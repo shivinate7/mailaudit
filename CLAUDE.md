@@ -23,6 +23,8 @@ every seller, for "did all four of these arrive?" and for cost basis), and
 - `index.html` — the build output, committed to the repo. GitHub Pages serves it
   at https://shivinate7.github.io/mailaudit/ . The user runs it as an iOS
   home-screen web app.
+- `test/harness.mjs` + `test/app.test.mjs` — the behaviour suite (`npm test`).
+- `dev-server.mjs` — optional local static server (`npm run serve`).
 
 ### Storage split (important)
 
@@ -110,8 +112,8 @@ Shipping Status, Url, Vendor Product Id, Fee Amount, Refund Amount.
 
 Everything here is user-verified in daily use except the **By item** view, cost
 basis, **Mystery mail** and **envelope photos**, which are newer and so far
-verified only by the jsdom harness described under Testing approach. The camera
-path in particular has never run on a real iPhone.
+verified only by `npm test`. The camera path in particular has never run on a
+real iPhone.
 
 - Three views behind a Packages / By item / Mystery mail switch at the top. The
   first two share one `received` map, the date filter, search, and Hide
@@ -233,21 +235,57 @@ ordering if you add anything to that line.
 ```
 npm install
 npm run build        # -> index.html
-npm run deploy       # build + commit index.html + push (Pages auto-deploys)
+npm test             # behaviour suite, must be green before deploying
+npm run serve        # optional local server on :4173
+npm run deploy       # build + test + commit index.html + push (Pages auto-deploys)
 ```
 
 GitHub Pages serves from main branch root. Deploy quirk learned the hard way:
 if the Pages workflow sits Queued >10 min, don't re-run the same run — cancel
 it and push a trivial commit to spawn a fresh run.
 
+Note `npm run deploy` only commits `index.html`; source and doc changes have to
+be committed yourself first.
+
+### Running it locally
+
+Opening `index.html` straight off disk works — `file://` was **measured**
+supporting localStorage *and* IndexedDB (Blobs included), so nothing the app
+needs is missing there. `npm run serve` exists only to give a scheme matching
+production, which matters if you're chasing an origin-dependent bug.
+
+**Every origin has its own storage.** `file://`, `http://localhost:4173` and
+`https://shivinate7.github.io` are three separate ledgers that cannot see each
+other, so data "vanishing" when you switch is expected, not a bug. Moving
+between them means Backup → restore, and photos need *Backup + photos*.
+
 ## Testing approach
 
-No test framework is set up in this repo yet, and no harness is committed —
-each one has been written ad hoc and thrown away. The recipe: bundle app.jsx
-with esbuild (platform=node, format=cjs), boot in jsdom with mocked
-`window.storage` and `window.photos`, seed saved state into those mocks, drive
-clicks through `react-dom/test-utils` `act`, assert on DOM text. The last run
-covered the whole app in 102 assertions.
+`npm test` — 105 assertions, no test framework, ~6s. `test/app.test.mjs` runs
+top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
+the jsdom setup, storage mocks, DOM helpers and the fixture.
+
+It bundles `app.jsx` with esbuild (platform=node, format=cjs), boots it in jsdom
+against mocked `window.storage` / `window.photos`, and drives it with real DOM
+events, asserting on rendered text. The app has no exports but the component and
+that's fine — every behaviour worth protecting is one you can see, so the
+assertions read the DOM the way the user does.
+
+(Three previous harnesses were written ad hoc and thrown away, which is why the
+same assertions kept being rewritten from scratch. Hence this one is committed
+and `jsdom` is a real devDependency.)
+
+**The suite is mutation-tested.** Breaking a behaviour on purpose must turn it
+red — verified for: assignment checking in more than was recorded, `resetAll`
+forgetting to clear envelopes, and undo restoring a snapshot instead of
+subtracting its own delta. Do the same when you add a claim; an assertion that
+can't fail is decoration.
+
+That exercise already earned its keep once. Every assignment in groups 1–19
+happens to take a card's *full* quantity, so the mutation "assign marks the
+whole line received" passed all 101 of them. Group 20 exists to catch it:
+record **one** copy of a qty-2 line and check exactly one copy lands. Don't
+delete it.
 
 Gotchas worth remembering:
 
@@ -264,29 +302,29 @@ Gotchas worth remembering:
 - Drive file restore through the drop handler: build an `Event("drop")` and
   `Object.defineProperty` a `dataTransfer` onto it. Setting `input.files` isn't
   practical.
-- The photo sweep is on a 2s timer; tests must wait past it.
+- The photo sweep is on a 2s timer and the ledger save is debounced 500ms;
+  tests must wait past them (`SWEEP_WAIT`, `SAVE_WAIT`).
+- Packages render expanded, so "Mark all received" matches several buttons —
+  reach into the specific card, not the first hit on the page.
 
-Worth formalizing (vitest + testing-library) if development continues.
+Test groups map to the claims this file makes, so if you change a behaviour
+deliberately, change the assertion and the prose in the same commit. What's
+covered: mystery mail hiding controls that don't apply; recording moving no
+counts; candidates ranking without deciding; assignment checking in *only* what
+was recorded (including partial quantities); undo composing with a later hand
+edit; ties from near-duplicate packages; leftovers keeping id/createdAt/note;
+smart-punctuation name matching; migration from pre-feature saves; `resetAll`
+surviving the debounce; candidates self-correcting when a package is received
+elsewhere; both backups and both restore paths; the photo sweep; and the older
+package/by-item views still working.
 
-Regression-sensitive behaviors to always re-verify: sticky-row checking under
-Hide received, merge-on-reimport preserving received state, backup/restore
-round-trip, canceled exclusion from counts, frozen sort stability, and by-item
-totals and basis staying whole while the breakdown is filtered.
+Still only covered by eye, never by a test: anything that needs a real device —
+the camera capture, the canvas downscale, iOS keyboard behaviour, and layout at
+375px.
 
-For mystery mail: that recording an envelope moves no counts, that assigning
-checks in *only* the recorded cards, that near-duplicate packages surface as a
-tie rather than a pick, that undo subtracts its own delta rather than restoring
-a snapshot (so a hand edit made in between survives), and that `resetAll` clears
-envelopes so the debounced save can't write them back.
-
-For photos: that no image data ever appears in the ledger JSON, that the sweep
-collects orphans but spares referenced blobs, that a round-trip through Edit
-keeps them, that `resetAll` clears the photo store, and that a photo backup
-survives restore onto an empty store byte-for-byte — that last one is the path
-a host migration would actually take.
-
-`jsdom` is not a dependency — install it for a harness run with
-`npm install jsdom --no-save` so package.json stays clean.
+Worth moving to vitest + testing-library if this grows much further; the
+hand-rolled `ok`/`eq` and the top-to-bottom script are fine at this size but
+give no isolation between groups.
 
 ## Known open threads
 
