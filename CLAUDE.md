@@ -224,6 +224,29 @@ green only on an exact match and the armed check-in confirm, signal red only on
 Discard. Photo thumbnails are 56px squares; the viewer is a full-screen pine-ink
 scrim, tap anywhere to dismiss.
 
+### Incoming theme — palette D▸ (approved, not yet built)
+
+The UI is slated to be repainted in a Violet Evergarden–inspired theme. The
+palette below is **decided and signed off**; the "Postal ledger" paragraph above
+still describes the live app and stays accurate until the repaint lands.
+
+| token | hex | | token | hex |
+|---|---|---|---|---|
+| canvas | `#F2E9DA` | | accent | `#6F5CA6` |
+| surface | `#FCF6EA` | | gold | `#C9A961` |
+| rule | `#DCCDB6` | | received | `#2E7A5E` |
+| ink | `#332E3F` | | lost | `#A8443C` |
+| muted | `#7A6E86` | | | |
+
+Warm parchment base, violet ink and accent, gold secondary. Measured contrast:
+ink/canvas 10.88:1, accent/surface 5.19:1, muted/surface 4.43:1. Two things to
+carry forward: `accent` was darkened from `#7B6BA8` specifically to clear 4.5:1
+(it carries real information — outstanding totals, the active filter chip), and
+`muted` at 4.43:1 is still marginally under, so darken it slightly when adopting.
+`theme-color` in `build.mjs` is deliberately still `#F4F5F2` — change it to
+`#F2E9DA` in the same commit as the repaint, not before, or Safari's chrome sits
+as a warm band above a cool page.
+
 At iPhone width the by-item row is genuinely tight: the right-hand column holds
 up to three lines (count, basis, outstanding) and the meta line under the name
 truncates. It is ordered counts-first (`3 sellers · 3 orders · <sets>`) so the
@@ -246,6 +269,25 @@ it and push a trivial commit to spawn a fresh run.
 
 Note `npm run deploy` only commits `index.html`; source and doc changes have to
 be committed yourself first.
+
+### Icons
+
+`apple-touch-icon.png` (180×180) and `icon-32.png` are committed assets at the
+repo root, referenced by `<link>` tags in the `build.mjs` head template. The
+1024 master and its generator live in `icon/` — `python3 icon/gen-icon.py`
+rewrites the SVG, and that file's docstring has the exact Chrome + `sips`
+commands to re-export the PNGs. The generator is stdlib-only and never runs
+during build or test.
+
+Two things that will bite:
+
+- **Both `href`s must stay relative.** Pages serves this from the `/mailaudit/`
+  subpath, so a root-absolute `/apple-touch-icon.png` resolves to
+  `shivinate7.github.io/apple-touch-icon.png` and 404s.
+- **iOS caches home-screen icons hard.** Changing the PNG does nothing to an
+  already-installed home-screen app; it has to be deleted and re-added from
+  Safari. That is safe for data — check-ins are keyed to the *origin*, not the
+  icon — but take a Backup first out of habit.
 
 ### Running it locally
 
@@ -329,7 +371,6 @@ give no isolation between groups.
 ## Known open threads
 
 - Vendor toggle (include eBay purchases) — user undecided, currently hard-filtered to TCG.
-- Custom home-screen icon (apple-touch-icon needs a real PNG file in the repo).
 - Possible migration to Netlify/Cloudflare for faster deploys. An origin change
   resets phone storage — both localStorage *and* IndexedDB — so it needs a
   Backup + photos → restore round trip. User is aware and relaxed about it.
