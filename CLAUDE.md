@@ -4,32 +4,38 @@ A single-page tool for verifying receipt of TCGplayer card orders. The user buys
 hundreds of low-cost cards across many sellers; this app ingests OrderWand CSV
 exports of their order history and gives them a checklist to mark cards as
 received, see what's outstanding (and its dollar value), and flag possibly-lost
-mail. Two views over the same check-in data: **Packages** (order + seller, the
-mail-day working view) and **By item** (the same product name pooled across
-every seller, for "did all four of these arrive?" and for cost basis).
-
-Built iteratively in a Claude chat; this repo is the continuation point.
+mail. Three views over the same check-in data: **Packages** (order + seller,
+the mail-day working view), **By item** (the same product name pooled across
+every seller, for "did all four of these arrive?" and for cost basis), and
+**Mystery mail** (packages that arrive with no way to tell who sent them).
 
 ## Architecture
 
 - `src/app.jsx` — the entire application, one React component file. No router,
   no CSS files (inline styles + one `<style>` tag for focus rules), Tailwind is
   NOT used. Dependencies: react, react-dom, papaparse only.
-- `src/entry.jsx` — standalone entry: shims `window.storage` (an async
-  get/set/delete/list API) onto localStorage, then mounts the app.
+- `src/entry.jsx` — the platform layer. Provides `window.storage` (async
+  get/set/delete/list over localStorage, holding the ledger) and
+  `window.photos` (async put/get/delete/keys/clear/sweep/usage over IndexedDB,
+  holding envelope photos), then mounts the app.
 - `build.mjs` — bundles entry via esbuild and inlines the JS into a
-  self-contained `index.html` (~189 KB) with iOS home-screen-app meta tags.
+  self-contained `index.html` with iOS home-screen-app meta tags.
 - `index.html` — the build output, committed to the repo. GitHub Pages serves it
   at https://shivinate7.github.io/mailaudit/ . The user runs it as an iOS
   home-screen web app.
 
-### Dual-target constraint (important)
+### Storage split (important)
 
-`src/app.jsx` doubles as a Claude.ai artifact (where `window.storage` is
-provided by the platform). Keep it a single file with a default export, no
-imports beyond react/papaparse, and never use localStorage/sessionStorage
-directly inside it — always go through `window.storage`. The entry shim is the
-only place localStorage may appear.
+`app.jsx` never touches a storage API directly — everything goes through
+`window.storage` or `window.photos`, and `entry.jsx` is the only place
+localStorage or IndexedDB may appear. Keep them apart: the ledger is one small
+JSON blob that has to save on a 500ms debounce, and photos are megabytes that
+must never get near it. localStorage caps out around 5MB; IndexedDB scales with
+free disk and stores Blobs without base64's ~33% inflation.
+
+Note `shivinate7.github.io` is a single origin across every repo the user has
+on Pages — hence the `mailday:` key namespace, and hence a per-origin storage
+quota shared with any other Pages project.
 
 ## Invariants — do not break these
 
@@ -37,13 +43,22 @@ only place localStorage may appear.
    shimmed under localStorage namespace `mailday:` → literal key
    `mailday:mailday:v1`. Real users have months of check-in data under these
    keys. Any schema change must ship with in-place migration in the load path.
-2. **Saved-state shape:** `{ items, received, dateFilter, sortBy, itemSort,
-   savedAt }`. `items` = array of parsed line items; `received` = map of item
-   key → count received. Item key = `orderId|itemNumber|vendorProductId` —
-   stable across re-imports; never change its construction. New keys must be
-   optional and defaulted in the load path (as `itemSort` is), so saved states
-   written by older builds keep loading. `itemSort` briefly shipped as
-   `cardSort`; the load path still reads that key as a fallback.
+2. **Saved-state shape:** `{ items, received, envelopes, dateFilter, sortBy,
+   itemSort, savedAt }`. `items` = array of parsed line items; `received` = map
+   of item key → count received; `envelopes` = mystery-mail records, each
+   `{ id, createdAt, note, entries: [{ name, qty }], photos: [photoId] }`.
+   Item key = `orderId|itemNumber|vendorProductId` — stable across re-imports;
+   never change its construction. Envelope entries store card **names**, never
+   item keys, so a re-import can't rot them and newly imported older orders
+   become candidates for free.
+   New keys must be optional and defaulted in the load path (as `itemSort`,
+   `envelopes` and `photos` are), so saved states written by older builds keep
+   loading. `itemSort` briefly shipped as `cardSort`; the load path still reads
+   that key as a fallback. Adding a persisted key means touching **five** sites:
+   the load effect, the save payload + its dep array, `backup`, the JSON restore
+   branch, and `resetAll` — miss the last one and the next debounced save writes
+   the stale value straight back. Photo *blobs* are not in here at all; only
+   their ids are (see Envelope photos below).
 3. **Imports MERGE, never replace.** TCGplayer only serves ~120 days of history,
    so this app is the system of record for older orders. Re-importing must keep
    every existing item and all `received` state, adding/refreshing by key.
@@ -60,9 +75,18 @@ only place localStorage may appear.
    stricter — a *completed item* also stays until filters change, because most
    items have a single copy and vanishing on every tap would recreate exactly
    the mis-tap cascade this invariant exists to prevent.
-6. **No native browser dialogs.** `window.confirm`/`alert` are blocked in the
-   Claude artifact sandbox — the Reset button uses an inline two-tap confirm.
-   Keep that pattern.
+6. **No native browser dialogs.** `window.confirm`/`alert` block the whole page
+   and look wrong in a home-screen app; every destructive action uses an inline
+   two-tap confirm instead (Reset, Discard, Assign). Keep that pattern. (This
+   started as a sandbox limitation and outlived it — it's now a UI choice.)
+7. **Mystery mail never decides anything.** The user buys the same cheap cards
+   from many sellers, so *near-duplicate packages are normal* — two outstanding
+   orders can have identical contents. The app may rank the packages an envelope
+   could have come from; it must never auto-assign, never treat a perfect
+   fingerprint match as an action, and never check off a card the user didn't
+   record (no "mark the rest of the package too"). Equally-good candidates are
+   reported as a tie and rendered without emphasis. This constraint came
+   directly from the user — don't "simplify" it away as friction.
 
 ## OrderWand CSV schema & quirks (learned from the user's real exports)
 
@@ -84,12 +108,17 @@ Shipping Status, Url, Vendor Product Id, Fee Amount, Refund Amount.
 
 ## Feature map (all implemented)
 
-Everything here is user-verified in daily use except the **By item** view and
-cost basis, which are new in this build and so far verified only by the jsdom
-harness described under Testing approach.
+Everything here is user-verified in daily use except the **By item** view, cost
+basis, **Mystery mail** and **envelope photos**, which are newer and so far
+verified only by the jsdom harness described under Testing approach. The camera
+path in particular has never run on a real iPhone.
 
-- Two views behind a Packages / By item switch at the top; both share one
-  `received` map, the date filter, search, and Hide received.
+- Three views behind a Packages / By item / Mystery mail switch at the top. The
+  first two share one `received` map, the date filter, search, and Hide
+  received; Mystery mail hides all of those (they apply to nothing there) but
+  keeps Re-import / Backup / Reset reachable. The switch survives an empty
+  ledger so pending envelopes can't be stranded, and carries a count badge when
+  envelopes are waiting.
 - **By item view**: line items pooled by *exact* Product Name across every
   seller and order (TCGplayer names are a scrape, so duplicates are
   byte-identical — no normalization is done, deliberately). Each row shows
@@ -106,6 +135,42 @@ harness described under Testing approach.
   per-line, so they are deliberately not allocated into it. Basis is what was
   paid and never moves when copies are checked in; the red figure beside it is
   what's still outstanding.
+- **Mystery mail**: for packages that arrive with no way to tell who sent them.
+  *Record an envelope* → one autofocused input, suggestions drawn from cards
+  still outstanding (`outstandingNames`), tap to add (tap again bumps qty), the
+  input clears and keeps focus so the iOS keyboard never dips; the return key
+  or an "Add … as typed" row records anything not in the ledger. Optional note
+  (tracking #, sender) and optional photos, neither of which blocks the fast
+  path. Saved envelopes sit in a pile, newest first, and touch nothing in the
+  ledger.
+  Each pending envelope lists the outstanding packages that could explain it
+  (`rankCandidates`), best first, with how much each explains; a two-tap confirm
+  checks in *exactly the recorded cards* and nothing else. Unexplained entries
+  are tagged "no outstanding copy" and stay behind in a smaller envelope that
+  keeps its id/createdAt/note. Per-envelope Edit and two-tap Discard. The last
+  assignment is undoable, with the notice rendered at the vacated slot in the
+  pile rather than at the top of the page.
+  Name matching goes through `normName` (NFD-strip accents, lowercase, collapse
+  non-alphanumerics) — required because iOS smart punctuation turns a typed `'`
+  into `’`, which would otherwise never equal the CSV's straight apostrophe.
+  Candidates ignore the date filter on purpose (a mystery envelope is as likely
+  to be an old order) and exclude canceled orders. They're derived, never
+  stored, so a package received by other means simply stops being offered.
+  See invariant 7 for what this must never do.
+- **Envelope photos** (a snap of the mailing label, so a tracking number or
+  sender survives without typing it). `<input capture="environment">` opens the
+  iOS camera directly; the image is canvas-downscaled to a 2000px long edge at
+  JPEG 0.8 — big enough to *read* a label, small enough not to matter — and
+  written straight to IndexedDB. Envelopes carry only photo ids; the blob never
+  enters the ledger JSON. Thumbnails on the card, tap for a full-screen viewer.
+  Object URLs are revoked on unmount (leaking them pins whole images in memory
+  for the life of the page).
+  Nothing deletes photos implicitly, so a single **sweep** effect covers every
+  orphan path at once (discard, assign-away, restore, a cancelled composer): it
+  drops any blob no envelope references, held off while an undo is live or a
+  composer is open, since either can bring ids back. A "N photos stored · X of
+  Y used on this device" line in the pile reports real
+  `navigator.storage.estimate()` numbers.
 - CSV import (drag/drop or picker), merge semantics, import summary notice.
 - Packages grouped by orderId+seller; expand/collapse; per-package progress bar
   (only when partially complete); contextual "Mark all received" / "Clear
@@ -113,9 +178,10 @@ harness described under Testing approach.
 - Whole-row tap to toggle; 2-line name wrap; qty stepper for qty>1 with
   indeterminate-dash partial state.
 - Search (card/set/seller/order), Hide received, date filters (All/30/45/60/90,
-  free "# days" input, custom from–to) — all shared by both views. Package sort
-  (newest/oldest/$ remaining/seller A–Z) is separate from `itemSort`; the
-  control swaps with the view. Both orders are frozen while checking.
+  free "# days" input, custom from–to) — shared by the two ledger views and
+  hidden entirely under Mystery mail. Package sort (newest/oldest/$ remaining/
+  seller A–Z) is separate from `itemSort`; the control swaps with the view.
+  Both orders are frozen while checking.
 - Outstanding value: overall "$X still missing", per-package and per-item
   "N left · $Y".
 - Lost-mail flags on untracked unreceived packages: amber "may be lost" at 14d
@@ -125,10 +191,16 @@ harness described under Testing approach.
 - Canceled orders: excluded from list and all counts; viewable via
   "N canceled — view" link which scrolls to a dashed reference section (for
   refund auditing). Tracked/untracked shown as ●/○ dot + word in header meta.
-- Backup button downloads full-state JSON (`{mailday:1, items, received,
-  dateFilter, sortBy, itemSort}`); the file picker restores it (any `.json`
-  routes to restore, `.csv` routes to import). Restore tolerates older backups
-  missing the newer keys.
+- **Two backups.** *Backup* downloads `{mailday:1, items, received, envelopes,
+  dateFilter, sortBy, itemSort}` — small, quick, and holds the irreplaceable
+  part. *Backup + photos* (only shown when photos exist) adds `photos` as an
+  `{id: dataURL}` map; photos are memory aids, so paying their file size is
+  opt-in. The file picker restores either (any `.json` routes to restore,
+  `.csv` routes to import) and tolerates older backups missing newer keys.
+  Restoring a photo-less backup **strips** envelopes' photo ids rather than
+  leaving them pointing at blobs that exist nowhere. A restore is a full
+  replace, so if pending envelopes are about to be replaced the notice says so —
+  they're hand-typed and losing them silently would be the worst kind of quiet.
 - Persistence auto-saves debounced 500ms with saved/saving indicator.
 
 ## Design language
@@ -140,7 +212,15 @@ No emoji in chrome except the empty-state 📬. Typographic dot indicators, not
 icons. Max content width 760px; must work at 380px (iPhone). Touch targets:
 whole-row tap, 30px check indicator, 34px steppers. The view switch is a
 pill-shaped segmented control in uppercase mono, active segment filled with
-pine ink — same treatment as the active date-range chip.
+pine ink — same treatment as the active date-range chip. Three segments plus the
+envelope count badge only just fit at 375px, which is why the pill padding is
+`8px 14px` rather than 16 — don't lengthen a label without re-checking.
+
+Mystery mail follows the same language: manila for anything advisory (the
+ambiguity warning, the "as typed" row, the "no outstanding copy" tag), stamp
+green only on an exact match and the armed check-in confirm, signal red only on
+Discard. Photo thumbnails are 56px squares; the viewer is a full-screen pine-ink
+scrim, tap anywhere to dismiss.
 
 At iPhone width the by-item row is genuinely tight: the right-hand column holds
 up to three lines (count, basis, outstanding) and the meta line under the name
@@ -164,17 +244,46 @@ it and push a trivial commit to spawn a fresh run.
 
 No test framework is set up in this repo yet, and no harness is committed —
 each one has been written ad hoc and thrown away. The recipe: bundle app.jsx
-with esbuild (platform=node, format=cjs), boot in jsdom with a mocked
-`window.storage`, seed saved state into that mock, drive clicks through
-`react-dom/test-utils` `act`, assert on DOM text. Two gotchas worth
-remembering: `navigator` can't be assigned onto Node's `global` (use
-`Object.defineProperty` and skip failures), and jsdom holds the process open
-unless you `window.close()` at the end. Worth formalizing (vitest +
-testing-library) if development continues. Regression-sensitive behaviors to
-always re-verify: sticky-row checking under Hide received, merge-on-reimport
-preserving received state, backup/restore round-trip, canceled exclusion from
-counts, frozen sort stability, and by-item totals and basis staying whole while
-the breakdown is filtered.
+with esbuild (platform=node, format=cjs), boot in jsdom with mocked
+`window.storage` and `window.photos`, seed saved state into those mocks, drive
+clicks through `react-dom/test-utils` `act`, assert on DOM text. The last run
+covered the whole app in 102 assertions.
+
+Gotchas worth remembering:
+
+- `navigator` can't be assigned onto Node's `global` — use `Object.defineProperty`.
+- jsdom holds the process open unless you `window.close()` at the end.
+- Write the esbuild output *under the project* (e.g.
+  `node_modules/.mailday-harness/`) or its own `require("react")` resolves to a
+  second React copy and hooks blow up.
+- `boot()` must unmount the previous root before calling `createRoot` on the
+  same container again.
+- **jsdom has no IndexedDB.** Mock `window.photos` directly rather than trying
+  to polyfill — the app only ever sees that API, and a `Map` of Blobs matches
+  its contract exactly.
+- Drive file restore through the drop handler: build an `Event("drop")` and
+  `Object.defineProperty` a `dataTransfer` onto it. Setting `input.files` isn't
+  practical.
+- The photo sweep is on a 2s timer; tests must wait past it.
+
+Worth formalizing (vitest + testing-library) if development continues.
+
+Regression-sensitive behaviors to always re-verify: sticky-row checking under
+Hide received, merge-on-reimport preserving received state, backup/restore
+round-trip, canceled exclusion from counts, frozen sort stability, and by-item
+totals and basis staying whole while the breakdown is filtered.
+
+For mystery mail: that recording an envelope moves no counts, that assigning
+checks in *only* the recorded cards, that near-duplicate packages surface as a
+tie rather than a pick, that undo subtracts its own delta rather than restoring
+a snapshot (so a hand edit made in between survives), and that `resetAll` clears
+envelopes so the debounced save can't write them back.
+
+For photos: that no image data ever appears in the ledger JSON, that the sweep
+collects orphans but spares referenced blobs, that a round-trip through Edit
+keeps them, that `resetAll` clears the photo store, and that a photo backup
+survives restore onto an empty store byte-for-byte — that last one is the path
+a host migration would actually take.
 
 `jsdom` is not a dependency — install it for a harness run with
 `npm install jsdom --no-save` so package.json stays clean.
@@ -183,6 +292,10 @@ the breakdown is filtered.
 
 - Vendor toggle (include eBay purchases) — user undecided, currently hard-filtered to TCG.
 - Custom home-screen icon (apple-touch-icon needs a real PNG file in the repo).
-- Possible migration to Netlify/Cloudflare for faster deploys (origin change
-  = phone storage reset; requires Backup→restore flow; user aware).
-- The Claude.ai artifact copy of app.jsx should be kept in sync when practical.
+- Possible migration to Netlify/Cloudflare for faster deploys. An origin change
+  resets phone storage — both localStorage *and* IndexedDB — so it needs a
+  Backup + photos → restore round trip. User is aware and relaxed about it.
+- **Unverified on-device:** iOS clears script-writable storage after 7 days of
+  non-use under ITP, but home-screen-installed web apps are understood to be
+  exempt. Worth confirming empirically, since it's the difference between
+  "safe" and "data quietly vanishes".
