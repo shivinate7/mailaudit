@@ -24,6 +24,12 @@ const C = {
 const mono = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
 const sans = "'Avenir Next', 'Segoe UI', system-ui, -apple-system, sans-serif";
 
+const money = (n) =>
+  `$${n.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
 const STORAGE_KEY = "mailday:v1";
 
 /* ---------- CSV helpers ---------- */
@@ -85,6 +91,18 @@ function parseItems(rows) {
   return items;
 }
 
+/* lost-mail heuristics for untracked, unreceived mail:
+   14d ≈ TCGplayer est. delivery window + grace; 30d = refund deadline floor */
+function lostMail(date, tracking, done) {
+  if (done || !/^without tracking$/i.test(tracking || "")) return null;
+  const t = Date.parse(date);
+  if (Number.isNaN(t)) return null;
+  const days = Math.floor((Date.now() - t) / 86400000);
+  if (days >= 30) return { tier: "deadline", days };
+  if (days >= 14) return { tier: "maybe", days };
+  return null;
+}
+
 /* ---------- Small UI atoms ---------- */
 
 function ProgressBar({ pct, height = 8 }) {
@@ -112,13 +130,23 @@ function ProgressBar({ pct, height = 8 }) {
 
 /* ---------- Item row ---------- */
 
-function ItemRow({ item, got, onSet }) {
+function ItemRow({ item, got, onSet, variant = "package" }) {
   const done = got >= item.qty;
   const partial = got > 0 && !done;
   const toggle = () => onSet(item.key, done ? 0 : item.qty);
+  /* in the by-item view the name is the group heading, so the row leads with
+     where this copy came from instead */
+  const source = variant === "source";
+  const title = source ? item.seller : item.name;
   const meta = (item.qty > 1 ? [`×${item.qty}`] : [])
-    .concat([item.set, item.finish, item.condition].filter(Boolean))
+    .concat(
+      (source
+        ? [item.date, item.set, item.finish, item.condition]
+        : [item.set, item.finish, item.condition]
+      ).filter(Boolean)
+    )
     .join(" · ");
+  const lost = source ? lostMail(item.date, item.tracking, done) : null;
   return (
     <div
       onClick={toggle}
@@ -177,7 +205,7 @@ function ItemRow({ item, got, onSet }) {
               overflow: "hidden",
             }}
           >
-            {item.name}
+            {title}
           </div>
           <span
             style={{
@@ -200,8 +228,36 @@ function ItemRow({ item, got, onSet }) {
             whiteSpace: "nowrap",
           }}
         >
+          {lost && (
+            <span
+              style={{
+                color: lost.tier === "deadline" ? C.red : C.amber,
+                fontWeight: 700,
+              }}
+            >
+              ⚠ {lost.days}d ·{" "}
+            </span>
+          )}
           {meta || "—"}
         </div>
+        {/* order ids are long; on its own line it never loses the tail to
+            ellipsis, and it's the key for chasing a refund */}
+        {source && (
+          <div
+            style={{
+              marginTop: 1,
+              fontFamily: mono,
+              fontSize: 10.5,
+              color: C.inkSoft,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+            title={item.orderId}
+          >
+            {item.orderId}
+          </div>
+        )}
         {item.qty > 1 && (
           <div
             onClick={(e) => e.stopPropagation()}
@@ -282,15 +338,7 @@ function PackageCard({ pkg, received, onSet, onBulk }) {
     missingVal >= 100
       ? `$${Math.round(missingVal).toLocaleString()}`
       : `$${missingVal.toFixed(2)}`;
-  /* lost-mail heuristics for untracked, unreceived packages:
-     14d ≈ TCGplayer est. delivery window + grace; 30d = refund deadline floor */
-  const days = Math.floor((Date.now() - (Date.parse(pkg.date) || Date.now())) / 86400000);
-  const lostTier =
-    !done && tracked === "untracked" && days >= 30
-      ? "deadline"
-      : !done && tracked === "untracked" && days >= 14
-      ? "maybe"
-      : null;
+  const lost = lostMail(pkg.date, pkg.tracking, done);
 
   return (
     <div
@@ -354,14 +402,14 @@ function PackageCard({ pkg, received, onSet, onBulk }) {
             }}
             title={pkg.orderId}
           >
-            {lostTier === "deadline" && (
+            {lost?.tier === "deadline" && (
               <span style={{ color: C.red, fontWeight: 700 }}>
-                ⚠ {days}d — refund window closing, contact seller ·{" "}
+                ⚠ {lost.days}d — refund window closing, contact seller ·{" "}
               </span>
             )}
-            {lostTier === "maybe" && (
+            {lost?.tier === "maybe" && (
               <span style={{ color: C.amber, fontWeight: 700 }}>
-                ⚠ {days}d — may be lost ·{" "}
+                ⚠ {lost.days}d — may be lost ·{" "}
               </span>
             )}
             {pkg.date && `${pkg.date} · `}
@@ -447,6 +495,195 @@ function PackageCard({ pkg, received, onSet, onBulk }) {
               item={it}
               got={Math.min(it.qty, received[it.key] || 0)}
               onSet={onSet}
+            />
+          ))}
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ---------- Item total (same product name across every seller) ---------- */
+
+function ItemTotalRow({ item, received, onSet, onBulk }) {
+  const totalQty = item.qty;
+  const gotQty = item.items.reduce(
+    (s, it) => s + Math.min(it.qty, received[it.key] || 0),
+    0
+  );
+  const done = gotQty >= totalQty;
+  const [open, setOpen] = useState(false);
+  const missingVal = item.items.reduce(
+    (s, it) => s + it.price * (it.qty - Math.min(it.qty, received[it.key] || 0)),
+    0
+  );
+  /* counts always cover every copy of the item; only the breakdown is filtered */
+  const hiddenCopies = item.items.length - item.shown.length;
+  const setLabel =
+    item.sets.length === 0
+      ? ""
+      : item.sets.length === 1
+      ? item.sets[0]
+      : `${item.sets[0]} +${item.sets.length - 1} more`;
+  const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+  const copies = (n) => `${n} cop${n === 1 ? "y" : "ies"}`;
+  /* counts first: they're short and always survive, while a long set list
+     degrades to an ellipsis — and each copy's set is in the breakdown anyway */
+  const meta = [plural(item.sellerCount, "seller"), plural(item.orderCount, "order"), setLabel]
+    .filter(Boolean)
+    .join(" · ");
+
+  return (
+    <div
+      style={{
+        background: C.card,
+        border: `1px solid ${done ? C.green : C.line}`,
+        borderRadius: 10,
+        overflow: "hidden",
+        boxShadow: "0 1px 2px rgba(28,43,36,0.06)",
+      }}
+    >
+      <button
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          width: "100%",
+          textAlign: "left",
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          padding: "12px 14px",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+        }}
+      >
+        <span
+          style={{
+            fontFamily: mono,
+            fontSize: 10,
+            color: C.inkSoft,
+            transform: open ? "rotate(90deg)" : "none",
+            transition: "transform 140ms ease",
+            display: "inline-block",
+            flexShrink: 0,
+          }}
+        >
+          ▶
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontWeight: 700,
+              fontSize: 15,
+              lineHeight: 1.3,
+              color: C.ink,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {item.name}
+          </div>
+          <div
+            style={{
+              fontFamily: mono,
+              fontSize: 11,
+              color: C.inkSoft,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {meta}
+          </div>
+        </div>
+        <div style={{ flexShrink: 0, textAlign: "right" }}>
+          <div
+            style={{
+              fontFamily: mono,
+              fontSize: 15,
+              fontWeight: 700,
+              color: done ? C.green : C.ink,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {gotQty}/{totalQty}
+            {done ? " ✓" : ""}
+          </div>
+          {/* labelled, so it never reads as the red outstanding figure below */}
+          <div
+            style={{
+              fontFamily: mono,
+              fontSize: 11.5,
+              color: C.inkSoft,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {money(item.basis)} basis
+          </div>
+          {!done && (
+            <div
+              style={{
+                fontFamily: mono,
+                fontSize: 11,
+                fontWeight: 700,
+                color: C.red,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {totalQty - gotQty} left · {money(missingVal)}
+            </div>
+          )}
+        </div>
+      </button>
+
+      {gotQty > 0 && !done && (
+        <div style={{ padding: "0 14px 10px" }}>
+          <ProgressBar pct={(gotQty / totalQty) * 100} height={5} />
+        </div>
+      )}
+
+      {open && (
+        <>
+          <div
+            style={{
+              padding: "0 14px 6px",
+              fontFamily: mono,
+              fontSize: 10.5,
+              color: C.inkSoft,
+            }}
+          >
+            {money(item.basis)} across {copies(totalQty)} · {money(item.avg)} avg
+            {hiddenCopies > 0 &&
+              ` · ${copies(hiddenCopies)} hidden by filters`}
+          </div>
+          <div
+            style={{
+              display: "flex",
+              gap: 8,
+              padding: "0 14px 8px",
+              justifyContent: "flex-end",
+            }}
+          >
+            {!done && (
+              <button onClick={() => onBulk(item.items, true)} style={miniBtn}>
+                Mark all received
+              </button>
+            )}
+            {gotQty > 0 && (
+              <button onClick={() => onBulk(item.items, false)} style={miniBtn}>
+                Clear check-ins
+              </button>
+            )}
+          </div>
+          {item.shown.map((it) => (
+            <ItemRow
+              key={it.key}
+              item={it}
+              got={Math.min(it.qty, received[it.key] || 0)}
+              onSet={onSet}
+              variant="source"
             />
           ))}
         </>
@@ -584,6 +821,8 @@ export default function MailDayLedger() {
   const resetTimer = useRef(null);
   const [dateFilter, setDateFilter] = useState({ preset: "all", from: "", to: "" });
   const [sortBy, setSortBy] = useState("newest");
+  const [view, setView] = useState("packages"); // packages | items
+  const [itemSort, setItemSort] = useState("missing");
   const receivedRef = useRef({});
   useEffect(() => {
     receivedRef.current = received;
@@ -602,6 +841,9 @@ export default function MailDayLedger() {
           setReceived(data.received || {});
           if (data.dateFilter) setDateFilter(data.dateFilter);
           if (data.sortBy) setSortBy(data.sortBy);
+          // cardSort: the key this setting shipped under before the rename
+          if (data.itemSort || data.cardSort)
+            setItemSort(data.itemSort || data.cardSort);
         }
       } catch {
         /* nothing saved yet — fresh start */
@@ -624,7 +866,14 @@ export default function MailDayLedger() {
       try {
         await window.storage.set(
           STORAGE_KEY,
-          JSON.stringify({ items, received, dateFilter, sortBy, savedAt: Date.now() })
+          JSON.stringify({
+            items,
+            received,
+            dateFilter,
+            sortBy,
+            itemSort,
+            savedAt: Date.now(),
+          })
         );
         setSaving("saved");
       } catch {
@@ -632,11 +881,11 @@ export default function MailDayLedger() {
       }
     }, 500);
     return () => clearTimeout(saveTimer.current);
-  }, [items, received, dateFilter, sortBy, loaded]);
+  }, [items, received, dateFilter, sortBy, itemSort, loaded]);
 
   const backup = useCallback(() => {
     const blob = new Blob(
-      [JSON.stringify({ mailday: 1, items, received, dateFilter, sortBy })],
+      [JSON.stringify({ mailday: 1, items, received, dateFilter, sortBy, itemSort })],
       { type: "application/json" }
     );
     const a = document.createElement("a");
@@ -644,7 +893,7 @@ export default function MailDayLedger() {
     a.download = `mailday-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(a.href);
-  }, [items, received, dateFilter, sortBy]);
+  }, [items, received, dateFilter, sortBy, itemSort]);
 
   const handleFile = useCallback(
     (file) => {
@@ -660,6 +909,8 @@ export default function MailDayLedger() {
             setReceived(data.received || {});
             if (data.dateFilter) setDateFilter(data.dateFilter);
             if (data.sortBy) setSortBy(data.sortBy);
+            if (data.itemSort || data.cardSort)
+              setItemSort(data.itemSort || data.cardSort);
             setImportMsg(
               `Backup restored — ${data.items.length} lines and your check-ins are back.`
             );
@@ -723,7 +974,7 @@ export default function MailDayLedger() {
   /* reset sticky rows whenever the view context changes */
   useEffect(() => {
     setSticky(new Set());
-  }, [hideDone, query, dateFilter]);
+  }, [hideDone, query, dateFilter, view]);
 
   const bulkSet = useCallback((pkgItems, on) => {
     setReceived((prev) => {
@@ -894,6 +1145,99 @@ export default function MailDayLedger() {
       );
   }, [packages, query, hideDone, received, sticky, packageOrder]);
 
+  /* by-item totals: exact product-name match, pooled across every seller/order.
+     TCGplayer names are a scrape, so identical items carry byte-identical names.
+     basis = what the copies cost (price × qty); shipping and tax are per-order
+     in the CSV, not per-line, so they're not in it. */
+  const itemGroups = useMemo(() => {
+    const map = new Map();
+    for (const it of rangedItems) {
+      if (!map.has(it.name))
+        map.set(it.name, { name: it.name, items: [], sets: [], qty: 0 });
+      map.get(it.name).items.push(it);
+    }
+    const arr = [...map.values()];
+    for (const g of arr) {
+      g.items.sort(
+        (a, b) =>
+          (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0) ||
+          a.seller.localeCompare(b.seller)
+      );
+      g.qty = g.items.reduce((s, it) => s + it.qty, 0);
+      g.basis = g.items.reduce((s, it) => s + it.price * it.qty, 0);
+      g.avg = g.qty ? g.basis / g.qty : 0;
+      g.sets = [...new Set(g.items.map((it) => it.set).filter(Boolean))];
+      g.sellerCount = new Set(g.items.map((it) => it.seller)).size;
+      g.orderCount = new Set(g.items.map((it) => it.orderId)).size;
+    }
+    return arr;
+  }, [rangedItems]);
+
+  /* frozen while checking, same as packageOrder */
+  const itemOrder = useMemo(() => {
+    const rec = receivedRef.current;
+    const gotOf = (g) =>
+      g.items.reduce((s, it) => s + Math.min(it.qty, rec[it.key] || 0), 0);
+    const missingVal = (g) =>
+      g.items.reduce(
+        (s, it) => s + it.price * (it.qty - Math.min(it.qty, rec[it.key] || 0)),
+        0
+      );
+    const sorted = [...itemGroups];
+    if (itemSort === "basis")
+      sorted.sort((a, b) => b.basis - a.basis || a.name.localeCompare(b.name));
+    else if (itemSort === "ordered")
+      sorted.sort((a, b) => b.qty - a.qty || a.name.localeCompare(b.name));
+    else if (itemSort === "value")
+      sorted.sort(
+        (a, b) => missingVal(b) - missingVal(a) || a.name.localeCompare(b.name)
+      );
+    else if (itemSort === "name")
+      sorted.sort((a, b) => a.name.localeCompare(b.name));
+    else
+      sorted.sort(
+        (a, b) =>
+          b.qty - gotOf(b) - (a.qty - gotOf(a)) ||
+          missingVal(b) - missingVal(a) ||
+          a.name.localeCompare(b.name)
+      );
+    const order = new Map();
+    sorted.forEach((g, i) => order.set(g.name, i));
+    return order;
+  }, [itemGroups, itemSort]);
+
+  const visibleItems = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return itemGroups
+      .map((g) => {
+        /* unlike a package — a physical thing you finish — an item row is one
+           line in a long scan, and most items have a single copy. Completing
+           one must not yank the row out from under the finger, so an item that
+           was just checked stays until the filters change and sticky clears. */
+        const allDone = g.items.every((it) => (received[it.key] || 0) >= it.qty);
+        if (hideDone && allDone && !g.items.some((it) => sticky.has(it.key)))
+          return { ...g, shown: [] };
+        let shown = g.items;
+        if (q)
+          shown = shown.filter((it) =>
+            [it.name, it.set, it.seller, it.orderId]
+              .join(" ")
+              .toLowerCase()
+              .includes(q)
+          );
+        if (hideDone)
+          shown = shown.filter(
+            (it) => (received[it.key] || 0) < it.qty || sticky.has(it.key)
+          );
+        return { ...g, shown };
+      })
+      .filter((g) => g.shown.length > 0)
+      .sort(
+        (a, b) =>
+          (itemOrder.get(a.name) ?? 1e9) - (itemOrder.get(b.name) ?? 1e9)
+      );
+  }, [itemGroups, query, hideDone, received, sticky, itemOrder]);
+
   const totals = useMemo(() => {
     let total = 0,
       got = 0,
@@ -968,6 +1312,41 @@ export default function MailDayLedger() {
 
         {items.length > 0 && (
           <>
+            {/* View switch */}
+            <div
+              style={{
+                display: "inline-flex",
+                border: `1px solid ${C.line}`,
+                borderRadius: 999,
+                overflow: "hidden",
+                background: "#fff",
+                marginBottom: 14,
+              }}
+            >
+              {[
+                ["packages", "Packages"],
+                ["items", "By item"],
+              ].map(([v, label]) => (
+                <button
+                  key={v}
+                  onClick={() => setView(v)}
+                  style={{
+                    fontFamily: mono,
+                    fontSize: 11,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    padding: "8px 16px",
+                    border: "none",
+                    background: view === v ? C.ink : "transparent",
+                    color: view === v ? "#fff" : C.inkSoft,
+                    cursor: "pointer",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
             {/* Overall progress */}
             <div
               style={{
@@ -1024,7 +1403,11 @@ export default function MailDayLedger() {
                 }}
               >
                 <span style={{ whiteSpace: "nowrap" }}>
-                  {packages.length} packages
+                  {view === "items"
+                    ? `${itemGroups.length} unique item${
+                        itemGroups.length === 1 ? "" : "s"
+                      }`
+                    : `${packages.length} packages`}
                   {range ? " in range" : ""} · autosaves
                 </span>
                 <span>
@@ -1214,22 +1597,42 @@ export default function MailDayLedger() {
                   outline: "none",
                 }}
               />
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                aria-label="Sort packages"
-                style={{
-                  ...dateInput,
-                  padding: "9px 8px",
-                  fontSize: 12,
-                  cursor: "pointer",
-                }}
-              >
-                <option value="newest">Sort: newest</option>
-                <option value="oldest">Sort: oldest</option>
-                <option value="value">Sort: $ remaining</option>
-                <option value="seller">Sort: seller A–Z</option>
-              </select>
+              {view === "items" ? (
+                <select
+                  value={itemSort}
+                  onChange={(e) => setItemSort(e.target.value)}
+                  aria-label="Sort items"
+                  style={{
+                    ...dateInput,
+                    padding: "9px 8px",
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="missing">Sort: most missing</option>
+                  <option value="basis">Sort: biggest position</option>
+                  <option value="ordered">Sort: most ordered</option>
+                  <option value="value">Sort: $ remaining</option>
+                  <option value="name">Sort: name A–Z</option>
+                </select>
+              ) : (
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  aria-label="Sort packages"
+                  style={{
+                    ...dateInput,
+                    padding: "9px 8px",
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="newest">Sort: newest</option>
+                  <option value="oldest">Sort: oldest</option>
+                  <option value="value">Sort: $ remaining</option>
+                  <option value="seller">Sort: seller A–Z</option>
+                </select>
+              )}
               <button
                 onClick={() => setHideDone((h) => !h)}
                 style={{
@@ -1315,18 +1718,29 @@ export default function MailDayLedger() {
           </div>
         )}
 
-        {/* Packages */}
+        {/* Packages / items */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {visible.map((pkg) => (
-            <PackageCard
-              key={pkg.gk}
-              pkg={pkg}
-              received={received}
-              onSet={setCount}
-              onBulk={bulkSet}
-            />
-          ))}
-          {items.length > 0 && visible.length === 0 && (
+          {view === "items"
+            ? visibleItems.map((g) => (
+                <ItemTotalRow
+                  key={g.name}
+                  item={g}
+                  received={received}
+                  onSet={setCount}
+                  onBulk={bulkSet}
+                />
+              ))
+            : visible.map((pkg) => (
+                <PackageCard
+                  key={pkg.gk}
+                  pkg={pkg}
+                  received={received}
+                  onSet={setCount}
+                  onBulk={bulkSet}
+                />
+              ))}
+          {items.length > 0 &&
+            (view === "items" ? visibleItems.length : visible.length) === 0 && (
             <div
               style={{
                 textAlign: "center",
@@ -1337,6 +1751,8 @@ export default function MailDayLedger() {
             >
               {hideDone && !query
                 ? "Everything here has been checked in. 🎉"
+                : view === "items"
+                ? "No items match that search."
                 : "No cards match that search."}
             </div>
           )}
