@@ -3,22 +3,31 @@ import Papa from "papaparse";
 
 /* ============================================================
    MAIL DAY LEDGER — OrderWand CSV check-in tracker
-   Palette: cool paper, pine ink, stamp green, signal red, manila
+   Palette: warm parchment, violet ink and accent, gold secondary
    ============================================================ */
 
+/* Palette D▸ — warm parchment, violet ink and accent, gold secondary.
+   Every value here is contrast-checked against `card` (#FCF6EA), the surface
+   most text actually sits on; the ones that carry information clear 4.5:1.
+   Don't swap a value without re-checking the pair it's used against — the
+   awkward ones are manilaInk (must clear 4.5 on `manila`, not on card) and
+   inkSoft, which was darkened from the original #7A6E86 for exactly that
+   reason. `paper` is the page, `card` is any raised surface — there is no
+   pure white in this theme, so never reach for C.card. */
 const C = {
-  paper: "#F4F5F2",
-  card: "#FFFFFF",
-  ink: "#1C2B24",
-  inkSoft: "#5A6B62",
-  line: "#DDE1DA",
-  green: "#2E7D4F",
-  greenSoft: "#E7F2EB",
-  red: "#C0442B",
-  redSoft: "#F9ECE8",
-  manila: "#EFE6CF",
-  manilaInk: "#7A6A3E",
-  amber: "#A8720E",
+  paper: "#F2E9DA",
+  card: "#FCF6EA",
+  ink: "#332E3F",
+  inkSoft: "#6E6379",
+  line: "#DCCDB6",
+  accent: "#6F5CA6",
+  green: "#2E7A5E",
+  greenSoft: "#E7EADC",
+  red: "#A8443C",
+  redSoft: "#F4E4D9",
+  manila: "#EADBBA",
+  manilaInk: "#695832",
+  amber: "#846008",
 };
 
 const mono = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
@@ -311,7 +320,10 @@ function ProgressBar({ pct, height = 8 }) {
         style={{
           width: `${pct}%`,
           height: "100%",
-          background: pct >= 100 ? C.green : C.ink,
+          /* accent while in progress, green once complete. The old theme used
+             ink here, which worked because it was a near-black *green*; the new
+             ink is a near-black violet and read as flat black on parchment. */
+          background: pct >= 100 ? C.green : C.accent,
           borderRadius: height,
           transition: "width 240ms ease",
         }}
@@ -367,8 +379,8 @@ function ItemRow({ item, got, onSet, variant = "package" }) {
           flexShrink: 0,
           borderRadius: 8,
           border: `2px solid ${done ? C.green : partial ? C.manilaInk : C.inkSoft}`,
-          background: done ? C.green : partial ? C.manila : "#fff",
-          color: done ? "#fff" : C.manilaInk,
+          background: done ? C.green : partial ? C.manila : C.card,
+          color: done ? C.card : C.manilaInk,
           cursor: "pointer",
           display: "flex",
           alignItems: "center",
@@ -499,7 +511,7 @@ const stepBtn = {
   height: 34,
   borderRadius: 8,
   border: `1px solid ${C.line}`,
-  background: "#fff",
+  background: C.card,
   color: C.ink,
   cursor: "pointer",
   fontSize: 16,
@@ -631,7 +643,7 @@ function PackageCard({ pkg, received, onSet, onBulk }) {
               padding: "3px 8px",
               transform: "rotate(-4deg)",
               flexShrink: 0,
-              background: "#fff",
+              background: C.card,
             }}
           >
             RECEIVED
@@ -890,7 +902,7 @@ const dateInput = {
   padding: "4px 8px",
   borderRadius: 6,
   border: `1px solid ${C.line}`,
-  background: "#fff",
+  background: C.card,
   color: C.ink,
 };
 
@@ -900,7 +912,7 @@ const miniBtn = {
   padding: "8px 12px",
   borderRadius: 5,
   border: `1px solid ${C.line}`,
-  background: "#fff",
+  background: C.card,
   color: C.ink,
   cursor: "pointer",
 };
@@ -948,7 +960,7 @@ function UploadZone({ onFile, error, replacing }) {
           fontWeight: 700,
           fontSize: 14,
           background: C.ink,
-          color: "#fff",
+          color: C.card,
           border: "none",
           borderRadius: 8,
           padding: "10px 20px",
@@ -1101,7 +1113,7 @@ function PhotoStrip({ ids, onRemove }) {
                   lineHeight: "20px",
                   borderRadius: 999,
                   border: `1px solid ${C.line}`,
-                  background: "#fff",
+                  background: C.card,
                   color: C.red,
                   fontSize: 12,
                   padding: 0,
@@ -1263,7 +1275,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel }) {
             padding: "10px 12px",
             borderRadius: 8,
             border: `1px solid ${C.line}`,
-            background: "#fff",
+            background: C.card,
             color: C.ink,
             outline: "none",
           }}
@@ -1435,7 +1447,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel }) {
             padding: "9px 12px",
             borderRadius: 8,
             border: `1px solid ${C.line}`,
-            background: "#fff",
+            background: C.card,
             color: C.ink,
             outline: "none",
           }}
@@ -1502,8 +1514,8 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel }) {
           disabled={entries.length === 0}
           style={{
             ...miniBtn,
-            background: entries.length ? C.ink : "#fff",
-            color: entries.length ? "#fff" : C.inkSoft,
+            background: entries.length ? C.ink : C.card,
+            color: entries.length ? C.card : C.inkSoft,
             borderColor: entries.length ? C.ink : C.line,
             fontWeight: entries.length ? 700 : 400,
             cursor: entries.length ? "pointer" : "default",
@@ -1588,8 +1600,8 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit }) {
             ...miniBtn,
             fontSize: 11,
             padding: "5px 9px",
-            color: confirmDiscard ? "#fff" : C.red,
-            background: confirmDiscard ? C.red : "#fff",
+            color: confirmDiscard ? C.card : C.red,
+            background: confirmDiscard ? C.red : C.card,
             borderColor: confirmDiscard ? C.red : C.redSoft,
             fontWeight: confirmDiscard ? 700 : 400,
           }}
@@ -1758,8 +1770,8 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit }) {
                         flexShrink: 0,
                         fontSize: 11.5,
                         padding: "8px 10px",
-                        background: armed ? C.green : "#fff",
-                        color: armed ? "#fff" : C.ink,
+                        background: armed ? C.green : C.card,
+                        color: armed ? C.card : C.ink,
                         borderColor: armed ? C.green : C.line,
                         fontWeight: armed ? 700 : 400,
                       }}
@@ -2539,7 +2551,7 @@ export default function MailDayLedger() {
               border: `1px solid ${C.line}`,
               borderRadius: 999,
               overflow: "hidden",
-              background: "#fff",
+              background: C.card,
               marginBottom: 14,
             }}
           >
@@ -2558,8 +2570,8 @@ export default function MailDayLedger() {
                   textTransform: "uppercase",
                   padding: "8px 14px",
                   border: "none",
-                  background: view === v ? C.ink : "transparent",
-                  color: view === v ? "#fff" : C.inkSoft,
+                  background: view === v ? C.accent : "transparent",
+                  color: view === v ? C.card : C.inkSoft,
                   cursor: "pointer",
                   whiteSpace: "nowrap",
                 }}
@@ -2570,7 +2582,7 @@ export default function MailDayLedger() {
                     style={{
                       marginLeft: 6,
                       fontWeight: 700,
-                      color: view === v ? "#fff" : C.red,
+                      color: view === v ? C.card : C.red,
                     }}
                   >
                     {envelopes.length}
@@ -2706,9 +2718,9 @@ export default function MailDayLedger() {
                       fontSize: 11.5,
                       padding: "5px 11px",
                       borderRadius: 999,
-                      border: `1px solid ${active ? C.ink : C.line}`,
-                      background: active ? C.ink : "#fff",
-                      color: active ? "#fff" : C.ink,
+                      border: `1px solid ${active ? C.accent : C.line}`,
+                      background: active ? C.accent : C.card,
+                      color: active ? C.card : C.ink,
                       cursor: "pointer",
                     }}
                   >
@@ -2888,8 +2900,8 @@ export default function MailDayLedger() {
                   ...miniBtn,
                   fontSize: 12,
                   padding: "9px 12px",
-                  background: hideDone ? C.ink : "#fff",
-                  color: hideDone ? "#fff" : C.ink,
+                  background: hideDone ? C.ink : C.card,
+                  color: hideDone ? C.card : C.ink,
                 }}
               >
                 {hideDone ? "Showing remaining only" : "Hide received"}
@@ -2928,8 +2940,8 @@ export default function MailDayLedger() {
                   ...miniBtn,
                   fontSize: 12,
                   padding: "9px 12px",
-                  color: confirmReset ? "#fff" : C.red,
-                  background: confirmReset ? C.red : "#fff",
+                  color: confirmReset ? C.card : C.red,
+                  background: confirmReset ? C.red : C.card,
                   borderColor: confirmReset ? C.red : C.redSoft,
                   fontWeight: confirmReset ? 700 : 400,
                 }}
@@ -2970,7 +2982,7 @@ export default function MailDayLedger() {
                   fontWeight: 700,
                   fontSize: 15,
                   background: C.ink,
-                  color: "#fff",
+                  color: C.card,
                   border: "none",
                   borderRadius: 10,
                   padding: "13px 20px",

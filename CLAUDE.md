@@ -207,45 +207,67 @@ real iPhone.
 
 ## Design language
 
-"Postal ledger": cool paper background (#F4F5F2), pine ink (#1C2B24), stamp
-green (#2E7D4F), signal red (#C0442B), manila (#EFE6CF/#7A6A3E), amber
-(#A8720E). Monospace (system) for numbers/ids/labels, system sans for content.
-No emoji in chrome except the empty-state 📬. Typographic dot indicators, not
-icons. Max content width 760px; must work at 380px (iPhone). Touch targets:
-whole-row tap, 30px check indicator, 34px steppers. The view switch is a
-pill-shaped segmented control in uppercase mono, active segment filled with
-pine ink — same treatment as the active date-range chip. Three segments plus the
-envelope count badge only just fit at 375px, which is why the pill padding is
-`8px 14px` rather than 16 — don't lengthen a label without re-checking.
+"Parchment ledger" (palette D▸, Violet Evergarden–inspired): warm parchment
+page, violet ink and accent, gold secondary. Every colour lives in the `C`
+object at the top of `src/app.jsx` — **there is no colour literal anywhere else
+in the file, and no pure white in the theme.** Never reach for `"#fff"`; use
+`C.card`, which is the off-white parchment surface.
+
+Monospace (system) for numbers/ids/labels, system sans for content. No emoji in
+chrome except the empty-state 📬. Typographic dot indicators, not icons. Max
+content width 760px; must work at 380px (iPhone). Touch targets: whole-row tap,
+30px check indicator, 34px steppers. The view switch is a pill-shaped segmented
+control in uppercase mono, active segment filled with **accent violet** — same
+treatment as the active date-range chip. Three segments plus the envelope count
+badge only just fit at 375px, which is why the pill padding is `8px 14px` rather
+than 16 — don't lengthen a label without re-checking.
+
+Semantics, which survived the repaint unchanged: green means received, red means
+missing money or destructive, manila/gold means advisory, amber means the 14-day
+lost-mail warning, and accent violet means "active control". The progress bar is
+accent while in progress and green at 100% — it used to be `ink`, which worked
+only because the old ink was a near-black *green*; the new ink is a near-black
+violet and read as flat black on parchment.
 
 Mystery mail follows the same language: manila for anything advisory (the
-ambiguity warning, the "as typed" row, the "no outstanding copy" tag), stamp
-green only on an exact match and the armed check-in confirm, signal red only on
-Discard. Photo thumbnails are 56px squares; the viewer is a full-screen pine-ink
-scrim, tap anywhere to dismiss.
+ambiguity warning, the "as typed" row, the "no outstanding copy" tag), green
+only on an exact match and the armed check-in confirm, red only on Discard.
+Photo thumbnails are 56px squares; the viewer is a full-screen ink scrim, tap
+anywhere to dismiss.
 
-### Incoming theme — palette D▸ (approved, not yet built)
+### The palette, and why each value is what it is
 
-The UI is slated to be repainted in a Violet Evergarden–inspired theme. The
-palette below is **decided and signed off**; the "Postal ledger" paragraph above
-still describes the live app and stays accurate until the repaint lands.
+| token | hex | role | contrast |
+|---|---|---|---|
+| `paper` | `#F2E9DA` | the page | — |
+| `card` | `#FCF6EA` | any raised surface; **the theme's "white"** | — |
+| `ink` | `#332E3F` | primary text | 10.88:1 on paper |
+| `inkSoft` | `#6E6379` | secondary text | 5.24:1 on card |
+| `line` | `#DCCDB6` | rules, borders | — |
+| `accent` | `#6F5CA6` | active controls, progress | 5.19:1 on card |
+| `green` | `#2E7A5E` | received | — |
+| `greenSoft` | `#E7EADC` | checked-row wash | ink on it 10.73:1 |
+| `red` | `#A8443C` | missing money, destructive | — |
+| `redSoft` | `#F4E4D9` | danger wash | red on it 4.76:1 |
+| `manila` | `#EADBBA` | advisory background | — |
+| `manilaInk` | `#695832` | text **on manila** | 5.04:1 on manila |
+| `amber` | `#846008` | 14-day lost-mail warning | 5.33:1 on card |
 
-| token | hex | | token | hex |
-|---|---|---|---|---|
-| canvas | `#F2E9DA` | | accent | `#6F5CA6` |
-| surface | `#FCF6EA` | | gold | `#C9A961` |
-| rule | `#DCCDB6` | | received | `#2E7A5E` |
-| ink | `#332E3F` | | lost | `#A8443C` |
-| muted | `#7A6E86` | | | |
+Everything carrying information clears 4.5:1. Two values are load-bearing in a
+non-obvious way and should not be nudged casually:
 
-Warm parchment base, violet ink and accent, gold secondary. Measured contrast:
-ink/canvas 10.88:1, accent/surface 5.19:1, muted/surface 4.43:1. Two things to
-carry forward: `accent` was darkened from `#7B6BA8` specifically to clear 4.5:1
-(it carries real information — outstanding totals, the active filter chip), and
-`muted` at 4.43:1 is still marginally under, so darken it slightly when adopting.
-`theme-color` in `build.mjs` is deliberately still `#F4F5F2` — change it to
-`#F2E9DA` in the same commit as the repaint, not before, or Safari's chrome sits
-as a warm band above a cool page.
+- **`inkSoft`** was darkened from the originally-chosen `#7A6E86`, which measured
+  4.43:1 and failed. It is used 42 times, more than any token but `ink`.
+- **`manilaInk`** is checked against **`manila`**, not against `card` — it sits on
+  the advisory background. Pick it on the wrong pair and it looks fine in
+  isolation while failing everywhere it's actually used.
+
+`theme-color` in `build.mjs` and the `<style>` page background both track
+`paper` (`#F2E9DA`). If `paper` changes, change them in the same commit or
+Safari's chrome sits as a mismatched band above the page.
+
+The icon was designed against this palette first and the UI followed; see
+`icon/gen-icon.py` for that side of it.
 
 At iPhone width the by-item row is genuinely tight: the right-hand column holds
 up to three lines (count, basis, outstanding) and the meta line under the name
