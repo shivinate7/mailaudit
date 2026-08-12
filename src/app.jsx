@@ -60,7 +60,7 @@ const mono = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
    Note Cochin has a small x-height, so content set in it runs visually smaller
    than the same nominal px in a sans — sizes here are already paid up for that
    and shouldn't be trimmed back. */
-const serif = "Cochin, 'Hoefler Text', Palatino, Georgia, serif";
+const cochin = "Cochin, 'Hoefler Text', Palatino, Georgia, serif";
 
 const money = (n) =>
   `$${n.toLocaleString(undefined, {
@@ -769,10 +769,10 @@ function PackageCard({ pkg, received, onSet, onBulk }) {
         ) : (
           <span
             style={{
-              /* deliberately serif, not mono: the user wanted the outstanding
+              /* deliberately Cochin, not mono: the user wanted the outstanding
                  pill to read as part of the letterhead voice rather than as
                  tabular data. The exception to "mono for numbers". */
-              fontFamily: serif,
+              fontFamily: cochin,
               fontSize: 12.5,
               fontWeight: 700,
               color: C.red,
@@ -953,7 +953,7 @@ function ItemTotalRow({ item, received, onSet, onBulk }) {
           {!done && (
             <div
               style={{
-                fontFamily: serif,
+                fontFamily: cochin,
                 fontSize: 12,
                 fontWeight: 700,
                 color: C.red,
@@ -1080,7 +1080,7 @@ function UploadZone({ onFile, error, replacing }) {
       <button
         onClick={() => inputRef.current?.click()}
         style={{
-          fontFamily: serif,
+          fontFamily: cochin,
           fontWeight: 700,
           fontSize: 14,
           background: C.ink,
@@ -1393,7 +1393,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel }) {
           style={{
             width: "100%",
             boxSizing: "border-box",
-            fontFamily: serif,
+            fontFamily: cochin,
             /* 16px or iOS Safari zooms the page on focus and never zooms back */
             fontSize: 16,
             padding: "10px 12px",
@@ -1440,7 +1440,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel }) {
                 style={{
                   flex: 1,
                   minWidth: 0,
-                  fontFamily: serif,
+                  fontFamily: cochin,
                   fontSize: 14,
                   color: C.ink,
                   display: "-webkit-box",
@@ -1478,7 +1478,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel }) {
                 border: "none",
                 background: C.manila,
                 color: C.manilaInk,
-                fontFamily: serif,
+                fontFamily: cochin,
                 fontSize: 13,
                 cursor: "pointer",
               }}
@@ -1566,7 +1566,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel }) {
           style={{
             width: "100%",
             boxSizing: "border-box",
-            fontFamily: serif,
+            fontFamily: cochin,
             fontSize: 16,
             padding: "9px 12px",
             borderRadius: 8,
@@ -2659,7 +2659,7 @@ export default function MailDayLedger() {
     return (
       <div
         style={{
-          fontFamily: serif,
+          fontFamily: cochin,
           background: C.paper,
           minHeight: "100vh",
           display: "flex",
@@ -2675,7 +2675,7 @@ export default function MailDayLedger() {
   return (
     <div
       style={{
-        fontFamily: serif,
+        fontFamily: cochin,
         background: C.paper,
         minHeight: "100vh",
         color: C.ink,
@@ -2689,7 +2689,7 @@ export default function MailDayLedger() {
         /* Form controls do NOT inherit font-family — browsers force their own
            UI font. Without this, every button that didn't set one explicitly
            rendered in the UA default (Arial in Chrome) rather than the theme
-           serif, which is what made seller names look like a different face.
+           theme face, which is what made seller names look like a different face.
            font-family only: the many controls that set their own size/weight
            inline must keep them, and inline styles already win over this. */
         button, input, select, textarea { font-family: inherit; }
@@ -3072,7 +3072,7 @@ export default function MailDayLedger() {
                 style={{
                   flex: 1,
                   minWidth: 160,
-                  fontFamily: serif,
+                  fontFamily: cochin,
                   fontSize: 14,
                   padding: "9px 12px",
                   borderRadius: 8,
@@ -3206,7 +3206,7 @@ export default function MailDayLedger() {
               <button
                 onClick={() => setComposing("new")}
                 style={{
-                  fontFamily: serif,
+                  fontFamily: cochin,
                   fontWeight: 700,
                   fontSize: 15,
                   background: C.ink,

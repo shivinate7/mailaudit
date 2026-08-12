@@ -229,7 +229,7 @@ object at the top of `src/app.jsx` — **there is no colour literal anywhere els
 in the file, and no pure white in the theme.** Never reach for `"#fff"`; use
 `C.card`, which is the off-white parchment surface.
 
-Cochin (`serif`) for everything that isn't a number, monospace for
+Cochin (the `cochin` constant) for everything that isn't a number, monospace for
 numbers/ids/labels. There is no sans in the app any more — the old `sans`
 constant is gone and the root sets `serif`, which everything inherits.
 
