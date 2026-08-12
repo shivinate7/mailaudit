@@ -129,7 +129,8 @@ real iPhone.
 - **Tally view**: line items pooled by *exact* Product Name across every
   seller and order (TCGplayer names are a scrape, so duplicates are
   byte-identical — no normalization is done, deliberately). Each row shows
-  `got/ordered`, cost basis, "N left · $Y", seller/order counts and the sets
+  `got/ordered`, the **unit rate** ("$X / copy"), "N left · $Y",
+  seller/order counts and the sets
   involved; expanding adds a "$X across N copies · $Y avg" line and lists every
   source copy (seller, date, set, order id) with the same tap-to-check and qty
   stepper as the package view, plus per-copy lost-mail flags. Counts and basis
@@ -145,6 +146,13 @@ real iPhone.
   per-line, so they are deliberately not allocated into it. Basis is what was
   paid and never moves when copies are checked in; the red figure beside it is
   what's still outstanding.
+  The collapsed Tally row shows the **unit rate** (`avg` = basis / copies), not
+  the basis — what one copy averaged is the more useful number at a glance when
+  most rows are a single cheap card. The whole position is one tap away:
+  expanding shows "$X across N copies · $Y avg". Note the "biggest position"
+  sort still ranks by total basis, which is deliberately a different ordering
+  from "unit rate" — a cheap card bought in bulk has a large position and a
+  small rate.
 - **Orphaned**: for packages that arrive with no way to tell who sent them.
   *Record an envelope* → one autofocused input, suggestions drawn from cards
   still outstanding (`outstandingNames`), tap to add (tap again bumps qty), the

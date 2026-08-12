@@ -936,7 +936,10 @@ function ItemTotalRow({ item, received, onSet, onBulk }) {
             {gotQty}/{totalQty}
             {done ? " ✓" : ""}
           </div>
-          {/* labelled, so it never reads as the red outstanding figure below */}
+          {/* the unit rate, not the whole position — what one copy averaged.
+              Labelled, so it never reads as the red outstanding figure below.
+              The full position is still one tap away: expanding shows
+              "$X across N copies · $Y avg". */}
           <div
             style={{
               fontFamily: mono,
@@ -945,7 +948,7 @@ function ItemTotalRow({ item, received, onSet, onBulk }) {
               whiteSpace: "nowrap",
             }}
           >
-            {money(item.basis)} basis
+            {money(item.avg)} / copy
           </div>
           {!done && (
             <div
@@ -2570,15 +2573,10 @@ export default function MailDayLedger() {
         (a, b) => missingVal(b) - missingVal(a) || a.name.localeCompare(b.name)
       );
     else if (itemSort === "rate")
-      /* unit rate = cost basis / copies ordered, i.e. what one copy averaged.
-         Same figure the expanded row already shows as "$Y avg". Descending,
-         like every other magnitude sort here. qty is >=1 from the parser, but
-         guard anyway so a bad row can't produce NaN and scramble the order. */
-      sorted.sort(
-        (a, b) =>
-          (b.qty ? b.basis / b.qty : 0) - (a.qty ? a.basis / a.qty : 0) ||
-          a.name.localeCompare(b.name)
-      );
+      /* `avg` is basis / copies, computed once on the group — the same figure
+         the collapsed row shows as "$X / copy". Descending, like every other
+         magnitude sort here. It is already guarded against qty 0 at its source. */
+      sorted.sort((a, b) => b.avg - a.avg || a.name.localeCompare(b.name));
     else if (itemSort === "name")
       sorted.sort((a, b) => a.name.localeCompare(b.name));
     else
