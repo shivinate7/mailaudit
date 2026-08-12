@@ -343,6 +343,20 @@ list had no Backup button at all, for data that exists nowhere else. Test 23.1.
 The filters keep the narrower `items.length > 0` gate, since they describe a
 list that isn't there.
 
+**And the whole region is gated on `… || !!window.remote`, wider still.** Same
+bug, one level out, found on the live site the day Push/Pull shipped: an empty
+ledger is *exactly* when Pull is needed — a new phone, ITP having cleared
+storage, a move to another origin — and gated on data alone, the one control
+that recovers from having no data was unreachable whenever you had no data. The
+only button on screen was "Choose file". Now an empty ledger shows `Sync` alone:
+**Re-import and Reset stay on the narrower gate**, because there is nothing to
+re-import into (the upload zone is already up unprompted) and nothing to clear,
+and a red destructive button on an empty ledger is noise at best. Group 28.
+
+The pattern to take from this: any control that *recovers* state must not be
+gated on that state existing. Backup was widened once for this reason, Sync
+twice.
+
 Measured at 375px: the first package sits at y≈458, down from 604 — and still
 y≈457 after the Sync disclosure landed. Every control in row 3 measures 34px
 (`CTL_H`), horizontal overflow is 0 both collapsed and with the panel open.
@@ -567,7 +581,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 201 assertions, no test framework, ~20s. `test/app.test.mjs` runs
+`npm test` — 208 assertions, no test framework, ~20s. `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
 the jsdom setup, storage mocks, DOM helpers and the fixture.
 
@@ -686,10 +700,23 @@ running head pins), though those numbers are not asserted in CI.
 
 The GitHub adapter was also exercised by hand in a real browser against the
 built `index.html`: `window.remote` present, a keyless push reporting `no-key`,
-a saved key landing in `mailday-remote:v1` and **not** in the ledger blob, with
-`window.storage.list()` still returning only `["mailday:v1"]`, and `resetAll`
-clearing the ledger while leaving the token. What has **never** run against real
-GitHub: an actual push, pull, or conflict.
+a bad-shaped key rejected before any request, a saved key landing in
+`mailday-remote:v1` and **not** in the ledger blob, with `window.storage.list()`
+still returning only `["mailday:v1"]`, and `resetAll` clearing the ledger while
+leaving the token.
+
+One real request *has* gone to the live API, from the deployed Pages origin: a
+keyless `pull()` against the empty `data` branch returned 404 → `missing`. That
+is worth more than it looks — it proves CORS works from `shivinate7.github.io`,
+that the branch resolves (a missing *branch* answers "No commit found for the
+ref", a missing *file* answers "Not Found"), and that `classifyStatus` maps the
+real response. **Still never run against real GitHub: an authenticated push, a
+pull that returns content, and a conflict.**
+
+That same session is what surfaced the group-28 bug — Pull unreachable on an
+empty ledger. Worth remembering as a method: the suite was all green and the
+feature was still broken in its single most important scenario, because every
+test booted a ledger that already had data in it.
 
 Worth moving to vitest + testing-library if this grows much further; the
 hand-rolled `ok`/`eq` and the top-to-bottom script are fine at this size but

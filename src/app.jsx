@@ -3185,7 +3185,13 @@ export default function MailDayLedger() {
           </div>
         )}
 
-        {(items.length > 0 || envelopes.length > 0) && (
+        {/* `|| window.remote` matters: an empty ledger is EXACTLY when Pull is
+            needed — a new phone, ITP having cleared storage, a move to another
+            origin. Gated on data alone, the one control that recovers from
+            having no data was unreachable whenever you had no data. Same bug
+            the file actions already had once (see the toolbar notes); this is
+            the same fix one level out. */}
+        {(items.length > 0 || envelopes.length > 0 || !!window.remote) && (
           <>
             {/* Date range — hidden under Orphaned, where it applies to
                 nothing: envelope candidates are matched against every live
@@ -3449,13 +3455,17 @@ export default function MailDayLedger() {
                   alignItems: "center",
                 }}
               >
-                <button
-                  onClick={() => setShowUpload((s) => !s)}
-                  aria-expanded={showUpload}
-                  style={ctl}
-                >
-                  Re-import CSV
-                </button>
+                {/* nothing to re-import into, and the upload zone is already
+                    on screen unprompted when the ledger is empty */}
+                {(items.length > 0 || envelopes.length > 0) && (
+                  <button
+                    onClick={() => setShowUpload((s) => !s)}
+                    aria-expanded={showUpload}
+                    style={ctl}
+                  >
+                    Re-import CSV
+                  </button>
+                )}
                 {/* Everything that moves data in or out collapses behind one
                     control, the same trade the date range makes above: four
                     controls on this row became six once Push and Pull existed,
@@ -3511,19 +3521,23 @@ export default function MailDayLedger() {
                   </>
                 )}
                 {/* set apart from the data actions it sits beside and is the
-                    opposite of. Two-tap confirm unchanged — invariant 6. */}
-                <button
-                  onClick={resetAll}
-                  style={{
-                    ...ctl,
-                    color: confirmReset ? C.card : C.red,
-                    background: confirmReset ? C.red : C.redSoft,
-                    borderColor: confirmReset ? C.red : "transparent",
-                    fontWeight: confirmReset ? 700 : 400,
-                  }}
-                >
-                  {confirmReset ? "Tap again to clear everything" : "Reset"}
-                </button>
+                    opposite of. Two-tap confirm unchanged — invariant 6.
+                    Hidden with nothing to clear: on an empty ledger a red
+                    destructive button is noise at best and alarming at worst. */}
+                {(items.length > 0 || envelopes.length > 0) && (
+                  <button
+                    onClick={resetAll}
+                    style={{
+                      ...ctl,
+                      color: confirmReset ? C.card : C.red,
+                      background: confirmReset ? C.red : C.redSoft,
+                      borderColor: confirmReset ? C.red : "transparent",
+                      fontWeight: confirmReset ? 700 : 400,
+                    }}
+                  >
+                    {confirmReset ? "Tap again to clear everything" : "Reset"}
+                  </button>
+                )}
               </div>
             </div>
 

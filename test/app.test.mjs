@@ -1038,4 +1038,32 @@ eq(
   "27.14 every later push sends the sha this device last saw"
 );
 
+/* ── 28. an empty ledger must still be able to Pull ────────────────────── */
+
+/* The whole point of the feature: a new phone, or one ITP has cleared, opens
+   the app holding nothing and needs to recover. Gated on data alone — as the
+   rest of the toolbar rightly is — the one control that recovers from having
+   no data was unreachable exactly when it was needed. Caught on the live site,
+   not by this suite, which is why the assertion exists now. */
+await boot({ items: [], received: {}, envelopes: [] }, null, {
+  remote: OTHER_DEVICE,
+});
+ok(!!btn(/^Sync/), "28.1 Sync is reachable on a completely empty ledger");
+await openSync();
+ok(!!btn(/Pull from GitHub/), "28.2 and Pull with it");
+ok(!btn(/^Reset$/), "28.3 but Reset is hidden — there is nothing to clear");
+ok(
+  !btn(/Re-import CSV/),
+  "28.4 and so is Re-import — the upload zone is already on screen"
+);
+await click(btn(/Pull from GitHub/), "arm");
+await click(btn(/Tap again to replace/), "confirm");
+await sleep(SAVE_WAIT);
+eq(saved().items.length, 3, "28.5 and pulling actually recovers the ledger");
+
+/* with no remote there is nothing to offer, so the toolbar stays away */
+await boot({ items: [], received: {}, envelopes: [] }, null, { noRemote: true });
+ok(!btn(/^Sync/), "28.6 no remote, no toolbar on an empty ledger");
+ok(!btn(/^Backup$/), "28.7 and nothing else either");
+
 report();
