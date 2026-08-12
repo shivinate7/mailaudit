@@ -20,9 +20,17 @@ every seller, for "did all four of these arrive?" and for cost basis), and
   no CSS files (inline styles + one `<style>` tag for focus rules), Tailwind is
   NOT used. Dependencies: react, react-dom, papaparse only.
 - `src/entry.jsx` — the platform layer. Provides `window.storage` (async
-  get/set/delete/list over localStorage, holding the ledger) and
+  get/set/delete/list over localStorage, holding the ledger),
   `window.photos` (async put/get/delete/keys/clear/sweep/usage over IndexedDB,
-  holding envelope photos), then mounts the app.
+  holding envelope photos) and `window.remote` (target/status/setKey/clearKey/
+  pull/push/pushForce over the GitHub Contents API), then mounts the app.
+- `src/b64.mjs` — UTF-8-safe base64, for the Contents API. Its own module
+  because it is the one piece here that fails by producing *plausible corrupted
+  data* rather than an error, and `entry.jsx` can't be loaded from a test.
+- `src/remote-rules.mjs` — the two adapter decisions worth asserting on:
+  `classifyStatus` (GitHub's overloaded status codes → an error code the UI can
+  phrase) and `pushBody` (which omits the sha only on a create). Same reasoning
+  as `b64.mjs`: both fail quietly, so both are pure and directly tested.
 - `build.mjs` — bundles entry via esbuild and inlines the JS into a
   self-contained `index.html` with iOS home-screen-app meta tags.
 - `index.html` — the build output, committed to the repo. GitHub Pages serves it
@@ -43,6 +51,22 @@ free disk and stores Blobs without base64's ~33% inflation.
 Note `shivinate7.github.io` is a single origin across every repo the user has
 on Pages — hence the `mailday:` key namespace, and hence a per-origin storage
 quota shared with any other Pages project.
+
+**`window.remote` is transport, not storage.** localStorage remains the source
+of truth; the GitHub copy is a manual, tap-triggered backup and the app is
+fully functional offline. Nothing in it runs on a timer. Continuous sync was
+considered and rejected: the ledger blob is ~350KB at 1000 items and is
+rewritten *whole* on the 500ms debounce, GitHub's secondary limit is 80
+content-generating requests/min and 500/hr, and a commit per check-in would
+grow the repo that serves the app forever.
+
+The access token lives at raw localStorage key **`mailday-remote:v1`**,
+deliberately *outside* the `mailday:` namespace. `window.storage.list()`
+enumerates that prefix; nothing calls it today, but the day someone adds "back
+up everything in the namespace" the token would be swept into a file the user
+emails to themselves. Keeping it out makes that impossible by construction
+rather than by remembering. Verified in a browser: after saving a key,
+`storage.list()` still returns only `["mailday:v1"]`.
 
 ## Invariants — do not break these
 
@@ -66,6 +90,11 @@ quota shared with any other Pages project.
    branch, and `resetAll` — miss the last one and the next debounced save writes
    the stale value straight back. Photo *blobs* are not in here at all; only
    their ids are (see Envelope photos below).
+   The count stays **five**, not six, because the download and the GitHub push
+   share one payload builder — `snapshot()`. Give the push its own and the next
+   person to add a key misses one. The push carries no timestamp for the same
+   reason: it goes in the commit message instead, so the pushed bytes stay
+   identical to what the Backup file has always contained.
 3. **Imports MERGE, never replace.** TCGplayer only serves ~120 days of history,
    so this app is the system of record for older orders. Re-importing must keep
    every existing item and all `received` state, adding/refreshing by key.
@@ -84,8 +113,12 @@ quota shared with any other Pages project.
    the mis-tap cascade this invariant exists to prevent.
 6. **No native browser dialogs.** `window.confirm`/`alert` block the whole page
    and look wrong in a home-screen app; every destructive action uses an inline
-   two-tap confirm instead (Reset, Discard, Assign). Keep that pattern. (This
-   started as a sandbox limitation and outlived it — it's now a UI choice.)
+   two-tap confirm instead (Reset, Discard, Assign, **Pull**, **Push anyway**).
+   Keep that pattern. (This started as a sandbox limitation and outlived it —
+   it's now a UI choice.) With three armable controls in the main component,
+   arming one **disarms the others** via the shared `arm`/`disarm` pair: two
+   primed destructive buttons side by side is the exact mis-tap the pattern
+   exists to prevent. Test 26.17–26.19.
 7. **Orphaned mail never decides anything.** The user buys the same cheap cards
    from many sellers, so *near-duplicate packages are normal* — two outstanding
    orders can have identical contents. The app may rank the packages an envelope
@@ -94,6 +127,15 @@ quota shared with any other Pages project.
    record (no "mark the rest of the package too"). Equally-good candidates are
    reported as a tie and rendered without emphasis. This constraint came
    directly from the user — don't "simplify" it away as friction.
+8. **The GitHub token is a credential, not ledger data.** It must never enter
+   the ledger blob, a backup file, the pushed payload, the repo, the bundle, or
+   React state. Three structural guarantees, in descending strength: it lives
+   outside the `mailday:` namespace so no enumeration finds it; the key input is
+   **uncontrolled** (a `ref`, read once on submit, then cleared) so it is never
+   in a state snapshot or a DevTools dump; and the payload is built from named
+   fields and never spreads state. `resetAll` deliberately does **not** clear it
+   — it is a device credential, and dropping the stored sha with it would 422
+   the very next push for no reason. Test 25.24–25.27.
 
 ## OrderWand CSV schema & quirks (learned from the user's real exports)
 
@@ -116,9 +158,11 @@ Shipping Status, Url, Vendor Product Id, Fee Amount, Refund Amount.
 ## Feature map (all implemented)
 
 Everything here is user-verified in daily use except the **Tally** view, cost
-basis, **Orphaned** and **envelope photos**, which are newer and so far
-verified only by `npm test`. The camera path in particular has never run on a
-real iPhone.
+basis, **Orphaned**, **envelope photos** and **Push / Pull**, which are newer
+and so far verified only by `npm test`. The camera path in particular has never
+run on a real iPhone, and no request has ever gone to the real GitHub API — the
+push/pull paths are covered by the harness mock and by hand against the built
+page. See "Known open threads" for exactly what that leaves unproven.
 
 - Three views behind an Orphaned / Tally / Packages switch at the top. The
   first two share one `received` map, the date filter, search, and Hide
@@ -218,24 +262,67 @@ real iPhone.
 - Canceled orders: excluded from list and all counts; viewable via
   "N canceled — view" link which scrolls to a dashed reference section (for
   refund auditing). Tracked/untracked shown as ●/○ dot + word in header meta.
-- **Two backups.** *Backup* downloads `{mailday:1, items, received, envelopes,
-  dateFilter, sortBy, itemSort}` — small, quick, and holds the irreplaceable
-  part. *Backup + photos* (only shown when photos exist) adds `photos` as an
-  `{id: dataURL}` map; photos are memory aids, so paying their file size is
-  opt-in. The file picker restores either (any `.json` routes to restore,
-  `.csv` routes to import) and tolerates older backups missing newer keys.
-  Restoring a photo-less backup **strips** envelopes' photo ids rather than
-  leaving them pointing at blobs that exist nowhere. A restore is a full
-  replace, so if pending envelopes are about to be replaced the notice says so —
-  they're hand-typed and losing them silently would be the worst kind of quiet.
-- Persistence auto-saves debounced 500ms with saved/saving indicator.
+- **Two local backups and one remote.** *Backup* downloads
+  `{mailday:1, items, received, envelopes, dateFilter, sortBy, itemSort}` —
+  small, quick, and holds the irreplaceable part. *Backup + photos* (only shown
+  when photos exist) adds `photos` as an `{id: dataURL}` map; photos are memory
+  aids, so paying their file size is opt-in. The file picker restores either
+  (any `.json` routes to restore, `.csv` routes to import) and tolerates older
+  backups missing newer keys. A restore is a full replace, so if pending
+  envelopes are about to be replaced the notice says so — they're hand-typed and
+  losing them silently would be the worst kind of quiet.
+  Both the file restore and the GitHub pull funnel through one `applyBackup()`.
+  That matters twice: the `!data.mailday || !Array.isArray(data.items)` check is
+  the *only* thing between a corrupt payload and a wiped ledger, so it should
+  exist once; and the replaced-envelopes warning then covers the pull too, where
+  it matters more, because a pull is one tap rather than a deliberate file drop.
+- **Photo ids on restore: keep an id when its blob is inlined in the payload OR
+  already present on this device; strip only the rest.** This used to be
+  all-or-nothing on `data.photos`, which is right for a file restore onto a
+  fresh origin and silent data loss everywhere else. A pushed payload never
+  carries photos (they stay local by design), so pulling onto the very device
+  that took them stripped every id — and the sweep effect then deleted the JPEGs
+  from IndexedDB two seconds later, with nothing to restore from. The same bug
+  was already latent on the file path (plain Backup → restore on the same
+  device); it was simply rarely exercised. Tests 19.11–19.12, 26.11–26.13.
+- **Push / Pull (GitHub).** Manual, tap-triggered backup to `ledger.json` on the
+  **`data` branch** of `shivinate7/mailaudit` — never `main`, because Pages
+  deploys from main's root and every backup would otherwise trigger a site
+  rebuild. Push needs a fine-grained PAT (`Contents: read & write`, that repo
+  only) pasted once per device; **pull needs no key at all** on a public repo,
+  which is what lets a fresh device recover before it has been set up.
+  Conflict detection is the Contents API's blob sha, and the sha sent is the one
+  *this device last saw* — never one re-fetched moments earlier, which would
+  make every push win and silently discard the other device's. A stale push
+  reports the conflict and changes nothing; `Push anyway` (two-tap) is the
+  escape hatch, and it is safe-ish because every push is a commit, so what it
+  overwrote is still in the branch's history. A bad *pull* has no such
+  recovery — which is why Pull gets the two-tap and Push doesn't.
+  Photos never go to git.
+- Persistence auto-saves debounced 500ms with saved/saving indicator. The remote
+  is deliberately *not* on that path — no error there ever touches `saving`.
 
 ### The toolbar
 
 Three rows under the switch, each a group rather than a pile: **filters**
 (date range, Hide received), **list controls** (search, sort), then **file
-actions** (Re-import, Backup, Backup + photos, Reset) right-aligned in their own
-flex group.
+actions** (Re-import, Sync, Reset) right-aligned in their own flex group.
+
+**Everything that moves data in or out sits behind the `Sync` disclosure** —
+Push, Pull, Backup, Backup + photos, the target line and the key field. This is
+the same trade the date range makes. Row 3 held three controls before
+(Re-import, Backup, Reset — *Backup + photos* only appears when photos exist);
+adding Push and Pull would have made it five or six and wrapped it to two lines
+at 375px. Collapsed it is **still three**, so the feature costs the layout
+nothing: measured `Re-import CSV · Sync ▾ · Reset`, 258px wide, and the first
+package still sits at y≈457 against the documented 458.
+The chip is accent-filled only when there is something to say (a conflict, an
+error), never during normal use, and its label carries the last push date — so
+it reports when you last backed up without your having to ask.
+Cost: Backup is one tap deeper, which is ~6 mechanical edits in the suite
+(`openSync()` in `harness.mjs`). When `window.remote` is absent the disclosure
+isn't rendered at all and the file backups stay on the row, so no platform
+loses them. Test 25.1–25.2.
 
 Every control shares one height — `CTL_H`, currently 34px — via `ctl`,
 `ctlSelect` and `chip()` beside `dateInput`/`miniBtn`. Before those existed,
@@ -256,7 +343,9 @@ list had no Backup button at all, for data that exists nowhere else. Test 23.1.
 The filters keep the narrower `items.length > 0` gate, since they describe a
 list that isn't there.
 
-Measured at 375px: the first package sits at y≈458, down from 604.
+Measured at 375px: the first package sits at y≈458, down from 604 — and still
+y≈457 after the Sync disclosure landed. Every control in row 3 measures 34px
+(`CTL_H`), horizontal overflow is 0 both collapsed and with the panel open.
 
 ## Design language
 
@@ -412,6 +501,39 @@ it and push a trivial commit to spawn a fresh run.
 Note `npm run deploy` only commits `index.html`; source and doc changes have to
 be committed yourself first.
 
+### The GitHub backup (one-time setup)
+
+Target is `shivinate7/mailaudit`, branch **`data`**, file `ledger.json` — three
+constants at the top of the `window.remote` block in `entry.jsx`, so pointing at
+a private `mailaudit-data` repo later is a constant swap and nothing else.
+
+**Before pushing anything real**, open
+`raw.githubusercontent.com/shivinate7/mailaudit/data/ledger.json` in a
+logged-out window. The repo is public, so that is what the world can see: order
+ids, sellers, prices, dates, and any tracking numbers typed into envelope notes.
+Git also makes it permanent. If that is not acceptable, switch to a private repo
+*first* — much harder to undo afterwards. (Pull then needs the key on every
+device, since GitHub hides a private repo's existence behind a 404.)
+
+1. Create the branch, orphaned so it carries no source and never looks
+   deployable:
+   ```bash
+   git switch --orphan data && git commit --allow-empty -m "data branch: ledger backups live here, never merge to main" && git push -u origin data && git switch main
+   ```
+2. Settings → Pages should read "Deploy from a branch: `main` / `(root)`". Pages
+   only builds on pushes to its configured branch, and this repo has **no
+   `.github/workflows`**, so a push to `data` triggers nothing. Never merge
+   `data` into `main`.
+3. Settings → Developer settings → Personal access tokens → **Fine-grained**.
+   Name it per device (`mailday-iphone`) so one can be revoked alone. Only
+   select repositories: `mailaudit`. Repository permissions: **Contents → Read
+   and write** (Metadata → Read-only appears automatically and is required).
+   Nothing else. **Fine-grained PATs cap at 366 days** — set a real expiry and a
+   calendar reminder, because when it lapses the only symptom is a push that
+   stops working.
+4. In the app: Sync → paste → Save key → Push. Expect `Pushed ✓`, and check
+   `main` gained no commit.
+
 ### Icons
 
 `apple-touch-icon.png` (180×180) and `icon-32.png` are committed assets at the
@@ -445,15 +567,15 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 134 assertions, no test framework, ~6s. `test/app.test.mjs` runs
+`npm test` — 201 assertions, no test framework, ~20s. `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
 the jsdom setup, storage mocks, DOM helpers and the fixture.
 
 It bundles `app.jsx` with esbuild (platform=node, format=cjs), boots it in jsdom
-against mocked `window.storage` / `window.photos`, and drives it with real DOM
-events, asserting on rendered text. The app has no exports but the component and
-that's fine — every behaviour worth protecting is one you can see, so the
-assertions read the DOM the way the user does.
+against mocked `window.storage` / `window.photos` / `window.remote`, and drives
+it with real DOM events, asserting on rendered text. The app has no exports but
+the component and that's fine — every behaviour worth protecting is one you can
+see, so the assertions read the DOM the way the user does.
 
 (Three previous harnesses were written ad hoc and thrown away, which is why the
 same assertions kept being rewritten from scratch. Hence this one is committed
@@ -464,6 +586,21 @@ red — verified for: assignment checking in more than was recorded, `resetAll`
 forgetting to clear envelopes, and undo restoring a snapshot instead of
 subtracting its own delta. Do the same when you add a claim; an assertion that
 can't fail is decoration.
+
+The GitHub backup added ten more, all confirmed to turn the suite red:
+`snapshot()` dropping `envelopes`; `utf8ToBase64` replaced by `btoa`;
+`applyBackup` skipping the `mailday` validation; the pull reusing the old
+all-or-nothing photo predicate; Pull firing on one tap; a push treating every
+failure as success; arming Pull no longer disarming Reset; a pull that doesn't
+refresh the sha; `pushBody` always sending a sha; and a 403 always reading as a
+permission problem.
+
+That exercise caught a real one *here too*: the first draft of "pulling
+refreshes the sha" asserted on the payload, and a pull makes this device's
+ledger identical to the remote's — so the assertion was true whether the push
+landed or not, and the mutant survived. It now asserts on the **sha advancing**,
+which is the only thing that distinguishes the two states. Watch for this shape
+generally: after a pull, payload-equality assertions prove nothing.
 
 That exercise already earned its keep once. Every assignment in groups 1–19
 happens to take a card's *full* quantity, so the mutation "assign marks the
@@ -478,6 +615,28 @@ scrolling, so this verifies the *wiring* — that the observer attaches after th
 loading shell, and that the stuck/unstuck condition is right — which is exactly
 the part that can silently never fire. Whether a real scroller produces those
 entries is the browser's job.
+
+New in groups 25–27 (the GitHub backup). `test/harness.mjs` mocks
+`window.remote` the same way it mocks `window.photos`, with two deliberate
+choices:
+
+- The mock encodes and decodes through the **real** `src/b64.mjs`, so an
+  app-level push→pull round trip exercises the actual codec. That's why the
+  non-ASCII test is meaningful: every item in `ITEMS` is pure ASCII, and a
+  `btoa` regression would otherwise pass. The test drives it through an
+  *envelope entry* rather than the fixture — that's where iOS smart punctuation
+  actually enters, and it perturbs no counts.
+- The mock enforces the sha check **for real** rather than faking a conflict:
+  `remote.sha` is what the remote holds, `remote.deviceSha` is what this device
+  last saw, and a stale push is rejected exactly as GitHub would. Seeding a
+  remote without pulling *is* the second-device case.
+
+Group 27 is different in kind: it imports `src/remote-rules.mjs` directly and
+asserts on pure functions. That exists because `entry.jsx` mounts React on
+import and is unreachable from the harness — the same gap the localStorage and
+IndexedDB adapters have. Fetch plumbing is fine to leave uncovered; the status
+mapping and the sha-omission rule are not, because both fail *quietly*. **Still
+uncovered: the HTTP round trip itself.**
 
 Gotchas worth remembering:
 
@@ -498,6 +657,12 @@ Gotchas worth remembering:
   tests must wait past them (`SWEEP_WAIT`, `SAVE_WAIT`).
 - Packages render expanded, so "Mark all received" matches several buttons —
   reach into the specific card, not the first hit on the page.
+- Backup, Push and Pull live behind the Sync disclosure, so a test has to
+  `await openSync()` first. It's idempotent; just call it.
+- The key field is uncontrolled by design, so `el.value = "…"` is enough — don't
+  route it through `type()`, which exists for React-tracked inputs.
+- A successful push shows `Pushed ✓` for 2.5s, so `btn(/^Push$/)` won't match
+  during the flash. Assert on state, or wait it out.
 
 Test groups map to the claims this file makes, so if you change a behaviour
 deliberately, change the assertion and the prose in the same commit. What's
@@ -507,7 +672,10 @@ was recorded (including partial quantities); undo composing with a later hand
 edit; ties from near-duplicate packages; leftovers keeping id/createdAt/note;
 smart-punctuation name matching; migration from pre-feature saves; `resetAll`
 surviving the debounce; candidates self-correcting when a package is received
-elsewhere; both backups and both restore paths; the photo sweep; and the older
+elsewhere; both backups and both restore paths; the photo sweep; the GitHub
+push and pull (payload shape, non-ASCII round trip, conflict + force, expired
+key, offline, the token never leaking, pull as a full replace, photo ids kept
+vs stripped, arming one control disarming the other); and the older
 package/Tally views still working.
 
 Still only covered by eye, never by a test: anything that needs a real device —
@@ -515,6 +683,13 @@ the camera capture, the canvas downscale, and iOS keyboard behaviour. Layout at
 375px is no longer eyeball-only: it was measured in a real 375px viewport
 (overflow 0, thirds 114px each, seal 36px, 0.00px row displacement when the
 running head pins), though those numbers are not asserted in CI.
+
+The GitHub adapter was also exercised by hand in a real browser against the
+built `index.html`: `window.remote` present, a keyless push reporting `no-key`,
+a saved key landing in `mailday-remote:v1` and **not** in the ledger blob, with
+`window.storage.list()` still returning only `["mailday:v1"]`, and `resetAll`
+clearing the ledger while leaving the token. What has **never** run against real
+GitHub: an actual push, pull, or conflict.
 
 Worth moving to vitest + testing-library if this grows much further; the
 hand-rolled `ok`/`eq` and the top-to-bottom script are fine at this size but
@@ -529,4 +704,29 @@ give no isolation between groups.
 - **Unverified on-device:** iOS clears script-writable storage after 7 days of
   non-use under ITP, but home-screen-installed web apps are understood to be
   exempt. Worth confirming empirically, since it's the difference between
-  "safe" and "data quietly vanishes".
+  "safe" and "data quietly vanishes". (Push/Pull now makes this survivable
+  either way, provided the user actually pushes.)
+- **The pushed ledger is world-readable.** The repo is public, so `ledger.json`
+  on the `data` branch is served at a permanent `raw.githubusercontent.com` URL
+  to anyone, logged out — order ids, sellers, prices, dates, and any tracking
+  numbers or sender names typed into envelope notes. The user opted into this
+  knowingly; the escape hatch is a private `mailaudit-data` repo, which is three
+  constants in `entry.jsx` plus "pull now needs a key on every device".
+- **The token expires.** Fine-grained PATs cap at 366 days. When it lapses the
+  app 401s and says "expired or been revoked" — but nothing warns beforehand,
+  and the only symptom is a push that stops working.
+- **The token sits on a shared origin.** `shivinate7.github.io` is one origin
+  across every Pages repo, so script from any other project there can read
+  `mailday-remote:v1`. Mitigated by the fine-grained, single-repo,
+  Contents-only scope and one token per device — not eliminated.
+- **No auto-pull and no merge, both deliberate.** The app never fetches on its
+  own, and a conflict is resolved by the user (pull, or force), never by code
+  trying to reconcile two `received` maps.
+- **Never run against real GitHub.** Every push/pull path is covered by the
+  harness mock and by hand against the built page, but no HTTP request has
+  actually gone to the Contents API. Work through the setup checklist in
+  "Build & deploy" the first time, and then verify the conflict guard for real:
+  push from device A, then push from B *without* pulling, and confirm B is
+  blocked and B's ledger is untouched. If B succeeds, the sha bookkeeping is
+  wrong and A's data was just overwritten — recover with
+  `git show data~1:ledger.json` and restore that file the normal way.

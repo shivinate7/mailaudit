@@ -8,6 +8,8 @@
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+/* the REAL codec, not a mock of it — see the note on the remote mock below */
+import { utf8ToBase64, base64ToUtf8 } from "../src/b64.mjs";
 
 export const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -157,6 +159,113 @@ win.photos = {
   },
 };
 
+/* The GitHub backup. Same contract as the Contents API adapter in
+   src/entry.jsx — including that a push without a key never reaches the
+   network, so `calls` counts only attempts that would have hit GitHub.
+
+   Note this stores its payload as base64 through the REAL utf8ToBase64 /
+   base64ToUtf8. That's deliberate: the codec is the one part of this feature
+   that fails by producing plausible corrupted data rather than an error, and
+   entry.jsx (where it's wired up) is unreachable from here because it mounts
+   on import. Routing the mock through it means an app-level push→pull test
+   exercises the actual encoder.
+
+   `sha` vs `deviceSha` is the point of the whole feature, so the mock enforces
+   it for real rather than faking a conflict: `sha` is what the remote holds,
+   `deviceSha` is what this device last saw, and a push carrying a stale one is
+   rejected exactly as GitHub would. A seeded remote that this device has never
+   pulled is the second-device case. */
+export let remote = {
+  content: null, // base64, as GitHub hands it back
+  sha: null, // what the remote holds
+  deviceSha: null, // what this device last saw — a push sends THIS
+  key: null,
+  calls: [],
+  fail: null, // an error `.code` to throw from the next push/pull
+  pushedAt: null,
+  pulledAt: null,
+};
+/* fixed so a snapshot never depends on the clock */
+const REMOTE_NOW = Date.parse("2026-08-12T14:03:00Z");
+
+const remoteApi = {
+  async target() {
+    return {
+      owner: "shivinate7",
+      repo: "mailaudit",
+      branch: "data",
+      path: "ledger.json",
+    };
+  },
+  async status() {
+    return {
+      hasKey: !!remote.key,
+      sha: remote.sha,
+      pushedAt: remote.pushedAt,
+      pulledAt: remote.pulledAt,
+    };
+  },
+  async setKey(t) {
+    const v = String(t || "").trim();
+    if (!/^(github_pat_|ghp_)/.test(v))
+      throw Object.assign(new Error("bad-key"), { code: "bad-key" });
+    remote.key = v;
+  },
+  async clearKey() {
+    remote.key = null;
+  },
+  async pull() {
+    if (remote.fail)
+      throw Object.assign(new Error(remote.fail), { code: remote.fail });
+    remote.calls.push({ op: "pull", key: remote.key });
+    if (remote.content == null)
+      throw Object.assign(new Error("missing"), { code: "missing" });
+    remote.deviceSha = remote.sha; // a pull is how a device catches up
+    remote.pulledAt = REMOTE_NOW;
+    return { text: base64ToUtf8(remote.content), sha: remote.sha };
+  },
+  async push(text, message) {
+    if (!remote.key)
+      throw Object.assign(new Error("no-key"), { code: "no-key" });
+    remote.calls.push({ op: "push", text, message, sha: remote.deviceSha });
+    if (remote.fail)
+      throw Object.assign(new Error(remote.fail), { code: remote.fail });
+    /* the real optimistic-concurrency check, not a simulated one */
+    if (remote.sha !== remote.deviceSha)
+      throw Object.assign(new Error("conflict"), { code: "conflict" });
+    remote.content = utf8ToBase64(text);
+    remote.sha = `sha-${remote.calls.length}`;
+    remote.deviceSha = remote.sha;
+    remote.pushedAt = REMOTE_NOW;
+    return { sha: remote.sha, pushedAt: remote.pushedAt };
+  },
+  async pushForce(text, message) {
+    remote.fail = null; // the force is what clears a conflict
+    remote.deviceSha = remote.sha; // adopt the remote's sha, then overwrite
+    return remoteApi.push(text, message);
+  },
+};
+win.remote = remoteApi;
+
+export const resetRemote = (seedText) => {
+  remote = {
+    content: seedText == null ? null : utf8ToBase64(seedText),
+    sha: seedText == null ? null : "sha-0",
+    /* a fresh device has seen nothing, so seeding a remote without pulling is
+       exactly the state a second phone is in before its first pull */
+    deviceSha: null,
+    key: null,
+    calls: [],
+    fail: null,
+    pushedAt: null,
+    pulledAt: null,
+  };
+};
+/* what the remote is actually holding, decoded */
+export const remoteText = () =>
+  remote.content == null ? null : base64ToUtf8(remote.content);
+export const pushes = () => remote.calls.filter((c) => c.op === "push");
+
 export const photoKeys = () => [...photoStore.keys()];
 export const getPhoto = (id) => photoStore.get(id);
 export const saved = () => JSON.parse(store["mailday:v1"] || "{}");
@@ -221,6 +330,23 @@ export const type = async (input, value) => {
   });
 };
 
+/* Backup, Push and Pull all sit behind the Sync disclosure now — one tap
+   deeper than Backup used to be, which is the cost of keeping the toolbar's
+   third row to three controls. Idempotent, so tests can just call it. */
+export const openSync = async () => {
+  if (!btn(/^Push$/)) await click(btn(/^Sync/), "open sync panel");
+};
+
+/* The key field is uncontrolled by design (the token must never reach React
+   state), so a plain .value assignment is exactly what a paste does. */
+export const saveGitHubKey = async (token = "github_pat_testtoken") => {
+  await openSync();
+  const el = document.querySelector('input[aria-label="GitHub access token"]');
+  if (!el) throw new Error("no GitHub key field on screen");
+  el.value = token;
+  await click(btn(/^Save key$/), "save key");
+};
+
 /* Setting input.files isn't practical in jsdom, so file input goes through the
    drop handler instead, with dataTransfer defined onto a plain Event. */
 export const dropFile = async (name, contents) => {
@@ -247,11 +373,16 @@ console.error = (...a) =>
 
 let root = null;
 
-/** Mount a fresh app over the given saved state and photo blobs. */
-export async function boot(state, photos) {
+/** Mount a fresh app over the given saved state and photo blobs.
+    `opts.remote` seeds what the GitHub copy already holds (a JSON string);
+    `opts.noRemote` boots a platform with no window.remote at all. */
+export async function boot(state, photos, opts = {}) {
   if (root) await act(async () => root.unmount()); // else createRoot warns
   store = {};
   photoStore = new Map(photos || []);
+  resetRemote(opts.remote);
+  if (opts.noRemote) delete win.remote;
+  else win.remote = remoteApi;
   if (state) store["mailday:v1"] = JSON.stringify(state);
   document.getElementById("root").innerHTML = "";
   await act(async () => {

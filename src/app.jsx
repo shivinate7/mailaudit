@@ -1095,6 +1095,43 @@ const RANGES = [
   ["custom", "Custom…"],
 ];
 
+/* An underlined text button, for secondary actions that shouldn't carry a
+   control's weight — same treatment as the "N canceled — view" link. */
+const linkBtn = {
+  fontFamily: mono,
+  fontSize: 11,
+  color: C.inkSoft,
+  background: "transparent",
+  border: "none",
+  cursor: "pointer",
+  textDecoration: "underline",
+  textUnderlineOffset: 2,
+  padding: 0,
+};
+
+/* Every way the remote backup can fail, phrased for someone holding a phone.
+   Keyed by the `.code` window.remote puts on its errors — see entry.jsx.
+   The offline wording is deliberately reassuring: nothing was lost, this is a
+   backup rather than a sync, and the ledger on the device is still the real
+   one. */
+const REMOTE_SAYS = {
+  "no-key": "Add a GitHub key first — Push needs one, Pull doesn’t.",
+  "bad-key":
+    "That doesn’t look like a GitHub token — they start with github_pat_ or ghp_.",
+  auth: "That key has expired or been revoked. Paste a new one.",
+  forbidden:
+    "That key can’t write here. It needs Contents: read & write on the repo.",
+  "rate-limit": "GitHub is throttling requests. Try again shortly.",
+  conflict:
+    "The remote copy changed since you last pulled. Pull first, or push anyway to overwrite it.",
+  missing: "Nothing has been pushed yet.",
+  "no-branch": "The data branch doesn’t exist yet — see the setup notes.",
+  offline: "No connection. The ledger is safe on this device.",
+  server: "GitHub is having trouble. Try again.",
+  "bad-response":
+    "That isn’t a Mail Day ledger. Nothing on this device was changed.",
+};
+
 /* ---------- Upload zone ---------- */
 
 function UploadZone({ onFile, error, replacing }) {
@@ -2016,8 +2053,24 @@ export default function MailDayLedger() {
   const [uploadErr, setUploadErr] = useState("");
   const [showUpload, setShowUpload] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmPull, setConfirmPull] = useState(false);
+  const [confirmForce, setConfirmForce] = useState(false);
   const [importMsg, setImportMsg] = useState("");
   const resetTimer = useRef(null);
+  /* The remote backup collapses behind one control, exactly like the date
+     range above — a disclosure, not a preference, so it isn't persisted and
+     starts shut on every load. Push and Pull are manual: this is a backup, not
+     a sync, and nothing here ever fires on its own. */
+  const [syncOpen, setSyncOpen] = useState(false);
+  const [remoteTarget, setRemoteTarget] = useState(null);
+  const [remoteInfo, setRemoteInfo] = useState(null); // { hasKey, sha, pushedAt, pulledAt }
+  const [pushState, setPushState] = useState("idle"); // idle | pushing | pushed | conflict
+  const [pullState, setPullState] = useState("idle"); // idle | pulling
+  const [remoteMsg, setRemoteMsg] = useState(null); // { tone, text }
+  const [keyOpen, setKeyOpen] = useState(false);
+  /* uncontrolled on purpose: the token is read once on submit and never enters
+     React state, so it can't turn up in a state snapshot or a DevTools dump */
+  const keyInput = useRef(null);
   const [dateFilter, setDateFilter] = useState({ preset: "all", from: "", to: "" });
   const [sortBy, setSortBy] = useState("newest");
   const [view, setView] = useState("packages"); // packages | items | mystery
@@ -2119,20 +2172,32 @@ export default function MailDayLedger() {
     return () => clearTimeout(saveTimer.current);
   }, [items, received, envelopes, dateFilter, sortBy, itemSort, loaded]);
 
+  /* ONE payload builder, shared by the file download and the GitHub push.
+     Keeping it single is a documentation requirement as much as a DRY one:
+     invariant 2 says adding a persisted key means touching five sites, and a
+     second builder would quietly make it six — with the next person to add a
+     key missing one. Note there is deliberately no timestamp in here; the push
+     puts one in the commit message instead, so the payload shape stays frozen
+     and identical to what the Backup file has always contained. */
+  const snapshot = useCallback(
+    () => ({
+      mailday: 1,
+      items,
+      received,
+      envelopes,
+      dateFilter,
+      sortBy,
+      itemSort,
+    }),
+    [items, received, envelopes, dateFilter, sortBy, itemSort]
+  );
+
   /* Two backups on purpose. The plain one is small and quick and holds the
      irreplaceable part — the ledger and every check-in. Photos are memory
      aids that would multiply the file size, so they're opt-in. */
   const backup = useCallback(
     async (withPhotos) => {
-      const payload = {
-        mailday: 1,
-        items,
-        received,
-        envelopes,
-        dateFilter,
-        sortBy,
-        itemSort,
-      };
+      const payload = snapshot();
       if (withPhotos && window.photos) {
         setBackupBusy(true);
         const out = {};
@@ -2156,7 +2221,80 @@ export default function MailDayLedger() {
       a.click();
       URL.revokeObjectURL(a.href);
     },
-    [items, received, envelopes, dateFilter, sortBy, itemSort]
+    [snapshot, envelopes]
+  );
+
+  /* The one restore path, shared by a dropped file and a GitHub pull.
+     Funnelled rather than duplicated for two reasons: the validation below is
+     the ONLY thing standing between a corrupt payload and a wiped ledger, so
+     it should exist once; and the "pending envelopes were replaced" warning
+     now covers the pull too, where it matters more, because a pull is one tap
+     rather than a deliberate file drop.
+     Throws on anything unusable — and throws BEFORE the first setState, so a
+     failed restore leaves this device completely untouched. */
+  const applyBackup = useCallback(
+    async (text, source /* "file" | "remote" */) => {
+      const data = JSON.parse(text);
+      if (!data.mailday || !Array.isArray(data.items)) throw new Error();
+      const remote = source === "remote";
+      /* Keep a photo id when its blob is inlined in this payload OR already on
+         this device; strip only the rest. The old rule was all-or-nothing on
+         `data.photos`, which is right for a file restore onto a fresh origin
+         and silent data loss everywhere else: a pushed payload never carries
+         photos (they stay local by design), so pulling onto the very device
+         that took them stripped every id — and the sweep effect then deleted
+         the blobs from IndexedDB two seconds later, with nothing to restore
+         from. */
+      const inlined =
+        data.photos && typeof data.photos === "object" ? data.photos : null;
+      const inlinedIds = Object.keys(inlined || {});
+      /* a union, not a read-back after the writes below: those go in through a
+         fire-and-forget IIFE that hasn't run yet when this set is built */
+      const present = new Set([
+        ...(window.photos ? await window.photos.keys().catch(() => []) : []),
+        ...inlinedIds,
+      ]);
+      setItems(data.items);
+      setReceived(data.received || {});
+      setEnvelopes(
+        (data.envelopes || []).map((e) => ({
+          ...e,
+          photos: (e.photos || []).filter((id) => present.has(id)),
+        }))
+      );
+      if (inlinedIds.length && window.photos)
+        (async () => {
+          for (const [id, url] of Object.entries(inlined)) {
+            const b = await dataUrlToBlob(url);
+            if (b) await window.photos.put(id, b).catch(() => {});
+          }
+        })();
+      setComposing(null);
+      setUndo(null);
+      if (data.dateFilter) setDateFilter(data.dateFilter);
+      if (data.sortBy) setSortBy(data.sortBy);
+      if (data.itemSort || data.cardSort)
+        setItemSort(data.itemSort || data.cardSort);
+      setImportMsg(
+        `${remote ? "Pulled from GitHub" : "Backup restored"} — ${
+          data.items.length
+        } lines and your check-ins are back.` +
+          (inlinedIds.length
+            ? ` ${inlinedIds.length} photo${
+                inlinedIds.length === 1 ? "" : "s"
+              } too.`
+            : "") +
+          /* a restore is a full replace, and envelopes are hand-typed —
+             losing them silently would be the worst kind of quiet */
+          (envelopes.length > 0
+            ? ` ${envelopes.length} pending envelope${
+                envelopes.length === 1 ? " was" : "s were"
+              } replaced by the ${remote ? "remote copy" : "backup"}'s.`
+            : "")
+      );
+      setShowUpload(false);
+    },
+    [envelopes]
   );
 
   const handleFile = useCallback(
@@ -2166,54 +2304,11 @@ export default function MailDayLedger() {
         // restore from a Mail Day backup
         const reader = new FileReader();
         reader.onload = () => {
-          try {
-            const data = JSON.parse(reader.result);
-            if (!data.mailday || !Array.isArray(data.items)) throw new Error();
-            setItems(data.items);
-            setReceived(data.received || {});
-            /* a backup taken without photos can't restore them, so drop the
-               ids rather than leave envelopes pointing at blobs that no
-               longer exist anywhere */
-            const hasPhotos = data.photos && Object.keys(data.photos).length > 0;
-            setEnvelopes(
-              (data.envelopes || []).map((e) =>
-                hasPhotos ? e : { ...e, photos: [] }
-              )
-            );
-            if (hasPhotos && window.photos)
-              (async () => {
-                for (const [id, url] of Object.entries(data.photos)) {
-                  const b = await dataUrlToBlob(url);
-                  if (b) await window.photos.put(id, b).catch(() => {});
-                }
-              })();
-            setComposing(null);
-            setUndo(null);
-            if (data.dateFilter) setDateFilter(data.dateFilter);
-            if (data.sortBy) setSortBy(data.sortBy);
-            if (data.itemSort || data.cardSort)
-              setItemSort(data.itemSort || data.cardSort);
-            setImportMsg(
-              `Backup restored — ${data.items.length} lines and your check-ins are back.` +
-                (hasPhotos
-                  ? ` ${Object.keys(data.photos).length} photo${
-                      Object.keys(data.photos).length === 1 ? "" : "s"
-                    } too.`
-                  : "") +
-                /* a restore is a full replace, and envelopes are hand-typed —
-                   losing them silently would be the worst kind of quiet */
-                (envelopes.length > 0
-                  ? ` ${envelopes.length} pending envelope${
-                      envelopes.length === 1 ? " was" : "s were"
-                    } replaced by the backup's.`
-                  : "")
-            );
-            setShowUpload(false);
-          } catch {
+          applyBackup(reader.result, "file").catch(() =>
             setUploadErr(
               "That file isn\u2019t a Mail Day backup. Use a backup downloaded from the Backup button, or an OrderWand CSV."
-            );
-          }
+            )
+          );
         };
         reader.onerror = () =>
           setUploadErr("Couldn\u2019t read that file. Try again.");
@@ -2282,15 +2377,32 @@ export default function MailDayLedger() {
     });
   }, []);
 
+  /* Two-tap confirms, invariant 6 — no native dialogs. There are three armable
+     controls in this component now (Reset, Pull, Push anyway), so arming one
+     has to disarm the others: two primed destructive buttons sitting side by
+     side is precisely the mis-tap the pattern exists to prevent. */
+  const disarm = useCallback(() => {
+    setConfirmReset(false);
+    setConfirmPull(false);
+    setConfirmForce(false);
+  }, []);
+  const arm = useCallback(
+    (set) => {
+      disarm();
+      set(true);
+      clearTimeout(resetTimer.current);
+      resetTimer.current = setTimeout(disarm, 4000);
+    },
+    [disarm]
+  );
+
   const resetAll = useCallback(async () => {
     if (!confirmReset) {
-      setConfirmReset(true);
-      clearTimeout(resetTimer.current);
-      resetTimer.current = setTimeout(() => setConfirmReset(false), 4000);
+      arm(setConfirmReset);
       return;
     }
     clearTimeout(resetTimer.current);
-    setConfirmReset(false);
+    disarm();
     setItems([]);
     setReceived({});
     /* envelopes have to go too — left in state they'd be written straight back
@@ -2303,10 +2415,111 @@ export default function MailDayLedger() {
     try {
       await window.storage.delete(STORAGE_KEY);
       await window.photos?.clear();
+      /* The GitHub token and the remote sha deliberately survive a Reset. The
+         token is a device credential rather than ledger data, and dropping the
+         sha would make the very next push 422 for no reason. */
     } catch {
       /* fine */
     }
-  }, [confirmReset]);
+  }, [confirmReset, arm, disarm]);
+
+  /* ---- remote backup: manual push / pull ----
+     Transport only. localStorage stays the source of truth, nothing here runs
+     on a timer, and every failure path leaves both ends exactly as they were. */
+
+  useEffect(() => {
+    if (!loaded || !window.remote) return;
+    (async () => {
+      setRemoteTarget(await window.remote.target().catch(() => null));
+      setRemoteInfo(await window.remote.status().catch(() => null));
+    })();
+  }, [loaded, syncOpen]);
+
+  const doPush = useCallback(
+    async (force) => {
+      if (!window.remote) return;
+      disarm();
+      setRemoteMsg(null);
+      setPushState("pushing");
+      const text = JSON.stringify(snapshot());
+      /* the timestamp goes here rather than into the payload, so the pushed
+         shape stays byte-identical to the Backup file's — and it lands where
+         it's actually useful, in the commit list */
+      const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
+      const message = `ledger ${stamp} · ${items.length} lines · ${envelopes.length} envelopes`;
+      try {
+        await (force
+          ? window.remote.pushForce(text, message)
+          : window.remote.push(text, message));
+        setPushState("pushed");
+        setRemoteInfo(await window.remote.status().catch(() => null));
+        setTimeout(() => setPushState("idle"), 2500);
+      } catch (e) {
+        const code = e?.code || "server";
+        setPushState(code === "conflict" ? "conflict" : "idle");
+        setRemoteMsg({
+          tone: code === "conflict" || code === "no-key" ? "advice" : "error",
+          text: REMOTE_SAYS[code] || REMOTE_SAYS.server,
+        });
+        if (code === "no-key" || code === "auth") setKeyOpen(true);
+      }
+    },
+    [snapshot, items, envelopes, disarm]
+  );
+
+  const doPull = useCallback(async () => {
+    if (!window.remote) return;
+    /* a full local replace, so it arms first — and unlike a bad push, which
+       stays recoverable from the branch's history, a bad pull is not */
+    if (!confirmPull) {
+      arm(setConfirmPull);
+      return;
+    }
+    clearTimeout(resetTimer.current);
+    disarm();
+    setRemoteMsg(null);
+    setPullState("pulling");
+    try {
+      const res = await window.remote.pull();
+      await applyBackup(res.text, "remote");
+      setRemoteInfo(await window.remote.status().catch(() => null));
+      setPushState("idle"); // a pull clears any conflict it was blocked on
+    } catch (e) {
+      /* applyBackup throws bare on a payload that isn't a ledger; anything
+         from the adapter carries a code. Either way nothing local changed. */
+      const code = e?.code || "bad-response";
+      setRemoteMsg({
+        tone: code === "missing" ? "advice" : "error",
+        text: REMOTE_SAYS[code] || REMOTE_SAYS["bad-response"],
+      });
+      if (code === "auth") setKeyOpen(true);
+    }
+    setPullState("idle");
+  }, [confirmPull, arm, disarm, applyBackup]);
+
+  const saveKey = useCallback(async () => {
+    if (!window.remote) return;
+    try {
+      await window.remote.setKey(keyInput.current?.value || "");
+      if (keyInput.current) keyInput.current.value = "";
+      setKeyOpen(false);
+      setRemoteMsg(null);
+      setRemoteInfo(await window.remote.status().catch(() => null));
+    } catch (e) {
+      setRemoteMsg({
+        tone: "error",
+        text: REMOTE_SAYS[e?.code] || REMOTE_SAYS["bad-key"],
+      });
+    }
+  }, []);
+
+  const clearKey = useCallback(async () => {
+    if (!window.remote) return;
+    await window.remote.clearKey().catch(() => {});
+    setRemoteMsg(null);
+    setKeyOpen(true);
+    setRemoteInfo(await window.remote.status().catch(() => null));
+  }, []);
 
   /* date range */
   const range = useMemo(() => {
@@ -3163,11 +3376,11 @@ export default function MailDayLedger() {
             )}
 
             {/* Toolbar */}
+            <div style={{ marginBottom: 16 }}>
             <div
               style={{
                 display: "flex",
                 gap: 8,
-                marginBottom: 16,
                 flexWrap: "wrap",
                 alignItems: "center",
               }}
@@ -3243,19 +3456,61 @@ export default function MailDayLedger() {
                 >
                   Re-import CSV
                 </button>
-                <button onClick={() => backup(false)} style={ctl}>
-                  Backup
-                </button>
-                {photoCount > 0 && (
+                {/* Everything that moves data in or out collapses behind one
+                    control, the same trade the date range makes above: four
+                    controls on this row became six once Push and Pull existed,
+                    which wrapped it to two lines at 375px. Collapsed it is
+                    three — and the label now tells you when you last backed up
+                    without your having to ask. Accent-filled only when there is
+                    something to say, so it isn't shouting during normal use. */}
+                {window.remote ? (
                   <button
-                    onClick={() => backup(true)}
-                    disabled={backupBusy}
-                    style={{ ...ctl, opacity: backupBusy ? 0.6 : 1 }}
+                    onClick={() => setSyncOpen((o) => !o)}
+                    aria-expanded={syncOpen}
+                    aria-label="Backup and sync"
+                    style={{
+                      ...chip(
+                        pushState === "conflict" || remoteMsg?.tone === "error"
+                      ),
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 7,
+                    }}
                   >
-                    {backupBusy ? "Packing…" : "Backup + photos"}
+                    {remoteInfo?.pushedAt
+                      ? `Sync · pushed ${new Date(remoteInfo.pushedAt)
+                          .toISOString()
+                          .slice(5, 10)}`
+                      : "Sync"}
+                    <span
+                      style={{
+                        fontSize: 8,
+                        transform: syncOpen ? "rotate(180deg)" : "none",
+                        transition: "transform 140ms ease",
+                      }}
+                    >
+                      ▼
+                    </span>
                   </button>
+                ) : (
+                  /* no remote on this platform — the file backups stay where
+                     they have always been rather than hiding behind nothing */
+                  <>
+                    <button onClick={() => backup(false)} style={ctl}>
+                      Backup
+                    </button>
+                    {photoCount > 0 && (
+                      <button
+                        onClick={() => backup(true)}
+                        disabled={backupBusy}
+                        style={{ ...ctl, opacity: backupBusy ? 0.6 : 1 }}
+                      >
+                        {backupBusy ? "Packing…" : "Backup + photos"}
+                      </button>
+                    )}
+                  </>
                 )}
-                {/* set apart from Backup, which it sits beside and is the
+                {/* set apart from the data actions it sits beside and is the
                     opposite of. Two-tap confirm unchanged — invariant 6. */}
                 <button
                   onClick={resetAll}
@@ -3270,6 +3525,197 @@ export default function MailDayLedger() {
                   {confirmReset ? "Tap again to clear everything" : "Reset"}
                 </button>
               </div>
+            </div>
+
+            {syncOpen && window.remote && (
+              <div
+                style={{
+                  marginTop: 8,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 6,
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                  }}
+                >
+                  <button
+                    onClick={() => doPush(false)}
+                    disabled={pushState === "pushing"}
+                    style={{
+                      ...ctl,
+                      opacity: pushState === "pushing" ? 0.6 : 1,
+                      color: pushState === "pushed" ? C.green : C.ink,
+                      borderColor: pushState === "pushed" ? C.green : C.line,
+                    }}
+                  >
+                    {pushState === "pushing"
+                      ? "Pushing…"
+                      : pushState === "pushed"
+                      ? "Pushed ✓"
+                      : "Push"}
+                  </button>
+                  {/* the only force in the feature, and it exists so a device
+                      holding the copy worth keeping isn't stuck behind a
+                      conflict it could otherwise clear only by destroying it.
+                      Advisory manila, not red: every push is a commit, so what
+                      it overwrites stays in the branch's history. */}
+                  {pushState === "conflict" && (
+                    <button
+                      onClick={() =>
+                        confirmForce ? doPush(true) : arm(setConfirmForce)
+                      }
+                      style={{
+                        ...ctl,
+                        background: confirmForce ? C.manilaInk : C.manila,
+                        color: confirmForce ? C.card : C.manilaInk,
+                        borderColor: "transparent",
+                        fontWeight: confirmForce ? 700 : 400,
+                      }}
+                    >
+                      {confirmForce ? "Tap again to overwrite" : "Push anyway"}
+                    </button>
+                  )}
+                  {/* short label on purpose — the full sentence goes in the
+                      advisory below, where it can wrap. A long armed label is
+                      exactly what once pushed a line past the column edge. */}
+                  <button
+                    onClick={doPull}
+                    disabled={pullState === "pulling"}
+                    style={{
+                      ...ctl,
+                      color: confirmPull ? C.card : C.ink,
+                      background: confirmPull ? C.red : C.card,
+                      borderColor: confirmPull ? C.red : C.line,
+                      fontWeight: confirmPull ? 700 : 400,
+                      opacity: pullState === "pulling" ? 0.6 : 1,
+                    }}
+                  >
+                    {pullState === "pulling"
+                      ? "Pulling…"
+                      : confirmPull
+                      ? "Tap again to replace"
+                      : "Pull from GitHub"}
+                  </button>
+                  <button onClick={() => backup(false)} style={ctl}>
+                    Backup
+                  </button>
+                  {photoCount > 0 && (
+                    <button
+                      onClick={() => backup(true)}
+                      disabled={backupBusy}
+                      style={{ ...ctl, opacity: backupBusy ? 0.6 : 1 }}
+                    >
+                      {backupBusy ? "Packing…" : "Backup + photos"}
+                    </button>
+                  )}
+                  {remoteTarget && (
+                    <span
+                      style={{
+                        fontFamily: mono,
+                        fontSize: 11,
+                        color: C.inkSoft,
+                        marginLeft: "auto",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {remoteTarget.owner}/{remoteTarget.repo} ·{" "}
+                      {remoteTarget.branch}
+                    </span>
+                  )}
+                </div>
+                {confirmPull && (
+                  <div
+                    style={{
+                      fontFamily: cochin,
+                      fontSize: 13.5,
+                      lineHeight: 1.4,
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      background: C.redSoft,
+                      color: C.red,
+                    }}
+                  >
+                    Pull replaces every item, check-in and pending envelope on
+                    this device with the remote copy.
+                  </div>
+                )}
+                {remoteMsg && (
+                  <div
+                    style={{
+                      fontFamily: cochin,
+                      fontSize: 13.5,
+                      lineHeight: 1.4,
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      background:
+                        remoteMsg.tone === "error" ? C.redSoft : C.manila,
+                      color: remoteMsg.tone === "error" ? C.red : C.manilaInk,
+                    }}
+                  >
+                    {remoteMsg.text}
+                  </div>
+                )}
+                {remoteInfo &&
+                  (keyOpen || !remoteInfo.hasKey ? (
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 6,
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                      }}
+                    >
+                      <input
+                        ref={keyInput}
+                        type="password"
+                        placeholder="GitHub token (github_pat_…)"
+                        aria-label="GitHub access token"
+                        autoComplete="off"
+                        spellCheck={false}
+                        autoCapitalize="off"
+                        style={{
+                          ...ctl,
+                          flex: "1 1 220px",
+                          minWidth: 180,
+                          fontFamily: mono,
+                          fontSize: 12,
+                          cursor: "text",
+                          outline: "none",
+                        }}
+                      />
+                      <button onClick={saveKey} style={ctl}>
+                        Save key
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 10,
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                        fontFamily: mono,
+                        fontSize: 11,
+                        color: C.inkSoft,
+                      }}
+                    >
+                      <span>key saved on this device</span>
+                      <button onClick={() => setKeyOpen(true)} style={linkBtn}>
+                        Replace
+                      </button>
+                      <button onClick={clearKey} style={linkBtn}>
+                        Clear
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            )}
             </div>
           </>
         )}

@@ -25,14 +25,21 @@ import {
   observers,
   ok,
   photoKeys,
+  openSync,
+  pushes,
   record,
+  remote,
+  remoteText,
   report,
+  saveGitHubKey,
   saved,
   sleep,
   text,
   type,
   win,
 } from "./harness.mjs";
+/* the adapter's pure rules — see group 27 for why these are imported directly */
+import { classifyStatus, pushBody } from "../src/remote-rules.mjs";
 
 const fresh = () => boot({ items: ITEMS, received: {} });
 
@@ -44,6 +51,7 @@ ok(/Nothing waiting/.test(text()), "1.1 empty pile shows its empty state");
 ok(!!btn(/Record an envelope/), "1.2 record button present");
 ok(!/Orders from/.test(text()), "1.3 date filter hidden — it applies to nothing here");
 ok(!document.querySelector('input[placeholder^="Search card"]'), "1.4 search hidden");
+await openSync(); // the file actions moved behind the Sync disclosure
 ok(!!btn(/^Backup$/), "1.5 Backup still reachable");
 ok(!!btn(/^Reset$/), "1.6 Reset still reachable");
 
@@ -234,6 +242,7 @@ win.URL.createObjectURL = (b) => {
 };
 win.URL.revokeObjectURL = () => {};
 
+await openSync();
 await click(btn(/^Backup$/), "backup");
 const plainText = await captured.text();
 const plain = JSON.parse(plainText);
@@ -393,6 +402,7 @@ await boot(
   [["pho-3", jpeg()]]
 );
 await goTo("orphaned");
+await openSync();
 ok(!!btn(/Backup \+ photos/), "19.1 photo backup offered only when photos exist");
 
 await click(btn(/^Backup$/), "plain backup");
@@ -426,6 +436,38 @@ eq(photoKeys(), ["pho-3"], "19.8 the blob is back in the photo store");
 await sleep(SAVE_WAIT);
 eq(saved().envelopes[0].photos, ["pho-3"], "19.9 and the envelope still points at it");
 eq(await getPhoto("pho-3").text(), "fake-jpeg-bytes", "19.10 image survived byte-for-byte");
+
+/* ...but on a device that STILL HOLDS the blob, the id must survive. The rule
+   used to be all-or-nothing on the payload's photo map, so restoring a plain
+   backup onto the very device that took the photo stripped the id and the
+   sweep deleted the JPEG two seconds later — silent loss on a round trip that
+   should have been a no-op. Same failure the pull path would have had. */
+await boot(
+  {
+    items: ITEMS,
+    received: {},
+    envelopes: [
+      {
+        id: "env-r",
+        createdAt: Date.parse("2026-08-01"),
+        note: "",
+        photos: ["pho-3"],
+        entries: [{ name: "Ponder", qty: 1 }],
+      },
+    ],
+  },
+  [["pho-3", jpeg()]]
+);
+await click(btn(/Re-import CSV/), "show upload zone");
+await dropFile("plain.json", smallText);
+await sleep(SAVE_WAIT);
+eq(
+  saved().envelopes[0].photos,
+  ["pho-3"],
+  "19.11 a photo-less restore keeps ids whose blob is on this device"
+);
+await sleep(SWEEP_WAIT);
+eq(photoKeys(), ["pho-3"], "19.12 so the sweep leaves the blob alone");
 
 /* ── 20. a partial quantity checks in ONE copy, not the whole line ─────── */
 
@@ -541,6 +583,7 @@ await boot({
   ],
 });
 
+await openSync();
 ok(!!btn(/^Backup$/), "23.1 Backup survives an empty item list");
 ok(!!btn(/Re-import/), "23.2 so does Re-import");
 ok(!!btn(/^Reset$/), "23.3 and Reset");
@@ -620,6 +663,379 @@ const t24b = text();
 ok(
   t24b.indexOf("Delta Cards") > t24b.indexOf("Alpha Cards"),
   "24.3 by date that ordering inverts, so the two sorts really differ"
+);
+
+/* ── 25. pushing the ledger to GitHub ──────────────────────────────────── */
+
+/* A platform with no remote must lose nothing: the file backups stay on the
+   toolbar rather than hiding behind a disclosure that isn't there. */
+await boot({ items: ITEMS, received: {} }, null, { noRemote: true });
+ok(!btn(/^Sync/), "25.1 no Sync control when the platform has no remote");
+ok(!!btn(/^Backup$/), "25.2 and Backup stays on the toolbar in that case");
+
+await fresh();
+await openSync();
+ok(!!btn(/^Push$/), "25.3 Sync opens onto Push");
+await click(btn(/^Push$/), "push with no key");
+eq(pushes().length, 0, "25.4 a push with no key never reaches GitHub");
+ok(/Add a GitHub key first/.test(text()), "25.5 and says why");
+ok(
+  !!document.querySelector('input[aria-label="GitHub access token"]'),
+  "25.6 opening the key field rather than just complaining"
+);
+
+await saveGitHubKey();
+await click(btn(/^Push$/), "push");
+eq(pushes().length, 1, "25.7 with a key it goes");
+const pushed = JSON.parse(pushes()[0].text);
+eq(pushed.mailday, 1, "25.8 the payload is a Mail Day backup");
+eq(pushed.items.length, ITEMS.length, "25.9 carrying every line");
+for (const k of ["received", "envelopes", "dateFilter", "sortBy", "itemSort"])
+  ok(k in pushed, `25.10 and the ${k} key`);
+ok(
+  !("savedAt" in pushed),
+  "25.11 but no timestamp — the payload shape stays frozen"
+);
+ok(
+  /^ledger \d{4}-\d\d-\d\d/.test(pushes()[0].message) &&
+    new RegExp(`${ITEMS.length} lines`).test(pushes()[0].message),
+  "25.12 the commit message carries the date and the counts instead"
+);
+eq(
+  pushes()[0].sha,
+  null,
+  "25.13 the first push sends no sha — nothing is there to overwrite"
+);
+
+/* Non-ASCII is the reason the codec exists: btoa throws above U+00FF, card
+   names carry Æ/ö/é and iOS smart punctuation turns a typed ' into ’. The
+   harness encodes through the real utf8ToBase64, so this round trip is the
+   thing that would break. */
+await fresh();
+await goTo("orphaned");
+await record(["Æther Vial’s Jötun"], "Séance");
+await goTo("packages");
+await saveGitHubKey();
+await click(btn(/^Push$/), "push non-ASCII");
+/* named rather than left to crash on JSON.parse(null): with btoa in place of
+   the codec this is the assertion that should point at the problem */
+ok(!!remoteText(), "25.13b the non-ASCII payload encodes at all");
+const trip = JSON.parse(remoteText() || "{}");
+eq(
+  trip.envelopes[0].entries[0].name,
+  "Æther Vial’s Jötun",
+  "25.14 a non-ASCII envelope entry survives the push byte-for-byte"
+);
+eq(trip.envelopes[0].note, "Séance", "25.15 and so does the note");
+
+/* A stale push must be refused rather than silently overwriting the other
+   device — and the force has to exist, or a device holding the copy worth
+   keeping is stuck. */
+const OTHER_DEVICE = JSON.stringify({
+  mailday: 1,
+  items: ITEMS.slice(0, 3),
+  received: { [ITEMS[0].key]: 1 },
+  envelopes: [],
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+});
+
+await boot({ items: ITEMS, received: {} }, null, { remote: OTHER_DEVICE });
+await openSync();
+await saveGitHubKey();
+await click(btn(/^Push$/), "stale push");
+ok(
+  /changed since you last pulled/.test(text()),
+  "25.16 pushing over a remote this device never pulled conflicts"
+);
+eq(
+  JSON.parse(remoteText()).items.length,
+  3,
+  "25.17 and the other device's copy is still there"
+);
+ok(!!btn(/Push anyway/), "25.18 the force is offered");
+await click(btn(/Push anyway/), "arm force");
+eq(
+  JSON.parse(remoteText()).items.length,
+  3,
+  "25.19 one tap on the force still overwrites nothing"
+);
+await click(btn(/Tap again to overwrite/), "confirm force");
+eq(
+  JSON.parse(remoteText()).items.length,
+  ITEMS.length,
+  "25.20 two taps overwrite deliberately"
+);
+
+/* the failures the user will actually meet */
+await fresh();
+await openSync();
+await saveGitHubKey();
+remote.fail = "auth";
+await click(btn(/^Push$/), "expired key");
+ok(/expired or been revoked/.test(text()), "25.21 an expired key says so plainly");
+ok(
+  !!document.querySelector('input[aria-label="GitHub access token"]'),
+  "25.22 and reopens the field"
+);
+
+await fresh();
+await openSync();
+await saveGitHubKey();
+remote.fail = "offline";
+await click(btn(/^Push$/), "offline push");
+ok(
+  /safe on this device/.test(text()),
+  "25.23 offline reassures rather than alarms — nothing was lost"
+);
+
+/* The token is a credential, not ledger data. It must not be in the saved
+   ledger, in a backup file, in the pushed payload, or anywhere the app's own
+   storage namespace can be enumerated. */
+await fresh();
+await openSync();
+await saveGitHubKey("github_pat_SECRETVALUE");
+await click(btn(/^Push$/), "push after saving a key");
+await click(btn(/^Backup$/), "backup after saving a key");
+const LEAK = /github_pat_|ghp_/;
+await sleep(SAVE_WAIT);
+ok(!LEAK.test(JSON.stringify(saved())), "25.24 the key is not in the saved ledger");
+ok(!LEAK.test(pushes()[0].text), "25.25 nor in the pushed payload");
+ok(!LEAK.test(await captured.text()), "25.26 nor in a backup file");
+eq(
+  (await win.storage.list()).keys,
+  ["mailday:v1"],
+  "25.27 and the ledger namespace holds only the ledger"
+);
+
+/* ── 26. pulling the ledger back ───────────────────────────────────────── */
+
+await boot({ items: ITEMS, received: {} }, null, { remote: OTHER_DEVICE });
+await openSync();
+await click(btn(/Pull from GitHub/), "arm pull");
+eq(
+  remote.calls.filter((c) => c.op === "pull").length,
+  0,
+  "26.1 one tap arms and fetches nothing"
+);
+ok(/Tap again to replace/.test(text()), "26.2 and the button says what is next");
+ok(
+  /replaces every item, check-in and pending envelope/.test(text()),
+  "26.3 with the full sentence where it can wrap"
+);
+await click(btn(/Tap again to replace/), "confirm pull");
+await sleep(SAVE_WAIT);
+eq(saved().items.length, 3, "26.4 the second tap replaces the ledger");
+eq(saved().received[ITEMS[0].key], 1, "26.5 check-ins come with it");
+ok(/Pulled from GitHub/.test(text()), "26.6 and the notice names the source");
+ok(!remote.key, "26.7 none of which needed a key");
+
+/* a pull that isn't a ledger must change nothing */
+await boot({ items: ITEMS, received: {} }, null, {
+  remote: JSON.stringify({ hello: "world" }),
+});
+await openSync();
+await click(btn(/Pull from GitHub/), "arm");
+await click(btn(/Tap again to replace/), "confirm");
+ok(/isn.t a Mail Day ledger/.test(text()), "26.8 a non-ledger payload is refused");
+await sleep(SAVE_WAIT);
+eq(saved().items.length, ITEMS.length, "26.9 and nothing local moved");
+
+/* the same warning a file restore gives, on the path where it matters more */
+await boot(
+  {
+    items: ITEMS,
+    received: {},
+    envelopes: [
+      {
+        id: "env-p",
+        createdAt: 1,
+        note: "hand typed",
+        entries: [{ name: "Ponder", qty: 1 }],
+        photos: [],
+      },
+    ],
+  },
+  null,
+  { remote: OTHER_DEVICE }
+);
+await openSync();
+await click(btn(/Pull from GitHub/), "arm");
+await click(btn(/Tap again to replace/), "confirm");
+ok(
+  /pending envelope was replaced/.test(text()),
+  "26.10 a pull warns about replaced envelopes, exactly like a file restore"
+);
+
+/* THE landmine: a pushed payload never carries photos, so a pull must not
+   strip ids whose blobs are sitting right here — and the sweep must not then
+   collect them. Push from the phone, pull on the same phone, photos gone. */
+const PHOTO_STATE = {
+  items: ITEMS,
+  received: {},
+  envelopes: [
+    {
+      id: "env-ph",
+      createdAt: 1,
+      note: "",
+      entries: [{ name: "Ponder", qty: 1 }],
+      photos: ["pho-9"],
+    },
+  ],
+};
+await boot(PHOTO_STATE, [["pho-9", jpeg()]], {
+  remote: JSON.stringify({
+    mailday: 1,
+    ...PHOTO_STATE,
+    dateFilter: { preset: "all", from: "", to: "" },
+    sortBy: "newest",
+    itemSort: "missing",
+  }),
+});
+await openSync();
+await click(btn(/Pull from GitHub/), "arm");
+await click(btn(/Tap again to replace/), "confirm");
+await sleep(SAVE_WAIT);
+eq(
+  saved().envelopes[0].photos,
+  ["pho-9"],
+  "26.11 a pull keeps ids whose blob is on this device"
+);
+await sleep(SWEEP_WAIT);
+eq(photoKeys(), ["pho-9"], "26.12 and the sweep leaves the blob alone");
+
+/* the other half of the same rule: an id with no blob anywhere is dropped */
+await boot({ items: ITEMS, received: {} }, null, {
+  remote: JSON.stringify({
+    mailday: 1,
+    items: ITEMS,
+    received: {},
+    envelopes: [
+      {
+        id: "env-x",
+        createdAt: 1,
+        note: "",
+        entries: [{ name: "Ponder", qty: 1 }],
+        photos: ["pho-gone"],
+      },
+    ],
+    dateFilter: { preset: "all", from: "", to: "" },
+    sortBy: "newest",
+    itemSort: "missing",
+  }),
+});
+await openSync();
+await click(btn(/Pull from GitHub/), "arm");
+await click(btn(/Tap again to replace/), "confirm");
+await sleep(SAVE_WAIT);
+eq(
+  saved().envelopes[0].photos,
+  [],
+  "26.13 but an id whose blob is nowhere is still stripped"
+);
+
+/* a pull is how a device catches up, so the push it was blocked on now lands */
+await boot({ items: ITEMS, received: {} }, null, { remote: OTHER_DEVICE });
+await openSync();
+await saveGitHubKey();
+await click(btn(/^Push$/), "blocked push");
+ok(/changed since you last pulled/.test(text()), "26.14 blocked, as in group 25");
+await click(btn(/Pull from GitHub/), "arm");
+await click(btn(/Tap again to replace/), "confirm");
+await click(btn(/^Push$/), "push after pulling");
+/* NB assert on the sha, not on the payload: a pull makes this device's ledger
+   identical to the remote's, so "the remote holds 3 items" is true whether the
+   push landed or not. The sha advancing is the only thing that distinguishes
+   them — which is exactly the bookkeeping under test. */
+ok(
+  !/changed since you last pulled/.test(text()),
+  "26.15 the following push is not blocked"
+);
+ok(
+  remote.sha !== "sha-0",
+  "26.16 because pulling refreshed the sha, so the push actually landed"
+);
+
+/* arming one destructive control disarms the other — two primed buttons side
+   by side is the mis-tap the two-tap pattern exists to prevent */
+await fresh();
+await openSync();
+await click(btn(/^Reset$/), "arm reset");
+ok(/Tap again to clear everything/.test(text()), "26.17 Reset arms");
+await click(btn(/Pull from GitHub/), "arm pull");
+ok(/Tap again to replace/.test(text()), "26.18 Pull arms");
+ok(!/Tap again to clear everything/.test(text()), "26.19 and Reset disarms itself");
+
+/* ── 27. the adapter's two load-bearing decisions ──────────────────────── */
+
+/* Everything above drives window.remote through the harness mock, which is the
+   right level for "does the UI react correctly to a conflict". It does NOT
+   cover the adapter's own rules, because entry.jsx mounts React on import and
+   can't be loaded here — the same gap the localStorage and IndexedDB adapters
+   have. So the two rules that fail quietly are pure functions, and this group
+   asserts them directly. What is still uncovered: the fetch round trip itself. */
+
+eq(classifyStatus(401, "Bad credentials"), "auth", "27.1 401 is an expired key");
+eq(
+  classifyStatus(403, "API rate limit exceeded", { remaining: "0" }),
+  "rate-limit",
+  "27.2 a 403 with the budget spent is throttling"
+);
+eq(
+  classifyStatus(403, "You have exceeded a secondary rate limit", {
+    retryAfter: 60,
+  }),
+  "rate-limit",
+  "27.3 so is one carrying retry-after"
+);
+eq(
+  classifyStatus(403, "Resource not accessible by personal access token"),
+  "forbidden",
+  "27.4 but a plain 403 is a permission problem, not throttling"
+);
+eq(classifyStatus(409, "is at abc but expected def"), "conflict", "27.5 409 conflicts");
+eq(
+  classifyStatus(422, 'Invalid request. "sha" wasn’t supplied.'),
+  "conflict",
+  "27.6 and so does a 422 about a missing sha — the second-device case"
+);
+eq(
+  classifyStatus(422, "Invalid request. branch is not valid."),
+  "server",
+  "27.7 while an unrelated 422 does not"
+);
+eq(classifyStatus(404, "Not Found"), "missing", "27.8 404 means nothing pushed yet");
+eq(
+  classifyStatus(404, "No commit found for the ref data"),
+  "no-branch",
+  "27.9 unless it is the branch that is missing"
+);
+eq(classifyStatus(500, ""), "server", "27.10 5xx is GitHub's problem");
+
+/* the sha rule: omitted only when there is nothing to overwrite */
+const enc = (s) => `b64(${s})`;
+const created = pushBody({
+  text: "x",
+  branch: "data",
+  sha: null,
+  message: "m",
+  encode: enc,
+});
+ok(!("sha" in created), "27.11 the first push omits the sha — it is a create");
+eq(created.branch, "data", "27.12 and targets the data branch, never main");
+eq(created.content, "b64(x)", "27.13 encoding the payload on the way out");
+const updated = pushBody({
+  text: "x",
+  branch: "data",
+  sha: "abc123",
+  message: "m",
+  encode: enc,
+});
+eq(
+  updated.sha,
+  "abc123",
+  "27.14 every later push sends the sha this device last saw"
 );
 
 report();
