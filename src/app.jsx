@@ -1041,6 +1041,60 @@ const miniBtn = {
   cursor: "pointer",
 };
 
+/* ---------- the toolbar vocabulary ----------
+   One height for every control in the filter region. Before this, chips were
+   `5px 11px`, selects `9px 8px` and buttons `9px 12px`, so nothing shared a
+   baseline and the rows wrapped raggedly — that mismatch, not the colours, is
+   what read as unfinished. Change CTL_H and the whole toolbar follows.
+   `flexShrink: 0` on all of them is deliberate: the region had none, so a long
+   label ("Tap again to clear everything") could push a line past the column. */
+const CTL_H = 34;
+
+const ctl = {
+  fontFamily: mono,
+  fontSize: 12,
+  height: CTL_H,
+  /* inputs are content-box by default while buttons are border-box, so without
+     this the search field renders 2px taller than everything beside it */
+  boxSizing: "border-box",
+  padding: "0 11px",
+  borderRadius: 8,
+  border: `1px solid ${C.line}`,
+  background: C.card,
+  color: C.ink,
+  cursor: "pointer",
+  flexShrink: 0,
+  whiteSpace: "nowrap",
+};
+
+/* selects need their own horizontal padding — the native caret eats the right */
+const ctlSelect = { ...ctl, padding: "0 6px" };
+
+/* a pill. `active` is the accent-filled state, same treatment as the view
+   switch, so the two toggle sets in the app read alike. */
+const chip = (active) => ({
+  ...ctl,
+  fontSize: 11.5,
+  borderRadius: 999,
+  border: `1px solid ${active ? C.accent : C.line}`,
+  background: active ? C.accent : C.card,
+  color: active ? C.card : C.ink,
+});
+
+/* preset → label, module-level so the collapsed control and the expanded chips
+   cannot drift apart. The values are deliberately heterogeneous — "all", raw
+   numbers, "days", "custom" — because the numeric ones are used arithmetically
+   when the range is applied. Do not stringify them. */
+const RANGES = [
+  ["all", "All time"],
+  [30, "30d"],
+  [45, "45d"],
+  [60, "60d"],
+  [90, "90d"],
+  ["days", "# days"],
+  ["custom", "Custom…"],
+];
+
 /* ---------- Upload zone ---------- */
 
 function UploadZone({ onFile, error, replacing }) {
@@ -1944,6 +1998,10 @@ export default function MailDayLedger() {
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState("idle"); // idle | saving | saved | error
   const [query, setQuery] = useState("");
+  /* the date range collapses to one control; this opens the chip set. Not
+     persisted — it's a disclosure, not a preference, and it should start shut
+     on every load so the toolbar is at its shortest when you open the app. */
+  const [rangeOpen, setRangeOpen] = useState(false);
   const [hideDone, setHideDone] = useState(false);
   const [showCanceled, setShowCanceled] = useState(false);
   const canceledRef = useRef(null);
@@ -2730,7 +2788,13 @@ export default function MailDayLedger() {
 
         /* Fixed height, always in flow, bled to the column edges so content
            passes under it rather than beside it. Only opacity/transform
-           change when it pins — never height. */
+           change when it pins — never height.
+           This height is load-bearing TWICE. It is the running head, and while
+           unpinned it is also the masthead's bottom margin — the 46px of air
+           above the view switch is this element, not a margin anywhere. That
+           spacing is wanted: it drops the filters into one-handed thumb reach.
+           So don't "reclaim" it by shrinking this to fit the text; if the bar
+           ever goes away, give the masthead an explicit marginBottom instead. */
         .mdl-sticky { position: sticky; top: 0; z-index: 30; height: 46px;
                       margin: 0 -16px; padding: 0 16px;
                       display: flex; align-items: center; gap: 10px;
@@ -2896,17 +2960,20 @@ export default function MailDayLedger() {
           </div>
         )}
 
-        {items.length > 0 && (
+        {(items.length > 0 || envelopes.length > 0) && (
           <>
             {/* Date range — hidden under Orphaned, where it applies to
                 nothing: envelope candidates are matched against every live
-                order, and a visible filter would imply otherwise */}
-            {view !== "mystery" && (
+                order, and a visible filter would imply otherwise.
+                Collapsed to one control: seven chips wrapped to two rows at
+                375px and the custom from–to pair always claimed a third,
+                because native date inputs carry a ~140px UA minimum. */}
+            {view !== "mystery" && items.length > 0 && (
+            <div style={{ marginBottom: 10 }}>
             <div
               style={{
                 display: "flex",
-                gap: 6,
-                marginBottom: 10,
+                gap: 8,
                 flexWrap: "wrap",
                 alignItems: "center",
               }}
@@ -2918,42 +2985,107 @@ export default function MailDayLedger() {
                   letterSpacing: "0.12em",
                   textTransform: "uppercase",
                   color: C.inkSoft,
-                  marginRight: 2,
                 }}
               >
                 Orders from
               </span>
-              {[
-                ["all", "All time"],
-                [30, "30d"],
-                [45, "45d"],
-                [60, "60d"],
-                [90, "90d"],
-                ["days", "# days"],
-                ["custom", "Custom…"],
-              ].map(([val, label]) => {
-                const active = dateFilter.preset === val;
-                return (
-                  <button
-                    key={String(val)}
-                    onClick={() =>
-                      setDateFilter((d) => ({ ...d, preset: val }))
-                    }
-                    style={{
-                      fontFamily: mono,
-                      fontSize: 11.5,
-                      padding: "5px 11px",
-                      borderRadius: 999,
-                      border: `1px solid ${active ? C.accent : C.line}`,
-                      background: active ? C.accent : C.card,
-                      color: active ? C.card : C.ink,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
+              {/* accent only when a range is actually narrowing the list, so
+                  the default "All time" doesn't imply a filter is on */}
+              <button
+                onClick={() => setRangeOpen((o) => !o)}
+                aria-expanded={rangeOpen}
+                aria-label="Change date range"
+                style={{
+                  ...chip(dateFilter.preset !== "all"),
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 7,
+                }}
+              >
+                {(RANGES.find(([v]) => v === dateFilter.preset) || RANGES[0])[1]}
+                <span
+                  style={{
+                    fontSize: 8,
+                    transform: rangeOpen ? "rotate(180deg)" : "none",
+                    transition: "transform 140ms ease",
+                  }}
+                >
+                  ▼
+                </span>
+              </button>
+              {/* a filter, so it sits with the date range rather than with the
+                  file actions — and it stops being a lone button on a line of
+                  its own, which is what still read as ragged */}
+              <button
+                onClick={() => setHideDone((h) => !h)}
+                aria-pressed={hideDone}
+                style={{
+                  ...ctl,
+                  background: hideDone ? C.ink : C.card,
+                  color: hideDone ? C.card : C.ink,
+                  borderColor: hideDone ? C.ink : C.line,
+                }}
+              >
+                {hideDone ? "Showing remaining only" : "Hide received"}
+              </button>
+              {(hiddenCount > 0 || canceledCount > 0) && (
+                <span
+                  style={{
+                    fontFamily: mono,
+                    fontSize: 11,
+                    color: C.inkSoft,
+                    marginLeft: "auto",
+                    whiteSpace: "nowrap",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  {hiddenCount > 0 && <span>{hiddenCount} lines outside range</span>}
+                  {canceledCount > 0 && (
+                    <button
+                      onClick={() => setShowCanceled((s) => !s)}
+                      aria-expanded={showCanceled}
+                      style={{
+                        fontFamily: mono,
+                        fontSize: 11,
+                        color: showCanceled ? C.ink : C.inkSoft,
+                        background: "transparent",
+                        border: "none",
+                        cursor: "pointer",
+                        textDecoration: "underline",
+                        textUnderlineOffset: 2,
+                        padding: 0,
+                      }}
+                    >
+                      {showCanceled
+                        ? "hide canceled"
+                        : `${canceledCount} canceled — view`}
+                    </button>
+                  )}
+                </span>
+              )}
+            </div>
+            {rangeOpen && (
+            <div
+              style={{
+                display: "flex",
+                gap: 6,
+                marginTop: 8,
+                flexWrap: "wrap",
+                alignItems: "center",
+              }}
+            >
+              {RANGES.map(([val, label]) => (
+                <button
+                  key={String(val)}
+                  onClick={() => setDateFilter((d) => ({ ...d, preset: val }))}
+                  aria-pressed={dateFilter.preset === val}
+                  style={chip(dateFilter.preset === val)}
+                >
+                  {label}
+                </button>
+              ))}
               {dateFilter.preset === "days" && (
                 <span
                   style={{
@@ -3013,46 +3145,12 @@ export default function MailDayLedger() {
                   />
                 </span>
               )}
-              {(hiddenCount > 0 || canceledCount > 0) && (
-                <span
-                  style={{
-                    fontFamily: mono,
-                    fontSize: 11,
-                    color: C.inkSoft,
-                    marginLeft: "auto",
-                    whiteSpace: "nowrap",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
-                >
-                  {hiddenCount > 0 && <span>{hiddenCount} lines outside range</span>}
-                  {canceledCount > 0 && (
-                    <button
-                      onClick={() => setShowCanceled((s) => !s)}
-                      style={{
-                        fontFamily: mono,
-                        fontSize: 11,
-                        color: showCanceled ? C.ink : C.inkSoft,
-                        background: "transparent",
-                        border: "none",
-                        cursor: "pointer",
-                        textDecoration: "underline",
-                        textUnderlineOffset: 2,
-                        padding: 0,
-                      }}
-                    >
-                      {showCanceled
-                        ? "hide canceled"
-                        : `${canceledCount} canceled — view`}
-                    </button>
-                  )}
-                </span>
-              )}
+            </div>
+            )}
             </div>
             )}
 
-            {/* Controls */}
+            {/* Toolbar */}
             <div
               style={{
                 display: "flex",
@@ -3062,120 +3160,104 @@ export default function MailDayLedger() {
                 alignItems: "center",
               }}
             >
-              {/* search / sort / hide only describe the ledger lists; Backup
-                  and Reset stay reachable from every view */}
-              {view !== "mystery" && (
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search card, set, seller, or order…"
-                style={{
-                  flex: 1,
-                  minWidth: 160,
-                  fontFamily: cochin,
-                  fontSize: 14,
-                  padding: "9px 12px",
-                  borderRadius: 8,
-                  border: `1px solid ${C.line}`,
-                  background: C.card,
-                  color: C.ink,
-                  outline: "none",
-                }}
-              />
-              )}
-              {view === "mystery" ? null : view === "items" ? (
-                <select
-                  value={itemSort}
-                  onChange={(e) => setItemSort(e.target.value)}
-                  aria-label="Sort items"
+              {/* Search shares its line with sort — it's the only control that
+                  wants to grow, and pairing it with fixed-width buttons is what
+                  forced three wrapped rows before. */}
+              {view !== "mystery" && items.length > 0 && (
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search card, set, seller, or order…"
+                  aria-label="Search cards, sets, sellers and order ids"
                   style={{
-                    ...dateInput,
-                    padding: "9px 8px",
-                    fontSize: 12,
-                    cursor: "pointer",
+                    ...ctl,
+                    flex: "1 1 150px",
+                    minWidth: 150,
+                    fontFamily: cochin,
+                    fontSize: 14,
+                    cursor: "text",
+                    outline: "none",
                   }}
-                >
-                  <option value="missing">Sort: most missing</option>
-                  <option value="basis">Sort: biggest position</option>
-                  <option value="ordered">Sort: most ordered</option>
-                  <option value="value">Sort: $ remaining</option>
-                  <option value="rate">Sort: unit rate</option>
-                  <option value="name">Sort: name A–Z</option>
-                </select>
-              ) : (
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value)}
-                  aria-label="Sort packages"
-                  style={{
-                    ...dateInput,
-                    padding: "9px 8px",
-                    fontSize: 12,
-                    cursor: "pointer",
-                  }}
-                >
-                  <option value="newest">Sort: newest</option>
-                  <option value="oldest">Sort: oldest</option>
-                  <option value="value">Sort: $ remaining</option>
-                  <option value="rate">Sort: unit rate</option>
-                  <option value="seller">Sort: seller A–Z</option>
-                </select>
+                />
               )}
-              {view !== "mystery" && (
-              <button
-                onClick={() => setHideDone((h) => !h)}
+              {view !== "mystery" &&
+                items.length > 0 &&
+                (view === "items" ? (
+                  <select
+                    value={itemSort}
+                    onChange={(e) => setItemSort(e.target.value)}
+                    aria-label="Sort items"
+                    style={ctlSelect}
+                  >
+                    <option value="missing">Sort: most missing</option>
+                    <option value="basis">Sort: biggest position</option>
+                    <option value="ordered">Sort: most ordered</option>
+                    <option value="value">Sort: $ remaining</option>
+                    <option value="rate">Sort: unit rate</option>
+                    <option value="name">Sort: name A–Z</option>
+                  </select>
+                ) : (
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value)}
+                    aria-label="Sort packages"
+                    style={ctlSelect}
+                  >
+                    <option value="newest">Sort: newest</option>
+                    <option value="oldest">Sort: oldest</option>
+                    <option value="value">Sort: $ remaining</option>
+                    <option value="rate">Sort: unit rate</option>
+                    <option value="seller">Sort: seller A–Z</option>
+                  </select>
+                ))}
+              {/* Data actions, grouped so file management reads as a separate
+                  thing from filtering. Gated on the OUTER condition only — they
+                  must survive an empty item list, because a user holding
+                  hand-typed orphaned envelopes with no items still needs
+                  Backup, and it used to disappear on them entirely. */}
+              <div
                 style={{
-                  ...miniBtn,
-                  fontSize: 12,
-                  padding: "9px 12px",
-                  background: hideDone ? C.ink : C.card,
-                  color: hideDone ? C.card : C.ink,
+                  display: "flex",
+                  gap: 8,
+                  marginLeft: "auto",
+                  flexWrap: "wrap",
+                  alignItems: "center",
                 }}
               >
-                {hideDone ? "Showing remaining only" : "Hide received"}
-              </button>
-              )}
-              {view === "mystery" && <span style={{ flex: 1 }} />}
-              <button
-                onClick={() => setShowUpload((s) => !s)}
-                style={{ ...miniBtn, fontSize: 12, padding: "9px 12px" }}
-              >
-                Re-import CSV
-              </button>
-              <button
-                onClick={() => backup(false)}
-                style={{ ...miniBtn, fontSize: 12, padding: "9px 12px" }}
-              >
-                Backup
-              </button>
-              {photoCount > 0 && (
                 <button
-                  onClick={() => backup(true)}
-                  disabled={backupBusy}
+                  onClick={() => setShowUpload((s) => !s)}
+                  aria-expanded={showUpload}
+                  style={ctl}
+                >
+                  Re-import CSV
+                </button>
+                <button onClick={() => backup(false)} style={ctl}>
+                  Backup
+                </button>
+                {photoCount > 0 && (
+                  <button
+                    onClick={() => backup(true)}
+                    disabled={backupBusy}
+                    style={{ ...ctl, opacity: backupBusy ? 0.6 : 1 }}
+                  >
+                    {backupBusy ? "Packing…" : "Backup + photos"}
+                  </button>
+                )}
+                {/* set apart from Backup, which it sits beside and is the
+                    opposite of. Two-tap confirm unchanged — invariant 6. */}
+                <button
+                  onClick={resetAll}
                   style={{
-                    ...miniBtn,
-                    fontSize: 12,
-                    padding: "9px 12px",
-                    opacity: backupBusy ? 0.6 : 1,
+                    ...ctl,
+                    color: confirmReset ? C.card : C.red,
+                    background: confirmReset ? C.red : C.redSoft,
+                    borderColor: confirmReset ? C.red : "transparent",
+                    fontWeight: confirmReset ? 700 : 400,
                   }}
                 >
-                  {backupBusy ? "Packing…" : "Backup + photos"}
+                  {confirmReset ? "Tap again to clear everything" : "Reset"}
                 </button>
-              )}
-              <button
-                onClick={resetAll}
-                style={{
-                  ...miniBtn,
-                  fontSize: 12,
-                  padding: "9px 12px",
-                  color: confirmReset ? C.card : C.red,
-                  background: confirmReset ? C.red : C.card,
-                  borderColor: confirmReset ? C.red : C.redSoft,
-                  fontWeight: confirmReset ? 700 : 400,
-                }}
-              >
-                {confirmReset ? "Tap again to clear everything" : "Reset"}
-              </button>
+              </div>
             </div>
           </>
         )}

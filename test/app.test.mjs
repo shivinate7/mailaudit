@@ -525,4 +525,73 @@ ok(
   "22.3 the $50 single still leads on unit rate"
 );
 
+/* ── 23. the control region ────────────────────────────────────────────── */
+
+/* The data actions used to be gated on `items.length > 0` while the view switch
+   was gated on `items.length > 0 || envelopes.length > 0`. A user holding
+   hand-typed orphaned envelopes with an empty item list could therefore reach
+   them and have NO Backup button — the one thing protecting data that exists
+   nowhere else. CLAUDE.md claimed the opposite. */
+await boot({
+  items: [],
+  received: {},
+  envelopes: [
+    { id: "env-1", createdAt: 1, note: "tracking 9400",
+      entries: [{ name: "Brainstorm", qty: 1 }], photos: [] },
+  ],
+});
+
+ok(!!btn(/^Backup$/), "23.1 Backup survives an empty item list");
+ok(!!btn(/Re-import/), "23.2 so does Re-import");
+ok(!!btn(/^Reset$/), "23.3 and Reset");
+/* but the filters describe a list that doesn't exist, so they must stay away */
+ok(
+  !document.querySelector('input[aria-label^="Search cards"]'),
+  "23.4 search stays hidden with no items"
+);
+ok(!document.querySelector("select"), "23.5 so does sort");
+
+/* The date range collapses to one control. Seven chips wrapped to two rows at
+   375px, and the custom from–to pair always claimed a third. */
+await fresh();
+
+const chips = () =>
+  buttons().filter((b) => /^(All time|30d|45d|60d|90d|# days|Custom…)$/.test(
+    b.textContent.trim()
+  ));
+const disclosure = () =>
+  buttons().find((b) => b.getAttribute("aria-label") === "Change date range") || {
+    textContent: "",
+    getAttribute: () => null,
+  };
+/* stand in for a missing chip so a broken disclosure reports as failed
+   assertions rather than taking the whole run down with a TypeError */
+const chip = (label) =>
+  chips().find((c) => c.textContent.trim() === label) || { getAttribute: () => null };
+
+eq(chips().length, 0, "23.6 chip set is collapsed on load");
+ok(/All time/.test(disclosure().textContent), "23.7 collapsed control shows the active range");
+eq(disclosure().getAttribute("aria-expanded"), "false", "23.8 and reports it shut");
+
+await click(disclosure(), "open range");
+eq(chips().length, 7, "23.9 opening reveals every range");
+eq(disclosure().getAttribute("aria-expanded"), "true", "23.10 and reports it open");
+
+/* state conveyed by colour alone is invisible to a screen reader; the view
+   switch already sets aria-pressed, so these match it */
+eq(
+  chip("All time").getAttribute("aria-pressed"),
+  "true",
+  "23.11 the active range is marked pressed"
+);
+eq(
+  chip("30d").getAttribute("aria-pressed"),
+  "false",
+  "23.12 and the inactive ones are not"
+);
+
+const d30 = chips().find((c) => c.textContent.trim() === "30d");
+if (d30) await click(d30, "pick 30d");
+ok(/30d/.test(disclosure().textContent), "23.13 picking a range updates the collapsed label");
+
 report();

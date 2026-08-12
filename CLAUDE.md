@@ -198,8 +198,14 @@ real iPhone.
 - Search (card/set/seller/order), Hide received, date filters (All/30/45/60/90,
   free "# days" input, custom from–to) — shared by the two ledger views and
   hidden entirely under Orphaned. Package sort (newest/oldest/$ remaining/
-  seller A–Z) is separate from `itemSort`; the control swaps with the view.
-  Both orders are frozen while checking.
+  unit rate/seller A–Z) is separate from `itemSort`; the control swaps with the
+  view. Both orders are frozen while checking.
+  The **date range is collapsed behind one control** showing the active range;
+  tapping it reveals the chip set, the free "# days" box and the custom from–to
+  pair. It defaults shut on every load and is not persisted — a disclosure, not
+  a preference. Collapsing it was worth ~22px: seven chips wrapped to two rows
+  at 375px, and custom from–to always claimed a third because native
+  `<input type="date">` carries a ~140px UA minimum width.
 - Outstanding value: overall "$X still missing", per-package and per-item
   "N left · $Y".
 - Lost-mail flags on untracked unreceived packages: amber "may be lost" at 14d
@@ -220,6 +226,34 @@ real iPhone.
   replace, so if pending envelopes are about to be replaced the notice says so —
   they're hand-typed and losing them silently would be the worst kind of quiet.
 - Persistence auto-saves debounced 500ms with saved/saving indicator.
+
+### The toolbar
+
+Three rows under the switch, each a group rather than a pile: **filters**
+(date range, Hide received), **list controls** (search, sort), then **file
+actions** (Re-import, Backup, Backup + photos, Reset) right-aligned in their own
+flex group.
+
+Every control shares one height — `CTL_H`, currently 34px — via `ctl`,
+`ctlSelect` and `chip()` beside `dateInput`/`miniBtn`. Before those existed,
+chips were `5px 11px`, selects `9px 8px` and buttons `9px 12px`, so nothing
+shared a baseline and the rows wrapped raggedly; **that mismatch, not the
+colours, is what read as unfinished.** Change `CTL_H` and the whole toolbar
+follows. Note `ctl` sets `boxSizing: border-box` because inputs are content-box
+by default while buttons are not — without it the search field renders 2px
+taller than everything beside it.
+
+`flexShrink: 0` is on all of them deliberately: the region had none, so a long
+label ("Tap again to clear everything") could push a line past the column edge.
+
+**The file actions are gated on `items.length > 0 || envelopes.length > 0`, the
+same condition as the view switch — not on `items.length` alone.** They used to
+be, which meant a user holding hand-typed orphaned envelopes with an empty item
+list had no Backup button at all, for data that exists nowhere else. Test 23.1.
+The filters keep the narrower `items.length > 0` gate, since they describe a
+list that isn't there.
+
+Measured at 375px: the first package sits at y≈458, down from 604.
 
 ## Design language
 
@@ -408,7 +442,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 118 assertions, no test framework, ~6s. `test/app.test.mjs` runs
+`npm test` — 131 assertions, no test framework, ~6s. `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
 the jsdom setup, storage mocks, DOM helpers and the fixture.
 
