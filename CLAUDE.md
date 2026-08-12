@@ -1,13 +1,18 @@
 # Mail Day Ledger
 
+*(The app presents itself as **MANIFEST**, under a C.H Postal Company
+letterhead. "Mail Day Ledger" remains the project's name — repo `mailaudit`,
+storage namespace `mailday:` — and neither of those may be renamed to follow the
+masthead; see invariant 1.)*
+
 A single-page tool for verifying receipt of TCGplayer card orders. The user buys
 hundreds of low-cost cards across many sellers; this app ingests OrderWand CSV
 exports of their order history and gives them a checklist to mark cards as
 received, see what's outstanding (and its dollar value), and flag possibly-lost
 mail. Three views over the same check-in data: **Packages** (order + seller,
-the mail-day working view), **By item** (the same product name pooled across
+the mail-day working view), **Tally** (the same product name pooled across
 every seller, for "did all four of these arrive?" and for cost basis), and
-**Mystery mail** (packages that arrive with no way to tell who sent them).
+**Orphaned** (packages that arrive with no way to tell who sent them).
 
 ## Architecture
 
@@ -47,7 +52,7 @@ quota shared with any other Pages project.
    keys. Any schema change must ship with in-place migration in the load path.
 2. **Saved-state shape:** `{ items, received, envelopes, dateFilter, sortBy,
    itemSort, savedAt }`. `items` = array of parsed line items; `received` = map
-   of item key → count received; `envelopes` = mystery-mail records, each
+   of item key → count received; `envelopes` = orphaned-mail records, each
    `{ id, createdAt, note, entries: [{ name, qty }], photos: [photoId] }`.
    Item key = `orderId|itemNumber|vendorProductId` — stable across re-imports;
    never change its construction. Envelope entries store card **names**, never
@@ -73,7 +78,7 @@ quota shared with any other Pages project.
    individually-checked rows stay visible ("sticky") until the package is fully
    received or filters change; sort order is snapshotted (frozen) while
    checking and re-computed only on sort/filter changes; packages never
-   auto-collapse mid-interaction. In the by-item view the sticky rule is
+   auto-collapse mid-interaction. In the Tally view the sticky rule is
    stricter — a *completed item* also stays until filters change, because most
    items have a single copy and vanishing on every tap would recreate exactly
    the mis-tap cascade this invariant exists to prevent.
@@ -81,7 +86,7 @@ quota shared with any other Pages project.
    and look wrong in a home-screen app; every destructive action uses an inline
    two-tap confirm instead (Reset, Discard, Assign). Keep that pattern. (This
    started as a sandbox limitation and outlived it — it's now a UI choice.)
-7. **Mystery mail never decides anything.** The user buys the same cheap cards
+7. **Orphaned mail never decides anything.** The user buys the same cheap cards
    from many sellers, so *near-duplicate packages are normal* — two outstanding
    orders can have identical contents. The app may rank the packages an envelope
    could have come from; it must never auto-assign, never treat a perfect
@@ -110,18 +115,18 @@ Shipping Status, Url, Vendor Product Id, Fee Amount, Refund Amount.
 
 ## Feature map (all implemented)
 
-Everything here is user-verified in daily use except the **By item** view, cost
-basis, **Mystery mail** and **envelope photos**, which are newer and so far
+Everything here is user-verified in daily use except the **Tally** view, cost
+basis, **Orphaned** and **envelope photos**, which are newer and so far
 verified only by `npm test`. The camera path in particular has never run on a
 real iPhone.
 
-- Three views behind a Packages / By item / Mystery mail switch at the top. The
+- Three views behind an Orphaned / Tally / Packages switch at the top. The
   first two share one `received` map, the date filter, search, and Hide
-  received; Mystery mail hides all of those (they apply to nothing there) but
+  received; Orphaned hides all of those (they apply to nothing there) but
   keeps Re-import / Backup / Reset reachable. The switch survives an empty
   ledger so pending envelopes can't be stranded, and carries a count badge when
   envelopes are waiting.
-- **By item view**: line items pooled by *exact* Product Name across every
+- **Tally view**: line items pooled by *exact* Product Name across every
   seller and order (TCGplayer names are a scrape, so duplicates are
   byte-identical — no normalization is done, deliberately). Each row shows
   `got/ordered`, cost basis, "N left · $Y", seller/order counts and the sets
@@ -137,7 +142,7 @@ real iPhone.
   per-line, so they are deliberately not allocated into it. Basis is what was
   paid and never moves when copies are checked in; the red figure beside it is
   what's still outstanding.
-- **Mystery mail**: for packages that arrive with no way to tell who sent them.
+- **Orphaned**: for packages that arrive with no way to tell who sent them.
   *Record an envelope* → one autofocused input, suggestions drawn from cards
   still outstanding (`outstandingNames`), tap to add (tap again bumps qty), the
   input clears and keeps focus so the iOS keyboard never dips; the return key
@@ -155,7 +160,7 @@ real iPhone.
   Name matching goes through `normName` (NFD-strip accents, lowercase, collapse
   non-alphanumerics) — required because iOS smart punctuation turns a typed `'`
   into `’`, which would otherwise never equal the CSV's straight apostrophe.
-  Candidates ignore the date filter on purpose (a mystery envelope is as likely
+  Candidates ignore the date filter on purpose (an orphaned envelope is as likely
   to be an old order) and exclude canceled orders. They're derived, never
   stored, so a package received by other means simply stops being offered.
   See invariant 7 for what this must never do.
@@ -181,7 +186,7 @@ real iPhone.
   indeterminate-dash partial state.
 - Search (card/set/seller/order), Hide received, date filters (All/30/45/60/90,
   free "# days" input, custom from–to) — shared by the two ledger views and
-  hidden entirely under Mystery mail. Package sort (newest/oldest/$ remaining/
+  hidden entirely under Orphaned. Package sort (newest/oldest/$ remaining/
   seller A–Z) is separate from `itemSort`; the control swaps with the view.
   Both orders are frozen while checking.
 - Outstanding value: overall "$X still missing", per-package and per-item
@@ -213,14 +218,20 @@ object at the top of `src/app.jsx` — **there is no colour literal anywhere els
 in the file, and no pure white in the theme.** Never reach for `"#fff"`; use
 `C.card`, which is the off-white parchment surface.
 
-Monospace (system) for numbers/ids/labels, system sans for content. No emoji in
+Cochin (`serif`) for everything that isn't a number, monospace for numbers/ids/labels. There is no sans in the app any more — the old `sans` constant is gone and the root sets `serif`, which everything inherits. No emoji in
 chrome except the empty-state 📬. Typographic dot indicators, not icons. Max
 content width 760px; must work at 380px (iPhone). Touch targets: whole-row tap,
 30px check indicator, 34px steppers. The view switch is a pill-shaped segmented
 control in uppercase mono, active segment filled with **accent violet** — same
-treatment as the active date-range chip. Three segments plus the envelope count
-badge only just fit at 375px, which is why the pill padding is `8px 14px` rather
-than 16 — don't lengthen a label without re-checking.
+treatment as the active date-range chip. It is **equal thirds at full width**
+(`grid-template-columns: repeat(3,1fr)`), in the order Orphaned / Tally /
+Packages — Packages sits right so the daily-driver view lands under the thumb.
+
+Equal thirds *inverted* the old sizing constraint, so ignore any advice about
+trimming the pill padding. The pill can no longer overflow the column; it is the
+column by construction. The constraint moved inside: the longest label plus its
+count badge has to fit **one third — 114px at 375px** — and the lever is the
+clamped `font-size`, not the padding. Measured at 375: all three fit.
 
 Semantics, which survived the repaint unchanged: green means received, red means
 missing money or destructive, manila/gold means advisory, amber means the 14-day
@@ -229,11 +240,46 @@ accent while in progress and green at 100% — it used to be `ink`, which worked
 only because the old ink was a near-black *green*; the new ink is a near-black
 violet and read as flat black on parchment.
 
-Mystery mail follows the same language: manila for anything advisory (the
+Orphaned follows the same language: manila for anything advisory (the
 ambiguity warning, the "as typed" row, the "no outstanding copy" tag), green
 only on an exact match and the armed check-in confirm, red only on Discard.
 Photo thumbnails are 56px squares; the viewer is a full-screen ink scrim, tap
 anywhere to dismiss.
+
+### The masthead
+
+The top of the page is one composed letterhead, not stacked boxes: a wax seal
+between two gold rules, **MANIFEST** in Cochin caps, the C.H Postal Company
+line, then the tallies folded in under a hairline. The stats used to be their
+own bordered card and the two edges fought each other 20px apart.
+
+The tallies are three ruled thirds — cards, packages, value — each `done/total`.
+Value is compacted (`compact()`: whole dollars under 1k, then `k`/`M` at ≤2dp,
+zeros trimmed) because three figures share one row at 375px. **`money()` is
+still the format anywhere a figure has to be read exactly**, including the
+"still missing" line directly beneath, which is deliberately not rounded.
+
+Sizing is by `clamp()`, never breakpoints — this file still has **zero media
+queries** apart from `prefers-reduced-motion`. Each curve is tuned to hit its
+design size at 375px and again at 760px, where the content column stops growing.
+The seal is `clamp(36px, calc(20px + 4.2vw), 52px)`: measured 36px at 375.
+
+**The running head is load-bearing for invariant 5.** The tall block is ordinary
+content that scrolls away; the slim bar after it is `position: sticky` with a
+*fixed* height, so it is always in flow and pinning changes paint, never layout.
+An `IntersectionObserver` on a 1px sentinel toggles only `opacity`/`transform`.
+Do not "improve" this into a height animation, and do not swap the observer for
+a scroll listener. Two traps, both already paid for:
+
+- The effect must depend on `loaded`. The first commit renders the loading
+  shell, so an effect with `[]` deps binds to a sentinel that doesn't exist and
+  the bar stays invisible forever, with nothing looking broken. Test 21.7/21.8.
+- The `top < 0` guard is not redundant. A sentinel is also un-intersecting when
+  it is *below* the fold, which is the state at the top of a short viewport;
+  without the guard the bar pins while you are looking at the header. Test 21.10.
+
+Measured at 375px: horizontal overflow 0, switch thirds 114/114/114, all labels
+fit, row displacement on pin **0.00px**.
 
 ### The palette, and why each value is what it is
 
@@ -252,6 +298,9 @@ anywhere to dismiss.
 | `manila` | `#EADBBA` | advisory background | — |
 | `manilaInk` | `#695832` | text **on manila** | 5.04:1 on manila |
 | `amber` | `#846008` | 14-day lost-mail warning | 5.33:1 on card |
+| `gold` | `#C9A961` | ornamental rules only — **never text** | 2.2:1 on card |
+| `silver` | `#C4C3C0` | the empty half of a progress bar | fill on it 3.17:1 |
+| `wax*` | five values | the seal's relief ramp, `<Seal>` only | — |
 
 Everything carrying information clears 4.5:1. Two values are load-bearing in a
 non-obvious way and should not be nudged casually:
@@ -261,6 +310,13 @@ non-obvious way and should not be nudged casually:
 - **`manilaInk`** is checked against **`manila`**, not against `card` — it sits on
   the advisory background. Pick it on the wrong pair and it looks fine in
   isolation while failing everywhere it's actually used.
+- **`silver`** was chosen on looks, not legibility: the `line` it replaced
+  measured *better* against the violet fill (3.58:1 vs 3.17:1). Both clear the
+  3:1 floor for graphical objects, so it's a fair trade — but if it's ever
+  revisited, it has to stay **cool**. Every warm metal tested (pewter, deep
+  parchment) fell below 3:1 against violet.
+- **`gold`** is ornament only. At 2.2:1 on `card` it fails for text by a wide
+  margin; it exists for the masthead rules and nothing else.
 
 `theme-color` in `build.mjs` and the `<style>` page background both track
 `paper` (`#F2E9DA`). If `paper` changes, change them in the same commit or
@@ -269,7 +325,7 @@ Safari's chrome sits as a mismatched band above the page.
 The icon was designed against this palette first and the UI followed; see
 `icon/gen-icon.py` for that side of it.
 
-At iPhone width the by-item row is genuinely tight: the right-hand column holds
+At iPhone width the Tally row is genuinely tight: the right-hand column holds
 up to three lines (count, basis, outstanding) and the meta line under the name
 truncates. It is ordered counts-first (`3 sellers · 3 orders · <sets>`) so the
 long set list is what degrades to an ellipsis, never the counts. Keep that
@@ -325,7 +381,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 105 assertions, no test framework, ~6s. `test/app.test.mjs` runs
+`npm test` — 115 assertions, no test framework, ~6s. `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
 the jsdom setup, storage mocks, DOM helpers and the fixture.
 
@@ -351,6 +407,14 @@ whole line received" passed all 101 of them. Group 20 exists to catch it:
 record **one** copy of a qty-2 line and check exactly one copy lands. Don't
 delete it.
 
+New in group 21 (the masthead): `test/harness.mjs` stubs
+`IntersectionObserver` and exports `observers`, so a test can hand the callback
+an entry and assert the running head reacts. jsdom has no layout and no real
+scrolling, so this verifies the *wiring* — that the observer attaches after the
+loading shell, and that the stuck/unstuck condition is right — which is exactly
+the part that can silently never fire. Whether a real scroller produces those
+entries is the browser's job.
+
 Gotchas worth remembering:
 
 - `navigator` can't be assigned onto Node's `global` — use `Object.defineProperty`.
@@ -373,18 +437,20 @@ Gotchas worth remembering:
 
 Test groups map to the claims this file makes, so if you change a behaviour
 deliberately, change the assertion and the prose in the same commit. What's
-covered: mystery mail hiding controls that don't apply; recording moving no
+covered: orphaned mail hiding controls that don't apply; recording moving no
 counts; candidates ranking without deciding; assignment checking in *only* what
 was recorded (including partial quantities); undo composing with a later hand
 edit; ties from near-duplicate packages; leftovers keeping id/createdAt/note;
 smart-punctuation name matching; migration from pre-feature saves; `resetAll`
 surviving the debounce; candidates self-correcting when a package is received
 elsewhere; both backups and both restore paths; the photo sweep; and the older
-package/by-item views still working.
+package/Tally views still working.
 
 Still only covered by eye, never by a test: anything that needs a real device —
-the camera capture, the canvas downscale, iOS keyboard behaviour, and layout at
-375px.
+the camera capture, the canvas downscale, and iOS keyboard behaviour. Layout at
+375px is no longer eyeball-only: it was measured in a real 375px viewport
+(overflow 0, thirds 114px each, seal 36px, 0.00px row displacement when the
+running head pins), though those numbers are not asserted in CI.
 
 Worth moving to vitest + testing-library if this grows much further; the
 hand-rolled `ok`/`eq` and the top-to-bottom script are fine at this size but

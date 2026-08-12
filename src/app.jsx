@@ -20,6 +20,16 @@ const C = {
   ink: "#332E3F",
   inkSoft: "#6E6379",
   line: "#DCCDB6",
+  /* ornamental rules and the masthead's secondary metal. Never used for text on
+     `card` — it only clears 2.2:1 there. Ornament and fills only. */
+  gold: "#C9A961",
+  /* the empty half of a progress bar. Antique silver rather than `line` — the
+     one cool value in the theme, chosen for the struck-coin read. Note `line`
+     actually measured *better* against the violet fill (3.58:1 vs 3.17:1);
+     this was a deliberate trade of contrast for character, and both clear the
+     3:1 floor for graphical objects. Any replacement must stay cool — both
+     warm metals tested fell below 3:1. */
+  silver: "#C4C3C0",
   accent: "#6F5CA6",
   green: "#2E7A5E",
   /* green wash warmed with a little gold — a straight green-into-card mix
@@ -31,16 +41,45 @@ const C = {
   manila: "#EADBBA",
   manilaInk: "#695832",
   amber: "#846008",
+  /* The masthead seal's wax-relief ramp. Only <Seal> uses these; they live here
+     so the "no colour literal outside C" rule still holds. `wax` is the same
+     value as `red` but named apart — the seal is ornament, not a danger state,
+     and the two should be free to diverge. */
+  wax: "#A8443C",
+  waxLit: "#C86A5F",
+  waxDeep: "#66231D",
+  waxCut: "#5E1F1A",
+  waxRaised: "#E09A90",
 };
 
 const mono = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
-const sans = "'Avenir Next', 'Segoe UI', system-ui, -apple-system, sans-serif";
+/* Cochin — an 18th-century French copperplate face, present on iOS and macOS.
+   Picked to match the old-style letterforms the C.H Postal Company register
+   lives in; the fallbacks walk down the same family (old-style → transitional →
+   generic), never to a Didone, which is the wrong register entirely.
+   Note Cochin has a small x-height, so content set in it runs visually smaller
+   than the same nominal px in a sans — sizes here are already paid up for that
+   and shouldn't be trimmed back. */
+const serif = "Cochin, 'Hoefler Text', Palatino, Georgia, serif";
 
 const money = (n) =>
   `$${n.toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+
+/* Compact money for the masthead tallies, where three figures share one row at
+   375px and cents are noise. Whole dollars under 1k, then k / M with at most
+   two decimals and trailing zeros trimmed: 27, 101, 4k, 63.45k, 1.2M.
+   Only for display — `money()` stays the format everywhere a figure is meant to
+   be read exactly. */
+const compact = (n) => {
+  const a = Math.abs(n);
+  const trim = (x) => String(Math.round(x * 100) / 100);
+  if (a >= 1e6) return `${trim(n / 1e6)}M`;
+  if (a >= 1e3) return `${trim(n / 1e3)}k`;
+  return String(Math.round(n));
+};
 
 const STORAGE_KEY = "mailday:v1";
 
@@ -115,7 +154,7 @@ function lostMail(date, tracking, done) {
   return null;
 }
 
-/* ---------- Mystery mail ---------- */
+/* ---------- Orphaned mail ---------- */
 
 /* Names are matched loosely on purpose. iOS smart punctuation turns a typed
    ' into ’, so "Urza’s Saga" off the phone would never equal the CSV's
@@ -309,12 +348,88 @@ function rankCandidates(entries, pkgs, received) {
 
 /* ---------- Small UI atoms ---------- */
 
+/* The C.H Postal Company seal — the masthead's centre ornament, and the only
+   SVG in this file. Drawn as a chevron-over-bar device rather than anything
+   finer: at the 36px end of its clamp there is room for roughly one bold shape,
+   and every more detailed attempt turned to mud. The relief is two copies of
+   the same path — a cut copy low, a raised copy 3.5 units above it — which is
+   what makes it read as pressed wax rather than a printed disc.
+   `id` must be unique per instance or the gradients collide when two are on the
+   page at once (the masthead and the sticky bar both render one). */
+function Seal({ size, id, className }) {
+  const g = `wax-${id}`;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 100 100"
+      aria-hidden="true"
+      className={className}
+      style={{ display: "block", flex: "none" }}
+    >
+      <defs>
+        <radialGradient id={g} cx="37%" cy="30%" r="78%">
+          <stop offset="0" stopColor={C.waxLit} />
+          <stop offset="0.5" stopColor={C.wax} />
+          <stop offset="1" stopColor={C.waxDeep} />
+        </radialGradient>
+      </defs>
+      {/* irregular edge — real wax is never a circle */}
+      <path
+        d="M50 2 C69 2 80 9 88 20 C96 31 99 45 96 59 C92 75 81 90 65 95
+           C50 100 34 98 22 89 C9 78 2 62 3 47 C5 30 15 15 31 7 C37 4 43 2 50 2 Z"
+        fill={`url(#${g})`}
+      />
+      <circle
+        cx="50"
+        cy="50"
+        r="39"
+        fill="none"
+        stroke={C.waxDeep}
+        strokeWidth="3.5"
+        opacity="0.6"
+      />
+      <g
+        fill="none"
+        stroke={C.waxCut}
+        strokeWidth="8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.78"
+      >
+        <path d="M29 58 L50 38 L71 58" />
+        <path d="M31 72 L69 72" />
+      </g>
+      <g
+        fill="none"
+        stroke={C.waxRaised}
+        strokeWidth="3.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.5"
+      >
+        <path d="M29 54.5 L50 34.5 L71 54.5" />
+        <path d="M31 68.5 L69 68.5" />
+      </g>
+      <ellipse
+        cx="34"
+        cy="28"
+        rx="15"
+        ry="9"
+        fill={C.card}
+        opacity="0.22"
+        transform="rotate(-35 34 28)"
+      />
+    </svg>
+  );
+}
+
 function ProgressBar({ pct, height = 8 }) {
   return (
     <div
       style={{
         height,
-        background: C.line,
+        background: C.silver,
         borderRadius: height,
         overflow: "hidden",
       }}
@@ -341,7 +456,7 @@ function ItemRow({ item, got, onSet, variant = "package" }) {
   const done = got >= item.qty;
   const partial = got > 0 && !done;
   const toggle = () => onSet(item.key, done ? 0 : item.qty);
-  /* in the by-item view the name is the group heading, so the row leads with
+  /* in the Tally view the name is the group heading, so the row leads with
      where this copy came from instead */
   const source = variant === "source";
   const title = source ? item.seller : item.name;
@@ -959,7 +1074,7 @@ function UploadZone({ onFile, error, replacing }) {
       <button
         onClick={() => inputRef.current?.click()}
         style={{
-          fontFamily: sans,
+          fontFamily: serif,
           fontWeight: 700,
           fontSize: 14,
           background: C.ink,
@@ -1272,7 +1387,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel }) {
           style={{
             width: "100%",
             boxSizing: "border-box",
-            fontFamily: sans,
+            fontFamily: serif,
             /* 16px or iOS Safari zooms the page on focus and never zooms back */
             fontSize: 16,
             padding: "10px 12px",
@@ -1319,7 +1434,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel }) {
                 style={{
                   flex: 1,
                   minWidth: 0,
-                  fontFamily: sans,
+                  fontFamily: serif,
                   fontSize: 14,
                   color: C.ink,
                   display: "-webkit-box",
@@ -1357,7 +1472,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel }) {
                 border: "none",
                 background: C.manila,
                 color: C.manilaInk,
-                fontFamily: sans,
+                fontFamily: serif,
                 fontSize: 13,
                 cursor: "pointer",
               }}
@@ -1445,7 +1560,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel }) {
           style={{
             width: "100%",
             boxSizing: "border-box",
-            fontFamily: sans,
+            fontFamily: serif,
             fontSize: 16,
             padding: "9px 12px",
             borderRadius: 8,
@@ -1842,8 +1957,32 @@ export default function MailDayLedger() {
   const [dateFilter, setDateFilter] = useState({ preset: "all", from: "", to: "" });
   const [sortBy, setSortBy] = useState("newest");
   const [view, setView] = useState("packages"); // packages | items | mystery
+
+  /* Masthead collapse. The tall block is ordinary content that scrolls away;
+     the slim bar below it is `position: sticky` with a FIXED height, so it is
+     always in flow and pinning changes paint, never layout. The observer only
+     toggles opacity/transform — both compositor-only. This is deliberate:
+     invariant 5 forbids anything moving under the pointer mid-check-in, and a
+     header that resized on scroll would be exactly that bug. Do not "improve"
+     this into a height animation. */
+  const [stuck, setStuck] = useState(false);
+  const sentinel = useRef(null);
+  useEffect(() => {
+    const el = sentinel.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      ([e]) => setStuck(!e.isIntersecting && e.boundingClientRect.top < 0),
+      { threshold: 0 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+    /* `loaded` matters: the first commit renders the "Opening the ledger…"
+       shell, so the sentinel isn't in the DOM yet and this would attach to
+       nothing and never retry. Depending on it re-runs the effect once the
+       real masthead mounts. */
+  }, [loaded]);
   const [itemSort, setItemSort] = useState("missing");
-  /* mystery mail: cards recorded off an unidentifiable envelope, parked until
+  /* orphaned mail: cards recorded off an unidentifiable envelope, parked until
      the user ties them to a package by hand */
   const [envelopes, setEnvelopes] = useState([]); // newest first
   const [composing, setComposing] = useState(null); // null | "new" | envelopeId
@@ -1866,7 +2005,7 @@ export default function MailDayLedger() {
           const data = JSON.parse(res.value);
           setItems(data.items || []);
           setReceived(data.received || {});
-          // absent on anything saved before mystery mail shipped;
+          // absent on anything saved before orphaned mail shipped;
           // photos absent on anything saved before photos shipped
           setEnvelopes(
             (data.envelopes || []).map((e) => ({ ...e, photos: e.photos || [] }))
@@ -2122,7 +2261,7 @@ export default function MailDayLedger() {
     return { from: Date.now() - dateFilter.preset * 86400000, to: null };
   }, [dateFilter]);
 
-  /* ---- mystery mail ---- */
+  /* ---- orphaned mail ---- */
 
   const saveEnvelope = useCallback((draft) => {
     setEnvelopes((prev) =>
@@ -2380,7 +2519,7 @@ export default function MailDayLedger() {
       );
   }, [packages, query, hideDone, received, sticky, packageOrder]);
 
-  /* by-item totals: exact product-name match, pooled across every seller/order.
+  /* Tally totals: exact product-name match, pooled across every seller/order.
      TCGplayer names are a scrape, so identical items carry byte-identical names.
      basis = what the copies cost (price × qty); shipping and tax are per-order
      in the CSV, not per-line, so they're not in it. */
@@ -2476,15 +2615,32 @@ export default function MailDayLedger() {
   const totals = useMemo(() => {
     let total = 0,
       got = 0,
-      missingVal = 0;
+      missingVal = 0,
+      val = 0;
     for (const it of rangedItems) {
       const g = Math.min(it.qty, received[it.key] || 0);
       total += it.qty;
       got += g;
+      val += it.price * it.qty;
       missingVal += it.price * (it.qty - g);
     }
-    return { total, got, missingVal };
+    /* `val` is what the range cost, `missingVal` what hasn't landed — the
+       masthead shows val - missingVal as the figure already in hand. Both
+       exclude canceled orders, since rangedItems already does. */
+    return { total, got, missingVal, val };
   }, [rangedItems, received]);
+
+  /* Packages fully checked in, for the masthead tally. A package counts as in
+     only when every copy of every line has arrived. */
+  const pkgsDone = useMemo(
+    () =>
+      packages.filter((p) =>
+        p.items.every(
+          (it) => Math.min(it.qty, received[it.key] || 0) >= it.qty
+        )
+      ).length,
+    [packages, received]
+  );
 
   const remaining = totals.total - totals.got;
 
@@ -2492,7 +2648,7 @@ export default function MailDayLedger() {
     return (
       <div
         style={{
-          fontFamily: sans,
+          fontFamily: serif,
           background: C.paper,
           minHeight: "100vh",
           display: "flex",
@@ -2508,7 +2664,7 @@ export default function MailDayLedger() {
   return (
     <div
       style={{
-        fontFamily: sans,
+        fontFamily: serif,
         background: C.paper,
         minHeight: "100vh",
         color: C.ink,
@@ -2518,141 +2674,129 @@ export default function MailDayLedger() {
         button:focus-visible { outline: 2px solid ${C.green}; outline-offset: 2px; }
         input:focus-visible { outline: 2px solid ${C.ink}; outline-offset: 1px; }
         button, input { -webkit-tap-highlight-color: transparent; }
+
+        /* ── Masthead ────────────────────────────────────────────────────
+           Sizing is by clamp() rather than breakpoints: this file has no
+           media queries anywhere and responds intrinsically, so clamp keeps
+           that property — it is only a value, not a new layout mode. Each
+           curve is tuned to hit its two design sizes at 375px and at 760px,
+           which is where the content column stops growing. */
+        .mdl-head { text-align: center; padding: 14px 8px 0; }
+        .mdl-rule { display: flex; align-items: center; justify-content: center;
+                    gap: 13px; max-width: 270px; margin: 0 auto 11px; }
+        .mdl-rule i { flex: 1; height: 1px; background: ${C.gold}; opacity: .75; }
+        .mdl-seal { width: clamp(36px, calc(20px + 4.2vw), 52px); height: auto; }
+        .mdl-title { margin: 0; font-weight: 400; text-transform: uppercase;
+                     font-size: clamp(31px, calc(24px + 1.9vw), 38px);
+                     letter-spacing: .22em; text-indent: .22em; line-height: 1.06; }
+        .mdl-house { font-family: ${mono}; letter-spacing: .26em;
+                     font-size: clamp(8.5px, 2.7vw, 10px);
+                     text-transform: uppercase; color: ${C.inkSoft}; margin-top: 9px; }
+
+        .mdl-tallies { border-top: 1px solid ${C.line}; margin-top: 13px;
+                       padding-top: 11px; text-align: left; }
+        .mdl-thirds { display: flex; text-align: center; margin-bottom: 9px; }
+        .mdl-thirds > div { flex: 1; min-width: 0; }
+        .mdl-thirds .mdl-mid { border-left: 1px solid ${C.line};
+                               border-right: 1px solid ${C.line}; }
+        .mdl-k { font-family: ${mono}; font-size: 8.5px; letter-spacing: .16em;
+                 text-transform: uppercase; color: ${C.inkSoft}; }
+        .mdl-fig { font-family: ${mono}; font-size: 13px; margin-top: 3px;
+                   white-space: nowrap; }
+        .mdl-fig b { color: ${C.accent}; font-weight: 700; }
+        .mdl-fig span { color: ${C.inkSoft}; }
+        .mdl-foot { display: flex; justify-content: space-between; flex-wrap: wrap;
+                    gap: 2px 12px; margin-top: 8px; font-family: ${mono};
+                    font-size: 10.5px; color: ${C.inkSoft}; }
+
+        /* Fixed height, always in flow, bled to the column edges so content
+           passes under it rather than beside it. Only opacity/transform
+           change when it pins — never height. */
+        .mdl-sticky { position: sticky; top: 0; z-index: 30; height: 46px;
+                      margin: 0 -16px; padding: 0 16px;
+                      display: flex; align-items: center; gap: 10px;
+                      background: ${C.paper};
+                      border-bottom: 1px solid ${C.line};
+                      opacity: 0; pointer-events: none;
+                      transform: translateY(-3px);
+                      transition: opacity 160ms ease, transform 160ms ease; }
+        .mdl-sticky[data-stuck="yes"] { opacity: 1; transform: none;
+                                        pointer-events: auto; }
+        .mdl-sticky-t { font-size: 16px; letter-spacing: .18em;
+                        text-transform: uppercase; }
+        .mdl-sticky-f { margin-left: auto; font-family: ${mono}; font-size: 11px;
+                        color: ${C.inkSoft}; white-space: nowrap; }
+
+        /* Equal thirds. Overflow is now impossible; the label has to fit its
+           own third instead, which the clamped font-size buys. */
+        .mdl-switch { display: grid; grid-template-columns: repeat(3, 1fr);
+                      width: 100%; border: 1px solid ${C.line};
+                      border-radius: 999px; overflow: hidden;
+                      background: ${C.card}; margin-bottom: 14px; }
+        .mdl-switch button { font-family: ${mono}; letter-spacing: .09em;
+                      font-size: clamp(9px, 2.75vw, 11px);
+                      padding: clamp(7px, 2.1vw, 9px) 4px;
+                      text-transform: uppercase; border: none;
+                      background: transparent; color: ${C.inkSoft};
+                      cursor: pointer; white-space: nowrap; display: flex;
+                      align-items: center; justify-content: center; gap: 5px; }
+        .mdl-switch button.on { background: ${C.accent}; color: ${C.card}; }
+        .mdl-switch button b { font-weight: 700; color: ${C.red}; }
+        .mdl-switch button.on b { color: ${C.card}; }
+
+        @media (prefers-reduced-motion: reduce) {
+          .mdl-sticky { transition: none; transform: none; }
+        }
       `}</style>
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "24px 16px 80px" }}>
-        {/* Header */}
-        <div style={{ marginBottom: 18 }}>
-          <div
-            style={{
-              fontFamily: mono,
-              fontSize: 11,
-              letterSpacing: "0.18em",
-              color: C.inkSoft,
-              textTransform: "uppercase",
-            }}
-          >
-            TCGplayer check-in
+        {/* ── Masthead ───────────────────────────────────────────────────
+            A letterhead: seal, title, house line, then the tallies folded in
+            under a rule. One composed block, not three stacked boxes — the
+            stats used to be their own bordered card and the two edges fought
+            each other 20px apart. */}
+        <div className="mdl-head">
+          <div className="mdl-rule">
+            <i />
+            <Seal id="head" size={52} className="mdl-seal" />
+            <i />
           </div>
-          <h1
-            style={{
-              margin: "2px 0 0",
-              fontSize: 26,
-              fontWeight: 800,
-              letterSpacing: "-0.01em",
-            }}
-          >
-            Mail Day Ledger
-          </h1>
-        </div>
+          <h1 className="mdl-title">Manifest</h1>
+          <div className="mdl-house">C.H Postal Company</div>
 
-        {/* envelopes can outlive the ledger, so the switch has to survive an
-            empty item list or they'd be stranded with no way back to them */}
-        {(items.length > 0 || envelopes.length > 0) && (
-          <div
-            style={{
-              display: "inline-flex",
-              border: `1px solid ${C.line}`,
-              borderRadius: 999,
-              overflow: "hidden",
-              background: C.card,
-              marginBottom: 14,
-            }}
-          >
-            {[
-              ["packages", "Packages"],
-              ["items", "By item"],
-              ["mystery", "Mystery mail"],
-            ].map(([v, label]) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                style={{
-                  fontFamily: mono,
-                  fontSize: 11,
-                  letterSpacing: "0.1em",
-                  textTransform: "uppercase",
-                  padding: "8px 14px",
-                  border: "none",
-                  background: view === v ? C.accent : "transparent",
-                  color: view === v ? C.card : C.inkSoft,
-                  cursor: "pointer",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {label}
-                {v === "mystery" && envelopes.length > 0 && (
-                  <span
-                    style={{
-                      marginLeft: 6,
-                      fontWeight: 700,
-                      color: view === v ? C.card : C.red,
-                    }}
-                  >
-                    {envelopes.length}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {items.length > 0 && (
-          <>
-            {/* Overall progress */}
-            <div
-              style={{
-                background: C.card,
-                border: `1px solid ${C.line}`,
-                borderRadius: 10,
-                padding: "14px 16px",
-                marginBottom: 16,
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "baseline",
-                  marginBottom: 8,
-                  gap: 12,
-                  flexWrap: "wrap",
-                }}
-              >
-                <span style={{ fontFamily: mono, fontSize: 13 }}>
-                  <strong>{totals.got}</strong> of{" "}
-                  <strong>{totals.total}</strong> cards checked in
-                </span>
-                <span
-                  style={{
-                    fontFamily: mono,
-                    fontSize: 13,
-                    fontWeight: 700,
-                    color: remaining === 0 ? C.green : C.red,
-                  }}
-                >
-                  {remaining === 0
-                    ? "ALL ACCOUNTED FOR ✓"
-                    : `${remaining} still missing · $${totals.missingVal.toLocaleString(
-                        undefined,
-                        { minimumFractionDigits: 2, maximumFractionDigits: 2 }
-                      )}`}
-                </span>
+          {items.length > 0 && (
+            <div className="mdl-tallies">
+              {/* done / total for each of the three things being tracked.
+                  Cards and packages are counts; value is compacted, because
+                  three figures share one row at 375px and cents are noise
+                  there — `money()` is still used everywhere a figure has to be
+                  read exactly. */}
+              <div className="mdl-thirds">
+                <div>
+                  <div className="mdl-k">cards</div>
+                  <div className="mdl-fig">
+                    <b>{totals.got}</b>
+                    <span>/{totals.total}</span>
+                  </div>
+                </div>
+                <div className="mdl-mid">
+                  <div className="mdl-k">packages</div>
+                  <div className="mdl-fig">
+                    <b>{pkgsDone}</b>
+                    <span>/{packages.length}</span>
+                  </div>
+                </div>
+                <div>
+                  <div className="mdl-k">value</div>
+                  <div className="mdl-fig">
+                    <b>${compact(totals.val - totals.missingVal)}</b>
+                    <span>/${compact(totals.val)}</span>
+                  </div>
+                </div>
               </div>
               <ProgressBar
                 pct={totals.total ? (totals.got / totals.total) * 100 : 0}
               />
-              <div
-                style={{
-                  marginTop: 8,
-                  fontFamily: mono,
-                  fontSize: 10.5,
-                  color: C.inkSoft,
-                  display: "flex",
-                  justifyContent: "space-between",
-                  flexWrap: "wrap",
-                  gap: "2px 12px",
-                }}
-              >
+              <div className="mdl-foot">
                 <span style={{ whiteSpace: "nowrap" }}>
                   {view === "mystery"
                     ? `${envelopes.length} envelope${
@@ -2665,6 +2809,18 @@ export default function MailDayLedger() {
                     : `${packages.length} packages${range ? " in range" : ""}`}
                   {" · autosaves"}
                 </span>
+                {/* the exact outstanding figure — the compacted third above
+                    rounds, and this is the number the whole app exists for */}
+                <span
+                  style={{
+                    fontWeight: 700,
+                    color: remaining === 0 ? C.green : C.red,
+                  }}
+                >
+                  {remaining === 0
+                    ? "ALL ACCOUNTED FOR ✓"
+                    : `${remaining} still missing · ${money(totals.missingVal)}`}
+                </span>
                 <span>
                   {saving === "saving" && "saving…"}
                   {saving === "saved" && "saved ✓"}
@@ -2674,8 +2830,56 @@ export default function MailDayLedger() {
                 </span>
               </div>
             </div>
+          )}
+        </div>
 
-            {/* Date range — hidden under mystery mail, where it applies to
+        {/* Sentinel + running head. The bar is always in flow at a fixed
+            height, so pinning it never moves anything; only its opacity
+            changes. See the note on `stuck` above — this is load-bearing for
+            invariant 5. */}
+        <div ref={sentinel} style={{ height: 1 }} aria-hidden="true" />
+        <div className="mdl-sticky" data-stuck={stuck ? "yes" : "no"}>
+          <Seal id="bar" size={22} />
+          <span className="mdl-sticky-t">Manifest</span>
+          {items.length > 0 && (
+            <span className="mdl-sticky-f">
+              {totals.got}/{totals.total}
+              {remaining > 0 && ` · ${money(totals.missingVal)}`}
+            </span>
+          )}
+        </div>
+
+        {/* envelopes can outlive the ledger, so the switch has to survive an
+            empty item list or they'd be stranded with no way back to them.
+            Equal thirds at full width: the pill can no longer overflow the
+            column, so the constraint moved inside — the longest label plus its
+            badge has to fit one third (~114px at 375px) and the lever is the
+            clamped font-size, not the padding. */}
+        {(items.length > 0 || envelopes.length > 0) && (
+          <div className="mdl-switch">
+            {[
+              ["mystery", "Orphaned"],
+              ["items", "Tally"],
+              ["packages", "Packages"],
+            ].map(([v, label]) => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                aria-pressed={view === v}
+                className={view === v ? "on" : undefined}
+              >
+                {label}
+                {v === "mystery" && envelopes.length > 0 && (
+                  <b>{envelopes.length}</b>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {items.length > 0 && (
+          <>
+            {/* Date range — hidden under Orphaned, where it applies to
                 nothing: envelope candidates are matched against every live
                 order, and a visible filter would imply otherwise */}
             {view !== "mystery" && (
@@ -2849,7 +3053,7 @@ export default function MailDayLedger() {
                 style={{
                   flex: 1,
                   minWidth: 160,
-                  fontFamily: sans,
+                  fontFamily: serif,
                   fontSize: 14,
                   padding: "9px 12px",
                   borderRadius: 8,
@@ -2981,7 +3185,7 @@ export default function MailDayLedger() {
               <button
                 onClick={() => setComposing("new")}
                 style={{
-                  fontFamily: sans,
+                  fontFamily: serif,
                   fontWeight: 700,
                   fontSize: 15,
                   background: C.ink,

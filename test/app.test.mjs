@@ -21,6 +21,7 @@ import {
   getPhoto,
   goTo,
   jpeg,
+  observers,
   ok,
   photoKeys,
   record,
@@ -37,7 +38,7 @@ const fresh = () => boot({ items: ITEMS, received: {} });
 /* ── 1. mystery mail hides what doesn't apply, keeps what does ─────────── */
 
 await fresh();
-await goTo("mystery mail");
+await goTo("orphaned");
 ok(/Nothing waiting/.test(text()), "1.1 empty pile shows its empty state");
 ok(!!btn(/Record an envelope/), "1.2 record button present");
 ok(!/Orders from/.test(text()), "1.3 date filter hidden — it applies to nothing here");
@@ -50,7 +51,7 @@ ok(!!btn(/^Reset$/), "1.6 Reset still reachable");
 await record(["Path to Exile", "Swords to Plowshares", "Ponder", "Lightning Bolt"]);
 ok(/Envelope ·/.test(text()), "2.1 envelope card rendered");
 ok(/4 cards/.test(text()), "2.2 envelope card count");
-ok(/0 of 14 cards checked in/.test(text()), "2.3 ledger untouched by recording");
+ok(/cards\s*0\/14/.test(text()), "2.3 ledger untouched by recording");
 await sleep(SAVE_WAIT);
 eq(saved().envelopes?.length, 1, "2.4 envelope persisted");
 eq(saved().envelopes[0].entries.length, 4, "2.5 four entries persisted");
@@ -70,7 +71,7 @@ eq(cands.length, 3, "3.6 the weaker 1-card candidates are offered too, ranked be
 /* ── 4. assigning checks in EXACTLY what was recorded ──────────────────── */
 
 await assign(0);
-ok(/4 of 14 cards checked in/.test(text()), "4.1 exactly 4 cards checked in");
+ok(/cards\s*4\/14/.test(text()), "4.1 exactly 4 cards checked in");
 await sleep(SAVE_WAIT);
 const rec = saved().received;
 eq(Object.keys(rec).length, 4, "4.2 four keys written");
@@ -85,7 +86,7 @@ ok(/Checked in 4 cards against Gamma Cards/.test(text()), "4.6 undo notice shown
 /* ── 5. undo restores the exact prior state ────────────────────────────── */
 
 await click(btn(/^Undo$/), "undo");
-ok(/0 of 14 cards checked in/.test(text()), "5.1 check-ins reversed");
+ok(/cards\s*0\/14/.test(text()), "5.1 check-ins reversed");
 await sleep(SAVE_WAIT);
 eq(saved().received, {}, "5.2 keys deleted, not zeroed");
 eq(saved().envelopes.length, 1, "5.3 envelope came back");
@@ -95,7 +96,7 @@ ok(!/Checked in 4 cards/.test(text()), "5.5 undo notice cleared");
 /* ── 6. near-duplicate packages surface as a tie ───────────────────────── */
 
 await fresh();
-await goTo("mystery mail");
+await goTo("orphaned");
 await record(["Brainstorm", "Brainstorm"]); // only Alpha/Beta carry it, identically
 ok(/×2 Brainstorm/.test(text()), "6.1 re-tapping the same card bumps qty");
 ok(/2 packages fit these cards equally well/.test(text()), "6.2 the tie is surfaced");
@@ -107,13 +108,13 @@ ok(/2 more still owed/.test(tied[0].parentElement.textContent), "6.5 and reports
 /* ── 7. a partial match leaves a smaller envelope behind ───────────────── */
 
 await fresh();
-await goTo("mystery mail");
+await goTo("orphaned");
 await record(["Lightning Bolt", "Counterspell", "Sol Ring"], "USPS 9400 test");
 ok(/no outstanding copy/.test(text()), "7.1 an entry nothing can explain is flagged");
 await sleep(SAVE_WAIT);
 const before = saved().envelopes[0];
 await assign(0);
-ok(/2 of 14 cards checked in/.test(text()), "7.2 only the two matched cards checked in");
+ok(/cards\s*2\/14/.test(text()), "7.2 only the two matched cards checked in");
 ok(/1 card still in the envelope/.test(text()), "7.3 leftover reported in the notice");
 await sleep(SAVE_WAIT);
 const after = saved().envelopes[0];
@@ -126,7 +127,7 @@ eq(after.note, "USPS 9400 test", "7.8 keeps its note");
 /* ── 8. iOS smart punctuation vs the CSV's straight apostrophe ─────────── */
 
 await fresh();
-await goTo("mystery mail");
+await goTo("orphaned");
 await click(btn(/Record an envelope/));
 await type(cardInput(), "Urza’s Sag"); // curly, as an iPhone produces
 ok(
@@ -148,7 +149,7 @@ await boot({
     },
   ],
 });
-await goTo("mystery mail");
+await goTo("orphaned");
 const curly = allBtns(/^This one$/);
 eq(curly.length, 1, "8.3 an entry STORED with the curly form still matches");
 ok(/Delta Cards/.test(curly[0].parentElement.textContent), "8.4 the right package");
@@ -159,7 +160,7 @@ ok(!/no outstanding copy/.test(text()), "8.5 not treated as unmatched");
 await sleep(SAVE_WAIT);
 const carried = saved(); // exactly what the app wrote
 await boot(carried);
-await goTo("mystery mail");
+await goTo("orphaned");
 ok(/Envelope ·/.test(text()), "9.1 envelopes survive a reload");
 ok(/Urza/.test(text()), "9.2 with their entries");
 ok(Array.isArray(carried.envelopes), "9.3 envelopes present in the saved blob");
@@ -172,14 +173,14 @@ await boot({
   sortBy: "newest",
   itemSort: "missing",
 });
-await goTo("mystery mail");
+await goTo("orphaned");
 ok(/Nothing waiting/.test(text()), "9.4 pre-feature save migrates to an empty pile");
 ok(!/undefined/.test(text()), "9.5 nothing undefined leaked into the UI");
 
 /* ── 10. reset clears envelopes, and the debounce can't resurrect them ─── */
 
 await fresh();
-await goTo("mystery mail");
+await goTo("orphaned");
 await record(["Ponder"]);
 await sleep(SAVE_WAIT);
 eq(saved().envelopes.length, 1, "10.1 envelope saved before reset");
@@ -192,7 +193,7 @@ eq(saved().items ?? [], [], "10.3 items gone");
 /* ── 11. candidates are derived, so they self-correct ──────────────────── */
 
 await fresh();
-await goTo("mystery mail");
+await goTo("orphaned");
 await record(["Ponder"]);
 eq(allBtns(/^This one$/).length, 1, "11.1 Ponder's package offered");
 /* check that package off by hand elsewhere; packages render expanded, so reach
@@ -203,7 +204,7 @@ await click(
   [...gamma.querySelectorAll("button")].find((b) => /Mark all received/.test(b.textContent)),
   "mark Gamma received"
 );
-await goTo("mystery mail");
+await goTo("orphaned");
 eq(allBtns(/^This one$/).length, 0, "11.2 no longer offered once received elsewhere");
 ok(/No outstanding package accounts/.test(text()), "11.3 says so plainly");
 ok(/no outstanding copy/.test(text()), "11.4 and flags the entry");
@@ -211,8 +212,8 @@ ok(/no outstanding copy/.test(text()), "11.4 and flags the entry");
 /* ── 12. the older views still work ────────────────────────────────────── */
 
 await fresh();
-ok(/0 of 14 cards checked in/.test(text()), "12.1 totals unchanged by the feature");
-await goTo("by item");
+ok(/cards\s*0\/14/.test(text()), "12.1 totals unchanged by the feature");
+await goTo("tally");
 ok(/unique item/.test(text()), "12.2 by-item view still renders");
 await goTo("packages");
 ok(/4 packages/.test(text()), "12.3 package count unchanged");
@@ -222,7 +223,7 @@ ok(/Showing remaining only/.test(text()), "12.4 hide-received still toggles");
 /* ── 13. backup and restore carry envelopes ────────────────────────────── */
 
 await fresh();
-await goTo("mystery mail");
+await goTo("orphaned");
 await record(["Ponder", "Preordain"], "backup me");
 
 let captured = null;
@@ -242,13 +243,13 @@ eq(plain.envelopes[0].note, "backup me", "13.3 and the note");
 await fresh();
 await click(btn(/Re-import CSV/), "show upload zone");
 await dropFile("mailday-backup.json", plainText);
-await goTo("mystery mail");
+await goTo("orphaned");
 ok(/Envelope ·/.test(text()), "13.4 restore brings the envelope back");
 ok(/backup me/.test(text()), "13.5 including its note");
 
 /* restoring over a pending envelope is a silent data loss unless we say so */
 await fresh();
-await goTo("mystery mail");
+await goTo("orphaned");
 await record(["Brainstorm"]);
 await click(btn(/Re-import CSV/), "show upload zone");
 await dropFile("mailday-backup.json", plainText);
@@ -257,7 +258,7 @@ ok(/pending envelope was replaced/.test(text()), "13.6 restore warns about repla
 /* ── 14. undo composes with a later hand edit ──────────────────────────── */
 
 await fresh();
-await goTo("mystery mail");
+await goTo("orphaned");
 await record(["Ponder"]);
 await assign(0);
 await sleep(SAVE_WAIT);
@@ -270,11 +271,11 @@ await click(
   [...gamma2.querySelectorAll("button")].find((b) => /Mark all received/.test(b.textContent)),
   "mark Gamma received by hand"
 );
-ok(/5 of 14 cards checked in/.test(text()), "14.2 hand edit applied on top of the assignment");
+ok(/cards\s*5\/14/.test(text()), "14.2 hand edit applied on top of the assignment");
 
-await goTo("mystery mail");
+await goTo("orphaned");
 await click(btn(/^Undo$/), "undo after hand edit");
-ok(/4 of 14 cards checked in/.test(text()), "14.3 undo removes only its own delta");
+ok(/cards\s*4\/14/.test(text()), "14.3 undo removes only its own delta");
 await sleep(SAVE_WAIT);
 ok(!(ponderKey in saved().received), "14.4 the envelope's card is outstanding again");
 eq(Object.keys(saved().received).length, 4, "14.5 the hand edit survived");
@@ -282,7 +283,7 @@ eq(Object.keys(saved().received).length, 4, "14.5 the hand edit survived");
 /* ── 15. two envelopes contending for one package ──────────────────────── */
 
 await fresh();
-await goTo("mystery mail");
+await goTo("orphaned");
 await record(["Brainstorm", "Brainstorm"]);
 await record(["Brainstorm", "Brainstorm"]);
 eq(envelopeCount(), 2, "15.1 two envelopes pending");
@@ -294,7 +295,7 @@ eq(allBtns(/^This one$/).length, 1, "15.4 exactly one candidate left for it");
 /* ── 16. only one two-tap confirm can be armed at a time ───────────────── */
 
 await fresh();
-await goTo("mystery mail");
+await goTo("orphaned");
 await record(["Ponder"]);
 await click(btn(/^Discard$/), "arm discard");
 ok(/Tap again to discard/.test(text()), "16.1 discard armed");
@@ -324,7 +325,7 @@ await boot(
     ["pho-orphan", jpeg()], // referenced by nothing
   ]
 );
-await goTo("mystery mail");
+await goTo("orphaned");
 ok(/1 photo stored/.test(text()), "17.1 photo count reported");
 ok(/used on this device/.test(text()), "17.2 real quota line rendered");
 await sleep(SAVE_WAIT);
@@ -360,7 +361,7 @@ await boot(
   },
   [["pho-2", jpeg()]]
 );
-await goTo("mystery mail");
+await goTo("orphaned");
 await click(btn(/^Edit$/), "edit envelope");
 await click(btn(/Save changes/), "save unchanged");
 await sleep(SWEEP_WAIT);
@@ -390,7 +391,7 @@ await boot(
   },
   [["pho-3", jpeg()]]
 );
-await goTo("mystery mail");
+await goTo("orphaned");
 ok(!!btn(/Backup \+ photos/), "19.1 photo backup offered only when photos exist");
 
 await click(btn(/^Backup$/), "plain backup");
@@ -433,15 +434,68 @@ eq(await getPhoto("pho-3").text(), "fake-jpeg-bytes", "19.10 image survived byte
    `next[itemKey] = qtyOf[itemKey]` — assign marks the whole line — passes the
    entire suite. Found by mutation testing; don't delete it. */
 await fresh();
-await goTo("mystery mail");
+await goTo("orphaned");
 await record(["Brainstorm"]); // one copy, of a line that has two
 await assign(0);
-ok(/1 of 14 cards checked in/.test(text()), "20.1 one copy checked in, not the pair");
+ok(/cards\s*1\/14/.test(text()), "20.1 one copy checked in, not the pair");
 await sleep(SAVE_WAIT);
 eq(Object.values(saved().received), [1], "20.2 the line is at 1, not its full qty of 2");
 eq(saved().envelopes.length, 0, "20.3 the envelope is fully consumed");
 
 await goTo("packages");
 ok(/1\/2/.test(text()), "20.4 the package shows the line half received");
+
+/* ── 21. the masthead ──────────────────────────────────────────────────── */
+
+/* The running head is what makes the tall masthead affordable: it collapses to
+   a slim bar on scroll. Its whole risk is that the observer silently never
+   attaches — the first commit renders the loading shell, so an effect that ran
+   only on mount would bind to a sentinel that doesn't exist yet and the bar
+   would stay invisible forever. Nothing about the page would look broken. */
+
+await fresh();
+
+ok(/MANIFEST|Manifest/.test(text()), "21.1 title renders");
+ok(/C\.H Postal Company/.test(text()), "21.2 house line renders");
+ok(/cards/i.test(text()) && /packages/i.test(text()) && /value/i.test(text()),
+  "21.3 all three tallies render");
+
+/* order matters: Orphaned sits left, Packages right, so the daily-driver view
+   lands under the thumb */
+const segs = buttons()
+  .slice(0, 3)
+  .map((b) => b.textContent.replace(/\d+$/, ""));
+eq(segs, ["Orphaned", "Tally", "Packages"], "21.4 switch order, swapped");
+
+const headBar = () => document.querySelector(".mdl-sticky");
+ok(!!headBar(), "21.5 running head is in the DOM");
+eq(headBar().getAttribute("data-stuck"), "no", "21.6 not pinned at rest");
+
+/* the observer must have attached despite the loading shell on first commit */
+ok(observers.length > 0, "21.7 observer attached after the ledger loaded");
+
+/* stand in for a missing observer so the rest of the group still reports as
+   failed assertions rather than taking the whole run down with a TypeError */
+const io = observers[observers.length - 1] || { fire() {} };
+
+await act(async () => {
+  io.fire(false, -120); // sentinel scrolled off top
+});
+eq(headBar().getAttribute("data-stuck"), "yes", "21.8 pins once scrolled past");
+
+await act(async () => {
+  io.fire(true, 40); // scrolled back to the top
+});
+eq(headBar().getAttribute("data-stuck"), "no", "21.9 releases back at the top");
+
+/* A sentinel can also be un-intersecting because it is BELOW the fold — on a
+   viewport shorter than the masthead, that is the state at the very top of the
+   page. Without the `top < 0` guard the bar would pin while you are already
+   looking at the header. */
+await act(async () => {
+  io.fire(false, 400); // sentinel below the fold
+});
+eq(headBar().getAttribute("data-stuck"), "no",
+  "21.10 does not pin when the sentinel is below the viewport");
 
 report();

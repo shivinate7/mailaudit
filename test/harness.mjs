@@ -71,6 +71,39 @@ global.requestAnimationFrame = (cb) => setTimeout(cb, 0);
 global.cancelAnimationFrame = (id) => clearTimeout(id);
 global.IS_REACT_ACT_ENVIRONMENT = true;
 
+/* jsdom has no IntersectionObserver and no layout, so the masthead's collapse
+   can't be driven by real scrolling here. Stub the API and keep a handle on the
+   live instances instead: a test can then hand the callback an entry and assert
+   the running head reacts. This verifies the wiring — observe on mount, correct
+   stuck/unstuck condition — which is the part that can silently never fire.
+   Whether the browser's scroller *produces* those entries is the browser's job,
+   not ours. */
+export const observers = [];
+class FakeIntersectionObserver {
+  constructor(cb) {
+    this.cb = cb;
+    this.targets = [];
+    observers.push(this);
+  }
+  observe(el) {
+    this.targets.push(el);
+  }
+  disconnect() {
+    this.targets = [];
+    const i = observers.indexOf(this);
+    if (i > -1) observers.splice(i, 1);
+  }
+  unobserve(el) {
+    this.targets = this.targets.filter((t) => t !== el);
+  }
+  /* top < 0 means the sentinel has scrolled off the top of the viewport */
+  fire(isIntersecting, top) {
+    this.cb([{ isIntersecting, boundingClientRect: { top } }], this);
+  }
+}
+global.IntersectionObserver = FakeIntersectionObserver;
+win.IntersectionObserver = FakeIntersectionObserver;
+
 /* ---------- storage mocks ---------- */
 
 /* The ledger. Same contract as the localStorage adapter in src/entry.jsx. */
