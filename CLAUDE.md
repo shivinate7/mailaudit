@@ -200,6 +200,9 @@ real iPhone.
   hidden entirely under Orphaned. Package sort (newest/oldest/$ remaining/
   unit rate/seller A–Z) is separate from `itemSort`; the control swaps with the
   view. Both orders are frozen while checking.
+  **Unit rate** means different things per view and both are implemented:
+  in Tally it is `g.avg` (the group's basis over its copies); for a package it
+  is that package's basis over its own copies, computed in `packageOrder`.
   The **date range is collapsed behind one control** showing the active range;
   tapping it reveals the chip set, the free "# days" box and the custom from–to
   pair. It defaults shut on every load and is not persisted — a disclosure, not
@@ -442,7 +445,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 131 assertions, no test framework, ~6s. `test/app.test.mjs` runs
+`npm test` — 134 assertions, no test framework, ~6s. `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
 the jsdom setup, storage mocks, DOM helpers and the fixture.
 

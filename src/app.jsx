@@ -2544,7 +2544,19 @@ export default function MailDayLedger() {
       sorted.sort((a, b) => t(a) - t(b) || a.seller.localeCompare(b.seller));
     else if (sortBy === "value")
       sorted.sort((a, b) => missing(b) - missing(a) || t(b) - t(a));
-    else if (sortBy === "seller")
+    else if (sortBy === "rate") {
+      /* what one card in this package averaged — its basis over its copies.
+         The Tally view reads `g.avg` off the group; a package isn't grouped by
+         name, so it's computed here from the lines. Guarded against qty 0 the
+         same way. */
+      const rate = (p) => {
+        const q = p.items.reduce((s, it) => s + it.qty, 0);
+        return q
+          ? p.items.reduce((s, it) => s + it.price * it.qty, 0) / q
+          : 0;
+      };
+      sorted.sort((a, b) => rate(b) - rate(a) || t(b) - t(a));
+    } else if (sortBy === "seller")
       sorted.sort((a, b) => a.seller.localeCompare(b.seller) || t(b) - t(a));
     else sorted.sort((a, b) => t(b) - t(a) || a.seller.localeCompare(b.seller));
     const order = new Map();

@@ -594,4 +594,32 @@ const d30 = chips().find((c) => c.textContent.trim() === "30d");
 if (d30) await click(d30, "pick 30d");
 ok(/30d/.test(disclosure().textContent), "23.13 picking a range updates the collapsed label");
 
+/* ── 24. Packages sort by unit rate ────────────────────────────────────── */
+
+/* The option was added to BOTH sort dropdowns by a replace() without a count,
+   but only the Tally view implemented it — picking it under Packages silently
+   fell through to "newest". Delta is the discriminator: one $50 card, so it is
+   LAST by date and FIRST by unit rate. If this ever falls through again, 24.1
+   inverts. */
+await fresh();
+await goTo("packages");
+await choose(/sort packages/i, "rate");
+
+const t24 = text();
+ok(
+  t24.indexOf("Delta Cards") < t24.indexOf("Gamma Cards"),
+  "24.1 the $50 single package leads on unit rate"
+);
+ok(
+  t24.indexOf("Gamma Cards") < t24.indexOf("Alpha Cards"),
+  "24.2 and a pricier basket outranks a cheap one"
+);
+
+await choose(/sort packages/i, "newest");
+const t24b = text();
+ok(
+  t24b.indexOf("Delta Cards") > t24b.indexOf("Alpha Cards"),
+  "24.3 by date that ordering inverts, so the two sorts really differ"
+);
+
 report();
