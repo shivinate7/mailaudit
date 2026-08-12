@@ -769,8 +769,11 @@ function PackageCard({ pkg, received, onSet, onBulk }) {
         ) : (
           <span
             style={{
-              fontFamily: mono,
-              fontSize: 12,
+              /* deliberately serif, not mono: the user wanted the outstanding
+                 pill to read as part of the letterhead voice rather than as
+                 tabular data. The exception to "mono for numbers". */
+              fontFamily: serif,
+              fontSize: 12.5,
               fontWeight: 700,
               color: C.red,
               background: C.redSoft,
@@ -947,8 +950,8 @@ function ItemTotalRow({ item, received, onSet, onBulk }) {
           {!done && (
             <div
               style={{
-                fontFamily: mono,
-                fontSize: 11,
+                fontFamily: serif,
+                fontSize: 12,
                 fontWeight: 700,
                 color: C.red,
                 whiteSpace: "nowrap",
@@ -2566,6 +2569,16 @@ export default function MailDayLedger() {
       sorted.sort(
         (a, b) => missingVal(b) - missingVal(a) || a.name.localeCompare(b.name)
       );
+    else if (itemSort === "rate")
+      /* unit rate = cost basis / copies ordered, i.e. what one copy averaged.
+         Same figure the expanded row already shows as "$Y avg". Descending,
+         like every other magnitude sort here. qty is >=1 from the parser, but
+         guard anyway so a bad row can't produce NaN and scramble the order. */
+      sorted.sort(
+        (a, b) =>
+          (b.qty ? b.basis / b.qty : 0) - (a.qty ? a.basis / a.qty : 0) ||
+          a.name.localeCompare(b.name)
+      );
     else if (itemSort === "name")
       sorted.sort((a, b) => a.name.localeCompare(b.name));
     else
@@ -2674,6 +2687,14 @@ export default function MailDayLedger() {
         button:focus-visible { outline: 2px solid ${C.green}; outline-offset: 2px; }
         input:focus-visible { outline: 2px solid ${C.ink}; outline-offset: 1px; }
         button, input { -webkit-tap-highlight-color: transparent; }
+
+        /* Form controls do NOT inherit font-family — browsers force their own
+           UI font. Without this, every button that didn't set one explicitly
+           rendered in the UA default (Arial in Chrome) rather than the theme
+           serif, which is what made seller names look like a different face.
+           font-family only: the many controls that set their own size/weight
+           inline must keep them, and inline styles already win over this. */
+        button, input, select, textarea { font-family: inherit; }
 
         /* ── Masthead ────────────────────────────────────────────────────
            Sizing is by clamp() rather than breakpoints: this file has no
@@ -3080,6 +3101,7 @@ export default function MailDayLedger() {
                   <option value="basis">Sort: biggest position</option>
                   <option value="ordered">Sort: most ordered</option>
                   <option value="value">Sort: $ remaining</option>
+                  <option value="rate">Sort: unit rate</option>
                   <option value="name">Sort: name A–Z</option>
                 </select>
               ) : (
@@ -3097,6 +3119,7 @@ export default function MailDayLedger() {
                   <option value="newest">Sort: newest</option>
                   <option value="oldest">Sort: oldest</option>
                   <option value="value">Sort: $ remaining</option>
+                  <option value="rate">Sort: unit rate</option>
                   <option value="seller">Sort: seller A–Z</option>
                 </select>
               )}

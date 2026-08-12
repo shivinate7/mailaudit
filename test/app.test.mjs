@@ -13,6 +13,7 @@ import {
   boot,
   btn,
   buttons,
+  choose,
   cardInput,
   click,
   dropFile,
@@ -497,5 +498,31 @@ await act(async () => {
 });
 eq(headBar().getAttribute("data-stuck"), "no",
   "21.10 does not pin when the sentinel is below the viewport");
+
+/* ── 22. Tally sorts by unit rate ──────────────────────────────────────── */
+
+/* Unit rate is basis ÷ copies, which genuinely disagrees with total basis in
+   this fixture: Brainstorm's position is worth more than Ponder's (2.00 vs
+   0.75) but each individual copy is cheaper (0.50 vs 0.75). The two orderings
+   are therefore opposite — if this ever quietly sorts by basis again, 22.2
+   flips. That's the whole point of asserting on this pair. */
+await fresh();
+await goTo("tally");
+
+await choose(/sort items/i, "basis");
+ok(
+  text().indexOf("Brainstorm") < text().indexOf("Ponder"),
+  "22.1 by biggest position, Brainstorm outranks Ponder"
+);
+
+await choose(/sort items/i, "rate");
+ok(
+  text().indexOf("Ponder") < text().indexOf("Brainstorm"),
+  "22.2 by unit rate, Ponder outranks Brainstorm"
+);
+ok(
+  text().indexOf("Urza") < text().indexOf("Swords to Plowshares"),
+  "22.3 the $50 single still leads on unit rate"
+);
 
 report();

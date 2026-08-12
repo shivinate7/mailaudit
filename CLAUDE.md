@@ -135,8 +135,11 @@ real iPhone.
   stepper as the package view, plus per-copy lost-mail flags. Counts and basis
   always cover every copy of the item even when Hide received or search filters
   the breakdown — a "N copies hidden by filters" note says so. Sort: most
-  missing / biggest position / most ordered / $ remaining / name A–Z, frozen
-  while checking and persisted as `itemSort`.
+  missing / biggest position / most ordered / $ remaining / **unit rate** /
+  name A–Z, frozen while checking and persisted as `itemSort`. Unit rate is
+  `basis / qty` — the same figure the expanded row shows as "$Y avg" — and it
+  deliberately disagrees with "biggest position": a cheap card bought in bulk
+  has a large position and a small rate.
 - **Cost basis** = Σ (Price × Quantity) over the item's non-canceled copies in
   the active date range. Shipping and tax are per-order columns in the CSV, not
   per-line, so they are deliberately not allocated into it. Basis is what was
@@ -218,7 +221,23 @@ object at the top of `src/app.jsx` — **there is no colour literal anywhere els
 in the file, and no pure white in the theme.** Never reach for `"#fff"`; use
 `C.card`, which is the off-white parchment surface.
 
-Cochin (`serif`) for everything that isn't a number, monospace for numbers/ids/labels. There is no sans in the app any more — the old `sans` constant is gone and the root sets `serif`, which everything inherits. No emoji in
+Cochin (`serif`) for everything that isn't a number, monospace for
+numbers/ids/labels. There is no sans in the app any more — the old `sans`
+constant is gone and the root sets `serif`, which everything inherits.
+
+**Form controls do not inherit `font-family`.** Browsers force their own UI
+font onto `button`/`input`/`select`/`textarea`, so setting the family on the
+root is not enough — a `button, input, select, textarea { font-family: inherit }`
+rule in the `<style>` tag is what actually makes them Cochin. Without it every
+button that doesn't set a family inline silently renders in the UA default
+(Arial in Chrome); it looked like seller names "weren't Cochin". **jsdom has no
+UA stylesheet doing this, so no test can catch a regression here** — it was
+caught by reading `getComputedStyle` in a real browser, and that's the only way
+it will be caught again.
+
+The outstanding "N left · $Y" pill is the one deliberate exception to
+"mono for numbers": it's set in `serif` so it reads in the letterhead voice
+rather than as tabular data. No emoji in
 chrome except the empty-state 📬. Typographic dot indicators, not icons. Max
 content width 760px; must work at 380px (iPhone). Touch targets: whole-row tap,
 30px check indicator, 34px steppers. The view switch is a pill-shaped segmented
@@ -381,7 +400,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 115 assertions, no test framework, ~6s. `test/app.test.mjs` runs
+`npm test` — 118 assertions, no test framework, ~6s. `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
 the jsdom setup, storage mocks, DOM helpers and the fixture.
 

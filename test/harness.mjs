@@ -268,6 +268,25 @@ export const goTo = (view) =>
 export const cardInput = () =>
   document.querySelector('input[aria-label="Card name"]');
 
+/* Drive a <select>. React tracks the DOM value node, so assigning `.value`
+   directly is silently ignored on re-render — go through the native setter,
+   then dispatch, the same way a user's change would arrive. */
+export const choose = async (labelRe, value) => {
+  const sel = [...document.querySelectorAll("select")].find((s) =>
+    labelRe.test(s.getAttribute("aria-label") || "")
+  );
+  if (!sel) throw new Error(`no select matching ${labelRe}`);
+  const setter = Object.getOwnPropertyDescriptor(
+    win.HTMLSelectElement.prototype,
+    "value"
+  ).set;
+  await act(async () => {
+    setter.call(sel, value);
+    sel.dispatchEvent(new win.Event("change", { bubbles: true }));
+  });
+};
+
+
 /** Record an envelope, tapping suggestions where they exist. */
 export async function record(names, note) {
   await click(btn(/Record an envelope/), "new envelope");
