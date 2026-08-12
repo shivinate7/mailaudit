@@ -246,7 +246,7 @@ anywhere to dismiss.
 | `line` | `#DCCDB6` | rules, borders | — |
 | `accent` | `#6F5CA6` | active controls, progress | 5.19:1 on card |
 | `green` | `#2E7A5E` | received | — |
-| `greenSoft` | `#E7EADC` | checked-row wash | ink on it 10.73:1 |
+| `greenSoft` | `#E6E7D7` | checked-row wash (gold-warmed) | ink on it 10.46:1 |
 | `red` | `#A8443C` | missing money, destructive | — |
 | `redSoft` | `#F4E4D9` | danger wash | red on it 4.76:1 |
 | `manila` | `#EADBBA` | advisory background | — |

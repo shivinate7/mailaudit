@@ -22,7 +22,10 @@ const C = {
   line: "#DCCDB6",
   accent: "#6F5CA6",
   green: "#2E7A5E",
-  greenSoft: "#E7EADC",
+  /* green wash warmed with a little gold — a straight green-into-card mix
+     (#E7EADC) read grey next to parchment. Green still leads (G > R) so the
+     row keeps its "received" cast rather than going beige. */
+  greenSoft: "#E6E7D7",
   red: "#A8443C",
   redSoft: "#F4E4D9",
   manila: "#EADBBA",
