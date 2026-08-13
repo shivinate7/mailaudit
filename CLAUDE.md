@@ -365,7 +365,12 @@ options ship, laid out four to a row so they cost two rows rather than three.
 
 **Everything that moves data in or out still sits behind the `Sync`
 disclosure** — Push, Pull, Backup, Backup + photos, the target line and the key
-field. Re-import and Reset stay on the narrower `items.length > 0 ||
+field. It uses the same `panelWrap` surface as the date and sort disclosures.
+It did not at first, and it was the one panel in the region with no padding and
+no rule, so its buttons sat flush against the section edge while the chip that
+opened them was right-aligned above — which reads, correctly, as off-centre.
+Everything inside it is one left-aligned block flush with `FIND`; the target
+line lost its `marginLeft: auto` for the same reason. Re-import and Reset stay on the narrower `items.length > 0 ||
 envelopes.length > 0` gate; Sync survives it, because an empty ledger is exactly
 when Pull is needed. Group 28.
 

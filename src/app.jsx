@@ -3879,9 +3879,14 @@ export default function MailDayLedger() {
               </div>
 
             {syncOpen && window.remote && (
+              /* the same surface the date and sort disclosures use. Without
+                 panelWrap this was the one panel in the region with no padding
+                 and no rule, so its buttons sat flush against the section edge
+                 while the chip that opened them was right-aligned above —
+                 which reads, correctly, as off-centre. */
               <div
                 style={{
-                  marginTop: 8,
+                  ...panelWrap,
                   display: "flex",
                   flexDirection: "column",
                   gap: 8,
@@ -3966,12 +3971,15 @@ export default function MailDayLedger() {
                     </button>
                   )}
                   {remoteTarget && (
+                    /* no marginLeft:auto — it pushed this to the right edge
+                       while the key line below stayed left, so the panel read
+                       as a zigzag. Everything in here is one left-aligned
+                       block, flush with FIND and the head cells above. */
                     <span
                       style={{
                         fontFamily: mono,
                         fontSize: 11,
                         color: C.inkSoft,
-                        marginLeft: "auto",
                         whiteSpace: "nowrap",
                       }}
                     >
