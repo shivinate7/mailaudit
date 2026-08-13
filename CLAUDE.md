@@ -326,6 +326,16 @@ package still sits at y≈457 against the documented 458.
 The chip is accent-filled only when there is something to say (a conflict, an
 error), never during normal use, and its label carries the last push date — so
 it reports when you last backed up without your having to ask.
+
+**That label lives on a hard width budget, and it is the only elastic thing in
+the row.** At 375px: Re-import CSV 118px + Reset 60px + two 8px gaps leaves
+**149px** for the chip. `Sync · pushed 08-12` renders 167px and wraps the row to
+two lines, costing ~42px of vertical; `Sync · 08-12` is 119px and fits. The word
+"pushed" was dropped for exactly this reason. Note how the bug hid: the row was
+measured with the bare `Sync` label, which is the state a device is in *only
+before its first push* — so the wrap appeared the moment the feature was used
+for real, on a build whose tests were all green. jsdom has no layout, so no
+assertion here can catch it; if you change this label, re-measure at 375px.
 Cost: Backup is one tap deeper, which is ~6 mechanical edits in the suite
 (`openSync()` in `harness.mjs`). When `window.remote` is absent the disclosure
 isn't rendered at all and the file backups stay on the row, so no platform

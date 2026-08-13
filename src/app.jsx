@@ -3489,8 +3489,17 @@ export default function MailDayLedger() {
                       gap: 7,
                     }}
                   >
+                    {/* The date but NOT the word "pushed": this row has a hard
+                        width budget and the label is the only elastic thing in
+                        it. Measured at 375px — Re-import CSV 118 + Reset 60 +
+                        two 8px gaps leaves 149px, and "Sync · pushed 08-12"
+                        renders 167px, which wraps the row to two lines and
+                        costs ~42px of vertical. "Sync · 08-12" is 119px.
+                        The bare "Sync" this was measured against only ever
+                        shows before the first push, so the wrap appeared the
+                        moment the feature was actually used. */}
                     {remoteInfo?.pushedAt
-                      ? `Sync · pushed ${new Date(remoteInfo.pushedAt)
+                      ? `Sync · ${new Date(remoteInfo.pushedAt)
                           .toISOString()
                           .slice(5, 10)}`
                       : "Sync"}
