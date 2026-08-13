@@ -330,6 +330,30 @@ export const type = async (input, value) => {
   });
 };
 
+/* ---------- the ruled head ----------
+   The three reporting cells replaced a Hide-received button, a native <select>
+   and a chip disclosure. Each cell is a button whose text starts with its
+   micro-label, so they're addressable without reaching for structure. */
+export const cell = (re) => buttons().find((b) => re.test(b.textContent.trim()));
+
+export const toggleShowing = () => click(cell(/^Showing/), "showing cell");
+
+export const openRange = async () => {
+  const c = cell(/^Orders from/);
+  if (!c) throw new Error("no range cell on screen");
+  if (c.getAttribute("aria-expanded") !== "true") await click(c, "open range");
+};
+
+/* Sort is a panel of options now, not a <select>, so pick by visible label. */
+export const pickSort = async (label) => {
+  const c = cell(/^Sorted by/);
+  if (!c) throw new Error("no sort cell on screen");
+  if (c.getAttribute("aria-expanded") !== "true") await click(c, "open sort");
+  const opt = buttons().find((b) => b.textContent.trim() === label);
+  if (!opt) throw new Error(`no sort option "${label}"`);
+  await click(opt, `sort ${label}`);
+};
+
 /* Backup, Push and Pull all sit behind the Sync disclosure now — one tap
    deeper than Backup used to be, which is the cost of keeping the toolbar's
    third row to three controls. Idempotent, so tests can just call it. */

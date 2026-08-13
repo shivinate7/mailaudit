@@ -1089,13 +1089,199 @@ const chip = (active) => ({
    when the range is applied. Do not stringify them. */
 const RANGES = [
   ["all", "All time"],
-  [30, "30d"],
-  [45, "45d"],
-  [60, "60d"],
-  [90, "90d"],
-  ["days", "# days"],
-  ["custom", "Custom…"],
+  [30, "30 days"],
+  [45, "45 days"],
+  [60, "60 days"],
+  [90, "90 days"],
+  ["days", "Last…"],
+  ["custom", "By month"],
 ];
+
+/* ---------- the ruled head ----------
+   The masthead already establishes a vocabulary the control region used to
+   ignore: hairline rules, ruled thirds, uppercase mono micro-labels over
+   values. This is that vocabulary continued — no boxes, no radii, no fills
+   except the one accent that means "active" everywhere else in the app.
+   Rules are `line`, NOT `gold`: gold is masthead ornament and fails for
+   anything carrying information (2.2:1). */
+const RULE = { height: 1, background: C.line };
+const RULE_THIN = { height: 1, background: C.line, opacity: 0.55 };
+
+const cellLab = {
+  fontSize: 8.5,
+  letterSpacing: "0.16em",
+  textTransform: "uppercase",
+  color: C.inkSoft,
+};
+/* minWidth 0 and the ellipsis on the TEXT CHILD, not here: text-overflow does
+   nothing on a flex container, and a flex item defaults to minWidth:auto so it
+   refuses to shrink. Measured before this was fixed — a long sort label took
+   its cell from 114px to 182px, squeezed the other two, and pushed the document
+   to 377px in a 375px viewport. */
+const cellVal = {
+  fontFamily: cochin,
+  fontSize: 15,
+  lineHeight: 1.15,
+  color: C.ink,
+  display: "flex",
+  alignItems: "baseline",
+  gap: 5,
+  minWidth: 0,
+};
+const cellValText = {
+  minWidth: 0,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+const cellFig = {
+  fontSize: 9.5,
+  color: C.inkSoft,
+  whiteSpace: "nowrap",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+/* `last` drops the divider on the right-hand cell */
+const headCell = (last) => ({
+  minHeight: 46,
+  padding: "7px 9px 8px",
+  display: "flex",
+  flexDirection: "column",
+  gap: 3,
+  border: 0,
+  borderRight: last ? "none" : `1px solid ${C.line}`,
+  background: "transparent",
+  textAlign: "left",
+  cursor: "pointer",
+  minWidth: 0,
+});
+/* the affordance. A cell built out of the same parts as the masthead's
+   READ-ONLY tallies reads as a statistic, so the two cells that open something
+   underline their value — a form's write-on rule, not a button box. */
+const valUnder = (open) => ({
+  borderBottom: `1px solid ${open ? C.accent : C.line}`,
+});
+const headCaret = (open) => ({
+  fontSize: 9,
+  color: C.inkSoft,
+  flexShrink: 0,
+  transform: open ? "rotate(180deg)" : "none",
+  transition: "transform 140ms ease",
+});
+/* one option in the date or sort panel. The 1px gap over a `line` background
+   is what draws the grid, so a missing cell would show the rule colour through
+   — hence the last option spans the row. */
+const optCell = (on) => ({
+  height: CTL_H,
+  border: 0,
+  background: on ? C.accent : C.card,
+  color: on ? C.card : C.ink,
+  fontFamily: mono,
+  fontSize: 11.5,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  whiteSpace: "nowrap",
+  cursor: "pointer",
+});
+
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+/* sort vocabularies, one per view. Module-level so the panel and the collapsed
+   value in the head cannot drift apart — the same mistake the date range's
+   label made before RANGES was hoisted. */
+const PKG_SORTS = [
+  ["newest", "Newest"],
+  ["oldest", "Oldest"],
+  ["value", "$ remaining"],
+  ["rate", "Unit rate"],
+  ["seller", "Seller A–Z"],
+];
+const ITEM_SORTS = [
+  ["missing", "Most missing"],
+  ["basis", "Biggest position"],
+  ["ordered", "Most ordered"],
+  ["value", "$ remaining"],
+  ["rate", "Unit rate"],
+  ["name", "Name A–Z"],
+];
+
+const panelWrap = {
+  padding: "4px 9px 11px",
+  borderTop: `1px solid ${C.line}`,
+  background: C.card,
+};
+/* the 1px gap over a `line` background IS the grid — cells paint `card` over it */
+const optGrid = (cols) => ({
+  display: "grid",
+  gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+  gap: 1,
+  background: C.line,
+  border: `1px solid ${C.line}`,
+  marginTop: 10,
+});
+const subRow = { display: "flex", alignItems: "center", gap: 9, marginTop: 10 };
+const subHead = { display: "flex", alignItems: "center", gap: 9, margin: "11px 0 8px" };
+/* the rule is an inset shadow, not a border: a 1px border eats the content box
+   and leaves the − and + at 32px, under the app's own touch floor */
+const well = {
+  display: "inline-flex",
+  alignItems: "stretch",
+  height: CTL_H,
+  borderRadius: 999,
+  background: C.card,
+  overflow: "hidden",
+  boxShadow: `inset 0 0 0 1px ${C.line}`,
+};
+const dayStep = {
+  width: CTL_H,
+  border: 0,
+  background: "transparent",
+  color: C.ink,
+  fontFamily: mono,
+  fontSize: 15,
+  cursor: "pointer",
+};
+const numBox = {
+  width: 46,
+  border: 0,
+  background: "transparent",
+  textAlign: "center",
+  fontFamily: mono,
+  fontSize: 13,
+  color: C.ink,
+  outline: "none",
+  boxShadow: `inset 1px 0 0 ${C.line}, inset -1px 0 0 ${C.line}`,
+};
+const exactToggle = {
+  height: CTL_H,
+  display: "flex",
+  alignItems: "center",
+  gap: 7,
+  marginTop: 11,
+  border: 0,
+  background: "transparent",
+  fontFamily: mono,
+  fontSize: 11,
+  color: C.inkSoft,
+  cursor: "pointer",
+  padding: 0,
+};
+const cancCell = (on) => ({
+  flexShrink: 0,
+  border: 0,
+  borderLeft: `1px solid ${C.line}`,
+  background: "transparent",
+  padding: "0 10px",
+  fontFamily: mono,
+  fontSize: 10,
+  color: on ? C.ink : C.inkSoft,
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 5,
+  whiteSpace: "nowrap",
+  cursor: "pointer",
+});
 
 /* An underlined text button, for secondary actions that shouldn't carry a
    control's weight — same treatment as the "N canceled — view" link. */
@@ -1621,7 +1807,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel }) {
                 >
                   <button
                     onClick={() => setQty(nk, e.qty - 1)}
-                    style={stepBtn}
+                    style={dayStep}
                     aria-label={`One fewer ${e.name}`}
                   >
                     –
@@ -1638,7 +1824,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel }) {
                   </span>
                   <button
                     onClick={() => setQty(nk, e.qty + 1)}
-                    style={stepBtn}
+                    style={dayStep}
                     aria-label={`One more ${e.name}`}
                   >
                     +
@@ -2041,6 +2227,8 @@ export default function MailDayLedger() {
      persisted — it's a disclosure, not a preference, and it should start shut
      on every load so the toolbar is at its shortest when you open the app. */
   const [rangeOpen, setRangeOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
+  const [exactOpen, setExactOpen] = useState(false);
   const [hideDone, setHideDone] = useState(false);
   const [showCanceled, setShowCanceled] = useState(false);
   const canceledRef = useRef(null);
@@ -2697,6 +2885,88 @@ export default function MailDayLedger() {
 
   const hiddenCount = liveItems.length - rangedItems.length;
 
+  /* ---- the ruled head's derived values ----
+     Months are read off the orders that actually exist, newest first. That is
+     what lets the custom range be picked rather than typed: iOS's numeric
+     keypad has no hyphen key, so a masked date field is uncompletable on the
+     only device this ships to, and a month can never be 2026-02-31. */
+  const months = useMemo(() => {
+    const seen = new Set();
+    for (const it of items) {
+      /* Read the month off an ISO string directly. Going through Date and
+         local getters shifts it: Date.parse("2026-05-01") is UTC midnight, and
+         getMonth() in any behind-UTC zone rolls it back to April. Older
+         exports use M/D/YY, which parses as LOCAL midnight — so those want the
+         local getters, and only those. */
+      const iso = /^(\d{4})-(\d{2})/.exec(it.date || "");
+      if (iso) {
+        seen.add(`${iso[1]}-${iso[2]}`);
+        continue;
+      }
+      const t = Date.parse(it.date);
+      if (!t) continue;
+      const d = new Date(t);
+      seen.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+    }
+    return [...seen].sort().reverse();
+  }, [items]);
+
+  /* the year is only worth printing when the ledger spans more than one */
+  const oneYear = useMemo(
+    () => new Set(months.map((k) => k.slice(0, 4))).size <= 1,
+    [months]
+  );
+  const monthLabel = useCallback(
+    (k) => MON[+k.slice(5, 7) - 1] + (oneYear ? "" : ` ’${k.slice(2, 4)}`),
+    [oneYear]
+  );
+
+  /* a custom range that happens to be exactly one whole month is shown as that
+     month, so picking "Aug" reads back as "Aug" rather than as "Custom" */
+  const monthKey =
+    dateFilter.preset === "custom" &&
+    dateFilter.from &&
+    dateFilter.to &&
+    dateFilter.from.slice(0, 7) === dateFilter.to.slice(0, 7) &&
+    dateFilter.from.endsWith("-01")
+      ? dateFilter.from.slice(0, 7)
+      : null;
+
+  const pickMonth = useCallback((k) => {
+    const [y, m] = k.split("-").map(Number);
+    const last = new Date(y, m, 0).getDate(); // day 0 of next month
+    setDateFilter((d) => ({
+      ...d,
+      preset: "custom",
+      from: `${k}-01`,
+      to: `${k}-${String(last).padStart(2, "0")}`,
+    }));
+  }, []);
+
+  const bumpDays = useCallback((by) => {
+    setDateFilter((d) => {
+      const n = Math.max(1, (parseInt(d.days, 10) || 21) + by);
+      return { ...d, preset: "days", days: String(n) };
+    });
+  }, []);
+
+  const rangeLabel = useMemo(() => {
+    const p = dateFilter.preset;
+    if (p === "days")
+      return dateFilter.days ? `Last ${dateFilter.days}d` : "Last…";
+    if (p === "custom") {
+      if (monthKey) return monthLabel(monthKey);
+      return dateFilter.from || dateFilter.to ? "Custom" : "By month";
+    }
+    return (RANGES.find(([v]) => v === p) || RANGES[0])[1];
+  }, [dateFilter, monthKey, monthLabel]);
+
+  const sortLabel = useMemo(() => {
+    const [list, cur] =
+      view === "items" ? [ITEM_SORTS, itemSort] : [PKG_SORTS, sortBy];
+    return (list.find(([v]) => v === cur) || list[0])[1];
+  }, [view, itemSort, sortBy]);
+
   /* grouping + filtering */
   const packages = useMemo(() => groupPackages(rangedItems), [rangedItems]);
 
@@ -3195,270 +3465,342 @@ export default function MailDayLedger() {
             the same fix one level out. */}
         {(items.length > 0 || envelopes.length > 0 || !!window.remote) && (
           <>
-            {/* Date range — hidden under Orphaned, where it applies to
-                nothing: envelope candidates are matched against every live
-                order, and a visible filter would imply otherwise.
-                Collapsed to one control: seven chips wrapped to two rows at
-                375px and the custom from–to pair always claimed a third,
-                because native date inputs carry a ~140px UA minimum. */}
-            {view !== "mystery" && items.length > 0 && (
-            <div style={{ marginBottom: 10 }}>
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                flexWrap: "wrap",
-                alignItems: "center",
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: mono,
-                  fontSize: 10.5,
-                  letterSpacing: "0.12em",
-                  textTransform: "uppercase",
-                  color: C.inkSoft,
-                }}
-              >
-                Orders from
-              </span>
-              {/* accent only when a range is actually narrowing the list, so
-                  the default "All time" doesn't imply a filter is on */}
-              <button
-                onClick={() => setRangeOpen((o) => !o)}
-                aria-expanded={rangeOpen}
-                aria-label="Change date range"
-                style={{
-                  ...chip(dateFilter.preset !== "all"),
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 7,
-                }}
-              >
-                {(RANGES.find(([v]) => v === dateFilter.preset) || RANGES[0])[1]}
-                <span
-                  style={{
-                    fontSize: 8,
-                    transform: rangeOpen ? "rotate(180deg)" : "none",
-                    transition: "transform 140ms ease",
-                  }}
-                >
-                  ▼
-                </span>
-              </button>
-              {/* a filter, so it sits with the date range rather than with the
-                  file actions — and it stops being a lone button on a line of
-                  its own, which is what still read as ragged */}
-              <button
-                onClick={() => setHideDone((h) => !h)}
-                aria-pressed={hideDone}
-                style={{
-                  ...ctl,
-                  background: hideDone ? C.ink : C.card,
-                  color: hideDone ? C.card : C.ink,
-                  borderColor: hideDone ? C.ink : C.line,
-                }}
-              >
-                {hideDone ? "Showing remaining only" : "Hide received"}
-              </button>
-              {(hiddenCount > 0 || canceledCount > 0) && (
-                <span
-                  style={{
-                    fontFamily: mono,
-                    fontSize: 11,
-                    color: C.inkSoft,
-                    marginLeft: "auto",
-                    whiteSpace: "nowrap",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                  }}
-                >
-                  {hiddenCount > 0 && <span>{hiddenCount} lines outside range</span>}
-                  {canceledCount > 0 && (
+            {/* THE RULED HEAD. The masthead's own vocabulary continued —
+                hairline rules, uppercase mono micro-labels over Cochin values,
+                no boxes and no fills. It replaced a tray of controls that
+                shared a height but nothing else: two radii, two font families
+                and three type sizes, plus a native <select> and a native date
+                pair that drew their own UA chrome on a parchment page. */}
+            <section style={{ marginBottom: 16 }}>
+              <div style={RULE} />
+
+              {view !== "mystery" && items.length > 0 && (
+                <>
+                  {/* Three ruled cells. Only the range cell carries a figure:
+                      the other two would be restating the masthead's own
+                      tallies a hundred pixels above. */}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                    }}
+                  >
                     <button
-                      onClick={() => setShowCanceled((s) => !s)}
-                      aria-expanded={showCanceled}
+                      onClick={() => {
+                        setSortOpen(false);
+                        setRangeOpen((o) => !o);
+                      }}
+                      aria-expanded={rangeOpen}
+                      style={headCell(false)}
+                    >
+                      <span style={cellLab}>Orders from</span>
+                      <span style={cellVal}>
+                        <span style={{ ...cellValText, ...valUnder(rangeOpen) }}>
+                          {rangeLabel}
+                        </span>
+                        <i style={headCaret(rangeOpen)}>▾</i>
+                      </span>
+                      <span style={cellFig}>
+                        {rangedItems.length} line
+                        {rangedItems.length === 1 ? "" : "s"}
+                        {hiddenCount > 0 ? ` · ${hiddenCount} outside` : ""}
+                      </span>
+                    </button>
+
+                    {/* the old "Hide received" button, said as state rather
+                        than as an instruction */}
+                    <button
+                      onClick={() => setHideDone((h) => !h)}
+                      aria-pressed={hideDone}
+                      style={headCell(false)}
+                    >
+                      <span style={cellLab}>Showing</span>
+                      <span style={cellVal}>
+                        <i
+                          style={{
+                            fontSize: 10,
+                            flexShrink: 0,
+                            color: hideDone ? C.accent : C.inkSoft,
+                          }}
+                        >
+                          {hideDone ? "●" : "○"}
+                        </i>
+                        <span style={cellValText}>
+                          {hideDone ? "Unreceived" : "Everything"}
+                        </span>
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setRangeOpen(false);
+                        setSortOpen((o) => !o);
+                      }}
+                      aria-expanded={sortOpen}
+                      style={headCell(true)}
+                    >
+                      <span style={cellLab}>Sorted by</span>
+                      <span style={cellVal}>
+                        <span style={{ ...cellValText, ...valUnder(sortOpen) }}>
+                          {sortLabel}
+                        </span>
+                        <i style={headCaret(sortOpen)}>▾</i>
+                      </span>
+                    </button>
+                  </div>
+
+                  {rangeOpen && (
+                    <div style={panelWrap}>
+                      {/* four columns, not three: seven options over three
+                          rows cost a row more than the chip set they replaced.
+                          Four fits 2 rows, and the last spans the two cells it
+                          would otherwise leave showing the grid's rule colour
+                          through as a solid slab. */}
+                      <div style={optGrid(4)}>
+                        {RANGES.map(([val, label], i) => (
+                          <button
+                            key={String(val)}
+                            onClick={() =>
+                              setDateFilter((d) => ({ ...d, preset: val }))
+                            }
+                            aria-pressed={dateFilter.preset === val}
+                            style={{
+                              ...optCell(dateFilter.preset === val),
+                              ...(i === RANGES.length - 1
+                                ? { gridColumn: "span 2" }
+                                : null),
+                            }}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+
+                      {dateFilter.preset === "days" && (
+                        <div style={subRow}>
+                          <span style={cellLab}>Last</span>
+                          <span style={well}>
+                            <button
+                              onClick={() => bumpDays(-1)}
+                              aria-label="Fewer days"
+                              style={dayStep}
+                            >
+                              −
+                            </button>
+                            <input
+                              type="number"
+                              min="1"
+                              inputMode="numeric"
+                              value={dateFilter.days ?? ""}
+                              onChange={(e) =>
+                                setDateFilter((d) => ({
+                                  ...d,
+                                  days: e.target.value,
+                                }))
+                              }
+                              placeholder="21"
+                              aria-label="Number of days"
+                              style={numBox}
+                            />
+                            <button
+                              onClick={() => bumpDays(1)}
+                              aria-label="More days"
+                              style={dayStep}
+                            >
+                              +
+                            </button>
+                          </span>
+                          <span style={cellLab}>days</span>
+                        </div>
+                      )}
+
+                      {dateFilter.preset === "custom" && (
+                        <>
+                          {/* Picked from the orders that exist rather than
+                              typed. iOS's numeric keypad has no hyphen key, so
+                              a masked YYYY-MM-DD field is uncompletable on the
+                              one device this ships to; months need no keyboard
+                              at all and cannot produce 2026-02-31. */}
+                          <div style={subHead}>
+                            <span style={cellLab}>Month</span>
+                            <span style={{ flex: 1, height: 1, background: C.line }} />
+                          </div>
+                          <div
+                            style={{ display: "flex", flexWrap: "wrap", gap: 5 }}
+                          >
+                            {months.map((k) => (
+                              <button
+                                key={k}
+                                onClick={() => pickMonth(k)}
+                                aria-pressed={monthKey === k}
+                                style={{
+                                  ...optCell(monthKey === k),
+                                  padding: "0 10px",
+                                  border: `1px solid ${
+                                    monthKey === k ? C.accent : C.line
+                                  }`,
+                                }}
+                              >
+                                {monthLabel(k)}
+                              </button>
+                            ))}
+                          </div>
+                          <button
+                            onClick={() => setExactOpen((o) => !o)}
+                            aria-expanded={exactOpen}
+                            style={exactToggle}
+                          >
+                            <span style={{ color: C.accent, width: 10 }}>
+                              {exactOpen ? "–" : "+"}
+                            </span>
+                            Exact dates
+                          </button>
+                          {exactOpen && (
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 7,
+                                flexWrap: "wrap",
+                              }}
+                            >
+                              <input
+                                type="date"
+                                value={dateFilter.from}
+                                onChange={(e) =>
+                                  setDateFilter((d) => ({
+                                    ...d,
+                                    from: e.target.value,
+                                  }))
+                                }
+                                style={dateInput}
+                                aria-label="From date"
+                              />
+                              <span style={{ color: C.inkSoft }}>–</span>
+                              <input
+                                type="date"
+                                value={dateFilter.to}
+                                onChange={(e) =>
+                                  setDateFilter((d) => ({
+                                    ...d,
+                                    to: e.target.value,
+                                  }))
+                                }
+                                style={dateInput}
+                                aria-label="To date"
+                              />
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {sortOpen && (
+                    <div style={panelWrap}>
+                      {/* two columns, not three: these labels are words, and
+                          the Tally set runs to "Biggest position" */}
+                      <div style={optGrid(2)}>
+                        {(view === "items" ? ITEM_SORTS : PKG_SORTS).map(
+                          ([val, label], i, arr) => {
+                            const cur = view === "items" ? itemSort : sortBy;
+                            return (
+                              <button
+                                key={val}
+                                onClick={() => {
+                                  if (view === "items") setItemSort(val);
+                                  else setSortBy(val);
+                                  setSortOpen(false);
+                                }}
+                                aria-pressed={cur === val}
+                                style={{
+                                  ...optCell(cur === val),
+                                  ...(arr.length % 2 === 1 &&
+                                  i === arr.length - 1
+                                    ? { gridColumn: "1 / -1" }
+                                    : null),
+                                }}
+                              >
+                                {label}
+                              </button>
+                            );
+                          }
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={RULE_THIN} />
+
+                  {/* Find, with the canceled reference beside it as another
+                      ruled cell rather than a link floating on its own line */}
+                  <div
+                    style={{ display: "flex", alignItems: "stretch", height: 40 }}
+                  >
+                    <label
                       style={{
-                        fontFamily: mono,
-                        fontSize: 11,
-                        color: showCanceled ? C.ink : C.inkSoft,
-                        background: "transparent",
-                        border: "none",
-                        cursor: "pointer",
-                        textDecoration: "underline",
-                        textUnderlineOffset: 2,
-                        padding: 0,
+                        flex: 1,
+                        minWidth: 0,
+                        display: "flex",
+                        alignItems: "stretch",
+                        gap: 10,
+                        padding: "0 9px",
+                        cursor: "text",
                       }}
                     >
-                      {showCanceled
-                        ? "hide canceled"
-                        : `${canceledCount} canceled — view`}
-                    </button>
-                  )}
-                </span>
-              )}
-            </div>
-            {rangeOpen && (
-            <div
-              style={{
-                display: "flex",
-                gap: 6,
-                marginTop: 8,
-                flexWrap: "wrap",
-                alignItems: "center",
-              }}
-            >
-              {RANGES.map(([val, label]) => (
-                <button
-                  key={String(val)}
-                  onClick={() => setDateFilter((d) => ({ ...d, preset: val }))}
-                  aria-pressed={dateFilter.preset === val}
-                  style={chip(dateFilter.preset === val)}
-                >
-                  {label}
-                </button>
-              ))}
-              {dateFilter.preset === "days" && (
-                <span
-                  style={{
-                    display: "inline-flex",
-                    gap: 6,
-                    alignItems: "center",
-                    fontFamily: mono,
-                    fontSize: 12,
-                    color: C.inkSoft,
-                  }}
-                >
-                  last
-                  <input
-                    type="number"
-                    min="1"
-                    inputMode="numeric"
-                    value={dateFilter.days ?? ""}
-                    onChange={(e) =>
-                      setDateFilter((d) => ({ ...d, days: e.target.value }))
-                    }
-                    placeholder="21"
-                    style={{ ...dateInput, width: 64, textAlign: "center" }}
-                    aria-label="Number of days"
-                  />
-                  days
-                </span>
-              )}
-              {dateFilter.preset === "custom" && (
-                <span
-                  style={{
-                    display: "inline-flex",
-                    gap: 6,
-                    alignItems: "center",
-                    fontFamily: mono,
-                    fontSize: 12,
-                    color: C.inkSoft,
-                  }}
-                >
-                  <input
-                    type="date"
-                    value={dateFilter.from}
-                    onChange={(e) =>
-                      setDateFilter((d) => ({ ...d, from: e.target.value }))
-                    }
-                    style={dateInput}
-                    aria-label="From date"
-                  />
-                  –
-                  <input
-                    type="date"
-                    value={dateFilter.to}
-                    onChange={(e) =>
-                      setDateFilter((d) => ({ ...d, to: e.target.value }))
-                    }
-                    style={dateInput}
-                    aria-label="To date"
-                  />
-                </span>
-              )}
-            </div>
-            )}
-            </div>
-            )}
+                      <span style={{ ...cellLab, alignSelf: "center" }}>Find</span>
+                      <input
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        placeholder="card, set, seller, order"
+                        aria-label="Search cards, sets, sellers and order ids"
+                        style={{
+                          flex: 1,
+                          minWidth: 0,
+                          height: "100%",
+                          border: 0,
+                          background: "transparent",
+                          outline: "none",
+                          fontFamily: cochin,
+                          /* 16px or focusing it zooms the page on iOS */
+                          fontSize: 16,
+                          color: C.ink,
+                          padding: 0,
+                        }}
+                      />
+                    </label>
+                    {canceledCount > 0 && (
+                      <button
+                        onClick={() => setShowCanceled((s) => !s)}
+                        aria-expanded={showCanceled}
+                        style={cancCell(showCanceled)}
+                      >
+                        {canceledCount} canceled
+                        <i style={{ fontSize: 9 }}>{showCanceled ? "▾" : "▸"}</i>
+                      </button>
+                    )}
+                  </div>
 
-            {/* Toolbar */}
-            <div style={{ marginBottom: 16 }}>
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                flexWrap: "wrap",
-                alignItems: "center",
-              }}
-            >
-              {/* Search shares its line with sort — it's the only control that
-                  wants to grow, and pairing it with fixed-width buttons is what
-                  forced three wrapped rows before. */}
-              {view !== "mystery" && items.length > 0 && (
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search card, set, seller, or order…"
-                  aria-label="Search cards, sets, sellers and order ids"
-                  style={{
-                    ...ctl,
-                    flex: "1 1 150px",
-                    minWidth: 150,
-                    fontFamily: cochin,
-                    fontSize: 14,
-                    cursor: "text",
-                    outline: "none",
-                  }}
-                />
+                  <div style={RULE_THIN} />
+                </>
               )}
-              {view !== "mystery" &&
-                items.length > 0 &&
-                (view === "items" ? (
-                  <select
-                    value={itemSort}
-                    onChange={(e) => setItemSort(e.target.value)}
-                    aria-label="Sort items"
-                    style={ctlSelect}
-                  >
-                    <option value="missing">Sort: most missing</option>
-                    <option value="basis">Sort: biggest position</option>
-                    <option value="ordered">Sort: most ordered</option>
-                    <option value="value">Sort: $ remaining</option>
-                    <option value="rate">Sort: unit rate</option>
-                    <option value="name">Sort: name A–Z</option>
-                  </select>
-                ) : (
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value)}
-                    aria-label="Sort packages"
-                    style={ctlSelect}
-                  >
-                    <option value="newest">Sort: newest</option>
-                    <option value="oldest">Sort: oldest</option>
-                    <option value="value">Sort: $ remaining</option>
-                    <option value="rate">Sort: unit rate</option>
-                    <option value="seller">Sort: seller A–Z</option>
-                  </select>
-                ))}
-              {/* Data actions, grouped so file management reads as a separate
-                  thing from filtering. Gated on the OUTER condition only — they
-                  must survive an empty item list, because a user holding
-                  hand-typed orphaned envelopes with no items still needs
-                  Backup, and it used to disappear on them entirely. */}
+
+              {/* File actions, set apart. Flattening them into the same ruled
+                  grid as the filters destroys the separation the region has
+                  always kept: file management is not a filter. Re-import and
+                  Reset stay on the narrower gate — there is nothing to import
+                  into and nothing to clear on an empty ledger — while Sync
+                  survives it, because an empty ledger is exactly when Pull is
+                  needed. */}
               <div
                 style={{
                   display: "flex",
-                  gap: 8,
-                  marginLeft: "auto",
                   flexWrap: "wrap",
-                  alignItems: "center",
+                  gap: 8,
+                  justifyContent: "flex-end",
+                  padding: "8px 9px 9px",
                 }}
               >
-                {/* nothing to re-import into, and the upload zone is already
-                    on screen unprompted when the ledger is empty */}
                 {(items.length > 0 || envelopes.length > 0) && (
                   <button
                     onClick={() => setShowUpload((s) => !s)}
@@ -3468,42 +3810,26 @@ export default function MailDayLedger() {
                     Re-import CSV
                   </button>
                 )}
-                {/* Everything that moves data in or out collapses behind one
-                    control, the same trade the date range makes above: four
-                    controls on this row became six once Push and Pull existed,
-                    which wrapped it to two lines at 375px. Collapsed it is
-                    three — and the label now tells you when you last backed up
-                    without your having to ask. Accent-filled only when there is
-                    something to say, so it isn't shouting during normal use. */}
                 {window.remote ? (
                   <button
                     onClick={() => setSyncOpen((o) => !o)}
                     aria-expanded={syncOpen}
                     aria-label="Backup and sync"
                     style={{
-                      ...chip(
-                        pushState === "conflict" || remoteMsg?.tone === "error"
-                      ),
+                      ...ctl,
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 7,
                     }}
                   >
-                    {/* The date but NOT the word "pushed": this row has a hard
-                        width budget and the label is the only elastic thing in
-                        it. Measured at 375px — Re-import CSV 118 + Reset 60 +
-                        two 8px gaps leaves 149px, and "Sync · pushed 08-12"
-                        renders 167px, which wraps the row to two lines and
-                        costs ~42px of vertical. "Sync · 08-12" is 119px.
-                        The bare "Sync" this was measured against only ever
-                        shows before the first push, so the wrap appeared the
-                        moment the feature was actually used. */}
+                    {/* the date but NOT the word "pushed" — this row has a hard
+                        width budget and the label is its only elastic part */}
                     {remoteInfo?.pushedAt
                       ? `Sync · ${new Date(remoteInfo.pushedAt)
                           .toISOString()
                           .slice(5, 10)}`
                       : "Sync"}
-                    <span
+                    <i
                       style={{
                         fontSize: 8,
                         transform: syncOpen ? "rotate(180deg)" : "none",
@@ -3511,11 +3837,9 @@ export default function MailDayLedger() {
                       }}
                     >
                       ▼
-                    </span>
+                    </i>
                   </button>
                 ) : (
-                  /* no remote on this platform — the file backups stay where
-                     they have always been rather than hiding behind nothing */
                   <>
                     <button onClick={() => backup(false)} style={ctl}>
                       Backup
@@ -3531,10 +3855,6 @@ export default function MailDayLedger() {
                     )}
                   </>
                 )}
-                {/* set apart from the data actions it sits beside and is the
-                    opposite of. Two-tap confirm unchanged — invariant 6.
-                    Hidden with nothing to clear: on an empty ledger a red
-                    destructive button is noise at best and alarming at worst. */}
                 {(items.length > 0 || envelopes.length > 0) && (
                   <button
                     onClick={resetAll}
@@ -3544,13 +3864,19 @@ export default function MailDayLedger() {
                       background: confirmReset ? C.red : C.redSoft,
                       borderColor: confirmReset ? C.red : "transparent",
                       fontWeight: confirmReset ? 700 : 400,
+                      /* transient, so spanning the row costs nothing at rest
+                         and lets the sentence name its consequence. Long-hand
+                         because `ctl` sets flexShrink and React warns about
+                         mixing the shorthand with it. */
+                      ...(confirmReset
+                        ? { flexGrow: 1, flexBasis: "100%" }
+                        : null),
                     }}
                   >
                     {confirmReset ? "Tap again to clear everything" : "Reset"}
                   </button>
                 )}
               </div>
-            </div>
 
             {syncOpen && window.remote && (
               <div
@@ -3741,7 +4067,9 @@ export default function MailDayLedger() {
                   ))}
               </div>
             )}
-            </div>
+
+              <div style={RULE} />
+            </section>
           </>
         )}
 

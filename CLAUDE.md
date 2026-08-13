@@ -309,37 +309,65 @@ page. See "Known open threads" for exactly what that leaves unproven.
 - Persistence auto-saves debounced 500ms with saved/saving indicator. The remote
   is deliberately *not* on that path — no error there ever touches `saving`.
 
-### The toolbar
+### The ruled head
 
-Three rows under the switch, each a group rather than a pile: **filters**
-(date range, Hide received), **list controls** (search, sort), then **file
-actions** (Re-import, Sync, Reset) right-aligned in their own flex group.
+The control region is the masthead's own vocabulary continued, not a tray of
+buttons in a different idiom: hairline rules, uppercase mono micro-labels over
+Cochin values, no boxes and no fills except the accent that means "active"
+everywhere else in the app. It replaced a region that shared a control height
+and nothing else — two radii (999px chips beside 8px rects), two font families,
+three type sizes, a native `<select>` drawing its own caret and a native date
+pair rendering grey `mm/dd/yyyy` in the system font on a parchment page.
 
-**Everything that moves data in or out sits behind the `Sync` disclosure** —
-Push, Pull, Backup, Backup + photos, the target line and the key field. This is
-the same trade the date range makes. Row 3 held three controls before
-(Re-import, Backup, Reset — *Backup + photos* only appears when photos exist);
-adding Push and Pull would have made it five or six and wrapped it to two lines
-at 375px. Collapsed it is **still three**, so the feature costs the layout
-nothing: measured `Re-import CSV · Sync ▾ · Reset`, 258px wide, and the first
-package still sits at y≈457 against the documented 458.
-The chip is accent-filled only when there is something to say (a conflict, an
-error), never during normal use, and its label carries the last push date — so
-it reports when you last backed up without your having to ask.
+Three ruled cells report the state and open what changes it:
 
-**That label lives on a hard width budget, and it is the only elastic thing in
-the row.** At 375px: Re-import CSV 118px + Reset 60px + two 8px gaps leaves
-**149px** for the chip. `Sync · pushed 08-12` renders 167px and wraps the row to
-two lines, costing ~42px of vertical; `Sync · 08-12` is 119px and fits. The word
-"pushed" was dropped for exactly this reason. Note how the bug hid: the row was
-measured with the bare `Sync` label, which is the state a device is in *only
-before its first push* — so the wrap appeared the moment the feature was used
-for real, on a build whose tests were all green. jsdom has no layout, so no
-assertion here can catch it; if you change this label, re-measure at 375px.
-Cost: Backup is one tap deeper, which is ~6 mechanical edits in the suite
-(`openSync()` in `harness.mjs`). When `window.remote` is absent the disclosure
-isn't rendered at all and the file backups stay on the row, so no platform
-loses them. Test 25.1–25.2.
+- **Orders from** — the active range, plus the only figure line in the row
+  (`N lines · M outside`). The other two cells deliberately carry no figure;
+  they would be restating the masthead's own tallies a hundred pixels above.
+- **Showing** — the old "Hide received" button, said as state (`○ Everything` /
+  `● Unreceived`) rather than as an instruction.
+- **Sorted by** — opens a panel of options. There is no `<select>` in the app
+  any more.
+
+Then a **Find** row carrying search, with the canceled reference beside it as
+another ruled cell rather than an underlined link floating on its own line.
+Then the file actions, **set apart** — flattening them into the same ruled grid
+destroys the separation the region has always kept: file management is not a
+filter.
+
+Two details that are load-bearing and easy to undo by accident:
+
+- **The two cells that open something underline their value.** A cell built out
+  of the same parts as the masthead's *read-only* tallies reads as a statistic —
+  the first draft scored 2/5 on discoverability with a reviewer for exactly this.
+  The underline is a form's write-on rule, not a button box, so the thesis
+  survives.
+- **`grid-template-columns: repeat(3, minmax(0, 1fr))`, never `1fr`.** A bare
+  `1fr` is `minmax(auto, 1fr)`, so a long value expands its track past its third
+  and squeezes the other two. And `text-overflow: ellipsis` does nothing on a
+  flex container — it has to sit on the text child, which also needs
+  `min-width: 0` or it refuses to shrink. Measured before this was fixed: a
+  25-character sort label took its cell from 114px to 182px and pushed the
+  document to **377px in a 375px viewport**. jsdom has no layout, so **no
+  assertion can catch a regression here** — re-measure at 375px if you touch it.
+
+**The custom range is picked, not typed.** Months are derived from the orders
+the ledger actually contains, newest first. iOS's numeric keypad has no hyphen
+key, so a masked `YYYY-MM-DD` field is uncompletable on the only device this
+ships to; a month needs no keyboard, cannot express 2026-02-31, and makes the
+~140px UA minimum width that collapsed the date range in the first place
+irrelevant. The native pair survives behind an **Exact dates** disclosure for
+the rare precise case. Reading the month off the ISO string is deliberate:
+`Date.parse("2026-05-01")` is UTC midnight and `getMonth()` in any behind-UTC
+zone rolls it back to April. Test 23.16 catches that; older M/D/YY exports parse
+as *local* midnight and take the local-getter branch. All **seven** RANGES
+options ship, laid out four to a row so they cost two rows rather than three.
+
+**Everything that moves data in or out still sits behind the `Sync`
+disclosure** — Push, Pull, Backup, Backup + photos, the target line and the key
+field. Re-import and Reset stay on the narrower `items.length > 0 ||
+envelopes.length > 0` gate; Sync survives it, because an empty ledger is exactly
+when Pull is needed. Group 28.
 
 Every control shares one height — `CTL_H`, currently 34px — via `ctl`,
 `ctlSelect` and `chip()` beside `dateInput`/`miniBtn`. Before those existed,
@@ -374,9 +402,17 @@ The pattern to take from this: any control that *recovers* state must not be
 gated on that state existing. Backup was widened once for this reason, Sync
 twice.
 
-Measured at 375px: the first package sits at y≈458, down from 604 — and still
-y≈457 after the Sync disclosure landed. Every control in row 3 measures 34px
-(`CTL_H`), horizontal overflow is 0 both collapsed and with the panel open.
+Measured at 375px against 281 real lines across 150 orders, from the view
+switch to the first package card: **185px at rest**, 282px with the range panel
+open, 326px showing "last N days", 467px showing the month picker. Horizontal
+overflow is 0 in every state and no option string clips.
+
+Note the resting figure is **14px worse than the 171px it replaced**, and that
+is the trade, made knowingly: what was bought is that both native controls are
+gone, the state reads at a glance instead of having to be inferred from four
+separate controls, and nothing in the region wraps or reflows when the view
+changes. If the height ever has to come back, the `.fig` line and the cell
+padding are where it is.
 
 ## Design language
 
@@ -598,7 +634,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 214 assertions, no test framework, ~20s. `test/app.test.mjs` runs
+`npm test` — 219 assertions, no test framework, ~20s. `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
 the jsdom setup, storage mocks, DOM helpers and the fixture.
 
@@ -693,6 +729,14 @@ Gotchas worth remembering:
   reach into the specific card, not the first hit on the page.
 - Backup, Push and Pull live behind the Sync disclosure, so a test has to
   `await openSync()` first. It's idempotent; just call it.
+- The ruled head replaced a Hide-received button, a native `<select>` and a chip
+  disclosure, so `harness.mjs` exports `cell(re)`, `toggleShowing()`,
+  `openRange()` and `pickSort(label)`. There is no `<select>` left to drive with
+  `choose()`; pick sort by its visible label.
+- **Anything about width is unassertable here.** jsdom has no layout, so the
+  `minmax(0,1fr)` / `min-width:0` truncation fix in the head cannot be
+  protected by a test — it was found by measuring a real 375px viewport and
+  that is the only way it will be found again.
 - The key field is uncontrolled by design, so `el.value = "…"` is enough — don't
   route it through `type()`, which exists for React-tracked inputs.
 - A successful push shows `Pushed ✓` for 2.5s, so `btn(/^Push$/)` won't match

@@ -15,6 +15,7 @@ import {
   buttons,
   choose,
   cardInput,
+  cell,
   click,
   csv,
   dropFile,
@@ -26,7 +27,9 @@ import {
   observers,
   ok,
   photoKeys,
+  openRange,
   openSync,
+  pickSort,
   pushes,
   record,
   remote,
@@ -36,6 +39,7 @@ import {
   saved,
   sleep,
   text,
+  toggleShowing,
   type,
   win,
 } from "./harness.mjs";
@@ -51,7 +55,10 @@ await goTo("orphaned");
 ok(/Nothing waiting/.test(text()), "1.1 empty pile shows its empty state");
 ok(!!btn(/Record an envelope/), "1.2 record button present");
 ok(!/Orders from/.test(text()), "1.3 date filter hidden — it applies to nothing here");
-ok(!document.querySelector('input[placeholder^="Search card"]'), "1.4 search hidden");
+ok(
+  !document.querySelector('input[aria-label^="Search cards"]'),
+  "1.4 search hidden"
+);
 await openSync(); // the file actions moved behind the Sync disclosure
 ok(!!btn(/^Backup$/), "1.5 Backup still reachable");
 ok(!!btn(/^Reset$/), "1.6 Reset still reachable");
@@ -227,8 +234,8 @@ await goTo("tally");
 ok(/unique item/.test(text()), "12.2 by-item view still renders");
 await goTo("packages");
 ok(/4 packages/.test(text()), "12.3 package count unchanged");
-await click(btn(/Hide received/), "hide received");
-ok(/Showing remaining only/.test(text()), "12.4 hide-received still toggles");
+await toggleShowing();
+ok(/Unreceived/.test(text()), "12.4 hide-received still toggles");
 
 /* ── 13. backup and restore carry envelopes ────────────────────────────── */
 
@@ -552,13 +559,13 @@ eq(headBar().getAttribute("data-stuck"), "no",
 await fresh();
 await goTo("tally");
 
-await choose(/sort items/i, "basis");
+await pickSort("Biggest position");
 ok(
   text().indexOf("Brainstorm") < text().indexOf("Ponder"),
   "22.1 by biggest position, Brainstorm outranks Ponder"
 );
 
-await choose(/sort items/i, "rate");
+await pickSort("Unit rate");
 ok(
   text().indexOf("Ponder") < text().indexOf("Brainstorm"),
   "22.2 by unit rate, Ponder outranks Brainstorm"
@@ -593,50 +600,71 @@ ok(
   !document.querySelector('input[aria-label^="Search cards"]'),
   "23.4 search stays hidden with no items"
 );
-ok(!document.querySelector("select"), "23.5 so does sort");
+ok(!cell(/^Sorted by/), "23.5 so does sort");
 
-/* The date range collapses to one control. Seven chips wrapped to two rows at
-   375px, and the custom from–to pair always claimed a third. */
+/* The date range is one of three ruled cells now. It reports the active range
+   AND how many lines are in it, and opens the full option set beneath the head
+   rather than as a wrapping chip row. */
 await fresh();
 
-const chips = () =>
-  buttons().filter((b) => /^(All time|30d|45d|60d|90d|# days|Custom…)$/.test(
-    b.textContent.trim()
-  ));
-const disclosure = () =>
-  buttons().find((b) => b.getAttribute("aria-label") === "Change date range") || {
-    textContent: "",
+const opts = () =>
+  buttons().filter((b) =>
+    /^(All time|30 days|45 days|60 days|90 days|Last…|By month)$/.test(
+      b.textContent.trim()
+    )
+  );
+/* stand in for a missing option so a broken panel reports as failed assertions
+   rather than taking the whole run down with a TypeError */
+const opt = (label) =>
+  opts().find((c) => c.textContent.trim() === label) || {
     getAttribute: () => null,
   };
-/* stand in for a missing chip so a broken disclosure reports as failed
-   assertions rather than taking the whole run down with a TypeError */
-const chip = (label) =>
-  chips().find((c) => c.textContent.trim() === label) || { getAttribute: () => null };
+const rangeCell = () =>
+  cell(/^Orders from/) || { textContent: "", getAttribute: () => null };
 
-eq(chips().length, 0, "23.6 chip set is collapsed on load");
-ok(/All time/.test(disclosure().textContent), "23.7 collapsed control shows the active range");
-eq(disclosure().getAttribute("aria-expanded"), "false", "23.8 and reports it shut");
+eq(opts().length, 0, "23.6 the option set is collapsed on load");
+ok(/All time/.test(rangeCell().textContent), "23.7 the cell reports the active range");
+ok(/12 lines/.test(rangeCell().textContent), "23.8 and how many lines are in it");
+eq(rangeCell().getAttribute("aria-expanded"), "false", "23.9 shut on load");
 
-await click(disclosure(), "open range");
-eq(chips().length, 7, "23.9 opening reveals every range");
-eq(disclosure().getAttribute("aria-expanded"), "true", "23.10 and reports it open");
+await openRange();
+eq(opts().length, 7, "23.10 opening reveals every range, including the free one");
+eq(rangeCell().getAttribute("aria-expanded"), "true", "23.11 and reports it open");
 
 /* state conveyed by colour alone is invisible to a screen reader; the view
    switch already sets aria-pressed, so these match it */
 eq(
-  chip("All time").getAttribute("aria-pressed"),
+  opt("All time").getAttribute("aria-pressed"),
   "true",
-  "23.11 the active range is marked pressed"
+  "23.12 the active range is marked pressed"
 );
 eq(
-  chip("30d").getAttribute("aria-pressed"),
+  opt("30 days").getAttribute("aria-pressed"),
   "false",
-  "23.12 and the inactive ones are not"
+  "23.13 and the inactive ones are not"
 );
 
-const d30 = chips().find((c) => c.textContent.trim() === "30d");
-if (d30) await click(d30, "pick 30d");
-ok(/30d/.test(disclosure().textContent), "23.13 picking a range updates the collapsed label");
+await click(opt("30 days"), "pick 30 days");
+ok(/30 days/.test(rangeCell().textContent), "23.14 picking a range updates the cell");
+
+/* The custom range is picked from the months the ledger actually contains —
+   no typing, because iOS's numeric keypad has no hyphen key, and no way to
+   express 2026-02-31. */
+await openRange();
+await click(opt("By month"), "by month");
+const monthChips = () =>
+  buttons().filter((b) => /^[A-Z][a-z]{2}( ’\d\d)?$/.test(b.textContent.trim()));
+ok(monthChips().length > 0, "23.15 months are offered, derived from the orders present");
+ok(
+  monthChips().every((b) => /Jul|Jun|May/.test(b.textContent)),
+  "23.16 and only months the ledger actually has"
+);
+await click(monthChips()[0], "pick the newest month");
+ok(/Jul/.test(rangeCell().textContent), "23.17 which reads back as that month, not 'Custom'");
+ok(
+  !document.querySelector('input[type="date"]'),
+  "23.18 and needs no native date field to do it"
+);
 
 /* ── 24. Packages sort by unit rate ────────────────────────────────────── */
 
@@ -647,7 +675,7 @@ ok(/30d/.test(disclosure().textContent), "23.13 picking a range updates the coll
    inverts. */
 await fresh();
 await goTo("packages");
-await choose(/sort packages/i, "rate");
+await pickSort("Unit rate");
 
 const t24 = text();
 ok(
@@ -659,7 +687,7 @@ ok(
   "24.2 and a pricier basket outranks a cheap one"
 );
 
-await choose(/sort packages/i, "newest");
+await pickSort("Newest");
 const t24b = text();
 ok(
   t24b.indexOf("Delta Cards") > t24b.indexOf("Alpha Cards"),
