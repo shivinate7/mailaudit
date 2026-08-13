@@ -118,7 +118,9 @@ function parseItems(rows) {
     const name = decodeEntities((r["product name"] || "").trim());
     if (!name) return;
     const orderId = (r["order id"] || "unknown").trim();
-    const seller = (r["party"] || r["seller"] || "Unknown seller").trim();
+    const seller = decodeEntities(
+      (r["party"] || r["seller"] || "Unknown seller").trim()
+    );
     const itemNumber = (r["item number"] || String(i)).trim();
     const productId = (r["vendor product id"] || "").trim();
     let set = decodeEntities((r["set name"] || "").trim());

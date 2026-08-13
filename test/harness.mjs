@@ -348,20 +348,55 @@ export const saveGitHubKey = async (token = "github_pat_testtoken") => {
 };
 
 /* Setting input.files isn't practical in jsdom, so file input goes through the
-   drop handler instead, with dataTransfer defined onto a plain Event. */
+   drop handler instead, with dataTransfer defined onto a plain Event.
+   The app routes on the file *name*, but papaparse still wants a real Blob, so
+   the type tracks the extension. */
 export const dropFile = async (name, contents) => {
+  const type = /\.csv$/i.test(name) ? "text/csv" : "application/json";
   await act(async () => {
     const ev = new win.Event("drop", { bubbles: true });
     Object.defineProperty(ev, "dataTransfer", {
-      value: {
-        files: [new win.File([contents], name, { type: "application/json" })],
-      },
+      value: { files: [new win.File([contents], name, { type })] },
     });
     document.querySelector('div[style*="dashed"]').dispatchEvent(ev);
   });
   await act(async () => {
     await sleep(80); // FileReader is async
   });
+};
+
+/* An OrderWand export, as the real thing is shaped. `rows` are objects keyed by
+   the CSV's own column names; anything omitted falls back to a sane default. */
+export const csv = (rows) => {
+  const cols = [
+    "Type", "Vendor", "Order Id", "Ordered At", "Item Number", "Product Name",
+    "Set Name", "Condition", "Finish", "Price", "Quantity", "Total Amount",
+    "Product Line", "Party", "Shipping Status", "Vendor Product Id",
+  ];
+  const base = {
+    Type: "purchase",
+    Vendor: "TCGplayer",
+    "Ordered At": "2026-07-01",
+    "Set Name": "Test Set",
+    Condition: "Near Mint",
+    Finish: "",
+    Price: "1.00",
+    Quantity: "1",
+    "Product Line": "Magic",
+    "Shipping Status": "without tracking",
+  };
+  const cell = (v) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+  return [
+    cols.join(","),
+    ...rows.map((r, i) => {
+      const full = { "Item Number": String(i), ...base, ...r };
+      full["Total Amount"] ??= String(
+        (parseFloat(full.Price) || 0) * (parseInt(full.Quantity, 10) || 1)
+      );
+      full["Vendor Product Id"] ??= `p${i}`;
+      return cols.map((c) => cell(String(full[c] ?? ""))).join(",");
+    }),
+  ].join("\n");
 };
 
 /* ---------- app driving ---------- */

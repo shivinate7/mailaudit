@@ -16,6 +16,7 @@ import {
   choose,
   cardInput,
   click,
+  csv,
   dropFile,
   envelopeCount,
   eq,
@@ -1065,5 +1066,44 @@ eq(saved().items.length, 3, "28.5 and pulling actually recovers the ledger");
 await boot({ items: [], received: {}, envelopes: [] }, null, { noRemote: true });
 ok(!btn(/^Sync/), "28.6 no remote, no toolbar on an empty ledger");
 ok(!btn(/^Backup$/), "28.7 and nothing else either");
+
+/* ── 29. the parser decodes entities in seller names too ───────────────── */
+
+/* The user's real export contains the seller "LT's Hobbies&amp;Games2". Product
+   and set names went through decodeEntities from the start; the seller didn't,
+   so the raw entity leaked into the package header, the Tally view's source
+   rows and — worse, because it makes a sane search silently fail — the search
+   haystack. This is the first test to drive a CSV through the parser at all;
+   ITEMS is pre-parsed, which is exactly why the gap survived. */
+const SELLER = "LT's Hobbies&amp;Games2";
+const DECODED = "LT's Hobbies&Games2";
+
+await boot({ items: [], received: {} });
+await dropFile(
+  "orders.csv",
+  csv([
+    { "Order Id": "E1", Party: SELLER, "Product Name": "Mox Diamond", Price: "5.00" },
+    { "Order Id": "E1", Party: SELLER, "Product Name": "Sylvan Library", Price: "9.00" },
+  ])
+);
+ok(/Imported 2 lines/.test(text()), "29.1 the CSV actually imported");
+ok(text().includes(DECODED), "29.2 package header shows the decoded seller");
+ok(!/&amp;/.test(text()), "29.3 and no raw entity anywhere on the page");
+await sleep(SAVE_WAIT);
+eq(saved().items[0].seller, DECODED, "29.4 the decoded name is what persists");
+
+await type(
+  document.querySelector('input[aria-label="Search cards, sets, sellers and order ids"]'),
+  "Hobbies&Games2"
+);
+ok(/Mox Diamond/.test(text()), "29.5 searching the seller as displayed matches");
+await type(
+  document.querySelector('input[aria-label="Search cards, sets, sellers and order ids"]'),
+  ""
+);
+
+await goTo("tally");
+await click(btn(/Mox Diamond/), "expand the tally row");
+ok(text().includes(DECODED), "29.6 Tally's source rows show it decoded too");
 
 report();

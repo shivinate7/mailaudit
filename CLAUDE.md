@@ -148,6 +148,13 @@ Shipping Status, Url, Vendor Product Id, Fee Amount, Refund Amount.
   `Seller`; the parser accepts both.
 - `Price` is per-unit (verified: Price × Quantity == Total Amount on all rows).
 - Product/Set names contain HTML entities (`&amp;` etc.) — parser decodes.
+  **So do seller names** (`Party`): the user's real export contains
+  `LT's Hobbies&amp;Games2`. That one was missed for a long time because `ITEMS`
+  in the harness is *pre-parsed*, so nothing exercised `parseItems` at all;
+  group 29 is the first test that drives a CSV through it. A raw entity there
+  leaks into the package header, Tally's source rows, and the search haystack —
+  where it fails silently, since searching what's on screen then matches
+  nothing.
 - TCGplayer-Direct rows may put "Sold by X" in Set Name — parser blanks those.
 - `Shipping Status` values: `with tracking`, `without tracking`, `unknown`,
   `canceled`. No tracking numbers or carrier data exist anywhere in the export.
@@ -581,7 +588,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 208 assertions, no test framework, ~20s. `test/app.test.mjs` runs
+`npm test` — 214 assertions, no test framework, ~20s. `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
 the jsdom setup, storage mocks, DOM helpers and the fixture.
 
@@ -666,7 +673,10 @@ Gotchas worth remembering:
   its contract exactly.
 - Drive file restore through the drop handler: build an `Event("drop")` and
   `Object.defineProperty` a `dataTransfer` onto it. Setting `input.files` isn't
-  practical.
+  practical. The same helper carries a CSV (`csv()` builds an OrderWand-shaped
+  one) — papaparse reads it as a real Blob through jsdom's `FileReader`, so the
+  file's MIME type has to track its extension even though the app routes on the
+  name.
 - The photo sweep is on a 2s timer and the ledger save is debounced 500ms;
   tests must wait past them (`SWEEP_WAIT`, `SAVE_WAIT`).
 - Packages render expanded, so "Mark all received" matches several buttons —
@@ -689,8 +699,9 @@ surviving the debounce; candidates self-correcting when a package is received
 elsewhere; both backups and both restore paths; the photo sweep; the GitHub
 push and pull (payload shape, non-ASCII round trip, conflict + force, expired
 key, offline, the token never leaking, pull as a full replace, photo ids kept
-vs stripped, arming one control disarming the other); and the older
-package/Tally views still working.
+vs stripped, arming one control disarming the other); entity decoding on
+seller names, through a real CSV import; and the older package/Tally views
+still working.
 
 Still only covered by eye, never by a test: anything that needs a real device —
 the camera capture, the canvas downscale, and iOS keyboard behaviour. Layout at
