@@ -3,7 +3,10 @@
 *(The app presents itself as **MANIFEST**, under a C.H Postal Company
 letterhead. "Mail Day Ledger" remains the project's name — repo `mailaudit`,
 storage namespace `mailday:` — and neither of those may be renamed to follow the
-masthead; see invariant 1.)*
+masthead; see invariant 1. The browser `<title>` in `build.mjs` is "Manifest";
+`apple-mobile-web-app-title` is deliberately still "Mail Day", because iOS bakes
+that label in at install time and changing it forces a delete-and-re-add of the
+home-screen icon. That mismatch is intentional — don't "fix" it without asking.)*
 
 A single-page tool for verifying receipt of TCGplayer card orders. The user buys
 hundreds of low-cost cards across many sellers; this app ingests OrderWand CSV
