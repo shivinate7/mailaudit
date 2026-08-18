@@ -33,6 +33,11 @@ import {
   pushes,
   record,
   remote,
+  remotePhotos,
+  remotePhotoIds,
+  setPhotosUnknown,
+  jpegOf,
+  bytesOf,
   remoteText,
   report,
   saveGitHubKey,
@@ -45,6 +50,14 @@ import {
 } from "./harness.mjs";
 /* the adapter's pure rules — see group 27 for why these are imported directly */
 import { classifyStatus, pushBody } from "../src/remote-rules.mjs";
+import {
+  photoName,
+  photoIdFromName,
+  mimeFromName,
+  isAlreadyThere,
+  photoPlan,
+} from "../src/photo-rules.mjs";
+import { utf8ToBase64, bytesToBase64, blobToBase64 } from "../src/b64.mjs";
 
 const fresh = () => boot({ items: ITEMS, received: {} });
 
@@ -934,34 +947,57 @@ eq(
 await sleep(SWEEP_WAIT);
 eq(photoKeys(), ["pho-9"], "26.12 and the sweep leaves the blob alone");
 
-/* the other half of the same rule: an id with no blob anywhere is dropped */
-await boot({ items: ITEMS, received: {} }, null, {
-  remote: JSON.stringify({
-    mailday: 1,
-    items: ITEMS,
-    received: {},
-    envelopes: [
-      {
-        id: "env-x",
-        createdAt: 1,
-        note: "",
-        entries: [{ name: "Ponder", qty: 1 }],
-        photos: ["pho-gone"],
-      },
-    ],
-    dateFilter: { preset: "all", from: "", to: "" },
-    sortBy: "newest",
-    itemSort: "missing",
-  }),
+/* The other half of the same rule — but "nowhere" now has to be established
+   rather than assumed. Photos live in a private repo, so a device with no key
+   cannot tell an empty store from one it isn't allowed to look at, and GitHub
+   answers both with a 404. Stripping on that reading would destroy the link to
+   a photo sitting safe on GitHub; keeping it costs a blank tile until the next
+   pull. So the rule splits: strip only when the store was READ and genuinely
+   didn't have it. */
+const GONE_LEDGER = JSON.stringify({
+  mailday: 1,
+  items: ITEMS,
+  received: {},
+  envelopes: [
+    {
+      id: "env-x",
+      createdAt: 1,
+      note: "",
+      entries: [{ name: "Ponder", qty: 1 }],
+      photos: ["pho-gone"],
+    },
+  ],
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
 });
+
+await boot({ items: ITEMS, received: {} }, null, { remote: GONE_LEDGER });
 await openSync();
+await saveGitHubKey(); /* the key is what makes the photo store readable */
 await click(btn(/Pull from GitHub/), "arm");
 await click(btn(/Tap again to replace/), "confirm");
 await sleep(SAVE_WAIT);
 eq(
   saved().envelopes[0].photos,
   [],
-  "26.13 but an id whose blob is nowhere is still stripped"
+  "26.13 an id the photo store was read and found not to hold is stripped"
+);
+
+/* and the case that used to be conflated with it */
+await boot({ items: ITEMS, received: {} }, null, { remote: GONE_LEDGER });
+await openSync();
+await click(btn(/Pull from GitHub/), "arm");
+await click(btn(/Tap again to replace/), "confirm");
+await sleep(SAVE_WAIT);
+eq(
+  saved().envelopes[0].photos,
+  ["pho-gone"],
+  "26.13b but with no key the store is unreadable, so the id is KEPT, not lost"
+);
+ok(
+  /photos need your key/i.test(text()),
+  "26.13c and it says so rather than reporting them lost"
 );
 
 /* a pull is how a device catches up, so the push it was blocked on now lands */
@@ -1133,5 +1169,333 @@ await type(
 await goTo("tally");
 await click(btn(/Mox Diamond/), "expand the tally row");
 ok(text().includes(DECODED), "29.6 Tally's source rows show it decoded too");
+
+/* ── 30. photos push and pull ──────────────────────────────────────────────
+   Photo files are immutable and addressed by id, so the whole algorithm is a
+   set difference — nothing merges, nothing overwrites, and the same tap can be
+   repeated safely. What these protect is the ORDER of a pull (download before
+   replace, or every id is stripped) and the strict separation of the photo
+   error channel from the ledger's, since the ledger's `conflict` arms a button
+   that force-overwrites another device's check-ins. */
+
+const withPhoto = (ids) => ({
+  items: ITEMS,
+  received: {},
+  envelopes: [
+    {
+      id: "env-p",
+      createdAt: 1,
+      note: "",
+      entries: [{ name: "Ponder", qty: 1 }],
+      photos: ids,
+    },
+  ],
+});
+const photoCalls = () => remote.calls.filter((c) => /Photo/.test(c.op));
+
+/* a ledger with no photos in it at all */
+await boot({ items: ITEMS, received: {} });
+await openSync();
+await saveGitHubKey();
+await click(btn(/^Push$/), "push a photoless ledger");
+eq(photoCalls().length, 0, "30.1 a ledger with no photos makes no photo requests");
+
+/* one photo, held locally, absent from the remote */
+await boot(withPhoto(["pho-a"]), [["pho-a", jpegOf(1)]]);
+await openSync();
+await saveGitHubKey();
+await click(btn(/^Push$/), "first push");
+await sleep(60);
+eq(remotePhotoIds(), ["pho-a"], "30.2 a push sends a photo the remote lacks");
+
+/* pushing again must send NOTHING: the set difference is what makes a repeat
+   tap cheap, and what makes a partial upload resumable */
+const sentSoFar = photoCalls().filter((c) => c.op === "pushPhoto").length;
+/* the button reads "Pushed ✓" for 2.5s after a success — and that flash now
+   starts AFTER the photo phase, not before it */
+await click(btn(/^Push(ed ✓)?$/), "second push");
+await sleep(60);
+eq(
+  photoCalls().filter((c) => c.op === "pushPhoto").length,
+  sentSoFar,
+  "30.3 pushing again sends nothing — only new bytes ever move"
+);
+
+/* a blob left behind by a discarded envelope is not ours to publish */
+await boot({ items: ITEMS, received: {} }, [["pho-orphan", jpegOf(2)]]);
+await openSync();
+await saveGitHubKey();
+await click(btn(/^Push$/), "push with an unreferenced blob");
+await sleep(60);
+ok(
+  !remotePhotoIds().includes("pho-orphan"),
+  "30.4 a blob no envelope references is never pushed"
+);
+
+/* ---- the pull, and the ordering it depends on ---- */
+const PHOTO_LEDGER = JSON.stringify({
+  mailday: 1,
+  ...withPhoto(["pho-a"]),
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+});
+
+await boot({ items: ITEMS, received: {} }, null, {
+  remote: PHOTO_LEDGER,
+  remotePhotos: [["pho-a.jpg", await blobToBase64(jpegOf(1))]],
+});
+await openSync();
+await saveGitHubKey();
+await click(btn(/Pull from GitHub/), "arm");
+await click(btn(/Tap again to replace/), "confirm");
+await sleep(SAVE_WAIT);
+eq(
+  saved().envelopes[0].photos,
+  ["pho-a"],
+  "30.5 a pull onto a device with no blobs KEEPS the id"
+);
+eq(photoKeys(), ["pho-a"], "30.6 because it downloaded the blob first");
+eq(
+  await bytesOf(getPhoto("pho-a")),
+  [...(await bytesOf(jpegOf(1)))],
+  "30.7 and the bytes survived the round trip exactly"
+);
+eq(getPhoto("pho-a").type, "image/jpeg", "30.8 with its own type, not GitHub's");
+await sleep(SWEEP_WAIT);
+eq(photoKeys(), ["pho-a"], "30.9 and the sweep leaves the downloaded blob alone");
+
+/* the store is there but genuinely lacks it — the only case where dropping the
+   id is right, and it must still say so rather than fail silently */
+await boot({ items: ITEMS, received: {} }, null, { remote: PHOTO_LEDGER });
+await openSync();
+await saveGitHubKey();
+await click(btn(/Pull from GitHub/), "arm");
+await click(btn(/Tap again to replace/), "confirm");
+await sleep(SAVE_WAIT);
+ok(/not on GitHub/i.test(text()), "30.10 a photo missing everywhere is reported");
+
+/* ---- the one that guards the worst bug in the feature ---- */
+await boot(withPhoto(["pho-a"]), [["pho-a", jpegOf(1)]]);
+await openSync();
+await saveGitHubKey();
+remote.photoFail = "conflict"; /* GitHub 409s rapid writes to one repo */
+await click(btn(/^Push$/), "push where the photo leg 409s");
+await sleep(60);
+ok(
+  !btn(/Push anyway/),
+  "30.11 a photo conflict NEVER arms Push anyway — that button overwrites the ledger"
+);
+eq(remoteText() && JSON.parse(remoteText()).items.length, ITEMS.length,
+  "30.12 and the ledger push itself still landed");
+remote.photoFail = null;
+
+/* ---- the store we cannot see ---- */
+await boot({ items: ITEMS, received: {} }, null, {
+  remote: PHOTO_LEDGER,
+  photosUnknown: "no-access",
+});
+await openSync();
+await click(btn(/Pull from GitHub/), "arm");
+await click(btn(/Tap again to replace/), "confirm");
+await sleep(SAVE_WAIT);
+eq(
+  saved().envelopes[0].photos,
+  ["pho-a"],
+  "30.13 an unreadable photo store keeps every id — it is not evidence of loss"
+);
+eq(saved().items.length, ITEMS.length, "30.14 and the ledger still applied");
+ok(!/not on GitHub/i.test(text()), "30.15 and nothing is reported as lost");
+
+
+/* The sweep race, which is the reason the photo phase holds it off at all. A
+   pull writes blobs while `envelopes` still holds the OLD list, so nothing
+   re-runs the sweep effect and a timer armed before the pull started is still
+   counting down against a keep-set that knows nothing about what is arriving.
+   Two photos and a slow wire put a download on each side of that 2s timer. */
+const TWO_PHOTO_LEDGER = JSON.stringify({
+  mailday: 1,
+  items: ITEMS,
+  received: {},
+  envelopes: [
+    {
+      id: "env-p",
+      createdAt: 1,
+      note: "",
+      entries: [{ name: "Ponder", qty: 1 }],
+      photos: ["pho-a", "pho-b"],
+    },
+  ],
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+});
+await boot({ items: ITEMS, received: {} }, null, {
+  remote: TWO_PHOTO_LEDGER,
+  remotePhotos: [
+    ["pho-a.jpg", await blobToBase64(jpegOf(1))],
+    ["pho-b.jpg", await blobToBase64(jpegOf(2))],
+  ],
+});
+remote.photoDelay = 1200; /* first lands ~1.2s, second ~2.4s — the sweep is due at 2s */
+await openSync();
+await saveGitHubKey();
+await click(btn(/Pull from GitHub/), "arm");
+await click(btn(/Tap again to replace/), "confirm");
+/* two 1.2s downloads, then the replace, then the debounced save — and past the
+   2s mark where the pre-pull sweep was armed to fire */
+await sleep(2400 + SWEEP_WAIT);
+remote.photoDelay = 0;
+eq(
+  photoKeys().sort(),
+  ["pho-a", "pho-b"],
+  "30.16 a sweep falling due mid-download does not eat what just arrived"
+);
+eq(
+  saved().envelopes[0].photos.sort(),
+  ["pho-a", "pho-b"],
+  "30.17 and both ids survive into the saved ledger"
+);
+
+/* The "gone" warning, both ways round. A pull is a full replace, so a photo the
+   CURRENT ledger references and the incoming one does not is about to stop
+   existing — and if it was never pushed, that was the last copy. But a photo
+   BOTH ledgers reference survives untouched, and saying otherwise is a false
+   alarm at the exact moment nothing is wrong. The first draft measured the
+   wrong set and got both cases backwards. */
+await boot(
+  {
+    items: ITEMS,
+    received: {},
+    envelopes: [
+      {
+        id: "env-local",
+        createdAt: 1,
+        note: "",
+        entries: [{ name: "Ponder", qty: 1 }],
+        photos: ["pho-local"],
+      },
+    ],
+  },
+  [["pho-local", jpegOf(7)]],
+  { remote: PHOTO_LEDGER } /* incoming references pho-a, never pho-local */
+);
+await openSync();
+await saveGitHubKey();
+await click(btn(/Pull from GitHub/), "arm");
+await click(btn(/Tap again to replace/), "confirm");
+await sleep(SAVE_WAIT);
+ok(
+  /never pushed/i.test(text()),
+  "30.18 a photo the incoming ledger doesn't know about is reported as lost"
+);
+
+/* the inverse: both ledgers reference it and the blob is here, so it survives
+   the pull completely — warning here would be a false alarm */
+await boot(withPhoto(["pho-a"]), [["pho-a", jpegOf(1)]], { remote: PHOTO_LEDGER });
+await openSync();
+await saveGitHubKey();
+await click(btn(/Pull from GitHub/), "arm");
+await click(btn(/Tap again to replace/), "confirm");
+await sleep(SAVE_WAIT);
+eq(
+  saved().envelopes[0].photos,
+  ["pho-a"],
+  "30.19 a photo both ledgers reference survives the pull"
+);
+ok(
+  !/never pushed/i.test(text()),
+  "30.20 and is NOT reported as gone — that was the false alarm"
+);
+
+/* ── 31. the photo rules, asserted directly ────────────────────────────────
+   Same reasoning as group 27: entry.jsx mounts React on import and is
+   unreachable from here, so anything living there is untested by construction.
+   Fetch plumbing is a fine thing to leave uncovered. These are not, because
+   every one of them fails quietly — a wrong extension loses the image type, a
+   mis-read 422 either re-uploads forever or calls a throttle a success, and a
+   codec that treats a JPEG as text produces plausible corrupted bytes. */
+
+eq(photoName("pho-a-1", "image/jpeg"), "pho-a-1.jpg", "31.1 jpeg names");
+eq(photoName("pho-a-1", "image/png"), "pho-a-1.png", "31.2 png keeps its type");
+eq(
+  photoName("pho-a-1", ""),
+  "pho-a-1.bin",
+  "31.3 an unknown type still round-trips rather than guessing jpeg"
+);
+for (const mime of ["image/jpeg", "image/png", "image/heic", ""])
+  eq(
+    photoIdFromName(photoName("pho-mabc-3f9a", mime)),
+    "pho-mabc-3f9a",
+    `31.4 name/id round trip survives ${mime || "an unknown type"}`
+  );
+eq(photoIdFromName("README.md"), null, "31.5 a stray repo file is not a photo");
+eq(
+  photoIdFromName("ledger.json"),
+  null,
+  "31.6 nor is anything else that isn't ours"
+);
+eq(mimeFromName("pho-a-1.png"), "image/png", "31.7 the type comes back off the name");
+eq(
+  mimeFromName("pho-a-1.bin"),
+  "application/octet-stream",
+  "31.8 and falls back rather than lying about being an image"
+);
+
+const GH_422 = 'Invalid request.\n\n"sha" wasn\'t supplied.';
+ok(isAlreadyThere(422, GH_422), "31.9 a sha-less PUT onto an existing path is 'already there'");
+ok(
+  !isAlreadyThere(409, "Conflict"),
+  "31.10 but a 409 is GitHub throttling — calling that success loses the photo"
+);
+ok(!isAlreadyThere(422, "something else"), "31.11 and an unrelated 422 is not");
+eq(
+  classifyStatus(422, GH_422),
+  "conflict",
+  "31.12 which is why this cannot be read off the classified code — both are 'conflict'"
+);
+
+const plan = photoPlan({
+  referenced: ["a", "b", "c"],
+  local: ["a", "d"],
+  remote: { known: true, ids: ["b"] },
+});
+eq(plan.toPush, ["a"], "31.13 push what is referenced and held but not remote");
+eq(plan.toPull, ["b"], "31.14 pull what is referenced and remote but not held");
+eq(plan.lost, ["c"], "31.15 report what is referenced and nowhere");
+ok(!plan.toPush.includes("d"), "31.16 an unreferenced blob is never published");
+
+const blind = photoPlan({
+  referenced: ["a", "b"],
+  local: ["a"],
+  remote: { known: false, reason: "no-access" },
+});
+eq(blind.lost, [], "31.17 an unreadable store reports NOTHING lost");
+eq(blind.toPush, [], "31.18 and pushes nothing, since it cannot know what is there");
+ok(!blind.known, "31.19 it says it does not know, rather than guessing empty");
+
+/* the codec: a JPEG is not text, and the text encoder mangles it */
+const raw = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x80, 0xfe]);
+const asBytes = bytesToBase64(raw);
+eq(
+  [...Buffer.from(asBytes, "base64")],
+  [...raw],
+  "31.20 bytesToBase64 round-trips arbitrary bytes exactly"
+);
+ok(
+  utf8ToBase64(new TextDecoder().decode(raw)) !== asBytes,
+  "31.21 and the text encoder does NOT — which is why photos need their own"
+);
+eq(
+  await blobToBase64(jpegOf(3)),
+  bytesToBase64(new Uint8Array(await jpegOf(3).arrayBuffer())),
+  "31.22 blobToBase64 is that same core, over a blob"
+);
+eq(
+  utf8ToBase64("LT's Hobbies&Games2 · Æther ’x’"),
+  bytesToBase64(new TextEncoder().encode("LT's Hobbies&Games2 · Æther ’x’")),
+  "31.23 and the ledger path is observably unchanged by sharing it"
+);
+
 
 report();

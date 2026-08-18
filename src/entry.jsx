@@ -1,8 +1,9 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./app.jsx";
-import { utf8ToBase64, base64ToUtf8 } from "./b64.mjs";
+import { utf8ToBase64, base64ToUtf8, blobToBase64 } from "./b64.mjs";
 import { classifyStatus, pushBody } from "./remote-rules.mjs";
+import { photoName, photoIdFromName, mimeFromName, isAlreadyThere } from "./photo-rules.mjs";
 
 /* ============================================================
    Platform layer. app.jsx never touches a storage API directly —
@@ -130,6 +131,26 @@ const REMOTE = {
   path: "ledger.json",
 };
 
+/* Photos go somewhere else, and the somewhere else is PRIVATE. A mailing label
+   carries a delivery address, a sender and a tracking number; the ledger repo
+   is public and git is permanent, so the two cannot share a home. The ledger
+   stays public precisely so a device with no key can still recover the
+   irreplaceable part — see the note on a token-free pull in api() below.
+
+   `main` rather than an orphan branch: this repo serves no Pages site, so there
+   is nothing a push here could rebuild, and a README-initialised default branch
+   is one less setup step to get wrong.
+
+   One file per photo, named by id. That is the entire design: a photo path is
+   written exactly once by whoever holds it, so photo sync is a set difference
+   with no merge, no sha bookkeeping and no conflict possible by construction. */
+const PHOTOS = {
+  owner: "shivinate7",
+  repo: "mailaudit-photos",
+  branch: "main",
+  dir: "photos",
+};
+
 /* Deliberately OUTSIDE the "mailday:" namespace above. window.storage.list()
    enumerates that prefix; nothing calls it today, but the day someone adds
    "back up everything in the namespace" the token would be swept into a file
@@ -186,6 +207,44 @@ async function api(path, init = {}) {
     /* 5xx and rate-limit pages are sometimes not JSON */
   }
   return { ok: res.ok, status: res.status, body, headers: res.headers };
+}
+
+/* Same request, but asking GitHub for the file's own bytes instead of a JSON
+   envelope. Returns the Response undigested, because a photo is binary and
+   res.json() would be nonsense.
+
+   The raw media type is what keeps photos off the base64 decode path entirely,
+   and it sidesteps the Contents API's 1MB cliff: over that size the JSON
+   `content` field comes back empty, while raw serves the bytes up to 100MB. */
+async function apiRaw(path) {
+  const { token } = rec();
+  const headers = {
+    Accept: "application/vnd.github.raw+json",
+    "X-GitHub-Api-Version": "2022-11-28",
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  if (typeof navigator !== "undefined" && navigator.onLine === false)
+    throw remoteErr("offline");
+  let res;
+  try {
+    res = await fetch(API + path, { headers });
+  } catch {
+    throw remoteErr("offline");
+  }
+  return res;
+}
+
+/* GitHub asks for at least a second between writes to one repo, and caps
+   content-generating requests at 80/min and 500/hr. This lives here rather than
+   in app.jsx because window.remote is the transport — rate-limit policy is a
+   property of the wire, not of the ledger. It also means the test harness,
+   which replaces window.remote wholesale, never pays a real second per photo. */
+const WRITE_GAP_MS = 1000;
+let lastWrite = 0;
+async function spaceWrites() {
+  const wait = lastWrite + WRITE_GAP_MS - Date.now();
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  lastWrite = Date.now();
 }
 
 /* The mapping itself lives in src/remote-rules.mjs so it can be asserted on —
@@ -279,6 +338,120 @@ window.remote = {
      holding the copy worth keeping isn't stuck behind a conflict it could
      otherwise clear only by destroying that copy. Safe-ish because every push
      is a commit: the overwritten version stays in the branch's history. */
+  /* ---- photos ----
+     Blob in, blob out, ids only. app.jsx never learns that a photo is a file or
+     what it is called — the same seam that keeps the string "ledger.json" out
+     of it. The id -> filename map below is why: only this layer knows the
+     extension, and it is the extension that carries the image type, because a
+     raw GET answers with GitHub's media type rather than the file's own. */
+  async photoTarget() {
+    return { ...PHOTOS };
+  },
+
+  /* Populated by listPhotos, read by pullPhoto. Every pull lists before it
+     fetches, so this is always warm by the time it is needed. */
+  _names: new Map(),
+
+  /* One request, via the Trees API rather than Contents: it returns the whole
+     directory with an explicit `truncated` flag and no 1000-entry cap to guess
+     at. The Contents endpoint is documented to stop at 1000 files without
+     saying what it does past that, and a 403 there would classify as
+     `forbidden` — telling the user their perfectly good token needs write
+     access.
+
+     THREE-VALUED ON PURPOSE. A 404 means "no photos pushed yet" on a repo you
+     can see and "you cannot see this repo" on a private one, because GitHub
+     hides existence rather than admitting a 403. Collapsing that to an empty
+     set makes a device that simply has no key conclude every photo it owns is
+     lost. So on a 404 we ask one cheap follow-up question — can we see the repo
+     at all? — and only claim knowledge when we have it. */
+  async listPhotos() {
+    const res = await api(
+      `/repos/${PHOTOS.owner}/${PHOTOS.repo}/git/trees/${PHOTOS.branch}:${PHOTOS.dir}`
+    );
+    if (res.ok) {
+      const tree = Array.isArray(res.body?.tree) ? res.body.tree : [];
+      const ids = [];
+      const sizes = {};
+      window.remote._names = new Map();
+      for (const e of tree) {
+        if (e.type !== "blob") continue;
+        const id = photoIdFromName(e.path);
+        if (!id) continue; /* a README or anything else that isn't ours */
+        ids.push(id);
+        sizes[id] = e.size || 0;
+        window.remote._names.set(id, e.path);
+      }
+      return { known: true, ids, sizes, truncated: !!res.body?.truncated };
+    }
+    if (res.status === 404) {
+      const repo = await api(`/repos/${PHOTOS.owner}/${PHOTOS.repo}`);
+      /* the repo is there and readable, so the directory simply doesn't exist
+         yet — which is exactly the state of a freshly created backup repo */
+      if (repo.ok) {
+        window.remote._names = new Map();
+        return { known: true, ids: [], sizes: {}, truncated: false };
+      }
+      return { known: false, reason: repo.status === 404 ? "no-access" : classify(repo).code };
+    }
+    return { known: false, reason: classify(res).code };
+  },
+
+  /* Always a create, so never a sha — see pushBody. A PUT onto a path that
+     already holds bytes is success, not a conflict: the photo is immutable and
+     addressed by its id, so "already there" means the job is done. That test
+     reads the raw status, not the classified code, because classifyStatus folds
+     a sha-less 422 and a throttling 409 into the same "conflict" and they mean
+     opposite things here. */
+  async pushPhoto(id, blob, message) {
+    const r = rec();
+    if (!r.token) throw remoteErr("no-key");
+    const name = photoName(id, blob?.type);
+    const body = {
+      message: message || `photo ${id}`,
+      content: await blobToBase64(blob),
+      branch: PHOTOS.branch,
+    };
+    await spaceWrites();
+    const res = await api(
+      `/repos/${PHOTOS.owner}/${PHOTOS.repo}/contents/${PHOTOS.dir}/${name}`,
+      { method: "PUT", body: JSON.stringify(body) }
+    );
+    if (res.ok) {
+      window.remote._names.set(id, name);
+      return { id, skipped: false };
+    }
+    if (isAlreadyThere(res.status, res.body?.message)) {
+      window.remote._names.set(id, name);
+      return { id, skipped: true };
+    }
+    throw classify(res);
+  },
+
+  /* NOT res.blob(). That would take its type from the response Content-Type,
+     which is GitHub's media type rather than image/jpeg — and that blob flows
+     straight into blobToDataUrl on the "Backup + photos" path, which would
+     write data:application/vnd.github.raw into the backup file and faithfully
+     restore the wrong type later. One pulled photo would quietly poison the
+     local backup format. Build the blob from the bytes and the filename. */
+  async pullPhoto(id) {
+    const name = window.remote._names.get(id) || photoName(id, "image/jpeg");
+    const res = await apiRaw(
+      `/repos/${PHOTOS.owner}/${PHOTOS.repo}/contents/${PHOTOS.dir}/${name}?ref=${PHOTOS.branch}`
+    );
+    if (!res.ok) {
+      let body = null;
+      try {
+        body = await res.json();
+      } catch {
+        /* raw errors are not always JSON */
+      }
+      throw classify({ ok: false, status: res.status, body, headers: res.headers });
+    }
+    const bytes = await res.arrayBuffer();
+    return new Blob([bytes], { type: mimeFromName(name) });
+  },
+
   async pushForce(text, message) {
     const head = await api(
       `/repos/${REMOTE.owner}/${REMOTE.repo}/contents/${REMOTE.path}?ref=${REMOTE.branch}`

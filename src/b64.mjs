@@ -18,12 +18,34 @@
    blows the argument limit; chunking keeps each spread small. */
 const CHUNK = 0x8000;
 
-export function utf8ToBase64(str) {
-  const bytes = new TextEncoder().encode(str);
+/* The shared core. Extracted so the photo path cannot drift from the ledger
+   path — they are the same operation on different bytes, and having two copies
+   of a loop whose only failure mode is silent corruption is asking for it. */
+export function bytesToBase64(bytes) {
   let bin = "";
   for (let i = 0; i < bytes.length; i += CHUNK)
     bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
   return btoa(bin);
+}
+
+export function utf8ToBase64(str) {
+  return bytesToBase64(new TextEncoder().encode(str));
+}
+
+/* Photos, for the Contents API, which takes base64 only.
+
+   This must NOT go through utf8ToBase64. A JPEG is arbitrary bytes, not UTF-8;
+   decoding it as text and re-encoding mangles every byte that isn't valid UTF-8
+   and silently changes the length. Measured before writing this: 300KB of
+   high-byte data survives this function byte-identical and does not survive the
+   text path. That is the whole reason this file exists — it is the one piece
+   here that fails by producing plausible corrupted data rather than an error.
+
+   Only an encoder is needed. The pull asks GitHub for the raw media type and
+   reads res.arrayBuffer(), so photo bytes never round-trip through base64 on
+   the way back. */
+export async function blobToBase64(blob) {
+  return bytesToBase64(new Uint8Array(await blob.arrayBuffer()));
 }
 
 export function base64ToUtf8(b64) {

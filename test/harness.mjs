@@ -9,7 +9,8 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 /* the REAL codec, not a mock of it — see the note on the remote mock below */
-import { utf8ToBase64, base64ToUtf8 } from "../src/b64.mjs";
+import { utf8ToBase64, base64ToUtf8, blobToBase64 } from "../src/b64.mjs";
+import { photoName, mimeFromName } from "../src/photo-rules.mjs";
 
 export const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -182,11 +183,36 @@ export let remote = {
   key: null,
   calls: [],
   fail: null, // an error `.code` to throw from the next push/pull
+  photoFail: null, // ditto, but for the photo methods only
   pushedAt: null,
   pulledAt: null,
 };
 /* fixed so a snapshot never depends on the clock */
 const REMOTE_NOW = Date.parse("2026-08-12T14:03:00Z");
+
+/* The remote photo store: filename -> base64, exactly as GitHub holds it.
+   Encoded through the REAL blobToBase64 for the same reason the ledger goes
+   through the real utf8ToBase64 — a codec regression has to be able to fail an
+   app-level test, and every blob the fixture makes is otherwise small and
+   boring enough that a broken encoder would sail through. */
+export let remotePhotos = new Map();
+/* what listPhotos can see. `null` = readable; a code = we cannot tell what is
+   there, which is what a private repo answers a keyless device. */
+export let photosUnknown = null;
+
+export function setPhotosUnknown(reason) {
+  photosUnknown = reason;
+}
+export function remotePhotoIds() {
+  return [...remotePhotos.keys()].map((n) => n.replace(/\.[^.]+$/, ""));
+}
+
+/* test-only inverse of blobToBase64; the app never decodes photo base64,
+   because a real pull reads raw bytes off the wire */
+function b64ToBlob(b64, type) {
+  const bin = Buffer.from(b64, "base64");
+  return new win.Blob([new Uint8Array(bin)], { type });
+}
 
 const remoteApi = {
   async target() {
@@ -239,6 +265,66 @@ const remoteApi = {
     remote.pushedAt = REMOTE_NOW;
     return { sha: remote.sha, pushedAt: remote.pushedAt };
   },
+  async photoTarget() {
+    return {
+      owner: "shivinate7",
+      repo: "mailaudit-photos",
+      branch: "main",
+      dir: "photos",
+    };
+  },
+  async listPhotos() {
+    remote.calls.push({ op: "listPhotos" });
+    /* a private repo 404s a caller it doesn't trust, and "I can't see it" is
+       not "it's empty" — the app must not read this as "every photo is lost" */
+    if (photosUnknown) return { known: false, reason: photosUnknown };
+    /* The photo repo is PRIVATE, and GitHub hides a private repo's existence
+       behind a 404 rather than admitting a 403. So a keyless device cannot tell
+       "no photos yet" from "not allowed to look" — which is the whole reason
+       listPhotos is three-valued. Modelling it as readable-without-a-key would
+       make the suite blind to the exact bug this shape exists to prevent. */
+    if (!remote.key) return { known: false, reason: "no-access" };
+    const ids = [];
+    const sizes = {};
+    for (const name of remotePhotos.keys()) {
+      const id = name.replace(/\.[^.]+$/, "");
+      ids.push(id);
+      sizes[id] = 1000;
+    }
+    return { known: true, ids, sizes, truncated: false };
+  },
+  async pushPhoto(id, blob, message) {
+    if (!remote.key)
+      throw Object.assign(new Error("no-key"), { code: "no-key" });
+    if (remote.photoFail)
+      throw Object.assign(new Error(remote.photoFail), {
+        code: remote.photoFail,
+      });
+    const name = photoName(id, blob?.type);
+    remote.calls.push({ op: "pushPhoto", id, name, message });
+    /* immutable by id: a path that already holds bytes is success, not an
+       overwrite and not a conflict */
+    if (remotePhotos.has(name)) return { id, skipped: true };
+    remotePhotos.set(name, await blobToBase64(blob));
+    return { id, skipped: false };
+  },
+  async pullPhoto(id) {
+    /* a real download takes time, and the sweep runs on a 2s timer — the race
+       between the two is a real one and needs to be reachable from a test */
+    if (remote.photoDelay) await sleep(remote.photoDelay);
+    if (remote.photoFail)
+      throw Object.assign(new Error(remote.photoFail), {
+        code: remote.photoFail,
+      });
+    const name = [...remotePhotos.keys()].find(
+      (n) => n.replace(/\.[^.]+$/, "") === id
+    );
+    if (!name)
+      throw Object.assign(new Error("missing"), { code: "missing" });
+    remote.calls.push({ op: "pullPhoto", id, name });
+    return b64ToBlob(remotePhotos.get(name), mimeFromName(name));
+  },
+
   async pushForce(text, message) {
     remote.fail = null; // the force is what clears a conflict
     remote.deviceSha = remote.sha; // adopt the remote's sha, then overwrite
@@ -257,6 +343,8 @@ export const resetRemote = (seedText) => {
     key: null,
     calls: [],
     fail: null,
+    photoFail: null,
+    photoDelay: 0,
     pushedAt: null,
     pulledAt: null,
   };
@@ -439,6 +527,10 @@ export async function boot(state, photos, opts = {}) {
   if (root) await act(async () => root.unmount()); // else createRoot warns
   store = {};
   photoStore = new Map(photos || []);
+  /* the suite has no isolation between groups — leave these set and group 30
+     leaks straight into 31 */
+  remotePhotos = new Map(opts.remotePhotos || []);
+  photosUnknown = opts.photosUnknown || null;
   resetRemote(opts.remote);
   if (opts.noRemote) delete win.remote;
   else win.remote = remoteApi;
@@ -551,6 +643,18 @@ export const ITEMS = [
   ]),
 ];
 export const TOTAL_CARDS = ITEMS.reduce((s, it) => s + it.qty, 0); // 14
+
+/* distinguishable bytes, including high ones — a JPEG is not UTF-8, and an
+   encoder that treats it as text corrupts exactly these */
+export const jpegBytes = (seed = 1) => {
+  const a = new Uint8Array(512);
+  for (let i = 0; i < a.length; i++) a[i] = (i * 7 + seed * 31 + 199) % 256;
+  return a;
+};
+export const jpegOf = (seed = 1) =>
+  new win.Blob([jpegBytes(seed)], { type: "image/jpeg" });
+export const bytesOf = async (blob) =>
+  blob ? [...new Uint8Array(await blob.arrayBuffer())] : null;
 
 export const jpeg = () =>
   new win.Blob(["fake-jpeg-bytes"], { type: "image/jpeg" });

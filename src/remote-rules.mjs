@@ -27,8 +27,16 @@ export function classifyStatus(status, message = "", opts = {}) {
   if (status === 422) return /sha/i.test(msg) ? "conflict" : "server";
   if (status === 404) {
     /* the branch missing and the file missing are different problems with
-       different fixes, and only one of them is normal */
-    if (/No commit found for the ref/i.test(msg)) return "no-branch";
+       different fixes, and only one of them is normal.
+
+       Two wordings, because GET and PUT do not answer alike: a read of a bad
+       ref says "No commit found for the ref", a write to one says "Branch not
+       found". Matching only the read wording sent a setup-time PUT down the
+       `missing` path, where the copy reads "Nothing has been pushed yet" — the
+       most misleading thing it could say at exactly the moment someone is
+       wondering why their brand-new branch doesn't work. */
+    if (/no commit found for the ref|branch .*not found/i.test(msg))
+      return "no-branch";
     return "missing";
   }
   if (status >= 500) return "server";

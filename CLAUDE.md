@@ -27,9 +27,24 @@ every seller, for "did all four of these arrive?" and for cost basis), and
   `window.photos` (async put/get/delete/keys/clear/sweep/usage over IndexedDB,
   holding envelope photos) and `window.remote` (target/status/setKey/clearKey/
   pull/push/pushForce over the GitHub Contents API), then mounts the app.
-- `src/b64.mjs` — UTF-8-safe base64, for the Contents API. Its own module
+- `src/b64.mjs` — base64 for the Contents API: `bytesToBase64` is the shared
+  core, `utf8ToBase64`/`base64ToUtf8` the ledger's text path, and
+  `blobToBase64` the photo path. A JPEG is not UTF-8 — pushing one through the
+  text encoder mangles every byte that isn't valid UTF-8 and changes its length
+  (measured, and asserted in 31.21). Only an encoder is needed for photos: the
+  pull asks for the raw media type and reads `arrayBuffer()`, so photo bytes
+  never round-trip through base64 coming back. Its own module
   because it is the one piece here that fails by producing *plausible corrupted
   data* rather than an error, and `entry.jsx` can't be loaded from a test.
+- `src/photo-rules.mjs` — the photo-sync rules, same rationale as the two below:
+  naming (`photoName`/`photoIdFromName`/`mimeFromName` — the image type has to
+  survive in the filename, because a raw GET answers with GitHub's media type,
+  not the file's), `isAlreadyThere` (keyed on the raw **status**, not the
+  classified code, since `classifyStatus` folds a sha-less 422 and a throttling
+  409 into the same `conflict` and they mean opposite things), and `photoPlan`
+  (the set difference, three-valued on the remote). Imported by `entry.jsx` for
+  naming and by `app.jsx` for `photoPlan` — **the one local-module import in
+  `app.jsx`**, whose dependencies are otherwise react, react-dom and papaparse.
 - `src/remote-rules.mjs` — the two adapter decisions worth asserting on:
   `classifyStatus` (GitHub's overloaded status codes → an error code the UI can
   phrase) and `pushBody` (which omits the sha only on a create). Same reasoning
@@ -55,7 +70,12 @@ Note `shivinate7.github.io` is a single origin across every repo the user has
 on Pages — hence the `mailday:` key namespace, and hence a per-origin storage
 quota shared with any other Pages project.
 
-**`window.remote` is transport, not storage.** localStorage remains the source
+**`window.remote` is transport, not storage.** It now carries photos as well
+as the ledger, to a second (private) repo — but still speaks only ids and
+blobs: `app.jsx` never learns a filename, exactly as it never learns the string
+`"ledger.json"`. The naming rules live in `src/photo-rules.mjs` and are
+imported only by `entry.jsx`.
+ localStorage remains the source
 of truth; the GitHub copy is a manual, tap-triggered backup and the app is
 fully functional offline. Nothing in it runs on a timer. Continuous sync was
 considered and rejected: the ledger blob is ~350KB at 1000 items and is
@@ -286,8 +306,9 @@ page. See "Known open threads" for exactly what that leaves unproven.
   the *only* thing between a corrupt payload and a wiped ledger, so it should
   exist once; and the replaced-envelopes warning then covers the pull too, where
   it matters more, because a pull is one tap rather than a deliberate file drop.
-- **Photo ids on restore: keep an id when its blob is inlined in the payload OR
-  already present on this device; strip only the rest.** This used to be
+- **Photo ids on restore: keep an id when its blob is inlined in the payload,
+  already present on this device, OR known to be on the photo remote; strip
+  only the rest.** This used to be
   all-or-nothing on `data.photos`, which is right for a file restore onto a
   fresh origin and silent data loss everywhere else. A pushed payload never
   carries photos (they stay local by design), so pulling onto the very device
@@ -295,6 +316,15 @@ page. See "Known open threads" for exactly what that leaves unproven.
   from IndexedDB two seconds later, with nothing to restore from. The same bug
   was already latent on the file path (plain Backup → restore on the same
   device); it was simply rarely exercised. Tests 19.11–19.12, 26.11–26.13.
+  The third arm (`extraPresent`) came with photo sync and matters in two places
+  a narrower rule would lose data: one GET failing out of twelve would strip
+  that one id, the debounced save would write the stripped ledger and the next
+  push would publish it — severing the link to a photo sitting safe on GitHub
+  that a retry would have fetched; and when the photo repo can't be reached at
+  all, every id would go at once. **Keeping an id costs a blank manila tile
+  until the next pull. Stripping it costs the photo.** So 26.13 split: strip
+  only when the store was actually *read* and genuinely didn't hold it (26.13),
+  keep when we couldn't look (26.13b).
 - **Push / Pull (GitHub).** Manual, tap-triggered backup to `ledger.json` on the
   **`data` branch** of `shivinate7/mailaudit` — never `main`, because Pages
   deploys from main's root and every backup would otherwise trigger a site
@@ -308,7 +338,40 @@ page. See "Known open threads" for exactly what that leaves unproven.
   escape hatch, and it is safe-ish because every push is a commit, so what it
   overwrote is still in the branch's history. A bad *pull* has no such
   recovery — which is why Pull gets the two-tap and Push doesn't.
-  Photos never go to git.
+  **Photos go too, to a different repo.** `shivinate7/mailaudit-photos`,
+  **private**, branch `main`, one file per photo at `photos/<id>.<ext>`. Private
+  because a mailing label carries a delivery address, a sender and a tracking
+  number, and the ledger repo is public and git is permanent. Push and Pull each
+  do both legs in one tap — ledger first, photos after.
+
+  The whole algorithm is a **set difference over ids**. A photo file is
+  immutable and addressed by its id, so every remote path is written exactly
+  once by whoever holds it: nothing merges, nothing overwrites, there is no
+  second sha to track, and **photo sync cannot conflict by construction**. That
+  property is why one-file-per-photo beat both a manifest (mutable, needs its
+  own sha machinery, can drift from the directory, saves zero requests) and the
+  Git Data API (one tidy commit, but a ref update needs a parent sha, so two
+  devices backing up at once would genuinely collide). Protect it.
+
+  Three things that are load-bearing and non-obvious:
+
+  - **The photo phase has its own state and its own copy table (`PHOTO_SAYS`).**
+    It must never write `pushState`, because `pushState === "conflict"` is the
+    only gate on **Push anyway**, which force-overwrites the *ledger*. GitHub
+    answers 409 to rapid successive Contents writes on one repo, so routing a
+    throttled photo upload through the ledger's error path would offer a button
+    that silently discards another device's check-ins. Test 30.11.
+  - **A pull downloads before it applies.** See the restore bullet above: run
+    `applyBackup` first and every photo id is stripped. Tests 30.5–30.9.
+  - **`listPhotos()` is three-valued.** A 404 means "nothing pushed yet" on a
+    repo you can see and "you can't see this repo" on a private one, because
+    GitHub hides existence rather than admitting a 403 — verified live: a
+    keyless request to `mailaudit-photos` 404s on both the tree *and* the repo
+    itself. Collapse that to "empty" and a device with no key concludes every
+    photo it owns is **lost**. So it answers `{known:true, ids}` or
+    `{known:false, reason}`, `photoPlan` refuses to compute `lost` or `toPush`
+    when it doesn't know, and a 404 is disambiguated by one extra
+    `GET /repos/{owner}/{repo}`. Tests 26.13b, 30.13–30.15.
 - Persistence auto-saves debounced 500ms with saved/saving indicator. The remote
   is deliberately *not* on that path — no error there ever touches `saving`.
 
@@ -615,15 +678,27 @@ device, since GitHub hides a private repo's existence behind a 404.)
    only builds on pushes to its configured branch, and this repo has **no
    `.github/workflows`**, so a push to `data` triggers nothing. Never merge
    `data` into `main`.
-3. Settings → Developer settings → Personal access tokens → **Fine-grained**.
+3. Create the photo repo: **`shivinate7/mailaudit-photos`, private, initialised
+   with a README** so `main` exists — a Contents PUT into a repo with no commits
+   is not a path worth relying on. Private is not optional: these are pictures
+   of mailing labels with the delivery address on them.
+4. Settings → Developer settings → Personal access tokens → **Fine-grained**.
    Name it per device (`mailday-iphone`) so one can be revoked alone. Only
-   select repositories: `mailaudit`. Repository permissions: **Contents → Read
-   and write** (Metadata → Read-only appears automatically and is required).
-   Nothing else. **Fine-grained PATs cap at 366 days** — set a real expiry and a
+   select repositories: **`mailaudit` AND `mailaudit-photos`** — one widened
+   token covers both; an existing token can be edited rather than regenerated.
+   Repository permissions: **Contents → Read and write** (Metadata → Read-only
+   appears automatically and is required). Nothing else. **Fine-grained PATs cap at 366 days** — set a real expiry and a
    calendar reminder, because when it lapses the only symptom is a push that
    stops working.
-4. In the app: Sync → paste → Save key → Push. Expect `Pushed ✓`, and check
-   `main` gained no commit.
+5. In the app: Sync → paste → Save key → Push. Expect `Pushed ✓`, and check
+   `main` gained no commit. With photos in the ledger, expect `mailaudit-photos`
+   to gain one commit per photo (cosmetic — that repo serves nothing) and the
+   button to stay on `Pushing…` until they are done, roughly a second each.
+
+   Then the test worth actually doing: **pull onto a second device or origin**
+   and confirm the thumbnails render. That is the one path where getting the
+   order wrong is silent — the ledger would come back looking perfect with every
+   photo id quietly stripped.
 
 ### Icons
 
@@ -673,7 +748,9 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 219 assertions, no test framework, ~20s. `test/app.test.mjs` runs
+`npm test` — 267 assertions, no test framework, ~30s (groups 30–31 spend a few
+seconds in real timers, deliberately: the sweep race can only be reached by
+letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
 the jsdom setup, storage mocks, DOM helpers and the fixture.
 
@@ -768,6 +845,11 @@ Gotchas worth remembering:
   reach into the specific card, not the first hit on the page.
 - Backup, Push and Pull live behind the Sync disclosure, so a test has to
   `await openSync()` first. It's idempotent; just call it.
+- The `Pushed ✓` flash now starts **after** the photo phase, not after the
+  ledger leg — showing it while a dozen uploads are queued is a lie, and it
+  re-enabled the button into a second concurrent loop. So a test that pushes
+  twice must match `/^Push(ed ✓)?$/`, and both buttons are disabled on
+  `syncBusy` for the whole operation rather than on `pushState`/`pullState`.
 - The ruled head replaced a Hide-received button, a native `<select>` and a chip
   disclosure, so `harness.mjs` exports `cell(re)`, `toggleShowing()`,
   `openRange()` and `pickSort(label)`. There is no `<select>` left to drive with
@@ -780,6 +862,44 @@ Gotchas worth remembering:
   route it through `type()`, which exists for React-tracked inputs.
 - A successful push shows `Pushed ✓` for 2.5s, so `btn(/^Push$/)` won't match
   during the flash. Assert on state, or wait it out.
+
+New in groups 30–31 (photo sync). `harness.mjs` grows a remote photo store
+alongside the ledger mock, with three choices worth keeping:
+
+- It encodes through the **real** `blobToBase64`, so an app-level push→pull
+  round trip exercises the actual codec — 30.7 asserts the bytes come back
+  identical, and swapping the encoder for the text one turns it red.
+- **`listPhotos` refuses to answer without a key**, because the photo repo is
+  private and GitHub hides a private repo behind a 404. Modelling it as readable
+  keylessly would make the suite blind to the entire `no-access` bug class — and
+  in fact it did: this is what forced 26.13 to split.
+- `remote.photoDelay` makes a download slow, which is the only way to put the
+  2s sweep between two arriving photos (30.16).
+
+The sweep is protected by **two** guards — `syncBusy` in the effect's condition
+and `syncingRef.current` inside the timeout callback — and they are genuinely
+redundant: removing either alone leaves 30.16 green, removing both turns it red.
+That is deliberate (the ref is set synchronously; the state behind it commits on
+React's schedule, which jsdom will not reliably reproduce), but it does mean no
+test pins either one individually. Don't read a surviving single mutant here as
+dead code.
+
+One bug this exercise actually caught, worth keeping as a cautionary tale: the
+pull's "these photos are about to be gone" warning was measured off
+`plan.toPush`, which is keyed on the **incoming** ledger's ids — precisely the
+set that survives a pull untouched. It fired when photos were safe and stayed
+silent when they were genuinely destroyed. It is now measured against what the
+replace actually drops (referenced here, absent from the incoming copy, absent
+from the remote). Tests 30.18–30.20 pin both directions, because the first
+version got both of them backwards.
+
+Mutation-tested, all confirmed to turn the suite red: a pull applying the backup
+*before* downloading (ids stripped); photo bytes through the text encoder; a
+push that doesn't subtract what is already remote; an unreadable store read as
+empty; both sweep guards removed; and — the most valuable assertion in the
+feature — **a photo error escaping into the ledger's error path**, which makes
+`Push anyway` appear and would let a slow upload arm a button that overwrites
+another device's ledger (30.11).
 
 Test groups map to the claims this file makes, so if you change a behaviour
 deliberately, change the assertion and the prose in the same commit. What's
@@ -814,8 +934,15 @@ keyless `pull()` against the empty `data` branch returned 404 → `missing`. Tha
 is worth more than it looks — it proves CORS works from `shivinate7.github.io`,
 that the branch resolves (a missing *branch* answers "No commit found for the
 ref", a missing *file* answers "Not Found"), and that `classifyStatus` maps the
-real response. **Still never run against real GitHub: an authenticated push, a
-pull that returns content, and a conflict.**
+real response. Since then the `data` branch has taken **real authenticated
+pushes** (`git log origin/data` shows them), so that gap is closed for the
+ledger. Photo sync has had its read paths verified live and keylessly — the raw
+media type returns bytes with `access-control-allow-origin: *`, a directory
+listing returns `{name,type,size,sha}`, a missing directory returns 404 "Not
+Found" (so `missing`, distinct from `no-branch`), and a keyless request to the
+private `mailaudit-photos` 404s on both the tree and the repo, which is the
+`no-access` path. **Still never run against real GitHub: an authenticated photo
+PUT, a photo pull that returns bytes, and a ledger conflict.**
 
 That same session is what surfaced the group-28 bug — Pull unreachable on an
 empty ledger. Worth remembering as a method: the suite was all green and the
@@ -853,6 +980,29 @@ give no isolation between groups.
 - **No auto-pull and no merge, both deliberate.** The app never fetches on its
   own, and a conflict is resolved by the user (pull, or force), never by code
   trying to reconcile two `received` maps.
+- **Photos in git are permanent, including discarded ones.** Nothing ever
+  deletes a remote photo: Discard, the sweep and `resetAll` all stop at the
+  device boundary, and git history would keep the blob even if the tip didn't.
+  So a label from an envelope you discarded stays in the private repo forever.
+  A `DELETE` path is easy to add but costs a fourth content-generating request
+  class and a new destructive control; being honest about it is the better
+  trade. The upside of the same fact: **Reset is now survivable for photos** —
+  `resetAll` keeps the token and sha, so a Pull brings ledger and photos back.
+- **The 500-content-requests/hour cap is shared with the ledger push.** A
+  first-ever backfill of several hundred photos cannot finish inside an hour.
+  Hence `PHOTO_BATCH` (25 per tap) and the resumable set difference; the loop
+  also stops rather than grinds on a 403/429, per GitHub's own guidance.
+- **The token now spans two repos.** One widened fine-grained PAT covers
+  `mailaudit` and `mailaudit-photos`. That is one more private repo inside the
+  blast radius of the shared-origin risk noted above — the mitigation is still
+  the single-purpose Contents-only scope and one token per device, and the
+  alternative (a second, separate token) was considered and declined for the
+  paste-per-device cost.
+- **Keyless pull now recovers the ledger but not the photos.** The ledger repo
+  is public, so that half is unchanged and a fresh device still gets its
+  check-ins back with no setup. Photos need the key. They must read as *"needs
+  your key"* and never as lost — that distinction is the whole point of
+  `listPhotos` being three-valued.
 - **Never run against real GitHub.** Every push/pull path is covered by the
   harness mock and by hand against the built page, but no HTTP request has
   actually gone to the Contents API. Work through the setup checklist in

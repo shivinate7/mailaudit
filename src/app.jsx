@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Papa from "papaparse";
+import { photoPlan } from "./photo-rules.mjs";
 
 /* ============================================================
    MAIL DAY LEDGER — OrderWand CSV check-in tracker
@@ -173,8 +174,24 @@ function normName(s) {
 let envSeq = 0;
 const newEnvelopeId = () =>
   `env-${Date.now().toString(36)}-${(envSeq++).toString(36)}`;
+/* The random tail is not decoration. envSeq resets to 0 on every page load, so
+   before photos were shared these ids were unique only if two of them were
+   never generated in the same millisecond — fine for a store one device owns
+   alone. On a remote store keyed by id and never overwritten it stops being
+   fine: a collision means the second device's push lands on an existing path,
+   which we correctly read as "already there, nothing to do", and that device
+   then downloads the OTHER device's photo under its own id. A silently wrong
+   picture, which is the exact failure class this codebase carves modules out to
+   prevent. Old ids keep working; nothing persisted changes shape. */
+const rand8 = () => {
+  try {
+    return crypto.randomUUID().replace(/-/g, "").slice(0, 8);
+  } catch {
+    return Math.random().toString(36).slice(2, 10).padEnd(8, "0");
+  }
+};
 const newPhotoId = () =>
-  `pho-${Date.now().toString(36)}-${(envSeq++).toString(36)}`;
+  `pho-${Date.now().toString(36)}-${(envSeq++).toString(36)}${rand8()}`;
 
 const bytes = (n) =>
   n >= 1e9
@@ -1309,21 +1326,45 @@ const linkBtn = {
    backup rather than a sync, and the ledger on the device is still the real
    one. */
 const REMOTE_SAYS = {
-  "no-key": "Add a GitHub key first — Push needs one, Pull doesn’t.",
+  "no-key": "Add a GitHub key first — pushing needs one, pulling the ledger doesn’t.",
   "bad-key":
     "That doesn’t look like a GitHub token — they start with github_pat_ or ghp_.",
   auth: "That key has expired or been revoked. Paste a new one.",
   forbidden:
-    "That key can’t write here. It needs Contents: read & write on the repo.",
+    "That key can’t write to the ledger repo. It needs Contents: read & write on mailaudit.",
   "rate-limit": "GitHub is throttling requests. Try again shortly.",
   conflict:
     "The remote copy changed since you last pulled. Pull first, or push anyway to overwrite it.",
-  missing: "Nothing has been pushed yet.",
+  missing: "No ledger has been pushed yet.",
   "no-branch": "The data branch doesn’t exist yet — see the setup notes.",
   offline: "No connection. The ledger is safe on this device.",
   server: "GitHub is having trouble. Try again.",
   "bad-response":
     "That isn’t a Mail Day ledger. Nothing on this device was changed.",
+};
+
+/* A SEPARATE table, and photo failures get a separate piece of state, because
+   the ledger's codes drive `pushState` and `pushState === "conflict"` is the
+   only thing gating "Push anyway" — which force-overwrites the LEDGER. GitHub
+   answers 409 to rapid successive writes on one repo, so routing a throttled
+   photo upload through the ledger's error path would offer the user a button
+   that silently discards another device's check-ins. Photos must never be able
+   to arm that. */
+const PHOTO_SAYS = {
+  "no-access":
+    "Photos need your key — they live in a private repo, so pulling them isn’t anonymous.",
+  "no-key": "Photos need a key to sync. The ledger above is safe either way.",
+  auth: "That key can’t reach the photo repo. Check it covers mailaudit-photos.",
+  forbidden:
+    "That key can’t write photos. It needs Contents: read & write on mailaudit-photos.",
+  "rate-limit":
+    "GitHub is throttling photo uploads. The ledger is pushed — tap Push again shortly.",
+  "no-branch":
+    "The photo repo has no main branch yet — create it with a README first.",
+  missing: "The photo repo isn’t reachable. Create mailaudit-photos first.",
+  offline: "No connection, so photos didn’t sync. Nothing was lost.",
+  conflict: "GitHub is busy. The ledger is pushed — tap Push again to finish the photos.",
+  server: "GitHub had trouble with the photos. Tap Push again to finish.",
 };
 
 /* ---------- Upload zone ---------- */
@@ -1459,8 +1500,13 @@ function Notice({ children, actionLabel, onAction, onDismiss }) {
 
 /* Resolves photo ids to object URLs and revokes them on the way out — leaking
    these keeps whole images alive in memory for the life of the page. */
-function usePhotoUrls(ids) {
-  const key = (ids || []).join(",");
+/* `epoch` exists because the key below is the id list and nothing else, and a
+   pull can write blobs WITHOUT changing that list — same ids, new array,
+   identical join, so the effect never re-runs and the photos you just
+   downloaded stay blank squares until a reload. Anything that writes to the
+   photo store bumps the epoch; that is what puts them on screen. */
+function usePhotoUrls(ids, epoch = 0) {
+  const key = `${epoch}|${(ids || []).join(",")}`;
   const [urls, setUrls] = useState({});
   useEffect(() => {
     let dead = false;
@@ -1486,8 +1532,8 @@ function usePhotoUrls(ids) {
   return urls;
 }
 
-function PhotoStrip({ ids, onRemove }) {
-  const urls = usePhotoUrls(ids);
+function PhotoStrip({ ids, onRemove, epoch = 0 }) {
+  const urls = usePhotoUrls(ids, epoch);
   const [zoom, setZoom] = useState("");
   if (!ids?.length) return null;
   return (
@@ -1939,7 +1985,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel }) {
 
 /* ---------- A recorded envelope, waiting to be tied to a package ---------- */
 
-function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit }) {
+function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) {
   const [confirmGk, setConfirmGk] = useState("");
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -2071,7 +2117,7 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit }) {
         )}
         {env.photos?.length > 0 && (
           <div style={{ marginTop: 8 }}>
-            <PhotoStrip ids={env.photos} />
+            <PhotoStrip ids={env.photos} epoch={photoEpoch} />
           </div>
         )}
       </div>
@@ -2262,7 +2308,29 @@ export default function MailDayLedger() {
   const [remoteInfo, setRemoteInfo] = useState(null); // { hasKey, sha, pushedAt, pulledAt }
   const [pushState, setPushState] = useState("idle"); // idle | pushing | pushed | conflict
   const [pullState, setPullState] = useState("idle"); // idle | pulling
+  const [photoTarget, setPhotoTarget] = useState(null);
   const [remoteMsg, setRemoteMsg] = useState(null); // { tone, text }
+  /* Photos get their own message and their own progress. See PHOTO_SAYS: a
+     photo failure that reached `pushState` could arm "Push anyway" and
+     overwrite the ledger. */
+  const [photoMsg, setPhotoMsg] = useState(null); // { tone, text }
+  const [photoSync, setPhotoSync] = useState(null); // { dir, done, total }
+  /* Bumped by every write to the photo store, so thumbnails re-resolve after a
+     pull that kept the same ids — see usePhotoUrls. */
+  const [photoEpoch, setPhotoEpoch] = useState(0);
+  /* One flag for the whole operation, ledger phase and photo phase together.
+     Without it the "Pushed ✓" flash flips Push back to enabled 2.5s in while
+     uploads are still queued, and a second tap starts a CONCURRENT second loop:
+     duplicate PUTs, double the rate budget, and genuinely simultaneous writes
+     to one repo — which is what produces the 409 in the first place. */
+  const [syncBusy, setSyncBusy] = useState(false);
+  /* The sweep reads this synchronously. setState commits on React's schedule,
+     and a timer armed two seconds ago does not wait for that. */
+  const syncingRef = useRef(false);
+  /* A sync now runs for minutes rather than milliseconds, so Reset and a
+     restore can land in the middle of one. Every await-resume checks that its
+     generation is still current and bails if the world moved on. */
+  const syncGen = useRef(0);
   const [keyOpen, setKeyOpen] = useState(false);
   /* uncontrolled on purpose: the token is read once on submit and never enters
      React state, so it can't turn up in a state snapshot or a DevTools dump */
@@ -2375,6 +2443,14 @@ export default function MailDayLedger() {
      key missing one. Note there is deliberately no timestamp in here; the push
      puts one in the commit message instead, so the payload shape stays frozen
      and identical to what the Backup file has always contained. */
+  /* One list, three readers: the backup packer, the sweep, and photo sync. They
+     were three separate flatMaps over the same field, which is three chances
+     for them to disagree about what "in use" means. */
+  const referencedPhotoIds = useMemo(
+    () => [...new Set(envelopes.flatMap((e) => e.photos || []))],
+    [envelopes]
+  );
+
   const snapshot = useCallback(
     () => ({
       mailday: 1,
@@ -2397,7 +2473,7 @@ export default function MailDayLedger() {
       if (withPhotos && window.photos) {
         setBackupBusy(true);
         const out = {};
-        for (const id of envelopes.flatMap((e) => e.photos || [])) {
+        for (const id of referencedPhotoIds) {
           const b = await window.photos.get(id).catch(() => null);
           if (b) {
             const url = await blobToDataUrl(b);
@@ -2417,7 +2493,7 @@ export default function MailDayLedger() {
       a.click();
       URL.revokeObjectURL(a.href);
     },
-    [snapshot, envelopes]
+    [snapshot, referencedPhotoIds]
   );
 
   /* The one restore path, shared by a dropped file and a GitHub pull.
@@ -2429,10 +2505,13 @@ export default function MailDayLedger() {
      Throws on anything unusable — and throws BEFORE the first setState, so a
      failed restore leaves this device completely untouched. */
   const applyBackup = useCallback(
-    async (text, source /* "file" | "remote" */) => {
+    async (text, source /* "file" | "remote" */, extraPresent = null) => {
       const data = JSON.parse(text);
       if (!data.mailday || !Array.isArray(data.items)) throw new Error();
       const remote = source === "remote";
+      /* a restore replaces everything, so anything still in flight against the
+         old world must not land on the new one */
+      syncGen.current++;
       /* Keep a photo id when its blob is inlined in this payload OR already on
          this device; strip only the rest. The old rule was all-or-nothing on
          `data.photos`, which is right for a file restore onto a fresh origin
@@ -2440,7 +2519,18 @@ export default function MailDayLedger() {
          photos (they stay local by design), so pulling onto the very device
          that took them stripped every id — and the sweep effect then deleted
          the blobs from IndexedDB two seconds later, with nothing to restore
-         from. */
+         from.
+
+         `extraPresent` widens that to a third case: ids the REMOTE is known to
+         hold. A pull downloads before it applies, so the blobs are usually
+         local by now and this changes nothing — but it is what saves the two
+         cases where they aren't. One GET out of twelve failing would otherwise
+         strip that one id, the debounced save would write the stripped ledger,
+         and the next push would publish it — destroying the link to a photo
+         sitting safe on GitHub that a retry would have fetched. And when the
+         photo repo can't be reached at all (no key, offline), every id would go
+         at once. Keeping an id costs a blank tile until the next pull; stripping
+         it costs the photo. */
       const inlined =
         data.photos && typeof data.photos === "object" ? data.photos : null;
       const inlinedIds = Object.keys(inlined || {});
@@ -2449,6 +2539,7 @@ export default function MailDayLedger() {
       const present = new Set([
         ...(window.photos ? await window.photos.keys().catch(() => []) : []),
         ...inlinedIds,
+        ...(extraPresent || []),
       ]);
       setItems(data.items);
       setReceived(data.received || {});
@@ -2599,6 +2690,11 @@ export default function MailDayLedger() {
     }
     clearTimeout(resetTimer.current);
     disarm();
+    /* A sync now runs for minutes, not milliseconds, so it can easily still be
+       in flight here. Bumping the generation makes every await-resume inside it
+       bail: otherwise a mid-flight pull would finish and cheerfully restore the
+       ledger that was just cleared. */
+    syncGen.current++;
     setItems([]);
     setReceived({});
     /* envelopes have to go too — left in state they'd be written straight back
@@ -2628,8 +2724,90 @@ export default function MailDayLedger() {
     (async () => {
       setRemoteTarget(await window.remote.target().catch(() => null));
       setRemoteInfo(await window.remote.status().catch(() => null));
+      if (typeof window.remote.photoTarget === "function")
+        setPhotoTarget(await window.remote.photoTarget().catch(() => null));
     })();
   }, [loaded, syncOpen]);
+
+  /* ---- the photo phase ----
+     Shared by push and pull. Photos are immutable and addressed by id, so the
+     whole algorithm is a set difference — nothing to merge, no sha, and no
+     conflict possible: every remote path is written once by whoever holds it.
+
+     Feature-detected, because the harness (and any cached older bundle) exposes
+     a window.remote without these methods, and an undefined call here would be
+     swallowed by the caller's catch and surfaced as a generic ledger error. */
+  const photoSyncAvailable =
+    !!window.remote && typeof window.remote.listPhotos === "function";
+
+  /* Per tap, so a first-ever backfill can't sit uploading for an hour: GitHub
+     allows 500 content-generating requests an hour and the ledger push shares
+     that budget. The set difference makes the next tap resume rather than
+     repeat. */
+  const PHOTO_BATCH = 25;
+
+  const surveyPhotos = useCallback(
+    async (referenced) => {
+      if (!photoSyncAvailable || !window.photos || !referenced.length)
+        return null;
+      const local = await window.photos.keys().catch(() => []);
+      const remote = await window.remote.listPhotos().catch((e) => ({
+        known: false,
+        reason: e?.code || "server",
+      }));
+      return { plan: photoPlan({ referenced, local, remote }), remote };
+    },
+    [photoSyncAvailable]
+  );
+
+  const flashTimer = useRef(null);
+
+  const pushPhotos = useCallback(
+    async (gen) => {
+      const survey = await surveyPhotos(referencedPhotoIds);
+      if (!survey || syncGen.current !== gen) return;
+      const { plan, remote } = survey;
+      if (!plan.known) {
+        setPhotoMsg({ tone: "advice", text: PHOTO_SAYS[remote.reason] || PHOTO_SAYS.server });
+        return;
+      }
+      const batch = plan.toPush.slice(0, PHOTO_BATCH);
+      if (!batch.length) return;
+      setPhotoSync({ dir: "push", done: 0, total: batch.length });
+      let done = 0;
+      for (const id of batch) {
+        if (syncGen.current !== gen) return;
+        const blob = await window.photos.get(id).catch(() => null);
+        if (!blob) continue; /* swept or reset out from under us */
+        try {
+          await window.remote.pushPhoto(id, blob, `photo ${id}`);
+          done++;
+          setPhotoSync({ dir: "push", done, total: batch.length });
+        } catch (e) {
+          const code = e?.code || "server";
+          setPhotoMsg({
+            tone: "advice",
+            text:
+              done > 0
+                ? `Ledger pushed · ${done} of ${batch.length} photos. ${
+                    PHOTO_SAYS[code] || PHOTO_SAYS.server
+                  }`
+                : PHOTO_SAYS[code] || PHOTO_SAYS.server,
+          });
+          /* stop, don't grind: GitHub's guidance on a throttle is to back off,
+             and continuing the loop extends the block */
+          return;
+        }
+      }
+      const left = plan.toPush.length - batch.length;
+      if (left > 0)
+        setPhotoMsg({
+          tone: "advice",
+          text: `${done} photos sent · ${left} still to go — tap Push again to finish.`,
+        });
+    },
+    [surveyPhotos, referencedPhotoIds]
+  );
 
   const doPush = useCallback(
     async (force) => {
@@ -2643,13 +2821,25 @@ export default function MailDayLedger() {
          it's actually useful, in the commit list */
       const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
       const message = `ledger ${stamp} · ${items.length} lines · ${envelopes.length} envelopes`;
+      const gen = ++syncGen.current;
+      syncingRef.current = true;
+      setSyncBusy(true);
       try {
         await (force
           ? window.remote.pushForce(text, message)
           : window.remote.push(text, message));
-        setPushState("pushed");
         setRemoteInfo(await window.remote.status().catch(() => null));
-        setTimeout(() => setPushState("idle"), 2500);
+        /* Only now, after the ledger is actually on GitHub. A conflict here
+           means this device is out of sync, and spraying photos at the remote
+           while the ledger that references them was rejected is the wrong order
+           to fail in. */
+        await pushPhotos(gen);
+        if (syncGen.current !== gen) return;
+        /* the flash starts AFTER the photos, not before — "Pushed ✓" while a
+           dozen uploads are still queued is simply a lie, and it re-enables the
+           button into a second concurrent loop */
+        setPushState("pushed");
+        flashTimer.current = setTimeout(() => setPushState("idle"), 2500);
       } catch (e) {
         const code = e?.code || "server";
         setPushState(code === "conflict" ? "conflict" : "idle");
@@ -2658,9 +2848,114 @@ export default function MailDayLedger() {
           text: REMOTE_SAYS[code] || REMOTE_SAYS.server,
         });
         if (code === "no-key" || code === "auth") setKeyOpen(true);
+      } finally {
+        syncingRef.current = false;
+        setSyncBusy(false);
+        setPhotoSync(null);
       }
     },
-    [snapshot, items, envelopes, disarm]
+    [snapshot, items, envelopes, disarm, pushPhotos]
+  );
+
+  /* Returns the ids applyBackup should treat as present, and downloads what it
+     can first. Never throws: a photo problem must not abort the ledger pull,
+     which is the part that matters. */
+  const pullPhotos = useCallback(
+    async (text, gen) => {
+      /* A SECOND parse site, deliberately non-authoritative. applyBackup owns
+         the "is this even a ledger" question — the check there is the only
+         thing between a corrupt payload and a wiped ledger, so it stays in one
+         place. Here we only want the photo ids, and anything unexpected simply
+         means we learn nothing. Note {"hello":"world"} parses fine, so the
+         envelopes field has to be treated as optional. */
+      let incoming = [];
+      try {
+        const data = JSON.parse(text);
+        incoming = [
+          ...new Set(
+            (Array.isArray(data?.envelopes) ? data.envelopes : []).flatMap(
+              (e) => e?.photos || []
+            )
+          ),
+        ];
+      } catch {
+        return null;
+      }
+      if (!incoming.length) return null;
+
+      const survey = await surveyPhotos(incoming);
+      if (!survey || syncGen.current !== gen) return null;
+      const { plan, remote } = survey;
+
+      if (!plan.known) {
+        /* We could not see the store, so we know nothing — and "I can't see it"
+           must never be reported as "it's gone". Keep every id: the bytes are
+           very likely on GitHub, and a blank tile until the next pull is a far
+           smaller loss than the photo. */
+        setPhotoMsg({
+          tone: "advice",
+          text: PHOTO_SAYS[remote.reason] || PHOTO_SAYS.server,
+        });
+        return incoming;
+      }
+
+      /* What this pull is about to destroy: photos the CURRENT ledger references
+         and the incoming one does not. applyBackup replaces envelopes wholesale,
+         so those ids simply stop existing and the sweep deletes their blobs two
+         seconds later — and if they were never pushed, that is the last copy.
+
+         Measured against `incoming`, deliberately, NOT against plan.toPush.
+         `plan` is keyed on the incoming ledger's ids, so its toPush is the set
+         that is referenced, held here and not yet uploaded — precisely the set
+         that SURVIVES this pull untouched. Warning on that told the user their
+         photos were gone at the exact moment they were safe, and said nothing
+         in the case that actually loses them. */
+      const incomingSet = new Set(incoming);
+      const remoteSet = new Set(remote.ids || []);
+      const stranded = referencedPhotoIds.filter(
+        (id) => !incomingSet.has(id) && !remoteSet.has(id)
+      ).length;
+
+      const batch = plan.toPull.slice(0, PHOTO_BATCH);
+      if (batch.length) setPhotoSync({ dir: "pull", done: 0, total: batch.length });
+      let done = 0;
+      const got = [];
+      for (const id of batch) {
+        if (syncGen.current !== gen) return null;
+        try {
+          const blob = await window.remote.pullPhoto(id);
+          await window.photos.put(id, blob);
+          got.push(id);
+          done++;
+          setPhotoSync({ dir: "pull", done, total: batch.length });
+        } catch {
+          /* keep going: one bad fetch shouldn't cost the other eleven */
+        }
+      }
+      if (got.length) setPhotoEpoch((n) => n + 1);
+
+      const notes = [];
+      if (stranded)
+        notes.push(
+          `${stranded} photo${stranded === 1 ? "" : "s"} the remote copy doesn’t ${
+            stranded === 1 ? "know about was" : "know about were"
+          } never pushed, and ${stranded === 1 ? "is" : "are"} now gone.`
+        );
+      if (plan.lost.length)
+        notes.push(
+          `${plan.lost.length} photo${
+            plan.lost.length === 1 ? " is" : "s are"
+          } not on GitHub either.`
+        );
+      const left = plan.toPull.length - batch.length;
+      if (left > 0) notes.push(`${left} more will arrive on the next Pull.`);
+      if (notes.length) setPhotoMsg({ tone: "advice", text: notes.join(" ") });
+
+      /* every id the remote holds, not just the ones fetched this time: a GET
+         that failed is a retry, not a reason to sever the link */
+      return [...got, ...plan.toPull];
+    },
+    [surveyPhotos, referencedPhotoIds]
   );
 
   const doPull = useCallback(async () => {
@@ -2672,12 +2967,27 @@ export default function MailDayLedger() {
       return;
     }
     clearTimeout(resetTimer.current);
+    clearTimeout(flashTimer.current);
     disarm();
     setRemoteMsg(null);
+    setPhotoMsg(null);
     setPullState("pulling");
+    const gen = ++syncGen.current;
+    syncingRef.current = true;
+    setSyncBusy(true);
     try {
       const res = await window.remote.pull();
-      await applyBackup(res.text, "remote");
+      /* THE ordering that makes this feature work. applyBackup keeps a photo id
+         only when its blob is inlined or already on this device, so it has to
+         run AFTER the downloads — run it first and every id is stripped, the
+         debounced save writes the stripped ledger, and the next push publishes
+         it over the good copy.
+
+         So: learn what the INCOMING ledger references, fetch what's missing,
+         and only then replace anything. */
+      const extraPresent = await pullPhotos(res.text, gen);
+      if (syncGen.current !== gen) return;
+      await applyBackup(res.text, "remote", extraPresent);
       setRemoteInfo(await window.remote.status().catch(() => null));
       setPushState("idle"); // a pull clears any conflict it was blocked on
     } catch (e) {
@@ -2689,9 +2999,16 @@ export default function MailDayLedger() {
         text: REMOTE_SAYS[code] || REMOTE_SAYS["bad-response"],
       });
       if (code === "auth") setKeyOpen(true);
+    } finally {
+      /* released only now — applyBackup has landed the new envelopes, so the
+         sweep's keep-set is finally correct. Clearing it earlier re-arms the
+         sweep against the OLD list. */
+      syncingRef.current = false;
+      setSyncBusy(false);
+      setPhotoSync(null);
     }
     setPullState("idle");
-  }, [confirmPull, arm, disarm, applyBackup]);
+  }, [confirmPull, arm, disarm, applyBackup, pullPhotos]);
 
   const saveKey = useCallback(async () => {
     if (!window.remote) return;
@@ -2769,13 +3086,19 @@ export default function MailDayLedger() {
      every case. Held off while an undo is live, since that can bring an
      envelope (and its photo ids) back. */
   useEffect(() => {
-    if (!loaded || undo || composing || !window.photos) return;
-    const keep = new Set(envelopes.flatMap((e) => e.photos || []));
+    if (!loaded || undo || composing || syncBusy || !window.photos) return;
+    const keep = new Set(referencedPhotoIds);
     const t = setTimeout(() => {
+      /* checked again HERE, not just in the guard above: a pull writes blobs
+         while `envelopes` still holds the old list, so nothing re-runs this
+         effect and a timer armed two seconds earlier would delete the very
+         photos we just downloaded. The ref is set synchronously; the state
+         behind syncBusy is not. */
+      if (syncingRef.current) return;
       window.photos.sweep(keep).catch(() => {});
     }, 2000);
     return () => clearTimeout(t);
-  }, [envelopes, undo, composing, loaded]);
+  }, [referencedPhotoIds, undo, composing, syncBusy, loaded]);
 
   const discardEnvelope = useCallback((id) => {
     setEnvelopes((prev) => prev.filter((e) => e.id !== id));
@@ -3010,15 +3333,24 @@ export default function MailDayLedger() {
     return map;
   }, [envelopes, allPackages, received, view]);
 
-  const photoCount = useMemo(
-    () => envelopes.reduce((s, e) => s + (e.photos?.length || 0), 0),
-    [envelopes]
-  );
+  const photoCount = referencedPhotoIds.length;
+  /* Ids, not blobs. After a pull that kept ids whose bytes are still on GitHub,
+     the two genuinely differ, and reporting only the first would claim photos
+     are "stored" on a device holding none of them — and offer a
+     "Backup + photos" whose photos map comes out empty. */
+  const [photosHere, setPhotosHere] = useState(null);
 
   useEffect(() => {
     if (view !== "mystery" || !window.photos) return;
     window.photos.usage().then(setPhotoUsage).catch(() => {});
-  }, [view, photoCount]);
+    window.photos
+      .keys()
+      .then((keys) => {
+        const here = new Set(keys || []);
+        setPhotosHere(referencedPhotoIds.filter((id) => here.has(id)).length);
+      })
+      .catch(() => setPhotosHere(null));
+  }, [view, photoCount, photoEpoch, referencedPhotoIds]);
 
   /* package ordering — computed when sort/filters change, frozen while checking
      so packages don't leapfrog mid-session on value-based sorts */
@@ -3920,10 +4252,10 @@ export default function MailDayLedger() {
                 >
                   <button
                     onClick={() => doPush(false)}
-                    disabled={pushState === "pushing"}
+                    disabled={syncBusy}
                     style={{
                       ...ctl,
-                      opacity: pushState === "pushing" ? 0.6 : 1,
+                      opacity: syncBusy ? 0.6 : 1,
                       color: pushState === "pushed" ? C.green : C.ink,
                       borderColor: pushState === "pushed" ? C.green : C.line,
                     }}
@@ -3960,14 +4292,14 @@ export default function MailDayLedger() {
                       exactly what once pushed a line past the column edge. */}
                   <button
                     onClick={doPull}
-                    disabled={pullState === "pulling"}
+                    disabled={syncBusy}
                     style={{
                       ...ctl,
                       color: confirmPull ? C.card : C.ink,
                       background: confirmPull ? C.red : C.card,
                       borderColor: confirmPull ? C.red : C.line,
                       fontWeight: confirmPull ? 700 : 400,
-                      opacity: pullState === "pulling" ? 0.6 : 1,
+                      opacity: syncBusy ? 0.6 : 1,
                     }}
                   >
                     {pullState === "pulling"
@@ -4003,6 +4335,15 @@ export default function MailDayLedger() {
                     >
                       {remoteTarget.owner}/{remoteTarget.repo} ·{" "}
                       {remoteTarget.branch}
+                      {photoTarget && (
+                        /* its own row: the span above is nowrap, and the two
+                           targets share no line at 375px */
+                        <>
+                          <br />
+                          {photoTarget.owner}/{photoTarget.repo} ·{" "}
+                          {photoTarget.branch} · private
+                        </>
+                      )}
                     </span>
                   )}
                 </div>
@@ -4020,6 +4361,40 @@ export default function MailDayLedger() {
                   >
                     Pull replaces every item, check-in and pending envelope on
                     this device with the remote copy.
+                  </div>
+                )}
+                {photoSync && (
+                  <div
+                    style={{
+                      fontFamily: mono,
+                      fontSize: 10.5,
+                      letterSpacing: ".08em",
+                      textTransform: "uppercase",
+                      color: C.inkSoft,
+                      paddingTop: 6,
+                    }}
+                  >
+                    {photoSync.dir === "push" ? "Sending" : "Fetching"} photos{" "}
+                    {photoSync.done}/{photoSync.total}
+                  </div>
+                )}
+                {photoMsg && (
+                  /* a SEPARATE box from remoteMsg — see PHOTO_SAYS. Advisory
+                     manila, never red: the ledger is safe whatever the photos
+                     did, and a red box here would read as "the backup failed". */
+                  <div
+                    style={{
+                      marginTop: 8,
+                      padding: "7px 9px",
+                      borderRadius: 8,
+                      background: C.manila,
+                      color: C.manilaInk,
+                      fontFamily: cochin,
+                      fontSize: 13.5,
+                      lineHeight: 1.35,
+                    }}
+                  >
+                    {photoMsg.text}
                   </div>
                 )}
                 {remoteMsg && (
@@ -4179,6 +4554,7 @@ export default function MailDayLedger() {
                     onAssign={assignEnvelope}
                     onDiscard={discardEnvelope}
                     onEdit={setComposing}
+                    photoEpoch={photoEpoch}
                   />
                 )}
               </React.Fragment>
@@ -4225,7 +4601,14 @@ export default function MailDayLedger() {
                   paddingTop: 4,
                 }}
               >
-                {photoCount} photo{photoCount === 1 ? "" : "s"} stored
+                {photoCount} photo{photoCount === 1 ? "" : "s"}
+                {/* ids and blobs are the same number right up until a pull
+                    keeps an id whose bytes are still on GitHub, and then
+                    "7 photos stored" would be a claim about a device holding
+                    none of them */}
+                {photosHere != null && photosHere !== photoCount
+                  ? ` · ${photosHere} on this device`
+                  : " stored"}
                 {photoUsage?.quota
                   ? ` · ${bytes(photoUsage.used)} of ${bytes(
                       photoUsage.quota
