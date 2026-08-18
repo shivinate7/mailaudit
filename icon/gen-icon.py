@@ -19,7 +19,21 @@ To re-export the PNGs after changing this file (macOS, needs Chrome):
       --window-size=1024,1024 --screenshot=/tmp/master-1024.png \\
       "file:///tmp/export.html"
     sips -z 180 180 /tmp/master-1024.png --out ../apple-touch-icon.png
-    sips -z  32  32 /tmp/master-1024.png --out ../icon-32.png
+
+And the favicon PNG fallback, which comes from favicon.svg — NOT from the
+master — and must keep its transparency, so pass a transparent backdrop:
+
+    printf '<!doctype html><meta charset="utf-8"><style>html,body{margin:0;\
+    padding:0;background:transparent}img{display:block;width:512px;height:512px}\
+    </style><img src="file://ABSOLUTE/PATH/TO/favicon.svg">' > /tmp/fav.html
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless \
+      --disable-gpu --hide-scrollbars --force-device-scale-factor=1 \
+      --default-background-color=00000000 --window-size=512,512 \
+      --screenshot=/tmp/fav-512.png "file:///tmp/fav.html"
+    sips -z 32 32 /tmp/fav-512.png --out ../icon-32.png
+
+The img src must be ABSOLUTE — a relative one resolves against /tmp and renders
+a blank PNG that looks like a successful export.
 
 Render at 1024 and downsample — rendering straight to 180 loses the guilloche
 to aliasing instead of averaging it. Chrome emits an opaque PNG with no alpha
@@ -172,6 +186,62 @@ def brooch():
     return "".join(b)
 
 
+
+# ---------------------------------------------------------------------------
+# The favicon is a DIFFERENT drawing, not the master shrunk.
+#
+# A browser tab renders it at 16 CSS px. The master is a scene — a brooch
+# sitting on a violet ground — and at 16px the ground eats most of the frame
+# while the mark itself lands around 10px. Next to a favicon that fills its
+# box it reads as small and washed out.
+#
+# So: no ground (transparent, which favicons allow and apple-touch-icon does
+# not), and the mark scaled until the lobes touch the edge. Everything that
+# only exists to be seen large is cut — the guilloche, the 32 scroll marks,
+# the engine-turned field. What survives is what still reads at 16px: a gold
+# ring, eight lobes, an emerald centre.
+# ---------------------------------------------------------------------------
+
+FAVICON_OUT = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "favicon.svg"
+)
+
+
+def favicon_svg():
+    """Full-bleed, transparent, radically simplified. 100-unit viewBox."""
+    lobes = []
+    for i in range(8):
+        a = i / 8 * 2 * math.pi - math.pi / 2
+        x, y = 50 + 42 * math.cos(a), 50 + 42 * math.sin(a)
+        lobes.append(
+            f'<circle cx="{x:.2f}" cy="{y:.2f}" r="8.4" fill="url(#fg)"/>'
+            f'<circle cx="{x:.2f}" cy="{y:.2f}" r="8.4" fill="none" '
+            f'stroke="{GOLDD}" stroke-width="1.1" opacity=".85"/>'
+            f'<circle cx="{x:.2f}" cy="{y:.2f}" r="3.4" fill="{VIOD}"/>'
+        )
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" '
+        'width="100" height="100">'
+        '<defs>'
+        f'<linearGradient id="fg" x1=".12" y1="0" x2=".88" y2="1">'
+        f'<stop offset="0" stop-color="{GOLDL}"/><stop offset=".38" stop-color="{GOLD}"/>'
+        f'<stop offset=".58" stop-color="{GOLDL}"/><stop offset="1" stop-color="{GOLDD}"/>'
+        f'</linearGradient>'
+        f'<radialGradient id="fj" cx="34%" cy="28%" r="82%">'
+        f'<stop offset="0" stop-color="#87DEBB"/><stop offset=".42" stop-color="#37A37E"/>'
+        f'<stop offset="1" stop-color="#175540"/></radialGradient>'
+        '</defs>'
+        + "".join(lobes)
+        + f'<circle cx="50" cy="50" r="40" fill="url(#fg)"/>'
+        + f'<circle cx="50" cy="50" r="40" fill="none" stroke="{GOLDD}" stroke-width="2"/>'
+        + f'<circle cx="50" cy="50" r="29" fill="{GOLDD}"/>'
+        + f'<circle cx="50" cy="50" r="27" fill="url(#fj)"/>'
+        + '<ellipse cx="41" cy="40" rx="8.5" ry="5.5" fill="#DDFBF0" opacity=".45" '
+          'transform="rotate(-38 41 40)"/>'
+        + "</svg>"
+    )
+
+
 def render():
     ground = (f'<radialGradient id="bgg" cx="50%" cy="42%" r="76%">'
               f'<stop offset="0" stop-color="{G1}"/><stop offset="0.58" stop-color="{G2}"/>'
@@ -187,3 +257,7 @@ if __name__ == "__main__":
     with open(OUT, "w") as f:
         f.write(svg)
     print(f"wrote {OUT} ({len(svg)} bytes)")
+    fav = favicon_svg()
+    with open(FAVICON_OUT, "w") as f:
+        f.write(fav)
+    print(f"wrote {FAVICON_OUT} ({len(fav)} bytes)")
