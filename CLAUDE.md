@@ -366,6 +366,15 @@ zone rolls it back to April. Test 23.16 catches that; older M/D/YY exports parse
 as *local* midnight and take the local-getter branch. All **seven** RANGES
 options ship, laid out four to a row so they cost two rows rather than three.
 
+**The disclosure panels carry no fill.** `panelWrap` is padding plus a top
+hairline and nothing else. It used to set `background: C.card`, which painted a
+beige rectangle ruled top and bottom whose left and right edges simply stopped —
+square-cornered and full-bleed to the column, in an app where every other filled
+surface is a rounded inset card. The fill was the only thing creating an edge to
+resolve, and it contradicted the region's own thesis. Don't reintroduce it: the
+option grids still read, because `optGrid` paints `line` and each `optCell`
+paints `card` over it, so the cells sit slightly raised against the page.
+
 **Everything that moves data in or out still sits behind the `Sync`
 disclosure** — Push, Pull, Backup, Backup + photos, the target line and the key
 field. It uses the same `panelWrap` surface as the date and sort disclosures.
@@ -481,7 +490,14 @@ between two gold rules, **MANIFEST** in Cochin caps, the C.H Postal Company
 line, then the tallies folded in under a hairline. The stats used to be their
 own bordered card and the two edges fought each other 20px apart.
 
-The tallies are three ruled thirds — cards, packages, value — each `done/total`.
+The tallies are three ruled cells — cards, packages, value — each `done/total`.
+**Not equal thirds.** The two counts are 7 characters (`480/800`) and the value
+is 14–17 (`$45.8k/$77.66k`), so equal tracks starved the only cell that needed
+room and left ~23px unused in each of the other two — the value ran into the
+divider on its left, which is what got it reported from the phone. The value
+cell is `flex: 1.7`; measured at 375px all three now land on the *same* headroom
+(23.3 / 23.3 / 23.2px), and the six-figure case `$100.24k/$118.60k` fits rather
+than clipping. Re-measure if the type size or the 6px cell padding changes.
 Value is compacted (`compact()`: whole dollars under 1k, then `k`/`M` at ≤2dp,
 zeros trimmed) because three figures share one row at 375px. **`money()` is
 still the format anywhere a figure has to be read exactly**, including the

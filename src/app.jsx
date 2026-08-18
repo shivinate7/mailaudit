@@ -1206,10 +1206,16 @@ const ITEM_SORTS = [
   ["name", "Name A–Z"],
 ];
 
+/* No fill. With `background: C.card` this painted a beige rectangle ruled top
+   and bottom whose left and right edges simply stopped, square-cornered and
+   full-bleed to the column, in an app where every other filled surface is a
+   rounded inset card. The fill was the only thing creating an edge to resolve —
+   and the region's whole thesis is hairlines, no boxes and no fills. The option
+   grid still reads: optGrid paints C.line and each optCell paints C.card over
+   it, so the cells sit slightly raised against the page. */
 const panelWrap = {
   padding: "4px 9px 11px",
   borderTop: `1px solid ${C.line}`,
-  background: C.card,
 };
 /* the 1px gap over a `line` background IS the grid — cells paint `card` over it */
 const optGrid = (cols) => ({
@@ -3270,7 +3276,19 @@ export default function MailDayLedger() {
         .mdl-tallies { border-top: 1px solid ${C.line}; margin-top: 13px;
                        padding-top: 11px; text-align: left; }
         .mdl-thirds { display: flex; text-align: center; margin-bottom: 9px; }
-        .mdl-thirds > div { flex: 1; min-width: 0; }
+        /* NOT equal thirds. Measured at 375px: the content column is 343px, the
+           two counts are 7 characters ("559/905") and the value is 15
+           ("$38.32k/$47.94k") — about 55px against 117px at mono 13px. Equal
+           tracks starve the only cell that needs room and leave ~59px unused in
+           each of the other two, so the value ran into the divider on its left.
+           1/1/1.5 gives 98/98/147 and every figure clears its cell. It gets
+           worse as the ledger grows, so the track is sized past today: at 1.5
+           the six-figure "$100.24k/$118.60k" (133.1px) still overran a 123.9px
+           cell. At 1.7, measured at 375px, all three land on the SAME headroom
+           — 23.3 / 23.3 / 23.2px — and the six-figure case fits exactly rather
+           than clipping. Re-measure if the type size or padding changes. */
+        .mdl-thirds > div { flex: 1; min-width: 0; padding: 0 6px; }
+        .mdl-thirds .mdl-wide { flex: 1.7; }
         .mdl-thirds .mdl-mid { border-left: 1px solid ${C.line};
                                border-right: 1px solid ${C.line}; }
         .mdl-k { font-family: ${mono}; font-size: 8.5px; letter-spacing: .16em;
@@ -3365,7 +3383,7 @@ export default function MailDayLedger() {
                     <span>/{packages.length}</span>
                   </div>
                 </div>
-                <div>
+                <div className="mdl-wide">
                   <div className="mdl-k">value</div>
                   <div className="mdl-fig">
                     <b>${compact(totals.val - totals.missingVal)}</b>
