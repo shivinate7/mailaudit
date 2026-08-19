@@ -72,6 +72,12 @@ for (const k of [
   global[k] = win[k];
 global.requestAnimationFrame = (cb) => setTimeout(cb, 0);
 global.cancelAnimationFrame = (id) => clearTimeout(id);
+/* jsdom implements no scrolling at all, so this method simply isn't there and
+   calling it throws. The app scrolls in two places (the canceled reference and
+   the Tally view's jump to an order); neither is a claim a test can check —
+   there is no layout to move — so stub it and let the assertions be about
+   *what renders*, which is the part that can actually be wrong. */
+win.HTMLElement.prototype.scrollIntoView = function () {};
 global.IS_REACT_ACT_ENVIRONMENT = true;
 
 /* jsdom has no IntersectionObserver and no layout, so the masthead's collapse

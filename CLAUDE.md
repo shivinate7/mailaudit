@@ -271,7 +271,31 @@ page. See "Known open threads" for exactly what that leaves unproven.
   indeterminate-dash partial state.
 - Search (card/set/seller/order), Hide received, date filters (All/30/45/60/90,
   free "# days" input, custom from–to) — shared by the two ledger views and
-  hidden entirely under Orphaned. Package sort (newest/oldest/$ remaining/
+  hidden entirely under Orphaned.
+  **A search filters *inside* a package, so every result needs a way back to
+  its whole order.** One matching line draws a card that looks like a complete
+  one-line order, which is the wrong thing to believe with the envelope in your
+  hand — and the way out used to be "clear the search and hunt for the seller",
+  which on an iOS keyboard costs enough that nobody does it. So: `revealed`, a
+  set of package `gk`s that ignore the filters and render the whole order, with
+  two entrances. In **Packages**, a filtered card carries a footer
+  — `+4 more lines in this order · show all` — which reveals *that* package
+  and leaves the other results filtered, so near-duplicate candidates can be
+  compared side by side. In **Tally**, each source copy's order id is the
+  control (underlined, with a `›`): it reveals that order, switches to
+  Packages and scrolls to it, **leaving the search untouched** so one tap on
+  the view switch comes straight back.
+  Three things here are load-bearing. A reveal ignores **hideDone as well as
+  the query** — otherwise the jump lands on nothing whenever the tapped copy's
+  package is fully checked in, and the "+N more" count promises lines the
+  hideDone filter then swallows. Reveals clear on `query`/`dateFilter` but
+  deliberately **not** on `view`, because the jump sets `revealed` and `view` in
+  one handler and a `view` dep would wipe it on the very next commit. And the
+  order-id button **stops propagation**: the row it sits in checks a card in on
+  any tap, so without it a navigation gesture would silently write to the
+  ledger — the exact mis-tap invariant 5 exists to prevent. `revealed` is
+  ephemeral UI state, never persisted, so invariant 2's five-site rule does not
+  apply to it. Group 32. Package sort (newest/oldest/$ remaining/
   unit rate/seller A–Z) is separate from `itemSort`; the control swaps with the
   view. Both orders are frozen while checking.
   **Unit rate** means different things per view and both are implemented:
@@ -748,7 +772,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 267 assertions, no test framework, ~30s (groups 30–31 spend a few
+`npm test` — 283 assertions, no test framework, ~30s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
@@ -860,6 +884,10 @@ Gotchas worth remembering:
   that is the only way it will be found again.
 - The key field is uncontrolled by design, so `el.value = "…"` is enough — don't
   route it through `type()`, which exists for React-tracked inputs.
+- **jsdom implements no scrolling**, so `scrollIntoView` simply isn't there and
+  calling it throws. `harness.mjs` stubs it. There is no layout to move, so
+  where the page ends up is not assertable here — group 32's jump asserts on
+  *what renders* instead, which is the part that can actually be wrong.
 - A successful push shows `Pushed ✓` for 2.5s, so `btn(/^Push$/)` won't match
   during the flash. Assert on state, or wait it out.
 
@@ -901,6 +929,15 @@ feature — **a photo error escaping into the ledger's error path**, which makes
 `Push anyway` appear and would let a slow upload arm a button that overwrites
 another device's ledger (30.11).
 
+Group 32 (getting from a search hit to the whole order) added four, all
+confirmed to turn the suite red: the order-id button losing its
+`stopPropagation`, which turns a look into a check-in; `revealed` missing from
+`visible`'s dep array, so the reveal renders one commit late or never; the
+reveal-clearing effect also keyed on `view`, which wipes the reveal the Tally
+jump just set and lands you on a still-filtered card; and a reveal that
+bypasses the query but not `hideDone`, which quietly shows less than "the whole
+order" and strands the jump on a fully-received package.
+
 Test groups map to the claims this file makes, so if you change a behaviour
 deliberately, change the assertion and the prose in the same commit. What's
 covered: orphaned mail hiding controls that don't apply; recording moving no
@@ -913,7 +950,9 @@ elsewhere; both backups and both restore paths; the photo sweep; the GitHub
 push and pull (payload shape, non-ASCII round trip, conflict + force, expired
 key, offline, the token never leaking, pull as a full replace, photo ids kept
 vs stripped, arming one control disarming the other); entity decoding on
-seller names, through a real CSV import; and the older package/Tally views
+seller names, through a real CSV import; getting from a search hit to the whole
+order (per-package reveal, the Tally jump, the search surviving it, the hideDone
+bypass, and a navigation tap writing nothing); and the older package/Tally views
 still working.
 
 Still only covered by eye, never by a test: anything that needs a real device —

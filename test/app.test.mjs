@@ -1498,4 +1498,138 @@ eq(
 );
 
 
+/* ── 32. getting from a search hit to the whole order ──────────────────
+   Search filters *inside* a package, so one matching line draws a card that
+   looks like a complete one-line order — exactly the wrong thing to believe
+   with the envelope in your hand. Until now there was no way out of it: the
+   rest of that order was unreachable without clearing the search and hunting
+   the seller down by hand, which on an iOS keyboard costs enough that nobody
+   does it. Two entrances, one idea — `revealed`, the set of packages that
+   ignore the filters and render the whole order. */
+
+const search = () =>
+  document.querySelector(
+    'input[aria-label="Search cards, sets, sellers and order ids"]'
+  );
+const card = (re) => btn(re)?.parentElement;
+const revealBtn = (c) =>
+  [...c.querySelectorAll("button")].find((b) =>
+    /in this order|whole order/.test(b.textContent)
+  );
+const orderBtn = (id) =>
+  document.querySelector(`button[aria-label="Show the whole order ${id}"]`);
+/* the jump scrolls on a frame, and the frame lands outside the click's act() */
+const settle = () => act(async () => await sleep(0));
+
+await fresh();
+await type(search(), "Lightning Bolt");
+eq(
+  allBtns(/more lines? in this order/).length,
+  3,
+  "32.1 every filtered card says how much of itself the search is hiding"
+);
+ok(
+  /\+4 more lines in this order/.test(card(/Gamma Cards/).textContent) &&
+    /\+2 more lines in this order/.test(card(/Alpha Cards/).textContent),
+  "32.2 and the count is that package's own, not the page's"
+);
+ok(
+  /1 left · \$1\.00/.test(card(/Alpha Cards/).textContent),
+  "32.3 the header still describes the matching line while filtered"
+);
+
+await click(revealBtn(card(/Alpha Cards/)), "show all of Alpha's order");
+ok(
+  /Counterspell/.test(card(/Alpha Cards/).textContent) &&
+    /Brainstorm/.test(card(/Alpha Cards/).textContent),
+  "32.4 revealing shows the rest of that order"
+);
+ok(
+  !/Counterspell/.test(card(/Beta Games/).textContent),
+  "32.5 and only that one — the other candidates stay filtered for comparison"
+);
+ok(
+  /4 left · \$4\.00/.test(card(/Alpha Cards/).textContent),
+  "32.6 the header now covers the whole order, which is what 'show all' means"
+);
+
+await click(revealBtn(card(/Alpha Cards/)), "back to matches");
+ok(
+  !/Counterspell/.test(card(/Alpha Cards/).textContent),
+  "32.7 and it toggles back"
+);
+
+await type(search(), "");
+eq(
+  allBtns(/in this order/).length,
+  0,
+  "32.8 nothing hidden, nothing offered — the control is the search's, not the card's"
+);
+
+/* the Tally view has no card to expand, so its way in is the order id */
+await fresh();
+await type(search(), "Lightning Bolt");
+await goTo("tally");
+await click(btn(/Lightning Bolt/), "expand the tally row");
+ok(!!orderBtn("C1"), "32.9 each source copy carries a way into its order");
+await click(orderBtn("C1"), "open Gamma's order");
+await settle();
+eq(
+  buttons()
+    .find((b) => /^Packages/.test(b.textContent))
+    .getAttribute("aria-pressed"),
+  "true",
+  "32.10 which lands in Packages"
+);
+ok(
+  /Ponder/.test(card(/Gamma Cards/).textContent) &&
+    /Swords to Plowshares/.test(card(/Gamma Cards/).textContent),
+  "32.11 on the whole order, not the one line that matched"
+);
+ok(
+  !/Counterspell/.test(card(/Alpha Cards/).textContent),
+  "32.12 leaving every other result exactly as it was"
+);
+eq(
+  search().value,
+  "Lightning Bolt",
+  "32.13 and the search survives the trip — one tap gets you back to Tally"
+);
+
+await type(search(), "Lightning");
+ok(
+  !/Ponder/.test(card(/Gamma Cards/).textContent),
+  "32.14 a new query is a new question, so the reveals go with it"
+);
+
+/* the hideDone bypass. Ponder is already checked in, so a reveal that only
+   ignored the query would show four lines and call it the whole order — and
+   a package with every line received would drop out of the list entirely,
+   landing the jump on nothing at all. */
+await boot({ items: ITEMS, received: { "C1|3|pPonder": 1 } });
+await toggleShowing();
+await type(search(), "Lightning Bolt");
+await goTo("tally");
+await click(btn(/Lightning Bolt/), "expand the tally row");
+await click(orderBtn("C1"), "open Gamma's order");
+await settle();
+ok(
+  /Ponder/.test(card(/Gamma Cards/).textContent),
+  "32.15 the whole order means whole — Hide received is bypassed too"
+);
+
+/* The order id sits inside a row whose whole surface checks a card in. Without
+   stopPropagation, a tap that meant to look would quietly mark it received:
+   a data write from a navigation gesture, which is the mis-tap invariant 5
+   exists to prevent. */
+await fresh();
+await goTo("tally");
+await click(btn(/Lightning Bolt/), "expand the tally row");
+await click(orderBtn("A1"), "open Alpha's order");
+await settle();
+ok(
+  /cards\s*0\/14/.test(text()),
+  "32.16 opening an order checks nothing in"
+);
+
 report();

@@ -248,10 +248,16 @@ async function dataUrlToBlob(url) {
 
 const isUntracked = (p) => /^without tracking$/i.test(p.tracking || "");
 
+/* A package's identity: one order from one seller. Written at three sites now
+   (the live grouping, the canceled reference section, and the Tally view's
+   "show me this order" jump), and they must not drift — a gk that disagrees
+   with the one in `packages` silently matches nothing. */
+const gkOf = (it) => `${it.orderId}::${it.seller}`;
+
 function groupPackages(source) {
   const map = new Map();
   for (const it of source) {
-    const gk = `${it.orderId}::${it.seller}`;
+    const gk = gkOf(it);
     if (!map.has(gk))
       map.set(gk, {
         gk,
@@ -471,7 +477,7 @@ function ProgressBar({ pct, height = 8 }) {
 
 /* ---------- Item row ---------- */
 
-function ItemRow({ item, got, onSet, variant = "package" }) {
+function ItemRow({ item, got, onSet, variant = "package", onOpenOrder }) {
   const done = got >= item.qty;
   const partial = got > 0 && !done;
   const toggle = () => onSet(item.key, done ? 0 : item.qty);
@@ -582,23 +588,72 @@ function ItemRow({ item, got, onSet, variant = "package" }) {
           {meta || "—"}
         </div>
         {/* order ids are long; on its own line it never loses the tail to
-            ellipsis, and it's the key for chasing a refund */}
-        {source && (
-          <div
-            style={{
-              marginTop: 1,
-              fontFamily: mono,
-              fontSize: 10.5,
-              color: C.inkSoft,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-            title={item.orderId}
-          >
-            {item.orderId}
-          </div>
-        )}
+            ellipsis, and it's the key for chasing a refund. In the Tally view
+            it is also the way out: this copy is one line of a real order, and
+            the question it raises — "what else was in that envelope?" — has no
+            other answer here. Tapping opens that whole order in Packages.
+            stopPropagation is load-bearing: the whole row toggles a check-in,
+            so without it a navigation tap would silently mark the card
+            received. That's a data write from a gesture that meant to look,
+            and exactly the mis-tap invariant 5 exists to prevent. */}
+        {source &&
+          (onOpenOrder ? (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenOrder(gkOf(item));
+              }}
+              aria-label={`Show the whole order ${item.orderId}`}
+              title={item.orderId}
+              style={{
+                marginTop: 1,
+                minHeight: 30,
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                padding: "6px 0",
+                border: 0,
+                background: "transparent",
+                fontFamily: mono,
+                fontSize: 10.5,
+                color: C.inkSoft,
+                textAlign: "left",
+                cursor: "pointer",
+              }}
+            >
+              {/* ellipsis has to sit on the text child of a flex row, and the
+                  child needs min-width 0 or it refuses to shrink */}
+              <span
+                style={{
+                  minWidth: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  textDecoration: "underline",
+                  textUnderlineOffset: 2,
+                }}
+              >
+                {item.orderId}
+              </span>
+              <span style={{ flexShrink: 0 }}>{"\u203a"}</span>
+            </button>
+          ) : (
+            <div
+              style={{
+                marginTop: 1,
+                fontFamily: mono,
+                fontSize: 10.5,
+                color: C.inkSoft,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+              title={item.orderId}
+            >
+              {item.orderId}
+            </div>
+          ))}
         {item.qty > 1 && (
           <div
             onClick={(e) => e.stopPropagation()}
@@ -658,7 +713,16 @@ const stepBtn = {
 
 /* ---------- Package (order + seller) group ---------- */
 
-function PackageCard({ pkg, received, onSet, onBulk }) {
+function PackageCard({
+  pkg,
+  received,
+  onSet,
+  onBulk,
+  hiddenByFilters = 0,
+  revealed = false,
+  onToggleReveal,
+  innerRef,
+}) {
   const totalQty = pkg.items.reduce((s, it) => s + it.qty, 0);
   const gotQty = pkg.items.reduce(
     (s, it) => s + Math.min(it.qty, received[it.key] || 0),
@@ -683,6 +747,7 @@ function PackageCard({ pkg, received, onSet, onBulk }) {
 
   return (
     <div
+      ref={innerRef}
       style={{
         position: "relative",
         background: C.card,
@@ -690,6 +755,8 @@ function PackageCard({ pkg, received, onSet, onBulk }) {
         borderRadius: 10,
         overflow: "hidden",
         boxShadow: "0 1px 2px rgba(28,43,36,0.06)",
+        /* clears the 46px running head when the Tally view scrolls us here */
+        scrollMarginTop: 58,
       }}
     >
       <button
@@ -841,6 +908,43 @@ function PackageCard({ pkg, received, onSet, onBulk }) {
               onSet={onSet}
             />
           ))}
+          {/* The way out of a search. A filtered card looks exactly like a
+              one-line order, which is the wrong thing to believe when you are
+              holding the envelope — so say how many lines the filters took and
+              offer the whole order. Deliberately below the rows and outside
+              the tap area of any of them. */}
+          {(hiddenByFilters > 0 || revealed) && onToggleReveal && (
+            <button
+              onClick={() => onToggleReveal(pkg.gk)}
+              aria-expanded={revealed}
+              style={{
+                width: "100%",
+                minHeight: CTL_H,
+                padding: "8px 14px",
+                textAlign: "left",
+                border: 0,
+                borderTop: `1px solid ${C.line}`,
+                background: "transparent",
+                fontFamily: mono,
+                fontSize: 11,
+                color: C.inkSoft,
+                cursor: "pointer",
+              }}
+            >
+              {revealed ? (
+                <>
+                  Showing the whole order{" "}
+                  <u style={{ textUnderlineOffset: 2 }}>back to matches</u>
+                </>
+              ) : (
+                <>
+                  +{hiddenByFilters} more line{hiddenByFilters === 1 ? "" : "s"}{" "}
+                  in this order{" "}
+                  <u style={{ textUnderlineOffset: 2 }}>show all</u>
+                </>
+              )}
+            </button>
+          )}
         </>
       )}
     </div>
@@ -849,7 +953,7 @@ function PackageCard({ pkg, received, onSet, onBulk }) {
 
 /* ---------- Item total (same product name across every seller) ---------- */
 
-function ItemTotalRow({ item, received, onSet, onBulk }) {
+function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder }) {
   const totalQty = item.qty;
   const gotQty = item.items.reduce(
     (s, it) => s + Math.min(it.qty, received[it.key] || 0),
@@ -1031,6 +1135,7 @@ function ItemTotalRow({ item, received, onSet, onBulk }) {
               got={Math.min(it.qty, received[it.key] || 0)}
               onSet={onSet}
               variant="source"
+              onOpenOrder={onOpenOrder}
             />
           ))}
         </>
@@ -2292,6 +2397,14 @@ export default function MailDayLedger() {
       );
   }, [showCanceled]);
   const [sticky, setSticky] = useState(() => new Set()); // just-checked rows stay visible under hideDone
+  /* Packages that ignore the filters and render their whole order. Search
+     filters *inside* a package, so one matching line draws a card that looks
+     like a one-line order; this is the way back to the rest of it. Ephemeral
+     UI state — never persisted, so invariant 2's five-site rule doesn't apply
+     and `resetAll` has nothing to do here. */
+  const [revealed, setRevealed] = useState(() => new Set());
+  const [jumpGk, setJumpGk] = useState(null);
+  const jumpRef = useRef(null);
   const [uploadErr, setUploadErr] = useState("");
   const [showUpload, setShowUpload] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
@@ -2652,6 +2765,44 @@ export default function MailDayLedger() {
   useEffect(() => {
     setSticky(new Set());
   }, [hideDone, query, dateFilter, view]);
+
+  /* A reveal is scoped to the search that made it necessary — a new query is a
+     new question, and a stale gk would keep one card unfiltered for no visible
+     reason. Deliberately NOT keyed on `view`: the Tally jump sets `revealed`
+     and `view` in the same handler, so a `view` dep would wipe the reveal on
+     the very next commit and land you on a still-filtered card. */
+  useEffect(() => {
+    setRevealed(new Set());
+  }, [query, dateFilter]);
+
+  const toggleReveal = useCallback((gk) => {
+    setRevealed((prev) => {
+      const next = new Set(prev);
+      if (next.has(gk)) next.delete(gk);
+      else next.add(gk);
+      return next;
+    });
+  }, []);
+
+  /* Tally → Packages, on the order this copy came from. The reveal is what
+     makes the landing reliable rather than lucky: under a search the package
+     is filtered down to the matching line, and under "Unreceived" a package
+     whose copies are all checked in isn't in the list at all — so the jump
+     would arrive at nothing. Revealing bypasses both. */
+  const openOrder = useCallback((gk) => {
+    setRevealed((prev) => (prev.has(gk) ? prev : new Set(prev).add(gk)));
+    setView("packages");
+    setJumpGk(gk);
+  }, []);
+
+  useEffect(() => {
+    if (!jumpGk || view !== "packages") return;
+    // a frame, so the packages list exists before we scroll to it
+    requestAnimationFrame(() => {
+      jumpRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setJumpGk(null);
+    });
+  }, [jumpGk, view]);
 
   const bulkSet = useCallback((pkgItems, on) => {
     setReceived((prev) => {
@@ -3185,7 +3336,7 @@ export default function MailDayLedger() {
     const map = new Map();
     for (const it of items) {
       if (!/^cancel/i.test(it.tracking || "")) continue;
-      const gk = `${it.orderId}::${it.seller}`;
+      const gk = gkOf(it);
       if (!map.has(gk))
         map.set(gk, {
           gk,
@@ -3391,13 +3542,22 @@ export default function MailDayLedger() {
     const q = query.trim().toLowerCase();
     return packages
       .map((p) => {
+        /* A revealed package answers "what else was in that envelope?", so it
+           ignores both filters — the query AND hideDone. Bypassing hideDone
+           too is what makes the Tally jump land on a package whose copies are
+           already checked in, and it keeps the "+N more" count honest: a count
+           that promised lines hideDone would then swallow is worse than none.
+           `p.items` is the whole order within the active date range, which is
+           the whole order full stop — every line of a package shares one order
+           date, so a range takes all of them or none. */
+        if (revealed.has(p.gk)) return { ...p, hiddenByFilters: 0 };
         // a fully-received package disappears immediately under hideDone,
         // even if some rows were sticky (nothing left to mis-tap)
         if (
           hideDone &&
           p.items.every((it) => (received[it.key] || 0) >= it.qty)
         )
-          return { ...p, items: [] };
+          return { ...p, items: [], hiddenByFilters: 0 };
         let its = p.items;
         if (q)
           its = its.filter((it) =>
@@ -3410,13 +3570,13 @@ export default function MailDayLedger() {
           its = its.filter(
             (it) => (received[it.key] || 0) < it.qty || sticky.has(it.key)
           );
-        return { ...p, items: its };
+        return { ...p, items: its, hiddenByFilters: p.items.length - its.length };
       })
       .filter((p) => p.items.length > 0)
       .sort(
         (a, b) => (packageOrder.get(a.gk) ?? 1e9) - (packageOrder.get(b.gk) ?? 1e9)
       );
-  }, [packages, query, hideDone, received, sticky, packageOrder]);
+  }, [packages, query, hideDone, received, sticky, packageOrder, revealed]);
 
   /* Tally totals: exact product-name match, pooled across every seller/order.
      TCGplayer names are a scrape, so identical items carry byte-identical names.
@@ -4630,6 +4790,7 @@ export default function MailDayLedger() {
                   received={received}
                   onSet={setCount}
                   onBulk={bulkSet}
+                  onOpenOrder={openOrder}
                 />
               ))
             : visible.map((pkg) => (
@@ -4639,6 +4800,10 @@ export default function MailDayLedger() {
                   received={received}
                   onSet={setCount}
                   onBulk={bulkSet}
+                  hiddenByFilters={pkg.hiddenByFilters}
+                  revealed={revealed.has(pkg.gk)}
+                  onToggleReveal={toggleReveal}
+                  innerRef={pkg.gk === jumpGk ? jumpRef : null}
                 />
               ))}
           {items.length > 0 &&
