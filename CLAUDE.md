@@ -423,6 +423,20 @@ Three ruled cells report the state and open what changes it:
   the state each session starts from, and one tap brings the received rows back
   for as long as that session lasts. Tests 12.4–12.7; 12.7 pins the reload
   specifically, which is the whole point of it not being persisted.
+  **A resume counts as reopening too.** On iOS a home-screen app is normally
+  *backgrounded*, not closed — the page survives, so waiting for a remount
+  meant the only thing that reset Showing was WebKit evicting the page, which
+  can be days. A `visibilitychange` listener resets it when the app comes back
+  after `RESUME_RESET_MS` (60s) away. The threshold is the whole design: a hop
+  out to read a tracking number and straight back is the same session, and
+  flipping the list under a thumb mid-check-in is exactly the mis-tap
+  invariant 5 exists to prevent. **Only Showing resets** — the query, the range
+  and the reveals are things you were in the middle of, and clearing those
+  reads as the app forgetting rather than as a fresh start. Tests 12.8–12.9
+  pin both sides of the threshold; `harness.mjs` exports `backgroundFor(ms)`,
+  which overrides `visibilityState` *and* `hidden` (jsdom's `hidden` reads its
+  own field, so setting one alone leaves the other lying) and freezes
+  `Date.now` for the trip.
 - **Sorted by** — opens a panel of options. There is no `<select>` in the app
   any more.
 
@@ -779,7 +793,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 286 assertions, no test framework, ~30s (groups 30–31 spend a few
+`npm test` — 288 assertions, no test framework, ~30s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds

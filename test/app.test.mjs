@@ -15,6 +15,7 @@ import {
   buttons,
   choose,
   cardInput,
+  backgroundFor,
   cell,
   click,
   csv,
@@ -264,6 +265,23 @@ await fresh();
 ok(
   /Unreceived/.test(cell(/^Showing/).textContent),
   "12.7 Everything doesn't survive a reload"
+);
+
+/* On iOS a home-screen app is usually backgrounded, not closed, so a remount
+   is not what reopening looks like — coming back after a real absence has to
+   count too. But a hop out to read a tracking number and straight back is the
+   same session, and flipping the list under a thumb mid-check-in is the
+   mis-tap invariant 5 exists to prevent. So the gap decides. */
+await toggleShowing();
+await backgroundFor(5_000);
+ok(
+  /Everything/.test(cell(/^Showing/).textContent),
+  "12.8 a glance away is the same session"
+);
+await backgroundFor(5 * 60_000);
+ok(
+  /Unreceived/.test(cell(/^Showing/).textContent),
+  "12.9 coming back after a real absence starts fresh"
 );
 
 /* ── 13. backup and restore carry envelopes ────────────────────────────── */

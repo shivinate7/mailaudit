@@ -432,6 +432,41 @@ export const cell = (re) => buttons().find((b) => re.test(b.textContent.trim()))
 
 export const toggleShowing = () => click(cell(/^Showing/), "showing cell");
 
+/* Background the page for `awayMs` and bring it back — what iOS actually does
+   when you switch apps and return, which is not a remount. jsdom reports the
+   page permanently visible, so both `visibilityState` and `hidden` are
+   overridden (`hidden` reads its own internal field, so setting the other
+   alone leaves it lying), and Date.now is frozen for the trip so the elapsed
+   time is the argument rather than the wall clock. */
+export async function backgroundFor(awayMs) {
+  const realNow = Date.now;
+  let clock = realNow();
+  const setVisibility = (state) => {
+    Object.defineProperty(document, "visibilityState", {
+      value: state,
+      configurable: true,
+    });
+    Object.defineProperty(document, "hidden", {
+      value: state === "hidden",
+      configurable: true,
+    });
+  };
+  try {
+    Date.now = () => clock;
+    setVisibility("hidden");
+    await act(async () => {
+      document.dispatchEvent(new win.Event("visibilitychange"));
+    });
+    clock += awayMs;
+    setVisibility("visible");
+    await act(async () => {
+      document.dispatchEvent(new win.Event("visibilitychange"));
+    });
+  } finally {
+    Date.now = realNow;
+  }
+}
+
 export const openRange = async () => {
   const c = cell(/^Orders from/);
   if (!c) throw new Error("no range cell on screen");
