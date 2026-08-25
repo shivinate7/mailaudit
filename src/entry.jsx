@@ -274,7 +274,16 @@ window.remote = {
       sha: r.sha || null,
       pushedAt: r.pushedAt || null,
       pulledAt: r.pulledAt || null,
+      /* A DEVICE setting, not ledger data — which is why it lives in this
+         record beside the token rather than in the saved state. Whether this
+         phone pushes on its own is a property of this phone; syncing it would
+         mean the laptop turning the phone's background traffic on. It also
+         keeps invariant 2's five-site rule out of it entirely. */
+      auto: !!r.auto,
     };
+  },
+  async setAuto(on) {
+    saveRec({ auto: !!on });
   },
   async setKey(token) {
     const t = String(token || "").trim();
@@ -308,6 +317,44 @@ window.remote = {
     if (typeof text !== "string" || !text) throw remoteErr("bad-response");
     saveRec({ sha: b.sha || null, pulledAt: Date.now() });
     return { text, sha: b.sha || null };
+  },
+
+  /* "Has the other device pushed since I last looked?" — for a few hundred
+     bytes and no content-generating request.
+
+     The Trees API rather than Contents, for the same reason listPhotos uses it:
+     a Contents GET on ledger.json answers with the entire file base64'd (~470KB
+     at 1000 lines) merely to report a sha, and this runs on every foreground.
+     A tree entry carries the BLOB sha, which is exactly the value push() stores
+     from `content.sha` and exactly what r.sha is compared against — so `ahead`
+     is a real answer rather than a heuristic. This is a read, against the
+     5000/hr authenticated budget, not the 500/hr content-generating one.
+
+     Three-valued like listPhotos, and for a sharper reason: this drives whether
+     auto-push is allowed to fire. "I could not look" must never be reported as
+     "nothing has changed", because that is precisely the state in which pushing
+     overwrites the other device. Unknown means: do not push. */
+  async peek() {
+    let res;
+    try {
+      res = await api(
+        `/repos/${REMOTE.owner}/${REMOTE.repo}/git/trees/${REMOTE.branch}`
+      );
+    } catch (e) {
+      return { known: false, reason: e?.code || "offline" };
+    }
+    if (!res.ok) {
+      /* the branch or the file simply not being there yet is a real answer:
+         nothing has been pushed, so nobody is ahead of us */
+      const code = classify(res).code;
+      if (code === "missing" || code === "no-branch")
+        return { known: true, sha: null, ahead: false };
+      return { known: false, reason: code };
+    }
+    const tree = Array.isArray(res.body?.tree) ? res.body.tree : [];
+    const entry = tree.find((e) => e.path === REMOTE.path && e.type === "blob");
+    const sha = entry?.sha || null;
+    return { known: true, sha, ahead: !!sha && sha !== (rec().sha || null) };
   },
 
   async push(text, message) {

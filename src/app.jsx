@@ -1,6 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Papa from "papaparse";
 import { photoPlan } from "./photo-rules.mjs";
+import {
+  mergeItems,
+  mergeLedger,
+  mergeSummary,
+} from "./merge-rules.mjs";
 
 /* ============================================================
    MAIL DAY LEDGER — OrderWand CSV check-in tracker
@@ -1472,6 +1477,18 @@ const PHOTO_SAYS = {
   server: "GitHub had trouble with the photos. Tap Push again to finish.",
 };
 
+/* The ONE place a payload is turned into a ledger, and the only thing standing
+   between a corrupt file and a wiped one. Two callers now — the restore path
+   and the merge path — which is exactly why it stopped being two inline lines
+   inside applyBackup. `{"hello":"world"}` parses as JSON perfectly well; the
+   `mailday` marker and an items ARRAY are what make it ours.
+   Throws bare, like it always did: callers report `bad-response`. */
+function parseLedger(text) {
+  const data = JSON.parse(text);
+  if (!data.mailday || !Array.isArray(data.items)) throw new Error();
+  return data;
+}
+
 /* ---------- Upload zone ---------- */
 
 function UploadZone({ onFile, error, replacing }) {
@@ -2421,6 +2438,13 @@ export default function MailDayLedger() {
   const [remoteInfo, setRemoteInfo] = useState(null); // { hasKey, sha, pushedAt, pulledAt }
   const [pushState, setPushState] = useState("idle"); // idle | pushing | pushed | conflict
   const [pullState, setPullState] = useState("idle"); // idle | pulling
+  const [mergeState, setMergeState] = useState("idle"); // idle | merging
+  /* "the other device has pushed since we last looked" — set by peek() on
+     foreground, cleared by a merge or a pull. Never persisted: it is a fact
+     about the remote right now, and a stale one restored from disk would
+     nag about a device that has since been caught up with. */
+  const [ahead, setAhead] = useState(false);
+  const [autoOn, setAutoOn] = useState(false);
   const [photoTarget, setPhotoTarget] = useState(null);
   const [remoteMsg, setRemoteMsg] = useState(null); // { tone, text }
   /* Photos get their own message and their own progress. See PHOTO_SAYS: a
@@ -2618,10 +2642,14 @@ export default function MailDayLedger() {
      Throws on anything unusable — and throws BEFORE the first setState, so a
      failed restore leaves this device completely untouched. */
   const applyBackup = useCallback(
-    async (text, source /* "file" | "remote" */, extraPresent = null) => {
-      const data = JSON.parse(text);
-      if (!data.mailday || !Array.isArray(data.items)) throw new Error();
+    async (text, source /* "file" | "remote" | "merge" */, extraPresent = null, notice = null) => {
+      const data = parseLedger(text);
       const remote = source === "remote";
+      /* A merge only ever ADDS, so the two warnings below are not merely
+         unnecessary there — they are false. Nothing is replaced and nothing is
+         at risk, and saying so would teach the user to fear the one safe
+         button in the panel. */
+      const replacing = source !== "merge";
       /* a restore replaces everything, so anything still in flight against the
          old world must not land on the new one */
       syncGen.current++;
@@ -2676,6 +2704,7 @@ export default function MailDayLedger() {
       if (data.itemSort || data.cardSort)
         setItemSort(data.itemSort || data.cardSort);
       setImportMsg(
+        notice ||
         `${remote ? "Pulled from GitHub" : "Backup restored"} — ${
           data.items.length
         } lines and your check-ins are back.` +
@@ -2686,7 +2715,7 @@ export default function MailDayLedger() {
             : "") +
           /* a restore is a full replace, and envelopes are hand-typed —
              losing them silently would be the worst kind of quiet */
-          (envelopes.length > 0
+          (replacing && envelopes.length > 0
             ? ` ${envelopes.length} pending envelope${
                 envelopes.length === 1 ? " was" : "s were"
               } replaced by the ${remote ? "remote copy" : "backup"}'s.`
@@ -2726,14 +2755,12 @@ export default function MailDayLedger() {
             );
             return;
           }
-          // MERGE: keep everything already tracked, add/refresh lines from the new file
-          const map = new Map(items.map((it) => [it.key, it]));
-          let added = 0;
-          for (const it of parsed) {
-            if (!map.has(it.key)) added++;
-            map.set(it.key, it);
-          }
-          setItems([...map.values()]);
+          /* MERGE, invariant 3: keep everything already tracked, add what's
+             new. Shared with the two-device merge rather than kept as a second
+             Map-union here — one definition of "union line items by key", so
+             the two cannot drift. */
+          const { items: mergedItems, added } = mergeItems(items, parsed);
+          setItems(mergedItems);
           setUndo(null); // its plan referenced the pre-merge line-up
           setImportMsg(
             items.length === 0
@@ -2874,7 +2901,9 @@ export default function MailDayLedger() {
     if (!loaded || !window.remote) return;
     (async () => {
       setRemoteTarget(await window.remote.target().catch(() => null));
-      setRemoteInfo(await window.remote.status().catch(() => null));
+      const st = await window.remote.status().catch(() => null);
+      setRemoteInfo(st);
+      setAutoOn(!!st?.auto);
       if (typeof window.remote.photoTarget === "function")
         setPhotoTarget(await window.remote.photoTarget().catch(() => null));
     })();
@@ -2913,9 +2942,13 @@ export default function MailDayLedger() {
 
   const flashTimer = useRef(null);
 
+  /* `refs` overrides what counts as referenced. The merge needs it: it applies
+     a union of both devices' envelopes, and React has not committed that state
+     by the time this runs — reading referencedPhotoIds here would survey the
+     PRE-merge list and quietly skip every photo the merge just adopted. */
   const pushPhotos = useCallback(
-    async (gen) => {
-      const survey = await surveyPhotos(referencedPhotoIds);
+    async (gen, refs) => {
+      const survey = await surveyPhotos(refs || referencedPhotoIds);
       if (!survey || syncGen.current !== gen) return;
       const { plan, remote } = survey;
       if (!plan.known) {
@@ -2991,6 +3024,7 @@ export default function MailDayLedger() {
            button into a second concurrent loop */
         setPushState("pushed");
         flashTimer.current = setTimeout(() => setPushState("idle"), 2500);
+        return { ok: true };
       } catch (e) {
         const code = e?.code || "server";
         setPushState(code === "conflict" ? "conflict" : "idle");
@@ -2999,6 +3033,10 @@ export default function MailDayLedger() {
           text: REMOTE_SAYS[code] || REMOTE_SAYS.server,
         });
         if (code === "no-key" || code === "auth") setKeyOpen(true);
+        /* returned rather than only rendered, so the auto path can resolve a
+           conflict by merging instead of leaving a button armed on a screen
+           nobody is looking at */
+        return { ok: false, code };
       } finally {
         syncingRef.current = false;
         setSyncBusy(false);
@@ -3161,6 +3199,189 @@ export default function MailDayLedger() {
     setPullState("idle");
   }, [confirmPull, arm, disarm, applyBackup, pullPhotos]);
 
+  /* ---- merge: the resolution the conflict path never had ----
+
+     Pull and Push anyway are the two halves of the same mistake: each keeps one
+     device's work by discarding the other's. This keeps both. It only ever
+     ADDS — see merge-rules.mjs — so it destroys nothing, needs no two-tap
+     confirm, and is safe to re-run.
+
+     Two entrances, one function: the conflict (where it also completes the push
+     that was rejected) and the "other device is ahead" notice (where it does
+     not, because there may be nothing local to send and an empty commit is
+     noise). */
+  const doMerge = useCallback(
+    async (alsoPush) => {
+      if (!window.remote) return { ok: false, code: "server" };
+      clearTimeout(flashTimer.current);
+      disarm();
+      setRemoteMsg(null);
+      setPhotoMsg(null);
+      setMergeState("merging");
+      let gen = ++syncGen.current;
+      syncingRef.current = true;
+      setSyncBusy(true);
+      try {
+        /* this also refreshes the device sha, which is the thing that actually
+           clears the conflict — the merged push below is no longer stale */
+        const res = await window.remote.pull();
+        /* photos BEFORE applying, the same ordering doPull depends on: the
+           merge unions both devices' envelopes, so ids arriving from the other
+           device have no blob here yet and applyBackup would strip every one of
+           them. Tests 30.5-30.9 pin the same trap on the pull path. */
+        const extraPresent = await pullPhotos(res.text, gen);
+        if (syncGen.current !== gen) return { ok: false, code: "server" };
+        const { merged, stats } = mergeLedger(snapshot(), parseLedger(res.text));
+        const text = JSON.stringify(merged);
+        const before = syncGen.current;
+        await applyBackup(text, "merge", extraPresent, mergeSummary(stats));
+        /* applyBackup bumps syncGen — it has to, since a restore replaces the
+           world and anything still in flight against the old one must not land.
+           doPull is unaffected because applying is the last thing it does; a
+           merge PUSHES afterwards, so without re-adopting the generation here
+           every gen-guarded step below bails and the photo phase and the
+           "Pushed ✓" flash silently never run. Exactly one bump is ours; any
+           other number means something really did move on. */
+        if (syncGen.current !== before + 1) return { ok: false, code: "server" };
+        gen = syncGen.current;
+        setAhead(false);
+        setPushState("idle");
+        if (alsoPush) {
+          const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
+          await window.remote.push(
+            text,
+            `merge ${stamp} · ${merged.items.length} lines · ${merged.envelopes.length} envelopes`
+          );
+          setRemoteInfo(await window.remote.status().catch(() => null));
+          /* the MERGED envelopes' ids, not referencedPhotoIds — applyBackup's
+             setState has not committed yet, so the hook's value is still the
+             pre-merge list and every adopted photo would be skipped */
+          await pushPhotos(gen, [
+            ...new Set(merged.envelopes.flatMap((e) => e.photos || [])),
+          ]);
+          if (syncGen.current !== gen) return { ok: false, code: "server" };
+          setPushState("pushed");
+          flashTimer.current = setTimeout(() => setPushState("idle"), 2500);
+        }
+        return { ok: true };
+      } catch (e) {
+        /* parseLedger throws bare on a payload that isn't a ledger; anything
+           from the adapter carries a code. Either way the merge landed nothing,
+           because applyBackup throws before its first setState. */
+        const code = e?.code || "bad-response";
+        /* a third writer landed between our pull and our push. Re-arm the
+           conflict controls rather than leaving a bare message and no way
+           forward — merging again is the right next move, and it converges. */
+        if (code === "conflict") setPushState("conflict");
+        setRemoteMsg({
+          tone: code === "missing" || code === "conflict" ? "advice" : "error",
+          text: REMOTE_SAYS[code] || REMOTE_SAYS["bad-response"],
+        });
+        if (code === "auth" || code === "no-key") setKeyOpen(true);
+        return { ok: false, code };
+      } finally {
+        syncingRef.current = false;
+        setSyncBusy(false);
+        setMergeState("idle");
+        setPhotoSync(null);
+      }
+    },
+    [disarm, applyBackup, pullPhotos, pushPhotos, snapshot]
+  );
+
+  /* ---- is the other device ahead? ----
+     One cheap read on foreground (see remote.peek). Deliberately NOT on a
+     timer: the app has never polled, and the question only has a consequence
+     when someone is actually looking at the screen.
+
+     Runs without a key on purpose. Pulling the public ledger repo needs none,
+     so a keyless device can still merge — and telling it "your laptop is ahead"
+     is exactly the nudge that stops it pushing over the top later. */
+  useEffect(() => {
+    if (!loaded || !window.remote || typeof window.remote.peek !== "function")
+      return;
+    const check = async () => {
+      if (document.visibilityState === "hidden" || syncingRef.current) return;
+      const p = await window.remote.peek().catch(() => null);
+      /* known:false is "we could not look", which must never render as "all
+         clear" — leave the flag exactly as it was */
+      if (p && p.known) setAhead(!!p.ahead);
+    };
+    check();
+    document.addEventListener("visibilitychange", check);
+    return () => document.removeEventListener("visibilitychange", check);
+  }, [loaded, syncBusy]);
+
+  /* ---- auto-push ----
+     Safe only because the merge above exists. Automating pushes without it
+     would turn the conflict trap from something hit occasionally into the
+     normal way the two devices meet. */
+  const AUTO_PUSH_MS = 90000;
+  const autoTimer = useRef(null);
+  const skipFirstAuto = useRef(true);
+
+  const autoPush = useCallback(async () => {
+    if (!window.remote || syncingRef.current) return;
+    /* never mid-thought: a half-built envelope, a live undo and an armed
+       destructive button are all states where the ledger on screen is not the
+       one the user means yet */
+    if (composing || undo || confirmReset || confirmPull || confirmForce) return;
+    const info = await window.remote.status().catch(() => null);
+    if (!info?.hasKey) return;
+    if (typeof window.remote.peek === "function") {
+      const p = await window.remote.peek().catch(() => null);
+      /* "could not look" means DO NOT PUSH. This is the whole reason peek is
+         three-valued: pushing on an unknown remote state is how a device
+         overwrites the other one. */
+      if (!p || !p.known) return;
+      if (p.ahead) {
+        setAhead(true);
+        return;
+      }
+    }
+    const r = await doPush(false);
+    /* a conflict opened between the peek and the push — resolve it the safe
+       way rather than leaving "Push anyway" armed on an unattended screen */
+    if (r && !r.ok && r.code === "conflict") await doMerge(true);
+  }, [composing, undo, confirmReset, confirmPull, confirmForce, doPush, doMerge]);
+
+  /* Through a ref, and that is the whole point: autoPush's identity changes on
+     essentially every render (it depends on doPush, which depends on snapshot),
+     so listing it as a dep would re-arm the debounce on every commit — a sort
+     change would push, and the comment below would be a lie. */
+  const autoPushRef = useRef(autoPush);
+  useEffect(() => {
+    autoPushRef.current = autoPush;
+  });
+
+  useEffect(() => {
+    if (!loaded || !autoOn) return;
+    /* the load effect's first commit is not a change the user made */
+    if (skipFirstAuto.current) {
+      skipFirstAuto.current = false;
+      return;
+    }
+    clearTimeout(autoTimer.current);
+    autoTimer.current = setTimeout(() => autoPushRef.current(), AUTO_PUSH_MS);
+    return () => clearTimeout(autoTimer.current);
+    /* deliberately only the three fields that are REAL data. dateFilter,
+       sortBy and itemSort are on the debounced save because they persist, but
+       re-sorting the screen is not a reason to open a network connection. */
+  }, [items, received, envelopes, autoOn, loaded]);
+
+  /* Backgrounding is the last chance to catch a mail day that never went idle
+     for 90s. Best-effort by construction: fetch(keepalive) caps at 64KB and a
+     1000-line ledger base64s to roughly 470KB, so iOS will often kill this
+     mid-flight. The foreground catch-up above is what actually guarantees it. */
+  useEffect(() => {
+    if (!loaded || !autoOn) return;
+    const onHide = () => {
+      if (document.visibilityState === "hidden") autoPushRef.current();
+    };
+    document.addEventListener("visibilitychange", onHide);
+    return () => document.removeEventListener("visibilitychange", onHide);
+  }, [loaded, autoOn]);
+
   const saveKey = useCallback(async () => {
     if (!window.remote) return;
     try {
@@ -3176,6 +3397,15 @@ export default function MailDayLedger() {
       });
     }
   }, []);
+
+  const toggleAuto = useCallback(async () => {
+    if (!window.remote) return;
+    const next = !autoOn;
+    setAutoOn(next);
+    if (typeof window.remote.setAuto === "function")
+      await window.remote.setAuto(next).catch(() => {});
+    setRemoteInfo(await window.remote.status().catch(() => null));
+  }, [autoOn]);
 
   const clearKey = useCallback(async () => {
     if (!window.remote) return;
@@ -3214,6 +3444,11 @@ export default function MailDayLedger() {
                   entries: draft.entries,
                   note: draft.note,
                   photos: draft.photos || [],
+                  /* what lets the two-device merge tell an edit from a stale
+                     copy of the same envelope. Optional and defaulted (absent
+                     reads as 0), so envelopes written before this shipped keep
+                     loading untouched — invariant 2. */
+                  updatedAt: Date.now(),
                 }
               : e
           )
@@ -3221,6 +3456,7 @@ export default function MailDayLedger() {
             {
               id: newEnvelopeId(),
               createdAt: Date.now(),
+              updatedAt: Date.now(),
               note: draft.note,
               entries: draft.entries,
               photos: draft.photos || [],
@@ -3281,8 +3517,15 @@ export default function MailDayLedger() {
         .filter((e) => e.qty > 0);
       setEnvelopes((prev) =>
         leftovers.length
-          ? /* keep id/createdAt/note so it holds its place in the pile */
-            prev.map((e) => (e.id === env.id ? { ...e, entries: leftovers } : e))
+          ? /* keep id/createdAt/note so it holds its place in the pile.
+               updatedAt moves, though: assignment SHRINKS an envelope, and
+               without a fresh stamp the other device's larger stale copy would
+               win the merge and resurrect the entries just checked in. */
+            prev.map((e) =>
+              e.id === env.id
+                ? { ...e, entries: leftovers, updatedAt: Date.now() }
+                : e
+            )
           : prev.filter((e) => e.id !== env.id)
       );
 
@@ -4330,6 +4573,15 @@ export default function MailDayLedger() {
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 7,
+                      /* the ahead-notice lives INSIDE this disclosure, which
+                         defaults shut — so without something on the chip
+                         itself nobody would ever learn the other device is
+                         ahead. Colour rather than a dot or a badge on purpose:
+                         this row has a hard width budget at 375px and accent
+                         already means "active" everywhere else, so it costs
+                         zero pixels. */
+                      color: ahead ? C.accent : C.ink,
+                      borderColor: ahead ? C.accent : C.line,
                     }}
                   >
                     {/* the date but NOT the word "pushed" — this row has a hard
@@ -4426,6 +4678,31 @@ export default function MailDayLedger() {
                       ? "Pushed ✓"
                       : "Push"}
                   </button>
+                  {/* The safe resolution, and therefore the PRIMARY one:
+                      accent violet, the app's "this is the live control"
+                      colour, sitting to the left of the force. It carries no
+                      two-tap arm because it destroys nothing — arming it would
+                      say the opposite, and invariant 6's pattern is for
+                      destructive actions specifically. */}
+                  {(pushState === "conflict" || ahead) && (
+                    <button
+                      onClick={() => doMerge(pushState === "conflict")}
+                      disabled={syncBusy}
+                      style={{
+                        ...ctl,
+                        background: C.accent,
+                        color: C.card,
+                        borderColor: C.accent,
+                        opacity: syncBusy ? 0.6 : 1,
+                      }}
+                    >
+                      {mergeState === "merging"
+                        ? "Merging…"
+                        : pushState === "conflict"
+                        ? "Merge & push"
+                        : "Merge"}
+                    </button>
+                  )}
                   {/* the only force in the feature, and it exists so a device
                       holding the copy worth keeping isn't stuck behind a
                       conflict it could otherwise clear only by destroying it.
@@ -4480,6 +4757,22 @@ export default function MailDayLedger() {
                       {backupBusy ? "Packing…" : "Backup + photos"}
                     </button>
                   )}
+                  {remoteInfo?.hasKey && (
+                    /* ○/● said as state, the same idiom the SHOWING head cell
+                       uses. Gated on hasKey because auto-push cannot work
+                       without one, and a toggle that silently does nothing is
+                       worse than no toggle. */
+                    <button
+                      onClick={toggleAuto}
+                      style={{
+                        ...ctl,
+                        color: autoOn ? C.accent : C.inkSoft,
+                        borderColor: autoOn ? C.accent : C.line,
+                      }}
+                    >
+                      {autoOn ? "● Auto-push" : "○ Auto-push"}
+                    </button>
+                  )}
                   {remoteTarget && (
                     /* no marginLeft:auto — it pushed this to the right edge
                        while the key line below stayed left, so the panel read
@@ -4507,6 +4800,25 @@ export default function MailDayLedger() {
                     </span>
                   )}
                 </div>
+                {ahead && pushState !== "conflict" && (
+                  /* advisory manila, never red: being behind is the ordinary
+                     state after the other device pushes, and the fix adds
+                     rather than replaces */
+                  <div
+                    style={{
+                      fontFamily: cochin,
+                      fontSize: 13.5,
+                      lineHeight: 1.4,
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      background: C.manila,
+                      color: C.manilaInk,
+                    }}
+                  >
+                    Your other device has pushed newer lines. Merge brings them
+                    in — nothing here is replaced.
+                  </div>
+                )}
                 {confirmPull && (
                   <div
                     style={{

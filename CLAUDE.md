@@ -43,8 +43,19 @@ every seller, for "did all four of these arrive?" and for cost basis), and
   classified code, since `classifyStatus` folds a sha-less 422 and a throttling
   409 into the same `conflict` and they mean opposite things), and `photoPlan`
   (the set difference, three-valued on the remote). Imported by `entry.jsx` for
-  naming and by `app.jsx` for `photoPlan` — **the one local-module import in
-  `app.jsx`**, whose dependencies are otherwise react, react-dom and papaparse.
+  naming and by `app.jsx` for `photoPlan` — one of the **two** local-module
+  imports in `app.jsx` (the other is `merge-rules.mjs`), whose dependencies are
+  otherwise react, react-dom and papaparse.
+- `src/merge-rules.mjs` — reconciling two devices' ledgers: `mergeItems` (union
+  by `it.key`, and the CSV import path calls it too so there is one definition
+  of "union line items"), `mergeReceived` (per-key **max**), `mergeEnvelopes`
+  (union by id, freshest `updatedAt` wins) and `mergeLedger`/`mergeSummary`.
+  Pure and directly tested for the sharpest version of the reason the three
+  modules below are: this is the piece that fails by producing a *plausible
+  wrong ledger*, and a merge that silently drops 35 imported lines is
+  indistinguishable from one that worked. **The merge only ever ADDS** — nothing
+  is dropped, no count decreases — which is why it needs no two-tap confirm and
+  why re-running it is harmless.
 - `src/remote-rules.mjs` — the two adapter decisions worth asserting on:
   `classifyStatus` (GitHub's overloaded status codes → an error code the UI can
   phrase) and `pushBody` (which omits the sha only on a create). Same reasoning
@@ -76,12 +87,25 @@ blobs: `app.jsx` never learns a filename, exactly as it never learns the string
 `"ledger.json"`. The naming rules live in `src/photo-rules.mjs` and are
 imported only by `entry.jsx`.
  localStorage remains the source
-of truth; the GitHub copy is a manual, tap-triggered backup and the app is
-fully functional offline. Nothing in it runs on a timer. Continuous sync was
-considered and rejected: the ledger blob is ~350KB at 1000 items and is
-rewritten *whole* on the 500ms debounce, GitHub's secondary limit is 80
-content-generating requests/min and 500/hr, and a commit per check-in would
-grow the repo that serves the app forever.
+of truth; the GitHub copy is a backup and the app is fully functional offline.
+
+**Push may now run itself, on a 90s idle debounce plus backgrounding, behind an
+off-by-default per-device toggle.** What was rejected was *continuous* sync — a
+push per check-in, at the 500ms save cadence — and that is still rejected: the
+ledger blob is rewritten *whole*, and GitHub's secondary limit is 80
+content-generating requests/min and 500/hr, shared with photos. The 90s debounce
+is two orders of magnitude off that.
+
+The repo-growth worry that argued against it turned out to be small, and there
+are numbers: the real ledger blob is **235KB**, and all **19 pushes** of it
+bundle to **39KB** — git deltas near-identical JSON to roughly 2KB a version.
+At tens of pushes a mail day that is single-digit MB a year.
+
+**Auto-push is safe only because the merge exists.** Automating it without
+`merge-rules.mjs` would turn the conflict trap from something hit occasionally
+into the normal way two devices meet. It is also why auto-push refuses to write
+when `peek()` cannot see the remote: pushing on an unknown remote state is
+precisely how one device overwrites the other.
 
 The access token lives at raw localStorage key **`mailday-remote:v1`**,
 deliberately *outside* the `mailday:` namespace. `window.storage.list()`
@@ -100,7 +124,12 @@ rather than by remembering. Verified in a browser: after saving a key,
 2. **Saved-state shape:** `{ items, received, envelopes, dateFilter, sortBy,
    itemSort, savedAt }`. `items` = array of parsed line items; `received` = map
    of item key → count received; `envelopes` = orphaned-mail records, each
-   `{ id, createdAt, note, entries: [{ name, qty }], photos: [photoId] }`.
+   `{ id, createdAt, note, entries: [{ name, qty }], photos: [photoId],
+   updatedAt }`. `updatedAt` is what lets the two-device merge tell a real edit
+   from a stale copy of the same envelope; it is optional and defaulted (absent
+   reads as 0), so envelopes written before it shipped keep loading untouched.
+   It costs nothing under the five-site rule below because it lives *inside*
+   `envelopes`, which is already persisted.
    Item key = `orderId|itemNumber|vendorProductId` — stable across re-imports;
    never change its construction. Envelope entries store card **names**, never
    item keys, so a re-import can't rot them and newly imported older orders
@@ -349,7 +378,30 @@ page. See "Known open threads" for exactly what that leaves unproven.
   until the next pull. Stripping it costs the photo.** So 26.13 split: strip
   only when the store was actually *read* and genuinely didn't hold it (26.13),
   keep when we couldn't look (26.13b).
-- **Push / Pull (GitHub).** Manual, tap-triggered backup to `ledger.json` on the
+- **Merge (the conflict's way out).** Pull and Push anyway are the two halves of
+  the same mistake — each keeps one device's work by discarding the other's.
+  `Merge & push` keeps both: pull, union, apply, push. It carries **no two-tap
+  arm**, deliberately, because it destroys nothing and invariant 6's pattern is
+  for destructive actions specifically; arming it would say the opposite of what
+  it does. Two entrances, one function (`doMerge`): the conflict, where it also
+  completes the rejected push, and the *ahead-notice*, where it does not (there
+  may be nothing local to send, and an empty commit is noise).
+  The ordering inside it is the same one `doPull` depends on — **photos are
+  fetched before the ledger is applied** — and for a sharper reason: the merge
+  unions both devices' envelopes, so ids arriving from the other device have no
+  blob here yet and `applyBackup` would strip every one of them.
+- **`peek()`, and auto-push.** `GET /git/trees/{branch}` returns the **blob**
+  sha for `ledger.json` — the exact value `push` stores and `rec().sha` is
+  compared against — for a few hundred bytes on the *read* budget rather than
+  the ~470KB a Contents GET would spend to answer the same question. It runs on
+  foreground, never on a timer, and it is **three-valued** for the same reason
+  `listPhotos` is: "I could not look" must never render as "all clear", because
+  that is the state in which pushing overwrites the other device. Auto-push
+  (off by default, per-device, stored beside the token and **not** in the
+  ledger) looks before every write and declines on `ahead` or on unknown; a
+  conflict opening between the look and the write resolves by merging rather
+  than leaving `Push anyway` armed on a screen nobody is watching.
+- **Push / Pull (GitHub).** Tap-triggered backup to `ledger.json` on the
   **`data` branch** of `shivinate7/mailaudit` — never `main`, because Pages
   deploys from main's root and every backup would otherwise trigger a site
   rebuild. Push needs a fine-grained PAT (`Contents: read & write`, that repo
@@ -463,8 +515,14 @@ option grids still read, because `optGrid` paints `line` and each `optCell`
 paints `card` over it, so the cells sit slightly raised against the page.
 
 **Everything that moves data in or out still sits behind the `Sync`
-disclosure** — Push, Pull, Backup, Backup + photos, the target line and the key
-field. It uses the same `panelWrap` surface as the date and sort disclosures.
+disclosure** — Push, Merge, Pull, Backup, Backup + photos, the auto-push
+toggle, the target line and the key field. Two of those are conditional:
+`Merge` appears on a conflict *or* when `peek()` says the other device is ahead,
+and the auto-push toggle only once there is a key, because auto-push cannot work
+without one and a toggle that silently does nothing is worse than no toggle.
+`Merge` is filled **accent violet** — the app's "this is the live control"
+colour — because it is the safe resolution and therefore the primary one, while
+the force beside it stays advisory manila. It uses the same `panelWrap` surface as the date and sort disclosures.
 It did not at first, and it was the one panel in the region with no padding and
 no rule, so its buttons sat flush against the section edge while the chip that
 opened them was right-aligned above — which reads, correctly, as off-centre.
@@ -724,6 +782,17 @@ device, since GitHub hides a private repo's existence behind a 404.)
    order wrong is silent — the ledger would come back looking perfect with every
    photo id quietly stripped.
 
+6. **Prove the merge before trusting auto-push**, because auto-push's conflict
+   recovery is that same path running unattended. On A: check a card in, Push.
+   On B *without pulling*: import a CSV that adds lines, Push — expect the
+   conflict, then **Merge & push**. B must end holding A's check-in *and* its
+   own new lines, and A's next Merge must agree. Only then turn `● Auto-push`
+   on, one device at a time.
+
+   `file://` and `http://localhost:4173` are two separate origins with two
+   separate ledgers, so they stand in for two devices without needing a second
+   phone — see "Running it locally".
+
 ### Icons
 
 `apple-touch-icon.png` (180×180), `favicon.svg` and `icon-32.png` are committed
@@ -772,7 +841,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 283 assertions, no test framework, ~30s (groups 30–31 spend a few
+`npm test` — 337 assertions, no test framework, ~55s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
@@ -787,6 +856,17 @@ see, so the assertions read the DOM the way the user does.
 (Three previous harnesses were written ad hoc and thrown away, which is why the
 same assertions kept being rewritten from scratch. Hence this one is committed
 and `jsdom` is a real devDependency.)
+
+New in groups 33–34 (two-device merge and auto-push). Group 33 is pure, like 27
+and 31: it imports `merge-rules.mjs` directly, because a merge that drops lines
+produces a plausible ledger rather than an error. The assertions worth keeping
+are the *symmetry* ones — merging A into B and B into A must yield the same
+counts, and merging twice must add nothing — since those are what say "this
+cannot pick a loser" and "a retry after a half-failed sync is harmless".
+
+Group 34 drives the app. Its fixture is the real 08-22 state from
+`git log origin/data`: a phone holding unpushed check-ins and a stale item list
+against a remote carrying the laptop's fresh import.
 
 **The suite is mutation-tested.** Breaking a behaviour on purpose must turn it
 red — verified for: assignment checking in more than was recorded, `resetAll`
@@ -890,6 +970,20 @@ Gotchas worth remembering:
   *what renders* instead, which is the part that can actually be wrong.
 - A successful push shows `Pushed ✓` for 2.5s, so `btn(/^Push$/)` won't match
   during the flash. Assert on state, or wait it out.
+- **Auto-push's 90s idle debounce is not something to wait out.** Drive it with
+  `background()` instead, which dispatches `visibilitychange` with
+  `visibilityState` stubbed to `hidden` — the handler calls `autoPush()`
+  immediately. That is a fast seam *and* a real path (switching away mid-mail-day
+  is the last chance to catch a session that never went idle), so the test isn't
+  reaching for a private hook. `foreground()` is the inverse and is also what
+  re-runs the `peek`.
+  A test that merely waits ~200ms and asserts nothing was pushed proves nothing,
+  because the debounce is 90s — that assertion cannot fail. The first draft of
+  34.18 was exactly that shape; watch for it.
+- **`remote.fail` cannot express "the push conflicts".** It rejects the pull as
+  well, so the merge that recovers from the conflict never gets its payload.
+  `remote.pushFailOnce` is the one-shot, push-only version, and it models the
+  real race: the remote moves between the `peek` and the `PUT`.
 
 New in groups 30–31 (photo sync). `harness.mjs` grows a remote photo store
 alongside the ledger mock, with three choices worth keeping:
@@ -929,6 +1023,36 @@ feature — **a photo error escaping into the ledger's error path**, which makes
 `Push anyway` appear and would let a slow upload arm a button that overwrites
 another device's ledger (30.11).
 
+Groups 33–34 (two-device merge and auto-push) added **twelve**, all confirmed
+to turn the suite red: `mergeReceived` using incoming-wins instead of `max`;
+`mergeItems` replacing instead of unioning; the envelope collision preferring
+the bigger copy; `mergeLedger` letting the remote's view preferences win; a
+merge applying the ledger *before* downloading photos; auto-push reading an
+unreadable remote as all clear; auto-push leaving a conflict rather than
+merging; a merge that stops disarming the other confirms; assignment no longer
+stamping `updatedAt`; the photo phase surveying the pre-merge reference list;
+`doMerge` not re-adopting the generation `applyBackup` bumps; and a conflict
+during the merged push leaving no button.
+
+Three of those are worth remembering as method, because the first drafts of
+these tests were all wrong in ways that looked fine:
+
+- **34.10 asserted `saved().items === undefined ? 0 : 1`** — which is 1 whether
+  the ledger survived or was wiped. Tightening it to a real count immediately
+  showed the test was *also* reading before the 500ms debounce had written.
+  Two bugs behind one assertion that could not fail.
+- **The photo-ordering mutant was "caught" for the wrong reason.** It failed
+  34.7 (the merged ledger reaching GitHub) because moving the code also tripped
+  the generation guard — nothing was asserting about photos at all. It only
+  became a real test once 34.31 put the blob **exclusively on the remote**; with
+  a local copy the id is in `present` anyway and the assertion passes under the
+  mutation. When a mutant dies, check it died of the right thing.
+- **`doMerge` genuinely was broken**, and only 34.29 found it: `applyBackup`
+  increments `syncGen` so that work in flight against the pre-restore world
+  can't land. `doPull` never noticed because applying is the last thing it does.
+  A merge *pushes* afterwards, so every gen-guarded step after the apply — the
+  whole photo phase, and the `Pushed ✓` flash — silently did nothing.
+
 Group 32 (getting from a search hit to the whole order) added four, all
 confirmed to turn the suite red: the order-id button losing its
 `stopPropagation`, which turns a look into a check-in; `revealed` missing from
@@ -952,8 +1076,13 @@ key, offline, the token never leaking, pull as a full replace, photo ids kept
 vs stripped, arming one control disarming the other); entity decoding on
 seller names, through a real CSV import; getting from a search hit to the whole
 order (per-package reveal, the Tally jump, the search surviving it, the hideDone
-bypass, and a navigation tap writing nothing); and the older package/Tally views
-still working.
+bypass, and a navigation tap writing nothing); the two-device merge (both
+devices' work surviving a conflict, symmetry, idempotence, view preferences
+staying local, an assigned-away envelope not resurrecting, and the merged
+ledger reaching GitHub); auto-push (looking before it writes, refusing on an
+unreadable *or* an ahead remote, merging rather than forcing when a conflict
+opens mid-write, and the toggle living outside the ledger); and the older
+package/Tally views still working.
 
 Still only covered by eye, never by a test: anything that needs a real device —
 the camera capture, the canvas downscale, and iOS keyboard behaviour. Layout at
@@ -981,7 +1110,7 @@ listing returns `{name,type,size,sha}`, a missing directory returns 404 "Not
 Found" (so `missing`, distinct from `no-branch`), and a keyless request to the
 private `mailaudit-photos` 404s on both the tree and the repo, which is the
 `no-access` path. **Still never run against real GitHub: an authenticated photo
-PUT, a photo pull that returns bytes, and a ledger conflict.**
+PUT, a photo pull that returns bytes, a ledger conflict, and `peek()`.**
 
 That same session is what surfaced the group-28 bug — Pull unreachable on an
 empty ledger. Worth remembering as a method: the suite was all green and the
@@ -1016,9 +1145,25 @@ give no isolation between groups.
   across every Pages repo, so script from any other project there can read
   `mailday-remote:v1`. Mitigated by the fine-grained, single-repo,
   Contents-only scope and one token per device — not eliminated.
-- **No auto-pull and no merge, both deliberate.** The app never fetches on its
-  own, and a conflict is resolved by the user (pull, or force), never by code
-  trying to reconcile two `received` maps.
+- **A merge exists; auto-pull-and-apply still deliberately doesn't.** A
+  conflict is resolved by `Merge & push` (see `merge-rules.mjs`), which keeps
+  both devices' work — Pull and Push anyway remain, but they are now the two
+  lossy options rather than the only ones. What the app still never does is
+  apply a remote change *on its own*: `peek()` reports that the other device is
+  ahead and offers `Merge`, and the user picks the moment. Merging forty new
+  CSV lines into the package list mid-check-in is exactly the cascading mis-tap
+  invariant 5 exists to prevent.
+- **`max` on `received` cannot express an un-check.** "Clear check-ins", or
+  stepping a qty back to 0, racing the other device's stale copy means the card
+  comes back checked. Visible and one tap to fix, and the alternative is a
+  per-key `receivedAt` schema change bought for a case a phone-only-checks-in
+  workflow barely produces. It stays available: `receivedAt` would be an
+  additive optional key and `mergeReceived` is the one function to change.
+- **Envelope deletion isn't represented, so a discarded envelope can come
+  back.** Nothing distinguishes "deleted here" from "created there" without
+  tombstones. The bias is chosen: entries are hand-typed and exist nowhere else,
+  and invariant 7 means a stray envelope decides nothing on its own —
+  resurrecting one costs a tap, dropping one costs data the user typed.
 - **Photos in git are permanent, including discarded ones.** Nothing ever
   deletes a remote photo: Discard, the sweep and `resetAll` all stop at the
   device boundary, and git history would keep the blob even if the tip didn't.
@@ -1042,11 +1187,21 @@ give no isolation between groups.
   check-ins back with no setup. Photos need the key. They must read as *"needs
   your key"* and never as lost — that distinction is the whole point of
   `listPhotos` being three-valued.
-- **Never run against real GitHub.** Every push/pull path is covered by the
-  harness mock and by hand against the built page, but no HTTP request has
-  actually gone to the Contents API. Work through the setup checklist in
-  "Build & deploy" the first time, and then verify the conflict guard for real:
-  push from device A, then push from B *without* pulling, and confirm B is
-  blocked and B's ledger is untouched. If B succeeds, the sha bookkeeping is
-  wrong and A's data was just overwritten — recover with
-  `git show data~1:ledger.json` and restore that file the normal way.
+- **The conflict guard has never been verified against real GitHub**, and it is
+  now the thing most worth verifying, because `Merge & push` and auto-push both
+  hang off it. The ledger repo *has* taken real authenticated pushes
+  (`git log origin/data`), so the transport works; what is unproven is the 409
+  itself. Verify it deliberately: push from device A, then push from B *without*
+  pulling. B must be blocked. If B succeeds, the sha bookkeeping is wrong and
+  A's data was just overwritten — recover with `git show data~1:ledger.json`
+  and restore that file the normal way.
+  Then take the same setup one step further, which is the new path: on B tap
+  **Merge & push**, and confirm B ends holding *both* devices' work and A's next
+  Pull agrees. Do this **before turning auto-push on**, because auto-push's
+  conflict recovery is exactly this path running unattended.
+- **`peek()` has never run against real GitHub either.** It needs no permission
+  the token doesn't already have (`GET /git/trees/{branch}` is a read), but the
+  one thing to check by eye is that a *fresh* device — no local sha — reports
+  `ahead` rather than erroring, since that is the state every new phone starts
+  in. Still never run for real: an authenticated photo PUT, a photo pull that
+  returns bytes, and a ledger conflict.

@@ -31,6 +31,9 @@ import {
   openSync,
   pickSort,
   pushes,
+  peeks,
+  background,
+  foreground,
   record,
   remote,
   remotePhotos,
@@ -58,6 +61,13 @@ import {
   photoPlan,
 } from "../src/photo-rules.mjs";
 import { utf8ToBase64, bytesToBase64, blobToBase64 } from "../src/b64.mjs";
+import {
+  mergeItems,
+  mergeReceived,
+  mergeEnvelopes,
+  mergeLedger,
+  mergeSummary,
+} from "../src/merge-rules.mjs";
 
 const fresh = () => boot({ items: ITEMS, received: {} });
 
@@ -1631,5 +1641,475 @@ ok(
   /cards\s*0\/14/.test(text()),
   "32.16 opening an order checks nothing in"
 );
+
+/* ── 33. merging two devices' ledgers ─────────────────────────────────────
+   Pure, imported directly, same rationale as groups 27 and 31: this is the
+   piece of the sync that fails by producing a plausible WRONG ledger rather
+   than an error, and a merge that quietly drops 35 imported lines is
+   indistinguishable from one that worked. The branch history records that
+   exact loss happening for real (752 items -> 717 -> 752). */
+
+/* the shape of the actual bug: each device holds what the other is missing */
+const PHONE = {
+  items: ITEMS.slice(0, 3),
+  received: { [ITEMS[0].key]: 1, [ITEMS[1].key]: 1 },
+  envelopes: [],
+  sortBy: "newest",
+  itemSort: "missing",
+  dateFilter: { preset: "all", from: "", to: "" },
+};
+const LAPTOP = {
+  items: ITEMS, /* the same three plus everything a fresh CSV added */
+  received: { [ITEMS[0].key]: 1 },
+  envelopes: [],
+  sortBy: "value",
+  itemSort: "basis",
+  dateFilter: { preset: "days", from: "", to: "", days: "30" },
+};
+
+const m33 = mergeLedger(PHONE, LAPTOP);
+eq(m33.merged.items.length, ITEMS.length, "33.1 the laptop's imported lines survive");
+eq(
+  m33.merged.received[ITEMS[1].key],
+  1,
+  "33.2 and so do the check-ins the laptop had never seen"
+);
+eq(m33.stats.itemsAdded, ITEMS.length - 3, "33.3 the count of what arrived is reported");
+
+/* the property the whole feature rests on: neither direction loses anything */
+const back = mergeLedger(LAPTOP, PHONE);
+eq(
+  back.merged.items.length,
+  m33.merged.items.length,
+  "33.4 merging the other way round gives the same line count"
+);
+eq(
+  Object.keys(back.merged.received).length,
+  Object.keys(m33.merged.received).length,
+  "33.5 and the same check-ins — the merge cannot pick a loser"
+);
+
+/* idempotence, which is what makes a retry after a half-failed sync harmless */
+const again = mergeLedger(m33.merged, LAPTOP);
+eq(again.stats.itemsAdded, 0, "33.6 merging the same thing twice adds nothing");
+eq(again.merged.items.length, ITEMS.length, "33.7 and changes nothing");
+
+/* counts take the max, so a partially-received line keeps the further count */
+eq(
+  mergeReceived({ k: 1 }, { k: 3 }).received.k,
+  3,
+  "33.8 the further-along count wins"
+);
+eq(
+  mergeReceived({ k: 3 }, { k: 1 }).received.k,
+  3,
+  "33.9 in either direction — this is a max, not a last-writer-wins"
+);
+eq(mergeReceived({ k: 3 }, { k: 1 }).added, 0, "33.10 and nothing is reported added");
+
+/* view preferences are per-device: syncing them makes the phone's sort jump
+   because the laptop happened to be sorted differently */
+eq(m33.merged.sortBy, "newest", "33.11 the local sort survives a merge");
+eq(m33.merged.itemSort, "missing", "33.12 and so does the local item sort");
+eq(m33.merged.dateFilter.preset, "all", "33.13 and the local date range");
+
+/* the collision rule. Assignment SHRINKS an envelope, so "prefer the bigger
+   one" would resurrect the entries just checked in — while mergeReceived also
+   keeps the check-ins they produced, leaving the same cards both received and
+   still sitting in the envelope. */
+const ASSIGNED = {
+  id: "env-1",
+  createdAt: 10,
+  updatedAt: 200,
+  note: "",
+  entries: [{ name: "Ponder", qty: 1 }],
+  photos: [],
+};
+const STALE = {
+  id: "env-1",
+  createdAt: 10,
+  updatedAt: 100,
+  note: "",
+  entries: [
+    { name: "Ponder", qty: 1 },
+    { name: "Lightning Bolt", qty: 1 },
+    { name: "Counterspell", qty: 1 },
+  ],
+  photos: [],
+};
+eq(
+  mergeEnvelopes([ASSIGNED], [STALE]).envelopes[0].entries.length,
+  1,
+  "33.14 the freshest write wins, so an assigned-away entry stays away"
+);
+eq(
+  mergeEnvelopes([STALE], [ASSIGNED]).envelopes[0].entries.length,
+  1,
+  "33.15 and it wins from the other side too"
+);
+/* absent on everything written before this shipped — has to be handled, not
+   migrated (invariant 2: new keys optional and defaulted) */
+const NOSTAMP = { id: "env-1", createdAt: 10, entries: [{ name: "X", qty: 9 }] };
+eq(
+  mergeEnvelopes([ASSIGNED], [NOSTAMP]).envelopes[0].entries[0].name,
+  "Ponder",
+  "33.16 an unstamped copy loses to a stamped one rather than crashing"
+);
+eq(
+  mergeEnvelopes([NOSTAMP], [{ ...NOSTAMP, entries: [] }]).envelopes[0].entries.length,
+  1,
+  "33.17 and two unstamped copies tie to the local one"
+);
+
+/* the deliberate bias: an envelope's entries are hand-typed and exist nowhere
+   else, and invariant 7 means a stray one decides nothing on its own */
+const other = mergeEnvelopes([], [ASSIGNED]);
+eq(other.envelopes.length, 1, "33.18 an envelope only the other device has is adopted");
+eq(other.added, 1, "33.19 and counted");
+
+eq(
+  mergeItems(ITEMS.slice(0, 2), []).items.length,
+  2,
+  "33.20 merging nothing in drops nothing"
+);
+ok(
+  /nothing new/.test(mergeSummary({ itemsAdded: 0, checkInsAdded: 0, envelopesAdded: 0 })),
+  "33.21 a merge that changed nothing says so rather than claiming a win"
+);
+ok(
+  /35 new lines/.test(mergeSummary({ itemsAdded: 35, checkInsAdded: 0, envelopesAdded: 0 })),
+  "33.22 and one that did says what arrived"
+);
+
+/* ── 34. the conflict stops being a trap ──────────────────────────────────
+   Group 25 proves a stale push is BLOCKED. This proves it can now be resolved
+   without either device losing work — which is the entire point, because both
+   previous resolutions were lossy and the history shows the lossy one being
+   taken. */
+
+/* the laptop pushed an import; this phone has unpushed check-ins and a stale
+   item list — precisely the 08-22 state in the branch history */
+const LAPTOP_PUSHED = JSON.stringify({
+  mailday: 1,
+  items: ITEMS,
+  received: {},
+  envelopes: [],
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+});
+
+await boot(
+  { items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } },
+  null,
+  { remote: LAPTOP_PUSHED }
+);
+await openSync();
+await saveGitHubKey();
+await click(btn(/^Push$/), "stale push");
+ok(/changed since you last pulled/.test(text()), "34.1 the push is blocked, as before");
+ok(!!btn(/Merge & push/), "34.2 but now there is a way out that isn't lossy");
+
+await click(btn(/Merge & push/), "merge");
+await settle();
+await sleep(SAVE_WAIT);
+eq(saved().items.length, ITEMS.length, "34.3 the laptop's imported lines arrive");
+eq(
+  saved().received[ITEMS[0].key],
+  1,
+  "34.4 and this device's check-ins are still here"
+);
+ok(
+  /Merged/.test(text()),
+  "34.5 and it says what happened"
+);
+eq(
+  JSON.parse(remoteText()).items.length,
+  ITEMS.length,
+  "34.6 the merged ledger reached GitHub, so the conflict is cleared"
+);
+eq(
+  JSON.parse(remoteText()).received[ITEMS[0].key],
+  1,
+  "34.7 carrying the check-ins the remote had never seen"
+);
+
+/* Merge destroys nothing, so arming it would say the opposite of what it does
+   — and invariant 6's two-tap pattern is for destructive actions specifically. */
+await boot(
+  { items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } },
+  null,
+  { remote: LAPTOP_PUSHED }
+);
+await openSync();
+await saveGitHubKey();
+await click(btn(/^Push$/), "stale push");
+await click(btn(/^Reset$/), "arm reset");
+ok(/Tap again to clear everything/.test(text()), "34.8 Reset arms");
+await click(btn(/Merge & push/), "merge while reset is armed");
+await settle();
+ok(!/Tap again to clear everything/.test(text()), "34.9 merging disarms Reset");
+await sleep(SAVE_WAIT);
+eq(saved().items.length, ITEMS.length, "34.10 and did not clear the ledger");
+
+/* the notice, and the merge that only brings in */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { remote: LAPTOP_PUSHED });
+await openSync();
+await settle();
+ok(
+  /pushed newer lines/.test(text()),
+  "34.11 a device that is behind is told so without being made to pull"
+);
+eq(peeks().length > 0, true, "34.12 which it learned from one cheap read, not a pull");
+await click(btn(/^Merge$/), "merge in");
+await settle();
+await sleep(SAVE_WAIT);
+eq(saved().items.length, ITEMS.length, "34.13 merging brings the new lines in");
+ok(!/pushed newer lines/.test(text()), "34.14 and the notice clears");
+
+/* ---- auto-push ----
+   The reason the merge had to come first: automating pushes without it turns
+   the trap above from occasional into the normal way two devices meet. */
+
+await fresh();
+await openSync();
+await saveGitHubKey();
+ok(!!btn(/Auto-push/), "34.15 the toggle appears once there is a key");
+await click(btn(/○ Auto-push/), "turn it on");
+await settle();
+eq(remote.auto, true, "34.16 and it is remembered by the transport layer");
+eq(
+  saved().auto,
+  undefined,
+  "34.17 NOT in the ledger — it is a device setting, like the token"
+);
+
+/* Backgrounding runs auto-push straight away rather than after the 90s idle
+   debounce, so these drive that path — which is also a real one: switching away
+   mid-mail-day is the last chance to catch a session that never went idle. */
+
+/* THE safety property. "I could not look" must never be read as "all clear":
+   pushing on an unknown remote state is exactly how one device overwrites the
+   other, and it is the reason peek() is three-valued at all. */
+await boot({ items: ITEMS, received: {} }, null, { remote: LAPTOP_PUSHED });
+await openSync();
+await saveGitHubKey();
+await click(btn(/○ Auto-push/), "arm auto-push");
+await settle();
+remote.peekUnknown = "offline";
+const unseen = pushes().length;
+await background();
+eq(pushes().length, unseen, "34.18 auto-push refuses to write when it could not look");
+remote.peekUnknown = null;
+
+/* and when it CAN look and the other device is ahead, it still doesn't push —
+   it says so instead, which is the whole point of not automating the pull */
+const behind = pushes().length;
+await background();
+eq(pushes().length, behind, "34.19 nor when the other device is ahead");
+await foreground();
+ok(/pushed newer lines/.test(text()), "34.20 it reports it rather than overwriting");
+
+/* the ordinary case: nobody is ahead, so it goes */
+await boot({ items: ITEMS, received: {} }, null, { remote: null });
+await openSync();
+await saveGitHubKey();
+await click(btn(/○ Auto-push/), "arm auto-push");
+await settle();
+const quiet = pushes().length;
+await background();
+ok(pushes().length > quiet, "34.21 with the remote in step, auto-push pushes");
+ok(
+  peeks().length > 0,
+  "34.22 and it looked first — the peek is what makes the push safe"
+);
+
+/* a conflict opening between the look and the write must not leave "Push
+   anyway" armed on a screen nobody is watching */
+await boot(
+  { items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } },
+  null,
+  { remote: LAPTOP_PUSHED }
+);
+await openSync();
+await saveGitHubKey();
+await click(btn(/○ Auto-push/), "arm auto-push");
+await settle();
+/* peek reports all clear, but the remote moves before the PUT lands — the race
+   the optimistic sha check exists to catch */
+remote.peekUnknown = null;
+remote.deviceSha = remote.sha; /* so peek says all clear */
+remote.pushFailOnce = "conflict"; /* ...and the write disagrees */
+await background();
+await settle();
+await sleep(SAVE_WAIT);
+eq(
+  saved().items.length,
+  ITEMS.length,
+  "34.23 a conflict during an unattended push resolves by merging, not by forcing"
+);
+eq(
+  saved().received[ITEMS[0].key],
+  1,
+  "34.24 keeping this device's check-ins through it"
+);
+
+/* Two gaps the mutation pass found: group 33 proves mergeEnvelopes prefers the
+   freshest write, but nothing proved the APP stamps one when an assignment
+   shrinks an envelope — and with both stamps equal, local wins a tie anyway, so
+   the bug hid. The stamp only earns its keep when the remote copy was touched
+   more recently than this device's last *save*, which is what this sets up. */
+const ENV_LOCAL = {
+  id: "env-s",
+  createdAt: 5,
+  updatedAt: 1,
+  note: "",
+  entries: [
+    { name: "Ponder", qty: 1 },
+    { name: "Zzz Unmatched", qty: 1 },
+  ],
+  photos: [],
+};
+const REMOTE_HAS_BOTH = JSON.stringify({
+  mailday: 1,
+  items: ITEMS,
+  received: {},
+  /* the pre-assignment copy, stamped LATER than this device's stored envelope */
+  envelopes: [{ ...ENV_LOCAL, updatedAt: 2 }],
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+});
+
+await boot({ items: ITEMS, received: {}, envelopes: [ENV_LOCAL] }, null, {
+  remote: REMOTE_HAS_BOTH,
+});
+await goTo("orphaned");
+await assign(0); /* checks Ponder in; "Zzz Unmatched" stays as a leftover */
+eq(envelopeCount(), 1, "34.26 a partial assignment leaves the envelope behind");
+await openSync();
+await saveGitHubKey();
+await click(btn(/^Push$/), "stale push");
+await click(btn(/Merge & push/), "merge");
+await settle();
+await sleep(SAVE_WAIT);
+eq(
+  saved().envelopes[0].entries.length,
+  1,
+  "34.27 the assignment stamps the envelope, so the remote's stale copy loses"
+);
+ok(
+  !/Ponder/.test(JSON.stringify(saved().envelopes)),
+  "34.28 the entry that was checked in does not come back"
+);
+
+/* And the other survivor: a merge adopts the remote's envelopes, so the photo
+   phase has to survey the MERGED reference list. Reading the hook's value gives
+   the pre-merge list — React has not committed — and a photo this device holds
+   for an envelope only the remote knew about is silently never uploaded. The
+   real shape of this is a ledger push that landed while its photo upload was
+   rate-limited. */
+const REMOTE_WANTS_PHOTO = JSON.stringify({
+  mailday: 1,
+  items: ITEMS,
+  received: {},
+  envelopes: [
+    {
+      id: "env-p",
+      createdAt: 7,
+      updatedAt: 7,
+      note: "",
+      entries: [{ name: "Ponder", qty: 1 }],
+      photos: ["pho-9"],
+    },
+  ],
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+});
+/* the blob is HERE; the photo repo does not have it; no local envelope
+   references it until the merge adopts the remote's */
+await boot({ items: ITEMS, received: {}, envelopes: [] }, [["pho-9", jpegOf(3)]], {
+  remote: REMOTE_WANTS_PHOTO,
+});
+await openSync();
+await saveGitHubKey();
+await click(btn(/^Push$/), "stale push");
+await click(btn(/Merge & push/), "merge");
+await settle();
+ok(
+  remotePhotoIds().includes("pho-9"),
+  "34.29 a photo the merge adopts is uploaded, not skipped"
+);
+
+/* THE ordering the whole feature rests on, and the one the pull path already
+   pins at 30.5-30.9: a merge adopts the other device's envelopes, so their
+   photo ids arrive with no blob here yet. Apply the ledger before downloading
+   and applyBackup's present-set strips every one of them — the debounced save
+   then writes the stripped ledger and the next push publishes it over the good
+   copy. The blob below is deliberately ONLY on the remote; a local copy would
+   put the id in `present` anyway and the test would pass either way. */
+const MERGE_PHOTO_LEDGER = JSON.stringify({
+  mailday: 1,
+  items: ITEMS,
+  received: {},
+  envelopes: [
+    {
+      id: "env-r",
+      createdAt: 9,
+      updatedAt: 9,
+      note: "",
+      entries: [{ name: "Ponder", qty: 1 }],
+      photos: ["pho-7"],
+    },
+  ],
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+});
+await boot({ items: ITEMS.slice(0, 3), received: {}, envelopes: [] }, null, {
+  remote: MERGE_PHOTO_LEDGER,
+  remotePhotos: [["pho-7.jpg", await blobToBase64(jpegOf(7))]],
+});
+await openSync();
+await saveGitHubKey();
+await click(btn(/^Push$/), "stale push");
+await click(btn(/Merge & push/), "merge");
+await settle();
+await sleep(SAVE_WAIT);
+eq(
+  saved().envelopes[0].photos,
+  ["pho-7"],
+  "34.31 a merge downloads photos BEFORE it applies, so adopted ids survive"
+);
+ok(photoKeys().includes("pho-7"), "34.32 and the blob really landed on this device");
+
+/* A third writer landing between the merge's pull and its push. Leaving a bare
+   message and no button here would strand the user on a screen whose only
+   remaining options are the two lossy ones — and merging again is both the
+   right next move and convergent. */
+await boot(
+  { items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } },
+  null,
+  { remote: LAPTOP_PUSHED }
+);
+await openSync();
+await saveGitHubKey();
+await click(btn(/^Push$/), "stale push");
+remote.pushFailOnce = "conflict";
+await click(btn(/Merge & push/), "merge into a moving remote");
+await settle();
+ok(
+  !!btn(/Merge & push/),
+  "34.30 a conflict during the merged push still offers the safe way out"
+);
+
+/* auto-push off is off */
+await boot({ items: ITEMS, received: {} }, null, { remote: null });
+await openSync();
+await saveGitHubKey();
+const off = pushes().length;
+await background();
+eq(pushes().length, off, "34.25 with the toggle off, backgrounding pushes nothing");
 
 report();
