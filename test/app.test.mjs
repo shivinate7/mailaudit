@@ -247,8 +247,14 @@ await goTo("tally");
 ok(/unique item/.test(text()), "12.2 by-item view still renders");
 await goTo("packages");
 ok(/4 packages/.test(text()), "12.3 package count unchanged");
+/* Showing starts on Unreceived: the app is opened with mail in hand, so the
+   outstanding list is the one worth landing on. It still toggles both ways —
+   it's a session control, not a persisted preference. */
+ok(/Unreceived/.test(cell(/^Showing/).textContent), "12.4 Showing starts on Unreceived");
 await toggleShowing();
-ok(/Unreceived/.test(text()), "12.4 hide-received still toggles");
+ok(/Everything/.test(cell(/^Showing/).textContent), "12.5 one tap brings received rows back");
+await toggleShowing();
+ok(/Unreceived/.test(cell(/^Showing/).textContent), "12.6 and toggles back");
 
 /* ── 13. backup and restore carry envelopes ────────────────────────────── */
 
@@ -1607,7 +1613,8 @@ ok(
    a package with every line received would drop out of the list entirely,
    landing the jump on nothing at all. */
 await boot({ items: ITEMS, received: { "C1|3|pPonder": 1 } });
-await toggleShowing();
+/* Showing defaults to Unreceived, so hideDone is already on here — don't
+   toggle it, or this stops testing the bypass and passes for free. */
 await type(search(), "Lightning Bolt");
 await goTo("tally");
 await click(btn(/Lightning Bolt/), "expand the tally row");

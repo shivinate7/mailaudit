@@ -2386,7 +2386,11 @@ export default function MailDayLedger() {
   const [rangeOpen, setRangeOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
   const [exactOpen, setExactOpen] = useState(false);
-  const [hideDone, setHideDone] = useState(false);
+  /* Defaults to on: the app is opened with mail in hand, and the question is
+     always "what is still outstanding". Not persisted (it isn't in the saved
+     shape) — this is the state every load starts from, and one tap on the
+     Showing cell brings the received rows back for the session. */
+  const [hideDone, setHideDone] = useState(true);
   const [showCanceled, setShowCanceled] = useState(false);
   const canceledRef = useRef(null);
   useEffect(() => {

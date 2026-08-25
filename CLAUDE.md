@@ -415,7 +415,13 @@ Three ruled cells report the state and open what changes it:
   (`N lines · M outside`). The other two cells deliberately carry no figure;
   they would be restating the masthead's own tallies a hundred pixels above.
 - **Showing** — the old "Hide received" button, said as state (`○ Everything` /
-  `● Unreceived`) rather than as an instruction.
+  `● Unreceived`) rather than as an instruction. **It starts on `● Unreceived`
+  on every load.** The app is opened with mail in hand and the question is
+  always "what is still outstanding"; landing on the full list meant a tap
+  before the working view every single time. Like the range disclosure it is
+  *not* persisted and does not belong in the saved shape (invariant 2) — it is
+  the state each session starts from, and one tap brings the received rows back
+  for as long as that session lasts. Tests 12.4–12.6.
 - **Sorted by** — opens a panel of options. There is no `<select>` in the app
   any more.
 
@@ -772,7 +778,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 283 assertions, no test framework, ~30s (groups 30–31 spend a few
+`npm test` — 285 assertions, no test framework, ~30s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
