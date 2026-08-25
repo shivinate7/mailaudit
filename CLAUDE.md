@@ -421,7 +421,8 @@ Three ruled cells report the state and open what changes it:
   before the working view every single time. Like the range disclosure it is
   *not* persisted and does not belong in the saved shape (invariant 2) — it is
   the state each session starts from, and one tap brings the received rows back
-  for as long as that session lasts. Tests 12.4–12.6.
+  for as long as that session lasts. Tests 12.4–12.7; 12.7 pins the reload
+  specifically, which is the whole point of it not being persisted.
 - **Sorted by** — opens a panel of options. There is no `<select>` in the app
   any more.
 
@@ -778,7 +779,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 285 assertions, no test framework, ~30s (groups 30–31 spend a few
+`npm test` — 286 assertions, no test framework, ~30s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds

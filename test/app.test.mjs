@@ -255,6 +255,16 @@ await toggleShowing();
 ok(/Everything/.test(cell(/^Showing/).textContent), "12.5 one tap brings received rows back");
 await toggleShowing();
 ok(/Unreceived/.test(cell(/^Showing/).textContent), "12.6 and toggles back");
+/* and the choice does not survive a reload. Switching to Everything is a
+   session choice, not a preference: reopening the app lands on the
+   outstanding list again. hideDone is deliberately absent from the saved
+   shape, so this is guaranteed by there being nothing to load. */
+await toggleShowing();
+await fresh();
+ok(
+  /Unreceived/.test(cell(/^Showing/).textContent),
+  "12.7 Everything doesn't survive a reload"
+);
 
 /* ── 13. backup and restore carry envelopes ────────────────────────────── */
 
