@@ -491,10 +491,8 @@ Three ruled cells report the state and open what changes it:
   invariant 5 exists to prevent. **Only Showing resets** — the query, the range
   and the reveals are things you were in the middle of, and clearing those
   reads as the app forgetting rather than as a fresh start. Tests 12.8–12.9
-  pin both sides of the threshold; `harness.mjs` exports `backgroundFor(ms)`,
-  which overrides `visibilityState` *and* `hidden` (jsdom's `hidden` reads its
-  own field, so setting one alone leaves the other lying) and freezes
-  `Date.now` for the trip.
+  pin both sides of the threshold via `backgroundFor(ms)`, which is
+  `background()`/`foreground()` with the clock frozen across the trip.
 - **Sorted by** — opens a panel of options. There is no `<select>` in the app
   any more.
 
@@ -985,12 +983,6 @@ Gotchas worth remembering:
   disclosure, so `harness.mjs` exports `cell(re)`, `toggleShowing()`,
   `openRange()` and `pickSort(label)`. There is no `<select>` left to drive with
   `choose()`; pick sort by its visible label.
-- `backgroundFor(ms)` simulates switching away from the app and back, for the
-  resume reset on Showing. It overrides **both** `visibilityState` and
-  `hidden` — jsdom's `hidden` reads its own internal field, so setting one
-  alone leaves the other contradicting it — and freezes `Date.now` for the
-  trip, so the elapsed time is the argument rather than the wall clock. It is
-  not a remount: that is the whole point, since on iOS a resume isn't one.
 - **Anything about width is unassertable here.** jsdom has no layout, so the
   `minmax(0,1fr)` / `min-width:0` truncation fix in the head cannot be
   protected by a test — it was found by measuring a real 375px viewport and
@@ -1010,6 +1002,13 @@ Gotchas worth remembering:
   is the last chance to catch a session that never went idle), so the test isn't
   reaching for a private hook. `foreground()` is the inverse and is also what
   re-runs the `peek`.
+- `backgroundFor(ms)` is that pair with `Date.now` frozen across it, for the
+  resume reset on Showing — the elapsed time is the argument rather than the
+  wall clock, since the threshold is 60s and no test can wait it out. It is
+  deliberately not a remount: on iOS a resume isn't one, and that is the whole
+  distinction the reset exists to handle. Note all three visibility listeners
+  read `document.visibilityState`, never `document.hidden`, so stubbing the
+  one is enough.
   A test that merely waits ~200ms and asserts nothing was pushed proves nothing,
   because the debounce is 90s — that assertion cannot fail. The first draft of
   34.18 was exactly that shape; watch for it.
@@ -1085,6 +1084,15 @@ these tests were all wrong in ways that looked fine:
   can't land. `doPull` never noticed because applying is the last thing it does.
   A merge *pushes* afterwards, so every gen-guarded step after the apply — the
   whole photo phase, and the `Pushed ✓` flash — silently did nothing.
+
+Group 12's Showing assertions added five, all confirmed to turn the suite red:
+the default flipped back to Everything; the choice surviving a remount (a
+module-level cache, standing in for anyone who "helpfully" persists it), which
+kills 12.7 while leaving 12.4 green, so the pair isolates the reload from the
+default; the threshold dropped, so a five-second glance away resets the list;
+the resume never resetting; and the hidden branch not stamping the clock. That
+last pair is why 12.8 and 12.9 both exist — either one alone leaves half the
+threshold unpinned.
 
 Group 32 (getting from a search hit to the whole order) added four, all
 confirmed to turn the suite red: the order-id button losing its

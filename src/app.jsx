@@ -1170,13 +1170,6 @@ const miniBtn = {
   cursor: "pointer",
 };
 
-/* ---------- the toolbar vocabulary ----------
-   One height for every control in the filter region. Before this, chips were
-   `5px 11px`, selects `9px 8px` and buttons `9px 12px`, so nothing shared a
-   baseline and the rows wrapped raggedly — that mismatch, not the colours, is
-   what read as unfinished. Change CTL_H and the whole toolbar follows.
-   `flexShrink: 0` on all of them is deliberate: the region had none, so a long
-   label ("Tap again to clear everything") could push a line past the column. */
 /* How long the app has to be in the background before coming back counts as
    "reopening it" rather than "glancing away". iOS keeps a home-screen web app's
    page alive when you switch away, so without this the only thing that resets
@@ -1187,6 +1180,13 @@ const miniBtn = {
    shorter than any real "I'll come back to this later". */
 const RESUME_RESET_MS = 60_000;
 
+/* ---------- the toolbar vocabulary ----------
+   One height for every control in the filter region. Before this, chips were
+   `5px 11px`, selects `9px 8px` and buttons `9px 12px`, so nothing shared a
+   baseline and the rows wrapped raggedly — that mismatch, not the colours, is
+   what read as unfinished. Change CTL_H and the whole toolbar follows.
+   `flexShrink: 0` on all of them is deliberate: the region had none, so a long
+   label ("Tap again to clear everything") could push a line past the column. */
 const CTL_H = 34;
 
 const ctl = {
