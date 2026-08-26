@@ -157,7 +157,9 @@ rather than by remembering. Verified in a browser: after saving a key,
 5. **No layout shift under the pointer while checking cards.** History: hiding a
    row on tap caused cascading mis-taps on mobile. Hence: under "Hide received",
    individually-checked rows stay visible ("sticky") until the package is fully
-   received or filters change; sort order is snapshotted (frozen) while
+   received or filters change (the resume reset clears them too, which is why
+   it waits out `RESUME_RESET_MS` rather than firing on every glance away);
+   sort order is snapshotted (frozen) while
    checking and re-computed only on sort/filter changes; packages never
    auto-collapse mid-interaction. In the Tally view the sticky rule is
    stricter — a *completed item* also stays until filters change, because most
@@ -217,9 +219,21 @@ Shipping Status, Url, Vendor Product Id, Fee Amount, Refund Amount.
 ## Feature map (all implemented)
 
 Everything here is user-verified in daily use except the **Tally** view, cost
-basis, **Orphaned**, **envelope photos** and **Push / Pull**, which are newer
-and so far verified only by `npm test`. The camera path in particular has never
-run on a real iPhone, and no request has ever gone to the real GitHub API — the
+basis, **Orphaned**, **envelope photos**, **Push / Pull**, the **two-device
+merge and auto-push**, and the **resume reset on Showing**, which are newer and
+so far verified only by `npm test`.
+
+Auto-push is the one thing here with a *field* record, and it is a bad one: its
+first day of real two-device use destroyed a check-in. Not because the merge was
+wrong — replayed against the two real ledgers it is correct — but because the
+adapter advanced the stored sha before the app had applied the bytes, which let
+a stale ledger push with no conflict. Fixed and pinned by group 35, and the
+reason the sha rule is written out at length under Push / Pull. Treat the rest
+of this paragraph's list as genuinely unproven, not merely untested. The
+camera path in particular has never run on a real iPhone, and neither has the
+resume reset — jsdom can prove the listener is wired and the arithmetic right,
+but whether iOS fires `visibilitychange` on a home-screen app's return is
+WebKit's call; and no request has ever gone to the real GitHub API — the
 push/pull paths are covered by the harness mock and by hand against the built
 page. See "Known open threads" for exactly what that leaves unproven.
 
@@ -298,7 +312,8 @@ page. See "Known open threads" for exactly what that leaves unproven.
   check-ins"; rotated RECEIVED stamp replaces the count badge when complete.
 - Whole-row tap to toggle; 2-line name wrap; qty stepper for qty>1 with
   indeterminate-dash partial state.
-- Search (card/set/seller/order), Hide received, date filters (All/30/45/60/90,
+- Search (card/set/seller/order), Showing (the old "Hide received", which now
+  starts on Unreceived every session — see the ruled head), date filters (All/30/45/60/90,
   free "# days" input, custom from–to) — shared by the two ledger views and
   hidden entirely under Orphaned.
   **A search filters *inside* a package, so every result needs a way back to
@@ -488,7 +503,26 @@ Three ruled cells report the state and open what changes it:
   (`N lines · M outside`). The other two cells deliberately carry no figure;
   they would be restating the masthead's own tallies a hundred pixels above.
 - **Showing** — the old "Hide received" button, said as state (`○ Everything` /
-  `● Unreceived`) rather than as an instruction.
+  `● Unreceived`) rather than as an instruction. **It starts on `● Unreceived`
+  on every load.** The app is opened with mail in hand and the question is
+  always "what is still outstanding"; landing on the full list meant a tap
+  before the working view every single time. Like the range disclosure it is
+  *not* persisted and does not belong in the saved shape (invariant 2) — it is
+  the state each session starts from, and one tap brings the received rows back
+  for as long as that session lasts. Tests 12.4–12.7; 12.7 pins the reload
+  specifically, which is the whole point of it not being persisted.
+  **A resume counts as reopening too.** On iOS a home-screen app is normally
+  *backgrounded*, not closed — the page survives, so waiting for a remount
+  meant the only thing that reset Showing was WebKit evicting the page, which
+  can be days. A `visibilitychange` listener resets it when the app comes back
+  after `RESUME_RESET_MS` (60s) away. The threshold is the whole design: a hop
+  out to read a tracking number and straight back is the same session, and
+  flipping the list under a thumb mid-check-in is exactly the mis-tap
+  invariant 5 exists to prevent. **Only Showing resets** — the query, the range
+  and the reveals are things you were in the middle of, and clearing those
+  reads as the app forgetting rather than as a fresh start. Tests 12.8–12.9
+  pin both sides of the threshold via `backgroundFor(ms)`, which is
+  `background()`/`foreground()` with the clock frozen across the trip.
 - **Sorted by** — opens a panel of options. There is no `<select>` in the app
   any more.
 
@@ -862,7 +896,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 342 assertions, no test framework, ~55s (groups 30–31 spend a few
+`npm test` — 347 assertions, no test framework, ~55s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
@@ -1005,6 +1039,13 @@ Gotchas worth remembering:
   is the last chance to catch a session that never went idle), so the test isn't
   reaching for a private hook. `foreground()` is the inverse and is also what
   re-runs the `peek`.
+- `backgroundFor(ms)` is that pair with `Date.now` frozen across it, for the
+  resume reset on Showing — the elapsed time is the argument rather than the
+  wall clock, since the threshold is 60s and no test can wait it out. It is
+  deliberately not a remount: on iOS a resume isn't one, and that is the whole
+  distinction the reset exists to handle. Note all three visibility listeners
+  read `document.visibilityState`, never `document.hidden`, so stubbing the
+  one is enough.
   A test that merely waits ~200ms and asserts nothing was pushed proves nothing,
   because the debounce is 90s — that assertion cannot fail. The first draft of
   34.18 was exactly that shape; watch for it.
@@ -1089,6 +1130,15 @@ these tests were all wrong in ways that looked fine:
   A merge *pushes* afterwards, so every gen-guarded step after the apply — the
   whole photo phase, and the `Pushed ✓` flash — silently did nothing.
 
+Group 12's Showing assertions added five, all confirmed to turn the suite red:
+the default flipped back to Everything; the choice surviving a remount (a
+module-level cache, standing in for anyone who "helpfully" persists it), which
+kills 12.7 while leaving 12.4 green, so the pair isolates the reload from the
+default; the threshold dropped, so a five-second glance away resets the list;
+the resume never resetting; and the hidden branch not stamping the clock. That
+last pair is why 12.8 and 12.9 both exist — either one alone leaves half the
+threshold unpinned.
+
 Group 32 (getting from a search hit to the whole order) added four, all
 confirmed to turn the suite red: the order-id button losing its
 `stopPropagation`, which turns a look into a check-in; `revealed` missing from
@@ -1110,7 +1160,9 @@ elsewhere; both backups and both restore paths; the photo sweep; the GitHub
 push and pull (payload shape, non-ASCII round trip, conflict + force, expired
 key, offline, the token never leaking, pull as a full replace, photo ids kept
 vs stripped, arming one control disarming the other); entity decoding on
-seller names, through a real CSV import; getting from a search hit to the whole
+seller names, through a real CSV import; Showing starting on Unreceived and
+not surviving a reload, and both sides of the resume threshold (a glance away
+keeps your choice, a real absence starts fresh); getting from a search hit to the whole
 order (per-package reveal, the Tally jump, the search surviving it, the hideDone
 bypass, and a navigation tap writing nothing); the two-device merge (both
 devices' work surviving a conflict, symmetry, idempotence, view preferences
@@ -1121,7 +1173,9 @@ opens mid-write, and the toggle living outside the ledger); and the older
 package/Tally views still working.
 
 Still only covered by eye, never by a test: anything that needs a real device —
-the camera capture, the canvas downscale, and iOS keyboard behaviour. Layout at
+the camera capture, the canvas downscale, iOS keyboard behaviour, and whether
+iOS actually fires `visibilitychange` when a home-screen app is resumed (the
+suite dispatches the event itself, so it pins the reaction and not the trigger). Layout at
 375px is no longer eyeball-only: it was measured in a real 375px viewport
 (overflow 0, thirds 114px each, seal 36px, 0.00px row displacement when the
 running head pins), though those numbers are not asserted in CI.

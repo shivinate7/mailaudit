@@ -15,6 +15,7 @@ import {
   buttons,
   choose,
   cardInput,
+  backgroundFor,
   cell,
   click,
   csv,
@@ -257,8 +258,41 @@ await goTo("tally");
 ok(/unique item/.test(text()), "12.2 by-item view still renders");
 await goTo("packages");
 ok(/4 packages/.test(text()), "12.3 package count unchanged");
+/* Showing starts on Unreceived: the app is opened with mail in hand, so the
+   outstanding list is the one worth landing on. It still toggles both ways —
+   it's a session control, not a persisted preference. */
+ok(/Unreceived/.test(cell(/^Showing/).textContent), "12.4 Showing starts on Unreceived");
 await toggleShowing();
-ok(/Unreceived/.test(text()), "12.4 hide-received still toggles");
+ok(/Everything/.test(cell(/^Showing/).textContent), "12.5 one tap brings received rows back");
+await toggleShowing();
+ok(/Unreceived/.test(cell(/^Showing/).textContent), "12.6 and toggles back");
+/* and the choice does not survive a reload. Switching to Everything is a
+   session choice, not a preference: reopening the app lands on the
+   outstanding list again. hideDone is deliberately absent from the saved
+   shape, so this is guaranteed by there being nothing to load. */
+await toggleShowing();
+await fresh();
+ok(
+  /Unreceived/.test(cell(/^Showing/).textContent),
+  "12.7 Everything doesn't survive a reload"
+);
+
+/* On iOS a home-screen app is usually backgrounded, not closed, so a remount
+   is not what reopening looks like — coming back after a real absence has to
+   count too. But a hop out to read a tracking number and straight back is the
+   same session, and flipping the list under a thumb mid-check-in is the
+   mis-tap invariant 5 exists to prevent. So the gap decides. */
+await toggleShowing();
+await backgroundFor(5_000);
+ok(
+  /Everything/.test(cell(/^Showing/).textContent),
+  "12.8 a glance away is the same session"
+);
+await backgroundFor(5 * 60_000);
+ok(
+  /Unreceived/.test(cell(/^Showing/).textContent),
+  "12.9 coming back after a real absence starts fresh"
+);
 
 /* ── 13. backup and restore carry envelopes ────────────────────────────── */
 
@@ -1617,7 +1651,8 @@ ok(
    a package with every line received would drop out of the list entirely,
    landing the jump on nothing at all. */
 await boot({ items: ITEMS, received: { "C1|3|pPonder": 1 } });
-await toggleShowing();
+/* Showing defaults to Unreceived, so hideDone is already on here — don't
+   toggle it, or this stops testing the bypass and passes for free. */
 await type(search(), "Lightning Bolt");
 await goTo("tally");
 await click(btn(/Lightning Bolt/), "expand the tally row");

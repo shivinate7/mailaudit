@@ -1170,6 +1170,16 @@ const miniBtn = {
   cursor: "pointer",
 };
 
+/* How long the app has to be in the background before coming back counts as
+   "reopening it" rather than "glancing away". iOS keeps a home-screen web app's
+   page alive when you switch away, so without this the only thing that resets
+   Showing is the system evicting the page — which can be days. A short hop out
+   to read a tracking number and straight back is not a new session, and
+   flipping the list under someone mid-check-in is the mis-tap invariant 5
+   exists to prevent. A minute is comfortably longer than that hop and far
+   shorter than any real "I'll come back to this later". */
+const RESUME_RESET_MS = 60_000;
+
 /* ---------- the toolbar vocabulary ----------
    One height for every control in the filter region. Before this, chips were
    `5px 11px`, selects `9px 8px` and buttons `9px 12px`, so nothing shared a
@@ -2403,7 +2413,11 @@ export default function MailDayLedger() {
   const [rangeOpen, setRangeOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
   const [exactOpen, setExactOpen] = useState(false);
-  const [hideDone, setHideDone] = useState(false);
+  /* Defaults to on: the app is opened with mail in hand, and the question is
+     always "what is still outstanding". Not persisted (it isn't in the saved
+     shape) — this is the state every load starts from, and one tap on the
+     Showing cell brings the received rows back for the session. */
+  const [hideDone, setHideDone] = useState(true);
   const [showCanceled, setShowCanceled] = useState(false);
   const canceledRef = useRef(null);
   useEffect(() => {
@@ -2792,6 +2806,28 @@ export default function MailDayLedger() {
   useEffect(() => {
     setSticky(new Set());
   }, [hideDone, query, dateFilter, view]);
+
+  /* Showing is the state a session starts from, and on iOS "closing" a
+     home-screen app usually just backgrounds it — the page survives, so a
+     mount is not what reopening looks like. Coming back after a real absence
+     is the same event as a fresh load, so treat it as one. Only Showing
+     resets: the query, the range and the reveals are things you were in the
+     middle of, and dropping those would read as the app forgetting rather
+     than as a fresh start. */
+  const hiddenAt = useRef(null);
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenAt.current = Date.now();
+        return;
+      }
+      const away = hiddenAt.current == null ? 0 : Date.now() - hiddenAt.current;
+      hiddenAt.current = null;
+      if (away >= RESUME_RESET_MS) setHideDone(true);
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
 
   /* A reveal is scoped to the search that made it necessary — a new query is a
      new question, and a stale gk would keep one card unfiltered for no visible

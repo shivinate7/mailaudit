@@ -509,6 +509,24 @@ export const cell = (re) => buttons().find((b) => re.test(b.textContent.trim()))
 
 export const toggleShowing = () => click(cell(/^Showing/), "showing cell");
 
+/* Background the page for `awayMs` and bring it back — what iOS actually does
+   when you switch apps and return, which is not a remount. Composes the
+   plain background()/foreground() pair above and adds the one thing the
+   resume reset needs: a frozen clock, so the elapsed time is the argument
+   rather than the wall clock. */
+export async function backgroundFor(awayMs) {
+  const realNow = Date.now;
+  let clock = realNow();
+  try {
+    Date.now = () => clock;
+    await background();
+    clock += awayMs;
+    await foreground();
+  } finally {
+    Date.now = realNow;
+  }
+}
+
 export const openRange = async () => {
   const c = cell(/^Orders from/);
   if (!c) throw new Error("no range cell on screen");
