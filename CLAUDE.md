@@ -378,6 +378,27 @@ page. See "Known open threads" for exactly what that leaves unproven.
   until the next pull. Stripping it costs the photo.** So 26.13 split: strip
   only when the store was actually *read* and genuinely didn't hold it (26.13),
   keep when we couldn't look (26.13b).
+- **The stored sha is accepted only after the bytes are applied.** `pull()`
+  returns the sha; `acceptPull()` stores it, and the app calls that *after*
+  `applyBackup` has landed. This is the rule the whole conflict scheme rests on,
+  and it was learned the expensive way — see the note below.
+
+  The stored sha is this device's **claim to be holding the remote's bytes**.
+  The adapter originally wrote it the instant they arrived, which makes the
+  claim true only if the app then applies them. When it doesn't — a payload it
+  rejects, a merge that throws, a generation guard that bails — the device sits
+  on a *current sha over stale data*, and its next push carries that sha and is
+  **accepted**: no conflict raised, the other device's work destroyed. Auto-push
+  made that automatic and unattended, within 90 seconds.
+
+  It happened on the first day of real two-device use and cost a check-in.
+  `git log origin/data` has the receipt: `87793de` is **byte-identical to
+  `38017ae`, six days older**, landing on top of a newer ledger with no
+  conflict. Diff the blobs, not just the counts — identical blobs are how you
+  tell which device wrote what.
+
+  Failing to accept leaves the device merely *behind*, which conflicts loudly on
+  the next push. That is the direction this must fail in. Group 35.
 - **Merge (the conflict's way out).** Pull and Push anyway are the two halves of
   the same mistake — each keeps one device's work by discarding the other's.
   `Merge & push` keeps both: pull, union, apply, push. It carries **no two-tap
@@ -841,7 +862,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 337 assertions, no test framework, ~55s (groups 30–31 spend a few
+`npm test` — 342 assertions, no test framework, ~55s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
@@ -856,6 +877,13 @@ see, so the assertions read the DOM the way the user does.
 (Three previous harnesses were written ad hoc and thrown away, which is why the
 same assertions kept being rewritten from scratch. Hence this one is committed
 and `jsdom` is a real devDependency.)
+
+New in group 35 (a pull that didn't land must not license a push). The whole
+group exists because the suite was green, the merge logic was provably correct
+against the user's real ledgers, and the feature still destroyed data on day
+one — because nothing asserted on what the *sha* did when an apply failed. When
+a sync bug is reported, check what the sha did, not just what the merge
+computed.
 
 New in groups 33–34 (two-device merge and auto-push). Group 33 is pure, like 27
 and 31: it imports `merge-rules.mjs` directly, because a merge that drops lines
@@ -980,6 +1008,10 @@ Gotchas worth remembering:
   A test that merely waits ~200ms and asserts nothing was pushed proves nothing,
   because the debounce is 90s — that assertion cannot fail. The first draft of
   34.18 was exactly that shape; watch for it.
+- **`background()` restores `visibilityState` to visible when it returns.** It
+  did not at first, and a hidden document makes the foreground peek return
+  early — so the Merge button never appears and an unrelated later test fails
+  looking for it. The symptom points nowhere near the cause.
 - **`remote.fail` cannot express "the push conflicts".** It rejects the pull as
   well, so the merge that recovers from the conflict never gets its payload.
   `remote.pushFailOnce` is the one-shot, push-only version, and it models the
@@ -1022,6 +1054,10 @@ empty; both sweep guards removed; and — the most valuable assertion in the
 feature — **a photo error escaping into the ledger's error path**, which makes
 `Push anyway` appear and would let a slow upload arm a button that overwrites
 another device's ledger (30.11).
+
+Group 35 added three, all confirmed to turn the suite red: the adapter
+advancing the sha inside `pull()` again; `doMerge` never accepting it; and
+`doPull` never accepting it.
 
 Groups 33–34 (two-device merge and auto-push) added **twelve**, all confirmed
 to turn the suite red: `mergeReceived` using incoming-wins instead of `max`;

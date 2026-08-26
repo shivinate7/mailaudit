@@ -315,8 +315,25 @@ window.remote = {
       }
     } else throw remoteErr("bad-response", { status: res.status });
     if (typeof text !== "string" || !text) throw remoteErr("bad-response");
-    saveRec({ sha: b.sha || null, pulledAt: Date.now() });
+    /* THE SHA IS NOT SAVED HERE, and that is load-bearing.
+
+       The stored sha is this device's claim to be holding the remote's bytes.
+       Writing it the moment they arrive makes the claim true only if the app
+       then applies them — and when it doesn't (a payload it rejects, a merge
+       that throws, a generation guard that bails), the device is left holding
+       a CURRENT sha over STALE data. Its next push carries that sha, GitHub
+       accepts it, and the other device's work is destroyed with no conflict
+       raised. With auto-push on, that happens within 90 seconds, unattended.
+
+       So the caller accepts it via acceptPull() once the data is genuinely in.
+       Failing to accept leaves this device merely behind, which conflicts
+       loudly on the next push — the direction this should fail in. */
     return { text, sha: b.sha || null };
+  },
+
+  /* Only called after a pull's bytes have actually been applied. */
+  async acceptPull(sha) {
+    saveRec({ sha: sha || null, pulledAt: Date.now() });
   },
 
   /* "Has the other device pushed since I last looked?" — for a few hundred
