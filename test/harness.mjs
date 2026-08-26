@@ -189,9 +189,18 @@ export let remote = {
   key: null,
   calls: [],
   fail: null, // an error `.code` to throw from the next push/pull
+  /* one-shot, push only. Models the race the sha check exists for: the remote
+     moves between the peek and the write, so a look that said "all clear" is
+     already out of date by the time the PUT lands. `fail` cannot express this
+     — it would reject the recovering pull too. */
+  pushFailOnce: null,
   photoFail: null, // ditto, but for the photo methods only
   pushedAt: null,
   pulledAt: null,
+  auto: false,
+  /* what peek() can see. null = readable; a code = "we could not look", which
+     is the state auto-push must refuse to act on. */
+  peekUnknown: null,
 };
 /* fixed so a snapshot never depends on the clock */
 const REMOTE_NOW = Date.parse("2026-08-12T14:03:00Z");
@@ -235,6 +244,23 @@ const remoteApi = {
       sha: remote.sha,
       pushedAt: remote.pushedAt,
       pulledAt: remote.pulledAt,
+      auto: !!remote.auto,
+    };
+  },
+  async setAuto(on) {
+    remote.auto = !!on;
+  },
+  /* Modelled off the same two fields the push check uses, so "ahead" here means
+     exactly what it means on the wire: the remote holds a blob this device has
+     not seen. Counted in `calls` so a test can prove auto-push looked BEFORE it
+     wrote — the ordering is the whole safety property. */
+  async peek() {
+    remote.calls.push({ op: "peek" });
+    if (remote.peekUnknown) return { known: false, reason: remote.peekUnknown };
+    return {
+      known: true,
+      sha: remote.sha,
+      ahead: !!remote.sha && remote.sha !== remote.deviceSha,
     };
   },
   async setKey(t) {
@@ -262,6 +288,11 @@ const remoteApi = {
     remote.calls.push({ op: "push", text, message, sha: remote.deviceSha });
     if (remote.fail)
       throw Object.assign(new Error(remote.fail), { code: remote.fail });
+    if (remote.pushFailOnce) {
+      const code = remote.pushFailOnce;
+      remote.pushFailOnce = null;
+      throw Object.assign(new Error(code), { code });
+    }
     /* the real optimistic-concurrency check, not a simulated one */
     if (remote.sha !== remote.deviceSha)
       throw Object.assign(new Error("conflict"), { code: "conflict" });
@@ -349,16 +380,47 @@ export const resetRemote = (seedText) => {
     key: null,
     calls: [],
     fail: null,
+    pushFailOnce: null,
     photoFail: null,
     photoDelay: 0,
     pushedAt: null,
     pulledAt: null,
+    auto: false,
+    peekUnknown: null,
   };
 };
 /* what the remote is actually holding, decoded */
 export const remoteText = () =>
   remote.content == null ? null : base64ToUtf8(remote.content);
 export const pushes = () => remote.calls.filter((c) => c.op === "push");
+export const peeks = () => remote.calls.filter((c) => c.op === "peek");
+
+/* Backgrounding the app runs auto-push immediately, with no 90s wait — which
+   is both the fast seam for a test and a real path the user takes every time
+   they switch away mid-mail-day. jsdom leaves visibilityState read-only, hence
+   defineProperty. */
+export const background = async () => {
+  Object.defineProperty(win.document, "visibilityState", {
+    value: "hidden",
+    configurable: true,
+  });
+  await act(async () => {
+    win.document.dispatchEvent(new win.Event("visibilitychange"));
+    await sleep(0);
+  });
+  await act(async () => await sleep(0));
+};
+export const foreground = async () => {
+  Object.defineProperty(win.document, "visibilityState", {
+    value: "visible",
+    configurable: true,
+  });
+  await act(async () => {
+    win.document.dispatchEvent(new win.Event("visibilitychange"));
+    await sleep(0);
+  });
+  await act(async () => await sleep(0));
+};
 
 export const photoKeys = () => [...photoStore.keys()];
 export const getPhoto = (id) => photoStore.get(id);
