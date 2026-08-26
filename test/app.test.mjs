@@ -2112,4 +2112,63 @@ const off = pushes().length;
 await background();
 eq(pushes().length, off, "34.25 with the toggle off, backgrounding pushes nothing");
 
+/* ── 35. a pull that didn't land must not license a push ──────────────────
+   Found in the wild on day one, and it cost a real check-in.
+
+   The stored sha is this device's claim to be holding the remote's bytes. The
+   adapter used to write it the instant they arrived — before the app had
+   applied anything. When the apply then didn't happen, the device sat on a
+   CURRENT sha over STALE data, and its next push carried that sha and was
+   ACCEPTED: no conflict, and the other device's work gone. Auto-push made that
+   automatic and unattended.
+
+   `git log origin/data` has the receipt: a push whose blob is byte-identical to
+   a ledger six days old, landing on top of a newer one without a conflict. */
+
+/* anything the app will fetch but refuse to apply */
+const UNAPPLIABLE = JSON.stringify({ notALedger: true, items: [] });
+
+await boot({ items: ITEMS, received: { [ITEMS[0].key]: 1 } }, null, {
+  remote: UNAPPLIABLE,
+});
+await openSync();
+await saveGitHubKey();
+await settle();
+await click(btn(/^Merge$/), "merge something unappliable");
+await settle();
+ok(/isn’t a Mail Day ledger/.test(text()), "35.1 the payload is refused");
+eq(
+  remote.deviceSha,
+  null,
+  "35.2 and a refused payload does NOT advance this device's sha"
+);
+
+/* the half that actually lost the data: with the sha advanced, this push would
+   have been accepted rather than blocked */
+await click(btn(/○ Auto-push/), "enable auto-push");
+await settle();
+await background();
+ok(
+  /notALedger/.test(remoteText()),
+  "35.3 so auto-push cannot overwrite the other device with stale data"
+);
+
+/* the same guard must not break the ordinary case: a pull that DID land is
+   exactly what earns the right to push */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+  remote: LAPTOP_PUSHED,
+});
+await openSync();
+await saveGitHubKey();
+await click(btn(/^Merge$/), "merge a real ledger");
+await settle();
+ok(remote.deviceSha !== null, "35.4 a merge that landed does advance the sha");
+await click(btn(/^Push$/), "push after merging");
+await settle();
+eq(
+  JSON.parse(remoteText()).items.length,
+  ITEMS.length,
+  "35.5 and the following push is accepted rather than conflicting"
+);
+
 report();

@@ -278,9 +278,16 @@ const remoteApi = {
     remote.calls.push({ op: "pull", key: remote.key });
     if (remote.content == null)
       throw Object.assign(new Error("missing"), { code: "missing" });
-    remote.deviceSha = remote.sha; // a pull is how a device catches up
-    remote.pulledAt = REMOTE_NOW;
+    /* deliberately NOT advancing deviceSha here — the real adapter doesn't
+       either. A device catches up when it has APPLIED the bytes, not when it
+       has received them; conflating the two lets a failed apply leave a
+       current sha over stale data, which then pushes with no conflict. */
     return { text: base64ToUtf8(remote.content), sha: remote.sha };
+  },
+  async acceptPull(sha) {
+    remote.calls.push({ op: "acceptPull", sha });
+    remote.deviceSha = sha;
+    remote.pulledAt = REMOTE_NOW;
   },
   async push(text, message) {
     if (!remote.key)
@@ -409,6 +416,14 @@ export const background = async () => {
     await sleep(0);
   });
   await act(async () => await sleep(0));
+  /* restore silently — the point of this helper is "run auto-push now", not
+     "leave the page hidden for every test that follows". Left hidden, the
+     foreground peek returns early and the Merge button never appears, which
+     shows up as an unrelated test failing to find a button. */
+  Object.defineProperty(win.document, "visibilityState", {
+    value: "visible",
+    configurable: true,
+  });
 };
 export const foreground = async () => {
   Object.defineProperty(win.document, "visibilityState", {

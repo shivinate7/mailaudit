@@ -2926,6 +2926,14 @@ export default function MailDayLedger() {
      repeat. */
   const PHOTO_BATCH = 25;
 
+  /* Feature-detected: a cached older bundle exposes a window.remote whose
+     pull() still advances the sha on its own, and an undefined call here would
+     be swallowed by the caller's catch and reported as a failed sync. */
+  const acceptPull = useCallback(async (sha) => {
+    if (typeof window.remote?.acceptPull === "function")
+      await window.remote.acceptPull(sha).catch(() => {});
+  }, []);
+
   const surveyPhotos = useCallback(
     async (referenced) => {
       if (!photoSyncAvailable || !window.photos || !referenced.length)
@@ -3177,6 +3185,10 @@ export default function MailDayLedger() {
       const extraPresent = await pullPhotos(res.text, gen);
       if (syncGen.current !== gen) return;
       await applyBackup(res.text, "remote", extraPresent);
+      /* only now — see remote.pull(). Claiming the remote's sha before its
+         bytes are applied leaves this device able to push stale data with no
+         conflict, which destroys the other device's work. */
+      await acceptPull(res.sha);
       setRemoteInfo(await window.remote.status().catch(() => null));
       setPushState("idle"); // a pull clears any conflict it was blocked on
     } catch (e) {
@@ -3197,7 +3209,7 @@ export default function MailDayLedger() {
       setPhotoSync(null);
     }
     setPullState("idle");
-  }, [confirmPull, arm, disarm, applyBackup, pullPhotos]);
+  }, [confirmPull, arm, disarm, applyBackup, pullPhotos, acceptPull]);
 
   /* ---- merge: the resolution the conflict path never had ----
 
@@ -3244,6 +3256,9 @@ export default function MailDayLedger() {
            other number means something really did move on. */
         if (syncGen.current !== before + 1) return { ok: false, code: "server" };
         gen = syncGen.current;
+        /* the merged state is in, so this device may now claim the remote's
+           sha — and must, or the push below would conflict against itself */
+        await acceptPull(res.sha);
         setAhead(false);
         setPushState("idle");
         if (alsoPush) {
@@ -3286,7 +3301,7 @@ export default function MailDayLedger() {
         setPhotoSync(null);
       }
     },
-    [disarm, applyBackup, pullPhotos, pushPhotos, snapshot]
+    [disarm, applyBackup, pullPhotos, pushPhotos, snapshot, acceptPull]
   );
 
   /* ---- is the other device ahead? ----
