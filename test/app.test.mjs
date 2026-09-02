@@ -66,6 +66,7 @@ import {
   mergeItems,
   mergeReceived,
   mergeEnvelopes,
+  mergeStamps,
   mergeLedger,
   mergeSummary,
 } from "../src/merge-rules.mjs";
@@ -776,7 +777,7 @@ eq(pushes().length, 1, "25.7 with a key it goes");
 const pushed = JSON.parse(pushes()[0].text);
 eq(pushed.mailday, 1, "25.8 the payload is a Mail Day backup");
 eq(pushed.items.length, ITEMS.length, "25.9 carrying every line");
-for (const k of ["received", "envelopes", "dateFilter", "sortBy", "itemSort"])
+for (const k of ["received", "envelopes", "stamps", "dateFilter", "sortBy", "itemSort"])
   ok(k in pushed, `25.10 and the ${k} key`);
 ok(
   !("savedAt" in pushed),
@@ -1808,11 +1809,15 @@ eq(
   "33.20 merging nothing in drops nothing"
 );
 ok(
-  /nothing new/.test(mergeSummary({ itemsAdded: 0, checkInsAdded: 0, envelopesAdded: 0 })),
+  /nothing new/.test(
+    mergeSummary({ itemsAdded: 0, checkInsAdded: 0, envelopesAdded: 0, stampsAdded: 0 })
+  ),
   "33.21 a merge that changed nothing says so rather than claiming a win"
 );
 ok(
-  /35 new lines/.test(mergeSummary({ itemsAdded: 35, checkInsAdded: 0, envelopesAdded: 0 })),
+  /35 new lines/.test(
+    mergeSummary({ itemsAdded: 35, checkInsAdded: 0, envelopesAdded: 0, stampsAdded: 0 })
+  ),
   "33.22 and one that did says what arrived"
 );
 
@@ -2205,5 +2210,443 @@ eq(
   ITEMS.length,
   "35.5 and the following push is accepted rather than conflicting"
 );
+
+/* ── 36. a stamp is the order's status, and a refund leaves the ledger ────
+   One stamp per package, set by hand — claim filed, refunded, seller
+   contacted, reshipped, partial refund — dated the day it was set, with a
+   free line. The two refund kinds take the package out of every count and the
+   normal list exactly as a canceled order is, and the "N stamped" cell is
+   then the one place the order can still be found. The stamp is a persisted
+   key, so invariant 2's five sites and the merge builder's sixth all carry
+   it; the last of those fails by silently dropping every stamp on every
+   merge and pushing the loss, which is why 36.62–36.69 exist. */
+
+const GK_A = "A1::Alpha Cards";
+const GK_C = "C1::Gamma Cards";
+const GK_D = "D1::Delta Cards";
+const inCard = (c, re) =>
+  [...c.querySelectorAll("button")].find((b) => re.test(b.textContent));
+const bandOf = (c) => c.querySelector('button[aria-label^="Edit stamp"]');
+const noteInput = (c) => c.querySelector('input[aria-label="Stamp note"]');
+const stampedCell = () => cell(/stamped/);
+/* the two entrances: the Stamp button on an unstamped card, the band on a
+   stamped one. `label` null keeps the kind already there; `note` undefined
+   keeps the note. */
+const stampPkg = async (re, label, note) => {
+  await click(inCard(card(re), /^Stamp$/) || bandOf(card(re)), `open stamp editor`);
+  if (label) await click(inCard(card(re), new RegExp(`^${label}$`)), `pick ${label}`);
+  if (note !== undefined) await type(noteInput(card(re)), note);
+  await click(inCard(card(re), /^Save$/), "save stamp");
+};
+const S = (kind, updatedAt, note = "") => ({ kind, at: "2026-08-01", note, updatedAt });
+const TOMB = (updatedAt) => ({ kind: "", at: "", note: "", updatedAt });
+const sortedEntries = (o) => Object.keys(o).sort().map((k) => [k, o[k]]);
+
+await fresh();
+ok(!!inCard(card(/Alpha Cards/), /^Stamp$/), "36.1 an unstamped package offers a Stamp button");
+ok(!stampedCell(), "36.2 and with nothing stamped there is no stamped cell");
+await click(inCard(card(/Alpha Cards/), /^Stamp$/), "open the stamp editor");
+{
+  const c = card(/Alpha Cards/);
+  eq(
+    ["Claim filed", "Refunded", "Seller contacted", "Reshipped", "Partial refund"].filter(
+      (l) => !!inCard(c, new RegExp(`^${l}$`))
+    ).length,
+    5,
+    "36.3 the editor offers the five stamps"
+  );
+  ok(inCard(c, /^Save$/).disabled, "36.4 and Save waits for a kind to be picked");
+  ok(!inCard(c, /Remove stamp/), "36.5 with nothing to remove yet");
+  await click(inCard(c, /^Claim filed$/), "pick Claim filed");
+  await type(noteInput(c), "case 123, they said ten days");
+  await click(inCard(c, /^Save$/), "save");
+}
+ok(
+  /CLAIM FILED · \d\d-\d\d/.test(card(/Alpha Cards/).textContent),
+  "36.6 the band shows the stamp, dated the day it was set"
+);
+ok(/case 123/.test(card(/Alpha Cards/).textContent), "36.7 and the note beside it");
+ok(
+  !inCard(card(/Alpha Cards/), /^Stamp$/) && !!bandOf(card(/Alpha Cards/)),
+  "36.8 the Stamp button is gone — the band itself is now the control"
+);
+await sleep(SAVE_WAIT);
+{
+  const st = saved().stamps?.[GK_A];
+  ok(
+    st && st.kind === "claim" && /case 123/.test(st.note) &&
+      /^\d{4}-\d\d-\d\d$/.test(st.at) && typeof st.updatedAt === "number",
+    "36.9 and it is in the saved blob, keyed by the package, dated and time-stamped"
+  );
+}
+const firstUpdated = saved().stamps[GK_A].updatedAt;
+ok(
+  /0\/14/.test(text()) && /4 packages/.test(text()),
+  "36.10 a claim changes no count — the cards are still out there"
+);
+ok(
+  !/refund window closing|may be lost/.test(card(/Alpha Cards/).textContent),
+  "36.11 the lost-mail warning is gone on a stamped order — it is being handled"
+);
+ok(
+  /refund window closing|may be lost/.test(card(/Beta Games/).textContent),
+  "36.12 and still there on one that isn't"
+);
+await goTo("tally");
+await click(btn(/Lightning Bolt/), "expand Lightning Bolt");
+ok(
+  !/⚠/.test(orderBtn("A1").parentElement.textContent) &&
+    /⚠/.test(orderBtn("B1").parentElement.textContent),
+  "36.13 the Tally source row agrees: no warning on the stamped order's copy, warning on the other"
+);
+ok(!stampedCell(), "36.14 no stamped cell under Tally — a stamp belongs to a package");
+await goTo("packages");
+ok(
+  !!stampedCell() && /1 stamped/.test(stampedCell().textContent),
+  "36.15 back in Packages the cell counts it"
+);
+
+/* a refund is the stamp that changes the numbers */
+await sleep(5);
+await stampPkg(/Alpha Cards/, "Refunded");
+ok(!card(/Alpha Cards/), "36.16 a refunded package leaves the list");
+ok(
+  /0\/10/.test(text()) && /3 packages/.test(text()),
+  "36.17 and the counts — the money is back, so nothing is outstanding"
+);
+ok(!cell(/canceled/), "36.18 without being mistaken for a canceled order");
+ok(
+  /1 stamped/.test(stampedCell().textContent),
+  "36.19 the stamped cell still counts it, which is the way back to it"
+);
+await click(stampedCell(), "filter to stamped");
+ok(
+  !!card(/Alpha Cards/) &&
+    /REFUNDED ·/.test(card(/Alpha Cards/).textContent) &&
+    !/CLAIM FILED/.test(card(/Alpha Cards/).textContent),
+  "36.20 under the filter it is there, the new stamp in place of the old — one stamp per order"
+);
+ok(
+  /4 left · refunded/.test(card(/Alpha Cards/).textContent) &&
+    !/\$4\.00/.test(card(/Alpha Cards/).textContent),
+  "36.21 wearing a manila 'refunded' pill rather than a red figure"
+);
+ok(
+  /0\/10/.test(text()) && /3 packages/.test(text()),
+  "36.22 the masthead does not change with the filter"
+);
+ok(!card(/Beta Games/), "36.23 and unstamped packages are filtered out");
+await sleep(SAVE_WAIT);
+ok(
+  (saved().stamps?.[GK_A]?.updatedAt ?? 0) > firstUpdated,
+  "36.24 replacing the stamp re-stamps updatedAt, so the merge knows which copy is newer"
+);
+await click(stampedCell(), "filter off");
+ok(!card(/Alpha Cards/) && !!card(/Beta Games/), "36.25 the filter comes off the same way");
+
+/* the filter sits ON TOP of Showing, not beside it */
+await fresh();
+await stampPkg(/Beta Games/, "Seller contacted", "asked for tracking");
+await click(inCard(card(/Beta Games/), /^Mark all received$/), "receive all of Beta");
+ok(!card(/Beta Games/), "36.26 a fully received package hides under Unreceived, stamped or not");
+ok(/1 stamped/.test(stampedCell().textContent), "36.27 the cell still counts it");
+await click(stampedCell(), "filter on");
+ok(
+  !card(/Beta Games/),
+  "36.28 the filter does not bring a received package back — Showing still applies"
+);
+await toggleShowing();
+ok(
+  !!card(/Beta Games/) && /SELLER CONTACTED/.test(card(/Beta Games/).textContent),
+  "36.29 Everything does"
+);
+
+/* and on top of Find, which now reads the stamp too */
+await fresh();
+await stampPkg(/Alpha Cards/, "Claim filed", "usps 9400");
+await click(stampedCell(), "filter on");
+await type(search(), "Gamma");
+ok(!card(/Alpha Cards/), "36.30 Find still narrows the stamped list");
+await type(search(), "");
+await click(stampedCell(), "filter off");
+await type(search(), "9400");
+{
+  const c = card(/Alpha Cards/);
+  ok(
+    c && /Lightning Bolt/.test(c.textContent) && /Counterspell/.test(c.textContent) &&
+      /Brainstorm/.test(c.textContent),
+    "36.31 a note match finds the order and shows every line of it"
+  );
+  ok(!/more lines? in this order/.test(c.textContent), "36.32 with nothing for the search to be hiding");
+  ok(!card(/Beta Games/), "36.33 and only that order");
+}
+await stampPkg(/Alpha Cards/, null, "fedex 7700");
+ok(
+  !card(/Alpha Cards/),
+  "36.34 editing the note under a live search re-runs the search — the hit is gone"
+);
+await type(search(), "claim");
+ok(!!card(/Alpha Cards/), "36.35 the stamp's label is searchable too");
+await type(search(), "");
+
+/* and on top of the date range, count and list alike */
+await stampPkg(/Gamma Cards/, "Reshipped", "");
+ok(/2 stamped/.test(stampedCell().textContent), "36.36 two stamped orders");
+await openRange();
+await click(opt("By month"), "by month");
+await click(monthChips().find((b) => /Jul/.test(b.textContent)), "pick July");
+ok(
+  /1 stamped/.test(stampedCell().textContent),
+  "36.37 the count follows the date range — Gamma is a June order"
+);
+await click(stampedCell(), "filter on");
+ok(!!card(/Alpha Cards/) && !card(/Gamma Cards/), "36.38 and so does the list");
+await openRange();
+await click(opt("All time"), "all time");
+ok(
+  /2 stamped/.test(stampedCell().textContent) && !!card(/Gamma Cards/),
+  "36.39 widen the range and both are back"
+);
+await stampPkg(/Alpha Cards/, "Refunded");
+{
+  const t = text();
+  ok(
+    t.indexOf("Alpha Cards") !== -1 && t.indexOf("Alpha Cards") < t.indexOf("Gamma Cards"),
+    "36.40 under Newest the refunded July order still sorts ahead of the June one — the frozen order ranks the stamped list, not the list it left"
+  );
+}
+
+/* removal: two-tap, and a tombstone rather than a hole */
+await click(bandOf(card(/Alpha Cards/)), "open Alpha's stamp");
+await click(inCard(card(/Alpha Cards/), /^Remove stamp$/), "remove, first tap");
+ok(
+  !!inCard(card(/Alpha Cards/), /Tap again to remove/),
+  "36.41 Remove is two-tap, like every other destructive control"
+);
+await sleep(SAVE_WAIT);
+eq(saved().stamps?.[GK_A]?.kind, "refunded", "36.42 and one tap changes nothing");
+await click(inCard(card(/Alpha Cards/), /Tap again to remove/), "remove, second tap");
+ok(!card(/Alpha Cards/), "36.43 un-stamped, Alpha drops out of the stamped list");
+ok(/1 stamped/.test(stampedCell().textContent), "36.44 and the cell counts one fewer");
+await sleep(SAVE_WAIT);
+ok(
+  GK_A in (saved().stamps || {}) && saved().stamps[GK_A].kind === "",
+  "36.45 the removal is a tombstone in the blob, not a missing key — so it can travel to the other device"
+);
+await click(stampedCell(), "filter off");
+ok(
+  !!card(/Alpha Cards/) && !!inCard(card(/Alpha Cards/), /^Stamp$/) && /0\/14/.test(text()),
+  "36.46 Alpha is back in the normal list, un-refunded, offering a fresh Stamp"
+);
+await click(stampedCell(), "filter on again");
+await click(bandOf(card(/Gamma Cards/)), "open Gamma's stamp");
+await click(inCard(card(/Gamma Cards/), /^Remove stamp$/), "first tap");
+await click(inCard(card(/Gamma Cards/), /Tap again to remove/), "second tap");
+ok(
+  !stampedCell() &&
+    [/Alpha Cards/, /Beta Games/, /Gamma Cards/, /Delta Cards/].every((re) => !!card(re)),
+  "36.47 removing the last stamp drops the filter rather than stranding an empty list"
+);
+
+/* the five sites of invariant 2 */
+await fresh();
+await stampPkg(/Alpha Cards/, "Claim filed", "reload me");
+await sleep(SAVE_WAIT);
+await boot(saved());
+ok(
+  /CLAIM FILED/.test(card(/Alpha Cards/).textContent) && /reload me/.test(text()),
+  "36.48 stamps survive a reload"
+);
+await boot({
+  items: ITEMS,
+  received: {},
+  envelopes: [],
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+});
+ok(
+  !/undefined/.test(text()) && !stampedCell() && !!inCard(card(/Alpha Cards/), /^Stamp$/),
+  "36.49 a blob written before stamps shipped loads clean, with nothing stamped"
+);
+await stampPkg(/Alpha Cards/, "Claim filed", "");
+await sleep(SAVE_WAIT);
+await click(btn(/^Reset$/), "reset");
+await click(btn(/Tap again to clear everything/), "confirm reset");
+await sleep(800); // past the debounce, which is when a stale value would reappear
+eq(saved().stamps ?? {}, {}, "36.50 Reset clears stamps and the debounce does not write them back");
+
+await fresh();
+await stampPkg(/Alpha Cards/, "Claim filed", "pushed");
+await openSync();
+await saveGitHubKey();
+await click(btn(/^Push$/), "push");
+ok(
+  JSON.parse(pushes()[0].text).stamps?.[GK_A]?.kind === "claim",
+  "36.51 the pushed payload carries the stamps"
+);
+
+const REMOTE_STAMPED = JSON.stringify({
+  mailday: 1,
+  items: ITEMS,
+  received: {},
+  envelopes: [],
+  stamps: { [GK_C]: S("reshipped", 5, "second copy on its way") },
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+});
+await boot(
+  { items: ITEMS, received: {}, stamps: { [GK_A]: { ...S("claim", 10), at: "2026-08-20" } } },
+  null,
+  { remote: REMOTE_STAMPED }
+);
+ok(
+  /CLAIM FILED · 08-20/.test(card(/Alpha Cards/).textContent),
+  "36.52 (setup) the local stamp renders straight from the blob, dated as stored"
+);
+await openSync();
+await click(btn(/^Pull from GitHub$/), "pull");
+await click(btn(/Tap again to replace/), "confirm pull");
+await settle();
+ok(
+  !/CLAIM FILED/.test(card(/Alpha Cards/).textContent) &&
+    /RESHIPPED · 08-01/.test(card(/Gamma Cards/).textContent),
+  "36.53 a pull is a full replace — the remote's stamps, not a union"
+);
+
+/* the merge rule, pure — the sixth site */
+eq(
+  mergeStamps({ a: S("claim", 10) }, { a: S("refunded", 20) }).stamps.a.kind,
+  "refunded",
+  "36.54 the fresher stamp wins"
+);
+eq(
+  mergeStamps({ a: S("claim", 10) }, { a: S("refunded", 10) }).stamps.a.kind,
+  "claim",
+  "36.55 a tie goes to the device running the merge"
+);
+eq(
+  mergeStamps({ a: S("claim", 10) }, { a: TOMB(20) }).stamps.a.kind,
+  "",
+  "36.56 a newer tombstone removes — the removal travels"
+);
+eq(
+  mergeStamps({ a: TOMB(10) }, { a: S("claim", 20) }).stamps.a.kind,
+  "claim",
+  "36.57 an older tombstone loses — re-stamping after a removal elsewhere works"
+);
+eq(
+  mergeStamps({ a: S("claim", 10) }, { a: { kind: "reshipped" } }).stamps.a.kind,
+  "claim",
+  "36.58 a copy with no timestamp reads as oldest, without crashing"
+);
+{
+  const ab = mergeStamps(
+    { a: S("claim", 10), b: S("contacted", 30) },
+    { a: S("refunded", 20), c: S("reshipped", 5) }
+  );
+  const ba = mergeStamps(
+    { a: S("refunded", 20), c: S("reshipped", 5) },
+    { a: S("claim", 10), b: S("contacted", 30) }
+  );
+  eq(
+    sortedEntries(ab.stamps),
+    sortedEntries(ba.stamps),
+    "36.59 merging either way round gives the same stamps — it cannot pick a loser"
+  );
+  eq(mergeStamps(ab.stamps, ab.stamps).added, 0, "36.60 merging the same thing twice adds nothing");
+}
+eq(
+  mergeStamps({}, { a: S("claim", 1), b: TOMB(2) }).added,
+  1,
+  "36.61 `added` counts stamps, not tombstones — a removal is not 'a stamp from the other device'"
+);
+eq(
+  mergeLedger(PHONE, LAPTOP).merged.stamps,
+  {},
+  "36.62 a merged ledger always carries a stamps key, even when neither side had any"
+);
+{
+  const m = mergeLedger(
+    { ...PHONE, stamps: { a: S("claim", 10) } },
+    { ...LAPTOP, stamps: { b: S("reshipped", 5) } }
+  );
+  ok(
+    m.merged.stamps?.a?.kind === "claim" && m.merged.stamps?.b?.kind === "reshipped" &&
+      m.stats.stampsAdded === 1,
+    "36.63 and carries both devices' stamps — the merge builder names the key"
+  );
+}
+ok(
+  /1 stamp\b/.test(
+    mergeSummary({ itemsAdded: 0, checkInsAdded: 0, envelopesAdded: 0, stampsAdded: 1 })
+  ) &&
+    /2 stamps/.test(
+      mergeSummary({ itemsAdded: 0, checkInsAdded: 0, envelopesAdded: 0, stampsAdded: 2 })
+    ),
+  "36.64 the notice says so"
+);
+
+/* and driven through the app, group 34's shape: a stale push, the conflict,
+   Merge & push — with a removal on the other side */
+const LAPTOP_STAMPED = JSON.stringify({
+  mailday: 1,
+  items: ITEMS,
+  received: {},
+  envelopes: [],
+  stamps: { [GK_A]: TOMB(20), [GK_D]: S("reshipped", 5, "laptop's") },
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+});
+await boot(
+  {
+    items: ITEMS.slice(0, 8),
+    received: {},
+    stamps: { [GK_A]: S("claim", 10), [GK_C]: S("contacted", 10, "phone's") },
+  },
+  null,
+  { remote: LAPTOP_STAMPED }
+);
+await openSync();
+await saveGitHubKey();
+await click(btn(/^Push$/), "stale push");
+await click(btn(/Merge & push/), "merge");
+await settle();
+await sleep(SAVE_WAIT);
+{
+  const st = saved().stamps || {};
+  ok(st[GK_C]?.kind === "contacted", "36.65 this device's stamp survives the merge");
+  ok(st[GK_D]?.kind === "reshipped", "36.66 the other device's arrives");
+  ok(
+    st[GK_A]?.kind === "",
+    "36.67 and its newer removal takes this device's older stamp with it"
+  );
+  const up = JSON.parse(remoteText()).stamps || {};
+  ok(
+    up[GK_A]?.kind === "" && up[GK_C]?.kind === "contacted" && up[GK_D]?.kind === "reshipped",
+    "36.68 the merged stamps reach GitHub"
+  );
+  ok(
+    /1 stamp\b/.test(text()),
+    "36.69 and the notice counts the one stamp that arrived, not the tombstone"
+  );
+}
+
+/* The Orphaned view hangs off the same chokepoint. This is the assertion that
+   caught a mutant the counts could not: with the refund exclusion dropped from
+   `liveItems` alone, every masthead figure still came out right (they derive
+   from `rangedItems`, which excludes refunds on its own) — only the envelope
+   candidates went wrong, offering a package nothing is expected from. */
+await fresh();
+await stampPkg(/Delta Cards/, "Partial refund", "$50 back");
+await goTo("orphaned");
+await record(["Urza's Saga"]);
+ok(
+  /No outstanding package accounts/.test(text()),
+  "36.70 a refunded order's cards are not candidates for an orphaned envelope — nothing is expected from it any more"
+);
+ok(/no outstanding copy/.test(text()), "36.71 and the entry is tagged as unexplained");
 
 report();
