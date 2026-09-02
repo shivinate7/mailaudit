@@ -2206,4 +2206,56 @@ eq(
   "35.5 and the following push is accepted rather than conflicting"
 );
 
+/* ── 36. the action row ───────────────────────────────────────────────────
+
+   The file actions became a row of ruled cells in the head's own vocabulary
+   (CLAUDE.md, "The ruled head"). What can be pinned here is behaviour; the
+   layout it exists for — equal cells, the 375px fit, nothing right-aligned
+   over a void — is re-measured in a real viewport like the rest of the
+   region, because jsdom has none. */
+await boot({ items: ITEMS, received: {} }, null, { remote: OTHER_DEVICE });
+await openSync();
+await click(btn(/^Reset$/), "arm reset");
+ok(!!btn(/Tap again to clear everything/), "36.1 an armed Reset takes the row");
+ok(
+  !btn(/Re-import CSV/) && !btn(/^Sync/),
+  "36.2 and the other two cells step out — nothing beside it to mis-tap"
+);
+ok(!!btn(/^Push$/), "36.3 while the open Sync panel stays put underneath");
+await click(btn(/Pull from GitHub/), "arm pull instead");
+ok(
+  !!btn(/Re-import CSV/) && !!btn(/^Sync/) && !!btn(/^Reset$/),
+  "36.4 disarming brings them back"
+);
+
+/* the option grid paints its rule colour through the 1px gap, so an odd count
+   has to give the last cell the whole row or the empty half shows as a slab.
+   Against an unseeded remote (nothing to be behind, so no Merge cell), no key
+   and no photos is Push, Pull, Backup — three. */
+await boot({ items: ITEMS, received: {} });
+await openSync();
+eq(
+  btn(/^Backup$/).style.gridColumn,
+  "1 / -1",
+  "36.5 an odd last cell in the Sync grid spans the row"
+);
+await saveGitHubKey();
+ok(!!btn(/Auto-push/), "36.6 a key adds the toggle, making four");
+eq(
+  btn(/^Backup$/).style.gridColumn,
+  "",
+  "36.7 and an even count leaves every cell its own half"
+);
+
+/* not layout — a device behaviour. iOS zooms the page on focusing any input
+   under 16px, and the viewport meta deliberately leaves zoom on; the old 12px
+   token box zoomed on every paste. */
+await click(btn(/^Replace$/), "reopen the key field");
+eq(
+  document.querySelector('input[aria-label="GitHub access token"]').style
+    .fontSize,
+  "16px",
+  "36.8 the token field is 16px so focusing it does not zoom the page on iOS"
+);
+
 report();
