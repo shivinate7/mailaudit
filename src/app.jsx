@@ -259,6 +259,42 @@ const isUntracked = (p) => /^without tracking$/i.test(p.tracking || "");
    with the one in `packages` silently matches nothing. */
 const gkOf = (it) => `${it.orderId}::${it.seller}`;
 
+/* ---------- order stamps ----------
+   One stamp per package — a status the user sets by hand ("claim filed",
+   "refunded"), dated the day it was set, with an optional free line. The
+   vocabulary is fixed and module-level for the same reason RANGES and
+   PKG_SORTS are: the chips in the editor and the band on the card read one
+   table, so they cannot drift.
+   A removed stamp is a TOMBSTONE — `kind: ""` with a fresh `updatedAt` —
+   rather than a deleted key, so the removal itself survives the two-device
+   merge (see mergeStamps in merge-rules.mjs). Every reader goes through
+   hasStamp, never key presence. */
+const STAMP_KINDS = [
+  ["claim", "Claim filed"],
+  ["refunded", "Refunded"],
+  ["contacted", "Seller contacted"],
+  ["reshipped", "Reshipped"],
+  ["partial", "Partial refund"],
+];
+const STAMP_LABEL = Object.fromEntries(STAMP_KINDS);
+const hasStamp = (s) => !!(s && s.kind);
+/* both refund kinds take the package out of the ledger's counts, exactly as a
+   canceled order is — the money is back, so nothing is outstanding */
+const isRefundStamp = (s) => s?.kind === "refunded" || s?.kind === "partial";
+/* the LOCAL calendar day, deliberately not toISOString(): at 8pm Central a
+   claim filed today would be dated tomorrow. Same trap the month picker
+   documents (test 23.16), same side of it. */
+const todayLocal = () => {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+/* parseLedger validates only `mailday` and `items`, so everything that reads
+   `data.stamps` off a payload goes through this — Object.keys(null) inside a
+   memo would take the whole app down on a hand-edited backup */
+const sanitizeStamps = (v) =>
+  v && typeof v === "object" && !Array.isArray(v) ? v : {};
+
 function groupPackages(source) {
   const map = new Map();
   for (const it of source) {
@@ -482,7 +518,14 @@ function ProgressBar({ pct, height = 8 }) {
 
 /* ---------- Item row ---------- */
 
-function ItemRow({ item, got, onSet, variant = "package", onOpenOrder }) {
+function ItemRow({
+  item,
+  got,
+  onSet,
+  variant = "package",
+  onOpenOrder,
+  stamped = false,
+}) {
   const done = got >= item.qty;
   const partial = got > 0 && !done;
   const toggle = () => onSet(item.key, done ? 0 : item.qty);
@@ -498,7 +541,10 @@ function ItemRow({ item, got, onSet, variant = "package", onOpenOrder }) {
       ).filter(Boolean)
     )
     .join(" · ");
-  const lost = source ? lostMail(item.date, item.tracking, done) : null;
+  /* `stamped`: the copy's order carries a stamp, so it is being handled and
+     the warning would nag about a claim already filed — same rule as the
+     package header, plumbed down because a row knows only its own item */
+  const lost = source ? lostMail(item.date, item.tracking, done || stamped) : null;
   return (
     <div
       onClick={toggle}
@@ -716,6 +762,32 @@ const stepBtn = {
   padding: 0,
 };
 
+/* the order-stamp chip: the RECEIVED stamp's construction in the advisory
+   colour — manilaInk on card, rotated a touch less — since it is a status the
+   user set rather than the ledger's own verdict */
+/* the editor's five kinds, in the month picker's treatment: an option cell
+   carrying its own rule. Referenced lazily, so it may sit above optCell. */
+const stampKindCell = (on) => ({
+  ...optCell(on),
+  padding: "0 10px",
+  border: `1px solid ${on ? C.accent : C.line}`,
+});
+const stampChip = {
+  fontFamily: mono,
+  fontSize: 10.5,
+  fontWeight: 700,
+  letterSpacing: "0.1em",
+  color: C.manilaInk,
+  border: `2px solid ${C.manilaInk}`,
+  borderRadius: 4,
+  padding: "3px 8px",
+  transform: "rotate(-3deg)",
+  flexShrink: 0,
+  background: C.card,
+  whiteSpace: "nowrap",
+  display: "inline-block",
+};
+
 /* ---------- Package (order + seller) group ---------- */
 
 function PackageCard({
@@ -727,6 +799,8 @@ function PackageCard({
   revealed = false,
   onToggleReveal,
   innerRef,
+  stamp,
+  onStamp,
 }) {
   const totalQty = pkg.items.reduce((s, it) => s + it.qty, 0);
   const gotQty = pkg.items.reduce(
@@ -748,7 +822,40 @@ function PackageCard({
     missingVal >= 100
       ? `$${Math.round(missingVal).toLocaleString()}`
       : `$${missingVal.toFixed(2)}`;
-  const lost = lostMail(pkg.date, pkg.tracking, done);
+  const stamped = hasStamp(stamp);
+  const refunded = isRefundStamp(stamp);
+  /* a stamped order is being handled — the warning would nag about a claim
+     that is already filed, and for a reshipment the original order date means
+     nothing at all. `done` already means "no warning"; so does this. */
+  const lost = lostMail(pkg.date, pkg.tracking, done || stamped);
+
+  /* the stamp editor, local to the card. Two-tap on Remove, the same pair
+     EnvelopeCard carries: one timer, one armed control, cleared on unmount. */
+  const [editing, setEditing] = useState(false);
+  const [kind, setKind] = useState("");
+  const [note, setNote] = useState("");
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const timer = useRef(null);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const disarm = () => setConfirmRemove(false);
+  const arm = (set, val) => {
+    disarm();
+    set(val);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(disarm, 4000);
+  };
+  /* seeded at open time, not at mount: a merge can change the stamp under a
+     mounted card, and the editor should open on what is there now */
+  const openEditor = () => {
+    setKind(stamped ? stamp.kind : "");
+    setNote(stamped ? stamp.note || "" : "");
+    setEditing(true);
+  };
+  const closeEditor = () => {
+    clearTimeout(timer.current);
+    disarm();
+    setEditing(false);
+  };
 
   return (
     <div
@@ -866,17 +973,165 @@ function PackageCard({
               fontFamily: cochin,
               fontSize: 12.5,
               fontWeight: 700,
-              color: C.red,
-              background: C.redSoft,
+              /* manila once refunded: the cards are still out, but no money
+                 is — the red figure would be claiming a loss that isn't one */
+              color: refunded ? C.manilaInk : C.red,
+              background: refunded ? C.manila : C.redSoft,
               borderRadius: 999,
               padding: "3px 10px",
               flexShrink: 0,
             }}
           >
-            {totalQty - gotQty} left · {missingValLabel}
+            {totalQty - gotQty} left · {refunded ? "refunded" : missingValLabel}
           </span>
         )}
       </button>
+
+      {/* The stamp band: the order's status, visible collapsed too, and — once
+          a stamp exists — the control that edits it. A sibling of the header
+          button, above the rows, so nothing moves under a thumb mid-check-in
+          (invariant 5); opening the editor is a deliberate tap on the band,
+          the same class of move as expanding the package. */}
+      {stamped && !editing && (
+        <button
+          onClick={openEditor}
+          aria-label={`Edit stamp on ${pkg.seller}`}
+          style={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "0 14px 10px",
+            border: 0,
+            background: "transparent",
+            textAlign: "left",
+            cursor: "pointer",
+          }}
+        >
+          <span style={stampChip}>
+            {STAMP_LABEL[stamp.kind].toUpperCase()} · {(stamp.at || "").slice(5)}
+          </span>
+          {/* ellipsis has to sit on the text child, which needs min-width 0 */}
+          <span
+            style={{
+              flex: 1,
+              minWidth: 0,
+              fontFamily: cochin,
+              fontStyle: "italic",
+              fontSize: 13.5,
+              lineHeight: 1.3,
+              color: C.ink,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {stamp.note || ""}
+          </span>
+          <span
+            style={{
+              fontFamily: mono,
+              fontSize: 12,
+              color: C.inkSoft,
+              flexShrink: 0,
+            }}
+          >
+            {"\u203a"}
+          </span>
+        </button>
+      )}
+      {editing && (
+        <div style={{ padding: "0 14px 12px" }}>
+          <div style={{ ...subHead, margin: "0 0 8px" }}>
+            <span style={cellLab}>Stamp</span>
+            <span style={{ flex: 1, height: 1, background: C.line }} />
+          </div>
+          {/* five cells will not fit one row at 375px; wrapping is the plan */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {STAMP_KINDS.map(([k, label]) => (
+              <button
+                key={k}
+                onClick={() => setKind(k)}
+                aria-pressed={kind === k}
+                style={stampKindCell(kind === k)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Anything else — what they said, when…"
+            aria-label="Stamp note"
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              marginTop: 10,
+              fontFamily: cochin,
+              /* 16px or focusing it zooms the page on iOS */
+              fontSize: 16,
+              padding: "9px 12px",
+              borderRadius: 8,
+              border: `1px solid ${C.line}`,
+              background: C.card,
+              color: C.ink,
+              outline: "none",
+            }}
+          />
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginTop: 8,
+            }}
+          >
+            {stamped && (
+              <button
+                onClick={() => {
+                  if (confirmRemove) {
+                    onStamp(pkg.gk, null);
+                    closeEditor();
+                  } else arm(setConfirmRemove, true);
+                }}
+                style={{
+                  ...miniBtn,
+                  fontSize: 11,
+                  padding: "5px 9px",
+                  color: confirmRemove ? C.card : C.red,
+                  background: confirmRemove ? C.red : C.card,
+                  borderColor: confirmRemove ? C.red : C.redSoft,
+                  fontWeight: confirmRemove ? 700 : 400,
+                }}
+              >
+                {confirmRemove ? "Tap again to remove" : "Remove stamp"}
+              </button>
+            )}
+            <span style={{ flex: 1 }} />
+            <button onClick={closeEditor} style={miniBtn}>
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                onStamp(pkg.gk, { kind, note });
+                closeEditor();
+              }}
+              disabled={!kind}
+              style={{
+                ...miniBtn,
+                background: kind ? C.ink : C.card,
+                color: kind ? C.card : C.inkSoft,
+                borderColor: kind ? C.ink : C.line,
+                fontWeight: kind ? 700 : 400,
+                cursor: kind ? "pointer" : "default",
+              }}
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      )}
 
       {gotQty > 0 && !done && (
         <div style={{ padding: "0 14px 10px" }}>
@@ -894,6 +1149,16 @@ function PackageCard({
               justifyContent: "flex-end",
             }}
           >
+            {/* the first stamp's only entrance; once one exists the band is
+                the control. marginRight auto keeps the bulk buttons right. */}
+            {!stamped && !editing && (
+              <button
+                onClick={openEditor}
+                style={{ ...miniBtn, marginRight: "auto" }}
+              >
+                Stamp
+              </button>
+            )}
             {!done && (
               <button onClick={() => onBulk(pkg.items, true)} style={miniBtn}>
                 Mark all received
@@ -958,7 +1223,7 @@ function PackageCard({
 
 /* ---------- Item total (same product name across every seller) ---------- */
 
-function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder }) {
+function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder, stampedGks }) {
   const totalQty = item.qty;
   const gotQty = item.items.reduce(
     (s, it) => s + Math.min(it.qty, received[it.key] || 0),
@@ -1141,6 +1406,7 @@ function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder }) {
               onSet={onSet}
               variant="source"
               onOpenOrder={onOpenOrder}
+              stamped={!!stampedGks?.has(gkOf(it))}
             />
           ))}
         </>
@@ -1657,6 +1923,24 @@ function Notice({ children, actionLabel, onAction, onDismiss }) {
    identical join, so the effect never re-runs and the photos you just
    downloaded stay blank squares until a reload. Anything that writes to the
    photo store bumps the epoch; that is what puts them on screen. */
+/* The set of package keys whose stamp satisfies `pred`, with an identity that
+   changes only when the MEMBERSHIP does. `stamps` is a fresh object on every
+   note edit, and if that rebuilt liveItems → packages, packageOrder would
+   re-freeze the sort mid-check-in — the leapfrog invariant 5 exists to
+   prevent. Keying the memo on the sorted membership string keeps a typo fix
+   from reshuffling the list. `pred` must be a module-level constant. */
+function useGkSet(stamps, pred) {
+  const key = useMemo(
+    () =>
+      Object.keys(stamps)
+        .filter((gk) => pred(stamps[gk]))
+        .sort()
+        .join("\u0000"),
+    [stamps, pred]
+  );
+  return useMemo(() => new Set(key ? key.split("\u0000") : []), [key]);
+}
+
 function usePhotoUrls(ids, epoch = 0) {
   const key = `${epoch}|${(ids || []).join(",")}`;
   const [urls, setUrls] = useState({});
@@ -2439,6 +2723,9 @@ export default function MailDayLedger() {
      Showing cell brings the received rows back for the session. */
   const [hideDone, setHideDone] = useState(true);
   const [showCanceled, setShowCanceled] = useState(false);
+  /* the stamped filter — a filter on top of the normal list, like Showing,
+     and ephemeral like it: not in the saved shape, starts off on every load */
+  const [showStamped, setShowStamped] = useState(false);
   const canceledRef = useRef(null);
   useEffect(() => {
     if (showCanceled)
@@ -2537,6 +2824,8 @@ export default function MailDayLedger() {
   /* orphaned mail: cards recorded off an unidentifiable envelope, parked until
      the user ties them to a package by hand */
   const [envelopes, setEnvelopes] = useState([]); // newest first
+  /* order stamps, keyed by package gk — persisted, see invariant 2 */
+  const [stamps, setStamps] = useState({});
   const [composing, setComposing] = useState(null); // null | "new" | envelopeId
   const [undo, setUndo] = useState(null); // last assignment, reversible
   const [backupBusy, setBackupBusy] = useState(false);
@@ -2562,6 +2851,8 @@ export default function MailDayLedger() {
           setEnvelopes(
             (data.envelopes || []).map((e) => ({ ...e, photos: e.photos || [] }))
           );
+          // absent on anything saved before stamps shipped
+          setStamps(sanitizeStamps(data.stamps));
           if (data.dateFilter) setDateFilter(data.dateFilter);
           if (data.sortBy) setSortBy(data.sortBy);
           // cardSort: the key this setting shipped under before the rename
@@ -2593,6 +2884,7 @@ export default function MailDayLedger() {
             items,
             received,
             envelopes,
+            stamps,
             dateFilter,
             sortBy,
             itemSort,
@@ -2605,7 +2897,7 @@ export default function MailDayLedger() {
       }
     }, 500);
     return () => clearTimeout(saveTimer.current);
-  }, [items, received, envelopes, dateFilter, sortBy, itemSort, loaded]);
+  }, [items, received, envelopes, stamps, dateFilter, sortBy, itemSort, loaded]);
 
   /* ONE payload builder, shared by the file download and the GitHub push.
      Keeping it single is a documentation requirement as much as a DRY one:
@@ -2628,11 +2920,12 @@ export default function MailDayLedger() {
       items,
       received,
       envelopes,
+      stamps,
       dateFilter,
       sortBy,
       itemSort,
     }),
-    [items, received, envelopes, dateFilter, sortBy, itemSort]
+    [items, received, envelopes, stamps, dateFilter, sortBy, itemSort]
   );
 
   /* Two backups on purpose. The plain one is small and quick and holds the
@@ -2724,6 +3017,7 @@ export default function MailDayLedger() {
           photos: (e.photos || []).filter((id) => present.has(id)),
         }))
       );
+      setStamps(sanitizeStamps(data.stamps));
       if (inlinedIds.length && window.photos)
         (async () => {
           for (const [id, url] of Object.entries(inlined)) {
@@ -2825,7 +3119,7 @@ export default function MailDayLedger() {
   /* reset sticky rows whenever the view context changes */
   useEffect(() => {
     setSticky(new Set());
-  }, [hideDone, query, dateFilter, view]);
+  }, [hideDone, query, dateFilter, view, showStamped]);
 
   /* Showing is the state a session starts from, and on iOS "closing" a
      home-screen app usually just backgrounds it — the page survives, so a
@@ -2874,6 +3168,9 @@ export default function MailDayLedger() {
      would arrive at nothing. Revealing bypasses both. */
   const openOrder = useCallback((gk) => {
     setRevealed((prev) => (prev.has(gk) ? prev : new Set(prev).add(gk)));
+    /* the stamped filter would otherwise swallow an unstamped target — the
+       same "jump lands on nothing" failure group 32 fixed for hideDone */
+    setShowStamped(false);
     setView("packages");
     setJumpGk(gk);
   }, []);
@@ -2895,6 +3192,27 @@ export default function MailDayLedger() {
         else delete next[it.key];
       }
       return next;
+    });
+  }, []);
+
+  /* The one writer for stamps, so `updatedAt` — what the two-device merge
+     ranks copies by — is set in exactly one place. `patch` null removes: a
+     tombstone rather than a delete, so the removal itself travels. The date
+     survives a note-only edit; picking a different kind re-dates it, since
+     "refunded on the 4th" is a different fact from "claim filed on the 1st". */
+  const setStamp = useCallback((gk, patch) => {
+    setStamps((prev) => {
+      const cur = prev[gk];
+      if (!patch && !hasStamp(cur)) return prev; // nothing to remove
+      const next = patch
+        ? {
+            kind: patch.kind,
+            note: (patch.note || "").trim(),
+            at: cur?.kind === patch.kind && cur.at ? cur.at : todayLocal(),
+            updatedAt: Date.now(),
+          }
+        : { kind: "", note: "", at: "", updatedAt: Date.now() };
+      return { ...prev, [gk]: next };
     });
   }, []);
 
@@ -2934,6 +3252,8 @@ export default function MailDayLedger() {
     /* envelopes have to go too — left in state they'd be written straight back
        by the next debounced save and reappear pointing at a ledger that's gone */
     setEnvelopes([]);
+    setStamps({});
+    setShowStamped(false);
     setComposing(null);
     setUndo(null);
     setSticky(new Set());
@@ -3640,11 +3960,26 @@ export default function MailDayLedger() {
     setUndo(null);
   }, [undo]);
 
-  const liveItems = useMemo(
+  /* items ─► activeItems (not canceled) ─► rangedActive (in range) ─► rangedItems (not refunded) ─► packages
+                          └─► liveItems (not refunded)                    └─► stampedPackages
+     Two exclusions, one chokepoint each. Canceled is the CSV's word; refunded
+     is the user's stamp, and it leaves the counts the same way — the money is
+     back, so nothing is outstanding. Everything downstream (totals, Tally,
+     envelope candidates) inherits both without knowing about either. */
+  const activeItems = useMemo(
     () => items.filter((it) => !/^cancel/i.test(it.tracking || "")),
     [items]
   );
-  const canceledCount = items.length - liveItems.length;
+  const canceledCount = items.length - activeItems.length;
+  const refundedGks = useGkSet(stamps, isRefundStamp);
+  const stampedGks = useGkSet(stamps, hasStamp);
+  const liveItems = useMemo(
+    () =>
+      refundedGks.size
+        ? activeItems.filter((it) => !refundedGks.has(gkOf(it)))
+        : activeItems,
+    [activeItems, refundedGks]
+  );
 
   const canceledPackages = useMemo(() => {
     const map = new Map();
@@ -3666,16 +4001,26 @@ export default function MailDayLedger() {
     return arr;
   }, [items]);
 
-  const rangedItems = useMemo(() => {
-    if (!range) return liveItems;
-    return liveItems.filter((it) => {
+  /* the range applied BEFORE the refund exclusion, so the stamped filter can
+     source refunded packages back in — they are otherwise out of the list, and
+     that list is the only place a refund can be found and un-stamped */
+  const rangedActive = useMemo(() => {
+    if (!range) return activeItems;
+    return activeItems.filter((it) => {
       const t = Date.parse(it.date);
       if (Number.isNaN(t)) return true; // keep undated rows visible
       if (range.from != null && t < range.from) return false;
       if (range.to != null && t > range.to) return false;
       return true;
     });
-  }, [liveItems, range]);
+  }, [activeItems, range]);
+  const rangedItems = useMemo(
+    () =>
+      refundedGks.size
+        ? rangedActive.filter((it) => !refundedGks.has(gkOf(it)))
+        : rangedActive,
+    [rangedActive, refundedGks]
+  );
 
   const hiddenCount = liveItems.length - rangedItems.length;
 
@@ -3764,6 +4109,25 @@ export default function MailDayLedger() {
   /* grouping + filtering */
   const packages = useMemo(() => groupPackages(rangedItems), [rangedItems]);
 
+  /* The stamped filter's source. Built from rangedActive, not rangedItems, so
+     refunded packages are in it; filtered to stamped gks; and it obeys the
+     range because the count and the list derive from one array — the cell can
+     never promise a package the list then hides. Showing and Find still apply
+     downstream in `visible`, so the count CAN read higher than the list,
+     exactly as "N lines" can. */
+  const stampedPackages = useMemo(
+    () => groupPackages(rangedActive.filter((it) => stampedGks.has(gkOf(it)))),
+    [rangedActive, stampedGks]
+  );
+  const stampedCount = stampedPackages.length;
+  /* derived rather than trusted: the effect clears a stale toggle, but without
+     this guard the commit before it runs would render an empty list */
+  const stampedMode = showStamped && stampedCount > 0;
+  useEffect(() => {
+    if (stampedCount === 0) setShowStamped(false);
+  }, [stampedCount]);
+  const orderSource = stampedMode ? stampedPackages : packages;
+
   /* Envelope candidates deliberately ignore the date filter — a mystery
      envelope is just as likely to be an old order as a recent one. */
   const allPackages = useMemo(() => groupPackages(liveItems), [liveItems]);
@@ -3827,7 +4191,10 @@ export default function MailDayLedger() {
         (s, it) => s + it.price * (it.qty - Math.min(it.qty, rec[it.key] || 0)),
         0
       );
-    const sorted = [...packages];
+    /* orderSource, not packages: a refunded package is only ever in the
+       stamped list, and ranking off `packages` would leave every one of them
+       at ?? 1e9 — last under every sort */
+    const sorted = [...orderSource];
     if (sortBy === "oldest")
       sorted.sort((a, b) => t(a) - t(b) || a.seller.localeCompare(b.seller));
     else if (sortBy === "value")
@@ -3850,11 +4217,11 @@ export default function MailDayLedger() {
     const order = new Map();
     sorted.forEach((p, i) => order.set(p.gk, i));
     return order;
-  }, [packages, sortBy]);
+  }, [orderSource, sortBy]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return packages
+    return orderSource
       .map((p) => {
         /* A revealed package answers "what else was in that envelope?", so it
            ignores both filters — the query AND hideDone. Bypassing hideDone
@@ -3872,8 +4239,18 @@ export default function MailDayLedger() {
           p.items.every((it) => (received[it.key] || 0) >= it.qty)
         )
           return { ...p, items: [], hiddenByFilters: 0 };
+        /* a stamp is the package's, not a line's, so a hit on its label or
+           note keeps every line — filtering them would draw exactly the
+           one-line-order lie group 32 exists to undo */
+        const s = stamps[p.gk];
+        const pkgHit =
+          !!q &&
+          hasStamp(s) &&
+          `${STAMP_LABEL[s.kind] || ""} ${s.note || ""}`
+            .toLowerCase()
+            .includes(q);
         let its = p.items;
-        if (q)
+        if (q && !pkgHit)
           its = its.filter((it) =>
             [it.name, it.set, it.seller, it.orderId]
               .join(" ")
@@ -3890,7 +4267,7 @@ export default function MailDayLedger() {
       .sort(
         (a, b) => (packageOrder.get(a.gk) ?? 1e9) - (packageOrder.get(b.gk) ?? 1e9)
       );
-  }, [packages, query, hideDone, received, sticky, packageOrder, revealed]);
+  }, [orderSource, stamps, query, hideDone, received, sticky, packageOrder, revealed]);
 
   /* Tally totals: exact product-name match, pooled across every seller/order.
      TCGplayer names are a scrape, so identical items carry byte-identical names.
@@ -4724,6 +5101,27 @@ export default function MailDayLedger() {
                         <i style={{ fontSize: 9 }}>{showCanceled ? "▾" : "▸"}</i>
                       </button>
                     )}
+                    {/* a filter, not a disclosure — hence the Showing cell's
+                        ○/● and aria-pressed rather than the caret. Packages
+                        only: a stamp belongs to a package, and Tally has no
+                        package to filter. */}
+                    {view === "packages" && stampedCount > 0 && (
+                      <button
+                        onClick={() => setShowStamped((s) => !s)}
+                        aria-pressed={showStamped}
+                        style={cancCell(showStamped)}
+                      >
+                        {stampedCount} stamped
+                        <i
+                          style={{
+                            fontSize: 9,
+                            color: showStamped ? C.accent : C.inkSoft,
+                          }}
+                        >
+                          {showStamped ? "●" : "○"}
+                        </i>
+                      </button>
+                    )}
                   </div>
 
                   <div style={RULE_THIN} />
@@ -5180,6 +5578,7 @@ export default function MailDayLedger() {
                   onSet={setCount}
                   onBulk={bulkSet}
                   onOpenOrder={openOrder}
+                  stampedGks={stampedGks}
                 />
               ))
             : visible.map((pkg) => (
@@ -5193,6 +5592,8 @@ export default function MailDayLedger() {
                   revealed={revealed.has(pkg.gk)}
                   onToggleReveal={toggleReveal}
                   innerRef={pkg.gk === jumpGk ? jumpRef : null}
+                  stamp={stamps[pkg.gk]}
+                  onStamp={setStamp}
                 />
               ))}
           {items.length > 0 &&

@@ -49,13 +49,22 @@ every seller, for "did all four of these arrive?" and for cost basis), and
 - `src/merge-rules.mjs` — reconciling two devices' ledgers: `mergeItems` (union
   by `it.key`, and the CSV import path calls it too so there is one definition
   of "union line items"), `mergeReceived` (per-key **max**), `mergeEnvelopes`
-  (union by id, freshest `updatedAt` wins) and `mergeLedger`/`mergeSummary`.
+  (union by id, freshest `updatedAt` wins), `mergeStamps` (per-package,
+  freshest `updatedAt` wins, tombstones included) and
+  `mergeLedger`/`mergeSummary`.
   Pure and directly tested for the sharpest version of the reason the three
   modules below are: this is the piece that fails by producing a *plausible
   wrong ledger*, and a merge that silently drops 35 imported lines is
   indistinguishable from one that worked. **The merge only ever ADDS** — nothing
   is dropped, no count decreases — which is why it needs no two-tap confirm and
-  why re-running it is harmless.
+  why re-running it is harmless. The one exception is a *removed* stamp, which
+  travels as a tombstone and beats an older stamp: still the user's own write
+  winning by freshness, not the merge deciding anything, and there because a
+  resurrected `refunded` stamp would silently pull money back out of the tally.
+  `mergeLedger` builds the merged ledger from **named fields**, so a persisted
+  key it does not name is dropped by every merge, applied locally as a full
+  replace, and pushed — invariant 2's five sites in `app.jsx` are this file's
+  sixth.
 - `src/remote-rules.mjs` — the two adapter decisions worth asserting on:
   `classifyStatus` (GitHub's overloaded status codes → an error code the UI can
   phrase) and `pushBody` (which omits the sha only on a create). Same reasoning
@@ -121,15 +130,23 @@ rather than by remembering. Verified in a browser: after saving a key,
    shimmed under localStorage namespace `mailday:` → literal key
    `mailday:mailday:v1`. Real users have months of check-in data under these
    keys. Any schema change must ship with in-place migration in the load path.
-2. **Saved-state shape:** `{ items, received, envelopes, dateFilter, sortBy,
-   itemSort, savedAt }`. `items` = array of parsed line items; `received` = map
-   of item key → count received; `envelopes` = orphaned-mail records, each
-   `{ id, createdAt, note, entries: [{ name, qty }], photos: [photoId],
-   updatedAt }`. `updatedAt` is what lets the two-device merge tell a real edit
-   from a stale copy of the same envelope; it is optional and defaulted (absent
-   reads as 0), so envelopes written before it shipped keep loading untouched.
-   It costs nothing under the five-site rule below because it lives *inside*
-   `envelopes`, which is already persisted.
+2. **Saved-state shape:** `{ items, received, envelopes, stamps, dateFilter,
+   sortBy, itemSort, savedAt }`. `items` = array of parsed line items;
+   `received` = map of item key → count received; `envelopes` = orphaned-mail
+   records, each `{ id, createdAt, note, entries: [{ name, qty }],
+   photos: [photoId], updatedAt }`. `updatedAt` is what lets the two-device
+   merge tell a real edit from a stale copy of the same envelope; it is optional
+   and defaulted (absent reads as 0), so envelopes written before it shipped
+   keep loading untouched. It costs nothing under the five-site rule below
+   because it lives *inside* `envelopes`, which is already persisted.
+   `stamps` = map of **package** key (`gkOf`: `orderId::seller`, never
+   `it.key`) → `{ kind, at, note, updatedAt }`, one per package; `kind` is one
+   of `claim | refunded | contacted | reshipped | partial`, `at` the local
+   calendar day it was set. **`kind: ""` is a tombstone** — a removal, kept so
+   it can win a merge — and every reader goes through `hasStamp`, never key
+   presence. Absent on older saves; defaulted to `{}` through
+   `sanitizeStamps`, because `parseLedger` validates only `mailday` and
+   `items`.
    Item key = `orderId|itemNumber|vendorProductId` — stable across re-imports;
    never change its construction. Envelope entries store card **names**, never
    item keys, so a re-import can't rot them and newly imported older orders
@@ -147,6 +164,14 @@ rather than by remembering. Verified in a browser: after saving a key,
    person to add a key misses one. The push carries no timestamp for the same
    reason: it goes in the commit message instead, so the pushed bytes stay
    identical to what the Backup file has always contained.
+   **Plus one outside `app.jsx`:** `mergeLedger` in `merge-rules.mjs` builds
+   the merged ledger from named fields, so a key it does not name is dropped by
+   every merge, applied as a full replace, and pushed — both devices lose it.
+   `stamps` was the first key added after that builder existed; test 37.62
+   pins the key's presence. A related rollout hazard: an older build's
+   `snapshot()` omits `stamps`, so its next push publishes a ledger without
+   them and a Pull onto the new build wipes them (a Merge keeps the local
+   ones). Update both devices before stamping anything.
 3. **Imports MERGE, never replace.** TCGplayer only serves ~120 days of history,
    so this app is the system of record for older orders. Re-importing must keep
    every existing item and all `received` state, adding/refreshing by key.
@@ -167,12 +192,14 @@ rather than by remembering. Verified in a browser: after saving a key,
    the mis-tap cascade this invariant exists to prevent.
 6. **No native browser dialogs.** `window.confirm`/`alert` block the whole page
    and look wrong in a home-screen app; every destructive action uses an inline
-   two-tap confirm instead (Reset, Discard, Assign, **Pull**, **Push anyway**).
-   Keep that pattern. (This started as a sandbox limitation and outlived it —
-   it's now a UI choice.) With three armable controls in the main component,
-   arming one **disarms the others** via the shared `arm`/`disarm` pair: two
-   primed destructive buttons side by side is the exact mis-tap the pattern
-   exists to prevent. Test 26.17–26.19.
+   two-tap confirm instead (Reset, Discard, Assign, **Pull**, **Push anyway**,
+   **Remove stamp**). Keep that pattern. (This started as a sandbox limitation
+   and outlived it — it's now a UI choice.) With three armable controls in the
+   main component, arming one **disarms the others** via the shared
+   `arm`/`disarm` pair: two primed destructive buttons side by side is the
+   exact mis-tap the pattern exists to prevent. Test 26.17–26.19. `PackageCard`
+   carries its own local pair for Remove stamp, as `EnvelopeCard` does for
+   Discard and Assign — one timer, one armed control, cleared on unmount.
 7. **Orphaned mail never decides anything.** The user buys the same cheap cards
    from many sellers, so *near-duplicate packages are normal* — two outstanding
    orders can have identical contents. The app may rank the packages an envelope
@@ -360,6 +387,48 @@ page. See "Known open threads" for exactly what that leaves unproven.
 - Canceled orders: excluded from list and all counts; viewable via
   "N canceled — view" link which scrolls to a dashed reference section (for
   refund auditing). Tracked/untracked shown as ●/○ dot + word in header meta.
+  **Refunded and partial-refund stamped packages leave the same way** — see
+  the next bullet.
+- **Order stamps** — one per package, set by hand: `Claim filed · Refunded ·
+  Seller contacted · Reshipped · Partial refund`, dated the day it was set
+  (local calendar day, not UTC — the same trap the month picker documents),
+  with an optional free line. Picking another kind **replaces** it and
+  re-dates it; editing only the note keeps the date. Rendered as a band under
+  the package header — a rotated chip in the RECEIVED stamp's construction,
+  manila rather than green, then the note in Cochin italic — visible while the
+  package is collapsed too. Two entrances, one editor: the first stamp comes
+  from a `Stamp` button placed first in the expanded card's action row; once
+  one exists that button goes away and **the band itself is the control**
+  (trailing `›`, like the Tally order-id link). The editor is the five kinds
+  as option cells in the month picker's treatment, the note field (16px or
+  iOS zooms), a two-tap *Remove stamp*,
+  Cancel and Save.
+  `Refunded` and `Partial refund` take the package out of **every count and
+  the normal list**, exactly as a canceled order is — the money is back, so
+  nothing is outstanding. One chokepoint: `liveItems` excludes refunded
+  packages the way `activeItems` excludes canceled ones, and totals, Tally,
+  and the Orphaned candidates all inherit it. So stamping an order Refunded
+  makes its card **vanish from the list under your finger** — the precedent
+  is "Mark all received" under Unreceived, and the `N stamped` cell is the
+  signpost. That cell, beside `N canceled` in the Find row, is a **filter on
+  top of the normal pipeline**: the date range, Showing and Find all still
+  apply (so a stamped, fully received package stays hidden under Unreceived,
+  and the count can read higher than the list, exactly as `N lines` can).
+  Refunded packages are sourced back in while it is on — `stampedPackages`
+  comes from `rangedActive`, the in-range items *before* the refund exclusion
+  — with a manila `N left · refunded` pill in place of the red figure. It is
+  the only place a refund can be found and un-stamped. `packageOrder` ranks
+  whichever source is live, or a refunded package would sit last under every
+  sort. Packages view only; Tally has no package to filter.
+  The stamp's label and note are in the Packages search haystack, and a
+  package-level hit keeps **every** line — filtering them would draw exactly
+  the one-line-order lie group 32 exists to undo. The lost-mail warning is
+  hidden on any stamped package, header line and Tally source row alike: the
+  order is being handled, and for a reshipment the original date means
+  nothing. `useGkSet` gives the refunded/stamped sets an identity that changes
+  only with their *membership*, so a note edit never rebuilds `packages` and
+  re-freezes the sort mid-check-in (invariant 5). Removal writes a tombstone,
+  not a hole (invariant 2). Group 37.
 - **Two local backups and one remote.** *Backup* downloads
   `{mailday:1, items, received, envelopes, dateFilter, sortBy, itemSort}` —
   small, quick, and holds the irreplaceable part. *Backup + photos* (only shown
@@ -527,7 +596,12 @@ Three ruled cells report the state and open what changes it:
   any more.
 
 Then a **Find** row carrying search, with the canceled reference beside it as
-another ruled cell rather than an underlined link floating on its own line.
+another ruled cell rather than an underlined link floating on its own line, and
+the `N stamped` filter beside that in the same cell style — `○/●` and
+`aria-pressed` rather than the canceled cell's caret, because it is a filter
+state (the Showing cell's idiom), not a disclosure. The row now holds two
+`flexShrink: 0` cells and the search input absorbs the loss; re-measure at
+375px if either label grows.
 Then the **action row** — Re-import CSV / Sync / Reset — as equal ruled cells
 at full width, uppercase mono like the view switch, 40px tall like Find.
 File management is not a filter, and the row used to say so by changing
@@ -946,7 +1020,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 355 assertions, no test framework, ~55s (groups 30–31 spend a few
+`npm test` — 427 assertions, no test framework, ~60s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
@@ -961,6 +1035,20 @@ see, so the assertions read the DOM the way the user does.
 (Three previous harnesses were written ad hoc and thrown away, which is why the
 same assertions kept being rewritten from scratch. Hence this one is committed
 and `jsdom` is a real devDependency.)
+
+New in group 37 (order stamps). It drives the whole feature through the DOM —
+the two entrances, the replace-not-stack rule, a refund leaving every count,
+the stamped filter obeying Showing, Find and the range, the tombstone, the
+five persistence sites — and then imports `mergeStamps` directly for the
+merge rule and ends on group 34's shape with a removal on the other side.
+Three of its assertions are the ones to keep if the group is ever trimmed:
+37.34 (editing a note under a live search) is the only shape that catches
+`stamps` missing from `visible`'s dep array, since a query change re-runs the
+fresh closure anyway; 37.40 sorts a *refunded* package under Newest, because
+under Oldest the `packageOrder`-from-`packages` mutant coincidentally produces
+the right order; and 37.62 asserts `merged.stamps` deep-equals `{}` rather
+than merely truthy, because `undefined` is exactly what the builder produces
+when it forgets the key.
 
 New in group 36 (the action row). Four claims, all behaviour rather than
 layout, because jsdom has none and the layout is what the row exists for: an
@@ -1162,6 +1250,21 @@ Group 35 added three, all confirmed to turn the suite red: the adapter
 advancing the sha inside `pull()` again; `doMerge` never accepting it; and
 `doPull` never accepting it.
 
+Group 37 (order stamps) added **nine**, all confirmed to turn the suite red:
+`mergeLedger` not naming `stamps` (37.62–37.68); `snapshot()` dropping them
+(25.10, 37.51, 37.68); `canceledCount` measured off `liveItems` instead of
+`activeItems` (37.18); `packageOrder` built from `packages` rather than the
+live source (37.40); removal as a `delete` rather than a tombstone (37.45);
+`mergeStamps` letting the incoming copy take a tie (37.55); `stamps` missing
+from `visible`'s deps (37.34); the refund exclusion dropped from `liveItems`
+(37.70); and the warning ignoring the stamp (37.11).
+That seventh one is the cautionary tale of this group: with the exclusion
+dropped from `liveItems` alone, **every masthead figure still came out right**
+— they derive from `rangedItems`, which excludes refunds on its own — and the
+first draft of the group, all counts and lists, let the mutant live. Only the
+Orphaned candidates read `liveItems`, so only an envelope test could see it.
+When a chokepoint has two branches, assert on both.
+
 Groups 33–34 (two-device merge and auto-push) added **twelve**, all confirmed
 to turn the suite red: `mergeReceived` using incoming-wins instead of `max`;
 `mergeItems` replacing instead of unioning; the envelope collision preferring
@@ -1316,6 +1419,11 @@ give no isolation between groups.
   tombstones. The bias is chosen: entries are hand-typed and exist nowhere else,
   and invariant 7 means a stray envelope decides nothing on its own —
   resurrecting one costs a tap, dropping one costs data the user typed.
+  **Stamps go the other way, deliberately:** a removed stamp is a tombstone
+  (`kind: ""`), because a resurrected `refunded` stamp would silently take
+  money back out of the tally, and a stamp is one value the user can re-set in
+  two taps. Tombstones and stamps orphaned by a changed seller string are
+  never pruned; both are a few bytes.
 - **Photos in git are permanent, including discarded ones.** Nothing ever
   deletes a remote photo: Discard, the sweep and `resetAll` all stop at the
   device boundary, and git history would keep the blob even if the tip didn't.
