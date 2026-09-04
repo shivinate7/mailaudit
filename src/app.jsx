@@ -765,6 +765,13 @@ const stepBtn = {
 /* the order-stamp chip: the RECEIVED stamp's construction in the advisory
    colour — manilaInk on card, rotated a touch less — since it is a status the
    user set rather than the ledger's own verdict */
+/* the editor's five kinds, in the month picker's treatment: an option cell
+   carrying its own rule. Referenced lazily, so it may sit above optCell. */
+const stampKindCell = (on) => ({
+  ...optCell(on),
+  padding: "0 10px",
+  border: `1px solid ${on ? C.accent : C.line}`,
+});
 const stampChip = {
   fontFamily: mono,
   fontSize: 10.5,
@@ -1039,14 +1046,14 @@ function PackageCard({
             <span style={cellLab}>Stamp</span>
             <span style={{ flex: 1, height: 1, background: C.line }} />
           </div>
-          {/* five chips will not fit one row at 375px; wrapping is the plan */}
+          {/* five cells will not fit one row at 375px; wrapping is the plan */}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {STAMP_KINDS.map(([k, label]) => (
               <button
                 key={k}
                 onClick={() => setKind(k)}
                 aria-pressed={kind === k}
-                style={chip(kind === k)}
+                style={stampKindCell(kind === k)}
               >
                 {label}
               </button>
@@ -1440,44 +1447,15 @@ const miniBtn = {
 const RESUME_RESET_MS = 60_000;
 
 /* ---------- the toolbar vocabulary ----------
-   One height for every control in the filter region. Before this, chips were
-   `5px 11px`, selects `9px 8px` and buttons `9px 12px`, so nothing shared a
-   baseline and the rows wrapped raggedly — that mismatch, not the colours, is
-   what read as unfinished. Change CTL_H and the whole toolbar follows.
-   `flexShrink: 0` on all of them is deliberate: the region had none, so a long
-   label ("Tap again to clear everything") could push a line past the column. */
+   One height for every control inside the disclosure panels. Before this,
+   chips were `5px 11px`, selects `9px 8px` and buttons `9px 12px`, so nothing
+   shared a baseline and the rows wrapped raggedly — that mismatch, not the
+   colours, is what read as unfinished. Change CTL_H and every option cell,
+   the day stepper and the key field follow. (The boxed `ctl`/`chip` controls
+   this constant was written for are gone: the last of them — the file
+   actions and the Sync panel's buttons — became a ruled action row and an
+   option grid, see `.mdl-acts` and `syncActions`.) */
 const CTL_H = 34;
-
-const ctl = {
-  fontFamily: mono,
-  fontSize: 12,
-  height: CTL_H,
-  /* inputs are content-box by default while buttons are border-box, so without
-     this the search field renders 2px taller than everything beside it */
-  boxSizing: "border-box",
-  padding: "0 11px",
-  borderRadius: 8,
-  border: `1px solid ${C.line}`,
-  background: C.card,
-  color: C.ink,
-  cursor: "pointer",
-  flexShrink: 0,
-  whiteSpace: "nowrap",
-};
-
-/* selects need their own horizontal padding — the native caret eats the right */
-const ctlSelect = { ...ctl, padding: "0 6px" };
-
-/* a pill. `active` is the accent-filled state, same treatment as the view
-   switch, so the two toggle sets in the app read alike. */
-const chip = (active) => ({
-  ...ctl,
-  fontSize: 11.5,
-  borderRadius: 999,
-  border: `1px solid ${active ? C.accent : C.line}`,
-  background: active ? C.accent : C.card,
-  color: active ? C.card : C.ink,
-});
 
 /* preset → label, module-level so the collapsed control and the expanded chips
    cannot drift apart. The values are deliberately heterogeneous — "all", raw
@@ -1697,6 +1675,55 @@ const linkBtn = {
   textDecoration: "underline",
   textUnderlineOffset: 2,
   padding: 0,
+};
+
+/* ---------- the Sync panel's particulars ----------
+   Micro-label beside a mono value: the head cells' own two parts, laid on
+   their side so three of them stack under the option grid. `minmax(0, 1fr)`
+   on the value track for the reason headCell needs minWidth 0 — the photo
+   target is 44 characters, wider than a 375px column minus the label, and it
+   has to wrap inside its track rather than push the panel past the page. */
+const partGrid = {
+  display: "grid",
+  gridTemplateColumns: "auto minmax(0, 1fr)",
+  columnGap: 12,
+  rowGap: 6,
+  alignItems: "baseline",
+  marginTop: 2,
+};
+const partLab = { ...cellLab, whiteSpace: "nowrap" };
+const partVal = {
+  fontFamily: mono,
+  fontSize: 11,
+  lineHeight: 1.5,
+  color: C.inkSoft,
+  minWidth: 0,
+  overflowWrap: "anywhere",
+};
+/* The token field is a write-on rule like FIND, not a box. 16px is not a
+   choice: iOS zooms the page on focusing any input smaller than that, and the
+   viewport meta deliberately leaves the user able to zoom. */
+const keyField = {
+  flex: "1 1 140px",
+  minWidth: 0,
+  height: CTL_H,
+  boxSizing: "border-box",
+  border: 0,
+  borderBottom: `1px solid ${C.line}`,
+  borderRadius: 0,
+  background: "transparent",
+  fontFamily: mono,
+  fontSize: 16,
+  color: C.ink,
+  outline: "none",
+  padding: "0 2px",
+};
+/* the month chips' treatment: an option cell carrying its own rule */
+const keySave = {
+  ...optCell(false),
+  padding: "0 12px",
+  border: `1px solid ${C.line}`,
+  flexShrink: 0,
 };
 
 /* Every way the remote backup can fail, phrased for someone holding a phone.
@@ -4389,6 +4416,98 @@ export default function MailDayLedger() {
       </div>
     );
 
+  /* ---- the Sync panel's actions, as data ----
+     Rendered as an option grid (see the panel), which has to know the count
+     to give an odd last cell the full row. Order is order of use: Push, then
+     whatever the last push turned up (Merge, and the force on a real
+     conflict), then Pull, the two file backups, and the per-device toggle.
+     Each entry carries its own colour, because the grid's one accent means
+     "on" and these mean five different things. */
+  const syncActions = [];
+  syncActions.push({
+    key: "push",
+    onClick: () => doPush(false),
+    disabled: syncBusy,
+    label:
+      pushState === "pushing"
+        ? "Pushing…"
+        : pushState === "pushed"
+        ? "Pushed ✓"
+        : "Push",
+    style: pushState === "pushed" ? { color: C.green } : null,
+  });
+  /* The safe resolution, and therefore the PRIMARY one: the grid's accent
+     fill, the app's "this is the live control" colour, beside the force. It
+     carries no two-tap arm because it destroys nothing — arming it would say
+     the opposite, and invariant 6's pattern is for destructive actions
+     specifically. */
+  if (pushState === "conflict" || ahead)
+    syncActions.push({
+      key: "merge",
+      on: true,
+      onClick: () => doMerge(pushState === "conflict"),
+      disabled: syncBusy,
+      label:
+        mergeState === "merging"
+          ? "Merging…"
+          : pushState === "conflict"
+          ? "Merge & push"
+          : "Merge",
+    });
+  /* the only force in the feature, and it exists so a device holding the
+     copy worth keeping isn't stuck behind a conflict it could otherwise clear
+     only by destroying it. Advisory manila, not red: every push is a commit,
+     so what it overwrites stays in the branch's history. */
+  if (pushState === "conflict")
+    syncActions.push({
+      key: "force",
+      onClick: () => (confirmForce ? doPush(true) : arm(setConfirmForce)),
+      label: confirmForce ? "Tap again to overwrite" : "Push anyway",
+      style: confirmForce
+        ? { background: C.manilaInk, color: C.card, fontWeight: 700 }
+        : { background: C.manila, color: C.manilaInk },
+    });
+  /* short label on purpose — the full sentence goes in the advisory under
+     the grid, where it can wrap */
+  syncActions.push({
+    key: "pull",
+    onClick: doPull,
+    disabled: syncBusy,
+    label:
+      pullState === "pulling"
+        ? "Pulling…"
+        : confirmPull
+        ? "Tap again to replace"
+        : "Pull from GitHub",
+    style: confirmPull
+      ? { background: C.red, color: C.card, fontWeight: 700 }
+      : null,
+  });
+  syncActions.push({
+    key: "backup",
+    onClick: () => backup(false),
+    label: "Backup",
+  });
+  if (photoCount > 0)
+    syncActions.push({
+      key: "photos",
+      onClick: () => backup(true),
+      disabled: backupBusy,
+      label: backupBusy ? "Packing…" : "Backup + photos",
+    });
+  /* ○/● said as state, the idiom the SHOWING head cell uses, and "on" is the
+     grid's accent fill. Gated on hasKey because auto-push cannot work without
+     one, and a toggle that silently does nothing is worse than no toggle. */
+  if (remoteInfo?.hasKey)
+    syncActions.push({
+      key: "auto",
+      on: autoOn,
+      pressed: autoOn,
+      onClick: toggleAuto,
+      label: autoOn ? "● Auto-push" : "○ Auto-push",
+      style: autoOn ? null : { color: C.inkSoft },
+    });
+
   return (
     <div
       style={{
@@ -4498,8 +4617,37 @@ export default function MailDayLedger() {
         .mdl-switch button b { font-weight: 700; color: ${C.red}; }
         .mdl-switch button.on b { color: ${C.card}; }
 
+        /* ── The action row ─────────────────────────────────────────────
+           Columns by child count — one cell on an empty ledger, three with
+           a remote, four without — and the divider is each cell's own right
+           rule with the last one dropped. Classes rather than inline styles
+           because the row's membership is conditional, so "last" can't be a
+           prop the way headCell's is. The label sizes on the view switch's
+           curve: 10px at 375, where "SYNC · 09-02 ▾" has to fit a 114px
+           third, 11px by 760. */
+        .mdl-acts { display: grid; grid-auto-flow: column;
+                    grid-auto-columns: minmax(0, 1fr); }
+        .mdl-act { height: 40px; min-width: 0; padding: 0 6px; border: 0;
+                   border-right: 1px solid ${C.line}; background: transparent;
+                   font-family: ${mono}; font-size: clamp(10px, 2.7vw, 11px);
+                   letter-spacing: .07em; text-transform: uppercase;
+                   color: ${C.ink}; cursor: pointer; display: inline-flex;
+                   align-items: center; justify-content: center; gap: 6px;
+                   white-space: nowrap; }
+        .mdl-act:last-child { border-right: 0; }
+        .mdl-act > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+        .mdl-act i { font-style: normal; font-size: 8px; color: ${C.inkSoft};
+                     flex-shrink: 0; transition: transform 140ms ease; }
+        .mdl-act[aria-expanded="true"], .mdl-act.ahead { color: ${C.accent}; }
+        .mdl-act[aria-expanded="true"] i { transform: rotate(180deg);
+                                           color: ${C.accent}; }
+        .mdl-act.danger { color: ${C.red}; }
+        .mdl-act.armed { background: ${C.red}; color: ${C.card}; font-weight: 700; }
+        .mdl-act:disabled { opacity: .6; cursor: default; }
+
         @media (prefers-reduced-motion: reduce) {
           .mdl-sticky { transition: none; transform: none; }
+          .mdl-act i { transition: none; }
         }
       `}</style>
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "24px 16px 80px" }}>
@@ -4980,408 +5128,293 @@ export default function MailDayLedger() {
                 </>
               )}
 
-              {/* File actions, set apart. Flattening them into the same ruled
-                  grid as the filters destroys the separation the region has
-                  always kept: file management is not a filter. Re-import and
-                  Reset stay on the narrower gate — there is nothing to import
-                  into and nothing to clear on an empty ledger — while Sync
-                  survives it, because an empty ledger is exactly when Pull is
-                  needed. */}
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 8,
-                  justifyContent: "flex-end",
-                  padding: "8px 9px 9px",
-                }}
-              >
-                {(items.length > 0 || envelopes.length > 0) && (
+              {/* THE ACTION ROW. File management is not a filter, and this
+                  used to say so by changing idiom: three boxed mono buttons
+                  pushed to the right edge, under a region made of hairlines
+                  and ruled cells. That kept the separation and broke the page
+                  — a tray of buttons in a different vocabulary, a void to
+                  their left that grew to ~450px at desktop width, and a panel
+                  that opened left-aligned under a chip that sat right. The
+                  separation is kept by TREATMENT now: the head cells are
+                  label-over-value state, this row is uppercase mono actions,
+                  and the thin rule above is the line between them. Equal cells
+                  at full width — the view switch and the head's thirds again —
+                  so there is nothing to align and nowhere for a void to open.
+                  `.mdl-acts` sizes its columns by child count (grid-auto-flow:
+                  column): one cell on an empty ledger, three with a remote,
+                  four without one. Re-import and Reset stay on the narrower
+                  gate — there is nothing to import into and nothing to clear
+                  on an empty ledger — while Sync survives it, because an empty
+                  ledger is exactly when Pull is needed.
+                  An ARMED Reset takes the whole row and the other two cells
+                  step out for the four seconds it lasts. The sentence needs the
+                  width, and it is the better two-tap: the target grows over
+                  the spot just tapped instead of wrapping to a new line under
+                  it, and the two controls a mis-tap could land on aren't there
+                  to land on. */}
+              <div className="mdl-acts">
+                {(items.length > 0 || envelopes.length > 0) && !confirmReset && (
                   <button
                     onClick={() => setShowUpload((s) => !s)}
                     aria-expanded={showUpload}
-                    style={ctl}
+                    className="mdl-act"
                   >
-                    Re-import CSV
+                    <span>Re-import CSV</span>
                   </button>
                 )}
-                {window.remote ? (
-                  <button
-                    onClick={() => setSyncOpen((o) => !o)}
-                    aria-expanded={syncOpen}
-                    aria-label="Backup and sync"
-                    style={{
-                      ...ctl,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 7,
+                {!confirmReset &&
+                  (window.remote ? (
+                    <button
+                      onClick={() => setSyncOpen((o) => !o)}
+                      aria-expanded={syncOpen}
+                      aria-label="Backup and sync"
                       /* the ahead-notice lives INSIDE this disclosure, which
-                         defaults shut — so without something on the chip
+                         defaults shut — so without something on the cell
                          itself nobody would ever learn the other device is
                          ahead. Colour rather than a dot or a badge on purpose:
-                         this row has a hard width budget at 375px and accent
-                         already means "active" everywhere else, so it costs
-                         zero pixels. */
-                      color: ahead ? C.accent : C.ink,
-                      borderColor: ahead ? C.accent : C.line,
-                    }}
-                  >
-                    {/* the date but NOT the word "pushed" — this row has a hard
-                        width budget and the label is its only elastic part */}
-                    {remoteInfo?.pushedAt
-                      ? `Sync · ${new Date(remoteInfo.pushedAt)
-                          .toISOString()
-                          .slice(5, 10)}`
-                      : "Sync"}
-                    <i
-                      style={{
-                        fontSize: 8,
-                        transform: syncOpen ? "rotate(180deg)" : "none",
-                        transition: "transform 140ms ease",
-                      }}
+                         this cell is one third of 375px and accent already
+                         means "active" everywhere else, so it costs zero
+                         pixels. */
+                      className={ahead ? "mdl-act ahead" : "mdl-act"}
                     >
-                      ▼
-                    </i>
-                  </button>
-                ) : (
-                  <>
-                    <button onClick={() => backup(false)} style={ctl}>
-                      Backup
+                      {/* the date but NOT the word "pushed" — the label is the
+                          cell's only elastic part and the third is 114px */}
+                      <span>
+                        {remoteInfo?.pushedAt
+                          ? `Sync · ${new Date(remoteInfo.pushedAt)
+                              .toISOString()
+                              .slice(5, 10)}`
+                          : "Sync"}
+                      </span>
+                      <i>▾</i>
                     </button>
-                    {photoCount > 0 && (
-                      <button
-                        onClick={() => backup(true)}
-                        disabled={backupBusy}
-                        style={{ ...ctl, opacity: backupBusy ? 0.6 : 1 }}
-                      >
-                        {backupBusy ? "Packing…" : "Backup + photos"}
+                  ) : (
+                    <>
+                      <button onClick={() => backup(false)} className="mdl-act">
+                        <span>Backup</span>
                       </button>
-                    )}
-                  </>
-                )}
+                      {photoCount > 0 && (
+                        <button
+                          onClick={() => backup(true)}
+                          disabled={backupBusy}
+                          className="mdl-act"
+                        >
+                          <span>{backupBusy ? "Packing…" : "Backup + photos"}</span>
+                        </button>
+                      )}
+                    </>
+                  ))}
                 {(items.length > 0 || envelopes.length > 0) && (
                   <button
                     onClick={resetAll}
-                    style={{
-                      ...ctl,
-                      color: confirmReset ? C.card : C.red,
-                      background: confirmReset ? C.red : C.redSoft,
-                      borderColor: confirmReset ? C.red : "transparent",
-                      fontWeight: confirmReset ? 700 : 400,
-                      /* transient, so spanning the row costs nothing at rest
-                         and lets the sentence name its consequence. Long-hand
-                         because `ctl` sets flexShrink and React warns about
-                         mixing the shorthand with it. */
-                      ...(confirmReset
-                        ? { flexGrow: 1, flexBasis: "100%" }
-                        : null),
-                    }}
+                    className={confirmReset ? "mdl-act armed" : "mdl-act danger"}
                   >
-                    {confirmReset ? "Tap again to clear everything" : "Reset"}
+                    <span>
+                      {confirmReset ? "Tap again to clear everything" : "Reset"}
+                    </span>
                   </button>
                 )}
               </div>
 
-            {syncOpen && window.remote && (
-              /* the same surface the date and sort disclosures use. Without
-                 panelWrap this was the one panel in the region with no padding
-                 and no rule, so its buttons sat flush against the section edge
-                 while the chip that opened them was right-aligned above —
-                 which reads, correctly, as off-centre. */
-              <div
-                style={{
-                  ...panelWrap,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 8,
-                }}
-              >
+              {syncOpen && window.remote && (
+                /* The same surface the date and sort disclosures use, and now
+                   the same contents: an option grid of actions over a block of
+                   particulars. It used to be a flex-wrap of boxed buttons with
+                   the target repo floating after them as bare text — the one
+                   panel in the region that still looked like the tray the
+                   region replaced. The grid is two columns everywhere, like the
+                   sort panel: "Pull from GitHub" and the armed "Tap again to
+                   replace" both need the 160px a half of 375px gives them and
+                   neither fits a third. An odd count leaves the last cell
+                   spanning the row, or the rule colour shows through the empty
+                   half as a slab — same trick the range panel uses. */
                 <div
                   style={{
+                    ...panelWrap,
                     display: "flex",
-                    gap: 6,
-                    flexWrap: "wrap",
-                    alignItems: "center",
+                    flexDirection: "column",
+                    gap: 8,
                   }}
                 >
-                  <button
-                    onClick={() => doPush(false)}
-                    disabled={syncBusy}
-                    style={{
-                      ...ctl,
-                      opacity: syncBusy ? 0.6 : 1,
-                      color: pushState === "pushed" ? C.green : C.ink,
-                      borderColor: pushState === "pushed" ? C.green : C.line,
-                    }}
-                  >
-                    {pushState === "pushing"
-                      ? "Pushing…"
-                      : pushState === "pushed"
-                      ? "Pushed ✓"
-                      : "Push"}
-                  </button>
-                  {/* The safe resolution, and therefore the PRIMARY one:
-                      accent violet, the app's "this is the live control"
-                      colour, sitting to the left of the force. It carries no
-                      two-tap arm because it destroys nothing — arming it would
-                      say the opposite, and invariant 6's pattern is for
-                      destructive actions specifically. */}
-                  {(pushState === "conflict" || ahead) && (
-                    <button
-                      onClick={() => doMerge(pushState === "conflict")}
-                      disabled={syncBusy}
+                  <div style={{ ...optGrid(2), marginTop: 6 }}>
+                    {syncActions.map((a, i) => (
+                      <button
+                        key={a.key}
+                        onClick={a.onClick}
+                        disabled={a.disabled}
+                        aria-pressed={a.pressed}
+                        style={{
+                          ...optCell(!!a.on),
+                          ...a.style,
+                          opacity: a.disabled ? 0.6 : 1,
+                          ...(syncActions.length % 2 === 1 &&
+                          i === syncActions.length - 1
+                            ? { gridColumn: "1 / -1" }
+                            : null),
+                        }}
+                      >
+                        {a.label}
+                      </button>
+                    ))}
+                  </div>
+                  {ahead && pushState !== "conflict" && (
+                    /* advisory manila, never red: being behind is the ordinary
+                       state after the other device pushes, and the fix adds
+                       rather than replaces */
+                    <div
                       style={{
-                        ...ctl,
-                        background: C.accent,
-                        color: C.card,
-                        borderColor: C.accent,
-                        opacity: syncBusy ? 0.6 : 1,
+                        fontFamily: cochin,
+                        fontSize: 13.5,
+                        lineHeight: 1.4,
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        background: C.manila,
+                        color: C.manilaInk,
                       }}
                     >
-                      {mergeState === "merging"
-                        ? "Merging…"
-                        : pushState === "conflict"
-                        ? "Merge & push"
-                        : "Merge"}
-                    </button>
+                      Your other device has pushed newer lines. Merge brings
+                      them in — nothing here is replaced.
+                    </div>
                   )}
-                  {/* the only force in the feature, and it exists so a device
-                      holding the copy worth keeping isn't stuck behind a
-                      conflict it could otherwise clear only by destroying it.
-                      Advisory manila, not red: every push is a commit, so what
-                      it overwrites stays in the branch's history. */}
-                  {pushState === "conflict" && (
-                    <button
-                      onClick={() =>
-                        confirmForce ? doPush(true) : arm(setConfirmForce)
-                      }
+                  {confirmPull && (
+                    <div
                       style={{
-                        ...ctl,
-                        background: confirmForce ? C.manilaInk : C.manila,
-                        color: confirmForce ? C.card : C.manilaInk,
-                        borderColor: "transparent",
-                        fontWeight: confirmForce ? 700 : 400,
+                        fontFamily: cochin,
+                        fontSize: 13.5,
+                        lineHeight: 1.4,
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        background: C.redSoft,
+                        color: C.red,
                       }}
                     >
-                      {confirmForce ? "Tap again to overwrite" : "Push anyway"}
-                    </button>
+                      Pull replaces every item, check-in and pending envelope on
+                      this device with the remote copy.
+                    </div>
                   )}
-                  {/* short label on purpose — the full sentence goes in the
-                      advisory below, where it can wrap. A long armed label is
-                      exactly what once pushed a line past the column edge. */}
-                  <button
-                    onClick={doPull}
-                    disabled={syncBusy}
-                    style={{
-                      ...ctl,
-                      color: confirmPull ? C.card : C.ink,
-                      background: confirmPull ? C.red : C.card,
-                      borderColor: confirmPull ? C.red : C.line,
-                      fontWeight: confirmPull ? 700 : 400,
-                      opacity: syncBusy ? 0.6 : 1,
-                    }}
-                  >
-                    {pullState === "pulling"
-                      ? "Pulling…"
-                      : confirmPull
-                      ? "Tap again to replace"
-                      : "Pull from GitHub"}
-                  </button>
-                  <button onClick={() => backup(false)} style={ctl}>
-                    Backup
-                  </button>
-                  {photoCount > 0 && (
-                    <button
-                      onClick={() => backup(true)}
-                      disabled={backupBusy}
-                      style={{ ...ctl, opacity: backupBusy ? 0.6 : 1 }}
-                    >
-                      {backupBusy ? "Packing…" : "Backup + photos"}
-                    </button>
-                  )}
-                  {remoteInfo?.hasKey && (
-                    /* ○/● said as state, the same idiom the SHOWING head cell
-                       uses. Gated on hasKey because auto-push cannot work
-                       without one, and a toggle that silently does nothing is
-                       worse than no toggle. */
-                    <button
-                      onClick={toggleAuto}
-                      style={{
-                        ...ctl,
-                        color: autoOn ? C.accent : C.inkSoft,
-                        borderColor: autoOn ? C.accent : C.line,
-                      }}
-                    >
-                      {autoOn ? "● Auto-push" : "○ Auto-push"}
-                    </button>
-                  )}
-                  {remoteTarget && (
-                    /* no marginLeft:auto — it pushed this to the right edge
-                       while the key line below stayed left, so the panel read
-                       as a zigzag. Everything in here is one left-aligned
-                       block, flush with FIND and the head cells above. */
-                    <span
+                  {photoSync && (
+                    <div
                       style={{
                         fontFamily: mono,
-                        fontSize: 11,
+                        fontSize: 10.5,
+                        letterSpacing: ".08em",
+                        textTransform: "uppercase",
                         color: C.inkSoft,
-                        whiteSpace: "nowrap",
                       }}
                     >
-                      {remoteTarget.owner}/{remoteTarget.repo} ·{" "}
-                      {remoteTarget.branch}
-                      {photoTarget && (
-                        /* its own row: the span above is nowrap, and the two
-                           targets share no line at 375px */
+                      {photoSync.dir === "push" ? "Sending" : "Fetching"} photos{" "}
+                      {photoSync.done}/{photoSync.total}
+                    </div>
+                  )}
+                  {photoMsg && (
+                    /* a SEPARATE box from remoteMsg — see PHOTO_SAYS. Advisory
+                       manila, never red: the ledger is safe whatever the photos
+                       did, and a red box here would read as "the backup
+                       failed". */
+                    <div
+                      style={{
+                        padding: "7px 9px",
+                        borderRadius: 8,
+                        background: C.manila,
+                        color: C.manilaInk,
+                        fontFamily: cochin,
+                        fontSize: 13.5,
+                        lineHeight: 1.35,
+                      }}
+                    >
+                      {photoMsg.text}
+                    </div>
+                  )}
+                  {remoteMsg && (
+                    <div
+                      style={{
+                        fontFamily: cochin,
+                        fontSize: 13.5,
+                        lineHeight: 1.4,
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        background:
+                          remoteMsg.tone === "error" ? C.redSoft : C.manila,
+                        color: remoteMsg.tone === "error" ? C.red : C.manilaInk,
+                      }}
+                    >
+                      {remoteMsg.text}
+                    </div>
+                  )}
+                  {(remoteTarget || remoteInfo) && (
+                    /* The particulars: micro-label over nothing, beside a mono
+                       value — the head cells' own parts laid on their side.
+                       One left-aligned block, flush with FIND and the cells
+                       above; the old target line had a marginLeft:auto that
+                       sent it to the right edge while the key line stayed
+                       left, and the panel read as a zigzag. */
+                    <div style={partGrid}>
+                      {remoteTarget && (
                         <>
-                          <br />
-                          {photoTarget.owner}/{photoTarget.repo} ·{" "}
-                          {photoTarget.branch} · private
+                          <span style={partLab}>Ledger</span>
+                          <span style={partVal}>
+                            {remoteTarget.owner}/{remoteTarget.repo} ·{" "}
+                            {remoteTarget.branch}
+                          </span>
                         </>
                       )}
-                    </span>
+                      {photoTarget && (
+                        <>
+                          <span style={partLab}>Photos</span>
+                          <span style={partVal}>
+                            {photoTarget.owner}/{photoTarget.repo} ·{" "}
+                            {photoTarget.branch}&nbsp;·&nbsp;private
+                          </span>
+                        </>
+                      )}
+                      {remoteInfo && (
+                        <>
+                          <span style={partLab}>Key</span>
+                          {keyOpen || !remoteInfo.hasKey ? (
+                            <span
+                              style={{
+                                display: "flex",
+                                gap: 8,
+                                alignItems: "center",
+                                minWidth: 0,
+                              }}
+                            >
+                              <input
+                                ref={keyInput}
+                                type="password"
+                                placeholder="github_pat_…"
+                                aria-label="GitHub access token"
+                                autoComplete="off"
+                                spellCheck={false}
+                                autoCapitalize="off"
+                                style={keyField}
+                              />
+                              <button onClick={saveKey} style={keySave}>
+                                Save key
+                              </button>
+                            </span>
+                          ) : (
+                            <span style={partVal}>
+                              saved on this device
+                              <span style={{ margin: "0 6px" }}>·</span>
+                              <button
+                                onClick={() => setKeyOpen(true)}
+                                style={linkBtn}
+                              >
+                                Replace
+                              </button>
+                              <span style={{ margin: "0 6px" }}>·</span>
+                              <button onClick={clearKey} style={linkBtn}>
+                                Clear
+                              </button>
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
                   )}
                 </div>
-                {ahead && pushState !== "conflict" && (
-                  /* advisory manila, never red: being behind is the ordinary
-                     state after the other device pushes, and the fix adds
-                     rather than replaces */
-                  <div
-                    style={{
-                      fontFamily: cochin,
-                      fontSize: 13.5,
-                      lineHeight: 1.4,
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      background: C.manila,
-                      color: C.manilaInk,
-                    }}
-                  >
-                    Your other device has pushed newer lines. Merge brings them
-                    in — nothing here is replaced.
-                  </div>
-                )}
-                {confirmPull && (
-                  <div
-                    style={{
-                      fontFamily: cochin,
-                      fontSize: 13.5,
-                      lineHeight: 1.4,
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      background: C.redSoft,
-                      color: C.red,
-                    }}
-                  >
-                    Pull replaces every item, check-in and pending envelope on
-                    this device with the remote copy.
-                  </div>
-                )}
-                {photoSync && (
-                  <div
-                    style={{
-                      fontFamily: mono,
-                      fontSize: 10.5,
-                      letterSpacing: ".08em",
-                      textTransform: "uppercase",
-                      color: C.inkSoft,
-                      paddingTop: 6,
-                    }}
-                  >
-                    {photoSync.dir === "push" ? "Sending" : "Fetching"} photos{" "}
-                    {photoSync.done}/{photoSync.total}
-                  </div>
-                )}
-                {photoMsg && (
-                  /* a SEPARATE box from remoteMsg — see PHOTO_SAYS. Advisory
-                     manila, never red: the ledger is safe whatever the photos
-                     did, and a red box here would read as "the backup failed". */
-                  <div
-                    style={{
-                      marginTop: 8,
-                      padding: "7px 9px",
-                      borderRadius: 8,
-                      background: C.manila,
-                      color: C.manilaInk,
-                      fontFamily: cochin,
-                      fontSize: 13.5,
-                      lineHeight: 1.35,
-                    }}
-                  >
-                    {photoMsg.text}
-                  </div>
-                )}
-                {remoteMsg && (
-                  <div
-                    style={{
-                      fontFamily: cochin,
-                      fontSize: 13.5,
-                      lineHeight: 1.4,
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      background:
-                        remoteMsg.tone === "error" ? C.redSoft : C.manila,
-                      color: remoteMsg.tone === "error" ? C.red : C.manilaInk,
-                    }}
-                  >
-                    {remoteMsg.text}
-                  </div>
-                )}
-                {remoteInfo &&
-                  (keyOpen || !remoteInfo.hasKey ? (
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 6,
-                        flexWrap: "wrap",
-                        alignItems: "center",
-                      }}
-                    >
-                      <input
-                        ref={keyInput}
-                        type="password"
-                        placeholder="GitHub token (github_pat_…)"
-                        aria-label="GitHub access token"
-                        autoComplete="off"
-                        spellCheck={false}
-                        autoCapitalize="off"
-                        style={{
-                          ...ctl,
-                          flex: "1 1 220px",
-                          minWidth: 180,
-                          fontFamily: mono,
-                          fontSize: 12,
-                          cursor: "text",
-                          outline: "none",
-                        }}
-                      />
-                      <button onClick={saveKey} style={ctl}>
-                        Save key
-                      </button>
-                    </div>
-                  ) : (
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 10,
-                        flexWrap: "wrap",
-                        alignItems: "center",
-                        fontFamily: mono,
-                        fontSize: 11,
-                        color: C.inkSoft,
-                      }}
-                    >
-                      <span>key saved on this device</span>
-                      <button onClick={() => setKeyOpen(true)} style={linkBtn}>
-                        Replace
-                      </button>
-                      <button onClick={clearKey} style={linkBtn}>
-                        Clear
-                      </button>
-                    </div>
-                  ))}
-              </div>
-            )}
+              )}
 
               <div style={RULE} />
             </section>

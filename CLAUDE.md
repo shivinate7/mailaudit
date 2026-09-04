@@ -20,8 +20,8 @@ every seller, for "did all four of these arrive?" and for cost basis), and
 ## Architecture
 
 - `src/app.jsx` — the entire application, one React component file. No router,
-  no CSS files (inline styles + one `<style>` tag for focus rules), Tailwind is
-  NOT used. Dependencies: react, react-dom, papaparse only.
+  no CSS files (inline styles + one `<style>` tag for focus rules, the
+  masthead and the action row), Tailwind is NOT used. Dependencies: react, react-dom, papaparse only.
 - `src/entry.jsx` — the platform layer. Provides `window.storage` (async
   get/set/delete/list over localStorage, holding the ledger),
   `window.photos` (async put/get/delete/keys/clear/sweep/usage over IndexedDB,
@@ -167,7 +167,7 @@ rather than by remembering. Verified in a browser: after saving a key,
    **Plus one outside `app.jsx`:** `mergeLedger` in `merge-rules.mjs` builds
    the merged ledger from named fields, so a key it does not name is dropped by
    every merge, applied as a full replace, and pushed — both devices lose it.
-   `stamps` was the first key added after that builder existed; test 36.62
+   `stamps` was the first key added after that builder existed; test 37.62
    pins the key's presence. A related rollout hazard: an older build's
    `snapshot()` omits `stamps`, so its next push publishes a ledger without
    them and a Pull onto the new build wipes them (a Merge keeps the local
@@ -400,7 +400,8 @@ page. See "Known open threads" for exactly what that leaves unproven.
   from a `Stamp` button placed first in the expanded card's action row; once
   one exists that button goes away and **the band itself is the control**
   (trailing `›`, like the Tally order-id link). The editor is the five kinds
-  as `chip()`s, the note field (16px or iOS zooms), a two-tap *Remove stamp*,
+  as option cells in the month picker's treatment, the note field (16px or
+  iOS zooms), a two-tap *Remove stamp*,
   Cancel and Save.
   `Refunded` and `Partial refund` take the package out of **every count and
   the normal list**, exactly as a canceled order is — the money is back, so
@@ -427,7 +428,7 @@ page. See "Known open threads" for exactly what that leaves unproven.
   nothing. `useGkSet` gives the refunded/stamped sets an identity that changes
   only with their *membership*, so a note edit never rebuilds `packages` and
   re-freezes the sort mid-check-in (invariant 5). Removal writes a tombstone,
-  not a hole (invariant 2). Group 36.
+  not a hole (invariant 2). Group 37.
 - **Two local backups and one remote.** *Backup* downloads
   `{mailday:1, items, received, envelopes, dateFilter, sortBy, itemSort}` —
   small, quick, and holds the irreplaceable part. *Backup + photos* (only shown
@@ -601,9 +602,28 @@ the `N stamped` filter beside that in the same cell style — `○/●` and
 state (the Showing cell's idiom), not a disclosure. The row now holds two
 `flexShrink: 0` cells and the search input absorbs the loss; re-measure at
 375px if either label grows.
-Then the file actions, **set apart** — flattening them into the same ruled grid
-destroys the separation the region has always kept: file management is not a
-filter.
+Then the **action row** — Re-import CSV / Sync / Reset — as equal ruled cells
+at full width, uppercase mono like the view switch, 40px tall like Find.
+File management is not a filter, and the row used to say so by changing
+*idiom*: three boxed mono buttons pushed to the right edge, under a region made
+of hairlines. That kept the separation and broke the page — a tray of buttons
+in a different vocabulary, a void to their left that grew to ~450px at desktop
+width, and a Sync panel that opened left-aligned under a chip that sat right.
+The separation is kept by *treatment* now: the head cells are label-over-value
+state, the action row is bare uppercase actions, and the thin rule above it is
+the line between them. It is `.mdl-acts` in the `<style>` tag rather than
+inline styles because its membership is conditional — one cell on an empty
+ledger, three with a remote, four without — so the columns come from
+`grid-auto-flow: column` and the divider is each cell's own right rule with
+`:last-child` dropped; "last" can't be a prop the way `headCell`'s is.
+Sync carries the only caret; it turns accent when open, and the whole cell
+turns accent when `peek()` says the other device is ahead — colour rather
+than a badge because the cell is one third of 375px. Reset is red text at
+rest; **armed, it takes the whole row** (red fill, "Tap again to clear
+everything") and the other two cells step out for the four seconds it lasts.
+That is the better two-tap, not a compromise: the target grows over the spot
+just tapped instead of wrapping to a new line under it, and the two controls a
+mis-tap could land on aren't there to land on.
 
 Two details that are load-bearing and easy to undo by accident:
 
@@ -650,26 +670,41 @@ and the auto-push toggle only once there is a key, because auto-push cannot work
 without one and a toggle that silently does nothing is worse than no toggle.
 `Merge` is filled **accent violet** — the app's "this is the live control"
 colour — because it is the safe resolution and therefore the primary one, while
-the force beside it stays advisory manila. It uses the same `panelWrap` surface as the date and sort disclosures.
-It did not at first, and it was the one panel in the region with no padding and
-no rule, so its buttons sat flush against the section edge while the chip that
-opened them was right-aligned above — which reads, correctly, as off-centre.
-Everything inside it is one left-aligned block flush with `FIND`; the target
-line lost its `marginLeft: auto` for the same reason. Re-import and Reset stay on the narrower `items.length > 0 ||
-envelopes.length > 0` gate; Sync survives it, because an empty ledger is exactly
-when Pull is needed. Group 28.
+the force beside it stays advisory manila. The panel is the same `panelWrap`
+surface as the date and sort disclosures **and now the same contents**: an
+`optGrid(2)` of action cells over a block of *particulars*. The actions are
+built as data (`syncActions`, just above the component's `return`) because
+the grid has to know the count — an odd last cell spans the row, or the rule
+colour shows through the empty half as a slab, the same trick the range panel
+uses. Two columns everywhere, like the sort panel: "Pull from GitHub" and the
+armed "Tap again to replace" both need the ~160px a half of 375px gives them
+and neither fits a third. Each entry carries its own colour, because the grid's
+one accent means "on" and these mean five things: Pushed ✓ green text, Merge
+accent fill, Push anyway manila (manilaInk fill when armed), Pull red fill when
+armed, Auto-push the accent fill when on and inkSoft when off. The particulars
+(`partGrid`) are the head cells' two parts laid on their side — `LEDGER` /
+`PHOTOS` / `KEY` micro-labels beside mono values — replacing a target line
+that floated after the buttons as bare text. The value track is
+`minmax(0, 1fr)` so the 44-character photo target wraps inside it at 375px
+rather than pushing the panel past the page. The token field is a write-on
+rule like Find, not a box, and it is **16px** because iOS zooms the page on
+focusing any smaller input and the viewport meta deliberately leaves zoom on;
+the old 12px box zoomed on every paste. Re-import and Reset stay on the
+narrower `items.length > 0 || envelopes.length > 0` gate; Sync survives it,
+because an empty ledger is exactly when Pull is needed. Group 28.
 
-Every control shares one height — `CTL_H`, currently 34px — via `ctl`,
-`ctlSelect` and `chip()` beside `dateInput`/`miniBtn`. Before those existed,
-chips were `5px 11px`, selects `9px 8px` and buttons `9px 12px`, so nothing
-shared a baseline and the rows wrapped raggedly; **that mismatch, not the
-colours, is what read as unfinished.** Change `CTL_H` and the whole toolbar
-follows. Note `ctl` sets `boxSizing: border-box` because inputs are content-box
-by default while buttons are not — without it the search field renders 2px
-taller than everything beside it.
-
-`flexShrink: 0` is on all of them deliberately: the region had none, so a long
-label ("Tap again to clear everything") could push a line past the column edge.
+Every control inside the panels shares one height — `CTL_H`, currently 34px
+— via `optCell`, the day-stepper `well` and the token `keyField`. Before
+that existed, chips were `5px 11px`, selects `9px 8px` and buttons
+`9px 12px`, so nothing shared a baseline and the rows wrapped raggedly;
+**that mismatch, not the colours, is what read as unfinished.** Change
+`CTL_H` and every panel follows. The boxed `ctl`/`chip` controls the
+constant was written for are gone — the last of them, the file actions and
+the Sync panel's buttons, became the ruled action row and an option grid — so
+nothing in the region is a rounded box any more. Note `keyField` sets
+`boxSizing: border-box` because inputs are content-box by default while
+buttons are not; without it the field renders 2px taller than the Save cell
+beside it.
 
 **The file actions are gated on `items.length > 0 || envelopes.length > 0`, the
 same condition as the view switch — not on `items.length` alone.** They used to
@@ -703,6 +738,22 @@ gone, the state reads at a glance instead of having to be inferred from four
 separate controls, and nothing in the region wraps or reflows when the view
 changes. If the height ever has to come back, the `.fig` line and the cell
 padding are where it is.
+
+The action row was then re-measured in real Chromium against the user's actual
+ledger (793 lines, 3 envelopes), old build and new through the same script,
+from the top of the view switch to the top of the first card: at 375px
+**214px → 203px at rest** (the 40px ruled row replaces a 51px padded tray),
+armed Reset 256px → 203px (it no longer wraps onto a second line), an empty
+ledger 69px → 58px, and every one of 24 width × state combinations at 0px
+horizontal overflow. The one figure that went the other way is the open Sync
+panel, **357px → 419px at 375px** (320px → 406px at 760px): the two-column
+option grid stacks three rows where the flex-wrap fitted two (one at 760), and
+the particulars sit on three ruled lines instead of two crammed ones. That is
+paid only while the disclosure is open, and it buys the panel looking like
+its two siblings rather than like the tray the region replaced. At 375px the
+three action cells measure 114.3px each and the grid's halves 161px; the fits
+worth re-checking if the type changes are "SYNC · 09-02 ▾" in a third and
+"Tap again to replace" in a half.
 
 ## Design language
 
@@ -969,7 +1020,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 419 assertions, no test framework, ~60s (groups 30–31 spend a few
+`npm test` — 427 assertions, no test framework, ~60s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
@@ -985,19 +1036,31 @@ see, so the assertions read the DOM the way the user does.
 same assertions kept being rewritten from scratch. Hence this one is committed
 and `jsdom` is a real devDependency.)
 
-New in group 36 (order stamps). It drives the whole feature through the DOM —
+New in group 37 (order stamps). It drives the whole feature through the DOM —
 the two entrances, the replace-not-stack rule, a refund leaving every count,
 the stamped filter obeying Showing, Find and the range, the tombstone, the
 five persistence sites — and then imports `mergeStamps` directly for the
 merge rule and ends on group 34's shape with a removal on the other side.
 Three of its assertions are the ones to keep if the group is ever trimmed:
-36.34 (editing a note under a live search) is the only shape that catches
+37.34 (editing a note under a live search) is the only shape that catches
 `stamps` missing from `visible`'s dep array, since a query change re-runs the
-fresh closure anyway; 36.40 sorts a *refunded* package under Newest, because
+fresh closure anyway; 37.40 sorts a *refunded* package under Newest, because
 under Oldest the `packageOrder`-from-`packages` mutant coincidentally produces
-the right order; and 36.62 asserts `merged.stamps` deep-equals `{}` rather
+the right order; and 37.62 asserts `merged.stamps` deep-equals `{}` rather
 than merely truthy, because `undefined` is exactly what the builder produces
 when it forgets the key.
+
+New in group 36 (the action row). Four claims, all behaviour rather than
+layout, because jsdom has none and the layout is what the row exists for: an
+armed Reset takes the row and the other two cells step out (36.1–36.4, and
+the open Sync panel underneath stays put); an odd cell count in the Sync grid
+spans its last cell (36.5–36.7 — the first draft booted against a seeded
+remote, which makes this device *behind*, adds a Merge cell, and turns three
+into four: read the count off the screen, not off the fixture); and the token
+field is 16px (36.8), which is the one style assertion in the suite, kept
+because it pins an iOS behaviour — focusing anything smaller zooms the page —
+and not a look. Confirmed to turn the suite red: the row keeping its other
+cells while Reset is armed, and the span dropped.
 
 New in group 35 (a pull that didn't land must not license a push). The whole
 group exists because the suite was green, the merge logic was provably correct
@@ -1187,14 +1250,14 @@ Group 35 added three, all confirmed to turn the suite red: the adapter
 advancing the sha inside `pull()` again; `doMerge` never accepting it; and
 `doPull` never accepting it.
 
-Group 36 (order stamps) added **nine**, all confirmed to turn the suite red:
-`mergeLedger` not naming `stamps` (36.62–36.68); `snapshot()` dropping them
-(25.10, 36.51, 36.68); `canceledCount` measured off `liveItems` instead of
-`activeItems` (36.18); `packageOrder` built from `packages` rather than the
-live source (36.40); removal as a `delete` rather than a tombstone (36.45);
-`mergeStamps` letting the incoming copy take a tie (36.55); `stamps` missing
-from `visible`'s deps (36.34); the refund exclusion dropped from `liveItems`
-(36.70); and the warning ignoring the stamp (36.11).
+Group 37 (order stamps) added **nine**, all confirmed to turn the suite red:
+`mergeLedger` not naming `stamps` (37.62–37.68); `snapshot()` dropping them
+(25.10, 37.51, 37.68); `canceledCount` measured off `liveItems` instead of
+`activeItems` (37.18); `packageOrder` built from `packages` rather than the
+live source (37.40); removal as a `delete` rather than a tombstone (37.45);
+`mergeStamps` letting the incoming copy take a tie (37.55); `stamps` missing
+from `visible`'s deps (37.34); the refund exclusion dropped from `liveItems`
+(37.70); and the warning ignoring the stamp (37.11).
 That seventh one is the cautionary tale of this group: with the exclusion
 dropped from `liveItems` alone, **every masthead figure still came out right**
 — they derive from `rangedItems`, which excludes refunds on its own — and the
