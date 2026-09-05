@@ -141,7 +141,7 @@ rather than by remembering. Verified in a browser: after saving a key,
    because it lives *inside* `envelopes`, which is already persisted.
    `stamps` = map of **package** key (`gkOf`: `orderId::seller`, never
    `it.key`) → `{ kind, at, note, updatedAt }`, one per package; `kind` is one
-   of `claim | refunded | contacted | reshipped | partial`, `at` the local
+   of `claim | refunded | contacted | reshipped | partial | other`, `at` the local
    calendar day it was set. **`kind: ""` is a tombstone** — a removal, kept so
    it can win a merge — and every reader goes through `hasStamp`, never key
    presence. Absent on older saves; defaulted to `{}` through
@@ -390,7 +390,7 @@ page. See "Known open threads" for exactly what that leaves unproven.
   **Refunded and partial-refund stamped packages leave the same way** — see
   the next bullet.
 - **Order stamps** — one per package, set by hand: `Claim filed · Refunded ·
-  Seller contacted · Reshipped · Partial refund`, dated the day it was set
+  Seller contacted · Reshipped · Partial refund · Other`, dated the day it was set
   (local calendar day, not UTC — the same trap the month picker documents),
   with an optional free line. Picking another kind **replaces** it and
   re-dates it; editing only the note keeps the date. Rendered as a band under
@@ -399,9 +399,10 @@ page. See "Known open threads" for exactly what that leaves unproven.
   package is collapsed too. Two entrances, one editor: the first stamp comes
   from a `Stamp` button placed first in the expanded card's action row; once
   one exists that button goes away and **the band itself is the control**
-  (trailing `›`, like the Tally order-id link). The editor is the five kinds
-  as option cells in the month picker's treatment, the note field (16px or
-  iOS zooms), a two-tap *Remove stamp*,
+  (trailing `›`, like the Tally order-id link). The editor is the six kinds
+  as option cells in the month picker's treatment — `Other` last, for
+  anything the fixed five don't name, with the free line carrying the detail —
+  the note field (16px or iOS zooms), a two-tap *Remove stamp*,
   Cancel and Save.
   `Refunded` and `Partial refund` take the package out of **every count and
   the normal list**, exactly as a canceled order is — the money is back, so
@@ -1020,7 +1021,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 427 assertions, no test framework, ~60s (groups 30–31 spend a few
+`npm test` — 429 assertions, no test framework, ~60s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
