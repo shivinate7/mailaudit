@@ -275,6 +275,9 @@ const STAMP_KINDS = [
   ["contacted", "Seller contacted"],
   ["reshipped", "Reshipped"],
   ["partial", "Partial refund"],
+  /* the escape hatch for anything the fixed five don't name — the note field
+     carries the detail, this just keeps the order out of "nothing's wrong" */
+  ["other", "Other"],
 ];
 const STAMP_LABEL = Object.fromEntries(STAMP_KINDS);
 const hasStamp = (s) => !!(s && s.kind);
@@ -1046,7 +1049,7 @@ function PackageCard({
             <span style={cellLab}>Stamp</span>
             <span style={{ flex: 1, height: 1, background: C.line }} />
           </div>
-          {/* five cells will not fit one row at 375px; wrapping is the plan */}
+          {/* six cells will not fit one row at 375px; wrapping is the plan */}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {STAMP_KINDS.map(([k, label]) => (
               <button

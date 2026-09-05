@@ -2301,11 +2301,11 @@ await click(inCard(card(/Alpha Cards/), /^Stamp$/), "open the stamp editor");
 {
   const c = card(/Alpha Cards/);
   eq(
-    ["Claim filed", "Refunded", "Seller contacted", "Reshipped", "Partial refund"].filter(
+    ["Claim filed", "Refunded", "Seller contacted", "Reshipped", "Partial refund", "Other"].filter(
       (l) => !!inCard(c, new RegExp(`^${l}$`))
     ).length,
-    5,
-    "37.3 the editor offers the five stamps"
+    6,
+    "37.3 the editor offers the six stamps, Other included"
   );
   ok(inCard(c, /^Save$/).disabled, "37.4 and Save waits for a kind to be picked");
   ok(!inCard(c, /Remove stamp/), "37.5 with nothing to remove yet");
@@ -2343,6 +2343,16 @@ ok(
 ok(
   /refund window closing|may be lost/.test(card(/Beta Games/).textContent),
   "37.12 and still there on one that isn't"
+);
+await stampPkg(/Alpha Cards/, "Other", "package split — one box short");
+ok(
+  /OTHER · \d\d-\d\d/.test(card(/Alpha Cards/).textContent) &&
+    /package split/.test(card(/Alpha Cards/).textContent),
+  "37.12b Other is a stamp like any other — labelled, dated, notable"
+);
+ok(
+  /0\/14/.test(text()) && /4 packages/.test(text()),
+  "37.12c and unlike the two refund kinds, it changes no count"
 );
 await goTo("tally");
 await click(btn(/Lightning Bolt/), "expand Lightning Bolt");
