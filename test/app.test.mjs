@@ -19,6 +19,8 @@ import {
   cell,
   click,
   csv,
+  versionMetas,
+  versionText,
   dropFile,
   envelopeCount,
   eq,
@@ -62,6 +64,14 @@ import {
   photoPlan,
 } from "../src/photo-rules.mjs";
 import { utf8ToBase64, bytesToBase64, blobToBase64 } from "../src/b64.mjs";
+import {
+  RETENTION,
+  dayKey,
+  dayAnchors,
+  keptIds,
+  prunePlan,
+  shouldSnapshot,
+} from "../src/version-rules.mjs";
 import {
   mergeItems,
   mergeReceived,
@@ -2205,5 +2215,251 @@ eq(
   ITEMS.length,
   "35.5 and the following push is accepted rather than conflicting"
 );
+
+/* ── 36. which saved versions survive ─────────────────────────────────────
+   Pure, imported directly, same rationale as 27, 31 and 33: a pruning bug
+   deletes the one version the user was reaching for and leaves a list that
+   looks perfectly healthy. There is nothing to notice until the moment it
+   matters, which is the moment it can't be fixed. */
+
+const DAY = 86_400_000;
+const NOW = Date.parse("2026-09-05T14:00:00");
+/* built with local-midnight offsets, because dayKey reads local calendar days
+   and a UTC-built fixture would land on the wrong side of the boundary for
+   anyone behind UTC — the same trap test 23.16 pins on the date filter */
+const atDay = (daysAgo, hour = 12) => {
+  const d = new Date(NOW);
+  d.setDate(d.getDate() - daysAgo);
+  d.setHours(hour, 0, 0, 0);
+  return d.getTime();
+};
+const ver = (id, at, kind = "recent") => ({ id, at, kind });
+
+/* the recent ring, and the only thing it promises: the newest N */
+const manyRecents = Array.from({ length: 30 }, (_, i) =>
+  ver(`r${i}`, NOW - i * 30_000)
+);
+{
+  const keep = keptIds(manyRecents, NOW);
+  ok(keep.has("r0"), "36.1 the newest check-in snapshot survives");
+  /* r29 is the oldest AND today's earliest, so the anchor rule keeps it —
+     which is the union working, not the ring failing. r25 is out of the top
+     20 and is nobody's anchor, so it is what the ring's promise rests on. */
+  ok(!keep.has("r25"), "36.2 and the ring really does drop what falls out of it");
+  /* r0 is also today's earliest? No — r29 is, so the anchor rule keeps it too
+     if they share a day. These are 30s apart, so they do. Assert the COUNT
+     rather than a membership, which is what a ring is actually claiming. */
+  eq(
+    manyRecents.filter((r) => keptIds(manyRecents, NOW).has(r.id)).length,
+    RETENTION.recentKeep + 1,
+    "36.3 the ring keeps exactly its quota, plus the day's anchor"
+  );
+}
+
+/* Milestones do NOT compete with the ring. This is the union-not-intersection
+   property: thirty ordinary check-ins must not be able to evict the snapshot
+   taken in front of an import. */
+{
+  const mixed = [
+    ...Array.from({ length: 40 }, (_, i) => ver(`r${i}`, NOW - i * 30_000)),
+    ver("m1", NOW - 60_000, "milestone"),
+  ];
+  ok(keptIds(mixed, NOW).has("m1"), "36.4 a milestone outlives the recent ring");
+}
+
+/* the reach: an old day's first version is what "restore last Tuesday" means */
+{
+  /* the ring is saturated with today's work on purpose: with only a handful
+     of records it keeps everything, and every assertion below would pass for
+     the wrong reason */
+  const spread = [
+    ...Array.from({ length: RETENTION.recentKeep }, (_, i) =>
+      ver(`fill${i}`, NOW - i * 30_000)
+    ),
+    ver("d90a", atDay(90, 9)),
+    ver("d90b", atDay(90, 17)),
+    ver("d200", atDay(200)),
+  ];
+  const keep = keptIds(spread, NOW);
+  ok(keep.has("d90a"), "36.5 the first version of an old day is kept");
+  ok(
+    !keep.has("d90b"),
+    "36.6 but only the first — the rest of that day is not an anchor"
+  );
+  ok(!keep.has("d200"), "36.7 and reach really does end, rather than growing forever");
+}
+
+/* Earliest, not latest, and this is the whole point of a day anchor: you are
+   reaching for how things stood BEFORE the day that went wrong. Keeping the
+   day's last version would preserve the damage and drop the thing you wanted. */
+{
+  const oneDay = [ver("late", atDay(3, 20)), ver("early", atDay(3, 7))];
+  eq([...dayAnchors(oneDay)], ["early"], "36.8 the day's anchor is its earliest");
+}
+
+/* The first draft of this asserted dayKey("2026-05-01T00:30") === "2026-05-01",
+   which is true under the UTC reading too and so could not fail — the exact
+   decoration shape this file's notes warn about. The boundary has to be
+   derived from the runner's own offset instead: an instant one minute the
+   right side of local midnight is on a DIFFERENT UTC day wherever this runs,
+   and in UTC itself no such instant exists, so there is nothing to claim. */
+{
+  const off = new Date(NOW).getTimezoneOffset();
+  if (off !== 0) {
+    const d = new Date(NOW);
+    d.setHours(off > 0 ? 23 : 0, off > 0 ? 59 : 1, 0, 0);
+    ok(
+      dayKey(d.getTime()) !== d.toISOString().slice(0, 10),
+      "36.9 days are local — an instant on another UTC day still reads as its own"
+    );
+  }
+}
+
+/* prunePlan is the complement of keptIds and must stay that way — two
+   independent rule sets is how a record ends up both kept and dropped */
+{
+  const all = [
+    ...Array.from({ length: 25 }, (_, i) => ver(`r${i}`, NOW - i * 30_000)),
+    ver("old", atDay(400)),
+  ];
+  const dropped = new Set(prunePlan(all, NOW));
+  const kept = keptIds(all, NOW);
+  ok(
+    all.every((r) => dropped.has(r.id) !== kept.has(r.id)),
+    "36.10 every record is either kept or dropped, never both and never neither"
+  );
+  ok(dropped.has("old"), "36.11 and a version past every window is dropped");
+}
+
+/* the write gate: a mail day is hundreds of taps on a 500ms save debounce, so
+   snapshotting every save would spend the entire ring on one package */
+ok(!shouldSnapshot("recent", NOW - 5_000, NOW), "36.12 check-ins don't each earn a version");
+ok(shouldSnapshot("recent", NOW - 45_000, NOW), "36.13 but a real gap in the work does");
+ok(
+  shouldSnapshot("milestone", NOW - 1, NOW),
+  "36.14 a milestone always writes — it is standing in front of a bulk operation"
+);
+ok(shouldSnapshot("recent", null, NOW), "36.15 and the very first version always writes");
+
+
+/* ── 37. the rollback list ────────────────────────────────────────────────
+   Driving the app, unlike group 36 which drives the rules. The claim is
+   narrower and more useful: a version stands in front of each operation that
+   can lose data in bulk, it holds the world as it was BEFORE that operation,
+   and restoring one is itself undoable. */
+
+await boot({ items: ITEMS.slice(0, 3), received: {} });
+ok(!btn(/^History/), "37.1 no versions yet, so no History control");
+/* Showing defaults to Unreceived, and a fully-received package hides — which
+   would take the very button the next few steps need with it */
+await toggleShowing();
+
+await click(btn(/Mark all received/), "check the package in");
+await settle();
+ok(!!btn(/^History/), "37.2 the first real change earns a version, and History appears");
+
+/* the gate: a mail day is hundreds of taps on a 500ms save debounce, and with
+   no throttle the ring would be spent on a single package */
+const afterOne = versionMetas().filter((m) => m.kind !== "milestone").length;
+await click(btn(/Clear check-ins/), "clear them");
+await settle();
+await click(btn(/Mark all received/), "and check them in again");
+await settle();
+eq(
+  versionMetas().filter((m) => m.kind !== "milestone").length,
+  afterOne,
+  "37.3 but further changes inside the gate don't each earn one"
+);
+
+/* ---- a milestone stands in front of an import ---- */
+await click(btn(/Re-import CSV/), "open the upload zone");
+await dropFile(
+  "more.csv",
+  csv([
+    { "Order Id": "NEW1", Party: "New Seller", "Product Name": "Lightning Bolt" },
+    { "Order Id": "NEW1", Party: "New Seller", "Product Name": "Counterspell" },
+  ])
+);
+await settle();
+const beforeImport = versionText("before import");
+ok(!!beforeImport, "37.4 an import takes a milestone in front of it");
+/* guarded, deliberately: a milestone that was never taken makes this null, and
+   an assertion that THROWS aborts a top-to-bottom suite with no isolation —
+   masking every group after it. Fail, don't explode. */
+eq(
+  beforeImport && JSON.parse(beforeImport).items.length,
+  3,
+  "37.5 holding the ledger as it was BEFORE the import, not after"
+);
+
+/* ---- and in front of a Reset, which is the one that matters most ---- */
+/* an envelope first, so the milestone has something in it that ONLY snapshot()
+   carries — items alone would pass just as well under a version builder that
+   quietly dropped envelopes, which is the whole reason takeVersion is a third
+   reader of snapshot() rather than a fourth builder */
+await goTo("orphaned");
+await record(["Lightning Bolt"]);
+await settle();
+/* Reset is reachable from Orphaned by design, so there is no need to come
+   back — and staying here proves it */
+await click(btn(/^Reset$/), "arm reset");
+await click(btn(/Tap again to clear everything/), "confirm reset");
+await settle();
+await sleep(SAVE_WAIT);
+eq(saved().items?.length ?? 0, 0, "37.6 the Reset really did clear the ledger");
+const beforeReset = versionText("before reset");
+ok(!!beforeReset, "37.7 a Reset takes a milestone in front of it");
+eq(
+  beforeReset && JSON.parse(beforeReset).items.length,
+  5,
+  "37.8 holding the imported ledger the Reset destroyed"
+);
+eq(
+  beforeReset && JSON.parse(beforeReset).envelopes?.length,
+  1,
+  "37.8b and the hand-typed envelope too — a version is the WHOLE saved shape"
+);
+ok(
+  versionMetas().length > 0,
+  "37.9 and versions survive resetAll — clearing them would destroy the escape hatch"
+);
+
+/* ---- restoring, which is the whole point ---- */
+ok(!!btn(/^History/), "37.10 History is reachable on the ledger a Reset emptied");
+/* idempotent, like openSync: the chip TOGGLES, so a blind click closes a
+   panel that is already open and the row below vanishes */
+const openHistory = async () => {
+  if (!btn(/before reset/)) await click(btn(/^History/), "open history");
+};
+await openHistory();
+await click(btn(/before reset/), "expand that version");
+await click(btn(/Restore this version/), "arm restore");
+await settle();
+eq(
+  saved().items?.length ?? 0,
+  0,
+  "37.11 one tap does not restore — invariant 6, it is a full replace"
+);
+await click(btn(/Tap again to replace everything/), "confirm restore");
+await settle();
+await sleep(SAVE_WAIT);
+eq(saved().items.length, 5, "37.12 two taps bring the destroyed ledger back");
+ok(
+  !!versionText("before restore"),
+  "37.13 and the restore took its own milestone, so the wrong row is survivable"
+);
+
+/* arming a restore has to disarm Reset — two primed destructive buttons side
+   by side is the exact mis-tap invariant 6 exists to prevent */
+await click(btn(/^Reset$/), "arm reset");
+ok(/Tap again to clear everything/.test(text()), "37.14 Reset arms");
+await openHistory();
+await click(btn(/before reset/), "expand a version");
+await click(btn(/Restore this version/), "arm restore");
+ok(
+  !/Tap again to clear everything/.test(text()),
+  "37.15 and arming a restore disarms Reset"
+);
+
 
 report();

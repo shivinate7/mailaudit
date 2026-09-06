@@ -4,11 +4,13 @@ import App from "./app.jsx";
 import { utf8ToBase64, base64ToUtf8, blobToBase64 } from "./b64.mjs";
 import { classifyStatus, pushBody } from "./remote-rules.mjs";
 import { photoName, photoIdFromName, mimeFromName, isAlreadyThere } from "./photo-rules.mjs";
+import { prunePlan } from "./version-rules.mjs";
 
 /* ============================================================
    Platform layer. app.jsx never touches a storage API directly —
    it goes through window.storage (the ledger), window.photos
-   (envelope photos) and window.remote (the GitHub backup).
+   (envelope photos), window.versions (the rollback list) and
+   window.remote (the GitHub backup).
    Keeping the first two apart matters: the ledger is a single
    small JSON blob that must save fast on every keystroke, and
    photos are megabytes that must never get near it. window.remote
@@ -110,6 +112,139 @@ window.photos = {
     } catch {
       return null;
     }
+  },
+};
+
+/* ---- saved versions: IndexedDB ----
+   A rollback list for the ledger, so "go back to before that import"
+   is a tap on the phone rather than `git show data~5:ledger.json` on
+   a laptop that isn't in the room.
+
+   Its OWN database, not another store bolted onto mailday-photos.
+   Adding a store means a version bump, and an upgrade that fails
+   takes the whole connection with it — photos are irreplaceable and
+   these are a convenience, so they must not be able to hurt each
+   other. Two connections is the cheaper risk.
+
+   Two stores rather than one, and that split is load-bearing:
+   `list()` runs every time the History panel opens, and IndexedDB
+   getAll() hands back whole records. With the payloads in the same
+   store that would materialise every saved ledger — megabytes — to
+   render a list of dates. `meta` is small and read often; `blobs`
+   is large and read only when something is actually restored. */
+const VDB_NAME = "mailday-versions";
+const VMETA = "meta";
+const VBLOBS = "blobs";
+let vdbPromise = null;
+
+function vdb() {
+  if (!vdbPromise)
+    vdbPromise = new Promise((resolve, reject) => {
+      const req = indexedDB.open(VDB_NAME, 1);
+      req.onupgradeneeded = () => {
+        const d = req.result;
+        if (!d.objectStoreNames.contains(VMETA))
+          d.createObjectStore(VMETA, { keyPath: "id" });
+        if (!d.objectStoreNames.contains(VBLOBS)) d.createObjectStore(VBLOBS);
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  return vdbPromise;
+}
+
+function vtx(stores, mode, run) {
+  return vdb().then(
+    (d) =>
+      new Promise((resolve, reject) => {
+        const t = d.transaction(stores, mode);
+        let req;
+        try {
+          req = run(...stores.map((s) => t.objectStore(s)));
+        } catch (e) {
+          reject(e);
+          return;
+        }
+        t.oncomplete = () => resolve(req ? req.result : undefined);
+        t.onerror = () => reject(t.error);
+        t.onabort = () => reject(t.error);
+      })
+  );
+}
+
+/* Built into Safari, so no dependency — the ledger is JSON with a
+   few hundred near-identical repeated keys and gzips about tenfold.
+   The `gz` flag rides along in the metadata rather than being assumed,
+   so a record written on a browser without CompressionStream still
+   reads back on one that has it, and vice versa. */
+async function gzipText(text) {
+  const raw = new Blob([text]);
+  if (typeof CompressionStream !== "function") return { blob: raw, gz: false };
+  try {
+    const s = raw.stream().pipeThrough(new CompressionStream("gzip"));
+    return { blob: await new Response(s).blob(), gz: true };
+  } catch {
+    return { blob: raw, gz: false };
+  }
+}
+
+async function gunzipBlob(blob, gz) {
+  if (!gz) return blob.text();
+  const s = blob.stream().pipeThrough(new DecompressionStream("gzip"));
+  return new Response(s).text();
+}
+
+window.versions = {
+  /* `text` is whatever app.jsx's snapshot() produced — this layer never
+     parses it, exactly as window.storage never parses the ledger. The
+     counts come in already computed for the same reason: the platform
+     layer knowing what a "line" is would be the seam leaking. */
+  async put({ text, label, kind = "recent", lines = 0, checked = 0 }) {
+    const at = Date.now();
+    const id = `v${at}-${Math.random().toString(36).slice(2, 8)}`;
+    const { blob, gz } = await gzipText(text);
+    await vtx([VMETA, VBLOBS], "readwrite", (meta, blobs) => {
+      meta.put({ id, at, label, kind, lines, checked, gz, bytes: blob.size });
+      blobs.put(blob, id);
+    });
+    await window.versions.prune();
+    return id;
+  },
+
+  /* metadata only — see the two-store note above */
+  async list() {
+    const all = (await vtx([VMETA], "readonly", (m) => m.getAll())) || [];
+    return all.sort((a, b) => b.at - a.at);
+  },
+
+  async get(id) {
+    const meta = await vtx([VMETA], "readonly", (m) => m.get(id));
+    if (!meta) return null;
+    const blob = await vtx([VBLOBS], "readonly", (b) => b.get(id));
+    if (!blob) return null;
+    return gunzipBlob(blob, meta.gz);
+  },
+
+  async remove(id) {
+    await vtx([VMETA, VBLOBS], "readwrite", (meta, blobs) => {
+      meta.delete(id);
+      blobs.delete(id);
+    });
+  },
+
+  /* Runs on every write rather than on a timer: the rules are cheap,
+     and a prune that only happens when someone remembers to call it is
+     a prune that has already stopped happening. */
+  async prune() {
+    const all = await window.versions.list();
+    const dead = prunePlan(all);
+    for (const id of dead) await window.versions.remove(id);
+    return dead.length;
+  },
+
+  async usage() {
+    const all = await window.versions.list();
+    return { count: all.length, bytes: all.reduce((n, r) => n + (r.bytes || 0), 0) };
   },
 };
 

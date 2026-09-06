@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Papa from "papaparse";
 import { photoPlan } from "./photo-rules.mjs";
+import { shouldSnapshot } from "./version-rules.mjs";
 import {
   mergeItems,
   mergeLedger,
@@ -86,6 +87,22 @@ const compact = (n) => {
   if (a >= 1e3) return `${trim(n / 1e3)}k`;
   return String(Math.round(n));
 };
+
+/* Today gets a clock, anything older gets a date too. The list is read for
+   "which of these is from before lunch" far more often than for the year, and
+   at 375px this row has exactly one elastic column — the label — so the
+   timestamp has to stay short enough not to compete with it. */
+function versionWhen(at) {
+  const d = new Date(at);
+  const n = new Date();
+  const p = (x) => String(x).padStart(2, "0");
+  const clock = `${p(d.getHours())}:${p(d.getMinutes())}`;
+  const sameDay =
+    d.getFullYear() === n.getFullYear() &&
+    d.getMonth() === n.getMonth() &&
+    d.getDate() === n.getDate();
+  return sameDay ? clock : `${p(d.getMonth() + 1)}-${p(d.getDate())} ${clock}`;
+}
 
 const STORAGE_KEY = "mailday:v1";
 
@@ -2443,6 +2460,22 @@ export default function MailDayLedger() {
   const [confirmForce, setConfirmForce] = useState(false);
   const [importMsg, setImportMsg] = useState("");
   const resetTimer = useRef(null);
+  /* ---- saved versions ----
+     A rollback list, so the four operations that can lose data in bulk each
+     have something standing in front of them. All of it is ephemeral UI state
+     plus a cache of what the store holds — nothing here is persisted into the
+     ledger, so invariant 2's five-site rule does not apply. The versions
+     themselves are built from snapshot(), which is what keeps it that way:
+     they are a third READER of the one payload builder, never a fourth
+     builder, so a new persisted key reaches them for free. */
+  const [versionList, setVersionList] = useState([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [openVersion, setOpenVersion] = useState(null);
+  /* holds the id being confirmed rather than a boolean — see `arm` below */
+  const [confirmRestore, setConfirmRestore] = useState(null);
+  const [versionMsg, setVersionMsg] = useState(null);
+  const lastVersionAt = useRef(null);
+  const skipFirstVersion = useRef(true);
   /* The remote backup collapses behind one control, exactly like the date
      range above — a disclosure, not a preference, so it isn't persisted and
      starts shut on every load. Push and Pull are manual: this is a backup, not
@@ -2602,6 +2635,14 @@ export default function MailDayLedger() {
     [envelopes]
   );
 
+  /* The same figure takeVersion stores, and deliberately NOT totals.got —
+     that one is filtered by the active date range, so a version would appear
+     to differ from now every time the range changed. */
+  const checkedTotal = useMemo(
+    () => Object.values(received).reduce((n, v) => n + v, 0),
+    [received]
+  );
+
   const snapshot = useCallback(
     () => ({
       mailday: 1,
@@ -2647,6 +2688,48 @@ export default function MailDayLedger() {
     [snapshot, referencedPhotoIds]
   );
 
+  const refreshVersions = useCallback(async () => {
+    if (!window.versions) return;
+    setVersionList(await window.versions.list().catch(() => []));
+  }, []);
+
+  /* Save a version of where the ledger stands right now.
+
+     Built from snapshot() and nothing else — the same payload the download and
+     the GitHub push send. That is the whole reason adding a version tier costs
+     nothing at the invariant-2 five-site rule: give this its own builder and
+     the next person to add a persisted key silently ships a rollback list that
+     drops it.
+
+     Two kinds, and the difference is WHEN they are taken rather than what they
+     contain. A milestone is taken BEFORE a bulk operation, so it holds the
+     world as it was in front of the thing that might have ruined it. A recent
+     is taken after an ordinary change, so it holds where you got to. Both are
+     the right answer for their own question.
+
+     Fire-and-forget by design: snapshot() is read synchronously here, before
+     the first await, so a caller can take a milestone and mutate state on the
+     very next line without waiting. Nothing the user is doing should ever
+     block on a backup of it. */
+  const takeVersion = useCallback(
+    (label, kind = "recent") => {
+      if (!window.versions) return;
+      if (!shouldSnapshot(kind, lastVersionAt.current)) return;
+      lastVersionAt.current = Date.now();
+      const payload = snapshot();
+      const text = JSON.stringify(payload);
+      const checked = Object.values(payload.received || {}).reduce(
+        (n, v) => n + v,
+        0
+      );
+      window.versions
+        .put({ text, label, kind, lines: payload.items.length, checked })
+        .then(refreshVersions)
+        .catch(() => {});
+    },
+    [snapshot, refreshVersions]
+  );
+
   /* The one restore path, shared by a dropped file and a GitHub pull.
      Funnelled rather than duplicated for two reasons: the validation below is
      the ONLY thing standing between a corrupt payload and a wiped ledger, so
@@ -2659,6 +2742,15 @@ export default function MailDayLedger() {
     async (text, source /* "file" | "remote" | "merge" */, extraPresent = null, notice = null) => {
       const data = parseLedger(text);
       const remote = source === "remote";
+      /* AFTER the parse and before the first setState: a payload that isn't a
+         ledger throws above this line, so a rejected restore doesn't spend a
+         version slot, and a restore that is about to land always has the world
+         it is replacing saved in front of it. This is what makes every restore
+         — file, pull, merge and the History list itself — undoable. */
+      takeVersion(
+        source === "file" ? "before restore" : "before sync",
+        "milestone"
+      );
       /* A merge only ever ADDS, so the two warnings below are not merely
          unnecessary there — they are false. Nothing is replaced and nothing is
          at risk, and saying so would teach the user to fear the one safe
@@ -2737,8 +2829,9 @@ export default function MailDayLedger() {
       );
       setShowUpload(false);
     },
-    [envelopes]
+    [envelopes, takeVersion]
   );
+
 
   const handleFile = useCallback(
     (file) => {
@@ -2773,6 +2866,7 @@ export default function MailDayLedger() {
              new. Shared with the two-device merge rather than kept as a second
              Map-union here — one definition of "union line items by key", so
              the two cannot drift. */
+          takeVersion("before import", "milestone");
           const { items: mergedItems, added } = mergeItems(items, parsed);
           setItems(mergedItems);
           setUndo(null); // its plan referenced the pre-merge line-up
@@ -2788,7 +2882,7 @@ export default function MailDayLedger() {
         error: () => setUploadErr("Couldn\u2019t read that file. Try re-exporting from OrderWand."),
       });
     },
-    [items, envelopes]
+    [items, envelopes, takeVersion]
   );
 
   const setCount = useCallback((key, n) => {
@@ -2878,19 +2972,23 @@ export default function MailDayLedger() {
     });
   }, []);
 
-  /* Two-tap confirms, invariant 6 — no native dialogs. There are three armable
-     controls in this component now (Reset, Pull, Push anyway), so arming one
-     has to disarm the others: two primed destructive buttons sitting side by
-     side is precisely the mis-tap the pattern exists to prevent. */
+  /* Two-tap confirms, invariant 6 — no native dialogs. There are four armable
+     controls in this component now (Reset, Pull, Push anyway, Restore), so
+     arming one has to disarm the others: two primed destructive buttons
+     sitting side by side is precisely the mis-tap the pattern exists to
+     prevent. Restore is the reason `arm` takes a value: there are many restore
+     buttons on screen at once, one per version, so "which one is primed" has
+     to be an id rather than a flag. Disarming is still a single call. */
   const disarm = useCallback(() => {
     setConfirmReset(false);
     setConfirmPull(false);
     setConfirmForce(false);
+    setConfirmRestore(null);
   }, []);
   const arm = useCallback(
-    (set) => {
+    (set, value = true) => {
       disarm();
-      set(true);
+      set(value);
       clearTimeout(resetTimer.current);
       resetTimer.current = setTimeout(disarm, 4000);
     },
@@ -2904,6 +3002,11 @@ export default function MailDayLedger() {
     }
     clearTimeout(resetTimer.current);
     disarm();
+    /* The most valuable version this app takes. Reset is the one control that
+       destroys everything, and versions deliberately survive it (see the store
+       note) — so a Reset tapped twice by accident is now recoverable rather
+       than final. */
+    takeVersion("before reset", "milestone");
     /* A sync now runs for minutes, not milliseconds, so it can easily still be
        in flight here. Bumping the generation makes every await-resume inside it
        bail: otherwise a mid-flight pull would finish and cheerfully restore the
@@ -2927,7 +3030,71 @@ export default function MailDayLedger() {
     } catch {
       /* fine */
     }
-  }, [confirmReset, arm, disarm]);
+  }, [confirmReset, arm, disarm, takeVersion]);
+
+  /* Two-tap, because restoring is a full replace — invariant 6. It is also the
+     one destructive control in the app that is genuinely undoable, because
+     applyBackup takes a "before restore" milestone on the way in: tap the
+     wrong row and the row above it is the world you just left. */
+  const restoreVersion = useCallback(
+    async (id) => {
+      if (confirmRestore !== id) {
+        arm(setConfirmRestore, id);
+        return;
+      }
+      clearTimeout(resetTimer.current);
+      disarm();
+      setVersionMsg(null);
+      const text = await window.versions?.get(id).catch(() => null);
+      if (!text) {
+        setVersionMsg("That version could not be read from this device.");
+        return;
+      }
+      try {
+        /* "file" and not a fourth source: this IS a local full replace, and it
+           should carry exactly the warnings one does — the pending-envelopes
+           sentence above matters here as much as anywhere. */
+        await applyBackup(text, "file", null, null);
+        setOpenVersion(null);
+      } catch {
+        setVersionMsg("That version could not be restored — it looks corrupt.");
+      }
+    },
+    [confirmRestore, arm, disarm, applyBackup]
+  );
+
+  /* Through a ref, for the reason autoPushRef exists further down: takeVersion
+     depends on snapshot(), so its identity changes whenever ANY persisted
+     field does — including dateFilter and sortBy. Listed as a dep it would
+     re-arm the effect below on every commit, and re-sorting the screen would
+     save a version of the ledger. */
+  const takeVersionRef = useRef(takeVersion);
+  useEffect(() => {
+    takeVersionRef.current = takeVersion;
+  });
+
+  useEffect(() => {
+    if (loaded) refreshVersions();
+  }, [loaded, refreshVersions]);
+
+  /* The rolling half of the list. Deliberately only the three fields that are
+     REAL data — the same three the auto-push debounce watches, and for the
+     same reason: re-sorting the screen is not a change worth a version.
+
+     Taken AFTER the change rather than before, which is the opposite of a
+     milestone and correct for both. A milestone answers "what was it like
+     before that import"; this answers "where had I got to". The 30s gate in
+     shouldSnapshot is what keeps a mail day's hundreds of taps from spending
+     the whole ring on one package. */
+  useEffect(() => {
+    if (!loaded) return;
+    /* the load effect's first commit is not a change the user made */
+    if (skipFirstVersion.current) {
+      skipFirstVersion.current = false;
+      return;
+    }
+    takeVersionRef.current("check-ins");
+  }, [items, received, envelopes, loaded]);
 
   /* ---- remote backup: manual push / pull ----
      Transport only. localStorage stays the source of truth, nothing here runs
@@ -4267,7 +4434,15 @@ export default function MailDayLedger() {
             having no data was unreachable whenever you had no data. Same bug
             the file actions already had once (see the toolbar notes); this is
             the same fix one level out. */}
-        {(items.length > 0 || envelopes.length > 0 || !!window.remote) && (
+        {/* ...and `versionList.length > 0` widens it a third time, for the
+            same reason it was widened twice before. On a device with no remote,
+            an empty ledger would otherwise hide the History list — which is the
+            one control that undoes the Reset that emptied it. Any control that
+            RECOVERS state must not be gated on that state existing. */}
+        {(items.length > 0 ||
+          envelopes.length > 0 ||
+          versionList.length > 0 ||
+          !!window.remote) && (
           <>
             {/* THE RULED HEAD. The masthead's own vocabulary continued —
                 hairline rules, uppercase mono micro-labels over Cochin values,
@@ -4668,6 +4843,35 @@ export default function MailDayLedger() {
                     )}
                   </>
                 )}
+                {/* Gated on there being versions, NOT on there being a ledger.
+                    A rollback list is a control that RECOVERS state, and the
+                    ruled-head notes name that pattern twice already: gate it
+                    on the data existing and the one thing that undoes a Reset
+                    is unreachable exactly when a Reset has just happened. */}
+                {versionList.length > 0 && (
+                  <button
+                    onClick={() => setHistoryOpen((o) => !o)}
+                    aria-expanded={historyOpen}
+                    aria-label="Saved versions"
+                    style={{
+                      ...ctl,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 7,
+                    }}
+                  >
+                    History
+                    <i
+                      style={{
+                        fontSize: 8,
+                        transform: historyOpen ? "rotate(180deg)" : "none",
+                        transition: "transform 140ms ease",
+                      }}
+                    >
+                      ▼
+                    </i>
+                  </button>
+                )}
                 {(items.length > 0 || envelopes.length > 0) && (
                   <button
                     onClick={resetAll}
@@ -4691,6 +4895,167 @@ export default function MailDayLedger() {
                 )}
               </div>
 
+            {historyOpen && versionList.length > 0 && (
+              /* panelWrap and nothing else — the same surface the date and
+                 sort disclosures use. No fill: every filled surface in this
+                 app is a rounded inset card, and a square full-bleed beige
+                 rectangle ruled top and bottom contradicts that. */
+              <div style={panelWrap}>
+                <div
+                  style={{
+                    fontFamily: mono,
+                    fontSize: 10.5,
+                    letterSpacing: 0.7,
+                    color: C.inkSoft,
+                    margin: "8px 0 2px",
+                  }}
+                >
+                  SAVED VERSIONS
+                </div>
+                {versionMsg && (
+                  <div
+                    style={{
+                      fontFamily: cochin,
+                      fontSize: 13.5,
+                      lineHeight: 1.4,
+                      padding: "8px 10px",
+                      borderRadius: 8,
+                      background: C.redSoft,
+                      color: C.red,
+                      marginTop: 8,
+                    }}
+                  >
+                    {versionMsg}
+                  </div>
+                )}
+                {versionList.map((v) => {
+                  const open = openVersion === v.id;
+                  const dLines = v.lines - items.length;
+                  const dChecked = v.checked - checkedTotal;
+                  const delta = (n, word) =>
+                    n === 0 ? null : `${n > 0 ? "+" : "\u2212"}${Math.abs(n)} ${word}`;
+                  const diff = [delta(dLines, "lines"), delta(dChecked, "checked")]
+                    .filter(Boolean)
+                    .join(" \u00b7 ");
+                  return (
+                    <div
+                      key={v.id}
+                      style={{
+                        borderTop: `1px solid ${C.line}`,
+                        padding: "9px 0 8px",
+                      }}
+                    >
+                      <button
+                        onClick={() => setOpenVersion(open ? null : v.id)}
+                        aria-expanded={open}
+                        style={{
+                          display: "flex",
+                          alignItems: "baseline",
+                          gap: 8,
+                          width: "100%",
+                          padding: 0,
+                          border: "none",
+                          background: "none",
+                          textAlign: "left",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: mono,
+                            fontSize: 11.5,
+                            color: C.ink,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {versionWhen(v.at)}
+                        </span>
+                        <span
+                          style={{
+                            fontFamily: cochin,
+                            fontSize: 14,
+                            color: v.kind === "milestone" ? C.ink : C.inkSoft,
+                            /* the label is the elastic part of this row, and
+                               ellipsis needs both of these — it does nothing on
+                               a flex container, and the child refuses to shrink
+                               without min-width */
+                            minWidth: 0,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {v.label}
+                        </span>
+                        <span
+                          style={{
+                            fontFamily: mono,
+                            fontSize: 11,
+                            color: C.inkSoft,
+                            marginLeft: "auto",
+                            flexShrink: 0,
+                          }}
+                        >
+                          {v.lines}/{v.checked}
+                        </span>
+                      </button>
+                      {open && (
+                        <div style={{ marginTop: 8 }}>
+                          <div
+                            style={{
+                              fontFamily: cochin,
+                              fontSize: 13.5,
+                              color: C.inkSoft,
+                              marginBottom: 8,
+                            }}
+                          >
+                            {v.lines} lines, {v.checked} checked in
+                            {diff ? ` \u2014 ${diff} against now` : " \u2014 same as now"}
+                            .
+                          </div>
+                          <button
+                            onClick={() => restoreVersion(v.id)}
+                            style={{
+                              ...ctl,
+                              color: confirmRestore === v.id ? C.card : C.red,
+                              background:
+                                confirmRestore === v.id ? C.red : C.redSoft,
+                              borderColor:
+                                confirmRestore === v.id ? C.red : "transparent",
+                              fontWeight: confirmRestore === v.id ? 700 : 400,
+                            }}
+                          >
+                            {confirmRestore === v.id
+                              ? "Tap again to replace everything"
+                              : "Restore this version"}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                <div
+                  style={{
+                    fontFamily: mono,
+                    fontSize: 10.5,
+                    color: C.inkSoft,
+                    borderTop: `1px solid ${C.line}`,
+                    paddingTop: 8,
+                  }}
+                >
+                  {versionList.length} version
+                  {versionList.length === 1 ? "" : "s"} ·{" "}
+                  {(() => {
+                    const kb =
+                      versionList.reduce((n, v) => n + (v.bytes || 0), 0) / 1024;
+                    return kb >= 1024
+                      ? `${Math.round(kb / 102.4) / 10} MB`
+                      : `${Math.round(kb)} kB`;
+                  })()}{" "}
+                  on this device
+                </div>
+              </div>
+            )}
             {syncOpen && window.remote && (
               /* the same surface the date and sort disclosures use. Without
                  panelWrap this was the one panel in the region with no padding

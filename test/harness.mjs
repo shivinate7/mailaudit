@@ -11,6 +11,7 @@ import path from "node:path";
 /* the REAL codec, not a mock of it — see the note on the remote mock below */
 import { utf8ToBase64, base64ToUtf8, blobToBase64 } from "../src/b64.mjs";
 import { photoName, mimeFromName } from "../src/photo-rules.mjs";
+import { prunePlan } from "../src/version-rules.mjs";
 
 export const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -438,6 +439,59 @@ export const foreground = async () => {
 };
 
 export const photoKeys = () => [...photoStore.keys()];
+
+/* ---- window.versions ----
+   Mocked directly rather than polyfilled, for the reason window.photos is:
+   jsdom has no IndexedDB, the app only ever sees this API, and a Map matches
+   its contract exactly.
+
+   Two deliberate choices. It prunes through the REAL prunePlan, so an
+   app-level "take a version" exercises the actual retention rules rather than
+   a convenient fiction — the same reason the remote mock encodes through the
+   real b64. And it stores the text uncompressed: gzip is the platform layer's
+   business, app.jsx never learns whether it happened, and CompressionStream
+   does not exist in jsdom. */
+export let versionStore = new Map(); // id -> { meta, text }
+export const versionMetas = () =>
+  [...versionStore.values()].map((v) => v.meta).sort((a, b) => b.at - a.at);
+export const versionText = (label) => {
+  const hit = versionMetas().find((m) => m.label === label);
+  return hit ? versionStore.get(hit.id).text : null;
+};
+
+const versionsApi = {
+  async put({ text, label, kind = "recent", lines = 0, checked = 0 }) {
+    const at = Date.now();
+    /* the counter is not decoration: several versions can land inside one
+       millisecond here, and a colliding id would silently overwrite the
+       version a test is about to assert on */
+    const id = `v${at}-${versionStore.size}`;
+    versionStore.set(id, {
+      meta: { id, at, label, kind, lines, checked, bytes: text.length },
+      text,
+    });
+    await versionsApi.prune();
+    return id;
+  },
+  async list() {
+    return versionMetas();
+  },
+  async get(id) {
+    return versionStore.get(id)?.text ?? null;
+  },
+  async remove(id) {
+    versionStore.delete(id);
+  },
+  async prune() {
+    const dead = prunePlan(versionMetas());
+    for (const id of dead) versionStore.delete(id);
+    return dead.length;
+  },
+  async usage() {
+    const all = versionMetas();
+    return { count: all.length, bytes: all.reduce((n, v) => n + v.bytes, 0) };
+  },
+};
 export const getPhoto = (id) => photoStore.get(id);
 export const saved = () => JSON.parse(store["mailday:v1"] || "{}");
 
@@ -632,6 +686,9 @@ export async function boot(state, photos, opts = {}) {
      leaks straight into 31 */
   remotePhotos = new Map(opts.remotePhotos || []);
   photosUnknown = opts.photosUnknown || null;
+  versionStore = new Map(opts.versions || []);
+  if (opts.noVersions) delete win.versions;
+  else win.versions = versionsApi;
   resetRemote(opts.remote);
   if (opts.noRemote) delete win.remote;
   else win.remote = remoteApi;

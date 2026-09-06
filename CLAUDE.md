@@ -25,7 +25,9 @@ every seller, for "did all four of these arrive?" and for cost basis), and
 - `src/entry.jsx` — the platform layer. Provides `window.storage` (async
   get/set/delete/list over localStorage, holding the ledger),
   `window.photos` (async put/get/delete/keys/clear/sweep/usage over IndexedDB,
-  holding envelope photos) and `window.remote` (target/status/setKey/clearKey/
+  holding envelope photos), `window.versions` (put/list/get/remove/prune/usage
+  over its **own** IndexedDB database, holding gzipped ledger snapshots) and
+  `window.remote` (target/status/setKey/clearKey/
   pull/push/pushForce over the GitHub Contents API), then mounts the app.
 - `src/b64.mjs` — base64 for the Contents API: `bytesToBase64` is the shared
   core, `utf8ToBase64`/`base64ToUtf8` the ledger's text path, and
@@ -43,9 +45,10 @@ every seller, for "did all four of these arrive?" and for cost basis), and
   classified code, since `classifyStatus` folds a sha-less 422 and a throttling
   409 into the same `conflict` and they mean opposite things), and `photoPlan`
   (the set difference, three-valued on the remote). Imported by `entry.jsx` for
-  naming and by `app.jsx` for `photoPlan` — one of the **two** local-module
-  imports in `app.jsx` (the other is `merge-rules.mjs`), whose dependencies are
-  otherwise react, react-dom and papaparse.
+  naming and by `app.jsx` for `photoPlan` — one of the **three** local-module
+  imports in `app.jsx` (the others are `merge-rules.mjs` and
+  `version-rules.mjs`), whose dependencies are otherwise react, react-dom and
+  papaparse.
 - `src/merge-rules.mjs` — reconciling two devices' ledgers: `mergeItems` (union
   by `it.key`, and the CSV import path calls it too so there is one definition
   of "union line items"), `mergeReceived` (per-key **max**), `mergeEnvelopes`
@@ -56,6 +59,22 @@ every seller, for "did all four of these arrive?" and for cost basis), and
   indistinguishable from one that worked. **The merge only ever ADDS** — nothing
   is dropped, no count decreases — which is why it needs no two-tap confirm and
   why re-running it is harmless.
+- `src/version-rules.mjs` — which saved versions survive a prune. Same
+  rationale as the modules around it, and the sharpest case for it after
+  `merge-rules.mjs`: a pruning bug deletes the one version the user was
+  reaching for and leaves a list that looks perfectly healthy, so there is
+  nothing to notice until the moment it can't be fixed. Three independent
+  reasons to live, **unioned and never intersected** — the newest
+  `recentKeep`, milestones inside `milestoneDays`, and the *earliest* record of
+  each day inside `dayDays`. Two things are deliberate and easy to undo by
+  accident: there is **no stored "daily" kind and nothing is ever promoted** —
+  "the first version of each day" is derived at prune time by `dayAnchors`, so
+  it cannot drift out of step with the records the way a written-once flag
+  would; and the anchor is the day's **earliest**, because the state worth
+  reaching for is how things stood *before* the day that went wrong, not after
+  it. `prunePlan` is expressed as the complement of `keptIds` so no record can
+  be both. `shouldSnapshot` is the write gate. Imported by `entry.jsx`
+  (`prunePlan`) and `app.jsx` (`shouldSnapshot`). Group 36.
 - `src/remote-rules.mjs` — the two adapter decisions worth asserting on:
   `classifyStatus` (GitHub's overloaded status codes → an error code the UI can
   phrase) and `pushBody` (which omits the sha only on a create). Same reasoning
@@ -71,8 +90,21 @@ every seller, for "did all four of these arrive?" and for cost basis), and
 ### Storage split (important)
 
 `app.jsx` never touches a storage API directly — everything goes through
-`window.storage` or `window.photos`, and `entry.jsx` is the only place
-localStorage or IndexedDB may appear. Keep them apart: the ledger is one small
+`window.storage`, `window.photos` or `window.versions`, and `entry.jsx` is the
+only place localStorage or IndexedDB may appear.
+
+`window.versions` is a **separate IndexedDB database**, not another store bolted
+onto `mailday-photos`. Adding a store means a version bump, and an upgrade that
+fails takes the whole connection with it — photos are irreplaceable and versions
+are a convenience, so they must not be able to hurt each other. Two connections
+is the cheaper risk. Inside it, two object stores: `meta` is small and read
+every time the History panel opens, `blobs` is large and read only when
+something is actually restored. Keep them apart — IndexedDB's `getAll()` hands
+back whole records, so a single store would materialise every saved ledger just
+to render a list of dates. Snapshots are gzipped with `CompressionStream` (built
+into Safari, no dependency; ~235KB of ledger JSON becomes ~25KB), and the `gz`
+flag rides in the metadata rather than being assumed, so a record written on a
+browser without it still reads back. Keep them apart: the ledger is one small
 JSON blob that has to save on a 500ms debounce, and photos are megabytes that
 must never get near it. localStorage caps out around 5MB; IndexedDB scales with
 free disk and stores Blobs without base64's ~33% inflation.
@@ -137,7 +169,14 @@ rather than by remembering. Verified in a browser: after saving a key,
    New keys must be optional and defaulted in the load path (as `itemSort`,
    `envelopes` and `photos` are), so saved states written by older builds keep
    loading. `itemSort` briefly shipped as `cardSort`; the load path still reads
-   that key as a fallback. Adding a persisted key means touching **five** sites:
+   that key as a fallback.
+   Saved **versions** cost nothing here, and that is by construction:
+   `takeVersion` is a third *reader* of `snapshot()` rather than a fourth
+   builder, and every restore path — file, pull, merge and the History list —
+   funnels through `applyBackup`. Give the version list its own payload builder
+   and the next person to add a persisted key silently ships a rollback list
+   that drops it. Test 37.8b.
+   Adding a persisted key means touching **five** sites:
    the load effect, the save payload + its dep array, `backup`, the JSON restore
    branch, and `resetAll` — miss the last one and the next debounced save writes
    the stale value straight back. Photo *blobs* are not in here at all; only
@@ -167,12 +206,16 @@ rather than by remembering. Verified in a browser: after saving a key,
    the mis-tap cascade this invariant exists to prevent.
 6. **No native browser dialogs.** `window.confirm`/`alert` block the whole page
    and look wrong in a home-screen app; every destructive action uses an inline
-   two-tap confirm instead (Reset, Discard, Assign, **Pull**, **Push anyway**).
+   two-tap confirm instead (Reset, Discard, Assign, **Pull**, **Push anyway**,
+   **Restore**).
    Keep that pattern. (This started as a sandbox limitation and outlived it —
-   it's now a UI choice.) With three armable controls in the main component,
+   it's now a UI choice.) With four armable controls in the main component,
    arming one **disarms the others** via the shared `arm`/`disarm` pair: two
    primed destructive buttons side by side is the exact mis-tap the pattern
-   exists to prevent. Test 26.17–26.19.
+   exists to prevent. Test 26.17–26.19, 37.14–37.15. `arm` takes a *value*
+   rather than always setting `true`, because Restore has one button per version
+   on screen at once, so "which one is primed" has to be an id; disarming is
+   still a single call.
 7. **Orphaned mail never decides anything.** The user buys the same cheap cards
    from many sellers, so *near-duplicate packages are normal* — two outstanding
    orders can have identical contents. The app may rank the packages an envelope
@@ -360,6 +403,31 @@ page. See "Known open threads" for exactly what that leaves unproven.
 - Canceled orders: excluded from list and all counts; viewable via
   "N canceled — view" link which scrolls to a dashed reference section (for
   refund auditing). Tracked/untracked shown as ●/○ dot + word in header meta.
+- **Saved versions, and a History list to roll back from.** Every push is
+  already a git commit, so the remote has always been a complete archive — what
+  was missing was any way to reach one without a laptop. `window.versions` keeps
+  gzipped snapshots on the device and the History disclosure lists them newest
+  first, `14:32 · before import · 806/481`, expanding to the delta against now
+  and a two-tap `Restore this version`.
+  Three tiers, and the important half is *when* each is taken, not what it
+  holds. **Milestones** are taken immediately BEFORE each of the four
+  operations that can lose data in bulk — import, sync, restore, reset — so
+  each holds the world as it stood in front of the thing that might have ruined
+  it. **Recent** ones are taken AFTER an ordinary change, so they hold where you
+  got to; a 30s gate keeps a mail day's hundreds of taps from spending the whole
+  ring on one package. The **day anchor** is derived, not stored (see
+  `version-rules.mjs`).
+  Two consequences worth protecting. `resetAll` deliberately does **not** clear
+  versions, which is what makes an accidental Reset recoverable rather than
+  final — it is the single most valuable thing here. And a restore takes its own
+  `before restore` milestone on the way in, so tapping the wrong row is
+  survivable rather than a second disaster.
+  The History chip is gated on **versions existing**, never on the ledger — and
+  it widens the whole file-actions region's gate for the third time, for the
+  reason Backup was widened once and Sync twice: any control that RECOVERS
+  state must not be gated on that state existing. Gate it on `items.length` and
+  the one control that undoes a Reset is unreachable exactly when a Reset has
+  just happened. Group 37.
 - **Two local backups and one remote.** *Backup* downloads
   `{mailday:1, items, received, envelopes, dateFilter, sortBy, itemSort}` —
   small, quick, and holds the irreplaceable part. *Backup + photos* (only shown
@@ -896,14 +964,15 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 347 assertions, no test framework, ~55s (groups 30–31 spend a few
+`npm test` — 378 assertions, no test framework, ~60s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
 the jsdom setup, storage mocks, DOM helpers and the fixture.
 
 It bundles `app.jsx` with esbuild (platform=node, format=cjs), boots it in jsdom
-against mocked `window.storage` / `window.photos` / `window.remote`, and drives
+against mocked `window.storage` / `window.photos` / `window.versions` /
+`window.remote`, and drives
 it with real DOM events, asserting on rendered text. The app has no exports but
 the component and that's fine — every behaviour worth protecting is one you can
 see, so the assertions read the DOM the way the user does.
@@ -911,6 +980,48 @@ see, so the assertions read the DOM the way the user does.
 (Three previous harnesses were written ad hoc and thrown away, which is why the
 same assertions kept being rewritten from scratch. Hence this one is committed
 and `jsdom` is a real devDependency.)
+
+New in groups 36–37 (saved versions). Group 36 is pure, like 27, 31 and 33: it
+imports `version-rules.mjs` directly, because a pruning bug deletes the one
+version the user was reaching for and leaves a list that looks healthy. Group 37
+drives the app and asserts on what a milestone actually *holds* — the ledger as
+it was BEFORE the operation, envelopes included.
+
+Two method notes worth keeping. **36.9's first draft could not fail:**
+`dayKey("2026-05-01T00:30")` is `"2026-05-01"` under the UTC reading too, so the
+assertion was decoration. It now derives an instant from the runner's own
+`getTimezoneOffset()` — one minute the right side of local midnight is on a
+different UTC day wherever this runs — and skips itself in UTC, where there is
+nothing to claim. **And three of the group's own assertions were wrong before
+the code was:** 36.2/36.6/36.7 failed on the first run because the day-anchor
+rule keeps records the recent ring drops (the union working, not the ring
+failing) and because a four-record fixture leaves the ring unsaturated, so
+everything passes for the wrong reason. Saturate the ring in any fixture that
+means to test what falls out of it.
+
+A third note, learned killing those mutants: **an assertion that THROWS is a
+worse kill than one that fails.** Three of group 37's mutants died by
+`JSON.parse(null)` inside the test file, which aborts a top-to-bottom suite with
+no isolation and masks every group after it. The reads are guarded now
+(`beforeReset && JSON.parse(...)`) so a missing milestone reports a mismatch and
+the run continues. Guard any assertion that dereferences something a mutation
+can make null.
+
+`test/harness.mjs` mocks `window.versions` with a `Map`, and prunes through the
+**real** `prunePlan` — same reasoning as the remote mock encoding through the
+real b64. It stores text uncompressed on purpose: gzip is the platform layer's
+business, `app.jsx` never learns whether it happened, and jsdom has no
+`CompressionStream`.
+
+Mutation-tested, all confirmed to turn the suite red: the day anchor taking a
+day's latest instead of its earliest; the recent ring keeping everything; day
+anchors reaching forever; `dayKey` reading UTC; every save earning a version;
+milestones never surviving; a version built from its own payload rather than
+`snapshot()` (which drops envelopes — 37.8b is the only assertion that catches
+it, and it is why the group records an envelope before the Reset); restore
+firing on one tap; restoring taking no milestone of its own; the History chip
+gated on `items.length`; Reset taking no milestone; and Reset tidying the
+versions away.
 
 New in group 35 (a pull that didn't land must not license a push). The whole
 group exists because the suite was green, the merge logic was provably correct
