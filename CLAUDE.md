@@ -144,6 +144,20 @@ are numbers: the real ledger blob is **235KB**, and all **19 pushes** of it
 bundle to **39KB** — git deltas near-identical JSON to roughly 2KB a version.
 At tens of pushes a mail day that is single-digit MB a year.
 
+**The push and the merge guard on different things, and the difference is the
+point.** The merge refuses while `composing`, `undo` or any armed confirm is
+live, because it APPLIES a remote ledger and `applyBackup` nulls the first two.
+The push refuses only on armed confirms: it changes nothing on this device, a
+half-built envelope is not in the ledger yet, and a pending undo sits on top of
+a check-in that genuinely happened and is already saved. Guarding the push on
+them too was over-broad and it stalled — `undo` survives a trip to Packages by
+design (group 14 pins that), so an assignment followed by a view switch stopped
+all backup for the rest of the session, invisibly, because there is no undo
+control outside Orphaned. Test 38b.3b. (`composing` is additionally cleared when
+you leave Orphaned, because the composer's draft lives in local state inside
+that view and is already gone by then — the flag was outliving the thing it
+described.)
+
 **Auto-push is safe only because the merge exists.** Automating it without
 `merge-rules.mjs` would turn the conflict trap from something hit occasionally
 into the normal way two devices meet. It is also why auto-push refuses to write
@@ -505,6 +519,21 @@ page. See "Known open threads" for exactly what that leaves unproven.
   recoverable. `versionsDown` carries that now, a failed write resets the 30s
   gate rather than also swallowing the next window, and an unreadable list never
   renders as an empty one. Tests 38b.4–38b.5.
+  **A restore is not local, and now says so.** It rewrites `items`, `received`
+  and `envelopes` — three of the auto-push debounce's deps — so ninety seconds
+  later the rolled-back ledger is published, unattended and *accepted*, because
+  the stored sha is still current and there is no conflict to raise. Nothing is
+  destroyed (every push is a commit, and the other device recovers by merging),
+  but the two-tap said "replace everything", which reads as local. The expanded
+  row says "This becomes the backup too, a minute later" when there is a key.
+  The same is true of `resetAll`, which keeps the sha by design: **a Reset
+  publishes an empty ledger 90 seconds later.** Contained for the same reasons,
+  and worth knowing.
+  The sha itself is deliberately untouched by a restore, and rolling it *back*
+  would be the actual mistake: it would 409 the next push against a remote this
+  device is not behind, forcing the user through Merge — which only ADDS, and
+  would therefore silently re-add the very lines the rollback removed. The
+  repair path would undo the repair.
   Two consequences worth protecting. `resetAll` deliberately does **not** clear
   versions, which is what makes an accidental Reset recoverable rather than
   final. And a restore takes its own `before restore` milestone on the way in,
@@ -538,7 +567,18 @@ page. See "Known open threads" for exactly what that leaves unproven.
   the *only* thing between a corrupt payload and a wiped ledger, so it should
   exist once; and the replaced-envelopes warning then covers the pull too, where
   it matters more, because a pull is one tap rather than a deliberate file drop.
-- **Photo ids on restore: keep an id when its blob is inlined in the payload,
+- **An unreadable LOCAL photo store keeps every id, exactly as an unreadable
+remote one does.** `applyBackup` and `surveyPhotos` both used
+`photos.keys().catch(() => [])`, which reads "I could not look" as "this device
+holds nothing" — so with IndexedDB unavailable every id not already on the photo
+remote was stripped, the debounced save wrote the stripped ledger, and the next
+push published it. The remote half of this rule is argued at length below and
+pinned by 26.13b; the local read never got the same treatment. It is
+three-valued now: `applyBackup` keeps every id when the store will not answer,
+and `surveyPhotos` returns `null` rather than planning a sync it cannot survey
+honestly.
+
+**Photo ids on restore: keep an id when its blob is inlined in the payload,
   already present on this device, OR known to be on the photo remote; strip
   only the rest.** This used to be
   all-or-nothing on `data.photos`, which is right for a file restore onto a
@@ -1204,7 +1244,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 496 assertions, no test framework, ~60s (groups 30–31 spend a few
+`npm test` — 498 assertions, no test framework, ~60s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds

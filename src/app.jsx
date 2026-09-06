@@ -3214,17 +3214,38 @@ export default function MailDayLedger() {
       const inlinedIds = Object.keys(inlined || {});
       /* a union, not a read-back after the writes below: those go in through a
          fire-and-forget IIFE that hasn't run yet when this set is built */
-      const present = new Set([
-        ...(window.photos ? await window.photos.keys().catch(() => []) : []),
-        ...inlinedIds,
-        ...(extraPresent || []),
-      ]);
+      /* Three-valued, for the same reason `listPhotos` is. `.catch(() => [])`
+         read "I could not look" as "this device holds nothing" — so with
+         IndexedDB unavailable (private browsing, quota, storage pressure) every
+         id not already on the photo remote was stripped below, the debounced
+         save wrote the stripped ledger, and the next push published it. That
+         severs the link to photos sitting safe on another device or waiting to
+         be uploaded. The remote half of this rule is argued at length above
+         ("keeping an id costs a blank tile, stripping it costs the photo") and
+         test 26.13b pins it; the LOCAL read never got the same treatment.
+         `null` here means unreadable, and unreadable keeps everything. */
+      let localIds = null;
+      if (window.photos) {
+        try {
+          localIds = await window.photos.keys();
+        } catch {
+          localIds = null;
+        }
+      } else localIds = [];
+      const present =
+        localIds === null
+          ? null
+          : new Set([...localIds, ...inlinedIds, ...(extraPresent || [])]);
       setItems(data.items);
       setReceived(data.received || {});
       setEnvelopes(
         (data.envelopes || []).map((e) => ({
           ...e,
-          photos: (e.photos || []).filter((id) => present.has(id)),
+          /* present === null is "the store would not answer" — keep every id
+             rather than publishing a ledger with the links cut out */
+          photos: present
+            ? (e.photos || []).filter((id) => present.has(id))
+            : e.photos || [],
         }))
       );
       setStamps(sanitizeStamps(data.stamps));
@@ -3573,9 +3594,19 @@ export default function MailDayLedger() {
   }, []);
 
   /* Same two taps and the same funnel as a local restore — only the source of
-     the bytes differs. It deliberately does NOT touch the stored sha: rolling
-     the ledger back is a local act, and if the remote should follow, the
-     ordinary push does it as a new commit, which keeps that reversible too. */
+     the bytes differs. It deliberately does NOT touch the stored sha, and that
+     is right: rolling the sha BACK would 409 the next push against a remote
+     this device is not behind, forcing the user through Merge — which only ADDS
+     (see merge-rules.mjs), and would therefore silently re-add the very lines
+     the rollback removed. The repair path would undo the repair.
+
+     What is NOT true, and used to be claimed here, is that a restore is purely
+     local. It rewrites items/received/envelopes, which are three of the
+     auto-push debounce's deps — so ninety seconds later the rolled-back ledger
+     is published, unattended, and accepted (the stored sha is still current, so
+     there is no conflict to raise). Every push is a commit and the other device
+     recovers by merging, but "this only affects this device" was wrong and the
+     two-tap copy said nothing about it. The same is true of restoreVersion. */
   const restoreOlder = useCallback(
     async (sha) => {
       if (confirmRestore !== sha) {
@@ -3679,7 +3710,17 @@ export default function MailDayLedger() {
     async (referenced) => {
       if (!photoSyncAvailable || !window.photos || !referenced.length)
         return null;
-      const local = await window.photos.keys().catch(() => []);
+      /* Same three-valued rule as the remote read beside it: an unreadable
+         LOCAL store is not an empty one. Read as empty, every referenced id
+         looks missing-from-this-device, so the plan wants to pull all of them
+         and treats anything the remote lacks as lost. Bail instead — a sync we
+         cannot survey honestly is one we should not run. */
+      let local;
+      try {
+        local = await window.photos.keys();
+      } catch {
+        return null;
+      }
       const remote = await window.remote.listPhotos().catch((e) => ({
         known: false,
         reason: e?.code || "server",
@@ -3687,6 +3728,28 @@ export default function MailDayLedger() {
       return { plan: photoPlan({ referenced, local, remote }), remote };
     },
     [photoSyncAvailable]
+  );
+
+  /* Leaving Orphaned has to drop both mid-thought flags, because both stop
+     being true the moment the view unmounts — and both silently block every
+     background sync while they are set (`autoMerge` and `autoPush` refuse on
+     them, correctly, since applyBackup nulls them).
+
+     `composing` is the clear-cut one: EnvelopeComposer holds its entries in
+     local state inside the mystery block, so a view switch has already
+     destroyed the draft. Keeping the flag set afterwards protects nothing and
+     costs all backup for the rest of the session.
+
+     `undo` is deliberately NOT dropped here. It survives a trip to Packages on
+     purpose — "assign, hand-edit elsewhere, come back and undo only your own
+     delta" is a real workflow and group 14 pins it. The sync stall it used to
+     cause is fixed at the other end instead: see autoPush's guard list. */
+  const leaveFor = useCallback(
+    (v) => {
+      if (view === "mystery" && v !== "mystery") setComposing(null);
+      setView(v);
+    },
+    [view]
   );
 
   const flashTimer = useRef(null);
@@ -4117,8 +4180,8 @@ export default function MailDayLedger() {
      the merge just rewrote the three deps of the auto-push debounce, so the
      union goes out 90 seconds later through the path that peeks first. */
   const autoMerge = useCallback(async () => {
-    /* The same mid-thought states auto-push refuses to write in — and here the
-       stake is higher. applyBackup calls setComposing(null) and setUndo(null),
+    /* The mid-thought states, and here the stake is higher than for a push —
+       this one APPLIES. applyBackup calls setComposing(null) and setUndo(null),
        so a merge landing while a half-built envelope is open DISCARDS entries
        that are hand-typed, in no CSV and on no remote. "Open the composer, duck
        out to read the mailing label, come back two minutes later" is this
@@ -4203,12 +4266,16 @@ export default function MailDayLedger() {
 
   const autoPush = useCallback(async () => {
     if (!window.remote || syncingRef.current) return;
-    /* never mid-thought: a half-built envelope, a live undo and an armed
-       destructive button are all states where the ledger on screen is not the
-       one the user means yet */
+    /* Armed destructive buttons only. `composing` and `undo` are guarded for
+       the MERGE, which applies a remote ledger and nulls both — but a push
+       changes nothing on this device, and neither state makes the ledger wrong:
+       a half-built envelope is not in it yet, and a pending undo sits on top of
+       a check-in that genuinely happened and is already saved.
+       Guarding a push on them was over-broad, and it stalled: `undo` survives a
+       trip to Packages by design (group 14), so an assignment followed by a
+       view switch used to stop all backup for the rest of the session,
+       invisibly. */
     if (
-      composing ||
-      undo ||
       confirmReset ||
       confirmPull ||
       confirmForce ||
@@ -4217,8 +4284,15 @@ export default function MailDayLedger() {
          push takes a milestone and prepends a row, shifting every row down
          between the user's two taps */
       confirmRestore
-    )
+    ) {
+      /* and come back to it. The timer is otherwise only re-armed by a change
+         to the ledger, so a composer left open past the 90s mark simply dropped
+         the pending push until the next edit — a mail day can easily end that
+         way. */
+      clearTimeout(autoTimer.current);
+      autoTimer.current = setTimeout(() => autoPushRef.current(), AUTO_PUSH_MS);
       return;
+    }
     const info = await window.remote.status().catch(() => null);
     if (!info?.hasKey) return;
     if (typeof window.remote.peek === "function") {
@@ -4236,16 +4310,7 @@ export default function MailDayLedger() {
     /* a conflict opened between the peek and the push — resolve it the safe
        way rather than leaving "Push anyway" armed on an unattended screen */
     if (r && !r.ok && r.code === "conflict") await doMerge(true);
-  }, [
-    composing,
-    undo,
-    confirmReset,
-    confirmPull,
-    confirmForce,
-    confirmRestore,
-    doPush,
-    doMerge,
-  ]);
+  }, [confirmReset, confirmPull, confirmForce, confirmRestore, doPush, doMerge]);
 
   /* Through a ref, and that is the whole point: autoPush's identity changes on
      essentially every render (it depends on doPush, which depends on snapshot),
@@ -4978,6 +5043,11 @@ export default function MailDayLedger() {
     syncActions.push({
       key: "force",
       onClick: () => (confirmForce ? doPush(true) : arm(setConfirmForce)),
+      /* the only sync action that was missing this. `syncingRef` is a boolean,
+         not a counter, so a force fired into an in-flight auto-push lets the
+         older operation's finally clear the flag while this one is still
+         running — which is exactly the guard the photo sweep re-checks. */
+      disabled: syncBusy,
       label: confirmForce ? "Tap again to overwrite" : "Push anyway",
       style: confirmForce
         ? { background: C.manilaInk, color: C.card, fontWeight: 700 }
@@ -5275,7 +5345,7 @@ export default function MailDayLedger() {
             ].map(([v, label]) => (
               <button
                 key={v}
-                onClick={() => setView(v)}
+                onClick={() => leaveFor(v)}
                 aria-pressed={view === v}
                 className={view === v ? "on" : undefined}
               >
@@ -5770,7 +5840,7 @@ export default function MailDayLedger() {
                 )}
               </div>
 
-              {historyOpen && (
+              {historyOpen && !confirmReset && (
                 /* The same surface and the same parts as the sort and Sync
                    disclosures: an option grid of actions over a list built from
                    the head cells' label-and-value pair. Nothing here is a
@@ -5887,6 +5957,21 @@ export default function MailDayLedger() {
                                 ? ` \u2014 ${diff} against now`
                                 : " \u2014 same as now"}
                               .
+                              {remoteInfo?.hasKey && (
+                                /* Said plainly, because it was not obvious and
+                                   the two-tap's "replace everything" reads as
+                                   local. A restore rewrites the three fields
+                                   the auto-push debounce watches, so ninety
+                                   seconds later this becomes the backup too —
+                                   unattended, and accepted, because the stored
+                                   sha is still current. Nothing is destroyed
+                                   (every push is a commit) but the user should
+                                   not find that out afterwards. */
+                                <>
+                                  {" "}
+                                  This becomes the backup too, a minute later.
+                                </>
+                              )}
                             </div>
                             <button
                               onClick={() => restoreVersion(v.id)}
@@ -6191,7 +6276,7 @@ export default function MailDayLedger() {
           </>
         )}
 
-        {(items.length === 0 || showUpload) && (
+        {(items.length === 0 || showUpload) && !confirmReset && (
           <div style={{ marginBottom: 20 }}>
             <UploadZone
               onFile={handleFile}

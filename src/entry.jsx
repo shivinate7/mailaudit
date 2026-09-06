@@ -60,6 +60,9 @@ function db() {
   if (!dbPromise)
     dbPromise = new Promise((resolve, reject) => {
       const req = indexedDB.open(DB_NAME, 1);
+      /* same reasoning as vdb()'s — a blocked open hangs rather than throws */
+      req.onblocked = () =>
+        reject(new Error("photo database blocked by another tab"));
       req.onupgradeneeded = () => {
         if (!req.result.objectStoreNames.contains(STORE))
           req.result.createObjectStore(STORE);
@@ -141,6 +144,13 @@ function vdb() {
   if (!vdbPromise)
     vdbPromise = new Promise((resolve, reject) => {
       const req = indexedDB.open(VDB_NAME, 1);
+      /* Unreachable at version 1, and one line now rather than a mystery later:
+         the day this schema needs version 2, a second open tab holding the old
+         connection leaves this promise PENDING rather than rejected — every
+         versions call hangs, with no message anywhere, which is the one failure
+         mode this codebase has no copy for. */
+      req.onblocked = () =>
+        reject(new Error("versions database blocked by another tab"));
       req.onupgradeneeded = () => {
         const d = req.result;
         if (!d.objectStoreNames.contains(VMETA))
@@ -207,7 +217,12 @@ window.versions = {
       meta.put({ id, at, label, kind, lines, checked, gz, bytes: blob.size });
       blobs.put(blob, id);
     });
-    await window.versions.prune();
+    /* Deliberately not awaited into the caller's failure. The record is on
+       disk by now; prune runs a separate transaction per deletion, so one of
+       those rejecting used to reject `put` as well — reporting a version that
+       exists as one that failed, which the app then surfaces as "versions can't
+       be saved". Partial success is not failure. */
+    await window.versions.prune().catch(() => {});
     return id;
   },
 

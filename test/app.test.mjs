@@ -2973,6 +2973,25 @@ const stalled = pushes().length;
 await background();
 eq(pushes().length, stalled, "38b.3 and it really has stopped backing up");
 
+/* An undo survives a trip to Packages by design (group 14), and it used to
+   block auto-push for the whole session as a side effect — invisibly, because
+   there is no undo control outside Orphaned. The merge still guards on it
+   (applying nulls it); the push does not, because a push changes nothing here
+   and the check-in it would publish genuinely happened. */
+await boot({ items: ITEMS, received: {} }, null, { remote: null });
+await openSync();
+await saveGitHubKey();
+await goTo("orphaned");
+await record(["Ponder"]);
+await assign(0);
+await goTo("packages");
+const withUndo = pushes().length;
+await background();
+ok(
+  pushes().length > withUndo,
+  "38b.3b a pending undo does not stop the backup — only the merge guards on it"
+);
+
 /* A version store that cannot write makes "Reset is recoverable" false. It
    used to fail into an empty catch, and History then said "No versions saved
    on this device yet" — affirmatively wrong rather than merely unhelpful. */
@@ -3110,14 +3129,26 @@ ok(
 
 /* arming a restore has to disarm Reset — two primed destructive buttons side
    by side is the exact mis-tap invariant 6 exists to prevent */
-await click(btn(/^Reset$/), "arm reset");
-ok(/Tap again to clear everything/.test(text()), "39.14 Reset arms");
+/* Driven restore-first, because that is the only order the UI now allows: an
+   armed Reset takes the row AND closes the panels the other cells control, so
+   there is no Restore button on screen to reach while it is primed. That gate
+   is itself the invariant-6 property — nothing beside the armed control to
+   mis-tap — so the pair is tested in the direction it can actually happen. */
 await openHistory();
 await click(btn(/before reset/), "expand a version");
 await click(btn(/Restore this version/), "arm restore");
 ok(
-  !/Tap again to clear everything/.test(text()),
-  "39.15 and arming a restore disarms Reset"
+  /Tap again to replace everything/.test(text()),
+  "39.14 a restore arms"
+);
+await click(btn(/^Reset$/), "arm Reset instead");
+ok(
+  /Tap again to clear everything/.test(text()),
+  "39.15 Reset arms, and takes the row"
+);
+ok(
+  !/Tap again to replace everything/.test(text()),
+  "39.16 disarming the restore with it — never two primed at once"
 );
 
 /* ── 40. coming back to the app catches it up ─────────────────────────────
