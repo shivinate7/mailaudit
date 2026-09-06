@@ -16,6 +16,14 @@ on:
     # a look even if the cause turns out to be "no mail".
     - cron: "0 9 * * *"
   workflow_dispatch:
+    inputs:
+      threshold:
+        description: >-
+          Days of silence before this complains. Exists so the alarm can be
+          PROVEN to fire — run it with 0 once and confirm an issue appears.
+          An alarm nobody has seen go off is not an alarm.
+        default: "4"
+        required: false
 
 permissions:
   contents: read
@@ -37,7 +45,12 @@ jobs:
           echo "when=$(git log -1 --format=%ad --date=short)" >> "$GITHUB_OUTPUT"
           echo "Last ledger push: $DAYS day(s) ago"
       - name: Open an issue if the backup has gone quiet
-        if: steps.age.outputs.days >= 4
+        # fromJSON on both sides: step outputs are strings, and a string/number
+        # comparison that silently comes out false is exactly how an alarm ends
+        # up never firing.
+        if: >-
+          fromJSON(steps.age.outputs.days) >=
+          fromJSON(github.event.inputs.threshold || '4')
         uses: actions/github-script@v7
         env:
           DAYS: ${{ steps.age.outputs.days }}
