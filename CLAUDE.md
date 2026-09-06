@@ -655,8 +655,12 @@ honestly.
   **`data` branch** of `shivinate7/mailaudit` — never `main`, because Pages
   deploys from main's root and every backup would otherwise trigger a site
   rebuild. Push needs a fine-grained PAT (`Contents: read & write`, that repo
-  only) pasted once per device; **pull needs no key at all** on a public repo,
-  which is what lets a fresh device recover before it has been set up.
+  only) pasted once per device — and since the repo went private, **pull needs
+  that key too**. This used to read "pull needs no key at all", which was the
+  property that let a fresh device recover before it had been set up; closing
+  the world-readable ledger cost exactly that, knowingly. A device with no key
+  can now do nothing remote at all, which is why `no-access` is a `syncBroken`
+  case with its own line rather than an error buried in a panel.
   Conflict detection is the Contents API's blob sha, and the sha sent is the one
   *this device last saw* — never one re-fetched moments earlier, which would
   make every push win and silently discard the other device's. A stale push
@@ -1718,8 +1722,21 @@ media type returns bytes with `access-control-allow-origin: *`, a directory
 listing returns `{name,type,size,sha}`, a missing directory returns 404 "Not
 Found" (so `missing`, distinct from `no-branch`), and a keyless request to the
 private `mailaudit-photos` 404s on both the tree and the repo, which is the
-`no-access` path. **Still never run against real GitHub: an authenticated photo
-PUT, a photo pull that returns bytes, a ledger conflict, and `peek()`.**
+`no-access` path.
+
+**The ledger repo's own private path is now verified live too** — the first
+real-GitHub confirmation of anything on the read side since the repo was closed.
+From the deployed Pages origin with no key, `pull()`, `listVersions()` and
+`peek()` all return `no-access`, and `peek()` answers `{known: false}` rather
+than "nobody is ahead", which is the reading that would otherwise let a keyless
+device push straight over the one that can see. Measured at the same time: the
+site still serves **200** to an anonymous request while
+`raw.githubusercontent.com/.../data/ledger.json` and the repo API both **404**.
+That is the whole point of the private/Pro arrangement, confirmed rather than
+assumed. So `peek()` comes off the unverified list.
+
+**Still never run against real GitHub: an authenticated photo PUT, a photo pull
+that returns bytes, and a ledger conflict.**
 
 That same session is what surfaced the group-28 bug — Pull unreachable on an
 empty ledger. Worth remembering as a method: the suite was all green and the
@@ -1813,11 +1830,13 @@ give no isolation between groups.
   the single-purpose Contents-only scope and one token per device, and the
   alternative (a second, separate token) was considered and declined for the
   paste-per-device cost.
-- **Keyless pull now recovers the ledger but not the photos.** The ledger repo
-  is public, so that half is unchanged and a fresh device still gets its
-  check-ins back with no setup. Photos need the key. They must read as *"needs
-  your key"* and never as lost — that distinction is the whole point of
-  `listPhotos` being three-valued.
+- **Nothing recovers without the key any more.** This entry used to say the
+  ledger half was keyless and only photos needed the token. Both need it now
+  that the ledger repo is private, so a fresh device must be set up before it
+  can recover rather than after — the one real cost of closing the public
+  ledger. Everything unreachable must read as *"needs your key"* and never as
+  lost or as absent, which is why `listPhotos` and `peek` are three-valued and
+  why `classifyLedger` disambiguates the 404.
 - **The conflict guard has never been verified against real GitHub**, and it is
   now the thing most worth verifying, because `Merge & push` and auto-push both
   hang off it. The ledger repo *has* taken real authenticated pushes
@@ -1830,9 +1849,11 @@ give no isolation between groups.
   **Merge & push**, and confirm B ends holding *both* devices' work and A's next
   Pull agrees. Do this **before turning auto-push on**, because auto-push's
   conflict recovery is exactly this path running unattended.
-- **`peek()` has never run against real GitHub either.** It needs no permission
-  the token doesn't already have (`GET /git/trees/{branch}` is a read), but the
-  one thing to check by eye is that a *fresh* device — no local sha — reports
-  `ahead` rather than erroring, since that is the state every new phone starts
-  in. Still never run for real: an authenticated photo PUT, a photo pull that
-  returns bytes, and a ledger conflict.
+- **`peek()` has now run against real GitHub, but only its refusal path.** From
+  the deployed origin with no key it returns `{known: false, reason:
+  "no-access"}` against the private repo, which is the branch that matters most
+  — read the other way, a keyless device would push over the one that can see.
+  What is still unverified is the *successful* path: that a keyed, fresh device
+  with no local sha reports `ahead` rather than erroring, since that is the
+  state every new phone starts in. Still never run for real: an authenticated
+  photo PUT, a photo pull that returns bytes, and a ledger conflict.
