@@ -535,10 +535,15 @@ page. See "Known open threads" for exactly what that leaves unproven.
   foreground, never on a timer, and it is **three-valued** for the same reason
   `listPhotos` is: "I could not look" must never render as "all clear", because
   that is the state in which pushing overwrites the other device. Auto-push
-  (off by default, per-device, stored beside the token and **not** in the
-  ledger) looks before every write and declines on `ahead` or on unknown; a
-  conflict opening between the look and the write resolves by merging rather
-  than leaving `Push anyway` armed on a screen nobody is watching.
+  (unconditional now — there is no toggle) looks before every write and declines
+  on `ahead` or on unknown; a conflict opening between the look and the write
+  resolves by merging rather than leaving `Push anyway` armed on a screen nobody
+  is watching.
+  **The same `peek` is now also the auto-merge's trigger**, which is why it is
+  one read and not two, and why the merge sits inside its `known` branch. The
+  foreground call therefore does three things at once: reports whether the
+  remote is ahead, licenses or refuses the merge, and — via `freshSession` —
+  decides whether this foreground was a new session at all.
 - **Push / Pull (GitHub).** Automatic backup to `ledger.json` on the
   **`data` branch** of `shivinate7/mailaudit` — never `main`, because Pages
   deploys from main's root and every backup would otherwise trigger a site
@@ -1278,7 +1283,10 @@ Gotchas worth remembering:
   immediately. That is a fast seam *and* a real path (switching away mid-mail-day
   is the last chance to catch a session that never went idle), so the test isn't
   reaching for a private hook. `foreground()` is the inverse and is also what
-  re-runs the `peek`.
+  re-runs the `peek` — and, since the resume merge shipped, what can trigger a
+  merge. Note `background()` restores `visibilityState` silently without
+  dispatching a second event, so it never fires the resume path on its own;
+  reach for `backgroundFor(ms)` when that is what you want.
 - `backgroundFor(ms)` is that pair with `Date.now` frozen across it, for the
   resume reset on Showing — the elapsed time is the argument rather than the
   wall clock, since the threshold is 60s and no test can wait it out. It is
