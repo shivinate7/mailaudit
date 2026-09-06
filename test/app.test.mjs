@@ -664,6 +664,14 @@ await boot({
 await openHistory();
 ok(!!btn(/^Backup$/), "23.1 Backup survives an empty item list");
 ok(!!btn(/Re-import/), "23.2 so does Re-import");
+/* ...and it now controls something. The zone used to be forced open by an
+   empty item list alone, so with a pending envelope this cell flipped
+   aria-expanded over a panel that was open either way. */
+ok(!document.querySelector('div[style*="dashed"]'), "23.2b the zone starts shut here");
+await click(btn(/Re-import/), "open the zone");
+ok(!!document.querySelector('div[style*="dashed"]'), "23.2c and the cell opens it");
+await click(btn(/Re-import/), "and shuts it again");
+ok(!document.querySelector('div[style*="dashed"]'), "23.2d and shuts it");
 ok(!!btn(/^Reset$/), "23.3 and Reset");
 /* but the filters describe a list that doesn't exist, so they must stay away */
 ok(

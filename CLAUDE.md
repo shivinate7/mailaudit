@@ -836,6 +836,18 @@ resolve, and it contradicted the region's own thesis. Don't reintroduce it: the
 option grids still read, because `optGrid` paints `line` and each `optCell`
 paints `card` over it, so the cells sit slightly raised against the page.
 
+**History and Sync close each other**, the way the range and sort cells already
+do — both panels are several hundred pixels tall and stacked they push the
+packages off the screen. An armed Reset closes both, since it already hides the
+cells that open them; leaving the panels up with no control was the same
+one-way-door shape as the line itself.
+
+**The upload zone opens on an empty ledger only when there are no envelopes
+either.** It used to be forced open by an empty *item* list alone, which made
+the Re-import cell beside it — deliberately kept reachable when envelopes exist,
+test 23.2 — a disclosure that flipped `aria-expanded` over a panel that was open
+regardless. Tests 23.2b–23.2d.
+
 **On the happy path there is no sync vocabulary on screen at all.** No `Sync`
 cell in the action row, no toggle, no `Merge`, no "the other device is ahead"
 notice. Sync happens or it doesn't, and the only case worth a pixel is the one
@@ -1249,7 +1261,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 502 assertions, no test framework, ~60s (groups 30–31 spend a few
+`npm test` — 505 assertions, no test framework, ~60s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds

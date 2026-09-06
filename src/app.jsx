@@ -5754,7 +5754,10 @@ export default function MailDayLedger() {
                    panel's header, and a header that says "not backed up" over a
                    ledger that just pushed would be a lie. */
                 <button
-                  onClick={() => setSyncOpen((o) => !o)}
+                  onClick={() => {
+                    setHistoryOpen(false);
+                    setSyncOpen((o) => !o);
+                  }}
                   aria-expanded={syncOpen}
                   style={{
                     display: "block",
@@ -5819,7 +5822,14 @@ export default function MailDayLedger() {
                     thing-it-recovers trap this file names three times. */}
                 {!confirmReset && (!!window.versions || !!window.remote) && (
                   <button
-                    onClick={() => setHistoryOpen((o) => !o)}
+                    onClick={() => {
+                      /* closes Sync, the way the range and sort cells close
+                         each other. Both panels are several hundred pixels
+                         tall; stacked they push the packages off the screen. */
+                      setSyncOpen(false);
+                      setVersionMsg(null);
+                      setHistoryOpen((o) => !o);
+                    }}
                     aria-expanded={historyOpen}
                     aria-label="Saved versions"
                     className="mdl-act"
@@ -6276,7 +6286,15 @@ export default function MailDayLedger() {
           </>
         )}
 
-        {(items.length === 0 || showUpload) && !confirmReset && (
+        {/* `items.length === 0 && envelopes.length === 0`, not `items.length
+            === 0` alone. The zone is meant to be up unprompted on a genuinely
+            empty ledger — but with no items and a pending envelope it was
+            forced open regardless, which made the Re-import cell beside it a
+            disclosure that flipped aria-expanded and controlled nothing. Test
+            23.2 keeps that cell (it is reachable for a reason); this is what
+            gives it something to do. */}
+        {(showUpload || (items.length === 0 && envelopes.length === 0)) &&
+          !confirmReset && (
           <div style={{ marginBottom: 20 }}>
             <UploadZone
               onFile={handleFile}
