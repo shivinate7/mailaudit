@@ -1201,7 +1201,12 @@ device, since GitHub hides a private repo's existence behind a 404.)
    local deploy can skip by accident.
    `backup-watchdog.yml` is the check the app cannot do for itself: it reads the
    `data` branch's own history on a daily schedule and opens an issue if nothing
-   has landed in four days. The phone's "Backed up" line is only as honest as
+   has landed in four days. **Its alarm has been seen to fire** — dispatched
+   once with `threshold=0`, which opened issue #4, since verified and closed. A
+   green run proves only that it stayed quiet; that input exists so the other
+   half can be proven too, and both sides of the comparison go through
+   `fromJSON` because step outputs are strings and a string/number compare that
+   silently evaluates false is exactly how an alarm ends up never going off. The phone's "Backed up" line is only as honest as
    the phone — a device whose token expired, whose storage is unreadable, or
    that simply never gets opened has no way to tell you it stopped. This one
    cannot be fooled by anything happening on a device.
