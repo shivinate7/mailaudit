@@ -777,6 +777,25 @@ anything longer stops being a warning). It is deliberately **not gated on there
 being local data**: a device with an empty ledger and no key is the fresh phone,
 and this line is its only route to the Pull that recovers it. Test 28.1.
 
+**It renders on `syncBroken || syncOpen`, and it is a TOGGLE.** Both halves were
+learned by shipping without them, and the bug was reported from the phone within
+the hour. It opened on tap and nothing closed it, because removing the Sync cell
+had taken the only control that could — and worse, the moment you fixed the
+thing it was complaining about, `syncBroken` went null, the line disappeared and
+the panel was stranded open with no control at all. **A disclosure has to be its
+own way back out.** While the panel is open the line is that panel's header, so
+when the sync is healthy it goes quiet (`Backed up 09-06 — tap to close`,
+transparent rather than manila) instead of vanishing — a header reading "not
+backed up" over a ledger that just pushed would be a lie. Tests 28.8–28.12, both
+halves mutation-confirmed.
+
+The same session found a hole in the harness this had been hiding: the remote
+mock set `pushedAt` to the frozen `REMOTE_NOW` (2026-08-12), so **every fixture
+was permanently past `SYNC_STALE_MS` and the healthy state — `syncBroken ===
+null` — was unreachable from a test.** It is `Date.now()` now; the frozen clock
+is there so payload snapshots don't depend on the wall clock, and this is status
+metadata that nothing asserts on.
+
 The action row keeps its three equal cells — **History takes the one Sync
 vacated**. Behind the line: Push, Merge, Pull, Push anyway, the target line and
 the key field. `Merge` still appears on a conflict *or* when `peek()` says the
@@ -1137,7 +1156,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 484 assertions, no test framework, ~60s (groups 30–31 spend a few
+`npm test` — 489 assertions, no test framework, ~60s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds

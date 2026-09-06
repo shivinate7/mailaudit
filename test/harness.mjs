@@ -335,7 +335,13 @@ const remoteApi = {
       text,
     });
     remote.deviceSha = remote.sha;
-    remote.pushedAt = REMOTE_NOW;
+    /* Date.now(), NOT the frozen REMOTE_NOW. `syncBroken` measures staleness
+       against this, so a fixed 2026-08-12 makes every fixture permanently
+       "not backed up since…" and the healthy state — syncBroken === null —
+       becomes unreachable from a test. The frozen clock is there so PAYLOAD
+       snapshots don't depend on the wall clock; this is status metadata and
+       nothing asserts on its value. */
+    remote.pushedAt = Date.now();
     return { sha: remote.sha, pushedAt: remote.pushedAt };
   },
   async photoTarget() {

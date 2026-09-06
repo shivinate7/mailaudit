@@ -5557,7 +5557,7 @@ export default function MailDayLedger() {
                   the spot just tapped instead of wrapping to a new line under
                   it, and the two controls a mis-tap could land on aren't there
                   to land on. */}
-              {syncBroken && (
+              {(syncBroken || syncOpen) && (
                 /* The one thing sync is allowed to say, and the only entrance
                    to the repair kit. Advisory manila, never red — being
                    unbacked-up is a state to fix, not a loss that has happened;
@@ -5565,9 +5565,23 @@ export default function MailDayLedger() {
                    the one line the user has to keep believing.
                    Full width above the ruled row rather than a cell in it: it
                    is a sentence, it has to wrap, and the row's cells are a
-                   fixed 40px of uppercase mono. */
+                   fixed 40px of uppercase mono.
+
+                   `|| syncOpen` and a TOGGLE, both learned from the first
+                   version shipping without them. It opened on tap and never
+                   closed, because removing the Sync cell took the only control
+                   that could shut the panel — and worse, the moment you fixed
+                   the thing it was complaining about, `syncBroken` went null,
+                   the line disappeared, and the panel was stranded open with no
+                   control at all. A disclosure has to be its own way back out.
+
+                   Which is also why it goes quiet rather than vanishing when
+                   the sync is healthy: while the panel is open the line is that
+                   panel's header, and a header that says "not backed up" over a
+                   ledger that just pushed would be a lie. */
                 <button
-                  onClick={() => setSyncOpen(true)}
+                  onClick={() => setSyncOpen((o) => !o)}
+                  aria-expanded={syncOpen}
                   style={{
                     display: "block",
                     width: "100%",
@@ -5578,12 +5592,20 @@ export default function MailDayLedger() {
                     padding: "9px 9px 10px",
                     border: 0,
                     borderTop: `1px solid ${C.line}`,
-                    background: C.manila,
-                    color: C.manilaInk,
+                    background: syncBroken ? C.manila : "transparent",
+                    color: syncBroken ? C.manilaInk : C.inkSoft,
                     cursor: "pointer",
                   }}
                 >
-                  {syncBroken === "no-key"
+                  {!syncBroken
+                    ? `Backed up${
+                        remoteInfo?.pushedAt
+                          ? ` ${new Date(remoteInfo.pushedAt)
+                              .toISOString()
+                              .slice(0, 10)}`
+                          : ""
+                      } — tap to close`
+                    : syncBroken === "no-key"
                     ? "Not backed up on this device — tap to set it up"
                     : syncBroken === "never"
                     ? "Nothing has been backed up yet — tap to fix"

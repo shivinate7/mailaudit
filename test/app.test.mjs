@@ -1182,6 +1182,7 @@ ok(
   !!btn(/tap to/),
   "28.1 the repair kit is reachable on a completely empty ledger"
 );
+
 await openSync();
 ok(!!btn(/Pull from GitHub/), "28.2 and Pull with it");
 ok(!btn(/^Reset$/), "28.3 but Reset is hidden — there is nothing to clear");
@@ -1201,6 +1202,38 @@ ok(!btn(/^Sync/), "28.6 no remote, no toolbar on an empty ledger");
    RECOVERS state, so it must not be gated on that state existing. Backup is
    inside it rather than on the row. */
 ok(!btn(/^Backup$/), "28.7 and no file action sitting on the row itself");
+
+/* It shipped once as a one-way door: the line opened the panel and nothing
+   closed it, because removing the Sync cell took the only control that could.
+   Worse, fixing the very thing it complained about made `syncBroken` null, the
+   line vanish, and the panel strand open with no control at all. A disclosure
+   has to be its own way back out.
+
+   Its own fixture, with the remote IN STEP: the group's usual one seeds an
+   ahead remote, so the push below would conflict and syncBroken would land on
+   "conflict" rather than clearing — which is exactly how the first draft of
+   this test failed, for a reason that had nothing to do with the claim. */
+await boot({ items: ITEMS.slice(0, 2), received: {} }, null, { remote: null });
+await click(btn(/tap to/), "open the repair kit");
+ok(!!btn(/^Push$/), "28.8 tapping the line opens the repair kit");
+await click(btn(/tap to/), "and tap it again");
+ok(!btn(/^Push$/), "28.9 tapping it again closes it — not a one-way door");
+await click(btn(/tap to/), "reopen");
+await saveGitHubKey();
+await click(btn(/^Push$/), "push, so nothing is broken any more");
+/* `settle` is declared further down the file; this group runs before it */
+await act(async () => await sleep(0));
+ok(
+  !!btn(/tap to close/),
+  "28.10 once the sync is healthy the header stays, so the panel is not stranded"
+);
+ok(
+  !/Not backed up/.test(text()),
+  "28.11 but it stops claiming a problem it no longer has"
+);
+await click(btn(/tap to close/), "close it from the healthy header");
+ok(!btn(/^Push$/), "28.12 and that closes it too");
+
 
 /* ── 29. the parser decodes entities in seller names too ───────────────── */
 
