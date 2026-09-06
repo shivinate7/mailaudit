@@ -92,12 +92,56 @@ every seller, for "did all four of these arrive?" and for cost basis), and
   phrase) and `pushBody` (which omits the sha only on a create). Same reasoning
   as `b64.mjs`: both fail quietly, so both are pure and directly tested.
 - `build.mjs` — bundles entry via esbuild and inlines the JS into a
-  self-contained `index.html` with iOS home-screen-app meta tags.
+  self-contained `index.html` with iOS home-screen-app meta tags. It also bakes
+  in **the public seed** (see below): `git show origin/data:ledger.json`,
+  reduced to `SEED_KEEP`, gzipped and base64'd into a `<script id="seed">`.
 - `index.html` — the build output, committed to the repo. GitHub Pages serves it
   at https://shivinate7.github.io/mailaudit/ . The user runs it as an iOS
   home-screen web app.
 - `test/harness.mjs` + `test/app.test.mjs` — the behaviour suite (`npm test`).
 - `dev-server.mjs` — optional local static server (`npm run serve`).
+
+### The public seed
+
+The site is public and the ledger repo is not, and **those are different
+artifacts** — Pages serves `main` root and has never served the `data` branch.
+So sharing the URL used to hand someone the app with nothing in it: their
+browser's localStorage is their own and empty, and the fetch for the ledger
+404s. Measured, on the live site with storage cleared: the whole page was the
+masthead and "Drop your OrderWand CSV here".
+
+The seed closes that without reopening the repo. A snapshot is baked **into
+`index.html`** at build time, so a visitor gets the app and the data in one
+public file, hydrates into their own storage, and can do as they like with it.
+They still cannot push — that needs a token they do not have, which was always
+true and was never the gap.
+
+**What is published is exactly `SEED_KEEP`** — `items`, `received`, `stamps`,
+and the three view preferences. That is order ids, seller names, card names,
+prices and dates: the substance of the ledger, and the point of sharing it.
+What is withheld: **`envelopes` entirely** (hand-typed notes, where CLAUDE.md
+has always said tracking numbers and sender names end up), and **stamp `note`
+text** (the kind and date stay, so the status band still reads). Photos never
+went near the ledger. Widen `SEED_KEEP` only on purpose — the Pages site is
+world-readable and git is permanent.
+
+The stamp-note leak was found by decoding the built page and grepping it, not
+by reading the code. **Do that after any change here** — it is the only way to
+know what you actually published.
+
+Two guards in the load path, and the second is the one that matters:
+
+- It never overwrites an existing ledger (`!value`).
+- **It never runs on a device that has a key.** A keyed device is one of the
+  owner's, and the seed is a build-time snapshot — hydrating it over cleared
+  owner-storage would put stale data under a live sha, and auto-push would then
+  publish it. A keyed device gets nothing here and recovers by pulling.
+
+It is a snapshot, not a feed: it refreshes when you deploy. Group 38d, all three
+guards mutation-confirmed. Gzip+base64 because the real ledger is ~250KB and
+deflates to 49KB inlined; `entry.jsx` inflates it with `DecompressionStream`,
+the same primitive the version store uses, so `app.jsx` never learns how the
+seed was packed.
 
 ### Storage split (important)
 
@@ -1292,7 +1336,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 508 assertions, no test framework, ~60s (groups 30–31 spend a few
+`npm test` — 517 assertions, no test framework, ~60s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds

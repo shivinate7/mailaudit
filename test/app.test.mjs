@@ -3094,6 +3094,76 @@ ok(
 eq(saved().items?.length ?? 3, 3, "38c.3 and nothing on this device changed");
 remote.private = false;
 
+/* ── 38d. the public seed ─────────────────────────────────────────────────
+   The site is public and the ledger repo is not, and those are separate
+   artifacts — Pages serves `main` root and has never served `data`. So sharing
+   the URL used to hand someone the app with nothing in it. A snapshot baked
+   into index.html closes that without reopening the repo: a visitor lands on a
+   populated app, fiddles with it locally, and cannot push because pushing needs
+   a token they do not have. */
+
+const SEED = JSON.stringify({
+  mailday: 1,
+  items: ITEMS,
+  received: { [ITEMS[0].key]: 1 },
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+});
+
+/* a stranger: nothing saved, no key */
+await boot(null, null, { remote: null, seed: SEED });
+await settle();
+ok(/Lightning Bolt/.test(text()), "38d.1 a visitor lands on a populated app");
+ok(
+  /someone else’s ledger/.test(text()),
+  "38d.2 and is told whose it is, and that their changes stay put"
+);
+ok(
+  !/tap to set it up/.test(text()),
+  "38d.3 not told to set up a backup — there is nothing of theirs to back up"
+);
+
+/* it is a real working copy, not a read-only display */
+await toggleShowing();
+await click(btn(/Mark all received/), "a visitor ticks something off");
+await settle();
+await sleep(SAVE_WAIT);
+ok(saved().items.length > 0, "38d.4 their edits land in their OWN storage");
+eq(pushes().length, 0, "38d.5 and nothing was pushed anywhere");
+
+/* THE guard. A device with a key is the owner's, and the seed is a build-time
+   snapshot — hydrating it over cleared owner-storage would put stale data under
+   a live sha, and auto-push would then publish it. */
+await boot(null, null, {
+  remote: null,
+  seed: SEED,
+  remoteKey: "github_pat_testtoken",
+});
+await settle();
+ok(
+  !/Lightning Bolt/.test(text()),
+  "38d.6 a device WITH a key is never seeded — it pulls instead"
+);
+eq(saved().items?.length ?? 0, 0, "38d.7 so no stale snapshot can be published from it");
+
+/* and a device that already has a ledger keeps it */
+await boot({ items: ITEMS.slice(0, 2), received: {} }, null, {
+  remote: null,
+  seed: SEED,
+});
+await settle();
+/* the DOM first, because `saved()` alone cannot fail here: the debounced save
+   is 500ms away, so without the wait below it returns the boot fixture whether
+   or not the seed overwrote state. The overwrite mutant survived on exactly
+   that — the same shape 34.10 records. */
+ok(
+  !/Urza/.test(text()),
+  "38d.8 an existing ledger is not replaced by the seed"
+);
+await sleep(SAVE_WAIT);
+eq(saved().items.length, 2, "38d.9 and that is what persists");
+
 /* ── 39. the rollback list ────────────────────────────────────────────────
    Driving the app, unlike group 36 which drives the rules. The claim is
    narrower and more useful: a version stands in front of each operation that

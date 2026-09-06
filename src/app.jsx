@@ -2926,14 +2926,47 @@ export default function MailDayLedger() {
   });
   const saveTimer = useRef(null);
   const skipFirstSave = useRef(true);
+  /* "what you are looking at is a snapshot of someone else's ledger" — true
+     only for a visitor, since seeding requires no key on the device */
+  const [seedShown, setSeedShown] = useState(false);
+  /* the notice is about PROVENANCE, not about being unsaved, so it survives
+     edits: the ledger on screen is still someone else's, however much of it the
+     visitor has since ticked off. It goes when they clear or replace it. */
 
   /* load persisted state */
   useEffect(() => {
     (async () => {
       try {
-        const res = await window.storage.get(STORAGE_KEY);
-        if (res?.value) {
-          const data = JSON.parse(res.value);
+        let value = null;
+        try {
+          value = (await window.storage.get(STORAGE_KEY))?.value || null;
+        } catch {
+          /* nothing saved yet */
+        }
+        /* ---- the public seed ----
+           Nothing saved AND no key on this device: that is someone who has just
+           opened the public URL. Give them the snapshot build.mjs baked in, so
+           they land on a populated app rather than an empty one, and let them
+           do whatever they like with it — it hydrates into THEIR localStorage
+           and nothing here can reach back.
+
+           The `hasKey` half is the guard that matters. A device with a key is
+           one of the owner's, and the seed is a build-time snapshot: seeding
+           over a cleared owner-device would put stale data under a live sha,
+           and auto-push would publish it. So a keyed device gets nothing here
+           and recovers the way it always has, by pulling. */
+        if (!value && window.seed) {
+          const info = await window.remote?.status?.().catch(() => null);
+          if (!info?.hasKey) {
+            const seeded = await window.seed.load().catch(() => null);
+            if (seeded) {
+              value = seeded;
+              setSeedShown(true);
+            }
+          }
+        }
+        if (value) {
+          const data = JSON.parse(value);
           setItems(data.items || []);
           setReceived(data.received || {});
           // absent on anything saved before orphaned mail shipped;
@@ -3026,6 +3059,11 @@ export default function MailDayLedger() {
      already. */
   const syncBroken = useMemo(() => {
     if (!window.remote) return null;
+    /* A visitor is not an unbacked-up device, and "tap to set it up" is
+       meaningless advice to someone looking at a copy of someone else's
+       ledger. Their own key would not help them; there is nothing of theirs to
+       back up. Say what is actually true instead — see the line's copy. */
+    if (seedShown) return "seeded";
     if (pushState === "conflict") return "conflict";
     if (remoteMsg?.tone === "error") return "error";
     /* a device that cannot SEE the backup is as unbacked-up as one that cannot
@@ -3055,7 +3093,7 @@ export default function MailDayLedger() {
     if (!remoteInfo.pushedAt) return "never";
     if (Date.now() - remoteInfo.pushedAt > SYNC_STALE_MS) return "stale";
     return null;
-  }, [pushState, remoteMsg, remoteInfo, ahead]);
+  }, [pushState, remoteMsg, remoteInfo, ahead, seedShown]);
 
   const snapshot = useCallback(
     () => ({
@@ -5792,7 +5830,9 @@ export default function MailDayLedger() {
                     cursor: "pointer",
                   }}
                 >
-                  {syncBroken === "no-access"
+                  {syncBroken === "seeded"
+                    ? "A snapshot of someone else’s ledger — anything you change stays on this device"
+                    : syncBroken === "no-access"
                     ? "This device can’t see the backup — tap to add its key"
                     : syncBroken === "behind"
                     ? "Your other device has newer lines — tap to bring them in"

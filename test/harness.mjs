@@ -749,6 +749,12 @@ export async function boot(state, photos, opts = {}) {
      leaks straight into 31 */
   remotePhotos = new Map(opts.remotePhotos || []);
   photosUnknown = opts.photosUnknown || null;
+  /* the snapshot build.mjs bakes into index.html. Mocked as plain text: the
+     gzip+base64 packing is the platform layer's business, exactly as it is for
+     the version store, and jsdom has no DecompressionStream. */
+  if (opts.seed) win.seed = { async load() { return opts.seed; } };
+  else if (opts.noSeed === false) delete win.seed;
+  else delete win.seed;
   versionStore = new Map(opts.versions || []);
   if (opts.noVersions) delete win.versions;
   else win.versions = versionsApi;
@@ -763,6 +769,9 @@ export async function boot(state, photos, opts = {}) {
      it was written to produce. It is also the more faithful model of the wire,
      which is why this is a fix rather than a workaround. */
   resetRemote(opts.remoteAtBoot ?? null);
+  /* a key present BEFORE the app mounts — the state every one of the owner's
+     devices is in, and the one the seed guard turns on */
+  if (opts.remoteKey) remote.key = opts.remoteKey;
   if (opts.noRemote) delete win.remote;
   else win.remote = remoteApi;
   if (state) store["mailday:v1"] = JSON.stringify(state);

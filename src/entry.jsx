@@ -263,6 +263,39 @@ window.versions = {
   },
 };
 
+/* ---- the public seed ----
+   A snapshot baked into index.html by build.mjs, so someone opening the public
+   URL lands on a populated app instead of an empty one. The ledger repo is
+   private and Pages has never served it; this is how the site carries data
+   without the repo carrying it publicly.
+
+   Read-only and one-way by construction: it hydrates into the visitor's OWN
+   localStorage, so anything they do afterwards is theirs and stays on their
+   device. Pushing back needs a token they do not have.
+
+   Inflated here rather than in app.jsx for the same reason gzip lives in the
+   version store: the app deals in ledger text and never learns how it was
+   packed. Returns null whenever there is no seed, which is every local build
+   made without the data branch to hand. */
+window.seed = {
+  async load() {
+    const tag = document.getElementById("seed");
+    const packed = tag?.textContent?.trim();
+    if (!packed) return null;
+    try {
+      const bytes = Uint8Array.from(atob(packed), (c) => c.charCodeAt(0));
+      if (typeof DecompressionStream !== "function") return null;
+      const s = new Blob([bytes]).stream().pipeThrough(
+        new DecompressionStream("gzip")
+      );
+      const text = await new Response(s).text();
+      return typeof text === "string" && text ? text : null;
+    } catch {
+      return null;
+    }
+  },
+};
+
 /* ---- remote backup: the GitHub Contents API ----
    TRANSPORT, not storage. localStorage stays the source of truth; this is a
    manual, tap-triggered push/pull so the ledger survives losing the phone, ITP
