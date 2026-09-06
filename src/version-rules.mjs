@@ -11,13 +11,14 @@
 
    The model is deliberately small: a record carries only when it
    was taken and whether it was a milestone. Everything else is
-   DERIVED here. In particular there is no stored "daily" kind and
-   nothing ever gets promoted — "the first version of each day" is
-   computed at prune time, so it cannot drift out of step with the
-   records the way a written-once flag would.
+   DERIVED here. In particular there is no stored "daily" or
+   "hourly" kind and nothing ever gets promoted — "the first version
+   of each hour/day" is computed at prune time, so it cannot drift
+   out of step with the records the way a written-once flag would.
    ============================================================ */
 
 const DAY = 86_400_000;
+const HOUR = 3_600_000;
 
 export const RETENTION = {
   /* the current session's check-ins. Twenty at ~30s apart is roughly
@@ -31,9 +32,19 @@ export const RETENTION = {
   /* a belt beside the braces: thirty days of a heavy import habit
      shouldn't be able to outgrow the budget on its own */
   milestoneMax: 60,
+  /* the first version of each hour, for a day. This is the tier
+     that closes the gap the other three leave: the ring covers ten
+     to thirty minutes of dense work before it churns out, and the
+     day anchor covers this morning, so without this the honest
+     answer to "put it back to how it was at 11am" was "you can't".
+     24 more records, roughly 600KB gzipped — the cheapest tier
+     here by some way, and the one that matches how a mail day
+     actually goes wrong. */
+  hourHours: 24,
   /* the first version of each calendar day, kept for six months.
      This is what gives the list reach — the tiers above cover
-     minutes and weeks, this one covers "restore last Tuesday". */
+     minutes, hours and weeks; this one covers "restore last
+     Tuesday". */
   dayDays: 180,
 };
 
@@ -48,23 +59,32 @@ export function dayKey(at) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-/* The earliest surviving record of each day, by id.
+/* Local calendar hour, on the same reasoning as dayKey. */
+export function hourKey(at) {
+  return `${dayKey(at)}T${String(new Date(at).getHours()).padStart(2, "0")}`;
+}
 
-   Earliest and not latest: the point of a day anchor is "how things
-   stood before that day's work", which is the state you want back
-   when the whole day went wrong. Taking the last one of the day
-   would keep the damage and drop the thing you were reaching for. */
-export function dayAnchors(records) {
+/* The earliest surviving record of each bucket, by id.
+
+   EARLIEST and not latest, and this is the whole point of an anchor:
+   what you want back is how things stood *before* the stretch that
+   went wrong, not after it. Taking the last record of the bucket
+   would preserve the damage and drop the thing you were reaching
+   for. Shared by the hour and day tiers so the two cannot drift. */
+export function earliestPer(records, keyOf) {
   const first = new Map();
   for (const r of records) {
-    const k = dayKey(r.at);
+    const k = keyOf(r.at);
     const held = first.get(k);
     if (!held || r.at < held.at) first.set(k, r);
   }
   return new Set([...first.values()].map((r) => r.id));
 }
 
-/* Three independent reasons to live, unioned — never intersected.
+export const dayAnchors = (records) => earliestPer(records, dayKey);
+export const hourAnchors = (records) => earliestPer(records, hourKey);
+
+/* Four independent reasons to live, unioned — never intersected.
    A record kept by any one rule is kept, so the tiers can't cancel
    each other out: the day anchor outliving the recent ring is the
    normal case, not an edge one. */
@@ -80,6 +100,9 @@ export function keptIds(records, now = Date.now(), policy = RETENTION) {
     .filter((r) => r.kind === "milestone" && now - r.at <= policy.milestoneDays * DAY)
     .sort((a, b) => b.at - a.at);
   for (const r of milestones.slice(0, policy.milestoneMax)) keep.add(r.id);
+
+  const today = records.filter((r) => now - r.at <= policy.hourHours * HOUR);
+  for (const id of hourAnchors(today)) keep.add(id);
 
   const fresh = records.filter((r) => now - r.at <= policy.dayDays * DAY);
   for (const id of dayAnchors(fresh)) keep.add(id);

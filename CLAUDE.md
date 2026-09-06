@@ -71,15 +71,20 @@ every seller, for "did all four of these arrive?" and for cost basis), and
 - `src/version-rules.mjs` — which saved versions survive a prune. Same
   rationale as the modules around it: a pruning bug deletes the one version the
   user was reaching for and leaves a list that looks perfectly healthy, so there
-  is nothing to notice until the moment it can't be fixed. Three independent
+  is nothing to notice until the moment it can't be fixed. Four independent
   reasons to live, **unioned and never intersected** — the newest `recentKeep`,
-  milestones inside `milestoneDays`, and the *earliest* record of each day
-  inside `dayDays`. Two things are deliberate and easy to undo by accident:
-  there is **no stored "daily" kind and nothing is ever promoted** — the day
-  anchor is derived at prune time by `dayAnchors`, so it cannot drift out of
-  step with the records the way a written-once flag would; and the anchor is the
-  day's **earliest**, because the state worth reaching for is how things stood
-  *before* the day that went wrong. `prunePlan` is the complement of `keptIds`
+  milestones inside `milestoneDays`, the earliest record of each *hour* inside
+  `hourHours`, and the earliest of each *day* inside `dayDays`. The hourly tier
+  closes the gap the others leave: the ring holds ten to thirty minutes of dense
+  work before it churns out and the day anchor holds this morning, so without it
+  the honest answer to "put it back to how it was at 11am" was "you can't".
+  24 more records, ~600KB gzipped — the cheapest tier here.
+  Two things are deliberate and easy to undo by accident: there is **no stored
+  "hourly" or "daily" kind and nothing is ever promoted** — both anchors are
+  derived at prune time by `earliestPer`, so they cannot drift out of step with
+  the records the way a written-once flag would; and an anchor is its bucket's
+  **earliest**, because the state worth reaching for is how things stood
+  *before* the stretch that went wrong. `prunePlan` is the complement of `keptIds`
   so no record can be both. `shouldSnapshot` is the write gate. Imported by
   `entry.jsx` (`prunePlan`) and `app.jsx` (`shouldSnapshot`). Group 38.
 - `src/remote-rules.mjs` — the two adapter decisions worth asserting on:
@@ -492,7 +497,7 @@ page. See "Known open threads" for exactly what that leaves unproven.
 - **Saved versions, and a History list to roll back from.** Gzipped snapshots
   in their own IndexedDB store, listed newest first —
   `14:32 · before import · 806/481` — expanding to the delta against now and a
-  two-tap `Restore this version`. Three tiers, and the important half is *when*
+  two-tap `Restore this version`. Four tiers, and the important half is *when*
   each is taken. **Milestones** go in immediately BEFORE each of the operations
   that can lose data in bulk — import, sync, restore, reset — so each holds the
   world as it stood in front of the thing that might have ruined it. **Recent**
@@ -1244,7 +1249,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 498 assertions, no test framework, ~60s (groups 30–31 spend a few
+`npm test` — 502 assertions, no test framework, ~60s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
@@ -1279,7 +1284,8 @@ real b64. It stores text uncompressed on purpose: gzip is the platform layer's
 business, `app.jsx` never learns whether it happened, and jsdom has no
 `CompressionStream`.
 
-Mutation-tested, all confirmed to turn the suite red: the day anchor taking a
+Mutation-tested, all confirmed to turn the suite red: the hourly tier deleted,
+reaching forever, or treating every record as an anchor; the day anchor taking a
 day's latest instead of its earliest; the recent ring keeping everything; day
 anchors reaching forever; `dayKey` reading UTC; every save earning a version;
 milestones never surviving; a version built from its own payload rather than
@@ -1293,11 +1299,16 @@ the load control fetching nothing.
 
 Four method notes worth keeping, all learned the hard way here:
 
-- **Three of group 38's own assertions were wrong before the code was.** They
-  failed on the first run because the day-anchor rule keeps records the recent
-  ring drops (the union working, not the ring failing), and because a
-  four-record fixture never saturates the ring, so everything passes for the
-  wrong reason. Saturate the ring in any fixture meant to test what falls out.
+- **Group 38's own assertions have been wrong before the code was, four
+  separate times, always the same way.** A tier's fixture must neutralise every
+  *other* tier or the assertion is decided elsewhere: the day anchor keeps
+  records the recent ring drops (the union working, not the ring failing), a
+  small fixture never saturates the ring, and — the one that survived a mutation
+  run — a record three hours old is also *today's earliest*, so it is kept by
+  the day tier whether or not an hourly tier exists at all. Deleting the hourly
+  tier left the suite green until the fixture gained an earlier record to take
+  the day anchor off it. **When asserting that one tier keeps or drops
+  something, make sure no other tier is quietly deciding it for you.**
 - **38.9's first draft could not fail at all**: `dayKey("2026-05-01T00:30")` is
   `"2026-05-01"` under the UTC reading too. It derives the boundary from the
   runner's own `getTimezoneOffset()` now, and skips itself in UTC where there is

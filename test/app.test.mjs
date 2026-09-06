@@ -69,6 +69,7 @@ import {
   RETENTION,
   dayKey,
   dayAnchors,
+  hourAnchors,
   keptIds,
   prunePlan,
   shouldSnapshot,
@@ -2862,6 +2863,51 @@ const manyRecents = Array.from({ length: 30 }, (_, i) =>
     ver("m1", NOW - 60_000, "milestone"),
   ];
   ok(keptIds(mixed, NOW).has("m1"), "38.4 a milestone outlives the recent ring");
+}
+
+/* The tier that closes the real gap. The ring holds ten to thirty minutes of
+   dense work; the day anchor holds this morning. Without an hourly tier the
+   honest answer to "put it back to how it was at 11am" was "you can't". */
+{
+  const atHoursAgo = (h, min = 0) => NOW - h * 3_600_000 + min * 60_000;
+  /* Every other tier deliberately neutralised, or this proves nothing. The ring
+     is saturated with the last few minutes so nothing survives by being recent,
+     and `dawn` is today's earliest record so it — not h3early — is the DAY
+     anchor. Without dawn, h3early is kept by the day tier and the whole block
+     passes with the hourly tier deleted; that mutant survived the first run.
+
+     This is the fourth time in this group the same shape has bitten: when
+     asserting that one tier keeps or drops something, make sure no other tier
+     is quietly deciding it for you. */
+  const day = [
+    ...Array.from({ length: RETENTION.recentKeep }, (_, i) =>
+      ver(`now${i}`, NOW - i * 30_000)
+    ),
+    ver("dawn", atHoursAgo(9)),
+    ver("h3early", atHoursAgo(3, 2)),
+    ver("h3late", atHoursAgo(3, 55)),
+    /* h34 exists so h30 is NOT its day's anchor — otherwise h30 survives via
+       the DAY tier and proves nothing about the hourly one. Third time this
+       exact shape has bitten in this group: when asserting that a tier drops
+       something, make sure no other tier is quietly keeping it. */
+    ver("h34", atHoursAgo(34)),
+    ver("h30", atHoursAgo(30)),
+  ];
+  const keep = keptIds(day, NOW);
+  ok(keep.has("h3early"), "38.5b three hours ago is still reachable");
+  ok(
+    !keep.has("h3late"),
+    "38.5c but only the hour's first — the rest of it is not an anchor"
+  );
+  ok(
+    !keep.has("h30"),
+    "38.5d and the hourly reach ends at a day, or it would never stop"
+  );
+  eq(
+    [...hourAnchors([ver("late", atHoursAgo(5, 50)), ver("early", atHoursAgo(5, 1))])],
+    ["early"],
+    "38.5e the hour's anchor is its earliest, like the day's"
+  );
 }
 
 /* the reach: an old day's first version is what "restore last Tuesday" means */
