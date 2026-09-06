@@ -5,6 +5,7 @@
   "description": "TCGplayer order check-in tracker fed by OrderWand CSV exports",
   "scripts": {
     "build": "node build.mjs",
+    "check:build": "node build.mjs --check",
     "test": "node test/app.test.mjs",
     "serve": "node dev-server.mjs",
     "deploy": "npm run build && npm test && git add index.html && git commit -m \"deploy: rebuild index.html\" && git push"

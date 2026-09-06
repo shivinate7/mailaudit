@@ -41,9 +41,19 @@ jobs:
       # The committed index.html must match what the sources build, or the live
       # site is not the code in the repo. Cheap to check, and the one thing a
       # local `npm run deploy` can skip by accident.
+      #
+      # This used to diff the two pages whole, and it was red for four straight
+      # runs because it cannot work that way. index.html carries the code AND a
+      # snapshot of the ledger read off `origin/data` at build time, and
+      # actions/checkout is single-branch — so the runner has no origin/data,
+      # builds a seedless page, and every comparison differs. Fetching that
+      # branch here would only trade an always-wrong check for a randomly-wrong
+      # one: the phone rewrites `data` on a 90s idle debounce, so a rebuild
+      # minutes after a deploy legitimately produces different bytes.
+      #
+      # `--check` compares the code and ignores the seed, which is data. The
+      # logic lives in build.mjs beside the template that writes the seed tag,
+      # so the two cannot drift apart — and it fails loudly rather than quietly
+      # comparing nothing if the tag's shape ever changes without it.
       - name: index.html is in step with src/
-        run: |
-          cp index.html /tmp/committed.html
-          npm run build --silent
-          diff -q /tmp/committed.html index.html \
-            || { echo "::error::index.html is stale — run npm run deploy"; exit 1; }
+        run: npm run check:build --silent

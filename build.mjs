@@ -105,9 +105,51 @@ const html = `<!doctype html>
 </head>
 <body>
 <div id="root"></div>
-${seed ? `<script id="seed" type="application/gzip-base64">${seed}</script>` : ""}
-<script>${bundle}</script>
+${seed ? `<script id="seed" type="application/gzip-base64">${seed}</script>\n` : ""}<script>${bundle}</script>
 </body>
 </html>`;
-writeFileSync("index.html", html);
-console.log(`index.html built (${(html.length / 1024).toFixed(0)} KB)`);
+/* ---------- `node build.mjs --check` ----------
+   Is the committed index.html the code in this repo? That is the one thing a
+   local `npm run deploy` can skip by accident, and it is worth a machine
+   noticing.
+
+   The comparison IGNORES the seed, and that is the design rather than a
+   loophole. index.html carries two things: the code, and a snapshot of the
+   ledger read off `origin/data` at build time. Only the first is being
+   claimed — and the second cannot be compared even in principle, because that
+   branch is rewritten by the phone's auto-push on a 90s idle debounce, so a
+   rebuild minutes after a deploy legitimately produces different bytes.
+   Diffing whole pages therefore fails one of two ways, and CI managed the
+   first: ALWAYS, because actions/checkout is single-branch so the runner has
+   no origin/data and builds seedless (main was red for four runs on exactly
+   this); or AT RANDOM, if you fetch the branch and race the phone. A check
+   that cries wolf is worse than none, because it trains you past the alarm.
+
+   So this strips the seed from both sides. It lives here, beside the template
+   that writes the tag, so the two cannot drift apart — and if the tag's shape
+   ever changes without this following, the guard below says so rather than
+   quietly comparing nothing. A stale SEED is harmless in a way stale code is
+   not: a visitor sees a slightly older ledger, and the next deploy refreshes
+   it. */
+const withoutSeed = (page) =>
+  page.replace(/<script id="seed"[^>]*>[^<]*<\/script>\n/, "");
+
+if (process.argv.includes("--check")) {
+  const a = withoutSeed(readFileSync("index.html", "utf8"));
+  const b = withoutSeed(html);
+  if (a.includes('id="seed"') || b.includes('id="seed"')) {
+    console.error(
+      "check: a seed tag survived the strip — the tag's shape changed and\n" +
+        "       withoutSeed() in build.mjs did not follow it."
+    );
+    process.exit(1);
+  }
+  if (a !== b) {
+    console.error("index.html is stale — run npm run deploy");
+    process.exit(1);
+  }
+  console.log("index.html is in step with src/ (seed ignored — it is data)");
+} else {
+  writeFileSync("index.html", html);
+  console.log(`index.html built (${(html.length / 1024).toFixed(0)} KB)`);
+}
