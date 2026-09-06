@@ -3587,4 +3587,58 @@ ok(
   `42.3 the longest message ("${worst}", ${worst.length}) fits the reserved ${reservedCh()}ch`
 );
 
+
+/* ── 43. the joy pass: the two claims that are not about layout ─────────
+   Almost nothing in the motion pass is assertable here — jsdom has no layout
+   and no compositor, so durations, easing, distances and the fact that nothing
+   reflows were all settled by measuring a real 375px viewport instead. Two
+   claims are behaviour, though, and both fail silently.
+
+   The first is the view switch. The violet fill is now ONE sliding element
+   rather than a background each button paints for itself, so the only thing
+   saying which third it belongs on is the data-view attribute the stylesheet
+   keys against. Lose it and the app has no active-view indicator at all — not
+   a degraded one, none — and every button still looks exactly right in a DOM
+   dump.
+
+   The second is the gate under every celebration in the app. A plain CSS class
+   replays its animation each time React rebuilds the tree, so leaving the
+   stamp permanently classed would restamp every finished order on the page on
+   a view switch, a re-sort or a filter change. useJustBecame ties the motion
+   to the ACT of completing a package. It is also the more honest reading: the
+   moment worth marking is the check-in, not the fact of having been checked
+   in. */
+
+await fresh();
+const sw = () => document.querySelector(".mdl-switch");
+eq(sw().dataset.view, "packages", "43.1 the switch says which third the fill is on");
+await goTo("tally");
+eq(sw().dataset.view, "items", "43.2 and it follows the view");
+await goTo("packages");
+
+/* Showing starts on Unreceived, and a package that completes leaves that list
+   — correct, and it would take the very element under assertion off the page.
+   Everything keeps it there. */
+await toggleShowing();
+const alpha = card(/Alpha Cards/);
+ok(!alpha.querySelector(".mdl-land"), "43.3 nothing has landed yet");
+await click(inCard(alpha, /^Mark all received$/), "complete Alpha");
+ok(
+  !!card(/Alpha Cards/).querySelector(".mdl-land"),
+  "43.4 completing a package lands its stamp"
+);
+
+/* the whole point of the gate: leave and come back, and the stamp is simply
+   there. A mutant that classes the stamp on `done` alone passes 43.4 and dies
+   here, which is the pair that matters. */
+await goTo("tally");
+await goTo("packages");
+const alphaAgain = card(/Alpha Cards/);
+ok(/RECEIVED/.test(alphaAgain.textContent), "43.5 the stamp survives the round trip");
+ok(
+  !alphaAgain.querySelector(".mdl-land"),
+  "43.6 but a re-render does not restamp four hundred finished orders"
+);
+
+
 report();

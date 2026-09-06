@@ -440,6 +440,32 @@ function rankCandidates(entries, pkgs, received) {
 
 /* ---------- Small UI atoms ---------- */
 
+/* True for one animation's worth of time after `on` flips false -> true while
+   this component stays mounted, and NEVER on a fresh mount. Everything that
+   celebrates in this app — the RECEIVED stamp, the order-stamp band, the
+   progress bar reaching 100% — is a state a package can already be in, so a
+   bare CSS class would replay the animation every time React rebuilt the tree:
+   switching Packages -> Tally would restamp four hundred finished orders at
+   once, and a sort change would do it again. This ties the motion to the ACT
+   rather than to the state, which is also the honest reading — the moment
+   worth marking is the check-in, not the fact of having been checked in.
+   The window is generous (700ms against a 380ms animation) because it only has
+   to outlast the animation, and a class removed a frame early would cut it. */
+function useJustBecame(on, ms = 700) {
+  const was = useRef(on);
+  const [fresh, setFresh] = useState(false);
+  useEffect(() => {
+    const rose = on && !was.current;
+    was.current = on;
+    if (!rose) return;
+    setFresh(true);
+    const t = setTimeout(() => setFresh(false), ms);
+    return () => clearTimeout(t);
+  }, [on, ms]);
+  return fresh;
+}
+
+
 /* The C.H Postal Company seal — the masthead's centre ornament, and the only
    SVG in this file. Drawn as a chevron-over-bar device rather than anything
    finer: at the 36px end of its clamp there is room for roughly one bold shape,
@@ -503,7 +529,12 @@ function Seal({ size, id, className }) {
         <path d="M29 54.5 L50 34.5 L71 54.5" />
         <path d="M31 68.5 L69 68.5" />
       </g>
+      {/* the specular catch. Classed so the masthead's copy can bring it up
+          after the wax has landed; the running head's copy is never selected
+          and keeps the attribute value throughout. A presentation attribute,
+          so with the animation off it simply reads 0.22. */}
       <ellipse
+        className="mdl-shine"
         cx="34"
         cy="28"
         rx="15"
@@ -517,6 +548,17 @@ function Seal({ size, id, className }) {
 }
 
 function ProgressBar({ pct, height = 8 }) {
+  /* The colour now arrives a beat after the width lands, so the two read as
+     cause and effect rather than as one event, and a single pass of light
+     travels a bar that has just filled.
+     Note WHICH bar that can be. The two per-package bars are mounted only
+     while `gotQty > 0 && !done`, so they are unmounted the instant they would
+     reach 100% and never render full — a package's completion is marked on the
+     card instead (see .mdl-gild). The bar this reaches is the masthead's, and
+     100% there means every card in the ledger has arrived, which is the largest
+     thing this app has to say and is worth the light it costs. Gated on the
+     crossing rather than the state: see useJustBecame. */
+  const justDone = useJustBecame(pct >= 100);
   return (
     <div
       style={{
@@ -524,6 +566,9 @@ function ProgressBar({ pct, height = 8 }) {
         background: C.silver,
         borderRadius: height,
         overflow: "hidden",
+        /* the stage for .mdl-sheen, which is clipped to the bar by the
+           overflow above and so can never paint over the row */
+        position: "relative",
       }}
     >
       <div
@@ -535,9 +580,10 @@ function ProgressBar({ pct, height = 8 }) {
              ink is a near-black violet and read as flat black on parchment. */
           background: pct >= 100 ? C.green : C.accent,
           borderRadius: height,
-          transition: "width 240ms ease",
+          transition: "width 240ms ease, background 340ms 160ms ease",
         }}
       />
+      {justDone && <i className="mdl-sheen" aria-hidden="true" />}
     </div>
   );
 }
@@ -554,6 +600,9 @@ function ItemRow({
 }) {
   const done = got >= item.qty;
   const partial = got > 0 && !done;
+  /* the tick draws only when this row is checked in under the finger, never
+     when a done row simply renders (a view switch, a re-sort, a filter change) */
+  const inked = useJustBecame(done, 400);
   const toggle = () => onSet(item.key, done ? 0 : item.qty);
   /* in the Tally view the name is the group heading, so the row leads with
      where this copy came from instead */
@@ -608,9 +657,35 @@ function ItemRow({
           fontSize: 16,
           lineHeight: 1,
           padding: 0,
+          /* the wash and its rule soak in rather than switching; colour only,
+             so the 30px box never moves under the next tap */
+          transition:
+            "background 200ms ease, border-color 200ms ease, color 200ms ease",
         }}
       >
-        {done ? "✓" : partial ? "–" : ""}
+        {/* the tick is drawn, not typed: one stroke left to right, which is
+            what the glyph was always standing in for. An SVG rather than the
+            "✓" character purely so it can be written — the aria-label above
+            carries the meaning either way, and the partial state stays a
+            typographic dash because a half-drawn stroke would read as a tick
+            still arriving. */}
+        {done ? (
+          <svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              className={inked ? "mdl-nib" : undefined}
+              d="M4 12.5 L9.5 18 L20 6"
+              fill="none"
+              stroke={C.card}
+              strokeWidth="3.2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        ) : partial ? (
+          "–"
+        ) : (
+          ""
+        )}
       </button>
 
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -808,6 +883,9 @@ const stampChip = {
   borderRadius: 4,
   padding: "3px 8px",
   transform: "rotate(-3deg)",
+  /* read by the shared landing keyframes, so this chip and the RECEIVED stamp
+     share one animation and each returns to its own angle */
+  "--rest": "-3deg",
   flexShrink: 0,
   background: C.card,
   whiteSpace: "nowrap",
@@ -848,7 +926,11 @@ function PackageCard({
     missingVal >= 100
       ? `$${Math.round(missingVal).toLocaleString()}`
       : `$${missingVal.toFixed(2)}`;
+  const justStamped = useJustBecame(done);
   const stamped = hasStamp(stamp);
+  /* the order stamp the user sets by hand lands the same way the ledger's own
+     verdict does — same keyframes, its own resting angle */
+  const justBanded = useJustBecame(stamped);
   const refunded = isRefundStamp(stamp);
   /* a stamped order is being handled — the warning would nag about a claim
      that is already filed, and for a reshipment the original order date means
@@ -897,6 +979,15 @@ function PackageCard({
         scrollMarginTop: 58,
       }}
     >
+      {/* One pass of gold across the card on the tap that completes it, on the
+          same beat as the stamp landing. This is where the completion moment
+          actually lives: the per-package progress bar is mounted only while
+          `gotQty > 0 && !done`, so it is gone before it can ever render at
+          100% — the bar cannot mark its own completion because it does not
+          survive it. The card does. Absolutely positioned and pointer-events
+          none inside the card's existing relative/overflow-hidden box, so it
+          is clipped to the card, catches no taps and moves nothing. */}
+      {justStamped && <i className="mdl-gild" aria-hidden="true" />}
       <button
         onClick={() => setOpen((o) => !o)}
         style={{
@@ -974,6 +1065,11 @@ function PackageCard({
         </div>
         {done ? (
           <span
+            /* it is a stamp, so it lands like one — but only on the tap that
+               actually completed the package. `justStamped` is false on a fresh
+               mount, which is what keeps a view switch from restamping every
+               finished order on the page at once. */
+            className={justStamped ? "mdl-land" : undefined}
             style={{
               fontFamily: mono,
               fontSize: 10.5,
@@ -984,6 +1080,8 @@ function PackageCard({
               borderRadius: 4,
               padding: "3px 8px",
               transform: "rotate(-4deg)",
+              /* the angle the landing returns to, read by the shared keyframes */
+              "--rest": "-4deg",
               flexShrink: 0,
               background: C.card,
             }}
@@ -1034,7 +1132,10 @@ function PackageCard({
             cursor: "pointer",
           }}
         >
-          <span style={stampChip}>
+          <span
+            className={justBanded ? "mdl-land" : undefined}
+            style={stampChip}
+          >
             {STAMP_LABEL[stamp.kind].toUpperCase()} · {(stamp.at || "").slice(5)}
           </span>
           {/* ellipsis has to sit on the text child, which needs min-width 0 */}
@@ -1560,6 +1661,9 @@ const headCell = (last) => ({
    underline their value — a form's write-on rule, not a button box. */
 const valUnder = (open) => ({
   borderBottom: `1px solid ${open ? C.accent : C.line}`,
+  /* the rule takes the ink rather than switching to it — the same beat as the
+     caret turning beside it, so the cell reads as one gesture */
+  transition: "border-color 200ms ease",
 });
 const headCaret = (open) => ({
   fontSize: 9,
@@ -5232,18 +5336,24 @@ export default function MailDayLedger() {
 
         /* Equal thirds. Overflow is now impossible; the label has to fit its
            own third instead, which the clamped font-size buys. */
-        .mdl-switch { display: grid; grid-template-columns: repeat(3, 1fr);
+        .mdl-switch { position: relative; display: grid;
+                      grid-template-columns: repeat(3, 1fr);
                       width: 100%; border: 1px solid ${C.line};
                       border-radius: 999px; overflow: hidden;
                       background: ${C.card}; margin-bottom: 14px; }
-        .mdl-switch button { font-family: ${mono}; letter-spacing: .09em;
+        .mdl-switch button { position: relative; z-index: 1;
+                      font-family: ${mono}; letter-spacing: .09em;
                       font-size: clamp(9px, 2.75vw, 11px);
                       padding: clamp(7px, 2.1vw, 9px) 4px;
                       text-transform: uppercase; border: none;
                       background: transparent; color: ${C.inkSoft};
                       cursor: pointer; white-space: nowrap; display: flex;
-                      align-items: center; justify-content: center; gap: 5px; }
-        .mdl-switch button.on { background: ${C.accent}; color: ${C.card}; }
+                      align-items: center; justify-content: center; gap: 5px;
+                      transition: color 300ms ease; }
+        /* the accent fill is .mdl-thumb's job now — a button painting its own
+           background would leave the fill behind wherever the thumb had just
+           been, and there would be two of it mid-slide */
+        .mdl-switch button.on { color: ${C.card}; }
         .mdl-switch button b { font-weight: 700; color: ${C.red}; }
         .mdl-switch button.on b { color: ${C.card}; }
 
@@ -5280,9 +5390,155 @@ export default function MailDayLedger() {
         .mdl-act.armed { background: ${C.red}; color: ${C.card}; font-weight: 700; }
         .mdl-act:disabled { opacity: .6; cursor: default; }
 
+        /* ── Motion ──────────────────────────────────────────────────────
+           A joy pass, under one rule: NOTHING HERE MAY REFLOW. Every keyframe
+           below touches opacity, transform, colour or box-shadow and nothing
+           else — no width, height, margin or padding on anything a finger is
+           about to land on. That is invariant 5 restated as a stylesheet
+           constraint, and it is why the sliding switch thumb is an absolutely
+           positioned element rather than a background that moves between three
+           buttons, and why the check tick is drawn with stroke-dashoffset
+           inside a box whose 30px never changes.
+
+           The register is stationery, not software: a stamp rocked onto paper,
+           a seal pressed, rules drawn like a pen stroke, gold catching light
+           once. Nothing springs, nothing bounces past its rest and hangs there.
+           The one overshoot in here — the stamp's +1deg — is the wrist roll
+           that inks a rubber stamp's edges, and it returns THROUGH rest rather
+           than oscillating around it.
+
+           Every rule is switched off in the reduced-motion block at the foot of
+           this sheet, where the app is exactly what it was before this pass:
+           each animated thing has a resting state that is its own final frame,
+           so a plain animation:none leaves it drawn, not hidden. (No
+           backticks anywhere in this sheet's comments — it is one template
+           literal, and a stray one would end the string.) */
+
+        /* The letterhead composes itself once per load: the seal is pressed,
+           then the rules are drawn outward from it, then the type settles.
+           These are both-filled animations on elements that mount once, so
+           they run on first paint and never again — a re-render does not
+           rebuild them, and nothing here is on a timer. */
+        .mdl-head .mdl-seal { animation: mdl-press 600ms cubic-bezier(.22,.85,.3,1) both; }
+        @keyframes mdl-press {
+          0%   { opacity: 0; transform: scale(.68) rotate(-10deg); }
+          58%  { opacity: 1; transform: scale(1.06) rotate(2.5deg); }
+          100% { opacity: 1; transform: scale(1) rotate(0); }
+        }
+        /* the catch of light, once the wax is down and still. Only the
+           masthead's seal; the running head's is left alone. */
+        .mdl-head .mdl-seal .mdl-shine {
+          animation: mdl-shine 520ms 420ms ease-out both; }
+        @keyframes mdl-shine { from { opacity: 0; } to { opacity: .22; } }
+        /* drawn outward from the seal, and AFTER it — the order a page is
+           actually made in: press the wax, then rule the paper */
+        .mdl-rule i { animation: mdl-draw 680ms 240ms cubic-bezier(.16,1,.3,1) both; }
+        .mdl-rule i:first-child { transform-origin: right center; }
+        .mdl-rule i:last-child  { transform-origin: left center; }
+        @keyframes mdl-draw { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+        /* The sequence is staged rather than crowded: five overlapping beats
+           landing in the order a letterhead is actually made — wax, rules,
+           name, house, figures — and finished by ~1060ms. An earlier cut ran
+           the whole thing inside 700ms and it read as one blur rather than as
+           a sequence; the ceremony is the point, and it is bought at the price
+           the owner chose knowingly, which is that the tallies arrive last.
+           That price is the thing to re-examine if this is ever revisited: the
+           figures are what the app is opened to read. Keep the last beat under
+           ~1.1s, and never let the tallies start after the house line. */
+        .mdl-title   { animation: mdl-settle 540ms 360ms cubic-bezier(.16,1,.3,1) both; }
+        .mdl-house   { animation: mdl-settle 500ms 470ms cubic-bezier(.16,1,.3,1) both; }
+        .mdl-tallies { animation: mdl-settle 500ms 560ms cubic-bezier(.16,1,.3,1) both; }
+        @keyframes mdl-settle {
+          from { opacity: 0; transform: translateY(7px); }
+          to   { opacity: 1; transform: none; }
+        }
+
+        /* The switch is one object being moved, not three lamps being lit. The
+           violet fill is its own absolutely positioned element at exactly a
+           third of the track, translated by whole multiples of its own width —
+           so it lands on the thirds the grid already defines and cannot drift
+           out of step with them. The buttons keep transparent backgrounds and
+           sit above it; only their colour crosses over. */
+        .mdl-thumb { position: absolute; top: 0; bottom: 0; left: 0;
+                     width: calc(100% / 3); background: ${C.accent};
+                     border-radius: 999px; pointer-events: none;
+                     transition: transform 420ms cubic-bezier(.16,1,.3,1); }
+        .mdl-switch[data-view="items"] .mdl-thumb    { transform: translateX(100%); }
+        .mdl-switch[data-view="packages"] .mdl-thumb { transform: translateX(200%); }
+
+        /* A stamp lands: down at an angle, rocked flat, settled back. It plays
+           only when a package actually completes under the user's finger —
+           useJustBecame gates it — because a class alone would restamp every
+           finished order on the page each time React rebuilt the tree.
+           The --rest property carries the element's own resting angle, so the
+           RECEIVED
+           stamp (-4deg) and the order-stamp band (-3deg) share one keyframe
+           set and each returns to its own place. */
+        .mdl-land { animation: mdl-stamp 380ms cubic-bezier(.32,.7,.3,1) both; }
+        @keyframes mdl-stamp {
+          0%   { opacity: 0; transform: rotate(-13deg) scale(1.3); }
+          45%  { opacity: 1; transform: rotate(1deg) scale(.97); }
+          72%  { transform: rotate(-6deg) scale(1.01); }
+          100% { opacity: 1; transform: rotate(var(--rest, -4deg)) scale(1); }
+        }
+
+        /* Gold catching light, once, along a bar that has just filled. It is a
+           sibling inside the bar's own overflow:hidden box, so it is clipped to
+           the bar and can never paint over the row. */
+        .mdl-sheen { position: absolute; inset: 0; pointer-events: none;
+                     background: linear-gradient(100deg, transparent 32%,
+                       ${C.card} 50%, transparent 68%);
+                     animation: mdl-sheen 620ms 140ms cubic-bezier(.3,0,.2,1) both; }
+        @keyframes mdl-sheen {
+          from { opacity: .9; transform: translateX(-105%); }
+          to   { opacity: 0;  transform: translateX(105%); }
+        }
+
+        /* Gold catching light across a package that has just been completed.
+           Faint and quick: the band is the ornamental gold, which is never
+           allowed to carry information, and here it carries none — it says
+           only that something finished. Opacity is animated on the element
+           rather than baked into the gradient stops so the palette stays whole
+           values from C, with no alpha literal anywhere. */
+        .mdl-gild { position: absolute; inset: 0; pointer-events: none;
+                    background: linear-gradient(100deg, transparent 34%,
+                      ${C.gold} 50%, transparent 66%);
+                    animation: mdl-gild 620ms 60ms cubic-bezier(.32,0,.24,1) both; }
+        @keyframes mdl-gild {
+          0%   { opacity: 0;   transform: translateX(-60%); }
+          35%  { opacity: .30; }
+          100% { opacity: 0;   transform: translateX(60%); }
+        }
+
+        /* The tick is written rather than switched on: one stroke, left to
+           right, in the time it takes to notice it happened. 300ms is the
+           ceiling here and not a preference — this fires hundreds of times on
+           a mail day, and anything slower would start to feel like latency. */
+        .mdl-nib { stroke-dasharray: 26; animation: mdl-nib 300ms cubic-bezier(.4,.1,.3,1) both; }
+        @keyframes mdl-nib { from { stroke-dashoffset: 26; } to { stroke-dashoffset: 0; } }
+
+        /* Disclosures. The panel's arrival is animated; the space it takes is
+           not, and must not be — the layout it pushes down is the same layout
+           it has always pushed down, one commit after the tap. */
+        .mdl-panel { animation: mdl-panel 220ms cubic-bezier(.16,1,.3,1) both; }
+        @keyframes mdl-panel {
+          from { opacity: 0; transform: translateY(-4px); }
+          to   { opacity: 1; transform: none; }
+        }
+
         @media (prefers-reduced-motion: reduce) {
           .mdl-sticky { transition: none; transform: none; }
           .mdl-act i { transition: none; }
+          /* Each of these rests at its own final frame, so switching the
+             animation off leaves the thing drawn and in place rather than
+             stranded at opacity 0 — the seal is visible, the rules are full
+             width, the tick is complete, the stamp sits at its inline angle. */
+          .mdl-head .mdl-seal, .mdl-head .mdl-seal .mdl-shine, .mdl-rule i,
+          .mdl-title, .mdl-house, .mdl-tallies,
+          .mdl-land, .mdl-nib, .mdl-panel { animation: none; }
+          .mdl-thumb { transition: none; }
+          .mdl-sheen, .mdl-gild { display: none; }
         }
       `}</style>
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "24px 16px 80px" }}>
@@ -5431,7 +5687,10 @@ export default function MailDayLedger() {
             badge has to fit one third (~114px at 375px) and the lever is the
             clamped font-size, not the padding. */}
         {(items.length > 0 || envelopes.length > 0) && (
-          <div className="mdl-switch">
+          <div className="mdl-switch" data-view={view}>
+            {/* the sliding fill. aria-hidden and pointer-events:none — the
+                buttons above it carry the pressed state and every gesture. */}
+            <i className="mdl-thumb" aria-hidden="true" />
             {[
               ["mystery", "Orphaned"],
               ["items", "Tally"],
@@ -5545,7 +5804,7 @@ export default function MailDayLedger() {
                   </div>
 
                   {rangeOpen && (
-                    <div style={panelWrap}>
+                    <div className="mdl-panel" style={panelWrap}>
                       {/* four columns, not three: seven options over three
                           rows cost a row more than the chip set they replaced.
                           Four fits 2 rows, and the last spans the two cells it
@@ -5692,7 +5951,7 @@ export default function MailDayLedger() {
                   )}
 
                   {sortOpen && (
-                    <div style={panelWrap}>
+                    <div className="mdl-panel" style={panelWrap}>
                       {/* two columns, not three: these labels are words, and
                           the Tally set runs to "Biggest position" */}
                       <div style={optGrid(2)}>
@@ -5958,6 +6217,7 @@ export default function MailDayLedger() {
                    the same verb as the list below — save a version — one to
                    this device, one off it. */
                 <div
+                  className="mdl-panel"
                   style={{
                     ...panelWrap,
                     display: "flex",
@@ -6177,6 +6437,7 @@ export default function MailDayLedger() {
                    spanning the row, or the rule colour shows through the empty
                    half as a slab — same trick the range panel uses. */
                 <div
+                  className="mdl-panel"
                   style={{
                     ...panelWrap,
                     display: "flex",
