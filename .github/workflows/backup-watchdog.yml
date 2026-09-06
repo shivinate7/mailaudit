@@ -1,0 +1,79 @@
+# The one check the app fundamentally cannot do for itself.
+#
+# The phone's "Backed up 09-06" line is only as honest as the phone: a device
+# whose token has expired, whose IndexedDB is unreadable, or that simply never
+# gets opened, has no way to tell you it stopped. CLAUDE.md lists the token
+# expiry as having no warning at all — "the only symptom is a push that stops
+# working". This watches from outside.
+#
+# It reads the `data` branch's own history, so it cannot be fooled by anything
+# happening (or not happening) on a device.
+name: backup watchdog
+
+on:
+  schedule:
+    # 09:00 UTC daily. A mail day that produced nothing for three days is worth
+    # a look even if the cause turns out to be "no mail".
+    - cron: "0 9 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: data
+          fetch-depth: 1
+      - id: age
+        run: |
+          LAST=$(git log -1 --format=%ct)
+          DAYS=$(( ( $(date +%s) - LAST ) / 86400 ))
+          echo "days=$DAYS" >> "$GITHUB_OUTPUT"
+          echo "when=$(git log -1 --format=%ad --date=short)" >> "$GITHUB_OUTPUT"
+          echo "Last ledger push: $DAYS day(s) ago"
+      - name: Open an issue if the backup has gone quiet
+        if: steps.age.outputs.days >= 4
+        uses: actions/github-script@v7
+        env:
+          DAYS: ${{ steps.age.outputs.days }}
+          WHEN: ${{ steps.age.outputs.when }}
+        with:
+          script: |
+            const { DAYS, WHEN } = process.env;
+            const title = "Backup has gone quiet";
+            // one open issue at a time — this runs daily and should nag once,
+            // not build a pile
+            const open = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: "open", labels: "backup-watchdog",
+            });
+            const body = [
+              `Nothing has landed on the \`data\` branch in **${DAYS} days** (last: ${WHEN}).`,
+              "",
+              "The app pushes on a 90-second idle debounce and on backgrounding, so a",
+              "gap this long usually means one of:",
+              "",
+              "- the fine-grained PAT expired on the device that does the pushing",
+              "  (they cap at 366 days, and the only symptom is that pushes stop);",
+              "- that device is sitting behind the other one, which blocks auto-push;",
+              "- storage on the device is unreadable, so nothing is being saved either;",
+              "- or simply no mail. Close this if so.",
+              "",
+              "Open the app and look at the line above the action row — it says which.",
+            ].join("\n");
+            if (open.data.length) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: open.data[0].number, body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title, body, labels: ["backup-watchdog"],
+              });
+            }

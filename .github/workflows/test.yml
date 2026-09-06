@@ -1,0 +1,49 @@
+# The repo had no workflows at all, deliberately: CLAUDE.md relies on that to
+# guarantee a ledger push to `data` triggers no build. That guarantee now rests
+# on these filters instead of on there being nothing to filter, so read them
+# before adding anything here.
+#
+#   - `branches: [main]` alone would already exclude `data`, but the paths
+#     filter is the belt: nothing under src/ or test/ ever changes on `data`,
+#     which carries exactly one file.
+#   - `index.html` is deliberately NOT a trigger. It is the build output and
+#     `npm run deploy` commits it separately; running the suite again on that
+#     commit would double every deploy for no new information.
+name: test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "test/**"
+      - "package.json"
+      - "build.mjs"
+      - ".github/workflows/test.yml"
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  suite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      # The committed index.html must match what the sources build, or the live
+      # site is not the code in the repo. Cheap to check, and the one thing a
+      # local `npm run deploy` can skip by accident.
+      - name: index.html is in step with src/
+        run: |
+          cp index.html /tmp/committed.html
+          npm run build --silent
+          diff -q /tmp/committed.html index.html \
+            || { echo "::error::index.html is stale — run npm run deploy"; exit 1; }

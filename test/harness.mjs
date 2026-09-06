@@ -202,6 +202,8 @@ export let remote = {
   /* what peek() can see. null = readable; a code = "we could not look", which
      is the state auto-push must refuse to act on. */
   peekUnknown: null,
+  /* the ledger repo is private: a keyless device gets 404, not the file */
+  private: false,
   history: [], // every push, as a commit
 };
 /* fixed so a snapshot never depends on the clock */
@@ -259,6 +261,10 @@ const remoteApi = {
   async peek() {
     remote.calls.push({ op: "peek" });
     if (remote.peekUnknown) return { known: false, reason: remote.peekUnknown };
+    /* "I cannot see it" is not "nobody is ahead" — that reading is the state in
+       which this device goes on pushing over the other one */
+    if (remote.private && !remote.key)
+      return { known: false, reason: "no-access" };
     return {
       known: true,
       sha: remote.sha,
@@ -295,6 +301,12 @@ const remoteApi = {
   async pull() {
     if (remote.fail)
       throw Object.assign(new Error(remote.fail), { code: remote.fail });
+    /* the ledger repo is PRIVATE now, and GitHub hides a repo you cannot see
+       behind a 404 — so a keyless device must get `no-access`, never `missing`.
+       Modelling it as readable keylessly would make the suite blind to the
+       whole bug class, exactly as it would for listPhotos. */
+    if (remote.private && !remote.key)
+      throw Object.assign(new Error("no-access"), { code: "no-access" });
     remote.calls.push({ op: "pull", key: remote.key });
     if (remote.content == null)
       throw Object.assign(new Error("missing"), { code: "missing" });
@@ -435,6 +447,7 @@ export const resetRemote = (seedText) => {
     pulledAt: null,
     auto: false,
     peekUnknown: null,
+    private: false,
     history: [],
   };
 };

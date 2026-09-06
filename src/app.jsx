@@ -1794,7 +1794,13 @@ const keySave = {
    backup rather than a sync, and the ledger on the device is still the real
    one. */
 const REMOTE_SAYS = {
-  "no-key": "Add a GitHub key first — pushing needs one, pulling the ledger doesn’t.",
+  "no-key": "Add a GitHub key first — this device can’t reach the backup without one.",
+  /* the private-repo case. GitHub hides a repo you cannot see behind a 404, so
+     without this the app would say "no ledger has been pushed yet" to someone
+     whose ledger is sitting safely on a branch they simply cannot read — an
+     invitation to push over it, or to conclude the backup never worked. */
+  "no-access":
+    "This device can’t see the backup — it needs a key with access to the ledger repo.",
   "bad-key":
     "That doesn’t look like a GitHub token — they start with github_pat_ or ghp_.",
   auth: "That key has expired or been revoked. Paste a new one.",
@@ -3022,6 +3028,9 @@ export default function MailDayLedger() {
     if (!window.remote) return null;
     if (pushState === "conflict") return "conflict";
     if (remoteMsg?.tone === "error") return "error";
+    /* a device that cannot SEE the backup is as unbacked-up as one that cannot
+       write to it, and on a private repo that is what a missing key looks like */
+    if (remoteMsg?.code === "no-access") return "no-access";
     /* Being behind IS broken, and this was the worst hole the silent-sync
        change opened. Auto-push declines while `ahead`, and the auto-merge only
        fires on a fresh session — so a device that goes behind mid-session
@@ -3847,7 +3856,11 @@ export default function MailDayLedger() {
         const code = e?.code || "server";
         setPushState(code === "conflict" ? "conflict" : "idle");
         setRemoteMsg({
-          tone: code === "conflict" || code === "no-key" ? "advice" : "error",
+          code,
+          tone:
+            code === "conflict" || code === "no-key" || code === "no-access"
+              ? "advice"
+              : "error",
           text: REMOTE_SAYS[code] || REMOTE_SAYS.server,
         });
         /* `quiet` is auto-push, and this is the same reasoning doMerge's quiet
@@ -4018,7 +4031,8 @@ export default function MailDayLedger() {
          from the adapter carries a code. Either way nothing local changed. */
       const code = e?.code || "bad-response";
       setRemoteMsg({
-        tone: code === "missing" ? "advice" : "error",
+        code,
+        tone: code === "missing" || code === "no-access" ? "advice" : "error",
         text: REMOTE_SAYS[code] || REMOTE_SAYS["bad-response"],
       });
       if (code === "auth") setKeyOpen(true);
@@ -4144,7 +4158,11 @@ export default function MailDayLedger() {
              Suppressing costs nothing, because a failed merge lands nothing —
              applyBackup throws before its first setState. */
           setRemoteMsg({
-            tone: code === "missing" || code === "conflict" ? "advice" : "error",
+            code,
+            tone:
+              code === "missing" || code === "conflict" || code === "no-access"
+                ? "advice"
+                : "error",
             text: REMOTE_SAYS[code] || REMOTE_SAYS["bad-response"],
           });
           if (code === "auth" || code === "no-key") setKeyOpen(true);
@@ -5774,7 +5792,9 @@ export default function MailDayLedger() {
                     cursor: "pointer",
                   }}
                 >
-                  {syncBroken === "behind"
+                  {syncBroken === "no-access"
+                    ? "This device can’t see the backup — tap to add its key"
+                    : syncBroken === "behind"
                     ? "Your other device has newer lines — tap to bring them in"
                     : !syncBroken
                     ? `Backed up${

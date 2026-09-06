@@ -3069,6 +3069,31 @@ ok(
 );
 win.versions.put = realPut;
 
+/* ── 38c. a private ledger repo ───────────────────────────────────────────
+   GitHub hides a repo you cannot see behind a 404 rather than admitting a 403,
+   so on a private ledger "nothing has been pushed yet" and "you need a key"
+   arrive identically. Told the first when the second is true, a device would
+   report a backup that never worked — over a ledger sitting safely on a branch
+   it simply cannot read. The photo repo has always had this shape; the ledger
+   inherited it the day it stopped being public. */
+
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { remote: null });
+remote.private = true;
+await openSync();
+await click(btn(/Pull from GitHub/), "arm pull");
+await click(btn(/Tap again to replace/), "pull without a key");
+await settle();
+ok(
+  /can’t see the backup/.test(text()),
+  "38c.1 a keyless device is told it cannot SEE the backup"
+);
+ok(
+  !/pushed yet/.test(text()),
+  "38c.2 and never that nothing has been pushed — which would be a lie"
+);
+eq(saved().items?.length ?? 3, 3, "38c.3 and nothing on this device changed");
+remote.private = false;
+
 /* ── 39. the rollback list ────────────────────────────────────────────────
    Driving the app, unlike group 36 which drives the rules. The claim is
    narrower and more useful: a version stands in front of each operation that

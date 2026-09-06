@@ -413,6 +413,27 @@ function classify(res) {
   return remoteErr(code, { status, detail: msg, retryAfter });
 }
 
+/* A 404 from the ledger repo is ambiguous the moment that repo is PRIVATE:
+   GitHub hides a repo you cannot see rather than admitting a 403, so "no
+   ledger has been pushed yet" and "you need a key" arrive identically. The
+   photo repo has always had this problem and disambiguates with one extra
+   read; the ledger repo inherited it the day it stopped being public.
+
+   Getting this wrong is not cosmetic. `missing` renders as "No ledger has been
+   pushed yet" — which, told to someone whose ledger is sitting safely on a
+   branch they simply cannot read, is an invitation to push over it or to
+   conclude the backup never worked. One request, only on the 404 path, only
+   when it matters. */
+async function classifyLedger(res) {
+  const err = classify(res);
+  if (res.status !== 404) return err;
+  const repo = await api(`/repos/${REMOTE.owner}/${REMOTE.repo}`);
+  /* readable, so the file or branch really is absent — keep the precise code */
+  if (repo.ok) return err;
+  if (repo.status === 404) return remoteErr("no-access", { status: 404 });
+  return classify(repo);
+}
+
 window.remote = {
   async target() {
     return { ...REMOTE };
@@ -461,7 +482,7 @@ window.remote = {
       `/repos/${REMOTE.owner}/${REMOTE.repo}/commits?path=${REMOTE.path}` +
         `&sha=${REMOTE.branch}&per_page=${limit}`
     );
-    if (!res.ok) throw classify(res);
+    if (!res.ok) throw await classifyLedger(res);
     const rows = Array.isArray(res.body) ? res.body : [];
     return rows.map((c) => ({
       sha: c.sha,
@@ -480,7 +501,7 @@ window.remote = {
     const res = await api(
       `/repos/${REMOTE.owner}/${REMOTE.repo}/contents/${REMOTE.path}?ref=${sha}`
     );
-    if (!res.ok) throw classify(res);
+    if (!res.ok) throw await classifyLedger(res);
     const b = res.body || {};
     if (b.encoding === "base64" && b.content) return base64ToUtf8(b.content);
     if (b.download_url) {
@@ -508,7 +529,7 @@ window.remote = {
     const res = await api(
       `/repos/${REMOTE.owner}/${REMOTE.repo}/contents/${REMOTE.path}?ref=${REMOTE.branch}`
     );
-    if (!res.ok) throw classify(res);
+    if (!res.ok) throw await classifyLedger(res);
     const b = res.body || {};
     let text;
     if (b.encoding === "base64" && b.content) text = base64ToUtf8(b.content);
@@ -570,11 +591,14 @@ window.remote = {
     }
     if (!res.ok) {
       /* the branch or the file simply not being there yet is a real answer:
-         nothing has been pushed, so nobody is ahead of us */
-      const code = classify(res).code;
-      if (code === "missing" || code === "no-branch")
+         nothing has been pushed, so nobody is ahead of us. But on a PRIVATE
+         ledger repo a keyless 404 means "you cannot see this", which is the
+         opposite — and reading it as "nobody is ahead" is exactly the state in
+         which this device would go on pushing over the other one. */
+      const err = await classifyLedger(res);
+      if (err.code === "missing" || err.code === "no-branch")
         return { known: true, sha: null, ahead: false };
-      return { known: false, reason: code };
+      return { known: false, reason: err.code };
     }
     const tree = Array.isArray(res.body?.tree) ? res.body.tree : [];
     const entry = tree.find((e) => e.path === REMOTE.path && e.type === "blob");

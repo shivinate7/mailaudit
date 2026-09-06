@@ -677,9 +677,16 @@ honestly.
   ordering *and* cleared `remote.fail` on the way in, so a force could never
   fail and nothing could ever have caught this.
   **Photos go too, to a different repo.** `shivinate7/mailaudit-photos`,
-  **private**, branch `main`, one file per photo at `photos/<id>.<ext>`. Private
-  because a mailing label carries a delivery address, a sender and a tracking
-  number, and the ledger repo is public and git is permanent. Push and Pull each
+  **private**, branch `main`, one file per photo at `photos/<id>.<ext>`.
+  Privacy used to be the whole reason for the split — a mailing label carries a
+  delivery address, and the ledger repo was public. That argument is gone now
+  that both repos are private, and the question of merging them is a fair one.
+  Two reasons survive it, and they are why they stay apart. **GitHub's 409 on
+  rapid successive Contents writes is per-repo** — it is why the photo phase has
+  its own error table and must never touch `pushState` — so merging would make
+  that collision routine instead of rare. And **git is permanent while the app
+  repo is the one you clone**: the ledger's entire history is 39KB, and every
+  photo ever taken would live in it forever, with no undo. Push and Pull each
   do both legs in one tap — ledger first, photos after.
 
   The whole algorithm is a **set difference over ids**. A photo file is
@@ -1176,9 +1183,24 @@ device, since GitHub hides a private repo's existence behind a 404.)
    git switch --orphan data && git commit --allow-empty -m "data branch: ledger backups live here, never merge to main" && git push -u origin data && git switch main
    ```
 2. Settings → Pages should read "Deploy from a branch: `main` / `(root)`". Pages
-   only builds on pushes to its configured branch, and this repo has **no
-   `.github/workflows`**, so a push to `data` triggers nothing. Never merge
-   `data` into `main`.
+   only builds on pushes to its configured branch. Never merge `data` into
+   `main`.
+   **The repo used to have no `.github/workflows` at all, and that absence was
+   the guarantee that a ledger push triggers nothing.** There are two workflows
+   now, so that guarantee rests on their filters instead — read them before
+   adding a third. `test.yml` is `branches: [main]` plus a paths filter (nothing
+   under `src/` or `test/` ever changes on `data`, which carries one file), and
+   it deliberately does **not** trigger on `index.html`, because `npm run
+   deploy` commits that separately and re-running the suite on the build output
+   would double every deploy for no new information. It also checks the
+   committed `index.html` still matches what the sources build — the one thing a
+   local deploy can skip by accident.
+   `backup-watchdog.yml` is the check the app cannot do for itself: it reads the
+   `data` branch's own history on a daily schedule and opens an issue if nothing
+   has landed in four days. The phone's "Backed up" line is only as honest as
+   the phone — a device whose token expired, whose storage is unreadable, or
+   that simply never gets opened has no way to tell you it stopped. This one
+   cannot be fooled by anything happening on a device.
 3. Create the photo repo: **`shivinate7/mailaudit-photos`, private, initialised
    with a README** so `main` exists — a Contents PUT into a repo with no commits
    is not a path worth relying on. Private is not optional: these are pictures
@@ -1261,7 +1283,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 505 assertions, no test framework, ~60s (groups 30–31 spend a few
+`npm test` — 508 assertions, no test framework, ~60s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
@@ -1719,12 +1741,24 @@ give no isolation between groups.
   exempt. Worth confirming empirically, since it's the difference between
   "safe" and "data quietly vanishes". (Push/Pull now makes this survivable
   either way, provided the user actually pushes.)
-- **The pushed ledger is world-readable.** The repo is public, so `ledger.json`
-  on the `data` branch is served at a permanent `raw.githubusercontent.com` URL
-  to anyone, logged out — order ids, sellers, prices, dates, and any tracking
-  numbers or sender names typed into envelope notes. The user opted into this
-  knowingly; the escape hatch is a private `mailaudit-data` repo, which is three
-  constants in `entry.jsx` plus "pull now needs a key on every device".
+- **The ledger repo is PRIVATE.** It was world-readable — `ledger.json` served
+  at a permanent `raw.githubusercontent.com` URL to anyone, logged out, carrying
+  order ids, sellers, prices, dates and any tracking numbers or sender names
+  typed into envelope notes. GitHub Pro serves Pages from a private repo, so
+  closing it cost one setting rather than the `mailaudit-data` migration this
+  entry used to describe. The **site** is still public (Pages access control is
+  Enterprise-only, and is not wanted here) — the app loads for anyone; the data
+  does not.
+  The price, which was always the price: **keyless pull is gone.** A fresh
+  device can no longer recover before it has been set up, and every device needs
+  the token pasted. And GitHub hides a repo you cannot see behind a **404**, so
+  every ledger read now has to disambiguate that or a keyless device is told
+  "no ledger has been pushed yet" about a ledger sitting safely on a branch it
+  simply cannot read — an invitation to push over it. `classifyLedger` does one
+  extra `GET /repos/{owner}/{repo}` on the 404 path only; `pull`, `peek`,
+  `listVersions` and `getVersion` all route through it, and `no-access` is a
+  `syncBroken` case with its own line. Group 38c. This is the same shape
+  `listPhotos` has always had, inherited by the ledger the day it went private.
 - **The token expires.** Fine-grained PATs cap at 366 days. When it lapses the
   app 401s and says "expired or been revoked" — but nothing warns beforehand,
   and the only symptom is a push that stops working.
