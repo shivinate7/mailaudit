@@ -309,10 +309,13 @@ const remoteApi = {
     remote.deviceSha = sha;
     remote.pulledAt = REMOTE_NOW;
   },
-  async push(text, message) {
+  async push(text, message, overrideSha) {
     if (!remote.key)
       throw Object.assign(new Error("no-key"), { code: "no-key" });
-    remote.calls.push({ op: "push", text, message, sha: remote.deviceSha });
+    /* the force hands its freshly-looked-up sha through rather than recording
+       it first — see pushForce */
+    const sending = overrideSha !== undefined ? overrideSha : remote.deviceSha;
+    remote.calls.push({ op: "push", text, message, sha: sending });
     if (remote.fail)
       throw Object.assign(new Error(remote.fail), { code: remote.fail });
     if (remote.pushFailOnce) {
@@ -321,7 +324,7 @@ const remoteApi = {
       throw Object.assign(new Error(code), { code });
     }
     /* the real optimistic-concurrency check, not a simulated one */
-    if (remote.sha !== remote.deviceSha)
+    if (remote.sha !== sending)
       throw Object.assign(new Error("conflict"), { code: "conflict" });
     remote.content = utf8ToBase64(text);
     remote.sha = `sha-${remote.calls.length}`;
@@ -405,9 +408,12 @@ const remoteApi = {
   },
 
   async pushForce(text, message) {
-    remote.fail = null; // the force is what clears a conflict
-    remote.deviceSha = remote.sha; // adopt the remote's sha, then overwrite
-    return remoteApi.push(text, message);
+    /* Looks the remote up and HANDS that sha to the PUT — it does not record
+       it first. The mock used to do `deviceSha = remote.sha` here, mirroring a
+       real bug in the adapter, and it also cleared `remote.fail` so the force
+       could never fail — which is exactly why no test could catch it. Model
+       both faithfully or the force is the one write path with no coverage. */
+    return remoteApi.push(text, message, remote.sha);
   },
 };
 win.remote = remoteApi;

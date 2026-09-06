@@ -2825,6 +2825,9 @@ export default function MailDayLedger() {
   /* holds the id being confirmed rather than a boolean — see `arm` below */
   const [confirmRestore, setConfirmRestore] = useState(null);
   const [versionMsg, setVersionMsg] = useState(null);
+  /* null = the store is answering. A string = it is not, and every promise
+     this feature makes is currently void — see the write path below. */
+  const [versionsDown, setVersionsDown] = useState(null);
   /* null = never asked, [] = asked and the branch had none */
   const [olderVersions, setOlderVersions] = useState(null);
   const [olderBusy, setOlderBusy] = useState(false);
@@ -3019,13 +3022,31 @@ export default function MailDayLedger() {
     if (!window.remote) return null;
     if (pushState === "conflict") return "conflict";
     if (remoteMsg?.tone === "error") return "error";
+    /* Being behind IS broken, and this was the worst hole the silent-sync
+       change opened. Auto-push declines while `ahead`, and the auto-merge only
+       fires on a fresh session — so a device that goes behind mid-session
+       stops backing up entirely, for the rest of that session, with nothing on
+       screen. The manila "your other device has pushed newer lines" advisory
+       does still exist — but it lives INSIDE the sync panel, whose only
+       entrance is this very line, so it can only be found by someone who
+       already knew to go looking.
+
+       The staleness branch below cannot rescue it either: this memo only
+       recomputes when one of its deps changes, and a stalled device changes
+       none of them, so the `Date.now()` comparison is frozen too. */
+    if (ahead) return "behind";
+    /* remoteInfo is null until its effect runs, which is one commit after the
+       first paint. Reading that as "no key" flashes the manila banner on every
+       cold start of a perfectly configured device — the same "I could not
+       look" ≠ "all clear" rule peek and listPhotos follow. */
+    if (!remoteInfo) return null;
     /* a keyless device can PULL (the ledger repo is public) but can never push,
        so it genuinely is not backed up, and saying so is honest not naggy */
-    if (!remoteInfo?.hasKey) return "no-key";
-    if (!remoteInfo?.pushedAt) return "never";
+    if (!remoteInfo.hasKey) return "no-key";
+    if (!remoteInfo.pushedAt) return "never";
     if (Date.now() - remoteInfo.pushedAt > SYNC_STALE_MS) return "stale";
     return null;
-  }, [pushState, remoteMsg, remoteInfo]);
+  }, [pushState, remoteMsg, remoteInfo, ahead]);
 
   const snapshot = useCallback(
     () => ({
@@ -3083,7 +3104,17 @@ export default function MailDayLedger() {
      failed restore leaves this device completely untouched. */
   const refreshVersions = useCallback(async () => {
     if (!window.versions) return;
-    setVersionList(await window.versions.list().catch(() => []));
+    try {
+      setVersionList(await window.versions.list());
+      setVersionsDown(null);
+    } catch {
+      /* NOT `.catch(() => [])`. An empty array renders "No versions saved on
+         this device yet", which is indistinguishable from an intact list that
+         failed to read once — and there is no retry, so one transient failure
+         told the user for the rest of the session that the escape hatch did
+         not exist. Leave the list alone and say what actually happened. */
+      setVersionsDown("Saved versions can't be read on this device right now.");
+    }
   }, []);
 
   /* Save a version of where the ledger stands right now.
@@ -3115,8 +3146,25 @@ export default function MailDayLedger() {
       );
       window.versions
         .put({ text, label, kind, lines: payload.items.length, checked })
-        .then(refreshVersions)
-        .catch(() => {});
+        .then(() => {
+          setVersionsDown(null);
+          refreshVersions();
+        })
+        .catch(() => {
+          /* This used to be `.catch(() => {})`, and that silence was the worst
+             thing in the feature. With IndexedDB unavailable — private
+             browsing, quota exhausted by the photo store, iOS storage pressure
+             — every version fails, including the `before reset` milestone. The
+             ledger is then destroyed by a Reset the app has told the user is
+             recoverable, and History says "No versions saved on this device
+             yet", which is affirmatively wrong rather than merely unhelpful.
+             A promise this feature cannot keep has to be withdrawn out loud. */
+          setVersionsDown(
+            "Versions can't be saved on this device right now — a Reset or a restore would not be undoable."
+          );
+          /* and don't let a failed attempt also swallow the next 30 seconds */
+          lastVersionAt.current = null;
+        });
     },
     [snapshot, refreshVersions]
   );
@@ -3695,8 +3743,14 @@ export default function MailDayLedger() {
   );
 
   const doPush = useCallback(
-    async (force) => {
+    async (force, quiet = false) => {
       if (!window.remote) return;
+      /* doPull and doMerge both clear this; doPush did not. A "Pushed ✓" flash
+         from 2s ago would otherwise fire mid-way through the next push and
+         reset a freshly-set "conflict" to idle — taking Merge, Push anyway and
+         the advisory line off the screen with it, leaving a real conflict with
+         no surface at all. */
+      clearTimeout(flashTimer.current);
       disarm();
       setRemoteMsg(null);
       setPushState("pushing");
@@ -3733,7 +3787,14 @@ export default function MailDayLedger() {
           tone: code === "conflict" || code === "no-key" ? "advice" : "error",
           text: REMOTE_SAYS[code] || REMOTE_SAYS.server,
         });
-        if (code === "no-key" || code === "auth") setKeyOpen(true);
+        /* `quiet` is auto-push, and this is the same reasoning doMerge's quiet
+           mode already encodes: nobody tapped anything, and setKeyOpen swaps
+           "saved on this device" for an empty field, which reads as *your key
+           is gone*. An expired token would otherwise flip the panel into that
+           state unattended, with (until now) no cancel to get out of it.
+           The remoteMsg above is NOT suppressed — an unattended failure is
+           exactly what the advisory line exists to surface. */
+        if (!quiet && (code === "no-key" || code === "auth")) setKeyOpen(true);
         /* returned rather than only rendered, so the auto path can resolve a
            conflict by merging instead of leaving a button armed on a screen
            nobody is looking at */
@@ -3742,6 +3803,11 @@ export default function MailDayLedger() {
         syncingRef.current = false;
         setSyncBusy(false);
         setPhotoSync(null);
+        /* same reason as doPull's: a generation guard can return out of the
+           middle and leave the label reading "Pushing…" forever. Only the
+           in-flight label is cleared here — "pushed" and "conflict" are
+           outcomes and must survive. */
+        setPushState((p) => (p === "pushing" ? "idle" : p));
       }
     },
     [snapshot, items, envelopes, disarm, pushPhotos]
@@ -3900,8 +3966,13 @@ export default function MailDayLedger() {
       syncingRef.current = false;
       setSyncBusy(false);
       setPhotoSync(null);
+      /* in the finally, not after the try. A generation guard returns out of
+         the middle of this function — `resetAll` bumps syncGen by design and is
+         not disabled during a sync — and the label was left reading "Pulling…"
+         for the rest of the session. mergeState always had this right; pull and
+         push did not. */
+      setPullState("idle");
     }
-    setPullState("idle");
   }, [confirmPull, arm, disarm, applyBackup, pullPhotos, acceptPull]);
 
   /* ---- merge: the resolution the conflict path never had ----
@@ -4052,11 +4123,23 @@ export default function MailDayLedger() {
        that are hand-typed, in no CSV and on no remote. "Open the composer, duck
        out to read the mailing label, come back two minutes later" is this
        feature's own workflow, over the threshold by construction. */
-    if (composing || undo || confirmReset || confirmPull || confirmForce) return;
+    if (
+      composing ||
+      undo ||
+      confirmReset ||
+      confirmPull ||
+      confirmForce ||
+      /* an armed Restore is an armed destructive button like the rest — and the
+         one most likely to have the ground move under it, because a merge or a
+         push takes a milestone and prepends a row, shifting every row down
+         between the user's two taps */
+      confirmRestore
+    )
+      return;
     /* quiet: nobody tapped anything, so nothing may speak in the voice of
        something that was tapped. See doMerge's catch. */
     await doMerge(false, true);
-  }, [composing, undo, confirmReset, confirmPull, confirmForce, doMerge]);
+  }, [composing, undo, confirmReset, confirmPull, confirmForce, confirmRestore, doMerge]);
 
   /* Through a ref, for the reason autoPushRef exists below: doMerge's identity
      churns on essentially every render, and its consumer is the peek effect,
@@ -4123,7 +4206,19 @@ export default function MailDayLedger() {
     /* never mid-thought: a half-built envelope, a live undo and an armed
        destructive button are all states where the ledger on screen is not the
        one the user means yet */
-    if (composing || undo || confirmReset || confirmPull || confirmForce) return;
+    if (
+      composing ||
+      undo ||
+      confirmReset ||
+      confirmPull ||
+      confirmForce ||
+      /* an armed Restore is an armed destructive button like the rest — and the
+         one most likely to have the ground move under it, because a merge or a
+         push takes a milestone and prepends a row, shifting every row down
+         between the user's two taps */
+      confirmRestore
+    )
+      return;
     const info = await window.remote.status().catch(() => null);
     if (!info?.hasKey) return;
     if (typeof window.remote.peek === "function") {
@@ -4137,11 +4232,20 @@ export default function MailDayLedger() {
         return;
       }
     }
-    const r = await doPush(false);
+    const r = await doPush(false, true);
     /* a conflict opened between the peek and the push — resolve it the safe
        way rather than leaving "Push anyway" armed on an unattended screen */
     if (r && !r.ok && r.code === "conflict") await doMerge(true);
-  }, [composing, undo, confirmReset, confirmPull, confirmForce, doPush, doMerge]);
+  }, [
+    composing,
+    undo,
+    confirmReset,
+    confirmPull,
+    confirmForce,
+    confirmRestore,
+    doPush,
+    doMerge,
+  ]);
 
   /* Through a ref, and that is the whole point: autoPush's identity changes on
      essentially every render (it depends on doPush, which depends on snapshot),
@@ -5597,7 +5701,9 @@ export default function MailDayLedger() {
                     cursor: "pointer",
                   }}
                 >
-                  {!syncBroken
+                  {syncBroken === "behind"
+                    ? "Your other device has newer lines — tap to bring them in"
+                    : !syncBroken
                     ? `Backed up${
                         remoteInfo?.pushedAt
                           ? ` ${new Date(remoteInfo.pushedAt)
@@ -5634,7 +5740,14 @@ export default function MailDayLedger() {
                     there is actually something to repair.
                     HISTORY takes the cell, which keeps the row at the three
                     equal cells this design was measured at. */}
-                {!confirmReset && !!window.versions && (
+                {/* `window.versions || window.remote`, not just versions.
+                    Backup, Backup + photos and the branch's own archive all
+                    live in this panel, and none of them needs the versions
+                    adapter — so gating the cell on it alone left a device with
+                    no IndexedDB unable to download a backup file OR reach the
+                    remote history, which is exactly the recovery-gated-on-the-
+                    thing-it-recovers trap this file names three times. */}
+                {!confirmReset && (!!window.versions || !!window.remote) && (
                   <button
                     onClick={() => setHistoryOpen((o) => !o)}
                     aria-expanded={historyOpen}
@@ -5709,7 +5822,21 @@ export default function MailDayLedger() {
                       {versionMsg}
                     </div>
                   )}
-                  {versionList.length === 0 && (
+                  {versionsDown && (
+                    <div
+                      style={{
+                        fontFamily: cochin,
+                        fontSize: 13.5,
+                        lineHeight: 1.4,
+                        padding: "8px 10px",
+                        background: C.manila,
+                        color: C.manilaInk,
+                      }}
+                    >
+                      {versionsDown}
+                    </div>
+                  )}
+                  {versionList.length === 0 && !versionsDown && (
                     <div style={{ ...partVal, marginTop: 2 }}>
                       No versions saved on this device yet.
                     </div>
@@ -6020,6 +6147,21 @@ export default function MailDayLedger() {
                               <button onClick={saveKey} style={keySave}>
                                 Save key
                               </button>
+                              {remoteInfo.hasKey && (
+                                /* Replace used to be a one-way door: it swapped
+                                   "saved on this device · Replace · Clear" for
+                                   a bare field with no cancel, and the only
+                                   setKeyOpen(false) was inside saveKey's try —
+                                   so changing your mind meant pasting a valid
+                                   token or reloading the app. Only offered when
+                                   there IS a key to go back to. */
+                                <button
+                                  onClick={() => setKeyOpen(false)}
+                                  style={linkBtn}
+                                >
+                                  Cancel
+                                </button>
+                              )}
                             </span>
                           ) : (
                             <span style={partVal}>

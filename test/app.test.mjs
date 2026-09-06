@@ -2272,6 +2272,39 @@ eq(
   "35.5 and the following push is accepted rather than conflicting"
 );
 
+/* A FORCE that did not land must not advance the sha either. This was the last
+   place in the codebase still recording the claim before writing the bytes:
+   pushForce looked the remote up, saved that sha, and only then PUT. When the
+   PUT failed the device sat on a current sha over stale data — and its next
+   auto-push was ACCEPTED, no conflict raised, the other device's work gone.
+   Verbatim the incident this group exists for, through the force door.
+
+   The mock could never catch it, because it cleared `remote.fail` on the way
+   in, so the force could not fail. */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+  remote: LAPTOP_PUSHED,
+});
+await openSync();
+await saveGitHubKey();
+await click(btn(/^Push$/), "stale push, to reach the conflict");
+await settle();
+const shaBeforeForce = remote.deviceSha;
+remote.pushFailOnce = "offline";
+await click(btn(/Push anyway/), "arm the force");
+await click(btn(/Tap again to overwrite/), "force into a failing write");
+await settle();
+eq(
+  remote.deviceSha,
+  shaBeforeForce,
+  "35.6 a force whose write failed does not advance the sha"
+);
+eq(
+  remoteText(),
+  LAPTOP_PUSHED,
+  "35.7 so the other device's ledger is still standing"
+);
+
+
 /* ── 36. the action row ───────────────────────────────────────────────────
 
    The file actions became a row of ruled cells in the head's own vocabulary
@@ -2905,6 +2938,63 @@ ok(
 );
 ok(shouldSnapshot("recent", null, NOW), "38.15 and the very first version always writes");
 
+
+/* ── 38b. the two silences the audit found ───────────────────────────────
+   Both are the same failure: a promise the app keeps making after it has
+   stopped being able to keep it. Neither had any surface at all. */
+
+/* Being BEHIND is broken. auto-push declines while `ahead`, and the merge only
+   fires on a fresh session — so a device that goes behind mid-session stops
+   backing up entirely, for the rest of that session. The old manila notice
+   used to cover that; removing it left the stall invisible, and the 24h
+   staleness backstop cannot rescue it because the memo never recomputes. */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { remote: null });
+await openSync();
+await saveGitHubKey();
+await click(btn(/^Push$/), "get in step");
+await settle();
+ok(!/tap to fix/.test(text()), "38b.1 in step, the line says nothing is wrong");
+/* the other device pushes while we sit here — no resume, so no auto-merge */
+remote.content = utf8ToBase64(LAPTOP_PUSHED);
+remote.sha = "sha-behind";
+await foreground();
+await settle();
+/* the LINE, not `text()`. The panel carries its own "pushed newer lines"
+   advisory, and it was open here — so a text match passed whether or not
+   syncBroken had a `behind` branch at all. The first draft of this assertion
+   could not fail, and the mutant proved it. The line is a button; the panel's
+   advisory is a div. */
+await click(btn(/tap to/), "close the panel, so only the line can answer");
+ok(
+  !!btn(/newer lines/),
+  "38b.2 going behind mid-session is surfaced on the line itself, not buried in a panel"
+);
+const stalled = pushes().length;
+await background();
+eq(pushes().length, stalled, "38b.3 and it really has stopped backing up");
+
+/* A version store that cannot write makes "Reset is recoverable" false. It
+   used to fail into an empty catch, and History then said "No versions saved
+   on this device yet" — affirmatively wrong rather than merely unhelpful. */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { remote: null });
+/* the mock's methods live on one shared object, so this must be put back or it
+   leaks into every group after this one */
+const realPut = win.versions.put;
+win.versions.put = async () => {
+  throw new Error("QuotaExceededError");
+};
+await click(btn(/Mark all received/), "a change the store cannot save");
+await settle();
+await openHistory();
+ok(
+  /would not be undoable/.test(text()),
+  "38b.4 a store that cannot write says so, instead of failing silently"
+);
+ok(
+  !/No versions saved on this device yet/.test(text()),
+  "38b.5 and never claims an empty list it has not actually read"
+);
+win.versions.put = realPut;
 
 /* ── 39. the rollback list ────────────────────────────────────────────────
    Driving the app, unlike group 36 which drives the rules. The claim is

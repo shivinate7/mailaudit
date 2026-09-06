@@ -485,6 +485,26 @@ page. See "Known open threads" for exactly what that leaves unproven.
   ones are taken AFTER an ordinary change, so they hold where you got to; a 30s
   gate keeps a mail day's hundreds of taps from spending the ring on one
   package. The **day anchor** is derived, not stored (see `version-rules.mjs`).
+  **A store that cannot write says so.** `takeVersion` used to fail into an
+  empty catch, and `refreshVersions` used `.catch(() => [])`. With IndexedDB
+  unavailable — private browsing, quota exhausted by the photo store, iOS
+  storage pressure — every version failed silently, *including the
+  `before reset` milestone*, and History then reported "No versions saved on
+  this device yet", which is affirmatively wrong rather than merely unhelpful:
+  the ledger would be destroyed by a Reset the app had promised was recoverable.
+  `versionsDown` carries that now, a failed write resets the 30s gate rather
+  than also swallowing the next window, and an unreadable list never renders as
+  an empty one. Tests 38b.4–38b.5.
+  **A store that cannot write says so.** `takeVersion` used to fail into an
+  empty catch and `refreshVersions` used `.catch(() => [])`. With IndexedDB
+  unavailable — private browsing, quota exhausted by the photo store, iOS
+  storage pressure — every version failed silently, *including the
+  `before reset` milestone*, and History then reported "No versions saved on
+  this device yet": affirmatively wrong rather than merely unhelpful, since the
+  ledger would then be destroyed by a Reset the app had promised was
+  recoverable. `versionsDown` carries that now, a failed write resets the 30s
+  gate rather than also swallowing the next window, and an unreadable list never
+  renders as an empty one. Tests 38b.4–38b.5.
   Two consequences worth protecting. `resetAll` deliberately does **not** clear
   versions, which is what makes an accidental Reset recoverable rather than
   final. And a restore takes its own `before restore` milestone on the way in,
@@ -599,6 +619,18 @@ page. See "Known open threads" for exactly what that leaves unproven.
   escape hatch, and it is safe-ish because every push is a commit, so what it
   overwrote is still in the branch's history. A bad *pull* has no such
   recovery — which is why Pull gets the two-tap and Push doesn't.
+  **`pushForce` hands its looked-up sha to the PUT rather than storing it
+  first.** It used to `saveRec({ sha })` before writing, which made the force
+  the one remaining place recording a claim to hold bytes it had not written —
+  and when that PUT then failed (offline, throttled, a 409 racing the photo
+  repo), the device sat on a *current sha over stale data* and its next
+  auto-push was **accepted with no conflict raised**. Verbatim the incident
+  below, reached through the force door instead of the pull. `push()` takes an
+  optional sha override for exactly this and records it only once the bytes are
+  on GitHub. Tests 35.6–35.7 pin it at the app level; the adapter is unreachable
+  from the suite, so the mock was corrected to match — it had mirrored the same
+  ordering *and* cleared `remote.fail` on the way in, so a force could never
+  fail and nothing could ever have caught this.
   **Photos go too, to a different repo.** `shivinate7/mailaudit-photos`,
   **private**, branch `main`, one file per photo at `photos/<id>.<ext>`. Private
   because a mailing label carries a delivery address, a sender and a tracking
@@ -770,12 +802,28 @@ So there is **one line**, advisory manila, full width above the ruled row (a
 sentence has to wrap; the row's cells are a fixed 40px of uppercase mono), and
 it is the sole entrance to what is now a repair kit: `Not backed up since
 Aug 30 — tap to fix`. `syncBroken` decides, in priority order: a conflict, an
-errored last attempt, no key on this device, never pushed, or a successful push
-older than `SYNC_STALE_MS` (24h — the push is automatic and idle-debounced, so
+errored last attempt, **being behind**, no key on this device, never pushed, or
+a successful push older than `SYNC_STALE_MS` (24h — the push is automatic and idle-debounced, so
 anything shorter fires on an ordinary evening with the phone face down, and
 anything longer stops being a warning). It is deliberately **not gated on there
 being local data**: a device with an empty ledger and no key is the fresh phone,
 and this line is its only route to the Pull that recovers it. Test 28.1.
+
+**`ahead` is one of its cases, and leaving it out was the worst hole the silent
+sync opened.** Auto-push declines while the remote is ahead, and the auto-merge
+only fires on a *fresh session* — so a device that goes behind mid-session stops
+backing up entirely, for the rest of that session. The manila "pushed newer
+lines" advisory still exists but lives *inside* the panel, whose only entrance
+is this line, so it could only be found by someone who already knew to look. And
+the 24h staleness backstop could not rescue it: `syncBroken` is a `useMemo` that
+reads `Date.now()`, and a stalled device changes none of its deps, so that
+comparison is frozen too. Tests 38b.1–38b.3.
+
+**`remoteInfo == null` returns `null`, not `"no-key"`.** It is null until its
+effect runs, one commit after first paint, so reading it as "no key" flashed the
+manila banner on every cold start of a perfectly configured device. Same
+three-valued rule `peek` and `listPhotos` follow: "I haven't looked" is not "all
+clear", in either direction.
 
 **It renders on `syncBroken || syncOpen`, and it is a TOGGLE.** Both halves were
 learned by shipping without them, and the bug was reported from the phone within
@@ -1156,7 +1204,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 489 assertions, no test framework, ~60s (groups 30–31 spend a few
+`npm test` — 496 assertions, no test framework, ~60s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
@@ -1330,6 +1378,22 @@ import and is unreachable from the harness — the same gap the localStorage and
 IndexedDB adapters have. Fetch plumbing is fine to leave uncovered; the status
 mapping and the sha-omission rule are not, because both fail *quietly*. **Still
 uncovered: the HTTP round trip itself.**
+
+That gap has a cost worth naming, because it was paid: the `pushForce` sha bug
+lived in `entry.jsx`, so **no app-level test could catch it, and none can catch
+its return** — restoring the bad ordering leaves the suite green, verified. What
+the suite pins instead is the *mock's* faithfulness (35.6–35.7), which is only
+as good as the mock. When a rule matters and lives below this seam the mock IS
+the test, so keep it honest: this one had mirrored the bug and disabled the only
+failure that could have exposed it.
+
+That gap has a cost worth naming, because it was paid: the `pushForce` sha bug
+lived in `entry.jsx`, so **no app-level test could catch it, and none can catch
+its return.** Restoring the bad ordering leaves the suite green — verified. What
+the suite pins instead is the *mock's* faithfulness (35.6–35.7), which is only
+as good as the mock. When a rule matters and lives below this seam, the mock is
+the test, so keep it honest: this one had mirrored the bug and disabled the only
+failure that could expose it.
 
 Gotchas worth remembering:
 

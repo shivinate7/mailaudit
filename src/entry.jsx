@@ -469,11 +469,22 @@ window.remote = {
     const b = res.body || {};
     if (b.encoding === "base64" && b.content) return base64ToUtf8(b.content);
     if (b.download_url) {
+      /* `r.ok` and the empty check are both load-bearing, and `pull` has the
+         second one for the same reason. download_url is a short-lived signed
+         URL; when it 404s or 500s, fetch RESOLVES (it only rejects on network
+         failure) and .text() hands back the error body. Returned as-is, that
+         reaches parseLedger, throws, and the app blames the user's backup —
+         "it looks corrupt" — for what was a transient network failure. */
+      let text;
       try {
-        return await (await fetch(b.download_url)).text();
-      } catch {
-        throw remoteErr("offline");
+        const raw = await fetch(b.download_url);
+        if (!raw.ok) throw remoteErr("server", { status: raw.status });
+        text = await raw.text();
+      } catch (e) {
+        throw e?.code ? e : remoteErr("offline");
       }
+      if (typeof text !== "string" || !text) throw remoteErr("bad-response");
+      return text;
     }
     throw remoteErr("bad-response", { status: res.status });
   },
@@ -556,15 +567,21 @@ window.remote = {
     return { known: true, sha, ahead: !!sha && sha !== (rec().sha || null) };
   },
 
-  async push(text, message) {
+  async push(text, message, overrideSha) {
     const r = rec();
     if (!r.token) throw remoteErr("no-key");
     /* THE load-bearing line of this whole feature: send the sha THIS DEVICE
-       last saw (r.sha), never one fetched a moment ago. See pushBody. */
+       last saw (r.sha), never one fetched a moment ago. See pushBody.
+
+       `overrideSha` is the ONE exception and it belongs to pushForce, which
+       has deliberately just looked the remote up. It is passed through rather
+       than stored first — storing a sha for bytes that have not been written
+       is the exact bug group 35 exists for, and the force door was the last
+       place in the codebase still doing it. */
     const body = pushBody({
       text,
       branch: REMOTE.branch,
-      sha: r.sha,
+      sha: overrideSha !== undefined ? overrideSha : r.sha,
       message: message || "ledger",
       encode: utf8ToBase64,
     });
@@ -702,10 +719,19 @@ window.remote = {
     const head = await api(
       `/repos/${REMOTE.owner}/${REMOTE.repo}/contents/${REMOTE.path}?ref=${REMOTE.branch}`
     );
-    if (head.ok) saveRec({ sha: head.body?.sha || null });
-    else if (head.status === 404) saveRec({ sha: null });
+    let sha;
+    if (head.ok) sha = head.body?.sha || null;
+    else if (head.status === 404) sha = null;
     else throw classify(head);
-    return window.remote.push(text, message);
+    /* Handed to the PUT, NOT written to the record first. It used to
+       `saveRec({ sha })` right here, which made this the one place left that
+       recorded a claim to hold bytes it had not written — and if the PUT then
+       failed (offline, throttled, a 409 racing the photo repo), the device sat
+       on a current sha over stale data and its next auto-push was ACCEPTED
+       with no conflict. That is verbatim the incident in the sha note above,
+       reached through the force door instead of the pull. push() records the
+       sha itself, once the bytes are actually on GitHub. */
+    return window.remote.push(text, message, sha);
   },
 };
 
