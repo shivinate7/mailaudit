@@ -20,8 +20,8 @@ every seller, for "did all four of these arrive?" and for cost basis), and
 ## Architecture
 
 - `src/app.jsx` — the entire application, one React component file. No router,
-  no CSS files (inline styles + one `<style>` tag for focus rules), Tailwind is
-  NOT used. Dependencies: react, react-dom, papaparse only.
+  no CSS files (inline styles + one `<style>` tag for focus rules, the
+  masthead and the action row), Tailwind is NOT used. Dependencies: react, react-dom, papaparse only.
 - `src/entry.jsx` — the platform layer. Provides `window.storage` (async
   get/set/delete/list over localStorage, holding the ledger),
   `window.photos` (async put/get/delete/keys/clear/sweep/usage over IndexedDB,
@@ -52,29 +52,36 @@ every seller, for "did all four of these arrive?" and for cost basis), and
 - `src/merge-rules.mjs` — reconciling two devices' ledgers: `mergeItems` (union
   by `it.key`, and the CSV import path calls it too so there is one definition
   of "union line items"), `mergeReceived` (per-key **max**), `mergeEnvelopes`
-  (union by id, freshest `updatedAt` wins) and `mergeLedger`/`mergeSummary`.
+  (union by id, freshest `updatedAt` wins), `mergeStamps` (per-package,
+  freshest `updatedAt` wins, tombstones included) and
+  `mergeLedger`/`mergeSummary`.
   Pure and directly tested for the sharpest version of the reason the three
   modules below are: this is the piece that fails by producing a *plausible
   wrong ledger*, and a merge that silently drops 35 imported lines is
   indistinguishable from one that worked. **The merge only ever ADDS** — nothing
   is dropped, no count decreases — which is why it needs no two-tap confirm and
-  why re-running it is harmless.
+  why re-running it is harmless. The one exception is a *removed* stamp, which
+  travels as a tombstone and beats an older stamp: still the user's own write
+  winning by freshness, not the merge deciding anything, and there because a
+  resurrected `refunded` stamp would silently pull money back out of the tally.
+  `mergeLedger` builds the merged ledger from **named fields**, so a persisted
+  key it does not name is dropped by every merge, applied locally as a full
+  replace, and pushed — invariant 2's five sites in `app.jsx` are this file's
+  sixth.
 - `src/version-rules.mjs` — which saved versions survive a prune. Same
-  rationale as the modules around it, and the sharpest case for it after
-  `merge-rules.mjs`: a pruning bug deletes the one version the user was
-  reaching for and leaves a list that looks perfectly healthy, so there is
-  nothing to notice until the moment it can't be fixed. Three independent
-  reasons to live, **unioned and never intersected** — the newest
-  `recentKeep`, milestones inside `milestoneDays`, and the *earliest* record of
-  each day inside `dayDays`. Two things are deliberate and easy to undo by
-  accident: there is **no stored "daily" kind and nothing is ever promoted** —
-  "the first version of each day" is derived at prune time by `dayAnchors`, so
-  it cannot drift out of step with the records the way a written-once flag
-  would; and the anchor is the day's **earliest**, because the state worth
-  reaching for is how things stood *before* the day that went wrong, not after
-  it. `prunePlan` is expressed as the complement of `keptIds` so no record can
-  be both. `shouldSnapshot` is the write gate. Imported by `entry.jsx`
-  (`prunePlan`) and `app.jsx` (`shouldSnapshot`). Group 36.
+  rationale as the modules around it: a pruning bug deletes the one version the
+  user was reaching for and leaves a list that looks perfectly healthy, so there
+  is nothing to notice until the moment it can't be fixed. Three independent
+  reasons to live, **unioned and never intersected** — the newest `recentKeep`,
+  milestones inside `milestoneDays`, and the *earliest* record of each day
+  inside `dayDays`. Two things are deliberate and easy to undo by accident:
+  there is **no stored "daily" kind and nothing is ever promoted** — the day
+  anchor is derived at prune time by `dayAnchors`, so it cannot drift out of
+  step with the records the way a written-once flag would; and the anchor is the
+  day's **earliest**, because the state worth reaching for is how things stood
+  *before* the day that went wrong. `prunePlan` is the complement of `keptIds`
+  so no record can be both. `shouldSnapshot` is the write gate. Imported by
+  `entry.jsx` (`prunePlan`) and `app.jsx` (`shouldSnapshot`). Group 38.
 - `src/remote-rules.mjs` — the two adapter decisions worth asserting on:
   `classifyStatus` (GitHub's overloaded status codes → an error code the UI can
   phrase) and `pushBody` (which omits the sha only on a create). Same reasoning
@@ -96,15 +103,14 @@ only place localStorage or IndexedDB may appear.
 `window.versions` is a **separate IndexedDB database**, not another store bolted
 onto `mailday-photos`. Adding a store means a version bump, and an upgrade that
 fails takes the whole connection with it — photos are irreplaceable and versions
-are a convenience, so they must not be able to hurt each other. Two connections
-is the cheaper risk. Inside it, two object stores: `meta` is small and read
-every time the History panel opens, `blobs` is large and read only when
-something is actually restored. Keep them apart — IndexedDB's `getAll()` hands
-back whole records, so a single store would materialise every saved ledger just
-to render a list of dates. Snapshots are gzipped with `CompressionStream` (built
-into Safari, no dependency; ~235KB of ledger JSON becomes ~25KB), and the `gz`
-flag rides in the metadata rather than being assumed, so a record written on a
-browser without it still reads back. Keep them apart: the ledger is one small
+are a convenience, so they must not be able to hurt each other. Inside it, two
+object stores: `meta` is small and read every time the History panel opens,
+`blobs` is large and read only on an actual restore. Keep them apart —
+IndexedDB's `getAll()` hands back whole records, so a single store would
+materialise every saved ledger just to render a list of dates. Snapshots are
+gzipped with `CompressionStream` (built into Safari, no dependency; ~235KB of
+ledger JSON becomes ~25KB — measured 65,756 → 5,680 bytes, 11.6×), and the `gz`
+flag rides in the metadata rather than being assumed. Keep them apart: the ledger is one small
 JSON blob that has to save on a 500ms debounce, and photos are megabytes that
 must never get near it. localStorage caps out around 5MB; IndexedDB scales with
 free disk and stores Blobs without base64's ~33% inflation.
@@ -158,15 +164,23 @@ rather than by remembering. Verified in a browser: after saving a key,
    shimmed under localStorage namespace `mailday:` → literal key
    `mailday:mailday:v1`. Real users have months of check-in data under these
    keys. Any schema change must ship with in-place migration in the load path.
-2. **Saved-state shape:** `{ items, received, envelopes, dateFilter, sortBy,
-   itemSort, savedAt }`. `items` = array of parsed line items; `received` = map
-   of item key → count received; `envelopes` = orphaned-mail records, each
-   `{ id, createdAt, note, entries: [{ name, qty }], photos: [photoId],
-   updatedAt }`. `updatedAt` is what lets the two-device merge tell a real edit
-   from a stale copy of the same envelope; it is optional and defaulted (absent
-   reads as 0), so envelopes written before it shipped keep loading untouched.
-   It costs nothing under the five-site rule below because it lives *inside*
-   `envelopes`, which is already persisted.
+2. **Saved-state shape:** `{ items, received, envelopes, stamps, dateFilter,
+   sortBy, itemSort, savedAt }`. `items` = array of parsed line items;
+   `received` = map of item key → count received; `envelopes` = orphaned-mail
+   records, each `{ id, createdAt, note, entries: [{ name, qty }],
+   photos: [photoId], updatedAt }`. `updatedAt` is what lets the two-device
+   merge tell a real edit from a stale copy of the same envelope; it is optional
+   and defaulted (absent reads as 0), so envelopes written before it shipped
+   keep loading untouched. It costs nothing under the five-site rule below
+   because it lives *inside* `envelopes`, which is already persisted.
+   `stamps` = map of **package** key (`gkOf`: `orderId::seller`, never
+   `it.key`) → `{ kind, at, note, updatedAt }`, one per package; `kind` is one
+   of `claim | refunded | contacted | reshipped | partial | other`, `at` the local
+   calendar day it was set. **`kind: ""` is a tombstone** — a removal, kept so
+   it can win a merge — and every reader goes through `hasStamp`, never key
+   presence. Absent on older saves; defaulted to `{}` through
+   `sanitizeStamps`, because `parseLedger` validates only `mailday` and
+   `items`.
    Item key = `orderId|itemNumber|vendorProductId` — stable across re-imports;
    never change its construction. Envelope entries store card **names**, never
    item keys, so a re-import can't rot them and newly imported older orders
@@ -178,9 +192,10 @@ rather than by remembering. Verified in a browser: after saving a key,
    Saved **versions** cost nothing here, and that is by construction:
    `takeVersion` is a third *reader* of `snapshot()` rather than a fourth
    builder, and every restore path — file, pull, merge and the History list —
-   funnels through `applyBackup`. Give the version list its own payload builder
-   and the next person to add a persisted key silently ships a rollback list
-   that drops it. Test 37.8b.
+   funnels through `applyBackup`. `stamps` is the proof: it shipped after the
+   version list and needed no change to it. Give the list its own payload
+   builder and the next person to add a persisted key silently ships a rollback
+   that drops it. Test 39.8b.
    Adding a persisted key means touching **five** sites:
    the load effect, the save payload + its dep array, `backup`, the JSON restore
    branch, and `resetAll` — miss the last one and the next debounced save writes
@@ -191,6 +206,14 @@ rather than by remembering. Verified in a browser: after saving a key,
    person to add a key misses one. The push carries no timestamp for the same
    reason: it goes in the commit message instead, so the pushed bytes stay
    identical to what the Backup file has always contained.
+   **Plus one outside `app.jsx`:** `mergeLedger` in `merge-rules.mjs` builds
+   the merged ledger from named fields, so a key it does not name is dropped by
+   every merge, applied as a full replace, and pushed — both devices lose it.
+   `stamps` was the first key added after that builder existed; test 37.62
+   pins the key's presence. A related rollout hazard: an older build's
+   `snapshot()` omits `stamps`, so its next push publishes a ledger without
+   them and a Pull onto the new build wipes them (a Merge keeps the local
+   ones). Update both devices before stamping anything.
 3. **Imports MERGE, never replace.** TCGplayer only serves ~120 days of history,
    so this app is the system of record for older orders. Re-importing must keep
    every existing item and all `received` state, adding/refreshing by key.
@@ -212,15 +235,16 @@ rather than by remembering. Verified in a browser: after saving a key,
 6. **No native browser dialogs.** `window.confirm`/`alert` block the whole page
    and look wrong in a home-screen app; every destructive action uses an inline
    two-tap confirm instead (Reset, Discard, Assign, **Pull**, **Push anyway**,
-   **Restore**).
-   Keep that pattern. (This started as a sandbox limitation and outlived it —
-   it's now a UI choice.) With four armable controls in the main component,
-   arming one **disarms the others** via the shared `arm`/`disarm` pair: two
-   primed destructive buttons side by side is the exact mis-tap the pattern
-   exists to prevent. Test 26.17–26.19, 37.14–37.15. `arm` takes a *value*
-   rather than always setting `true`, because Restore has one button per version
-   on screen at once, so "which one is primed" has to be an id; disarming is
-   still a single call.
+   **Remove stamp**, **Restore**). Keep that pattern. (This started as a sandbox limitation
+   and outlived it — it's now a UI choice.) With four armable controls in the
+   main component, arming one **disarms the others** via the shared
+   `arm`/`disarm` pair: two primed destructive buttons side by side is the
+   exact mis-tap the pattern exists to prevent. `arm` takes a *value* rather
+   than always setting `true`, because **Restore** has one button per version on
+   screen at once, so "which one is primed" has to be an id; disarming is still
+   a single call. Tests 26.17–26.19, 39.14–39.15. `PackageCard`
+   carries its own local pair for Remove stamp, as `EnvelopeCard` does for
+   Discard and Assign — one timer, one armed control, cleared on unmount.
 7. **Orphaned mail never decides anything.** The user buys the same cheap cards
    from many sellers, so *near-duplicate packages are normal* — two outstanding
    orders can have identical contents. The app may rank the packages an envelope
@@ -408,46 +432,78 @@ page. See "Known open threads" for exactly what that leaves unproven.
 - Canceled orders: excluded from list and all counts; viewable via
   "N canceled — view" link which scrolls to a dashed reference section (for
   refund auditing). Tracked/untracked shown as ●/○ dot + word in header meta.
-- **Saved versions, and a History list to roll back from.** Every push is
-  already a git commit, so the remote has always been a complete archive — what
-  was missing was any way to reach one without a laptop. `window.versions` keeps
-  gzipped snapshots on the device and the History disclosure lists them newest
-  first, `14:32 · before import · 806/481`, expanding to the delta against now
-  and a two-tap `Restore this version`.
-  Three tiers, and the important half is *when* each is taken, not what it
-  holds. **Milestones** are taken immediately BEFORE each of the four
-  operations that can lose data in bulk — import, sync, restore, reset — so
-  each holds the world as it stood in front of the thing that might have ruined
-  it. **Recent** ones are taken AFTER an ordinary change, so they hold where you
-  got to; a 30s gate keeps a mail day's hundreds of taps from spending the whole
-  ring on one package. The **day anchor** is derived, not stored (see
-  `version-rules.mjs`).
+  **Refunded and partial-refund stamped packages leave the same way** — see
+  the next bullet.
+- **Order stamps** — one per package, set by hand: `Claim filed · Refunded ·
+  Seller contacted · Reshipped · Partial refund · Other`, dated the day it was set
+  (local calendar day, not UTC — the same trap the month picker documents),
+  with an optional free line. Picking another kind **replaces** it and
+  re-dates it; editing only the note keeps the date. Rendered as a band under
+  the package header — a rotated chip in the RECEIVED stamp's construction,
+  manila rather than green, then the note in Cochin italic — visible while the
+  package is collapsed too. Two entrances, one editor: the first stamp comes
+  from a `Stamp` button placed first in the expanded card's action row; once
+  one exists that button goes away and **the band itself is the control**
+  (trailing `›`, like the Tally order-id link). The editor is the six kinds
+  as option cells in the month picker's treatment — `Other` last, for
+  anything the fixed five don't name, with the free line carrying the detail —
+  the note field (16px or iOS zooms), a two-tap *Remove stamp*,
+  Cancel and Save.
+  `Refunded` and `Partial refund` take the package out of **every count and
+  the normal list**, exactly as a canceled order is — the money is back, so
+  nothing is outstanding. One chokepoint: `liveItems` excludes refunded
+  packages the way `activeItems` excludes canceled ones, and totals, Tally,
+  and the Orphaned candidates all inherit it. So stamping an order Refunded
+  makes its card **vanish from the list under your finger** — the precedent
+  is "Mark all received" under Unreceived, and the `N stamped` cell is the
+  signpost. That cell, beside `N canceled` in the Find row, is a **filter on
+  top of the normal pipeline**: the date range, Showing and Find all still
+  apply (so a stamped, fully received package stays hidden under Unreceived,
+  and the count can read higher than the list, exactly as `N lines` can).
+  Refunded packages are sourced back in while it is on — `stampedPackages`
+  comes from `rangedActive`, the in-range items *before* the refund exclusion
+  — with a manila `N left · refunded` pill in place of the red figure. It is
+  the only place a refund can be found and un-stamped. `packageOrder` ranks
+  whichever source is live, or a refunded package would sit last under every
+  sort. Packages view only; Tally has no package to filter.
+  The stamp's label and note are in the Packages search haystack, and a
+  package-level hit keeps **every** line — filtering them would draw exactly
+  the one-line-order lie group 32 exists to undo. The lost-mail warning is
+  hidden on any stamped package, header line and Tally source row alike: the
+  order is being handled, and for a reshipment the original date means
+  nothing. `useGkSet` gives the refunded/stamped sets an identity that changes
+  only with their *membership*, so a note edit never rebuilds `packages` and
+  re-freezes the sort mid-check-in (invariant 5). Removal writes a tombstone,
+  not a hole (invariant 2). Group 37.
+- **Saved versions, and a History list to roll back from.** Gzipped snapshots
+  in their own IndexedDB store, listed newest first —
+  `14:32 · before import · 806/481` — expanding to the delta against now and a
+  two-tap `Restore this version`. Three tiers, and the important half is *when*
+  each is taken. **Milestones** go in immediately BEFORE each of the operations
+  that can lose data in bulk — import, sync, restore, reset — so each holds the
+  world as it stood in front of the thing that might have ruined it. **Recent**
+  ones are taken AFTER an ordinary change, so they hold where you got to; a 30s
+  gate keeps a mail day's hundreds of taps from spending the ring on one
+  package. The **day anchor** is derived, not stored (see `version-rules.mjs`).
   Two consequences worth protecting. `resetAll` deliberately does **not** clear
   versions, which is what makes an accidental Reset recoverable rather than
-  final — it is the single most valuable thing here. And a restore takes its own
-  `before restore` milestone on the way in, so tapping the wrong row is
-  survivable rather than a second disaster.
+  final. And a restore takes its own `before restore` milestone on the way in,
+  so tapping the wrong row is survivable rather than a second disaster.
   **Older versions come off the branch itself**, behind a `Load older versions`
-  tap at the foot of the list. Nothing new had to be stored for this: every push
-  has always been a commit, so `data` already *was* a version archive — the half
-  that was missing was reaching it without a laptop. `listVersions` reads
-  `GET /commits?path=ledger.json&sha=data`; `getVersion(sha)` is the same
-  Contents call `pull` makes with a commit in place of the branch name,
-  over-1MB fallback included. Both are **reads**, so they spend nothing from the
-  500-content-writes/hour budget the push and photos share, and neither needs a
-  key on the public ledger repo. Behind a tap rather than fetched on open,
-  because it is two round trips for something wanted rarely and the local list
-  already answers "undo what I just did". Restoring one funnels through the same
-  `applyBackup` — so it takes a local `before restore` milestone too — and
-  deliberately does not touch the stored sha: rolling the ledger back is a local
-  act, and pushing afterwards rolls the remote back as a *new* commit, which is
-  what keeps that reversible in turn. Group 39.
-  The History chip is gated on **versions existing**, never on the ledger — and
-  it widens the whole file-actions region's gate for the third time, for the
-  reason Backup was widened once and Sync twice: any control that RECOVERS
-  state must not be gated on that state existing. Gate it on `items.length` and
-  the one control that undoes a Reset is unreachable exactly when a Reset has
-  just happened. Group 37.
+  tap. Nothing new is stored for it: every push has always been a commit, so
+  `data` already *was* an archive — the missing half was reaching it without a
+  laptop. `listVersions`/`getVersion` are both **reads**, so they spend nothing
+  from the 500-content-writes/hour budget and neither needs a key on the public
+  repo. Restoring one funnels through the same `applyBackup`, and deliberately
+  does not touch the stored sha: rolling the ledger back is local, and pushing
+  afterwards rolls the remote back as a *new* commit, which keeps that
+  reversible in turn. Groups 39 and 41.
+  The panel also carries **Backup** and **Backup + photos**, which moved out of
+  the Sync panel — they are version actions, "save one off this device", and the
+  Sync panel is now a repair kit that only opens on failure. The History cell is
+  gated on the versions **adapter**, never on the ledger: it holds the one
+  control that undoes a Reset, and gating it on `items.length` would make it
+  unreachable exactly when a Reset has just happened.
 - **Two local backups and one remote.** *Backup* downloads
   `{mailday:1, items, received, envelopes, dateFilter, sortBy, itemSort}` —
   small, quick, and holds the irreplaceable part. *Backup + photos* (only shown
@@ -507,23 +563,9 @@ page. See "Known open threads" for exactly what that leaves unproven.
   `Merge & push` keeps both: pull, union, apply, push. It carries **no two-tap
   arm**, deliberately, because it destroys nothing and invariant 6's pattern is
   for destructive actions specifically; arming it would say the opposite of what
-  it does. **Three** entrances, one function (`doMerge`): the conflict, where it
-  also completes the rejected push; the repair kit's `Merge`, where it does not
-  (there may be nothing local to send, and an empty commit is noise); and the
-  **resume**, which is also `alsoPush: false` and additionally `quiet: true`.
-  Quiet means two things and both are load-bearing. It suppresses the summary
-  *only when the merge added nothing* — `peek` says "ahead" on any new blob sha
-  and a push writes one whenever the ledger is re-saved, so an empty-data commit
-  on the other device would otherwise greet the user on their next resume with a
-  notice about a merge they never asked for that did nothing. When it DID add
-  something the sentence stays even quietly: the list just changed shape and
-  that is the only thing on screen explaining why. And it suppresses
-  `setRemoteMsg`/`setKeyOpen` in the catch, because every one of those strings
-  is phrased for someone who just tapped a button — `setKeyOpen` is the worse of
-  the two, swapping "key saved on this device" for an empty field, which reads
-  as *your key is gone*. `setPushState("conflict")` is **not** suppressed: that
-  is a control, not a message. This also required `applyBackup`'s `notice` to go
-  three-valued (`!= null`, not `||`), so `""` can mean "say nothing".
+  it does. Two entrances, one function (`doMerge`): the conflict, where it also
+  completes the rejected push, and the *ahead-notice*, where it does not (there
+  may be nothing local to send, and an empty commit is noise).
   The ordering inside it is the same one `doPull` depends on — **photos are
   fetched before the ledger is applied** — and for a sharper reason: the merge
   unions both devices' envelopes, so ids arriving from the other device have no
@@ -541,9 +583,9 @@ page. See "Known open threads" for exactly what that leaves unproven.
   is watching.
   **The same `peek` is now also the auto-merge's trigger**, which is why it is
   one read and not two, and why the merge sits inside its `known` branch. The
-  foreground call therefore does three things at once: reports whether the
-  remote is ahead, licenses or refuses the merge, and — via `freshSession` —
-  decides whether this foreground was a new session at all.
+  foreground call does three things at once: reports whether the remote is
+  ahead, licenses or refuses the merge, and — via `freshSession` — decides
+  whether this foreground was a new session at all.
 - **Push / Pull (GitHub).** Automatic backup to `ledger.json` on the
   **`data` branch** of `shivinate7/mailaudit` — never `main`, because Pages
   deploys from main's root and every backup would otherwise trigger a site
@@ -630,9 +672,8 @@ Three ruled cells report the state and open what changes it:
   synchronously, the merge after a network round trip). Two reshapes of the same
   list on one resume is fine precisely *because* it is a resume: nothing is
   under the pointer. The query, the range and the reveals still do **not**
-  reset — those are things you were in the middle of, and clearing them reads as
-  the app forgetting rather than as a fresh start. Tests 12.8–12.9 and group 38
-  pin both sides of the threshold via `backgroundFor(ms)`, which is
+  reset — those are things you were in the middle of. Tests 12.8–12.9 and group
+  40 pin both sides via `backgroundFor(ms)`, which is
   `background()`/`foreground()` with the clock frozen across the trip.
 
   **The elapsed time has to be handed forward, not re-derived, and this is the
@@ -640,22 +681,46 @@ Three ruled cells report the state and open what changes it:
   returning — and it registers *first*, because it has `[]` deps while the peek
   effect waits on `loaded`. Anything downstream that reads `hiddenAt` therefore
   measures zero forever and the merge never fires: no error, nothing on screen,
-  nothing to notice. So the handler records its finding into `freshSession`, on
-  **both** branches (a short hop has to be able to cancel a stale signal), and
-  the peek's `check()` consumes it synchronously on every path out — that effect
-  also runs on mount and on every `syncBusy` flip, and a merge flips `syncBusy`
-  twice, so a surviving flag would let the merge re-trigger itself.
-  `freshSession` starts **true**: a cold mount is a new session too, and the
-  more valuable half, since a fresh phone should come back already reconciled
-  rather than needing someone to go looking for a control.
+  nothing to notice. So the handler records into `freshSession`, on **both**
+  branches (a short hop must be able to cancel a stale signal), and the peek's
+  `check()` consumes it synchronously on every path out — that effect also runs
+  on mount and on every `syncBusy` flip, and a merge flips `syncBusy` twice, so
+  a surviving flag would let the other device's push land mid-session with no
+  resume in sight. `freshSession` starts **true**: a cold mount is a new session
+  too, and the more valuable half, since a fresh phone should come back already
+  reconciled rather than needing someone to go looking for a control.
 - **Sorted by** — opens a panel of options. There is no `<select>` in the app
   any more.
 
 Then a **Find** row carrying search, with the canceled reference beside it as
-another ruled cell rather than an underlined link floating on its own line.
-Then the file actions, **set apart** — flattening them into the same ruled grid
-destroys the separation the region has always kept: file management is not a
-filter.
+another ruled cell rather than an underlined link floating on its own line, and
+the `N stamped` filter beside that in the same cell style — `○/●` and
+`aria-pressed` rather than the canceled cell's caret, because it is a filter
+state (the Showing cell's idiom), not a disclosure. The row now holds two
+`flexShrink: 0` cells and the search input absorbs the loss; re-measure at
+375px if either label grows.
+Then the **action row** — Re-import CSV / Sync / Reset — as equal ruled cells
+at full width, uppercase mono like the view switch, 40px tall like Find.
+File management is not a filter, and the row used to say so by changing
+*idiom*: three boxed mono buttons pushed to the right edge, under a region made
+of hairlines. That kept the separation and broke the page — a tray of buttons
+in a different vocabulary, a void to their left that grew to ~450px at desktop
+width, and a Sync panel that opened left-aligned under a chip that sat right.
+The separation is kept by *treatment* now: the head cells are label-over-value
+state, the action row is bare uppercase actions, and the thin rule above it is
+the line between them. It is `.mdl-acts` in the `<style>` tag rather than
+inline styles because its membership is conditional — one cell on an empty
+ledger, three with a remote, four without — so the columns come from
+`grid-auto-flow: column` and the divider is each cell's own right rule with
+`:last-child` dropped; "last" can't be a prop the way `headCell`'s is.
+Sync carries the only caret; it turns accent when open, and the whole cell
+turns accent when `peek()` says the other device is ahead — colour rather
+than a badge because the cell is one third of 375px. Reset is red text at
+rest; **armed, it takes the whole row** (red fill, "Tap again to clear
+everything") and the other two cells step out for the four seconds it lasts.
+That is the better two-tap, not a compromise: the target grows over the spot
+just tapped instead of wrapping to a new line under it, and the two controls a
+mis-tap could land on aren't there to land on.
 
 Two details that are load-bearing and easy to undo by accident:
 
@@ -695,57 +760,67 @@ option grids still read, because `optGrid` paints `line` and each `optCell`
 paints `card` over it, so the cells sit slightly raised against the page.
 
 **On the happy path there is no sync vocabulary on screen at all.** No `Sync`
-chip, no toggle, no `Merge` button, no "the other device is ahead" notice. Sync
-happens or it doesn't, and the only case worth a pixel is the one where it has
-*stopped* happening — because a ledger that quietly stopped reaching GitHub is
-exactly the failure the remote exists to prevent, and it is invisible by nature.
+cell in the action row, no toggle, no `Merge`, no "the other device is ahead"
+notice. Sync happens or it doesn't, and the only case worth a pixel is the one
+where it has *stopped* — because a ledger that quietly stopped reaching GitHub
+is exactly the failure the remote exists to prevent, and it is invisible by
+nature.
 
-So there is **one line**, advisory manila, and it is the sole entrance to what
-is now a repair kit: `Not backed up since Aug 30 — tap to fix`. `syncBroken`
-decides, in priority order: a conflict, an errored last attempt, no key on this
-device, never pushed, or a successful push older than `SYNC_STALE_MS` (24h — the
-push is automatic and idle-debounced, so anything shorter fires on an ordinary
-evening with the phone face down, and anything longer stops being a warning).
+So there is **one line**, advisory manila, full width above the ruled row (a
+sentence has to wrap; the row's cells are a fixed 40px of uppercase mono), and
+it is the sole entrance to what is now a repair kit: `Not backed up since
+Aug 30 — tap to fix`. `syncBroken` decides, in priority order: a conflict, an
+errored last attempt, no key on this device, never pushed, or a successful push
+older than `SYNC_STALE_MS` (24h — the push is automatic and idle-debounced, so
+anything shorter fires on an ordinary evening with the phone face down, and
+anything longer stops being a warning). It is deliberately **not gated on there
+being local data**: a device with an empty ledger and no key is the fresh phone,
+and this line is its only route to the Pull that recovers it. Test 28.1.
 
-It is deliberately **not gated on there being local data**. A device with an
-empty ledger and no key is the fresh phone, and this line is its only route to
-the Pull that recovers it — the same rule that widened Backup once, Sync twice
-and History a third time. Test 28.1.
-
-Behind it: Push, Merge, Pull, Push anyway, the target line and the key field.
-`Merge` still appears on a conflict *or* when `peek()` says the other device is
-ahead, for the case the automatic path could not finish. **Backup and Backup +
-photos moved out** into the file-actions row — they were only ever inside that
-disclosure because the disclosure was on screen, they are file actions rather
-than sync actions, and burying them behind a control that now appears only on
-failure would strand them.
-
-One accepted cost: a device whose sync is healthy has no way into the panel, so
-a key cannot be rotated *proactively*. In practice a token that needs replacing
-has expired, which errors, which raises the line — but it is a real gap and it
-was chosen rather than overlooked.
+The action row keeps its three equal cells — **History takes the one Sync
+vacated**. Behind the line: Push, Merge, Pull, Push anyway, the target line and
+the key field. `Merge` still appears on a conflict *or* when `peek()` says the
+other device is ahead, for the case the automatic path could not finish. One
+accepted cost, chosen rather than overlooked: a device whose sync is healthy has
+no way into the panel, so a key cannot be rotated *proactively* — in practice a
+token needing replacement has expired, which errors, which raises the line.
 `Merge` is filled **accent violet** — the app's "this is the live control"
 colour — because it is the safe resolution and therefore the primary one, while
-the force beside it stays advisory manila. It uses the same `panelWrap` surface as the date and sort disclosures.
-It did not at first, and it was the one panel in the region with no padding and
-no rule, so its buttons sat flush against the section edge while the chip that
-opened them was right-aligned above — which reads, correctly, as off-centre.
-Everything inside it is one left-aligned block flush with `FIND`; the target
-line lost its `marginLeft: auto` for the same reason. Re-import and Reset stay on the narrower `items.length > 0 ||
-envelopes.length > 0` gate; Sync survives it, because an empty ledger is exactly
-when Pull is needed. Group 28.
+the force beside it stays advisory manila. The panel is the same `panelWrap`
+surface as the date and sort disclosures **and now the same contents**: an
+`optGrid(2)` of action cells over a block of *particulars*. The actions are
+built as data (`syncActions`, just above the component's `return`) because
+the grid has to know the count — an odd last cell spans the row, or the rule
+colour shows through the empty half as a slab, the same trick the range panel
+uses. Two columns everywhere, like the sort panel: "Pull from GitHub" and the
+armed "Tap again to replace" both need the ~160px a half of 375px gives them
+and neither fits a third. Each entry carries its own colour, because the grid's
+one accent means "on" and these mean five things: Pushed ✓ green text, Merge
+accent fill, Push anyway manila (manilaInk fill when armed), Pull red fill when
+armed, Auto-push the accent fill when on and inkSoft when off. The particulars
+(`partGrid`) are the head cells' two parts laid on their side — `LEDGER` /
+`PHOTOS` / `KEY` micro-labels beside mono values — replacing a target line
+that floated after the buttons as bare text. The value track is
+`minmax(0, 1fr)` so the 44-character photo target wraps inside it at 375px
+rather than pushing the panel past the page. The token field is a write-on
+rule like Find, not a box, and it is **16px** because iOS zooms the page on
+focusing any smaller input and the viewport meta deliberately leaves zoom on;
+the old 12px box zoomed on every paste. Re-import and Reset stay on the
+narrower `items.length > 0 || envelopes.length > 0` gate; Sync survives it,
+because an empty ledger is exactly when Pull is needed. Group 28.
 
-Every control shares one height — `CTL_H`, currently 34px — via `ctl`,
-`ctlSelect` and `chip()` beside `dateInput`/`miniBtn`. Before those existed,
-chips were `5px 11px`, selects `9px 8px` and buttons `9px 12px`, so nothing
-shared a baseline and the rows wrapped raggedly; **that mismatch, not the
-colours, is what read as unfinished.** Change `CTL_H` and the whole toolbar
-follows. Note `ctl` sets `boxSizing: border-box` because inputs are content-box
-by default while buttons are not — without it the search field renders 2px
-taller than everything beside it.
-
-`flexShrink: 0` is on all of them deliberately: the region had none, so a long
-label ("Tap again to clear everything") could push a line past the column edge.
+Every control inside the panels shares one height — `CTL_H`, currently 34px
+— via `optCell`, the day-stepper `well` and the token `keyField`. Before
+that existed, chips were `5px 11px`, selects `9px 8px` and buttons
+`9px 12px`, so nothing shared a baseline and the rows wrapped raggedly;
+**that mismatch, not the colours, is what read as unfinished.** Change
+`CTL_H` and every panel follows. The boxed `ctl`/`chip` controls the
+constant was written for are gone — the last of them, the file actions and
+the Sync panel's buttons, became the ruled action row and an option grid — so
+nothing in the region is a rounded box any more. Note `keyField` sets
+`boxSizing: border-box` because inputs are content-box by default while
+buttons are not; without it the field renders 2px taller than the Save cell
+beside it.
 
 **The file actions are gated on `items.length > 0 || envelopes.length > 0`, the
 same condition as the view switch — not on `items.length` alone.** They used to
@@ -779,6 +854,22 @@ gone, the state reads at a glance instead of having to be inferred from four
 separate controls, and nothing in the region wraps or reflows when the view
 changes. If the height ever has to come back, the `.fig` line and the cell
 padding are where it is.
+
+The action row was then re-measured in real Chromium against the user's actual
+ledger (793 lines, 3 envelopes), old build and new through the same script,
+from the top of the view switch to the top of the first card: at 375px
+**214px → 203px at rest** (the 40px ruled row replaces a 51px padded tray),
+armed Reset 256px → 203px (it no longer wraps onto a second line), an empty
+ledger 69px → 58px, and every one of 24 width × state combinations at 0px
+horizontal overflow. The one figure that went the other way is the open Sync
+panel, **357px → 419px at 375px** (320px → 406px at 760px): the two-column
+option grid stacks three rows where the flex-wrap fitted two (one at 760), and
+the particulars sit on three ruled lines instead of two crammed ones. That is
+paid only while the disclosure is open, and it buys the panel looking like
+its two siblings rather than like the tray the region replaced. At 375px the
+three action cells measure 114.3px each and the grid's halves 161px; the fits
+worth re-checking if the type changes are "SYNC · 09-02 ▾" in a third and
+"Tap again to replace" in a half.
 
 ## Design language
 
@@ -1046,7 +1137,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 401 assertions, no test framework, ~60s (groups 30–31 spend a few
+`npm test` — 484 assertions, no test framework, ~60s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
@@ -1063,75 +1154,19 @@ see, so the assertions read the DOM the way the user does.
 same assertions kept being rewritten from scratch. Hence this one is committed
 and `jsdom` is a real devDependency.)
 
-New in group 39 (older versions off the branch). The remote mock now records
-every push as a commit in `remote.history`, which is not a convenience — it is
-the actual claim the feature rests on. One method note: the first draft matched
-the older commit's row with `new RegExp(message.split(" ")[0])`, and **every
-push message starts with `ledger`**, so it silently selected the newest row and
-restored the version the app already had. It passed, and proved nothing. Match
-on the full message.
+New in groups 38–41 (saved versions, and sync running itself).
 
-Mutation-tested, all confirmed to turn the suite red: the load control fetching
-nothing; a remote restore firing on one tap; and a remote restore bypassing
-`applyBackup` (which would skip both the corrupt-payload guard and the
-`before restore` milestone that makes the rollback itself undoable).
+Group 38 is pure, like 27, 31 and 33: it imports `version-rules.mjs` directly,
+because a pruning bug deletes the one version the user was reaching for and
+leaves a list that looks healthy. Group 39 drives the app and asserts on what a
+milestone actually *holds* — the ledger as it was BEFORE the operation,
+envelopes included. Group 40 is the resume merge, the behaviour in this app with
+the least margin for error, because it applies a remote change with nobody
+watching. Group 41 reads older versions off the branch's own history; the remote
+mock records every push as a commit, which is not a convenience but the actual
+claim the feature rests on.
 
-New in group 38 (the resume merge). The behaviour with the least margin for
-error in the whole app, because it applies a remote change with nobody watching.
-Both sides of the 60s threshold via `backgroundFor(ms)`, plus: an unreadable
-peek refuses, a half-built envelope holds it off *and is still on screen*,
-finishing the thought lets the very next resume through (without which the guard
-assertions would pass just as well if the merge were broken outright), an
-unpaired `foreground()` with no absence behind it is not a fresh session, a cold
-mount against an already-ahead remote merges, and a merge that added nothing
-says nothing.
-
-Mutation-tested, all confirmed to turn the suite red: the resume handler reading
-the shared `hiddenAt` instead of its own ref (**the most valuable one in the
-change and the least visible in review** — registration order makes `away`
-always 0, so the merge silently never fires; caught by 38.4/38.6/38.11/38.12);
-the threshold dropped to 0; the signal never consumed; an unknown remote read
-as ahead; the mid-thought guard removed; `acceptPull` dropped from `doMerge`
-(group 35's mutant, re-killed on this path); the quiet merge announcing itself
-anyway; and `freshSession` starting false, so a cold mount never catches up.
-
-**One of those survived the first draft, and finding out why is the lesson.**
-"The signal is never consumed" passed all fifteen assertions, because every one
-of them ended with the two ends *in step* — where no further merge is possible
-and a flag left standing costs nothing. The scenario it actually breaks is the
-one nothing was testing: `check()` re-runs on every `syncBusy` flip, not only on
-a visibility event, so an unconsumed flag lets the laptop's push land
-mid-session, with no resume anywhere in sight — the list reshaping under a thumb,
-which is the exact thing the threshold exists to prevent. 38.12–38.13 pin it
-now. When a mutant survives, look for the state your fixtures never reach.
-
-New in groups 36–37 (saved versions). Group 36 is pure, like 27, 31 and 33: it
-imports `version-rules.mjs` directly, because a pruning bug deletes the one
-version the user was reaching for and leaves a list that looks healthy. Group 37
-drives the app and asserts on what a milestone actually *holds* — the ledger as
-it was BEFORE the operation, envelopes included.
-
-Two method notes worth keeping. **36.9's first draft could not fail:**
-`dayKey("2026-05-01T00:30")` is `"2026-05-01"` under the UTC reading too, so the
-assertion was decoration. It now derives an instant from the runner's own
-`getTimezoneOffset()` — one minute the right side of local midnight is on a
-different UTC day wherever this runs — and skips itself in UTC, where there is
-nothing to claim. **And three of the group's own assertions were wrong before
-the code was:** 36.2/36.6/36.7 failed on the first run because the day-anchor
-rule keeps records the recent ring drops (the union working, not the ring
-failing) and because a four-record fixture leaves the ring unsaturated, so
-everything passes for the wrong reason. Saturate the ring in any fixture that
-means to test what falls out of it.
-
-A third note, learned killing those mutants: **an assertion that THROWS is a
-worse kill than one that fails.** Three of group 37's mutants died by
-`JSON.parse(null)` inside the test file, which aborts a top-to-bottom suite with
-no isolation and masks every group after it. The reads are guarded now
-(`beforeReset && JSON.parse(...)`) so a missing milestone reports a mismatch and
-the run continues. Guard any assertion that dereferences something a mutation
-can make null.
-
-`test/harness.mjs` mocks `window.versions` with a `Map`, and prunes through the
+`test/harness.mjs` mocks `window.versions` with a `Map` and prunes through the
 **real** `prunePlan` — same reasoning as the remote mock encoding through the
 real b64. It stores text uncompressed on purpose: gzip is the platform layer's
 business, `app.jsx` never learns whether it happened, and jsdom has no
@@ -1141,11 +1176,66 @@ Mutation-tested, all confirmed to turn the suite red: the day anchor taking a
 day's latest instead of its earliest; the recent ring keeping everything; day
 anchors reaching forever; `dayKey` reading UTC; every save earning a version;
 milestones never surviving; a version built from its own payload rather than
-`snapshot()` (which drops envelopes — 37.8b is the only assertion that catches
-it, and it is why the group records an envelope before the Reset); restore
-firing on one tap; restoring taking no milestone of its own; the History chip
-gated on `items.length`; Reset taking no milestone; and Reset tidying the
-versions away.
+`snapshot()`; restore firing on one tap (local and remote); a restore bypassing
+`applyBackup`; the History cell gated on `items.length`; Reset taking no
+milestone or tidying the versions away; the resume handler reading the shared
+`hiddenAt`; the threshold dropped to 0; the signal never consumed; an unknown
+remote read as ahead; the mid-thought guard removed; `acceptPull` dropped from
+`doMerge`; the quiet merge announcing itself; `freshSession` starting false; and
+the load control fetching nothing.
+
+Four method notes worth keeping, all learned the hard way here:
+
+- **Three of group 38's own assertions were wrong before the code was.** They
+  failed on the first run because the day-anchor rule keeps records the recent
+  ring drops (the union working, not the ring failing), and because a
+  four-record fixture never saturates the ring, so everything passes for the
+  wrong reason. Saturate the ring in any fixture meant to test what falls out.
+- **38.9's first draft could not fail at all**: `dayKey("2026-05-01T00:30")` is
+  `"2026-05-01"` under the UTC reading too. It derives the boundary from the
+  runner's own `getTimezoneOffset()` now, and skips itself in UTC where there is
+  nothing to claim.
+- **An assertion that THROWS is a worse kill than one that fails.** Three of
+  group 39's mutants died by `JSON.parse(null)` inside the test file, which
+  aborts a top-to-bottom suite with no isolation and masks every group after it.
+  Those reads are guarded now (`beforeReset && JSON.parse(...)`).
+- **One mutant survived the first draft of group 40, and finding out why is the
+  lesson.** "The signal is never consumed" passed all fifteen assertions,
+  because every one ended with the two ends *in step*, where no further merge is
+  possible and a flag left standing costs nothing. The state nothing reached:
+  `check()` re-runs on every `syncBusy` flip, not only on visibility, so an
+  unconsumed flag lets the other device's push land mid-session with no resume
+  in sight. 40.12–40.13 pin it. **When a mutant survives, look for the state
+  your fixtures never reach.** (Relatedly, group 41's first draft matched the
+  older commit by `message.split(" ")[0]` — every push message starts with
+  `ledger`, so it selected the newest row and restored the version the app
+  already had. It passed and proved nothing.)
+
+New in group 37 (order stamps). It drives the whole feature through the DOM —
+the two entrances, the replace-not-stack rule, a refund leaving every count,
+the stamped filter obeying Showing, Find and the range, the tombstone, the
+five persistence sites — and then imports `mergeStamps` directly for the
+merge rule and ends on group 34's shape with a removal on the other side.
+Three of its assertions are the ones to keep if the group is ever trimmed:
+37.34 (editing a note under a live search) is the only shape that catches
+`stamps` missing from `visible`'s dep array, since a query change re-runs the
+fresh closure anyway; 37.40 sorts a *refunded* package under Newest, because
+under Oldest the `packageOrder`-from-`packages` mutant coincidentally produces
+the right order; and 37.62 asserts `merged.stamps` deep-equals `{}` rather
+than merely truthy, because `undefined` is exactly what the builder produces
+when it forgets the key.
+
+New in group 36 (the action row). Four claims, all behaviour rather than
+layout, because jsdom has none and the layout is what the row exists for: an
+armed Reset takes the row and the other two cells step out (36.1–36.4, and
+the open Sync panel underneath stays put); an odd cell count in the Sync grid
+spans its last cell (36.5–36.7 — the first draft booted against a seeded
+remote, which makes this device *behind*, adds a Merge cell, and turns three
+into four: read the count off the screen, not off the fixture); and the token
+field is 16px (36.8), which is the one style assertion in the suite, kept
+because it pins an iOS behaviour — focusing anything smaller zooms the page —
+and not a look. Confirmed to turn the suite red: the row keeping its other
+cells while Reset is armed, and the span dropped.
 
 New in group 35 (a pull that didn't land must not license a push). The whole
 group exists because the suite was green, the merge logic was provably correct
@@ -1245,16 +1335,17 @@ Gotchas worth remembering:
 - Packages render expanded, so "Mark all received" matches several buttons —
   reach into the specific card, not the first hit on the page.
 - Push, Pull and Merge are the repair kit, whose only entrance is the
-  broken-line, so `openSync()` clicks `/tap to/` rather than a `Sync` chip.
-  Still idempotent; just call it. It works because every fresh fixture starts
-  with no key, which *is* a broken state.
+  broken-line, so `openSync()` clicks `/tap to/` rather than a `Sync` cell.
+  Backup moved to History, so `openHistory()` is its counterpart. Both
+  idempotent; just call them. `openSync()` works because every fresh fixture
+  starts with no key, which *is* a broken state.
 - **`boot()` seeds `opts.remote` AFTER the mount and then glances at the page**
   (a `foreground()` with the away-clock untouched). That is what almost every
   fixture actually means — the other device pushed at some point since — and it
   had to change when resumes began merging, because a cold mount counts as a
   fresh session and a remote seeded *before* the mount would auto-merge away the
   very conflict the fixture was written to produce. `opts.remoteAtBoot` is the
-  explicit before-mount form, for the cold-start assertions in group 38. One
+  explicit before-mount form, for the cold-start assertions in group 40. One
   harness change, no call sites touched, and a more faithful model of the wire.
 - The `Pushed ✓` flash now starts **after** the photo phase, not after the
   ledger leg — showing it while a dozen uploads are queued is a lie, and it
@@ -1283,10 +1374,7 @@ Gotchas worth remembering:
   immediately. That is a fast seam *and* a real path (switching away mid-mail-day
   is the last chance to catch a session that never went idle), so the test isn't
   reaching for a private hook. `foreground()` is the inverse and is also what
-  re-runs the `peek` — and, since the resume merge shipped, what can trigger a
-  merge. Note `background()` restores `visibilityState` silently without
-  dispatching a second event, so it never fires the resume path on its own;
-  reach for `backgroundFor(ms)` when that is what you want.
+  re-runs the `peek`.
 - `backgroundFor(ms)` is that pair with `Date.now` frozen across it, for the
   resume reset on Showing — the elapsed time is the argument rather than the
   wall clock, since the threshold is 60s and no test can wait it out. It is
@@ -1347,6 +1435,21 @@ another device's ledger (30.11).
 Group 35 added three, all confirmed to turn the suite red: the adapter
 advancing the sha inside `pull()` again; `doMerge` never accepting it; and
 `doPull` never accepting it.
+
+Group 37 (order stamps) added **nine**, all confirmed to turn the suite red:
+`mergeLedger` not naming `stamps` (37.62–37.68); `snapshot()` dropping them
+(25.10, 37.51, 37.68); `canceledCount` measured off `liveItems` instead of
+`activeItems` (37.18); `packageOrder` built from `packages` rather than the
+live source (37.40); removal as a `delete` rather than a tombstone (37.45);
+`mergeStamps` letting the incoming copy take a tie (37.55); `stamps` missing
+from `visible`'s deps (37.34); the refund exclusion dropped from `liveItems`
+(37.70); and the warning ignoring the stamp (37.11).
+That seventh one is the cautionary tale of this group: with the exclusion
+dropped from `liveItems` alone, **every masthead figure still came out right**
+— they derive from `rangedItems`, which excludes refunds on its own — and the
+first draft of the group, all counts and lists, let the mutant live. Only the
+Orphaned candidates read `liveItems`, so only an envelope test could see it.
+When a chokepoint has two branches, assert on both.
 
 Groups 33–34 (two-device merge and auto-push) added **twelve**, all confirmed
 to turn the suite red: `mergeReceived` using incoming-wins instead of `max`;
@@ -1494,7 +1597,7 @@ give no isolation between groups.
   mid-thought (the five guards), and never on a remote it could not read.
   Auto-push's `ahead` branch stayed a **refusal** on purpose — the 90s debounce
   measures *data* idleness, not the user's, so it fires exactly when someone is
-  reading the screen with a reveal open, and it is also the one thing stopping a
+  reading the screen with a reveal open, and it is the one thing stopping a
   device writing over a remote it is behind (34.19).
 - **`max` on `received` cannot express an un-check.** "Clear check-ins", or
   stepping a qty back to 0, racing the other device's stale copy means the card
@@ -1507,6 +1610,11 @@ give no isolation between groups.
   tombstones. The bias is chosen: entries are hand-typed and exist nowhere else,
   and invariant 7 means a stray envelope decides nothing on its own —
   resurrecting one costs a tap, dropping one costs data the user typed.
+  **Stamps go the other way, deliberately:** a removed stamp is a tombstone
+  (`kind: ""`), because a resurrected `refunded` stamp would silently take
+  money back out of the tally, and a stamp is one value the user can re-set in
+  two taps. Tombstones and stamps orphaned by a changed seller string are
+  never pruned; both are a few bytes.
 - **Photos in git are permanent, including discarded ones.** Nothing ever
   deletes a remote photo: Discard, the sweep and `resetAll` all stop at the
   device boundary, and git history would keep the blob even if the tip didn't.

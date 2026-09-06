@@ -88,10 +88,16 @@ const compact = (n) => {
   return String(Math.round(n));
 };
 
+/* How long a ledger may go unpushed before the app says so. A day, because the
+   push is automatic and idle-debounced: anything shorter fires on an ordinary
+   evening with the phone face down, and anything longer stops being a warning
+   and starts being an obituary. */
+const SYNC_STALE_MS = 24 * 60 * 60 * 1000;
+
 /* Today gets a clock, anything older gets a date too. The list is read for
    "which of these is from before lunch" far more often than for the year, and
-   at 375px this row has exactly one elastic column — the label — so the
-   timestamp has to stay short enough not to compete with it. */
+   the row has exactly one elastic column — the label — so the timestamp has to
+   stay short enough not to compete with it. */
 function versionWhen(at) {
   const d = new Date(at);
   const n = new Date();
@@ -103,12 +109,6 @@ function versionWhen(at) {
     d.getDate() === n.getDate();
   return sameDay ? clock : `${p(d.getMonth() + 1)}-${p(d.getDate())} ${clock}`;
 }
-
-/* How long a ledger may go unpushed before the app says so. A day, because
-   the push is automatic and idle-debounced: anything shorter would fire on an
-   ordinary evening with the phone face down, and anything longer stops being a
-   warning and starts being an obituary. */
-const SYNC_STALE_MS = 24 * 60 * 60 * 1000;
 
 const STORAGE_KEY = "mailday:v1";
 
@@ -281,6 +281,45 @@ const isUntracked = (p) => /^without tracking$/i.test(p.tracking || "");
    "show me this order" jump), and they must not drift — a gk that disagrees
    with the one in `packages` silently matches nothing. */
 const gkOf = (it) => `${it.orderId}::${it.seller}`;
+
+/* ---------- order stamps ----------
+   One stamp per package — a status the user sets by hand ("claim filed",
+   "refunded"), dated the day it was set, with an optional free line. The
+   vocabulary is fixed and module-level for the same reason RANGES and
+   PKG_SORTS are: the chips in the editor and the band on the card read one
+   table, so they cannot drift.
+   A removed stamp is a TOMBSTONE — `kind: ""` with a fresh `updatedAt` —
+   rather than a deleted key, so the removal itself survives the two-device
+   merge (see mergeStamps in merge-rules.mjs). Every reader goes through
+   hasStamp, never key presence. */
+const STAMP_KINDS = [
+  ["claim", "Claim filed"],
+  ["refunded", "Refunded"],
+  ["contacted", "Seller contacted"],
+  ["reshipped", "Reshipped"],
+  ["partial", "Partial refund"],
+  /* the escape hatch for anything the fixed five don't name — the note field
+     carries the detail, this just keeps the order out of "nothing's wrong" */
+  ["other", "Other"],
+];
+const STAMP_LABEL = Object.fromEntries(STAMP_KINDS);
+const hasStamp = (s) => !!(s && s.kind);
+/* both refund kinds take the package out of the ledger's counts, exactly as a
+   canceled order is — the money is back, so nothing is outstanding */
+const isRefundStamp = (s) => s?.kind === "refunded" || s?.kind === "partial";
+/* the LOCAL calendar day, deliberately not toISOString(): at 8pm Central a
+   claim filed today would be dated tomorrow. Same trap the month picker
+   documents (test 23.16), same side of it. */
+const todayLocal = () => {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+};
+/* parseLedger validates only `mailday` and `items`, so everything that reads
+   `data.stamps` off a payload goes through this — Object.keys(null) inside a
+   memo would take the whole app down on a hand-edited backup */
+const sanitizeStamps = (v) =>
+  v && typeof v === "object" && !Array.isArray(v) ? v : {};
 
 function groupPackages(source) {
   const map = new Map();
@@ -505,7 +544,14 @@ function ProgressBar({ pct, height = 8 }) {
 
 /* ---------- Item row ---------- */
 
-function ItemRow({ item, got, onSet, variant = "package", onOpenOrder }) {
+function ItemRow({
+  item,
+  got,
+  onSet,
+  variant = "package",
+  onOpenOrder,
+  stamped = false,
+}) {
   const done = got >= item.qty;
   const partial = got > 0 && !done;
   const toggle = () => onSet(item.key, done ? 0 : item.qty);
@@ -521,7 +567,10 @@ function ItemRow({ item, got, onSet, variant = "package", onOpenOrder }) {
       ).filter(Boolean)
     )
     .join(" · ");
-  const lost = source ? lostMail(item.date, item.tracking, done) : null;
+  /* `stamped`: the copy's order carries a stamp, so it is being handled and
+     the warning would nag about a claim already filed — same rule as the
+     package header, plumbed down because a row knows only its own item */
+  const lost = source ? lostMail(item.date, item.tracking, done || stamped) : null;
   return (
     <div
       onClick={toggle}
@@ -739,6 +788,32 @@ const stepBtn = {
   padding: 0,
 };
 
+/* the order-stamp chip: the RECEIVED stamp's construction in the advisory
+   colour — manilaInk on card, rotated a touch less — since it is a status the
+   user set rather than the ledger's own verdict */
+/* the editor's five kinds, in the month picker's treatment: an option cell
+   carrying its own rule. Referenced lazily, so it may sit above optCell. */
+const stampKindCell = (on) => ({
+  ...optCell(on),
+  padding: "0 10px",
+  border: `1px solid ${on ? C.accent : C.line}`,
+});
+const stampChip = {
+  fontFamily: mono,
+  fontSize: 10.5,
+  fontWeight: 700,
+  letterSpacing: "0.1em",
+  color: C.manilaInk,
+  border: `2px solid ${C.manilaInk}`,
+  borderRadius: 4,
+  padding: "3px 8px",
+  transform: "rotate(-3deg)",
+  flexShrink: 0,
+  background: C.card,
+  whiteSpace: "nowrap",
+  display: "inline-block",
+};
+
 /* ---------- Package (order + seller) group ---------- */
 
 function PackageCard({
@@ -750,6 +825,8 @@ function PackageCard({
   revealed = false,
   onToggleReveal,
   innerRef,
+  stamp,
+  onStamp,
 }) {
   const totalQty = pkg.items.reduce((s, it) => s + it.qty, 0);
   const gotQty = pkg.items.reduce(
@@ -771,7 +848,40 @@ function PackageCard({
     missingVal >= 100
       ? `$${Math.round(missingVal).toLocaleString()}`
       : `$${missingVal.toFixed(2)}`;
-  const lost = lostMail(pkg.date, pkg.tracking, done);
+  const stamped = hasStamp(stamp);
+  const refunded = isRefundStamp(stamp);
+  /* a stamped order is being handled — the warning would nag about a claim
+     that is already filed, and for a reshipment the original order date means
+     nothing at all. `done` already means "no warning"; so does this. */
+  const lost = lostMail(pkg.date, pkg.tracking, done || stamped);
+
+  /* the stamp editor, local to the card. Two-tap on Remove, the same pair
+     EnvelopeCard carries: one timer, one armed control, cleared on unmount. */
+  const [editing, setEditing] = useState(false);
+  const [kind, setKind] = useState("");
+  const [note, setNote] = useState("");
+  const [confirmRemove, setConfirmRemove] = useState(false);
+  const timer = useRef(null);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  const disarm = () => setConfirmRemove(false);
+  const arm = (set, val) => {
+    disarm();
+    set(val);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(disarm, 4000);
+  };
+  /* seeded at open time, not at mount: a merge can change the stamp under a
+     mounted card, and the editor should open on what is there now */
+  const openEditor = () => {
+    setKind(stamped ? stamp.kind : "");
+    setNote(stamped ? stamp.note || "" : "");
+    setEditing(true);
+  };
+  const closeEditor = () => {
+    clearTimeout(timer.current);
+    disarm();
+    setEditing(false);
+  };
 
   return (
     <div
@@ -889,17 +999,165 @@ function PackageCard({
               fontFamily: cochin,
               fontSize: 12.5,
               fontWeight: 700,
-              color: C.red,
-              background: C.redSoft,
+              /* manila once refunded: the cards are still out, but no money
+                 is — the red figure would be claiming a loss that isn't one */
+              color: refunded ? C.manilaInk : C.red,
+              background: refunded ? C.manila : C.redSoft,
               borderRadius: 999,
               padding: "3px 10px",
               flexShrink: 0,
             }}
           >
-            {totalQty - gotQty} left · {missingValLabel}
+            {totalQty - gotQty} left · {refunded ? "refunded" : missingValLabel}
           </span>
         )}
       </button>
+
+      {/* The stamp band: the order's status, visible collapsed too, and — once
+          a stamp exists — the control that edits it. A sibling of the header
+          button, above the rows, so nothing moves under a thumb mid-check-in
+          (invariant 5); opening the editor is a deliberate tap on the band,
+          the same class of move as expanding the package. */}
+      {stamped && !editing && (
+        <button
+          onClick={openEditor}
+          aria-label={`Edit stamp on ${pkg.seller}`}
+          style={{
+            width: "100%",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            padding: "0 14px 10px",
+            border: 0,
+            background: "transparent",
+            textAlign: "left",
+            cursor: "pointer",
+          }}
+        >
+          <span style={stampChip}>
+            {STAMP_LABEL[stamp.kind].toUpperCase()} · {(stamp.at || "").slice(5)}
+          </span>
+          {/* ellipsis has to sit on the text child, which needs min-width 0 */}
+          <span
+            style={{
+              flex: 1,
+              minWidth: 0,
+              fontFamily: cochin,
+              fontStyle: "italic",
+              fontSize: 13.5,
+              lineHeight: 1.3,
+              color: C.ink,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {stamp.note || ""}
+          </span>
+          <span
+            style={{
+              fontFamily: mono,
+              fontSize: 12,
+              color: C.inkSoft,
+              flexShrink: 0,
+            }}
+          >
+            {"\u203a"}
+          </span>
+        </button>
+      )}
+      {editing && (
+        <div style={{ padding: "0 14px 12px" }}>
+          <div style={{ ...subHead, margin: "0 0 8px" }}>
+            <span style={cellLab}>Stamp</span>
+            <span style={{ flex: 1, height: 1, background: C.line }} />
+          </div>
+          {/* six cells will not fit one row at 375px; wrapping is the plan */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {STAMP_KINDS.map(([k, label]) => (
+              <button
+                key={k}
+                onClick={() => setKind(k)}
+                aria-pressed={kind === k}
+                style={stampKindCell(kind === k)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Anything else — what they said, when…"
+            aria-label="Stamp note"
+            style={{
+              width: "100%",
+              boxSizing: "border-box",
+              marginTop: 10,
+              fontFamily: cochin,
+              /* 16px or focusing it zooms the page on iOS */
+              fontSize: 16,
+              padding: "9px 12px",
+              borderRadius: 8,
+              border: `1px solid ${C.line}`,
+              background: C.card,
+              color: C.ink,
+              outline: "none",
+            }}
+          />
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              marginTop: 8,
+            }}
+          >
+            {stamped && (
+              <button
+                onClick={() => {
+                  if (confirmRemove) {
+                    onStamp(pkg.gk, null);
+                    closeEditor();
+                  } else arm(setConfirmRemove, true);
+                }}
+                style={{
+                  ...miniBtn,
+                  fontSize: 11,
+                  padding: "5px 9px",
+                  color: confirmRemove ? C.card : C.red,
+                  background: confirmRemove ? C.red : C.card,
+                  borderColor: confirmRemove ? C.red : C.redSoft,
+                  fontWeight: confirmRemove ? 700 : 400,
+                }}
+              >
+                {confirmRemove ? "Tap again to remove" : "Remove stamp"}
+              </button>
+            )}
+            <span style={{ flex: 1 }} />
+            <button onClick={closeEditor} style={miniBtn}>
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                onStamp(pkg.gk, { kind, note });
+                closeEditor();
+              }}
+              disabled={!kind}
+              style={{
+                ...miniBtn,
+                background: kind ? C.ink : C.card,
+                color: kind ? C.card : C.inkSoft,
+                borderColor: kind ? C.ink : C.line,
+                fontWeight: kind ? 700 : 400,
+                cursor: kind ? "pointer" : "default",
+              }}
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      )}
 
       {gotQty > 0 && !done && (
         <div style={{ padding: "0 14px 10px" }}>
@@ -917,6 +1175,16 @@ function PackageCard({
               justifyContent: "flex-end",
             }}
           >
+            {/* the first stamp's only entrance; once one exists the band is
+                the control. marginRight auto keeps the bulk buttons right. */}
+            {!stamped && !editing && (
+              <button
+                onClick={openEditor}
+                style={{ ...miniBtn, marginRight: "auto" }}
+              >
+                Stamp
+              </button>
+            )}
             {!done && (
               <button onClick={() => onBulk(pkg.items, true)} style={miniBtn}>
                 Mark all received
@@ -981,7 +1249,7 @@ function PackageCard({
 
 /* ---------- Item total (same product name across every seller) ---------- */
 
-function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder }) {
+function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder, stampedGks }) {
   const totalQty = item.qty;
   const gotQty = item.items.reduce(
     (s, it) => s + Math.min(it.qty, received[it.key] || 0),
@@ -1164,6 +1432,7 @@ function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder }) {
               onSet={onSet}
               variant="source"
               onOpenOrder={onOpenOrder}
+              stamped={!!stampedGks?.has(gkOf(it))}
             />
           ))}
         </>
@@ -1204,44 +1473,15 @@ const miniBtn = {
 const RESUME_RESET_MS = 60_000;
 
 /* ---------- the toolbar vocabulary ----------
-   One height for every control in the filter region. Before this, chips were
-   `5px 11px`, selects `9px 8px` and buttons `9px 12px`, so nothing shared a
-   baseline and the rows wrapped raggedly — that mismatch, not the colours, is
-   what read as unfinished. Change CTL_H and the whole toolbar follows.
-   `flexShrink: 0` on all of them is deliberate: the region had none, so a long
-   label ("Tap again to clear everything") could push a line past the column. */
+   One height for every control inside the disclosure panels. Before this,
+   chips were `5px 11px`, selects `9px 8px` and buttons `9px 12px`, so nothing
+   shared a baseline and the rows wrapped raggedly — that mismatch, not the
+   colours, is what read as unfinished. Change CTL_H and every option cell,
+   the day stepper and the key field follow. (The boxed `ctl`/`chip` controls
+   this constant was written for are gone: the last of them — the file
+   actions and the Sync panel's buttons — became a ruled action row and an
+   option grid, see `.mdl-acts` and `syncActions`.) */
 const CTL_H = 34;
-
-const ctl = {
-  fontFamily: mono,
-  fontSize: 12,
-  height: CTL_H,
-  /* inputs are content-box by default while buttons are border-box, so without
-     this the search field renders 2px taller than everything beside it */
-  boxSizing: "border-box",
-  padding: "0 11px",
-  borderRadius: 8,
-  border: `1px solid ${C.line}`,
-  background: C.card,
-  color: C.ink,
-  cursor: "pointer",
-  flexShrink: 0,
-  whiteSpace: "nowrap",
-};
-
-/* selects need their own horizontal padding — the native caret eats the right */
-const ctlSelect = { ...ctl, padding: "0 6px" };
-
-/* a pill. `active` is the accent-filled state, same treatment as the view
-   switch, so the two toggle sets in the app read alike. */
-const chip = (active) => ({
-  ...ctl,
-  fontSize: 11.5,
-  borderRadius: 999,
-  border: `1px solid ${active ? C.accent : C.line}`,
-  background: active ? C.accent : C.card,
-  color: active ? C.card : C.ink,
-});
 
 /* preset → label, module-level so the collapsed control and the expanded chips
    cannot drift apart. The values are deliberately heterogeneous — "all", raw
@@ -1463,6 +1703,91 @@ const linkBtn = {
   padding: 0,
 };
 
+/* ---------- the Sync panel's particulars ----------
+   Micro-label beside a mono value: the head cells' own two parts, laid on
+   their side so three of them stack under the option grid. `minmax(0, 1fr)`
+   on the value track for the reason headCell needs minWidth 0 — the photo
+   target is 44 characters, wider than a 375px column minus the label, and it
+   has to wrap inside its track rather than push the panel past the page. */
+const partGrid = {
+  display: "grid",
+  gridTemplateColumns: "auto minmax(0, 1fr)",
+  columnGap: 12,
+  rowGap: 6,
+  alignItems: "baseline",
+  marginTop: 2,
+};
+const partLab = { ...cellLab, whiteSpace: "nowrap" };
+
+/* ---------- the saved-versions list ----------
+   A hairline per row and the head cells' own two parts laid on their side, so
+   the list reads as more of the ruled region rather than as a tray dropped
+   into it. No fills and no radii: `restoreCell` is the one exception, and only
+   when armed, because a primed destructive control has to be unmistakable. */
+const verRow = { borderTop: `1px solid ${C.line}`, paddingTop: 8 };
+const verHead = {
+  display: "flex",
+  alignItems: "baseline",
+  gap: 8,
+  width: "100%",
+  padding: 0,
+  border: 0,
+  background: "transparent",
+  textAlign: "left",
+  cursor: "pointer",
+};
+const verWhen = { fontFamily: mono, fontSize: 11, color: C.ink, flexShrink: 0 };
+const verFig = {
+  fontFamily: mono,
+  fontSize: 10.5,
+  color: C.inkSoft,
+  marginLeft: "auto",
+  flexShrink: 0,
+};
+/* the force's treatment, in red rather than manila: a restore replaces the
+   ledger, which is the one thing "Push anyway" does not do */
+const restoreCell = (armed) => ({
+  ...optCell(false),
+  padding: "0 12px",
+  border: `1px solid ${armed ? C.red : C.line}`,
+  background: armed ? C.red : C.redSoft,
+  color: armed ? C.card : C.red,
+  fontWeight: armed ? 700 : 400,
+});
+const partVal = {
+  fontFamily: mono,
+  fontSize: 11,
+  lineHeight: 1.5,
+  color: C.inkSoft,
+  minWidth: 0,
+  overflowWrap: "anywhere",
+};
+/* The token field is a write-on rule like FIND, not a box. 16px is not a
+   choice: iOS zooms the page on focusing any input smaller than that, and the
+   viewport meta deliberately leaves the user able to zoom. */
+const keyField = {
+  flex: "1 1 140px",
+  minWidth: 0,
+  height: CTL_H,
+  boxSizing: "border-box",
+  border: 0,
+  borderBottom: `1px solid ${C.line}`,
+  borderRadius: 0,
+  background: "transparent",
+  fontFamily: mono,
+  fontSize: 16,
+  color: C.ink,
+  outline: "none",
+  padding: "0 2px",
+};
+/* the month chips' treatment: an option cell carrying its own rule */
+const keySave = {
+  ...optCell(false),
+  padding: "0 12px",
+  border: `1px solid ${C.line}`,
+  flexShrink: 0,
+};
+
 /* Every way the remote backup can fail, phrased for someone holding a phone.
    Keyed by the `.code` window.remote puts on its errors — see entry.jsx.
    The offline wording is deliberately reassuring: nothing was lost, this is a
@@ -1660,6 +1985,24 @@ function Notice({ children, actionLabel, onAction, onDismiss }) {
    identical join, so the effect never re-runs and the photos you just
    downloaded stay blank squares until a reload. Anything that writes to the
    photo store bumps the epoch; that is what puts them on screen. */
+/* The set of package keys whose stamp satisfies `pred`, with an identity that
+   changes only when the MEMBERSHIP does. `stamps` is a fresh object on every
+   note edit, and if that rebuilt liveItems → packages, packageOrder would
+   re-freeze the sort mid-check-in — the leapfrog invariant 5 exists to
+   prevent. Keying the memo on the sorted membership string keeps a typo fix
+   from reshuffling the list. `pred` must be a module-level constant. */
+function useGkSet(stamps, pred) {
+  const key = useMemo(
+    () =>
+      Object.keys(stamps)
+        .filter((gk) => pred(stamps[gk]))
+        .sort()
+        .join("\u0000"),
+    [stamps, pred]
+  );
+  return useMemo(() => new Set(key ? key.split("\u0000") : []), [key]);
+}
+
 function usePhotoUrls(ids, epoch = 0) {
   const key = `${epoch}|${(ids || []).join(",")}`;
   const [urls, setUrls] = useState({});
@@ -2442,6 +2785,9 @@ export default function MailDayLedger() {
      Showing cell brings the received rows back for the session. */
   const [hideDone, setHideDone] = useState(true);
   const [showCanceled, setShowCanceled] = useState(false);
+  /* the stamped filter — a filter on top of the normal list, like Showing,
+     and ephemeral like it: not in the saved shape, starts off on every load */
+  const [showStamped, setShowStamped] = useState(false);
   const canceledRef = useRef(null);
   useEffect(() => {
     if (showCanceled)
@@ -2464,16 +2810,15 @@ export default function MailDayLedger() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmPull, setConfirmPull] = useState(false);
   const [confirmForce, setConfirmForce] = useState(false);
-  const [importMsg, setImportMsg] = useState("");
-  const resetTimer = useRef(null);
   /* ---- saved versions ----
-     A rollback list, so the four operations that can lose data in bulk each
-     have something standing in front of them. All of it is ephemeral UI state
-     plus a cache of what the store holds — nothing here is persisted into the
-     ledger, so invariant 2's five-site rule does not apply. The versions
-     themselves are built from snapshot(), which is what keeps it that way:
-     they are a third READER of the one payload builder, never a fourth
-     builder, so a new persisted key reaches them for free. */
+     A rollback list, so the operations that can lose data in bulk each have
+     something standing in front of them. All ephemeral UI state plus a cache of
+     what the store holds — nothing here is persisted into the ledger, so
+     invariant 2's five sites (and merge-rules' sixth) do not apply. The
+     versions themselves are built from snapshot(), which is what keeps it that
+     way: a third READER of the one payload builder, never a fourth builder, so
+     a new persisted key reaches them for free. `stamps` proved that — it
+     shipped after this and needed no change here. */
   const [versionList, setVersionList] = useState([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [openVersion, setOpenVersion] = useState(null);
@@ -2485,6 +2830,8 @@ export default function MailDayLedger() {
   const [olderBusy, setOlderBusy] = useState(false);
   const lastVersionAt = useRef(null);
   const skipFirstVersion = useRef(true);
+  const [importMsg, setImportMsg] = useState("");
+  const resetTimer = useRef(null);
   /* The remote backup collapses behind one control, exactly like the date
      range above — a disclosure, not a preference, so it isn't persisted and
      starts shut on every load. Push and Pull are manual: this is a backup, not
@@ -2558,6 +2905,8 @@ export default function MailDayLedger() {
   /* orphaned mail: cards recorded off an unidentifiable envelope, parked until
      the user ties them to a package by hand */
   const [envelopes, setEnvelopes] = useState([]); // newest first
+  /* order stamps, keyed by package gk — persisted, see invariant 2 */
+  const [stamps, setStamps] = useState({});
   const [composing, setComposing] = useState(null); // null | "new" | envelopeId
   const [undo, setUndo] = useState(null); // last assignment, reversible
   const [backupBusy, setBackupBusy] = useState(false);
@@ -2583,6 +2932,8 @@ export default function MailDayLedger() {
           setEnvelopes(
             (data.envelopes || []).map((e) => ({ ...e, photos: e.photos || [] }))
           );
+          // absent on anything saved before stamps shipped
+          setStamps(sanitizeStamps(data.stamps));
           if (data.dateFilter) setDateFilter(data.dateFilter);
           if (data.sortBy) setSortBy(data.sortBy);
           // cardSort: the key this setting shipped under before the rename
@@ -2614,6 +2965,7 @@ export default function MailDayLedger() {
             items,
             received,
             envelopes,
+            stamps,
             dateFilter,
             sortBy,
             itemSort,
@@ -2626,7 +2978,7 @@ export default function MailDayLedger() {
       }
     }, 500);
     return () => clearTimeout(saveTimer.current);
-  }, [items, received, envelopes, dateFilter, sortBy, itemSort, loaded]);
+  }, [items, received, envelopes, stamps, dateFilter, sortBy, itemSort, loaded]);
 
   /* ONE payload builder, shared by the file download and the GitHub push.
      Keeping it single is a documentation requirement as much as a DRY one:
@@ -2644,34 +2996,31 @@ export default function MailDayLedger() {
   );
 
   /* The same figure takeVersion stores, and deliberately NOT totals.got —
-     that one is filtered by the active date range, so a version would appear
-     to differ from now every time the range changed. */
+     that one is filtered by the active date range, so a version would appear to
+     differ from now every time the range changed. */
   const checkedTotal = useMemo(
     () => Object.values(received).reduce((n, v) => n + v, 0),
     [received]
   );
 
   /* ---- the one thing sync is allowed to say ----
-     Everything else about the remote is now silent: there is no toggle, no
-     Merge button on the page, no "the other device is ahead" notice, and no
-     chip. Sync happens or it doesn't, and the only case worth a pixel is the
-     one where it has stopped happening — because a ledger that quietly stopped
-     reaching GitHub is exactly the failure the remote exists to prevent, and
-     it is invisible by nature.
+     Everything else about the remote is silent now: no toggle, no Merge cell in
+     the action row, no "the other device is ahead" notice. Sync happens or it
+     doesn't, and the only case worth a pixel is the one where it has stopped —
+     because a ledger that quietly stopped reaching GitHub is exactly the
+     failure the remote exists to prevent, and it is invisible by nature.
 
      Deliberately NOT gated on there being local data. A device with an empty
      ledger and no key is the fresh phone, and this line is its only way to the
-     Pull that recovers it — the same "a control that recovers state must not
-     be gated on that state existing" rule that widened Backup once, Sync twice
-     and History a third time. Gate it on items.length and the app is unusable
-     on precisely the device it was built to rescue. */
+     Pull that recovers it — the "a control that recovers state must not be
+     gated on that state existing" rule that widened Backup once and Sync twice
+     already. */
   const syncBroken = useMemo(() => {
     if (!window.remote) return null;
     if (pushState === "conflict") return "conflict";
     if (remoteMsg?.tone === "error") return "error";
-    /* a keyless device can PULL (the ledger repo is public) but can never
-       push, so it genuinely is not backed up, and saying so is honest rather
-       than nagging */
+    /* a keyless device can PULL (the ledger repo is public) but can never push,
+       so it genuinely is not backed up, and saying so is honest not naggy */
     if (!remoteInfo?.hasKey) return "no-key";
     if (!remoteInfo?.pushedAt) return "never";
     if (Date.now() - remoteInfo.pushedAt > SYNC_STALE_MS) return "stale";
@@ -2684,11 +3033,12 @@ export default function MailDayLedger() {
       items,
       received,
       envelopes,
+      stamps,
       dateFilter,
       sortBy,
       itemSort,
     }),
-    [items, received, envelopes, dateFilter, sortBy, itemSort]
+    [items, received, envelopes, stamps, dateFilter, sortBy, itemSort]
   );
 
   /* Two backups on purpose. The plain one is small and quick and holds the
@@ -2723,6 +3073,14 @@ export default function MailDayLedger() {
     [snapshot, referencedPhotoIds]
   );
 
+  /* The one restore path, shared by a dropped file and a GitHub pull.
+     Funnelled rather than duplicated for two reasons: the validation below is
+     the ONLY thing standing between a corrupt payload and a wiped ledger, so
+     it should exist once; and the "pending envelopes were replaced" warning
+     now covers the pull too, where it matters more, because a pull is one tap
+     rather than a deliberate file drop.
+     Throws on anything unusable — and throws BEFORE the first setState, so a
+     failed restore leaves this device completely untouched. */
   const refreshVersions = useCallback(async () => {
     if (!window.versions) return;
     setVersionList(await window.versions.list().catch(() => []));
@@ -2731,21 +3089,19 @@ export default function MailDayLedger() {
   /* Save a version of where the ledger stands right now.
 
      Built from snapshot() and nothing else — the same payload the download and
-     the GitHub push send. That is the whole reason adding a version tier costs
-     nothing at the invariant-2 five-site rule: give this its own builder and
-     the next person to add a persisted key silently ships a rollback list that
-     drops it.
+     the GitHub push send. That is why adding a version tier costs nothing at
+     invariant 2's five sites: give this its own builder and the next person to
+     add a persisted key silently ships a rollback list that drops it. `stamps`
+     is the proof — it landed after this and needed no change here.
 
-     Two kinds, and the difference is WHEN they are taken rather than what they
-     contain. A milestone is taken BEFORE a bulk operation, so it holds the
-     world as it was in front of the thing that might have ruined it. A recent
-     is taken after an ordinary change, so it holds where you got to. Both are
-     the right answer for their own question.
+     Two kinds, and the difference is WHEN, not what. A milestone is taken
+     BEFORE a bulk operation, so it holds the world as it was in front of the
+     thing that might have ruined it. A recent is taken after an ordinary
+     change, so it holds where you got to.
 
-     Fire-and-forget by design: snapshot() is read synchronously here, before
-     the first await, so a caller can take a milestone and mutate state on the
-     very next line without waiting. Nothing the user is doing should ever
-     block on a backup of it. */
+     Fire-and-forget: snapshot() is read synchronously before the first await,
+     so a caller can take a milestone and mutate state on the very next line.
+     Nothing the user is doing should block on a backup of it. */
   const takeVersion = useCallback(
     (label, kind = "recent") => {
       if (!window.versions) return;
@@ -2765,23 +3121,15 @@ export default function MailDayLedger() {
     [snapshot, refreshVersions]
   );
 
-  /* The one restore path, shared by a dropped file and a GitHub pull.
-     Funnelled rather than duplicated for two reasons: the validation below is
-     the ONLY thing standing between a corrupt payload and a wiped ledger, so
-     it should exist once; and the "pending envelopes were replaced" warning
-     now covers the pull too, where it matters more, because a pull is one tap
-     rather than a deliberate file drop.
-     Throws on anything unusable — and throws BEFORE the first setState, so a
-     failed restore leaves this device completely untouched. */
   const applyBackup = useCallback(
     async (text, source /* "file" | "remote" | "merge" */, extraPresent = null, notice = null) => {
       const data = parseLedger(text);
       const remote = source === "remote";
       /* AFTER the parse and before the first setState: a payload that isn't a
          ledger throws above this line, so a rejected restore doesn't spend a
-         version slot, and a restore that is about to land always has the world
-         it is replacing saved in front of it. This is what makes every restore
-         — file, pull, merge and the History list itself — undoable. */
+         version slot, and a restore about to land always has the world it is
+         replacing saved in front of it. This is what makes every restore —
+         file, pull, merge and the History list itself — undoable. */
       takeVersion(
         source === "file" ? "before restore" : "before sync",
         "milestone"
@@ -2831,6 +3179,7 @@ export default function MailDayLedger() {
           photos: (e.photos || []).filter((id) => present.has(id)),
         }))
       );
+      setStamps(sanitizeStamps(data.stamps));
       if (inlinedIds.length && window.photos)
         (async () => {
           for (const [id, url] of Object.entries(inlined)) {
@@ -2845,14 +3194,15 @@ export default function MailDayLedger() {
       if (data.itemSort || data.cardSort)
         setItemSort(data.itemSort || data.cardSort);
       setImportMsg(
-        /* Three-valued, and `!= null` rather than `||` is the whole point: an
-           empty string has to be able to mean "say nothing", which only the
+        /* Three-valued, and `!= null` rather than `||` is the point: an empty
+           string has to be able to mean "say nothing", which only the
            unattended merge uses and only when it added nothing. Under `||` it
-           would fall through to the default sentence below, which would be a
-           lie about an operation nobody asked for. */
+           falls through to the default sentence, which would be a lie about an
+           operation nobody asked for. */
         notice != null
           ? notice
-          : `${remote ? "Pulled from GitHub" : "Backup restored"} — ${
+          :
+        `${remote ? "Pulled from GitHub" : "Backup restored"} — ${
           data.items.length
         } lines and your check-ins are back.` +
           (inlinedIds.length
@@ -2872,7 +3222,6 @@ export default function MailDayLedger() {
     },
     [envelopes, takeVersion]
   );
-
 
   const handleFile = useCallback(
     (file) => {
@@ -2940,7 +3289,7 @@ export default function MailDayLedger() {
   /* reset sticky rows whenever the view context changes */
   useEffect(() => {
     setSticky(new Set());
-  }, [hideDone, query, dateFilter, view]);
+  }, [hideDone, query, dateFilter, view, showStamped]);
 
   /* Showing is the state a session starts from, and on iOS "closing" a
      home-screen app usually just backgrounds it — the page survives, so a
@@ -2951,28 +3300,22 @@ export default function MailDayLedger() {
      than as a fresh start. */
   const hiddenAt = useRef(null);
   /* The one-shot "that foreground was a new session" signal, handed forward to
-     the peek effect several hundred lines below — which is where the automatic
-     merge lives, because the peek is already making the one network read the
-     decision needs and a second one on every foreground would double a request
-     budget this feature is careful about.
+     the peek effect below — which is where the automatic merge lives, because
+     the peek is already making the one network read the decision needs.
 
      It has to be HANDED forward rather than re-derived, and this is the trap.
      The handler below runs FIRST — it registers on the first commit, while the
-     peek effect waits on `loaded` — and it nulls `hiddenAt` before returning.
-     So anything downstream that reads `hiddenAt` measures zero forever and the
+     peek effect waits on `loaded` — and nulls `hiddenAt` before returning. So
+     anything downstream that reads `hiddenAt` measures zero forever and the
      merge never fires: no error, nothing on screen, nothing to notice.
 
-     Written on BOTH branches, never only the true one, so a short hop out can
-     cancel a signal an earlier long absence left standing.
-
-     One-shot BY CONTRACT, and the contract is enforced at the consumer rather
-     than here — see `check()`. That function also runs on mount and on every
-     `syncBusy` flip, and a merge flips `syncBusy` twice, so a flag that
-     survived being acted on would let the merge re-trigger itself.
+     Written on BOTH branches, so a short hop out can cancel a signal an earlier
+     long absence left standing. One-shot BY CONTRACT, enforced at the consumer
+     — see `check()`, which also runs on mount and on every `syncBusy` flip, and
+     a merge flips `syncBusy` twice.
 
      Starts TRUE: a cold mount is a new session too, and the more valuable half
-     — a fresh phone, an ITP eviction or an origin move should come back
-     already reconciled rather than needing someone to go looking for a button. */
+     — a fresh phone should come back already reconciled. */
   const freshSession = useRef(true);
   useEffect(() => {
     const onVisibility = () => {
@@ -2987,8 +3330,7 @@ export default function MailDayLedger() {
       /* Two consequences of one finding, landing seconds apart — this one
          synchronously, the merge after a network round trip. Two reshapes of
          the same list on one resume is fine precisely BECAUSE it is a resume:
-         nothing is under the pointer, and both are saying "new session" in the
-         two ways the app has to say it. */
+         nothing is under the pointer. */
       if (fresh) setHideDone(true);
     };
     document.addEventListener("visibilitychange", onVisibility);
@@ -3020,6 +3362,9 @@ export default function MailDayLedger() {
      would arrive at nothing. Revealing bypasses both. */
   const openOrder = useCallback((gk) => {
     setRevealed((prev) => (prev.has(gk) ? prev : new Set(prev).add(gk)));
+    /* the stamped filter would otherwise swallow an unstamped target — the
+       same "jump lands on nothing" failure group 32 fixed for hideDone */
+    setShowStamped(false);
     setView("packages");
     setJumpGk(gk);
   }, []);
@@ -3044,19 +3389,40 @@ export default function MailDayLedger() {
     });
   }, []);
 
-  /* Two-tap confirms, invariant 6 — no native dialogs. There are four armable
-     controls in this component now (Reset, Pull, Push anyway, Restore), so
-     arming one has to disarm the others: two primed destructive buttons
-     sitting side by side is precisely the mis-tap the pattern exists to
-     prevent. Restore is the reason `arm` takes a value: there are many restore
-     buttons on screen at once, one per version, so "which one is primed" has
-     to be an id rather than a flag. Disarming is still a single call. */
+  /* The one writer for stamps, so `updatedAt` — what the two-device merge
+     ranks copies by — is set in exactly one place. `patch` null removes: a
+     tombstone rather than a delete, so the removal itself travels. The date
+     survives a note-only edit; picking a different kind re-dates it, since
+     "refunded on the 4th" is a different fact from "claim filed on the 1st". */
+  const setStamp = useCallback((gk, patch) => {
+    setStamps((prev) => {
+      const cur = prev[gk];
+      if (!patch && !hasStamp(cur)) return prev; // nothing to remove
+      const next = patch
+        ? {
+            kind: patch.kind,
+            note: (patch.note || "").trim(),
+            at: cur?.kind === patch.kind && cur.at ? cur.at : todayLocal(),
+            updatedAt: Date.now(),
+          }
+        : { kind: "", note: "", at: "", updatedAt: Date.now() };
+      return { ...prev, [gk]: next };
+    });
+  }, []);
+
+  /* Two-tap confirms, invariant 6 — no native dialogs. There are three armable
+     controls in this component now (Reset, Pull, Push anyway), so arming one
+     has to disarm the others: two primed destructive buttons sitting side by
+     side is precisely the mis-tap the pattern exists to prevent. */
   const disarm = useCallback(() => {
     setConfirmReset(false);
     setConfirmPull(false);
     setConfirmForce(false);
     setConfirmRestore(null);
   }, []);
+  /* `arm` takes a VALUE rather than always setting true, because Restore has
+     one button per version on screen at once, so "which one is primed" has to
+     be an id. Disarming is still a single call. */
   const arm = useCallback(
     (set, value = true) => {
       disarm();
@@ -3075,9 +3441,8 @@ export default function MailDayLedger() {
     clearTimeout(resetTimer.current);
     disarm();
     /* The most valuable version this app takes. Reset is the one control that
-       destroys everything, and versions deliberately survive it (see the store
-       note) — so a Reset tapped twice by accident is now recoverable rather
-       than final. */
+       destroys everything, and versions deliberately survive it — so a Reset
+       tapped twice by accident is recoverable rather than final. */
     takeVersion("before reset", "milestone");
     /* A sync now runs for minutes, not milliseconds, so it can easily still be
        in flight here. Bumping the generation makes every await-resume inside it
@@ -3089,6 +3454,8 @@ export default function MailDayLedger() {
     /* envelopes have to go too — left in state they'd be written straight back
        by the next debounced save and reappear pointing at a ledger that's gone */
     setEnvelopes([]);
+    setStamps({});
+    setShowStamped(false);
     setComposing(null);
     setUndo(null);
     setSticky(new Set());
@@ -3106,8 +3473,8 @@ export default function MailDayLedger() {
 
   /* Two-tap, because restoring is a full replace — invariant 6. It is also the
      one destructive control in the app that is genuinely undoable, because
-     applyBackup takes a "before restore" milestone on the way in: tap the
-     wrong row and the row above it is the world you just left. */
+     applyBackup takes a "before restore" milestone on the way in: tap the wrong
+     row and the row above it is the world you just left. */
   const restoreVersion = useCallback(
     async (id) => {
       if (confirmRestore !== id) {
@@ -3124,8 +3491,7 @@ export default function MailDayLedger() {
       }
       try {
         /* "file" and not a fourth source: this IS a local full replace, and it
-           should carry exactly the warnings one does — the pending-envelopes
-           sentence above matters here as much as anywhere. */
+           should carry exactly the warnings one does. */
         await applyBackup(text, "file", null, null);
         setOpenVersion(null);
       } catch {
@@ -3135,11 +3501,33 @@ export default function MailDayLedger() {
     [confirmRestore, arm, disarm, applyBackup]
   );
 
-  /* Same two taps and the same funnel as a local restore — the only difference
-     is where the bytes come from. It deliberately does NOT touch the stored
-     sha: rolling the ledger back is a local act, and if the user then wants the
-     remote rolled back too, the ordinary push does it as a new commit, which is
-     what makes it reversible in turn. */
+  /* The branch's own history, behind an explicit tap. Every push has always
+     been a commit, so this archive already existed — it was only unreachable
+     from the phone. Both calls are reads, so nothing here touches the
+     content-write budget, and neither needs a key on the public ledger repo.
+     Not fetched on open: two round trips for something wanted rarely, and the
+     local list already answers "undo what I just did". */
+  const loadOlder = useCallback(async () => {
+    if (!window.remote || typeof window.remote.listVersions !== "function")
+      return;
+    setOlderBusy(true);
+    setVersionMsg(null);
+    try {
+      setOlderVersions(await window.remote.listVersions());
+    } catch (e) {
+      setOlderVersions(null);
+      setVersionMsg(
+        REMOTE_SAYS[e?.code || "bad-response"] || REMOTE_SAYS["bad-response"]
+      );
+    } finally {
+      setOlderBusy(false);
+    }
+  }, []);
+
+  /* Same two taps and the same funnel as a local restore — only the source of
+     the bytes differs. It deliberately does NOT touch the stored sha: rolling
+     the ledger back is a local act, and if the remote should follow, the
+     ordinary push does it as a new commit, which keeps that reversible too. */
   const restoreOlder = useCallback(
     async (sha) => {
       if (confirmRestore !== sha) {
@@ -3168,34 +3556,10 @@ export default function MailDayLedger() {
     [confirmRestore, arm, disarm, applyBackup]
   );
 
-  /* The branch's own history, behind an explicit tap. Every push has always
-     been a commit, so this archive already existed — it was just only reachable
-     from a laptop. Both calls are reads, so nothing here touches the
-     content-write budget, and neither needs a key on the public ledger repo.
-     Not fetched on open: two round trips for something wanted rarely, and the
-     local list already answers "undo what I just did". */
-  const loadOlder = useCallback(async () => {
-    if (!window.remote || typeof window.remote.listVersions !== "function")
-      return;
-    setOlderBusy(true);
-    setVersionMsg(null);
-    try {
-      setOlderVersions(await window.remote.listVersions());
-    } catch (e) {
-      setOlderVersions(null);
-      setVersionMsg(
-        REMOTE_SAYS[e?.code || "bad-response"] || REMOTE_SAYS["bad-response"]
-      );
-    } finally {
-      setOlderBusy(false);
-    }
-  }, []);
-
-  /* Through a ref, for the reason autoPushRef exists further down: takeVersion
-     depends on snapshot(), so its identity changes whenever ANY persisted
-     field does — including dateFilter and sortBy. Listed as a dep it would
-     re-arm the effect below on every commit, and re-sorting the screen would
-     save a version of the ledger. */
+  /* Through a ref, for the reason autoPushRef exists: takeVersion depends on
+     snapshot(), so its identity changes whenever ANY persisted field does —
+     including dateFilter and sortBy. Listed as a dep it would re-arm the effect
+     below on every commit, and re-sorting the screen would save a version. */
   const takeVersionRef = useRef(takeVersion);
   useEffect(() => {
     takeVersionRef.current = takeVersion;
@@ -3205,15 +3569,14 @@ export default function MailDayLedger() {
     if (loaded) refreshVersions();
   }, [loaded, refreshVersions]);
 
-  /* The rolling half of the list. Deliberately only the three fields that are
-     REAL data — the same three the auto-push debounce watches, and for the
-     same reason: re-sorting the screen is not a change worth a version.
+  /* The rolling half of the list. Deliberately only the fields that are REAL
+     data — the same ones the auto-push debounce watches, and for the same
+     reason: re-sorting the screen is not a change worth a version.
 
-     Taken AFTER the change rather than before, which is the opposite of a
-     milestone and correct for both. A milestone answers "what was it like
-     before that import"; this answers "where had I got to". The 30s gate in
-     shouldSnapshot is what keeps a mail day's hundreds of taps from spending
-     the whole ring on one package. */
+     Taken AFTER the change, the opposite of a milestone and correct for both. A
+     milestone answers "what was it like before that import"; this answers
+     "where had I got to". The 30s gate in shouldSnapshot keeps a mail day's
+     hundreds of taps from spending the whole ring on one package. */
   useEffect(() => {
     if (!loaded) return;
     /* the load effect's first commit is not a change the user made */
@@ -3222,7 +3585,7 @@ export default function MailDayLedger() {
       return;
     }
     takeVersionRef.current("check-ins");
-  }, [items, received, envelopes, loaded]);
+  }, [items, received, envelopes, stamps, loaded]);
 
   /* ---- remote backup: manual push / pull ----
      Transport only. localStorage stays the source of truth, nothing here runs
@@ -3579,15 +3942,17 @@ export default function MailDayLedger() {
         /* An unattended merge that added nothing has nothing to report, and
            reporting it anyway is worse than silence — `peek` says "ahead" on
            any new blob sha, and a push writes one whenever the ledger is
-           re-saved, so an empty-data commit on the other device would
-           otherwise greet the user on their next resume with a notice about a
-           merge they never asked for that did nothing.
-           When it DID add something the summary stays, even quietly: the list
-           just changed shape, and that sentence is the only thing on screen
-           explaining why. Suppressing it would be the quiet data-shaped
-           surprise this whole feature exists to avoid. */
+           re-saved, so an empty-data commit elsewhere would otherwise greet the
+           user on their next resume with a notice about a merge they never
+           asked for that did nothing. When it DID add something the summary
+           stays even quietly: the list just changed shape, and that sentence is
+           the only thing explaining why. */
         const changed =
-          stats.itemsAdded + stats.checkInsAdded + stats.envelopesAdded > 0;
+          stats.itemsAdded +
+            stats.checkInsAdded +
+            stats.envelopesAdded +
+            (stats.stampsAdded || 0) >
+          0;
         await applyBackup(
           text,
           "merge",
@@ -3634,18 +3999,16 @@ export default function MailDayLedger() {
         /* a third writer landed between our pull and our push. Re-arm the
            conflict controls rather than leaving a bare message and no way
            forward — merging again is the right next move, and it converges. */
-        /* NOT suppressed on the quiet path: this is a control, not a message.
-           It is what puts the repair kit within reach. */
+        /* NOT suppressed on the quiet path: a control, not a message. It is
+           what puts the repair kit within reach. */
         if (code === "conflict") setPushState("conflict");
         if (!quiet) {
-          /* Every one of these strings is phrased for someone who just tapped
-             a button — "Paste a new one", "Try again". Nobody tapped anything
-             here, so the user would meet them later with no idea what asked.
-             setKeyOpen is the worse of the two: it swaps "key saved on this
+          /* Every one of these strings is phrased for someone who just tapped a
+             button — "Paste a new one", "Try again". Nobody tapped anything
+             here. setKeyOpen is the worse of the two: it swaps "saved on this
              device" for an empty field, which reads as *your key is gone*.
              Suppressing costs nothing, because a failed merge lands nothing —
-             applyBackup throws before its first setState — so a quiet failure
-             degrades to exactly the behaviour before any of this existed. */
+             applyBackup throws before its first setState. */
           setRemoteMsg({
             tone: code === "missing" || code === "conflict" ? "advice" : "error",
             text: REMOTE_SAYS[code] || REMOTE_SAYS["bad-response"],
@@ -3665,34 +4028,30 @@ export default function MailDayLedger() {
 
   /* ---- the merge, run for you ----
 
-     This was declined once, and the reason was right: applying forty imported
-     lines into the package list mid-check-in is the cascading mis-tap
-     invariant 5 exists to prevent. What changed is not the risk but the
-     evidence. Coming back after RESUME_RESET_MS away is not mid-check-in — it
-     is a new session, and the app already stakes a list reshape on exactly
-     that finding when it resets Showing. This spends the same finding twice.
-     And the merge only ever ADDS (mergeReceived is a max, mergeItems a union),
-     so the residual risk is that the list changes shape, never that anything
-     of the user's is lost.
+     Declined once, and the reason was right: applying forty imported lines into
+     the package list mid-check-in is the cascading mis-tap invariant 5 exists
+     to prevent. What changed is not the risk but the evidence. Coming back
+     after RESUME_RESET_MS away is not mid-check-in — it is a new session, and
+     the app already stakes a list reshape on exactly that finding when it
+     resets Showing. This spends the same finding twice. And the merge only ever
+     ADDS, so the residual risk is that the list changes shape, never that
+     anything of the user's is lost.
 
-     It needs no key: the ledger repo is public, which is why `peek` runs
-     keyless — so this works on a device that has never been set up, which is
-     exactly the device that most needs it.
+     Needs no key: the ledger repo is public, which is why `peek` runs keyless —
+     so it works on a device that has never been set up, which is the device
+     that most needs it.
 
-     And it does not push. `alsoPush` is false, so no empty commit is
-     manufactured for a device that had nothing to send; if this device IS
-     holding unpushed work, the merge just rewrote items/received/envelopes —
-     the three deps of the auto-push debounce — so the union goes out 90
-     seconds later through the path that peeks first and already knows how to
-     recover from a conflict. */
+     It does not push. `alsoPush` is false, so no empty commit is manufactured
+     for a device with nothing to send; if this device IS holding unpushed work,
+     the merge just rewrote the three deps of the auto-push debounce, so the
+     union goes out 90 seconds later through the path that peeks first. */
   const autoMerge = useCallback(async () => {
-    /* The same five mid-thought states auto-push refuses to write in — and
-       here the stake is higher, not lower. applyBackup calls setComposing(null)
-       and setUndo(null), so a merge landing while a half-built envelope is open
-       DISCARDS entries that are hand-typed, exist in no CSV and are on no
-       remote. "Open the composer, duck out to read the mailing label, come back
-       two minutes later" is not a rare path — it is this feature's own
-       workflow, and it is over the threshold by construction. */
+    /* The same mid-thought states auto-push refuses to write in — and here the
+       stake is higher. applyBackup calls setComposing(null) and setUndo(null),
+       so a merge landing while a half-built envelope is open DISCARDS entries
+       that are hand-typed, in no CSV and on no remote. "Open the composer, duck
+       out to read the mailing label, come back two minutes later" is this
+       feature's own workflow, over the threshold by construction. */
     if (composing || undo || confirmReset || confirmPull || confirmForce) return;
     /* quiet: nobody tapped anything, so nothing may speak in the voice of
        something that was tapped. See doMerge's catch. */
@@ -3700,12 +4059,11 @@ export default function MailDayLedger() {
   }, [composing, undo, confirmReset, confirmPull, confirmForce, doMerge]);
 
   /* Through a ref, for the reason autoPushRef exists below: doMerge's identity
-     churns on essentially every render (it depends on snapshot), and its
-     consumer is the peek effect, whose deps are `[loaded, syncBusy]`. Listing
-     it there would re-register the listener on every commit AND re-run
-     `check()`, which is a network read — so a sort change would peek.
-     Declared HERE, above that effect, so this updater runs first within a
-     commit's effect phase. */
+     churns on essentially every render, and its consumer is the peek effect,
+     whose deps are `[loaded, syncBusy]`. Listing it there would re-register the
+     listener on every commit AND re-run `check()`, which is a network read — so
+     a sort change would peek. Declared HERE, above that effect, so this updater
+     runs first within a commit's effect phase. */
   const autoMergeRef = useRef(autoMerge);
   useEffect(() => {
     autoMergeRef.current = autoMerge;
@@ -3728,19 +4086,19 @@ export default function MailDayLedger() {
          foreground; letting it survive to whatever re-runs check() next is
          precisely the failure mode, because this effect's deps are
          `[loaded, syncBusy]` and a merge flips syncBusy twice — a surviving
-         flag would let the merge re-trigger itself the moment it finished.
-         Dropping a signal costs one tap on the repair kit. Keeping one costs
-         the guarantee that this only ever fires on a measured absence. */
+         flag would let the laptop's push land mid-session, with no resume
+         anywhere in sight. Dropping a signal costs one tap on the repair kit;
+         keeping one costs the guarantee that this only fires on a measured
+         absence. */
       const fresh = freshSession.current;
       freshSession.current = false;
       if (document.visibilityState === "hidden" || syncingRef.current) return;
       const p = await window.remote.peek().catch(() => null);
       /* known:false is "we could not look", which must never render as "all
-         clear" — leave the flag exactly as it was. Restructured from a positive
-         guard into an early return so the merge below sits INSIDE the known
-         branch rather than beside it: an unknown remote cannot license reading
-         it any more than it can license writing it, and the structure is what
-         says so. */
+         clear" — leave the flag exactly as it was. Restructured into an early
+         return so the merge below sits INSIDE the known branch rather than
+         beside it: an unknown remote cannot license reading it any more than
+         writing it, and the structure is what says so. */
       if (!p || !p.known) return;
       setAhead(!!p.ahead);
       /* Not awaited: check() has nothing left to do, and doMerge returns a code
@@ -4001,11 +4359,26 @@ export default function MailDayLedger() {
     setUndo(null);
   }, [undo]);
 
-  const liveItems = useMemo(
+  /* items ─► activeItems (not canceled) ─► rangedActive (in range) ─► rangedItems (not refunded) ─► packages
+                          └─► liveItems (not refunded)                    └─► stampedPackages
+     Two exclusions, one chokepoint each. Canceled is the CSV's word; refunded
+     is the user's stamp, and it leaves the counts the same way — the money is
+     back, so nothing is outstanding. Everything downstream (totals, Tally,
+     envelope candidates) inherits both without knowing about either. */
+  const activeItems = useMemo(
     () => items.filter((it) => !/^cancel/i.test(it.tracking || "")),
     [items]
   );
-  const canceledCount = items.length - liveItems.length;
+  const canceledCount = items.length - activeItems.length;
+  const refundedGks = useGkSet(stamps, isRefundStamp);
+  const stampedGks = useGkSet(stamps, hasStamp);
+  const liveItems = useMemo(
+    () =>
+      refundedGks.size
+        ? activeItems.filter((it) => !refundedGks.has(gkOf(it)))
+        : activeItems,
+    [activeItems, refundedGks]
+  );
 
   const canceledPackages = useMemo(() => {
     const map = new Map();
@@ -4027,16 +4400,26 @@ export default function MailDayLedger() {
     return arr;
   }, [items]);
 
-  const rangedItems = useMemo(() => {
-    if (!range) return liveItems;
-    return liveItems.filter((it) => {
+  /* the range applied BEFORE the refund exclusion, so the stamped filter can
+     source refunded packages back in — they are otherwise out of the list, and
+     that list is the only place a refund can be found and un-stamped */
+  const rangedActive = useMemo(() => {
+    if (!range) return activeItems;
+    return activeItems.filter((it) => {
       const t = Date.parse(it.date);
       if (Number.isNaN(t)) return true; // keep undated rows visible
       if (range.from != null && t < range.from) return false;
       if (range.to != null && t > range.to) return false;
       return true;
     });
-  }, [liveItems, range]);
+  }, [activeItems, range]);
+  const rangedItems = useMemo(
+    () =>
+      refundedGks.size
+        ? rangedActive.filter((it) => !refundedGks.has(gkOf(it)))
+        : rangedActive,
+    [rangedActive, refundedGks]
+  );
 
   const hiddenCount = liveItems.length - rangedItems.length;
 
@@ -4125,6 +4508,25 @@ export default function MailDayLedger() {
   /* grouping + filtering */
   const packages = useMemo(() => groupPackages(rangedItems), [rangedItems]);
 
+  /* The stamped filter's source. Built from rangedActive, not rangedItems, so
+     refunded packages are in it; filtered to stamped gks; and it obeys the
+     range because the count and the list derive from one array — the cell can
+     never promise a package the list then hides. Showing and Find still apply
+     downstream in `visible`, so the count CAN read higher than the list,
+     exactly as "N lines" can. */
+  const stampedPackages = useMemo(
+    () => groupPackages(rangedActive.filter((it) => stampedGks.has(gkOf(it)))),
+    [rangedActive, stampedGks]
+  );
+  const stampedCount = stampedPackages.length;
+  /* derived rather than trusted: the effect clears a stale toggle, but without
+     this guard the commit before it runs would render an empty list */
+  const stampedMode = showStamped && stampedCount > 0;
+  useEffect(() => {
+    if (stampedCount === 0) setShowStamped(false);
+  }, [stampedCount]);
+  const orderSource = stampedMode ? stampedPackages : packages;
+
   /* Envelope candidates deliberately ignore the date filter — a mystery
      envelope is just as likely to be an old order as a recent one. */
   const allPackages = useMemo(() => groupPackages(liveItems), [liveItems]);
@@ -4188,7 +4590,10 @@ export default function MailDayLedger() {
         (s, it) => s + it.price * (it.qty - Math.min(it.qty, rec[it.key] || 0)),
         0
       );
-    const sorted = [...packages];
+    /* orderSource, not packages: a refunded package is only ever in the
+       stamped list, and ranking off `packages` would leave every one of them
+       at ?? 1e9 — last under every sort */
+    const sorted = [...orderSource];
     if (sortBy === "oldest")
       sorted.sort((a, b) => t(a) - t(b) || a.seller.localeCompare(b.seller));
     else if (sortBy === "value")
@@ -4211,11 +4616,11 @@ export default function MailDayLedger() {
     const order = new Map();
     sorted.forEach((p, i) => order.set(p.gk, i));
     return order;
-  }, [packages, sortBy]);
+  }, [orderSource, sortBy]);
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return packages
+    return orderSource
       .map((p) => {
         /* A revealed package answers "what else was in that envelope?", so it
            ignores both filters — the query AND hideDone. Bypassing hideDone
@@ -4233,8 +4638,18 @@ export default function MailDayLedger() {
           p.items.every((it) => (received[it.key] || 0) >= it.qty)
         )
           return { ...p, items: [], hiddenByFilters: 0 };
+        /* a stamp is the package's, not a line's, so a hit on its label or
+           note keeps every line — filtering them would draw exactly the
+           one-line-order lie group 32 exists to undo */
+        const s = stamps[p.gk];
+        const pkgHit =
+          !!q &&
+          hasStamp(s) &&
+          `${STAMP_LABEL[s.kind] || ""} ${s.note || ""}`
+            .toLowerCase()
+            .includes(q);
         let its = p.items;
-        if (q)
+        if (q && !pkgHit)
           its = its.filter((it) =>
             [it.name, it.set, it.seller, it.orderId]
               .join(" ")
@@ -4251,7 +4666,7 @@ export default function MailDayLedger() {
       .sort(
         (a, b) => (packageOrder.get(a.gk) ?? 1e9) - (packageOrder.get(b.gk) ?? 1e9)
       );
-  }, [packages, query, hideDone, received, sticky, packageOrder, revealed]);
+  }, [orderSource, stamps, query, hideDone, received, sticky, packageOrder, revealed]);
 
   /* Tally totals: exact product-name match, pooled across every seller/order.
      TCGplayer names are a scrape, so identical items carry byte-identical names.
@@ -4400,6 +4815,99 @@ export default function MailDayLedger() {
       </div>
     );
 
+  /* ---- the Sync panel's actions, as data ----
+     Rendered as an option grid (see the panel), which has to know the count
+     to give an odd last cell the full row. Order is order of use: Push, then
+     whatever the last push turned up (Merge, and the force on a real
+     conflict), then Pull, the two file backups, and the per-device toggle.
+     Each entry carries its own colour, because the grid's one accent means
+     "on" and these mean five different things. */
+  /* The two exports, as data, for the History panel's grid — the same shape
+     syncActions uses so the two panels cannot drift apart. */
+  const backupActions = [
+    { key: "backup", onClick: () => backup(false), label: "Backup" },
+  ];
+  if (photoCount > 0)
+    backupActions.push({
+      key: "photos",
+      onClick: () => backup(true),
+      disabled: backupBusy,
+      label: backupBusy ? "Packing…" : "Backup + photos",
+    });
+
+  const syncActions = [];
+  syncActions.push({
+    key: "push",
+    onClick: () => doPush(false),
+    disabled: syncBusy,
+    label:
+      pushState === "pushing"
+        ? "Pushing…"
+        : pushState === "pushed"
+        ? "Pushed ✓"
+        : "Push",
+    style: pushState === "pushed" ? { color: C.green } : null,
+  });
+  /* The safe resolution, and therefore the PRIMARY one: the grid's accent
+     fill, the app's "this is the live control" colour, beside the force. It
+     carries no two-tap arm because it destroys nothing — arming it would say
+     the opposite, and invariant 6's pattern is for destructive actions
+     specifically. */
+  if (pushState === "conflict" || ahead)
+    syncActions.push({
+      key: "merge",
+      on: true,
+      onClick: () => doMerge(pushState === "conflict"),
+      disabled: syncBusy,
+      label:
+        mergeState === "merging"
+          ? "Merging…"
+          : pushState === "conflict"
+          ? "Merge & push"
+          : "Merge",
+    });
+  /* the only force in the feature, and it exists so a device holding the
+     copy worth keeping isn't stuck behind a conflict it could otherwise clear
+     only by destroying it. Advisory manila, not red: every push is a commit,
+     so what it overwrites stays in the branch's history. */
+  if (pushState === "conflict")
+    syncActions.push({
+      key: "force",
+      onClick: () => (confirmForce ? doPush(true) : arm(setConfirmForce)),
+      label: confirmForce ? "Tap again to overwrite" : "Push anyway",
+      style: confirmForce
+        ? { background: C.manilaInk, color: C.card, fontWeight: 700 }
+        : { background: C.manila, color: C.manilaInk },
+    });
+  /* short label on purpose — the full sentence goes in the advisory under
+     the grid, where it can wrap */
+  syncActions.push({
+    key: "pull",
+    onClick: doPull,
+    disabled: syncBusy,
+    label:
+      pullState === "pulling"
+        ? "Pulling…"
+        : confirmPull
+        ? "Tap again to replace"
+        : "Pull from GitHub",
+    style: confirmPull
+      ? { background: C.red, color: C.card, fontWeight: 700 }
+      : null,
+  });
+  /* Backup and Backup + photos moved OUT of here and into the History panel.
+     They are version actions — "save one off this device" — not sync actions,
+     and this panel is now a repair kit reached only when something has broken.
+     Leaving them here would put the two controls a healthy device might
+     actually want behind a door that only opens on failure. */
+  /* The ○/● Auto-push toggle lived here. It is gone on purpose, and not
+     because the feature was dropped — sync is unconditional now. A per-device
+     switch for "does this work" made the thing the app is supposed to do
+     quietly into a thing you had to opt into, and an off toggle on the other
+     device is a silent way to be unbacked-up for months. The `auto` field
+     survives in entry.jsx's record, unread; removing a stored field is its own
+     migration question. */
+
   return (
     <div
       style={{
@@ -4509,8 +5017,42 @@ export default function MailDayLedger() {
         .mdl-switch button b { font-weight: 700; color: ${C.red}; }
         .mdl-switch button.on b { color: ${C.card}; }
 
+        /* ── The action row ─────────────────────────────────────────────
+           Columns by child count — one cell on an empty ledger, three with
+           a remote, four without — and the divider is each cell's own right
+           rule with the last one dropped. Classes rather than inline styles
+           because the row's membership is conditional, so "last" can't be a
+           prop the way headCell's is. The label sizes on the view switch's
+           curve: 10px at 375, where "SYNC · 09-02 ▾" has to fit a 114px
+           third, 11px by 760. */
+        .mdl-acts { display: grid; grid-auto-flow: column;
+                    grid-auto-columns: minmax(0, 1fr); }
+        .mdl-act { height: 40px; min-width: 0; padding: 0 6px; border: 0;
+                   border-right: 1px solid ${C.line}; background: transparent;
+                   font-family: ${mono}; font-size: clamp(10px, 2.7vw, 11px);
+                   letter-spacing: .07em; text-transform: uppercase;
+                   color: ${C.ink}; cursor: pointer; display: inline-flex;
+                   align-items: center; justify-content: center; gap: 6px;
+                   white-space: nowrap; }
+        .mdl-act:last-child { border-right: 0; }
+        .mdl-act > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+        .mdl-act i { font-style: normal; font-size: 8px; color: ${C.inkSoft};
+                     flex-shrink: 0; transition: transform 140ms ease; }
+        /* An .ahead rule used to live here too, for the Sync cell that
+           turned accent when the other device was in front. Both are gone: a
+           resume merges on its own, so being behind is no longer a state the
+           row has to report. (No backticks in this comment — it sits inside a
+           template literal, and one would end the string.) */
+        .mdl-act[aria-expanded="true"] { color: ${C.accent}; }
+        .mdl-act[aria-expanded="true"] i { transform: rotate(180deg);
+                                           color: ${C.accent}; }
+        .mdl-act.danger { color: ${C.red}; }
+        .mdl-act.armed { background: ${C.red}; color: ${C.card}; font-weight: 700; }
+        .mdl-act:disabled { opacity: .6; cursor: default; }
+
         @media (prefers-reduced-motion: reduce) {
           .mdl-sticky { transition: none; transform: none; }
+          .mdl-act i { transition: none; }
         }
       `}</style>
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "24px 16px 80px" }}>
@@ -4648,15 +5190,7 @@ export default function MailDayLedger() {
             having no data was unreachable whenever you had no data. Same bug
             the file actions already had once (see the toolbar notes); this is
             the same fix one level out. */}
-        {/* ...and `versionList.length > 0` widens it a third time, for the
-            same reason it was widened twice before. On a device with no remote,
-            an empty ledger would otherwise hide the History list — which is the
-            one control that undoes the Reset that emptied it. Any control that
-            RECOVERS state must not be gated on that state existing. */}
-        {(items.length > 0 ||
-          envelopes.length > 0 ||
-          versionList.length > 0 ||
-          !!window.remote) && (
+        {(items.length > 0 || envelopes.length > 0 || !!window.remote) && (
           <>
             {/* THE RULED HEAD. The masthead's own vocabulary continued —
                 hairline rules, uppercase mono micro-labels over Cochin values,
@@ -4972,37 +5506,78 @@ export default function MailDayLedger() {
                         <i style={{ fontSize: 9 }}>{showCanceled ? "▾" : "▸"}</i>
                       </button>
                     )}
+                    {/* a filter, not a disclosure — hence the Showing cell's
+                        ○/● and aria-pressed rather than the caret. Packages
+                        only: a stamp belongs to a package, and Tally has no
+                        package to filter. */}
+                    {view === "packages" && stampedCount > 0 && (
+                      <button
+                        onClick={() => setShowStamped((s) => !s)}
+                        aria-pressed={showStamped}
+                        style={cancCell(showStamped)}
+                      >
+                        {stampedCount} stamped
+                        <i
+                          style={{
+                            fontSize: 9,
+                            color: showStamped ? C.accent : C.inkSoft,
+                          }}
+                        >
+                          {showStamped ? "●" : "○"}
+                        </i>
+                      </button>
+                    )}
                   </div>
 
                   <div style={RULE_THIN} />
                 </>
               )}
 
-              {/* File actions, set apart. Flattening them into the same ruled
-                  grid as the filters destroys the separation the region has
-                  always kept: file management is not a filter. Re-import and
-                  Reset stay on the narrower gate — there is nothing to import
-                  into and nothing to clear on an empty ledger — while Sync
-                  survives it, because an empty ledger is exactly when Pull is
-                  needed. */}
+              {/* THE ACTION ROW. File management is not a filter, and this
+                  used to say so by changing idiom: three boxed mono buttons
+                  pushed to the right edge, under a region made of hairlines
+                  and ruled cells. That kept the separation and broke the page
+                  — a tray of buttons in a different vocabulary, a void to
+                  their left that grew to ~450px at desktop width, and a panel
+                  that opened left-aligned under a chip that sat right. The
+                  separation is kept by TREATMENT now: the head cells are
+                  label-over-value state, this row is uppercase mono actions,
+                  and the thin rule above is the line between them. Equal cells
+                  at full width — the view switch and the head's thirds again —
+                  so there is nothing to align and nowhere for a void to open.
+                  `.mdl-acts` sizes its columns by child count (grid-auto-flow:
+                  column): one cell on an empty ledger, three with a remote,
+                  four without one. Re-import and Reset stay on the narrower
+                  gate — there is nothing to import into and nothing to clear
+                  on an empty ledger — while Sync survives it, because an empty
+                  ledger is exactly when Pull is needed.
+                  An ARMED Reset takes the whole row and the other two cells
+                  step out for the four seconds it lasts. The sentence needs the
+                  width, and it is the better two-tap: the target grows over
+                  the spot just tapped instead of wrapping to a new line under
+                  it, and the two controls a mis-tap could land on aren't there
+                  to land on. */}
               {syncBroken && (
-                /* Advisory manila, never red. Being unbacked-up is a state to
-                   fix, not a loss that has happened — the ledger on this device
-                   is fine. Red here would cry wolf at the one line the user has
-                   to keep believing. */
+                /* The one thing sync is allowed to say, and the only entrance
+                   to the repair kit. Advisory manila, never red — being
+                   unbacked-up is a state to fix, not a loss that has happened;
+                   the ledger on this device is fine. Red here would cry wolf at
+                   the one line the user has to keep believing.
+                   Full width above the ruled row rather than a cell in it: it
+                   is a sentence, it has to wrap, and the row's cells are a
+                   fixed 40px of uppercase mono. */
                 <button
                   onClick={() => setSyncOpen(true)}
                   style={{
                     display: "block",
+                    width: "100%",
                     textAlign: "left",
                     fontFamily: cochin,
                     fontSize: 13.5,
                     lineHeight: 1.4,
-                    padding: "8px 10px",
-                    margin: "0 9px",
-                    width: "calc(100% - 18px)",
-                    borderRadius: 8,
-                    border: "none",
+                    padding: "9px 9px 10px",
+                    border: 0,
+                    borderTop: `1px solid ${C.line}`,
                     background: C.manila,
                     color: C.manilaInk,
                     cursor: "pointer",
@@ -5019,642 +5594,433 @@ export default function MailDayLedger() {
                     : "The backup needs attention — tap to fix"}
                 </button>
               )}
-              <div
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 8,
-                  justifyContent: "flex-end",
-                  padding: "8px 9px 9px",
-                }}
-              >
-                {(items.length > 0 || envelopes.length > 0) && (
+              <div className="mdl-acts">
+                {(items.length > 0 || envelopes.length > 0) && !confirmReset && (
                   <button
                     onClick={() => setShowUpload((s) => !s)}
                     aria-expanded={showUpload}
-                    style={ctl}
+                    className="mdl-act"
                   >
-                    Re-import CSV
+                    <span>Re-import CSV</span>
                   </button>
                 )}
-                {/* The `Sync · MM-DD` chip lived here, and it is gone. It
-                    was the last piece of sync vocabulary on the happy path: a
-                    control whose whole job was to name a thing the app now
-                    does by itself. The panel it opened still exists — it is
-                    the repair kit — but its only entrance is the broken-line
-                    above, which appears when there is actually something to
-                    repair.
-                    Backup moves out here unconditionally as a result. It was
-                    only ever inside that disclosure because the disclosure was
-                    on screen; it is a file action, not a sync action, and
-                    burying it behind a control that now only appears on
-                    failure would strand it. */}
-                <button onClick={() => backup(false)} style={ctl}>
-                  Backup
-                </button>
-                {photoCount > 0 && (
-                  <button
-                    onClick={() => backup(true)}
-                    disabled={backupBusy}
-                    style={{ ...ctl, opacity: backupBusy ? 0.6 : 1 }}
-                  >
-                    {backupBusy ? "Packing…" : "Backup + photos"}
-                  </button>
-                )}
-                {/* Gated on there being versions, NOT on there being a ledger.
-                    A rollback list is a control that RECOVERS state, and the
-                    ruled-head notes name that pattern twice already: gate it
-                    on the data existing and the one thing that undoes a Reset
-                    is unreachable exactly when a Reset has just happened. */}
-                {versionList.length > 0 && (
+                {/* The SYNC cell lived here, and it is gone — it was the last
+                    piece of sync vocabulary on the happy path, a control whose
+                    whole job was to name a thing the app now does by itself.
+                    The panel it opened still exists as the repair kit, but its
+                    only entrance is the broken-line above, which appears when
+                    there is actually something to repair.
+                    HISTORY takes the cell, which keeps the row at the three
+                    equal cells this design was measured at. */}
+                {!confirmReset && !!window.versions && (
                   <button
                     onClick={() => setHistoryOpen((o) => !o)}
                     aria-expanded={historyOpen}
                     aria-label="Saved versions"
-                    style={{
-                      ...ctl,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 7,
-                    }}
+                    className="mdl-act"
                   >
-                    History
-                    <i
-                      style={{
-                        fontSize: 8,
-                        transform: historyOpen ? "rotate(180deg)" : "none",
-                        transition: "transform 140ms ease",
-                      }}
-                    >
-                      ▼
-                    </i>
+                    <span>History</span>
+                    <i>▾</i>
                   </button>
                 )}
                 {(items.length > 0 || envelopes.length > 0) && (
                   <button
                     onClick={resetAll}
-                    style={{
-                      ...ctl,
-                      color: confirmReset ? C.card : C.red,
-                      background: confirmReset ? C.red : C.redSoft,
-                      borderColor: confirmReset ? C.red : "transparent",
-                      fontWeight: confirmReset ? 700 : 400,
-                      /* transient, so spanning the row costs nothing at rest
-                         and lets the sentence name its consequence. Long-hand
-                         because `ctl` sets flexShrink and React warns about
-                         mixing the shorthand with it. */
-                      ...(confirmReset
-                        ? { flexGrow: 1, flexBasis: "100%" }
-                        : null),
-                    }}
+                    className={confirmReset ? "mdl-act armed" : "mdl-act danger"}
                   >
-                    {confirmReset ? "Tap again to clear everything" : "Reset"}
+                    <span>
+                      {confirmReset ? "Tap again to clear everything" : "Reset"}
+                    </span>
                   </button>
                 )}
               </div>
 
-            {historyOpen && versionList.length > 0 && (
-              /* panelWrap and nothing else — the same surface the date and
-                 sort disclosures use. No fill: every filled surface in this
-                 app is a rounded inset card, and a square full-bleed beige
-                 rectangle ruled top and bottom contradicts that. */
-              <div style={panelWrap}>
+              {historyOpen && (
+                /* The same surface and the same parts as the sort and Sync
+                   disclosures: an option grid of actions over a list built from
+                   the head cells' label-and-value pair. Nothing here is a
+                   rounded box.
+
+                   Backup and Backup + photos live at the top because they are
+                   the same verb as the list below — save a version — one to
+                   this device, one off it. */
                 <div
                   style={{
-                    fontFamily: mono,
-                    fontSize: 10.5,
-                    letterSpacing: 0.7,
-                    color: C.inkSoft,
-                    margin: "8px 0 2px",
-                  }}
-                >
-                  SAVED VERSIONS
-                </div>
-                {versionMsg && (
-                  <div
-                    style={{
-                      fontFamily: cochin,
-                      fontSize: 13.5,
-                      lineHeight: 1.4,
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      background: C.redSoft,
-                      color: C.red,
-                      marginTop: 8,
-                    }}
-                  >
-                    {versionMsg}
-                  </div>
-                )}
-                {versionList.map((v) => {
-                  const open = openVersion === v.id;
-                  const dLines = v.lines - items.length;
-                  const dChecked = v.checked - checkedTotal;
-                  const delta = (n, word) =>
-                    n === 0 ? null : `${n > 0 ? "+" : "\u2212"}${Math.abs(n)} ${word}`;
-                  const diff = [delta(dLines, "lines"), delta(dChecked, "checked")]
-                    .filter(Boolean)
-                    .join(" \u00b7 ");
-                  return (
-                    <div
-                      key={v.id}
-                      style={{
-                        borderTop: `1px solid ${C.line}`,
-                        padding: "9px 0 8px",
-                      }}
-                    >
-                      <button
-                        onClick={() => setOpenVersion(open ? null : v.id)}
-                        aria-expanded={open}
-                        style={{
-                          display: "flex",
-                          alignItems: "baseline",
-                          gap: 8,
-                          width: "100%",
-                          padding: 0,
-                          border: "none",
-                          background: "none",
-                          textAlign: "left",
-                          cursor: "pointer",
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontFamily: mono,
-                            fontSize: 11.5,
-                            color: C.ink,
-                            flexShrink: 0,
-                          }}
-                        >
-                          {versionWhen(v.at)}
-                        </span>
-                        <span
-                          style={{
-                            fontFamily: cochin,
-                            fontSize: 14,
-                            color: v.kind === "milestone" ? C.ink : C.inkSoft,
-                            /* the label is the elastic part of this row, and
-                               ellipsis needs both of these — it does nothing on
-                               a flex container, and the child refuses to shrink
-                               without min-width */
-                            minWidth: 0,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {v.label}
-                        </span>
-                        <span
-                          style={{
-                            fontFamily: mono,
-                            fontSize: 11,
-                            color: C.inkSoft,
-                            marginLeft: "auto",
-                            flexShrink: 0,
-                          }}
-                        >
-                          {v.lines}/{v.checked}
-                        </span>
-                      </button>
-                      {open && (
-                        <div style={{ marginTop: 8 }}>
-                          <div
-                            style={{
-                              fontFamily: cochin,
-                              fontSize: 13.5,
-                              color: C.inkSoft,
-                              marginBottom: 8,
-                            }}
-                          >
-                            {v.lines} lines, {v.checked} checked in
-                            {diff ? ` \u2014 ${diff} against now` : " \u2014 same as now"}
-                            .
-                          </div>
-                          <button
-                            onClick={() => restoreVersion(v.id)}
-                            style={{
-                              ...ctl,
-                              color: confirmRestore === v.id ? C.card : C.red,
-                              background:
-                                confirmRestore === v.id ? C.red : C.redSoft,
-                              borderColor:
-                                confirmRestore === v.id ? C.red : "transparent",
-                              fontWeight: confirmRestore === v.id ? 700 : 400,
-                            }}
-                          >
-                            {confirmRestore === v.id
-                              ? "Tap again to replace everything"
-                              : "Restore this version"}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-                {(olderVersions || []).map((v) => {
-                  const open = openVersion === v.sha;
-                  return (
-                    <div
-                      key={v.sha}
-                      style={{
-                        borderTop: `1px solid ${C.line}`,
-                        padding: "9px 0 8px",
-                      }}
-                    >
-                      <button
-                        onClick={() => setOpenVersion(open ? null : v.sha)}
-                        aria-expanded={open}
-                        style={{
-                          display: "flex",
-                          alignItems: "baseline",
-                          gap: 8,
-                          width: "100%",
-                          padding: 0,
-                          border: "none",
-                          background: "none",
-                          textAlign: "left",
-                          cursor: "pointer",
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontFamily: mono,
-                            fontSize: 11.5,
-                            color: C.ink,
-                            flexShrink: 0,
-                          }}
-                        >
-                          {versionWhen(v.at)}
-                        </span>
-                        <span
-                          style={{
-                            fontFamily: cochin,
-                            fontSize: 14,
-                            color: C.inkSoft,
-                            minWidth: 0,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {v.message.split("\n")[0]}
-                        </span>
-                      </button>
-                      {open && (
-                        <div style={{ marginTop: 8 }}>
-                          <button
-                            onClick={() => restoreOlder(v.sha)}
-                            style={{
-                              ...ctl,
-                              color: confirmRestore === v.sha ? C.card : C.red,
-                              background:
-                                confirmRestore === v.sha ? C.red : C.redSoft,
-                              borderColor:
-                                confirmRestore === v.sha ? C.red : "transparent",
-                              fontWeight: confirmRestore === v.sha ? 700 : 400,
-                            }}
-                          >
-                            {confirmRestore === v.sha
-                              ? "Tap again to replace everything"
-                              : "Restore this version"}
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-                {window.remote &&
-                  typeof window.remote.listVersions === "function" &&
-                  olderVersions === null && (
-                    <button
-                      onClick={loadOlder}
-                      disabled={olderBusy}
-                      style={{
-                        ...ctl,
-                        marginTop: 9,
-                        opacity: olderBusy ? 0.6 : 1,
-                      }}
-                    >
-                      {olderBusy ? "Looking…" : "Load older versions"}
-                    </button>
-                  )}
-                {olderVersions?.length === 0 && (
-                  <div
-                    style={{
-                      fontFamily: cochin,
-                      fontSize: 13.5,
-                      color: C.inkSoft,
-                      marginTop: 9,
-                    }}
-                  >
-                    Nothing older has been backed up yet.
-                  </div>
-                )}
-                <div
-                  style={{
-                    fontFamily: mono,
-                    fontSize: 10.5,
-                    color: C.inkSoft,
-                    borderTop: `1px solid ${C.line}`,
-                    paddingTop: 8,
-                    marginTop: 9,
-                  }}
-                >
-                  {versionList.length} version
-                  {versionList.length === 1 ? "" : "s"} ·{" "}
-                  {(() => {
-                    const kb =
-                      versionList.reduce((n, v) => n + (v.bytes || 0), 0) / 1024;
-                    return kb >= 1024
-                      ? `${Math.round(kb / 102.4) / 10} MB`
-                      : `${Math.round(kb)} kB`;
-                  })()}{" "}
-                  on this device
-                </div>
-              </div>
-            )}
-            {syncOpen && window.remote && (
-              /* the same surface the date and sort disclosures use. Without
-                 panelWrap this was the one panel in the region with no padding
-                 and no rule, so its buttons sat flush against the section edge
-                 while the chip that opened them was right-aligned above —
-                 which reads, correctly, as off-centre. */
-              <div
-                style={{
-                  ...panelWrap,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 8,
-                }}
-              >
-                <div
-                  style={{
+                    ...panelWrap,
                     display: "flex",
-                    gap: 6,
-                    flexWrap: "wrap",
-                    alignItems: "center",
+                    flexDirection: "column",
+                    gap: 8,
                   }}
                 >
-                  <button
-                    onClick={() => doPush(false)}
-                    disabled={syncBusy}
-                    style={{
-                      ...ctl,
-                      opacity: syncBusy ? 0.6 : 1,
-                      color: pushState === "pushed" ? C.green : C.ink,
-                      borderColor: pushState === "pushed" ? C.green : C.line,
-                    }}
-                  >
-                    {pushState === "pushing"
-                      ? "Pushing…"
-                      : pushState === "pushed"
-                      ? "Pushed ✓"
-                      : "Push"}
-                  </button>
-                  {/* The safe resolution, and therefore the PRIMARY one:
-                      accent violet, the app's "this is the live control"
-                      colour, sitting to the left of the force. It carries no
-                      two-tap arm because it destroys nothing — arming it would
-                      say the opposite, and invariant 6's pattern is for
-                      destructive actions specifically. */}
-                  {(pushState === "conflict" || ahead) && (
-                    <button
-                      onClick={() => doMerge(pushState === "conflict")}
-                      disabled={syncBusy}
+                  <div style={{ ...optGrid(2), marginTop: 6 }}>
+                    {backupActions.map((a, i) => (
+                      <button
+                        key={a.key}
+                        onClick={a.onClick}
+                        disabled={a.disabled}
+                        style={{
+                          ...optCell(false),
+                          opacity: a.disabled ? 0.6 : 1,
+                          /* an odd last cell spans, or the rule colour shows
+                             through the empty half as a slab */
+                          ...(backupActions.length % 2 === 1 &&
+                          i === backupActions.length - 1
+                            ? { gridColumn: "1 / -1" }
+                            : null),
+                        }}
+                      >
+                        {a.label}
+                      </button>
+                    ))}
+                  </div>
+                  {versionMsg && (
+                    <div
                       style={{
-                        ...ctl,
-                        background: C.accent,
-                        color: C.card,
-                        borderColor: C.accent,
-                        opacity: syncBusy ? 0.6 : 1,
+                        fontFamily: cochin,
+                        fontSize: 13.5,
+                        lineHeight: 1.4,
+                        padding: "8px 10px",
+                        background: C.redSoft,
+                        color: C.red,
                       }}
                     >
-                      {mergeState === "merging"
-                        ? "Merging…"
-                        : pushState === "conflict"
-                        ? "Merge & push"
-                        : "Merge"}
-                    </button>
+                      {versionMsg}
+                    </div>
                   )}
-                  {/* the only force in the feature, and it exists so a device
-                      holding the copy worth keeping isn't stuck behind a
-                      conflict it could otherwise clear only by destroying it.
-                      Advisory manila, not red: every push is a commit, so what
-                      it overwrites stays in the branch's history. */}
-                  {pushState === "conflict" && (
-                    <button
-                      onClick={() =>
-                        confirmForce ? doPush(true) : arm(setConfirmForce)
-                      }
+                  {versionList.length === 0 && (
+                    <div style={{ ...partVal, marginTop: 2 }}>
+                      No versions saved on this device yet.
+                    </div>
+                  )}
+                  {versionList.map((v) => {
+                    const open = openVersion === v.id;
+                    const dLines = v.lines - items.length;
+                    const dChecked = v.checked - checkedTotal;
+                    const delta = (n, word) =>
+                      n === 0
+                        ? null
+                        : `${n > 0 ? "+" : "\u2212"}${Math.abs(n)} ${word}`;
+                    const diff = [
+                      delta(dLines, "lines"),
+                      delta(dChecked, "checked"),
+                    ]
+                      .filter(Boolean)
+                      .join(" \u00b7 ");
+                    return (
+                      <div key={v.id} style={verRow}>
+                        <button
+                          onClick={() => setOpenVersion(open ? null : v.id)}
+                          aria-expanded={open}
+                          style={verHead}
+                        >
+                          <span style={verWhen}>{versionWhen(v.at)}</span>
+                          <span
+                            style={{
+                              ...cellValText,
+                              fontFamily: cochin,
+                              fontSize: 14,
+                              color: v.kind === "milestone" ? C.ink : C.inkSoft,
+                            }}
+                          >
+                            {v.label}
+                          </span>
+                          <span style={verFig}>
+                            {v.lines}/{v.checked}
+                          </span>
+                        </button>
+                        {open && (
+                          <div style={{ marginTop: 8 }}>
+                            <div
+                              style={{ ...partVal, marginBottom: 8 }}
+                            >
+                              {v.lines} lines, {v.checked} checked in
+                              {diff
+                                ? ` \u2014 ${diff} against now`
+                                : " \u2014 same as now"}
+                              .
+                            </div>
+                            <button
+                              onClick={() => restoreVersion(v.id)}
+                              style={restoreCell(confirmRestore === v.id)}
+                            >
+                              {confirmRestore === v.id
+                                ? "Tap again to replace everything"
+                                : "Restore this version"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {(olderVersions || []).map((v) => {
+                    const open = openVersion === v.sha;
+                    return (
+                      <div key={v.sha} style={verRow}>
+                        <button
+                          onClick={() => setOpenVersion(open ? null : v.sha)}
+                          aria-expanded={open}
+                          style={verHead}
+                        >
+                          <span style={verWhen}>{versionWhen(v.at)}</span>
+                          <span
+                            style={{
+                              ...cellValText,
+                              fontFamily: cochin,
+                              fontSize: 14,
+                              color: C.inkSoft,
+                            }}
+                          >
+                            {v.message.split("\n")[0]}
+                          </span>
+                        </button>
+                        {open && (
+                          <div style={{ marginTop: 8 }}>
+                            <button
+                              onClick={() => restoreOlder(v.sha)}
+                              style={restoreCell(confirmRestore === v.sha)}
+                            >
+                              {confirmRestore === v.sha
+                                ? "Tap again to replace everything"
+                                : "Restore this version"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {window.remote &&
+                    typeof window.remote.listVersions === "function" &&
+                    olderVersions === null && (
+                      <button
+                        onClick={loadOlder}
+                        disabled={olderBusy}
+                        style={{ ...linkBtn, alignSelf: "flex-start" }}
+                      >
+                        {olderBusy ? "Looking…" : "Load older versions"}
+                      </button>
+                    )}
+                  {olderVersions?.length === 0 && (
+                    <div style={partVal}>
+                      Nothing older has been backed up yet.
+                    </div>
+                  )}
+                  <div style={partGrid}>
+                    <span style={partLab}>Stored</span>
+                    <span style={partVal}>
+                      {versionList.length} version
+                      {versionList.length === 1 ? "" : "s"} ·{" "}
+                      {(() => {
+                        const kb =
+                          versionList.reduce((n, v) => n + (v.bytes || 0), 0) /
+                          1024;
+                        return kb >= 1024
+                          ? `${Math.round(kb / 102.4) / 10} MB`
+                          : `${Math.round(kb)} kB`;
+                      })()}{" "}
+                      on this device
+                    </span>
+                  </div>
+                </div>
+              )}
+              {syncOpen && window.remote && (
+                /* The same surface the date and sort disclosures use, and now
+                   the same contents: an option grid of actions over a block of
+                   particulars. It used to be a flex-wrap of boxed buttons with
+                   the target repo floating after them as bare text — the one
+                   panel in the region that still looked like the tray the
+                   region replaced. The grid is two columns everywhere, like the
+                   sort panel: "Pull from GitHub" and the armed "Tap again to
+                   replace" both need the 160px a half of 375px gives them and
+                   neither fits a third. An odd count leaves the last cell
+                   spanning the row, or the rule colour shows through the empty
+                   half as a slab — same trick the range panel uses. */
+                <div
+                  style={{
+                    ...panelWrap,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                  }}
+                >
+                  <div style={{ ...optGrid(2), marginTop: 6 }}>
+                    {syncActions.map((a, i) => (
+                      <button
+                        key={a.key}
+                        onClick={a.onClick}
+                        disabled={a.disabled}
+                        aria-pressed={a.pressed}
+                        style={{
+                          ...optCell(!!a.on),
+                          ...a.style,
+                          opacity: a.disabled ? 0.6 : 1,
+                          ...(syncActions.length % 2 === 1 &&
+                          i === syncActions.length - 1
+                            ? { gridColumn: "1 / -1" }
+                            : null),
+                        }}
+                      >
+                        {a.label}
+                      </button>
+                    ))}
+                  </div>
+                  {ahead && pushState !== "conflict" && (
+                    /* advisory manila, never red: being behind is the ordinary
+                       state after the other device pushes, and the fix adds
+                       rather than replaces */
+                    <div
                       style={{
-                        ...ctl,
-                        background: confirmForce ? C.manilaInk : C.manila,
-                        color: confirmForce ? C.card : C.manilaInk,
-                        borderColor: "transparent",
-                        fontWeight: confirmForce ? 700 : 400,
+                        fontFamily: cochin,
+                        fontSize: 13.5,
+                        lineHeight: 1.4,
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        background: C.manila,
+                        color: C.manilaInk,
                       }}
                     >
-                      {confirmForce ? "Tap again to overwrite" : "Push anyway"}
-                    </button>
+                      Your other device has pushed newer lines. Merge brings
+                      them in — nothing here is replaced.
+                    </div>
                   )}
-                  {/* short label on purpose — the full sentence goes in the
-                      advisory below, where it can wrap. A long armed label is
-                      exactly what once pushed a line past the column edge. */}
-                  <button
-                    onClick={doPull}
-                    disabled={syncBusy}
-                    style={{
-                      ...ctl,
-                      color: confirmPull ? C.card : C.ink,
-                      background: confirmPull ? C.red : C.card,
-                      borderColor: confirmPull ? C.red : C.line,
-                      fontWeight: confirmPull ? 700 : 400,
-                      opacity: syncBusy ? 0.6 : 1,
-                    }}
-                  >
-                    {pullState === "pulling"
-                      ? "Pulling…"
-                      : confirmPull
-                      ? "Tap again to replace"
-                      : "Pull from GitHub"}
-                  </button>
-                  <button onClick={() => backup(false)} style={ctl}>
-                    Backup
-                  </button>
-                  {photoCount > 0 && (
-                    <button
-                      onClick={() => backup(true)}
-                      disabled={backupBusy}
-                      style={{ ...ctl, opacity: backupBusy ? 0.6 : 1 }}
+                  {confirmPull && (
+                    <div
+                      style={{
+                        fontFamily: cochin,
+                        fontSize: 13.5,
+                        lineHeight: 1.4,
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        background: C.redSoft,
+                        color: C.red,
+                      }}
                     >
-                      {backupBusy ? "Packing…" : "Backup + photos"}
-                    </button>
+                      Pull replaces every item, check-in and pending envelope on
+                      this device with the remote copy.
+                    </div>
                   )}
-                  {/* The ○/● Auto-push toggle lived here. It is gone on
-                      purpose, and not because the feature was dropped — sync
-                      is unconditional now. A per-device switch for "does this
-                      work" was the ceremony being removed: it made the thing
-                      the app is supposed to do quietly into a thing you had to
-                      opt into, and an off toggle on the other device is a
-                      silent way to be unbacked-up for months. The `auto` field
-                      survives in entry.jsx's record, unread — removing a
-                      stored field is its own migration question. */}
-                  {remoteTarget && (
-                    /* no marginLeft:auto — it pushed this to the right edge
-                       while the key line below stayed left, so the panel read
-                       as a zigzag. Everything in here is one left-aligned
-                       block, flush with FIND and the head cells above. */
-                    <span
+                  {photoSync && (
+                    <div
                       style={{
                         fontFamily: mono,
-                        fontSize: 11,
+                        fontSize: 10.5,
+                        letterSpacing: ".08em",
+                        textTransform: "uppercase",
                         color: C.inkSoft,
-                        whiteSpace: "nowrap",
                       }}
                     >
-                      {remoteTarget.owner}/{remoteTarget.repo} ·{" "}
-                      {remoteTarget.branch}
-                      {photoTarget && (
-                        /* its own row: the span above is nowrap, and the two
-                           targets share no line at 375px */
+                      {photoSync.dir === "push" ? "Sending" : "Fetching"} photos{" "}
+                      {photoSync.done}/{photoSync.total}
+                    </div>
+                  )}
+                  {photoMsg && (
+                    /* a SEPARATE box from remoteMsg — see PHOTO_SAYS. Advisory
+                       manila, never red: the ledger is safe whatever the photos
+                       did, and a red box here would read as "the backup
+                       failed". */
+                    <div
+                      style={{
+                        padding: "7px 9px",
+                        borderRadius: 8,
+                        background: C.manila,
+                        color: C.manilaInk,
+                        fontFamily: cochin,
+                        fontSize: 13.5,
+                        lineHeight: 1.35,
+                      }}
+                    >
+                      {photoMsg.text}
+                    </div>
+                  )}
+                  {remoteMsg && (
+                    <div
+                      style={{
+                        fontFamily: cochin,
+                        fontSize: 13.5,
+                        lineHeight: 1.4,
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        background:
+                          remoteMsg.tone === "error" ? C.redSoft : C.manila,
+                        color: remoteMsg.tone === "error" ? C.red : C.manilaInk,
+                      }}
+                    >
+                      {remoteMsg.text}
+                    </div>
+                  )}
+                  {(remoteTarget || remoteInfo) && (
+                    /* The particulars: micro-label over nothing, beside a mono
+                       value — the head cells' own parts laid on their side.
+                       One left-aligned block, flush with FIND and the cells
+                       above; the old target line had a marginLeft:auto that
+                       sent it to the right edge while the key line stayed
+                       left, and the panel read as a zigzag. */
+                    <div style={partGrid}>
+                      {remoteTarget && (
                         <>
-                          <br />
-                          {photoTarget.owner}/{photoTarget.repo} ·{" "}
-                          {photoTarget.branch} · private
+                          <span style={partLab}>Ledger</span>
+                          <span style={partVal}>
+                            {remoteTarget.owner}/{remoteTarget.repo} ·{" "}
+                            {remoteTarget.branch}
+                          </span>
                         </>
                       )}
-                    </span>
+                      {photoTarget && (
+                        <>
+                          <span style={partLab}>Photos</span>
+                          <span style={partVal}>
+                            {photoTarget.owner}/{photoTarget.repo} ·{" "}
+                            {photoTarget.branch}&nbsp;·&nbsp;private
+                          </span>
+                        </>
+                      )}
+                      {remoteInfo && (
+                        <>
+                          <span style={partLab}>Key</span>
+                          {keyOpen || !remoteInfo.hasKey ? (
+                            <span
+                              style={{
+                                display: "flex",
+                                gap: 8,
+                                alignItems: "center",
+                                minWidth: 0,
+                              }}
+                            >
+                              <input
+                                ref={keyInput}
+                                type="password"
+                                placeholder="github_pat_…"
+                                aria-label="GitHub access token"
+                                autoComplete="off"
+                                spellCheck={false}
+                                autoCapitalize="off"
+                                style={keyField}
+                              />
+                              <button onClick={saveKey} style={keySave}>
+                                Save key
+                              </button>
+                            </span>
+                          ) : (
+                            <span style={partVal}>
+                              saved on this device
+                              <span style={{ margin: "0 6px" }}>·</span>
+                              <button
+                                onClick={() => setKeyOpen(true)}
+                                style={linkBtn}
+                              >
+                                Replace
+                              </button>
+                              <span style={{ margin: "0 6px" }}>·</span>
+                              <button onClick={clearKey} style={linkBtn}>
+                                Clear
+                              </button>
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </div>
                   )}
                 </div>
-                {/* The manila "your other device has pushed newer lines"
-                    notice lived here. It is gone because the condition it
-                    described now resolves itself on the next resume — and a
-                    notice about something already being handled is exactly the
-                    ceremony this change set out to remove. The Merge button
-                    below survives, inside the repair kit, for the case the
-                    automatic path could not finish. */}
-                {confirmPull && (
-                  <div
-                    style={{
-                      fontFamily: cochin,
-                      fontSize: 13.5,
-                      lineHeight: 1.4,
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      background: C.redSoft,
-                      color: C.red,
-                    }}
-                  >
-                    Pull replaces every item, check-in and pending envelope on
-                    this device with the remote copy.
-                  </div>
-                )}
-                {photoSync && (
-                  <div
-                    style={{
-                      fontFamily: mono,
-                      fontSize: 10.5,
-                      letterSpacing: ".08em",
-                      textTransform: "uppercase",
-                      color: C.inkSoft,
-                      paddingTop: 6,
-                    }}
-                  >
-                    {photoSync.dir === "push" ? "Sending" : "Fetching"} photos{" "}
-                    {photoSync.done}/{photoSync.total}
-                  </div>
-                )}
-                {photoMsg && (
-                  /* a SEPARATE box from remoteMsg — see PHOTO_SAYS. Advisory
-                     manila, never red: the ledger is safe whatever the photos
-                     did, and a red box here would read as "the backup failed". */
-                  <div
-                    style={{
-                      marginTop: 8,
-                      padding: "7px 9px",
-                      borderRadius: 8,
-                      background: C.manila,
-                      color: C.manilaInk,
-                      fontFamily: cochin,
-                      fontSize: 13.5,
-                      lineHeight: 1.35,
-                    }}
-                  >
-                    {photoMsg.text}
-                  </div>
-                )}
-                {remoteMsg && (
-                  <div
-                    style={{
-                      fontFamily: cochin,
-                      fontSize: 13.5,
-                      lineHeight: 1.4,
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      background:
-                        remoteMsg.tone === "error" ? C.redSoft : C.manila,
-                      color: remoteMsg.tone === "error" ? C.red : C.manilaInk,
-                    }}
-                  >
-                    {remoteMsg.text}
-                  </div>
-                )}
-                {remoteInfo &&
-                  (keyOpen || !remoteInfo.hasKey ? (
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 6,
-                        flexWrap: "wrap",
-                        alignItems: "center",
-                      }}
-                    >
-                      <input
-                        ref={keyInput}
-                        type="password"
-                        placeholder="GitHub token (github_pat_…)"
-                        aria-label="GitHub access token"
-                        autoComplete="off"
-                        spellCheck={false}
-                        autoCapitalize="off"
-                        style={{
-                          ...ctl,
-                          flex: "1 1 220px",
-                          minWidth: 180,
-                          fontFamily: mono,
-                          fontSize: 12,
-                          cursor: "text",
-                          outline: "none",
-                        }}
-                      />
-                      <button onClick={saveKey} style={ctl}>
-                        Save key
-                      </button>
-                    </div>
-                  ) : (
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 10,
-                        flexWrap: "wrap",
-                        alignItems: "center",
-                        fontFamily: mono,
-                        fontSize: 11,
-                        color: C.inkSoft,
-                      }}
-                    >
-                      <span>key saved on this device</span>
-                      <button onClick={() => setKeyOpen(true)} style={linkBtn}>
-                        Replace
-                      </button>
-                      <button onClick={clearKey} style={linkBtn}>
-                        Clear
-                      </button>
-                    </div>
-                  ))}
-              </div>
-            )}
+              )}
 
               <div style={RULE} />
             </section>
@@ -5818,6 +6184,7 @@ export default function MailDayLedger() {
                   onSet={setCount}
                   onBulk={bulkSet}
                   onOpenOrder={openOrder}
+                  stampedGks={stampedGks}
                 />
               ))
             : visible.map((pkg) => (
@@ -5831,6 +6198,8 @@ export default function MailDayLedger() {
                   revealed={revealed.has(pkg.gk)}
                   onToggleReveal={toggleReveal}
                   innerRef={pkg.gk === jumpGk ? jumpRef : null}
+                  stamp={stamps[pkg.gk]}
+                  onStamp={setStamp}
                 />
               ))}
           {items.length > 0 &&

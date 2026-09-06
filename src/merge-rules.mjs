@@ -20,7 +20,13 @@
    THE PROPERTY THAT MAKES IT SAFE: the merge only ever ADDS. Line items union,
    check-in counts take the max, envelopes union. Nothing is dropped and no
    count ever decreases, so applying it can lose neither device's work — which
-   is why it needs no two-tap confirm, and why re-running it is harmless. */
+   is why it needs no two-tap confirm, and why re-running it is harmless.
+
+   One deliberate exception: a stamp REMOVED on one device is a tombstone with
+   a fresh `updatedAt`, and a newer tombstone beats an older stamp. That is
+   still "freshest write wins" — the user's own removal propagating, not the
+   merge deciding anything — and it is there because a resurrected `refunded`
+   stamp would silently pull money back out of the tally. See mergeStamps. */
 
 /* Union of two line-item lists, keyed on `it.key`
    (`orderId|itemNumber|vendorProductId` — invariant 2, stable across
@@ -116,7 +122,36 @@ export function mergeEnvelopes(base, incoming) {
   };
 }
 
+/* Per-package, freshest `updatedAt` wins, strictly — the caller's own copy
+   takes a tie, as with envelopes. Keyed on the package gk (`orderId::seller`).
+
+   Tombstones (`kind: ""`) are ordinary entries here: a newer tombstone removes
+   an older stamp, an older tombstone loses to a newer stamp (re-stamping after
+   a removal on the other device works). `added` counts stamps that ARRIVED,
+   not tombstones that did — "1 stamp from the other device" must mean a stamp
+   the user can see. Never prunes: a tombstone or an orphaned gk is a few bytes,
+   and dropping one is exactly the resurrection it exists to prevent. */
+export function mergeStamps(base, incoming) {
+  const t = (s) => Number(s?.updatedAt) || 0;
+  const out = { ...(base || {}) };
+  let added = 0;
+  for (const [gk, s] of Object.entries(incoming || {})) {
+    if (!s || typeof s !== "object") continue;
+    const mine = out[gk];
+    if (mine && t(s) <= t(mine)) continue; // strict >: local wins a tie
+    out[gk] = s;
+    if (s.kind) added++;
+  }
+  return { stamps: out, added };
+}
+
 /* `local` is the device running the merge and wins every tie.
+
+   Builds `merged` from NAMED fields. That is deliberate — a payload is never
+   spread through, so nothing unexpected rides along — but it means a new
+   persisted key that is not named here is dropped by every merge, applied
+   locally as a full replace, and then pushed. Invariant 2's five sites in
+   app.jsx are this file's sixth.
 
    The three view preferences are deliberately NOT merged — local keeps its own.
    They describe how this screen is sorted and filtered, not what is true about
@@ -126,12 +161,14 @@ export function mergeLedger(local, incoming) {
   const items = mergeItems(local?.items, incoming?.items);
   const received = mergeReceived(local?.received, incoming?.received);
   const envelopes = mergeEnvelopes(local?.envelopes, incoming?.envelopes);
+  const stamps = mergeStamps(local?.stamps, incoming?.stamps);
   return {
     merged: {
       mailday: 1,
       items: items.items,
       received: received.received,
       envelopes: envelopes.envelopes,
+      stamps: stamps.stamps,
       dateFilter: local?.dateFilter,
       sortBy: local?.sortBy,
       itemSort: local?.itemSort,
@@ -140,6 +177,7 @@ export function mergeLedger(local, incoming) {
       itemsAdded: items.added,
       checkInsAdded: received.added,
       envelopesAdded: envelopes.added,
+      stampsAdded: stamps.added,
     },
   };
 }
@@ -160,6 +198,8 @@ export function mergeSummary(stats) {
     bits.push(
       `${stats.envelopesAdded} envelope${stats.envelopesAdded === 1 ? "" : "s"}`
     );
+  if (stats.stampsAdded)
+    bits.push(`${stats.stampsAdded} stamp${stats.stampsAdded === 1 ? "" : "s"}`);
   if (!bits.length) return "Merged — the other device had nothing new.";
   const list =
     bits.length === 1

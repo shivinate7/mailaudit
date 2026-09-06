@@ -19,6 +19,7 @@ import {
   cell,
   click,
   csv,
+  openHistory,
   versionMetas,
   versionText,
   dropFile,
@@ -76,6 +77,7 @@ import {
   mergeItems,
   mergeReceived,
   mergeEnvelopes,
+  mergeStamps,
   mergeLedger,
   mergeSummary,
 } from "../src/merge-rules.mjs";
@@ -93,7 +95,7 @@ ok(
   !document.querySelector('input[aria-label^="Search cards"]'),
   "1.4 search hidden"
 );
-await openSync(); // the file actions moved behind the Sync disclosure
+await openHistory(); // Backup moved from the Sync panel to History
 ok(!!btn(/^Backup$/), "1.5 Backup still reachable");
 ok(!!btn(/^Reset$/), "1.6 Reset still reachable");
 
@@ -317,7 +319,7 @@ win.URL.createObjectURL = (b) => {
 };
 win.URL.revokeObjectURL = () => {};
 
-await openSync();
+await openHistory();
 await click(btn(/^Backup$/), "backup");
 const plainText = await captured.text();
 const plain = JSON.parse(plainText);
@@ -477,7 +479,7 @@ await boot(
   [["pho-3", jpeg()]]
 );
 await goTo("orphaned");
-await openSync();
+await openHistory();
 ok(!!btn(/Backup \+ photos/), "19.1 photo backup offered only when photos exist");
 
 await click(btn(/^Backup$/), "plain backup");
@@ -658,7 +660,7 @@ await boot({
   ],
 });
 
-await openSync();
+await openHistory();
 ok(!!btn(/^Backup$/), "23.1 Backup survives an empty item list");
 ok(!!btn(/Re-import/), "23.2 so does Re-import");
 ok(!!btn(/^Reset$/), "23.3 and Reset");
@@ -767,7 +769,10 @@ ok(
    toolbar rather than hiding behind a disclosure that isn't there. */
 await boot({ items: ITEMS, received: {} }, null, { noRemote: true });
 ok(!btn(/^Sync/), "25.1 no Sync control when the platform has no remote");
-ok(!!btn(/^Backup$/), "25.2 and Backup stays on the toolbar in that case");
+/* Backup lives in History now, and History is gated on the versions adapter
+   rather than on the remote — so a platform with no remote loses nothing. */
+await openHistory();
+ok(!!btn(/^Backup$/), "25.2 and Backup is still reachable in that case");
 
 await fresh();
 await openSync();
@@ -786,7 +791,7 @@ eq(pushes().length, 1, "25.7 with a key it goes");
 const pushed = JSON.parse(pushes()[0].text);
 eq(pushed.mailday, 1, "25.8 the payload is a Mail Day backup");
 eq(pushed.items.length, ITEMS.length, "25.9 carrying every line");
-for (const k of ["received", "envelopes", "dateFilter", "sortBy", "itemSort"])
+for (const k of ["received", "envelopes", "stamps", "dateFilter", "sortBy", "itemSort"])
   ok(k in pushed, `25.10 and the ${k} key`);
 ok(
   !("savedAt" in pushed),
@@ -893,6 +898,7 @@ await fresh();
 await openSync();
 await saveGitHubKey("github_pat_SECRETVALUE");
 await click(btn(/^Push$/), "push after saving a key");
+await openHistory();
 await click(btn(/^Backup$/), "backup after saving a key");
 const LEAK = /github_pat_|ghp_/;
 await sleep(SAVE_WAIT);
@@ -1168,10 +1174,10 @@ await boot({ items: [], received: {}, envelopes: [] }, null, {
   remote: OTHER_DEVICE,
 });
 /* The Sync chip is gone — on the happy path there is no sync vocabulary on
-   screen at all. The claim survives unchanged though, and it is the one that
-   matters: an empty ledger is EXACTLY when Pull is needed, so the way in must
-   still be there. It is the broken-line now, which on a keyless device says so
-   honestly rather than waiting for a failure to happen. */
+   screen at all. The claim survives unchanged, and it is the one that matters:
+   an empty ledger is EXACTLY when Pull is needed, so the way in must still be
+   there. It is the broken-line now, which on a keyless device says so honestly
+   rather than waiting for a failure to happen. */
 ok(
   !!btn(/tap to/),
   "28.1 the repair kit is reachable on a completely empty ledger"
@@ -1191,7 +1197,10 @@ eq(saved().items.length, 3, "28.5 and pulling actually recovers the ledger");
 /* with no remote there is nothing to offer, so the toolbar stays away */
 await boot({ items: [], received: {}, envelopes: [] }, null, { noRemote: true });
 ok(!btn(/^Sync/), "28.6 no remote, no toolbar on an empty ledger");
-ok(!btn(/^Backup$/), "28.7 and nothing else either");
+/* History is the exception, and deliberately: it is the one control that
+   RECOVERS state, so it must not be gated on that state existing. Backup is
+   inside it rather than on the row. */
+ok(!btn(/^Backup$/), "28.7 and no file action sitting on the row itself");
 
 /* ── 29. the parser decodes entities in seller names too ───────────────── */
 
@@ -1826,11 +1835,15 @@ eq(
   "33.20 merging nothing in drops nothing"
 );
 ok(
-  /nothing new/.test(mergeSummary({ itemsAdded: 0, checkInsAdded: 0, envelopesAdded: 0 })),
+  /nothing new/.test(
+    mergeSummary({ itemsAdded: 0, checkInsAdded: 0, envelopesAdded: 0, stampsAdded: 0 })
+  ),
   "33.21 a merge that changed nothing says so rather than claiming a win"
 );
 ok(
-  /35 new lines/.test(mergeSummary({ itemsAdded: 35, checkInsAdded: 0, envelopesAdded: 0 })),
+  /35 new lines/.test(
+    mergeSummary({ itemsAdded: 35, checkInsAdded: 0, envelopesAdded: 0, stampsAdded: 0 })
+  ),
   "33.22 and one that did says what arrived"
 );
 
@@ -1905,17 +1918,13 @@ ok(!/Tap again to clear everything/.test(text()), "34.9 merging disarms Reset");
 await sleep(SAVE_WAIT);
 eq(saved().items.length, ITEMS.length, "34.10 and did not clear the ledger");
 
-/* Being behind is no longer something the page says. It used to carry a manila
-   notice and a Merge button; both are gone from the happy path, because a
-   resume now merges on its own. What survives is the repair kit's Merge, for
-   the case the automatic path could not finish — and, just as importantly, the
-   page staying SILENT about a condition that fixes itself. */
+/* the notice, and the merge that only brings in */
 await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { remote: LAPTOP_PUSHED });
 await openSync();
 await settle();
 ok(
-  !/pushed newer lines/.test(text()),
-  "34.11 being behind is not something the page nags about any more"
+  /pushed newer lines/.test(text()),
+  "34.11 a device that is behind is told so without being made to pull"
 );
 eq(peeks().length > 0, true, "34.12 which it learned from one cheap read, not a pull");
 await click(btn(/^Merge$/), "merge in");
@@ -1960,20 +1969,13 @@ await background();
 eq(pushes().length, unseen, "34.18 auto-push refuses to write when it could not look");
 remote.peekUnknown = null;
 
-/* and when it CAN look and the other device is ahead, it still doesn't push.
-   This branch is the one thing stopping a device writing over a remote it is
-   behind, and it stayed a refusal on purpose even after resumes began merging:
-   the 90s debounce measures DATA idleness, not the user's, so it fires exactly
-   when someone is reading the screen with a reveal open. */
+/* and when it CAN look and the other device is ahead, it still doesn't push —
+   it says so instead, which is the whole point of not automating the pull */
 const behind = pushes().length;
 await background();
 eq(pushes().length, behind, "34.19 nor when the other device is ahead");
 await foreground();
-eq(
-  remoteText(),
-  LAPTOP_PUSHED,
-  "34.20 leaving the other device's ledger exactly as it found it"
-);
+ok(/pushed newer lines/.test(text()), "34.20 it reports it rather than overwriting");
 
 /* the ordinary case: nobody is ahead, so it goes */
 await boot({ items: ITEMS, received: {} }, null, { remote: null });
@@ -2173,7 +2175,11 @@ await boot({ items: ITEMS, received: {} }, null, { remote: null });
 await openSync();
 const off = pushes().length;
 await background();
-eq(pushes().length, off, "34.25 with no key on this device, backgrounding pushes nothing");
+eq(
+  pushes().length,
+  off,
+  "34.25 with no key on this device, backgrounding pushes nothing"
+);
 
 /* ── 35. a pull that didn't land must not license a push ──────────────────
    Found in the wild on day one, and it cost a real check-in.
@@ -2233,7 +2239,515 @@ eq(
   "35.5 and the following push is accepted rather than conflicting"
 );
 
-/* ── 36. which saved versions survive ─────────────────────────────────────
+/* ── 36. the action row ───────────────────────────────────────────────────
+
+   The file actions became a row of ruled cells in the head's own vocabulary
+   (CLAUDE.md, "The ruled head"). What can be pinned here is behaviour; the
+   layout it exists for — equal cells, the 375px fit, nothing right-aligned
+   over a void — is re-measured in a real viewport like the rest of the
+   region, because jsdom has none. */
+/* The SYNC cell is gone entirely — sync has no presence on the happy path —
+   so the third cell is HISTORY, and the row is still the three equal cells
+   this design was measured at. */
+await boot({ items: ITEMS, received: {} }, null, { remote: OTHER_DEVICE });
+await openSync();
+await click(btn(/^Reset$/), "arm reset");
+ok(!!btn(/Tap again to clear everything/), "36.1 an armed Reset takes the row");
+ok(
+  !btn(/Re-import CSV/) && !btn(/^History/),
+  "36.2 and the other two cells step out — nothing beside it to mis-tap"
+);
+ok(!!btn(/^Push$/), "36.3 while the open Sync panel stays put underneath");
+await click(btn(/Pull from GitHub/), "arm pull instead");
+ok(
+  !!btn(/Re-import CSV/) && !!btn(/^History/) && !!btn(/^Reset$/),
+  "36.4 disarming brings them back"
+);
+ok(!btn(/^Sync/), "36.4b and the Sync cell is gone for good, not merely shut");
+
+/* the option grid paints its rule colour through the 1px gap, so an odd count
+   has to give the last cell the whole row or the empty half shows as a slab.
+   The History grid is where this reads most plainly now: Backup alone is one
+   cell, and a device with photos makes two. */
+await boot({ items: ITEMS, received: {} });
+await openHistory();
+eq(
+  btn(/^Backup$/).style.gridColumn,
+  "1 / -1",
+  "36.5 an odd last cell in the grid spans the row"
+);
+await boot(withPhoto(["pho-g"]), [["pho-g", jpeg()]]);
+await openHistory();
+ok(!!btn(/Backup \+ photos/), "36.6 photos add the second cell, making two");
+eq(
+  btn(/^Backup$/).style.gridColumn,
+  "",
+  "36.7 and an even count leaves every cell its own half"
+);
+await boot({ items: ITEMS, received: {} });
+await openSync();
+await saveGitHubKey();
+
+/* not layout — a device behaviour. iOS zooms the page on focusing any input
+   under 16px, and the viewport meta deliberately leaves zoom on; the old 12px
+   token box zoomed on every paste. */
+await click(btn(/^Replace$/), "reopen the key field");
+eq(
+  document.querySelector('input[aria-label="GitHub access token"]').style
+    .fontSize,
+  "16px",
+  "36.8 the token field is 16px so focusing it does not zoom the page on iOS"
+);
+
+/* ── 37. a stamp is the order's status, and a refund leaves the ledger ────
+   One stamp per package, set by hand — claim filed, refunded, seller
+   contacted, reshipped, partial refund — dated the day it was set, with a
+   free line. The two refund kinds take the package out of every count and the
+   normal list exactly as a canceled order is, and the "N stamped" cell is
+   then the one place the order can still be found. The stamp is a persisted
+   key, so invariant 2's five sites and the merge builder's sixth all carry
+   it; the last of those fails by silently dropping every stamp on every
+   merge and pushing the loss, which is why 37.62–37.69 exist. */
+
+const GK_A = "A1::Alpha Cards";
+const GK_C = "C1::Gamma Cards";
+const GK_D = "D1::Delta Cards";
+const inCard = (c, re) =>
+  [...c.querySelectorAll("button")].find((b) => re.test(b.textContent));
+const bandOf = (c) => c.querySelector('button[aria-label^="Edit stamp"]');
+const noteInput = (c) => c.querySelector('input[aria-label="Stamp note"]');
+const stampedCell = () => cell(/stamped/);
+/* the two entrances: the Stamp button on an unstamped card, the band on a
+   stamped one. `label` null keeps the kind already there; `note` undefined
+   keeps the note. */
+const stampPkg = async (re, label, note) => {
+  await click(inCard(card(re), /^Stamp$/) || bandOf(card(re)), `open stamp editor`);
+  if (label) await click(inCard(card(re), new RegExp(`^${label}$`)), `pick ${label}`);
+  if (note !== undefined) await type(noteInput(card(re)), note);
+  await click(inCard(card(re), /^Save$/), "save stamp");
+};
+const S = (kind, updatedAt, note = "") => ({ kind, at: "2026-08-01", note, updatedAt });
+const TOMB = (updatedAt) => ({ kind: "", at: "", note: "", updatedAt });
+const sortedEntries = (o) => Object.keys(o).sort().map((k) => [k, o[k]]);
+
+await fresh();
+ok(!!inCard(card(/Alpha Cards/), /^Stamp$/), "37.1 an unstamped package offers a Stamp button");
+ok(!stampedCell(), "37.2 and with nothing stamped there is no stamped cell");
+await click(inCard(card(/Alpha Cards/), /^Stamp$/), "open the stamp editor");
+{
+  const c = card(/Alpha Cards/);
+  eq(
+    ["Claim filed", "Refunded", "Seller contacted", "Reshipped", "Partial refund", "Other"].filter(
+      (l) => !!inCard(c, new RegExp(`^${l}$`))
+    ).length,
+    6,
+    "37.3 the editor offers the six stamps, Other included"
+  );
+  ok(inCard(c, /^Save$/).disabled, "37.4 and Save waits for a kind to be picked");
+  ok(!inCard(c, /Remove stamp/), "37.5 with nothing to remove yet");
+  await click(inCard(c, /^Claim filed$/), "pick Claim filed");
+  await type(noteInput(c), "case 123, they said ten days");
+  await click(inCard(c, /^Save$/), "save");
+}
+ok(
+  /CLAIM FILED · \d\d-\d\d/.test(card(/Alpha Cards/).textContent),
+  "37.6 the band shows the stamp, dated the day it was set"
+);
+ok(/case 123/.test(card(/Alpha Cards/).textContent), "37.7 and the note beside it");
+ok(
+  !inCard(card(/Alpha Cards/), /^Stamp$/) && !!bandOf(card(/Alpha Cards/)),
+  "37.8 the Stamp button is gone — the band itself is now the control"
+);
+await sleep(SAVE_WAIT);
+{
+  const st = saved().stamps?.[GK_A];
+  ok(
+    st && st.kind === "claim" && /case 123/.test(st.note) &&
+      /^\d{4}-\d\d-\d\d$/.test(st.at) && typeof st.updatedAt === "number",
+    "37.9 and it is in the saved blob, keyed by the package, dated and time-stamped"
+  );
+}
+const firstUpdated = saved().stamps[GK_A].updatedAt;
+ok(
+  /0\/14/.test(text()) && /4 packages/.test(text()),
+  "37.10 a claim changes no count — the cards are still out there"
+);
+ok(
+  !/refund window closing|may be lost/.test(card(/Alpha Cards/).textContent),
+  "37.11 the lost-mail warning is gone on a stamped order — it is being handled"
+);
+ok(
+  /refund window closing|may be lost/.test(card(/Beta Games/).textContent),
+  "37.12 and still there on one that isn't"
+);
+await stampPkg(/Alpha Cards/, "Other", "package split — one box short");
+ok(
+  /OTHER · \d\d-\d\d/.test(card(/Alpha Cards/).textContent) &&
+    /package split/.test(card(/Alpha Cards/).textContent),
+  "37.12b Other is a stamp like any other — labelled, dated, notable"
+);
+ok(
+  /0\/14/.test(text()) && /4 packages/.test(text()),
+  "37.12c and unlike the two refund kinds, it changes no count"
+);
+await goTo("tally");
+await click(btn(/Lightning Bolt/), "expand Lightning Bolt");
+ok(
+  !/⚠/.test(orderBtn("A1").parentElement.textContent) &&
+    /⚠/.test(orderBtn("B1").parentElement.textContent),
+  "37.13 the Tally source row agrees: no warning on the stamped order's copy, warning on the other"
+);
+ok(!stampedCell(), "37.14 no stamped cell under Tally — a stamp belongs to a package");
+await goTo("packages");
+ok(
+  !!stampedCell() && /1 stamped/.test(stampedCell().textContent),
+  "37.15 back in Packages the cell counts it"
+);
+
+/* a refund is the stamp that changes the numbers */
+await sleep(5);
+await stampPkg(/Alpha Cards/, "Refunded");
+ok(!card(/Alpha Cards/), "37.16 a refunded package leaves the list");
+ok(
+  /0\/10/.test(text()) && /3 packages/.test(text()),
+  "37.17 and the counts — the money is back, so nothing is outstanding"
+);
+ok(!cell(/canceled/), "37.18 without being mistaken for a canceled order");
+ok(
+  /1 stamped/.test(stampedCell().textContent),
+  "37.19 the stamped cell still counts it, which is the way back to it"
+);
+await click(stampedCell(), "filter to stamped");
+ok(
+  !!card(/Alpha Cards/) &&
+    /REFUNDED ·/.test(card(/Alpha Cards/).textContent) &&
+    !/CLAIM FILED/.test(card(/Alpha Cards/).textContent),
+  "37.20 under the filter it is there, the new stamp in place of the old — one stamp per order"
+);
+ok(
+  /4 left · refunded/.test(card(/Alpha Cards/).textContent) &&
+    !/\$4\.00/.test(card(/Alpha Cards/).textContent),
+  "37.21 wearing a manila 'refunded' pill rather than a red figure"
+);
+ok(
+  /0\/10/.test(text()) && /3 packages/.test(text()),
+  "37.22 the masthead does not change with the filter"
+);
+ok(!card(/Beta Games/), "37.23 and unstamped packages are filtered out");
+await sleep(SAVE_WAIT);
+ok(
+  (saved().stamps?.[GK_A]?.updatedAt ?? 0) > firstUpdated,
+  "37.24 replacing the stamp re-stamps updatedAt, so the merge knows which copy is newer"
+);
+await click(stampedCell(), "filter off");
+ok(!card(/Alpha Cards/) && !!card(/Beta Games/), "37.25 the filter comes off the same way");
+
+/* the filter sits ON TOP of Showing, not beside it */
+await fresh();
+await stampPkg(/Beta Games/, "Seller contacted", "asked for tracking");
+await click(inCard(card(/Beta Games/), /^Mark all received$/), "receive all of Beta");
+ok(!card(/Beta Games/), "37.26 a fully received package hides under Unreceived, stamped or not");
+ok(/1 stamped/.test(stampedCell().textContent), "37.27 the cell still counts it");
+await click(stampedCell(), "filter on");
+ok(
+  !card(/Beta Games/),
+  "37.28 the filter does not bring a received package back — Showing still applies"
+);
+await toggleShowing();
+ok(
+  !!card(/Beta Games/) && /SELLER CONTACTED/.test(card(/Beta Games/).textContent),
+  "37.29 Everything does"
+);
+
+/* and on top of Find, which now reads the stamp too */
+await fresh();
+await stampPkg(/Alpha Cards/, "Claim filed", "usps 9400");
+await click(stampedCell(), "filter on");
+await type(search(), "Gamma");
+ok(!card(/Alpha Cards/), "37.30 Find still narrows the stamped list");
+await type(search(), "");
+await click(stampedCell(), "filter off");
+await type(search(), "9400");
+{
+  const c = card(/Alpha Cards/);
+  ok(
+    c && /Lightning Bolt/.test(c.textContent) && /Counterspell/.test(c.textContent) &&
+      /Brainstorm/.test(c.textContent),
+    "37.31 a note match finds the order and shows every line of it"
+  );
+  ok(!/more lines? in this order/.test(c.textContent), "37.32 with nothing for the search to be hiding");
+  ok(!card(/Beta Games/), "37.33 and only that order");
+}
+await stampPkg(/Alpha Cards/, null, "fedex 7700");
+ok(
+  !card(/Alpha Cards/),
+  "37.34 editing the note under a live search re-runs the search — the hit is gone"
+);
+await type(search(), "claim");
+ok(!!card(/Alpha Cards/), "37.35 the stamp's label is searchable too");
+await type(search(), "");
+
+/* and on top of the date range, count and list alike */
+await stampPkg(/Gamma Cards/, "Reshipped", "");
+ok(/2 stamped/.test(stampedCell().textContent), "37.36 two stamped orders");
+await openRange();
+await click(opt("By month"), "by month");
+await click(monthChips().find((b) => /Jul/.test(b.textContent)), "pick July");
+ok(
+  /1 stamped/.test(stampedCell().textContent),
+  "37.37 the count follows the date range — Gamma is a June order"
+);
+await click(stampedCell(), "filter on");
+ok(!!card(/Alpha Cards/) && !card(/Gamma Cards/), "37.38 and so does the list");
+await openRange();
+await click(opt("All time"), "all time");
+ok(
+  /2 stamped/.test(stampedCell().textContent) && !!card(/Gamma Cards/),
+  "37.39 widen the range and both are back"
+);
+await stampPkg(/Alpha Cards/, "Refunded");
+{
+  const t = text();
+  ok(
+    t.indexOf("Alpha Cards") !== -1 && t.indexOf("Alpha Cards") < t.indexOf("Gamma Cards"),
+    "37.40 under Newest the refunded July order still sorts ahead of the June one — the frozen order ranks the stamped list, not the list it left"
+  );
+}
+
+/* removal: two-tap, and a tombstone rather than a hole */
+await click(bandOf(card(/Alpha Cards/)), "open Alpha's stamp");
+await click(inCard(card(/Alpha Cards/), /^Remove stamp$/), "remove, first tap");
+ok(
+  !!inCard(card(/Alpha Cards/), /Tap again to remove/),
+  "37.41 Remove is two-tap, like every other destructive control"
+);
+await sleep(SAVE_WAIT);
+eq(saved().stamps?.[GK_A]?.kind, "refunded", "37.42 and one tap changes nothing");
+await click(inCard(card(/Alpha Cards/), /Tap again to remove/), "remove, second tap");
+ok(!card(/Alpha Cards/), "37.43 un-stamped, Alpha drops out of the stamped list");
+ok(/1 stamped/.test(stampedCell().textContent), "37.44 and the cell counts one fewer");
+await sleep(SAVE_WAIT);
+ok(
+  GK_A in (saved().stamps || {}) && saved().stamps[GK_A].kind === "",
+  "37.45 the removal is a tombstone in the blob, not a missing key — so it can travel to the other device"
+);
+await click(stampedCell(), "filter off");
+ok(
+  !!card(/Alpha Cards/) && !!inCard(card(/Alpha Cards/), /^Stamp$/) && /0\/14/.test(text()),
+  "37.46 Alpha is back in the normal list, un-refunded, offering a fresh Stamp"
+);
+await click(stampedCell(), "filter on again");
+await click(bandOf(card(/Gamma Cards/)), "open Gamma's stamp");
+await click(inCard(card(/Gamma Cards/), /^Remove stamp$/), "first tap");
+await click(inCard(card(/Gamma Cards/), /Tap again to remove/), "second tap");
+ok(
+  !stampedCell() &&
+    [/Alpha Cards/, /Beta Games/, /Gamma Cards/, /Delta Cards/].every((re) => !!card(re)),
+  "37.47 removing the last stamp drops the filter rather than stranding an empty list"
+);
+
+/* the five sites of invariant 2 */
+await fresh();
+await stampPkg(/Alpha Cards/, "Claim filed", "reload me");
+await sleep(SAVE_WAIT);
+await boot(saved());
+ok(
+  /CLAIM FILED/.test(card(/Alpha Cards/).textContent) && /reload me/.test(text()),
+  "37.48 stamps survive a reload"
+);
+await boot({
+  items: ITEMS,
+  received: {},
+  envelopes: [],
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+});
+ok(
+  !/undefined/.test(text()) && !stampedCell() && !!inCard(card(/Alpha Cards/), /^Stamp$/),
+  "37.49 a blob written before stamps shipped loads clean, with nothing stamped"
+);
+await stampPkg(/Alpha Cards/, "Claim filed", "");
+await sleep(SAVE_WAIT);
+await click(btn(/^Reset$/), "reset");
+await click(btn(/Tap again to clear everything/), "confirm reset");
+await sleep(800); // past the debounce, which is when a stale value would reappear
+eq(saved().stamps ?? {}, {}, "37.50 Reset clears stamps and the debounce does not write them back");
+
+await fresh();
+await stampPkg(/Alpha Cards/, "Claim filed", "pushed");
+await openSync();
+await saveGitHubKey();
+await click(btn(/^Push$/), "push");
+ok(
+  JSON.parse(pushes()[0].text).stamps?.[GK_A]?.kind === "claim",
+  "37.51 the pushed payload carries the stamps"
+);
+
+const REMOTE_STAMPED = JSON.stringify({
+  mailday: 1,
+  items: ITEMS,
+  received: {},
+  envelopes: [],
+  stamps: { [GK_C]: S("reshipped", 5, "second copy on its way") },
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+});
+await boot(
+  { items: ITEMS, received: {}, stamps: { [GK_A]: { ...S("claim", 10), at: "2026-08-20" } } },
+  null,
+  { remote: REMOTE_STAMPED }
+);
+ok(
+  /CLAIM FILED · 08-20/.test(card(/Alpha Cards/).textContent),
+  "37.52 (setup) the local stamp renders straight from the blob, dated as stored"
+);
+await openSync();
+await click(btn(/^Pull from GitHub$/), "pull");
+await click(btn(/Tap again to replace/), "confirm pull");
+await settle();
+ok(
+  !/CLAIM FILED/.test(card(/Alpha Cards/).textContent) &&
+    /RESHIPPED · 08-01/.test(card(/Gamma Cards/).textContent),
+  "37.53 a pull is a full replace — the remote's stamps, not a union"
+);
+
+/* the merge rule, pure — the sixth site */
+eq(
+  mergeStamps({ a: S("claim", 10) }, { a: S("refunded", 20) }).stamps.a.kind,
+  "refunded",
+  "37.54 the fresher stamp wins"
+);
+eq(
+  mergeStamps({ a: S("claim", 10) }, { a: S("refunded", 10) }).stamps.a.kind,
+  "claim",
+  "37.55 a tie goes to the device running the merge"
+);
+eq(
+  mergeStamps({ a: S("claim", 10) }, { a: TOMB(20) }).stamps.a.kind,
+  "",
+  "37.56 a newer tombstone removes — the removal travels"
+);
+eq(
+  mergeStamps({ a: TOMB(10) }, { a: S("claim", 20) }).stamps.a.kind,
+  "claim",
+  "37.57 an older tombstone loses — re-stamping after a removal elsewhere works"
+);
+eq(
+  mergeStamps({ a: S("claim", 10) }, { a: { kind: "reshipped" } }).stamps.a.kind,
+  "claim",
+  "37.58 a copy with no timestamp reads as oldest, without crashing"
+);
+{
+  const ab = mergeStamps(
+    { a: S("claim", 10), b: S("contacted", 30) },
+    { a: S("refunded", 20), c: S("reshipped", 5) }
+  );
+  const ba = mergeStamps(
+    { a: S("refunded", 20), c: S("reshipped", 5) },
+    { a: S("claim", 10), b: S("contacted", 30) }
+  );
+  eq(
+    sortedEntries(ab.stamps),
+    sortedEntries(ba.stamps),
+    "37.59 merging either way round gives the same stamps — it cannot pick a loser"
+  );
+  eq(mergeStamps(ab.stamps, ab.stamps).added, 0, "37.60 merging the same thing twice adds nothing");
+}
+eq(
+  mergeStamps({}, { a: S("claim", 1), b: TOMB(2) }).added,
+  1,
+  "37.61 `added` counts stamps, not tombstones — a removal is not 'a stamp from the other device'"
+);
+eq(
+  mergeLedger(PHONE, LAPTOP).merged.stamps,
+  {},
+  "37.62 a merged ledger always carries a stamps key, even when neither side had any"
+);
+{
+  const m = mergeLedger(
+    { ...PHONE, stamps: { a: S("claim", 10) } },
+    { ...LAPTOP, stamps: { b: S("reshipped", 5) } }
+  );
+  ok(
+    m.merged.stamps?.a?.kind === "claim" && m.merged.stamps?.b?.kind === "reshipped" &&
+      m.stats.stampsAdded === 1,
+    "37.63 and carries both devices' stamps — the merge builder names the key"
+  );
+}
+ok(
+  /1 stamp\b/.test(
+    mergeSummary({ itemsAdded: 0, checkInsAdded: 0, envelopesAdded: 0, stampsAdded: 1 })
+  ) &&
+    /2 stamps/.test(
+      mergeSummary({ itemsAdded: 0, checkInsAdded: 0, envelopesAdded: 0, stampsAdded: 2 })
+    ),
+  "37.64 the notice says so"
+);
+
+/* and driven through the app, group 34's shape: a stale push, the conflict,
+   Merge & push — with a removal on the other side */
+const LAPTOP_STAMPED = JSON.stringify({
+  mailday: 1,
+  items: ITEMS,
+  received: {},
+  envelopes: [],
+  stamps: { [GK_A]: TOMB(20), [GK_D]: S("reshipped", 5, "laptop's") },
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+});
+await boot(
+  {
+    items: ITEMS.slice(0, 8),
+    received: {},
+    stamps: { [GK_A]: S("claim", 10), [GK_C]: S("contacted", 10, "phone's") },
+  },
+  null,
+  { remote: LAPTOP_STAMPED }
+);
+await openSync();
+await saveGitHubKey();
+await click(btn(/^Push$/), "stale push");
+await click(btn(/Merge & push/), "merge");
+await settle();
+await sleep(SAVE_WAIT);
+{
+  const st = saved().stamps || {};
+  ok(st[GK_C]?.kind === "contacted", "37.65 this device's stamp survives the merge");
+  ok(st[GK_D]?.kind === "reshipped", "37.66 the other device's arrives");
+  ok(
+    st[GK_A]?.kind === "",
+    "37.67 and its newer removal takes this device's older stamp with it"
+  );
+  const up = JSON.parse(remoteText()).stamps || {};
+  ok(
+    up[GK_A]?.kind === "" && up[GK_C]?.kind === "contacted" && up[GK_D]?.kind === "reshipped",
+    "37.68 the merged stamps reach GitHub"
+  );
+  ok(
+    /1 stamp\b/.test(text()),
+    "37.69 and the notice counts the one stamp that arrived, not the tombstone"
+  );
+}
+
+/* The Orphaned view hangs off the same chokepoint. This is the assertion that
+   caught a mutant the counts could not: with the refund exclusion dropped from
+   `liveItems` alone, every masthead figure still came out right (they derive
+   from `rangedItems`, which excludes refunds on its own) — only the envelope
+   candidates went wrong, offering a package nothing is expected from. */
+await fresh();
+await stampPkg(/Delta Cards/, "Partial refund", "$50 back");
+await goTo("orphaned");
+await record(["Urza's Saga"]);
+ok(
+  /No outstanding package accounts/.test(text()),
+  "37.70 a refunded order's cards are not candidates for an orphaned envelope — nothing is expected from it any more"
+);
+ok(/no outstanding copy/.test(text()), "37.71 and the entry is tagged as unexplained");
+
+/* ── 38. which saved versions survive ─────────────────────────────────────
    Pure, imported directly, same rationale as 27, 31 and 33: a pruning bug
    deletes the one version the user was reaching for and leaves a list that
    looks perfectly healthy. There is nothing to notice until the moment it
@@ -2258,18 +2772,18 @@ const manyRecents = Array.from({ length: 30 }, (_, i) =>
 );
 {
   const keep = keptIds(manyRecents, NOW);
-  ok(keep.has("r0"), "36.1 the newest check-in snapshot survives");
+  ok(keep.has("r0"), "38.1 the newest check-in snapshot survives");
   /* r29 is the oldest AND today's earliest, so the anchor rule keeps it —
      which is the union working, not the ring failing. r25 is out of the top
      20 and is nobody's anchor, so it is what the ring's promise rests on. */
-  ok(!keep.has("r25"), "36.2 and the ring really does drop what falls out of it");
+  ok(!keep.has("r25"), "38.2 and the ring really does drop what falls out of it");
   /* r0 is also today's earliest? No — r29 is, so the anchor rule keeps it too
      if they share a day. These are 30s apart, so they do. Assert the COUNT
      rather than a membership, which is what a ring is actually claiming. */
   eq(
     manyRecents.filter((r) => keptIds(manyRecents, NOW).has(r.id)).length,
     RETENTION.recentKeep + 1,
-    "36.3 the ring keeps exactly its quota, plus the day's anchor"
+    "38.3 the ring keeps exactly its quota, plus the day's anchor"
   );
 }
 
@@ -2281,7 +2795,7 @@ const manyRecents = Array.from({ length: 30 }, (_, i) =>
     ...Array.from({ length: 40 }, (_, i) => ver(`r${i}`, NOW - i * 30_000)),
     ver("m1", NOW - 60_000, "milestone"),
   ];
-  ok(keptIds(mixed, NOW).has("m1"), "36.4 a milestone outlives the recent ring");
+  ok(keptIds(mixed, NOW).has("m1"), "38.4 a milestone outlives the recent ring");
 }
 
 /* the reach: an old day's first version is what "restore last Tuesday" means */
@@ -2298,12 +2812,12 @@ const manyRecents = Array.from({ length: 30 }, (_, i) =>
     ver("d200", atDay(200)),
   ];
   const keep = keptIds(spread, NOW);
-  ok(keep.has("d90a"), "36.5 the first version of an old day is kept");
+  ok(keep.has("d90a"), "38.5 the first version of an old day is kept");
   ok(
     !keep.has("d90b"),
-    "36.6 but only the first — the rest of that day is not an anchor"
+    "38.6 but only the first — the rest of that day is not an anchor"
   );
-  ok(!keep.has("d200"), "36.7 and reach really does end, rather than growing forever");
+  ok(!keep.has("d200"), "38.7 and reach really does end, rather than growing forever");
 }
 
 /* Earliest, not latest, and this is the whole point of a day anchor: you are
@@ -2311,7 +2825,7 @@ const manyRecents = Array.from({ length: 30 }, (_, i) =>
    day's last version would preserve the damage and drop the thing you wanted. */
 {
   const oneDay = [ver("late", atDay(3, 20)), ver("early", atDay(3, 7))];
-  eq([...dayAnchors(oneDay)], ["early"], "36.8 the day's anchor is its earliest");
+  eq([...dayAnchors(oneDay)], ["early"], "38.8 the day's anchor is its earliest");
 }
 
 /* The first draft of this asserted dayKey("2026-05-01T00:30") === "2026-05-01",
@@ -2327,7 +2841,7 @@ const manyRecents = Array.from({ length: 30 }, (_, i) =>
     d.setHours(off > 0 ? 23 : 0, off > 0 ? 59 : 1, 0, 0);
     ok(
       dayKey(d.getTime()) !== d.toISOString().slice(0, 10),
-      "36.9 days are local — an instant on another UTC day still reads as its own"
+      "38.9 days are local — an instant on another UTC day still reads as its own"
     );
   }
 }
@@ -2343,37 +2857,47 @@ const manyRecents = Array.from({ length: 30 }, (_, i) =>
   const kept = keptIds(all, NOW);
   ok(
     all.every((r) => dropped.has(r.id) !== kept.has(r.id)),
-    "36.10 every record is either kept or dropped, never both and never neither"
+    "38.10 every record is either kept or dropped, never both and never neither"
   );
-  ok(dropped.has("old"), "36.11 and a version past every window is dropped");
+  ok(dropped.has("old"), "38.11 and a version past every window is dropped");
 }
 
 /* the write gate: a mail day is hundreds of taps on a 500ms save debounce, so
    snapshotting every save would spend the entire ring on one package */
-ok(!shouldSnapshot("recent", NOW - 5_000, NOW), "36.12 check-ins don't each earn a version");
-ok(shouldSnapshot("recent", NOW - 45_000, NOW), "36.13 but a real gap in the work does");
+ok(!shouldSnapshot("recent", NOW - 5_000, NOW), "38.12 check-ins don't each earn a version");
+ok(shouldSnapshot("recent", NOW - 45_000, NOW), "38.13 but a real gap in the work does");
 ok(
   shouldSnapshot("milestone", NOW - 1, NOW),
-  "36.14 a milestone always writes — it is standing in front of a bulk operation"
+  "38.14 a milestone always writes — it is standing in front of a bulk operation"
 );
-ok(shouldSnapshot("recent", null, NOW), "36.15 and the very first version always writes");
+ok(shouldSnapshot("recent", null, NOW), "38.15 and the very first version always writes");
 
 
-/* ── 37. the rollback list ────────────────────────────────────────────────
+/* ── 39. the rollback list ────────────────────────────────────────────────
    Driving the app, unlike group 36 which drives the rules. The claim is
    narrower and more useful: a version stands in front of each operation that
    can lose data in bulk, it holds the world as it was BEFORE that operation,
    and restoring one is itself undoable. */
 
 await boot({ items: ITEMS.slice(0, 3), received: {} });
-ok(!btn(/^History/), "37.1 no versions yet, so no History control");
+/* History is gated on the versions ADAPTER, not on there being versions —
+   Backup lives inside it now, so it has to be reachable before the first one
+   exists. What is empty at this point is the list itself. */
+await openHistory();
+ok(
+  /No versions saved on this device yet/.test(text()),
+  "39.1 nothing saved yet, and the panel says so"
+);
 /* Showing defaults to Unreceived, and a fully-received package hides — which
    would take the very button the next few steps need with it */
 await toggleShowing();
 
 await click(btn(/Mark all received/), "check the package in");
 await settle();
-ok(!!btn(/^History/), "37.2 the first real change earns a version, and History appears");
+ok(
+  !/No versions saved on this device yet/.test(text()),
+  "39.2 and the first real change earns one"
+);
 
 /* the gate: a mail day is hundreds of taps on a 500ms save debounce, and with
    no throttle the ring would be spent on a single package */
@@ -2385,7 +2909,7 @@ await settle();
 eq(
   versionMetas().filter((m) => m.kind !== "milestone").length,
   afterOne,
-  "37.3 but further changes inside the gate don't each earn one"
+  "39.3 but further changes inside the gate don't each earn one"
 );
 
 /* ---- a milestone stands in front of an import ---- */
@@ -2399,14 +2923,14 @@ await dropFile(
 );
 await settle();
 const beforeImport = versionText("before import");
-ok(!!beforeImport, "37.4 an import takes a milestone in front of it");
+ok(!!beforeImport, "39.4 an import takes a milestone in front of it");
 /* guarded, deliberately: a milestone that was never taken makes this null, and
    an assertion that THROWS aborts a top-to-bottom suite with no isolation —
    masking every group after it. Fail, don't explode. */
 eq(
   beforeImport && JSON.parse(beforeImport).items.length,
   3,
-  "37.5 holding the ledger as it was BEFORE the import, not after"
+  "39.5 holding the ledger as it was BEFORE the import, not after"
 );
 
 /* ---- and in front of a Reset, which is the one that matters most ---- */
@@ -2423,31 +2947,26 @@ await click(btn(/^Reset$/), "arm reset");
 await click(btn(/Tap again to clear everything/), "confirm reset");
 await settle();
 await sleep(SAVE_WAIT);
-eq(saved().items?.length ?? 0, 0, "37.6 the Reset really did clear the ledger");
+eq(saved().items?.length ?? 0, 0, "39.6 the Reset really did clear the ledger");
 const beforeReset = versionText("before reset");
-ok(!!beforeReset, "37.7 a Reset takes a milestone in front of it");
+ok(!!beforeReset, "39.7 a Reset takes a milestone in front of it");
 eq(
   beforeReset && JSON.parse(beforeReset).items.length,
   5,
-  "37.8 holding the imported ledger the Reset destroyed"
+  "39.8 holding the imported ledger the Reset destroyed"
 );
 eq(
   beforeReset && JSON.parse(beforeReset).envelopes?.length,
   1,
-  "37.8b and the hand-typed envelope too — a version is the WHOLE saved shape"
+  "39.8b and the hand-typed envelope too — a version is the WHOLE saved shape"
 );
 ok(
   versionMetas().length > 0,
-  "37.9 and versions survive resetAll — clearing them would destroy the escape hatch"
+  "39.9 and versions survive resetAll — clearing them would destroy the escape hatch"
 );
 
 /* ---- restoring, which is the whole point ---- */
-ok(!!btn(/^History/), "37.10 History is reachable on the ledger a Reset emptied");
-/* idempotent, like openSync: the chip TOGGLES, so a blind click closes a
-   panel that is already open and the row below vanishes */
-const openHistory = async () => {
-  if (!btn(/before reset/)) await click(btn(/^History/), "open history");
-};
+ok(!!btn(/^History/), "39.10 History is reachable on the ledger a Reset emptied");
 await openHistory();
 await click(btn(/before reset/), "expand that version");
 await click(btn(/Restore this version/), "arm restore");
@@ -2455,30 +2974,30 @@ await settle();
 eq(
   saved().items?.length ?? 0,
   0,
-  "37.11 one tap does not restore — invariant 6, it is a full replace"
+  "39.11 one tap does not restore — invariant 6, it is a full replace"
 );
 await click(btn(/Tap again to replace everything/), "confirm restore");
 await settle();
 await sleep(SAVE_WAIT);
-eq(saved().items.length, 5, "37.12 two taps bring the destroyed ledger back");
+eq(saved().items.length, 5, "39.12 two taps bring the destroyed ledger back");
 ok(
   !!versionText("before restore"),
-  "37.13 and the restore took its own milestone, so the wrong row is survivable"
+  "39.13 and the restore took its own milestone, so the wrong row is survivable"
 );
 
 /* arming a restore has to disarm Reset — two primed destructive buttons side
    by side is the exact mis-tap invariant 6 exists to prevent */
 await click(btn(/^Reset$/), "arm reset");
-ok(/Tap again to clear everything/.test(text()), "37.14 Reset arms");
+ok(/Tap again to clear everything/.test(text()), "39.14 Reset arms");
 await openHistory();
 await click(btn(/before reset/), "expand a version");
 await click(btn(/Restore this version/), "arm restore");
 ok(
   !/Tap again to clear everything/.test(text()),
-  "37.15 and arming a restore disarms Reset"
+  "39.15 and arming a restore disarms Reset"
 );
 
-/* ── 38. coming back to the app catches it up ─────────────────────────────
+/* ── 40. coming back to the app catches it up ─────────────────────────────
    The merge was always the safe resolution, but it needed a tap — on a panel
    you had to know to open. So two devices met at the conflict rather than at
    the merge. This runs the same doMerge on the same threshold the Showing
@@ -2496,7 +3015,7 @@ const PHONE_STATE = { items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } 
    resume test needs to start from */
 await boot(PHONE_STATE, null, { remote: LAPTOP_PUSHED });
 await settle();
-eq(remote.deviceSha, null, "38.1 a glance at the phone merges nothing");
+eq(remote.deviceSha, null, "40.1 a glance at the phone merges nothing");
 
 /* "I could not look" is not "all clear" — the same property that stops
    auto-push writing, applied to reading. Note `ahead` is already true here, so
@@ -2505,31 +3024,31 @@ eq(remote.deviceSha, null, "38.1 a glance at the phone merges nothing");
 remote.peekUnknown = "offline";
 await backgroundFor(5 * 60_000);
 await settle();
-eq(remote.deviceSha, null, "38.2 a remote it could not read is not merged");
+eq(remote.deviceSha, null, "40.2 a remote it could not read is not merged");
 remote.peekUnknown = null;
 
 /* half the threshold: a hop out to read a tracking number is the same session,
    and replacing the ledger under a thumb is the mis-tap invariant 5 prevents */
 await backgroundFor(5_000);
 await settle();
-eq(remote.deviceSha, null, "38.3 a glance away is still the same session");
+eq(remote.deviceSha, null, "40.3 a glance away is still the same session");
 
 /* and the other half, which is the whole feature */
 await backgroundFor(5 * 60_000);
 await settle();
 await sleep(SAVE_WAIT);
-eq(saved().items.length, ITEMS.length, "38.4 a real absence merges without a tap");
+eq(saved().items.length, ITEMS.length, "40.4 a real absence merges without a tap");
 eq(
   saved().received[ITEMS[0].key],
   1,
-  "38.5 keeping this device's check-in through it — a merge only adds"
+  "40.5 keeping this device's check-in through it — a merge only adds"
 );
 /* group 35's rule: after a merge the payloads match either way, so payload
    equality proves nothing. The sha advancing is the only thing that says the
    pull LANDED, and it is what stops the next push conflicting. */
 ok(
   remote.deviceSha !== null && remote.deviceSha === remote.sha,
-  "38.6 and the merge accepted the remote's sha"
+  "40.6 and the merge accepted the remote's sha"
 );
 
 /* in step, a resume looks and stops there */
@@ -2539,7 +3058,7 @@ await settle();
 eq(
   remote.calls.filter((c) => c.op === "pull").length,
   pulled,
-  "38.7 with the two ends in step, a resume pulls nothing"
+  "40.7 with the two ends in step, a resume pulls nothing"
 );
 
 /* An unpaired "visible" event is not a fresh session. iOS fires more of these
@@ -2551,7 +3070,7 @@ await foreground();
 await settle();
 ok(
   remote.deviceSha !== remote.sha,
-  "38.8 a foreground with no absence behind it is not a new session"
+  "40.8 a foreground with no absence behind it is not a new session"
 );
 
 /* ---- never mid-thought ----
@@ -2566,8 +3085,8 @@ await click(btn(/Record an envelope/), "start an envelope");
 await type(cardInput(), "Lightning");
 await backgroundFor(5 * 60_000);
 await settle();
-eq(remote.deviceSha, null, "38.9 a half-built envelope holds the merge off");
-ok(!!btn(/Save envelope/), "38.10 and the envelope is still on screen, not swept away");
+eq(remote.deviceSha, null, "40.9 a half-built envelope holds the merge off");
+ok(!!btn(/Save envelope/), "40.10 and the envelope is still on screen, not swept away");
 
 /* the guard is the only thing holding it: finish the thought and the very next
    resume catches up. Without this, 38.9 would pass just as well if the merge
@@ -2577,7 +3096,7 @@ await backgroundFor(5 * 60_000);
 await settle();
 ok(
   remote.deviceSha !== null && remote.deviceSha === remote.sha,
-  "38.11 once the thought is finished, the next resume merges"
+  "40.11 once the thought is finished, the next resume merges"
 );
 
 /* ---- and a mid-session sync is not a resume ----
@@ -2601,9 +3120,9 @@ await settle();
 eq(
   remote.deviceSha,
   null,
-  "38.12 a sync mid-session does not merge — only a resume does"
+  "40.12 a sync mid-session does not merge — only a resume does"
 );
-ok(!!btn(/Merge & push/), "38.13 the conflict is still standing, for you to resolve");
+ok(!!btn(/Merge & push/), "40.13 the conflict is still standing, for you to resolve");
 
 /* ---- a cold mount is a fresh session too ----
    On iOS reopening is usually a resume, which is everything above — but
@@ -2613,11 +3132,11 @@ ok(!!btn(/Merge & push/), "38.13 the conflict is still standing, for you to reso
 await boot(PHONE_STATE, null, { remoteAtBoot: LAPTOP_PUSHED });
 await settle();
 await sleep(SAVE_WAIT);
-eq(saved().items.length, ITEMS.length, "38.14 opening the app to an ahead remote merges");
+eq(saved().items.length, ITEMS.length, "40.14 opening the app to an ahead remote merges");
 eq(
   saved().received[ITEMS[0].key],
   1,
-  "38.15 keeping this device's check-ins through the cold start"
+  "40.15 keeping this device's check-ins through the cold start"
 );
 
 /* ---- and it says nothing when it did nothing ----
@@ -2637,11 +3156,11 @@ await boot(PHONE_STATE, null, { remoteAtBoot: SAME });
 await settle();
 ok(
   remote.deviceSha !== null && remote.deviceSha === remote.sha,
-  "38.16 it still merges, so the silence below is a choice and not a no-op"
+  "40.16 it still merges, so the silence below is a choice and not a no-op"
 );
-ok(!/Merged/.test(text()), "38.17 but says nothing, because it added nothing");
+ok(!/Merged/.test(text()), "40.17 but says nothing, because it added nothing");
 
-/* ── 39. older versions, read off the branch's own history ────────────────
+/* ── 41. older versions, read off the branch's own history ────────────────
    The archive is not something the remote grew — every push has always been a
    commit, so the branch already WAS a version history. This only makes it
    reachable from the phone, which is the half that was missing: `git show
@@ -2670,24 +3189,24 @@ await settle();
 await sleep(SAVE_WAIT);
 await click(btn(/^Push(ed ✓)?$/), "second push");
 await settle();
-eq(saved().items.length, 5, "39.1 the ledger grew, and both states are on the branch");
+eq(saved().items.length, 5, "41.1 the ledger grew, and both states are on the branch");
 
 /* nothing is fetched until asked: two round trips for something wanted rarely,
    and the local list already answers "undo what I just did" */
-await click(btn(/^History/), "open history");
+await openHistory();
 eq(
   remote.calls.filter((c) => c.op === "listVersions").length,
   0,
-  "39.2 the branch history is not fetched just because the panel opened"
+  "41.2 the branch history is not fetched just because the panel opened"
 );
-ok(!!btn(/Load older versions/), "39.3 but there is a way to ask for it");
+ok(!!btn(/Load older versions/), "41.3 but there is a way to ask for it");
 
 await click(btn(/Load older versions/), "ask for it");
 await settle();
 eq(
   remote.calls.filter((c) => c.op === "listVersions").length,
   1,
-  "39.4 and asking fetches the branch's commits"
+  "41.4 and asking fetches the branch's commits"
 );
 
 /* the older of the two commits is the 3-line ledger */
@@ -2704,15 +3223,15 @@ await settle();
 eq(
   saved().items.length,
   5,
-  "39.5 one tap does not restore — invariant 6 applies to a remote version too"
+  "41.5 one tap does not restore — invariant 6 applies to a remote version too"
 );
 await click(btn(/Tap again to replace everything/), "confirm");
 await settle();
 await sleep(SAVE_WAIT);
-eq(saved().items.length, OLD_COUNT, "39.6 two taps roll the ledger back to that commit");
+eq(saved().items.length, OLD_COUNT, "41.6 two taps roll the ledger back to that commit");
 ok(
   !!versionText("before restore"),
-  "39.7 and it took a local milestone on the way in, so the rollback is undoable"
+  "41.7 and it took a local milestone on the way in, so the rollback is undoable"
 );
 
 

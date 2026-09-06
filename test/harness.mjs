@@ -635,6 +635,13 @@ export const openSync = async () => {
   if (!btn(/^Push$/)) await click(btn(/tap to/), "open the repair kit");
 };
 
+/* Backup and Backup + photos moved out of the Sync panel and into History —
+   they are version actions, and the Sync panel is a repair kit now that only
+   opens on failure. Idempotent, like openSync. */
+export const openHistory = async () => {
+  if (!btn(/^Backup$/)) await click(btn(/^History/), "open history");
+};
+
 /* The key field is uncontrolled by design (the token must never reach React
    state), so a plain .value assignment is exactly what a paste does. */
 export const saveGitHubKey = async (token = "github_pat_testtoken") => {
