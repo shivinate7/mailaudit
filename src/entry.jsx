@@ -431,6 +431,53 @@ window.remote = {
     saveRec({ token: null });
   },
 
+  /* ---- older versions, read straight off the branch's history ----
+     Every push has always been a commit, so the branch IS a version archive —
+     this just makes it reachable from the phone. Both calls are READS, so they
+     spend nothing from the 500-content-writes/hour budget the push and the
+     photos share, and neither needs a key on the public ledger repo, which is
+     what lets a device recover before it has been set up.
+
+     Deliberately behind an explicit tap in the UI rather than fetched on open:
+     it is two round trips for something wanted rarely, and the local list
+     already answers "undo what I just did". */
+  async listVersions(limit = 30) {
+    const res = await api(
+      `/repos/${REMOTE.owner}/${REMOTE.repo}/commits?path=${REMOTE.path}` +
+        `&sha=${REMOTE.branch}&per_page=${limit}`
+    );
+    if (!res.ok) throw classify(res);
+    const rows = Array.isArray(res.body) ? res.body : [];
+    return rows.map((c) => ({
+      sha: c.sha,
+      /* the COMMITTED date, not the authored one: a push is both, but only the
+         committed date is what GitHub orders the list by */
+      at: Date.parse(c.commit?.committer?.date || c.commit?.author?.date || 0),
+      message: c.commit?.message || "",
+    }));
+  },
+
+  /* The bytes of ledger.json as of one commit. `?ref=` takes any commit-ish,
+     so this is the same Contents call `pull` makes with a sha in place of the
+     branch name — including the over-1MB fallback, which is why it is worth
+     sharing the shape rather than reaching for the raw host. */
+  async getVersion(sha) {
+    const res = await api(
+      `/repos/${REMOTE.owner}/${REMOTE.repo}/contents/${REMOTE.path}?ref=${sha}`
+    );
+    if (!res.ok) throw classify(res);
+    const b = res.body || {};
+    if (b.encoding === "base64" && b.content) return base64ToUtf8(b.content);
+    if (b.download_url) {
+      try {
+        return await (await fetch(b.download_url)).text();
+      } catch {
+        throw remoteErr("offline");
+      }
+    }
+    throw remoteErr("bad-response", { status: res.status });
+  },
+
   async pull() {
     const res = await api(
       `/repos/${REMOTE.owner}/${REMOTE.repo}/contents/${REMOTE.path}?ref=${REMOTE.branch}`

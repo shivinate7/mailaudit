@@ -121,8 +121,13 @@ imported only by `entry.jsx`.
  localStorage remains the source
 of truth; the GitHub copy is a backup and the app is fully functional offline.
 
-**Push may now run itself, on a 90s idle debounce plus backgrounding, behind an
-off-by-default per-device toggle.** What was rejected was *continuous* sync — a
+**Sync runs itself, and there is no toggle.** Push on a 90s idle debounce plus
+backgrounding; the *merge* on a foreground after `RESUME_RESET_MS` away, and on
+a cold mount. The `● Auto-push` toggle is gone — a per-device switch for "does
+this work" turned the thing the app is supposed to do quietly into a thing you
+had to opt into, and an off toggle on the other device is a silent way to be
+unbacked-up for months. (`auto` survives unread in `entry.jsx`'s record;
+removing a stored field is its own migration question.) What was rejected was *continuous* sync — a
 push per check-in, at the 500ms save cadence — and that is still rejected: the
 ledger blob is rewritten *whole*, and GitHub's secondary limit is 80
 content-generating requests/min and 500/hr, shared with photos. The 90s debounce
@@ -422,6 +427,21 @@ page. See "Known open threads" for exactly what that leaves unproven.
   final — it is the single most valuable thing here. And a restore takes its own
   `before restore` milestone on the way in, so tapping the wrong row is
   survivable rather than a second disaster.
+  **Older versions come off the branch itself**, behind a `Load older versions`
+  tap at the foot of the list. Nothing new had to be stored for this: every push
+  has always been a commit, so `data` already *was* a version archive — the half
+  that was missing was reaching it without a laptop. `listVersions` reads
+  `GET /commits?path=ledger.json&sha=data`; `getVersion(sha)` is the same
+  Contents call `pull` makes with a commit in place of the branch name,
+  over-1MB fallback included. Both are **reads**, so they spend nothing from the
+  500-content-writes/hour budget the push and photos share, and neither needs a
+  key on the public ledger repo. Behind a tap rather than fetched on open,
+  because it is two round trips for something wanted rarely and the local list
+  already answers "undo what I just did". Restoring one funnels through the same
+  `applyBackup` — so it takes a local `before restore` milestone too — and
+  deliberately does not touch the stored sha: rolling the ledger back is a local
+  act, and pushing afterwards rolls the remote back as a *new* commit, which is
+  what keeps that reversible in turn. Group 39.
   The History chip is gated on **versions existing**, never on the ledger — and
   it widens the whole file-actions region's gate for the third time, for the
   reason Backup was widened once and Sync twice: any control that RECOVERS
@@ -487,9 +507,23 @@ page. See "Known open threads" for exactly what that leaves unproven.
   `Merge & push` keeps both: pull, union, apply, push. It carries **no two-tap
   arm**, deliberately, because it destroys nothing and invariant 6's pattern is
   for destructive actions specifically; arming it would say the opposite of what
-  it does. Two entrances, one function (`doMerge`): the conflict, where it also
-  completes the rejected push, and the *ahead-notice*, where it does not (there
-  may be nothing local to send, and an empty commit is noise).
+  it does. **Three** entrances, one function (`doMerge`): the conflict, where it
+  also completes the rejected push; the repair kit's `Merge`, where it does not
+  (there may be nothing local to send, and an empty commit is noise); and the
+  **resume**, which is also `alsoPush: false` and additionally `quiet: true`.
+  Quiet means two things and both are load-bearing. It suppresses the summary
+  *only when the merge added nothing* — `peek` says "ahead" on any new blob sha
+  and a push writes one whenever the ledger is re-saved, so an empty-data commit
+  on the other device would otherwise greet the user on their next resume with a
+  notice about a merge they never asked for that did nothing. When it DID add
+  something the sentence stays even quietly: the list just changed shape and
+  that is the only thing on screen explaining why. And it suppresses
+  `setRemoteMsg`/`setKeyOpen` in the catch, because every one of those strings
+  is phrased for someone who just tapped a button — `setKeyOpen` is the worse of
+  the two, swapping "key saved on this device" for an empty field, which reads
+  as *your key is gone*. `setPushState("conflict")` is **not** suppressed: that
+  is a control, not a message. This also required `applyBackup`'s `notice` to go
+  three-valued (`!= null`, not `||`), so `""` can mean "say nothing".
   The ordering inside it is the same one `doPull` depends on — **photos are
   fetched before the ledger is applied** — and for a sharper reason: the merge
   unions both devices' envelopes, so ids arriving from the other device have no
@@ -505,7 +539,7 @@ page. See "Known open threads" for exactly what that leaves unproven.
   ledger) looks before every write and declines on `ahead` or on unknown; a
   conflict opening between the look and the write resolves by merging rather
   than leaving `Push anyway` armed on a screen nobody is watching.
-- **Push / Pull (GitHub).** Tap-triggered backup to `ledger.json` on the
+- **Push / Pull (GitHub).** Automatic backup to `ledger.json` on the
   **`data` branch** of `shivinate7/mailaudit` — never `main`, because Pages
   deploys from main's root and every backup would otherwise trigger a site
   rebuild. Push needs a fine-grained PAT (`Contents: read & write`, that repo
@@ -586,11 +620,29 @@ Three ruled cells report the state and open what changes it:
   after `RESUME_RESET_MS` (60s) away. The threshold is the whole design: a hop
   out to read a tracking number and straight back is the same session, and
   flipping the list under a thumb mid-check-in is exactly the mis-tap
-  invariant 5 exists to prevent. **Only Showing resets** — the query, the range
-  and the reveals are things you were in the middle of, and clearing those
-  reads as the app forgetting rather than as a fresh start. Tests 12.8–12.9
+  invariant 5 exists to prevent. Showing resets, **and an ahead remote is merged
+  in** — two consequences of one finding, landing seconds apart (this one
+  synchronously, the merge after a network round trip). Two reshapes of the same
+  list on one resume is fine precisely *because* it is a resume: nothing is
+  under the pointer. The query, the range and the reveals still do **not**
+  reset — those are things you were in the middle of, and clearing them reads as
+  the app forgetting rather than as a fresh start. Tests 12.8–12.9 and group 38
   pin both sides of the threshold via `backgroundFor(ms)`, which is
   `background()`/`foreground()` with the clock frozen across the trip.
+
+  **The elapsed time has to be handed forward, not re-derived, and this is the
+  trap.** The resume handler computes `away` and then nulls `hiddenAt` before
+  returning — and it registers *first*, because it has `[]` deps while the peek
+  effect waits on `loaded`. Anything downstream that reads `hiddenAt` therefore
+  measures zero forever and the merge never fires: no error, nothing on screen,
+  nothing to notice. So the handler records its finding into `freshSession`, on
+  **both** branches (a short hop has to be able to cancel a stale signal), and
+  the peek's `check()` consumes it synchronously on every path out — that effect
+  also runs on mount and on every `syncBusy` flip, and a merge flips `syncBusy`
+  twice, so a surviving flag would let the merge re-trigger itself.
+  `freshSession` starts **true**: a cold mount is a new session too, and the
+  more valuable half, since a fresh phone should come back already reconciled
+  rather than needing someone to go looking for a control.
 - **Sorted by** — opens a panel of options. There is no `<select>` in the app
   any more.
 
@@ -637,12 +689,36 @@ resolve, and it contradicted the region's own thesis. Don't reintroduce it: the
 option grids still read, because `optGrid` paints `line` and each `optCell`
 paints `card` over it, so the cells sit slightly raised against the page.
 
-**Everything that moves data in or out still sits behind the `Sync`
-disclosure** — Push, Merge, Pull, Backup, Backup + photos, the auto-push
-toggle, the target line and the key field. Two of those are conditional:
-`Merge` appears on a conflict *or* when `peek()` says the other device is ahead,
-and the auto-push toggle only once there is a key, because auto-push cannot work
-without one and a toggle that silently does nothing is worse than no toggle.
+**On the happy path there is no sync vocabulary on screen at all.** No `Sync`
+chip, no toggle, no `Merge` button, no "the other device is ahead" notice. Sync
+happens or it doesn't, and the only case worth a pixel is the one where it has
+*stopped* happening — because a ledger that quietly stopped reaching GitHub is
+exactly the failure the remote exists to prevent, and it is invisible by nature.
+
+So there is **one line**, advisory manila, and it is the sole entrance to what
+is now a repair kit: `Not backed up since Aug 30 — tap to fix`. `syncBroken`
+decides, in priority order: a conflict, an errored last attempt, no key on this
+device, never pushed, or a successful push older than `SYNC_STALE_MS` (24h — the
+push is automatic and idle-debounced, so anything shorter fires on an ordinary
+evening with the phone face down, and anything longer stops being a warning).
+
+It is deliberately **not gated on there being local data**. A device with an
+empty ledger and no key is the fresh phone, and this line is its only route to
+the Pull that recovers it — the same rule that widened Backup once, Sync twice
+and History a third time. Test 28.1.
+
+Behind it: Push, Merge, Pull, Push anyway, the target line and the key field.
+`Merge` still appears on a conflict *or* when `peek()` says the other device is
+ahead, for the case the automatic path could not finish. **Backup and Backup +
+photos moved out** into the file-actions row — they were only ever inside that
+disclosure because the disclosure was on screen, they are file actions rather
+than sync actions, and burying them behind a control that now appears only on
+failure would strand them.
+
+One accepted cost: a device whose sync is healthy has no way into the panel, so
+a key cannot be rotated *proactively*. In practice a token that needs replacing
+has expired, which errors, which raises the line — but it is a real gap and it
+was chosen rather than overlooked.
 `Merge` is filled **accent violet** — the app's "this is the live control"
 colour — because it is the safe resolution and therefore the primary one, while
 the force beside it stays advisory manila. It uses the same `panelWrap` surface as the date and sort disclosures.
@@ -909,8 +985,9 @@ device, since GitHub hides a private repo's existence behind a 404.)
    recovery is that same path running unattended. On A: check a card in, Push.
    On B *without pulling*: import a CSV that adds lines, Push — expect the
    conflict, then **Merge & push**. B must end holding A's check-in *and* its
-   own new lines, and A's next Merge must agree. Only then turn `● Auto-push`
-   on, one device at a time.
+   own new lines, and A's next Merge must agree. There is no toggle to turn on
+   any more — sync is unconditional — so this proof is a prerequisite for
+   running the app on two devices at all, not just for enabling something.
 
    `file://` and `http://localhost:4173` are two separate origins with two
    separate ledgers, so they stand in for two devices without needing a second
@@ -964,7 +1041,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 378 assertions, no test framework, ~60s (groups 30–31 spend a few
+`npm test` — 401 assertions, no test framework, ~60s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
@@ -980,6 +1057,48 @@ see, so the assertions read the DOM the way the user does.
 (Three previous harnesses were written ad hoc and thrown away, which is why the
 same assertions kept being rewritten from scratch. Hence this one is committed
 and `jsdom` is a real devDependency.)
+
+New in group 39 (older versions off the branch). The remote mock now records
+every push as a commit in `remote.history`, which is not a convenience — it is
+the actual claim the feature rests on. One method note: the first draft matched
+the older commit's row with `new RegExp(message.split(" ")[0])`, and **every
+push message starts with `ledger`**, so it silently selected the newest row and
+restored the version the app already had. It passed, and proved nothing. Match
+on the full message.
+
+Mutation-tested, all confirmed to turn the suite red: the load control fetching
+nothing; a remote restore firing on one tap; and a remote restore bypassing
+`applyBackup` (which would skip both the corrupt-payload guard and the
+`before restore` milestone that makes the rollback itself undoable).
+
+New in group 38 (the resume merge). The behaviour with the least margin for
+error in the whole app, because it applies a remote change with nobody watching.
+Both sides of the 60s threshold via `backgroundFor(ms)`, plus: an unreadable
+peek refuses, a half-built envelope holds it off *and is still on screen*,
+finishing the thought lets the very next resume through (without which the guard
+assertions would pass just as well if the merge were broken outright), an
+unpaired `foreground()` with no absence behind it is not a fresh session, a cold
+mount against an already-ahead remote merges, and a merge that added nothing
+says nothing.
+
+Mutation-tested, all confirmed to turn the suite red: the resume handler reading
+the shared `hiddenAt` instead of its own ref (**the most valuable one in the
+change and the least visible in review** — registration order makes `away`
+always 0, so the merge silently never fires; caught by 38.4/38.6/38.11/38.12);
+the threshold dropped to 0; the signal never consumed; an unknown remote read
+as ahead; the mid-thought guard removed; `acceptPull` dropped from `doMerge`
+(group 35's mutant, re-killed on this path); the quiet merge announcing itself
+anyway; and `freshSession` starting false, so a cold mount never catches up.
+
+**One of those survived the first draft, and finding out why is the lesson.**
+"The signal is never consumed" passed all fifteen assertions, because every one
+of them ended with the two ends *in step* — where no further merge is possible
+and a flag left standing costs nothing. The scenario it actually breaks is the
+one nothing was testing: `check()` re-runs on every `syncBusy` flip, not only on
+a visibility event, so an unconsumed flag lets the laptop's push land
+mid-session, with no resume anywhere in sight — the list reshaping under a thumb,
+which is the exact thing the threshold exists to prevent. 38.12–38.13 pin it
+now. When a mutant survives, look for the state your fixtures never reach.
 
 New in groups 36–37 (saved versions). Group 36 is pure, like 27, 31 and 33: it
 imports `version-rules.mjs` directly, because a pruning bug deletes the one
@@ -1120,8 +1239,18 @@ Gotchas worth remembering:
   tests must wait past them (`SWEEP_WAIT`, `SAVE_WAIT`).
 - Packages render expanded, so "Mark all received" matches several buttons —
   reach into the specific card, not the first hit on the page.
-- Backup, Push and Pull live behind the Sync disclosure, so a test has to
-  `await openSync()` first. It's idempotent; just call it.
+- Push, Pull and Merge are the repair kit, whose only entrance is the
+  broken-line, so `openSync()` clicks `/tap to/` rather than a `Sync` chip.
+  Still idempotent; just call it. It works because every fresh fixture starts
+  with no key, which *is* a broken state.
+- **`boot()` seeds `opts.remote` AFTER the mount and then glances at the page**
+  (a `foreground()` with the away-clock untouched). That is what almost every
+  fixture actually means — the other device pushed at some point since — and it
+  had to change when resumes began merging, because a cold mount counts as a
+  fresh session and a remote seeded *before* the mount would auto-merge away the
+  very conflict the fixture was written to produce. `opts.remoteAtBoot` is the
+  explicit before-mount form, for the cold-start assertions in group 38. One
+  harness change, no call sites touched, and a more faithful model of the wire.
 - The `Pushed ✓` flash now starts **after** the photo phase, not after the
   ledger leg — showing it while a dozen uploads are queued is a lie, and it
   re-enabled the button into a second concurrent loop. So a test that pushes
@@ -1346,14 +1475,19 @@ give no isolation between groups.
   across every Pages repo, so script from any other project there can read
   `mailday-remote:v1`. Mitigated by the fine-grained, single-repo,
   Contents-only scope and one token per device — not eliminated.
-- **A merge exists; auto-pull-and-apply still deliberately doesn't.** A
-  conflict is resolved by `Merge & push` (see `merge-rules.mjs`), which keeps
-  both devices' work — Pull and Push anyway remain, but they are now the two
-  lossy options rather than the only ones. What the app still never does is
-  apply a remote change *on its own*: `peek()` reports that the other device is
-  ahead and offers `Merge`, and the user picks the moment. Merging forty new
-  CSV lines into the package list mid-check-in is exactly the cascading mis-tap
-  invariant 5 exists to prevent.
+- **Auto-apply happens now, and why the answer changed is worth recording.**
+  This entry used to say the app never applies a remote change on its own. The
+  objection was never "applying is unsafe" — it was that *the app could not tell
+  mid-check-in from between-sessions*, and merging forty new CSV lines into the
+  package list under a thumb is the cascading mis-tap invariant 5 exists to
+  prevent. `RESUME_RESET_MS` **is** that discrimination, and the app already
+  trusts it with a list reshape when it resets Showing. So the merge now spends
+  the same finding. What has *not* changed: it never applies on a timer, never
+  mid-thought (the five guards), and never on a remote it could not read.
+  Auto-push's `ahead` branch stayed a **refusal** on purpose — the 90s debounce
+  measures *data* idleness, not the user's, so it fires exactly when someone is
+  reading the screen with a reveal open, and it is also the one thing stopping a
+  device writing over a remote it is behind (34.19).
 - **`max` on `received` cannot express an un-check.** "Clear check-ins", or
   stepping a qty back to 0, racing the other device's stale copy means the card
   comes back checked. Visible and one tap to fix, and the alternative is a

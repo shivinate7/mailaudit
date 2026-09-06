@@ -1167,7 +1167,15 @@ eq(
 await boot({ items: [], received: {}, envelopes: [] }, null, {
   remote: OTHER_DEVICE,
 });
-ok(!!btn(/^Sync/), "28.1 Sync is reachable on a completely empty ledger");
+/* The Sync chip is gone — on the happy path there is no sync vocabulary on
+   screen at all. The claim survives unchanged though, and it is the one that
+   matters: an empty ledger is EXACTLY when Pull is needed, so the way in must
+   still be there. It is the broken-line now, which on a keyless device says so
+   honestly rather than waiting for a failure to happen. */
+ok(
+  !!btn(/tap to/),
+  "28.1 the repair kit is reachable on a completely empty ledger"
+);
 await openSync();
 ok(!!btn(/Pull from GitHub/), "28.2 and Pull with it");
 ok(!btn(/^Reset$/), "28.3 but Reset is hidden — there is nothing to clear");
@@ -1897,13 +1905,17 @@ ok(!/Tap again to clear everything/.test(text()), "34.9 merging disarms Reset");
 await sleep(SAVE_WAIT);
 eq(saved().items.length, ITEMS.length, "34.10 and did not clear the ledger");
 
-/* the notice, and the merge that only brings in */
+/* Being behind is no longer something the page says. It used to carry a manila
+   notice and a Merge button; both are gone from the happy path, because a
+   resume now merges on its own. What survives is the repair kit's Merge, for
+   the case the automatic path could not finish — and, just as importantly, the
+   page staying SILENT about a condition that fixes itself. */
 await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { remote: LAPTOP_PUSHED });
 await openSync();
 await settle();
 ok(
-  /pushed newer lines/.test(text()),
-  "34.11 a device that is behind is told so without being made to pull"
+  !/pushed newer lines/.test(text()),
+  "34.11 being behind is not something the page nags about any more"
 );
 eq(peeks().length > 0, true, "34.12 which it learned from one cheap read, not a pull");
 await click(btn(/^Merge$/), "merge in");
@@ -1919,14 +1931,16 @@ ok(!/pushed newer lines/.test(text()), "34.14 and the notice clears");
 await fresh();
 await openSync();
 await saveGitHubKey();
-ok(!!btn(/Auto-push/), "34.15 the toggle appears once there is a key");
-await click(btn(/○ Auto-push/), "turn it on");
-await settle();
-eq(remote.auto, true, "34.16 and it is remembered by the transport layer");
+/* There is no toggle any more, and its absence is the claim: sync is not
+   something you turn on. A per-device switch for "does this work" made the
+   thing the app is supposed to do quietly into a thing you had to opt into,
+   and an off toggle on the other device is a silent way to be unbacked-up for
+   months. */
+ok(!btn(/Auto-push/), "34.15 there is no toggle — sync is not opt-in");
 eq(
   saved().auto,
   undefined,
-  "34.17 NOT in the ledger — it is a device setting, like the token"
+  "34.17 and nothing about it leaked into the ledger on its way out"
 );
 
 /* Backgrounding runs auto-push straight away rather than after the 90s idle
@@ -1939,7 +1953,6 @@ eq(
 await boot({ items: ITEMS, received: {} }, null, { remote: LAPTOP_PUSHED });
 await openSync();
 await saveGitHubKey();
-await click(btn(/○ Auto-push/), "arm auto-push");
 await settle();
 remote.peekUnknown = "offline";
 const unseen = pushes().length;
@@ -1947,19 +1960,25 @@ await background();
 eq(pushes().length, unseen, "34.18 auto-push refuses to write when it could not look");
 remote.peekUnknown = null;
 
-/* and when it CAN look and the other device is ahead, it still doesn't push —
-   it says so instead, which is the whole point of not automating the pull */
+/* and when it CAN look and the other device is ahead, it still doesn't push.
+   This branch is the one thing stopping a device writing over a remote it is
+   behind, and it stayed a refusal on purpose even after resumes began merging:
+   the 90s debounce measures DATA idleness, not the user's, so it fires exactly
+   when someone is reading the screen with a reveal open. */
 const behind = pushes().length;
 await background();
 eq(pushes().length, behind, "34.19 nor when the other device is ahead");
 await foreground();
-ok(/pushed newer lines/.test(text()), "34.20 it reports it rather than overwriting");
+eq(
+  remoteText(),
+  LAPTOP_PUSHED,
+  "34.20 leaving the other device's ledger exactly as it found it"
+);
 
 /* the ordinary case: nobody is ahead, so it goes */
 await boot({ items: ITEMS, received: {} }, null, { remote: null });
 await openSync();
 await saveGitHubKey();
-await click(btn(/○ Auto-push/), "arm auto-push");
 await settle();
 const quiet = pushes().length;
 await background();
@@ -1978,7 +1997,6 @@ await boot(
 );
 await openSync();
 await saveGitHubKey();
-await click(btn(/○ Auto-push/), "arm auto-push");
 await settle();
 /* peek reports all clear, but the remote moves before the PUT lands — the race
    the optimistic sha check exists to catch */
@@ -2149,13 +2167,13 @@ ok(
   "34.30 a conflict during the merged push still offers the safe way out"
 );
 
-/* auto-push off is off */
+/* No toggle means no "off", so the remaining refusal is the one that matters:
+   a device with no key cannot push, and must not pretend otherwise. */
 await boot({ items: ITEMS, received: {} }, null, { remote: null });
 await openSync();
-await saveGitHubKey();
 const off = pushes().length;
 await background();
-eq(pushes().length, off, "34.25 with the toggle off, backgrounding pushes nothing");
+eq(pushes().length, off, "34.25 with no key on this device, backgrounding pushes nothing");
 
 /* ── 35. a pull that didn't land must not license a push ──────────────────
    Found in the wild on day one, and it cost a real check-in.
@@ -2190,7 +2208,6 @@ eq(
 
 /* the half that actually lost the data: with the sha advanced, this push would
    have been accepted rather than blocked */
-await click(btn(/○ Auto-push/), "enable auto-push");
 await settle();
 await background();
 ok(
@@ -2459,6 +2476,243 @@ await click(btn(/Restore this version/), "arm restore");
 ok(
   !/Tap again to clear everything/.test(text()),
   "37.15 and arming a restore disarms Reset"
+);
+
+/* ── 38. coming back to the app catches it up ─────────────────────────────
+   The merge was always the safe resolution, but it needed a tap — on a panel
+   you had to know to open. So two devices met at the conflict rather than at
+   the merge. This runs the same doMerge on the same threshold the Showing
+   reset already uses: a real absence is a new session, and a new session starts
+   by catching up.
+
+   The threshold is the whole design. Applying forty imported lines into the
+   package list mid-check-in is the cascading mis-tap invariant 5 exists to
+   prevent; coming back after a minute away is not mid-check-in. */
+
+const PHONE_STATE = { items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } };
+
+/* boot's `remote` option seeds AFTER the mount and glances at the page, so the
+   app knows the remote moved but has not been away — exactly the state a
+   resume test needs to start from */
+await boot(PHONE_STATE, null, { remote: LAPTOP_PUSHED });
+await settle();
+eq(remote.deviceSha, null, "38.1 a glance at the phone merges nothing");
+
+/* "I could not look" is not "all clear" — the same property that stops
+   auto-push writing, applied to reading. Note `ahead` is already true here, so
+   an implementation that merges off the cached flag instead of a fresh peek
+   merges anyway: that is the bug this pins. */
+remote.peekUnknown = "offline";
+await backgroundFor(5 * 60_000);
+await settle();
+eq(remote.deviceSha, null, "38.2 a remote it could not read is not merged");
+remote.peekUnknown = null;
+
+/* half the threshold: a hop out to read a tracking number is the same session,
+   and replacing the ledger under a thumb is the mis-tap invariant 5 prevents */
+await backgroundFor(5_000);
+await settle();
+eq(remote.deviceSha, null, "38.3 a glance away is still the same session");
+
+/* and the other half, which is the whole feature */
+await backgroundFor(5 * 60_000);
+await settle();
+await sleep(SAVE_WAIT);
+eq(saved().items.length, ITEMS.length, "38.4 a real absence merges without a tap");
+eq(
+  saved().received[ITEMS[0].key],
+  1,
+  "38.5 keeping this device's check-in through it — a merge only adds"
+);
+/* group 35's rule: after a merge the payloads match either way, so payload
+   equality proves nothing. The sha advancing is the only thing that says the
+   pull LANDED, and it is what stops the next push conflicting. */
+ok(
+  remote.deviceSha !== null && remote.deviceSha === remote.sha,
+  "38.6 and the merge accepted the remote's sha"
+);
+
+/* in step, a resume looks and stops there */
+const pulled = remote.calls.filter((c) => c.op === "pull").length;
+await backgroundFor(5 * 60_000);
+await settle();
+eq(
+  remote.calls.filter((c) => c.op === "pull").length,
+  pulled,
+  "38.7 with the two ends in step, a resume pulls nothing"
+);
+
+/* An unpaired "visible" event is not a fresh session. iOS fires more of these
+   than you would like, and reading "no absence recorded" as an infinite one
+   would pull on every single foreground. */
+remote.content = utf8ToBase64(LAPTOP_PUSHED);
+remote.sha = "sha-laptop-2";
+await foreground();
+await settle();
+ok(
+  remote.deviceSha !== remote.sha,
+  "38.8 a foreground with no absence behind it is not a new session"
+);
+
+/* ---- never mid-thought ----
+   applyBackup calls setComposing(null), so a merge landing under a half-built
+   envelope does not merely interrupt the thought — it deletes entries that are
+   hand-typed, in no CSV and on no remote. And "start the envelope, duck out to
+   read the label, come back two minutes later" is this feature's own workflow,
+   over the threshold by construction. */
+await boot(PHONE_STATE, null, { remote: LAPTOP_PUSHED });
+await goTo("orphaned");
+await click(btn(/Record an envelope/), "start an envelope");
+await type(cardInput(), "Lightning");
+await backgroundFor(5 * 60_000);
+await settle();
+eq(remote.deviceSha, null, "38.9 a half-built envelope holds the merge off");
+ok(!!btn(/Save envelope/), "38.10 and the envelope is still on screen, not swept away");
+
+/* the guard is the only thing holding it: finish the thought and the very next
+   resume catches up. Without this, 38.9 would pass just as well if the merge
+   were broken outright. */
+await click(btn(/^Cancel$/), "abandon the envelope");
+await backgroundFor(5 * 60_000);
+await settle();
+ok(
+  remote.deviceSha !== null && remote.deviceSha === remote.sha,
+  "38.11 once the thought is finished, the next resume merges"
+);
+
+/* ---- and a mid-session sync is not a resume ----
+   `check()` re-runs on every `syncBusy` flip, not only on a visibility event,
+   and a merge flips it twice. So the fresh-session signal has to be consumed
+   the first time it is read, or the merge re-triggers itself — or worse, fires
+   here: the laptop pushing while you are sitting in the app, mid-check-in, with
+   no resume anywhere in sight. That is precisely the list-under-the-thumb
+   reshape the threshold exists to prevent.
+
+   This is the assertion the first draft of the group was missing: every other
+   test here ends with the two ends in step, where no further merge is possible
+   and a signal left standing costs nothing. */
+await boot(PHONE_STATE, null, { remote: null });
+await openSync();
+await saveGitHubKey();
+remote.content = utf8ToBase64(LAPTOP_PUSHED);
+remote.sha = "sha-mid-session";
+await click(btn(/^Push$/), "push into a remote that moved under us");
+await settle();
+eq(
+  remote.deviceSha,
+  null,
+  "38.12 a sync mid-session does not merge — only a resume does"
+);
+ok(!!btn(/Merge & push/), "38.13 the conflict is still standing, for you to resolve");
+
+/* ---- a cold mount is a fresh session too ----
+   On iOS reopening is usually a resume, which is everything above — but
+   sometimes the page really was discarded, and that is the same boundary. It
+   is also the more valuable half: a fresh phone should come back already
+   reconciled rather than needing someone to go looking for a control. */
+await boot(PHONE_STATE, null, { remoteAtBoot: LAPTOP_PUSHED });
+await settle();
+await sleep(SAVE_WAIT);
+eq(saved().items.length, ITEMS.length, "38.14 opening the app to an ahead remote merges");
+eq(
+  saved().received[ITEMS[0].key],
+  1,
+  "38.15 keeping this device's check-ins through the cold start"
+);
+
+/* ---- and it says nothing when it did nothing ----
+   peek reports "ahead" on any new blob sha, and a push writes one whenever the
+   ledger is re-saved — so an empty-data commit on the other device would
+   otherwise greet the user with a notice about a merge they never asked for
+   that changed nothing. */
+const SAME = JSON.stringify({
+  mailday: 1,
+  ...PHONE_STATE,
+  envelopes: [],
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+});
+await boot(PHONE_STATE, null, { remoteAtBoot: SAME });
+await settle();
+ok(
+  remote.deviceSha !== null && remote.deviceSha === remote.sha,
+  "38.16 it still merges, so the silence below is a choice and not a no-op"
+);
+ok(!/Merged/.test(text()), "38.17 but says nothing, because it added nothing");
+
+/* ── 39. older versions, read off the branch's own history ────────────────
+   The archive is not something the remote grew — every push has always been a
+   commit, so the branch already WAS a version history. This only makes it
+   reachable from the phone, which is the half that was missing: `git show
+   data~5:ledger.json` needs a laptop that is rarely in the room.
+
+   Both calls are reads, so nothing here spends from the content-write budget
+   the push and the photos share. */
+
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { remote: null });
+await openSync();
+await saveGitHubKey();
+
+/* two pushes, so the branch holds a genuinely older ledger than the current one */
+await click(btn(/^Push$/), "first push");
+await settle();
+const OLD_COUNT = saved().items.length;
+await click(btn(/Re-import CSV/), "open the upload zone");
+await dropFile(
+  "more.csv",
+  csv([
+    { "Order Id": "V1", Party: "Later Seller", "Product Name": "Ponder" },
+    { "Order Id": "V1", Party: "Later Seller", "Product Name": "Preordain" },
+  ])
+);
+await settle();
+await sleep(SAVE_WAIT);
+await click(btn(/^Push(ed ✓)?$/), "second push");
+await settle();
+eq(saved().items.length, 5, "39.1 the ledger grew, and both states are on the branch");
+
+/* nothing is fetched until asked: two round trips for something wanted rarely,
+   and the local list already answers "undo what I just did" */
+await click(btn(/^History/), "open history");
+eq(
+  remote.calls.filter((c) => c.op === "listVersions").length,
+  0,
+  "39.2 the branch history is not fetched just because the panel opened"
+);
+ok(!!btn(/Load older versions/), "39.3 but there is a way to ask for it");
+
+await click(btn(/Load older versions/), "ask for it");
+await settle();
+eq(
+  remote.calls.filter((c) => c.op === "listVersions").length,
+  1,
+  "39.4 and asking fetches the branch's commits"
+);
+
+/* the older of the two commits is the 3-line ledger */
+/* Matched on the FULL message, not its first word: every push message starts
+   with "ledger", so a looser match silently picks the newest row and the test
+   restores the version it already had — passing while proving nothing. */
+const older = remote.history[0];
+await click(
+  buttons().find((b) => b.textContent.includes(older.message)),
+  "expand the older commit"
+);
+await click(btn(/Restore this version/), "arm restore");
+await settle();
+eq(
+  saved().items.length,
+  5,
+  "39.5 one tap does not restore — invariant 6 applies to a remote version too"
+);
+await click(btn(/Tap again to replace everything/), "confirm");
+await settle();
+await sleep(SAVE_WAIT);
+eq(saved().items.length, OLD_COUNT, "39.6 two taps roll the ledger back to that commit");
+ok(
+  !!versionText("before restore"),
+  "39.7 and it took a local milestone on the way in, so the rollback is undoable"
 );
 
 

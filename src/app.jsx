@@ -104,6 +104,12 @@ function versionWhen(at) {
   return sameDay ? clock : `${p(d.getMonth() + 1)}-${p(d.getDate())} ${clock}`;
 }
 
+/* How long a ledger may go unpushed before the app says so. A day, because
+   the push is automatic and idle-debounced: anything shorter would fire on an
+   ordinary evening with the phone face down, and anything longer stops being a
+   warning and starts being an obituary. */
+const SYNC_STALE_MS = 24 * 60 * 60 * 1000;
+
 const STORAGE_KEY = "mailday:v1";
 
 /* ---------- CSV helpers ---------- */
@@ -2474,6 +2480,9 @@ export default function MailDayLedger() {
   /* holds the id being confirmed rather than a boolean — see `arm` below */
   const [confirmRestore, setConfirmRestore] = useState(null);
   const [versionMsg, setVersionMsg] = useState(null);
+  /* null = never asked, [] = asked and the branch had none */
+  const [olderVersions, setOlderVersions] = useState(null);
+  const [olderBusy, setOlderBusy] = useState(false);
   const lastVersionAt = useRef(null);
   const skipFirstVersion = useRef(true);
   /* The remote backup collapses behind one control, exactly like the date
@@ -2491,7 +2500,6 @@ export default function MailDayLedger() {
      about the remote right now, and a stale one restored from disk would
      nag about a device that has since been caught up with. */
   const [ahead, setAhead] = useState(false);
-  const [autoOn, setAutoOn] = useState(false);
   const [photoTarget, setPhotoTarget] = useState(null);
   const [remoteMsg, setRemoteMsg] = useState(null); // { tone, text }
   /* Photos get their own message and their own progress. See PHOTO_SAYS: a
@@ -2642,6 +2650,33 @@ export default function MailDayLedger() {
     () => Object.values(received).reduce((n, v) => n + v, 0),
     [received]
   );
+
+  /* ---- the one thing sync is allowed to say ----
+     Everything else about the remote is now silent: there is no toggle, no
+     Merge button on the page, no "the other device is ahead" notice, and no
+     chip. Sync happens or it doesn't, and the only case worth a pixel is the
+     one where it has stopped happening — because a ledger that quietly stopped
+     reaching GitHub is exactly the failure the remote exists to prevent, and
+     it is invisible by nature.
+
+     Deliberately NOT gated on there being local data. A device with an empty
+     ledger and no key is the fresh phone, and this line is its only way to the
+     Pull that recovers it — the same "a control that recovers state must not
+     be gated on that state existing" rule that widened Backup once, Sync twice
+     and History a third time. Gate it on items.length and the app is unusable
+     on precisely the device it was built to rescue. */
+  const syncBroken = useMemo(() => {
+    if (!window.remote) return null;
+    if (pushState === "conflict") return "conflict";
+    if (remoteMsg?.tone === "error") return "error";
+    /* a keyless device can PULL (the ledger repo is public) but can never
+       push, so it genuinely is not backed up, and saying so is honest rather
+       than nagging */
+    if (!remoteInfo?.hasKey) return "no-key";
+    if (!remoteInfo?.pushedAt) return "never";
+    if (Date.now() - remoteInfo.pushedAt > SYNC_STALE_MS) return "stale";
+    return null;
+  }, [pushState, remoteMsg, remoteInfo]);
 
   const snapshot = useCallback(
     () => ({
@@ -2810,8 +2845,14 @@ export default function MailDayLedger() {
       if (data.itemSort || data.cardSort)
         setItemSort(data.itemSort || data.cardSort);
       setImportMsg(
-        notice ||
-        `${remote ? "Pulled from GitHub" : "Backup restored"} — ${
+        /* Three-valued, and `!= null` rather than `||` is the whole point: an
+           empty string has to be able to mean "say nothing", which only the
+           unattended merge uses and only when it added nothing. Under `||` it
+           would fall through to the default sentence below, which would be a
+           lie about an operation nobody asked for. */
+        notice != null
+          ? notice
+          : `${remote ? "Pulled from GitHub" : "Backup restored"} — ${
           data.items.length
         } lines and your check-ins are back.` +
           (inlinedIds.length
@@ -2909,6 +2950,30 @@ export default function MailDayLedger() {
      middle of, and dropping those would read as the app forgetting rather
      than as a fresh start. */
   const hiddenAt = useRef(null);
+  /* The one-shot "that foreground was a new session" signal, handed forward to
+     the peek effect several hundred lines below — which is where the automatic
+     merge lives, because the peek is already making the one network read the
+     decision needs and a second one on every foreground would double a request
+     budget this feature is careful about.
+
+     It has to be HANDED forward rather than re-derived, and this is the trap.
+     The handler below runs FIRST — it registers on the first commit, while the
+     peek effect waits on `loaded` — and it nulls `hiddenAt` before returning.
+     So anything downstream that reads `hiddenAt` measures zero forever and the
+     merge never fires: no error, nothing on screen, nothing to notice.
+
+     Written on BOTH branches, never only the true one, so a short hop out can
+     cancel a signal an earlier long absence left standing.
+
+     One-shot BY CONTRACT, and the contract is enforced at the consumer rather
+     than here — see `check()`. That function also runs on mount and on every
+     `syncBusy` flip, and a merge flips `syncBusy` twice, so a flag that
+     survived being acted on would let the merge re-trigger itself.
+
+     Starts TRUE: a cold mount is a new session too, and the more valuable half
+     — a fresh phone, an ITP eviction or an origin move should come back
+     already reconciled rather than needing someone to go looking for a button. */
+  const freshSession = useRef(true);
   useEffect(() => {
     const onVisibility = () => {
       if (document.visibilityState === "hidden") {
@@ -2917,7 +2982,14 @@ export default function MailDayLedger() {
       }
       const away = hiddenAt.current == null ? 0 : Date.now() - hiddenAt.current;
       hiddenAt.current = null;
-      if (away >= RESUME_RESET_MS) setHideDone(true);
+      const fresh = away >= RESUME_RESET_MS;
+      freshSession.current = fresh;
+      /* Two consequences of one finding, landing seconds apart — this one
+         synchronously, the merge after a network round trip. Two reshapes of
+         the same list on one resume is fine precisely BECAUSE it is a resume:
+         nothing is under the pointer, and both are saying "new session" in the
+         two ways the app has to say it. */
+      if (fresh) setHideDone(true);
     };
     document.addEventListener("visibilitychange", onVisibility);
     return () => document.removeEventListener("visibilitychange", onVisibility);
@@ -3063,6 +3135,62 @@ export default function MailDayLedger() {
     [confirmRestore, arm, disarm, applyBackup]
   );
 
+  /* Same two taps and the same funnel as a local restore — the only difference
+     is where the bytes come from. It deliberately does NOT touch the stored
+     sha: rolling the ledger back is a local act, and if the user then wants the
+     remote rolled back too, the ordinary push does it as a new commit, which is
+     what makes it reversible in turn. */
+  const restoreOlder = useCallback(
+    async (sha) => {
+      if (confirmRestore !== sha) {
+        arm(setConfirmRestore, sha);
+        return;
+      }
+      clearTimeout(resetTimer.current);
+      disarm();
+      setVersionMsg(null);
+      let text = null;
+      try {
+        text = await window.remote.getVersion(sha);
+      } catch (e) {
+        setVersionMsg(
+          REMOTE_SAYS[e?.code || "bad-response"] || REMOTE_SAYS["bad-response"]
+        );
+        return;
+      }
+      try {
+        await applyBackup(text, "file", null, null);
+        setOpenVersion(null);
+      } catch {
+        setVersionMsg("That version could not be restored — it looks corrupt.");
+      }
+    },
+    [confirmRestore, arm, disarm, applyBackup]
+  );
+
+  /* The branch's own history, behind an explicit tap. Every push has always
+     been a commit, so this archive already existed — it was just only reachable
+     from a laptop. Both calls are reads, so nothing here touches the
+     content-write budget, and neither needs a key on the public ledger repo.
+     Not fetched on open: two round trips for something wanted rarely, and the
+     local list already answers "undo what I just did". */
+  const loadOlder = useCallback(async () => {
+    if (!window.remote || typeof window.remote.listVersions !== "function")
+      return;
+    setOlderBusy(true);
+    setVersionMsg(null);
+    try {
+      setOlderVersions(await window.remote.listVersions());
+    } catch (e) {
+      setOlderVersions(null);
+      setVersionMsg(
+        REMOTE_SAYS[e?.code || "bad-response"] || REMOTE_SAYS["bad-response"]
+      );
+    } finally {
+      setOlderBusy(false);
+    }
+  }, []);
+
   /* Through a ref, for the reason autoPushRef exists further down: takeVersion
      depends on snapshot(), so its identity changes whenever ANY persisted
      field does — including dateFilter and sortBy. Listed as a dep it would
@@ -3106,7 +3234,6 @@ export default function MailDayLedger() {
       setRemoteTarget(await window.remote.target().catch(() => null));
       const st = await window.remote.status().catch(() => null);
       setRemoteInfo(st);
-      setAutoOn(!!st?.auto);
       if (typeof window.remote.photoTarget === "function")
         setPhotoTarget(await window.remote.photoTarget().catch(() => null));
     })();
@@ -3426,7 +3553,7 @@ export default function MailDayLedger() {
      not, because there may be nothing local to send and an empty commit is
      noise). */
   const doMerge = useCallback(
-    async (alsoPush) => {
+    async (alsoPush, quiet = false) => {
       if (!window.remote) return { ok: false, code: "server" };
       clearTimeout(flashTimer.current);
       disarm();
@@ -3449,7 +3576,24 @@ export default function MailDayLedger() {
         const { merged, stats } = mergeLedger(snapshot(), parseLedger(res.text));
         const text = JSON.stringify(merged);
         const before = syncGen.current;
-        await applyBackup(text, "merge", extraPresent, mergeSummary(stats));
+        /* An unattended merge that added nothing has nothing to report, and
+           reporting it anyway is worse than silence — `peek` says "ahead" on
+           any new blob sha, and a push writes one whenever the ledger is
+           re-saved, so an empty-data commit on the other device would
+           otherwise greet the user on their next resume with a notice about a
+           merge they never asked for that did nothing.
+           When it DID add something the summary stays, even quietly: the list
+           just changed shape, and that sentence is the only thing on screen
+           explaining why. Suppressing it would be the quiet data-shaped
+           surprise this whole feature exists to avoid. */
+        const changed =
+          stats.itemsAdded + stats.checkInsAdded + stats.envelopesAdded > 0;
+        await applyBackup(
+          text,
+          "merge",
+          extraPresent,
+          quiet && !changed ? "" : mergeSummary(stats)
+        );
         /* applyBackup bumps syncGen — it has to, since a restore replaces the
            world and anything still in flight against the old one must not land.
            doPull is unaffected because applying is the last thing it does; a
@@ -3490,12 +3634,24 @@ export default function MailDayLedger() {
         /* a third writer landed between our pull and our push. Re-arm the
            conflict controls rather than leaving a bare message and no way
            forward — merging again is the right next move, and it converges. */
+        /* NOT suppressed on the quiet path: this is a control, not a message.
+           It is what puts the repair kit within reach. */
         if (code === "conflict") setPushState("conflict");
-        setRemoteMsg({
-          tone: code === "missing" || code === "conflict" ? "advice" : "error",
-          text: REMOTE_SAYS[code] || REMOTE_SAYS["bad-response"],
-        });
-        if (code === "auth" || code === "no-key") setKeyOpen(true);
+        if (!quiet) {
+          /* Every one of these strings is phrased for someone who just tapped
+             a button — "Paste a new one", "Try again". Nobody tapped anything
+             here, so the user would meet them later with no idea what asked.
+             setKeyOpen is the worse of the two: it swaps "key saved on this
+             device" for an empty field, which reads as *your key is gone*.
+             Suppressing costs nothing, because a failed merge lands nothing —
+             applyBackup throws before its first setState — so a quiet failure
+             degrades to exactly the behaviour before any of this existed. */
+          setRemoteMsg({
+            tone: code === "missing" || code === "conflict" ? "advice" : "error",
+            text: REMOTE_SAYS[code] || REMOTE_SAYS["bad-response"],
+          });
+          if (code === "auth" || code === "no-key") setKeyOpen(true);
+        }
         return { ok: false, code };
       } finally {
         syncingRef.current = false;
@@ -3506,6 +3662,54 @@ export default function MailDayLedger() {
     },
     [disarm, applyBackup, pullPhotos, pushPhotos, snapshot, acceptPull]
   );
+
+  /* ---- the merge, run for you ----
+
+     This was declined once, and the reason was right: applying forty imported
+     lines into the package list mid-check-in is the cascading mis-tap
+     invariant 5 exists to prevent. What changed is not the risk but the
+     evidence. Coming back after RESUME_RESET_MS away is not mid-check-in — it
+     is a new session, and the app already stakes a list reshape on exactly
+     that finding when it resets Showing. This spends the same finding twice.
+     And the merge only ever ADDS (mergeReceived is a max, mergeItems a union),
+     so the residual risk is that the list changes shape, never that anything
+     of the user's is lost.
+
+     It needs no key: the ledger repo is public, which is why `peek` runs
+     keyless — so this works on a device that has never been set up, which is
+     exactly the device that most needs it.
+
+     And it does not push. `alsoPush` is false, so no empty commit is
+     manufactured for a device that had nothing to send; if this device IS
+     holding unpushed work, the merge just rewrote items/received/envelopes —
+     the three deps of the auto-push debounce — so the union goes out 90
+     seconds later through the path that peeks first and already knows how to
+     recover from a conflict. */
+  const autoMerge = useCallback(async () => {
+    /* The same five mid-thought states auto-push refuses to write in — and
+       here the stake is higher, not lower. applyBackup calls setComposing(null)
+       and setUndo(null), so a merge landing while a half-built envelope is open
+       DISCARDS entries that are hand-typed, exist in no CSV and are on no
+       remote. "Open the composer, duck out to read the mailing label, come back
+       two minutes later" is not a rare path — it is this feature's own
+       workflow, and it is over the threshold by construction. */
+    if (composing || undo || confirmReset || confirmPull || confirmForce) return;
+    /* quiet: nobody tapped anything, so nothing may speak in the voice of
+       something that was tapped. See doMerge's catch. */
+    await doMerge(false, true);
+  }, [composing, undo, confirmReset, confirmPull, confirmForce, doMerge]);
+
+  /* Through a ref, for the reason autoPushRef exists below: doMerge's identity
+     churns on essentially every render (it depends on snapshot), and its
+     consumer is the peek effect, whose deps are `[loaded, syncBusy]`. Listing
+     it there would re-register the listener on every commit AND re-run
+     `check()`, which is a network read — so a sort change would peek.
+     Declared HERE, above that effect, so this updater runs first within a
+     commit's effect phase. */
+  const autoMergeRef = useRef(autoMerge);
+  useEffect(() => {
+    autoMergeRef.current = autoMerge;
+  });
 
   /* ---- is the other device ahead? ----
      One cheap read on foreground (see remote.peek). Deliberately NOT on a
@@ -3519,11 +3723,29 @@ export default function MailDayLedger() {
     if (!loaded || !window.remote || typeof window.remote.peek !== "function")
       return;
     const check = async () => {
+      /* Consumed synchronously, before anything can await, and on EVERY path
+         out including the early returns below. The signal is about THIS
+         foreground; letting it survive to whatever re-runs check() next is
+         precisely the failure mode, because this effect's deps are
+         `[loaded, syncBusy]` and a merge flips syncBusy twice — a surviving
+         flag would let the merge re-trigger itself the moment it finished.
+         Dropping a signal costs one tap on the repair kit. Keeping one costs
+         the guarantee that this only ever fires on a measured absence. */
+      const fresh = freshSession.current;
+      freshSession.current = false;
       if (document.visibilityState === "hidden" || syncingRef.current) return;
       const p = await window.remote.peek().catch(() => null);
       /* known:false is "we could not look", which must never render as "all
-         clear" — leave the flag exactly as it was */
-      if (p && p.known) setAhead(!!p.ahead);
+         clear" — leave the flag exactly as it was. Restructured from a positive
+         guard into an early return so the merge below sits INSIDE the known
+         branch rather than beside it: an unknown remote cannot license reading
+         it any more than it can license writing it, and the structure is what
+         says so. */
+      if (!p || !p.known) return;
+      setAhead(!!p.ahead);
+      /* Not awaited: check() has nothing left to do, and doMerge returns a code
+         rather than throwing, so there is no floating rejection here. */
+      if (p.ahead && fresh) autoMergeRef.current();
     };
     check();
     document.addEventListener("visibilitychange", check);
@@ -3573,7 +3795,7 @@ export default function MailDayLedger() {
   });
 
   useEffect(() => {
-    if (!loaded || !autoOn) return;
+    if (!loaded) return;
     /* the load effect's first commit is not a change the user made */
     if (skipFirstAuto.current) {
       skipFirstAuto.current = false;
@@ -3585,20 +3807,20 @@ export default function MailDayLedger() {
     /* deliberately only the three fields that are REAL data. dateFilter,
        sortBy and itemSort are on the debounced save because they persist, but
        re-sorting the screen is not a reason to open a network connection. */
-  }, [items, received, envelopes, autoOn, loaded]);
+  }, [items, received, envelopes, loaded]);
 
   /* Backgrounding is the last chance to catch a mail day that never went idle
      for 90s. Best-effort by construction: fetch(keepalive) caps at 64KB and a
      1000-line ledger base64s to roughly 470KB, so iOS will often kill this
      mid-flight. The foreground catch-up above is what actually guarantees it. */
   useEffect(() => {
-    if (!loaded || !autoOn) return;
+    if (!loaded) return;
     const onHide = () => {
       if (document.visibilityState === "hidden") autoPushRef.current();
     };
     document.addEventListener("visibilitychange", onHide);
     return () => document.removeEventListener("visibilitychange", onHide);
-  }, [loaded, autoOn]);
+  }, [loaded]);
 
   const saveKey = useCallback(async () => {
     if (!window.remote) return;
@@ -3616,14 +3838,6 @@ export default function MailDayLedger() {
     }
   }, []);
 
-  const toggleAuto = useCallback(async () => {
-    if (!window.remote) return;
-    const next = !autoOn;
-    setAutoOn(next);
-    if (typeof window.remote.setAuto === "function")
-      await window.remote.setAuto(next).catch(() => {});
-    setRemoteInfo(await window.remote.status().catch(() => null));
-  }, [autoOn]);
 
   const clearKey = useCallback(async () => {
     if (!window.remote) return;
@@ -4771,6 +4985,40 @@ export default function MailDayLedger() {
                   into and nothing to clear on an empty ledger — while Sync
                   survives it, because an empty ledger is exactly when Pull is
                   needed. */}
+              {syncBroken && (
+                /* Advisory manila, never red. Being unbacked-up is a state to
+                   fix, not a loss that has happened — the ledger on this device
+                   is fine. Red here would cry wolf at the one line the user has
+                   to keep believing. */
+                <button
+                  onClick={() => setSyncOpen(true)}
+                  style={{
+                    display: "block",
+                    textAlign: "left",
+                    fontFamily: cochin,
+                    fontSize: 13.5,
+                    lineHeight: 1.4,
+                    padding: "8px 10px",
+                    margin: "0 9px",
+                    width: "calc(100% - 18px)",
+                    borderRadius: 8,
+                    border: "none",
+                    background: C.manila,
+                    color: C.manilaInk,
+                    cursor: "pointer",
+                  }}
+                >
+                  {syncBroken === "no-key"
+                    ? "Not backed up on this device — tap to set it up"
+                    : syncBroken === "never"
+                    ? "Nothing has been backed up yet — tap to fix"
+                    : syncBroken === "stale"
+                    ? `Not backed up since ${new Date(remoteInfo.pushedAt)
+                        .toISOString()
+                        .slice(0, 10)} — tap to fix`
+                    : "The backup needs attention — tap to fix"}
+                </button>
+              )}
               <div
                 style={{
                   display: "flex",
@@ -4789,59 +5037,29 @@ export default function MailDayLedger() {
                     Re-import CSV
                   </button>
                 )}
-                {window.remote ? (
+                {/* The `Sync · MM-DD` chip lived here, and it is gone. It
+                    was the last piece of sync vocabulary on the happy path: a
+                    control whose whole job was to name a thing the app now
+                    does by itself. The panel it opened still exists — it is
+                    the repair kit — but its only entrance is the broken-line
+                    above, which appears when there is actually something to
+                    repair.
+                    Backup moves out here unconditionally as a result. It was
+                    only ever inside that disclosure because the disclosure was
+                    on screen; it is a file action, not a sync action, and
+                    burying it behind a control that now only appears on
+                    failure would strand it. */}
+                <button onClick={() => backup(false)} style={ctl}>
+                  Backup
+                </button>
+                {photoCount > 0 && (
                   <button
-                    onClick={() => setSyncOpen((o) => !o)}
-                    aria-expanded={syncOpen}
-                    aria-label="Backup and sync"
-                    style={{
-                      ...ctl,
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 7,
-                      /* the ahead-notice lives INSIDE this disclosure, which
-                         defaults shut — so without something on the chip
-                         itself nobody would ever learn the other device is
-                         ahead. Colour rather than a dot or a badge on purpose:
-                         this row has a hard width budget at 375px and accent
-                         already means "active" everywhere else, so it costs
-                         zero pixels. */
-                      color: ahead ? C.accent : C.ink,
-                      borderColor: ahead ? C.accent : C.line,
-                    }}
+                    onClick={() => backup(true)}
+                    disabled={backupBusy}
+                    style={{ ...ctl, opacity: backupBusy ? 0.6 : 1 }}
                   >
-                    {/* the date but NOT the word "pushed" — this row has a hard
-                        width budget and the label is its only elastic part */}
-                    {remoteInfo?.pushedAt
-                      ? `Sync · ${new Date(remoteInfo.pushedAt)
-                          .toISOString()
-                          .slice(5, 10)}`
-                      : "Sync"}
-                    <i
-                      style={{
-                        fontSize: 8,
-                        transform: syncOpen ? "rotate(180deg)" : "none",
-                        transition: "transform 140ms ease",
-                      }}
-                    >
-                      ▼
-                    </i>
+                    {backupBusy ? "Packing…" : "Backup + photos"}
                   </button>
-                ) : (
-                  <>
-                    <button onClick={() => backup(false)} style={ctl}>
-                      Backup
-                    </button>
-                    {photoCount > 0 && (
-                      <button
-                        onClick={() => backup(true)}
-                        disabled={backupBusy}
-                        style={{ ...ctl, opacity: backupBusy ? 0.6 : 1 }}
-                      >
-                        {backupBusy ? "Packing…" : "Backup + photos"}
-                      </button>
-                    )}
-                  </>
                 )}
                 {/* Gated on there being versions, NOT on there being a ledger.
                     A rollback list is a control that RECOVERS state, and the
@@ -5034,6 +5252,105 @@ export default function MailDayLedger() {
                     </div>
                   );
                 })}
+                {(olderVersions || []).map((v) => {
+                  const open = openVersion === v.sha;
+                  return (
+                    <div
+                      key={v.sha}
+                      style={{
+                        borderTop: `1px solid ${C.line}`,
+                        padding: "9px 0 8px",
+                      }}
+                    >
+                      <button
+                        onClick={() => setOpenVersion(open ? null : v.sha)}
+                        aria-expanded={open}
+                        style={{
+                          display: "flex",
+                          alignItems: "baseline",
+                          gap: 8,
+                          width: "100%",
+                          padding: 0,
+                          border: "none",
+                          background: "none",
+                          textAlign: "left",
+                          cursor: "pointer",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: mono,
+                            fontSize: 11.5,
+                            color: C.ink,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {versionWhen(v.at)}
+                        </span>
+                        <span
+                          style={{
+                            fontFamily: cochin,
+                            fontSize: 14,
+                            color: C.inkSoft,
+                            minWidth: 0,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {v.message.split("\n")[0]}
+                        </span>
+                      </button>
+                      {open && (
+                        <div style={{ marginTop: 8 }}>
+                          <button
+                            onClick={() => restoreOlder(v.sha)}
+                            style={{
+                              ...ctl,
+                              color: confirmRestore === v.sha ? C.card : C.red,
+                              background:
+                                confirmRestore === v.sha ? C.red : C.redSoft,
+                              borderColor:
+                                confirmRestore === v.sha ? C.red : "transparent",
+                              fontWeight: confirmRestore === v.sha ? 700 : 400,
+                            }}
+                          >
+                            {confirmRestore === v.sha
+                              ? "Tap again to replace everything"
+                              : "Restore this version"}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {window.remote &&
+                  typeof window.remote.listVersions === "function" &&
+                  olderVersions === null && (
+                    <button
+                      onClick={loadOlder}
+                      disabled={olderBusy}
+                      style={{
+                        ...ctl,
+                        marginTop: 9,
+                        opacity: olderBusy ? 0.6 : 1,
+                      }}
+                    >
+                      {olderBusy ? "Looking…" : "Load older versions"}
+                    </button>
+                  )}
+                {olderVersions?.length === 0 && (
+                  <div
+                    style={{
+                      fontFamily: cochin,
+                      fontSize: 13.5,
+                      color: C.inkSoft,
+                      marginTop: 9,
+                    }}
+                  >
+                    Nothing older has been backed up yet.
+                  </div>
+                )}
                 <div
                   style={{
                     fontFamily: mono,
@@ -5041,6 +5358,7 @@ export default function MailDayLedger() {
                     color: C.inkSoft,
                     borderTop: `1px solid ${C.line}`,
                     paddingTop: 8,
+                    marginTop: 9,
                   }}
                 >
                   {versionList.length} version
@@ -5173,22 +5491,15 @@ export default function MailDayLedger() {
                       {backupBusy ? "Packing…" : "Backup + photos"}
                     </button>
                   )}
-                  {remoteInfo?.hasKey && (
-                    /* ○/● said as state, the same idiom the SHOWING head cell
-                       uses. Gated on hasKey because auto-push cannot work
-                       without one, and a toggle that silently does nothing is
-                       worse than no toggle. */
-                    <button
-                      onClick={toggleAuto}
-                      style={{
-                        ...ctl,
-                        color: autoOn ? C.accent : C.inkSoft,
-                        borderColor: autoOn ? C.accent : C.line,
-                      }}
-                    >
-                      {autoOn ? "● Auto-push" : "○ Auto-push"}
-                    </button>
-                  )}
+                  {/* The ○/● Auto-push toggle lived here. It is gone on
+                      purpose, and not because the feature was dropped — sync
+                      is unconditional now. A per-device switch for "does this
+                      work" was the ceremony being removed: it made the thing
+                      the app is supposed to do quietly into a thing you had to
+                      opt into, and an off toggle on the other device is a
+                      silent way to be unbacked-up for months. The `auto` field
+                      survives in entry.jsx's record, unread — removing a
+                      stored field is its own migration question. */}
                   {remoteTarget && (
                     /* no marginLeft:auto — it pushed this to the right edge
                        while the key line below stayed left, so the panel read
@@ -5216,25 +5527,13 @@ export default function MailDayLedger() {
                     </span>
                   )}
                 </div>
-                {ahead && pushState !== "conflict" && (
-                  /* advisory manila, never red: being behind is the ordinary
-                     state after the other device pushes, and the fix adds
-                     rather than replaces */
-                  <div
-                    style={{
-                      fontFamily: cochin,
-                      fontSize: 13.5,
-                      lineHeight: 1.4,
-                      padding: "8px 10px",
-                      borderRadius: 8,
-                      background: C.manila,
-                      color: C.manilaInk,
-                    }}
-                  >
-                    Your other device has pushed newer lines. Merge brings them
-                    in — nothing here is replaced.
-                  </div>
-                )}
+                {/* The manila "your other device has pushed newer lines"
+                    notice lived here. It is gone because the condition it
+                    described now resolves itself on the next resume — and a
+                    notice about something already being handled is exactly the
+                    ceremony this change set out to remove. The Merge button
+                    below survives, inside the repair kit, for the case the
+                    automatic path could not finish. */}
                 {confirmPull && (
                   <div
                     style={{

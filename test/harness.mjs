@@ -202,6 +202,7 @@ export let remote = {
   /* what peek() can see. null = readable; a code = "we could not look", which
      is the state auto-push must refuse to act on. */
   peekUnknown: null,
+  history: [], // every push, as a commit
 };
 /* fixed so a snapshot never depends on the clock */
 const REMOTE_NOW = Date.parse("2026-08-12T14:03:00Z");
@@ -273,6 +274,24 @@ const remoteApi = {
   async clearKey() {
     remote.key = null;
   },
+  /* Reads, both of them: no key needed on the public ledger repo, and nothing
+     spent from the content-write budget. */
+  async listVersions(limit = 30) {
+    remote.calls.push({ op: "listVersions" });
+    if (remote.fail)
+      throw Object.assign(new Error(remote.fail), { code: remote.fail });
+    return [...remote.history]
+      .reverse()
+      .slice(0, limit)
+      .map((h) => ({ sha: h.sha, at: h.at, message: h.message }));
+  },
+  async getVersion(sha) {
+    remote.calls.push({ op: "getVersion", sha });
+    const h = remote.history.find((x) => x.sha === sha);
+    if (!h) throw Object.assign(new Error("missing"), { code: "missing" });
+    return h.text;
+  },
+
   async pull() {
     if (remote.fail)
       throw Object.assign(new Error(remote.fail), { code: remote.fail });
@@ -306,6 +325,15 @@ const remoteApi = {
       throw Object.assign(new Error("conflict"), { code: "conflict" });
     remote.content = utf8ToBase64(text);
     remote.sha = `sha-${remote.calls.length}`;
+    /* every push is a commit, which is the whole basis of the older-versions
+       list — the archive is not a feature the remote grew, it is what a branch
+       already is */
+    remote.history.push({
+      sha: remote.sha,
+      at: REMOTE_NOW + remote.history.length * 60_000,
+      message,
+      text,
+    });
     remote.deviceSha = remote.sha;
     remote.pushedAt = REMOTE_NOW;
     return { sha: remote.sha, pushedAt: remote.pushedAt };
@@ -395,6 +423,7 @@ export const resetRemote = (seedText) => {
     pulledAt: null,
     auto: false,
     peekUnknown: null,
+    history: [],
   };
 };
 /* what the remote is actually holding, decoded */
@@ -597,11 +626,13 @@ export const pickSort = async (label) => {
   await click(opt, `sort ${label}`);
 };
 
-/* Backup, Push and Pull all sit behind the Sync disclosure now — one tap
-   deeper than Backup used to be, which is the cost of keeping the toolbar's
-   third row to three controls. Idempotent, so tests can just call it. */
+/* Push, Pull and Merge are the repair kit now, and its only entrance is the
+   broken-line — there is no Sync chip any more, because on the happy path
+   there is nothing about sync on screen at all. Idempotent, so tests can just
+   call it; note it only works while sync IS broken, which in a fresh fixture
+   means "this device has no key", the state every test starts in. */
 export const openSync = async () => {
-  if (!btn(/^Push$/)) await click(btn(/^Sync/), "open sync panel");
+  if (!btn(/^Push$/)) await click(btn(/tap to/), "open the repair kit");
 };
 
 /* The key field is uncontrolled by design (the token must never reach React
@@ -689,7 +720,17 @@ export async function boot(state, photos, opts = {}) {
   versionStore = new Map(opts.versions || []);
   if (opts.noVersions) delete win.versions;
   else win.versions = versionsApi;
-  resetRemote(opts.remote);
+  /* `remoteAtBoot` seeds BEFORE the app mounts, which is the cold-start case:
+     this device opens against a remote that is already ahead. `remote` seeds
+     AFTER, which is what almost every fixture actually means — the other device
+     pushed at some point since, and then you looked at your phone.
+
+     The distinction only started mattering when a resume began merging on its
+     own, because a cold mount counts as a fresh session: seeded before the
+     mount, every one of those fixtures would auto-merge away the very conflict
+     it was written to produce. It is also the more faithful model of the wire,
+     which is why this is a fix rather than a workaround. */
+  resetRemote(opts.remoteAtBoot ?? null);
   if (opts.noRemote) delete win.remote;
   else win.remote = remoteApi;
   if (state) store["mailday:v1"] = JSON.stringify(state);
@@ -701,6 +742,15 @@ export async function boot(state, photos, opts = {}) {
   await act(async () => {
     await sleep(0);
   });
+  if (opts.remote != null) {
+    remote.content = utf8ToBase64(opts.remote);
+    remote.sha = "sha-0";
+    /* and now you look at your phone. Without this the app never re-peeks —
+       check() runs on mount and on syncBusy, neither of which a bare
+       assignment touches — so nothing would know the remote had moved. The
+       away-clock is untouched, so this is a glance, not a new session. */
+    await foreground();
+  }
 }
 
 export const goTo = (view) =>
