@@ -3538,4 +3538,53 @@ ok(
 );
 
 
+/* ── 42. the save indicator does not move the list ────────────────────────
+   `.mdl-foot` is a wrapping flex row, so an indicator that exists only while
+   a save is in flight can add a whole LINE to it — and by the time a card is
+   being tapped the masthead has scrolled away, so what that actually moves is
+   the package list, under the thumb, twice per check-in. Invariant 5, from
+   the one element in the app that changes on every single tap.
+
+   jsdom has no layout, so the shift itself is unassertable here; it was
+   measured in a real viewport instead (12–14px on 4 of 10 realistic figure
+   pairs before the fix, 0 after, at 320 / 375 / 390 / 430 / 760px, with
+   horizontal overflow 0 throughout). What IS assertable is the mechanism the
+   fix rests on, and every part of it can regress without looking wrong.
+
+   42.2 is the half that was got wrong first: reserving the WIDTH is not
+   enough, because an empty flex item is zero pixels TALL, so a line holding
+   only the empty slot collapses and the shift comes straight back — measured
+   at 14px idle against 26px saving with the width already reserved. The slot
+   therefore always carries content.
+   42.3 keeps the reservation honest as the copy changes: the longest message
+   the app can put in that slot has to fit the width the slot reserves, which
+   is counted in the same monospace `ch` the reservation is written in. */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { remote: null });
+const saveSlot = () => document.querySelector(".mdl-foot").lastElementChild;
+const reservedCh = () => parseFloat(saveSlot().style.minWidth);
+ok(
+  /ch$/.test(saveSlot().style.minWidth) && reservedCh() > 0,
+  "42.1 the indicator's slot reserves its width instead of being sized by its content"
+);
+eq(
+  saveSlot().textContent,
+  "\u00a0",
+  "42.2 and is never empty at rest, so its line box cannot collapse"
+);
+
+/* the widest of the three messages, reached the only way it can be */
+const realSet = win.storage.set;
+win.storage.set = async () => {
+  throw new Error("QuotaExceededError");
+};
+await click(btn(/Mark all received/), "a change the store cannot save");
+await sleep(SAVE_WAIT);
+await settle();
+const worst = saveSlot().textContent;
+win.storage.set = realSet;
+ok(
+  worst.length > 1 && worst.length <= reservedCh(),
+  `42.3 the longest message ("${worst}", ${worst.length}) fits the reserved ${reservedCh()}ch`
+);
+
 report();

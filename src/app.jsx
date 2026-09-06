@@ -5358,12 +5358,50 @@ export default function MailDayLedger() {
                     ? "ALL ACCOUNTED FOR ✓"
                     : `${remaining} still missing · ${money(totals.missingVal)}`}
                 </span>
-                <span>
-                  {saving === "saving" && "saving…"}
-                  {saving === "saved" && "saved ✓"}
-                  {saving === "error" && (
-                    <span style={{ color: C.red }}>couldn’t save</span>
-                  )}
+                {/* The indicator's slot is RESERVED, never sized by what is
+                    in it. `.mdl-foot` wraps, so a slot that exists only while
+                    a save is in flight can add a whole LINE to the row — and
+                    every package card below it then steps down ~14px on the
+                    tap and back up when the save clears. By then the masthead
+                    has scrolled away and the thumb is on a card, so what
+                    actually moves is the list: the layout shift under the
+                    pointer invariant 5 exists to prevent, twice per check-in.
+                    Measured at 375px against the seeded ledger, 4 of 10
+                    realistic figure pairs moved by 12–14px; which ones depends
+                    only on where the two figures happen to fall relative to
+                    the wrap point, which is why the fix is to take the
+                    indicator out of that arithmetic rather than to widen
+                    anything. The width is the LONGEST of the three states —
+                    "couldn’t save", 13 monospace characters — so the content
+                    swaps inside a box that never changes size. Change that
+                    copy and re-measure at 375px: jsdom has no layout, so no
+                    test can catch the shift itself. Group 42 pins what is
+                    left — that the reservation exists, that the slot is never
+                    empty, and that the longest message still fits the `ch`
+                    reserved here. Whether that many `ch` is enough in the
+                    font the page actually renders is a viewport's answer. */}
+                <span
+                  style={{
+                    minWidth: "13ch",
+                    textAlign: "right",
+                    whiteSpace: "nowrap",
+                    color: saving === "error" ? C.red : undefined,
+                  }}
+                >
+                  {saving === "saving"
+                    ? "saving…"
+                    : saving === "saved"
+                    ? "saved ✓"
+                    : saving === "error"
+                    ? "couldn’t save"
+                    : /* idle. A non-breaking space, not nothing: the reserved
+                         width alone is not enough, because an EMPTY flex item
+                         is zero pixels TALL, and when the slot wraps onto a
+                         line of its own that line collapses — which put the
+                         shift straight back (measured: 14px idle against 26px
+                         saving). One space gives the box the row's own line
+                         box without hard-coding a height. */
+                      "\u00a0"}
                 </span>
               </div>
             </div>

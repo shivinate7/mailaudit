@@ -1144,6 +1144,45 @@ a scroll listener. Two traps, both already paid for:
 Measured at 375px: horizontal overflow 0, switch thirds 114/114/114, all labels
 fit, row displacement on pin **0.00px**.
 
+**The tally footer's save indicator sits in a RESERVED slot, and that is
+invariant 5 too.** `.mdl-foot` is a wrapping flex row holding three things —
+`N packages · autosaves`, the exact `N still missing · $X`, and the debounced
+save indicator. The indicator used to be sized by its content, which meant it
+was 0px wide at rest and ~44px wide while saving, and a flex row that wraps has
+no way to absorb that: whether the row is one line or two depends on where the
+two figures happen to fall relative to the wrap point, so on the wrong side of
+it the indicator *added a line* on every tap and took it away again 2.5s later.
+By then the masthead has scrolled off and the thumb is on a card, so what
+actually moved was the package list, twice per check-in — the cascading mis-tap
+this invariant exists to prevent, arriving from the one element that changes on
+every single tap. It predates the motion pass; it was never a regression from
+it.
+
+So the slot reserves `min-width: 13ch` — the longest of its three states,
+`couldn’t save` — and the content swaps inside a box that never changes size.
+**Reserving the width alone is not enough**, and getting that wrong looks like
+a fix: an empty flex item is zero pixels *tall*, so a line holding nothing but
+the empty slot collapses, and the shift comes straight back (measured: 14px
+idle against 26px saving, with the width already reserved). The idle state
+therefore renders a non-breaking space rather than nothing — one line box, no
+hard-coded height. Change any of the three messages and re-measure: 13ch is the
+longest one, counted.
+
+Measured on the built page against the seeded ledger, 12 realistic figure pairs
+× 4 indicator states at each of 320 / 375 / 390 / 430 / 760px: **height
+constant in every pair, horizontal overflow 0 throughout**. Before the fix, 4
+of 10 pairs at 375px moved by 12–14px. At 375px the row is 26px (two lines) for
+every pair the seed can produce; at 760px it is 12px (one line). Group 42 pins
+the mechanism underneath — jsdom has no layout, so the shift itself is not
+assertable there and never will be.
+
+What this does *not* fix, and is worth knowing: the two figures can still
+change width on their own (`100 packages` → `99 packages`, `$1,009.00` →
+`$999.00`), and on the wrap boundary that can reflow the row by itself. It is
+far rarer than a save indicator that changes twice per tap, and the fix would
+be to reserve width for figures whose whole job is to change. Left alone
+deliberately.
+
 ### The palette, and why each value is what it is
 
 | token | hex | role | contrast |
@@ -1336,7 +1375,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 517 assertions, no test framework, ~60s (groups 30–31 spend a few
+`npm test` — 520 assertions, no test framework, ~60s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
@@ -1352,6 +1391,21 @@ see, so the assertions read the DOM the way the user does.
 (Three previous harnesses were written ad hoc and thrown away, which is why the
 same assertions kept being rewritten from scratch. Hence this one is committed
 and `jsdom` is a real devDependency.)
+
+New in group 42 (the save indicator's reserved slot). It is the smallest group
+here and the one with the least it can prove, which is the point of writing
+down what it is for: the defect is a **layout shift**, jsdom has no layout, and
+no assertion in this suite will ever catch one. The measurement lives in
+"The masthead"; what 42 pins is the mechanism underneath it, in each of the
+places it can regress without looking wrong. 42.2 is the one that was got
+wrong on the first attempt — reserving the slot's *width* while leaving it
+empty, which fixes nothing, because an empty flex item is zero pixels *tall*
+and a line holding only that item collapses. 42.3 is the one that keeps working
+as the app changes: it drives the store into failure to reach the longest of
+the three messages and asserts it fits the reserved width, counted in the `ch`
+the reservation is written in — so lengthening that copy without widening the
+slot turns the suite red rather than quietly reintroducing the shift. Nothing
+here asserts the reservation's *size* is right; only a viewport can say that.
 
 New in groups 38–41 (saved versions, and sync running itself).
 
