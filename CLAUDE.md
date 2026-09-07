@@ -556,16 +556,6 @@ page. See "Known open threads" for exactly what that leaves unproven.
   gate keeps a mail day's hundreds of taps from spending the ring on one
   package. The **day anchor** is derived, not stored (see `version-rules.mjs`).
   **A store that cannot write says so.** `takeVersion` used to fail into an
-  empty catch, and `refreshVersions` used `.catch(() => [])`. With IndexedDB
-  unavailable — private browsing, quota exhausted by the photo store, iOS
-  storage pressure — every version failed silently, *including the
-  `before reset` milestone*, and History then reported "No versions saved on
-  this device yet", which is affirmatively wrong rather than merely unhelpful:
-  the ledger would be destroyed by a Reset the app had promised was recoverable.
-  `versionsDown` carries that now, a failed write resets the 30s gate rather
-  than also swallowing the next window, and an unreadable list never renders as
-  an empty one. Tests 38b.4–38b.5.
-  **A store that cannot write says so.** `takeVersion` used to fail into an
   empty catch and `refreshVersions` used `.catch(() => [])`. With IndexedDB
   unavailable — private browsing, quota exhausted by the photo store, iOS
   storage pressure — every version failed silently, *including the
@@ -1290,6 +1280,26 @@ every pair the seed can produce; at 760px it is 12px (one line). Group 42 pins
 the mechanism underneath — jsdom has no layout, so the shift itself is not
 assertable there and never will be.
 
+**Re-measuring this is easy to get wrong, in three ways that each look like a
+result.** Measure on a *clone* of `.mdl-foot`, never the live row: setting
+`textContent` on a node React owns tears the tree down with a `removeChild`
+NotFoundError. Set the idle state to `\u00a0` and not `" "` — HTML collapses a
+plain space, so a plain-space "idle" measures as the *empty* slot and duly
+reports the shipped build shifting 12px on 7 of 12 pairs, which is the bug
+being reproduced by the measurement rather than found. And substitute the
+figures: the seed's own pair (`478 packages` / `173 still missing · $6,066.20`)
+is already 335px against a 327px row, so it is two lines in every state and
+cannot move — only pairs small enough to share one line *without* the slot
+discriminate at all.
+
+One measured detail the "counted" above glosses: `couldn’t save` renders
+82.19px against the 82.18px the reservation buys, because `ch` is the advance
+of `0` and the curly apostrophe is fractionally wider. It does not shift today
+— `min-width` is a floor, and that line has ~50px of slack — but the slot is
+not literally covering its longest message, and 42.3 compares *character
+counts*, so it catches a longer message and would not catch a same-length one
+with wider glyphs.
+
 What this does *not* fix, and is worth knowing: the two figures can still
 change width on their own (`100 packages` → `99 packages`, `$1,009.00` →
 `$999.00`), and on the wrap boundary that can reflow the row by itself. It is
@@ -1731,14 +1741,6 @@ import and is unreachable from the harness — the same gap the localStorage and
 IndexedDB adapters have. Fetch plumbing is fine to leave uncovered; the status
 mapping and the sha-omission rule are not, because both fail *quietly*. **Still
 uncovered: the HTTP round trip itself.**
-
-That gap has a cost worth naming, because it was paid: the `pushForce` sha bug
-lived in `entry.jsx`, so **no app-level test could catch it, and none can catch
-its return** — restoring the bad ordering leaves the suite green, verified. What
-the suite pins instead is the *mock's* faithfulness (35.6–35.7), which is only
-as good as the mock. When a rule matters and lives below this seam the mock IS
-the test, so keep it honest: this one had mirrored the bug and disabled the only
-failure that could have exposed it.
 
 That gap has a cost worth naming, because it was paid: the `pushForce` sha bug
 lived in `entry.jsx`, so **no app-level test could catch it, and none can catch
