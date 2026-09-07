@@ -302,6 +302,10 @@ rather than by remembering. Verified in a browser: after saving a key,
    stricter — a *completed item* also stays until filters change, because most
    items have a single copy and vanishing on every tap would recreate exactly
    the mis-tap cascade this invariant exists to prevent.
+   **And the card itself must not change height on that tap** — see "The card's
+   reserved geometry". The rows inside a package are as much under the thumb as
+   the list is, and before that was fixed the first check-in in a package moved
+   every remaining row in it down by 28px.
 6. **No native browser dialogs.** `window.confirm`/`alert` block the whole page
    and look wrong in a home-screen app; every destructive action uses an inline
    two-tap confirm instead (Reset, Discard, Assign, **Pull**, **Push anyway**,
@@ -450,8 +454,11 @@ page. See "Known open threads" for exactly what that leaves unproven.
   `navigator.storage.estimate()` numbers.
 - CSV import (drag/drop or picker), merge semantics, import summary notice.
 - Packages grouped by orderId+seller; expand/collapse; per-package progress bar
-  (only when partially complete); contextual "Mark all received" / "Clear
-  check-ins"; rotated RECEIVED stamp replaces the count badge when complete.
+  (only when partially complete, and drawn as a 3px rule on the card's top edge
+  rather than as a row inside it — see "The card's reserved geometry");
+  contextual "Mark all received" / "Clear check-ins", in a row held at a
+  reserved height for the same reason; rotated RECEIVED stamp replaces the
+  count badge when complete.
 - Whole-row tap to toggle; 2-line name wrap; qty stepper for qty>1 with
   indeterminate-dash partial state.
 - Search (card/set/seller/order), Showing (the old "Hide received", which now
@@ -1091,7 +1098,10 @@ missing money or destructive, manila/gold means advisory, amber means the 14-day
 lost-mail warning, and accent violet means "active control". The progress bar is
 accent while in progress and green at 100% — it used to be `ink`, which worked
 only because the old ink was a near-black *green*; the new ink is a near-black
-violet and read as flat black on parchment.
+violet and read as flat black on parchment. The two card bars carry the same
+colours but no radius of their own: they lie on their card's top edge, where
+the card's 10px corner already rounds them, and a pill there would read as a
+second smaller shape floating inside the first. The masthead's keeps its pill.
 
 Orphaned follows the same language: manila for anything advisory (the
 ambiguity warning, the "as typed" row, the "no outstanding copy" tag), green
@@ -1158,6 +1168,12 @@ Seven moments:
   completion because it does not survive it. The card does. The band is the
   ornamental gold, which is never allowed to carry information, and here it
   carries none.
+  That gate is now load-bearing in a second direction, and the reason is worth
+  knowing before anyone touches the bar: it survived the fix for the 28px card
+  shift **only because the bar was taken out of flow rather than reserved a
+  slot**. A reserved slot would have to stay mounted at 100%, and the bar would
+  then sheen its own completion next to the gild. See "The card's reserved
+  geometry"; test 44.5 is what fails if it is put back.
 - **The check tick is written**, one stroke left to right, 300ms. That ceiling
   is not a preference either: this fires hundreds of times on a mail day and
   anything slower starts to feel like latency. The glyph is an SVG path rather
@@ -1306,6 +1322,70 @@ change width on their own (`100 packages` → `99 packages`, `$1,009.00` →
 far rarer than a save indicator that changes twice per tap, and the fix would
 be to reserve width for figures whose whole job is to change. Left alone
 deliberately.
+
+### The card's reserved geometry
+
+The save indicator above was the *smaller* half of this. The same defect lived
+one level down and twice the size: measured at 375px against the seeded ledger,
+**the first check-in in a package grew its card by 28px and pushed every
+remaining row in it down by 28px** — inside the card, directly under the thumb
+that had just tapped one of them. Invariant 5, on the most common gesture in
+the app. It predates the motion pass and the save-slot fix and was independent
+of both.
+
+Two unrelated causes, each needing its own answer:
+
+**The progress bar is out of FLOW, not reserved a slot.** It used to mount
+between the header and the item rows on the first check-in, a 15px child
+appearing above everything it displaced. It now sits on the card's own top
+edge — `edgeBar`, absolutely positioned inside the card's existing
+`overflow: hidden` rounded box, so the 10px corner does its rounding (hence
+`ProgressBar`'s `radius` prop, separate from `height`, so this one is not a pill
+floating inside another shape), it catches no taps, and it can mount and unmount
+without moving anything. 3px, because it is a rule on an edge now rather than a
+bar in a row.
+
+Out of flow rather than reserved **for a reason that is not about layout**: it
+is what lets the `gotQty > 0 && !done` gate stand. A reserved slot has to stay
+mounted through completion, so the bar would render at 100% and sheen — and the
+Motion section's gild is the sole marker of a package completing *precisely
+because* the bar cannot survive to be one. Test 44.5 fails if the gate goes;
+read that failure as "this is a change to the motion design", not as a broken
+refactor. The Tally card was given `position: relative` for the same bar;
+PackageCard already had one for `.mdl-gild`. Without it the bar escapes to the
+nearest positioned ancestor and draws somewhere else on the page entirely,
+which is why 44.2 and 44.7 pin both.
+
+**The action row is reserved at its tallest state** (`BULK_ROW_H`, 44px of
+content). Its membership changes on the same tap — "Clear check-ins" joins
+"Stamp" and "Mark all received" — and at 375px those three want 60.6 + 143.7 +
+129.9 plus two 8px gaps = **350px in the 313px a card gives them**, so both bulk
+labels wrap to a second line and the row goes 31px → 44px. It shrinks by the
+same 13px on the tap that *completes* a package, where "Mark all received"
+leaves; reserving the tallest state pins both transitions at once. A counted
+constant exactly like the save slot's 13ch, and stale the same way — two lines
+of 11.5px mono plus `miniBtn`'s 8px padding. **The Tally card's row is
+deliberately NOT reserved**: it has no Stamp button, so its two buttons are
+282px of the same 313px, neither wraps, and it is one line in every state. Add a
+third control there and reserve it then, measuring rather than assuming 44 fits.
+
+Measured on the built page against the seeded ledger, rest → first check-in →
+second → the tap that completes the package: **card height constant at 347.09px
+and every item row displaced 0.00px**, horizontal overflow 0 in every state; the
+Tally card likewise **496.09px constant, 0.00px shift**. Row content needed
+against the 44 reserved, by width: 57 at 320px, 44 at 360 / 375 / 390, 31 at 430
+and 760.
+
+**So 320px is the one width this does not fully fix** — three buttons wrap to a
+*third* line there and the row still steps 13px (the bar half is
+width-independent, so 320 improves from 28px to 13px). Left deliberately: 320 is
+below this file's own stated 380px floor and is not a viewport current iOS runs,
+and reserving 57 would buy it by spending 26px of dead space in every expanded
+card at the widths that are real. If it is ever wanted, the way to get it
+without the dead space is to keep all three buttons mounted and hide the
+inapplicable one — the row then measures itself at every width — at the cost of
+the visible label wrapping at rest, which is a look and therefore a decision to
+put to the owner rather than a fix to apply.
 
 ### The palette, and why each value is what it is
 
@@ -1528,7 +1608,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 526 assertions, no test framework, ~60s (groups 30–31 spend a few
+`npm test` — 538 assertions, no test framework, ~60s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
@@ -1577,6 +1657,35 @@ turn the suite red. One fixture note worth keeping — the first draft checked t
 package in under the default Showing, where a completed package correctly leaves
 the list, so the element under assertion left the page; the group toggles to
 Everything first.
+
+New in group 44 (the card stops moving under the thumb). Same shape as 42, and
+the same honest limit: the defect is a **layout shift**, jsdom has no layout,
+and no assertion here will ever catch one — the numbers live in "The card's
+reserved geometry" and were taken in a real viewport. What 44 pins is the
+mechanism, in each place it can regress without looking wrong in a DOM dump: the
+bar is out of flow (44.4a), cannot eat the header tap it now lies across
+(44.4b), and both cards are containing blocks for it (44.2, 44.7) — without one
+it draws somewhere else on the page entirely. The row's reservation exists
+(44.3) and does not vary with the row's membership (44.4c) or with `done`
+(44.6).
+
+**44.5 is the one to keep if the group is ever trimmed**, and it is not really
+a layout assertion at all: it says completing a package still *unmounts* the
+bar. That gate is the whole reason the bar was taken out of flow instead of
+being reserved a slot, because a slot has to stay mounted at 100% and the bar
+would then sheen its own completion beside `.mdl-gild`. Read a 44.5 failure as
+"someone changed the motion design", not as a broken refactor.
+
+Eight mutants, all confirmed to turn the suite red, and note that three of them
+needed a *pair* to die properly: the bar back in flow (44.4a); the bar allowed
+to take pointer events (44.4b); either card losing `position: relative` (44.2,
+44.7); the reservation dropped altogether (44.3); the bar surviving completion,
+i.e. a reserved slot by another name (44.5); a reservation that varies by
+membership (44.4c) — which 44.3 cannot catch, because a mutant that reserves
+*something* different in each state still reserves something; and one that
+varies only on the `done` branch (44.6), which 44.4c in turn cannot catch,
+because it compares against a rest value the same mutant moved. Each of 44.3,
+44.4c and 44.6 is alive only against the mutant the other two miss.
 
 New in groups 38–41 (saved versions, and sync running itself).
 
@@ -1958,8 +2067,11 @@ devices' work surviving a conflict, symmetry, idempotence, view preferences
 staying local, an assigned-away envelope not resurrecting, and the merged
 ledger reaching GitHub); auto-push (looking before it writes, refusing on an
 unreadable *or* an ahead remote, merging rather than forcing when a conflict
-opens mid-write, and the toggle living outside the ledger); and the older
-package/Tally views still working.
+opens mid-write, and the toggle living outside the ledger); the mechanism under
+a package card that does not change height on a check-in (the bar out of flow
+and unable to take a tap, both cards being containing blocks for it, the bar
+still unmounting on completion, and the action row's reservation not varying
+with its membership); and the older package/Tally views still working.
 
 Still only covered by eye, never by a test: anything that needs a real device —
 the camera capture, the canvas downscale, iOS keyboard behaviour, and whether
@@ -1967,7 +2079,9 @@ iOS actually fires `visibilitychange` when a home-screen app is resumed (the
 suite dispatches the event itself, so it pins the reaction and not the trigger). Layout at
 375px is no longer eyeball-only: it was measured in a real 375px viewport
 (overflow 0, thirds 114px each, seal 36px, 0.00px row displacement when the
-running head pins), though those numbers are not asserted in CI.
+running head pins, and a package card constant at 347.09px with 0.00px row
+displacement across a whole check-in), though those numbers are not asserted in
+CI.
 
 The GitHub adapter was also exercised by hand in a real browser against the
 built `index.html`: `window.remote` present, a keyless push reporting `no-key`,

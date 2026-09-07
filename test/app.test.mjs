@@ -3641,4 +3641,111 @@ ok(
 );
 
 
+/* ── 44. the card does not change height on the tap that checks a card in ──
+   The same defect group 42 fixed in the masthead, one level down and twice
+   the size: measured at 375px against the seeded ledger, the FIRST check-in
+   in a package grew its card by 28px and pushed every remaining row in it
+   down by 28px — inside the card, directly under the thumb that had just
+   tapped one of them. Invariant 5, on the most common gesture in the app.
+   Two independent causes, and both had to go:
+     · a 15px progress bar mounting between the header and the item rows;
+     · the contextual action row growing 39px -> 52px, because "Clear
+       check-ins" joins it on that tap and three buttons want 350px of the
+       313px a card gives them at 375px, so both bulk labels wrap.
+
+   jsdom has no layout, so — exactly as in 42 — the shift itself is not
+   assertable here and never will be. It was measured in a real 375px viewport
+   instead: card height constant at 347.09px and every item row displaced
+   0.00px across rest -> first check-in -> second -> the tap that COMPLETES
+   the package (which shrank the row by the same 13px before this), with
+   horizontal overflow 0 in every state; the Tally card likewise 496.09px
+   constant. What is pinned below is the mechanism each of those numbers rests
+   on, in the places it can regress without looking wrong in a DOM dump.
+
+   44.5 is the one to keep if this group is ever trimmed. The bar is out of
+   FLOW rather than reserved a slot, and the whole reason that route was taken
+   is that it lets the `gotQty > 0 && !done` gate stand — so the bar still
+   cannot render at 100%, and .mdl-gild remains the sole marker of a package
+   completing (see the Motion section). Reserve the bar a permanent slot
+   instead and 44.5 dies, which is the intended reading: that is a change to
+   the motion design, not a refactor. */
+
+await fresh();
+await toggleShowing(); /* Everything, so a completed package stays on the page */
+
+/* found by its own structure — a wrapper whose ProgressBar fill is sized in
+   `%` — so that "is it out of flow" stays a real claim about it rather than
+   the thing we used to find it */
+const bar = (c) =>
+  [...c.children].find(
+    (k) =>
+      k.tagName === "DIV" &&
+      /%$/.test(k.firstElementChild?.firstElementChild?.style.width || "")
+  );
+const bulkRow = (c) =>
+  [...c.children].find((k) =>
+    /Mark all received|Clear check-ins/.test(k.textContent)
+  );
+
+const alphaCard = () => card(/Alpha Cards/);
+ok(!bar(alphaCard()), "44.1 an untouched package has no progress bar");
+eq(
+  alphaCard().style.position,
+  "relative",
+  "44.2 and the card is the containing block the bar will need"
+);
+const restRow = bulkRow(alphaCard()).style.minHeight;
+ok(!!restRow, "44.3 its action row reserves a height rather than taking its own");
+
+await click(
+  alphaCard().querySelector('button[aria-label="Mark as received"]'),
+  "check one card in"
+);
+const partBar = bar(alphaCard());
+ok(!!partBar, "44.4 checking one card in mounts the bar");
+eq(
+  partBar.style.position,
+  "absolute",
+  "44.4a out of flow, so mounting it displaces none of the rows below"
+);
+eq(
+  partBar.style.pointerEvents,
+  "none",
+  "44.4b and it cannot eat the header tap it now lies across"
+);
+eq(
+  bulkRow(alphaCard()).style.minHeight,
+  restRow,
+  "44.4c the row's reservation does not move when Clear check-ins joins it"
+);
+
+/* the gate, and the reason for taking the bar out of flow rather than
+   reserving it a slot */
+await click(inCard(alphaCard(), /^Mark all received$/), "complete Alpha");
+ok(
+  !bar(alphaCard()),
+  "44.5 completing the package unmounts the bar, so it never renders at 100%"
+);
+ok(
+  !!alphaCard().querySelector(".mdl-land"),
+  "44.5a and the stamp is still what marks the completion"
+);
+eq(
+  bulkRow(alphaCard()).style.minHeight,
+  restRow,
+  "44.6 the reservation holds through the completing tap too, where the row shrinks"
+);
+
+/* the Tally card carries the same bar, and had to be given a containing block
+   of its own for it — without one it escapes to the nearest positioned
+   ancestor and draws somewhere else on the page entirely */
+await goTo("tally");
+const bolt = () => card(/Lightning Bolt/);
+eq(
+  bolt().style.position,
+  "relative",
+  "44.7 the Tally card is a containing block too"
+);
+ok(!!bar(bolt()), "44.8 and carries the bar for a partly-received item");
+
 report();

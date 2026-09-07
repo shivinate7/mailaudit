@@ -547,7 +547,7 @@ function Seal({ size, id, className }) {
   );
 }
 
-function ProgressBar({ pct, height = 8 }) {
+function ProgressBar({ pct, height = 8, radius = height }) {
   /* The colour now arrives a beat after the width lands, so the two read as
      cause and effect rather than as one event, and a single pass of light
      travels a bar that has just filled.
@@ -557,14 +557,18 @@ function ProgressBar({ pct, height = 8 }) {
      card instead (see .mdl-gild). The bar this reaches is the masthead's, and
      100% there means every card in the ledger has arrived, which is the largest
      thing this app has to say and is worth the light it costs. Gated on the
-     crossing rather than the state: see useJustBecame. */
+     crossing rather than the state: see useJustBecame.
+     `radius` is separate from `height` for the two card bars only: they sit on
+     their card's own top edge, where the card's 10px corner is already doing
+     the rounding and a pill would read as a second, smaller shape floating
+     inside it. Everywhere else the default (a full pill) is what you want. */
   const justDone = useJustBecame(pct >= 100);
   return (
     <div
       style={{
         height,
         background: C.silver,
-        borderRadius: height,
+        borderRadius: radius,
         overflow: "hidden",
         /* the stage for .mdl-sheen, which is clipped to the bar by the
            overflow above and so can never paint over the row */
@@ -579,7 +583,7 @@ function ProgressBar({ pct, height = 8 }) {
              ink here, which worked because it was a near-black *green*; the new
              ink is a near-black violet and read as flat black on parchment. */
           background: pct >= 100 ? C.green : C.accent,
-          borderRadius: height,
+          borderRadius: radius,
           transition: "width 240ms ease, background 340ms 160ms ease",
         }}
       />
@@ -1260,9 +1264,20 @@ function PackageCard({
         </div>
       )}
 
+      {/* Out of flow, on the card's own top edge — see edgeBar. In flow this
+          was a 15px child appearing between the header and the item rows on
+          the FIRST check-in, so it pushed every remaining row in the package
+          down by 15px, under the thumb that had just tapped one of them
+          (invariant 5). Mounting an absolutely positioned element reflows
+          nothing, so the gate can stay exactly as it was — which is what keeps
+          .mdl-gild the sole marker of completion. */}
       {gotQty > 0 && !done && (
-        <div style={{ padding: "0 14px 10px" }}>
-          <ProgressBar pct={(gotQty / totalQty) * 100} height={5} />
+        <div style={edgeBar}>
+          <ProgressBar
+            pct={(gotQty / totalQty) * 100}
+            height={EDGE_BAR_H}
+            radius={0}
+          />
         </div>
       )}
 
@@ -1274,6 +1289,10 @@ function PackageCard({
               gap: 8,
               padding: "0 14px 8px",
               justifyContent: "flex-end",
+              /* held at its tallest state so the row never changes height when
+                 a button joins or leaves it — see BULK_ROW_H */
+              minHeight: BULK_ROW_H,
+              boxSizing: "content-box",
             }}
           >
             {/* the first stamp's only entrance; once one exists the band is
@@ -1381,6 +1400,9 @@ function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder, stampedGks }
   return (
     <div
       style={{
+        /* the containing block for the top-edge progress bar below; PackageCard
+           already had one for .mdl-gild */
+        position: "relative",
         background: C.card,
         border: `1px solid ${done ? C.green : C.line}`,
         borderRadius: 10,
@@ -1486,9 +1508,16 @@ function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder, stampedGks }
         </div>
       </button>
 
+      {/* the same top-edge bar as PackageCard's, for the same reason — see
+          edgeBar. The wrapper above carries `position: relative` only to be
+          this bar's containing block. */}
       {gotQty > 0 && !done && (
-        <div style={{ padding: "0 14px 10px" }}>
-          <ProgressBar pct={(gotQty / totalQty) * 100} height={5} />
+        <div style={edgeBar}>
+          <ProgressBar
+            pct={(gotQty / totalQty) * 100}
+            height={EDGE_BAR_H}
+            radius={0}
+          />
         </div>
       )}
 
@@ -1506,6 +1535,12 @@ function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder, stampedGks }
             {hiddenCopies > 0 &&
               ` · ${copies(hiddenCopies)} hidden by filters`}
           </div>
+          {/* deliberately NOT reserved the way PackageCard's row is: there is no
+              Stamp button here, so the two bulk buttons are 282px of the 313px
+              a card gives them at 375px, neither wraps, and the row is one line
+              in every state it passes through. Add a third control here and it
+              will start wrapping like that one — reserve it then, and measure
+              at 375px rather than assuming BULK_ROW_H still fits. */}
           <div
             style={{
               display: "flex",
@@ -1562,6 +1597,64 @@ const miniBtn = {
   color: C.ink,
   cursor: "pointer",
 };
+
+/* ---------- the card's reserved geometry ----------
+   Both of these exist for one reason: a card must not change height on the tap
+   that checks a card in, because the rows below it are under the thumb that
+   just tapped (invariant 5). This is the same defect the save indicator's
+   reserved slot fixed in the masthead, one level down and larger — measured at
+   375px it was 28px, against that one's 12–14px.
+
+   The progress bar is taken OUT OF FLOW rather than reserved: it lives on the
+   card's top edge, absolutely positioned inside the card's existing
+   `overflow: hidden` rounded box, so it is clipped to the card, catches no
+   taps, and can be mounted and unmounted without moving anything. That is why
+   it keeps its `gotQty > 0 && !done` gate — and so why it still cannot render
+   at 100%, leaving .mdl-gild the only marker of a package completing. A
+   reserved in-flow slot would have cost that. 3px because it is now a rule on
+   an edge rather than a bar in a row, and it reads at a glance against the
+   card's border either way. */
+const EDGE_BAR_H = 3;
+const edgeBar = {
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  /* it now lies across the top of the header button, so it must be invisible
+     to the pointer — a bar that swallowed that tap would stop the card from
+     collapsing, and the rounding it does not need is the card's corner's job
+     (hence radius={0} at the call sites) */
+  pointerEvents: "none",
+};
+
+/* The package card's contextual action row, reserved at its TALLEST state.
+   Its membership changes on the same tap — "Clear check-ins" joins "Stamp" and
+   "Mark all received" — and at 375px those three want 60.6 + 143.7 + 129.9 px
+   plus two 8px gaps = 350px in the 313px the card gives them, so both bulk
+   labels wrap to a second line and the row grows 31px -> 44px. It shrinks by
+   the same 13px on the tap that COMPLETES a package, where "Mark all received"
+   leaves: reserving the tallest state pins both transitions at once.
+
+   This is a counted constant, exactly like the save slot's 13ch, and it goes
+   stale the same way: it is two lines of 11.5px mono plus miniBtn's 8px
+   padding. Change either of those labels, miniBtn's font size or padding, or
+   the card's width, and RE-MEASURE — jsdom has no layout, so the suite pins
+   that the reservation is there and never varies, and can never say whether it
+   is big enough.
+
+   Measured, content height needed against the 44 reserved: 57 at 320px, 44 at
+   360 / 375 / 390, 31 at 430 and 760 (where all three fit one line and the
+   reservation is 13px of slack). So this covers 360px up, and **at 320px the
+   row still steps 13px** — three buttons wrap to a THIRD line there. Left
+   deliberately: 320 is below this app's stated 380px floor and is not a
+   viewport current iOS runs, and reserving 57 would buy it by spending 26px of
+   dead space in every expanded card at the widths that are real. The bar half
+   of the fix is width-independent, so 320 still improves from 28px to 13px.
+   If that last 13px is ever wanted, the way to get it without the dead space
+   is to keep all three buttons mounted and hide the inapplicable one
+   (`visibility: hidden`), which makes the row self-measuring at every width —
+   at the cost of the visible label wrapping at rest, which is a look. */
+const BULK_ROW_H = 44;
 
 /* How long the app has to be in the background before coming back counts as
    "reopening it" rather than "glancing away". iOS keeps a home-screen web app's
