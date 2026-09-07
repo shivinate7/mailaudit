@@ -57,3 +57,11 @@ jobs:
       # comparing nothing if the tag's shape ever changes without it.
       - name: index.html is in step with src/
         run: npm run check:build --silent
+
+      # The other half of the same question. `check:build` asks whether the
+      # committed page is this repo's CODE; this asks what the page's DATA
+      # actually publishes — decoded, not read off the source that meant to
+      # write it, which is how the stamp-note leak was found. Cheap, and the
+      # only kind of mistake here that git makes permanent.
+      - name: the published seed withholds what it must
+        run: npm run check:seed --silent

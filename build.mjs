@@ -2,7 +2,7 @@
 import { build } from "esbuild";
 import { readFileSync, writeFileSync } from "fs";
 import { execFileSync } from "child_process";
-import { gzipSync } from "zlib";
+import { gzipSync, gunzipSync } from "zlib";
 
 /* ---------- the public seed ----------
    The site is public; the ledger repo is not. Those are separate artifacts —
@@ -134,6 +134,57 @@ ${seed ? `<script id="seed" type="application/gzip-base64">${seed}</script>\n` :
 const withoutSeed = (page) =>
   page.replace(/<script id="seed"[^>]*>[^<]*<\/script>\n/, "");
 
+/* ---------- `node build.mjs --check-seed` ----------
+   What did we actually publish? The stamp-note leak was found by decoding the
+   built page and grepping it, not by reading the code, and CLAUDE.md has asked
+   for that grep by hand after any change here ever since. A hand check that
+   has to be remembered is one that eventually isn't, and forgetting is
+   permanent here: the Pages site is world-readable and git keeps every
+   version of it.
+
+   So this decodes the committed page's seed and reads the payload back. It
+   lives beside SEED_KEEP rather than in the workflow so there is no second
+   allow-list to keep in step — widening the seed widens this in the same edit,
+   which is the whole point. A backstop, not a proof: it can only refuse the
+   leaks someone already thought of. */
+const ALLOWED = new Set(["mailday", ...SEED_KEEP]);
+
+function checkSeed() {
+  const page = readFileSync("index.html", "utf8");
+  const m = page.match(/<script id="seed"[^>]*>([^<]*)<\/script>/);
+  if (!m) {
+    /* whether a seed is present at all is a property of the deploying
+       machine's refs, not of the sources — CI has none — so this is not a
+       failure. That a visitor gets an empty app is still worth saying. */
+    console.log("check: index.html carries no seed");
+    return 0;
+  }
+  let data;
+  try {
+    data = JSON.parse(gunzipSync(Buffer.from(m[1], "base64")).toString("utf8"));
+  } catch (e) {
+    console.error(`check: the seed does not decode — ${e.message}`);
+    return 1;
+  }
+  const leaks = [];
+  if (data.mailday !== 1 || !Array.isArray(data.items) || !data.items.length)
+    leaks.push("the seed decodes but is not a ledger");
+  for (const k of Object.keys(data))
+    if (!ALLOWED.has(k)) leaks.push(`it publishes "${k}", which is not in SEED_KEEP`);
+  const noted = Object.values(data.stamps || {}).filter((s) => s && s.note);
+  if (noted.length) leaks.push(`${noted.length} stamp note(s) survived into it`);
+  if (leaks.length) {
+    for (const l of leaks) console.error(`check: ${l}`);
+    return 1;
+  }
+  console.log(
+    `the seed publishes ${data.items.length} lines and ` +
+      `${Object.keys(data.stamps || {}).length} stamps — no envelopes, ` +
+      "no notes, nothing outside SEED_KEEP"
+  );
+  return 0;
+}
+
 if (process.argv.includes("--check")) {
   const a = withoutSeed(readFileSync("index.html", "utf8"));
   const b = withoutSeed(html);
@@ -149,6 +200,8 @@ if (process.argv.includes("--check")) {
     process.exit(1);
   }
   console.log("index.html is in step with src/ (seed ignored — it is data)");
+} else if (process.argv.includes("--check-seed")) {
+  process.exit(checkSeed());
 } else {
   writeFileSync("index.html", html);
   console.log(`index.html built (${(html.length / 1024).toFixed(0)} KB)`);
