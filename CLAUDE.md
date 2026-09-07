@@ -127,7 +127,14 @@ world-readable and git is permanent.
 
 The stamp-note leak was found by decoding the built page and grepping it, not
 by reading the code. **Do that after any change here** — it is the only way to
-know what you actually published.
+know what you actually published. `npm run check:seed` is that grep written
+down, and CI runs it on every push: it decodes the committed page's seed and
+fails on any key outside `SEED_KEEP` or any surviving stamp `note`. Its
+allow-list is `SEED_KEEP` itself rather than a copy, so widening the seed
+widens the gate in the same edit — deliberately, since that edit is where the
+thinking should happen. It is a backstop, not a proof: it can only refuse the
+leaks someone already thought of, which is why the hand grep stays the
+instruction.
 
 Two guards in the load path, and the second is the one that matters:
 
@@ -1348,6 +1355,7 @@ npm run build        # -> index.html
 npm test             # behaviour suite, must be green before deploying
 npm run serve        # optional local server on :4173
 npm run check:build  # is the committed index.html the code in this repo?
+npm run check:seed   # and what does the seed baked into it publish?
 npm run deploy       # build + test + commit index.html + push (Pages auto-deploys)
 ```
 
@@ -1412,7 +1420,11 @@ device, since GitHub hides a private repo's existence behind a 404.)
    deploy` commits that separately and re-running the suite on the build output
    would double every deploy for no new information. It also checks the
    committed `index.html` still matches what the sources build — the one thing a
-   local deploy can skip by accident.
+   local deploy can skip by accident — via `check:build`, which compares the
+   code and ignores the seed for the reasons above. A second step runs
+   `check:seed`, which decodes the seed the committed page actually carries and
+   refuses anything outside `SEED_KEEP`: the two together ask whether the page
+   is this repo's code, and then what its data publishes.
    `backup-watchdog.yml` is the check the app cannot do for itself: it reads the
    `data` branch's own history on a daily schedule and opens an issue if nothing
    has landed in four days. **Its alarm has been seen to fire** — dispatched
