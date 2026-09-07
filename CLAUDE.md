@@ -1126,9 +1126,13 @@ switch fill is an absolutely positioned element rather than a background moving
 between three buttons, and why the check tick is drawn with `stroke-dashoffset`
 inside a box whose 30px never changes. Measured in a real 375px viewport across
 a check-in: the row's height, the indicator's 30×30 and the document width all
-drift **0.00px**, and horizontal overflow stays 0 in every state.
+drift **0.00px**, and horizontal overflow stays 0 in every state. The same
+holds for a card being opened: the card below it steps to its new position in
+**one commit** and holds it for the whole animation (measured across ten frames
+— a single distinct offset), because only opacity and transform are animated
+and the height is never touched.
 
-Seven moments:
+Eight moments:
 
 - **The letterhead composes itself, once per load**, in the order a page is
   actually made: wax, rules, name, house, figures. The seal is pressed
@@ -1184,6 +1188,23 @@ Seven moments:
   so the two read as cause and effect rather than one event, and sweeps once.
   It is reachable but rare: 100% there means every card in the ledger has
   arrived, which is the largest thing this app has to say.
+- **A card opening lays its contents down in order.** The bulk row, then each
+  item row, each a beat behind the last (`mdl-reveal`, 240ms, opacity and 4px)
+  — a letter unfolded rather than a light switched on. The stagger is **capped
+  at 132ms**, so past the sixth row every remaining row shares the last beat
+  and a twenty-line order finishes as promptly as a three-line one (measured:
+  delays 0/22/44/66/88/110/132/132/132, everything settled by 372ms).
+  It is gated on `useJustBecame` for a reason particular to this card: an
+  unreceived package **starts expanded** (`useState(!done)`), so a bare class
+  would set every open card on the page animating at once on load, competing
+  with the letterhead's own sequence. Measured on the seeded ledger: 0 reveals
+  fire on load, 9 on a card opened by hand.
+  **Collapsing is deliberately not animated**, and that is the same rule read
+  the other way. An exit animation means keeping the rows mounted past the tap
+  and shrinking the card a fifth of a second later — a *delayed* layout change,
+  under a thumb that has already moved on, which is worse than an immediate
+  one. The caret carries both directions instead (200ms, the sheet's easing);
+  on the way closed it is the only thing that moves.
 - **The disclosure panels arrive** (220ms, opacity and 4px). The space they
   take is *not* animated and must not be — it is the same layout they have
   always pushed down, one commit after the tap.

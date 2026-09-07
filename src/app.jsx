@@ -601,6 +601,11 @@ function ItemRow({
   variant = "package",
   onOpenOrder,
   stamped = false,
+  /* set only while a card is being opened by hand, so the rows can be laid
+     down in order rather than switched on at once. Absent everywhere else,
+     which is what keeps a re-sort or a view switch silent. */
+  className,
+  revealIndex = 0,
 }) {
   const done = got >= item.qty;
   const partial = got > 0 && !done;
@@ -627,7 +632,10 @@ function ItemRow({
   return (
     <div
       onClick={toggle}
+      className={className}
       style={{
+        /* its place in the stagger; read by .mdl-reveal, inert without it */
+        "--i": revealIndex,
         display: "flex",
         alignItems: "flex-start",
         gap: 12,
@@ -930,6 +938,12 @@ function PackageCard({
     missingVal >= 100
       ? `$${Math.round(missingVal).toLocaleString()}`
       : `$${missingVal.toFixed(2)}`;
+  /* true only when this card is opened by hand, never when it renders already
+     open — an unreceived package starts expanded (`useState(!done)`), so a
+     bare class would set every open card on the page animating at once on
+     load, competing with the letterhead's own sequence. Same gate, same
+     reason, as the stamp landing below. */
+  const justOpened = useJustBecame(open, 500);
   const justStamped = useJustBecame(done);
   const stamped = hasStamp(stamp);
   /* the order stamp the user sets by hand lands the same way the ledger's own
@@ -1012,7 +1026,10 @@ function PackageCard({
             fontSize: 10,
             color: C.inkSoft,
             transform: open ? "rotate(90deg)" : "none",
-            transition: "transform 140ms ease",
+            /* the sheet's easing, and long enough to read: on the way closed
+               this is the only thing that moves, because the rows are gone in
+               the same commit as the tap */
+            transition: "transform 200ms cubic-bezier(.16,1,.3,1)",
             display: "inline-block",
             flexShrink: 0,
           }}
@@ -1284,7 +1301,9 @@ function PackageCard({
       {open && (
         <>
           <div
+            className={justOpened ? "mdl-reveal" : undefined}
             style={{
+              "--i": 0,
               display: "flex",
               gap: 8,
               padding: "0 14px 8px",
@@ -1316,9 +1335,11 @@ function PackageCard({
               </button>
             )}
           </div>
-          {pkg.items.map((it) => (
+          {pkg.items.map((it, i) => (
             <ItemRow
               key={it.key}
+              className={justOpened ? "mdl-reveal" : undefined}
+              revealIndex={i + 1}
               item={it}
               got={Math.min(it.qty, received[it.key] || 0)}
               onSet={onSet}
@@ -1377,6 +1398,8 @@ function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder, stampedGks }
   );
   const done = gotQty >= totalQty;
   const [open, setOpen] = useState(false);
+  /* same gate as PackageCard's: the act of opening, never a re-render */
+  const justOpened = useJustBecame(open, 500);
   const missingVal = item.items.reduce(
     (s, it) => s + it.price * (it.qty - Math.min(it.qty, received[it.key] || 0)),
     0
@@ -1430,7 +1453,10 @@ function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder, stampedGks }
             fontSize: 10,
             color: C.inkSoft,
             transform: open ? "rotate(90deg)" : "none",
-            transition: "transform 140ms ease",
+            /* the sheet's easing, and long enough to read: on the way closed
+               this is the only thing that moves, because the rows are gone in
+               the same commit as the tap */
+            transition: "transform 200ms cubic-bezier(.16,1,.3,1)",
             display: "inline-block",
             flexShrink: 0,
           }}
@@ -1524,7 +1550,9 @@ function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder, stampedGks }
       {open && (
         <>
           <div
+            className={justOpened ? "mdl-reveal" : undefined}
             style={{
+              "--i": 0,
               padding: "0 14px 6px",
               fontFamily: mono,
               fontSize: 10.5,
@@ -1542,7 +1570,9 @@ function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder, stampedGks }
               will start wrapping like that one — reserve it then, and measure
               at 375px rather than assuming BULK_ROW_H still fits. */}
           <div
+            className={justOpened ? "mdl-reveal" : undefined}
             style={{
+              "--i": 1,
               display: "flex",
               gap: 8,
               padding: "0 14px 8px",
@@ -1560,9 +1590,11 @@ function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder, stampedGks }
               </button>
             )}
           </div>
-          {item.shown.map((it) => (
+          {item.shown.map((it, i) => (
             <ItemRow
               key={it.key}
+              className={justOpened ? "mdl-reveal" : undefined}
+              revealIndex={i + 2}
               item={it}
               got={Math.min(it.qty, received[it.key] || 0)}
               onSet={onSet}
@@ -5611,6 +5643,31 @@ export default function MailDayLedger() {
         .mdl-nib { stroke-dasharray: 26; animation: mdl-nib 300ms cubic-bezier(.4,.1,.3,1) both; }
         @keyframes mdl-nib { from { stroke-dashoffset: 26; } to { stroke-dashoffset: 0; } }
 
+        /* A card opening. Its contents are laid down in order rather than
+           switched on at once — the same gesture as a letter being unfolded,
+           and the same rule as the panels below: the SPACE the card takes
+           appears in one commit and is never animated. Animating the height
+           would reflow every card beneath it for the length of the animation,
+           which is the one thing this sheet may not do.
+
+           Collapsing is deliberately NOT animated, and that is the same rule
+           read the other way. An exit animation means keeping the rows mounted
+           after the tap and shrinking the card a fifth of a second later — a
+           delayed layout change, under a thumb that has already moved on, which
+           is worse than an immediate one. The caret carries both directions
+           instead: it is the one thing that moves on the way closed.
+
+           The stagger is capped so a twenty-line order finishes as promptly as
+           a three-line one — past the sixth row every remaining row shares the
+           last beat. It is gated on useJustBecame, so a card that renders
+           already open (an unreceived package starts expanded) stays still. */
+        .mdl-reveal { animation: mdl-reveal 240ms cubic-bezier(.16,1,.3,1) both;
+                      animation-delay: min(calc(var(--i, 0) * 22ms), 132ms); }
+        @keyframes mdl-reveal {
+          from { opacity: 0; transform: translateY(4px); }
+          to   { opacity: 1; transform: none; }
+        }
+
         /* Disclosures. The panel's arrival is animated; the space it takes is
            not, and must not be — the layout it pushes down is the same layout
            it has always pushed down, one commit after the tap. */
@@ -5629,7 +5686,7 @@ export default function MailDayLedger() {
              width, the tick is complete, the stamp sits at its inline angle. */
           .mdl-head .mdl-seal, .mdl-head .mdl-seal .mdl-shine, .mdl-rule i,
           .mdl-title, .mdl-house, .mdl-tallies,
-          .mdl-land, .mdl-nib, .mdl-panel { animation: none; }
+          .mdl-land, .mdl-nib, .mdl-panel, .mdl-reveal { animation: none; }
           .mdl-thumb { transition: none; }
           .mdl-sheen, .mdl-gild { display: none; }
         }
