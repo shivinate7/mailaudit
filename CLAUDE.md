@@ -113,7 +113,7 @@ never to have reached a committed build.
   as `b64.mjs`: both fail quietly, so both are pure and directly tested.
 - `build.mjs` — bundles entry via esbuild and inlines the JS into a
   self-contained `index.html` with iOS home-screen-app meta tags. It also bakes
-  in **the public seed** (see below): `git show origin/data:ledger.json`,
+  in **the public seed** (see below): `git show ledger/data:ledger.json`,
   reduced to `SEED_KEEP`, gzipped and base64'd into a `<script id="seed">`.
 - `index.html` — the build output, committed to the repo. GitHub Pages serves it
   at https://shivinate7.github.io/mailaudit/ . The user runs it as an iOS
@@ -720,9 +720,13 @@ honestly.
   ahead, licenses or refuses the merge, and — via `freshSession` — decides
   whether this foreground was a new session at all.
 - **Push / Pull (GitHub).** Automatic backup to `ledger.json` on the
-  **`data` branch** of `shivinate7/mailaudit` — never `main`, because Pages
-  deploys from main's root and every backup would otherwise trigger a site
-  rebuild. Push needs a fine-grained PAT (`Contents: read & write`, that repo
+  **`data` branch** of `shivinate7/mailaudit-data` — the private repo, which
+  also holds the photos on its `main`. It used to be `mailaudit`'s own `data`
+  branch, and that is why `mailaudit` had to stay private; moving it out is what
+  let the source repo go public. The branch survives the move for a NEW reason —
+  `listVersions` reads `commits?path=ledger.json&sha=data`, so that log is the
+  version archive and photo commits must stay off it. The old reason (Pages
+  deploys from main's root) is void in a repo that serves no site. Push needs a fine-grained PAT (`Contents: read & write`, that repo
   only) pasted once per device — and since the repo went private, **pull needs
   that key too**. This used to read "pull needs no key at all", which was the
   property that let a fresh device recover before it had been set up; closing
@@ -762,18 +766,35 @@ honestly.
   from the suite, so the mock was corrected to match — it had mirrored the same
   ordering *and* cleared `remote.fail` on the way in, so a force could never
   fail and nothing could ever have caught this.
-  **Photos go too, to a different repo.** `shivinate7/mailaudit-photos`,
-  **private**, branch `main`, one file per photo at `photos/<id>.<ext>`.
-  Privacy used to be the whole reason for the split — a mailing label carries a
-  delivery address, and the ledger repo was public. That argument is gone now
-  that both repos are private, and the question of merging them is a fair one.
-  Two reasons survive it, and they are why they stay apart. **GitHub's 409 on
-  rapid successive Contents writes is per-repo** — it is why the photo phase has
-  its own error table and must never touch `pushState` — so merging would make
-  that collision routine instead of rare. And **git is permanent while the app
-  repo is the one you clone**: the ledger's entire history is 39KB, and every
-  photo ever taken would live in it forever, with no undo. Push and Pull each
-  do both legs in one tap — ledger first, photos after.
+  **Photos share the repo with the ledger, on their own branch.**
+  `shivinate7/mailaudit-data`, **private**, branch `main`, one file per photo at
+  `photos/<id>.<ext>`.
+  They used to be two repos, and the argument for that is worth knowing because
+  it is *retired*, not forgotten. Privacy was the whole of it: a mailing label
+  carries a delivery address and the ledger repo was public. That died when the
+  ledger repo went private, and the merge happened when `mailaudit` went public
+  and the ledger had to leave it regardless. What the merge buys is **one repo
+  in the token's blast radius instead of two** — `shivinate7.github.io` is a
+  single origin across every Pages project, so the mitigation for a readable
+  token is the fine-grained, Contents-only, now genuinely *single*-repo scope.
+
+  Of the two reasons that once survived the privacy argument, one applied only
+  to the opposite merge and one is now **paid in code**:
+
+  - "Git is permanent while the app repo is the one you clone" argued against
+    photos landing in `mailaudit`. The ledger moved *into* the photo repo, so
+    `mailaudit` got smaller, not bigger. It never applied to this direction.
+  - "**GitHub's 409 on rapid successive Contents writes is per-repo**" is real
+    and still true, and it is why `push()` now `await`s `spaceWrites()` — the
+    same 1s clock `pushPhoto` has always used. Before the merge the ledger PUT
+    could skip it because it was the only write its repo ever saw, and app.jsx
+    pushes the ledger then immediately loops photo uploads. **Remove that call
+    and the first photo of every push 409s.** The separate error tables still
+    matter for the same reason they always did: a throttled photo must never
+    reach `pushState`, because `pushState === "conflict"` is the only gate on
+    Push anyway.
+
+  Push and Pull each do both legs in one tap — ledger first, photos after.
 
   The whole algorithm is a **set difference over ids**. A photo file is
   immutable and addressed by its id, so every remote path is written exactly
@@ -797,8 +818,8 @@ honestly.
   - **`listPhotos()` is three-valued.** A 404 means "nothing pushed yet" on a
     repo you can see and "you can't see this repo" on a private one, because
     GitHub hides existence rather than admitting a 403 — verified live: a
-    keyless request to `mailaudit-photos` 404s on both the tree *and* the repo
-    itself. Collapse that to "empty" and a device with no key concludes every
+    keyless request to the photo repo (then named `mailaudit-photos`, now
+    `mailaudit-data`) 404s on both the tree *and* the repo itself. Collapse that to "empty" and a device with no key concludes every
     photo it owns is **lost**. So it answers `{known:true, ids}` or
     `{known:false, reason}`, `photoPlan` refuses to compute `lost` or `toPush`
     when it doesn't know, and a 404 is disambiguated by one extra
@@ -1536,26 +1557,40 @@ be committed yourself first.
 
 ### The GitHub backup (one-time setup)
 
-Target is `shivinate7/mailaudit`, branch **`data`**, file `ledger.json` — three
-constants at the top of the `window.remote` block in `entry.jsx`, so pointing at
-a private `mailaudit-data` repo later is a constant swap and nothing else.
+Target is `shivinate7/mailaudit-data` — branch **`data`**, file `ledger.json`
+for the ledger; branch **`main`**, directory `photos/` for the photos. Two
+constant objects at the top of the `window.remote` block in `entry.jsx`.
 
-**Before pushing anything real**, open
-`raw.githubusercontent.com/shivinate7/mailaudit/data/ledger.json` in a
-logged-out window. The repo is public, so that is what the world can see: order
-ids, sellers, prices, dates, and any tracking numbers typed into envelope notes.
-Git also makes it permanent. If that is not acceptable, switch to a private repo
-*first* — much harder to undo afterwards. (Pull then needs the key on every
-device, since GitHub hides a private repo's existence behind a 404.)
+**`mailaudit` itself is PUBLIC and holds no data.** That is the arrangement this
+setup exists to produce, and it is what makes Actions and Pages free. The
+separation, measured anonymously after the move: the Pages site answers **200**,
+while `api.github.com/repos/shivinate7/mailaudit-data` and
+`raw.githubusercontent.com/shivinate7/mailaudit-data/data/ledger.json` both
+**404**. The ledger repo stays private for hygiene rather than secrecy — a
+backup store does not belong in the repo that serves a public site — but the
+consequence is real: **every device needs the key for everything**, because
+GitHub hides a repo you cannot see behind a 404 rather than a 403.
 
-1. Create the branch, orphaned so it carries no source and never looks
-   deployable:
+A clone also needs a remote named `ledger` for the seed to build:
+```bash
+git remote add ledger https://github.com/shivinate7/mailaudit-data.git && git fetch ledger data
+```
+Without it the build is seedless, and `npm run check:seed` says so rather than
+failing — but on a machine where the ref *does* resolve, a seedless committed
+page is a hard failure, because that means the build dropped a seed it could
+have made.
+
+1. The `data` branch already exists in `mailaudit-data`, carrying the ledger's
+   full history (130 commits at the time of the move, tip blob identical to the
+   old repo's — blob shas are content-addressed, which is why no device needed
+   re-keying). To recreate it from scratch:
    ```bash
    git switch --orphan data && git commit --allow-empty -m "data branch: ledger backups live here, never merge to main" && git push -u origin data && git switch main
    ```
-2. Settings → Pages should read "Deploy from a branch: `main` / `(root)`". Pages
-   only builds on pushes to its configured branch. Never merge `data` into
-   `main`.
+2. Settings → Pages on **`mailaudit`** should read "Deploy from a branch:
+   `main` / `(root)`". Nothing the app writes touches that repo any more, so a
+   backup can no longer trigger a site rebuild by construction rather than by
+   branch discipline.
    **The repo used to have no `.github/workflows` at all, and that absence was
    the guarantee that a ledger push triggers nothing.** There are two workflows
    now, so that guarantee rests on their filters instead — read them before
@@ -1581,22 +1616,25 @@ device, since GitHub hides a private repo's existence behind a 404.)
    the phone — a device whose token expired, whose storage is unreadable, or
    that simply never gets opened has no way to tell you it stopped. This one
    cannot be fooled by anything happening on a device.
-3. Create the photo repo: **`shivinate7/mailaudit-photos`, private, initialised
-   with a README** so `main` exists — a Contents PUT into a repo with no commits
-   is not a path worth relying on. Private is not optional: these are pictures
-   of mailing labels with the delivery address on them.
+3. The photos live on `mailaudit-data`'s **`main`**, in `photos/`. That branch
+   must exist before any Contents PUT — a PUT into a repo with no commits is not
+   a path worth relying on, so initialise with a README if recreating. Private is
+   not optional: these are pictures of mailing labels with the delivery address
+   on them.
 4. Settings → Developer settings → Personal access tokens → **Fine-grained**.
    Name it per device (`mailday-iphone`) so one can be revoked alone. Only
-   select repositories: **`mailaudit` AND `mailaudit-photos`** — one widened
-   token covers both; an existing token can be edited rather than regenerated.
+   select repositories: **`mailaudit-data` only.** One repo, which is the point
+   — the token used to span two and that was a listed open thread. `mailaudit`
+   is public and the app never writes to it.
    Repository permissions: **Contents → Read and write** (Metadata → Read-only
    appears automatically and is required). Nothing else. **Fine-grained PATs cap at 366 days** — set a real expiry and a
    calendar reminder, because when it lapses the only symptom is a push that
    stops working.
 5. In the app: Sync → paste → Save key → Push. Expect `Pushed ✓`, and check
-   `main` gained no commit. With photos in the ledger, expect `mailaudit-photos`
-   to gain one commit per photo (cosmetic — that repo serves nothing) and the
-   button to stay on `Pushing…` until they are done, roughly a second each.
+   `mailaudit` gained no commit at all. With photos in the ledger, expect
+   `mailaudit-data` to gain one commit per photo on `main` and the button to stay
+   on `Pushing…` until they are done, roughly a second each — the ledger and the
+   photos now share one repo's write budget and one `spaceWrites()` clock.
 
    Then the test worth actually doing: **pull onto a second device or origin**
    and confirm the thumbnails render. That is the one path where getting the
@@ -2156,8 +2194,10 @@ ledger. Photo sync has had its read paths verified live and keylessly — the ra
 media type returns bytes with `access-control-allow-origin: *`, a directory
 listing returns `{name,type,size,sha}`, a missing directory returns 404 "Not
 Found" (so `missing`, distinct from `no-branch`), and a keyless request to the
-private `mailaudit-photos` 404s on both the tree and the repo, which is the
-`no-access` path.
+private photo repo (then `mailaudit-photos`, now `mailaudit-data`) 404s on both
+the tree and the repo, which is the `no-access` path. Re-measured after the
+move against `mailaudit-data`: repo API and raw ledger URL both 404 keyless,
+while the Pages site still answers 200.
 
 **The ledger repo's own private path is now verified live too** — the first
 real-GitHub confirmation of anything on the read side since the repo was closed.
@@ -2193,14 +2233,17 @@ give no isolation between groups.
   exempt. Worth confirming empirically, since it's the difference between
   "safe" and "data quietly vanishes". (Push/Pull now makes this survivable
   either way, provided the user actually pushes.)
-- **The ledger repo is PRIVATE.** It was world-readable — `ledger.json` served
-  at a permanent `raw.githubusercontent.com` URL to anyone, logged out, carrying
-  order ids, sellers, prices, dates and any tracking numbers or sender names
-  typed into envelope notes. GitHub Pro serves Pages from a private repo, so
-  closing it cost one setting rather than the `mailaudit-data` migration this
-  entry used to describe. The **site** is still public (Pages access control is
-  Enterprise-only, and is not wanted here) — the app loads for anyone; the data
-  does not.
+- **The ledger lives in `mailaudit-data`; `mailaudit` is PUBLIC.** This entry
+  used to describe closing `mailaudit` itself as the cheap alternative to a
+  `mailaudit-data` migration. That migration then happened anyway, for a reason
+  the original framing did not anticipate: **private repos bill Actions minutes**,
+  and an unrelated repo on the account exhausted the allowance, which refused CI
+  on a repo whose whole safety story rests on it. Moving the ledger out let the
+  source repo go public, so `test.yml` and Pages are free again.
+  The data is not secret and never was the point — the ledger repo stays private
+  for hygiene: a backup store does not belong in the repo that serves a public
+  site. Measured anonymously after the move: Pages **200**, the repo API and the
+  raw ledger URL both **404**.
   The price, which was always the price: **keyless pull is gone.** A fresh
   device can no longer recover before it has been set up, and every device needs
   the token pasted. And GitHub hides a repo you cannot see behind a **404**, so
@@ -2259,19 +2302,30 @@ give no isolation between groups.
   first-ever backfill of several hundred photos cannot finish inside an hour.
   Hence `PHOTO_BATCH` (25 per tap) and the resumable set difference; the loop
   also stops rather than grinds on a 403/429, per GitHub's own guidance.
-- **The token now spans two repos.** One widened fine-grained PAT covers
-  `mailaudit` and `mailaudit-photos`. That is one more private repo inside the
-  blast radius of the shared-origin risk noted above — the mitigation is still
-  the single-purpose Contents-only scope and one token per device, and the
-  alternative (a second, separate token) was considered and declined for the
-  paste-per-device cost.
-- **Nothing recovers without the key any more.** This entry used to say the
-  ledger half was keyless and only photos needed the token. Both need it now
-  that the ledger repo is private, so a fresh device must be set up before it
-  can recover rather than after — the one real cost of closing the public
-  ledger. Everything unreachable must read as *"needs your key"* and never as
+- ~~**The token now spans two repos.**~~ **Closed by the `mailaudit-data`
+  move.** The PAT covers exactly one repo again, which was the main thing the
+  merge bought: `mailaudit` is public and the app never writes to it, so the
+  shared-origin risk above now has a single private repo in its blast radius
+  rather than two. Mitigation is unchanged — Contents-only scope, one token per
+  device — it just covers less.
+- **Nothing recovers without the key.** A fresh device must be set up before it
+  can recover rather than after — the standing cost of the ledger being private,
+  and unchanged by the move (it is still one private repo, just a different one). Everything unreachable must read as *"needs your key"* and never as
   lost or as absent, which is why `listPhotos` and `peek` are three-valued and
   why `classifyLedger` disambiguates the 404.
+- **The backup watchdog lives in `mailaudit-data`, not in the public repo, and
+  that placement is load-bearing.** GitHub disables scheduled workflows in a
+  **public** repo after 60 days of repository inactivity; private repos are
+  exempt. Hosting the one device-independent backup alarm somewhere it can
+  silently switch itself off would reproduce the exact failure it exists to
+  catch — a workflow that never runs opens no issue, which is indistinguishable
+  from one that ran and found everything healthy. It reads its own repo's `data`
+  branch, so it needs no cross-repo token and no edits. **Its cost is ~10s/day,
+  but it is paid in Actions minutes, so it stops entirely when the account is
+  over its limit** — verified the hard way: dispatched with `threshold=0`
+  immediately after the move and refused with the billing message, same as the
+  public repo's runs. The minutes hog is `test.yml`, which is free now that
+  `mailaudit` is public; the watchdog's few minutes are not optional.
 - **The conflict guard has never been verified against real GitHub**, and it is
   now the thing most worth verifying, because `Merge & push` and auto-push both
   hang off it. The ledger repo *has* taken real authenticated pushes
