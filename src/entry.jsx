@@ -303,33 +303,47 @@ window.seed = {
    is automatic — see the note on `sha` below for why continuous sync was not
    the design.
 
-   Target lives in one object so switching to a private data repo later is a
-   constant swap and nothing else. `data` and not `main` on purpose: Pages
-   deploys from main's root, so pushing the ledger there would trigger a site
-   rebuild on every backup. */
+   Target lives in one object, which is what made the move into the private repo
+   a two-line change.
+
+   `data` and not `main`, and the ORIGINAL reason for that is now dead: it was
+   "Pages deploys from main's root, so pushing the ledger there would trigger a
+   site rebuild", and this repo serves no Pages site. It survives on a reason
+   that is actually current — `listVersions` asks for
+   `commits?path=ledger.json&sha=data`, so **the branch's commit log IS the
+   version archive**. Sharing `main` with the photos would interleave a commit
+   per photo into that log and leave the path filter doing real work to hide
+   them. Don't "simplify" the branch away on the strength of the dead reason. */
 const REMOTE = {
   owner: "shivinate7",
-  repo: "mailaudit",
+  repo: "mailaudit-data",
   branch: "data",
   path: "ledger.json",
 };
 
-/* Photos go somewhere else, and the somewhere else is PRIVATE. A mailing label
-   carries a delivery address, a sender and a tracking number; the ledger repo
-   is public and git is permanent, so the two cannot share a home. The ledger
-   stays public precisely so a device with no key can still recover the
-   irreplaceable part — see the note on a token-free pull in api() below.
+/* Photos share the repo with the ledger now, on their own branch. They did not
+   always: the split existed because a mailing label carries a delivery address
+   while the ledger repo was PUBLIC, and git is permanent. That argument died
+   when the ledger repo went private, and the two halves were merged when
+   `mailaudit` went public and the ledger had to leave it anyway.
 
-   `main` rather than an orphan branch: this repo serves no Pages site, so there
-   is nothing a push here could rebuild, and a README-initialised default branch
-   is one less setup step to get wrong.
+   What the merge buys: one repo in the token's blast radius instead of two.
+   `shivinate7.github.io` is a single origin across every Pages project, so
+   script from any other project there can read the stored token — the mitigation
+   is the fine-grained, Contents-only, now genuinely SINGLE-repo scope.
+
+   `main` rather than the ledger's `data`: see REMOTE above — that branch's
+   commit log is the version archive and photo commits must stay out of it.
+   Sharing a repo does cost one thing, and push() pays it: GitHub wants ≥1s
+   between Contents writes to one repo, so the ledger PUT and the photo PUTs are
+   now on the same `spaceWrites()` clock where before they were independent.
 
    One file per photo, named by id. That is the entire design: a photo path is
    written exactly once by whoever holds it, so photo sync is a set difference
    with no merge, no sha bookkeeping and no conflict possible by construction. */
 const PHOTOS = {
   owner: "shivinate7",
-  repo: "mailaudit-photos",
+  repo: "mailaudit-data",
   branch: "main",
   dir: "photos",
 };
@@ -371,9 +385,11 @@ async function api(path, init = {}) {
     ...(init.headers || {}),
   };
   /* sent on reads too: unauthenticated GETs share a 60/hr *per-IP* budget with
-     everyone behind the same NAT, authenticated is 5000/hr. Absent a token the
-     read still works on a public repo, which is what makes a token-free pull on
-     a fresh device possible. */
+     everyone behind the same NAT, authenticated is 5000/hr. It used to be
+     optional on reads, because the ledger repo was public and a keyless pull was
+     how a fresh device recovered before it had been set up. Both repos are one
+     private repo now, so every call here needs the token and a keyless read gets
+     a 404 that means "you cannot see this" — see classifyLedger. */
   if (token) headers.Authorization = `Bearer ${token}`;
   let res;
   try {
@@ -439,10 +455,12 @@ async function spaceWrites() {
 }
 
 /* The mapping itself lives in src/remote-rules.mjs so it can be asserted on —
-   this wrapper just unpacks the response. Note on a PUBLIC repo a 404 means
-   the file isn't there yet; on a private one it is also what a token with no
-   access sees, since GitHub hides existence. Worth knowing if REMOTE is ever
-   pointed at one. */
+   this wrapper just unpacks the response. Note the 404 is ambiguous on the
+   PRIVATE repo everything now lives in: it means both "the file isn't there
+   yet" and "this token cannot see the repo", because GitHub hides existence
+   rather than admitting a 403. Ledger reads go through classifyLedger, which
+   disambiguates; this plain wrapper does not, and its callers are the writes
+   and the photo calls, which have a key by definition. */
 function classify(res) {
   const { status, body, headers } = res;
   const msg = String(body?.message || "");
@@ -512,8 +530,8 @@ window.remote = {
      Every push has always been a commit, so the branch IS a version archive —
      this just makes it reachable from the phone. Both calls are READS, so they
      spend nothing from the 500-content-writes/hour budget the push and the
-     photos share, and neither needs a key on the public ledger repo, which is
-     what lets a device recover before it has been set up.
+     photos share. Both need the key, like everything else here now that the
+     ledger lives in the private repo.
 
      Deliberately behind an explicit tap in the UI rather than fetched on open:
      it is two round trips for something wanted rarely, and the local list
@@ -665,6 +683,12 @@ window.remote = {
       message: message || "ledger",
       encode: utf8ToBase64,
     });
+    /* The ledger and the photos live in ONE repo now, and GitHub's "≥1s between
+       writes" is per-repo. Before the merge this call could skip the gap because
+       it was the only write its repo ever saw; app.jsx pushes the ledger and
+       then immediately loops photo uploads, so without this the ledger PUT and
+       the first photo PUT land back-to-back and the second 409s. */
+    await spaceWrites();
     const res = await api(
       `/repos/${REMOTE.owner}/${REMOTE.repo}/contents/${REMOTE.path}`,
       { method: "PUT", body: JSON.stringify(body) }

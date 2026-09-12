@@ -2034,7 +2034,7 @@ const REMOTE_SAYS = {
     "That doesn’t look like a GitHub token — they start with github_pat_ or ghp_.",
   auth: "That key has expired or been revoked. Paste a new one.",
   forbidden:
-    "That key can’t write to the ledger repo. It needs Contents: read & write on mailaudit.",
+    "That key can’t write to the ledger repo. It needs Contents: read & write on mailaudit-data.",
   "rate-limit": "GitHub is throttling requests. Try again shortly.",
   conflict:
     "The remote copy changed since you last pulled. Pull first, or push anyway to overwrite it.",
@@ -2057,14 +2057,14 @@ const PHOTO_SAYS = {
   "no-access":
     "Photos need your key — they live in a private repo, so pulling them isn’t anonymous.",
   "no-key": "Photos need a key to sync. The ledger above is safe either way.",
-  auth: "That key can’t reach the photo repo. Check it covers mailaudit-photos.",
+  auth: "That key can’t reach the photo repo. Check it covers mailaudit-data.",
   forbidden:
-    "That key can’t write photos. It needs Contents: read & write on mailaudit-photos.",
+    "That key can’t write photos. It needs Contents: read & write on mailaudit-data.",
   "rate-limit":
     "GitHub is throttling photo uploads. The ledger is pushed — tap Push again shortly.",
   "no-branch":
     "The photo repo has no main branch yet — create it with a README first.",
-  missing: "The photo repo isn’t reachable. Create mailaudit-photos first.",
+  missing: "The photo repo isn’t reachable. Create mailaudit-data first.",
   offline: "No connection, so photos didn’t sync. Nothing was lost.",
   conflict: "GitHub is busy. The ledger is pushed — tap Push again to finish the photos.",
   server: "GitHub had trouble with the photos. Tap Push again to finish.",
@@ -3316,8 +3316,9 @@ export default function MailDayLedger() {
        cold start of a perfectly configured device — the same "I could not
        look" ≠ "all clear" rule peek and listPhotos follow. */
     if (!remoteInfo) return null;
-    /* a keyless device can PULL (the ledger repo is public) but can never push,
-       so it genuinely is not backed up, and saying so is honest not naggy */
+    /* a keyless device can do nothing remote at all now that the ledger lives
+       in the private repo — it cannot even see the backup, let alone write it.
+       So it genuinely is not backed up, and saying so is honest not naggy */
     if (!remoteInfo.hasKey) return "no-key";
     if (!remoteInfo.pushedAt) return "never";
     if (Date.now() - remoteInfo.pushedAt > SYNC_STALE_MS) return "stale";
@@ -3849,7 +3850,7 @@ export default function MailDayLedger() {
   /* The branch's own history, behind an explicit tap. Every push has always
      been a commit, so this archive already existed — it was only unreachable
      from the phone. Both calls are reads, so nothing here touches the
-     content-write budget, and neither needs a key on the public ledger repo.
+     content-write budget. Both need the key, like every call here does now.
      Not fetched on open: two round trips for something wanted rarely, and the
      local list already answers "undo what I just did". */
   const loadOlder = useCallback(async () => {
@@ -4456,9 +4457,10 @@ export default function MailDayLedger() {
      ADDS, so the residual risk is that the list changes shape, never that
      anything of the user's is lost.
 
-     Needs no key: the ledger repo is public, which is why `peek` runs keyless —
-     so it works on a device that has never been set up, which is the device
-     that most needs it.
+     Needs the key, like everything else since the ledger moved into the
+     private repo. A device that has never been set up gets `no-access` here and
+     the repair kit's line says so — which is the honest answer, where "nobody
+     is ahead" would be the dangerous one.
 
      It does not push. `alsoPush` is false, so no empty commit is manufactured
      for a device with nothing to send; if this device IS holding unpushed work,
@@ -4505,9 +4507,10 @@ export default function MailDayLedger() {
      timer: the app has never polled, and the question only has a consequence
      when someone is actually looking at the screen.
 
-     Runs without a key on purpose. Pulling the public ledger repo needs none,
-     so a keyless device can still merge — and telling it "your laptop is ahead"
-     is exactly the nudge that stops it pushing over the top later. */
+     A keyless device cannot read the private repo, so it cannot merge either —
+     `peek` answers {known:false} and the merge is refused rather than guessed.
+     "I could not look" must never render as "nobody is ahead": that reading is
+     what would let this device push over the one that can see. */
   useEffect(() => {
     if (!loaded || !window.remote || typeof window.remote.peek !== "function")
       return;
@@ -6722,7 +6725,7 @@ export default function MailDayLedger() {
                           <span style={partLab}>Photos</span>
                           <span style={partVal}>
                             {photoTarget.owner}/{photoTarget.repo} ·{" "}
-                            {photoTarget.branch}&nbsp;·&nbsp;private
+                            {photoTarget.branch}
                           </span>
                         </>
                       )}

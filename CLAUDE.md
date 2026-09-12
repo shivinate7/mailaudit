@@ -17,6 +17,26 @@ the mail-day working view), **Tally** (the same product name pooled across
 every seller, for "did all four of these arrive?" and for cost basis), and
 **Orphaned** (packages that arrive with no way to tell who sent them).
 
+## Working here
+
+**Before handing the owner a task, check whether it is yours to do.** Only
+escalate what genuinely needs their hands (a physical device), their credentials
+(a token UI) or their judgement (an irreversible or outward-facing call).
+Anything reachable by `gh`, `git`, an API call or a file edit is yours. Treat a
+task list addressed to them as a draft needing an audit pass before it ships, and
+when a step really is theirs, say why in a clause so the split reads as reasoned
+rather than arbitrary.
+
+**Work from outcomes, not from process.** This file is dense with decisions, and
+some of them have outlived the constraint that produced them — the "the ledger
+repo is public" argument survived the repo going private and sat there as the
+load-bearing reason for a design it no longer justified. When a rule blocks the
+obvious answer, check whether its stated reason still holds before designing
+around it. If the reason is dead but the rule is still right, keep it and
+re-justify it on current grounds, in the same commit. Verify empirically rather
+than reasoning from this file where you can: a documented seed leak turned out
+never to have reached a committed build.
+
 ## Architecture
 
 - `src/app.jsx` — the entire application, one React component file. No router,

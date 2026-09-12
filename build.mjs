@@ -6,8 +6,9 @@ import { gzipSync, gunzipSync } from "zlib";
 
 /* ---------- the public seed ----------
    The site is public; the ledger repo is not. Those are separate artifacts —
-   Pages serves `main` root and has never served the `data` branch — so sharing
-   the URL hands someone the app with no data in it at all.
+   the ledger lives on the `data` branch of the private `mailaudit-data` repo,
+   which Pages has never served — so sharing the URL hands someone the app with
+   no data in it at all.
 
    This closes that without reopening the repo: a snapshot is baked INTO
    index.html at build time, so a visitor gets the app and the data in one
@@ -24,17 +25,41 @@ import { gzipSync, gunzipSync } from "zlib";
    Snapshot, not live: it refreshes when you deploy. */
 const SEED_KEEP = ["items", "received", "stamps", "dateFilter", "sortBy", "itemSort"];
 
+/* The ledger moved out of this repo, so the ref moved with it. Still a local
+   git object read — no network and no key at build time — but it now needs a
+   remote named `ledger` pointing at mailaudit-data, fetched. `npm run deploy`
+   fetches it; a clone that has never set it up builds seedless and --check-seed
+   says so rather than failing. One-time setup is in CLAUDE.md. */
+const SEED_REMOTE = "ledger";
+const SEED_REF = `${SEED_REMOTE}/data:ledger.json`;
+
+/* True when this tree COULD build a seed — i.e. the ref resolves. The
+   distinction matters to --check-seed: a machine with no ledger remote (CI)
+   legitimately ships a seedless page, but a machine that can see the ledger and
+   still shipped one has a real bug, and that used to pass silently. */
+function seedRefAvailable() {
+  try {
+    execFileSync("git", ["rev-parse", "--verify", "--quiet", SEED_REF], {
+      stdio: "ignore",
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function buildSeed() {
   let raw;
   try {
-    /* straight off the data branch, which the deploying machine already has —
-       no network, no key, and nothing here reaches for the private repo */
-    raw = execFileSync("git", ["show", "origin/data:ledger.json"], {
+    raw = execFileSync("git", ["show", SEED_REF], {
       encoding: "utf8",
       maxBuffer: 64 * 1024 * 1024,
+      /* git's own "fatal: invalid object name" on stderr reads as a build
+         error when it is the ordinary seedless path */
+      stdio: ["ignore", "pipe", "ignore"],
     });
   } catch {
-    console.log("  seed: no origin/data ledger — building without one");
+    console.log(`  seed: no ${SEED_REF} — building without one`);
     return null;
   }
   let data;
@@ -153,10 +178,20 @@ function checkSeed() {
   const page = readFileSync("index.html", "utf8");
   const m = page.match(/<script id="seed"[^>]*>([^<]*)<\/script>/);
   if (!m) {
-    /* whether a seed is present at all is a property of the deploying
-       machine's refs, not of the sources — CI has none — so this is not a
-       failure. That a visitor gets an empty app is still worth saying. */
-    console.log("check: index.html carries no seed");
+    /* Whether a seed is present is a property of the deploying machine's refs,
+       not of the sources — CI has no ledger remote and legitimately ships a
+       seedless page. But "I cannot look" is not "all clear": on a machine that
+       CAN resolve the ref, a seedless committed page means the build silently
+       lost its seed, and both gates used to stay green on a permanently empty
+       public site. So the pass is conditional on not being able to do better. */
+    if (seedRefAvailable()) {
+      console.error(
+        `check: index.html carries no seed, but ${SEED_REF} resolves here — ` +
+          "the build dropped it. Run npm run build and commit the result."
+      );
+      return 1;
+    }
+    console.log(`check: index.html carries no seed (${SEED_REF} not available here)`);
     return 0;
   }
   let data;
