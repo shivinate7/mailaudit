@@ -709,6 +709,20 @@ honestly.
   the world-readable ledger cost exactly that, knowingly. A device with no key
   can now do nothing remote at all, which is why `no-access` is a `syncBroken`
   case with its own line rather than an error buried in a panel.
+  **`offline` is decided by a failed `fetch` and by nothing else.** There was a
+  `navigator.onLine === false` pre-flight in `api()` and `apiRaw()`; it is gone.
+  The flag is not authoritative — Chrome on macOS leaves it stuck false after a
+  sleep/wake or a VPN interface change, and a laptop was measured sitting at
+  `onLine: false` while that same fetch reached GitHub and answered 404. Sync
+  had been dead five days and the only symptom was a banner saying the
+  connection was gone: the app was declining requests that worked, and the
+  advisory line phrased its own refusal as a fact about the network. It is the
+  three-valued rule `peek`, `listPhotos` and `classifyLedger` all follow, read
+  in the other direction — *"I could not look"* is not a fact, and neither is
+  *"the browser says there is no network"*. The guard only ever saved a doomed
+  request; a device that really is offline rejects in the `catch` and gets the
+  identical error one round trip later. Don't reintroduce it as an
+  optimisation.
   Conflict detection is the Contents API's blob sha, and the sha sent is the one
   *this device last saw* — never one re-fetched moments earlier, which would
   make every push win and silently discard the other device's. A stale push

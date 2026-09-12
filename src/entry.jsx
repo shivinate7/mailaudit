@@ -375,12 +375,22 @@ async function api(path, init = {}) {
      read still works on a public repo, which is what makes a token-free pull on
      a fresh device possible. */
   if (token) headers.Authorization = `Bearer ${token}`;
-  if (typeof navigator !== "undefined" && navigator.onLine === false)
-    throw remoteErr("offline");
   let res;
   try {
     res = await fetch(API + path, { ...init, headers });
   } catch {
+    /* The ONLY place `offline` is decided, and deliberately so. There used to
+       be a `navigator.onLine === false` pre-flight above this, which treated a
+       browser flag as authoritative — and Chrome on macOS leaves it stuck false
+       after a sleep/wake or a VPN interface change. Measured on the laptop:
+       onLine false, and this very fetch reaching GitHub and answering 404. The
+       app was refusing requests that worked, sync was dead for five days, and
+       the only symptom was a banner saying the connection was gone.
+
+       It is the same rule peek(), listPhotos() and classifyLedger() are all
+       three-valued for: "I could not look" is not a fact about the world. The
+       guard only ever saved a doomed request; a genuinely offline device
+       rejects here and gets the identical error one round trip later. */
     throw remoteErr("offline");
   }
   let body = null;
@@ -406,8 +416,6 @@ async function apiRaw(path) {
     "X-GitHub-Api-Version": "2022-11-28",
   };
   if (token) headers.Authorization = `Bearer ${token}`;
-  if (typeof navigator !== "undefined" && navigator.onLine === false)
-    throw remoteErr("offline");
   let res;
   try {
     res = await fetch(API + path, { headers });
