@@ -3748,4 +3748,55 @@ eq(
 );
 ok(!!bar(bolt()), "44.8 and carries the bar for a partly-received item");
 
+/* ---- 45. a device that only ever MERGES is still backed up ----------------
+   Reported from the phone: "hasn't been backed up since 09-16" on a device
+   whose data was demonstrably current, with no such line on the laptop. Both
+   halves of that were true at once, which is the tell — `syncBroken` measured
+   `pushedAt` alone, so it was asking "did I write recently?" when the line it
+   renders claims "are my bytes on GitHub?".
+
+   Those come apart as soon as the two devices have different jobs. The laptop
+   is where the editing happens, so it pushes and never goes stale; the phone
+   mostly merges what the laptop sent, and `acceptPull` records `pulledAt`, not
+   `pushedAt`. A phone in perfect step reported itself unbacked-up for as long
+   as it went without writing.
+
+   Taking the later of the two cannot hide a real problem, because every branch
+   above this one outranks it — which is what 45.3 pins. */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { remote: null });
+await openSync();
+await saveGitHubKey();
+await click(btn(/^Push$/), "get in step");
+await settle();
+
+/* Age the write past the 24h threshold while the READ stays fresh — a phone
+   that merged this morning and has not edited anything since.
+
+   Closing the panel is what makes this land, and it is not test noise:
+   `remoteInfo` is refreshed by an effect keyed on `[loaded, syncOpen]`, so
+   nothing else in the app re-reads the device record. The first draft set the
+   timestamps and called foreground(), which re-peeks but never re-reads
+   status — the component kept the pushedAt from the push above and the mutant
+   survived every assertion. */
+remote.pushedAt = Date.now() - 3 * 86400000;
+remote.pulledAt = Date.now();
+await click(btn(/tap to/), "close the panel, refreshing status on the way");
+await settle();
+ok(
+  !/tap to fix/.test(text()),
+  "45.1 pulled today, pushed three days ago — not stale"
+);
+ok(
+  !btn(/Not backed up since/),
+  "45.2 and it does not accuse a device that is holding the remote's bytes"
+);
+
+/* The guard that makes 45.1 safe. A fresh pulledAt must never mask a device
+   that is genuinely behind — staleness is the LAST branch for this reason. */
+remote.content = utf8ToBase64(LAPTOP_PUSHED);
+remote.sha = "sha-45-behind";
+await foreground();
+await settle();
+ok(/newer lines/.test(text()), "45.3 a fresh pulledAt never masks being behind");
+
 report();

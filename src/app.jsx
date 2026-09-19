@@ -3286,6 +3286,15 @@ export default function MailDayLedger() {
      Pull that recovers it — the "a control that recovers state must not be
      gated on that state existing" rule that widened Backup once and Sync twice
      already. */
+  /* The last time this device and the backup agreed, in EITHER direction.
+     One definition, read by the decision below and by the line's own copy, so
+     a change to what "backed up" means cannot leave the sentence saying
+     something else. */
+  const syncedAt = useMemo(
+    () => Math.max(remoteInfo?.pushedAt || 0, remoteInfo?.pulledAt || 0) || null,
+    [remoteInfo]
+  );
+
   const syncBroken = useMemo(() => {
     if (!window.remote) return null;
     /* A visitor is not an unbacked-up device, and "tap to set it up" is
@@ -3320,10 +3329,26 @@ export default function MailDayLedger() {
        in the private repo — it cannot even see the backup, let alone write it.
        So it genuinely is not backed up, and saying so is honest not naggy */
     if (!remoteInfo.hasKey) return "no-key";
-    if (!remoteInfo.pushedAt) return "never";
-    if (Date.now() - remoteInfo.pushedAt > SYNC_STALE_MS) return "stale";
+    /* **The clock is the last time this device AGREED with the backup, not the
+       last time it wrote to it.** It used to read `pushedAt` alone, which asks
+       "did I write recently?" when the question is "are my bytes on GitHub?".
+       Those come apart the moment the two devices have different jobs: the
+       laptop is where the editing happens, so it pushes; the phone mostly
+       merges what the laptop sent. A phone in perfect step — same sha, nothing
+       outstanding — reported "Not backed up since 09-16" for as long as it went
+       without writing, which is affirmatively wrong rather than merely
+       unhelpful, and it is the line whose whole job is to be believed.
+
+       `acceptPull` records `pulledAt` for exactly this, and a merge goes
+       through it. Taking the later of the two cannot paper over a real problem,
+       because every branch above outranks this one: unpushed local work against
+       a moved remote is `behind`, and a push that failed is `error`. What is
+       left when both of those are clear is a device holding the remote's bytes,
+       which is what "backed up" means. */
+    if (!syncedAt) return "never";
+    if (Date.now() - syncedAt > SYNC_STALE_MS) return "stale";
     return null;
-  }, [pushState, remoteMsg, remoteInfo, ahead, seedShown]);
+  }, [pushState, remoteMsg, remoteInfo, ahead, seedShown, syncedAt]);
 
   const snapshot = useCallback(
     () => ({
@@ -6288,10 +6313,8 @@ export default function MailDayLedger() {
                     ? "Your other device has newer lines — tap to bring them in"
                     : !syncBroken
                     ? `Backed up${
-                        remoteInfo?.pushedAt
-                          ? ` ${new Date(remoteInfo.pushedAt)
-                              .toISOString()
-                              .slice(0, 10)}`
+                        syncedAt
+                          ? ` ${new Date(syncedAt).toISOString().slice(0, 10)}`
                           : ""
                       } — tap to close`
                     : syncBroken === "no-key"
@@ -6299,7 +6322,7 @@ export default function MailDayLedger() {
                     : syncBroken === "never"
                     ? "Nothing has been backed up yet — tap to fix"
                     : syncBroken === "stale"
-                    ? `Not backed up since ${new Date(remoteInfo.pushedAt)
+                    ? `Not backed up since ${new Date(syncedAt)
                         .toISOString()
                         .slice(0, 10)} — tap to fix`
                     : "The backup needs attention — tap to fix"}

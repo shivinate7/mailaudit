@@ -973,8 +973,8 @@ So there is **one line**, advisory manila, full width above the ruled row (a
 sentence has to wrap; the row's cells are a fixed 40px of uppercase mono), and
 it is the sole entrance to what is now a repair kit: `Not backed up since
 Aug 30 — tap to fix`. `syncBroken` decides, in priority order: a conflict, an
-errored last attempt, **being behind**, no key on this device, never pushed, or
-a successful push older than `SYNC_STALE_MS` (24h — the push is automatic and idle-debounced, so
+errored last attempt, **being behind**, no key on this device, never synced, or
+a last agreement with the remote older than `SYNC_STALE_MS` (24h — the push is automatic and idle-debounced, so
 anything shorter fires on an ordinary evening with the phone face down, and
 anything longer stops being a warning). It is deliberately **not gated on there
 being local data**: a device with an empty ledger and no key is the fresh phone,
@@ -989,6 +989,25 @@ is this line, so it could only be found by someone who already knew to look. And
 the 24h staleness backstop could not rescue it: `syncBroken` is a `useMemo` that
 reads `Date.now()`, and a stalled device changes none of its deps, so that
 comparison is frozen too. Tests 38b.1–38b.3.
+
+**The staleness clock is the last time this device AGREED with the backup, in
+either direction — not the last time it wrote.** `syncedAt` is
+`max(pushedAt, pulledAt)`, defined once and read by both the decision and the
+line's own copy so the two cannot drift. It measured `pushedAt` alone until a
+phone reported "Not backed up since 09-16" while demonstrably holding the
+laptop's newest lines. Both halves were true at once, which is the tell: the
+question the line answers is *"are my bytes on GitHub?"*, and `pushedAt` answers
+*"did I write recently?"*. Those come apart the moment two devices have
+different jobs — the laptop is where the editing happens so it pushes and never
+goes stale, while the phone mostly merges, and `acceptPull` records `pulledAt`,
+not `pushedAt`. A phone in perfect step accused itself for as long as it went
+without writing, on the one line whose entire job is to be believed.
+Taking the later of the two cannot paper over a real problem, and the reason is
+structural rather than lucky: **every branch above this one outranks it.**
+Unpushed local work against a moved remote is `behind`; a push that failed is
+`error`. What is left once those are clear is a device holding the remote's
+bytes, which is what "backed up" means. Group 45, and 45.3 is the assertion
+that pins the ordering — a fresh `pulledAt` must never mask being behind.
 
 **`remoteInfo == null` returns `null`, not `"no-key"`.** It is null until its
 effect runs, one commit after first paint, so reading it as "no key" flashed the
@@ -1701,7 +1720,7 @@ between them means Backup → restore, and photos need *Backup + photos*.
 
 ## Testing approach
 
-`npm test` — 538 assertions, no test framework, ~60s (groups 30–31 spend a few
+`npm test` — 541 assertions, no test framework, ~60s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
@@ -1750,6 +1769,24 @@ turn the suite red. One fixture note worth keeping — the first draft checked t
 package in under the default Showing, where a completed package correctly leaves
 the list, so the element under assertion left the page; the group toggles to
 Everything first.
+
+New in group 45 (a device that only merges is still backed up). Three
+assertions, and the method note is worth more than the count. **The first draft
+could not fail**: it aged `remote.pushedAt`, called `foreground()` and asserted
+— but `foreground()` re-peeks and never re-reads `status()`, so the component
+kept the timestamp from the push above and the mutant survived all of it.
+`remoteInfo` is refreshed by an effect keyed on `[loaded, syncOpen]`, so the
+test has to toggle the panel to make the device record land. Watch for this
+shape generally: **after changing a value the adapter owns, check that anything
+actually re-reads it.** Mutation-confirmed — staleness measured off `pushedAt`
+alone kills 45.1 and 45.2.
+`test/harness.mjs` needed the same correction to be able to prove it:
+`acceptPull` set `pulledAt` to the frozen `REMOTE_NOW`, exactly the hole the
+comment two functions below already warns about for `pushedAt`. It was left
+frozen because nothing read it; the day `syncBroken` did, every merged device
+would have been permanently stale and the healthy state unreachable from a
+test. **When a mock's field stops being decorative, re-read the comment next to
+the field that already wasn't.**
 
 New in group 44 (the card stops moving under the thumb). Same shape as 42, and
 the same honest limit: the defect is a **layout shift**, jsdom has no layout,

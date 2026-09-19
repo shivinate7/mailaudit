@@ -319,7 +319,13 @@ const remoteApi = {
   async acceptPull(sha) {
     remote.calls.push({ op: "acceptPull", sha });
     remote.deviceSha = sha;
-    remote.pulledAt = REMOTE_NOW;
+    /* Date.now(), NOT the frozen REMOTE_NOW — the same correction `push` below
+       already carries, and for the same reason now that it is also true here:
+       `syncBroken` measures staleness against the later of pushedAt/pulledAt,
+       so a frozen pulledAt would make every merged device permanently stale and
+       put the healthy state out of the suite's reach. It was left frozen while
+       nothing read it. The adapter uses Date.now(); so must this. */
+    remote.pulledAt = Date.now();
   },
   async push(text, message, overrideSha) {
     if (!remote.key)
