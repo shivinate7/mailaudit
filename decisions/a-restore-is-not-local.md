@@ -21,3 +21,9 @@ Restoring a version rewrites items, received counts, and envelopes, all fields t
   would therefore silently re-add the very lines the rollback removed. The
   repair path would undo the repair.
 ```
+
+## See also
+
+- `sha-accepted-only-after-apply` — the sha rule a restore does not touch.
+- `a-store-that-cannot-write-says-so` — the version store a restore reads from.
+- `milestones-are-taken-before-the-risk` — the safety net a restore takes on the way in.

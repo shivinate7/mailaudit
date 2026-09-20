@@ -10,3 +10,8 @@ The order-id button in Tally stops its click from reaching the row underneath. T
   any tap, so without it a navigation gesture would silently write to the
   ledger — the exact mis-tap invariant 5 exists to prevent. `revealed` is
 ```
+
+## See also
+
+- `a-search-filters-inside-a-package` — the feature this control belongs to.
+- `a-reveal-ignores-hidedone-too` — the reveal rule this button triggers.

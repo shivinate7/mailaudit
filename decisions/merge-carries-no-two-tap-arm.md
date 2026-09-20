@@ -14,3 +14,8 @@ Merge and push pulls, unions, applies, and pushes in one step, and it destroys n
   completes the rejected push, and the *ahead-notice*, where it does not (there
   may be nothing local to send, and an empty commit is noise).
 ```
+
+## See also
+
+- `a-stale-push-conflicts-pull-gets-two-tap` — the confirm pattern this control skips.
+- `sha-accepted-only-after-apply` — the rule merge still depends on.

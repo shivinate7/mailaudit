@@ -10,3 +10,8 @@ A revealed package must ignore hideDone as well as the search query. Otherwise t
   package is fully checked in, and the "+N more" count promises lines the
   hideDone filter then swallows. Reveals clear on `query`/`dateFilter` but
 ```
+
+## See also
+
+- `a-search-filters-inside-a-package` — the search this reveal answers.
+- `order-id-button-stops-propagation` — the other tap control in the same feature.

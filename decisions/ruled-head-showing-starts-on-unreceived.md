@@ -15,3 +15,8 @@ The Showing cell shows state, not an instruction, and it always starts on unrece
   for as long as that session lasts. Tests 12.4–12.7; 12.7 pins the reload
   specifically, which is the whole point of it not being persisted.
 ```
+
+## See also
+
+- `ruled-head-a-resume-counts-as-reopening` — the other trigger that resets this state.
+- `no-layout-shift-under-the-pointer` — the invariant this state avoids breaking.

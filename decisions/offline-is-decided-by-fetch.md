@@ -20,3 +20,8 @@ The app decides offline only from an actual failed network request, never from t
   identical error one round trip later. Don't reintroduce it as an
   optimisation.
 ```
+
+## See also
+
+- `peek-is-three-valued` — the same three-valued rule applied to the sha read.
+- `listphotos-is-three-valued` — the same rule applied to the photo list.

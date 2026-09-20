@@ -24,3 +24,9 @@ Unpushed local work against a moved remote is `behind`; a push that failed is
 bytes, which is what "backed up" means. Group 45, and 45.3 is the assertion
 that pins the ordering — a fresh `pulledAt` must never mask being behind.
 ```
+
+## See also
+
+- `ruled-head-one-advisory-line-is-the-only-entrance` — the line this clock feeds.
+- `sha-accepted-only-after-apply` — the sha rule that keeps a pull honest about agreement.
+- `pull-needs-a-key-too` — a case this clock must treat as broken sync.

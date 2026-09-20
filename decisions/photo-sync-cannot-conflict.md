@@ -14,3 +14,8 @@ Photo sync works as a set difference over immutable, id-addressed files. Each re
   Git Data API (one tidy commit, but a ref update needs a parent sha, so two
   devices backing up at once would genuinely collide). Protect it.
 ```
+
+## See also
+
+- `photo-errors-never-reach-pushstate` — the consequence of this design for error handling.
+- `photos-stay-out-of-the-ledger` — the boundary that keeps photo ids simple to diff.

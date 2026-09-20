@@ -15,3 +15,9 @@ A 404 from the photo repo means either nothing pushed yet, or a private repo the
     when it doesn't know, and a 404 is disambiguated by one extra
     `GET /repos/{owner}/{repo}`. Tests 26.13b, 30.13–30.15.
 ```
+
+## See also
+
+- `peek-is-three-valued` — the same rule applied to the ledger sha.
+- `offline-is-decided-by-fetch` — the same rule read in the other direction.
+- `photo-ids-unreadable-local` — the local half of the same three-valued shape.

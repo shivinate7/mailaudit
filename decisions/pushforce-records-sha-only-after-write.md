@@ -18,3 +18,8 @@ A forced push stores its looked-up sha only after the bytes actually reach GitHu
   ordering *and* cleared `remote.fail` on the way in, so a force could never
   fail and nothing could ever have caught this.
 ```
+
+## See also
+
+- `sha-accepted-only-after-apply` — the same rule reached through the pull door instead of the force door.
+- `a-stale-push-conflicts-pull-gets-two-tap` — the conflict this rule keeps honest.

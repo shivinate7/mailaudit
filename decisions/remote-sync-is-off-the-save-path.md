@@ -8,3 +8,8 @@ The local save runs on its own debounced path with its own saved or saving indic
 - Persistence auto-saves debounced 500ms with saved/saving indicator. The remote
   is deliberately *not* on that path — no error there ever touches `saving`.
 ```
+
+## See also
+
+- `a-store-that-cannot-write-says-so` — a failure this local save must not inherit.
+- `offline-is-decided-by-fetch` — the check that decides if remote sync can run at all.

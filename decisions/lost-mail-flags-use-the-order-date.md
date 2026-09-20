@@ -10,3 +10,8 @@ An untracked, unreceived package gets an amber flag at fourteen days and a red f
   eligibility ends 30 days after estimated delivery; order date is a
   conservative proxy since EDD isn't in the CSV).
 ```
+
+## See also
+
+- `a-stamped-package-hides-the-lost-mail-warning` — the case that suppresses this flag.
+- `one-stamp-per-package` — the record that decides if the case above applies.

@@ -13,3 +13,9 @@ Push needs a fine-grained PAT (`Contents: read & write`, that repo
   can now do nothing remote at all, which is why `no-access` is a `syncBroken`
   case with its own line rather than an error buried in a panel.
 ```
+
+## See also
+
+- `a-recovery-control-is-not-gated-on-its-own-state` — the rule that keeps Pull reachable anyway.
+- `ruled-head-one-advisory-line-is-the-only-entrance` — the line that leads to Pull.
+- `offline-is-decided-by-fetch` — the read a keyless pull still depends on.

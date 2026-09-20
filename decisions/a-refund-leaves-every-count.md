@@ -13,3 +13,8 @@ A package stamped Refunded or Partial refund drops out of every count and the no
   makes its card **vanish from the list under your finger** — the precedent
   is "Mark all received" under Unreceived, and the `N stamped` cell is the
 ```
+
+## See also
+
+- `a-stamped-package-hides-the-lost-mail-warning` — another effect a stamp has on a package.
+- `one-stamp-per-package` — the stamp that triggers this exclusion.

@@ -13,3 +13,9 @@ The app sends the sha it last saw for conflict checks, never one fetched again r
   overwrote is still in the branch's history. A bad *pull* has no such
   recovery — which is why Pull gets the two-tap and Push doesn't.
 ```
+
+## See also
+
+- `sha-accepted-only-after-apply` — the rule that decides what counts as stale.
+- `merge-carries-no-two-tap-arm` — the one confirm control that breaks this pattern on purpose.
+- `pushforce-records-sha-only-after-write` — the force path this rule still guards.

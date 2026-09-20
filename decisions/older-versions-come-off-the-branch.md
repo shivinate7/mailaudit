@@ -15,3 +15,8 @@ Every push has always created a commit, so the remote branch already held a full
   afterwards rolls the remote back as a *new* commit, which keeps that
   reversible in turn. Groups 39 and 41.
 ```
+
+## See also
+
+- `milestones-are-taken-before-the-risk` — the local tiers this branch history extends.
+- `sha-accepted-only-after-apply` — the sha rule a restore from here still follows.

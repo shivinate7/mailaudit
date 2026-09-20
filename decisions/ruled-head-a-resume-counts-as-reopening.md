@@ -22,3 +22,9 @@ An iOS home-screen app is backgrounded, not closed, so a page remount is not the
   `background()`/`foreground()` with the clock frozen across the trip.
 
 ```
+
+## See also
+
+- `ruled-head-the-elapsed-time-is-handed-forward` — the signal that carries the away time to the merge check.
+- `ruled-head-showing-starts-on-unreceived` — the state a resume resets.
+- `peek-is-three-valued` — the read that a resume triggers.

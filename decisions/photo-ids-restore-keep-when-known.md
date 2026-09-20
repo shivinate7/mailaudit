@@ -16,3 +16,9 @@ A restore keeps a photo id in three cases only. The blob must sit in the payload
   was already latent on the file path (plain Backup → restore on the same
   device); it was simply rarely exercised. Tests 19.11–19.12, 26.11–26.13.
 ```
+
+## See also
+
+- `photo-ids-unreadable-local` — the local half of the same keep-or-strip rule.
+- `photos-stay-out-of-the-ledger` — the boundary this rule protects.
+- `a-restore-is-not-local` — the restore path this rule guards.

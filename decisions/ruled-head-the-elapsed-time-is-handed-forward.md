@@ -19,3 +19,8 @@ The resume handler must pass its own measured away-time to the merge check, inst
   too, and the more valuable half, since a fresh phone should come back already
   reconciled rather than needing someone to go looking for a control.
 ```
+
+## See also
+
+- `ruled-head-a-resume-counts-as-reopening` — the resume behavior this signal drives.
+- `peek-is-three-valued` — the read that consumes this signal.

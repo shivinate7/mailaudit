@@ -11,3 +11,9 @@ Each package holds at most one order stamp, set by hand from a fixed list of kin
   with an optional free line. Picking another kind **replaces** it and
   re-dates it; editing only the note keeps the date. Rendered as a band under
 ```
+
+## See also
+
+- `stamp-removal-writes-a-tombstone` — how a stamp is undone.
+- `a-refund-leaves-every-count` — an effect two of the stamp kinds cause.
+- `a-stamped-package-hides-the-lost-mail-warning` — another effect of setting a stamp.

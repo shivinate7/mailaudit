@@ -11,3 +11,8 @@ Cost basis sums price times quantity over non-canceled copies in the active date
   paid and never moves when copies are checked in; the red figure beside it is
   what's still outstanding.
 ```
+
+## See also
+
+- `unit-rate-is-not-the-position` — the other Tally figure basis feeds.
+- `tally-pools-on-the-exact-name` — the grouping basis is computed over.

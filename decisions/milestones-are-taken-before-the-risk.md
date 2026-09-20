@@ -13,3 +13,9 @@ A milestone version saves right before any operation that can lose data in bulk,
   gate keeps a mail day's hundreds of taps from spending the ring on one
   package. The **day anchor** is derived, not stored (see `version-rules.mjs`).
 ```
+
+## See also
+
+- `a-store-that-cannot-write-says-so` — the failure that could silently skip a milestone.
+- `a-restore-is-not-local` — an operation a milestone guards.
+- `older-versions-come-off-the-branch` — the other half of the version history.
