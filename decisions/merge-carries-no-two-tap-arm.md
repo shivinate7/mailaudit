@@ -1,4 +1,4 @@
-# Merge Never Needs A Two Tap Arm
+# Merge never needs a two-tap arm
 
 Merge and push pulls, unions, applies, and pushes in one step, and it destroys nothing from either device. Because of that, it skips the two-tap confirm pattern reserved for destructive actions. Arming a control that destroys nothing would say the opposite of what the action does.
 

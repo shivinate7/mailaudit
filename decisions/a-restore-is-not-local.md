@@ -1,4 +1,4 @@
-# A Restore Is Not Local
+# A restore is not local
 
 Restoring a version rewrites items, received counts, and envelopes, all fields the auto-push debounce watches. Ninety seconds later, the restored ledger publishes to the remote with nobody confirming that step. The two-tap restore control now says this out loud, because replace everything reads as local even though it is not. A Reset carries the identical risk, since it keeps the same sha and publishes an empty ledger the same way.
 

@@ -1,4 +1,4 @@
-# A Stamp Hides The Lost Mail Warning
+# A stamp hides the lost-mail warning
 
 Any stamped package hides the lost-mail warning, in its header and in its Tally source row. The order is already being handled by hand, so the warning would add nothing. For a reshipped order, the original order date carries no useful meaning.
 

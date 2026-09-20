@@ -1,4 +1,4 @@
-# Pull Gets The Two Tap, Push Does Not
+# Pull gets the two-tap, push does not
 
 The app sends the sha it last saw for conflict checks, never one fetched again right before the push. A stale push reports a conflict and changes nothing, and every push stays recoverable as a commit in history. A bad pull has no matching recovery. That is why only Pull carries the two-tap confirm, and Push does not.
 

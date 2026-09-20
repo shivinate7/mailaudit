@@ -1,4 +1,4 @@
-# Remote Sync Never Touches The Save Indicator
+# Remote sync never touches the save indicator
 
 The local save runs on its own debounced path with its own saved or saving indicator. Remote sync sits deliberately outside that path. No remote error, of any kind, ever touches the local saving state.
 

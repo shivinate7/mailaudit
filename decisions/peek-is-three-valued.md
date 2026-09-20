@@ -1,4 +1,4 @@
-# Peek Is Three Valued, Not A Guess
+# peek is three-valued, not a guess
 
 The peek check reads only the remote's blob sha, a few hundred bytes, instead of the full ledger. It answers with one of three states, because could not look must never read as all clear. Reading an unknown state as clear is exactly the state where a push would overwrite the other device. Auto-push checks peek before every write and declines on an ahead or unknown result.
 

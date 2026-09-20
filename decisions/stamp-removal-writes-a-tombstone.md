@@ -1,4 +1,4 @@
-# Removing A Stamp Writes A Tombstone
+# Removing a stamp writes a tombstone
 
 Removing an order stamp writes a tombstone value instead of deleting the entry. A hole in the data cannot survive a merge the way a tombstone can. The refunded and stamped id sets keep a stable identity tied to membership. A note edit alone does not rebuild the package list or refreeze its sort order.
 
