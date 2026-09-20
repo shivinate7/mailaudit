@@ -24,3 +24,9 @@ Nothing the app writes should touch the source repository, so a backup can never
    refuses anything outside `SEED_KEEP`: the two together ask whether the page
    is this repo's code, and then what its data publishes.
 ```
+
+## See also
+
+- `one-repo-for-both-halves` — why the source repository must stay untouched by a backup
+- `check-build-ignores-seed` — the check one of these workflows runs
+- `backup-watchdog-catches-silent-failure` — the other scheduled workflow in the private repository

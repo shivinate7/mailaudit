@@ -25,3 +25,11 @@ The merge module never drops a line, an item, or a received count. A merge that 
   replace, and pushed — invariant 2's five sites in `app.jsx` are this file's
   sixth.
 ```
+
+## See also
+
+- `b64-fails-by-producing-plausible-data` — the same reasoning, on the base64 module
+- `photo-rules-fails-quietly` — the same reasoning, on the photo-sync module
+- `remote-rules-fail-quietly` — the same reasoning, on the remote adapter
+- `auto-push-safe-because-merge-exists` — why this rule is what makes auto-push safe
+- `imports-merge-never-replace` — the invariant this module's union logic also serves

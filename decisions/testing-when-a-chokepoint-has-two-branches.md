@@ -12,3 +12,8 @@ first draft of the group, all counts and lists, let the mutant live. Only the
 Orphaned candidates read `liveItems`, so only an envelope test could see it.
 When a chokepoint has two branches, assert on both.
 ```
+
+## See also
+
+- `testing-one-tier-must-not-decide-another` — a related shape, where one tier can hide a mutant on another
+- `merge-rules-only-add` — the two-branch chokepoint that hid the refund mutant

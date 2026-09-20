@@ -19,3 +19,9 @@ you leave Orphaned, because the composer's draft lives in local state inside
 that view and is already gone by then — the flag was outliving the thing it
 described.)
 ```
+
+## See also
+
+- `auto-push-safe-because-merge-exists` — the merge these guards protect
+- `two-device-merge-must-be-proven-first` — the proof this guarded merge needs before two devices sync
+- `no-native-dialogs` — the confirm pattern these guards sit behind

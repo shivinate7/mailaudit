@@ -17,3 +17,10 @@ Photo naming, the already-there check, and the sync plan all live in one pure mo
   `version-rules.mjs`), whose dependencies are otherwise react, react-dom and
   papaparse.
 ```
+
+## See also
+
+- `b64-fails-by-producing-plausible-data` — the same reasoning, on the base64 module
+- `remote-rules-fail-quietly` — the same reasoning, on the remote adapter
+- `merge-rules-only-add` — the same reasoning, on the merge module
+- `remote-is-transport-not-storage` — the adapter these naming rules serve

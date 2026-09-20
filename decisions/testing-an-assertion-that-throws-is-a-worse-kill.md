@@ -10,3 +10,8 @@ A test that throws on a mutant is worse than one that fails cleanly. Three mutan
   aborts a top-to-bottom suite with no isolation and masks every group after it.
   Those reads are guarded now (`beforeReset && JSON.parse(...)`).
 ```
+
+## See also
+
+- `testing-an-assertion-that-cannot-fail-is-decoration` — the neighboring failure mode of a weak assertion
+- `version-tiers-are-unioned` — the version suite where the guarded reads live

@@ -11,3 +11,8 @@ forgetting to clear envelopes, and undo restoring a snapshot instead of
 subtracting its own delta. Do the same when you add a claim; an assertion that
 can't fail is decoration.
 ```
+
+## See also
+
+- `testing-after-a-pull-payload-equality-proves-nothing` — a specific case of an assertion that cannot fail
+- `testing-an-assertion-that-throws-is-a-worse-kill` — another way an assertion can fail to protect the suite

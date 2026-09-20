@@ -19,3 +19,8 @@ deflates to 49KB inlined; `entry.jsx` inflates it with `DecompressionStream`,
 the same primitive the version store uses, so `app.jsx` never learns how the
 seed was packed.
 ```
+
+## See also
+
+- `the-public-seed` — what these guards protect a keyed device from
+- `check-seed-backstop-not-proof` — the check that verifies what the seed publishes

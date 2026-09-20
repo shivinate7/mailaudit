@@ -14,3 +14,8 @@ test has to toggle the panel to make the device record land. Watch for this
 shape generally: **after changing a value the adapter owns, check that anything
 actually re-reads it.**
 ```
+
+## See also
+
+- `testing-when-a-mock-field-stops-being-decorative` — a mock-side version of the same unread-value trap
+- `sync-runs-itself` — the automatic status this re-read check was written for

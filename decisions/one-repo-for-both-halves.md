@@ -15,3 +15,10 @@ backup store does not belong in the repo that serves a public site — but the
 consequence is real: **every device needs the key for everything**, because
 GitHub hides a repo you cannot see behind a 404 rather than a 403.
 ```
+
+## See also
+
+- `data-branch-setup` — the branch inside this repository that holds the ledger
+- `photo-branch-must-preexist` — the branch inside this repository that holds the photos
+- `fine-grained-token-single-repo` — the token scope this single repository allows
+- `ci-workflow-filters-guarantee-no-rebuild-trigger` — why a public source repository stays untouched by backups

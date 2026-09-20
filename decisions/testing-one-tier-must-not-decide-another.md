@@ -16,3 +16,8 @@ When several rules can each keep or drop the same record, a test on one rule mus
   the day anchor off it. **When asserting that one tier keeps or drops
   something, make sure no other tier is quietly deciding it for you.**
 ```
+
+## See also
+
+- `version-tiers-are-unioned` — the union design this testing pitfall lives inside
+- `testing-when-a-chokepoint-has-two-branches` — a related shape, where one path can hide a mutant on another

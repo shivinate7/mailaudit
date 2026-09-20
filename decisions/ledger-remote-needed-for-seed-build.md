@@ -14,3 +14,9 @@ failing — but on a machine where the ref *does* resolve, a seedless committed
 page is a hard failure, because that means the build dropped a seed it could
 have made.
 ````
+
+## See also
+
+- `the-public-seed` — what the seed this remote supplies actually contains
+- `check-build-ignores-seed` — the check that reports a seedless build
+- `data-branch-setup` — the branch this remote must fetch

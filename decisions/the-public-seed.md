@@ -27,3 +27,9 @@ text** (the kind and date stay, so the status band still reads). Photos never
 went near the ledger. Widen `SEED_KEEP` only on purpose — the Pages site is
 world-readable and git is permanent.
 ```
+
+## See also
+
+- `check-seed-backstop-not-proof` — the check that verifies what this seed actually publishes
+- `seed-load-guards` — the guards that keep this seed off a keyed device
+- `ledger-remote-needed-for-seed-build` — the remote a build needs to bake this seed in

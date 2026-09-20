@@ -16,3 +16,9 @@ thinking should happen. It is a backstop, not a proof: it can only refuse the
 leaks someone already thought of, which is why the hand grep stays the
 instruction.
 ```
+
+## See also
+
+- `check-build-ignores-seed` — the other half of the same check, on whether the page is this repository's code
+- `the-public-seed` — what the seed is allowed to publish
+- `seed-load-guards` — the guards on the other end, when the seed loads

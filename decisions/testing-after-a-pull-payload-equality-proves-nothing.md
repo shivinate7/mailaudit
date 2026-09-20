@@ -12,3 +12,8 @@ landed or not, and the mutant survived. It now asserts on the **sha advancing**,
 which is the only thing that distinguishes the two states. Watch for this shape
 generally: after a pull, payload-equality assertions prove nothing.
 ```
+
+## See also
+
+- `testing-an-assertion-that-cannot-fail-is-decoration` — the general rule this specific case follows
+- `merge-rules-only-add` — the pull and merge behavior this assertion was written to check

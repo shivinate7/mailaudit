@@ -28,3 +28,9 @@ Setting up sync ends with an actual conflict test, not a successful push. One de
    separate ledgers, so they stand in for two devices without needing a second
    phone — see "Running it locally".
 ```
+
+## See also
+
+- `auto-push-safe-because-merge-exists` — why this proof matters before automatic sync runs
+- `push-and-merge-guard-differently` — the guard rules this proof exercises
+- `merge-rules-only-add` — the union rule this conflict test is proving

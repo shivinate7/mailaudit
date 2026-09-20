@@ -15,3 +15,9 @@ The base64 helpers for the Contents API get their own file. A JPEG pushed throug
   because it is the one piece here that fails by producing *plausible corrupted
   data* rather than an error, and `entry.jsx` can't be loaded from a test.
 ```
+
+## See also
+
+- `photo-rules-fails-quietly` — the same reasoning applied to photo naming
+- `remote-rules-fail-quietly` — the same reasoning applied to the remote adapter
+- `merge-rules-only-add` — the same reasoning applied to the merge module

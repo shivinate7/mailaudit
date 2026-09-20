@@ -13,3 +13,9 @@ emails to themselves. Keeping it out makes that impossible by construction
 rather than by remembering. Verified in a browser: after saving a key,
 `storage.list()` still returns only `["mailday:v1"]`.
 ```
+
+## See also
+
+- `the-token-is-a-credential` — the invariant this placement protects
+- `shared-origin-needs-namespace` — the namespace this token deliberately sits outside
+- `fine-grained-token-single-repo` — the scope of the token kept out of that namespace
