@@ -8,6 +8,7 @@
     "check:build": "node build.mjs --check",
     "check:seed": "node build.mjs --check-seed",
     "check:docs": "node check-docs.mjs",
+    "check:records": "node check-records.mjs",
     "test": "node test/app.test.mjs",
     "serve": "node dev-server.mjs",
     "deploy": "git fetch ledger data --quiet || true && npm run build && npm test && git switch -c deploy/$(date +%Y%m%d%H%M%S)-$$ && git add index.html && git commit -m \"deploy: rebuild index.html\" && git push -u origin HEAD && gh pr create --fill --base main && git switch -"

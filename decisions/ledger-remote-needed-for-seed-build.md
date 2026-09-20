@@ -4,7 +4,7 @@ A fresh clone needs a git remote pointing at the private data repository. It mus
 
 ## The argument, as recorded
 
-```
+````
 A clone also needs a remote named `ledger` for the seed to build:
 ```bash
 git remote add ledger https://github.com/shivinate7/mailaudit-data.git && git fetch ledger data
@@ -13,4 +13,4 @@ Without it the build is seedless, and `npm run check:seed` says so rather than
 failing — but on a machine where the ref *does* resolve, a seedless committed
 page is a hard failure, because that means the build dropped a seed it could
 have made.
-```
+````
