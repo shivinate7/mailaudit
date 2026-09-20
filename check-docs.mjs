@@ -26,10 +26,21 @@ let failures = 0;
 /* ---------- claim 1: the published assertion count ----------
    The suite itself prints "<N> passed, <M> failed" — see test/harness.mjs.
    That printed total is the one true count; CLAUDE.md's prose is graded
-   against it, never the other way around. */
+   against it, never the other way around.
+
+   The total is NOT stable across timezones. CLAUDE.md documents test 38.9 as
+   skipping itself in UTC, "where there is nothing to claim" — a CI runner set
+   to UTC prints one fewer assertion than a machine behind UTC. A count that
+   changes with the runner's clock cannot be checked anywhere, so this always
+   runs the suite under a fixed, non-UTC zone. America/New_York is picked
+   because it is where 38.9 has something to claim; any zone behind UTC would
+   do. */
+const FIXED_TZ = "America/New_York";
+
 function suiteTotal() {
   const out = execFileSync(process.execPath, ["test/app.test.mjs"], {
     encoding: "utf8",
+    env: { ...process.env, TZ: FIXED_TZ },
   });
   const m = out.match(/(\d+) passed, (\d+) failed/);
   if (!m) {

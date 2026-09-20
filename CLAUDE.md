@@ -1627,7 +1627,7 @@ have made.
    **The repo used to have no `.github/workflows` at all.** That absence was
    the guarantee that a ledger push triggers nothing. There is one workflow
    now. That guarantee rests on its filters instead. Read them before adding a
-   second. `test.yml` is `branches: [main]` plus a paths filter. Nothing under
+   second. `.github/workflows/test.yml` is `branches: [main]` plus a paths filter. Nothing under
    `src/` or `test/` ever changes on `data`, which carries one file. It
    deliberately does **not** trigger on `index.html`. `npm run deploy` opens a
    pull request for that file instead of pushing it directly. Re-running the
@@ -1735,6 +1735,11 @@ seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
 the jsdom setup, storage mocks, DOM helpers and the fixture.
+
+**The count depends on the clock's zone.** Under UTC the suite prints one
+fewer assertion, 540, because test 38.9 skips itself there. It has nothing to
+claim in that zone. `check:docs` pins a non-UTC zone for exactly this reason,
+so the published count stays checkable.
 
 It bundles `app.jsx` with esbuild (platform=node, format=cjs), boots it in jsdom
 against mocked `window.storage` / `window.photos` / `window.versions` /
@@ -2271,6 +2276,18 @@ give no isolation between groups.
 
 ## Known open threads
 
+- **CI runs in UTC, so test 38.9 never runs there.** GitHub Actions sets `TZ`
+  to UTC. 38.9 skips itself in that zone, on purpose, because it has nothing
+  to claim there. So a green `suite` check on this repo's pull requests never
+  actually executes 38.9. The global rule applies here directly: a green
+  check proves only its platform and the states its fixtures build. This one
+  proves nothing about 38.9, ever, as CI is configured today. `check:docs`
+  works around the same fact for the published count, by pinning a non-UTC
+  zone when it measures the suite. That fix does not reach the test run
+  inside CI itself, which still skips 38.9 on every run. Left as is: the test
+  is deliberately zone-conditional, and changing it would hide the real gap
+  instead of naming it.
+
 - Vendor toggle (include eBay purchases) — user undecided, currently hard-filtered to TCG.
 - Possible migration to Netlify/Cloudflare for faster deploys. An origin change
   resets phone storage — both localStorage *and* IndexedDB — so it needs a
@@ -2280,27 +2297,32 @@ give no isolation between groups.
   exempt. Worth confirming empirically, since it's the difference between
   "safe" and "data quietly vanishes". (Push/Pull now makes this survivable
   either way, provided the user actually pushes.)
-- **The ledger lives in `mailaudit-data`; `mailaudit` is PUBLIC.** This entry
+
+- **The ledger lives in `mailaudit-data`. `mailaudit` is PUBLIC.** This entry
   used to describe closing `mailaudit` itself as the cheap alternative to a
-  `mailaudit-data` migration. That migration then happened anyway, for a reason
-  the original framing did not anticipate: **private repos bill Actions minutes**,
-  and an unrelated repo on the account exhausted the allowance, which refused CI
-  on a repo whose whole safety story rests on it. Moving the ledger out let the
-  source repo go public, so `test.yml` and Pages are free again.
-  The data is not secret and never was the point — the ledger repo stays private
-  for hygiene: a backup store does not belong in the repo that serves a public
-  site. Measured anonymously after the move: Pages **200**, the repo API and the
-  raw ledger URL both **404**.
-  The price, which was always the price: **keyless pull is gone.** A fresh
-  device can no longer recover before it has been set up, and every device needs
-  the token pasted. And GitHub hides a repo you cannot see behind a **404**, so
-  every ledger read now has to disambiguate that or a keyless device is told
-  "no ledger has been pushed yet" about a ledger sitting safely on a branch it
-  simply cannot read — an invitation to push over it. `classifyLedger` does one
-  extra `GET /repos/{owner}/{repo}` on the 404 path only; `pull`, `peek`,
-  `listVersions` and `getVersion` all route through it, and `no-access` is a
-  `syncBroken` case with its own line. Group 38c. This is the same shape
-  `listPhotos` has always had, inherited by the ledger the day it went private.
+  `mailaudit-data` migration. That migration then happened anyway. The reason
+  is one the original framing did not anticipate. **Private repos bill Actions
+  minutes.** An unrelated repo on the account exhausted the allowance. That
+  refused CI on a repo whose whole safety story rests on it. Moving the ledger
+  out let the source repo go public. `.github/workflows/test.yml` and Pages
+  are free again because of that.
+  The data is not secret, and that was never the point. The ledger repo stays
+  private for hygiene. A backup store does not belong in the repo that serves
+  a public site. Measured anonymously after the move: Pages **200**, the repo
+  API and the raw ledger URL both **404**.
+  The price was always the price. **Keyless pull is gone.** A fresh device can
+  no longer recover before it has been set up, and every device needs the
+  token pasted. GitHub also hides a repo you cannot see behind a **404**.
+  Every ledger read now has to tell that apart from a real "nothing pushed
+  yet". Otherwise a keyless device is told a nonexistent ledger. The ledger is
+  really sitting safely on a branch that device cannot read. That invites the
+  device to push over it.
+  `classifyLedger` does one extra `GET /repos/{owner}/{repo}` on the 404 path
+  only. `pull`, `peek`, `listVersions` and `getVersion` all route through it.
+  `no-access` is a `syncBroken` case with its own line. Group 38c. This is the
+  same shape `listPhotos` has always had, inherited by the ledger the day it
+  went private.
+
 - **The token expires.** Fine-grained PATs cap at 366 days. When it lapses the
   app 401s and says "expired or been revoked" — but nothing warns beforehand,
   and the only symptom is a push that stops working.
@@ -2378,6 +2400,14 @@ give no isolation between groups.
   repo before the move: dispatched once with `threshold=0`, it opened issue
   #4, since verified and closed. A green run only proves the watchdog stayed
   quiet. That dispatch input exists so the loud half can be proven too.
+  Both sides of that comparison go through `fromJSON`, because step outputs
+  are strings. A string-to-number compare that silently reads false is
+  exactly how an alarm ends up never going off.
+  **The whole reason this workflow exists is that the phone cannot check
+  itself.** The phone's "Backed up" line is only as honest as the phone. A
+  device whose token expired, whose storage is unreadable, or that simply
+  never gets opened has no way to tell you it stopped.
+  This one cannot be fooled by anything happening on a device.
 
 - **The conflict guard has never been verified against real GitHub**, and it is
   now the thing most worth verifying, because `Merge & push` and auto-push both
