@@ -119,6 +119,13 @@ milestone or tidying the versions away; the resume handler reading the shared
 remote read as ahead; the mid-thought guard removed; `acceptPull` dropped from
 `doMerge`; the quiet merge announcing itself; `freshSession` starting false; and
 the load control fetching nothing.
+
+Four method notes worth keeping, all learned the hard way here:
+
+- **38.9's first draft could not fail at all**: `dayKey("2026-05-01T00:30")` is
+  `"2026-05-01"` under the UTC reading too. It derives the boundary from the
+  runner's own `getTimezoneOffset()` now, and skips itself in UTC where there is
+  nothing to claim.
 ```
 
 ## Groups 37, 36, 35, 33 to 34, 20, 21, 25 to 27 (feature and adapter groups)
@@ -181,6 +188,20 @@ all-or-nothing photo predicate; Pull firing on one tap; a push treating every
 failure as success; arming Pull no longer disarming Reset; a pull that doesn't
 refresh the sha; `pushBody` always sending a sha; and a 403 always reading as a
 permission problem.
+
+Three of those are worth remembering as method, because the first drafts of
+these tests were all wrong in ways that looked fine:
+
+- **34.10 asserted `saved().items === undefined ? 0 : 1`** — which is 1 whether
+  the ledger survived or was wiped. Tightening it to a real count immediately
+  showed the test was *also* reading before the 500ms debounce had written.
+  Two bugs behind one assertion that could not fail.
+
+- **`doMerge` genuinely was broken**, and only 34.29 found it: `applyBackup`
+  increments `syncGen` so that work in flight against the pre-restore world
+  can't land. `doPull` never noticed because applying is the last thing it does.
+  A merge *pushes* afterwards, so every gen-guarded step after the apply — the
+  whole photo phase, and the `Pushed ✓` flash — silently did nothing.
 
 That exercise already earned its keep once. Every assignment in groups 1–19
 happens to take a card's *full* quantity, so the mutation "assign marks the
