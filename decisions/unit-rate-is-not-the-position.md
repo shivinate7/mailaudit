@@ -13,3 +13,8 @@ The Tally row shows the unit rate, not the total basis. Most rows hold a single 
   from "unit rate" — a cheap card bought in bulk has a large position and a
   small rate.
 ```
+
+## See also
+
+- `tally-pools-on-the-exact-name` — the grouping this rate is computed over.
+- `cost-basis-excludes-shipping-and-tax` — the basis this rate divides.

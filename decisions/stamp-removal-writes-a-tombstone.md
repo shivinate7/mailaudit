@@ -10,3 +10,8 @@ Removing an order stamp writes a tombstone value instead of deleting the entry. 
   re-freezes the sort mid-check-in (invariant 5). Removal writes a tombstone,
   not a hole (invariant 2). Group 37.
 ```
+
+## See also
+
+- `one-stamp-per-package` — the value this tombstone replaces.
+- `merge-rules-only-add` — the merge rule a tombstone must still win against.

@@ -18,3 +18,9 @@ The app stores the remote sha only after applying the pulled bytes, never the mo
   **accepted**: no conflict raised, the other device's work destroyed. Auto-push
   made that automatic and unattended, within 90 seconds.
 ```
+
+## See also
+
+- `pushforce-records-sha-only-after-write` — the same rule reached through the force door.
+- `a-stale-push-conflicts-pull-gets-two-tap` — the conflict this rule exists to raise honestly.
+- `a-restore-is-not-local` — an operation that deliberately does not touch this sha.

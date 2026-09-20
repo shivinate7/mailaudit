@@ -12,3 +12,8 @@ The photo upload phase keeps its own status and its own error table, separate fr
     throttled photo upload through the ledger's error path would offer a button
     that silently discards another device's check-ins. Test 30.11.
 ```
+
+## See also
+
+- `a-stale-push-conflicts-pull-gets-two-tap` — the button this rule protects from a false conflict.
+- `photo-sync-cannot-conflict` — why a photo error is never a real conflict.

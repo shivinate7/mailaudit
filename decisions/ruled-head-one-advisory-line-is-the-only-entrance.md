@@ -23,3 +23,9 @@ anything longer stops being a warning). It is deliberately **not gated on there
 being local data**: a device with an empty ledger and no key is the fresh phone,
 and this line is its only route to the Pull that recovers it. Test 28.1.
 ```
+
+## See also
+
+- `a-recovery-control-is-not-gated-on-its-own-state` — the same reachability rule this line follows.
+- `ruled-head-the-staleness-clock-measures-agreement` — the clock this line reports on.
+- `pull-needs-a-key-too` — the recovery this line is the entrance to.

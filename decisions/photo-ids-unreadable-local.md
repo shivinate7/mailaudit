@@ -16,3 +16,8 @@ three-valued now: `applyBackup` keeps every id when the store will not answer,
 and `surveyPhotos` returns `null` rather than planning a sync it cannot survey
 honestly.
 ```
+
+## See also
+
+- `photo-ids-restore-keep-when-known` — the remote half of the same rule.
+- `listphotos-is-three-valued` — the same three-valued reasoning applied locally.

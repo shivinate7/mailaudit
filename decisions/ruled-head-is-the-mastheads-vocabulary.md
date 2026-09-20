@@ -19,3 +19,8 @@ Three ruled cells report the state and open what changes it:
   (`N lines · M outside`). The other two cells deliberately carry no figure;
   they would be restating the masthead's own tallies a hundred pixels above.
 ```
+
+## See also
+
+- `ruled-head-panels-carry-no-fill` — the same vocabulary applied to disclosure panels.
+- `ruled-head-one-advisory-line-is-the-only-entrance` — the one line that carries sync vocabulary instead.

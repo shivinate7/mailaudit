@@ -16,3 +16,9 @@ When IndexedDB cannot be written, every version save must fail visibly instead o
   gate rather than also swallowing the next window, and an unreadable list never
   renders as an empty one. Tests 38b.4–38b.5.
 ```
+
+## See also
+
+- `a-recovery-control-is-not-gated-on-its-own-state` — the linked rule about staying reachable on failure.
+- `milestones-are-taken-before-the-risk` — the milestone this failure could silently lose.
+- `listphotos-is-three-valued` — the same three-valued shape applied elsewhere.

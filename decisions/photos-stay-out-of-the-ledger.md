@@ -10,3 +10,8 @@ Envelope photos live in IndexedDB, and only their ids travel inside the ledger. 
   Object URLs are revoked on unmount (leaking them pins whole images in memory
   for the life of the page).
 ```
+
+## See also
+
+- `photo-ids-restore-keep-when-known` — the rule for restoring the ids this file keeps out.
+- `photo-sync-cannot-conflict` — why the id-only design stays conflict-free.

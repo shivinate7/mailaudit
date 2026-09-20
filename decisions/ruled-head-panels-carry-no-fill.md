@@ -14,3 +14,8 @@ resolve, and it contradicted the region's own thesis. Don't reintroduce it: the
 option grids still read, because `optGrid` paints `line` and each `optCell`
 paints `card` over it, so the cells sit slightly raised against the page.
 ```
+
+## See also
+
+- `ruled-head-is-the-mastheads-vocabulary` — the region thesis this rule protects.
+- `ruled-head-the-range-is-picked-not-typed` — a panel that keeps this rule.

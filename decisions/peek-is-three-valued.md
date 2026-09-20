@@ -17,3 +17,10 @@ The peek check reads only the remote's blob sha, a few hundred bytes, instead of
   resolves by merging rather than leaving `Push anyway` armed on a screen nobody
   is watching.
 ```
+
+## See also
+
+- `listphotos-is-three-valued` — the same rule applied to photos.
+- `offline-is-decided-by-fetch` — the same rule read in the other direction.
+- `sha-accepted-only-after-apply` — the sha this read compares against.
+- `ruled-head-the-elapsed-time-is-handed-forward` — the resume signal this read consumes.

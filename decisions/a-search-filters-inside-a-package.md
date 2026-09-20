@@ -11,3 +11,8 @@ A search filters lines inside a package, so one matching line can look like a wh
   hand — and the way out used to be "clear the search and hunt for the seller",
   which on an iOS keyboard costs enough that nobody does it. So: `revealed`, a
 ```
+
+## See also
+
+- `a-reveal-ignores-hidedone-too` — the rule a reveal must also honor.
+- `order-id-button-stops-propagation` — the tap control this feature adds.

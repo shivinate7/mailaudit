@@ -26,3 +26,9 @@ The pattern to take from this: any control that *recovers* state must not be
 gated on that state existing. Backup was widened once for this reason, Sync
 twice.
 ```
+
+## See also
+
+- `ruled-head-one-advisory-line-is-the-only-entrance` — the same rule applied to the sync entrance.
+- `a-store-that-cannot-write-says-so` — another control that must stay visible on failure.
+- `pull-needs-a-key-too` — the recovery this rule protects.
