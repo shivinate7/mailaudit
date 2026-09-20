@@ -22,6 +22,10 @@
 // own prose (or add a citation to the record that supersedes it) instead of
 // touching the fence.
 //
+// A third pass reads INSIDE the fences too, but only in advisory mode: it
+// counts how many of the paths quoted there still exist and how many do not,
+// and never fails on either number. See the comment above that pass for why.
+//
 // What this deliberately does NOT check: the measured page figures in "The
 // card's reserved geometry" and "The masthead" (185px, 347.09px, and the
 // rest). Those come from a real browser viewport, not from code, and jsdom
@@ -295,6 +299,78 @@ console.log(`check:docs: ${checked} path(s) checked against the filesystem, outs
 console.log(`check:docs: ${refused.size} backtick span(s) refused as not path-like`);
 if (process.env.CHECK_DOCS_VERBOSE) {
   for (const s of refused) console.log(`  refused: ${s}`);
+}
+
+/* ---------- advisory: paths named INSIDE a fence ----------
+   Almost every path in the corpus now sits inside a fence — the verbatim
+   historical quote check:records pins against a commit. Claim 2 above
+   cannot look there without fighting that pin (see the file header), which
+   makes it nearly decoration on the corpus's most useful half: the risk the
+   whole split creates is an argument that quietly stops describing the repo
+   it argues about, and that risk lives almost entirely inside fences now.
+   This pass is the answer, and it is deliberately advisory rather than a
+   check: a path inside a fence names history, and correcting it would
+   REWRITE that history, which check:records exists to refuse (its claim 3
+   is exactly "this quote must not drift from what it was extracted from").
+   So this can never turn the build red, on purpose. It only counts and
+   reports, so a reader can see, for any argument, how many of the files it
+   names have since moved or gone — a fact about the argument's age, not a
+   defect this repo owes a fix. */
+const fenceStale = []; // { file, span, line }
+let fenceChecked = 0;
+
+for (const f of files) {
+  const fences = parseFences(f.text);
+  const lines = f.text.split("\n");
+  const seenInFile = new Set();
+  for (const fence of fences) {
+    // Body lines only — 1-indexed startLine+1 .. endLine-1, excluding the
+    // backtick delimiter lines themselves.
+    const bodyLines = lines.slice(fence.startLine, fence.endLine - 1);
+    const body = bodyLines.join("\n");
+    for (const m of body.matchAll(/`([^`\n]+)`/g)) {
+      const span = m[1];
+      if (seenInFile.has(span)) continue;
+      seenInFile.add(span);
+      if (excluded(span)) continue;
+
+      const offsetLines = body.slice(0, m.index).split("\n").length - 1;
+      const line = fence.startLine + 1 + offsetLines;
+
+      if (span.endsWith("/")) {
+        const dir = span.slice(0, -1);
+        if (!dir.includes("/")) continue; // same ambiguous-bare-directory refusal as claim 2
+        fenceChecked++;
+        if (!(existsSync(dir) && statSync(dir).isDirectory())) {
+          fenceStale.push({ file: f.path, span, line });
+        }
+        continue;
+      }
+
+      if (!EXT.test(span)) continue;
+
+      let target = span;
+      if (!span.includes("/")) {
+        if (knownPath.has(span)) target = knownPath.get(span);
+        else if (!existsSync(span)) continue; // not path-like enough to judge, same as claim 2
+      }
+      fenceChecked++;
+      if (!existsSync(target)) {
+        fenceStale.push({ file: f.path, span, line });
+      }
+    }
+  }
+}
+
+const fenceStillThere = fenceChecked - fenceStale.length;
+console.log(
+  `check:docs: ${fenceStillThere} path(s) inside fences still exist, ${fenceStale.length} ` +
+    `no longer do (history, not a failure)`
+);
+if (fenceStale.length) {
+  for (const s of fenceStale.slice(0, 10)) {
+    console.log(`  stale: ${s.file}:${s.line} quotes \`${s.span}\``);
+  }
 }
 
 if (failures) {
