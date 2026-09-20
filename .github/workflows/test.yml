@@ -36,6 +36,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # check:records compares every quoted argument against two pinned
+          # commits, and the default shallow checkout holds neither, so the
+          # check died here while passing on every developer machine. Same trap
+          # check:build fell into one section below: a claim about git history,
+          # run where the history was never fetched.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: "22"

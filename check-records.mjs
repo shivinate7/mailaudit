@@ -203,8 +203,36 @@ const PRE_SPLIT_CLAUDE_MD_SHA = "507ab47d289870b3b0e567ebbea98740254424be";
    refuse. */
 const CORRECTED_CLAUDE_MD_SHA = "d5cb3694378f0e7e0ba093d2d0a812de8af134d6";
 
+/* A shallow checkout holds neither pinned commit, and `git show` then dies with
+   "exists on disk, but not in <sha>". That is how this check first failed in CI
+   while passing on every developer machine, which is the same trap check:build
+   fell into: a claim about git history, run where the history was never fetched.
+
+   Two answers, and both are needed. The workflow checks out with fetch-depth 0,
+   so CI really can read both bases. And a read that still cannot run reports
+   UNKNOWN and does not fail, because "I could not look" is not "the records
+   drifted". This repo already applies that rule to peek, listPhotos and
+   classifyLedger, and the same reasoning runs the other way here: a guard that
+   reads its own blindness as a defect teaches the reader to ignore it. */
 function claudeMdAt(sha) {
-  return execFileSync("git", ["show", `${sha}:CLAUDE.md`], { encoding: "utf8" });
+  try {
+    return execFileSync("git", ["show", `${sha}:CLAUDE.md`], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+  } catch {
+    try {
+      execFileSync("git", ["fetch", "--quiet", "--depth=1", "origin", sha], {
+        stdio: "ignore",
+      });
+      return execFileSync("git", ["show", `${sha}:CLAUDE.md`], {
+        encoding: "utf8",
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+    } catch {
+      return null;
+    }
+  }
 }
 
 function preSplitClaudeMd() {
@@ -224,7 +252,21 @@ function preSplitClaudeMd() {
    internal whitespace. So this check does NOT strip or normalize leading
    whitespace anywhere: every paragraph is compared byte for byte. */
 {
-  const bases = [preSplitClaudeMd(), claudeMdAt(CORRECTED_CLAUDE_MD_SHA)];
+  const bases = [preSplitClaudeMd(), claudeMdAt(CORRECTED_CLAUDE_MD_SHA)].filter(
+    (b) => b !== null
+  );
+  if (bases.length === 0) {
+    /* Skip the claim, do not grade it against nothing. The first cut of this
+       branch printed UNKNOWN and then compared every paragraph against an empty
+       base, so all 236 came back "not verbatim" and the run failed. That is the
+       unknown-read-as-broken mistake this repo names in three other places,
+       committed by the guard that was meant to honour it. */
+    console.log(
+      "check:records: verbatim claim UNKNOWN — this checkout holds neither pinned " +
+        "commit, so no quote could be compared. Not a failure. Check out with " +
+        "fetch-depth 0 to grade it."
+    );
+  } else {
   let totalParas = 0;
   let foundParas = 0;
   const missing = [];
@@ -251,6 +293,7 @@ function preSplitClaudeMd() {
   console.log(
     `check:records: ${foundParas}/${totalParas} quoted paragraph(s) verbatim against CLAUDE.md@${PRE_SPLIT_CLAUDE_MD_SHA.slice(0, 7)} or @${CORRECTED_CLAUDE_MD_SHA.slice(0, 7)}, ${missing.length} missing`
   );
+  }
 }
 
 /* ---------- claim 1: every citation resolves ----------
