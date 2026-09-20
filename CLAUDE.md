@@ -1610,31 +1610,28 @@ have made.
    `main` / `(root)`". Nothing the app writes touches that repo any more, so a
    backup can no longer trigger a site rebuild by construction rather than by
    branch discipline.
-   **The repo used to have no `.github/workflows` at all, and that absence was
-   the guarantee that a ledger push triggers nothing.** There are two workflows
-   now, so that guarantee rests on their filters instead — read them before
-   adding a third. `test.yml` is `branches: [main]` plus a paths filter (nothing
-   under `src/` or `test/` ever changes on `data`, which carries one file), and
-   it deliberately does **not** trigger on `index.html`, because `npm run
-   deploy` commits that separately and re-running the suite on the build output
-   would double every deploy for no new information. It also checks the
-   committed `index.html` still matches what the sources build — the one thing a
-   local deploy can skip by accident — via `check:build`, which compares the
-   code and ignores the seed for the reasons above. A second step runs
-   `check:seed`, which decodes the seed the committed page actually carries and
-   refuses anything outside `SEED_KEEP`: the two together ask whether the page
-   is this repo's code, and then what its data publishes.
-   `backup-watchdog.yml` is the check the app cannot do for itself: it reads the
-   `data` branch's own history on a daily schedule and opens an issue if nothing
-   has landed in four days. **Its alarm has been seen to fire** — dispatched
-   once with `threshold=0`, which opened issue #4, since verified and closed. A
-   green run proves only that it stayed quiet; that input exists so the other
-   half can be proven too, and both sides of the comparison go through
-   `fromJSON` because step outputs are strings and a string/number compare that
-   silently evaluates false is exactly how an alarm ends up never going off. The phone's "Backed up" line is only as honest as
-   the phone — a device whose token expired, whose storage is unreadable, or
-   that simply never gets opened has no way to tell you it stopped. This one
-   cannot be fooled by anything happening on a device.
+
+   **The repo used to have no `.github/workflows` at all.** That absence was
+   the guarantee that a ledger push triggers nothing. There is one workflow
+   now. That guarantee rests on its filters instead. Read them before adding a
+   second. `test.yml` is `branches: [main]` plus a paths filter. Nothing under
+   `src/` or `test/` ever changes on `data`, which carries one file. It
+   deliberately does **not** trigger on `index.html`. `npm run deploy` opens a
+   pull request for that file instead of pushing it directly. Re-running the
+   suite on the build output would double every deploy for no new information.
+   It also checks that the committed `index.html` still matches what the
+   sources build. That is the one thing a local deploy can skip by accident.
+   `check:build` does that check. It compares the code and ignores the seed for
+   the reasons above. A second step runs `check:seed`. It decodes the seed the
+   committed page actually carries and refuses anything outside `SEED_KEEP`. A
+   third step runs `check:docs`. It checks the numbers and paths this file
+   publishes. Together the three ask whether the page is this repo's code.
+   They also ask what its data publishes, and whether this file tells the
+   truth about both.
+
+   **The backup watchdog is not in this repo.** It lives in `mailaudit-data`,
+   on purpose. See "Known open threads" for why.
+
 3. The photos live on `mailaudit-data`'s **`main`**, in `photos/`. That branch
    must exist before any Contents PUT — a PUT into a repo with no commits is not
    a path worth relying on, so initialise with a README if recreating. Private is
@@ -2350,19 +2347,25 @@ give no isolation between groups.
   and unchanged by the move (it is still one private repo, just a different one). Everything unreachable must read as *"needs your key"* and never as
   lost or as absent, which is why `listPhotos` and `peek` are three-valued and
   why `classifyLedger` disambiguates the 404.
-- **The backup watchdog lives in `mailaudit-data`, not in the public repo, and
-  that placement is load-bearing.** GitHub disables scheduled workflows in a
-  **public** repo after 60 days of repository inactivity; private repos are
+
+- **The backup watchdog lives in `mailaudit-data`, not in the public repo.**
+  That placement is load-bearing. GitHub disables scheduled workflows in a
+  **public** repo after 60 days of repository inactivity. Private repos are
   exempt. Hosting the one device-independent backup alarm somewhere it can
   silently switch itself off would reproduce the exact failure it exists to
-  catch — a workflow that never runs opens no issue, which is indistinguishable
-  from one that ran and found everything healthy. It reads its own repo's `data`
-  branch, so it needs no cross-repo token and no edits. **Its cost is ~10s/day,
-  but it is paid in Actions minutes, so it stops entirely when the account is
-  over its limit** — verified the hard way: dispatched with `threshold=0`
-  immediately after the move and refused with the billing message, same as the
-  public repo's runs. The minutes hog is `test.yml`, which is free now that
-  `mailaudit` is public; the watchdog's few minutes are not optional.
+  catch. A workflow that never runs opens no issue. That is indistinguishable
+  from one that ran and found everything healthy. It reads its own repo's
+  `data` branch, so it needs no cross-repo token and no edits. **Its cost is
+  ~10s/day, but it is paid in Actions minutes**, so it stops entirely when the
+  account is over its limit. Verified the hard way: dispatched with
+  `threshold=0` right after the move, and refused with the billing message,
+  same as the public repo's runs. The minutes hog is `test.yml`, which is free
+  now that `mailaudit` is public. The watchdog's few minutes are not optional.
+  **Its alarm has also been seen to fire for real**, from its old home in this
+  repo before the move: dispatched once with `threshold=0`, it opened issue
+  #4, since verified and closed. A green run only proves the watchdog stayed
+  quiet. That dispatch input exists so the loud half can be proven too.
+
 - **The conflict guard has never been verified against real GitHub**, and it is
   now the thing most worth verifying, because `Merge & push` and auto-push both
   hang off it. The ledger repo *has* taken real authenticated pushes
