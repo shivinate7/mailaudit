@@ -1,4 +1,4 @@
-# The Order Id Link Stops Propagation
+# The order id link stops propagation
 
 The order-id button in Tally stops its click from reaching the row underneath. The row itself checks a card in on any tap. Without the stop, tapping the link to navigate would silently write a check-in to the ledger.
 

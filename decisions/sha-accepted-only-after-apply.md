@@ -1,4 +1,4 @@
-# The Stored Sha Waits For The Apply
+# The stored sha waits for the apply
 
 The app stores the remote sha only after applying the pulled bytes, never the moment they arrive. The stored sha is this device's claim to already hold the remote data. Storing it earlier once let a failed apply leave a current sha over stale data. The next push then carried no conflict and silently overwrote the other device's work.
 

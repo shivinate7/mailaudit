@@ -1,4 +1,4 @@
-# Refunded Packages Leave Every Count
+# Refunded packages leave every count
 
 A package stamped Refunded or Partial refund drops out of every count and the normal package list, the same way a canceled order does. The money already came back, so nothing about that package stays outstanding. Totals, Tally, and the Orphaned candidates all inherit this exclusion from one shared source.
 

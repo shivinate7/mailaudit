@@ -1,4 +1,4 @@
-# Pull Now Needs The Same Key
+# Pull now needs the same key
 
 Since the ledger repo went private, pull needs the same fine-grained token that push already required. A fresh device with no key can no longer recover on its own before setup. The app treats this as its own broken-sync case with its own message, rather than a plain error buried in a panel.
 

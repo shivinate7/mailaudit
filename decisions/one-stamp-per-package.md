@@ -1,4 +1,4 @@
-# One Stamp Per Package, Latest Wins
+# One stamp per package, latest wins
 
 Each package holds at most one order stamp, set by hand from a fixed list of kinds. Picking a different kind replaces the old stamp and moves its date forward. Editing only the note keeps the existing date in place.
 

@@ -1,4 +1,4 @@
-# Tally Pools By Exact Product Name
+# Tally pools by exact product name
 
 The Tally view groups line items by the exact product name text. TCGplayer names come from a scrape, so identical products share one byte-identical string. The app does not normalize names before pooling them. This choice is deliberate and stays in place.
 
