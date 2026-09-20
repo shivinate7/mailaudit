@@ -65,3 +65,8 @@ jobs:
       # only kind of mistake here that git makes permanent.
       - name: the published seed withholds what it must
         run: npm run check:seed --silent
+
+      # CLAUDE.md's own numbers and paths, checked against the repo itself —
+      # see check-docs.mjs for what this does and does not cover.
+      - name: CLAUDE.md's numbers and paths check out
+        run: npm run check:docs --silent

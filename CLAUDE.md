@@ -1541,8 +1541,18 @@ npm test             # behaviour suite, must be green before deploying
 npm run serve        # optional local server on :4173
 npm run check:build  # is the committed index.html the code in this repo?
 npm run check:seed   # and what does the seed baked into it publish?
+npm run check:docs   # does this file's own numbers and paths still check out?
 npm run deploy       # build + test + commit index.html on a branch + open a PR
 ```
+
+`check:docs` checks two things this file publishes. It checks the suite's
+assertion count against a real run, not an assumed one. It checks every
+backtick path it names against the actual filesystem. It refuses to judge
+anything that does not look like a path. It prints what it refused, so a
+silent skip is never mistaken for a pass. It cannot check the measured page
+figures in "The card's reserved geometry" or "The masthead". Those numbers
+come from a real browser viewport, not from code. Re-measure them by hand,
+the way those sections describe.
 
 **`check:build` compares the code and ignores the seed, and that is the design
 rather than a gap.** `index.html` carries two things — the bundle, and a
