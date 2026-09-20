@@ -19,6 +19,10 @@ on:
       - "test/**"
       - "package.json"
       - "build.mjs"
+      - "check-records.mjs"
+      - "invariants/**"
+      - "measurements/**"
+      - "decisions/**"
       - ".github/workflows/test.yml"
   pull_request:
     branches: [main]
@@ -32,6 +36,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # check:records compares every quoted argument against two pinned
+          # commits, and the default shallow checkout holds neither, so the
+          # check died here while passing on every developer machine. Same trap
+          # check:build fell into one section below: a claim about git history,
+          # run where the history was never fetched.
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
@@ -65,3 +76,15 @@ jobs:
       # only kind of mistake here that git makes permanent.
       - name: the published seed withholds what it must
         run: npm run check:seed --silent
+
+      # CLAUDE.md's own numbers and paths, checked against the repo itself —
+      # see check-docs.mjs for what this does and does not cover.
+      - name: CLAUDE.md's numbers and paths check out
+        run: npm run check:docs --silent
+
+      # The record corpus under invariants/, measurements/ and decisions/ —
+      # see check-records.mjs for the six claims this proves. The index half
+      # of it (CHECK_RECORDS_INDEX) stays off here until CLAUDE.md is rewritten
+      # into an index that actually cites every record.
+      - name: the record corpus checks out
+        run: npm run check:records --silent
