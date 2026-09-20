@@ -34,6 +34,19 @@ The daily watchdog runs in `mailaudit-data`, not in the now-public `mailaudit`. 
   This one cannot be fooled by anything happening on a device.
 ```
 
+## The rest of the thread, as recorded
+
+```
+  catch — a workflow that never runs opens no issue, which is indistinguishable
+  from one that ran and found everything healthy. It reads its own repo's `data`
+  branch, so it needs no cross-repo token and no edits. **Its cost is ~10s/day,
+  but it is paid in Actions minutes, so it stops entirely when the account is
+  over its limit** — verified the hard way: dispatched with `threshold=0`
+  immediately after the move and refused with the billing message, same as the
+  public repo's runs. The minutes hog is `test.yml`, which is free now that
+  `mailaudit` is public; the watchdog's few minutes are not optional.
+```
+
 ## See also
 
 - `backup-watchdog-catches-silent-failure` — the same alarm, argued from the app side

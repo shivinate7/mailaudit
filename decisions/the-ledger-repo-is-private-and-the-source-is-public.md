@@ -33,6 +33,30 @@ The ledger and photos live in a private repo so a backup store never shares a re
   went private.
 ```
 
+## The rest of the thread, as recorded
+
+```
+  `mailaudit-data` migration. That migration then happened anyway, for a reason
+  the original framing did not anticipate: **private repos bill Actions minutes**,
+  and an unrelated repo on the account exhausted the allowance, which refused CI
+  on a repo whose whole safety story rests on it. Moving the ledger out let the
+  source repo go public, so `test.yml` and Pages are free again.
+  The data is not secret and never was the point — the ledger repo stays private
+  for hygiene: a backup store does not belong in the repo that serves a public
+  site. Measured anonymously after the move: Pages **200**, the repo API and the
+  raw ledger URL both **404**.
+  The price, which was always the price: **keyless pull is gone.** A fresh
+  device can no longer recover before it has been set up, and every device needs
+  the token pasted. And GitHub hides a repo you cannot see behind a **404**, so
+  every ledger read now has to disambiguate that or a keyless device is told
+  "no ledger has been pushed yet" about a ledger sitting safely on a branch it
+  simply cannot read — an invitation to push over it. `classifyLedger` does one
+  extra `GET /repos/{owner}/{repo}` on the 404 path only; `pull`, `peek`,
+  `listVersions` and `getVersion` all route through it, and `no-access` is a
+  `syncBroken` case with its own line. Group 38c. This is the same shape
+  `listPhotos` has always had, inherited by the ledger the day it went private.
+```
+
 ## See also
 
 - `one-repo-for-both-halves` — why the ledger and photos share this one private repo

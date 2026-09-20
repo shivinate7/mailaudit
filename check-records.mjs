@@ -270,7 +270,13 @@ function preSplitClaudeMd() {
    can tell "this was meant to name a record" from "this is a CSS property"
    without knowing every future slug in advance — the same shape of refusal
    check-docs.mjs uses for a backtick span that isn't path-like. */
-const SLUG_SHAPE = /^[a-z0-9]+(-[a-z0-9]+){2,}$/;
+/* One hyphen is enough. This used to demand two, which made every two-word
+   slug invisible: parser-filters, feature-map, suite-size, motion-timings and
+   six more. The index cited all of them and the check reported them orphaned,
+   which is the shape of a guard that fails by being too narrow rather than by
+   going quiet. Widening is safe here, because a token only counts once it
+   matches a real file name. */
+const SLUG_SHAPE = /^[a-z0-9]+(-[a-z0-9]+)+$/;
 
 function levenshtein(a, b) {
   const dp = Array.from({ length: a.length + 1 }, (_, i) => [i, ...Array(b.length).fill(0)]);
@@ -356,19 +362,23 @@ function closestSlug(token, slugs) {
    default would land a check that is red the moment it merges, and a check
    that cries wolf on landing is worse than no check: nobody would trust the
    next red run either. */
-if (process.env.CHECK_RECORDS_INDEX === "1") {
+/* This ran behind CHECK_RECORDS_INDEX until the index existed, so it would not
+   land red. The index exists now, so the claim is unconditional: an orphaned
+   record is one nobody can find, and a dead index entry is a promise the repo
+   cannot keep. */
+{
   const claude = readFileSync("CLAUDE.md", "utf8");
   const slugSet = new Set(records.map((r) => r.slug));
   const citedInIndex = new Set(
-    [...claude.matchAll(/`([a-z0-9]+(?:-[a-z0-9]+){2,})`/g)]
+    [...claude.matchAll(/`([a-z0-9]+(?:-[a-z0-9]+)+)`/g)]
       .map((m) => m[1])
       .filter((s) => slugSet.has(s))
   );
   const orphans = records.filter((r) => !citedInIndex.has(r.slug));
-  const deadEntries = [...claude.matchAll(/`([a-z0-9]+(?:-[a-z0-9]+){2,})`/g)]
+  const deadEntries = [...claude.matchAll(/`([a-z0-9]+(?:-[a-z0-9]+)+)`/g)]
     .map((m) => m[1])
     .filter((s, i, arr) => arr.indexOf(s) === i)
-    .filter((s) => !slugSet.has(s) && /-.*-/.test(s));
+    .filter((s) => !slugSet.has(s) && /-/.test(s));
 
   if (orphans.length) {
     console.error(
@@ -376,15 +386,14 @@ if (process.env.CHECK_RECORDS_INDEX === "1") {
     );
     failures += orphans.length;
   }
-  // deadEntries is best-effort only (it can't tell a real dead citation from
-  // a code token CLAUDE.md happens to mention that also looks slug-shaped),
-  // so it is reported but not currently a source of new failures beyond the
-  // orphan count above; keep it for whoever wires the index in.
+  // deadEntries stays best-effort and never fails on its own: it cannot tell a
+  // dead citation from a code token the index happens to mention in backticks,
+  // and `data-view` and `theme-color` are both real examples. It is printed so
+  // a reader can judge, which is the honest half of a check that cannot decide.
+  if (deadEntries.length) console.log(`check:records: index mentions ${deadEntries.length} slug-shaped token(s) that are not records: ${deadEntries.join(", ")}`);
   console.log(
     `check:records: index check — ${records.length - orphans.length}/${records.length} record(s) cited, ${orphans.length} orphan(s)`
   );
-} else {
-  console.log("check:records: index check skipped (CHECK_RECORDS_INDEX not set)");
 }
 
 if (failures) {
