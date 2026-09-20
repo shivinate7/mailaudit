@@ -1541,7 +1541,7 @@ npm test             # behaviour suite, must be green before deploying
 npm run serve        # optional local server on :4173
 npm run check:build  # is the committed index.html the code in this repo?
 npm run check:seed   # and what does the seed baked into it publish?
-npm run deploy       # build + test + commit index.html + push (Pages auto-deploys)
+npm run deploy       # build + test + commit index.html on a branch + open a PR
 ```
 
 **`check:build` compares the code and ignores the seed, and that is the design
@@ -1567,12 +1567,15 @@ no `origin/data` (CI's exact condition) exits 0; a source change with no rebuild
 exits 1 saying "index.html is stale"; and a drifted tag shape exits 1 naming
 `withoutSeed()`.
 
-GitHub Pages serves from main branch root. Deploy quirk learned the hard way:
-if the Pages workflow sits Queued >10 min, don't re-run the same run — cancel
-it and push a trivial commit to spawn a fresh run.
+GitHub Pages serves from main branch root. `npm run deploy` no longer pushes to
+main directly. It builds `index.html` on its own branch, commits it there, and
+opens a pull request with `gh pr create`. Pages deploys once that pull request
+merges. Deploy quirk learned the hard way: the Pages workflow can sit Queued
+for over 10 minutes after a merge. Do not re-run that same run. Cancel it and
+push a trivial commit to spawn a fresh run instead.
 
-Note `npm run deploy` only commits `index.html`; source and doc changes have to
-be committed yourself first.
+Note `npm run deploy` only commits `index.html`. Source and doc changes have
+to be committed yourself first, on a branch of their own.
 
 ### The GitHub backup (one-time setup)
 
