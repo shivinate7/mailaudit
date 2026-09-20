@@ -1,6 +1,8 @@
 # Test suite assertion count and run time
 
-This record holds the assertion count and the run time for `npm test`. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+This record holds the assertion count and the run time for `npm test`. The suite runs 541 assertions and takes near 60 seconds. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+
+The count depends on the clock's zone. Under UTC the suite runs 540, because test 38.9 has nothing to claim there. `npm run check:docs` pins a non-UTC zone for that reason, and it grades the figure in this sentence.
 
 ## How to re-measure
 
