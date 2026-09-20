@@ -1,6 +1,6 @@
 # A card lays its rows down in order
 
-Opening a card reveals the bulk row, then each item row, one beat behind the last. The stagger caps at 132 milliseconds, so a long order still finishes promptly. `useJustBecame` gates this, so a package that starts already open does not animate on load.
+Opening a card reveals the bulk row, then each item row, one beat behind the last. The motion-timings record has the exact stagger and cap. A long order still finishes promptly. `useJustBecame` gates this, so a package that starts already open does not animate on load.
 
 ## The argument, as recorded
 
@@ -17,3 +17,8 @@ Opening a card reveals the bulk row, then each item row, one beat behind the las
   with the letterhead's own sequence. Measured on the seeded ledger: 0 reveals
   fire on load, 9 on a card opened by hand.
 ```
+
+## See also
+
+- `motion-timings` — the exact beat delays and cap this stagger uses.
+- `motion-use-just-became` — the gate that keeps this reveal from firing on load.

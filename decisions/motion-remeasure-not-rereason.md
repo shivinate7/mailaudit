@@ -14,3 +14,8 @@ is not compositing**, which makes sampled mid-animation values read as frozen;
 pause with `getAnimations()` and set `currentTime` instead of sampling frames,
 or the numbers will lie to you.
 ```
+
+## See also
+
+- `suite-size` — the assertion count the test suite can and cannot cover.
+- `motion-method-is-side-by-side-proof` — how these timings were chosen in the first place.

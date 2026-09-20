@@ -12,3 +12,8 @@ past its rest and hangs there. The one overshoot in the whole sheet — the
 stamp's `+1deg` — is the wrist roll that inks a rubber stamp's edges, and it
 returns *through* rest rather than oscillating around it.
 ```
+
+## See also
+
+- `motion-method-is-side-by-side-proof` — how each moment here was chosen.
+- `motion-the-stamp-lands` — the one allowed overshoot this rule names.

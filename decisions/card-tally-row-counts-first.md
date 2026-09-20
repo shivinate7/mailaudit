@@ -11,3 +11,8 @@ truncates. It is ordered counts-first (`3 sellers · 3 orders · <sets>`) so the
 long set list is what degrades to an ellipsis, never the counts. Keep that
 ordering if you add anything to that line.
 ```
+
+## See also
+
+- `card-the-action-row-is-reserved` — the other card ruling that reserves space against a change in content.
+- `no-layout-shift-under-the-pointer` — the invariant this ordering choice protects.

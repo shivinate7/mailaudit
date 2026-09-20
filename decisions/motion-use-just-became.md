@@ -16,3 +16,8 @@ not the fact of having been checked in. Tests 43.3–43.6; 43.4 and 43.6 are a
 pair, and a mutant that classes the stamp on `done` alone passes the first and
 dies on the second.
 ```
+
+## See also
+
+- `motion-a-completed-package-is-gilded` — one animation this gate protects from replaying.
+- `motion-a-card-opens-in-order` — the other animation this gate protects from firing on load.

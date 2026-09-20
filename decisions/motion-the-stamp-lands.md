@@ -10,3 +10,8 @@ The stamp rocks down and settles at its resting angle instead of blinking into p
   keyframes and returns to its own −3° — the resting angle rides in a `--rest`
   custom property, so one animation serves both.
 ```
+
+## See also
+
+- `motion-timings` — the exact angles and duration this landing uses.
+- `motion-is-stationery-not-software` — the register this landing is built to fit.

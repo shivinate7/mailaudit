@@ -10,3 +10,8 @@ The overall progress bar's green fill lands a beat after its width, so the two r
   It is reachable but rare: 100% there means every card in the ledger has
   arrived, which is the largest thing this app has to say.
 ```
+
+## See also
+
+- `motion-timings` — the exact beat delay between width and green.
+- `motion-a-completed-package-is-gilded` — the same cause-then-effect beat, on a single card.
