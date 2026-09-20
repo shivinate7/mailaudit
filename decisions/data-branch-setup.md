@@ -4,7 +4,7 @@ The data branch in the private repository already carries the ledger's full hist
 
 ## The argument, as recorded
 
-```
+````
 1. The `data` branch already exists in `mailaudit-data`, carrying the ledger's
    full history (130 commits at the time of the move, tip blob identical to the
    old repo's — blob shas are content-addressed, which is why no device needed
@@ -12,4 +12,4 @@ The data branch in the private repository already carries the ledger's full hist
    ```bash
    git switch --orphan data && git commit --allow-empty -m "data branch: ledger backups live here, never merge to main" && git push -u origin data && git switch main
    ```
-```
+````
