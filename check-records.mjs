@@ -187,10 +187,28 @@ function titleIsTitleCase(title) {
    from. */
 const PRE_SPLIT_CLAUDE_MD_SHA = "507ab47d289870b3b0e567ebbea98740254424be";
 
+/* A second base, and the reason it has to exist.
+
+   Three passages were corrected ON THIS BRANCH before they were extracted: the
+   watchdog entry lost a contradiction, two arguments came back, and a new
+   thread recorded that CI runs in UTC. A record that quotes the corrected text
+   cannot match the pre-split pin, and a record that quotes the pin to satisfy
+   this check would state something the repo no longer says. The check was
+   wrong, not the records.
+
+   So a paragraph passes when it matches EITHER base. This one is the branch tip
+   that still carried the whole CLAUDE.md, immediately before the index replaced
+   it. Neither SHA may be bumped. Bumping one makes this check compare a record
+   against text it was never extracted from, which is the one thing it exists to
+   refuse. */
+const CORRECTED_CLAUDE_MD_SHA = "d5cb3694378f0e7e0ba093d2d0a812de8af134d6";
+
+function claudeMdAt(sha) {
+  return execFileSync("git", ["show", `${sha}:CLAUDE.md`], { encoding: "utf8" });
+}
+
 function preSplitClaudeMd() {
-  return execFileSync("git", ["show", `${PRE_SPLIT_CLAUDE_MD_SHA}:CLAUDE.md`], {
-    encoding: "utf8",
-  });
+  return claudeMdAt(PRE_SPLIT_CLAUDE_MD_SHA);
 }
 
 /* A record's quote fence is one contiguous block of lines lifted from
@@ -206,7 +224,7 @@ function preSplitClaudeMd() {
    internal whitespace. So this check does NOT strip or normalize leading
    whitespace anywhere: every paragraph is compared byte for byte. */
 {
-  const base = preSplitClaudeMd();
+  const bases = [preSplitClaudeMd(), claudeMdAt(CORRECTED_CLAUDE_MD_SHA)];
   let totalParas = 0;
   let foundParas = 0;
   const missing = [];
@@ -217,7 +235,7 @@ function preSplitClaudeMd() {
     const paras = body.split(/\n\s*\n/).map((p) => p).filter((p) => p.trim() !== "");
     paras.forEach((p, idx) => {
       totalParas++;
-      if (base.includes(p)) {
+      if (bases.some((base) => base.includes(p))) {
         foundParas++;
       } else {
         missing.push({ path: r.path, idx, snippet: p.slice(0, 60).replace(/\n/g, "\\n") });
@@ -231,7 +249,7 @@ function preSplitClaudeMd() {
     failures++;
   }
   console.log(
-    `check:records: ${foundParas}/${totalParas} quoted paragraph(s) verbatim against CLAUDE.md@${PRE_SPLIT_CLAUDE_MD_SHA.slice(0, 12)}, ${missing.length} missing`
+    `check:records: ${foundParas}/${totalParas} quoted paragraph(s) verbatim against CLAUDE.md@${PRE_SPLIT_CLAUDE_MD_SHA.slice(0, 7)} or @${CORRECTED_CLAUDE_MD_SHA.slice(0, 7)}, ${missing.length} missing`
   );
 }
 
