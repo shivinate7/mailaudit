@@ -16,3 +16,8 @@ The whole application lives in one React component file, with no router and no C
   `window.remote` (target/status/setKey/clearKey/
   pull/push/pushForce over the GitHub Contents API), then mounts the app.
 ```
+
+## See also
+
+- `storage-split-three-adapters` — the storage rule this platform layer file enforces
+- `versions-get-their-own-database` — one of the three adapters this split gives its own home

@@ -17,3 +17,8 @@ A surviving mutant means the fixtures never reach the state where the bug matter
   `ledger`, so it selected the newest row and restored the version the app
   already had. It passed and proved nothing.)
 ```
+
+## See also
+
+- `testing-when-a-mutant-dies-check-the-cause` — the paired lesson, on a mutant that appears caught instead
+- `sync-runs-itself` — the resume merge feature where this surviving mutant lived

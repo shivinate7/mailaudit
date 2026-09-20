@@ -12,3 +12,8 @@ A mutant dying does not prove the intended assertion caught it. The photo-orderi
   a local copy the id is in `present` anyway and the assertion passes under the
   mutation. When a mutant dies, check it died of the right thing.
 ```
+
+## See also
+
+- `testing-when-a-mutant-survives-find-the-unreached-state` — the paired lesson, on a mutant that lives instead
+- `two-device-merge-must-be-proven-first` — the merge feature where this false kill happened

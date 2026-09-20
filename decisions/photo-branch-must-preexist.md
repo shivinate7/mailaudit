@@ -11,3 +11,9 @@ Photos live on the data repository's main branch, in a photos directory, and tha
    not optional: these are pictures of mailing labels with the delivery address
    on them.
 ```
+
+## See also
+
+- `data-branch-setup` — the sibling setup step for the ledger branch
+- `one-repo-for-both-halves` — the repository both branches share
+- `remote-is-transport-not-storage` — the adapter that writes into this branch

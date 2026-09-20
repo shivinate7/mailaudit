@@ -19,3 +19,8 @@ Two things that will bite:
   Safari. That is safe for data — check-ins are keyed to the *origin*, not the
   icon — but take a Backup first out of habit.
 ```
+
+## See also
+
+- `favicon-is-a-different-drawing` — the drawing these export steps produce
+- `testing-jsdom-has-no-layout` — why an export defect like a blank PNG needs a real render to catch

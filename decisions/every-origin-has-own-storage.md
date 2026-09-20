@@ -10,3 +10,9 @@ The file protocol, the local server, and the live Pages site are three separate 
 other, so data "vanishing" when you switch is expected, not a bug. Moving
 between them means Backup → restore, and photos need *Backup + photos*.
 ```
+
+## See also
+
+- `shared-origin-needs-namespace` — the namespace rule inside one of those origins
+- `file-protocol-works-locally` — why the file origin needs no server
+- `storage-split-three-adapters` — the adapters that hold each origin's data

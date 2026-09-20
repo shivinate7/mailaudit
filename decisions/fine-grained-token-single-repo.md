@@ -15,3 +15,9 @@ Each device gets its own named fine-grained personal access token. It is scoped 
    calendar reminder, because when it lapses the only symptom is a push that
    stops working.
 ```
+
+## See also
+
+- `the-token-lives-outside-the-namespace` — the storage guarantee that protects this same token
+- `one-repo-for-both-halves` — the single repository this token is scoped to
+- `the-token-is-a-credential` — the invariant this scoping exists to protect

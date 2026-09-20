@@ -13,3 +13,9 @@ imported only by `entry.jsx`.
  localStorage remains the source
 of truth; the GitHub copy is a backup and the app is fully functional offline.
 ```
+
+## See also
+
+- `photo-rules-fails-quietly` — the naming rules this adapter never learns
+- `storage-split-three-adapters` — the local adapters this remote backs up
+- `the-token-lives-outside-the-namespace` — the credential this transport uses without storing it as data

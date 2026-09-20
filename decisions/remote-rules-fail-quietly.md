@@ -10,3 +10,9 @@ Two adapter decisions get their own pure functions. One maps GitHub's status cod
   phrase) and `pushBody` (which omits the sha only on a create). Same reasoning
   as `b64.mjs`: both fail quietly, so both are pure and directly tested.
 ```
+
+## See also
+
+- `b64-fails-by-producing-plausible-data` — the same reasoning, on the base64 module
+- `photo-rules-fails-quietly` — the same reasoning, on the photo-sync module
+- `merge-rules-only-add` — the same reasoning, on the merge module

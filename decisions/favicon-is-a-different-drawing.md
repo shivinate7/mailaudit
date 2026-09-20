@@ -16,3 +16,8 @@ left is what still reads at 16px — gold ring, eight lobes, emerald centre.
 The SVG is served first with the PNG as a fallback for browsers that don't take
 `type="image/svg+xml"`.
 ```
+
+## See also
+
+- `icon-paths-and-export-gotchas` — the export step that can produce a blank favicon
+- `testing-jsdom-has-no-layout` — why a rendering claim like this needs a real browser

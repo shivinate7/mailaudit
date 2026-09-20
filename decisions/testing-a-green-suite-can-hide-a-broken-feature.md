@@ -10,3 +10,8 @@ empty ledger. Worth remembering as a method: the suite was all green and the
 feature was still broken in its single most important scenario, because every
 test booted a ledger that already had data in it.
 ```
+
+## See also
+
+- `testing-an-assertion-that-cannot-fail-is-decoration` — the related failure mode of a test that proves nothing
+- `testing-when-a-mutant-survives-find-the-unreached-state` — the same blind spot, found through a mutant instead

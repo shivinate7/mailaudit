@@ -13,3 +13,8 @@ as good as the mock. When a rule matters and lives below this seam, the mock is
 the test, so keep it honest: this one had mirrored the bug and disabled the only
 failure that could expose it.
 ```
+
+## See also
+
+- `testing-when-a-mock-field-stops-being-decorative` — another way a mock can hide a real defect
+- `b64-fails-by-producing-plausible-data` — the module family this seam sits below

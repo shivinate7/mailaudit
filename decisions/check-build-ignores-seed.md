@@ -28,3 +28,9 @@ no `origin/data` (CI's exact condition) exits 0; a source change with no rebuild
 exits 1 saying "index.html is stale"; and a drifted tag shape exits 1 naming
 `withoutSeed()`.
 ```
+
+## See also
+
+- `check-seed-backstop-not-proof` — the other half of the same check, on what the seed publishes
+- `the-public-seed` — the seed this check strips before comparing
+- `ledger-remote-needed-for-seed-build` — why a build can come out seedless

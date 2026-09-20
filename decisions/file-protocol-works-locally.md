@@ -10,3 +10,8 @@ supporting localStorage *and* IndexedDB (Blobs included), so nothing the app
 needs is missing there. `npm run serve` exists only to give a scheme matching
 production, which matters if you're chasing an origin-dependent bug.
 ```
+
+## See also
+
+- `every-origin-has-own-storage` — why the file origin is a separate ledger from the others
+- `testing-jsdom-has-no-layout` — why this claim needed a real browser, not a test

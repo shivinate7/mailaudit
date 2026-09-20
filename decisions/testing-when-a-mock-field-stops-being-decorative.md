@@ -13,3 +13,8 @@ would have been permanently stale and the healthy state unreachable from a
 test. **When a mock's field stops being decorative, re-read the comment next to
 the field that already wasn't.**
 ```
+
+## See also
+
+- `testing-a-mock-is-the-test-below-the-seam` — why an honest mock matters below an untestable seam
+- `testing-check-that-something-re-reads-the-value` — the read-side version of the same trap

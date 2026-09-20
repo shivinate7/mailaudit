@@ -17,3 +17,9 @@ A daily scheduled workflow reads the data branch's own history and opens an issu
    that simply never gets opened has no way to tell you it stopped. This one
    cannot be fooled by anything happening on a device.
 ```
+
+## See also
+
+- `data-branch-setup` — the branch the watchdog reads
+- `one-repo-for-both-halves` — why the watchdog lives in the private repository
+- `sync-runs-itself` — the automatic push the watchdog is checking on

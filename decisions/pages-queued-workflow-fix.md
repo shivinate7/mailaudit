@@ -9,3 +9,8 @@ GitHub Pages serves from main branch root. Deploy quirk learned the hard way:
 if the Pages workflow sits Queued >10 min, don't re-run the same run — cancel
 it and push a trivial commit to spawn a fresh run.
 ```
+
+## See also
+
+- `ci-workflow-filters-guarantee-no-rebuild-trigger` — the workflow filters this deploy quirk sits beside
+- `one-repo-for-both-halves` — the repository this Pages deploy serves
