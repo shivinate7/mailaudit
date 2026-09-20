@@ -1,6 +1,6 @@
 # Test suite assertion count and run time
 
-This record holds the assertion count and the run time for `npm test`. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+This record holds the assertion count and the run time for `npm test`. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change. The suite currently prints 541 assertions.
 
 ## How to re-measure
 
