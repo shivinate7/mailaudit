@@ -11,3 +11,9 @@ object at the top of `src/app.jsx` — **there is no colour literal anywhere els
 in the file, and no pure white in the theme.** Never reach for `"#fff"`; use
 `C.card`, which is the off-white parchment surface.
 ```
+
+## See also
+
+- `palette-token-table-and-contrast-floor` — the full token table this ruling names.
+- `design-the-view-switch-is-equal-thirds` — a control styled from this same palette.
+- `palette-theme-color-tracks-paper` — the rule that keeps the browser chrome matched to this palette.

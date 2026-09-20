@@ -25,3 +25,8 @@ Eight moments:
   `opacity="0.22"` presentation attribute throughout, which is also exactly
   what the masthead's falls back to under reduced motion.
 ```
+
+## See also
+
+- `motion-timings` — the exact beat timings this sequence lands on.
+- `masthead-is-one-letterhead` — the letterhead this sequence composes.

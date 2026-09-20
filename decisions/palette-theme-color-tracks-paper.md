@@ -12,3 +12,8 @@ Safari's chrome sits as a mismatched band above the page.
 The icon was designed against this palette first and the UI followed; see
 `icon/gen-icon.py` for that side of it.
 ```
+
+## See also
+
+- `design-parchment-ledger` — the palette this browser chrome color must track.
+- `palette-token-table-and-contrast-floor` — the token table `paper` belongs to.

@@ -19,3 +19,8 @@ Finishing a package draws one pass of gold across the card, and this gild is the
   then sheen its own completion next to the gild. See "The card's reserved
   geometry"; test 44.5 is what fails if it is put back.
 ```
+
+## See also
+
+- `card-the-bar-is-out-of-flow` — the reason the progress bar cannot mark its own completion.
+- `motion-use-just-became` — the gate that keeps this gild from replaying on every render.

@@ -16,3 +16,8 @@ The active-view fill is a single element that slides between thirds, never three
   no active-view indicator at all, and every button still looks correct in a
   DOM dump. Tests 43.1–43.2.
 ```
+
+## See also
+
+- `switch-thirds-and-seal` — the measured thirds and thumb offset this object slides between.
+- `design-the-view-switch-is-equal-thirds` — the layout ruling this animation moves across.

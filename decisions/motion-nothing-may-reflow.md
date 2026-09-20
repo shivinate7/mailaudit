@@ -19,3 +19,11 @@ holds for a card being opened: the card below it steps to its new position in
 — a single distinct offset), because only opacity and transform are animated
 and the height is never touched.
 ```
+
+The ruled-head-heights and card-reserved-geometry records hold these measured numbers.
+
+## See also
+
+- `ruled-head-heights` — the measured row height this rule keeps at zero drift.
+- `card-reserved-geometry` — the measured card shift this rule keeps at zero.
+- `no-layout-shift-under-the-pointer` — the invariant this stylesheet rule restates.

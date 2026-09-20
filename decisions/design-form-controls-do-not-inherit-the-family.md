@@ -15,3 +15,8 @@ UA stylesheet doing this, so no test can catch a regression here** — it was
 caught by reading `getComputedStyle` in a real browser, and that's the only way
 it will be caught again.
 ```
+
+## See also
+
+- `design-parchment-ledger` — the palette this font rule renders on top of.
+- `motion-remeasure-not-rereason` — the same lesson, that a real browser must confirm what a test cannot.
