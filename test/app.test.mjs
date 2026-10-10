@@ -3799,4 +3799,40 @@ await foreground();
 await settle();
 ok(/newer lines/.test(text()), "45.3 a fresh pulledAt never masks being behind");
 
+/* ── 46. the parser keeps only TCG purchases ───────────────────────────────
+   Invariant parser-filters: a row enters the checklist only when Type is
+   purchase (or blank) AND Vendor starts with TCG. The real exports carry eBay
+   and seller-side rows, and nothing downstream can tell one from an order once
+   it is in the list. One CSV, one row per way to be rejected, plus the kept
+   row. Blank Vendor is deliberately not asserted: the parser lets it through
+   while the invariant reads TCG-only, and that mismatch is the owner's call. */
+
+const KEPT = "Kept TCG Card";
+const EBAY = "Rejected eBay Card";
+const SALE = "Rejected Sale Card";
+const OTHER = "Rejected Other Vendor Card";
+
+await boot({ items: [], received: {} });
+await dropFile(
+  "orders.csv",
+  csv([
+    { "Order Id": "P1", "Product Name": KEPT, Price: "2.00" },
+    { "Order Id": "P2", Vendor: "eBay", "Product Name": EBAY, Price: "3.00" },
+    { "Order Id": "P3", Type: "sale", "Product Name": SALE, Price: "4.00" },
+    { "Order Id": "P4", Vendor: "CardMarket", "Product Name": OTHER, Price: "5.00" },
+  ])
+);
+ok(/Imported 1 lines/.test(text()), "46.1 only the TCG purchase is imported");
+ok(text().includes(KEPT), "46.2 and it is on the page");
+await sleep(SAVE_WAIT);
+eq(
+  saved().items.map((it) => it.name),
+  [KEPT],
+  "46.3 the persisted ledger holds exactly the TCG purchase"
+);
+ok(
+  ![EBAY, SALE, OTHER].some((n) => text().includes(n)),
+  "46.4 none of the rejected rows reach the page"
+);
+
 report();
