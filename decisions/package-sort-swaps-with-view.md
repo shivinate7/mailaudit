@@ -4,7 +4,7 @@ The Packages view has its own sort, separate from the Tally sort. The sort contr
 
 **Holds while:** `packageOrder` in `src/app.jsx` ranks the packages, and it reads `itemSort` for no package key.
 
-Both orders freeze while the user checks cards. For a package, unit rate is that package's basis over its own copies. `packageOrder` computes it.
+Both orders freeze while the user checks cards. The unit rate for a package is set out in `unit-rate-is-not-the-position`.
 
 `packageOrder` ranks whichever source is live. A refunded package in the stamped filter sorts with the rest. See `stamped-filter-on-the-pipeline`.
 

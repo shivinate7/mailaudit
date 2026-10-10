@@ -4,7 +4,7 @@ Merge is the primary sync action. Push anyway stays advisory.
 
 **Holds while:** `src/app.jsx` sets `on: true` on the Merge action, and it styles the Push anyway action in manila.
 
-Merge appears on a conflict. It also appears when `peek()` says the other device is ahead. It covers the case that the automatic path could not finish.
+Merge appears on a conflict, and when `peek()` says the other device is ahead. The two entrances are set out in `merge-carries-no-two-tap-arm`. Merge covers the case that the automatic path could not finish.
 
 Merge is filled accent violet. That is the app's colour for the live control. Merge is the safe resolution, so it is the primary one. Its label reads "Merge & push" on a conflict. Otherwise it reads "Merge".
 

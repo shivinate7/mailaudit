@@ -21,7 +21,7 @@ one record, and each record holds current text only; git keeps the history. Read
 records your task needs. Do not read them all.
 
 - `invariants/` holds a rule that must not break. 8 records.
-- `decisions/` holds a ruling and the reason it still holds. 181 records.
+- `decisions/` holds a ruling and the reason it still holds. 180 records.
 - `measurements/` holds a measured figure and how to re-measure it. 8 records.
 
 A record cites another record by slug, never by a path, so a record survives a
@@ -100,7 +100,6 @@ Sync runs itself. These records say what it refuses to do, and why each refusal 
 - `pull-fetches-photos-before-apply` — A pull fetches photos before it applies.
 - `ledger-and-photos-share-a-repo` — The ledger and the photos share one repo.
 - `photo-writes-wait-one-second` — Photo writes wait one second after the ledger.
-- `behind-device-counts-as-broken` — A device that is behind counts as broken sync.
 - `null-remote-info-is-not-no-key` — A null remote status is not a missing key.
 
 ## Envelope photos

@@ -4,11 +4,11 @@ The date filter applies to the Tally view and the Packages view. Orphaned hides 
 
 **Holds while:** `RANGES` in `src/app.jsx` lists the date options.
 
-The options are All, 30, 45, 60 and 90 days. A free "# days" box accepts any count. A custom from–to pair sets a range. Search and Showing also apply to both ledger views.
+The options are All time, 30 days, 45 days, 60 days and 90 days. "Last…" takes a free day count. "By month" sets a custom range from the months in the ledger. The native from–to pair sits behind an "Exact dates" disclosure. Search and Showing also apply to both ledger views.
 
-The range sits behind one control. That control shows the active range. Tapping it opens the chip set, the "# days" box and the custom pair. The panel starts shut on every load. It is not saved.
+The range sits behind one control. That control shows the active range. Tapping it opens the chip set, the "Last…" day box and the month picker. The panel starts shut on every load. It is not saved.
 
-The collapse saved ~22px at 375px. Seven chips had wrapped to two rows. The custom pair always claimed a third row. The native `<input type="date">` has a ~140px minimum width.
+Before the collapse, seven chips wrapped to two rows. The custom pair claimed a third row. The collapse saved ~22px at 375px. The native `<input type="date">` has a ~140px minimum width.
 
 ## See also
 

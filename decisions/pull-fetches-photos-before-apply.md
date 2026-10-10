@@ -4,7 +4,7 @@ A pull fetches the photos first, and then it applies the ledger. The merge follo
 
 **Holds while:** `doPull` in `src/app.jsx` calls `pullPhotos` before `applyBackup`.
 
-The ordering is what makes this feature work. `applyBackup` keeps a photo id only when its blob is present. If the ledger applied first, every photo id would be stripped. Tests 30.5–30.9 pin the pull's order.
+The ordering is what makes this feature work. `applyBackup` keeps a photo id when its blob is inlined in the payload, already on this device, or known on the photo remote. See `photo-ids-restore-keep-if-known`. If the ledger applied first, every id whose blob is not already on this device would be stripped, including ids the photo remote holds. Tests 30.5–30.9 pin the pull's order.
 
 The merge has a sharper reason. The merge unions both devices' envelopes. Ids that arrive from the other device have no blob on this device yet. `applyBackup` would strip every one of them. So the photos come first.
 

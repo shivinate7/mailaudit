@@ -1,6 +1,6 @@
 # The sync panel is a two-column option grid
 
-The sync panel is an option grid of two columns. A block of particulars sits under the grid.
+The sync panel is an option grid of two columns. A block of particulars sits under the grid. It sits on the same surface as the date and sort disclosures, `panelWrap`. See `ruled-head-panels-carry-no-fill`.
 
 **Holds while:** `syncActions` in `src/app.jsx` builds the panel's actions, and `optGrid(2)` lays them out.
 
@@ -24,4 +24,5 @@ Behind the sync line sit Push, Merge, Pull, Push anyway, the particulars and the
 - `sync-particulars-ruled-values` — the particulars under the grid.
 - `merge-is-the-primary-sync-action` — the colour and order of the Merge action.
 - `sync-line-toggles-its-panel` — the line that opens this panel.
+- `ruled-head-panels-carry-no-fill` — the panel surface this panel shares.
 - `ruled-head-heights` — the measured height of the open panel.

@@ -10,8 +10,6 @@ In Packages, a filtered card carries this footer: `+4 more lines in this order Â
 
 In Tally, each source copy's order id is an underlined control with a `â€º`. It reveals that order, switches to Packages and scrolls to it. It leaves the search untouched, so one tap on the view switch comes straight back.
 
-A reveal ignores `hideDone` as well as the query. Otherwise the jump lands on nothing when the copy's package is fully checked in. The "+N more" count promises lines, and `hideDone` would hide them again.
-
 The Find search matches the card name, the set, the seller and the order. A stamp's label and note are part of the Packages search. A package-level hit keeps every line of its order. Filtering those lines would recreate the one-line lie. Group 32 covers the reveal.
 
 ## See also

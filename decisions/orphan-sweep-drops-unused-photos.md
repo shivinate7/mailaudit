@@ -14,5 +14,5 @@ The pile shows a line such as "N photos stored · X of Y used on this device". T
 
 - `label-photos-downscale-to-2000px` — the photos the sweep keeps or drops.
 - `photos-in-git-are-permanent` — the sweep stops at the device, not at git.
-- `photo-rules-fails-quietly` — the photo rules that the sweep relies on.
+- `photo-ids-restore-keep-if-known` — a stripped id lets the sweep delete its blob.
 - `orphaned-mail-never-decides` — the limit on what an orphaned envelope may decide.
