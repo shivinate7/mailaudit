@@ -1,14 +1,8 @@
 # Disclosure panels fade in, their space does not
 
-A disclosure panel arrives with an opacity and position fade. The motion-timings record has the exact duration. The layout space it takes is never animated, because it is the same push-down the page has always had.
+A disclosure panel arrives with an opacity fade and a 4px move, over 220ms. The exact timing is in the `motion-timings` record.
 
-## The argument, as recorded
-
-```
-- **The disclosure panels arrive** (220ms, opacity and 4px). The space they
-  take is *not* animated and must not be — it is the same layout they have
-  always pushed down, one commit after the tap.
-```
+The layout space a panel takes is never animated, and it must not be. That space is the same layout the page has always pushed down. It changes one commit after the tap.
 
 ## See also
 

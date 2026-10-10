@@ -1,22 +1,12 @@
 # peek is three-valued, not a guess
 
-The peek check reads only the remote's blob sha, a few hundred bytes, instead of the full ledger. It answers with one of three states, because could not look must never read as all clear. Reading an unknown state as clear is exactly the state where a push would overwrite the other device. Auto-push checks peek before every write and declines on an ahead or unknown result.
+The peek check reads only the remote's blob sha, a few hundred bytes, not the full ledger. It answers with one of three states. "Could not look" must never read as "all clear". Reading an unknown state as clear is the one state in which a push would overwrite the other device.
 
-## The argument, as recorded
+`peek()` calls `GET /git/trees/{branch}`. That returns the **blob** sha for `ledger.json`. It is the exact value `push` stores, and `rec().sha` is compared against it. The call spends a few hundred bytes of the read budget. A Contents GET would spend ~470KB to answer the same question.
 
-```
-- **`peek()`, and auto-push.** `GET /git/trees/{branch}` returns the **blob**
-  sha for `ledger.json` — the exact value `push` stores and `rec().sha` is
-  compared against — for a few hundred bytes on the *read* budget rather than
-  the ~470KB a Contents GET would spend to answer the same question. It runs on
-  foreground, never on a timer, and it is **three-valued** for the same reason
-  `listPhotos` is: "I could not look" must never render as "all clear", because
-  that is the state in which pushing overwrites the other device. Auto-push
-  (unconditional now — there is no toggle) looks before every write and declines
-  on `ahead` or on unknown; a conflict opening between the look and the write
-  resolves by merging rather than leaving `Push anyway` armed on a screen nobody
-  is watching.
-```
+`peek()` runs on foreground, never on a timer. It is three-valued for the same reason `listPhotos` is.
+
+Auto-push is unconditional. There is no toggle. It looks before every write, and it declines on `ahead` or on unknown. If a conflict opens between the look and the write, it resolves by merging. It does not leave `Push anyway` armed on a screen nobody is watching.
 
 ## See also
 

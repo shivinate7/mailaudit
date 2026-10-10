@@ -1,17 +1,10 @@
 # The check tick is written, not popped in
 
-The check mark draws as one stroke, a speed chosen because it fires hundreds of times on a mail day. The motion-timings record has the exact duration. It is an SVG path so it can be drawn, and a typographic dash still marks the partial state.
+The check tick draws as one stroke, from left to right. It takes 300ms. That ceiling is not a preference. The tick fires hundreds of times on a mail day. Anything slower feels like latency. The exact stroke duration is in `motion-timings`.
 
-## The argument, as recorded
+The glyph is an SVG path, not the `✓` character. The path is what lets the tick be drawn. The `aria-label` carries the meaning either way.
 
-```
-- **The check tick is written**, one stroke left to right, 300ms. That ceiling
-  is not a preference either: this fires hundreds of times on a mail day and
-  anything slower starts to feel like latency. The glyph is an SVG path rather
-  than the `✓` character purely so it *can* be drawn; the `aria-label` carries
-  the meaning either way, and the partial state stays a typographic dash
-  because a half-drawn stroke would read as a tick still arriving.
-```
+The partial state stays a typographic dash. A half-drawn stroke would read as a tick still arriving.
 
 ## See also
 

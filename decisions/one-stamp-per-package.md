@@ -1,16 +1,10 @@
 # One stamp per package, latest wins
 
-Each package holds at most one order stamp, set by hand from a fixed list of kinds. Picking a different kind replaces the old stamp and moves its date forward. Editing only the note keeps the existing date in place.
+Each package holds at most one order stamp. Stamps are set by hand from a fixed list of kinds: `Claim filed · Refunded · Seller contacted · Reshipped · Partial refund · Other`.
 
-## The argument, as recorded
+A stamp is dated the day it was set. The date is the local calendar day, not UTC. This is the same trap the month picker documents. A stamp can also carry an optional free line.
 
-```
-- **Order stamps** — one per package, set by hand: `Claim filed · Refunded ·
-  Seller contacted · Reshipped · Partial refund · Other`, dated the day it was set
-  (local calendar day, not UTC — the same trap the month picker documents),
-  with an optional free line. Picking another kind **replaces** it and
-  re-dates it; editing only the note keeps the date. Rendered as a band under
-```
+Picking another kind replaces the old stamp, and it re-dates the stamp. Editing only the note keeps the existing date. The stamp renders as a band under the package header.
 
 ## See also
 
