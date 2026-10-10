@@ -8,6 +8,8 @@ GitHub Actions sets `TZ` to UTC. Test 38.9 skips itself in that zone, on purpose
 
 What this still does not prove: the UTC path. The skip branch of 38.9 no longer runs in CI. A green check proves only its platform and the states its fixtures build. This one now proves the non-UTC state.
 
+**Test 38.9 itself.** Its first draft could not fail. `dayKey("2026-05-01T00:30")` returns `"2026-05-01"` under the UTC reading too. So the test now derives the boundary from the runner's own `getTimezoneOffset()`. It skips itself in UTC. There is nothing to claim there.
+
 ## See also
 
 - `testing-jsdom-has-no-layout` — another case where a green run proves only its own platform

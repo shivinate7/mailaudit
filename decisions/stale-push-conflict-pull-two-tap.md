@@ -10,6 +10,8 @@ Conflict detection uses the blob sha from the Contents API. The sha sent is the 
 
 A stale push reports the conflict and changes nothing. `Push anyway` (two-tap) is the escape hatch. It is a partial safety net. Every push is a commit, so what it overwrote is still in the branch's history. A bad *pull* has no such recovery. That is why Pull gets the two-tap and Push does not.
 
+**Pinned by:** groups 25 to 27. Mutant confirmed red: a push that treats every failure as success.
+
 ## See also
 
 - `sha-accepted-only-after-apply` — the rule that decides what counts as stale.

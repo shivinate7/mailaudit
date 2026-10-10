@@ -12,6 +12,12 @@ A JPEG is not UTF-8. Pushing one through the text encoder mangles every byte tha
 
 Photos need only an encoder. The pull asks for the raw media type and reads `arrayBuffer()`, so photo bytes never reach base64 on the way back.
 
+**Pinned by:** 31.21 for the JPEG case, and 30.7 for the photo round trip. The harness mocks encode through the real `src/b64.mjs` functions. Test 30.7 asserts that the bytes come back identical. Swapping in the text encoder turns it red.
+
+Groups 25 to 27 confirm red a mutant that replaces `utf8ToBase64` with `btoa`. A fixture alone would miss that mutant. Every item in `ITEMS` is pure ASCII.
+
+Group 25's non-ASCII round trip goes through an envelope entry. iOS smart punctuation enters the app there. It changes no counts.
+
 ## See also
 
 - `photo-rules-fails-quietly` — the same reasoning applied to photo naming

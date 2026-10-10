@@ -8,6 +8,8 @@ Every push creates a commit, so the remote branch already holds a full archive o
 
 Restoring one funnels through the same `applyBackup`. It deliberately does not touch the stored sha. Rolling the ledger back is local. Pushing afterward rolls the remote back as a new commit, which keeps that reversible in turn.
 
+**Pinned by:** group 41, which reads older versions off the branch's own history. The remote mock records every push as a commit. That claim is the one this feature rests on. Mutant confirmed red: the load control fetching nothing. Group 41's first draft selected a commit by `message.split(" ")[0]`. Every push message starts with `ledger`. So that selector always picked the newest row. See `testing-surviving-mutant`.
+
 ## See also
 
 - `milestones-taken-before-risk` — the local tiers this branch history extends.

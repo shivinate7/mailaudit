@@ -12,6 +12,13 @@ The query, the range, and the reveals still do **not** reset. Those are things y
 
 Tests 12.8–12.9 and group 40 pin both sides. They use `backgroundFor(ms)`, which is `background()` and `foreground()` with the clock frozen across the trip.
 
+**Pinned by:** 12.8 and 12.9. They pin both sides of the threshold. Either one alone leaves half of it unpinned. Mutants confirmed red:
+- the threshold dropped, so a five-second glance away resets the list;
+- the resume never resetting;
+- the hidden branch not stamping the clock.
+
+Group 40 also kills the threshold dropped to 0.
+
 ## See also
 
 - `ruled-head-hand-elapsed-forward` — the signal that carries the away time to the merge check.

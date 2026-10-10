@@ -14,6 +14,13 @@ The bar is out of flow, not reserved. The reason is not about layout. The `gotQt
 
 The Tally card has `position: relative` for the same bar. PackageCard already had one, for `.mdl-gild`. Without `position: relative`, the bar escapes to the nearest positioned ancestor and draws somewhere else on the page. Tests 44.2 and 44.7 pin both cards.
 
+**Pinned by:** 44.2, 44.4a, 44.4b, 44.5 and 44.7. Three mutants needed a pair of assertions to die properly:
+- the bar back in flow (44.4a);
+- the bar taking pointer events (44.4b);
+- either card losing `position: relative` (44.2 and 44.7).
+
+The bar surviving completion is a reserved slot by another name. 44.5 kills that mutant. Read a 44.5 failure as a change to the motion design, not as a broken refactor. Keep 44.5 if the group is ever trimmed.
+
 ## See also
 
 - `card-reserved-geometry` — the measured card growth this record fixes.

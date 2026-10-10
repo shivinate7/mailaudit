@@ -10,6 +10,10 @@ The old rule was all-or-nothing on `data.photos`. That is right for a file resto
 
 The same bug was latent on the file path, a plain Backup followed by restore on the same device. It was rarely exercised there. Tests 19.11–19.12, 26.11–26.13.
 
+**Pinned by:** 30.5–30.9 for the ordering, and 26.11–26.13 for the ids. Mutants confirmed red:
+- a pull that applies the backup before it downloads, which strips every id;
+- a pull that reuses the old all-or-nothing predicate.
+
 ## See also
 
 - `photo-ids-unreadable-local` — the local half of the same keep-or-strip rule.

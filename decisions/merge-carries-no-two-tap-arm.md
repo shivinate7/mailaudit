@@ -11,6 +11,8 @@ There are two entrances to one function, `doMerge`:
 - The conflict. Here it also completes the rejected push.
 - The ahead-notice. Here it does not complete a push. There may be nothing local to send, and an empty commit is noise.
 
+**Pinned by:** group 34. Mutant confirmed red: a merge that stops disarming the other armed confirms.
+
 ## See also
 
 - `stale-push-conflict-pull-two-tap` — the confirm pattern this control skips.

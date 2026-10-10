@@ -8,6 +8,8 @@ Measuring `pushedAt` alone is wrong. The line answers "are my bytes on GitHub?" 
 
 Taking the later of the two cannot hide a real problem. The reason is structural, not luck. Every branch above this one outranks it. Unpushed local work against a moved remote is `behind`. A push that failed is `error`. Once those are clear, what is left is a device that holds the remote's bytes. That is what "backed up" means. Group 45 covers this. Test 45.3 pins the ordering: a fresh `pulledAt` must never mask being behind.
 
+**Pinned by:** 45.1–45.3. Staleness measured off `pushedAt` alone kills 45.1 and 45.2. Test 45.3 pins the ordering. A fresh `pulledAt` must never mask being behind. The `remoteInfo` effect keys on `[loaded, syncOpen]`. So a test must toggle the panel before it asserts. See `testing-check-something-rereads`.
+
 ## See also
 
 - `ruled-head-one-advisory-entrance` — the line this clock feeds.

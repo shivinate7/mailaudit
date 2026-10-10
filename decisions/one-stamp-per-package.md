@@ -8,6 +8,8 @@ A stamp is dated the day it was set. The date is the local calendar day, not UTC
 
 Picking another kind replaces the old stamp, and it re-dates the stamp. Editing only the note keeps the existing date. The stamp renders as a band under the package header.
 
+**Pinned by:** group 37. It checks the two entrances. It also checks the rule that a new kind replaces the old one rather than stacking.
+
 ## See also
 
 - `stamp-removal-writes-a-tombstone` — how a stamp is undone.
