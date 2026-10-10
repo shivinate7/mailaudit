@@ -1,17 +1,15 @@
 // A checked reader for the record corpus under invariants/, measurements/
-// and decisions/ — the 128 files CLAUDE.md is being split into. Same spirit
-// as check-docs.mjs: nothing here is hand-maintained data. Every count comes
-// from walking the real files, and every claim about CLAUDE.md's own prose
-// comes from git history, so this cannot drift out of step with either
-// without failing loudly. Run with `npm run check:records`.
+// and decisions/ — the files CLAUDE.md was split into. Same spirit as
+// check-docs.mjs: nothing here is hand-maintained data. Every count comes
+// from walking the real files. Records hold current text only; git keeps
+// history. Run with `npm run check:records`.
 //
-// Six claims, each with its own section below:
+// Five claims, each with its own section below:
 //   1. every citation resolves
 //   2. no fence is broken
-//   3. every quote is still verbatim, against the pre-split CLAUDE.md
-//   4. no duplicate slug across the three folders
-//   5. every record has its shape (title, prose, a fence)
-//   6. no orphan and no dead index entry (gated: CLAUDE.md is not the index yet)
+//   3. no duplicate slug across the three folders
+//   4. every record has its shape (title, own prose first, sentence-case title)
+//   5. no orphan and no dead index entry
 
 import { readFileSync, readdirSync } from "fs";
 import { execFileSync } from "child_process";
@@ -35,7 +33,7 @@ for (const folder of FOLDERS) {
 
 console.log(`check:records: walked ${records.length} record(s)`);
 
-/* ---------- claim 4: no duplicate slug ----------
+/* ---------- claim 3: no duplicate slug ----------
    A slug is a record's identity — the thing another record or CLAUDE.md
    cites. Two files sharing one slug across the three folders would make a
    citation ambiguous about which it means, silently. */
@@ -56,7 +54,7 @@ console.log(`check:records: walked ${records.length} record(s)`);
   console.log(`check:records: ${bySlug.size} distinct slug(s), ${dupes} duplicate(s)`);
 }
 
-/* ---------- fence parsing, shared by claims 2, 3 and 5 ----------
+/* ---------- fence parsing, shared by claims 2 and 4 ----------
    A fence opens on a line (indented at most 3 spaces, CommonMark's own
    allowance) that is nothing but a run of 3+ backticks, optionally followed
    by an info string containing no backtick. It closes on the next such
@@ -113,10 +111,10 @@ function parseFences(text) {
   console.log(`check:records: ${records.length - broken} record(s) with balanced fences, ${broken} broken`);
 }
 
-/* ---------- claim 5: every record has its shape ----------
+/* ---------- claim 4: every record has its shape ----------
    - an H1 title on the first line
-   - at least one sentence of the record's own prose before the first fence
-   - at least one fence
+   - at least one sentence of the record's own prose before the first
+     section heading or fence
    - the title is sentence case, not Title Case
 
    "Title Case" is judged the way the corpus itself was written: one lane
@@ -146,12 +144,12 @@ function titleIsTitleCase(title) {
       continue;
     }
     const { fences } = parseFences(r.text);
-    if (fences.length === 0) {
-      console.error(`check:records: ${r.path} has no fence at all`);
-      failures++;
-      continue;
-    }
-    const beforeFirstFence = lines.slice(1, fences[0].startLine - 1).join("\n");
+    const h2 = lines.findIndex((l, i) => i > 0 && /^## /.test(l));
+    const end = Math.min(
+      fences.length ? fences[0].startLine - 1 : lines.length,
+      h2 < 0 ? lines.length : h2
+    );
+    const beforeFirstFence = lines.slice(1, end).join("\n");
     const proseSentence = beforeFirstFence
       .split("\n")
       .map((l) => l.trim())
@@ -160,7 +158,7 @@ function titleIsTitleCase(title) {
       .trim();
     if (!/[.!?]/.test(proseSentence) || proseSentence.length < 10) {
       console.error(
-        `check:records: ${r.path}:2 has no sentence of its own prose before the first fence`
+        `check:records: ${r.path}:2 has no sentence of its own prose before the first section or fence`
       );
       failures++;
       continue;
@@ -178,127 +176,9 @@ function titleIsTitleCase(title) {
   console.log(`check:records: ${shaped}/${records.length} record(s) have the right shape`);
 }
 
-/* ---------- claim 3: every quote is still verbatim ----------
-   Pinned to the commit immediately before the split, so the comparison is
-   against the exact prose the records claim to have copied — never against
-   CLAUDE.md as it stands now (which is mid-rewrite into an index) and never
-   against a moving `main`. This SHA must never be bumped: doing so would
-   make the check compare records against text they were never extracted
-   from. */
-const PRE_SPLIT_CLAUDE_MD_SHA = "507ab47d289870b3b0e567ebbea98740254424be";
-
-/* A second base, and the reason it has to exist.
-
-   Three passages were corrected ON THIS BRANCH before they were extracted: the
-   watchdog entry lost a contradiction, two arguments came back, and a new
-   thread recorded that CI runs in UTC. A record that quotes the corrected text
-   cannot match the pre-split pin, and a record that quotes the pin to satisfy
-   this check would state something the repo no longer says. The check was
-   wrong, not the records.
-
-   So a paragraph passes when it matches EITHER base. This one is the branch tip
-   that still carried the whole CLAUDE.md, immediately before the index replaced
-   it. Neither SHA may be bumped. Bumping one makes this check compare a record
-   against text it was never extracted from, which is the one thing it exists to
-   refuse. */
-const CORRECTED_CLAUDE_MD_SHA = "d5cb3694378f0e7e0ba093d2d0a812de8af134d6";
-
-/* A shallow checkout holds neither pinned commit, and `git show` then dies with
-   "exists on disk, but not in <sha>". That is how this check first failed in CI
-   while passing on every developer machine, which is the same trap check:build
-   fell into: a claim about git history, run where the history was never fetched.
-
-   Two answers, and both are needed. The workflow checks out with fetch-depth 0,
-   so CI really can read both bases. And a read that still cannot run reports
-   UNKNOWN and does not fail, because "I could not look" is not "the records
-   drifted". This repo already applies that rule to peek, listPhotos and
-   classifyLedger, and the same reasoning runs the other way here: a guard that
-   reads its own blindness as a defect teaches the reader to ignore it. */
-function claudeMdAt(sha) {
-  try {
-    return execFileSync("git", ["show", `${sha}:CLAUDE.md`], {
-      encoding: "utf8",
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-  } catch {
-    try {
-      execFileSync("git", ["fetch", "--quiet", "--depth=1", "origin", sha], {
-        stdio: "ignore",
-      });
-      return execFileSync("git", ["show", `${sha}:CLAUDE.md`], {
-        encoding: "utf8",
-        stdio: ["ignore", "pipe", "pipe"],
-      });
-    } catch {
-      return null;
-    }
-  }
-}
-
-function preSplitClaudeMd() {
-  return claudeMdAt(PRE_SPLIT_CLAUDE_MD_SHA);
-}
-
-/* A record's quote fence is one contiguous block of lines lifted from
-   CLAUDE.md, but three of them stitch together non-adjacent paragraphs from
-   different parts of the file (an ellipsis-free "here are the figures"
-   composite) — so the fence body as ONE string is never going to be a
-   substring of CLAUDE.md, and checking it that way would fail all three for
-   no real reason. Splitting on blank lines and checking each paragraph on
-   its own survives that, because CLAUDE.md's own paragraphs are separated
-   the same way, and — the two records that quote an indented passage — an
-   indented paragraph is still one contiguous, byte-identical block within
-   itself; only the JOIN between paragraphs was ever the problem, not
-   internal whitespace. So this check does NOT strip or normalize leading
-   whitespace anywhere: every paragraph is compared byte for byte. */
-{
-  const bases = [preSplitClaudeMd(), claudeMdAt(CORRECTED_CLAUDE_MD_SHA)].filter(
-    (b) => b !== null
-  );
-  if (bases.length === 0) {
-    /* Skip the claim, do not grade it against nothing. The first cut of this
-       branch printed UNKNOWN and then compared every paragraph against an empty
-       base, so all 236 came back "not verbatim" and the run failed. That is the
-       unknown-read-as-broken mistake this repo names in three other places,
-       committed by the guard that was meant to honour it. */
-    console.log(
-      "check:records: verbatim claim UNKNOWN — this checkout holds neither pinned " +
-        "commit, so no quote could be compared. Not a failure. Check out with " +
-        "fetch-depth 0 to grade it."
-    );
-  } else {
-  let totalParas = 0;
-  let foundParas = 0;
-  const missing = [];
-  for (const r of records) {
-    const { fences } = parseFences(r.text);
-    if (fences.length === 0) continue; // already reported under claim 5
-    const body = fences[0].body.join("\n");
-    const paras = body.split(/\n\s*\n/).map((p) => p).filter((p) => p.trim() !== "");
-    paras.forEach((p, idx) => {
-      totalParas++;
-      if (bases.some((base) => base.includes(p))) {
-        foundParas++;
-      } else {
-        missing.push({ path: r.path, idx, snippet: p.slice(0, 60).replace(/\n/g, "\\n") });
-      }
-    });
-  }
-  for (const m of missing) {
-    console.error(
-      `check:records: ${m.path} quote paragraph #${m.idx + 1} is not verbatim in CLAUDE.md@${PRE_SPLIT_CLAUDE_MD_SHA}: "${m.snippet}..."`
-    );
-    failures++;
-  }
-  console.log(
-    `check:records: ${foundParas}/${totalParas} quoted paragraph(s) verbatim against CLAUDE.md@${PRE_SPLIT_CLAUDE_MD_SHA.slice(0, 7)} or @${CORRECTED_CLAUDE_MD_SHA.slice(0, 7)}, ${missing.length} missing`
-  );
-  }
-}
-
 /* ---------- claim 1: every citation resolves ----------
-   A citation is a backticked span, OUTSIDE a fence (fences are the quoted
-   CLAUDE.md prose, not a record's own cross-references), shaped like a slug:
+   A citation is a backticked span, OUTSIDE a fence (a fence holds code or sample
+   text, not a record's own cross-references), shaped like a slug:
    lowercase words joined by hyphens, at least two hyphens (three words or
    more). That shape alone is not enough — the corpus is full of code and CSS
    identifiers that also look like that (`theme-color`, `data-view`,
@@ -397,7 +277,7 @@ function closestSlug(token, slugs) {
   }
 }
 
-/* ---------- claim 6: no orphan, and no dead index entry ----------
+/* ---------- claim 5: no orphan, and no dead index entry ----------
    CLAUDE.md on this branch is still the long file it always was, not the
    index it is about to become — so this claim is behind an env switch,
    default OFF. The orchestrator turns it on (CHECK_RECORDS_INDEX=1) in the

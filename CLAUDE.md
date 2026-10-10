@@ -17,7 +17,7 @@ storage namespace do not follow the masthead. See `the-masthead-is-not-the-proje
 ## How to read this file
 
 This file is an index, and it holds no argument of its own. Every ruling lives in
-one record, and each record carries the original wording inside a fence. Read the
+one record, and each record holds current text only; git keeps the history. Read the
 records your task needs. Do not read them all.
 
 - `invariants/` holds a rule that must not break. 8 records.
@@ -25,9 +25,9 @@ records your task needs. Do not read them all.
 - `measurements/` holds a measured figure and how to re-measure it. 8 records.
 
 A record cites another record by slug, never by a path, so a record survives a
-move. `npm run check:records` proves six things. This index cites every record.
-Every citation resolves. No quoted wording drifted from the file this index
-replaced. No slug repeats. No fence is broken. Every record carries its shape.
+move. `npm run check:records` proves five things. This index cites every record.
+Every citation resolves. No slug repeats. No fence is broken. Every record
+carries its shape.
 
 An open question carries a `**Status:**` line. That line is the only thing that
 separates a question still open from a ruling already settled, so keep it.
