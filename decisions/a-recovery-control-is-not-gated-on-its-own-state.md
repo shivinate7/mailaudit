@@ -2,6 +2,8 @@
 
 If the data they act on is absent, the file actions and the sync region must not hide. Otherwise the recovery control is unreachable in the one case it exists for. Backup must still show for envelopes without items. Sync must still show for an empty ledger, because Pull is needed then.
 
+**Holds while:** `src/app.jsx` gates the file actions on `items.length > 0 || envelopes.length > 0`. The sync region gate adds `|| !!window.remote`, so Sync shows on an empty ledger.
+
 ## Gates in the current build
 
 The file actions are gated on `items.length > 0 || envelopes.length > 0`. This is the same condition as the view switch. It is not `items.length` alone. A user with hand-typed orphaned envelopes and an empty item list would otherwise have no Backup button. That data exists nowhere else. Test 23.1.

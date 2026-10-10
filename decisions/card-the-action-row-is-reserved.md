@@ -2,6 +2,8 @@
 
 The action row's buttons change on the same tap that changes the card. The row reserves the tallest height any combination of buttons can need. One width still shifts by a smaller amount. The card-reserved-geometry record has the exact heights per width. The app leaves that gap alone, because the width falls below its own stated floor.
 
+**Holds while:** `BULK_ROW_H` in `src/app.jsx` reserves the tallest action-row state at 360px and up.
+
 ## Why the row reserves its tallest state
 
 The row is reserved at its tallest state, `BULK_ROW_H`, which is 44px of content. Its membership changes on the same tap. "Clear check-ins" joins "Stamp" and "Mark all received". At 375px those three want 60.6 + 143.7 + 129.9 plus two 8px gaps. That is **350px in the 313px a card gives them**. Both bulk labels wrap to a second line, and the row goes from 31px to 44px. It shrinks by the same 13px on the tap that *completes* a package, where "Mark all received" leaves. Reserving the tallest state pins both transitions at once.

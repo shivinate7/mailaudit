@@ -2,6 +2,8 @@
 
 **Cost basis** = Σ (Price × Quantity) over the item's non-canceled copies in the active date range. Shipping and tax are per-order columns in the CSV, not per-line. They are deliberately not allocated into the basis.
 
+**Holds while:** `g.basis` in `src/app.jsx` sums `price * qty` only, and no code reads the CSV Shipping Amount or Tax Amount columns.
+
 Basis is what was paid. It never moves when copies are checked in. The red figure beside it is what is still outstanding.
 
 ## See also

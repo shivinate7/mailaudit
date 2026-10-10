@@ -2,6 +2,8 @@
 
 The whole application lives in one React component file, `src/app.jsx`. It has no router and no CSS files. It uses inline styles, plus one `<style>` tag for focus rules, the masthead and the action row. Tailwind is not used. Its only dependencies are react, react-dom and papaparse.
 
+**Holds while:** `package.json` lists only react, react-dom and papaparse as dependencies, and `src/app.jsx` holds the application.
+
 A separate platform layer, `src/entry.jsx`, gives the browser storage and network APIs a single home. It provides these objects:
 
 - `window.storage`: async get, set, delete and list over localStorage. It holds the ledger.
