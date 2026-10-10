@@ -1,6 +1,6 @@
 # Newer features have only test proof
 
-Daily use verifies most of the feature map. These features are newer. Only `npm test` proves them so far:
+Daily use verifies most features. These features are newer. Only `npm test` proves them so far:
 
 - the Tally view and cost basis;
 - Orphaned and envelope photos;

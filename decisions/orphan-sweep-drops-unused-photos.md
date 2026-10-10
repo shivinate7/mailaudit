@@ -2,11 +2,11 @@
 
 One sweep effect covers every path that orphans a photo. Nothing deletes photos implicitly.
 
-**Holds while:** the sweep effect in `src/app.jsx` drops blobs that no envelope references, and it waits while an undo or a composer is open.
+**Holds while:** the sweep effect in `src/app.jsx` returns early when `undo`, `composing` or `syncBusy` is set.
 
 The sweep covers discard, assign-away, restore, and a cancelled composer. It drops any blob that no envelope references.
 
-It is held off while an undo is live, or while a composer is open. Either one can bring photo ids back.
+It is held off while an undo is live, or while a composer is open. Either one can bring photo ids back. It is also held off while a sync is busy. The timer checks the sync ref again when it fires, because a pull writes blobs before the envelope list catches up.
 
 The pile shows a line such as "N photos stored · X of Y used on this device". The figures come from real `navigator.storage.estimate()` numbers.
 

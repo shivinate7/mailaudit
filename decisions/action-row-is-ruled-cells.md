@@ -4,7 +4,7 @@ The action row holds equal ruled cells across the full width. The cells are Re-i
 
 **Holds while:** `src/app.jsx` styles the row as `.mdl-acts` with `grid-auto-flow: column`, and it has no Sync cell.
 
-File management is not a filter. An earlier row used three boxed buttons pushed to the right edge. That tray used another visual idiom. It left a void near 450px at desktop width. A thin rule above the row divides it from the head cells.
+The head cells are label-over-value state. The action row is bare uppercase actions. That separation is kept by treatment, not by a different idiom. File management is not a filter. An earlier row used three boxed buttons pushed to the right edge. That tray used another visual idiom. It left a void near 450px at desktop width. A thin rule above the row divides it from the head cells.
 
 The row is styled in the `<style>` tag as `.mdl-acts`, not as inline styles. Its membership depends on state. Re-import CSV shows only when the ledger or envelopes hold data. History shows when the versions adapter or the remote exists. So `grid-auto-flow: column` sets the columns.
 

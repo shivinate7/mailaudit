@@ -6,7 +6,7 @@ The two cells that open something underline their value.
 
 A cell built from the same parts as the masthead's read-only tallies reads as a statistic. The first draft scored 2/5 on discoverability with a reviewer, for exactly that reason.
 
-The underline is a form's write-on rule, not a button box. So the thesis of the ruled head survives.
+The underline is a form's write-on rule, not a button box. So the thesis in `ruled-head-masthead-vocabulary` survives.
 
 ## See also
 
