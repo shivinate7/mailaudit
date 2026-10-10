@@ -4,7 +4,7 @@ The app stores the remote sha only after it applies the pulled bytes. Storing th
 
 `pull()` returns the sha. `acceptPull()` stores it. The app calls `acceptPull()` after `applyBackup` has landed. This is the rule the whole conflict scheme rests on.
 
-Storing the sha on arrival would break this rule. A rejected payload would then leave the device on a current sha over stale data. A merge that throws, or a generation guard that bails, would do the same. The next push would carry that sha and be accepted. No conflict would be raised, and the other device's work would be destroyed. Auto-push would make this automatic and unattended, within 90 seconds.
+A sha stored on arrival lets a failed apply (a rejected payload, a merge that throws, or a generation guard that bails) leave a current sha over stale data. The next push then carries that sha and is accepted with no conflict, so the other device's work is destroyed. Auto-push makes this unattended, within 90 seconds.
 
 ## See also
 

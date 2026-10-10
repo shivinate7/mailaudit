@@ -9,7 +9,7 @@ The `● Auto-push` toggle is gone. A per-device switch for "does this work" tur
 
 Continuous sync was rejected, and it still is. It would push once per check-in, at the 500ms save cadence. The ledger blob is rewritten whole. GitHub's secondary limit is 80 content-generating requests/min and 500/hr, shared with photos. The 90s debounce is two orders of magnitude off that limit.
 
-The repo growth this would cause turned out to be small. The real ledger blob is 235KB. All 19 pushes of it bundle to 39KB. Git deltas near-identical JSON to roughly 2KB a version. At tens of pushes a mail day, that is single-digit MB a year. The push count and blob size are also in `ledger-and-seed-sizes`.
+The repo growth this would cause turned out to be small. The real ledger blob is 235KB. All 19 pushes of it bundle to 39KB. Git deltas near-identical JSON to roughly 2KB a version. At tens of pushes a mail day, that is single-digit MB a year. The push count and blob size live in `ledger-and-seed-sizes`.
 
 ## See also
 
