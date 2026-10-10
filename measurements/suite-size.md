@@ -1,8 +1,8 @@
 # Test suite assertion count and run time
 
-This record holds the assertion count and the run time for `npm test`. The suite runs 545 assertions and takes near 60 seconds. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+This record holds the assertion count and the run time for `npm test`. The suite runs 548 assertions and takes near 60 seconds. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
-The count depends on the clock's zone. Under UTC the suite runs 540, because test 38.9 has nothing to claim there. `npm run check:docs` pins a non-UTC zone for that reason, and it grades the figure in this sentence.
+The count depends on the clock's zone. Under UTC the suite runs 547, because test 38.9 has nothing to claim there. `npm run check:docs` pins a non-UTC zone for that reason, and it grades the figure in this sentence.
 
 ## How to re-measure
 
@@ -15,7 +15,7 @@ Run `npm test` and read its own summary line for the assertion count. Time the r
 ## The figures, as recorded
 
 ```
-`npm test` — 545 assertions, no test framework, ~60s (groups 30–31 spend a few
+`npm test` — 548 assertions, no test framework, ~60s (groups 30–31 spend a few
 seconds in real timers, deliberately: the sweep race can only be reached by
 letting the clock run). `test/app.test.mjs` runs
 top to bottom and either prints "all green" or exits 1; `test/harness.mjs` holds
