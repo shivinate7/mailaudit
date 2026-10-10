@@ -16,6 +16,7 @@
 // cannot see a layout shift would be worse than admitting the gap. Re-measure
 // them by hand, in a real 375px viewport, the way those records describe.
 
+import * as esbuild from "esbuild";
 import { readFileSync, readdirSync } from "fs";
 import { existsSync, statSync } from "fs";
 import { execFileSync } from "child_process";
@@ -346,36 +347,21 @@ function walk(path, out) {
     for (const n of readdirSync(path)) if (n !== "node_modules") walk(`${path}/${n}`, out);
   } else if (!/\.(png|jpe?g)$/i.test(path)) {
     let t = readFileSync(path, "utf8");
-    // A name in a comment is prose, not code: strip JS comments before matching.
-    // Known ceiling: only JS-family comments are stripped, so a name in a `#`
-    // comment of a .py or .yml file still counts. Regex literals are not
-    // tokenised either; a `/*` or quote inside one could mislead the scan.
-    if (/\.(mjs|jsx?)$/.test(path)) t = stripJsComments(t);
+    // A name in a comment is prose, not code: esbuild drops JS comments (it
+    // keeps strings and regex literals intact). A file it cannot parse fails
+    // the check by name; it is never treated as clear. Known ceiling: non-JS
+    // files (.py, .yml) are not stripped, so a name in a `#` comment still counts.
+    if (/\.(mjs|jsx?)$/.test(path)) {
+      try {
+        t = esbuild.transformSync(t, { loader: "jsx", legalComments: "none" }).code;
+      } catch (e) {
+        console.error(`check:docs: cannot parse ${path}: ${e.errors?.[0]?.text ?? e.message}`);
+        failures++;
+        t = "";
+      }
+    }
     out.push(t);
   }
-}
-// Scans once, skipping string literals, so `accept="image/*"` opens no comment.
-function stripJsComments(t) {
-  let out = "";
-  for (let i = 0; i < t.length; ) {
-    const c = t[i];
-    if (c === '"' || c === "'" || c === "`") {
-      let j = i + 1;
-      while (j < t.length && t[j] !== c && (c === "`" || t[j] !== "\n")) j += t[j] === "\\" ? 2 : 1;
-      out += t.slice(i, j + 1);
-      i = j + 1;
-    } else if (c === "/" && t[i + 1] === "*") {
-      const j = t.indexOf("*/", i + 2);
-      out += " ";
-      i = j < 0 ? t.length : j + 2;
-    } else if (c === "/" && t[i + 1] === "/") {
-      while (i < t.length && t[i] !== "\n") i++;
-    } else {
-      out += c;
-      i++;
-    }
-  }
-  return out;
 }
 const codeParts = [];
 for (const r of CODE_ROOTS) walk(r, codeParts);
