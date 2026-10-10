@@ -2,7 +2,7 @@
 
 `shivinate7.github.io` is a single origin across every repo the user has on Pages. That is why the key namespace is `mailday:`. Every stored key carries that prefix.
 
-It is also why the storage quota is per origin. Any other Pages project on that origin shares the same quota.
+It is also why the storage quota is shared. The quota is per origin, so every other Pages project on that origin uses the same quota.
 
 ## See also
 
