@@ -2,9 +2,9 @@
 
 The masthead progress bar takes its green a beat after its width lands. The two read as cause and effect, not as one event. The bar sweeps once.
 
-The bar is reachable but rare. 100% there means that every card in the ledger has arrived. That is the largest thing this app has to say.
+**Holds while:** `ProgressBar` in `src/app.jsx` delays its background change for at least as long as its width change runs.
 
-**Holds while:** the `ProgressBar` in `src/app.jsx` delays its background change by 160ms, and its width change runs for 240ms.
+The bar is reachable but rare. 100% there means that every card in the ledger has arrived. That is the largest thing this app has to say.
 
 ## See also
 
