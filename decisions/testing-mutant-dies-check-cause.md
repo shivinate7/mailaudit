@@ -6,6 +6,8 @@ A mutant dying does not prove the intended assertion caught it. Check that the m
 
 The photo-ordering mutant failed test 34.7, which checks the merged ledger reaching GitHub. It failed because moving the code also tripped an unrelated generation guard. No assertion about photos ran at all. It became a real test once 34.31 put the blob exclusively on the remote. With a local copy, the id is already in `present`, so the assertion passes under the mutation.
 
+**Coincidence passes too.** Test 37.40 sorts a refunded package under Newest. There, the mutant that builds `packageOrder` from `packages` gives the wrong order. Under Oldest, the same mutant gives the right order by coincidence. A fixture can let a mutant pass for the wrong reason. Pick the case where the mutant's answer differs.
+
 ## See also
 
 - `testing-surviving-mutant` — the paired lesson, on a mutant that lives instead

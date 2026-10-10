@@ -8,6 +8,8 @@ Reveals clear when `query` or `dateFilter` changes. They do not clear when `view
 
 Group 32 covers this behaviour.
 
+**Pinned by:** group 32. Mutant confirmed red: a reveal that bypasses the query but not `hideDone`. That shows less than the whole order. It also strands the Tally jump on a fully received package.
+
 ## See also
 
 - `search-filters-inside-package` — the search this reveal answers.

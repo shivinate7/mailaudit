@@ -26,6 +26,13 @@ At the 46px reservation, the first check-in moves no item row at 360, 375 or 390
 
 If the fix is ever wanted, get it without dead space. Keep all three buttons mounted and hide the inapplicable one. The row then measures itself at every width. The cost is that the visible label wraps at rest. That is a look, so it is a decision for the owner, not a fix to apply.
 
+**Pinned by:** 44.3, 44.4c and 44.6. Mutants confirmed red:
+- the reservation dropped altogether (44.3);
+- a reservation that varies by membership (44.4c);
+- a reservation that varies only on the `done` branch (44.6).
+
+Each of the three is alive only against the mutant that the other two miss. 44.3 cannot catch a mutant that reserves something different in each state. That mutant still reserves something. 44.4c cannot catch the `done` mutant. It compares against a rest value that the same mutant moved.
+
 ## See also
 
 - `card-reserved-geometry` — the measured card and action row heights this ruling reserves against.

@@ -30,6 +30,19 @@ Two things are deliberate and easy to undo by accident.
 
 `prunePlan` deletes every record that `keptIds` does not keep. So no record can be both kept and pruned. `shouldSnapshot` is the write gate. `entry.jsx` imports `prunePlan`, and `app.jsx` imports `shouldSnapshot`. Group 38.
 
+**Pinned by:** group 38, which imports `version-rules.mjs` directly. The group is pure, like groups 27, 31 and 33. Mutants confirmed red:
+- the hourly tier deleted;
+- the hourly tier reaching forever, or treating every record as an anchor;
+- the day anchor taking a day's latest instead of its earliest;
+- the recent ring keeping everything;
+- day anchors reaching forever;
+- `dayKey` reading UTC;
+- every save earning a version;
+- milestones never surviving;
+- a version built from its own payload rather than `snapshot()`.
+
+**Test mock.** `test/harness.mjs` mocks `window.versions` with a `Map`. It prunes through the real `prunePlan`. The remote mock encodes through the real `src/b64.mjs` for the same reason. The mock stores text uncompressed on purpose. Gzip is the platform layer's job. `app.jsx` never learns whether it ran. jsdom has no `CompressionStream`.
+
 ## See also
 
 - `versions-get-their-own-database` — the database these retention tiers prune

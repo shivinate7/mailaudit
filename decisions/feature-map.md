@@ -161,6 +161,9 @@ Sync carries the only caret. It turns accent while it is open. If `peek()` says 
 
 Reset is red text at rest. **Armed, it takes the whole row.** It shows a red fill and "Tap again to clear everything". The other two cells step out for the four seconds it lasts. This is the better two-tap, not a compromise. The target grows over the spot just tapped, instead of wrapping to a new line under it. The two controls a mis-tap could land on are not there to land on.
 
+**Pinned by:** 36.1–36.4. An armed Reset takes the row (36.1). The other two cells step out (36.2). The open Sync panel stays put underneath (36.3). Disarming brings the cells back (36.4). Test 36.4b checks that the Sync cell is gone for good, not only shut.
+
+
 Two details are load-bearing and easy to undo by accident:
 
 - **The two cells that open something underline their value.** A cell built from the same parts as the masthead's *read-only* tallies reads as a statistic. The first draft scored 2/5 on discoverability with a reviewer for exactly this. The underline is a form's write-on rule, not a button box. So the thesis survives.
@@ -197,6 +200,9 @@ There is one accepted cost. A device whose sync is healthy has no way into the p
 
 The panel uses the same `panelWrap` surface as the date and sort disclosures. It also has the same contents: an `optGrid(2)` of action cells over a block of *particulars*. The actions are built as data (`syncActions`, just above the component's `return`). The grid has to know the count. An odd last cell spans the row. Otherwise the rule color shows through the empty half as a slab. The range panel uses the same trick.
 
+**Pinned by:** 36.5–36.7. An odd last cell spans the row (36.5). Adding Backup + photos makes the second cell (36.6). An even count leaves every cell its own half (36.7). The first draft of group 36 booted against a seeded remote. That made the device behind. Behind adds a Merge cell, which turns three cells into four. So read the count off the screen, not off the fixture.
+
+
 Two columns are used everywhere, like the sort panel. "Pull from GitHub" and the armed "Tap again to replace" both need the ~160px that a half of 375px gives them. Neither fits a third.
 
 Each entry carries its own color. The grid's one accent means "on", and these entries mean five things:
@@ -210,6 +216,9 @@ Each entry carries its own color. The grid's one accent means "on", and these en
 The particulars (`partGrid`) are the head cells' two parts laid on their side. They have `LEDGER` / `PHOTOS` / `KEY` micro-labels beside mono values. They replace a target line that floated after the buttons as bare text. The value track is `minmax(0, 1fr)`. So the 44-character photo target wraps inside it at 375px, rather than pushing the panel past the page.
 
 The token field is a write-on rule like Find, not a box. It is **16px**, because iOS zooms the page on focusing any smaller input. The viewport meta deliberately leaves zoom on. The old 12px box zoomed on every paste.
+
+**Pinned by:** 36.8. It is the one style assertion in the suite. It pins an iOS behaviour, not a look. Focusing any smaller input zooms the page.
+
 
 Re-import and Reset stay on the narrower `items.length > 0 || envelopes.length > 0` gate. Sync survives that narrower gate. An empty ledger is the case that most needs Pull. Group 28.
 

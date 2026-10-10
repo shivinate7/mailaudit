@@ -19,6 +19,8 @@ The stale limit is 24h. Push is automatic and idle-debounced. A shorter limit wo
 
 The line is deliberately **not gated on local data**. A device with an empty ledger and no key is a fresh phone. This line is its only route to the Pull that recovers it. Test 28.1 covers this.
 
+**Pinned by:** 28.1, 28.8–28.12 and 38b.1–38b.3. Test 28.1 shows the line on an empty ledger with no key. Tests 28.8–28.12 cover the line as the panel's own toggle. Both halves are mutation-confirmed. Tests 38b.1–38b.3 cover the ahead case. The helper `openSync()` clicks `/tap to/`, because the line is the only entrance. `openHistory()` is its counterpart. Both helpers are idempotent.
+
 ## See also
 
 - `recovery-control-not-state-gated` — the same reachability rule this line follows.

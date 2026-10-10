@@ -10,6 +10,8 @@ A Reset has the same risk. `resetAll` keeps the sha by design. So a Reset publis
 
 A restore does not touch the sha. Rolling the sha back would be the real mistake. It would 409 the next push against a remote that this device is not behind. That forces the user through Merge. Merge only ADDS. So it would silently re-add the very lines the rollback removed. The repair path would undo the repair.
 
+**Pinned by:** group 39. Mutants confirmed red: a restore firing on one tap, local or remote. Another: a restore that bypasses `applyBackup`. `applyBackup` checks `!data.mailday || !Array.isArray(data.items)`. That check is the only barrier between a corrupt payload and a wiped ledger. Groups 25 to 27 confirm red a mutant that skips the `mailday` validation.
+
 ## See also
 
 - `sha-accepted-only-after-apply` — the sha rule a restore does not touch.

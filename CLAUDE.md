@@ -21,7 +21,7 @@ one record, and each record holds current text only; git keeps the history. Read
 records your task needs. Do not read them all.
 
 - `invariants/` holds a rule that must not break. 8 records.
-- `decisions/` holds a ruling and the reason it still holds. 145 records.
+- `decisions/` holds a ruling and the reason it still holds. 157 records.
 - `measurements/` holds a measured figure and how to re-measure it. 8 records.
 
 A record cites another record by slug, never by a path, so a record survives a
@@ -91,6 +91,8 @@ Sync runs itself. These records say what it refuses to do, and why each refusal 
 - `stale-push-conflict-pull-two-tap` — Pull gets the two-tap, push does not.
 - `merge-carries-no-two-tap-arm` — Merge never needs a two-tap arm.
 - `two-device-merge-proven-first` — Prove the two-device merge before trusting auto-push.
+- `merge-readopts-sync-generation` — A merge re-adopts the sync generation.
+- `push-flash-waits-for-photos` — Pushed shows only after the photos.
 - `remote-sync-is-off-the-save-path` — Remote sync never touches the save indicator.
 - `fine-grained-token-single-repo` — One fine-grained token, scoped to one repo.
 - `token-lives-outside-namespace` — The access token sits outside the storage namespace.
@@ -107,6 +109,8 @@ A photo is a picture of a mailing label. It never enters the ledger, and it can 
 - `photo-errors-never-hit-pushstate` — A photo error never reaches pushState.
 - `photo-ids-restore-keep-if-known` — A restore keeps a photo id when known.
 - `photo-ids-unreadable-local` — An unreadable local photo store keeps ids.
+- `photo-sweep-two-guards` — The photo sweep has two guards.
+- `pull-warns-on-what-it-drops` — A pull warns about the photos it would drop.
 
 ## Saved versions and recovery
 
@@ -237,6 +241,8 @@ Lessons this repo paid for. Each one came from a green suite that hid a real def
 - `testing-mock-field-stops-decor` — When a mock field stops being decorative.
 - `testing-mutant-dies-check-cause` — When a mutant dies, check the cause.
 - `testing-surviving-mutant` — When a mutant survives, find the unreached state.
+- `testing-deps-caught-by-edit` — A missing dependency shows only on an edit.
+- `testing-partial-qty-needs-case` — Assignment needs a partial-quantity case.
 
 ## Reference
 
@@ -246,10 +252,16 @@ A fact an agent needs, that argues nothing. Read the CSV record before touching 
 - `build-and-deploy` — Build, test and deploy commands.
 - `design-language` — The parchment ledger's look and feel.
 - `feature-map` — What each view and control does.
+- `harness-boot-seeds-remote-late` — Boot seeds the remote after the mount.
+- `harness-drives-resume-by-event` — Drive a resume by event, not by waiting.
+- `harness-drives-the-controls` — Tests drive the controls by their labels.
+- `harness-drop-feeds-the-csv` — Tests feed files through the drop handler.
+- `harness-jsdom-setup-gotchas` — The harness supplies what jsdom lacks.
+- `harness-push-race-one-shot` — A push conflict needs a one-shot failure.
+- `harness-waits-past-debounces` — Tests wait past the debounces.
 - `live-verification` — What has run against real GitHub or a real device.
 - `orderwand-csv` — The OrderWand CSV schema and quirks.
-- `test-groups` — What each test group covers.
-- `test-harness` — How to drive the behaviour suite.
+- `tests-track-the-claims` — Tests track the claims they pin.
 
 ## Open threads
 

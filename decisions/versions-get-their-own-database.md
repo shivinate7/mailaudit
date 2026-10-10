@@ -10,6 +10,8 @@ Snapshots are gzipped with `CompressionStream`. That is built into Safari, so it
 
 The ledger and the photos must also stay apart, for a different reason. The ledger is one small JSON blob that saves on a 500ms debounce. Photos are megabytes, and they must never get near it. localStorage caps out around 5MB. IndexedDB scales with free disk, and it stores Blobs without base64's ~33% inflation.
 
+**Pinned by:** group 39. Mutant confirmed red: the History cell gated on `items.length`. That gate would hide the one control that undoes a Reset. It would hide that control exactly when a Reset has just emptied the ledger.
+
 ## See also
 
 - `version-tiers-are-unioned` — the retention rule that decides what this database keeps

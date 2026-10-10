@@ -10,6 +10,8 @@ A keyless request to the photo repo 404s on both the tree and the repo itself. T
 
 Tests 26.13b and 30.13–30.15 pin this.
 
+**Pinned by:** 26.13b and 30.13–30.15. The harness photo mock refuses to answer without a key. The photo repo is private. GitHub hides a private repo behind a 404. A keyless mock would make the suite blind to the whole `no-access` class of bug. That blindness forced test 26.13 to split.
+
 ## See also
 
 - `peek-is-three-valued` — the same rule applied to the ledger sha.

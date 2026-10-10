@@ -6,6 +6,8 @@ Photo sync is a set difference over ids. A photo file is immutable, and it is ad
 
 That property is why one file per photo won. A mutable manifest needs its own sha machinery. It can drift from the directory, and it saves zero requests. The Git Data API makes one tidy commit. But a ref update needs a parent sha. So two devices backing up at once would really collide. Protect this property.
 
+Mutant confirmed red: a push that does not subtract what is already on the remote.
+
 ## See also
 
 - `photo-errors-never-hit-pushstate` — how this design changes error handling.

@@ -10,6 +10,8 @@ The peek check reads only the remote's blob sha, a few hundred bytes, not the fu
 
 Auto-push is unconditional. There is no toggle. It looks before every write, and it declines on `ahead` or on unknown. If a conflict opens between the look and the write, it resolves by merging. It does not leave `Push anyway` armed on a screen nobody is watching.
 
+Mutant confirmed red: an unknown remote read as ahead.
+
 ## See also
 
 - `listphotos-is-three-valued` — the same rule applied to photos.

@@ -4,6 +4,10 @@ Automating the push without the merge rule (`merge-rules.mjs`) would turn the co
 
 **Holds while:** `autoPush` in `src/app.jsx` returns early unless `peek()` reports `known`, and `src/merge-rules.mjs` exports `mergeLedger`.
 
+**Pinned by:** 34.18. It asserts that auto-push refuses to write when it cannot look. Mutants confirmed red:
+- auto-push reading an unreadable remote as all clear;
+- auto-push leaving a conflict rather than merging it.
+
 ## See also
 
 - `merge-rules-only-add` — the merge rule that makes auto-push safe

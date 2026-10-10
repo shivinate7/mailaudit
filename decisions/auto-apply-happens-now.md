@@ -10,6 +10,8 @@ Some rules do not change. The merge never applies on a timer. It never applies m
 
 Auto-push still refuses an `ahead` remote, on purpose. The 90s debounce measures data idleness, not the user's attention. So it fires while someone reads the screen with a reveal open. The refusal stops a device from writing over a remote that it is behind (34.19).
 
+**Pinned by:** group 40. Mutant confirmed red: the mid-thought guard removed.
+
 ## See also
 
 - `ruled-head-resume-is-reopening` — the resume threshold this merge now reuses

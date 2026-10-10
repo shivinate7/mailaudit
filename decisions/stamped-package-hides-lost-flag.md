@@ -6,6 +6,8 @@ Any stamped package hides the lost-mail warning. The warning is hidden in the pa
 
 Group 32 covers the search reveal, see `search-filters-inside-package`.
 
+**Pinned by:** 37.11. Mutant confirmed red: the warning ignoring the stamp.
+
 ## See also
 
 - `lost-mail-flags-use-order-date` — the warning this rule hides.

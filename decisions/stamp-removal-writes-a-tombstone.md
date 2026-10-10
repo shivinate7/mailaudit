@@ -4,6 +4,10 @@ Removing an order stamp writes a tombstone value instead of deleting the entry. 
 
 **Holds while:** the remove path in `src/app.jsx` writes `kind: ""` instead of deleting the stamp, and `useGkSet` is defined there.
 
+**Pinned by:** group 37. Mutants confirmed red:
+- removal written as a `delete` rather than a tombstone (37.45);
+- `mergeStamps` letting the incoming copy take a tie (37.55).
+
 ## See also
 
 - `one-stamp-per-package` — the value this tombstone replaces.
