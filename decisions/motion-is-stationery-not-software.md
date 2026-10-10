@@ -2,7 +2,7 @@
 
 Every motion in the app must feel like paper and ink. It must never feel like software chrome. Ink settles into paper. A seal is pressed. A stamp is rocked onto a page. Rules are drawn like a pen stroke. Gold catches the light once.
 
-**Holds while:** the one overshoot is the `rotate(1deg)` frame in `mdl-stamp` in `src/app.jsx`, and no other keyframe passes its rest value.
+**Holds while:** `mdl-stamp` in `src/app.jsx` keeps its `rotate(1deg)` frame at 45% and ends at `var(--rest)`.
 
 Nothing springs. Nothing bounces past its rest and hangs there.
 

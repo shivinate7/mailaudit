@@ -2,7 +2,7 @@
 
 Both icon `href`s must stay relative. Pages serves this site from the `/mailaudit/` subpath. A root-absolute `/apple-touch-icon.png` resolves to `shivinate7.github.io/apple-touch-icon.png` and 404s.
 
-**Holds while:** the two icon `href`s in `build.mjs` stay relative with no leading slash, and the Pages site stays at the `/mailaudit/` subpath.
+**Holds while:** every icon `href` in `build.mjs` stays relative with no leading slash, and the Pages site stays at the `/mailaudit/` subpath.
 
 Exporting the favicon PNG needs an ABSOLUTE `file://` src in the throwaway HTML. Also pass `--default-background-color=00000000` to keep the alpha. A relative src resolves against `/tmp`. It renders nothing, and it produces a blank PNG that looks like a successful export. That happened once.
 

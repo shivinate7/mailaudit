@@ -2,7 +2,7 @@
 
 The merge and the push refuse different in-progress states. The difference is deliberate. The push and the merge guard on different things, and the difference is the point.
 
-**Holds while:** `autoPush` in `src/app.jsx` refuses only on armed confirms, and `autoMerge` also refuses on `composing` and `undo`.
+**Holds while:** `autoPush` in `src/app.jsx` does not check `composing` or `undo`, and `autoMerge` checks both.
 
 The merge refuses while `composing`, `undo`, or any armed confirm is live. The merge applies a remote ledger. That would erase in-progress work. `applyBackup` nulls the first two flags.
 
