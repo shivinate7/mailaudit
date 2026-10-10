@@ -2,7 +2,7 @@
 
 **Status:** open.
 
-A move to Netlify or Cloudflare is on the table for faster deploys. Any new origin wipes both localStorage and IndexedDB on the phone. So each device needs a Backup + photos, then a restore, to keep its data through the move. The user knows this and is relaxed about it. The user accepts the cost of the move.
+A move to Netlify or Cloudflare is on the table for faster deploys. Any new origin wipes both localStorage and IndexedDB on the phone. So each device needs a Backup + photos, then a restore, to keep its data through the move. The user knows this and is relaxed about it. If the move happens, the user accepts the cost.
 
 ## See also
 
