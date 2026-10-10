@@ -3803,11 +3803,15 @@ ok(/newer lines/.test(text()), "45.3 a fresh pulledAt never masks being behind")
    Invariant parser-filters: a row enters the checklist only when Type is
    purchase (or blank) AND Vendor starts with TCG. The real exports carry eBay
    and seller-side rows, and nothing downstream can tell one from an order once
-   it is in the list. One CSV, one row per way to be rejected, plus the kept
-   row. Blank Vendor is deliberately not asserted: the parser lets it through
-   while the invariant reads TCG-only, and that mismatch is the owner's call. */
+   it is in the list. One CSV, one row per way in or out. Each rejected row
+   fails a different assertion, so a mutant that drops only the vendor filter
+   and a mutant that drops only the type filter each turn a different id red:
+   the eBay row is a purchase (only the vendor filter rejects it), and the sale
+   row is TCG (only the type filter rejects it). A blank Vendor is kept, per the
+   owner's ruling in invariants/parser-filters.md. */
 
 const KEPT = "Kept TCG Card";
+const BLANK = "Kept Blank Vendor Card";
 const EBAY = "Rejected eBay Card";
 const SALE = "Rejected Sale Card";
 const OTHER = "Rejected Other Vendor Card";
@@ -3817,22 +3821,35 @@ await dropFile(
   "orders.csv",
   csv([
     { "Order Id": "P1", "Product Name": KEPT, Price: "2.00" },
-    { "Order Id": "P2", Vendor: "eBay", "Product Name": EBAY, Price: "3.00" },
-    { "Order Id": "P3", Type: "sale", "Product Name": SALE, Price: "4.00" },
-    { "Order Id": "P4", Vendor: "CardMarket", "Product Name": OTHER, Price: "5.00" },
+    { "Order Id": "P2", Vendor: "", "Product Name": BLANK, Price: "2.50" },
+    { "Order Id": "P3", Vendor: "eBay", "Product Name": EBAY, Price: "3.00" },
+    { "Order Id": "P4", Type: "sale", "Product Name": SALE, Price: "4.00" },
+    { "Order Id": "P5", Vendor: "CardMarket", "Product Name": OTHER, Price: "5.00" },
   ])
 );
-ok(/Imported 1 lines/.test(text()), "46.1 only the TCG purchase is imported");
-ok(text().includes(KEPT), "46.2 and it is on the page");
+ok(/Imported 2 lines/.test(text()), "46.1 the TCG and blank-vendor purchases are imported, nothing else");
+ok(text().includes(KEPT), "46.2 the TCG purchase is on the page");
 await sleep(SAVE_WAIT);
 eq(
-  saved().items.map((it) => it.name),
-  [KEPT],
-  "46.3 the persisted ledger holds exactly the TCG purchase"
+  saved().items.map((it) => it.name).sort(),
+  [KEPT, BLANK].sort(),
+  "46.3 the persisted ledger holds exactly the two kept purchases"
 );
 ok(
-  ![EBAY, SALE, OTHER].some((n) => text().includes(n)),
-  "46.4 none of the rejected rows reach the page"
+  text().includes(BLANK),
+  "46.4 a purchase with a blank Vendor is kept, per the owner's ruling"
+);
+ok(
+  !text().includes(EBAY) && !saved().items.some((it) => it.name === EBAY),
+  "46.5 the eBay purchase is rejected (vendor filter only)"
+);
+ok(
+  !text().includes(OTHER) && !saved().items.some((it) => it.name === OTHER),
+  "46.6 the non-TCG vendor is rejected (vendor filter only)"
+);
+ok(
+  !text().includes(SALE) && !saved().items.some((it) => it.name === SALE),
+  "46.7 the TCG sale row is rejected (type filter only)"
 );
 
 report();
