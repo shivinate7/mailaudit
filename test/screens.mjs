@@ -86,14 +86,42 @@ const ITEMS = [
     ["Lightning Bolt", 1, 1.0],
     ["Path to Exile", 1, 3.0],
   ]),
+  /* The long case. A seller name with no break opportunity, as run-together
+     TCGplayer store names are, and a set name long enough to fill a Tally meta
+     line. Most cards and rows are overflow:hidden, so a long value inside them
+     is clipped rather than widening the document: this case only reaches
+     documentElement.scrollWidth through an unclipped element (the head, or the
+     Orphaned candidate rows if their clip is removed). See the handback. */
+  ...mk("H1", "CollectorsVaultTradingCardEmporiumOutletSuperStoreOfficialLLC", "2026-07-08", "with tracking", [
+    ["Lightning Bolt", 1, 1.0],
+    ["Ponder", 1, 0.75],
+  ]).map((it) => ({
+    ...it,
+    set: "Commander Legends Battle for Baldur's Gate Extended Art Foil",
+  })),
 ];
+
+/* A year of history outside the date range. The range is absolute (not "last
+   N days"), so the fixture does not drift as the clock moves. The head's
+   "N lines · M outside" figure has to hold a four-digit count, which is the
+   longest figure the head can show. */
+const ARCHIVE = Array.from({ length: 60 }, (_, i) =>
+  mk(
+    `Z${i}`,
+    "Archive Bin Trading Cards",
+    "2025-01-15",
+    "without tracking",
+    Array.from({ length: 20 }, (_, j) => [`Archive Card ${j}`, 1, 0.1])
+  )
+).flat();
 
 /* The sort state is set to the LONGEST label each view can show ("$ remaining"
    in Packages, "Biggest position" in Tally), so the head has to hold its worst
    case at every width. A short label would let a 1fr grid pass by accident. */
 const LEDGER = {
   mailday: 1,
-  items: ITEMS,
+  items: [...ITEMS, ...ARCHIVE],
+  dateFilter: { preset: "custom", from: "2026-06-10", to: "2026-08-31" },
   received: {},
   envelopes: [
     {
