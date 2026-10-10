@@ -6,25 +6,8 @@
 // check. So this walks CLAUDE.md plus every `.md` file in those three
 // folders, and checks the same two claims as before, now against the whole
 // corpus: the suite's published assertion count, and every repo path named
-// in backticks. Run with `npm run check:docs`.
-//
-// FENCES ARE HISTORY, NOT A CLAIM. Most record prose sits outside a fence
-// that quotes the pre-split CLAUDE.md verbatim, byte for byte — and
-// `npm run check:records` (claim 3 there) checks that quote against a pinned
-// commit. If this file judged text INSIDE a fence, a path or a count that
-// went stale in the years since that quote was written would fail here while
-// `check:records` insists the fence must not change to fix it — two checks
-// telling you to do opposite things to the same line. So every claim below is
-// judged only against a record's OWN prose, outside its fences. If you are
-// reading this because a number or a path inside a fenced block looks wrong:
-// it is supposed to look wrong. That block is a dated quote, not a live
-// claim, and "fixing" it breaks check:records instead. Correct the record's
-// own prose (or add a citation to the record that supersedes it) instead of
-// touching the fence.
-//
-// A third pass reads INSIDE the fences too, but only in advisory mode: it
-// counts how many of the paths quoted there still exist and how many do not,
-// and never fails on either number. See the comment above that pass for why.
+// in backticks. Run with `npm run check:docs`. Text inside a code fence is
+// never judged: it is sample code, not a claim about the repo.
 //
 // What this deliberately does NOT check: the measured page figures in "The
 // card's reserved geometry" and "The masthead" (185px, 347.09px, and the
@@ -153,19 +136,11 @@ for (const f of prose) {
 }
 
 if (countClaims === 0) {
-  // This is the honest finding, not a bug to paper over: `measurements/
-  // suite-size.md` names the count only inside its fence (the frozen quote),
-  // and its own prose deliberately never restates the number — it says how
-  // to re-measure it instead. So there is currently no live claim anywhere
-  // in the corpus for this file to check the real total against. That is
-  // reported here rather than silently passed, but it is not treated as a
-  // failure: the fence is exempt by design (see the file header), and a
-  // record that only ever names a figure once, historically, is not lying
-  // about the present. If a record's own prose ever states the count again,
-  // the check above starts grading it automatically.
+  // No record's prose states the count. Reported rather than silently
+  // passed, but not a failure: the check above grades any record that does.
   console.log(
-    `check:docs: no record's own prose states an assertion count — the figure ` +
-      `lives only inside measurements/suite-size.md's fence (suite's real total: ${real})`
+    `check:docs: no record's own prose states an assertion count — see ` +
+      `measurements/suite-size.md (suite's real total: ${real})`
   );
 } else {
   console.log(
@@ -299,78 +274,6 @@ console.log(`check:docs: ${checked} path(s) checked against the filesystem, outs
 console.log(`check:docs: ${refused.size} backtick span(s) refused as not path-like`);
 if (process.env.CHECK_DOCS_VERBOSE) {
   for (const s of refused) console.log(`  refused: ${s}`);
-}
-
-/* ---------- advisory: paths named INSIDE a fence ----------
-   Almost every path in the corpus now sits inside a fence — the verbatim
-   historical quote check:records pins against a commit. Claim 2 above
-   cannot look there without fighting that pin (see the file header), which
-   makes it nearly decoration on the corpus's most useful half: the risk the
-   whole split creates is an argument that quietly stops describing the repo
-   it argues about, and that risk lives almost entirely inside fences now.
-   This pass is the answer, and it is deliberately advisory rather than a
-   check: a path inside a fence names history, and correcting it would
-   REWRITE that history, which check:records exists to refuse (its claim 3
-   is exactly "this quote must not drift from what it was extracted from").
-   So this can never turn the build red, on purpose. It only counts and
-   reports, so a reader can see, for any argument, how many of the files it
-   names have since moved or gone — a fact about the argument's age, not a
-   defect this repo owes a fix. */
-const fenceStale = []; // { file, span, line }
-let fenceChecked = 0;
-
-for (const f of files) {
-  const fences = parseFences(f.text);
-  const lines = f.text.split("\n");
-  const seenInFile = new Set();
-  for (const fence of fences) {
-    // Body lines only — 1-indexed startLine+1 .. endLine-1, excluding the
-    // backtick delimiter lines themselves.
-    const bodyLines = lines.slice(fence.startLine, fence.endLine - 1);
-    const body = bodyLines.join("\n");
-    for (const m of body.matchAll(/`([^`\n]+)`/g)) {
-      const span = m[1];
-      if (seenInFile.has(span)) continue;
-      seenInFile.add(span);
-      if (excluded(span)) continue;
-
-      const offsetLines = body.slice(0, m.index).split("\n").length - 1;
-      const line = fence.startLine + 1 + offsetLines;
-
-      if (span.endsWith("/")) {
-        const dir = span.slice(0, -1);
-        if (!dir.includes("/")) continue; // same ambiguous-bare-directory refusal as claim 2
-        fenceChecked++;
-        if (!(existsSync(dir) && statSync(dir).isDirectory())) {
-          fenceStale.push({ file: f.path, span, line });
-        }
-        continue;
-      }
-
-      if (!EXT.test(span)) continue;
-
-      let target = span;
-      if (!span.includes("/")) {
-        if (knownPath.has(span)) target = knownPath.get(span);
-        else if (!existsSync(span)) continue; // not path-like enough to judge, same as claim 2
-      }
-      fenceChecked++;
-      if (!existsSync(target)) {
-        fenceStale.push({ file: f.path, span, line });
-      }
-    }
-  }
-}
-
-const fenceStillThere = fenceChecked - fenceStale.length;
-console.log(
-  `check:docs: ${fenceStillThere} path(s) inside fences still exist, ${fenceStale.length} ` +
-    `no longer do (history, not a failure)`
-);
-if (fenceStale.length) {
-  for (const s of fenceStale.slice(0, 10)) {
-    console.log(`  stale: ${s.file}:${s.line} quotes \`${s.span}\``);
-  }
 }
 
 if (failures) {
