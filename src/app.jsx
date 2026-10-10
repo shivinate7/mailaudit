@@ -5656,7 +5656,7 @@ export default function MailDayLedger() {
            allowed to carry information, and here it carries none — it says
            only that something finished. Opacity is animated on the element
            rather than baked into the gradient stops so the palette stays whole
-           values from C, with no alpha literal anywhere. */
+           values from C, with no alpha literal in the gradient. */
         .mdl-gild { position: absolute; inset: 0; pointer-events: none;
                     background: linear-gradient(100deg, transparent 34%,
                       ${C.gold} 50%, transparent 66%);
