@@ -33,4 +33,4 @@ Two things are deliberate and easy to undo by accident.
 ## See also
 
 - `versions-get-their-own-database` — the database these retention tiers prune
-- `testing-one-tier-not-decides` — the testing pitfall this union design creates
+- `testing-isolate-each-tier` — the testing pitfall this union design creates

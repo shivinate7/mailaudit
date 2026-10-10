@@ -14,6 +14,6 @@ Tests 12.8–12.9 and group 40 pin both sides. They use `backgroundFor(ms)`, whi
 
 ## See also
 
-- `ruled-head-elapsed-passed-on` — the signal that carries the away time to the merge check.
+- `ruled-head-hand-elapsed-forward` — the signal that carries the away time to the merge check.
 - `ruled-head-showing-unreceived` — the state a resume resets.
 - `peek-is-three-valued` — the read that a resume triggers.

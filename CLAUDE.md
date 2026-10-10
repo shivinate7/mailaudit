@@ -157,7 +157,7 @@ The control region is the masthead's own vocabulary continued. Read these before
 - `ruled-head-one-advisory-entrance` — One advisory line is sync's only entrance.
 - `ruled-head-panels-carry-no-fill` — Disclosure panels carry no fill.
 - `ruled-head-showing-unreceived` — Showing starts on unreceived every load.
-- `ruled-head-elapsed-passed-on` — Hand the elapsed time forward, never re-derive it.
+- `ruled-head-hand-elapsed-forward` — Hand the elapsed time forward, never re-derive it.
 - `ruled-head-range-picked` — The custom date range is picked, not typed.
 - `ruled-head-stale-clock-agreement` — The staleness clock measures agreement, not writes.
 
@@ -232,11 +232,11 @@ Lessons this repo paid for. Each one came from a green suite that hid a real def
 - `testing-throwing-assert-bad-kill` — An assertion that throws is a worse kill.
 - `testing-check-something-rereads` — Check that something re-reads the value.
 - `testing-jsdom-has-no-layout` — jsdom has no layout.
-- `testing-one-tier-not-decides` — One tier must not decide another.
+- `testing-isolate-each-tier` — One tier must not decide another.
 - `testing-chokepoint-two-branches` — When a chokepoint has two branches.
 - `testing-mock-field-stops-decor` — When a mock field stops being decorative.
 - `testing-mutant-dies-check-cause` — When a mutant dies, check the cause.
-- `testing-mutant-lives-find-state` — When a mutant survives, find the unreached state.
+- `testing-surviving-mutant` — When a mutant survives, find the unreached state.
 
 ## Reference
 

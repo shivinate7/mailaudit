@@ -9,4 +9,4 @@ Group 28 now pins this bug. A live check of the deployed page found it. The suit
 ## See also
 
 - `testing-unfailable-assert-decor` — the related failure mode of a test that proves nothing
-- `testing-mutant-lives-find-state` — the same blind spot, found through a mutant instead
+- `testing-surviving-mutant` — the same blind spot, found through a mutant instead

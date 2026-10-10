@@ -8,5 +8,5 @@ The photo-ordering mutant failed test 34.7, which checks the merged ledger reach
 
 ## See also
 
-- `testing-mutant-lives-find-state` — the paired lesson, on a mutant that lives instead
+- `testing-surviving-mutant` — the paired lesson, on a mutant that lives instead
 - `two-device-merge-proven-first` — the merge feature where this false kill happened

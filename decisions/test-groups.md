@@ -84,10 +84,10 @@ Mutation-tested, all confirmed to turn the suite red:
 
 Four method notes are worth keeping. Each one was learned the hard way. Three of them have their own records, linked here.
 
-- `testing-one-tier-not-decides`: group 38's own assertions were wrong four separate times, always the same way.
+- `testing-isolate-each-tier`: group 38's own assertions were wrong four separate times, always the same way.
 - **38.9's first draft could not fail at all.** `dayKey("2026-05-01T00:30")` is `"2026-05-01"` under the UTC reading too. The test now derives the boundary from the runner's own `getTimezoneOffset()`. It skips itself in UTC, where there is nothing to claim.
 - `testing-throwing-assert-bad-kill`: three of group 39's mutants died by `JSON.parse(null)`. The reads are guarded now as `beforeReset && JSON.parse(...)`.
-- `testing-mutant-lives-find-state`: group 40's mutant, "the signal is never consumed", survived the first draft. 40.12–40.13 pin it. Group 41's first draft matched `message.split(" ")[0]`.
+- `testing-surviving-mutant`: group 40's mutant, "the signal is never consumed", survived the first draft. 40.12–40.13 pin it. Group 41's first draft matched `message.split(" ")[0]`.
 
 ## Groups 37, 36, 35, 33 to 34, 20, 21, 25 to 27 (feature and adapter groups)
 

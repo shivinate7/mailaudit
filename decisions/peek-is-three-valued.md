@@ -15,4 +15,4 @@ Auto-push is unconditional. There is no toggle. It looks before every write, and
 - `listphotos-is-three-valued` — the same rule applied to photos.
 - `offline-is-decided-by-fetch` — the same rule read in the other direction.
 - `sha-accepted-only-after-apply` — the sha this read compares against.
-- `ruled-head-elapsed-passed-on` — the resume signal this read consumes.
+- `ruled-head-hand-elapsed-forward` — the resume signal this read consumes.

@@ -6,5 +6,5 @@ A shared chokepoint can have two read paths. A mutant on one branch can hide beh
 
 ## See also
 
-- `testing-one-tier-not-decides` — a related shape, where one tier can hide a mutant on another
+- `testing-isolate-each-tier` — a related shape, where one tier can hide a mutant on another
 - `merge-rules-only-add` — the two-branch chokepoint that hid the refund mutant
