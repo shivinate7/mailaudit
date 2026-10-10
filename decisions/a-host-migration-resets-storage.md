@@ -4,6 +4,8 @@
 
 A move to Netlify or Cloudflare is on the table for faster deploys. Any new origin wipes both localStorage and IndexedDB on the phone. So each device needs a Backup + photos, then a restore, to keep its data through the move. The user knows this and is relaxed about it. If the move happens, the user accepts the cost.
 
+**Holds while:** the app is still served from GitHub Pages at shivinate7.github.io/mailaudit. A move to Netlify or Cloudflare closes this record.
+
 ## See also
 
 - `every-origin-has-own-storage` — why a new host gives a new, empty ledger

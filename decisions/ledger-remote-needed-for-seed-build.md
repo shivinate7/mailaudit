@@ -2,6 +2,8 @@
 
 A fresh clone needs a git remote that points at the private data repository. The data branch must be fetched before the build can bake in a seed. Without that remote, the build runs seedless. The seed checker reports that rather than failing outright.
 
+**Holds while:** `build.mjs` reads the seed through `SEED_REF`, from the `ledger` remote. When that ref resolves, `--check-seed` fails a seedless page.
+
 On a machine where the remote does resolve, a seedless committed page is a hard failure. This means that the build dropped a seed it could have made.
 
 ## Setup

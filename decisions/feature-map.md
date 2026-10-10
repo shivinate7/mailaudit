@@ -2,6 +2,8 @@
 
 This file holds the Feature map. It describes the three views, saved versions and stamps, and how Push, Pull and the sync panel behave. Read it when you need to know what a screen or control does, not why it was built that way. The rulings behind these features live in other decisions/ files and in invariants/. This file is description only.
 
+**Holds while:** `src/app.jsx` still labels the three views Orphaned, Tally and Packages. The `invariants/` and `decisions/` folders still hold the rulings this file cites.
+
 ## What is verified and what is not
 
 Everything here is user-verified in daily use, except these items. They are the **Tally** view, cost basis, **Orphaned**, **envelope photos**, **Push / Pull**, the **two-device merge and auto-push**, and the **resume reset on Showing**. They are newer. So far they are verified only by `npm test`.

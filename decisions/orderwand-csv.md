@@ -2,6 +2,8 @@
 
 This record holds the CSV column list and every quirk found in the user's real OrderWand exports. Read it before you change the parser. No decision or invariant record holds this material, so this record is its only home. The parser depends on every line here.
 
+**Holds while:** `parseItems` in `src/app.jsx` reads `party` with `seller` as fallback, and decodes HTML entities in names.
+
 ## Schema and quirks
 
 These quirks were learned from the user's real exports.
