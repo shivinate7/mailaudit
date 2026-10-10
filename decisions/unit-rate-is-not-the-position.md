@@ -6,6 +6,8 @@ The collapsed Tally row shows the **unit rate**, not the basis. The unit rate is
 
 The "biggest position" sort still ranks by total basis. That order is deliberately different from "unit rate". A cheap card bought in bulk has a large position and a small rate.
 
+The unit rate is `basis / qty`. The row shows it as "$X / copy". In Tally, the value is `g.avg`. For a package, the unit rate is that package's basis over its own copies. `packageOrder` computes it.
+
 ## See also
 
 - `tally-pools-on-the-exact-name` — the grouping this rate is computed over.

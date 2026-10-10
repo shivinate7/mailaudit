@@ -4,6 +4,8 @@ A mock field that nothing reads can stay wrong for a long time, without harm. In
 
 **Holds while:** `acceptPull` in `test/harness.mjs` sets `pulledAt` to `Date.now()`, and `syncedAt` in `src/app.jsx` reads `pulledAt`.
 
+The same thing happened to the sync status. The mock set `pushedAt` to the frozen `REMOTE_NOW`, 2026-08-12. So every fixture sat past the stale limit. The healthy state, `syncBroken === null`, was unreachable from a test. The mock uses `Date.now()` now. The frozen clock stays for payload snapshots. This timestamp is status metadata that no assertion reads.
+
 When a mock field stops being decorative, re-read the comment beside the field that already mattered.
 
 ## See also
