@@ -1,25 +1,12 @@
 # Offline is decided by a failed fetch
 
-The app decides offline only from an actual failed network request, never from the browser's own online flag. That flag can get stuck reporting false after a sleep, a wake, or a network change. It once hid a real five-day sync outage behind a wrong offline message. A device that is genuinely offline still fails in the same request, one round trip later.
+The app decides `offline` only by a failed `fetch`, and by nothing else. It never uses the browser's own online flag. That flag can get stuck at false after a sleep, a wake, or a network change. It once hid a five-day sync outage behind a wrong offline message. A device that is really offline still fails in the same request, one round trip later.
 
-## The argument, as recorded
+The `navigator.onLine === false` pre-flight check is gone from `api()` and `apiRaw()`. Do not add it back. The flag is not reliable. Chrome on macOS can leave it stuck at false after a sleep, a wake, or a VPN interface change. One laptop was measured at `onLine: false`, while the same fetch reached GitHub and answered 404. During that outage, the only symptom was a banner that said the connection was gone. The app declined requests that worked. The advisory line stated its own refusal as a fact about the network.
 
-```
-  **`offline` is decided by a failed `fetch` and by nothing else.** There was a
-  `navigator.onLine === false` pre-flight in `api()` and `apiRaw()`; it is gone.
-  The flag is not authoritative — Chrome on macOS leaves it stuck false after a
-  sleep/wake or a VPN interface change, and a laptop was measured sitting at
-  `onLine: false` while that same fetch reached GitHub and answered 404. Sync
-  had been dead five days and the only symptom was a banner saying the
-  connection was gone: the app was declining requests that worked, and the
-  advisory line phrased its own refusal as a fact about the network. It is the
-  three-valued rule `peek`, `listPhotos` and `classifyLedger` all follow, read
-  in the other direction — *"I could not look"* is not a fact, and neither is
-  *"the browser says there is no network"*. The guard only ever saved a doomed
-  request; a device that really is offline rejects in the `catch` and gets the
-  identical error one round trip later. Don't reintroduce it as an
-  optimisation.
-```
+The rule here is the three-valued rule that `peek`, `listPhotos`, and `classifyLedger` follow, read in the other direction. "I could not look" is not a fact. Neither is "the browser says there is no network."
+
+The guard only saved a request that would fail anyway. A device that is really offline rejects in the `catch` block. It gets the same error one round trip later. Do not add the guard back as an optimisation.
 
 ## See also
 

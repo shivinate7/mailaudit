@@ -1,18 +1,17 @@
 # Palette token contrast ratios
 
-This record holds the contrast ratio of every token, as the palette table gives them. It holds the two tokens the table flags as load-bearing. Re-measure after a change to any hex value in the `C` object.
+This record holds the contrast ratio of every token, as the palette table gives them. It also holds notes on the tokens that need care. Re-measure after a change to any hex value in the `C` object.
 
 ## How to re-measure
 
-Take each token pair the table names. Compute the contrast ratio against the surface the table names, not against `card` by default. Check `inkSoft` and `manilaInk` first, because both sit on a background other than the plain page. The prose names no tool. Use a standard contrast calculator against the hex pairs in the fence.
+Take each token pair in the table below. Compute each ratio against the surface the table names. Do not use `card` by default. Check `inkSoft` and `manilaInk` first, because both sit on a background other than the plain page. No tool is named here. Use a standard contrast calculator with the hex pairs in the table.
 
 ## Reader
 
 No reader. Nothing in the test suite checks a contrast ratio.
 
-## The figures, as recorded
+## Figures
 
-```
 | token | hex | role | contrast |
 |---|---|---|---|
 | `paper` | `#F2E9DA` | the page | — |
@@ -32,19 +31,9 @@ No reader. Nothing in the test suite checks a contrast ratio.
 | `silver` | `#C4C3C0` | the empty half of a progress bar | fill on it 3.17:1 |
 | `wax*` | five values | the seal's relief ramp, `<Seal>` only | — |
 
-Everything carrying information clears 4.5:1. Two values are load-bearing in a
-non-obvious way and should not be nudged casually:
+Everything carrying information clears 4.5:1. These values need care, and should not be nudged casually:
 
-- **`inkSoft`** was darkened from the originally-chosen `#7A6E86`, which measured
-  4.43:1 and failed. It is used 42 times, more than any token but `ink`.
-- **`manilaInk`** is checked against **`manila`**, not against `card` — it sits on
-  the advisory background. Pick it on the wrong pair and it looks fine in
-  isolation while failing everywhere it's actually used.
-- **`silver`** was chosen on looks, not legibility: the `line` it replaced
-  measured *better* against the violet fill (3.58:1 vs 3.17:1). Both clear the
-  3:1 floor for graphical objects, so it's a fair trade — but if it's ever
-  revisited, it has to stay **cool**. Every warm metal tested (pewter, deep
-  parchment) fell below 3:1 against violet.
-- **`gold`** is ornament only. At 2.2:1 on `card` it fails for text by a wide
-  margin; it exists for the masthead rules and nothing else.
-```
+- **`inkSoft`** was darkened from `#7A6E86`, which measured 4.43:1 and failed. It is used 42 times, more than any token but `ink`.
+- **`manilaInk`** is checked against **`manila`**, not against `card`. It sits on the advisory background. Pick it on the wrong pair, and it looks fine in isolation while it fails everywhere it is used.
+- **`silver`** was chosen on looks, not legibility. The `line` it replaced measured better against the violet fill, at 3.58:1 against 3.17:1. Both clear the 3:1 floor for graphical objects, so the trade is fair. If `silver` is ever revisited, it must stay **cool**. Every warm metal tested (pewter, deep parchment) fell below 3:1 against violet.
+- **`gold`** is ornament only. At 2.2:1 on `card`, it fails for text by a wide margin. It exists for the masthead rules and nothing else.

@@ -1,21 +1,9 @@
 # No native browser dialogs
 
-The app never uses window.confirm or window.alert. These dialogs block the whole page and look wrong in a home-screen app. Every destructive action uses an inline two-tap confirm instead. Arming one destructive control disarms every other one, so two primed destructive buttons never sit side by side.
+This is invariant 6. The app never uses `window.confirm`/`alert`. These dialogs block the whole page, and they look wrong in a home-screen app. Every destructive action uses an inline two-tap confirm instead. Those actions are Reset, Discard, Assign, **Pull**, **Push anyway**, **Remove stamp**, and **Restore**. Keep this pattern. It started as a sandbox limit, and it is now a UI choice.
 
-## The argument, as recorded
+The main component has four armable controls. Arming one **disarms the others**. The shared `arm`/`disarm` pair does this. Two primed destructive buttons side by side are the exact mis-tap that the pattern prevents.
 
-```
-6. **No native browser dialogs.** `window.confirm`/`alert` block the whole page
-   and look wrong in a home-screen app; every destructive action uses an inline
-   two-tap confirm instead (Reset, Discard, Assign, **Pull**, **Push anyway**,
-   **Remove stamp**, **Restore**). Keep that pattern. (This started as a sandbox limitation
-   and outlived it — it's now a UI choice.) With four armable controls in the
-   main component, arming one **disarms the others** via the shared
-   `arm`/`disarm` pair: two primed destructive buttons side by side is the
-   exact mis-tap the pattern exists to prevent. `arm` takes a *value* rather
-   than always setting `true`, because **Restore** has one button per version on
-   screen at once, so "which one is primed" has to be an id; disarming is still
-   a single call. Tests 26.17–26.19, 39.14–39.15. `PackageCard`
-   carries its own local pair for Remove stamp, as `EnvelopeCard` does for
-   Discard and Assign — one timer, one armed control, cleared on unmount.
-```
+`arm` takes a value, and it does not always set `true`. **Restore** has one button per version on screen at once. So "which one is primed" has to be an id. Disarming is still a single call. Tests 26.17–26.19 and 39.14–39.15 cover this.
+
+`PackageCard` has its own local pair for Remove stamp. `EnvelopeCard` has its own local pair for Discard and Assign. Each card runs one timer and has one armed control. The timer clears on unmount.

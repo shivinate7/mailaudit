@@ -2,25 +2,11 @@
 
 **Status:** open. The design is settled, but it is a risk accepted on purpose and worth re-checking as the app changes.
 
-The old rule said the app never applies a remote change unattended. The real objection was never that applying is unsafe. It was that the app could not tell mid-check-in apart from between-sessions. `RESUME_RESET_MS` supplies that discrimination, the same threshold that already resets the Showing filter on resume, so the merge now spends the same finding. Auto-push still refuses on an ahead remote, on purpose, because the idle debounce measures data idleness and not the user's own attention.
+The app applies a remote change on its own. The real constraint is not that applying is unsafe. The constraint is that the app must not change the list while a check-in is in progress. Merging forty new CSV lines into the package list under a thumb would cause the cascading mis-tap that invariant 5 prevents. `RESUME_RESET_MS` is the threshold that separates a real absence from a short glance away. It is the same threshold that resets the Showing filter on resume, so the merge reuses that signal.
 
-## The thread, as recorded
+Some rules do not change. The merge never applies on a timer. It never applies mid-thought, which the five guards check. It never applies a remote that it could not read.
 
-```
-- **Auto-apply happens now, and why the answer changed is worth recording.**
-  This entry used to say the app never applies a remote change on its own. The
-  objection was never "applying is unsafe" — it was that *the app could not tell
-  mid-check-in from between-sessions*, and merging forty new CSV lines into the
-  package list under a thumb is the cascading mis-tap invariant 5 exists to
-  prevent. `RESUME_RESET_MS` **is** that discrimination, and the app already
-  trusts it with a list reshape when it resets Showing. So the merge now spends
-  the same finding. What has *not* changed: it never applies on a timer, never
-  mid-thought (the five guards), and never on a remote it could not read.
-  Auto-push's `ahead` branch stayed a **refusal** on purpose — the 90s debounce
-  measures *data* idleness, not the user's, so it fires exactly when someone is
-  reading the screen with a reveal open, and it is the one thing stopping a
-  device writing over a remote it is behind (34.19).
-```
+Auto-push still refuses an `ahead` remote, on purpose. The 90s debounce measures data idleness, not the user's attention. So it fires while someone reads the screen with a reveal open. The refusal stops a device from writing over a remote that it is behind (34.19).
 
 ## See also
 

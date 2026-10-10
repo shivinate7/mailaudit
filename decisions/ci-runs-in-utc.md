@@ -2,23 +2,11 @@
 
 **Status:** open.
 
-GitHub Actions sets the timezone to UTC. Test 38.9 skips itself in that zone on purpose, because it has nothing to claim there. A green suite check on this repo's pull requests never actually executes 38.9. `check:docs` pins a non-UTC zone to measure the published test count correctly. That fix never reaches the test run inside CI itself.
+GitHub Actions sets `TZ` to UTC. Test 38.9 skips itself in that zone, on purpose, because it has nothing to claim there. So a green `suite` check on this repo's pull requests never runs 38.9. The global rule applies here directly: a green check proves only its platform and the states its fixtures build. As CI is configured today, the check proves nothing about 38.9.
 
-## The thread, as recorded
+`check:docs` works around the same fact for the published count. When it measures the suite, it pins a non-UTC zone. That fix does not reach the test run inside CI. CI still skips 38.9 on every run.
 
-```
-- **CI runs in UTC, so test 38.9 never runs there.** GitHub Actions sets `TZ`
-  to UTC. 38.9 skips itself in that zone, on purpose, because it has nothing
-  to claim there. So a green `suite` check on this repo's pull requests never
-  actually executes 38.9. The global rule applies here directly: a green
-  check proves only its platform and the states its fixtures build. This one
-  proves nothing about 38.9, ever, as CI is configured today. `check:docs`
-  works around the same fact for the published count, by pinning a non-UTC
-  zone when it measures the suite. That fix does not reach the test run
-  inside CI itself, which still skips 38.9 on every run. Left as is: the test
-  is deliberately zone-conditional, and changing it would hide the real gap
-  instead of naming it.
-```
+The gap is left as it is. The test is zone-conditional by design. Changing it would hide the real gap instead of naming it.
 
 ## See also
 
