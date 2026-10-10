@@ -1,0 +1,20 @@
+# The stamp band is the control
+
+A stamp shows as a band under the package header. Once a stamp exists, the band itself opens the editor.
+
+**Holds while:** `STAMP_KINDS` in `src/app.jsx` lists six kinds, and `Other` comes last.
+
+The band is a rotated chip, built like the RECEIVED stamp. It is manila, not green. It carries the note in Cochin italic. It stays visible while the package is collapsed.
+
+The first stamp comes from a `Stamp` button. That button sits first in the expanded card's action row. Once a stamp exists, the button goes away. The band takes its place and shows a trailing `›`, as the Tally order-id link does.
+
+The editor offers the six kinds as option cells, in the month picker's treatment. `Other` comes last. It covers anything the fixed five do not name. The free line carries the detail.
+
+The editor also has a note field at 16px, so iOS does not zoom. It has a two-tap Remove stamp control, and Cancel and Save buttons.
+
+## See also
+
+- `one-stamp-per-package` — why picking a kind replaces the stamp.
+- `stamp-removal-writes-a-tombstone` — how a removed stamp survives a merge.
+- `order-id-button-stops-propagate` — the other trailing `›` control.
+- `motion-the-stamp-lands` — the motion the stamp uses when it appears.

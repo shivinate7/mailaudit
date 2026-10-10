@@ -1,0 +1,15 @@
+# The token field is 16px to stop iOS zoom
+
+The token field is set at 16px. iOS zooms the page when a focused input is smaller than 16px.
+
+**Holds while:** `keyField` in `src/app.jsx` sets `fontSize: 16`.
+
+The field is a write-on rule, like the Find field. It is not a box. The viewport meta leaves zoom on. So a smaller input would zoom the page on focus.
+
+The old 12px box zoomed on every paste. The 16px size stops that.
+
+## See also
+
+- `design-form-controls-no-inherit` — the font rule that form controls also need.
+- `ruled-head-heights` — the control height that the key field shares.
+- `sync-particulars-ruled-values` — the particulars that lead into the key field.

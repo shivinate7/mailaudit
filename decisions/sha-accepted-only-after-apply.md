@@ -8,6 +8,10 @@ The app stores the remote sha only after it applies the pulled bytes. Storing th
 
 Storing the sha on arrival once let a failed apply leave a current sha over stale data. A failed apply could be a rejected payload, a merge that throws, or a generation guard that bails. The next push was accepted with no conflict, and it destroyed the other device's work. Auto-push makes this unattended, within 90 seconds.
 
+The incident happened on the first day of real two-device use. It cost a check-in. `git log origin/data` has the receipt. Commit `87793de` is byte-identical to `38017ae`, six days older. It landed on top of a newer ledger with no conflict. Diff the blobs, not just the counts. Identical blobs are how you tell which device wrote what.
+
+Failing to accept leaves the device merely behind. The next push then conflicts loudly. That is the direction this must fail in. Group 35 pins it.
+
 ## See also
 
 - `pushforce-sha-only-after-write` — the same rule reached through the force door.

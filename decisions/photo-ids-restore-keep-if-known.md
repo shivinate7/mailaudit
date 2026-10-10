@@ -10,6 +10,10 @@ The old rule was all-or-nothing on `data.photos`. That is right for a file resto
 
 The same bug was latent on the file path, a plain Backup followed by restore on the same device. It was rarely exercised there. Tests 19.11–19.12, 26.11–26.13.
 
+The third arm, `extraPresent`, came with photo sync. It matters in two places that a narrower rule would fail. One GET fails out of twelve. That would strip one id. The debounced save would write the stripped ledger, and the next push would publish it. That severs the link to a photo safe on GitHub, which a retry would have fetched. If the photo repo cannot be reached at all, every id would go at once.
+
+Keeping an id costs a blank manila tile until the next pull. Stripping it costs the photo. So test 26.13 splits in two. An id is stripped only when the store was read and did not hold it (26.13). An id is kept when the store could not be read (26.13b).
+
 ## See also
 
 - `photo-ids-unreadable-local` — the local half of the same keep-or-strip rule.

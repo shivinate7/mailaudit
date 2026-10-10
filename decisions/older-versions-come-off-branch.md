@@ -8,6 +8,8 @@ Every push creates a commit, so the remote branch already holds a full archive o
 
 Restoring one funnels through the same `applyBackup`. It deliberately does not touch the stored sha. Rolling the ledger back is local. Pushing afterward rolls the remote back as a new commit, which keeps that reversible in turn.
 
+`listVersions` reads `commits?path=ledger.json&sha=data`. That log is the version archive. Photo commits must stay off that log.
+
 ## See also
 
 - `milestones-taken-before-risk` — the local tiers this branch history extends.

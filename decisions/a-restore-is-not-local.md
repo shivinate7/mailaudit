@@ -8,6 +8,8 @@ Nothing is destroyed. Every push is a commit, and the other device recovers by m
 
 A Reset has the same risk. `resetAll` keeps the sha by design. So a Reset publishes an empty ledger 90 seconds later. The risk is contained for the same reasons.
 
+A restore takes its own `before restore` milestone on the way in. So tapping the wrong row is survivable, not a second disaster. Every restore funnels through `applyBackup()`. See `every-restore-passes-applybackup`.
+
 A restore does not touch the sha. Rolling the sha back would be the real mistake. It would 409 the next push against a remote that this device is not behind. That forces the user through Merge. Merge only ADDS. So it would silently re-add the very lines the rollback removed. The repair path would undo the repair.
 
 ## See also

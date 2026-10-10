@@ -12,6 +12,8 @@ The filters keep the narrower gate `items.length > 0`. They describe a list that
 
 The whole region is gated on `… || !!window.remote`, which is wider still. Pull is needed most on an empty ledger. Examples: a new phone, ITP clearing storage, or a move to another origin. If the gate used data alone, the one control that recovers from no data would be unreachable. On an empty ledger the only button on screen was "Choose file". Now an empty ledger shows `Sync` alone.
 
+The History cell follows the same rule. It is gated on the versions adapter or the remote, never on the ledger. It holds the one control that undoes a Reset. Gating it on `items.length` would hide it just after a Reset.
+
 Re-import and Reset keep the narrower gate. There is nothing to re-import into, because the upload zone is already up. There is nothing to clear. A red destructive button on an empty ledger is noise at best. Group 28.
 
 ## The rule
