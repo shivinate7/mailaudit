@@ -255,7 +255,7 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 
 - `a-host-migration-resets-storage` — A host migration resets phone storage.
 - `auto-apply-happens-now` — Auto-apply happens now, and why that changed.
-- `ci-runs-in-utc` — CI runs in UTC, so test 38.9 never runs there.
+- `ci-runs-in-utc` — CI runs the suite outside UTC, so test 38.9 runs there.
 - `envelope-deletion-is-not-represented` — Envelope deletion is not represented.
 - `itp-may-clear-storage` — ITP may clear storage after seven idle days.
 - `max-cannot-express-an-uncheck` — `max` on received cannot express an un-check.

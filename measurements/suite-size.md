@@ -2,7 +2,7 @@
 
 This record holds the assertion count and the run time for `npm test`. The suite runs 548 assertions and takes near 60 seconds. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
-The count depends on the clock's zone. Under UTC the suite runs 547, because test 38.9 has nothing to claim there. `npm run check:docs` pins a non-UTC zone for that reason, and it grades the figure in this sentence.
+The count depends on the clock's zone. Under UTC the suite runs 547, because test 38.9 has nothing to claim there. So the zone is pinned to `America/New_York`. In CI, the test step sets `TZ`. Locally, `npm run check:docs` sets it for its own suite run. `check:docs` grades the figure in this sentence.
 
 `npm test` has no test framework. It runs 548 assertions in ~60s. Groups 30 to 31 spend a few seconds in real timers, on purpose. The sweep race can only be reached by letting the clock run. `test/app.test.mjs` runs top to bottom. It either prints "all green" or exits 1. `test/harness.mjs` holds the jsdom setup, the storage mocks, the DOM helpers, and the fixture.
 

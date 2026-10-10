@@ -459,8 +459,8 @@ async function spaceWrites() {
    PRIVATE repo everything now lives in: it means both "the file isn't there
    yet" and "this token cannot see the repo", because GitHub hides existence
    rather than admitting a 403. Ledger reads go through classifyLedger, which
-   disambiguates; this plain wrapper does not, and its callers are the writes
-   and the photo calls, which have a key by definition. */
+   disambiguates; this plain wrapper does not, so call it only where a key is
+   certain (writes, photo calls) or where the 404 is already handled. */
 function classify(res) {
   const { status, body, headers } = res;
   const msg = String(body?.message || "");
@@ -628,8 +628,7 @@ window.remote = {
      bytes and no content-generating request.
 
      The Trees API rather than Contents, for the same reason listPhotos uses it:
-     a Contents GET on ledger.json answers with the entire file base64'd (~470KB
-     at 1000 lines) merely to report a sha, and this runs on every foreground.
+     a Contents GET on ledger.json answers with the entire file base64'd merely to report a sha, and this runs on every foreground.
      A tree entry carries the BLOB sha, which is exactly the value push() stores
      from `content.sha` and exactly what r.sha is compared against — so `ahead`
      is a real answer rather than a heuristic. This is a read, against the

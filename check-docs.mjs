@@ -1,7 +1,7 @@
 // A checked reader for the record corpus's own published numbers and paths.
 //
 // This used to read only CLAUDE.md, which was 2,385 lines and held every
-// argument. CLAUDE.md is now a 297-line index; the 154 records under
+// argument. CLAUDE.md is now an index; the records under
 // decisions/, invariants/ and measurements/ hold the prose this file used to
 // check. So this walks CLAUDE.md plus every `.md` file in those three
 // folders, and checks the same two claims as before, now against the whole
@@ -24,7 +24,7 @@ const FOLDERS = ["decisions", "invariants", "measurements"];
 
 // ---------- load the corpus: CLAUDE.md plus every record ----------
 
-const files = [{ path: "CLAUDE.md", text: readFileSync("CLAUDE.md", "utf8") }];
+const files = ["CLAUDE.md", "README.md"].map((path) => ({ path, text: readFileSync(path, "utf8") }));
 for (const folder of FOLDERS) {
   for (const name of readdirSync(folder).sort()) {
     if (!name.endsWith(".md")) continue;
@@ -103,18 +103,31 @@ function lineAt(text, index) {
    `suite-size` record) document that test 38.9 skips itself in UTC, so a CI
    runner set to UTC prints one fewer assertion than a machine behind UTC.
    A count that changes with the runner's clock cannot be checked anywhere,
-   so this always runs the suite under a fixed, non-UTC zone — unchanged from
-   before the split. */
+   so the count is always read from a run under a fixed, non-UTC zone.
+   CI runs the suite once under that zone and names its output in
+   CHECK_DOCS_SUITE_LOG; this reads the count from that file. With the
+   variable unset (local use) it runs the suite itself, as before. A named
+   file that is unreadable or holds no count is a failure, never a pass. */
 const FIXED_TZ = "America/New_York";
 
 function suiteTotal() {
-  const out = execFileSync(process.execPath, ["test/app.test.mjs"], {
-    encoding: "utf8",
-    env: { ...process.env, TZ: FIXED_TZ },
-  });
+  const log = process.env.CHECK_DOCS_SUITE_LOG;
+  let out;
+  if (log) {
+    try {
+      out = readFileSync(log, "utf8");
+    } catch (e) {
+      throw new Error(`could not read CHECK_DOCS_SUITE_LOG (${log}): ${e.message}`);
+    }
+  } else {
+    out = execFileSync(process.execPath, ["test/app.test.mjs"], {
+      encoding: "utf8",
+      env: { ...process.env, TZ: FIXED_TZ },
+    });
+  }
   const m = out.match(/(\d+) passed, (\d+) failed/);
   if (!m) {
-    throw new Error("could not read a pass/fail count out of npm test's output");
+    throw new Error("could not read a pass/fail count out of the suite's output");
   }
   return Number(m[1]) + Number(m[2]);
 }
@@ -165,7 +178,18 @@ const BARE_EXT = /^\.[a-z0-9]+$/i;
 // `raw.githubusercontent.com/owner/repo/...` — not a path in THIS repo.
 const DOMAIN = /^[a-z0-9-]+(\.[a-z0-9-]+)+\//i;
 
+// Names the records give that are NOT in this repo, by design. Each is judged
+// by hand, not by the filesystem. Keep this list to what the records say lives
+// elsewhere; a path that moved inside this repo must fail, not land here.
+const OTHER_REPO = new Set([
+  "ledger.json", // the ledger file, on the data branch of mailaudit-data
+  "photos/", // the photo directory, on main of mailaudit-data
+  "backup-watchdog.yml", // the watchdog workflow, lives in mailaudit-data
+  "_studies.html", // the motion proof sheet, never committed (decisions/motion-method-is-side-by-side-proof.md)
+]);
+
 function excluded(s) {
+  if (OTHER_REPO.has(s)) return true;
   if (/\s/.test(s)) return true;
   if (s.includes("://")) return true;
   if (s.includes("{") || s.includes("}")) return true;
@@ -210,6 +234,22 @@ for (const { span } of allSpans) {
   if (!knownPath.has(base)) knownPath.set(base, span);
 }
 
+// Every file in the repo, for bare filenames that live below the root.
+const tracked = execFileSync("git", ["ls-files"], { encoding: "utf8" }).split("\n");
+
+// A bare filename's real location: the corpus's own qualified mention, then the
+// root, then any tracked file with that basename. null when it is nowhere.
+function resolveBare(name) {
+  if (knownPath.has(name)) return knownPath.get(name);
+  if (existsSync(name)) return name;
+  const hits = tracked.filter((t) => t.endsWith("/" + name));
+  return hits.length > 1 ? { ambiguous: hits } : hits[0] ?? null;
+}
+function lineCount(path) {
+  const t = readFileSync(path, "utf8");
+  return t.split("\n").length - (t.endsWith("\n") ? 1 : 0);
+}
+
 let checked = 0;
 const refused = new Set();
 const seenPerFile = new Map(); // file -> Set(span) — de-dupe within one file, as before
@@ -221,20 +261,38 @@ for (const entry of allSpans) {
   if (seen.has(span)) continue;
   seen.add(span);
 
+  // `file:line` (or `file:a-b`): the file must exist with at least that many lines.
+  const fl = span.match(/^([^\s:]+\.[a-z]+):(\d+)(?:-(\d+))?$/i);
+  if (fl) {
+    checked++;
+    const need = Number(fl[3] ?? fl[2]);
+    const where = fl[1].includes("/") ? (existsSync(fl[1]) ? fl[1] : null) : resolveBare(fl[1]);
+    if (where?.ambiguous) {
+      console.error(`check:docs: ${file}:${lineAt(fileProse, index)} names \`${span}\`, which is ambiguous: ${where.ambiguous.join(", ")}`);
+      failures++;
+      continue;
+    }
+    const have = where ? lineCount(where) : -1;
+    if (have < need) {
+      const line = lineAt(fileProse, index);
+      console.error(
+        `check:docs: ${file}:${line} names \`${span}\`, but ` +
+          (have < 0 ? "that file does not exist" : `${fl[1]} has only ${have} line(s)`)
+      );
+      failures++;
+    }
+    continue;
+  }
+
   if (excluded(span)) {
     refused.add(span);
     continue;
   }
 
   if (span.endsWith("/")) {
-    // Only judge a multi-segment directory (`.github/workflows/`) — a bare
-    // single-segment one (`photos/`) is as likely to name a directory in
-    // another repo as one here, and is refused rather than guessed at.
+    // Every directory is judged, single-segment ones too: prose that
+    // names a directory in another repo says so without backticks.
     const dir = span.slice(0, -1);
-    if (!dir.includes("/")) {
-      refused.add(span);
-      continue;
-    }
     checked++;
     if (!(existsSync(dir) && statSync(dir).isDirectory())) {
       const line = lineAt(fileProse, index);
@@ -253,14 +311,13 @@ for (const entry of allSpans) {
   // the corpus has itself supplied a real location for it (via knownPath) or
   // it is plausibly a root file — anything else (a filename that lives only
   // in another repo, like `ledger.json`) is refused, not failed.
-  let target = span;
-  if (!span.includes("/")) {
-    if (knownPath.has(span)) target = knownPath.get(span);
-    else if (!existsSync(span)) {
-      refused.add(span);
-      continue;
-    }
+  const found = span.includes("/") ? span : resolveBare(span) ?? span;
+  if (found.ambiguous) {
+    console.error(`check:docs: ${file}:${lineAt(fileProse, index)} names \`${span}\`, which is ambiguous: ${found.ambiguous.join(", ")}`);
+    failures++;
+    continue;
   }
+  const target = found;
   checked++;
   if (!existsSync(target)) {
     const line = lineAt(fileProse, index);
@@ -269,7 +326,80 @@ for (const entry of allSpans) {
   }
 }
 
-console.log(`check:docs: walked ${files.length} file(s) (CLAUDE.md + ${files.length - 1} record(s))`);
+/* ---------- claim 3: every code-shaped name in backticks occurs in the code ----------
+   A span shaped like a code name (camelCase, PascalCase, snake_case, CONST_CASE, or
+   `name()`) must occur as a whole word somewhere in the code roots below.
+   A renamed function then turns every record that cites it red. Names the
+   code cannot hold are listed in EXTERNAL, one reason each. */
+const CODE_ROOTS = ["src", "test", "build.mjs", "check-records.mjs", "icon", "package.json", ".github"];
+const EXTERNAL = new Set([
+  "receivedAt", // proposed, not built: max-cannot-express-an-uncheck says it "would be" a key
+  "currentTime", // Web Animations API, set by hand when measuring motion
+  "getAnimations", // Web Animations API, used by hand when measuring motion
+  "removeChild", // DOM method named in the save-slot measurement note
+  "enforce_admins", // GitHub branch-protection setting, not our code
+  "fromJSON", // GitHub Actions expression function
+]);
+function walk(path, out) {
+  if (!existsSync(path)) return;
+  if (statSync(path).isDirectory()) {
+    for (const n of readdirSync(path)) if (n !== "node_modules") walk(`${path}/${n}`, out);
+  } else if (!/\.(png|jpe?g)$/i.test(path)) {
+    let t = readFileSync(path, "utf8");
+    // A name in a comment is prose, not code: strip JS comments before matching.
+    // Known ceiling: only JS-family comments are stripped, so a name in a `#`
+    // comment of a .py or .yml file still counts. Regex literals are not
+    // tokenised either; a `/*` or quote inside one could mislead the scan.
+    if (/\.(mjs|jsx?)$/.test(path)) t = stripJsComments(t);
+    out.push(t);
+  }
+}
+// Scans once, skipping string literals, so `accept="image/*"` opens no comment.
+function stripJsComments(t) {
+  let out = "";
+  for (let i = 0; i < t.length; ) {
+    const c = t[i];
+    if (c === '"' || c === "'" || c === "`") {
+      let j = i + 1;
+      while (j < t.length && t[j] !== c && (c === "`" || t[j] !== "\n")) j += t[j] === "\\" ? 2 : 1;
+      out += t.slice(i, j + 1);
+      i = j + 1;
+    } else if (c === "/" && t[i + 1] === "*") {
+      const j = t.indexOf("*/", i + 2);
+      out += " ";
+      i = j < 0 ? t.length : j + 2;
+    } else if (c === "/" && t[i + 1] === "/") {
+      while (i < t.length && t[i] !== "\n") i++;
+    } else {
+      out += c;
+      i++;
+    }
+  }
+  return out;
+}
+const codeParts = [];
+for (const r of CODE_ROOTS) walk(r, codeParts);
+const codeText = codeParts.join("\n");
+const NAME_SHAPE = /^(?:[a-z][a-z0-9]*[A-Z][A-Za-z0-9]*|[a-z][a-z0-9]*(?:_[a-z0-9]+)+|[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+|[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]*)+|[A-Za-z_$][\w$]*\(\))$/;
+const nameSeen = new Set();
+let namesJudged = 0;
+for (const { file, span, index, prose: fileProse } of allSpans) {
+  if (!NAME_SHAPE.test(span)) continue;
+  const name = span.replace(/\(\)$/, "");
+  if (EXTERNAL.has(name)) continue;
+  const key = `${file}\0${name}`;
+  if (nameSeen.has(key)) continue;
+  nameSeen.add(key);
+  namesJudged++;
+  const re = new RegExp(`(?<![\\w$])${name.replace(/\$/g, "\\$")}(?![\\w$])`);
+  if (!re.test(codeText)) {
+    console.error(`check:docs: ${file}:${lineAt(fileProse, index)} names \`${span}\`, which occurs nowhere in the code`);
+    failures++;
+  }
+}
+console.log(`check:docs: ${namesJudged} code name(s) judged against the code`);
+
+console.log(`check:docs: walked ${files.length} file(s) (CLAUDE.md, README.md + ${files.length - 2} record(s))`);
 console.log(`check:docs: ${checked} path(s) checked against the filesystem, outside any fence`);
 console.log(`check:docs: ${refused.size} backtick span(s) refused as not path-like`);
 if (process.env.CHECK_DOCS_VERBOSE) {

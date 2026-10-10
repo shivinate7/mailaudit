@@ -276,9 +276,9 @@ async function dataUrlToBlob(url) {
 
 const isUntracked = (p) => /^without tracking$/i.test(p.tracking || "");
 
-/* A package's identity: one order from one seller. Written at three sites now
-   (the live grouping, the canceled reference section, and the Tally view's
-   "show me this order" jump), and they must not drift — a gk that disagrees
+/* A package's identity: one order from one seller. Written in many places
+   (grouping, filters, the Tally view's "show me this order" jump), so every
+   site calls this one function and they cannot drift — a gk that disagrees
    with the one in `packages` silently matches nothing. */
 const gkOf = (it) => `${it.orderId}::${it.seller}`;
 
