@@ -21,7 +21,7 @@ one record, and each record holds current text only; git keeps the history. Read
 records your task needs. Do not read them all.
 
 - `invariants/` holds a rule that must not break. 8 records.
-- `decisions/` holds a ruling and the reason it still holds. 141 records.
+- `decisions/` holds a ruling and the reason it still holds. 143 records.
 - `measurements/` holds a measured figure and how to re-measure it. 8 records.
 
 A record cites another record by slug, never by a path, so a record survives a
@@ -216,6 +216,8 @@ What each check asks, and the two traps in the icon pipeline.
 - `main-moves-only-by-pr` — Main moves only by pull request, admins included.
 - `screens-checked-headless-in-ci` — Each view is checked headless at 375 and 760px.
 - `records-hold-current-text-only` — Records hold current text only; git keeps history.
+- `records-name-what-dates-them` — Each decision names the fact that would date it.
+- `readme-is-minimal` — The README is minimal, and carries no license.
 
 ## Testing method
 
