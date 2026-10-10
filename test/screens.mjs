@@ -8,7 +8,7 @@
      1. No sideways overflow, in every view, at 375px and 760px. The head's
         three ruled cells must hold the longest sort label (decisions: the ruled
         head, `minmax(0, 1fr)`; measurements/ruled-head-heights.md).
-     2. Checking one card in moves no other row in that card (invariant no-layout-shift-under-the-pointer;
+     2. Checking one card in moves no other row in that card (invariant no-layout-shift-under-pointer;
         measurements/card-reserved-geometry.md). Measured at 375px in Packages
         and in Tally.
 

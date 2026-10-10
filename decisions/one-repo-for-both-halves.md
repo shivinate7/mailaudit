@@ -13,4 +13,4 @@ The real cost is that every device needs the key for everything. GitHub hides a 
 - `data-branch-setup` — the branch inside this repository that holds the ledger
 - `photo-branch-must-preexist` — the branch inside this repository that holds the photos
 - `fine-grained-token-single-repo` — the token scope this single repository allows
-- `ci-workflow-filters-guarantee-no-rebuild-trigger` — why a public source repository stays untouched by backups
+- `ci-filters-guarantee-no-rebuild` — why a public source repository stays untouched by backups

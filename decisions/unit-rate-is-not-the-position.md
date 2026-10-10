@@ -9,4 +9,4 @@ The "biggest position" sort still ranks by total basis. That order is deliberate
 ## See also
 
 - `tally-pools-on-the-exact-name` — the grouping this rate is computed over.
-- `cost-basis-excludes-shipping-and-tax` — the basis this rate divides.
+- `cost-basis-excludes-ship-and-tax` — the basis this rate divides.

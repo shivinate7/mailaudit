@@ -10,4 +10,4 @@ The 500-content-requests/hour cap is shared with the ledger push. Photo uploads 
 
 - `photo-sync-cannot-conflict` — why a resumable set difference is safe to retry
 - `push-and-merge-guard-differently` — the other request this budget is shared with
-- `the-watchdog-lives-in-the-private-repo` — a separate Actions-minutes budget with a similar shape
+- `watchdog-lives-in-private-repo` — a separate Actions-minutes budget with a similar shape

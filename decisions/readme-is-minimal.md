@@ -6,4 +6,4 @@ The public repo has a short README. It holds the name, one sentence, a link to t
 
 ## See also
 
-- `the-ledger-repo-is-private-and-the-source-is-public` — why this repo is public.
+- `ledger-private-source-public` — why this repo is public.

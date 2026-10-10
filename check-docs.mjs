@@ -186,7 +186,7 @@ const OTHER_REPO = new Set([
   "ledger.json", // the ledger file, on the data branch of mailaudit-data
   "photos/", // the photo directory, on main of mailaudit-data
   "backup-watchdog.yml", // the watchdog workflow, lives in mailaudit-data
-  "_studies.html", // the motion proof sheet, never committed (decisions/motion-method-is-side-by-side-proof.md)
+  "_studies.html", // the motion proof sheet, never committed (decisions/motion-method-side-by-side-proof.md)
 ]);
 
 function excluded(s) {

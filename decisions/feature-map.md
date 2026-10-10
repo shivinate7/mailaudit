@@ -217,12 +217,12 @@ Re-import and Reset stay on the narrower `items.length > 0 || envelopes.length >
 
 - `card-tally-row-counts-first` — why the Tally row orders its meta line the way it does.
 - `unit-rate-is-not-the-position` — the figure the Tally sort calls "unit rate".
-- `cost-basis-excludes-shipping-and-tax` — what basis counts and what it leaves out.
+- `cost-basis-excludes-ship-and-tax` — what basis counts and what it leaves out.
 - `orphaned-mail-never-decides` — the invariant Orphaned's ranking must never cross.
 - `stamp-removal-writes-a-tombstone` — how a removed stamp survives a merge.
 - `one-stamp-per-package` — why picking a new stamp kind replaces, not stacks.
 - `versions-get-their-own-database` — why saved versions live outside the photo store.
-- `milestones-are-taken-before-the-risk` — when a milestone version is taken.
+- `milestones-taken-before-risk` — when a milestone version is taken.
 - `sha-accepted-only-after-apply` — the rule the sync panel's Push/Pull rest on.
 - `peek-is-three-valued` — what peek() answers and why unknown is not clear.
 - `one-repo-for-both-halves` — why the ledger and photos share one repo now.

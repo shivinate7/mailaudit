@@ -13,5 +13,5 @@ The same fact has an upside. Reset is survivable for photos. `resetAll` keeps th
 ## See also
 
 - `photo-sync-cannot-conflict` — the same one-file-per-photo design this permanence follows from
-- `pushforce-records-sha-only-after-write` — the sha rule Reset relies on to stay recoverable
+- `pushforce-sha-only-after-write` — the sha rule Reset relies on to stay recoverable
 - `the-write-budget-is-shared` — the request budget a delete path would also spend

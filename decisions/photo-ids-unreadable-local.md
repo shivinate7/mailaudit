@@ -10,5 +10,5 @@ An unreadable local photo store keeps every id, exactly as an unreadable remote 
 
 ## See also
 
-- `photo-ids-restore-keep-when-known` — the remote half of the same rule.
+- `photo-ids-restore-keep-if-known` — the remote half of the same rule.
 - `listphotos-is-three-valued` — the same three-valued reasoning applied locally.

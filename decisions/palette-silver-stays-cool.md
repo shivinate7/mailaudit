@@ -7,4 +7,4 @@ The `silver` token was chosen on looks, not on legibility. The `line` colour it 
 ## See also
 
 - `palette-contrast` — the measured ratios behind this choice.
-- `palette-token-table-and-contrast-floor` — the floor this token must clear.
+- `palette-tokens-contrast-floor` — the floor this token must clear.

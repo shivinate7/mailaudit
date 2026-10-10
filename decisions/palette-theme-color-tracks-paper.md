@@ -9,4 +9,4 @@ The icon was designed against this palette first. The interface followed from it
 ## See also
 
 - `design-parchment-ledger` — the palette this browser chrome color must track.
-- `palette-token-table-and-contrast-floor` — the token table `paper` belongs to.
+- `palette-tokens-contrast-floor` — the token table `paper` belongs to.

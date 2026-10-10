@@ -10,5 +10,5 @@ Stamping an order `Refunded` makes its card vanish from the list under the user'
 
 ## See also
 
-- `a-stamped-package-hides-the-lost-mail-warning` — another effect a stamp has on a package.
+- `stamped-package-hides-lost-flag` — another effect a stamp has on a package.
 - `one-stamp-per-package` — the stamp that triggers this exclusion.

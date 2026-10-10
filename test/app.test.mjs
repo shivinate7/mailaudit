@@ -294,7 +294,7 @@ ok(
    is not what reopening looks like — coming back after a real absence has to
    count too. But a hop out to read a tracking number and straight back is the
    same session, and flipping the list under a thumb mid-check-in is the
-   mis-tap invariant no-layout-shift-under-the-pointer exists to prevent. So the gap decides. */
+   mis-tap invariant no-layout-shift-under-pointer exists to prevent. So the gap decides. */
 await toggleShowing();
 await backgroundFor(5_000);
 ok(
@@ -1734,7 +1734,7 @@ ok(
 
 /* The order id sits inside a row whose whole surface checks a card in. Without
    stopPropagation, a tap that meant to look would quietly mark it received:
-   a data write from a navigation gesture, which is the mis-tap invariant no-layout-shift-under-the-pointer
+   a data write from a navigation gesture, which is the mis-tap invariant no-layout-shift-under-pointer
    exists to prevent. */
 await fresh();
 await goTo("tally");
@@ -3308,7 +3308,7 @@ ok(
    by catching up.
 
    The threshold is the whole design. Applying forty imported lines into the
-   package list mid-check-in is the cascading mis-tap invariant no-layout-shift-under-the-pointer exists to
+   package list mid-check-in is the cascading mis-tap invariant no-layout-shift-under-pointer exists to
    prevent; coming back after a minute away is not mid-check-in. */
 
 const PHONE_STATE = { items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } };
@@ -3331,7 +3331,7 @@ eq(remote.deviceSha, null, "40.2 a remote it could not read is not merged");
 remote.peekUnknown = null;
 
 /* half the threshold: a hop out to read a tracking number is the same session,
-   and replacing the ledger under a thumb is the mis-tap invariant no-layout-shift-under-the-pointer prevents */
+   and replacing the ledger under a thumb is the mis-tap invariant no-layout-shift-under-pointer prevents */
 await backgroundFor(5_000);
 await settle();
 eq(remote.deviceSha, null, "40.3 a glance away is still the same session");
@@ -3542,7 +3542,7 @@ ok(
    `.mdl-foot` is a wrapping flex row, so an indicator that exists only while
    a save is in flight can add a whole LINE to it — and by the time a card is
    being tapped the masthead has scrolled away, so what that actually moves is
-   the package list, under the thumb, twice per check-in. Invariant no-layout-shift-under-the-pointer, from
+   the package list, under the thumb, twice per check-in. Invariant no-layout-shift-under-pointer, from
    the one element in the app that changes on every single tap.
 
    jsdom has no layout, so the shift itself is unassertable here; it was
@@ -3646,7 +3646,7 @@ ok(
    the size: measured at 375px against the seeded ledger, the FIRST check-in
    in a package grew its card by 28px and pushed every remaining row in it
    down by 28px — inside the card, directly under the thumb that had just
-   tapped one of them. Invariant no-layout-shift-under-the-pointer, on the most common gesture in the app.
+   tapped one of them. Invariant no-layout-shift-under-pointer, on the most common gesture in the app.
    Two independent causes, and both had to go:
      · a 15px progress bar mounting between the header and the item rows;
      · the contextual action row growing 39px -> 52px, because "Clear

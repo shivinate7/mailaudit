@@ -7,4 +7,4 @@ Every change reaches `main` through a pull request that passes the required `sui
 ## See also
 
 - `build-and-deploy` — the deploy script that opens the pull request.
-- `ci-workflow-filters-guarantee-no-rebuild-trigger` — what `suite` runs on.
+- `ci-filters-guarantee-no-rebuild` — what `suite` runs on.

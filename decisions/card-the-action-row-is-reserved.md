@@ -29,5 +29,5 @@ If the fix is ever wanted, get it without dead space. Keep all three buttons mou
 ## See also
 
 - `card-reserved-geometry` — the measured card and action row heights this ruling reserves against.
-- `no-layout-shift-under-the-pointer` — the invariant the reservation exists to satisfy.
+- `no-layout-shift-under-pointer` — the invariant the reservation exists to satisfy.
 - `card-the-bar-is-out-of-flow` — the other fix for the same 28 pixel shift, done a different way.

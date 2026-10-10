@@ -25,13 +25,13 @@ Orphaned follows the same colour language. Manila marks anything advisory: the a
 
 ## Motion, card geometry, and palette
 
-The motion rules are in `motion-is-stationery-not-software` and `motion-nothing-may-reflow`. The card's fixed height is in `card-reserved-geometry`. The palette values are in `palette-token-table-and-contrast-floor`.
+The motion rules are in `motion-stationery-not-software` and `motion-nothing-may-reflow`. The card's fixed height is in `card-reserved-geometry`. The palette values are in `palette-tokens-contrast-floor`.
 
 ## See also
 
 - `design-parchment-ledger` — the palette's name and inspiration.
-- `design-form-controls-do-not-inherit-the-family` — why buttons need an explicit font rule.
-- `design-the-view-switch-is-equal-thirds` — the view switch's own sizing rule.
-- `palette-token-table-and-contrast-floor` — the full token table and its contrast floor.
+- `design-form-controls-no-inherit` — why buttons need an explicit font rule.
+- `design-view-switch-equal-thirds` — the view switch's own sizing rule.
+- `palette-tokens-contrast-floor` — the full token table and its contrast floor.
 - `palette-gold-is-ornament-only` — why gold never carries text.
 - `card-reserved-geometry` — the measured numbers behind the card's fixed height.

@@ -14,7 +14,7 @@ The module holds three rules:
 
 ## See also
 
-- `b64-fails-by-producing-plausible-data` — the same reasoning, on the base64 module
+- `b64-fails-with-plausible-data` — the same reasoning, on the base64 module
 - `remote-rules-fail-quietly` — the same reasoning, on the remote adapter
 - `merge-rules-only-add` — the same reasoning, on the merge module
 - `remote-is-transport-not-storage` — the adapter these naming rules serve

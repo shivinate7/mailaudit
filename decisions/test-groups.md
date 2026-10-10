@@ -6,7 +6,7 @@ This file is the coverage map. It lists what each numbered test group proves, an
 
 ## Groups 42, 43, 45 and 44 (motion and layout mechanics)
 
-Group 42 covers the save indicator's reserved slot. It is the smallest group, and it can prove the least. The defect is a layout shift. jsdom has no layout, so no assertion in this suite can catch one. The measurements are in `masthead-the-save-slot-is-reserved`. Group 42 pins the mechanism underneath. It checks each place where that mechanism could regress without looking wrong.
+Group 42 covers the save indicator's reserved slot. It is the smallest group, and it can prove the least. The defect is a layout shift. jsdom has no layout, so no assertion in this suite can catch one. The measurements are in `masthead-save-slot-reserved`. Group 42 pins the mechanism underneath. It checks each place where that mechanism could regress without looking wrong.
 
 42.2 covers a mistake made on the first attempt. That attempt reserved the slot's width and left the slot empty. That fixes nothing. An empty flex item is zero pixels tall. A line that holds only that item collapses. 42.3 keeps working as the app changes. It drives the store into failure, to reach the longest of the three messages. It asserts that the message fits the reserved width, counted in the `ch` that the reservation uses. So lengthening that copy without widening the slot turns the suite red, rather than quietly reintroducing the shift. Nothing here asserts that the reservation's size is right. Only a viewport can say that.
 
@@ -84,10 +84,10 @@ Mutation-tested, all confirmed to turn the suite red:
 
 Four method notes are worth keeping. Each one was learned the hard way. Three of them have their own records, linked here.
 
-- `testing-one-tier-must-not-decide-another`: group 38's own assertions were wrong four separate times, always the same way.
+- `testing-one-tier-not-decides`: group 38's own assertions were wrong four separate times, always the same way.
 - **38.9's first draft could not fail at all.** `dayKey("2026-05-01T00:30")` is `"2026-05-01"` under the UTC reading too. The test now derives the boundary from the runner's own `getTimezoneOffset()`. It skips itself in UTC, where there is nothing to claim.
-- `testing-an-assertion-that-throws-is-a-worse-kill`: three of group 39's mutants died by `JSON.parse(null)`. The reads are guarded now as `beforeReset && JSON.parse(...)`.
-- `testing-when-a-mutant-survives-find-the-unreached-state`: group 40's mutant, "the signal is never consumed", survived the first draft. 40.12–40.13 pin it. Group 41's first draft matched `message.split(" ")[0]`.
+- `testing-throwing-assert-bad-kill`: three of group 39's mutants died by `JSON.parse(null)`. The reads are guarded now as `beforeReset && JSON.parse(...)`.
+- `testing-mutant-lives-find-state`: group 40's mutant, "the signal is never consumed", survived the first draft. 40.12–40.13 pin it. Group 41's first draft matched `message.split(" ")[0]`.
 
 ## Groups 37, 36, 35, 33 to 34, 20, 21, 25 to 27 (feature and adapter groups)
 
@@ -232,7 +232,7 @@ Test groups map to the claims this file makes. So if you change a behaviour on p
 ## See also
 
 - `suite-size`, the assertion count and run time cited across these groups.
-- `testing-when-a-mutant-dies-check-the-cause`, the method lesson group 34 taught.
-- `testing-when-a-chokepoint-has-two-branches`, the lesson group 37 taught.
+- `testing-mutant-dies-check-cause`, the method lesson group 34 taught.
+- `testing-chokepoint-two-branches`, the lesson group 37 taught.
 - `merge-rules-only-add`, the design groups 33 to 34 protect.
 - `sha-accepted-only-after-apply`, the rule group 35 exists to pin.

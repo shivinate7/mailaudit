@@ -14,6 +14,6 @@ Guarding the push on the same wider set was over-broad. It stalled backup for an
 
 ## See also
 
-- `auto-push-safe-because-merge-exists` — the merge these guards protect
-- `two-device-merge-must-be-proven-first` — the proof this guarded merge needs before two devices sync
+- `auto-push-safe-as-merge-exists` — the merge these guards protect
+- `two-device-merge-proven-first` — the proof this guarded merge needs before two devices sync
 - `no-native-dialogs` — the confirm pattern these guards sit behind

@@ -22,4 +22,4 @@ Verified all three ways in an isolated checkout:
 
 - `check-seed-backstop-not-proof` — the other half of the same check, on what the seed publishes
 - `the-public-seed` — the seed this check strips before comparing
-- `ledger-remote-needed-for-seed-build` — why a build can come out seedless
+- `ledger-remote-needed-for-seed` — why a build can come out seedless

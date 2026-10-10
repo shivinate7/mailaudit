@@ -8,7 +8,7 @@ A fresh device must have its token before it can recover, not after. This is the
 
 ## See also
 
-- `a-recovery-control-is-not-gated-on-its-own-state` — the pattern this fresh-device case follows
+- `recovery-control-not-state-gated` — the pattern this fresh-device case follows
 - `listphotos-is-three-valued` — one of the three-valued reads this thread names
 - `peek-is-three-valued` — the other three-valued read this thread names
-- `the-ledger-repo-is-private-and-the-source-is-public` — the decision this cost is standing on
+- `ledger-private-source-public` — the decision this cost is standing on

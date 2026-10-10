@@ -60,6 +60,6 @@ Groups 30–31 added photo sync. `harness.mjs` grows a remote photo store alongs
 ## See also
 
 - `suite-size`, the assertion count and run time for `npm test`.
-- `testing-a-mock-is-the-test-below-the-seam`, why the mocks must stay honest.
+- `testing-mock-is-test-below-seam`, why the mocks must stay honest.
 - `remote-rules-fail-quietly`, why the remote mock enforces the sha check for real.
 - `photo-sync-cannot-conflict`, the design the photo mock exercises.

@@ -7,4 +7,4 @@ Each view (Orphaned, Tally, Packages) is checked in a headless browser at 375px 
 ## See also
 
 - `testing-jsdom-has-no-layout` — why the behaviour suite cannot catch a layout shift.
-- `no-layout-shift-under-the-pointer` — the invariant this check guards.
+- `no-layout-shift-under-pointer` — the invariant this check guards.

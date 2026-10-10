@@ -762,7 +762,7 @@ function ItemRow({
             stopPropagation is load-bearing: the whole row toggles a check-in,
             so without it a navigation tap would silently mark the card
             received. That's a data write from a gesture that meant to look,
-            and exactly the mis-tap invariant no-layout-shift-under-the-pointer exists to prevent. */}
+            and exactly the mis-tap invariant no-layout-shift-under-pointer exists to prevent. */}
         {source &&
           (onOpenOrder ? (
             <button
@@ -1138,7 +1138,7 @@ function PackageCard({
       {/* The stamp band: the order's status, visible collapsed too, and — once
           a stamp exists — the control that edits it. A sibling of the header
           button, above the rows, so nothing moves under a thumb mid-check-in
-          (invariant no-layout-shift-under-the-pointer); opening the editor is a deliberate tap on the band,
+          (invariant no-layout-shift-under-pointer); opening the editor is a deliberate tap on the band,
           the same class of move as expanding the package. */}
       {stamped && !editing && (
         <button
@@ -1288,7 +1288,7 @@ function PackageCard({
           was a 15px child appearing between the header and the item rows on
           the FIRST check-in, so it pushed every remaining row in the package
           down by 15px, under the thumb that had just tapped one of them
-          (invariant no-layout-shift-under-the-pointer). Mounting an absolutely positioned element reflows
+          (invariant no-layout-shift-under-pointer). Mounting an absolutely positioned element reflows
           nothing, so the gate can stay exactly as it was — which is what keeps
           .mdl-gild the sole marker of completion. */}
       {gotQty > 0 && !done && (
@@ -1636,7 +1636,7 @@ const miniBtn = {
 /* ---------- the card's reserved geometry ----------
    Both of these exist for one reason: a card must not change height on the tap
    that checks a card in, because the rows below it are under the thumb that
-   just tapped (invariant no-layout-shift-under-the-pointer). This is the same defect the save indicator's
+   just tapped (invariant no-layout-shift-under-pointer). This is the same defect the save indicator's
    reserved slot fixed in the masthead, one level down and larger — measured at
    375px it was 28px, against that one's 12–14px.
 
@@ -1696,7 +1696,7 @@ const BULK_ROW_H = 46;
    page alive when you switch away, so without this the only thing that resets
    Showing is the system evicting the page — which can be days. A short hop out
    to read a tracking number and straight back is not a new session, and
-   flipping the list under someone mid-check-in is the mis-tap invariant no-layout-shift-under-the-pointer
+   flipping the list under someone mid-check-in is the mis-tap invariant no-layout-shift-under-pointer
    exists to prevent. A minute is comfortably longer than that hop and far
    shorter than any real "I'll come back to this later". */
 const RESUME_RESET_MS = 60_000;
@@ -2226,7 +2226,7 @@ function Notice({ children, actionLabel, onAction, onDismiss }) {
 /* The set of package keys whose stamp satisfies `pred`, with an identity that
    changes only when the MEMBERSHIP does. `stamps` is a fresh object on every
    note edit, and if that rebuilt liveItems → packages, packageOrder would
-   re-freeze the sort mid-check-in — the leapfrog invariant no-layout-shift-under-the-pointer exists to
+   re-freeze the sort mid-check-in — the leapfrog invariant no-layout-shift-under-pointer exists to
    prevent. Keying the memo on the sorted membership string keeps a typo fix
    from reshuffling the list. `pred` must be a module-level constant. */
 function useGkSet(stamps, pred) {
@@ -3123,7 +3123,7 @@ export default function MailDayLedger() {
      the slim bar below it is `position: sticky` with a FIXED height, so it is
      always in flow and pinning changes paint, never layout. The observer only
      toggles opacity/transform — both compositor-only. This is deliberate:
-     invariant no-layout-shift-under-the-pointer forbids anything moving under the pointer mid-check-in, and a
+     invariant no-layout-shift-under-pointer forbids anything moving under the pointer mid-check-in, and a
      header that resized on scroll would be exactly that bug. Do not "improve"
      this into a height animation. */
   const [stuck, setStuck] = useState(false);
@@ -4477,7 +4477,7 @@ export default function MailDayLedger() {
   /* ---- the merge, run for you ----
 
      Declined once, and the reason was right: applying forty imported lines into
-     the package list mid-check-in is the cascading mis-tap invariant no-layout-shift-under-the-pointer exists
+     the package list mid-check-in is the cascading mis-tap invariant no-layout-shift-under-pointer exists
      to prevent. What changed is not the risk but the evidence. Coming back
      after RESUME_RESET_MS away is not mid-check-in — it is a new session, and
      the app already stakes a list reshape on exactly that finding when it
@@ -5550,7 +5550,7 @@ export default function MailDayLedger() {
            A joy pass, under one rule: NOTHING HERE MAY REFLOW. Every keyframe
            below touches opacity, transform, colour or box-shadow and nothing
            else — no width, height, margin or padding on anything a finger is
-           about to land on. That is invariant no-layout-shift-under-the-pointer restated as a stylesheet
+           about to land on. That is invariant no-layout-shift-under-pointer restated as a stylesheet
            constraint, and it is why the sliding switch thumb is an absolutely
            positioned element rather than a background that moves between three
            buttons, and why the check tick is drawn with stroke-dashoffset
@@ -5802,7 +5802,7 @@ export default function MailDayLedger() {
                     tap and back up when the save clears. By then the masthead
                     has scrolled away and the thumb is on a card, so what
                     actually moves is the list: the layout shift under the
-                    pointer invariant no-layout-shift-under-the-pointer exists to prevent, twice per check-in.
+                    pointer invariant no-layout-shift-under-pointer exists to prevent, twice per check-in.
                     Measured at 375px against the seeded ledger, 4 of 10
                     realistic figure pairs moved by 12–14px; which ones depends
                     only on where the two figures happen to fall relative to
@@ -5848,7 +5848,7 @@ export default function MailDayLedger() {
         {/* Sentinel + running head. The bar is always in flow at a fixed
             height, so pinning it never moves anything; only its opacity
             changes. See the note on `stuck` above — this is load-bearing for
-            invariant no-layout-shift-under-the-pointer. */}
+            invariant no-layout-shift-under-pointer. */}
         <div ref={sentinel} style={{ height: 1 }} aria-hidden="true" />
         <div className="mdl-sticky" data-stuck={stuck ? "yes" : "no"}>
           <Seal id="bar" size={22} />

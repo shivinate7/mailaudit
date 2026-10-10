@@ -14,4 +14,4 @@ git switch --orphan data && git commit --allow-empty -m "data branch: ledger bac
 
 - `one-repo-for-both-halves` — why the ledger moved into this branch's repository
 - `photo-branch-must-preexist` — the sibling setup step for the photo branch
-- `backup-watchdog-catches-silent-failure` — the workflow that reads this branch's history
+- `watchdog-catches-silent-failure` — the workflow that reads this branch's history

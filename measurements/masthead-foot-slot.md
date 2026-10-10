@@ -12,9 +12,9 @@ No reader. A test cannot hold this claim, because jsdom has no layout.
 
 ## Figures
 
-The tally footer's save indicator sits in a RESERVED slot. This is `no-layout-shift-under-the-pointer` too. `.mdl-foot` is a wrapping flex row. It holds three things: `N packages · autosaves`, the exact `N still missing · $X`, and the debounced save indicator.
+The tally footer's save indicator sits in a RESERVED slot. This is `no-layout-shift-under-pointer` too. `.mdl-foot` is a wrapping flex row. It holds three things: `N packages · autosaves`, the exact `N still missing · $X`, and the debounced save indicator.
 
-The indicator was sized by its content. So it was 0px wide at rest and ~44px wide while saving. A flex row that wraps cannot absorb that change. Whether the row is one line or two depends on where the two figures fall relative to the wrap point. On the wrong side of that point, the indicator *added a line* on every tap. It took the line away again 2.5s later. By then the masthead had scrolled off, and the thumb was on a card. So what actually moved was the package list, twice per check-in. That is the cascading mis-tap that `no-layout-shift-under-the-pointer` exists to prevent, and it came from the one element that changes on every tap. This predates the motion pass. It was never a regression from it.
+The indicator was sized by its content. So it was 0px wide at rest and ~44px wide while saving. A flex row that wraps cannot absorb that change. Whether the row is one line or two depends on where the two figures fall relative to the wrap point. On the wrong side of that point, the indicator *added a line* on every tap. It took the line away again 2.5s later. By then the masthead had scrolled off, and the thumb was on a card. So what actually moved was the package list, twice per check-in. That is the cascading mis-tap that `no-layout-shift-under-pointer` exists to prevent, and it came from the one element that changes on every tap. This predates the motion pass. It was never a regression from it.
 
 The slot reserves `min-width: 13ch`. That is the width of the longest of its three states, `couldn’t save`. The content swaps inside a box that never changes size.
 

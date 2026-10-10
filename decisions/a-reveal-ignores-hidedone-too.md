@@ -10,5 +10,5 @@ Group 32 covers this behaviour.
 
 ## See also
 
-- `a-search-filters-inside-a-package` — the search this reveal answers.
-- `order-id-button-stops-propagation` — the other tap control in the same feature.
+- `search-filters-inside-package` — the search this reveal answers.
+- `order-id-button-stops-propagate` — the other tap control in the same feature.

@@ -7,4 +7,4 @@ At iPhone width, the Tally row is tight. The right-hand column holds up to three
 ## See also
 
 - `card-the-action-row-is-reserved` — the other card ruling that reserves space against a change in content.
-- `no-layout-shift-under-the-pointer` — the invariant this ordering choice protects.
+- `no-layout-shift-under-pointer` — the invariant this ordering choice protects.

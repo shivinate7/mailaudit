@@ -10,6 +10,6 @@ Storing the sha on arrival once let a failed apply leave a current sha over stal
 
 ## See also
 
-- `pushforce-records-sha-only-after-write` — the same rule reached through the force door.
-- `a-stale-push-conflicts-pull-gets-two-tap` — the conflict this rule exists to raise honestly.
+- `pushforce-sha-only-after-write` — the same rule reached through the force door.
+- `stale-push-conflict-pull-two-tap` — the conflict this rule exists to raise honestly.
 - `a-restore-is-not-local` — an operation that deliberately does not touch this sha.

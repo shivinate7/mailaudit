@@ -8,5 +8,5 @@ Thumbnails appear on the card. Tapping one opens a full-screen viewer. The app r
 
 ## See also
 
-- `photo-ids-restore-keep-when-known` — the rule for restoring the ids this file keeps out.
+- `photo-ids-restore-keep-if-known` — the rule for restoring the ids this file keeps out.
 - `photo-sync-cannot-conflict` — why the id-only design stays conflict-free.

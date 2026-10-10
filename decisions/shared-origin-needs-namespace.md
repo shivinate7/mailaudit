@@ -9,4 +9,4 @@ It is also why the storage quota is shared. The quota is per origin, so every ot
 ## See also
 
 - `every-origin-has-own-storage` — the origin boundary this namespace sits inside
-- `the-token-lives-outside-the-namespace` — the credential deliberately left out of this namespace
+- `token-lives-outside-namespace` — the credential deliberately left out of this namespace
