@@ -2,6 +2,8 @@
 
 This record holds the harness mechanics. It covers how `test/harness.mjs` mocks each platform API, and the gotchas to know. Read it before you write or fix a test.
 
+**Holds while:** `npm test` prints `548 passed, 0 failed` and `all green`. Checked 2026-10-10 after a fresh `npm ci`.
+
 ## The suite and the harness, in outline
 
 `npm test` runs 548 assertions. It has no test framework, and it takes about 60s. Groups 30–31 spend a few seconds in real timers, on purpose. The sweep race can only be reached by letting the clock run.

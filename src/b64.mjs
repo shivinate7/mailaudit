@@ -36,8 +36,8 @@ export function utf8ToBase64(str) {
 
    This must NOT go through utf8ToBase64. A JPEG is arbitrary bytes, not UTF-8;
    decoding it as text and re-encoding mangles every byte that isn't valid UTF-8
-   and silently changes the length. Measured before writing this: 300KB of
-   high-byte data survives this function byte-identical and does not survive the
+   and silently changes the length. Measured before writing this: high-byte data
+   survives this function byte-identical and does not survive the
    text path. That is the whole reason this file exists — it is the one piece
    here that fails by producing plausible corrupted data rather than an error.
 

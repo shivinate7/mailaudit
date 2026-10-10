@@ -2,6 +2,8 @@
 
 Restoring a version rewrites `items`, `received` and `envelopes`. Three of these fields are deps of the auto-push debounce. So 90 seconds later, the rolled-back ledger publishes to the remote. It publishes unattended and is accepted. The stored sha is still current, so there is no conflict to raise.
 
+**Holds while:** `AUTO_PUSH_MS` is 90000 in `src/app.jsx`, and the auto-push effect depends on `items`, `received` and `envelopes`.
+
 Nothing is destroyed. Every push is a commit, and the other device recovers by merging. But the two-tap control said "replace everything", which reads as local. The control now says this out loud. When there is a key, the expanded row says "This becomes the backup too, a minute later".
 
 A Reset has the same risk. `resetAll` keeps the sha by design. So a Reset publishes an empty ledger 90 seconds later. The risk is contained for the same reasons.

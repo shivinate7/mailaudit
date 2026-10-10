@@ -2,6 +2,8 @@
 
 Four independent reasons keep a saved version alive. They are recency, milestones, the earliest version of each hour, and the earliest version of each day. The hour and day anchors are derived at prune time, not stored. This keeps them from drifting out of step with the records they describe. The size of this tier lives in `ledger-and-seed-sizes`.
 
+**Holds while:** `keptIds` in `src/version-rules.mjs` unions four tiers, and `RETENTION` sets `recentKeep` to 20, `milestoneDays` to 30, `hourHours` to 24 and `dayDays` to 180.
+
 A pruning bug can delete the one version the user was reaching for. It leaves a list that still looks healthy. Nothing signals the loss until the moment it cannot be fixed.
 
 ## The module

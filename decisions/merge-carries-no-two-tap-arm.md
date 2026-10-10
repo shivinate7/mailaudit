@@ -2,6 +2,8 @@
 
 Merge and push pulls, unions, applies, and pushes in one step. It destroys nothing from either device. Pull and Push anyway are the two halves of the same mistake. Each keeps one device's work by discarding the other's. `Merge & push` keeps both.
 
+**Holds while:** `doMerge` in `src/app.jsx` runs on one tap, with no confirm state of its own.
+
 It carries no two-tap arm, on purpose. Invariant 6's pattern is for destructive actions only. Arming a control that destroys nothing would say the opposite of what it does. The merge skips the confirm pattern for that reason.
 
 There are two entrances to one function, `doMerge`:

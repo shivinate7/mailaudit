@@ -2,6 +2,8 @@
 
 Nothing the app writes should touch the source repository, so a backup can never trigger a site rebuild. The guarantee used to rest on the absence of `.github/workflows`. Now it rests on the path filters of two workflows. A third workflow must read those filters first.
 
+**Holds while:** the push trigger in `.github/workflows/test.yml` names only `main` and a paths filter, and that filter does not list `index.html`.
+
 ## Settings
 
 Settings → Pages on `mailaudit` should read "Deploy from a branch: `main` / `(root)`". Nothing the app writes touches that repo any more. A backup can no longer trigger a site rebuild by construction, not by branch discipline.

@@ -2,6 +2,8 @@
 
 Push needs a fine-grained personal access token. It needs `Contents: read & write`, scoped to that repo only. The key is pasted once per device. Since the ledger repo went private, pull needs that key too.
 
+**Holds while:** `src/app.jsx` maps a `no-access` error to the `syncBroken` line, and the ledger repo `mailaudit-data` is private.
+
 Closing the ledger repo cost one property, knowingly. A fresh device can no longer recover before it is configured with a key. A device with no key can now do nothing remote at all. So `no-access` is a `syncBroken` case with its own line. It is not an error buried in a panel.
 
 ## See also

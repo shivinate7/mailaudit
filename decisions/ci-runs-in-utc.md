@@ -1,15 +1,15 @@
-# CI runs in UTC, so test 38.9 never runs there
+# CI runs the suite outside UTC, so test 38.9 runs there
 
 **Status:** open.
 
-GitHub Actions sets `TZ` to UTC. Test 38.9 skips itself in that zone, on purpose, because it has nothing to claim there. So a green `suite` check on this repo's pull requests never runs 38.9. The global rule applies here directly: a green check proves only its platform and the states its fixtures build. As CI is configured today, the check proves nothing about 38.9.
+GitHub Actions sets `TZ` to UTC. Test 38.9 skips itself in that zone, on purpose, because it has nothing to claim there. So the `suite` job pins `TZ=America/New_York` on its one `npm test` run, and 38.9 runs on every CI run.
 
-`check:docs` works around the same fact for the published count. When it measures the suite, it pins a non-UTC zone. That fix does not reach the test run inside CI. CI still skips 38.9 on every run.
+`check:docs` does not run the suite again. CI tees the run's output to a file and names it in `CHECK_DOCS_SUITE_LOG`. `check:docs` reads the count from that file. If the file is missing or holds no count, it fails. If the variable is unset, as in local use, it runs the suite itself under the same zone.
 
-The gap is left as it is. The test is zone-conditional by design. Changing it would hide the real gap instead of naming it.
+What this still does not prove: the UTC path. The skip branch of 38.9 no longer runs in CI. A green check proves only its platform and the states its fixtures build. This one now proves the non-UTC state.
 
 ## See also
 
 - `testing-jsdom-has-no-layout` — another case where a green run proves only its own platform
 - `check-build-ignores-seed` — a different published-count workaround with the same shape
-- `suite-size` — the published count `check:docs` measures under a pinned zone
+- `suite-size` — the published count `check:docs` reads from the pinned-zone run

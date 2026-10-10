@@ -28,7 +28,7 @@ const C = {
   inkSoft: "#6E6379",
   line: "#DCCDB6",
   /* ornamental rules and the masthead's secondary metal. Never used for text on
-     `card` — it only clears 2.2:1 there. Ornament and fills only. */
+     `card` — it only clears 2.09:1 there. Ornament and fills only. */
   gold: "#C9A961",
   /* the empty half of a progress bar. Antique silver rather than `line` — the
      one cool value in the theme, chosen for the struck-coin read. Note `line`
@@ -57,6 +57,9 @@ const C = {
   waxDeep: "#66231D",
   waxCut: "#5E1F1A",
   waxRaised: "#E09A90",
+  /* translucent surfaces, by role */
+  shadow: "rgba(28,43,36,0.06)",
+  scrim: "rgba(28,43,36,0.92)",
 };
 
 const mono = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
@@ -276,9 +279,9 @@ async function dataUrlToBlob(url) {
 
 const isUntracked = (p) => /^without tracking$/i.test(p.tracking || "");
 
-/* A package's identity: one order from one seller. Written at three sites now
-   (the live grouping, the canceled reference section, and the Tally view's
-   "show me this order" jump), and they must not drift — a gk that disagrees
+/* A package's identity: one order from one seller. Written in many places
+   (grouping, filters, the Tally view's "show me this order" jump), so every
+   site calls this one function and they cannot drift — a gk that disagrees
    with the one in `packages` silently matches nothing. */
 const gkOf = (it) => `${it.orderId}::${it.seller}`;
 
@@ -584,7 +587,7 @@ function ProgressBar({ pct, height = 8, radius = height }) {
              ink is a near-black violet and read as flat black on parchment. */
           background: pct >= 100 ? C.green : C.accent,
           borderRadius: radius,
-          transition: "width 240ms ease, background 340ms 160ms ease",
+          transition: "width 240ms ease, background 340ms 280ms ease",
         }}
       />
       {justDone && <i className="mdl-sheen" aria-hidden="true" />}
@@ -992,7 +995,7 @@ function PackageCard({
         border: `1px solid ${done ? C.green : C.line}`,
         borderRadius: 10,
         overflow: "hidden",
-        boxShadow: "0 1px 2px rgba(28,43,36,0.06)",
+        boxShadow: `0 1px 2px ${C.shadow}`,
         /* clears the 46px running head when the Tally view scrolls us here */
         scrollMarginTop: 58,
       }}
@@ -1430,7 +1433,7 @@ function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder, stampedGks }
         border: `1px solid ${done ? C.green : C.line}`,
         borderRadius: 10,
         overflow: "hidden",
-        boxShadow: "0 1px 2px rgba(28,43,36,0.06)",
+        boxShadow: `0 1px 2px ${C.shadow}`,
       }}
     >
       <button
@@ -1729,7 +1732,7 @@ const RANGES = [
    values. This is that vocabulary continued — no boxes, no radii, no fills
    except the one accent that means "active" everywhere else in the app.
    Rules are `line`, NOT `gold`: gold is masthead ornament and fails for
-   anything carrying information (2.2:1). */
+   anything carrying information (2.09:1). */
 const RULE = { height: 1, background: C.line };
 const RULE_THIN = { height: 1, background: C.line, opacity: 0.55 };
 
@@ -2320,7 +2323,7 @@ function PhotoStrip({ ids, onRemove, epoch = 0 }) {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(28,43,36,0.92)",
+            background: C.scrim,
             zIndex: 50,
             display: "flex",
             alignItems: "center",
@@ -2420,7 +2423,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel }) {
         border: `1px solid ${C.ink}`,
         borderRadius: 10,
         overflow: "hidden",
-        boxShadow: "0 1px 2px rgba(28,43,36,0.06)",
+        boxShadow: `0 1px 2px ${C.shadow}`,
       }}
     >
       <div
@@ -2750,7 +2753,7 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
         border: `1px solid ${C.line}`,
         borderRadius: 10,
         overflow: "hidden",
-        boxShadow: "0 1px 2px rgba(28,43,36,0.06)",
+        boxShadow: `0 1px 2px ${C.shadow}`,
       }}
     >
       <div
@@ -5653,7 +5656,7 @@ export default function MailDayLedger() {
            allowed to carry information, and here it carries none — it says
            only that something finished. Opacity is animated on the element
            rather than baked into the gradient stops so the palette stays whole
-           values from C, with no alpha literal anywhere. */
+           values from C, with no alpha literal in the gradient. */
         .mdl-gild { position: absolute; inset: 0; pointer-events: none;
                     background: linear-gradient(100deg, transparent 34%,
                       ${C.gold} 50%, transparent 66%);

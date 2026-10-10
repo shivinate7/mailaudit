@@ -2,6 +2,8 @@
 
 The disclosure panels hold only padding and a top hairline. They never carry a background fill. The option grids still read as raised, because their own cells paint a surface over the panel's rule.
 
+**Holds while:** `panelWrap` in `src/app.jsx` sets padding and a top border, and no background.
+
 ## The reason
 
 `panelWrap` is padding plus a top hairline and nothing else. Do not set `background: C.card` on it. A fill would paint a beige rectangle, ruled top and bottom. Its left and right edges would simply stop. The edges would be square-cornered and full-bleed to the column. In this app every other filled surface is a rounded inset card. The fill would be the only thing creating an edge to resolve. It would contradict the ruled region's own thesis.

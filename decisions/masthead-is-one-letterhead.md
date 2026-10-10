@@ -2,6 +2,8 @@
 
 The top of the page is one composed letterhead, not stacked boxes. A wax seal sits between two gold rules. **MANIFEST** is set in Cochin caps. The C.H Postal Company line sits below it. Then the tallies are folded in under a hairline.
 
+**Holds while:** `src/app.jsx` renders the `Seal`, the `Manifest` title and the house line inside one `.mdl-head` block.
+
 The stats used to sit in their own bordered card. The two edges fought each other, 20px apart. The `ruled-head-heights` record holds the measured gap.
 
 ## See also

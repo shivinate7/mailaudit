@@ -2,6 +2,8 @@
 
 GitHub Pages serves the site from the main branch root. When the Pages workflow sits queued for more than 10 minutes, do not re-run the same run. Cancel it instead. Then push a trivial commit to start a fresh run.
 
+**Holds while:** the Pages source for `mailaudit` is branch `main`, path `/`.
+
 ## See also
 
 - `ci-workflow-filters-guarantee-no-rebuild-trigger` — the workflow filters this deploy quirk sits beside

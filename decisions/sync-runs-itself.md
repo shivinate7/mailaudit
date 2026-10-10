@@ -2,6 +2,8 @@
 
 Sync runs itself, and there is no toggle.
 
+**Holds while:** `AUTO_PUSH_MS` is `90000` in `src/app.jsx`. No Auto-push toggle is rendered.
+
 - Push runs on a 90s idle debounce, and on backgrounding.
 - The merge runs on a foreground after `RESUME_RESET_MS` away, and on a cold mount.
 

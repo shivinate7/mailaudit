@@ -2,6 +2,8 @@
 
 On the happy path, no sync vocabulary appears on screen. The action row has no `Sync` cell. There is no toggle, no `Merge`, and no notice that the other device is ahead. Sync either happens or it does not. Only the failed case deserves a pixel. A ledger that quietly stopped reaching GitHub is exactly the failure the remote exists to prevent. It is invisible by nature.
 
+**Holds while:** `SYNC_STALE_MS` in `src/app.jsx` is 24 hours, and `syncBroken` checks conflict, error, behind, then no key, in that order.
+
 So there is **one line**. It is advisory manila, full width, above the ruled row. A sentence has to wrap, while the row's cells are a fixed 40px of uppercase mono. The line is the sole entrance to the repair kit. One example of the line's copy is `Not backed up since Aug 30 — tap to fix`.
 
 `syncBroken` decides whether the line shows. It checks these cases in priority order:

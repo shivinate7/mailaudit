@@ -2,6 +2,8 @@
 
 When several rules can each keep or drop the same record, a test on one rule must neutralize every other rule first. Otherwise another rule decides the outcome, and the assertion tests the wrong thing.
 
+**Holds while:** `src/version-rules.mjs` keeps four retention tiers, and group 38 in `test/app.test.mjs` tests them.
+
 Group 38's own assertions were wrong before the code was, four separate times, always the same way. A tier's fixture did not neutralize the other tiers. So another tier quietly decided the outcome. Examples:
 
 - The day anchor kept records that the recent ring dropped. That was the union working, not the ring failing.

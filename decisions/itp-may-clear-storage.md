@@ -4,6 +4,8 @@
 
 Apple's Intelligent Tracking Prevention (ITP) clears script-writable storage after 7 days of non-use. Home-screen-installed web apps are believed to be exempt. Nobody has confirmed this on a real device. The gap matters, because it is the difference between data that is safe and data that quietly vanishes. Confirm it empirically. Push and Pull make this survivable either way, as long as the user actually pushes.
 
+**Holds while:** no on-device check in `test/` or `src/` shows that iOS keeps the storage of a home-screen app after seven idle days.
+
 ## See also
 
 - `every-origin-has-own-storage` — the storage this risk would clear
