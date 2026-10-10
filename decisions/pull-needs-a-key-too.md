@@ -8,6 +8,6 @@ Closing the ledger repo cost one property, knowingly. A fresh device can no long
 
 ## See also
 
-- `a-recovery-control-is-not-gated-on-its-own-state` — the rule that keeps Pull reachable anyway.
-- `ruled-head-one-advisory-line-is-the-only-entrance` — the line that leads to Pull.
+- `recovery-control-not-state-gated` — the rule that keeps Pull reachable anyway.
+- `ruled-head-one-advisory-entrance` — the line that leads to Pull.
 - `offline-is-decided-by-fetch` — the read a keyless pull still depends on.

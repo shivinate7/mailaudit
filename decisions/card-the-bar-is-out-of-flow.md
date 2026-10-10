@@ -4,7 +4,7 @@ The progress bar is absolutely positioned on the card's own top edge, in `edgeBa
 
 **Holds while:** `edgeBar` in `src/app.jsx` sets `position: absolute`, and the bar mounts only while `gotQty > 0 && !done`.
 
-Before the fix, the first check-in in a package grew the card by 28px, and pushed every remaining row in it down by 28px. That was measured at 375px against the seeded ledger. The rows sat directly under the thumb that had just tapped one of them. That broke `no-layout-shift-under-the-pointer` on the most common gesture in the app.
+Before the fix, the first check-in in a package grew the card by 28px, and pushed every remaining row in it down by 28px. That was measured at 375px against the seeded ledger. The rows sat directly under the thumb that had just tapped one of them. That broke `no-layout-shift-under-pointer` on the most common gesture in the app.
 
 The 28px came from two unrelated causes. The in-flow bar was 15px of it. The bar was a 15px child that appeared above everything it displaced. The action row was the other cause. Its labels wrapped to a second line, which grew the row. The row is now reserved at 46px (`BULK_ROW_H`), so a wrap no longer moves it. The `card-reserved-geometry` record has the measured heights.
 
@@ -17,5 +17,5 @@ The Tally card has `position: relative` for the same bar. PackageCard already ha
 ## See also
 
 - `card-reserved-geometry` — the measured card growth this record fixes.
-- `no-layout-shift-under-the-pointer` — the invariant the out-of-flow bar exists to satisfy.
-- `motion-a-completed-package-is-gilded` — the animation that marks completion once the bar can no longer do it.
+- `no-layout-shift-under-pointer` — the invariant the out-of-flow bar exists to satisfy.
+- `motion-completed-package-gilded` — the animation that marks completion once the bar can no longer do it.

@@ -12,7 +12,7 @@ across every seller, which answers "did all four arrive" and carries the cost
 basis. **Orphaned** holds a package that arrives with no way to tell who sent it.
 
 The app presents itself as MANIFEST. The project name, the repo name and the
-storage namespace do not follow the masthead. See `the-masthead-is-not-the-project-name`.
+storage namespace do not follow the masthead. See `masthead-is-not-project-name`.
 
 ## How to read this file
 
@@ -50,7 +50,7 @@ verify against the repo rather than against this file.
 Eight rules. Breaking one costs the owner months of check-in data.
 
 - `imports-merge-never-replace` — Imports merge, never replace.
-- `no-layout-shift-under-the-pointer` — No layout shift under the pointer.
+- `no-layout-shift-under-pointer` — No layout shift under the pointer.
 - `no-native-dialogs` — No native browser dialogs.
 - `orphaned-mail-never-decides` — Orphaned mail never decides anything.
 - `parser-filters` — Parser keeps only TCG purchases.
@@ -68,7 +68,7 @@ Nothing in the component touches a storage API. Three adapters do, and each fail
 - `shared-origin-needs-namespace` — The Pages origin is shared, so storage is namespaced.
 - `every-origin-has-own-storage` — Every origin holds a separate ledger.
 - `file-protocol-works-locally` — The file protocol supports everything the app needs.
-- `b64-fails-by-producing-plausible-data` — Base64 lives in its own module.
+- `b64-fails-with-plausible-data` — Base64 lives in its own module.
 - `photo-rules-fails-quietly` — Photo rules are pure and separately tested.
 - `remote-rules-fail-quietly` — Remote status mapping is pure and tested.
 - `merge-rules-only-add` — The two-device merge only ever adds.
@@ -81,19 +81,19 @@ Sync runs itself. These records say what it refuses to do, and why each refusal 
 - `remote-is-transport-not-storage` — The remote adapter is transport, not storage.
 - `sync-runs-itself` — Sync runs itself, with no toggle.
 - `push-and-merge-guard-differently` — Push and merge guard on different confirms.
-- `auto-push-safe-because-merge-exists` — Auto-push is safe only because merge exists.
+- `auto-push-safe-as-merge-exists` — Auto-push is safe only because merge exists.
 - `sha-accepted-only-after-apply` — The stored sha waits for the apply.
-- `pushforce-records-sha-only-after-write` — pushForce records the sha after the write.
+- `pushforce-sha-only-after-write` — pushForce records the sha after the write.
 - `peek-is-three-valued` — peek is three-valued, not a guess.
 - `listphotos-is-three-valued` — listPhotos is three-valued too.
 - `offline-is-decided-by-fetch` — Offline is decided by a failed fetch.
 - `pull-needs-a-key-too` — Pull now needs the same key.
-- `a-stale-push-conflicts-pull-gets-two-tap` — Pull gets the two-tap, push does not.
+- `stale-push-conflict-pull-two-tap` — Pull gets the two-tap, push does not.
 - `merge-carries-no-two-tap-arm` — Merge never needs a two-tap arm.
-- `two-device-merge-must-be-proven-first` — Prove the two-device merge before trusting auto-push.
+- `two-device-merge-proven-first` — Prove the two-device merge before trusting auto-push.
 - `remote-sync-is-off-the-save-path` — Remote sync never touches the save indicator.
 - `fine-grained-token-single-repo` — One fine-grained token, scoped to one repo.
-- `the-token-lives-outside-the-namespace` — The access token sits outside the storage namespace.
+- `token-lives-outside-namespace` — The access token sits outside the storage namespace.
 - `one-repo-for-both-halves` — The source repo is public and holds no data.
 - `data-branch-setup` — The data branch is the ledger's history, not a scratch file.
 - `photo-branch-must-preexist` — The photo branch must exist before any upload.
@@ -104,19 +104,19 @@ A photo is a picture of a mailing label. It never enters the ledger, and it can 
 
 - `photos-stay-out-of-the-ledger` — Photo blobs never enter the ledger.
 - `photo-sync-cannot-conflict` — Photo sync cannot conflict by design.
-- `photo-errors-never-reach-pushstate` — A photo error never reaches pushState.
-- `photo-ids-restore-keep-when-known` — A restore keeps a photo id when known.
+- `photo-errors-never-hit-pushstate` — A photo error never reaches pushState.
+- `photo-ids-restore-keep-if-known` — A restore keeps a photo id when known.
 - `photo-ids-unreadable-local` — An unreadable local photo store keeps ids.
 
 ## Saved versions and recovery
 
 A milestone is taken before the risky step, never after. Read these before changing anything that restores.
 
-- `milestones-are-taken-before-the-risk` — Milestones save before the risky step.
+- `milestones-taken-before-risk` — Milestones save before the risky step.
 - `a-restore-is-not-local` — A restore is not local.
-- `older-versions-come-off-the-branch` — Older versions come from the branch.
-- `a-store-that-cannot-write-says-so` — A broken version store must say so.
-- `a-recovery-control-is-not-gated-on-its-own-state` — A recovery control cannot need the state it recovers.
+- `older-versions-come-off-branch` — Older versions come from the branch.
+- `unwritable-store-says-so` — A broken version store must say so.
+- `recovery-control-not-state-gated` — A recovery control cannot need the state it recovers.
 
 ## The public seed
 
@@ -125,19 +125,19 @@ The site is public and the ledger repo is not. The seed closes that gap, and one
 - `the-public-seed` — A public seed hydrates a visitor's empty ledger.
 - `seed-load-guards` — The seed never overwrites a keyed device.
 - `check-seed-backstop-not-proof` — Check the built seed by decoding it, not by reading the code.
-- `ledger-remote-needed-for-seed-build` — A build needs the data remote to seed the page.
+- `ledger-remote-needed-for-seed` — A build needs the data remote to seed the page.
 
 ## The three views
 
 Packages, Tally and Orphaned read one check-in map. These records say what each view may and may not decide.
 
-- `cost-basis-excludes-shipping-and-tax` — Cost basis excludes shipping and tax.
+- `cost-basis-excludes-ship-and-tax` — Cost basis excludes shipping and tax.
 - `unit-rate-is-not-the-position` — Unit rate and position differ on purpose.
 - `tally-pools-on-the-exact-name` — Tally pools by exact product name.
-- `a-search-filters-inside-a-package` — A search result needs a way back.
+- `search-filters-inside-package` — A search result needs a way back.
 - `a-reveal-ignores-hidedone-too` — A reveal ignores hideDone too.
-- `order-id-button-stops-propagation` — The order id link stops propagation.
-- `lost-mail-flags-use-the-order-date` — Lost-mail flags count from the order date.
+- `order-id-button-stops-propagate` — The order id link stops propagation.
+- `lost-mail-flags-use-order-date` — Lost-mail flags count from the order date.
 
 ## Order stamps
 
@@ -146,37 +146,37 @@ One stamp per package, set by hand. A refund takes the package out of every coun
 - `one-stamp-per-package` — One stamp per package, latest wins.
 - `stamp-removal-writes-a-tombstone` — Removing a stamp writes a tombstone.
 - `a-refund-leaves-every-count` — Refunded packages leave every count.
-- `a-stamped-package-hides-the-lost-mail-warning` — A stamp hides the lost-mail warning.
+- `stamped-package-hides-lost-flag` — A stamp hides the lost-mail warning.
 
 ## The ruled head
 
 The control region is the masthead's own vocabulary continued. Read these before changing a control there.
 
-- `ruled-head-a-resume-counts-as-reopening` — A resume counts as reopening.
-- `ruled-head-is-the-mastheads-vocabulary` — The ruled head continues the masthead.
-- `ruled-head-one-advisory-line-is-the-only-entrance` — One advisory line is sync's only entrance.
+- `ruled-head-resume-is-reopening` — A resume counts as reopening.
+- `ruled-head-masthead-vocabulary` — The ruled head continues the masthead.
+- `ruled-head-one-advisory-entrance` — One advisory line is sync's only entrance.
 - `ruled-head-panels-carry-no-fill` — Disclosure panels carry no fill.
-- `ruled-head-showing-starts-on-unreceived` — Showing starts on unreceived every load.
-- `ruled-head-the-elapsed-time-is-handed-forward` — Hand the elapsed time forward, never re-derive it.
-- `ruled-head-the-range-is-picked-not-typed` — The custom date range is picked, not typed.
-- `ruled-head-the-staleness-clock-measures-agreement` — The staleness clock measures agreement, not writes.
+- `ruled-head-showing-unreceived` — Showing starts on unreceived every load.
+- `ruled-head-hand-elapsed-forward` — Hand the elapsed time forward, never re-derive it.
+- `ruled-head-range-picked` — The custom date range is picked, not typed.
+- `ruled-head-stale-clock-agreement` — The staleness clock measures agreement, not writes.
 
 ## Motion
 
 The register is stationery, not software. One rule governs all of it: nothing may reflow.
 
 - `motion-a-card-opens-in-order` — A card lays its rows down in order.
-- `motion-a-completed-package-is-gilded` — A completed package is gilded, not badged.
-- `motion-collapsing-is-not-animated` — Collapsing a card runs with no animation.
+- `motion-completed-package-gilded` — A completed package is gilded, not badged.
+- `motion-collapse-not-animated` — Collapsing a card runs with no animation.
 - `motion-disclosure-panels-arrive` — Disclosure panels fade in, their space does not.
-- `motion-is-stationery-not-software` — Motion reads as stationery, not software.
-- `motion-method-is-side-by-side-proof` — Each motion was chosen by looking, not by reading.
+- `motion-stationery-not-software` — Motion reads as stationery, not software.
+- `motion-method-side-by-side-proof` — Each motion was chosen by looking, not by reading.
 - `motion-nothing-may-reflow` — No animation can cause a reflow.
-- `motion-reduced-motion-leaves-it-drawn` — Reduced motion leaves every animation at its final frame.
+- `motion-reduced-leaves-it-drawn` — Reduced motion leaves every animation at its final frame.
 - `motion-remeasure-not-rereason` — Motion timing claims need a real browser, not a test.
 - `motion-the-check-tick-is-written` — The check tick is written, not popped in.
-- `motion-the-letterhead-composes-once` — The letterhead composes itself once per load.
-- `motion-the-masthead-bar-sweeps-once` — The masthead bar turns green a beat late.
+- `motion-letterhead-composes-once` — The letterhead composes itself once per load.
+- `motion-masthead-bar-sweeps-once` — The masthead bar turns green a beat late.
 - `motion-the-stamp-lands` — The RECEIVED stamp lands, it does not appear.
 - `motion-the-switch-is-one-object` — The view switch moves one object, not three lights.
 - `motion-use-just-became` — useJustBecame guards every celebration animation.
@@ -188,31 +188,31 @@ Where the page holds its shape, and where every colour comes from.
 - `card-tally-row-counts-first` — The Tally row degrades sets first, never counts.
 - `card-the-action-row-is-reserved` — The card action row reserves its tallest height.
 - `card-the-bar-is-out-of-flow` — The package progress bar sits out of flow.
-- `design-form-controls-do-not-inherit-the-family` — Form controls need their own font rule.
+- `design-form-controls-no-inherit` — Form controls need their own font rule.
 - `design-parchment-ledger` — The palette is parchment ledger.
-- `design-the-view-switch-is-equal-thirds` — The view switch is equal thirds.
+- `design-view-switch-equal-thirds` — The view switch is equal thirds.
 - `masthead-is-one-letterhead` — The masthead is one letterhead, not stacked boxes.
 - `masthead-sizing-by-clamp` — Masthead sizing uses clamp, never breakpoints.
-- `masthead-tallies-are-not-equal-thirds` — The tally cells are not sized equally.
-- `masthead-the-running-head-is-sticky` — The running head pins by opacity, never by height.
-- `masthead-the-save-slot-is-reserved` — The save indicator sits in a reserved, fixed-size slot.
+- `masthead-tallies-unequal-thirds` — The tally cells are not sized equally.
+- `masthead-running-head-sticky` — The running head pins by opacity, never by height.
+- `masthead-save-slot-reserved` — The save indicator sits in a reserved, fixed-size slot.
 - `palette-gold-is-ornament-only` — Gold is ornament only, never text.
 - `palette-inksoft-and-manilaink` — inkSoft and manilaInk are checked against the right surface.
 - `palette-silver-stays-cool` — Silver must stay a cool grey.
 - `palette-theme-color-tracks-paper` — The browser chrome colour must track the paper token.
-- `palette-token-table-and-contrast-floor` — Every colour token meets a contrast floor.
+- `palette-tokens-contrast-floor` — Every colour token meets a contrast floor.
 
 ## Build, CI and assets
 
 What each check asks, and the two traps in the icon pipeline.
 
 - `check-build-ignores-seed` — The build check compares code, and ignores the seed.
-- `ci-workflow-filters-guarantee-no-rebuild-trigger` — CI filters replace the old no-workflows guarantee.
-- `backup-watchdog-catches-silent-failure` — A scheduled watchdog checks the backup, not the phone.
+- `ci-filters-guarantee-no-rebuild` — CI filters replace the old no-workflows guarantee.
+- `watchdog-catches-silent-failure` — A scheduled watchdog checks the backup, not the phone.
 - `pages-queued-workflow-fix` — A stuck Pages deploy needs a new commit, not a re-run.
 - `favicon-is-a-different-drawing` — The favicon is redrawn, not the master shrunk.
 - `icon-paths-and-export-gotchas` — Icon paths stay relative, and iOS caches hard.
-- `the-masthead-is-not-the-project-name` — The masthead is not the project name.
+- `masthead-is-not-project-name` — The masthead is not the project name.
 - `main-moves-only-by-pr` — Main moves only by pull request, admins included.
 - `screens-checked-headless-in-ci` — Each view is checked headless at 375 and 760px.
 - `records-hold-current-text-only` — Records hold current text only; git keeps history.
@@ -225,18 +225,18 @@ What each check asks, and the two traps in the icon pipeline.
 
 Lessons this repo paid for. Each one came from a green suite that hid a real defect.
 
-- `testing-a-green-suite-can-hide-a-broken-feature` — A green suite can hide a broken feature.
-- `testing-a-mock-is-the-test-below-the-seam` — A mock is the test below the seam.
-- `testing-after-a-pull-payload-equality-proves-nothing` — After a pull, payload equality proves nothing.
-- `testing-an-assertion-that-cannot-fail-is-decoration` — An assertion that cannot fail is decoration.
-- `testing-an-assertion-that-throws-is-a-worse-kill` — An assertion that throws is a worse kill.
-- `testing-check-that-something-re-reads-the-value` — Check that something re-reads the value.
+- `testing-green-suite-hides-break` — A green suite can hide a broken feature.
+- `testing-mock-is-test-below-seam` — A mock is the test below the seam.
+- `testing-pull-payload-eq-void` — After a pull, payload equality proves nothing.
+- `testing-unfailable-assert-decor` — An assertion that cannot fail is decoration.
+- `testing-throwing-assert-bad-kill` — An assertion that throws is a worse kill.
+- `testing-check-something-rereads` — Check that something re-reads the value.
 - `testing-jsdom-has-no-layout` — jsdom has no layout.
-- `testing-one-tier-must-not-decide-another` — One tier must not decide another.
-- `testing-when-a-chokepoint-has-two-branches` — When a chokepoint has two branches.
-- `testing-when-a-mock-field-stops-being-decorative` — When a mock field stops being decorative.
-- `testing-when-a-mutant-dies-check-the-cause` — When a mutant dies, check the cause.
-- `testing-when-a-mutant-survives-find-the-unreached-state` — When a mutant survives, find the unreached state.
+- `testing-isolate-each-tier` — One tier must not decide another.
+- `testing-chokepoint-two-branches` — When a chokepoint has two branches.
+- `testing-mock-field-stops-decor` — When a mock field stops being decorative.
+- `testing-mutant-dies-check-cause` — When a mutant dies, check the cause.
+- `testing-surviving-mutant` — When a mutant survives, find the unreached state.
 
 ## Reference
 
@@ -258,18 +258,18 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 - `a-host-migration-resets-storage` — A host migration resets phone storage.
 - `auto-apply-happens-now` — Auto-apply happens now, and why that changed.
 - `ci-runs-in-utc` — CI runs the suite outside UTC, so test 38.9 runs there.
-- `envelope-deletion-is-not-represented` — Envelope deletion is not represented.
+- `envelope-deletion-unrepresented` — Envelope deletion is not represented.
 - `itp-may-clear-storage` — ITP may clear storage after seven idle days.
 - `max-cannot-express-an-uncheck` — `max` on received cannot express an un-check.
 - `nothing-recovers-without-the-key` — Nothing recovers without the key.
 - `peek-is-verified-only-on-refusal` — `peek()` is verified only on its refusal path.
 - `photos-in-git-are-permanent` — Photos in git are permanent.
 - `the-conflict-guard-is-unverified` — The conflict guard is unverified against real GitHub.
-- `the-ledger-repo-is-private-and-the-source-is-public` — The ledger repo is private, the source repo is public.
-- `the-token-expires-with-no-warning` — The token expires with no warning.
-- `the-token-sits-on-a-shared-origin` — The token sits on a shared origin.
+- `ledger-private-source-public` — The ledger repo is private, the source repo is public.
+- `token-expires-without-warning` — The token expires with no warning.
+- `token-sits-on-shared-origin` — The token sits on a shared origin.
 - `the-token-used-to-span-two-repos` — The token used to span two repositories.
-- `the-watchdog-lives-in-the-private-repo` — The backup watchdog lives in the private repo.
+- `watchdog-lives-in-private-repo` — The backup watchdog lives in the private repo.
 - `the-write-budget-is-shared` — The write budget is shared with the ledger push.
 - `vendor-toggle-undecided` — The vendor toggle stays undecided.
 

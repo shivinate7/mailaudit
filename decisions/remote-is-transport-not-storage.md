@@ -10,4 +10,4 @@ localStorage remains the source of truth. The GitHub copy is a backup, so the ap
 
 - `photo-rules-fails-quietly` — the naming rules this adapter never learns
 - `storage-split-three-adapters` — the local adapters this remote backs up
-- `the-token-lives-outside-the-namespace` — the credential this transport uses without storing it as data
+- `token-lives-outside-namespace` — the credential this transport uses without storing it as data

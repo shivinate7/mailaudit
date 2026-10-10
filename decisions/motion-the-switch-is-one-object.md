@@ -13,4 +13,4 @@ The consequence: `data-view` on `.mdl-switch` is the only thing that says which 
 ## See also
 
 - `switch-thirds-and-seal` — the measured thirds and thumb offset this object slides between.
-- `design-the-view-switch-is-equal-thirds` — the layout ruling this animation moves across.
+- `design-view-switch-equal-thirds` — the layout ruling this animation moves across.

@@ -11,4 +11,4 @@ If the Browser pane is not compositing, it freezes animation timelines. That mak
 ## See also
 
 - `suite-size` — the assertion count the test suite can and cannot cover.
-- `motion-method-is-side-by-side-proof` — how these timings were chosen in the first place.
+- `motion-method-side-by-side-proof` — how these timings were chosen in the first place.

@@ -8,5 +8,5 @@ That property is why one file per photo won. A mutable manifest needs its own sh
 
 ## See also
 
-- `photo-errors-never-reach-pushstate` — how this design changes error handling.
+- `photo-errors-never-hit-pushstate` — how this design changes error handling.
 - `photos-stay-out-of-the-ledger` — the boundary that keeps photo ids simple to diff.

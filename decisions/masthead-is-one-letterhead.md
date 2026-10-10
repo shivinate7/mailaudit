@@ -9,5 +9,5 @@ The stats used to sit in their own bordered card. The two edges fought each othe
 ## See also
 
 - `ruled-head-heights` — the measured gap between the old stats card and the masthead.
-- `masthead-tallies-are-not-equal-thirds` — how the folded-in tallies are sized inside this letterhead.
-- `motion-the-letterhead-composes-once` — how this letterhead builds itself on load.
+- `masthead-tallies-unequal-thirds` — how the folded-in tallies are sized inside this letterhead.
+- `motion-letterhead-composes-once` — how this letterhead builds itself on load.

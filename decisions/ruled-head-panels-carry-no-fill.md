@@ -12,5 +12,5 @@ Do not reintroduce the fill. The option grids still read, because `optGrid` pain
 
 ## See also
 
-- `ruled-head-is-the-mastheads-vocabulary` — the region thesis this rule protects.
-- `ruled-head-the-range-is-picked-not-typed` — a panel that keeps this rule.
+- `ruled-head-masthead-vocabulary` — the region thesis this rule protects.
+- `ruled-head-range-picked` — a panel that keeps this rule.

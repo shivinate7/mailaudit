@@ -74,5 +74,5 @@ It is worth moving to vitest and testing-library if this grows much further. The
 
 - `peek-is-three-valued`, the design confirmed live in this file.
 - `pull-needs-a-key-too`, why every device needs a token for reads too.
-- `pushforce-records-sha-only-after-write`, the bug this file's coverage gap describes.
-- `backup-watchdog-catches-silent-failure`, the alarm mentioned in the setup steps.
+- `pushforce-sha-only-after-write`, the bug this file's coverage gap describes.
+- `watchdog-catches-silent-failure`, the alarm mentioned in the setup steps.

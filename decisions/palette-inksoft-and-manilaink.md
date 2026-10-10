@@ -11,4 +11,4 @@ The measured ratios for both tokens live in `palette-contrast`.
 ## See also
 
 - `palette-contrast` — the measured ratios behind both tokens.
-- `palette-token-table-and-contrast-floor` — the full token table these two tokens belong to.
+- `palette-tokens-contrast-floor` — the full token table these two tokens belong to.

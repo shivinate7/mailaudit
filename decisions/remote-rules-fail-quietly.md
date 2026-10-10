@@ -11,6 +11,6 @@ Both fail quietly when wrong. That is the same reasoning that governs the base64
 
 ## See also
 
-- `b64-fails-by-producing-plausible-data` — the same reasoning, on the base64 module
+- `b64-fails-with-plausible-data` — the same reasoning, on the base64 module
 - `photo-rules-fails-quietly` — the same reasoning, on the photo-sync module
 - `merge-rules-only-add` — the same reasoning, on the merge module

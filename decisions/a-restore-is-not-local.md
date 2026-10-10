@@ -13,5 +13,5 @@ A restore does not touch the sha. Rolling the sha back would be the real mistake
 ## See also
 
 - `sha-accepted-only-after-apply` — the sha rule a restore does not touch.
-- `a-store-that-cannot-write-says-so` — the version store a restore reads from.
-- `milestones-are-taken-before-the-risk` — the safety net a restore takes on the way in.
+- `unwritable-store-says-so` — the version store a restore reads from.
+- `milestones-taken-before-risk` — the safety net a restore takes on the way in.

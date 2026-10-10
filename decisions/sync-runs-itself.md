@@ -15,6 +15,6 @@ The repo growth this would cause turned out to be small. The real ledger blob is
 
 ## See also
 
-- `auto-push-safe-because-merge-exists` — the rule that makes this automatic push safe
-- `two-device-merge-must-be-proven-first` — the proof required before turning this loose on two devices
+- `auto-push-safe-as-merge-exists` — the rule that makes this automatic push safe
+- `two-device-merge-proven-first` — the proof required before turning this loose on two devices
 - `push-and-merge-guard-differently` — what this automatic push and merge each refuse to run over

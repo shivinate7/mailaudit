@@ -9,4 +9,4 @@ The RECEIVED stamp lands rather than blinking into being. It goes down at −13�
 ## See also
 
 - `motion-timings` — the exact angles and duration this landing uses.
-- `motion-is-stationery-not-software` — the register this landing is built to fit.
+- `motion-stationery-not-software` — the register this landing is built to fit.

@@ -10,6 +10,6 @@ The CSS keyword `transparent` is not a color literal. It names no color and pain
 
 ## See also
 
-- `palette-token-table-and-contrast-floor` — the full token table this ruling names.
-- `design-the-view-switch-is-equal-thirds` — a control styled from this same palette.
+- `palette-tokens-contrast-floor` — the full token table this ruling names.
+- `design-view-switch-equal-thirds` — a control styled from this same palette.
 - `palette-theme-color-tracks-paper` — the rule that keeps the browser chrome matched to this palette.

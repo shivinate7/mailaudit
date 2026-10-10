@@ -7,4 +7,4 @@ The `gold` token is ornament only. At 2.09:1 on `card`, it fails the contrast fl
 ## See also
 
 - `palette-contrast` — the measured ratio behind this ruling.
-- `palette-token-table-and-contrast-floor` — the full token table this token belongs to.
+- `palette-tokens-contrast-floor` — the full token table this token belongs to.

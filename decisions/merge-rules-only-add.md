@@ -18,8 +18,8 @@ The one exception is a *removed* stamp. It travels as a tombstone and beats an o
 
 ## See also
 
-- `b64-fails-by-producing-plausible-data` — the same reasoning, on the base64 module
+- `b64-fails-with-plausible-data` — the same reasoning, on the base64 module
 - `photo-rules-fails-quietly` — the same reasoning, on the photo-sync module
 - `remote-rules-fail-quietly` — the same reasoning, on the remote adapter
-- `auto-push-safe-because-merge-exists` — why this rule is what makes auto-push safe
+- `auto-push-safe-as-merge-exists` — why this rule is what makes auto-push safe
 - `imports-merge-never-replace` — the invariant this module's union logic also serves

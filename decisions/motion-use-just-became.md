@@ -10,5 +10,5 @@ Tests 43.3–43.6. Tests 43.4 and 43.6 are a pair. A mutant that classes the sta
 
 ## See also
 
-- `motion-a-completed-package-is-gilded` — one animation this gate protects from replaying.
+- `motion-completed-package-gilded` — one animation this gate protects from replaying.
 - `motion-a-card-opens-in-order` — the other animation this gate protects from firing on load.

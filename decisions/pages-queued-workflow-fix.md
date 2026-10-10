@@ -6,5 +6,5 @@ GitHub Pages serves the site from the main branch root. When the Pages workflow 
 
 ## See also
 
-- `ci-workflow-filters-guarantee-no-rebuild-trigger` — the workflow filters this deploy quirk sits beside
+- `ci-filters-guarantee-no-rebuild` — the workflow filters this deploy quirk sits beside
 - `one-repo-for-both-halves` — the repository this Pages deploy serves

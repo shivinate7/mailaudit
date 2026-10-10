@@ -15,5 +15,5 @@ Do this before auto-push is enabled. Auto-push's conflict recovery is exactly th
 ## See also
 
 - `sha-accepted-only-after-apply` — the rule this untested conflict path relies on
-- `two-device-merge-must-be-proven-first` — the proof procedure this thread points at
-- `a-stale-push-conflicts-pull-gets-two-tap` — the button this conflict is meant to surface
+- `two-device-merge-proven-first` — the proof procedure this thread points at
+- `stale-push-conflict-pull-two-tap` — the button this conflict is meant to surface

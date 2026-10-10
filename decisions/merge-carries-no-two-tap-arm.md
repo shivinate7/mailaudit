@@ -13,5 +13,5 @@ There are two entrances to one function, `doMerge`:
 
 ## See also
 
-- `a-stale-push-conflicts-pull-gets-two-tap` — the confirm pattern this control skips.
+- `stale-push-conflict-pull-two-tap` — the confirm pattern this control skips.
 - `sha-accepted-only-after-apply` — the rule merge still depends on.

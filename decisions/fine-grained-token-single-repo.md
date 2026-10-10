@@ -12,6 +12,6 @@ To create the token, go to Settings → Developer settings → Personal access t
 
 ## See also
 
-- `the-token-lives-outside-the-namespace` — the storage guarantee that protects this same token
+- `token-lives-outside-namespace` — the storage guarantee that protects this same token
 - `one-repo-for-both-halves` — the single repository this token is scoped to
 - `the-token-is-a-credential` — the invariant this scoping exists to protect

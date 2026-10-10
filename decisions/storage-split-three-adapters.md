@@ -10,4 +10,4 @@ The application component (`app.jsx`) never calls localStorage or IndexedDB itse
 
 - `versions-get-their-own-database` — why one of the three adapters gets its own database
 - `single-file-architecture` — the file boundary these adapters live behind
-- `the-token-lives-outside-the-namespace` — the credential kept outside all three adapters' namespace
+- `token-lives-outside-namespace` — the credential kept outside all three adapters' namespace

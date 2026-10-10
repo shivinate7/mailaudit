@@ -12,4 +12,4 @@ Picking another kind replaces the old stamp, and it re-dates the stamp. Editing 
 
 - `stamp-removal-writes-a-tombstone` — how a stamp is undone.
 - `a-refund-leaves-every-count` — an effect two of the stamp kinds cause.
-- `a-stamped-package-hides-the-lost-mail-warning` — another effect of setting a stamp.
+- `stamped-package-hides-lost-flag` — another effect of setting a stamp.
