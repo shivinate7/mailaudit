@@ -54,7 +54,7 @@ The gap has a cost, and the cost was paid. The `pushForce` sha bug lived in `ent
 
 Still only covered by eye, never by a test: anything that needs a real device. That includes the camera capture, the canvas downscale, iOS keyboard behaviour, and whether iOS fires `visibilitychange` when a home-screen app is resumed. The suite dispatches that event itself. So it pins the reaction, not the trigger.
 
-Layout at 375px is no longer eyeball-only. It was measured in a real 375px viewport. The measured values were: overflow 0, thirds 114px each, seal 36px, and 0.00px row displacement when the running head pins. A package card stayed constant at 347.09px, with 0.00px row displacement across a whole check-in. These numbers are not asserted in CI.
+Layout at 375px is no longer eyeball-only. It was measured in a real 375px viewport. The measured values were: overflow 0, thirds 114px each, seal 36px, and 0.00px row displacement when the running head pins. A package card stayed constant at 347.09px, with 0.00px row displacement across a whole check-in. Both figures were taken at the 44px action row reservation, before `BULK_ROW_H` became 46, and have not been re-measured. `npm run check:screens` asserts two of these figures in CI: no sideways overflow at 375px and 760px, and no row moving after a first check-in at 375px. The rest are not asserted.
 
 The GitHub adapter was also exercised by hand in a real browser, against the built `index.html`. The checks were these. `window.remote` is present. A keyless push reports `no-key`. A bad-shaped key is rejected before any request. A saved key lands in `mailday-remote:v1`, and **not** in the ledger blob. `window.storage.list()` still returns only `["mailday:v1"]`. `resetAll` clears the ledger and leaves the token.
 

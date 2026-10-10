@@ -12,7 +12,7 @@ Group 42 pins two behaviour claims under `useJustBecame`. No reader holds a dura
 
 ## Motion figures
 
-The app moves now. The register is **stationery, not software**. Ink settles into paper. A seal is pressed. A stamp rocks onto a page. Rules are drawn like a pen stroke. Gold catches the light once. Nothing springs. Nothing bounces past its rest and hangs there. The one overshoot in the sheet is the stamp's `+1deg`. It is the wrist roll that inks a rubber stamp's edges. It returns *through* rest rather than oscillating around it.
+The app moves now. The register is **stationery, not software**. Ink settles into paper. A seal is pressed. A stamp rocks onto a page. Rules are drawn like a pen stroke. Gold catches the light once. Nothing springs. Nothing bounces past its rest and hangs there. The overshoots are the seal press (`mdl-press`, 58%) and the stamp (`mdl-stamp`, 45% and 72%). The full list is in `motion-is-stationery-not-software`.
 
 Everything lives in one commented block in the `<style>` tag. One rule applies, and it is not a style preference: **nothing may reflow**. Every keyframe touches opacity, transform, colour or box-shadow, and nothing else. This is invariant 5, restated as a stylesheet constraint. It is why the sliding switch fill is an absolutely positioned element, not a background that moves between three buttons. It is also why the check tick is drawn with `stroke-dashoffset` inside a box whose 30px never changes.
 

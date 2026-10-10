@@ -19,7 +19,7 @@ The app defines one fixed set of color tokens, each with a named role. Every tok
 | `manila` | `#EADBBA` | advisory background | — |
 | `manilaInk` | `#695832` | text **on manila** | 5.04:1 on manila |
 | `amber` | `#846008` | 14-day lost-mail warning | 5.33:1 on card |
-| `gold` | `#C9A961` | ornamental rules only — **never text** | 2.2:1 on card |
+| `gold` | `#C9A961` | ornament only (masthead rules, completed-package gild) — **never text** | 2.09:1 on card |
 | `silver` | `#C4C3C0` | the empty half of a progress bar | fill on it 3.17:1 |
 | `wax*` | five values | the seal's relief ramp, `<Seal>` only | — |
 

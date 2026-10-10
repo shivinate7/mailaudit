@@ -1,8 +1,8 @@
 # The backup watchdog lives in the private repo
 
-**Status:** open.
-
 The daily watchdog runs in `mailaudit-data`, not in the public `mailaudit`. This placement is load-bearing. GitHub disables scheduled workflows in a public repo after 60 days of repository inactivity. Private repos are exempt.
+
+**Holds while:** `backup-watchdog.yml` lives in `mailaudit-data`, and `mailaudit-data` is private. This repo's `.github/workflows/` holds no watchdog.
 
 Hosting the one device-independent backup alarm somewhere it can silently switch itself off would reproduce the exact failure it exists to catch. A workflow that never runs opens no issue. That looks the same as one that ran and found everything healthy.
 

@@ -17,7 +17,7 @@ Cochin, set by the `cochin` constant, is used for everything that is not a numbe
 
 ## Color semantics
 
-Green is for received items. Red is for missing money or destructive actions. Manila and gold are for advisory items. Amber is for the 14-day lost-mail warning. Accent violet is for active controls.
+Green is for received items. Red is for missing money or destructive actions. Manila is for advisory items. Gold is ornament only and carries no meaning. Amber is for the 14-day lost-mail warning. Accent violet is for active controls.
 
 The progress bar is accent while it is in progress. It is green at 100%. It is not `ink`. The ink is a near-black violet, so an `ink` bar would read as flat black on parchment. The two card bars use the same colours, with no radius of their own. They sit on the card's top edge, where the card's 10px corner already rounds them. A pill there would read as a second, smaller shape inside the first. The masthead bar keeps its pill.
 

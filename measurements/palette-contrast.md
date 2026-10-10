@@ -27,7 +27,7 @@ No reader. Nothing in the test suite checks a contrast ratio.
 | `manila` | `#EADBBA` | advisory background | — |
 | `manilaInk` | `#695832` | text **on manila** | 5.04:1 on manila |
 | `amber` | `#846008` | 14-day lost-mail warning | 5.33:1 on card |
-| `gold` | `#C9A961` | ornamental rules only — **never text** | 2.2:1 on card |
+| `gold` | `#C9A961` | ornament only (masthead rules, completed-package gild) — **never text** | 2.09:1 on card |
 | `silver` | `#C4C3C0` | the empty half of a progress bar | fill on it 3.17:1 |
 | `wax*` | five values | the seal's relief ramp, `<Seal>` only | — |
 
@@ -36,4 +36,4 @@ Everything carrying information clears 4.5:1. These values need care, and should
 - **`inkSoft`** was darkened from `#7A6E86`, which measured 4.43:1 and failed. It is used 42 times, more than any token but `ink`.
 - **`manilaInk`** is checked against **`manila`**, not against `card`. It sits on the advisory background. Pick it on the wrong pair, and it looks fine in isolation while it fails everywhere it is used.
 - **`silver`** was chosen on looks, not legibility. The `line` it replaced measured better against the violet fill, at 3.58:1 against 3.17:1. Both clear the 3:1 floor for graphical objects, so the trade is fair. If `silver` is ever revisited, it must stay **cool**. Every warm metal tested (pewter, deep parchment) fell below 3:1 against violet.
-- **`gold`** is ornament only. At 2.2:1 on `card`, it fails for text by a wide margin. It exists for the masthead rules and nothing else.
+- **`gold`** is ornament only. At 2.09:1 on `card`, it fails for text by a wide margin. It is used for the masthead rules and the completed-package gild, both ornament.

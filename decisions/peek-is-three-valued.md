@@ -4,7 +4,7 @@ The peek check reads only the remote's blob sha, a few hundred bytes, not the fu
 
 **Holds while:** `peek()` in `src/entry.jsx` returns `known: false` when it cannot look. `autoPush` in `src/app.jsx` returns early on `!p.known` and on `p.ahead`.
 
-`peek()` calls `GET /git/trees/{branch}`. That returns the **blob** sha for `ledger.json`. It is the exact value `push` stores, and `rec().sha` is compared against it. The call spends a few hundred bytes of the read budget. A Contents GET would spend ~470KB to answer the same question.
+`peek()` calls `GET /git/trees/{branch}`. That returns the **blob** sha for `ledger.json`. It is the exact value `push` stores, and `rec().sha` is compared against it. The call spends a few hundred bytes of the read budget. A Contents GET downloads the whole ledger to answer the same question.
 
 `peek()` runs on foreground, never on a timer. It is three-valued for the same reason `listPhotos` is.
 
