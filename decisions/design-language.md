@@ -1,6 +1,6 @@
 # The parchment ledger's look and feel
 
-This record covers the file notes, typography, and colour semantics of the app. The palette, motion, and card geometry rules have their own records, listed under See also. Read this record for what a control looks like.
+This record covers the file notes, typography, and colour semantics of the app. The palette and card geometry rules are listed under See also. The motion rules are cited in the section below. Read this record for what a control looks like.
 
 ## Files
 
@@ -23,7 +23,7 @@ Orphaned follows the same colour language. Manila marks anything advisory: the a
 
 ## Motion, card geometry, and palette
 
-The motion rules are in the motion records. The card's fixed height is in `card-reserved-geometry`. The palette values are in `palette-token-table-and-contrast-floor`.
+The motion rules are in `motion-is-stationery-not-software` and `motion-nothing-may-reflow`. The card's fixed height is in `card-reserved-geometry`. The palette values are in `palette-token-table-and-contrast-floor`.
 
 ## See also
 

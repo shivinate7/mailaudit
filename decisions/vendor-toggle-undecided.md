@@ -2,7 +2,7 @@
 
 **Status:** open.
 
-The app hard-filters imports to TCG vendor rows. The app is hard-filtered to TCG today. The user has not decided whether to add a toggle that includes eBay purchases. That decision is the user's call, not a default to guess. Guessing yes risks pulling in seller-side rows that the checklist was never meant to hold. Guessing no keeps hiding orders the user may want tracked.
+The app hard-filters imports to TCG vendor rows. The user has not decided whether to add a toggle that includes eBay purchases. That decision is the user's call, not a default to guess. Guessing yes risks pulling in seller-side rows that the checklist was never meant to hold. Guessing no keeps hiding orders the user may want tracked.
 
 ## See also
 

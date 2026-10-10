@@ -6,5 +6,5 @@ A move to Netlify or Cloudflare is on the table for faster deploys. Any new orig
 
 ## See also
 
-- `every-origin-has-own-storage` — why a new host means that the ledger starts empty
+- `every-origin-has-own-storage` — why a new host gives a new, empty ledger
 - `storage-split-three-adapters` — what a Backup + photos restore has to carry across
