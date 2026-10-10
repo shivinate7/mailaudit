@@ -34,7 +34,7 @@ Unit rate is `basis / qty`. It is the same figure the expanded row shows as "$Y 
 - Each pending envelope lists the outstanding packages that could explain it (`rankCandidates`), best first, with how much each explains. A two-tap confirm checks in *exactly the recorded cards* and nothing else. Unexplained entries are tagged "no outstanding copy". They stay behind in a smaller envelope that keeps its id, createdAt and note. Each envelope has Edit and a two-tap Discard. The last assignment is undoable. Its notice is rendered at the vacated slot in the pile, not at the top of the page.
 - Name matching goes through `normName` (NFD-strip accents, lowercase, collapse non-alphanumerics). This is required, because iOS smart punctuation turns a typed `'` into `’`. The CSV uses a straight apostrophe, so the names would never match without it.
 - Candidates ignore the date filter on purpose, because an orphaned envelope is as likely to be an old order. Candidates also exclude canceled orders. They are derived, never stored. So a package received by other means simply stops being offered.
-- See invariant 7 for what this must never do.
+- See `orphaned-mail-never-decides` for what this must never do.
 - **Envelope photos** (a snap of the mailing label, so a tracking number or sender survives without typing it). `<input capture="environment">` opens the iOS camera directly. The image is canvas-downscaled to a 2000px long edge at JPEG 0.8. That is big enough to *read* a label and small enough not to matter. It is written straight to IndexedDB. Envelopes carry only photo ids. Thumbnails sit on the card, and tapping one opens a full-screen viewer.
 - Nothing deletes photos implicitly. So a single **sweep** effect covers every orphan path at once: discard, assign-away, restore, and a cancelled composer. It drops any blob that no envelope references. It is held off while an undo is live or a composer is open, because either can bring ids back. A "N photos stored · X of Y used on this device" line in the pile reports real `navigator.storage.estimate()` numbers.
 - CSV import works by drag and drop or by picker. It uses merge semantics and shows an import summary notice.
@@ -49,7 +49,7 @@ A search filters inside a package. So every result needs a way back to its whole
 - In **Packages**, a filtered card carries a footer: `+4 more lines in this order · show all`. It reveals *that* package. It leaves the other results filtered, so near-duplicate candidates can be compared side by side.
 - In **Tally**, each source copy's order id is the control. It is underlined, with a `›`. It reveals that order, switches to Packages, and scrolls to it. It leaves the search untouched, so one tap on the view switch comes straight back.
 
-`revealed` is ephemeral UI state, never persisted. So invariant 2's five-site rule does not apply to it. Group 32.
+`revealed` is ephemeral UI state, never persisted. So the five-site rule in `saved-state-shape` does not apply to it. Group 32.
 
 Package sort (newest/oldest/$ remaining/unit rate/seller A–Z) is separate from `itemSort`. The control swaps with the view. Both orders are frozen while checking.
 

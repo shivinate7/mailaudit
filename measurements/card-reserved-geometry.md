@@ -12,7 +12,7 @@ Open the built page against the seeded ledger. Step through rest, the first chec
 
 ## The defect
 
-Before the fix, measured at 375px against the seeded ledger, the first check-in in a package grew its card by 28px. It pushed every remaining row in the card down by 28px. The rows moved directly under the thumb that had just tapped one of them. This breaks invariant 5, on the most common gesture in the app. The masthead save indicator had a smaller version of the same defect. The defect is independent of the motion pass and of the save-slot fix.
+Before the fix, measured at 375px against the seeded ledger, the first check-in in a package grew its card by 28px. It pushed every remaining row in the card down by 28px. The rows moved directly under the thumb that had just tapped one of them. This breaks `no-layout-shift-under-the-pointer`, on the most common gesture in the app. The masthead save indicator had a smaller version of the same defect. The defect is independent of the motion pass and of the save-slot fix.
 
 There were two unrelated causes. Each needed its own fix.
 
