@@ -2,6 +2,8 @@
 
 The photo-sync rules live in `src/photo-rules.mjs`. Their rationale matches the other pure modules. Each of these decisions fails quietly when wrong. So the module stays pure, and it gets direct tests instead of trust.
 
+**Holds while:** `src/photo-rules.mjs` exports `photoName`, `photoIdFromName`, `mimeFromName`, `isAlreadyThere` and `photoPlan`, and `src/app.jsx` imports exactly three local modules.
+
 The module holds three rules:
 
 - Naming: `photoName`, `photoIdFromName`, and `mimeFromName`. The image type has to survive in the filename. A raw GET answers with GitHub's media type, not the file's own type.

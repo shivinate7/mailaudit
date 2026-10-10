@@ -2,6 +2,8 @@
 
 The site and the ledger repository are different artifacts. The site is public, and the ledger is not. Pages serves the `main` root and has never served the `data` branch.
 
+**Holds while:** `SEED_KEEP` in `build.mjs` names `items`, `received`, `stamps`, `dateFilter`, `sortBy` and `itemSort`, and not `envelopes`.
+
 Sharing the URL alone gives a visitor the app with nothing in it. Their browser's localStorage is their own and empty. The fetch for the ledger 404s. Measured on the live site with storage cleared, the whole page was the masthead and "Drop your OrderWand CSV here".
 
 The seed closes that gap without reopening the repo. A snapshot is baked into `index.html` at build time. A visitor gets the app and the data in one public file. The visitor hydrates into their own storage and can do as they like with it. They still cannot push. Pushing needs a token they do not have. That was always true, and it was never the gap.
