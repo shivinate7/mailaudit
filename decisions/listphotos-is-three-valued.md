@@ -1,20 +1,12 @@
 # listPhotos is three-valued too
 
-A 404 from the photo repo means either nothing pushed yet, or a private repo the caller cannot see. GitHub answers both cases the same way. Reading that as simply empty would tell a keyless device that every photo it owns is lost. The photo list function answers with a known list or an explicit unknown reason instead. Planning code then refuses to compute lost or pending photos when the answer is unknown.
+`listPhotos()` answers in one of two shapes: `{known:true, ids}` or `{known:false, reason}`. A 404 is ambiguous. On a repo you can see, it means that nothing has been pushed yet. On a private repo you cannot see, it means that you cannot see the repo. GitHub hides existence rather than admitting a 403, so both cases look the same. Reading that as simply empty would tell a keyless device that every photo it owns is lost.
 
-## The argument, as recorded
+A keyless request to the photo repo 404s on both the tree and the repo itself. That was verified live. The photo repo was once named `mailaudit-photos`. It is now `mailaudit-data`. A 404 is disambiguated by one extra `GET /repos/{owner}/{repo}`.
 
-```
-  - **`listPhotos()` is three-valued.** A 404 means "nothing pushed yet" on a
-    repo you can see and "you can't see this repo" on a private one, because
-    GitHub hides existence rather than admitting a 403 — verified live: a
-    keyless request to the photo repo (then named `mailaudit-photos`, now
-    `mailaudit-data`) 404s on both the tree *and* the repo itself. Collapse that to "empty" and a device with no key concludes every
-    photo it owns is **lost**. So it answers `{known:true, ids}` or
-    `{known:false, reason}`, `photoPlan` refuses to compute `lost` or `toPush`
-    when it doesn't know, and a 404 is disambiguated by one extra
-    `GET /repos/{owner}/{repo}`. Tests 26.13b, 30.13–30.15.
-```
+`photoPlan` refuses to compute `lost` or `toPush` when the answer is unknown. Planning code therefore never reports photos as lost on a device that cannot see them.
+
+Tests 26.13b and 30.13–30.15 pin this.
 
 ## See also
 

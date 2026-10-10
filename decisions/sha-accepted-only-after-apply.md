@@ -1,23 +1,10 @@
 # The stored sha waits for the apply
 
-The app stores the remote sha only after applying the pulled bytes, never the moment they arrive. The stored sha is this device's claim to already hold the remote data. Storing it earlier once let a failed apply leave a current sha over stale data. The next push then carried no conflict and silently overwrote the other device's work.
+The app stores the remote sha only after it applies the pulled bytes. Storing the sha is this device's claim to hold the remote's bytes. The claim must be true when it is made, so the sha is stored last.
 
-## The argument, as recorded
+`pull()` returns the sha. `acceptPull()` stores it. The app calls `acceptPull()` after `applyBackup` has landed. This is the rule the whole conflict scheme rests on.
 
-```
-- **The stored sha is accepted only after the bytes are applied.** `pull()`
-  returns the sha; `acceptPull()` stores it, and the app calls that *after*
-  `applyBackup` has landed. This is the rule the whole conflict scheme rests on,
-  and it was learned the expensive way — see the note below.
-
-  The stored sha is this device's **claim to be holding the remote's bytes**.
-  The adapter originally wrote it the instant they arrived, which makes the
-  claim true only if the app then applies them. When it doesn't — a payload it
-  rejects, a merge that throws, a generation guard that bails — the device sits
-  on a *current sha over stale data*, and its next push carries that sha and is
-  **accepted**: no conflict raised, the other device's work destroyed. Auto-push
-  made that automatic and unattended, within 90 seconds.
-```
+Storing the sha on arrival would break this rule. A rejected payload would then leave the device on a current sha over stale data. A merge that throws, or a generation guard that bails, would do the same. The next push would carry that sha and be accepted. No conflict would be raised, and the other device's work would be destroyed. Auto-push would make this automatic and unattended, within 90 seconds.
 
 ## See also
 
