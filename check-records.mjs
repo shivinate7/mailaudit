@@ -11,8 +11,7 @@
 //   4. every record has its shape (title, own prose first, sentence-case title)
 //   5. no orphan and no dead index entry
 //   6. every invariant names the test that pins it, and no record cites an
-//      invariant by number (gated on CHECK_RECORDS_PINS until the records
-//      carry their "Pinned by" lines)
+//      invariant by number
 
 import { readFileSync, readdirSync } from "fs";
 import { execFileSync } from "child_process";
@@ -329,10 +328,8 @@ function closestSlug(token, slugs) {
    "group 44") that exists in test/app.test.mjs, or the literal "nothing yet"
    (counted as a warning, not a failure). A cited id that does not exist
    fails. Any "invariant <digit>" anywhere in the corpus fails.
-   Gated on CHECK_RECORDS_PINS=1, default OFF, for the same reason claim 5 was:
-   until the records PR adds the "Pinned by" lines this is red on main. Drop the
-   gate in the commit that lands them. */
-if (process.env.CHECK_RECORDS_PINS) {
+   */
+{
   const tests = readFileSync("test/app.test.mjs", "utf8");
   const ids = new Set([...tests.matchAll(/["'`](\d+[a-z]?\.\d+[a-z]?)[\s"'`]/g)].map((m) => m[1]));
   const groups = new Set([...tests.matchAll(/^\/\* ── (\d+[a-z]?)\./gm)].map((m) => m[1]));

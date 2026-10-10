@@ -351,6 +351,8 @@ function walk(path, out) {
     // keeps strings and regex literals intact). A file it cannot parse fails
     // the check by name; it is never treated as clear. Known ceiling: non-JS
     // files (.py, .yml) are not stripped, so a name in a `#` comment still counts.
+    // And esbuild folds constant expressions: `false && X` becomes `false`, so a
+    // name that lives only in such dead code reads as absent.
     if (/\.(mjs|jsx?)$/.test(path)) {
       try {
         t = esbuild.transformSync(t, { loader: "jsx", legalComments: "none" }).code;
