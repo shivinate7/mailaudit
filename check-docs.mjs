@@ -237,6 +237,18 @@ for (const { span } of allSpans) {
 // Every file in the repo, for bare filenames that live below the root.
 const tracked = execFileSync("git", ["ls-files"], { encoding: "utf8" }).split("\n");
 
+// A bare filename's real location: the corpus's own qualified mention, then the
+// root, then any tracked file with that basename. null when it is nowhere.
+function resolveBare(name) {
+  if (knownPath.has(name)) return knownPath.get(name);
+  if (existsSync(name)) return name;
+  return tracked.find((t) => t.endsWith("/" + name)) ?? null;
+}
+function lineCount(path) {
+  const t = readFileSync(path, "utf8");
+  return t.split("\n").length - (t.endsWith("\n") ? 1 : 0);
+}
+
 let checked = 0;
 const refused = new Set();
 const seenPerFile = new Map(); // file -> Set(span) — de-dupe within one file, as before
@@ -253,7 +265,8 @@ for (const entry of allSpans) {
   if (fl) {
     checked++;
     const need = Number(fl[3] ?? fl[2]);
-    const have = existsSync(fl[1]) ? readFileSync(fl[1], "utf8").split("\n").length : -1;
+    const where = fl[1].includes("/") ? (existsSync(fl[1]) ? fl[1] : null) : resolveBare(fl[1]);
+    const have = where ? lineCount(where) : -1;
     if (have < need) {
       const line = lineAt(fileProse, index);
       console.error(
@@ -292,18 +305,7 @@ for (const entry of allSpans) {
   // the corpus has itself supplied a real location for it (via knownPath) or
   // it is plausibly a root file — anything else (a filename that lives only
   // in another repo, like `ledger.json`) is refused, not failed.
-  let target = span;
-  if (!span.includes("/")) {
-    if (knownPath.has(span)) target = knownPath.get(span);
-    else if (!existsSync(span) && !tracked.some((t) => t.endsWith("/" + span))) {
-      // Not at the root and nowhere in the tree: judged, not skipped.
-      const line = lineAt(fileProse, index);
-      console.error(`check:docs: ${file}:${line} names \`${span}\`, which is not in this repo`);
-      failures++;
-      checked++;
-      continue;
-    }
-  }
+  const target = span.includes("/") ? span : resolveBare(span) ?? span;
   checked++;
   if (!existsSync(target)) {
     const line = lineAt(fileProse, index);
@@ -313,15 +315,13 @@ for (const entry of allSpans) {
 }
 
 /* ---------- claim 3: every code-shaped name in backticks occurs in the code ----------
-   A span shaped like a code name (camelCase, snake_case, CONST_CASE, or
+   A span shaped like a code name (camelCase, PascalCase, snake_case, CONST_CASE, or
    `name()`) must occur as a whole word somewhere in the code roots below.
    A renamed function then turns every record that cites it red. Names the
    code cannot hold are listed in EXTERNAL, one reason each. */
-const CODE_ROOTS = ["src", "test", "build.mjs", "check-docs.mjs", "check-records.mjs", "icon", "package.json", ".github"];
+const CODE_ROOTS = ["src", "test", "build.mjs", "check-records.mjs", "icon", "package.json", ".github"];
 const EXTERNAL = new Set([
-  "DELETE", // HTTP verb, named in records about the photo repo
-  "TZ", // the environment variable CI and check:docs set; read by node, not by our code
-  "KEY", // the sync panel's micro-label, a rendered word, not a code name
+  "receivedAt", // proposed, not built: max-cannot-express-an-uncheck says it "would be" a key
   "currentTime", // Web Animations API, set by hand when measuring motion
   "getAnimations", // Web Animations API, used by hand when measuring motion
   "removeChild", // DOM method named in the save-slot measurement note
@@ -332,12 +332,19 @@ function walk(path, out) {
   if (!existsSync(path)) return;
   if (statSync(path).isDirectory()) {
     for (const n of readdirSync(path)) if (n !== "node_modules") walk(`${path}/${n}`, out);
-  } else if (!/\.(png|jpe?g)$/i.test(path)) out.push(readFileSync(path, "utf8"));
+  } else if (!/\.(png|jpe?g)$/i.test(path)) {
+    let t = readFileSync(path, "utf8");
+    // A name in a comment is prose, not code: strip JS comments before matching.
+    if (/\.(mjs|jsx?)$/.test(path)) {
+      t = t.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:'"`\\])\/\/.*$/gm, "$1");
+    }
+    out.push(t);
+  }
 }
 const codeParts = [];
 for (const r of CODE_ROOTS) walk(r, codeParts);
 const codeText = codeParts.join("\n");
-const NAME_SHAPE = /^(?:[a-z][a-z0-9]*[A-Z][A-Za-z0-9]*|[a-z][a-z0-9]*(?:_[a-z0-9]+)+|[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+|[A-Za-z_$][\w$]*\(\))$/;
+const NAME_SHAPE = /^(?:[a-z][a-z0-9]*[A-Z][A-Za-z0-9]*|[a-z][a-z0-9]*(?:_[a-z0-9]+)+|[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+|[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]*)+|[A-Za-z_$][\w$]*\(\))$/;
 const nameSeen = new Set();
 let namesJudged = 0;
 for (const { file, span, index, prose: fileProse } of allSpans) {
