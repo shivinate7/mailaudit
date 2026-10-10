@@ -242,7 +242,8 @@ const tracked = execFileSync("git", ["ls-files"], { encoding: "utf8" }).split("\
 function resolveBare(name) {
   if (knownPath.has(name)) return knownPath.get(name);
   if (existsSync(name)) return name;
-  return tracked.find((t) => t.endsWith("/" + name)) ?? null;
+  const hits = tracked.filter((t) => t.endsWith("/" + name));
+  return hits.length > 1 ? { ambiguous: hits } : hits[0] ?? null;
 }
 function lineCount(path) {
   const t = readFileSync(path, "utf8");
@@ -266,6 +267,11 @@ for (const entry of allSpans) {
     checked++;
     const need = Number(fl[3] ?? fl[2]);
     const where = fl[1].includes("/") ? (existsSync(fl[1]) ? fl[1] : null) : resolveBare(fl[1]);
+    if (where?.ambiguous) {
+      console.error(`check:docs: ${file}:${lineAt(fileProse, index)} names \`${span}\`, which is ambiguous: ${where.ambiguous.join(", ")}`);
+      failures++;
+      continue;
+    }
     const have = where ? lineCount(where) : -1;
     if (have < need) {
       const line = lineAt(fileProse, index);
@@ -305,7 +311,13 @@ for (const entry of allSpans) {
   // the corpus has itself supplied a real location for it (via knownPath) or
   // it is plausibly a root file — anything else (a filename that lives only
   // in another repo, like `ledger.json`) is refused, not failed.
-  const target = span.includes("/") ? span : resolveBare(span) ?? span;
+  const found = span.includes("/") ? span : resolveBare(span) ?? span;
+  if (found.ambiguous) {
+    console.error(`check:docs: ${file}:${lineAt(fileProse, index)} names \`${span}\`, which is ambiguous: ${found.ambiguous.join(", ")}`);
+    failures++;
+    continue;
+  }
+  const target = found;
   checked++;
   if (!existsSync(target)) {
     const line = lineAt(fileProse, index);
@@ -335,11 +347,35 @@ function walk(path, out) {
   } else if (!/\.(png|jpe?g)$/i.test(path)) {
     let t = readFileSync(path, "utf8");
     // A name in a comment is prose, not code: strip JS comments before matching.
-    if (/\.(mjs|jsx?)$/.test(path)) {
-      t = t.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:'"`\\])\/\/.*$/gm, "$1");
-    }
+    // Known ceiling: only JS-family comments are stripped, so a name in a `#`
+    // comment of a .py or .yml file still counts. Regex literals are not
+    // tokenised either; a `/*` or quote inside one could mislead the scan.
+    if (/\.(mjs|jsx?)$/.test(path)) t = stripJsComments(t);
     out.push(t);
   }
+}
+// Scans once, skipping string literals, so `accept="image/*"` opens no comment.
+function stripJsComments(t) {
+  let out = "";
+  for (let i = 0; i < t.length; ) {
+    const c = t[i];
+    if (c === '"' || c === "'" || c === "`") {
+      let j = i + 1;
+      while (j < t.length && t[j] !== c && (c === "`" || t[j] !== "\n")) j += t[j] === "\\" ? 2 : 1;
+      out += t.slice(i, j + 1);
+      i = j + 1;
+    } else if (c === "/" && t[i + 1] === "*") {
+      const j = t.indexOf("*/", i + 2);
+      out += " ";
+      i = j < 0 ? t.length : j + 2;
+    } else if (c === "/" && t[i + 1] === "/") {
+      while (i < t.length && t[i] !== "\n") i++;
+    } else {
+      out += c;
+      i++;
+    }
+  }
+  return out;
 }
 const codeParts = [];
 for (const r of CODE_ROOTS) walk(r, codeParts);

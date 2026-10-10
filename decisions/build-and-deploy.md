@@ -33,7 +33,7 @@ A stale seed is harmless. A visitor sees a slightly older ledger, and the next d
 
 GitHub Pages serves from the main branch root. Quirk: if the Pages workflow sits Queued >10 min, do not re-run the same run. Cancel it, and push a trivial commit to start a fresh run.
 
-`npm run deploy` fetches the ledger branch for the seed, builds, runs the suite, then switches to a new branch named `deploy/<YYYYMMDDHHMMSS>-<pid>` and commits only `index.html` there. It pushes that branch, opens a pull request to main, and switches back to the branch you started on. Pages deploys when that PR merges. You must commit source and doc changes yourself first.
+`npm run deploy` fetches the ledger branch for the seed, builds, runs the suite, then switches to a new branch named `deploy/<YYYYMMDDHHMMSS>-<pid>` and commits only `index.html` there. It pushes that branch, opens a pull request to main, and, only if every step succeeded, switches back to the branch you started on. Pages deploys when that PR merges. You must commit source and doc changes yourself first.
 
 ## See also
 
