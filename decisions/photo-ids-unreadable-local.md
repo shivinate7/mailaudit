@@ -10,6 +10,8 @@ An unreadable local photo store keeps every id, exactly as an unreadable remote 
 
 Mutant confirmed red: an unreadable store read as empty.
 
+**Pinned by:** 47.1 and 47.2 pin a file restore with the local store unreadable, on screen and in the saved ledger. Test 26.13b pins the remote half.
+
 ## See also
 
 - `photo-ids-restore-keep-if-known` — the remote half of the same rule.
