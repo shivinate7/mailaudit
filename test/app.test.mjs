@@ -111,7 +111,7 @@ eq(saved().envelopes?.length, 1, "2.4 envelope persisted");
 eq(saved().envelopes[0].entries.length, 4, "2.5 four entries persisted");
 eq(saved().received, {}, "2.6 no check-ins written");
 
-/* ── 3. candidates rank, they never decide (invariant 7) ───────────────── */
+/* ── 3. candidates rank, they never decide (invariant orphaned-mail-never-decides) ───────────────── */
 
 const cands = allBtns(/^This one$/);
 ok(cands.length >= 1, "3.1 at least one candidate offered");
@@ -294,7 +294,7 @@ ok(
    is not what reopening looks like — coming back after a real absence has to
    count too. But a hop out to read a tracking number and straight back is the
    same session, and flipping the list under a thumb mid-check-in is the
-   mis-tap invariant 5 exists to prevent. So the gap decides. */
+   mis-tap invariant no-layout-shift-under-the-pointer exists to prevent. So the gap decides. */
 await toggleShowing();
 await backgroundFor(5_000);
 ok(
@@ -1734,7 +1734,7 @@ ok(
 
 /* The order id sits inside a row whose whole surface checks a card in. Without
    stopPropagation, a tap that meant to look would quietly mark it received:
-   a data write from a navigation gesture, which is the mis-tap invariant 5
+   a data write from a navigation gesture, which is the mis-tap invariant no-layout-shift-under-the-pointer
    exists to prevent. */
 await fresh();
 await goTo("tally");
@@ -1852,7 +1852,7 @@ eq(
   "33.15 and it wins from the other side too"
 );
 /* absent on everything written before this shipped — has to be handled, not
-   migrated (invariant 2: new keys optional and defaulted) */
+   migrated (invariant saved-state-shape: new keys optional and defaulted) */
 const NOSTAMP = { id: "env-1", createdAt: 10, entries: [{ name: "X", qty: 9 }] };
 eq(
   mergeEnvelopes([ASSIGNED], [NOSTAMP]).envelopes[0].entries[0].name,
@@ -1866,7 +1866,7 @@ eq(
 );
 
 /* the deliberate bias: an envelope's entries are hand-typed and exist nowhere
-   else, and invariant 7 means a stray one decides nothing on its own */
+   else, and invariant orphaned-mail-never-decides means a stray one decides nothing on its own */
 const other = mergeEnvelopes([], [ASSIGNED]);
 eq(other.envelopes.length, 1, "33.18 an envelope only the other device has is adopted");
 eq(other.added, 1, "33.19 and counted");
@@ -1943,7 +1943,7 @@ eq(
 );
 
 /* Merge destroys nothing, so arming it would say the opposite of what it does
-   — and invariant 6's two-tap pattern is for destructive actions specifically. */
+   — and invariant no-native-dialogs's two-tap pattern is for destructive actions specifically. */
 await boot(
   { items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } },
   null,
@@ -2380,7 +2380,7 @@ eq(
    free line. The two refund kinds take the package out of every count and the
    normal list exactly as a canceled order is, and the "N stamped" cell is
    then the one place the order can still be found. The stamp is a persisted
-   key, so invariant 2's five sites and the merge builder's sixth all carry
+   key, so invariant saved-state-shape's five sites and the merge builder's sixth all carry
    it; the last of those fails by silently dropping every stamp on every
    merge and pushing the loss, which is why 37.62–37.69 exist. */
 
@@ -2621,7 +2621,7 @@ ok(
   "37.47 removing the last stamp drops the filter rather than stranding an empty list"
 );
 
-/* the five sites of invariant 2 */
+/* the five sites of invariant saved-state-shape */
 await fresh();
 await stampPkg(/Alpha Cards/, "Claim filed", "reload me");
 await sleep(SAVE_WAIT);
@@ -3265,7 +3265,7 @@ await settle();
 eq(
   saved().items?.length ?? 0,
   0,
-  "39.11 one tap does not restore — invariant 6, it is a full replace"
+  "39.11 one tap does not restore — invariant no-native-dialogs, it is a full replace"
 );
 await click(btn(/Tap again to replace everything/), "confirm restore");
 await settle();
@@ -3277,11 +3277,11 @@ ok(
 );
 
 /* arming a restore has to disarm Reset — two primed destructive buttons side
-   by side is the exact mis-tap invariant 6 exists to prevent */
+   by side is the exact mis-tap invariant no-native-dialogs exists to prevent */
 /* Driven restore-first, because that is the only order the UI now allows: an
    armed Reset takes the row AND closes the panels the other cells control, so
    there is no Restore button on screen to reach while it is primed. That gate
-   is itself the invariant-6 property — nothing beside the armed control to
+   is itself the no-native-dialogs property — nothing beside the armed control to
    mis-tap — so the pair is tested in the direction it can actually happen. */
 await openHistory();
 await click(btn(/before reset/), "expand a version");
@@ -3308,7 +3308,7 @@ ok(
    by catching up.
 
    The threshold is the whole design. Applying forty imported lines into the
-   package list mid-check-in is the cascading mis-tap invariant 5 exists to
+   package list mid-check-in is the cascading mis-tap invariant no-layout-shift-under-the-pointer exists to
    prevent; coming back after a minute away is not mid-check-in. */
 
 const PHONE_STATE = { items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } };
@@ -3331,7 +3331,7 @@ eq(remote.deviceSha, null, "40.2 a remote it could not read is not merged");
 remote.peekUnknown = null;
 
 /* half the threshold: a hop out to read a tracking number is the same session,
-   and replacing the ledger under a thumb is the mis-tap invariant 5 prevents */
+   and replacing the ledger under a thumb is the mis-tap invariant no-layout-shift-under-the-pointer prevents */
 await backgroundFor(5_000);
 await settle();
 eq(remote.deviceSha, null, "40.3 a glance away is still the same session");
@@ -3526,7 +3526,7 @@ await settle();
 eq(
   saved().items.length,
   5,
-  "41.5 one tap does not restore — invariant 6 applies to a remote version too"
+  "41.5 one tap does not restore — invariant no-native-dialogs applies to a remote version too"
 );
 await click(btn(/Tap again to replace everything/), "confirm");
 await settle();
@@ -3542,7 +3542,7 @@ ok(
    `.mdl-foot` is a wrapping flex row, so an indicator that exists only while
    a save is in flight can add a whole LINE to it — and by the time a card is
    being tapped the masthead has scrolled away, so what that actually moves is
-   the package list, under the thumb, twice per check-in. Invariant 5, from
+   the package list, under the thumb, twice per check-in. Invariant no-layout-shift-under-the-pointer, from
    the one element in the app that changes on every single tap.
 
    jsdom has no layout, so the shift itself is unassertable here; it was
@@ -3646,7 +3646,7 @@ ok(
    the size: measured at 375px against the seeded ledger, the FIRST check-in
    in a package grew its card by 28px and pushed every remaining row in it
    down by 28px — inside the card, directly under the thumb that had just
-   tapped one of them. Invariant 5, on the most common gesture in the app.
+   tapped one of them. Invariant no-layout-shift-under-the-pointer, on the most common gesture in the app.
    Two independent causes, and both had to go:
      · a 15px progress bar mounting between the header and the item rows;
      · the contextual action row growing 39px -> 52px, because "Clear

@@ -14,7 +14,7 @@ The merge only ever adds. Nothing is dropped, and no count decreases. A merge th
 
 The one exception is a *removed* stamp. It travels as a tombstone and beats an older stamp. That is the user's own write winning by freshness. The merge does not decide anything here. The tombstone exists because a resurrected `refunded` stamp would silently pull money back out of the tally.
 
-`mergeLedger` builds the merged ledger from **named fields**. So a persisted key it does not name is dropped by every merge. The merge applies the result locally as a full replace, and then pushes it. That makes this file a sixth site for invariant 2, after the five sites in `app.jsx`.
+`mergeLedger` builds the merged ledger from **named fields**. So a persisted key it does not name is dropped by every merge. The merge applies the result locally as a full replace, and then pushes it. That makes this file a sixth site for `saved-state-shape`, after the five sites in `app.jsx`.
 
 ## See also
 

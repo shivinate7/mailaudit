@@ -20,6 +20,7 @@ on:
       - "package.json"
       - "build.mjs"
       - "check-records.mjs"
+      - "check-docs.mjs"
       - "invariants/**"
       - "measurements/**"
       - "decisions/**"
@@ -49,6 +50,7 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci
+      - run: npm run test:check-docs
       # The one suite run. TZ is pinned non-UTC so test 38.9 runs (it skips in
       # UTC); check:docs below reads its pass count from this log.
       # pipefail makes a red suite fail the step despite the tee.

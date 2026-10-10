@@ -4,7 +4,7 @@ Every keyframe touches only opacity, transform, colour, or box-shadow. Nothing e
 
 **Holds while:** the motion rules stay in one commented `<style>` block in `src/app.jsx`, and `.mdl-thumb` stays absolutely positioned.
 
-All the animation rules sit in one commented block in the `<style>` tag. The rule behind them is not a style preference: **nothing may reflow.** That is invariant 5 restated as a stylesheet constraint. Two choices follow from it. The sliding switch fill is an absolutely positioned element, not a background that moves between three buttons. The check tick is drawn with `stroke-dashoffset` inside a box whose 30px never changes.
+All the animation rules sit in one commented block in the `<style>` tag. The rule behind them is not a style preference: **nothing may reflow.** That is `no-layout-shift-under-the-pointer` restated as a stylesheet constraint. Two choices follow from it. The sliding switch fill is an absolutely positioned element, not a background that moves between three buttons. The check tick is drawn with `stroke-dashoffset` inside a box whose 30px never changes.
 
 Measured in a real 375px viewport across a check-in, the row's height, the indicator's 30×30, and the document width all drift **0.00px**. Horizontal overflow stays 0 in every state.
 

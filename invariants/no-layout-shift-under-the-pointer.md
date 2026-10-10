@@ -9,3 +9,5 @@ Hiding a row under the user's tap caused cascading mis-taps on mobile. So checki
 - The card itself must not change height on that tap. See `card-the-action-row-is-reserved` (why the action row has a fixed height) and `card-reserved-geometry` (the measured card heights). The rows inside a package are as much under the thumb as the list is. Before that was fixed, the first check-in in a package moved every remaining row in it down by 28px.
 
 A row moving under the thumb is the same failure this rule exists to stop.
+
+**Pinned by:** 44.2–44.7 (the bar is out of flow, and both cards are containing blocks for it; the action row keeps its reserved height; the bar unmounts on completion), 42.1–42.2 (the save slot reserves its width and is never empty), 12.8–12.9 and 40.3 (a glance away keeps the choice and does not merge), and `npm run check:screens` (checking one card in moves no other row, at 375px in Packages and in Tally). Not asserted: that a checked row stays visible under Unreceived until its package completes (20.4 checks package progress only), or that sort order holds while checking (the sort tests in 22 and 24 use static data).

@@ -762,7 +762,7 @@ function ItemRow({
             stopPropagation is load-bearing: the whole row toggles a check-in,
             so without it a navigation tap would silently mark the card
             received. That's a data write from a gesture that meant to look,
-            and exactly the mis-tap invariant 5 exists to prevent. */}
+            and exactly the mis-tap invariant no-layout-shift-under-the-pointer exists to prevent. */}
         {source &&
           (onOpenOrder ? (
             <button
@@ -1138,7 +1138,7 @@ function PackageCard({
       {/* The stamp band: the order's status, visible collapsed too, and — once
           a stamp exists — the control that edits it. A sibling of the header
           button, above the rows, so nothing moves under a thumb mid-check-in
-          (invariant 5); opening the editor is a deliberate tap on the band,
+          (invariant no-layout-shift-under-the-pointer); opening the editor is a deliberate tap on the band,
           the same class of move as expanding the package. */}
       {stamped && !editing && (
         <button
@@ -1288,7 +1288,7 @@ function PackageCard({
           was a 15px child appearing between the header and the item rows on
           the FIRST check-in, so it pushed every remaining row in the package
           down by 15px, under the thumb that had just tapped one of them
-          (invariant 5). Mounting an absolutely positioned element reflows
+          (invariant no-layout-shift-under-the-pointer). Mounting an absolutely positioned element reflows
           nothing, so the gate can stay exactly as it was — which is what keeps
           .mdl-gild the sole marker of completion. */}
       {gotQty > 0 && !done && (
@@ -1636,7 +1636,7 @@ const miniBtn = {
 /* ---------- the card's reserved geometry ----------
    Both of these exist for one reason: a card must not change height on the tap
    that checks a card in, because the rows below it are under the thumb that
-   just tapped (invariant 5). This is the same defect the save indicator's
+   just tapped (invariant no-layout-shift-under-the-pointer). This is the same defect the save indicator's
    reserved slot fixed in the masthead, one level down and larger — measured at
    375px it was 28px, against that one's 12–14px.
 
@@ -1696,7 +1696,7 @@ const BULK_ROW_H = 46;
    page alive when you switch away, so without this the only thing that resets
    Showing is the system evicting the page — which can be days. A short hop out
    to read a tracking number and straight back is not a new session, and
-   flipping the list under someone mid-check-in is the mis-tap invariant 5
+   flipping the list under someone mid-check-in is the mis-tap invariant no-layout-shift-under-the-pointer
    exists to prevent. A minute is comfortably longer than that hop and far
    shorter than any real "I'll come back to this later". */
 const RESUME_RESET_MS = 60_000;
@@ -2226,7 +2226,7 @@ function Notice({ children, actionLabel, onAction, onDismiss }) {
 /* The set of package keys whose stamp satisfies `pred`, with an identity that
    changes only when the MEMBERSHIP does. `stamps` is a fresh object on every
    note edit, and if that rebuilt liveItems → packages, packageOrder would
-   re-freeze the sort mid-check-in — the leapfrog invariant 5 exists to
+   re-freeze the sort mid-check-in — the leapfrog invariant no-layout-shift-under-the-pointer exists to
    prevent. Keying the memo on the sorted membership string keeps a typo fix
    from reshuffling the list. `pred` must be a module-level constant. */
 function useGkSet(stamps, pred) {
@@ -3038,7 +3038,7 @@ export default function MailDayLedger() {
   /* Packages that ignore the filters and render their whole order. Search
      filters *inside* a package, so one matching line draws a card that looks
      like a one-line order; this is the way back to the rest of it. Ephemeral
-     UI state — never persisted, so invariant 2's five-site rule doesn't apply
+     UI state — never persisted, so invariant saved-state-shape's five-site rule doesn't apply
      and `resetAll` has nothing to do here. */
   const [revealed, setRevealed] = useState(() => new Set());
   const [jumpGk, setJumpGk] = useState(null);
@@ -3052,7 +3052,7 @@ export default function MailDayLedger() {
      A rollback list, so the operations that can lose data in bulk each have
      something standing in front of them. All ephemeral UI state plus a cache of
      what the store holds — nothing here is persisted into the ledger, so
-     invariant 2's five sites (and merge-rules' sixth) do not apply. The
+     invariant saved-state-shape's five sites (and merge-rules' sixth) do not apply. The
      versions themselves are built from snapshot(), which is what keeps it that
      way: a third READER of the one payload builder, never a fourth builder, so
      a new persisted key reaches them for free. `stamps` proved that — it
@@ -3123,7 +3123,7 @@ export default function MailDayLedger() {
      the slim bar below it is `position: sticky` with a FIXED height, so it is
      always in flow and pinning changes paint, never layout. The observer only
      toggles opacity/transform — both compositor-only. This is deliberate:
-     invariant 5 forbids anything moving under the pointer mid-check-in, and a
+     invariant no-layout-shift-under-the-pointer forbids anything moving under the pointer mid-check-in, and a
      header that resized on scroll would be exactly that bug. Do not "improve"
      this into a height animation. */
   const [stuck, setStuck] = useState(false);
@@ -3146,7 +3146,7 @@ export default function MailDayLedger() {
   /* orphaned mail: cards recorded off an unidentifiable envelope, parked until
      the user ties them to a package by hand */
   const [envelopes, setEnvelopes] = useState([]); // newest first
-  /* order stamps, keyed by package gk — persisted, see invariant 2 */
+  /* order stamps, keyed by package gk — persisted, see invariant saved-state-shape */
   const [stamps, setStamps] = useState({});
   const [composing, setComposing] = useState(null); // null | "new" | envelopeId
   const [undo, setUndo] = useState(null); // last assignment, reversible
@@ -3256,7 +3256,7 @@ export default function MailDayLedger() {
 
   /* ONE payload builder, shared by the file download and the GitHub push.
      Keeping it single is a documentation requirement as much as a DRY one:
-     invariant 2 says adding a persisted key means touching five sites, and a
+     invariant saved-state-shape says adding a persisted key means touching five sites, and a
      second builder would quietly make it six — with the next person to add a
      key missing one. Note there is deliberately no timestamp in here; the push
      puts one in the commit message instead, so the payload shape stays frozen
@@ -3426,7 +3426,7 @@ export default function MailDayLedger() {
 
      Built from snapshot() and nothing else — the same payload the download and
      the GitHub push send. That is why adding a version tier costs nothing at
-     invariant 2's five sites: give this its own builder and the next person to
+     invariant saved-state-shape's five sites: give this its own builder and the next person to
      add a persisted key silently ships a rollback list that drops it. `stamps`
      is the proof — it landed after this and needed no change here.
 
@@ -3626,7 +3626,7 @@ export default function MailDayLedger() {
             );
             return;
           }
-          /* MERGE, invariant 3: keep everything already tracked, add what's
+          /* MERGE, invariant imports-merge-never-replace: keep everything already tracked, add what's
              new. Shared with the two-device merge rather than kept as a second
              Map-union here — one definition of "union line items by key", so
              the two cannot drift. */
@@ -3784,7 +3784,7 @@ export default function MailDayLedger() {
     });
   }, []);
 
-  /* Two-tap confirms, invariant 6 — no native dialogs. There are three armable
+  /* Two-tap confirms, invariant no-native-dialogs — no native dialogs. There are three armable
      controls in this component now (Reset, Pull, Push anyway), so arming one
      has to disarm the others: two primed destructive buttons sitting side by
      side is precisely the mis-tap the pattern exists to prevent. */
@@ -3845,7 +3845,7 @@ export default function MailDayLedger() {
     }
   }, [confirmReset, arm, disarm, takeVersion]);
 
-  /* Two-tap, because restoring is a full replace — invariant 6. It is also the
+  /* Two-tap, because restoring is a full replace — invariant no-native-dialogs. It is also the
      one destructive control in the app that is genuinely undoable, because
      applyBackup takes a "before restore" milestone on the way in: tap the wrong
      row and the row above it is the world you just left. */
@@ -4477,7 +4477,7 @@ export default function MailDayLedger() {
   /* ---- the merge, run for you ----
 
      Declined once, and the reason was right: applying forty imported lines into
-     the package list mid-check-in is the cascading mis-tap invariant 5 exists
+     the package list mid-check-in is the cascading mis-tap invariant no-layout-shift-under-the-pointer exists
      to prevent. What changed is not the risk but the evidence. Coming back
      after RESUME_RESET_MS away is not mid-check-in — it is a new session, and
      the app already stakes a list reshape on exactly that finding when it
@@ -4722,7 +4722,7 @@ export default function MailDayLedger() {
                   /* what lets the two-device merge tell an edit from a stale
                      copy of the same envelope. Optional and defaulted (absent
                      reads as 0), so envelopes written before this shipped keep
-                     loading untouched — invariant 2. */
+                     loading untouched — invariant saved-state-shape. */
                   updatedAt: Date.now(),
                 }
               : e
@@ -5336,7 +5336,7 @@ export default function MailDayLedger() {
   /* The safe resolution, and therefore the PRIMARY one: the grid's accent
      fill, the app's "this is the live control" colour, beside the force. It
      carries no two-tap arm because it destroys nothing — arming it would say
-     the opposite, and invariant 6's pattern is for destructive actions
+     the opposite, and invariant no-native-dialogs's pattern is for destructive actions
      specifically. */
   if (pushState === "conflict" || ahead)
     syncActions.push({
@@ -5550,7 +5550,7 @@ export default function MailDayLedger() {
            A joy pass, under one rule: NOTHING HERE MAY REFLOW. Every keyframe
            below touches opacity, transform, colour or box-shadow and nothing
            else — no width, height, margin or padding on anything a finger is
-           about to land on. That is invariant 5 restated as a stylesheet
+           about to land on. That is invariant no-layout-shift-under-the-pointer restated as a stylesheet
            constraint, and it is why the sliding switch thumb is an absolutely
            positioned element rather than a background that moves between three
            buttons, and why the check tick is drawn with stroke-dashoffset
@@ -5802,7 +5802,7 @@ export default function MailDayLedger() {
                     tap and back up when the save clears. By then the masthead
                     has scrolled away and the thumb is on a card, so what
                     actually moves is the list: the layout shift under the
-                    pointer invariant 5 exists to prevent, twice per check-in.
+                    pointer invariant no-layout-shift-under-the-pointer exists to prevent, twice per check-in.
                     Measured at 375px against the seeded ledger, 4 of 10
                     realistic figure pairs moved by 12–14px; which ones depends
                     only on where the two figures happen to fall relative to
@@ -5848,7 +5848,7 @@ export default function MailDayLedger() {
         {/* Sentinel + running head. The bar is always in flow at a fixed
             height, so pinning it never moves anything; only its opacity
             changes. See the note on `stuck` above — this is load-bearing for
-            invariant 5. */}
+            invariant no-layout-shift-under-the-pointer. */}
         <div ref={sentinel} style={{ height: 1 }} aria-hidden="true" />
         <div className="mdl-sticky" data-stuck={stuck ? "yes" : "no"}>
           <Seal id="bar" size={22} />

@@ -29,7 +29,7 @@
    stamp would silently pull money back out of the tally. See mergeStamps. */
 
 /* Union of two line-item lists, keyed on `it.key`
-   (`orderId|itemNumber|vendorProductId` — invariant 2, stable across
+   (`orderId|itemNumber|vendorProductId` — invariant saved-state-shape, stable across
    re-imports). This is also what a CSV import does to the existing list, so
    app.jsx's import path calls it too rather than keeping a second Map-union
    that could drift from this one.
@@ -96,7 +96,7 @@ export function mergeReceived(base, incoming) {
    assigning one away completely, leaves nothing behind to distinguish "deleted
    here" from "created there" — so a discarded envelope the other device still
    holds comes back. That bias is chosen: an envelope's entries are hand-typed
-   and exist nowhere else, and invariant 7 means a stray envelope decides
+   and exist nowhere else, and invariant orphaned-mail-never-decides means a stray envelope decides
    nothing on its own. Resurrecting one costs a tap to discard again; dropping
    one costs data the user typed. */
 export function mergeEnvelopes(base, incoming) {
@@ -150,7 +150,7 @@ export function mergeStamps(base, incoming) {
    Builds `merged` from NAMED fields. That is deliberate — a payload is never
    spread through, so nothing unexpected rides along — but it means a new
    persisted key that is not named here is dropped by every merge, applied
-   locally as a full replace, and then pushed. Invariant 2's five sites in
+   locally as a full replace, and then pushed. Invariant saved-state-shape's five sites in
    app.jsx are this file's sixth.
 
    The three view preferences are deliberately NOT merged — local keeps its own.
