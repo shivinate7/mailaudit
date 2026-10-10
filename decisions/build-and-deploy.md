@@ -6,12 +6,15 @@ This file holds the npm scripts, what each asks, and the deploy sequence, plus t
 
 ```
 npm install
-npm run build        # -> index.html
-npm test             # behaviour suite, must be green before deploying
-npm run serve        # optional local server on :4173
-npm run check:build  # is the committed index.html the code in this repo?
-npm run check:seed   # and what does the seed baked into it publish?
-npm run deploy       # build + test + commit index.html + push (Pages auto-deploys)
+npm run build         # -> index.html
+npm test              # behaviour suite, must be green before deploying
+npm run serve         # optional local server on :4173
+npm run check:build   # is the committed index.html the code in this repo?
+npm run check:seed    # and what does the seed baked into it publish?
+npm run check:docs    # do the corpus's published numbers and paths hold?
+npm run check:records # do the records' citations and fences hold?
+npm run check:screens # screen verdicts in a real browser
+npm run deploy        # build + test, then a deploy-<timestamp> branch holding index.html and a PR to main
 ```
 
 ## Why check:build ignores the seed, and the Pages quirk
@@ -30,7 +33,7 @@ A stale seed is harmless. A visitor sees a slightly older ledger, and the next d
 
 GitHub Pages serves from the main branch root. Quirk: if the Pages workflow sits Queued >10 min, do not re-run the same run. Cancel it, and push a trivial commit to start a fresh run.
 
-`npm run deploy` only commits `index.html`. You must commit source and doc changes yourself first.
+`npm run deploy` commits only `index.html`, on a new branch named deploy-<timestamp>, and opens a pull request to main. Pages deploys when that PR merges. You must commit source and doc changes yourself first.
 
 ## See also
 

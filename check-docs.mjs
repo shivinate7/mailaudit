@@ -1,7 +1,7 @@
 // A checked reader for the record corpus's own published numbers and paths.
 //
 // This used to read only CLAUDE.md, which was 2,385 lines and held every
-// argument. CLAUDE.md is now a 297-line index; the 154 records under
+// argument. CLAUDE.md is now an index; the records under
 // decisions/, invariants/ and measurements/ hold the prose this file used to
 // check. So this walks CLAUDE.md plus every `.md` file in those three
 // folders, and checks the same two claims as before, now against the whole
@@ -24,7 +24,7 @@ const FOLDERS = ["decisions", "invariants", "measurements"];
 
 // ---------- load the corpus: CLAUDE.md plus every record ----------
 
-const files = [{ path: "CLAUDE.md", text: readFileSync("CLAUDE.md", "utf8") }];
+const files = ["CLAUDE.md", "README.md"].map((path) => ({ path, text: readFileSync(path, "utf8") }));
 for (const folder of FOLDERS) {
   for (const name of readdirSync(folder).sort()) {
     if (!name.endsWith(".md")) continue;
@@ -178,7 +178,18 @@ const BARE_EXT = /^\.[a-z0-9]+$/i;
 // `raw.githubusercontent.com/owner/repo/...` — not a path in THIS repo.
 const DOMAIN = /^[a-z0-9-]+(\.[a-z0-9-]+)+\//i;
 
+// Names the records give that are NOT in this repo, by design. Each is judged
+// by hand, not by the filesystem. Keep this list to what the records say lives
+// elsewhere; a path that moved inside this repo must fail, not land here.
+const OTHER_REPO = new Set([
+  "ledger.json", // the ledger file, on the data branch of mailaudit-data
+  "photos/", // the photo directory, on main of mailaudit-data
+  "backup-watchdog.yml", // the watchdog workflow, lives in mailaudit-data
+  "_studies.html", // the motion proof sheet, never committed (decisions/motion-method-is-side-by-side-proof.md)
+]);
+
 function excluded(s) {
+  if (OTHER_REPO.has(s)) return true;
   if (/\s/.test(s)) return true;
   if (s.includes("://")) return true;
   if (s.includes("{") || s.includes("}")) return true;
@@ -223,6 +234,9 @@ for (const { span } of allSpans) {
   if (!knownPath.has(base)) knownPath.set(base, span);
 }
 
+// Every file in the repo, for bare filenames that live below the root.
+const tracked = execFileSync("git", ["ls-files"], { encoding: "utf8" }).split("\n");
+
 let checked = 0;
 const refused = new Set();
 const seenPerFile = new Map(); // file -> Set(span) — de-dupe within one file, as before
@@ -234,20 +248,32 @@ for (const entry of allSpans) {
   if (seen.has(span)) continue;
   seen.add(span);
 
+  // `file:line` (or `file:a-b`): the file must exist with at least that many lines.
+  const fl = span.match(/^([^\s:]+\.[a-z]+):(\d+)(?:-(\d+))?$/i);
+  if (fl) {
+    checked++;
+    const need = Number(fl[3] ?? fl[2]);
+    const have = existsSync(fl[1]) ? readFileSync(fl[1], "utf8").split("\n").length : -1;
+    if (have < need) {
+      const line = lineAt(fileProse, index);
+      console.error(
+        `check:docs: ${file}:${line} names \`${span}\`, but ` +
+          (have < 0 ? "that file does not exist" : `${fl[1]} has only ${have} line(s)`)
+      );
+      failures++;
+    }
+    continue;
+  }
+
   if (excluded(span)) {
     refused.add(span);
     continue;
   }
 
   if (span.endsWith("/")) {
-    // Only judge a multi-segment directory (`.github/workflows/`) — a bare
-    // single-segment one (`photos/`) is as likely to name a directory in
-    // another repo as one here, and is refused rather than guessed at.
+    // Every directory is judged, single-segment ones too: prose that
+    // names a directory in another repo says so without backticks.
     const dir = span.slice(0, -1);
-    if (!dir.includes("/")) {
-      refused.add(span);
-      continue;
-    }
     checked++;
     if (!(existsSync(dir) && statSync(dir).isDirectory())) {
       const line = lineAt(fileProse, index);
@@ -269,8 +295,12 @@ for (const entry of allSpans) {
   let target = span;
   if (!span.includes("/")) {
     if (knownPath.has(span)) target = knownPath.get(span);
-    else if (!existsSync(span)) {
-      refused.add(span);
+    else if (!existsSync(span) && !tracked.some((t) => t.endsWith("/" + span))) {
+      // Not at the root and nowhere in the tree: judged, not skipped.
+      const line = lineAt(fileProse, index);
+      console.error(`check:docs: ${file}:${line} names \`${span}\`, which is not in this repo`);
+      failures++;
+      checked++;
       continue;
     }
   }
@@ -282,7 +312,51 @@ for (const entry of allSpans) {
   }
 }
 
-console.log(`check:docs: walked ${files.length} file(s) (CLAUDE.md + ${files.length - 1} record(s))`);
+/* ---------- claim 3: every code-shaped name in backticks occurs in the code ----------
+   A span shaped like a code name (camelCase, snake_case, CONST_CASE, or
+   `name()`) must occur as a whole word somewhere in the code roots below.
+   A renamed function then turns every record that cites it red. Names the
+   code cannot hold are listed in EXTERNAL, one reason each. */
+const CODE_ROOTS = ["src", "test", "build.mjs", "check-docs.mjs", "check-records.mjs", "icon", "package.json", ".github"];
+const EXTERNAL = new Set([
+  "DELETE", // HTTP verb, named in records about the photo repo
+  "TZ", // the environment variable CI and check:docs set; read by node, not by our code
+  "KEY", // the sync panel's micro-label, a rendered word, not a code name
+  "currentTime", // Web Animations API, set by hand when measuring motion
+  "getAnimations", // Web Animations API, used by hand when measuring motion
+  "removeChild", // DOM method named in the save-slot measurement note
+  "enforce_admins", // GitHub branch-protection setting, not our code
+  "fromJSON", // GitHub Actions expression function
+]);
+function walk(path, out) {
+  if (!existsSync(path)) return;
+  if (statSync(path).isDirectory()) {
+    for (const n of readdirSync(path)) if (n !== "node_modules") walk(`${path}/${n}`, out);
+  } else if (!/\.(png|jpe?g)$/i.test(path)) out.push(readFileSync(path, "utf8"));
+}
+const codeParts = [];
+for (const r of CODE_ROOTS) walk(r, codeParts);
+const codeText = codeParts.join("\n");
+const NAME_SHAPE = /^(?:[a-z][a-z0-9]*[A-Z][A-Za-z0-9]*|[a-z][a-z0-9]*(?:_[a-z0-9]+)+|[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+|[A-Za-z_$][\w$]*\(\))$/;
+const nameSeen = new Set();
+let namesJudged = 0;
+for (const { file, span, index, prose: fileProse } of allSpans) {
+  if (!NAME_SHAPE.test(span)) continue;
+  const name = span.replace(/\(\)$/, "");
+  if (EXTERNAL.has(name)) continue;
+  const key = `${file}\0${name}`;
+  if (nameSeen.has(key)) continue;
+  nameSeen.add(key);
+  namesJudged++;
+  const re = new RegExp(`(?<![\\w$])${name.replace(/\$/g, "\\$")}(?![\\w$])`);
+  if (!re.test(codeText)) {
+    console.error(`check:docs: ${file}:${lineAt(fileProse, index)} names \`${span}\`, which occurs nowhere in the code`);
+    failures++;
+  }
+}
+console.log(`check:docs: ${namesJudged} code name(s) judged against the code`);
+
+console.log(`check:docs: walked ${files.length} file(s) (CLAUDE.md, README.md + ${files.length - 2} record(s))`);
 console.log(`check:docs: ${checked} path(s) checked against the filesystem, outside any fence`);
 console.log(`check:docs: ${refused.size} backtick span(s) refused as not path-like`);
 if (process.env.CHECK_DOCS_VERBOSE) {
