@@ -19,7 +19,9 @@ The Auto-push cell is gone. Sync runs unconditionally now. See `sync-runs-itself
 
 Behind the sync line sit Push, Merge, Pull, Push anyway, the particulars and the key field.
 
-**Pinned by:** 36.5–36.7. An odd last cell spans the row (36.5). Adding Backup + photos makes the second cell (36.6). An even count leaves every cell its own half (36.7). The first draft of group 36 booted against a seeded remote. That made the device behind. Behind adds a Merge cell, which turns three cells into four. So read the count off the screen, not off the fixture.
+The first draft of group 36 booted against a seeded remote. That made the device behind. Behind adds a Merge cell, which turns three cells into four. So read the count off the screen, not off the fixture.
+
+**Pinned by:** 28.2 and 28.8 pin that Pull is offered and that the repair kit opens. No test pins this grid's two-column layout, so the layout is unmeasured. The odd-cell rule is pinned through the History grid, which shares `optGrid(2)`, by 36.5 in `history-restores-a-saved-version`.
 
 ## See also
 

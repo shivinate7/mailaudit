@@ -2,8 +2,8 @@
 
 A saved version survives a prune when any one of four rules keeps it. The rules are these.
 
-- The newest `recentKeep` versions.
-- Milestones inside `milestoneDays`.
+- The newest `recentKeep` versions that are not milestones.
+- Milestones inside `milestoneDays`, capped at the newest `milestoneMax` of them.
 - The earliest version of each hour inside `hourHours`.
 - The earliest version of each day inside `dayDays`.
 

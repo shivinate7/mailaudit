@@ -72,7 +72,6 @@ Nothing in the component touches a storage API. Three adapters do, and each fail
 - `photo-rules-fails-quietly` — Photo rules are pure and separately tested.
 - `remote-rules-fail-quietly` — Remote status mapping is pure and tested.
 - `merge-rules-only-add` — The two-device merge only ever adds.
-- `shrunk-envelope-gets-fresh-stamp` — A partial assignment restamps the envelope.
 
 ## Sync, the remote and the token
 
@@ -159,7 +158,7 @@ Packages, Tally and Orphaned read one check-in map. These records say what each 
 - `orphaned-colours-by-meaning` — Orphaned uses colour for the same meanings.
 - `undo-removes-only-its-delta` — Undo subtracts its own delta, not a snapshot.
 - `three-views-share-one-switch` — Three views share one switch.
-- `tally-counts-ignore-the-filters` — Tally counts cover every copy, filtered or not.
+- `tally-counts-ignore-the-filters` — Search and hide-received never change Tally counts.
 - `tally-row-lists-its-copies` — A Tally row lists every copy it counts.
 - `tally-sort-keys-are-six` — The Tally view sorts on six keys.
 - `package-sort-swaps-with-view` — Package sort swaps with the view.
@@ -169,6 +168,7 @@ Packages, Tally and Orphaned read one check-in map. These records say what each 
 - `orphan-entry-takes-one-input` — Recording an envelope takes one input.
 - `candidates-skip-date-filter` — Candidates ignore the date filter and canceled orders.
 - `assign-checks-recorded-cards` — Assigning an envelope checks in only its recorded cards.
+- `shrunk-envelope-gets-fresh-stamp` — A partial assignment restamps the envelope.
 - `envelope-names-match-normname` — Envelope names match after normalizing.
 - `csv-import-shows-a-summary` — A CSV import shows a summary.
 

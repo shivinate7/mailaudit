@@ -6,7 +6,7 @@ The ledger and the photos share one private repo, `mailaudit-data`. The ledger s
 
 Privacy was the whole reason for two repos. A mailing label shows a delivery address. The ledger repo was public. That reason ended when the ledger repo went private.
 
-The merge happened when `mailaudit` went public. The ledger had to leave it regardless. `shivinate7.github.io` is one origin across every Pages project. So the token must stay fine-grained, Contents-only, and single-repo. See `token-sits-on-shared-origin`.
+The merge happened when `mailaudit` went public. Before that, `mailaudit` held the ledger on its own `data` branch, which is why it had to stay private. Moving the ledger out let the source repo go public. The ledger had to leave it regardless. `shivinate7.github.io` is one origin across every Pages project. So the token must stay fine-grained, Contents-only, and single-repo. See `token-sits-on-shared-origin`.
 
 Two other reasons once backed the split. One is retired. "Git is permanent while the app repo is the one you clone" argued against photos in `mailaudit`. The ledger moved into the photo repo, so `mailaudit` got smaller. That argument never applied to this direction.
 

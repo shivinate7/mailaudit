@@ -8,7 +8,7 @@ Measured anonymously after the repo move, the Pages site answers 200. `api.githu
 
 The real cost is that every device needs the key for everything. GitHub hides a repo you cannot see behind a 404, not a 403.
 
-`mailaudit` used to hold the ledger on its own `data` branch. That is why `mailaudit` had to stay private. Moving the ledger out let the source repo go public.
+Why the ledger left `mailaudit` is in `ledger-and-photos-share-a-repo`.
 
 ## See also
 

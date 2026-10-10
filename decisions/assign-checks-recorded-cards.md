@@ -6,7 +6,7 @@ A two-tap confirm checks in exactly the cards recorded in an envelope. It checks
 
 Unexplained entries are tagged "no outstanding copy". They stay behind in a smaller envelope. That envelope keeps the original id, `createdAt` and note.
 
-Each envelope has an Edit control and a two-tap Discard control. The last assignment can be undone. The undo notice shows at the vacated slot in the pile, not at the top of the page.
+Each envelope has an Edit control and a two-tap Discard control. The last assignment can be undone. See `undo-removes-only-its-delta` for the undo and where its notice shows.
 
 ## See also
 

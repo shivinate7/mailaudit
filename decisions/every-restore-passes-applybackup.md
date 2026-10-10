@@ -2,11 +2,13 @@
 
 The file restore and the GitHub pull both pass through one function, `applyBackup()`. A saved version restores through it too.
 
-**Holds while:** `applyBackup` in `src/app.jsx` rejects a payload that lacks `mailday` or an `items` array.
+**Holds while:** `parseLedger` in `src/app.jsx` rejects a payload that lacks `mailday` or an `items` array, and `applyBackup` calls `parseLedger` before its first write.
 
-The check `!data.mailday || !Array.isArray(data.items)` is the only thing between a corrupt payload and a wiped ledger. So the check exists once, in that function.
+The check `!data.mailday || !Array.isArray(data.items)` is the only thing between a corrupt payload and a wiped ledger. So the check exists once, in `parseLedger`, which `applyBackup` calls.
 
-The replaced-envelopes warning also covers the pull. A pull is one tap, not a deliberate file drop. So the warning matters more there.
+A restore that would replace pending envelopes shows a replaced-envelopes warning. The warning also covers the pull. A pull is one tap, not a deliberate file drop. So the warning matters more there. Envelopes are hand-typed. Losing them silently is the worst kind of quiet.
+
+**Pinned by:** 26.10 pins the warning on a pull.
 
 ## See also
 

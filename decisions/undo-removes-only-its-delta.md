@@ -1,6 +1,6 @@
 # Undo removes only its own delta
 
-Undo keeps the deltas of an assignment, not a snapshot of the ledger. For each card, undo subtracts what the assignment took. If the user hand-edited a card after the assignment, that edit survives the undo. A snapshot restore would erase it. A key that falls to zero is deleted, not stored as 0. The envelope returns to its place in the pile.
+Undo keeps the deltas of an assignment, not a snapshot of the ledger. For each card, undo subtracts what the assignment took. If the user hand-edited a card after the assignment, that edit survives the undo. A snapshot restore would erase it. A key that falls to zero is deleted, not stored as 0. The envelope returns to its place in the pile, and the undo notice shows at that vacated slot, not at the top of the page.
 
 **Holds while:** `undoAssign` in `src/app.jsx` subtracts the takes in `undo.plan` from `received`, and `setUndo` records the plan rather than a copy of `received`.
 

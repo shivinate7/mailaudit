@@ -1,15 +1,16 @@
-# Tally counts cover every copy, filtered or not
+# Tally counts ignore search and hide-received
 
-Tally counts and basis cover every copy of an item. A filter does not change them. Hide received and search can filter the copy breakdown, and the counts still cover every copy.
+Search and hide-received filter only the copy breakdown under a Tally item. They never change its counts or its cost basis. The date range does change them, because Tally sums only the date-ranged items. See `date-filter-spans-ledger-views`.
 
-**Holds while:** `src/app.jsx` still shows a note that says how many copies the filters hid, through `hidden by filters`.
+**Holds while:** `src/app.jsx` still builds the Tally groups from `rangedItems`, and still shows a note through `hidden by filters`.
 
-A note reads `N copies hidden by filters` when filters hide copies from the breakdown. The counts stay complete. So the figures never change because a filter changed.
+A note reads `N copies hidden by filters` when search or hide-received hides copies from the breakdown. The counts stay complete. So the figures never change because a search or hide-received changed.
 
-Cost basis follows the same rule. See `cost-basis-excludes-ship-and-tax` for what basis counts.
+Cost basis follows the same rule for search and hide-received. See `cost-basis-excludes-ship-and-tax` for what basis counts.
 
 ## See also
 
 - `cost-basis-excludes-ship-and-tax` — what the basis counts and leaves out.
 - `search-filters-inside-package` — the search that filters the breakdown.
 - `tally-row-lists-its-copies` — the rows that the counts cover.
+- `date-filter-spans-ledger-views` — the date range, which does change the counts.

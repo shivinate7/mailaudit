@@ -10,7 +10,7 @@ A backup is small and quick, and it holds the irreplaceable part. Backup + photo
 
 The file picker sends a `.json` file to restore. It sends a `.csv` file to import. A restore is a full replace.
 
-If pending envelopes would be replaced, the notice says so. Envelopes are hand-typed. Losing them silently is the worst kind of quiet.
+The replaced-envelopes warning is covered in `every-restore-passes-applybackup`.
 
 ## See also
 
