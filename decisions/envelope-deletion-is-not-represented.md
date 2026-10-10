@@ -6,7 +6,7 @@ A discarded envelope has no tombstone. Nothing distinguishes "deleted here" from
 
 **Holds while:** `mergeEnvelopes` in `src/merge-rules.mjs` has no deletion marker. A deletion marker on envelopes closes this.
 
-This bias is deliberate. Entries are hand typed and exist nowhere else. Invariant 7 means that a stray envelope decides nothing on its own. So resurrecting one costs a tap. Dropping one costs data the user typed.
+This bias is deliberate. Entries are hand typed and exist nowhere else. `orphaned-mail-never-decides` means that a stray envelope decides nothing on its own. So resurrecting one costs a tap. Dropping one costs data the user typed.
 
 Stamps take the opposite bias, on purpose. A removed stamp is a tombstone, `kind: ""`. A resurrected `refunded` stamp would silently take money back out of the tally. A stamp is one value the user can re-set in two taps.
 

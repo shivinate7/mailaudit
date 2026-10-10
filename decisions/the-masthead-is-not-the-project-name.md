@@ -1,6 +1,6 @@
 # The masthead is not the project name
 
-The app presents itself as **MANIFEST**, under a C.H Postal Company letterhead. The project name stays Mail Day Ledger. The repo keeps `mailaudit`, and the storage namespace keeps `mailday:`. None of those may follow the masthead. See invariant 1. Real check-in data sits under those keys.
+The app presents itself as **MANIFEST**, under a C.H Postal Company letterhead. The project name stays Mail Day Ledger. The repo keeps `mailaudit`, and the storage namespace keeps `mailday:`. None of those may follow the masthead. See `storage-keys-are-frozen`. Real check-in data sits under those keys.
 
 **Holds while:** `build.mjs` sets the page title to `Manifest` and the iOS title to `Mail Day`, and `STORAGE_KEY` in `src/app.jsx` is `mailday:v1`.
 
