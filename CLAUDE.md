@@ -21,7 +21,7 @@ one record, and each record holds current text only; git keeps the history. Read
 records your task needs. Do not read them all.
 
 - `invariants/` holds a rule that must not break. 8 records.
-- `decisions/` holds a ruling and the reason it still holds. 143 records.
+- `decisions/` holds a ruling and the reason it still holds. 145 records.
 - `measurements/` holds a measured figure and how to re-measure it. 8 records.
 
 A record cites another record by slug, never by a path, so a record survives a
@@ -218,6 +218,8 @@ What each check asks, and the two traps in the icon pipeline.
 - `records-hold-current-text-only` — Records hold current text only; git keeps history.
 - `records-name-what-dates-them` — Each decision names the fact that would date it.
 - `readme-is-minimal` — The README is minimal, and carries no license.
+- `orchestrator-may-merge` — The orchestrating session may merge green, reviewed PRs.
+- `invariants-cited-by-slug` — Invariants are cited by slug, never by number.
 
 ## Testing method
 
