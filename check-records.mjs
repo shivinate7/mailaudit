@@ -197,9 +197,9 @@ function titleIsTitleCase(title) {
    check-docs.mjs uses for a backtick span that isn't path-like.
 
    THE CEILING: a slug-shaped token more than 2 edits from every real slug
-   (a truncated slug such as `saved-state`, say) is refused, not failed.
-   Claim 6 closes that hole for the one place it matters, citations of an
-   invariant, with a narrower rule of its own. */
+   (a truncated slug such as `no-layout-shift`, say) is refused, not failed.
+   Known ceiling. Claim 6 does not close it: it checks only the token right
+   after the word "invariant". */
 /* One hyphen is enough. This used to demand two, which made every two-word
    slug invisible: parser-filters, feature-map, suite-size, motion-timings and
    six more. The index cited all of them and the check reported them orphaned,
@@ -330,20 +330,21 @@ function closestSlug(token, slugs) {
    Owner ruling 2026-10-10: invariants are cited by slug, never by number, and
    each one names the test that pins it. Every invariants/*.md holds a line
    starting "**Pinned by:**" that names at least one test id ("44.5" or
-   "group 44") that exists in test/app.test.mjs, or one of the scripts that run tests (`npm test`,
-   `npm run test:*` and `npm run check:screens`) that exists in package.json. "nothing yet" is not an answer: a Pinned-by line with no
+   "group 44") that exists in test/app.test.mjs, or a script that runs tests that exists in package.json:
+   `npm run test:*` or `npm run check:screens` may stand alone, but bare
+   `npm test` counts only beside a named id or "group N". "nothing yet" is not an answer: a Pinned-by line with no
    real test fails (owner ruling 2026-10-10). A cited id that does not exist
    fails. Any numbered cite of an invariant fails, in records and in
    src/, test/ and build.mjs comments. So does a token right after the word
-   "invariant"/"invariants" (backticked, or bare kebab-case) that is not one
-   of the invariant slugs: `invariant no-layout-shift` fails. Ceiling: this
-   sees only a token directly after the word; an invariant slug cited some
-   other way is claim 1's business.
+   "invariant"/"invariants" (a backticked span, or a bare kebab-case word with
+   2+ hyphens) that is not one of the invariant slugs fails:
+   `invariant storage-keys-frozen` fails, "invariant pre-existing" passes.
+   Ceiling: only the token directly after the word is read.
    */
 {
   const tests = readFileSync("test/app.test.mjs", "utf8");
   // ids only from the assertion form: a label that opens with the id
-  // (`ok(x, "44.5 ...")`, or the label alone on its own line). A fixture
+  // (`ok(x, "44.5 ...")`, `ok("44.5 ...", x)`, or the label alone on its own line). A fixture
   // price like "2.50" is not followed by a space and has no comma before it.
   const ids = new Set([...tests.matchAll(/(?:[(,]|^)\s*["'`](\d+[a-z]?\.\d+[a-z]?) /gm)].map((m) => m[1]));
   const groups = new Set([...tests.matchAll(/^\/\* (?:──|-{4}) (\d+[a-z]?)\./gm)].map((m) => m[1]));
@@ -363,7 +364,7 @@ function closestSlug(token, slugs) {
       console.error(`check:records: ${path}: cites an invariant by number ("${m[0].replace(/\s+/g, " ")}"); cite the slug`);
       bad++;
     }
-    for (const m of text.matchAll(/\binvariants?\s+(`[^`]+`|[a-z0-9]+(?:-[a-z0-9]+)+)/gi)) {
+    for (const m of text.matchAll(/\binvariants?\s+(`[^`]+`|[a-z0-9]+(?:-[a-z0-9]+){2,})/gi)) {
       const tok = m[1].replace(/`/g, "").toLowerCase();
       if (!invSlugs.has(tok)) {
         console.error(`check:records: ${path}: "invariant ${tok}" is not an invariant slug`);
@@ -384,8 +385,8 @@ function closestSlug(token, slugs) {
       ...[...line.matchAll(/\bgroup (\d+[a-z]?)\b/gi)].map((m) => ["group", m[1]]),
       ...[...line.matchAll(/npm (?:run )?(test(?::[\w-]+)?|check:screens)\b/g)].map((m) => ["script", m[1]]),
     ];
-    if (!cited.length) {
-      console.error(`check:records: ${r.path}: "Pinned by" names no real test (a test id, "group N" or a test script)`);
+    if (!cited.some(([k, v]) => k !== "script" || v !== "test")) {
+      console.error(`check:records: ${r.path}: "Pinned by" names no real test (a test id or "group N"; bare npm test does not count alone)`);
       bad++;
     }
     for (const [kind, id] of cited) {
