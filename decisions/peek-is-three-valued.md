@@ -8,7 +8,11 @@ The peek check reads only the remote's blob sha, a few hundred bytes, not the fu
 
 `peek()` runs on foreground, never on a timer. It is three-valued for the same reason `listPhotos` is.
 
+The same `peek()` call also triggers the auto-merge. So it is one read, not two. The auto-merge runs only inside the `known` branch. The foreground call does three things at once. It reports whether the remote is ahead. It licenses or refuses the merge. Through `freshSession`, it decides whether this foreground was a new session.
+
 Auto-push is unconditional. There is no toggle. It looks before every write, and it declines on `ahead` or on unknown. If a conflict opens between the look and the write, it resolves by merging. It does not leave `Push anyway` armed on a screen nobody is watching.
+
+Mutant confirmed red: an unknown remote read as ahead.
 
 ## See also
 

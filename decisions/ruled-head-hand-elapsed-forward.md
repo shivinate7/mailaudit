@@ -10,6 +10,13 @@ So the handler records into `freshSession`, on **both** branches. A short hop mu
 
 `freshSession` starts **true**. A cold mount is a new session too. It is the more valuable half. A fresh phone should come back already reconciled. It should not need a person to search for a control.
 
+**Pinned by:** group 40. Mutants confirmed red:
+- the resume handler reading the shared `hiddenAt`;
+- `freshSession` starting false;
+- the signal never consumed.
+
+The consume mutant survived the first draft of group 40. Every fixture ended with both devices in step. See `testing-surviving-mutant`.
+
 ## See also
 
 - `ruled-head-resume-is-reopening` — the resume behavior this signal drives.

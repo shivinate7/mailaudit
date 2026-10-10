@@ -21,13 +21,13 @@ one record, and each record holds current text only; git keeps the history. Read
 records your task needs. Do not read them all.
 
 - `invariants/` holds a rule that must not break. 8 records.
-- `decisions/` holds a ruling and the reason it still holds. 145 records.
+- `decisions/` holds a ruling and the reason it still holds. 200 records.
 - `measurements/` holds a measured figure and how to re-measure it. 8 records.
 
 A record cites another record by slug, never by a path, so a record survives a
-move. `npm run check:records` proves five things. This index cites every record.
+move. `npm run check:records` proves six things. This index cites every record.
 Every citation resolves. No slug repeats. No fence is broken. Every record
-carries its shape.
+carries its shape. Every invariant names the test that pins it.
 
 An open question carries a `**Status:**` line. That line is the only thing that
 separates a question still open from a ruling already settled, so keep it.
@@ -72,7 +72,6 @@ Nothing in the component touches a storage API. Three adapters do, and each fail
 - `photo-rules-fails-quietly` — Photo rules are pure and separately tested.
 - `remote-rules-fail-quietly` — Remote status mapping is pure and tested.
 - `merge-rules-only-add` — The two-device merge only ever adds.
-- `version-tiers-are-unioned` — Version-retention tiers are unioned, never intersected.
 
 ## Sync, the remote and the token
 
@@ -91,12 +90,18 @@ Sync runs itself. These records say what it refuses to do, and why each refusal 
 - `stale-push-conflict-pull-two-tap` — Pull gets the two-tap, push does not.
 - `merge-carries-no-two-tap-arm` — Merge never needs a two-tap arm.
 - `two-device-merge-proven-first` — Prove the two-device merge before trusting auto-push.
+- `merge-readopts-sync-generation` — A merge re-adopts the sync generation.
+- `push-flash-waits-for-photos` — Pushed shows only after the photos.
 - `remote-sync-is-off-the-save-path` — Remote sync never touches the save indicator.
 - `fine-grained-token-single-repo` — One fine-grained token, scoped to one repo.
 - `token-lives-outside-namespace` — The access token sits outside the storage namespace.
 - `one-repo-for-both-halves` — The source repo is public and holds no data.
 - `data-branch-setup` — The data branch is the ledger's history, not a scratch file.
 - `photo-branch-must-preexist` — The photo branch must exist before any upload.
+- `pull-fetches-photos-before-apply` — A pull fetches photos before it applies.
+- `ledger-and-photos-share-a-repo` — The ledger and the photos share one repo.
+- `photo-writes-wait-one-second` — Photo writes wait one second after the ledger.
+- `null-remote-info-is-not-no-key` — A null remote status is not a missing key.
 
 ## Envelope photos
 
@@ -107,6 +112,11 @@ A photo is a picture of a mailing label. It never enters the ledger, and it can 
 - `photo-errors-never-hit-pushstate` — A photo error never reaches pushState.
 - `photo-ids-restore-keep-if-known` — A restore keeps a photo id when known.
 - `photo-ids-unreadable-local` — An unreadable local photo store keeps ids.
+- `photo-thumbnails-and-viewer` — Thumbnails are 56px squares, and the viewer is a scrim.
+- `photo-sweep-two-guards` — The photo sweep has two guards.
+- `pull-warns-on-what-it-drops` — A pull warns about the photos it would drop.
+- `label-photos-downscale-to-2000px` — Label photos downscale to 2000px.
+- `orphan-sweep-drops-unused-photos` — The sweep drops photos no envelope uses.
 
 ## Saved versions and recovery
 
@@ -117,6 +127,13 @@ A milestone is taken before the risky step, never after. Read these before chang
 - `older-versions-come-off-branch` — Older versions come from the branch.
 - `unwritable-store-says-so` — A broken version store must say so.
 - `recovery-control-not-state-gated` — A recovery control cannot need the state it recovers.
+- `retention-tiers-are-unioned` — Any one of four tiers keeps a version.
+- `hourly-tier-closes-the-gap` — The hourly tier keeps one version per hour for a day.
+- `anchors-are-derived-not-stored` — Hour and day anchors are computed at prune time.
+- `anchor-is-the-earliest-record` — An anchor is the earliest version of its bucket.
+- `history-restores-a-saved-version` — History lists saved versions and restores one.
+- `backup-files-restore-two-ways` — Backup files restore with or without photos.
+- `every-restore-passes-applybackup` — Every restore passes through applyBackup.
 
 ## The public seed
 
@@ -138,6 +155,22 @@ Packages, Tally and Orphaned read one check-in map. These records say what each 
 - `a-reveal-ignores-hidedone-too` — A reveal ignores hideDone too.
 - `order-id-button-stops-propagate` — The order id link stops propagation.
 - `lost-mail-flags-use-order-date` — Lost-mail flags count from the order date.
+- `orphaned-colours-by-meaning` — Orphaned uses colour for the same meanings.
+- `undo-removes-only-its-delta` — Undo subtracts its own delta, not a snapshot.
+- `three-views-share-one-switch` — Three views share one switch.
+- `search-hide-keep-tally-counts` — Search and hide-received never change shown Tally counts.
+- `tally-row-lists-its-copies` — A Tally row lists every copy it counts.
+- `tally-sort-keys-are-six` — The Tally view sorts on six keys.
+- `package-sort-swaps-with-view` — Package sort swaps with the view.
+- `packages-group-by-order-seller` — Packages group by order and seller.
+- `outstanding-value-per-level` — Each level states what is still outstanding.
+- `canceled-orders-leave-the-list` — Canceled orders leave the list, not the record.
+- `orphan-entry-takes-one-input` — Recording an envelope takes one input.
+- `candidates-skip-date-filter` — Candidates ignore the date filter and canceled orders.
+- `assign-checks-recorded-cards` — Assigning an envelope checks in only its recorded cards.
+- `shrunk-envelope-gets-fresh-stamp` — A partial assignment restamps the envelope.
+- `envelope-names-match-normname` — Envelope names match after normalizing.
+- `csv-import-shows-a-summary` — A CSV import shows a summary.
 
 ## Order stamps
 
@@ -147,6 +180,8 @@ One stamp per package, set by hand. A refund takes the package out of every coun
 - `stamp-removal-writes-a-tombstone` — Removing a stamp writes a tombstone.
 - `a-refund-leaves-every-count` — Refunded packages leave every count.
 - `stamped-package-hides-lost-flag` — A stamp hides the lost-mail warning.
+- `stamp-band-opens-the-editor` — The stamp band is the control.
+- `stamped-filter-on-the-pipeline` — The stamped filter sits on the normal pipeline.
 
 ## The ruled head
 
@@ -160,6 +195,17 @@ The control region is the masthead's own vocabulary continued. Read these before
 - `ruled-head-hand-elapsed-forward` — Hand the elapsed time forward, never re-derive it.
 - `ruled-head-range-picked` — The custom date range is picked, not typed.
 - `ruled-head-stale-clock-agreement` — The staleness clock measures agreement, not writes.
+- `date-filter-spans-ledger-views` — The date filter applies to both ledger views.
+- `action-row-is-ruled-cells` — The action row is ruled cells, not buttons.
+- `armed-reset-takes-the-row` — An armed Reset takes the whole action row.
+- `disclosure-cells-underline-value` — Cells that open something underline their value.
+- `history-sync-close-each-other` — History and Sync close each other.
+- `upload-zone-opens-when-empty` — The upload zone opens only on an empty ledger.
+- `sync-line-toggles-its-panel` — The sync line is also the panel's way out.
+- `merge-is-the-primary-sync-action` — Merge is the primary sync action.
+- `sync-panel-is-two-column-grid` — The sync panel is a two-column option grid.
+- `sync-particulars-ruled-values` — Sync particulars are ruled label and value pairs.
+- `token-field-is-sixteen-pixels` — The token field is 16px to stop iOS zoom.
 
 ## Motion
 
@@ -201,6 +247,8 @@ Where the page holds its shape, and where every colour comes from.
 - `palette-silver-stays-cool` — Silver must stay a cool grey.
 - `palette-theme-color-tracks-paper` — The browser chrome colour must track the paper token.
 - `palette-tokens-contrast-floor` — Every colour token meets a contrast floor.
+- `progress-bar-accent-then-green` — The progress bar is accent, then green at 100%.
+- `typography-cochin-and-mono` — Cochin sets words, monospace sets numbers.
 
 ## Build, CI and assets
 
@@ -237,6 +285,10 @@ Lessons this repo paid for. Each one came from a green suite that hid a real def
 - `testing-mock-field-stops-decor` — When a mock field stops being decorative.
 - `testing-mutant-dies-check-cause` — When a mutant dies, check the cause.
 - `testing-surviving-mutant` — When a mutant survives, find the unreached state.
+- `testing-deps-caught-by-edit` — A missing dependency shows only on an edit.
+- `testing-partial-qty-needs-case` — Assignment needs a partial-quantity case.
+- `claims-and-tests-change-together` — A changed behaviour changes its test in one commit.
+- `newer-features-test-proof-only` — Newer features have only test proof.
 
 ## Reference
 
@@ -244,12 +296,15 @@ A fact an agent needs, that argues nothing. Read the CSV record before touching 
 
 - `assets-and-icons` — Icon files and how to export them.
 - `build-and-deploy` — Build, test and deploy commands.
-- `design-language` — The parchment ledger's look and feel.
-- `feature-map` — What each view and control does.
+- `harness-boot-seeds-remote-late` — Boot seeds the remote after the mount.
+- `harness-drives-resume-by-event` — Drive a resume by event, not by waiting.
+- `harness-drives-the-controls` — Tests drive the controls by their labels.
+- `harness-drop-feeds-the-csv` — Tests feed files through the drop handler.
+- `harness-jsdom-setup-gotchas` — The harness supplies what jsdom lacks.
+- `harness-push-race-one-shot` — A push conflict needs a one-shot failure.
+- `harness-waits-past-debounces` — Tests wait past the debounces.
 - `live-verification` — What has run against real GitHub or a real device.
 - `orderwand-csv` — The OrderWand CSV schema and quirks.
-- `test-groups` — What each test group covers.
-- `test-harness` — How to drive the behaviour suite.
 
 ## Open threads
 

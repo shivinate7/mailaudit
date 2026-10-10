@@ -16,6 +16,7 @@ No reader. A test cannot hold this claim, because jsdom has no layout.
 - `text-overflow: ellipsis` does nothing on a flex container. It has to sit on the text child. That child also needs `min-width: 0`, or it refuses to shrink.
 - Measured before this was fixed: a 25-character sort label took its cell from 114px to 182px. It pushed the document to **377px in a 375px viewport**.
 - jsdom has no layout, so **no assertion can catch a regression here**. Re-measure at 375px if you touch it.
+- The Find row holds two cells with `flexShrink: 0`. The search input absorbs the loss. Re-measure at 375px if either label grows.
 
 ## Control height
 

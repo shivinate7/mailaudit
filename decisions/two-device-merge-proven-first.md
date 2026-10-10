@@ -14,6 +14,15 @@ Setup ends with an actual conflict test. It does not end with a successful push.
 
    `file://` and `http://localhost:4173` are two separate origins with two separate ledgers. So they can act as two devices, without a second phone. See "Running it locally".
 
+**Pinned by:** group 34. Its fixture is the real 08-22 state from `git log origin/data`. A phone holds unpushed check-ins and a stale item list. The remote holds the laptop's fresh import.
+
+Mutants confirmed red:
+- a merge that applies the ledger before it downloads photos;
+- a photo phase that surveys the pre-merge reference list;
+- a conflict during the merged push that leaves no button.
+
+Group 40 also kills a quiet merge that announces itself.
+
 ## See also
 
 - `auto-push-safe-as-merge-exists` — why this proof matters before automatic sync runs

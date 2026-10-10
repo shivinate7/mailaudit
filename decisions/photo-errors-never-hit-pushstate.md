@@ -4,6 +4,8 @@ The photo upload phase keeps its own status and its own error table. These are s
 
 **Holds while:** `src/app.jsx` keeps `PHOTO_SAYS` as the photo copy table. Push anyway appears only for `pushState === "conflict"`.
 
+**Pinned by:** 30.11. It is the most valuable assertion in the photo feature. Its mutant lets a photo error escape into the ledger's error path. That would make **Push anyway** appear. A slow upload could then arm a button that overwrites another device's ledger.
+
 ## See also
 
 - `stale-push-conflict-pull-two-tap` — the button this rule protects from a false conflict.

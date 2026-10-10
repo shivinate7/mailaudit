@@ -14,5 +14,5 @@ When you assert that one tier keeps or drops something, make sure that no other 
 
 ## See also
 
-- `version-tiers-are-unioned` — the union design this testing pitfall lives inside
+- `retention-tiers-are-unioned` — the union design this testing pitfall lives inside
 - `testing-chokepoint-two-branches` — a related shape, where one path can hide a mutant on another

@@ -1,6 +1,6 @@
 # Build, test and deploy commands
 
-This file holds the npm scripts, what each asks, and the deploy sequence, plus the Pages queued-workflow quirk.
+This file holds the npm scripts and what each asks. It also holds what the build writes, the deploy sequence, and the Pages queued-workflow quirk.
 
 **Holds while:** `withoutSeed()` in `build.mjs` strips the seed from both sides of `check:build`. `test.yml` never fetches the `data` branch.
 
@@ -18,6 +18,10 @@ npm run check:records # do the records' citations and fences hold?
 npm run check:screens # screen verdicts in a real browser
 npm run deploy        # build + test, then a branch holding only index.html, pushed, with a PR to main
 ```
+
+## What the build writes
+
+`build.mjs` bundles `src/entry.jsx` with esbuild. It inlines the JavaScript into a self-contained `index.html`, with iOS home-screen-app meta tags. `index.html` is the build output, and it is committed to the repo. GitHub Pages serves it at https://shivinate7.github.io/mailaudit/. The owner runs it as an iOS home-screen web app. `dev-server.mjs` is the optional static server behind `npm run serve`.
 
 ## Why check:build ignores the seed, and the Pages quirk
 

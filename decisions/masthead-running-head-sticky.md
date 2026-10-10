@@ -15,6 +15,8 @@ Skip either guard, and the bar can stay invisible, or pin at the wrong time.
 
 Measured at 375px: horizontal overflow 0, switch thirds 114/114/114, all labels fit, and row displacement on pin **0.00px**. The measured row displacement is held at zero by this sticky rule. See `ruled-head-heights`.
 
+**Pinned by:** group 21, which includes 21.7, 21.8 and 21.10. `test/harness.mjs` stubs `IntersectionObserver` and exports `observers`. A test can hand the callback an entry. jsdom has no layout and no real scrolling. So the group verifies only the wiring. It checks that the observer attaches after the loading shell. It checks that the stuck and unstuck condition is right. Whether a real scroller produces those entries is the browser's job.
+
 ## See also
 
 - `ruled-head-heights` — the measured row displacement this sticky rule holds at zero.

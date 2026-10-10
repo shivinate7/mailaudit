@@ -1,0 +1,14 @@
+# The Tally view sorts on six keys
+
+The Tally view sorts its rows on six keys. They are most missing, biggest position, most ordered, dollars remaining, unit rate, and name A to Z.
+
+**Holds while:** the sort table in `src/app.jsx` lists `Most missing`, `Biggest position`, `Most ordered` and `Name A–Z`, among the six.
+
+The order freezes while the user checks cards. The choice persists as `itemSort`. The unit rate sort can disagree with the biggest-position sort, on purpose. See `unit-rate-is-not-the-position`.
+
+## See also
+
+- `no-layout-shift-under-pointer` — why the order freezes while the user checks cards.
+- `saved-state-shape` — where `itemSort` is saved.
+- `unit-rate-is-not-the-position` — why unit rate and position differ.
+- `package-sort-swaps-with-view` — the separate sort the Packages view uses.

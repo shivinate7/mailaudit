@@ -8,6 +8,8 @@ An unreadable local photo store keeps every id, exactly as an unreadable remote 
 
 `applyBackup` keeps every id when the store will not answer. `surveyPhotos` returns `null` rather than planning a sync it cannot survey honestly. The remote half of this rule is pinned by test 26.13b.
 
+Mutant confirmed red: an unreadable store read as empty.
+
 ## See also
 
 - `photo-ids-restore-keep-if-known` — the remote half of the same rule.

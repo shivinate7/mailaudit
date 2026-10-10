@@ -16,6 +16,15 @@ The one exception is a *removed* stamp. It travels as a tombstone and beats an o
 
 `mergeLedger` builds the merged ledger from **named fields**. So a persisted key it does not name is dropped by every merge. The merge applies the result locally as a full replace, and then pushes it. That makes this file a sixth site for `saved-state-shape`, after the five sites in `app.jsx`.
 
+**Pinned by:** groups 33 and 34. Group 33 is pure, like groups 27 and 31. It imports `merge-rules.mjs` directly. A merge that drops lines makes a plausible ledger, not an error. Its symmetry assertions are the ones to keep. Merging A into B and B into A must give the same counts. Merging twice must add nothing. Those two claims show that the merge cannot pick a loser. They also show that a retry after a half-failed sync is harmless.
+
+Mutants confirmed red:
+- `mergeReceived` using incoming-wins instead of `max`;
+- `mergeItems` replacing instead of unioning;
+- an envelope collision that prefers the bigger copy;
+- `mergeLedger` letting the remote's view preferences win;
+- assignment no longer stamping `updatedAt`.
+
 ## See also
 
 - `b64-fails-with-plausible-data` — the same reasoning, on the base64 module

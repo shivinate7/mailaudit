@@ -4,6 +4,8 @@ A jsdom suite cannot see width, shift, or truncation. jsdom has no layout engine
 
 **Holds while:** `jsdom` is a devDependency in `package.json`. `test/harness.mjs` boots the app inside it.
 
+jsdom implements no scrolling. So `scrollIntoView` does not exist, and calling it throws. `test/harness.mjs` stubs it. Group 32's jump therefore asserts on what renders. It does not assert on where the page ends up.
+
 ## See also
 
 - `favicon-is-a-different-drawing` — a rendering claim this limit applies to

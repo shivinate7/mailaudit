@@ -8,6 +8,8 @@ So `useJustBecame` is the load-bearing piece, and it must be protected. The hook
 
 Tests 43.3–43.6. Tests 43.4 and 43.6 are a pair. A mutant that classes the stamp on `done` alone passes the first and dies on the second.
 
+**Fixture note.** The first draft checked the package in under the default Showing. A completed package leaves the list there. So the element under assertion left the page. The group now toggles to Everything first. Group 43 has six assertions, not sixty, by design. Almost nothing about motion can be asserted in jsdom. Durations, easing and the no-reflow claim were settled by measuring a real 375px viewport.
+
 ## See also
 
 - `motion-completed-package-gilded` — one animation this gate protects from replaying.

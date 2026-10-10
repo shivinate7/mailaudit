@@ -8,6 +8,7 @@ Before this change, the region shared a control height and nothing else. It had 
 
 Three ruled cells report the state and open what changes it:
 
+- **Sorted by** opens a panel of options. The app has no `<select>` any more.
 - **Orders from**: the active range. This cell also holds the only figure line in the row, `N lines · M outside`. The other two cells deliberately carry no figure. They would restate the masthead's own tallies, a hundred pixels above.
 
 ## See also

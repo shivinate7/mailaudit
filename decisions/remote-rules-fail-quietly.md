@@ -9,6 +9,12 @@ Two adapter decisions get their own pure functions, in `src/remote-rules.mjs`. B
 
 Both fail quietly when wrong. That is the same reasoning that governs the base64 module (`b64.mjs`). So both stay pure and directly tested.
 
+**Pinned by:** groups 25 to 27. Group 27 imports these functions directly. `entry.jsx` mounts React on import, so the harness cannot reach it. Fetch plumbing can stay uncovered. The status mapping and the sha rule cannot. Mutants confirmed red:
+- `pushBody` always sending a sha;
+- a 403 always reading as a permission problem.
+
+The HTTP round trip itself is still uncovered.
+
 ## See also
 
 - `b64-fails-with-plausible-data` — the same reasoning, on the base64 module

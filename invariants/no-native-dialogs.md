@@ -9,3 +9,6 @@ The main component has four armable controls. Arming one **disarms the others**.
 `PackageCard` has its own local pair for Remove stamp. `EnvelopeCard` has its own local pair for Discard and Assign. Each card runs one timer and has one armed control. The timer clears on unmount.
 
 **Pinned by:** 16.1–16.3 (arming one disarms the other), 26.17–26.19 (Reset and Pull arm; Reset disarms), 39.14–39.15 (a restore arms; Reset arms and takes the row), 41.5 (one tap does not restore a remote version). Nothing pins the ban on `window.confirm` and `alert` itself.
+
+Mutants confirmed red: Pull firing on one tap, arming Pull no longer disarming Reset, and Restore firing on one tap, local or remote (39.14 and 41.5).
+
