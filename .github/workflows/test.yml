@@ -79,3 +79,30 @@ jobs:
       # see check-records.mjs for the five claims this proves.
       - name: the record corpus checks out
         run: npm run check:records --silent
+
+  # Decision screens-checked-headless-in-ci: the screen check runs once, here,
+  # on macOS only (Cochin exists only there), and never at deploy time.
+  # Actions use mutable tags, matching `suite`; pinning both by SHA is a
+  # follow-up.
+  screens:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    # Cancel a superseded run on a PR ref; never cancel a run on main, where
+    # each merge needs its own verdict.
+    concurrency:
+      group: screens-${{ github.ref }}
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: install Chromium
+        run: npx playwright install chromium
+        timeout-minutes: 5
+      - run: npm run build
+      - run: npm run check:screens
