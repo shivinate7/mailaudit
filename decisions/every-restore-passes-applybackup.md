@@ -6,7 +6,7 @@ The file restore and the GitHub pull both pass through one function, `applyBacku
 
 The check `!data.mailday || !Array.isArray(data.items)` is the only thing between a corrupt payload and a wiped ledger. So the check exists once, in `parseLedger`, which `applyBackup` calls.
 
-A restore that would replace pending envelopes shows a replaced-envelopes warning. The warning also covers the pull. A pull is one tap, not a deliberate file drop. So the warning matters more there. Envelopes are hand-typed. Losing them silently is the worst kind of quiet.
+A restore that would replace pending envelopes shows a replaced-envelopes warning. The warning also covers the pull. A pull is a two-tap control, not a deliberate file drop. So the warning matters more there. Envelopes are hand-typed. Losing them silently is the worst kind of quiet.
 
 **Pinned by:** 26.10 pins the warning on a pull.
 

@@ -23,4 +23,4 @@ The other two group 32 mutants are recorded in `order-id-button-stops-propagate`
 - `a-reveal-ignores-hidedone-too` — the rule that a reveal must also ignore `hideDone`.
 - `order-id-button-stops-propagate` — the tap control that starts a Tally reveal.
 - `saved-state-shape` — the five-site rule that does not apply to `revealed`.
-- `tally-counts-ignore-the-filters` — the counts that filters never change.
+- `search-hide-keep-tally-counts` — the counts that search and hide-received never change.

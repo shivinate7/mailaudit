@@ -158,7 +158,7 @@ Packages, Tally and Orphaned read one check-in map. These records say what each 
 - `orphaned-colours-by-meaning` — Orphaned uses colour for the same meanings.
 - `undo-removes-only-its-delta` — Undo subtracts its own delta, not a snapshot.
 - `three-views-share-one-switch` — Three views share one switch.
-- `tally-counts-ignore-the-filters` — Search and hide-received never change shown Tally counts.
+- `search-hide-keep-tally-counts` — Search and hide-received never change shown Tally counts.
 - `tally-row-lists-its-copies` — A Tally row lists every copy it counts.
 - `tally-sort-keys-are-six` — The Tally view sorts on six keys.
 - `package-sort-swaps-with-view` — Package sort swaps with the view.

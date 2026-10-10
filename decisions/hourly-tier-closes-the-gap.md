@@ -1,6 +1,6 @@
 # The hourly tier closes a gap
 
-The ring keeps the newest 20 versions. That covers ten to thirty minutes of dense work before it churns out. The day anchor covers this morning. Neither covers the hour before that. The hourly tier keeps one anchor per hour for 24 hours. See `anchor-is-the-earliest-record` for which version each anchor is. Without it, the answer to "put it back to how it was at 11am" would be "you cannot".
+The ring keeps the newest 20 non-milestone versions. That covers ten to thirty minutes of dense work before it churns out. The day anchor covers this morning. Neither covers the hour before that. The hourly tier keeps one anchor per hour for 24 hours. See `anchor-is-the-earliest-record` for which version each anchor is. Without it, the answer to "put it back to how it was at 11am" would be "you cannot".
 
 **Holds while:** `hourHours` is 24 in `RETENTION`, and `keptIds` in `src/version-rules.mjs` keeps `hourAnchors(today)`.
 

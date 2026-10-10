@@ -13,6 +13,6 @@ The unit rate is explained in `unit-rate-is-not-the-position`.
 ## See also
 
 - `unit-rate-is-not-the-position` — the rate the collapsed row shows.
-- `tally-counts-ignore-the-filters` — the counts the row shows, filtered or not.
+- `search-hide-keep-tally-counts` — the counts the row shows, whatever search and hide-received hide.
 - `card-tally-row-counts-first` — the order of the row's meta line.
 - `search-filters-inside-package` — how a copy's order id reveals its whole order.
