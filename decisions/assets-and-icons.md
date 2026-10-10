@@ -2,6 +2,8 @@
 
 This file holds where the icon assets live, where the master and the generator sit, and the exact export commands. Read it before touching any icon file.
 
+**Holds while:** `build.mjs` links the three icon files with relative `href` values. `icon/gen-icon.py` defines `favicon_svg()`.
+
 ## Where the icon files live
 
 `apple-touch-icon.png` (180×180), `favicon.svg` and `icon-32.png` are committed at the repo root. The `<link>` tags in the `build.mjs` head template reference them. The 1024 master and the generator live in `icon/`. Running `python3 icon/gen-icon.py` rewrites both the master SVG and `favicon.svg`. That file's docstring has the exact Chrome and `sips` commands to re-export the PNGs. The generator uses only the standard library. It never runs during build or test.

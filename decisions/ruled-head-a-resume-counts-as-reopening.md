@@ -2,6 +2,8 @@
 
 An iOS home-screen app is usually backgrounded, not closed. The page survives. So waiting for a remount meant that only WebKit evicting the page reset Showing. That can take days.
 
+**Holds while:** `RESUME_RESET_MS` is `60_000` in `src/app.jsx`, and the resume handler resets Showing only after that absence. Tests 12.8 and 12.9 cover both sides.
+
 A `visibilitychange` listener resets Showing when the app comes back after `RESUME_RESET_MS` (60s) away. The threshold is the whole design. A hop out to read a tracking number and straight back is the same session. Flipping the list under a thumb mid-check-in is exactly the mis-tap that invariant 5 exists to prevent.
 
 Two things happen on the same resume. Showing resets, and an ahead remote is merged in. These are two results of one finding. They land seconds apart. The reset is synchronous. The merge runs after a network round trip. Two reshapes of the same list on one resume are fine. The reason is that it is a resume, so nothing is under the pointer.

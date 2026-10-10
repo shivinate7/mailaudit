@@ -2,6 +2,8 @@
 
 This file holds the npm scripts, what each asks, and the deploy sequence, plus the Pages queued-workflow quirk.
 
+**Holds while:** `withoutSeed()` in `build.mjs` strips the seed from both sides of `check:build`. `test.yml` never fetches the `data` branch.
+
 ## The npm scripts
 
 ```

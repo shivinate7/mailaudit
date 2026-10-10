@@ -2,6 +2,8 @@
 
 This record covers the file notes, typography, and colour semantics of the app. The palette and card geometry rules are listed under See also. The motion rules are cited in the section below. Read this record for what a control looks like.
 
+**Holds while:** the `C` palette object and the `cochin` constant are in `src/app.jsx`. No `sans` constant is defined there.
+
 ## Files
 
 - `build.mjs` bundles the entry file with esbuild. It inlines the JavaScript into a self-contained `index.html` with iOS home-screen-app meta tags. It also bakes in **the public seed**. The seed comes from `git show ledger/data:ledger.json`, reduced to `SEED_KEEP`. The build gzips it, base64 encodes it, and writes it into a `<script id="seed">`.
