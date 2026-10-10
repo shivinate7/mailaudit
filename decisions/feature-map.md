@@ -155,6 +155,8 @@ File management is not a filter. Earlier, the row used a different idiom. Three 
 
 The separation is now kept by treatment. The head cells are label-over-value state. The action row is bare uppercase actions. A thin rule above the row divides the two.
 
+Group 36 pins this row. Tests 36.1 to 36.4 check that an armed Reset takes the row, and that the other cells step out. Tests 36.5 to 36.7 check that an odd cell count in the Sync grid spans its last cell. Test 36.8 checks that the token field is 16px.
+
 The row is styled as `.mdl-acts` in the `<style>` tag, not as inline styles. Its membership is conditional. It has one cell on an empty ledger, three with a remote, and four without. So the columns come from `grid-auto-flow: column`. The divider is each cell's own right rule, with `:last-child` dropped. "Last" cannot be a prop the way `headCell`'s is.
 
 Sync carries the only caret. It turns accent while it is open. If `peek()` says the other device is ahead, the whole cell turns accent. Color does this rather than a badge, because the cell is one third of 375px.

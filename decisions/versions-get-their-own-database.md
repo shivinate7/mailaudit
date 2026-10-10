@@ -14,6 +14,6 @@ The ledger and the photos must also stay apart, for a different reason. The ledg
 
 ## See also
 
-- `version-tiers-are-unioned` — the retention rule that decides what this database keeps
+- `retention-tiers-are-unioned` — the retention rule that decides what this database keeps
 - `storage-split-three-adapters` — the split this database is one third of
 - `single-file-architecture` — the platform layer file this database lives behind

@@ -9,5 +9,5 @@ A test that pushes twice must match `/^Push(ed ✓)?$/`. Both buttons stay disab
 ## See also
 
 - `photo-errors-never-hit-pushstate`, the photo phase's own status.
-- `two-device-merge-proven-first`, the merge that shares the flash.
+- `two-device-merge-proven-first`, the two-device check. Merge & push ends in the same flash.
 - `merge-readopts-sync-generation`, the guard that lets the flash run after a merge.

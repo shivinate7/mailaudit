@@ -4,7 +4,7 @@
 
 **Holds while:** `remote.pushFailOnce` in `test/harness.mjs` is cleared after one push, and the pull path does not read it.
 
-The one-shot models the real race. The remote moves between the `peek` and the `PUT`. The mock also runs the real sha check. It compares `remote.sha` with the sha this device sends.
+The one-shot models the real race. The remote moves between the `peek` and the `PUT`.
 
 ## See also
 

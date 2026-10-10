@@ -10,4 +10,4 @@ Build an `Event("drop")`. Attach the files with `Object.defineProperty` as `data
 
 - `harness-jsdom-setup-gotchas`, the other jsdom limits a test meets.
 - `orderwand-csv`, the file format `csv()` builds.
-- `two-device-merge-proven-first`, the merge that a restored file can feed.
+- `two-device-merge-proven-first`, the two-device check. A dropped CSV is an import, which merges. A dropped backup is a restore, which replaces.

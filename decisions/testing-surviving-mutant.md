@@ -8,6 +8,8 @@ A fixture that ends with both ends in step cannot expose a signal left unconsume
 
 Selecting a commit by `message.split(" ")[0]` picks the newest row. Every push message starts with `ledger`, so that selector restores the version the app already has. Group 41 first selected a commit this way, and its test passed while proving nothing.
 
+A fixture can also let a mutant pass for the wrong reason. Test 37.40 sorts a refunded package under Newest. There, the mutant that builds `packageOrder` from `packages` gives the wrong order. Under Oldest, the same mutant gives the right order by coincidence. So pick the case where the mutant's answer differs.
+
 When a mutant survives, look for the state your fixtures never reach.
 
 ## See also

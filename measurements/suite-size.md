@@ -10,7 +10,7 @@ The harness bundles `app.jsx` with esbuild. It sets `platform: "node"` and `form
 
 ## How to re-measure
 
-Run `npm test` and read its own summary line for the assertion count. A passing run prints `548 passed, 0 failed` and `all green`. Checked after a fresh `npm ci`. The bare name `harness.mjs` refers to `test/harness.mjs`. Time the run with the shell's own timer. Expect a run near 60 seconds, because groups 30 to 31 hold real-timer waits on purpose.
+Run `npm test` and read its own summary line for the assertion count. A passing run prints `548 passed, 0 failed` and `all green`. Checked 2026-10-10 after a fresh `npm ci`. The bare name `harness.mjs` refers to `test/harness.mjs`. Time the run with the shell's own timer. Expect a run near 60 seconds, because groups 30 to 31 hold real-timer waits on purpose.
 
 ## Reader
 

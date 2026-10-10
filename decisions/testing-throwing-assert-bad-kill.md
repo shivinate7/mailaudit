@@ -7,4 +7,4 @@ A test that throws on a mutant is worse than one that fails cleanly. Three of gr
 ## See also
 
 - `testing-unfailable-assert-decor` — the neighboring failure mode of a weak assertion
-- `version-tiers-are-unioned` — the version suite where the guarded reads live
+- `milestones-taken-before-risk` — group 39, the version suite where the guarded reads live
