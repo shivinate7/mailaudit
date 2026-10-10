@@ -2,7 +2,7 @@
 
 A fully passing suite proved nothing about the single most important scenario. Every test booted a ledger that already held data. The Pull control was unreachable on an empty ledger. That is the exact case a fresh device needs it for.
 
-Group 28 found this bug. A live check of the deployed page surfaced it. The suite was all green, and the feature was still broken in its most important scenario. A green run covers only the states its fixtures actually build.
+Group 28 now pins this bug. A live check of the deployed page found it. The suite was all green, and the feature was still broken in its most important scenario. A green run covers only the states its fixtures actually build.
 
 ## See also
 

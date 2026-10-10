@@ -1,6 +1,6 @@
-# Every color token meets a contrast floor
+# Every colour token meets a contrast floor
 
-The app defines one fixed set of color tokens, each with a named role. Every token that carries information clears a 4.5 to 1 contrast ratio. The palette-contrast record holds the measured ratio for each token.
+The app defines one fixed set of color tokens, each with a named role. Every token that carries information clears a 4.5 to 1 contrast ratio. The `palette-contrast` record holds the measured ratio for each token.
 
 | token | hex | role | contrast |
 |---|---|---|---|

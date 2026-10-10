@@ -10,7 +10,7 @@ Auto-push is the one item here with a *field* record, and it is a bad one. Its f
 
 Treat the rest of this list as genuinely unproven, not merely untested. The camera path in particular has never run on a real iPhone, and neither has the resume reset. jsdom can prove that the listener is wired and the arithmetic is right. Whether iOS fires `visibilitychange` on a home-screen app's return is WebKit's call.
 
-Real requests have reached GitHub. The data branch has taken real authenticated pushes, and the keyless refusal path has run from the deployed page. The push and pull paths are still covered mainly by the harness mock. The photo PUT, the photo pull that returns bytes, and the ledger conflict have never run against real GitHub. See "Known open threads" for exactly what that leaves unproven.
+Real requests have reached GitHub. The data branch has taken real authenticated pushes, and the keyless refusal path has run from the deployed page. The push and pull paths are still covered by the harness mock and by hand against the built page. The photo PUT, the photo pull that returns bytes, and the ledger conflict have never run against real GitHub. See "Known open threads" for exactly what that leaves unproven.
 
 ## Feature map (all implemented)
 
@@ -120,10 +120,10 @@ The merge's ordering matches the one `doPull` depends on. **Photos are fetched b
 
 Earlier, the photos and the ledger were in two repos. Privacy was the whole reason for that. A mailing label carries a delivery address. The ledger repo was public. That reason ended when the ledger repo went private. The merge happened when `mailaudit` went public. The ledger had to leave it regardless. The merge buys **one repo in the token's blast radius instead of two**. `shivinate7.github.io` is a single origin across every Pages project. So the mitigation for a readable token is the fine-grained, Contents-only scope, which is now genuinely single-repo.
 
-Two earlier reasons for separate repos are retired. One applied only to the opposite merge. The other is now paid in code.
+The privacy argument for separate repos is retired. Two other reasons outlived it. One applied only to the opposite merge, so it is retired too. The other is still live, and the code handles it.
 
 - "Git is permanent while the app repo is the one you clone" argued against photos landing in `mailaudit`. The ledger moved *into* the photo repo, so `mailaudit` got smaller, not bigger. This argument never applied to this direction.
-- "**GitHub's 409 on rapid successive Contents writes is per-repo**" is real and still true. That is why `push()` now `await`s `spaceWrites()`, the same 1s clock that `pushPhoto` has always used. Before the merge, the ledger PUT could skip it, because it was the only write its repo ever saw. `app.jsx` pushes the ledger, then immediately loops photo uploads. **Remove that call, and the first photo of every push 409s.** The separate error tables still matter for the same reason they always did. A throttled photo must never reach `pushState`. `pushState === "conflict"` is the only gate on Push anyway.
+- "**GitHub's 409 on rapid successive Contents writes is per-repo**" is still live, and the code handles it. That is why `push()` now `await`s `spaceWrites()`, the same 1s clock that `pushPhoto` has always used. Before the merge, the ledger PUT could skip it, because it was the only write its repo ever saw. `app.jsx` pushes the ledger, then immediately loops photo uploads. **Remove that call, and the first photo of every push 409s.** The separate error tables still matter for the same reason they always did. A throttled photo must never reach `pushState`. `pushState === "conflict"` is the only gate on Push anyway.
 
 Push and Pull each do both legs in one tap. The ledger goes first, and the photos go after.
 
@@ -137,8 +137,10 @@ The whole algorithm is a **set difference over ids**. A photo file is immutable 
 
 ## The ruled head
 
-Three ruled cells report state and open what changes it. Showing is one of them. Sorted by is another.
+Three ruled cells report the state and open what changes it.
 
+- **Orders from** shows the active range. It is the only cell with a figure line, `N lines · M outside`. The other two cells carry no figure. They would restate the masthead's own tallies a hundred pixels above.
+- **Showing** is the old "Hide received" button, said as state (`○ Everything` / `● Unreceived`) rather than as an instruction. It starts on `● Unreceived` on every load. It is not persisted.
 - **Sorted by** opens a panel of options. The app has no `<select>` any more.
 
 Next is a **Find** row. It carries search. The canceled reference sits beside it, as another ruled cell. It is not an underlined link floating on its own line. Beside that is the `N stamped` filter, in the same cell style. It uses `○/●` and `aria-pressed`, not the canceled cell's caret. The reason is that it is a filter state, the Showing cell's idiom, not a disclosure. The row now holds two `flexShrink: 0` cells, and the search input absorbs the loss. Re-measure at 375px if either label grows.
