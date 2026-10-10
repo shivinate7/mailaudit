@@ -6,7 +6,7 @@ This file is the coverage map. It lists what each numbered test group proves, an
 
 Group 42 covers the save indicator's reserved slot. It is the smallest group, and it can prove the least. The defect is a layout shift. jsdom has no layout, so no assertion in this suite can catch one. The measurements are in `masthead-the-save-slot-is-reserved`. Group 42 pins the mechanism underneath. It checks each place where that mechanism could regress without looking wrong.
 
-42.2 covers a mistake made on the first attempt. That attempt reserved the slot's width and left the slot empty. That fixes nothing. An empty flex item is zero pixels tall. A line that holds only that item collapses. 42.3 keeps working as the app changes. It drives the store into failure, to reach the longest of the three messages. It asserts that the message fits the reserved width, counted in the `ch` that the reservation uses. So a longer message turns the suite red. Nothing here asserts that the reservation's size is right. Only a viewport can say that.
+42.2 covers a mistake made on the first attempt. That attempt reserved the slot's width and left the slot empty. That fixes nothing. An empty flex item is zero pixels tall. A line that holds only that item collapses. 42.3 keeps working as the app changes. It drives the store into failure, to reach the longest of the three messages. It asserts that the message fits the reserved width, counted in the `ch` that the reservation uses. So lengthening that copy without widening the slot turns the suite red, rather than quietly reintroducing the shift. Nothing here asserts that the reservation's size is right. Only a viewport can say that.
 
 Group 43 is the joy pass. It has six assertions, not sixty, by design. Almost nothing about motion is assertable here. jsdom has no layout and no compositor. Durations, easing, distances and the no-reflow claim were settled by measuring a real 375px viewport. A test that pretended otherwise would be decoration. What remains is two claims that are behaviour. Both fail silently.
 
@@ -80,12 +80,12 @@ Mutation-tested, all confirmed to turn the suite red:
 - `freshSession` starting false;
 - the load control fetching nothing.
 
-Four method notes are worth keeping. Each one was learned the hard way.
+Four method notes are worth keeping. Each one was learned the hard way. Three of them have their own records, linked here.
 
-- Group 38's own assertions were wrong four separate times, always the same way. A tier's fixture must neutralise every other tier. Otherwise another tier decides the assertion. The day anchor keeps records that the recent ring drops. That is the union working, not the ring failing. A small fixture never saturates the ring. A record three hours old is also today's earliest. So the day tier keeps it, with or without an hourly tier. Deleting the hourly tier left the suite green. It stayed green until the fixture gained an earlier record, to take the day anchor off that record. For any assertion about one tier, check that no other tier decides the result.
+- `testing-one-tier-must-not-decide-another`: group 38's own assertions were wrong four separate times, always the same way.
 - **38.9's first draft could not fail at all.** `dayKey("2026-05-01T00:30")` is `"2026-05-01"` under the UTC reading too. The test now derives the boundary from the runner's own `getTimezoneOffset()`. It skips itself in UTC, where there is nothing to claim.
-- An assertion that throws is a worse kill than one that fails. Three of group 39's mutants died by `JSON.parse(null)` inside the test file. That aborts a top-to-bottom suite with no isolation, and it masks every group after it. Those reads are guarded now: `beforeReset && JSON.parse(...)`.
-- One mutant survived the first draft of group 40. The mutant was "the signal is never consumed". All fifteen assertions passed. Each one ended with the two ends in step. No further merge is possible there, so a flag left standing costs nothing. The untested state was a different one. `check()` re-runs on every `syncBusy` flip, not only on visibility. So an unconsumed flag lets the other device's push land mid-session, with no resume in sight. 40.12–40.13 pin it. A surviving mutant points to a state that your fixtures never reach. Look for that state. Group 41's first draft had a related fault. It matched the older commit by `message.split(" ")[0]`. Every push message starts with `ledger`. So it selected the newest row, and restored the version the app already had. It passed, and it proved nothing.
+- `testing-an-assertion-that-throws-is-a-worse-kill`: three of group 39's mutants died by `JSON.parse(null)`. The reads are guarded now as `beforeReset && JSON.parse(...)`.
+- `testing-when-a-mutant-survives-find-the-unreached-state`: group 40's mutant, "the signal is never consumed", survived the first draft. 40.12–40.13 pin it. Group 41's first draft matched `message.split(" ")[0]`.
 
 ## Groups 37, 36, 35, 33 to 34, 20, 21, 25 to 27 (feature and adapter groups)
 
