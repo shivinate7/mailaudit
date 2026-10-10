@@ -2,6 +2,8 @@
 
 Settle motion claims by measuring, not by reading. If a claim changes, re-measure it. Do not re-reason it.
 
+**Holds while:** `jsdom` is a devDependency in `package.json`, and `test/app.test.mjs` runs group 42 in it.
+
 jsdom has no layout and no compositor. So durations, easing, distances, and the no-reflow claim are not assertable, and no test protects them. Test group 42 pins only the two claims that are behaviour.
 
 If the Browser pane is not compositing, it freezes animation timelines. That makes sampled mid-animation values read as frozen. To read a value, pause with `getAnimations()` and set `currentTime`. Do not sample frames, because the numbers will be wrong.

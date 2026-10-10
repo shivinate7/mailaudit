@@ -2,6 +2,8 @@
 
 This file draws the line between proven and unproven. It lists what has run against the live GitHub API and a real device. It also names what has not. Read it before you claim a path is safe. Keep the split exactly as this file draws it.
 
+**Holds while:** the repo `mailaudit-data` is private. An anonymous request gets 404 for it, gets 200 for `mailaudit`, and the Pages site answers 200. Checked 2026-10-10.
+
 ## The GitHub backup one-time setup
 
 The target is `shivinate7/mailaudit-data`. The ledger lives on branch **`data`**, in the file `ledger.json`. The photos live on branch **`main`**, in the directory `photos/`. Two constant objects sit at the top of the `window.remote` block in `entry.jsx`.

@@ -2,6 +2,8 @@
 
 The `data` branch in `mailaudit-data` already exists. It carries the ledger's full history: 130 commits at the time of the move. Its tip blob is identical to the old repo's. Blob shas are content-addressed. So no device needed re-keying.
 
+**Holds while:** the private repo `mailaudit-data` has a `data` branch that holds `ledger.json`, and `REMOTE.branch` in `src/entry.jsx` is `data`.
+
 If the branch must be recreated, it starts as an orphan branch with one empty commit. It must never merge into `main`. To recreate it from scratch, run:
 
 ```bash

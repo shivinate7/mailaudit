@@ -2,6 +2,8 @@
 
 The base64 helpers for the Contents API get their own file, `src/b64.mjs`. A JPEG pushed through the wrong text path does not error. It silently produces corrupted bytes of the wrong length. That failure is worse than a thrown error, so the code stays pure and tested on its own. `entry.jsx` cannot load in a test, so the platform file cannot make this claim.
 
+**Holds while:** `src/b64.mjs` exports `utf8ToBase64` and `blobToBase64` as separate functions. Test 31.21 in `test/app.test.mjs` asserts the JPEG case.
+
 - `bytesToBase64` is the shared core.
 - `utf8ToBase64` and `base64ToUtf8` are the ledger's text path.
 - `blobToBase64` is the photo path.

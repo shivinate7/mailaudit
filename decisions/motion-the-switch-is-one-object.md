@@ -2,6 +2,8 @@
 
 The active-view fill is a single element that slides between thirds. Three buttons never light up on their own.
 
+**Holds while:** `.mdl-thumb` is the only element that paints the active view. `data-view` is set on `.mdl-switch` in `src/app.jsx`. Tests 43.1 and 43.2 pin `data-view`.
+
 `.mdl-thumb` is the violet fill. It is absolutely positioned at exactly a third of the track. It translates by whole multiples of its own width, so it lands on the thirds the grid already defines. It cannot drift out of step with them.
 
 The buttons paint no background of their own. A button that did would leave a fill behind wherever the thumb had just been. There would be two fills mid-slide.

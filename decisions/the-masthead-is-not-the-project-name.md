@@ -2,6 +2,8 @@
 
 The app presents itself as **MANIFEST**, under a C.H Postal Company letterhead. The project name stays Mail Day Ledger. The repo keeps `mailaudit`, and the storage namespace keeps `mailday:`. None of those may follow the masthead. See invariant 1. Real check-in data sits under those keys.
 
+**Holds while:** `build.mjs` sets the page title to `Manifest` and the iOS title to `Mail Day`, and `STORAGE_KEY` in `src/app.jsx` is `mailday:v1`.
+
 The browser `<title>` in `build.mjs` is "Manifest". The `apple-mobile-web-app-title` stays "Mail Day" on purpose. iOS bakes that label in at install time. Changing it forces a delete and re-add of the home-screen icon. This mismatch is intentional. Do not fix it without asking.
 
 ## See also
