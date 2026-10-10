@@ -1,19 +1,12 @@
 # Disclosure panels carry no fill
 
-The disclosure panels hold only padding and a top hairline, never a background fill. A filled panel created edges that clashed with the app's own rounded-card surfaces, and it contradicted the ruled region's own thesis. The option grids still read as raised, because their own cells paint a surface over the panel's rule.
+The disclosure panels hold only padding and a top hairline. They never carry a background fill. The option grids still read as raised, because their own cells paint a surface over the panel's rule.
 
-## The argument, as recorded
+## The reason
 
-```
-**The disclosure panels carry no fill.** `panelWrap` is padding plus a top
-hairline and nothing else. It used to set `background: C.card`, which painted a
-beige rectangle ruled top and bottom whose left and right edges simply stopped —
-square-cornered and full-bleed to the column, in an app where every other filled
-surface is a rounded inset card. The fill was the only thing creating an edge to
-resolve, and it contradicted the region's own thesis. Don't reintroduce it: the
-option grids still read, because `optGrid` paints `line` and each `optCell`
-paints `card` over it, so the cells sit slightly raised against the page.
-```
+`panelWrap` is padding plus a top hairline and nothing else. Do not set `background: C.card` on it. A fill would paint a beige rectangle, ruled top and bottom. Its left and right edges would simply stop. The edges would be square-cornered and full-bleed to the column. In this app every other filled surface is a rounded inset card. The fill would be the only thing creating an edge to resolve. It would contradict the ruled region's own thesis.
+
+Do not reintroduce the fill. The option grids still read, because `optGrid` paints `line` and each `optCell` paints `card` over it. The cells sit slightly raised against the page.
 
 ## See also
 

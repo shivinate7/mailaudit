@@ -2,40 +2,25 @@
 
 The action row's buttons change on the same tap that changes the card. The row reserves the tallest height any combination of buttons can need. One width still shifts by a smaller amount. The card-reserved-geometry record has the exact heights per width. The app leaves that gap alone, because the width falls below its own stated floor.
 
-## The argument, as recorded
+## Why the row reserves its tallest state
 
-```
-**The action row is reserved at its tallest state** (`BULK_ROW_H`, 44px of
-content). Its membership changes on the same tap — "Clear check-ins" joins
-"Stamp" and "Mark all received" — and at 375px those three want 60.6 + 143.7 +
-129.9 plus two 8px gaps = **350px in the 313px a card gives them**, so both bulk
-labels wrap to a second line and the row goes 31px → 44px. It shrinks by the
-same 13px on the tap that *completes* a package, where "Mark all received"
-leaves; reserving the tallest state pins both transitions at once. A counted
-constant exactly like the save slot's 13ch, and stale the same way — two lines
-of 11.5px mono plus `miniBtn`'s 8px padding. **The Tally card's row is
-deliberately NOT reserved**: it has no Stamp button, so its two buttons are
-282px of the same 313px, neither wraps, and it is one line in every state. Add a
-third control there and reserve it then, measuring rather than assuming 44 fits.
+The row is reserved at its tallest state, `BULK_ROW_H`, which is 44px of content. Its membership changes on the same tap. "Clear check-ins" joins "Stamp" and "Mark all received". At 375px those three want 60.6 + 143.7 + 129.9 plus two 8px gaps. That is **350px in the 313px a card gives them**. Both bulk labels wrap to a second line, and the row goes from 31px to 44px. It shrinks by the same 13px on the tap that *completes* a package, where "Mark all received" leaves. Reserving the tallest state pins both transitions at once.
 
-Measured on the built page against the seeded ledger, rest → first check-in →
-second → the tap that completes the package: **card height constant at 347.09px
-and every item row displaced 0.00px**, horizontal overflow 0 in every state; the
-Tally card likewise **496.09px constant, 0.00px shift**. Row content needed
-against the 44 reserved, by width: 57 at 320px, 44 at 360 / 375 / 390, 31 at 430
-and 760.
+This is a counted constant, like the save slot's 13ch. It goes stale the same way: two lines of 11.5px mono plus `miniBtn`'s 8px padding.
 
-**So 320px is the one width this does not fully fix** — three buttons wrap to a
-*third* line there and the row still steps 13px (the bar half is
-width-independent, so 320 improves from 28px to 13px). Left deliberately: 320 is
-below this file's own stated 380px floor and is not a viewport current iOS runs,
-and reserving 57 would buy it by spending 26px of dead space in every expanded
-card at the widths that are real. If it is ever wanted, the way to get it
-without the dead space is to keep all three buttons mounted and hide the
-inapplicable one — the row then measures itself at every width — at the cost of
-the visible label wrapping at rest, which is a look and therefore a decision to
-put to the owner rather than a fix to apply.
-```
+The Tally card's row is deliberately not reserved. It has no Stamp button. Its two buttons are 282px of the same 313px. Neither wraps, so it is one line in every state. If a third control is added there, reserve it then. Measure rather than assume that 44px fits.
+
+## Measurements
+
+Measured on the built page against the seeded ledger. The steps are rest, first check-in, second check-in, and the tap that completes the package. Across those steps, **card height is constant at 347.09px and every item row is displaced 0.00px**. Horizontal overflow is 0 in every state. The Tally card is likewise **496.09px constant, 0.00px shift**.
+
+Row content needed against the 44 reserved, by width: 57 at 320px, 44 at 360 / 375 / 390, 31 at 430 and 760.
+
+## The 320px exception
+
+**320px is the one width this does not fully fix.** Three buttons wrap to a *third* line there, and the row still steps 13px. The bar half is width-independent, so at 320px the shift falls from 28px to 13px. This is left deliberately. 320px is below the app's stated 380px floor. It is not a viewport that current iOS runs. Reserving 57px would fix 320px by spending 26px of dead space in every expanded card at the widths that are real.
+
+If the fix is ever wanted, get it without dead space. Keep all three buttons mounted and hide the inapplicable one. The row then measures itself at every width. The cost is that the visible label wraps at rest. That is a look, so it is a decision for the owner, not a fix to apply.
 
 ## See also
 
