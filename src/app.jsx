@@ -28,7 +28,7 @@ const C = {
   inkSoft: "#6E6379",
   line: "#DCCDB6",
   /* ornamental rules and the masthead's secondary metal. Never used for text on
-     `card` — it only clears 2.2:1 there. Ornament and fills only. */
+     `card` — it only clears 2.09:1 there. Ornament and fills only. */
   gold: "#C9A961",
   /* the empty half of a progress bar. Antique silver rather than `line` — the
      one cool value in the theme, chosen for the struck-coin read. Note `line`
@@ -1732,7 +1732,7 @@ const RANGES = [
    values. This is that vocabulary continued — no boxes, no radii, no fills
    except the one accent that means "active" everywhere else in the app.
    Rules are `line`, NOT `gold`: gold is masthead ornament and fails for
-   anything carrying information (2.2:1). */
+   anything carrying information (2.09:1). */
 const RULE = { height: 1, background: C.line };
 const RULE_THIN = { height: 1, background: C.line, opacity: 0.55 };
 
