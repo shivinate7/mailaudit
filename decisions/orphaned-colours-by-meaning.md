@@ -2,13 +2,15 @@
 
 Orphaned uses the app's colour meanings. Manila marks advisory items. Green marks an exact match or a check-in. Red marks a destructive control.
 
-Manila marks advisory items in Orphaned. These are the ambiguity warning, the "as typed" row in the composer, and the "no outstanding copy" tag.
+In Orphaned, manila marks the ambiguity warning, the "as typed" row in the composer, and the "no outstanding copy" tag. Manila also fills a photo tile while its image loads. That fill is a placeholder, not an advisory.
 
-Green marks an exact match, and the armed check-in confirm. The Undo notice, which reports a check-in, also uses green.
+In Orphaned, green marks an exact match, the armed check-in confirm, and the Undo notice that reports a check-in. The Undo notice uses the shared `Notice` component, which is green in every view.
 
-Red marks a destructive control. In Orphaned, these are Discard, and the composer's Remove photo control.
+In Orphaned, red marks Discard, and the Remove photo control in the composer.
 
-**Holds while:** `EnvelopeCard` in `src/app.jsx` paints Discard with `C.red`, and `EnvelopeComposer` paints its "as typed" row with `C.manila`.
+Open: the owner has not ruled whether green and red stay scarce in Orphaned. Until a ruling, the list above is what the code paints.
+
+**Holds while:** `EnvelopeCard` in `src/app.jsx` paints Discard with `C.red`. `PhotoStrip` paints Remove photo with `C.red`, and only `EnvelopeComposer` passes it `onRemove`. `Notice` paints `C.greenSoft` with a `C.green` border. The exact-match text and the armed check-in button paint `C.green`. `EnvelopeComposer` paints its "as typed" row with `C.manila`.
 
 ## See also
 

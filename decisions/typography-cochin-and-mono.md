@@ -12,5 +12,4 @@ The root element sets `fontFamily: cochin`. Every element inherits that font. Fo
 
 - `design-view-switch-equal-thirds` — the one exception to mono for numbers, the outstanding pill.
 - `design-form-controls-no-inherit` — form controls need their own font rule.
-- `design-parchment-ledger` — the palette these fonts are set on.
 - `masthead-is-one-letterhead` — MANIFEST is set in Cochin caps.
