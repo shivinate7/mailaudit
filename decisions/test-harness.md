@@ -4,7 +4,7 @@ This record holds the harness mechanics. It covers how `test/harness.mjs` mocks 
 
 ## The suite and the harness, in outline
 
-`npm test` runs 541 assertions. It has no test framework, and it takes about 60s. Groups 30–31 spend a few seconds in real timers, on purpose. The sweep race can only be reached by letting the clock run.
+`npm test` runs 548 assertions. It has no test framework, and it takes about 60s. Groups 30–31 spend a few seconds in real timers, on purpose. The sweep race can only be reached by letting the clock run.
 
 `test/app.test.mjs` runs top to bottom. It either prints "all green" or exits 1. `test/harness.mjs` holds the jsdom setup, the storage mocks, the DOM helpers, and the fixture.
 
