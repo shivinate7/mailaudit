@@ -2,6 +2,8 @@
 
 The control region uses the masthead's own vocabulary. It has hairline rules and uppercase mono micro-labels over Cochin values. It has no boxes and no fills. The only fill is the accent that means "active" everywhere else in the app.
 
+**Holds while:** `src/app.jsx` labels the first head cell "Orders from" and shows a count of lines outside the range.
+
 Before this change, the region shared a control height and nothing else. It had two radii (999px chips beside 8px rects), two font families and three type sizes. It also had a native `<select>` that drew its own caret. Its native date pair rendered grey `mm/dd/yyyy` in the system font, on a parchment page.
 
 Three ruled cells report the state and open what changes it:

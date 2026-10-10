@@ -4,6 +4,8 @@
 
 No path ever deletes a remote photo. Discard, the sweep, and `resetAll` all stop at the device boundary. Git history would keep the blob even if the tip did not. So a label from an envelope you discarded stays in the private repo forever.
 
+**Holds while:** `src/entry.jsx` makes no DELETE request to GitHub. Adding one closes this record.
+
 A `DELETE` path is easy to add. It costs a fourth content-generating request class and a new destructive control. Accepting the permanence is the better trade.
 
 The same fact has an upside. Reset is survivable for photos. `resetAll` keeps the token and the sha, so a Pull brings the ledger and the photos back.

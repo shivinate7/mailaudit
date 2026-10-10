@@ -2,6 +2,8 @@
 
 Setup ends with an actual conflict test. It does not end with a successful push. The two steps below are part of the one-time setup.
 
+**Holds while:** `src/app.jsx` has no auto-push toggle, and the conflict control reads "Merge & push".
+
 5. In the app: Sync → paste → Save key → Push. Expect `Pushed ✓`. Check that `mailaudit` gained no commit at all. With photos in the ledger, expect `mailaudit-data` to gain one commit per photo on `main`. The button stays on `Pushing…` until they are done. Each takes roughly a second. The ledger and the photos share one repo's write budget and one `spaceWrites()` clock.
 
    Then run the test worth doing. Pull onto a second device or origin, and confirm the thumbnails render. This is the one path where a wrong order fails silently. The ledger comes back looking perfect, with every photo id quietly stripped.
