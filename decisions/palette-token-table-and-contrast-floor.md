@@ -2,6 +2,8 @@
 
 The app defines one fixed set of color tokens, each with a named role. Every token that carries information clears a 4.5 to 1 contrast ratio. The `palette-contrast` record holds the measured ratio for each token.
 
+**Holds while:** the `C` object at the top of `src/app.jsx` defines each hex value in the table below.
+
 | token | hex | role | contrast |
 |---|---|---|---|
 | `paper` | `#F2E9DA` | the page | — |

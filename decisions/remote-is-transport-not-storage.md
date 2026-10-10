@@ -2,6 +2,8 @@
 
 `window.remote` is transport, not storage. It carries photos as well as the ledger, to a second, private repo. It still speaks only ids and blobs. `app.jsx` never learns a filename. It never learns the string `"ledger.json"` either. The naming rules live in `src/photo-rules.mjs`. Only `entry.jsx`, the platform layer, imports them.
 
+**Holds while:** only `src/entry.jsx` imports the naming helpers from `src/photo-rules.mjs`, `src/app.jsx` never contains `ledger.json`, and `window.storage` uses localStorage.
+
 localStorage remains the source of truth. The GitHub copy is a backup, so the app works fully offline.
 
 ## See also

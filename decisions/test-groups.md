@@ -2,6 +2,8 @@
 
 This file is the coverage map. It lists what each numbered test group proves, and the mutants confirmed to turn the suite red for it. Read it before you change a behaviour on purpose, to find which assertion to update.
 
+**Holds while:** `npm test` runs `test/app.test.mjs`, which labels its assertions 42.x to 45.x as this file names them.
+
 ## Groups 42, 43, 45 and 44 (motion and layout mechanics)
 
 Group 42 covers the save indicator's reserved slot. It is the smallest group, and it can prove the least. The defect is a layout shift. jsdom has no layout, so no assertion in this suite can catch one. The measurements are in `masthead-the-save-slot-is-reserved`. Group 42 pins the mechanism underneath. It checks each place where that mechanism could regress without looking wrong.

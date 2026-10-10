@@ -2,6 +2,8 @@
 
 A restore keeps a photo id in three cases only. The blob must sit in the payload, already live on this device, or be confirmed on the photo remote. Anything else gets stripped.
 
+**Holds while:** `applyBackup` in `src/app.jsx` keeps the union of local ids, inlined ids and `extraPresent`.
+
 The rule is this. Keep an id if its blob is inlined in the payload, already present on this device, or known to be on the photo remote. Strip only the rest.
 
 The old rule was all-or-nothing on `data.photos`. That is right for a file restore onto a fresh origin. Everywhere else it is silent data loss. A pushed payload never carries photos, because photos stay local by design. So pulling onto the very device that took them stripped every id. The sweep effect then deleted the JPEGs from IndexedDB two seconds later, with nothing to restore from.
