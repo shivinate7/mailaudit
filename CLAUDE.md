@@ -21,7 +21,7 @@ one record, and each record holds current text only; git keeps the history. Read
 records your task needs. Do not read them all.
 
 - `invariants/` holds a rule that must not break. 8 records.
-- `decisions/` holds a ruling and the reason it still holds. 145 records.
+- `decisions/` holds a ruling and the reason it still holds. 148 records.
 - `measurements/` holds a measured figure and how to re-measure it. 8 records.
 
 A record cites another record by slug, never by a path, so a record survives a
@@ -107,6 +107,7 @@ A photo is a picture of a mailing label. It never enters the ledger, and it can 
 - `photo-errors-never-hit-pushstate` — A photo error never reaches pushState.
 - `photo-ids-restore-keep-if-known` — A restore keeps a photo id when known.
 - `photo-ids-unreadable-local` — An unreadable local photo store keeps ids.
+- `photo-thumbnails-and-viewer` — Thumbnails are 56px squares, and the viewer is a scrim.
 
 ## Saved versions and recovery
 
@@ -138,6 +139,7 @@ Packages, Tally and Orphaned read one check-in map. These records say what each 
 - `a-reveal-ignores-hidedone-too` — A reveal ignores hideDone too.
 - `order-id-button-stops-propagate` — The order id link stops propagation.
 - `lost-mail-flags-use-order-date` — Lost-mail flags count from the order date.
+- `orphaned-colours-by-meaning` — Orphaned uses colour for the same meanings.
 
 ## Order stamps
 
@@ -201,6 +203,8 @@ Where the page holds its shape, and where every colour comes from.
 - `palette-silver-stays-cool` — Silver must stay a cool grey.
 - `palette-theme-color-tracks-paper` — The browser chrome colour must track the paper token.
 - `palette-tokens-contrast-floor` — Every colour token meets a contrast floor.
+- `progress-bar-accent-then-green` — The progress bar is accent, then green at 100%.
+- `typography-cochin-and-mono` — Cochin sets words, monospace sets numbers.
 
 ## Build, CI and assets
 
@@ -244,7 +248,6 @@ A fact an agent needs, that argues nothing. Read the CSV record before touching 
 
 - `assets-and-icons` — Icon files and how to export them.
 - `build-and-deploy` — Build, test and deploy commands.
-- `design-language` — The parchment ledger's look and feel.
 - `feature-map` — What each view and control does.
 - `live-verification` — What has run against real GitHub or a real device.
 - `orderwand-csv` — The OrderWand CSV schema and quirks.

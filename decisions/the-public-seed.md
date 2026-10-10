@@ -21,6 +21,10 @@ Photos never went near the ledger.
 
 Widen `SEED_KEEP` only on purpose. The Pages site is world-readable, and git is permanent.
 
+## How the build bakes it in
+
+The seed comes from `git show ledger/data:ledger.json`, reduced to `SEED_KEEP`. That read needs the `ledger` remote, as `ledger-remote-needed-for-seed` describes. The build gzips the result and base64 encodes it. It writes the result into a `<script id="seed">` tag in `index.html`.
+
 ## See also
 
 - `check-seed-backstop-not-proof` — the check that verifies what this seed actually publishes
