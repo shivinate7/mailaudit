@@ -17,17 +17,17 @@ storage namespace do not follow the masthead. See `the-masthead-is-not-the-proje
 ## How to read this file
 
 This file is an index, and it holds no argument of its own. Every ruling lives in
-one record, and each record carries the original wording inside a fence. Read the
+one record, and each record holds current text only; git keeps the history. Read the
 records your task needs. Do not read them all.
 
 - `invariants/` holds a rule that must not break. 8 records.
-- `decisions/` holds a ruling and the reason it still holds. 138 records.
+- `decisions/` holds a ruling and the reason it still holds. 141 records.
 - `measurements/` holds a measured figure and how to re-measure it. 8 records.
 
 A record cites another record by slug, never by a path, so a record survives a
-move. `npm run check:records` proves six things. This index cites every record.
-Every citation resolves. No quoted wording drifted from the file this index
-replaced. No slug repeats. No fence is broken. Every record carries its shape.
+move. `npm run check:records` proves five things. This index cites every record.
+Every citation resolves. No slug repeats. No fence is broken. Every record
+carries its shape.
 
 An open question carries a `**Status:**` line. That line is the only thing that
 separates a question still open from a ruling already settled, so keep it.
@@ -213,6 +213,9 @@ What each check asks, and the two traps in the icon pipeline.
 - `favicon-is-a-different-drawing` — The favicon is redrawn, not the master shrunk.
 - `icon-paths-and-export-gotchas` — Icon paths stay relative, and iOS caches hard.
 - `the-masthead-is-not-the-project-name` — The masthead is not the project name.
+- `main-moves-only-by-pr` — Main moves only by pull request, admins included.
+- `screens-checked-headless-in-ci` — Each view is checked headless at 375 and 760px.
+- `records-hold-current-text-only` — Records hold current text only; git keeps history.
 
 ## Testing method
 

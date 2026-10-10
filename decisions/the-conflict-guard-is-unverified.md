@@ -2,24 +2,13 @@
 
 **Status:** open.
 
-`Merge & push` and auto-push both depend on GitHub's 409 conflict response, and that response has never been triggered for real. The transport itself works, since real authenticated pushes have landed. The remaining test is to push from two devices without pulling between them, and confirm the second push is blocked. A merge on the blocked device should then recover both sides. Getting the sha bookkeeping wrong here would let one device silently overwrite another's data.
+`Merge & push` and auto-push both depend on GitHub's 409 conflict response. That response has never been triggered for real. The transport itself works, since real authenticated pushes have landed. The ledger repo has taken them, and `git log origin/data` shows them. What is unproven is the 409 itself. Getting the sha bookkeeping wrong here would let one device silently overwrite another's data.
 
-## The thread, as recorded
+Verify it deliberately. Push from device A. Then push from device B without pulling. B must be blocked. If B succeeds, the sha bookkeeping is wrong, and A's data was just overwritten. Recover it with `git show data~1:ledger.json`. Then restore that file the normal way.
 
-```
-- **The conflict guard has never been verified against real GitHub**, and it is
-  now the thing most worth verifying, because `Merge & push` and auto-push both
-  hang off it. The ledger repo *has* taken real authenticated pushes
-  (`git log origin/data`), so the transport works; what is unproven is the 409
-  itself. Verify it deliberately: push from device A, then push from B *without*
-  pulling. B must be blocked. If B succeeds, the sha bookkeeping is wrong and
-  A's data was just overwritten — recover with `git show data~1:ledger.json`
-  and restore that file the normal way.
-  Then take the same setup one step further, which is the new path: on B tap
-  **Merge & push**, and confirm B ends holding *both* devices' work and A's next
-  Pull agrees. Do this **before turning auto-push on**, because auto-push's
-  conflict recovery is exactly this path running unattended.
-```
+Then take the same setup one step further. This is the new path. On B, tap **Merge & push**. B must end holding both devices' work. A's next Pull must agree.
+
+Do this before auto-push is enabled. Auto-push's conflict recovery is exactly this path running unattended.
 
 ## See also
 

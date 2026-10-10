@@ -2,17 +2,7 @@
 
 **Status:** open.
 
-A fresh device must be set up with a token before it can recover anything, not after. This is the standing cost of the ledger repo being private. The move to a new private repo left this cost unchanged. Every unreachable state has to read as needing a key, never as lost or absent. That is why `listPhotos`, `peek`, and `classifyLedger` all disambiguate a hidden repo from an empty one.
-
-## The thread, as recorded
-
-```
-- **Nothing recovers without the key.** A fresh device must be set up before it
-  can recover rather than after — the standing cost of the ledger being private,
-  and unchanged by the move (it is still one private repo, just a different one). Everything unreachable must read as *"needs your key"* and never as
-  lost or as absent, which is why `listPhotos` and `peek` are three-valued and
-  why `classifyLedger` disambiguates the 404.
-```
+A fresh device must have its token before it can recover, not after. This is the standing cost of the ledger being private. The move to a different repo did not change that cost. The repo is still one private repo, just a different one. Every unreachable state must read as "needs your key". It must never read as lost or absent. That is why `listPhotos` and `peek` are three-valued. It is also why `classifyLedger` disambiguates the 404.
 
 ## See also
 

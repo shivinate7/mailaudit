@@ -1,21 +1,10 @@
 # An unreadable local photo store keeps ids
 
-When the local photo store cannot answer, the app must keep every photo id rather than treat silence as an empty store. Reading silence as empty once stripped every id not already backed up remotely. The next debounced save then wrote that stripped ledger. The photo id logic is three-valued now, so an unreadable store never plans a sync it cannot see clearly.
+An unreadable local photo store keeps every id, exactly as an unreadable remote one does. When the store cannot answer, silence is not a fact. The app must not treat it as an empty store.
 
-## The argument, as recorded
+`applyBackup` and `surveyPhotos` both used `photos.keys().catch(() => [])`, which reads "I could not look" as "this device holds nothing". With IndexedDB unavailable, every id not already on the photo remote was stripped. The debounced save then wrote the stripped ledger, and the next push published it.
 
-```
-- **An unreadable LOCAL photo store keeps every id, exactly as an unreadable
-remote one does.** `applyBackup` and `surveyPhotos` both used
-`photos.keys().catch(() => [])`, which reads "I could not look" as "this device
-holds nothing" — so with IndexedDB unavailable every id not already on the photo
-remote was stripped, the debounced save wrote the stripped ledger, and the next
-push published it. The remote half of this rule is argued at length below and
-pinned by 26.13b; the local read never got the same treatment. It is
-three-valued now: `applyBackup` keeps every id when the store will not answer,
-and `surveyPhotos` returns `null` rather than planning a sync it cannot survey
-honestly.
-```
+`applyBackup` keeps every id when the store will not answer. `surveyPhotos` returns `null` rather than planning a sync it cannot survey honestly. The remote half of this rule is pinned by test 26.13b.
 
 ## See also
 

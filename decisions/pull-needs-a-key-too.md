@@ -1,18 +1,8 @@
 # Pull now needs the same key
 
-Since the ledger repo went private, pull needs the same fine-grained token that push already required. A fresh device with no key can no longer recover on its own before setup. The app treats this as its own broken-sync case with its own message, rather than a plain error buried in a panel.
+Push needs a fine-grained personal access token. It needs `Contents: read & write`, scoped to that repo only. The key is pasted once per device. Since the ledger repo went private, pull needs that key too.
 
-## The argument, as recorded
-
-```
-Push needs a fine-grained PAT (`Contents: read & write`, that repo
-  only) pasted once per device — and since the repo went private, **pull needs
-  that key too**. This used to read "pull needs no key at all", which was the
-  property that let a fresh device recover before it had been set up; closing
-  the world-readable ledger cost exactly that, knowingly. A device with no key
-  can now do nothing remote at all, which is why `no-access` is a `syncBroken`
-  case with its own line rather than an error buried in a panel.
-```
+Closing the ledger repo cost one property, knowingly. A fresh device can no longer recover before it is configured with a key. A device with no key can now do nothing remote at all. So `no-access` is a `syncBroken` case with its own line. It is not an error buried in a panel.
 
 ## See also
 

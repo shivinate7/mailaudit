@@ -1,15 +1,8 @@
 # Each motion was chosen by looking, not by reading
 
-Every moment in the motion design was built two or three ways as a side-by-side proof sheet, holding every variable but one constant. The winning version was picked by looking at it, not by reading a description of it.
+Every moment in the motion design was built two or three ways, as a side-by-side proof sheet. Every variable but one was held constant. The winning version was picked by looking at it. It was not picked by reading about it.
 
-## The argument, as recorded
-
-```
-`_studies.html` is not in the repo, but the method that produced this is worth
-keeping: each moment was built two or three ways as a side-by-side proof sheet
-with every variable but one held constant, and picked by looking rather than by
-reading a description.
-```
+`_studies.html` is not in the repo, but the method is worth keeping.
 
 ## See also
 

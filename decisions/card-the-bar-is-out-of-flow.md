@@ -1,41 +1,16 @@
 # The package progress bar sits out of flow
 
-The first check-in in a package used to grow the card. The card-reserved-geometry record has the measured shift. That growth pushed every row down under the user's thumb. The progress bar now sits absolutely positioned on the card's own top edge. It can mount and unmount without moving anything, and it never has to render at a finished 100 percent.
+The progress bar is absolutely positioned on the card's own top edge, in `edgeBar`. It is not part of the card's flow, so the bar moves no row when it mounts.
 
-## The argument, as recorded
+The first check-in in a package grew the card by 28px, and pushed every remaining row in it down by 28px. That was measured at 375px against the seeded ledger. The rows sat directly under the thumb that had just tapped one of them. That broke invariant 5 on the most common gesture in the app.
 
-```
-The save indicator above was the *smaller* half of this. The same defect lived
-one level down and twice the size: measured at 375px against the seeded ledger,
-**the first check-in in a package grew its card by 28px and pushed every
-remaining row in it down by 28px** — inside the card, directly under the thumb
-that had just tapped one of them. Invariant 5, on the most common gesture in
-the app. It predates the motion pass and the save-slot fix and was independent
-of both.
+The 28px came from two unrelated causes. The in-flow bar was 15px of it. The bar was a 15px child that appeared above everything it displaced. The action row was the other cause. Its labels wrapped to a second line, which grew the row from 31px to 44px. The `card-reserved-geometry` record has the measured card growth for both causes.
 
-Two unrelated causes, each needing its own answer:
+`edgeBar` is absolutely positioned inside the card's existing `overflow: hidden` rounded box. The card's 10px corner rounds the bar. This is why `ProgressBar` has a `radius` prop separate from `height`. Without that split, the bar would be a pill floating inside another shape. The bar is 3px tall, because it is a rule on an edge, not a bar in a row. It catches no taps. It can mount and unmount without moving anything.
 
-**The progress bar is out of FLOW, not reserved a slot.** It used to mount
-between the header and the item rows on the first check-in, a 15px child
-appearing above everything it displaced. It now sits on the card's own top
-edge — `edgeBar`, absolutely positioned inside the card's existing
-`overflow: hidden` rounded box, so the 10px corner does its rounding (hence
-`ProgressBar`'s `radius` prop, separate from `height`, so this one is not a pill
-floating inside another shape), it catches no taps, and it can mount and unmount
-without moving anything. 3px, because it is a rule on an edge now rather than a
-bar in a row.
+The bar is out of flow, not reserved. The reason is not about layout. The `gotQty > 0 && !done` gate stands because of this. A reserved slot would stay mounted through completion. The bar would then render at 100% and sheen. The Motion section's gild is the only marker of a completed package, because the bar cannot survive to mark it. Test 44.5 fails if the gate goes. Read that failure as a change to the motion design, not as a broken refactor.
 
-Out of flow rather than reserved **for a reason that is not about layout**: it
-is what lets the `gotQty > 0 && !done` gate stand. A reserved slot has to stay
-mounted through completion, so the bar would render at 100% and sheen — and the
-Motion section's gild is the sole marker of a package completing *precisely
-because* the bar cannot survive to be one. Test 44.5 fails if the gate goes;
-read that failure as "this is a change to the motion design", not as a broken
-refactor. The Tally card was given `position: relative` for the same bar;
-PackageCard already had one for `.mdl-gild`. Without it the bar escapes to the
-nearest positioned ancestor and draws somewhere else on the page entirely,
-which is why 44.2 and 44.7 pin both.
-```
+The Tally card has `position: relative` for the same bar. PackageCard already had one, for `.mdl-gild`. Without `position: relative`, the bar escapes to the nearest positioned ancestor and draws somewhere else on the page. Tests 44.2 and 44.7 pin both cards.
 
 ## See also
 

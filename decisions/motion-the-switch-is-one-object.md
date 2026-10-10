@@ -1,21 +1,12 @@
 # The view switch moves one object, not three lights
 
-The active-view fill is a single element that slides between thirds, never three buttons lighting up on their own. The `data-view` attribute on the switch is now the only signal of which view is active.
+The active-view fill is a single element that slides between thirds. Three buttons never light up on their own.
 
-## The argument, as recorded
+`.mdl-thumb` is the violet fill. It is absolutely positioned at exactly a third of the track. It translates by whole multiples of its own width, so it lands on the thirds the grid already defines. It cannot drift out of step with them.
 
-```
-- **The view switch is one object being moved, not three lamps being lit.**
-  `.mdl-thumb` is the violet fill, absolutely positioned at exactly a third of
-  the track and translated by whole multiples of its own width, so it lands on
-  the thirds the grid already defines and cannot drift out of step with them.
-  The buttons no longer paint their own background — a button that did would
-  leave a fill behind wherever the thumb had just been, and there would be two
-  of it mid-slide. **The consequence to know: `data-view` on `.mdl-switch` is
-  now the only thing saying which segment is active.** Drop it and the app has
-  no active-view indicator at all, and every button still looks correct in a
-  DOM dump. Tests 43.1–43.2.
-```
+The buttons paint no background of their own. A button that did would leave a fill behind wherever the thumb had just been. There would be two fills mid-slide.
+
+The consequence: `data-view` on `.mdl-switch` is the only thing that says which segment is active. Drop that attribute, and the app has no active-view indicator at all. Every button still looks correct in a DOM dump. Tests 43.1–43.2 pin it.
 
 ## See also
 

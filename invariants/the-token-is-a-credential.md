@@ -1,17 +1,11 @@
 # The GitHub token is a credential
 
-The GitHub access token is a device credential, not ledger data. It must never enter the ledger blob, a backup file, the pushed payload, the repo, the bundle, or React state. The app keeps this true by construction. The token lives outside the ledger's storage namespace. The key input field is uncontrolled and read only once. The saved payload is built from named fields rather than a spread of state.
+This is invariant 8. The GitHub token is a device credential, not ledger data. It must never enter the ledger blob, a backup file, the pushed payload, the repo, the bundle, or React state.
 
-## The argument, as recorded
+Three structural guarantees keep it out. They are listed from strongest to weakest.
 
-```
-8. **The GitHub token is a credential, not ledger data.** It must never enter
-   the ledger blob, a backup file, the pushed payload, the repo, the bundle, or
-   React state. Three structural guarantees, in descending strength: it lives
-   outside the `mailday:` namespace so no enumeration finds it; the key input is
-   **uncontrolled** (a `ref`, read once on submit, then cleared) so it is never
-   in a state snapshot or a DevTools dump; and the payload is built from named
-   fields and never spreads state. `resetAll` deliberately does **not** clear it
-   — it is a device credential, and dropping the stored sha with it would 422
-   the very next push for no reason. Test 25.24–25.27.
-```
+1. The token lives outside the `mailday:` namespace, so no enumeration finds it.
+2. The key input is **uncontrolled**. It is a `ref`. The app reads it once on submit, then clears it. So the token is never in a state snapshot or a DevTools dump.
+3. The payload is built from named fields. It never spreads state.
+
+`resetAll` deliberately does **not** clear the token. The token is a device credential. Dropping the stored sha with it would make the very next push fail with a 422, for no reason. Tests 25.24–25.27 cover this.

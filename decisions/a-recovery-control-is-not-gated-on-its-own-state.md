@@ -1,31 +1,20 @@
 # A recovery control cannot need the state it recovers
 
-File actions and the sync region both used to hide when the data they act on was absent. That made the recovery control unreachable in exactly the case it exists for. Backup needed envelopes without items to still show a button. Sync needed an empty ledger to still show Pull. Any control whose job is to recover state must never be gated on that state existing.
+If the data they act on is absent, the file actions and the sync region must not hide. Otherwise the recovery control is unreachable in the one case it exists for. Backup must still show for envelopes without items. Sync must still show for an empty ledger, because Pull is needed then.
 
-## The argument, as recorded
+## Gates in the current build
 
-```
-**The file actions are gated on `items.length > 0 || envelopes.length > 0`, the
-same condition as the view switch — not on `items.length` alone.** They used to
-be, which meant a user holding hand-typed orphaned envelopes with an empty item
-list had no Backup button at all, for data that exists nowhere else. Test 23.1.
-The filters keep the narrower `items.length > 0` gate, since they describe a
-list that isn't there.
+The file actions are gated on `items.length > 0 || envelopes.length > 0`. This is the same condition as the view switch. It is not `items.length` alone. A user with hand-typed orphaned envelopes and an empty item list would otherwise have no Backup button. That data exists nowhere else. Test 23.1.
 
-**And the whole region is gated on `… || !!window.remote`, wider still.** Same
-bug, one level out, found on the live site the day Push/Pull shipped: an empty
-ledger is *exactly* when Pull is needed — a new phone, ITP having cleared
-storage, a move to another origin — and gated on data alone, the one control
-that recovers from having no data was unreachable whenever you had no data. The
-only button on screen was "Choose file". Now an empty ledger shows `Sync` alone:
-**Re-import and Reset stay on the narrower gate**, because there is nothing to
-re-import into (the upload zone is already up unprompted) and nothing to clear,
-and a red destructive button on an empty ledger is noise at best. Group 28.
+The filters keep the narrower gate `items.length > 0`. They describe a list that is not there.
 
-The pattern to take from this: any control that *recovers* state must not be
-gated on that state existing. Backup was widened once for this reason, Sync
-twice.
-```
+The whole region is gated on `… || !!window.remote`, which is wider still. Pull is needed most on an empty ledger. Examples: a new phone, ITP clearing storage, or a move to another origin. If the gate used data alone, the one control that recovers from no data would be unreachable. On an empty ledger the only button on screen was "Choose file". Now an empty ledger shows `Sync` alone.
+
+Re-import and Reset keep the narrower gate. There is nothing to re-import into, because the upload zone is already up. There is nothing to clear. A red destructive button on an empty ledger is noise at best. Group 28.
+
+## The rule
+
+Any control that recovers state must not be gated on that state existing. Backup was widened once for this reason. Sync was widened twice.
 
 ## See also
 

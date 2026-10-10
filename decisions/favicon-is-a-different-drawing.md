@@ -1,21 +1,10 @@
 # The favicon is redrawn, not the master shrunk
 
-A browser tab renders the favicon at 16 pixels, but the master icon is a full scene meant to be seen large. At tab size the background ate the frame, and the mark read small and washed out. The favicon drops the background entirely, since favicons allow transparency and the touch icon does not, and scales the mark until it fills the edge. Everything that only reads at a large size gets cut.
+A browser tab renders the favicon at 16 CSS px. The master icon is a scene: a brooch on a violet ground. At that size the ground takes over the frame, and the mark is around 10px. It reads small and washed out beside other tabs' icons.
 
-## The argument, as recorded
+So the favicon is a different drawing. `favicon_svg()` drops the ground entirely. The ground is transparent, which favicons allow and `apple-touch-icon` does not. It scales the mark until the lobes touch the edge. It cuts everything that exists only to be seen large: the guilloche, the 32 scroll marks, and the engine-turned field. What remains is what still reads at 16px: a gold ring, eight lobes, and an emerald centre.
 
-```
-**The favicon is a different drawing, not the master shrunk.** A tab renders it
-at 16 CSS px; the master is a *scene* — a brooch on a violet ground — so at that
-size the ground ate the frame and the mark landed around 10px, reading small and
-washed out beside other tabs' icons. `favicon_svg()` drops the ground entirely
-(transparent, which favicons allow and `apple-touch-icon` does not), scales the
-mark until the lobes touch the edge, and cuts everything that only exists to be
-seen large: the guilloche, the 32 scroll marks, the engine-turned field. What is
-left is what still reads at 16px — gold ring, eight lobes, emerald centre.
-The SVG is served first with the PNG as a fallback for browsers that don't take
-`type="image/svg+xml"`.
-```
+The SVG is served first. The PNG is the fallback for browsers that do not accept `type="image/svg+xml"`.
 
 ## See also
 

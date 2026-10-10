@@ -9,13 +9,15 @@
     "check:seed": "node build.mjs --check-seed",
     "check:docs": "node check-docs.mjs",
     "check:records": "node check-records.mjs",
+    "check:screens": "node test/screens.mjs",
     "test": "node test/app.test.mjs",
     "serve": "node dev-server.mjs",
     "deploy": "git fetch ledger data --quiet || true && npm run build && npm test && git switch -c deploy/$(date +%Y%m%d%H%M%S)-$$ && git add index.html && git commit -m \"deploy: rebuild index.html\" && git push -u origin HEAD && gh pr create --fill --base main && git switch -"
   },
   "devDependencies": {
     "esbuild": "^0.24.0",
-    "jsdom": "^29.1.1"
+    "jsdom": "^29.1.1",
+    "playwright": "1.63.0"
   },
   "dependencies": {
     "papaparse": "^5.4.1",

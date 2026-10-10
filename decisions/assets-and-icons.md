@@ -2,43 +2,23 @@
 
 This file holds where the icon assets live, where the master and the generator sit, and the exact export commands. Read it before touching any icon file.
 
-## Icon files and the two things that will bite
+## Where the icon files live
 
-```
-### Icons
+`apple-touch-icon.png` (180×180), `favicon.svg` and `icon-32.png` are committed at the repo root. The `<link>` tags in the `build.mjs` head template reference them. The 1024 master and the generator live in `icon/`. Running `python3 icon/gen-icon.py` rewrites both the master SVG and `favicon.svg`. That file's docstring has the exact Chrome and `sips` commands to re-export the PNGs. The generator uses only the standard library. It never runs during build or test.
 
-`apple-touch-icon.png` (180×180), `favicon.svg` and `icon-32.png` are committed
-assets at the repo root, referenced by `<link>` tags in the `build.mjs` head
-template. The 1024 master and the generator live in `icon/` — `python3
-icon/gen-icon.py` rewrites both the master SVG and `favicon.svg`, and that
-file's docstring has the exact Chrome + `sips` commands to re-export the PNGs.
-The generator is stdlib-only and never runs during build or test.
+## The favicon is a different drawing
 
-**The favicon is a different drawing, not the master shrunk.** A tab renders it
-at 16 CSS px; the master is a *scene* — a brooch on a violet ground — so at that
-size the ground ate the frame and the mark landed around 10px, reading small and
-washed out beside other tabs' icons. `favicon_svg()` drops the ground entirely
-(transparent, which favicons allow and `apple-touch-icon` does not), scales the
-mark until the lobes touch the edge, and cuts everything that only exists to be
-seen large: the guilloche, the 32 scroll marks, the engine-turned field. What is
-left is what still reads at 16px — gold ring, eight lobes, emerald centre.
-The SVG is served first with the PNG as a fallback for browsers that don't take
-`type="image/svg+xml"`.
+The favicon is not the master, shrunk. A tab renders it at 16 CSS px. The master is a scene: a brooch on a violet ground. At that size the ground ate the frame, and the mark landed around 10px. It read small and washed out beside other tabs' icons.
 
-Two things that will bite:
+`favicon_svg()` drops the ground entirely. The result is transparent, which favicons allow and `apple-touch-icon` does not. It scales the mark until the lobes touch the edge. It cuts everything that exists only to be seen large: the guilloche, the 32 scroll marks, and the engine-turned field. What remains is what still reads at 16px: gold ring, eight lobes and emerald centre.
 
-- **Both `href`s must stay relative.** Pages serves this from the `/mailaudit/`
-  subpath, so a root-absolute `/apple-touch-icon.png` resolves to
-  `shivinate7.github.io/apple-touch-icon.png` and 404s.
-- **Exporting the favicon PNG needs an ABSOLUTE `file://` src** in the throwaway
-  HTML, and `--default-background-color=00000000` to keep the alpha. A relative
-  src resolves against `/tmp`, renders nothing, and produces a blank PNG that
-  looks like a successful export — it happened once.
-- **iOS caches home-screen icons hard.** Changing the PNG does nothing to an
-  already-installed home-screen app; it has to be deleted and re-added from
-  Safari. That is safe for data — check-ins are keyed to the *origin*, not the
-  icon — but take a Backup first out of habit.
-```
+The SVG is served first. The PNG is the fallback for browsers that do not accept `type="image/svg+xml"`.
+
+## Traps when you change icons
+
+- Both `href`s must stay relative. Pages serves this site from the `/mailaudit/` subpath. A root-absolute `/apple-touch-icon.png` resolves to `shivinate7.github.io/apple-touch-icon.png` and 404s.
+- Exporting the favicon PNG needs an ABSOLUTE `file://` src in the throwaway HTML. Also pass `--default-background-color=00000000` to keep the alpha. A relative src resolves against `/tmp`. It renders nothing, and it produces a blank PNG that looks like a successful export. That happened once.
+- iOS caches home-screen icons hard. Changing the PNG does nothing to an app that is already installed on the home screen. Delete the app and add it again from Safari. That is safe for data, because check-ins are keyed to the origin, not the icon. Take a Backup first anyway.
 
 ## See also
 

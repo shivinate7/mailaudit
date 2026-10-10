@@ -1,21 +1,12 @@
 # A restore keeps a photo id when known
 
-A restore keeps a photo id in three cases only. The blob must sit in the payload, already live on this device, or be confirmed on the photo remote. Anything else gets stripped. A pushed payload never carries photo blobs, so pulling onto the very device that took the photos once stripped every id. The sweep then deleted the actual files two seconds later.
+A restore keeps a photo id in three cases only. The blob must sit in the payload, already live on this device, or be confirmed on the photo remote. Anything else gets stripped.
 
-## The argument, as recorded
+The rule is this. Keep an id if its blob is inlined in the payload, already present on this device, or known to be on the photo remote. Strip only the rest.
 
-```
-**Photo ids on restore: keep an id when its blob is inlined in the payload,
-  already present on this device, OR known to be on the photo remote; strip
-  only the rest.** This used to be
-  all-or-nothing on `data.photos`, which is right for a file restore onto a
-  fresh origin and silent data loss everywhere else. A pushed payload never
-  carries photos (they stay local by design), so pulling onto the very device
-  that took them stripped every id — and the sweep effect then deleted the JPEGs
-  from IndexedDB two seconds later, with nothing to restore from. The same bug
-  was already latent on the file path (plain Backup → restore on the same
-  device); it was simply rarely exercised. Tests 19.11–19.12, 26.11–26.13.
-```
+The old rule was all-or-nothing on `data.photos`. That is right for a file restore onto a fresh origin. Everywhere else it is silent data loss. A pushed payload never carries photos, because photos stay local by design. So pulling onto the very device that took them stripped every id. The sweep effect then deleted the JPEGs from IndexedDB two seconds later, with nothing to restore from.
+
+The same bug was latent on the file path, a plain Backup followed by restore on the same device. It was rarely exercised there. Tests 19.11–19.12, 26.11–26.13.
 
 ## See also
 

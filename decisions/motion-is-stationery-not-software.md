@@ -1,17 +1,10 @@
 # Motion reads as stationery, not software
 
-Every motion in the app must feel like paper and ink, never like software chrome. The only allowed overshoot is the stamp's wrist-roll, and it settles through rest instead of bouncing around it.
+Every motion in the app must feel like paper and ink. It must never feel like software chrome. Ink settles into paper. A seal is pressed. A stamp is rocked onto a page. Rules are drawn like a pen stroke. Gold catches the light once.
 
-## The argument, as recorded
+Nothing springs. Nothing bounces past its rest and hangs there.
 
-```
-The app moves now, and the register is **stationery, not software**: ink
-settling into paper, a seal pressed, a stamp rocked onto a page, rules drawn
-like a pen stroke, gold catching light once. Nothing springs, nothing bounces
-past its rest and hangs there. The one overshoot in the whole sheet — the
-stamp's `+1deg` — is the wrist roll that inks a rubber stamp's edges, and it
-returns *through* rest rather than oscillating around it.
-```
+One overshoot is allowed in the whole sheet. It is the stamp's `+1deg`. That is the wrist roll that inks a rubber stamp's edges. It returns *through* rest. It does not oscillate around rest.
 
 ## See also
 
