@@ -2,7 +2,7 @@
 
 This file is the coverage map. It lists what each numbered test group proves, and the mutants confirmed to turn the suite red for it. Read it before you change a behaviour on purpose, to find which assertion to update.
 
-**Holds while:** `npm test` runs `test/app.test.mjs`, which labels its assertions 42.x to 45.x as this file names them.
+**Holds while:** `npm test` runs `test/app.test.mjs`, which labels its assertions with their group number, such as `42.3` or `38b.4`.
 
 ## Groups 42, 43, 45 and 44 (motion and layout mechanics)
 

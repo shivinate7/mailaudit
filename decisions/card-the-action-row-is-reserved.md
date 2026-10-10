@@ -2,7 +2,7 @@
 
 The action row's buttons change on the same tap that changes the card. The row reserves the tallest height any combination of buttons can need. One width still shifts by a smaller amount. The card-reserved-geometry record has the exact heights per width. The app leaves that gap alone, because the width falls below its own stated floor.
 
-**Holds while:** `BULK_ROW_H` in `src/app.jsx` reserves the tallest action-row state.
+**Holds while:** `BULK_ROW_H` in `src/app.jsx` reserves the tallest action-row state at 360px and up.
 
 ## Why the row reserves its tallest state
 

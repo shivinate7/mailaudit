@@ -4,7 +4,7 @@
 
 The ledger and photos live in a private repo. So a backup store never shares a repo with a public site. That choice has a cost. Keyless pull is gone. A fresh device cannot recover until it has a token. Every device needs its token pasted in before it can recover anything at all. `classifyLedger` carries the extra request that tells a hidden repo apart from an empty one. That disambiguation is the ongoing cost of this design.
 
-**Holds while:** `mailaudit-data` is PRIVATE and `mailaudit` is PUBLIC on GitHub. This record closes when a fresh device can pull the ledger without a key.
+**Holds while:** `mailaudit-data` is PRIVATE and `mailaudit` is PUBLIC on GitHub.
 
 The ledger lives in `mailaudit-data`. `mailaudit` is PUBLIC. Closing `mailaudit` itself was the cheap alternative to a `mailaudit-data` migration. The migration happened anyway, for a reason the original framing did not anticipate. **Private repos bill Actions minutes.** An unrelated repo on the account used up the allowance. That refused CI on a repo whose whole safety story rests on it. Moving the ledger out let the source repo go public. So the `test.yml` workflow (`.github/workflows/test.yml`) and Pages are free again.
 

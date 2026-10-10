@@ -2,7 +2,7 @@
 
 Closing a card happens at once, with no exit animation. The `motion-timings` record has the caret duration.
 
-**Holds while:** the caret transition in `src/app.jsx` runs for `200ms`.
+**Holds while:** the card caret transition in `src/app.jsx` (`PackageCard` and `ItemTotalRow`) runs for `200ms`.
 
 An exit animation would keep the rows mounted past the tap. It would shrink the card a fifth of a second later. That is a delayed layout change under a thumb that has already moved on. It is worse than an immediate change.
 
