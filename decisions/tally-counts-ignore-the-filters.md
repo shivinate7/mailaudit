@@ -1,6 +1,6 @@
-# Tally counts ignore search and hide-received
+# Search and hide-received never change shown Tally counts
 
-Search and hide-received filter only the copy breakdown under a Tally item. They never change its counts or its cost basis. The date range does change them, because Tally sums only the date-ranged items. See `date-filter-spans-ledger-views`.
+Search and hide-received filter the copy breakdown under a Tally item. They can hide a whole row, but they never change the counts or cost basis of a row that stays shown. The date range does change them, because Tally sums only the date-ranged items. See `date-filter-spans-ledger-views`.
 
 **Holds while:** `src/app.jsx` still builds the Tally groups from `rangedItems`, and still shows a note through `hidden by filters`.
 
