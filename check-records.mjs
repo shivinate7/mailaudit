@@ -4,12 +4,15 @@
 // from walking the real files. Records hold current text only; git keeps
 // history. Run with `npm run check:records`.
 //
-// Five claims, each with its own section below:
+// Six claims, each with its own section below:
 //   1. every citation resolves
 //   2. no fence is broken
 //   3. no duplicate slug across the three folders
 //   4. every record has its shape (title, own prose first, sentence-case title)
 //   5. no orphan and no dead index entry
+//   6. every invariant names the test that pins it, and no record cites an
+//      invariant by number (gated on CHECK_RECORDS_PINS until the records
+//      carry their "Pinned by" lines)
 
 import { readFileSync, readdirSync } from "fs";
 import { execFileSync } from "child_process";
@@ -317,6 +320,53 @@ function closestSlug(token, slugs) {
   console.log(
     `check:records: index check — ${records.length - orphans.length}/${records.length} record(s) cited, ${orphans.length} orphan(s)`
   );
+}
+
+/* ---------- claim 6: invariants name their tests; numbers are retired ----------
+   Owner ruling 2026-10-10: invariants are cited by slug, never by number, and
+   each one names the test that pins it. Every invariants/*.md holds a line
+   starting "**Pinned by:**" that names at least one test id ("44.5" or
+   "group 44") that exists in test/app.test.mjs, or the literal "nothing yet"
+   (counted as a warning, not a failure). A cited id that does not exist
+   fails. Any "invariant <digit>" anywhere in the corpus fails.
+   Gated on CHECK_RECORDS_PINS=1, default OFF, for the same reason claim 5 was:
+   until the records PR adds the "Pinned by" lines this is red on main. Drop the
+   gate in the commit that lands them. */
+if (process.env.CHECK_RECORDS_PINS) {
+  const tests = readFileSync("test/app.test.mjs", "utf8");
+  const ids = new Set([...tests.matchAll(/["'`](\d+[a-z]?\.\d+[a-z]?)[\s"'`]/g)].map((m) => m[1]));
+  const groups = new Set([...tests.matchAll(/^\/\* ── (\d+[a-z]?)\./gm)].map((m) => m[1]));
+  let bad = 0, nothingYet = 0;
+  for (const r of records) {
+    for (const m of r.text.matchAll(/invariants? \d/gi)) {
+      console.error(`check:records: ${r.path}: cites an invariant by number ("${m[0]}"); cite the slug`);
+      bad++;
+    }
+    if (r.folder !== "invariants") continue;
+    const line = r.text.split("\n").find((l) => l.startsWith("**Pinned by:**"));
+    if (!line) {
+      console.error(`check:records: ${r.path}: no "**Pinned by:**" line`);
+      bad++;
+      continue;
+    }
+    if (/nothing yet/.test(line)) { nothingYet++; continue; }
+    const cited = [
+      ...[...line.matchAll(/\b(\d+[a-z]?\.\d+[a-z]?)\b/g)].map((m) => ["id", m[1]]),
+      ...[...line.matchAll(/\bgroup (\d+[a-z]?)\b/gi)].map((m) => ["group", m[1]]),
+    ];
+    if (!cited.length) {
+      console.error(`check:records: ${r.path}: "Pinned by" names no test id and is not "nothing yet"`);
+      bad++;
+    }
+    for (const [kind, id] of cited) {
+      if (!(kind === "id" ? ids : groups).has(id)) {
+        console.error(`check:records: ${r.path}: pinned by ${kind} ${id}, which does not exist in test/app.test.mjs`);
+        bad++;
+      }
+    }
+  }
+  failures += bad;
+  console.log(`check:records: pins check — ${bad} problem(s), ${nothingYet} invariant(s) pinned by "nothing yet" (warning)`);
 }
 
 if (failures) {
