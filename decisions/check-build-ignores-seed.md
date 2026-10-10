@@ -2,6 +2,8 @@
 
 The build check, `check:build`, compares code and ignores the seed. This is the design, not a gap.
 
+**Holds while:** `withoutSeed()` in `build.mjs` strips the seed from both sides, and `.github/workflows/test.yml` runs `check:build` on a default checkout.
+
 `index.html` carries two things. One is the bundle. The other is a snapshot of the ledger, read off `origin/data` at build time. Only the bundle is a claim about this repository. The seed cannot be compared, even in principle. The phone rewrites `data` on a 90s idle debounce. So two builds minutes apart legitimately differ.
 
 Diffing whole pages fails in one of two ways. In CI, it fails always. `actions/checkout` is single-branch, so the runner has no `origin/data`. It builds seedless, and every comparison differs. `main` was red for four runs on exactly this, while `npm test` itself passed. The other way is failure at random. You get it by fetching the branch and racing the phone. A check that cries wolf is worse than no check. It trains you past the alarm.

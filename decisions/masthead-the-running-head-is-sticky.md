@@ -2,6 +2,8 @@
 
 The slim running head is `position: sticky` with a fixed height. It stays in flow. So pinning changes paint, never layout. An `IntersectionObserver` on a 1px sentinel toggles only `opacity`/`transform`. This is invariant 5 in practice. Do not turn this into a height animation. Do not swap the observer for a scroll listener.
 
+**Holds while:** `src/app.jsx` keeps the `.mdl-sticky` bar at `position: sticky` and `height: 46px`, its observer effect on `[loaded]`, and the `top < 0` guard.
+
 The tall block above is ordinary content that scrolls away. The slim bar after it is the part that pins.
 
 Two traps are already known. Both have tests.

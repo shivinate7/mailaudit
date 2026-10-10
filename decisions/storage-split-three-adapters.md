@@ -2,6 +2,8 @@
 
 The application component (`app.jsx`) never calls localStorage or IndexedDB itself. Every read and write goes through one of three adapters: `window.storage`, `window.photos` or `window.versions`.
 
+**Holds while:** `src/app.jsx` makes no `localStorage` or `indexedDB` calls, and `src/entry.jsx` defines `window.storage`, `window.photos` and `window.versions`.
+
 `entry.jsx` is the only place localStorage or IndexedDB may appear. The platform layer file is the only place either browser storage API may appear. This keeps every storage call in one file that a test can mock.
 
 ## See also
