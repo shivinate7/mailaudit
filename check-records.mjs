@@ -181,8 +181,8 @@ function titleIsTitleCase(title) {
 /* ---------- claim 1: every citation resolves ----------
    A citation is a backticked span, OUTSIDE a fence (a fence holds code or sample
    text, not a record's own cross-references), shaped like a slug:
-   lowercase words joined by hyphens, at least two hyphens (three words or
-   more). That shape alone is not enough — the corpus is full of code and CSS
+   lowercase words joined by hyphens, at least one hyphen (see SLUG_SHAPE
+   below). That shape alone is not enough — the corpus is full of code and CSS
    identifiers that also look like that (`theme-color`, `data-view`,
    `apple-touch-icon`, `force-with-lease`), and a hand-written list of them
    would rot the moment a new one is added.
@@ -194,7 +194,12 @@ function titleIsTitleCase(title) {
    slug is refused: printed and counted, never failed, because nothing here
    can tell "this was meant to name a record" from "this is a CSS property"
    without knowing every future slug in advance — the same shape of refusal
-   check-docs.mjs uses for a backtick span that isn't path-like. */
+   check-docs.mjs uses for a backtick span that isn't path-like.
+
+   THE CEILING: a slug-shaped token more than 2 edits from every real slug
+   (a truncated slug such as `saved-state`, say) is refused, not failed.
+   Claim 6 closes that hole for the one place it matters, citations of an
+   invariant, with a narrower rule of its own. */
 /* One hyphen is enough. This used to demand two, which made every two-word
    slug invisible: parser-filters, feature-map, suite-size, motion-timings and
    six more. The index cited all of them and the check reported them orphaned,
@@ -255,12 +260,9 @@ function closestSlug(token, slugs) {
           continue;
         }
         const { slug, dist } = closestSlug(tok, slugList);
-        // a prefix of a real slug (or a real slug that starts with the token)
-        // is a dangling cite too: `no-layout-shift` for no-layout-shift-under-...
-        const prefixOf = slugList.find((s) => s.startsWith(tok + "-") || tok.startsWith(s + "-"));
-        if (prefixOf || (slug !== null && dist <= 2)) {
+        if (slug !== null && dist <= 2) {
           console.error(
-            `check:records: ${r.path}:${i + 1} cites \`${tok}\`, which does not exist — closest is \`${prefixOf ?? slug}\``
+            `check:records: ${r.path}:${i + 1} cites \`${tok}\`, which does not exist — closest is \`${slug}\` (edit distance ${dist})`
           );
           failures++;
           brokenCitations++;
@@ -328,17 +330,22 @@ function closestSlug(token, slugs) {
    Owner ruling 2026-10-10: invariants are cited by slug, never by number, and
    each one names the test that pins it. Every invariants/*.md holds a line
    starting "**Pinned by:**" that names at least one test id ("44.5" or
-   "group 44") that exists in test/app.test.mjs, or an `npm run <script>` that exists
-   in package.json. "nothing yet" is not an answer: a Pinned-by line with no
+   "group 44") that exists in test/app.test.mjs, or one of the scripts that run tests (`npm test`,
+   `npm run test:*` and `npm run check:screens`) that exists in package.json. "nothing yet" is not an answer: a Pinned-by line with no
    real test fails (owner ruling 2026-10-10). A cited id that does not exist
-   fails. Any "invariant <digit>" anywhere in the corpus fails.
+   fails. Any numbered cite of an invariant fails, in records and in
+   src/, test/ and build.mjs comments. So does a token right after the word
+   "invariant"/"invariants" (backticked, or bare kebab-case) that is not one
+   of the invariant slugs: `invariant no-layout-shift` fails. Ceiling: this
+   sees only a token directly after the word; an invariant slug cited some
+   other way is claim 1's business.
    */
 {
   const tests = readFileSync("test/app.test.mjs", "utf8");
   // ids only from the assertion form: a label that opens with the id
   // (`ok(x, "44.5 ...")`, or the label alone on its own line). A fixture
   // price like "2.50" is not followed by a space and has no comma before it.
-  const ids = new Set([...tests.matchAll(/(?:,|^)\s*["'`](\d+[a-z]?\.\d+[a-z]?) /gm)].map((m) => m[1]));
+  const ids = new Set([...tests.matchAll(/(?:[(,]|^)\s*["'`](\d+[a-z]?\.\d+[a-z]?) /gm)].map((m) => m[1]));
   const groups = new Set([...tests.matchAll(/^\/\* (?:──|-{4}) (\d+[a-z]?)\./gm)].map((m) => m[1]));
   const scripts = new Set(Object.keys(JSON.parse(readFileSync("package.json", "utf8")).scripts));
   let bad = 0;
@@ -350,10 +357,18 @@ function closestSlug(token, slugs) {
       readdirSync(d).filter((n) => /\.(mjs|jsx)$/.test(n)).map((n) => [`${d}/${n}`, readFileSync(`${d}/${n}`, "utf8")])),
     ["build.mjs", readFileSync("build.mjs", "utf8")],
   ];
+  const invSlugs = new Set(records.filter((r) => r.folder === "invariants").map((r) => r.slug));
   for (const [path, text] of numbered) {
-    for (const m of text.matchAll(/invariants?[\s\-_]*\d/gi)) {
+    for (const m of text.matchAll(/\binvariants?[\s\-_]*\d/gi)) {
       console.error(`check:records: ${path}: cites an invariant by number ("${m[0].replace(/\s+/g, " ")}"); cite the slug`);
       bad++;
+    }
+    for (const m of text.matchAll(/\binvariants?\s+(`[^`]+`|[a-z0-9]+(?:-[a-z0-9]+)+)/gi)) {
+      const tok = m[1].replace(/`/g, "").toLowerCase();
+      if (!invSlugs.has(tok)) {
+        console.error(`check:records: ${path}: "invariant ${tok}" is not an invariant slug`);
+        bad++;
+      }
     }
   }
   for (const r of records) {
@@ -367,10 +382,10 @@ function closestSlug(token, slugs) {
     const cited = [
       ...[...line.matchAll(/\b(\d+[a-z]?\.\d+[a-z]?)\b/g)].map((m) => ["id", m[1]]),
       ...[...line.matchAll(/\bgroup (\d+[a-z]?)\b/gi)].map((m) => ["group", m[1]]),
-      ...[...line.matchAll(/npm run ([\w:-]+)/g)].map((m) => ["script", m[1]]),
+      ...[...line.matchAll(/npm (?:run )?(test(?::[\w-]+)?|check:screens)\b/g)].map((m) => ["script", m[1]]),
     ];
     if (!cited.length) {
-      console.error(`check:records: ${r.path}: "Pinned by" names no real test (a test id, "group N" or an npm script)`);
+      console.error(`check:records: ${r.path}: "Pinned by" names no real test (a test id, "group N" or a test script)`);
       bad++;
     }
     for (const [kind, id] of cited) {
