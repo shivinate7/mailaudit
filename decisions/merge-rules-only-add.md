@@ -2,6 +2,8 @@
 
 The merge only ever adds. Nothing is dropped, and no count decreases. A merge that silently drops 35 imported lines looks the same as one that worked, so the rule matters. It is why the merge needs no two-tap confirm, and why running it again is harmless.
 
+**Holds while:** `mergeReceived` in `src/merge-rules.mjs` keeps the larger count for each key. `mergeLedger` builds its result from named fields.
+
 `src/merge-rules.mjs` reconciles two devices' ledgers. It is pure and directly tested. It is the piece that fails by producing a plausible wrong ledger.
 
 - `mergeItems` unions by `it.key`. The CSV import path calls it too, so there is one definition of "union line items".

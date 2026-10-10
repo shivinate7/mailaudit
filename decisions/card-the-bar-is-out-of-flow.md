@@ -2,6 +2,8 @@
 
 The progress bar is absolutely positioned on the card's own top edge, in `edgeBar`. It is not part of the card's flow, so the bar moves no row when it mounts.
 
+**Holds while:** `edgeBar` in `src/app.jsx` sets `position: absolute`, and the bar mounts only while `gotQty > 0 && !done`.
+
 The first check-in in a package grew the card by 28px, and pushed every remaining row in it down by 28px. That was measured at 375px against the seeded ledger. The rows sat directly under the thumb that had just tapped one of them. That broke invariant 5 on the most common gesture in the app.
 
 The 28px came from two unrelated causes. The in-flow bar was 15px of it. The bar was a 15px child that appeared above everything it displaced. The action row was the other cause. Its labels wrapped to a second line, which grew the row from 31px to 44px. The `card-reserved-geometry` record has the measured card growth for both causes.
