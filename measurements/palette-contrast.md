@@ -12,7 +12,7 @@ No reader. Nothing in the test suite checks a contrast ratio.
 
 ## Figures
 
-| token | hex | role | contrast |
+| token | value | role | contrast |
 |---|---|---|---|
 | `paper` | `#F2E9DA` | the page | — |
 | `card` | `#FCF6EA` | any raised surface; **the theme's "white"** | — |
@@ -30,6 +30,8 @@ No reader. Nothing in the test suite checks a contrast ratio.
 | `gold` | `#C9A961` | ornament only (masthead rules, completed-package gild) — **never text** | 2.09:1 on card |
 | `silver` | `#C4C3C0` | the empty half of a progress bar | fill on it 3.17:1 |
 | `wax*` | five values | the seal's relief ramp, `<Seal>` only | — |
+| `shadow` | `rgba(28,43,36,0.06)` | card shadows | — |
+| `scrim` | `rgba(28,43,36,0.92)` | the photo viewer's backdrop | — |
 
 Everything carrying information clears 4.5:1. These values need care, and should not be nudged casually:
 
