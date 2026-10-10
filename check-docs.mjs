@@ -103,18 +103,31 @@ function lineAt(text, index) {
    `suite-size` record) document that test 38.9 skips itself in UTC, so a CI
    runner set to UTC prints one fewer assertion than a machine behind UTC.
    A count that changes with the runner's clock cannot be checked anywhere,
-   so this always runs the suite under a fixed, non-UTC zone — unchanged from
-   before the split. */
+   so the count is always read from a run under a fixed, non-UTC zone.
+   CI runs the suite once under that zone and names its output in
+   CHECK_DOCS_SUITE_LOG; this reads the count from that file. With the
+   variable unset (local use) it runs the suite itself, as before. A named
+   file that is unreadable or holds no count is a failure, never a pass. */
 const FIXED_TZ = "America/New_York";
 
 function suiteTotal() {
-  const out = execFileSync(process.execPath, ["test/app.test.mjs"], {
-    encoding: "utf8",
-    env: { ...process.env, TZ: FIXED_TZ },
-  });
+  const log = process.env.CHECK_DOCS_SUITE_LOG;
+  let out;
+  if (log) {
+    try {
+      out = readFileSync(log, "utf8");
+    } catch (e) {
+      throw new Error(`could not read CHECK_DOCS_SUITE_LOG (${log}): ${e.message}`);
+    }
+  } else {
+    out = execFileSync(process.execPath, ["test/app.test.mjs"], {
+      encoding: "utf8",
+      env: { ...process.env, TZ: FIXED_TZ },
+    });
+  }
   const m = out.match(/(\d+) passed, (\d+) failed/);
   if (!m) {
-    throw new Error("could not read a pass/fail count out of npm test's output");
+    throw new Error("could not read a pass/fail count out of the suite's output");
   }
   return Number(m[1]) + Number(m[2]);
 }
