@@ -3852,4 +3852,96 @@ ok(
   "46.7 the TCG sale row is rejected (type filter only)"
 );
 
+/* ── 47. a store that will not answer, and an odd sync grid ────────────────
+   Records photo-ids-unreadable-local and sync-panel-is-two-column-grid.
+
+   An unreadable LOCAL photo store keeps every id on a file restore. applyBackup
+   used to read a failed keys() as "this device holds nothing", so the envelope's
+   ids were stripped and the debounced save published the stripped ledger. The
+   keys() call rejects for this one restore only, and is put back after.
+
+   The Sync panel is a two-column option grid. An odd last cell spans the row so
+   the rule colour does not show through the empty half. The expected spans are
+   derived from the cell count read off the screen, and the parity is part of
+   the compared value, so a fixture that drifts to the other parity fails here
+   rather than passing vacuously. */
+
+const KEYS_DOWN_LEDGER = JSON.stringify({
+  mailday: 1,
+  items: ITEMS,
+  received: {},
+  envelopes: [
+    {
+      id: "env-k",
+      createdAt: 1,
+      note: "",
+      entries: [{ name: "Ponder", qty: 1 }],
+      photos: ["pho-k"],
+    },
+  ],
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+});
+
+await boot({ items: ITEMS, received: {}, envelopes: [] }, []);
+await goTo("orphaned");
+await click(btn(/Re-import CSV/), "show upload zone");
+const realKeys = win.photos.keys;
+win.photos.keys = async () => {
+  throw new Error("local photo store unreadable");
+};
+try {
+  await dropFile("ledger.json", KEYS_DOWN_LEDGER);
+  ok(
+    /(?<!\d)1 photo(?!s)/.test(text()),
+    "47.1 an unreadable local store keeps the envelope's photo id on screen"
+  );
+  await sleep(SAVE_WAIT);
+  eq(
+    saved().envelopes[0].photos,
+    ["pho-k"],
+    "47.2 and the saved ledger keeps the id, so the next push cannot publish it stripped"
+  );
+} finally {
+  win.photos.keys = realKeys;
+}
+
+/* the grid's cells, read off the screen; Push is in every state of this panel */
+const gridCells = () => [...btn(/^Push$/).parentElement.children];
+const spansFor = (cells, odd) =>
+  cells.map((_, i) => (odd && i === cells.length - 1 ? "1 / -1" : ""));
+
+/* odd: a device behind the other one gets Push, Merge and Pull, three cells */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+  remote: LAPTOP_PUSHED,
+});
+await openSync();
+await settle();
+{
+  const cells = gridCells();
+  eq(
+    {
+      odd: cells.length % 2 === 1,
+      merge: !!btn(/^Merge$/),
+      spans: cells.map((c) => c.style.gridColumn),
+    },
+    { odd: true, merge: true, spans: spansFor(cells, true) },
+    "47.3 an odd count in the sync grid spans the last cell across the row"
+  );
+}
+
+/* even: a device with no key and nothing to merge gets Push and Pull, two cells */
+await boot({ items: ITEMS, received: {} });
+await openSync();
+await settle();
+{
+  const cells = gridCells();
+  eq(
+    { odd: cells.length % 2 === 1, spans: cells.map((c) => c.style.gridColumn) },
+    { odd: false, spans: spansFor(cells, false) },
+    "47.4 an even count leaves every cell its own half"
+  );
+}
+
 report();
