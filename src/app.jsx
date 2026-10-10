@@ -1663,8 +1663,8 @@ const edgeBar = {
    Its membership changes on the same tap — "Clear check-ins" joins "Stamp" and
    "Mark all received" — and at 375px those three want 60.6 + 143.7 + 129.9 px
    plus two 8px gaps = 350px in the 313px the card gives them, so both bulk
-   labels wrap to a second line and the row grows 31px -> 44px. It shrinks by
-   the same 13px on the tap that COMPLETES a package, where "Mark all received"
+   labels wrap to a second line and the row grows 31px -> 46px. It shrinks by
+   the same 15px on the tap that COMPLETES a package, where "Mark all received"
    leaves: reserving the tallest state pins both transitions at once.
 
    This is a counted constant, exactly like the save slot's 13ch, and it goes
@@ -1674,19 +1674,19 @@ const edgeBar = {
    that the reservation is there and never varies, and can never say whether it
    is big enough.
 
-   Measured, content height needed against the 44 reserved: 57 at 320px, 44 at
+   Measured, content height needed against the 46 reserved: 57 at 320px, 46 at
    360 / 375 / 390, 31 at 430 and 760 (where all three fit one line and the
-   reservation is 13px of slack). So this covers 360px up, and **at 320px the
-   row still steps 13px** — three buttons wrap to a THIRD line there. Left
+   reservation is 15px of slack). So this covers 360px up, and **at 320px the
+   row still steps 11px** — three buttons wrap to a THIRD line there. Left
    deliberately: 320 is below this app's stated 380px floor and is not a
    viewport current iOS runs, and reserving 57 would buy it by spending 26px of
    dead space in every expanded card at the widths that are real. The bar half
-   of the fix is width-independent, so 320 still improves from 28px to 13px.
-   If that last 13px is ever wanted, the way to get it without the dead space
+   of the fix is width-independent, so 320 still improves from 28px to 11px.
+   If that last 11px is ever wanted, the way to get it without the dead space
    is to keep all three buttons mounted and hide the inapplicable one
    (`visibility: hidden`), which makes the row self-measuring at every width —
    at the cost of the visible label wrapping at rest, which is a look. */
-const BULK_ROW_H = 44;
+const BULK_ROW_H = 46;
 
 /* How long the app has to be in the background before coming back counts as
    "reopening it" rather than "glancing away". iOS keeps a home-screen web app's
