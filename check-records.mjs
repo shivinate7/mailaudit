@@ -255,9 +255,12 @@ function closestSlug(token, slugs) {
           continue;
         }
         const { slug, dist } = closestSlug(tok, slugList);
-        if (slug !== null && dist <= 2) {
+        // a prefix of a real slug (or a real slug that starts with the token)
+        // is a dangling cite too: `no-layout-shift` for no-layout-shift-under-...
+        const prefixOf = slugList.find((s) => s.startsWith(tok + "-") || tok.startsWith(s + "-"));
+        if (prefixOf || (slug !== null && dist <= 2)) {
           console.error(
-            `check:records: ${r.path}:${i + 1} cites \`${tok}\`, which does not exist — closest is \`${slug}\` (edit distance ${dist})`
+            `check:records: ${r.path}:${i + 1} cites \`${tok}\`, which does not exist — closest is \`${prefixOf ?? slug}\``
           );
           failures++;
           brokenCitations++;
@@ -325,20 +328,35 @@ function closestSlug(token, slugs) {
    Owner ruling 2026-10-10: invariants are cited by slug, never by number, and
    each one names the test that pins it. Every invariants/*.md holds a line
    starting "**Pinned by:**" that names at least one test id ("44.5" or
-   "group 44") that exists in test/app.test.mjs, or the literal "nothing yet"
-   (counted as a warning, not a failure). A cited id that does not exist
+   "group 44") that exists in test/app.test.mjs, or an `npm run <script>` that exists
+   in package.json. "nothing yet" is not an answer: a Pinned-by line with no
+   real test fails (owner ruling 2026-10-10). A cited id that does not exist
    fails. Any "invariant <digit>" anywhere in the corpus fails.
    */
 {
   const tests = readFileSync("test/app.test.mjs", "utf8");
-  const ids = new Set([...tests.matchAll(/["'`](\d+[a-z]?\.\d+[a-z]?)[\s"'`]/g)].map((m) => m[1]));
-  const groups = new Set([...tests.matchAll(/^\/\* ── (\d+[a-z]?)\./gm)].map((m) => m[1]));
-  let bad = 0, nothingYet = 0;
-  for (const r of records) {
-    for (const m of r.text.matchAll(/invariants? \d/gi)) {
-      console.error(`check:records: ${r.path}: cites an invariant by number ("${m[0]}"); cite the slug`);
+  // ids only from the assertion form: a label that opens with the id
+  // (`ok(x, "44.5 ...")`, or the label alone on its own line). A fixture
+  // price like "2.50" is not followed by a space and has no comma before it.
+  const ids = new Set([...tests.matchAll(/(?:,|^)\s*["'`](\d+[a-z]?\.\d+[a-z]?) /gm)].map((m) => m[1]));
+  const groups = new Set([...tests.matchAll(/^\/\* (?:──|-{4}) (\d+[a-z]?)\./gm)].map((m) => m[1]));
+  const scripts = new Set(Object.keys(JSON.parse(readFileSync("package.json", "utf8")).scripts));
+  let bad = 0;
+  // numbers are retired: no record, test or source file may cite one. Spans
+  // line breaks and hyphens/underscores ("invariant-6", "invariants 2 and 5").
+  const numbered = [
+    ...records.map((r) => [r.path, r.text]),
+    ...["src", "test"].flatMap((d) =>
+      readdirSync(d).filter((n) => /\.(mjs|jsx)$/.test(n)).map((n) => [`${d}/${n}`, readFileSync(`${d}/${n}`, "utf8")])),
+    ["build.mjs", readFileSync("build.mjs", "utf8")],
+  ];
+  for (const [path, text] of numbered) {
+    for (const m of text.matchAll(/invariants?[\s\-_]*\d/gi)) {
+      console.error(`check:records: ${path}: cites an invariant by number ("${m[0].replace(/\s+/g, " ")}"); cite the slug`);
       bad++;
     }
+  }
+  for (const r of records) {
     if (r.folder !== "invariants") continue;
     const line = r.text.split("\n").find((l) => l.startsWith("**Pinned by:**"));
     if (!line) {
@@ -346,24 +364,24 @@ function closestSlug(token, slugs) {
       bad++;
       continue;
     }
-    if (/nothing yet/.test(line)) { nothingYet++; continue; }
     const cited = [
       ...[...line.matchAll(/\b(\d+[a-z]?\.\d+[a-z]?)\b/g)].map((m) => ["id", m[1]]),
       ...[...line.matchAll(/\bgroup (\d+[a-z]?)\b/gi)].map((m) => ["group", m[1]]),
+      ...[...line.matchAll(/npm run ([\w:-]+)/g)].map((m) => ["script", m[1]]),
     ];
     if (!cited.length) {
-      console.error(`check:records: ${r.path}: "Pinned by" names no test id and is not "nothing yet"`);
+      console.error(`check:records: ${r.path}: "Pinned by" names no real test (a test id, "group N" or an npm script)`);
       bad++;
     }
     for (const [kind, id] of cited) {
-      if (!(kind === "id" ? ids : groups).has(id)) {
-        console.error(`check:records: ${r.path}: pinned by ${kind} ${id}, which does not exist in test/app.test.mjs`);
+      if (!(kind === "id" ? ids : kind === "group" ? groups : scripts).has(id)) {
+        console.error(`check:records: ${r.path}: pinned by ${kind} ${id}, which does not exist in ${kind === "script" ? "package.json" : "test/app.test.mjs"}`);
         bad++;
       }
     }
   }
   failures += bad;
-  console.log(`check:records: pins check — ${bad} problem(s), ${nothingYet} invariant(s) pinned by "nothing yet" (warning)`);
+  console.log(`check:records: pins check — ${bad} problem(s)`);
 }
 
 if (failures) {

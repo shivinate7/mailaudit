@@ -3281,7 +3281,7 @@ ok(
 /* Driven restore-first, because that is the only order the UI now allows: an
    armed Reset takes the row AND closes the panels the other cells control, so
    there is no Restore button on screen to reach while it is primed. That gate
-   is itself the invariant-6 property — nothing beside the armed control to
+   is itself the no-native-dialogs property — nothing beside the armed control to
    mis-tap — so the pair is tested in the direction it can actually happen. */
 await openHistory();
 await click(btn(/before reset/), "expand a version");
