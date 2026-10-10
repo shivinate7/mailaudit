@@ -1,23 +1,10 @@
 # pushForce records the sha after the write
 
-A forced push stores its looked-up sha only after the bytes actually reach GitHub, not before the write. Storing the sha first once let a failed forced write leave a current sha over stale data. The next automatic push then carried no conflict and overwrote the other device silently. Push now takes an optional sha override for exactly this case.
+`pushForce` hands its looked-up sha to the PUT. It does not store that sha first. The rule exists because an earlier version called `saveRec({ sha })` before it wrote. That made the force the one remaining place that recorded a claim to hold bytes it had not written. When the PUT then failed, the device kept a current sha over stale data. The failure could come from being offline, from throttling, or from a 409 raised by racing the photo repo. The next auto-push was then accepted with no conflict raised. This is the same incident as the pull path, reached through the force path.
 
-## The argument, as recorded
+`push()` takes an optional sha override for this case. It records that sha only after the bytes reach GitHub.
 
-```
-  **`pushForce` hands its looked-up sha to the PUT rather than storing it
-  first.** It used to `saveRec({ sha })` before writing, which made the force
-  the one remaining place recording a claim to hold bytes it had not written —
-  and when that PUT then failed (offline, throttled, a 409 racing the photo
-  repo), the device sat on a *current sha over stale data* and its next
-  auto-push was **accepted with no conflict raised**. Verbatim the incident
-  below, reached through the force door instead of the pull. `push()` takes an
-  optional sha override for exactly this and records it only once the bytes are
-  on GitHub. Tests 35.6–35.7 pin it at the app level; the adapter is unreachable
-  from the suite, so the mock was corrected to match — it had mirrored the same
-  ordering *and* cleared `remote.fail` on the way in, so a force could never
-  fail and nothing could ever have caught this.
-```
+Tests 35.6–35.7 pin this at the app level. The adapter is unreachable from the suite, so the mock was corrected to match. The mock had mirrored the same ordering. It had also cleared `remote.fail` on the way in. So a force could never fail, and nothing could catch this.
 
 ## See also
 

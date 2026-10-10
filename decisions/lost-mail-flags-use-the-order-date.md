@@ -1,15 +1,8 @@
 # Lost-mail flags count from the order date
 
-An untracked, unreceived package gets an amber flag at fourteen days and a red flag at thirty days, both counted from the order date. TCGplayer's refund window actually closes thirty days after estimated delivery, a date missing from the CSV. Order date stands in as a conservative proxy for that missing date.
+An untracked, unreceived package gets an amber "may be lost" flag at 14d from the order date. It gets a red "refund window closing" flag at 30d from the order date.
 
-## The argument, as recorded
-
-```
-- Lost-mail flags on untracked unreceived packages: amber "may be lost" at 14d
-  from order date, red "refund window closing" at 30d (TCGplayer refund
-  eligibility ends 30 days after estimated delivery; order date is a
-  conservative proxy since EDD isn't in the CSV).
-```
+TCGplayer refund eligibility ends 30 days after the estimated delivery date (EDD). The CSV has no EDD column. So the order date is a conservative proxy for that missing date.
 
 ## See also
 

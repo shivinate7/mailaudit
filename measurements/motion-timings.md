@@ -10,139 +10,30 @@ Open the built page in a real browser. Watch a full load for the letterhead beat
 
 Group 42 pins two behaviour claims under `useJustBecame`. No reader holds a duration, a delay, or the no-reflow claim, because jsdom has no layout and no compositor.
 
-## The figures, as recorded
+## Motion figures
 
-```
-The app moves now, and the register is **stationery, not software**: ink
-settling into paper, a seal pressed, a stamp rocked onto a page, rules drawn
-like a pen stroke, gold catching light once. Nothing springs, nothing bounces
-past its rest and hangs there. The one overshoot in the whole sheet — the
-stamp's `+1deg` — is the wrist roll that inks a rubber stamp's edges, and it
-returns *through* rest rather than oscillating around it.
+The app moves now. The register is **stationery, not software**. Ink settles into paper. A seal is pressed. A stamp rocks onto a page. Rules are drawn like a pen stroke. Gold catches the light once. Nothing springs. Nothing bounces past its rest and hangs there. The one overshoot in the sheet is the stamp's `+1deg`. It is the wrist roll that inks a rubber stamp's edges. It returns *through* rest rather than oscillating around it.
 
-Everything lives in one commented block in the `<style>` tag, under a single
-rule that is not a style preference: **nothing may reflow.** Every keyframe
-touches opacity, transform, colour or box-shadow and nothing else. That is
-invariant 5 restated as a stylesheet constraint, and it is why the sliding
-switch fill is an absolutely positioned element rather than a background moving
-between three buttons, and why the check tick is drawn with `stroke-dashoffset`
-inside a box whose 30px never changes. Measured in a real 375px viewport across
-a check-in: the row's height, the indicator's 30×30 and the document width all
-drift **0.00px**, and horizontal overflow stays 0 in every state. The same
-holds for a card being opened: the card below it steps to its new position in
-**one commit** and holds it for the whole animation (measured across ten frames
-— a single distinct offset), because only opacity and transform are animated
-and the height is never touched.
+Everything lives in one commented block in the `<style>` tag. One rule applies, and it is not a style preference: **nothing may reflow**. Every keyframe touches opacity, transform, colour or box-shadow, and nothing else. This is invariant 5, restated as a stylesheet constraint. It is why the sliding switch fill is an absolutely positioned element, not a background that moves between three buttons. It is also why the check tick is drawn with `stroke-dashoffset` inside a box whose 30px never changes.
 
-Eight moments:
+Measured in a real 375px viewport across a check-in, the row's height, the indicator's 30×30 and the document width all drift **0.00px**. Horizontal overflow stays 0 in every state. The same holds for a card being opened. The card below steps to its new position in **one commit**, and it holds that position for the whole animation. Measured across ten frames, there was a single distinct offset. Only opacity and transform are animated. The height is never touched.
 
-- **The letterhead composes itself, once per load**, in the order a page is
-  actually made: wax, rules, name, house, figures. The seal is pressed
-  (`mdl-press`, 600ms, .68 → 1.06 → 1), its specular catch comes up once the
-  wax is down and still (`mdl-shine`, 420ms in), the gold rules are drawn
-  outward from it (`mdl-draw`, scaleX, each pulling from its inner end), then
-  the title, house line and tallies settle. Five overlapping beats landing at
-  600 / 900 / 920 / 940 / 970 / **1060ms**.
-  The first cut ran the whole thing inside 700ms and **read as one blur rather
-  than as a sequence** — the ceremony needs the room. The price was chosen
-  knowingly by the owner and is the thing to re-examine if this is revisited:
-  **the tallies arrive last**, and they are the figures the app is opened to
-  read. Two guard rails if you retime it — keep the final beat under ~1.1s, and
-  never let the tallies start after the house line.
-  `mdl-shine` is scoped to `.mdl-head .mdl-seal`. The running head renders a
-  second `<Seal>`, and it is deliberately not selected: its highlight keeps the
-  `opacity="0.22"` presentation attribute throughout, which is also exactly
-  what the masthead's falls back to under reduced motion.
-- **The view switch is one object being moved, not three lamps being lit.**
-  `.mdl-thumb` is the violet fill, absolutely positioned at exactly a third of
-  the track and translated by whole multiples of its own width, so it lands on
-  the thirds the grid already defines and cannot drift out of step with them.
-  The buttons no longer paint their own background — a button that did would
-  leave a fill behind wherever the thumb had just been, and there would be two
-  of it mid-slide. **The consequence to know: `data-view` on `.mdl-switch` is
-  now the only thing saying which segment is active.** Drop it and the app has
-  no active-view indicator at all, and every button still looks correct in a
-  DOM dump. Tests 43.1–43.2.
-- **The RECEIVED stamp lands** rather than blinking into being: down at −13°,
-  rocked flat, settled back to its −4°. The order-stamp band uses the same
-  keyframes and returns to its own −3° — the resting angle rides in a `--rest`
-  custom property, so one animation serves both.
-- **A completed package is gilded.** One pass of gold across the card, on the
-  same beat as the stamp. This is where the completion moment actually lives:
-  the per-package progress bar is mounted only while `gotQty > 0 && !done`, so
-  it is *gone before it can ever render at 100%* — the bar cannot mark its own
-  completion because it does not survive it. The card does. The band is the
-  ornamental gold, which is never allowed to carry information, and here it
-  carries none.
-  That gate is now load-bearing in a second direction, and the reason is worth
-  knowing before anyone touches the bar: it survived the fix for the 28px card
-  shift **only because the bar was taken out of flow rather than reserved a
-  slot**. A reserved slot would have to stay mounted at 100%, and the bar would
-  then sheen its own completion next to the gild. See "The card's reserved
-  geometry"; test 44.5 is what fails if it is put back.
-- **The check tick is written**, one stroke left to right, 300ms. That ceiling
-  is not a preference either: this fires hundreds of times on a mail day and
-  anything slower starts to feel like latency. The glyph is an SVG path rather
-  than the `✓` character purely so it *can* be drawn; the `aria-label` carries
-  the meaning either way, and the partial state stays a typographic dash
-  because a half-drawn stroke would read as a tick still arriving.
-- **The masthead progress bar** takes its green a beat after the width lands,
-  so the two read as cause and effect rather than one event, and sweeps once.
-  It is reachable but rare: 100% there means every card in the ledger has
-  arrived, which is the largest thing this app has to say.
-- **A card opening lays its contents down in order.** The bulk row, then each
-  item row, each a beat behind the last (`mdl-reveal`, 240ms, opacity and 4px)
-  — a letter unfolded rather than a light switched on. The stagger is **capped
-  at 132ms**, so past the sixth row every remaining row shares the last beat
-  and a twenty-line order finishes as promptly as a three-line one (measured:
-  delays 0/22/44/66/88/110/132/132/132, everything settled by 372ms).
-  It is gated on `useJustBecame` for a reason particular to this card: an
-  unreceived package **starts expanded** (`useState(!done)`), so a bare class
-  would set every open card on the page animating at once on load, competing
-  with the letterhead's own sequence. Measured on the seeded ledger: 0 reveals
-  fire on load, 9 on a card opened by hand.
-  **Collapsing is deliberately not animated**, and that is the same rule read
-  the other way. An exit animation means keeping the rows mounted past the tap
-  and shrinking the card a fifth of a second later — a *delayed* layout change,
-  under a thumb that has already moved on, which is worse than an immediate
-  one. The caret carries both directions instead (200ms, the sheet's easing);
-  on the way closed it is the only thing that moves.
-- **The disclosure panels arrive** (220ms, opacity and 4px). The space they
-  take is *not* animated and must not be — it is the same layout they have
-  always pushed down, one commit after the tap.
+There are eight moments.
 
-**`useJustBecame` is the load-bearing piece and the one to protect.** Every
-celebration here marks a state a package can already be *in*, so a bare CSS
-class would replay its animation each time React rebuilt the tree: switching
-Packages → Tally and back would restamp every finished order at once, and a
-re-sort would do it again. The hook returns true only when its value rises
-false → true **while the component stays mounted**, and never on a fresh mount.
-It is also the more honest reading — the moment worth marking is the check-in,
-not the fact of having been checked in. Tests 43.3–43.6; 43.4 and 43.6 are a
-pair, and a mutant that classes the stamp on `done` alone passes the first and
-dies on the second.
+- **The letterhead composes itself, once per load**, in the order a page is made: wax, rules, name, house, figures. The seal is pressed (`mdl-press`, 600ms, .68 → 1.06 → 1). Its specular catch comes up once the wax is down and still (`mdl-shine`, 420ms in). The gold rules are drawn outward from it (`mdl-draw`, scaleX, each pulling from its inner end). Then the title, house line and tallies settle. Five overlapping beats land at 600 / 900 / 920 / 940 / 970 / **1060ms**. The sequence needs room. A version that ran inside 700ms read as one blur. It did not read as a sequence. The owner chose this price knowingly. It is the thing to re-examine if this is revisited. **The tallies arrive last.** They are the figures the app is opened to read. If you retime it, keep the final beat under ~1.1s. Never let the tallies start after the house line. `mdl-shine` is scoped to `.mdl-head .mdl-seal`. The running head renders a second `<Seal>`. That second seal is deliberately not selected. Its highlight keeps the `opacity="0.22"` presentation attribute throughout. The masthead falls back to that same value under reduced motion.
+- **The view switch is one object being moved, not three lamps being lit.** `.mdl-thumb` is the violet fill. It is absolutely positioned at exactly a third of the track. It is translated by whole multiples of its own width. So it lands on the thirds the grid already defines. The buttons do not paint their own background. A button that did would leave a fill behind wherever the thumb had just been. **`data-view` on `.mdl-switch` is now the only thing that says which segment is active.** Drop it, and the app has no active-view indicator at all. Every button still looks correct in a DOM dump. Tests 43.1–43.2 cover this.
+- **The RECEIVED stamp lands.** It does not blink into being. It starts down at −13°, rocks flat, and settles back to its −4°. The order-stamp band uses the same keyframes. It returns to its own −3°. The resting angle rides in a `--rest` custom property, so one animation serves both.
+- **A completed package is gilded.** One pass of gold crosses the card, on the same beat as the stamp. This is where the completion moment lives. The per-package progress bar is mounted only while `gotQty > 0 && !done`. So it is gone before it can render at 100%. The bar cannot mark its own completion, because it does not survive that completion. The card does. The band is the ornamental gold. It must never carry information, and here it carries none. That gate is load-bearing in a second way. It survived the fix for the 28px card shift only because the bar was taken out of flow, not given a reserved slot. A reserved slot would stay mounted at 100%. The bar would then sheen its own completion beside the gild. See "The card's reserved geometry". Test 44.5 fails if the bar is put back.
+- **The check tick is written**, one stroke from left to right, in 300ms. That ceiling is a rule, not a preference. The tick fires hundreds of times on a mail day. Anything slower feels like latency. The glyph is an SVG path, not the `✓` character, so that it can be drawn. The `aria-label` carries the meaning either way. The partial state stays a typographic dash. A half-drawn stroke would read as a tick still arriving.
+- **The masthead progress bar** takes its green a beat after the width lands. The two read as cause and effect. They do not read as one event. It sweeps once. It is reachable but rare. 100% there means that every card in the ledger has arrived. That is the largest thing this app has to say.
+- **A card opening lays its contents down in order.** The bulk row comes first, then each item row. Each row comes a beat behind the last. Each uses `mdl-reveal`, which takes 240ms and moves opacity and 4px. This is a letter unfolding, not a light switching on. The stagger is **capped at 132ms**. Past the sixth row, every remaining row shares the last beat. So a twenty-line order finishes as promptly as a three-line one. Measured delays were 0/22/44/66/88/110/132/132/132. Everything settled by 372ms. The reveal is gated on `useJustBecame`. An unreceived package **starts expanded** (`useState(!done)`). A bare class would set every open card on the page animating at once on load. That would compete with the letterhead's own sequence. Measured on the seeded ledger: 0 reveals fire on load, and 9 fire on a card opened by hand.
+- **Collapsing is deliberately not animated.** An exit animation would keep the rows mounted past the tap. It would shrink the card a fifth of a second later. That is a *delayed* layout change, under a thumb that has already moved on. That is worse than an immediate change. The caret carries both directions instead, in 200ms, with the sheet's easing. On the way closed, the caret is the only thing that moves.
+- **The disclosure panels arrive** in 220ms, with opacity and 4px. The space they take is *not* animated, and must not be. It is the same layout they have always pushed down, one commit after the tap.
 
-**Every rule is switched off under `prefers-reduced-motion`, and the resting
-state is each animation's own final frame** — so `animation: none` leaves the
-thing *drawn*, not hidden: the seal visible, the rules full width, the tick
-complete, the stamp at its inline angle, the thumb on its third. Verified by
-forcing the reduced-motion block on unconditionally in a real browser: seal
-opacity 1, rules 104px, title and tallies opaque, thumb at 228.66px = 2 × the
-114.33px third, overflow 0. With motion off the app is pixel-for-pixel what it
-was before this pass.
+**`useJustBecame` is the load-bearing piece, and the one to protect.** Every celebration here marks a state that a package can already be *in*. A bare CSS class would replay its animation each time React rebuilt the tree. Switching Packages to Tally and back would restamp every finished order at once. A re-sort would do it again. The hook returns true only when its value rises from false to true *while the component stays mounted*. It never returns true on a fresh mount. This is also the more honest reading. The moment worth marking is the check-in, not the fact of having been checked in. Tests 43.3–43.6 cover it. Tests 43.4 and 43.6 are a pair. A mutant that classes the stamp on `done` alone passes the first and dies on the second.
 
-Two things measurement, not reading, settled here, and both will need
-re-measuring rather than re-reasoning if they change. **jsdom has no layout and
-no compositor**, so durations, easing, distances and the no-reflow claim are
-not assertable and no test protects them — group 42 pins only the two claims
-that are behaviour. And **the Browser pane freezes animation timelines when it
-is not compositing**, which makes sampled mid-animation values read as frozen;
-pause with `getAnimations()` and set `currentTime` instead of sampling frames,
-or the numbers will lie to you.
+**Every rule is switched off under `prefers-reduced-motion`.** The resting state is each animation's own final frame. So `animation: none` leaves the thing *drawn*, not hidden. The seal is visible. The rules are full width. The tick is complete. The stamp sits at its inline angle. The thumb sits on its third. In a real browser, the reduced-motion block was forced on unconditionally. The figures were: seal opacity 1, rules 104px, title and tallies opaque, and thumb at 228.66px. That equals 2 × the 114.33px third. Overflow was 0. With motion off, the app matches its pre-pass appearance pixel for pixel.
 
-`_studies.html` is not in the repo, but the method that produced this is worth
-keeping: each moment was built two or three ways as a side-by-side proof sheet
-with every variable but one held constant, and picked by looking rather than by
-reading a description.
+Two things measurement settled, not reading. Both need re-measuring, not re-reasoning, if they change. jsdom has no layout and no compositor. So durations, easing, distances and the no-reflow claim are not assertable. No test protects them. Group 42 pins only the two claims that are behaviour. The Browser pane freezes animation timelines when it is not compositing. That makes sampled mid-animation values look frozen. Pause with `getAnimations()` and set `currentTime` instead of sampling frames. Otherwise the numbers lie.
 
-```
+`_studies.html` is not in the repo, but the method that produced this is worth keeping. Each moment was built two or three ways, as a side-by-side proof sheet. Every variable but one was held constant. The winner was picked by looking, not by reading a description.
