@@ -57,6 +57,9 @@ const C = {
   waxDeep: "#66231D",
   waxCut: "#5E1F1A",
   waxRaised: "#E09A90",
+  /* translucent surfaces, by role */
+  shadow: "rgba(28,43,36,0.06)",
+  scrim: "rgba(28,43,36,0.92)",
 };
 
 const mono = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
@@ -584,7 +587,7 @@ function ProgressBar({ pct, height = 8, radius = height }) {
              ink is a near-black violet and read as flat black on parchment. */
           background: pct >= 100 ? C.green : C.accent,
           borderRadius: radius,
-          transition: "width 240ms ease, background 340ms 160ms ease",
+          transition: "width 240ms ease, background 340ms 280ms ease",
         }}
       />
       {justDone && <i className="mdl-sheen" aria-hidden="true" />}
@@ -992,7 +995,7 @@ function PackageCard({
         border: `1px solid ${done ? C.green : C.line}`,
         borderRadius: 10,
         overflow: "hidden",
-        boxShadow: "0 1px 2px rgba(28,43,36,0.06)",
+        boxShadow: `0 1px 2px ${C.shadow}`,
         /* clears the 46px running head when the Tally view scrolls us here */
         scrollMarginTop: 58,
       }}
@@ -1430,7 +1433,7 @@ function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder, stampedGks }
         border: `1px solid ${done ? C.green : C.line}`,
         borderRadius: 10,
         overflow: "hidden",
-        boxShadow: "0 1px 2px rgba(28,43,36,0.06)",
+        boxShadow: `0 1px 2px ${C.shadow}`,
       }}
     >
       <button
@@ -2320,7 +2323,7 @@ function PhotoStrip({ ids, onRemove, epoch = 0 }) {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(28,43,36,0.92)",
+            background: C.scrim,
             zIndex: 50,
             display: "flex",
             alignItems: "center",
@@ -2420,7 +2423,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel }) {
         border: `1px solid ${C.ink}`,
         borderRadius: 10,
         overflow: "hidden",
-        boxShadow: "0 1px 2px rgba(28,43,36,0.06)",
+        boxShadow: `0 1px 2px ${C.shadow}`,
       }}
     >
       <div
@@ -2750,7 +2753,7 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
         border: `1px solid ${C.line}`,
         borderRadius: 10,
         overflow: "hidden",
-        boxShadow: "0 1px 2px rgba(28,43,36,0.06)",
+        boxShadow: `0 1px 2px ${C.shadow}`,
       }}
     >
       <div
