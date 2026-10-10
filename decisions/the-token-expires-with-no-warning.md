@@ -2,15 +2,7 @@
 
 **Status:** open.
 
-Fine-grained GitHub tokens cap at 366 days. When one lapses, every push starts failing with an expired-or-revoked error. Nothing in the app warns the user beforehand, so the first sign of trouble is a sync that has already stopped.
-
-## The thread, as recorded
-
-```
-- **The token expires.** Fine-grained PATs cap at 366 days. When it lapses the
-  app 401s and says "expired or been revoked" — but nothing warns beforehand,
-  and the only symptom is a push that stops working.
-```
+Fine-grained personal access tokens cap at 366 days. When a token lapses, the app 401s and says "expired or been revoked". Every push then fails. Nothing warns the user beforehand, so the first sign of trouble is a sync that has already stopped.
 
 ## See also
 

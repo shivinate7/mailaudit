@@ -1,15 +1,10 @@
 # A reveal ignores hideDone too
 
-A revealed package must ignore hideDone as well as the search query. Otherwise the jump lands on nothing when the tapped copy's package is already fully checked in. The plus-N-more footer promises lines that the hideDone filter would then hide again.
+A revealed package must ignore `hideDone` as well as the search `query`. Otherwise the jump lands on nothing when the tapped copy's package is already fully checked in. The `+N more` count in the footer promises lines. The `hideDone` filter would then hide those lines again.
 
-## The argument, as recorded
+Reveals clear when `query` or `dateFilter` changes. They do not clear when `view` changes. The Tally jump sets `revealed` and `view` in one handler. A `view` dependency would clear the reveal on the very next commit.
 
-```
-  Three things here are load-bearing. A reveal ignores **hideDone as well as
-  the query** — otherwise the jump lands on nothing whenever the tapped copy's
-  package is fully checked in, and the "+N more" count promises lines the
-  hideDone filter then swallows. Reveals clear on `query`/`dateFilter` but
-```
+Group 32 covers this behaviour.
 
 ## See also
 

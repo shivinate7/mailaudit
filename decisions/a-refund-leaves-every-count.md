@@ -1,18 +1,10 @@
 # Refunded packages leave every count
 
-A package stamped Refunded or Partial refund drops out of every count and the normal package list, the same way a canceled order does. The money already came back, so nothing about that package stays outstanding. Totals, Tally, and the Orphaned candidates all inherit this exclusion from one shared source.
+A package stamped `Refunded` or `Partial refund` drops out of every count and the normal package list. A canceled order leaves the same way. The money already came back, so nothing about that package stays outstanding.
 
-## The argument, as recorded
+One shared source, `liveItems`, excludes refunded packages the way `activeItems` excludes canceled ones. Totals, Tally, and the Orphaned candidates all inherit that exclusion.
 
-```
-  `Refunded` and `Partial refund` take the package out of **every count and
-  the normal list**, exactly as a canceled order is — the money is back, so
-  nothing is outstanding. One chokepoint: `liveItems` excludes refunded
-  packages the way `activeItems` excludes canceled ones, and totals, Tally,
-  and the Orphaned candidates all inherit it. So stamping an order Refunded
-  makes its card **vanish from the list under your finger** — the precedent
-  is "Mark all received" under Unreceived, and the `N stamped` cell is the
-```
+Stamping an order `Refunded` makes its card vanish from the list under the user's finger. The precedent is "Mark all received" under Unreceived. The `N stamped` cell is the signpost for those packages.
 
 ## See also
 

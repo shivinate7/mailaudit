@@ -1,10 +1,7 @@
 # Every colour token meets a contrast floor
 
-The app defines one fixed set of colour tokens, each with a named role. Every token that carries information clears a 4.5 to 1 contrast ratio. The palette-contrast record holds the measured ratio for each token.
+The app defines one fixed set of color tokens, each with a named role. Every token that carries information clears a 4.5 to 1 contrast ratio. The `palette-contrast` record holds the measured ratio for each token.
 
-## The argument, as recorded
-
-```
 | token | hex | role | contrast |
 |---|---|---|---|
 | `paper` | `#F2E9DA` | the page | — |
@@ -24,9 +21,9 @@ The app defines one fixed set of colour tokens, each with a named role. Every to
 | `silver` | `#C4C3C0` | the empty half of a progress bar | fill on it 3.17:1 |
 | `wax*` | five values | the seal's relief ramp, `<Seal>` only | — |
 
-Everything carrying information clears 4.5:1. Two values are load-bearing in a
-non-obvious way and should not be nudged casually:
-```
+Everything carrying information clears 4.5:1.
+
+Two values are load-bearing in a non-obvious way. Do not nudge them casually: `inkSoft` and `manilaInk`. The See also records give the reasons.
 
 ## See also
 

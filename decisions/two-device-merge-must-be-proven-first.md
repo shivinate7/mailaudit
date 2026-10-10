@@ -1,33 +1,16 @@
 # Prove the two-device merge before trusting auto-push
 
-Setting up sync ends with an actual conflict test, not a successful push. One device checks in a card and pushes. A second device, without pulling, imports new lines and pushes into the conflict, then merges. Both devices must end holding both sets of changes, and the first device's next merge must agree. There is no toggle to turn sync on, so this proof is required before running the app on two devices at all.
+Setup ends with an actual conflict test. It does not end with a successful push. The two steps below are part of the one-time setup.
 
-## The argument, as recorded
+5. In the app: Sync → paste → Save key → Push. Expect `Pushed ✓`. Check that `mailaudit` gained no commit at all. With photos in the ledger, expect `mailaudit-data` to gain one commit per photo on `main`. The button stays on `Pushing…` until they are done. Each takes roughly a second. The ledger and the photos share one repo's write budget and one `spaceWrites()` clock.
 
-```
-5. In the app: Sync → paste → Save key → Push. Expect `Pushed ✓`, and check
-   `mailaudit` gained no commit at all. With photos in the ledger, expect
-   `mailaudit-data` to gain one commit per photo on `main` and the button to stay
-   on `Pushing…` until they are done, roughly a second each — the ledger and the
-   photos now share one repo's write budget and one `spaceWrites()` clock.
+   Then run the test worth doing. Pull onto a second device or origin, and confirm the thumbnails render. This is the one path where a wrong order fails silently. The ledger comes back looking perfect, with every photo id quietly stripped.
 
-   Then the test worth actually doing: **pull onto a second device or origin**
-   and confirm the thumbnails render. That is the one path where getting the
-   order wrong is silent — the ledger would come back looking perfect with every
-   photo id quietly stripped.
+6. Prove the merge before trusting auto-push. Auto-push's conflict recovery is that same path, running unattended. On A, check a card in, then Push. On B, without pulling, import a CSV that adds lines, then Push. Expect the conflict. Then tap **Merge & push**. B must end holding A's check-in and its own new lines. A's next Merge must agree.
 
-6. **Prove the merge before trusting auto-push**, because auto-push's conflict
-   recovery is that same path running unattended. On A: check a card in, Push.
-   On B *without pulling*: import a CSV that adds lines, Push — expect the
-   conflict, then **Merge & push**. B must end holding A's check-in *and* its
-   own new lines, and A's next Merge must agree. There is no toggle to turn on
-   any more — sync is unconditional — so this proof is a prerequisite for
-   running the app on two devices at all, not just for enabling something.
+   Sync is unconditional now. There is no toggle to enable. So this proof is a prerequisite for running the app on two devices at all, not only for enabling a feature.
 
-   `file://` and `http://localhost:4173` are two separate origins with two
-   separate ledgers, so they stand in for two devices without needing a second
-   phone — see "Running it locally".
-```
+   `file://` and `http://localhost:4173` are two separate origins with two separate ledgers. So they can act as two devices, without a second phone. See "Running it locally".
 
 ## See also
 

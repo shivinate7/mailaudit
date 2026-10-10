@@ -1,15 +1,8 @@
 # Photo blobs never enter the ledger
 
-Envelope photos live in IndexedDB, and only their ids travel inside the ledger. The image blob itself never enters the ledger JSON. The app revokes each thumbnail object URL on unmount. Leaving it would pin the whole image in memory for the life of the page.
+Envelope photos live in IndexedDB. Only their ids travel inside the ledger. The image blob itself never enters the ledger JSON. Envelopes carry only photo ids.
 
-## The argument, as recorded
-
-```
-  written straight to IndexedDB. Envelopes carry only photo ids; the blob never
-  enters the ledger JSON. Thumbnails on the card, tap for a full-screen viewer.
-  Object URLs are revoked on unmount (leaking them pins whole images in memory
-  for the life of the page).
-```
+Thumbnails appear on the card. Tapping one opens a full-screen viewer. The app revokes each thumbnail object URL on unmount. Leaking those URLs would pin whole images in memory for the life of the page.
 
 ## See also
 

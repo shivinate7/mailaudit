@@ -1,30 +1,32 @@
 # Version-retention tiers are unioned, never intersected
 
-Four independent reasons keep a saved version alive: recency, milestones, the earliest of each hour, and the earliest of each day. A pruning bug that deletes the wrong version leaves a list that still looks healthy, with nothing to notice until the loss matters. The hour and day anchors are derived at prune time rather than stored. This keeps them from drifting out of step with the records they describe. The size of this tier lives in `ledger-and-seed-sizes`.
+Four independent reasons keep a saved version alive. They are recency, milestones, the earliest version of each hour, and the earliest version of each day. The hour and day anchors are derived at prune time, not stored. This keeps them from drifting out of step with the records they describe. The size of this tier lives in `ledger-and-seed-sizes`.
 
-## The argument, as recorded
+A pruning bug can delete the one version the user was reaching for. It leaves a list that still looks healthy. Nothing signals the loss until the moment it cannot be fixed.
 
-```
-- `src/version-rules.mjs` — which saved versions survive a prune. Same
-  rationale as the modules around it: a pruning bug deletes the one version the
-  user was reaching for and leaves a list that looks perfectly healthy, so there
-  is nothing to notice until the moment it can't be fixed. Four independent
-  reasons to live, **unioned and never intersected** — the newest `recentKeep`,
-  milestones inside `milestoneDays`, the earliest record of each *hour* inside
-  `hourHours`, and the earliest of each *day* inside `dayDays`. The hourly tier
-  closes the gap the others leave: the ring holds ten to thirty minutes of dense
-  work before it churns out and the day anchor holds this morning, so without it
-  the honest answer to "put it back to how it was at 11am" was "you can't".
-  24 more records, ~600KB gzipped — the cheapest tier here.
-  Two things are deliberate and easy to undo by accident: there is **no stored
-  "hourly" or "daily" kind and nothing is ever promoted** — both anchors are
-  derived at prune time by `earliestPer`, so they cannot drift out of step with
-  the records the way a written-once flag would; and an anchor is its bucket's
-  **earliest**, because the state worth reaching for is how things stood
-  *before* the stretch that went wrong. `prunePlan` is the complement of `keptIds`
-  so no record can be both. `shouldSnapshot` is the write gate. Imported by
-  `entry.jsx` (`prunePlan`) and `app.jsx` (`shouldSnapshot`). Group 38.
-```
+## The module
+
+`src/version-rules.mjs` decides which saved versions survive a prune. The four reasons are unioned and never intersected:
+
+- The newest `recentKeep` versions.
+- Milestones inside `milestoneDays`.
+- The earliest record of each *hour* inside `hourHours`.
+- The earliest record of each *day* inside `dayDays`.
+
+## Why the hourly tier exists
+
+The hourly tier closes a gap the other tiers leave. The ring holds ten to thirty minutes of dense work before it churns out. The day anchor holds this morning. Without the hourly tier, the answer to "put it back to how it was at 11am" would be "you cannot".
+
+The hourly tier adds 24 more records, ~600KB gzipped. It is the cheapest tier here.
+
+## Two deliberate choices
+
+Two things are deliberate and easy to undo by accident.
+
+- There is no stored "hourly" or "daily" kind, and nothing is ever promoted. Both anchors are derived at prune time by `earliestPer`. So they cannot drift out of step with the records, the way a written-once flag would.
+- An anchor is its bucket's **earliest**. The state worth reaching for is how things stood *before* the stretch that went wrong.
+
+`prunePlan` deletes every record that `keptIds` does not keep. So no record can be both kept and pruned. `shouldSnapshot` is the write gate. `entry.jsx` imports `prunePlan`, and `app.jsx` imports `shouldSnapshot`. Group 38.
 
 ## See also
 

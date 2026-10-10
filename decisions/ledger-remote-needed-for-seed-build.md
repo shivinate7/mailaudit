@@ -1,19 +1,18 @@
 # A build needs the data remote to seed the page
 
-A fresh clone needs a git remote pointing at the private data repository. It must be fetched for the data branch before the build can bake in a seed. Without that remote, the build runs seedless. The seed checker reports that rather than failing outright. On a machine where the remote does resolve, a seedless committed page is a hard failure. That means the build dropped a seed it could have made.
+A fresh clone needs a git remote that points at the private data repository. The data branch must be fetched before the build can bake in a seed. Without that remote, the build runs seedless. The seed checker reports that rather than failing outright.
 
-## The argument, as recorded
+On a machine where the remote does resolve, a seedless committed page is a hard failure. This means that the build dropped a seed it could have made.
 
-````
-A clone also needs a remote named `ledger` for the seed to build:
+## Setup
+
+A clone needs a remote named `ledger` for the seed to build:
+
 ```bash
 git remote add ledger https://github.com/shivinate7/mailaudit-data.git && git fetch ledger data
 ```
-Without it the build is seedless, and `npm run check:seed` says so rather than
-failing — but on a machine where the ref *does* resolve, a seedless committed
-page is a hard failure, because that means the build dropped a seed it could
-have made.
-````
+
+Without the remote, the build is seedless. `npm run check:seed` reports that instead of failing. On a machine where the ref does resolve, a seedless committed page is a hard failure. The build dropped a seed it could have made.
 
 ## See also
 

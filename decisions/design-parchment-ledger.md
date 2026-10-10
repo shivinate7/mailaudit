@@ -1,16 +1,8 @@
 # The palette is parchment ledger
 
-The theme is a warm parchment page with violet ink and accent, and gold as a secondary color. Every color lives in one object at the top of the app file, and no color literal appears anywhere else. There is no pure white in the theme. The off-white parchment surface stands in for white everywhere.
+The theme is named "Parchment ledger" (palette D▸, Violet Evergarden–inspired). It is a warm parchment page with violet ink and accent. Gold is the secondary color.
 
-## The argument, as recorded
-
-```
-"Parchment ledger" (palette D▸, Violet Evergarden–inspired): warm parchment
-page, violet ink and accent, gold secondary. Every colour lives in the `C`
-object at the top of `src/app.jsx` — **there is no colour literal anywhere else
-in the file, and no pure white in the theme.** Never reach for `"#fff"`; use
-`C.card`, which is the off-white parchment surface.
-```
+Every color lives in the `C` object at the top of `src/app.jsx`. No color literal appears anywhere else in the file. The theme has no pure white. Never reach for `"#fff"`. Use `C.card`, which is the off-white parchment surface.
 
 ## See also
 
