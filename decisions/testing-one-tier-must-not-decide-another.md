@@ -1,21 +1,14 @@
 # One tier must not decide another
 
-When several rules can each keep or drop the same record, a test on one rule must neutralize every other rule first. The version-pruning suite was wrong before the code was. This happened four separate times, because one tier quietly decided the outcome another tier's fixture claimed to test.
+When several rules can each keep or drop the same record, a test on one rule must neutralize every other rule first. Otherwise another rule decides the outcome, and the assertion tests the wrong thing.
 
-## The argument, as recorded
+Group 38's own assertions were wrong before the code was, four separate times, always the same way. A tier's fixture did not neutralize the other tiers. So another tier quietly decided the outcome. Examples:
 
-```
-- **Group 38's own assertions have been wrong before the code was, four
-  separate times, always the same way.** A tier's fixture must neutralise every
-  *other* tier or the assertion is decided elsewhere: the day anchor keeps
-  records the recent ring drops (the union working, not the ring failing), a
-  small fixture never saturates the ring, and — the one that survived a mutation
-  run — a record three hours old is also *today's earliest*, so it is kept by
-  the day tier whether or not an hourly tier exists at all. Deleting the hourly
-  tier left the suite green until the fixture gained an earlier record to take
-  the day anchor off it. **When asserting that one tier keeps or drops
-  something, make sure no other tier is quietly deciding it for you.**
-```
+- The day anchor kept records that the recent ring dropped. That was the union working, not the ring failing.
+- A small fixture never saturated the ring.
+- A record three hours old was also today's earliest. So the day tier kept it, whether or not an hourly tier existed. This was the one that survived a mutation run. Deleting the hourly tier left the suite green. It stayed green until the fixture gained an earlier record. That record took the day anchor off the three-hour-old record.
+
+When you assert that one tier keeps or drops something, make sure that no other tier is quietly deciding it for you.
 
 ## See also
 

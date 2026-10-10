@@ -1,18 +1,10 @@
 # The access token sits outside the storage namespace
 
-The GitHub access token lives at a raw localStorage key, deliberately outside the app's own key namespace. The storage adapter's list call enumerates that namespace, and nothing calls it today. If a future feature backs up everything under that namespace, the token stays out of reach by construction, not by memory.
+The GitHub access token lives at the raw localStorage key `mailday-remote:v1`. That key sits deliberately outside the `mailday:` namespace.
 
-## The argument, as recorded
+`window.storage.list()` enumerates that prefix. Nothing calls it today. But the day someone adds a backup of everything in the namespace, the token would be swept into a file the user emails to themselves. Keeping the token outside the namespace makes that impossible by construction. Nobody has to remember the rule.
 
-```
-The access token lives at raw localStorage key **`mailday-remote:v1`**,
-deliberately *outside* the `mailday:` namespace. `window.storage.list()`
-enumerates that prefix; nothing calls it today, but the day someone adds "back
-up everything in the namespace" the token would be swept into a file the user
-emails to themselves. Keeping it out makes that impossible by construction
-rather than by remembering. Verified in a browser: after saving a key,
-`storage.list()` still returns only `["mailday:v1"]`.
-```
+Verified in a browser. After saving a key, `storage.list()` still returns only `["mailday:v1"]`.
 
 ## See also
 
