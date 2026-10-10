@@ -8,7 +8,7 @@ In Orphaned, green marks an exact match, the armed check-in confirm, and the Und
 
 In Orphaned, red marks Discard, and the Remove photo control in the composer.
 
-Open: the owner has not ruled whether green and red stay scarce in Orphaned. Until a ruling, the list above is what the code paints.
+Green and red are not kept scarce in Orphaned. Each colour keeps one meaning: green is a check-in, done or about to be committed, and red is a delete. The owner ruled this on 2026-10-10. So the Undo notice stays green, and Remove photo stays red.
 
 **Holds while:** `EnvelopeCard` in `src/app.jsx` paints Discard with `C.red`. `PhotoStrip` paints Remove photo with `C.red`, and only `EnvelopeComposer` passes it `onRemove`. `Notice` paints `C.greenSoft` with a `C.green` border. The exact-match text and the armed check-in button paint `C.green`. `EnvelopeComposer` paints its "as typed" row with `C.manila`.
 
