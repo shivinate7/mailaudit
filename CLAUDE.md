@@ -21,7 +21,7 @@ one record, and each record holds current text only; git keeps the history. Read
 records your task needs. Do not read them all.
 
 - `invariants/` holds a rule that must not break. 8 records.
-- `decisions/` holds a ruling and the reason it still holds. 138 records.
+- `decisions/` holds a ruling and the reason it still holds. 141 records.
 - `measurements/` holds a measured figure and how to re-measure it. 8 records.
 
 A record cites another record by slug, never by a path, so a record survives a
@@ -213,6 +213,9 @@ What each check asks, and the two traps in the icon pipeline.
 - `favicon-is-a-different-drawing` — The favicon is redrawn, not the master shrunk.
 - `icon-paths-and-export-gotchas` — Icon paths stay relative, and iOS caches hard.
 - `the-masthead-is-not-the-project-name` — The masthead is not the project name.
+- `main-moves-only-by-pr` — Main moves only by pull request, admins included.
+- `screens-checked-headless-in-ci` — Each view is checked headless at 375 and 760px.
+- `records-hold-current-text-only` — Records hold current text only; git keeps history.
 
 ## Testing method
 
