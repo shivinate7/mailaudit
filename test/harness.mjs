@@ -873,7 +873,7 @@ const mk = (orderId, seller, date, tracking, rows) =>
   }));
 
 /* Alpha and Beta are deliberate near-duplicates — identical contents from
-   different sellers. That's the case invariant 7 exists for, and it's normal
+   different sellers. That's the case invariant orphaned-mail-never-decides exists for, and it's normal
    for this user, so it belongs in the baseline fixture rather than one test. */
 export const ITEMS = [
   ...mk("A1", "Alpha Cards", "2026-07-01", "without tracking", [

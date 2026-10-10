@@ -508,7 +508,7 @@ window.remote = {
          record beside the token rather than in the saved state. Whether this
          phone pushes on its own is a property of this phone; syncing it would
          mean the laptop turning the phone's background traffic on. It also
-         keeps invariant 2's five-site rule out of it entirely. */
+         keeps invariant saved-state-shape's five-site rule out of it entirely. */
       auto: !!r.auto,
     };
   },
