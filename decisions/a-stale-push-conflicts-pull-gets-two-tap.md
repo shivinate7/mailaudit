@@ -2,7 +2,7 @@
 
 The app sends the sha it last saw for conflict checks. It never sends a sha fetched again right before the push. A stale push reports a conflict and changes nothing. Every push stays recoverable as a commit in history. A bad pull has no matching recovery. That is why only Pull carries the two-tap confirm, and Push does not.
 
-**Holds while:** `confirmPull` in `src/app.jsx` arms the two-tap on Pull, and no `confirmPush` state exists for the Push button.
+**Holds while:** `confirmPull` in `src/app.jsx` arms the two-tap on Pull, and the Push button has no confirm state of its own.
 
 ## Why the sha is the last one seen
 
