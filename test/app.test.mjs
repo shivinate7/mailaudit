@@ -6733,6 +6733,41 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   await pasteKey59("bad key!");
   ok(!text().includes("Sync key saved."), "59.18c a later failed save removes the confirmation");
   ok(text().includes(REFUSED59), "59.18d and shows the refusal in its place");
+
+  /* 59.19. The message slot is reserved: an element sits after the save button even
+     when it holds no text, on its own line, with a minimum height. jsdom has no
+     layout, so this asserts the structure and the inline geometry only. The geometry
+     itself is proven by a headless measure, not by this case. */
+  await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true, remote: null });
+  await settle();
+  await openPanel59();
+  const slot19 = btn(/^Save sync key$/)?.nextElementSibling ?? null;
+  ok(!!slot19, "59.19a the message slot exists beside the save button while the message is empty");
+  eq(slot19?.textContent ?? null, "", "59.19b and holds no text");
+  ok(slot19?.style.flexBasis === "100%", "59.19c and takes its own line");
+  ok(!!slot19?.style.minHeight, "59.19d and reserves a minimum height");
+
+  /* 59.20. A good save says so, and closing and reopening the panel keeps the message. */
+  await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true, remote: null });
+  await settle();
+  await openPanel59();
+  await pasteKey59(KEY59);
+  await closePanel59();
+  await openPanel59();
+  ok(text().includes("Sync key saved."), "59.20 the message survives a close and a reopen of the panel");
+
+  /* 59.21. A good save says so, and a later 401 from the Worker does not clear it. */
+  await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true, remote: null });
+  await settle();
+  await openPanel59();
+  await pasteKey59(KEY59);
+  setSyncKeyRefused(true);
+  await foreground();
+  await settle();
+  await sleep(1000);
+  await settle();
+  ok(text().includes("Sync key saved."), "59.21 a later 401 does not clear the save message");
+  setSyncKeyRefused(false);
 }
 
 uninstallClock();
