@@ -2,7 +2,7 @@
 
 The app defines one fixed set of color tokens, each with a named role. Every token that carries information clears a 4.5 to 1 contrast ratio. The `palette-contrast` record holds the measured ratio for each token.
 
-**Holds while:** the `C` object at the top of `src/app.jsx` defines each value in the table below. The values are hex, except `shadow` and `scrim`, which are `rgba()`.
+**Holds while:** `shared/tokens.json` defines each value in the table below, and `src/app.jsx` reads that file as `C`. The values are hex, except `shadow` and `scrim`, which are `rgba()`.
 
 | token | value | role | contrast |
 |---|---|---|---|

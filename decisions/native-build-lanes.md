@@ -1,10 +1,10 @@
 # The native build runs in ordered lanes
 
-**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. No lane has landed.
+**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. S1 has landed in PR #62, and its row has left this table. No other lane has landed.
 
 The native rebuild splits into lanes. W lanes change the Worker. S lanes change shared files and extract the rules. The C lane changes CI. N lanes build the native client. A lane that lands leaves this table, and git keeps its history.
 
-**Holds while:** lane S1 has not landed, and the repo has no native folder.
+**Holds while:** no lane in this table has landed, and the repo has no native folder.
 
 ## How every lane runs
 
@@ -21,8 +21,7 @@ The native rebuild splits into lanes. W lanes change the Worker. S lanes change 
 | W1 Reply carries stats | worker/core.mjs, worker/core.test.mjs | The POST reply holds `stats` equal to what `mergeLedger` returns. A POST that changes nothing gives zero stats. | `npm run test:worker` | none |
 | W2 Worker photo route | Worker files, not yet briefed | Not yet briefed. | Not yet briefed. | none |
 | W3 Worker daily snapshots | Worker files, not yet briefed | Not yet briefed. | Not yet briefed. | none |
-| S1 Shared tokens | shared/tokens.json, src/app.jsx, index.html | The built `C` deep-equals tokens.json. A drifted value goes red. | `npm test && npm run check:build` | none |
-| S2 Extract rules, part 1 | src/view-rules.mjs, src/app.jsx, test/view-rules.test.mjs, index.html | `parseItems` filters, `lostMail`, `normName`, `groupPackages`, the `rankCandidates` tie, `matchEnvelope`. | `node test/view-rules.test.mjs && npm test && npm run check:build` | S1 |
+| S2 Extract rules, part 1 | src/view-rules.mjs, src/app.jsx, test/view-rules.test.mjs, index.html | `parseItems` filters, `lostMail`, `normName`, `groupPackages`, the `rankCandidates` tie, `matchEnvelope`. | `node test/view-rules.test.mjs && npm test && npm run check:build` | S1 (landed) |
 | S3 Extract rules, part 2 | src/view-rules.mjs, src/app.jsx, index.html | Tally pooling, the six sort keys, filters, totals, `outstandingNames`. Sticky rows and the frozen sort stay in the component. | same as S2 | S2 |
 | S4 Fixtures and golden files | shared/fixtures, scripts/gen-golden.mjs, test/harness.mjs | `check:golden` goes red on a hand-edited golden file. | `npm run check:golden && npm test` | S3 |
 | C1 Native CI job | .github/workflows/test.yml | Proof: the job goes red on a broken Swift test in a PR. | The PR's native job is green. | S4 |
@@ -43,7 +42,7 @@ W2 and W3 come from the owner's rulings, not from the first plan. Their files, t
 
 ## Order
 
-- Batch 1: W1 and S1, with W2 and W3 free to start. S1, S2, S3 and S4 run in series, because each one rebuilds index.html.
+- Batch 1: W1 and S1 (landed), with W2 and W3 free to start. S2, S3 and S4 run in series, because each one rebuilds index.html.
 - Batch 2: C1 and N1, after S4.
 - Batch 3: N2 and N3.
 - Batch 4: N5, beside N4a.

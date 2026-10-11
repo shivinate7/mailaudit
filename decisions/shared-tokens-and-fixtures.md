@@ -1,16 +1,16 @@
 # Both clients read one token file and one fixture set
 
-**Status:** ruled. The owner ruled on 2026-10-11 to follow Degen's D32 rule that the palette tokens and the test fixtures are shared files. Lanes S1 and S4 build them. Neither has landed.
+**Status:** ruled. The owner ruled on 2026-10-11 to follow Degen's D32 rule that the palette tokens and the test fixtures are shared files. Lane S1 landed in PR #62. Lane S4 has not landed.
 
 The palette and the test data have one home each. The web build and the Swift client both read them, so neither client can drift from the other.
 
-**Holds while:** `src/app.jsx` holds the palette as the literal `C`, and the Swift client needs the same values.
+**Holds while:** `shared/tokens.json` holds the palette, and the Swift client needs the same values.
 
 ## Tokens
 
 - The file shared/tokens.json replaces the literal `C` in `src/app.jsx`.
 - esbuild imports the JSON. Swift decodes it at launch. No Style Dictionary is used.
-- Lane S1 tests that the built `C` deep-equals the file. A drifted value goes red.
+- Test group 60 of `npm test` checks that the built `C` deep-equals the file (60.4). A drifted value goes red (60.5 and 60.6).
 - The palette rules still apply to the values, see `design-parchment-ledger` and `palette-tokens-contrast-floor`.
 
 ## Fixtures and golden files
