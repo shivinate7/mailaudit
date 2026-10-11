@@ -6752,21 +6752,23 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   await settle();
   await openPanel59();
   await pasteKey59(KEY59);
+  ok(text().includes("Sync key saved."), "59.20pre the good save says so");
   await closePanel59();
   await openPanel59();
-  ok(text().includes("Sync key saved."), "59.20 the message survives a close and a reopen of the panel");
+  ok(!text().includes("Sync key saved."), "59.20 closing and reopening the panel clears the save message");
 
   /* 59.21. A good save says so, and a later 401 from the Worker does not clear it. */
   await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true, remote: null });
   await settle();
   await openPanel59();
   await pasteKey59(KEY59);
+  ok(text().includes("Sync key saved."), "59.21pre the good save says so");
   setSyncKeyRefused(true);
   await foreground();
   await settle();
   await sleep(1000);
   await settle();
-  ok(text().includes("Sync key saved."), "59.21 a later 401 does not clear the save message");
+  ok(!text().includes("Sync key saved."), "59.21 a later 401 removes the save message");
   setSyncKeyRefused(false);
 }
 
