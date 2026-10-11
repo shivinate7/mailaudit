@@ -2811,7 +2811,7 @@ await sleep(SAVE_WAIT);
     "37.68 the merged stamps reach GitHub"
   );
   ok(
-    /1 stamp\b/.test(text()),
+    /\b1 stamp from the other device\b/.test(text()),
     "37.69 and the notice counts the one stamp that arrived, not the tombstone"
   );
 }
@@ -4794,6 +4794,19 @@ for (const [path, look] of [
     0,
     "50.A4b an older stamp does not undo a removal, and removes nothing"
   );
+  /* A5: a tombstone with no live local stamp removes nothing. A mutant that
+     counts every winning tombstone reports a removal here, and the notice lies. */
+  const TOMB_ALONE = { a: { kind: "", at: "", note: "", updatedAt: 200 } };
+  eq(
+    mergeStamps({}, TOMB_ALONE).removed,
+    0,
+    "50.A5a a tombstone with no local stamp removes nothing"
+  );
+  eq(
+    mergeStamps(undefined, TOMB_ALONE).removed,
+    0,
+    "50.A5b and the same with no local stamps at all"
+  );
 
   /* A2 through the app: the other device un-checked later, and this device
      still holds the check. The manual merge applies the removal. */
@@ -4893,6 +4906,22 @@ for (const [path, look] of [
   await sleep(SAVE_WAIT);
   eq(saved().stamps?.[GK_A]?.kind ?? "", "", "50.A4e a quiet merge applies the stamp removal");
   ok(noticeNamesRemoval(), "50.A4f and the quiet merge still leaves a notice naming it");
+
+  /* A5 through the app: an incoming tombstone for a stamp this device never
+     had. The quiet merge takes it, and leaves no notice. */
+  await boot({ items: ITEMS, received: {} }, null, KEY);
+  await openSync();
+  await click(btn(/^Push$/), "push");
+  await sleep(60);
+  remote.content = utf8ToBase64(
+    asRemote({ items: ITEMS, received: {}, receivedAt: {}, envelopes: [], stamps: STAMP_GONE50 })
+  );
+  remote.sha = "sha-other";
+  await backgroundFor(5 * 60_000);
+  await settle();
+  await sleep(SAVE_WAIT);
+  ok(typeof saved().stamps?.[GK_A] === "object", "50.A5c the quiet merge takes the tombstone");
+  ok(!REMOVED.test(text()) && !/Merged/.test(text()), "50.A5d and leaves no notice");
 
   /* B: write sites that already stamp receivedAt */
   await fresh();
