@@ -78,11 +78,14 @@ export async function route(request, env, store) {
     return json({ error: "bad ledger" }, 400);
 
   const cur = await store.read();
-  const ledger = cur ? mergeLedger(cur.ledger, incoming).merged : incoming;
+  const merge = cur ? mergeLedger(cur.ledger, incoming) : null;
+  const ledger = merge ? merge.merged : incoming;
+  // No merge runs against an empty store, so there is nothing to count.
+  const stats = merge ? merge.stats : mergeLedger({}, {}).stats;
   if (new TextEncoder().encode(JSON.stringify(ledger)).length > MAX_LEDGER_BYTES) return json({ error: "too-large" }, 413);
-  if (cur && canon(ledger) === canon(cur.ledger)) return json({ ledger, rev: cur.rev });
+  if (cur && canon(ledger) === canon(cur.ledger)) return json({ ledger, rev: cur.rev, stats });
   const rev = (cur?.rev ?? 0) + 1;
   await store.write(ledger, rev);
   await store.broadcast({ rev });
-  return json({ ledger, rev });
+  return json({ ledger, rev, stats });
 }

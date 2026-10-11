@@ -453,7 +453,8 @@ win.remote = remoteApi;
 
 /* window.sync: the Worker adapter of stage 4b. The contract is route() in
    worker/core.mjs. GET answers {ledger, rev}, or 404 while the object is empty.
-   POST merges with the app's own mergeLedger and answers {ledger, rev}. A
+   POST merges with the app's own mergeLedger and answers {ledger, rev, stats}.
+   The web app counts its own stats, so this fake leaves stats out. A
    missing or wrong key answers 401, and a merged ledger over the cap answers
    413. The real adapter keeps the device key at the raw localStorage key
    "mailday-sync:v1", outside the "mailday:" namespace. Here the key lives in
