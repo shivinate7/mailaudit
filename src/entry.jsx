@@ -5,7 +5,7 @@ import { utf8ToBase64, base64ToUtf8, blobToBase64 } from "./b64.mjs";
 import { classifyStatus, pushBody } from "./remote-rules.mjs";
 import { photoName, photoIdFromName, mimeFromName, isAlreadyThere } from "./photo-rules.mjs";
 import { prunePlan } from "./version-rules.mjs";
-import { keyFromHash, syncStatus, backoffMs, SYNC_KEY_STORAGE } from "./sync-rules.mjs";
+import { keyFromHash, syncStatus, backoffMs, SYNC_KEY_STORAGE, SYNC_TIMEOUT_MS } from "./sync-rules.mjs";
 
 /* ============================================================
    Platform layer. app.jsx never touches a storage API directly —
@@ -883,8 +883,11 @@ const syncSave = (k) => {
 const syncCall = async (method, ledger) => {
   const key = syncKey();
   if (!key) return { status: 401, body: { error: "unauthorized" } };
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), SYNC_TIMEOUT_MS);
   try {
     const res = await fetch(`${SYNC_URL}/ledger`, {
+      signal: ctl.signal,
       method,
       headers: {
         Authorization: `Bearer ${key}`,
@@ -895,6 +898,8 @@ const syncCall = async (method, ledger) => {
     return { status: res.status, body: await res.json().catch(() => null) };
   } catch {
     return { status: null, body: null };
+  } finally {
+    clearTimeout(timer);
   }
 };
 window.sync = {

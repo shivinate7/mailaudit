@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import Papa from "papaparse";
 import { photoPlan } from "./photo-rules.mjs";
 import { shouldSnapshot } from "./version-rules.mjs";
-import { SYNC_POST_MS, IDLE_APPLY_MS, idleReady, backoffMs } from "./sync-rules.mjs";
+import { SYNC_POST_MS, SYNC_TIMEOUT_MS, IDLE_APPLY_MS, idleReady, backoffMs } from "./sync-rules.mjs";
 import {
   mergeItems,
   mergeLedger,
@@ -4195,7 +4195,7 @@ export default function MailDayLedger() {
       setPushState("pushing");
       /* the mirror writes the merge with the last server ledger, never a raw
          snapshot that may hold fewer lines than the Worker does */
-      const text = JSON.stringify(
+      let text = JSON.stringify(
         mirror && lastServer.current
           ? mergeLedger(snapshot(), lastServer.current).merged
           : snapshot()
@@ -4209,9 +4209,27 @@ export default function MailDayLedger() {
       syncingRef.current = true;
       setSyncBusy(true);
       try {
-        await (force
-          ? window.remote.pushForce(text, message)
-          : window.remote.push(text, message));
+        try {
+          await (force
+            ? window.remote.pushForce(text, message)
+            : window.remote.push(text, message));
+        } catch (e) {
+          if (!(mirror && e?.code === "conflict")) throw e;
+          /* a mirror conflict: GitHub moved. Read it, merge it into the ledger
+             being pushed, write under the fresh sha, and give the Worker the
+             merge. Never write a copy that has not merged what GitHub holds. */
+          const res = await window.remote.pull();
+          const merged = mergeLedger(JSON.parse(text), parseLedger(res.text)).merged;
+          text = JSON.stringify(merged);
+          await window.remote.push(text, message, res.sha);
+          if (window.sync) {
+            try {
+              settleReply(await withTimeout(window.sync.post(merged)), true);
+            } catch {
+              /* the GitHub write landed; the Worker catches up on the next POST */
+            }
+          }
+        }
         setRemoteInfo(await window.remote.status().catch(() => null));
         /* Only now, after the ledger is actually on GitHub. A conflict here
            means this device is out of sync, and spraying photos at the remote
@@ -4673,6 +4691,13 @@ export default function MailDayLedger() {
   const heldRev = useRef(0); // the highest rev heard while a POST was in flight
   const refusedRef = useRef(false); // a 401: no more calls until the page reloads
   const closeRef = useRef(null);
+  const tooBigRef = useRef(false);
+  /* a Worker call that never answers counts as unreachable */
+  const withTimeout = (p) =>
+    Promise.race([
+      p,
+      new Promise((res) => setTimeout(() => res({ status: null, body: null, code: "unknown" }), SYNC_TIMEOUT_MS)),
+    ]);
   /* one home for a held reply, from a POST or from a rev-gated GET. A reply
      with a rev below the newest landed one is stale and is dropped. */
   const holdReply = (r) => {
@@ -4689,8 +4714,14 @@ export default function MailDayLedger() {
   /* One verdict for every Worker reply. empty (404) is a healthy server with
      nothing stored yet. Anything else but ok is a failure: mirror off, the
      advisory state set, and the retry follows backoffMs, not every save. */
-  const settleReply = (r) => {
+  const settleReply = (r, fromPost = false) => {
     if (r.code === "ok" || r.code === "empty") {
+      /* only a successful POST clears a too-big state; a GET still holds its reply */
+      if (tooBigRef.current && !(fromPost && r.code === "ok")) {
+        if (r.code === "ok") holdReply(r);
+        return;
+      }
+      tooBigRef.current = false;
       mirrorRef.current = true;
       failN.current = 0;
       nextTry.current = 0;
@@ -4699,6 +4730,7 @@ export default function MailDayLedger() {
       if (r.code === "ok") holdReply(r);
       return;
     }
+    tooBigRef.current = r.code === "too-big";
     mirrorRef.current = false;
     setServerDown(r.code === "too-big" || r.code === "no-access" ? r.code : "unknown");
     if (r.code === "no-access") {
@@ -4718,19 +4750,23 @@ export default function MailDayLedger() {
   postRef.current = () => {
     const p = (async () => {
       if (!window.sync || !(await window.sync.hasKey())) return;
-      if (refusedRef.current || Date.now() < nextTry.current) return;
+      /* 50 ms of slack: a timer that fires a hair early still retries */
+      if (refusedRef.current || Date.now() < nextTry.current - 50) return;
       postsInFlight.current++;
       let r;
       try {
-        r = await window.sync.post(snapshot());
+        r = await withTimeout(window.sync.post(snapshot()));
       } finally {
         postsInFlight.current--;
       }
-      settleReply(r);
+      settleReply(r, true);
       /* a rev heard while the POST was out is this device's own write if the
          reply carries it; only a higher one is another device's */
-      if (postsInFlight.current === 0 && heldRev.current > lastRev.current) revRef.current(heldRev.current);
-      heldRev.current = 0;
+      if (postsInFlight.current === 0) {
+        const held = heldRev.current;
+        heldRev.current = 0;
+        if (held > lastRev.current) revRef.current(held);
+      }
     })();
     cycleRef.current = p;
     return p;
@@ -4740,7 +4776,7 @@ export default function MailDayLedger() {
   coldRef.current = () => {
     cycleRef.current = (async () => {
       if (!window.sync || !(await window.sync.hasKey())) return;
-      settleReply(await window.sync.get());
+      settleReply(await withTimeout(window.sync.get()));
     })();
   };
   /* a rev above the last one seen (or already being fetched) is one GET */
@@ -4753,7 +4789,7 @@ export default function MailDayLedger() {
     if (refusedRef.current) return;
     if (rev <= Math.max(lastRev.current, inflightRev.current)) return;
     inflightRev.current = rev;
-    const r = await window.sync.get();
+    const r = await withTimeout(window.sync.get());
     if (r.code !== "ok") inflightRev.current = lastRev.current;
     settleReply(r);
   };
@@ -4863,6 +4899,7 @@ export default function MailDayLedger() {
   const AUTO_PUSH_MS = 90000;
   const autoTimer = useRef(null);
   const skipFirstAuto = useRef(true);
+  const mirrorDirty = useRef(false);
 
   const autoPush = useCallback(async () => {
     if (!window.remote || syncingRef.current) return;
@@ -4896,11 +4933,13 @@ export default function MailDayLedger() {
     const info = await window.remote.status().catch(() => null);
     if (!info?.hasKey) return;
     /* With a Worker key, GitHub is a mirror: no peek, no merge, and a stale sha
-       is a forced write (pushForce re-reads the sha), never a two-tap. */
-    await cycleRef.current;
+       merges GitHub in and writes under the fresh sha (see doPush), no two-tap. */
     if (mirrorRef.current) {
+      /* the mirror writes only when the ledger changed since its last write: an
+         unchanged resume must not touch GitHub, and a conflict means a merge */
+      if (!mirrorDirty.current) return;
       const r = await doPush(false, true, true);
-      if (r && !r.ok && r.code === "conflict") await doPush(true, true, true);
+      if (r?.ok) mirrorDirty.current = false;
       return;
     }
     if (typeof window.remote.peek === "function") {
@@ -4937,6 +4976,7 @@ export default function MailDayLedger() {
       skipFirstAuto.current = false;
       return;
     }
+    mirrorDirty.current = true;
     clearTimeout(autoTimer.current);
     autoTimer.current = setTimeout(() => autoPushRef.current(), AUTO_PUSH_MS);
     return () => clearTimeout(autoTimer.current);

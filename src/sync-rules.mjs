@@ -34,6 +34,9 @@ export function syncStatus(status) {
 
 export const isNewRev = (have, got) => got > have;
 
+/* a Worker call that has not answered by now counts as unreachable */
+export const SYNC_TIMEOUT_MS = 10000;
+
 /* a POST goes out this long after a change */
 export const SYNC_POST_MS = 3000;
 
