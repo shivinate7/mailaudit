@@ -31,5 +31,8 @@ export class Ledger extends DurableObject {
 export default {
   // Fresh store per sync-revamp-cloudflare. "ledger" is the stage-2 seed and
   // "ledger-v2" is the probe store; rolling back means an older name.
-  fetch: (request, env) => env.LEDGER.get(env.LEDGER.idFromName("ledger-v3")).fetch(request),
+  // A probe deploy sets STORE_NAME (--var STORE_NAME:probe-1) and never touches
+  // the real store. wrangler.toml does not set it, so a plain deploy is ledger-v3.
+  fetch: (request, env) =>
+    env.LEDGER.get(env.LEDGER.idFromName(env.STORE_NAME || "ledger-v3")).fetch(request),
 };
