@@ -4,12 +4,13 @@
 
 A merge never drops a line from `items`. A check-in or an envelope goes only when a later write wins. A check-in count falls only that way. An un-check is one such write. A merge that silently dropped 35 imported lines would look the same as one that worked, so the rule matters. Running the merge again is harmless.
 
-**Holds while:** `mergeReceived` in `src/merge-rules.mjs` takes the later time per key, and the per-key max when a time is missing. `mergeLedger` builds its result from named fields.
+**Holds while:** `mergeReceived` in `src/merge-rules.mjs` takes the later time per key. A timed absence beats an untimed count. With no time on either side, it takes the per-key max. `mergeLedger` builds its result from named fields.
 
 `src/merge-rules.mjs` reconciles two devices' ledgers. It is pure and directly tested. It is the piece that fails by producing a plausible wrong ledger.
 
 - `mergeItems` unions by `it.key`. The CSV import path calls it too, so there is one definition of "union line items".
-- `mergeReceived` takes the later time per key, from `receivedAt`. With no times, it takes the per-key **max**.
+- `mergeReceived` takes the later time per key, from `receivedAt`. A timed absence beats an untimed count, because only an un-check makes one. With no time on either side, it takes the per-key **max**.
+- The cost of that rule: an old build writes no times. So its later check-in loses to a timed un-check. Update both devices first, as `saved-state-shape` says.
 - `mergeEnvelopes` unions by id. The freshest `updatedAt` wins. A `deletedAt` tombstone competes the same way.
 - `mergeStamps` works per package. The freshest `updatedAt` wins, and tombstones are included.
 - `mergeLedger` and `mergeSummary` complete the module.
