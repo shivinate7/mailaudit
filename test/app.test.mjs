@@ -6281,6 +6281,8 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
       LP1.every((n, i) => i === 0 || n >= LP1[i - 1]),
       `58.P1a GitHub never holds fewer lines than before (writes: ${JSON.stringify(LP1)})`
     );
+    eq(saved().items?.length, 18, "58.P1c the local copy ends with the union, 18 lines");
+    eq((await win.sync.get()).body?.ledger?.items?.length, 18, "58.P1d and the Worker ends with the union, 18 lines");
   }
 
   /* P4, a port of the reviewer's probe. 3 local lines meet 12 remote ones, so the
@@ -6315,6 +6317,33 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
       `58.P4a GitHub never holds fewer lines than before (writes: ${JSON.stringify(LP4)})`
     );
     eq(LP4.at(-1), 15, "58.P4b and the last write holds the union, 15 lines");
+  }
+
+  /* P5. Two Worker replies arrive while a recent touch holds the apply: the
+     bigger first, then one that lacks its lines. The mirror push that runs while
+     they are held carries the bigger one's lines too, since the server copy only
+     grows. A copy that took the later reply alone would write 8 lines, not 18. */
+  {
+    const touchP5 = () => act(async () => { win.dispatchEvent(new win.Event("pointerdown")); await sleep(0); });
+    const ledgerP5 = (items) => ({ mailday: 1, items, received: {}, envelopes: [] });
+    await boot({ items: ITEMS.slice(0, 6), received: {} }, null, { remoteKey: GH58, syncKey: KEY58 });
+    await settle();
+    await click(btn(/Mark all received/), "check in, so the mirror push is due");
+    await sleep(POST58);
+    await settle();
+    await sleep(AUTO58 - POST58 - 5000);
+    await touchP5();
+    await fireSyncRev(syncRev() + 1, ledgerP5(REMOTE58)); /* the newer reply: 12 lines */
+    await fireSyncRev(syncRev() + 1, ledgerP5(REMOTE58.slice(0, 2))); /* the older one: 2 of them */
+    eq(saved().items?.length, 6, "58.P5a0 both replies are held by the touch, so the local copy still has 6 lines");
+    await sleep(6000);
+    await settle();
+    ok(pushes().length > 0, "58.P5a1 a mirror push ran while the replies were held");
+    eq(
+      JSON.parse(pushes().at(-1).text).items.length,
+      18,
+      "58.P5a the push carries the newer reply's lines: 6 local and 12 from the Worker"
+    );
   }
 }
 
