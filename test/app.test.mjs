@@ -134,7 +134,11 @@ ok(
   "4.3 the package's 5th card is NOT checked in — only what was entered"
 );
 ok(Object.values(rec).every((v) => v > 0), "4.4 no zero counts stored (key-absent means zero)");
-eq(saved().envelopes.length, 0, "4.5 fully-consumed envelope left the pile");
+eq(
+  saved().envelopes.filter((e) => !e.deletedAt).length,
+  0,
+  "4.5 fully-consumed envelope left the pile (no live envelope; a tombstone is kept)"
+);
 ok(/Checked in 4 cards against Gamma Cards/.test(text()), "4.6 undo notice shown");
 
 /* ── 5. undo restores the exact prior state ────────────────────────────── */
@@ -561,7 +565,11 @@ await assign(0);
 ok(/cards\s*1\/14/.test(text()), "20.1 one copy checked in, not the pair");
 await sleep(SAVE_WAIT);
 eq(Object.values(saved().received), [1], "20.2 the line is at 1, not its full qty of 2");
-eq(saved().envelopes.length, 0, "20.3 the envelope is fully consumed");
+eq(
+  saved().envelopes.filter((e) => !e.deletedAt).length,
+  0,
+  "20.3 the envelope is fully consumed (no live envelope; a tombstone is kept)"
+);
 
 await goTo("packages");
 ok(/1\/2/.test(text()), "20.4 the package shows the line half received");
