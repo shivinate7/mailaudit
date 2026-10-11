@@ -71,7 +71,7 @@ Nothing in the component touches a storage API. Three adapters do, and each fail
 - `b64-fails-with-plausible-data` — Base64 lives in its own module.
 - `photo-rules-fails-quietly` — Photo rules are pure and separately tested.
 - `remote-rules-fail-quietly` — Remote status mapping is pure and tested.
-- `merge-rules-only-add` — The two-device merge only ever adds.
+- `merge-later-change-wins` — The later change wins in a two-device merge.
 
 ## Sync, the remote and the token
 

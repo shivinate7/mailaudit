@@ -13,6 +13,6 @@ The merge has a sharper reason. The merge unions both devices' envelopes. Ids th
 ## See also
 
 - `photo-ids-restore-keep-if-known` — the rule that keeps a photo id on restore.
-- `merge-rules-only-add` — the merge that unions the envelopes.
+- `merge-later-change-wins` — the merge that unions the envelopes.
 - `merge-carries-no-two-tap-arm` — the merge's two entrances.
 - `every-restore-passes-applybackup` — the function this order protects.

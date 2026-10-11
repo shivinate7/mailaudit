@@ -8,6 +8,6 @@ Automating the push without the merge rule (`merge-rules.mjs`) would turn the co
 
 ## See also
 
-- `merge-rules-only-add` — the merge rule that makes auto-push safe
+- `merge-later-change-wins` — the merge rule that makes auto-push safe
 - `push-and-merge-guard-differently` — why the push and the merge guard on different states
 - `two-device-merge-proven-first` — the conflict test to run before trusting this
