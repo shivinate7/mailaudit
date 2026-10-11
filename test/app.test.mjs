@@ -5318,4 +5318,167 @@ await settle();
 ok(remote.calls.slice(remoteBefore).some((c) => c.op === "pull"), "53.8a the failed cycle falls back to the GitHub merge");
 ok(/server/i.test(advisory()), "53.8b and the advisory line says the server failed");
 
+/* ── 54. with a Worker key, GitHub is a mirror (harness contract only) ──
+   Stage 4b, decision sync-revamp-cloudflare: the Worker holds the truth, and
+   GitHub gets the merged snapshot on the mirror timer. With a key, GitHub
+   decides nothing. No peek, no auto-merge, no "behind" line, and a stale sha
+   is a forced write, never a two-tap.
+
+   The mirror timer is AUTO_PUSH_MS (90s) in src/app.jsx. This suite has no
+   fake timers, so only a delay of exactly 90000 is caught here, and the test
+   fires it on demand. sleep() and the save debounce pass through untouched.
+
+   Case 54.4 (no key) needs no case of its own. Today's behaviour is pinned by
+   groups 34 (34.11 to 34.23: the behind line, the peek, the conflict merge),
+   38b.2 (the behind line), and 40.4 (a fresh absence merges without a tap).
+
+   Case 54.5 is a suspected bug, not a ruling: the autoPush effect's deps
+   (src/app.jsx, near line 4729) are [items, received, envelopes, loaded], and
+   they omit stamps. */
+const KEY54 = "device-54-key";
+const GH54 = "github_pat_testtoken";
+const AUTO_MS = 90000; // AUTO_PUSH_MS in src/app.jsx
+let autoLive54 = null; // null = not catching; else the armed timers not yet run or cleared
+let autoArmed54 = 0; // every AUTO_PUSH_MS timer armed while catching
+const realSetTimeout54 = globalThis.setTimeout;
+const realClearTimeout54 = globalThis.clearTimeout;
+const catchAutoTimers = () => {
+  autoLive54 = [];
+  autoArmed54 = 0;
+  globalThis.setTimeout = (fn, ms, ...rest) => {
+    if (ms !== AUTO_MS) return realSetTimeout54(fn, ms, ...rest);
+    const h = { fn };
+    autoLive54.push(h);
+    autoArmed54 += 1;
+    return h;
+  };
+  globalThis.clearTimeout = (h) => {
+    if (autoLive54) autoLive54 = autoLive54.filter((x) => x !== h);
+    return realClearTimeout54(h);
+  };
+};
+const releaseAutoTimers = () => {
+  autoLive54 = null;
+  globalThis.setTimeout = realSetTimeout54;
+  globalThis.clearTimeout = realClearTimeout54;
+};
+/* runs the newest live mirror timer, as the 90s wait would. false if none */
+const fireAutoTimer = async () => {
+  const h = autoLive54?.pop();
+  if (!h) return false;
+  await act(async () => {
+    await h.fn();
+    await sleep(0);
+  });
+  return true;
+};
+
+/* 54.1 with a key, GitHub is not read at all. A remote that holds a sha this
+   device never saw is ahead, and with a key it raises no "behind" line. Red
+   today: the foreground peek reads it as ahead, and the resume merges it. */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+  remote: LAPTOP_PUSHED,
+  remoteKey: GH54,
+  syncKey: KEY54,
+});
+await settle();
+/* read before the resume, which would merge the remote away and make the
+   line's absence mean nothing */
+ok(!btn(/newer lines/), "54.1c a remote that is ahead raises no behind line");
+await backgroundFor(5 * 60_000);
+await settle();
+eq(peeks().length, 0, "54.1a with a key, nothing peeks at GitHub");
+eq(
+  remote.calls.filter((c) => c.op === "pull").length,
+  0,
+  "54.1b and a resume after an absence merges nothing from GitHub"
+);
+
+/* 54.2 with a key, the mirror push runs on AUTO_PUSH_MS, and what it pushes is
+   the merged snapshot: the four lines the Worker reply carried, not the three
+   this device held. Red today: no reply is applied, so the mirror holds three,
+   and nothing arms the timer. */
+catchAutoTimers();
+try {
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+    remoteKey: GH54,
+    syncKey: KEY54,
+    syncLedger: { mailday: 1, items: ITEMS.slice(0, 4), received: {}, envelopes: [] },
+  });
+  await settle();
+  await pageshow();
+  await sleep(APPLY_WAIT);
+  ok(autoArmed54 > 0, "54.2a the merged lines arm the mirror timer, which is AUTO_PUSH_MS");
+  ok(await fireAutoTimer(), "54.2b and the timer is live, so the mirror push can run");
+  await settle();
+  const sent = pushes();
+  const last = sent[sent.length - 1];
+  eq(
+    last ? JSON.parse(last.text).items.length : 0,
+    4,
+    "54.2c the mirror pushes the merged snapshot, four lines"
+  );
+} finally {
+  releaseAutoTimers();
+}
+
+/* 54.3 with a key, a mirror push that meets a stale sha re-reads the sha and
+   writes again, through pushForce. It arms no two-tap and shows no conflict
+   line. Red today: autoPush peeks first, reads the remote as ahead, and never
+   pushes at all. */
+catchAutoTimers();
+try {
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+    remote: LAPTOP_PUSHED,
+    remoteKey: GH54,
+    syncKey: KEY54,
+  });
+  await settle();
+  await click(btn(/Mark all received/), "check in with a key");
+  await fireAutoTimer();
+  await settle();
+  eq(
+    pushes().map((p) => p.sha),
+    [null, "sha-0"],
+    "54.3a the stale write goes first, then one forced write under the sha the remote holds"
+  );
+  eq(
+    remote.history.map((h) => JSON.parse(h.text).items.length),
+    [3],
+    "54.3b the forced write lands this device's snapshot on GitHub"
+  );
+  ok(!btn(/Push anyway/), "54.3c no two-tap is armed");
+  ok(
+    !buttons().some((b) => /needs attention/.test(b.textContent)) &&
+      !/remote copy changed/.test(text()),
+    "54.3d and no conflict line shows"
+  );
+} finally {
+  releaseAutoTimers();
+}
+
+/* 54.5 (suspected bug, no sync key on this device) a stamp alone arms the
+   mirror push. The autoPush effect omits stamps from its deps, so a stamp-only
+   change arms no timer and no push follows. Red on today's code if the omission
+   is real. */
+catchAutoTimers();
+try {
+  await boot({ items: ITEMS, received: {} }, null, { remoteKey: GH54 });
+  await settle();
+  const armedBefore = autoArmed54;
+  await stampPkg(/Alpha Cards/, "Other", "package split");
+  await sleep(SAVE_WAIT);
+  eq(
+    Object.keys(saved().stamps ?? {}).length,
+    1,
+    "54.5a the stamp is saved, so the next check means something"
+  );
+  ok(autoArmed54 > armedBefore, "54.5b a stamp alone arms the mirror timer");
+  ok(await fireAutoTimer(), "54.5c and the timer is live, so a push can follow");
+  await settle();
+  ok(pushes().length > 0, "54.5d and the timer pushes the stamped ledger to GitHub");
+} finally {
+  releaseAutoTimers();
+}
+
 report();
