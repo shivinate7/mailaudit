@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Papa from "papaparse";
 import tokens from "../shared/tokens.json";
-import { parseItems, lostMail, normName, isUntracked, gkOf, groupPackages, matchEnvelope, rankCandidates } from "./view-rules.mjs";
+import { parseItems, lostMail, normName, isUntracked, gkOf, groupPackages, rankCandidates } from "./view-rules.mjs";
 import { photoPlan } from "./photo-rules.mjs";
 import { shouldSnapshot } from "./version-rules.mjs";
 import { KEY_RE, SYNC_POST_MS, SYNC_COLD_POST_MS, SYNC_TIMEOUT_MS, IDLE_APPLY_MS, idleReady, backoffMs } from "./sync-rules.mjs";
