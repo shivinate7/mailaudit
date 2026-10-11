@@ -11,6 +11,7 @@
     "test:check-docs": "node test/check-docs.test.mjs",
     "test:worker": "node worker/core.test.mjs",
     "test:send-key": "node test/send-key.test.mjs",
+    "test:view-rules": "node test/view-rules.test.mjs",
     "worker:deploy": "cd worker && npx --yes wrangler@4.149.0 deploy",
     "worker:dev": "cd worker && npx --yes wrangler@4.149.0 dev",
     "check:records": "node check-records.mjs",
