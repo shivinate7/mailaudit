@@ -4661,4 +4661,230 @@ for (const [path, look] of [
   eq(saved().receivedAt ?? {}, {}, "49.C4 Reset clears receivedAt, and the debounce does not write it back");
 }
 
+/* ---- 50. timed absences, reported removals, and the write sites ----
+   A1 and A2 are red on 69fcf67 by ruling: a timed absence beats an untimed
+   count, and a merge that lowers, clears or discards is reported as a removal,
+   never as "nothing new". B pins write sites that already work. Each one goes
+   red under a mutant in a scratch copy, not in this tree. */
+{
+  const K = ITEMS[0].key; /* Lightning Bolt, in Alpha Cards */
+  const REMOVED = /\bremov(ed|al)\b/i;
+  const NOTHING = /had nothing new|Nothing of yours was lost/;
+  const noticeNamesRemoval = () => REMOVED.test(text()) && !NOTHING.test(text());
+  const lineRow = (pkgRe, name) =>
+    [...card(pkgRe).querySelectorAll('button[aria-label^="Mark as"]')].find((b) =>
+      b.parentElement?.textContent.includes(name)
+    );
+  const asRemote = (s) => JSON.stringify({ mailday: 1, ...s });
+  const led = (received, receivedAt, envelopes) => ({
+    items: ITEMS,
+    received,
+    receivedAt,
+    envelopes,
+  });
+  const LIVE50 = {
+    id: "e50",
+    createdAt: 1,
+    updatedAt: 100,
+    note: "",
+    entries: [{ name: "Ponder", qty: 1 }],
+    photos: [],
+  };
+  const TOMB50 = { ...LIVE50, updatedAt: 200, deletedAt: 200, entries: [], photos: [] };
+
+  /* A1: a timed absence beats an untimed count, in either direction */
+  const a1 = mergeReceived({ [K]: 1 }, {}, {}, { [K]: 200 });
+  eq(
+    { count: a1.received[K] ?? null, at: a1.receivedAt[K] },
+    { count: null, at: 200 },
+    "50.A1a a timed un-check beats an untimed count"
+  );
+  const a2 = mergeReceived({}, { [K]: 1 }, { [K]: 200 }, {});
+  eq(
+    { count: a2.received[K] ?? null, at: a2.receivedAt[K] },
+    { count: null, at: 200 },
+    "50.A1b in the other direction"
+  );
+  eq(
+    mergeReceived({ [K]: 1 }, {}, { [K]: 200 }, {}).received[K],
+    1,
+    "50.A1c a timed count beats an untimed absence (holds today)"
+  );
+  eq(
+    mergeReceived({}, { [K]: 1 }, {}, { [K]: 200 }).received[K],
+    1,
+    "50.A1d in the other direction (holds today)"
+  );
+
+  /* A2: a removal is counted, so the notice cannot say "nothing new" */
+  eq(
+    mergeReceived({ [K]: 1 }, {}, { [K]: 100 }, { [K]: 200 }).removed,
+    1,
+    "50.A2a an un-check is reported as one removal"
+  );
+  eq(
+    mergeReceived({ [K]: 3 }, { [K]: 1 }, { [K]: 100 }, { [K]: 200 }).removed,
+    1,
+    "50.A2b a count lowered by a later change is a removal"
+  );
+  eq(
+    mergeReceived({ [K]: 1 }, { [K]: 3 }, { [K]: 100 }, { [K]: 200 }).removed,
+    0,
+    "50.A2c a later increase removes nothing"
+  );
+  eq(
+    mergeLedger(led({ [K]: 1 }, { [K]: 100 }, []), led({}, { [K]: 200 }, [])).stats
+      .checkInsRemoved,
+    1,
+    "50.A2d mergeLedger stats count the check-in removed"
+  );
+  eq(
+    mergeLedger(led({}, {}, [LIVE50]), led({}, {}, [TOMB50])).stats.envelopesRemoved,
+    1,
+    "50.A2e an incoming tombstone counts as an envelope removed"
+  );
+  eq(
+    mergeLedger(led({}, {}, [TOMB50]), led({}, {}, [{ ...LIVE50, updatedAt: 300 }])).stats
+      .envelopesRemoved,
+    0,
+    "50.A2f a live edit that beats a tombstone removes nothing"
+  );
+  eq(
+    mergeLedger(led({}, {}, []), led({}, {}, [TOMB50])).stats.envelopesRemoved,
+    0,
+    "50.A2g a tombstone for an envelope never held here removes nothing"
+  );
+  const quiet = { itemsAdded: 0, checkInsAdded: 0, envelopesAdded: 0, stampsAdded: 0 };
+  for (const field of ["checkInsRemoved", "envelopesRemoved"]) {
+    const s = mergeSummary({ ...quiet, [field]: 1 });
+    ok(
+      REMOVED.test(s) && !NOTHING.test(s),
+      `50.A2h a merge that only removes says so (${field})`
+    );
+  }
+
+  /* A2 through the app: the other device un-checked later, and this device
+     still holds the check. The manual merge applies the removal. */
+  await fresh();
+  await click(lineRow(/Alpha Cards/, "Lightning Bolt"), "check Lightning Bolt in");
+  await sleep(SAVE_WAIT);
+  const checkedAt = saved().receivedAt[K];
+  remote.content = utf8ToBase64(
+    asRemote({ ...saved(), received: {}, receivedAt: { [K]: checkedAt + 1000 } })
+  );
+  remote.sha = "sha-0";
+  await foreground();
+  await openSync();
+  await saveGitHubKey();
+  await click(btn(/^Push$/), "stale push");
+  await click(btn(/Merge & push/), "merge");
+  await settle();
+  await sleep(SAVE_WAIT);
+  eq(saved().received[K], undefined, "50.A2i the merge applies the other device's un-check");
+  ok(noticeNamesRemoval(), "50.A2j and the notice names the removal, not 'nothing new'");
+
+  /* the other device discarded an envelope this device still holds live */
+  await fresh();
+  await goTo("orphaned");
+  await record(["Ponder", "Preordain"], "kept");
+  await sleep(SAVE_WAIT);
+  const live = saved().envelopes.find((e) => !e.deletedAt);
+  const discardedAt = (live.updatedAt || 0) + 1000;
+  remote.content = utf8ToBase64(
+    asRemote({
+      ...saved(),
+      envelopes: [
+        { ...live, entries: [], photos: [], deletedAt: discardedAt, updatedAt: discardedAt },
+      ],
+    })
+  );
+  remote.sha = "sha-0";
+  await foreground();
+  await openSync();
+  await saveGitHubKey();
+  await click(btn(/^Push$/), "stale push");
+  await click(btn(/Merge & push/), "merge");
+  await settle();
+  await sleep(SAVE_WAIT);
+  eq(
+    saved().envelopes.filter((e) => !e.deletedAt).length,
+    0,
+    "50.A2k the merge applies the other device's discard"
+  );
+  ok(noticeNamesRemoval(), "50.A2l and the notice names the removal");
+
+  /* the quiet unattended merge: a removal alone must still leave a notice */
+  /* seeded checked, not checked in here: a check-in leaves an Undo notice, and
+     autoMerge stands down while one is open */
+  await boot({ items: ITEMS, received: { [K]: 1 }, receivedAt: { [K]: 100 } }, null, KEY);
+  await openSync();
+  await click(btn(/^Push$/), "push the check-in");
+  await sleep(60);
+  const local = saved();
+  remote.content = utf8ToBase64(
+    asRemote({ ...local, received: {}, receivedAt: { [K]: 1100 } })
+  );
+  remote.sha = "sha-other"; /* the other device pushed since: peek says ahead */
+  await backgroundFor(5 * 60_000);
+  await settle();
+  await sleep(SAVE_WAIT); /* the merged state is saved on a debounce */
+  eq(saved().received[K], undefined, "50.A2m a quiet merge applies the un-check");
+  ok(noticeNamesRemoval(), "50.A2n and the quiet merge still leaves a notice naming it");
+
+  /* B: write sites that already stamp receivedAt */
+  await fresh();
+  await goTo("packages");
+  await click(allBtns(/^Mark all received$/)[0], "mark a package all received");
+  await sleep(SAVE_WAIT);
+  const bulkKeys = Object.keys(saved().received);
+  ok(
+    bulkKeys.length > 0 && bulkKeys.every((k) => typeof saved().receivedAt?.[k] === "number"),
+    "50.B1 a bulk check-in writes a time for each key it sets"
+  );
+
+  await fresh();
+  await goTo("orphaned");
+  await record(["Brainstorm"]);
+  await assign(0);
+  await sleep(SAVE_WAIT);
+  const key = Object.keys(saved().received)[0];
+  ok(
+    typeof key === "string" && typeof saved().receivedAt?.[key] === "number",
+    "50.B2 an assign writes a time for each key it sets"
+  );
+  const tAssign = saved().receivedAt?.[key];
+  await click(btn(/^Undo$/), "undo the assign");
+  await sleep(SAVE_WAIT);
+  eq(saved().received[key], undefined, "50.B3a undo deletes the key");
+  ok(saved().receivedAt?.[key] > tAssign, "50.B3b and undo writes a later time, so the un-check travels");
+
+  await fresh();
+  await click(btn(/Re-import CSV/), "show upload zone");
+  await dropFile(
+    "mailday-backup.json",
+    JSON.stringify({
+      mailday: 1,
+      items: ITEMS,
+      received: { [K]: 1 },
+      receivedAt: { [K]: 1234567 },
+      envelopes: [],
+      stamps: {},
+    })
+  );
+  await sleep(SAVE_WAIT);
+  eq(saved().receivedAt?.[K], 1234567, "50.B4 a restore brings each key's time back");
+
+  await fresh();
+  await goTo("orphaned");
+  await record(["Path to Exile", "Swords to Plowshares", "Ponder", "Lightning Bolt"]);
+  await assign(0);
+  await sleep(SAVE_WAIT);
+  const tombs = (saved().envelopes || []).filter((e) => typeof e.deletedAt === "number");
+  eq(
+    { n: tombs.length, entries: tombs[0]?.entries.length },
+    { n: 1, entries: 0 },
+    "50.B5 a full assign saves a tombstone with its time, not a removed envelope"
+  );
+}
+
 report();
