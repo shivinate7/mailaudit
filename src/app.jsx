@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Papa from "papaparse";
 import tokens from "../shared/tokens.json";
-import { parseItems, lostMail, normName, isUntracked, gkOf, groupPackages, rankCandidates } from "./view-rules.mjs";
+import {
+  parseItems, lostMail, normName, isUntracked, gkOf, groupPackages, rankCandidates,
+  dateRange, inRange, dropCanceled, dropGks, canceledPackagesOf, stampedPackagesOf,
+  tallyGroups, sortTally, sortPackages, filterPackages, filterTally,
+  totalsOf, outstandingOf, outstandingNames as outstandingNamesOf, packagesDone,
+} from "./view-rules.mjs";
 import { photoPlan } from "./photo-rules.mjs";
 import { shouldSnapshot } from "./version-rules.mjs";
 import { KEY_RE, SYNC_POST_MS, SYNC_COLD_POST_MS, SYNC_TIMEOUT_MS, IDLE_APPLY_MS, idleReady, backoffMs } from "./sync-rules.mjs";
@@ -689,10 +694,7 @@ function PackageCard({
     : /^without tracking$/i.test(pkg.tracking || "")
     ? "untracked"
     : null;
-  const missingVal = pkg.items.reduce(
-    (s, it) => s + it.price * (it.qty - Math.min(it.qty, received[it.key] || 0)),
-    0
-  );
+  const missingVal = outstandingOf(pkg.items, received).value;
   const missingValLabel =
     missingVal >= 100
       ? `$${Math.round(missingVal).toLocaleString()}`
@@ -1159,10 +1161,7 @@ function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder, stampedGks }
   const [open, setOpen] = useState(false);
   /* same gate as PackageCard's: the act of opening, never a re-render */
   const justOpened = useJustBecame(open, 500);
-  const missingVal = item.items.reduce(
-    (s, it) => s + it.price * (it.qty - Math.min(it.qty, received[it.key] || 0)),
-    0
-  );
+  const missingVal = outstandingOf(item.items, received).value;
   /* counts always cover every copy of the item; only the breakdown is filtered */
   const hiddenCopies = item.items.length - item.shown.length;
   const setLabel =
@@ -4909,21 +4908,7 @@ export default function MailDayLedger() {
   }, []);
 
   /* date range */
-  const range = useMemo(() => {
-    if (dateFilter.preset === "all") return null;
-    if (dateFilter.preset === "custom") {
-      const from = dateFilter.from ? Date.parse(dateFilter.from) : null;
-      const to = dateFilter.to ? Date.parse(dateFilter.to) + 86399999 : null;
-      if (from == null && to == null) return null;
-      return { from, to };
-    }
-    if (dateFilter.preset === "days") {
-      const n = parseInt(dateFilter.days, 10);
-      if (!n || n <= 0) return null;
-      return { from: Date.now() - n * 86400000, to: null };
-    }
-    return { from: Date.now() - dateFilter.preset * 86400000, to: null };
-  }, [dateFilter]);
+  const range = useMemo(() => dateRange(dateFilter, Date.now()), [dateFilter]);
 
   /* ---- orphaned mail ---- */
 
@@ -5076,58 +5061,25 @@ export default function MailDayLedger() {
      back, so nothing is outstanding. Everything downstream (totals, Tally,
      envelope candidates) inherits both without knowing about either. */
   const activeItems = useMemo(
-    () => items.filter((it) => !/^cancel/i.test(it.tracking || "")),
+    () => dropCanceled(items),
     [items]
   );
   const canceledCount = items.length - activeItems.length;
   const refundedGks = useGkSet(stamps, isRefundStamp);
   const stampedGks = useGkSet(stamps, hasStamp);
   const liveItems = useMemo(
-    () =>
-      refundedGks.size
-        ? activeItems.filter((it) => !refundedGks.has(gkOf(it)))
-        : activeItems,
+    () => dropGks(activeItems, refundedGks),
     [activeItems, refundedGks]
   );
 
-  const canceledPackages = useMemo(() => {
-    const map = new Map();
-    for (const it of items) {
-      if (!/^cancel/i.test(it.tracking || "")) continue;
-      const gk = gkOf(it);
-      if (!map.has(gk))
-        map.set(gk, {
-          gk,
-          orderId: it.orderId,
-          seller: it.seller,
-          date: it.date,
-          items: [],
-        });
-      map.get(gk).items.push(it);
-    }
-    const arr = [...map.values()];
-    arr.sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0));
-    return arr;
-  }, [items]);
+  const canceledPackages = useMemo(() => canceledPackagesOf(items), [items]);
 
   /* the range applied BEFORE the refund exclusion, so the stamped filter can
      source refunded packages back in — they are otherwise out of the list, and
      that list is the only place a refund can be found and un-stamped */
-  const rangedActive = useMemo(() => {
-    if (!range) return activeItems;
-    return activeItems.filter((it) => {
-      const t = Date.parse(it.date);
-      if (Number.isNaN(t)) return true; // keep undated rows visible
-      if (range.from != null && t < range.from) return false;
-      if (range.to != null && t > range.to) return false;
-      return true;
-    });
-  }, [activeItems, range]);
+  const rangedActive = useMemo(() => inRange(activeItems, range), [activeItems, range]);
   const rangedItems = useMemo(
-    () =>
-      refundedGks.size
-        ? rangedActive.filter((it) => !refundedGks.has(gkOf(it)))
-        : rangedActive,
+    () => dropGks(rangedActive, refundedGks),
     [rangedActive, refundedGks]
   );
 
@@ -5225,7 +5177,7 @@ export default function MailDayLedger() {
      downstream in `visible`, so the count CAN read higher than the list,
      exactly as "N lines" can. */
   const stampedPackages = useMemo(
-    () => groupPackages(rangedActive.filter((it) => stampedGks.has(gkOf(it)))),
+    () => stampedPackagesOf(rangedActive, stampedGks),
     [rangedActive, stampedGks]
   );
   const stampedCount = stampedPackages.length;
@@ -5241,25 +5193,10 @@ export default function MailDayLedger() {
      envelope is just as likely to be an old order as a recent one. */
   const allPackages = useMemo(() => groupPackages(liveItems), [liveItems]);
 
-  const outstandingNames = useMemo(() => {
-    const map = new Map();
-    for (const it of liveItems) {
-      const out = it.qty - Math.min(it.qty, received[it.key] || 0);
-      if (out <= 0) continue;
-      const nk = normName(it.name);
-      if (!map.has(nk))
-        map.set(nk, { nk, name: it.name, qty: 0, sellers: new Set() });
-      const e = map.get(nk);
-      e.qty += out;
-      e.sellers.add(it.seller);
-    }
-    return [...map.values()].map(({ nk, name, qty, sellers }) => ({
-      nk,
-      name,
-      qty,
-      sellerCount: sellers.size,
-    }));
-  }, [liveItems, received]);
+  const outstandingNames = useMemo(
+    () => outstandingNamesOf(liveItems, received),
+    [liveItems, received]
+  );
 
   /* Derived, never stored — so a package received by other means simply stops
      being offered, with no stale-suggestion bookkeeping to get wrong. */
@@ -5293,218 +5230,65 @@ export default function MailDayLedger() {
   /* package ordering — computed when sort/filters change, frozen while checking
      so packages don't leapfrog mid-session on value-based sorts */
   const packageOrder = useMemo(() => {
-    const rec = receivedRef.current;
-    const t = (p) => Date.parse(p.date) || 0;
-    const missing = (p) =>
-      p.items.reduce(
-        (s, it) => s + it.price * (it.qty - Math.min(it.qty, rec[it.key] || 0)),
-        0
-      );
     /* orderSource, not packages: a refunded package is only ever in the
        stamped list, and ranking off `packages` would leave every one of them
        at ?? 1e9 — last under every sort */
-    const sorted = [...orderSource];
-    if (sortBy === "oldest")
-      sorted.sort((a, b) => t(a) - t(b) || a.seller.localeCompare(b.seller));
-    else if (sortBy === "value")
-      sorted.sort((a, b) => missing(b) - missing(a) || t(b) - t(a));
-    else if (sortBy === "rate") {
-      /* what one card in this package averaged — its basis over its copies.
-         The Tally view reads `g.avg` off the group; a package isn't grouped by
-         name, so it's computed here from the lines. Guarded against qty 0 the
-         same way. */
-      const rate = (p) => {
-        const q = p.items.reduce((s, it) => s + it.qty, 0);
-        return q
-          ? p.items.reduce((s, it) => s + it.price * it.qty, 0) / q
-          : 0;
-      };
-      sorted.sort((a, b) => rate(b) - rate(a) || t(b) - t(a));
-    } else if (sortBy === "seller")
-      sorted.sort((a, b) => a.seller.localeCompare(b.seller) || t(b) - t(a));
-    else sorted.sort((a, b) => t(b) - t(a) || a.seller.localeCompare(b.seller));
     const order = new Map();
-    sorted.forEach((p, i) => order.set(p.gk, i));
+    sortPackages(orderSource, sortBy, receivedRef.current).forEach((p, i) =>
+      order.set(p.gk, i)
+    );
     return order;
   }, [orderSource, sortBy]);
 
   const visible = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return orderSource
-      .map((p) => {
-        /* A revealed package answers "what else was in that envelope?", so it
-           ignores both filters — the query AND hideDone. Bypassing hideDone
-           too is what makes the Tally jump land on a package whose copies are
-           already checked in, and it keeps the "+N more" count honest: a count
-           that promised lines hideDone would then swallow is worse than none.
-           `p.items` is the whole order within the active date range, which is
-           the whole order full stop — every line of a package shares one order
-           date, so a range takes all of them or none. */
-        if (revealed.has(p.gk)) return { ...p, hiddenByFilters: 0 };
-        // a fully-received package disappears immediately under hideDone,
-        // even if some rows were sticky (nothing left to mis-tap)
-        if (
-          hideDone &&
-          p.items.every((it) => (received[it.key] || 0) >= it.qty)
-        )
-          return { ...p, items: [], hiddenByFilters: 0 };
-        /* a stamp is the package's, not a line's, so a hit on its label or
-           note keeps every line — filtering them would draw exactly the
-           one-line-order lie group 32 exists to undo */
-        const s = stamps[p.gk];
-        const pkgHit =
-          !!q &&
-          hasStamp(s) &&
-          `${STAMP_LABEL[s.kind] || ""} ${s.note || ""}`
-            .toLowerCase()
-            .includes(q);
-        let its = p.items;
-        if (q && !pkgHit)
-          its = its.filter((it) =>
-            [it.name, it.set, it.seller, it.orderId]
-              .join(" ")
-              .toLowerCase()
-              .includes(q)
-          );
-        if (hideDone)
-          its = its.filter(
-            (it) => (received[it.key] || 0) < it.qty || sticky.has(it.key)
-          );
-        return { ...p, items: its, hiddenByFilters: p.items.length - its.length };
-      })
-      .filter((p) => p.items.length > 0)
-      .sort(
-        (a, b) => (packageOrder.get(a.gk) ?? 1e9) - (packageOrder.get(b.gk) ?? 1e9)
-      );
+    /* a stamp is the package's, not a line's: filterPackages reads its label
+       and note through this, so the label table stays here */
+    const stampText = (gk) => {
+      const s = stamps[gk];
+      return hasStamp(s) ? `${STAMP_LABEL[s.kind] || ""} ${s.note || ""}` : "";
+    };
+    return filterPackages(orderSource, {
+      query,
+      hideDone,
+      received,
+      sticky,
+      revealed,
+      stampText,
+    }).sort(
+      (a, b) => (packageOrder.get(a.gk) ?? 1e9) - (packageOrder.get(b.gk) ?? 1e9)
+    );
   }, [orderSource, stamps, query, hideDone, received, sticky, packageOrder, revealed]);
 
   /* Tally totals: exact product-name match, pooled across every seller/order.
      TCGplayer names are a scrape, so identical items carry byte-identical names.
      basis = what the copies cost (price × qty); shipping and tax are per-order
      in the CSV, not per-line, so they're not in it. */
-  const itemGroups = useMemo(() => {
-    const map = new Map();
-    for (const it of rangedItems) {
-      if (!map.has(it.name))
-        map.set(it.name, { name: it.name, items: [], sets: [], qty: 0 });
-      map.get(it.name).items.push(it);
-    }
-    const arr = [...map.values()];
-    for (const g of arr) {
-      g.items.sort(
-        (a, b) =>
-          (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0) ||
-          a.seller.localeCompare(b.seller)
-      );
-      g.qty = g.items.reduce((s, it) => s + it.qty, 0);
-      g.basis = g.items.reduce((s, it) => s + it.price * it.qty, 0);
-      g.avg = g.qty ? g.basis / g.qty : 0;
-      g.sets = [...new Set(g.items.map((it) => it.set).filter(Boolean))];
-      g.sellerCount = new Set(g.items.map((it) => it.seller)).size;
-      g.orderCount = new Set(g.items.map((it) => it.orderId)).size;
-    }
-    return arr;
-  }, [rangedItems]);
+  const itemGroups = useMemo(() => tallyGroups(rangedItems), [rangedItems]);
 
   /* frozen while checking, same as packageOrder */
   const itemOrder = useMemo(() => {
-    const rec = receivedRef.current;
-    const gotOf = (g) =>
-      g.items.reduce((s, it) => s + Math.min(it.qty, rec[it.key] || 0), 0);
-    const missingVal = (g) =>
-      g.items.reduce(
-        (s, it) => s + it.price * (it.qty - Math.min(it.qty, rec[it.key] || 0)),
-        0
-      );
-    const sorted = [...itemGroups];
-    if (itemSort === "basis")
-      sorted.sort((a, b) => b.basis - a.basis || a.name.localeCompare(b.name));
-    else if (itemSort === "ordered")
-      sorted.sort((a, b) => b.qty - a.qty || a.name.localeCompare(b.name));
-    else if (itemSort === "value")
-      sorted.sort(
-        (a, b) => missingVal(b) - missingVal(a) || a.name.localeCompare(b.name)
-      );
-    else if (itemSort === "rate")
-      /* `avg` is basis / copies, computed once on the group — the same figure
-         the collapsed row shows as "$X / copy". Descending, like every other
-         magnitude sort here. It is already guarded against qty 0 at its source. */
-      sorted.sort((a, b) => b.avg - a.avg || a.name.localeCompare(b.name));
-    else if (itemSort === "name")
-      sorted.sort((a, b) => a.name.localeCompare(b.name));
-    else
-      sorted.sort(
-        (a, b) =>
-          b.qty - gotOf(b) - (a.qty - gotOf(a)) ||
-          missingVal(b) - missingVal(a) ||
-          a.name.localeCompare(b.name)
-      );
     const order = new Map();
-    sorted.forEach((g, i) => order.set(g.name, i));
+    sortTally(itemGroups, itemSort, receivedRef.current).forEach((g, i) =>
+      order.set(g.name, i)
+    );
     return order;
   }, [itemGroups, itemSort]);
 
-  const visibleItems = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return itemGroups
-      .map((g) => {
-        /* unlike a package — a physical thing you finish — an item row is one
-           line in a long scan, and most items have a single copy. Completing
-           one must not yank the row out from under the finger, so an item that
-           was just checked stays until the filters change and sticky clears. */
-        const allDone = g.items.every((it) => (received[it.key] || 0) >= it.qty);
-        if (hideDone && allDone && !g.items.some((it) => sticky.has(it.key)))
-          return { ...g, shown: [] };
-        let shown = g.items;
-        if (q)
-          shown = shown.filter((it) =>
-            [it.name, it.set, it.seller, it.orderId]
-              .join(" ")
-              .toLowerCase()
-              .includes(q)
-          );
-        if (hideDone)
-          shown = shown.filter(
-            (it) => (received[it.key] || 0) < it.qty || sticky.has(it.key)
-          );
-        return { ...g, shown };
-      })
-      .filter((g) => g.shown.length > 0)
-      .sort(
-        (a, b) =>
-          (itemOrder.get(a.name) ?? 1e9) - (itemOrder.get(b.name) ?? 1e9)
-      );
-  }, [itemGroups, query, hideDone, received, sticky, itemOrder]);
-
-  const totals = useMemo(() => {
-    let total = 0,
-      got = 0,
-      missingVal = 0,
-      val = 0;
-    for (const it of rangedItems) {
-      const g = Math.min(it.qty, received[it.key] || 0);
-      total += it.qty;
-      got += g;
-      val += it.price * it.qty;
-      missingVal += it.price * (it.qty - g);
-    }
-    /* `val` is what the range cost, `missingVal` what hasn't landed — the
-       masthead shows val - missingVal as the figure already in hand. Both
-       exclude canceled orders, since rangedItems already does. */
-    return { total, got, missingVal, val };
-  }, [rangedItems, received]);
-
-  /* Packages fully checked in, for the masthead tally. A package counts as in
-     only when every copy of every line has arrived. */
-  const pkgsDone = useMemo(
+  const visibleItems = useMemo(
     () =>
-      packages.filter((p) =>
-        p.items.every(
-          (it) => Math.min(it.qty, received[it.key] || 0) >= it.qty
-        )
-      ).length,
-    [packages, received]
+      filterTally(itemGroups, { query, hideDone, received, sticky }).sort(
+        (a, b) => (itemOrder.get(a.name) ?? 1e9) - (itemOrder.get(b.name) ?? 1e9)
+      ),
+    [itemGroups, query, hideDone, received, sticky, itemOrder]
   );
+
+  /* `val` is what the range cost, `missingVal` what hasn't landed; the
+     masthead shows val - missingVal as the figure already in hand. Both
+     exclude canceled orders, since rangedItems already does. */
+  const totals = useMemo(() => totalsOf(rangedItems, received), [rangedItems, received]);
+
+  /* Packages fully checked in, for the masthead tally. */
+  const pkgsDone = useMemo(() => packagesDone(packages, received), [packages, received]);
 
   const remaining = totals.total - totals.got;
 
