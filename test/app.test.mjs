@@ -6244,14 +6244,15 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     eq(count58("post") - posts5b, 0, "58.N5b a cold open on a store equal to local sends no POST");
   }
 
-  /* P1. After a failed merge POST, an older Worker reply from the retry must not
-     replace the held merge. A touch just before the conflict holds the apply.
-     GitHub never shrinks: each write is at least as large as the one before, and
-     the last holds the union, 15 lines. */
+  /* P1, a port of the reviewer's probe. 6 local lines meet 12 remote ones, so the
+     union is 18. A touch 6 s before the conflict holds the apply, the merge POST
+     fails, nothing hides, and the net comes back. A second check-in then makes
+     the retry reply older than the held merge. GitHub never holds fewer lines
+     than before: the head wrote 18, then 6. */
   {
     const touchP1 = () => act(async () => { win.dispatchEvent(new win.Event("pointerdown")); await sleep(0); });
     const lensP1 = () => remote.history.map((h) => JSON.parse(h.text).items.length);
-    await boot({ items: LOCAL58, received: {} }, null, { remote: asRemote58(REMOTE58), remoteKey: GH58, syncKey: KEY58 });
+    await boot({ items: ITEMS.slice(0, 6), received: {} }, null, { remote: asRemote58(REMOTE58), remoteKey: GH58, syncKey: KEY58 });
     await settle();
     await click(btn(/Mark all received/), "check in, so the Worker holds this device's copy");
     await sleep(POST58);
@@ -6262,25 +6263,30 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
       await touchP1();
       await sleep(6000);
       await settle();
-      await background();
-      await settle();
     } finally {
       setSyncNetFail(false);
     }
-    await sleep(40000);
+    await sleep(15000);
+    await settle();
+    await sleep(1000);
+    await settle();
+    await click(allBtns(/^Mark all received$/)[0], "second change");
+    await sleep(AUTO58 + 1000);
+    await settle();
+    await sleep(AUTO58 + 1000);
     await settle();
     const LP1 = lensP1();
     ok(LP1.length > 0, "58.P1a0 GitHub was written, so the shrink check means something");
     ok(
       LP1.every((n, i) => i === 0 || n >= LP1[i - 1]),
-      "58.P1a GitHub never shrinks: each write is at least as large as the one before"
+      `58.P1a GitHub never holds fewer lines than before (writes: ${JSON.stringify(LP1)})`
     );
-    eq(LP1.at(-1), 15, "58.P1b and the last write holds the union, 15 lines");
   }
 
-  /* P4. A touch 6 s before a mirror conflict, then a hide. No write to GitHub may
-     hold fewer than the union of 15 lines: the local copy never overwrites the merge.
-     Red on a mutant that drops the mirror guard in the conflict catch. */
+  /* P4, a port of the reviewer's probe. 3 local lines meet 12 remote ones, so the
+     union is 15. A touch 6 s before the conflict holds the apply, the merge POST
+     fails, the page hides, and the net comes back. No write to GitHub holds fewer
+     than before: a mutant that gates the merged text on mirror mode wrote 15, then 3. */
   {
     const touchP4 = () => act(async () => { win.dispatchEvent(new win.Event("pointerdown")); await sleep(0); });
     const lensP4 = () => remote.history.map((h) => JSON.parse(h.text).items.length);
@@ -6300,14 +6306,15 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     } finally {
       setSyncNetFail(false);
     }
-    await sleep(15000);
+    await sleep(AUTO58 + 1000);
     await settle();
     const LP4 = lensP4();
     ok(LP4.length > 0, "58.P4a0 GitHub was written, so the no-short-write check means something");
     ok(
-      LP4.every((n) => n >= 15),
-      "58.P4a no write to GitHub holds fewer than the union of 15 lines"
+      LP4.every((n, i) => i === 0 || n >= LP4[i - 1]),
+      `58.P4a GitHub never holds fewer lines than before (writes: ${JSON.stringify(LP4)})`
     );
+    eq(LP4.at(-1), 15, "58.P4b and the last write holds the union, 15 lines");
   }
 }
 
