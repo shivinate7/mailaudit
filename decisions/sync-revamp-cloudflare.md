@@ -17,15 +17,15 @@ GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Del
 
 ## The design
 
-- **Sync base:** one Cloudflare Durable Object holds the ledger in SQLite. It holds the photos too, one row per photo id. The free plan gives 5 GB. On 2026-10-11 the photo repo held 8 photos in 5.3 MB, near 660 KB each, so 5 GB holds about 7,500 of them. R2 is not used: it must be turned on in the dashboard by accepting terms, and the Durable Object already has the room. Devices connect over a WebSocket and resync on resume. The free tier covers this app many times over. Durable Object point-in-time recovery gives 30 days of history.
+- **Sync base:** one Cloudflare Durable Object holds the ledger in SQLite. It holds the photos too, one row per photo id. The free plan gives 5 GB. On 2026-10-11 the photo repo held 8 photos in 5.3 MB, near 660 KB each, so 5 GB holds about 7,500 of them. R2 is not used: it must be turned on in the dashboard by accepting terms, and the Durable Object already has the room. Devices connect over a WebSocket and resync on resume. The free tier covers this app many times over. Durable Object point-in-time recovery gives 30 days of history. The photo route is a Worker route that serves both the web app and the native client, see Worker work ahead.
 - **Rejected:** hardened GitHub (no live updates, and it rests on a conflict reply that has never run, see `the-conflict-guard-is-unverified`); a server on HA Green (no backups, and a full disk stops the house DNS); Supabase (pauses after a week idle, no free backups); Firebase (photos and jobs need billing); Yjs or Automerge (a large rewrite for flat keyed data); hosted local-first services (shutting down or too young).
 - **The site stays on GitHub Pages.** The Worker answers the Pages origin across CORS. So no device moves to a new origin, and no device loses its stored ledger.
 - **Sign-in:** one key per device. A Cloudflare Access email code is the backup way in. The key stays a credential, see `the-token-is-a-credential`.
 - **Key delivery:** the keys live in the Mac's Keychain. A script opens the app on the Mac with its key in the URL fragment, which no server receives. The app stores the key and clears the fragment. For the iPhone, the Mac shows the same link as a QR code. No key is printed.
-- **GitHub becomes a mirror.** Each device still pushes the merged ledger to the GitHub `data` branch, once the server has answered. So the public seed, the backup watchdog and History keep working, and the Worker needs no GitHub token. The Durable Object holds the truth, so a GitHub conflict resolves by reading the new sha and writing again.
+- **GitHub leaves the sync role.** The owner ruled on 2026-10-11: "Cloudflare does it all". The Worker keeps daily snapshots for History and backup, and the watchdog checks the Worker. The public seed goes away or reads from the server, and that choice is open. Until that replacement ships, each web device still pushes the merged ledger to the GitHub `data` branch, once the server has answered. So the public seed, the backup watchdog and History keep working meanwhile. The Worker needs no GitHub token, and native never holds one. The Durable Object holds the truth, so a GitHub conflict resolves by reading the new sha and writing again. The mirror rulings under Stage 4b describe that web path and retire with it. See `worker-keeps-snapshots`.
 - **Live updates wait for a pause.** A change from the other device applies when this device has had no input for 10 seconds. No line says an update is waiting; the merge notice after the apply names what changed. A waiting line would have cost 40px of empty space at rest. This keeps `no-layout-shift-under-pointer`. One exception: the cold reply to a saved key applies at once, because the owner just tapped Save. The next reply waits again.
 - **Un-checks and deletes:** each check-in key carries the time of its last change in a new saved key, and the later change wins. A discarded or assigned envelope stays as a tombstone with a deletion time, and every reader skips it. A ledger without these fields merges by today's rules, so an older build stays safe. The new key follows the six sites in `saved-state-shape`.
-- **Orders:** a nightly job on HA Green replaces the OrderWand export. The owner chose HA Green over the MacBook. The job reads `store.tcgplayer.com/myaccount/orderhistory` with the owner's login cookie, as OrderWand 4.4.0 does. It GETs a form token, POSTs a date range, then reads each page. It sends the orders to the Worker. The Worker runs the same parser filters and the same merge, so `parser-filters` and `imports-merge-never-replace` still hold.
+- **Orders:** a nightly job on HA Green replaces the OrderWand export. The owner chose HA Green over the MacBook. On 2026-10-11 the owner said of the job: `we're gonna figure out how to just pull the tcgplayer orders list after we understood how orderwand did it`. The native client has no CSV import. Orders reach it through the Worker, see `csv-import-stays-web`. The job reads `store.tcgplayer.com/myaccount/orderhistory` with the owner's login cookie, as OrderWand 4.4.0 does. It GETs a form token, POSTs a date range, then reads each page. It sends the orders to the Worker. The Worker runs the same parser filters and the same merge, so `parser-filters` and `imports-merge-never-replace` still hold.
 - **Item keys:** the job must build each key as `orderId|itemNumber|vendorProductId`, exactly as the CSV does. The item number is the line's position in its order. The product id comes from the card image URL. A different key would split one card into two lines, see `saved-state-shape`.
 - **The job's host:** a small local add-on on HA Green, built like the Degen add-on. It starts once, and an HA automation starts it each night. It posts to the Worker, then exits. The cookie never runs inside HA Core. The add-on's DNS skips AdGuard Home, so the job cannot stall the house DNS. It keeps state in `/tmp` only and logs one line per run.
 - **The cookie:** it can also reach the owner's seller account. It lives in the add-on's options as a password field. Root, the add-on and any HA admin can read it. It never goes to Cloudflare, to the ledger or to HA's shared secrets file. The owner pastes it in the add-on's Configuration tab.
@@ -62,9 +62,19 @@ The orchestrator made these under the owner's grant to run the stages, on 2026-1
 - **iPhone key:** the home-screen app keeps its own storage, so a QR scan reaches Safari only. The sync panel holds a masked key field. The owner pastes the key there from the Mac clipboard, and the clipboard is cleared after. Claude never types or pastes a key.
 - **QR code:** macOS draws it with its own image tools. No new package is installed.
 
+## Worker work ahead
+
+The native build needs these changes to the Worker. Today the Worker serves only `/ledger` and `/ws`, with no photo route and no import route. The lanes are in `native-build-lanes`.
+
+- **Stats in the reply (lane W1):** the POST reply carries `stats` from `mergeLedger`, as it carries the ledger and the rev now. A client then shows the merge notice without running the merge.
+- **Photo route (lane W2):** the owner ruled on 2026-10-11: "Build server photo route first". The route serves both clients before native photo lane N10. It stores photos as rows by photo id, as the design section says.
+- **Daily snapshots (lane W3):** the Worker keeps daily snapshots for History and backup, see `worker-keeps-snapshots`.
+- **Universal-link file:** a Worker route serves the apple-app-site-association file, only if the custom URL scheme fails, see `native-key-via-url-scheme`.
+
 ## Still open
 
 - Whether a Cloudflare Access login survives in an iOS home-screen app. This is untested.
+- Whether the public seed goes away or reads from the server, see `worker-keeps-snapshots`.
 - Live updates use a WebSocket. A new rev from the other device starts one GET, and the reply waits for the idle gate.
 - A 413 from the Worker turns mirror mode off, as an unknown answer does. The advisory line names the size problem.
 
@@ -74,3 +84,5 @@ The orchestrator made these under the owner's grant to run the stages, on 2026-1
 - `ledger-private-source-public` — the private ledger repo the move retires.
 - `orderwand-csv` — the CSV the nightly job replaces.
 - `ruled-head-one-advisory-entrance` — the one line that names a failed server.
+- `worker-keeps-snapshots` — GitHub leaves the sync role.
+- `native-swift-rebuild` — the native client that talks to this Worker.
