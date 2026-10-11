@@ -3097,9 +3097,7 @@ export default function MailDayLedger() {
   const [syncOpen, setSyncOpen] = useState(false);
   const [remoteTarget, setRemoteTarget] = useState(null);
   const [remoteInfo, setRemoteInfo] = useState(null); // { hasKey, sha, pushedAt, pulledAt }
-  const [serverDown, setServerDown] = useState(false); // the Worker POST failed as unknown
-  const [workerKey, setWorkerKey] = useState(false); // this device has a Worker key
-  const [waiting, setWaiting] = useState(false); // a Worker reply is held for the idle gate
+  const [serverDown, setServerDown] = useState(false); // false | "unknown" | "too-big": the POST fell back to GitHub
   const [pushState, setPushState] = useState("idle"); // idle | pushing | pushed | conflict
   const [pullState, setPullState] = useState("idle"); // idle | pulling
   const [mergeState, setMergeState] = useState("idle"); // idle | merging
@@ -3349,7 +3347,7 @@ export default function MailDayLedger() {
     if (seedShown) return "seeded";
     if (pushState === "conflict") return "conflict";
     if (remoteMsg?.tone === "error") return "error";
-    if (serverDown) return "server";
+    if (serverDown) return serverDown === "too-big" ? "too-big" : "server";
     /* a device that cannot SEE the backup is as unbacked-up as one that cannot
        write to it, and on a private repo that is what a missing key looks like */
     if (remoteMsg?.code === "no-access") return "no-access";
@@ -4646,7 +4644,6 @@ export default function MailDayLedger() {
     }
     const reply = pendingReply.current;
     pendingReply.current = null;
-    setWaiting(false);
     doMerge(false, true, reply);
   };
   /* one home for a held reply, from a POST or from a rev-gated GET */
@@ -4654,18 +4651,18 @@ export default function MailDayLedger() {
     if (typeof r.body?.rev === "number") lastRev.current = Math.max(lastRev.current, r.body.rev);
     if (r.code !== "ok" || !r.body?.ledger) return;
     pendingReply.current = r.body.ledger;
-    setWaiting(true);
     tryApplyRef.current();
   };
   const postRef = useRef(null);
   postRef.current = async () => {
     if (!window.sync || !(await window.sync.hasKey())) return;
     const r = await window.sync.post(snapshot());
-    /* unknown (network, 5xx) is the only code that sends this cycle to GitHub.
-       empty is not an error. */
-    setServerDown(r.code === "unknown");
+    /* unknown (network, 5xx) and too-big (413) send this cycle to GitHub, by one
+       path. empty is not an error. */
+    const down = r.code === "unknown" || r.code === "too-big";
+    setServerDown(down ? r.code : false);
     if (r.code === "ok") holdReply(r);
-    else if (r.code === "unknown" && !syncingRef.current) await autoMergeRef.current();
+    else if (down && !syncingRef.current) await autoMergeRef.current();
   };
   /* a rev above the last one seen (POST and GET replies set it) is one GET */
   const lastRev = useRef(0);
@@ -4684,7 +4681,6 @@ export default function MailDayLedger() {
     let dead = false;
     (async () => {
       if (!window.sync || !(await window.sync.hasKey()) || dead) return;
-      setWorkerKey(true);
       close = window.sync.connect((rev) => revRef.current(rev));
     })();
     return () => {
@@ -6479,12 +6475,7 @@ export default function MailDayLedger() {
                   the spot just tapped instead of wrapping to a new line under
                   it, and the two controls a mis-tap could land on aren't there
                   to land on. */}
-              {/* the advisory slot keeps its height, empty or filled, so a line
-                  arriving cannot move the row under a thumb */}
-              {workerKey && !(syncBroken || syncOpen || waiting) && (
-                <div data-advisory-slot style={{ minHeight: 40 }} />
-              )}
-              {(syncBroken || syncOpen || waiting) && (
+              {(syncBroken || syncOpen) && (
                 /* The one thing sync is allowed to say, and the only entrance
                    to the repair kit. Advisory manila, never red — being
                    unbacked-up is a state to fix, not a loss that has happened;
@@ -6512,9 +6503,7 @@ export default function MailDayLedger() {
                     setSyncOpen((o) => !o);
                   }}
                   aria-expanded={syncOpen}
-                  {...(workerKey ? { "data-advisory-slot": "" } : {})}
                   style={{
-                    ...(workerKey ? { minHeight: 40 } : {}),
                     display: "block",
                     width: "100%",
                     textAlign: "left",
@@ -6529,9 +6518,7 @@ export default function MailDayLedger() {
                     cursor: "pointer",
                   }}
                 >
-                  {!syncBroken && waiting
-                    ? "Updates from the other device are waiting"
-                    : syncBroken === "seeded"
+                  {syncBroken === "seeded"
                     ? "A snapshot of someone else’s ledger — anything you change stays on this device"
                     : syncBroken === "no-access"
                     ? "This device can’t see the backup — tap to add its key"
@@ -6539,6 +6526,8 @@ export default function MailDayLedger() {
                     ? "Your other device has newer lines — tap to bring them in"
                     : syncBroken === "server"
                     ? "The sync server could not be reached, so this sync used the GitHub backup — tap to fix"
+                    : syncBroken === "too-big"
+                    ? "The ledger is too big for the sync server, so this sync used the GitHub backup — tap to fix"
                     : syncBroken === "photos-unreadable"
                     ? "This device’s photos could not be read, so no new photos were backed up — tap to fix"
                     : syncBroken === "backup-unknown"
