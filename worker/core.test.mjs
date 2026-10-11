@@ -768,6 +768,16 @@ await test("9.5 the limit leaves at least 100,000 bytes under the Durable Object
 /* ---------- 10. rev and broadcast: only a change raises rev and signals ---------- */
 /* route() signals index.mjs by calling store.broadcast after store.write.
    There is no flag in its return value, so these tests pin the store calls. */
+/* The seven counts mergeLedger reports. A no-op merge gives all zero. */
+const ZERO_STATS = {
+  itemsAdded: 0,
+  checkInsAdded: 0,
+  envelopesAdded: 0,
+  checkInsRemoved: 0,
+  envelopesRemoved: 0,
+  stampsRemoved: 0,
+  stampsAdded: 0,
+};
 await test("10.1 a POST whose merge equals the stored ledger keeps rev, writes nothing and sends no broadcast", async () => {
   const K = "100|1|555";
   const stored = ledger({
@@ -803,7 +813,10 @@ await test("10.2 a POST to an empty store stores the ledger exactly as sent, at 
   eq(s.writes.length, 1, "store write calls");
   eq(s.writes[0]?.ledger, incoming, "stored ledger, as sent");
   eq(s.writes[0]?.rev, 1, "stored rev");
-  eq(await res.json(), { ledger: incoming, rev: 1 }, "response body");
+  const body = await res.json();
+  eq(body.ledger, incoming, "response ledger, as sent");
+  eq(body.rev, 1, "response rev");
+  eq(body.stats, ZERO_STATS, "response stats: no merge ran, so zero");
 });
 
 await test("10.3 a POST that changes the stored ledger writes rev 4, then broadcasts {rev: 4}", async () => {
@@ -824,17 +837,6 @@ await test("10.3 a POST that changes the stored ledger writes rev 4, then broadc
 });
 
 /* ---------- 11. the reply carries stats: the counts of this merge ---------- */
-/* The seven counts mergeLedger reports. A no-op merge gives all zero. */
-const ZERO_STATS = {
-  itemsAdded: 0,
-  checkInsAdded: 0,
-  envelopesAdded: 0,
-  checkInsRemoved: 0,
-  envelopesRemoved: 0,
-  stampsRemoved: 0,
-  stampsAdded: 0,
-};
-
 await test("11.1 a POST that changes the stored ledger replies with the stats of that merge", async () => {
   const K = "100|1|555";
   const stored = ledger({ items: [item(K, "Alpha Card", 2)] });
@@ -882,8 +884,9 @@ await test("11.3 the reply counts an un-check in checkInsRemoved, as mergeLedger
   eq((await res.json()).stats, expected, "reply stats");
 });
 
-/* No merge runs against an empty store, so the core holds no merge to count.
-   Reading taken: the reply then carries zero stats. See the brief's open question. */
+/* Ruling: a first POST to an empty store replies with zero stats, because no
+   merge runs and so there are no counts to report. The stats-in-reply rule
+   lives in sync-revamp-cloudflare (lane W1). */
 await test("11.4 a first POST to an empty store replies with zero stats", async () => {
   const s = empty();
   const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: ledger() } });
