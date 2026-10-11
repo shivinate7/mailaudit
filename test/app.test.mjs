@@ -6578,6 +6578,92 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     syncCalls().some((c) => c.op === "connect" && c.key === NEW12),
     "59.12b and a new connect runs with the new key"
   );
+
+  /* 59.13. Items and no check-ins, the server empty (404), a key pasted. The 404
+     answers no reply, so nothing clears applyNow. Another device's rev then waits
+     for the idle gate after the last tap, and does not apply at once. Red on head:
+     applyNow is cleared only by a reply that applies, so it stays set. */
+  const OTHER13 = {
+    mailday: 1,
+    items: ITEMS.slice(0, 3),
+    received: { [ITEMS[2].key]: 1 },
+    receivedAt: { [ITEMS[2].key]: 400 },
+    dateFilter: { preset: "all", from: "", to: "" },
+    sortBy: "newest",
+    itemSort: "missing",
+  };
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+    remoteKey: GH59,
+    syncAdapter: true,
+    remote: null,
+  });
+  await settle();
+  await openPanel59();
+  await pasteKey59(KEY59);
+  await fireSyncRev(1, OTHER13);
+  await sleep(SAVE_WAIT);
+  ok(!saved().received?.[ITEMS[2].key], "59.13a after a 404 and a key, another device's rev does not apply at once");
+  await sleep(APPLY_WAIT);
+  ok(saved().received?.[ITEMS[2].key] === 1, "59.13b and it applies once the idle gate opens");
+
+  /* 59.14. Gap 1: a seeded page and a server ledger that holds a check-in the seed
+     lacks. The paste applies that ledger, so the seed line goes (the clear on the
+     applied path, app.jsx ~4544), and a later check-in POSTs. */
+  const SERVER14 = {
+    mailday: 1,
+    items: ITEMS.slice(0, 3),
+    received: { [ITEMS[1].key]: 1 },
+    receivedAt: { [ITEMS[1].key]: 200 },
+    dateFilter: { preset: "all", from: "", to: "" },
+    sortBy: "newest",
+    itemSort: "missing",
+  };
+  await boot(null, null, { remote: null, seed: SEED, syncAdapter: true, syncLedger: SERVER14 });
+  await settle();
+  ok(/someone else’s ledger/.test(text()), "59.14pre the device shows the public seed");
+  await openPanel59();
+  await pasteKey59(KEY59);
+  ok(!/someone else’s ledger/.test(text()), "59.14a a server ledger with check-ins applies, and the seed line goes");
+  const posts14 = count59("post");
+  await toggleShowing();
+  await click(btn(/Mark all received/), "check in the cards");
+  await settle();
+  await sleep(SR.SYNC_POST_MS + 300);
+  await settle();
+  ok(count59("post") > posts14, "59.14b and a later check-in POSTs");
+
+  /* 59.15. Gap 2: the first reply after a saved key applies at once. A second reply
+     from another device waits for the idle gate after the last tap. Red on head with
+     applyNow.current = false removed (app.jsx ~4700). */
+  const FIRST15 = {
+    mailday: 1,
+    items: ITEMS.slice(0, 3),
+    received: { [ITEMS[1].key]: 1 },
+    receivedAt: { [ITEMS[1].key]: 300 },
+    dateFilter: { preset: "all", from: "", to: "" },
+    sortBy: "newest",
+    itemSort: "missing",
+  };
+  const SECOND15 = {
+    ...FIRST15,
+    received: { ...FIRST15.received, [ITEMS[2].key]: 1 },
+    receivedAt: { ...FIRST15.receivedAt, [ITEMS[2].key]: 400 },
+  };
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+    remoteKey: GH59,
+    syncAdapter: true,
+    remote: null,
+    syncLedger: FIRST15,
+  });
+  await settle();
+  await openPanel59();
+  await pasteKey59(KEY59);
+  ok(saved().received?.[ITEMS[1].key] === 1, "59.15a the first reply after a saved key applies at once");
+  await fireSyncRev(2, SECOND15);
+  await sleep(SAVE_WAIT);
+  ok(!saved().received?.[ITEMS[2].key], "59.15b a second reply from another device does not apply at once");
+  await sleep(APPLY_WAIT);
+  ok(saved().received?.[ITEMS[2].key] === 1, "59.15c and it applies once the idle gate opens");
 }
 
 uninstallClock();
