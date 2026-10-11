@@ -3960,9 +3960,12 @@ await settle();
   );
 }
 
+/* The unreadable copy in PHOTO_SAYS. Module scope: 47.5 and group 48 both use it. */
+const PHOTO_UNREADABLE = /photos.*(could not|couldn.t) be read/i;
+
 /* ---- an unreadable LOCAL photo store, during a push ----
-   surveyPhotos bails when keys() rejects, so a push sends nothing and says
-   nothing about photos. The blob is real and referenced, so a READABLE store
+   surveyPhotos bails when keys() rejects, so a push sends nothing and must say
+   so. The blob is real and referenced, so a READABLE store
    would upload it, which is what makes "nothing uploaded" a real claim.
    GUARDS, not kills: read-as-empty also sends nothing on a push, because push
    only sends what it finds locally, and push never reports `lost`. The pull
@@ -3981,7 +3984,7 @@ await settle();
   } finally {
     win.photos.keys = keysBefore;
   }
-  /* the photo copy from PHOTO_SAYS and the pull's lost/gone notes */
+  /* every PHOTO_SAYS copy except `unreadable`, plus the pull's lost/gone notes */
   const PHOTO_LINE =
     /Photos need|photo repo|photos didn’t sync|photo uploads|to finish the photos|trouble with the photos|can’t write photos|photos sent|still to go|not on GitHub|never pushed|now gone/i;
   const pushed = remoteText() ? JSON.parse(remoteText()) : {};
@@ -3992,7 +3995,13 @@ await settle();
     "47.5 and the pushed ledger still references the id"
   );
   eq(remotePhotoIds(), [], "47.5 and nothing is uploaded to the photo repo");
-  ok(!PHOTO_LINE.test(text()), "47.5 and no photo line is shown");
+  /* Inverted when 48.1 landed. The unreadable line must show, and no other
+     photo copy may: the push says the right thing, not a server or repo error. */
+  eq(
+    { shown: PHOTO_UNREADABLE.test(text()), otherCopy: PHOTO_LINE.test(text()) },
+    { shown: true, otherCopy: false },
+    "47.5 the unreadable-photos line is shown, and no other photo copy is"
+  );
 }
 
 /* ---- the same store, on a pull ----
@@ -4034,6 +4043,325 @@ await settle();
   ok(
     /^repeat\(\s*2\s*,/.test(grid?.style.gridTemplateColumns ?? ""),
     "47.7 the sync grid is two columns"
+  );
+}
+
+/* ── 48. "I could not look" is always visible ─────────────────────────────
+   Records photo-ids-unreadable-local, photo-errors-never-hit-pushstate and
+   ruled-head-one-advisory-entrance. Stage 1 of the sync revamp.
+
+   Each path below is silent today. Once fixed, the builder must put these
+   words on screen. The tests match the regexes, not exact copy. Any wording
+   that matches is accepted. Examples that match:
+
+     photo store unreadable (48.1, 48.2, 48.3, 48.5): PHOTO_UNREADABLE
+       "This device’s photos could not be read, so they were not backed up."
+     remote unknown (48.4): BACKUP_UNKNOWN
+       "The backup could not be checked — tap to fix"
+
+   The photo words may sit in the photo box (48.1, 48.3) or on the advisory
+   line (48.2). The remote words must sit on the advisory line (48.4). The
+   advisory line is the one disclosure button, so `onLine` looks only there.
+
+   A photo error never sets pushState, so "Push anyway" stays away (48.1,
+   48.3). The ledger push still finishes, so "Pushed ✓" still shows.
+
+   Each fixture carries exactly one reason for the line. A healthy push first
+   clears "never synced", so the reason under test is the only one left. The
+   priority order inside syncBroken is not pinned here. */
+const BACKUP_UNKNOWN = /backup.*(could not|couldn.t) be checked/i;
+const onLine = (re) =>
+  buttons().some((b) => b.hasAttribute("aria-expanded") && re.test(b.textContent));
+const KEY = { remoteKey: "github_pat_testtoken" };
+const unreadable = async () => {
+  throw new Error("local photo store unreadable");
+};
+
+/* ---- 48.1 a push whose photo phase cannot read the local store ---- */
+await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], KEY);
+await openSync();
+const keysBefore481 = win.photos.keys;
+win.photos.keys = unreadable;
+try {
+  await click(btn(/^Push$/), "push with an unreadable local store");
+  await sleep(60);
+} finally {
+  win.photos.keys = keysBefore481;
+}
+eq(
+  {
+    words: PHOTO_UNREADABLE.test(text()),
+    anyway: !!btn(/Push anyway/),
+    pushed: !!btn(/^Pushed ✓$/),
+  },
+  { words: true, anyway: false, pushed: true },
+  "48.1 an unreadable local store is said so, never arms Push anyway, and the ledger still lands"
+);
+
+/* ---- 48.2 the same store, read by the unattended push, panel shut ---- */
+await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], KEY);
+await background(); /* a healthy push first, so "never synced" is not the reason */
+await settle();
+const keysBefore482 = win.photos.keys;
+const pushesBefore482 = pushes().length;
+win.photos.keys = unreadable;
+try {
+  await background();
+  await sleep(60);
+} finally {
+  win.photos.keys = keysBefore482;
+}
+eq(
+  {
+    ran: pushes().length > pushesBefore482,
+    panelOpen: !!btn(/^Push$/),
+    onLine: onLine(PHOTO_UNREADABLE),
+  },
+  { ran: true, panelOpen: false, onLine: true },
+  "48.2 an unreadable local store shows on the advisory line with the panel shut"
+);
+
+/* ---- 48.3 the upload loop cannot read a blob it was told to send ---- */
+await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], KEY);
+await openSync();
+const getBefore483 = win.photos.get;
+win.photos.get = unreadable;
+try {
+  await click(btn(/^Push$/), "push where the blob cannot be read");
+  await sleep(60);
+} finally {
+  win.photos.get = getBefore483;
+}
+eq(
+  {
+    pushed: !!btn(/^Pushed ✓$/),
+    words: PHOTO_UNREADABLE.test(text()),
+    sent: remotePhotoIds(),
+    anyway: !!btn(/Push anyway/),
+  },
+  { pushed: true, words: true, sent: [], anyway: false },
+  "48.3 a blob that cannot be read is said so, not skipped as if swept"
+);
+
+/* ---- 48.4 a remote it cannot look at, on the foreground and unattended ----
+   Two boots, one per path, so a fix on one path cannot pass the other. */
+for (const [path, look] of [
+  ["foreground peek", foreground],
+  ["autoPush", background],
+]) {
+  await boot({ items: ITEMS, received: {} }, null, KEY);
+  await background(); /* a healthy push first, so "never synced" is not the reason */
+  await settle();
+  remote.peekUnknown = "offline";
+  const before = BACKUP_UNKNOWN.test(text());
+  const peeksBefore = peeks().length;
+  await look();
+  await sleep(60);
+  remote.peekUnknown = null;
+  eq(
+    {
+      looked: peeks().length > peeksBefore,
+      before,
+      onLine: onLine(BACKUP_UNKNOWN),
+    },
+    { looked: true, before: false, onLine: true },
+    `48.4 a remote it could not look at says so on the advisory line (${path})`
+  );
+}
+
+/* ---- 48.5 the healthy case stays quiet, so a fix that always shows fails ---- */
+await boot({ items: ITEMS, received: {} }, null, KEY);
+await openSync();
+await click(btn(/^Push$/), "healthy push, no photos");
+await sleep(60);
+eq(
+  {
+    pushed: !!btn(/^Pushed ✓$/),
+    words: PHOTO_UNREADABLE.test(text()) || BACKUP_UNKNOWN.test(text()),
+  },
+  { pushed: true, words: false },
+  "48.5 a ledger with no photos and a readable store says nothing about photos"
+);
+
+await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], KEY);
+await openSync();
+await click(btn(/^Push$/), "healthy push with a photo");
+await sleep(60);
+const peeksBefore485 = peeks().length;
+await foreground();
+await sleep(60);
+eq(
+  {
+    landed: remotePhotoIds(),
+    looked: peeks().length > peeksBefore485,
+    words: PHOTO_UNREADABLE.test(text()) || BACKUP_UNKNOWN.test(text()),
+    anyway: !!btn(/Push anyway/),
+  },
+  { landed: ["pho-k"], looked: true, words: false, anyway: false },
+  "48.5 a readable store and a known remote show neither line, and the photo really went up"
+);
+
+/* the line clears once the store reads again, or it latches */
+await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], KEY);
+await openSync();
+const keysBefore485 = win.photos.keys;
+win.photos.keys = unreadable;
+try {
+  await click(btn(/^Push$/), "push with an unreadable store");
+  await sleep(60);
+} finally {
+  win.photos.keys = keysBefore485;
+}
+await click(btn(/^Push(ed ✓)?$/), "push again once the store reads");
+await sleep(60);
+eq(
+  { words: PHOTO_UNREADABLE.test(text()), landed: remotePhotoIds() },
+  { words: false, landed: ["pho-k"] },
+  "48.5 once the store reads again the words clear and the photo goes up"
+);
+
+/* ---- 48.6 a keyless cold start on the private ledger ----
+   The 38c device opened cold: the private ledger is seeded before the mount, so
+   the mount's own look is the only remote read, and it is refused. No pull runs
+   here. 38c.1 misses this bug because its failed pull sets remoteMsg, and that
+   outranks backupUnknown. */
+const NO_KEY_LINE = /tap to (set it up|add its key)/;
+await boot({ items: ITEMS, received: {} }, null, {
+  remoteAtBoot: LAPTOP_PUSHED,
+  remotePrivate: true,
+});
+await settle();
+eq(
+  {
+    looked: peeks().length > 0,
+    noKey: onLine(NO_KEY_LINE),
+    unknownWords: BACKUP_UNKNOWN.test(text()),
+  },
+  { looked: true, noKey: true, unknownWords: false },
+  "48.6 a keyless cold start on the private ledger says the key is missing, not that the backup could not be checked"
+);
+
+/* ---- 48.7 an unreadable photo push, then a readable pull or merge ----
+   Only the push path clears the unreadable flag today. Both paths below read
+   the remote with the photo store readable and push nothing: the manual pull,
+   and the unattended merge (alsoPush false). The incoming ledger references
+   pho-k, so the readable survey really runs. */
+const photoListCalls = () => remote.calls.filter((c) => c.op === "listPhotos").length;
+const brokenLine = () => onLine(/tap to (?!close)/);
+
+/* the manual pull */
+await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], KEY);
+await openSync();
+const keysBefore487a = win.photos.keys;
+win.photos.keys = unreadable;
+try {
+  await click(btn(/^Push$/), "push with an unreadable local store");
+  await sleep(60);
+} finally {
+  win.photos.keys = keysBefore487a;
+}
+const before487a = PHOTO_UNREADABLE.test(text());
+const pushes487a = pushes().length;
+const lists487a = photoListCalls();
+await click(btn(/Pull from GitHub/), "arm pull");
+await click(btn(/Tap again to replace/), "confirm pull");
+await sleep(SAVE_WAIT);
+eq(
+  {
+    before: before487a,
+    listed: photoListCalls() > lists487a,
+    applied: remote.deviceSha === remote.sha,
+    pushed: pushes().length - pushes487a,
+    words: PHOTO_UNREADABLE.test(text()),
+    line: brokenLine(),
+  },
+  { before: true, listed: true, applied: true, pushed: 0, words: false, line: false },
+  "48.7 a readable pull clears the unreadable-photos words (manual pull)"
+);
+
+/* the unattended merge: the other device is ahead, and the device is away long
+   enough to be a fresh session, so autoMerge runs with alsoPush false */
+await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], KEY);
+await openSync();
+const keysBefore487b = win.photos.keys;
+win.photos.keys = unreadable;
+try {
+  await click(btn(/^Push$/), "push with an unreadable local store");
+  await sleep(60);
+} finally {
+  win.photos.keys = keysBefore487b;
+}
+remote.sha = "sha-other"; /* the other device pushed since: peek says ahead */
+const before487b = PHOTO_UNREADABLE.test(text());
+const pushes487b = pushes().length;
+const lists487b = photoListCalls();
+await backgroundFor(5 * 60_000);
+await settle();
+await sleep(60);
+eq(
+  {
+    before: before487b,
+    listed: photoListCalls() > lists487b,
+    applied: remote.deviceSha === remote.sha,
+    pushed: pushes().length - pushes487b,
+    words: PHOTO_UNREADABLE.test(text()),
+    line: brokenLine(),
+  },
+  { before: true, listed: true, applied: true, pushed: 0, words: false, line: false },
+  "48.7 a readable unattended merge clears the unreadable-photos words (autoMerge)"
+);
+
+/* ---- 48.8 one look fails, the next succeeds, inside one check ----
+   A single transient {known:false} must not raise the line. The look is retried
+   once before the line is raised. Both looks, the foreground check and the
+   unattended autoPush, take the same path as 48.4. */
+for (const [path, look] of [
+  ["foreground peek", foreground],
+  ["autoPush", background],
+]) {
+  await boot({ items: ITEMS, received: {} }, null, KEY);
+  await background(); /* a healthy push first, so "never synced" is not the reason */
+  await settle();
+  remote.peekUnknownOnce = "offline";
+  const peeksBefore = peeks().length;
+  await look();
+  await sleep(60);
+  const consumed = remote.peekUnknownOnce === null;
+  remote.peekUnknownOnce = null;
+  eq(
+    {
+      looked: peeks().length > peeksBefore,
+      consumed,
+      words: BACKUP_UNKNOWN.test(text()),
+      onLine: onLine(BACKUP_UNKNOWN),
+    },
+    { looked: true, consumed: true, words: false, onLine: false },
+    `48.8 one transient unknown look does not raise the line (${path})`
+  );
+}
+
+/* ---- 48.9 a look that stays unknown on both tries still raises the line ----
+   The other side of the retry. 48.4 covers one unknown look, so this adds the
+   recovery: a later known look must clear the line, or a retry that latches
+   would pass 48.4. */
+for (const [path, look] of [
+  ["foreground peek", foreground],
+  ["autoPush", background],
+]) {
+  await boot({ items: ITEMS, received: {} }, null, KEY);
+  await background(); /* a healthy push first, so "never synced" is not the reason */
+  await settle();
+  remote.peekUnknown = "offline";
+  await look();
+  await sleep(60);
+  const shown = onLine(BACKUP_UNKNOWN);
+  remote.peekUnknown = null;
+  await look();
+  await sleep(60);
+  eq(
+    { shown, cleared: !BACKUP_UNKNOWN.test(text()) },
+    { shown: true, cleared: true },
+    `48.9 a remote unknown on both tries shows the line, and a later known look clears it (${path})`
   );
 }
 
