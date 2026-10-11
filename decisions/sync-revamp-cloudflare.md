@@ -35,7 +35,8 @@ GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Del
 
 - `worker/core.mjs` holds the logic that can be pure, and `npm run test:worker` tests it. `worker/index.mjs` holds the Worker and the `Ledger` Durable Object, which keeps `{ledger, rev}` under one storage key.
 - `POST /ledger` merges the incoming ledger into the stored one with `mergeLedger` from `src/merge-rules.mjs`, the same merge the app runs. The stored copy's view preferences win. A POST that changes nothing writes nothing and sends no broadcast.
-- The Durable Object's name is ledger-v2, and the old object, named `ledger`, is the rollback.
+- The Durable Object takes its name from a deploy setting, and the default is ledger-v3. A probe deploy sets its own name, so a live test never writes to the real store. The object named `ledger` holds the stage 2 seed. The object named `ledger-v2` holds a live probe's test data, and no device may use it.
+- A device's own write causes no GET. A rev heard while its POST is in flight waits for the reply. After a 401 the device stops calling the Worker until the page reloads.
 - The app sends its key as a Bearer token in the `Authorization` header. A key that matches no stored hash gets 401. A body that is not a ledger gets 400. `GET /ledger` returns 404 until the first POST seeds the store.
 - A merged ledger over the size limit gets 413 and writes nothing. A Durable Object value caps at 2,000,000 bytes, and the limit keeps at least 100,000 bytes of headroom under that cap. The guard counts UTF-8 bytes, not characters.
 - A WebSocket carries the key as the second of exactly two protocols, `mailaudit` and the key. A browser cannot set a header on a WebSocket.
