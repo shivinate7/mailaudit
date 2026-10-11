@@ -6152,12 +6152,12 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     await settle();
     await pageshow();
     await sleep(APPLY_WAIT); /* idle, so the reply that follows can apply */
+    const posts5 = count58("post"); /* from before the apply, so a POST at the apply counts */
     await fireSyncRev(syncRev() + 1, SERVER5); /* the other device's push arrives */
     await sleep(APPLY_WAIT);
     await settle();
     await sleep(SAVE_WAIT);
     ok(saved().received?.[K5] === 1, "58.N5pre the remote change is applied and saved");
-    const posts5 = count58("post");
     await sleep(10000);
     await settle();
     eq(count58("post") - posts5, 0, "58.N5a no POST in the 10 s after the apply, since the snapshot equals the server ledger");
