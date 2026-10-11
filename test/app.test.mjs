@@ -6942,7 +6942,7 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     outsideC60 = null;
   }
   const stray60 = outsideC60 === null ? ["(unreadable)"] : outsideC60.match(COLOUR60) ?? [];
-  ok(stray60.length === 0, `60.10 no colour literal in src/app.jsx code outside const C (found: ${stray60.join(" ")})`);
+  ok(stray60.length === 0, `60.10 no colour literal in src/app.jsx code (found: ${stray60.join(" ")})`);
 
   /* 60.11: the scanner respects strings, template literals and JSX text. A regex that
      strips comments first would fail these. */
