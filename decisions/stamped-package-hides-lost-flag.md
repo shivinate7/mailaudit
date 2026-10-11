@@ -2,7 +2,7 @@
 
 Any stamped package hides the lost-mail warning. The warning is hidden in the package header line and in the Tally source row alike. The order is already being handled by hand, so the warning would add nothing. For a reshipped order, the original order date has no meaning.
 
-**Holds while:** `lostMail` in `src/app.jsx` returns null when its `done` argument is true. Both of its callers pass `done || stamped`.
+**Holds while:** `lostMail` in `src/view-rules.mjs` returns null when its `done` argument is true. Both of its callers in `src/app.jsx` pass `done || stamped`. V2.4 in `test/view-rules.test.mjs` pins the null.
 
 Group 32 covers the search reveal, see `search-filters-inside-package`.
 
