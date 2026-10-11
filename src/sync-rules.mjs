@@ -37,6 +37,9 @@ export const isNewRev = (have, got) => got > have;
 /* a Worker call that has not answered by now counts as unreachable */
 export const SYNC_TIMEOUT_MS = 10000;
 
+/* a cold open that finds the server lacking something POSTs this long after the first reply */
+export const SYNC_COLD_POST_MS = 500;
+
 /* a POST goes out this long after a change */
 export const SYNC_POST_MS = 3000;
 

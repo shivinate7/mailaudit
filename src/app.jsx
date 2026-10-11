@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import Papa from "papaparse";
 import { photoPlan } from "./photo-rules.mjs";
 import { shouldSnapshot } from "./version-rules.mjs";
-import { SYNC_POST_MS, SYNC_TIMEOUT_MS, IDLE_APPLY_MS, idleReady, backoffMs } from "./sync-rules.mjs";
+import { SYNC_POST_MS, SYNC_COLD_POST_MS, SYNC_TIMEOUT_MS, IDLE_APPLY_MS, idleReady, backoffMs } from "./sync-rules.mjs";
 import {
   mergeItems,
   mergeLedger,
@@ -4193,10 +4193,12 @@ export default function MailDayLedger() {
       disarm();
       setRemoteMsg(null);
       setPushState("pushing");
-      /* the mirror writes the merge with the last server ledger, never a raw
-         snapshot that may hold fewer lines than the Worker does */
+      /* Every push, mirror or not, writes the merge with the last server ledger
+         once one is known, never a raw snapshot: a snapshot that has not yet
+         applied the server's lines holds fewer than GitHub does, and writing it
+         is how a failed merge POST once shrank GitHub from 15 lines to 3. */
       let text = JSON.stringify(
-        mirror && lastServer.current
+        lastServer.current
           ? mergeLedger(snapshot(), lastServer.current).merged
           : snapshot()
       );
@@ -4231,8 +4233,11 @@ export default function MailDayLedger() {
             try {
               settleReply(await withTimeout(window.sync.post(merged)), true);
             } catch {
-              /* the GitHub write landed; the Worker catches up on the next POST */
+              mirrorRef.current = false;
             }
+            /* the Worker did not take the merge: the next push reconciles with
+               GitHub by the peek path, even if a retry turns mirror mode back on */
+            if (!mirrorRef.current) githubNext.current = true;
           }
         }
         setRemoteInfo(await window.remote.status().catch(() => null));
@@ -4697,6 +4702,7 @@ export default function MailDayLedger() {
   const refusedRef = useRef(false); // a 401: no more calls until the page reloads
   const closeRef = useRef(null);
   const tooBigRef = useRef(false);
+  const githubNext = useRef(false); // the next push takes the GitHub path
   /* a Worker call that never answers counts as unreachable */
   const withTimeout = (p) => {
     let t;
@@ -4716,6 +4722,12 @@ export default function MailDayLedger() {
     envelopes: l.envelopes || [],
     stamps: l.stamps || {},
   });
+  /* user-made data: check-ins, envelopes, stamps. Lines alone come back from a CSV. */
+  const holdsUserDataRef = useRef(null);
+  holdsUserDataRef.current = () => {
+    const d = dataOf(snapshot());
+    return Object.keys(d.received).length > 0 || d.envelopes.length > 0 || Object.keys(d.stamps).length > 0;
+  };
   const lacksRef = useRef(null);
   lacksRef.current = (srv) =>
     canon(dataOf(mergeLedger(srv, snapshot()).merged)) !== canon(dataOf(srv));
@@ -4799,10 +4811,13 @@ export default function MailDayLedger() {
       if (!window.sync || !(await window.sync.hasKey())) return;
       const r = await withTimeout(window.sync.get());
       settleReply(r);
-      /* a cold open where this device holds something the server lacks sends it
-         within a beat (500 ms), once the first reply has landed */
-      if (r.code === "ok" && r.body?.ledger && lacksRef.current(r.body.ledger))
-        setTimeout(() => postRef.current(), 500);
+      /* a cold open where this device holds something the server lacks (on an
+         empty store, any check-ins, envelopes or stamps) sends it within a beat of the first reply */
+      const send =
+        r.code === "ok"
+          ? r.body?.ledger && lacksRef.current(r.body.ledger)
+          : r.code === "empty" && holdsUserDataRef.current();
+      if (send) setTimeout(() => postRef.current(), SYNC_COLD_POST_MS);
     })();
   };
   /* a rev above the last one seen (or already being fetched) is one GET */
@@ -4964,16 +4979,21 @@ export default function MailDayLedger() {
     if (!info?.hasKey) return;
     /* With a Worker key, GitHub is a mirror: no peek, no merge, and a stale sha
        merges GitHub in and writes under the fresh sha (see doPush), no two-tap. */
-    if (mirrorRef.current) {
+    if (mirrorRef.current && !githubNext.current) {
       /* the mirror writes only when the ledger changed since its last write: an
          unchanged resume must not touch GitHub, and a conflict means a merge */
       if (!mirrorDirty.current) return;
       /* cleared BEFORE the push: a change made in flight sets it again */
       mirrorDirty.current = false;
-      const r = await doPush(false, true, true);
-      if (!r?.ok) mirrorDirty.current = true;
+      let r;
+      try {
+        r = await doPush(false, true, true);
+      } finally {
+        if (!r?.ok) mirrorDirty.current = true;
+      }
       return;
     }
+    githubNext.current = false;
     if (typeof window.remote.peek === "function") {
       const p = await peekTwice();
       /* "could not look" means DO NOT PUSH. This is the whole reason peek is
