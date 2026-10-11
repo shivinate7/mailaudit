@@ -52,7 +52,7 @@ The orchestrator made these under the owner's grant to run the stages, on 2026-1
 - **Switch:** the Worker moves to a new, empty Durable Object. Each device's first POST seeds it. The old object stays as the rollback copy. A re-seed from the old object could bring back an un-check through the per-key max.
 - **Milestones on a live apply:** a live apply takes a milestone only when it removes something. Otherwise the recent version is enough. A milestone on every apply would fill the 60-slot list in one mail day.
 - **Mirror mode needs a healthy server:** GitHub becomes a mirror only after the Worker answers `ok` or `empty` in this session. Any failure turns mirror mode off, and the device then runs the plain GitHub path. Worker retries wait on `backoffMs`. A per-cycle fallback merge pulled and took a milestone on every save, so it is gone.
-- **The mirror pushes the merged ledger:** it merges the local ledger with the last server reply. So a lagging device never shrinks the GitHub copy.
+- **The mirror pushes the merged ledger:** it merges the local ledger with the last server reply. On a conflict it reads the GitHub ledger and merges that in too, then writes with the fresh sha. It never force-writes its own copy, so no device can shrink the GitHub copy. That holds even when the server store starts empty.
 - **A refused key says so:** a 401 shows its own advisory line.
 - **iPhone key:** the owner scans one QR code. If the key does not reach the home-screen app, the app gains a scan-key control.
 - **QR code:** macOS draws it with its own image tools. No new package is installed.

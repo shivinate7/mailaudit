@@ -28,7 +28,7 @@ A Worker reply that waits for the idle gate shows no line. Test 55.5 pins it.
 
 The stale limit is 24h. Push is automatic and idle-debounced. A shorter limit would fire on an ordinary evening with the phone face down. A longer limit would stop being a warning.
 
-Without a Worker key, being behind must reach this line. Auto-push declines while the remote is ahead. The automatic merge runs only on a fresh session. So a device that falls behind mid-session stops backing up for the rest of that session. The manila "pushed newer lines" notice sits inside the sync panel. The panel opens only from this line. A person had to know to look for the notice. With a key, GitHub is a mirror, no peek runs, and a remote that is ahead raises no behind line. Test 54.1c pins that.
+Without a Worker key, being behind must reach this line. Auto-push declines while the remote is ahead. The automatic merge runs only on a fresh session. So a device that falls behind mid-session stops backing up for the rest of that session. The manila "pushed newer lines" notice sits inside the sync panel. The panel opens only from this line. A person had to know to look for the notice. With a Worker key and a healthy server, GitHub is a mirror. Then no peek runs, and a remote that is ahead raises no behind line. Test 54.1c pins that.
 
 The 24-hour check is frozen too. `syncBroken` reads `Date.now()` inside its `useMemo`. A stalled device changes none of its dependencies, so the comparison does not re-run. Tests 38b.1–38b.3 pin this.
 
