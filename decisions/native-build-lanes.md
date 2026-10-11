@@ -35,7 +35,7 @@ The native rebuild splits into lanes. W lanes change the Worker. S lanes change 
 | N6 Tally and filters | Tally and Filters views | Sort keys. Search and hide-received do not change Tally counts. The copies list. | same as N5 | N5 |
 | N7 Orphaned | Orphaned views | One input records an envelope. No auto-assign. A tie has no emphasis. A partial-quantity assign. Undo removes only its delta. | same as N5 | N5 |
 | N8 Masthead and backup | Masthead views, the backup file code | The export bytes equal the snapshot. No key in the export. Reduced motion shows the final frame. The save slot has a fixed width. | same as N5 | N5 |
-| N9 Milestones | the versions code | A milestone is saved before a reset and before an apply that removes something. The prune equals `keptIds`. | ST | N4a |
+| N9 Milestones | the versions code | A milestone is saved before a reset and before an apply that removes something. The prune equals `keptIds`. The list shows each milestone, and a restore takes a milestone first and passes the same apply path. | ST | N4a |
 | N10 Photos | Photos views | A downscale to 2000px. A photo blob never enters the ledger. | ST | W2 |
 | N11 Device check | none | The owner checks on a device. The ios-adblock phone-apps list gets the new entry. | the owner | all |
 
