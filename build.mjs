@@ -112,6 +112,7 @@ await build({
 });
 
 const bundle = readFileSync("dist-bundle.js", "utf8");
+const { paper } = JSON.parse(readFileSync("shared/tokens.json", "utf8"));
 const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -122,11 +123,11 @@ const html = `<!doctype html>
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Mail Day">
-<meta name="theme-color" content="#F2E9DA">
+<meta name="theme-color" content="${paper}">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="icon" sizes="32x32" href="icon-32.png">
-<style>html,body,#root{margin:0;padding:0;background:#F2E9DA;-webkit-text-size-adjust:100%}</style>
+<style>html,body,#root{margin:0;padding:0;background:${paper};-webkit-text-size-adjust:100%}</style>
 </head>
 <body>
 <div id="root"></div>

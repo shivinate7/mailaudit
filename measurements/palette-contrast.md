@@ -1,6 +1,6 @@
 # Palette token contrast ratios
 
-This record holds the contrast ratio of every token, as the palette table gives them. It also holds notes on the tokens that need care. Re-measure after a change to any hex value in the `C` object.
+This record holds the contrast ratio of every token, as the palette table gives them. It also holds notes on the tokens that need care. Re-measure after a change to any hex value in `shared/tokens.json`.
 
 ## How to re-measure
 
@@ -8,7 +8,7 @@ Take each token pair in the table below. Compute each ratio against the surface 
 
 ## Reader
 
-No reader. Nothing in the test suite checks a contrast ratio.
+Test group 60 of `npm test` checks each pair in its list (60.7) against that pair's floor. No other ratio has a reader.
 
 ## Figures
 
