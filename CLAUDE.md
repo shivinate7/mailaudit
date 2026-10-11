@@ -104,6 +104,7 @@ Sync runs itself. These records say what it refuses to do, and why each refusal 
 - `ledger-and-photos-share-a-repo` — The ledger and the photos share one repo.
 - `photo-writes-wait-one-second` — Photo writes wait one second after the ledger.
 - `null-remote-info-is-not-no-key` — A null remote status is not a missing key.
+- `native-swift-rebuild` — MANIFEST is rebuilt as a native Swift client.
 
 ## Envelope photos
 
@@ -327,7 +328,6 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 - `watchdog-lives-in-private-repo` — The backup watchdog lives in the private repo.
 - `the-write-budget-is-shared` — The write budget is shared with the ledger push.
 - `vendor-toggle-undecided` — The vendor toggle stays undecided.
-- `native-ios-shell-question` — A native iOS shell is not worth building now.
 - `sync-revamp-cloudflare` — Sync moves from GitHub to Cloudflare, and orders arrive with no export.
 - `merge-later-change-wins` — Clock skew can pin a merge key. Accepted risk.
 
