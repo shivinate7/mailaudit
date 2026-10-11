@@ -19,9 +19,9 @@ The Auto-push cell is gone. Sync runs unconditionally now. See `sync-runs-itself
 
 Behind the sync line sit Push, Merge, Pull, Push anyway, the particulars and the key field.
 
-The first draft of group 36 booted against a seeded remote. That made the device behind. Behind adds a Merge cell, which turns three cells into four. So read the count off the screen, not off the fixture.
+The first draft of group 36 booted against a seeded remote. That made the device behind. Behind adds a Merge cell, which turns two cells into three. So read the count off the screen, not off the fixture.
 
-**Pinned by:** 28.2 and 28.8 pin that Pull is offered and that the repair kit opens. This panel's odd-cell span and its two columns are unpinned, so they are unmeasured. The History panel sets its own span, pinned by 36.5 in `history-restores-a-saved-version`.
+**Pinned by:** 28.2 and 28.8 pin that Pull is offered and that the repair kit opens. 47.3 pins that an odd count gives the last cell a full-row span, and 47.4 pins that an even count sets no span. The two columns are unpinned, because jsdom has no layout. The History panel sets its own span, pinned by 36.5 in `history-restores-a-saved-version`.
 
 ## See also
 
