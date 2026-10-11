@@ -6669,6 +6669,112 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   ok(!saved().received?.[ITEMS[2].key], "59.15b a second reply from another device does not apply at once");
   await sleep(APPLY_WAIT);
   ok(saved().received?.[ITEMS[2].key] === 1, "59.15c and it applies once the idle gate opens");
+
+  /* 59.16. The owner's path on the home-screen app: keyless with a GitHub token, the
+     panel opened to paste, a good save, and the panel still open. The line must not
+     read "no sync key" after the save, with the panel open, after a close, or after a
+     foreground. The owner saw it read so until a force-quit. */
+  await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true, remote: null });
+  await settle();
+  ok(!!entry59(), "59.16pre a keyless device shows the paste line first");
+  await openPanel59();
+  await pasteKey59(KEY59);
+  ok(await win.sync.hasKey(), "59.16a the key is saved");
+  ok(!/no sync key/.test(text()), "59.16b with the panel still open after the save, no 'no sync key' line");
+  await closePanel59();
+  ok(!/no sync key/.test(text()), "59.16c after a close, no 'no sync key' line");
+  await foreground();
+  await settle();
+  ok(!/no sync key/.test(text()), "59.16d after a foreground, no 'no sync key' line");
+
+  /* 59.17. The owner's full order: a keyless home-screen device with check-ins and a
+     server ledger that holds a check-in. The save applies that ledger. The owner then
+     checks in, another device's rev arrives, and the line is read at each step. */
+  const SERVER17 = {
+    mailday: 1,
+    items: ITEMS.slice(0, 3),
+    received: { [ITEMS[1].key]: 1 },
+    receivedAt: { [ITEMS[1].key]: 500 },
+    dateFilter: { preset: "all", from: "", to: "" },
+    sortBy: "newest",
+    itemSort: "missing",
+  };
+  await boot({ items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } }, null, {
+    remoteKey: GH59,
+    syncAdapter: true,
+    remote: null,
+    syncLedger: SERVER17,
+  });
+  await settle();
+  await openPanel59();
+  await pasteKey59(KEY59);
+  ok(!/no sync key/.test(text()), "59.17a with the panel open after the save, no 'no sync key' line");
+  await closePanel59();
+  ok(!/no sync key/.test(text()), "59.17b after the apply and a close, no 'no sync key' line");
+  await toggleShowing();
+  await click(btn(/Mark all received/), "check in the cards");
+  await sleep(SR.SYNC_POST_MS + 300);
+  await settle();
+  ok(!/no sync key/.test(text()), "59.17c after a check-in POSTs, no 'no sync key' line");
+  await fireSyncRev(2, { ...SERVER17, received: { ...SERVER17.received, [ITEMS[2].key]: 1 } });
+  await sleep(APPLY_WAIT);
+  await settle();
+  ok(!/no sync key/.test(text()), "59.17d after another device's rev applies, no 'no sync key' line");
+  await foreground();
+  await settle();
+  ok(!/no sync key/.test(text()), "59.17e after a foreground, no 'no sync key' line");
+
+  /* 59.18. A good save confirms itself beside the field: the panel stays open with
+     the field empty and masked, and "Sync key saved." says the key was taken. A later
+     failed save replaces that confirmation with the refusal. Red on main: no
+     confirmation exists, so the owner saw an empty field and no answer. */
+  await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true, remote: null });
+  await settle();
+  await openPanel59();
+  await pasteKey59(KEY59);
+  ok(text().includes("Sync key saved."), "59.18a after a good save the panel says 'Sync key saved.' beside the field");
+  const f18 = field59();
+  ok(!!f18 && f18.value === "" && f18.type === "password", "59.18b and the field is still empty and masked");
+  await pasteKey59("bad key!");
+  ok(!text().includes("Sync key saved."), "59.18c a later failed save removes the confirmation");
+  ok(text().includes(REFUSED59), "59.18d and shows the refusal in its place");
+
+  /* 59.19. The message slot is reserved: an element sits after the save button even
+     when it holds no text, on its own line, with a minimum height. jsdom has no
+     layout, so this asserts the structure and the inline geometry only. The geometry
+     itself is proven by a headless measure, not by this case. */
+  await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true, remote: null });
+  await settle();
+  await openPanel59();
+  const slot19 = btn(/^Save sync key$/)?.nextElementSibling ?? null;
+  ok(!!slot19, "59.19a the message slot exists beside the save button while the message is empty");
+  eq(slot19?.textContent ?? null, "", "59.19b and holds no text");
+  ok(slot19?.style.flexBasis === "100%", "59.19c and takes its own line");
+  ok(!!slot19?.style.minHeight, "59.19d and reserves a minimum height");
+
+  /* 59.20. A good save says so, and closing and reopening the panel clears the message. */
+  await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true, remote: null });
+  await settle();
+  await openPanel59();
+  await pasteKey59(KEY59);
+  ok(text().includes("Sync key saved."), "59.20pre the good save says so");
+  await closePanel59();
+  await openPanel59();
+  ok(!text().includes("Sync key saved."), "59.20 closing and reopening the panel clears the save message");
+
+  /* 59.21. A good save says so, and a later 401 from the Worker clears it. */
+  await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true, remote: null });
+  await settle();
+  await openPanel59();
+  await pasteKey59(KEY59);
+  ok(text().includes("Sync key saved."), "59.21pre the good save says so");
+  setSyncKeyRefused(true);
+  await foreground();
+  await settle();
+  await sleep(1000);
+  await settle();
+  ok(!text().includes("Sync key saved."), "59.21 a later 401 removes the save message");
+  setSyncKeyRefused(false);
 }
 
 /* ---------- 60. shared palette tokens ----------

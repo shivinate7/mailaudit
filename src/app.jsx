@@ -4843,7 +4843,7 @@ export default function MailDayLedger() {
       );
       return;
     }
-    setSyncKeyMsg("");
+    setSyncKeyMsg("Sync key saved.");
     setWorkerKeySet(true);
     /* a new key lifts a 401 stop and every backoff, and opens the socket if none is open */
     refusedRef.current = false;
@@ -4857,6 +4857,10 @@ export default function MailDayLedger() {
     applyNow.current = true;
     coldRef.current();
   };
+  /* the save message is stale once the panel closes or the Worker refuses the key */
+  useEffect(() => {
+    if (!syncOpen || serverDown === "no-access") setSyncKeyMsg("");
+  }, [syncOpen, serverDown]);
   useEffect(() => {
     if (window.sync) window.sync.hasKey().then(setWorkerKeySet, () => setWorkerKeySet(null));
   }, []);
@@ -7283,7 +7287,11 @@ export default function MailDayLedger() {
                             <button onClick={saveSyncKey} style={keySave}>
                               Save sync key
                             </button>
-                            {syncKeyMsg && <span style={partVal}>{syncKeyMsg}</span>}
+                            {/* always rendered, on its own line, one line tall: the Save
+                                button never moves when text arrives */}
+                            <span style={{ ...partVal, flexBasis: "100%", minHeight: 17 }}>
+                              {syncKeyMsg}
+                            </span>
                           </span>
                         </>
                       )}
