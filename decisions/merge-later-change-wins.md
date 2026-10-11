@@ -1,5 +1,7 @@
 # The later change wins in a two-device merge.
 
+**Status:** accepted risk. A device clock set far ahead can pin a merge key.
+
 A merge never drops a line from `items`. A check-in or an envelope goes only when a later write wins. A check-in count falls only that way. An un-check is one such write. A merge that silently dropped 35 imported lines would look the same as one that worked, so the rule matters. Running the merge again is harmless.
 
 **Holds while:** `mergeReceived` in `src/merge-rules.mjs` takes the later time per key, and the per-key max when a time is missing. `mergeLedger` builds its result from named fields.
@@ -24,6 +26,12 @@ Mutants confirmed red:
 - an envelope collision that prefers the bigger copy;
 - `mergeLedger` letting the remote's view preferences win;
 - assignment no longer stamping `updatedAt`.
+
+## Clock skew is an accepted risk
+
+A device clock set far ahead pins a key. A later real change on the other device then loses to that pinned time. Envelope and stamp `updatedAt` share this exposure. The merge trusts device time, and no bound checks it.
+
+**Holds while:** `touchReceived` in `src/app.jsx` stamps `Date.now()` from the device, with no server time or skew bound. A server-set time, or a skew bound, would end this risk.
 
 ## See also
 
