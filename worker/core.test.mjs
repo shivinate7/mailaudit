@@ -15,9 +15,9 @@ import { readFileSync } from "node:fs";
 import { mergeLedger } from "../src/merge-rules.mjs";
 
 /* A missing or broken core fails in one clear line, not a raw stack trace. */
-let route, keyAllowed, wsAuthorized;
+let route, keyAllowed, wsAuthorized, MAX_LEDGER_BYTES;
 try {
-  ({ route, keyAllowed, wsAuthorized } = await import("./core.mjs"));
+  ({ route, keyAllowed, wsAuthorized, MAX_LEDGER_BYTES } = await import("./core.mjs"));
 } catch (e) {
   console.log(
     `FAIL worker/core.mjs does not load (expected until the core is built): ${e.message.split("\n")[0]}`
@@ -26,6 +26,10 @@ try {
 }
 if (typeof route !== "function") {
   console.log("FAIL worker/core.mjs does not export route(request, env, store)");
+  process.exit(1);
+}
+if (typeof MAX_LEDGER_BYTES !== "number") {
+  console.log("FAIL worker/core.mjs does not export MAX_LEDGER_BYTES");
   process.exit(1);
 }
 if (typeof keyAllowed !== "function" || typeof wsAuthorized !== "function") {
@@ -647,6 +651,69 @@ await test("8.9 wsAuthorized returns a bare boolean, and nothing it returns echo
       ok(!String(res).includes(k), `${p}: the result echoes the key`);
     }
   }
+});
+
+/* ---------- 9. the size guard: the merged ledger, in bytes ---------- */
+/* route() refuses a merged ledger whose JSON is over MAX_LEDGER_BYTES, which
+   is 1.9 MiB and not a whole number of bytes. LIM is the largest size the
+   guard accepts. Sizes use the core's own measure: TextEncoder over
+   JSON.stringify. */
+const LIM = Math.floor(MAX_LEDGER_BYTES);
+const bytes = (v) => new TextEncoder().encode(JSON.stringify(v)).length;
+
+/* A ledger whose JSON is exactly n bytes: one item, its name padded with
+   ASCII. ASCII is one byte a character, and JSON leaves it unescaped. */
+function sized(n, key = "100|9|999") {
+  const base = bytes(ledger({ items: [item(key, "")] }));
+  return ledger({ items: [item(key, "x".repeat(n - base))] });
+}
+
+await test("9.1 a merged ledger over the limit gets 413 too-large, and nothing is written or broadcast", async () => {
+  const over = sized(LIM + 1);
+  eq(bytes(over), LIM + 1, "fixture: LIM + 1 bytes");
+  ok(bytes(mergeLedger(ledger(), over).merged) > LIM, "fixture: merged with the stored ledger is over");
+  for (const [name, mk] of [
+    ["stored", seeded],
+    ["empty", empty],
+  ]) {
+    const s = mk();
+    const before = canon(s.state);
+    const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, origin: PAGES, json: { ledger: over } });
+    eq(res.status, 413, `${name}: status`);
+    eq(await res.json(), { error: "too-large" }, `${name}: body`);
+    eq(res.headers.get("Access-Control-Allow-Origin"), PAGES, `${name}: CORS header on the 413`);
+    eq(s.writes.length, 0, `${name}: writes`);
+    eq(s.broadcasts.length, 0, `${name}: broadcasts`);
+    ok(canon(s.state) === before, `${name}: stored state unchanged`);
+  }
+});
+
+await test("9.2 a ledger just under the limit is accepted and written at rev 1", async () => {
+  const under = sized(LIM);
+  eq(bytes(under), LIM, "fixture: LIM bytes");
+  const s = empty();
+  const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, origin: PAGES, json: { ledger: under } });
+  eq(res.status, 200, "status");
+  eq(s.writes.length, 1, "writes");
+  eq(s.writes[0]?.rev, 1, "write rev");
+  ok(canon(s.writes[0]?.ledger) === canon(under), "written ledger is the posted one");
+  eq(s.broadcasts, [{ rev: 1 }], "broadcast");
+});
+
+await test("9.3 the limit is checked on the merged ledger: a small incoming that crosses it with a large stored ledger gets 413", async () => {
+  const stored = sized(LIM - 500, "900|1|001");
+  const incoming = ledger({ items: [item("900|2|002", "y".repeat(1000))] });
+  eq(bytes(stored), LIM - 500, "fixture: stored is under the limit");
+  ok(bytes(incoming) < LIM, "fixture: incoming alone is under the limit");
+  ok(bytes(mergeLedger(stored, incoming).merged) > LIM, "fixture: the merge is over the limit");
+  const s = fakeStore({ ledger: stored, rev: 3 });
+  const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, origin: PAGES, json: { ledger: incoming } });
+  eq(res.status, 413, "status");
+  eq(await res.json(), { error: "too-large" }, "body");
+  eq(res.headers.get("Access-Control-Allow-Origin"), PAGES, "CORS header on the 413");
+  eq(s.writes.length, 0, "writes");
+  eq(s.broadcasts.length, 0, "broadcasts");
+  ok(canon(s.state) === canon({ ledger: stored, rev: 3 }), "stored state unchanged");
 });
 
 report();
