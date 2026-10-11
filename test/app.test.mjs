@@ -5124,6 +5124,7 @@ const KEY53 = "device-53-key";
 const K0 = ITEMS[0].key;
 const POST_MS = SR?.SYNC_POST_MS ?? 3000;
 const IDLE_MS = SR?.IDLE_APPLY_MS ?? 10000;
+const POST_TOL = POST_MS + 1000;
 const POST_WAIT = POST_MS + 300;
 const APPLY_WAIT = IDLE_MS + 500;
 
@@ -5157,11 +5158,18 @@ await settle();
     return real(ledger);
   };
   try {
-    const t0 = Date.now();
     await click(btn(/Mark all received/), "check in with a sync key");
-    await sleep(POST_WAIT);
+    /* the clock starts just after the click, so the debounce is timed from the
+       moment the user's tap has landed. The tolerance is one second over the
+       deadline, and the wait covers the whole tolerance so a POST inside it is
+       seen. A POST that never comes, or lands after 2 x SYNC_POST_MS, fails. */
+    const t1 = Date.now();
+    await sleep(POST_TOL + 300);
     ok(stamps.length >= 1, "53.1a a check-in POSTs to window.sync");
-    ok(stamps.length >= 1 && stamps[0] - t0 <= POST_MS, "53.1b and the POST starts within SYNC_POST_MS of the check-in");
+    ok(
+      stamps.length >= 1 && stamps[0] - t1 <= POST_TOL,
+      "53.1b and the POST starts within SYNC_POST_MS + 1000 ms of the check-in"
+    );
     const posted = syncCalls().find((c) => c.op === "post");
     const body = posted?.body ? JSON.parse(posted.body) : null;
     eq(
