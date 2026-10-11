@@ -1,6 +1,6 @@
 /* The pure half of the sync server: route(request, env, store) -> Response.
    No Worker, no Durable Object, no network. The merge is the app's own. */
-import { mergeLedger } from "../src/merge-rules.mjs";
+import { mergeLedger, canon } from "../src/merge-rules.mjs";
 
 const hex = async (s) =>
   [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))]
@@ -47,13 +47,6 @@ function cors(request, env) {
 
 /* Durable Object per-value cap is 2,000,000 bytes; refuse a ledger over this, which keeps 200,000 bytes of headroom. */
 export const MAX_LEDGER_BYTES = 1_800_000;
-
-/* Key-order-independent form; array order still counts, so a reorder reads as changed (safe: one extra write). */
-const canon = (v) =>
-  JSON.stringify(v, (_, x) =>
-    x && typeof x === "object" && !Array.isArray(x)
-      ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, x[k]]))
-      : x);
 
 export async function route(request, env, store) {
   const headers = cors(request, env);

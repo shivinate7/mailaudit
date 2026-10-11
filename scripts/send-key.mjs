@@ -4,6 +4,7 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { mkdtemp, rm } from "node:fs/promises";
+import { rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
@@ -35,6 +36,12 @@ if (!account) {
 }
 
 let dir;
+// the QR holds the key: a signal must not leave it on disk
+for (const sig of ["SIGINT", "SIGTERM"])
+  process.on(sig, () => {
+    if (dir) rmSync(dir, { recursive: true, force: true });
+    process.exit(130);
+  });
 try {
   let key;
   try {

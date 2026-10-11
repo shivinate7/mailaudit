@@ -849,24 +849,31 @@ window.remote = {
    mailday: namespace like the GitHub token, and is never logged. Nothing calls
    this adapter yet (lane L4). Contract: the mock in test/harness.mjs. */
 const SYNC_URL = "https://manifestnumberone.shivamsemwal01.workers.dev";
+/* If storage throws, the key lives in memory for this session. */
+let memKey = null;
 const syncKey = () => {
   try {
-    return localStorage.getItem(SYNC_KEY_STORAGE) || null;
+    return localStorage.getItem(SYNC_KEY_STORAGE) || memKey;
   } catch {
-    return null;
+    return memKey;
   }
 };
+/* true when the key reached storage */
 const syncSave = (k) => {
+  memKey = k;
   try {
     localStorage.setItem(SYNC_KEY_STORAGE, k);
-  } catch {}
+    return true;
+  } catch {
+    return false;
+  }
 };
 /* A key in the fragment is stored, then the fragment is removed so the key does
    not stay in the address bar or history. */
 {
   const k = keyFromHash(location.hash);
-  if (k) {
-    syncSave(k);
+  /* the fragment stays when the key could not be stored: it is the only copy */
+  if (k && syncSave(k)) {
     try {
       history.replaceState(null, "", location.pathname + location.search);
     } catch {}
