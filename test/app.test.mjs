@@ -57,6 +57,8 @@ import {
   syncCloseCount,
   syncRev,
   fireSyncRev,
+  fireSyncRevOnly,
+  holdSyncPosts,
   installClock,
   uninstallClock,
   text,
@@ -5863,6 +5865,107 @@ try {
   win.sync.get = realGet56;
 }
 eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never replaces the newer held reply");
+
+/* ---- 57. the Worker probe: keys and the seed, own writes, the 401 stop, copy ----
+   Red on sync/s4b by design: each case is a claim the probe found false. The
+   mock keeps the Worker key in sync.key, apart from the GitHub token. */
+{
+  const KEY57 = "device-57-key";
+  const SEED57 = JSON.stringify({ mailday: 1, items: ITEMS, received: {}, envelopes: [], stamps: {} });
+  const POST57 = (SR?.SYNC_POST_MS ?? 3000) + 300;
+  const count57 = (op) => syncCalls().filter((c) => c.op === op).length;
+  const line57 = () => buttons().map((b) => b.textContent).find((t) => /tap to/i.test(t)) ?? "";
+
+  /* N1a. A device with a Worker key and no GitHub token, starting empty, is
+     keyed, like a GitHub token, so it must not load the public seed. */
+  await boot(null, null, { seed: SEED57, syncKey: KEY57 });
+  await settle();
+  await sleep(SAVE_WAIT);
+  ok(!/snapshot of someone/i.test(text()), "57.N1a a device with a Worker key gets no seed banner");
+  ok(!(saved().items?.length), "57.N1b and no seeded items are saved");
+
+  /* N1c. A keyless visitor gets the seed, and when a sync advisory applies too,
+     the advisory wins the line. A keyless device is "no-key", so it wins. */
+  await boot(null, null, { seed: SEED57 });
+  await settle();
+  await sleep(SAVE_WAIT);
+  eq(
+    advisory().trim(),
+    "Not backed up on this device — tap to set it up",
+    "57.N1c when the seed and a sync advisory both apply, the advisory wins the line"
+  );
+
+  /* N2. The rev for this device's own POST can arrive before the POST reply.
+     The device must not answer its own write with a GET. */
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { syncKey: KEY57 });
+  await settle();
+  const release57 = holdSyncPosts();
+  try {
+    await click(btn(/Mark all received/), "check in, so a POST goes out");
+    await sleep(POST57);
+    ok(count57("post") > 0, "57.N2a0 the POST is in flight, so the own-rev check means something");
+    const gets57 = count57("get");
+    await fireSyncRevOnly(syncRev() + 1); /* the rev this POST will be given */
+    await sleep(100);
+    release57();
+    await sleep(300);
+    eq(count57("get") - gets57, 0, "57.N2a no GET follows this device's own write");
+  } finally {
+    release57();
+  }
+
+  /* N3. After a 401 the device stops calling sync.post until the key changes or
+     the page reloads. No retry follows the backoff window. */
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { syncKey: KEY57 });
+  await settle();
+  setSyncKeyRefused(true);
+  try {
+    await click(btn(/Mark all received/), "check in, so a POST is refused");
+    await sleep(POST57);
+    ok(count57("post") > 0, "57.N3a0 the POST was refused, so the stop means something");
+    const posts57 = count57("post");
+    const connects57 = count57("connect");
+    await sleep(4500); /* the first two backoff waits, 1 s and 2 s, both fall inside */
+    eq(count57("post") - posts57, 0, "57.N3a no POST follows a 401 over the backoff window");
+    eq(count57("connect") - connects57, 0, "57.N3b and no connect follows it");
+  } finally {
+    setSyncKeyRefused(false);
+  }
+
+  /* N4. The server lines drop the GitHub claim. */
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { syncKey: KEY57 });
+  await settle();
+  setSyncNetFail(true);
+  try {
+    await click(btn(/Mark all received/), "check in, so a POST fails");
+    await sleep(POST57);
+  } finally {
+    setSyncNetFail(false);
+  }
+  await settle();
+  ok(count57("post") > 0, "57.N4a0 the POST failed, so the copy check means something");
+  eq(
+    line57().trim(),
+    "The sync server could not be reached — tap to fix",
+    "57.N4a the unreachable line drops the GitHub claim"
+  );
+
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { syncKey: KEY57 });
+  await settle();
+  setSyncTooBig(true);
+  try {
+    await click(btn(/Mark all received/), "check in, so a POST is too big");
+    await sleep(POST57);
+  } finally {
+    setSyncTooBig(false);
+  }
+  await settle();
+  eq(
+    line57().trim(),
+    "The ledger is too big for the sync server — tap to fix",
+    "57.N4b the too-big line drops the GitHub claim"
+  );
+}
 
 uninstallClock();
 report();
