@@ -66,7 +66,7 @@ The orchestrator made these under the owner's grant to run the stages, on 2026-1
 
 The native build needs these changes to the Worker. Today the Worker serves only `/ledger` and `/ws`, with no photo route and no import route. The lanes are in `native-build-lanes`.
 
-- **Stats in the reply (lane W1):** the POST reply carries `stats` from `mergeLedger`, as it carries the ledger and the rev now. A client then shows the merge notice without running the merge.
+- **Stats in the reply (lane W1):** the POST reply carries `stats` from `mergeLedger`, as it carries the ledger and the rev now. A first POST to an empty store replies with zero stats, so the seeding device sees nothing as new (owner-delegated ruling, 2026-10-11). A client then shows the merge notice without running the merge.
 - **Photo route (lane W2):** the owner ruled on 2026-10-11: "Build server photo route first". The route serves both clients before native photo lane N10. It stores photos as rows by photo id, as the design section says.
 - **Daily snapshots (lane W3):** the Worker keeps daily snapshots for History and backup, see `worker-keeps-snapshots`.
 - **Universal-link file:** a Worker route serves the apple-app-site-association file, only if the custom URL scheme fails, see `native-key-via-url-scheme`.
