@@ -5025,6 +5025,9 @@ eq(sr("syncStatus", 413), "too-big", "51.10 413 is too-big");
 eq(sr("syncStatus", 500), "unknown", "51.11 a 5xx is unknown, not ok");
 eq(sr("syncStatus", null), "unknown", "51.12 a network failure (null) is unknown");
 eq(sr("syncStatus", 0), "unknown", "51.13 a status of 0 is unknown");
+/* worker/core.mjs answers GET with 404 {error:"empty"} while the store is
+   empty. The first upload seeds it, so this is not an error. */
+eq(sr("syncStatus", 404), "empty", "51.13a 404 is empty, the store has not been seeded yet");
 
 /* a revision is new only when it is ahead of the one this device saw */
 eq(sr("isNewRev", 3, 4), true, "51.14 a later revision is new");
