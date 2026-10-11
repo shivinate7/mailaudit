@@ -6144,7 +6144,8 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     });
     await settle();
     await sleep(SAVE_WAIT);
-    const SERVER5 = saved(); /* what another device would have pushed */
+    /* what another device would have pushed: a Worker ledger carries mailday, or parseLedger refuses it */
+    const SERVER5 = { mailday: 1, ...saved() };
     /* the store exists and matches this device, so the cold GET is not an empty seed */
     const LOCAL5 = { items: ITEMS.slice(0, 3), received: {}, envelopes: [] };
     await boot(LOCAL5, null, { noRemote: true, syncKey: KEY58, syncLedger: LOCAL5 });
