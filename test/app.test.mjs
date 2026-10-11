@@ -4365,4 +4365,292 @@ for (const [path, look] of [
   );
 }
 
+/* ── 49. un-checks and deletes travel between devices ─────────────────────
+   The merge used to only ADD. A check-in could never be undone across two
+   devices, and a discarded envelope came back. Two fixes are pinned here. A
+   `receivedAt` map gives each check-in key the time of its last change, and the
+   later change wins. A discarded envelope leaves a tombstone, `deletedAt`, that
+   every reader skips. The pure cases import src/merge-rules.mjs directly, as in
+   groups 27, 31 and 33. Cases marked "holds today" pass on the per-key max
+   too. They pin what the new rule must keep. */
+{
+  const K = "A1|0|pLightningBolt";
+  const pick = (o) => ({ received: o.received, receivedAt: o.receivedAt });
+  const sorted = (o) =>
+    JSON.stringify(
+      Object.fromEntries(
+        Object.entries(o || {}).sort(([a], [b]) => (a < b ? -1 : 1))
+      )
+    );
+
+  /* an un-check beats an older check, whichever side it arrives on */
+  eq(
+    mergeReceived({ [K]: 1 }, {}, { [K]: 100 }, { [K]: 200 }).received,
+    {},
+    "49.1a an un-check at 200 beats a check at 100 when the un-check arrives"
+  );
+  eq(
+    mergeReceived({}, { [K]: 1 }, { [K]: 200 }, { [K]: 100 }).received,
+    {},
+    "49.1b and when the un-check is already here"
+  );
+
+  /* a newer check beats an older un-check (holds today) */
+  eq(
+    mergeReceived({}, { [K]: 1 }, { [K]: 100 }, { [K]: 200 }).received,
+    { [K]: 1 },
+    "49.2a a newer check beats an older un-check (holds today)"
+  );
+  eq(
+    mergeReceived({ [K]: 1 }, {}, { [K]: 200 }, { [K]: 100 }).received,
+    { [K]: 1 },
+    "49.2b in either direction (holds today)"
+  );
+
+  /* equal times take the max count, and the shared time is kept */
+  eq(
+    mergeReceived({ [K]: 1 }, { [K]: 3 }, { [K]: 100 }, { [K]: 100 }).received,
+    { [K]: 3 },
+    "49.3a equal times take the max count (holds today)"
+  );
+  eq(
+    mergeReceived({ [K]: 3 }, { [K]: 1 }, { [K]: 100 }, { [K]: 100 }).received,
+    { [K]: 3 },
+    "49.3b in either direction (holds today)"
+  );
+  eq(
+    mergeReceived({ [K]: 3 }, { [K]: 1 }, { [K]: 100 }, { [K]: 100 }).receivedAt,
+    { [K]: 100 },
+    "49.3c and the shared time is kept"
+  );
+
+  /* a side with no time for the key falls back to today's per-key max */
+  eq(
+    mergeReceived({ [K]: 1 }, { [K]: 3 }, { [K]: 100 }).received,
+    { [K]: 3 },
+    "49.4a a missing time falls back to the max (holds today)"
+  );
+  eq(
+    mergeReceived({ [K]: 3 }, { [K]: 1 }, undefined, { [K]: 100 }).received,
+    { [K]: 3 },
+    "49.4b in the other direction (holds today)"
+  );
+  eq(
+    mergeReceived({ [K]: 1 }, { [K]: 3 }, { [K]: 100 }).receivedAt,
+    { [K]: 100 },
+    "49.4c the merged time is the one that exists"
+  );
+  eq(
+    mergeReceived({ [K]: 1 }, { [K]: 3 }).receivedAt,
+    {},
+    "49.4d with no time on either side, receivedAt is an empty map"
+  );
+
+  /* symmetry holds (holds today; the new rule must keep it) */
+  const CASES = [
+    [{ [K]: 1 }, {}, { [K]: 100 }, { [K]: 200 }],
+    [{ [K]: 1 }, { [K]: 3 }, { [K]: 100 }, { [K]: 100 }],
+    [{ [K]: 3 }, { [K]: 1 }, undefined, { [K]: 100 }],
+    [{ a: 2, [K]: 1 }, { a: 1 }, { a: 50, [K]: 90 }, { a: 10, [K]: 120 }],
+  ];
+  for (const [i, [a, b, ta, tb]] of CASES.entries()) {
+    const ab = mergeReceived(a, b, ta, tb);
+    const ba = mergeReceived(b, a, tb, ta);
+    ok(
+      sorted(ab.received) === sorted(ba.received) &&
+        sorted(ab.receivedAt) === sorted(ba.receivedAt),
+      `49.5.${i} the merge is symmetric (holds today)`
+    );
+  }
+
+  /* idempotence: replaying a stale check does not bring the card back */
+  const m49 = mergeReceived({ [K]: 1 }, {}, { [K]: 100 }, { [K]: 200 });
+  eq(m49.received, {}, "49.6a the un-check holds after the merge");
+  eq(
+    mergeReceived(m49.received, { [K]: 1 }, m49.receivedAt, { [K]: 100 }).received,
+    {},
+    "49.6b and merging the stale check again does not check the card"
+  );
+
+  /* tombstones. The freshest updatedAt already wins (holds today) */
+  const LIVE49 = {
+    id: "e1",
+    createdAt: 10,
+    updatedAt: 100,
+    note: "",
+    entries: [{ name: "Ponder", qty: 1 }],
+    photos: [],
+  };
+  const TOMB49 = {
+    id: "e1",
+    createdAt: 10,
+    updatedAt: 200,
+    deletedAt: 200,
+    note: "",
+    entries: [],
+    photos: [],
+  };
+  const LIVE49_NEWER = { ...LIVE49, updatedAt: 300 };
+  const shape = (list) =>
+    list.map((e) => ({ deletedAt: e.deletedAt ?? null, entries: e.entries }));
+  const TOMBED = [{ deletedAt: 200, entries: [] }];
+  const LIVED = [{ deletedAt: null, entries: [{ name: "Ponder", qty: 1 }] }];
+  eq(
+    shape(mergeEnvelopes([LIVE49], [TOMB49]).envelopes),
+    TOMBED,
+    "49.7a a tombstone beats an older live envelope (holds today)"
+  );
+  eq(
+    shape(mergeEnvelopes([TOMB49], [LIVE49]).envelopes),
+    TOMBED,
+    "49.7b in either direction (holds today)"
+  );
+  eq(
+    shape(mergeEnvelopes([TOMB49], [LIVE49_NEWER]).envelopes),
+    LIVED,
+    "49.7c a newer live edit beats an older tombstone (holds today)"
+  );
+  eq(
+    shape(mergeEnvelopes([LIVE49_NEWER], [TOMB49]).envelopes),
+    LIVED,
+    "49.7d in either direction (holds today)"
+  );
+
+  /* mergeLedger names receivedAt, so it survives the merge (saved-state-shape) */
+  const L8 = { items: ITEMS, received: { [K]: 1 }, receivedAt: { [K]: 100 }, envelopes: [] };
+  const I8 = { items: ITEMS, received: {}, receivedAt: { [K]: 200 }, envelopes: [] };
+  eq(mergeLedger(L8, I8).merged.received, {}, "49.8a the merged ledger keeps the un-check");
+  eq(
+    mergeLedger(L8, I8).merged.receivedAt,
+    { [K]: 200 },
+    "49.8b and carries receivedAt"
+  );
+  eq(
+    mergeLedger(
+      { items: ITEMS, received: {}, envelopes: [] },
+      { items: ITEMS, received: {}, envelopes: [] }
+    ).merged.receivedAt,
+    {},
+    "49.8c a merged ledger always carries receivedAt, even when neither side had one"
+  );
+  eq(
+    pick(mergeReceived({}, {}, {}, {})),
+    { received: {}, receivedAt: {} },
+    "49.8d an empty merge carries an empty receivedAt"
+  );
+}
+
+/* ---- 49 through the app: a stale copy on the other device ---- */
+{
+  const K = ITEMS[0].key; /* Lightning Bolt, in Alpha Cards */
+  /* a line row's check button. Its row holds the name, so match on it */
+  const lineRow = (pkgRe, name) =>
+    [...card(pkgRe).querySelectorAll('button[aria-label^="Mark as"]')].find((b) =>
+      b.parentElement?.textContent.includes(name)
+    );
+  /* what GitHub holds: the push format, which carries mailday (parseLedger needs it) */
+  const asRemote = (s) => JSON.stringify({ mailday: 1, ...s });
+
+  /* an un-check outlives a stale copy that still has the card checked */
+  await fresh();
+  await click(lineRow(/Alpha Cards/, "Lightning Bolt"), "check Lightning Bolt in");
+  await sleep(SAVE_WAIT);
+  const checkedCopy = saved(); /* what the other device holds */
+  await sleep(5); /* a later change has to read a later time */
+  await click(lineRow(/Alpha Cards/, "Lightning Bolt"), "un-check Lightning Bolt");
+  await sleep(SAVE_WAIT);
+  ok(typeof saved().receivedAt?.[K] === "number", "49.A1 an un-check writes its time");
+  remote.content = utf8ToBase64(asRemote(checkedCopy));
+  remote.sha = "sha-0";
+  await foreground();
+  await openSync();
+  await saveGitHubKey();
+  await click(btn(/^Push$/), "stale push");
+  await click(btn(/Merge & push/), "merge");
+  await settle();
+  await sleep(SAVE_WAIT);
+  eq(saved().received ?? {}, {}, "49.A2 a merge with the stale copy keeps the card un-checked");
+  ok(/cards\s*0\/14/.test(text()), "49.A3 and the screen shows nothing checked");
+  eq(
+    JSON.parse(remoteText()).received ?? {},
+    {},
+    "49.A4 and the merged copy on GitHub has no check either"
+  );
+}
+
+{
+  /* a discarded envelope stays gone when the old copy comes back */
+  const liveEnvs = (s) => (s.envelopes || []).filter((e) => !e.deletedAt);
+  const asRemote = (s) => JSON.stringify({ mailday: 1, ...s });
+  await fresh();
+  await goTo("orphaned");
+  await record(["Ponder", "Preordain"], "discard me");
+  await sleep(SAVE_WAIT);
+  const liveCopy = saved(); /* the other device still holds the envelope */
+  await click(btn(/^Discard$/), "discard");
+  await click(btn(/Tap again to discard/), "confirm discard");
+  await sleep(SAVE_WAIT);
+  ok(
+    (saved().envelopes || []).some(
+      (e) => typeof e.deletedAt === "number" && e.entries.length === 0
+    ),
+    "49.B1 a discard leaves a tombstone with its time"
+  );
+  remote.content = utf8ToBase64(asRemote(liveCopy));
+  remote.sha = "sha-0";
+  await foreground();
+  await openSync();
+  await saveGitHubKey();
+  await click(btn(/^Push$/), "stale push");
+  await click(btn(/Merge & push/), "merge");
+  await settle();
+  await sleep(SAVE_WAIT);
+  await goTo("orphaned");
+  eq(envelopeCount(), 0, "49.B2 a merge with the old copy keeps the envelope gone");
+  ok(/Nothing waiting/.test(text()), "49.B3 and the pile says so");
+  eq(
+    btn(/^Orphaned/)?.textContent.trim(),
+    "Orphaned",
+    "49.B4 and the tab shows no count"
+  );
+  eq(liveEnvs(saved()).length, 0, "49.B5 and the saved ledger holds no live envelope");
+}
+
+{
+  /* receivedAt survives a reload, reaches the pushed payload and the Backup
+     file, and Reset clears it */
+  const K = ITEMS[0].key;
+  const lineRow = (pkgRe, name) =>
+    [...card(pkgRe).querySelectorAll('button[aria-label^="Mark as"]')].find((b) =>
+      b.parentElement?.textContent.includes(name)
+    );
+  await fresh();
+  await click(lineRow(/Alpha Cards/, "Lightning Bolt"), "check Lightning Bolt in");
+  await sleep(SAVE_WAIT);
+  ok(typeof saved().receivedAt?.[K] === "number", "49.C1 a check-in writes its time");
+  await boot(saved());
+
+  await openSync();
+  await saveGitHubKey();
+  await click(btn(/^Push$/), "push");
+  const pushed = pushes()[0] ? JSON.parse(pushes()[0].text) : {};
+  ok(typeof pushed.receivedAt?.[K] === "number", "49.C2 the pushed payload carries it");
+
+  let backupBlob = null;
+  win.URL.createObjectURL = (b) => {
+    backupBlob = b;
+    return "blob:49";
+  };
+  await openHistory();
+  await click(btn(/^Backup$/), "backup");
+  const backedUp = backupBlob ? JSON.parse(await backupBlob.text()) : {};
+  ok(typeof backedUp.receivedAt?.[K] === "number", "49.C3 it survives a reload into the Backup file");
+
+  await openHistory();
+  await click(btn(/^Reset$/), "reset");
+  await click(btn(/Tap again to clear everything/), "confirm reset");
+  await sleep(800); /* past the debounce, when a stale value would come back */
+  eq(saved().receivedAt ?? {}, {}, "49.C4 Reset clears receivedAt, and the debounce does not write it back");
+}
+
 report();
