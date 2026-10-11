@@ -823,4 +823,72 @@ await test("10.3 a POST that changes the stored ledger writes rev 4, then broadc
   eq((await res.json()).rev, 4, "response rev");
 });
 
+/* ---------- 11. the reply carries stats: the counts of this merge ---------- */
+/* The seven counts mergeLedger reports. A no-op merge gives all zero. */
+const ZERO_STATS = {
+  itemsAdded: 0,
+  checkInsAdded: 0,
+  envelopesAdded: 0,
+  checkInsRemoved: 0,
+  envelopesRemoved: 0,
+  stampsRemoved: 0,
+  stampsAdded: 0,
+};
+
+await test("11.1 a POST that changes the stored ledger replies with the stats of that merge", async () => {
+  const K = "100|1|555";
+  const stored = ledger({ items: [item(K, "Alpha Card", 2)] });
+  const incoming = ledger({
+    items: [item(K, "Alpha Card", 2), item("100|2|556", "Beta Card", 1)],
+    received: { [K]: 1 },
+    receivedAt: { [K]: 50 },
+  });
+  const expected = mergeLedger(clone(stored), clone(incoming)).stats;
+  ok(expected.itemsAdded + expected.checkInsAdded > 0, "fixture: this merge adds an item and a check-in");
+  const s = fakeStore({ ledger: stored, rev: 3 });
+  const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: incoming } });
+  eq(res.status, 200, "status");
+  eq((await res.json()).stats, expected, "reply stats");
+});
+
+await test("11.2 a POST that changes nothing replies with zero stats and keeps rev", async () => {
+  const K = "100|1|555";
+  const stored = ledger({
+    received: { [K]: 1 },
+    receivedAt: { [K]: 100 },
+    envelopes: [{ id: "env-x", createdAt: 1, updatedAt: 1 }],
+    stamps: { "111::Seller A": { kind: "refunded", updatedAt: 3 } },
+  });
+  ok(
+    canon(mergeLedger(clone(stored), clone(stored)).stats) === canon(ZERO_STATS),
+    "fixture: merging the stored ledger with itself counts nothing"
+  );
+  const s = fakeStore({ ledger: stored, rev: 3 });
+  const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: stored } });
+  eq(res.status, 200, "status");
+  eq(s.writes.length, 0, "store write calls");
+  eq((await res.json()).stats, ZERO_STATS, "reply stats");
+});
+
+await test("11.3 the reply counts an un-check in checkInsRemoved, as mergeLedger does", async () => {
+  const K = "100|1|555";
+  const stored = ledger({ received: { [K]: 1 }, receivedAt: { [K]: 100 } });
+  const incoming = ledger({ received: {}, receivedAt: { [K]: 200 } });
+  const expected = mergeLedger(clone(stored), clone(incoming)).stats;
+  ok(expected.checkInsRemoved >= 1, "fixture: this merge un-checks one card");
+  const s = fakeStore({ ledger: stored, rev: 4 });
+  const res = await send(s, "POST", "/ledger", { key: KEY_LAPTOP, json: { ledger: incoming } });
+  eq(res.status, 200, "status");
+  eq((await res.json()).stats, expected, "reply stats");
+});
+
+/* No merge runs against an empty store, so the core holds no merge to count.
+   Reading taken: the reply then carries zero stats. See the brief's open question. */
+await test("11.4 a first POST to an empty store replies with zero stats", async () => {
+  const s = empty();
+  const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: ledger() } });
+  eq(res.status, 200, "status");
+  eq((await res.json()).stats, ZERO_STATS, "reply stats");
+});
+
 report();
