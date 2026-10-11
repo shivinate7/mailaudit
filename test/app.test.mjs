@@ -51,6 +51,7 @@ import {
   saved,
   sleep,
   setSyncNetFail,
+  setSyncTooBig,
   syncCalls,
   syncCloseCount,
   syncRev,
@@ -5608,6 +5609,27 @@ eq(saved().items?.length ?? 0, 3, "55.4d an open notice holds the apply");
 await click(dismiss55(), "dismiss the notice");
 await sleep(1500);
 eq(saved().items?.length ?? 0, 4, "55.4e and the apply runs once the notice is dismissed");
+
+/* 55.8 a POST the server refuses as too big (413) must not go quiet. As unknown
+   does, that cycle falls back to the GitHub merge, and the advisory line names
+   the size problem. Pattern from 53.8. */
+const bigLine55 = () => buttons().map((b) => b.textContent).find((t) => /too big/i.test(t)) ?? "";
+await boot(PHONE_STATE, null, { remote: LAPTOP_PUSHED, syncKey: KEY55 });
+await settle();
+setSyncTooBig(true);
+const remoteBefore55 = remote.calls.length;
+const posts55b = postCount();
+try {
+  await backgroundFor(5 * 60_000);
+  await sleep(POST_WAIT);
+  ok(postCount() > posts55b, "55.8a0 a POST was attempted, so the too-big check means something");
+} finally {
+  setSyncTooBig(false);
+}
+await settle();
+ok(remote.calls.slice(remoteBefore55).some((c) => c.op === "pull"), "55.8a the too-big cycle falls back to the GitHub merge");
+ok(/too big/i.test(bigLine55()), "55.8b and the advisory line says the data is too big");
+ok(/tap to/i.test(bigLine55()), "55.8c and the advisory line says tap to, as group 53's helper expects");
 
 /* 55.7 with no key, sync.connect is never called */
 await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { noRemote: true });

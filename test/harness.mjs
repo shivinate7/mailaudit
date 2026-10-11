@@ -458,7 +458,7 @@ win.remote = remoteApi;
    `sync.key`, outside `store`, so storage.list() cannot see it.
    HARNESS CONTRACT ONLY. entry.jsx is not bundled here, so these cases prove
    this mock, not the adapter. */
-const syncFresh = () => ({ key: null, ledger: null, rev: 0, netFail: false, calls: [], onRev: null });
+const syncFresh = () => ({ key: null, ledger: null, rev: 0, netFail: false, tooBig: false, calls: [], onRev: null });
 let sync = syncFresh();
 export const syncCalls = () => sync.calls;
 /* how many close functions connect() has handed out and that were called.
@@ -482,6 +482,11 @@ export const fireSyncRev = async (rev, ledger) => {
    syncStatus maps to "unknown" */
 export const setSyncNetFail = (on) => {
   sync.netFail = !!on;
+};
+/* a POST the server refuses as too big: a 413, which syncStatus maps to
+   "too-big" */
+export const setSyncTooBig = (on) => {
+  sync.tooBig = !!on;
 };
 const syncErr = (code) => Object.assign(new Error(code), { code });
 /* every reply is {status, body, code}, code = syncStatus(status), as the
@@ -507,6 +512,7 @@ const syncApi = {
     sync.calls.push({ op: "post", keyed: !!sync.key, body: JSON.stringify(ledger) });
     if (sync.netFail) return syncReply(null, null);
     if (!sync.key) return syncReply(401, { error: "unauthorized" });
+    if (sync.tooBig) return syncReply(413, { error: "too-big" });
     if (!ledger || ledger.mailday !== 1 || !Array.isArray(ledger.items))
       return syncReply(400, { error: "bad ledger" });
     const merged = sync.ledger ? mergeLedger(sync.ledger, ledger).merged : ledger;
