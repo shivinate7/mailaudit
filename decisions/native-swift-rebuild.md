@@ -4,7 +4,7 @@
 
 MANIFEST is rebuilt as a native Swift client. The work starts after the Cloudflare sync work lands. That work is stage 4b and the paste-key fix. The client talks to the same Cloudflare Worker, so the server and its merge rules carry over.
 
-**Holds while:** no Swift client exists in this repo or a sibling repo. A Swift client that syncs through the Worker on the iPhone closes the build half. A ruling on the Mac side closes the rest.
+**Holds while:** no Swift client exists in this repo or a sibling repo. A SwiftUI app for iPhone and Mac that syncs through the Worker closes the build. The web app stays beside it.
 
 ## Why the web app is not enough on the iPhone
 
@@ -32,20 +32,26 @@ Every claim below rests on an Apple or WebKit source. None was measured on the o
 - A second client codebase. The web app is about 6,500 lines, with its own behaviour suite. The Swift client needs its own tests for the merge-facing rules.
 - A one-time move of the phone's data. The new app starts empty, as in `a-host-migration-resets-storage`. The Worker restores the check-ins. The local versions do not come back. Photos come back only if the client reads them from their store.
 
-## The Mac side
+## The Mac side: Degen's pattern
 
-**Status:** open. The owner said the rebuild "maybe" does not fix the laptop side.
+The owner ruled on 2026-10-11 to follow the Degen repo's D32, "Native SwiftUI app beside the web app". So the Mac gets the same SwiftUI app as the iPhone, and the web app stays.
 
-The MacBook runs the app in Safari. Safari keeps the 7-day rule, which counts days of Safari use (WebKit blog, "Full Third-Party Cookie Blocking and More", 2020). The key also sits on the shared origin there.
+- One SwiftUI target that builds for both iOS and macOS, and a Swift package for the client logic.
+- Never build a feature twice. Degen's owner rule: "never copy or redo stuff on one side and the other individually unless if its web-only and native-only stuff".
+- A parity table gives each feature one row, with a web test, a native test, and a scope of both, web-only or native-only.
+- The Worker is the one home of the merge. The Swift client sends its changes and renders the reply. So `src/merge-rules.mjs` is never ported to Swift.
+- The palette tokens and the test fixtures are shared files, built for both clients.
+- The web app stays for the public seed and for any browser.
 
-- **M1. Keep the Mac a web app.** No new cost. The Worker serves both clients. The Mac keeps the shared-origin key risk and the 7-day rule. Add to Dock gives the Mac page the web-app treatment (WebKit blog, "Updates to Storage Policy", 2023). Its effect on the 7-day rule is unknown.
-- **M2. One SwiftUI app for iPhone and Mac.** The Mac gains the Keychain key and native storage. It costs Mac layouts and Mac testing in the same codebase. The web app would then serve only the public seed, and maybe retire.
+The Mac gains the Keychain key and native storage. In Safari it had the 7-day rule, which counts days of Safari use (WebKit blog, "Full Third-Party Cookie Blocking and More", 2020). Its key also sat on the shared origin. The cost is a parity table to keep, and a shared-token build step.
+
+Rejected: Swift on the iPhone only, because the Mac keeps both web risks. One SwiftUI app with the web app retired, because it drops the browser fallback and the live web suite.
 
 ## See also
 
 - `sync-revamp-cloudflare` — the Worker the Swift client talks to
 - `itp-may-clear-storage` — the eviction risk that native storage removes on the phone
 - `a-host-migration-resets-storage` — the same reset a new app causes
-- `token-sits-on-shared-origin` — the key risk that stays on the Mac under M1
+- `token-sits-on-shared-origin` — the key risk that the SwiftUI app closes on both devices
 - `live-verification` — the resume trigger that is still eye-only
 - `nothing-recovers-without-the-key` — why the Keychain key matters
