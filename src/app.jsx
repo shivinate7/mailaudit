@@ -4226,8 +4226,7 @@ export default function MailDayLedger() {
           await window.remote.push(text, message, res.sha);
           /* the merge is the newest ledger this device knows, whatever the Worker
              answers: it is what the mirror writes next, and it is applied here */
-          lastServer.current = merged;
-          pendingReply.current = merged;
+          growServer(merged);
           tryApplyRef.current();
           if (window.sync) {
             try {
@@ -4733,6 +4732,17 @@ export default function MailDayLedger() {
     canon(dataOf(mergeLedger(srv, snapshot()).merged)) !== canon(dataOf(srv));
   /* one home for a held reply, from a POST or from a rev-gated GET. A reply
      with a rev below the newest landed one is stale and is dropped. */
+  /* The ONLY writer of lastServer and pendingReply. The server copy only grows:
+     each is the merge of what it held and what arrived, never the arrival alone,
+     so a late older reply cannot shrink a bigger merge that is still held. */
+  const growServer = (ledger) => {
+    lastServer.current = lastServer.current
+      ? mergeLedger(lastServer.current, ledger).merged
+      : ledger;
+    pendingReply.current = pendingReply.current
+      ? mergeLedger(pendingReply.current, ledger).merged
+      : lastServer.current;
+  };
   const holdReply = (r) => {
     const rev = r.body?.rev;
     if (typeof rev === "number") {
@@ -4740,8 +4750,7 @@ export default function MailDayLedger() {
       lastRev.current = rev;
     }
     if (!r.body?.ledger) return;
-    lastServer.current = r.body.ledger;
-    pendingReply.current = r.body.ledger;
+    growServer(r.body.ledger);
     tryApplyRef.current();
   };
   /* One verdict for every Worker reply. empty (404) is a healthy server with
