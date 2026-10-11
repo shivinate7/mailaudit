@@ -478,6 +478,24 @@ export const fireSyncRev = async (rev, ledger) => {
     await sleep(0);
   });
 };
+/* the rev channel fires `rev` without moving the server. A test uses it for the
+   rev of a POST still in flight, which the POST then gives when released. */
+export const fireSyncRevOnly = async (rev) => {
+  await act(async () => {
+    sync.onRev?.(rev);
+    await sleep(0);
+  });
+};
+/* holds every POST until the returned release() is called, so a test can fire
+   a rev while this device's own write is still in flight */
+export const holdSyncPosts = () => {
+  let release;
+  sync.hold = new Promise((r) => (release = r));
+  return () => {
+    sync.hold = null;
+    release();
+  };
+};
 /* a network failure: the adapter answers {status: null, body: null}, which
    syncStatus maps to "unknown" */
 export const setSyncNetFail = (on) => {
@@ -514,6 +532,8 @@ const syncApi = {
   },
   async post(ledger) {
     sync.calls.push({ op: "post", keyed: !!sync.key, body: JSON.stringify(ledger) });
+    /* held by holdSyncPosts(): the POST is in flight until the test releases it */
+    if (sync.hold) await sync.hold;
     if (sync.netFail) return syncReply(null, null);
     if (sync.refused || !sync.key) return syncReply(401, { error: "unauthorized" });
     if (sync.tooBig) return syncReply(413, { error: "too-big" });
