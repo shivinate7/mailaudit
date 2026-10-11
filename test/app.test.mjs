@@ -6664,6 +6664,60 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   ok(!saved().received?.[ITEMS[2].key], "59.15b a second reply from another device does not apply at once");
   await sleep(APPLY_WAIT);
   ok(saved().received?.[ITEMS[2].key] === 1, "59.15c and it applies once the idle gate opens");
+
+  /* 59.16. The owner's path on the home-screen app: keyless with a GitHub token, the
+     panel opened to paste, a good save, and the panel still open. The line must not
+     read "no sync key" after the save, with the panel open, after a close, or after a
+     foreground. The owner saw it read so until a force-quit. */
+  await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true, remote: null });
+  await settle();
+  ok(!!entry59(), "59.16pre a keyless device shows the paste line first");
+  await openPanel59();
+  await pasteKey59(KEY59);
+  ok(await win.sync.hasKey(), "59.16a the key is saved");
+  ok(!/no sync key/.test(text()), "59.16b with the panel still open after the save, no 'no sync key' line");
+  await closePanel59();
+  ok(!/no sync key/.test(text()), "59.16c after a close, no 'no sync key' line");
+  await foreground();
+  await settle();
+  ok(!/no sync key/.test(text()), "59.16d after a foreground, no 'no sync key' line");
+
+  /* 59.17. The owner's full order: a keyless home-screen device with check-ins and a
+     server ledger that holds a check-in. The save applies that ledger. The owner then
+     checks in, another device's rev arrives, and the line is read at each step. */
+  const SERVER17 = {
+    mailday: 1,
+    items: ITEMS.slice(0, 3),
+    received: { [ITEMS[1].key]: 1 },
+    receivedAt: { [ITEMS[1].key]: 500 },
+    dateFilter: { preset: "all", from: "", to: "" },
+    sortBy: "newest",
+    itemSort: "missing",
+  };
+  await boot({ items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } }, null, {
+    remoteKey: GH59,
+    syncAdapter: true,
+    remote: null,
+    syncLedger: SERVER17,
+  });
+  await settle();
+  await openPanel59();
+  await pasteKey59(KEY59);
+  ok(!/no sync key/.test(text()), "59.17a with the panel open after the save, no 'no sync key' line");
+  await closePanel59();
+  ok(!/no sync key/.test(text()), "59.17b after the apply and a close, no 'no sync key' line");
+  await toggleShowing();
+  await click(btn(/Mark all received/), "check in the cards");
+  await sleep(SR.SYNC_POST_MS + 300);
+  await settle();
+  ok(!/no sync key/.test(text()), "59.17c after a check-in POSTs, no 'no sync key' line");
+  await fireSyncRev(2, { ...SERVER17, received: { ...SERVER17.received, [ITEMS[2].key]: 1 } });
+  await sleep(APPLY_WAIT);
+  await settle();
+  ok(!/no sync key/.test(text()), "59.17d after another device's rev applies, no 'no sync key' line");
+  await foreground();
+  await settle();
+  ok(!/no sync key/.test(text()), "59.17e after a foreground, no 'no sync key' line");
 }
 
 uninstallClock();
