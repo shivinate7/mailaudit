@@ -1,4 +1,4 @@
-# `max` on received could not express an un-check
+# A per-key time lets an un-check beat an older check
 
 **Status:** closed, by the `receivedAt` change (`sync-revamp-cloudflare`).
 

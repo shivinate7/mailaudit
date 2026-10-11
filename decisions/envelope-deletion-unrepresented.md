@@ -1,4 +1,4 @@
-# Envelope deletion was not represented
+# A discarded envelope leaves a tombstone that a stale copy cannot revive
 
 **Status:** closed, by the `deletedAt` tombstone (`sync-revamp-cloudflare`).
 
