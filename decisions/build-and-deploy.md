@@ -16,8 +16,11 @@ npm run check:seed    # and what does the seed baked into it publish?
 npm run check:docs    # do the corpus's published numbers and paths hold?
 npm run check:records # do the records' citations and fences hold?
 npm run check:screens # screen verdicts in a real browser
+npm run test:send-key # the send-key script's own test
 npm run deploy        # build + test, then a branch holding only index.html, pushed, with a PR to main
 ```
+
+`scripts/send-key.mjs` is not an npm script. Run it with node and one argument. The argument `mac` opens the sync link on this Mac. The argument `iphone` shows a QR code for the iPhone. The key rules live in `sync-revamp-cloudflare`.
 
 ## What the build writes
 
