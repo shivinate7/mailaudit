@@ -6243,6 +6243,72 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     await settle();
     eq(count58("post") - posts5b, 0, "58.N5b a cold open on a store equal to local sends no POST");
   }
+
+  /* P1. After a failed merge POST, an older Worker reply from the retry must not
+     replace the held merge. A touch just before the conflict holds the apply.
+     GitHub never shrinks: each write is at least as large as the one before, and
+     the last holds the union, 15 lines. */
+  {
+    const touchP1 = () => act(async () => { win.dispatchEvent(new win.Event("pointerdown")); await sleep(0); });
+    const lensP1 = () => remote.history.map((h) => JSON.parse(h.text).items.length);
+    await boot({ items: LOCAL58, received: {} }, null, { remote: asRemote58(REMOTE58), remoteKey: GH58, syncKey: KEY58 });
+    await settle();
+    await click(btn(/Mark all received/), "check in, so the Worker holds this device's copy");
+    await sleep(POST58);
+    await settle();
+    setSyncNetFail(true);
+    try {
+      await sleep(AUTO58 - POST58 - 5000);
+      await touchP1();
+      await sleep(6000);
+      await settle();
+      await background();
+      await settle();
+    } finally {
+      setSyncNetFail(false);
+    }
+    await sleep(40000);
+    await settle();
+    const LP1 = lensP1();
+    ok(LP1.length > 0, "58.P1a0 GitHub was written, so the shrink check means something");
+    ok(
+      LP1.every((n, i) => i === 0 || n >= LP1[i - 1]),
+      "58.P1a GitHub never shrinks: each write is at least as large as the one before"
+    );
+    eq(LP1.at(-1), 15, "58.P1b and the last write holds the union, 15 lines");
+  }
+
+  /* P4. A touch 6 s before a mirror conflict, then a hide. No write to GitHub may
+     hold fewer than the union of 15 lines: the local copy never overwrites the merge.
+     Red on a mutant that drops the mirror guard in the conflict catch. */
+  {
+    const touchP4 = () => act(async () => { win.dispatchEvent(new win.Event("pointerdown")); await sleep(0); });
+    const lensP4 = () => remote.history.map((h) => JSON.parse(h.text).items.length);
+    await boot({ items: LOCAL58, received: {} }, null, { remote: asRemote58(REMOTE58), remoteKey: GH58, syncKey: KEY58 });
+    await settle();
+    await click(btn(/Mark all received/), "check in, so the Worker holds this device's copy");
+    await sleep(POST58);
+    await settle();
+    setSyncNetFail(true);
+    try {
+      await sleep(AUTO58 - POST58 - 5000);
+      await touchP4();
+      await sleep(6000);
+      await settle();
+      await background();
+      await settle();
+    } finally {
+      setSyncNetFail(false);
+    }
+    await sleep(15000);
+    await settle();
+    const LP4 = lensP4();
+    ok(LP4.length > 0, "58.P4a0 GitHub was written, so the no-short-write check means something");
+    ok(
+      LP4.every((n) => n >= 15),
+      "58.P4a no write to GitHub holds fewer than the union of 15 lines"
+    );
+  }
 }
 
 uninstallClock();
