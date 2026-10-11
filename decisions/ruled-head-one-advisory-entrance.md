@@ -19,7 +19,7 @@ So there is **one line**. It is advisory manila, full width, above the ruled row
 9. Never synced.
 10. A last agreement with the remote that is older than `SYNC_STALE_MS`.
 
-"I could not look" is never silent. Cases 6 and 8 used to return with no sign, so a blind push looked the same as a working one. A single unknown peek retries once before case 8 shows, so a slow network on resume does not raise the line. No key outranks case 8, because a keyless device cannot look at all, and adding its key is the true fix. Group 48 pins these cases, and pins that a healthy device shows none of them.
+"I could not look" is never silent. Cases 6 and 8 used to return with no sign, so a blind push looked the same as a working one. An unknown peek retries once before case 8 shows, so one failed request does not raise the line. The retry is immediate, so it does not cover a network that is still waking up. A no-access or rate-limit answer is not retried, because a retry cannot change it. No key outranks case 8, because a keyless device cannot look at all, and adding its key is the true fix. Group 48 pins these cases, and pins that a healthy device shows none of them.
 
 The stale limit is 24h. Push is automatic and idle-debounced. A shorter limit would fire on an ordinary evening with the phone face down. A longer limit would stop being a warning.
 
