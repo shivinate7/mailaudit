@@ -3227,7 +3227,9 @@ export default function MailDayLedger() {
            and recovers the way it always has, by pulling. */
         if (!value && window.seed) {
           const info = await window.remote?.status?.().catch(() => null);
-          if (!info?.hasKey) {
+          /* a Worker key is a key too: that device is one of the owner's */
+          const workerKeyed = await window.sync?.hasKey?.().catch(() => false);
+          if (!info?.hasKey && !workerKeyed) {
             const seeded = await window.seed.load().catch(() => null);
             if (seeded) {
               value = seeded;
@@ -3345,7 +3347,6 @@ export default function MailDayLedger() {
        meaningless advice to someone looking at a copy of someone else's
        ledger. Their own key would not help them; there is nothing of theirs to
        back up. Say what is actually true instead — see the line's copy. */
-    if (seedShown) return "seeded";
     if (pushState === "conflict") return "conflict";
     if (remoteMsg?.tone === "error") return "error";
     if (serverDown)
@@ -3374,6 +3375,8 @@ export default function MailDayLedger() {
        genuinely is not backed up, and saying so is honest not naggy. */
     if (remoteInfo && !remoteInfo.hasKey) return "no-key";
     if (backupUnknown) return "backup-unknown";
+    /* a sync advisory outranks the visitor's line: it says what to fix */
+    if (seedShown) return "seeded";
     /* remoteInfo is null until its effect runs, which is one commit after the
        first paint. Reading that as "no key" flashes the manila banner on every
        cold start of a perfectly configured device — the same "I could not
@@ -4667,6 +4670,10 @@ export default function MailDayLedger() {
   const failN = useRef(0);
   const nextTry = useRef(0);
   const retryTimer = useRef(null);
+  const postsInFlight = useRef(0);
+  const heldRev = useRef(0); // the highest rev heard while a POST was in flight
+  const refusedRef = useRef(false); // a 401: no more calls until the page reloads
+  const closeRef = useRef(null);
   /* one home for a held reply, from a POST or from a rev-gated GET. A reply
      with a rev below the newest landed one is stale and is dropped. */
   const holdReply = (r) => {
@@ -4695,6 +4702,14 @@ export default function MailDayLedger() {
     }
     mirrorRef.current = false;
     setServerDown(r.code === "too-big" || r.code === "no-access" ? r.code : "unknown");
+    if (r.code === "no-access") {
+      /* a refused key stays refused: stop POSTs, retries and the socket */
+      refusedRef.current = true;
+      clearTimeout(retryTimer.current);
+      if (closeRef.current) closeRef.current();
+      closeRef.current = null;
+      return;
+    }
     const wait = backoffMs(failN.current++);
     nextTry.current = Date.now() + wait;
     clearTimeout(retryTimer.current);
@@ -4704,8 +4719,19 @@ export default function MailDayLedger() {
   postRef.current = () => {
     const p = (async () => {
       if (!window.sync || !(await window.sync.hasKey())) return;
-      if (Date.now() < nextTry.current) return;
-      settleReply(await window.sync.post(snapshot()));
+      if (refusedRef.current || Date.now() < nextTry.current) return;
+      postsInFlight.current++;
+      let r;
+      try {
+        r = await window.sync.post(snapshot());
+      } finally {
+        postsInFlight.current--;
+      }
+      settleReply(r);
+      /* a rev heard while the POST was out is this device's own write if the
+         reply carries it; only a higher one is another device's */
+      if (postsInFlight.current === 0 && heldRev.current > lastRev.current) revRef.current(heldRev.current);
+      heldRev.current = 0;
     })();
     cycleRef.current = p;
     return p;
@@ -4721,6 +4747,11 @@ export default function MailDayLedger() {
   /* a rev above the last one seen (or already being fetched) is one GET */
   const revRef = useRef(null);
   revRef.current = async (rev) => {
+    if (postsInFlight.current > 0) {
+      heldRev.current = Math.max(heldRev.current, rev);
+      return;
+    }
+    if (refusedRef.current) return;
     if (rev <= Math.max(lastRev.current, inflightRev.current)) return;
     inflightRev.current = rev;
     const r = await window.sync.get();
@@ -4732,15 +4763,15 @@ export default function MailDayLedger() {
     tryApplyRef.current();
   }, [mergeBlocked, importMsg]);
   useEffect(() => {
-    let close = null;
     let dead = false;
     (async () => {
-      if (!window.sync || !(await window.sync.hasKey()) || dead) return;
-      close = window.sync.connect((rev) => revRef.current(rev));
+      if (!window.sync || !(await window.sync.hasKey()) || dead || refusedRef.current) return;
+      closeRef.current = window.sync.connect((rev) => revRef.current(rev));
     })();
     return () => {
       dead = true;
-      if (close) close();
+      if (closeRef.current) closeRef.current();
+      closeRef.current = null;
     };
   }, []);
   useEffect(() => {
@@ -6585,11 +6616,11 @@ export default function MailDayLedger() {
                     : syncBroken === "behind"
                     ? "Your other device has newer lines — tap to bring them in"
                     : syncBroken === "server"
-                    ? "The sync server could not be reached, so this sync used the GitHub backup — tap to fix"
+                    ? "The sync server could not be reached — tap to fix"
                     : syncBroken === "key-refused"
                     ? "This device’s sync key was refused — tap to fix"
                     : syncBroken === "too-big"
-                    ? "The ledger is too big for the sync server, so this sync used the GitHub backup — tap to fix"
+                    ? "The ledger is too big for the sync server — tap to fix"
                     : syncBroken === "photos-unreadable"
                     ? "This device’s photos could not be read, so no new photos were backed up — tap to fix"
                     : syncBroken === "backup-unknown"

@@ -29,6 +29,7 @@ export class Ledger extends DurableObject {
 }
 
 export default {
-  // Fresh store per sync-revamp-cloudflare; rollback is the old name "ledger".
-  fetch: (request, env) => env.LEDGER.get(env.LEDGER.idFromName("ledger-v2")).fetch(request),
+  // Fresh store per sync-revamp-cloudflare. "ledger" is the stage-2 seed and
+  // "ledger-v2" is the probe store; rolling back means an older name.
+  fetch: (request, env) => env.LEDGER.get(env.LEDGER.idFromName("ledger-v3")).fetch(request),
 };
