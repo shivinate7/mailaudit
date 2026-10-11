@@ -1,0 +1,14 @@
+name = "manifestnumberone"
+main = "index.mjs"
+compatibility_date = "2026-10-01"
+
+[vars]
+ALLOWED_ORIGINS = "https://shivinate7.github.io,http://localhost:4173"
+
+[[durable_objects.bindings]]
+name = "LEDGER"
+class_name = "Ledger"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Ledger"]
