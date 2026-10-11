@@ -6747,7 +6747,7 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   ok(slot19?.style.flexBasis === "100%", "59.19c and takes its own line");
   ok(!!slot19?.style.minHeight, "59.19d and reserves a minimum height");
 
-  /* 59.20. A good save says so, and closing and reopening the panel keeps the message. */
+  /* 59.20. A good save says so, and closing and reopening the panel clears the message. */
   await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true, remote: null });
   await settle();
   await openPanel59();
@@ -6757,7 +6757,7 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   await openPanel59();
   ok(!text().includes("Sync key saved."), "59.20 closing and reopening the panel clears the save message");
 
-  /* 59.21. A good save says so, and a later 401 from the Worker does not clear it. */
+  /* 59.21. A good save says so, and a later 401 from the Worker clears it. */
   await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true, remote: null });
   await settle();
   await openPanel59();
