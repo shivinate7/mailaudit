@@ -22,7 +22,7 @@ GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Del
 - **The site stays on GitHub Pages.** The Worker answers the Pages origin across CORS. So no device moves to a new origin, and no device loses its stored ledger.
 - **Sign-in:** one key per device. A Cloudflare Access email code is the backup way in. The key stays a credential, see `the-token-is-a-credential`.
 - **Key delivery:** the keys live in the Mac's Keychain. A script opens the app on the Mac with its key in the URL fragment, which no server receives. The app stores the key and clears the fragment. For the iPhone, the Mac shows the same link as a QR code that the owner scans once. No key is printed or pasted.
-- **GitHub becomes a mirror.** Each device still pushes the merged ledger to the GitHub `data` branch. So the public seed, the backup watchdog and History keep working, and the Worker needs no GitHub token. The Durable Object holds the truth, so a GitHub conflict resolves by reading the new sha and writing again.
+- **GitHub becomes a mirror.** Each device still pushes the merged ledger to the GitHub `data` branch, once the server has answered. So the public seed, the backup watchdog and History keep working, and the Worker needs no GitHub token. The Durable Object holds the truth, so a GitHub conflict resolves by reading the new sha and writing again.
 - **Live updates wait for a pause.** A change from the other device applies when this device has had no input for 10 seconds. No line says an update is waiting; the merge notice after the apply names what changed. A waiting line would have cost 40px of empty space at rest. This keeps `no-layout-shift-under-pointer`.
 - **Un-checks and deletes:** each check-in key carries the time of its last change in a new saved key, and the later change wins. A discarded or assigned envelope stays as a tombstone with a deletion time, and every reader skips it. A ledger without these fields merges by today's rules, so an older build stays safe. The new key follows the six sites in `saved-state-shape`.
 - **Orders:** a nightly job on HA Green replaces the OrderWand export. The owner chose HA Green over the MacBook. The job reads `store.tcgplayer.com/myaccount/orderhistory` with the owner's login cookie, as OrderWand 4.4.0 does. It GETs a form token, POSTs a date range, then reads each page. It sends the orders to the Worker. The Worker runs the same parser filters and the same merge, so `parser-filters` and `imports-merge-never-replace` still hold.
@@ -50,7 +50,9 @@ The orchestrator made these under the owner's grant to run the stages, on 2026-1
 
 - **Switch:** the Worker moves to a new, empty Durable Object. Each device's first POST seeds it. The old object stays as the rollback copy. A re-seed from the old object could bring back an un-check through the per-key max.
 - **Milestones on a live apply:** a live apply takes a milestone only when it removes something. Otherwise the recent version is enough. A milestone on every apply would fill the 60-slot list in one mail day.
-- **Worker unreachable:** that cycle falls back to the GitHub merge, and the advisory line says the server failed. The merge is symmetric, so a second merge later is harmless.
+- **Mirror mode needs a healthy server:** GitHub becomes a mirror only after the Worker answers `ok` or `empty` in this session. Any failure turns mirror mode off, and the device then runs the plain GitHub path. Worker retries wait on `backoffMs`. A per-cycle fallback merge pulled and took a milestone on every save, so it is gone.
+- **The mirror pushes the merged ledger:** it merges the local ledger with the last server reply. So a lagging device never shrinks the GitHub copy.
+- **A refused key says so:** a 401 shows its own advisory line.
 - **iPhone key:** the owner scans one QR code. If the key does not reach the home-screen app, the app gains a scan-key control.
 - **QR code:** macOS draws it with its own image tools. No new package is installed.
 
@@ -58,7 +60,7 @@ The orchestrator made these under the owner's grant to run the stages, on 2026-1
 
 - Whether a Cloudflare Access login survives in an iOS home-screen app. This is untested.
 - Live updates use a WebSocket. A new rev from the other device starts one GET, and the reply waits for the idle gate.
-- A 413 from the Worker falls back to the GitHub merge for that cycle, as an unknown answer does. The advisory line names the size problem.
+- A 413 from the Worker turns mirror mode off, as an unknown answer does. The advisory line names the size problem.
 
 ## See also
 

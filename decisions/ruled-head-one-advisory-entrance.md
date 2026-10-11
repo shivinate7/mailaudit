@@ -11,7 +11,7 @@ So there is **one line**. It is advisory manila, full width, above the ruled row
 1. The page shows the public seed.
 2. A conflict.
 3. An errored last attempt.
-4. The last Worker POST failed as unknown or too big, so this sync used the GitHub merge.
+4. The last Worker call failed as unknown, refused the key, or found the ledger too big. Mirror mode is then off.
 5. The device cannot see the private repo.
 6. **Being behind.**
 7. This device's photos could not be read.
@@ -22,7 +22,7 @@ So there is **one line**. It is advisory manila, full width, above the ruled row
 
 "I could not look" is never silent. Cases 7 and 9 used to return with no sign, so a blind push looked the same as a working one. An unknown peek retries once before case 9 shows, so one failed request does not raise the line. The retry is immediate, so it does not cover a network that is still waking up. A no-access or rate-limit answer is not retried, because a retry cannot change it. No key outranks case 9, because a keyless device cannot look at all, and adding its key is the true fix. Group 48 pins these cases, and pins that a healthy device shows none of them.
 
-Case 4 names the server. Its copy is `The sync server could not be reached, so this sync used the GitHub backup — tap to fix`. That cycle falls back to the GitHub merge, and test 53.8b pins that the line names the server. A 413 reply takes the same fallback, and its copy is `The ledger is too big for the sync server, so this sync used the GitHub backup — tap to fix`. Test 55.8 pins it. See `sync-revamp-cloudflare`.
+Case 4 names the server. Its copy is `The sync server could not be reached, so this sync used the GitHub backup — tap to fix`. The failure turns mirror mode off, so the plain GitHub path runs. Test 53.8b pins that the line names the server. A 413 reply does the same, and its copy is `The ledger is too big for the sync server, so this sync used the GitHub backup — tap to fix`. Test 55.8 pins it. A 401 shows `This device’s sync key was refused — tap to fix`, and group 56 pins it. See `sync-revamp-cloudflare`.
 
 A Worker reply that waits for the idle gate shows no line. Test 55.5 pins it.
 
