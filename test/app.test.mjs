@@ -3862,9 +3862,9 @@ ok(
 
    The Sync panel is a two-column option grid. An odd last cell spans the row so
    the rule colour does not show through the empty half. The expected spans are
-   derived from the cell count read off the screen, and the parity is part of
-   the compared value, so a fixture that drifts to the other parity fails here
-   rather than passing vacuously. */
+   literal: the last cell must be one of FULL_ROW, and every other cell must
+   carry no span. The parity is part of the compared value, so a fixture that
+   drifts to the other parity fails here rather than passing vacuously. */
 
 const KEYS_DOWN_LEDGER = JSON.stringify({
   mailday: 1,
@@ -3894,9 +3894,12 @@ win.photos.keys = async () => {
 try {
   await dropFile("ledger.json", KEYS_DOWN_LEDGER);
   /* the Orphaned pile's photo footer: a leaf div, since the count and its copy
-     are text nodes with no element between them. Anchored, so a "1 photo too"
-     elsewhere on the page cannot stand in for it. Read with ?. so a missing
-     footer fails the assertion instead of throwing. */
+     are text nodes with no element between them. The lookup takes the FIRST
+     leaf div in DOM order whose text starts "N photo" or "N photos". The
+     anchor fixes only the start of the text, so it does not pin the pile: a
+     leaf reading "1 photo too" that comes earlier in DOM order is the one
+     checked. Read with ?. so a missing footer fails the assertion instead of
+     throwing. */
   const pileFooter = [...document.querySelectorAll("div")].find(
     (d) => d.children.length === 0 && /^\d+ photos?\b/.test(d.textContent)
   );
@@ -3915,12 +3918,12 @@ try {
 }
 
 /* the grid's cells, read off the screen; Push is in every state of this panel */
-const gridCells = () => [...btn(/^Push$/).parentElement.children];
+const gridCells = () => [...(btn(/^Push$/)?.parentElement?.children ?? [])];
 /* a full-row span as the browser reads it back. jsdom keeps the spacing that was
    written, so spacing is stripped before the compare. `1 / 3` is the full row of
    a two-column grid; `span 2` is the same claim written another way */
 const FULL_ROW = ["1/-1", "span2", "1/3"];
-const spanOf = (c) => c.style.gridColumn.replace(/\s+/g, "");
+const spanOf = (c) => (c?.style.gridColumn ?? "").replace(/\s+/g, "");
 
 /* odd: a device behind the other one gets Push, Merge and Pull, three cells */
 await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
@@ -3980,7 +3983,7 @@ await settle();
   }
   /* the photo copy from PHOTO_SAYS and the pull's lost/gone notes */
   const PHOTO_LINE =
-    /Photos need|photo repo|photos didn’t sync|photo uploads|to finish the photos|trouble with the photos|photos sent|still to go|not on GitHub|never pushed|now gone/i;
+    /Photos need|photo repo|photos didn’t sync|photo uploads|to finish the photos|trouble with the photos|can’t write photos|photos sent|still to go|not on GitHub|never pushed|now gone/i;
   const pushed = remoteText() ? JSON.parse(remoteText()) : {};
   ok(!!btn(/^Pushed ✓$/), "47.5 the push still finishes, with the ledger on GitHub");
   eq(
@@ -4015,7 +4018,7 @@ await settle();
     win.photos.keys = keysBefore;
   }
   eq(
-    saved().envelopes[0].photos,
+    saved().envelopes?.[0]?.photos,
     ["pho-a"],
     "47.6 an unreadable local store keeps the pulled photo id"
   );
@@ -4027,9 +4030,9 @@ await settle();
    columns. jsdom has no layout, so this reads the inline style. The mutant is
    optGrid(3) on the sync grid, which every span check above still passes. */
 {
-  const grid = btn(/^Push$/).parentElement;
+  const grid = btn(/^Push$/)?.parentElement;
   ok(
-    /^repeat\(\s*2\s*,/.test(grid.style.gridTemplateColumns),
+    /^repeat\(\s*2\s*,/.test(grid?.style.gridTemplateColumns ?? ""),
     "47.7 the sync grid is two columns"
   );
 }
