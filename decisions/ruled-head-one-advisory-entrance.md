@@ -2,22 +2,24 @@
 
 On the happy path, no sync vocabulary appears on screen. The action row has no `Sync` cell. There is no toggle, no `Merge`, and no notice that the other device is ahead. Sync either happens or it does not. Only the failed case deserves a pixel. A ledger that quietly stopped reaching GitHub is exactly the failure the remote exists to prevent. It is invisible by nature.
 
-**Holds while:** `SYNC_STALE_MS` in `src/app.jsx` is 24 hours. `syncBroken` checks conflict, error, behind, then no key, in that order. It is a `useMemo` whose dependencies include `ahead`.
+**Holds while:** `SYNC_STALE_MS` in `src/app.jsx` is 24 hours. `syncBroken` checks its cases in the order listed below. It is a `useMemo` whose dependencies include `ahead`.
 
 So there is **one line**. It is advisory manila, full width, above the ruled row. A sentence has to wrap, while the row's cells are a fixed 40px of uppercase mono. The line is the sole entrance to the repair kit. One example of the line's copy is `Not backed up since Aug 30 — tap to fix`.
 
 `syncBroken` decides whether the line shows. It checks these cases in priority order:
 
-1. A conflict.
-2. An errored last attempt.
-3. **Being behind.**
-4. This device's photos could not be read.
-5. The backup could not be checked: the peek came back unknown.
-6. No key on this device.
-7. Never synced.
-8. A last agreement with the remote that is older than `SYNC_STALE_MS`.
+1. The page shows the public seed.
+2. A conflict.
+3. An errored last attempt.
+4. The device cannot see the private repo.
+5. **Being behind.**
+6. This device's photos could not be read.
+7. No key on this device.
+8. The backup could not be checked: the peek came back unknown twice.
+9. Never synced.
+10. A last agreement with the remote that is older than `SYNC_STALE_MS`.
 
-"I could not look" is never silent. Cases 4 and 5 used to return with no sign, so a blind push looked the same as a working one. Group 48 pins both cases, and pins that a healthy device shows neither.
+"I could not look" is never silent. Cases 6 and 8 used to return with no sign, so a blind push looked the same as a working one. A single unknown peek retries once before case 8 shows, so a slow network on resume does not raise the line. No key outranks case 8, because a keyless device cannot look at all, and adding its key is the true fix. Group 48 pins these cases, and pins that a healthy device shows none of them.
 
 The stale limit is 24h. Push is automatic and idle-debounced. A shorter limit would fire on an ordinary evening with the phone face down. A longer limit would stop being a warning.
 
