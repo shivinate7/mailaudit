@@ -1,6 +1,6 @@
 # The component never touches a storage API directly
 
-The application component (`app.jsx`) never calls localStorage or IndexedDB itself. Every read and write goes through one of three adapters: `window.storage`, `window.photos` or `window.versions`.
+The application component (`app.jsx`) never calls localStorage or IndexedDB itself. Every storage read and write goes through one of three adapters: `window.storage`, `window.photos` or `window.versions`. The two transport adapters, `window.remote` and `window.sync`, send data to the network. Each keeps its own small record in localStorage, inside `entry.jsx`.
 
 **Holds while:** `src/app.jsx` makes no `localStorage` or `indexedDB` calls, and `src/entry.jsx` defines `window.storage`, `window.photos` and `window.versions`.
 

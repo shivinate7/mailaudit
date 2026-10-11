@@ -1,10 +1,10 @@
 # Sync moves from GitHub to Cloudflare
 
-**Status:** open. Stage 2 is built: the server runs at `manifestnumberone.shivamsemwal01.workers.dev`, seeded from the GitHub ledger. The app does not use it yet.
+**Status:** open. Stage 4b is built, and the switch is pending. The server runs at `manifestnumberone.shivamsemwal01.workers.dev`. A device sends its ledger there once it has its key. The switch is the move to the new Durable Object, see Stage 4b rulings.
 
 GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Deliberately a manual backup, not continuous sync." Auto-push and merge grew on top of it later, and no one chose a sync base again. A fresh choice, made on 2026-10-10, picked Cloudflare.
 
-**Holds while:** `src/entry.jsx` still syncs through the GitHub Contents API. The record closes when the Cloudflare base carries the ledger and the photos, and this file is rewritten as current text.
+**Holds while:** `src/entry.jsx` still sends photos through the GitHub Contents API, and it mirrors the ledger there. The record closes when the Cloudflare base carries the ledger and the photos, and this file is rewritten as current text.
 
 ## Outcomes the revamp must give
 
@@ -34,7 +34,9 @@ GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Del
 ## The server, as built
 
 - `worker/core.mjs` holds the logic that can be pure, and `npm run test:worker` tests it. `worker/index.mjs` holds the Worker and the `Ledger` Durable Object, which keeps `{ledger, rev}` under one storage key.
-- `POST /ledger` merges the incoming ledger into the stored one with `mergeLedger` from `src/merge-rules.mjs`, the same merge the app runs. The stored copy's view preferences win.
+- `POST /ledger` merges the incoming ledger into the stored one with `mergeLedger` from `src/merge-rules.mjs`, the same merge the app runs. The stored copy's view preferences win. A POST that changes nothing writes nothing and sends no broadcast.
+- The Durable Object's name is ledger-v2, and the old object, named `ledger`, is the rollback.
+- The app sends its key as a Bearer token in the `Authorization` header. A key that matches no stored hash gets 401. A body that is not a ledger gets 400. `GET /ledger` returns 404 until the first POST seeds the store.
 - A merged ledger over the size limit gets 413 and writes nothing. A Durable Object value caps at 2,000,000 bytes, and the limit keeps at least 100,000 bytes of headroom under that cap. The guard counts UTF-8 bytes, not characters.
 - A WebSocket carries the key as the second of exactly two protocols, `mailaudit` and the key. A browser cannot set a header on a WebSocket.
 - The device keys live in the macOS Keychain, service `mailaudit-sync`, accounts `iphone` and `macbook`. The Worker holds only their SHA-256 hashes, in a Worker secret.
@@ -55,9 +57,12 @@ The orchestrator made these under the owner's grant to run the stages, on 2026-1
 ## Still open
 
 - Whether a Cloudflare Access login survives in an iOS home-screen app. This is untested.
+- Live updates are not wired in this build. A device learns the other device's changes when its next POST replies. The WebSocket path and the updates-waiting line are not built yet.
+- A 413 from the Worker shows no line, and the app does not fall back to GitHub for it. Only an unknown answer does that.
 
 ## See also
 
 - `sync-runs-itself` — the GitHub sync this replaces.
 - `ledger-private-source-public` — the private ledger repo the move retires.
 - `orderwand-csv` — the CSV the nightly job replaces.
+- `ruled-head-one-advisory-entrance` — the one line that names a failed server.

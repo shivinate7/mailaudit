@@ -11,25 +11,30 @@ So there is **one line**. It is advisory manila, full width, above the ruled row
 1. The page shows the public seed.
 2. A conflict.
 3. An errored last attempt.
-4. The device cannot see the private repo.
-5. **Being behind.**
-6. This device's photos could not be read.
-7. No key on this device.
-8. The backup could not be checked: the peek came back unknown twice.
-9. Never synced.
-10. A last agreement with the remote that is older than `SYNC_STALE_MS`.
+4. The last Worker POST failed as unknown, so this sync used the GitHub merge.
+5. The device cannot see the private repo.
+6. **Being behind.**
+7. This device's photos could not be read.
+8. No GitHub key on this device.
+9. The backup could not be checked: the peek came back unknown twice.
+10. Never synced.
+11. A last agreement with the remote that is older than `SYNC_STALE_MS`.
 
-"I could not look" is never silent. Cases 6 and 8 used to return with no sign, so a blind push looked the same as a working one. An unknown peek retries once before case 8 shows, so one failed request does not raise the line. The retry is immediate, so it does not cover a network that is still waking up. A no-access or rate-limit answer is not retried, because a retry cannot change it. No key outranks case 8, because a keyless device cannot look at all, and adding its key is the true fix. Group 48 pins these cases, and pins that a healthy device shows none of them.
+"I could not look" is never silent. Cases 7 and 9 used to return with no sign, so a blind push looked the same as a working one. An unknown peek retries once before case 9 shows, so one failed request does not raise the line. The retry is immediate, so it does not cover a network that is still waking up. A no-access or rate-limit answer is not retried, because a retry cannot change it. No key outranks case 9, because a keyless device cannot look at all, and adding its key is the true fix. Group 48 pins these cases, and pins that a healthy device shows none of them.
+
+Case 4 names the server. Its copy is `The sync server could not be reached, so this sync used the GitHub backup — tap to fix`. That cycle falls back to the GitHub merge, and test 53.8b pins that the line names the server. A 413 reply from the Worker shows no line in this build. See `sync-revamp-cloudflare`.
+
+While a Worker reply waits for the idle gate, the line says that updates are waiting. This holds only once the live-update path is built. Until then, no line shows a held reply.
 
 The stale limit is 24h. Push is automatic and idle-debounced. A shorter limit would fire on an ordinary evening with the phone face down. A longer limit would stop being a warning.
 
-Being behind must reach this line. Auto-push declines while the remote is ahead. The automatic merge runs only on a fresh session. So a device that falls behind mid-session stops backing up for the rest of that session. The manila "pushed newer lines" notice sits inside the sync panel. The panel opens only from this line. A person had to know to look for the notice.
+Without a Worker key, being behind must reach this line. Auto-push declines while the remote is ahead. The automatic merge runs only on a fresh session. So a device that falls behind mid-session stops backing up for the rest of that session. The manila "pushed newer lines" notice sits inside the sync panel. The panel opens only from this line. A person had to know to look for the notice. With a key, GitHub is a mirror, no peek runs, and a remote that is ahead raises no behind line. Test 54.1c pins that.
 
 The 24-hour check is frozen too. `syncBroken` reads `Date.now()` inside its `useMemo`. A stalled device changes none of its dependencies, so the comparison does not re-run. Tests 38b.1–38b.3 pin this.
 
 The line is deliberately **not gated on local data**. A device with an empty ledger and no key is a fresh phone. This line is its only route to the Pull that recovers it. Test 28.1 covers this.
 
-**Pinned by:** 28.1, 28.8–28.12 and 38b.1–38b.3. Test 28.1 shows the line on an empty ledger with no key. Tests 28.8–28.12 cover the line as the panel's own toggle. Both halves are mutation-confirmed. Tests 38b.1–38b.3 cover the ahead case. The helper `openSync()` clicks `/tap to/`, because the line is the only entrance. `openHistory()` is its counterpart. Both helpers are idempotent.
+**Pinned by:** 28.1, 28.8–28.12 and 38b.1–38b.3, and tests 53.8b (the server copy) and 54.1c (no behind line with a key). Test 28.1 shows the line on an empty ledger with no key. Tests 28.8–28.12 cover the line as the panel's own toggle. Both halves are mutation-confirmed. Tests 38b.1–38b.3 cover the ahead case. The helper `openSync()` clicks `/tap to/`, because the line is the only entrance. `openHistory()` is its counterpart. Both helpers are idempotent.
 
 ## See also
 
@@ -39,3 +44,4 @@ The line is deliberately **not gated on local data**. A device with an empty led
 - `auto-apply-happens-now` — why the automatic merge runs on a fresh session only.
 - `sync-runs-itself` — the automatic push that declines while behind.
 - `ruled-head-hand-elapsed-forward` — the fresh-session signal the merge reads.
+- `sync-revamp-cloudflare` — the Worker whose failure case 4 names.
