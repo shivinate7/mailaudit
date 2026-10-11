@@ -6550,15 +6550,19 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   ok(count59("get") > 0, "59.10a a pasted key on a seeded page with a server ledger GETs it");
   ok(!/someone else’s ledger/.test(text()), "59.10b and the seed line is gone once the ledger merges");
   const posts10 = count59("post");
+  const lastPost10 = syncCalls().filter((c) => c.op === "post").pop();
+  const checkins10 = (c) => Object.keys(JSON.parse(c?.body ?? "{}").received ?? {}).length;
   await toggleShowing();
   await click(btn(/Mark all received/), "check in the cards");
   await settle();
-  await sleep(1000);
+  /* the change POST waits SYNC_POST_MS after the last change (53.0 pins it), so
+     the virtual clock runs past the deadline before the POST is read */
+  await sleep(SR.SYNC_POST_MS + 300);
   await settle();
   const last10 = syncCalls().filter((c) => c.op === "post").pop();
   ok(
-    count59("post") > posts10 && JSON.parse(last10?.body ?? "{}").received?.[ITEMS[1].key] != null,
-    "59.10c a check-in POSTs a ledger that carries it"
+    count59("post") > posts10 && checkins10(last10) > checkins10(lastPost10),
+    "59.10c the check-in POSTs a ledger with more check-ins than the POST before it"
   );
 
   /* 59.12. Replacing the key while a socket is open closes that socket, and a new
