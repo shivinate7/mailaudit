@@ -6718,6 +6718,21 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   await foreground();
   await settle();
   ok(!/no sync key/.test(text()), "59.17e after a foreground, no 'no sync key' line");
+
+  /* 59.18. A good save confirms itself beside the field: the panel stays open with
+     the field empty and masked, and "Sync key saved." says the key was taken. A later
+     failed save replaces that confirmation with the refusal. Red on main: no
+     confirmation exists, so the owner saw an empty field and no answer. */
+  await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true, remote: null });
+  await settle();
+  await openPanel59();
+  await pasteKey59(KEY59);
+  ok(text().includes("Sync key saved."), "59.18a after a good save the panel says 'Sync key saved.' beside the field");
+  const f18 = field59();
+  ok(!!f18 && f18.value === "" && f18.type === "password", "59.18b and the field is still empty and masked");
+  await pasteKey59("bad key!");
+  ok(!text().includes("Sync key saved."), "59.18c a later failed save removes the confirmation");
+  ok(text().includes(REFUSED59), "59.18d and shows the refusal in its place");
 }
 
 uninstallClock();
