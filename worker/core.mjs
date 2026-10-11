@@ -26,10 +26,10 @@ export async function keyAllowed(key, env) {
 /* A browser cannot set Authorization on a WebSocket, so the key rides in
    Sec-WebSocket-Protocol as "mailaudit, <key>". Returns true when valid. */
 export async function wsAuthorized(request, env) {
-  const [name, key] = (request.headers.get("Sec-WebSocket-Protocol") || "")
+  const parts = (request.headers.get("Sec-WebSocket-Protocol") || "")
     .split(",")
     .map((s) => s.trim());
-  return name === "mailaudit" && keyAllowed(key, env);
+  return parts.length === 2 && parts[0] === "mailaudit" && keyAllowed(parts[1], env);
 }
 
 function cors(request, env) {
@@ -44,6 +44,9 @@ function cors(request, env) {
       }
     : {};
 }
+
+/* Durable Object per-value cap is 2MB; refuse a ledger over this, less headroom. */
+export const MAX_LEDGER_BYTES = 1.9 * 1024 * 1024;
 
 export async function route(request, env, store) {
   const headers = cors(request, env);
@@ -76,6 +79,7 @@ export async function route(request, env, store) {
 
   const cur = await store.read();
   const ledger = cur ? mergeLedger(cur.ledger, incoming).merged : incoming;
+  if (new TextEncoder().encode(JSON.stringify(ledger)).length > MAX_LEDGER_BYTES) return json({ error: "too-large" }, 413);
   const rev = (cur?.rev ?? 0) + 1;
   await store.write(ledger, rev);
   await store.broadcast({ rev });
