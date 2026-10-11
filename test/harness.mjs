@@ -692,7 +692,82 @@ export function report() {
 
 /* ---------- DOM helpers ---------- */
 
-export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/* ── the virtual clock (harness only) ──
+   Groups 53 to 56 drive the app's timers on demand, not in real time. While
+   the clock is installed, Date.now and every setTimeout of 1 ms or more run on
+   a virtual clock. sleep(ms) advances that clock by ms, and fires each timer
+   that comes due, in order. A zero delay, and every real wait, stays real.
+   Groups 1 to 52 never install it, so their real timers are untouched.
+   Node's own timers are captured first, so the harness can always wait for
+   real. No src/ code changes. */
+const realSetTimeout = globalThis.setTimeout;
+const realClearTimeout = globalThis.clearTimeout;
+const realSetImmediate = globalThis.setImmediate;
+const realDateNow = Date.now;
+let vclock = null;
+/* Between two virtual timers, the app's async work (IndexedDB, merges, state
+   commits) still runs on real turns. A few real milliseconds let it settle. */
+const yieldReal = async () => {
+  for (let i = 0; i < 2; i++) await new Promise((r) => realSetTimeout(r, 5));
+  await new Promise((r) => realSetImmediate(r));
+};
+export const installClock = () => {
+  if (vclock) return;
+  vclock = { now: realDateNow(), timers: [], seq: 0 };
+  Date.now = () => vclock.now;
+  globalThis.setTimeout = (fn, ms = 0, ...args) => {
+    if (!(Number(ms) >= 1)) return realSetTimeout(fn, ms, ...args);
+    const h = { id: ++vclock.seq, at: vclock.now + Number(ms), fn, args, virtual: true };
+    vclock.timers.push(h);
+    return h;
+  };
+  globalThis.clearTimeout = (h) => {
+    if (h && h.virtual) {
+      vclock.timers = vclock.timers.filter((x) => x !== h);
+      return;
+    }
+    return realClearTimeout(h);
+  };
+};
+export const uninstallClock = () => {
+  if (!vclock) return;
+  Date.now = realDateNow;
+  globalThis.setTimeout = realSetTimeout;
+  globalThis.clearTimeout = realClearTimeout;
+  vclock = null;
+};
+const advanceClock = (ms) => {
+  const target = vclock.now + ms;
+  /* Each timer runs inside its own act, so React commits its effects at the
+     timer's own virtual time. Inside one long act, effects wait for the end,
+     and the timers they set would land after the target. */
+  const run = async () => {
+    let quiet = 0;
+    while (quiet < 3) {
+      await yieldReal();
+      const due = vclock.timers
+        .filter((t) => t.at <= target)
+        .sort((a, b) => a.at - b.at || a.id - b.id)[0];
+      if (!due) {
+        quiet += 1;
+        continue;
+      }
+      quiet = 0;
+      vclock.timers = vclock.timers.filter((t) => t !== due);
+      vclock.now = Math.max(vclock.now, due.at);
+      await act(async () => {
+        due.fn(...due.args);
+        await yieldReal();
+      });
+    }
+    vclock.now = target;
+  };
+  return run();
+};
+export const sleep = (ms) =>
+  vclock && Number(ms) >= 1
+    ? advanceClock(Number(ms))
+    : new Promise((r) => realSetTimeout(r, ms));
 export const text = () => document.body.textContent;
 export const buttons = () => [...document.querySelectorAll("button")];
 export const btn = (re) => buttons().find((b) => re.test(b.textContent));

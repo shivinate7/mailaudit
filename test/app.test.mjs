@@ -57,6 +57,8 @@ import {
   syncCloseCount,
   syncRev,
   fireSyncRev,
+  installClock,
+  uninstallClock,
   text,
   toggleShowing,
   type,
@@ -5116,6 +5118,10 @@ ok(
   "52.10 the mock's own post record never carries the key"
 );
 
+/* The virtual clock covers groups 53 to 56 (see harness.mjs). Installed here,
+   removed after group 56, so groups 1 to 52 keep real timers. */
+installClock();
+
 /* ── 53. the Stage 4b sync path, through the app (harness contract only) ──
    Stage 4b moves sync from the GitHub adapter to window.sync. These cases pin
    what the app does with that adapter, through the harness mock. The mock is
@@ -5858,4 +5864,5 @@ try {
 }
 eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never replaces the newer held reply");
 
+uninstallClock();
 report();
