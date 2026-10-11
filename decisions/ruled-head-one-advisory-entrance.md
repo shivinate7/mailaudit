@@ -17,12 +17,15 @@ So there is **one line**. It is advisory manila, full width, above the ruled row
 7. This device's photos could not be read.
 8. No GitHub key on this device.
 9. The backup could not be checked: the peek came back unknown twice.
-10. Never synced.
-11. A last agreement with the remote that is older than `SYNC_STALE_MS`.
+10. A GitHub key but no sync key, while the sync panel is closed.
+11. Never synced.
+12. A last agreement with the remote that is older than `SYNC_STALE_MS`.
 
 "I could not look" is never silent. Cases 7 and 9 used to return with no sign, so a blind push looked the same as a working one. An unknown peek retries once before case 9 shows, so one failed request does not raise the line. The retry is immediate, so it does not cover a network that is still waking up. A no-access or rate-limit answer is not retried, because a retry cannot change it. No key outranks case 9, because a keyless device cannot look at all, and adding its key is the true fix. Group 48 pins these cases, and pins that a healthy device shows none of them.
 
-Case 4 names the server. Its copy is `The sync server could not be reached — tap to fix`. The failure turns mirror mode off, so the plain GitHub path runs. Test 53.8b pins that the line names the server. A 413 reply does the same, and its copy is `The ledger is too big for the sync server — tap to fix`. Test 55.8 pins it. A 401 shows `This device’s sync key was refused — tap to fix`, and group 56 pins it. See `sync-revamp-cloudflare`.
+Case 4 names the server. Its copy is `The sync server could not be reached — tap to fix`. The failure turns mirror mode off, so the plain GitHub path runs. Test 53.8b pins that the line names the server. A 413 reply does the same, and its copy is `The ledger is too big for the sync server — tap to fix`. Test 55.8 pins it. A 401 shows `This device’s sync key was refused — tap to fix`, and group 56 pins it.
+
+Case 10 is the only way to paste a sync key on a device. The home-screen app keeps its own storage, so a key set in Safari does not reach it. Its copy is `This device has no sync key — tap to paste it`. The panel holds a masked field and `Save sync key`. With the panel open, the line is the panel's header and tells the truth about the backup. Group 59 pins it. See `sync-revamp-cloudflare`.
 
 A Worker reply that waits for the idle gate shows no line. Test 55.5 pins it.
 
