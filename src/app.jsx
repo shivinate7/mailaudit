@@ -3530,10 +3530,10 @@ export default function MailDayLedger() {
         source === "file" ? "before restore" : "before sync",
         "milestone"
       );
-      /* A merge only ever ADDS, so the two warnings below are not merely
-         unnecessary there — they are false. Nothing is replaced and nothing is
-         at risk, and saying so would teach the user to fear the one safe
-         button in the panel. */
+      /* A merge keeps the later change per key, and names every removal in its
+         notice, so the two warnings below are not merely unnecessary there —
+         they are false. Nothing is replaced wholesale, and saying so would
+         teach the user to fear the one safe button in the panel. */
       const replacing = source !== "merge";
       /* a restore replaces everything, so anything still in flight against the
          old world must not land on the new one */
@@ -3948,9 +3948,9 @@ export default function MailDayLedger() {
   /* Same two taps and the same funnel as a local restore — only the source of
      the bytes differs. It deliberately does NOT touch the stored sha, and that
      is right: rolling the sha BACK would 409 the next push against a remote
-     this device is not behind, forcing the user through Merge — which only ADDS
-     (see merge-rules.mjs), and would therefore silently re-add the very lines
-     the rollback removed. The repair path would undo the repair.
+     this device is not behind, forcing the user through Merge — which unions line
+     items (see merge-rules.mjs), and would therefore silently re-add the very
+     lines the rollback removed. The repair path would undo the repair.
 
      What is NOT true, and used to be claimed here, is that a restore is purely
      local. It rewrites items/received/envelopes, which are three of the
@@ -4418,9 +4418,9 @@ export default function MailDayLedger() {
   /* ---- merge: the resolution the conflict path never had ----
 
      Pull and Push anyway are the two halves of the same mistake: each keeps one
-     device's work by discarding the other's. This keeps both. It only ever
-     ADDS — see merge-rules.mjs — so it destroys nothing, needs no two-tap
-     confirm, and is safe to re-run.
+     device's work by discarding the other's. This keeps both. The later
+     change wins per key — see merge-rules.mjs — and the notice names any
+     removal, so it needs no two-tap confirm and is safe to re-run.
 
      Two entrances, one function: the conflict (where it also completes the push
      that was rejected) and the "other device is ahead" notice (where it does
@@ -4462,6 +4462,8 @@ export default function MailDayLedger() {
           stats.itemsAdded +
             stats.checkInsAdded +
             stats.envelopesAdded +
+            stats.checkInsRemoved +
+            stats.envelopesRemoved +
             (stats.stampsAdded || 0) >
           0;
         await applyBackup(
@@ -4552,9 +4554,9 @@ export default function MailDayLedger() {
      to prevent. What changed is not the risk but the evidence. Coming back
      after RESUME_RESET_MS away is not mid-check-in — it is a new session, and
      the app already stakes a list reshape on exactly that finding when it
-     resets Showing. This spends the same finding twice. And the merge only ever
-     ADDS, so the residual risk is that the list changes shape, never that
-     anything of the user's is lost.
+     resets Showing. This spends the same finding twice. And the merge keeps
+     the later change and names any removal, so the residual risk is that the
+     list changes shape, never that something is lost unreported.
 
      Needs the key, like everything else since the ledger moved into the
      private repo. A device that has never been set up gets `no-access` here and
