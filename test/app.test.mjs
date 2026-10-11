@@ -3960,9 +3960,12 @@ await settle();
   );
 }
 
+/* The unreadable copy in PHOTO_SAYS. Module scope: 47.5 and group 48 both use it. */
+const PHOTO_UNREADABLE = /photos.*(could not|couldn.t) be read/i;
+
 /* ---- an unreadable LOCAL photo store, during a push ----
-   surveyPhotos bails when keys() rejects, so a push sends nothing and says
-   nothing about photos. The blob is real and referenced, so a READABLE store
+   surveyPhotos bails when keys() rejects, so a push sends nothing and must say
+   so. The blob is real and referenced, so a READABLE store
    would upload it, which is what makes "nothing uploaded" a real claim.
    GUARDS, not kills: read-as-empty also sends nothing on a push, because push
    only sends what it finds locally, and push never reports `lost`. The pull
@@ -3981,7 +3984,7 @@ await settle();
   } finally {
     win.photos.keys = keysBefore;
   }
-  /* the photo copy from PHOTO_SAYS and the pull's lost/gone notes */
+  /* every PHOTO_SAYS copy except `unreadable`, plus the pull's lost/gone notes */
   const PHOTO_LINE =
     /Photos need|photo repo|photos didn’t sync|photo uploads|to finish the photos|trouble with the photos|can’t write photos|photos sent|still to go|not on GitHub|never pushed|now gone/i;
   const pushed = remoteText() ? JSON.parse(remoteText()) : {};
@@ -3992,11 +3995,13 @@ await settle();
     "47.5 and the pushed ledger still references the id"
   );
   eq(remotePhotoIds(), [], "47.5 and nothing is uploaded to the photo repo");
-  /* Superseded by 48.1, which requires the unreadable-store words on screen.
-     This still passes only because PHOTO_LINE holds the old copy, not the new
-     words, so it proves nothing about the line. Delete or invert it when 48.1
-     lands. */
-  ok(!PHOTO_LINE.test(text()), "47.5 and no pre-48 photo copy is shown (see 48.1)");
+  /* Inverted when 48.1 landed. The unreadable line must show, and no other
+     photo copy may: the push says the right thing, not a server or repo error. */
+  eq(
+    { shown: PHOTO_UNREADABLE.test(text()), otherCopy: PHOTO_LINE.test(text()) },
+    { shown: true, otherCopy: false },
+    "47.5 the unreadable-photos line is shown, and no other photo copy is"
+  );
 }
 
 /* ---- the same store, on a pull ----
@@ -4064,7 +4069,6 @@ await settle();
    Each fixture carries exactly one reason for the line. A healthy push first
    clears "never synced", so the reason under test is the only one left. The
    priority order inside syncBroken is not pinned here. */
-const PHOTO_UNREADABLE = /photos.*(could not|couldn.t) be read/i;
 const BACKUP_UNKNOWN = /backup.*(could not|couldn.t) be checked/i;
 const onLine = (re) =>
   buttons().some((b) => b.hasAttribute("aria-expanded") && re.test(b.textContent));
