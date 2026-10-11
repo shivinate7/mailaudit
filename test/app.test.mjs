@@ -3893,8 +3893,15 @@ win.photos.keys = async () => {
 };
 try {
   await dropFile("ledger.json", KEYS_DOWN_LEDGER);
+  /* the Orphaned pile's photo footer: a leaf div, since the count and its copy
+     are text nodes with no element between them. Anchored, so a "1 photo too"
+     elsewhere on the page cannot stand in for it. Read with ?. so a missing
+     footer fails the assertion instead of throwing. */
+  const pileFooter = [...document.querySelectorAll("div")].find(
+    (d) => d.children.length === 0 && /^\d+ photos?\b/.test(d.textContent)
+  );
   ok(
-    /(?<!\d)1 photo(?!s)/.test(text()),
+    /^1 photo(?!s)/.test(pileFooter?.textContent ?? ""),
     "47.1 an unreadable local store keeps the envelope's photo id on screen"
   );
   await sleep(SAVE_WAIT);
@@ -3909,8 +3916,11 @@ try {
 
 /* the grid's cells, read off the screen; Push is in every state of this panel */
 const gridCells = () => [...btn(/^Push$/).parentElement.children];
-const spansFor = (cells, odd) =>
-  cells.map((_, i) => (odd && i === cells.length - 1 ? "1 / -1" : ""));
+/* a full-row span as the browser reads it back. jsdom keeps the spacing that was
+   written, so spacing is stripped before the compare. `1 / 3` is the full row of
+   a two-column grid; `span 2` is the same claim written another way */
+const FULL_ROW = ["1/-1", "span2", "1/3"];
+const spanOf = (c) => c.style.gridColumn.replace(/\s+/g, "");
 
 /* odd: a device behind the other one gets Push, Merge and Pull, three cells */
 await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
@@ -3920,13 +3930,16 @@ await openSync();
 await settle();
 {
   const cells = gridCells();
+  /* only the last cell spans, and the span must cover the whole row */
+  const rest = cells.slice(0, -1);
   eq(
     {
       odd: cells.length % 2 === 1,
       merge: !!btn(/^Merge$/),
-      spans: cells.map((c) => c.style.gridColumn),
+      last: FULL_ROW.includes(spanOf(cells.at(-1))),
+      rest: rest.map(spanOf),
     },
-    { odd: true, merge: true, spans: spansFor(cells, true) },
+    { odd: true, merge: true, last: true, rest: rest.map(() => "") },
     "47.3 an odd count in the sync grid gives the last cell a full-row span"
   );
 }
@@ -3938,9 +3951,86 @@ await settle();
 {
   const cells = gridCells();
   eq(
-    { odd: cells.length % 2 === 1, spans: cells.map((c) => c.style.gridColumn) },
-    { odd: false, spans: spansFor(cells, false) },
+    { odd: cells.length % 2 === 1, spans: cells.map(spanOf) },
+    { odd: false, spans: cells.map(() => "") },
     "47.4 an even count sets no span on any cell"
+  );
+}
+
+/* ---- an unreadable LOCAL photo store, during a push ----
+   surveyPhotos bails when keys() rejects, so a push sends nothing and says
+   nothing about photos. The blob is real and referenced, so a READABLE store
+   would upload it, which is what makes "nothing uploaded" a real claim.
+   GUARDS, not kills: read-as-empty also sends nothing on a push, because push
+   only sends what it finds locally, and push never reports `lost`. The pull
+   case below is the one that kills that mutant. */
+{
+  await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]]);
+  await openSync();
+  await saveGitHubKey();
+  const keysBefore = win.photos.keys;
+  win.photos.keys = async () => {
+    throw new Error("local photo store unreadable");
+  };
+  try {
+    await click(btn(/^Push$/), "push with an unreadable local store");
+    await sleep(60);
+  } finally {
+    win.photos.keys = keysBefore;
+  }
+  /* the photo copy from PHOTO_SAYS and the pull's lost/gone notes */
+  const PHOTO_LINE =
+    /Photos need|photo repo|photos didn’t sync|photo uploads|to finish the photos|trouble with the photos|photos sent|still to go|not on GitHub|never pushed|now gone/i;
+  const pushed = remoteText() ? JSON.parse(remoteText()) : {};
+  ok(!!btn(/^Pushed ✓$/), "47.5 the push still finishes, with the ledger on GitHub");
+  eq(
+    pushed.envelopes?.[0]?.photos,
+    ["pho-k"],
+    "47.5 and the pushed ledger still references the id"
+  );
+  eq(remotePhotoIds(), [], "47.5 and nothing is uploaded to the photo repo");
+  ok(!PHOTO_LINE.test(text()), "47.5 and no photo line is shown");
+}
+
+/* ---- the same store, on a pull ----
+   The pull's twin of the push case, on 30.10's fixture: the store is there and
+   lacks the blob, so a READABLE store would report pho-a as lost. Unreadable,
+   the pull must skip its photo phase and say nothing about photos. applyBackup's
+   own keys() read is unreadable too, so it keeps the pulled id. Read as empty,
+   the survey calls pho-a lost and the line shows: this is the kill for the
+   read-as-empty mutant. */
+{
+  await boot({ items: ITEMS, received: {} }, null, { remote: PHOTO_LEDGER });
+  await openSync();
+  await saveGitHubKey(); /* the key is what makes the photo store readable */
+  const keysBefore = win.photos.keys;
+  win.photos.keys = async () => {
+    throw new Error("local photo store unreadable");
+  };
+  try {
+    await click(btn(/Pull from GitHub/), "arm");
+    await click(btn(/Tap again to replace/), "confirm");
+    await sleep(SAVE_WAIT);
+  } finally {
+    win.photos.keys = keysBefore;
+  }
+  eq(
+    saved().envelopes[0].photos,
+    ["pho-a"],
+    "47.6 an unreadable local store keeps the pulled photo id"
+  );
+  ok(!/not on GitHub/i.test(text()), "47.6 and reports no photo as lost");
+}
+
+/* ---- the grid is two columns ----
+   The full-row span in 47.3 only means half the panel if the grid is two
+   columns. jsdom has no layout, so this reads the inline style. The mutant is
+   optGrid(3) on the sync grid, which every span check above still passes. */
+{
+  const grid = btn(/^Push$/).parentElement;
+  ok(
+    /^repeat\(\s*2\s*,/.test(grid.style.gridTemplateColumns),
+    "47.7 the sync grid is two columns"
   );
 }
 
