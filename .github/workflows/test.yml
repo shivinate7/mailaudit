@@ -17,6 +17,7 @@ on:
     paths:
       - "src/**"
       - "test/**"
+      - "worker/**"
       - "package.json"
       - "build.mjs"
       - "check-records.mjs"
@@ -51,6 +52,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run test:check-docs
+      - run: npm run test:worker
       # The one suite run. TZ is pinned non-UTC so test 38.9 runs (it skips in
       # UTC); check:docs below reads its pass count from this log.
       # pipefail makes a red suite fail the step despite the tee.
