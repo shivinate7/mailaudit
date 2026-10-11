@@ -996,7 +996,11 @@ export async function boot(state, photos, opts = {}) {
   else win.remote = remoteApi;
   /* a fresh device has no sync key; each boot is a new device */
   sync = syncFresh();
-  win.sync = syncApi;
+  /* the Worker adapter ships in every real build, so a test that needs it opts
+     in. Without it the app sees no adapter, and no sync-key entrance is offered
+     to a keyless device, which is what groups 1-52 were written against. */
+  if (opts.syncKey || opts.syncAdapter) win.sync = syncApi;
+  else delete win.sync;
   /* a seeded device key and server ledger, set before mount so the app sees
      them at its first read. The server is at rev 1 once it holds a ledger. */
   if (opts.syncKey) sync.key = opts.syncKey;

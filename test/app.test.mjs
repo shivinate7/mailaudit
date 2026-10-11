@@ -5075,8 +5075,10 @@ eq(
 
 const SYNC_KEY = "sync_SECRETVALUE-42";
 const SYNC_LEAK = /sync_SECRET/;
+/* this group tests the adapter itself, so it boots with the adapter installed */
+const freshSync = () => boot({ items: ITEMS, received: {} }, null, { syncAdapter: true });
 
-await fresh();
+await freshSync();
 eq(await win.sync.hasKey(), false, "52.1 a fresh device has no sync key");
 await win.sync.setKey(SYNC_KEY);
 eq(await win.sync.hasKey(), true, "52.2 setKey makes hasKey true");
@@ -5089,7 +5091,7 @@ try {
 eq(badCode, "bad-key", "52.3 a key outside the Worker's alphabet is refused");
 
 /* the same three-place check as 25.24 to 25.27, for the sync key */
-await fresh();
+await freshSync();
 await win.sync.setKey(SYNC_KEY);
 await openSync();
 await saveGitHubKey("github_pat_SECRETVALUE");
@@ -5109,7 +5111,7 @@ eq(
 );
 
 /* the mock's own contract, as route() in worker/core.mjs states it */
-await fresh();
+await freshSync();
 const unkeyed = await win.sync.post({ mailday: 1, items: [] });
 eq(unkeyed.status, 401, "52.8 a post with no key is refused");
 await win.sync.setKey(SYNC_KEY);
@@ -6379,12 +6381,12 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   /* 59.1. A keyless Worker device, with GitHub healthy, still has an entrance. The
      sync line offers it, since the line is the one entrance, and a keyless device
      is not on the new path. No new control was added beside it. */
-  await boot(SEED59, null, { remoteKey: GH59 });
+  await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true });
   await settle();
   ok(!!entry59(), "59.1 a keyless Worker device offers a sync key entry, though sync is healthy");
 
   /* 59.2. A valid key, pasted and saved, calls setKey, then runs the cold-open path. */
-  await boot(SEED59, null, { remoteKey: GH59 });
+  await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true });
   await settle();
   const spy2 = spySetKey59();
   try {
@@ -6409,7 +6411,7 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
 
   /* 59.3. A key with characters outside the alphabet is refused with a plain message.
      setKey is not called, and no native dialog opens (no-native-dialogs). */
-  await boot(SEED59, null, { remoteKey: GH59 });
+  await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true });
   await settle();
   const spy3 = spySetKey59();
   let dialogs59 = 0;
@@ -6453,6 +6455,20 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   } finally {
     spy5.restore();
   }
+
+  /* 59.6. In step with GitHub, a keyless Worker device still offers the paste line.
+     Its own boot, with the panel closed: an open panel shows the line on its own,
+     which would prove nothing. A device that has a GitHub token but no Worker key
+     is the owner's iPhone, so the line must show, never be suppressed. */
+  await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true, remote: null });
+  await openSync();
+  await click(btn(/^Push$/), "push, so this device agrees with GitHub");
+  await settle();
+  ok(/Backed up/.test(text()), "59.6pre the device is in step: a recent push, so syncedAt is set");
+  await click(btn(/tap to close/), "close the panel, leaving a healthy keyless device");
+  await settle();
+  ok(!/tap to fix/.test(text()), "59.6a in step, no fault line is shown");
+  ok(!!entry59(), "59.6b a keyless device in step with GitHub still shows the sync key paste line");
 }
 
 uninstallClock();
