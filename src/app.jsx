@@ -3098,6 +3098,8 @@ export default function MailDayLedger() {
   const [remoteTarget, setRemoteTarget] = useState(null);
   const [remoteInfo, setRemoteInfo] = useState(null); // { hasKey, sha, pushedAt, pulledAt }
   const [serverDown, setServerDown] = useState(false); // the Worker POST failed as unknown
+  const [workerKey, setWorkerKey] = useState(false); // this device has a Worker key
+  const [waiting, setWaiting] = useState(false); // a Worker reply is held for the idle gate
   const [pushState, setPushState] = useState("idle"); // idle | pushing | pushed | conflict
   const [pullState, setPullState] = useState("idle"); // idle | pulling
   const [mergeState, setMergeState] = useState("idle"); // idle | merging
@@ -4636,7 +4638,7 @@ export default function MailDayLedger() {
     clearTimeout(applyTimer.current);
     if (!pendingReply.current) return;
     const idle = idleReady(lastActivity.current, Date.now());
-    if (!idle || mergeBlocked || syncingRef.current) {
+    if (!idle || mergeBlocked || importMsg || syncingRef.current) {
       /* wake when the idle gate opens; an armed guard is re-checked each second */
       const left = IDLE_APPLY_MS - (Date.now() - lastActivity.current);
       applyTimer.current = setTimeout(() => tryApplyRef.current(), idle ? 1000 : Math.max(left, 100));
@@ -4644,7 +4646,16 @@ export default function MailDayLedger() {
     }
     const reply = pendingReply.current;
     pendingReply.current = null;
+    setWaiting(false);
     doMerge(false, true, reply);
+  };
+  /* one home for a held reply, from a POST or from a rev-gated GET */
+  const holdReply = (r) => {
+    if (typeof r.body?.rev === "number") lastRev.current = Math.max(lastRev.current, r.body.rev);
+    if (r.code !== "ok" || !r.body?.ledger) return;
+    pendingReply.current = r.body.ledger;
+    setWaiting(true);
+    tryApplyRef.current();
   };
   const postRef = useRef(null);
   postRef.current = async () => {
@@ -4653,11 +4664,34 @@ export default function MailDayLedger() {
     /* unknown (network, 5xx) is the only code that sends this cycle to GitHub.
        empty is not an error. */
     setServerDown(r.code === "unknown");
-    if (r.code === "ok" && r.body?.ledger) {
-      pendingReply.current = r.body.ledger;
-      tryApplyRef.current();
-    } else if (r.code === "unknown" && !syncingRef.current) await autoMergeRef.current();
+    if (r.code === "ok") holdReply(r);
+    else if (r.code === "unknown" && !syncingRef.current) await autoMergeRef.current();
   };
+  /* a rev above the last one seen (POST and GET replies set it) is one GET */
+  const lastRev = useRef(0);
+  const revRef = useRef(null);
+  revRef.current = async (rev) => {
+    if (rev <= lastRev.current) return;
+    lastRev.current = rev;
+    holdReply(await window.sync.get());
+  };
+  /* a guard clearing is a reason to look again now, not at the next poll */
+  useEffect(() => {
+    tryApplyRef.current();
+  }, [mergeBlocked, importMsg]);
+  useEffect(() => {
+    let close = null;
+    let dead = false;
+    (async () => {
+      if (!window.sync || !(await window.sync.hasKey()) || dead) return;
+      setWorkerKey(true);
+      close = window.sync.connect((rev) => revRef.current(rev));
+    })();
+    return () => {
+      dead = true;
+      if (close) close();
+    };
+  }, []);
   useEffect(() => {
     const touch = () => {
       lastActivity.current = Date.now();
@@ -6445,7 +6479,12 @@ export default function MailDayLedger() {
                   the spot just tapped instead of wrapping to a new line under
                   it, and the two controls a mis-tap could land on aren't there
                   to land on. */}
-              {(syncBroken || syncOpen) && (
+              {/* the advisory slot keeps its height, empty or filled, so a line
+                  arriving cannot move the row under a thumb */}
+              {workerKey && !(syncBroken || syncOpen || waiting) && (
+                <div data-advisory-slot style={{ minHeight: 40 }} />
+              )}
+              {(syncBroken || syncOpen || waiting) && (
                 /* The one thing sync is allowed to say, and the only entrance
                    to the repair kit. Advisory manila, never red — being
                    unbacked-up is a state to fix, not a loss that has happened;
@@ -6473,7 +6512,9 @@ export default function MailDayLedger() {
                     setSyncOpen((o) => !o);
                   }}
                   aria-expanded={syncOpen}
+                  {...(workerKey ? { "data-advisory-slot": "" } : {})}
                   style={{
+                    ...(workerKey ? { minHeight: 40 } : {}),
                     display: "block",
                     width: "100%",
                     textAlign: "left",
@@ -6488,7 +6529,9 @@ export default function MailDayLedger() {
                     cursor: "pointer",
                   }}
                 >
-                  {syncBroken === "seeded"
+                  {!syncBroken && waiting
+                    ? "Updates from the other device are waiting"
+                    : syncBroken === "seeded"
                     ? "A snapshot of someone else’s ledger — anything you change stays on this device"
                     : syncBroken === "no-access"
                     ? "This device can’t see the backup — tap to add its key"
