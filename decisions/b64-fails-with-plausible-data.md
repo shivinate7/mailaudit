@@ -22,4 +22,4 @@ Group 25's non-ASCII round trip goes through an envelope entry. iOS smart punctu
 
 - `photo-rules-fails-quietly` — the same reasoning applied to photo naming
 - `remote-rules-fail-quietly` — the same reasoning applied to the remote adapter
-- `merge-rules-only-add` — the same reasoning applied to the merge module
+- `merge-later-change-wins` — the same reasoning applied to the merge module

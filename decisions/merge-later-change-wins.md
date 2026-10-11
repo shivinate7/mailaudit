@@ -1,6 +1,6 @@
-# The two-device merge adds, and removals win by time
+# The later change wins in a two-device merge.
 
-The merge never drops an item. A count can fall, but only when a later write wins the merge. An un-check is one such write. A merge that silently drops 35 imported lines looks the same as one that worked, so the rule matters. Running the merge again is harmless.
+The merge drops an item only when a later write wins. A count falls only that way. An un-check is one such write. A merge that silently drops 35 imported lines looks the same as one that worked, so the rule matters. Running the merge again is harmless.
 
 **Holds while:** `mergeReceived` in `src/merge-rules.mjs` takes the later time per key, and the per-key max when a time is missing. `mergeLedger` builds its result from named fields.
 

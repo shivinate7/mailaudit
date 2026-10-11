@@ -27,4 +27,4 @@ Group 40 also kills a quiet merge that announces itself.
 
 - `auto-push-safe-as-merge-exists` — why this proof matters before automatic sync runs
 - `push-and-merge-guard-differently` — the guard rules this proof exercises
-- `merge-rules-only-add` — the union rule this conflict test is proving
+- `merge-later-change-wins` — the union rule this conflict test is proving

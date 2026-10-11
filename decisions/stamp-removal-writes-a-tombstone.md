@@ -11,4 +11,4 @@ Removing an order stamp writes a tombstone value instead of deleting the entry. 
 ## See also
 
 - `one-stamp-per-package` — the value this tombstone replaces.
-- `merge-rules-only-add` — the merge rule a tombstone must still win against.
+- `merge-later-change-wins` — the merge rule that lets a tombstone beat an older stamp.

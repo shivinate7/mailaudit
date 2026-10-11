@@ -19,4 +19,4 @@ The HTTP round trip itself is still uncovered.
 
 - `b64-fails-with-plausible-data` — the same reasoning, on the base64 module
 - `photo-rules-fails-quietly` — the same reasoning, on the photo-sync module
-- `merge-rules-only-add` — the same reasoning, on the merge module
+- `merge-later-change-wins` — the same reasoning, on the merge module

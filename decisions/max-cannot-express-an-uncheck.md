@@ -6,6 +6,6 @@ A per-key `receivedAt` map closes this. Each check or un-check stores the time o
 
 ## See also
 
-- `merge-rules-only-add` — the rule this exception was carved from, now revised
+- `merge-later-change-wins` — the rule this exception was carved from, now revised
 - `imports-merge-never-replace` — the wider merge philosophy this sits inside
 - `sync-revamp-cloudflare` — the design that added `receivedAt`

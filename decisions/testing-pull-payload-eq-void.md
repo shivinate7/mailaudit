@@ -11,4 +11,4 @@ Watch for this shape generally. After a pull, payload-equality assertions prove 
 ## See also
 
 - `testing-unfailable-assert-decor` — the general rule this specific case follows
-- `merge-rules-only-add` — the pull and merge behavior this assertion was written to check
+- `merge-later-change-wins` — the pull and merge behavior this assertion was written to check

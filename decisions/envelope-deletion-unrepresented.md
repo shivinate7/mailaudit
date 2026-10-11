@@ -12,4 +12,4 @@ Tombstones and stamps orphaned by a changed seller string are never pruned. Both
 
 - `orphaned-mail-never-decides` — the invariant a stray envelope still obeys
 - `stamp-removal-writes-a-tombstone` — the pattern a discard now follows
-- `merge-rules-only-add` — the merge rule this record revised
+- `merge-later-change-wins` — the merge rule this record revised
