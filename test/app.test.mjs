@@ -6347,5 +6347,113 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   }
 }
 
+/* ---- 59. the Worker sync key, pasted on this device ----
+   The home-screen app keeps its own storage, apart from Safari, so a key that
+   arrives by the QR link reaches Safari only. These cases pin a paste entry.
+   Red on main by design: the entry does not exist yet. The entry is the sync
+   line, which must offer it for a keyless Worker device (see
+   ruled-head-one-advisory-entrance: the one line is the only entrance). */
+{
+  const GH59 = "github_pat_testtoken";
+  const KEY59 = "k59-" + "A".repeat(39); /* 43 characters, the Worker's alphabet */
+  const BAD59 = "bad key!";
+  const SEED59 = {
+    items: ITEMS.slice(0, 3),
+    received: { [ITEMS[0].key]: 1 },
+    receivedAt: { [ITEMS[0].key]: 100 },
+  };
+  const count59 = (op) => syncCalls().filter((c) => c.op === op).length;
+  const entry59 = () =>
+    buttons().find((b) => /sync key/i.test(b.textContent) && /tap to/i.test(b.textContent)) ?? null;
+  const field59 = () => document.querySelector('input[aria-label="Sync key"]');
+  const spySetKey59 = () => {
+    const real = win.sync.setKey;
+    const calls = { n: 0 };
+    win.sync.setKey = (k) => {
+      calls.n += 1;
+      return real(k);
+    };
+    return { calls, restore: () => (win.sync.setKey = real) };
+  };
+
+  /* 59.1. A keyless Worker device, with GitHub healthy, still has an entrance. The
+     sync line offers it, since the line is the one entrance, and a keyless device
+     is not on the new path. No new control was added beside it. */
+  await boot(SEED59, null, { remoteKey: GH59 });
+  await settle();
+  ok(!!entry59(), "59.1 a keyless Worker device offers a sync key entry, though sync is healthy");
+
+  /* 59.2. A valid key, pasted and saved, calls setKey, then runs the cold-open path. */
+  await boot(SEED59, null, { remoteKey: GH59 });
+  await settle();
+  const spy2 = spySetKey59();
+  try {
+    if (entry59()) await click(entry59(), "open the sync key entry");
+    await settle();
+    ok(!!field59(), "59.2a0 the sync key field opens from the entry");
+    if (field59()) await type(field59(), KEY59);
+    if (btn(/^Save sync key$/)) await click(btn(/^Save sync key$/), "save the pasted key");
+    await sleep(1000);
+    await settle();
+    eq(spy2.calls.n, 1, "59.2a the valid key is passed to window.sync.setKey once");
+    ok(await win.sync.hasKey(), "59.2b and the device now holds a Worker key");
+    ok(count59("get") > 0, "59.2c saving runs the cold-open path: a GET");
+    ok(count59("post") > 0, "59.2d and a POST, since local holds a check-in the server lacks");
+    /* 59.4. The key never shows in the DOM after saving. The field clears and masks. */
+    ok(!document.body.innerHTML.includes(KEY59), "59.4a the key never shows in the DOM after saving");
+    const f4 = field59();
+    ok(!!f4 && f4.value === "" && f4.type === "password", "59.4b the field stays, cleared and masked");
+  } finally {
+    spy2.restore();
+  }
+
+  /* 59.3. A key with characters outside the alphabet is refused with a plain message.
+     setKey is not called, and no native dialog opens (no-native-dialogs). */
+  await boot(SEED59, null, { remoteKey: GH59 });
+  await settle();
+  const spy3 = spySetKey59();
+  let dialogs59 = 0;
+  const realAlert = win.alert;
+  const realConfirm = win.confirm;
+  const realPrompt = win.prompt;
+  win.alert = win.confirm = win.prompt = () => {
+    dialogs59 += 1;
+  };
+  try {
+    if (entry59()) await click(entry59(), "open the sync key entry");
+    await settle();
+    ok(!!field59(), "59.3pre the field is reachable, so the refusal case means something");
+    if (field59()) await type(field59(), BAD59);
+    if (btn(/^Save sync key$/)) await click(btn(/^Save sync key$/), "save a bad key");
+    await sleep(1000);
+    await settle();
+    ok(!!field59() && spy3.calls.n === 0, "59.3a a key outside the alphabet is refused, and setKey is not called");
+    ok(/not a valid sync key/i.test(text()), "59.3b and the refusal is a plain message");
+    ok(!!field59() && dialogs59 === 0, "59.3c and no native dialog opens");
+  } finally {
+    win.alert = realAlert;
+    win.confirm = realConfirm;
+    win.prompt = realPrompt;
+    spy3.restore();
+  }
+
+  /* 59.5. With a Worker key already set, the entry still exists, so a key can be replaced. */
+  await boot(SEED59, null, { remoteKey: GH59, syncKey: KEY59 });
+  await settle();
+  ok(!!entry59(), "59.5a with a Worker key set, the sync key entry still exists, so the key can be replaced");
+  const spy5 = spySetKey59();
+  try {
+    if (entry59()) await click(entry59(), "open the sync key entry");
+    await settle();
+    if (field59()) await type(field59(), "k59-" + "B".repeat(39));
+    if (btn(/^Save sync key$/)) await click(btn(/^Save sync key$/), "replace the key");
+    await sleep(1000);
+    await settle();
+    ok(spy5.calls.n > 0, "59.5b and a replacement key is passed to setKey");
+  } finally {
+    spy5.restore();
+  }
+}
+
 uninstallClock();
 report();
