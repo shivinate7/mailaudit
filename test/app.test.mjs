@@ -4220,4 +4220,149 @@ eq(
   "48.5 once the store reads again the words clear and the photo goes up"
 );
 
+/* ---- 48.6 a keyless cold start on the private ledger ----
+   The 38c device opened cold: the private ledger is seeded before the mount, so
+   the mount's own look is the only remote read, and it is refused. No pull runs
+   here. 38c.1 misses this bug because its failed pull sets remoteMsg, and that
+   outranks backupUnknown. */
+const NO_KEY_LINE = /tap to (set it up|add its key)/;
+await boot({ items: ITEMS, received: {} }, null, {
+  remoteAtBoot: LAPTOP_PUSHED,
+  remotePrivate: true,
+});
+await settle();
+eq(
+  {
+    looked: peeks().length > 0,
+    noKey: onLine(NO_KEY_LINE),
+    unknownWords: BACKUP_UNKNOWN.test(text()),
+  },
+  { looked: true, noKey: true, unknownWords: false },
+  "48.6 a keyless cold start on the private ledger says the key is missing, not that the backup could not be checked"
+);
+
+/* ---- 48.7 an unreadable photo push, then a readable pull or merge ----
+   Only the push path clears the unreadable flag today. Both paths below read
+   the remote with the photo store readable and push nothing: the manual pull,
+   and the unattended merge (alsoPush false). The incoming ledger references
+   pho-k, so the readable survey really runs. */
+const photoListCalls = () => remote.calls.filter((c) => c.op === "listPhotos").length;
+const brokenLine = () => onLine(/tap to (?!close)/);
+
+/* the manual pull */
+await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], KEY);
+await openSync();
+const keysBefore487a = win.photos.keys;
+win.photos.keys = unreadable;
+try {
+  await click(btn(/^Push$/), "push with an unreadable local store");
+  await sleep(60);
+} finally {
+  win.photos.keys = keysBefore487a;
+}
+const before487a = PHOTO_UNREADABLE.test(text());
+const pushes487a = pushes().length;
+const lists487a = photoListCalls();
+await click(btn(/Pull from GitHub/), "arm pull");
+await click(btn(/Tap again to replace/), "confirm pull");
+await sleep(SAVE_WAIT);
+eq(
+  {
+    before: before487a,
+    listed: photoListCalls() > lists487a,
+    applied: remote.deviceSha === remote.sha,
+    pushed: pushes().length - pushes487a,
+    words: PHOTO_UNREADABLE.test(text()),
+    line: brokenLine(),
+  },
+  { before: true, listed: true, applied: true, pushed: 0, words: false, line: false },
+  "48.7 a readable pull clears the unreadable-photos words (manual pull)"
+);
+
+/* the unattended merge: the other device is ahead, and the device is away long
+   enough to be a fresh session, so autoMerge runs with alsoPush false */
+await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], KEY);
+await openSync();
+const keysBefore487b = win.photos.keys;
+win.photos.keys = unreadable;
+try {
+  await click(btn(/^Push$/), "push with an unreadable local store");
+  await sleep(60);
+} finally {
+  win.photos.keys = keysBefore487b;
+}
+remote.sha = "sha-other"; /* the other device pushed since: peek says ahead */
+const before487b = PHOTO_UNREADABLE.test(text());
+const pushes487b = pushes().length;
+const lists487b = photoListCalls();
+await backgroundFor(5 * 60_000);
+await settle();
+await sleep(60);
+eq(
+  {
+    before: before487b,
+    listed: photoListCalls() > lists487b,
+    applied: remote.deviceSha === remote.sha,
+    pushed: pushes().length - pushes487b,
+    words: PHOTO_UNREADABLE.test(text()),
+    line: brokenLine(),
+  },
+  { before: true, listed: true, applied: true, pushed: 0, words: false, line: false },
+  "48.7 a readable unattended merge clears the unreadable-photos words (autoMerge)"
+);
+
+/* ---- 48.8 one look fails, the next succeeds, inside one check ----
+   A single transient {known:false} must not raise the line. The look is retried
+   once before the line is raised. Both looks, the foreground check and the
+   unattended autoPush, take the same path as 48.4. */
+for (const [path, look] of [
+  ["foreground peek", foreground],
+  ["autoPush", background],
+]) {
+  await boot({ items: ITEMS, received: {} }, null, KEY);
+  await background(); /* a healthy push first, so "never synced" is not the reason */
+  await settle();
+  remote.peekUnknownOnce = "offline";
+  const peeksBefore = peeks().length;
+  await look();
+  await sleep(60);
+  const consumed = remote.peekUnknownOnce === null;
+  remote.peekUnknownOnce = null;
+  eq(
+    {
+      looked: peeks().length > peeksBefore,
+      consumed,
+      words: BACKUP_UNKNOWN.test(text()),
+      onLine: onLine(BACKUP_UNKNOWN),
+    },
+    { looked: true, consumed: true, words: false, onLine: false },
+    `48.8 one transient unknown look does not raise the line (${path})`
+  );
+}
+
+/* ---- 48.9 a look that stays unknown on both tries still raises the line ----
+   The other side of the retry. 48.4 covers one unknown look, so this adds the
+   recovery: a later known look must clear the line, or a retry that latches
+   would pass 48.4. */
+for (const [path, look] of [
+  ["foreground peek", foreground],
+  ["autoPush", background],
+]) {
+  await boot({ items: ITEMS, received: {} }, null, KEY);
+  await background(); /* a healthy push first, so "never synced" is not the reason */
+  await settle();
+  remote.peekUnknown = "offline";
+  await look();
+  await sleep(60);
+  const shown = onLine(BACKUP_UNKNOWN);
+  remote.peekUnknown = null;
+  await look();
+  await sleep(60);
+  eq(
+    { shown, cleared: !BACKUP_UNKNOWN.test(text()) },
+    { shown: true, cleared: true },
+    `48.9 a remote unknown on both tries shows the line, and a later known look clears it (${path})`
+  );
+}
+
 report();

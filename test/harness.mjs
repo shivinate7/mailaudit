@@ -202,6 +202,10 @@ export let remote = {
   /* what peek() can see. null = readable; a code = "we could not look", which
      is the state auto-push must refuse to act on. */
   peekUnknown: null,
+  /* one-shot, peek only. The first look is "could not look" and the next one
+     reads normally: the transient a single retry exists for. Consumed by the
+     look that reads it, so a test can check it was used. */
+  peekUnknownOnce: null,
   /* the ledger repo is private: a keyless device gets 404, not the file */
   private: false,
   history: [], // every push, as a commit
@@ -261,6 +265,11 @@ const remoteApi = {
   async peek() {
     remote.calls.push({ op: "peek" });
     if (remote.peekUnknown) return { known: false, reason: remote.peekUnknown };
+    if (remote.peekUnknownOnce) {
+      const reason = remote.peekUnknownOnce;
+      remote.peekUnknownOnce = null;
+      return { known: false, reason };
+    }
     /* "I cannot see it" is not "nobody is ahead" — that reading is the state in
        which this device goes on pushing over the other one */
     if (remote.private && !remote.key)
@@ -453,6 +462,7 @@ export const resetRemote = (seedText) => {
     pulledAt: null,
     auto: false,
     peekUnknown: null,
+    peekUnknownOnce: null,
     private: false,
     history: [],
   };
@@ -778,6 +788,9 @@ export async function boot(state, photos, opts = {}) {
   /* a key present BEFORE the app mounts — the state every one of the owner's
      devices is in, and the one the seed guard turns on */
   if (opts.remoteKey) remote.key = opts.remoteKey;
+  /* a private ledger repo BEFORE the mount, so the cold-start look meets it.
+     Setting `private` after boot is a glance, not a cold start. */
+  if (opts.remotePrivate) remote.private = true;
   if (opts.noRemote) delete win.remote;
   else win.remote = remoteApi;
   if (state) store["mailday:v1"] = JSON.stringify(state);
