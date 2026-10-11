@@ -6104,8 +6104,10 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     await sleep(AUTO58 + 1000); /* the push meets the stale sha, merges, and the merge POST fails */
     await settle();
     const peeks0 = peeks().length;
+    setSyncNetFail(false); /* the Worker answers again; mirror mode stays off until a reply */
     await sleep(AUTO58 + 1000); /* mirror mode is off, so this push takes the GitHub path */
     await settle();
+    ok(pushes().length >= 2, "58.FB1a the device reaches a second push, so the line check means something");
     ok(
       remote.history.every((h) => JSON.parse(h.text).items.length >= 12),
       "58.FB1 a failed merge POST never leaves GitHub with fewer than its 12 lines"
@@ -6113,6 +6115,79 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     ok(peeks().length > peeks0, "58.FB2 with mirror mode off, the next push takes the GitHub path, which peeks");
   } finally {
     setSyncNetFail(false);
+  }
+
+  /* G1 (F-B gap). A mirror conflict, then the merge POST fails, and the page hides
+     at once. The GitHub push that follows must carry the merged ledger: 3 local
+     lines and 12 GitHub lines, 15 in all. Never fewer than GitHub held. */
+  await boot({ items: LOCAL58, received: {} }, null, {
+    remote: asRemote58(REMOTE58),
+    remoteKey: GH58,
+    syncKey: KEY58,
+  });
+  await settle();
+  await click(btn(/Mark all received/), "check in, so the Worker holds this device's copy");
+  await sleep(POST58);
+  await settle();
+  setSyncNetFail(true);
+  try {
+    await sleep(AUTO58 + 1000); /* the conflict, then the merge POST fails */
+    await settle();
+    await background(); /* the page hides at once, before any held apply runs */
+    setSyncNetFail(false);
+    await sleep(AUTO58 + 1000);
+    await settle();
+  } finally {
+    setSyncNetFail(false);
+  }
+  const lastG1 = remote.history.at(-1);
+  eq(
+    lastG1 ? JSON.parse(lastG1.text).items.length : 0,
+    15,
+    "58.G1 the GitHub push after a failed merge POST carries the merged ledger, 15 lines"
+  );
+
+  /* E3. Empty store on cold open. Local holds data, the first GET answers 404
+     empty, and the device POSTs its ledger within about 1 s (ledger-v3 starts empty). */
+  {
+    const K3 = ITEMS[0].key;
+    await boot({ items: ITEMS.slice(0, 3), received: { [K3]: 1 }, receivedAt: { [K3]: 100 } }, null, {
+      syncKey: KEY58,
+    });
+    await settle();
+    ok(count58("get") > 0, "58.E3a0 the cold GET was made, so the empty reply means something");
+    await sleep(1000);
+    await settle();
+    ok(count58("post") > 0, "58.E3a the device POSTs its ledger within about 1 s of an empty reply");
+    eq((await win.sync.get()).body?.ledger?.received?.[K3], 1, "58.E3b and the store holds the check-in");
+  }
+
+  /* N5w. From just before a remote apply to 10 s after it, no POST: the snapshot
+     equals the server ledger. Deleting the gate in the save effect makes every
+     apply POST, and this window sees it. */
+  {
+    const K5w = ITEMS[0].key;
+    await boot({ items: ITEMS.slice(0, 3), received: { [K5w]: 1 }, receivedAt: { [K5w]: 100 } }, null, {
+      noRemote: true,
+      syncKey: KEY58,
+    });
+    await settle();
+    await sleep(SAVE_WAIT);
+    const SERVER5w = { mailday: 1, ...saved() };
+    const LOCAL5w = { items: ITEMS.slice(0, 3), received: {}, envelopes: [] };
+    await boot(LOCAL5w, null, { noRemote: true, syncKey: KEY58, syncLedger: LOCAL5w });
+    await settle();
+    await pageshow();
+    await sleep(APPLY_WAIT);
+    const postsW = count58("post");
+    await fireSyncRev(syncRev() + 1, SERVER5w);
+    await sleep(APPLY_WAIT);
+    await settle();
+    await sleep(SAVE_WAIT);
+    ok(saved().received?.[K5w] === 1, "58.N5w0 the remote change is applied and saved");
+    await sleep(10000);
+    await settle();
+    eq(count58("post") - postsW, 0, "58.N5w no POST from the apply to 10 s after it");
   }
 
   /* Step 8. A cold open with a key, where this device holds a check-in the server
