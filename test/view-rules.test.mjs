@@ -24,6 +24,7 @@ const normName = fn("normName");
 const groupPackages = fn("groupPackages");
 const matchEnvelope = fn("matchEnvelope");
 const rankCandidates = fn("rankCandidates");
+const isUntracked = fn("isUntracked");
 
 /* ---------- assertion helpers ---------- */
 
@@ -176,6 +177,16 @@ eq(
   "LT's Hobbies&Games2",
   "V1.7 an entity in the seller name is decoded before it is kept"
 );
+/* blank-name rule: a row with no product name is dropped, whatever its vendor */
+eq(
+  names(parseItems([{ ...TCG, "Product Name": "   " }, { ...TCG, "Product Name": undefined }])),
+  [],
+  "V1.8 a row whose product name is blank or missing is dropped"
+);
+/* TCGplayer Direct quirk: "Sold by X" in Set Name is blanked. Only that prefix. */
+eq(parseItems([{ ...TCG, "Set Name": "Sold by Alpha Cards" }])?.[0]?.set, "", "V1.9 a Sold by set name is blanked");
+eq(parseItems([{ ...TCG, "Set Name": "SOLD BY beta" }])?.[0]?.set, "", "V1.10 the Sold by match ignores case");
+eq(parseItems([{ ...TCG, "Set Name": "Sold Out Edition" }])?.[0]?.set, "Sold Out Edition", "V1.11 a set name that only starts with sold is kept");
 
 /* ── V2. lost-mail flags count from the order date (lost-mail-flags-use-order-date) ─ */
 /* source: test/app.test.mjs group 37 (37.11, 37.12) and the untracked-only rule */
@@ -186,6 +197,37 @@ eq(lostMail(ago(13.5), "without tracking", false), null, "V2.3 under fourteen da
 eq(lostMail(ago(35), "without tracking", true), null, "V2.4 a received or stamped order raises nothing");
 eq(lostMail(ago(35), "with tracking", false), null, "V2.5 a tracked package raises nothing");
 eq(lostMail("not a date", "without tracking", false), null, "V2.6 an unreadable order date raises nothing");
+
+/* fixed clock: lostMail reads Date.now, so the boundary is set, not raced.
+   CSV dates are date-only, which Date.parse reads as UTC midnight. */
+const withClock = (iso, run) => {
+  const real = Date.now;
+  Date.now = () => Date.parse(iso);
+  try {
+    return run();
+  } finally {
+    Date.now = real;
+  }
+};
+const at = (iso, date, tracking = "without tracking", done = false) =>
+  withClock(iso, () => lostMail(date, tracking, done));
+const NOON_CLOCK = "2026-07-15T00:00:00Z";
+eq(at(NOON_CLOCK, "2026-07-02"), null, "V2.7 thirteen days raises nothing");
+eq(at(NOON_CLOCK, "2026-07-01"), { tier: "maybe", days: 14 }, "V2.8 exactly fourteen days is the maybe tier");
+eq(at(NOON_CLOCK, "2026-06-16"), { tier: "maybe", days: 29 }, "V2.9 twenty-nine days is still the maybe tier");
+eq(at(NOON_CLOCK, "2026-06-15"), { tier: "deadline", days: 30 }, "V2.10 exactly thirty days is the deadline tier");
+eq(
+  at("2026-07-15T12:00:00Z", "2026-07-01"),
+  { tier: "maybe", days: 14 },
+  "V2.11 a partial day counts down, so 14.5 days reads as 14"
+);
+/* isUntracked is the same rule lostMail reads: untracked means exactly "without tracking" */
+eq(isUntracked({ tracking: "without tracking" }), true, "V2.12 without tracking is untracked");
+eq(isUntracked({ tracking: "Without Tracking" }), true, "V2.13 the untracked match ignores case");
+eq(isUntracked({ tracking: "with tracking" }), false, "V2.14 with tracking is not untracked");
+eq(isUntracked({ tracking: "unknown" }), false, "V2.15 an unknown status is not untracked");
+eq(isUntracked({ tracking: "canceled" }), false, "V2.16 a canceled status is not untracked");
+eq(isUntracked({}), false, "V2.17 a package with no tracking field is not untracked");
 
 /* ── V3. names match loosely (envelope-names-match-normname) ───────────── */
 /* source: test/app.test.mjs group 8 (smart apostrophe) and group 25 (Æther, Séance) */
@@ -230,6 +272,15 @@ eq(
   ])?.map((p) => p.gk),
   ["X1::Seller One", "X1::Seller Two"],
   "V4.4 one order from two sellers is two packages"
+);
+/* same order date: the seller name breaks the tie, whatever the input order */
+eq(
+  groupPackages([
+    item("S2", "Seller Two", "Ponder", 1, "2026-07-01", "without tracking", 0),
+    item("S1", "Seller One", "Ponder", 1, "2026-07-01", "without tracking", 0),
+  ])?.map((p) => p.gk),
+  ["S1::Seller One", "S2::Seller Two"],
+  "V4.5 packages on one order date sort by seller name"
 );
 
 /* ── V5. what an envelope explains about one package (matchEnvelope) ───── */
@@ -333,6 +384,49 @@ eq(
 const E5 = env(["Brainstorm", 2], ["Counterspell", 1], ["Lightning Bolt", 1]);
 const r5 = rankCandidates(E5, ALL, {});
 ok(r5?.list?.[0]?.exact === true, "V6.12 an envelope that fills a package exactly is marked exact");
+
+/* tie count: a tie needs the same matchedQty AND the same pkgLeft. envLeft is
+   not a separate key: entriesTotal is fixed per envelope, so envLeft is a
+   function of matchedQty and can never split a tie on its own. */
+const mkPkg = (orderId, seller, rows, date = "2026-07-01", tracking = "without tracking") => ({
+  gk: `${orderId}::${seller}`,
+  orderId,
+  seller,
+  date,
+  tracking,
+  items: rows.map(([name, qty], n) => item(orderId, seller, name, qty, date, tracking, n)),
+});
+const rawGks = (r) => (Array.isArray(r?.list) ? r.list.map((c) => c.pkg.gk) : r);
+
+const TIE_X = mkPkg("T1", "Xray", [["Lightning Bolt", 1], ["Ponder", 1]]);
+const TIE_Z = mkPkg("T2", "Zulu", [["Lightning Bolt", 1]]);
+const r13 = rankCandidates(env(["Lightning Bolt", 1], ["Ponder", 1]), [TIE_Z, TIE_X], {});
+eq(r13?.tied, 1, "V6.13 a candidate that matches fewer cards is not a tie, though its pkgLeft is equal");
+eq(rawGks(r13), ["T1::Xray", "T2::Zulu"], "V6.13b the candidate matching more cards ranks first");
+
+const TIE_P = mkPkg("T3", "Papa", [["Lightning Bolt", 1]]);
+const TIE_Q = mkPkg("T4", "Quebec", [["Lightning Bolt", 1], ["Ponder", 1]]);
+const r14 = rankCandidates(env(["Lightning Bolt", 1]), [TIE_Q, TIE_P], {});
+eq(r14?.tied, 1, "V6.14 two candidates that match equally but owe different leftovers are not a tie");
+eq(rawGks(r14), ["T3::Papa", "T4::Quebec"], "V6.14b the candidate that owes less ranks first");
+
+/* render order below the tie: date (older first), then untracked, then gk.
+   Read raw, not gksOf, because gksOf sorts and would hide the order. */
+eq(rawGks(rankCandidates(E3, ALL, {})), ["A1::Alpha Cards", "B1::Beta Games"], "V6.15 equal candidates list the older order first");
+const T_TRACKED = mkPkg("T5", "Tango", [["Lightning Bolt", 1]], "2026-07-01", "with tracking");
+const T_UNTRACKED = mkPkg("U6", "Uniform", [["Lightning Bolt", 1]], "2026-07-01", "without tracking");
+eq(
+  rawGks(rankCandidates(env(["Lightning Bolt", 1]), [T_TRACKED, T_UNTRACKED], {})),
+  ["U6::Uniform", "T5::Tango"],
+  "V6.16 on a full tie an untracked package lists before a tracked one"
+);
+const T_WOLF = mkPkg("W9", "Wolf", [["Lightning Bolt", 1]], "2026-07-01", "without tracking");
+const T_ANT = mkPkg("W8", "Ant", [["Lightning Bolt", 1]], "2026-07-01", "without tracking");
+eq(
+  rawGks(rankCandidates(env(["Lightning Bolt", 1]), [T_WOLF, T_ANT], {})),
+  ["W8::Ant", "W9::Wolf"],
+  "V6.17 on a full tie the package key orders the list, not the input"
+);
 
 /* ---------- report ---------- */
 
