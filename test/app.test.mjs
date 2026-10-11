@@ -6779,7 +6779,7 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
 
   /* 60.5, 60.6: drift. One value changed in the JSON the bundle reads must reach C,
      and the comparator must name it. */
-  const DRIFT60 = "#F2E9DB";
+  const DRIFT60 = "#00FF00"; // no real paper is this green, so a paper edit cannot match it
   const drifted60 = await probeC60({ ...(tokens60 ?? {}), paper: DRIFT60 });
   ok(drifted60?.paper === DRIFT60, "60.5 a drifted tokens file moves the built C.paper, so C reads the JSON");
   ok(diff60(drifted60, tokens60).includes("paper"), "60.6 the comparator names paper when the build drifts");
@@ -6831,7 +6831,7 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
 
   let outsideC60 = null;
   try {
-    outsideC60 = codeOnly60(readOr60(APP60)).replace(/const\s+C\s*=\s*\{[\s\S]*?\n\};?/, "");
+    outsideC60 = codeOnly60(readOr60(APP60));
   } catch {
     outsideC60 = null;
   }
@@ -6861,6 +6861,16 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     colourLiterals60("// #333333\nconst a = 1; /* #444444 */\n"),
     [],
     "60.11d a colour that sits only in comments is not a literal"
+  );
+  eq(
+    colourLiterals60('const sep = "// not a comment", hex = "#abc123";\n'),
+    ["#abc123"],
+    "60.11e a line-comment opener inside a string does not hide the colour after it"
+  );
+  eq(
+    colourLiterals60('const tag = "# note", hex = "#fedcba";\n'),
+    ["#fedcba"],
+    "60.11f a hash opener inside a string does not hide the colour after it"
   );
 }
 
