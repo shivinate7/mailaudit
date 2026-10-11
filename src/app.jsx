@@ -4176,7 +4176,7 @@ export default function MailDayLedger() {
   );
 
   const doPush = useCallback(
-    async (force, quiet = false) => {
+    async (force, quiet = false, mirror = false) => {
       if (!window.remote) return;
       /* doPull and doMerge both clear this; doPush did not. A "Pushed ✓" flash
          from 2s ago would otherwise fire mid-way through the next push and
@@ -4215,6 +4215,8 @@ export default function MailDayLedger() {
         return { ok: true };
       } catch (e) {
         const code = e?.code || "server";
+        /* the mirror treats a stale sha as a forced write, so no conflict state */
+        if (mirror && code === "conflict") return { ok: false, code };
         setPushState(code === "conflict" ? "conflict" : "idle");
         setRemoteMsg({
           code,
@@ -4686,9 +4688,7 @@ export default function MailDayLedger() {
       return;
     }
     clearTimeout(postTimer.current);
-    /* 500 ms inside the deadline, so the POST is on the wire by SYNC_POST_MS
-       after the tap, not SYNC_POST_MS after the effect that follows the tap */
-    postTimer.current = setTimeout(() => postRef.current(), SYNC_POST_MS - 500);
+    postTimer.current = setTimeout(() => postRef.current(), SYNC_POST_MS);
     return () => clearTimeout(postTimer.current);
   }, [items, received, receivedAt, envelopes, stamps, loaded]);
 
@@ -4717,6 +4717,8 @@ export default function MailDayLedger() {
       const fresh = freshSession.current;
       freshSession.current = false;
       if (document.visibilityState === "hidden" || syncingRef.current) return;
+      /* a Worker key retires the GitHub peek; the mirror push is autoPush's */
+      if (window.sync && (await window.sync.hasKey())) return;
       const p = await peekTwice();
       /* known:false is "we could not look", which must never render as "all
          clear" — leave the flag exactly as it was. Restructured into an early
@@ -4774,6 +4776,13 @@ export default function MailDayLedger() {
     }
     const info = await window.remote.status().catch(() => null);
     if (!info?.hasKey) return;
+    /* With a Worker key, GitHub is a mirror: no peek, no merge, and a stale sha
+       is a forced write (pushForce re-reads the sha), never a two-tap. */
+    if (window.sync && (await window.sync.hasKey())) {
+      const r = await doPush(false, true, true);
+      if (r && !r.ok && r.code === "conflict") await doPush(true, true);
+      return;
+    }
     if (typeof window.remote.peek === "function") {
       const p = await peekTwice();
       /* "could not look" means DO NOT PUSH. This is the whole reason peek is
@@ -4814,7 +4823,7 @@ export default function MailDayLedger() {
     /* deliberately only the three fields that are REAL data. dateFilter,
        sortBy and itemSort are on the debounced save because they persist, but
        re-sorting the screen is not a reason to open a network connection. */
-  }, [items, received, envelopes, loaded]);
+  }, [items, received, receivedAt, envelopes, stamps, loaded]);
 
   /* Backgrounding is the last chance to catch a mail day that never went idle
      for 90s. Best-effort by construction: fetch(keepalive) caps at 64KB and a
