@@ -50,6 +50,7 @@ import {
   saveGitHubKey,
   saved,
   sleep,
+  setSyncNetFail,
   syncCalls,
   text,
   toggleShowing,
@@ -5109,5 +5110,212 @@ ok(
   syncCalls().every((c) => !SYNC_LEAK.test(c.body ?? "")),
   "52.10 the mock's own post record never carries the key"
 );
+
+/* ── 53. the Stage 4b sync path, through the app (harness contract only) ──
+   Stage 4b moves sync from the GitHub adapter to window.sync. These cases pin
+   what the app does with that adapter, through the harness mock. The mock is
+   the contract, not entry.jsx, which is not bundled here.
+
+   There are no fake timers. Only case 1 waits for the POST deadline. The other
+   cases fire pageshow, then wait out the idle apply gate (IDLE_APPLY_MS, group
+   51.19) where a live apply is claimed. */
+
+const KEY53 = "device-53-key";
+const K0 = ITEMS[0].key;
+const POST_MS = SR?.SYNC_POST_MS ?? 3000;
+const IDLE_MS = SR?.IDLE_APPLY_MS ?? 10000;
+const POST_WAIT = POST_MS + 300;
+const APPLY_WAIT = IDLE_MS + 500;
+
+/* 53.0 the deadline is one exported constant, read through the same dynamic
+   import as group 51 */
+eq(SR?.SYNC_POST_MS ?? "MISSING", 3000, "53.0 SYNC_POST_MS is 3000, exported from sync-rules");
+
+const postCount = () => syncCalls().filter((c) => c.op === "post").length;
+const milestoneCount = () => versionMetas().filter((m) => m.kind === "milestone").length;
+const newestMilestone = () => versionMetas().find((m) => m.kind === "milestone") ?? null;
+/* the advisory line is whichever button carries a sync sentence */
+const ADVISORY_RE =
+  /tap to|^Backed up|^Not backed up|^Nothing has been backed up|newer lines|can’t see|could not be checked|needs attention|snapshot of someone/i;
+const advisory = () => buttons().map((b) => b.textContent).find((t) => ADVISORY_RE.test(t)) ?? "";
+const ERROR_COPY_RE = /server|could not|needs attention/i;
+const pageshow = () =>
+  act(async () => {
+    win.dispatchEvent(new win.Event("pageshow"));
+    await sleep(0);
+  });
+
+/* 1. a check-in POSTs the snapshot within SYNC_POST_MS. The only case that waits
+   for the deadline itself. */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { noRemote: true, syncKey: KEY53 });
+await settle();
+{
+  const real = win.sync.post;
+  const stamps = [];
+  win.sync.post = async (ledger) => {
+    stamps.push(Date.now());
+    return real(ledger);
+  };
+  try {
+    const t0 = Date.now();
+    await click(btn(/Mark all received/), "check in with a sync key");
+    await sleep(POST_WAIT);
+    ok(stamps.length >= 1, "53.1a a check-in POSTs to window.sync");
+    ok(stamps.length >= 1 && stamps[0] - t0 <= POST_MS, "53.1b and the POST starts within SYNC_POST_MS of the check-in");
+    const posted = syncCalls().find((c) => c.op === "post");
+    const body = posted?.body ? JSON.parse(posted.body) : null;
+    eq(
+      [body?.mailday, body?.items?.length, Object.keys(body?.received ?? {}).length],
+      [1, 3, 3],
+      "53.1c the body is the snapshot: the ledger, with all three check-ins"
+    );
+  } finally {
+    win.sync.post = real;
+  }
+}
+
+/* 2. the POST also fires on a foreground, on pageshow and on online */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { noRemote: true, syncKey: KEY53 });
+await settle();
+const triggers = [
+  ["53.2a a foreground (visibilitychange to visible)", () => foreground()],
+  ["53.2b pageshow", () => pageshow()],
+  [
+    "53.2c online",
+    () =>
+      act(async () => {
+        win.dispatchEvent(new win.Event("online"));
+        await sleep(0);
+      }),
+  ],
+];
+for (const [label, fire] of triggers) {
+  const before = postCount();
+  await fire();
+  await sleep(POST_WAIT);
+  ok(postCount() > before, `${label} POSTs the snapshot`);
+}
+
+/* 3. the reply is applied as mergeLedger(snapshot(), reply). The other device's
+   fourth line arrives, and the local view preferences do not change. The guard
+   is the arrival: without it, the preference check could pass on an unapplied
+   reply. */
+const LOCAL_PREFS = {
+  sortBy: "oldest",
+  itemSort: "basis",
+  dateFilter: { preset: "all", from: "", to: "" },
+};
+await boot({ items: ITEMS.slice(0, 3), received: {}, ...LOCAL_PREFS }, null, {
+  noRemote: true,
+  syncKey: KEY53,
+  syncLedger: {
+    mailday: 1,
+    items: ITEMS.slice(0, 4),
+    received: {},
+    envelopes: [],
+    sortBy: "seller",
+    itemSort: "value",
+    dateFilter: { preset: "all", from: "2026-01-01", to: "" },
+  },
+});
+await settle();
+await pageshow();
+await sleep(APPLY_WAIT);
+eq(saved().items?.length ?? 0, 4, "53.3a the server's fourth line arrived, so the reply was applied");
+eq(
+  [saved().sortBy, saved().itemSort, saved().dateFilter],
+  [LOCAL_PREFS.sortBy, LOCAL_PREFS.itemSort, LOCAL_PREFS.dateFilter],
+  "53.3b and the local view preferences held, not the server's"
+);
+
+/* 4. a reply that changes nothing takes no milestone and calls no apply. The
+   guard is that a POST happened. Without it, "no milestone" passes on code that
+   never POSTs at all. */
+await boot({ items: ITEMS.slice(0, 3), received: { [K0]: 1 } }, null, {
+  noRemote: true,
+  syncKey: KEY53,
+  syncLedger: { mailday: 1, items: ITEMS.slice(0, 3), received: { [K0]: 1 }, envelopes: [] },
+});
+await settle();
+const msBefore = milestoneCount();
+const postsBefore = postCount();
+await pageshow();
+await sleep(APPLY_WAIT);
+ok(postCount() > postsBefore, "53.4a the POST happened, so the milestone check means something");
+eq(milestoneCount(), msBefore, "53.4 a reply that changes nothing takes no milestone");
+
+/* 5. a reply that removes something (an un-check from the other device) takes a
+   milestone first, and that milestone holds the check-in as it stood before the
+   apply. The server's later timestamp on K0 wins the merge. */
+await boot(
+  { items: ITEMS.slice(0, 3), received: { [K0]: 1 }, receivedAt: { [K0]: 1000 } },
+  null,
+  {
+    noRemote: true,
+    syncKey: KEY53,
+    syncLedger: {
+      mailday: 1,
+      items: ITEMS.slice(0, 3),
+      received: {},
+      receivedAt: { [K0]: 2000 },
+      envelopes: [],
+    },
+  }
+);
+await settle();
+await pageshow();
+await sleep(APPLY_WAIT);
+const ms = newestMilestone();
+ok(!!ms, "53.5a the removal took a milestone in front of the apply");
+const held = ms ? versionText(ms.label) : null;
+const heldRec = held ? JSON.parse(held).received : null;
+eq(heldRec?.[K0] ?? null, 1, "53.5b holding the check-in the other device removed, as it stood before");
+eq(saved().received?.[K0] ?? null, null, "53.5c and the apply took that check-in away");
+
+/* 6. a 404 from an empty store is not an error. The first POST seeds the store.
+   No window.remote here: syncBroken is null without it, so the no-error check
+   would pass as decoration. */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { syncKey: KEY53 });
+await settle();
+eq((await win.sync.get()).code, "empty", "53.6a the store is empty before the first POST");
+ok(!ERROR_COPY_RE.test(advisory()), "53.6b and the advisory line shows no sync error on an empty store");
+await click(btn(/Mark all received/), "the first check-in seeds the store");
+await sleep(POST_WAIT);
+eq((await win.sync.get()).code, "ok", "53.6c the first POST seeds the store");
+ok(!ERROR_COPY_RE.test(advisory()), "53.6d and the advisory line still shows no sync error");
+
+/* 7. with no sync key, nothing calls sync.post, and today's GitHub push runs
+   unchanged. Green on today's code by design: this is a guard, not a red case. */
+await boot({ items: ITEMS.slice(0, 3), received: {} });
+await settle();
+await click(btn(/Mark all received/), "check in with no sync key");
+await sleep(POST_WAIT);
+ok(Object.keys(saved().received ?? {}).length === 3, "53.7a0 the check-in happened, so the next check means something");
+eq(postCount(), 0, "53.7a with no sync key, a check-in makes no POST");
+await saveGitHubKey();
+await click(btn(/^Push$/), "push over GitHub");
+await sleep(SAVE_WAIT);
+ok(pushes().length > 0, "53.7b the GitHub push still runs with no sync key");
+
+/* 8. a POST that fails as unknown (the network) falls back to today's GitHub
+   merge for that cycle, and the advisory line says the server failed. The
+   fallback is decided on code === "unknown". Green on today's code for the pull
+   alone, since a fresh foreground already merges over GitHub: 53.8b is the red
+   claim. */
+await boot(PHONE_STATE, null, { remote: LAPTOP_PUSHED, syncKey: KEY53 });
+await settle();
+setSyncNetFail(true);
+const remoteBefore = remote.calls.length;
+try {
+  await backgroundFor(5 * 60_000);
+  await sleep(POST_WAIT);
+  ok(postCount() > 0, "53.8a0 a POST was attempted, so the fallback check means something");
+  eq((await win.sync.get()).code, "unknown", "53.8a1 a network failure answers code unknown");
+} finally {
+  setSyncNetFail(false);
+}
+await settle();
+ok(remote.calls.slice(remoteBefore).some((c) => c.op === "pull"), "53.8a the failed cycle falls back to the GitHub merge");
+ok(/server/i.test(advisory()), "53.8b and the advisory line says the server failed");
 
 report();

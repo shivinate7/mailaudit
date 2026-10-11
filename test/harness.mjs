@@ -12,6 +12,7 @@ import path from "node:path";
 import { utf8ToBase64, base64ToUtf8, blobToBase64 } from "../src/b64.mjs";
 import { photoName, mimeFromName } from "../src/photo-rules.mjs";
 import { prunePlan } from "../src/version-rules.mjs";
+import { syncStatus } from "../src/sync-rules.mjs";
 import { mergeLedger } from "../src/merge-rules.mjs";
 /* the Worker's real size cap, so the mock refuses what the server refuses */
 import { MAX_LEDGER_BYTES } from "../worker/core.mjs";
@@ -457,10 +458,18 @@ win.remote = remoteApi;
    `sync.key`, outside `store`, so storage.list() cannot see it.
    HARNESS CONTRACT ONLY. entry.jsx is not bundled here, so these cases prove
    this mock, not the adapter. */
-const syncFresh = () => ({ key: null, ledger: null, rev: 0, calls: [] });
+const syncFresh = () => ({ key: null, ledger: null, rev: 0, netFail: false, calls: [] });
 let sync = syncFresh();
 export const syncCalls = () => sync.calls;
+/* a network failure: the adapter answers {status: null, body: null}, which
+   syncStatus maps to "unknown" */
+export const setSyncNetFail = (on) => {
+  sync.netFail = !!on;
+};
 const syncErr = (code) => Object.assign(new Error(code), { code });
+/* every reply is {status, body, code}, code = syncStatus(status), as the
+   real adapter in entry.jsx answers it */
+const syncReply = (status, body) => ({ status, body, code: syncStatus(status) });
 const syncApi = {
   async hasKey() {
     return !!sync.key;
@@ -472,25 +481,29 @@ const syncApi = {
   },
   async get() {
     sync.calls.push({ op: "get", keyed: !!sync.key });
-    if (!sync.key) return { status: 401, body: { error: "unauthorized" } };
-    if (sync.ledger == null) return { status: 404, body: { error: "empty" } };
-    return { status: 200, body: { ledger: sync.ledger, rev: sync.rev } };
+    if (sync.netFail) return syncReply(null, null);
+    if (!sync.key) return syncReply(401, { error: "unauthorized" });
+    if (sync.ledger == null) return syncReply(404, { error: "empty" });
+    return syncReply(200, { ledger: sync.ledger, rev: sync.rev });
   },
   async post(ledger) {
     sync.calls.push({ op: "post", keyed: !!sync.key, body: JSON.stringify(ledger) });
-    if (!sync.key) return { status: 401, body: { error: "unauthorized" } };
+    if (sync.netFail) return syncReply(null, null);
+    if (!sync.key) return syncReply(401, { error: "unauthorized" });
     if (!ledger || ledger.mailday !== 1 || !Array.isArray(ledger.items))
-      return { status: 400, body: { error: "bad ledger" } };
+      return syncReply(400, { error: "bad ledger" });
     const merged = sync.ledger ? mergeLedger(sync.ledger, ledger).merged : ledger;
     const size = new TextEncoder().encode(JSON.stringify(merged)).length;
-    if (size > MAX_LEDGER_BYTES) return { status: 413, body: { error: "too-large" } };
+    if (size > MAX_LEDGER_BYTES) return syncReply(413, { error: "too-large" });
     sync.ledger = merged;
     sync.rev += 1;
-    return { status: 200, body: { ledger: merged, rev: sync.rev } };
+    return syncReply(200, { ledger: merged, rev: sync.rev });
   },
-  async connect() {
+  /* onRev is never called here; the real adapter returns a close function
+     whether or not a key is set */
+  connect(onRev) {
     sync.calls.push({ op: "connect", keyed: !!sync.key });
-    return { ok: !!sync.key };
+    return () => {};
   },
 };
 win.sync = syncApi;
@@ -846,6 +859,13 @@ export async function boot(state, photos, opts = {}) {
   /* a fresh device has no sync key; each boot is a new device */
   sync = syncFresh();
   win.sync = syncApi;
+  /* a seeded device key and server ledger, set before mount so the app sees
+     them at its first read. The server is at rev 1 once it holds a ledger. */
+  if (opts.syncKey) sync.key = opts.syncKey;
+  if (opts.syncLedger) {
+    sync.ledger = opts.syncLedger;
+    sync.rev = 1;
+  }
   if (state) store["mailday:v1"] = JSON.stringify(state);
   document.getElementById("root").innerHTML = "";
   await act(async () => {
