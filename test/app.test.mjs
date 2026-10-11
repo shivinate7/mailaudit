@@ -5075,8 +5075,10 @@ eq(
 
 const SYNC_KEY = "sync_SECRETVALUE-42";
 const SYNC_LEAK = /sync_SECRET/;
+/* this group tests the adapter itself, so it boots with the adapter installed */
+const freshSync = () => boot({ items: ITEMS, received: {} }, null, { syncAdapter: true });
 
-await fresh();
+await freshSync();
 eq(await win.sync.hasKey(), false, "52.1 a fresh device has no sync key");
 await win.sync.setKey(SYNC_KEY);
 eq(await win.sync.hasKey(), true, "52.2 setKey makes hasKey true");
@@ -5089,7 +5091,7 @@ try {
 eq(badCode, "bad-key", "52.3 a key outside the Worker's alphabet is refused");
 
 /* the same three-place check as 25.24 to 25.27, for the sync key */
-await fresh();
+await freshSync();
 await win.sync.setKey(SYNC_KEY);
 await openSync();
 await saveGitHubKey("github_pat_SECRETVALUE");
@@ -5109,7 +5111,7 @@ eq(
 );
 
 /* the mock's own contract, as route() in worker/core.mjs states it */
-await fresh();
+await freshSync();
 const unkeyed = await win.sync.post({ mailday: 1, items: [] });
 eq(unkeyed.status, 401, "52.8 a post with no key is refused");
 await win.sync.setKey(SYNC_KEY);
@@ -6345,6 +6347,323 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
       "58.P5a the push carries the newer reply's lines: 6 local and 12 from the Worker"
     );
   }
+}
+
+/* ---- 59. the Worker sync key, pasted on this device ----
+   The home-screen app keeps its own storage, apart from Safari, so a key that
+   arrives by the QR link reaches Safari only. These cases pin a paste entry.
+   Red on main by design: the entry does not exist yet. The entry is the sync
+   line, which must offer it for a keyless Worker device (see
+   ruled-head-one-advisory-entrance: the one line is the only entrance). */
+{
+  const GH59 = "github_pat_testtoken";
+  const KEY59 = "k59-" + "A".repeat(39); /* 43 characters, the Worker's alphabet */
+  const BAD59 = "abc123&x";
+  const REFUSED59 = "That is not a valid sync key. Paste it again.";
+  const STORE59 = "This device could not save the sync key. Try again.";
+  const SEED59 = {
+    items: ITEMS.slice(0, 3),
+    received: { [ITEMS[0].key]: 1 },
+    receivedAt: { [ITEMS[0].key]: 100 },
+  };
+  const count59 = (op) => syncCalls().filter((c) => c.op === op).length;
+  const entry59 = () =>
+    buttons().find((b) => /sync key/i.test(b.textContent) && /tap to/i.test(b.textContent)) ?? null;
+  const field59 = () => document.querySelector('input[aria-label="Sync key"]');
+  /* the sync line is the panel's only toggle: aria-expanded tracks syncOpen */
+  const lineBtn59 = () =>
+    buttons().find((b) => b.hasAttribute("aria-expanded") && /tap to|someone else/i.test(b.textContent)) ?? null;
+  const openPanel59 = async () => {
+    const b = lineBtn59();
+    if (b && b.getAttribute("aria-expanded") !== "true") await click(b, "open the sync panel");
+    await settle();
+  };
+  const closePanel59 = async () => {
+    const b = lineBtn59();
+    if (b && b.getAttribute("aria-expanded") === "true") await click(b, "close the sync panel");
+    await settle();
+  };
+  const pasteKey59 = async (key) => {
+    if (field59()) await type(field59(), key);
+    if (btn(/^Save sync key$/)) await click(btn(/^Save sync key$/), "save the pasted key");
+    await sleep(1000);
+    await settle();
+  };
+  const spySetKey59 = () => {
+    const real = win.sync.setKey;
+    const calls = { n: 0 };
+    win.sync.setKey = (k) => {
+      calls.n += 1;
+      return real(k);
+    };
+    return { calls, restore: () => (win.sync.setKey = real) };
+  };
+
+  /* 59.1. A keyless Worker device, with GitHub healthy, still has an entrance. The
+     sync line offers it, since the line is the one entrance, and a keyless device
+     is not on the new path. No new control was added beside it. */
+  await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true });
+  await settle();
+  ok(!!entry59(), "59.1 a keyless Worker device offers a sync key entry, though sync is healthy");
+
+  /* 59.2. A valid key, pasted and saved, calls setKey, then runs the cold-open path. */
+  await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true });
+  await settle();
+  const spy2 = spySetKey59();
+  try {
+    if (entry59()) await click(entry59(), "open the sync key entry");
+    await settle();
+    ok(!!field59(), "59.2a0 the sync key field opens from the entry");
+    if (field59()) await type(field59(), KEY59);
+    if (btn(/^Save sync key$/)) await click(btn(/^Save sync key$/), "save the pasted key");
+    await sleep(1000);
+    await settle();
+    eq(spy2.calls.n, 1, "59.2a the valid key is passed to window.sync.setKey once");
+    ok(await win.sync.hasKey(), "59.2b and the device now holds a Worker key");
+    ok(count59("get") > 0, "59.2c saving runs the cold-open path: a GET");
+    ok(count59("post") > 0, "59.2d and a POST, since local holds a check-in the server lacks");
+    /* 59.4. After saving, the field stays, cleared and masked. innerHTML does not
+       serialise an input's value, so the clear is checked on the element itself. */
+    const f4 = field59();
+    ok(!!f4 && f4.value === "" && f4.type === "password", "59.4 the field stays, cleared and masked, after a good save");
+  } finally {
+    spy2.restore();
+  }
+
+  /* 59.3. A key with characters outside the alphabet is refused with a plain message.
+     setKey is not called, and no native dialog opens (no-native-dialogs). */
+  await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true });
+  await settle();
+  const spy3 = spySetKey59();
+  let dialogs59 = 0;
+  const realAlert = win.alert;
+  const realConfirm = win.confirm;
+  const realPrompt = win.prompt;
+  win.alert = win.confirm = win.prompt = () => {
+    dialogs59 += 1;
+  };
+  try {
+    if (entry59()) await click(entry59(), "open the sync key entry");
+    await settle();
+    ok(!!field59(), "59.3pre the field is reachable, so the refusal case means something");
+    if (field59()) await type(field59(), BAD59);
+    if (btn(/^Save sync key$/)) await click(btn(/^Save sync key$/), "save a bad key");
+    await sleep(1000);
+    await settle();
+    ok(!!field59() && spy3.calls.n === 0, "59.3a a key outside the alphabet is refused, and setKey is not called");
+    ok(text().includes(REFUSED59), "59.3b and the refusal is the plain message, exactly");
+    ok(!!field59() && dialogs59 === 0, "59.3c and no native dialog opens");
+  } finally {
+    win.alert = realAlert;
+    win.confirm = realConfirm;
+    win.prompt = realPrompt;
+    spy3.restore();
+  }
+
+  /* 59.5. With a Worker key already set, the field stays reachable through the
+     panel, so the key can be replaced. The line's tail copy is not pinned here. */
+  await boot(SEED59, null, { remoteKey: GH59, syncKey: KEY59 });
+  await settle();
+  await openPanel59();
+  ok(!!field59(), "59.5a with a Worker key set, the sync key field stays reachable through the panel");
+  const spy5 = spySetKey59();
+  try {
+    await pasteKey59("k59-" + "B".repeat(39));
+    ok(spy5.calls.n > 0, "59.5b and a replacement key is passed to setKey");
+  } finally {
+    spy5.restore();
+  }
+
+  /* 59.6. In step with GitHub, a keyless Worker device still offers the paste line.
+     Its own boot, with the panel closed: an open panel shows the line on its own,
+     which would prove nothing. A device that has a GitHub token but no Worker key
+     is the owner's iPhone, so the line must show, never be suppressed. */
+  await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true, remote: null });
+  await openSync();
+  await click(btn(/^Push$/), "push, so this device agrees with GitHub");
+  await settle();
+  ok(/Backed up/.test(text()), "59.6pre the device is in step: a recent push, so syncedAt is set");
+  await click(btn(/tap to close/), "close the panel, leaving a healthy keyless device");
+  await settle();
+  ok(!/tap to fix/.test(text()), "59.6a in step, no fault line is shown");
+  ok(!!entry59(), "59.6b a keyless device in step with GitHub still shows the sync key paste line");
+
+  /* 59.7. False alarm. A Worker-keyed device with the panel closed shows no
+     "no sync key" line. Mutant: app.jsx workerKeySet !== null (~3393). */
+  await boot(SEED59, null, { remoteKey: GH59, syncKey: KEY59 });
+  await settle();
+  ok(!/no sync key/.test(text()), "59.7a a Worker-keyed device with the panel closed shows no 'no sync key' line");
+
+  /* 59.7b. A good save, then a panel close, leaves no paste line. Mutant: remove
+     setWorkerKeySet(true) (~4863); the line then survives the close. */
+  await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true });
+  await settle();
+  await openPanel59();
+  await pasteKey59(KEY59);
+  ok(await win.sync.hasKey(), "59.7b the good key is saved");
+  await closePanel59();
+  ok(!/no sync key/.test(text()), "59.7c after a good save and a panel close, no 'no sync key' line remains");
+
+  /* 59.8. A device that shows the public seed holds no key of its own. A pasted key
+     must not POST the seed's ledger to the Worker. Read seed-load-guards. */
+  await boot(null, null, { remote: null, seed: SEED, syncAdapter: true });
+  await settle();
+  ok(/someone else’s ledger/.test(text()), "59.8pre the device shows the public seed");
+  await openPanel59();
+  ok(!!field59(), "59.8pre2 the sync key field is reachable on the seeded device");
+  await pasteKey59(KEY59);
+  eq(count59("post"), 0, "59.8a a pasted key on a seeded device POSTs nothing to the Worker");
+
+  /* 59.9. When setKey throws, the field is cleared anyway, and the refusal shows.
+     The real adapter's throw path in entry.jsx has no seam here: see the report. */
+  await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true });
+  await settle();
+  await openPanel59();
+  const realSet9 = win.sync.setKey;
+  win.sync.setKey = async () => {
+    throw Object.assign(new Error("storage"), { code: "storage" });
+  };
+  try {
+    await pasteKey59(KEY59);
+    ok(!!field59() && field59().value === "", "59.9a a failed setKey still clears the field");
+    ok(text().includes(STORE59) && !text().includes(REFUSED59), "59.9b a storage failure shows its own copy, not the refusal");
+  } finally {
+    win.sync.setKey = realSet9;
+  }
+
+  /* 59.10. A seeded page with a server ledger present. A pasted good key GETs the
+     ledger and merges it. The "someone else's ledger" line goes, and a later
+     check-in POSTs a ledger that carries it. */
+  const SERVER59 = {
+    mailday: 1,
+    items: ITEMS.slice(0, 3),
+    received: {},
+    dateFilter: { preset: "all", from: "", to: "" },
+    sortBy: "newest",
+    itemSort: "missing",
+  };
+  await boot(null, null, { remote: null, seed: SEED, syncAdapter: true, syncLedger: SERVER59 });
+  await settle();
+  ok(/someone else’s ledger/.test(text()), "59.10pre the device shows the public seed");
+  await openPanel59();
+  await pasteKey59(KEY59);
+  ok(count59("get") > 0, "59.10a a pasted key on a seeded page with a server ledger GETs it");
+  ok(!/someone else’s ledger/.test(text()), "59.10b and the seed line is gone once the ledger merges");
+  const posts10 = count59("post");
+  const lastPost10 = syncCalls().filter((c) => c.op === "post").pop();
+  const checkins10 = (c) => Object.keys(JSON.parse(c?.body ?? "{}").received ?? {}).length;
+  await toggleShowing();
+  await click(btn(/Mark all received/), "check in the cards");
+  await settle();
+  /* the change POST waits SYNC_POST_MS after the last change (53.0 pins it), so
+     the virtual clock runs past the deadline before the POST is read */
+  await sleep(SR.SYNC_POST_MS + 300);
+  await settle();
+  const last10 = syncCalls().filter((c) => c.op === "post").pop();
+  ok(
+    count59("post") > posts10 && checkins10(last10) > checkins10(lastPost10),
+    "59.10c the check-in POSTs a ledger with more check-ins than the POST before it"
+  );
+
+  /* 59.12. Replacing the key while a socket is open closes that socket, and a new
+     connect runs with the new key. */
+  const NEW12 = "k59-" + "C".repeat(39);
+  await boot(SEED59, null, { remoteKey: GH59, syncKey: KEY59 });
+  await settle();
+  const closes12 = syncCloseCount();
+  await openPanel59();
+  await pasteKey59(NEW12);
+  ok(syncCloseCount() > closes12, "59.12a replacing the key closes the open socket");
+  ok(
+    syncCalls().some((c) => c.op === "connect" && c.key === NEW12),
+    "59.12b and a new connect runs with the new key"
+  );
+
+  /* 59.13. Items and no check-ins, the server empty (404), a key pasted. The 404
+     answers no reply, so nothing clears applyNow. Another device's rev then waits
+     for the idle gate after the last tap, and does not apply at once. Red on head:
+     applyNow is cleared only by a reply that applies, so it stays set. */
+  const OTHER13 = {
+    mailday: 1,
+    items: ITEMS.slice(0, 3),
+    received: { [ITEMS[2].key]: 1 },
+    receivedAt: { [ITEMS[2].key]: 400 },
+    dateFilter: { preset: "all", from: "", to: "" },
+    sortBy: "newest",
+    itemSort: "missing",
+  };
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+    remoteKey: GH59,
+    syncAdapter: true,
+    remote: null,
+  });
+  await settle();
+  await openPanel59();
+  await pasteKey59(KEY59);
+  await fireSyncRev(1, OTHER13);
+  await sleep(SAVE_WAIT);
+  ok(!saved().received?.[ITEMS[2].key], "59.13a after a 404 and a key, another device's rev does not apply at once");
+  await sleep(APPLY_WAIT);
+  ok(saved().received?.[ITEMS[2].key] === 1, "59.13b and it applies once the idle gate opens");
+
+  /* 59.14. Gap 1: a seeded page and a server ledger that holds a check-in the seed
+     lacks. The paste applies that ledger, so the seed line goes (the clear on the
+     applied path, app.jsx ~4544), and a later check-in POSTs. */
+  const SERVER14 = {
+    mailday: 1,
+    items: ITEMS.slice(0, 3),
+    received: { [ITEMS[1].key]: 1 },
+    receivedAt: { [ITEMS[1].key]: 200 },
+    dateFilter: { preset: "all", from: "", to: "" },
+    sortBy: "newest",
+    itemSort: "missing",
+  };
+  await boot(null, null, { remote: null, seed: SEED, syncAdapter: true, syncLedger: SERVER14 });
+  await settle();
+  ok(/someone else’s ledger/.test(text()), "59.14pre the device shows the public seed");
+  await openPanel59();
+  await pasteKey59(KEY59);
+  ok(!/someone else’s ledger/.test(text()), "59.14a a server ledger with check-ins applies, and the seed line goes");
+  const posts14 = count59("post");
+  await toggleShowing();
+  await click(btn(/Mark all received/), "check in the cards");
+  await settle();
+  await sleep(SR.SYNC_POST_MS + 300);
+  await settle();
+  ok(count59("post") > posts14, "59.14b and a later check-in POSTs");
+
+  /* 59.15. Gap 2: the first reply after a saved key applies at once. A second reply
+     from another device waits for the idle gate after the last tap. Red on head with
+     applyNow.current = false removed (app.jsx ~4700). */
+  const FIRST15 = {
+    mailday: 1,
+    items: ITEMS.slice(0, 3),
+    received: { [ITEMS[1].key]: 1 },
+    receivedAt: { [ITEMS[1].key]: 300 },
+    dateFilter: { preset: "all", from: "", to: "" },
+    sortBy: "newest",
+    itemSort: "missing",
+  };
+  const SECOND15 = {
+    ...FIRST15,
+    received: { ...FIRST15.received, [ITEMS[2].key]: 1 },
+    receivedAt: { ...FIRST15.receivedAt, [ITEMS[2].key]: 400 },
+  };
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+    remoteKey: GH59,
+    syncAdapter: true,
+    remote: null,
+    syncLedger: FIRST15,
+  });
+  await settle();
+  await openPanel59();
+  await pasteKey59(KEY59);
+  ok(saved().received?.[ITEMS[1].key] === 1, "59.15a the first reply after a saved key applies at once");
+  await fireSyncRev(2, SECOND15);
+  await sleep(SAVE_WAIT);
+  ok(!saved().received?.[ITEMS[2].key], "59.15b a second reply from another device does not apply at once");
+  await sleep(APPLY_WAIT);
+  ok(saved().received?.[ITEMS[2].key] === 1, "59.15c and it applies once the idle gate opens");
 }
 
 uninstallClock();

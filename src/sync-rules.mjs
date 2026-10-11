@@ -7,7 +7,7 @@
 export const SYNC_KEY_STORAGE = "mailday-sync:v1";
 
 /* a key is the Worker's alphabet and nothing else */
-const KEY_RE = /^[A-Za-z0-9_-]+$/;
+export const KEY_RE = /^[A-Za-z0-9_-]+$/;
 
 /* The key arrives as #k=<key>. Anything outside the alphabet is refused, not
    cleaned: a half-decoded key would 401 later with no hint why. */
