@@ -2069,6 +2069,7 @@ const PHOTO_SAYS = {
     "The photo repo has no main branch yet — create it with a README first.",
   missing: "The photo repo isn’t reachable. Create mailaudit-data first.",
   offline: "No connection, so photos didn’t sync. Nothing was lost.",
+  unreadable: "This device’s photos could not be read, so they were not backed up.",
   conflict: "GitHub is busy. The ledger is pushed — tap Push again to finish the photos.",
   server: "GitHub had trouble with the photos. Tap Push again to finish.",
 };
@@ -3094,6 +3095,10 @@ export default function MailDayLedger() {
      photo failure that reached `pushState` could arm "Push anyway" and
      overwrite the ledger. */
   const [photoMsg, setPhotoMsg] = useState(null); // { tone, text }
+  /* "I could not look" states. Each rides the one advisory line (syncBroken),
+     and each clears when a later look succeeds. Neither touches pushState. */
+  const [photoUnreadable, setPhotoUnreadable] = useState(false);
+  const [backupUnknown, setBackupUnknown] = useState(false);
   const [photoSync, setPhotoSync] = useState(null); // { dir, done, total }
   /* Bumped by every write to the photo store, so thumbnails re-resolve after a
      pull that kept the same ids — see usePhotoUrls. */
@@ -3323,6 +3328,8 @@ export default function MailDayLedger() {
        recomputes when one of its deps changes, and a stalled device changes
        none of them, so the `Date.now()` comparison is frozen too. */
     if (ahead) return "behind";
+    if (photoUnreadable) return "photos-unreadable";
+    if (backupUnknown) return "backup-unknown";
     /* remoteInfo is null until its effect runs, which is one commit after the
        first paint. Reading that as "no key" flashes the manila banner on every
        cold start of a perfectly configured device — the same "I could not
@@ -3351,7 +3358,7 @@ export default function MailDayLedger() {
     if (!syncedAt) return "never";
     if (Date.now() - syncedAt > SYNC_STALE_MS) return "stale";
     return null;
-  }, [pushState, remoteMsg, remoteInfo, ahead, seedShown, syncedAt]);
+  }, [pushState, remoteMsg, remoteInfo, ahead, seedShown, syncedAt, photoUnreadable, backupUnknown]);
 
   const snapshot = useCallback(
     () => ({
@@ -4024,7 +4031,7 @@ export default function MailDayLedger() {
       try {
         local = await window.photos.keys();
       } catch {
-        return null;
+        return { unreadable: true };
       }
       const remote = await window.remote.listPhotos().catch((e) => ({
         known: false,
@@ -4066,7 +4073,14 @@ export default function MailDayLedger() {
   const pushPhotos = useCallback(
     async (gen, refs) => {
       const survey = await surveyPhotos(refs || referencedPhotoIds);
-      if (!survey || syncGen.current !== gen) return;
+      if (syncGen.current !== gen) return;
+      setPhotoUnreadable(!!survey?.unreadable);
+      if (survey?.unreadable) {
+        setPhotoMsg({ tone: "advice", text: PHOTO_SAYS.unreadable });
+        return;
+      }
+      if (!survey) return;
+      setPhotoMsg(null);
       const { plan, remote } = survey;
       if (!plan.known) {
         setPhotoMsg({ tone: "advice", text: PHOTO_SAYS[remote.reason] || PHOTO_SAYS.server });
@@ -4078,7 +4092,14 @@ export default function MailDayLedger() {
       let done = 0;
       for (const id of batch) {
         if (syncGen.current !== gen) return;
-        const blob = await window.photos.get(id).catch(() => null);
+        let blob;
+        try {
+          blob = await window.photos.get(id);
+        } catch {
+          setPhotoUnreadable(true);
+          setPhotoMsg({ tone: "advice", text: PHOTO_SAYS.unreadable });
+          return;
+        }
         if (!blob) continue; /* swept or reset out from under us */
         try {
           await window.remote.pushPhoto(id, blob, `photo ${id}`);
@@ -4213,6 +4234,10 @@ export default function MailDayLedger() {
 
       const survey = await surveyPhotos(incoming);
       if (!survey || syncGen.current !== gen) return null;
+      if (survey.unreadable) {
+        setPhotoUnreadable(true);
+        return null;
+      }
       const { plan, remote } = survey;
 
       if (!plan.known) {
@@ -4561,6 +4586,7 @@ export default function MailDayLedger() {
          return so the merge below sits INSIDE the known branch rather than
          beside it: an unknown remote cannot license reading it any more than
          writing it, and the structure is what says so. */
+      setBackupUnknown(!p || !p.known);
       if (!p || !p.known) return;
       setAhead(!!p.ahead);
       /* Not awaited: check() has nothing left to do, and doMerge returns a code
@@ -4616,6 +4642,7 @@ export default function MailDayLedger() {
       /* "could not look" means DO NOT PUSH. This is the whole reason peek is
          three-valued: pushing on an unknown remote state is how a device
          overwrites the other one. */
+      setBackupUnknown(!p || !p.known);
       if (!p || !p.known) return;
       if (p.ahead) {
         setAhead(true);
@@ -6314,6 +6341,10 @@ export default function MailDayLedger() {
                     ? "This device can’t see the backup — tap to add its key"
                     : syncBroken === "behind"
                     ? "Your other device has newer lines — tap to bring them in"
+                    : syncBroken === "photos-unreadable"
+                    ? "This device’s photos could not be read, so they were not backed up — tap to fix"
+                    : syncBroken === "backup-unknown"
+                    ? "The backup could not be checked — tap to fix"
                     : !syncBroken
                     ? `Backed up${
                         syncedAt
