@@ -5,6 +5,7 @@ import { utf8ToBase64, base64ToUtf8, blobToBase64 } from "./b64.mjs";
 import { classifyStatus, pushBody } from "./remote-rules.mjs";
 import { photoName, photoIdFromName, mimeFromName, isAlreadyThere } from "./photo-rules.mjs";
 import { prunePlan } from "./version-rules.mjs";
+import { keyFromHash, syncStatus, backoffMs, SYNC_KEY_STORAGE } from "./sync-rules.mjs";
 
 /* ============================================================
    Platform layer. app.jsx never touches a storage API directly —
@@ -840,6 +841,100 @@ window.remote = {
        reached through the force door instead of the pull. push() records the
        sha itself, once the bytes are actually on GitHub. */
     return window.remote.push(text, message, sha);
+  },
+};
+
+/* ---- window.sync: the Cloudflare Worker adapter (stage 4b) ----
+   The device key sits at SYNC_KEY_STORAGE, raw localStorage, outside the
+   mailday: namespace like the GitHub token, and is never logged. Nothing calls
+   this adapter yet (lane L4). Contract: the mock in test/harness.mjs. */
+const SYNC_URL = "https://manifestnumberone.shivamsemwal01.workers.dev";
+const syncKey = () => {
+  try {
+    return localStorage.getItem(SYNC_KEY_STORAGE) || null;
+  } catch {
+    return null;
+  }
+};
+const syncSave = (k) => {
+  try {
+    localStorage.setItem(SYNC_KEY_STORAGE, k);
+  } catch {}
+};
+/* A key in the fragment is stored, then the fragment is removed so the key does
+   not stay in the address bar or history. */
+{
+  const k = keyFromHash(location.hash);
+  if (k) {
+    syncSave(k);
+    try {
+      history.replaceState(null, "", location.pathname + location.search);
+    } catch {}
+  }
+}
+/* reply: {status: HTTP status or null on a network failure, body, code} */
+const syncCall = async (method, ledger) => {
+  const key = syncKey();
+  if (!key) return { status: 401, body: { error: "unauthorized" } };
+  try {
+    const res = await fetch(`${SYNC_URL}/ledger`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${key}`,
+        ...(ledger ? { "Content-Type": "application/json" } : {}),
+      },
+      body: ledger ? JSON.stringify({ ledger }) : undefined,
+    });
+    return { status: res.status, body: await res.json().catch(() => null) };
+  } catch {
+    return { status: null, body: null };
+  }
+};
+window.sync = {
+  async hasKey() {
+    return !!syncKey();
+  },
+  async setKey(k) {
+    const v = String(k || "").trim();
+    if (!/^[A-Za-z0-9_-]+$/.test(v)) throw Object.assign(new Error("bad-key"), { code: "bad-key" });
+    syncSave(v);
+  },
+  async get() {
+    const r = await syncCall("GET");
+    return { ...r, code: syncStatus(r.status) };
+  },
+  async post(ledger) {
+    const r = await syncCall("POST", ledger);
+    return { ...r, code: syncStatus(r.status) };
+  },
+  /* onRev(rev) fires on each pushed {rev}. Returns a close function. */
+  connect(onRev) {
+    const key = syncKey();
+    if (!key) return () => {};
+    let ws, timer, attempt = 0, closed = false;
+    const open = () => {
+      ws = new WebSocket(SYNC_URL.replace(/^http/, "ws") + "/ws", ["mailaudit", key]);
+      ws.onopen = () => {
+        attempt = 0;
+      };
+      ws.onmessage = (e) => {
+        try {
+          const { rev } = JSON.parse(e.data);
+          if (typeof rev === "number") onRev(rev);
+        } catch {}
+      };
+      ws.onclose = () => {
+        if (!closed) timer = setTimeout(open, backoffMs(attempt++));
+      };
+    };
+    open();
+    return () => {
+      closed = true;
+      clearTimeout(timer);
+      try {
+        ws.close();
+      } catch {}
+    };
   },
 };
 
