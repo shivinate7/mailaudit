@@ -3386,14 +3386,11 @@ export default function MailDayLedger() {
     if (!remoteInfo) return null;
     /* A device with a GitHub token but no Worker key: the sync line is the one
        entrance for pasting it (the home-screen app keeps its own storage). Just
-       below the Worker failures and every GitHub failure. It stands in for the
-       "never" and "stale" lines, so a device in step with GitHub still says nothing. */
-    if (
-      workerKeySet === false &&
-      remoteInfo.hasKey &&
-      (!syncedAt || Date.now() - syncedAt > SYNC_STALE_MS)
-    )
-      return "sync-key";
+       below the Worker failures and every GitHub failure, above "never" and
+       "stale". It always shows: the adapter exists only where a Worker key can
+       be pasted. With the panel open the line is that panel's header and says the
+       truth about the backup; the field is in the panel. */
+    if (workerKeySet === false && remoteInfo.hasKey && !syncOpen) return "sync-key";
     /* **The clock is the last time this device AGREED with the backup, not the
        last time it wrote to it.** It used to read `pushedAt` alone, which asks
        "did I write recently?" when the question is "are my bytes on GitHub?".
@@ -3413,7 +3410,7 @@ export default function MailDayLedger() {
     if (!syncedAt) return "never";
     if (Date.now() - syncedAt > SYNC_STALE_MS) return "stale";
     return null;
-  }, [pushState, remoteMsg, remoteInfo, ahead, seedShown, syncedAt, photoUnreadable, backupUnknown, serverDown, workerKeySet]);
+  }, [pushState, remoteMsg, remoteInfo, ahead, seedShown, syncedAt, photoUnreadable, backupUnknown, serverDown, workerKeySet, syncOpen]);
 
   /* a device that holds a Worker key keeps the way to replace it on these lines */
   const syncKeyTail = workerKeySet ? ", or replace the sync key" : "";
