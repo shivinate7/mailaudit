@@ -17,8 +17,9 @@ GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Del
 
 ## The design
 
-- **Sync base:** one Cloudflare Durable Object holds the ledger in SQLite. Photos go to R2. Devices connect over a WebSocket and resync on resume. The free tier covers this app many times over. Durable Object point-in-time recovery gives 30 days of history.
+- **Sync base:** one Cloudflare Durable Object holds the ledger in SQLite. It holds the photos too, one row per photo id. The free plan gives 5 GB, and the photos come to near 100 MB. R2 is not used: it must be turned on in the dashboard by accepting terms, and the Durable Object already has the room. Devices connect over a WebSocket and resync on resume. The free tier covers this app many times over. Durable Object point-in-time recovery gives 30 days of history.
 - **Rejected:** hardened GitHub (no live updates, and it rests on a conflict reply that has never run, see `the-conflict-guard-is-unverified`); a server on HA Green (no backups, and a full disk stops the house DNS); Supabase (pauses after a week idle, no free backups); Firebase (photos and jobs need billing); Yjs or Automerge (a large rewrite for flat keyed data); hosted local-first services (shutting down or too young).
+- **The site stays on GitHub Pages.** The Worker answers the Pages origin across CORS. So no device moves to a new origin, and no device loses its stored ledger.
 - **Sign-in:** one key per device, pasted once. A Cloudflare Access email code is the backup way in. The key stays a credential, see `the-token-is-a-credential`.
 - **Orders:** a nightly job on HA Green replaces the OrderWand export. The owner chose HA Green over the MacBook. The job reads `store.tcgplayer.com/myaccount/orderhistory` with the owner's login cookie, as OrderWand 4.4.0 does. It GETs a form token, POSTs a date range, then reads each page. It sends the orders to the Worker. The Worker runs the same parser filters and the same merge, so `parser-filters` and `imports-merge-never-replace` still hold.
 - **Item keys:** the job must build each key as `orderId|itemNumber|vendorProductId`, exactly as the CSV does. The item number is the line's position in its order. The product id comes from the card image URL. A different key would split one card into two lines, see `saved-state-shape`.
@@ -29,7 +30,7 @@ GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Del
 ## Still open
 
 - Whether a Cloudflare Access login survives in an iOS home-screen app. This is untested.
-- The move to a new origin empties both devices' storage, see `a-host-migration-resets-storage`. Seed the Durable Object from the GitHub ledger before any device switches.
+- Seed the Durable Object from the GitHub ledger before any device switches to it.
 
 ## See also
 
