@@ -895,7 +895,10 @@ const syncCall = async (method, ledger) => {
       },
       body: ledger ? JSON.stringify({ ledger }) : undefined,
     });
-    return { status: res.status, body: await res.json().catch(() => null) };
+    const body = await res.json().catch(() => null);
+    /* a 200 with no readable body is not an answer: count it as unreachable */
+    if (res.status === 200 && !body) return { status: null, body: null };
+    return { status: res.status, body };
   } catch {
     return { status: null, body: null };
   } finally {

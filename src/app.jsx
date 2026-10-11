@@ -4222,6 +4222,11 @@ export default function MailDayLedger() {
           const merged = mergeLedger(JSON.parse(text), parseLedger(res.text)).merged;
           text = JSON.stringify(merged);
           await window.remote.push(text, message, res.sha);
+          /* the merge is the newest ledger this device knows, whatever the Worker
+             answers: it is what the mirror writes next, and it is applied here */
+          lastServer.current = merged;
+          pendingReply.current = merged;
+          tryApplyRef.current();
           if (window.sync) {
             try {
               settleReply(await withTimeout(window.sync.post(merged)), true);
@@ -4693,11 +4698,27 @@ export default function MailDayLedger() {
   const closeRef = useRef(null);
   const tooBigRef = useRef(false);
   /* a Worker call that never answers counts as unreachable */
-  const withTimeout = (p) =>
-    Promise.race([
+  const withTimeout = (p) => {
+    let t;
+    return Promise.race([
       p,
-      new Promise((res) => setTimeout(() => res({ status: null, body: null, code: "unknown" }), SYNC_TIMEOUT_MS)),
-    ]);
+      new Promise((res) => {
+        t = setTimeout(() => res({ status: null, body: null, code: "unknown" }), SYNC_TIMEOUT_MS);
+      }),
+    ]).finally(() => clearTimeout(t));
+  };
+  /* does the server lack anything this device holds? Merging the snapshot into
+     the server ledger changes it only then. View prefs are not data. */
+  const dataOf = (l) => ({
+    items: l.items || [],
+    received: l.received || {},
+    receivedAt: l.receivedAt || {},
+    envelopes: l.envelopes || [],
+    stamps: l.stamps || {},
+  });
+  const lacksRef = useRef(null);
+  lacksRef.current = (srv) =>
+    canon(dataOf(mergeLedger(srv, snapshot()).merged)) !== canon(dataOf(srv));
   /* one home for a held reply, from a POST or from a rev-gated GET. A reply
      with a rev below the newest landed one is stale and is dropped. */
   const holdReply = (r) => {
@@ -4776,7 +4797,12 @@ export default function MailDayLedger() {
   coldRef.current = () => {
     cycleRef.current = (async () => {
       if (!window.sync || !(await window.sync.hasKey())) return;
-      settleReply(await withTimeout(window.sync.get()));
+      const r = await withTimeout(window.sync.get());
+      settleReply(r);
+      /* a cold open where this device holds something the server lacks sends it
+         within a beat (500 ms), once the first reply has landed */
+      if (r.code === "ok" && r.body?.ledger && lacksRef.current(r.body.ledger))
+        setTimeout(() => postRef.current(), 500);
     })();
   };
   /* a rev above the last one seen (or already being fetched) is one GET */
@@ -4841,7 +4867,11 @@ export default function MailDayLedger() {
       return;
     }
     clearTimeout(postTimer.current);
-    postTimer.current = setTimeout(() => postRef.current(), SYNC_POST_MS);
+    postTimer.current = setTimeout(() => {
+      /* a save that left the snapshot equal to the server's ledger needs no POST */
+      if (lastServer.current && !lacksRef.current(lastServer.current)) return;
+      postRef.current();
+    }, SYNC_POST_MS);
     return () => clearTimeout(postTimer.current);
   }, [items, received, receivedAt, envelopes, stamps, loaded]);
 
@@ -4938,8 +4968,10 @@ export default function MailDayLedger() {
       /* the mirror writes only when the ledger changed since its last write: an
          unchanged resume must not touch GitHub, and a conflict means a merge */
       if (!mirrorDirty.current) return;
+      /* cleared BEFORE the push: a change made in flight sets it again */
+      mirrorDirty.current = false;
       const r = await doPush(false, true, true);
-      if (r?.ok) mirrorDirty.current = false;
+      if (!r?.ok) mirrorDirty.current = true;
       return;
     }
     if (typeof window.remote.peek === "function") {
