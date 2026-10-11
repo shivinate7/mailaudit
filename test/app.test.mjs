@@ -52,6 +52,7 @@ import {
   sleep,
   setSyncNetFail,
   setSyncTooBig,
+  setSyncKeyRefused,
   syncCalls,
   syncCloseCount,
   syncRev,
@@ -5635,5 +5636,226 @@ ok(/tap to/i.test(bigLine55()), "55.8c and the advisory line says tap to, as gro
 await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { noRemote: true });
 await settle();
 eq(connectCount(), 0, "55.7 with no key, sync.connect is never called");
+
+/* ── 56. PR 54 review round (harness contract only) ──
+   Orchestrator ruling: mirror mode turns on only after a Worker POST or GET
+   returns ok in this session, and turns off on any failure. While it is off,
+   the device runs today's GitHub path. B1 to B3 are the review's blocking
+   findings. S1 to S3 and S6 are its should-fix findings. S4 is not written:
+   entry.jsx is not bundled by the harness, so the #k= fragment is out of reach
+   from here. S5 is in test/send-key.test.mjs.
+
+   There are no fake timers. The timed cases wait real time, as group 53 does. */
+
+const KEY56 = "device-56-key";
+const GH56 = "github_pat_testtoken";
+const pullCount56 = () => remote.calls.filter((c) => c.op === "pull").length;
+const backoff56 = (k) => SR?.backoffMs?.(k) ?? 1000 * 2 ** k;
+const pick56 = (x) => ({
+  items: x.items,
+  received: x.received,
+  receivedAt: x.receivedAt,
+  envelopes: x.envelopes,
+});
+/* a JSON string with object keys sorted, so two equal ledgers compare equal */
+const canon56 = (x) =>
+  JSON.stringify(x, (k, v) =>
+    v && typeof v === "object" && !Array.isArray(v)
+      ? Object.fromEntries(Object.keys(v).sort().map((key) => [key, v[key]]))
+      : v
+  );
+const advisoryWith56 = (re) => buttons().map((b) => b.textContent).find((t) => re.test(t)) ?? "";
+const CARDS56 = [/Alpha Cards/, /Beta Games/, /Gamma Cards/, /Delta Cards/];
+
+/* 56.1 B1. The Worker POST fails (unknown, then too-big) and saves keep coming.
+   Over 20 s there is at most one GitHub pull, no milestone unless something was
+   removed, and retries follow backoffMs: the wait after failed attempt k is at
+   least backoffMs(k). Four check-ins, 3.5 s apart, so the Worker is tried after
+   each one. Ungated, the retry gaps would be 3.5 s, which is too short by the
+   third gap. */
+for (const [label, setFail] of [
+  ["unknown", setSyncNetFail],
+  ["too-big", setSyncTooBig],
+]) {
+  await boot({ items: ITEMS, received: {} }, null, { remote: LAPTOP_PUSHED, syncKey: KEY56 });
+  await settle();
+  const pulls0 = pullCount56();
+  const ms0 = milestoneCount();
+  const attempts = [];
+  const realPost56 = win.sync.post;
+  win.sync.post = async (ledger) => {
+    attempts.push(Date.now());
+    return realPost56(ledger);
+  };
+  setFail(true);
+  try {
+    for (const re of CARDS56) {
+      await click(inCard(card(re), /^Mark all received$/), `check in ${re} (${label})`);
+      await sleep(3500);
+    }
+    await sleep(6000); // the window closes 20 s after the first check-in
+  } finally {
+    setFail(false);
+    win.sync.post = realPost56;
+  }
+  ok(attempts.length >= 2, `56.1${label[0]}0 the Worker was tried more than once, so the retry check means something`);
+  ok(
+    attempts.every((t, k) => k === 0 || t - attempts[k - 1] >= backoff56(k - 1) - 200),
+    `56.1${label[0]}a retries to the Worker follow backoffMs, not every save (${label})`
+  );
+  ok(pullCount56() - pulls0 <= 1, `56.1${label[0]}b at most one GitHub pull in 20 s (${label})`);
+  eq(milestoneCount() - ms0, 0, `56.1${label[0]}c no milestone, since nothing was removed (${label})`);
+}
+
+/* 56.2 B2. The Worker answers 401 to this device's key. The advisory line says
+   the key was refused, and tap to. The GitHub peek and merge still run, as they
+   do on a device with no Worker key. */
+await boot(PHONE_STATE, null, { remote: LAPTOP_PUSHED, syncKey: KEY56 });
+await settle();
+const posts56b = postCount();
+const peeks56b = peeks().length;
+const pulls56b = pullCount56();
+setSyncKeyRefused(true);
+try {
+  await backgroundFor(5 * 60_000);
+  await sleep(POST_WAIT);
+} finally {
+  setSyncKeyRefused(false);
+}
+await settle();
+ok(postCount() > posts56b, "56.2a0 the POST was refused, so the key check means something");
+const keyLine56 = advisoryWith56(/key/i);
+ok(/key/i.test(keyLine56), "56.2b the advisory line says the device's sync key was refused");
+ok(/tap to/i.test(keyLine56), "56.2b2 and the advisory line says tap to");
+ok(peeks().length > peeks56b, "56.2c the GitHub peek still runs");
+ok(pullCount56() > pulls56b, "56.2d and the GitHub merge still runs");
+
+/* 56.3 B3. A healthy Worker holds 12 lines, and this device holds 3. The mirror
+   push must never write fewer than 12 lines to GitHub: it pushes the merge of
+   the local snapshot with the last server ledger, never the raw snapshot. The
+   POST reply arrives first, so mirror mode is on before the push. */
+catchAutoTimers();
+try {
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+    remoteKey: GH56,
+    syncKey: KEY56,
+    syncLedger: { mailday: 1, items: ITEMS, received: {}, envelopes: [] },
+  });
+  await settle();
+  await click(inCard(card(/Alpha Cards/), /^Mark all received$/), "a change that arms the mirror timer");
+  await settle();
+  await pageshow();
+  await sleep(POST_WAIT);
+  ok(await fireAutoTimer(), "56.3a0 the mirror timer is live, so the push can run");
+  await settle();
+  ok(pushes().length > 0, "56.3a1 a mirror push reached GitHub, so the line count means something");
+  let lines56 = 0;
+  try {
+    lines56 = JSON.parse(remoteText() ?? "null")?.items?.length ?? 0;
+  } catch {
+    lines56 = 0;
+  }
+  ok(lines56 >= 12, `56.3b the mirror push wrote ${lines56} lines to GitHub, never fewer than the server's 12`);
+} finally {
+  releaseAutoTimers();
+}
+
+/* 56.4 S1. A reply that differs only in an envelope note, an envelope photo id
+   or receivedAt is applied. Each difference alone is a case, and the local ends
+   equal to the merge, compared canonically, not by counts. The reply is a GET,
+   so the merge is mergeLedger(local, reply), as the app runs it. */
+const LOCAL56 = {
+  mailday: 1,
+  items: ITEMS.slice(0, 3),
+  received: { [K0]: 1 },
+  receivedAt: { [K0]: 1000 },
+  envelopes: [
+    { id: "E1", createdAt: 1000, updatedAt: 1, note: "old note", entries: [], photos: [] },
+    { id: "E2", createdAt: 900, updatedAt: 1, note: "", entries: [], photos: [{ id: "p1" }] },
+  ],
+};
+const SERVER56 = {
+  mailday: 1,
+  items: ITEMS.slice(0, 3),
+  received: { [K0]: 1 },
+  receivedAt: { [K0]: 2000 },
+  envelopes: [
+    { id: "E1", createdAt: 1000, updatedAt: 2, note: "new note", entries: [], photos: [] },
+    { id: "E2", createdAt: 900, updatedAt: 2, note: "", entries: [], photos: [{ id: "p2" }] },
+  ],
+};
+await boot({ items: LOCAL56.items, received: LOCAL56.received, receivedAt: LOCAL56.receivedAt, envelopes: LOCAL56.envelopes }, null, {
+  noRemote: true,
+  syncKey: KEY56,
+});
+await settle();
+const expected56 = mergeLedger(LOCAL56, SERVER56).merged;
+await fireSyncRev(2, SERVER56);
+await sleep(APPLY_WAIT + 1000);
+eq(saved().envelopes?.find((e) => e.id === "E1")?.note ?? null, "new note", "56.4a an envelope note that differs alone is applied");
+eq(saved().envelopes?.find((e) => e.id === "E2")?.photos?.[0]?.id ?? null, "p2", "56.4b an envelope photo id that differs alone is applied");
+eq(saved().receivedAt?.[K0] ?? null, 2000, "56.4c a receivedAt that differs alone is applied");
+eq(canon56(pick56(saved())), canon56(pick56(expected56)), "56.4d and the local ends equal to the merge, compared canonically");
+
+/* 56.5 S2. A cold open with a key calls the Worker within about 1 s, and applies
+   a server ledger with more lines once the idle gate has passed. */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+  noRemote: true,
+  syncKey: KEY56,
+  syncLedger: { mailday: 1, items: ITEMS.slice(0, 4), received: {}, envelopes: [] },
+});
+await settle();
+await sleep(1000);
+ok(
+  syncCalls().some((c) => c.op === "get" || c.op === "post"),
+  "56.5a a cold open with a key calls the Worker within about 1 s"
+);
+await sleep(APPLY_WAIT - 1000);
+eq(saved().items?.length ?? 0, 4, "56.5b and the server's fourth line is applied after the idle gate");
+
+/* 56.6 S3. A second held reply applies after the idle gate, although the first
+   apply's notice is still open. The first apply must leave a notice; that is
+   checked first, so the second check means something. */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+  noRemote: true,
+  syncKey: KEY56,
+  syncLedger: { mailday: 1, items: ITEMS.slice(0, 4), received: {}, envelopes: [] },
+});
+await settle();
+await fireSyncRev(2, { mailday: 1, items: ITEMS.slice(0, 4), received: {}, envelopes: [] });
+await sleep(APPLY_WAIT + 1000);
+eq(saved().items?.length ?? 0, 4, "56.6a0 the first reply is applied");
+ok(!!dismiss55(), "56.6a1 the first apply left its notice open, so the second check means something");
+await fireSyncRev(3, { mailday: 1, items: ITEMS, received: {}, envelopes: [] });
+await sleep(2500);
+eq(saved().items?.length ?? 0, 12, "56.6b a second held reply applies after idle, though the first notice is open");
+
+/* 56.7 S6. A late GET reply with a lower rev never replaces a newer held reply.
+   The first GET is held back, the rev-3 GET lands and is held, then the rev-2
+   reply arrives. The rev-3 reply (12 lines) must be the one applied. */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+  noRemote: true,
+  syncKey: KEY56,
+  syncLedger: { mailday: 1, items: ITEMS.slice(0, 4), received: {}, envelopes: [] },
+});
+await settle();
+const realGet56 = win.sync.get;
+let releaseLate56 = null;
+let getCalls56 = 0;
+win.sync.get = (...args) => {
+  getCalls56 += 1;
+  if (getCalls56 === 1) return new Promise((r) => (releaseLate56 = r));
+  return realGet56(...args);
+};
+try {
+  await fireSyncRev(2, { mailday: 1, items: ITEMS.slice(0, 4), received: {}, envelopes: [] });
+  await fireSyncRev(3, { mailday: 1, items: ITEMS, received: {}, envelopes: [] });
+  await sleep(300);
+  releaseLate56({ status: 200, body: { ledger: { mailday: 1, items: ITEMS.slice(0, 4), received: {}, envelopes: [] }, rev: 2 }, code: "ok" });
+  await sleep(APPLY_WAIT + 1000);
+} finally {
+  win.sync.get = realGet56;
+}
+eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never replaces the newer held reply");
 
 report();

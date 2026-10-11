@@ -32,7 +32,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -234,6 +234,61 @@ for (const dev of ["mac", "iphone"]) {
     expect(`${dev}, security fails: nothing opened`, readLog(sb, "open.log") === null);
     expect(`${dev}, security fails: no QR drawn`, readLog(sb, "osascript.log") === null);
     expect(`${dev}, security fails: no key bytes in stdout or stderr`, !leaks(r.out + r.err));
+  } finally {
+    cleanup(sb);
+  }
+}
+
+// Runs the script with a pipe for stdin, and sends SIGINT once the script has
+// printed its "press Enter" line, which comes after the fake open has run. The
+// script is then waiting on stdin, so the signal lands in the Enter wait.
+function runThenInterrupt(sb, args) {
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, [SCRIPT, ...args], {
+      cwd: REPO,
+      env: {
+        ...process.env,
+        PATH: `${sb.bin}:${process.env.PATH}`,
+        TMPDIR: sb.tmp,
+        FAKE_LOG_DIR: sb.logs,
+        FAKE_SECURITY_FAIL: "",
+      },
+    });
+    let out = "";
+    let err = "";
+    let sent = false;
+    child.stdout.on("data", (d) => {
+      out += d;
+      if (!sent && /press Enter/.test(out)) {
+        sent = true;
+        child.kill("SIGINT");
+      }
+    });
+    child.stderr.on("data", (d) => {
+      err += d;
+    });
+    const guard = setTimeout(() => child.kill("SIGKILL"), 20000);
+    child.on("close", (status, signal) => {
+      clearTimeout(guard);
+      resolve({ status, signal, out, err });
+    });
+  });
+}
+
+// iphone, SIGINT during the Enter wait: the PNG and its directory must still go.
+{
+  const sb = sandbox();
+  try {
+    const r = await runThenInterrupt(sb, ["iphone"]);
+    const rows = (readLog(sb, "open-png.log") ?? "").split("\n").filter((l) => l !== "");
+    const [png] = (rows[0] ?? "").split("\t");
+    expect("iphone, SIGINT: open ran, so the PNG was shown", rows.length === 1 && Boolean(png));
+    expect("iphone, SIGINT: PNG gone after the signal", Boolean(png) && !existsSync(png));
+    expect(
+      "iphone, SIGINT: PNG directory gone after the signal",
+      Boolean(png) && !existsSync(dirname(png))
+    );
+    expect("iphone, SIGINT: no key bytes in stdout or stderr", !leaks(r.out + r.err));
   } finally {
     cleanup(sb);
   }

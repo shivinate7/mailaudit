@@ -458,7 +458,7 @@ win.remote = remoteApi;
    `sync.key`, outside `store`, so storage.list() cannot see it.
    HARNESS CONTRACT ONLY. entry.jsx is not bundled here, so these cases prove
    this mock, not the adapter. */
-const syncFresh = () => ({ key: null, ledger: null, rev: 0, netFail: false, tooBig: false, calls: [], onRev: null });
+const syncFresh = () => ({ key: null, ledger: null, rev: 0, netFail: false, tooBig: false, refused: false, calls: [], onRev: null });
 let sync = syncFresh();
 export const syncCalls = () => sync.calls;
 /* how many close functions connect() has handed out and that were called.
@@ -488,6 +488,10 @@ export const setSyncNetFail = (on) => {
 export const setSyncTooBig = (on) => {
   sync.tooBig = !!on;
 };
+/* the Worker refuses this device's key: every call answers 401 */
+export const setSyncKeyRefused = (on) => {
+  sync.refused = !!on;
+};
 const syncErr = (code) => Object.assign(new Error(code), { code });
 /* every reply is {status, body, code}, code = syncStatus(status), as the
    real adapter in entry.jsx answers it */
@@ -504,14 +508,14 @@ const syncApi = {
   async get() {
     sync.calls.push({ op: "get", keyed: !!sync.key });
     if (sync.netFail) return syncReply(null, null);
-    if (!sync.key) return syncReply(401, { error: "unauthorized" });
+    if (sync.refused || !sync.key) return syncReply(401, { error: "unauthorized" });
     if (sync.ledger == null) return syncReply(404, { error: "empty" });
     return syncReply(200, { ledger: sync.ledger, rev: sync.rev });
   },
   async post(ledger) {
     sync.calls.push({ op: "post", keyed: !!sync.key, body: JSON.stringify(ledger) });
     if (sync.netFail) return syncReply(null, null);
-    if (!sync.key) return syncReply(401, { error: "unauthorized" });
+    if (sync.refused || !sync.key) return syncReply(401, { error: "unauthorized" });
     if (sync.tooBig) return syncReply(413, { error: "too-big" });
     if (!ledger || ledger.mailday !== 1 || !Array.isArray(ledger.items))
       return syncReply(400, { error: "bad ledger" });
