@@ -2,7 +2,7 @@
 
 **Status:** ruled. The owner ruled on 2026-10-11: "Cloudflare does it all". Lane W3 builds the snapshots and has not landed.
 
-GitHub leaves the sync role entirely. The Worker keeps daily snapshots of the ledger for History and for backup. The backup watchdog checks the Worker. The public seed goes away or reads from the server, and that choice is open.
+GitHub leaves the sync role entirely. The Worker keeps daily snapshots of the ledger for History and for backup. The backup watchdog checks the Worker. The public seed goes away. The owner ruled on 2026-10-11 to drop it, so the ledger stops being public and a visitor sees an empty app.
 
 **Holds while:** the Worker serves only `/ledger` and `/ws`, and `src/entry.jsx` still mirrors the ledger to the GitHub `data` branch.
 
@@ -22,10 +22,6 @@ Today only web devices push to the `data` branch. Once both devices run the nati
 
 - A Worker cron that mirrors to the `data` branch. It would put a GitHub token in a Worker secret.
 - The Mac browser as the one mirror. The seed, History and the watchdog would go stale once both devices are native.
-
-## Still open
-
-- Whether the public seed goes away, or reads from the server.
 
 ## Records that this dates when the replacement ships
 

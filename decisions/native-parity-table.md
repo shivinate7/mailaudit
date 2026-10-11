@@ -19,7 +19,7 @@ Each client draws its own screen. The logic has one home, see `rules-run-in-java
 - Worker sync: POST, GET, the WebSocket, the idle gate, resume, and the 401 and 413 advisory lines.
 - Backup export, the masthead and ruled head, the palette, Cochin and monospace type, and motion with reduced motion.
 - Envelope photo capture. Photo sync for both clients runs through the Worker photo route, see `sync-revamp-cloudflare`.
-- Milestones of local versions. Native saves them and prunes them by the same rule as the web app.
+- Milestones of local versions. Native saves them, prunes them by the same rule as the web app, lists them, and restores one. The owner ruled on 2026-10-11: "yeah list and restore".
 
 ## Rows with one scope
 
@@ -38,10 +38,6 @@ Each client draws its own screen. The logic has one home, see `rules-run-in-java
 | URL-scheme key intake | native-only | It delivers the key with no typing. |
 | Ledger file in Application Support | native-only | The WebKit storage eviction rule does not apply to it. |
 | scenePhase resume and the camera usage string | native-only | They are platform plumbing. |
-
-## Still open
-
-- Whether native lists a saved milestone and restores it is not ruled. Lane N9 saves and prunes milestones only. Native has no restore from a backup file.
 
 ## See also
 
