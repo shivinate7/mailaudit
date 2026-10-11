@@ -21,7 +21,7 @@ one record, and each record holds current text only; git keeps the history. Read
 records your task needs. Do not read them all.
 
 - `invariants/` holds a rule that must not break. 8 records.
-- `decisions/` holds a ruling and the reason it still holds. 201 records.
+- `decisions/` holds a ruling and the reason it still holds. 202 records.
 - `measurements/` holds a measured figure and how to re-measure it. 8 records.
 
 A record cites another record by slug, never by a path, so a record survives a
@@ -104,6 +104,7 @@ Sync runs itself. These records say what it refuses to do, and why each refusal 
 - `ledger-and-photos-share-a-repo` — The ledger and the photos share one repo.
 - `photo-writes-wait-one-second` — Photo writes wait one second after the ledger.
 - `null-remote-info-is-not-no-key` — A null remote status is not a missing key.
+- `native-swift-rebuild` — MANIFEST is rebuilt as a native Swift client.
 
 ## Envelope photos
 
