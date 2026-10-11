@@ -5120,8 +5120,8 @@ ok(
   "52.10 the mock's own post record never carries the key"
 );
 
-/* The virtual clock covers groups 53 to 56 (see harness.mjs). Installed here,
-   removed after group 56, so groups 1 to 52 keep real timers. */
+/* The virtual clock covers groups 53 to 57 (see harness.mjs). Installed here,
+   removed after group 57, so groups 1 to 52 keep real timers. */
 installClock();
 
 /* ── 53. the Stage 4b sync path, through the app (harness contract only) ──
@@ -5465,8 +5465,8 @@ try {
   );
   eq(
     remote.history.map((h) => JSON.parse(h.text).items.length),
-    [3],
-    "54.3b the forced write lands this device's snapshot on GitHub"
+    [ITEMS.length],
+    "54.3b the forced write carries the merge of this device and GitHub, not this device's copy alone"
   );
   ok(!btn(/Push anyway/), "54.3c no two-tap is armed");
   ok(
@@ -5954,6 +5954,112 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     "The ledger is too big for the sync server — tap to fix",
     "57.N4b the too-big line drops the GitHub claim"
   );
+}
+
+/* ---- 58. PR 54 round 3: the mirror conflict, the timeout, the 413 line, overlapping POSTs ----
+   Red on sync/s4b by design. F3 is not here: the virtual clock cannot fire a
+   timer early. The mock holds POSTs with holdSyncPosts(), set AFTER boot, since
+   boot() swaps in a fresh sync mock. */
+{
+  const KEY58 = "device-58-key";
+  const GH58 = "github_pat_testtoken";
+  const AUTO58 = 90000; /* AUTO_PUSH_MS in src/app.jsx */
+  const POST58 = (SR?.SYNC_POST_MS ?? 3000) + 300;
+  const count58 = (op) => syncCalls().filter((c) => c.op === op).length;
+  const asRemote58 = (items) =>
+    JSON.stringify({
+      mailday: 1,
+      items,
+      received: {},
+      envelopes: [],
+      dateFilter: { preset: "all", from: "", to: "" },
+      sortBy: "newest",
+      itemSort: "missing",
+    });
+  const LOCAL58 = ITEMS.slice(0, 3);
+  /* GitHub holds 12 lines this device has never seen, so the union is 15 */
+  const REMOTE58 = ITEMS.map((it) => ({ ...it, orderId: `R${it.orderId}`, key: `R${it.key}` }));
+
+  /* F1. On a mirror push conflict the device reads GitHub, merges it in, writes
+     with the fresh sha, and POSTs the merge. It never writes its own copy alone. */
+  await boot({ items: LOCAL58, received: {} }, null, {
+    remote: asRemote58(REMOTE58),
+    remoteKey: GH58,
+    syncKey: KEY58,
+  });
+  await settle();
+  await click(btn(/Mark all received/), "check in, so a POST and a mirror push go out");
+  await sleep(AUTO58 + 1000);
+  await settle();
+  eq(
+    new Set(JSON.parse(remoteText()).items.map((i) => i.key)).size,
+    15,
+    "58.F1a GitHub ends with the union, all 15 lines"
+  );
+  ok(
+    remote.history.length > 0 &&
+      remote.history.every((h) => JSON.parse(h.text).items.length >= 12),
+    "58.F1b no GitHub write ever holds fewer than 12 lines"
+  );
+  eq(
+    new Set(((await win.sync.get()).body?.ledger?.items ?? []).map((i) => i.key)).size,
+    15,
+    "58.F1c the Worker store also ends with the union"
+  );
+
+  /* F2. A Worker call that never answers times out at SYNC_TIMEOUT_MS, and the
+     GitHub peek and push go ahead. */
+  eq(SR?.SYNC_TIMEOUT_MS ?? "MISSING", 10000, "58.F2a SYNC_TIMEOUT_MS is 10000, exported from sync-rules");
+  await boot({ items: LOCAL58, received: {} }, null, { remoteKey: GH58, syncKey: KEY58 });
+  await settle();
+  const release58 = holdSyncPosts();
+  try {
+    await click(btn(/Mark all received/), "check in, and the POST never answers");
+    await sleep(AUTO58 + 1000);
+    await settle();
+    ok(pushes().length > 0, "58.F2b a GitHub push goes ahead after the Worker times out");
+  } finally {
+    release58();
+  }
+
+  /* F4. After a 413, a successful GET must not clear the too-big line. Only a
+     successful POST does. */
+  await boot({ items: LOCAL58, received: {} }, null, { syncKey: KEY58 });
+  await settle();
+  setSyncTooBig(true);
+  try {
+    await click(btn(/Mark all received/), "check in, so a POST is too big");
+    await sleep(POST58);
+  } finally {
+    setSyncTooBig(false);
+  }
+  await settle();
+  ok(/too big/i.test(advisory()), "58.F4a0 the POST was refused as too big, so the line means something");
+  await fireSyncRev(syncRev() + 1, { mailday: 1, items: LOCAL58, received: {}, envelopes: [] });
+  await sleep(100);
+  await settle();
+  ok(/too big/i.test(advisory()), "58.F4a a successful GET does not clear the too-big line");
+
+  /* F5. A rev heard while two POSTs overlap is held, and released after the
+     second reply lands: one GET follows when the rev is above both replies. */
+  await boot({ items: ITEMS.slice(0, 6), received: {} }, null, { syncKey: KEY58 });
+  await settle();
+  const release58b = holdSyncPosts();
+  try {
+    await click(allBtns(/^Mark all received$/)[0], "first check-in, POST 1 goes out");
+    await sleep(POST58);
+    /* the first package is complete and leaves the unreceived view, so Beta is now first */
+    await click(allBtns(/^Mark all received$/)[0], "second check-in, POST 2 goes out");
+    await sleep(POST58);
+    eq(count58("post"), 2, "58.F5a0 two POSTs are in flight, so the overlap means something");
+    await fireSyncRevOnly(syncRev() + 3); /* above both replies, which give rev+1 and rev+2 */
+    const gets58 = count58("get");
+    release58b();
+    await sleep(300);
+    eq(count58("get") - gets58, 1, "58.F5a one GET follows once both replies land, since the rev is above both");
+  } finally {
+    release58b();
+  }
 }
 
 uninstallClock();
