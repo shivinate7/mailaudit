@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import Papa from "papaparse";
 import { photoPlan } from "./photo-rules.mjs";
 import { shouldSnapshot } from "./version-rules.mjs";
-import { SYNC_POST_MS, SYNC_COLD_POST_MS, SYNC_TIMEOUT_MS, IDLE_APPLY_MS, idleReady, backoffMs } from "./sync-rules.mjs";
+import { KEY_RE, SYNC_POST_MS, SYNC_COLD_POST_MS, SYNC_TIMEOUT_MS, IDLE_APPLY_MS, idleReady, backoffMs } from "./sync-rules.mjs";
 import {
   mergeItems,
   mergeLedger,
@@ -3098,6 +3098,9 @@ export default function MailDayLedger() {
   const [syncOpen, setSyncOpen] = useState(false);
   const [remoteTarget, setRemoteTarget] = useState(null);
   const [remoteInfo, setRemoteInfo] = useState(null); // { hasKey, sha, pushedAt, pulledAt }
+  const [workerKeySet, setWorkerKeySet] = useState(null); // null until asked, then true | false
+  const [syncKeyMsg, setSyncKeyMsg] = useState("");
+  const syncKeyInput = useRef(null);
   const [serverDown, setServerDown] = useState(false); // false | "unknown" | "too-big" | "no-access": the last Worker call failed
   const [pushState, setPushState] = useState("idle"); // idle | pushing | pushed | conflict
   const [pullState, setPullState] = useState("idle"); // idle | pulling
@@ -3381,6 +3384,13 @@ export default function MailDayLedger() {
        cold start of a perfectly configured device — the same "I could not
        look" ≠ "all clear" rule peek and listPhotos follow. */
     if (!remoteInfo) return null;
+    /* A device with a GitHub token but no Worker key: the sync line is the one
+       entrance for pasting it (the home-screen app keeps its own storage). Just
+       below the Worker failures and every GitHub failure, above "never" and
+       "stale". It always shows: the adapter exists only where a Worker key can
+       be pasted. With the panel open the line is that panel's header and says the
+       truth about the backup; the field is in the panel. */
+    if (workerKeySet === false && remoteInfo.hasKey && !syncOpen) return "sync-key";
     /* **The clock is the last time this device AGREED with the backup, not the
        last time it wrote to it.** It used to read `pushedAt` alone, which asks
        "did I write recently?" when the question is "are my bytes on GitHub?".
@@ -3400,7 +3410,7 @@ export default function MailDayLedger() {
     if (!syncedAt) return "never";
     if (Date.now() - syncedAt > SYNC_STALE_MS) return "stale";
     return null;
-  }, [pushState, remoteMsg, remoteInfo, ahead, seedShown, syncedAt, photoUnreadable, backupUnknown, serverDown]);
+  }, [pushState, remoteMsg, remoteInfo, ahead, seedShown, syncedAt, photoUnreadable, backupUnknown, serverDown, workerKeySet, syncOpen]);
 
   const snapshot = useCallback(
     () => ({
@@ -4519,7 +4529,10 @@ export default function MailDayLedger() {
         if (reply) {
           /* nothing to merge: no apply, no milestone. Canonical compare, so a
              note, a photo id or a receivedAt that differs alone still counts. */
-          if (canon(merged) === canon(snapshot())) return { ok: true };
+          if (canon(merged) === canon(snapshot())) {
+            setSeedShown(false); /* a server ledger has landed: this page is the owner's now */
+            return { ok: true };
+          }
           /* a milestone only in front of a removal, and before the apply */
           if (stats.checkInsRemoved + stats.envelopesRemoved + (stats.stampsRemoved || 0) > 0)
             takeVersion("before sync", "milestone");
@@ -4528,6 +4541,7 @@ export default function MailDayLedger() {
         /* remembered so the next apply can tell this notice from an import's */
         if (reply) serverNotice.current = notice;
         await applyBackup(text, reply ? "server" : "merge", extraPresent, notice);
+        if (reply) setSeedShown(false); /* seed-load-guards: no longer someone else's ledger */
         /* applyBackup bumps syncGen — it has to, since a restore replaces the
            world and anything still in flight against the old one must not land.
            doPull is unaffected because applying is the last thing it does; a
@@ -4671,7 +4685,8 @@ export default function MailDayLedger() {
   tryApplyRef.current = () => {
     clearTimeout(applyTimer.current);
     if (!pendingReply.current) return;
-    const idle = idleReady(lastActivity.current, Date.now());
+    /* a pasted key is a tap the user just made: its first reply applies at once */
+    const idle = applyNow.current || idleReady(lastActivity.current, Date.now());
     /* an import notice holds the apply; the notice a server apply left does not */
     const noticeOpen = importMsg && importMsg !== serverNotice.current;
     if (!idle || mergeBlocked || noticeOpen || syncingRef.current) {
@@ -4682,9 +4697,11 @@ export default function MailDayLedger() {
     }
     const reply = pendingReply.current;
     pendingReply.current = null;
+    applyNow.current = false;
     doMerge(false, true, reply);
   };
   const serverNotice = useRef("");
+  const applyNow = useRef(false);
   const lastServer = useRef(null); // the newest ledger the Worker answered with
   const lastRev = useRef(0); // the newest rev whose reply landed
   const inflightRev = useRef(0);
@@ -4793,7 +4810,9 @@ export default function MailDayLedger() {
     const p = (async () => {
       if (!window.sync || !(await window.sync.hasKey())) return;
       /* 50 ms of slack: a timer that fires a hair early still retries */
-      if (refusedRef.current || Date.now() < nextTry.current - 50) return;
+      /* a page that shows the seed holds someone else's ledger: it never POSTs
+         (seed-load-guards) */
+      if (seedShown || refusedRef.current || Date.now() < nextTry.current - 50) return;
       postsInFlight.current++;
       let r;
       try {
@@ -4817,6 +4836,17 @@ export default function MailDayLedger() {
   const coldRef = useRef(null);
   coldRef.current = () => {
     cycleRef.current = (async () => {
+      try {
+        await coldCycle();
+      } finally {
+        /* every cold path ends here: no reply is held for the apply, so the
+           apply-at-once exception of a saved key ends with it */
+        if (!pendingReply.current) applyNow.current = false;
+      }
+    })();
+  };
+  const coldCycle = async () => {
+    {
       if (!window.sync || !(await window.sync.hasKey())) return;
       const r = await withTimeout(window.sync.get());
       settleReply(r);
@@ -4827,8 +4857,46 @@ export default function MailDayLedger() {
           ? r.body?.ledger && lacksRef.current(r.body.ledger)
           : r.code === "empty" && holdsUserDataRef.current();
       if (send) setTimeout(() => postRef.current(), SYNC_COLD_POST_MS);
-    })();
+    }
   };
+  /* Paste a Worker key. The field is validated by the same rule as a #k= link,
+     stored through window.sync.setKey, cleared, then the cold-open path runs:
+     a GET, and a POST when this device holds something the server lacks. */
+  const saveSyncKey = async () => {
+    const v = (syncKeyInput.current?.value || "").trim();
+    /* the field is cleared on every path, the refusals included */
+    if (syncKeyInput.current) syncKeyInput.current.value = "";
+    if (!KEY_RE.test(v)) {
+      setSyncKeyMsg("That is not a valid sync key. Paste it again.");
+      return;
+    }
+    try {
+      await window.sync.setKey(v);
+    } catch (e) {
+      setSyncKeyMsg(
+        e?.code === "storage"
+          ? "This device could not save the sync key. Try again."
+          : "That is not a valid sync key. Paste it again."
+      );
+      return;
+    }
+    setSyncKeyMsg("");
+    setWorkerKeySet(true);
+    /* a new key lifts a 401 stop and every backoff, and opens the socket if none is open */
+    refusedRef.current = false;
+    failN.current = 0;
+    nextTry.current = 0;
+    tooBigRef.current = false;
+    setServerDown(false);
+    /* the old socket carries the old key: close it, then connect with the new one */
+    if (closeRef.current) closeRef.current();
+    closeRef.current = window.sync.connect((rev) => revRef.current(rev));
+    applyNow.current = true;
+    coldRef.current();
+  };
+  useEffect(() => {
+    if (window.sync) window.sync.hasKey().then(setWorkerKeySet, () => setWorkerKeySet(null));
+  }, []);
   /* a rev above the last one seen (or already being fetched) is one GET */
   const revRef = useRef(null);
   revRef.current = async (rev) => {
@@ -6717,6 +6785,8 @@ export default function MailDayLedger() {
                     ? "Your other device has newer lines — tap to bring them in"
                     : syncBroken === "server"
                     ? "The sync server could not be reached — tap to fix"
+                    : syncBroken === "sync-key"
+                    ? "This device has no sync key — tap to paste it"
                     : syncBroken === "key-refused"
                     ? "This device’s sync key was refused — tap to fix"
                     : syncBroken === "too-big"
@@ -7223,6 +7293,35 @@ export default function MailDayLedger() {
                               </button>
                             </span>
                           )}
+                        </>
+                      )}
+                      {window.sync && workerKeySet !== null && (
+                        <>
+                          <span style={partLab}>Sync key</span>
+                          <span
+                            style={{
+                              display: "flex",
+                              gap: 8,
+                              alignItems: "center",
+                              flexWrap: "wrap",
+                              minWidth: 0,
+                            }}
+                          >
+                            <input
+                              ref={syncKeyInput}
+                              type="password"
+                              placeholder="paste the sync key"
+                              aria-label="Sync key"
+                              autoComplete="off"
+                              spellCheck={false}
+                              autoCapitalize="off"
+                              style={keyField}
+                            />
+                            <button onClick={saveSyncKey} style={keySave}>
+                              Save sync key
+                            </button>
+                            {syncKeyMsg && <span style={partVal}>{syncKeyMsg}</span>}
+                          </span>
                         </>
                       )}
                     </div>
