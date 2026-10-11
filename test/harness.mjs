@@ -562,7 +562,7 @@ const syncApi = {
   /* the real adapter returns a close function whether or not a key is set.
      onRev is called only by fireSyncRev() in the tests. */
   connect(onRev) {
-    sync.calls.push({ op: "connect", keyed: !!sync.key });
+    sync.calls.push({ op: "connect", keyed: !!sync.key, key: sync.key });
     sync.onRev = onRev;
     return () => {
       syncCloses += 1;

@@ -6360,6 +6360,7 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   const KEY59 = "k59-" + "A".repeat(39); /* 43 characters, the Worker's alphabet */
   const BAD59 = "abc123&x";
   const REFUSED59 = "That is not a valid sync key. Paste it again.";
+  const STORE59 = "This device could not save the sync key. Try again.";
   const SEED59 = {
     items: ITEMS.slice(0, 3),
     received: { [ITEMS[0].key]: 1 },
@@ -6525,10 +6526,54 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   try {
     await pasteKey59(KEY59);
     ok(!!field59() && field59().value === "", "59.9a a failed setKey still clears the field");
-    ok(text().includes(REFUSED59), "59.9b and the refusal copy shows");
+    ok(text().includes(STORE59) && !text().includes(REFUSED59), "59.9b a storage failure shows its own copy, not the refusal");
   } finally {
     win.sync.setKey = realSet9;
   }
+
+  /* 59.10. A seeded page with a server ledger present. A pasted good key GETs the
+     ledger and merges it. The "someone else's ledger" line goes, and a later
+     check-in POSTs a ledger that carries it. */
+  const SERVER59 = {
+    mailday: 1,
+    items: ITEMS.slice(0, 3),
+    received: {},
+    dateFilter: { preset: "all", from: "", to: "" },
+    sortBy: "newest",
+    itemSort: "missing",
+  };
+  await boot(null, null, { remote: null, seed: SEED, syncAdapter: true, syncLedger: SERVER59 });
+  await settle();
+  ok(/someone else’s ledger/.test(text()), "59.10pre the device shows the public seed");
+  await openPanel59();
+  await pasteKey59(KEY59);
+  ok(count59("get") > 0, "59.10a a pasted key on a seeded page with a server ledger GETs it");
+  ok(!/someone else’s ledger/.test(text()), "59.10b and the seed line is gone once the ledger merges");
+  const posts10 = count59("post");
+  await toggleShowing();
+  await click(btn(/Mark all received/), "check in the cards");
+  await settle();
+  await sleep(1000);
+  await settle();
+  const last10 = syncCalls().filter((c) => c.op === "post").pop();
+  ok(
+    count59("post") > posts10 && JSON.parse(last10?.body ?? "{}").received?.[ITEMS[1].key] != null,
+    "59.10c a check-in POSTs a ledger that carries it"
+  );
+
+  /* 59.12. Replacing the key while a socket is open closes that socket, and a new
+     connect runs with the new key. */
+  const NEW12 = "k59-" + "C".repeat(39);
+  await boot(SEED59, null, { remoteKey: GH59, syncKey: KEY59 });
+  await settle();
+  const closes12 = syncCloseCount();
+  await openPanel59();
+  await pasteKey59(NEW12);
+  ok(syncCloseCount() > closes12, "59.12a replacing the key closes the open socket");
+  ok(
+    syncCalls().some((c) => c.op === "connect" && c.key === NEW12),
+    "59.12b and a new connect runs with the new key"
+  );
 }
 
 uninstallClock();
