@@ -48,6 +48,13 @@ function cors(request, env) {
 /* Durable Object per-value cap is 2,000,000 bytes; refuse a ledger over this, which keeps 200,000 bytes of headroom. */
 export const MAX_LEDGER_BYTES = 1_800_000;
 
+/* Key-order-independent form; array order still counts, so a reorder reads as changed (safe: one extra write). */
+const canon = (v) =>
+  JSON.stringify(v, (_, x) =>
+    x && typeof x === "object" && !Array.isArray(x)
+      ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, x[k]]))
+      : x);
+
 export async function route(request, env, store) {
   const headers = cors(request, env);
   const json = (body, status = 200) =>
@@ -80,6 +87,7 @@ export async function route(request, env, store) {
   const cur = await store.read();
   const ledger = cur ? mergeLedger(cur.ledger, incoming).merged : incoming;
   if (new TextEncoder().encode(JSON.stringify(ledger)).length > MAX_LEDGER_BYTES) return json({ error: "too-large" }, 413);
+  if (cur && canon(ledger) === canon(cur.ledger)) return json({ ledger, rev: cur.rev });
   const rev = (cur?.rev ?? 0) + 1;
   await store.write(ledger, rev);
   await store.broadcast({ rev });

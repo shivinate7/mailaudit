@@ -29,5 +29,6 @@ export class Ledger extends DurableObject {
 }
 
 export default {
-  fetch: (request, env) => env.LEDGER.get(env.LEDGER.idFromName("ledger")).fetch(request),
+  // Fresh store per sync-revamp-cloudflare; rollback is the old name "ledger".
+  fetch: (request, env) => env.LEDGER.get(env.LEDGER.idFromName("ledger-v2")).fetch(request),
 };
