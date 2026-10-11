@@ -17,7 +17,7 @@ Read on 2026-10-11 from secondary sources. The Spotify app was not opened.
 - Mobile: a clock icon on Home opens a list sorted by date. A "Today" heading starts it. "See all played" expands one day. A tap on a row plays it.
 - Desktop: the Recently Played tab in the Queue. The list is flat and newest first. It holds the last 50 tracks. A row shows title, album and duration. A three-dot menu sits on each row.
 - Spotify staff say an entry cannot be removed. The list only grows.
-- The Web API gives each entry `played_at` and `context`, the place it was played from. It returns at most 50.
+- The Web API gives each entry a played-at time and a context, the place it was played from. It returns at most 50.
 - Unverified: a three-month reach on mobile. One search summary relays a community post. The fetch of that post failed.
 
 The ledger borrows five traits. These are newest first, day headings, one row for one thing, a tap that acts, and a capped list that is never edited. It leaves four. These are artwork (the app shows no card image), the per-row menu (a row has one action), "See all played" (new rows open under the thumb), and the Home-tab entrance.
@@ -32,7 +32,7 @@ One entry per action on this device. Each entry holds its time `at`.
 - Envelope recorded, edited or discarded: the envelope before and after.
 - Envelope assigned: the plan (card key and take), and the envelope before and after. This is the data of today's `undo`.
 
-Each single-value entry (stamp, envelope) also holds `afterAt`, the `updatedAt` it wrote.
+Each single-value entry (stamp, envelope) also holds the `updatedAt` that it wrote.
 
 Not logged: a CSV import, a merge or live apply from the other device, a restore, a pull, a Reset, and the view preferences. A milestone covers each risky one, see `milestones-taken-before-risk`. A change from the other device belongs to that device's log.
 
@@ -64,7 +64,7 @@ The panel freezes its rows when it opens, as the sort order is frozen while the 
 An undo is a new, later write. It is never a local rollback.
 
 - **Counts.** The undo subtracts the row's own delta from the card's current count. It clamps the result between 0 and the line's quantity. A count that reaches zero is deleted, not stored as 0. So a hand edit made after the row survives, and any row of a card can be undone in any order (`undo-removes-only-its-delta`).
-- **Stamps and envelopes.** The undo writes the `before` value only when the subject's last write is still this row's write. The subject's `updatedAt` must equal the row's `afterAt`. If not, the row reads `CHANGED SINCE` and does nothing. Writing `before` over a newer change would be a rollback.
+- **Stamps and envelopes.** The undo writes the `before` value only when the subject's last write is still this row's write. The subject's `updatedAt` must equal the `updatedAt` that the row wrote. If not, the row reads `CHANGED SINCE` and does nothing. Writing `before` over a newer change would be a rollback.
 - **A stamp** returns with its old `at` date. A stamp that did not exist before returns as a tombstone (`stamp-removal-writes-a-tombstone`).
 - **An envelope.** Undoing a record writes a discard tombstone. Undoing an edit writes the older copy. Undoing a discard or an assign writes the live copy with a fresh `updatedAt`, so it beats the tombstone (`envelope-deletion-unrepresented`).
 - **An assign** subtracts the plan's takes and restores the envelope, as `undoAssign` does. The Undo notice and the row call one function. If the envelope changed since, the whole row reads `CHANGED SINCE`. Both parts happen, or neither.
