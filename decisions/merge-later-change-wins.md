@@ -1,6 +1,6 @@
 # The later change wins in a two-device merge.
 
-The merge drops an item only when a later write wins. A count falls only that way. An un-check is one such write. A merge that silently drops 35 imported lines looks the same as one that worked, so the rule matters. Running the merge again is harmless.
+A merge never drops a line from `items`. A check-in or an envelope goes only when a later write wins. A check-in count falls only that way. An un-check is one such write. A merge that silently dropped 35 imported lines would look the same as one that worked, so the rule matters. Running the merge again is harmless.
 
 **Holds while:** `mergeReceived` in `src/merge-rules.mjs` takes the later time per key, and the per-key max when a time is missing. `mergeLedger` builds its result from named fields.
 
@@ -16,7 +16,7 @@ Removals are the exceptions. A removed stamp travels as a tombstone, and it beat
 
 `mergeLedger` builds the merged ledger from **named fields**. So a persisted key it does not name is dropped by every merge. It names `receivedAt`. The merge applies the result locally as a full replace, and then pushes it. That makes this file a sixth site for `saved-state-shape`, after the five sites in `app.jsx`.
 
-**Pinned by:** groups 33, 34 and 49. Group 33 is pure, like groups 27 and 31. It imports `merge-rules.mjs` directly. A merge that drops lines makes a plausible ledger, not an error. Its symmetry assertions are the ones to keep. Merging A into B and B into A must give the same counts. Merging twice must add nothing. Those two claims show that the merge does not prefer either device. They also show that a retry after a half-failed sync is harmless. Group 49 pins the un-check and tombstone merges.
+**Pinned by:** groups 33, 34 and 49. Group 33 is pure, like groups 27 and 31. It imports `merge-rules.mjs` directly. A merge that dropped lines would make a plausible ledger, not an error. Its symmetry assertions are the ones to keep. Merging A into B and B into A must give the same counts. Merging twice must add nothing. Those two claims show that the merge does not prefer either device. They also show that a retry after a half-failed sync is harmless. Group 49 pins the un-check and tombstone merges.
 
 Mutants confirmed red:
 - `mergeReceived` using incoming-wins instead of `max`;
