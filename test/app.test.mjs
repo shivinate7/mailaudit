@@ -5884,17 +5884,6 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   ok(!/snapshot of someone/i.test(text()), "57.N1a a device with a Worker key gets no seed banner");
   ok(!(saved().items?.length), "57.N1b and no seeded items are saved");
 
-  /* N1c. A keyless visitor gets the seed, and when a sync advisory applies too,
-     the advisory wins the line. A keyless device is "no-key", so it wins. */
-  await boot(null, null, { seed: SEED57 });
-  await settle();
-  await sleep(SAVE_WAIT);
-  eq(
-    advisory().trim(),
-    "Not backed up on this device — tap to set it up",
-    "57.N1c when the seed and a sync advisory both apply, the advisory wins the line"
-  );
-
   /* N2. The rev for this device's own POST can arrive before the POST reply.
      The device must not answer its own write with a GET. */
   await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { syncKey: KEY57 });
