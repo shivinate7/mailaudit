@@ -4880,7 +4880,7 @@ export default function MailDayLedger() {
       );
       return;
     }
-    setSyncKeyMsg("");
+    setSyncKeyMsg("Sync key saved.");
     setWorkerKeySet(true);
     /* a new key lifts a 401 stop and every backoff, and opens the socket if none is open */
     refusedRef.current = false;
