@@ -4450,12 +4450,12 @@ export default function MailDayLedger() {
         const { merged, stats } = mergeLedger(snapshot(), parseLedger(res.text));
         const text = JSON.stringify(merged);
         const before = syncGen.current;
-        /* An unattended merge that added nothing has nothing to report, and
+        /* An unattended merge that added and removed nothing has nothing to report, and
            reporting it anyway is worse than silence — `peek` says "ahead" on
            any new blob sha, and a push writes one whenever the ledger is
            re-saved, so an empty-data commit elsewhere would otherwise greet the
            user on their next resume with a notice about a merge they never
-           asked for that did nothing. When it DID add something the summary
+           asked for that did nothing. When it DID add or remove something the summary
            stays even quietly: the list just changed shape, and that sentence is
            the only thing explaining why. */
         const changed =
@@ -4464,6 +4464,7 @@ export default function MailDayLedger() {
             stats.envelopesAdded +
             stats.checkInsRemoved +
             stats.envelopesRemoved +
+            (stats.stampsRemoved || 0) +
             (stats.stampsAdded || 0) >
           0;
         await applyBackup(
@@ -5417,7 +5418,7 @@ export default function MailDayLedger() {
   });
   /* The safe resolution, and therefore the PRIMARY one: the grid's accent
      fill, the app's "this is the live control" colour, beside the force. It
-     carries no two-tap arm because it destroys nothing — arming it would say
+     carries no two-tap arm because it keeps the later change and names every removal — arming it would say
      the opposite, and invariant no-native-dialogs's pattern is for destructive actions
      specifically. */
   if (pushState === "conflict" || ahead)

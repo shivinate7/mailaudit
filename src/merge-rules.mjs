@@ -23,11 +23,11 @@
    change the user made on purpose, and the merge notice names every removal.
    Re-running it is harmless.
 
-   One deliberate exception: a stamp REMOVED on one device is a tombstone with
-   a fresh `updatedAt`, and a newer tombstone beats an older stamp. That is
-   still "freshest write wins" — the user's own removal propagating, not the
-   merge deciding anything — and it is there because a resurrected `refunded`
-   stamp would silently pull money back out of the tally. See mergeStamps. */
+   Stamps follow the same rule: a stamp REMOVED on one device is a tombstone
+   with a fresh `updatedAt`, and a newer tombstone beats an older stamp. That is
+   the user's own removal propagating, not the merge deciding anything, and a
+   resurrected `refunded` stamp would silently pull money back out of the
+   tally. The merge counts it as a removal. See mergeStamps. */
 
 /* Union of two line-item lists, keyed on `it.key`
    (`orderId|itemNumber|vendorProductId` — invariant saved-state-shape, stable across
@@ -161,14 +161,16 @@ export function mergeStamps(base, incoming) {
   const t = (s) => Number(s?.updatedAt) || 0;
   const out = { ...(base || {}) };
   let added = 0;
+  let removed = 0;
   for (const [gk, s] of Object.entries(incoming || {})) {
     if (!s || typeof s !== "object") continue;
     const mine = out[gk];
     if (mine && t(s) <= t(mine)) continue; // strict >: local wins a tie
     out[gk] = s;
     if (s.kind) added++;
+    else if (mine?.kind) removed++;
   }
-  return { stamps: out, added };
+  return { stamps: out, added, removed };
 }
 
 /* `local` is the device running the merge and wins every tie.
@@ -211,6 +213,7 @@ export function mergeLedger(local, incoming) {
       envelopesAdded: envelopes.added,
       checkInsRemoved: received.removed,
       envelopesRemoved: envelopes.removed,
+      stampsRemoved: stamps.removed,
       stampsAdded: stamps.added,
     },
   };
@@ -237,14 +240,18 @@ export function mergeSummary(stats) {
   const gone = [];
   if (stats.checkInsRemoved)
     gone.push(
-      `${stats.checkInsRemoved} check-in${stats.checkInsRemoved === 1 ? "" : "s"}`
+      `un-checked ${stats.checkInsRemoved} card${stats.checkInsRemoved === 1 ? "" : "s"}`
     );
   if (stats.envelopesRemoved)
     gone.push(
       `${stats.envelopesRemoved} envelope${stats.envelopesRemoved === 1 ? "" : "s"}`
     );
+  if (stats.stampsRemoved)
+    gone.push(
+      `${stats.stampsRemoved} stamp${stats.stampsRemoved === 1 ? "" : "s"}`
+    );
   const removal = gone.length
-    ? ` The other device's later changes removed ${gone.join(" and ")}.`
+    ? ` Removed by the other device's later changes: ${gone.join(", ")}.`
     : "";
   if (!bits.length)
     return removal
