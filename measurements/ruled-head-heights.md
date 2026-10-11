@@ -50,7 +50,7 @@ The action row was re-measured in real Chromium. The test used the user's actual
 - An empty ledger fell from 69px to 58px.
 - Every one of 24 width-by-state combinations has 0px horizontal overflow.
 
-One figure went the other way. The open Sync panel grew from **357px to 419px at 375px**. At 760px it grew from 320px to 406px. The two-column option grid stacks three rows where the flex-wrap fitted two (one at 760px). The particulars sit on three ruled lines instead of two crammed ones. This cost is paid only while the disclosure is open. The reserved sync key message line adds 25px more (17px plus an 8px gap), so the open panel is 444px at 375px and 431px at 760px, measured headless on 2026-10-11. In return, the panel looks like its two siblings instead of like the tray the region replaced.
+One figure went the other way. The open Sync panel grew from **357px to 419px at 375px**. At 760px it grew from 320px to 406px. The two-column option grid stacks three rows where the flex-wrap fitted two (one at 760px). The particulars sit on three ruled lines instead of two crammed ones. This cost is paid only while the disclosure is open. The reserved sync key message line adds 25px more (17px plus an 8px gap). So the open panel is 444px at 375px and 431px at 760px, measured headless on 2026-10-11. In return, the panel looks like its two siblings instead of like the tray the region replaced.
 
 At 375px the three action cells measure 114.3px each. The grid's halves measure 161px. Re-check these fits if the type changes:
 
