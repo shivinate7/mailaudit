@@ -34,6 +34,9 @@ export function syncStatus(status) {
 
 export const isNewRev = (have, got) => got > have;
 
+/* a POST goes out this long after a change */
+export const SYNC_POST_MS = 3000;
+
 /* a pushed rev is applied only after the device has sat idle this long */
 export const IDLE_APPLY_MS = 10000;
 export const idleReady = (lastActivity, now) => now - lastActivity >= IDLE_APPLY_MS;
