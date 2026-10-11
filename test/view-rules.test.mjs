@@ -410,9 +410,25 @@ const r14 = rankCandidates(env(["Lightning Bolt", 1]), [TIE_Q, TIE_P], {});
 eq(r14?.tied, 1, "V6.14 two candidates that match equally but owe different leftovers are not a tie");
 eq(rawGks(r14), ["T3::Papa", "T4::Quebec"], "V6.14b the candidate that owes less ranks first");
 
-/* render order below the tie: date (older first), then untracked, then gk.
-   Read raw, not gksOf, because gksOf sorts and would hide the order. */
-eq(rawGks(rankCandidates(E3, ALL, {})), ["A1::Alpha Cards", "B1::Beta Games"], "V6.15 equal candidates list the older order first");
+/* render order below the tie: the sort puts untracked first (src/view-rules.mjs:184),
+   then date, older first (:185), then gk. Read raw, not gksOf, because gksOf
+   sorts and would hide the order. V6.15 gives the older order the later gk, so
+   only the date key can put it first. */
+const OLD_Z = mkPkg("Z7", "Zulu", [["Brainstorm", 2]], "2026-07-01", "without tracking");
+const NEW_A = mkPkg("A2", "Alpha", [["Brainstorm", 2]], "2026-07-02", "without tracking");
+eq(
+  rawGks(rankCandidates(env(["Brainstorm", 2]), [NEW_A, OLD_Z], {})),
+  ["Z7::Zulu", "A2::Alpha"],
+  "V6.15 equal candidates list the older order first"
+);
+/* untracked outranks date: the newer untracked order lists before the older tracked one */
+const OLD_T = mkPkg("T8", "Tango", [["Brainstorm", 2]], "2026-06-01", "with tracking");
+const NEW_U = mkPkg("U7", "Uniform", [["Brainstorm", 2]], "2026-07-01", "without tracking");
+eq(
+  rawGks(rankCandidates(env(["Brainstorm", 2]), [OLD_T, NEW_U], {})),
+  ["U7::Uniform", "T8::Tango"],
+  "V6.18 an untracked order lists before an older tracked one, so untracked outranks date"
+);
 const T_TRACKED = mkPkg("T5", "Tango", [["Lightning Bolt", 1]], "2026-07-01", "with tracking");
 const T_UNTRACKED = mkPkg("U6", "Uniform", [["Lightning Bolt", 1]], "2026-07-01", "without tracking");
 eq(
