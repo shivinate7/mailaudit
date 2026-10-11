@@ -94,6 +94,11 @@ import {
   mergeLedger,
   mergeSummary,
 } from "../src/merge-rules.mjs";
+/* group 60 reads the palette from the built bundle and from the files on disk */
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 
 const fresh = () => boot({ items: ITEMS, received: {} });
 
@@ -6770,6 +6775,209 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   await settle();
   ok(!text().includes("Sync key saved."), "59.21 a later 401 removes the save message");
   setSyncKeyRefused(false);
+}
+
+/* ---------- 60. shared palette tokens ----------
+   The palette has one home, shared/tokens.json, and the built C must equal it.
+   app.jsx does not export C, and this suite needs no product change to read it.
+   The probe bundles src/app.jsx in memory with a plugin that appends one named
+   export, __probeC. A drift plugin swaps the JSON the bundle imports, so the drift
+   case shows that C reads the file and holds no copy. Every file read is guarded,
+   so a missing tokens.json fails an assertion and never throws. */
+{
+  const ROOT60 = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+  const APP60 = path.join(ROOT60, "src/app.jsx");
+  const TOKENS60 = path.join(ROOT60, "shared/tokens.json");
+  const esbuild60 = createRequire(path.join(ROOT60, "package.json"))("esbuild");
+  const readOr60 = (p) => {
+    try {
+      return readFileSync(p, "utf8");
+    } catch {
+      return "";
+    }
+  };
+
+  /* The scanner. esbuild drops comments and keeps string, template and JSX text, so a
+     comment opener inside a string or template cannot hide the code after it. */
+  const codeOnly60 = (src) => esbuild60.transformSync(src, { loader: "jsx", legalComments: "none" }).code;
+  const COLOUR60 = /#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b|rgba?\(/g;
+  const colourLiterals60 = (src) => {
+    try {
+      return codeOnly60(src).match(COLOUR60) ?? [];
+    } catch {
+      return null;
+    }
+  };
+
+  /* 60.1 */
+  let tokens60 = null;
+  try {
+    tokens60 = JSON.parse(readOr60(TOKENS60));
+  } catch {
+    tokens60 = null;
+  }
+  ok(
+    tokens60 !== null && typeof tokens60 === "object" && !Array.isArray(tokens60),
+    "60.1 shared/tokens.json exists and parses to an object"
+  );
+
+  /* 60.2, 60.3: the source reads the file and holds no literal C */
+  let appCode60 = "";
+  try {
+    appCode60 = codeOnly60(readOr60(APP60));
+  } catch {
+    appCode60 = "";
+  }
+  ok(
+    /\bimport\b[^;]*\bfrom\s*["']\.\.\/shared\/tokens\.json["']/.test(appCode60),
+    "60.2 src/app.jsx imports ../shared/tokens.json"
+  );
+  ok(!/\bconst\s+C\s*=\s*\{/.test(appCode60), "60.3 src/app.jsx holds no literal `const C = {`");
+
+  /* the probe: the built C, optionally with the JSON the bundle imports replaced */
+  const probeC60 = async (tokensOverride) => {
+    try {
+      const built = await esbuild60.build({
+        entryPoints: [APP60],
+        bundle: true,
+        write: false,
+        format: "esm",
+        platform: "node",
+        loader: { ".jsx": "jsx" },
+        logLevel: "silent",
+        plugins: [
+          {
+            name: "palette-probe",
+            setup(b) {
+              b.onLoad({ filter: /src[\\/]app\.jsx$/ }, (args) => ({
+                contents: readFileSync(args.path, "utf8") + "\nexport { C as __probeC };\n",
+                loader: "jsx",
+              }));
+              if (tokensOverride)
+                b.onLoad({ filter: /shared[\\/]tokens\.json$/ }, () => ({
+                  contents: JSON.stringify(tokensOverride),
+                  loader: "json",
+                }));
+            },
+          },
+        ],
+      });
+      const mod = await import(
+        "data:text/javascript;base64," + Buffer.from(built.outputFiles[0].text).toString("base64")
+      );
+      return mod.__probeC ?? null;
+    } catch {
+      return null;
+    }
+  };
+  /* top-level keys that differ, sorted; a missing side reads as one difference */
+  const diff60 = (a, b) => {
+    if (!a || !b) return ["(no value)"];
+    return [...new Set([...Object.keys(a), ...Object.keys(b)])]
+      .filter((k) => JSON.stringify(a[k]) !== JSON.stringify(b[k]))
+      .sort();
+  };
+
+  /* 60.4: the built C deep-equals the file */
+  const built60 = await probeC60(null);
+  const d60 = diff60(built60, tokens60);
+  ok(d60.length === 0, `60.4 the built C deep-equals shared/tokens.json (differs: ${d60.join(", ")})`);
+
+  /* 60.5, 60.6: drift. One value changed in the JSON the bundle reads must reach C,
+     and the comparator must name it. */
+  const DRIFT60 = "#00FF00"; // no real paper is this green, so a paper edit cannot match it
+  const drifted60 = await probeC60({ ...(tokens60 ?? {}), paper: DRIFT60 });
+  ok(drifted60?.paper === DRIFT60, "60.5 a drifted tokens file moves the built C.paper, so C reads the JSON");
+  ok(diff60(drifted60, tokens60).includes("paper"), "60.6 the comparator names paper when the build drifts");
+
+  /* 60.7 to 60.10: the palette rules, read from the built C. These hold before and after
+     the move, so they are guards, not red-first cases. */
+  const C60 = built60 ?? {};
+  const hexOk60 = (v) => typeof v === "string" && /^#[0-9a-fA-F]{6}$/.test(v);
+  const lum60 = (hex) =>
+    [1, 3, 5]
+      .map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+      .map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4))
+      .reduce((s, c, i) => s + c * [0.2126, 0.7152, 0.0722][i], 0);
+  const ratio60 = (a, b) => {
+    if (!hexOk60(a) || !hexOk60(b)) return 0;
+    const [hi, lo] = [lum60(a), lum60(b)].sort((p, q) => q - p);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+  const PAIRS60 = [
+    ["ink", "paper", 4.5],
+    ["inkSoft", "card", 4.5],
+    ["accent", "card", 4.5],
+    ["ink", "greenSoft", 4.5],
+    ["red", "redSoft", 4.5],
+    ["manilaInk", "manila", 4.5],
+    ["amber", "card", 4.5],
+    ["accent", "silver", 3],
+  ];
+  for (const [fg, bg, floor] of PAIRS60) {
+    const r = ratio60(C60[fg], C60[bg]);
+    ok(r >= floor, `60.7 ${fg} on ${bg} clears ${floor}:1 (measured ${r.toFixed(2)})`);
+  }
+
+  const tableRows60 = [...readOr60(path.join(ROOT60, "decisions/palette-tokens-contrast-floor.md")).matchAll(
+    /^\| `(\w+)` \| `([^`]+)` \|/gm
+  )].map((m) => [m[1], m[2]]);
+  ok(tableRows60.length >= 15, "60.8a the contrast record holds its token table");
+  for (const [name, value] of tableRows60)
+    ok(
+      String(C60[name] ?? "").toUpperCase() === value.toUpperCase(),
+      `60.8 ${name} is ${value}, as the contrast record states (built: ${C60[name]})`
+    );
+
+  const page60 = readOr60(path.join(ROOT60, "index.html"));
+  const theme60 = page60.match(/<meta name="theme-color" content="([^"]+)"/)?.[1] ?? "";
+  const bodyBg60 = page60.match(/<style>html,body,#root\{[^}]*?background:\s*([^;}]+)/)?.[1]?.trim() ?? "";
+  ok(theme60.toUpperCase() === String(C60.paper).toUpperCase(), `60.9a theme-color (${theme60}) tracks paper`);
+  ok(bodyBg60.toUpperCase() === String(C60.paper).toUpperCase(), `60.9b page background (${bodyBg60}) tracks paper`);
+
+  let outsideC60 = null;
+  try {
+    outsideC60 = codeOnly60(readOr60(APP60));
+  } catch {
+    outsideC60 = null;
+  }
+  const stray60 = outsideC60 === null ? ["(unreadable)"] : outsideC60.match(COLOUR60) ?? [];
+  ok(stray60.length === 0, `60.10 no colour literal in src/app.jsx code (found: ${stray60.join(" ")})`);
+
+  /* 60.11: the scanner respects strings, template literals and JSX text. A regex that
+     strips comments first would fail these. */
+  eq(
+    colourLiterals60('const s = "/*", hex = "#abc123"; /* end */ const k = "#654321";\nconst u = "//x";\n'),
+    ["#abc123", "#654321"],
+    "60.11a a comment opener inside a string does not hide the literal after it"
+  );
+  eq(
+    colourLiterals60(
+      "const css = `\n// not a comment #aabbcc\n/* open\n.x { color: #fedcba; }\n`;\nconst after = \"#123abc\";\n"
+    ),
+    ["#aabbcc", "#fedcba", "#123abc"],
+    "60.11b a multi-line template keeps its comment-like text and its colours"
+  );
+  eq(
+    colourLiterals60("const el = <p>Don't</p>;\n/* #111111 */\nconst hex = \"#222222\";\nconst q = 'x';\n"),
+    ["#222222"],
+    "60.11c a lone quote in JSX text opens no string, and a colour in a comment is ignored"
+  );
+  eq(
+    colourLiterals60("// #333333\nconst a = 1; /* #444444 */\n"),
+    [],
+    "60.11d a colour that sits only in comments is not a literal"
+  );
+  eq(
+    colourLiterals60('const sep = "// not a comment", hex = "#abc123";\n'),
+    ["#abc123"],
+    "60.11e a line-comment opener inside a string does not hide the colour after it"
+  );
+  eq(
+    colourLiterals60('const tag = "# note", hex = "#fedcba";\n'),
+    ["#fedcba"],
+    "60.11f a hash opener inside a string does not hide the colour after it"
+  );
 }
 
 uninstallClock();

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Papa from "papaparse";
+import tokens from "../shared/tokens.json";
 import { photoPlan } from "./photo-rules.mjs";
 import { shouldSnapshot } from "./version-rules.mjs";
 import { KEY_RE, SYNC_POST_MS, SYNC_COLD_POST_MS, SYNC_TIMEOUT_MS, IDLE_APPLY_MS, idleReady, backoffMs } from "./sync-rules.mjs";
@@ -25,46 +26,8 @@ import {
    inkSoft, which was darkened from the original #7A6E86 for exactly that
    reason. `paper` is the page, `card` is any raised surface — there is no
    pure white in this theme, so never reach for C.card. */
-const C = {
-  paper: "#F2E9DA",
-  card: "#FCF6EA",
-  ink: "#332E3F",
-  inkSoft: "#6E6379",
-  line: "#DCCDB6",
-  /* ornamental rules and the masthead's secondary metal. Never used for text on
-     `card` — it only clears 2.09:1 there. Ornament and fills only. */
-  gold: "#C9A961",
-  /* the empty half of a progress bar. Antique silver rather than `line` — the
-     one cool value in the theme, chosen for the struck-coin read. Note `line`
-     actually measured *better* against the violet fill (3.58:1 vs 3.17:1);
-     this was a deliberate trade of contrast for character, and both clear the
-     3:1 floor for graphical objects. Any replacement must stay cool — both
-     warm metals tested fell below 3:1. */
-  silver: "#C4C3C0",
-  accent: "#6F5CA6",
-  green: "#2E7A5E",
-  /* green wash warmed with a little gold — a straight green-into-card mix
-     (#E7EADC) read grey next to parchment. Green still leads (G > R) so the
-     row keeps its "received" cast rather than going beige. */
-  greenSoft: "#E6E7D7",
-  red: "#A8443C",
-  redSoft: "#F4E4D9",
-  manila: "#EADBBA",
-  manilaInk: "#695832",
-  amber: "#846008",
-  /* The masthead seal's wax-relief ramp. Only <Seal> uses these; they live here
-     so the "no colour literal outside C" rule still holds. `wax` is the same
-     value as `red` but named apart — the seal is ornament, not a danger state,
-     and the two should be free to diverge. */
-  wax: "#A8443C",
-  waxLit: "#C86A5F",
-  waxDeep: "#66231D",
-  waxCut: "#5E1F1A",
-  waxRaised: "#E09A90",
-  /* translucent surfaces, by role */
-  shadow: "rgba(28,43,36,0.06)",
-  scrim: "rgba(28,43,36,0.92)",
-};
+/* The palette lives in shared/tokens.json, see design-parchment-ledger. */
+const C = tokens;
 
 const mono = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
 /* Cochin — an 18th-century French copperplate face, present on iOS and macOS.
