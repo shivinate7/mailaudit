@@ -4836,6 +4836,17 @@ export default function MailDayLedger() {
   const coldRef = useRef(null);
   coldRef.current = () => {
     cycleRef.current = (async () => {
+      try {
+        await coldCycle();
+      } finally {
+        /* every cold path ends here: no reply is held for the apply, so the
+           apply-at-once exception of a saved key ends with it */
+        if (!pendingReply.current) applyNow.current = false;
+      }
+    })();
+  };
+  const coldCycle = async () => {
+    {
       if (!window.sync || !(await window.sync.hasKey())) return;
       const r = await withTimeout(window.sync.get());
       settleReply(r);
@@ -4846,7 +4857,7 @@ export default function MailDayLedger() {
           ? r.body?.ledger && lacksRef.current(r.body.ledger)
           : r.code === "empty" && holdsUserDataRef.current();
       if (send) setTimeout(() => postRef.current(), SYNC_COLD_POST_MS);
-    })();
+    }
   };
   /* Paste a Worker key. The field is validated by the same rule as a #k= link,
      stored through window.sync.setKey, cleared, then the cold-open path runs:
