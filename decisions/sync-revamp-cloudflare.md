@@ -23,7 +23,7 @@ GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Del
 - **Sign-in:** one key per device. A Cloudflare Access email code is the backup way in. The key stays a credential, see `the-token-is-a-credential`.
 - **Key delivery:** the keys live in the Mac's Keychain. A script opens the app on the Mac with its key in the URL fragment, which no server receives. The app stores the key and clears the fragment. For the iPhone, the Mac shows the same link as a QR code that the owner scans once. No key is printed or pasted.
 - **GitHub becomes a mirror.** Each device still pushes the merged ledger to the GitHub `data` branch. So the public seed, the backup watchdog and History keep working, and the Worker needs no GitHub token. The Durable Object holds the truth, so a GitHub conflict resolves by reading the new sha and writing again.
-- **Live updates wait for a pause.** A change from the other device applies when this device has had no input for 10 seconds. Until then a quiet line says that updates are waiting. This keeps `no-layout-shift-under-pointer`.
+- **Live updates wait for a pause.** A change from the other device applies when this device has had no input for 10 seconds. No line says an update is waiting; the merge notice after the apply names what changed. A waiting line would have cost 40px of empty space at rest. This keeps `no-layout-shift-under-pointer`.
 - **Un-checks and deletes:** each check-in key carries the time of its last change in a new saved key, and the later change wins. A discarded or assigned envelope stays as a tombstone with a deletion time, and every reader skips it. A ledger without these fields merges by today's rules, so an older build stays safe. The new key follows the six sites in `saved-state-shape`.
 - **Orders:** a nightly job on HA Green replaces the OrderWand export. The owner chose HA Green over the MacBook. The job reads `store.tcgplayer.com/myaccount/orderhistory` with the owner's login cookie, as OrderWand 4.4.0 does. It GETs a form token, POSTs a date range, then reads each page. It sends the orders to the Worker. The Worker runs the same parser filters and the same merge, so `parser-filters` and `imports-merge-never-replace` still hold.
 - **Item keys:** the job must build each key as `orderId|itemNumber|vendorProductId`, exactly as the CSV does. The item number is the line's position in its order. The product id comes from the card image URL. A different key would split one card into two lines, see `saved-state-shape`.
@@ -57,8 +57,8 @@ The orchestrator made these under the owner's grant to run the stages, on 2026-1
 ## Still open
 
 - Whether a Cloudflare Access login survives in an iOS home-screen app. This is untested.
-- Live updates are not wired in this build. A device learns the other device's changes when its next POST replies. The WebSocket path and the updates-waiting line are not built yet.
-- A 413 from the Worker shows no line, and the app does not fall back to GitHub for it. Only an unknown answer does that.
+- Live updates use a WebSocket. A new rev from the other device starts one GET, and the reply waits for the idle gate.
+- A 413 from the Worker falls back to the GitHub merge for that cycle, as an unknown answer does. The advisory line names the size problem.
 
 ## See also
 
