@@ -55,6 +55,9 @@ The orchestrator made these under the owner's grant to run the stages, on 2026-1
 - **Milestones on a live apply:** a live apply takes a milestone only when it removes something. Otherwise the recent version is enough. A milestone on every apply would fill the 60-slot list in one mail day.
 - **Mirror mode needs a healthy server:** GitHub becomes a mirror only after the Worker answers `ok` or `empty` in this session. Any failure turns mirror mode off, and the device then runs the plain GitHub path. Worker retries wait on `backoffMs`. A per-cycle fallback merge pulled and took a milestone on every save, so it is gone.
 - **The mirror pushes the merged ledger:** it merges the local ledger with the last server reply. On a conflict it reads the GitHub ledger and merges that in too, then writes with the fresh sha. It never force-writes its own copy, so no device can shrink the GitHub copy. That holds even when the server store starts empty.
+- **The server copy only grows:** the device keeps the last server ledger as a merge of every reply. An older reply can never replace a newer one, so no push can shrink GitHub.
+- **An empty store gets seeded:** a cold open that finds the store empty POSTs local check-ins, envelopes and stamps. That is the switch-day path.
+- **A failed merge POST peeks once:** the next push takes the GitHub path and its peek, even if mirror mode returns.
 - **A refused key says so:** a 401 shows its own advisory line.
 - **iPhone key:** the owner scans one QR code. If the key does not reach the home-screen app, the app gains a scan-key control.
 - **QR code:** macOS draws it with its own image tools. No new package is installed.
