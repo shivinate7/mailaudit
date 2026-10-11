@@ -2,7 +2,7 @@
 
 Each pending envelope lists the outstanding packages that could explain it. The list ranks them, best first, and shows how much each one explains.
 
-**Holds while:** `rankCandidates` in `src/app.jsx` takes the entries, the packages and the received map. It takes no date range.
+**Holds while:** `rankCandidates` in `src/view-rules.mjs` takes the entries, the packages and the received map. It takes no date range. V6 in `test/view-rules.test.mjs` pins the ranking and the tie.
 
 Candidates ignore the date filter on purpose. An orphaned envelope is as likely to come from an old order. Candidates also exclude canceled orders.
 

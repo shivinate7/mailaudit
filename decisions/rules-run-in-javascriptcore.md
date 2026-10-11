@@ -1,8 +1,8 @@
 # The Swift client runs the view rules in JavaScriptCore
 
-**Status:** ruled. The owner ruled on 2026-10-11: "Run the JS in Swift". No rule is extracted and no bridge is built yet.
+**Status:** ruled. The owner ruled on 2026-10-11: "Run the JS in Swift". S2 has landed in PR #63 and moved the first view rules to `src/view-rules.mjs`. No bridge is built yet.
 
-JavaScriptCore runs the same JavaScript rules module that the web app uses, so the view logic has one home. The Swift client holds no copy of a view rule. Lanes S2, S3 and N1 in `native-build-lanes` build this.
+JavaScriptCore runs the same JavaScript rules module that the web app uses, so the view logic has one home. The Swift client holds no copy of a view rule. Lanes S2 (landed), S3 and N1 in `native-build-lanes` build this.
 
 **Holds while:** the view rules are JavaScript under `src/`, and the native client must run them offline on the device.
 
