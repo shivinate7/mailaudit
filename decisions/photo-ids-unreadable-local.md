@@ -10,7 +10,7 @@ An unreadable local photo store keeps every id, exactly as an unreadable remote 
 
 Mutant confirmed red: an unreadable store read as empty.
 
-**Pinned by:** 47.1 and 47.2 pin a file restore with the local store unreadable, on screen and in the saved ledger. Test 26.13b pins the remote half. For the `surveyPhotos` half, 47.6 kills a pull that reads the store as empty, and 47.5 kills a push that reads it as full. Neither test kills the other mutant. A push that reads the store as empty uploads nothing and reports nothing, so no test can tell it apart.
+**Pinned by:** 47.1 and 47.2 pin a file restore with the local store unreadable, on screen and in the saved ledger. Test 26.13b pins the remote half. For the `surveyPhotos` half, 47.6 kills a pull that reads the store as empty, and 47.5 kills a push that reads it as full. A push that meets an unreadable store now says that the photos could not be read. So 48.1 to 48.3 catch a push that reads the store as empty.
 
 ## See also
 

@@ -11,9 +11,13 @@ So there is **one line**. It is advisory manila, full width, above the ruled row
 1. A conflict.
 2. An errored last attempt.
 3. **Being behind.**
-4. No key on this device.
-5. Never synced.
-6. A last agreement with the remote that is older than `SYNC_STALE_MS`.
+4. This device's photos could not be read.
+5. The backup could not be checked: the peek came back unknown.
+6. No key on this device.
+7. Never synced.
+8. A last agreement with the remote that is older than `SYNC_STALE_MS`.
+
+"I could not look" is never silent. Cases 4 and 5 used to return with no sign, so a blind push looked the same as a working one. Group 48 pins both cases, and pins that a healthy device shows neither.
 
 The stale limit is 24h. Push is automatic and idle-debounced. A shorter limit would fire on an ordinary evening with the phone face down. A longer limit would stop being a warning.
 
