@@ -765,4 +765,62 @@ await test("9.5 the limit leaves at least 100,000 bytes under the Durable Object
   ok(MAX_LEDGER_BYTES <= 1_900_000, `MAX_LEDGER_BYTES is ${MAX_LEDGER_BYTES}, over 1,900,000`);
 });
 
+/* ---------- 10. rev and broadcast: only a change raises rev and signals ---------- */
+/* route() signals index.mjs by calling store.broadcast after store.write.
+   There is no flag in its return value, so these tests pin the store calls. */
+await test("10.1 a POST whose merge equals the stored ledger keeps rev, writes nothing and sends no broadcast", async () => {
+  const K = "100|1|555";
+  const stored = ledger({
+    received: { [K]: 1 },
+    receivedAt: { [K]: 100 },
+    envelopes: [{ id: "env-x", createdAt: 1, updatedAt: 1 }],
+    stamps: { "111::Seller A": { kind: "refunded", updatedAt: 3 } },
+  });
+  ok(
+    canon(mergeLedger(clone(stored), clone(stored)).merged) === canon(stored),
+    "fixture: merging the stored ledger with itself returns it"
+  );
+  const s = fakeStore({ ledger: stored, rev: 3 });
+  const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: stored } });
+  eq(res.status, 200, "status");
+  eq(s.writes.length, 0, "store write calls");
+  eq(s.broadcasts.length, 0, "broadcast calls");
+  eq(s.state.rev, 3, "stored rev");
+  eq((await res.json()).rev, 3, "response rev");
+});
+
+await test("10.2 a POST to an empty store stores the ledger exactly as sent, at rev 1", async () => {
+  const K = "100|1|555";
+  const incoming = ledger({
+    received: { [K]: 1 },
+    receivedAt: { [K]: 100 },
+    envelopes: [{ id: "env-x", createdAt: 1, updatedAt: 1 }],
+    stamps: { "111::Seller A": { kind: "", updatedAt: 9 } },
+  });
+  const s = empty();
+  const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: incoming } });
+  eq(res.status, 200, "status");
+  eq(s.writes.length, 1, "store write calls");
+  eq(s.writes[0]?.ledger, incoming, "stored ledger, as sent");
+  eq(s.writes[0]?.rev, 1, "stored rev");
+  eq(await res.json(), { ledger: incoming, rev: 1 }, "response body");
+});
+
+await test("10.3 a POST that changes the stored ledger writes rev 4, then broadcasts {rev: 4}", async () => {
+  const K = "100|1|555";
+  const stored = ledger({ receivedAt: {} });
+  const incoming = ledger({ received: { [K]: 1 }, receivedAt: { [K]: 50 } });
+  ok(
+    canon(mergeLedger(clone(stored), clone(incoming)).merged) !== canon(stored),
+    "fixture: the merge changes the stored ledger"
+  );
+  const s = fakeStore({ ledger: stored, rev: 3 });
+  const res = await send(s, "POST", "/ledger", { key: KEY_LAPTOP, json: { ledger: incoming } });
+  eq(res.status, 200, "status");
+  eq(s.writes.map((w) => w.rev), [4], "write rev");
+  eq(s.broadcasts, [{ rev: 4 }], "broadcast");
+  eq(s.order, ["write", "broadcast"], "order");
+  eq((await res.json()).rev, 4, "response rev");
+});
+
 report();
