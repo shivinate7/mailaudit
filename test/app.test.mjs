@@ -59,6 +59,7 @@ import {
   fireSyncRev,
   fireSyncRevOnly,
   holdSyncPosts,
+  holdRemotePushes,
   installClock,
   uninstallClock,
   text,
@@ -5343,7 +5344,7 @@ ok(/server/i.test(advisory()), "53.8b and the advisory line says the server fail
    Stage 4b, decision sync-revamp-cloudflare: the Worker holds the truth, and
    GitHub gets the merged snapshot on the mirror timer. With a key, GitHub
    decides nothing. No peek, no auto-merge, no "behind" line, and a stale sha
-   is a forced write, never a two-tap.
+   is a merged write, never a two-tap.
 
    The mirror timer is AUTO_PUSH_MS (90s) in src/app.jsx. This suite has no
    fake timers, so only a delay of exactly 90000 is caught here, and the test
@@ -5443,8 +5444,8 @@ try {
   releaseAutoTimers();
 }
 
-/* 54.3 with a key, a mirror push that meets a stale sha re-reads the sha and
-   writes again, through pushForce. It arms no two-tap and shows no conflict
+/* 54.3 with a key, a mirror push that meets a stale sha re-reads the sha, merges
+   GitHub's ledger in, and writes the merge under the fresh sha. It arms no two-tap and shows no conflict
    line. Red today: autoPush peeks first, reads the remote as ahead, and never
    pushes at all. */
 catchAutoTimers();
@@ -5461,12 +5462,12 @@ try {
   eq(
     pushes().map((p) => p.sha),
     [null, "sha-0"],
-    "54.3a the stale write goes first, then one forced write under the sha the remote holds"
+    "54.3a the stale write goes first, then one merged write under the sha the remote holds"
   );
   eq(
     remote.history.map((h) => JSON.parse(h.text).items.length),
     [ITEMS.length],
-    "54.3b the forced write carries the merge of this device and GitHub, not this device's copy alone"
+    "54.3b the merged write carries this device and GitHub, not this device's copy alone"
   );
   ok(!btn(/Push anyway/), "54.3c no two-tap is armed");
   ok(
@@ -6059,6 +6060,114 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     eq(count58("get") - gets58, 1, "58.F5a one GET follows once both replies land, since the rev is above both");
   } finally {
     release58b();
+  }
+
+  /* F-A. A check-in made while a mirror push is in flight is not lost: a second
+     mirror push follows the release, and it carries the check-in. */
+  await boot({ items: ITEMS.slice(0, 6), received: {} }, null, { remoteKey: GH58, syncKey: KEY58 });
+  await settle();
+  const releaseA = holdRemotePushes();
+  try {
+    await click(allBtns(/^Mark all received$/)[0], "first check-in, the mirror push goes out and is held");
+    await sleep(AUTO58 + 1000);
+    await settle();
+    eq(pushes().length, 1, "58.FA0 one mirror push is in flight, so the check-in during it means something");
+    await click(allBtns(/^Mark all received$/)[0], "a check-in while the push is in flight");
+    releaseA();
+    await sleep(AUTO58 + 1000);
+    await settle();
+    ok(pushes().length >= 2, "58.FA1 a second mirror push follows the release");
+    eq(
+      Object.keys(JSON.parse(pushes().at(-1).text).received ?? {}).length,
+      6,
+      "58.FA2 and it carries the check-in made in flight"
+    );
+  } finally {
+    releaseA();
+  }
+
+  /* F-B. On a mirror conflict the merge POST to the Worker fails (unknown). Mirror
+     mode turns off, and the next push takes the GitHub path. GitHub keeps its
+     own lines: it is never written with fewer than it held. */
+  await boot({ items: LOCAL58, received: {} }, null, {
+    remote: asRemote58(REMOTE58),
+    remoteKey: GH58,
+    syncKey: KEY58,
+  });
+  await settle();
+  await click(btn(/Mark all received/), "check in, so the Worker holds this device's copy");
+  await sleep(POST58);
+  await settle();
+  ok(count58("post") > 0, "58.FB0 the Worker holds this device's copy, so mirror mode is on");
+  setSyncNetFail(true);
+  try {
+    await sleep(AUTO58 + 1000); /* the push meets the stale sha, merges, and the merge POST fails */
+    await settle();
+    const peeks0 = peeks().length;
+    await sleep(AUTO58 + 1000); /* mirror mode is off, so this push takes the GitHub path */
+    await settle();
+    ok(
+      remote.history.every((h) => JSON.parse(h.text).items.length >= 12),
+      "58.FB1 a failed merge POST never leaves GitHub with fewer than its 12 lines"
+    );
+    ok(peeks().length > peeks0, "58.FB2 with mirror mode off, the next push takes the GitHub path, which peeks");
+  } finally {
+    setSyncNetFail(false);
+  }
+
+  /* Step 8. A cold open with a key, where this device holds a check-in the server
+     lacks. After the first GET reply the device POSTs its merge within about 1 s,
+     and the server ends with the check-in. */
+  {
+    const K8 = ITEMS[0].key;
+    await boot({ items: ITEMS.slice(0, 3), received: { [K8]: 1 }, receivedAt: { [K8]: 100 } }, null, {
+      syncKey: KEY58,
+      syncLedger: { mailday: 1, items: ITEMS.slice(0, 3), received: {}, envelopes: [] },
+    });
+    await settle();
+    ok(count58("get") > 0, "58.S8a0 the cold GET was made, so the reply means something");
+    const posts8 = count58("post");
+    await sleep(1000);
+    await settle();
+    ok(count58("post") > posts8, "58.S8a the device POSTs within about 1 s of the first GET reply");
+    eq((await win.sync.get()).body?.ledger?.received?.[K8], 1, "58.S8b and the server ends with the check-in");
+  }
+
+  /* N5. After a device applies a remote change and saves, it sends no POST when
+     its snapshot equals the last server ledger. A cold open on a store equal to
+     local sends none either. */
+  {
+    const K5 = ITEMS[0].key;
+    await boot({ items: ITEMS.slice(0, 3), received: { [K5]: 1 }, receivedAt: { [K5]: 100 } }, null, {
+      noRemote: true,
+      syncKey: KEY58,
+    });
+    await settle();
+    await sleep(SAVE_WAIT);
+    const SERVER5 = saved(); /* what another device would have pushed */
+    /* the store exists and matches this device, so the cold GET is not an empty seed */
+    const LOCAL5 = { items: ITEMS.slice(0, 3), received: {}, envelopes: [] };
+    await boot(LOCAL5, null, { noRemote: true, syncKey: KEY58, syncLedger: LOCAL5 });
+    await settle();
+    await pageshow();
+    await sleep(APPLY_WAIT); /* idle, so the reply that follows can apply */
+    await fireSyncRev(syncRev() + 1, SERVER5); /* the other device's push arrives */
+    await sleep(APPLY_WAIT);
+    await settle();
+    await sleep(SAVE_WAIT);
+    ok(saved().received?.[K5] === 1, "58.N5pre the remote change is applied and saved");
+    const posts5 = count58("post");
+    await sleep(10000);
+    await settle();
+    eq(count58("post") - posts5, 0, "58.N5a no POST in the 10 s after the apply, since the snapshot equals the server ledger");
+
+    await boot(SERVER5, null, { noRemote: true, syncKey: KEY58, syncLedger: SERVER5 });
+    await settle();
+    ok(count58("get") > 0, "58.N5b0 the cold GET was made, so the equal-store check means something");
+    const posts5b = count58("post");
+    await sleep(10000);
+    await settle();
+    eq(count58("post") - posts5b, 0, "58.N5b a cold open on a store equal to local sends no POST");
   }
 }
 

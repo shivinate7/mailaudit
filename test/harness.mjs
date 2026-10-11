@@ -347,6 +347,8 @@ const remoteApi = {
        it first — see pushForce */
     const sending = overrideSha !== undefined ? overrideSha : remote.deviceSha;
     remote.calls.push({ op: "push", text, message, sha: sending });
+    /* held by holdRemotePushes(): the push is in flight until the test releases it */
+    if (remote.hold) await remote.hold;
     if (remote.fail)
       throw Object.assign(new Error(remote.fail), { code: remote.fail });
     if (remote.pushFailOnce) {
@@ -477,6 +479,17 @@ export const fireSyncRev = async (rev, ledger) => {
     sync.onRev?.(rev);
     await sleep(0);
   });
+};
+/* holds every GitHub push until the returned release() is called, so a test can
+   change the ledger while a mirror push is in flight. Set after boot(), which
+   resets `remote`. */
+export const holdRemotePushes = () => {
+  let release;
+  remote.hold = new Promise((r) => (release = r));
+  return () => {
+    remote.hold = null;
+    release();
+  };
 };
 /* the rev channel fires `rev` without moving the server. A test uses it for the
    rev of a POST still in flight, which the POST then gives when released. */
