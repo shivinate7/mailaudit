@@ -3927,7 +3927,7 @@ await settle();
       spans: cells.map((c) => c.style.gridColumn),
     },
     { odd: true, merge: true, spans: spansFor(cells, true) },
-    "47.3 an odd count in the sync grid spans the last cell across the row"
+    "47.3 an odd count in the sync grid gives the last cell a full-row span"
   );
 }
 
@@ -3940,7 +3940,7 @@ await settle();
   eq(
     { odd: cells.length % 2 === 1, spans: cells.map((c) => c.style.gridColumn) },
     { odd: false, spans: spansFor(cells, false) },
-    "47.4 an even count leaves every cell its own half"
+    "47.4 an even count sets no span on any cell"
   );
 }
 
