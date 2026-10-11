@@ -45,8 +45,8 @@ function cors(request, env) {
     : {};
 }
 
-/* Durable Object per-value cap is 2MB; refuse a ledger over this, less headroom. */
-export const MAX_LEDGER_BYTES = 1.9 * 1024 * 1024;
+/* Durable Object per-value cap is 2,000,000 bytes; refuse a ledger over this, which keeps 200,000 bytes of headroom. */
+export const MAX_LEDGER_BYTES = 1_800_000;
 
 export async function route(request, env, store) {
   const headers = cors(request, env);
