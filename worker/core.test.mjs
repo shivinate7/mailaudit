@@ -768,16 +768,9 @@ await test("9.5 the limit leaves at least 100,000 bytes under the Durable Object
 /* ---------- 10. rev and broadcast: only a change raises rev and signals ---------- */
 /* route() signals index.mjs by calling store.broadcast after store.write.
    There is no flag in its return value, so these tests pin the store calls. */
-/* The seven counts mergeLedger reports. A no-op merge gives all zero. */
-const ZERO_STATS = {
-  itemsAdded: 0,
-  checkInsAdded: 0,
-  envelopesAdded: 0,
-  checkInsRemoved: 0,
-  envelopesRemoved: 0,
-  stampsRemoved: 0,
-  stampsAdded: 0,
-};
+/* The seven counts mergeLedger reports. A no-op merge gives all zero. Their
+   one home is mergeLedger, so the zeros come from it. */
+const ZERO_STATS = mergeLedger({}, {}).stats;
 await test("10.1 a POST whose merge equals the stored ledger keeps rev, writes nothing and sends no broadcast", async () => {
   const K = "100|1|555";
   const stored = ledger({
