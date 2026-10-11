@@ -643,21 +643,20 @@ await test("8.8 the stored hash of a key, used as the key, is refused", async ()
   eq(await wsAuth(`mailaudit, ${sha256(KEY_PHONE)}`), false, "hash as key");
 });
 
-await test("8.9 wsAuthorized returns a bare boolean, and nothing it returns echoes the key", async () => {
+await test("8.9 wsAuthorized returns a bare boolean, so no key can come back in its result", async () => {
   for (const k of [KEY_PHONE, KEY_STRANGER]) {
     for (const p of [`mailaudit, ${k}`, `${k}, mailaudit`, `mailaudit, ${k}, junk`]) {
       const res = await wsAuth(p);
       ok(res === true || res === false, `${p}: returned ${typeof res}, not a boolean`);
-      ok(!String(res).includes(k), `${p}: the result echoes the key`);
     }
   }
 });
 
 /* ---------- 9. the size guard: the merged ledger, in bytes ---------- */
-/* route() refuses a merged ledger whose JSON is over MAX_LEDGER_BYTES, which
-   is 1.9 MiB and not a whole number of bytes. LIM is the largest size the
-   guard accepts. Sizes use the core's own measure: TextEncoder over
-   JSON.stringify. */
+/* route() refuses a merged ledger whose JSON is over MAX_LEDGER_BYTES. That
+   constant need not be a whole number of bytes, so LIM floors it. LIM is the
+   largest size the guard accepts. Sizes use the core's own measure: TextEncoder
+   over JSON.stringify. */
 const LIM = Math.floor(MAX_LEDGER_BYTES);
 const bytes = (v) => new TextEncoder().encode(JSON.stringify(v)).length;
 
@@ -714,6 +713,39 @@ await test("9.3 the limit is checked on the merged ledger: a small incoming that
   eq(s.writes.length, 0, "writes");
   eq(s.broadcasts.length, 0, "broadcasts");
   ok(canon(s.state) === canon({ ledger: stored, rev: 3 }), "stored state unchanged");
+});
+
+/* "é" is one character and two UTF-8 bytes, and JSON.stringify leaves it
+   unescaped. So a ledger can be under the limit in characters and over it in
+   bytes. A measure that counts characters would accept it. */
+const chars = (v) => JSON.stringify(v).length;
+
+await test("9.4 the limit counts UTF-8 bytes, not characters: a ledger under it in characters and over it in bytes gets 413", async () => {
+  const key = "100|9|998";
+  const need = LIM + 1 - bytes(ledger({ items: [item(key, "")] }));
+  const name = "é".repeat(need >> 1) + (need % 2 ? "x" : "");
+  const incoming = ledger({ items: [item(key, name)] });
+  eq(bytes(incoming), LIM + 1, "fixture: incoming is LIM + 1 bytes");
+  for (const [label, mk, stored] of [
+    ["stored", seeded, ledger()],
+    ["empty", empty, null],
+  ]) {
+    const merged = stored ? mergeLedger(stored, incoming).merged : incoming;
+    ok(bytes(merged) > LIM, `${label}: fixture: merged is over the limit in bytes`);
+    ok(chars(merged) <= LIM, `${label}: fixture: merged is under the limit in characters`);
+    const s = mk();
+    const before = canon(s.state);
+    const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, origin: PAGES, json: { ledger: incoming } });
+    eq(res.status, 413, `${label}: status`);
+    eq(await res.json(), { error: "too-large" }, `${label}: body`);
+    eq(s.writes.length, 0, `${label}: writes`);
+    eq(s.broadcasts.length, 0, `${label}: broadcasts`);
+    ok(canon(s.state) === before, `${label}: stored state unchanged`);
+  }
+});
+
+await test("9.5 the limit leaves at least 100,000 bytes under the Durable Object's 2,000,000-byte value cap", async () => {
+  ok(MAX_LEDGER_BYTES <= 1_900_000, `MAX_LEDGER_BYTES is ${MAX_LEDGER_BYTES}, over 1,900,000`);
 });
 
 report();
