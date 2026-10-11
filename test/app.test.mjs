@@ -5497,25 +5497,19 @@ try {
    Worker's rev channel reports that another device moved the server. A rev
    above the last one seen triggers one GET. The GET reply is held, and applied
    only after IDLE_APPLY_MS with no input and no armed guard. While a reply is
-   held, the advisory line says so, in a slot that keeps its height.
+   held, nothing on screen says so: no advisory line, no reserved slot. The
+   orchestrator dropped the "updates waiting" line (it cost 40px at rest).
 
    There are no fake timers. The timed cases wait real time, as group 53 does.
    The rev channel is fired by fireSyncRev(), which the mock keeps alongside
-   connect(). Not written here: that the slot keeps its height on screen. That
-   needs a 375px check (npm run check:screens, test/screens.mjs), which jsdom
-   cannot make. */
+   connect(). */
 
 const KEY55 = "device-55-key";
 const LEDGER55 = { mailday: 1, items: ITEMS.slice(0, 4), received: {}, envelopes: [] };
 const getCount = () => syncCalls().filter((c) => c.op === "get").length;
 const connectCount = () => syncCalls().filter((c) => c.op === "connect").length;
 const input55 = () => win.dispatchEvent(new win.Event("pointerdown"));
-const WAITING_RE = /waiting/i;
-const waiting = () => buttons().map((b) => b.textContent).find((t) => WAITING_RE.test(t)) ?? "";
 const slot55 = () => document.querySelector("[data-advisory-slot]");
-/* reserved means a fixed height in inline style or a reserved class. jsdom has
-   no layout, so this pins the structure only. */
-const reserved55 = (el) => !!el && (el.style.minHeight !== "" || /reserv/.test(el.className));
 const dismiss55 = () => [...document.querySelectorAll('button[aria-label="Dismiss"]')][0] ?? null;
 
 /* 55.1 with a key, the app connects once on mount, and the close function
@@ -5557,13 +5551,13 @@ eq(getCount() - get55d, 0, "55.2d the echo of that GET's rev triggers no GET");
 
 /* 55.3 a GET reply is held, and applied only after IDLE_APPLY_MS with no input.
    Input at 9 s restarts the wait, so nothing applies at 10 s, and the reply is
-   applied by 19 s. While it is held, the advisory line says so (55.5), and the
-   slot is reserved (55.6). The device POSTs once to seed the empty store, then
-   waits out the idle gate, so the seed reply is applied before the timing
-   starts. */
+   applied by 20.5 s: the 10 s gate after the input at 9 s, plus the 500 ms
+   debounced save. While it is held, no advisory line shows and no
+   data-advisory-slot element exists (55.5). The device POSTs once to seed the
+   empty store, then waits out the idle gate, so the seed reply is applied
+   before the timing starts. */
 await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { noRemote: true, syncKey: KEY55 });
 await settle();
-ok(!!slot55() && reserved55(slot55()), "55.6a the advisory slot is present and reserved with no reply held");
 await pageshow();
 await sleep(APPLY_WAIT);
 input55();
@@ -5572,16 +5566,13 @@ const until55 = (ms) => sleep(Math.max(0, t055 + ms - Date.now()));
 await fireSyncRev(2, LEDGER55);
 await until55(1000);
 eq(saved().items?.length ?? 0, 3, "55.3a a GET reply is held, not applied");
-ok(WAITING_RE.test(waiting()), "55.5a while the reply is held, the advisory line says updates are waiting");
-ok(!!slot55() && reserved55(slot55()), "55.6b the advisory slot is present and reserved while the line is filled");
+eq([advisory(), !!slot55()], ["", false], "55.5 while the reply is held, no advisory line shows and no data-advisory-slot element exists");
 await until55(9000);
 input55();
 await until55(10000);
 eq(saved().items?.length ?? 0, 3, "55.3b no apply at 10 s, because input at 9 s restarted the wait");
-await until55(19500);
-eq(saved().items?.length ?? 0, 4, "55.3c the held reply is applied by 19 s");
-ok(!WAITING_RE.test(waiting()), "55.5b and the waiting line clears once the reply is applied");
-ok(!!slot55() && reserved55(slot55()), "55.6c and the slot is still reserved after the apply");
+await until55(20500);
+eq(saved().items?.length ?? 0, 4, "55.3c the held reply is applied by 20.5 s");
 
 /* 55.4 an armed Reset holds the apply. The apply runs once the hold clears, and
    the idle wait has already passed. The wait is past before the arm, so only
