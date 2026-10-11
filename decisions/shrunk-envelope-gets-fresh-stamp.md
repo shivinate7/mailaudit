@@ -1,6 +1,6 @@
 # A shrunk envelope gets a fresh stamp
 
-A partial assignment leaves some entries behind, so the envelope shrinks. The assignment then sets `updatedAt` to the current time. Without that stamp, the other device's larger, stale copy would win the merge. It would bring back the entries just checked in. A full assignment removes the envelope instead. That removal has no tombstone. See `envelope-deletion-unrepresented`.
+A partial assignment leaves some entries behind, so the envelope shrinks. The assignment then sets `updatedAt` to the current time. Without that stamp, the other device's larger, stale copy would win the merge. It would bring back the entries just checked in. A full assignment writes a tombstone instead. It sets `deletedAt` and `updatedAt`, so a stale copy cannot bring the envelope back. See `envelope-deletion-unrepresented`.
 
 **Holds while:** the assign handler in `src/app.jsx` sets `updatedAt: Date.now()` on the leftover branch, and `mergeEnvelopes` in `src/merge-rules.mjs` keeps the copy with the larger `updatedAt`.
 
@@ -8,6 +8,6 @@ A partial assignment leaves some entries behind, so the envelope shrinks. The as
 
 ## See also
 
-- `envelope-deletion-unrepresented` — the full-assignment case, which has no tombstone
+- `envelope-deletion-unrepresented` — the full-assignment case, which leaves a tombstone
 - `merge-later-change-wins` — the merge rule this stamp relies on
 - `undo-removes-only-its-delta` — the other write an assignment makes
