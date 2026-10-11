@@ -21,7 +21,7 @@ one record, and each record holds current text only; git keeps the history. Read
 records your task needs. Do not read them all.
 
 - `invariants/` holds a rule that must not break. 8 records.
-- `decisions/` holds a ruling and the reason it still holds. 200 records.
+- `decisions/` holds a ruling and the reason it still holds. 201 records.
 - `measurements/` holds a measured figure and how to re-measure it. 8 records.
 
 A record cites another record by slug, never by a path, so a record survives a
@@ -327,6 +327,7 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 - `watchdog-lives-in-private-repo` — The backup watchdog lives in the private repo.
 - `the-write-budget-is-shared` — The write budget is shared with the ledger push.
 - `vendor-toggle-undecided` — The vendor toggle stays undecided.
+- `sync-revamp-cloudflare` — Sync moves from GitHub to Cloudflare, and orders arrive with no export.
 
 ## Measurements
 
