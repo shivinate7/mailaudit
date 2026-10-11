@@ -1,0 +1,576 @@
+/* Contract tests for the sync server's core, worker/core.mjs. Run with
+   `npm run test:worker`. Plain node, no framework, the same ok/eq style as
+   test/app.test.mjs. The core is the pure half of the Cloudflare Worker, so
+   every rule here runs with no Worker, no Durable Object and no network.
+
+   The store is a fake that records what it was asked to do, in order, and
+   clones every value it gets or returns. So a core that mutates its input
+   cannot pass by accident, and a test can see that write comes before
+   broadcast.
+
+   Keys are hashed here with node:crypto, not the core's Web Crypto, so a bug
+   in the core's hashing fails a test instead of matching itself. */
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { mergeLedger } from "../src/merge-rules.mjs";
+
+/* A missing or broken core fails in one clear line, not a raw stack trace. */
+let route;
+try {
+  ({ route } = await import("./core.mjs"));
+} catch (e) {
+  console.log(
+    `FAIL worker/core.mjs does not load (expected until the core is built): ${e.message.split("\n")[0]}`
+  );
+  process.exit(1);
+}
+if (typeof route !== "function") {
+  console.log("FAIL worker/core.mjs does not export route(request, env, store)");
+  process.exit(1);
+}
+
+/* ---------- harness: the ok/eq/report shape of test/app.test.mjs ---------- */
+let pass = 0;
+const fails = [];
+let current = "";
+
+function ok(cond, label) {
+  if (cond) pass++;
+  else fails.push(`${current}: ${label}`);
+}
+
+/* Key order is not part of the contract, so both sides are canonicalised. */
+const canon = (v) =>
+  JSON.stringify(v, (_, x) =>
+    x && typeof x === "object" && !Array.isArray(x)
+      ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, x[k]]))
+      : x
+  );
+
+function eq(actual, expected, label) {
+  const a = canon(actual);
+  const e = canon(expected);
+  if (a === e) pass++;
+  else fails.push(`${current}: ${label}\n     expected ${e}\n     actual   ${a}`);
+}
+
+/* A throw inside one test fails that test, and the run goes on. */
+async function test(id, fn) {
+  current = id;
+  try {
+    await fn();
+  } catch (e) {
+    fails.push(`${id}: threw ${e.message}`);
+  }
+}
+
+function report() {
+  console.log(`\n${pass} passed, ${fails.length} failed`);
+  for (const f of fails) console.log(`  ✗ ${f}`);
+  if (fails.length) process.exit(1);
+  console.log("all green");
+}
+
+/* ---------- fixtures ---------- */
+const sha256 = (s) => createHash("sha256").update(s).digest("hex");
+const KEY_PHONE = "k-test-phone-7f3a9c";
+const KEY_LAPTOP = "k-test-laptop-b21e04";
+const KEY_STRANGER = "k-test-stranger-00000";
+const ENV = {
+  DEVICE_KEY_HASHES: `${sha256(KEY_PHONE)},${sha256(KEY_LAPTOP)}`,
+  ALLOWED_ORIGINS: "https://shivinate7.github.io,http://localhost:4173",
+};
+const BASE = "https://manifestnumberone.shivamsemwal01.workers.dev";
+const PAGES = "https://shivinate7.github.io";
+const LOCAL = "http://localhost:4173";
+const STRANGER = "https://evil.example";
+
+const item = (key, name, qty = 1) => ({ key, name, qty });
+const ledger = (over = {}) => ({
+  mailday: 1,
+  items: [item("100|1|555", "Alpha Card", 2)],
+  received: {},
+  envelopes: [],
+  stamps: {},
+  dateFilter: "30d",
+  sortBy: "date",
+  itemSort: "name",
+  ...over,
+});
+const clone = (v) => structuredClone(v);
+
+/* initial is {ledger, rev} or null for an empty store. */
+function fakeStore(initial = null) {
+  const s = {
+    state: initial ? clone(initial) : null,
+    writes: [],
+    broadcasts: [],
+    order: [],
+  };
+  s.read = async () => (s.state ? clone(s.state) : null);
+  s.write = async (l, rev) => {
+    s.order.push("write");
+    s.writes.push({ ledger: clone(l), rev });
+    s.state = { ledger: clone(l), rev };
+  };
+  s.broadcast = async (obj) => {
+    s.order.push("broadcast");
+    s.broadcasts.push(clone(obj));
+  };
+  return s;
+}
+
+/* o: key (sent as Bearer), auth (raw Authorization), origin, headers, and
+   json or raw as the body. */
+function req(method, path, o = {}) {
+  const headers = { ...(o.headers || {}) };
+  if (o.key !== undefined) headers.Authorization = `Bearer ${o.key}`;
+  if (o.auth !== undefined) headers.Authorization = o.auth;
+  if (o.origin !== undefined) headers.Origin = o.origin;
+  let body;
+  if (o.json !== undefined) body = JSON.stringify(o.json);
+  if (o.raw !== undefined) body = o.raw;
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  return new Request(BASE + path, { method, headers, body });
+}
+
+const send = (store, method, path, o) =>
+  route(req(method, path, o), ENV, store);
+
+const list = (v) =>
+  (v || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+const seeded = () => fakeStore({ ledger: ledger(), rev: 3 });
+const empty = () => fakeStore(null);
+
+/* Bodies the route must refuse with 400, and write nothing for. */
+const BAD_BODIES = [
+  { json: { ledger: { mailday: 2, items: [] } } },
+  { json: { ledger: { mailday: "1", items: [] } } },
+  { json: { ledger: { items: [] } } },
+  { json: { ledger: { mailday: 1, items: {} } } },
+  { json: { ledger: { mailday: 1, items: "x" } } },
+  { json: { ledger: { mailday: 1 } } },
+  { json: {} },
+  { raw: "{not json" },
+];
+
+/* ---------- 1. auth: Bearer key, hashed against DEVICE_KEY_HASHES ---------- */
+await test("1.1 the first listed device key reads the ledger", async () => {
+  const res = await send(seeded(), "GET", "/ledger", { key: KEY_PHONE });
+  eq(res.status, 200, "status");
+});
+
+await test("1.2 the second listed device key reads the ledger", async () => {
+  const res = await send(seeded(), "GET", "/ledger", { key: KEY_LAPTOP });
+  eq(res.status, 200, "status");
+});
+
+await test("1.3 a key not in the list gets 401 on read", async () => {
+  const res = await send(seeded(), "GET", "/ledger", { key: KEY_STRANGER });
+  eq(res.status, 401, "status");
+});
+
+await test("1.4 a key not in the list cannot write", async () => {
+  const s = seeded();
+  const before = clone(s.state);
+  const res = await send(s, "POST", "/ledger", {
+    key: KEY_STRANGER,
+    json: { ledger: ledger() },
+  });
+  eq(res.status, 401, "status");
+  eq(s.writes.length, 0, "writes");
+  eq(s.broadcasts.length, 0, "broadcasts");
+  eq(s.state, before, "store unchanged");
+});
+
+await test("1.5 no Authorization header gets 401, on read and on write", async () => {
+  const s = seeded();
+  eq((await send(s, "GET", "/ledger", {})).status, 401, "GET status");
+  eq(
+    (await send(s, "POST", "/ledger", { json: { ledger: ledger() } })).status,
+    401,
+    "POST status"
+  );
+  eq(s.writes.length, 0, "POST wrote nothing");
+});
+
+await test("1.6 a scheme other than Bearer gets 401", async () => {
+  const s = seeded();
+  eq(
+    (await send(s, "GET", "/ledger", { auth: `Basic ${KEY_PHONE}` })).status,
+    401,
+    "Basic scheme"
+  );
+  eq(
+    (await send(s, "GET", "/ledger", { auth: KEY_PHONE })).status,
+    401,
+    "bare key with no scheme"
+  );
+});
+
+await test("1.7 the stored hash is not itself a key", async () => {
+  const res = await send(seeded(), "GET", "/ledger", {
+    key: sha256(KEY_PHONE),
+  });
+  eq(res.status, 401, "status");
+});
+
+await test("1.8 a 401 never echoes the presented key", async () => {
+  const res = await send(seeded(), "GET", "/ledger", { key: KEY_STRANGER });
+  const text = await res.text();
+  ok(!text.includes(KEY_STRANGER), "body contains the presented key");
+  ok(
+    ![...res.headers.values()].some((v) => v.includes(KEY_STRANGER)),
+    "a header contains the presented key"
+  );
+});
+
+await test("1.9 auth is checked before the empty-store answer", async () => {
+  const res = await send(empty(), "GET", "/ledger", {});
+  eq(res.status, 401, "no header on an empty store is 401, not 404");
+});
+
+/* ---------- 2. GET /ledger ---------- */
+await test("2.1 GET on an empty store is 404 {error: empty}", async () => {
+  const res = await send(empty(), "GET", "/ledger", { key: KEY_PHONE });
+  eq(res.status, 404, "status");
+  eq(await res.json(), { error: "empty" }, "body");
+});
+
+await test("2.2 GET returns the stored ledger and its rev", async () => {
+  const stored = ledger({ received: { "100|1|555": 1 } });
+  const s = fakeStore({ ledger: stored, rev: 4 });
+  const res = await send(s, "GET", "/ledger", { key: KEY_PHONE });
+  eq(res.status, 200, "status");
+  eq(await res.json(), { ledger: stored, rev: 4 }, "body");
+});
+
+await test("2.3 GET writes and broadcasts nothing", async () => {
+  const s = seeded();
+  await send(s, "GET", "/ledger", { key: KEY_PHONE });
+  eq(s.writes.length, 0, "writes");
+  eq(s.broadcasts.length, 0, "broadcasts");
+});
+
+/* ---------- 3. POST /ledger refuses bad bodies ---------- */
+await test("3.1 a bad body on a stored ledger gets 400 and changes nothing", async () => {
+  for (const [i, b] of BAD_BODIES.entries()) {
+    const s = seeded();
+    const before = clone(s.state);
+    const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, ...b });
+    eq(res.status, 400, `bad body ${i}: status`);
+    eq(s.writes.length, 0, `bad body ${i}: writes`);
+    eq(s.broadcasts.length, 0, `bad body ${i}: broadcasts`);
+    eq(s.state, before, `bad body ${i}: store unchanged`);
+  }
+});
+
+await test("3.2 the same bad bodies on an empty store write nothing", async () => {
+  for (const [i, b] of BAD_BODIES.entries()) {
+    const s = empty();
+    const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, ...b });
+    eq(res.status, 400, `bad body ${i}: status`);
+    eq(s.writes.length, 0, `bad body ${i}: writes`);
+    eq(s.state, null, `bad body ${i}: store still empty`);
+  }
+});
+
+/* ---------- 4. POST /ledger writes and merges ---------- */
+await test("4.1 the first ledger on an empty store is written verbatim at rev 1", async () => {
+  const incoming = ledger({ received: { "100|1|555": 1 } });
+  const s = empty();
+  const res = await send(s, "POST", "/ledger", {
+    key: KEY_PHONE,
+    json: { ledger: incoming },
+  });
+  eq(res.status, 200, "status");
+  eq(s.writes.length, 1, "writes");
+  eq(s.writes[0]?.rev, 1, "write rev");
+  eq(s.writes[0]?.ledger, incoming, "written ledger");
+  eq((await res.json()).rev, 1, "response rev");
+});
+
+await test("4.2 a merge is written at the stored rev plus one", async () => {
+  const s = fakeStore({ ledger: ledger(), rev: 4 });
+  const res = await send(s, "POST", "/ledger", {
+    key: KEY_PHONE,
+    json: { ledger: ledger() },
+  });
+  eq(res.status, 200, "status");
+  eq(s.writes.length, 1, "writes");
+  eq(s.writes[0]?.rev, 5, "write rev");
+  eq(s.state?.rev, 5, "stored rev");
+  eq((await res.json()).rev, 5, "response rev");
+});
+
+/* Each side holds something the other lacks: an item, a check-in and an
+   envelope on both. The server copy stands for the phone, the posted copy for
+   the laptop. */
+const PHONE_SIDE = ledger({
+  items: [item("100|1|555", "Alpha Card", 2), item("100|2|556", "Beta Card", 1)],
+  received: { "100|1|555": 1 },
+  envelopes: [{ id: "env-phone", createdAt: 1, updatedAt: 1, label: "phone" }],
+});
+const LAPTOP_SIDE = ledger({
+  items: [item("100|1|555", "Alpha Card", 2), item("200|1|777", "Gamma Card", 1)],
+  received: { "200|1|777": 2 },
+  envelopes: [{ id: "env-laptop", createdAt: 2, updatedAt: 2, label: "laptop" }],
+});
+
+await test("4.3 a merge keeps items, check-ins and envelopes from both sides", async () => {
+  const s = fakeStore({ ledger: PHONE_SIDE, rev: 4 });
+  const res = await send(s, "POST", "/ledger", {
+    key: KEY_LAPTOP,
+    json: { ledger: LAPTOP_SIDE },
+  });
+  eq(res.status, 200, "status");
+  const written = s.writes[0]?.ledger ?? {};
+  eq(
+    written.items?.map((i) => i.key).sort(),
+    ["100|1|555", "100|2|556", "200|1|777"],
+    "item keys from both sides"
+  );
+  eq(
+    written.received,
+    { "100|1|555": 1, "200|1|777": 2 },
+    "check-ins from both sides"
+  );
+  eq(
+    written.envelopes?.map((e) => e.id).sort(),
+    ["env-laptop", "env-phone"],
+    "envelopes from both sides"
+  );
+  eq(
+    written,
+    JSON.parse(JSON.stringify(mergeLedger(PHONE_SIDE, LAPTOP_SIDE).merged)),
+    "written ledger is mergeLedger(stored, incoming).merged"
+  );
+  eq((await res.json()).ledger, written, "response carries the written ledger");
+});
+
+await test("4.4 a stored check-in count is never lowered, and a higher one is taken", async () => {
+  const s = fakeStore({
+    ledger: ledger({ received: { "100|1|555": 5 } }),
+    rev: 4,
+  });
+  await send(s, "POST", "/ledger", {
+    key: KEY_LAPTOP,
+    json: {
+      ledger: ledger({ received: { "100|1|555": 2, "300|1|1": 3 } }),
+    },
+  });
+  eq(
+    s.writes[0]?.ledger.received,
+    { "100|1|555": 5, "300|1|1": 3 },
+    "per-key max"
+  );
+});
+
+await test("4.5 the stored view preferences win over the incoming ones", async () => {
+  const s = fakeStore({
+    ledger: ledger({ dateFilter: "30d", sortBy: "date", itemSort: "name" }),
+    rev: 4,
+  });
+  await send(s, "POST", "/ledger", {
+    key: KEY_LAPTOP,
+    json: {
+      ledger: ledger({ dateFilter: "all", sortBy: "name", itemSort: "qty" }),
+    },
+  });
+  const w = s.writes[0]?.ledger ?? {};
+  eq(
+    [w.dateFilter, w.sortBy, w.itemSort],
+    ["30d", "date", "name"],
+    "stored dateFilter, sortBy, itemSort kept"
+  );
+});
+
+await test("4.6 a newer tombstone clears an older stamp, and an older one does not", async () => {
+  const s = fakeStore({
+    ledger: ledger({
+      stamps: {
+        "111::Seller A": { kind: "refunded", updatedAt: 5 },
+        "222::Seller B": { kind: "refunded", updatedAt: 9 },
+      },
+    }),
+    rev: 4,
+  });
+  await send(s, "POST", "/ledger", {
+    key: KEY_LAPTOP,
+    json: {
+      ledger: ledger({
+        stamps: {
+          "111::Seller A": { kind: "", updatedAt: 9 },
+          "222::Seller B": { kind: "", updatedAt: 5 },
+        },
+      }),
+    },
+  });
+  eq(
+    s.writes[0]?.ledger.stamps,
+    {
+      "111::Seller A": { kind: "", updatedAt: 9 },
+      "222::Seller B": { kind: "refunded", updatedAt: 9 },
+    },
+    "stamps resolved by updatedAt, as mergeStamps does"
+  );
+});
+
+await test("4.7 posting the same ledger twice bumps rev and changes no count", async () => {
+  const L = ledger({
+    items: [item("100|1|555", "Alpha Card", 2), item("100|2|556", "Beta Card", 1)],
+    received: { "100|1|555": 1 },
+    envelopes: [{ id: "env-x", createdAt: 1, updatedAt: 1 }],
+    stamps: { "111::Seller A": { kind: "refunded", updatedAt: 3 } },
+  });
+  const s = empty();
+  await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: L } });
+  const res = await send(s, "POST", "/ledger", {
+    key: KEY_PHONE,
+    json: { ledger: L },
+  });
+  eq(res.status, 200, "second status");
+  eq(
+    s.writes.map((w) => w.rev),
+    [1, 2],
+    "revs"
+  );
+  const counts = (l) => ({
+    items: l.items.length,
+    checkIns: Object.values(l.received).reduce((a, b) => a + b, 0),
+    envelopes: l.envelopes.length,
+    stamps: Object.keys(l.stamps).length,
+  });
+  eq(counts(s.writes[1]?.ledger ?? {}), counts(s.writes[0]?.ledger ?? {}), "counts after the second post");
+  eq((await res.json()).rev, 2, "response rev");
+});
+
+await test("4.8 every successful POST writes, then broadcasts {rev} once", async () => {
+  const first = empty();
+  await send(first, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: ledger() } });
+  eq(first.broadcasts, [{ rev: 1 }], "first write broadcast");
+  eq(first.order, ["write", "broadcast"], "first write order");
+
+  const merge = fakeStore({ ledger: ledger(), rev: 4 });
+  await send(merge, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: ledger() } });
+  eq(merge.broadcasts, [{ rev: 5 }], "merge broadcast");
+  eq(merge.order, ["write", "broadcast"], "merge order");
+});
+
+/* ---------- 5. CORS ---------- */
+/* [label, store, method, path, options, expected status] */
+const CASES = [
+  ["200 GET", seeded, "GET", "/ledger", { key: KEY_PHONE }, 200],
+  ["200 POST", seeded, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: ledger() } }, 200],
+  ["400 POST", seeded, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: { mailday: 2, items: [] } } }, 400],
+  ["401 bad key", seeded, "GET", "/ledger", { key: KEY_STRANGER }, 401],
+  ["404 empty", empty, "GET", "/ledger", { key: KEY_PHONE }, 404],
+  ["404 unknown path", seeded, "GET", "/nope", { key: KEY_PHONE }, 404],
+  ["405 wrong method", seeded, "PUT", "/ledger", { key: KEY_PHONE }, 405],
+];
+
+await test("5.1 an allowed origin is echoed on every response", async () => {
+  for (const [name, mk, m, p, o, status] of CASES) {
+    const res = await send(mk(), m, p, { ...o, origin: PAGES });
+    eq(res.status, status, `${name}: status`);
+    eq(res.headers.get("access-control-allow-origin"), PAGES, `${name}: ACAO`);
+  }
+});
+
+await test("5.2 the second allowed origin is echoed too", async () => {
+  const res = await send(seeded(), "GET", "/ledger", { key: KEY_PHONE, origin: LOCAL });
+  eq(res.headers.get("access-control-allow-origin"), LOCAL, "ACAO");
+});
+
+await test("5.3 an unlisted origin gets no ACAO header on any response", async () => {
+  for (const [name, mk, m, p, o] of CASES) {
+    const res = await send(mk(), m, p, { ...o, origin: STRANGER });
+    eq(res.headers.get("access-control-allow-origin"), null, `${name}: ACAO`);
+  }
+});
+
+await test("5.4 an origin that only starts like an allowed one gets no ACAO", async () => {
+  for (const near of [
+    "https://shivinate7.github",
+    "https://shivinate7.github.io.evil.example",
+    "http://localhost:41730",
+  ]) {
+    const res = await send(seeded(), "GET", "/ledger", { key: KEY_PHONE, origin: near });
+    eq(res.headers.get("access-control-allow-origin"), null, `${near}: ACAO`);
+  }
+});
+
+await test("5.5 a request with no Origin is served, with no ACAO header", async () => {
+  /* The nightly HA job posts with no Origin, so CORS must not be the gate. */
+  const res = await send(seeded(), "GET", "/ledger", { key: KEY_PHONE });
+  eq(res.status, 200, "status");
+  eq(res.headers.get("access-control-allow-origin"), null, "ACAO");
+});
+
+await test("5.6 a preflight from an allowed origin is 204 and carries no auth", async () => {
+  const res = await send(seeded(), "OPTIONS", "/ledger", {
+    origin: PAGES,
+    headers: {
+      "Access-Control-Request-Method": "POST",
+      "Access-Control-Request-Headers": "authorization, content-type",
+    },
+  });
+  /* A browser never sends Authorization on a preflight, so this must not be 401. */
+  eq(res.status, 204, "status");
+  eq(res.headers.get("access-control-allow-origin"), PAGES, "ACAO");
+  const methods = list(res.headers.get("access-control-allow-methods")).map((m) =>
+    m.toUpperCase()
+  );
+  ok(
+    ["GET", "POST", "OPTIONS"].every((m) => methods.includes(m)),
+    `Allow-Methods covers GET, POST and OPTIONS; got ${methods.join(",")}`
+  );
+  const headers = list(res.headers.get("access-control-allow-headers")).map((h) =>
+    h.toLowerCase()
+  );
+  /* Named explicitly: a browser ignores a "*" wildcard for Authorization. */
+  ok(headers.includes("authorization"), `Allow-Headers names Authorization; got ${headers.join(",")}`);
+  ok(headers.includes("content-type"), `Allow-Headers names Content-Type; got ${headers.join(",")}`);
+});
+
+await test("5.7 a preflight from an unlisted origin gets no ACAO", async () => {
+  const res = await send(seeded(), "OPTIONS", "/ledger", {
+    origin: STRANGER,
+    headers: { "Access-Control-Request-Method": "POST" },
+  });
+  eq(res.headers.get("access-control-allow-origin"), null, "ACAO");
+});
+
+/* ---------- 6. routing ---------- */
+await test("6.1 an unknown path is 404 for a device with a good key", async () => {
+  const res = await send(seeded(), "GET", "/nope", { key: KEY_PHONE });
+  eq(res.status, 404, "status");
+});
+
+await test("6.2 PUT, PATCH and DELETE on /ledger are 405 for a device with a good key", async () => {
+  for (const m of ["PUT", "PATCH", "DELETE"]) {
+    const res = await send(seeded(), m, "/ledger", { key: KEY_PHONE });
+    eq(res.status, 405, `${m} status`);
+  }
+});
+
+/* ---------- 7. one merge, shared with the app ---------- */
+await test("7.1 the core imports the shared merge and holds no copy of it", async () => {
+  /* The one place this file reads source. It guards the rule that the app and
+     the server share one merge, which a behaviour test cannot see. */
+  const src = readFileSync(new URL("./core.mjs", import.meta.url), "utf8");
+  ok(
+    /from\s+["']\.\.\/src\/merge-rules\.mjs["']/.test(src),
+    "core.mjs imports ../src/merge-rules.mjs"
+  );
+  ok(
+    !/function\s+merge(Ledger|Items|Received|Envelopes|Stamps)\b/.test(src),
+    "core.mjs defines a merge function of its own"
+  );
+});
+
+report();

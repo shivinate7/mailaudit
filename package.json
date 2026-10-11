@@ -9,6 +9,7 @@
     "check:seed": "node build.mjs --check-seed",
     "check:docs": "node check-docs.mjs",
     "test:check-docs": "node test/check-docs.test.mjs",
+    "test:worker": "node worker/core.test.mjs",
     "check:records": "node check-records.mjs",
     "check:screens": "node test/screens.mjs",
     "test": "node test/app.test.mjs",
