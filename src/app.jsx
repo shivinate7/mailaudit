@@ -4529,7 +4529,10 @@ export default function MailDayLedger() {
         if (reply) {
           /* nothing to merge: no apply, no milestone. Canonical compare, so a
              note, a photo id or a receivedAt that differs alone still counts. */
-          if (canon(merged) === canon(snapshot())) return { ok: true };
+          if (canon(merged) === canon(snapshot())) {
+            setSeedShown(false); /* a server ledger has landed: this page is the owner's now */
+            return { ok: true };
+          }
           /* a milestone only in front of a removal, and before the apply */
           if (stats.checkInsRemoved + stats.envelopesRemoved + (stats.stampsRemoved || 0) > 0)
             takeVersion("before sync", "milestone");
@@ -4538,6 +4541,7 @@ export default function MailDayLedger() {
         /* remembered so the next apply can tell this notice from an import's */
         if (reply) serverNotice.current = notice;
         await applyBackup(text, reply ? "server" : "merge", extraPresent, notice);
+        if (reply) setSeedShown(false); /* seed-load-guards: no longer someone else's ledger */
         /* applyBackup bumps syncGen — it has to, since a restore replaces the
            world and anything still in flight against the old one must not land.
            doPull is unaffected because applying is the last thing it does; a
@@ -4681,7 +4685,8 @@ export default function MailDayLedger() {
   tryApplyRef.current = () => {
     clearTimeout(applyTimer.current);
     if (!pendingReply.current) return;
-    const idle = idleReady(lastActivity.current, Date.now());
+    /* a pasted key is a tap the user just made: its first reply applies at once */
+    const idle = applyNow.current || idleReady(lastActivity.current, Date.now());
     /* an import notice holds the apply; the notice a server apply left does not */
     const noticeOpen = importMsg && importMsg !== serverNotice.current;
     if (!idle || mergeBlocked || noticeOpen || syncingRef.current) {
@@ -4692,9 +4697,11 @@ export default function MailDayLedger() {
     }
     const reply = pendingReply.current;
     pendingReply.current = null;
+    applyNow.current = false;
     doMerge(false, true, reply);
   };
   const serverNotice = useRef("");
+  const applyNow = useRef(false);
   const lastServer = useRef(null); // the newest ledger the Worker answered with
   const lastRev = useRef(0); // the newest rev whose reply landed
   const inflightRev = useRef(0);
@@ -4854,8 +4861,12 @@ export default function MailDayLedger() {
     }
     try {
       await window.sync.setKey(v);
-    } catch {
-      setSyncKeyMsg("That is not a valid sync key. Paste it again.");
+    } catch (e) {
+      setSyncKeyMsg(
+        e?.code === "storage"
+          ? "This device could not save the sync key. Try again."
+          : "That is not a valid sync key. Paste it again."
+      );
       return;
     }
     setSyncKeyMsg("");
@@ -4866,7 +4877,10 @@ export default function MailDayLedger() {
     nextTry.current = 0;
     tooBigRef.current = false;
     setServerDown(false);
-    if (!closeRef.current) closeRef.current = window.sync.connect((rev) => revRef.current(rev));
+    /* the old socket carries the old key: close it, then connect with the new one */
+    if (closeRef.current) closeRef.current();
+    closeRef.current = window.sync.connect((rev) => revRef.current(rev));
+    applyNow.current = true;
     coldRef.current();
   };
   useEffect(() => {
