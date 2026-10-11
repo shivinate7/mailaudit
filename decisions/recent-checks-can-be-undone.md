@@ -1,6 +1,6 @@
 # Recent actions can be undone by tap
 
-**Status:** open. The owner ruled on 2026-10-11 that the log is "Synced across devices", and accepted the reach, the gesture, the redo rule and the entrance, see Ruled. Still open: the shape of the synced log, and three measurements the build must take. Nothing is built.
+**Status:** open. The owner ruled on 2026-10-11 that the log is "Synced across devices", and accepted the reach, the gesture, the redo rule and the entrance, see Ruled. The owner ruled the shape on 2026-10-11: "Inside the ledger". Still open: three measurements the build must take. Nothing is built.
 
 **Holds while:** `src/app.jsx` keeps no action log, and `undoAssign` is its only undo.
 
@@ -101,7 +101,7 @@ The log keeps the newest 200 rows and nothing older than 14 days. Undo entries d
 
 ## The shape of the synced log
 
-Recommended: a field in the ledger, named recent. It holds the entries described above.
+Ruled: a field in the ledger, named recent. The owner chose it on 2026-10-11, with its change to `saved-state-shape`. It holds the entries described above.
 
 **The merge rule.** `mergeLedger` carries it, so the Worker and the web app share one rule.
 
