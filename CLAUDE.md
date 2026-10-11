@@ -21,7 +21,7 @@ one record, and each record holds current text only; git keeps the history. Read
 records your task needs. Do not read them all.
 
 - `invariants/` holds a rule that must not break. 8 records.
-- `decisions/` holds a ruling and the reason it still holds. 202 records.
+- `decisions/` holds a ruling and the reason it still holds. 213 records.
 - `measurements/` holds a measured figure and how to re-measure it. 8 records.
 
 A record cites another record by slug, never by a path, so a record survives a
@@ -104,7 +104,23 @@ Sync runs itself. These records say what it refuses to do, and why each refusal 
 - `ledger-and-photos-share-a-repo` — The ledger and the photos share one repo.
 - `photo-writes-wait-one-second` — Photo writes wait one second after the ledger.
 - `null-remote-info-is-not-no-key` — A null remote status is not a missing key.
+- `worker-keeps-snapshots` — The Worker keeps daily snapshots, and GitHub leaves the sync role.
+
+## The native client
+
+MANIFEST is rebuilt in Swift. These records say what both clients share, what they do not, and the order of the work.
+
 - `native-swift-rebuild` — MANIFEST is rebuilt as a native Swift client.
+- `native-build-lanes` — The native build runs in ordered lanes.
+- `native-parity-table` — Each feature has one scope in the native rebuild.
+- `rules-run-in-javascriptcore` — The Swift client runs the view rules in JavaScriptCore.
+- `shared-tokens-and-fixtures` — Both clients read one token file and one fixture set.
+- `native-key-via-url-scheme` — The native client takes its key through a custom URL scheme.
+- `native-ledger-is-raw-json` — The native client keeps the ledger as raw JSON.
+- `native-reply-waits-generation` — A native reply applies only to a ledger that has not changed.
+- `native-files-are-frozen` — Native file names freeze on first ship.
+- `native-ci-on-hosted-macos` — The native job runs on a hosted macOS runner.
+- `csv-import-stays-web` — CSV import stays on the web app.
 
 ## Envelope photos
 
