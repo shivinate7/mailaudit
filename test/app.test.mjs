@@ -1950,8 +1950,9 @@ eq(
   "34.7 carrying the check-ins the remote had never seen"
 );
 
-/* Merge destroys nothing, so arming it would say the opposite of what it does
-   — and invariant no-native-dialogs's two-tap pattern is for destructive actions specifically. */
+/* In a merge the later change wins, and a merge is not a destructive act, so
+   arming it would say the opposite of what it does — and invariant
+   no-native-dialogs's two-tap pattern is for destructive actions specifically. */
 await boot(
   { items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } },
   null,
@@ -3352,7 +3353,7 @@ eq(saved().items.length, ITEMS.length, "40.4 a real absence merges without a tap
 eq(
   saved().received[ITEMS[0].key],
   1,
-  "40.5 keeping this device's check-in through it — a merge only adds"
+  "40.5 keeping this device's check-in through it — the later change wins"
 );
 /* group 35's rule: after a merge the payloads match either way, so payload
    equality proves nothing. The sha advancing is the only thing that says the
@@ -4671,6 +4672,8 @@ for (const [path, look] of [
   const REMOVED = /\bremov(ed|al)\b/i;
   const NOTHING = /had nothing new|Nothing of yours was lost/;
   const noticeNamesRemoval = () => REMOVED.test(text()) && !NOTHING.test(text());
+  /* a check-in removal is copy in cards: one card, never "check-ins" */
+  const uncheckedOne = () => /un-checked 1 card(?!s)/.test(text()) && !NOTHING.test(text());
   const lineRow = (pkgRe, name) =>
     [...card(pkgRe).querySelectorAll('button[aria-label^="Mark as"]')].find((b) =>
       b.parentElement?.textContent.includes(name)
@@ -4755,13 +4758,42 @@ for (const [path, look] of [
     "50.A2g a tombstone for an envelope never held here removes nothing"
   );
   const quiet = { itemsAdded: 0, checkInsAdded: 0, envelopesAdded: 0, stampsAdded: 0 };
-  for (const field of ["checkInsRemoved", "envelopesRemoved"]) {
+  for (const field of ["checkInsRemoved", "envelopesRemoved", "stampsRemoved"]) {
     const s = mergeSummary({ ...quiet, [field]: 1 });
     ok(
       REMOVED.test(s) && !NOTHING.test(s),
       `50.A2h a merge that only removes says so (${field})`
     );
   }
+
+  /* A3: removed counts keys, so the copy counts cards, not units. Un-checking
+     three copies of one card is one key, and the notice says one card. */
+  const three = mergeLedger(led({ [K]: 3 }, { [K]: 100 }, []), led({}, { [K]: 200 }, []));
+  eq(three.stats.checkInsRemoved, 1, "50.A3a un-checking 3 copies of one card counts one key");
+  ok(
+    mergeSummary(three.stats).includes("un-checked 1 card") &&
+      !/check-in/.test(mergeSummary(three.stats)),
+    "50.A3b and the notice reads 'un-checked 1 card', not check-ins"
+  );
+  ok(
+    mergeSummary({ ...quiet, checkInsRemoved: 2 }).includes("un-checked 2 cards"),
+    "50.A3c two cards read 'un-checked 2 cards'"
+  );
+
+  /* A4: a newer stamp tombstone removes a stamp, and the merge reports it */
+  const STAMPED50 = { [GK_A]: S("claim", 100) };
+  const STAMP_GONE50 = { [GK_A]: { kind: "", at: "", note: "", updatedAt: 200 } };
+  const withStamps = (stamps) => ({ ...led({}, {}, []), stamps });
+  eq(
+    mergeLedger(withStamps(STAMPED50), withStamps(STAMP_GONE50)).stats.stampsRemoved,
+    1,
+    "50.A4a a newer stamp tombstone counts one stamp removed"
+  );
+  eq(
+    mergeLedger(withStamps(STAMP_GONE50), withStamps(STAMPED50)).stats.stampsRemoved,
+    0,
+    "50.A4b an older stamp does not undo a removal, and removes nothing"
+  );
 
   /* A2 through the app: the other device un-checked later, and this device
      still holds the check. The manual merge applies the removal. */
@@ -4781,7 +4813,7 @@ for (const [path, look] of [
   await settle();
   await sleep(SAVE_WAIT);
   eq(saved().received[K], undefined, "50.A2i the merge applies the other device's un-check");
-  ok(noticeNamesRemoval(), "50.A2j and the notice names the removal, not 'nothing new'");
+  ok(uncheckedOne(), "50.A2j and the notice says un-checked 1 card, not 'nothing new'");
 
   /* the other device discarded an envelope this device still holds live */
   await fresh();
@@ -4829,7 +4861,38 @@ for (const [path, look] of [
   await settle();
   await sleep(SAVE_WAIT); /* the merged state is saved on a debounce */
   eq(saved().received[K], undefined, "50.A2m a quiet merge applies the un-check");
-  ok(noticeNamesRemoval(), "50.A2n and the quiet merge still leaves a notice naming it");
+  ok(uncheckedOne(), "50.A2n and the quiet merge still leaves a notice saying un-checked 1 card");
+
+  /* A4 through the app: the other device removed a stamp this device still holds */
+  await boot({ items: ITEMS, received: {}, stamps: STAMPED50 });
+  remote.content = utf8ToBase64(
+    asRemote({ items: ITEMS, received: {}, receivedAt: {}, envelopes: [], stamps: STAMP_GONE50 })
+  );
+  remote.sha = "sha-0";
+  await foreground();
+  await openSync();
+  await saveGitHubKey();
+  await click(btn(/^Push$/), "stale push");
+  await click(btn(/Merge & push/), "merge");
+  await settle();
+  await sleep(SAVE_WAIT);
+  eq(saved().stamps?.[GK_A]?.kind ?? "", "", "50.A4c the merge applies the other device's stamp removal");
+  ok(noticeNamesRemoval(), "50.A4d and the notice names the removal");
+
+  /* the quiet unattended merge, whose only change is that stamp removal */
+  await boot({ items: ITEMS, received: {}, stamps: STAMPED50 }, null, KEY);
+  await openSync();
+  await click(btn(/^Push$/), "push the stamp");
+  await sleep(60);
+  remote.content = utf8ToBase64(
+    asRemote({ items: ITEMS, received: {}, receivedAt: {}, envelopes: [], stamps: STAMP_GONE50 })
+  );
+  remote.sha = "sha-other"; /* the other device pushed since: peek says ahead */
+  await backgroundFor(5 * 60_000);
+  await settle();
+  await sleep(SAVE_WAIT);
+  eq(saved().stamps?.[GK_A]?.kind ?? "", "", "50.A4e a quiet merge applies the stamp removal");
+  ok(noticeNamesRemoval(), "50.A4f and the quiet merge still leaves a notice naming it");
 
   /* B: write sites that already stamp receivedAt */
   await fresh();
