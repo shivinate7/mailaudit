@@ -25,7 +25,7 @@ So there is **one line**. It is advisory manila, full width, above the ruled row
 
 Case 4 names the server. Its copy is `The sync server could not be reached — tap to fix`. The failure turns mirror mode off, so the plain GitHub path runs. Test 53.8b pins that the line names the server. A 413 reply does the same, and its copy is `The ledger is too big for the sync server — tap to fix`. Test 55.8 pins it. A 401 shows `This device’s sync key was refused — tap to fix`, and group 56 pins it.
 
-Case 10 is the only way to paste a sync key on a device. The home-screen app keeps its own storage, so a key set in Safari does not reach it. Its copy is `This device has no sync key — tap to paste it`. The panel holds a masked field and `Save sync key`. With the panel open, the line is the panel's header and tells the truth about the backup. Group 59 pins it. See `sync-revamp-cloudflare`.
+Case 10 is the entrance to the sync key field when no other line shows. The home-screen app keeps its own storage, so a key set in Safari does not reach it. Its copy is `This device has no sync key — tap to paste it`. The panel holds a masked field and `Save sync key`. With the panel open, the line is the panel's header and tells the truth about the backup. Group 59 pins it. See `sync-revamp-cloudflare`.
 
 A Worker reply that waits for the idle gate shows no line. Test 55.5 pins it.
 
