@@ -71,7 +71,7 @@ Nothing in the component touches a storage API. Three adapters do, and each fail
 - `b64-fails-with-plausible-data` — Base64 lives in its own module.
 - `photo-rules-fails-quietly` — Photo rules are pure and separately tested.
 - `remote-rules-fail-quietly` — Remote status mapping is pure and tested.
-- `merge-rules-only-add` — The two-device merge only ever adds.
+- `merge-later-change-wins` — The later change wins in a two-device merge.
 
 ## Sync, the remote and the token
 
@@ -89,6 +89,8 @@ Sync runs itself. These records say what it refuses to do, and why each refusal 
 - `pull-needs-a-key-too` — Pull now needs the same key.
 - `stale-push-conflict-pull-two-tap` — Pull gets the two-tap, push does not.
 - `merge-carries-no-two-tap-arm` — Merge never needs a two-tap arm.
+- `max-cannot-express-an-uncheck` — A per-key time lets an un-check beat an older check.
+- `envelope-deletion-unrepresented` — A discarded envelope leaves a tombstone that a stale copy cannot revive.
 - `two-device-merge-proven-first` — Prove the two-device merge before trusting auto-push.
 - `merge-readopts-sync-generation` — A merge re-adopts the sync generation.
 - `push-flash-waits-for-photos` — Pushed shows only after the photos.
@@ -313,9 +315,7 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 - `a-host-migration-resets-storage` — A host migration resets phone storage.
 - `auto-apply-happens-now` — Auto-apply happens now, and why that changed.
 - `ci-runs-in-utc` — CI runs the suite outside UTC, so test 38.9 runs there.
-- `envelope-deletion-unrepresented` — Envelope deletion is not represented.
 - `itp-may-clear-storage` — ITP may clear storage after seven idle days.
-- `max-cannot-express-an-uncheck` — `max` on received cannot express an un-check.
 - `nothing-recovers-without-the-key` — Nothing recovers without the key.
 - `peek-is-verified-only-on-refusal` — `peek()` is verified only on its refusal path.
 - `photos-in-git-are-permanent` — Photos in git are permanent.
@@ -328,6 +328,7 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 - `the-write-budget-is-shared` — The write budget is shared with the ledger push.
 - `vendor-toggle-undecided` — The vendor toggle stays undecided.
 - `sync-revamp-cloudflare` — Sync moves from GitHub to Cloudflare, and orders arrive with no export.
+- `merge-later-change-wins` — Clock skew can pin a merge key. Accepted risk.
 
 ## Measurements
 

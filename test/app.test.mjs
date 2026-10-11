@@ -134,7 +134,11 @@ ok(
   "4.3 the package's 5th card is NOT checked in — only what was entered"
 );
 ok(Object.values(rec).every((v) => v > 0), "4.4 no zero counts stored (key-absent means zero)");
-eq(saved().envelopes.length, 0, "4.5 fully-consumed envelope left the pile");
+eq(
+  saved().envelopes.filter((e) => !e.deletedAt).length,
+  0,
+  "4.5 fully-consumed envelope left the pile (no live envelope; a tombstone is kept)"
+);
 ok(/Checked in 4 cards against Gamma Cards/.test(text()), "4.6 undo notice shown");
 
 /* ── 5. undo restores the exact prior state ────────────────────────────── */
@@ -561,7 +565,11 @@ await assign(0);
 ok(/cards\s*1\/14/.test(text()), "20.1 one copy checked in, not the pair");
 await sleep(SAVE_WAIT);
 eq(Object.values(saved().received), [1], "20.2 the line is at 1, not its full qty of 2");
-eq(saved().envelopes.length, 0, "20.3 the envelope is fully consumed");
+eq(
+  saved().envelopes.filter((e) => !e.deletedAt).length,
+  0,
+  "20.3 the envelope is fully consumed (no live envelope; a tombstone is kept)"
+);
 
 await goTo("packages");
 ok(/1\/2/.test(text()), "20.4 the package shows the line half received");
@@ -1942,8 +1950,9 @@ eq(
   "34.7 carrying the check-ins the remote had never seen"
 );
 
-/* Merge destroys nothing, so arming it would say the opposite of what it does
-   — and invariant no-native-dialogs's two-tap pattern is for destructive actions specifically. */
+/* In a merge the later change wins, and a merge is not a destructive act, so
+   arming it would say the opposite of what it does — and invariant
+   no-native-dialogs's two-tap pattern is for destructive actions specifically. */
 await boot(
   { items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } },
   null,
@@ -2802,7 +2811,7 @@ await sleep(SAVE_WAIT);
     "37.68 the merged stamps reach GitHub"
   );
   ok(
-    /1 stamp\b/.test(text()),
+    /\b1 stamp from the other device\b/.test(text()),
     "37.69 and the notice counts the one stamp that arrived, not the tombstone"
   );
 }
@@ -3344,7 +3353,7 @@ eq(saved().items.length, ITEMS.length, "40.4 a real absence merges without a tap
 eq(
   saved().received[ITEMS[0].key],
   1,
-  "40.5 keeping this device's check-in through it — a merge only adds"
+  "40.5 keeping this device's check-in through it — the later change wins"
 );
 /* group 35's rule: after a merge the payloads match either way, so payload
    equality proves nothing. The sha advancing is the only thing that says the
@@ -4362,6 +4371,611 @@ for (const [path, look] of [
     { shown, cleared: !BACKUP_UNKNOWN.test(text()) },
     { shown: true, cleared: true },
     `48.9 a remote unknown on both tries shows the line, and a later known look clears it (${path})`
+  );
+}
+
+/* ── 49. un-checks and deletes travel between devices ─────────────────────
+   The merge used to only ADD. A check-in could never be undone across two
+   devices, and a discarded envelope came back. Two fixes are pinned here. A
+   `receivedAt` map gives each check-in key the time of its last change, and the
+   later change wins. A discarded envelope leaves a tombstone, `deletedAt`, that
+   every reader skips. The pure cases import src/merge-rules.mjs directly, as in
+   groups 27, 31 and 33. Cases marked "holds today" pass on the per-key max
+   too. They pin what the new rule must keep. */
+{
+  const K = "A1|0|pLightningBolt";
+  const pick = (o) => ({ received: o.received, receivedAt: o.receivedAt });
+  const sorted = (o) =>
+    JSON.stringify(
+      Object.fromEntries(
+        Object.entries(o || {}).sort(([a], [b]) => (a < b ? -1 : 1))
+      )
+    );
+
+  /* an un-check beats an older check, whichever side it arrives on */
+  eq(
+    mergeReceived({ [K]: 1 }, {}, { [K]: 100 }, { [K]: 200 }).received,
+    {},
+    "49.1a an un-check at 200 beats a check at 100 when the un-check arrives"
+  );
+  eq(
+    mergeReceived({}, { [K]: 1 }, { [K]: 200 }, { [K]: 100 }).received,
+    {},
+    "49.1b and when the un-check is already here"
+  );
+
+  /* a newer check beats an older un-check (holds today) */
+  eq(
+    mergeReceived({}, { [K]: 1 }, { [K]: 100 }, { [K]: 200 }).received,
+    { [K]: 1 },
+    "49.2a a newer check beats an older un-check (holds today)"
+  );
+  eq(
+    mergeReceived({ [K]: 1 }, {}, { [K]: 200 }, { [K]: 100 }).received,
+    { [K]: 1 },
+    "49.2b in either direction (holds today)"
+  );
+
+  /* equal times take the max count, and the shared time is kept */
+  eq(
+    mergeReceived({ [K]: 1 }, { [K]: 3 }, { [K]: 100 }, { [K]: 100 }).received,
+    { [K]: 3 },
+    "49.3a equal times take the max count (holds today)"
+  );
+  eq(
+    mergeReceived({ [K]: 3 }, { [K]: 1 }, { [K]: 100 }, { [K]: 100 }).received,
+    { [K]: 3 },
+    "49.3b in either direction (holds today)"
+  );
+  eq(
+    mergeReceived({ [K]: 3 }, { [K]: 1 }, { [K]: 100 }, { [K]: 100 }).receivedAt,
+    { [K]: 100 },
+    "49.3c and the shared time is kept"
+  );
+
+  /* a side with no time for the key falls back to today's per-key max */
+  eq(
+    mergeReceived({ [K]: 1 }, { [K]: 3 }, { [K]: 100 }).received,
+    { [K]: 3 },
+    "49.4a a missing time falls back to the max (holds today)"
+  );
+  eq(
+    mergeReceived({ [K]: 3 }, { [K]: 1 }, undefined, { [K]: 100 }).received,
+    { [K]: 3 },
+    "49.4b in the other direction (holds today)"
+  );
+  eq(
+    mergeReceived({ [K]: 1 }, { [K]: 3 }, { [K]: 100 }).receivedAt,
+    { [K]: 100 },
+    "49.4c the merged time is the one that exists"
+  );
+  eq(
+    mergeReceived({ [K]: 1 }, { [K]: 3 }).receivedAt,
+    {},
+    "49.4d with no time on either side, receivedAt is an empty map"
+  );
+
+  /* symmetry holds (holds today; the new rule must keep it) */
+  const CASES = [
+    [{ [K]: 1 }, {}, { [K]: 100 }, { [K]: 200 }],
+    [{ [K]: 1 }, { [K]: 3 }, { [K]: 100 }, { [K]: 100 }],
+    [{ [K]: 3 }, { [K]: 1 }, undefined, { [K]: 100 }],
+    [{ a: 2, [K]: 1 }, { a: 1 }, { a: 50, [K]: 90 }, { a: 10, [K]: 120 }],
+  ];
+  for (const [i, [a, b, ta, tb]] of CASES.entries()) {
+    const ab = mergeReceived(a, b, ta, tb);
+    const ba = mergeReceived(b, a, tb, ta);
+    ok(
+      sorted(ab.received) === sorted(ba.received) &&
+        sorted(ab.receivedAt) === sorted(ba.receivedAt),
+      `49.5.${i} the merge is symmetric (holds today)`
+    );
+  }
+
+  /* idempotence: replaying a stale check does not bring the card back */
+  const m49 = mergeReceived({ [K]: 1 }, {}, { [K]: 100 }, { [K]: 200 });
+  eq(m49.received, {}, "49.6a the un-check holds after the merge");
+  eq(
+    mergeReceived(m49.received, { [K]: 1 }, m49.receivedAt, { [K]: 100 }).received,
+    {},
+    "49.6b and merging the stale check again does not check the card"
+  );
+
+  /* tombstones. The freshest updatedAt already wins (holds today) */
+  const LIVE49 = {
+    id: "e1",
+    createdAt: 10,
+    updatedAt: 100,
+    note: "",
+    entries: [{ name: "Ponder", qty: 1 }],
+    photos: [],
+  };
+  const TOMB49 = {
+    id: "e1",
+    createdAt: 10,
+    updatedAt: 200,
+    deletedAt: 200,
+    note: "",
+    entries: [],
+    photos: [],
+  };
+  const LIVE49_NEWER = { ...LIVE49, updatedAt: 300 };
+  const shape = (list) =>
+    list.map((e) => ({ deletedAt: e.deletedAt ?? null, entries: e.entries }));
+  const TOMBED = [{ deletedAt: 200, entries: [] }];
+  const LIVED = [{ deletedAt: null, entries: [{ name: "Ponder", qty: 1 }] }];
+  eq(
+    shape(mergeEnvelopes([LIVE49], [TOMB49]).envelopes),
+    TOMBED,
+    "49.7a a tombstone beats an older live envelope (holds today)"
+  );
+  eq(
+    shape(mergeEnvelopes([TOMB49], [LIVE49]).envelopes),
+    TOMBED,
+    "49.7b in either direction (holds today)"
+  );
+  eq(
+    shape(mergeEnvelopes([TOMB49], [LIVE49_NEWER]).envelopes),
+    LIVED,
+    "49.7c a newer live edit beats an older tombstone (holds today)"
+  );
+  eq(
+    shape(mergeEnvelopes([LIVE49_NEWER], [TOMB49]).envelopes),
+    LIVED,
+    "49.7d in either direction (holds today)"
+  );
+
+  /* mergeLedger names receivedAt, so it survives the merge (saved-state-shape) */
+  const L8 = { items: ITEMS, received: { [K]: 1 }, receivedAt: { [K]: 100 }, envelopes: [] };
+  const I8 = { items: ITEMS, received: {}, receivedAt: { [K]: 200 }, envelopes: [] };
+  eq(mergeLedger(L8, I8).merged.received, {}, "49.8a the merged ledger keeps the un-check");
+  eq(
+    mergeLedger(L8, I8).merged.receivedAt,
+    { [K]: 200 },
+    "49.8b and carries receivedAt"
+  );
+  eq(
+    mergeLedger(
+      { items: ITEMS, received: {}, envelopes: [] },
+      { items: ITEMS, received: {}, envelopes: [] }
+    ).merged.receivedAt,
+    {},
+    "49.8c a merged ledger always carries receivedAt, even when neither side had one"
+  );
+  eq(
+    pick(mergeReceived({}, {}, {}, {})),
+    { received: {}, receivedAt: {} },
+    "49.8d an empty merge carries an empty receivedAt"
+  );
+}
+
+/* ---- 49 through the app: a stale copy on the other device ---- */
+{
+  const K = ITEMS[0].key; /* Lightning Bolt, in Alpha Cards */
+  /* a line row's check button. Its row holds the name, so match on it */
+  const lineRow = (pkgRe, name) =>
+    [...card(pkgRe).querySelectorAll('button[aria-label^="Mark as"]')].find((b) =>
+      b.parentElement?.textContent.includes(name)
+    );
+  /* what GitHub holds: the push format, which carries mailday (parseLedger needs it) */
+  const asRemote = (s) => JSON.stringify({ mailday: 1, ...s });
+
+  /* an un-check outlives a stale copy that still has the card checked */
+  await fresh();
+  await click(lineRow(/Alpha Cards/, "Lightning Bolt"), "check Lightning Bolt in");
+  await sleep(SAVE_WAIT);
+  const checkedCopy = saved(); /* what the other device holds */
+  await sleep(5); /* a later change has to read a later time */
+  await click(lineRow(/Alpha Cards/, "Lightning Bolt"), "un-check Lightning Bolt");
+  await sleep(SAVE_WAIT);
+  ok(typeof saved().receivedAt?.[K] === "number", "49.A1 an un-check writes its time");
+  remote.content = utf8ToBase64(asRemote(checkedCopy));
+  remote.sha = "sha-0";
+  await foreground();
+  await openSync();
+  await saveGitHubKey();
+  await click(btn(/^Push$/), "stale push");
+  await click(btn(/Merge & push/), "merge");
+  await settle();
+  await sleep(SAVE_WAIT);
+  eq(saved().received ?? {}, {}, "49.A2 a merge with the stale copy keeps the card un-checked");
+  ok(/cards\s*0\/14/.test(text()), "49.A3 and the screen shows nothing checked");
+  eq(
+    JSON.parse(remoteText()).received ?? {},
+    {},
+    "49.A4 and the merged copy on GitHub has no check either"
+  );
+}
+
+{
+  /* a discarded envelope stays gone when the old copy comes back */
+  const liveEnvs = (s) => (s.envelopes || []).filter((e) => !e.deletedAt);
+  const asRemote = (s) => JSON.stringify({ mailday: 1, ...s });
+  await fresh();
+  await goTo("orphaned");
+  await record(["Ponder", "Preordain"], "discard me");
+  await sleep(SAVE_WAIT);
+  const liveCopy = saved(); /* the other device still holds the envelope */
+  await click(btn(/^Discard$/), "discard");
+  await click(btn(/Tap again to discard/), "confirm discard");
+  await sleep(SAVE_WAIT);
+  ok(
+    (saved().envelopes || []).some(
+      (e) => typeof e.deletedAt === "number" && e.entries.length === 0
+    ),
+    "49.B1 a discard leaves a tombstone with its time"
+  );
+  remote.content = utf8ToBase64(asRemote(liveCopy));
+  remote.sha = "sha-0";
+  await foreground();
+  await openSync();
+  await saveGitHubKey();
+  await click(btn(/^Push$/), "stale push");
+  await click(btn(/Merge & push/), "merge");
+  await settle();
+  await sleep(SAVE_WAIT);
+  await goTo("orphaned");
+  eq(envelopeCount(), 0, "49.B2 a merge with the old copy keeps the envelope gone");
+  ok(/Nothing waiting/.test(text()), "49.B3 and the pile says so");
+  eq(
+    btn(/^Orphaned/)?.textContent.trim(),
+    "Orphaned",
+    "49.B4 and the tab shows no count"
+  );
+  eq(liveEnvs(saved()).length, 0, "49.B5 and the saved ledger holds no live envelope");
+}
+
+{
+  /* receivedAt survives a reload, reaches the pushed payload and the Backup
+     file, and Reset clears it */
+  const K = ITEMS[0].key;
+  const lineRow = (pkgRe, name) =>
+    [...card(pkgRe).querySelectorAll('button[aria-label^="Mark as"]')].find((b) =>
+      b.parentElement?.textContent.includes(name)
+    );
+  await fresh();
+  await click(lineRow(/Alpha Cards/, "Lightning Bolt"), "check Lightning Bolt in");
+  await sleep(SAVE_WAIT);
+  ok(typeof saved().receivedAt?.[K] === "number", "49.C1 a check-in writes its time");
+  await boot(saved());
+
+  await openSync();
+  await saveGitHubKey();
+  await click(btn(/^Push$/), "push");
+  const pushed = pushes()[0] ? JSON.parse(pushes()[0].text) : {};
+  ok(typeof pushed.receivedAt?.[K] === "number", "49.C2 the pushed payload carries it");
+
+  let backupBlob = null;
+  win.URL.createObjectURL = (b) => {
+    backupBlob = b;
+    return "blob:49";
+  };
+  await openHistory();
+  await click(btn(/^Backup$/), "backup");
+  const backedUp = backupBlob ? JSON.parse(await backupBlob.text()) : {};
+  ok(typeof backedUp.receivedAt?.[K] === "number", "49.C3 it survives a reload into the Backup file");
+
+  await openHistory();
+  await click(btn(/^Reset$/), "reset");
+  await click(btn(/Tap again to clear everything/), "confirm reset");
+  await sleep(800); /* past the debounce, when a stale value would come back */
+  eq(saved().receivedAt ?? {}, {}, "49.C4 Reset clears receivedAt, and the debounce does not write it back");
+}
+
+/* ---- 50. timed absences, reported removals, and the write sites ----
+   A1 and A2 are red on 69fcf67 by ruling: a timed absence beats an untimed
+   count, and a merge that lowers, clears or discards is reported as a removal,
+   never as "nothing new". B pins write sites that already work. Each one goes
+   red under a mutant in a scratch copy, not in this tree. */
+{
+  const K = ITEMS[0].key; /* Lightning Bolt, in Alpha Cards */
+  const REMOVED = /\bremov(ed|al)\b/i;
+  const NOTHING = /had nothing new|Nothing of yours was lost/;
+  const noticeNamesRemoval = () => REMOVED.test(text()) && !NOTHING.test(text());
+  /* a check-in removal is copy in cards: one card, never "check-ins" */
+  const uncheckedOne = () => /un-checked 1 card(?!s)/.test(text()) && !NOTHING.test(text());
+  const lineRow = (pkgRe, name) =>
+    [...card(pkgRe).querySelectorAll('button[aria-label^="Mark as"]')].find((b) =>
+      b.parentElement?.textContent.includes(name)
+    );
+  const asRemote = (s) => JSON.stringify({ mailday: 1, ...s });
+  const led = (received, receivedAt, envelopes) => ({
+    items: ITEMS,
+    received,
+    receivedAt,
+    envelopes,
+  });
+  const LIVE50 = {
+    id: "e50",
+    createdAt: 1,
+    updatedAt: 100,
+    note: "",
+    entries: [{ name: "Ponder", qty: 1 }],
+    photos: [],
+  };
+  const TOMB50 = { ...LIVE50, updatedAt: 200, deletedAt: 200, entries: [], photos: [] };
+
+  /* A1: a timed absence beats an untimed count, in either direction */
+  const a1 = mergeReceived({ [K]: 1 }, {}, {}, { [K]: 200 });
+  eq(
+    { count: a1.received[K] ?? null, at: a1.receivedAt[K] },
+    { count: null, at: 200 },
+    "50.A1a a timed un-check beats an untimed count"
+  );
+  const a2 = mergeReceived({}, { [K]: 1 }, { [K]: 200 }, {});
+  eq(
+    { count: a2.received[K] ?? null, at: a2.receivedAt[K] },
+    { count: null, at: 200 },
+    "50.A1b in the other direction"
+  );
+  eq(
+    mergeReceived({ [K]: 1 }, {}, { [K]: 200 }, {}).received[K],
+    1,
+    "50.A1c a timed count beats an untimed absence (holds today)"
+  );
+  eq(
+    mergeReceived({}, { [K]: 1 }, {}, { [K]: 200 }).received[K],
+    1,
+    "50.A1d in the other direction (holds today)"
+  );
+
+  /* A2: a removal is counted, so the notice cannot say "nothing new" */
+  eq(
+    mergeReceived({ [K]: 1 }, {}, { [K]: 100 }, { [K]: 200 }).removed,
+    1,
+    "50.A2a an un-check is reported as one removal"
+  );
+  eq(
+    mergeReceived({ [K]: 3 }, { [K]: 1 }, { [K]: 100 }, { [K]: 200 }).removed,
+    1,
+    "50.A2b a count lowered by a later change is a removal"
+  );
+  eq(
+    mergeReceived({ [K]: 1 }, { [K]: 3 }, { [K]: 100 }, { [K]: 200 }).removed,
+    0,
+    "50.A2c a later increase removes nothing"
+  );
+  eq(
+    mergeLedger(led({ [K]: 1 }, { [K]: 100 }, []), led({}, { [K]: 200 }, [])).stats
+      .checkInsRemoved,
+    1,
+    "50.A2d mergeLedger stats count the check-in removed"
+  );
+  eq(
+    mergeLedger(led({}, {}, [LIVE50]), led({}, {}, [TOMB50])).stats.envelopesRemoved,
+    1,
+    "50.A2e an incoming tombstone counts as an envelope removed"
+  );
+  eq(
+    mergeLedger(led({}, {}, [TOMB50]), led({}, {}, [{ ...LIVE50, updatedAt: 300 }])).stats
+      .envelopesRemoved,
+    0,
+    "50.A2f a live edit that beats a tombstone removes nothing"
+  );
+  eq(
+    mergeLedger(led({}, {}, []), led({}, {}, [TOMB50])).stats.envelopesRemoved,
+    0,
+    "50.A2g a tombstone for an envelope never held here removes nothing"
+  );
+  const quiet = { itemsAdded: 0, checkInsAdded: 0, envelopesAdded: 0, stampsAdded: 0 };
+  for (const field of ["checkInsRemoved", "envelopesRemoved", "stampsRemoved"]) {
+    const s = mergeSummary({ ...quiet, [field]: 1 });
+    ok(
+      REMOVED.test(s) && !NOTHING.test(s),
+      `50.A2h a merge that only removes says so (${field})`
+    );
+  }
+
+  /* A3: removed counts keys, so the copy counts cards, not units. Un-checking
+     three copies of one card is one key, and the notice says one card. */
+  const three = mergeLedger(led({ [K]: 3 }, { [K]: 100 }, []), led({}, { [K]: 200 }, []));
+  eq(three.stats.checkInsRemoved, 1, "50.A3a un-checking 3 copies of one card counts one key");
+  ok(
+    mergeSummary(three.stats).includes("un-checked 1 card") &&
+      !/check-in/.test(mergeSummary(three.stats)),
+    "50.A3b and the notice reads 'un-checked 1 card', not check-ins"
+  );
+  ok(
+    mergeSummary({ ...quiet, checkInsRemoved: 2 }).includes("un-checked 2 cards"),
+    "50.A3c two cards read 'un-checked 2 cards'"
+  );
+
+  /* A4: a newer stamp tombstone removes a stamp, and the merge reports it */
+  const STAMPED50 = { [GK_A]: S("claim", 100) };
+  const STAMP_GONE50 = { [GK_A]: { kind: "", at: "", note: "", updatedAt: 200 } };
+  const withStamps = (stamps) => ({ ...led({}, {}, []), stamps });
+  eq(
+    mergeLedger(withStamps(STAMPED50), withStamps(STAMP_GONE50)).stats.stampsRemoved,
+    1,
+    "50.A4a a newer stamp tombstone counts one stamp removed"
+  );
+  eq(
+    mergeLedger(withStamps(STAMP_GONE50), withStamps(STAMPED50)).stats.stampsRemoved,
+    0,
+    "50.A4b an older stamp does not undo a removal, and removes nothing"
+  );
+  /* A5: a tombstone with no live local stamp removes nothing. A mutant that
+     counts every winning tombstone reports a removal here, and the notice lies. */
+  const TOMB_ALONE = { a: { kind: "", at: "", note: "", updatedAt: 200 } };
+  eq(
+    mergeStamps({}, TOMB_ALONE).removed,
+    0,
+    "50.A5a a tombstone with no local stamp removes nothing"
+  );
+  eq(
+    mergeStamps(undefined, TOMB_ALONE).removed,
+    0,
+    "50.A5b and the same with no local stamps at all"
+  );
+
+  /* A2 through the app: the other device un-checked later, and this device
+     still holds the check. The manual merge applies the removal. */
+  await fresh();
+  await click(lineRow(/Alpha Cards/, "Lightning Bolt"), "check Lightning Bolt in");
+  await sleep(SAVE_WAIT);
+  const checkedAt = saved().receivedAt[K];
+  remote.content = utf8ToBase64(
+    asRemote({ ...saved(), received: {}, receivedAt: { [K]: checkedAt + 1000 } })
+  );
+  remote.sha = "sha-0";
+  await foreground();
+  await openSync();
+  await saveGitHubKey();
+  await click(btn(/^Push$/), "stale push");
+  await click(btn(/Merge & push/), "merge");
+  await settle();
+  await sleep(SAVE_WAIT);
+  eq(saved().received[K], undefined, "50.A2i the merge applies the other device's un-check");
+  ok(uncheckedOne(), "50.A2j and the notice says un-checked 1 card, not 'nothing new'");
+
+  /* the other device discarded an envelope this device still holds live */
+  await fresh();
+  await goTo("orphaned");
+  await record(["Ponder", "Preordain"], "kept");
+  await sleep(SAVE_WAIT);
+  const live = saved().envelopes.find((e) => !e.deletedAt);
+  const discardedAt = (live.updatedAt || 0) + 1000;
+  remote.content = utf8ToBase64(
+    asRemote({
+      ...saved(),
+      envelopes: [
+        { ...live, entries: [], photos: [], deletedAt: discardedAt, updatedAt: discardedAt },
+      ],
+    })
+  );
+  remote.sha = "sha-0";
+  await foreground();
+  await openSync();
+  await saveGitHubKey();
+  await click(btn(/^Push$/), "stale push");
+  await click(btn(/Merge & push/), "merge");
+  await settle();
+  await sleep(SAVE_WAIT);
+  eq(
+    saved().envelopes.filter((e) => !e.deletedAt).length,
+    0,
+    "50.A2k the merge applies the other device's discard"
+  );
+  ok(noticeNamesRemoval(), "50.A2l and the notice names the removal");
+
+  /* the quiet unattended merge: a removal alone must still leave a notice */
+  /* seeded checked, not checked in here: a check-in leaves an Undo notice, and
+     autoMerge stands down while one is open */
+  await boot({ items: ITEMS, received: { [K]: 1 }, receivedAt: { [K]: 100 } }, null, KEY);
+  await openSync();
+  await click(btn(/^Push$/), "push the check-in");
+  await sleep(60);
+  const local = saved();
+  remote.content = utf8ToBase64(
+    asRemote({ ...local, received: {}, receivedAt: { [K]: 1100 } })
+  );
+  remote.sha = "sha-other"; /* the other device pushed since: peek says ahead */
+  await backgroundFor(5 * 60_000);
+  await settle();
+  await sleep(SAVE_WAIT); /* the merged state is saved on a debounce */
+  eq(saved().received[K], undefined, "50.A2m a quiet merge applies the un-check");
+  ok(uncheckedOne(), "50.A2n and the quiet merge still leaves a notice saying un-checked 1 card");
+
+  /* A4 through the app: the other device removed a stamp this device still holds */
+  await boot({ items: ITEMS, received: {}, stamps: STAMPED50 });
+  remote.content = utf8ToBase64(
+    asRemote({ items: ITEMS, received: {}, receivedAt: {}, envelopes: [], stamps: STAMP_GONE50 })
+  );
+  remote.sha = "sha-0";
+  await foreground();
+  await openSync();
+  await saveGitHubKey();
+  await click(btn(/^Push$/), "stale push");
+  await click(btn(/Merge & push/), "merge");
+  await settle();
+  await sleep(SAVE_WAIT);
+  eq(saved().stamps?.[GK_A]?.kind ?? "", "", "50.A4c the merge applies the other device's stamp removal");
+  ok(noticeNamesRemoval(), "50.A4d and the notice names the removal");
+
+  /* the quiet unattended merge, whose only change is that stamp removal */
+  await boot({ items: ITEMS, received: {}, stamps: STAMPED50 }, null, KEY);
+  await openSync();
+  await click(btn(/^Push$/), "push the stamp");
+  await sleep(60);
+  remote.content = utf8ToBase64(
+    asRemote({ items: ITEMS, received: {}, receivedAt: {}, envelopes: [], stamps: STAMP_GONE50 })
+  );
+  remote.sha = "sha-other"; /* the other device pushed since: peek says ahead */
+  await backgroundFor(5 * 60_000);
+  await settle();
+  await sleep(SAVE_WAIT);
+  eq(saved().stamps?.[GK_A]?.kind ?? "", "", "50.A4e a quiet merge applies the stamp removal");
+  ok(noticeNamesRemoval(), "50.A4f and the quiet merge still leaves a notice naming it");
+
+  /* A5 through the app: an incoming tombstone for a stamp this device never
+     had. The quiet merge takes it, and leaves no notice. */
+  await boot({ items: ITEMS, received: {} }, null, KEY);
+  await openSync();
+  await click(btn(/^Push$/), "push");
+  await sleep(60);
+  remote.content = utf8ToBase64(
+    asRemote({ items: ITEMS, received: {}, receivedAt: {}, envelopes: [], stamps: STAMP_GONE50 })
+  );
+  remote.sha = "sha-other";
+  await backgroundFor(5 * 60_000);
+  await settle();
+  await sleep(SAVE_WAIT);
+  ok(typeof saved().stamps?.[GK_A] === "object", "50.A5c the quiet merge takes the tombstone");
+  ok(!REMOVED.test(text()) && !/Merged/.test(text()), "50.A5d and leaves no notice");
+
+  /* B: write sites that already stamp receivedAt */
+  await fresh();
+  await goTo("packages");
+  await click(allBtns(/^Mark all received$/)[0], "mark a package all received");
+  await sleep(SAVE_WAIT);
+  const bulkKeys = Object.keys(saved().received);
+  ok(
+    bulkKeys.length > 0 && bulkKeys.every((k) => typeof saved().receivedAt?.[k] === "number"),
+    "50.B1 a bulk check-in writes a time for each key it sets"
+  );
+
+  await fresh();
+  await goTo("orphaned");
+  await record(["Brainstorm"]);
+  await assign(0);
+  await sleep(SAVE_WAIT);
+  const key = Object.keys(saved().received)[0];
+  ok(
+    typeof key === "string" && typeof saved().receivedAt?.[key] === "number",
+    "50.B2 an assign writes a time for each key it sets"
+  );
+  const tAssign = saved().receivedAt?.[key];
+  await click(btn(/^Undo$/), "undo the assign");
+  await sleep(SAVE_WAIT);
+  eq(saved().received[key], undefined, "50.B3a undo deletes the key");
+  ok(saved().receivedAt?.[key] > tAssign, "50.B3b and undo writes a later time, so the un-check travels");
+
+  await fresh();
+  await click(btn(/Re-import CSV/), "show upload zone");
+  await dropFile(
+    "mailday-backup.json",
+    JSON.stringify({
+      mailday: 1,
+      items: ITEMS,
+      received: { [K]: 1 },
+      receivedAt: { [K]: 1234567 },
+      envelopes: [],
+      stamps: {},
+    })
+  );
+  await sleep(SAVE_WAIT);
+  eq(saved().receivedAt?.[K], 1234567, "50.B4 a restore brings each key's time back");
+
+  await fresh();
+  await goTo("orphaned");
+  await record(["Path to Exile", "Swords to Plowshares", "Ponder", "Lightning Bolt"]);
+  await assign(0);
+  await sleep(SAVE_WAIT);
+  const tombs = (saved().envelopes || []).filter((e) => typeof e.deletedAt === "number");
+  eq(
+    { n: tombs.length, entries: tombs[0]?.entries.length },
+    { n: 1, entries: 0 },
+    "50.B5 a full assign saves a tombstone with its time, not a removed envelope"
   );
 }
 

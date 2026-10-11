@@ -334,7 +334,6 @@ for (const entry of allSpans) {
    code cannot hold are listed in EXTERNAL, one reason each. */
 const CODE_ROOTS = ["src", "test", "build.mjs", "check-records.mjs", "icon", "package.json", ".github"];
 const EXTERNAL = new Set([
-  "receivedAt", // proposed, not built: max-cannot-express-an-uncheck says it "would be" a key
   "currentTime", // Web Animations API, set by hand when measuring motion
   "getAnimations", // Web Animations API, used by hand when measuring motion
   "removeChild", // DOM method named in the save-slot measurement note

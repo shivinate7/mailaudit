@@ -486,6 +486,23 @@ await test("4.8 every successful POST writes, then broadcasts {rev} once", async
   eq(merge.order, ["write", "broadcast"], "merge order");
 });
 
+/* An un-check is a key that is absent from `received`, stamped with a later
+   `receivedAt` than the stored check. The per-key max would keep the check. */
+await test("4.9 a POST's un-check with a newer time beats the stored check", async () => {
+  const K = "100|1|555";
+  const s = fakeStore({
+    ledger: ledger({ received: { [K]: 1 }, receivedAt: { [K]: 100 } }),
+    rev: 4,
+  });
+  const res = await send(s, "POST", "/ledger", {
+    key: KEY_LAPTOP,
+    json: { ledger: ledger({ received: {}, receivedAt: { [K]: 200 } }) },
+  });
+  eq(res.status, 200, "status");
+  eq(s.writes[0]?.ledger.received, {}, "the un-check wins, so the card is not checked");
+  eq(s.writes[0]?.ledger.receivedAt, { [K]: 200 }, "and the winning time is stored");
+});
+
 /* ---------- 5. CORS ---------- */
 /* [label, store, method, path, options, expected status] */
 const CASES = [

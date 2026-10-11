@@ -5,6 +5,8 @@ import { shouldSnapshot } from "./version-rules.mjs";
 import {
   mergeItems,
   mergeLedger,
+  isLiveEnvelope,
+  tombstoneOf,
   mergeSummary,
 } from "./merge-rules.mjs";
 
@@ -3019,6 +3021,9 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
 export default function MailDayLedger() {
   const [items, setItems] = useState([]);
   const [received, setReceived] = useState({});
+  /* item key -> ms of its last check or un-check; what lets the two-device merge
+     carry an un-check. Persisted: invariant saved-state-shape. */
+  const [receivedAt, setReceivedAt] = useState({});
   const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState("idle"); // idle | saving | saved | error
   const [query, setQuery] = useState("");
@@ -3160,7 +3165,13 @@ export default function MailDayLedger() {
   const [itemSort, setItemSort] = useState("missing");
   /* orphaned mail: cards recorded off an unidentifiable envelope, parked until
      the user ties them to a package by hand */
-  const [envelopes, setEnvelopes] = useState([]); // newest first
+  const [envelopes, setEnvelopes] = useState([]); // newest first; holds tombstones
+  /* the ONE reader for everything the user sees or counts: a discarded envelope
+     stays in `envelopes` as a tombstone so the discard can travel */
+  const liveEnvelopes = useMemo(
+    () => envelopes.filter(isLiveEnvelope),
+    [envelopes]
+  );
   /* order stamps, keyed by package gk — persisted, see invariant saved-state-shape */
   const [stamps, setStamps] = useState({});
   const [composing, setComposing] = useState(null); // null | "new" | envelopeId
@@ -3171,6 +3182,15 @@ export default function MailDayLedger() {
   useEffect(() => {
     receivedRef.current = received;
   });
+  /* the one writer for receivedAt: every check or un-check calls it */
+  const touchReceived = useCallback((keys) => {
+    const now = Date.now();
+    setReceivedAt((prev) => {
+      const next = { ...prev };
+      for (const k of keys) next[k] = now;
+      return next;
+    });
+  }, []);
   const saveTimer = useRef(null);
   const skipFirstSave = useRef(true);
   /* "what you are looking at is a snapshot of someone else's ledger" — true
@@ -3216,6 +3236,8 @@ export default function MailDayLedger() {
           const data = JSON.parse(value);
           setItems(data.items || []);
           setReceived(data.received || {});
+          // absent on anything saved before receivedAt shipped
+          setReceivedAt(data.receivedAt || {});
           // absent on anything saved before orphaned mail shipped;
           // photos absent on anything saved before photos shipped
           setEnvelopes(
@@ -3253,6 +3275,7 @@ export default function MailDayLedger() {
           JSON.stringify({
             items,
             received,
+            receivedAt,
             envelopes,
             stamps,
             dateFilter,
@@ -3267,7 +3290,7 @@ export default function MailDayLedger() {
       }
     }, 500);
     return () => clearTimeout(saveTimer.current);
-  }, [items, received, envelopes, stamps, dateFilter, sortBy, itemSort, loaded]);
+  }, [items, received, receivedAt, envelopes, stamps, dateFilter, sortBy, itemSort, loaded]);
 
   /* ONE payload builder, shared by the file download and the GitHub push.
      Keeping it single is a documentation requirement as much as a DRY one:
@@ -3280,8 +3303,8 @@ export default function MailDayLedger() {
      were three separate flatMaps over the same field, which is three chances
      for them to disagree about what "in use" means. */
   const referencedPhotoIds = useMemo(
-    () => [...new Set(envelopes.flatMap((e) => e.photos || []))],
-    [envelopes]
+    () => [...new Set(liveEnvelopes.flatMap((e) => e.photos || []))],
+    [liveEnvelopes]
   );
 
   /* The same figure takeVersion stores, and deliberately NOT totals.got —
@@ -3377,13 +3400,14 @@ export default function MailDayLedger() {
       mailday: 1,
       items,
       received,
+      receivedAt,
       envelopes,
       stamps,
       dateFilter,
       sortBy,
       itemSort,
     }),
-    [items, received, envelopes, stamps, dateFilter, sortBy, itemSort]
+    [items, received, receivedAt, envelopes, stamps, dateFilter, sortBy, itemSort]
   );
 
   /* Two backups on purpose. The plain one is small and quick and holds the
@@ -3506,10 +3530,10 @@ export default function MailDayLedger() {
         source === "file" ? "before restore" : "before sync",
         "milestone"
       );
-      /* A merge only ever ADDS, so the two warnings below are not merely
-         unnecessary there — they are false. Nothing is replaced and nothing is
-         at risk, and saying so would teach the user to fear the one safe
-         button in the panel. */
+      /* A merge keeps the later change per key, and names every removal in its
+         notice, so the two warnings below are not merely unnecessary there —
+         they are false. Nothing is replaced wholesale, and saying so would
+         teach the user to fear the one safe button in the panel. */
       const replacing = source !== "merge";
       /* a restore replaces everything, so anything still in flight against the
          old world must not land on the new one */
@@ -3562,6 +3586,7 @@ export default function MailDayLedger() {
           : new Set([...localIds, ...inlinedIds, ...(extraPresent || [])]);
       setItems(data.items);
       setReceived(data.received || {});
+      setReceivedAt(data.receivedAt || {});
       setEnvelopes(
         (data.envelopes || []).map((e) => ({
           ...e,
@@ -3605,15 +3630,15 @@ export default function MailDayLedger() {
             : "") +
           /* a restore is a full replace, and envelopes are hand-typed —
              losing them silently would be the worst kind of quiet */
-          (replacing && envelopes.length > 0
-            ? ` ${envelopes.length} pending envelope${
-                envelopes.length === 1 ? " was" : "s were"
+          (replacing && liveEnvelopes.length > 0
+            ? ` ${liveEnvelopes.length} pending envelope${
+                liveEnvelopes.length === 1 ? " was" : "s were"
               } replaced by the ${remote ? "remote copy" : "backup"}'s.`
             : "")
       );
       setShowUpload(false);
     },
-    [envelopes, takeVersion]
+    [liveEnvelopes, takeVersion]
   );
 
   const handleFile = useCallback(
@@ -3669,6 +3694,7 @@ export default function MailDayLedger() {
   );
 
   const setCount = useCallback((key, n) => {
+    touchReceived([key]);
     setReceived((prev) => {
       const next = { ...prev };
       if (n <= 0) delete next[key];
@@ -3772,6 +3798,7 @@ export default function MailDayLedger() {
   }, [jumpGk, view]);
 
   const bulkSet = useCallback((pkgItems, on) => {
+    touchReceived(pkgItems.map((it) => it.key));
     setReceived((prev) => {
       const next = { ...prev };
       for (const it of pkgItems) {
@@ -3844,6 +3871,7 @@ export default function MailDayLedger() {
     syncGen.current++;
     setItems([]);
     setReceived({});
+    setReceivedAt({});
     /* envelopes have to go too — left in state they'd be written straight back
        by the next debounced save and reappear pointing at a ledger that's gone */
     setEnvelopes([]);
@@ -3920,9 +3948,9 @@ export default function MailDayLedger() {
   /* Same two taps and the same funnel as a local restore — only the source of
      the bytes differs. It deliberately does NOT touch the stored sha, and that
      is right: rolling the sha BACK would 409 the next push against a remote
-     this device is not behind, forcing the user through Merge — which only ADDS
-     (see merge-rules.mjs), and would therefore silently re-add the very lines
-     the rollback removed. The repair path would undo the repair.
+     this device is not behind, forcing the user through Merge — which unions line
+     items (see merge-rules.mjs), and would therefore silently re-add the very
+     lines the rollback removed. The repair path would undo the repair.
 
      What is NOT true, and used to be claimed here, is that a restore is purely
      local. It rewrites items/received/envelopes, which are three of the
@@ -4160,7 +4188,7 @@ export default function MailDayLedger() {
          shape stays byte-identical to the Backup file's — and it lands where
          it's actually useful, in the commit list */
       const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
-      const message = `ledger ${stamp} · ${items.length} lines · ${envelopes.length} envelopes`;
+      const message = `ledger ${stamp} · ${items.length} lines · ${liveEnvelopes.length} envelopes`;
       const gen = ++syncGen.current;
       syncingRef.current = true;
       setSyncBusy(true);
@@ -4215,7 +4243,7 @@ export default function MailDayLedger() {
         setPushState((p) => (p === "pushing" ? "idle" : p));
       }
     },
-    [snapshot, items, envelopes, disarm, pushPhotos]
+    [snapshot, items, liveEnvelopes, disarm, pushPhotos]
   );
 
   /* Returns the ids applyBackup should treat as present, and downloads what it
@@ -4234,9 +4262,9 @@ export default function MailDayLedger() {
         const data = JSON.parse(text);
         incoming = [
           ...new Set(
-            (Array.isArray(data?.envelopes) ? data.envelopes : []).flatMap(
-              (e) => e?.photos || []
-            )
+            (Array.isArray(data?.envelopes) ? data.envelopes : [])
+              .filter(isLiveEnvelope)
+              .flatMap((e) => e?.photos || [])
           ),
         ];
       } catch {
@@ -4390,9 +4418,9 @@ export default function MailDayLedger() {
   /* ---- merge: the resolution the conflict path never had ----
 
      Pull and Push anyway are the two halves of the same mistake: each keeps one
-     device's work by discarding the other's. This keeps both. It only ever
-     ADDS — see merge-rules.mjs — so it destroys nothing, needs no two-tap
-     confirm, and is safe to re-run.
+     device's work by discarding the other's. This keeps both. The later
+     change wins per key — see merge-rules.mjs — and the notice names any
+     removal, so it needs no two-tap confirm and is safe to re-run.
 
      Two entrances, one function: the conflict (where it also completes the push
      that was rejected) and the "other device is ahead" notice (where it does
@@ -4422,18 +4450,21 @@ export default function MailDayLedger() {
         const { merged, stats } = mergeLedger(snapshot(), parseLedger(res.text));
         const text = JSON.stringify(merged);
         const before = syncGen.current;
-        /* An unattended merge that added nothing has nothing to report, and
+        /* An unattended merge that added and removed nothing has nothing to report, and
            reporting it anyway is worse than silence — `peek` says "ahead" on
            any new blob sha, and a push writes one whenever the ledger is
            re-saved, so an empty-data commit elsewhere would otherwise greet the
            user on their next resume with a notice about a merge they never
-           asked for that did nothing. When it DID add something the summary
+           asked for that did nothing. When it DID add or remove something the summary
            stays even quietly: the list just changed shape, and that sentence is
            the only thing explaining why. */
         const changed =
           stats.itemsAdded +
             stats.checkInsAdded +
             stats.envelopesAdded +
+            stats.checkInsRemoved +
+            stats.envelopesRemoved +
+            (stats.stampsRemoved || 0) +
             (stats.stampsAdded || 0) >
           0;
         await applyBackup(
@@ -4460,14 +4491,18 @@ export default function MailDayLedger() {
           const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
           await window.remote.push(
             text,
-            `merge ${stamp} · ${merged.items.length} lines · ${merged.envelopes.length} envelopes`
+            `merge ${stamp} · ${merged.items.length} lines · ${merged.envelopes.filter(isLiveEnvelope).length} envelopes`
           );
           setRemoteInfo(await window.remote.status().catch(() => null));
           /* the MERGED envelopes' ids, not referencedPhotoIds — applyBackup's
              setState has not committed yet, so the hook's value is still the
              pre-merge list and every adopted photo would be skipped */
           await pushPhotos(gen, [
-            ...new Set(merged.envelopes.flatMap((e) => e.photos || [])),
+            ...new Set(
+              merged.envelopes
+                .filter(isLiveEnvelope)
+                .flatMap((e) => e.photos || [])
+            ),
           ]);
           if (syncGen.current !== gen) return { ok: false, code: "server" };
           setPushState("pushed");
@@ -4520,9 +4555,9 @@ export default function MailDayLedger() {
      to prevent. What changed is not the risk but the evidence. Coming back
      after RESUME_RESET_MS away is not mid-check-in — it is a new session, and
      the app already stakes a list reshape on exactly that finding when it
-     resets Showing. This spends the same finding twice. And the merge only ever
-     ADDS, so the residual risk is that the list changes shape, never that
-     anything of the user's is lost.
+     resets Showing. This spends the same finding twice. And the merge keeps
+     the later change and names any removal, so the residual risk is that the
+     list changes shape, never that something is lost unreported.
 
      Needs the key, like everything else since the ledger moved into the
      private repo. A device that has never been set up gets `no-access` here and
@@ -4804,7 +4839,9 @@ export default function MailDayLedger() {
   }, [referencedPhotoIds, undo, composing, syncBusy, loaded]);
 
   const discardEnvelope = useCallback((id) => {
-    setEnvelopes((prev) => prev.filter((e) => e.id !== id));
+    setEnvelopes((prev) =>
+      prev.map((e) => (e.id === id ? tombstoneOf(e, Date.now()) : e))
+    );
     setUndo((u) => (u && u.envelope.id === id ? null : u));
   }, []);
 
@@ -4812,10 +4849,11 @@ export default function MailDayLedger() {
      package. Counts only ever grow here, so a key is never written as 0. */
   const assignEnvelope = useCallback(
     (env, cand) => {
-      const index = envelopes.findIndex((e) => e.id === env.id);
+      const index = liveEnvelopes.findIndex((e) => e.id === env.id);
       const qtyOf = {};
       for (const it of cand.pkg.items) qtyOf[it.key] = it.qty;
 
+      touchReceived(cand.plan.map((p) => p.itemKey));
       setReceived((prev) => {
         const next = { ...prev };
         for (const { itemKey, take } of cand.plan) {
@@ -4842,7 +4880,7 @@ export default function MailDayLedger() {
                 ? { ...e, entries: leftovers, updatedAt: Date.now() }
                 : e
             )
-          : prev.filter((e) => e.id !== env.id)
+          : prev.map((e) => (e.id === env.id ? tombstoneOf(e, Date.now()) : e))
       );
 
       const t = Date.parse(cand.pkg.date);
@@ -4861,13 +4899,14 @@ export default function MailDayLedger() {
         outOfRange,
       });
     },
-    [envelopes, range]
+    [liveEnvelopes, range, touchReceived]
   );
 
   /* stores the deltas, not a snapshot: if the package was hand-edited before
      the undo, subtracting composes where restoring would clobber */
   const undoAssign = useCallback(() => {
     if (!undo) return;
+    touchReceived(undo.plan.map((p) => p.itemKey));
     setReceived((prev) => {
       const next = { ...prev };
       for (const { itemKey, take } of undo.plan) {
@@ -4877,13 +4916,16 @@ export default function MailDayLedger() {
       }
       return next;
     });
+    /* back in place, with a fresh updatedAt so it beats the tombstone (or the
+       shrunk copy) it replaces on the other device too */
+    const back = { ...undo.envelope, updatedAt: Date.now() };
     setEnvelopes((prev) => {
-      const without = prev.filter((e) => e.id !== undo.envelope.id);
-      const at = Math.min(Math.max(undo.index, 0), without.length);
-      return [...without.slice(0, at), undo.envelope, ...without.slice(at)];
+      if (prev.some((e) => e.id === back.id))
+        return prev.map((e) => (e.id === back.id ? back : e));
+      return [back, ...prev];
     });
     setUndo(null);
-  }, [undo]);
+  }, [undo, touchReceived]);
 
   /* items ─► activeItems (not canceled) ─► rangedActive (in range) ─► rangedItems (not refunded) ─► packages
                           └─► liveItems (not refunded)                    └─► stampedPackages
@@ -5082,10 +5124,10 @@ export default function MailDayLedger() {
   const envelopeCandidates = useMemo(() => {
     const map = new Map();
     if (view !== "mystery") return map; // only ever read in that view
-    for (const env of envelopes)
+    for (const env of liveEnvelopes)
       map.set(env.id, rankCandidates(env.entries, allPackages, received));
     return map;
-  }, [envelopes, allPackages, received, view]);
+  }, [liveEnvelopes, allPackages, received, view]);
 
   const photoCount = referencedPhotoIds.length;
   /* Ids, not blobs. After a pull that kept ids whose bytes are still on GitHub,
@@ -5376,7 +5418,7 @@ export default function MailDayLedger() {
   });
   /* The safe resolution, and therefore the PRIMARY one: the grid's accent
      fill, the app's "this is the live control" colour, beside the force. It
-     carries no two-tap arm because it destroys nothing — arming it would say
+     carries no two-tap arm because it keeps the later change and names every removal — arming it would say
      the opposite, and invariant no-native-dialogs's pattern is for destructive actions
      specifically. */
   if (pushState === "conflict" || ahead)
@@ -5814,8 +5856,8 @@ export default function MailDayLedger() {
               <div className="mdl-foot">
                 <span style={{ whiteSpace: "nowrap" }}>
                   {view === "mystery"
-                    ? `${envelopes.length} envelope${
-                        envelopes.length === 1 ? "" : "s"
+                    ? `${liveEnvelopes.length} envelope${
+                        liveEnvelopes.length === 1 ? "" : "s"
                       } waiting`
                     : view === "items"
                     ? `${itemGroups.length} unique item${
@@ -5908,7 +5950,7 @@ export default function MailDayLedger() {
             column, so the constraint moved inside — the longest label plus its
             badge has to fit one third (~114px at 375px) and the lever is the
             clamped font-size, not the padding. */}
-        {(items.length > 0 || envelopes.length > 0) && (
+        {(items.length > 0 || liveEnvelopes.length > 0) && (
           <div className="mdl-switch" data-view={view}>
             {/* the sliding fill. aria-hidden and pointer-events:none — the
                 buttons above it carry the pressed state and every gesture. */}
@@ -5925,8 +5967,8 @@ export default function MailDayLedger() {
                 className={view === v ? "on" : undefined}
               >
                 {label}
-                {v === "mystery" && envelopes.length > 0 && (
-                  <b>{envelopes.length}</b>
+                {v === "mystery" && liveEnvelopes.length > 0 && (
+                  <b>{liveEnvelopes.length}</b>
                 )}
               </button>
             ))}
@@ -5939,7 +5981,7 @@ export default function MailDayLedger() {
             having no data was unreachable whenever you had no data. Same bug
             the file actions already had once (see the toolbar notes); this is
             the same fix one level out. */}
-        {(items.length > 0 || envelopes.length > 0 || !!window.remote) && (
+        {(items.length > 0 || liveEnvelopes.length > 0 || !!window.remote) && (
           <>
             {/* THE RULED HEAD. The masthead's own vocabulary continued —
                 hairline rules, uppercase mono micro-labels over Cochin values,
@@ -6377,7 +6419,7 @@ export default function MailDayLedger() {
                 </button>
               )}
               <div className="mdl-acts">
-                {(items.length > 0 || envelopes.length > 0) && !confirmReset && (
+                {(items.length > 0 || liveEnvelopes.length > 0) && !confirmReset && (
                   <button
                     onClick={() => setShowUpload((s) => !s)}
                     aria-expanded={showUpload}
@@ -6419,7 +6461,7 @@ export default function MailDayLedger() {
                     <i>▾</i>
                   </button>
                 )}
-                {(items.length > 0 || envelopes.length > 0) && (
+                {(items.length > 0 || liveEnvelopes.length > 0) && (
                   <button
                     onClick={resetAll}
                     className={confirmReset ? "mdl-act armed" : "mdl-act danger"}
@@ -6869,14 +6911,14 @@ export default function MailDayLedger() {
           </>
         )}
 
-        {/* `items.length === 0 && envelopes.length === 0`, not `items.length
+        {/* `items.length === 0 && liveEnvelopes.length === 0`, not `items.length
             === 0` alone. The zone is meant to be up unprompted on a genuinely
             empty ledger — but with no items and a pending envelope it was
             forced open regardless, which made the Re-import cell beside it a
             disclosure that flipped aria-expanded and controlled nothing. Test
             23.2 keeps that cell (it is reachable for a reason); this is what
             gives it something to do. */}
-        {(showUpload || (items.length === 0 && envelopes.length === 0)) &&
+        {(showUpload || (items.length === 0 && liveEnvelopes.length === 0)) &&
           !confirmReset && (
           <div style={{ marginBottom: 20 }}>
             <UploadZone
@@ -6918,7 +6960,7 @@ export default function MailDayLedger() {
               </button>
             )}
 
-            {envelopes.map((env, i) => (
+            {liveEnvelopes.map((env, i) => (
               <React.Fragment key={env.id}>
                 {undo && undo.index === i && (
                   <Notice
@@ -6964,7 +7006,7 @@ export default function MailDayLedger() {
             ))}
 
             {/* the pile emptied out from under it — still needs somewhere to go */}
-            {undo && undo.index >= envelopes.length && (
+            {undo && undo.index >= liveEnvelopes.length && (
               <Notice
                 actionLabel="Undo"
                 onAction={undoAssign}
@@ -6978,7 +7020,7 @@ export default function MailDayLedger() {
               </Notice>
             )}
 
-            {envelopes.length === 0 && composing !== "new" && (
+            {liveEnvelopes.length === 0 && composing !== "new" && (
               <div
                 style={{
                   textAlign: "center",

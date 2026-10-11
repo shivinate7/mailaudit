@@ -9,5 +9,5 @@ A partial assignment leaves some entries behind, so the envelope shrinks. The as
 ## See also
 
 - `envelope-deletion-unrepresented` — the full-assignment case, which has no tombstone
-- `merge-rules-only-add` — the merge rule this stamp relies on
+- `merge-later-change-wins` — the merge rule this stamp relies on
 - `undo-removes-only-its-delta` — the other write an assignment makes

@@ -10,4 +10,4 @@ The first version measured the warning against `plan.toPush`. That set is keyed 
 
 - `photo-ids-restore-keep-if-known`, the restore rule this warning guards.
 - `photo-sync-cannot-conflict`, why a photo id is never a shared write.
-- `two-device-merge-proven-first`, the two-device check. A pull replaces the ledger. The merge only adds.
+- `two-device-merge-proven-first`, the two-device check. A pull replaces the ledger. The merge unions line items and never drops one.

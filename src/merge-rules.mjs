@@ -17,16 +17,17 @@
    newer check-ins and a stale item list) → 752 again two hours later when the
    import was redone by hand.
 
-   THE PROPERTY THAT MAKES IT SAFE: the merge only ever ADDS. Line items union,
-   check-in counts take the max, envelopes union. Nothing is dropped and no
-   count ever decreases, so applying it can lose neither device's work — which
-   is why it needs no two-tap confirm, and why re-running it is harmless.
+   THE PROPERTY THAT MAKES IT SAFE: the later change wins. Line items union.
+   Each check-in key and each envelope takes whichever device changed it last,
+   so an un-check or a discard travels. Work is only ever replaced by a later
+   change the user made on purpose, and the merge notice names every removal.
+   Re-running it is harmless.
 
-   One deliberate exception: a stamp REMOVED on one device is a tombstone with
-   a fresh `updatedAt`, and a newer tombstone beats an older stamp. That is
-   still "freshest write wins" — the user's own removal propagating, not the
-   merge deciding anything — and it is there because a resurrected `refunded`
-   stamp would silently pull money back out of the tally. See mergeStamps. */
+   Stamps follow the same rule: a stamp REMOVED on one device is a tombstone
+   with a fresh `updatedAt`, and a newer tombstone beats an older stamp. That is
+   the user's own removal propagating, not the merge deciding anything, and a
+   resurrected `refunded` stamp would silently pull money back out of the
+   tally. The merge counts it as a removal. See mergeStamps. */
 
 /* Union of two line-item lists, keyed on `it.key`
    (`orderId|itemNumber|vendorProductId` — invariant saved-state-shape, stable across
@@ -50,31 +51,44 @@ export function mergeItems(base, incoming) {
   return { items: [...map.values()], added };
 }
 
-/* Per-key max.
-
-   Right because every writer of this map is additive in practice: assignment
-   does `next[key] = cur + take`, the stepper walks a count up, "Mark all
-   received" sets it to the line's full qty. Taking the larger of two counts
-   therefore keeps both devices' check-ins.
-
-   The one thing it gets wrong is a deliberate UN-check — "Clear check-ins", or
-   stepping a qty back down to 0 — racing the other device's stale copy: the
-   card comes back checked. That is a visible, one-tap-to-fix wart, and the
-   alternative (per-key timestamps) is a schema change bought to serve a case
-   that a phone-only-checks-in workflow barely produces. If it ever does bite,
-   `receivedAt` is an additive optional key and this is the function to change. */
-export function mergeReceived(base, incoming) {
-  const out = { ...(base || {}) };
+/* Per-key, later change wins. `baseAt` / `incomingAt` map a key to the ms of its
+   last change. A key ABSENT from `received` but carrying a time is an un-check.
+   Equal times take the max count. If either side has no time for a key (a ledger
+   from before `receivedAt`), the key falls back to the old per-key max, so an
+   older ledger merges by the old rule, except that a timed absence beats an
+   untimed count. `added` counts positive increases; `removed` counts keys whose
+   count this merge lowered or cleared.
+   The merged time map is the union, later time per key. */
+export function mergeReceived(base, incoming, baseAt, incomingAt) {
+  const bAt = baseAt || {};
+  const iAt = incomingAt || {};
+  const b = base || {};
+  const i = incoming || {};
+  const received = {};
+  const receivedAt = {};
   let added = 0;
-  for (const [key, n] of Object.entries(incoming || {})) {
-    const mine = out[key] || 0;
-    const theirs = Number(n) || 0;
-    if (theirs > mine) {
-      added += theirs - mine;
-      out[key] = theirs;
-    }
+  let removed = 0;
+  const keys = new Set([
+    ...Object.keys(b),
+    ...Object.keys(i),
+    ...Object.keys(bAt),
+    ...Object.keys(iAt),
+  ]);
+  for (const k of keys) {
+    const mine = Number(b[k]) || 0;
+    const theirs = Number(i[k]) || 0;
+    const ta = Number(bAt[k]) || 0;
+    const tb = Number(iAt[k]) || 0;
+    let n;
+    if (ta && tb && ta !== tb) n = ta > tb ? mine : theirs;
+    else if (!ta !== !tb && !(ta ? mine : theirs)) n = 0; // a timed absence beats an untimed count
+    else n = Math.max(mine, theirs);
+    if (n > 0) received[k] = n;
+    if (n > mine) added += n - mine;
+    if (n < mine) removed++;
+    if (ta || tb) receivedAt[k] = Math.max(ta, tb);
   }
-  return { received: out, added };
+  return { received, receivedAt, added, removed };
 }
 
 /* Union by id, newest-first by createdAt.
@@ -92,25 +106,36 @@ export function mergeReceived(base, incoming) {
    handled rather than migrated: absent reads as 0, so a copy that has been
    touched since beats one that hasn't, and two untouched copies tie to local.
 
-   DELETION IS NOT REPRESENTED, deliberately. Discarding an envelope, or
-   assigning one away completely, leaves nothing behind to distinguish "deleted
-   here" from "created there" — so a discarded envelope the other device still
-   holds comes back. That bias is chosen: an envelope's entries are hand-typed
-   and exist nowhere else, and invariant orphaned-mail-never-decides means a stray envelope decides
-   nothing on its own. Resurrecting one costs a tap to discard again; dropping
-   one costs data the user typed. */
+   DELETION IS A TOMBSTONE: `deletedAt`, `entries: []`, `photos: []`, with a
+   fresh `updatedAt`. It is an ordinary envelope here, so a newer tombstone beats
+   an older live copy and a newer live edit beats an older tombstone. */
+/* A discarded envelope is kept as a tombstone so the discard can travel. These
+   two are the only places that know the shape; app.jsx calls them. */
+export const isLiveEnvelope = (e) => !e?.deletedAt;
+export const tombstoneOf = (e, now) => ({
+  id: e.id,
+  createdAt: e.createdAt,
+  note: "",
+  updatedAt: now,
+  deletedAt: now,
+  entries: [],
+  photos: [],
+});
+
 export function mergeEnvelopes(base, incoming) {
   const stamp = (e) => Number(e?.updatedAt) || 0;
   const map = new Map();
   for (const e of base || []) if (e?.id) map.set(e.id, e);
   let added = 0;
+  let removed = 0;
   for (const e of incoming || []) {
     if (!e?.id) continue;
     const mine = map.get(e.id);
     if (!mine) {
       map.set(e.id, { ...e, photos: e.photos || [] });
-      added++;
+      if (isLiveEnvelope(e)) added++;
     } else if (stamp(e) > stamp(mine)) {
+      if (isLiveEnvelope(mine) && !isLiveEnvelope(e)) removed++;
       map.set(e.id, { ...e, photos: e.photos || [] });
     }
   }
@@ -119,6 +144,7 @@ export function mergeEnvelopes(base, incoming) {
       (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
     ),
     added,
+    removed,
   };
 }
 
@@ -135,14 +161,16 @@ export function mergeStamps(base, incoming) {
   const t = (s) => Number(s?.updatedAt) || 0;
   const out = { ...(base || {}) };
   let added = 0;
+  let removed = 0;
   for (const [gk, s] of Object.entries(incoming || {})) {
     if (!s || typeof s !== "object") continue;
     const mine = out[gk];
     if (mine && t(s) <= t(mine)) continue; // strict >: local wins a tie
     out[gk] = s;
     if (s.kind) added++;
+    else if (mine?.kind) removed++;
   }
-  return { stamps: out, added };
+  return { stamps: out, added, removed };
 }
 
 /* `local` is the device running the merge and wins every tie.
@@ -159,7 +187,12 @@ export function mergeStamps(base, incoming) {
    laptop happened to be sorted differently. */
 export function mergeLedger(local, incoming) {
   const items = mergeItems(local?.items, incoming?.items);
-  const received = mergeReceived(local?.received, incoming?.received);
+  const received = mergeReceived(
+    local?.received,
+    incoming?.received,
+    local?.receivedAt,
+    incoming?.receivedAt
+  );
   const envelopes = mergeEnvelopes(local?.envelopes, incoming?.envelopes);
   const stamps = mergeStamps(local?.stamps, incoming?.stamps);
   return {
@@ -167,6 +200,7 @@ export function mergeLedger(local, incoming) {
       mailday: 1,
       items: items.items,
       received: received.received,
+      receivedAt: received.receivedAt,
       envelopes: envelopes.envelopes,
       stamps: stamps.stamps,
       dateFilter: local?.dateFilter,
@@ -177,6 +211,9 @@ export function mergeLedger(local, incoming) {
       itemsAdded: items.added,
       checkInsAdded: received.added,
       envelopesAdded: envelopes.added,
+      checkInsRemoved: received.removed,
+      envelopesRemoved: envelopes.removed,
+      stampsRemoved: stamps.removed,
       stampsAdded: stamps.added,
     },
   };
@@ -200,10 +237,31 @@ export function mergeSummary(stats) {
     );
   if (stats.stampsAdded)
     bits.push(`${stats.stampsAdded} stamp${stats.stampsAdded === 1 ? "" : "s"}`);
-  if (!bits.length) return "Merged — the other device had nothing new.";
+  const gone = [];
+  if (stats.checkInsRemoved)
+    gone.push(
+      `un-checked ${stats.checkInsRemoved} card${stats.checkInsRemoved === 1 ? "" : "s"}`
+    );
+  if (stats.envelopesRemoved)
+    gone.push(
+      `${stats.envelopesRemoved} envelope${stats.envelopesRemoved === 1 ? "" : "s"}`
+    );
+  if (stats.stampsRemoved)
+    gone.push(
+      `${stats.stampsRemoved} stamp${stats.stampsRemoved === 1 ? "" : "s"}`
+    );
+  const removal = gone.length
+    ? ` Removed by the other device's later changes: ${gone.join(", ")}.`
+    : "";
+  if (!bits.length)
+    return removal
+      ? `Merged.${removal}`
+      : "Merged \u2014 the other device had nothing new.";
   const list =
     bits.length === 1
       ? bits[0]
       : `${bits.slice(0, -1).join(", ")} and ${bits[bits.length - 1]}`;
-  return `Merged — ${list} from the other device. Nothing of yours was lost.`;
+  return `Merged \u2014 ${list} from the other device.${
+    removal || " Nothing of yours was lost."
+  }`;
 }
