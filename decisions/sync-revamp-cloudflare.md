@@ -17,7 +17,7 @@ GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Del
 
 ## The design
 
-- **Sync base:** one Cloudflare Durable Object holds the ledger in SQLite. It holds the photos too, one row per photo id. The free plan gives 5 GB, and the photos come to near 100 MB. R2 is not used: it must be turned on in the dashboard by accepting terms, and the Durable Object already has the room. Devices connect over a WebSocket and resync on resume. The free tier covers this app many times over. Durable Object point-in-time recovery gives 30 days of history.
+- **Sync base:** one Cloudflare Durable Object holds the ledger in SQLite. It holds the photos too, one row per photo id. The free plan gives 5 GB. On 2026-10-11 the photo repo held 8 photos in 5.3 MB, near 660 KB each, so 5 GB holds about 7,500 of them. R2 is not used: it must be turned on in the dashboard by accepting terms, and the Durable Object already has the room. Devices connect over a WebSocket and resync on resume. The free tier covers this app many times over. Durable Object point-in-time recovery gives 30 days of history.
 - **Rejected:** hardened GitHub (no live updates, and it rests on a conflict reply that has never run, see `the-conflict-guard-is-unverified`); a server on HA Green (no backups, and a full disk stops the house DNS); Supabase (pauses after a week idle, no free backups); Firebase (photos and jobs need billing); Yjs or Automerge (a large rewrite for flat keyed data); hosted local-first services (shutting down or too young).
 - **The site stays on GitHub Pages.** The Worker answers the Pages origin across CORS. So no device moves to a new origin, and no device loses its stored ledger.
 - **Sign-in:** one key per device, pasted once. A Cloudflare Access email code is the backup way in. The key stays a credential, see `the-token-is-a-credential`.
@@ -31,15 +31,15 @@ GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Del
 
 - `worker/core.mjs` holds the logic that can be pure, and `npm run test:worker` tests it. `worker/index.mjs` holds the Worker and the `Ledger` Durable Object, which keeps `{ledger, rev}` under one storage key.
 - `POST /ledger` merges the incoming ledger into the stored one with `mergeLedger` from `src/merge-rules.mjs`, the same merge the app runs. The stored copy's view preferences win.
-- A merged ledger over 1.9 MiB gets 413 and writes nothing, because a Durable Object value caps at 2 MB.
+- A merged ledger over the size limit gets 413 and writes nothing. A Durable Object value caps at 2,000,000 bytes, and the limit keeps at least 100,000 bytes of headroom under that cap. The guard counts UTF-8 bytes, not characters.
 - A WebSocket carries the key as the second of exactly two protocols, `mailaudit` and the key. A browser cannot set a header on a WebSocket.
 - The device keys live in the macOS Keychain, service `mailaudit-sync`, accounts `iphone` and `macbook`. The Worker holds only their SHA-256 hashes, in a Worker secret.
-- Until stage 4 adds a timestamp per check-in, the server's merge cannot carry an un-check, as `max-cannot-express-an-uncheck` says.
+- The server's merge cannot carry an un-check yet. A timestamp per check-in fixes that, as `max-cannot-express-an-uncheck` says.
 
 ## Still open
 
 - Whether a Cloudflare Access login survives in an iOS home-screen app. This is untested.
-- Seed the Durable Object from the GitHub ledger before any device switches to it.
+- The GitHub ledger keeps moving until the devices switch. So seed the Durable Object again from it at the switch.
 
 ## See also
 
