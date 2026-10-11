@@ -52,6 +52,9 @@ import {
   sleep,
   setSyncNetFail,
   syncCalls,
+  syncCloseCount,
+  syncRev,
+  fireSyncRev,
   text,
   toggleShowing,
   type,
@@ -5488,5 +5491,136 @@ try {
 } finally {
   releaseAutoTimers();
 }
+
+/* ── 55. live updates: connect, a rev-gated GET, a held apply (harness contract only) ──
+   Stage 4b lane L5, decision sync-revamp-cloudflare (Stage 4b rulings). The
+   Worker's rev channel reports that another device moved the server. A rev
+   above the last one seen triggers one GET. The GET reply is held, and applied
+   only after IDLE_APPLY_MS with no input and no armed guard. While a reply is
+   held, the advisory line says so, in a slot that keeps its height.
+
+   There are no fake timers. The timed cases wait real time, as group 53 does.
+   The rev channel is fired by fireSyncRev(), which the mock keeps alongside
+   connect(). Not written here: that the slot keeps its height on screen. That
+   needs a 375px check (npm run check:screens, test/screens.mjs), which jsdom
+   cannot make. */
+
+const KEY55 = "device-55-key";
+const LEDGER55 = { mailday: 1, items: ITEMS.slice(0, 4), received: {}, envelopes: [] };
+const getCount = () => syncCalls().filter((c) => c.op === "get").length;
+const connectCount = () => syncCalls().filter((c) => c.op === "connect").length;
+const input55 = () => win.dispatchEvent(new win.Event("pointerdown"));
+const WAITING_RE = /waiting/i;
+const waiting = () => buttons().map((b) => b.textContent).find((t) => WAITING_RE.test(t)) ?? "";
+const slot55 = () => document.querySelector("[data-advisory-slot]");
+/* reserved means a fixed height in inline style or a reserved class. jsdom has
+   no layout, so this pins the structure only. */
+const reserved55 = (el) => !!el && (el.style.minHeight !== "" || /reserv/.test(el.className));
+const dismiss55 = () => [...document.querySelectorAll('button[aria-label="Dismiss"]')][0] ?? null;
+
+/* 55.1 with a key, the app connects once on mount, and the close function
+   runs on unmount. boot() unmounts the previous root before it resets the mock,
+   so the second boot is the unmount. */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { noRemote: true, syncKey: KEY55 });
+await settle();
+eq(connectCount(), 1, "55.1a with a key, the app calls sync.connect once on mount");
+const closesBefore55 = syncCloseCount();
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { noRemote: true });
+eq(syncCloseCount() - closesBefore55, 1, "55.1b and the close function runs on unmount");
+
+/* 55.2 a rev above the last one seen triggers one GET. The echo of the device's
+   own POST, at or below the last rev seen, triggers none. The last rev seen
+   comes from the POST reply, so the device POSTs first. */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { noRemote: true, syncKey: KEY55 });
+await settle();
+const posts55 = postCount();
+await pageshow();
+await sleep(300);
+ok(postCount() > posts55, "55.2a0 the POST happened, so the last rev seen is known");
+const seen55 = syncRev();
+const get55a = getCount();
+await fireSyncRev(seen55);
+await sleep(600);
+eq(getCount() - get55a, 0, "55.2a the echo of the device's own POST triggers no GET");
+const get55b = getCount();
+await fireSyncRev(seen55 - 1);
+await sleep(600);
+eq(getCount() - get55b, 0, "55.2b a rev below the last one seen triggers no GET");
+const get55c = getCount();
+await fireSyncRev(seen55 + 1, LEDGER55);
+await sleep(600);
+eq(getCount() - get55c, 1, "55.2c a rev above the last one seen triggers one GET");
+const get55d = getCount();
+await fireSyncRev(seen55 + 1);
+await sleep(600);
+eq(getCount() - get55d, 0, "55.2d the echo of that GET's rev triggers no GET");
+
+/* 55.3 a GET reply is held, and applied only after IDLE_APPLY_MS with no input.
+   Input at 9 s restarts the wait, so nothing applies at 10 s, and the reply is
+   applied by 19 s. While it is held, the advisory line says so (55.5), and the
+   slot is reserved (55.6). The device POSTs once to seed the empty store, then
+   waits out the idle gate, so the seed reply is applied before the timing
+   starts. */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { noRemote: true, syncKey: KEY55 });
+await settle();
+ok(!!slot55() && reserved55(slot55()), "55.6a the advisory slot is present and reserved with no reply held");
+await pageshow();
+await sleep(APPLY_WAIT);
+input55();
+const t055 = Date.now();
+const until55 = (ms) => sleep(Math.max(0, t055 + ms - Date.now()));
+await fireSyncRev(2, LEDGER55);
+await until55(1000);
+eq(saved().items?.length ?? 0, 3, "55.3a a GET reply is held, not applied");
+ok(WAITING_RE.test(waiting()), "55.5a while the reply is held, the advisory line says updates are waiting");
+ok(!!slot55() && reserved55(slot55()), "55.6b the advisory slot is present and reserved while the line is filled");
+await until55(9000);
+input55();
+await until55(10000);
+eq(saved().items?.length ?? 0, 3, "55.3b no apply at 10 s, because input at 9 s restarted the wait");
+await until55(19500);
+eq(saved().items?.length ?? 0, 4, "55.3c the held reply is applied by 19 s");
+ok(!WAITING_RE.test(waiting()), "55.5b and the waiting line clears once the reply is applied");
+ok(!!slot55() && reserved55(slot55()), "55.6c and the slot is still reserved after the apply");
+
+/* 55.4 an armed Reset holds the apply. The apply runs once the hold clears, and
+   the idle wait has already passed. The wait is past before the arm, so only
+   the armed Reset can hold the apply. Reset disarms itself after 4 s. */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { noRemote: true, syncKey: KEY55 });
+await settle();
+await pageshow();
+await sleep(APPLY_WAIT);
+await click(btn(/^Reset$/), "arm reset while the wait is past");
+ok(/Tap again to clear everything/.test(text()), "55.4 0 Reset is armed, so the hold means something");
+await fireSyncRev(2, LEDGER55);
+await sleep(1000);
+eq(saved().items?.length ?? 0, 3, "55.4a an armed Reset holds the apply");
+await sleep(5000);
+ok(!/Tap again to clear everything/.test(text()), "55.4b Reset has disarmed itself");
+eq(saved().items?.length ?? 0, 4, "55.4c and the apply runs once the hold clears");
+
+/* 55.4d an open notice holds the apply, as an armed Reset does. The notice is a
+   backup import with the same lines, so it changes nothing else. */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { noRemote: true, syncKey: KEY55 });
+await settle();
+await pageshow();
+await sleep(APPLY_WAIT);
+await click(btn(/Re-import CSV/), "show upload zone for the notice");
+await dropFile(
+  "mailday-backup.json",
+  JSON.stringify({ mailday: 1, items: ITEMS.slice(0, 3), received: {}, envelopes: [] })
+);
+ok(!!dismiss55(), "55.4d0 an import notice is open, so the hold means something");
+await fireSyncRev(2, LEDGER55);
+await sleep(1000);
+eq(saved().items?.length ?? 0, 3, "55.4d an open notice holds the apply");
+await click(dismiss55(), "dismiss the notice");
+await sleep(1500);
+eq(saved().items?.length ?? 0, 4, "55.4e and the apply runs once the notice is dismissed");
+
+/* 55.7 with no key, sync.connect is never called */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { noRemote: true });
+await settle();
+eq(connectCount(), 0, "55.7 with no key, sync.connect is never called");
 
 report();

@@ -458,9 +458,26 @@ win.remote = remoteApi;
    `sync.key`, outside `store`, so storage.list() cannot see it.
    HARNESS CONTRACT ONLY. entry.jsx is not bundled here, so these cases prove
    this mock, not the adapter. */
-const syncFresh = () => ({ key: null, ledger: null, rev: 0, netFail: false, calls: [] });
+const syncFresh = () => ({ key: null, ledger: null, rev: 0, netFail: false, calls: [], onRev: null });
 let sync = syncFresh();
 export const syncCalls = () => sync.calls;
+/* how many close functions connect() has handed out and that were called.
+   Kept outside `sync`, so a close from the unmounting app still counts after
+   boot() swaps in a fresh mock. */
+let syncCloses = 0;
+export const syncCloseCount = () => syncCloses;
+export const syncRev = () => sync.rev;
+/* another device's POST, as the Worker's rev channel reports it: the server
+   moves to `rev` (and to `ledger`, when given), then the open connect()
+   handler is told that rev */
+export const fireSyncRev = async (rev, ledger) => {
+  sync.rev = rev;
+  if (ledger) sync.ledger = ledger;
+  await act(async () => {
+    sync.onRev?.(rev);
+    await sleep(0);
+  });
+};
 /* a network failure: the adapter answers {status: null, body: null}, which
    syncStatus maps to "unknown" */
 export const setSyncNetFail = (on) => {
@@ -499,11 +516,14 @@ const syncApi = {
     sync.rev += 1;
     return syncReply(200, { ledger: merged, rev: sync.rev });
   },
-  /* onRev is never called here; the real adapter returns a close function
-     whether or not a key is set */
+  /* the real adapter returns a close function whether or not a key is set.
+     onRev is called only by fireSyncRev() in the tests. */
   connect(onRev) {
     sync.calls.push({ op: "connect", keyed: !!sync.key });
-    return () => {};
+    sync.onRev = onRev;
+    return () => {
+      syncCloses += 1;
+    };
   },
 };
 win.sync = syncApi;
