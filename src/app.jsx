@@ -2049,6 +2049,16 @@ const REMOTE_SAYS = {
     "That isn’t a Mail Day ledger. Nothing on this device was changed.",
 };
 
+/* One retry on an unknown look, shared by the foreground check and autoPush:
+   a single transient failure must not raise the backup-unknown line. */
+async function peekTwice() {
+  const look = () => window.remote.peek().catch(() => null);
+  const p = await look();
+  /* a retry cannot change either of these */
+  if (p && (p.known || p.reason === "no-access" || p.reason === "rate-limit")) return p;
+  return look();
+}
+
 /* A SEPARATE table, and photo failures get a separate piece of state, because
    the ledger's codes drive `pushState` and `pushState === "conflict"` is the
    only thing gating "Push anyway" — which force-overwrites the LEDGER. GitHub
@@ -2056,14 +2066,6 @@ const REMOTE_SAYS = {
    photo upload through the ledger's error path would offer the user a button
    that silently discards another device's check-ins. Photos must never be able
    to arm that. */
-/* One retry on an unknown look, shared by the foreground check and autoPush:
-   a single transient failure must not raise the backup-unknown line. */
-async function peekTwice() {
-  const look = () => window.remote.peek().catch(() => null);
-  const p = await look();
-  return p && p.known ? p : look();
-}
-
 const PHOTO_SAYS = {
   "no-access":
     "Photos need your key — they live in a private repo, so pulling them isn’t anonymous.",
@@ -2077,7 +2079,7 @@ const PHOTO_SAYS = {
     "The photo repo has no main branch yet — create it with a README first.",
   missing: "The photo repo isn’t reachable. Create mailaudit-data first.",
   offline: "No connection, so photos didn’t sync. Nothing was lost.",
-  unreadable: "This device’s photos could not be read, so nothing new was backed up.",
+  unreadable: "This device’s photos could not be read, so no new photos were backed up.",
   conflict: "GitHub is busy. The ledger is pushed — tap Push again to finish the photos.",
   server: "GitHub had trouble with the photos. Tap Push again to finish.",
 };
@@ -3339,7 +3341,9 @@ export default function MailDayLedger() {
     if (photoUnreadable) return "photos-unreadable";
     /* No key outranks "could not check": a keyless device on the private repo
        cannot look at all, and "add its key" is the true, actionable answer.
-       With a key, the order is unchanged. */
+       With a key, the order is unchanged. A keyless device can do nothing
+       remote at all now that the ledger lives in the private repo, so it
+       genuinely is not backed up, and saying so is honest not naggy. */
     if (remoteInfo && !remoteInfo.hasKey) return "no-key";
     if (backupUnknown) return "backup-unknown";
     /* remoteInfo is null until its effect runs, which is one commit after the
@@ -3347,10 +3351,6 @@ export default function MailDayLedger() {
        cold start of a perfectly configured device — the same "I could not
        look" ≠ "all clear" rule peek and listPhotos follow. */
     if (!remoteInfo) return null;
-    /* a keyless device can do nothing remote at all now that the ledger lives
-       in the private repo — it cannot even see the backup, let alone write it.
-       So it genuinely is not backed up, and saying so is honest not naggy */
-    if (!remoteInfo.hasKey) return "no-key";
     /* **The clock is the last time this device AGREED with the backup, not the
        last time it wrote to it.** It used to read `pushedAt` alone, which asks
        "did I write recently?" when the question is "are my bytes on GitHub?".
@@ -6356,7 +6356,7 @@ export default function MailDayLedger() {
                     : syncBroken === "behind"
                     ? "Your other device has newer lines — tap to bring them in"
                     : syncBroken === "photos-unreadable"
-                    ? "This device’s photos could not be read, so nothing new was backed up — tap to fix"
+                    ? "This device’s photos could not be read, so no new photos were backed up — tap to fix"
                     : syncBroken === "backup-unknown"
                     ? "The backup could not be checked — tap to fix"
                     : !syncBroken
