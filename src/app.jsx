@@ -3347,6 +3347,7 @@ export default function MailDayLedger() {
        meaningless advice to someone looking at a copy of someone else's
        ledger. Their own key would not help them; there is nothing of theirs to
        back up. Say what is actually true instead — see the line's copy. */
+    if (seedShown) return "seeded";
     if (pushState === "conflict") return "conflict";
     if (remoteMsg?.tone === "error") return "error";
     if (serverDown)
@@ -3375,8 +3376,6 @@ export default function MailDayLedger() {
        genuinely is not backed up, and saying so is honest not naggy. */
     if (remoteInfo && !remoteInfo.hasKey) return "no-key";
     if (backupUnknown) return "backup-unknown";
-    /* a sync advisory outranks the visitor's line: it says what to fix */
-    if (seedShown) return "seeded";
     /* remoteInfo is null until its effect runs, which is one commit after the
        first paint. Reading that as "no key" flashes the manila banner on every
        cold start of a perfectly configured device — the same "I could not
