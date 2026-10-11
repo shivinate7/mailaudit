@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import Papa from "papaparse";
 import { photoPlan } from "./photo-rules.mjs";
 import { shouldSnapshot } from "./version-rules.mjs";
-import { keyFromHash, SYNC_POST_MS, SYNC_COLD_POST_MS, SYNC_TIMEOUT_MS, IDLE_APPLY_MS, idleReady, backoffMs } from "./sync-rules.mjs";
+import { KEY_RE, SYNC_POST_MS, SYNC_COLD_POST_MS, SYNC_TIMEOUT_MS, IDLE_APPLY_MS, idleReady, backoffMs } from "./sync-rules.mjs";
 import {
   mergeItems,
   mergeLedger,
@@ -3412,9 +3412,6 @@ export default function MailDayLedger() {
     return null;
   }, [pushState, remoteMsg, remoteInfo, ahead, seedShown, syncedAt, photoUnreadable, backupUnknown, serverDown, workerKeySet, syncOpen]);
 
-  /* a device that holds a Worker key keeps the way to replace it on these lines */
-  const syncKeyTail = workerKeySet ? ", or replace the sync key" : "";
-
   const snapshot = useCallback(
     () => ({
       mailday: 1,
@@ -4806,7 +4803,9 @@ export default function MailDayLedger() {
     const p = (async () => {
       if (!window.sync || !(await window.sync.hasKey())) return;
       /* 50 ms of slack: a timer that fires a hair early still retries */
-      if (refusedRef.current || Date.now() < nextTry.current - 50) return;
+      /* a page that shows the seed holds someone else's ledger: it never POSTs
+         (seed-load-guards) */
+      if (seedShown || refusedRef.current || Date.now() < nextTry.current - 50) return;
       postsInFlight.current++;
       let r;
       try {
@@ -4847,18 +4846,18 @@ export default function MailDayLedger() {
      a GET, and a POST when this device holds something the server lacks. */
   const saveSyncKey = async () => {
     const v = (syncKeyInput.current?.value || "").trim();
-    const ok = keyFromHash("#k=" + v);
-    if (!v || !ok) {
+    /* the field is cleared on every path, the refusals included */
+    if (syncKeyInput.current) syncKeyInput.current.value = "";
+    if (!KEY_RE.test(v)) {
       setSyncKeyMsg("That is not a valid sync key. Paste it again.");
       return;
     }
     try {
-      await window.sync.setKey(ok);
+      await window.sync.setKey(v);
     } catch {
       setSyncKeyMsg("That is not a valid sync key. Paste it again.");
       return;
     }
-    if (syncKeyInput.current) syncKeyInput.current.value = "";
     setSyncKeyMsg("");
     setWorkerKeySet(true);
     /* a new key lifts a 401 stop and every backoff, and opens the socket if none is open */
@@ -6780,11 +6779,11 @@ export default function MailDayLedger() {
                     : syncBroken === "no-key"
                     ? "Not backed up on this device — tap to set it up"
                     : syncBroken === "never"
-                    ? `Nothing has been backed up yet — tap to fix${syncKeyTail}`
+                    ? "Nothing has been backed up yet — tap to fix"
                     : syncBroken === "stale"
                     ? `Not backed up since ${new Date(syncedAt)
                         .toISOString()
-                        .slice(0, 10)} — tap to fix${syncKeyTail}`
+                        .slice(0, 10)} — tap to fix`
                     : "The backup needs attention — tap to fix"}
                 </button>
               )}

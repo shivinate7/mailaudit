@@ -5,7 +5,7 @@ import { utf8ToBase64, base64ToUtf8, blobToBase64 } from "./b64.mjs";
 import { classifyStatus, pushBody } from "./remote-rules.mjs";
 import { photoName, photoIdFromName, mimeFromName, isAlreadyThere } from "./photo-rules.mjs";
 import { prunePlan } from "./version-rules.mjs";
-import { keyFromHash, syncStatus, backoffMs, SYNC_KEY_STORAGE, SYNC_TIMEOUT_MS } from "./sync-rules.mjs";
+import { keyFromHash, syncStatus, backoffMs, SYNC_KEY_STORAGE, SYNC_TIMEOUT_MS, KEY_RE } from "./sync-rules.mjs";
 
 /* ============================================================
    Platform layer. app.jsx never touches a storage API directly —
@@ -911,8 +911,13 @@ window.sync = {
   },
   async setKey(k) {
     const v = String(k || "").trim();
-    if (!/^[A-Za-z0-9_-]+$/.test(v)) throw Object.assign(new Error("bad-key"), { code: "bad-key" });
-    syncSave(v);
+    if (!KEY_RE.test(v)) throw Object.assign(new Error("bad-key"), { code: "bad-key" });
+    const prev = memKey;
+    /* a write that fails must say so: the app shows its refusal, not a false save */
+    if (!syncSave(v)) {
+      memKey = prev;
+      throw Object.assign(new Error("storage"), { code: "storage" });
+    }
   },
   async get() {
     const r = await syncCall("GET");
