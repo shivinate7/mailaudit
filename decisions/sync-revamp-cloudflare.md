@@ -1,6 +1,6 @@
 # Sync moves from GitHub to Cloudflare
 
-**Status:** open. The design is decided. Nothing is built yet.
+**Status:** open. Stage 2 is built: the server runs at `manifestnumberone.shivamsemwal01.workers.dev`, seeded from the GitHub ledger. The app does not use it yet.
 
 GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Deliberately a manual backup, not continuous sync." Auto-push and merge grew on top of it later, and no one chose a sync base again. A fresh choice, made on 2026-10-10, picked Cloudflare.
 
@@ -26,6 +26,15 @@ GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Del
 - **The job's host:** a small local add-on on HA Green, built like the Degen add-on. It starts once, and an HA automation starts it each night. It posts to the Worker, then exits. The cookie never runs inside HA Core. The add-on's DNS skips AdGuard Home, so the job cannot stall the house DNS. It keeps state in `/tmp` only and logs one line per run.
 - **The cookie:** it can also reach the owner's seller account. It lives in the add-on's options as a password field. Root, the add-on and any HA admin can read it. It never goes to Cloudflare, to the ledger or to HA's shared secrets file. The owner pastes it in the add-on's Configuration tab.
 - **Failure alerts:** the job sends a phone notice and exits nonzero on three events. These are a redirect to the logon page (an expired cookie), any non-2xx reply from the Worker, and any exception. TCGplayer's bot checks can block a client that is not a browser even with a good cookie, so the logon check must be strict. An HA automation alerts when no run has succeeded for 36 hours.
+
+## The server, as built
+
+- `worker/core.mjs` holds the logic that can be pure, and `npm run test:worker` tests it. `worker/index.mjs` holds the Worker and the `Ledger` Durable Object, which keeps `{ledger, rev}` under one storage key.
+- `POST /ledger` merges the incoming ledger into the stored one with `mergeLedger` from `src/merge-rules.mjs`, the same merge the app runs. The stored copy's view preferences win.
+- A merged ledger over 1.9 MiB gets 413 and writes nothing, because a Durable Object value caps at 2 MB.
+- A WebSocket carries the key as the second of exactly two protocols, `mailaudit` and the key. A browser cannot set a header on a WebSocket.
+- The device keys live in the macOS Keychain, service `mailaudit-sync`, accounts `iphone` and `macbook`. The Worker holds only their SHA-256 hashes, in a Worker secret.
+- Until stage 4 adds a timestamp per check-in, the server's merge cannot carry an un-check, as `max-cannot-express-an-uncheck` says.
 
 ## Still open
 
