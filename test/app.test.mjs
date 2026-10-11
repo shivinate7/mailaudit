@@ -50,6 +50,7 @@ import {
   saveGitHubKey,
   saved,
   sleep,
+  syncCalls,
   text,
   toggleShowing,
   type,
@@ -4978,5 +4979,132 @@ for (const [path, look] of [
     "50.B5 a full assign saves a tombstone with its time, not a removed envelope"
   );
 }
+
+/* ── 51. the Stage 4b rules, as pure functions ─────────────────────────────
+   src/sync-rules.mjs is written in stage 4b (L2). It is loaded with a dynamic
+   import, not a static one, so a missing module fails these cases one by one
+   instead of stopping the whole file. Every case compares with eq(), and a
+   missing export returns the sentinel "MISSING", which equals no expected value.
+   A thrown error comes back as {threw}, for the same reason. */
+
+const SR = await import("../src/sync-rules.mjs").catch(() => null);
+const sr = (name, ...args) => {
+  if (!SR || typeof SR[name] !== "function") return "MISSING";
+  try {
+    return SR[name](...args);
+  } catch (e) {
+    return { threw: String(e?.message || e) };
+  }
+};
+
+/* the device key rides in the fragment: #k=<key> */
+eq(sr("keyFromHash", "#k=abc123"), "abc123", "51.1 the key is read from #k=");
+eq(
+  sr("keyFromHash", "#k=abc_DEF-09"),
+  "abc_DEF-09",
+  "51.2 letters, digits, underscore and hyphen are all valid"
+);
+eq(sr("keyFromHash", ""), null, "51.3 no fragment means no key");
+eq(sr("keyFromHash", "#x=abc123"), null, "51.4 a fragment without k means no key");
+eq(sr("keyFromHash", "#k="), null, "51.5 an empty k means no key");
+eq(sr("keyFromHash", "#mk=abc123"), null, "51.6 a parameter that ends in k is not k");
+for (const [hash, why] of [
+  ["#k=ab+cd", "a plus sign"],
+  ["#k=ab/cd", "a slash"],
+  ["#k=ab=cd", "an equals sign"],
+  ["#k=ab%20cd", "a percent-encoded space"],
+  ["#k=ab.cd", "a dot"],
+]) {
+  eq(sr("keyFromHash", hash), null, `51.7 a key with ${why} is refused`);
+}
+
+/* the Worker's answer, reduced to what the app shows */
+eq(sr("syncStatus", 200), "ok", "51.8 200 is ok");
+eq(sr("syncStatus", 401), "no-access", "51.9 401 is no-access");
+eq(sr("syncStatus", 413), "too-big", "51.10 413 is too-big");
+eq(sr("syncStatus", 500), "unknown", "51.11 a 5xx is unknown, not ok");
+eq(sr("syncStatus", null), "unknown", "51.12 a network failure (null) is unknown");
+eq(sr("syncStatus", 0), "unknown", "51.13 a status of 0 is unknown");
+
+/* a revision is new only when it is ahead of the one this device saw */
+eq(sr("isNewRev", 3, 4), true, "51.14 a later revision is new");
+eq(sr("isNewRev", 4, 4), false, "51.15 the same revision is not new");
+eq(sr("isNewRev", 5, 4), false, "51.16 an older revision is not new");
+
+/* the apply waits for ten seconds without input */
+eq(sr("idleReady", 1000, 10999), false, "51.17 9,999 ms idle is not ready");
+eq(sr("idleReady", 1000, 11000), true, "51.18 10,000 ms idle is ready");
+eq(SR?.IDLE_APPLY_MS ?? "MISSING", 10000, "51.19 IDLE_APPLY_MS is 10000");
+
+/* backoff: the first wait is 1,000 ms (attempt 0), it doubles, and it caps at
+   60,000 ms. Attempt 0 is a choice, not a fact in the code yet. See Input Needed. */
+eq(sr("backoffMs", 0), 1000, "51.20 the first attempt waits 1,000 ms");
+eq(sr("backoffMs", 1), 2000, "51.21 the wait doubles");
+eq(sr("backoffMs", 2), 4000, "51.22 and doubles again");
+eq(sr("backoffMs", 5), 32000, "51.23 attempt 5 waits 32,000 ms");
+eq(sr("backoffMs", 6), 60000, "51.24 attempt 6 would be 64,000 and caps at 60,000");
+eq(sr("backoffMs", 30), 60000, "51.25 a long retry stays at the cap");
+
+/* one home for the device-key name. entry.jsx must import it from here, so the
+   key stays outside the mailday: namespace by a single constant. */
+eq(SR?.SYNC_KEY_STORAGE ?? "MISSING", "mailday-sync:v1", "51.26 the device key is stored at mailday-sync:v1");
+eq(
+  typeof SR?.SYNC_KEY_STORAGE === "string" && !SR.SYNC_KEY_STORAGE.startsWith("mailday:"),
+  true,
+  "51.27 and that key sits outside the mailday: namespace"
+);
+
+/* ── 52. the device key stays out of the ledger (harness contract only) ──
+   The mock win.sync holds the key outside the mock store, the way the real
+   adapter holds it outside the mailday: namespace. These cases prove the mock
+   and the isolation claim that the app sees. They cannot reach entry.jsx. */
+
+const SYNC_KEY = "sync_SECRETVALUE-42";
+const SYNC_LEAK = /sync_SECRET/;
+
+await fresh();
+eq(await win.sync.hasKey(), false, "52.1 a fresh device has no sync key");
+await win.sync.setKey(SYNC_KEY);
+eq(await win.sync.hasKey(), true, "52.2 setKey makes hasKey true");
+let badCode = null;
+try {
+  await win.sync.setKey("bad key.value");
+} catch (e) {
+  badCode = e.code;
+}
+eq(badCode, "bad-key", "52.3 a key outside the Worker's alphabet is refused");
+
+/* the same three-place check as 25.24 to 25.27, for the sync key */
+await fresh();
+await win.sync.setKey(SYNC_KEY);
+await openSync();
+await saveGitHubKey("github_pat_SECRETVALUE");
+await click(btn(/^Push$/), "push with a sync key set");
+await openHistory();
+await click(btn(/^Backup$/), "backup with a sync key set");
+await sleep(SAVE_WAIT);
+ok(pushes().length > 0, "52.4a the push happened, so the next check means something");
+ok(!!captured, "52.4b the backup happened, so the next check means something");
+ok(!SYNC_LEAK.test(JSON.stringify(saved())), "52.4 the sync key is not in the saved ledger");
+ok(!SYNC_LEAK.test(pushes()[0]?.text ?? ""), "52.5 nor in the pushed payload");
+ok(!SYNC_LEAK.test(await captured.text()), "52.6 nor in a backup file");
+eq(
+  (await win.storage.list()).keys,
+  ["mailday:v1"],
+  "52.7 and the ledger namespace still holds only the ledger"
+);
+
+/* the mock's own contract, as route() in worker/core.mjs states it */
+await fresh();
+const unkeyed = await win.sync.post({ mailday: 1, items: [] });
+eq(unkeyed.status, 401, "52.8 a post with no key is refused");
+await win.sync.setKey(SYNC_KEY);
+const first = await win.sync.post({ mailday: 1, items: [] });
+const second = await win.sync.post({ mailday: 1, items: [] });
+eq([first.status, second.status, second.body?.rev], [200, 200, 2], "52.9 each keyed post merges and advances rev");
+ok(
+  syncCalls().every((c) => !SYNC_LEAK.test(c.body ?? "")),
+  "52.10 the mock's own post record never carries the key"
+);
 
 report();

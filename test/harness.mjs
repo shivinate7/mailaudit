@@ -12,6 +12,9 @@ import path from "node:path";
 import { utf8ToBase64, base64ToUtf8, blobToBase64 } from "../src/b64.mjs";
 import { photoName, mimeFromName } from "../src/photo-rules.mjs";
 import { prunePlan } from "../src/version-rules.mjs";
+import { mergeLedger } from "../src/merge-rules.mjs";
+/* the Worker's real size cap, so the mock refuses what the server refuses */
+import { MAX_LEDGER_BYTES } from "../worker/core.mjs";
 
 export const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -445,6 +448,53 @@ const remoteApi = {
 };
 win.remote = remoteApi;
 
+/* window.sync: the Worker adapter of stage 4b. The contract is route() in
+   worker/core.mjs. GET answers {ledger, rev}, or 404 while the object is empty.
+   POST merges with the app's own mergeLedger and answers {ledger, rev}. A
+   missing or wrong key answers 401, and a merged ledger over the cap answers
+   413. The real adapter keeps the device key at the raw localStorage key
+   "mailday-sync:v1", outside the "mailday:" namespace. Here the key lives in
+   `sync.key`, outside `store`, so storage.list() cannot see it.
+   HARNESS CONTRACT ONLY. entry.jsx is not bundled here, so these cases prove
+   this mock, not the adapter. */
+const syncFresh = () => ({ key: null, ledger: null, rev: 0, calls: [] });
+let sync = syncFresh();
+export const syncCalls = () => sync.calls;
+const syncErr = (code) => Object.assign(new Error(code), { code });
+const syncApi = {
+  async hasKey() {
+    return !!sync.key;
+  },
+  async setKey(k) {
+    const v = String(k || "").trim();
+    if (!/^[A-Za-z0-9_-]+$/.test(v)) throw syncErr("bad-key");
+    sync.key = v;
+  },
+  async get() {
+    sync.calls.push({ op: "get", keyed: !!sync.key });
+    if (!sync.key) return { status: 401, body: { error: "unauthorized" } };
+    if (sync.ledger == null) return { status: 404, body: { error: "empty" } };
+    return { status: 200, body: { ledger: sync.ledger, rev: sync.rev } };
+  },
+  async post(ledger) {
+    sync.calls.push({ op: "post", keyed: !!sync.key, body: JSON.stringify(ledger) });
+    if (!sync.key) return { status: 401, body: { error: "unauthorized" } };
+    if (!ledger || ledger.mailday !== 1 || !Array.isArray(ledger.items))
+      return { status: 400, body: { error: "bad ledger" } };
+    const merged = sync.ledger ? mergeLedger(sync.ledger, ledger).merged : ledger;
+    const size = new TextEncoder().encode(JSON.stringify(merged)).length;
+    if (size > MAX_LEDGER_BYTES) return { status: 413, body: { error: "too-large" } };
+    sync.ledger = merged;
+    sync.rev += 1;
+    return { status: 200, body: { ledger: merged, rev: sync.rev } };
+  },
+  async connect() {
+    sync.calls.push({ op: "connect", keyed: !!sync.key });
+    return { ok: !!sync.key };
+  },
+};
+win.sync = syncApi;
+
 export const resetRemote = (seedText) => {
   remote = {
     content: seedText == null ? null : utf8ToBase64(seedText),
@@ -793,6 +843,9 @@ export async function boot(state, photos, opts = {}) {
   if (opts.remotePrivate) remote.private = true;
   if (opts.noRemote) delete win.remote;
   else win.remote = remoteApi;
+  /* a fresh device has no sync key; each boot is a new device */
+  sync = syncFresh();
+  win.sync = syncApi;
   if (state) store["mailday:v1"] = JSON.stringify(state);
   document.getElementById("root").innerHTML = "";
   await act(async () => {
