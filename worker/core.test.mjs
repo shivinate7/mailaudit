@@ -15,9 +15,9 @@ import { readFileSync } from "node:fs";
 import { mergeLedger } from "../src/merge-rules.mjs";
 
 /* A missing or broken core fails in one clear line, not a raw stack trace. */
-let route;
+let route, keyAllowed, wsAuthorized;
 try {
-  ({ route } = await import("./core.mjs"));
+  ({ route, keyAllowed, wsAuthorized } = await import("./core.mjs"));
 } catch (e) {
   console.log(
     `FAIL worker/core.mjs does not load (expected until the core is built): ${e.message.split("\n")[0]}`
@@ -26,6 +26,10 @@ try {
 }
 if (typeof route !== "function") {
   console.log("FAIL worker/core.mjs does not export route(request, env, store)");
+  process.exit(1);
+}
+if (typeof keyAllowed !== "function" || typeof wsAuthorized !== "function") {
+  console.log("FAIL worker/core.mjs does not export keyAllowed(key, env) and wsAuthorized(request, env)");
   process.exit(1);
 }
 
@@ -232,6 +236,23 @@ await test("1.8 a 401 never echoes the presented key", async () => {
 await test("1.9 auth is checked before the empty-store answer", async () => {
   const res = await send(empty(), "GET", "/ledger", {});
   eq(res.status, 401, "no header on an empty store is 401, not 404");
+});
+
+/* keyAllowed is reached only through route() and wsAuthorized() above, so
+   these pin it directly. */
+await test("1.10 keyAllowed is true for each listed device key", async () => {
+  eq(await keyAllowed(KEY_PHONE, ENV), true, "first listed key");
+  eq(await keyAllowed(KEY_LAPTOP, ENV), true, "second listed key");
+});
+
+await test("1.11 keyAllowed is false for a stranger, an empty or a missing key", async () => {
+  eq(await keyAllowed(KEY_STRANGER, ENV), false, "stranger key");
+  eq(await keyAllowed("", ENV), false, "empty string");
+  eq(await keyAllowed(undefined, ENV), false, "undefined");
+});
+
+await test("1.12 keyAllowed is false for the stored hash used as the key", async () => {
+  eq(await keyAllowed(sha256(KEY_PHONE), ENV), false, "hash as key");
 });
 
 /* ---------- 2. GET /ledger ---------- */
@@ -571,6 +592,61 @@ await test("7.1 the core imports the shared merge and holds no copy of it", asyn
     !/function\s+merge(Ledger|Items|Received|Envelopes|Stamps)\b/.test(src),
     "core.mjs defines a merge function of its own"
   );
+});
+
+/* ---------- 8. WebSocket upgrade: the key rides in Sec-WebSocket-Protocol ---------- */
+/* A browser's new WebSocket(url, ["mailaudit", key]) sends one header,
+   "mailaudit, <key>". wsAuthorized reads that header and nothing else, so
+   these build the upgrade request the same way. */
+const wsReq = (protocol) =>
+  new Request(BASE + "/ws", {
+    headers: protocol === undefined ? {} : { "Sec-WebSocket-Protocol": protocol },
+  });
+const wsAuth = (protocol) => wsAuthorized(wsReq(protocol), ENV);
+
+await test("8.1 the right key in the second protocol is authorized", async () => {
+  eq(await wsAuth(`mailaudit, ${KEY_PHONE}`), true, "first listed key");
+  eq(await wsAuth(`mailaudit, ${KEY_LAPTOP}`), true, "second listed key");
+});
+
+await test("8.2 a wrong key in the second protocol is refused", async () => {
+  eq(await wsAuth(`mailaudit, ${KEY_STRANGER}`), false, "stranger key");
+});
+
+await test("8.3 no Sec-WebSocket-Protocol header, or an empty one, is refused", async () => {
+  eq(await wsAuth(undefined), false, "no header");
+  eq(await wsAuth(""), false, "empty header");
+});
+
+await test("8.4 mailaudit alone, with no key, is refused", async () => {
+  eq(await wsAuth("mailaudit"), false, "name only");
+});
+
+await test("8.5 the key in the first position is refused", async () => {
+  eq(await wsAuth(`${KEY_PHONE}, mailaudit`), false, "key, then name");
+});
+
+await test("8.6 a valid key under any other protocol name is refused", async () => {
+  eq(await wsAuth(`chat, ${KEY_PHONE}`), false, "name is not mailaudit");
+});
+
+await test("8.7 a key list with extra entries is refused", async () => {
+  eq(await wsAuth(`mailaudit, ${KEY_PHONE}, ${KEY_LAPTOP}`), false, "two keys");
+  eq(await wsAuth(`mailaudit, ${KEY_PHONE}, junk`), false, "key and a stray entry");
+});
+
+await test("8.8 the stored hash of a key, used as the key, is refused", async () => {
+  eq(await wsAuth(`mailaudit, ${sha256(KEY_PHONE)}`), false, "hash as key");
+});
+
+await test("8.9 wsAuthorized returns a bare boolean, and nothing it returns echoes the key", async () => {
+  for (const k of [KEY_PHONE, KEY_STRANGER]) {
+    for (const p of [`mailaudit, ${k}`, `${k}, mailaudit`, `mailaudit, ${k}, junk`]) {
+      const res = await wsAuth(p);
+      ok(res === true || res === false, `${p}: returned ${typeof res}, not a boolean`);
+      ok(!String(res).includes(k), `${p}: the result echoes the key`);
+    }
+  }
 });
 
 report();
