@@ -2056,6 +2056,14 @@ const REMOTE_SAYS = {
    photo upload through the ledger's error path would offer the user a button
    that silently discards another device's check-ins. Photos must never be able
    to arm that. */
+/* One retry on an unknown look, shared by the foreground check and autoPush:
+   a single transient failure must not raise the backup-unknown line. */
+async function peekTwice() {
+  const look = () => window.remote.peek().catch(() => null);
+  const p = await look();
+  return p && p.known ? p : look();
+}
+
 const PHOTO_SAYS = {
   "no-access":
     "Photos need your key — they live in a private repo, so pulling them isn’t anonymous.",
@@ -2069,7 +2077,7 @@ const PHOTO_SAYS = {
     "The photo repo has no main branch yet — create it with a README first.",
   missing: "The photo repo isn’t reachable. Create mailaudit-data first.",
   offline: "No connection, so photos didn’t sync. Nothing was lost.",
-  unreadable: "This device’s photos could not be read, so they were not backed up.",
+  unreadable: "This device’s photos could not be read, so nothing new was backed up.",
   conflict: "GitHub is busy. The ledger is pushed — tap Push again to finish the photos.",
   server: "GitHub had trouble with the photos. Tap Push again to finish.",
 };
@@ -3329,6 +3337,10 @@ export default function MailDayLedger() {
        none of them, so the `Date.now()` comparison is frozen too. */
     if (ahead) return "behind";
     if (photoUnreadable) return "photos-unreadable";
+    /* No key outranks "could not check": a keyless device on the private repo
+       cannot look at all, and "add its key" is the true, actionable answer.
+       With a key, the order is unchanged. */
+    if (remoteInfo && !remoteInfo.hasKey) return "no-key";
     if (backupUnknown) return "backup-unknown";
     /* remoteInfo is null until its effect runs, which is one commit after the
        first paint. Reading that as "no key" flashes the manila banner on every
@@ -4238,6 +4250,8 @@ export default function MailDayLedger() {
         setPhotoUnreadable(true);
         return null;
       }
+      setPhotoUnreadable(false);
+      setPhotoMsg((m) => (m?.text === PHOTO_SAYS.unreadable ? null : m));
       const { plan, remote } = survey;
 
       if (!plan.known) {
@@ -4580,7 +4594,7 @@ export default function MailDayLedger() {
       const fresh = freshSession.current;
       freshSession.current = false;
       if (document.visibilityState === "hidden" || syncingRef.current) return;
-      const p = await window.remote.peek().catch(() => null);
+      const p = await peekTwice();
       /* known:false is "we could not look", which must never render as "all
          clear" — leave the flag exactly as it was. Restructured into an early
          return so the merge below sits INSIDE the known branch rather than
@@ -4638,7 +4652,7 @@ export default function MailDayLedger() {
     const info = await window.remote.status().catch(() => null);
     if (!info?.hasKey) return;
     if (typeof window.remote.peek === "function") {
-      const p = await window.remote.peek().catch(() => null);
+      const p = await peekTwice();
       /* "could not look" means DO NOT PUSH. This is the whole reason peek is
          three-valued: pushing on an unknown remote state is how a device
          overwrites the other one. */
@@ -6342,7 +6356,7 @@ export default function MailDayLedger() {
                     : syncBroken === "behind"
                     ? "Your other device has newer lines — tap to bring them in"
                     : syncBroken === "photos-unreadable"
-                    ? "This device’s photos could not be read, so they were not backed up — tap to fix"
+                    ? "This device’s photos could not be read, so nothing new was backed up — tap to fix"
                     : syncBroken === "backup-unknown"
                     ? "The backup could not be checked — tap to fix"
                     : !syncBroken

@@ -61,14 +61,19 @@ function db() {
     dbPromise = new Promise((resolve, reject) => {
       const req = indexedDB.open(DB_NAME, 1);
       /* same reasoning as vdb()'s — a blocked open hangs rather than throws */
-      req.onblocked = () =>
+      req.onblocked = () => {
+        dbPromise = null;
         reject(new Error("photo database blocked by another tab"));
+      };
       req.onupgradeneeded = () => {
         if (!req.result.objectStoreNames.contains(STORE))
           req.result.createObjectStore(STORE);
       };
       req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
+      req.onerror = () => {
+        dbPromise = null;
+        reject(req.error);
+      };
     });
   return dbPromise;
 }
