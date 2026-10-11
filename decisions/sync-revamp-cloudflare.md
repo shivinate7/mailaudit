@@ -42,10 +42,19 @@ GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Del
 - Ruling, made by the orchestrator under the owner's grant to run the stages: a timed un-check beats a count that has no time. A timed absence exists only when someone made an un-check.
 - `mergeReceived` follows that ruling, and group 50 pins it. A merge that removes a check-in or an envelope says so in its notice.
 
+## Stage 4b rulings
+
+The orchestrator made these under the owner's grant to run the stages, on 2026-10-11.
+
+- **Switch:** the Worker moves to a new, empty Durable Object. Each device's first POST seeds it. The old object stays as the rollback copy. A re-seed from the old object could bring back an un-check through the per-key max.
+- **Milestones on a live apply:** a live apply takes a milestone only when it removes something. Otherwise the recent version is enough. A milestone on every apply would fill the 60-slot list in one mail day.
+- **Worker unreachable:** that cycle falls back to the GitHub merge, and the advisory line says the server failed. The merge is symmetric, so a second merge later is harmless.
+- **iPhone key:** the owner scans one QR code. If the key does not reach the home-screen app, the app gains a scan-key control.
+- **QR code:** macOS draws it with its own image tools. No new package is installed.
+
 ## Still open
 
 - Whether a Cloudflare Access login survives in an iOS home-screen app. This is untested.
-- The GitHub ledger keeps moving until the devices switch. So seed the Durable Object again from it at the switch.
 
 ## See also
 
