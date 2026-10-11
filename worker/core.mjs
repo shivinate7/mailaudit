@@ -1,6 +1,6 @@
 /* The pure half of the sync server: route(request, env, store) -> Response.
    No Worker, no Durable Object, no network. The merge is the app's own. */
-import { mergeLedger } from "../src/merge-rules.mjs";
+import { mergeLedger, canon } from "../src/merge-rules.mjs";
 
 const hex = async (s) =>
   [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))]
@@ -80,6 +80,7 @@ export async function route(request, env, store) {
   const cur = await store.read();
   const ledger = cur ? mergeLedger(cur.ledger, incoming).merged : incoming;
   if (new TextEncoder().encode(JSON.stringify(ledger)).length > MAX_LEDGER_BYTES) return json({ error: "too-large" }, 413);
+  if (cur && canon(ledger) === canon(cur.ledger)) return json({ ledger, rev: cur.rev });
   const rev = (cur?.rev ?? 0) + 1;
   await store.write(ledger, rev);
   await store.broadcast({ rev });

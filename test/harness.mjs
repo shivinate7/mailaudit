@@ -12,6 +12,10 @@ import path from "node:path";
 import { utf8ToBase64, base64ToUtf8, blobToBase64 } from "../src/b64.mjs";
 import { photoName, mimeFromName } from "../src/photo-rules.mjs";
 import { prunePlan } from "../src/version-rules.mjs";
+import { syncStatus } from "../src/sync-rules.mjs";
+import { mergeLedger } from "../src/merge-rules.mjs";
+/* the Worker's real size cap, so the mock refuses what the server refuses */
+import { MAX_LEDGER_BYTES } from "../worker/core.mjs";
 
 export const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -343,6 +347,8 @@ const remoteApi = {
        it first — see pushForce */
     const sending = overrideSha !== undefined ? overrideSha : remote.deviceSha;
     remote.calls.push({ op: "push", text, message, sha: sending });
+    /* held by holdRemotePushes(): the push is in flight until the test releases it */
+    if (remote.hold) await remote.hold;
     if (remote.fail)
       throw Object.assign(new Error(remote.fail), { code: remote.fail });
     if (remote.pushFailOnce) {
@@ -444,6 +450,126 @@ const remoteApi = {
   },
 };
 win.remote = remoteApi;
+
+/* window.sync: the Worker adapter of stage 4b. The contract is route() in
+   worker/core.mjs. GET answers {ledger, rev}, or 404 while the object is empty.
+   POST merges with the app's own mergeLedger and answers {ledger, rev}. A
+   missing or wrong key answers 401, and a merged ledger over the cap answers
+   413. The real adapter keeps the device key at the raw localStorage key
+   "mailday-sync:v1", outside the "mailday:" namespace. Here the key lives in
+   `sync.key`, outside `store`, so storage.list() cannot see it.
+   HARNESS CONTRACT ONLY. entry.jsx is not bundled here, so these cases prove
+   this mock, not the adapter. */
+const syncFresh = () => ({ key: null, ledger: null, rev: 0, netFail: false, tooBig: false, refused: false, calls: [], onRev: null });
+let sync = syncFresh();
+export const syncCalls = () => sync.calls;
+/* how many close functions connect() has handed out and that were called.
+   Kept outside `sync`, so a close from the unmounting app still counts after
+   boot() swaps in a fresh mock. */
+let syncCloses = 0;
+export const syncCloseCount = () => syncCloses;
+export const syncRev = () => sync.rev;
+/* another device's POST, as the Worker's rev channel reports it: the server
+   moves to `rev` (and to `ledger`, when given), then the open connect()
+   handler is told that rev */
+export const fireSyncRev = async (rev, ledger) => {
+  sync.rev = rev;
+  if (ledger) sync.ledger = ledger;
+  await act(async () => {
+    sync.onRev?.(rev);
+    await sleep(0);
+  });
+};
+/* holds every GitHub push until the returned release() is called, so a test can
+   change the ledger while a mirror push is in flight. Set after boot(), which
+   resets `remote`. */
+export const holdRemotePushes = () => {
+  let release;
+  remote.hold = new Promise((r) => (release = r));
+  return () => {
+    remote.hold = null;
+    release();
+  };
+};
+/* the rev channel fires `rev` without moving the server. A test uses it for the
+   rev of a POST still in flight, which the POST then gives when released. */
+export const fireSyncRevOnly = async (rev) => {
+  await act(async () => {
+    sync.onRev?.(rev);
+    await sleep(0);
+  });
+};
+/* holds every POST until the returned release() is called, so a test can fire
+   a rev while this device's own write is still in flight */
+export const holdSyncPosts = () => {
+  let release;
+  sync.hold = new Promise((r) => (release = r));
+  return () => {
+    sync.hold = null;
+    release();
+  };
+};
+/* a network failure: the adapter answers {status: null, body: null}, which
+   syncStatus maps to "unknown" */
+export const setSyncNetFail = (on) => {
+  sync.netFail = !!on;
+};
+/* a POST the server refuses as too big: a 413, which syncStatus maps to
+   "too-big" */
+export const setSyncTooBig = (on) => {
+  sync.tooBig = !!on;
+};
+/* the Worker refuses this device's key: every call answers 401 */
+export const setSyncKeyRefused = (on) => {
+  sync.refused = !!on;
+};
+const syncErr = (code) => Object.assign(new Error(code), { code });
+/* every reply is {status, body, code}, code = syncStatus(status), as the
+   real adapter in entry.jsx answers it */
+const syncReply = (status, body) => ({ status, body, code: syncStatus(status) });
+const syncApi = {
+  async hasKey() {
+    return !!sync.key;
+  },
+  async setKey(k) {
+    const v = String(k || "").trim();
+    if (!/^[A-Za-z0-9_-]+$/.test(v)) throw syncErr("bad-key");
+    sync.key = v;
+  },
+  async get() {
+    sync.calls.push({ op: "get", keyed: !!sync.key });
+    if (sync.netFail) return syncReply(null, null);
+    if (sync.refused || !sync.key) return syncReply(401, { error: "unauthorized" });
+    if (sync.ledger == null) return syncReply(404, { error: "empty" });
+    return syncReply(200, { ledger: sync.ledger, rev: sync.rev });
+  },
+  async post(ledger) {
+    sync.calls.push({ op: "post", keyed: !!sync.key, body: JSON.stringify(ledger) });
+    /* held by holdSyncPosts(): the POST is in flight until the test releases it */
+    if (sync.hold) await sync.hold;
+    if (sync.netFail) return syncReply(null, null);
+    if (sync.refused || !sync.key) return syncReply(401, { error: "unauthorized" });
+    if (sync.tooBig) return syncReply(413, { error: "too-big" });
+    if (!ledger || ledger.mailday !== 1 || !Array.isArray(ledger.items))
+      return syncReply(400, { error: "bad ledger" });
+    const merged = sync.ledger ? mergeLedger(sync.ledger, ledger).merged : ledger;
+    const size = new TextEncoder().encode(JSON.stringify(merged)).length;
+    if (size > MAX_LEDGER_BYTES) return syncReply(413, { error: "too-large" });
+    sync.ledger = merged;
+    sync.rev += 1;
+    return syncReply(200, { ledger: merged, rev: sync.rev });
+  },
+  /* the real adapter returns a close function whether or not a key is set.
+     onRev is called only by fireSyncRev() in the tests. */
+  connect(onRev) {
+    sync.calls.push({ op: "connect", keyed: !!sync.key });
+    sync.onRev = onRev;
+    return () => {
+      syncCloses += 1;
+    };
+  },
+};
+win.sync = syncApi;
 
 export const resetRemote = (seedText) => {
   remote = {
@@ -599,7 +725,82 @@ export function report() {
 
 /* ---------- DOM helpers ---------- */
 
-export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/* ── the virtual clock (harness only) ──
+   Groups 53 to 56 drive the app's timers on demand, not in real time. While
+   the clock is installed, Date.now and every setTimeout of 1 ms or more run on
+   a virtual clock. sleep(ms) advances that clock by ms, and fires each timer
+   that comes due, in order. A zero delay, and every real wait, stays real.
+   Groups 1 to 52 never install it, so their real timers are untouched.
+   Node's own timers are captured first, so the harness can always wait for
+   real. No src/ code changes. */
+const realSetTimeout = globalThis.setTimeout;
+const realClearTimeout = globalThis.clearTimeout;
+const realSetImmediate = globalThis.setImmediate;
+const realDateNow = Date.now;
+let vclock = null;
+/* Between two virtual timers, the app's async work (IndexedDB, merges, state
+   commits) still runs on real turns. A few real milliseconds let it settle. */
+const yieldReal = async () => {
+  for (let i = 0; i < 2; i++) await new Promise((r) => realSetTimeout(r, 5));
+  await new Promise((r) => realSetImmediate(r));
+};
+export const installClock = () => {
+  if (vclock) return;
+  vclock = { now: realDateNow(), timers: [], seq: 0 };
+  Date.now = () => vclock.now;
+  globalThis.setTimeout = (fn, ms = 0, ...args) => {
+    if (!(Number(ms) >= 1)) return realSetTimeout(fn, ms, ...args);
+    const h = { id: ++vclock.seq, at: vclock.now + Number(ms), fn, args, virtual: true };
+    vclock.timers.push(h);
+    return h;
+  };
+  globalThis.clearTimeout = (h) => {
+    if (h && h.virtual) {
+      vclock.timers = vclock.timers.filter((x) => x !== h);
+      return;
+    }
+    return realClearTimeout(h);
+  };
+};
+export const uninstallClock = () => {
+  if (!vclock) return;
+  Date.now = realDateNow;
+  globalThis.setTimeout = realSetTimeout;
+  globalThis.clearTimeout = realClearTimeout;
+  vclock = null;
+};
+const advanceClock = (ms) => {
+  const target = vclock.now + ms;
+  /* Each timer runs inside its own act, so React commits its effects at the
+     timer's own virtual time. Inside one long act, effects wait for the end,
+     and the timers they set would land after the target. */
+  const run = async () => {
+    let quiet = 0;
+    while (quiet < 3) {
+      await yieldReal();
+      const due = vclock.timers
+        .filter((t) => t.at <= target)
+        .sort((a, b) => a.at - b.at || a.id - b.id)[0];
+      if (!due) {
+        quiet += 1;
+        continue;
+      }
+      quiet = 0;
+      vclock.timers = vclock.timers.filter((t) => t !== due);
+      vclock.now = Math.max(vclock.now, due.at);
+      await act(async () => {
+        due.fn(...due.args);
+        await yieldReal();
+      });
+    }
+    vclock.now = target;
+  };
+  return run();
+};
+export const sleep = (ms) =>
+  vclock && Number(ms) >= 1
+    ? advanceClock(Number(ms))
+    : new Promise((r) => realSetTimeout(r, ms));
 export const text = () => document.body.textContent;
 export const buttons = () => [...document.querySelectorAll("button")];
 export const btn = (re) => buttons().find((b) => re.test(b.textContent));
@@ -793,6 +994,16 @@ export async function boot(state, photos, opts = {}) {
   if (opts.remotePrivate) remote.private = true;
   if (opts.noRemote) delete win.remote;
   else win.remote = remoteApi;
+  /* a fresh device has no sync key; each boot is a new device */
+  sync = syncFresh();
+  win.sync = syncApi;
+  /* a seeded device key and server ledger, set before mount so the app sees
+     them at its first read. The server is at rev 1 once it holds a ledger. */
+  if (opts.syncKey) sync.key = opts.syncKey;
+  if (opts.syncLedger) {
+    sync.ledger = opts.syncLedger;
+    sync.rev = 1;
+  }
   if (state) store["mailday:v1"] = JSON.stringify(state);
   document.getElementById("root").innerHTML = "";
   await act(async () => {

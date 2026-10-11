@@ -265,3 +265,10 @@ export function mergeSummary(stats) {
     removal || " Nothing of yours was lost."
   }`;
 }
+
+/* Key-order-independent form; array order still counts, so a reorder reads as changed (safe: one extra write). */
+export const canon = (v) =>
+  JSON.stringify(v, (_, x) =>
+    x && typeof x === "object" && !Array.isArray(x)
+      ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, x[k]]))
+      : x);
