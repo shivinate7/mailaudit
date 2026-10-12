@@ -110,10 +110,11 @@ const clone = (v) => structuredClone(v);
 /* initial is {ledger, rev} or null for an empty store. The photo half of the
    store is three methods, named here as the contract the Durable Object
    adapter (worker/index.mjs) must provide:
-     photoList()            -> [id, ...]
+     photoList()            -> [{id, mime}, ...]   (the mime rides on the row, so a list needs no bytes)
      photoGet(id)           -> {mime, bytes} | null
      photoPut(id, mime, bytes) -> void   (the route, not the store, enforces write-once)
-   photoWrites counts every photoPut call, so a route that writes twice shows. */
+   photoWrites counts every photoPut call, so a route that writes twice shows.
+   photoGets counts every photoGet call, so a list that reads bytes shows. */
 function fakeStore(initial = null) {
   const s = {
     state: initial ? clone(initial) : null,
@@ -122,9 +123,11 @@ function fakeStore(initial = null) {
     order: [],
     photos: new Map(),
     photoWrites: [],
+    photoGets: [],
   };
-  s.photoList = async () => [...s.photos.keys()];
+  s.photoList = async () => [...s.photos.entries()].map(([id, p]) => ({ id, mime: p.mime }));
   s.photoGet = async (id) => {
+    s.photoGets.push(id);
     const p = s.photos.get(id);
     return p ? { mime: p.mime, bytes: p.bytes.slice() } : null;
   };
@@ -1063,6 +1066,16 @@ await test("12.13 a POST whose Content-Length is over MAX_PHOTO_BYTES gets 413 b
   eq(res.status, 413, "status");
   eq(bodyRead, false, "body read before the size check");
   eq(s.photoWrites.length, 0, "photoPut calls");
+});
+
+await test("12.14 GET /photos reads no photo bytes: zero photoGet calls, and the names still carry the extension", async () => {
+  const s = empty();
+  s.photos.set("pho-aaa111", { mime: "image/jpeg", bytes: PHO_JPG });
+  s.photos.set("pho-bbb222", { mime: "image/png", bytes: PHO_OTHER });
+  const res = await sendPhoto(s, "GET", "/photos", { key: KEY_PHONE });
+  eq(res.status, 200, "status");
+  eq(s.photoGets.length, 0, "photoGet calls on the list");
+  eq(((await res.json()).ids || []).slice().sort(), ["pho-aaa111.jpg", "pho-bbb222.png"], "names");
 });
 
 report();
