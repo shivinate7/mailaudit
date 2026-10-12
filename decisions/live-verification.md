@@ -74,10 +74,9 @@ It is worth moving to vitest and testing-library if this grows much further. The
 
 A probe deploy sets its own Durable Object name with the STORE_NAME variable, so a probe never touches the real store. Each lane names its probe below. A probe name is never ledger-v3, the real store, or ledger-v2, which holds an earlier probe's data.
 
-Owner ruling, 2026-10-12: a probe deploy of the Worker is granted, under its own name and store. A live deploy needs the owner's word again.
+Owner rulings, 2026-10-12: a probe deploy of the Worker was granted under its own name and store. After the probe passed, the owner granted the live deploy ("Deploy live").
 
-- **W2a photo route, probe-w2a.** Still to run on Cloudflare: the photos table is created through the Durable Object's SQLite API. A POST then a GET return the same bytes, with the type from the name. A second POST keeps the first bytes. A photo over 1.9 MB gets 413.
-- **W3a daily snapshots and /health, probe-w3a.** Still to run on Cloudflare: the snapshots table is created. The first changing write of a UTC day stores one snapshot, and a later one stores none. GET /health with no key returns only the last write time. The list and get snapshot routes answer with a device key.
+- **W2a photo route and W3a daily snapshots and /health: run on 2026-10-12.** See "Worker probe results" and "Live deploy" below. W2a and W3a need no second run.
 - **W2b, W3b, W3c, W3d and W3e.** No probe is named. Each waits for its brief.
 
 No test runs the Durable Object adapter. So the SQLite calls in worker/index.mjs are unproven until a probe runs.
@@ -105,3 +104,11 @@ Two traps found while probing. Both are about a probe deploy, not about the code
 
 - A secret change does not reach a Durable Object that is already running. The key got 401 until a deploy followed the secret change. Set the secret, then deploy.
 - A deploy that changes STORE_NAME serves both names for a short while. Ledger and photo writes then land in different stores and read back as missing. Deploy the same STORE_NAME twice before the probe, so every live version agrees.
+
+## Live deploy
+
+Run on 2026-10-12 at 15:39 UTC from main at 2cecd18, with wrangler 4.149.0. The new version is 85a7a137. The rollback version is 1f09b61e.
+
+- Before and after, the ledger read rev 3, 908 items and 4 envelopes.
+- The Durable Object ran the old code for about 3 minutes after the deploy, then the new code. Measured: /health gave 401 until 15:40:31, then 200 by 15:43:09. Check again after a few minutes before calling a deploy failed.
+- After: GET /health with no key gave 200 with only `at`. GET /snapshots gave `[]`. GET /photos gave `{"ids":[]}`. /ledger and /photos with no key gave 401.
