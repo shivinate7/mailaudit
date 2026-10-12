@@ -182,6 +182,66 @@ const cancelAt = buttons().findIndex((b) => b.textContent.trim() === "Cancel");
 ok(armedAt >= 0 && cancelAt > armedAt, "65.8 an armed Reset keeps its place, and Cancel sits after it");
 await click(cancelBtn0(), "cancel");
 
+/* GitHub replies the user never sees (owner ruling 2026-10-12, default 5). The
+   mirror retries a refused GitHub write quietly, so a refusal must not reach the
+   screen: no GitHub, no key and no "Needs attention". Each refusal is one push
+   GitHub turns away, then the Sync panel opened from its row. The helpers here
+   sit above group 1, so they use no helper defined further down. */
+const GH_COPY65 = /GitHub|\bkey\b|Needs attention/i;
+const BACKUP_UNKNOWN65 = /backup.*(could not|couldn.t) be checked/i;
+for (const [code, label] of [
+  ["auth", "401"],
+  ["forbidden", "403"],
+  ["rate-limit", "rate-limit"],
+  ["server", "server"],
+]) {
+  await boot({ items: ITEMS, received: {} }, null, { remoteKey: "github_pat_testtoken" });
+  await background();
+  remote.fail = code;
+  await background();
+  await foreground();
+  await openSync();
+  remote.fail = null;
+  ok(
+    !GH_COPY65.test(text()),
+    `65.${{ auth: 9, forbidden: 10, "rate-limit": 11, server: 12 }[code]} a GitHub ${label} reply shows no GitHub, key or Needs attention copy`
+  );
+}
+/* the control for the four above: a healthy device with the same key shows none
+   of it, and the panel is really open, so the regex is not a constant red */
+await boot({ items: ITEMS, received: {} }, null, { remoteKey: "github_pat_testtoken" });
+await background();
+await openSync();
+ok(
+  /Last sync/.test(text()) && !GH_COPY65.test(text()),
+  "65.13 a healthy device with the same key shows none of it either (the control)"
+);
+
+/* a GitHub peek that cannot read: the write is held, and no line tells the user */
+for (const [path, look] of [
+  ["foreground peek", foreground],
+  ["autoPush", background],
+]) {
+  await boot({ items: ITEMS, received: {} }, null, { remoteKey: "github_pat_testtoken" });
+  await background(); /* a healthy write first, so "never synced" is not the reason */
+  remote.peekUnknown = "offline";
+  await look();
+  remote.peekUnknown = null;
+  ok(
+    !BACKUP_UNKNOWN65.test(text()) && !/Needs attention/.test(text()),
+    `65.14 a GitHub peek that cannot read sets no visible backup-unknown line (${path})`
+  );
+}
+
+/* the Ledger tab is the gear: a hub circle inside a toothed outline (L11b). The
+   outline is the path of 24 points, so a plain circle or a bar would fail. */
+const ledgerIcon65 = viewTabs().find((b) => tabName(b) === "Ledger")?.querySelector("svg");
+const ledgerPath65 = ledgerIcon65?.querySelector("path")?.getAttribute("d") ?? "";
+ok(
+  !!ledgerIcon65?.querySelector("circle") && (ledgerPath65.match(/L/g) ?? []).length >= 16,
+  "65.15 the Ledger tab icon is a gear: a hub circle and a toothed outline"
+);
+
 /* ── 1. mystery mail hides what doesn't apply, keeps what does ─────────── */
 
 await fresh();
@@ -1464,7 +1524,13 @@ await drain();
 await sleep(60);
 /* Re-pointed: Push anyway is gone (owner ruling 2026-10-12). What must still
    hold is that a photo conflict puts no ask on screen at all. */
-eq(forbiddenIn(), [], "30.11 a photo conflict puts no Push anyway or Pull on screen");
+/* Re-pointed: "Push anyway" can no longer appear, so the old check could never
+   fail. The live way a conflict could reach the user is an armed two-tap or a
+   GitHub line, and either one is what this now catches. */
+ok(
+  !btn(/^Tap again to/) && forbiddenIn().length === 0 && !GITHUB_STATE_TEXT.test(text()),
+  "30.11 a photo conflict arms no two-tap and puts no GitHub verb or state on screen"
+);
 eq(remoteText() && JSON.parse(remoteText()).items.length, ITEMS.length,
   "30.12 and the ledger push itself still landed");
 remote.photoFail = null;
@@ -3618,6 +3684,14 @@ ok(
 );
 
 
+/* The Push button left the UI (owner ruling 2026-10-12). The GitHub write it
+   used to start is autoPush, and backgrounding the app runs autoPush at once,
+   so a test that needs the write on disk backgrounds instead of clicking. */
+const mirrorPush = async () => {
+  await background();
+  await settle();
+};
+
 /* ── 42. the save indicator does not move the list ────────────────────────
    `.mdl-foot` is a wrapping flex row, so an indicator that exists only while
    a save is in flight can add a whole LINE to it — and by the time a card is
@@ -3844,8 +3918,7 @@ ok(!!bar(bolt()), "44.8 and carries the bar for a partly-received item");
 await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { remote: null });
 await openSync();
 await saveGitHubKey();
-await click(btn(/^Push$/), "get in step");
-await settle();
+await mirrorPush();
 
 /* Age the write past the 24h threshold while the READ stays fresh — a phone
    that merged this morning and has not edited anything since.
@@ -3858,7 +3931,9 @@ await settle();
    survived every assertion. */
 remote.pushedAt = Date.now() - 3 * 86400000;
 remote.pulledAt = Date.now();
-await click(btn(/tap to/), "close the panel, refreshing status on the way");
+/* the Sync row shuts the panel: the advisory line is absent on a healthy device */
+await onLedger();
+await click(cell(/^Sync/), "close the panel, refreshing status on the way");
 await settle();
 ok(
   !/tap to fix/.test(text()),
@@ -3873,9 +3948,17 @@ ok(
    that is genuinely behind — staleness is the LAST branch for this reason. */
 remote.content = utf8ToBase64(LAPTOP_PUSHED);
 remote.sha = "sha-45-behind";
+/* The "newer lines" copy left the UI with the GitHub verbs (owner ruling
+   2026-10-12, default 5), so the guard is the live behaviour it protected: a
+   device behind GitHub does not write over it, however fresh its pulledAt. */
+const pushesBefore45 = pushes().length;
 await foreground();
-await settle();
-ok(/newer lines/.test(text()), "45.3 a fresh pulledAt never masks being behind");
+await mirrorPush();
+eq(
+  pushes().length,
+  pushesBefore45,
+  "45.3 a fresh pulledAt never masks being behind: a behind device does not write over GitHub"
+);
 
 /* ── 46. the parser keeps only TCG purchases ───────────────────────────────
    Invariant parser-filters: a row enters the checklist only when Type is
@@ -3972,6 +4055,9 @@ win.photos.keys = async () => {
 };
 try {
   await dropFile("ledger.json", KEYS_DOWN_LEDGER);
+  /* Re-import CSV now lives on the Ledger tab (L11b), so the drop lands there;
+     the pile's footer is read back on the Orphaned tab that shows it */
+  await goTo("orphaned");
   /* the Orphaned pile's photo footer: a leaf div, since the count and its copy
      are text nodes with no element between them. The lookup takes the FIRST
      leaf div in DOM order whose text starts "N photo" or "N photos". The
@@ -3996,48 +4082,9 @@ try {
   win.photos.keys = realKeys;
 }
 
-/* the grid's cells, read off the screen; Push is in every state of this panel */
-const gridCells = () => [...(btn(/^Push$/)?.parentElement?.children ?? [])];
-/* a full-row span as the browser reads it back. jsdom keeps the spacing that was
-   written, so spacing is stripped before the compare. `1 / 3` is the full row of
-   a two-column grid; `span 2` is the same claim written another way */
-const FULL_ROW = ["1/-1", "span2", "1/3"];
-const spanOf = (c) => (c?.style.gridColumn ?? "").replace(/\s+/g, "");
-
-/* odd: a device behind the other one gets Push, Merge and Pull, three cells */
-await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
-  remote: LAPTOP_PUSHED,
-});
-await openSync();
-await settle();
-{
-  const cells = gridCells();
-  /* only the last cell spans, and the span must cover the whole row */
-  const rest = cells.slice(0, -1);
-  eq(
-    {
-      odd: cells.length % 2 === 1,
-      merge: !!btn(/^Merge$/),
-      last: FULL_ROW.includes(spanOf(cells.at(-1))),
-      rest: rest.map(spanOf),
-    },
-    { odd: true, merge: true, last: true, rest: rest.map(() => "") },
-    "47.3 an odd count in the sync grid gives the last cell a full-row span"
-  );
-}
-
-/* even: a device with no key and nothing to merge gets Push and Pull, two cells */
-await boot({ items: ITEMS, received: {} });
-await openSync();
-await settle();
-{
-  const cells = gridCells();
-  eq(
-    { odd: cells.length % 2 === 1, spans: cells.map(spanOf) },
-    { odd: false, spans: cells.map(() => "") },
-    "47.4 an even count sets no span on any cell"
-  );
-}
+/* 47.3, 47.4 and 47.7 retired: they measured the Sync panel's option grid
+   (Push, Merge, Pull cells, odd last cell spanning the row), and that grid left
+   the UI with the verbs (owner ruling 2026-10-12). Nothing renders a span now. */
 
 /* The unreadable copy in PHOTO_SAYS. Module scope: 47.5 and group 48 both use it. */
 const PHOTO_UNREADABLE = /photos.*(could not|couldn.t) be read/i;
@@ -4057,8 +4104,9 @@ const PHOTO_UNREADABLE = /photos.*(could not|couldn.t) be read/i;
   win.photos.keys = async () => {
     throw new Error("local photo store unreadable");
   };
+  const pushesBefore47 = pushes().length;
   try {
-    await click(btn(/^Push$/), "push with an unreadable local store");
+    await mirrorPush();
     await sleep(60);
   } finally {
     win.photos.keys = keysBefore;
@@ -4067,7 +4115,7 @@ const PHOTO_UNREADABLE = /photos.*(could not|couldn.t) be read/i;
   const PHOTO_LINE =
     /Photos need|photo repo|photos didn’t sync|photo uploads|to finish the photos|trouble with the photos|can’t write photos|photos sent|still to go|not on GitHub|never pushed|now gone/i;
   const pushed = remoteText() ? JSON.parse(remoteText()) : {};
-  ok(!!btn(/^Pushed ✓$/), "47.5 the push still finishes, with the ledger on GitHub");
+  ok(pushes().length > pushesBefore47, "47.5 the push still finishes, with the ledger on GitHub");
   eq(
     pushed.envelopes?.[0]?.photos,
     ["pho-k"],
@@ -4091,16 +4139,20 @@ const PHOTO_UNREADABLE = /photos.*(could not|couldn.t) be read/i;
    the survey calls pho-a lost and the line shows: this is the kill for the
    read-as-empty mutant. */
 {
-  await boot({ items: ITEMS, received: {} }, null, { remote: PHOTO_LEDGER });
-  await openSync();
-  await saveGitHubKey(); /* the key is what makes the photo store readable */
+  /* Re-pointed: Pull left the UI (owner ruling 2026-10-12). A cold mount is a
+     fresh session, so the ahead remote merges with no tap, and the photo store
+     is made unreadable before the mount so that merge meets it. The key is what
+     makes the photo store readable. */
   const keysBefore = win.photos.keys;
   win.photos.keys = async () => {
     throw new Error("local photo store unreadable");
   };
   try {
-    await click(btn(/Pull from GitHub/), "arm");
-    await click(btn(/Tap again to replace/), "confirm");
+    await boot({ items: ITEMS, received: {} }, null, {
+      remoteAtBoot: PHOTO_LEDGER,
+      remoteKey: "github_pat_testtoken",
+    });
+    await settle();
     await sleep(SAVE_WAIT);
   } finally {
     win.photos.keys = keysBefore;
@@ -4113,37 +4165,25 @@ const PHOTO_UNREADABLE = /photos.*(could not|couldn.t) be read/i;
   ok(!/not on GitHub/i.test(text()), "47.6 and reports no photo as lost");
 }
 
-/* ---- the grid is two columns ----
-   The full-row span in 47.3 only means half the panel if the grid is two
-   columns. jsdom has no layout, so this reads the inline style. The mutant is
-   optGrid(3) on the sync grid, which every span check above still passes. */
-{
-  const grid = btn(/^Push$/)?.parentElement;
-  ok(
-    /^repeat\(\s*2\s*,/.test(grid?.style.gridTemplateColumns ?? ""),
-    "47.7 the sync grid is two columns"
-  );
-}
-
 /* ── 48. "I could not look" is always visible ─────────────────────────────
    Records photo-ids-unreadable-local, photo-errors-never-hit-pushstate and
    ruled-head-one-advisory-entrance. Stage 1 of the sync revamp.
 
-   Each path below is silent today. Once fixed, the builder must put these
+   Each path below is silent today. Once fixed, the builder must put the photo
    words on screen. The tests match the regexes, not exact copy. Any wording
    that matches is accepted. Examples that match:
 
      photo store unreadable (48.1, 48.2, 48.3, 48.5): PHOTO_UNREADABLE
        "This device’s photos could not be read, so they were not backed up."
-     remote unknown (48.4): BACKUP_UNKNOWN
-       "The backup could not be checked — tap to fix"
+     remote unknown: BACKUP_UNKNOWN, retired from the UI by 48.4 (default 5)
 
    The photo words may sit in the photo box (48.1, 48.3) or on the advisory
-   line (48.2). The remote words must sit on the advisory line (48.4). The
-   advisory line is the one disclosure button, so `onLine` looks only there.
+   line (48.2). The advisory line is the one disclosure button, so `onLine`
+   looks only there.
 
-   A photo error never sets pushState, so "Push anyway" stays away (48.1,
-   48.3). The ledger push still finishes, so "Pushed ✓" still shows.
+   A photo error never sets pushState, so no conflict is armed (48.1, 48.3).
+   The ledger write still finishes. "Push anyway" and "Pushed ✓" left the UI
+   (owner ruling 2026-10-12), so the write itself is what the cases count.
 
    Each fixture carries exactly one reason for the line. A healthy push first
    clears "never synced", so the reason under test is the only one left. The
@@ -4160,9 +4200,10 @@ const unreadable = async () => {
 await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], KEY);
 await openSync();
 const keysBefore481 = win.photos.keys;
+const pushes481 = pushes().length;
 win.photos.keys = unreadable;
 try {
-  await click(btn(/^Push$/), "push with an unreadable local store");
+  await mirrorPush();
   await sleep(60);
 } finally {
   win.photos.keys = keysBefore481;
@@ -4170,11 +4211,10 @@ try {
 eq(
   {
     words: PHOTO_UNREADABLE.test(text()),
-    anyway: !!btn(/Push anyway/),
-    pushed: !!btn(/^Pushed ✓$/),
+    ran: pushes().length > pushes481,
   },
-  { words: true, anyway: false, pushed: true },
-  "48.1 an unreadable local store is said so, never arms Push anyway, and the ledger still lands"
+  { words: true, ran: true },
+  "48.1 an unreadable local store is said so, and the ledger still lands"
 );
 
 /* ---- 48.2 the same store, read by the unattended push, panel shut ---- */
@@ -4193,10 +4233,9 @@ try {
 eq(
   {
     ran: pushes().length > pushesBefore482,
-    panelOpen: !!btn(/^Push$/),
     onLine: onLine(PHOTO_UNREADABLE),
   },
-  { ran: true, panelOpen: false, onLine: true },
+  { ran: true, onLine: true },
   "48.2 an unreadable local store shows on the advisory line with the panel shut"
 );
 
@@ -4204,26 +4243,29 @@ eq(
 await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], KEY);
 await openSync();
 const getBefore483 = win.photos.get;
+const pushes483 = pushes().length;
 win.photos.get = unreadable;
 try {
-  await click(btn(/^Push$/), "push where the blob cannot be read");
+  await mirrorPush();
   await sleep(60);
 } finally {
   win.photos.get = getBefore483;
 }
 eq(
   {
-    pushed: !!btn(/^Pushed ✓$/),
+    ran: pushes().length > pushes483,
     words: PHOTO_UNREADABLE.test(text()),
     sent: remotePhotoIds(),
-    anyway: !!btn(/Push anyway/),
   },
-  { pushed: true, words: true, sent: [], anyway: false },
+  { ran: true, words: true, sent: [] },
   "48.3 a blob that cannot be read is said so, not skipped as if swept"
 );
 
 /* ---- 48.4 a remote it cannot look at, on the foreground and unattended ----
-   Two boots, one per path, so a fix on one path cannot pass the other. */
+   Two boots, one per path, so a fix on one path cannot pass the other.
+   Re-pointed (owner ruling 2026-10-12, default 5): the GitHub peek's
+   "could not be checked" line is GitHub copy, so the user sees nothing. What
+   stays is the write guard: a look that cannot read writes nothing. */
 for (const [path, look] of [
   ["foreground peek", foreground],
   ["autoPush", background],
@@ -4232,40 +4274,39 @@ for (const [path, look] of [
   await background(); /* a healthy push first, so "never synced" is not the reason */
   await settle();
   remote.peekUnknown = "offline";
-  const before = BACKUP_UNKNOWN.test(text());
   const peeksBefore = peeks().length;
+  const pushesBefore = pushes().length;
   await look();
   await sleep(60);
   remote.peekUnknown = null;
   eq(
     {
       looked: peeks().length > peeksBefore,
-      before,
-      onLine: onLine(BACKUP_UNKNOWN),
+      wrote: pushes().length > pushesBefore,
+      copy: BACKUP_UNKNOWN.test(text()),
     },
-    { looked: true, before: false, onLine: true },
-    `48.4 a remote it could not look at says so on the advisory line (${path})`
+    { looked: true, wrote: false, copy: false },
+    `48.4 a remote it could not look at writes nothing and shows no GitHub line (${path})`
   );
 }
 
 /* ---- 48.5 the healthy case stays quiet, so a fix that always shows fails ---- */
 await boot({ items: ITEMS, received: {} }, null, KEY);
 await openSync();
-await click(btn(/^Push$/), "healthy push, no photos");
-await sleep(60);
+const pushes485a = pushes().length;
+await mirrorPush();
 eq(
   {
-    pushed: !!btn(/^Pushed ✓$/),
+    ran: pushes().length > pushes485a,
     words: PHOTO_UNREADABLE.test(text()) || BACKUP_UNKNOWN.test(text()),
   },
-  { pushed: true, words: false },
+  { ran: true, words: false },
   "48.5 a ledger with no photos and a readable store says nothing about photos"
 );
 
 await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], KEY);
 await openSync();
-await click(btn(/^Push$/), "healthy push with a photo");
-await sleep(60);
+await mirrorPush();
 const peeksBefore485 = peeks().length;
 await foreground();
 await sleep(60);
@@ -4274,9 +4315,8 @@ eq(
     landed: remotePhotoIds(),
     looked: peeks().length > peeksBefore485,
     words: PHOTO_UNREADABLE.test(text()) || BACKUP_UNKNOWN.test(text()),
-    anyway: !!btn(/Push anyway/),
   },
-  { landed: ["pho-k"], looked: true, words: false, anyway: false },
+  { landed: ["pho-k"], looked: true, words: false },
   "48.5 a readable store and a known remote show neither line, and the photo really went up"
 );
 
@@ -4286,12 +4326,12 @@ await openSync();
 const keysBefore485 = win.photos.keys;
 win.photos.keys = unreadable;
 try {
-  await click(btn(/^Push$/), "push with an unreadable store");
+  await mirrorPush();
   await sleep(60);
 } finally {
   win.photos.keys = keysBefore485;
 }
-await click(btn(/^Push(ed ✓)?$/), "push again once the store reads");
+await mirrorPush(); /* the store reads again: the next write sends the photo */
 await sleep(60);
 eq(
   { words: PHOTO_UNREADABLE.test(text()), landed: remotePhotoIds() },
@@ -4302,9 +4342,9 @@ eq(
 /* ---- 48.6 a keyless cold start on the private ledger ----
    The 38c device opened cold: the private ledger is seeded before the mount, so
    the mount's own look is the only remote read, and it is refused. No pull runs
-   here. 38c.1 misses this bug because its failed pull sets remoteMsg, and that
-   outranks backupUnknown. */
-const NO_KEY_LINE = /tap to (set it up|add its key)/;
+   here. Re-pointed (owner ruling 2026-10-12, default 5): the missing GitHub key
+   and the unchecked backup are GitHub copy, so the user sees neither line. The
+   look itself still runs. */
 await boot({ items: ITEMS, received: {} }, null, {
   remoteAtBoot: LAPTOP_PUSHED,
   remotePrivate: true,
@@ -4313,50 +4353,19 @@ await settle();
 eq(
   {
     looked: peeks().length > 0,
-    noKey: onLine(NO_KEY_LINE),
+    noKeyLine: onLine(/tap to (set it up|add its key)/),
     unknownWords: BACKUP_UNKNOWN.test(text()),
   },
-  { looked: true, noKey: true, unknownWords: false },
-  "48.6 a keyless cold start on the private ledger says the key is missing, not that the backup could not be checked"
+  { looked: true, noKeyLine: false, unknownWords: false },
+  "48.6 a keyless cold start on the private ledger shows no GitHub line (default 5)"
 );
 
-/* ---- 48.7 an unreadable photo push, then a readable pull or merge ----
-   Only the push path clears the unreadable flag today. Both paths below read
-   the remote with the photo store readable and push nothing: the manual pull,
-   and the unattended merge (alsoPush false). The incoming ledger references
-   pho-k, so the readable survey really runs. */
+/* ---- 48.7 an unreadable photo push, then a readable merge ----
+   The manual pull that used to clear the words left the UI with Pull. The
+   unattended merge below is the path that remains, so it is the one kept.
+   The incoming ledger references pho-k, so the readable survey really runs. */
 const photoListCalls = () => remote.calls.filter((c) => c.op === "listPhotos").length;
 const brokenLine = () => onLine(/tap to (?!close)/);
-
-/* the manual pull */
-await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], KEY);
-await openSync();
-const keysBefore487a = win.photos.keys;
-win.photos.keys = unreadable;
-try {
-  await click(btn(/^Push$/), "push with an unreadable local store");
-  await sleep(60);
-} finally {
-  win.photos.keys = keysBefore487a;
-}
-const before487a = PHOTO_UNREADABLE.test(text());
-const pushes487a = pushes().length;
-const lists487a = photoListCalls();
-await click(btn(/Pull from GitHub/), "arm pull");
-await click(btn(/Tap again to replace/), "confirm pull");
-await sleep(SAVE_WAIT);
-eq(
-  {
-    before: before487a,
-    listed: photoListCalls() > lists487a,
-    applied: remote.deviceSha === remote.sha,
-    pushed: pushes().length - pushes487a,
-    words: PHOTO_UNREADABLE.test(text()),
-    line: brokenLine(),
-  },
-  { before: true, listed: true, applied: true, pushed: 0, words: false, line: false },
-  "48.7 a readable pull clears the unreadable-photos words (manual pull)"
-);
 
 /* the unattended merge: the other device is ahead, and the device is away long
    enough to be a fresh session, so autoMerge runs with alsoPush false */
@@ -4365,7 +4374,7 @@ await openSync();
 const keysBefore487b = win.photos.keys;
 win.photos.keys = unreadable;
 try {
-  await click(btn(/^Push$/), "push with an unreadable local store");
+  await mirrorPush();
   await sleep(60);
 } finally {
   win.photos.keys = keysBefore487b;
@@ -4412,17 +4421,17 @@ for (const [path, look] of [
       looked: peeks().length > peeksBefore,
       consumed,
       words: BACKUP_UNKNOWN.test(text()),
-      onLine: onLine(BACKUP_UNKNOWN),
     },
-    { looked: true, consumed: true, words: false, onLine: false },
+    { looked: true, consumed: true, words: false },
     `48.8 one transient unknown look does not raise the line (${path})`
   );
 }
 
-/* ---- 48.9 a look that stays unknown on both tries still raises the line ----
-   The other side of the retry. 48.4 covers one unknown look, so this adds the
-   recovery: a later known look must clear the line, or a retry that latches
-   would pass 48.4. */
+/* ---- 48.9 a look that stays unknown on both tries holds the write ----
+   The other side of the retry. Re-pointed (owner ruling 2026-10-12, default
+   5): no line is shown either way. What the case still guards is that a
+   device which could not look does not write, and that a later known look
+   lets the write through again. */
 for (const [path, look] of [
   ["foreground peek", foreground],
   ["autoPush", background],
@@ -4431,16 +4440,18 @@ for (const [path, look] of [
   await background(); /* a healthy push first, so "never synced" is not the reason */
   await settle();
   remote.peekUnknown = "offline";
+  const pushesBefore = pushes().length;
   await look();
   await sleep(60);
-  const shown = onLine(BACKUP_UNKNOWN);
   remote.peekUnknown = null;
-  await look();
+  const held = pushes().length === pushesBefore;
+  /* the write resumes on the unattended path, the only one that writes */
+  await background();
   await sleep(60);
   eq(
-    { shown, cleared: !BACKUP_UNKNOWN.test(text()) },
-    { shown: true, cleared: true },
-    `48.9 a remote unknown on both tries shows the line, and a later known look clears it (${path})`
+    { held, resumed: pushes().length > pushesBefore },
+    { held: true, resumed: true },
+    `48.9 a remote unknown on both tries holds the write, and a later known look resumes it (${path})`
   );
 }
 
@@ -4641,13 +4652,14 @@ for (const [path, look] of [
   ok(typeof saved().receivedAt?.[K] === "number", "49.A1 an un-check writes its time");
   remote.content = utf8ToBase64(asRemote(checkedCopy));
   remote.sha = "sha-0";
-  await foreground();
-  await openSync();
   await saveGitHubKey();
-  await click(btn(/^Push$/), "stale push");
-  await click(btn(/Merge & push/), "merge");
+  /* Re-pointed: Push and Merge & push left the UI (owner ruling 2026-10-12).
+     The stale copy is ahead, and a fresh session is what merges it. The
+     mirror write after the merge is what carries the merged copy to GitHub. */
+  await backgroundFor(5 * 60_000);
   await settle();
   await sleep(SAVE_WAIT);
+  await mirrorPush();
   eq(saved().received ?? {}, {}, "49.A2 a merge with the stale copy keeps the card un-checked");
   ok(/cards\s*0\/14/.test(text()), "49.A3 and the screen shows nothing checked");
   eq(
@@ -4677,11 +4689,10 @@ for (const [path, look] of [
   );
   remote.content = utf8ToBase64(asRemote(liveCopy));
   remote.sha = "sha-0";
-  await foreground();
-  await openSync();
   await saveGitHubKey();
-  await click(btn(/^Push$/), "stale push");
-  await click(btn(/Merge & push/), "merge");
+  /* Re-pointed: Push and Merge & push left the UI (owner ruling 2026-10-12).
+     A fresh session merges the stale copy in, with no tap. */
+  await backgroundFor(5 * 60_000);
   await settle();
   await sleep(SAVE_WAIT);
   await goTo("orphaned");
@@ -4711,7 +4722,7 @@ for (const [path, look] of [
 
   await openSync();
   await saveGitHubKey();
-  await click(btn(/^Push$/), "push");
+  await mirrorPush();
   const pushed = pushes()[0] ? JSON.parse(pushes()[0].text) : {};
   ok(typeof pushed.receivedAt?.[K] === "number", "49.C2 the pushed payload carries it");
 
@@ -4889,11 +4900,10 @@ for (const [path, look] of [
     asRemote({ ...saved(), received: {}, receivedAt: { [K]: checkedAt + 1000 } })
   );
   remote.sha = "sha-0";
-  await foreground();
-  await openSync();
   await saveGitHubKey();
-  await click(btn(/^Push$/), "stale push");
-  await click(btn(/Merge & push/), "merge");
+  /* Re-pointed: Push and Merge & push left the UI (owner ruling 2026-10-12). A
+     fresh session merges the stale copy in, with no tap. */
+  await backgroundFor(5 * 60_000);
   await settle();
   await sleep(SAVE_WAIT);
   eq(saved().received[K], undefined, "50.A2i the merge applies the other device's un-check");
@@ -4915,11 +4925,10 @@ for (const [path, look] of [
     })
   );
   remote.sha = "sha-0";
-  await foreground();
-  await openSync();
   await saveGitHubKey();
-  await click(btn(/^Push$/), "stale push");
-  await click(btn(/Merge & push/), "merge");
+  /* Re-pointed: Push and Merge & push left the UI (owner ruling 2026-10-12). A
+     fresh session merges the stale copy in, with no tap. */
+  await backgroundFor(5 * 60_000);
   await settle();
   await sleep(SAVE_WAIT);
   eq(
@@ -4934,7 +4943,7 @@ for (const [path, look] of [
      autoMerge stands down while one is open */
   await boot({ items: ITEMS, received: { [K]: 1 }, receivedAt: { [K]: 100 } }, null, KEY);
   await openSync();
-  await click(btn(/^Push$/), "push the check-in");
+  await mirrorPush();
   await sleep(60);
   const local = saved();
   remote.content = utf8ToBase64(
@@ -4953,11 +4962,10 @@ for (const [path, look] of [
     asRemote({ items: ITEMS, received: {}, receivedAt: {}, envelopes: [], stamps: STAMP_GONE50 })
   );
   remote.sha = "sha-0";
-  await foreground();
-  await openSync();
   await saveGitHubKey();
-  await click(btn(/^Push$/), "stale push");
-  await click(btn(/Merge & push/), "merge");
+  /* Re-pointed: Push and Merge & push left the UI (owner ruling 2026-10-12). A
+     fresh session merges the stale copy in, with no tap. */
+  await backgroundFor(5 * 60_000);
   await settle();
   await sleep(SAVE_WAIT);
   eq(saved().stamps?.[GK_A]?.kind ?? "", "", "50.A4c the merge applies the other device's stamp removal");
@@ -4966,7 +4974,7 @@ for (const [path, look] of [
   /* the quiet unattended merge, whose only change is that stamp removal */
   await boot({ items: ITEMS, received: {}, stamps: STAMPED50 }, null, KEY);
   await openSync();
-  await click(btn(/^Push$/), "push the stamp");
+  await mirrorPush();
   await sleep(60);
   remote.content = utf8ToBase64(
     asRemote({ items: ITEMS, received: {}, receivedAt: {}, envelopes: [], stamps: STAMP_GONE50 })
@@ -4982,7 +4990,7 @@ for (const [path, look] of [
      had. The quiet merge takes it, and leaves no notice. */
   await boot({ items: ITEMS, received: {} }, null, KEY);
   await openSync();
-  await click(btn(/^Push$/), "push");
+  await mirrorPush();
   await sleep(60);
   remote.content = utf8ToBase64(
     asRemote({ items: ITEMS, received: {}, receivedAt: {}, envelopes: [], stamps: STAMP_GONE50 })
@@ -5155,7 +5163,11 @@ await freshSync();
 await win.sync.setKey(SYNC_KEY);
 await openSync();
 await saveGitHubKey("github_pat_SECRETVALUE");
-await click(btn(/^Push$/), "push with a sync key set");
+/* with a Worker key GitHub is a mirror that writes only what changed, so one
+   check-in gives the mirror something to write */
+await goTo("packages");
+await click(btn(/Mark all received/), "check in a card for the mirror to write");
+await mirrorPush();
 await openHistory();
 await click(btn(/^Backup$/), "backup with a sync key set");
 await sleep(SAVE_WAIT);
@@ -5377,7 +5389,7 @@ await sleep(POST_WAIT);
 ok(Object.keys(saved().received ?? {}).length === 3, "53.7a0 the check-in happened, so the next check means something");
 eq(postCount(), 0, "53.7a with no sync key, a check-in makes no POST");
 await saveGitHubKey();
-await click(btn(/^Push$/), "push over GitHub");
+await mirrorPush();
 await sleep(SAVE_WAIT);
 ok(pushes().length > 0, "53.7b the GitHub push still runs with no sync key");
 
@@ -5531,7 +5543,9 @@ try {
     [ITEMS.length],
     "54.3b the merged write carries this device and GitHub, not this device's copy alone"
   );
-  ok(!btn(/Push anyway/), "54.3c no two-tap is armed");
+  /* Re-pointed (owner ruling 2026-10-12): "Push anyway" left the UI, so it could
+     never fail. A two-tap copy on screen is the live way to arm a stale sha. */
+  ok(!btn(/^Tap again to/), "54.3c a stale sha arms no two-tap");
   ok(
     !buttons().some((b) => /needs attention/.test(b.textContent)) &&
       !/remote copy changed/.test(text()),
@@ -6432,17 +6446,17 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   const entry59 = () =>
     buttons().find((b) => /sync key/i.test(b.textContent) && /tap to/i.test(b.textContent)) ?? null;
   const field59 = () => document.querySelector('input[aria-label="Sync key"]');
-  /* the sync line is the panel's only toggle: aria-expanded tracks syncOpen */
-  const lineBtn59 = () =>
-    buttons().find((b) => b.hasAttribute("aria-expanded") && /tap to|someone else/i.test(b.textContent)) ?? null;
+  /* Re-pointed: the advisory line is not always on screen (a healthy device has
+     none), so the panel opens and shuts from the Sync row on the Ledger tab,
+     which is the one entrance that is always there (ledger-tab-holds-options). */
   const openPanel59 = async () => {
-    const b = lineBtn59();
-    if (b && b.getAttribute("aria-expanded") !== "true") await click(b, "open the sync panel");
+    await openSync();
     await settle();
   };
   const closePanel59 = async () => {
-    const b = lineBtn59();
-    if (b && b.getAttribute("aria-expanded") === "true") await click(b, "close the sync panel");
+    await onLedger();
+    const row = cell(/^Sync/);
+    if (row?.getAttribute("aria-expanded") === "true") await click(row, "close the sync panel");
     await settle();
   };
   const pasteKey59 = async (key) => {
@@ -6541,13 +6555,14 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
      which would prove nothing. A device that has a GitHub token but no Worker key
      is the owner's iPhone, so the line must show, never be suppressed. */
   await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true, remote: null });
-  await openSync();
-  await click(btn(/^Push$/), "push, so this device agrees with GitHub");
-  await settle();
+  /* the push comes first: the panel reads the device record when it opens */
+  await mirrorPush();
+  await openPanel59();
   ok(/Backed up/.test(text()), "59.6pre the device is in step: a recent push, so syncedAt is set");
-  await click(btn(/tap to close/), "close the panel, leaving a healthy keyless device");
-  await settle();
+  await closePanel59();
   ok(!/tap to fix/.test(text()), "59.6a in step, no fault line is shown");
+  /* the advisory line is for the working tabs; the Ledger tab says it in the Sync row */
+  await goTo("packages");
   ok(!!entry59(), "59.6b a keyless device in step with GitHub still shows the sync key paste line");
 
   /* 59.7. False alarm. A Worker-keyed device with the panel closed shows no
@@ -6615,6 +6630,8 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   const lastPost10 = syncCalls().filter((c) => c.op === "post").pop();
   const checkins10 = (c) => Object.keys(JSON.parse(c?.body ?? "{}").received ?? {}).length;
   await toggleShowing();
+  /* Mark all received is a package button: it lives on Packages, not the Ledger */
+  await goTo("packages");
   await click(btn(/Mark all received/), "check in the cards");
   await settle();
   /* the change POST waits SYNC_POST_MS after the last change (53.0 pins it), so
@@ -6688,6 +6705,8 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   ok(!/someone else’s ledger/.test(text()), "59.14a a server ledger with check-ins applies, and the seed line goes");
   const posts14 = count59("post");
   await toggleShowing();
+  /* Mark all received is a package button: it lives on Packages, not the Ledger */
+  await goTo("packages");
   await click(btn(/Mark all received/), "check in the cards");
   await settle();
   await sleep(SR.SYNC_POST_MS + 300);
@@ -6769,6 +6788,8 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   await closePanel59();
   ok(!/no sync key/.test(text()), "59.17b after the apply and a close, no 'no sync key' line");
   await toggleShowing();
+  /* Mark all received is a package button: it lives on Packages, not the Ledger */
+  await goTo("packages");
   await click(btn(/Mark all received/), "check in the cards");
   await sleep(SR.SYNC_POST_MS + 300);
   await settle();
@@ -7065,18 +7086,24 @@ const underFloorL1 = () =>
 
 /* A1, ux-claims-are-true: the merge copy says what a merge does. Where both
    devices changed the same card, the later change wins (merge-rules.mjs). */
-await boot({ items: ITEMS, received: {} }, null, { remote: LAPTOP_PUSHED });
-await openSync();
-await saveGitHubKey();
+/* Re-pointed (owner ruling 2026-10-12): "pushed newer lines" is GitHub copy and
+   left the UI with the verbs. A cold open against a newer remote is the merge
+   that is left, and its notice names what it took. The "later change to the
+   same card wins" copy went with the Merge button; the rule itself is pinned
+   by 49.1 to 49.4 and 50.A1. */
+await boot(PHONE_STATE, null, {
+  remoteAtBoot: LAPTOP_PUSHED,
+  remoteKey: "github_pat_testtoken",
+});
 await settle();
-await background();
-await foreground();
-ok(/pushed newer lines/.test(text()), "61.1 the merge notice is on screen");
-ok(/later change to the same card wins/.test(text()), "61.2 the merge copy says a later change to the same card wins");
+await sleep(SAVE_WAIT);
+ok(/Merged/.test(text()), "61.1 a cold open against a newer remote says what the merge took");
+ok(!GITHUB_STATE_TEXT.test(text()), "61.2 and shows no GitHub copy for the same state");
 ok(!/nothing here is replaced/.test(text()), "61.3 and it no longer says nothing here is replaced");
 
 /* A2, ask: Reset names the 14 cards it clears, and first focus lands on Cancel */
 await fresh();
+await onLedger(); /* Reset is a Ledger-tab control (L11b) */
 await tapL1(/^Reset$/, "arm reset");
 ok(!!btn(/Tap again to clear 14 cards/), "61.4 the Reset ask names the 14 cards it clears");
 ok(focusedL1() === "Cancel", "61.5 Reset puts first focus on Cancel");
@@ -7163,6 +7190,8 @@ eq((pileL1?.textContent.match(/[.!?](?=\s|$)/g) || []).length, 1, "61.26 and it 
    is 12 characters and shows whole; "Biggest po..." was cut after 10. */
 await fresh();
 await goTo("tally");
+/* the sort row lives on the Ledger tab and offers the view's own sorts (63.8) */
+await onLedger();
 await click(cell(/^Sorted by/), "open the Tally sort");
 const sortLabelsL1 = [...document.querySelectorAll(".mdl-panel button")].map((b) => b.textContent.trim());
 eq(sortLabelsL1.length, 6, "61.27 the Tally sort panel lists its six keys (tally-sort-keys-are-six)");
@@ -7246,6 +7275,7 @@ await boot({
     },
   ],
 });
+await onLedger(); /* Reset is a Ledger-tab control (L11b) */
 await tapL1(/^Reset$/, "arm reset with one envelope card and no ledger cards");
 eq(btn(/^Tap again to clear/)?.textContent.trim(), "Tap again to clear 1 card", "61.41 Reset counts the envelope card: exactly 1 card");
 await tapL1(/^Cancel$/, "cancel the reset");
@@ -7253,6 +7283,7 @@ await tapL1(/^Cancel$/, "cancel the reset");
 await fresh();
 await goTo("orphaned");
 await record(["Ponder"]);
+await onLedger(); /* Reset is a Ledger-tab control (L11b) */
 await tapL1(/^Reset$/, "arm reset with ledger cards and one envelope card");
 eq(btn(/^Tap again to clear/)?.textContent.trim(), "Tap again to clear 15 cards", "61.42 Reset counts the 14 ledger cards and the 1 envelope card");
 await tapL1(/^Cancel$/, "cancel the reset");
