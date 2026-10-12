@@ -22,9 +22,12 @@ public final class LedgerStore {
         }
         if let m = obj["mailday"], (m as? Int) != 1 { throw CocoaError(.fileReadCorruptFile) }
         if let e = obj["envelopes"], e as? [[String: Any]] == nil { throw CocoaError(.fileReadCorruptFile) }
+        for k in ["received", "receivedAt", "stamps"] {
+            if let v = obj[k], v as? [String: Any] == nil { throw CocoaError(.fileReadCorruptFile) }
+        }
         doc = obj
         doc["mailday"] = 1
-        for k in ["received", "receivedAt", "stamps"] where doc[k] as? [String: Any] == nil { doc[k] = [String: Any]() }
+        for k in ["received", "receivedAt", "stamps"] where doc[k] == nil { doc[k] = [String: Any]() }
         if doc["envelopes"] as? [[String: Any]] == nil { doc["envelopes"] = [[String: Any]]() }
         loaded = true
     }
