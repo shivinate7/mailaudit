@@ -17,6 +17,14 @@ export class Ledger extends DurableObject {
     },
     listSnapshots: async () => this.sql.exec("SELECT day, rev, at FROM snapshots").toArray(),
     pruneSnapshots: async (beforeDay) => void this.sql.exec("DELETE FROM snapshots WHERE day < ?", beforeDay),
+    writeKept: async (at, { ledger, rev }) =>
+      void this.sql.exec("INSERT INTO kept (at, rev, ledger) VALUES (?, ?, ?)", at, rev, JSON.stringify(ledger)),
+    readKept: async (at) => {
+      const r = this.sql.exec("SELECT rev, ledger FROM kept WHERE at = ?", at).toArray()[0];
+      return r ? { ledger: JSON.parse(r.ledger), rev: r.rev } : null;
+    },
+    listKept: async () => this.sql.exec("SELECT at, rev FROM kept").toArray(),
+    pruneKept: async (beforeDay) => void this.sql.exec("DELETE FROM kept WHERE substr(at, 1, 10) < ?", beforeDay),
     photoList: async () => this.ctx.storage.sql.exec("SELECT id, mime FROM photos").toArray().map((r) => ({ id: r.id, mime: r.mime })),
     photoGet: async (id) => {
       const r = this.ctx.storage.sql.exec("SELECT mime, bytes FROM photos WHERE id = ?", id).toArray()[0];
@@ -37,6 +45,7 @@ export class Ledger extends DurableObject {
     super(ctx, env);
     this.sql = ctx.storage.sql;
     this.sql.exec("CREATE TABLE IF NOT EXISTS snapshots (day TEXT PRIMARY KEY, rev INTEGER, at TEXT, ledger TEXT)");
+    this.sql.exec("CREATE TABLE IF NOT EXISTS kept (at TEXT PRIMARY KEY, rev INTEGER, ledger TEXT)");
     ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS photos (id TEXT PRIMARY KEY, mime TEXT NOT NULL, bytes BLOB NOT NULL)");
   }
 

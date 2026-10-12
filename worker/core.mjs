@@ -83,6 +83,16 @@ export async function route(request, env, store, now = Date.now()) {
     return snap ? json({ ledger: snap.ledger, rev: snap.rev, at: snap.at }) : json({ error: "not found" }, 404);
   }
 
+  if (request.method === "GET" && path === "/kept") {
+    const all = await store.listKept();
+    return json(all.map(({ at, rev }) => ({ at, rev })).sort((a, b) => (a.at < b.at ? 1 : -1)));
+  }
+  const km = /^\/kept\/([^/]+)$/.exec(path);
+  if (request.method === "GET" && km) {
+    const k = await store.readKept(decodeURIComponent(km[1]));
+    return k ? json({ ledger: k.ledger, rev: k.rev }) : json({ error: "not found" }, 404);
+  }
+
   if (path === "/photos" || path.startsWith("/photos/")) {
     if (request.method !== "GET" && request.method !== "POST") return json({ error: "method not allowed" }, 405);
     if (path === "/photos") {
@@ -125,7 +135,7 @@ export async function route(request, env, store, now = Date.now()) {
   if (salvageLedger(incoming).dropped) return json({ error: "bad ledger" }, 400);
 
   /* a stored ledger saved before the shape check shipped is mended before the merge;
-     the original stays as the day's snapshot below */
+     the original is kept below */
   const stored = await store.read();
   const mend = stored ? salvageLedger(stored.ledger) : null;
   const cur = mend?.dropped ? { ...stored, ledger: mend.data } : stored;
@@ -137,8 +147,11 @@ export async function route(request, env, store, now = Date.now()) {
   if (cur && !mend.dropped && canon(ledger) === canon(cur.ledger)) return json({ ledger, rev: cur.rev, stats });
   const rev = (cur?.rev ?? 0) + 1;
   const day = dayOf(now);
+  /* a mend always keeps the damaged original, whatever the snapshots hold */
+  if (mend?.dropped) await store.writeKept(new Date(now).toISOString(), { ledger: stored.ledger, rev: stored.rev });
   if (cur && !(await store.hasSnapshot(day))) await store.writeSnapshot(day, { ledger: stored.ledger, rev: stored.rev, at: stored.at });
   await store.pruneSnapshots(dayOf(now - (SNAPSHOT_DAYS - 1) * DAY_MS));
+  await store.pruneKept(dayOf(now - (SNAPSHOT_DAYS - 1) * DAY_MS));
   await store.write(ledger, rev, new Date(now).toISOString());
   await store.broadcast({ rev });
   return json({ ledger, rev, stats });

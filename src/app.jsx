@@ -4720,12 +4720,9 @@ syncBroken === "seeded"
      advisory state set, and the retry follows backoffMs, not every save. */
   const settleReply = async (r, fromPost = false) => {
     /* Lane B1: a reply with unreadable entries is kept in History as it came, then
-       mended before it is held. No copy, no reply: it counts as a failed call. */
-    /* an empty server holds nothing to copy: the gate lifts with it */
-    if (r.code === "empty") copyFailedRef.current = false;
+       mended before it is held. No copy, no reply: it counts as a failed call, and local work and sends go on. */
     if (r.code === "ok" && r.body?.ledger) {
       const { data, dropped } = salvageLedger(r.body.ledger);
-      copyFailedRef.current = false;
       if (dropped) {
         try {
           await keep(JSON.stringify(r.body.ledger));
@@ -4733,8 +4730,7 @@ syncBroken === "seeded"
           setMended(mendNotice(dropped));
           r = { ...r, body: { ...r.body, ledger: data } };
         } catch {
-          /* the copy failed: postRef sends nothing until a later GET keeps it */
-          copyFailedRef.current = true;
+          /* the copy failed: the reply is not applied. Sends go on; the Worker keeps its own copy. */
           r = { ...r, code: "unknown" };
         }
       }
@@ -4778,22 +4774,10 @@ syncBroken === "seeded"
     return r;
   };
   const postRef = useRef(null);
-  const copyFailedRef = useRef(false);
-  /* the one Worker send: refused while a damaged reply has no copy in History */
-  const sendPost = async (ledger) => {
-    if (copyFailedRef.current) throw new Error("copy-failed");
-    return window.sync.post(ledger);
-  };
+  const sendPost = (ledger) => window.sync.post(ledger);
   postRef.current = () => {
     const p = (async () => {
       if (!window.sync || !(await window.sync.hasKey())) return;
-      /* a damaged reply with no copy in History: a POST would let the Worker mend
-         the list with no copy kept. Read again instead, so the copy is retried. */
-      if (copyFailedRef.current) {
-        if (!seedShown && !damagedRef.current && !refusedRef.current && Date.now() >= nextTry.current - 50)
-          await settleReply(await withTimeout(window.sync.get()));
-        return;
-      }
       /* 50 ms of slack: a timer that fires a hair early still retries */
       /* a page that shows the seed holds someone else's ledger: it never POSTs
          (seed-load-guards) */
@@ -4868,7 +4852,6 @@ syncBroken === "seeded"
     setWorkerKeySet(true);
     /* a new key lifts a 401 stop and every backoff, and opens the socket if none is open */
     refusedRef.current = false;
-    copyFailedRef.current = false;
     failN.current = 0;
     nextTry.current = 0;
     tooBigRef.current = false;
