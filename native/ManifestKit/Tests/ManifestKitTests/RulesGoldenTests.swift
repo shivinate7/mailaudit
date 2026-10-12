@@ -6,7 +6,8 @@
 // the Swift seam (RulesEngine), not a raw JSContext.
 //
 // parse-items.json is not tested here. It needs CSV parsing, and csv-import-stays-web
-// keeps CSV import out of the native client. See the lane brief for the owner's ruling.
+// keeps CSV import out of the native client. That exclusion is an orchestrator default
+// of 2026-10-12, not an owner ruling.
 
 import Foundation
 import XCTest
