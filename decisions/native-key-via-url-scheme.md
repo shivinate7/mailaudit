@@ -1,6 +1,6 @@
 # The native client takes its key through a custom URL scheme
 
-**Status:** ruled. The owner accepted this on 2026-10-11 with "all seem fine". N2 landed in PR #81. One fact is unmeasured: whether the iPhone Camera opens a custom scheme from a QR code.
+**Status:** ruled. The owner accepted this on 2026-10-11 with "all seem fine". The orchestrator defaults of 2026-10-12 below replace its universal-link fallback, and the owner has not seen them. N2 landed in PR #81. One fact is unmeasured: whether the iPhone Camera opens a custom scheme from a QR code.
 
 The key reaches the native app by URL, with no typing. The app stores the key in its own Keychain and drops the URL.
 
@@ -8,15 +8,15 @@ The key reaches the native app by URL, with no typing. The app stores the key in
 
 ## The flow
 
-- `scripts/send-key.mjs` gains the flag `--native`. It builds manifestledger://sync#k=<key> in place of the Pages URL.
+- `scripts/send-key.mjs` gains the flag `--native`. It builds manifestledger://sync#k=<key> in place of the Pages URL. The flag follows the device: `scripts/send-key.mjs <device> --native`.
 - Mac: the script uses `open` to send the URL to the app.
 - iPhone: the QR holds the same URL. The Camera opens the app.
-- The app asks `keyFromHash` in the rules bundle to check the key with `KEY_RE`. It stores the key and drops the URL.
+- Lane N5 registers the scheme and calls `KeyIntake.accept`. Accept asks `keyFromHash` in the rules bundle to check the key with `KEY_RE`. It stores the key and drops the URL.
 - The key never prints, as in the web flow.
 
-## The fallback
+## No universal-link fallback
 
-A universal link takes over if the Camera does not open the custom scheme. A Worker route serves the apple-app-site-association file. The paid signing team allows Associated Domains, see `native-swift-rebuild`. The Camera check on a device is lane N11's hand check, see `native-build-lanes`.
+The 2026-10-11 fallback is withdrawn. A universal link carries no key, see the defaults below. A Worker route serves the apple-app-site-association file. Under those defaults it is not a key path. Whether it stays is not ruled. The paid signing team allows Associated Domains, see `native-swift-rebuild`. The Camera check on a device is lane N11's hand check, see `native-build-lanes`.
 
 ## The Keychain
 
@@ -28,6 +28,13 @@ A universal link takes over if the Camera does not open the custom scheme. A Wor
 ## Rejected
 
 Reading the existing `mailaudit-sync` item from the login Keychain. The access prompt asks for the login password, and that is typing.
+
+## Orchestrator defaults of 2026-10-12, not owner rulings
+
+- Only the custom scheme link carries a key. A universal link (https with `#k=`) is ignored, so the key never passes the web. `KeyIntake.accept` returns ignored unless the scheme is `manifestledger` and the host is `sync`. Nothing yet pins that an https link is ignored. The KeyIntake ignore test names only `otherapp://` and `manifestledger://other`.
+- `send-key` takes `<device> --native`, the device first. The usage check refuses `--native <device>`. No test pins that refusal.
+- Lane N5 registers the scheme and calls `KeyIntake.accept`, see `native-build-lanes`.
+- The Mirror scan of ledger, backup and view state moved to N3, N5 and N8, see `native-build-lanes`.
 
 ## See also
 
