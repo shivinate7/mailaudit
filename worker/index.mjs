@@ -8,6 +8,14 @@ export class Ledger extends DurableObject {
   store = {
     read: () => this.ctx.storage.get("state").then((s) => s ?? null),
     write: (ledger, rev) => this.ctx.storage.put("state", { ledger, rev }),
+    photoList: async () => this.ctx.storage.sql.exec("SELECT id FROM photos").toArray().map((r) => r.id),
+    photoGet: async (id) => {
+      const r = this.ctx.storage.sql.exec("SELECT mime, bytes FROM photos WHERE id = ?", id).toArray()[0];
+      return r ? { mime: r.mime, bytes: new Uint8Array(r.bytes) } : null;
+    },
+    photoPut: async (id, mime, bytes) => {
+      this.ctx.storage.sql.exec("INSERT OR IGNORE INTO photos (id, mime, bytes) VALUES (?, ?, ?)", id, mime, bytes);
+    },
     broadcast: async (obj) => {
       const msg = JSON.stringify(obj);
       for (const ws of this.ctx.getWebSockets()) {
@@ -15,6 +23,11 @@ export class Ledger extends DurableObject {
       }
     },
   };
+
+  constructor(ctx, env) {
+    super(ctx, env);
+    ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS photos (id TEXT PRIMARY KEY, mime TEXT NOT NULL, bytes BLOB NOT NULL)");
+  }
 
   async fetch(request) {
     if (new URL(request.url).pathname === "/ws") {
