@@ -48,6 +48,7 @@ function cors(request, env) {
 /* Durable Object per-value cap is 2,000,000 bytes; refuse a ledger over this, which keeps 200,000 bytes of headroom. */
 export const MAX_LEDGER_BYTES = 1_800_000;
 
+/* Keep today and the 179 days before it: exactly 180 snapshots. */
 export const SNAPSHOT_DAYS = 180;
 const DAY_MS = 864e5;
 const dayOf = (t) => new Date(t).toISOString().slice(0, 10);
@@ -104,7 +105,7 @@ export async function route(request, env, store, now = Date.now()) {
   const rev = (cur?.rev ?? 0) + 1;
   const day = dayOf(now);
   if (cur && !(await store.hasSnapshot(day))) await store.writeSnapshot(day, { ledger: cur.ledger, rev: cur.rev, at: cur.at });
-  await store.pruneSnapshots(dayOf(now - SNAPSHOT_DAYS * DAY_MS));
+  await store.pruneSnapshots(dayOf(now - (SNAPSHOT_DAYS - 1) * DAY_MS));
   await store.write(ledger, rev, new Date(now).toISOString());
   await store.broadcast({ rev });
   return json({ ledger, rev, stats });
