@@ -261,6 +261,23 @@ eq(isUntracked({ tracking: "Without Tracking" }), true, "V2.13 the untracked mat
 eq(isUntracked({ tracking: "with tracking" }), false, "V2.14 with tracking is not untracked");
 eq(isUntracked({ tracking: "unknown" }), false, "V2.15 an unknown status is not untracked");
 eq(isUntracked({ tracking: "canceled" }), false, "V2.16 a canceled status is not untracked");
+
+/* explicit clock: lostMail takes "now" as its fourth argument, in ms since the
+   epoch (the shape dateRange takes), and reads Date.now only when it is absent.
+   The fixed instant is 14 days after 2026-07-01, so the answer is "maybe".
+   With the wall clock (2026-10-11 or later) the same order is the deadline tier,
+   so the two answers differ for any run made after 2026-08-01. */
+const FIXED_NOW = Date.parse("2026-07-15T00:00:00Z");
+eq(
+  lostMail("2026-07-01", "without tracking", false, FIXED_NOW),
+  { tier: "maybe", days: 14 },
+  "V2.17 an explicit clock sets the day count, not Date.now"
+);
+ok(
+  JSON.stringify(lostMail("2026-07-01", "without tracking", false, FIXED_NOW)) !==
+    JSON.stringify(lostMail("2026-07-01", "without tracking", false)),
+  "V2.18 the explicit clock gives a different result from the Date.now default"
+);
 eq(isUntracked({}), false, "V2.17 a package with no tracking field is not untracked");
 
 /* ── V3. names match loosely (envelope-names-match-normname) ───────────── */
