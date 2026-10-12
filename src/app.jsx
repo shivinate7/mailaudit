@@ -1495,7 +1495,7 @@ const RESUME_RESET_MS = 60_000;
    the day stepper and the key field follow. (The boxed `ctl`/`chip` controls
    this constant was written for are gone: the last of them — the file
    actions and the Sync panel's buttons — became a ruled action row and an
-   option grid, see `.mdl-acts` and `syncActions`.) */
+   option grid, see `.mdl-lrow` and the Ledger tab.) */
 const CTL_H = 34;
 
 /* preset → label, module-level so the collapsed control and the expanded chips
@@ -1727,6 +1727,29 @@ const linkBtn = {
    on the value track for the reason headCell needs minWidth 0 — the photo
    target is 44 characters, wider than a 375px column minus the label, and it
    has to wrap inside its track rather than push the panel past the page. */
+/* One row of the Ledger tab: label and sub line left, mono value right. The
+   chevron is CSS, shown only on a row that opens something (aria-expanded), so
+   it never enters the row's text. */
+const LedgerRow = ({ label, sub, value, accent, expanded, pressed, onClick, disabled }) => (
+  <button
+    className="mdl-lrow"
+    onClick={onClick}
+    disabled={disabled}
+    aria-expanded={expanded}
+    aria-pressed={pressed}
+  >
+    <span className="l">
+      <span className="t">{label}</span>
+      {sub && <span className="s">{sub}</span>}
+    </span>
+    {value && (
+      <span className="v" style={accent ? { color: accent } : null}>
+        {value}
+      </span>
+    )}
+  </button>
+);
+
 const partGrid = {
   display: "grid",
   gridTemplateColumns: "auto minmax(0, 1fr)",
@@ -2935,6 +2958,7 @@ export default function MailDayLedger() {
   const [workerKeySet, setWorkerKeySet] = useState(null); // null until asked, then true | false
   const [syncKeyMsg, setSyncKeyMsg] = useState("");
   const syncKeyInput = useRef(null);
+  const [workerSyncedAt, setWorkerSyncedAt] = useState(null); // when a Worker call last succeeded
   const [serverDown, setServerDown] = useState(false); // false | "unknown" | "too-big" | "no-access": the last Worker call failed
   const [pushState, setPushState] = useState("idle"); // idle | pushing | pushed | conflict
   const [pullState, setPullState] = useState("idle"); // idle | pulling
@@ -2979,6 +3003,11 @@ export default function MailDayLedger() {
   const [sortBy, setSortBy] = useState("newest");
   const [view, setView] = useState("packages"); // packages | items | mystery | ledger
   const listView = view === "packages" || view === "items";
+  /* The Ledger tab sorts the working view it came from, so it remembers the
+     last list view. Inferred from package-sort-swaps-with-view, not ruled. */
+  const lastList = useRef("packages");
+  if (listView) lastList.current = view;
+  const sortView = listView ? view : lastList.current;
 
   /* Masthead collapse. The tall block is ordinary content that scrolls away;
      the slim bar below it is `position: sticky` with a FIXED height, so it is
@@ -3253,6 +3282,67 @@ export default function MailDayLedger() {
     if (Date.now() - syncedAt > SYNC_STALE_MS) return "stale";
     return null;
   }, [pushState, remoteMsg, remoteInfo, ahead, seedShown, syncedAt, photoUnreadable, backupUnknown, serverDown, workerKeySet, syncOpen]);
+
+  /* One sentence per sync state: the advisory line on a working screen says it
+     whole, and the Sync row on the Ledger tab says it without the "tap to". */
+  const syncSays = (
+syncBroken === "seeded"
+                    ? "A snapshot of someone else’s ledger — anything you change stays on this device"
+                    : syncBroken === "no-access"
+                    ? "This device can’t see the backup — tap to add its key"
+                    : syncBroken === "behind"
+                    ? "Your other device has newer lines — tap to bring them in"
+                    : syncBroken === "server"
+                    ? "The sync server could not be reached — tap to fix"
+                    : syncBroken === "sync-key"
+                    ? "This device has no sync key — tap to paste it"
+                    : syncBroken === "key-refused"
+                    ? "This device’s sync key was refused — tap to fix"
+                    : syncBroken === "too-big"
+                    ? "The ledger is too big for the sync server — tap to fix"
+                    : syncBroken === "photos-unreadable"
+                    ? "This device’s photos could not be read, so no new photos were backed up — tap to fix"
+                    : syncBroken === "backup-unknown"
+                    ? "The backup could not be checked — tap to fix"
+                    : !syncBroken
+                    ? `Backed up${
+                        syncedAt
+                          ? ` ${new Date(syncedAt).toISOString().slice(0, 10)}`
+                          : ""
+                      } — tap to close`
+                    : syncBroken === "no-key"
+                    ? "Not backed up on this device — tap to set it up"
+                    : syncBroken === "never"
+                    ? "Nothing has been backed up yet — tap to fix"
+                    : syncBroken === "stale"
+                    ? `Not backed up since ${new Date(syncedAt)
+                        .toISOString()
+                        .slice(0, 10)} — tap to fix`
+                    : "The backup needs attention — tap to fix"
+  );
+  /* Sync group particulars: the Cloudflare server's state, from the last
+     Worker call, and when that call last succeeded. */
+  const serverStatus =
+    workerKeySet === false
+      ? "No sync key on this device"
+      : serverDown === "no-access"
+      ? "Sync key refused"
+      : serverDown === "too-big"
+      ? "Ledger too big for the server"
+      : serverDown
+      ? "Could not be reached"
+      : workerKeySet
+      ? "Connected"
+      : "Not checked";
+  const lastSyncAt = workerSyncedAt || syncedAt;
+  const lastSyncText = lastSyncAt
+    ? new Date(lastSyncAt).toLocaleString([], {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    : "Not yet";
 
   const snapshot = useCallback(
     () => ({
@@ -3987,6 +4077,9 @@ export default function MailDayLedger() {
         )
           setComposing(t);
       }
+      /* the View panels belong to the Ledger tab: a visit starts them shut */
+      setSortOpen(false);
+      setRangeOpen(false);
       setView(v);
     },
     [view, liveEnvelopes, composing]
@@ -4654,6 +4747,7 @@ export default function MailDayLedger() {
       nextTry.current = 0;
       clearTimeout(retryTimer.current);
       setServerDown(false);
+      setWorkerSyncedAt(Date.now());
       if (r.code === "ok") holdReply(r);
       return;
     }
@@ -5286,9 +5380,9 @@ export default function MailDayLedger() {
 
   const sortLabel = useMemo(() => {
     const [list, cur] =
-      view === "items" ? [ITEM_SORTS, itemSort] : [PKG_SORTS, sortBy];
+      sortView === "items" ? [ITEM_SORTS, itemSort] : [PKG_SORTS, sortBy];
     return (list.find(([v]) => v === cur) || list[0])[1];
-  }, [view, itemSort, sortBy]);
+  }, [sortView, itemSort, sortBy]);
 
   /* grouping + filtering */
   const packages = useMemo(() => groupPackages(rangedItems), [rangedItems]);
@@ -5689,41 +5783,43 @@ export default function MailDayLedger() {
                    background: transparent; outline: none;
                    font-family: ${cochin}; color: ${C.ink}; padding: 0; }
 
-        /* ── The action row ─────────────────────────────────────────────
-           Columns by child count — one cell on an empty ledger, three with
-           a remote, four without — and the divider is each cell's own right
-           rule with the last one dropped. Classes rather than inline styles
-           because the row's membership is conditional, so "last" can't be a
-           prop the way headCell's is. The label sizes on the view switch's
-           curve: 10px at 375, where "SYNC · 09-02 ▾" has to fit a 114px
-           third, 11px by 760. */
-        .mdl-acts { display: grid; grid-auto-flow: column;
-                    grid-auto-columns: minmax(0, 1fr); }
-        /* armed: Cancel takes what it needs, the ask takes the rest, so the
-           count in "Tap again to clear N cards" is never cut off */
-        .mdl-acts.arming { grid-template-columns: auto minmax(0, 1fr); }
-        .mdl-act { height: 40px; min-width: 0; padding: 0 6px; border: 0;
-                   border-right: 1px solid ${C.line}; background: transparent;
-                   font-family: ${mono}; font-size: clamp(10px, 2.7vw, 11px);
-                   letter-spacing: .07em; text-transform: uppercase;
-                   color: ${C.ink}; cursor: pointer; display: inline-flex;
-                   align-items: center; justify-content: center; gap: 6px;
-                   white-space: nowrap; }
-        .mdl-act:last-child { border-right: 0; }
-        .mdl-act > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-        .mdl-act i { font-style: normal; font-size: 10px; color: ${C.inkSoft};
-                     flex-shrink: 0; transition: transform 140ms ease; }
-        /* An .ahead rule used to live here too, for the Sync cell that
-           turned accent when the other device was in front. Both are gone: a
-           resume merges on its own, so being behind is no longer a state the
-           row has to report. (No backticks in this comment — it sits inside a
-           template literal, and one would end the string.) */
-        .mdl-act[aria-expanded="true"] { color: ${C.accent}; }
-        .mdl-act[aria-expanded="true"] i { transform: rotate(180deg);
-                                           color: ${C.accent}; }
+        /* ── The Ledger tab ─────────────────────────────────────────────
+           Grouped cards of full-width rows: label (and a sub line) left, a
+           mono value right, a chevron drawn by CSS so it never enters the
+           row's text. Each row is a 52px target. Reset sits in its own card;
+           armed, it fills in place beside Cancel and nothing around it moves. */
+        .mdl-lh { margin: 18px 0 0; text-align: center; font-weight: 400;
+                  font-family: ${mono}; font-size: 12px; letter-spacing: .3em;
+                  text-indent: .3em; text-transform: uppercase; color: ${C.inkSoft}; }
+        .mdl-lg { margin: 16px 4px 8px; font-family: ${mono}; font-size: 11px;
+                  letter-spacing: .2em; text-transform: uppercase; color: ${C.inkSoft}; }
+        .mdl-lcard { background: ${C.card}; border: 1px solid ${C.line};
+                     border-radius: 16px; overflow: hidden; }
+        .mdl-lrow { display: flex; align-items: center; gap: 12px; width: 100%;
+                    min-height: 52px; padding: 10px 16px; border: 0;
+                    border-top: 1px solid ${C.line}; background: transparent;
+                    text-align: left; color: ${C.ink}; cursor: pointer; }
+        .mdl-lcard > :first-child { border-top: 0; }
+        .mdl-lrow > .l { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .mdl-lrow .t { font-size: 20px; line-height: 1.15; }
+        .mdl-lrow .s { font-size: 13.5px; line-height: 1.3; color: ${C.inkSoft}; }
+        .mdl-lrow .v { font-family: ${mono}; font-size: 14px; color: ${C.accent};
+                       text-align: right; }
+        .mdl-lrow::after { content: "›"; font-size: 22px; line-height: 1;
+                           color: ${C.inkSoft}; flex-shrink: 0;
+                           transition: transform 140ms ease; }
+        .mdl-lrow:not([aria-expanded])::after { content: none; }
+        .mdl-lrow[aria-expanded="true"]::after { transform: rotate(90deg); }
+        .mdl-lrow:disabled { opacity: .6; cursor: default; }
+        .mdl-reset { display: flex; }
+        .mdl-act { flex: 1; min-width: 0; min-height: 52px; padding: 10px 16px;
+                   border: 0; background: transparent; text-align: left;
+                   font-size: 20px; color: ${C.ink}; cursor: pointer; }
+        .mdl-act > span { display: block; min-width: 0; overflow: hidden;
+                          text-overflow: ellipsis; white-space: nowrap; }
+        .mdl-act.cancel { flex: 0 0 auto; border-right: 1px solid ${C.line}; }
         .mdl-act.danger { color: ${C.red}; }
-        .mdl-act.armed { background: ${C.red}; color: ${C.card}; font-weight: 700; }
-        .mdl-act:disabled { opacity: .6; cursor: default; }
+        .mdl-act.armed { background: ${C.red}; color: ${C.card}; font-weight: 700; font-size: 15px; }
 
         /* ── Motion ──────────────────────────────────────────────────────
            A joy pass, under one rule: NOTHING HERE MAY REFLOW. Every keyframe
@@ -5876,8 +5972,7 @@ export default function MailDayLedger() {
 
         @media (prefers-reduced-motion: reduce) {
           .mdl-sticky { transition: none; transform: none; }
-          .mdl-act i { transition: none; }
-          /* Each of these rests at its own final frame, so switching the
+            /* Each of these rests at its own final frame, so switching the
              animation off leaves the thing drawn and in place rather than
              stranded at opacity 0 — the seal is visible, the rules are full
              width, the tick is complete, the stamp sits at its inline angle. */
@@ -6074,98 +6169,167 @@ export default function MailDayLedger() {
           </div>
         )}
 
-        {/* `|| window.remote` matters: an empty ledger is EXACTLY when Pull is
-            needed — a new phone, ITP having cleared storage, a move to another
-            origin. Gated on data alone, the one control that recovers from
-            having no data was unreachable whenever you had no data. Same bug
-            the file actions already had once (see the toolbar notes); this is
-            the same fix one level out. */}
-        {(items.length > 0 || liveEnvelopes.length > 0 || !!window.remote) && (
-          <>
-            {/* THE RULED HEAD. The masthead's own vocabulary continued —
-                hairline rules, uppercase mono micro-labels over Cochin values,
-                no boxes and no fills. It replaced a tray of controls that
-                shared a height but nothing else: two radii, two font families
-                and three type sizes, plus a native <select> and a native date
-                pair that drew their own UA chrome on a parchment page. */}
-            <section style={{ marginBottom: 16 }}>
-              <div style={RULE} />
-
-              {listView && items.length > 0 && (
-                <>
-                  {/* Three ruled cells. Only the range cell carries a figure:
-                      the other two would be restating the masthead's own
-                      tallies a hundred pixels above. */}
+        {view !== "ledger" &&
+          ((listView &&
+            items.length > 0 &&
+            (canceledCount > 0 || (view === "packages" && stampedCount > 0))) ||
+            !!syncBroken) && (
+          <section style={{ marginBottom: 16 }}>
+            {/* The working screens keep only the canceled and stamped
+                references and the sync advisory. Every option moved to the
+                Ledger tab (decision ledger-tab-holds-options). */}
+            <div style={RULE} />
+            {listView && items.length > 0 && (
+              <>
+                  {/* Find moved to the floating pill above the bottom bar
+                      (phone-nav-is-bottom-bar). The canceled reference and the
+                      stamped filter keep their ruled row, and the row exists
+                      only while one of them has something to show. */}
+                  {(canceledCount > 0 ||
+                    (view === "packages" && stampedCount > 0)) && (
+                  <>
                   <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-                    }}
+                    style={{ display: "flex", alignItems: "stretch", height: 40, justifyContent: "flex-end" }}
                   >
-                    <button
-                      onClick={() => {
-                        setSortOpen(false);
-                        setRangeOpen((o) => !o);
-                      }}
-                      aria-expanded={rangeOpen}
-                      style={headCell(false)}
-                    >
-                      <span style={cellLab}>Orders from</span>
-                      <span style={cellVal}>
-                        <span style={{ ...cellValText, ...valUnder(rangeOpen) }}>
-                          {rangeLabel}
-                        </span>
-                        <i style={headCaret(rangeOpen)}>▾</i>
-                      </span>
-                      <span style={cellFig}>
-                        {rangedItems.length} line
-                        {rangedItems.length === 1 ? "" : "s"}
-                        {hiddenCount > 0 ? ` · ${hiddenCount} outside` : ""}
-                      </span>
-                    </button>
-
-                    {/* the old "Hide received" button, said as state rather
-                        than as an instruction */}
-                    <button
-                      onClick={() => setHideDone((h) => !h)}
-                      aria-pressed={hideDone}
-                      style={headCell(false)}
-                    >
-                      <span style={cellLab}>Showing</span>
-                      <span style={cellVal}>
+                    {canceledCount > 0 && (
+                      <button
+                        onClick={() => setShowCanceled((s) => !s)}
+                        aria-expanded={showCanceled}
+                        style={cancCell(showCanceled)}
+                      >
+                        {canceledCount} canceled
+                        <i style={{ fontSize: 10 }}>{showCanceled ? "▾" : "▸"}</i>
+                      </button>
+                    )}
+                    {/* a filter, not a disclosure — hence the Showing cell's
+                        ○/● and aria-pressed rather than the caret. Packages
+                        only: a stamp belongs to a package, and Tally has no
+                        package to filter. */}
+                    {view === "packages" && stampedCount > 0 && (
+                      <button
+                        onClick={() => setShowStamped((s) => !s)}
+                        aria-pressed={showStamped}
+                        style={cancCell(showStamped)}
+                      >
+                        {stampedCount} stamped
                         <i
                           style={{
                             fontSize: 10,
-                            flexShrink: 0,
-                            color: hideDone ? C.accent : C.inkSoft,
+                            color: showStamped ? C.accent : C.inkSoft,
                           }}
                         >
-                          {hideDone ? "●" : "○"}
+                          {showStamped ? "●" : "○"}
                         </i>
-                        <span style={cellValText}>
-                          {hideDone ? "Unreceived" : "Everything"}
-                        </span>
-                      </span>
-                    </button>
-
-                    <button
-                      onClick={() => {
-                        setRangeOpen(false);
-                        setSortOpen((o) => !o);
-                      }}
-                      aria-expanded={sortOpen}
-                      style={headCell(true)}
-                    >
-                      <span style={cellLab}>Sorted by</span>
-                      <span style={cellVal}>
-                        <span style={{ ...cellValText, ...valUnder(sortOpen) }}>
-                          {sortLabel}
-                        </span>
-                        <i style={headCaret(sortOpen)}>▾</i>
-                      </span>
-                    </button>
+                      </button>
+                    )}
                   </div>
 
+                  <div style={RULE_THIN} />
+                  </>
+                  )}
+              </>
+            )}
+            {syncBroken && (
+                /* The one thing sync says on a working screen, and the way
+                   into the Sync group on the Ledger tab. Advisory manila,
+                   never red: being unbacked-up is a state to fix, not a loss
+                   that has happened. It shows only when something is wrong
+                   (ledger-tab-holds-options). */
+                <button
+                  onClick={() => {
+                    setHistoryOpen(false);
+                    setSyncOpen(true);
+                    leaveFor("ledger");
+                  }}
+                  style={{
+                    display: "block",
+                    width: "100%",
+                    textAlign: "left",
+                    fontFamily: cochin,
+                    fontSize: 13.5,
+                    lineHeight: 1.4,
+                    padding: "9px 9px 10px",
+                    border: 0,
+                    borderTop: `1px solid ${C.line}`,
+                    background: C.manila,
+                    color: C.manilaInk,
+                    cursor: "pointer",
+                  }}
+                >
+                  {syncSays}
+                </button>
+              )}
+            <div style={RULE} />
+          </section>
+        )}
+
+        {view === "ledger" && (
+          <section style={{ marginBottom: 16 }} aria-label="Ledger options">
+            <h2 className="mdl-lh">Ledger</h2>
+            {items.length > 0 && (
+              <>
+                <div className="mdl-lg">View</div>
+                <div className="mdl-lcard">
+                  <LedgerRow
+                    label="Showing"
+                    value={`${hideDone ? "●" : "○"} ${hideDone ? "Unreceived" : "Everything"}`}
+                    onClick={() => setHideDone((h) => !h)}
+                    pressed={hideDone}
+                  />
+                  <LedgerRow
+                    label="Sorted by"
+                    value={sortLabel}
+                    expanded={sortOpen}
+                    onClick={() => {
+                      setRangeOpen(false);
+                      setSortOpen((o) => !o);
+                    }}
+                  />
+                  {sortOpen && (
+                    <div className="mdl-panel" style={panelWrap}>
+                      {/* two columns, not three: these labels are words, and
+                          the Tally set runs to "Biggest position" */}
+                      <div style={optGrid(2)}>
+                        {(sortView === "items" ? ITEM_SORTS : PKG_SORTS).map(
+                          ([val, label], i, arr) => {
+                            const cur = sortView === "items" ? itemSort : sortBy;
+                            return (
+                              <button
+                                key={val}
+                                onClick={() => {
+                                  if (sortView === "items") setItemSort(val);
+                                  else setSortBy(val);
+                                  setSortOpen(false);
+                                }}
+                                aria-pressed={cur === val}
+                                style={{
+                                  ...optCell(cur === val),
+                                  ...(arr.length % 2 === 1 &&
+                                  i === arr.length - 1
+                                    ? { gridColumn: "1 / -1" }
+                                    : null),
+                                }}
+                              >
+                                {label}
+                              </button>
+                            );
+                          }
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <LedgerRow
+                    label="Orders from"
+                    sub={`${rangedItems.length} line${rangedItems.length === 1 ? "" : "s"}${
+                      hiddenCount > 0 ? ` · ${hiddenCount} outside` : ""
+                    }`}
+                    value={rangeLabel}
+                    expanded={rangeOpen}
+                    onClick={() => {
+                      setSortOpen(false);
+                      setRangeOpen((o) => !o);
+                    }}
+                  />
                   {rangeOpen && (
                     <div className="mdl-panel" style={panelWrap}>
                       {/* four columns, not three: seven options over three
@@ -6312,266 +6476,145 @@ export default function MailDayLedger() {
                       )}
                     </div>
                   )}
+                </div>
+              </>
+            )}
 
-                  {sortOpen && (
-                    <div className="mdl-panel" style={panelWrap}>
-                      {/* two columns, not three: these labels are words, and
-                          the Tally set runs to "Biggest position" */}
-                      <div style={optGrid(2)}>
-                        {(view === "items" ? ITEM_SORTS : PKG_SORTS).map(
-                          ([val, label], i, arr) => {
-                            const cur = view === "items" ? itemSort : sortBy;
-                            return (
-                              <button
-                                key={val}
-                                onClick={() => {
-                                  if (view === "items") setItemSort(val);
-                                  else setSortBy(val);
-                                  setSortOpen(false);
-                                }}
-                                aria-pressed={cur === val}
-                                style={{
-                                  ...optCell(cur === val),
-                                  ...(arr.length % 2 === 1 &&
-                                  i === arr.length - 1
-                                    ? { gridColumn: "1 / -1" }
-                                    : null),
-                                }}
-                              >
-                                {label}
-                              </button>
-                            );
-                          }
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  <div style={RULE_THIN} />
-
-                  {/* Find moved to the floating pill above the bottom bar
-                      (phone-nav-is-bottom-bar). The canceled reference and the
-                      stamped filter keep their ruled row, and the row exists
-                      only while one of them has something to show. */}
-                  {(canceledCount > 0 ||
-                    (view === "packages" && stampedCount > 0)) && (
-                  <>
-                  <div
-                    style={{ display: "flex", alignItems: "stretch", height: 40, justifyContent: "flex-end" }}
-                  >
-                    {canceledCount > 0 && (
-                      <button
-                        onClick={() => setShowCanceled((s) => !s)}
-                        aria-expanded={showCanceled}
-                        style={cancCell(showCanceled)}
-                      >
-                        {canceledCount} canceled
-                        <i style={{ fontSize: 10 }}>{showCanceled ? "▾" : "▸"}</i>
-                      </button>
-                    )}
-                    {/* a filter, not a disclosure — hence the Showing cell's
-                        ○/● and aria-pressed rather than the caret. Packages
-                        only: a stamp belongs to a package, and Tally has no
-                        package to filter. */}
-                    {view === "packages" && stampedCount > 0 && (
-                      <button
-                        onClick={() => setShowStamped((s) => !s)}
-                        aria-pressed={showStamped}
-                        style={cancCell(showStamped)}
-                      >
-                        {stampedCount} stamped
-                        <i
-                          style={{
-                            fontSize: 10,
-                            color: showStamped ? C.accent : C.inkSoft,
-                          }}
-                        >
-                          {showStamped ? "●" : "○"}
-                        </i>
-                      </button>
-                    )}
-                  </div>
-
-                  <div style={RULE_THIN} />
-                  </>
-                  )}
-                </>
-              )}
-
-              {/* THE ACTION ROW. File management is not a filter, and this
-                  used to say so by changing idiom: three boxed mono buttons
-                  pushed to the right edge, under a region made of hairlines
-                  and ruled cells. That kept the separation and broke the page
-                  — a tray of buttons in a different vocabulary, a void to
-                  their left that grew to ~450px at desktop width, and a panel
-                  that opened left-aligned under a chip that sat right. The
-                  separation is kept by TREATMENT now: the head cells are
-                  label-over-value state, this row is uppercase mono actions,
-                  and the thin rule above is the line between them. Equal cells
-                  at full width — the view switch and the head's thirds again —
-                  so there is nothing to align and nowhere for a void to open.
-                  `.mdl-acts` sizes its columns by child count (grid-auto-flow:
-                  column): one cell on an empty ledger, three with a remote,
-                  four without one. Re-import and Reset stay on the narrower
-                  gate — there is nothing to import into and nothing to clear
-                  on an empty ledger — while Sync survives it, because an empty
-                  ledger is exactly when Pull is needed.
-                  An ARMED Reset takes the whole row and the other two cells
-                  step out for the four seconds it lasts. The sentence needs the
-                  width, and it is the better two-tap: the target grows over
-                  the spot just tapped instead of wrapping to a new line under
-                  it, and the two controls a mis-tap could land on aren't there
-                  to land on. */}
-              {(syncBroken || syncOpen) && (
-                /* The one thing sync is allowed to say, and the only entrance
-                   to the repair kit. Advisory manila, never red — being
-                   unbacked-up is a state to fix, not a loss that has happened;
-                   the ledger on this device is fine. Red here would cry wolf at
-                   the one line the user has to keep believing.
-                   Full width above the ruled row rather than a cell in it: it
-                   is a sentence, it has to wrap, and the row's cells are a
-                   fixed 40px of uppercase mono.
-
-                   `|| syncOpen` and a TOGGLE, both learned from the first
-                   version shipping without them. It opened on tap and never
-                   closed, because removing the Sync cell took the only control
-                   that could shut the panel — and worse, the moment you fixed
-                   the thing it was complaining about, `syncBroken` went null,
-                   the line disappeared, and the panel was stranded open with no
-                   control at all. A disclosure has to be its own way back out.
-
-                   Which is also why it goes quiet rather than vanishing when
-                   the sync is healthy: while the panel is open the line is that
-                   panel's header, and a header that says "not backed up" over a
-                   ledger that just pushed would be a lie. */
-                <button
+            <div className="mdl-lg">Data</div>
+            <div className="mdl-lcard">
+              {(window.remote || window.sync) && (
+                <LedgerRow
+                  label="Sync"
+                  sub={syncSays.replace(/ — tap.*$/, "")}
+                  value={
+                    !syncBroken
+                      ? "On"
+                      : ["no-key", "sync-key", "no-access"].includes(syncBroken)
+                      ? "Set up"
+                      : "Needs attention"
+                  }
+                  accent={syncBroken ? C.manilaInk : undefined}
+                  expanded={syncOpen}
                   onClick={() => {
                     setHistoryOpen(false);
                     setSyncOpen((o) => !o);
                   }}
-                  aria-expanded={syncOpen}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    textAlign: "left",
-                    fontFamily: cochin,
-                    fontSize: 13.5,
-                    lineHeight: 1.4,
-                    padding: "9px 9px 10px",
-                    border: 0,
-                    borderTop: `1px solid ${C.line}`,
-                    background: syncBroken ? C.manila : "transparent",
-                    color: syncBroken ? C.manilaInk : C.inkSoft,
-                    cursor: "pointer",
-                  }}
-                >
-                  {syncBroken === "seeded"
-                    ? "A snapshot of someone else’s ledger — anything you change stays on this device"
-                    : syncBroken === "no-access"
-                    ? "This device can’t see the backup — tap to add its key"
-                    : syncBroken === "behind"
-                    ? "Your other device has newer lines — tap to bring them in"
-                    : syncBroken === "server"
-                    ? "The sync server could not be reached — tap to fix"
-                    : syncBroken === "sync-key"
-                    ? "This device has no sync key — tap to paste it"
-                    : syncBroken === "key-refused"
-                    ? "This device’s sync key was refused — tap to fix"
-                    : syncBroken === "too-big"
-                    ? "The ledger is too big for the sync server — tap to fix"
-                    : syncBroken === "photos-unreadable"
-                    ? "This device’s photos could not be read, so no new photos were backed up — tap to fix"
-                    : syncBroken === "backup-unknown"
-                    ? "The backup could not be checked — tap to fix"
-                    : !syncBroken
-                    ? `Backed up${
-                        syncedAt
-                          ? ` ${new Date(syncedAt).toISOString().slice(0, 10)}`
-                          : ""
-                      } — tap to close`
-                    : syncBroken === "no-key"
-                    ? "Not backed up on this device — tap to set it up"
-                    : syncBroken === "never"
-                    ? "Nothing has been backed up yet — tap to fix"
-                    : syncBroken === "stale"
-                    ? `Not backed up since ${new Date(syncedAt)
-                        .toISOString()
-                        .slice(0, 10)} — tap to fix`
-                    : "The backup needs attention — tap to fix"}
-                </button>
+                />
               )}
-              <div className={confirmReset ? "mdl-acts arming" : "mdl-acts"}>
-                {(items.length > 0 || liveEnvelopes.length > 0) && !confirmReset && (
-                  <button
-                    onClick={() => setShowUpload((s) => !s)}
-                    aria-expanded={showUpload}
-                    className="mdl-act"
-                  >
-                    <span>Re-import CSV</span>
-                  </button>
-                )}
-                {/* The SYNC cell lived here, and it is gone — it was the last
-                    piece of sync vocabulary on the happy path, a control whose
-                    whole job was to name a thing the app now does by itself.
-                    The panel it opened still exists as the repair kit, but its
-                    only entrance is the broken-line above, which appears when
-                    there is actually something to repair.
-                    HISTORY takes the cell, which keeps the row at the three
-                    equal cells this design was measured at. */}
-                {/* `window.versions || window.remote`, not just versions.
-                    Backup, Backup + photos and the branch's own archive all
-                    live in this panel, and none of them needs the versions
-                    adapter — so gating the cell on it alone left a device with
-                    no IndexedDB unable to download a backup file OR reach the
-                    remote history, which is exactly the recovery-gated-on-the-
-                    thing-it-recovers trap this file names three times. */}
-                {!confirmReset && (!!window.versions || !!window.remote) && (
-                  <button
-                    onClick={() => {
-                      /* closes Sync, the way the range and sort cells close
-                         each other. Both panels are several hundred pixels
-                         tall; stacked they push the packages off the screen. */
-                      setSyncOpen(false);
-                      setVersionMsg(null);
-                      setVersionMsgAt(null);
-                      setHistoryOpen((o) => !o);
-                    }}
-                    aria-expanded={historyOpen}
-                    aria-label="Saved versions"
-                    className="mdl-act"
-                  >
-                    <span>History</span>
-                    <i>▾</i>
-                  </button>
-                )}
-                {confirmReset && (
-                  <button autoFocus onClick={disarm} className="mdl-act">
-                    <span>Cancel</span>
-                  </button>
-                )}
-                {(items.length > 0 || liveEnvelopes.length > 0) && (
-                  <button
-                    onClick={resetAll}
-                    className={confirmReset ? "mdl-act armed" : "mdl-act danger"}
-                  >
-                    <span>
-                      {confirmReset
-                        ? `Tap again to clear ${cardsOf(ledgerCards + envelopeCards)}`
-                        : "Reset"}
-                    </span>
-                  </button>
-                )}
-              </div>
-
-              {historyOpen && !confirmReset && (
+              {syncOpen && (window.remote || window.sync) && (
+                /* The Sync group holds the server status, the device key paste
+                   box and the last sync time, and no GitHub control (owner
+                   ruling 2026-10-12). The GitHub mirror still pushes in the
+                   background; a conflict there waits for it, with no button. */
+                <div
+                  className="mdl-panel"
+                  style={{ ...panelWrap, display: "flex", flexDirection: "column", gap: 8 }}
+                >
+                  {photoSync && (
+                    <div
+                      style={{
+                        fontFamily: mono,
+                        fontSize: 10.5,
+                        letterSpacing: ".08em",
+                        textTransform: "uppercase",
+                        color: C.inkSoft,
+                      }}
+                    >
+                      {photoSync.dir === "push" ? "Sending" : "Fetching"} photos{" "}
+                      {photoSync.done}/{photoSync.total}
+                    </div>
+                  )}
+                  {photoMsg && (
+                    <div
+                      style={{
+                        padding: "7px 9px",
+                        borderRadius: 8,
+                        background: C.manila,
+                        color: C.manilaInk,
+                        fontFamily: cochin,
+                        fontSize: 13.5,
+                        lineHeight: 1.35,
+                      }}
+                    >
+                      {photoMsg.text}
+                    </div>
+                  )}
+                  {remoteMsg && (
+                    <div
+                      style={{
+                        fontFamily: cochin,
+                        fontSize: 13.5,
+                        lineHeight: 1.4,
+                        padding: "8px 10px",
+                        borderRadius: 8,
+                        background: remoteMsg.tone === "error" ? C.redSoft : C.manila,
+                        color: remoteMsg.tone === "error" ? C.red : C.manilaInk,
+                      }}
+                    >
+                      {remoteMsg.text}
+                    </div>
+                  )}
+                  <div style={partGrid}>
+                    <span style={partLab}>Server</span>
+                    <span style={partVal}>{serverStatus}</span>
+                    <span style={partLab}>Last sync</span>
+                    <span style={partVal}>{lastSyncText}</span>
+                    {window.sync && workerKeySet !== null && (
+                      <>
+                        <span style={partLab}>Sync key</span>
+                        <span
+                          style={{
+                            display: "flex",
+                            gap: 8,
+                            alignItems: "center",
+                            flexWrap: "wrap",
+                            minWidth: 0,
+                          }}
+                        >
+                          <input
+                            ref={syncKeyInput}
+                            type="password"
+                            placeholder="paste the sync key"
+                            aria-label="Sync key"
+                            autoComplete="off"
+                            spellCheck={false}
+                            autoCapitalize="off"
+                            style={keyField}
+                          />
+                          <button onClick={saveSyncKey} style={keySave}>
+                            Save sync key
+                          </button>
+                          {/* always rendered, on its own line, one line tall: the Save
+                              button never moves when text arrives */}
+                          <span style={{ ...partVal, flexBasis: "100%", minHeight: 17 }}>
+                            {syncKeyMsg}
+                          </span>
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+              {(!!window.versions || !!window.remote) && (
+                <LedgerRow
+                  label="History"
+                  value="Saved versions"
+                  expanded={historyOpen}
+                  onClick={() => {
+                    /* closes Sync: both panels are tall, and stacked they push
+                       the options off the screen */
+                    setSyncOpen(false);
+                    setVersionMsg(null);
+                    setVersionMsgAt(null);
+                    setHistoryOpen((o) => !o);
+                  }}
+                />
+              )}
+              {historyOpen && (
                 /* The same surface and the same parts as the sort and Sync
                    disclosures: an option grid of actions over a list built from
                    the head cells' label-and-value pair. Nothing here is a
-                   rounded box.
-
-                   Backup and Backup + photos live at the top because they are
-                   the same verb as the list below — save a version — one to
-                   this device, one off it. */
+                   rounded box. */
                 <div
                   className="mdl-panel"
                   style={{
@@ -6581,28 +6624,6 @@ export default function MailDayLedger() {
                     gap: 8,
                   }}
                 >
-                  <div style={{ ...optGrid(2), marginTop: 6 }}>
-                    {backupActions.map((a, i) => (
-                      <button
-                        key={a.key}
-                        onClick={a.onClick}
-                        disabled={a.disabled}
-                        style={{
-                          ...optCell(false),
-                          opacity: a.disabled ? 0.6 : 1,
-                          /* an odd last cell spans, or the rule colour shows
-                             through the empty half as a slab */
-                          ...(backupActions.length % 2 === 1 &&
-                          i === backupActions.length - 1
-                            ? { gridColumn: "1 / -1" }
-                            : null),
-                        }}
-                      >
-                        {a.label}
-                      </button>
-                    ))}
-                  </div>
-                  {versionMsg && !versionMsgAt && versionMsgBox}
                   {versionsDown && (
                     <div
                       style={{
@@ -6794,269 +6815,59 @@ export default function MailDayLedger() {
                   </div>
                 </div>
               )}
-              {syncOpen && window.remote && (
-                /* The same surface the date and sort disclosures use, and now
-                   the same contents: an option grid of actions over a block of
-                   particulars. It used to be a flex-wrap of boxed buttons with
-                   the target repo floating after them as bare text — the one
-                   panel in the region that still looked like the tray the
-                   region replaced. The grid is two columns everywhere, like the
-                   sort panel: "Pull from GitHub" and the armed "Tap again to
-                   replace" both need the 160px a half of 375px gives them and
-                   neither fits a third. An odd count leaves the last cell
-                   spanning the row, or the rule colour shows through the empty
-                   half as a slab — same trick the range panel uses. */
-                <div
-                  className="mdl-panel"
-                  style={{
-                    ...panelWrap,
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 8,
-                  }}
-                >
-                  <div style={{ ...optGrid(2), marginTop: 6 }}>
-                    {syncActions.map((a, i) => (
-                      <button
-                        key={a.key}
-                        onClick={a.onClick}
-                        disabled={a.disabled}
-                        aria-pressed={a.pressed}
-                        style={{
-                          ...optCell(!!a.on),
-                          ...a.style,
-                          opacity: a.disabled ? 0.6 : 1,
-                          ...(syncActions.length % 2 === 1 &&
-                          i === syncActions.length - 1
-                            ? { gridColumn: "1 / -1" }
-                            : null),
-                        }}
-                      >
-                        {a.label}
-                      </button>
-                    ))}
-                  </div>
-                  {ahead && pushState !== "conflict" && (
-                    /* advisory manila, never red: being behind is the ordinary
-                       state after the other device pushes, and the fix adds
-                       rather than replaces */
-                    <div
-                      style={{
-                        fontFamily: cochin,
-                        fontSize: 13.5,
-                        lineHeight: 1.4,
-                        padding: "8px 10px",
-                        borderRadius: 8,
-                        background: C.manila,
-                        color: C.manilaInk,
-                      }}
-                    >
-                      Your other device has pushed newer lines. Merge brings
-                      them in. A later change to the same card wins.
-                    </div>
-                  )}
-                  {confirmPull && (
-                    <div
-                      style={{
-                        fontFamily: cochin,
-                        fontSize: 13.5,
-                        lineHeight: 1.4,
-                        padding: "8px 10px",
-                        borderRadius: 8,
-                        background: C.redSoft,
-                        color: C.red,
-                      }}
-                    >
-                      Pull replaces every item, check-in and pending envelope on
-                      this device with the remote copy.
-                    </div>
-                  )}
-                  {photoSync && (
-                    <div
-                      style={{
-                        fontFamily: mono,
-                        fontSize: 10.5,
-                        letterSpacing: ".08em",
-                        textTransform: "uppercase",
-                        color: C.inkSoft,
-                      }}
-                    >
-                      {photoSync.dir === "push" ? "Sending" : "Fetching"} photos{" "}
-                      {photoSync.done}/{photoSync.total}
-                    </div>
-                  )}
-                  {photoMsg && (
-                    /* a SEPARATE box from remoteMsg — see PHOTO_SAYS. Advisory
-                       manila, never red: the ledger is safe whatever the photos
-                       did, and a red box here would read as "the backup
-                       failed". */
-                    <div
-                      style={{
-                        padding: "7px 9px",
-                        borderRadius: 8,
-                        background: C.manila,
-                        color: C.manilaInk,
-                        fontFamily: cochin,
-                        fontSize: 13.5,
-                        lineHeight: 1.35,
-                      }}
-                    >
-                      {photoMsg.text}
-                    </div>
-                  )}
-                  {remoteMsg && (
-                    <div
-                      style={{
-                        fontFamily: cochin,
-                        fontSize: 13.5,
-                        lineHeight: 1.4,
-                        padding: "8px 10px",
-                        borderRadius: 8,
-                        background:
-                          remoteMsg.tone === "error" ? C.redSoft : C.manila,
-                        color: remoteMsg.tone === "error" ? C.red : C.manilaInk,
-                      }}
-                    >
-                      {remoteMsg.text}
-                    </div>
-                  )}
-                  {(remoteTarget || remoteInfo) && (
-                    /* The particulars: micro-label over nothing, beside a mono
-                       value — the head cells' own parts laid on their side.
-                       One left-aligned block, flush with FIND and the cells
-                       above; the old target line had a marginLeft:auto that
-                       sent it to the right edge while the key line stayed
-                       left, and the panel read as a zigzag. */
-                    <div style={partGrid}>
-                      {remoteTarget && (
-                        <>
-                          <span style={partLab}>Ledger</span>
-                          <span style={partVal}>
-                            {remoteTarget.owner}/{remoteTarget.repo} ·{" "}
-                            {remoteTarget.branch}
-                          </span>
-                        </>
-                      )}
-                      {photoTarget && (
-                        <>
-                          <span style={partLab}>Photos</span>
-                          <span style={partVal}>
-                            {photoTarget.owner}/{photoTarget.repo} ·{" "}
-                            {photoTarget.branch}
-                          </span>
-                        </>
-                      )}
-                      {remoteInfo && (
-                        <>
-                          <span style={partLab}>Key</span>
-                          {keyOpen || !remoteInfo.hasKey ? (
-                            <span
-                              style={{
-                                display: "flex",
-                                gap: 8,
-                                alignItems: "center",
-                                minWidth: 0,
-                              }}
-                            >
-                              <input
-                                ref={keyInput}
-                                type="password"
-                                placeholder="github_pat_…"
-                                aria-label="GitHub access token"
-                                autoComplete="off"
-                                spellCheck={false}
-                                autoCapitalize="off"
-                                style={keyField}
-                              />
-                              <button onClick={saveKey} style={keySave}>
-                                Save key
-                              </button>
-                              {remoteInfo.hasKey && (
-                                /* Replace used to be a one-way door: it swapped
-                                   "saved on this device · Replace · Clear" for
-                                   a bare field with no cancel, and the only
-                                   setKeyOpen(false) was inside saveKey's try —
-                                   so changing your mind meant pasting a valid
-                                   token or reloading the app. Only offered when
-                                   there IS a key to go back to. */
-                                <button
-                                  onClick={() => setKeyOpen(false)}
-                                  style={linkBtn}
-                                >
-                                  Cancel
-                                </button>
-                              )}
-                            </span>
-                          ) : (
-                            <span style={partVal}>
-                              saved on this device
-                              <span style={{ margin: "0 6px" }}>·</span>
-                              <button
-                                onClick={() => setKeyOpen(true)}
-                                style={linkBtn}
-                              >
-                                Replace
-                              </button>
-                              <span style={{ margin: "0 6px" }}>·</span>
-                              <button onClick={clearKey} style={linkBtn}>
-                                Clear
-                              </button>
-                            </span>
-                          )}
-                        </>
-                      )}
-                      {window.sync && workerKeySet !== null && (
-                        <>
-                          <span style={partLab}>Sync key</span>
-                          <span
-                            style={{
-                              display: "flex",
-                              gap: 8,
-                              alignItems: "center",
-                              flexWrap: "wrap",
-                              minWidth: 0,
-                            }}
-                          >
-                            <input
-                              ref={syncKeyInput}
-                              type="password"
-                              placeholder="paste the sync key"
-                              aria-label="Sync key"
-                              autoComplete="off"
-                              spellCheck={false}
-                              autoCapitalize="off"
-                              style={keyField}
-                            />
-                            <button onClick={saveSyncKey} style={keySave}>
-                              Save sync key
-                            </button>
-                            {/* always rendered, on its own line, one line tall: the Save
-                                button never moves when text arrives */}
-                            <span style={{ ...partVal, flexBasis: "100%", minHeight: 17 }}>
-                              {syncKeyMsg}
-                            </span>
-                          </span>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
+              <LedgerRow
+                label="Re-import CSV"
+                value="Merges"
+                expanded={showUpload || (items.length === 0 && liveEnvelopes.length === 0)}
+                onClick={() => setShowUpload((s) => !s)}
+              />
+              {backupActions.map((a) => (
+                <LedgerRow key={a.key} label={a.label} onClick={a.onClick} disabled={a.disabled} />
+              ))}
+              {versionMsg && !versionMsgAt && (
+                <div style={{ padding: "0 16px 12px" }}>{versionMsgBox}</div>
               )}
+            </div>
 
-              <div style={RULE} />
-            </section>
-          </>
+            {(showUpload || (items.length === 0 && liveEnvelopes.length === 0)) && (
+              <div style={{ marginTop: 12 }}>
+                <UploadZone
+                  onFile={handleFile}
+                  error={uploadErr}
+                  replacing={items.length > 0}
+                />
+              </div>
+            )}
+
+            {/* Reset arms in place, in its own box, last
+                (armed-reset-takes-the-row). Cancel takes first focus. It
+                shows on an empty ledger too (recovery-control-not-state-gated). */}
+            <div className="mdl-lcard mdl-reset" style={{ marginTop: 20 }}>
+              {confirmReset && (
+                <button autoFocus onClick={disarm} className="mdl-act cancel">
+                  <span>Cancel</span>
+                </button>
+              )}
+              <button
+                onClick={resetAll}
+                className={confirmReset ? "mdl-act armed" : "mdl-act danger"}
+              >
+                <span>
+                  {confirmReset
+                    ? `Tap again to clear ${cardsOf(ledgerCards + envelopeCards)}`
+                    : "Reset"}
+                </span>
+              </button>
+            </div>
+          </section>
         )}
 
-        {/* `items.length === 0 && liveEnvelopes.length === 0`, not `items.length
-            === 0` alone. The zone is meant to be up unprompted on a genuinely
-            empty ledger — but with no items and a pending envelope it was
-            forced open regardless, which made the Re-import cell beside it a
-            disclosure that flipped aria-expanded and controlled nothing. Test
-            23.2 keeps that cell (it is reachable for a reason); this is what
-            gives it something to do. */}
-        {(showUpload || (items.length === 0 && liveEnvelopes.length === 0)) &&
-          !confirmReset && (
+        {/* On the working screens the zone is up unprompted only on a
+            genuinely empty ledger (no items and no pending envelope). The
+            Ledger tab holds its own copy under Re-import CSV. */}
+        {view !== "ledger" &&
+          items.length === 0 &&
+          liveEnvelopes.length === 0 && (
           <div style={{ marginBottom: 20 }}>
             <UploadZone
               onFile={handleFile}
