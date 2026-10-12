@@ -66,7 +66,7 @@ The owner ruled on 2026-10-11 to follow the Degen repo's D32, "Native SwiftUI ap
 - The Worker is the one home of the merge. The Swift client sends its changes and renders the reply. So `src/merge-rules.mjs` is never ported to Swift.
 - The view rules run in JavaScriptCore, so they have one home too, see `rules-run-in-javascriptcore`.
 - The palette tokens and the test fixtures are shared files, built for both clients, see `shared-tokens-and-fixtures`.
-- The web app stays for any browser and for CSV import, see `csv-import-stays-web`. The public seed goes away or reads from the server, see `worker-keeps-snapshots`.
+- The web app stays for any browser and for CSV import, see `csv-import-stays-web`. The public seed goes away, see `worker-keeps-snapshots`.
 
 The Mac gains the Keychain key and native storage. In Safari it had the 7-day rule, which counts days of Safari use (WebKit blog, "Full Third-Party Cookie Blocking and More", 2020). Its key also sat on the shared origin. The cost is a parity table to keep, and a shared-token build step.
 

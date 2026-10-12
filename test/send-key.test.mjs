@@ -17,6 +17,16 @@
 //   - The PNG sits in a fresh directory, mode 0700 while it exists. Both the
 //     PNG and its directory are removed before the script exits.
 //   - A failure prints plain text and opens nothing.
+//   - With --native (given after the device name) the URL is
+//     manifestledger://sync#k=<key> in place of the Pages URL. Nothing else
+//     changes: the same Keychain read, the same open or QR path, the same cleanup.
+//   - --native with a Keychain key outside KEY_RE is refused before any open or
+//     QR. KEY_RE is imported from src/sync-rules.mjs, never copied.
+//   - An unknown flag exits non-zero before any Keychain read.
+//   - --native before the device name (reversed order) is refused before any
+//     Keychain read.
+//   - --native accepts a key with each printable ASCII character exactly when
+//     KEY_RE accepts it (a sweep over all 95 characters, not a substring check).
 //
 // Every case is gated on the script file existing, so a missing script fails
 // each case, not just the ones that need it.
@@ -34,6 +44,8 @@ import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { buildSync } from "esbuild";
+import { KEY_RE } from "../src/sync-rules.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SCRIPT = join(REPO, "scripts", "send-key.mjs");
@@ -41,7 +53,9 @@ const SCRIPT_PRESENT = existsSync(SCRIPT);
 
 const FAKE_KEY = "f4k3K3y0a1b2c3d4e5f60718293a4b5c6d";
 const URL_WITH_KEY = `https://shivinate7.github.io/mailaudit/#k=${FAKE_KEY}`;
-const LEAK_TOKENS = [FAKE_KEY, FAKE_KEY.slice(0, 8), FAKE_KEY.slice(-8), URL_WITH_KEY];
+const NATIVE_URL = `manifestledger://sync#k=${FAKE_KEY}`;
+const LEAK_TOKENS = [FAKE_KEY, FAKE_KEY.slice(0, 8), FAKE_KEY.slice(-8), URL_WITH_KEY, NATIVE_URL];
+const BAD_KEY = "bad key/x"; // fails KEY_RE: a space and a slash
 const ACCOUNTS = { mac: "macbook", iphone: "iphone" };
 
 let failures = 0;
@@ -87,6 +101,13 @@ for a in "$@"; do
 done
 `;
 
+// The sweep's security fake prints whatever key the case sets in FAKE_PRINTED_KEY,
+// so a key can hold any printable character, quotes included.
+const FAKE_SECURITY_ENV = String.raw`#!/bin/sh
+printf '%s\n' "$*" >> "$FAKE_LOG_DIR/security.log"
+printf '%s\n' "$FAKE_PRINTED_KEY"
+`;
+
 function writeFake(dir, name, body) {
   const p = join(dir, name);
   writeFileSync(p, body);
@@ -117,7 +138,7 @@ function readLog(sb, name) {
   return existsSync(p) ? readFileSync(p, "utf8") : null;
 }
 
-function run(sb, args, { stdin = "\n", securityFails = false } = {}) {
+function run(sb, args, { stdin = "\n", securityFails = false, extraEnv = {} } = {}) {
   const r = spawnSync(process.execPath, [SCRIPT, ...args], {
     cwd: REPO,
     input: stdin,
@@ -129,6 +150,7 @@ function run(sb, args, { stdin = "\n", securityFails = false } = {}) {
       TMPDIR: sb.tmp,
       FAKE_LOG_DIR: sb.logs,
       FAKE_SECURITY_FAIL: securityFails ? "1" : "",
+      ...extraEnv,
     },
   });
   return {
@@ -292,6 +314,261 @@ function runThenInterrupt(sb, args) {
   } finally {
     cleanup(sb);
   }
+}
+
+// --native, mac: the same Keychain read as without the flag. Only the URL changes.
+{
+  const sb = sandbox();
+  try {
+    const r = run(sb, ["mac", "--native"]);
+    expect("mac --native: exits 0", r.status === 0 && !r.timedOut);
+    expect(
+      "mac --native: security read is the same argv (-a macbook)",
+      readLog(sb, "security.log") === securityLine(ACCOUNTS.mac)
+    );
+    expect(
+      "mac --native: open got exactly the native URL",
+      readLog(sb, "open.log") === `${NATIVE_URL}\n`
+    );
+    expect("mac --native: no QR drawn", readLog(sb, "osascript.log") === null);
+    expect("mac --native: no key bytes in stdout or stderr", !leaks(r.out + r.err));
+  } finally {
+    cleanup(sb);
+  }
+}
+
+// --native, iphone: the QR holds the native URL. The PNG cleanup is unchanged.
+{
+  const sb = sandbox();
+  try {
+    const r = run(sb, ["iphone", "--native"]);
+    expect("iphone --native: exits 0", r.status === 0 && !r.timedOut);
+    expect(
+      "iphone --native: security read is the same argv (-a iphone)",
+      readLog(sb, "security.log") === securityLine(ACCOUNTS.iphone)
+    );
+    const drawn = readLog(sb, "osascript.log") ?? "";
+    expect("iphone --native: osascript drew the native URL", drawn.includes(NATIVE_URL));
+    expect("iphone --native: no Pages URL was drawn", !drawn.includes(URL_WITH_KEY));
+    const rows = (readLog(sb, "open-png.log") ?? "").split("\n").filter((l) => l !== "");
+    const [png, existed] = (rows[0] ?? "").split("\t");
+    expect(
+      "iphone --native: open got exactly one PNG, and it existed",
+      rows.length === 1 && existed === "yes"
+    );
+    expect(
+      "iphone --native: PNG and its directory gone after exit",
+      Boolean(png) && !existsSync(png) && !existsSync(dirname(png))
+    );
+    expect("iphone --native: no key bytes in stdout or stderr", !leaks(r.out + r.err));
+  } finally {
+    cleanup(sb);
+  }
+}
+
+// An unknown flag exits non-zero before any Keychain read.
+{
+  const sb = sandbox();
+  try {
+    const r = run(sb, ["mac", "--nativ"]);
+    expect("unknown flag: exits non-zero", r.status !== 0 && !r.timedOut);
+    expect("unknown flag: security never called", readLog(sb, "security.log") === null);
+    expect(
+      "unknown flag: nothing opened or drawn",
+      readLog(sb, "open.log") === null && readLog(sb, "osascript.log") === null
+    );
+    expect("unknown flag: plain message on stderr", plainMessage(r.err));
+  } finally {
+    cleanup(sb);
+  }
+}
+
+// --native with a Keychain key outside KEY_RE: refused before any open or QR.
+// This security fake prints BAD_KEY and logs its argv like the usual fake.
+function runWithKeychainKey(sb, args, printed) {
+  writeFake(
+    sb.bin,
+    "security",
+    `#!/bin/sh\nprintf '%s\\n' "$*" >> "$FAKE_LOG_DIR/security.log"\nprintf '%s\\n' '${printed}'\n`
+  );
+  return run(sb, args);
+}
+for (const dev of ["mac", "iphone"]) {
+  const sb = sandbox();
+  try {
+    const r = runWithKeychainKey(sb, [dev, "--native"], BAD_KEY);
+    expect(`${dev} --native, bad Keychain key: exits non-zero`, r.status !== 0 && !r.timedOut);
+    expect(`${dev} --native, bad Keychain key: plain message on stderr`, plainMessage(r.err));
+    expect(`${dev} --native, bad Keychain key: nothing opened`, readLog(sb, "open.log") === null);
+    expect(`${dev} --native, bad Keychain key: no QR drawn`, readLog(sb, "osascript.log") === null);
+    expect(
+      `${dev} --native, bad Keychain key: the bad key is not echoed`,
+      !(r.out + r.err).includes(BAD_KEY)
+    );
+  } finally {
+    cleanup(sb);
+  }
+}
+
+// Reversed order, --native before the device: refused before any Keychain read.
+for (const args of [["--native", "mac"], ["--native", "iphone"]]) {
+  const sb = sandbox();
+  const label = args.join(" ");
+  try {
+    const r = run(sb, args);
+    expect(`${label}: exits non-zero`, r.status !== 0 && !r.timedOut);
+    expect(`${label}: security never called`, readLog(sb, "security.log") === null);
+    expect(
+      `${label}: nothing opened or drawn`,
+      readLog(sb, "open.log") === null && readLog(sb, "osascript.log") === null
+    );
+    expect(`${label}: plain message on stderr`, plainMessage(r.err));
+  } finally {
+    cleanup(sb);
+  }
+}
+
+// Behaviour sweep. For every printable ASCII character c, a key "a<c>b" must be
+// accepted by --native exactly when KEY_RE accepts it. The sweep takes an accepts
+// function, so the same comparison runs on the real script and on a self-case.
+const PRINTABLE = Array.from({ length: 0x7e - 0x20 + 1 }, (_, i) => String.fromCharCode(0x20 + i));
+
+function alphabetMismatches(accepts) {
+  return PRINTABLE.filter((c) => {
+    const key = `a${c}b`;
+    return accepts(key) !== KEY_RE.test(key);
+  });
+}
+
+// Runs the real script with --native and a Keychain key of the given value. The
+// key is accepted when the script opens the native URL with that key and exits 0.
+function scriptAccepts(key) {
+  const sb = sandbox();
+  try {
+    writeFake(sb.bin, "security", FAKE_SECURITY_ENV);
+    const r = run(sb, ["mac", "--native"], { extraEnv: { FAKE_PRINTED_KEY: key } });
+    return r.status === 0 && readLog(sb, "open.log") === `manifestledger://sync#k=${key}\n`;
+  } finally {
+    cleanup(sb);
+  }
+}
+
+// Self-case: a reordered copy of the alphabet agrees with KEY_RE, and the same
+// copy with one character changed is caught by the sweep.
+const REORDERED = /^[0-9A-Za-z_-]+$/;
+const REORDERED_ONE_CHANGED = /^[0-9A-Za-z_+]+$/;
+selfCheck(
+  "sweep: a reordered copy of the alphabet agrees with KEY_RE",
+  alphabetMismatches((k) => REORDERED.test(k)).length === 0
+);
+selfCheck(
+  "sweep: a reordered copy with one character changed fails (+ and - differ)",
+  alphabetMismatches((k) => REORDERED_ONE_CHANGED.test(k)).join("") === "+-"
+);
+
+{
+  const mismatches = alphabetMismatches(scriptAccepts);
+  if (mismatches.length > 0) {
+    console.log(`     mismatched characters: ${JSON.stringify(mismatches)}`);
+  }
+  expect(
+    "send-key --native accepts a key with each printable ASCII character exactly when KEY_RE does",
+    mismatches.length === 0
+  );
+}
+
+// The import check parses the source with esbuild's JS parser. It bundles with every
+// import external, so the parser counts real import statements only. Comments,
+// string literals and template literals never count. The printed import clauses
+// are then matched by line, and their count must equal the parser's count, so a
+// line that only looks like an import cannot satisfy the check.
+const SYNC_RULES = "../src/sync-rules.mjs";
+const SYNC_RULES_CLAUSE =
+  /^import\s*\{([^}]*)\}\s*from\s*"\.\.\/src\/sync-rules\.mjs";$/gm;
+
+function probe(source) {
+  const r = buildSync({
+    stdin: { contents: source, loader: "js", sourcefile: "probe.mjs" },
+    bundle: true,
+    external: ["*"],
+    format: "esm",
+    write: false,
+    metafile: true,
+    logLevel: "silent",
+  });
+  const parsed = Object.values(r.metafile.inputs)
+    .flatMap((input) => input.imports)
+    .filter((imp) => imp.kind === "import-statement" && imp.path === SYNC_RULES).length;
+  const clauses = [...r.outputFiles[0].text.matchAll(SYNC_RULES_CLAUSE)];
+  const namesKeyRe = clauses.some((m) =>
+    m[1].split(",").map((s) => s.trim()).includes("KEY_RE")
+  );
+  return {
+    text: r.outputFiles[0].text,
+    importsKeyRe: parsed === clauses.length && parsed > 0 && namesKeyRe,
+  };
+}
+
+function selfCheck(label, cond) {
+  if (cond) {
+    console.log(`ok   ${label}`);
+  } else {
+    failures++;
+    console.log(`FAIL ${label}`);
+  }
+}
+
+// The checker's own cases. The fixtures hold a comment opener inside a string,
+// a multi-line template literal that holds an import line, and a lone quote in
+// a comment or a string.
+const REAL_IMPORT = `import { KEY_RE } from "../src/sync-rules.mjs";\n`;
+selfCheck("checker: a real import passes", probe(REAL_IMPORT).importsKeyRe);
+selfCheck(
+  "checker: a line-commented import fails",
+  !probe(`// ${REAL_IMPORT}const x = 1;\n`).importsKeyRe
+);
+selfCheck(
+  "checker: a block-commented import fails",
+  !probe(`/* ${REAL_IMPORT} */\nconst x = 1;\n`).importsKeyRe
+);
+selfCheck(
+  "checker: a comment opener inside a string does not hide a real import",
+  probe(`const s = "// not a comment";\n${REAL_IMPORT}`).importsKeyRe
+);
+selfCheck(
+  "checker: a block opener inside a string does not hide a real import",
+  probe(`const s = "/* not a comment";\n${REAL_IMPORT}`).importsKeyRe
+);
+selfCheck(
+  "checker: an import line inside a multi-line template literal fails",
+  !probe("const t = `\n" + REAL_IMPORT + "`;\n").importsKeyRe
+);
+selfCheck(
+  "checker: a lone quote in a comment does not break a real import",
+  probe(`// Don't stop here\n${REAL_IMPORT}`).importsKeyRe
+);
+selfCheck(
+  "checker: a lone quote in a string does not break a real import",
+  probe(`const d = "Don't";\n${REAL_IMPORT}`).importsKeyRe
+);
+selfCheck(
+  "checker: a copied KEY_RE with no import fails",
+  !probe("const KEY_RE = /^[A-Za-z0-9_-]+$/;\n").importsKeyRe
+);
+
+// The real script, then the real script with its KEY_RE import commented out. The
+// commented copy must fail, so the check is not reading the text of the import.
+{
+  const src = SCRIPT_PRESENT ? readFileSync(SCRIPT, "utf8") : "";
+  const commented = src.replace(
+    /^(import \{ KEY_RE \} from "\.\.\/src\/sync-rules\.mjs";)$/m,
+    "// $1"
+  );
+  expect("script imports KEY_RE from src/sync-rules.mjs", probe(src).importsKeyRe);
+  expect(
+    "script with its KEY_RE import commented out fails the import check",
+    commented !== src && !probe(commented).importsKeyRe
+  );
 }
 
 if (failures > 0) {

@@ -15,9 +15,9 @@ import { readFileSync } from "node:fs";
 import { mergeLedger } from "../src/merge-rules.mjs";
 
 /* A missing or broken core fails in one clear line, not a raw stack trace. */
-let route, keyAllowed, wsAuthorized, MAX_LEDGER_BYTES;
+let route, keyAllowed, wsAuthorized, MAX_LEDGER_BYTES, MAX_PHOTO_BYTES;
 try {
-  ({ route, keyAllowed, wsAuthorized, MAX_LEDGER_BYTES } = await import("./core.mjs"));
+  ({ route, keyAllowed, wsAuthorized, MAX_LEDGER_BYTES, MAX_PHOTO_BYTES } = await import("./core.mjs"));
 } catch (e) {
   console.log(
     `FAIL worker/core.mjs does not load (expected until the core is built): ${e.message.split("\n")[0]}`
@@ -107,23 +107,79 @@ const ledger = (over = {}) => ({
 });
 const clone = (v) => structuredClone(v);
 
-/* initial is {ledger, rev} or null for an empty store. */
-function fakeStore(initial = null) {
+/* Clock. route() takes `now` as epoch milliseconds. PREV is the stored
+   state's last write; NOW is the clock send() uses by default. Both are UTC. */
+const DAY = 864e5;
+const PREV = Date.UTC(2026, 9, 11, 18, 0);
+const NOW = Date.UTC(2026, 9, 12, 9, 0);
+const dayOf = (t) => new Date(t).toISOString().slice(0, 10);
+
+/* Store contract the Durable Object store in index.mjs must match. The fake
+   takes and returns plain objects; turning the ledger into TEXT is the
+   Durable Object's job. `at` is compared with new Date(at).getTime(), so
+   the format (ISO string or epoch ms) is not pinned here.
+     read() -> {ledger, rev, at} | null
+     write(ledger, rev, at)               replaces the ledger row
+     broadcast(obj)
+     hasSnapshot(day) -> boolean
+     writeSnapshot(day, {ledger, rev, at})
+     readSnapshot(day) -> {ledger, rev, at} | null
+     listSnapshots() -> [{day, rev, at}]  no ledger bodies, any order
+     pruneSnapshots(beforeDay)            drops days before beforeDay
+   The fake's `order` records "snapshot", "write" and "broadcast". Prune is
+   not recorded there. */
+/* initial is {ledger, rev, at?} or null for an empty store. A missing `at`
+   defaults to PREV. snaps is [[day, {ledger, rev, at}], ...]. */
+/* initial is {ledger, rev} or null for an empty store. The photo half of the
+   store is three methods, named here as the contract the Durable Object
+   adapter (worker/index.mjs) must provide:
+     photoList()            -> [{id, mime}, ...]   (the mime rides on the row, so a list needs no bytes)
+     photoGet(id)           -> {mime, bytes} | null
+     photoPut(id, mime, bytes) -> void   (the route, not the store, enforces write-once)
+   photoWrites counts every photoPut call, so a route that writes twice shows.
+   photoGets counts every photoGet call, so a list that reads bytes shows. */
+function fakeStore(initial = null, snaps = []) {
   const s = {
-    state: initial ? clone(initial) : null,
+    state: initial ? clone({ at: PREV, ...initial }) : null,
     writes: [],
     broadcasts: [],
     order: [],
+    snaps: new Map(snaps.map(([day, v]) => [day, clone(v)])),
+    snapWrites: [],
+    photos: new Map(),
+    photoWrites: [],
+    photoGets: [],
+  };
+  s.photoList = async () => [...s.photos.entries()].map(([id, p]) => ({ id, mime: p.mime }));
+  s.photoGet = async (id) => {
+    s.photoGets.push(id);
+    const p = s.photos.get(id);
+    return p ? { mime: p.mime, bytes: p.bytes.slice() } : null;
+  };
+  s.photoPut = async (id, mime, bytes) => {
+    s.photoWrites.push(id);
+    s.photos.set(id, { mime, bytes: new Uint8Array(bytes) });
   };
   s.read = async () => (s.state ? clone(s.state) : null);
-  s.write = async (l, rev) => {
+  s.write = async (l, rev, at) => {
     s.order.push("write");
-    s.writes.push({ ledger: clone(l), rev });
-    s.state = { ledger: clone(l), rev };
+    s.writes.push({ ledger: clone(l), rev, at });
+    s.state = { ledger: clone(l), rev, at };
   };
   s.broadcast = async (obj) => {
     s.order.push("broadcast");
     s.broadcasts.push(clone(obj));
+  };
+  s.hasSnapshot = async (day) => s.snaps.has(day);
+  s.writeSnapshot = async (day, snap) => {
+    s.order.push("snapshot");
+    s.snapWrites.push({ day, ...clone(snap) });
+    s.snaps.set(day, clone(snap));
+  };
+  s.readSnapshot = async (day) => (s.snaps.has(day) ? clone(s.snaps.get(day)) : null);
+  s.listSnapshots = async () => [...s.snaps].map(([day, v]) => ({ day, rev: v.rev, at: v.at }));
+  s.pruneSnapshots = async (beforeDay) => {
+    for (const day of [...s.snaps.keys()]) if (day < beforeDay) s.snaps.delete(day);
   };
   return s;
 }
@@ -142,8 +198,20 @@ function req(method, path, o = {}) {
   return new Request(BASE + path, { method, headers, body });
 }
 
-const send = (store, method, path, o) =>
-  route(req(method, path, o), ENV, store);
+/* o.now sets the clock for one call; every call defaults to NOW. */
+const send = (store, method, path, o = {}) =>
+  route(req(method, path, o), ENV, store, o.now ?? NOW);
+
+/* A photo request: raw bytes, no JSON content type, so the route must take the
+   media type from the file name, not from the request. */
+const photoReq = (method, path, { key, bytes, type = "application/octet-stream" } = {}) => {
+  const headers = { "Content-Type": type };
+  if (key !== undefined) headers.Authorization = `Bearer ${key}`;
+  return new Request(BASE + path, { method, headers, body: bytes });
+};
+const sendPhoto = (store, method, path, o) => route(photoReq(method, path, o), ENV, store);
+const PHO_JPG = new Uint8Array([0xff, 0xd8, 0xff, 1, 2, 3]);
+const PHO_OTHER = new Uint8Array([9, 8, 7, 6]);
 
 const list = (v) =>
   (v || "")
@@ -483,7 +551,8 @@ await test("4.8 every successful POST writes, then broadcasts {rev} once", async
   const merge = fakeStore({ ledger: ledger(), rev: 4 });
   await send(merge, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: ledger() } });
   eq(merge.broadcasts, [{ rev: 5 }], "merge broadcast");
-  eq(merge.order, ["write", "broadcast"], "merge order");
+  /* The merge is the first change on NOW's UTC day, so it snapshots first (group 13). */
+  eq(merge.order, ["snapshot", "write", "broadcast"], "merge order");
 });
 
 /* An un-check is a key that is absent from `received`, stamped with a later
@@ -729,7 +798,7 @@ await test("9.3 the limit is checked on the merged ledger: a small incoming that
   eq(res.headers.get("Access-Control-Allow-Origin"), PAGES, "CORS header on the 413");
   eq(s.writes.length, 0, "writes");
   eq(s.broadcasts.length, 0, "broadcasts");
-  ok(canon(s.state) === canon({ ledger: stored, rev: 3 }), "stored state unchanged");
+  ok(canon(s.state) === canon({ ledger: stored, rev: 3, at: PREV }), "stored state unchanged");
 });
 
 /* "é" is one character and two UTF-8 bytes, and JSON.stringify leaves it
@@ -825,7 +894,7 @@ await test("10.3 a POST that changes the stored ledger writes rev 4, then broadc
   eq(res.status, 200, "status");
   eq(s.writes.map((w) => w.rev), [4], "write rev");
   eq(s.broadcasts, [{ rev: 4 }], "broadcast");
-  eq(s.order, ["write", "broadcast"], "order");
+  eq(s.order, ["snapshot", "write", "broadcast"], "order");
   eq((await res.json()).rev, 4, "response rev");
 });
 
@@ -885,6 +954,340 @@ await test("11.4 a first POST to an empty store replies with zero stats", async 
   const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: ledger() } });
   eq(res.status, 200, "status");
   eq((await res.json()).stats, ZERO_STATS, "reply stats");
+});
+
+/* ---------- 13. daily snapshots, /health, and the snapshot routes ---------- */
+/* A snapshot is the ledger as it was before the first changing POST of a UTC
+   day. A changing POST runs snapshot, then write, then broadcast. A no-op,
+   a 413, a 400 and a first POST to an empty store take none. */
+const withCard = (n) =>
+  ledger({ items: [item("100|1|555", "Alpha Card", 2), item(`${n}|1|555`, `Card ${n}`)] });
+const changes = (stored, incoming) =>
+  canon(mergeLedger(clone(stored), clone(incoming)).merged) !== canon(stored);
+const snapOf = (day, rev) => ({
+  ledger: ledger({ received: { [day]: rev } }),
+  rev,
+  at: Date.parse(`${day}T12:00:00Z`),
+});
+/* GET /snapshots as a list of days. A non-array body fails here, not later. */
+async function listDays(s) {
+  const body = await (await send(s, "GET", "/snapshots", { key: KEY_PHONE })).json();
+  ok(Array.isArray(body), "GET /snapshots returns an array");
+  return Array.isArray(body) ? body.map((e) => e.day) : [];
+}
+
+await test("13.1 the first changing POST of a UTC day snapshots the ledger as it was before the write", async () => {
+  const stored = ledger();
+  ok(changes(stored, withCard(200)), "fixture: the POST changes the stored ledger");
+  const s = fakeStore({ ledger: stored, rev: 3, at: PREV });
+  const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: withCard(200) } });
+  eq(res.status, 200, "status");
+  eq(s.snapWrites.length, 1, "snapshot writes");
+  eq(s.snapWrites[0]?.day, "2026-10-12", "snapshot day");
+  eq(s.snapWrites[0]?.ledger, stored, "snapshot holds the pre-write ledger");
+  eq(s.snapWrites[0]?.rev, 3, "snapshot rev is the pre-write rev");
+  ok(new Date(s.snapWrites[0]?.at).getTime() === PREV, "snapshot at is the pre-write write time");
+  eq(s.order, ["snapshot", "write", "broadcast"], "order");
+  eq(s.writes.map((w) => w.rev), [4], "write rev");
+  ok(new Date(s.writes[0]?.at).getTime() === NOW, "write at is the POST's time");
+});
+
+await test("13.2 a second changing POST on the same UTC day writes no snapshot, and the first snapshot stays", async () => {
+  const stored = ledger();
+  const s = fakeStore({ ledger: stored, rev: 3, at: PREV });
+  await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: withCard(200) } });
+  eq(s.snapWrites.length, 1, "fixture: the first POST took the day's snapshot");
+  const afterFirst = clone(s.state.ledger);
+  s.order.length = 0;
+  ok(changes(afterFirst, withCard(300)), "fixture: the second POST changes the ledger");
+  const res = await send(s, "POST", "/ledger", {
+    key: KEY_PHONE,
+    now: NOW + 3 * 3600e3,
+    json: { ledger: withCard(300) },
+  });
+  eq(res.status, 200, "status");
+  eq(s.order, ["write", "broadcast"], "second POST order: no snapshot");
+  eq(s.snapWrites.length, 1, "snapshot writes after the second POST");
+  eq(s.snapWrites[0]?.ledger, stored, "the day's snapshot is still the pre-first-write ledger");
+  eq(s.writes.map((w) => w.rev), [4, 5], "write revs");
+});
+
+await test("13.3 a changing POST on a new UTC day snapshots again, including across midnight UTC", async () => {
+  const stored = ledger();
+  const s = fakeStore({ ledger: stored, rev: 3, at: PREV });
+  const late = Date.UTC(2026, 9, 12, 23, 59);
+  const early = Date.UTC(2026, 9, 13, 0, 1);
+  await send(s, "POST", "/ledger", { key: KEY_PHONE, now: late, json: { ledger: withCard(200) } });
+  const afterLate = clone(s.state.ledger);
+  s.order.length = 0;
+  ok(changes(afterLate, withCard(300)), "fixture: the second POST changes the ledger");
+  const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, now: early, json: { ledger: withCard(300) } });
+  eq(res.status, 200, "status");
+  eq(s.order, ["snapshot", "write", "broadcast"], "order on the new day");
+  eq(s.snapWrites.map((w) => w.day), ["2026-10-12", "2026-10-13"], "one snapshot per UTC day");
+  eq(s.snapWrites[1]?.ledger, afterLate, "the new day's snapshot is the ledger before that write");
+  eq(s.snapWrites[1]?.rev, 4, "the new day's snapshot rev is the pre-write rev");
+});
+
+await test("13.4 a no-op, a 413, a 400 and a first POST to an empty store take no snapshot; a later changing POST still does", async () => {
+  /* Every ledger the current app sends carries receivedAt (state at src/app.jsx ~2836). A save from before receivedAt shipped may lack it; the merge then adds {}, so the no-op looks like a change. */
+  const stored = ledger({ receivedAt: {} });
+  ok(!changes(stored, stored), "fixture: the no-op POST changes nothing");
+  const s = fakeStore({ ledger: stored, rev: 3, at: PREV });
+  await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: stored } });
+  eq(s.snapWrites.length, 0, "no-op: snapshot writes");
+  await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: sized(LIM + 1) } });
+  eq(s.snapWrites.length, 0, "413: snapshot writes");
+  for (const b of BAD_BODIES) await send(s, "POST", "/ledger", { key: KEY_PHONE, ...b });
+  eq(s.snapWrites.length, 0, "400: snapshot writes");
+  eq(s.writes.length, 0, "fixture: none of those wrote the ledger");
+  await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: withCard(200) } });
+  eq(s.snapWrites.length, 1, "anchor: the first changing POST of the day still snapshots once");
+
+  const e = empty();
+  await send(e, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: ledger() } });
+  eq(e.snapWrites.length, 0, "empty store: snapshot writes");
+  eq(e.writes.length, 1, "empty store: the ledger is still written");
+});
+
+await test("13.5 GET /snapshots lists days newest first, each with only day, rev and at", async () => {
+  const days = ["2026-10-09", "2026-10-11", "2026-10-10"];
+  const s = fakeStore(
+    { ledger: ledger(), rev: 3, at: PREV },
+    days.map((d) => [d, snapOf(d, 1)])
+  );
+  const res = await send(s, "GET", "/snapshots", { key: KEY_PHONE });
+  eq(res.status, 200, "status");
+  const body = await res.json();
+  ok(Array.isArray(body), "body is an array");
+  const list = Array.isArray(body) ? body : [];
+  eq(list.map((e) => e.day), ["2026-10-11", "2026-10-10", "2026-10-09"], "newest first");
+  for (const e of list) eq(Object.keys(e).sort(), ["at", "day", "rev"], `keys of ${e.day}`);
+  ok(!JSON.stringify(body).includes('"ledger"'), "no ledger body in the list");
+  ok(new Date(list[0]?.at).getTime() === Date.parse("2026-10-11T12:00:00Z"), "at is passed through");
+});
+
+await test("13.6 GET /snapshots/<day> returns that day's ledger, rev and at; an unknown day is 404", async () => {
+  const day = "2026-10-11";
+  const snap = snapOf(day, 7);
+  const s = fakeStore({ ledger: ledger(), rev: 3, at: PREV }, [[day, snap]]);
+  const res = await send(s, "GET", `/snapshots/${day}`, { key: KEY_PHONE });
+  eq(res.status, 200, "known day status");
+  const body = await res.json();
+  eq(body.ledger, snap.ledger, "ledger");
+  eq(body.rev, 7, "rev");
+  ok(new Date(body.at).getTime() === snap.at, "at");
+  eq((await send(s, "GET", "/snapshots/2026-10-01", { key: KEY_PHONE })).status, 404, "unknown day status");
+});
+
+await test("13.7 both snapshot routes need the key: 401 with none or a stranger's, 200 with a device key", async () => {
+  const day = "2026-10-11";
+  const s = fakeStore({ ledger: ledger(), rev: 3, at: PREV }, [[day, snapOf(day, 1)]]);
+  for (const path of ["/snapshots", `/snapshots/${day}`, "/snapshots/2026-10-01"]) {
+    eq((await send(s, "GET", path, {})).status, 401, `${path} no key`);
+    eq((await send(s, "GET", path, { key: KEY_STRANGER })).status, 401, `${path} stranger`);
+  }
+  eq((await send(s, "GET", "/snapshots", { key: KEY_PHONE })).status, 200, "anchor: GET /snapshots with a device key");
+  eq((await send(s, "GET", `/snapshots/${day}`, { key: KEY_PHONE })).status, 200, "anchor: GET /snapshots/<day> with a device key");
+});
+
+await test("13.8 GET /health with no key returns only {at}, the last write time; a no-op does not move it", async () => {
+  const s = seeded();
+  const res = await send(s, "GET", "/health", {});
+  eq(res.status, 200, "status");
+  const body = await res.json();
+  eq(Object.keys(body), ["at"], "keys: only at");
+  ok(new Date(body.at).getTime() === PREV, "at is the stored state's last write time");
+
+  await send(s, "POST", "/ledger", { key: KEY_PHONE, now: NOW, json: { ledger: withCard(200) } });
+  const after = await (await send(s, "GET", "/health", {})).json();
+  ok(new Date(after.at).getTime() === NOW, "after a changing POST, at is that write's time");
+
+  const current = clone(s.state.ledger);
+  ok(!changes(current, current), "fixture: the repeat POST changes nothing");
+  await send(s, "POST", "/ledger", { key: KEY_PHONE, now: NOW + 3600e3, json: { ledger: current } });
+  const noop = await (await send(s, "GET", "/health", {})).json();
+  ok(new Date(noop.at).getTime() === NOW, "a no-op POST does not move at");
+});
+
+await test("13.9 a changing POST keeps exactly 180 snapshots: today and the 179 days before it; the 180-day-old and older go", async () => {
+  /* Snapshots for 1 to 185 days ago, so the boundary and the older ones are all present. */
+  const ages = Array.from({ length: 185 }, (_, i) => i + 1);
+  const dayAgo = (k) => dayOf(NOW - k * DAY);
+  const s = fakeStore(
+    { ledger: ledger(), rev: 3, at: PREV },
+    ages.map((k) => [dayAgo(k), snapOf(dayAgo(k), 1)])
+  );
+  ok(changes(ledger(), withCard(200)), "fixture: the POST changes the ledger");
+  const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: withCard(200) } });
+  eq(res.status, 200, "status");
+  eq(s.snapWrites.map((w) => w.day), [dayOf(NOW)], "fixture: this POST takes today's snapshot");
+  const days = await listDays(s);
+  const kept = [dayOf(NOW), ...ages.filter((k) => k <= 179).map(dayAgo)];
+  eq(days.length, 180, "exactly 180 snapshots remain");
+  eq([...days].sort(), kept.sort(), "today and the 179 days before it remain");
+  ok(!days.includes(dayAgo(180)), "the 180-day-old snapshot is pruned");
+  ok(!days.includes(dayAgo(181)), "the 181-day-old snapshot is pruned");
+});
+
+/* ---------- 12. photos: write-once blobs beside the ledger, never in it ---------- */
+/* Group 11 is the W1 stats group on main, so the photo route takes group 12.
+   Ids are pho-<tag>; the name carries the type, so mime comes from the name. */
+await test("12.1 GET /photos on an empty store replies 200 with no ids", async () => {
+  const s = empty();
+  const res = await sendPhoto(s, "GET", "/photos", { key: KEY_PHONE });
+  eq(res.status, 200, "status");
+  eq((await res.json()).ids, [], "ids");
+});
+
+await test("12.2 GET /photos lists every stored photo as its file name, extension included", async () => {
+  const s = empty();
+  s.photos.set("pho-aaa111", { mime: "image/jpeg", bytes: PHO_JPG });
+  s.photos.set("pho-bbb222", { mime: "image/png", bytes: PHO_OTHER });
+  const res = await sendPhoto(s, "GET", "/photos", { key: KEY_PHONE });
+  eq(res.status, 200, "status");
+  eq(((await res.json()).ids || []).slice().sort(), ["pho-aaa111.jpg", "pho-bbb222.png"], "names");
+});
+
+await test("12.3 a POST stores the bytes, and GET serves them with the type from the name", async () => {
+  const s = empty();
+  const up = await sendPhoto(s, "POST", "/photos/pho-aaa111.jpg", { key: KEY_PHONE, bytes: PHO_JPG });
+  ok(up.status >= 200 && up.status < 300, `upload status ${up.status} is 2xx`);
+  const got = await sendPhoto(s, "GET", "/photos/pho-aaa111.jpg", { key: KEY_PHONE });
+  eq(got.status, 200, "status");
+  eq(got.headers.get("Content-Type"), "image/jpeg", "content type from the name");
+  eq(Array.from(new Uint8Array(await got.arrayBuffer())), Array.from(PHO_JPG), "bytes");
+});
+
+await test("12.4 a .heic photo is served as image/heic, whatever type the upload claimed", async () => {
+  const s = empty();
+  await sendPhoto(s, "POST", "/photos/pho-ccc333.heic", { key: KEY_PHONE, bytes: PHO_OTHER, type: "image/jpeg" });
+  const got = await sendPhoto(s, "GET", "/photos/pho-ccc333.heic", { key: KEY_PHONE });
+  eq(got.status, 200, "status");
+  eq(got.headers.get("Content-Type"), "image/heic", "content type from the name");
+});
+
+await test("12.5 a name that is not pho-id plus a known extension is refused with 400 and stores nothing", async () => {
+  for (const name of ["notes.jpg", "pho-aaa111.exe", "pho-aaa111"]) {
+    const s = empty();
+    const res = await sendPhoto(s, "POST", `/photos/${name}`, { key: KEY_PHONE, bytes: PHO_JPG });
+    eq(res.status, 400, `status for ${name}`);
+    eq(s.photos.size, 0, `photos stored for ${name}`);
+    eq(s.photoWrites.length, 0, `photoPut calls for ${name}`);
+  }
+});
+
+await test("12.6 a second POST to the same name keeps the first bytes", async () => {
+  const s = empty();
+  await sendPhoto(s, "POST", "/photos/pho-aaa111.jpg", { key: KEY_PHONE, bytes: PHO_JPG });
+  const again = await sendPhoto(s, "POST", "/photos/pho-aaa111.jpg", { key: KEY_LAPTOP, bytes: PHO_OTHER });
+  ok(again.status >= 200 && again.status < 300, `repeat status ${again.status} is 2xx`);
+  const kept = s.photos.get("pho-aaa111");
+  eq(kept ? Array.from(kept.bytes) : null, Array.from(PHO_JPG), "stored bytes after the repeat");
+  eq(s.photoWrites, ["pho-aaa111"], "photoPut calls: the repeat must not write again");
+});
+
+await test("12.7 a photo over MAX_PHOTO_BYTES is refused with 413 photo-too-large; one at the limit is kept", async () => {
+  ok(typeof MAX_PHOTO_BYTES === "number", "worker/core.mjs exports MAX_PHOTO_BYTES");
+  if (typeof MAX_PHOTO_BYTES !== "number") return;
+  const LIM = MAX_PHOTO_BYTES;
+  eq(LIM, 1_900_000, "limit is 1.9 MB");
+  const s = empty();
+  const over = await sendPhoto(s, "POST", "/photos/pho-big111.jpg", { key: KEY_PHONE, bytes: new Uint8Array(LIM + 1) });
+  eq(over.status, 413, "status over the limit");
+  eq((await over.json()).error, "photo-too-large", "error over the limit");
+  eq(s.photos.size, 0, "nothing stored over the limit");
+  eq(s.photoWrites.length, 0, "photoPut calls over the limit");
+  const at = await sendPhoto(s, "POST", "/photos/pho-big222.jpg", { key: KEY_PHONE, bytes: new Uint8Array(LIM) });
+  ok(at.status >= 200 && at.status < 300, `status at the limit ${at.status} is 2xx`);
+  eq(s.photos.has("pho-big222"), true, "stored at the limit");
+});
+
+await test("12.8 there is no delete route: DELETE on a photo or the list replies 405 and keeps the bytes", async () => {
+  const s = empty();
+  await sendPhoto(s, "POST", "/photos/pho-aaa111.jpg", { key: KEY_PHONE, bytes: PHO_JPG });
+  eq((await sendPhoto(s, "DELETE", "/photos/pho-aaa111.jpg", { key: KEY_PHONE })).status, 405, "DELETE on a photo");
+  eq((await sendPhoto(s, "DELETE", "/photos", { key: KEY_PHONE })).status, 405, "DELETE on the list");
+  eq(s.photos.has("pho-aaa111"), true, "photo kept");
+});
+
+await test("12.9 a photo POST writes no ledger, sends no broadcast and leaves rev alone", async () => {
+  const s = fakeStore({ ledger: ledger(), rev: 3 });
+  const before = canon(s.state);
+  const res = await sendPhoto(s, "POST", "/photos/pho-aaa111.jpg", { key: KEY_PHONE, bytes: PHO_JPG });
+  ok(res.status >= 200 && res.status < 300, `status ${res.status} is 2xx`);
+  eq(s.writes.length, 0, "ledger writes");
+  eq(s.broadcasts.length, 0, "broadcasts");
+  eq(canon(s.state), before, "stored ledger and rev");
+});
+
+await test("12.10 photo routes need a device key, and a missing id replies 404", async () => {
+  const s = empty();
+  s.photos.set("pho-aaa111", { mime: "image/jpeg", bytes: PHO_JPG });
+  const good = await sendPhoto(s, "POST", "/photos/pho-ddd444.jpg", { key: KEY_LAPTOP, bytes: PHO_OTHER });
+  ok(good.status >= 200 && good.status < 300, `positive control: keyed POST is 2xx, got ${good.status}`);
+  eq((await sendPhoto(s, "POST", "/photos/pho-bbb222.jpg", { bytes: PHO_OTHER })).status, 401, "POST without a key");
+  eq(s.photos.has("pho-bbb222"), false, "nothing stored without a key");
+  eq((await sendPhoto(s, "GET", "/photos", {})).status, 401, "GET list without a key");
+  eq((await sendPhoto(s, "GET", "/photos/pho-aaa111.jpg", {})).status, 401, "GET photo without a key");
+  eq((await sendPhoto(s, "GET", "/photos", { key: KEY_STRANGER })).status, 401, "GET list with a key not on the list");
+  eq((await sendPhoto(s, "GET", "/photos/pho-zzz999.jpg", { key: KEY_PHONE })).status, 404, "missing id");
+});
+
+await test("12.11 a path that is not valid percent-encoding is refused with 400, never thrown, for GET and POST", async () => {
+  for (const path of ["/photos/%", "/photos/%ZZ.jpg"]) {
+    const s = empty();
+    const got = await sendPhoto(s, "GET", path, { key: KEY_PHONE });
+    eq(got.status, 400, `GET status for ${path}`);
+    eq((await got.json()).error, "bad photo name", `GET error for ${path}`);
+    const up = await sendPhoto(s, "POST", path, { key: KEY_PHONE, bytes: PHO_JPG });
+    eq(up.status, 400, `POST status for ${path}`);
+    eq(s.photoWrites.length, 0, `photoPut calls for ${path}`);
+  }
+});
+
+await test("12.12 a photo is served with the mime on its stored row, not one re-derived from the URL", async () => {
+  const s = empty();
+  await sendPhoto(s, "POST", "/photos/pho-fff666.jpg", { key: KEY_PHONE, bytes: PHO_JPG, type: "image/png" });
+  eq(s.photos.get("pho-fff666")?.mime, "image/jpeg", "row mime from the name, not the upload's claim");
+  const got = await sendPhoto(s, "GET", "/photos/pho-fff666.jpg", { key: KEY_PHONE });
+  eq(got.headers.get("Content-Type"), "image/jpeg", "served mime for a .jpg upload");
+  s.photos.set("pho-eee555", { mime: "image/png", bytes: PHO_OTHER });
+  const row = await sendPhoto(s, "GET", "/photos/pho-eee555.jpg", { key: KEY_PHONE });
+  eq(row.status, 200, "status for a row stored as image/png");
+  eq(row.headers.get("Content-Type"), "image/png", "served mime is the stored row's, not image/jpeg from the name");
+});
+
+await test("12.13 a POST whose Content-Length is over MAX_PHOTO_BYTES gets 413 before its body is read", async () => {
+  const s = empty();
+  let bodyRead = false;
+  const r = {
+    method: "POST",
+    url: BASE + "/photos/pho-big333.jpg",
+    headers: new Headers({
+      Authorization: `Bearer ${KEY_PHONE}`,
+      "Content-Type": "application/octet-stream",
+      "Content-Length": String(MAX_PHOTO_BYTES + 1),
+    }),
+    arrayBuffer: async () => {
+      bodyRead = true;
+      return new ArrayBuffer(0);
+    },
+  };
+  const res = await route(r, ENV, s);
+  eq(res.status, 413, "status");
+  eq(bodyRead, false, "body read before the size check");
+  eq(s.photoWrites.length, 0, "photoPut calls");
+});
+
+await test("12.14 GET /photos reads no photo bytes: zero photoGet calls, and the names still carry the extension", async () => {
+  const s = empty();
+  s.photos.set("pho-aaa111", { mime: "image/jpeg", bytes: PHO_JPG });
+  s.photos.set("pho-bbb222", { mime: "image/png", bytes: PHO_OTHER });
+  const res = await sendPhoto(s, "GET", "/photos", { key: KEY_PHONE });
+  eq(res.status, 200, "status");
+  eq(s.photoGets.length, 0, "photoGet calls on the list");
+  eq(((await res.json()).ids || []).slice().sort(), ["pho-aaa111.jpg", "pho-bbb222.png"], "names");
 });
 
 report();

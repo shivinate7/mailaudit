@@ -1,12 +1,24 @@
 # CI skips draft pull requests after a proof
 
-**Status:** ruled 2026-10-11, not built. Drafts run CI today. The skip waits for a scratch PR. The scratch PR must show that a skipped required check does not read as passing.
+**Status:** ruled 2026-10-11. The native job skips drafts (lane C1). The other jobs still run on drafts. Their skip waits for a scratch PR. The scratch PR must show that a skipped required check does not read as passing. Owner ruling, 2026-10-12: the scratch-PR proof is granted. A separate lane runs it and records the result below. No result is recorded yet.
 
-Today `.github/workflows/test.yml` runs on `pull_request` with no draft filter, so a draft PR runs the whole suite. The owner ruled on 2026-10-11 that CI skips draft PRs. The ruling has one condition. The skip waits until a scratch PR shows that a skipped required check does not read as passing. Until then, drafts keep running CI.
+The owner ruled on 2026-10-11 that CI skips draft PRs. The ruling has one condition. The skip for the other jobs waits until a scratch PR shows that a skipped required check does not read as passing. Until then, drafts keep running CI in those jobs. Native stays not a required check until the owner says so, see `native-ci-on-hosted-macos`.
 
-The change covers every job in `test.yml`. It also adds draft state to the concurrency keys. It lands as one change, after the scratch PR.
+The `pull_request` trigger in `.github/workflows/test.yml` lists four types: `opened`, `synchronize`, `reopened` and `ready_for_review`. The native job has a draft guard. The suite, scope, screens and zizmor jobs have none, so a draft PR runs them.
 
-**Holds while:** the `pull_request` trigger in `.github/workflows/test.yml` has no `types` list and no draft filter.
+The rest of the change covers those four jobs and adds draft state to the concurrency keys, the native job's included. It lands as one change, after the scratch PR.
+
+**Holds while:** as of 2026-10-12, only the native job in `.github/workflows/test.yml` has a draft guard, and native is not a required check.
+
+## Scratch PR result
+
+Run on 2026-10-12 as scratch PR #83, closed unmerged. Draft run 38265934901 and ready run 38266281235.
+
+- While draft, suite, scope, screens and zizmor ran and passed. Native skipped. The merge state read CLEAN.
+- After ready, the same four jobs ran. Native skipped again, because the diff was README only and the scope job said no native change.
+- Main requires only suite and screens. Both ran on the draft, so no required check was skipped.
+
+The proof is incomplete. It shows that a skipped native job does not block a merge, because native is not required. It does not show how a skipped required check reads. That needs a draft guard on suite or screens, and a second scratch PR.
 
 ## See also
 

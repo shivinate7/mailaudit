@@ -1,6 +1,6 @@
-# What has run against real GitHub or a real device
+# What has run against real GitHub, a real device or a Worker probe
 
-This file draws the line between proven and unproven. It lists what has run against the live GitHub API and a real device. It also names what has not. Read it before you claim a path is safe. Keep the split exactly as this file draws it.
+This file draws the line between proven and unproven. It lists what has run against the live GitHub API, a real device and a Worker probe. It also names what has not. Read it before you claim a path is safe. Keep the split exactly as this file draws it.
 
 **Holds while:** the repo `mailaudit-data` is private. An anonymous request gets 404 for it, gets 200 for `mailaudit`, and the Pages site answers 200. Checked 2026-10-10.
 
@@ -69,6 +69,18 @@ Photo sync has had its read paths verified live and without a key. The raw media
 That same session is what surfaced the group-28 bug: Pull was unreachable on an empty ledger. Worth remembering as a method: the suite was all green. The feature was still broken in its single most important scenario, because every test booted a ledger that already had data in it.
 
 It is worth moving to vitest and testing-library if this grows much further. The hand-rolled `ok`/`eq` helpers and the top-to-bottom script are fine at this size. But they give no isolation between groups.
+
+## Worker probes still needed
+
+A probe deploy sets its own Durable Object name with the STORE_NAME variable, so a probe never touches the real store. Each lane names its probe below. A probe name is never ledger-v3, the real store, or ledger-v2, which holds an earlier probe's data.
+
+Owner ruling, 2026-10-12: a probe deploy of the Worker is granted, under its own name and store. A live deploy needs the owner's word again.
+
+- **W2a photo route, probe-w2a.** Still to run on Cloudflare: the photos table is created through the Durable Object's SQLite API. A POST then a GET return the same bytes, with the type from the name. A second POST keeps the first bytes. A photo over 1.9 MB gets 413.
+- **W3a daily snapshots and /health, probe-w3a.** Still to run on Cloudflare: the snapshots table is created. The first changing write of a UTC day stores one snapshot, and a later one stores none. GET /health with no key returns only the last write time. The list and get snapshot routes answer with a device key.
+- **W2b, W3b, W3c, W3d and W3e.** No probe is named. Each waits for its brief.
+
+No test runs the Durable Object adapter. So the SQLite calls in worker/index.mjs are unproven until a probe runs.
 
 ## See also
 
