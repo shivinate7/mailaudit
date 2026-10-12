@@ -432,5 +432,6 @@ export const packagesDone = (pkgs, received) =>
 
 /* Lane N5: the check-in toggle and the "N of M" label. Swift calls both through
    RulesEngine (rules-run-in-javascriptcore). A line that is in toggles to 0, else to qty. */
-export const toggleCount = (got, qty) => (got >= qty ? 0 : qty);
+export const isDone = (got, qty) => got >= qty;
+export const toggleCount = (got, qty) => (isDone(got, qty) ? 0 : qty);
 export const countLabel = (got, qty) => `${Math.min(got, qty)} of ${qty}`;

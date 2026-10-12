@@ -23,6 +23,8 @@ public final class PackagesModel {
     public private(set) var received: [String: Int] = [:]
     /// "N of M" per item key, from the bundle's countLabel.
     public private(set) var labels: [String: String] = [:]
+    /// Whether each item key is fully in, from the bundle's isDone.
+    public private(set) var done: [String: Bool] = [:]
     /// Set when the last check-in could not be saved; nil after one that was.
     public private(set) var checkInError: String?
 
@@ -43,21 +45,32 @@ public final class PackagesModel {
         rows = try JSONDecoder().decode([Package].self, from: Data(sorted.utf8))
         received = got
         labels = [:]
+        done = [:]
         for p in rows { for it in p.items { try await refreshLabel(it) } }
     }
 
     private func refreshLabel(_ it: LedgerItem) async throws {
         let out = try await engine.call("countLabel", "[\(received[it.key] ?? 0),\(it.qty)]")
         labels[it.key] = try JSONSerialization.jsonObject(with: Data(out.utf8), options: [.fragmentsAllowed]) as? String
+        done[it.key] = try await engine.call("isDone", "[\(received[it.key] ?? 0),\(it.qty)]") == "true"
     }
 
-    /// A tap: the bundle's toggleCount picks the count to write.
+    /// A tap: the bundle's toggleCount picks the count to write. Every failure, rule or save,
+    /// lands in checkInError and is thrown.
     public func toggle(key: String) async throws {
         guard let item = rows.lazy.flatMap(\.items).first(where: { $0.key == key }) else { return }
-        let out = try await engine.call("toggleCount", "[\(received[key] ?? 0),\(item.qty)]")
-        guard let count = Int(out) else { throw RulesEngine.Failure.threw("toggleCount gave \(out)") }
-        try await checkIn(key: key, count: count)
+        do {
+            let out = try await engine.call("toggleCount", "[\(received[key] ?? 0),\(item.qty)]")
+            guard let count = Int(out) else { throw RulesEngine.Failure.threw("toggleCount gave \(out)") }
+            try await checkIn(key: key, count: count)
+        } catch {
+            if checkInError == nil { checkInError = "Could not check in. \(error.localizedDescription)" }
+            throw error
+        }
     }
+
+    /// For the view: a tap whose failure is already in checkInError.
+    public func tap(key: String) async { try? await toggle(key: key) }
 
     public func checkIn(key: String, count: Int) async throws {
         do { try store.commitReceived(key, count: count) } catch {
@@ -66,6 +79,11 @@ public final class PackagesModel {
         }
         checkInError = nil
         received = store.received()
-        if let item = rows.lazy.flatMap(\.items).first(where: { $0.key == key }) { try await refreshLabel(item) }
+        if let item = rows.lazy.flatMap(\.items).first(where: { $0.key == key }) {
+            do { try await refreshLabel(item) } catch {
+                checkInError = "Saved, but the label could not refresh. \(error.localizedDescription)"
+                throw error
+            }
+        }
     }
 }

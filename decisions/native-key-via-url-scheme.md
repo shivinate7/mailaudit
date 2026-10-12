@@ -20,6 +20,7 @@ A universal link takes over if the Camera does not open the custom scheme. The o
 
 ## The Keychain
 
+- The Keychain service is the bundle id, `dev.shivinate.manifest` (orchestrator default 2026-10-12). Nothing has shipped, so no stored key moves.
 - The key lives in the app's own Keychain. The accessibility class is AfterFirstUnlockThisDeviceOnly.
 - `hasKey()` returns only a Bool. The sync client reads the key at request time.
 - The key never enters view state, the ledger or a backup, see `the-token-is-a-credential`.

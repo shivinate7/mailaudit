@@ -33,7 +33,7 @@ struct PackageRow: View {
             Text("\(pkg.seller), \(pkg.orderId)").font(.headline)
                 .frame(minHeight: 44, alignment: .leading)
             ForEach(pkg.items, id: \.key) { item in
-                let got = model.received[item.key] ?? 0
+                let isDone = model.done[item.key] ?? false
                 HStack {
                     VStack(alignment: .leading) {
                         Text(item.name)
@@ -42,12 +42,12 @@ struct PackageRow: View {
                     }
                     Spacer()
                     Button {
-                        Task { try? await model.toggle(key: item.key) }  // the failure shows in model.checkInError
+                        Task { await model.tap(key: item.key) }  // a failure shows in model.checkInError
                     } label: {
-                        Image(systemName: got >= item.qty ? "checkmark.circle.fill" : "circle")
+                        Image(systemName: isDone ? "checkmark.circle.fill" : "circle")
                             .frame(width: 45, height: 45).foregroundStyle(.primary)  // 45: layout rounding made a 44pt frame read 43.99999
                     }
-                    .accessibilityLabel("\(got >= item.qty ? "Undo check in" : "Check in") \(item.name)")
+                    .accessibilityLabel("\(isDone ? "Undo check in" : "Check in") \(item.name)")
                     .accessibilityIdentifier("checkin:\(item.key)")
                 }
                 .frame(minHeight: 44)

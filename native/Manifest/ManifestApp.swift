@@ -6,7 +6,7 @@ import SwiftUI
 struct ManifestApp: App {
     @State private var model: PackagesModel?
     @State private var failure: String?
-    private let keys = KeyStore(service: "com.shivinate.manifest", account: "device-key")
+    private let keys = KeyStore(service: "dev.shivinate.manifest", account: "device-key")
     @State private var engine: RulesEngine?
     private let links = PendingKeyLinks()
     private static let log = Logger(subsystem: "dev.shivinate.manifest", category: "key-link")
