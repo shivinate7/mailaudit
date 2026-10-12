@@ -40,6 +40,7 @@ import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { buildSync } from "esbuild";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SCRIPT = join(REPO, "scripts", "send-key.mjs");
@@ -396,14 +397,99 @@ for (const dev of ["mac", "iphone"]) {
   }
 }
 
-// The script takes KEY_RE from the web app's module and keeps no copy of the alphabet.
+// The import check parses the source with esbuild's JS parser. It bundles with every
+// import external, so the parser counts real import statements only. Comments,
+// string literals and template literals never count. The printed import clauses
+// are then matched by line, and their count must equal the parser's count, so a
+// line that only looks like an import cannot satisfy the check.
+const SYNC_RULES = "../src/sync-rules.mjs";
+const SYNC_RULES_CLAUSE =
+  /^import\s*\{([^}]*)\}\s*from\s*"\.\.\/src\/sync-rules\.mjs";$/gm;
+
+function probe(source) {
+  const r = buildSync({
+    stdin: { contents: source, loader: "js", sourcefile: "probe.mjs" },
+    bundle: true,
+    external: ["*"],
+    format: "esm",
+    write: false,
+    metafile: true,
+    logLevel: "silent",
+  });
+  const parsed = Object.values(r.metafile.inputs)
+    .flatMap((input) => input.imports)
+    .filter((imp) => imp.kind === "import-statement" && imp.path === SYNC_RULES).length;
+  const clauses = [...r.outputFiles[0].text.matchAll(SYNC_RULES_CLAUSE)];
+  const namesKeyRe = clauses.some((m) =>
+    m[1].split(",").map((s) => s.trim()).includes("KEY_RE")
+  );
+  return {
+    text: r.outputFiles[0].text,
+    importsKeyRe: parsed === clauses.length && parsed > 0 && namesKeyRe,
+  };
+}
+
+function selfCheck(label, cond) {
+  if (cond) {
+    console.log(`ok   ${label}`);
+  } else {
+    failures++;
+    console.log(`FAIL ${label}`);
+  }
+}
+
+// The checker's own cases. The fixtures hold a comment opener inside a string,
+// a multi-line template literal that holds an import line, and a lone quote in
+// a comment or a string.
+const REAL_IMPORT = `import { KEY_RE } from "../src/sync-rules.mjs";\n`;
+selfCheck("checker: a real import passes", probe(REAL_IMPORT).importsKeyRe);
+selfCheck(
+  "checker: a line-commented import fails",
+  !probe(`// ${REAL_IMPORT}const x = 1;\n`).importsKeyRe
+);
+selfCheck(
+  "checker: a block-commented import fails",
+  !probe(`/* ${REAL_IMPORT} */\nconst x = 1;\n`).importsKeyRe
+);
+selfCheck(
+  "checker: a comment opener inside a string does not hide a real import",
+  probe(`const s = "// not a comment";\n${REAL_IMPORT}`).importsKeyRe
+);
+selfCheck(
+  "checker: a block opener inside a string does not hide a real import",
+  probe(`const s = "/* not a comment";\n${REAL_IMPORT}`).importsKeyRe
+);
+selfCheck(
+  "checker: an import line inside a multi-line template literal fails",
+  !probe("const t = `\n" + REAL_IMPORT + "`;\n").importsKeyRe
+);
+selfCheck(
+  "checker: a lone quote in a comment does not break a real import",
+  probe(`// Don't stop here\n${REAL_IMPORT}`).importsKeyRe
+);
+selfCheck(
+  "checker: a lone quote in a string does not break a real import",
+  probe(`const d = "Don't";\n${REAL_IMPORT}`).importsKeyRe
+);
+selfCheck(
+  "checker: a copied KEY_RE with no import fails",
+  !probe("const KEY_RE = /^[A-Za-z0-9_-]+$/;\n").importsKeyRe
+);
+
+// The real script, then the real script with its KEY_RE import commented out. The
+// commented copy must fail, so the check is not reading the text of the import.
 {
   const src = SCRIPT_PRESENT ? readFileSync(SCRIPT, "utf8") : "";
-  expect(
-    "script imports KEY_RE from src/sync-rules.mjs",
-    /import\s*\{[^}]*\bKEY_RE\b[^}]*\}\s*from\s*["']\.\.\/src\/sync-rules\.mjs["']/.test(src)
+  const commented = src.replace(
+    /^(import \{ KEY_RE \} from "\.\.\/src\/sync-rules\.mjs";)$/m,
+    "// $1"
   );
-  expect("script keeps no copy of the key alphabet", !src.includes("A-Za-z0-9_-"));
+  expect("script imports KEY_RE from src/sync-rules.mjs", probe(src).importsKeyRe);
+  expect(
+    "script with its KEY_RE import commented out fails the import check",
+    commented !== src && !probe(commented).importsKeyRe
+  );
+  expect("script keeps no copy of the key alphabet", !probe(src).text.includes("A-Za-z0-9_-"));
 }
 
 if (failures > 0) {
