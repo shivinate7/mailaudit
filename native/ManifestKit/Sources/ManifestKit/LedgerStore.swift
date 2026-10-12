@@ -38,6 +38,12 @@ public final class LedgerStore {
         try data.write(to: fileURL, options: .atomic)
     }
 
+    /// The raw `items` array, as the rules take it.
+    public func items() -> [[String: Any]] { doc["items"] as? [[String: Any]] ?? [] }
+
+    /// The `received` map, key to count.
+    public func received() -> [String: Int] { (doc["received"] as? [String: Any] ?? [:]).compactMapValues { $0 as? Int } }
+
     /// count 0 is an un-check: drop `received`, stamp `receivedAt`.
     public func setReceived(_ key: String, count: Int) {
         var r = doc["received"] as? [String: Any] ?? [:]
@@ -47,6 +53,13 @@ public final class LedgerStore {
         doc["received"] = r
         doc["receivedAt"] = at
         generation += 1
+    }
+
+    /// setReceived then save. If the save fails, the store goes back to what it was.
+    public func commitReceived(_ key: String, count: Int) throws {
+        let (oldDoc, oldGen) = (doc, generation)
+        setReceived(key, count: count)
+        do { try save() } catch { doc = oldDoc; generation = oldGen; throw error }
     }
 
     public func setStamp(_ key: String, kind: String, note: String, at: String) {
