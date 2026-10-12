@@ -8,6 +8,12 @@ The `cochin` constant is the Cochin font stack. Its last family is the generic `
 
 The root element sets `fontFamily: cochin`. Every element inherits that font. Form controls do not inherit it on their own, so they need their own rule. See `design-form-controls-no-inherit`.
 
+## The size floor
+
+No visible text is smaller than 10px. The owner ruled on 2026-10-11, accept all: record a 10px micro-label floor. Per the 2026-10-11 audit, some labels are smaller than 10px today.
+
+**Status:** ruled 2026-10-11, not built. Build: no lane yet.
+
 ## See also
 
 - `design-view-switch-equal-thirds` — the one exception to mono for numbers, the outstanding pill.

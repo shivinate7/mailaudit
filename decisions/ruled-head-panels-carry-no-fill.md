@@ -1,5 +1,7 @@
 # Disclosure panels carry no fill
 
+**Status:** open. The overlay ruling of 2026-10-11, in `motion-disclosure-panels-arrive`, conflicts with this rule. A panel laid over the list has no fill, so the list rows show through it. The owner must choose a panel treatment. Until then, this rule stands.
+
 The disclosure panels hold only padding and a top hairline. They never carry a background fill. The option grids still read as raised, because their own cells paint a surface over the panel's rule.
 
 **Holds while:** `panelWrap` in `src/app.jsx` sets padding and a top border, and no background.

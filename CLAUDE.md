@@ -21,7 +21,7 @@ one record, and each record holds current text only; git keeps the history. Read
 records your task needs. Do not read them all.
 
 - `invariants/` holds a rule that must not break. 8 records.
-- `decisions/` holds a ruling and the reason it still holds. 213 records.
+- `decisions/` holds a ruling and the reason it still holds.
 - `measurements/` holds a measured figure and how to re-measure it. 8 records.
 
 A record cites another record by slug, never by a path, so a record survives a
@@ -34,10 +34,7 @@ separates a question still open from a ruling already settled, so keep it.
 
 ## Working here
 
-The owner's global rules govern this repo, and this file does not restate them.
-Two paragraphs here used to duplicate them, one on which tasks to escalate and
-one on judging a rule by its outcome. Both are in the global file, so both are
-cut rather than kept in two places that can disagree.
+The owner's global rules govern this repo, and this file does not restate them, so the two cannot disagree.
 
 One local lesson is worth the space, because this repo paid for it. A rule here
 can outlive the constraint that produced it. The argument that "the ledger repo
@@ -71,7 +68,6 @@ Nothing in the component touches a storage API. Three adapters do, and each fail
 - `b64-fails-with-plausible-data` — Base64 lives in its own module.
 - `photo-rules-fails-quietly` — Photo rules are pure and separately tested.
 - `remote-rules-fail-quietly` — Remote status mapping is pure and tested.
-- `merge-later-change-wins` — The later change wins in a two-device merge.
 
 ## Sync, the remote and the token
 
@@ -202,6 +198,14 @@ One stamp per package, set by hand. A refund takes the package out of every coun
 - `stamp-band-opens-the-editor` — The stamp band is the control.
 - `stamped-filter-on-the-pipeline` — The stamped filter sits on the normal pipeline.
 
+## House UX
+
+House UX rules that govern the screens. Read these before changing a screen.
+
+- `ux-house-rules-govern` — MANIFEST screens follow the house UX rules.
+- `spacing-on-4px-grid` — Spacing moves to a 4px grid with an 8px card radius.
+- `phone-nav-awaits-mockup` — Phone navigation waits for a mockup.
+
 ## The ruled head
 
 The control region is the masthead's own vocabulary continued. Read these before changing a control there.
@@ -216,7 +220,7 @@ The control region is the masthead's own vocabulary continued. Read these before
 - `ruled-head-stale-clock-agreement` — The staleness clock measures agreement, not writes.
 - `date-filter-spans-ledger-views` — The date filter applies to both ledger views.
 - `action-row-is-ruled-cells` — The action row is ruled cells, not buttons.
-- `armed-reset-takes-the-row` — An armed Reset takes the whole action row.
+- `armed-reset-takes-the-row` — An armed Reset arms in place.
 - `disclosure-cells-underline-value` — Cells that open something underline their value.
 - `history-sync-close-each-other` — History and Sync close each other.
 - `upload-zone-opens-when-empty` — The upload zone opens only on an empty ledger.
@@ -233,7 +237,7 @@ The register is stationery, not software. One rule governs all of it: nothing ma
 - `motion-a-card-opens-in-order` — A card lays its rows down in order.
 - `motion-completed-package-gilded` — A completed package is gilded, not badged.
 - `motion-collapse-not-animated` — Collapsing a card runs with no animation.
-- `motion-disclosure-panels-arrive` — Disclosure panels fade in, their space does not.
+- `motion-disclosure-panels-arrive` — Disclosure panels overlay the list and do not push it.
 - `motion-stationery-not-software` — Motion reads as stationery, not software.
 - `motion-method-side-by-side-proof` — Each motion was chosen by looking, not by reading.
 - `motion-nothing-may-reflow` — No animation can cause a reflow.
@@ -275,6 +279,7 @@ What each check asks, and the two traps in the icon pipeline.
 
 - `check-build-ignores-seed` — The build check compares code, and ignores the seed.
 - `ci-filters-guarantee-no-rebuild` — CI filters replace the old no-workflows guarantee.
+- `ci-skips-draft-prs` — CI skips draft pull requests after a proof.
 - `watchdog-catches-silent-failure` — A scheduled watchdog checks the backup, not the phone.
 - `pages-queued-workflow-fix` — A stuck Pages deploy needs a new commit, not a re-run.
 - `favicon-is-a-different-drawing` — The favicon is redrawn, not the master shrunk.

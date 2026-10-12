@@ -1,6 +1,8 @@
 # The action row is ruled cells, not buttons
 
-The action row holds equal ruled cells across the full width. The cells are Re-import CSV, History and Reset. They use uppercase mono, like the view switch. Each cell is 40px tall, like Find.
+**Status:** ruled 2026-10-11, not built. Owner ruling, accept all: the 40px ruled row gets a 44px touch hit area, with no visual change. The web lane that builds it, L6 in the 2026-10-11 audit, is not briefed yet.
+
+The action row holds equal ruled cells across the full width. The cells are Re-import CSV, History and Reset. They use uppercase mono, like the view switch. Each cell is 40px tall, like Find. Each cell has a 44px touch hit area, with no visual change.
 
 **Holds while:** `src/app.jsx` styles the row as `.mdl-acts` with `grid-auto-flow: column`, and it has no Sync cell.
 
