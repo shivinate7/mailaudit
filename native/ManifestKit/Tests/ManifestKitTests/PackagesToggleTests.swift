@@ -9,10 +9,10 @@
 // A failed save is surfaced: PackagesModel.checkInError holds the message, so the view
 // can show it. The view's `try?` is what drops it today.
 //
-// Red-first. These names do not exist yet: PackagesModel.toggle(key:) and
-// PackagesModel.checkInError. Until the builder adds them the target does not compile,
-// so this file's reds are a compile error on the missing names. The builder's stub
-// turns each into an XCTAssert red.
+// The names PackagesModel.toggle(key:) and PackagesModel.checkInError exist now.
+// The fault cases at the end (toggle rule throws or returns a non-integer; label
+// refresh fails after a good save) are red: the toggle fault leaves checkInError nil,
+// and the refresh fault leaves checkInError nil after the save clears it.
 //
 // Fake fixtures only. No Keychain item is read.
 
@@ -87,5 +87,72 @@ final class PackagesToggleTests: XCTestCase {
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: dir.path)
         try await model.checkIn(key: Self.checkedKey, count: 1)
         XCTAssertNil(model.checkInError, "a successful save must clear the error")
+    }
+
+    /// The real bundle with `override` appended. The override reassigns the global
+    /// `Rules` object, so the glue reads the replaced functions.
+    func overriddenBundle(_ override: String) throws -> URL {
+        let real = try String(contentsOf: RulesGoldenTests.bundleURL, encoding: .utf8)
+        let probe = FileManager.default.temporaryDirectory
+            .appending(path: "n5-toggle-fault-\(UUID().uuidString).js")
+        try (real + "\n" + override + "\n").write(to: probe, atomically: true, encoding: .utf8)
+        return probe
+    }
+
+    /// A toggle whose rule throws changes nothing, and the failure reaches checkInError.
+    func testToggleRuleThrowSurfacesErrorAndKeepsRows() async throws {
+        try await assertToggleFaultSurfaces(
+            "Rules=Object.assign({},Rules,{toggleCount:function(){throw new Error('toggle boom')}});")
+    }
+
+    /// A toggle whose rule returns a non-integer is refused the same way.
+    func testToggleRuleNonIntegerSurfacesErrorAndKeepsRows() async throws {
+        try await assertToggleFaultSurfaces(
+            "Rules=Object.assign({},Rules,{toggleCount:function(){return 1.5}});")
+    }
+
+    func assertToggleFaultSurfaces(_ override: String) async throws {
+        let url = try freshLedgerURL()
+        let store = LedgerStore(fileURL: url, now: { 1_786_543_380_000 })
+        let engine = try RulesEngine(bundleURL: try overriddenBundle(override))
+        try store.load()
+        let model = PackagesModel(engine: engine, store: store)
+        try await model.load()
+        let rowsBefore = model.rows
+        let receivedBefore = store.received()
+        XCTAssertNil(model.checkInError, "no error before the toggle")
+
+        do {
+            try await model.toggle(key: Self.checkedKey)
+            XCTFail("a toggle whose rule fails must throw")
+        } catch {}
+
+        XCTAssertNotNil(model.checkInError, "a failed toggle rule must surface checkInError")
+        XCTAssertEqual(model.rows, rowsBefore, "a failed toggle must leave the rows unchanged")
+        XCTAssertEqual(store.received(), receivedBefore, "a failed toggle must write nothing")
+    }
+
+    /// A label refresh that fails after a good save surfaces an error. The save stands.
+    func testLabelRefreshFailureAfterGoodSaveSurfacesError() async throws {
+        let url = try freshLedgerURL()
+        let store = LedgerStore(fileURL: url, now: { 1_786_543_380_000 })
+        let engine = try RulesEngine(bundleURL: try overriddenBundle(
+            "var __realCountLabel=Rules.countLabel;"
+            + "Rules=Object.assign({},Rules,{countLabel:function(r,q){"
+            + "if(r>0)throw new Error('label boom');return __realCountLabel(r,q);}});"))
+        try store.load()
+        let model = PackagesModel(engine: engine, store: store)
+        try await model.load()
+        XCTAssertNil(model.checkInError, "no error before the check-in")
+
+        do {
+            try await model.checkIn(key: Self.checkedKey, count: 1)
+            XCTFail("a label refresh that fails must throw")
+        } catch {}
+
+        let obj = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        let received = try XCTUnwrap(obj["received"] as? [String: Any])
+        XCTAssertEqual(received[Self.checkedKey] as? Int, 1, "the save before the refresh must stand")
+        XCTAssertNotNil(model.checkInError, "a label refresh failure after a good save must surface checkInError")
     }
 }
