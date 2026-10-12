@@ -1,5 +1,7 @@
 # Three views share one switch
 
+**Ruled, not built:** on phone, the bottom bar replaces this switch and adds a Ledger tab (`phone-nav-is-bottom-bar`). The empty-ledger rule below carries to the bar only once the owner rules it there.
+
 The top of the app holds one switch. It moves between three views: Orphaned, Tally and Packages. The Tally and Packages views share one `received` map, the date filter, search and Showing.
 
 **Holds while:** `src/app.jsx` labels the three views `Orphaned`, `Tally` and `Packages` in its view switch.
