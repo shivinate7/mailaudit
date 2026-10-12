@@ -45,6 +45,29 @@ const mono = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
    and shouldn't be trimmed back. */
 const cochin = "Cochin, 'Hoefler Text', Palatino, Georgia, serif";
 
+/* Line icons for the bottom bar's tabs, drawn on a 24px grid. */
+const BAR_ICONS = {
+  ledger: (
+    <>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1" />
+    </>
+  ),
+  mystery: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="1.5" />
+      <path d="M3 7l9 6 9-6M10.2 11.2a1.9 1.9 0 1 1 2.6 1.7c-.5.3-.8.6-.8 1.2" />
+    </>
+  ),
+  items: <path d="M5 5v14M9.5 5v14M14 5v14M18.5 5v14M3 17L21 7" />,
+  packages: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="1.5" />
+      <path d="M3 7l9 6 9-6" />
+    </>
+  ),
+};
+
 const money = (n) =>
   `$${n.toLocaleString(undefined, {
     minimumFractionDigits: 2,
@@ -2954,7 +2977,8 @@ export default function MailDayLedger() {
   const keyInput = useRef(null);
   const [dateFilter, setDateFilter] = useState({ preset: "all", from: "", to: "" });
   const [sortBy, setSortBy] = useState("newest");
-  const [view, setView] = useState("packages"); // packages | items | mystery
+  const [view, setView] = useState("packages"); // packages | items | mystery | ledger
+  const listView = view === "packages" || view === "items";
 
   /* Masthead collapse. The tall block is ordinary content that scrolls away;
      the slim bar below it is `position: sticky` with a FIXED height, so it is
@@ -5619,28 +5643,51 @@ export default function MailDayLedger() {
         .mdl-sticky-f { margin-left: auto; font-family: ${mono}; font-size: 11px;
                         color: ${C.inkSoft}; white-space: nowrap; }
 
-        /* Equal thirds. Overflow is now impossible; the label has to fit its
-           own third instead, which the clamped font-size buys. */
-        .mdl-switch { position: relative; display: grid;
-                      grid-template-columns: repeat(3, 1fr);
-                      width: 100%; border: 1px solid ${C.line};
-                      border-radius: 999px; overflow: hidden;
-                      background: ${C.card}; margin-bottom: 14px; }
-        .mdl-switch button { position: relative; z-index: 1;
-                      font-family: ${mono}; letter-spacing: .09em;
-                      font-size: clamp(10px, 2.75vw, 11px);
-                      padding: clamp(7px, 2.1vw, 9px) 4px;
-                      text-transform: uppercase; border: none;
-                      background: transparent; color: ${C.inkSoft};
-                      cursor: pointer; white-space: nowrap; display: flex;
-                      align-items: center; justify-content: center; gap: 5px;
-                      transition: color 300ms ease; }
-        /* the accent fill is .mdl-thumb's job now — a button painting its own
-           background would leave the fill behind wherever the thumb had just
-           been, and there would be two of it mid-slide */
-        .mdl-switch button.on { color: ${C.card}; }
-        .mdl-switch button b { font-weight: 700; color: ${C.red}; }
-        .mdl-switch button.on b { color: ${C.card}; }
+        /* The bottom bar: a floating glass capsule, 24px in from each side,
+           12px above the home indicator, capped at 480px and centred. Each
+           tab is a 44px-plus target. The active tab is a card-colour pill. */
+        .mdl-bar { position: fixed; z-index: 50; left: 24px; right: 24px;
+                   max-width: 480px; margin: 0 auto; height: 64px;
+                   bottom: calc(12px + env(safe-area-inset-bottom));
+                   display: flex; gap: 2px; padding: 5px;
+                   box-sizing: border-box; border: 1px solid ${C.line};
+                   border-radius: 999px;
+                   background: color-mix(in srgb, ${C.paper} 62%, transparent);
+                   -webkit-backdrop-filter: blur(18px) saturate(1.8);
+                   backdrop-filter: blur(18px) saturate(1.8);
+                   box-shadow: 0 8px 24px ${C.shadow}, 0 1px 3px ${C.shadow}; }
+        .mdl-bar button { position: relative; flex: 1; min-width: 44px;
+                   min-height: 44px; display: flex; flex-direction: column;
+                   align-items: center; justify-content: center; gap: 3px;
+                   padding: 0; border: 0; border-radius: 999px;
+                   background: transparent; color: ${C.ink}; cursor: pointer;
+                   font-family: ${mono}; font-size: 10px; letter-spacing: .09em;
+                   text-transform: uppercase; }
+        .mdl-bar button svg { width: 22px; height: 22px; fill: none;
+                   stroke: currentColor; stroke-width: 1.8;
+                   stroke-linecap: round; stroke-linejoin: round; }
+        .mdl-bar button.on { background: color-mix(in srgb, ${C.card} 90%, transparent);
+                   color: ${C.accent}; box-shadow: inset 0 0 0 1px ${C.line}; }
+        .mdl-bar button b { position: absolute; top: 6px; left: 50%;
+                   margin-left: 13px; font-size: 10px; font-weight: 700;
+                   color: ${C.red}; }
+        .mdl-pill { position: fixed; z-index: 50; left: 24px; right: 24px;
+                   max-width: 480px; margin: 0 auto; height: 48px;
+                   bottom: calc(12px + 64px + 8px + env(safe-area-inset-bottom));
+                   display: flex; align-items: center; gap: 10px;
+                   padding: 0 18px; box-sizing: border-box;
+                   border: 1px solid ${C.line}; border-radius: 999px;
+                   background: color-mix(in srgb, ${C.paper} 62%, transparent);
+                   -webkit-backdrop-filter: blur(18px) saturate(1.8);
+                   backdrop-filter: blur(18px) saturate(1.8);
+                   box-shadow: 0 8px 24px ${C.shadow}, 0 1px 3px ${C.shadow}; }
+        .mdl-pill:focus-within { border-color: ${C.accent}; }
+        .mdl-pill svg { flex: none; width: 20px; height: 20px; fill: none;
+                   stroke: ${C.inkSoft}; stroke-width: 1.8;
+                   stroke-linecap: round; }
+        .mdl-pill input { flex: 1; min-width: 0; height: 100%; border: 0;
+                   background: transparent; outline: none;
+                   font-family: ${cochin}; color: ${C.ink}; padding: 0; }
 
         /* ── The action row ─────────────────────────────────────────────
            Columns by child count — one cell on an empty ledger, three with
@@ -5742,19 +5789,6 @@ export default function MailDayLedger() {
           to   { opacity: 1; transform: none; }
         }
 
-        /* The switch is one object being moved, not three lamps being lit. The
-           violet fill is its own absolutely positioned element at exactly a
-           third of the track, translated by whole multiples of its own width —
-           so it lands on the thirds the grid already defines and cannot drift
-           out of step with them. The buttons keep transparent backgrounds and
-           sit above it; only their colour crosses over. */
-        .mdl-thumb { position: absolute; top: 0; bottom: 0; left: 0;
-                     width: calc(100% / 3); background: ${C.accent};
-                     border-radius: 999px; pointer-events: none;
-                     transition: transform 420ms cubic-bezier(.16,1,.3,1); }
-        .mdl-switch[data-view="items"] .mdl-thumb    { transform: translateX(100%); }
-        .mdl-switch[data-view="packages"] .mdl-thumb { transform: translateX(200%); }
-
         /* A stamp lands: down at an angle, rocked flat, settled back. It plays
            only when a package actually completes under the user's finger —
            useJustBecame gates it — because a class alone would restamp every
@@ -5850,11 +5884,10 @@ export default function MailDayLedger() {
           .mdl-head .mdl-seal, .mdl-head .mdl-seal .mdl-shine, .mdl-rule i,
           .mdl-title, .mdl-house, .mdl-tallies,
           .mdl-land, .mdl-nib, .mdl-panel, .mdl-reveal { animation: none; }
-          .mdl-thumb { transition: none; }
           .mdl-sheen, .mdl-gild { display: none; }
         }
       `}</style>
-      <div style={{ maxWidth: 760, margin: "0 auto", padding: "24px 16px 80px" }}>
+      <div style={{ maxWidth: 760, margin: "0 auto", padding: "24px 16px calc(148px + env(safe-area-inset-bottom))" }}>
         {/* ── Masthead ───────────────────────────────────────────────────
             A letterhead: seal, title, house line, then the tallies folded in
             under a rule. One composed block, not three stacked boxes — the
@@ -5999,28 +6032,45 @@ export default function MailDayLedger() {
             column, so the constraint moved inside — the longest label plus its
             badge has to fit one third (~114px at 375px) and the lever is the
             clamped font-size, not the padding. */}
-        {(items.length > 0 || liveEnvelopes.length > 0) && (
-          <div className="mdl-switch" data-view={view}>
-            {/* the sliding fill. aria-hidden and pointer-events:none — the
-                buttons above it carry the pressed state and every gesture. */}
-            <i className="mdl-thumb" aria-hidden="true" />
-            {[
-              ["mystery", "Orphaned"],
-              ["items", "Tally"],
-              ["packages", "Packages"],
-            ].map(([v, label]) => (
-              <button
-                key={v}
-                onClick={() => leaveFor(v)}
-                aria-pressed={view === v}
-                className={view === v ? "on" : undefined}
-              >
-                {label}
-                {v === "mystery" && liveEnvelopes.length > 0 && (
-                  <b>{liveEnvelopes.length}</b>
-                )}
-              </button>
-            ))}
+        {/* The bottom bar (phone-nav-is-bottom-bar). It shows on every
+            ledger, empty included, so Re-import and Reset stay reachable and
+            envelopes are never stranded. Four tabs, Ledger first. */}
+        <nav className="mdl-bar" aria-label="Views">
+          {[
+            ["ledger", "Ledger", BAR_ICONS.ledger],
+            ["mystery", "Orphaned", BAR_ICONS.mystery],
+            ["items", "Tally", BAR_ICONS.items],
+            ["packages", "Packages", BAR_ICONS.packages],
+          ].map(([v, label, d]) => (
+            <button
+              key={v}
+              onClick={() => leaveFor(v)}
+              aria-current={view === v ? "page" : undefined}
+              className={view === v ? "on" : undefined}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">{d}</svg>
+              {label}
+              {v === "mystery" && liveEnvelopes.length > 0 && (
+                <b>{liveEnvelopes.length}</b>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {listView && items.length > 0 && (
+          <div className="mdl-pill" role="search">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.5" />
+              <path d="M16 16l4.5 4.5" />
+            </svg>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Find card, set, seller, order"
+              aria-label="Search cards, sets, sellers and order ids"
+              /* 16px or focusing it zooms the page on iOS */
+              style={{ fontSize: 16 }}
+            />
           </div>
         )}
 
@@ -6041,7 +6091,7 @@ export default function MailDayLedger() {
             <section style={{ marginBottom: 16 }}>
               <div style={RULE} />
 
-              {view !== "mystery" && items.length > 0 && (
+              {listView && items.length > 0 && (
                 <>
                   {/* Three ruled cells. Only the range cell carries a figure:
                       the other two would be restating the masthead's own
@@ -6299,43 +6349,16 @@ export default function MailDayLedger() {
 
                   <div style={RULE_THIN} />
 
-                  {/* Find, with the canceled reference beside it as another
-                      ruled cell rather than a link floating on its own line */}
+                  {/* Find moved to the floating pill above the bottom bar
+                      (phone-nav-is-bottom-bar). The canceled reference and the
+                      stamped filter keep their ruled row, and the row exists
+                      only while one of them has something to show. */}
+                  {(canceledCount > 0 ||
+                    (view === "packages" && stampedCount > 0)) && (
+                  <>
                   <div
-                    style={{ display: "flex", alignItems: "stretch", height: 40 }}
+                    style={{ display: "flex", alignItems: "stretch", height: 40, justifyContent: "flex-end" }}
                   >
-                    <label
-                      style={{
-                        flex: 1,
-                        minWidth: 0,
-                        display: "flex",
-                        alignItems: "stretch",
-                        gap: 10,
-                        padding: "0 9px",
-                        cursor: "text",
-                      }}
-                    >
-                      <span style={{ ...cellLab, alignSelf: "center" }}>Find</span>
-                      <input
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder="card, set, seller, order"
-                        aria-label="Search cards, sets, sellers and order ids"
-                        style={{
-                          flex: 1,
-                          minWidth: 0,
-                          height: "100%",
-                          border: 0,
-                          background: "transparent",
-                          outline: "none",
-                          fontFamily: cochin,
-                          /* 16px or focusing it zooms the page on iOS */
-                          fontSize: 16,
-                          color: C.ink,
-                          padding: 0,
-                        }}
-                      />
-                    </label>
                     {canceledCount > 0 && (
                       <button
                         onClick={() => setShowCanceled((s) => !s)}
@@ -6370,6 +6393,8 @@ export default function MailDayLedger() {
                   </div>
 
                   <div style={RULE_THIN} />
+                  </>
+                  )}
                 </>
               )}
 
@@ -7180,7 +7205,7 @@ export default function MailDayLedger() {
         )}
 
         {/* Packages / items */}
-        {view !== "mystery" && (
+        {listView && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {view === "items"
             ? visibleItems.map((g) => (
@@ -7236,7 +7261,7 @@ export default function MailDayLedger() {
         </div>
         )}
 
-        {view !== "mystery" && showCanceled && canceledPackages.length > 0 && (
+        {listView && showCanceled && canceledPackages.length > 0 && (
           <div ref={canceledRef} style={{ marginTop: 28, scrollMarginTop: 12 }}>
             <div
               style={{
