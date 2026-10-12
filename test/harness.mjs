@@ -710,12 +710,31 @@ export { act };
 let pass = 0;
 const fails = [];
 
+/* A stalled await never reaches report(), so the run would end silent or hang.
+   The watchdog is idle-based: every assertion re-arms it, so a run that is making
+   progress never trips it, and one that stops for WATCHDOG_MS reports the failure
+   and the live handle kinds. It is unref'd, so it never keeps a finished run alive. */
+const WATCHDOG_MS = Number(process.env.MAILDAY_TEST_WATCHDOG_MS) || 300_000;
+/* Node's own timers, captured here: the virtual clock below swaps globalThis.setTimeout
+   for groups 53 to 56, and a watchdog on that clock would only fire when time is advanced. */
+const wdSetTimeout = globalThis.setTimeout;
+const wdClearTimeout = globalThis.clearTimeout;
+let watchdog = null;
+let reported = false;
+function arm() {
+  wdClearTimeout(watchdog);
+  watchdog = wdSetTimeout(() => stalled(`no assertion for ${WATCHDOG_MS / 1000} s, so the run stalled`), WATCHDOG_MS);
+  watchdog.unref();
+}
+
 export function ok(cond, label) {
+  arm();
   if (cond) pass++;
   else fails.push(label);
 }
 
 export function eq(actual, expected, label) {
+  arm();
   const a = JSON.stringify(actual);
   const e = JSON.stringify(expected);
   if (a === e) pass++;
@@ -731,6 +750,8 @@ export function liveHandleKinds() {
 }
 
 export function report() {
+  reported = true;
+  wdClearTimeout(watchdog);
   win.close(); // jsdom keeps the process alive otherwise
   const live = liveHandleKinds();
   if (live.length)
@@ -741,6 +762,22 @@ export function report() {
   if (fails.length) process.exit(1);
   console.log("all green");
 }
+
+/* The run ended or stalled without report(). Print what it had, name the live
+   handles, and exit red. Once only: report() and this path never both speak. */
+function stalled(why) {
+  if (reported) return;
+  reported = true;
+  win.close();
+  const live = liveHandleKinds();
+  fails.push(`${why}; live handles: ${live.length ? live.join(", ") : "none"}`);
+  console.log(`\n${pass} passed, ${fails.length} failed`);
+  for (const f of fails) console.log(`  ✗ ${f}`);
+  process.exit(1);
+}
+/* a run whose last await never settled can end with nothing alive: beforeExit still fires */
+process.once("beforeExit", () => stalled("the run ended without reaching report()"));
+arm();
 
 /* ---------- DOM helpers ---------- */
 

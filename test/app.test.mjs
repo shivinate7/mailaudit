@@ -7763,7 +7763,11 @@ ok(
    two labels side by side cannot run together and hide a word. STYLE and SCRIPT
    are not rendered. The words are the owner's list, exactly as ruled. "Merges"
    is not on the list, so a local verb passes. */
-const NO_GITHUB_WORDS66 = /\bgithub\b|\bpush(es|ed|ing)?\b|\bpull(s|ed|ing)?\b|\brepo(sitory)?\b|\btokens?\b|your key/i;
+const NO_GITHUB_WORDS66 = /\bgithub\b|\bpush(es|ed|ing)?\b|\bpull(s|ed|ing)?\b|\brepo(s|sitor(y|ies))?\b|\btokens?\b|your key/i;
+/* the guard must catch every word form, and must let a local verb through */
+for (const w of ["repo", "repos", "repository", "repositories"])
+  ok(NO_GITHUB_WORDS66.test(w), `66a.0 the guard catches "${w}"`);
+ok(!NO_GITHUB_WORDS66.test("Merges"), "66a.0b the guard lets Merges through");
 const renderedText66 = () => {
   const walker = document.createTreeWalker(document.body, win.NodeFilter.SHOW_TEXT);
   const parts = [];
