@@ -15,9 +15,9 @@ import { readFileSync } from "node:fs";
 import { mergeLedger } from "../src/merge-rules.mjs";
 
 /* A missing or broken core fails in one clear line, not a raw stack trace. */
-let route, keyAllowed, wsAuthorized, MAX_LEDGER_BYTES;
+let route, keyAllowed, wsAuthorized, MAX_LEDGER_BYTES, MAX_PHOTO_BYTES;
 try {
-  ({ route, keyAllowed, wsAuthorized, MAX_LEDGER_BYTES } = await import("./core.mjs"));
+  ({ route, keyAllowed, wsAuthorized, MAX_LEDGER_BYTES, MAX_PHOTO_BYTES } = await import("./core.mjs"));
 } catch (e) {
   console.log(
     `FAIL worker/core.mjs does not load (expected until the core is built): ${e.message.split("\n")[0]}`
@@ -107,13 +107,30 @@ const ledger = (over = {}) => ({
 });
 const clone = (v) => structuredClone(v);
 
-/* initial is {ledger, rev} or null for an empty store. */
+/* initial is {ledger, rev} or null for an empty store. The photo half of the
+   store is three methods, named here as the contract the Durable Object
+   adapter (worker/index.mjs) must provide:
+     photoList()            -> [id, ...]
+     photoGet(id)           -> {mime, bytes} | null
+     photoPut(id, mime, bytes) -> void   (the route, not the store, enforces write-once)
+   photoWrites counts every photoPut call, so a route that writes twice shows. */
 function fakeStore(initial = null) {
   const s = {
     state: initial ? clone(initial) : null,
     writes: [],
     broadcasts: [],
     order: [],
+    photos: new Map(),
+    photoWrites: [],
+  };
+  s.photoList = async () => [...s.photos.keys()];
+  s.photoGet = async (id) => {
+    const p = s.photos.get(id);
+    return p ? { mime: p.mime, bytes: p.bytes.slice() } : null;
+  };
+  s.photoPut = async (id, mime, bytes) => {
+    s.photoWrites.push(id);
+    s.photos.set(id, { mime, bytes: new Uint8Array(bytes) });
   };
   s.read = async () => (s.state ? clone(s.state) : null);
   s.write = async (l, rev) => {
@@ -144,6 +161,17 @@ function req(method, path, o = {}) {
 
 const send = (store, method, path, o) =>
   route(req(method, path, o), ENV, store);
+
+/* A photo request: raw bytes, no JSON content type, so the route must take the
+   media type from the file name, not from the request. */
+const photoReq = (method, path, { key, bytes, type = "application/octet-stream" } = {}) => {
+  const headers = { "Content-Type": type };
+  if (key !== undefined) headers.Authorization = `Bearer ${key}`;
+  return new Request(BASE + path, { method, headers, body: bytes });
+};
+const sendPhoto = (store, method, path, o) => route(photoReq(method, path, o), ENV, store);
+const PHO_JPG = new Uint8Array([0xff, 0xd8, 0xff, 1, 2, 3]);
+const PHO_OTHER = new Uint8Array([9, 8, 7, 6]);
 
 const list = (v) =>
   (v || "")
@@ -885,6 +913,107 @@ await test("11.4 a first POST to an empty store replies with zero stats", async 
   const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: ledger() } });
   eq(res.status, 200, "status");
   eq((await res.json()).stats, ZERO_STATS, "reply stats");
+});
+
+/* ---------- 12. photos: write-once blobs beside the ledger, never in it ---------- */
+/* Group 11 is the W1 stats group on main, so the photo route takes group 12.
+   Ids are pho-<tag>; the name carries the type, so mime comes from the name. */
+await test("12.1 GET /photos on an empty store replies 200 with no ids", async () => {
+  const s = empty();
+  const res = await sendPhoto(s, "GET", "/photos", { key: KEY_PHONE });
+  eq(res.status, 200, "status");
+  eq((await res.json()).ids, [], "ids");
+});
+
+await test("12.2 GET /photos lists the ids of every stored photo", async () => {
+  const s = empty();
+  s.photos.set("pho-aaa111", { mime: "image/jpeg", bytes: PHO_JPG });
+  s.photos.set("pho-bbb222", { mime: "image/png", bytes: PHO_OTHER });
+  const res = await sendPhoto(s, "GET", "/photos", { key: KEY_PHONE });
+  eq(res.status, 200, "status");
+  eq(((await res.json()).ids || []).slice().sort(), ["pho-aaa111", "pho-bbb222"], "ids");
+});
+
+await test("12.3 a POST stores the bytes, and GET serves them with the type from the name", async () => {
+  const s = empty();
+  const up = await sendPhoto(s, "POST", "/photos/pho-aaa111.jpg", { key: KEY_PHONE, bytes: PHO_JPG });
+  ok(up.status >= 200 && up.status < 300, `upload status ${up.status} is 2xx`);
+  const got = await sendPhoto(s, "GET", "/photos/pho-aaa111.jpg", { key: KEY_PHONE });
+  eq(got.status, 200, "status");
+  eq(got.headers.get("Content-Type"), "image/jpeg", "content type from the name");
+  eq(Array.from(new Uint8Array(await got.arrayBuffer())), Array.from(PHO_JPG), "bytes");
+});
+
+await test("12.4 a .heic photo is served as image/heic, whatever type the upload claimed", async () => {
+  const s = empty();
+  await sendPhoto(s, "POST", "/photos/pho-ccc333.heic", { key: KEY_PHONE, bytes: PHO_OTHER, type: "image/jpeg" });
+  const got = await sendPhoto(s, "GET", "/photos/pho-ccc333.heic", { key: KEY_PHONE });
+  eq(got.status, 200, "status");
+  eq(got.headers.get("Content-Type"), "image/heic", "content type from the name");
+});
+
+await test("12.5 a name that is not pho-id plus a known extension is refused with 400 and stores nothing", async () => {
+  for (const name of ["notes.jpg", "pho-aaa111.exe", "pho-aaa111"]) {
+    const s = empty();
+    const res = await sendPhoto(s, "POST", `/photos/${name}`, { key: KEY_PHONE, bytes: PHO_JPG });
+    eq(res.status, 400, `status for ${name}`);
+    eq(s.photos.size, 0, `photos stored for ${name}`);
+  }
+});
+
+await test("12.6 a second POST to the same name keeps the first bytes", async () => {
+  const s = empty();
+  await sendPhoto(s, "POST", "/photos/pho-aaa111.jpg", { key: KEY_PHONE, bytes: PHO_JPG });
+  const again = await sendPhoto(s, "POST", "/photos/pho-aaa111.jpg", { key: KEY_LAPTOP, bytes: PHO_OTHER });
+  ok(again.status >= 200 && again.status < 300, `repeat status ${again.status} is 2xx`);
+  const kept = s.photos.get("pho-aaa111");
+  eq(kept ? Array.from(kept.bytes) : null, Array.from(PHO_JPG), "stored bytes after the repeat");
+});
+
+await test("12.7 a photo over MAX_PHOTO_BYTES is refused with 413 photo-too-large; one at the limit is kept", async () => {
+  ok(typeof MAX_PHOTO_BYTES === "number", "worker/core.mjs exports MAX_PHOTO_BYTES");
+  if (typeof MAX_PHOTO_BYTES !== "number") return;
+  const LIM = MAX_PHOTO_BYTES;
+  eq(LIM, 1_900_000, "limit is 1.9 MB");
+  const s = empty();
+  const over = await sendPhoto(s, "POST", "/photos/pho-big111.jpg", { key: KEY_PHONE, bytes: new Uint8Array(LIM + 1) });
+  eq(over.status, 413, "status over the limit");
+  eq((await over.json()).error, "photo-too-large", "error over the limit");
+  eq(s.photos.size, 0, "nothing stored over the limit");
+  const at = await sendPhoto(s, "POST", "/photos/pho-big222.jpg", { key: KEY_PHONE, bytes: new Uint8Array(LIM) });
+  ok(at.status >= 200 && at.status < 300, `status at the limit ${at.status} is 2xx`);
+  eq(s.photos.has("pho-big222"), true, "stored at the limit");
+});
+
+await test("12.8 there is no delete route: DELETE on a photo or the list replies 405 and keeps the bytes", async () => {
+  const s = empty();
+  await sendPhoto(s, "POST", "/photos/pho-aaa111.jpg", { key: KEY_PHONE, bytes: PHO_JPG });
+  eq((await sendPhoto(s, "DELETE", "/photos/pho-aaa111.jpg", { key: KEY_PHONE })).status, 405, "DELETE on a photo");
+  eq((await sendPhoto(s, "DELETE", "/photos", { key: KEY_PHONE })).status, 405, "DELETE on the list");
+  eq(s.photos.has("pho-aaa111"), true, "photo kept");
+});
+
+await test("12.9 a photo POST writes no ledger, sends no broadcast and leaves rev alone", async () => {
+  const s = fakeStore({ ledger: ledger(), rev: 3 });
+  const before = canon(s.state);
+  const res = await sendPhoto(s, "POST", "/photos/pho-aaa111.jpg", { key: KEY_PHONE, bytes: PHO_JPG });
+  ok(res.status >= 200 && res.status < 300, `status ${res.status} is 2xx`);
+  eq(s.writes.length, 0, "ledger writes");
+  eq(s.broadcasts.length, 0, "broadcasts");
+  eq(canon(s.state), before, "stored ledger and rev");
+});
+
+await test("12.10 photo routes need a device key, and a missing id replies 404", async () => {
+  const s = empty();
+  s.photos.set("pho-aaa111", { mime: "image/jpeg", bytes: PHO_JPG });
+  const good = await sendPhoto(s, "POST", "/photos/pho-ddd444.jpg", { key: KEY_LAPTOP, bytes: PHO_OTHER });
+  ok(good.status >= 200 && good.status < 300, `positive control: keyed POST is 2xx, got ${good.status}`);
+  eq((await sendPhoto(s, "POST", "/photos/pho-bbb222.jpg", { bytes: PHO_OTHER })).status, 401, "POST without a key");
+  eq(s.photos.has("pho-bbb222"), false, "nothing stored without a key");
+  eq((await sendPhoto(s, "GET", "/photos", {})).status, 401, "GET list without a key");
+  eq((await sendPhoto(s, "GET", "/photos/pho-aaa111.jpg", {})).status, 401, "GET photo without a key");
+  eq((await sendPhoto(s, "GET", "/photos", { key: KEY_STRANGER })).status, 401, "GET list with a key not on the list");
+  eq((await sendPhoto(s, "GET", "/photos/pho-zzz999.jpg", { key: KEY_PHONE })).status, 404, "missing id");
 });
 
 report();
