@@ -48,7 +48,11 @@ function cors(request, env) {
 /* Durable Object per-value cap is 2,000,000 bytes; refuse a ledger over this, which keeps 200,000 bytes of headroom. */
 export const MAX_LEDGER_BYTES = 1_800_000;
 
-export async function route(request, env, store) {
+export const SNAPSHOT_DAYS = 180;
+const DAY_MS = 864e5;
+const dayOf = (t) => new Date(t).toISOString().slice(0, 10);
+
+export async function route(request, env, store, now = Date.now()) {
   const headers = cors(request, env);
   const json = (body, status = 200) =>
     new Response(JSON.stringify(body), {
@@ -57,10 +61,23 @@ export async function route(request, env, store) {
     });
   if (request.method === "OPTIONS") return new Response(null, { status: 204, headers });
 
+  const path = new URL(request.url).pathname;
+  if (request.method === "GET" && path === "/health") return json({ at: (await store.read())?.at ?? null });
+
   const m = /^Bearer (.+)$/.exec(request.headers.get("Authorization") || "");
   if (!m || !(await keyAllowed(m[1], env))) return json({ error: "unauthorized" }, 401);
 
-  if (new URL(request.url).pathname !== "/ledger") return json({ error: "not found" }, 404);
+  if (request.method === "GET" && path === "/snapshots") {
+    const all = await store.listSnapshots();
+    return json(all.map(({ day, rev, at }) => ({ day, rev, at })).sort((a, b) => (a.day < b.day ? 1 : -1)));
+  }
+  const sm = /^\/snapshots\/([^/]+)$/.exec(path);
+  if (request.method === "GET" && sm) {
+    const snap = await store.readSnapshot(sm[1]);
+    return snap ? json({ ledger: snap.ledger, rev: snap.rev, at: snap.at }) : json({ error: "not found" }, 404);
+  }
+
+  if (path !== "/ledger") return json({ error: "not found" }, 404);
 
   if (request.method === "GET") {
     const cur = await store.read();
@@ -85,7 +102,10 @@ export async function route(request, env, store) {
   if (new TextEncoder().encode(JSON.stringify(ledger)).length > MAX_LEDGER_BYTES) return json({ error: "too-large" }, 413);
   if (cur && canon(ledger) === canon(cur.ledger)) return json({ ledger, rev: cur.rev, stats });
   const rev = (cur?.rev ?? 0) + 1;
-  await store.write(ledger, rev);
+  const day = dayOf(now);
+  if (cur && !(await store.hasSnapshot(day))) await store.writeSnapshot(day, { ledger: cur.ledger, rev: cur.rev, at: cur.at });
+  await store.pruneSnapshots(dayOf(now - SNAPSHOT_DAYS * DAY_MS));
+  await store.write(ledger, rev, new Date(now).toISOString());
   await store.broadcast({ rev });
   return json({ ledger, rev, stats });
 }
