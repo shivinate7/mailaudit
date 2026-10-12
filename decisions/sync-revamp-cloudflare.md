@@ -69,7 +69,7 @@ The native build needs these changes to the Worker. On main the Worker serves on
 - **Stats in the reply (lane W1, landed in PR #61):** the POST reply carries `stats` from `mergeLedger`, as it carries the ledger and the rev now. A first POST to an empty store replies with zero stats, so the seeding device sees nothing as new (owner-delegated ruling, 2026-10-11). A client then shows the merge notice without running the merge.
 - **Photo route (lane W2):** the owner ruled on 2026-10-11: "Build server photo route first". The route serves both clients before native photo lane N10. It stores photos as rows by photo id, as the design section says. Lane W2a builds it on draft PR #77, not merged. Orchestrator defaults of 2026-10-12, not owner rulings: a photo over 1.9 MB is refused with 413, there is no delete route, and a repeat POST keeps the first bytes.
 - **Daily snapshots (lane W3):** the Worker keeps exactly 180 daily snapshots for History and backup, see `worker-keeps-snapshots`. Lane W3a builds them on draft PR #78. Group 13 (tests 13.1 to 13.9) holds the snapshot tests, and `npm run test:worker` reads 312 passed, 0 failed. Lanes W3b to W3e are named in `native-build-lanes`. W3b is blocked.
-- **Universal-link file:** a Worker route serves the apple-app-site-association file. Under the 2026-10-12 defaults no universal link carries the key. Whether the route stays is not ruled, see `native-key-via-url-scheme`.
+- **Universal-link file:** the universal-link fallback needs a Worker route for the apple-app-site-association file. The owner ruled the fallback on 2026-10-11. Neither the route nor the fallback is built. The fallback is built only if the N11 Camera check fails the custom scheme, see `native-key-via-url-scheme`.
 
 ## Still open
 
