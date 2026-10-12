@@ -50,7 +50,7 @@ const BAR_ICONS = {
   ledger: (
     <>
       <circle cx="12" cy="12" r="3" />
-      <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1" />
+      <path d="M10.7 5.1L10.8 2.6L13.2 2.6L13.3 5.1L15.9 6.2L17.8 4.5L19.5 6.2L17.8 8.1L18.9 10.7L21.4 10.8L21.4 13.2L18.9 13.3L17.8 15.9L19.5 17.8L17.8 19.5L15.9 17.8L13.3 18.9L13.2 21.4L10.8 21.4L10.7 18.9L8.1 17.8L6.2 19.5L4.5 17.8L6.2 15.9L5.1 13.3L2.6 13.2L2.6 10.8L5.1 10.7L6.2 8.1L4.5 6.2L6.2 4.5L8.1 6.2Z" />
     </>
   ),
   mystery: (
@@ -1835,21 +1835,20 @@ const keySave = {
    backup rather than a sync, and the ledger on the device is still the real
    one. */
 const REMOTE_SAYS = {
-  "no-key": "Add a GitHub key first — this device can’t reach the backup without one.",
+  "no-key": "This device has no key for the backup.",
   /* the private-repo case. GitHub hides a repo you cannot see behind a 404, so
      without this the app would say "no ledger has been pushed yet" to someone
      whose ledger is sitting safely on a branch they simply cannot read — an
      invitation to push over it, or to conclude the backup never worked. */
   "no-access":
-    "This device can’t see the backup — it needs a key with access to the ledger repo.",
+    "This device can’t read the backup with its key.",
   "bad-key":
     "That doesn’t look like a GitHub token — they start with github_pat_ or ghp_.",
   auth: "That key has expired or been revoked. Paste a new one.",
   forbidden:
     "That key can’t write to the ledger repo. It needs Contents: read & write on mailaudit-data.",
   "rate-limit": "GitHub is throttling requests. Try again shortly.",
-  conflict:
-    "The remote copy changed since you last pulled. Pull first, or push anyway to overwrite it.",
+  conflict: "The backup changed in the meantime.",
   missing: "No ledger has been pushed yet.",
   "no-branch": "The data branch doesn’t exist yet — see the setup notes.",
   offline: "No connection. The ledger is safe on this device.",
@@ -1857,6 +1856,10 @@ const REMOTE_SAYS = {
   "bad-response":
     "That isn’t a Mail Day ledger. Nothing on this device was changed.",
 };
+
+/* GitHub states the user is never told: the mirror resolves a conflict itself,
+   and a missing GitHub token only stops the mirror. */
+const GITHUB_QUIET = new Set(["conflict", "no-key", "no-access"]);
 
 /* One retry on an unknown look, shared by the foreground check and autoPush:
    a single transient failure must not raise the backup-unknown line. */
@@ -2918,7 +2921,6 @@ export default function MailDayLedger() {
   const [uploadErr, setUploadErr] = useState("");
   const [showUpload, setShowUpload] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
-  const [confirmPull, setConfirmPull] = useState(false);
   const [confirmForce, setConfirmForce] = useState(false);
   /* ---- saved versions ----
      A rollback list, so the operations that can lose data in bulk each have
@@ -2961,7 +2963,6 @@ export default function MailDayLedger() {
   const [workerSyncedAt, setWorkerSyncedAt] = useState(null); // when a Worker call last succeeded
   const [serverDown, setServerDown] = useState(false); // false | "unknown" | "too-big" | "no-access": the last Worker call failed
   const [pushState, setPushState] = useState("idle"); // idle | pushing | pushed | conflict
-  const [pullState, setPullState] = useState("idle"); // idle | pulling
   const [mergeState, setMergeState] = useState("idle"); // idle | merging
   /* "the other device has pushed since we last looked" — set by peek() on
      foreground, cleared by a merge or a pull. Never persisted: it is a fact
@@ -3222,13 +3223,11 @@ export default function MailDayLedger() {
        ledger. Their own key would not help them; there is nothing of theirs to
        back up. Say what is actually true instead — see the line's copy. */
     if (seedShown) return "seeded";
-    if (pushState === "conflict") return "conflict";
     if (remoteMsg?.tone === "error") return "error";
     if (serverDown)
       return serverDown === "unknown" ? "server" : serverDown === "no-access" ? "key-refused" : serverDown;
     /* a device that cannot SEE the backup is as unbacked-up as one that cannot
        write to it, and on a private repo that is what a missing key looks like */
-    if (remoteMsg?.code === "no-access") return "no-access";
     /* Being behind IS broken, and this was the worst hole the silent-sync
        change opened. Auto-push declines while `ahead`, and the auto-merge only
        fires on a fresh session — so a device that goes behind mid-session
@@ -3241,14 +3240,12 @@ export default function MailDayLedger() {
        The staleness branch below cannot rescue it either: this memo only
        recomputes when one of its deps changes, and a stalled device changes
        none of them, so the `Date.now()` comparison is frozen too. */
-    if (ahead) return "behind";
     if (photoUnreadable) return "photos-unreadable";
     /* No key outranks "could not check": a keyless device on the private repo
        cannot look at all, and "add its key" is the true, actionable answer.
        With a key, the order is unchanged. A keyless device can do nothing
        remote at all now that the ledger lives in the private repo, so it
        genuinely is not backed up, and saying so is honest not naggy. */
-    if (remoteInfo && !remoteInfo.hasKey) return "no-key";
     if (backupUnknown) return "backup-unknown";
     /* remoteInfo is null until its effect runs, which is one commit after the
        first paint. Reading that as "no key" flashes the manila banner on every
@@ -3288,10 +3285,6 @@ export default function MailDayLedger() {
   const syncSays = (
 syncBroken === "seeded"
                     ? "A snapshot of someone else’s ledger — anything you change stays on this device"
-                    : syncBroken === "no-access"
-                    ? "This device can’t see the backup — tap to add its key"
-                    : syncBroken === "behind"
-                    ? "Your other device has newer lines — tap to bring them in"
                     : syncBroken === "server"
                     ? "The sync server could not be reached — tap to fix"
                     : syncBroken === "sync-key"
@@ -3310,8 +3303,6 @@ syncBroken === "seeded"
                           ? ` ${new Date(syncedAt).toISOString().slice(0, 10)}`
                           : ""
                       } — tap to close`
-                    : syncBroken === "no-key"
-                    ? "Not backed up on this device — tap to set it up"
                     : syncBroken === "never"
                     ? "Nothing has been backed up yet — tap to fix"
                     : syncBroken === "stale"
@@ -3789,7 +3780,6 @@ syncBroken === "seeded"
      side is precisely the mis-tap the pattern exists to prevent. */
   const disarm = useCallback(() => {
     setConfirmReset(false);
-    setConfirmPull(false);
     setConfirmForce(false);
     setConfirmRestore(null);
   }, []);
@@ -4228,14 +4218,8 @@ syncBroken === "seeded"
         /* the mirror treats a stale sha as a forced write, so no conflict state */
         if (mirror && code === "conflict") return { ok: false, code };
         setPushState(code === "conflict" ? "conflict" : "idle");
-        setRemoteMsg({
-          code,
-          tone:
-            code === "conflict" || code === "no-key" || code === "no-access"
-              ? "advice"
-              : "error",
-          text: REMOTE_SAYS[code] || REMOTE_SAYS.server,
-        });
+        if (!GITHUB_QUIET.has(code))
+          setRemoteMsg({ code, tone: "error", text: REMOTE_SAYS[code] || REMOTE_SAYS.server });
         /* `quiet` is auto-push, and this is the same reasoning doMerge's quiet
            mode already encodes: nobody tapped anything, and setKeyOpen swaps
            "saved on this device" for an empty field, which reads as *your key
@@ -4369,68 +4353,6 @@ syncBroken === "seeded"
     [surveyPhotos, referencedPhotoIds]
   );
 
-  const doPull = useCallback(async () => {
-    if (!window.remote) return;
-    /* a full local replace, so it arms first — and unlike a bad push, which
-       stays recoverable from the branch's history, a bad pull is not */
-    if (!confirmPull) {
-      arm(setConfirmPull);
-      return;
-    }
-    clearTimeout(resetTimer.current);
-    clearTimeout(flashTimer.current);
-    disarm();
-    setRemoteMsg(null);
-    setPhotoMsg(null);
-    setPullState("pulling");
-    const gen = ++syncGen.current;
-    syncingRef.current = true;
-    setSyncBusy(true);
-    try {
-      const res = await window.remote.pull();
-      /* THE ordering that makes this feature work. applyBackup keeps a photo id
-         only when its blob is inlined or already on this device, so it has to
-         run AFTER the downloads — run it first and every id is stripped, the
-         debounced save writes the stripped ledger, and the next push publishes
-         it over the good copy.
-
-         So: learn what the INCOMING ledger references, fetch what's missing,
-         and only then replace anything. */
-      const extraPresent = await pullPhotos(res.text, gen);
-      if (syncGen.current !== gen) return;
-      await applyBackup(res.text, "remote", extraPresent);
-      /* only now — see remote.pull(). Claiming the remote's sha before its
-         bytes are applied leaves this device able to push stale data with no
-         conflict, which destroys the other device's work. */
-      await acceptPull(res.sha);
-      setRemoteInfo(await window.remote.status().catch(() => null));
-      setPushState("idle"); // a pull clears any conflict it was blocked on
-    } catch (e) {
-      /* applyBackup throws bare on a payload that isn't a ledger; anything
-         from the adapter carries a code. Either way nothing local changed. */
-      const code = e?.code || "bad-response";
-      setRemoteMsg({
-        code,
-        tone: code === "missing" || code === "no-access" ? "advice" : "error",
-        text: REMOTE_SAYS[code] || REMOTE_SAYS["bad-response"],
-      });
-      if (code === "auth") setKeyOpen(true);
-    } finally {
-      /* released only now — applyBackup has landed the new envelopes, so the
-         sweep's keep-set is finally correct. Clearing it earlier re-arms the
-         sweep against the OLD list. */
-      syncingRef.current = false;
-      setSyncBusy(false);
-      setPhotoSync(null);
-      /* in the finally, not after the try. A generation guard returns out of
-         the middle of this function — `resetAll` bumps syncGen by design and is
-         not disabled during a sync — and the label was left reading "Pulling…"
-         for the rest of the session. mergeState always had this right; pull and
-         push did not. */
-      setPullState("idle");
-    }
-  }, [confirmPull, arm, disarm, applyBackup, pullPhotos, acceptPull]);
-
   /* ---- merge: the resolution the conflict path never had ----
 
      Pull and Push anyway are the two halves of the same mistake: each keeps one
@@ -4559,14 +4481,12 @@ syncBroken === "seeded"
              device" for an empty field, which reads as *your key is gone*.
              Suppressing costs nothing, because a failed merge lands nothing —
              applyBackup throws before its first setState. */
-          setRemoteMsg({
-            code,
-            tone:
-              code === "missing" || code === "conflict" || code === "no-access"
-                ? "advice"
-                : "error",
-            text: REMOTE_SAYS[code] || REMOTE_SAYS["bad-response"],
-          });
+          if (!GITHUB_QUIET.has(code))
+            setRemoteMsg({
+              code,
+              tone: code === "missing" ? "advice" : "error",
+              text: REMOTE_SAYS[code] || REMOTE_SAYS["bad-response"],
+            });
           if (code === "auth" || code === "no-key") setKeyOpen(true);
         }
         return { ok: false, code };
@@ -4604,7 +4524,6 @@ syncBroken === "seeded"
     composing ||
     undo ||
     confirmReset ||
-    confirmPull ||
     confirmForce ||
     confirmRestore
   );
@@ -5002,7 +4921,6 @@ syncBroken === "seeded"
        invisibly. */
     if (
       confirmReset ||
-      confirmPull ||
       confirmForce ||
       /* an armed Restore is an armed destructive button like the rest — and the
          one most likely to have the ground move under it, because a merge or a
@@ -5053,7 +4971,7 @@ syncBroken === "seeded"
     /* a conflict opened between the peek and the push — resolve it the safe
        way rather than leaving "Push anyway" armed on an unattended screen */
     if (r && !r.ok && r.code === "conflict") await doMerge(true);
-  }, [confirmReset, confirmPull, confirmForce, confirmRestore, doPush, doMerge]);
+  }, [confirmReset, confirmForce, confirmRestore, doPush, doMerge]);
 
   /* Through a ref, and that is the whole point: autoPush's identity changes on
      essentially every render (it depends on doPush, which depends on snapshot),
@@ -5532,15 +5450,8 @@ syncBroken === "seeded"
       </div>
     );
 
-  /* ---- the Sync panel's actions, as data ----
-     Rendered as an option grid (see the panel), which has to know the count
-     to give an odd last cell the full row. Order is order of use: Push, then
-     whatever the last push turned up (Merge, and the force on a real
-     conflict), then Pull, the two file backups, and the per-device toggle.
-     Each entry carries its own colour, because the grid's one accent means
-     "on" and these mean five different things. */
-  /* The two exports, as data, for the History panel's grid — the same shape
-     syncActions uses so the two panels cannot drift apart. */
+  /* The two exports, as data, for the History panel's grid — one entry per
+     export. */
   const backupActions = [
     { key: "backup", onClick: () => backup(false), label: "Backup" },
   ];
@@ -5552,71 +5463,6 @@ syncBroken === "seeded"
       label: backupBusy ? "Packing…" : "Backup + photos",
     });
 
-  const syncActions = [];
-  syncActions.push({
-    key: "push",
-    onClick: () => doPush(false),
-    disabled: syncBusy,
-    label:
-      pushState === "pushing"
-        ? "Pushing…"
-        : pushState === "pushed"
-        ? "Pushed ✓"
-        : "Push",
-    style: pushState === "pushed" ? { color: C.green } : null,
-  });
-  /* The safe resolution, and therefore the PRIMARY one: the grid's accent
-     fill, the app's "this is the live control" colour, beside the force. It
-     carries no two-tap arm because it keeps the later change and names every removal — arming it would say
-     the opposite, and invariant no-native-dialogs's pattern is for destructive actions
-     specifically. */
-  if (pushState === "conflict" || ahead)
-    syncActions.push({
-      key: "merge",
-      on: true,
-      onClick: () => doMerge(pushState === "conflict"),
-      disabled: syncBusy,
-      label:
-        mergeState === "merging"
-          ? "Merging…"
-          : pushState === "conflict"
-          ? "Merge & push"
-          : "Merge",
-    });
-  /* the only force in the feature, and it exists so a device holding the
-     copy worth keeping isn't stuck behind a conflict it could otherwise clear
-     only by destroying it. Advisory manila, not red: every push is a commit,
-     so what it overwrites stays in the branch's history. */
-  if (pushState === "conflict")
-    syncActions.push({
-      key: "force",
-      onClick: () => (confirmForce ? doPush(true) : arm(setConfirmForce)),
-      /* the only sync action that was missing this. `syncingRef` is a boolean,
-         not a counter, so a force fired into an in-flight auto-push lets the
-         older operation's finally clear the flag while this one is still
-         running — which is exactly the guard the photo sweep re-checks. */
-      disabled: syncBusy,
-      label: confirmForce ? "Tap again to overwrite" : "Push anyway",
-      style: confirmForce
-        ? { background: C.manilaInk, color: C.card, fontWeight: 700 }
-        : { background: C.manila, color: C.manilaInk },
-    });
-  /* short label on purpose — the full sentence goes in the advisory under
-     the grid, where it can wrap */
-  syncActions.push({
-    key: "pull",
-    onClick: doPull,
-    disabled: syncBusy,
-    label:
-      pullState === "pulling"
-        ? "Pulling…"
-        : confirmPull
-        ? "Tap again to replace"
-        : "Pull from GitHub",
-    style: confirmPull
-      ? { background: C.red, color: C.card, fontWeight: 700 }
-      : null,
-  });
   /* Backup and Backup + photos moved OUT of here and into the History panel.
      They are version actions — "save one off this device" — not sync actions,
      and this panel is now a repair kit reached only when something has broken.
@@ -5817,7 +5663,7 @@ syncBroken === "seeded"
                    font-size: 20px; color: ${C.ink}; cursor: pointer; }
         .mdl-act > span { display: block; min-width: 0; overflow: hidden;
                           text-overflow: ellipsis; white-space: nowrap; }
-        .mdl-act.cancel { flex: 0 0 auto; border-right: 1px solid ${C.line}; }
+        .mdl-act.cancel { flex: 0 0 auto; border-left: 1px solid ${C.line}; }
         .mdl-act.danger { color: ${C.red}; }
         .mdl-act.armed { background: ${C.red}; color: ${C.card}; font-weight: 700; font-size: 15px; }
 
@@ -6489,7 +6335,7 @@ syncBroken === "seeded"
                   value={
                     !syncBroken
                       ? "On"
-                      : ["no-key", "sync-key", "no-access"].includes(syncBroken)
+                      : syncBroken === "sync-key"
                       ? "Set up"
                       : "Needs attention"
                   }
@@ -6840,14 +6686,10 @@ syncBroken === "seeded"
             )}
 
             {/* Reset arms in place, in its own box, last
-                (armed-reset-takes-the-row). Cancel takes first focus. It
+                (armed-reset-takes-the-row). Cancel sits after it, so the label
+                never moves. Cancel takes first focus. It
                 shows on an empty ledger too (recovery-control-not-state-gated). */}
             <div className="mdl-lcard mdl-reset" style={{ marginTop: 20 }}>
-              {confirmReset && (
-                <button autoFocus onClick={disarm} className="mdl-act cancel">
-                  <span>Cancel</span>
-                </button>
-              )}
               <button
                 onClick={resetAll}
                 className={confirmReset ? "mdl-act armed" : "mdl-act danger"}
@@ -6858,6 +6700,11 @@ syncBroken === "seeded"
                     : "Reset"}
                 </span>
               </button>
+              {confirmReset && (
+                <button autoFocus onClick={disarm} className="mdl-act cancel">
+                  <span>Cancel</span>
+                </button>
+              )}
             </div>
           </section>
         )}
