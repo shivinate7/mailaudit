@@ -38,11 +38,11 @@ The setup steps are:
 
    Set repository permissions to **Contents → Read and write**. Metadata → Read-only appears automatically, and it is required. Grant nothing else. **Fine-grained PATs cap at 366 days.** Set a real expiry and a calendar reminder. When the token lapses, the only symptom is a push that stops working.
 
-5. In the app, go to Sync → paste → Save key → Push. Expect `Pushed ✓`. Check that `mailaudit` gained no commit at all. With photos in the ledger, expect `mailaudit-data` to gain one commit per photo on `main`. The button stays on `Pushing…` until they are done. Each takes roughly a second. The ledger and the photos share one repo's write budget and one `spaceWrites()` clock.
+5. No screen path is left for this step. The Push control left the UI on 2026-10-12, and the mirror push runs on its own. Check that `mailaudit` gained no commit at all. With photos in the ledger, expect `mailaudit-data` to gain one commit per photo on `main`. The button stays on `Pushing…` until they are done. Each takes roughly a second. The ledger and the photos share one repo's write budget and one `spaceWrites()` clock.
 
-   Then run the test that matters most. Pull onto a second device or origin, and confirm the thumbnails render. That is the one path where a wrong order fails silently. The ledger would come back looking perfect, with every photo id quietly stripped.
+   Then run the test that matters most. A second device or origin must pull the ledger (the automatic merge does it on a fresh session), and confirm the thumbnails render. That is the one path where a wrong order fails silently. The ledger would come back looking perfect, with every photo id quietly stripped.
 
-6. Prove the merge before trusting auto-push. Auto-push's conflict recovery is that same path, running unattended. On A, check a card in, then Push. On B, without pulling, import a CSV that adds lines, then Push. Expect the conflict. Then tap **Merge & push**. B must end holding A's check-in *and* its own new lines. A's next Merge must agree. Sync is unconditional now. There is no toggle to enable. So this proof is a prerequisite for running the app on two devices at all. It is not only a prerequisite for enabling a feature.
+6. Prove the merge before trusting auto-push. Auto-push's conflict recovery is that same path, running unattended. On A, check a card in, then Push. On B, without pulling, import a CSV that adds lines, then Push. Expect the conflict. Then the automatic merge runs on B. No control is left. B must end holding A's check-in *and* its own new lines. A's next merge must agree. Sync is unconditional now. There is no toggle to enable. So this proof is a prerequisite for running the app on two devices at all. It is not only a prerequisite for enabling a feature.
 
    `file://` and `http://localhost:4173` are two separate origins with two separate ledgers. So they can act as two devices, without a second phone. See "Running it locally".
 
@@ -74,8 +74,12 @@ It is worth moving to vitest and testing-library if this grows much further. The
 
 A probe deploy sets its own Durable Object name with the STORE_NAME variable, so a probe never touches the real store. Each lane names its probe below. A probe name is never ledger-v3, the real store, or ledger-v2, which holds an earlier probe's data.
 
+Owner ruling, 2026-10-12: a probe deploy of the Worker is granted, under its own name and store. A live deploy needs the owner's word again.
+
 - **W2a photo route, probe-w2a.** Still to run on Cloudflare: the photos table is created through the Durable Object's SQLite API. A POST then a GET return the same bytes, with the type from the name. A second POST keeps the first bytes. A photo over 1.9 MB gets 413.
 - **W3a daily snapshots and /health, probe-w3a.** Still to run on Cloudflare: the snapshots table is created. The first changing write of a UTC day stores one snapshot, and a later one stores none. GET /health with no key returns only the last write time. The list and get snapshot routes answer with a device key.
+
+Update, 2026-10-12: both probes above ran on the probe Worker and passed. The owner then granted the live deploy ("Deploy live"). See "Worker probe results" and "Live deploy" below.
 - **W2b, W3b, W3c, W3d and W3e.** No probe is named. Each waits for its brief.
 
 No test runs the Durable Object adapter. So the SQLite calls in worker/index.mjs are unproven until a probe runs.
@@ -86,3 +90,28 @@ No test runs the Durable Object adapter. So the SQLite calls in worker/index.mjs
 - `pull-needs-a-key-too`, why every device needs a token for reads too.
 - `pushforce-sha-only-after-write`, the bug this file's coverage gap describes.
 - `watchdog-catches-silent-failure`, the alarm mentioned in the setup steps.
+
+## Worker probe results
+
+Run on 2026-10-12 with wrangler 4.149.0, against `https://manifest-probe.shivamsemwal01.workers.dev`. The Worker name is `manifest-probe`, the store is `probe-live6`, and the key is a fresh random key whose hash is the Worker secret. The live Worker `manifestnumberone` was not touched. The probe Worker stays deployed. All checks PASS.
+
+- POST /ledger to the empty store: 200, rev 1. A changed ledger: 200, rev 2.
+- GET /snapshots: 200, one entry for the day, no ledger body. After the first write, the list is empty. The snapshot is taken at the first changing write.
+- GET /snapshots/<day>: 200, the ledger as it was before the second write, rev 1.
+- GET /health with no key: 200, only `at`.
+- POST /photos/pho-probe1.jpg: 200. GET /photos: 200, the name carries `.jpg`. GET of the photo: 200, `image/jpeg`, same bytes. A second POST with other bytes: 200, and the first bytes stay.
+- POST of 1,900,001 bytes: 413. DELETE /photos/x: 405.
+- /ledger, /snapshots, /photos and a photo GET with no key: 401.
+
+Two traps found while probing. Both are about a probe deploy, not about the code.
+
+- A secret change does not reach a Durable Object that is already running. The key got 401 until a deploy followed the secret change. Set the secret, then deploy.
+- A deploy that changes STORE_NAME serves both names for a short while. Ledger and photo writes then land in different stores and read back as missing. Deploy the same STORE_NAME twice before the probe, so every live version agrees.
+
+## Live deploy
+
+Run on 2026-10-12 at 15:39 UTC from main at 2cecd18, with wrangler 4.149.0. The new version is 85a7a137. The rollback version is 1f09b61e.
+
+- Before and after, the ledger read rev 3, 908 items and 4 envelopes.
+- The Durable Object ran the old code for about 3 minutes after the deploy, then the new code. Measured: /health gave 401 until 15:40:31, then 200 by 15:43:09. Check again after a few minutes before calling a deploy failed.
+- After: GET /health with no key gave 200 with only `at`. GET /snapshots gave `[]`. GET /photos gave `{"ids":[]}`. /ledger and /photos with no key gave 401.

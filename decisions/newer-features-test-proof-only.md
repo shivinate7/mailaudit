@@ -4,7 +4,7 @@ Daily use verifies most features. These features are newer. Only `npm test` prov
 
 - the Tally view and cost basis;
 - Orphaned and envelope photos;
-- Push and Pull, the two-device merge and auto-push;
+- The GitHub mirror push and pull, the two-device merge and auto-push;
 - the resume reset on Showing.
 
 **Holds while:** `live-verification` records no field run of these features. It records no real iPhone run of the camera or the resume reset.

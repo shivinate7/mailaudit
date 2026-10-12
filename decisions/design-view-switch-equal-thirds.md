@@ -1,17 +1,17 @@
-# The view switch is equal thirds
+# The view switch is retired
 
-**Ruled, not built:** on phone, the bottom bar replaces this switch. The bar has four tabs, not three, and its active tab is not the violet fill. See `phone-nav-is-bottom-bar`. The layout below is the code today. It holds until the bar is built.
+**Retired:** L11a removed the view switch at every width. The bottom bar replaces it (`phone-nav-is-bottom-bar`). The equal-thirds layout, the 114px label constraint and the violet active fill went with it. The retired figures stay in `switch-thirds-and-seal`, marked as retired. The rules under "What still holds" apply to the rest of the chrome.
 
-The view switch is a pill-shaped segmented control in uppercase mono. It is **equal thirds at full width**, with `grid-template-columns: repeat(3,1fr)`. The order is Orphaned, Tally, Packages. The owner has not ruled whether Packages moves left. The active segment is filled with **accent violet**, the same treatment as the active date-range chip.
+**Holds while:** test 62.8 pins that `src/app.jsx` renders no in-page switch.
 
-**Holds while:** `.mdl-switch` in `src/app.jsx` sets `grid-template-columns: repeat(3, 1fr)`.
+## What still holds
 
-Equal thirds inverted the old sizing constraint. The pill can no longer overflow its column, because the column is the pill. The constraint now sits inside each segment. The longest label plus its count badge must fit one third, which is 114px at 375px. The lever is the clamped `font-size`, not the padding. Do not trim the pill padding to make a label fit. Measured at 375px, all three labels fit. The `switch-thirds-and-seal` record has the measured third and label fit.
+The outstanding "N left · $Y" pill is the one deliberate exception to "mono for numbers". It is set in `serif`, so it reads in the letterhead voice rather than as tabular data. The only emoji in chrome is the 📬 in the empty state. Dot indicators are typographic, not icons. Max content width is 760px. The app must work at 380px, the iPhone width. Touch targets are a whole-row tap, a 30px check indicator, and 34px steppers. The bar's tabs are 44px, as L6 requires.
 
-The rest of the design language still applies. The outstanding "N left · $Y" pill is the one deliberate exception to "mono for numbers". It is set in `serif`, so it reads in the letterhead voice rather than as tabular data. The only emoji in chrome is the 📬 in the empty state. Dot indicators are typographic, not icons. Max content width is 760px. The app must work at 380px, the iPhone width. Touch targets are a whole-row tap, a 30px check indicator, and 34px steppers.
+**Pinned by:** 62.8 (no in-page switch). The other rules in this section have no test. `npm run check:screens` checks 375px and 760px, not 380px.
 
 ## See also
 
-- `phone-nav-is-bottom-bar` — the bar that replaces this switch on phone.
-- `switch-thirds-and-seal` — the measured third width and label fit this ruling depends on.
-- `motion-the-switch-is-one-object` — the animation built on these same equal thirds.
+- `phone-nav-is-bottom-bar` — the bar that replaces this switch.
+- `switch-thirds-and-seal` — the retired thirds figures and the seal and tally figures.
+- `motion-the-switch-is-one-object` — the retired switch's motion. The active-view ruling is open for the bar.

@@ -320,6 +320,45 @@ final class LedgerStoreTests: XCTestCase {
         XCTAssertEqual(after, before, "a refused envelopes load leaves the file unchanged")
     }
 
+    /// `received`, `receivedAt` and `stamps` are maps. A value that is not an object is
+    /// malformed, like a non-array `envelopes`: load() throws, a save after it throws,
+    /// and the file stays as it was. An absent field still defaults to {}
+    /// (see testLoadSetsDefaultsForMissingFields).
+    func assertRefusesMalformedMap(_ field: String, _ value: Any, line: UInt = #line) throws {
+        try writeSeed(extra: [field: value])
+        let before = try Data(contentsOf: fileURL)
+        let store = makeStore()
+
+        XCTAssertThrowsError(try store.load(), "a non-object \(field) makes load throw", line: line)
+        XCTAssertThrowsError(try store.save(), "a save after a refused \(field) load throws", line: line)
+        let after = try Data(contentsOf: fileURL)
+        XCTAssertEqual(after, before, "a refused \(field) load leaves the file unchanged", line: line)
+    }
+
+    func testLoadRefusesArrayReceivedAndSaveWritesNothing() throws {
+        try assertRefusesMalformedMap("received", [Any]())
+    }
+
+    func testLoadRefusesStringReceivedAndSaveWritesNothing() throws {
+        try assertRefusesMalformedMap("received", "x")
+    }
+
+    func testLoadRefusesArrayReceivedAtAndSaveWritesNothing() throws {
+        try assertRefusesMalformedMap("receivedAt", [Any]())
+    }
+
+    func testLoadRefusesStringReceivedAtAndSaveWritesNothing() throws {
+        try assertRefusesMalformedMap("receivedAt", "x")
+    }
+
+    func testLoadRefusesArrayStampsAndSaveWritesNothing() throws {
+        try assertRefusesMalformedMap("stamps", [Any]())
+    }
+
+    func testLoadRefusesStringStampsAndSaveWritesNothing() throws {
+        try assertRefusesMalformedMap("stamps", "x")
+    }
+
     /// A good load, then the file is replaced with bytes that are not a ledger. The
     /// reload must throw, and a save after it must throw and leave the replacement as
     /// it was. On current code the failed reload keeps the old loaded state, so save()

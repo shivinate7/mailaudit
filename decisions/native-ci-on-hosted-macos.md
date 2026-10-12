@@ -1,6 +1,6 @@
 # The native job runs on a hosted macOS runner
 
-**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Lane C1 lands the job in PR #76. The required-check ruling is not built. Two facts are unknown, see Unmeasured.
+**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Lane C1 landed the job in PR #76. The owner has not made it a required check, see Required check. Two facts are unknown, see Unmeasured.
 
 The native job in `.github/workflows/test.yml` runs the Swift package tests on a hosted macOS runner. Degen's self-hosted runner is not copied. The rest of the native checks are in Still open.
 
@@ -18,7 +18,9 @@ The native job in `.github/workflows/test.yml` runs the Swift package tests on a
 
 ## Required check
 
-Owner ruling, accept all: the job becomes a required check after its first green run. A scope job and a nightly run gate it. Until then, the job is not required, and a red native run can merge.
+Owner ruling, 2026-10-11 ("accept all"): a scope job and a nightly run gate the job once it is required.
+
+Owner ruling, 2026-10-12: asked whether the job becomes required now, the owner did not grant it. The job stays not required until the owner says so. Until then, a red native run can merge.
 
 ## Cost
 
@@ -39,8 +41,8 @@ Degen's self-hosted runner. On a public repo, a fork PR would run on the owner's
 
 ## Still open
 
-- Lane N5 landed without these steps. Its diff does not touch `.github/workflows/test.yml`, so the native job still runs ST only. Still to add, under lane C2 in `native-build-lanes`, after ST and in this order: the `xcode-select` pin for Xcode; xcodegen; `xcodebuild build` for macOS and for the iOS Simulator with `CODE_SIGNING_ALLOWED=NO`; the UI tests. The 3-minute timeout was set for ST alone. The local build and UI tests took 26 s and 139 s, so the change that adds them must set a new timeout.
-- Unmeasured: how a required check reads a job that the draft guard skipped. The scratch PR measures this.
+- Lane N5 adds to the native job: the `xcode-select` pin for Xcode. Then, after ST, in this order: xcodegen; `xcodebuild build` for macOS and for the iOS Simulator with `CODE_SIGNING_ALLOWED=NO`; the UI tests.
+- Unmeasured: how a required check reads a job that the draft guard skipped. The scratch PR measures this. The owner granted the scratch PR on 2026-10-12. A separate lane runs it and records the result in `ci-skips-draft-prs`.
 
 ## See also
 

@@ -8,7 +8,7 @@ No path ever deletes a remote photo. Discard, the sweep, and `resetAll` all stop
 
 A `DELETE` path is easy to add. It costs a fourth content-generating request class and a new destructive control. Accepting the permanence is the better trade.
 
-The same fact has an upside. Reset is survivable for photos. `resetAll` keeps the token and the sha, so a Pull brings the ledger and the photos back.
+The same fact has an upside. Reset is survivable for photos. `resetAll` keeps the token and the sha, so a pull brings the ledger and the photos back.
 
 ## See also
 

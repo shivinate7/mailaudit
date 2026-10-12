@@ -16,6 +16,18 @@
         Measured at 375px in Orphaned, the view that holds envelope cards.
      4. The armed Reset ask shows its full label: the text is not cut, so no
         ellipsis. Measured at 375px in each view.
+     5. The bottom bar (decision phone-nav-is-bottom-bar) at 375px and 760px:
+        four tabs of at least 44px in order, the bar 24px in from each side and
+        capped at 480px, centred, 12px above the bottom edge and clear of a
+        34px home indicator, the search pill 8px above it, and the last row of
+        Tally and Packages clear of both when scrolled to the bottom.
+     6. The Ledger tab (decision ledger-tab-holds-options) at 375px and 760px:
+        each option is a 44px target, Reset is red, and Reset ends above the bar
+        stack when the tab is scrolled to the bottom.
+     7. The Sync panel on the Ledger tab (decision ledger-tab-holds-options, owner
+        ruling 2026-10-12) at 375px and 760px: the panel opens from its Sync cell,
+        holds no GitHub control (Pull from GitHub, Push, Push anyway, Merge & push),
+        and causes no sideways overflow.
 
    Reduced motion is on, so animation does not skew the numbers. Exit 0 when all
    checks pass; exit 1 with one `FAIL` line per failure and one summary line. */
@@ -31,7 +43,12 @@ const PAGE = path.resolve(process.argv[2] || path.join(ROOT, "index.html"));
    `mailday:`, so the literal localStorage key is `mailday:mailday:v1`. */
 const STORE_KEY = "mailday:mailday:v1";
 const WIDTHS = [375, 760];
-const VIEWS = ["Orphaned", "Tally", "Packages"];
+/* Every tab of the bottom bar (decision phone-nav-is-bottom-bar). Ledger has no
+   Reset ask until L11b, so the Reset check below leaves it out. */
+const VIEWS = ["Ledger", "Orphaned", "Tally", "Packages"];
+/* Reset lives on the Ledger tab only (decision ledger-tab-holds-options, group
+   63.3): the working views no longer hold it, so the ask is checked there. */
+const RESET_VIEWS = ["Ledger"];
 const TAP_TOLERANCE_PX = 0.5;
 
 /* ---------- fixture ---------- */
@@ -256,6 +273,7 @@ const resetAskProbe = () => {
     label: span.textContent.trim(),
     sw: span.scrollWidth,
     cw: span.clientWidth,
+    left: span.getBoundingClientRect().left,
   };
 };
 
@@ -287,10 +305,17 @@ async function openSeeded(browser, width) {
   return { ctx, page, pageErrors };
 }
 
+/* Opens a view by its tab label, matched by prefix: the Orphaned tab carries a
+   count badge. Returns false when no such tab can be clicked, so a missing
+   tab is a reported failure, not a thrown one. */
 async function showView(page, view) {
-  /* the Orphaned button carries a count badge, so match by its label prefix */
-  await page.locator(".mdl-switch button", { hasText: view }).click();
+  try {
+    await page.getByRole("button", { name: new RegExp(`^${view}`) }).first().click({ timeout: 3000 });
+  } catch {
+    return false;
+  }
   await page.waitForTimeout(250);
+  return true;
 }
 
 async function loadedOk(page) {
@@ -321,7 +346,10 @@ async function overflowChecks(browser) {
       await page.waitForTimeout(200);
       for (const view of VIEWS) {
         checks++;
-        await showView(page, view);
+        if (!(await showView(page, view))) {
+          fail(`overflow ${view} ${width}px`, "no tab opens this view");
+          continue;
+        }
         const { sw, iw } = await page.evaluate(overflowOf);
         if (sw > iw)
           fail(
@@ -450,6 +478,18 @@ async function resetAskCheck(browser, view) {
       return;
     }
     await showView(page, view);
+    /* where the Reset label sits before the first tap: the second tap has to
+       land on the same spot, so the armed label must not move from it */
+    const before = await page.evaluate(() => {
+      const s = [...document.querySelectorAll("button.mdl-act.danger > span")].find((x) =>
+        /^Reset$/.test(x.textContent.trim())
+      );
+      return s ? s.getBoundingClientRect().left : null;
+    });
+    if (before == null) {
+      fail(name, "no Reset label on the Ledger tab");
+      return;
+    }
     await page.locator("button.mdl-act.danger").first().click();
     try {
       await page.waitForSelector("button.mdl-act.armed", { timeout: 4000 });
@@ -464,8 +504,259 @@ async function resetAskCheck(browser, view) {
     }
     if (!/^Tap again to clear \d/.test(ask.label))
       fail(name, `the armed label reads "${ask.label}"`);
+    if (Math.abs(ask.left - before) > TAP_TOLERANCE_PX)
+      fail(
+        name,
+        `the armed label moved from ${before.toFixed(1)}px to ${ask.left.toFixed(1)}px between the first and second tap`
+      );
     if (ask.sw > ask.cw + TAP_TOLERANCE_PX)
       fail(name, `the ask label is cut: ${ask.sw}px of text in a ${ask.cw}px cell`);
+    for (const e of pageErrors) fail(name, `page error: ${e}`);
+  } finally {
+    await ctx.close();
+  }
+}
+
+/* The bottom bar and its search pill (decision phone-nav-is-bottom-bar), at
+   375px and 760px. jsdom has no layout, so each claim here is a box. The bar
+   holds four tabs, each a 44px target. It is 24px in from each side, capped at
+   480px and centred. It sits 12px above the bottom edge, and the pill sits 8px
+   above the bar. Clearance: at the bottom of a scrolled view, the last row
+   ends above the pill, so the bar never covers it. */
+const BAR_TABS = ["Ledger", "Orphaned", "Tally", "Packages"];
+const BAR_SEL = 'nav[aria-label="Views"]';
+const PILL_SEL = '[role="search"]';
+const BAR_BOTTOM_PX = 12;
+const BAR_INSET_PX = 24;
+const BAR_MAX_PX = 480;
+const PILL_GAP_PX = 8;
+const TAB_MIN_PX = 44;
+const HOME_INDICATOR_PX = 34;
+
+/* page.evaluate serialises these functions, so each one is self-contained. */
+const barState = () => {
+  const box = (el) => {
+    const r = el.getBoundingClientRect();
+    return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height };
+  };
+  const bar = document.querySelector('nav[aria-label="Views"]');
+  const pill = document.querySelector('[role="search"]');
+  return {
+    vw: window.innerWidth,
+    vh: window.innerHeight,
+    bar: bar ? box(bar) : null,
+    pill: pill ? box(pill) : null,
+    tabs: bar
+      ? [...bar.querySelectorAll("button")].map((b) => {
+          const aria = b.getAttribute("aria-current");
+          return {
+            name: b.textContent.replace(/\d+$/, "").trim(),
+            current: !!aria && aria !== "false",
+            ...box(b),
+          };
+        })
+      : [],
+    scrolls: document.documentElement.scrollHeight > window.innerHeight,
+  };
+};
+
+/* The bottom of the lowest visible text leaf that is not part of the bar or
+   the pill. Fixed elements are skipped: they do not scroll with the list. */
+const lastRowBottom = () => {
+  let max = -Infinity;
+  for (const el of document.body.querySelectorAll("*")) {
+    if (el.children.length || !el.textContent.trim()) continue;
+    if (el.closest('nav[aria-label="Views"], [role="search"]')) continue;
+    if (getComputedStyle(el).position === "fixed") continue;
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) continue;
+    max = Math.max(max, r.bottom);
+  }
+  return max;
+};
+
+async function barCheck(browser, width) {
+  const name = `bottom bar ${width}px`;
+  checks++;
+  const { ctx, page, pageErrors } = await openSeeded(browser, width);
+  try {
+    if (!(await loadedOk(page))) {
+      fail(name, "seeded ledger did not render");
+      return;
+    }
+    const s = await page.evaluate(barState);
+    if (!s.bar) {
+      fail(name, 'no nav[aria-label="Views"]: the bottom bar is missing');
+      return;
+    }
+    const names = s.tabs.map((t) => t.name);
+    if (JSON.stringify(names) !== JSON.stringify(BAR_TABS))
+      fail(name, `tabs read ${names.join(", ")}, want ${BAR_TABS.join(", ")}`);
+    for (const t of s.tabs) {
+      if (t.width < TAB_MIN_PX - TAP_TOLERANCE_PX || t.height < TAB_MIN_PX - TAP_TOLERANCE_PX)
+        fail(name, `tab ${t.name} is ${t.width.toFixed(1)}x${t.height.toFixed(1)}px, under ${TAB_MIN_PX}px`);
+    }
+    const current = s.tabs.filter((t) => t.current).map((t) => t.name);
+    if (JSON.stringify(current) !== JSON.stringify(["Packages"]))
+      fail(name, `current tab on load is ${JSON.stringify(current)}, want ["Packages"]`);
+
+    const wantW = Math.min(BAR_MAX_PX, s.vw - 2 * BAR_INSET_PX);
+    if (Math.abs(s.bar.width - wantW) > 1)
+      fail(name, `bar is ${s.bar.width.toFixed(1)}px wide, want ${wantW}px`);
+    const off = (s.bar.left + s.bar.right) / 2 - s.vw / 2;
+    if (Math.abs(off) > 1) fail(name, `bar is ${off.toFixed(1)}px off centre`);
+    const bottomGap = s.vh - s.bar.bottom;
+    if (Math.abs(bottomGap - BAR_BOTTOM_PX) > 1)
+      fail(name, `bar sits ${bottomGap.toFixed(1)}px above the bottom edge, want ${BAR_BOTTOM_PX}px`);
+
+    if (!s.pill) {
+      fail(name, 'no [role="search"] pill above the bar');
+    } else {
+      const pillGap = s.bar.top - s.pill.bottom;
+      if (Math.abs(pillGap - PILL_GAP_PX) > 1)
+        fail(name, `pill sits ${pillGap.toFixed(1)}px above the bar, want ${PILL_GAP_PX}px`);
+      if (Math.abs(s.pill.width - s.bar.width) > 1)
+        fail(name, `pill is ${s.pill.width.toFixed(1)}px wide, the bar ${s.bar.width.toFixed(1)}px`);
+    }
+    if (s.bar.left < -0.5 || s.bar.right > s.vw + 0.5)
+      fail(name, `bar runs off the screen (${s.bar.left.toFixed(1)} to ${s.bar.right.toFixed(1)})`);
+
+    /* clearance: at the bottom of each list view, the last row ends above the
+       stack (the pill, when shown, else the bar). A page that cannot scroll
+       proves nothing, so that case is a failure too. */
+    for (const view of ["Tally", "Packages"]) {
+      await page.locator(BAR_SEL).getByRole("button", { name: new RegExp(`^${view}`) }).click();
+      await page.waitForTimeout(250);
+      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      await page.waitForTimeout(250);
+      const at = await page.evaluate(barState);
+      const last = await page.evaluate(lastRowBottom);
+      const stackTop = at.pill ? Math.min(at.pill.top, at.bar.top) : at.bar.top;
+      if (!at.scrolls) fail(name, `${view}: page does not scroll, so clearance proves nothing`);
+      else if (last > stackTop + 0.5)
+        fail(name, `${view}: last row ends at ${last.toFixed(1)}px, under the bar stack at ${stackTop.toFixed(1)}px`);
+    }
+
+    /* the home indicator: the bar must clear it by the 12px, not sit on it */
+    if (width === 375) {
+      const cdp = await ctx.newCDPSession(page);
+      await cdp.send("Emulation.setSafeAreaInsetsOverride", {
+        insets: { top: 0, bottom: HOME_INDICATOR_PX, left: 0, right: 0 },
+      });
+      await page.waitForTimeout(250);
+      const inset = await page.evaluate(barState);
+      const lift = inset.vh - inset.bar.bottom;
+      if (lift < HOME_INDICATOR_PX + BAR_BOTTOM_PX - 1)
+        fail(name, `with a ${HOME_INDICATOR_PX}px home indicator the bar sits ${lift.toFixed(1)}px up, want at least ${HOME_INDICATOR_PX + BAR_BOTTOM_PX}px`);
+    }
+    for (const e of pageErrors) fail(name, `page error: ${e}`);
+  } finally {
+    await ctx.close();
+  }
+}
+
+/* The Ledger tab (decision ledger-tab-holds-options), at 375px and 760px. The
+   options sit on the tab, each a target of at least 44px. Reset is the red
+   control and ends above the bar stack at the bottom of the scroll. Clearance
+   is checked whether or not the tab scrolls: a tab that fits on screen cannot
+   hide Reset under the bar, so it is never a failure to fit. */
+const LEDGER_OPTIONS = [
+  /^Showing/,
+  /^Sorted by/,
+  /^Orders from/,
+  /^Sync/,
+  /^History/,
+  /^Re-import CSV/,
+  /^Backup$/,
+  /^Reset$/,
+];
+
+const ledgerState = () => {
+  const box = (el) => {
+    const r = el.getBoundingClientRect();
+    return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height };
+  };
+  return [...document.querySelectorAll("button")]
+    .filter((b) => !b.closest('nav[aria-label="Views"], [role="search"]'))
+    .map((b) => ({ name: b.textContent.trim(), color: getComputedStyle(b).color, ...box(b) }));
+};
+
+async function ledgerCheck(browser, width) {
+  const name = `ledger tab ${width}px`;
+  checks++;
+  const { ctx, page, pageErrors } = await openSeeded(browser, width);
+  try {
+    if (!(await loadedOk(page))) {
+      fail(name, "seeded ledger did not render");
+      return;
+    }
+    await page.locator(BAR_SEL).getByRole("button", { name: /^Ledger/ }).click();
+    await page.waitForTimeout(250);
+    const controls = await page.evaluate(ledgerState);
+    for (const re of LEDGER_OPTIONS) {
+      const c = controls.find((x) => re.test(x.name));
+      if (!c) {
+        fail(name, `no ${re} control on the Ledger tab`);
+        continue;
+      }
+      if (c.width < TAB_MIN_PX - TAP_TOLERANCE_PX || c.height < TAB_MIN_PX - TAP_TOLERANCE_PX)
+        fail(name, `${c.name} is ${c.width.toFixed(1)}x${c.height.toFixed(1)}px, under ${TAB_MIN_PX}px`);
+    }
+    const reset = controls.find((x) => /^Reset$/.test(x.name));
+    if (reset) {
+      const [r, g, b] = (reset.color.match(/\d+(\.\d+)?/g) || []).map(Number);
+      if (!(r > g + 60 && r > b + 60)) fail(name, `Reset is ${reset.color}, not a red`);
+    }
+
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await page.waitForTimeout(250);
+    const at = await page.evaluate(barState);
+    const after = await page.evaluate(ledgerState);
+    const resetAtBottom = after.find((x) => /^Reset$/.test(x.name));
+    const stackTop = at.pill ? Math.min(at.pill.top, at.bar.top) : at.bar.top;
+    if (resetAtBottom && resetAtBottom.bottom > stackTop + 0.5)
+      fail(name, `Reset ends at ${resetAtBottom.bottom.toFixed(1)}px, under the bar stack at ${stackTop.toFixed(1)}px`);
+    for (const e of pageErrors) fail(name, `page error: ${e}`);
+  } finally {
+    await ctx.close();
+  }
+}
+
+/* The Sync panel on the Ledger tab (decision ledger-tab-holds-options; owner
+   ruling 2026-10-12). Opened from its Sync cell. The panel holds no GitHub
+   control, and the open panel causes no sideways overflow. */
+const GITHUB_CONTROL_NAMES = [/Pull from GitHub/, /^Push$/, /^Pushed ✓$/, /Push anyway/, /Merge & push/];
+
+async function syncPanelCheck(browser, width) {
+  const name = `sync panel ${width}px`;
+  checks++;
+  const { ctx, page, pageErrors } = await openSeeded(browser, width);
+  try {
+    if (!(await loadedOk(page))) {
+      fail(name, "seeded ledger did not render");
+      return;
+    }
+    await page.locator(BAR_SEL).getByRole("button", { name: /^Ledger/ }).click();
+    await page.waitForTimeout(250);
+    const syncCell = page.locator("button", { hasText: /^Sync/ }).first();
+    if (!(await syncCell.count())) {
+      fail(name, "no Sync cell on the Ledger tab");
+    } else {
+      await syncCell.click();
+      await page.waitForTimeout(250);
+    }
+    const names = await page.evaluate(() =>
+      [...document.querySelectorAll("button")].map((b) => b.textContent.trim())
+    );
+    for (const re of GITHUB_CONTROL_NAMES) {
+      const hit = names.find((n) => re.test(n));
+      if (hit) fail(name, `the Sync panel still shows "${hit}"`);
+    }
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+    );
+    if (overflow > TAP_TOLERANCE_PX)
+      fail(name, `sideways overflow of ${overflow.toFixed(1)}px with the Sync panel open`);
     for (const e of pageErrors) fail(name, `page error: ${e}`);
   } finally {
     await ctx.close();
@@ -492,10 +783,13 @@ async function main() {
   try {
     const phases = [
       () => overflowChecks(browser),
+      ...WIDTHS.map((width) => () => barCheck(browser, width)),
+      ...WIDTHS.map((width) => () => ledgerCheck(browser, width)),
+      ...WIDTHS.map((width) => () => syncPanelCheck(browser, width)),
       () => rowShiftCheck(browser, { view: "Packages", anchorText: "Alpha Cards", expand: false }),
       () => rowShiftCheck(browser, { view: "Tally", anchorText: "Lightning Bolt", expand: true }),
       () => discardArmCheck(browser),
-      ...VIEWS.map((view) => () => resetAskCheck(browser, view)),
+      ...RESET_VIEWS.map((view) => () => resetAskCheck(browser, view)),
     ];
     for (const phase of phases) {
       try {

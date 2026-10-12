@@ -1,45 +1,60 @@
 # The Ledger tab holds the options
 
-The owner ruled on 2026-10-11: "E for sure". The bar in `phone-nav-is-bottom-bar` gets a fourth tab, Ledger, with a gear icon. The working screens lose their control rows. The Ledger tab holds the options in two groups.
+The owner ruled on 2026-10-11: "E for sure". The bar in `phone-nav-is-bottom-bar` has a fourth tab, Ledger. The working screens hold no option rows. The Ledger tab holds the options.
 
-**Status:** ruled, not built.
+The owner ruled on 2026-10-12, on GitHub sync: "i thought we are eliminating push and pull". The GitHub controls leave the UI. This follows the 2026-10-11 ruling "Cloudflare does it all" (`sync-revamp-cloudflare`).
 
-**Holds while:** the working screen of `src/app.jsx` renders the Orders from, Showing, Sorted by and Find cells, and the bar is ruled as in `phone-nav-is-bottom-bar`.
+**Status:** built in L11b, commit `12e8721`, on `web/l11-bottom-bar`, and carried by L11c, commit `b62aebd`. The look of the Ledger screen is not ruled.
+
+**Holds while:** `src/app.jsx` renders the Ledger tab as a `section` labelled "Ledger options". The working screens render no option rows. The advisory line stays on the working screens.
 
 ## The Ledger tab
 
-**View**
+**View.** Shows only when the ledger holds items.
 
-- Showing (unreceived).
+- Showing. Its value is `● Unreceived` or `○ Everything`.
 - Sorted by.
 - Orders from.
 
-**Data**
+**Data.**
 
-- Sync.
-- History.
+- Sync. Shows when this device has a remote or a Worker.
+- History. Shows when the versions adapter or the remote exists.
 - Re-import CSV.
+- Backup. Backup + photos shows as well when photos exist.
 
-Reset sits last, in red, in its own box.
-
-The sync advisory line still shows on the working screen. It shows only when something is wrong.
+**Reset.** Sits last, in its own box, in red. It arms in place (`armed-reset-takes-the-row`). It shows on an empty ledger.
 
 Find is not in the Ledger tab. It is a floating search field above the bar, as `phone-nav-is-bottom-bar` rules.
 
+## The Sync group
+
+The Sync group shows three things:
+
+- The server status, from the last Worker call.
+- The last sync time.
+- The device key box, with `Save sync key`.
+
+It holds no GitHub control. It has no Pull, no Push, no Merge, and no armed ask.
+
+The GitHub mirror push still runs in the background. `worker-keeps-snapshots` replaces it. The mirror code stays. A GitHub conflict waits for the mirror to resolve it. No button resolves it.
+
 ## Defaults and invariants
 
-- Backup sits in the Data group, after Re-import CSV. This is an orchestrator default of 2026-10-11, because Backup is a data action.
-- The Ledger tab, Re-import CSV and Reset stay reachable on an empty ledger. `recovery-control-not-state-gated` requires it, so this needs no new ruling.
-- The look of the Ledger screen is not ruled.
-- Lane L11 gives Pull's ask and Push anyway's ask a count and a Cancel. Orchestrator default, 2026-10-12, not an owner ruling. Both asks stay a known gap until L11 builds (`stale-push-conflict-pull-two-tap`, `ux-house-rules-govern`).
+- Backup sits in the Data group, after Re-import CSV. This is an orchestrator default of 2026-10-11, because Backup is a data action. The owner's mockup G, approved on 2026-10-11, has no Backup row.
+- The Ledger tab, Re-import CSV and Reset stay reachable on an empty ledger. `recovery-control-not-state-gated` requires it. Orchestrator default, 2026-10-12: the View group hides on an empty ledger, under the narrower gate that the filters keep. Pinned by 23.4 and 23.5 (search and sort stay hidden with no items).
+- The Ledger tab holds the Sync and History rows inside the Data group, after the View cells. This record keeps that grouping. Orchestrator default, 2026-10-12. Pinned by 63.4, which checks the ruled order.
+- The count and Cancel default for Pull's ask and Push anyway's ask no longer applies. Both asks left the UI on 2026-10-12.
+- The advisory line goes to the Ledger tab. It opens the Sync group and closes History (`ruled-head-one-advisory-entrance`).
 
 ## See also
 
 - `phone-nav-is-bottom-bar` — the bar that holds the Ledger tab.
-- `recovery-control-not-state-gated` — the rule that Reset and Re-import must stay reachable.
-- `ruled-head-showing-unreceived` — the Showing control, now in the Ledger tab.
-- `history-sync-close-each-other` — History and Sync, now in the Ledger tab.
+- `recovery-control-not-state-gated` — the rule that Reset and Re-import stay reachable.
+- `ruled-head-showing-unreceived` — the Showing row, now in the View group.
+- `history-sync-close-each-other` — History and Sync, both in the Ledger tab.
+- `armed-reset-takes-the-row` — how Reset arms in place.
+- `sync-panel-is-two-column-grid` — the Sync group's panel.
+- `worker-keeps-snapshots` — the Worker that replaces the GitHub mirror.
 
-## Records that change when lane L11 builds
-
-These still put the controls on the working screen, which is true until L11 ships. L11 rewrites them in place: `action-row-is-ruled-cells`, `armed-reset-takes-the-row`, `ruled-head-showing-unreceived`, `history-sync-close-each-other`, `sync-panel-is-two-column-grid` and `ruled-head-one-advisory-entrance`. When L11 builds, `stale-push-conflict-pull-two-tap` and `ux-house-rules-govern` drop their known-gap lines.
+**Pinned by:** 63.1 to 63.26 (group 63: the Ledger tab's groups, its gates on an empty ledger, the armed Reset, and the advisory line's route). 64.1 to 64.8 (group 64: the Sync group holds no GitHub control).
