@@ -1,6 +1,8 @@
 # The view switch is equal thirds
 
-The view switch is a pill-shaped segmented control in uppercase mono. It is **equal thirds at full width**, with `grid-template-columns: repeat(3,1fr)`. The order is Orphaned, Tally, Packages. Packages sits right, so the daily-driver view lands under the thumb. The active segment is filled with **accent violet**, the same treatment as the active date-range chip.
+**Ruled, not built:** on phone, the bottom bar replaces this switch. The bar has four tabs, not three, and its active tab is not the violet fill. See `phone-nav-is-bottom-bar`. The layout below is the code today. It holds until the bar is built.
+
+The view switch is a pill-shaped segmented control in uppercase mono. It is **equal thirds at full width**, with `grid-template-columns: repeat(3,1fr)`. The order is Orphaned, Tally, Packages. The owner has not ruled whether Packages moves left. The active segment is filled with **accent violet**, the same treatment as the active date-range chip.
 
 **Holds while:** `.mdl-switch` in `src/app.jsx` sets `grid-template-columns: repeat(3, 1fr)`.
 
@@ -10,5 +12,6 @@ The rest of the design language still applies. The outstanding "N left · $Y" pi
 
 ## See also
 
+- `phone-nav-is-bottom-bar` — the bar that replaces this switch on phone.
 - `switch-thirds-and-seal` — the measured third width and label fit this ruling depends on.
 - `motion-the-switch-is-one-object` — the animation built on these same equal thirds.

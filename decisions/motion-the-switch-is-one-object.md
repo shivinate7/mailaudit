@@ -1,5 +1,7 @@
 # The view switch moves one object, not three lights
 
+**Ruled, not built:** on phone, the bottom bar replaces this switch (`phone-nav-is-bottom-bar`). The bar's active tab is a card-colour pill. The owner has not ruled whether that pill slides as one object. Until the bar is built, this record holds for the top switch.
+
 The active-view fill is a single element that slides between thirds. Three buttons never light up on their own.
 
 **Holds while:** `.mdl-thumb` is the only element that paints the active view. `data-view` is set on `.mdl-switch` in `src/app.jsx`. Tests 43.1 and 43.2 pin `data-view`.
@@ -14,3 +16,4 @@ The consequence: `data-view` on `.mdl-switch` is the only thing that says which 
 
 - `switch-thirds-and-seal` — the measured thirds and thumb offset this object slides between.
 - `design-view-switch-equal-thirds` — the layout ruling this animation moves across.
+- `phone-nav-is-bottom-bar` — the bar that replaces this switch on phone. When it lands, tests 43.1 and 43.2 are re-pointed in the same commit.

@@ -10,7 +10,7 @@ The owner ruled on 2026-10-11: "apply the latest from claude settings' ux guidel
 
 A repo design record can add to a house rule. It cannot cancel one.
 
-The **house UX audit of 2026-10-11** is the source of the lane labels in these records, such as L1, L3 and L6. The web lanes are:
+The **house UX audit of 2026-10-11** is the source of the lane labels L1 to L10 in these records. L11 comes from the owner's bar ruling in `phone-nav-is-bottom-bar`, as W2 and W3 come from the owner's rulings in `native-build-lanes`. The web lanes are:
 
 - L1: copy and asks. Counts and Cancel in asks, a Clear control in empty states, a shorter Tally sort label, and the 10px label floor.
 - L2: component state. The envelope draft survives a view change, and errors show in the pressed row.
@@ -22,15 +22,17 @@ The **house UX audit of 2026-10-11** is the source of the lane labels in these r
 - L8: an axe check at 375px and 760px.
 - L9: CI paths and timeouts.
 - L10: the Dependabot cooldown and zizmor.
+- L11: bottom bar D on the web, the CSS version of the phone bar in `phone-nav-is-bottom-bar`. It has four tabs, the Ledger tab with a gear icon, and a floating Find field above the bar. Its tabs meet the 44px floor, as L6 does. Bottom padding keeps the last card clear of the bar. The bar moves no content, under `no-layout-shift-under-pointer`. Ruled, not built. Not yet briefed.
 
 ## The rules that the 2026-10-11 rulings apply
 
 - ux-press-moves-nothing: a press moves no other content. The records `armed-reset-takes-the-row` and `motion-disclosure-panels-arrive` apply it.
 - ux-a11y-floor: a touch target is 44 by 44 CSS px on touch. The record `action-row-is-ruled-cells` applies it.
-- ux-thumb-zone: the main action on a phone sits in reach of the thumb. The record `phone-nav-awaits-mockup` holds the open question.
+- ux-thumb-zone: the main action on a phone sits in reach of the thumb. The bar in `phone-nav-is-bottom-bar` applies it. The tab order is still open.
 - ux-ask-or-undo: a destructive press asks first or offers Undo, never both or neither. An ask names the act and its count, with first focus on Cancel. The record `armed-reset-takes-the-row` applies it.
 
 ## See also
 
 - `spacing-on-4px-grid` — the spacing default this repo follows.
-- `phone-nav-awaits-mockup` — the phone navigation question that the house default raises.
+- `phone-nav-is-bottom-bar` — the phone navigation ruling, which takes the house default for a bottom bar.
+- `ledger-tab-holds-options` — the Ledger tab that the bar holds.
