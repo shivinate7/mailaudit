@@ -2,6 +2,8 @@
 
 Reset is red text at rest. Armed, it shows a red fill and the words "Tap again to clear everything". The other two cells keep their places.
 
+The armed Reset names its count, and first focus goes to Cancel. The house rule ux-ask-or-undo asks for both. The native reset ask in lane N9 also names its count and has Cancel (`native-build-lanes`).
+
 **Status:** ruled 2026-10-11, not built. The owner ruled under press movement, "Fix both": Reset arms in place and does not collapse the action row. Today the code collapses the row. The other two cells step out for the four seconds the arm lasts. That is the old behaviour.
 
 **Holds while:** `src/app.jsx` shows the words "Tap again to clear everything" on the armed Reset, and it clears the arm after 4000 ms.

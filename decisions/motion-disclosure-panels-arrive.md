@@ -12,4 +12,4 @@ The arrival is a fade and a 4px move. It changes no layout. A panel never reflow
 
 - `motion-timings` — the exact duration this fade uses.
 - `motion-nothing-may-reflow` — the rule that keeps this arrival from touching layout.
-- `ruled-head-panels-carry-no-fill` — open: an overlay with no fill shows the list through the panel.
+- `ruled-head-panels-carry-no-fill` — the orchestrator default that an overlay panel takes the paper fill, so the list rows do not show through it.

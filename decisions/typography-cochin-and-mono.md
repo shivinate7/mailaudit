@@ -10,9 +10,9 @@ The root element sets `fontFamily: cochin`. Every element inherits that font. Fo
 
 ## The size floor
 
-No visible text is smaller than 10px. The owner ruled on 2026-10-11, accept all: record a 10px micro-label floor. Per the 2026-10-11 audit, some labels are smaller than 10px today.
+No visible text is smaller than 10px. The owner ruled on 2026-10-11, accept all: record a 10px micro-label floor. Per `ux-house-rules-govern`, some labels are smaller than 10px today.
 
-**Status:** ruled 2026-10-11, not built. Build: no lane yet.
+**Status:** ruled 2026-10-11, not built. Build: lane L1, see `ux-house-rules-govern`.
 
 ## See also
 

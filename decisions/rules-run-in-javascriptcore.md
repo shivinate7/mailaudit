@@ -14,8 +14,8 @@ Degen did a full Swift rewrite with server-side parsing. MANIFEST cannot copy th
 
 - S2 and S3 moved the pure rules out of `src/app.jsx` into `src/view-rules.mjs`. These are the helper functions at the top of the component, and the logic behind the memoized lists for Packages, Tally and the date range. The memos stay in the component and call the module. V1 to V12 in `test/view-rules.test.mjs` pin the moved rules.
 - Lane N1 will add a second esbuild IIFE to `build.mjs`. It will write the rules bundle at native/ManifestKit/Resources/rules.js. The bundle will carry the view rules, `src/sync-rules.mjs`, `src/version-rules.mjs` and `src/photo-rules.mjs`.
-- Swift loads the bundle into a JSContext that lives in an actor. Data crosses as JSON strings.
-- The sync constants come from that bundle: `SYNC_TIMEOUT_MS`, `IDLE_APPLY_MS`, `backoffMs` and `KEY_RE`.
+- Swift will load the bundle into a JSContext that will live in an actor. Data will cross as JSON strings.
+- The sync constants will come from that bundle: `SYNC_TIMEOUT_MS`, `IDLE_APPLY_MS`, `backoffMs` and `KEY_RE`.
 - The merge stays on the Worker. Native never loads `src/merge-rules.mjs`, so the merge has one home.
 - Sticky rows and the frozen sort stay in the component. They hold the no-layout-shift state, see `no-layout-shift-under-pointer`.
 

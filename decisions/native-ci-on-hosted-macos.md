@@ -8,7 +8,7 @@ The native checks run as one job in `.github/workflows/test.yml`, on a hosted ma
 
 ## The job
 
-- The job is named native. It runs on `macos-26`. Its timeout is set from its first green run. No value is ruled before then.
+- The job is named native. It runs on `macos-26`. Its timeout is set from its first green run. The rule is ci-hygiene step 5: about 2x the slowest green run. No value is ruled before then.
 - It uses the same concurrency group pattern as the screens job: one group per sha on main, and cancel on a PR ref.
 - It has `needs: suite`. So `check:golden` and `check:rules` run first on Ubuntu, and they gate the job.
 - Xcode is pinned with `xcode-select`.

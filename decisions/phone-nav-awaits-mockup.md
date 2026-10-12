@@ -1,6 +1,6 @@
 # Phone navigation waits for a mockup
 
-The top view switch stays on every layout until the owner decides. On 2026-10-11 the owner ruled that a bottom tab bar is "technically right". The owner also needs a mockup first, and said: "our fronthead is so pretty atm".
+The top view switch stays on every layout until the owner decides. On 2026-10-11 the owner remarked that a bottom tab bar is "technically right". That is a remark, not a ruling. The owner also needs a mockup first, and remarked: "our fronthead is so pretty atm".
 
 **Status:** open. The owner must review a mockup before any decision. No lane changes the top switch until then.
 

@@ -1,6 +1,6 @@
 # The backup watchdog lives in the private repo
 
-**Status:** accepted risk. The watchdog stops entirely when the account is over its Actions limit. The placement stays. A public repo can disable its scheduled workflows after 60 days of inactivity.
+**Status:** unruled risk. No ruling records an owner accepting it. The watchdog stops entirely when the account is over its Actions limit. The placement stays. A public repo can disable its scheduled workflows after 60 days of inactivity.
 
 The daily watchdog runs in `mailaudit-data`, not in the public `mailaudit`. This placement is load-bearing. GitHub disables scheduled workflows in a public repo after 60 days of repository inactivity. Private repos are exempt.
 

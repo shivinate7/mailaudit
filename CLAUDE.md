@@ -213,7 +213,7 @@ The control region is the masthead's own vocabulary continued. Read these before
 - `ruled-head-resume-is-reopening` — A resume counts as reopening.
 - `ruled-head-masthead-vocabulary` — The ruled head continues the masthead.
 - `ruled-head-one-advisory-entrance` — One advisory line is sync's only entrance.
-- `ruled-head-panels-carry-no-fill` — Disclosure panels carry no fill.
+- `ruled-head-panels-carry-no-fill` — Overlay panels take the paper fill.
 - `ruled-head-showing-unreceived` — Showing starts on unreceived every load.
 - `ruled-head-hand-elapsed-forward` — Hand the elapsed time forward, never re-derive it.
 - `ruled-head-range-picked` — The custom date range is picked, not typed.
