@@ -8309,12 +8309,54 @@ try {
     await sleep(8000);
     eq(postCount(), posts68, "68.5a no retry follows a 400: the POST count does not grow while the device waits");
     const line68 = advisory();
-    ok(line68.length > 0 && !/could not be reached/i.test(line68), "68.5b the 400 shows one plain line, not the unreachable-server line");
+    eq(line68, "The sync server refused this ledger’s shape, so it is not backed up.", "68.5b the 400 shows its exact line: it names the refusal and offers no fix it does not have");
   } finally {
     setSyncBadShape(false);
   }
 } catch (e) {
   ok(false, `68.5 threw: ${e.message}`);
+}
+
+/* 68.6 F1: a sync reply that holds damage, whose copy cannot be written to History. The
+   device sends nothing: a POST would let the Worker mend the list with no copy kept. */
+try {
+  const local68 = { ...GOOD67, items: ITEMS.slice(0, 3) };
+  await boot(local68, null, {
+    versions: VERS67(),
+    failPut: true,
+    syncAdapter: true,
+    syncKey: KEY68,
+    syncLedger: withField67("received", ["x"]),
+  });
+  await sleep(SAVE_WAIT);
+  const saved68 = savedText();
+  ok(syncCalls().some((c) => c.op === "get"), "68.6pre the device read the damaged reply, so the rest means something");
+  await backgroundFor(5 * 60_000);
+  await drain();
+  await sleep(SAVE_WAIT);
+  eq(postCount(), 0, "68.6 a damaged reply whose copy cannot be saved sends no POST, so the Worker cannot mend it with no copy kept");
+  eq(savedText(), saved68, "68.6a the saved text is unchanged");
+} catch (e) {
+  ok(false, `68.6 threw: ${e.message}`);
+}
+
+/* 68.7 F3: a History restore from a refused load whose copy cannot be written says the copy
+   failed, the same line Re-import gives, and does not call the version corrupt. */
+try {
+  await boot(null, null, { raw: RAW67, versions: VERS67(), failPut: true, syncAdapter: true, syncKey: KEY67, remoteKey: GH67 });
+  await sleep(SAVE_WAIT);
+  ok(FALLBACK67.test(text()), "68.7pre the load is refused, so the restore case means something");
+  await openHistory();
+  await click(btn(new RegExp(MILESTONE67)), "expand the milestone");
+  await click(btn(/Restore this version/), "arm restore on a refused load");
+  if (btn(/Tap again to replace/)) await click(btn(/Tap again to replace/), "confirm restore");
+  await settle();
+  await sleep(SAVE_WAIT);
+  ok(COPY68.test(text()), "68.7 a History restore whose copy cannot be saved shows the copy-failed line");
+  ok(!/looks corrupt/.test(text()), "68.7a the restore does not call the version corrupt");
+  eq(savedText(), RAW67, "68.7b a History restore whose copy fails changes nothing");
+} catch (e) {
+  ok(false, `68.7 threw: ${e.message}`);
 }
 
 report();
