@@ -1,12 +1,14 @@
 # CI skips draft pull requests after a proof
 
-**Status:** ruled 2026-10-11, not built. Drafts run CI today. The skip waits for a scratch PR. The scratch PR must show that a skipped required check does not read as passing.
+**Status:** ruled 2026-10-11. The native job skips drafts (lane C1). The other jobs still run on drafts. Their skip waits for a scratch PR. The scratch PR must show that a skipped required check does not read as passing.
 
-Today `.github/workflows/test.yml` runs on `pull_request` with no draft filter, so a draft PR runs the whole suite. The owner ruled on 2026-10-11 that CI skips draft PRs. The ruling has one condition. The skip waits until a scratch PR shows that a skipped required check does not read as passing. Until then, drafts keep running CI.
+The owner ruled on 2026-10-11 that CI skips draft PRs. The ruling has one condition. The skip for the other jobs waits until a scratch PR shows that a skipped required check does not read as passing. Until then, drafts keep running CI in those jobs. Native stays not a required check until the scratch-PR proof.
 
-The change covers every job in `test.yml`. It also adds draft state to the concurrency keys. It lands as one change, after the scratch PR.
+The `pull_request` trigger in `.github/workflows/test.yml` lists four types: `opened`, `synchronize`, `reopened` and `ready_for_review`. The native job has a draft guard. The suite, scope, screens and zizmor jobs have none, so a draft PR runs them.
 
-**Holds while:** the `pull_request` trigger in `.github/workflows/test.yml` has no `types` list and no draft filter.
+The rest of the change covers those four jobs and adds draft state to the concurrency keys, the native job's included. It lands as one change, after the scratch PR.
+
+**Holds while:** as of 2026-10-12, only the native job in `.github/workflows/test.yml` has a draft guard, and native is not a required check.
 
 ## See also
 

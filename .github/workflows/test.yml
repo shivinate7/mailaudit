@@ -19,6 +19,7 @@ on:
       - "test/**"
       - "worker/**"
       - "shared/**"
+      - "native/**"
       - "scripts/**"
       - "package.json"
       - "build.mjs"
@@ -34,6 +35,11 @@ on:
       - ".github/dependabot.yml"
   pull_request:
     branches: [main]
+    # ready_for_review starts the native job once a draft is marked ready.
+    types: [opened, synchronize, reopened, ready_for_review]
+  # Nightly full run: the native job runs whatever the diff says.
+  schedule:
+    - cron: "17 5 * * *"
   workflow_dispatch:
 
 permissions:
@@ -57,6 +63,8 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci
+      - run: npm run check:rules
+      - run: npm run test:rules
       - run: npm run test:check-docs
       - run: npm run test:worker
       - run: npm run test:send-key
@@ -137,6 +145,56 @@ jobs:
         timeout-minutes: 2
       - run: npm run build
       - run: npm run check:screens
+
+  # Decision native-ci-on-hosted-macos: says whether the native job has work.
+  # Nightly and dispatch run it; so does a diff that cannot be read (fail safe).
+  scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      native: ${{ steps.d.outputs.native }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: d
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          native=true
+          if [ "$EVENT" = push ] || [ "$EVENT" = pull_request ]; then
+            # NUL-separated, so a quoted path (a double quote in a name) still matches.
+            # A failed or empty diff leaves files empty, and native stays true.
+            files=$(git diff --no-renames --name-only -z "$BASE" HEAD | tr '\0' '\n')
+            if [ -n "$files" ]; then
+              grep -Eq '^(native/|shared/|src/view-rules\.mjs$|\.github/workflows/test\.yml$)' <<< "$files" || native=false
+            fi
+          fi
+          echo "scope verdict: event=$EVENT native=$native"
+          echo "native=$native" >> "$GITHUB_OUTPUT"
+
+  # Decision native-ci-on-hosted-macos: the Swift package tests (ST) on a
+  # hosted macOS runner. Skips drafts (decision ci-skips-draft-prs). The 3 min
+  # timeout is about 3.4x the 53s green run, for macOS start-up variance.
+  native:
+    needs: [suite, scope]
+    # !cancelled() lets it run when scope itself failed (fail safe) and still
+    # stops it on a cancelled run; the suite result check keeps the
+    # cheap-first rule: a red suite skips native.
+    if: ${{ !cancelled() && needs.suite.result == 'success' && (needs.scope.result != 'success' || needs.scope.outputs.native == 'true') && !github.event.pull_request.draft }}
+    runs-on: macos-26
+    timeout-minutes: 3
+    concurrency:
+      group: native-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - run: xcodebuild -version && swift --version
+      - run: swift test --package-path native/ManifestKit
 
   # Audits the workflows and the dependabot config. Same command as local:
   # zizmor .github/workflows .github/dependabot.yml (online-audits off; the action still passes github.token).

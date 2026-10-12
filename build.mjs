@@ -1,8 +1,49 @@
 // Builds the single-file standalone app: src/entry.jsx -> index.html
 import { build } from "esbuild";
-import { readFileSync, writeFileSync } from "fs";
+import { mkdirSync, readFileSync, writeFileSync } from "fs";
 import { execFileSync } from "child_process";
 import { gzipSync, gunzipSync } from "zlib";
+
+/* ---------- the rules bundle (rules-run-in-javascriptcore) ----------
+   The Swift client runs the same pure rules modules in JavaScriptCore. One
+   esbuild IIFE exposes them all as the global `Rules`; the RulesEngine actor
+   calls `Rules[name](...args)`. The merge rules stay out: the merge has one
+   home, the Worker. Built in memory (write:false), so --check-rules compares
+   bytes without touching the tree. This runs before the seed and the app
+   build, so the check needs neither git nor a ledger remote. */
+const RULES_OUT = "native/ManifestKit/Resources/rules.js";
+async function buildRules() {
+  const r = await build({
+    stdin: {
+      contents: ["view", "sync", "version", "photo"]
+        .map((m) => `export * from "./src/${m}-rules.mjs";`)
+        .join("\n"),
+      resolveDir: process.cwd(),
+    },
+    bundle: true,
+    minify: true,
+    format: "iife",
+    globalName: "Rules",
+    write: false,
+  });
+  return r.outputFiles[0].text;
+}
+if (process.argv.includes("--check-rules")) {
+  let committed = null;
+  try {
+    committed = readFileSync(RULES_OUT, "utf8");
+  } catch {}
+  if (committed === null) {
+    console.error(`check: ${RULES_OUT} is missing — run npm run build and commit it.`);
+    process.exit(1);
+  }
+  if (committed !== (await buildRules())) {
+    console.error(`check: ${RULES_OUT} is stale — run npm run build and commit it.`);
+    process.exit(1);
+  }
+  console.log("rules.js is in step with src/");
+  process.exit(0);
+}
 
 /* ---------- the public seed ----------
    The site is public; the ledger repo is not. Those are separate artifacts —
@@ -240,5 +281,7 @@ if (process.argv.includes("--check")) {
   process.exit(checkSeed());
 } else {
   writeFileSync("index.html", html);
+  mkdirSync("native/ManifestKit/Resources", { recursive: true });
+  writeFileSync(RULES_OUT, await buildRules());
   console.log(`index.html built (${(html.length / 1024).toFixed(0)} KB)`);
 }
