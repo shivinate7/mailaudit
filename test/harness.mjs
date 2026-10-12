@@ -624,6 +624,11 @@ export const background = async () => {
     configurable: true,
   });
 };
+/* autoPush is a chain of awaits (status, peek, then the write), and a single
+   act() flush does not reach its end. Pump the queue until the chain settles. */
+export const drain = async (turns = 30) => {
+  for (let i = 0; i < turns; i++) await act(async () => await sleep(0));
+};
 export const foreground = async () => {
   Object.defineProperty(win.document, "visibilityState", {
     value: "visible",
@@ -952,17 +957,12 @@ export const openHistory = async () => {
   await click(cell(/^History/), "open history");
 };
 
-/* The key field is uncontrolled by design (the token must never reach React
-   state), so a plain .value assignment is exactly what a paste does. */
+/* The GitHub token field left the UI (owner ruling 2026-10-12, group 64: the
+   Sync panel holds the Worker's device key and nothing for GitHub). A device
+   gets its GitHub key the way the owner's devices do, before the mount
+   (boot's remoteKey) or on the adapter, so this sets it on the adapter. */
 export const saveGitHubKey = async (token = "github_pat_testtoken") => {
-  await openSync();
-  const el = document.querySelector('input[aria-label="GitHub access token"]');
-  if (!el) {
-    fails.push("no GitHub key field on screen");
-    return;
-  }
-  el.value = token;
-  await click(btn(/^Save key$/), "save key");
+  await win.remote.setKey(token);
 };
 
 /* Setting input.files isn't practical in jsdom, so file input goes through the

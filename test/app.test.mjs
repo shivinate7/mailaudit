@@ -41,6 +41,7 @@ import {
   pushes,
   peeks,
   background,
+  drain,
   foreground,
   record,
   remote,
@@ -116,6 +117,70 @@ const currentTab = () =>
   viewTabs()
     .filter((b) => b.getAttribute("aria-current") && b.getAttribute("aria-current") !== "false")
     .map(tabName);
+
+/* ── 65. owner ruling 2026-10-12: no GitHub verbs on screen ────────────────
+   "i thought we are eliminating push and pull". Pull, Push anyway and the
+   GitHub key line leave the rendered text, so no state a user can reach may
+   show them. Placed before group 1 so a later crash in the suite cannot hide
+   these reds. Records: ledger-tab-holds-options, sync-revamp-cloudflare. */
+
+const AHEAD65 = JSON.stringify({
+  mailday: 1,
+  items: ITEMS.slice(0, 3),
+  received: {},
+  envelopes: [],
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+});
+const FORBIDDEN_WORDS = [/\bPull/, /push anyway/i, /Add a GitHub key/];
+const forbiddenIn = () => FORBIDDEN_WORDS.filter((re) => re.test(text())).map(String);
+
+await fresh();
+eq(forbiddenIn(), [], "65.1 no rendered text mentions Pull, push anyway or Add a GitHub key (Ledger tab)");
+
+await goTo("orphaned");
+eq(forbiddenIn(), [], "65.2 nor on the Orphaned tab");
+
+await boot({ items: ITEMS, received: {} }, null, { remote: AHEAD65, remoteKey: "github_pat_testtoken" });
+await openSync();
+eq(forbiddenIn(), [], "65.3 nor in the open Sync panel, with GitHub ahead and a key set");
+
+await boot({ items: [], received: {} }, null, { remote: AHEAD65 });
+await openSync();
+eq(forbiddenIn(), [], "65.4 nor on an empty ledger with no key, where recovery is needed");
+
+/* the ledger tab button is named by its visible label, and nothing else */
+await fresh();
+const ledgerTab = viewTabs().find((b) => tabName(b) === "Ledger");
+eq(
+  ledgerTab?.textContent.trim(),
+  "Ledger",
+  "65.5 the Ledger tab button has the accessible name Ledger"
+);
+
+/* owner default 5 (orchestrator, 2026-10-12): a GitHub state shows nothing to
+   the user. The mirror resolves a behind or conflicted copy itself, and a
+   missing GitHub token only stops the mirror. The advisory and remoteMsg speak
+   only of the Worker. */
+const GITHUB_STATE_TEXT = /newer lines|pushed newer|changed since you last pulled|can’t see the backup|tap to add its key/;
+await boot({ items: ITEMS, received: {} }, null, { remote: AHEAD65, remoteKey: "github_pat_testtoken" });
+await goTo("orphaned");
+ok(!GITHUB_STATE_TEXT.test(text()), "65.6 a GitHub copy ahead of this device shows no line to the user");
+await boot({ items: ITEMS, received: {} }, null, { remote: AHEAD65 });
+await goTo("orphaned");
+ok(!GITHUB_STATE_TEXT.test(text()), "65.7 a keyless device whose GitHub copy is unreachable shows no GitHub line");
+
+const cancelBtn0 = () => buttons().find((b) => b.textContent.trim() === "Cancel");
+/* owner default 6: an armed Reset must not move its own label. Cancel sits
+   after it, never before, so the second tap lands where the first did. */
+await fresh();
+await onLedger();
+await click(btn(/^Reset$/), "arm reset for the order check");
+const armedAt = buttons().findIndex((b) => /Tap again to clear/.test(b.textContent));
+const cancelAt = buttons().findIndex((b) => b.textContent.trim() === "Cancel");
+ok(armedAt >= 0 && cancelAt > armedAt, "65.8 an armed Reset keeps its place, and Cancel sits after it");
+await click(cancelBtn0(), "cancel");
 
 /* ── 1. mystery mail hides what doesn't apply, keeps what does ─────────── */
 
@@ -828,7 +893,12 @@ ok(
   "24.3 by date that ordering inverts, so the two sorts really differ"
 );
 
-/* ── 25. pushing the ledger to GitHub ──────────────────────────────────── */
+/* ── 25. the ledger reaches GitHub on its own ──────────────────────────── */
+
+/* Push left the UI (owner ruling 2026-10-12). GitHub is written by autoPush,
+   which a hidden page runs at once, so these cases reach the write through
+   background() and assert on pushes(). Retired here: 25.3's Push button, 25.5's
+   "Add a GitHub key first" text, and 25.18 to 25.20, the Push anyway two-tap. */
 
 /* A platform with no remote must lose nothing: the file backups stay on the
    toolbar rather than hiding behind a disclosure that isn't there. */
@@ -841,17 +911,16 @@ ok(!!btn(/^Backup$/), "25.2 and Backup is still reachable in that case");
 
 await fresh();
 await openSync();
-ok(!!btn(/^Push$/), "25.3 Sync opens onto Push");
-await click(btn(/^Push$/), "push with no key");
-eq(pushes().length, 0, "25.4 a push with no key never reaches GitHub");
-ok(/Add a GitHub key first/.test(text()), "25.5 and says why");
-ok(
-  !!document.querySelector('input[aria-label="GitHub access token"]'),
-  "25.6 opening the key field rather than just complaining"
-);
+/* 25.3 retired: the Sync panel no longer opens onto a GitHub key field (group 64) */
+await background();
+await drain();
+eq(pushes().length, 0, "25.4 with no key, the page never reaches GitHub");
+/* 25.5 and 25.6 retired: the GitHub key field and its "Add a GitHub key first"
+   line left the UI (owner ruling 2026-10-12, group 64). */
 
 await saveGitHubKey();
-await click(btn(/^Push$/), "push");
+await background();
+await drain();
 eq(pushes().length, 1, "25.7 with a key it goes");
 const pushed = JSON.parse(pushes()[0].text);
 eq(pushed.mailday, 1, "25.8 the payload is a Mail Day backup");
@@ -882,7 +951,8 @@ await goTo("orphaned");
 await record(["Æther Vial’s Jötun"], "Séance");
 await goTo("packages");
 await saveGitHubKey();
-await click(btn(/^Push$/), "push non-ASCII");
+await background();
+await drain();
 /* named rather than left to crash on JSON.parse(null): with btoa in place of
    the codec this is the assertion that should point at the problem */
 ok(!!remoteText(), "25.13b the non-ASCII payload encodes at all");
@@ -894,9 +964,9 @@ eq(
 );
 eq(trip.envelopes[0].note, "Séance", "25.15 and so does the note");
 
-/* A stale push must be refused rather than silently overwriting the other
-   device — and the force has to exist, or a device holding the copy worth
-   keeping is stuck. */
+/* A remote this device never pulled is ahead of it. GitHub then holds its
+   copy: the page neither overwrites it nor says so (the mirror resolves a
+   conflict itself, and no GitHub state is shown). */
 const OTHER_DEVICE = JSON.stringify({
   mailday: 1,
   items: ITEMS.slice(0, 3),
@@ -910,28 +980,12 @@ const OTHER_DEVICE = JSON.stringify({
 await boot({ items: ITEMS, received: {} }, null, { remote: OTHER_DEVICE });
 await openSync();
 await saveGitHubKey();
-await click(btn(/^Push$/), "stale push");
-ok(
-  /changed since you last pulled/.test(text()),
-  "25.16 pushing over a remote this device never pulled conflicts"
-);
+await background();
+await drain();
 eq(
   JSON.parse(remoteText()).items.length,
   3,
   "25.17 and the other device's copy is still there"
-);
-ok(!!btn(/Push anyway/), "25.18 the force is offered");
-await click(btn(/Push anyway/), "arm force");
-eq(
-  JSON.parse(remoteText()).items.length,
-  3,
-  "25.19 one tap on the force still overwrites nothing"
-);
-await click(btn(/Tap again to overwrite/), "confirm force");
-eq(
-  JSON.parse(remoteText()).items.length,
-  ITEMS.length,
-  "25.20 two taps overwrite deliberately"
 );
 
 /* the failures the user will actually meet */
@@ -939,18 +993,17 @@ await fresh();
 await openSync();
 await saveGitHubKey();
 remote.fail = "auth";
-await click(btn(/^Push$/), "expired key");
+await background();
+await drain();
 ok(/expired or been revoked/.test(text()), "25.21 an expired key says so plainly");
-ok(
-  !!document.querySelector('input[aria-label="GitHub access token"]'),
-  "25.22 and reopens the field"
-);
+/* 25.22 retired with the GitHub key field (owner ruling 2026-10-12, group 64) */
 
 await fresh();
 await openSync();
 await saveGitHubKey();
 remote.fail = "offline";
-await click(btn(/^Push$/), "offline push");
+await background();
+await drain();
 ok(
   /safe on this device/.test(text()),
   "25.23 offline reassures rather than alarms — nothing was lost"
@@ -962,7 +1015,8 @@ ok(
 await fresh();
 await openSync();
 await saveGitHubKey("github_pat_SECRETVALUE");
-await click(btn(/^Push$/), "push after saving a key");
+await background();
+await drain();
 await openHistory();
 await click(btn(/^Backup$/), "backup after saving a key");
 const LEAK = /github_pat_|ghp_/;
@@ -976,68 +1030,24 @@ eq(
   "25.27 and the ledger namespace holds only the ledger"
 );
 
-/* ── 26. pulling the ledger back ───────────────────────────────────────── */
+/* ── 26. a remote ledger reaches this device on a fresh resume ─────────── */
 
-await boot({ items: ITEMS, received: {} }, null, { remote: OTHER_DEVICE });
-await openSync();
-await click(btn(/Pull from GitHub/), "arm pull");
-eq(
-  remote.calls.filter((c) => c.op === "pull").length,
-  0,
-  "26.1 one tap arms and fetches nothing"
-);
-ok(/Tap again to replace/.test(text()), "26.2 and the button says what is next");
-ok(
-  /replaces every item, check-in and pending envelope/.test(text()),
-  "26.3 with the full sentence where it can wrap"
-);
-await click(btn(/Tap again to replace/), "confirm pull");
-await sleep(SAVE_WAIT);
-eq(saved().items.length, 3, "26.4 the second tap replaces the ledger");
-eq(saved().received[ITEMS[0].key], 1, "26.5 check-ins come with it");
-ok(/Pulled from GitHub/.test(text()), "26.6 and the notice names the source");
-ok(!remote.key, "26.7 none of which needed a key");
+/* Pull from GitHub left the UI (owner ruling 2026-10-12). Its arm, replace and
+   notice cases are retired: 26.1 to 26.7 (the button, its sentence and its
+   notice), 26.8 and 26.9 (its refusal of a non-ledger), 26.10 (its replace
+   warning), 26.14 to 26.16 (a pull that unblocks a push), 26.18 and 26.19 (the
+   Pull arm disarming Reset). The photo rules still hold on the automatic merge:
+   a fresh resume that finds GitHub ahead merges it in (autoMerge), and that
+   merge keeps the ids the same as the old pull did. These cases re-point there. */
 
-/* a pull that isn't a ledger must change nothing */
-await boot({ items: ITEMS, received: {} }, null, {
-  remote: JSON.stringify({ hello: "world" }),
-});
-await openSync();
-await click(btn(/Pull from GitHub/), "arm");
-await click(btn(/Tap again to replace/), "confirm");
-ok(/isn.t a Mail Day ledger/.test(text()), "26.8 a non-ledger payload is refused");
-await sleep(SAVE_WAIT);
-eq(saved().items.length, ITEMS.length, "26.9 and nothing local moved");
+const freshResume = async () => {
+  await backgroundFor(5 * 60_000);
+  await sleep(SAVE_WAIT);
+};
 
-/* the same warning a file restore gives, on the path where it matters more */
-await boot(
-  {
-    items: ITEMS,
-    received: {},
-    envelopes: [
-      {
-        id: "env-p",
-        createdAt: 1,
-        note: "hand typed",
-        entries: [{ name: "Ponder", qty: 1 }],
-        photos: [],
-      },
-    ],
-  },
-  null,
-  { remote: OTHER_DEVICE }
-);
-await openSync();
-await click(btn(/Pull from GitHub/), "arm");
-await click(btn(/Tap again to replace/), "confirm");
-ok(
-  /pending envelope was replaced/.test(text()),
-  "26.10 a pull warns about replaced envelopes, exactly like a file restore"
-);
-
-/* THE landmine: a pushed payload never carries photos, so a pull must not
+/* THE landmine: a pushed payload never carries photos, so a merge must not
    strip ids whose blobs are sitting right here — and the sweep must not then
-   collect them. Push from the phone, pull on the same phone, photos gone. */
+   collect them. Push from the phone, merge on the same phone, photos gone. */
 const PHOTO_STATE = {
   items: ITEMS,
   received: {},
@@ -1060,14 +1070,11 @@ await boot(PHOTO_STATE, [["pho-9", jpeg()]], {
     itemSort: "missing",
   }),
 });
-await openSync();
-await click(btn(/Pull from GitHub/), "arm");
-await click(btn(/Tap again to replace/), "confirm");
-await sleep(SAVE_WAIT);
+await freshResume();
 eq(
   saved().envelopes[0].photos,
   ["pho-9"],
-  "26.11 a pull keeps ids whose blob is on this device"
+  "26.11 a merge keeps ids whose blob is on this device"
 );
 await sleep(SWEEP_WAIT);
 eq(photoKeys(), ["pho-9"], "26.12 and the sweep leaves the blob alone");
@@ -1100,9 +1107,7 @@ const GONE_LEDGER = JSON.stringify({
 await boot({ items: ITEMS, received: {} }, null, { remote: GONE_LEDGER });
 await openSync();
 await saveGitHubKey(); /* the key is what makes the photo store readable */
-await click(btn(/Pull from GitHub/), "arm");
-await click(btn(/Tap again to replace/), "confirm");
-await sleep(SAVE_WAIT);
+await freshResume();
 eq(
   saved().envelopes[0].photos,
   [],
@@ -1112,9 +1117,7 @@ eq(
 /* and the case that used to be conflated with it */
 await boot({ items: ITEMS, received: {} }, null, { remote: GONE_LEDGER });
 await openSync();
-await click(btn(/Pull from GitHub/), "arm");
-await click(btn(/Tap again to replace/), "confirm");
-await sleep(SAVE_WAIT);
+await freshResume();
 eq(
   saved().envelopes[0].photos,
   ["pho-gone"],
@@ -1125,38 +1128,12 @@ ok(
   "26.13c and it says so rather than reporting them lost"
 );
 
-/* a pull is how a device catches up, so the push it was blocked on now lands */
-await boot({ items: ITEMS, received: {} }, null, { remote: OTHER_DEVICE });
-await openSync();
-await saveGitHubKey();
-await click(btn(/^Push$/), "blocked push");
-ok(/changed since you last pulled/.test(text()), "26.14 blocked, as in group 25");
-await click(btn(/Pull from GitHub/), "arm");
-await click(btn(/Tap again to replace/), "confirm");
-await click(btn(/^Push$/), "push after pulling");
-/* NB assert on the sha, not on the payload: a pull makes this device's ledger
-   identical to the remote's, so "the remote holds 3 items" is true whether the
-   push landed or not. The sha advancing is the only thing that distinguishes
-   them — which is exactly the bookkeeping under test. */
-ok(
-  !/changed since you last pulled/.test(text()),
-  "26.15 the following push is not blocked"
-);
-ok(
-  remote.sha !== "sha-0",
-  "26.16 because pulling refreshed the sha, so the push actually landed"
-);
-
-/* arming one destructive control disarms the other — two primed buttons side
-   by side is the mis-tap the two-tap pattern exists to prevent */
+/* Reset and the other destructive ask stay one at a time */
 await fresh();
 await openSync();
 await reachFor(/^Reset$/);
 await click(btn(/^Reset$/), "arm reset");
 ok(/Tap again to clear \d+ cards?/.test(text()), "26.17 Reset arms");
-await click(btn(/Pull from GitHub/), "arm pull");
-ok(/Tap again to replace/.test(text()), "26.18 Pull arms");
-ok(!/Tap again to clear \d+ cards?/.test(text()), "26.19 and Reset disarms itself");
 
 /* ── 27. the adapter's two load-bearing decisions ──────────────────────── */
 
@@ -1229,7 +1206,7 @@ eq(
   "27.14 every later push sends the sha this device last saw"
 );
 
-/* ── 28. an empty ledger must still be able to Pull ────────────────────── */
+/* ── 28. an empty ledger must still be able to recover ─────────────────── */
 
 /* The whole point of the feature: a new phone, or one ITP has cleared, opens
    the app holding nothing and needs to recover. Gated on data alone — as the
@@ -1241,25 +1218,30 @@ await boot({ items: [], received: {}, envelopes: [] }, null, {
 });
 /* The Sync chip is gone — on the happy path there is no sync vocabulary on
    screen at all. The claim survives unchanged, and it is the one that matters:
-   an empty ledger is EXACTLY when Pull is needed, so the way in must still be
-   there. It is the broken-line now, which on a keyless device says so honestly
-   rather than waiting for a failure to happen. */
+   an empty ledger is EXACTLY when recovery is needed, so the way in must still
+   be there. It is the broken-line now, which on a keyless device says so
+   honestly rather than waiting for a failure to happen. */
 ok(
   !!btn(/tap to/),
   "28.1 the repair kit is reachable on a completely empty ledger"
 );
 
 await openSync();
-ok(!!btn(/Pull from GitHub/), "28.2 and Pull with it");
 ok(!btn(/^Reset$/), "28.3 but Reset is hidden — there is nothing to clear");
 ok(
   !btn(/Re-import CSV/),
   "28.4 and so is Re-import — the upload zone is already on screen"
 );
-await click(btn(/Pull from GitHub/), "arm");
-await click(btn(/Tap again to replace/), "confirm");
+/* 28.2 and 28.5 re-pointed: Pull from GitHub left the UI (owner ruling
+   2026-10-12). Recovery is the mirror's own merge on a fresh resume, which
+   needs the GitHub key set before the mount, as the owner's devices have it. */
+await boot({ items: [], received: {}, envelopes: [] }, null, {
+  remote: OTHER_DEVICE,
+  remoteKey: "github_pat_testtoken",
+});
+await backgroundFor(5 * 60_000);
 await sleep(SAVE_WAIT);
-eq(saved().items.length, 3, "28.5 and pulling actually recovers the ledger");
+eq(saved().items.length, 3, "28.5 and a fresh resume recovers the empty ledger from GitHub");
 
 /* with no remote there is nothing to offer, so the toolbar stays away */
 await boot({ items: [], received: {}, envelopes: [] }, null, { noRemote: true });
@@ -1275,20 +1257,20 @@ ok(!btn(/^Backup$/), "28.7 and no file action sitting on the row itself");
    line vanish, and the panel strand open with no control at all. A disclosure
    has to be its own way back out.
 
-   Its own fixture, with the remote IN STEP: the group's usual one seeds an
-   ahead remote, so the push below would conflict and syncBroken would land on
-   "conflict" rather than clearing — which is exactly how the first draft of
-   this test failed, for a reason that had nothing to do with the claim. */
-await boot({ items: ITEMS.slice(0, 2), received: {} }, null, { remote: null });
+   Its own fixture: the GitHub key is set and the remote is IN STEP, so the
+   mirror push below has nothing to conflict with and syncBroken clears. */
+await boot({ items: ITEMS.slice(0, 2), received: {} }, null, {
+  remote: null,
+  remoteKey: "github_pat_testtoken",
+});
 await click(btn(/tap to/), "open the repair kit");
-ok(!!btn(/^Push$/), "28.8 tapping the line opens the repair kit");
-await click(btn(/tap to/), "and tap it again");
-ok(!btn(/^Push$/), "28.9 tapping it again closes it — not a one-way door");
-await click(btn(/tap to/), "reopen");
-await saveGitHubKey();
-await click(btn(/^Push$/), "push, so nothing is broken any more");
-/* `settle` is declared further down the file; this group runs before it */
-await act(async () => await sleep(0));
+ok(cell(/^Sync/)?.getAttribute("aria-expanded") === "true", "28.8 tapping the line opens the repair kit");
+await click(cell(/^Sync/), "and tap it again");
+ok(cell(/^Sync/)?.getAttribute("aria-expanded") !== "true", "28.9 tapping it again closes it — not a one-way door");
+await click(cell(/^Sync/), "reopen");
+/* the mirror push runs on its own and this device is healthy again */
+await background();
+await drain();
 ok(
   !!btn(/tap to close/),
   "28.10 once the sync is healthy the header stays, so the panel is not stranded"
@@ -1298,8 +1280,7 @@ ok(
   "28.11 but it stops claiming a problem it no longer has"
 );
 await click(btn(/tap to close/), "close it from the healthy header");
-ok(!btn(/^Push$/), "28.12 and that closes it too");
-
+ok(cell(/^Sync/)?.getAttribute("aria-expanded") !== "true", "28.12 and that closes it too");
 
 /* ── 29. the parser decodes entities in seller names too ───────────────── */
 
@@ -1340,13 +1321,20 @@ await goTo("tally");
 await click(btn(/Mox Diamond/), "expand the tally row");
 ok(text().includes(DECODED), "29.6 Tally's source rows show it decoded too");
 
-/* ── 30. photos push and pull ──────────────────────────────────────────────
+/* ── 30. photos push and pull ────────────────────────────────────────
    Photo files are immutable and addressed by id, so the whole algorithm is a
    set difference — nothing merges, nothing overwrites, and the same tap can be
-   repeated safely. What these protect is the ORDER of a pull (download before
-   replace, or every id is stripped) and the strict separation of the photo
-   error channel from the ledger's, since the ledger's `conflict` arms a button
-   that force-overwrites another device's check-ins. */
+   repeated safely. What these protect is the ORDER of a merge from GitHub
+   (download before replace, or every id is stripped) and the strict separation
+   of the photo error channel from the ledger's, since the ledger's `conflict`
+   used to arm a button that force-overwrote another device's check-ins.
+
+   Push and Pull left the UI (owner ruling 2026-10-12). The push leg runs as the
+   mirror does: a hidden page writes through autoPush (background). The pull leg
+   runs as a fresh resume that finds GitHub ahead (autoMerge), so each case
+   below sets the GitHub key at boot and resumes. The retired Pull asks are
+   30.10's "not on GitHub" reading through the button, which the merge reports
+   the same way, and 30.5 to 30.10 re-point rather than delete. */
 
 const withPhoto = (ids) => ({
   items: ITEMS,
@@ -1362,28 +1350,32 @@ const withPhoto = (ids) => ({
   ],
 });
 const photoCalls = () => remote.calls.filter((c) => /Photo/.test(c.op));
+const GH30 = "github_pat_testtoken";
+/* a fresh resume: the page was away, and on return GitHub is read and merged */
+const resume30 = async () => {
+  await backgroundFor(5 * 60_000);
+  await drain();
+  await sleep(SAVE_WAIT);
+};
 
 /* a ledger with no photos in it at all */
-await boot({ items: ITEMS, received: {} });
-await openSync();
-await saveGitHubKey();
-await click(btn(/^Push$/), "push a photoless ledger");
+await boot({ items: ITEMS, received: {} }, null, { remoteKey: GH30 });
+await background();
+await drain();
 eq(photoCalls().length, 0, "30.1 a ledger with no photos makes no photo requests");
 
 /* one photo, held locally, absent from the remote */
-await boot(withPhoto(["pho-a"]), [["pho-a", jpegOf(1)]]);
-await openSync();
-await saveGitHubKey();
-await click(btn(/^Push$/), "first push");
+await boot(withPhoto(["pho-a"]), [["pho-a", jpegOf(1)]], { remoteKey: GH30 });
+await background();
+await drain();
 await sleep(60);
 eq(remotePhotoIds(), ["pho-a"], "30.2 a push sends a photo the remote lacks");
 
 /* pushing again must send NOTHING: the set difference is what makes a repeat
    tap cheap, and what makes a partial upload resumable */
 const sentSoFar = photoCalls().filter((c) => c.op === "pushPhoto").length;
-/* the button reads "Pushed ✓" for 2.5s after a success — and that flash now
-   starts AFTER the photo phase, not before it */
-await click(btn(/^Push(ed ✓)?$/), "second push");
+await background();
+await drain();
 await sleep(60);
 eq(
   photoCalls().filter((c) => c.op === "pushPhoto").length,
@@ -1392,17 +1384,16 @@ eq(
 );
 
 /* a blob left behind by a discarded envelope is not ours to publish */
-await boot({ items: ITEMS, received: {} }, [["pho-orphan", jpegOf(2)]]);
-await openSync();
-await saveGitHubKey();
-await click(btn(/^Push$/), "push with an unreferenced blob");
+await boot({ items: ITEMS, received: {} }, [["pho-orphan", jpegOf(2)]], { remoteKey: GH30 });
+await background();
+await drain();
 await sleep(60);
 ok(
   !remotePhotoIds().includes("pho-orphan"),
   "30.4 a blob no envelope references is never pushed"
 );
 
-/* ---- the pull, and the ordering it depends on ---- */
+/* ---- the merge from GitHub, and the ordering it depends on ---- */
 const PHOTO_LEDGER = JSON.stringify({
   mailday: 1,
   ...withPhoto(["pho-a"]),
@@ -1413,17 +1404,14 @@ const PHOTO_LEDGER = JSON.stringify({
 
 await boot({ items: ITEMS, received: {} }, null, {
   remote: PHOTO_LEDGER,
+  remoteKey: GH30,
   remotePhotos: [["pho-a.jpg", await blobToBase64(jpegOf(1))]],
 });
-await openSync();
-await saveGitHubKey();
-await click(btn(/Pull from GitHub/), "arm");
-await click(btn(/Tap again to replace/), "confirm");
-await sleep(SAVE_WAIT);
+await resume30();
 eq(
   saved().envelopes[0].photos,
   ["pho-a"],
-  "30.5 a pull onto a device with no blobs KEEPS the id"
+  "30.5 a merge onto a device with no blobs KEEPS the id"
 );
 eq(photoKeys(), ["pho-a"], "30.6 because it downloaded the blob first");
 eq(
@@ -1437,20 +1425,15 @@ eq(photoKeys(), ["pho-a"], "30.9 and the sweep leaves the downloaded blob alone"
 
 /* the store is there but genuinely lacks it — the only case where dropping the
    id is right, and it must still say so rather than fail silently */
-await boot({ items: ITEMS, received: {} }, null, { remote: PHOTO_LEDGER });
-await openSync();
-await saveGitHubKey();
-await click(btn(/Pull from GitHub/), "arm");
-await click(btn(/Tap again to replace/), "confirm");
-await sleep(SAVE_WAIT);
+await boot({ items: ITEMS, received: {} }, null, { remote: PHOTO_LEDGER, remoteKey: GH30 });
+await resume30();
 ok(/not on GitHub/i.test(text()), "30.10 a photo missing everywhere is reported");
 
 /* ---- the one that guards the worst bug in the feature ---- */
-await boot(withPhoto(["pho-a"]), [["pho-a", jpegOf(1)]]);
-await openSync();
-await saveGitHubKey();
+await boot(withPhoto(["pho-a"]), [["pho-a", jpegOf(1)]], { remoteKey: GH30 });
 remote.photoFail = "conflict"; /* GitHub 409s rapid writes to one repo */
-await click(btn(/^Push$/), "push where the photo leg 409s");
+await background();
+await drain();
 await sleep(60);
 ok(
   !btn(/Push anyway/),
@@ -1464,11 +1447,9 @@ remote.photoFail = null;
 await boot({ items: ITEMS, received: {} }, null, {
   remote: PHOTO_LEDGER,
   photosUnknown: "no-access",
+  remoteKey: GH30,
 });
-await openSync();
-await click(btn(/Pull from GitHub/), "arm");
-await click(btn(/Tap again to replace/), "confirm");
-await sleep(SAVE_WAIT);
+await resume30();
 eq(
   saved().envelopes[0].photos,
   ["pho-a"],
@@ -1477,10 +1458,9 @@ eq(
 eq(saved().items.length, ITEMS.length, "30.14 and the ledger still applied");
 ok(!/not on GitHub/i.test(text()), "30.15 and nothing is reported as lost");
 
-
 /* The sweep race, which is the reason the photo phase holds it off at all. A
-   pull writes blobs while `envelopes` still holds the OLD list, so nothing
-   re-runs the sweep effect and a timer armed before the pull started is still
+   merge writes blobs while `envelopes` still holds the OLD list, so nothing
+   re-runs the sweep effect and a timer armed before the merge started is still
    counting down against a keep-set that knows nothing about what is arriving.
    Two photos and a slow wire put a download on each side of that 2s timer. */
 const TWO_PHOTO_LEDGER = JSON.stringify({
@@ -1502,18 +1482,16 @@ const TWO_PHOTO_LEDGER = JSON.stringify({
 });
 await boot({ items: ITEMS, received: {} }, null, {
   remote: TWO_PHOTO_LEDGER,
+  remoteKey: GH30,
   remotePhotos: [
     ["pho-a.jpg", await blobToBase64(jpegOf(1))],
     ["pho-b.jpg", await blobToBase64(jpegOf(2))],
   ],
 });
 remote.photoDelay = 1200; /* first lands ~1.2s, second ~2.4s — the sweep is due at 2s */
-await openSync();
-await saveGitHubKey();
-await click(btn(/Pull from GitHub/), "arm");
-await click(btn(/Tap again to replace/), "confirm");
+await backgroundFor(5 * 60_000);
 /* two 1.2s downloads, then the replace, then the debounced save — and past the
-   2s mark where the pre-pull sweep was armed to fire */
+   2s mark where the pre-merge sweep was armed to fire */
 await sleep(2400 + SWEEP_WAIT);
 remote.photoDelay = 0;
 eq(
@@ -1527,12 +1505,11 @@ eq(
   "30.17 and both ids survive into the saved ledger"
 );
 
-/* The "gone" warning, both ways round. A pull is a full replace, so a photo the
-   CURRENT ledger references and the incoming one does not is about to stop
-   existing — and if it was never pushed, that was the last copy. But a photo
-   BOTH ledgers reference survives untouched, and saying otherwise is a false
-   alarm at the exact moment nothing is wrong. The first draft measured the
-   wrong set and got both cases backwards. */
+/* The "gone" warning, both ways round. A merge that replaces the ledger makes a
+   photo the CURRENT ledger references and the incoming one does not about to
+   stop existing — and if it was never pushed, that was the last copy. But a
+   photo BOTH ledgers reference survives untouched, and saying otherwise is a
+   false alarm at the exact moment nothing is wrong. */
 await boot(
   {
     items: ITEMS,
@@ -1548,30 +1525,22 @@ await boot(
     ],
   },
   [["pho-local", jpegOf(7)]],
-  { remote: PHOTO_LEDGER } /* incoming references pho-a, never pho-local */
+  { remote: PHOTO_LEDGER, remoteKey: GH30 } /* incoming references pho-a, never pho-local */
 );
-await openSync();
-await saveGitHubKey();
-await click(btn(/Pull from GitHub/), "arm");
-await click(btn(/Tap again to replace/), "confirm");
-await sleep(SAVE_WAIT);
+await resume30();
 ok(
   /never pushed/i.test(text()),
   "30.18 a photo the incoming ledger doesn't know about is reported as lost"
 );
 
 /* the inverse: both ledgers reference it and the blob is here, so it survives
-   the pull completely — warning here would be a false alarm */
-await boot(withPhoto(["pho-a"]), [["pho-a", jpegOf(1)]], { remote: PHOTO_LEDGER });
-await openSync();
-await saveGitHubKey();
-await click(btn(/Pull from GitHub/), "arm");
-await click(btn(/Tap again to replace/), "confirm");
-await sleep(SAVE_WAIT);
+   the merge completely — warning here would be a false alarm */
+await boot(withPhoto(["pho-a"]), [["pho-a", jpegOf(1)]], { remote: PHOTO_LEDGER, remoteKey: GH30 });
+await resume30();
 eq(
   saved().envelopes[0].photos,
   ["pho-a"],
-  "30.19 a photo both ledgers reference survives the pull"
+  "30.19 a photo both ledgers reference survives the merge"
 );
 ok(
   !/never pushed/i.test(text()),
