@@ -8318,8 +8318,8 @@ try {
   ok(false, `68.5 threw: ${e.message}`);
 }
 
-/* 68.6 F1: a sync reply that holds damage, whose copy cannot be written to History. The
-   device sends nothing: a POST would let the Worker mend the list with no copy kept. */
+/* 68.6 F1: a sync reply that holds damage, whose copy cannot be written to History. The reply
+   is not applied, and sends go on: the Worker keeps its own copy of the damaged original. */
 try {
   const local68 = { ...GOOD67, items: ITEMS.slice(0, 3) };
   await boot(local68, null, {
@@ -8335,14 +8335,14 @@ try {
   await backgroundFor(5 * 60_000);
   await drain();
   await sleep(SAVE_WAIT);
-  eq(postCount(), 0, "68.6 a damaged reply whose copy cannot be saved sends no POST, so the Worker cannot mend it with no copy kept");
-  eq(savedText(), saved68, "68.6a the saved text is unchanged");
+  ok(postCount() > 0, "68.6 a damaged reply whose copy cannot be saved does not stop sends: the device POSTs, and the Worker keeps its own copy");
+  eq(savedText(), saved68, "68.6a the saved text is unchanged: the damaged reply is not applied");
 } catch (e) {
   ok(false, `68.6 threw: ${e.message}`);
 }
 
-/* 68.6b the same damaged reply, then a check-in and a foreground: neither sends, because
-   the copy is still missing. Every send path is gated, not only the retry timer. */
+/* 68.6b the same damaged reply, then a check-in: the check-in still POSTs while the copy is
+   missing. No send path is gated on the copy. */
 try {
   await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
     versions: VERS67(),
@@ -8352,12 +8352,13 @@ try {
     syncLedger: withField67("received", ["x"]),
   });
   await sleep(SAVE_WAIT);
+  const posts68b0 = postCount();
   await click(btn(/Mark all received/), "check in while the damaged copy is missing");
   await sleep(POST_WAIT);
   await foreground();
   await drain();
   await sleep(POST_WAIT);
-  eq(postCount(), 0, "68.6b a check-in and a foreground send nothing while the copy of a damaged reply is missing");
+  ok(postCount() > posts68b0, "68.6b a check-in while the copy of a damaged reply is missing still POSTs");
 } catch (e) {
   ok(false, `68.6b threw: ${e.message}`);
 }
@@ -8404,9 +8405,9 @@ try {
   ok(false, `68.8 threw: ${e.message}`);
 }
 
-/* 68.9 F1 bypass: a Worker copy that cannot be saved, then the Worker answers 404 on the retry,
-   so the device is a mirror again while the copy is still missing. A GitHub conflict on a mirror
-   push merges, then calls the Worker directly. That call must not go while the copy is missing. */
+/* 68.9 F1: a Worker copy that cannot be saved, then the Worker answers 404 on the retry, so the
+   device is a mirror again. A GitHub conflict on a mirror push merges, then calls the Worker
+   directly. That call goes: a copy that cannot be saved never holds the send. */
 try {
   await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
     versions: VERS67(),
@@ -8431,13 +8432,13 @@ try {
   await drain();
   await sleep(POST_WAIT);
   ok(remote.calls.filter((c) => c.op === "push").length > pushes68b, "68.9pre the mirror pushed to GitHub, so the conflict path runs");
-  eq(postCount(), posts68b, "68.9 a GitHub conflict on a mirror push sends no Worker POST while the copy is missing");
+  ok(postCount() > posts68b, "68.9 a GitHub conflict on a mirror push still POSTs to the Worker while the copy is missing");
 } catch (e) {
   ok(false, `68.9 threw: ${e.message}`);
 }
 
 /* 68.10a F3: a Worker copy that cannot be saved, then the Worker answers 404 on the retry. An
-   empty store is healthy, so the next edit may POST. The copy gate must not hold for ever. */
+   empty store is healthy, so the next edit POSTs. A copy that cannot be saved never holds sends. */
 try {
   await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
     versions: VERS67(),
@@ -8455,14 +8456,13 @@ try {
   const posts10a = postCount();
   await click(btn(/Mark all received/), "check in after the 404");
   await sleep(POST_WAIT);
-  ok(postCount() > posts10a, "68.10a after a 404 the next edit POSTs, so a failed copy does not hold the device for ever");
+  ok(postCount() > posts10a, "68.10a after a 404 the next edit POSTs: a failed copy never holds sends");
 } catch (e) {
   ok(false, `68.10a threw: ${e.message}`);
 }
 
 /* 68.10b F3: a Worker copy that cannot be saved, then a new sync key is saved while the Worker
-   cannot be read. The save clears the gate, so the next retry POSTs. The read is down, so the
-   retry is the only path a POST can take. */
+   cannot be read. The next retry POSTs: a failed copy never holds sends, with or without a key save. */
 const KEY68B = "device-68-key-b";
 try {
   await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
@@ -8487,7 +8487,7 @@ try {
   await drain();
   await sleep(SAVE_WAIT);
   setSyncNetFail(false);
-  ok(postCount() > posts10b, "68.10b after a new sync key is saved, the retry POSTs instead of holding for a copy that never comes");
+  ok(postCount() > posts10b, "68.10b after a new sync key is saved, the retry POSTs: a failed copy never holds sends");
 } catch (e) {
   ok(false, `68.10b threw: ${e.message}`);
 }
