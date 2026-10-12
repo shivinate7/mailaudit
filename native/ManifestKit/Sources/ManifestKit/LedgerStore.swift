@@ -15,11 +15,11 @@ public final class LedgerStore {
     }
 
     public func load() throws {
+        loaded = false
         let data = try Data(contentsOf: fileURL)
         guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw CocoaError(.fileReadCorruptFile)
         }
-        loaded = false
         if let m = obj["mailday"], (m as? Int) != 1 { throw CocoaError(.fileReadCorruptFile) }
         if let e = obj["envelopes"], e as? [[String: Any]] == nil { throw CocoaError(.fileReadCorruptFile) }
         doc = obj
