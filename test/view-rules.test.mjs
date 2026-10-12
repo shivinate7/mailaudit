@@ -949,6 +949,82 @@ eq(
   "V12.21 the stamped list holds only the stamped package"
 );
 
+/* ── V13. Gaps the S3 builder found. Green on main; each names its mutant. ─ */
+/* V13.1 mutant: drop the `q ? ... : 0` guard in the rate key, so a package with no copies rates NaN */
+const ZERO = {
+  gk: "Z1::Zed Cards",
+  orderId: "Z1",
+  seller: "Zed Cards",
+  date: "2026-07-03",
+  tracking: "without tracking",
+  items: [priced("Z1", "Zed Cards", "Nothing Card", 0, 9.0, "2026-07-03", "without tracking", 0)],
+};
+eq(
+  gkList(sortPackages([ZERO, ...PKGS], "rate", {})),
+  ["D1::Delta Cards", "C1::Gamma Cards", "B1::Beta Games", "A1::Alpha Cards", "Z1::Zed Cards"],
+  "V13.1 Unit rate: a package with no copies rates 0 and sinks to the bottom, never NaN"
+);
+
+/* V13.2 mutant: drop `|| sticky.has(it.key)` from the line filter, so a sticky line in a part-received package is hidden */
+eq(
+  pickNames(fPkg({ hideDone: true, received: B1_LB, sticky: new Set(["B1|0|pLightning Bolt"]) }, "B1::Beta Games")),
+  ["Lightning Bolt", "Counterspell", "Brainstorm"],
+  "V13.2 Hide received keeps a sticky line in a part-received package"
+);
+eq(
+  fPkg({ hideDone: true, received: B1_LB, sticky: new Set(["B1|0|pLightning Bolt"]) }, "B1::Beta Games")?.hiddenByFilters,
+  0,
+  "V13.3 and hides nothing, since the sticky line keeps every line of it"
+);
+
+/* V13.4 mutant: drop `hideDone &&` from the whole-row gate in filterTally, so a fully received row vanishes with Hide received off */
+const URZA_IN = { "D1|0|pUrza's Saga": 1 };
+eq(
+  nameList(filterTally(TALLY, vopts({ received: URZA_IN }))),
+  TALLY_IN,
+  "V13.4 with Hide received off, a Tally row with every copy in still shows"
+);
+eq(
+  tView({ received: URZA_IN }, "Urza's Saga"),
+  { shown: ["D1"], qty: 1, basis: 50 },
+  "V13.5 and shows its copy, with its counts"
+);
+
+/* V13.6 mutant: drop `n <= 0` from the days branch, so a negative count reads as a range starting in the future */
+eq(dateRange({ preset: "days", days: "-5" }, NOW), null, "V13.6 Last with a negative day count is no range");
+
+/* V13.7 mutant: `t >= range.to` in inRange, so the exact upper bound drops its own day */
+const EDGE = [
+  priced("G0", "Golf Cards", "Ponder", 1, 0.75, "2026-06-30", "without tracking", 0),
+  priced("G1", "Golf Cards", "Ponder", 1, 0.75, "2026-07-01", "without tracking", 0),
+  priced("G2", "Golf Cards", "Ponder", 1, 0.75, "2026-07-02", "without tracking", 0),
+];
+eq(
+  oids(inRange(EDGE, { from: null, to: Date.parse("2026-07-01") })),
+  ["G0", "G1"],
+  "V13.7 a row dated exactly on the upper bound stays; the day after drops"
+);
+
+/* V13.8 mutant: count orderIds, not sellers, in sellerCount */
+const TWO_ORDERS = [
+  priced("H1", "Hotel Cards", "Ponder", 1, 0.75, "2026-07-01", "without tracking", 0),
+  priced("H2", "Hotel Cards", "Ponder", 1, 0.75, "2026-07-02", "without tracking", 0),
+  priced("I1", "India Cards", "Ponder", 1, 0.75, "2026-07-03", "without tracking", 0),
+];
+eq(
+  oneN(outstandingNames(TWO_ORDERS, {}), "ponder"),
+  { nk: "ponder", name: "Ponder", qty: 3, sellerCount: 2 },
+  "V13.8 three orders from two sellers: sellerCount is 2, not the order count of 3"
+);
+
+/* V13.9 mutant: `some` for `every` in packagesDone, so a part-received package counts */
+eq(packagesDone(PKGS, B1_LB), 0, "V13.9 a part-received package is not done");
+eq(
+  packagesDone(PKGS, { ...A1_FULL, ...B1_LB }),
+  1,
+  "V13.10 one done package and one part-received package count as one"
+);
+
 /* ---------- report ---------- */
 
 console.log(`\n${pass} passed, ${fails.length} failed`);
