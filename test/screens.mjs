@@ -21,6 +21,9 @@
         capped at 480px, centred, 12px above the bottom edge and clear of a
         34px home indicator, the search pill 8px above it, and the last row of
         Tally and Packages clear of both when scrolled to the bottom.
+     6. The Ledger tab (decision ledger-tab-holds-options) at 375px and 760px:
+        each option is a 44px target, Reset is red, and Reset ends above the bar
+        stack when the tab is scrolled to the bottom.
 
    Reduced motion is on, so animation does not skew the numbers. Exit 0 when all
    checks pass; exit 1 with one `FAIL` line per failure and one summary line. */
@@ -628,6 +631,73 @@ async function barCheck(browser, width) {
   }
 }
 
+/* The Ledger tab (decision ledger-tab-holds-options), at 375px and 760px. The
+   options sit on the tab, each a target of at least 44px. Reset is the red
+   control and ends above the bar stack at the bottom of the scroll. Clearance
+   is checked whether or not the tab scrolls: a tab that fits on screen cannot
+   hide Reset under the bar, so it is never a failure to fit. */
+const LEDGER_OPTIONS = [
+  /^Showing/,
+  /^Sorted by/,
+  /^Orders from/,
+  /^Sync/,
+  /^History/,
+  /^Re-import CSV/,
+  /^Backup$/,
+  /^Reset$/,
+];
+
+const ledgerState = () => {
+  const box = (el) => {
+    const r = el.getBoundingClientRect();
+    return { top: r.top, bottom: r.bottom, left: r.left, right: r.right, width: r.width, height: r.height };
+  };
+  return [...document.querySelectorAll("button")]
+    .filter((b) => !b.closest('nav[aria-label="Views"], [role="search"]'))
+    .map((b) => ({ name: b.textContent.trim(), color: getComputedStyle(b).color, ...box(b) }));
+};
+
+async function ledgerCheck(browser, width) {
+  const name = `ledger tab ${width}px`;
+  checks++;
+  const { ctx, page, pageErrors } = await openSeeded(browser, width);
+  try {
+    if (!(await loadedOk(page))) {
+      fail(name, "seeded ledger did not render");
+      return;
+    }
+    await page.locator(BAR_SEL).getByRole("button", { name: /^Ledger/ }).click();
+    await page.waitForTimeout(250);
+    const controls = await page.evaluate(ledgerState);
+    for (const re of LEDGER_OPTIONS) {
+      const c = controls.find((x) => re.test(x.name));
+      if (!c) {
+        fail(name, `no ${re} control on the Ledger tab`);
+        continue;
+      }
+      if (c.width < TAB_MIN_PX - TAP_TOLERANCE_PX || c.height < TAB_MIN_PX - TAP_TOLERANCE_PX)
+        fail(name, `${c.name} is ${c.width.toFixed(1)}x${c.height.toFixed(1)}px, under ${TAB_MIN_PX}px`);
+    }
+    const reset = controls.find((x) => /^Reset$/.test(x.name));
+    if (reset) {
+      const [r, g, b] = (reset.color.match(/\d+(\.\d+)?/g) || []).map(Number);
+      if (!(r > g + 60 && r > b + 60)) fail(name, `Reset is ${reset.color}, not a red`);
+    }
+
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await page.waitForTimeout(250);
+    const at = await page.evaluate(barState);
+    const after = await page.evaluate(ledgerState);
+    const resetAtBottom = after.find((x) => /^Reset$/.test(x.name));
+    const stackTop = at.pill ? Math.min(at.pill.top, at.bar.top) : at.bar.top;
+    if (resetAtBottom && resetAtBottom.bottom > stackTop + 0.5)
+      fail(name, `Reset ends at ${resetAtBottom.bottom.toFixed(1)}px, under the bar stack at ${stackTop.toFixed(1)}px`);
+    for (const e of pageErrors) fail(name, `page error: ${e}`);
+  } finally {
+    await ctx.close();
+  }
+}
+
 async function main() {
   const t0 = Date.now();
   if (!existsSync(PAGE)) {
@@ -649,6 +719,7 @@ async function main() {
     const phases = [
       () => overflowChecks(browser),
       ...WIDTHS.map((width) => () => barCheck(browser, width)),
+      ...WIDTHS.map((width) => () => ledgerCheck(browser, width)),
       () => rowShiftCheck(browser, { view: "Packages", anchorText: "Alpha Cards", expand: false }),
       () => rowShiftCheck(browser, { view: "Tally", anchorText: "Lightning Bolt", expand: true }),
       () => discardArmCheck(browser),

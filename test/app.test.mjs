@@ -34,6 +34,10 @@ import {
   openRange,
   openSync,
   pickSort,
+  reachFor,
+  showingText,
+  onLedger,
+  backTo,
   pushes,
   peeks,
   background,
@@ -270,6 +274,7 @@ await goTo("orphaned");
 await record(["Ponder"]);
 await sleep(SAVE_WAIT);
 eq(saved().envelopes.length, 1, "10.1 envelope saved before reset");
+await reachFor(/^Reset$/);
 await click(btn(/^Reset$/), "reset");
 await click(btn(/Tap again to clear \d+ cards?/), "confirm reset");
 await sleep(800); // past the debounce, which is when a stale value would reappear
@@ -306,11 +311,11 @@ ok(/4 packages/.test(text()), "12.3 package count unchanged");
 /* Showing starts on Unreceived: the app is opened with mail in hand, so the
    outstanding list is the one worth landing on. It still toggles both ways —
    it's a session control, not a persisted preference. */
-ok(/Unreceived/.test(cell(/^Showing/).textContent), "12.4 Showing starts on Unreceived");
+ok(/Unreceived/.test((await showingText())), "12.4 Showing starts on Unreceived");
 await toggleShowing();
-ok(/Everything/.test(cell(/^Showing/).textContent), "12.5 one tap brings received rows back");
+ok(/Everything/.test((await showingText())), "12.5 one tap brings received rows back");
 await toggleShowing();
-ok(/Unreceived/.test(cell(/^Showing/).textContent), "12.6 and toggles back");
+ok(/Unreceived/.test((await showingText())), "12.6 and toggles back");
 /* and the choice does not survive a reload. Switching to Everything is a
    session choice, not a preference: reopening the app lands on the
    outstanding list again. hideDone is deliberately absent from the saved
@@ -318,7 +323,7 @@ ok(/Unreceived/.test(cell(/^Showing/).textContent), "12.6 and toggles back");
 await toggleShowing();
 await fresh();
 ok(
-  /Unreceived/.test(cell(/^Showing/).textContent),
+  /Unreceived/.test((await showingText())),
   "12.7 Everything doesn't survive a reload"
 );
 
@@ -330,12 +335,12 @@ ok(
 await toggleShowing();
 await backgroundFor(5_000);
 ok(
-  /Everything/.test(cell(/^Showing/).textContent),
+  /Everything/.test((await showingText())),
   "12.8 a glance away is the same session"
 );
 await backgroundFor(5 * 60_000);
 ok(
-  /Unreceived/.test(cell(/^Showing/).textContent),
+  /Unreceived/.test((await showingText())),
   "12.9 coming back after a real absence starts fresh"
 );
 
@@ -361,6 +366,7 @@ eq(plain.envelopes[0].entries.length, 2, "13.2 with both entries");
 eq(plain.envelopes[0].note, "backup me", "13.3 and the note");
 
 await fresh();
+await reachFor(/Re-import CSV/);
 await click(btn(/Re-import CSV/), "show upload zone");
 await dropFile("mailday-backup.json", plainText);
 await goTo("orphaned");
@@ -371,6 +377,7 @@ ok(/backup me/.test(text()), "13.5 including its note");
 await fresh();
 await goTo("orphaned");
 await record(["Brainstorm"]);
+await reachFor(/Re-import CSV/);
 await click(btn(/Re-import CSV/), "show upload zone");
 await dropFile("mailday-backup.json", plainText);
 ok(/pending envelope was replaced/.test(text()), "13.6 restore warns about replaced envelopes");
@@ -495,6 +502,8 @@ await sleep(SWEEP_WAIT);
 eq(photoKeys(), ["pho-2"], "18.1 a round-trip through Edit keeps the photo");
 eq(saved().envelopes[0].photos, ["pho-2"], "18.2 and its id");
 
+await reachFor(/^Reset$/);
+
 await click(btn(/^Reset$/), "reset");
 await click(btn(/Tap again to clear \d+ cards?/), "confirm reset");
 await sleep(800);
@@ -539,6 +548,7 @@ ok(/^data:/.test(big.photos["pho-3"]), "19.5 as a data URL");
 
 /* a photo-less restore must not leave ids pointing at blobs that exist nowhere */
 await fresh();
+await reachFor(/Re-import CSV/);
 await click(btn(/Re-import CSV/), "show upload zone");
 await dropFile("plain.json", smallText);
 await sleep(SAVE_WAIT);
@@ -546,6 +556,7 @@ eq(saved().envelopes[0].photos, [], "19.6 photo-less restore strips the ids");
 
 /* the migration path: land on a fresh origin, get the photos back */
 await fresh(); // empty photo store
+await reachFor(/Re-import CSV/);
 await click(btn(/Re-import CSV/), "show upload zone");
 await dropFile("photos.json", bigText);
 ok(/1 photo too/.test(text()), "19.7 restore notice counts the photos");
@@ -575,6 +586,7 @@ await boot(
   },
   [["pho-3", jpeg()]]
 );
+await reachFor(/Re-import CSV/);
 await click(btn(/Re-import CSV/), "show upload zone");
 await dropFile("plain.json", smallText);
 await sleep(SAVE_WAIT);
@@ -1139,6 +1151,7 @@ ok(
    by side is the mis-tap the two-tap pattern exists to prevent */
 await fresh();
 await openSync();
+await reachFor(/^Reset$/);
 await click(btn(/^Reset$/), "arm reset");
 ok(/Tap again to clear \d+ cards?/.test(text()), "26.17 Reset arms");
 await click(btn(/Pull from GitHub/), "arm pull");
@@ -1991,6 +2004,7 @@ await boot(
 await openSync();
 await saveGitHubKey();
 await click(btn(/^Push$/), "stale push");
+await reachFor(/^Reset$/);
 await click(btn(/^Reset$/), "arm reset");
 ok(/Tap again to clear \d+ cards?/.test(text()), "34.8 Reset arms");
 await click(btn(/Merge & push/), "merge while reset is armed");
@@ -2365,11 +2379,15 @@ eq(
    this design was measured at. */
 await boot({ items: ITEMS, received: {} }, null, { remote: OTHER_DEVICE });
 await openSync();
+await reachFor(/^Reset$/);
 await click(btn(/^Reset$/), "arm reset");
 ok(!!btn(/Tap again to clear \d+ cards?/), "36.1 an armed Reset takes the row");
+/* Retired (decision armed-reset-takes-the-row, owner ruling 2026-10-11, "Fix
+   both"): the arm no longer steps the two neighbouring cells out. It arms in
+   place, so the row does not move under a press. */
 ok(
-  !btn(/Re-import CSV/) && !btn(/^History/),
-  "36.2 and the other two cells step out — nothing beside it to mis-tap"
+  !!btn(/Re-import CSV/) && !!cell(/^History/),
+  "36.2 and the other two cells stay in place under the arm"
 );
 ok(!!btn(/^Push$/), "36.3 while the open Sync panel stays put underneath");
 await click(btn(/Pull from GitHub/), "arm pull instead");
@@ -2683,6 +2701,7 @@ ok(
 );
 await stampPkg(/Alpha Cards/, "Claim filed", "");
 await sleep(SAVE_WAIT);
+await reachFor(/^Reset$/);
 await click(btn(/^Reset$/), "reset");
 await click(btn(/Tap again to clear \d+ cards?/), "confirm reset");
 await sleep(800); // past the debounce, which is when a stale value would reappear
@@ -3243,6 +3262,7 @@ eq(
 );
 
 /* ---- a milestone stands in front of an import ---- */
+await reachFor(/Re-import CSV/);
 await click(btn(/Re-import CSV/), "open the upload zone");
 await dropFile(
   "more.csv",
@@ -3273,6 +3293,7 @@ await record(["Lightning Bolt"]);
 await settle();
 /* Reset is reachable from Orphaned by design, so there is no need to come
    back — and staying here proves it */
+await reachFor(/^Reset$/);
 await click(btn(/^Reset$/), "arm reset");
 await click(btn(/Tap again to clear \d+ cards?/), "confirm reset");
 await settle();
@@ -3329,6 +3350,7 @@ ok(
   /Tap again to replace \d+ cards?/.test(text()),
   "39.14 a restore arms"
 );
+await reachFor(/^Reset$/);
 await click(btn(/^Reset$/), "arm Reset instead");
 ok(
   /Tap again to clear \d+ cards?/.test(text()),
@@ -3519,6 +3541,7 @@ await saveGitHubKey();
 await click(btn(/^Push$/), "first push");
 await settle();
 const OLD_COUNT = saved().items.length;
+await reachFor(/Re-import CSV/);
 await click(btn(/Re-import CSV/), "open the upload zone");
 await dropFile(
   "more.csv",
@@ -3923,6 +3946,7 @@ const KEYS_DOWN_LEDGER = JSON.stringify({
 
 await boot({ items: ITEMS, received: {}, envelopes: [] }, []);
 await goTo("orphaned");
+await reachFor(/Re-import CSV/);
 await click(btn(/Re-import CSV/), "show upload zone");
 const realKeys = win.photos.keys;
 win.photos.keys = async () => {
@@ -4684,6 +4708,7 @@ for (const [path, look] of [
   ok(typeof backedUp.receivedAt?.[K] === "number", "49.C3 it survives a reload into the Backup file");
 
   await openHistory();
+  await reachFor(/^Reset$/);
   await click(btn(/^Reset$/), "reset");
   await click(btn(/Tap again to clear \d+ cards?/), "confirm reset");
   await sleep(800); /* past the debounce, when a stale value would come back */
@@ -4979,6 +5004,7 @@ for (const [path, look] of [
   ok(saved().receivedAt?.[key] > tAssign, "50.B3b and undo writes a later time, so the un-check travels");
 
   await fresh();
+  await reachFor(/Re-import CSV/);
   await click(btn(/Re-import CSV/), "show upload zone");
   await dropFile(
     "mailday-backup.json",
@@ -5610,6 +5636,7 @@ await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { noRemote: true, s
 await settle();
 await pageshow();
 await sleep(APPLY_WAIT);
+await reachFor(/^Reset$/);
 await click(btn(/^Reset$/), "arm reset while the wait is past");
 ok(/Tap again to clear \d+ cards?/.test(text()), "55.4 0 Reset is armed, so the hold means something");
 await fireSyncRev(2, LEDGER55);
@@ -5625,6 +5652,7 @@ await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { noRemote: true, s
 await settle();
 await pageshow();
 await sleep(APPLY_WAIT);
+await reachFor(/Re-import CSV/);
 await click(btn(/Re-import CSV/), "show upload zone for the notice");
 await dropFile(
   "mailday-backup.json",
@@ -7371,6 +7399,176 @@ eq(
   tabEl("Orphaned")?.textContent.replace(/\D+/g, ""),
   "1",
   "62.10 the Orphaned tab carries its envelope count"
+);
+
+/* ── 63. the Ledger tab holds the options, lane L11b (decision ledger-tab-holds-options) ──
+   The working screens lose their control rows. The Ledger tab holds the View
+   cells (Showing, Sorted by, Orders from), Sync, History, the Data cells
+   (Re-import CSV, Backup), and Reset last, in red. An armed Reset arms in
+   place. Sync and History open inside the tab. The tab is reachable on an
+   empty ledger. The advisory line stays on the working screen.
+   Ask counts follow the orchestrator default of 2026-10-11 and the local
+   reading: ledger cards plus saved-envelope cards on this device. */
+
+const ENV3 = {
+  id: "env-1",
+  createdAt: 1,
+  note: "tracking 9400",
+  entries: [{ name: "Brainstorm", qty: 3 }],
+  photos: [],
+};
+/* 14 ledger cards, 3 envelope cards, 17 together: three distinct numbers, so
+   a count that reads only one side fails here */
+const focusIsCancel = () =>
+  document.activeElement?.textContent.trim() === "Cancel";
+const cancelBtn = () =>
+  buttons().find((b) => b.textContent.trim() === "Cancel");
+const namesOnLedger = () =>
+  buttons()
+    .filter((b) => !b.closest("nav") && !b.closest('[role="search"]'))
+    .map((b) => b.textContent.trim());
+
+/* the working screen keeps none of the moved controls */
+await fresh();
+ok(!!headBar(), "63.1 the masthead stays on the working screen");
+ok(
+  !cell(/^Showing/) && !cell(/^Sorted by/) && !cell(/^Orders from/),
+  "63.2 Packages holds no View cell"
+);
+ok(
+  !cell(/^Sync/) && !cell(/^History/) && !btn(/^Re-import CSV/) && !btn(/^Backup$/) && !btn(/^Reset$/),
+  "63.3 nor Sync, History, the Data cells or Reset"
+);
+
+/* the Ledger tab, in the ruled order, with Reset last and in red */
+await onLedger();
+const seq = [
+  /^Showing/,
+  /^Sorted by/,
+  /^Orders from/,
+  /^Sync/,
+  /^History/,
+  /^Re-import CSV/,
+  /^Backup$/,
+  /^Reset$/,
+];
+const at = (re) => namesOnLedger().findIndex((n) => re.test(n));
+const idx = seq.map(at);
+ok(
+  idx.every((i) => i >= 0) && idx.every((v, i) => i === 0 || v > idx[i - 1]),
+  "63.4 the Ledger tab holds the options in the ruled order"
+);
+ok(
+  /^Reset$/.test(namesOnLedger().at(-1) ?? ""),
+  "63.5 Reset is the last control on the Ledger tab"
+);
+ok(/danger/.test(btn(/^Reset$/)?.className ?? ""), "63.6 and it is the red, danger control");
+
+/* the working screen is current when Ledger is not, and Ledger is current
+   after a visit (decision phone-nav-is-bottom-bar) */
+eq(currentTab(), ["Ledger"], "63.7 the Ledger tab is current after the visit");
+
+/* Sorted by offers the options of the working view it came from. This is an
+   inference from ruled sort behaviour (package-sort-swaps-with-view), not an
+   owner ruling. */
+await fresh();
+await goTo("tally");
+await onLedger();
+await click(cell(/^Sorted by/), "open sort from Ledger");
+ok(
+  buttons().some((b) => b.textContent.trim() === "Name A–Z") &&
+    !buttons().some((b) => b.textContent.trim() === "Seller A–Z"),
+  "63.8 Sorted by on the Ledger tab offers the Tally sorts after Tally"
+);
+await goTo("packages");
+await onLedger();
+await click(cell(/^Sorted by/), "open sort from Ledger");
+ok(
+  buttons().some((b) => b.textContent.trim() === "Seller A–Z"),
+  "63.9 and offers the Packages sorts after Packages"
+);
+
+/* Sync and History open inside the Ledger tab, and close each other */
+await fresh();
+await onLedger();
+await click(cell(/^Sync/), "open Sync on the Ledger tab");
+ok(!!btn(/^Push$/), "63.10 Sync opens its panel inside the Ledger tab");
+eq(currentTab(), ["Ledger"], "63.11 and the tab stays current");
+const syncWasOpen = !!btn(/^Push$/);
+await click(cell(/^History/), "open History");
+ok(syncWasOpen && !btn(/^Push$/), "63.12 opening History closes an open Sync");
+ok(cell(/^History/)?.getAttribute("aria-expanded") === "true", "63.13 and History is open");
+
+/* the advisory line on the working screen is the other way into Sync. Where
+   it lands is inferred, not ruled: it opens the Ledger tab with Sync open. */
+await fresh();
+await click(btn(/tap to/), "advisory line on Packages");
+eq(currentTab(), ["Ledger"], "63.14 the advisory line takes the tab to Ledger (inferred)");
+ok(!!btn(/^Push$/), "63.15 and opens the Sync panel there");
+
+/* reachable on an empty ledger (recovery-control-not-state-gated) */
+await boot({ items: [], received: {} });
+await onLedger();
+ok(!!cell(/^Sync/), "63.16 an empty ledger still reaches Sync");
+ok(!!cell(/^History/), "63.17 and History");
+ok(!!btn(/^Re-import CSV/), "63.18 and Re-import CSV");
+ok(!!btn(/^Backup$/), "63.19 and Backup");
+ok(!!btn(/^Reset$/), "63.20 and Reset");
+
+/* Reset arms in place on the Ledger tab */
+await boot({ items: ITEMS, received: {} });
+await onLedger();
+await click(btn(/^Reset$/), "arm reset in place");
+ok(!!btn(/Tap again to clear 14 cards/), "63.21 an armed Reset names the 14 ledger cards");
+ok(
+  !!btn(/Re-import CSV/) && !!cell(/^History/) && !!cell(/^Sync/),
+  "63.22 and the other cells stay where they are"
+);
+ok(focusIsCancel(), "63.23 Cancel takes first focus");
+await click(cancelBtn(), "cancel the reset");
+ok(!btn(/Tap again to clear/) && !!btn(/^Reset$/), "63.24 Cancel disarms, and nothing is cleared");
+ok(!!cell(/^Showing/) && /Unreceived/.test(cell(/^Showing/).textContent), "63.25 the Showing cell is unchanged");
+
+/* History stays open under an armed Reset (history-sync-close-each-other) */
+await openHistory();
+await click(btn(/^Reset$/), "arm reset with History open");
+eq(
+  cell(/^History/)?.getAttribute("aria-expanded"),
+  "true",
+  "63.26 an armed Reset leaves History open"
+);
+await click(cancelBtn(), "cancel");
+
+/* Pull's ask names the cards it replaces, and Cancel takes first focus.
+   Counts: 14 ledger, 3 envelope, 17 together. */
+await boot({ items: ITEMS, received: {}, envelopes: [ENV3] }, null, { remote: OTHER_DEVICE });
+await openSync();
+await click(btn(/Pull from GitHub/), "arm pull");
+ok(!!btn(/Tap again to replace 17 cards/), "63.27 Pull's ask names 17 cards: ledger plus envelope");
+ok(focusIsCancel(), "63.28 Pull's ask takes first focus on Cancel");
+await click(cancelBtn(), "cancel the pull");
+eq(
+  remote.calls.filter((c) => c.op === "pull").length,
+  0,
+  "63.29 Cancel fetches nothing and replaces nothing"
+);
+ok(!!btn(/Pull from GitHub/), "63.30 and Pull is offered again");
+
+/* Push anyway's ask names the local cards it would overwrite. Reading pinned
+   here: local ledger plus local envelope cards (17), not the remote's 3. */
+await boot({ items: ITEMS, received: {}, envelopes: [ENV3] }, null, { remote: OTHER_DEVICE });
+await openSync();
+await saveGitHubKey();
+await click(btn(/^Push$/), "stale push to reach the conflict");
+await settle();
+await click(btn(/Push anyway/), "arm the force");
+ok(!!btn(/Tap again to overwrite 17 cards/), "63.31 Push anyway's ask names 17 cards");
+ok(focusIsCancel(), "63.32 and takes first focus on Cancel");
+await click(cancelBtn(), "cancel the force");
+eq(
+  JSON.parse(remoteText()).items.length,
+  3,
+  "63.33 Cancel leaves the other device's copy alone"
 );
 
 report();

@@ -839,7 +839,42 @@ export const type = async (input, value) => {
    micro-label, so they're addressable without reaching for structure. */
 export const cell = (re) => buttons().find((b) => re.test(b.textContent.trim()));
 
-export const toggleShowing = () => click(cell(/^Showing/), "showing cell");
+/* The Ledger tab holds the options (decision ledger-tab-holds-options). Each
+   helper finds its control on the current screen first, and visits the Ledger
+   tab only when the control is absent, so one helper serves the base and the
+   built page. onLedger returns the working view it came from, so a helper that
+   only flips a setting can hand that view back. */
+const viewTabEls = () =>
+  [...(document.querySelector('nav[aria-label="Views"]')?.querySelectorAll("button") ?? [])];
+const tabLabel = (b) => b.textContent.replace(/\d+$/, "").trim();
+export const onLedger = async () => {
+  const cur = viewTabEls().find(
+    (b) => b.getAttribute("aria-current") && b.getAttribute("aria-current") !== "false"
+  );
+  const prev = cur ? tabLabel(cur) : null;
+  const ledgerTab = viewTabEls().find((b) => tabLabel(b) === "Ledger");
+  if (prev !== "Ledger" && ledgerTab) await click(ledgerTab, "Ledger tab");
+  return prev;
+};
+/* Visit the Ledger tab only when a control matching `re` is not on screen. */
+export const reachFor = async (re) => {
+  if (!buttons().some((b) => re.test(b.textContent.trim()))) await onLedger();
+};
+export const showingText = async () => {
+  await reachFor(/^Showing/);
+  return cell(/^Showing/)?.textContent ?? "";
+};
+export const backTo = async (prev) => {
+  if (!prev || prev === "Ledger") return;
+  const t = viewTabEls().find((b) => tabLabel(b) === prev);
+  if (t) await click(t, `${prev} tab`);
+};
+
+export const toggleShowing = async () => {
+  const prev = cell(/^Showing/) ? null : await onLedger();
+  await click(cell(/^Showing/), "showing cell");
+  await backTo(prev);
+};
 
 /* Background the page for `awayMs` and bring it back — what iOS actually does
    when you switch apps and return, which is not a remount. Composes the
@@ -860,25 +895,33 @@ export async function backgroundFor(awayMs) {
 }
 
 export const openRange = async () => {
+  if (!cell(/^Orders from/)) await onLedger();
   const c = cell(/^Orders from/);
-  if (!c) throw new Error("no range cell on screen");
+  if (!c) {
+    fails.push("no range cell on screen");
+    return;
+  }
   if (c.getAttribute("aria-expanded") !== "true") await click(c, "open range");
 };
 
 /* Sort is a panel of options now, not a <select>, so pick by visible label. */
 export const pickSort = async (label) => {
+  const prev = cell(/^Sorted by/) ? null : await onLedger();
   const c = cell(/^Sorted by/);
   if (!c) {
     fails.push("no sort cell on screen");
+    await backTo(prev);
     return;
   }
   if (c.getAttribute("aria-expanded") !== "true") await click(c, "open sort");
   const opt = buttons().find((b) => b.textContent.trim() === label);
   if (!opt) {
     fails.push(`no sort option "${label}"`);
+    await backTo(prev);
     return;
   }
   await click(opt, `sort ${label}`);
+  await backTo(prev);
 };
 
 /* Push, Pull and Merge are the repair kit now, and its only entrance is the
@@ -887,14 +930,22 @@ export const pickSort = async (label) => {
    call it; note it only works while sync IS broken, which in a fresh fixture
    means "this device has no key", the state every test starts in. */
 export const openSync = async () => {
-  if (!btn(/^Push$/)) await click(btn(/tap to/), "open the repair kit");
+  if (btn(/^Push$/)) return;
+  /* the advisory line, while it shows, opens the same panel; otherwise the
+     Sync cell on the Ledger tab does (decision ledger-tab-holds-options) */
+  if (btn(/tap to/)) await click(btn(/tap to/), "open the repair kit");
+  else {
+    await onLedger();
+    await click(cell(/^Sync/), "open Sync");
+  }
 };
 
-/* Backup and Backup + photos moved out of the Sync panel and into History —
-   they are version actions, and the Sync panel is a repair kit now that only
-   opens on failure. Idempotent, like openSync. */
+/* Idempotent, like openSync. History is a cell on the Ledger tab; its panel
+   opens inside that tab. */
 export const openHistory = async () => {
-  if (!btn(/^Backup$/)) await click(btn(/^History/), "open history");
+  if (cell(/^History/)?.getAttribute("aria-expanded") === "true") return;
+  if (!cell(/^History/)) await onLedger();
+  await click(cell(/^History/), "open history");
 };
 
 /* The key field is uncontrolled by design (the token must never reach React
@@ -902,7 +953,10 @@ export const openHistory = async () => {
 export const saveGitHubKey = async (token = "github_pat_testtoken") => {
   await openSync();
   const el = document.querySelector('input[aria-label="GitHub access token"]');
-  if (!el) throw new Error("no GitHub key field on screen");
+  if (!el) {
+    fails.push("no GitHub key field on screen");
+    return;
+  }
   el.value = token;
   await click(btn(/^Save key$/), "save key");
 };
