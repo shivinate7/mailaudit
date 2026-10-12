@@ -1,5 +1,7 @@
 # The package progress bar sits out of flow
 
+**Status:** ruled 2026-10-11, not built. The card corner moves from 10px to 8px under `spacing-on-4px-grid`. The code still has the 10px corner.
+
 The progress bar is absolutely positioned on the card's own top edge, in `edgeBar`. It is not part of the card's flow, so the bar moves no row when it mounts.
 
 **Holds while:** `edgeBar` in `src/app.jsx` sets `position: absolute`, and the bar mounts only while `gotQty > 0 && !done`.

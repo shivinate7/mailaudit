@@ -1,6 +1,6 @@
 # The native job runs on a hosted macOS runner
 
-**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Lane C1 builds it and has not landed. Two facts are unknown, see Unmeasured.
+**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Lane C1 builds it and has not landed. The 2026-10-11 rulings in Required check and Still open are ruled and not built. Two facts are unknown, see Unmeasured.
 
 The native checks run as one job in `.github/workflows/test.yml`, on a hosted macOS runner. Degen's self-hosted runner is not copied.
 
@@ -8,13 +8,17 @@ The native checks run as one job in `.github/workflows/test.yml`, on a hosted ma
 
 ## The job
 
-- The job is named native. It runs on `macos-26` with `timeout-minutes: 25`.
+- The job is named native. It runs on `macos-26`. Its timeout is set from its first green run. The rule is ci-hygiene step 5: about 2x the slowest green run. No value is ruled before then.
 - It uses the same concurrency group pattern as the screens job: one group per sha on main, and cancel on a PR ref.
 - It has `needs: suite`. So `check:golden` and `check:rules` run first on Ubuntu, and they gate the job.
 - Xcode is pinned with `xcode-select`.
 - Steps, in order: ST, then xcodegen, then `xcodebuild build` for macOS and for the iOS Simulator with `CODE_SIGNING_ALLOWED=NO`, then the UI tests.
 - ST means `swift test --package-path native/ManifestKit`, see `native-build-lanes`.
 - The paths filter for native and shared files is in `ci-filters-guarantee-no-rebuild`.
+
+## Required check
+
+Owner ruling, accept all: the job becomes a required check after its first green run. A scope job and a nightly run gate it. Until then, the job is not required, and a red native run can merge.
 
 ## Cost
 
@@ -33,7 +37,9 @@ Degen's self-hosted runner. On a public repo, a fork PR would run on the owner's
 
 ## Still open
 
-- The plan adds a trigger list `types: [opened, synchronize, reopened, ready_for_review]` and the guard `if: ${{ !github.event.pull_request.draft }}` on every job. Today `pull_request` has no `types` list and no draft filter, so a draft PR runs CI. Whether to skip CI on a draft PR is not ruled. The global rules open every PR as a draft and run the full suites in CI before review. A skip would move that proof to after review. Also unmeasured: how a required check reads a job that the guard skipped.
+- The draft skip is ruled, with a condition. The job follows `ci-skips-draft-prs`. A scratch PR must first show that a skipped required check does not read as passing.
+- Unmeasured: how a required check reads a job that the draft guard skipped. The scratch PR measures this.
+- The trigger list `types: [opened, synchronize, reopened, ready_for_review]` and the draft guard are not in the workflow yet.
 
 ## See also
 

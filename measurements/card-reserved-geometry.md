@@ -1,5 +1,7 @@
 # Card reserved geometry heights
 
+**Status:** re-measure pending. The 4px grid and 8px radius ruling in `spacing-on-4px-grid` will change this card. The figures below describe the code now. They are unmeasured after that change.
+
 This record holds the package card and Tally card heights across a check-in. It holds the row displacement, the action row content needed per width, and the 320px case left unfixed. Re-measure at 375px, and at the widths listed, after a change to the progress bar or the action row.
 
 ## How to re-measure

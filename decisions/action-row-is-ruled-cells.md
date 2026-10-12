@@ -1,6 +1,8 @@
 # The action row is ruled cells, not buttons
 
-The action row holds equal ruled cells across the full width. The cells are Re-import CSV, History and Reset. They use uppercase mono, like the view switch. Each cell is 40px tall, like Find.
+**Status:** ruled 2026-10-11, not built. Owner ruling, accept all: the 40px ruled row gets a 44px touch hit area, with no visual change. The web lane that builds it, L6 in `ux-house-rules-govern`, is not briefed yet.
+
+The action row holds equal ruled cells across the full width. The cells are Re-import CSV, History and Reset. They use uppercase mono, like the view switch. Each cell is 40px tall, like Find. Each cell has a 44px touch hit area, with no visual change.
 
 **Holds while:** `src/app.jsx` styles the row as `.mdl-acts` with `grid-auto-flow: column`, and it has no Sync cell.
 
@@ -16,7 +18,7 @@ Re-import and Reset keep the narrower gate. See `recovery-control-not-state-gate
 
 ## See also
 
-- `armed-reset-takes-the-row` — how an armed Reset takes the whole row.
+- `armed-reset-takes-the-row` — how an armed Reset arms in place, with the row unmoved.
 - `ruled-head-masthead-vocabulary` — the head cells this row continues.
 - `ruled-head-one-advisory-entrance` — the line that now opens the sync repair kit.
 - `recovery-control-not-state-gated` — why Re-import and Reset keep their gate.
