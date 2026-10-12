@@ -372,6 +372,96 @@ await test("3.2 the same bad bodies on an empty store write nothing", async () =
   }
 });
 
+/* The four fields the Worker shape-checks. A field may be absent (older saves
+   lack receivedAt, stamps and envelopes). A wrong shape, or JSON null, is damage. */
+const BAD_SHAPES = [
+  ...["received", "receivedAt", "stamps"].flatMap((f) => [[], "x", 7, true, null].map((v) => [f, v])),
+  ...[{}, "x", 7, true, null].map((v) => ["envelopes", v]),
+];
+
+await test("3.3 a ledger whose received, receivedAt, stamps or envelopes has the wrong shape, or is null, gets 400 with a plain error and changes nothing", async () => {
+  for (const [field, v] of BAD_SHAPES) {
+    const label = `${field}=${JSON.stringify(v)}`;
+    const s = seeded();
+    const before = clone(s.state);
+    let res;
+    try {
+      res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: ledger({ [field]: v }) } });
+    } catch (e) {
+      ok(false, `${label}: route threw instead of refusing: ${e.message}`);
+      continue;
+    }
+    eq(res.status, 400, `${label}: status`);
+    const body = await res.json().catch(() => null);
+    ok(typeof body?.error === "string" && body.error.length > 0, `${label}: plain error string`);
+    eq(s.writes.length, 0, `${label}: writes`);
+    eq(s.broadcasts.length, 0, `${label}: broadcasts`);
+    eq(s.snapWrites.length, 0, `${label}: snapshot writes`);
+    eq(s.state, before, `${label}: store unchanged`);
+  }
+});
+
+await test("3.4 the same wrong shapes on an empty store get 400 and write nothing", async () => {
+  for (const [field, v] of BAD_SHAPES) {
+    const label = `${field}=${JSON.stringify(v)}`;
+    const s = empty();
+    let res;
+    try {
+      res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: ledger({ [field]: v }) } });
+    } catch (e) {
+      ok(false, `${label}: route threw instead of refusing: ${e.message}`);
+      continue;
+    }
+    eq(res.status, 400, `${label}: status`);
+    eq(s.writes.length, 0, `${label}: writes`);
+    eq(s.state, null, `${label}: store still empty`);
+  }
+});
+
+await test("3.5 a ledger with well-shaped received, receivedAt, stamps and envelopes is stored", async () => {
+  const full = ledger({
+    received: { "100|1|555": 2 },
+    receivedAt: { "100|1|555": PREV },
+    stamps: {},
+    envelopes: [
+      {
+        id: "env1",
+        createdAt: PREV,
+        note: "",
+        entries: [{ name: "Alpha Card", qty: 1 }],
+        photos: [],
+        updatedAt: PREV,
+      },
+    ],
+  });
+  const s = empty();
+  const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: full } });
+  eq(res.status, 200, "empty store: status");
+  eq(s.state?.ledger, full, "empty store: stored ledger");
+  const merged = await send(seeded(), "POST", "/ledger", { key: KEY_PHONE, json: { ledger: full } });
+  eq(merged.status, 200, "stored ledger: status");
+  eq((await merged.json()).ledger.received, { "100|1|555": 2 }, "stored ledger: received survives the merge");
+});
+
+await test("3.6 a ledger missing received, receivedAt, stamps or envelopes is still stored", async () => {
+  const bare = { mailday: 1, items: [item("100|1|555", "Alpha Card", 2)] };
+  const cases = [
+    ...["received", "receivedAt", "stamps", "envelopes"].map((f) => {
+      const { [f]: _gone, ...rest } = ledger({ receivedAt: {} });
+      return [`without ${f}`, rest];
+    }),
+    ["without all four", bare],
+  ];
+  for (const [label, body] of cases) {
+    const s = empty();
+    const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: body } });
+    eq(res.status, 200, `${label}: status`);
+    eq(s.writes.length, 1, `${label}: writes`);
+    const seededRes = await send(seeded(), "POST", "/ledger", { key: KEY_PHONE, json: { ledger: body } });
+    eq(seededRes.status, 200, `${label}, stored ledger: status`);
+  }
+});
+
 /* ---------- 4. POST /ledger writes and merges ---------- */
 await test("4.1 the first ledger on an empty store is written verbatim at rev 1", async () => {
   const incoming = ledger({ received: { "100|1|555": 1 } });
