@@ -7407,18 +7407,8 @@ eq(
    (Re-import CSV, Backup), and Reset last, in red. An armed Reset arms in
    place. Sync and History open inside the tab. The tab is reachable on an
    empty ledger. The advisory line stays on the working screen.
-   Ask counts follow the orchestrator default of 2026-10-11 and the local
-   reading: ledger cards plus saved-envelope cards on this device. */
+   Group 64 carries the 2026-10-12 ruling that GitHub leaves the Sync panel. */
 
-const ENV3 = {
-  id: "env-1",
-  createdAt: 1,
-  note: "tracking 9400",
-  entries: [{ name: "Brainstorm", qty: 3 }],
-  photos: [],
-};
-/* 14 ledger cards, 3 envelope cards, 17 together: three distinct numbers, so
-   a count that reads only one side fails here */
 const focusIsCancel = () =>
   document.activeElement?.textContent.trim() === "Cancel";
 const cancelBtn = () =>
@@ -7427,6 +7417,11 @@ const namesOnLedger = () =>
   buttons()
     .filter((b) => !b.closest("nav") && !b.closest('[role="search"]'))
     .map((b) => b.textContent.trim());
+/* The Sync panel's marker. Push is gone (owner ruling 2026-10-12, GitHub leaves
+   the UI), so the panel is open when its Sync key field is on screen. That field
+   exists only on a device with the Worker adapter, so these fixtures boot with
+   syncAdapter. */
+const syncOpenNow = () => !!document.querySelector('input[aria-label="Sync key"]');
 
 /* the working screen keeps none of the moved controls */
 await fresh();
@@ -7489,22 +7484,24 @@ ok(
 );
 
 /* Sync and History open inside the Ledger tab, and close each other */
-await fresh();
+await boot({ items: ITEMS, received: {} }, null, { syncAdapter: true });
+await settle();
 await onLedger();
 await click(cell(/^Sync/), "open Sync on the Ledger tab");
-ok(!!btn(/^Push$/), "63.10 Sync opens its panel inside the Ledger tab");
+ok(syncOpenNow(), "63.10 Sync opens its panel inside the Ledger tab");
 eq(currentTab(), ["Ledger"], "63.11 and the tab stays current");
-const syncWasOpen = !!btn(/^Push$/);
+const syncWasOpen = syncOpenNow();
 await click(cell(/^History/), "open History");
-ok(syncWasOpen && !btn(/^Push$/), "63.12 opening History closes an open Sync");
+ok(syncWasOpen && !syncOpenNow(), "63.12 opening History closes an open Sync");
 ok(cell(/^History/)?.getAttribute("aria-expanded") === "true", "63.13 and History is open");
 
 /* the advisory line on the working screen is the other way into Sync. Where
    it lands is inferred, not ruled: it opens the Ledger tab with Sync open. */
-await fresh();
+await boot({ items: ITEMS, received: {} }, null, { syncAdapter: true });
+await settle();
 await click(btn(/tap to/), "advisory line on Packages");
 eq(currentTab(), ["Ledger"], "63.14 the advisory line takes the tab to Ledger (inferred)");
-ok(!!btn(/^Push$/), "63.15 and opens the Sync panel there");
+ok(syncOpenNow(), "63.15 and opens the Sync panel there");
 
 /* reachable on an empty ledger (recovery-control-not-state-gated) */
 await boot({ items: [], received: {} });
@@ -7539,36 +7536,43 @@ eq(
 );
 await click(cancelBtn(), "cancel");
 
-/* Pull's ask names the cards it replaces, and Cancel takes first focus.
-   Counts: 14 ledger, 3 envelope, 17 together. */
-await boot({ items: ITEMS, received: {}, envelopes: [ENV3] }, null, { remote: OTHER_DEVICE });
-await openSync();
-await click(btn(/Pull from GitHub/), "arm pull");
-ok(!!btn(/Tap again to replace 17 cards/), "63.27 Pull's ask names 17 cards: ledger plus envelope");
-ok(focusIsCancel(), "63.28 Pull's ask takes first focus on Cancel");
-await click(cancelBtn(), "cancel the pull");
-eq(
-  remote.calls.filter((c) => c.op === "pull").length,
-  0,
-  "63.29 Cancel fetches nothing and replaces nothing"
-);
-ok(!!btn(/Pull from GitHub/), "63.30 and Pull is offered again");
+/* ── 64. GitHub leaves the UI; the Sync group keeps the server (owner ruling 2026-10-12) ──
+   "i thought we are eliminating push and pull" (2026-10-12), after "Cloudflare
+   does it all" (2026-10-11). Pull from GitHub, Push, Push anyway and Merge & push
+   leave the UI, with their armed states. The Sync group shows the Cloudflare
+   server status, the device key paste box and the last sync time. The GitHub
+   mirror keeps pushing in the background until worker-keeps-snapshots replaces
+   it. Records: ledger-tab-holds-options, sync-revamp-cloudflare,
+   worker-keeps-snapshots, stale-push-conflict-pull-two-tap.
+   Retired here: 63.27 to 63.33, which counted the Pull and Push anyway asks. */
+const GITHUB_ASK_NAMES = [
+  /Pull from GitHub/,
+  /^Push$/,
+  /^Pushed ✓$/,
+  /Push anyway/,
+  /Merge & push/,
+  /Tap again to replace/,
+  /Tap again to overwrite/,
+];
+const hasAction = (re) => buttons().some((b) => re.test(b.textContent.trim()));
 
-/* Push anyway's ask names the local cards it would overwrite. Reading pinned
-   here: local ledger plus local envelope cards (17), not the remote's 3. */
-await boot({ items: ITEMS, received: {}, envelopes: [ENV3] }, null, { remote: OTHER_DEVICE });
-await openSync();
-await saveGitHubKey();
-await click(btn(/^Push$/), "stale push to reach the conflict");
+await boot({ items: ITEMS, received: {} }, null, { syncAdapter: true, remote: OTHER_DEVICE });
 await settle();
-await click(btn(/Push anyway/), "arm the force");
-ok(!!btn(/Tap again to overwrite 17 cards/), "63.31 Push anyway's ask names 17 cards");
-ok(focusIsCancel(), "63.32 and takes first focus on Cancel");
-await click(cancelBtn(), "cancel the force");
-eq(
-  JSON.parse(remoteText()).items.length,
-  3,
-  "63.33 Cancel leaves the other device's copy alone"
-);
+await openSync();
+await settle();
+ok(syncOpenNow(), "64.1 the Sync panel opens with the device key paste box");
+ok(!!btn(/Save sync key/), "64.2 and its Save sync key button");
+ok(!hasAction(/Pull from GitHub/), "64.3 the Sync panel offers no Pull from GitHub");
+ok(!hasAction(/^Push$/) && !hasAction(/^Pushed ✓$/), "64.4 nor Push");
+ok(!hasAction(/Merge & push/), "64.5 nor Merge & push, though the remote is ahead");
+ok(!GITHUB_ASK_NAMES.some((re) => hasAction(re)), "64.6 no GitHub control or armed ask is on screen");
+
+/* a fresh phone reaches the device key paste box, with no GitHub control in the way */
+await boot({ items: [], received: {} }, null, { syncAdapter: true });
+await settle();
+await openSync();
+await settle();
+ok(syncOpenNow(), "64.7 an empty ledger still reaches the device key paste box");
+ok(!hasAction(/Pull from GitHub/), "64.8 and offers no Pull from GitHub to recover with");
 
 report();

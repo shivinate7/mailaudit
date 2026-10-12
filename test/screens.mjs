@@ -24,6 +24,10 @@
      6. The Ledger tab (decision ledger-tab-holds-options) at 375px and 760px:
         each option is a 44px target, Reset is red, and Reset ends above the bar
         stack when the tab is scrolled to the bottom.
+     7. The Sync panel on the Ledger tab (decision ledger-tab-holds-options, owner
+        ruling 2026-10-12) at 375px and 760px: the panel opens from its Sync cell,
+        holds no GitHub control (Pull from GitHub, Push, Push anyway, Merge & push),
+        and causes no sideways overflow.
 
    Reduced motion is on, so animation does not skew the numbers. Exit 0 when all
    checks pass; exit 1 with one `FAIL` line per failure and one summary line. */
@@ -698,6 +702,47 @@ async function ledgerCheck(browser, width) {
   }
 }
 
+/* The Sync panel on the Ledger tab (decision ledger-tab-holds-options; owner
+   ruling 2026-10-12). Opened from its Sync cell. The panel holds no GitHub
+   control, and the open panel causes no sideways overflow. */
+const GITHUB_CONTROL_NAMES = [/Pull from GitHub/, /^Push$/, /^Pushed ✓$/, /Push anyway/, /Merge & push/];
+
+async function syncPanelCheck(browser, width) {
+  const name = `sync panel ${width}px`;
+  checks++;
+  const { ctx, page, pageErrors } = await openSeeded(browser, width);
+  try {
+    if (!(await loadedOk(page))) {
+      fail(name, "seeded ledger did not render");
+      return;
+    }
+    await page.locator(BAR_SEL).getByRole("button", { name: /^Ledger/ }).click();
+    await page.waitForTimeout(250);
+    const syncCell = page.locator("button", { hasText: /^Sync/ }).first();
+    if (!(await syncCell.count())) {
+      fail(name, "no Sync cell on the Ledger tab");
+    } else {
+      await syncCell.click();
+      await page.waitForTimeout(250);
+    }
+    const names = await page.evaluate(() =>
+      [...document.querySelectorAll("button")].map((b) => b.textContent.trim())
+    );
+    for (const re of GITHUB_CONTROL_NAMES) {
+      const hit = names.find((n) => re.test(n));
+      if (hit) fail(name, `the Sync panel still shows "${hit}"`);
+    }
+    const overflow = await page.evaluate(
+      () => document.documentElement.scrollWidth - document.documentElement.clientWidth
+    );
+    if (overflow > TAP_TOLERANCE_PX)
+      fail(name, `sideways overflow of ${overflow.toFixed(1)}px with the Sync panel open`);
+    for (const e of pageErrors) fail(name, `page error: ${e}`);
+  } finally {
+    await ctx.close();
+  }
+}
+
 async function main() {
   const t0 = Date.now();
   if (!existsSync(PAGE)) {
@@ -720,6 +765,7 @@ async function main() {
       () => overflowChecks(browser),
       ...WIDTHS.map((width) => () => barCheck(browser, width)),
       ...WIDTHS.map((width) => () => ledgerCheck(browser, width)),
+      ...WIDTHS.map((width) => () => syncPanelCheck(browser, width)),
       () => rowShiftCheck(browser, { view: "Packages", anchorText: "Alpha Cards", expand: false }),
       () => rowShiftCheck(browser, { view: "Tally", anchorText: "Lightning Bolt", expand: true }),
       () => discardArmCheck(browser),
