@@ -1871,7 +1871,7 @@ const NO_PHOTO_BACKUP =
   "Some photos are not backed up yet. They stay on this device and sync again on their own.";
 const PHOTO_SAYS = {
   "no-access":
-    "Photos need your key — they live in a private repo, so pulling them isn’t anonymous.",
+    "Photos need a sync key — this device has none, so they cannot sync.",
   "no-key": "Photos need a key to sync. The ledger above is safe either way.",
   auth: NO_PHOTO_BACKUP,
   forbidden: NO_PHOTO_BACKUP,
@@ -3177,7 +3177,7 @@ export default function MailDayLedger() {
           STORAGE_KEY,
           JSON.stringify({ ...payloadRef.current, workerSyncedAt, savedAt: Date.now() })
         )
-        .catch(() => {});
+        .catch((e) => console.warn("workerSyncedAt save failed", e));
     }, 500);
     return () => clearTimeout(t);
   }, [workerSyncedAt, loaded]);
@@ -3259,11 +3259,9 @@ syncBroken === "seeded"
                     : syncBroken === "photos-unreadable"
                     ? "This device’s photos could not be read, so no new photos were backed up — tap to fix"
                     : !syncBroken
-                    ? `Backed up${
-                        syncedAt
-                          ? ` ${new Date(syncedAt).toISOString().slice(0, 10)}`
-                          : ""
-                      } — tap to close`
+                    ? syncedAt
+                      ? `Backed up ${new Date(syncedAt).toISOString().slice(0, 10)} — tap to close`
+                      : "Not synced yet — tap to close"
                     : syncBroken === "stale"
                     ? `Not backed up since ${new Date(syncedAt)
                         .toISOString()
@@ -3522,7 +3520,7 @@ syncBroken === "seeded"
         notice != null
           ? notice
           :
-        `${remote ? "Pulled from GitHub" : "Backup restored"} — ${
+        `Backup restored — ${
           data.items.length
         } lines and your check-ins are back.` +
           (inlinedIds.length
@@ -4094,7 +4092,7 @@ syncBroken === "seeded"
       if (left > 0)
         setPhotoMsg({
           tone: "advice",
-          text: `${done} photos sent · ${left} still to go — tap Push again to finish.`,
+          text: `${done} photos sent · ${left} still to go — tap to send the rest.`,
         });
     },
     [surveyPhotos, referencedPhotoIds]
@@ -6455,21 +6453,6 @@ syncBroken === "seeded"
                                 ? ` \u2014 ${diff} against now`
                                 : " \u2014 same as now"}
                               .
-                              {remoteInfo?.hasKey && (
-                                /* Said plainly, because it was not obvious and
-                                   the two-tap's "replace everything" reads as
-                                   local. A restore rewrites the three fields
-                                   the auto-push debounce watches, so ninety
-                                   seconds later this becomes the backup too —
-                                   unattended, and accepted, because the stored
-                                   sha is still current. Nothing is destroyed
-                                   (every push is a commit) but the user should
-                                   not find that out afterwards. */
-                                <>
-                                  {" "}
-                                  This becomes the backup too, a minute later.
-                                </>
-                              )}
                             </div>
                             <div style={{ display: "flex", gap: 8 }}>
                               {confirmRestore === v.id && (
