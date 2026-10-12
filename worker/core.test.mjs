@@ -998,7 +998,7 @@ await test("13.3 a changing POST on a new UTC day snapshots again, including acr
 });
 
 await test("13.4 a no-op, a 413, a 400 and a first POST to an empty store take no snapshot; a later changing POST still does", async () => {
-  /* Every real ledger carries receivedAt, as src/app.jsx does (state at ~2836). Without it the merge adds {}, so the no-op looks like a change. */
+  /* Every ledger the current app sends carries receivedAt (state at src/app.jsx ~2836). A save from before receivedAt shipped may lack it; the merge then adds {}, so the no-op looks like a change. */
   const stored = ledger({ receivedAt: {} });
   ok(!changes(stored, stored), "fixture: the no-op POST changes nothing");
   const s = fakeStore({ ledger: stored, rev: 3, at: PREV });
