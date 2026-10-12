@@ -49,11 +49,16 @@ public final class PackagesModel {
         for p in rows { for it in p.items { try await refreshLabel(it) } }
     }
 
+    /// isDone and countLabel run apart: one failing must not stop the other. The first error is thrown.
     private func refreshLabel(_ it: LedgerItem) async throws {
-        // done first: it must follow the saved count even if the label refresh fails.
-        done[it.key] = try await engine.call("isDone", "[\(received[it.key] ?? 0),\(it.qty)]") == "true"
-        let out = try await engine.call("countLabel", "[\(received[it.key] ?? 0),\(it.qty)]")
-        labels[it.key] = try JSONSerialization.jsonObject(with: Data(out.utf8), options: [.fragmentsAllowed]) as? String
+        let args = "[\(received[it.key] ?? 0),\(it.qty)]"
+        var failure: Error?
+        do { done[it.key] = try await engine.call("isDone", args) == "true" } catch { failure = error }
+        do {
+            let out = try await engine.call("countLabel", args)
+            labels[it.key] = try JSONSerialization.jsonObject(with: Data(out.utf8), options: [.fragmentsAllowed]) as? String
+        } catch { failure = failure ?? error }
+        if let failure { throw failure }
     }
 
     /// A tap: the bundle's toggleCount picks the count to write. Every failure, rule or save,
