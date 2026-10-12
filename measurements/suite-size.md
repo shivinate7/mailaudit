@@ -21,7 +21,7 @@ Measured on 2026-10-12, at `b9e3f1c`, the head of PR #87 when measured:
 - New York zone (`TZ=America/New_York`): 1250 passed, 1 failed (68.9), exit 1. 268.0 s by the `verdict` timer.
 - UTC (`TZ=UTC`): 1249 passed, 1 failed (68.9), exit 1. 264.3 s by the `verdict` timer.
 
-At `7c4cdbe` New York printed 1242 passed, 1 failed (68.5b), and UTC printed 1241 passed, 1 failed (68.5b).
+At `7c4cdbe` New York printed 1242 passed, 1 failed (68.5b), exit 1, 259.6 s. UTC printed 1241 passed, 1 failed (68.5b), exit 1, 247.6 s.
 
 Each zone ran once, so each time is one reading. The run time varies on this machine. The New York run took 259.6 s at `7c4cdbe`, against 218.9 s at `1f230e9`. The cause is unmeasured. Take several runs before you compare a time. Groups 30 to 31 hold real-timer waits on purpose.
 
