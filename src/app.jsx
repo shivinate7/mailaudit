@@ -3327,7 +3327,7 @@ syncBroken === "seeded"
                     : syncBroken === "too-big"
                     ? "The ledger is too big for the sync server — tap to fix"
                     : syncBroken === "bad-shape"
-                    ? "The sync server refused this ledger’s shape, so it is not backed up — tap to fix"
+                    ? "The sync server refused this ledger’s shape, so it is not backed up."
                     : syncBroken === "photos-unreadable"
                     ? "This device’s photos could not be read, so no new photos were backed up — tap to fix"
                     : !syncBroken
@@ -3929,9 +3929,13 @@ syncBroken === "seeded"
            should carry exactly the warnings one does. */
         await applyBackup(text, "file", null, null);
         setOpenVersion(null);
-      } catch {
+      } catch (e) {
         setVersionMsgAt(id);
-        setVersionMsg("That version could not be restored — it looks corrupt.");
+        setVersionMsg(
+          e?.message === "unsaved"
+            ? "A copy of that file could not be saved to History, so nothing was changed."
+            : "That version could not be restored — it looks corrupt."
+        );
       }
     },
     [confirmRestore, arm, disarm, applyBackup]
@@ -3999,9 +4003,13 @@ syncBroken === "seeded"
       try {
         await applyBackup(text, "file", null, null);
         setOpenVersion(null);
-      } catch {
+      } catch (e) {
         setVersionMsgAt(sha);
-        setVersionMsg("That version could not be restored — it looks corrupt.");
+        setVersionMsg(
+          e?.message === "unsaved"
+            ? "A copy of that file could not be saved to History, so nothing was changed."
+            : "That version could not be restored — it looks corrupt."
+        );
       }
     },
     [confirmRestore, arm, disarm, applyBackup]
@@ -4715,6 +4723,7 @@ syncBroken === "seeded"
        mended before it is held. No copy, no reply: it counts as a failed call. */
     if (r.code === "ok" && r.body?.ledger) {
       const { data, dropped } = salvageLedger(r.body.ledger);
+      copyFailedRef.current = false;
       if (dropped) {
         try {
           await keep(JSON.stringify(r.body.ledger));
@@ -4722,6 +4731,8 @@ syncBroken === "seeded"
           setMended(mendNotice(dropped));
           r = { ...r, body: { ...r.body, ledger: data } };
         } catch {
+          /* the copy failed: postRef sends nothing until a later GET keeps it */
+          copyFailedRef.current = true;
           r = { ...r, code: "unknown" };
         }
       }
@@ -4765,9 +4776,17 @@ syncBroken === "seeded"
     return r;
   };
   const postRef = useRef(null);
+  const copyFailedRef = useRef(false);
   postRef.current = () => {
     const p = (async () => {
       if (!window.sync || !(await window.sync.hasKey())) return;
+      /* a damaged reply with no copy in History: a POST would let the Worker mend
+         the list with no copy kept. Read again instead, so the copy is retried. */
+      if (copyFailedRef.current) {
+        if (!seedShown && !damagedRef.current && !refusedRef.current && Date.now() >= nextTry.current - 50)
+          await settleReply(await withTimeout(window.sync.get()));
+        return;
+      }
       /* 50 ms of slack: a timer that fires a hair early still retries */
       /* a page that shows the seed holds someone else's ledger: it never POSTs
          (seed-load-guards) */
