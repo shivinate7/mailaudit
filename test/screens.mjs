@@ -46,7 +46,9 @@ const WIDTHS = [375, 760];
 /* Every tab of the bottom bar (decision phone-nav-is-bottom-bar). Ledger has no
    Reset ask until L11b, so the Reset check below leaves it out. */
 const VIEWS = ["Ledger", "Orphaned", "Tally", "Packages"];
-const RESET_VIEWS = ["Orphaned", "Tally", "Packages"];
+/* Reset lives on the Ledger tab only (decision ledger-tab-holds-options, group
+   63.3): the working views no longer hold it, so the ask is checked there. */
+const RESET_VIEWS = ["Ledger"];
 const TAP_TOLERANCE_PX = 0.5;
 
 /* ---------- fixture ---------- */
@@ -271,6 +273,7 @@ const resetAskProbe = () => {
     label: span.textContent.trim(),
     sw: span.scrollWidth,
     cw: span.clientWidth,
+    left: span.getBoundingClientRect().left,
   };
 };
 
@@ -475,6 +478,18 @@ async function resetAskCheck(browser, view) {
       return;
     }
     await showView(page, view);
+    /* where the Reset label sits before the first tap: the second tap has to
+       land on the same spot, so the armed label must not move from it */
+    const before = await page.evaluate(() => {
+      const s = [...document.querySelectorAll("button.mdl-act.danger > span")].find((x) =>
+        /^Reset$/.test(x.textContent.trim())
+      );
+      return s ? s.getBoundingClientRect().left : null;
+    });
+    if (before == null) {
+      fail(name, "no Reset label on the Ledger tab");
+      return;
+    }
     await page.locator("button.mdl-act.danger").first().click();
     try {
       await page.waitForSelector("button.mdl-act.armed", { timeout: 4000 });
@@ -489,6 +504,11 @@ async function resetAskCheck(browser, view) {
     }
     if (!/^Tap again to clear \d/.test(ask.label))
       fail(name, `the armed label reads "${ask.label}"`);
+    if (Math.abs(ask.left - before) > TAP_TOLERANCE_PX)
+      fail(
+        name,
+        `the armed label moved from ${before.toFixed(1)}px to ${ask.left.toFixed(1)}px between the first and second tap`
+      );
     if (ask.sw > ask.cw + TAP_TOLERANCE_PX)
       fail(name, `the ask label is cut: ${ask.sw}px of text in a ${ask.cw}px cell`);
     for (const e of pageErrors) fail(name, `page error: ${e}`);
