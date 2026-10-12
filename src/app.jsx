@@ -5043,17 +5043,22 @@ export default function MailDayLedger() {
      discarding an envelope, assigning it away, restoring a backup and
      cancelling a half-built envelope all leave blobs behind. One sweep covers
      every case. Held off while an undo is live, since that can bring an
-     envelope (and its photo ids) back. */
+     envelope (and its photo ids) back. A draft in composerDraft (an open
+     composer, or a closed one that kept its draft) holds its own photos: the
+     timer reads them when it fires and adds them to the keep set, so the
+     draft's photos survive while every other unused blob is still swept. */
   useEffect(() => {
     if (!loaded || undo || composing || syncBusy || !window.photos) return;
-    const keep = new Set(referencedPhotoIds);
     const t = setTimeout(() => {
       /* checked again HERE, not just in the guard above: a pull writes blobs
          while `envelopes` still holds the old list, so nothing re-runs this
          effect and a timer armed two seconds earlier would delete the very
          photos we just downloaded. The ref is set synchronously; the state
          behind syncBusy is not. */
-      if (syncingRef.current || composerDraft.current.size) return;
+      if (syncingRef.current) return;
+      const keep = new Set(referencedPhotoIds);
+      for (const d of composerDraft.current.values())
+        for (const id of d.photos || []) keep.add(id);
       window.photos.sweep(keep).catch(() => {});
     }, 2000);
     return () => clearTimeout(t);
