@@ -49,8 +49,8 @@ Owner ruling 2026-10-12 ("Keep a copy, then go on"), home `native-ledger-is-raw-
 
 On every path data comes in (load, Re-import, a sync reply, a pull), the client does three things:
 
-- It saves the data as it came in to History as a milestone, and waits for the write. If the write fails, nothing changes: a load refuses, a restore, pull or merge throws, and a sync reply counts as a failed call.
-- It keeps every entry it can read. `salvageLedger` in `view-rules.mjs` does this. It is the only mender. Its callers are the load effect, `readLedger` (restore, pull, merge) and `settleReply` (sync reply). The Worker calls it twice: to refuse a POST with a bad shape, and to mend a stored ledger before the merge (Worker 68.1 to 68.3). `rules.js` carries it for Swift, which does not call it yet.
+- It saves the data as it came in to History as a milestone, and waits for the write. On native the copy is a kept file beside ledger.json instead, see `native-ledger-is-raw-json`. If the write fails, nothing changes: a load refuses, a restore, pull or merge throws, and a sync reply counts as a failed call.
+- It keeps every entry it can read. `salvageLedger` in `view-rules.mjs` does this. It is the only mender. Its callers are the load effect, `readLedger` (restore, pull, merge), `settleReply` (sync reply) and the native load. The Worker calls it twice: to refuse a POST with a bad shape, and to mend a stored ledger before the merge (Worker 68.1 to 68.3). `rules.js` carries it for Swift, which calls it from the native load.
 - It shows one line: "N entries could not be read; the original is in History." A dropped whole field counts 1, and each dropped entry counts 1.
 
 The Worker refuses a POST with a bad shape (400), so one app's bug cannot reach the other.
