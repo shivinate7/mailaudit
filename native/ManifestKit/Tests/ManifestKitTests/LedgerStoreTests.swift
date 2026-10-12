@@ -412,6 +412,72 @@ final class LedgerStoreTests: XCTestCase {
         try assertMends("envelopes", "not-an-array", to: [Any](), dropped: 1)
     }
 
+    /// JSON null in `receivedAt` is damage, not absence. It is mended to {} and counts one.
+    func testReceivedAtNullIsDamagedNotAbsent() throws {
+        try assertMends("receivedAt", NSNull(), to: [String: Any](), dropped: 1)
+    }
+
+    /// JSON null in `stamps` is damage, not absence. It is mended to {} and counts one.
+    func testStampsNullIsDamagedNotAbsent() throws {
+        try assertMends("stamps", NSNull(), to: [String: Any](), dropped: 1)
+    }
+
+    /// JSON null in `envelopes` is damage, not absence. It is mended to [] and counts one.
+    func testEnvelopesNullIsDamagedNotAbsent() throws {
+        try assertMends("envelopes", NSNull(), to: [Any](), dropped: 1)
+    }
+
+    /// A clean ledger loads with no kept copy and a dropped count of 0.
+    func testCleanLoadMakesNoCopyAndCountsZero() throws {
+        try writeSeed(extra: ["received": [Self.itemKey: 1], "stamps": [String: Any](), "envelopes": [Any]()])
+        let store = makeStore()
+
+        XCTAssertNoThrow(try store.load(), "a clean ledger loads")
+        XCTAssertEqual(store.droppedCount, 0, "a clean load drops nothing")
+        XCTAssertEqual(try keptCopies().count, 0, "a clean load keeps no copy")
+    }
+
+    /// The mend is saved at once. Without any edit, the file on disk holds the mended
+    /// `received` after load, so a relaunch reads the mended ledger, not the damage.
+    func testLoadSavesTheMendAtOnce() throws {
+        try writeSeed(extra: ["received": "x"])
+        try makeStore().load()
+
+        let saved = try readSaved()
+        assertSameJSON(saved["received"], [String: Any](), "the mended received is on disk before any edit")
+        XCTAssertEqual(saved["mailday"] as? Int, 1, "the mended ledger is saved with mailday 1")
+    }
+
+    /// A relaunch after a mend reads the saved, mended ledger. It drops nothing and
+    /// makes no second copy, even when the clock has moved on.
+    func testRelaunchAfterMendMakesNoSecondCopy() throws {
+        try writeSeed(extra: ["received": "x"])
+        try makeStore().load()
+
+        clock += 60_000
+        let relaunch = makeStore()
+        XCTAssertNoThrow(try relaunch.load(), "the relaunch loads")
+        XCTAssertEqual(relaunch.droppedCount, 0, "the relaunch drops nothing, the mend was saved")
+        XCTAssertEqual(try keptCopies().count, 1, "a relaunch after a mend makes no second copy")
+    }
+
+    /// Two damaged loads at the same instant both succeed. Each keeps its own copy with
+    /// the original bytes, so a kept name never collides with an earlier one.
+    func testTwoDamagedLoadsInOneSecondBothSucceed() throws {
+        try writeSeed(extra: ["received": "x"])
+        let first = try Data(contentsOf: fileURL)
+        XCTAssertNoThrow(try makeStore().load(), "the first damaged load succeeds")
+
+        try writeSeed(extra: ["stamps": "y"])
+        let second = try Data(contentsOf: fileURL)
+        XCTAssertNoThrow(try makeStore().load(), "a second damaged load in the same instant succeeds")
+
+        let copies = try keptCopies()
+        XCTAssertEqual(copies.count, 2, "each damaged load keeps its own copy")
+        let bytes = Set(try copies.map { try Data(contentsOf: $0) })
+        XCTAssertEqual(bytes, [first, second], "the two copies hold the two originals")
+    }
+
     /// A good edit after a mend. The edit saves, and the kept copy still holds the
     /// original bytes.
     func testEditAfterMendSavesAndKeepsTheOriginalCopy() throws {
