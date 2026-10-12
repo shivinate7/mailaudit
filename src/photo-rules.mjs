@@ -5,9 +5,9 @@
    construction. Fetch plumbing is fine to leave uncovered. These are not,
    because every one of them fails *quietly*.
 
-   The naming half is imported only by entry.jsx. app.jsx imports `photoPlan`
-   and nothing else, so it never learns what a photo file is called — the same
-   split that keeps the string "ledger.json" out of app.jsx today. */
+   The naming half is imported by entry.jsx and worker/core.mjs. app.jsx imports
+   `photoPlan` and nothing else, so it never learns what a photo file is called
+   — the same split that keeps the string "ledger.json" out of app.jsx today. */
 
 /* A photo id carries no extension (see newPhotoId in app.jsx) and the stored
    blob is not reliably a JPEG: shrinkImage resolves the ORIGINAL File on three

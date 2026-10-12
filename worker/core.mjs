@@ -1,7 +1,7 @@
 /* The pure half of the sync server: route(request, env, store) -> Response.
    No Worker, no Durable Object, no network. The merge is the app's own. */
 import { mergeLedger, canon } from "../src/merge-rules.mjs";
-import { photoIdFromName, mimeFromName } from "../src/photo-rules.mjs";
+import { photoIdFromName, mimeFromName, photoName } from "../src/photo-rules.mjs";
 
 const hex = async (s) =>
   [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))]
@@ -52,6 +52,12 @@ export const MAX_LEDGER_BYTES = 1_800_000;
 /* A photo is one SQLite row; keep it under the 2,000,000 byte row cap with headroom. */
 export const MAX_PHOTO_BYTES = 1_900_000;
 
+// ponytail: one photoGet per id to learn its mime; add a mime column to photoList if the list grows large.
+async function photoNames(store) {
+  const ids = await store.photoList();
+  return Promise.all(ids.map(async (id) => photoName(id, (await store.photoGet(id))?.mime)));
+}
+
 export async function route(request, env, store) {
   const headers = cors(request, env);
   const json = (body, status = 200) =>
@@ -68,15 +74,18 @@ export async function route(request, env, store) {
   if (path === "/photos" || path.startsWith("/photos/")) {
     if (request.method !== "GET" && request.method !== "POST") return json({ error: "method not allowed" }, 405);
     if (path === "/photos") {
-      return request.method === "GET" ? json({ ids: await store.photoList() }) : json({ error: "method not allowed" }, 405);
+      return request.method === "GET" ? json({ ids: await photoNames(store) }) : json({ error: "method not allowed" }, 405);
     }
-    const name = decodeURIComponent(path.slice(8));
+    // Ids are base36/hex, never percent-encoded: refuse a % rather than decode it.
+    const name = path.slice(8);
+    if (name.includes("%")) return json({ error: "bad photo name" }, 400);
     const id = photoIdFromName(name);
     if (!id) return json({ error: "bad photo name" }, 400);
     if (request.method === "GET") {
       const p = await store.photoGet(id);
-      return p ? new Response(p.bytes, { headers: { ...headers, "Content-Type": mimeFromName(name) } }) : json({ error: "not found" }, 404);
+      return p ? new Response(p.bytes, { headers: { ...headers, "Content-Type": p.mime } }) : json({ error: "not found" }, 404);
     }
+    if (Number(request.headers.get("Content-Length")) > MAX_PHOTO_BYTES) return json({ error: "photo-too-large" }, 413);
     const bytes = new Uint8Array(await request.arrayBuffer());
     if (bytes.length > MAX_PHOTO_BYTES) return json({ error: "photo-too-large" }, 413);
     // Write-once: an id already stored keeps its first bytes.
