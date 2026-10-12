@@ -1,6 +1,6 @@
 # Assigning an envelope checks in only its recorded cards
 
-A two-tap confirm checks in exactly the cards recorded in an envelope. It checks in nothing else.
+A one-tap assign checks in exactly the cards recorded in an envelope. It checks in nothing else.
 
 **Holds while:** `src/app.jsx` still tags an unexplained entry with the words "no outstanding copy".
 

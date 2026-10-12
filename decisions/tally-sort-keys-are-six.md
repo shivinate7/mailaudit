@@ -6,6 +6,8 @@ The Tally view sorts its rows on six keys. They are most missing, cost basis, mo
 
 The order freezes while the user checks cards. The choice persists as `itemSort`. The unit rate sort can disagree with the cost-basis sort, on purpose. See `unit-rate-is-not-the-position`.
 
+**Pinned by:** tests 22.1 to 22.3 (cost basis and unit rate order the rows), and 61.27 and 61.28 (the sort panel lists at least five options, and each label is 12 characters or fewer). No test counts the six keys. Test 61.27 accepts five or more.
+
 ## See also
 
 - `no-layout-shift-under-pointer` — why the order freezes while the user checks cards.

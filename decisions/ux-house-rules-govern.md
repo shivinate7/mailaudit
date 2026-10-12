@@ -34,6 +34,10 @@ The **house UX audit of 2026-10-11** is the source of the lane labels L1 to L10 
 
 Orchestrator default, 2026-10-11, not an owner ruling: every ask names the count of cards it removes, and that count is true. The asks and their counts are in `armed-reset-takes-the-row`, `orphan-entry-takes-one-input`, `stamp-band-opens-the-editor` and `history-restores-a-saved-version`.
 
+Known gap under that default: Pull's ask, "Tap again to replace", names no count and has no Cancel. See `stale-push-conflict-pull-two-tap`. The gap closes in lane L11, where Sync moves into the Ledger tab (`ledger-tab-holds-options`).
+
+**Pinned by:** `check:screens` (its four claims: no sideways overflow at 375px and 760px, no row shift on check-in, the Discard arm moves nothing, and the Reset ask is not cut off), and tests 61.8 to 61.9, 61.11 to 61.16, 61.33 to 61.35 (a draft survives a tab change), 61.41 to 61.42, and 61.43 to 61.56. The test pins check the DOM, not geometry.
+
 ## See also
 
 - `spacing-on-4px-grid` — the spacing default this repo follows.

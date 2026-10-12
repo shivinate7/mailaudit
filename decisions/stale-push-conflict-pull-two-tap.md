@@ -4,7 +4,7 @@ The app sends the sha it last saw for conflict checks. It never sends a sha fetc
 
 **Holds while:** `confirmPull` in `src/app.jsx` arms the two-tap on Pull, and the Push button has no confirm state of its own.
 
-**Status:** open. Pull's ask, "Tap again to replace", names no count and has no Cancel. The orchestrator default of 2026-10-11 says every ask names a true count. The house rule ux-ask-or-undo asks for first focus on Cancel too. Pull replaces the ledger and the saved envelopes, so its count would include both. Owner to rule the scope.
+**Status:** open. Pull's ask, "Tap again to replace", names no count and has no Cancel. The orchestrator default of 2026-10-11 says every ask names a true count. The house rule ux-ask-or-undo asks for first focus on Cancel too. Pull replaces the ledger and the saved envelopes, so its count would include both. Owner to rule the scope. Known gap, orchestrator default of 2026-10-11: the fix closes in lane L11, where Sync moves into the Ledger tab (`ledger-tab-holds-options`). `ux-house-rules-govern` records the same gap.
 
 ## Why the sha is the last one seen
 
