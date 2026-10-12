@@ -924,13 +924,17 @@ export const pickSort = async (label) => {
   await backTo(prev);
 };
 
-/* Push, Pull and Merge are the repair kit now, and its only entrance is the
-   broken-line — there is no Sync chip any more, because on the happy path
-   there is nothing about sync on screen at all. Idempotent, so tests can just
-   call it; note it only works while sync IS broken, which in a fresh fixture
-   means "this device has no key", the state every test starts in. */
+/* Opens the Sync panel, which holds the GitHub key field. Push, Pull and Merge
+   left the UI (owner ruling 2026-10-12): GitHub is a mirror that runs itself,
+   so tests reach it through background() and assert pushes() instead. */
 export const openSync = async () => {
-  if (btn(/^Push$/)) return;
+  /* idempotent on the panel being open: the key field is its own mark, and
+     the Sync cell's aria-expanded says it when the field is not shown */
+  if (
+    cell(/^Sync/)?.getAttribute("aria-expanded") === "true" ||
+    document.querySelector('input[aria-label="GitHub access token"]')
+  )
+    return;
   /* the advisory line, while it shows, opens the same panel; otherwise the
      Sync cell on the Ledger tab does (decision ledger-tab-holds-options) */
   if (btn(/tap to/)) await click(btn(/tap to/), "open the repair kit");
@@ -1121,6 +1125,9 @@ export const choose = async (labelRe, value) => {
 
 /** Record an envelope, tapping suggestions where they exist. */
 export async function record(names, note) {
+  /* the envelope form lives on the Orphaned tab; a test may arrive from the
+     Ledger tab (openHistory leaves the app there) */
+  if (!btn(/Record an envelope/)) await goTo("orphaned");
   await click(btn(/Record an envelope/), "new envelope");
   for (const n of names) {
     await type(cardInput(), n.slice(0, 9));
