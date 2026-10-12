@@ -67,14 +67,15 @@ final class LedgerStoreTests: XCTestCase {
         LedgerStore(fileURL: fileURL, now: { self.clock })
     }
 
-    /// The fixture holds only `items`. A load needs `mailday`, so the seed adds it.
-    /// Extra fields go in as given.
+    /// The fixture holds only `items`. The seed adds `mailday` (1 by default; nil omits
+    /// it). Extra fields go in as given.
     @discardableResult
-    func writeSeed(extra: [String: Any] = [:]) throws -> [String: Any] {
+    func writeSeed(mailday: Any? = 1, extra: [String: Any] = [:]) throws -> [String: Any] {
         let fixtureData = try Data(contentsOf: Self.fixtureURL)
         let fixture = try XCTUnwrap(JSONSerialization.jsonObject(with: fixtureData) as? [String: Any])
         let items = try XCTUnwrap(fixture["items"])
-        var seed: [String: Any] = ["mailday": 1, "items": items]
+        var seed: [String: Any] = ["items": items]
+        if let mailday { seed["mailday"] = mailday }
         for (key, value) in extra { seed[key] = value }
         let data = try JSONSerialization.data(withJSONObject: seed, options: [.sortedKeys])
         try data.write(to: fileURL)
@@ -116,7 +117,11 @@ final class LedgerStoreTests: XCTestCase {
         store.setReceived(Self.itemKey, count: 1)  // an edit, so the save writes
         try store.save()
 
-        assertSameJSON(try readSaved()["futureField"], future, "unknown field survives save")
+        let saved = try readSaved()
+        assertSameJSON(saved["futureField"], future, "unknown field survives save")
+        // Without this, a save that writes nothing would still pass the line above.
+        let received = saved["received"] as? [String: Any] ?? [:]
+        XCTAssertEqual(received[Self.itemKey] as? Int, 1, "the edit landed in the saved file")
     }
 
     // MARK: check and un-check
@@ -261,5 +266,57 @@ final class LedgerStoreTests: XCTestCase {
         XCTAssertEqual((saved["receivedAt"] as? [String: Any])?.count ?? -1, 0, "receivedAt defaults to {}")
         XCTAssertEqual((saved["stamps"] as? [String: Any])?.count ?? -1, 0, "stamps defaults to {}")
         XCTAssertEqual((saved["envelopes"] as? [Any])?.count ?? -1, 0, "envelopes defaults to []")
+    }
+
+    // MARK: refusals
+
+    /// A file with no `mailday` is an older ledger. It loads, and the save writes mailday 1.
+    func testLoadAcceptsMissingMaildayAndSavesAsOne() throws {
+        try writeSeed(mailday: nil)
+        let store = makeStore()
+        try store.load()
+        try store.save()
+
+        XCTAssertEqual(try readSaved()["mailday"] as? Int, 1, "a file with no mailday loads and saves as 1")
+    }
+
+    /// A `mailday` of 2 is a newer format. load() must throw. A save after the refused
+    /// load must throw too, and the file must stay as it was. On current code load()
+    /// forces mailday to 1, so the file is overwritten.
+    func testLoadRefusesMaildayTwoAndSaveWritesNothing() throws {
+        try writeSeed(mailday: 2)
+        let before = try Data(contentsOf: fileURL)
+        let store = makeStore()
+
+        XCTAssertThrowsError(try store.load(), "a mailday 2 file makes load throw")
+        XCTAssertThrowsError(try store.save(), "a save after a refused mailday 2 load throws")
+        let after = try Data(contentsOf: fileURL)
+        XCTAssertEqual(after, before, "a refused mailday 2 load leaves the file unchanged")
+    }
+
+    /// save() before a successful load() must throw and write nothing. The seed file is
+    /// real, so a save that writes `{}` over it shows as a byte change.
+    func testSaveBeforeLoadThrowsAndWritesNothing() throws {
+        try writeSeed(extra: ["received": [Self.itemKey: 1]])
+        let before = try Data(contentsOf: fileURL)
+        let store = makeStore()
+
+        XCTAssertThrowsError(try store.save(), "save before load throws")
+        let after = try Data(contentsOf: fileURL)
+        XCTAssertEqual(after, before, "a save before load leaves the seed file unchanged")
+    }
+
+    /// An `envelopes` value that is not an array is malformed, not missing. load() must
+    /// throw, and a save after it must throw and write nothing. A missing `envelopes`
+    /// still defaults to [] (see testLoadSetsDefaultsForMissingFields).
+    func testLoadRefusesMalformedEnvelopesAndSaveWritesNothing() throws {
+        try writeSeed(extra: ["envelopes": "not-an-array"])
+        let before = try Data(contentsOf: fileURL)
+        let store = makeStore()
+
+        XCTAssertThrowsError(try store.load(), "a non-array envelopes makes load throw")
+        XCTAssertThrowsError(try store.save(), "a save after a refused envelopes load throws")
+        let after = try Data(contentsOf: fileURL)
+        XCTAssertEqual(after, before, "a refused envelopes load leaves the file unchanged")
     }
 }
