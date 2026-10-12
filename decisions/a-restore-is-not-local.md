@@ -14,7 +14,7 @@ A restore does not touch the sha. Rolling the sha back would be the real mistake
 
 **Pinned by:** group 39. Mutant confirmed red: a restore that bypasses `applyBackup`. `parseLedger`, which `applyBackup` calls, validates the payload. Test 35.1 kills a mutant that skips only the `mailday` check, because its payload carries `items` but no `mailday`. See `every-restore-passes-applybackup`.
 
-**Retired:** test 26.8 killed a mutant that removes the whole `parseLedger` check. It left with the Pull control on 2026-10-12. The whole-check mutant has no named pin now.
+**Retired:** test 26.8 killed a mutant that removes the whole `parseLedger` check. It left with the Pull control on 2026-10-12. Test 26.20 replaces it: a non-ledger JSON is refused on the restore path. Whether 26.20 also kills the whole-check mutant is unmeasured.
 
 ## See also
 

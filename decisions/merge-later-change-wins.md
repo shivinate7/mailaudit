@@ -19,7 +19,7 @@ Removals are the exceptions. A removed stamp travels as a tombstone, and it beat
 
 `mergeLedger` builds the merged ledger from **named fields**. So a persisted key it does not name is dropped by every merge. It names `receivedAt`. The merge applies the result locally as a full replace, and then pushes it. That makes this file a sixth site for `saved-state-shape`, after the five sites in `app.jsx`.
 
-**Retired:** test 37.53 (a pull replaces the stamps in full, not as a union), on 2026-10-12. The merge rule carries it now, in tests 37.65 to 37.68.
+**Re-pointed:** test 37.53 no longer pins a pull. The Pull control left the UI on 2026-10-12. Test 37.53 now pins a History restore, which replaces the stamps and notes in full, not as a union. The merge is pinned by tests 37.65 to 37.68.
 
 **Pinned by:** groups 33, 34 and 49. Group 33 is pure, like groups 27 and 31. It imports `merge-rules.mjs` directly. A merge that dropped lines would make a plausible ledger, not an error. Its symmetry assertions are the ones to keep. Merging A into B and B into A must give the same counts. Merging twice must add nothing. Those two claims show that the merge does not prefer either device. They also show that a retry after a half-failed sync is harmless. Group 49 pins the un-check and tombstone merges.
 

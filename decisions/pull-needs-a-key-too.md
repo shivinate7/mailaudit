@@ -6,7 +6,7 @@ Push needs a fine-grained personal access token. It needs `Contents: read & writ
 
 **Retired:** tests 26.1 to 26.7, with the Pull control on 2026-10-12. 26.7 checked that the old Pull needed no key.
 
-**Holds while:** `remote.pull` in `src/entry.jsx` sends the GitHub token, and `doMerge` in `src/app.jsx` calls it. The `no-access` code stops the mirror. It shows no line (default 5).
+**Holds while:** `remote.pull` in `src/entry.jsx` sends the GitHub token, and `doMerge` in `src/app.jsx` calls it. The `no-access` code stops the mirror. It shows no line (orchestrator default, 2026-10-12).
 
 Closing the ledger repo cost one property, knowingly. A fresh device can no longer recover before it is configured with a key. A device with no key can do nothing remote at all. A `no-access` answer used to raise its own advisory line. Orchestrator default, 2026-10-12: GitHub states show nothing to the user, so it raises none now. A missing GitHub token only stops the mirror.
 

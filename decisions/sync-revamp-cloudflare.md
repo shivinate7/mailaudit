@@ -43,9 +43,9 @@ GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Del
 - A merged ledger over the size limit gets 413 and writes nothing. A Durable Object value caps at 2,000,000 bytes, and the limit keeps at least 100,000 bytes of headroom under that cap. The guard counts UTF-8 bytes, not characters.
 - A WebSocket carries the key as the second of exactly two protocols, `mailaudit` and the key. A browser cannot set a header on a WebSocket.
 - The device keys live in the macOS Keychain, service `mailaudit-sync`, accounts `iphone` and `macbook`. The Worker holds only their SHA-256 hashes, in a Worker secret.
-- The server's merge carries an un-check when its side has a time. `mergeLedger` takes the later `receivedAt` per key, and test 4.9 pins it. `max-cannot-express-an-uncheck` records that fix.
+- The server's merge carries an un-check when its side has a time. `mergeLedger` takes the later `receivedAt` per key, and the worker suite's test 4.9 pins it (`npm run test:worker`). App tests 49.1a, 49.1b and 49.8a pin the same rule on the client merge. `max-cannot-express-an-uncheck` records that fix.
 - Ruling, made by the orchestrator under the owner's grant to run the stages: a timed un-check beats a count that has no time. A timed absence exists only when someone made an un-check.
-- `mergeReceived` follows that ruling, and group 50 pins it. A merge that removes a check-in or an envelope says so in its notice.
+- `mergeReceived` follows that ruling. App tests 49.1a and 49.1b pin it. Merge notices stay. A merge that removes something says what it removed, and names no GitHub (test 37.69).
 
 ## Stage 4b rulings
 

@@ -8,6 +8,8 @@ The count and the first focus on Cancel are an orchestrator default of 2026-10-1
 
 **Holds while:** `src/app.jsx` shows "Tap again to clear N cards" on the armed Reset. N is the ledger cards plus the live envelope cards. The shared `arm` helper clears the arm after 4000 ms. The armed box holds Reset, then Cancel, side by side. The count is not cut off. That width is not re-measured here.
 
+**Ruling, 2026-10-12:** merge stays blocked while Reset is armed. A merge does not run while the armed Reset is up. So the armed Reset stays armed, and the device keeps its own ledger. The gate is unchanged. Tests 34.9 and 34.10 pin it (see `milestones-taken-before-risk`).
+
 A mis-tap on a control next to the armed box is unmeasured. The arm no longer hides the Data group.
 
 Discard arms in place (`orphan-entry-takes-one-input`). It is the pattern this record asks for.
@@ -22,4 +24,4 @@ Discard arms in place (`orphan-entry-takes-one-input`). It is the pattern this r
 
 **Retired:** tests 26.18 (Pull arms) and 26.19 (the Pull arm disarming Reset), on 2026-10-12. The Pull arm left the UI.
 
-**Pinned by:** 63.21 (the arm names the 14 ledger cards), 63.22 (the other cells stay in place), 63.23 (Cancel takes first focus), 63.24 (Cancel disarms, and nothing is cleared). 61.4 (the count), 61.41 and 61.42 (the count with envelope cards), and 65.8 (an armed Reset keeps its place, and Cancel sits after it).
+**Pinned by:** 34.9 and 34.10 (a merge waits while Reset is armed), 63.21 (the arm names the 14 ledger cards), 63.22 (the other cells stay in place), 63.23 (Cancel takes first focus), 63.24 (Cancel disarms, and nothing is cleared). 61.4 (the count), 61.41 and 61.42 (the count with envelope cards), and 65.8 (an armed Reset keeps its place, and Cancel sits after it).

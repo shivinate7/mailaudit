@@ -12,6 +12,8 @@ The day anchor is derived, not stored. See `version-rules.mjs`. Each listed vers
 
 **Pinned by:** group 39. It asserts on what a milestone holds. That is the ledger as it was before the operation, envelopes included. Mutants confirmed red: milestones never surviving, and Reset taking no milestone or tidying the versions away. Three group 39 mutants died by `JSON.parse(null)`. That is a worse kill. See `testing-throwing-assert-bad-kill`.
 
+**Ruling, 2026-10-12:** merge stays blocked while Reset is armed (`armed-reset-takes-the-row`). Tests 34.9 and 34.10 pin it. The gate is unchanged.
+
 ## See also
 
 - `unwritable-store-says-so` — the failure that could silently skip a milestone.
