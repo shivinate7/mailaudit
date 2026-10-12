@@ -13,6 +13,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { mergeLedger } from "../src/merge-rules.mjs";
+import { salvageLedger } from "../src/view-rules.mjs";
 
 /* A missing or broken core fails in one clear line, not a raw stack trace. */
 let route, keyAllowed, wsAuthorized, MAX_LEDGER_BYTES, MAX_PHOTO_BYTES;
@@ -1334,5 +1335,30 @@ await test("12.14 GET /photos reads no photo bytes: zero photoGet calls, and the
   eq(s.photoGets.length, 0, "photoGet calls on the list");
   eq(((await res.json()).ids || []).slice().sort(), ["pho-aaa111.jpg", "pho-bbb222.png"], "names");
 });
+
+/* 68. A stored ledger that is already damaged (saved before the shape check shipped)
+   takes a POST: the POST is answered 200, the write is clean, and the original is the
+   day's snapshot, kept before the write. Records: native-ledger-is-raw-json,
+   saved-state-shape. */
+/* Each shape here is one the head gets wrong: envelopes {} throws in the merge, and a
+   stamps that is not an object, or holds a bad entry, is written back as damage. */
+const STORED_68 = [
+  { envelopes: {} },
+  { stamps: "x" },
+  { stamps: { "100::Seller": "x" } },
+];
+for (const [i, over] of STORED_68.entries()) {
+  await test(`68.${i + 1} a stored ledger with a bad field, ${JSON.stringify(over)}, takes a POST: 200, a clean write, the original kept as the day's snapshot`, async () => {
+    const damaged = ledger(over);
+    const s = fakeStore({ ledger: damaged, rev: 3 });
+    const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: ledger({ received: { "100|1|555": 1 } }) } });
+    eq(res.status, 200, `stored ${i}: status`);
+    eq(s.writes.length, 1, `stored ${i}: writes`);
+    ok(salvageLedger(s.writes[0]?.ledger ?? {}).dropped === 0, `stored ${i}: the written ledger has no unreadable field`);
+    eq(s.snapWrites.length, 1, `stored ${i}: snapshot writes`);
+    eq(s.snapWrites[0]?.ledger, damaged, `stored ${i}: the snapshot holds the original damaged ledger`);
+    eq(s.order, ["snapshot", "write", "broadcast"], `stored ${i}: order`);
+  });
+}
 
 report();

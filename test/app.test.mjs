@@ -59,6 +59,8 @@ import {
   sleep,
   setSyncNetFail,
   setSyncTooBig,
+  setSyncBadShape,
+  syncBadShapeCount,
   setSyncKeyRefused,
   syncCalls,
   syncCloseCount,
@@ -8213,6 +8215,106 @@ try {
   ok(!FALLBACK67.test(text()), "67.7a and the refusal clears");
 } catch (e) {
   ok(false, `67.7 threw: ${e.message}`);
+}
+
+/* ── 68. Refused loads, and the copy that comes before a refusal changes anything ──
+   Owner ruling 2026-10-12, "Keep a copy, then go on". Four gaps the build left open.
+   Each case is red on the head it was written against. Records: saved-state-shape,
+   native-ledger-is-raw-json, milestones-taken-before-risk. */
+const KEY68 = "device-68-key";
+const COPY68 = /A copy of that file could not be saved to History, so nothing was changed\./;
+const NOT_BACKUP68 = /isn[’']t a Mail Day backup/;
+
+/* 68.1 a file restore from a refused load: when the raw text cannot be copied, the restore changes nothing. */
+try {
+  await boot(null, null, { raw: RAW67, versions: VERS67(), failPut: true, syncAdapter: true, syncKey: KEY67, remoteKey: GH67 });
+  await sleep(SAVE_WAIT);
+  ok(FALLBACK67.test(text()), "68.1pre the load is refused, so the restore case means something");
+  await reachFor(/Re-import CSV/);
+  await click(btn(/Re-import CSV/), "show upload zone on a refused load");
+  ok(!!document.querySelector('div[style*="dashed"]'), "68.1pre2 the upload zone is open on a refused load");
+  await dropFile("mailday-backup.json", JSON.stringify({ ...GOOD67, items: ITEMS.slice(0, 3) }));
+  await sleep(SAVE_WAIT);
+  eq(savedText(), RAW67, "68.1 a file restore whose copy of the refused text fails changes nothing: the raw text is kept byte for byte");
+  ok(FALLBACK67.test(text()), "68.1a and the refusal still holds");
+} catch (e) {
+  ok(false, `68.1 threw: ${e.message}`);
+}
+
+/* 68.1b a History restore from a refused load: the same rule. */
+try {
+  await boot(null, null, { raw: RAW67, versions: VERS67(), failPut: true, syncAdapter: true, syncKey: KEY67, remoteKey: GH67 });
+  await sleep(SAVE_WAIT);
+  ok(FALLBACK67.test(text()), "68.1bpre the load is refused, so the History case means something");
+  await openHistory();
+  await click(btn(new RegExp(MILESTONE67)), "expand the milestone");
+  await click(btn(/Restore this version/), "arm restore on a refused load");
+  if (btn(/Tap again to replace/)) await click(btn(/Tap again to replace/), "confirm restore");
+  await settle();
+  await sleep(SAVE_WAIT);
+  eq(savedText(), RAW67, "68.1b a History restore whose copy of the refused text fails changes nothing");
+  ok(FALLBACK67.test(text()), "68.1c and the refusal still holds");
+} catch (e) {
+  ok(false, `68.1b threw: ${e.message}`);
+}
+
+/* 68.2 a re-import of a damaged file whose copy cannot be saved: the message is the copy's, not "not a backup". */
+try {
+  const before68 = { ...GOOD67, items: ITEMS.slice(0, 3) };
+  await boot(before68, null, { versions: VERS67(), failPut: true, syncAdapter: true, syncKey: KEY67, remoteKey: GH67 });
+  await sleep(SAVE_WAIT);
+  const savedBefore68 = savedText();
+  await reachFor(/Re-import CSV/);
+  await click(btn(/Re-import CSV/), "show upload zone");
+  await dropFile("mailday-backup.json", JSON.stringify({ ...withField67("received", "x"), items: ITEMS }));
+  await sleep(SAVE_WAIT);
+  ok(!NOT_BACKUP68.test(text()), "68.2 a damaged file whose copy cannot be saved is not called “not a Mail Day backup”");
+  ok(COPY68.test(text()), "68.2a the line says a copy could not be saved, and nothing was changed");
+  eq(savedText(), savedBefore68, "68.2b the saved text is unchanged");
+} catch (e) {
+  ok(false, `68.2 threw: ${e.message}`);
+}
+
+/* 68.3 saved text that is valid JSON but not an object is not usable: refuse, keep it as it is. */
+for (const raw of ["null", "5", "[]"]) {
+  const label = `68.3 saved text ${raw}`;
+  try {
+    await boot(null, null, { raw, versions: VERS67(), syncAdapter: true, syncKey: KEY67, remoteKey: GH67 });
+    await backgroundFor(5 * 60_000);
+    await drain();
+    await sleep(SAVE_WAIT);
+    ok(FALLBACK67.test(text()), `${label}: is refused and says the data is damaged`);
+    eq(savedText(), raw, `${label}: the saved text is kept as it is`);
+    eq(postCount(), 0, `${label}: no Worker push starts`);
+    await openHistory();
+    ok(!!btn(/^Backup$/), `${label}: History opens and Backup is reachable`);
+  } catch (e) {
+    ok(false, `${label} threw: ${e.message}`);
+  }
+}
+
+/* 68.4 the rules: a 400 is its own status, not unknown and not ok. */
+ok(sr("syncStatus", 400) !== "unknown" && sr("syncStatus", 400) !== "ok", "68.4 a 400 is its own status, not unknown and not ok");
+
+/* 68.5 a 400 from the Worker is a bad shape: no retry on backoff, and one plain line. A 5xx still retries (56.1). */
+try {
+  await boot({ items: ITEMS, received: {} }, null, { syncKey: KEY68 });
+  await settle();
+  setSyncBadShape(true);
+  try {
+    await click(btn(/Mark all received/), "check in, so a POST is refused as a bad shape");
+    await sleep(POST_WAIT);
+    ok(syncBadShapeCount() > 0, "68.5pre a POST was refused with a 400, so the rest means something");
+    const posts68 = postCount();
+    await sleep(8000);
+    eq(postCount(), posts68, "68.5a no retry follows a 400: the POST count does not grow while the device waits");
+    const line68 = advisory();
+    ok(line68.length > 0 && !/could not be reached/i.test(line68), "68.5b the 400 shows one plain line, not the unreachable-server line");
+  } finally {
+    setSyncBadShape(false);
+  }
+} catch (e) {
+  ok(false, `68.5 threw: ${e.message}`);
 }
 
 report();
