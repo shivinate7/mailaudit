@@ -1,25 +1,18 @@
-# The action row is ruled cells, not buttons
+# The action row is retired, and its cells are ruled rows
 
-**Status:** ruled 2026-10-11, not built. Owner ruling, accept all: the 40px ruled row gets a 44px touch hit area, with no visual change. The web lane that builds it, L6 in `ux-house-rules-govern`, is not briefed yet.
+**Status:** retired in L11b, commit `12e8721`. The working screens no longer hold the action row. Its cells are rows on the Ledger tab (`ledger-tab-holds-options`). The owner ruling of 2026-10-11 still applies: each cell has a 44px touch hit area, with no visual change. The rows set `min-height: 52px` in the `.mdl-lrow` style. No browser measure has been taken.
 
-The action row holds equal ruled cells across the full width. The cells are Re-import CSV, History and Reset. They use uppercase mono, like the view switch. Each cell is 40px tall, like Find. Each cell has a 44px touch hit area, with no visual change.
+**Holds while:** `src/app.jsx` renders each Ledger tab option with `LedgerRow`, styled as `.mdl-lrow`. The `.mdl-acts` row and its `grid-auto-flow: column` rule are gone.
 
-**Holds while:** `src/app.jsx` styles the row as `.mdl-acts` with `grid-auto-flow: column`, and it has no Sync cell.
+Each Ledger tab row shows its label and a sub line on the left. It shows its value in mono on the right. A row that opens a panel shows `aria-expanded`. A row that toggles a state shows `aria-pressed`. Re-import CSV and History carry the open state. The Reset row sits in its own box.
 
-The head cells are label-over-value state. The action row is bare uppercase actions. That separation is kept by treatment, not by a different idiom. File management is not a filter. An earlier row used three boxed buttons pushed to the right edge. That tray used another visual idiom. It left a void near 450px at desktop width. A thin rule above the row divides it from the head cells.
-
-The row is styled in the `<style>` tag as `.mdl-acts`, not as inline styles. Its membership depends on state. Re-import CSV shows only when the ledger or envelopes hold data. History shows when the versions adapter or the remote exists. So `grid-auto-flow: column` sets the columns.
-
-Each cell draws its own right rule as the divider. The rule on the last cell is removed with `:last-child`. A prop cannot mark the last cell, as `headCell` does for its own cells.
-
-The Sync cell is gone. Sync's entrance is the sync line, which appears when sync breaks or the panel is open. See `ruled-head-one-advisory-entrance`. History took the cell's place. History carries the only caret. The cell sets `aria-expanded` while it is open.
-
-Re-import and Reset keep the narrower gate. See `recovery-control-not-state-gated`.
+The Sync cell is gone from the working screens. The advisory line is the working screens' way to the Sync group (`ruled-head-one-advisory-entrance`). Re-import CSV and Reset keep the narrower gate. See `recovery-control-not-state-gated`.
 
 ## See also
 
-- `armed-reset-takes-the-row` — how an armed Reset arms in place, with the row unmoved.
-- `ruled-head-masthead-vocabulary` — the head cells this row continues.
-- `ruled-head-one-advisory-entrance` — the line that now opens the sync repair kit.
-- `recovery-control-not-state-gated` — why Re-import and Reset keep their gate.
-- `disclosure-cells-underline-value` — how a cell that opens a panel looks.
+- `ledger-tab-holds-options` — the rows this record now describes.
+- `armed-reset-takes-the-row` — how an armed Reset arms in place.
+- `recovery-control-not-state-gated` — why Re-import and Reset stay reachable.
+- `ruled-head-one-advisory-entrance` — the line that leads to the Sync group.
+
+**Pinned by:** 63.4 (the Ledger tab rows, in ruled order), 63.18 and 63.19 (Re-import CSV and Backup are reachable). No test pins the 44px hit area. jsdom has no layout.

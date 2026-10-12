@@ -1,27 +1,28 @@
 # A recovery control cannot need the state it recovers
 
-If the data they act on is absent, the file actions and the sync region must not hide. Otherwise the recovery control is unreachable in the one case it exists for. Backup must still show for envelopes without items. Sync must still show for an empty ledger, because Pull is needed then.
+If the data an action works on is absent, its recovery control must not hide. Otherwise the control is unreachable in the one case it exists for. Backup must still show for envelopes without items. The Ledger tab must still show for an empty ledger, with Re-import CSV and Reset on it.
 
-**Holds while:** `src/app.jsx` gates the file actions on `items.length > 0 || envelopes.length > 0`. The sync region gate adds `|| !!window.remote`, so Sync shows on an empty ledger.
+**Holds while:** `src/app.jsx` renders the Ledger tab on every ledger. Backup, Re-import CSV and Reset have no data gate. The Sync row gate is `window.remote || window.sync`. The History row gate is `window.versions || window.remote`.
 
 ## Gates in the current build
 
-The file actions are gated on `items.length > 0 || envelopes.length > 0`. This is the same condition as the view switch. It is not `items.length` alone. A user with hand-typed orphaned envelopes and an empty item list would otherwise have no Backup button. That data exists nowhere else. Test 23.1.
-
-The filters keep the narrower gate `items.length > 0`. They describe a list that is not there.
-
-The whole region is gated on `… || !!window.remote`, which is wider still. Pull is needed most on an empty ledger. Examples: a new phone, ITP clearing storage, or a move to another origin. If the gate used data alone, the one control that recovers from no data would be unreachable. On an empty ledger the only button on screen was "Choose file". Now an empty ledger shows `Sync` alone.
-
-The History cell follows the same rule. It is gated on the versions adapter or the remote, never on the ledger. It holds the one control that undoes a Reset. Gating it on `items.length` would hide it just after a Reset.
-
-Re-import and Reset keep the narrower gate. There is nothing to re-import into, because the upload zone is already up. There is nothing to clear. A red destructive button on an empty ledger is noise at best. Group 28.
+- Backup shows on every ledger. A user with hand-typed orphaned envelopes and an empty item list keeps a Backup button. That data exists nowhere else. Test 23.1.
+- Re-import CSV and Reset show on every ledger. On an empty ledger, Re-import opens the upload zone. Reset sits in its own box, last.
+- The View group (Showing, Sorted by, Orders from) shows only for a ledger with items. The filters describe a list that is not there, so they keep the narrower gate.
+- The Sync row shows for a device with a remote or a Worker. On an empty ledger it shows alone, with the device key box inside it.
+- The History row shows for a device with the versions adapter or the remote. It holds the control that undoes a Reset. Gating it on `items.length` would hide it just after a Reset.
 
 ## The rule
 
-Any control that recovers state must not be gated on that state existing. Backup was widened once for this reason. Sync was widened twice.
+Any control that recovers state must not be gated on that state existing. Backup was widened once for this reason. The Sync row was widened twice.
+
+The Pull that recovers an empty device is gone (owner ruling 2026-10-12). The Sync row still gives such a device its key box. The rule still holds for the controls that remain.
 
 ## See also
 
 - `ruled-head-one-advisory-entrance` — the same rule applied to the sync entrance.
+- `ledger-tab-holds-options` — the Ledger tab that holds these controls.
 - `unwritable-store-says-so` — another control that must stay visible on failure.
-- `pull-needs-a-key-too` — the recovery this rule protects.
+- `pull-needs-a-key-too` — the recovery that the Sync group no longer offers.
+
+**Pinned by:** 63.16 to 63.20 (an empty ledger still reaches Sync, History, Re-import CSV, Backup and Reset), 64.7 (an empty ledger still reaches the device key box), and 23.1 (Backup survives an empty item list).

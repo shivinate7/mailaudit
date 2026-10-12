@@ -207,7 +207,7 @@ House UX rules that govern the screens. Read these before changing a screen.
 - `ux-house-rules-govern` — MANIFEST screens follow the house UX rules.
 - `spacing-on-4px-grid` — Spacing moves to a 4px grid with an 8px card radius.
 - `phone-nav-is-bottom-bar` — Phone navigation is a bottom glass bar, built in L11a.
-- `ledger-tab-holds-options` — The Ledger tab holds the options, ruled and not built.
+- `ledger-tab-holds-options` — The Ledger tab holds the options, built in L11b.
 
 ## The ruled head
 
@@ -215,21 +215,21 @@ The control region is the masthead's own vocabulary continued. Read these before
 
 - `ruled-head-resume-is-reopening` — A resume counts as reopening.
 - `ruled-head-masthead-vocabulary` — The ruled head continues the masthead.
-- `ruled-head-one-advisory-entrance` — One advisory line is sync's only entrance.
+- `ruled-head-one-advisory-entrance` — One advisory line leads to the Sync group.
 - `ruled-head-panels-carry-no-fill` — Overlay panels take the paper fill.
 - `ruled-head-showing-unreceived` — Showing starts on unreceived every load.
 - `ruled-head-hand-elapsed-forward` — Hand the elapsed time forward, never re-derive it.
 - `ruled-head-range-picked` — The custom date range is picked, not typed.
 - `ruled-head-stale-clock-agreement` — The staleness clock measures agreement, not writes.
 - `date-filter-spans-ledger-views` — The date filter applies to both ledger views.
-- `action-row-is-ruled-cells` — The action row is ruled cells, not buttons.
+- `action-row-is-ruled-cells` — The action row is retired, and its cells are ruled rows.
 - `armed-reset-takes-the-row` — An armed Reset arms in place.
 - `disclosure-cells-underline-value` — Cells that open something underline their value.
 - `history-sync-close-each-other` — History and Sync close each other.
 - `upload-zone-opens-when-empty` — The upload zone opens only on an empty ledger.
 - `sync-line-toggles-its-panel` — The sync line is also the panel's way out.
 - `merge-is-the-primary-sync-action` — Merge is the primary sync action.
-- `sync-panel-is-two-column-grid` — The sync panel is a two-column option grid.
+- `sync-panel-is-two-column-grid` — The sync panel is server status, last sync and a key box.
 - `sync-particulars-ruled-values` — Sync particulars are ruled label and value pairs.
 - `token-field-is-sixteen-pixels` — The token field is 16px to stop iOS zoom.
 

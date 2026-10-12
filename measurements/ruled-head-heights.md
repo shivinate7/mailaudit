@@ -1,6 +1,6 @@
 # Ruled head control region heights
 
-**Status:** re-measure pending. The 4px grid ruling in `spacing-on-4px-grid` will change this region. `CTL_H` (34px) is off the 4px step. L11a removed the view switch that every figure starts from. It also moved Find out of the ruled row, into a pill above the bottom bar. The figures predate L11a, and they are unmeasured after the grid ruling.
+**Status:** re-measure pending. The 4px grid ruling in `spacing-on-4px-grid` will change this region. `CTL_H` (34px) is off the 4px step. L11a removed the view switch that every figure starts from. It also moved Find out of the ruled row, into a pill above the bottom bar. L11b (commit `12e8721`) moved the option rows into the Ledger tab. It also retired the action row (`action-row-is-ruled-cells`). The region measured below no longer exists at 375px. The figures predate L11a and L11b. They are unmeasured after the grid ruling.
 
 This record holds the control region height at 375px, in each state. States are: at rest, with a panel open, and with the action row empty or full. It also holds the one width bug the region had, at 377px. Re-measure at 375px after a change to the region's cells, panels, or the action row.
 
