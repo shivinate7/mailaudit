@@ -319,4 +319,33 @@ final class LedgerStoreTests: XCTestCase {
         let after = try Data(contentsOf: fileURL)
         XCTAssertEqual(after, before, "a refused envelopes load leaves the file unchanged")
     }
+
+    /// A good load, then the file is replaced with bytes that are not a ledger. The
+    /// reload must throw, and a save after it must throw and leave the replacement as
+    /// it was. On current code the failed reload keeps the old loaded state, so save()
+    /// writes the old document over the replacement.
+    func testFailedReloadOfTopLevelArrayLeavesStoreUnloaded() throws {
+        try writeSeed()
+        let store = makeStore()
+        try store.load()
+        try assertFailedReloadKeepsFile(store, replacement: Data("[]".utf8))
+    }
+
+    /// Same as above, with invalid JSON as the replacement.
+    func testFailedReloadOfInvalidJSONLeavesStoreUnloaded() throws {
+        try writeSeed()
+        let store = makeStore()
+        try store.load()
+        try assertFailedReloadKeepsFile(store, replacement: Data("{not json".utf8))
+    }
+
+    /// Writes `replacement` over the ledger, then checks that a reload throws, a save
+    /// throws, and the bytes on disk stay exactly as `replacement` left them.
+    func assertFailedReloadKeepsFile(_ store: LedgerStore, replacement: Data, line: UInt = #line) throws {
+        try replacement.write(to: fileURL)
+        XCTAssertThrowsError(try store.load(), "a reload of a non-ledger file throws", line: line)
+        XCTAssertThrowsError(try store.save(), "a save after a failed reload throws", line: line)
+        let after = try Data(contentsOf: fileURL)
+        XCTAssertEqual(after, replacement, "a failed reload then save leaves the replaced file unchanged", line: line)
+    }
 }
