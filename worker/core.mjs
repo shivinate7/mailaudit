@@ -52,12 +52,6 @@ export const MAX_LEDGER_BYTES = 1_800_000;
 /* A photo is one SQLite row; keep it under the 2,000,000 byte row cap with headroom. */
 export const MAX_PHOTO_BYTES = 1_900_000;
 
-// ponytail: one photoGet per id to learn its mime; add a mime column to photoList if the list grows large.
-async function photoNames(store) {
-  const ids = await store.photoList();
-  return Promise.all(ids.map(async (id) => photoName(id, (await store.photoGet(id))?.mime)));
-}
-
 export async function route(request, env, store) {
   const headers = cors(request, env);
   const json = (body, status = 200) =>
@@ -74,7 +68,7 @@ export async function route(request, env, store) {
   if (path === "/photos" || path.startsWith("/photos/")) {
     if (request.method !== "GET" && request.method !== "POST") return json({ error: "method not allowed" }, 405);
     if (path === "/photos") {
-      return request.method === "GET" ? json({ ids: await photoNames(store) }) : json({ error: "method not allowed" }, 405);
+      return request.method === "GET" ? json({ ids: (await store.photoList()).map((r) => photoName(r.id, r.mime)) }) : json({ error: "method not allowed" }, 405);
     }
     // Ids are base36/hex, never percent-encoded: refuse a % rather than decode it.
     const name = path.slice(8);

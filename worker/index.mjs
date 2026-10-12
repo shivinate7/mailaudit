@@ -8,7 +8,7 @@ export class Ledger extends DurableObject {
   store = {
     read: () => this.ctx.storage.get("state").then((s) => s ?? null),
     write: (ledger, rev) => this.ctx.storage.put("state", { ledger, rev }),
-    photoList: async () => this.ctx.storage.sql.exec("SELECT id FROM photos").toArray().map((r) => r.id),
+    photoList: async () => this.ctx.storage.sql.exec("SELECT id, mime FROM photos").toArray().map((r) => ({ id: r.id, mime: r.mime })),
     photoGet: async (id) => {
       const r = this.ctx.storage.sql.exec("SELECT mime, bytes FROM photos WHERE id = ?", id).toArray()[0];
       return r ? { mime: r.mime, bytes: new Uint8Array(r.bytes) } : null;
