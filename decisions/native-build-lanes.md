@@ -1,6 +1,6 @@
 # The native build runs in ordered lanes
 
-**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. W1 landed in PR #61, S1 in PR #62, S2 in PR #63, and S3 in PR #64. S4 landed in PR #65, and N1 landed in PR #75. Their rows have left this table. No other lane has landed. The rows below carry the 2026-10-11 changes. They are ruled and not built.
+**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. W1 landed in PR #61 and S1 in PR #62. S2 landed in PR #63, S3 in PR #64 and S4 in PR #65. N1 landed in PR #75, C1 in PR #76, W2a in PR #77 and W3a in PR #78. Their rows have left this table. No other lane has landed. The rows below carry the 2026-10-11 changes and the 2026-10-12 orchestrator defaults. They are ruled or named, and not built.
 
 The native rebuild splits into lanes. W lanes change the Worker. S lanes change shared files and extract the rules. The C lane changes CI. N lanes build the native client. A lane that lands leaves this table, and git keeps its history.
 
@@ -18,14 +18,11 @@ The native rebuild splits into lanes. W lanes change the Worker. S lanes change 
 
 | Lane | Files | Red-first tests | Done check | Deps |
 |---|---|---|---|---|
-| W2a Worker photo route, draft PR #77 | Worker files: worker/core.mjs, worker/index.mjs, worker/core.test.mjs. Branch worker/w2a-photos, not merged. | Group 12, cases 12.1 to 12.10. Red on the base with 21 assertion failures. Covers write-once bytes; the type from the name; a bad name 400; a photo over 1.9 MB refused 413 photo-too-large; no delete route, so 405; a photo POST writes no ledger, sends no broadcast and leaves rev alone; the device key; a missing id 404. The 1.9 MB cap and the no-delete route are orchestrator defaults of 2026-10-12. | The node test `node worker/core.test.mjs` passes on the branch. Nothing runs the Durable Object adapter, so its SQLite calls are unproven on Cloudflare. | none |
 | W2b, not briefed | Not briefed. No scope is recorded here. | Not yet briefed. | Not yet briefed. | Not yet briefed. |
-| W3a Worker daily snapshots on draft PR #78 | Worker files: worker/core.mjs, worker/index.mjs, worker/core.test.mjs. Branch worker/w3a-snapshots, not merged. | Group 13, cases 13.1 to 13.9. One snapshot per UTC day, before its first changing write. A no-op, a 413, a 400 and a first POST take no snapshot. The list and get routes need the key. GET /health needs no key and replies only with the last write time. The window keeps exactly 180 snapshots: today and the 179 days before it. | `npm run test:worker`: 312 passed, 0 failed. Not merged. | none |
 | W3b Restore stamps new change times, blocked | Worker files, not yet briefed. | Not yet briefed. | Not yet briefed. | Blocked. Today a restore keeps the old receivedAt, so a later server reply can undo it. Mirror mode is unverified. |
 | W3c, not briefed | Not briefed. No scope is recorded here. | Not yet briefed. | Not yet briefed. | Not yet briefed. |
 | W3d, not briefed | Not briefed. No scope is recorded here. | Not yet briefed. | Not yet briefed. | Not yet briefed. |
 | W3e, not briefed | Not briefed. No scope is recorded here. | Not yet briefed. | Not yet briefed. | Not yet briefed. |
-| C1 Native CI job | .github/workflows/test.yml | Proof: the job goes red on a broken Swift test in a PR. | The PR's native job is green. It becomes a required check after its first green run, gated by a scope job and a nightly run. Its timeout is set from that run. The draft guard follows `ci-skips-draft-prs`. | S4 (landed) |
 | N2 Key store and intake | the key store, the URL handler, scripts/send-key.mjs, test/send-key.test.mjs | The accessibility class. `hasKey` is a Bool. A bad key is refused. The key is absent from the ledger, the backup and the model (a Mirror scan). The `--native` URL. | ST and `npm run test:send-key` | N1 (landed) |
 | N3 Ledger store | the ledger store, the JSON value type | An unknown field round-trips. An un-check writes `receivedAt` and drops `received`. A stamp removal writes `kind:""`. A discard writes a tombstone. Each edit bumps the generation. A load sets defaults. | ST | N1 (landed) |
 | N4a Sync over HTTP | the sync client, a stub URL protocol | The Bearer header. The `{ledger}` body. The generation rule. A 401 stops calls. The 413 line. A 404 seeds by POST. A timeout reads as unknown. Backoff. Stop cancels an in-flight push or pull. | ST | N2, N3, W1 (landed), the stage 4b switch |
@@ -38,12 +35,12 @@ The native rebuild splits into lanes. W lanes change the Worker. S lanes change 
 | N10 Photos | Photos views | A downscale to 2000px. A photo blob never enters the ledger. The viewer is modal, with Escape and focus return. The photo upload has Stop. | ST | W2a |
 | N11 Device check | none | The owner checks on a device. The ios-adblock phone-apps list gets the new entry. The hand checks are named: VoiceOver order, Dynamic Type, and the draft kept when the app leaves. | the owner | all |
 
-W2 and W3 come from the owner's rulings, not from the first plan. W2a and W3a have their briefs in the table. W2b, W3b, W3c, W3d and W3e have no full brief, so their files, tests and done checks are not set.
+W2 and W3 come from the owner's rulings, not from the first plan. W2a and W3a have landed. Their tests are groups 12 and 13 in `worker/core.test.mjs`. W2b, W3b, W3c, W3d and W3e have no full brief, so their files, tests and done checks are not set.
 
 ## Order
 
-- Batch 1: W1, S1, S2, S3 and S4 (all landed), with W2 and W3 free to start. S4 ran after S3, because each one rebuilds index.html.
-- Batch 2: C1 and N1, after S4 (landed). N1 landed in PR #75. C1 has not landed.
+- Batch 1: W1, S1, S2, S3 and S4 (all landed). W2a and W3a ran beside them and landed. S4 ran after S3, because each one rebuilds index.html.
+- Batch 2: C1 and N1, after S4 (both landed).
 - Batch 3: N2 and N3.
 - Batch 4: N5, beside N4a.
 - Batch 5: N6, N7 and N8 after N5, with N4b and N9.
