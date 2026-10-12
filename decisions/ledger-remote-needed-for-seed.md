@@ -1,6 +1,6 @@
 # A build needs the data remote to seed the page
 
-**Status:** ruled 2026-10-11, not built. Source: `ux-house-rules-govern`. Owner ruling, accept all: if the seed fetch fails, deploy stops. Today `package.json` runs the fetch with `|| true`, so a failed fetch still builds a seedless page. Build: web lane L3, in draft PR #68, not merged.
+**Status:** ruled 2026-10-11, built. Source: `ux-house-rules-govern`. Owner ruling, accept all: if the seed fetch fails, deploy stops. The deploy script in `package.json` stops when the fetch fails or `ledger/data` has no `ledger.json`, and it runs `check:seed` before it opens a pull request (web lane L3).
 
 A fresh clone needs a git remote that points at the private data repository. The data branch must be fetched before the build can bake in a seed. Without that remote, the build runs seedless. The seed checker reports that rather than failing outright.
 
