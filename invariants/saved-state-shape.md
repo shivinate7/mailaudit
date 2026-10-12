@@ -57,21 +57,24 @@ The Worker refuses a POST with a bad shape (400), so one app's bug cannot reach 
 
 **Open: the Worker keeps no copy on a day that has a snapshot.** The Worker keeps the damaged stored ledger as the day's snapshot only when today has none. When today already has one, the merged ledger overwrites the damaged one, and no copy of it is kept. Worker 68.1 to 68.3 cover only the no-snapshot case. The owner decides the fix.
 
-**Five gaps closed on PR #87 (commit `d359c91`), each pinned:**
+**Gaps on PR #87, each with its pins** (items 1 to 5 closed in `d359c91`; items 6 to 8 in `7c4cdbe`, and item 7 is still open):
 
 1. A restore copies the refused text to History first and waits. If the copy fails, it changes nothing. Pinned by 68.1, 68.1a to 68.1c.
 2. A re-import whose copy cannot be saved says so, and does not say "not a backup". Pinned by 68.2, 68.2a, 68.2b.
 3. Saved text that is valid JSON but not an object is refused. Pinned by 68.3.
 4. The Worker mends a damaged stored ledger before the merge. Pinned by Worker 68.1 to 68.3.
 5. A Worker 400 is its own sync status, `bad-shape`. It is not retried on backoff. The next change POSTs again. It shows one plain line. Pinned by 68.4, 68.5, 68.5a, 68.5b.
+6. A damaged sync reply whose copy cannot be saved sends nothing. While the copy is missing, `postRef` sends no POST, so a check-in and a foreground send nothing either. A GET re-reads the reply when the retry is due, and the copy is tried again. Pinned by 68.6pre, 68.6, 68.6a, 68.6b.
+7. A Worker 400 (`bad-shape`) shows one line, and the line offers no fix: "The sync server refused this ledger’s shape, so it is not backed up." Pinned by 68.5b. At `7c4cdbe` 68.5b fails: the line reads empty when the test reads it. This item is open until 68.5b passes.
+8. A History restore and a branch restore whose copy cannot be saved show the Re-import copy-failed line, not "looks corrupt", and change nothing. Pinned by 68.7pre, 68.7, 68.7a, 68.7b, 68.8pre, 68.8, 68.8a, 68.8b.
 
 **Orchestrator defaults 2026-10-12, not owner rulings.** These fallbacks refuse and change nothing. They apply when the copy cannot be written, or the saved text is not JSON, or it is JSON that is not an object (`null`, a number, a list).
 
 - Load: the page says the saved ledger is damaged and was not loaded. It keeps the raw text and offers History and Backup. While refused, nothing is sent: no sync call or apply, no CSV import, no push. Reset puts the raw text in History first, or does not reset.
-- A restore, from a file or from History, clears the refusal. It copies the refused text to History first and waits for the write. If the copy fails, the restore throws and changes nothing.
+- A restore, from a file or from History, clears the refusal. It copies the refused text to History first and waits for the write. If the copy fails, the restore throws and changes nothing. A History restore whose copy fails shows the Re-import copy-failed line below, not "looks corrupt".
 - Re-import: when the copy cannot be saved, the page shows "A copy of that file could not be saved to History, so nothing was changed." This happens when the versions store is missing or a write fails. Any other failure shows `That file isn’t a Mail Day backup.`
-- Sync reply: a reply with unreadable entries is copied to History first. If the copy fails, the reply counts as a failed call and nothing is applied.
+- Sync reply: a reply with unreadable entries is copied to History first. If the copy fails, the reply counts as a failed call and nothing is applied. While that copy is missing, nothing is POSTed. A GET re-reads the reply when the retry is due.
 
-**Pinned by (web):** group 67 (the 67 labels for load, Re-import and sync reply; 67.F1 to 67.F3; 67.7 and 67.7a). 67.F1b, 67.F1c, 67.F2b and 67.F2c check that no push starts. Worker: 67.1 and 67.2, run by `npm run test:worker`, not `npm test`. Items 1 to 5 above: tests 68.1 to 68.5 in `test/app.test.mjs`, run by `npm test`. Worker 68.1 to 68.3, run by `npm run test:worker`.
+**Pinned by (web):** group 67 (the 67 labels for load, Re-import and sync reply; 67.F1 to 67.F3; 67.7 and 67.7a). 67.F1b, 67.F1c, 67.F2b and 67.F2c check that no push starts. Worker: 67.1 and 67.2, run by `npm run test:worker`, not `npm test`. Items 1 to 8 above: tests 68.1 to 68.8 in `test/app.test.mjs`, run by `npm test`. Worker 68.1 to 68.3, run by `npm run test:worker`.
 
-**Read from code, not tested:** the sync reply's copy failure, the pull and merge fallbacks, and the sync and apply guards. Reset with the raw text, and the CSV block.
+**Read from code, not tested:** the pull and merge fallbacks, and the sync and apply guards. Reset with the raw text, and the CSV block.
