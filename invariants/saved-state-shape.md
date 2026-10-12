@@ -57,7 +57,7 @@ The Worker refuses a POST with a bad shape (400), so one app's bug cannot reach 
 
 **Closed at `c48fc20`: the Worker keeps every mended original.** Before any write, the Worker copies the damaged stored ledger to `kept`, whatever the snapshots hold. The copy is written even when today's snapshot exists. Pinned by 69.1 (group 69).
 
-**Gaps on PR #87, each with its pins** (items 1 to 5 closed in `d359c91`; item 7 at `b9e3f1c`; item 8 in `7c4cdbe`; items 6 and 9 at `c48fc20`, tests re-pointed at `7786c7c`):
+**What PR #87 guards, each with its pins:**
 
 1. A restore copies the refused text to History first and waits. If the copy fails, it changes nothing. Pinned by 68.1, 68.1a to 68.1c.
 2. A re-import whose copy cannot be saved says so, and does not say "not a backup". Pinned by 68.2, 68.2a, 68.2b.
@@ -65,9 +65,9 @@ The Worker refuses a POST with a bad shape (400), so one app's bug cannot reach 
 4. The Worker mends a damaged stored ledger before the merge. Pinned by Worker 68.1 to 68.3.
 5. A Worker 400 is its own sync status, `bad-shape`. It is not retried on backoff. The next change POSTs again. It shows one plain line. Pinned by 68.4, 68.5, 68.5a, 68.5b.
 6. A damaged sync reply whose copy cannot be saved is not applied. It counts as a failed call (`code` `unknown`), and no send waits for the copy. The check-in POSTs while the copy is missing (68.6b), and so does a GitHub mirror conflict (68.9). `sendPost` has no hold. It is the one call to `window.sync.post`, and it has two callers: `postRef` and the mirror-conflict path. The retry is a POST after backoff, not a GET. That POST makes the Worker mend its stored ledger and keep the damaged original in `kept` before it writes. The Worker's clean reply then applies (68.6a). Pinned by 68.6pre, 68.6, 68.6a, 68.6b, 68.9pre, 68.9, 68.10pre, 68.10a, 68.10bpre and 68.10b, in `test/app.test.mjs` (`npm test`). The Worker half is group 69 (69.1 to 69.6) and 68.1 to 68.3, in `worker/core.test.mjs` (`npm run test:worker`).
-7. A Worker 400 (`bad-shape`) shows one line, and the line offers no fix: "The sync server refused this ledger’s shape, so it is not backed up." Pinned by 68.5b. Closed at `b9e3f1c`: 68.5b passes in New York and UTC. At `7c4cdbe` it failed, because the line read empty when the test read it.
+7. A Worker 400 (`bad-shape`) shows one line, and the line offers no fix: "The sync server refused this ledger’s shape, so it is not backed up." Pinned by 68.5b.
 8. A History restore and a branch restore whose copy cannot be saved show the Re-import copy-failed line, not "looks corrupt", and change nothing. Pinned by 68.7pre, 68.7, 68.7a, 68.7b, 68.8pre, 68.8, 68.8a, 68.8b.
-9. **Closed at `c48fc20`: no client path holds sends, so a 404 cannot end a hold.** At `b9e3f1c`, 68.9 failed: a GitHub conflict on a mirror push sent 2 Worker POSTs while the copy was missing, where 0 were expected. At `7786c7c`, 68.9 asserts that the mirror-conflict POST goes. Pinned by 68.9pre and 68.9.
+9. No client path holds sends: a GitHub mirror conflict POSTs to the Worker even while a local copy is missing. Pinned by 68.9pre and 68.9.
 
 **Orchestrator defaults 2026-10-12, not owner rulings.** These fallbacks refuse and change nothing. They apply when the copy cannot be written, or the saved text is not JSON, or it is JSON that is not an object (`null`, a number, a list).
 
