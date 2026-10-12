@@ -1067,6 +1067,10 @@ export async function boot(state, photos, opts = {}) {
   else win.remote = remoteApi;
   /* a fresh device has no sync key; each boot is a new device */
   sync = syncFresh();
+  /* set before the mount, so the cold-open GET already fails: a boot-time Worker
+     reply that never arrives (group 66). A setter called before boot is erased
+     by the fresh mock above, so it must be an option. */
+  if (opts.syncNetFail) sync.netFail = true;
   /* the Worker adapter ships in every real build, so a test that needs it opts
      in. Without it the app sees no adapter, and no sync-key entrance is offered
      to a keyless device, which is what groups 1-52 were written against. */

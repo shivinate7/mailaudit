@@ -1210,8 +1210,11 @@ eq(
   ["pho-gone"],
   "26.13b but with no key the store is unreadable, so the id is KEPT, not lost"
 );
+/* Re-pointed (owner ruling 2026-10-12, default 5): the copy may not say "your key"
+   or name a repo. Group 66 guards the words, so this asserts only that the line
+   says photos need something, not what that something is named. */
 ok(
-  /photos need your key/i.test(text()),
+  /Photos need/i.test(text()),
   "26.13c and it says so rather than reporting them lost"
 );
 
@@ -6638,15 +6641,24 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     spy5.restore();
   }
 
-  /* 59.6. In step with GitHub, a keyless Worker device still offers the paste line.
-     Its own boot, with the panel closed: an open panel shows the line on its own,
-     which would prove nothing. A device that has a GitHub token but no Worker key
-     is the owner's iPhone, so the line must show, never be suppressed. */
+  /* 59.6. A keyless Worker device still offers the paste line. Its own boot, with
+     the panel closed: an open panel shows the line on its own, which would prove
+     nothing. A device that has a GitHub token but no Worker key is the owner's
+     iPhone, so the line must show, never be suppressed. */
   await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true, remote: null });
-  /* the push comes first: the panel reads the device record when it opens */
+  /* the GitHub push comes first. It is a mirror now and sets no Worker agreement
+     (owner ruling 2026-10-12, default 5), so the Sync row must not read Backed up. */
   await mirrorPush();
   await openPanel59();
-  ok(/Backed up/.test(text()), "59.6pre the device is in step: a recent push, so syncedAt is set");
+  await onLedger();
+  await settle();
+  const row59 = cell(/^Sync/);
+  const lastSync59 = [...document.querySelectorAll("span")]
+    .find((s) => s.textContent.trim() === "Last sync")
+    ?.nextElementSibling?.textContent.trim();
+  ok(row59?.getAttribute("aria-expanded") === "true", "59.6pre0 the Sync row is open on the Ledger tab, so its sentence shows");
+  eq(lastSync59, "Not yet", "59.6pre1 with no Worker agreement, Last sync reads Not yet");
+  ok(!/Backed up/.test(row59?.textContent ?? ""), "59.6pre the Sync row does not read Backed up, since no Worker agreement is on record");
   await closePanel59();
   ok(!/tap to fix/.test(text()), "59.6a in step, no fault line is shown");
   /* the advisory line is for the working tabs; the Ledger tab says it in the Sync row */
@@ -7747,10 +7759,103 @@ ok(
   "66.2 a Worker key that has never agreed shows no GitHub word and no Nothing has been backed up yet"
 );
 
-/* the Worker agrees once, then the page is reloaded from the saved ledger */
+/* 66a. Rendered text, not textContent: each text node is joined with a space, so
+   two labels side by side cannot run together and hide a word. STYLE and SCRIPT
+   are not rendered. The words are the owner's list, exactly as ruled. "Merges"
+   is not on the list, so a local verb passes. */
+const NO_GITHUB_WORDS66 = /\bgithub\b|\bpush\b|\bpull(ing|ed)?\b|\brepo\b|private repo|your key/i;
+const renderedText66 = () => {
+  const walker = document.createTreeWalker(document.body, win.NodeFilter.SHOW_TEXT);
+  const parts = [];
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+    const tag = n.parentElement?.tagName;
+    if (tag !== "STYLE" && tag !== "SCRIPT") parts.push(n.nodeValue);
+  }
+  return parts.join(" ");
+};
+const guardWords66 = (label) => {
+  const hit = renderedText66().match(NO_GITHUB_WORDS66);
+  eq(hit ? hit[0] : null, null, `${label}: no rendered text names GitHub, Push, Pull, a repo or your key`);
+};
+const panelOpen66 = () => cell(/^Sync/)?.getAttribute("aria-expanded") === "true";
+/* the same options the Last sync row formats with */
+const fmt66 = (t) =>
+  new Date(t).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+const GH66 = "github_pat_testtoken";
+const KEY66 = "device-66-key";
+
+/* 66.5 keyless: no GitHub key, no Worker key. The sync-key line is the entrance. */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { syncAdapter: true, remote: AHEAD65 });
+ok(/no sync key/.test(text()), "66.5pre a keyless device shows the sync-key line");
+await openSync();
+await settle();
+ok(panelOpen66(), "66.5pre2 the Sync panel is open");
+guardWords66("66.5 keyless");
+
+/* 66.6 Worker-keyed and healthy: the Worker has agreed, GitHub is ahead */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+  remote: AHEAD65,
+  remoteKey: GH66,
+  syncAdapter: true,
+  syncKey: KEY66,
+});
+await backgroundFor(5 * 60_000);
+await drain();
+await sleep(SAVE_WAIT);
+await openSync();
+await settle();
+ok(panelOpen66(), "66.6pre the Sync panel is open");
+ok(/Connected/.test(text()), "66.6pre2 the Worker reads Connected");
+ok(lastSyncVal66() !== "" && lastSyncVal66() !== "Not yet", "66.6pre3 and the Worker has agreed");
+guardWords66("66.6 Worker-keyed healthy");
+
+/* 66.7 Worker failing: the cold-open reply never arrives */
 await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
   syncAdapter: true,
-  syncKey: "device-66-key",
+  syncKey: KEY66,
+  syncNetFail: true,
+});
+await openSync();
+await settle();
+ok(panelOpen66(), "66.7pre the Sync panel is open");
+ok(/could not be reached/i.test(text()), "66.7pre2 the Worker cannot be reached, and the page says so");
+guardWords66("66.7 Worker failing");
+
+/* 66.8 photos: 26 queued, one batch of 25 per tap (PHOTO_BATCH) */
+const MANY66 = Array.from({ length: 26 }, (_, i) => `pho-m${i}`);
+await boot(withPhoto(MANY66), MANY66.map((id, i) => [id, jpegOf(i + 1)]), { remoteKey: GH66 });
+await background();
+await drain();
+await sleep(60);
+eq(
+  remote.calls.filter((c) => c.op === "pushPhoto").length,
+  25,
+  "66.8pre one tap sends a batch of 25 while 26 are queued"
+);
+await openSync();
+await settle();
+ok(panelOpen66(), "66.8pre2 the Sync panel is open");
+guardWords66("66.8 over 25 photos queued");
+
+/* 66.9 photo key missing: the photo repo cannot be read without a key */
+await boot(withPhoto(["pho-nk"]), [["pho-nk", jpegOf(1)]], {
+  remoteKey: GH66,
+  photosUnknown: "no-access",
+});
+await background();
+await drain();
+await sleep(60);
+await openSync();
+await settle();
+ok(panelOpen66(), "66.9pre the Sync panel is open");
+ok(/Photos need/i.test(text()), "66.9pre2 the photo line says photos need something");
+guardWords66("66.9 photo key missing");
+
+/* 66.4 the last Worker agreement survives a reload, and a boot-time reply that
+   fails cannot replace it. The agreement is written by a real session first. */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+  syncAdapter: true,
+  syncKey: KEY66,
 });
 await backgroundFor(5 * 60_000);
 await drain();
@@ -7759,12 +7864,22 @@ await openSync();
 await settle();
 const agreedBefore = lastSyncVal66();
 ok(agreedBefore !== "", "66.3 the Sync panel shows Last sync once the Worker has agreed");
-await boot(saved(), null, { syncAdapter: true, syncKey: "device-66-key" });
+ok(typeof saved().workerSyncedAt === "number", "66.4pre the saved ledger holds the Worker agreement time");
+
+/* A distinct, older time. Had the boot re-agreed, Last sync would show today's
+   date, and a same-minute match could not tell the two apart. */
+const OLD66 = Date.parse("2026-10-09T08:15:00Z");
+await boot({ ...saved(), workerSyncedAt: OLD66 }, null, {
+  syncAdapter: true,
+  syncKey: KEY66,
+  syncNetFail: true,
+});
 await openSync();
 await settle();
-ok(
-  lastSyncVal66() !== "" && lastSyncVal66() === agreedBefore,
-  "66.4 after a reload, Last sync still shows the last Worker agreement"
+eq(
+  lastSyncVal66(),
+  fmt66(OLD66),
+  "66.4 after a reload whose Worker reply fails, Last sync still shows the saved Worker agreement"
 );
 
 report();
