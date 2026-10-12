@@ -16,11 +16,10 @@ Run `npm test` and read its summary line. The count is passed plus failed. A gre
 
 At `f956873`, the New York process printed its summary and `all green`, then stayed alive with no CPU use for 13 minutes. It was killed by hand. The UTC and machine-zone processes were stopped by hand just after their summaries. Their exit codes are unmeasured, and so is the cause.
 
-Measured at `f956873`, 2026-10-12:
+Measured on 2026-10-12, at the L11 head:
 
-- New York zone (`TZ=America/New_York`): 1079 passed, 0 failed. About 2 min from the verdict log's first line to its last output.
-- UTC (`TZ=UTC`): 1078 passed, 0 failed. About 2 min by the same measure.
-- Machine zone (CDT, plain `npm test`): 1079 passed, 0 failed. About 2 min by the same measure.
+- New York zone (`TZ=America/New_York`): 1086 passed, 0 failed. Read from CI run 38274816063, which measured no local run time.
+- UTC (`TZ=UTC`): 1085 passed, 0 failed, exit 0. About 2 min locally.
 
 The run time varies on this machine. Take several runs before you compare a time. Groups 30 to 31 hold real-timer waits on purpose.
 
