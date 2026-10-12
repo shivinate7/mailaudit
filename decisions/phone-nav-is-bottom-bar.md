@@ -2,7 +2,7 @@
 
 The owner ruled on 2026-10-11: "bottom bar D is gorgeous! yes go for it". On a phone, navigation is a floating glass capsule in the parchment palette. This is variant D. It has four tabs, from left to right: Ledger, Orphaned, Tally and Packages. The owner ruled the order on 2026-10-11: "move ledger to be most left on the bottom bar". The bar replaces the top view switch at every width.
 
-**Status:** built in L11a, commit `250823d`. The Ledger tab is built in L11b, commit `12e8721`. The gear icon is built in L11c, commit `b62aebd`. The owner approved mockup G on 2026-10-11: "G looks decent", and "this is the right direction go". The owner expects polish of the Ledger view and the app after the build. The orchestrator made two calls on the bar on 2026-10-12, as defaults the owner may overrule (see Defaults).
+**Status:** built in L11a, commit `250823d`. The Ledger tab is built in L11b, commit `12e8721`. The gear icon is built in L11c, commit `b62aebd`. The owner approved mockup G on 2026-10-11: "G looks decent", and "this is the right direction go". The owner expects polish of the Ledger view and the app after the build. The orchestrator made two calls on the bar on 2026-10-12, as defaults the owner may overrule (see Defaults). The native bar is built in lane N5 (PR #82), as the system tab bar with the gear on the Ledger tab.
 
 **Holds while:** `src/app.jsx` renders the bar as a `nav` labelled Views. It holds four tabs in the order Ledger, Orphaned, Tally, Packages. It marks the current tab with `aria-current`. The native target is iOS 26, as `native-swift-rebuild` sets it. The web palette is the parchment ledger, as `design-parchment-ledger` sets it.
 
@@ -22,7 +22,9 @@ The web lane is L11 in `ux-house-rules-govern`.
 
 ## The native bar
 
-The Swift app uses the system tab bar. The system tab bar gives the real iOS 26 glass. The native lane is N5 in `native-build-lanes`.
+The Swift app uses the system tab bar, built in lane N5, see `native-build-lanes`. The system tab bar gives the real iOS 26 glass. In N5, Ledger, Orphaned and Tally are placeholder screens. Tally and Orphaned are built in lanes N6 and N7. The Ledger tab has no lane yet.
+
+Orchestrator default, 2026-10-12, N5: the native app is iPhone-only (`TARGETED_DEVICE_FAMILY` 1). The four tabs, left to right, are Ledger (`gearshape`), Orphaned (`envelope.badge`), Tally (`number`) and Packages (`shippingbox`). `RootView` builds them.
 
 ## The Ledger tab
 
@@ -39,6 +41,7 @@ The canceled-orders reference and the stamped filter keep their own ruled row. T
 ## Defaults and invariants
 
 - Above phone width, the same bar and pill show, centred with a 480px maximum width. This is an orchestrator default of 2026-10-11 that keeps one layout. The owner may overrule it.
+- Orchestrator default, 2026-10-12: the 480px layout applies to the web only. The native app is iPhone-only.
 - Re-import CSV and Reset stay reachable on an empty ledger and from every screen. `recovery-control-not-state-gated` requires it. L11b moved both to the Ledger tab. One tap on the bar reaches that tab from any screen.
 - The Ledger icon is a gear, as in mockup G. `BAR_ICONS.ledger` in `src/app.jsx` draws a gear outline around a centre circle. It replaced the circle with eight rays. Orchestrator default, 2026-10-12. Unpinned: no test reads the icon.
 - The bar shows on an empty ledger, so Re-import CSV and Reset stay one tap away. Orchestrator default, 2026-10-12. It follows `recovery-control-not-state-gated`. Pinned by 62.9 (the four tabs on an empty ledger) and 63.16 to 63.20 (the Ledger tab reaches Sync, History, Re-import CSV, Backup and Reset on an empty ledger).
@@ -52,5 +55,5 @@ The canceled-orders reference and the stamped filter keep their own ruled row. T
 - `motion-the-switch-is-one-object` — the retired switch's motion. The bar's motion is not ruled.
 - `three-views-share-one-switch` — the three working views that the bar's tabs name.
 - `ux-house-rules-govern` — the house rules that the web lane L11 cites.
-- `native-build-lanes` — lane N5, the native tab bar.
+- `native-build-lanes` — lane N5, which built the native tab bar.
 - `no-layout-shift-under-pointer` — the invariant the bar must keep.

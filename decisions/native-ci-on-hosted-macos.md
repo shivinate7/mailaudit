@@ -26,6 +26,7 @@ Owner ruling, 2026-10-12: asked whether the job becomes required now, the owner 
 
 - The real costs are queue time and wall time. The estimate for the full job is 8 to 15 minutes a run. It is unmeasured.
 - The last screens job took 37 seconds (run 38169582645).
+- Measured on 2026-10-12, on this Mac and not a hosted runner (Xcode 27.0, an iPhone 17 simulator on iOS 27.0): `build-for-testing` took 26 s. The N5 UI tests took 139 s wall and 78.6 s in XCTest. Five tests ran: 4 passed, 1 skipped (the 760pt case), 0 failed.
 - If the repo goes private, GitHub bills macOS minutes at a multiple of Linux minutes. The rate was not checked. See `ledger-private-source-public`.
 
 ## Rejected
@@ -36,14 +37,16 @@ Degen's self-hosted runner. On a public repo, a fork PR would run on the owner's
 
 - Whether the runner image has Xcode 27 and xcodegen. If it lacks xcodegen, the job installs a pinned version.
 - Whether the runner keychain is unlocked. The key store tests use their own service name, see `native-key-via-url-scheme`.
+- The hosted-runner time of the UI tests. The 139 s figure in Cost is local.
 
 ## Still open
 
 - Lane N5 adds to the native job: the `xcode-select` pin for Xcode. Then, after ST, in this order: xcodegen; `xcodebuild build` for macOS and for the iOS Simulator with `CODE_SIGNING_ALLOWED=NO`; the UI tests.
+- Update, 2026-10-12: lane N5 landed without those steps. Its diff does not touch the workflow, so the native job still runs ST only. The steps move to lane C2 in `native-build-lanes`.
 - Unmeasured: how a required check reads a job that the draft guard skipped. The scratch PR measures this. The owner granted the scratch PR on 2026-10-12. A separate lane runs it and records the result in `ci-skips-draft-prs`.
 
 ## See also
 
-- `screens-checked-headless-in-ci` — the other macOS job. The native UI test is lane N5, in Still open.
+- `screens-checked-headless-in-ci` — the other macOS job. The native UI test (`native/ManifestUITests/PackagesShellUITests.swift`) is not in this job yet, see Still open.
 - `ci-filters-guarantee-no-rebuild` — the trigger filters that the new job must respect.
 - `ledger-private-source-public` — why the repo is public.
