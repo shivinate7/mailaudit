@@ -14,7 +14,7 @@ Saved envelopes sit in a pile, newest first. They touch nothing in the ledger.
 
 Each composer keeps its own draft. Its key is the envelope id, or `new` for a new record. Opening a second composer never loses the first one's draft. Cancel closes the composer and keeps its draft, under ux-keep-what-was-made. Only Discard or Save ends a draft. That rule is an orchestrator default of 2026-10-11, not an owner ruling.
 
-Owner ruling, 2026-10-12: a closed draft holds the photos it references, and the photo sweep keeps them. The sweep takes every other unused blob. An open composer still holds the sweep off. The sweep reads each draft's photos when its timer fires. Drafts live in memory only, so a reload clears them.
+Owner ruling, 2026-10-12 ("make it exact fix then"): a closed draft holds the photos it references, and the photo sweep keeps them. The sweep takes every other unused blob. An open composer still holds the sweep off. The sweep reads each draft's photos when its timer fires. Drafts live in memory only, so a reload clears them.
 
 **Status:** open. Built: the per-composer keys, the Cancel rule, Save, which ends its draft, and the sweep rule for drafts above. Not built: Discard does not end a draft. `discardEnvelope` in `src/app.jsx` never clears it, so the draft keeps its own photos until reload. Open: Reset, and every restore, pull or merge that applies, clears all drafts. `applyBackup` and `resetAll` clear the draft map. The default allows neither. Owner to rule. The default allows neither. Owner to rule.
 
