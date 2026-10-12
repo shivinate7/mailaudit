@@ -344,7 +344,7 @@ const EXTERNAL = new Set([
 function walk(path, out) {
   if (!existsSync(path)) return;
   if (statSync(path).isDirectory()) {
-    for (const n of readdirSync(path)) if (n !== "node_modules") walk(`${path}/${n}`, out);
+    for (const n of readdirSync(path)) if (n !== "node_modules" && !n.startsWith(".")) walk(`${path}/${n}`, out);
   } else if (!/\.(png|jpe?g)$/i.test(path)) {
     let t = readFileSync(path, "utf8");
     // A name in a comment is prose, not code: esbuild drops JS comments (it
