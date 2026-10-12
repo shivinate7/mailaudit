@@ -2,7 +2,7 @@
 
 The `N stamped` cell filters the Packages view to stamped packages. The filter sits on top of the normal pipeline.
 
-**Holds while:** `stampedPackages` in `src/app.jsx` reads `rangedActive`, which holds the in-range items before the refund exclusion.
+**Holds while:** `stampedPackages` in `src/app.jsx` calls `stampedPackagesOf` in `src/view-rules.mjs` (V12.21), and it reads `rangedActive`, which holds the in-range items before the refund exclusion.
 
 The date range, Showing and Find all still apply. So a stamped package that is fully received stays hidden under Unreceived. The count can read higher than the list. `N lines` can do the same.
 
