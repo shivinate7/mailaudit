@@ -31,6 +31,7 @@ Find is not in the Ledger tab. It is a floating search field above the bar, as `
 - Backup sits in the Data group, after Re-import CSV. This is an orchestrator default of 2026-10-11, because Backup is a data action.
 - The Ledger tab, Re-import CSV and Reset stay reachable on an empty ledger. `recovery-control-not-state-gated` requires it, so this needs no new ruling.
 - The look of the Ledger screen is not ruled.
+- Lane L11 gives Pull's ask and Push anyway's ask a count and a Cancel. Orchestrator default, 2026-10-12, not an owner ruling. Both asks stay a known gap until L11 builds (`stale-push-conflict-pull-two-tap`, `ux-house-rules-govern`).
 
 ## See also
 
@@ -41,4 +42,4 @@ Find is not in the Ledger tab. It is a floating search field above the bar, as `
 
 ## Records that change when lane L11 builds
 
-These still put the controls on the working screen, which is true until L11 ships. L11 rewrites them in place: `action-row-is-ruled-cells`, `armed-reset-takes-the-row`, `ruled-head-showing-unreceived`, `history-sync-close-each-other`, `sync-panel-is-two-column-grid` and `ruled-head-one-advisory-entrance`.
+These still put the controls on the working screen, which is true until L11 ships. L11 rewrites them in place: `action-row-is-ruled-cells`, `armed-reset-takes-the-row`, `ruled-head-showing-unreceived`, `history-sync-close-each-other`, `sync-panel-is-two-column-grid` and `ruled-head-one-advisory-entrance`. When L11 builds, `stale-push-conflict-pull-two-tap` and `ux-house-rules-govern` drop their known-gap lines.

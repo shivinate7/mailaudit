@@ -260,7 +260,7 @@ await record(["Ponder"]);
 await sleep(SAVE_WAIT);
 eq(saved().envelopes.length, 1, "10.1 envelope saved before reset");
 await click(btn(/^Reset$/), "reset");
-await click(btn(/Tap again to clear everything/), "confirm reset");
+await click(btn(/Tap again to clear \d+ cards?/), "confirm reset");
 await sleep(800); // past the debounce, which is when a stale value would reappear
 eq(saved().envelopes ?? [], [], "10.2 envelopes gone and NOT rewritten by the debounce");
 eq(saved().items ?? [], [], "10.3 items gone");
@@ -409,9 +409,16 @@ await record(["Ponder"]);
 await click(btn(/^Discard$/), "arm discard");
 ok(/Tap again to discard/.test(text()), "16.1 discard armed");
 await click(btn(/^This one$/), "arm assign");
-ok(/Tap again to check in/.test(text()), "16.2 assign armed");
-ok(!/Tap again to discard/.test(text()), "16.3 arming one disarms the other");
-eq(envelopeCount(), 1, "16.4 nothing actually fired");
+ok(!/Tap again to check in/.test(text()), "16.2 assign is not armed: one tap checks in");
+/* 16.3 was decoration once assign became one tap: the envelope left the pile,
+   so its armed Discard left with it. Now it asserts that no two-tap ask is
+   still armed after the tap. */
+ok(!/Tap again to discard/.test(text()), "16.3 no two-tap ask is left armed after the tap");
+/* 16.4 re-pointed (ux-claims-are-true): assign is one tap now, so the card
+   must land on that tap. The old count-of-envelopes check also passed when the
+   tap fired nothing, which is why the card count is asserted too. */
+eq(text().match(/cards\s*(\d+)\/14/)?.[1], "1", "16.4 one tap checked the card in");
+eq(envelopeCount(), 0, "16.4b and the envelope left the pile on that tap");
 
 /* ── 17. photos live outside the ledger and get swept when orphaned ────── */
 
@@ -478,7 +485,7 @@ eq(photoKeys(), ["pho-2"], "18.1 a round-trip through Edit keeps the photo");
 eq(saved().envelopes[0].photos, ["pho-2"], "18.2 and its id");
 
 await click(btn(/^Reset$/), "reset");
-await click(btn(/Tap again to clear everything/), "confirm reset");
+await click(btn(/Tap again to clear \d+ cards?/), "confirm reset");
 await sleep(800);
 eq(photoKeys(), [], "18.3 reset clears the photo store too");
 
@@ -654,10 +661,10 @@ eq(headBar().getAttribute("data-stuck"), "no",
 await fresh();
 await goTo("tally");
 
-await pickSort("Biggest position");
+await pickSort("Cost basis");
 ok(
   text().indexOf("Brainstorm") < text().indexOf("Ponder"),
-  "22.1 by biggest position, Brainstorm outranks Ponder"
+  "22.1 by cost basis, Brainstorm outranks Ponder"
 );
 
 await pickSort("Unit rate");
@@ -1121,10 +1128,10 @@ ok(
 await fresh();
 await openSync();
 await click(btn(/^Reset$/), "arm reset");
-ok(/Tap again to clear everything/.test(text()), "26.17 Reset arms");
+ok(/Tap again to clear \d+ cards?/.test(text()), "26.17 Reset arms");
 await click(btn(/Pull from GitHub/), "arm pull");
 ok(/Tap again to replace/.test(text()), "26.18 Pull arms");
-ok(!/Tap again to clear everything/.test(text()), "26.19 and Reset disarms itself");
+ok(!/Tap again to clear \d+ cards?/.test(text()), "26.19 and Reset disarms itself");
 
 /* ── 27. the adapter's two load-bearing decisions ──────────────────────── */
 
@@ -1979,10 +1986,10 @@ await openSync();
 await saveGitHubKey();
 await click(btn(/^Push$/), "stale push");
 await click(btn(/^Reset$/), "arm reset");
-ok(/Tap again to clear everything/.test(text()), "34.8 Reset arms");
+ok(/Tap again to clear \d+ cards?/.test(text()), "34.8 Reset arms");
 await click(btn(/Merge & push/), "merge while reset is armed");
 await settle();
-ok(!/Tap again to clear everything/.test(text()), "34.9 merging disarms Reset");
+ok(!/Tap again to clear \d+ cards?/.test(text()), "34.9 merging disarms Reset");
 await sleep(SAVE_WAIT);
 eq(saved().items.length, ITEMS.length, "34.10 and did not clear the ledger");
 
@@ -2353,7 +2360,7 @@ eq(
 await boot({ items: ITEMS, received: {} }, null, { remote: OTHER_DEVICE });
 await openSync();
 await click(btn(/^Reset$/), "arm reset");
-ok(!!btn(/Tap again to clear everything/), "36.1 an armed Reset takes the row");
+ok(!!btn(/Tap again to clear \d+ cards?/), "36.1 an armed Reset takes the row");
 ok(
   !btn(/Re-import CSV/) && !btn(/^History/),
   "36.2 and the other two cells step out — nothing beside it to mis-tap"
@@ -2671,7 +2678,7 @@ ok(
 await stampPkg(/Alpha Cards/, "Claim filed", "");
 await sleep(SAVE_WAIT);
 await click(btn(/^Reset$/), "reset");
-await click(btn(/Tap again to clear everything/), "confirm reset");
+await click(btn(/Tap again to clear \d+ cards?/), "confirm reset");
 await sleep(800); // past the debounce, which is when a stale value would reappear
 eq(saved().stamps ?? {}, {}, "37.50 Reset clears stamps and the debounce does not write them back");
 
@@ -3261,7 +3268,7 @@ await settle();
 /* Reset is reachable from Orphaned by design, so there is no need to come
    back — and staying here proves it */
 await click(btn(/^Reset$/), "arm reset");
-await click(btn(/Tap again to clear everything/), "confirm reset");
+await click(btn(/Tap again to clear \d+ cards?/), "confirm reset");
 await settle();
 await sleep(SAVE_WAIT);
 eq(saved().items?.length ?? 0, 0, "39.6 the Reset really did clear the ledger");
@@ -3293,7 +3300,7 @@ eq(
   0,
   "39.11 one tap does not restore — invariant no-native-dialogs, it is a full replace"
 );
-await click(btn(/Tap again to replace everything/), "confirm restore");
+await click(btn(/Tap again to replace \d+ cards?/), "confirm restore");
 await settle();
 await sleep(SAVE_WAIT);
 eq(saved().items.length, 5, "39.12 two taps bring the destroyed ledger back");
@@ -3313,16 +3320,16 @@ await openHistory();
 await click(btn(/before reset/), "expand a version");
 await click(btn(/Restore this version/), "arm restore");
 ok(
-  /Tap again to replace everything/.test(text()),
+  /Tap again to replace \d+ cards?/.test(text()),
   "39.14 a restore arms"
 );
 await click(btn(/^Reset$/), "arm Reset instead");
 ok(
-  /Tap again to clear everything/.test(text()),
+  /Tap again to clear \d+ cards?/.test(text()),
   "39.15 Reset arms, and takes the row"
 );
 ok(
-  !/Tap again to replace everything/.test(text()),
+  !/Tap again to replace \d+ cards?/.test(text()),
   "39.16 disarming the restore with it — never two primed at once"
 );
 
@@ -3554,7 +3561,7 @@ eq(
   5,
   "41.5 one tap does not restore — invariant no-native-dialogs applies to a remote version too"
 );
-await click(btn(/Tap again to replace everything/), "confirm");
+await click(btn(/Tap again to replace \d+ cards?/), "confirm");
 await settle();
 await sleep(SAVE_WAIT);
 eq(saved().items.length, OLD_COUNT, "41.6 two taps roll the ledger back to that commit");
@@ -4674,7 +4681,7 @@ for (const [path, look] of [
 
   await openHistory();
   await click(btn(/^Reset$/), "reset");
-  await click(btn(/Tap again to clear everything/), "confirm reset");
+  await click(btn(/Tap again to clear \d+ cards?/), "confirm reset");
   await sleep(800); /* past the debounce, when a stale value would come back */
   eq(saved().receivedAt ?? {}, {}, "49.C4 Reset clears receivedAt, and the debounce does not write it back");
 }
@@ -5600,12 +5607,12 @@ await settle();
 await pageshow();
 await sleep(APPLY_WAIT);
 await click(btn(/^Reset$/), "arm reset while the wait is past");
-ok(/Tap again to clear everything/.test(text()), "55.4 0 Reset is armed, so the hold means something");
+ok(/Tap again to clear \d+ cards?/.test(text()), "55.4 0 Reset is armed, so the hold means something");
 await fireSyncRev(2, LEDGER55);
 await sleep(1000);
 eq(saved().items?.length ?? 0, 3, "55.4a an armed Reset holds the apply");
 await sleep(5000);
-ok(!/Tap again to clear everything/.test(text()), "55.4b Reset has disarmed itself");
+ok(!/Tap again to clear \d+ cards?/.test(text()), "55.4b Reset has disarmed itself");
 eq(saved().items?.length ?? 0, 4, "55.4c and the apply runs once the hold clears");
 
 /* 55.4d an open notice holds the apply, as an armed Reset does. The notice is a
@@ -6979,6 +6986,337 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     "60.11f a hash opener inside a string does not hide the colour after it"
   );
 }
+
+/* ── 61. the house UX rules, lanes L1 and L2 (decision ux-house-rules-govern) ──
+   Each block names the rule it checks. An ask names the count it removes or
+   replaces, and its first focus lands on Cancel (ux-ask-or-undo). A missing
+   control is a failed case, never a crash: `tapL1` records the miss and goes
+   on, so one red case cannot hide the cases after it. */
+const tapL1 = async (re, label) => {
+  const el = btn(re);
+  ok(!!el, `${label}: the control is on screen`);
+  if (el) await click(el, label);
+};
+const focusedL1 = () => document.activeElement?.textContent.trim() || "";
+/* a text leaf: an element whose own text is the whole of its content */
+const leafL1 = (re) =>
+  [...document.querySelectorAll("div")].find(
+    (d) => d.childElementCount === 0 && re.test(d.textContent.trim())
+  );
+/* the 10px floor: an element with its own text, styled under 10px */
+const underFloorL1 = () =>
+  [...document.querySelectorAll("body *")]
+    .filter(
+      (el) =>
+        [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim()) &&
+        parseFloat(win.getComputedStyle(el).fontSize) < 10
+    )
+    .map((el) => el.textContent.trim().slice(0, 24));
+
+/* A1, ux-claims-are-true: the merge copy says what a merge does. Where both
+   devices changed the same card, the later change wins (merge-rules.mjs). */
+await boot({ items: ITEMS, received: {} }, null, { remote: LAPTOP_PUSHED });
+await openSync();
+await saveGitHubKey();
+await settle();
+await background();
+await foreground();
+ok(/pushed newer lines/.test(text()), "61.1 the merge notice is on screen");
+ok(/later change to the same card wins/.test(text()), "61.2 the merge copy says a later change to the same card wins");
+ok(!/nothing here is replaced/.test(text()), "61.3 and it no longer says nothing here is replaced");
+
+/* A2, ask: Reset names the 14 cards it clears, and first focus lands on Cancel */
+await fresh();
+await tapL1(/^Reset$/, "arm reset");
+ok(!!btn(/Tap again to clear 14 cards/), "61.4 the Reset ask names the 14 cards it clears");
+ok(focusedL1() === "Cancel", "61.5 Reset puts first focus on Cancel");
+await tapL1(/^Cancel$/, "cancel the reset");
+ok(!!btn(/^Reset$/), "61.6 Cancel returns Reset to its rest label");
+ok(/cards\s*0\/14/.test(text()), "61.7 and the ledger is untouched");
+
+/* A2, ask: Discard names the 4 cards in the envelope, and Cancel keeps it */
+await fresh();
+await goTo("orphaned");
+await record(["Path to Exile", "Swords to Plowshares", "Ponder", "Lightning Bolt"]);
+await tapL1(/^Discard$/, "arm discard");
+ok(!!btn(/Tap again to discard 4 cards/), "61.8 the Discard ask names the 4 cards it drops");
+ok(focusedL1() === "Cancel", "61.9 Discard puts first focus on Cancel");
+await tapL1(/^Cancel$/, "cancel the discard");
+ok(/Envelope · .* 4 cards/.test(text()), "61.10 Cancel keeps the envelope, still 4 cards");
+
+/* A2, ask: Remove stamp names the cards the package holds, and Cancel keeps the stamp */
+await fresh();
+await stampPkg(/Alpha Cards/, "Reshipped");
+await click(bandOf(card(/Alpha Cards/)), "open Alpha's stamp");
+await click(inCard(card(/Alpha Cards/), /^Remove stamp$/), "remove, first tap");
+const removeAskL1 = inCard(card(/Alpha Cards/), /Tap again to remove/);
+ok(!!removeAskL1 && /\d+ cards?/.test(removeAskL1.textContent), "61.11 the Remove ask names the cards the package holds");
+ok(focusedL1() === "Cancel", "61.12 Remove puts first focus on Cancel");
+await tapL1(/^Cancel$/, "cancel the removal");
+await sleep(SAVE_WAIT);
+ok(!!saved().stamps?.[GK_A]?.kind, "61.13 Cancel keeps the stamp");
+
+/* A2, ask: Restore names the 14 cards it replaces, and Cancel leaves the version */
+const VER_L1 = "v-l1-restore";
+const versionL1 = (text) => [
+  [VER_L1, { meta: { id: VER_L1, at: Date.now() - 3600_000, label: "before reset", kind: "milestone", lines: 3, checked: 0, bytes: 10 }, text }],
+];
+const openVersionL1 = () =>
+  click(
+    buttons().find((b) => b.textContent.includes("before reset") && b.getAttribute("aria-expanded") !== null),
+    "expand the version"
+  );
+await boot({ items: ITEMS, received: {} }, null, { versions: versionL1("{}") });
+await openHistory();
+await openVersionL1();
+await tapL1(/^Restore this version$/, "arm restore");
+ok(!!btn(/Tap again to replace 14 cards/), "61.14 the Restore ask names the 14 cards it replaces");
+ok(focusedL1() === "Cancel", "61.15 Restore puts first focus on Cancel");
+await tapL1(/^Cancel$/, "cancel the restore");
+ok(!!btn(/^Restore this version$/) && !btn(/Tap again to replace \d+ cards?/), "61.16 Cancel returns Restore to rest");
+
+/* A2, assign: one tap checks the envelope in, and Undo is the way back */
+await fresh();
+await goTo("orphaned");
+await record(["Ponder"]);
+await tapL1(/^This one$/, "check the candidate in, one tap");
+ok(!btn(/Tap again to check in/), "61.17 one tap checks in, with no second tap");
+ok(!!btn(/^Undo$/), "61.17b the one tap offers Undo");
+await tapL1(/^Undo$/, "undo the check-in");
+eq(envelopeCount(), 1, "61.18 Undo puts the envelope back");
+
+/* P4, ux-empty-one-action: the no-match state has one Clear search control */
+await fresh();
+await goTo("packages");
+await type(document.querySelector('input[aria-label^="Search cards"]'), "zzz no such card");
+ok(/No cards match that search\./.test(text()), "61.19 the no-match state shows its sentence");
+eq(allBtns(/^Clear search$/).length, 1, "61.20 and exactly one Clear search control");
+await tapL1(/^Clear search$/, "clear the search");
+eq(document.querySelector('input[aria-label^="Search cards"]')?.value, "", "61.21 Clear search empties the Find box");
+ok(!/No cards match that search/.test(text()) && !!card(/Alpha Cards/), "61.22 and the cards come back");
+
+/* P4: no party emoji in the all-checked message */
+await boot({ items: ITEMS, received: Object.fromEntries(ITEMS.map((it) => [it.key, it.qty])) });
+await goTo("packages");
+const doneL1 = leafL1(/^Everything here/);
+ok(!!doneL1, "61.23 the all-checked message is on screen");
+ok(!/\p{Extended_Pictographic}/u.test(doneL1?.textContent || ""), "61.24 and it carries no emoji");
+
+/* P4, ux-empty-one-action: the Orphaned empty state is one sentence */
+await fresh();
+await goTo("orphaned");
+const pileL1 = leafL1(/^Nothing waiting/);
+ok(!!pileL1, "61.25 the Orphaned empty state is on screen");
+eq((pileL1?.textContent.match(/[.!?](?=\s|$)/g) || []).length, 1, "61.26 and it is one sentence");
+
+/* P7: every Tally sort label fits the 375px cell. "Most missing", the default,
+   is 12 characters and shows whole; "Biggest po..." was cut after 10. */
+await fresh();
+await goTo("tally");
+await click(cell(/^Sorted by/), "open the Tally sort");
+const sortLabelsL1 = [...document.querySelectorAll(".mdl-panel button")].map((b) => b.textContent.trim());
+eq(sortLabelsL1.length, 6, "61.27 the Tally sort panel lists its six keys (tally-sort-keys-are-six)");
+eq(sortLabelsL1.filter((l) => l.length > 12), [], "61.28 every Tally sort label is 12 characters or fewer");
+
+/* the 10px label floor (typography-cochin-and-mono), on the views a person reads */
+await fresh();
+await goTo("tally");
+eq(underFloorL1(), [], "61.29 no Tally label is under 10px");
+await goTo("packages");
+eq(underFloorL1(), [], "61.30 no Packages label is under 10px");
+await goTo("orphaned");
+eq(underFloorL1(), [], "61.31 no Orphaned label is under 10px");
+await openHistory();
+eq(underFloorL1(), [], "61.32 no History label is under 10px");
+
+/* A3, ux-keep-what-was-made: the composer's draft survives a change of tab */
+await fresh();
+await goTo("orphaned");
+await tapL1(/Record an envelope/, "open the composer");
+await type(cardInput(), "Zyzzyva");
+await tapL1(/^Add “/, "add the card as typed");
+await type(document.querySelector('input[aria-label="Envelope note"]'), "keep this note");
+await goTo("packages");
+await goTo("orphaned");
+ok(!!btn(/Save envelope/), "61.33 the composer is still open after a tab change");
+eq(document.querySelector('input[aria-label="Envelope note"]')?.value, "keep this note", "61.34 and its note survives");
+ok(/Zyzzyva/.test(text()), "61.35 and so does the card it holds");
+await sleep(SAVE_WAIT);
+eq(saved().envelopes?.length ?? 0, 0, "61.36 a draft is not written to the ledger");
+
+/* P6, ux-answer-at-press: a failed version restore shows in the row pressed */
+await boot({ items: ITEMS, received: {} }, null, { versions: versionL1("") });
+await openHistory();
+await openVersionL1();
+const restoreBtnL1 = btn(/^Restore this version$/);
+const restoreRowL1 = restoreBtnL1?.parentElement.parentElement;
+await tapL1(/^Restore this version$/, "arm restore");
+await tapL1(/Tap again to replace/, "confirm restore");
+await settle();
+const restoreErrL1 = leafL1(/could not be read from this device/);
+ok(!!restoreErrL1, "61.37 the version error is on screen");
+ok(!!restoreErrL1 && !!restoreRowL1 && restoreRowL1.contains(restoreErrL1), "61.38 and it sits in the row of the version that failed");
+
+/* P6: a failed Load older shows beside the control pressed */
+await boot({ items: ITEMS, received: {} });
+await openHistory();
+const beforeL1 = new Set(
+  [...document.querySelectorAll("div")].filter((d) => d.childElementCount === 0).map((d) => d.textContent)
+);
+remote.fail = "offline";
+await tapL1(/Load older versions/, "ask for the older versions");
+await settle();
+const loadErrL1 = [...document.querySelectorAll("div")].find(
+  (d) => d.childElementCount === 0 && !beforeL1.has(d.textContent) && /No connection/.test(d.textContent)
+);
+ok(!!loadErrL1, "61.39 the Load older error is on screen");
+const loadBtnL1 = btn(/Load older versions/);
+ok(
+  !!loadErrL1 && !!loadBtnL1 && loadBtnL1.parentElement !== loadBtnL1.closest(".mdl-panel") && loadBtnL1.parentElement.contains(loadErrL1),
+  "61.40 and it shares a row with the control that failed"
+);
+remote.fail = null;
+
+/* ── 61.41+ (orchestrator defaults, 2026-10-11 — defaults, not owner rulings) ──
+   Reset's count and the Discard arm's structure, and drafts held per composer.
+   Geometry (no shrink, no move) is jsdom-blind: it is measured headless in
+   check:screens, and these cases assert only the DOM that would change it. */
+
+/* Reset counts every card it clears, envelope cards included (ux-ask-or-undo). */
+await boot({
+  items: [],
+  received: {},
+  envelopes: [
+    {
+      id: "env-reset-only",
+      createdAt: Date.parse("2026-08-01"),
+      note: "",
+      photos: [],
+      entries: [{ name: "Ponder", qty: 1 }],
+    },
+  ],
+});
+await tapL1(/^Reset$/, "arm reset with one envelope card and no ledger cards");
+eq(btn(/^Tap again to clear/)?.textContent.trim(), "Tap again to clear 1 card", "61.41 Reset counts the envelope card: exactly 1 card");
+await tapL1(/^Cancel$/, "cancel the reset");
+
+await fresh();
+await goTo("orphaned");
+await record(["Ponder"]);
+await tapL1(/^Reset$/, "arm reset with ledger cards and one envelope card");
+eq(btn(/^Tap again to clear/)?.textContent.trim(), "Tap again to clear 15 cards", "61.42 Reset counts the 14 ledger cards and the 1 envelope card");
+await tapL1(/^Cancel$/, "cancel the reset");
+
+/* Discard arm: the arm changes its own label in place. It adds no element to
+   the envelope header row, and the header label and Edit keep their nodes. */
+await fresh();
+await goTo("orphaned");
+await record(["Ponder"]);
+const headLabelL1 = () =>
+  [...document.querySelectorAll("span")].find((s) => /^Envelope ·/.test(s.textContent.trim()));
+const headRowL1 = headLabelL1()?.parentElement;
+const headLabelBefore = headLabelL1();
+const headEditBefore = [...(headRowL1?.children ?? [])].find((b) => b.textContent.trim() === "Edit");
+const headKidsBefore = headRowL1?.childElementCount;
+await tapL1(/^Discard$/, "arm discard");
+const headRowAfterL1 = headLabelL1()?.parentElement;
+ok(headRowAfterL1 === headRowL1, "61.43 the arm keeps the envelope header row's node");
+ok(headLabelL1() === headLabelBefore, "61.44 the arm keeps the envelope label's node");
+ok(
+  !!headEditBefore && [...(headRowAfterL1?.children ?? [])].includes(headEditBefore),
+  "61.45 the arm keeps the Edit control's node in the header row"
+);
+eq(headRowAfterL1?.childElementCount, headKidsBefore, "61.46 the arm adds no element to the header row");
+
+/* Cancel closes the composer and keeps its draft (ux-keep-what-was-made).
+   Only Discard or Save ends a draft. */
+await fresh();
+await goTo("orphaned");
+await tapL1(/Record an envelope/, "open the composer");
+await type(cardInput(), "Zyzzyva");
+await tapL1(/^Add “/, "add the card as typed");
+await type(document.querySelector('input[aria-label="Envelope note"]'), "cancel keeps this");
+const composerFootL1 = () => btn(/Save envelope/)?.parentElement;
+const composerCancelL1 = [...(composerFootL1()?.querySelectorAll("button") ?? [])].find(
+  (b) => b.textContent.trim() === "Cancel"
+);
+ok(!!composerCancelL1, "61.47 the composer has its own Cancel");
+await click(composerCancelL1, "cancel the composer");
+ok(!btn(/Save envelope/), "61.48 Cancel closes the composer");
+await tapL1(/Record an envelope/, "reopen the composer");
+eq(document.querySelector('input[aria-label="Envelope note"]')?.value, "cancel keeps this", "61.49 the reopened composer keeps its note");
+ok(/Zyzzyva/.test(text()), "61.50 and the card it held");
+await sleep(SAVE_WAIT);
+eq(saved().envelopes?.length ?? 0, 0, "61.51 Cancel wrote no envelope");
+
+/* Drafts are held per composer: opening a second composer never loses the
+   first composer's draft (ux-keep-what-was-made). */
+await fresh();
+await goTo("orphaned");
+await record(["Lightning Bolt"]);
+await tapL1(/Record an envelope/, "open the first composer, the new record");
+await type(cardInput(), "Zyzzyva");
+await tapL1(/^Add “/, "add a card to the first composer");
+await type(document.querySelector('input[aria-label="Envelope note"]'), "first draft note");
+await tapL1(/^Edit$/, "open a second composer on the saved envelope");
+await type(document.querySelector('input[aria-label="Envelope note"]'), "second draft note");
+await tapL1(/Record an envelope/, "return to the first composer");
+eq(document.querySelector('input[aria-label="Envelope note"]')?.value, "first draft note", "61.52 the first composer's note is kept");
+await tapL1(/^Edit$/, "return to the second composer");
+eq(document.querySelector('input[aria-label="Envelope note"]')?.value, "second draft note", "61.53 and the second composer's note is kept");
+
+/* Owner ruling (sweep holds only for live work): a closed composer draft holds
+   the photos it references, and nothing else. A draft holding photo A does not
+   freeze the sweep: A survives and an unused photo B is swept. An open composer
+   still holds the sweep off (61.57). The control runs first: with no draft, the
+   unreferenced blob is swept, so the held case is not vacuous. */
+await boot({ items: ITEMS, received: {} }, [["pho-draft", jpeg()]]);
+await goTo("orphaned");
+await sleep(SWEEP_WAIT);
+eq(photoKeys(), [], "61.54 control: with no draft open, the sweep removes an unreferenced blob");
+
+/* Photo A is referenced only by the draft: the envelope that first carried it
+   is discarded after the draft is closed, so no live envelope holds A. */
+await boot(
+  {
+    items: ITEMS,
+    received: {},
+    envelopes: [
+      {
+        id: "env-h",
+        createdAt: Date.parse("2026-08-01"),
+        note: "",
+        photos: ["pho-held"],
+        entries: [{ name: "Ponder", qty: 1 }],
+      },
+    ],
+  },
+  [
+    ["pho-held", jpeg()], // photo A: the closed draft holds it
+    ["pho-loose", jpeg()], // photo B: referenced by nothing
+  ]
+);
+await goTo("orphaned");
+await tapL1(/^Edit$/, "open the composer on the envelope that holds photo A");
+await type(document.querySelector('input[aria-label="Envelope note"]'), "draft holds photo A");
+const heldFootL1 = btn(/Save changes/)?.parentElement;
+const heldCancelL1 = [...(heldFootL1?.querySelectorAll("button") ?? [])].find(
+  (b) => b.textContent.trim() === "Cancel"
+);
+await click(heldCancelL1, "cancel the composer, keeping its draft");
+ok(!btn(/Save changes/), "61.55 the composer is closed, its draft is not");
+await click(btn(/^Discard$/), "discard the envelope, so only the draft holds photo A");
+await click(btn(/Tap again to discard/), "confirm the discard");
+await sleep(SWEEP_WAIT);
+eq(photoKeys(), ["pho-held"], "61.56 a closed draft keeps its photo A; unused photo B is swept");
+
+/* An open composer still holds the sweep off, even with no photo at all. */
+await boot({ items: ITEMS, received: {} }, [["pho-loose", jpeg()]]);
+await goTo("orphaned");
+await tapL1(/Record an envelope/, "open a composer and leave it open");
+await type(document.querySelector('input[aria-label="Envelope note"]'), "composer stays open");
+await sleep(SWEEP_WAIT);
+eq(photoKeys(), ["pho-loose"], "61.57 an open composer holds the sweep off an unreferenced blob");
 
 uninstallClock();
 report();

@@ -2,7 +2,9 @@
 
 The app sends the sha it last saw for conflict checks. It never sends a sha fetched again right before the push. A stale manual push reports a conflict and changes nothing. The automatic mirror push on a device with a Worker key does not stop there. It writes once more under the sha the remote holds, through `pushForce`. Every push stays recoverable as a commit in history. A bad pull has no matching recovery. That is why only Pull carries the two-tap confirm, and Push does not.
 
-**Holds while:** `confirmPull` in `src/app.jsx` arms the two-tap on Pull, and the Push button has no confirm state of its own.
+**Holds while:** `confirmPull` in `src/app.jsx` arms the two-tap on Pull, and the plain Push button has no confirm state of its own. `Push anyway` arms a second two-tap, "Tap again to overwrite".
+
+**Status:** open. Pull's ask, "Tap again to replace", and Push anyway's ask, "Tap again to overwrite", each name no count and have no Cancel. The orchestrator default of 2026-10-11 says every ask names a true count. The house rule ux-ask-or-undo asks for first focus on Cancel too. Pull replaces the ledger and the saved envelopes, so its count would include both. Owner to rule the scope of each count. Known gap. Orchestrator default of 2026-10-12, not an owner ruling: lane L11 gives both asks a count and a Cancel. Sync moves into the Ledger tab in L11 (`ledger-tab-holds-options`). `ux-house-rules-govern` records the same gap.
 
 ## Why the sha is the last one seen
 

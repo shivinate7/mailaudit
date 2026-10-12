@@ -723,7 +723,12 @@ function PackageCard({
   const [note, setNote] = useState("");
   const [confirmRemove, setConfirmRemove] = useState(false);
   const timer = useRef(null);
+  const cancelRef = useRef(null);
   useEffect(() => () => clearTimeout(timer.current), []);
+  /* an ask puts first focus on its way out (ux-ask-or-undo) */
+  useEffect(() => {
+    if (confirmRemove) cancelRef.current?.focus();
+  }, [confirmRemove]);
   const disarm = () => setConfirmRemove(false);
   const arm = (set, val) => {
     disarm();
@@ -1014,11 +1019,11 @@ function PackageCard({
                   fontWeight: confirmRemove ? 700 : 400,
                 }}
               >
-                {confirmRemove ? "Tap again to remove" : "Remove stamp"}
+                {confirmRemove ? `Tap again to remove stamp from ${cardsOf(totalQty)}` : "Remove stamp"}
               </button>
             )}
             <span style={{ flex: 1 }} />
-            <button onClick={closeEditor} style={miniBtn}>
+            <button ref={cancelRef} onClick={closeEditor} style={miniBtn}>
               Cancel
             </button>
             <button
@@ -1377,6 +1382,9 @@ const dateInput = {
   color: C.ink,
 };
 
+/* "14 cards" */
+const cardsOf = (n) => `${n} card${n === 1 ? "" : "s"}`;
+
 const miniBtn = {
   fontFamily: mono,
   fontSize: 11.5,
@@ -1492,7 +1500,7 @@ const RULE = { height: 1, background: C.line };
 const RULE_THIN = { height: 1, background: C.line, opacity: 0.55 };
 
 const cellLab = {
-  fontSize: 8.5,
+  fontSize: 10,
   letterSpacing: "0.16em",
   textTransform: "uppercase",
   color: C.inkSoft,
@@ -1519,7 +1527,7 @@ const cellValText = {
   textOverflow: "ellipsis",
 };
 const cellFig = {
-  fontSize: 9.5,
+  fontSize: 10,
   color: C.inkSoft,
   whiteSpace: "nowrap",
   overflow: "hidden",
@@ -1549,7 +1557,7 @@ const valUnder = (open) => ({
   transition: "border-color 200ms ease",
 });
 const headCaret = (open) => ({
-  fontSize: 9,
+  fontSize: 10,
   color: C.inkSoft,
   flexShrink: 0,
   transform: open ? "rotate(180deg)" : "none",
@@ -1586,7 +1594,7 @@ const PKG_SORTS = [
 ];
 const ITEM_SORTS = [
   ["missing", "Most missing"],
-  ["basis", "Biggest position"],
+  ["basis", "Cost basis"],
   ["ordered", "Most ordered"],
   ["value", "$ remaining"],
   ["rate", "Unit rate"],
@@ -2113,13 +2121,28 @@ function PhotoStrip({ ids, onRemove, epoch = 0 }) {
 
 /* Draft state lives here, not in the app: re-rendering the whole ledger on
    every keystroke drops characters with the iOS keyboard up. */
-function EnvelopeComposer({ initial, suggestions, onSave, onCancel }) {
-  const [draft, setDraft] = useState("");
-  const [entries, setEntries] = useState(() =>
-    (initial?.entries || []).map((e) => ({ ...e }))
+function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draftRef }) {
+  /* reopen on the draft the app kept for this target, if there is one */
+  const kept = draftRef.current.get(target) ?? null;
+  const [draft, setDraft] = useState(kept?.draft ?? "");
+  const [entries, setEntries] = useState(
+    () => kept?.entries ?? (initial?.entries || []).map((e) => ({ ...e }))
   );
-  const [note, setNote] = useState(initial?.note || "");
-  const [photos, setPhotos] = useState(() => [...(initial?.photos || [])]);
+  const [note, setNote] = useState(kept?.note ?? (initial?.note || ""));
+  const [photos, setPhotos] = useState(
+    () => kept?.photos ?? [...(initial?.photos || [])]
+  );
+  /* hand the draft up only when it differs from where it started */
+  useEffect(() => {
+    const dirty =
+      draft !== "" ||
+      note !== (initial?.note || "") ||
+      JSON.stringify(entries) !== JSON.stringify(initial?.entries || []) ||
+      photos.join() !== (initial?.photos || []).join();
+    /* delete then set, so the last key is the most recently touched composer */
+    draftRef.current.delete(target);
+    if (dirty) draftRef.current.set(target, { target, draft, entries, note, photos });
+  }, [draft, entries, note, photos, initial, target, draftRef]);
   const [busy, setBusy] = useState(false);
   const camera = useRef(null);
 
@@ -2488,7 +2511,6 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel }) {
 /* ---------- A recorded envelope, waiting to be tied to a package ---------- */
 
 function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) {
-  const [confirmGk, setConfirmGk] = useState("");
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const timer = useRef(null);
@@ -2497,7 +2519,6 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
   /* two-tap, same as the Reset button. Arming anything disarms everything
      else: one timer, one armed control. */
   const disarm = () => {
-    setConfirmGk("");
     setConfirmDiscard(false);
   };
   const arm = (set, val) => {
@@ -2549,22 +2570,65 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
         >
           Edit
         </button>
-        <button
-          onClick={() =>
-            confirmDiscard ? onDiscard(env.id) : arm(setConfirmDiscard, true)
-          }
-          style={{
-            ...miniBtn,
-            fontSize: 11,
-            padding: "5px 9px",
-            color: confirmDiscard ? C.card : C.red,
-            background: confirmDiscard ? C.red : C.card,
-            borderColor: confirmDiscard ? C.red : C.redSoft,
-            fontWeight: confirmDiscard ? 700 : 400,
-          }}
-        >
-          {confirmDiscard ? "Tap again to discard" : "Discard"}
-        </button>
+        {/* The arm must not shrink or move the label or Edit
+            (ux-press-moves-nothing). So the long ask cannot sit in this row:
+            Discard keeps its width, and the ask and its Cancel open as a
+            panel that hangs below the row without taking space. */}
+        <span style={{ position: "relative", display: "flex" }}>
+          <button
+            onClick={() => arm(setConfirmDiscard, true)}
+            style={{
+              ...miniBtn,
+              fontSize: 11,
+              padding: "5px 9px",
+              color: confirmDiscard ? C.card : C.red,
+              background: confirmDiscard ? C.red : C.card,
+              borderColor: confirmDiscard ? C.red : C.redSoft,
+            }}
+          >
+            Discard
+          </button>
+          {confirmDiscard && (
+            <span
+              style={{
+                position: "absolute",
+                top: "calc(100% + 4px)",
+                right: 0,
+                zIndex: 5,
+                display: "flex",
+                gap: 6,
+                padding: 4,
+                background: C.card,
+                border: `1px solid ${C.redSoft}`,
+                borderRadius: 8,
+                boxShadow: `0 2px 6px ${C.shadow}`,
+              }}
+            >
+              <button
+                autoFocus
+                onClick={disarm}
+                style={{ ...miniBtn, fontSize: 11, padding: "5px 9px" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => onDiscard(env.id)}
+                style={{
+                  ...miniBtn,
+                  fontSize: 11,
+                  padding: "5px 9px",
+                  whiteSpace: "nowrap",
+                  color: C.card,
+                  background: C.red,
+                  borderColor: C.red,
+                  fontWeight: 700,
+                }}
+              >
+                {`Tap again to discard ${cardsOf(total)}`}
+              </button>
+            </span>
+          )}
+        </span>
       </div>
 
       <div style={{ padding: "0 14px 10px" }}>
@@ -2661,7 +2725,6 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
             )}
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {shown.map((c) => {
-                const armed = confirmGk === c.pkg.gk;
                 return (
                   <div
                     key={c.pkg.gk}
@@ -2719,21 +2782,15 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
                       </div>
                     </div>
                     <button
-                      onClick={() =>
-                        armed ? onAssign(env, c) : arm(setConfirmGk, c.pkg.gk)
-                      }
+                      onClick={() => onAssign(env, c)}
                       style={{
                         ...miniBtn,
                         flexShrink: 0,
                         fontSize: 11.5,
                         padding: "8px 10px",
-                        background: armed ? C.green : C.card,
-                        color: armed ? C.card : C.ink,
-                        borderColor: armed ? C.green : C.line,
-                        fontWeight: armed ? 700 : 400,
                       }}
                     >
-                      {armed ? "Tap again to check in" : "This one"}
+                      This one
                     </button>
                   </div>
                 );
@@ -2832,6 +2889,9 @@ export default function MailDayLedger() {
   /* holds the id being confirmed rather than a boolean — see `arm` below */
   const [confirmRestore, setConfirmRestore] = useState(null);
   const [versionMsg, setVersionMsg] = useState(null);
+  /* which row the message belongs to (a version id, sha, or "older"): an error
+     shows where the finger was, not at the top of the panel (ux-answer-at-press) */
+  const [versionMsgAt, setVersionMsgAt] = useState(null);
   /* null = the store is answering. A string = it is not, and every promise
      this feature makes is currently void — see the write path below. */
   const [versionsDown, setVersionsDown] = useState(null);
@@ -2932,6 +2992,13 @@ export default function MailDayLedger() {
   /* order stamps, keyed by package gk — persisted, see invariant saved-state-shape */
   const [stamps, setStamps] = useState({});
   const [composing, setComposing] = useState(null); // null | "new" | envelopeId
+  /* The composer's unsaved draft. A ref, not state: the composer writes it on
+     every keystroke, and re-rendering the whole ledger per key drops characters
+     under the iOS keyboard. It lives here so a change of view does not destroy
+     it (ux-keep-what-was-made). It is never saved: no storage key, no ledger
+     field. */
+  const composerDraft = useRef(new Map()); // composer target -> its draft
+  const resumeTarget = useRef(null); // the composer open when the person left Orphaned
   const [undo, setUndo] = useState(null); // last assignment, reversible
   const [backupBusy, setBackupBusy] = useState(false);
   const [photoUsage, setPhotoUsage] = useState(null);
@@ -3376,6 +3443,7 @@ export default function MailDayLedger() {
             if (b) await window.photos.put(id, b).catch(() => {});
           }
         })();
+      composerDraft.current.clear();
       setComposing(null);
       setUndo(null);
       if (data.dateFilter) setDateFilter(data.dateFilter);
@@ -3648,6 +3716,7 @@ export default function MailDayLedger() {
     setEnvelopes([]);
     setStamps({});
     setShowStamped(false);
+    composerDraft.current.clear();
     setComposing(null);
     setUndo(null);
     setSticky(new Set());
@@ -3676,8 +3745,10 @@ export default function MailDayLedger() {
       clearTimeout(resetTimer.current);
       disarm();
       setVersionMsg(null);
+      setVersionMsgAt(null);
       const text = await window.versions?.get(id).catch(() => null);
       if (!text) {
+        setVersionMsgAt(id);
         setVersionMsg("That version could not be read from this device.");
         return;
       }
@@ -3687,6 +3758,7 @@ export default function MailDayLedger() {
         await applyBackup(text, "file", null, null);
         setOpenVersion(null);
       } catch {
+        setVersionMsgAt(id);
         setVersionMsg("That version could not be restored — it looks corrupt.");
       }
     },
@@ -3704,10 +3776,12 @@ export default function MailDayLedger() {
       return;
     setOlderBusy(true);
     setVersionMsg(null);
+    setVersionMsgAt(null);
     try {
       setOlderVersions(await window.remote.listVersions());
     } catch (e) {
       setOlderVersions(null);
+      setVersionMsgAt("older");
       setVersionMsg(
         REMOTE_SAYS[e?.code || "bad-response"] || REMOTE_SAYS["bad-response"]
       );
@@ -3739,10 +3813,12 @@ export default function MailDayLedger() {
       clearTimeout(resetTimer.current);
       disarm();
       setVersionMsg(null);
+      setVersionMsgAt(null);
       let text = null;
       try {
         text = await window.remote.getVersion(sha);
       } catch (e) {
+        setVersionMsgAt(sha);
         setVersionMsg(
           REMOTE_SAYS[e?.code || "bad-response"] || REMOTE_SAYS["bad-response"]
         );
@@ -3752,6 +3828,7 @@ export default function MailDayLedger() {
         await applyBackup(text, "file", null, null);
         setOpenVersion(null);
       } catch {
+        setVersionMsgAt(sha);
         setVersionMsg("That version could not be restored — it looks corrupt.");
       }
     },
@@ -3869,10 +3946,26 @@ export default function MailDayLedger() {
      cause is fixed at the other end instead: see autoPush's guard list. */
   const leaveFor = useCallback(
     (v) => {
-      if (view === "mystery" && v !== "mystery") setComposing(null);
+      /* Leaving drops the flag, so sync is not held off while the draft waits
+         in the ref; coming back reopens the composer on it. */
+      if (view === "mystery" && v !== "mystery") {
+        resumeTarget.current = composing;
+        setComposing(null);
+      }
+      /* only a composer that was open when the person left comes back; one
+         closed with Cancel keeps its draft but stays closed */
+      const t = resumeTarget.current;
+      if (v === "mystery" && t) {
+        resumeTarget.current = null;
+        if (
+          composerDraft.current.has(t) &&
+          (t === "new" || liveEnvelopes.some((e) => e.id === t))
+        )
+          setComposing(t);
+      }
       setView(v);
     },
-    [view]
+    [view, liveEnvelopes, composing]
   );
 
   const flashTimer = useRef(null);
@@ -4942,6 +5035,7 @@ export default function MailDayLedger() {
             ...prev,
           ]
     );
+    composerDraft.current.delete(draft.id ?? "new");
     setComposing(null);
   }, []);
 
@@ -4949,10 +5043,12 @@ export default function MailDayLedger() {
      discarding an envelope, assigning it away, restoring a backup and
      cancelling a half-built envelope all leave blobs behind. One sweep covers
      every case. Held off while an undo is live, since that can bring an
-     envelope (and its photo ids) back. */
+     envelope (and its photo ids) back. A draft in composerDraft (an open
+     composer, or a closed one that kept its draft) holds its own photos: the
+     timer reads them when it fires and adds them to the keep set, so the
+     draft's photos survive while every other unused blob is still swept. */
   useEffect(() => {
     if (!loaded || undo || composing || syncBusy || !window.photos) return;
-    const keep = new Set(referencedPhotoIds);
     const t = setTimeout(() => {
       /* checked again HERE, not just in the guard above: a pull writes blobs
          while `envelopes` still holds the old list, so nothing re-runs this
@@ -4960,6 +5056,9 @@ export default function MailDayLedger() {
          photos we just downloaded. The ref is set synchronously; the state
          behind syncBusy is not. */
       if (syncingRef.current) return;
+      const keep = new Set(referencedPhotoIds);
+      for (const d of composerDraft.current.values())
+        for (const id of d.photos || []) keep.add(id);
       window.photos.sweep(keep).catch(() => {});
     }, 2000);
     return () => clearTimeout(t);
@@ -5286,6 +5385,12 @@ export default function MailDayLedger() {
      masthead shows val - missingVal as the figure already in hand. Both
      exclude canceled orders, since rangedItems already does. */
   const totals = useMemo(() => totalsOf(rangedItems, received), [rangedItems, received]);
+  const ledgerCards = useMemo(() => items.reduce((n, it) => n + it.qty, 0), [items]);
+  /* Reset also clears the envelopes, so its count must include their cards */
+  const envelopeCards = useMemo(
+    () => liveEnvelopes.reduce((n, e) => n + e.entries.reduce((m, x) => m + x.qty, 0), 0),
+    [liveEnvelopes]
+  );
 
   /* Packages fully checked in, for the masthead tally. */
   const pkgsDone = useMemo(() => packagesDone(packages, received), [packages, received]);
@@ -5407,6 +5512,21 @@ export default function MailDayLedger() {
      survives in entry.jsx's record, unread; removing a stored field is its own
      migration question. */
 
+  const versionMsgBox = (
+    <div
+      style={{
+        fontFamily: cochin,
+        fontSize: 13.5,
+        lineHeight: 1.4,
+        padding: "8px 10px",
+        background: C.redSoft,
+        color: C.red,
+      }}
+    >
+      {versionMsg}
+    </div>
+  );
+
   return (
     <div
       style={{
@@ -5441,10 +5561,10 @@ export default function MailDayLedger() {
         .mdl-rule i { flex: 1; height: 1px; background: ${C.gold}; opacity: .75; }
         .mdl-seal { width: clamp(36px, calc(20px + 4.2vw), 52px); height: auto; }
         .mdl-title { margin: 0; font-weight: 400; text-transform: uppercase;
-                     font-size: clamp(31px, calc(24px + 1.9vw), 38px);
+                     font-size: 31px; font-size: clamp(31px, calc(24px + 1.9vw), 38px);
                      letter-spacing: .22em; text-indent: .22em; line-height: 1.06; }
         .mdl-house { font-family: ${mono}; letter-spacing: .26em;
-                     font-size: clamp(8.5px, 2.7vw, 10px);
+                     font-size: 10px;
                      text-transform: uppercase; color: ${C.inkSoft}; margin-top: 9px; }
 
         .mdl-tallies { border-top: 1px solid ${C.line}; margin-top: 13px;
@@ -5465,7 +5585,7 @@ export default function MailDayLedger() {
         .mdl-thirds .mdl-wide { flex: 1.7; }
         .mdl-thirds .mdl-mid { border-left: 1px solid ${C.line};
                                border-right: 1px solid ${C.line}; }
-        .mdl-k { font-family: ${mono}; font-size: 8.5px; letter-spacing: .16em;
+        .mdl-k { font-family: ${mono}; font-size: 10px; letter-spacing: .16em;
                  text-transform: uppercase; color: ${C.inkSoft}; }
         .mdl-fig { font-family: ${mono}; font-size: 13px; margin-top: 3px;
                    white-space: nowrap; }
@@ -5508,7 +5628,7 @@ export default function MailDayLedger() {
                       background: ${C.card}; margin-bottom: 14px; }
         .mdl-switch button { position: relative; z-index: 1;
                       font-family: ${mono}; letter-spacing: .09em;
-                      font-size: clamp(9px, 2.75vw, 11px);
+                      font-size: clamp(10px, 2.75vw, 11px);
                       padding: clamp(7px, 2.1vw, 9px) 4px;
                       text-transform: uppercase; border: none;
                       background: transparent; color: ${C.inkSoft};
@@ -5532,6 +5652,9 @@ export default function MailDayLedger() {
            third, 11px by 760. */
         .mdl-acts { display: grid; grid-auto-flow: column;
                     grid-auto-columns: minmax(0, 1fr); }
+        /* armed: Cancel takes what it needs, the ask takes the rest, so the
+           count in "Tap again to clear N cards" is never cut off */
+        .mdl-acts.arming { grid-template-columns: auto minmax(0, 1fr); }
         .mdl-act { height: 40px; min-width: 0; padding: 0 6px; border: 0;
                    border-right: 1px solid ${C.line}; background: transparent;
                    font-family: ${mono}; font-size: clamp(10px, 2.7vw, 11px);
@@ -5541,7 +5664,7 @@ export default function MailDayLedger() {
                    white-space: nowrap; }
         .mdl-act:last-child { border-right: 0; }
         .mdl-act > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-        .mdl-act i { font-style: normal; font-size: 8px; color: ${C.inkSoft};
+        .mdl-act i { font-style: normal; font-size: 10px; color: ${C.inkSoft};
                      flex-shrink: 0; transition: transform 140ms ease; }
         /* An .ahead rule used to live here too, for the Sync cell that
            turned accent when the other device was in front. Both are gone: a
@@ -6220,7 +6343,7 @@ export default function MailDayLedger() {
                         style={cancCell(showCanceled)}
                       >
                         {canceledCount} canceled
-                        <i style={{ fontSize: 9 }}>{showCanceled ? "▾" : "▸"}</i>
+                        <i style={{ fontSize: 10 }}>{showCanceled ? "▾" : "▸"}</i>
                       </button>
                     )}
                     {/* a filter, not a disclosure — hence the Showing cell's
@@ -6236,7 +6359,7 @@ export default function MailDayLedger() {
                         {stampedCount} stamped
                         <i
                           style={{
-                            fontSize: 9,
+                            fontSize: 10,
                             color: showStamped ? C.accent : C.inkSoft,
                           }}
                         >
@@ -6352,7 +6475,7 @@ export default function MailDayLedger() {
                     : "The backup needs attention — tap to fix"}
                 </button>
               )}
-              <div className="mdl-acts">
+              <div className={confirmReset ? "mdl-acts arming" : "mdl-acts"}>
                 {(items.length > 0 || liveEnvelopes.length > 0) && !confirmReset && (
                   <button
                     onClick={() => setShowUpload((s) => !s)}
@@ -6385,6 +6508,7 @@ export default function MailDayLedger() {
                          tall; stacked they push the packages off the screen. */
                       setSyncOpen(false);
                       setVersionMsg(null);
+                      setVersionMsgAt(null);
                       setHistoryOpen((o) => !o);
                     }}
                     aria-expanded={historyOpen}
@@ -6395,13 +6519,20 @@ export default function MailDayLedger() {
                     <i>▾</i>
                   </button>
                 )}
+                {confirmReset && (
+                  <button autoFocus onClick={disarm} className="mdl-act">
+                    <span>Cancel</span>
+                  </button>
+                )}
                 {(items.length > 0 || liveEnvelopes.length > 0) && (
                   <button
                     onClick={resetAll}
                     className={confirmReset ? "mdl-act armed" : "mdl-act danger"}
                   >
                     <span>
-                      {confirmReset ? "Tap again to clear everything" : "Reset"}
+                      {confirmReset
+                        ? `Tap again to clear ${cardsOf(ledgerCards + envelopeCards)}`
+                        : "Reset"}
                     </span>
                   </button>
                 )}
@@ -6446,20 +6577,7 @@ export default function MailDayLedger() {
                       </button>
                     ))}
                   </div>
-                  {versionMsg && (
-                    <div
-                      style={{
-                        fontFamily: cochin,
-                        fontSize: 13.5,
-                        lineHeight: 1.4,
-                        padding: "8px 10px",
-                        background: C.redSoft,
-                        color: C.red,
-                      }}
-                    >
-                      {versionMsg}
-                    </div>
-                  )}
+                  {versionMsg && !versionMsgAt && versionMsgBox}
                   {versionsDown && (
                     <div
                       style={{
@@ -6541,14 +6659,26 @@ export default function MailDayLedger() {
                                 </>
                               )}
                             </div>
-                            <button
-                              onClick={() => restoreVersion(v.id)}
-                              style={restoreCell(confirmRestore === v.id)}
-                            >
-                              {confirmRestore === v.id
-                                ? "Tap again to replace everything"
-                                : "Restore this version"}
-                            </button>
+                            <div style={{ display: "flex", gap: 8 }}>
+                              {confirmRestore === v.id && (
+                                <button
+                                  autoFocus
+                                  onClick={disarm}
+                                  style={{ ...restoreCell(false), color: C.ink, background: C.card, border: `1px solid ${C.line}` }}
+                                >
+                                  Cancel
+                                </button>
+                              )}
+                              <button
+                                onClick={() => restoreVersion(v.id)}
+                                style={{ ...restoreCell(confirmRestore === v.id), flex: 1 }}
+                              >
+                                {confirmRestore === v.id
+                                  ? `Tap again to replace ${cardsOf(ledgerCards)}`
+                                  : "Restore this version"}
+                              </button>
+                            </div>
+                            {versionMsg && versionMsgAt === v.id && versionMsgBox}
                           </div>
                         )}
                       </div>
@@ -6577,14 +6707,26 @@ export default function MailDayLedger() {
                         </button>
                         {open && (
                           <div style={{ marginTop: 8 }}>
-                            <button
-                              onClick={() => restoreOlder(v.sha)}
-                              style={restoreCell(confirmRestore === v.sha)}
-                            >
-                              {confirmRestore === v.sha
-                                ? "Tap again to replace everything"
-                                : "Restore this version"}
-                            </button>
+                            <div style={{ display: "flex", gap: 8 }}>
+                              {confirmRestore === v.sha && (
+                                <button
+                                  autoFocus
+                                  onClick={disarm}
+                                  style={{ ...restoreCell(false), color: C.ink, background: C.card, border: `1px solid ${C.line}` }}
+                                >
+                                  Cancel
+                                </button>
+                              )}
+                              <button
+                                onClick={() => restoreOlder(v.sha)}
+                                style={{ ...restoreCell(confirmRestore === v.sha), flex: 1 }}
+                              >
+                                {confirmRestore === v.sha
+                                  ? `Tap again to replace ${cardsOf(ledgerCards)}`
+                                  : "Restore this version"}
+                              </button>
+                            </div>
+                            {versionMsg && versionMsgAt === v.sha && versionMsgBox}
                           </div>
                         )}
                       </div>
@@ -6593,13 +6735,16 @@ export default function MailDayLedger() {
                   {window.remote &&
                     typeof window.remote.listVersions === "function" &&
                     olderVersions === null && (
-                      <button
-                        onClick={loadOlder}
-                        disabled={olderBusy}
-                        style={{ ...linkBtn, alignSelf: "flex-start" }}
-                      >
-                        {olderBusy ? "Looking…" : "Load older versions"}
-                      </button>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start" }}>
+                        <button
+                          onClick={loadOlder}
+                          disabled={olderBusy}
+                          style={linkBtn}
+                        >
+                          {olderBusy ? "Looking…" : "Load older versions"}
+                        </button>
+                        {versionMsg && versionMsgAt === "older" && versionMsgBox}
+                      </div>
                     )}
                   {olderVersions?.length === 0 && (
                     <div style={partVal}>
@@ -6682,7 +6827,7 @@ export default function MailDayLedger() {
                       }}
                     >
                       Your other device has pushed newer lines. Merge brings
-                      them in — nothing here is replaced.
+                      them in. A later change to the same card wins.
                     </div>
                   )}
                   {confirmPull && (
@@ -6905,6 +7050,8 @@ export default function MailDayLedger() {
             {composing === "new" ? (
               <EnvelopeComposer
                 suggestions={outstandingNames}
+                target="new"
+                draftRef={composerDraft}
                 onSave={saveEnvelope}
                 onCancel={() => setComposing(null)}
               />
@@ -6950,6 +7097,8 @@ export default function MailDayLedger() {
                   <EnvelopeComposer
                     initial={env}
                     suggestions={outstandingNames}
+                    target={env.id}
+                    draftRef={composerDraft}
                     onSave={saveEnvelope}
                     onCancel={() => setComposing(null)}
                   />
@@ -6997,9 +7146,8 @@ export default function MailDayLedger() {
                   lineHeight: 1.5,
                 }}
               >
-                Nothing waiting. When a package turns up that you can’t place,
-                record what was in it here — nothing is checked in until you
-                say which package it came from.
+                Nothing waiting: record a package here when you can’t tell who
+                sent it.
               </div>
             )}
 
@@ -7072,10 +7220,17 @@ export default function MailDayLedger() {
               }}
             >
               {hideDone && !query
-                ? "Everything here has been checked in. 🎉"
+                ? "Everything here has been checked in."
                 : view === "items"
                 ? "No items match that search."
                 : "No cards match that search."}
+              {query && (
+                <div style={{ marginTop: 10 }}>
+                  <button onClick={() => setQuery("")} style={linkBtn}>
+                    Clear search
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

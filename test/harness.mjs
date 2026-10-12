@@ -809,7 +809,12 @@ export const btn = (re) => buttons().find((b) => re.test(b.textContent));
 export const allBtns = (re) => buttons().filter((b) => re.test(b.textContent));
 
 export const click = async (el, label) => {
-  if (!el) throw new Error(`no element to click: ${label || "(unlabelled)"}`);
+  /* a missing control is recorded as a failed case, and the run goes on: one
+     red case must not stop the groups after it from reporting their own */
+  if (!el) {
+    fails.push(`no element to click: ${label || "(unlabelled)"}`);
+    return;
+  }
   await act(async () => {
     el.dispatchEvent(new win.MouseEvent("click", { bubbles: true }));
   });
@@ -863,10 +868,16 @@ export const openRange = async () => {
 /* Sort is a panel of options now, not a <select>, so pick by visible label. */
 export const pickSort = async (label) => {
   const c = cell(/^Sorted by/);
-  if (!c) throw new Error("no sort cell on screen");
+  if (!c) {
+    fails.push("no sort cell on screen");
+    return;
+  }
   if (c.getAttribute("aria-expanded") !== "true") await click(c, "open sort");
   const opt = buttons().find((b) => b.textContent.trim() === label);
-  if (!opt) throw new Error(`no sort option "${label}"`);
+  if (!opt) {
+    fails.push(`no sort option "${label}"`);
+    return;
+  }
   await click(opt, `sort ${label}`);
 };
 
@@ -1076,10 +1087,9 @@ export async function record(names, note) {
   await click(btn(/Save envelope/), "save envelope");
 }
 
-/** Two-tap assign against the Nth candidate. */
+/** One-tap assign against the Nth candidate. Undo is the way back, not a second tap. */
 export async function assign(n = 0) {
   await click(allBtns(/^This one$/)[n], `candidate ${n}`);
-  await click(btn(/Tap again to check in/), "confirm assign");
 }
 
 export const envelopeCount = () => allBtns(/^Discard$/).length;

@@ -11,6 +11,11 @@
      2. Checking one card in moves no other row in that card (invariant no-layout-shift-under-pointer;
         measurements/card-reserved-geometry.md). Measured at 375px in Packages
         and in Tally.
+     3. Arming Discard on an envelope card moves no element on the page and
+        causes no sideways overflow. The arm adds a panel; it takes no space.
+        Measured at 375px in Orphaned, the view that holds envelope cards.
+     4. The armed Reset ask shows its full label: the text is not cut, so no
+        ellipsis. Measured at 375px in each view.
 
    Reduced motion is on, so animation does not skew the numbers. Exit 0 when all
    checks pass; exit 1 with one `FAIL` line per failure and one summary line. */
@@ -192,6 +197,68 @@ const overflowOf = () => ({
   iw: window.innerWidth,
 });
 
+/* Every element's box, in document coordinates, so a scroll between the two
+   snapshots reads as no move. Kept on window: the before-snapshot outlives
+   the evaluate call that takes it. A sticky or fixed element is the exception:
+   a scroll moves it on screen while its place in the layout stays put, so it
+   is marked `pinned` and skipped. Its descendants move with it, so an element
+   inside a pinned one is marked too. */
+/* page.evaluate serialises this function, so the helper lives inside it. */
+const snapshotBoxes = () => {
+  const isPinned = (el) => {
+    for (let n = el; n && n !== document.documentElement; n = n.parentElement) {
+      const p = getComputedStyle(n).position;
+      if (p === "sticky" || p === "fixed") return true;
+    }
+    return false;
+  };
+  const boxes = new Map();
+  document.querySelectorAll("body *").forEach((el) => {
+    const r = el.getBoundingClientRect();
+    boxes.set(el, {
+      top: r.top + window.scrollY,
+      left: r.left + window.scrollX,
+      w: r.width,
+      h: r.height,
+      pinned: isPinned(el),
+    });
+  });
+  window.__screenBoxes = boxes;
+  return boxes.size;
+};
+
+const boxesMovedSince = (tol) => {
+  const moved = [];
+  let gone = 0;
+  for (const [el, b] of window.__screenBoxes) {
+    if (!el.isConnected) {
+      gone++;
+      continue;
+    }
+    if (b.pinned) continue; // sticky or fixed: a scroll moves it, not a layout change
+    const r = el.getBoundingClientRect();
+    const d = Math.max(
+      Math.abs(r.top + window.scrollY - b.top),
+      Math.abs(r.left + window.scrollX - b.left),
+      Math.abs(r.width - b.w),
+      Math.abs(r.height - b.h)
+    );
+    if (d > tol) moved.push({ tag: el.tagName, text: (el.textContent || "").trim().slice(0, 40), d });
+  }
+  return { gone, count: moved.length, first: moved[0] || null };
+};
+
+/* The armed Reset label: its own text span, measured against its cell. */
+const resetAskProbe = () => {
+  const span = document.querySelector("button.mdl-act.armed > span");
+  if (!span) return null;
+  return {
+    label: span.textContent.trim(),
+    sw: span.scrollWidth,
+    cw: span.clientWidth,
+  };
+};
+
 /* ---------- harness ---------- */
 
 const failures = [];
@@ -323,6 +390,88 @@ async function rowShiftCheck(browser, { view, anchorText, expand }) {
   }
 }
 
+/* Arm Discard on the first envelope card. Nothing on the page may move, and
+   the page may not widen. The Discard panel is absolutely placed, so it is
+   the one thing the arm may add; it must not push anything else. */
+async function discardArmCheck(browser) {
+  const name = "discard arm orphaned 375px";
+  checks++;
+  const { ctx, page, pageErrors } = await openSeeded(browser, 375);
+  try {
+    if (!(await loadedOk(page))) {
+      fail(name, "seeded ledger did not render");
+      return;
+    }
+    await showView(page, "Orphaned");
+    const discard = page.locator("button").filter({ hasText: /^Discard$/ });
+    if ((await discard.count()) === 0) {
+      fail(name, "no envelope card with a Discard control in Orphaned");
+      return;
+    }
+    await page.evaluate(snapshotBoxes);
+    await discard.first().click();
+    try {
+      await page.waitForFunction(
+        () => [...document.querySelectorAll("button")].some((b) => /^Tap again to discard/.test(b.textContent.trim())),
+        null,
+        { timeout: 4000 }
+      );
+    } catch {
+      fail(name, "the first tap did not open the Discard ask");
+      return;
+    }
+    await page.waitForTimeout(300);
+    const moved = await page.evaluate(boxesMovedSince, TAP_TOLERANCE_PX);
+    if (moved.gone)
+      fail(name, `${moved.gone} element(s) left the page when Discard was armed`);
+    if (moved.count)
+      fail(
+        name,
+        `${moved.count} element(s) moved when Discard was armed; first is <${moved.first.tag.toLowerCase()}> "${moved.first.text}" by ${moved.first.d.toFixed(2)}px`
+      );
+    const { sw, iw } = await page.evaluate(overflowOf);
+    if (sw > iw) fail(name, `document is ${sw}px wide in a ${iw}px viewport once Discard is armed`);
+    for (const e of pageErrors) fail(name, `page error: ${e}`);
+  } finally {
+    await ctx.close();
+  }
+}
+
+/* Arm Reset in one view and read its ask. The label is one line, and the cell
+   that holds it must be wide enough: scrollWidth above clientWidth is the
+   ellipsis the cell would otherwise hide behind. */
+async function resetAskCheck(browser, view) {
+  const name = `reset ask ${view} 375px`;
+  checks++;
+  const { ctx, page, pageErrors } = await openSeeded(browser, 375);
+  try {
+    if (!(await loadedOk(page))) {
+      fail(name, "seeded ledger did not render");
+      return;
+    }
+    await showView(page, view);
+    await page.locator("button.mdl-act.danger").first().click();
+    try {
+      await page.waitForSelector("button.mdl-act.armed", { timeout: 4000 });
+    } catch {
+      fail(name, "the first Reset tap did not arm the ask");
+      return;
+    }
+    const ask = await page.evaluate(resetAskProbe);
+    if (!ask) {
+      fail(name, "the armed Reset has no label span");
+      return;
+    }
+    if (!/^Tap again to clear \d/.test(ask.label))
+      fail(name, `the armed label reads "${ask.label}"`);
+    if (ask.sw > ask.cw + TAP_TOLERANCE_PX)
+      fail(name, `the ask label is cut: ${ask.sw}px of text in a ${ask.cw}px cell`);
+    for (const e of pageErrors) fail(name, `page error: ${e}`);
+  } finally {
+    await ctx.close();
+  }
+}
+
 async function main() {
   const t0 = Date.now();
   if (!existsSync(PAGE)) {
@@ -345,6 +494,8 @@ async function main() {
       () => overflowChecks(browser),
       () => rowShiftCheck(browser, { view: "Packages", anchorText: "Alpha Cards", expand: false }),
       () => rowShiftCheck(browser, { view: "Tally", anchorText: "Lightning Bolt", expand: true }),
+      () => discardArmCheck(browser),
+      ...VIEWS.map((view) => () => resetAskCheck(browser, view)),
     ];
     for (const phase of phases) {
       try {

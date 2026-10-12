@@ -1,10 +1,10 @@
-# The sweep drops photos no envelope uses
+# The sweep drops photos no envelope or draft uses
 
 One sweep effect covers every path that orphans a photo. Nothing deletes photos implicitly.
 
 **Holds while:** the sweep effect in `src/app.jsx` returns early when `undo`, `composing` or `syncBusy` is set.
 
-The sweep covers discard, assign-away, restore, and a cancelled composer. It drops any blob that no envelope references.
+The sweep covers discard, assign-away, restore, and a cancelled composer. It drops any blob that no envelope or draft references. A closed draft's photos are kept, as `orphan-entry-takes-one-input` rules.
 
 It is held off while an undo is live, or while a composer is open. Either one can bring photo ids back. The sync guards are in `photo-sweep-two-guards`.
 
