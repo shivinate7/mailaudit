@@ -6,6 +6,7 @@ public final class LedgerStore {
     private let fileURL: URL
     private let now: () -> Double
     private var doc: [String: Any] = [:]
+    private var loaded = false
     public private(set) var generation = 0
 
     public init(fileURL: URL, now: @escaping () -> Double) {
@@ -18,13 +19,18 @@ public final class LedgerStore {
         guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw CocoaError(.fileReadCorruptFile)
         }
+        loaded = false
+        if let m = obj["mailday"], (m as? Int) != 1 { throw CocoaError(.fileReadCorruptFile) }
+        if let e = obj["envelopes"], e as? [[String: Any]] == nil { throw CocoaError(.fileReadCorruptFile) }
         doc = obj
         doc["mailday"] = 1
         for k in ["received", "receivedAt", "stamps"] where doc[k] as? [String: Any] == nil { doc[k] = [String: Any]() }
         if doc["envelopes"] as? [[String: Any]] == nil { doc["envelopes"] = [[String: Any]]() }
+        loaded = true
     }
 
     public func save() throws {
+        guard loaded else { throw CocoaError(.fileReadCorruptFile) }
         let data = try JSONSerialization.data(withJSONObject: doc, options: [.sortedKeys])
         try data.write(to: fileURL, options: .atomic)
     }
