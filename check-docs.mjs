@@ -386,6 +386,25 @@ for (const { file, span, index, prose: fileProse } of allSpans) {
 }
 console.log(`check:docs: ${namesJudged} code name(s) judged against the code`);
 
+/* ---------- claim 4: markdown link targets in README.md and CLAUDE.md resolve ----------
+   [text](target): a relative file target must exist. URLs and bare #anchors are
+   not judged. A #fragment on a file target is stripped; the file is judged. */
+{
+  let links = 0;
+  for (const f of prose.filter((x) => x.path === "README.md" || x.path === "CLAUDE.md")) {
+    for (const m of f.prose.matchAll(/\]\(([^)\s]+)\)/g)) {
+      const t = m[1].split("#")[0];
+      if (!t || /^[a-z][a-z0-9+.-]*:/i.test(t)) continue;
+      links++;
+      if (!existsSync(t)) {
+        console.error(`check:docs: ${f.path}:${lineAt(f.prose, m.index)} links to \`${t}\`, which does not exist`);
+        failures++;
+      }
+    }
+  }
+  console.log(`check:docs: ${links} markdown link target(s) checked`);
+}
+
 console.log(`check:docs: walked ${files.length} file(s) (CLAUDE.md, README.md + ${files.length - 2} record(s))`);
 console.log(`check:docs: ${checked} path(s) checked against the filesystem, outside any fence`);
 console.log(`check:docs: ${refused.size} backtick span(s) refused as not path-like`);

@@ -400,6 +400,39 @@ function closestSlug(token, slugs) {
   console.log(`check:records: pins check — ${bad} problem(s)`);
 }
 
+/* ---------- claim 7: decisions hold while something; open threads carry a status; the index lists a slug once ----------
+   Every decisions/*.md holds a "**Holds while:**" line (the fact that dates it,
+   see records-name-what-dates-them). Every record CLAUDE.md lists under
+   "## Open threads" holds a "**Status:**" line. CLAUDE.md lists no slug twice. */
+{
+  let bad = 0;
+  const claude = readFileSync("CLAUDE.md", "utf8");
+  for (const r of records) {
+    if (r.folder === "decisions" && !/^\*\*Holds while:\*\*/m.test(r.text)) {
+      console.error(`check:records: ${r.path}: no "**Holds while:**" line`);
+      bad++;
+    }
+  }
+  const open = (claude.split(/^## Open threads$/m)[1] ?? "").split(/^## /m)[0];
+  for (const m of open.matchAll(/^- `([a-z0-9-]+)`/gm)) {
+    const r = records.find((x) => x.slug === m[1]);
+    if (r && !/^\*\*Status:\*\*/m.test(r.text)) {
+      console.error(`check:records: ${r.path}: open record has no "**Status:**" line`);
+      bad++;
+    }
+  }
+  const seen = new Set();
+  for (const m of claude.matchAll(/^- `([a-z0-9-]+)`/gm)) {
+    if (seen.has(m[1])) {
+      console.error(`check:records: CLAUDE.md lists \`${m[1]}\` more than once`);
+      bad++;
+    }
+    seen.add(m[1]);
+  }
+  failures += bad;
+  console.log(`check:records: holds-while, status and index-once check - ${bad} problem(s)`);
+}
+
 if (failures) {
   console.error(`check:records: ${failures} problem(s) found`);
   process.exit(1);
