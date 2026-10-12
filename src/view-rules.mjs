@@ -55,11 +55,11 @@ export function parseItems(rows) {
 
 /* lost-mail heuristics for untracked, unreceived mail:
    14d ≈ TCGplayer est. delivery window + grace; 30d = refund deadline floor */
-export function lostMail(date, tracking, done) {
+export function lostMail(date, tracking, done, now = Date.now()) {
   if (done || !/^without tracking$/i.test(tracking || "")) return null;
   const t = Date.parse(date);
   if (Number.isNaN(t)) return null;
-  const days = Math.floor((Date.now() - t) / 86400000);
+  const days = Math.floor((now - t) / 86400000);
   if (days >= 30) return { tier: "deadline", days };
   if (days >= 14) return { tier: "maybe", days };
   return null;

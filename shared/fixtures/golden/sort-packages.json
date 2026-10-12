@@ -1,0 +1,32 @@
+{
+  "newest": [
+    "B1::Beta Games",
+    "A1::Alpha Cards",
+    "C1::Gamma Cards",
+    "D1::Delta Cards"
+  ],
+  "oldest": [
+    "D1::Delta Cards",
+    "C1::Gamma Cards",
+    "A1::Alpha Cards",
+    "B1::Beta Games"
+  ],
+  "value": [
+    "D1::Delta Cards",
+    "C1::Gamma Cards",
+    "B1::Beta Games",
+    "A1::Alpha Cards"
+  ],
+  "rate": [
+    "D1::Delta Cards",
+    "C1::Gamma Cards",
+    "B1::Beta Games",
+    "A1::Alpha Cards"
+  ],
+  "seller": [
+    "A1::Alpha Cards",
+    "B1::Beta Games",
+    "D1::Delta Cards",
+    "C1::Gamma Cards"
+  ]
+}

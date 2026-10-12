@@ -1,0 +1,14 @@
+{
+  "none": {
+    "total": 14,
+    "got": 0,
+    "missingVal": 67.5,
+    "val": 67.5
+  },
+  "partial": {
+    "total": 14,
+    "got": 1,
+    "missingVal": 66.5,
+    "val": 67.5
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "missing": [
+    "Brainstorm",
+    "Counterspell",
+    "Lightning Bolt",
+    "Urza's Saga",
+    "Swords to Plowshares",
+    "Path to Exile",
+    "Ponder",
+    "Preordain"
+  ],
+  "basis": [
+    "Urza's Saga",
+    "Counterspell",
+    "Swords to Plowshares",
+    "Lightning Bolt",
+    "Path to Exile",
+    "Brainstorm",
+    "Ponder",
+    "Preordain"
+  ],
+  "ordered": [
+    "Brainstorm",
+    "Lightning Bolt",
+    "Counterspell",
+    "Path to Exile",
+    "Ponder",
+    "Preordain",
+    "Swords to Plowshares",
+    "Urza's Saga"
+  ],
+  "value": [
+    "Urza's Saga",
+    "Counterspell",
+    "Swords to Plowshares",
+    "Path to Exile",
+    "Brainstorm",
+    "Lightning Bolt",
+    "Ponder",
+    "Preordain"
+  ],
+  "rate": [
+    "Urza's Saga",
+    "Swords to Plowshares",
+    "Path to Exile",
+    "Counterspell",
+    "Lightning Bolt",
+    "Ponder",
+    "Preordain",
+    "Brainstorm"
+  ],
+  "name": [
+    "Brainstorm",
+    "Counterspell",
+    "Lightning Bolt",
+    "Path to Exile",
+    "Ponder",
+    "Preordain",
+    "Swords to Plowshares",
+    "Urza's Saga"
+  ]
+}

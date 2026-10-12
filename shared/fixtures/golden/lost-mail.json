@@ -1,0 +1,27 @@
+[
+  {
+    "gk": "B1::Beta Games",
+    "lost": {
+      "tier": "deadline",
+      "days": 41
+    }
+  },
+  {
+    "gk": "A1::Alpha Cards",
+    "lost": {
+      "tier": "deadline",
+      "days": 42
+    }
+  },
+  {
+    "gk": "C1::Gamma Cards",
+    "lost": null
+  },
+  {
+    "gk": "D1::Delta Cards",
+    "lost": {
+      "tier": "deadline",
+      "days": 103
+    }
+  }
+]
