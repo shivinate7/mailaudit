@@ -8,6 +8,8 @@ public final class LedgerStore {
     private var doc: [String: Any] = [:]
     private var loaded = false
     public private(set) var generation = 0
+    /// Entries the last load dropped from a damaged field; 0 when nothing was damaged.
+    public private(set) var droppedCount = 0
 
     public init(fileURL: URL, now: @escaping () -> Double) {
         self.fileURL = fileURL
@@ -16,16 +18,31 @@ public final class LedgerStore {
 
     public func load() throws {
         loaded = false
+        droppedCount = 0
         let data = try Data(contentsOf: fileURL)
         guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw CocoaError(.fileReadCorruptFile)
         }
         if let m = obj["mailday"], (m as? Int) != 1 { throw CocoaError(.fileReadCorruptFile) }
-        if let e = obj["envelopes"], e as? [[String: Any]] == nil { throw CocoaError(.fileReadCorruptFile) }
-        for k in ["received", "receivedAt", "stamps"] {
-            if let v = obj[k], v as? [String: Any] == nil { throw CocoaError(.fileReadCorruptFile) }
+        // The mend is salvageLedger in rules.js, the one home of the rule. The original
+        // text goes in as the argument, so no number is re-formatted on the way.
+        guard let bundle = Bundle.module.url(forResource: "rules", withExtension: "js"),
+              let text = String(data: data, encoding: .utf8) else { throw CocoaError(.fileReadCorruptFile) }
+        let out = try RulesCore(bundleURL: bundle).call("salvageLedger", "[" + text + "]")
+        guard let res = try JSONSerialization.jsonObject(with: Data(out.utf8)) as? [String: Any],
+              let mended = res["data"] as? [String: Any], let dropped = res["dropped"] as? Int else {
+            throw CocoaError(.fileReadCorruptFile)
         }
-        doc = obj
+        if dropped > 0 {
+            // Copy first. If the copy fails, load throws and nothing is mended.
+            let stamp = ISO8601DateFormatter().string(from: Date(timeIntervalSince1970: now() / 1000))
+                .replacingOccurrences(of: ":", with: "")
+            let keep = fileURL.deletingLastPathComponent()
+                .appending(path: "ledger.kept-\(stamp).json")
+            try data.write(to: keep, options: .withoutOverwriting)
+        }
+        doc = mended
+        droppedCount = dropped
         doc["mailday"] = 1
         for k in ["received", "receivedAt", "stamps"] where doc[k] == nil { doc[k] = [String: Any]() }
         if doc["envelopes"] as? [[String: Any]] == nil { doc["envelopes"] = [[String: Any]]() }

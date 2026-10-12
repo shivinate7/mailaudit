@@ -6,7 +6,7 @@ let package = Package(
     platforms: [.macOS("26.0"), .iOS("26.0")],
     products: [.library(name: "ManifestKit", targets: ["ManifestKit"])],
     targets: [
-        .target(name: "ManifestKit"),
+        .target(name: "ManifestKit", resources: [.copy("rules.js")]),
         .testTarget(
             name: "ManifestKitTests", dependencies: ["ManifestKit"]
         ),

@@ -1,21 +1,23 @@
 import Foundation
 import JavaScriptCore
 
-/// Runs the bundled web rules (Resources/rules.js) in JavaScriptCore.
-/// Data crosses as JSON strings. The context lives inside the actor, so it is
-/// only ever touched from one place (rules-run-in-javascriptcore).
-public actor RulesEngine {
-    public enum Failure: Error, Equatable {
-        case bundleUnreadable(String)
-        case bundleDidNotLoad(String)
-        case unknownFunction(String)
-        case threw(String)
-    }
+public enum RulesFailure: Error, Equatable {
+    case bundleUnreadable(String)
+    case bundleDidNotLoad(String)
+    case unknownFunction(String)
+    case threw(String)
+}
+
+/// The synchronous core: the bundled web rules (Resources/rules.js) in one JSContext.
+/// Not thread-safe. RulesEngine wraps it in an actor; LedgerStore.load uses it
+/// directly because load is synchronous (rules-run-in-javascriptcore).
+final class RulesCore {
+    typealias Failure = RulesFailure
 
     private let context: JSContext
     private let invoke: JSValue
 
-    public init(bundleURL: URL) throws {
+    init(bundleURL: URL) throws {
         guard let source = try? String(contentsOf: bundleURL, encoding: .utf8) else {
             throw Failure.bundleUnreadable(bundleURL.path)
         }
@@ -41,7 +43,7 @@ public actor RulesEngine {
     }
 
     /// Calls `Rules[name](...JSON.parse(argsJSON))` and returns the result as JSON.
-    public func call(_ name: String, _ argsJSON: String) throws -> String {
+    func call(_ name: String, _ argsJSON: String) throws -> String {
         var thrown: String?
         context.exceptionHandler = { _, e in thrown = e?.toString() }
         defer { context.exceptionHandler = nil }
@@ -52,5 +54,21 @@ public actor RulesEngine {
         }
         guard let s = out?.toString() else { throw Failure.threw("no result") }
         return s
+    }
+}
+
+/// Runs the bundled web rules in JavaScriptCore.
+/// Data crosses as JSON strings. The context lives inside the actor, so it is
+/// only ever touched from one place (rules-run-in-javascriptcore).
+public actor RulesEngine {
+    public typealias Failure = RulesFailure
+
+    private let core: RulesCore
+
+    public init(bundleURL: URL) throws { core = try RulesCore(bundleURL: bundleURL) }
+
+    /// Calls `Rules[name](...JSON.parse(argsJSON))` and returns the result as JSON.
+    public func call(_ name: String, _ argsJSON: String) throws -> String {
+        try core.call(name, argsJSON)
     }
 }
