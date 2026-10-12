@@ -1867,11 +1867,19 @@ async function peekTwice() {
    photo upload through the ledger's error path would offer the user a button
    that silently discards another device's check-ins. Photos must never be able
    to arm that. */
+/* A timer that only schedules background work (a push, a retry, a sweep) must
+   not keep a Node host alive after the page is gone. In a browser the handle
+   is a number and unref does not exist, so this is a plain setTimeout there. */
+function bgTimeout(fn, ms) {
+  const t = setTimeout(fn, ms);
+  t?.unref?.();
+  return t;
+}
 const NO_PHOTO_BACKUP =
   "Some photos are not backed up yet. They stay on this device and sync again on their own.";
 const PHOTO_SAYS = {
   "no-access":
-    "Photos need a sync key — this device has none, so they cannot sync.",
+    "Photos need more setup on this device, so they could not sync from it.",
   "no-key": "Photos need a key to sync. The ledger above is safe either way.",
   auth: NO_PHOTO_BACKUP,
   forbidden: NO_PHOTO_BACKUP,
@@ -3171,7 +3179,7 @@ export default function MailDayLedger() {
   payloadRef.current = { items, received, receivedAt, envelopes, stamps, dateFilter, sortBy, itemSort };
   useEffect(() => {
     if (!loaded || !workerSyncedAt) return;
-    const t = setTimeout(() => {
+    const t = bgTimeout(() => {
       window.storage
         .set(
           STORAGE_KEY,
@@ -3747,7 +3755,7 @@ syncBroken === "seeded"
       disarm();
       set(value);
       clearTimeout(resetTimer.current);
-      resetTimer.current = setTimeout(disarm, 4000);
+      resetTimer.current = bgTimeout(disarm, 4000);
     },
     [disarm]
   );
@@ -4166,7 +4174,7 @@ syncBroken === "seeded"
            dozen uploads are still queued is simply a lie, and it re-enables the
            button into a second concurrent loop */
         setPushState("pushed");
-        flashTimer.current = setTimeout(() => setPushState("idle"), 2500);
+        flashTimer.current = bgTimeout(() => setPushState("idle"), 2500);
         return { ok: true };
       } catch (e) {
         const code = e?.code || "server";
@@ -4411,7 +4419,7 @@ syncBroken === "seeded"
           ]);
           if (syncGen.current !== gen) return { ok: false, code: "server" };
           setPushState("pushed");
-          flashTimer.current = setTimeout(() => setPushState("idle"), 2500);
+          flashTimer.current = bgTimeout(() => setPushState("idle"), 2500);
         }
         return { ok: true };
       } catch (e) {
@@ -4517,7 +4525,7 @@ syncBroken === "seeded"
     if (!idle || mergeBlocked || noticeOpen || syncingRef.current) {
       /* wake when the idle gate opens; an armed guard is re-checked each second */
       const left = IDLE_APPLY_MS - (Date.now() - lastActivity.current);
-      applyTimer.current = setTimeout(() => tryApplyRef.current(), idle ? 1000 : Math.max(left, 100));
+      applyTimer.current = bgTimeout(() => tryApplyRef.current(), idle ? 1000 : Math.max(left, 100));
       return;
     }
     const reply = pendingReply.current;
@@ -4629,7 +4637,7 @@ syncBroken === "seeded"
     const wait = backoffMs(failN.current++);
     nextTry.current = Date.now() + wait;
     clearTimeout(retryTimer.current);
-    retryTimer.current = setTimeout(() => postRef.current(), wait);
+    retryTimer.current = bgTimeout(() => postRef.current(), wait);
   };
   const postRef = useRef(null);
   postRef.current = () => {
@@ -4682,7 +4690,7 @@ syncBroken === "seeded"
         r.code === "ok"
           ? r.body?.ledger && lacksRef.current(r.body.ledger)
           : r.code === "empty" && holdsUserDataRef.current();
-      if (send) setTimeout(() => postRef.current(), SYNC_COLD_POST_MS);
+      if (send) bgTimeout(() => postRef.current(), SYNC_COLD_POST_MS);
     }
   };
   /* Paste a Worker key. The field is validated by the same rule as a #k= link,
@@ -4794,7 +4802,7 @@ syncBroken === "seeded"
       return;
     }
     clearTimeout(postTimer.current);
-    postTimer.current = setTimeout(() => {
+    postTimer.current = bgTimeout(() => {
       /* a save that left the snapshot equal to the server's ledger needs no POST */
       if (lastServer.current && !lacksRef.current(lastServer.current)) return;
       postRef.current();
@@ -4854,6 +4862,14 @@ syncBroken === "seeded"
      normal way the two devices meet. */
   const AUTO_PUSH_MS = 90000;
   const autoTimer = useRef(null);
+  /* unmount stops every pending background timer, so none fires into a dead app */
+  useEffect(
+    () => () => {
+      for (const r of [resetTimer, saveTimer, flashTimer, applyTimer, postTimer, retryTimer, autoTimer])
+        clearTimeout(r.current);
+    },
+    []
+  );
   const skipFirstAuto = useRef(true);
   const mirrorDirty = useRef(false);
 
@@ -4882,7 +4898,7 @@ syncBroken === "seeded"
          the pending push until the next edit — a mail day can easily end that
          way. */
       clearTimeout(autoTimer.current);
-      autoTimer.current = setTimeout(() => autoPushRef.current(), AUTO_PUSH_MS);
+      autoTimer.current = bgTimeout(() => autoPushRef.current(), AUTO_PUSH_MS);
       return;
     }
     const info = await window.remote.status().catch(() => null);
@@ -4939,7 +4955,7 @@ syncBroken === "seeded"
     }
     mirrorDirty.current = true;
     clearTimeout(autoTimer.current);
-    autoTimer.current = setTimeout(() => autoPushRef.current(), AUTO_PUSH_MS);
+    autoTimer.current = bgTimeout(() => autoPushRef.current(), AUTO_PUSH_MS);
     return () => clearTimeout(autoTimer.current);
     /* deliberately only the three fields that are REAL data. dateFilter,
        sortBy and itemSort are on the debounced save because they persist, but
@@ -5015,7 +5031,7 @@ syncBroken === "seeded"
      draft's photos survive while every other unused blob is still swept. */
   useEffect(() => {
     if (!loaded || undo || composing || syncBusy || !window.photos) return;
-    const t = setTimeout(() => {
+    const t = bgTimeout(() => {
       /* checked again HERE, not just in the guard above: a pull writes blobs
          while `envelopes` still holds the old list, so nothing re-runs this
          effect and a timer armed two seconds earlier would delete the very
