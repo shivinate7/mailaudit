@@ -7901,4 +7901,114 @@ eq(
   "66.4 after a reload whose Worker reply fails, Last sync still shows the saved Worker agreement"
 );
 
+/* ── 67. owner ruling 2026-10-12 ("Web refuses too"): a damaged saved field stops the load ──
+   A received, receivedAt, stamps or envelopes value that is present but not the right
+   shape stops the load. The page says so in plain words, writes nothing back, starts no
+   sync push, and keeps History and Backup reachable. An absent field still loads with its
+   default. JSON null counts as damaged, as native-ledger-is-raw-json rules.
+   Only the load path is ruled here. The Re-import and sync-reply paths are not tested.
+   Records: native-ledger-is-raw-json, saved-state-shape, recovery-control-not-state-gated,
+   every-restore-passes-applybackup. */
+const REFUSE67 = /damaged|corrupt|can.t be (read|loaded)|could not be (read|loaded)|won.t load/i;
+const KEY67 = "device-67-key";
+const GH67 = "github_pat_testtoken";
+const MILESTONE67 = "before reset";
+const VER67_TEXT = JSON.stringify({
+  mailday: 1,
+  items: ITEMS,
+  received: {},
+  receivedAt: {},
+  envelopes: [],
+  stamps: {},
+});
+const VERS67 = () => [
+  [
+    "ver-67",
+    {
+      meta: {
+        id: "ver-67",
+        at: Date.now() - 3600_000,
+        label: MILESTONE67,
+        kind: "milestone",
+        lines: 3,
+        checked: 0,
+        bytes: VER67_TEXT.length,
+      },
+      text: VER67_TEXT,
+    },
+  ],
+];
+const GOOD67 = { mailday: 1, items: ITEMS.slice(0, 3), received: {}, receivedAt: {}, envelopes: [], stamps: {} };
+/* present but the wrong shape: a string, an array, JSON null, a number. Envelopes
+   take an object and a non-object list too, since they are a list of objects. */
+const DAMAGED67 = {
+  received: ["x", [], null, 7],
+  receivedAt: ["x", [], null, 7],
+  stamps: ["x", [], null, 7],
+  envelopes: ["x", {}, null, [1]],
+};
+
+for (const [field, values] of Object.entries(DAMAGED67)) {
+  for (const value of values) {
+    const label = `67 ${field}=${JSON.stringify(value)}`;
+    const seeded = { ...GOOD67, [field]: value };
+    try {
+      await boot(seeded, null, {
+        versions: VERS67(),
+        syncAdapter: true,
+        syncKey: KEY67,
+        remoteKey: GH67,
+      });
+      /* the paths that leak on the old code: the Worker's silent write and the
+         GitHub auto-push both run on a background cycle, as group 66 drives them */
+      await backgroundFor(5 * 60_000);
+      await drain();
+      await sleep(SAVE_WAIT);
+      ok(REFUSE67.test(text()), `${label}: the page says the saved data is damaged`);
+      eq(saved(), seeded, `${label}: the saved ledger is not written back`);
+      eq(postCount(), 0, `${label}: no Worker push starts`);
+      eq(pushes().length, 0, `${label}: no GitHub push starts`);
+      eq(versionText(MILESTONE67), VER67_TEXT, `${label}: the milestone is not overwritten`);
+      await openHistory();
+      ok(!!btn(/^Backup$/), `${label}: History opens and Backup is reachable`);
+    } catch (e) {
+      ok(false, `${label} threw: ${e.message}`);
+    }
+  }
+}
+
+/* An absent field is not damage. Each one, and all four together, still loads. */
+for (const field of [...Object.keys(DAMAGED67), "all four"]) {
+  const label = `67 ${field} absent`;
+  const base = { mailday: 1, items: ITEMS.slice(0, 3) };
+  const state = { ...GOOD67 };
+  if (field === "all four") for (const k of Object.keys(DAMAGED67)) delete state[k];
+  else delete state[field];
+  try {
+    await boot(field === "all four" ? base : state, null);
+    await sleep(SAVE_WAIT);
+    ok(!REFUSE67.test(text()), `${label}: loads with no refusal`);
+    ok(text().includes(ITEMS[0].name), `${label}: the items still show`);
+  } catch (e) {
+    ok(false, `${label} threw: ${e.message}`);
+  }
+}
+
+/* A History restore from a refused load lands. Otherwise the refusal would leave the
+   user with no way back to a good ledger. */
+try {
+  await boot({ ...GOOD67, received: "x" }, null, { versions: VERS67(), syncAdapter: true, syncKey: KEY67 });
+  await sleep(SAVE_WAIT);
+  await openHistory();
+  await click(btn(new RegExp(MILESTONE67)), "expand the milestone");
+  await click(btn(/Restore this version/), "arm restore");
+  if (btn(/Tap again to replace/)) await click(btn(/Tap again to replace/), "confirm restore");
+  await settle();
+  await sleep(SAVE_WAIT);
+  eq(saved().received, {}, "67.7 a History restore from a refused load replaces the damaged field");
+  eq(saved().items?.length, ITEMS.length, "67.7 a History restore from a refused load brings the version's items back");
+} catch (e) {
+  ok(false, `67.7 threw: ${e.message}`);
+}
+
 report();
