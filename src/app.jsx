@@ -4266,7 +4266,7 @@ syncBroken === "seeded"
           tryApplyRef.current();
           if (window.sync) {
             try {
-              await settleReply(await withTimeout(window.sync.post(merged)), true);
+              await settleReply(await withTimeout(sendPost(merged)), true);
             } catch {
               mirrorRef.current = false;
             }
@@ -4721,6 +4721,8 @@ syncBroken === "seeded"
   const settleReply = async (r, fromPost = false) => {
     /* Lane B1: a reply with unreadable entries is kept in History as it came, then
        mended before it is held. No copy, no reply: it counts as a failed call. */
+    /* an empty server holds nothing to copy: the gate lifts with it */
+    if (r.code === "empty") copyFailedRef.current = false;
     if (r.code === "ok" && r.body?.ledger) {
       const { data, dropped } = salvageLedger(r.body.ledger);
       copyFailedRef.current = false;
@@ -4777,6 +4779,11 @@ syncBroken === "seeded"
   };
   const postRef = useRef(null);
   const copyFailedRef = useRef(false);
+  /* the one Worker send: refused while a damaged reply has no copy in History */
+  const sendPost = async (ledger) => {
+    if (copyFailedRef.current) throw new Error("copy-failed");
+    return window.sync.post(ledger);
+  };
   postRef.current = () => {
     const p = (async () => {
       if (!window.sync || !(await window.sync.hasKey())) return;
@@ -4794,7 +4801,7 @@ syncBroken === "seeded"
       postsInFlight.current++;
       let r;
       try {
-        r = await withTimeout(window.sync.post(snapshot()));
+        r = await withTimeout(sendPost(snapshot()));
       } finally {
         postsInFlight.current--;
       }
@@ -4861,6 +4868,7 @@ syncBroken === "seeded"
     setWorkerKeySet(true);
     /* a new key lifts a 401 stop and every backoff, and opens the socket if none is open */
     refusedRef.current = false;
+    copyFailedRef.current = false;
     failN.current = 0;
     nextTry.current = 0;
     tooBigRef.current = false;
