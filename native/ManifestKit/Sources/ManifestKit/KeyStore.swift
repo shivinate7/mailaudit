@@ -3,7 +3,7 @@ import Security
 
 /// The Keychain calls the key store needs. Tests pass an in-memory fake
 /// (native-key-via-url-scheme).
-public protocol KeychainBackend: Sendable {
+protocol KeychainBackend: Sendable {
     /// SecItemAdd. Throws when an item with the same service and account exists.
     func add(_ attributes: [String: Any]) throws
     /// SecItemCopyMatching with kSecReturnData. nil when no item matches.
@@ -52,12 +52,23 @@ struct KeyStore {
     }
 
     /// Replaces any stored key. Writes kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly.
+    /// If the add fails, the old key is put back and the error is rethrown.
     func save(_ key: String) throws {
+        let old = try self.key()
         try backend.delete(identity)
+        do {
+            try backend.add(attributes(for: key))
+        } catch {
+            if let old { try? backend.add(attributes(for: old)) }
+            throw error
+        }
+    }
+
+    private func attributes(for key: String) -> [String: Any] {
         var attrs = identity
         attrs[kSecValueData as String] = Data(key.utf8)
         attrs[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        try backend.add(attrs)
+        return attrs
     }
 
     func key() throws -> String? {
