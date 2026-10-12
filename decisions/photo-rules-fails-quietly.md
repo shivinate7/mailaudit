@@ -2,7 +2,7 @@
 
 The photo-sync rules live in `src/photo-rules.mjs`. Their rationale matches the other pure modules. Each of these decisions fails quietly when wrong. So the module stays pure, and it gets direct tests instead of trust.
 
-**Holds while:** `src/photo-rules.mjs` exports `photoName`, `photoIdFromName`, `mimeFromName`, `isAlreadyThere` and `photoPlan`, and `src/app.jsx` imports exactly three local modules.
+**Holds while:** `src/photo-rules.mjs` exports `photoName`, `photoIdFromName`, `mimeFromName`, `isAlreadyThere` and `photoPlan`, and `src/app.jsx` imports exactly five local modules.
 
 The module holds three rules:
 
@@ -10,7 +10,7 @@ The module holds three rules:
 - `isAlreadyThere`: keyed on the raw **status**, not the classified code. `classifyStatus` folds a sha-less 422 and a throttling 409 into the same `conflict`. They mean opposite things.
 - `photoPlan`: the set difference, three-valued on the remote.
 
-`entry.jsx` imports the module for naming. `app.jsx` imports it for `photoPlan`. That makes it one of the **three** local-module imports in `app.jsx`. The other two are `merge-rules.mjs` and `version-rules.mjs`. Otherwise, `app.jsx` depends only on react, react-dom and papaparse.
+`entry.jsx` imports the module for naming. `app.jsx` imports it for `photoPlan`. That makes it one of the **five** local-module imports in `app.jsx`. The other four are `view-rules.mjs`, `version-rules.mjs`, `sync-rules.mjs` and `merge-rules.mjs`. Otherwise, `app.jsx` depends only on react, react-dom, papaparse and the `shared/tokens.json` file.
 
 ## See also
 

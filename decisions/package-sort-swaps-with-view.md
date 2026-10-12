@@ -2,7 +2,7 @@
 
 The Packages view has its own sort, separate from the Tally sort. The sort control swaps with the view. The keys are newest, oldest, dollars remaining, unit rate, and seller A to Z.
 
-**Holds while:** `packageOrder` in `src/app.jsx` ranks the packages, and it reads `itemSort` for no package key.
+**Holds while:** `packageOrder` in `src/app.jsx` ranks the packages through `sortPackages` in `src/view-rules.mjs` (V9), and it reads `itemSort` for no package key.
 
 Both orders freeze while the user checks cards. The unit rate for a package is set out in `unit-rate-is-not-the-position`.
 

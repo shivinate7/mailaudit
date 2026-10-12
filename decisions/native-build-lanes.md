@@ -1,6 +1,6 @@
 # The native build runs in ordered lanes
 
-**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. W1 landed in PR #61, S1 in PR #62, and S2 has landed in PR #63. Their rows have left this table. No other lane has landed.
+**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. W1 landed in PR #61, S1 in PR #62, S2 in PR #63, and S3 in PR #64. Their rows have left this table. No other lane has landed.
 
 The native rebuild splits into lanes. W lanes change the Worker. S lanes change shared files and extract the rules. The C lane changes CI. N lanes build the native client. A lane that lands leaves this table, and git keeps its history.
 
@@ -20,8 +20,7 @@ The native rebuild splits into lanes. W lanes change the Worker. S lanes change 
 |---|---|---|---|---|
 | W2 Worker photo route | Worker files, not yet briefed | Not yet briefed. | Not yet briefed. | none |
 | W3 Worker daily snapshots | Worker files, not yet briefed | Not yet briefed. | Not yet briefed. | none |
-| S3 Extract rules, part 2 | src/view-rules.mjs, src/app.jsx, index.html | Tally pooling, the six sort keys, filters, totals, `outstandingNames`. Sticky rows and the frozen sort stay in the component. | `node test/view-rules.test.mjs && npm test && npm run check:build` | S2 (landed) |
-| S4 Fixtures and golden files | shared/fixtures, scripts/gen-golden.mjs, test/harness.mjs | `check:golden` goes red on a hand-edited golden file. | `npm run check:golden && npm test` | S3 |
+| S4 Fixtures and golden files | shared/fixtures, scripts/gen-golden.mjs, test/harness.mjs | `check:golden` goes red on a hand-edited golden file. | `npm run check:golden && npm test` | S3 (landed) |
 | C1 Native CI job | .github/workflows/test.yml | Proof: the job goes red on a broken Swift test in a PR. | The PR's native job is green. | S4 |
 | N1 Project and rules bridge | native/project.yml, native/ManifestKit (Package.swift, the rules engine), build.mjs | The rules engine output equals each golden file. `check:rules` goes red on a stale bundle. | ST and `npm run check:rules` | S4 |
 | N2 Key store and intake | the key store, the URL handler, scripts/send-key.mjs, test/send-key.test.mjs | The accessibility class. `hasKey` is a Bool. A bad key is refused. The key is absent from the ledger, the backup and the model (a Mirror scan). The `--native` URL. | ST and `npm run test:send-key` | N1 |
@@ -40,7 +39,7 @@ W2 and W3 come from the owner's rulings, not from the first plan. Their files, t
 
 ## Order
 
-- Batch 1: W1, S1 and S2 (landed), with W2 and W3 free to start. S3 and S4 run in series, because each one rebuilds index.html.
+- Batch 1: W1, S1, S2 and S3 (landed), with W2 and W3 free to start. S4 runs after S3, because each one rebuilds index.html.
 - Batch 2: C1 and N1, after S4.
 - Batch 3: N2 and N3.
 - Batch 4: N5, beside N4a.
@@ -50,7 +49,7 @@ W2 and W3 come from the owner's rulings, not from the first plan. Their files, t
 
 ## Risk
 
-S2 (landed) and S3 change `src/app.jsx`, the largest file in the repo. The sticky rows and the frozen sort must stay in the component, see `no-layout-shift-under-pointer`.
+S2 and S3 (landed) changed `src/app.jsx`, the largest file in the repo. The sticky rows and the frozen sort must stay in the component, see `no-layout-shift-under-pointer`.
 
 Other risks live in the record for their lane:
 

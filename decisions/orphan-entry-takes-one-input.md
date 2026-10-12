@@ -2,7 +2,7 @@
 
 The Orphaned view records an envelope from one input. The input is autofocused when the view opens. Suggestions come from the cards still outstanding.
 
-**Holds while:** `outstandingNames` in `src/app.jsx` still supplies the suggestions for the envelope input.
+**Holds while:** `outstandingNames` in `src/app.jsx` still supplies the suggestions for the envelope input. Its logic is `outstandingNames` in `src/view-rules.mjs` (V11.8 to V11.10).
 
 A tap adds a suggested card. A second tap bumps its quantity. The input clears and keeps focus, so the iOS keyboard never drops. The return key, or an "Add … as typed" row, records anything that is not in the ledger.
 

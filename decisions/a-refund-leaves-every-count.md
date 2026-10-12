@@ -2,7 +2,7 @@
 
 A package stamped `Refunded` or `Partial refund` drops out of every count and the normal package list. A canceled order leaves the same way. The money already came back, so nothing about that package stays outstanding.
 
-**Holds while:** `liveItems` in `src/app.jsx` drops refunded packages, and `activeItems` drops canceled orders. `isRefundStamp` matches the `refunded` and `partial` stamp kinds.
+**Holds while:** `liveItems` in `src/app.jsx` calls `dropGks` in `src/view-rules.mjs` (V12.18 to V12.20) to drop refunded packages, and `activeItems` calls `dropCanceled` there (V12.14 and V12.15) to drop canceled orders. `isRefundStamp` matches the `refunded` and `partial` stamp kinds.
 
 One shared source, `liveItems`, excludes refunded packages the way `activeItems` excludes canceled ones. Totals, Tally, and the Orphaned candidates all inherit that exclusion.
 

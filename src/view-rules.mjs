@@ -203,3 +203,229 @@ export function rankCandidates(entries, pkgs, received) {
       if (c.perEntry[nk] > 0) explainable.add(nk);
   return { list, tied, explainable };
 }
+
+/* ---------- lane S3: filters, pooling, sorts and totals ----------
+   Each takes its state and clock as arguments. Sticky rows and the frozen
+   sort stay in src/app.jsx (no-layout-shift-under-pointer): the component
+   decides WHEN to call a sort, and passes the received map it froze. */
+
+const DAY_MS = 86400000;
+const CANCELED = (it) => /^cancel/i.test(it.tracking || "");
+const gotOfItem = (it, rec) => Math.min(it.qty, rec[it.key] || 0);
+
+/* the date filter as a {from, to} range, or null for no range */
+export function dateRange(filter, now) {
+  if (filter.preset === "all") return null;
+  if (filter.preset === "custom") {
+    const from = filter.from ? Date.parse(filter.from) : null;
+    const to = filter.to ? Date.parse(filter.to) + 86399999 : null;
+    if (from == null && to == null) return null;
+    return { from, to };
+  }
+  if (filter.preset === "days") {
+    const n = parseInt(filter.days, 10);
+    if (!n || n <= 0) return null;
+    return { from: now - n * DAY_MS, to: null };
+  }
+  return { from: now - filter.preset * DAY_MS, to: null };
+}
+
+export function inRange(items, range) {
+  if (!range) return items;
+  return items.filter((it) => {
+    const t = Date.parse(it.date);
+    if (Number.isNaN(t)) return true; // keep undated rows visible
+    if (range.from != null && t < range.from) return false;
+    if (range.to != null && t > range.to) return false;
+    return true;
+  });
+}
+
+export const dropCanceled = (items) => items.filter((it) => !CANCELED(it));
+
+export const dropGks = (items, gks) =>
+  gks.size ? items.filter((it) => !gks.has(gkOf(it))) : items;
+
+export function canceledPackagesOf(items) {
+  const map = new Map();
+  for (const it of items) {
+    if (!CANCELED(it)) continue;
+    const gk = gkOf(it);
+    if (!map.has(gk))
+      map.set(gk, { gk, orderId: it.orderId, seller: it.seller, date: it.date, items: [] });
+    map.get(gk).items.push(it);
+  }
+  const arr = [...map.values()];
+  arr.sort((a, b) => (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0));
+  return arr;
+}
+
+/* callers pass the range-applied, refund-inclusive items, so a refunded
+   package is in the stamped list (stamped-filter-on-the-pipeline) */
+export const stampedPackagesOf = (items, gks) =>
+  groupPackages(items.filter((it) => gks.has(gkOf(it))));
+
+/* Tally: exact product name, pooled across every seller and order.
+   basis = price x qty; shipping and tax are not in it. */
+export function tallyGroups(items) {
+  const map = new Map();
+  for (const it of items) {
+    if (!map.has(it.name))
+      map.set(it.name, { name: it.name, items: [], sets: [], qty: 0 });
+    map.get(it.name).items.push(it);
+  }
+  const arr = [...map.values()];
+  for (const g of arr) {
+    g.items.sort(
+      (a, b) =>
+        (Date.parse(b.date) || 0) - (Date.parse(a.date) || 0) ||
+        a.seller.localeCompare(b.seller)
+    );
+    g.qty = g.items.reduce((s, it) => s + it.qty, 0);
+    g.basis = g.items.reduce((s, it) => s + it.price * it.qty, 0);
+    g.avg = g.qty ? g.basis / g.qty : 0;
+    g.sets = [...new Set(g.items.map((it) => it.set).filter(Boolean))];
+    g.sellerCount = new Set(g.items.map((it) => it.seller)).size;
+    g.orderCount = new Set(g.items.map((it) => it.orderId)).size;
+  }
+  return arr;
+}
+
+/* copies still owed, and what they cost, for any level's lines */
+export function outstandingOf(items, received) {
+  let left = 0,
+    value = 0;
+  for (const it of items) {
+    const out = it.qty - gotOfItem(it, received);
+    left += out;
+    value += it.price * out;
+  }
+  return { left, value };
+}
+
+export function sortTally(groups, key, received) {
+  const gotOf = (g) => g.items.reduce((s, it) => s + gotOfItem(it, received), 0);
+  const missingVal = (g) => outstandingOf(g.items, received).value;
+  const sorted = [...groups];
+  if (key === "basis")
+    sorted.sort((a, b) => b.basis - a.basis || a.name.localeCompare(b.name));
+  else if (key === "ordered")
+    sorted.sort((a, b) => b.qty - a.qty || a.name.localeCompare(b.name));
+  else if (key === "value")
+    sorted.sort((a, b) => missingVal(b) - missingVal(a) || a.name.localeCompare(b.name));
+  else if (key === "rate")
+    /* avg = basis / copies, the figure the collapsed row shows; descending */
+    sorted.sort((a, b) => b.avg - a.avg || a.name.localeCompare(b.name));
+  else if (key === "name") sorted.sort((a, b) => a.name.localeCompare(b.name));
+  else
+    sorted.sort(
+      (a, b) =>
+        b.qty - gotOf(b) - (a.qty - gotOf(a)) ||
+        missingVal(b) - missingVal(a) ||
+        a.name.localeCompare(b.name)
+    );
+  return sorted;
+}
+
+export function sortPackages(pkgs, key, received) {
+  const t = (p) => Date.parse(p.date) || 0;
+  const missing = (p) => outstandingOf(p.items, received).value;
+  const sorted = [...pkgs];
+  if (key === "oldest")
+    sorted.sort((a, b) => t(a) - t(b) || a.seller.localeCompare(b.seller));
+  else if (key === "value")
+    sorted.sort((a, b) => missing(b) - missing(a) || t(b) - t(a));
+  else if (key === "rate") {
+    /* what one card in this package averaged: basis over copies, 0 at qty 0 */
+    const rate = (p) => {
+      const q = p.items.reduce((s, it) => s + it.qty, 0);
+      return q ? p.items.reduce((s, it) => s + it.price * it.qty, 0) / q : 0;
+    };
+    sorted.sort((a, b) => rate(b) - rate(a) || t(b) - t(a));
+  } else if (key === "seller")
+    sorted.sort((a, b) => a.seller.localeCompare(b.seller) || t(b) - t(a));
+  else sorted.sort((a, b) => t(b) - t(a) || a.seller.localeCompare(b.seller));
+  return sorted;
+}
+
+const lineHit = (it, q) =>
+  [it.name, it.set, it.seller, it.orderId].join(" ").toLowerCase().includes(q);
+
+/* opts {query, hideDone, received, sticky, revealed, stampText(gk)}; input order kept */
+export function filterPackages(pkgs, opts) {
+  const { hideDone, received, sticky, revealed, stampText } = opts;
+  const q = opts.query.trim().toLowerCase();
+  return pkgs
+    .map((p) => {
+      /* a revealed package ignores the query AND hideDone
+         (a-reveal-ignores-hidedone-too) */
+      if (revealed.has(p.gk)) return { ...p, hiddenByFilters: 0 };
+      // a package in full drops at once under hideDone, even with sticky lines
+      if (hideDone && p.items.every((it) => (received[it.key] || 0) >= it.qty))
+        return { ...p, items: [], hiddenByFilters: 0 };
+      /* a stamp is the package's, so a hit on its text keeps every line */
+      const pkgHit = !!q && stampText(p.gk).toLowerCase().includes(q);
+      let its = p.items;
+      if (q && !pkgHit) its = its.filter((it) => lineHit(it, q));
+      if (hideDone)
+        its = its.filter((it) => (received[it.key] || 0) < it.qty || sticky.has(it.key));
+      return { ...p, items: its, hiddenByFilters: p.items.length - its.length };
+    })
+    .filter((p) => p.items.length > 0);
+}
+
+/* a Tally row keeps its counts; only the `shown` copies are narrowed */
+export function filterTally(groups, opts) {
+  const { hideDone, received, sticky } = opts;
+  const q = opts.query.trim().toLowerCase();
+  return groups
+    .map((g) => {
+      /* an item row is one line in a long scan: a just-checked copy keeps it */
+      const allDone = g.items.every((it) => (received[it.key] || 0) >= it.qty);
+      if (hideDone && allDone && !g.items.some((it) => sticky.has(it.key)))
+        return { ...g, shown: [] };
+      let shown = g.items;
+      if (q) shown = shown.filter((it) => lineHit(it, q));
+      if (hideDone)
+        shown = shown.filter((it) => (received[it.key] || 0) < it.qty || sticky.has(it.key));
+      return { ...g, shown };
+    })
+    .filter((g) => g.shown.length > 0);
+}
+
+export function totalsOf(items, received) {
+  let total = 0,
+    got = 0,
+    missingVal = 0,
+    val = 0;
+  for (const it of items) {
+    const g = gotOfItem(it, received);
+    total += it.qty;
+    got += g;
+    val += it.price * it.qty;
+    missingVal += it.price * (it.qty - g);
+  }
+  return { total, got, missingVal, val };
+}
+
+export function outstandingNames(items, received) {
+  const map = new Map();
+  for (const it of items) {
+    const out = it.qty - gotOfItem(it, received);
+    if (out <= 0) continue;
+    const nk = normName(it.name);
+    if (!map.has(nk)) map.set(nk, { nk, name: it.name, qty: 0, sellers: new Set() });
+    const e = map.get(nk);
+    e.qty += out;
+    e.sellers.add(it.seller);
+  }
+  return [...map.values()].map(({ nk, name, qty, sellers }) => ({
+    nk,
+    name,
+    qty,
+    sellerCount: sellers.size,
+  }));
+}
+
+export const packagesDone = (pkgs, received) =>
+  pkgs.filter((p) => p.items.every((it) => gotOfItem(it, received) >= it.qty)).length;
