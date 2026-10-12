@@ -1,6 +1,7 @@
 /* The pure half of the sync server: route(request, env, store) -> Response.
    No Worker, no Durable Object, no network. The merge is the app's own. */
 import { mergeLedger, canon } from "../src/merge-rules.mjs";
+import { photoIdFromName, mimeFromName, photoName } from "../src/photo-rules.mjs";
 
 const hex = async (s) =>
   [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))]
@@ -48,6 +49,9 @@ function cors(request, env) {
 /* Durable Object per-value cap is 2,000,000 bytes; refuse a ledger over this, which keeps 200,000 bytes of headroom. */
 export const MAX_LEDGER_BYTES = 1_800_000;
 
+/* A photo is one SQLite row; keep it under the 2,000,000 byte row cap with headroom. */
+export const MAX_PHOTO_BYTES = 1_900_000;
+
 export async function route(request, env, store) {
   const headers = cors(request, env);
   const json = (body, status = 200) =>
@@ -60,7 +64,30 @@ export async function route(request, env, store) {
   const m = /^Bearer (.+)$/.exec(request.headers.get("Authorization") || "");
   if (!m || !(await keyAllowed(m[1], env))) return json({ error: "unauthorized" }, 401);
 
-  if (new URL(request.url).pathname !== "/ledger") return json({ error: "not found" }, 404);
+  const path = new URL(request.url).pathname;
+  if (path === "/photos" || path.startsWith("/photos/")) {
+    if (request.method !== "GET" && request.method !== "POST") return json({ error: "method not allowed" }, 405);
+    if (path === "/photos") {
+      return request.method === "GET" ? json({ ids: (await store.photoList()).map((r) => photoName(r.id, r.mime)) }) : json({ error: "method not allowed" }, 405);
+    }
+    // Ids are base36/hex, never percent-encoded: refuse a % rather than decode it.
+    const name = path.slice(8);
+    if (name.includes("%")) return json({ error: "bad photo name" }, 400);
+    const id = photoIdFromName(name);
+    if (!id) return json({ error: "bad photo name" }, 400);
+    if (request.method === "GET") {
+      const p = await store.photoGet(id);
+      return p ? new Response(p.bytes, { headers: { ...headers, "Content-Type": p.mime } }) : json({ error: "not found" }, 404);
+    }
+    if (Number(request.headers.get("Content-Length")) > MAX_PHOTO_BYTES) return json({ error: "photo-too-large" }, 413);
+    const bytes = new Uint8Array(await request.arrayBuffer());
+    if (bytes.length > MAX_PHOTO_BYTES) return json({ error: "photo-too-large" }, 413);
+    // Write-once: an id already stored keeps its first bytes.
+    if (!(await store.photoGet(id))) await store.photoPut(id, mimeFromName(name), bytes);
+    return json({ id });
+  }
+
+  if (path !== "/ledger") return json({ error: "not found" }, 404);
 
   if (request.method === "GET") {
     const cur = await store.read();

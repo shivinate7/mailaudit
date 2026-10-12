@@ -53,6 +53,8 @@ W2 and W3 come from the owner's rulings, not from the first plan. Their files, t
 
 S2 and S3 (landed) changed `src/app.jsx`, the largest file in the repo. The sticky rows and the frozen sort must stay in the component, see `no-layout-shift-under-pointer`.
 
+W2 accepts one risk. A POST with no `Content-Length` still reads the whole body before its 413, and the code does not cap that read. The client always sends one, so the read is accepted.
+
 Other risks live in the record for their lane:
 
 - `native-reply-waits-generation` holds the socket test limit.
