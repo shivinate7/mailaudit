@@ -57,6 +57,13 @@ const dayOf = (t) => new Date(t).toISOString().slice(0, 10);
 /* A photo is one SQLite row; keep it under the 2,000,000 byte row cap with headroom. */
 export const MAX_PHOTO_BYTES = 1_900_000;
 
+/* A field may be absent (older saves). A wrong shape, or null, is damage: refuse, store nothing.
+   No shared shape rule exists in src/ to reuse. */
+const isMap = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+const shapeOk = (l) =>
+  ["received", "receivedAt", "stamps"].every((f) => l[f] === undefined || isMap(l[f])) &&
+  (l.envelopes === undefined || Array.isArray(l.envelopes));
+
 export async function route(request, env, store, now = Date.now()) {
   const headers = cors(request, env);
   const json = (body, status = 200) =>
@@ -120,6 +127,7 @@ export async function route(request, env, store, now = Date.now()) {
   }
   if (!incoming || incoming.mailday !== 1 || !Array.isArray(incoming.items))
     return json({ error: "bad ledger" }, 400);
+  if (!shapeOk(incoming)) return json({ error: "bad shape" }, 400);
 
   const cur = await store.read();
   const merge = cur ? mergeLedger(cur.ledger, incoming) : null;
