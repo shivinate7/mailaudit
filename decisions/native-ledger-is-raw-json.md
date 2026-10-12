@@ -1,6 +1,6 @@
 # The native client keeps the ledger as raw JSON
 
-**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Lane N3 builds it. No Swift code exists yet.
+**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Lane N3 built it in PR #80, as LedgerStore.
 
 The native ledger store holds the ledger as raw JSON, not as typed structs. A JSON value enum carries every field. An edit changes only the fields it names. Fields that the client does not know survive the next POST, so the Worker merge cannot drop them.
 
@@ -19,7 +19,7 @@ An edit changes only `received`, `receivedAt`, `envelopes` and `stamps`. The res
 
 ## Proof
 
-Lane N3 tests that an unknown field round-trips. The other tests follow the list above.
+Lane N3 landed in PR #80 with a test for each item in the list above, in LedgerStoreTests. The unknown-field test is the round-trip proof.
 
 ## See also
 

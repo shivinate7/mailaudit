@@ -120,7 +120,7 @@ Ruled: a field in the ledger, named recent. The owner chose it on 2026-10-11, wi
 - `saved-state-shape`, an invariant. The log is a new persisted field. It needs the five sites in `src/app.jsx`, and the sixth site in `mergeLedger`. The pins to extend are 9.1–9.3, 37.48–37.51, 37.62–37.63, 39.8 and 39.8b, and group 49. An older build's `snapshot()` omits the field. Update both devices first, as that record says for each new field.
 - `merge-later-change-wins`. `mergeLedger` names the field, and the record gains the union and the cap.
 - `milestones-taken-before-risk`. A version holds the whole saved shape, so it holds the log.
-- `native-ledger-is-raw-json`. The fields that an edit may touch gain the log. Lane N3 gains tests, see `native-build-lanes`.
+- `native-ledger-is-raw-json`. The fields that an edit may touch gain the log. Lane N3 landed in PR #80 with no log tests, see `native-build-lanes`.
 - `rules-run-in-javascriptcore`. The rules bundle gains the log rules.
 - `native-parity-table`. It gains one row for the log, with the scope both clients.
 - `storage-keys-are-frozen` is not touched. The log lives inside the ledger key. The allowed new key is not used, and test 25.27 stands.

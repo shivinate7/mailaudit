@@ -1,6 +1,6 @@
 # Native file names freeze on first ship
 
-**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Lane N3 builds the files. No native build has shipped.
+**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Lane N3 landed in PR #80 with a store that takes its file URL from the caller. No app code yet names Application Support, `versions` or `photos`. No native build has shipped.
 
 The native client keeps its data in the folder Application Support. The file ledger.json holds the ledger, and it is written atomically. The folders versions and photos sit beside it. These three names freeze when the first native build ships.
 
