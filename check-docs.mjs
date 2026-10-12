@@ -398,7 +398,7 @@ console.log(`check:docs: ${namesJudged} code name(s) judged against the code`);
 {
   let links = 0;
   const blankSpans = (t) =>
-    t.replace(/(`+)(?!`)[\s\S]*?[^`]\1(?!`)/g, (m) => m.replace(/[^\n]/g, " "));
+    t.replace(/(`+)(?!`)[^\n]*?[^`]\1(?!`)/g, (m) => m.replace(/[^\n]/g, " "));
   for (const f of prose.filter((x) => x.path === "README.md" || x.path === "CLAUDE.md")) {
     const text = blankSpans(f.prose);
     for (const m of text.matchAll(/\]\(\s*(?:<([^>\n]+)>|([^)\s]+))/g)) {
