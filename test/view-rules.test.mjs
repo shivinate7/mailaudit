@@ -278,7 +278,7 @@ ok(
     JSON.stringify(lostMail("2026-07-01", "without tracking", false)),
   "V2.18 the explicit clock gives a different result from the Date.now default"
 );
-eq(isUntracked({}), false, "V2.17 a package with no tracking field is not untracked");
+eq(isUntracked({}), false, "V2.19 a package with no tracking field is not untracked");
 
 /* ── V3. names match loosely (envelope-names-match-normname) ───────────── */
 /* source: test/app.test.mjs group 8 (smart apostrophe) and group 25 (Æther, Séance) */
