@@ -102,6 +102,17 @@ import { fileURLToPath } from "node:url";
 
 const fresh = () => boot({ items: ITEMS, received: {} });
 
+/* The bottom bar's tabs (decision phone-nav-is-bottom-bar). Found by the nav's
+   name, never by position. A tab's count badge is stripped from its name. The
+   current tab is the one with a non-"false" aria-current (contract: "page"). */
+const viewTabs = () =>
+  [...(document.querySelector('nav[aria-label="Views"]')?.querySelectorAll("button") ?? [])];
+const tabName = (b) => b.textContent.replace(/\d+$/, "").trim();
+const currentTab = () =>
+  viewTabs()
+    .filter((b) => b.getAttribute("aria-current") && b.getAttribute("aria-current") !== "false")
+    .map(tabName);
+
 /* ── 1. mystery mail hides what doesn't apply, keeps what does ─────────── */
 
 await fresh();
@@ -613,12 +624,13 @@ ok(/C\.H Postal Company/.test(text()), "21.2 house line renders");
 ok(/cards/i.test(text()) && /packages/i.test(text()) && /value/i.test(text()),
   "21.3 all three tallies render");
 
-/* order matters: Orphaned sits left, Packages right, so the daily-driver view
-   lands under the thumb */
-const segs = buttons()
-  .slice(0, 3)
-  .map((b) => b.textContent.replace(/\d+$/, ""));
-eq(segs, ["Orphaned", "Tally", "Packages"], "21.4 switch order, swapped");
+/* order matters: Ledger sits leftmost, then Orphaned, Tally, Packages. The
+   bottom bar replaces the top switch on phone (phone-nav-is-bottom-bar). */
+eq(
+  viewTabs().map(tabName),
+  ["Ledger", "Orphaned", "Tally", "Packages"],
+  "21.4 bottom bar tab order, Ledger first"
+);
 
 const headBar = () => document.querySelector(".mdl-sticky");
 ok(!!headBar(), "21.5 running head is in the DOM");
@@ -1719,13 +1731,7 @@ await click(btn(/Lightning Bolt/), "expand the tally row");
 ok(!!orderBtn("C1"), "32.9 each source copy carries a way into its order");
 await click(orderBtn("C1"), "open Gamma's order");
 await settle();
-eq(
-  buttons()
-    .find((b) => /^Packages/.test(b.textContent))
-    .getAttribute("aria-pressed"),
-  "true",
-  "32.10 which lands in Packages"
-);
+eq(currentTab(), ["Packages"], "32.10 which lands in Packages");
 ok(
   /Ponder/.test(card(/Gamma Cards/).textContent) &&
     /Swords to Plowshares/.test(card(/Gamma Cards/).textContent),
@@ -3627,12 +3633,11 @@ ok(
    reflows were all settled by measuring a real 375px viewport instead. Two
    claims are behaviour, though, and both fail silently.
 
-   The first is the view switch. The violet fill is now ONE sliding element
-   rather than a background each button paints for itself, so the only thing
-   saying which third it belongs on is the data-view attribute the stylesheet
-   keys against. Lose it and the app has no active-view indicator at all — not
-   a degraded one, none — and every button still looks exactly right in a DOM
-   dump.
+   The first is the active-view indicator. The bottom bar replaces the switch
+   (phone-nav-is-bottom-bar), and that record rules no motion for the bar, so
+   the claim is the aria-current on the current tab. It is the only thing that
+   says which tab is current. Lose it and the app has no active-view indicator
+   at all, and every tab still looks exactly right in a DOM dump.
 
    The second is the gate under every celebration in the app. A plain CSS class
    replays its animation each time React rebuilds the tree, so leaving the
@@ -3643,10 +3648,9 @@ ok(
    in. */
 
 await fresh();
-const sw = () => document.querySelector(".mdl-switch");
-eq(sw().dataset.view, "packages", "43.1 the switch says which third the fill is on");
+eq(currentTab(), ["Packages"], "43.1 the bar says which tab is current");
 await goTo("tally");
-eq(sw().dataset.view, "items", "43.2 and it follows the view");
+eq(currentTab(), ["Tally"], "43.2 and it follows the view");
 await goTo("packages");
 
 /* Showing starts on Unreceived, and a package that completes leaves that list
@@ -7319,4 +7323,54 @@ await sleep(SWEEP_WAIT);
 eq(photoKeys(), ["pho-loose"], "61.57 an open composer holds the sweep off an unreferenced blob");
 
 uninstallClock();
+
+/* ── 62. the bottom bar, lane L11a (decision phone-nav-is-bottom-bar) ──────
+   The bar replaces the in-page view switch. It holds four tabs, Ledger,
+   Orphaned, Tally and Packages, and a floating search pill sits above it.
+   Ledger is an empty placeholder until L11b. The tab order is asserted in 21.4.
+   Geometry (44px targets, clearance over the last row, the 480px cap, the
+   safe-area inset) is asserted in test/screens.mjs, because jsdom has no
+   layout. */
+
+const pillInput = () =>
+  document.querySelector('[role="search"] input[aria-label^="Search cards"]');
+const tabEl = (name) => viewTabs().find((b) => tabName(b) === name);
+
+await fresh();
+ok(!!document.querySelector('nav[aria-label="Views"]'), "62.1 the tabs sit in a nav landmark");
+eq(currentTab(), ["Packages"], "62.2 Packages is current on load, and only one tab is");
+
+await click(tabEl("Ledger"), "Ledger tab");
+eq(currentTab(), ["Ledger"], "62.3 Ledger becomes the current tab");
+ok(!/Alpha Cards/.test(text()), "62.4 the Ledger placeholder shows no package");
+ok(
+  !document.querySelector('input[aria-label^="Search cards"]'),
+  "62.5 the search pill is not on the Ledger tab"
+);
+
+await click(tabEl("Packages"), "Packages tab");
+ok(!!pillInput(), "62.6 the search pill is a search landmark on Packages");
+eq(pillInput()?.style.fontSize, "16px", "62.7 the pill input is 16px, so iOS does not zoom");
+ok(!document.querySelector(".mdl-switch"), "62.8 the in-page view switch is retired");
+
+/* The bar shows on an empty ledger, so Re-import and Reset stay reachable
+   (recovery-control-not-state-gated). Whether the bar shows with nothing at
+   all is an open question for the owner; see the report. */
+await boot({ items: [], received: {} });
+eq(
+  viewTabs().map(tabName),
+  ["Ledger", "Orphaned", "Tally", "Packages"],
+  "62.9 the bar holds its four tabs on an empty ledger"
+);
+
+/* A pending envelope puts its count on the Orphaned tab. */
+await boot({ items: ITEMS, received: {} });
+await goTo("orphaned");
+await record(["Lightning Bolt"], "bar count");
+eq(
+  tabEl("Orphaned")?.textContent.replace(/\D+/g, ""),
+  "1",
+  "62.10 the Orphaned tab carries its envelope count"
+);
+
 report();
