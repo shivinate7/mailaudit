@@ -519,7 +519,7 @@ await test("4.8 every successful POST writes, then broadcasts {rev} once", async
   const merge = fakeStore({ ledger: ledger(), rev: 4 });
   await send(merge, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: ledger() } });
   eq(merge.broadcasts, [{ rev: 5 }], "merge broadcast");
-  /* The merge is the first change on NOW's UTC day, so it snapshots first (group 12). */
+  /* The merge is the first change on NOW's UTC day, so it snapshots first (group 13). */
   eq(merge.order, ["snapshot", "write", "broadcast"], "merge order");
 });
 
@@ -924,7 +924,7 @@ await test("11.4 a first POST to an empty store replies with zero stats", async 
   eq((await res.json()).stats, ZERO_STATS, "reply stats");
 });
 
-/* ---------- 12. daily snapshots, /health, and the snapshot routes ---------- */
+/* ---------- 13. daily snapshots, /health, and the snapshot routes ---------- */
 /* A snapshot is the ledger as it was before the first changing POST of a UTC
    day. A changing POST runs snapshot, then write, then broadcast. A no-op,
    a 413, a 400 and a first POST to an empty store take none. */
@@ -944,7 +944,7 @@ async function listDays(s) {
   return Array.isArray(body) ? body.map((e) => e.day) : [];
 }
 
-await test("12.1 the first changing POST of a UTC day snapshots the ledger as it was before the write", async () => {
+await test("13.1 the first changing POST of a UTC day snapshots the ledger as it was before the write", async () => {
   const stored = ledger();
   ok(changes(stored, withCard(200)), "fixture: the POST changes the stored ledger");
   const s = fakeStore({ ledger: stored, rev: 3, at: PREV });
@@ -960,7 +960,7 @@ await test("12.1 the first changing POST of a UTC day snapshots the ledger as it
   ok(new Date(s.writes[0]?.at).getTime() === NOW, "write at is the POST's time");
 });
 
-await test("12.2 a second changing POST on the same UTC day writes no snapshot, and the first snapshot stays", async () => {
+await test("13.2 a second changing POST on the same UTC day writes no snapshot, and the first snapshot stays", async () => {
   const stored = ledger();
   const s = fakeStore({ ledger: stored, rev: 3, at: PREV });
   await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: withCard(200) } });
@@ -980,7 +980,7 @@ await test("12.2 a second changing POST on the same UTC day writes no snapshot, 
   eq(s.writes.map((w) => w.rev), [4, 5], "write revs");
 });
 
-await test("12.3 a changing POST on a new UTC day snapshots again, including across midnight UTC", async () => {
+await test("13.3 a changing POST on a new UTC day snapshots again, including across midnight UTC", async () => {
   const stored = ledger();
   const s = fakeStore({ ledger: stored, rev: 3, at: PREV });
   const late = Date.UTC(2026, 9, 12, 23, 59);
@@ -997,8 +997,9 @@ await test("12.3 a changing POST on a new UTC day snapshots again, including acr
   eq(s.snapWrites[1]?.rev, 4, "the new day's snapshot rev is the pre-write rev");
 });
 
-await test("12.4 a no-op, a 413, a 400 and a first POST to an empty store take no snapshot; a later changing POST still does", async () => {
-  const stored = ledger();
+await test("13.4 a no-op, a 413, a 400 and a first POST to an empty store take no snapshot; a later changing POST still does", async () => {
+  /* Every real ledger carries receivedAt, as src/app.jsx does (state at ~2836). Without it the merge adds {}, so the no-op looks like a change. */
+  const stored = ledger({ receivedAt: {} });
   ok(!changes(stored, stored), "fixture: the no-op POST changes nothing");
   const s = fakeStore({ ledger: stored, rev: 3, at: PREV });
   await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: stored } });
@@ -1017,7 +1018,7 @@ await test("12.4 a no-op, a 413, a 400 and a first POST to an empty store take n
   eq(e.writes.length, 1, "empty store: the ledger is still written");
 });
 
-await test("12.5 GET /snapshots lists days newest first, each with only day, rev and at", async () => {
+await test("13.5 GET /snapshots lists days newest first, each with only day, rev and at", async () => {
   const days = ["2026-10-09", "2026-10-11", "2026-10-10"];
   const s = fakeStore(
     { ledger: ledger(), rev: 3, at: PREV },
@@ -1034,7 +1035,7 @@ await test("12.5 GET /snapshots lists days newest first, each with only day, rev
   ok(new Date(list[0]?.at).getTime() === Date.parse("2026-10-11T12:00:00Z"), "at is passed through");
 });
 
-await test("12.6 GET /snapshots/<day> returns that day's ledger, rev and at; an unknown day is 404", async () => {
+await test("13.6 GET /snapshots/<day> returns that day's ledger, rev and at; an unknown day is 404", async () => {
   const day = "2026-10-11";
   const snap = snapOf(day, 7);
   const s = fakeStore({ ledger: ledger(), rev: 3, at: PREV }, [[day, snap]]);
@@ -1047,7 +1048,7 @@ await test("12.6 GET /snapshots/<day> returns that day's ledger, rev and at; an 
   eq((await send(s, "GET", "/snapshots/2026-10-01", { key: KEY_PHONE })).status, 404, "unknown day status");
 });
 
-await test("12.7 both snapshot routes need the key: 401 with none or a stranger's, 200 with a device key", async () => {
+await test("13.7 both snapshot routes need the key: 401 with none or a stranger's, 200 with a device key", async () => {
   const day = "2026-10-11";
   const s = fakeStore({ ledger: ledger(), rev: 3, at: PREV }, [[day, snapOf(day, 1)]]);
   for (const path of ["/snapshots", `/snapshots/${day}`, "/snapshots/2026-10-01"]) {
@@ -1058,7 +1059,7 @@ await test("12.7 both snapshot routes need the key: 401 with none or a stranger'
   eq((await send(s, "GET", `/snapshots/${day}`, { key: KEY_PHONE })).status, 200, "anchor: GET /snapshots/<day> with a device key");
 });
 
-await test("12.8 GET /health with no key returns only {at}, the last write time; a no-op does not move it", async () => {
+await test("13.8 GET /health with no key returns only {at}, the last write time; a no-op does not move it", async () => {
   const s = seeded();
   const res = await send(s, "GET", "/health", {});
   eq(res.status, 200, "status");
@@ -1077,23 +1078,24 @@ await test("12.8 GET /health with no key returns only {at}, the last write time;
   ok(new Date(noop.at).getTime() === NOW, "a no-op POST does not move at");
 });
 
-await test("12.9 a changing POST prunes snapshots by age: 181 days old goes, 179 days old stays", async () => {
-  const old = dayOf(NOW - 181 * DAY);
-  const recent = dayOf(NOW - 179 * DAY);
+await test("13.9 a changing POST keeps exactly 180 snapshots: today and the 179 days before it; the 180-day-old and older go", async () => {
+  /* Snapshots for 1 to 185 days ago, so the boundary and the older ones are all present. */
+  const ages = Array.from({ length: 185 }, (_, i) => i + 1);
+  const dayAgo = (k) => dayOf(NOW - k * DAY);
   const s = fakeStore(
     { ledger: ledger(), rev: 3, at: PREV },
-    [
-      [old, snapOf(old, 1)],
-      [recent, snapOf(recent, 1)],
-    ]
+    ages.map((k) => [dayAgo(k), snapOf(dayAgo(k), 1)])
   );
   ok(changes(ledger(), withCard(200)), "fixture: the POST changes the ledger");
   const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: withCard(200) } });
   eq(res.status, 200, "status");
   eq(s.snapWrites.map((w) => w.day), [dayOf(NOW)], "fixture: this POST takes today's snapshot");
   const days = await listDays(s);
-  eq([...days].sort(), [recent, dayOf(NOW)].sort(), "exactly the 179-day-old and today's snapshots remain");
-  ok(!days.includes(old), "the 181-day-old snapshot is pruned");
+  const kept = [dayOf(NOW), ...ages.filter((k) => k <= 179).map(dayAgo)];
+  eq(days.length, 180, "exactly 180 snapshots remain");
+  eq([...days].sort(), kept.sort(), "today and the 179 days before it remain");
+  ok(!days.includes(dayAgo(180)), "the 180-day-old snapshot is pruned");
+  ok(!days.includes(dayAgo(181)), "the 181-day-old snapshot is pruned");
 });
 
 report();
