@@ -1,16 +1,27 @@
 # Test suite assertion count and run time
 
-This record holds the assertion count and the run time for `npm test`. The suite runs 1021 assertions and takes about 110 seconds. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+**Status:** measured at `9af0539`, checked 2026-10-12. All 1086 assertions pass under New York time, and all 1085 pass under UTC. Both runs exit 0 by themselves, with no live handles left.
 
-The count depends on the clock's zone. Under UTC the suite runs 1020, because test 38.9 has nothing to claim there. So the zone is pinned to `America/New_York`. In CI, the test step sets `TZ`. Locally, `npm run check:docs` sets it for its own suite run. `check:docs` grades the figure in this sentence.
+This record holds the assertion count and the run time for `npm test`. The suite runs 1086 assertions under New York time, and 1085 under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
-`npm test` has no test framework. It runs 1021 assertions in about 110s. Groups 30 to 31 spend a few seconds in real timers, on purpose. Groups 53 onward run on the harness virtual clock, see `harness-waits-past-debounces`. The sweep race can only be reached by letting the clock run. `test/app.test.mjs` runs top to bottom. It either prints "all green" or exits 1. `test/harness.mjs` holds the jsdom setup, the storage mocks, the DOM helpers, and the fixture's loader. The fixture itself is `shared/fixtures/ledger.json`.
+The count depends on the clock's zone, so the zone is pinned to `America/New_York`. In CI, the test step sets `TZ`, and it names one New York run's output in `CHECK_DOCS_SUITE_LOG`. `check:docs` grades the figure in this sentence. Locally, `npm run check:docs` runs the suite itself and waits for it to end.
+
+`npm test` has no test framework. It runs `test/app.test.mjs` top to bottom. It prints `N passed, M failed`, and it exits 1 when M is not zero. Groups 30 to 31 spend a few seconds in real timers, on purpose. Groups 53 onward run on the harness virtual clock, see `harness-waits-past-debounces`. The sweep race can only be reached by letting the clock run. `test/harness.mjs` holds the jsdom setup, the storage mocks, the DOM helpers, and the fixture's loader. The fixture itself is `shared/fixtures/ledger.json`.
 
 The harness bundles `app.jsx` with esbuild. It sets `platform: "node"` and `format: "cjs"`. The bundle goes to `node_modules/.mailday-test/app.bundle.cjs`. jsdom is a devDependency, and the harness runs in it. The harness is committed on purpose. Three earlier harnesses were improvised and thrown away. The same assertions were rewritten from scratch each time. The app has no exports except the component. So every behaviour worth protecting is visible. The assertions read the DOM the way the user does.
 
 ## How to re-measure
 
-Run `npm test` and read its own summary line for the assertion count. A passing run under New York time prints `1021 passed, 0 failed` and `all green`. Under UTC it prints `1020 passed, 0 failed`. Checked 2026-10-12 at commit ff00138: 112 seconds under the machine's zone (CDT), 105 seconds under UTC, by verdict's timer. The bare name `harness.mjs` refers to `test/harness.mjs`. Time the run with the shell's own timer. Expect a run near 110 seconds, because groups 30 to 31 hold real-timer waits on purpose.
+Run `npm test` and read its summary line. The count is passed plus failed. A green run prints `all green`. Time the run with the shell's own timer.
+
+At `f956873`, the New York process printed its summary and `all green`, then stayed alive with no CPU use for 13 minutes. It was killed by hand. The UTC and machine-zone processes were stopped by hand just after their summaries. Their exit codes are unmeasured, and so is the cause.
+
+Measured on 2026-10-12, at the L11 head:
+
+- New York zone (`TZ=America/New_York`): 1086 passed, 0 failed. Read from CI run 38274816063, which measured no local run time.
+- UTC (`TZ=UTC`): 1085 passed, 0 failed, exit 0. About 2 min locally.
+
+The run time varies on this machine. Take several runs before you compare a time. Groups 30 to 31 hold real-timer waits on purpose.
 
 ## Reader
 

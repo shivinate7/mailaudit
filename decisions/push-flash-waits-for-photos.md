@@ -1,13 +1,12 @@
 # Pushed shows only after the photos
 
-After a successful push, the button reads `Pushed ✓` for 2.5 seconds. The flash starts after the photo phase, not after the ledger leg. Showing it while a dozen uploads are queued would be a lie. It would also re-enable the button into a second, concurrent loop.
+**Status:** retired 2026-10-12. The owner removed the Push controls from the UI. No render shows a Pushed flash now, and test 64.4 asserts that no Pushed ✓ is on screen.
 
-**Holds while:** `doPush` in `src/app.jsx` starts its 2500 ms flash timer after the photo phase, and both sync buttons are disabled on `syncBusy`.
+The flash used to start after the photo phase, not after the ledger leg. Showing it while a dozen uploads were queued would have been a lie. The sync flag stayed set for the whole operation, so a second tap could not start a concurrent loop.
 
-A test that pushes twice must match `/^Push(ed ✓)?$/`. Both buttons stay disabled on `syncBusy` for the whole operation. They are not disabled on `pushState` or `pullState`. A successful push shows the flash, so `btn(/^Push$/)` does not match during it. It asserts on state, or it waits for the flash to end.
+**Holds while:** `doPush` in `src/app.jsx` still sets `setPushState("idle")` 2500 ms after the photo phase, and no render shows a "Pushed" label. Showing one again would undo this retirement.
 
 ## See also
 
-- `photo-errors-never-hit-pushstate`, the photo phase's own status.
-- `two-device-merge-proven-first`, the two-device check. Merge & push ends in the same flash.
-- `merge-readopts-sync-generation`, the guard that lets the flash run after a merge.
+- `two-device-merge-proven-first` — the two-device proof that used to end on this flash.
+- `merge-readopts-sync-generation` — the generation guard the flash depended on.

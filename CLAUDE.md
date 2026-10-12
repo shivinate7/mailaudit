@@ -84,21 +84,21 @@ Sync runs itself. These records say what it refuses to do, and why each refusal 
 - `peek-is-three-valued` — peek is three-valued, not a guess.
 - `listphotos-is-three-valued` — listPhotos is three-valued too.
 - `offline-is-decided-by-fetch` — Offline is decided by a failed fetch.
-- `pull-needs-a-key-too` — Pull now needs the same key.
-- `stale-push-conflict-pull-two-tap` — Pull gets the two-tap, push does not.
-- `merge-carries-no-two-tap-arm` — Merge never needs a two-tap arm.
+- `pull-needs-a-key-too` — A pull needs the same key.
+- `stale-push-conflict-pull-two-tap` — A stale push merges, and it never overwrites.
+- `merge-carries-no-two-tap-arm` — Merge runs unattended, with no two-tap arm.
 - `max-cannot-express-an-uncheck` — A per-key time lets an un-check beat an older check.
 - `envelope-deletion-unrepresented` — A discarded envelope leaves a tombstone that a stale copy cannot revive.
 - `two-device-merge-proven-first` — Prove the two-device merge before trusting auto-push.
 - `merge-readopts-sync-generation` — A merge re-adopts the sync generation.
-- `push-flash-waits-for-photos` — Pushed shows only after the photos.
+- `push-flash-waits-for-photos` — Retired 2026-10-12: the Pushed flash has no control.
 - `remote-sync-is-off-the-save-path` — Remote sync never touches the save indicator.
 - `fine-grained-token-single-repo` — One fine-grained token, scoped to one repo.
 - `token-lives-outside-namespace` — The access token sits outside the storage namespace.
 - `one-repo-for-both-halves` — The source repo is public and holds no data.
 - `data-branch-setup` — The data branch is the ledger's history, not a scratch file.
 - `photo-branch-must-preexist` — The photo branch must exist before any upload.
-- `pull-fetches-photos-before-apply` — A pull fetches photos before it applies.
+- `pull-fetches-photos-before-apply` — A merge fetches photos before it applies.
 - `ledger-and-photos-share-a-repo` — The ledger and the photos share one repo.
 - `photo-writes-wait-one-second` — Photo writes wait one second after the ledger.
 - `null-remote-info-is-not-no-key` — A null remote status is not a missing key.
@@ -174,7 +174,7 @@ Packages, Tally and Orphaned read one check-in map. These records say what each 
 - `lost-mail-flags-use-order-date` — Lost-mail flags count from the order date.
 - `orphaned-colours-by-meaning` — Orphaned uses colour for the same meanings.
 - `undo-removes-only-its-delta` — Undo subtracts its own delta, not a snapshot.
-- `three-views-share-one-switch` — Three views share one switch.
+- `three-views-share-one-switch` — The bar's working views share one check-in state.
 - `search-hide-keep-tally-counts` — Search and hide-received never change shown Tally counts.
 - `tally-row-lists-its-copies` — A Tally row lists every copy it counts.
 - `tally-sort-keys-are-six` — The Tally view sorts on six keys.
@@ -206,8 +206,8 @@ House UX rules that govern the screens. Read these before changing a screen.
 
 - `ux-house-rules-govern` — MANIFEST screens follow the house UX rules.
 - `spacing-on-4px-grid` — Spacing moves to a 4px grid with an 8px card radius.
-- `phone-nav-is-bottom-bar` — Phone navigation is a bottom glass bar, ruled and not built.
-- `ledger-tab-holds-options` — The Ledger tab holds the options, ruled and not built.
+- `phone-nav-is-bottom-bar` — Phone navigation is a bottom glass bar, built in L11a.
+- `ledger-tab-holds-options` — The Ledger tab holds the options, built in L11b.
 
 ## The ruled head
 
@@ -215,23 +215,23 @@ The control region is the masthead's own vocabulary continued. Read these before
 
 - `ruled-head-resume-is-reopening` — A resume counts as reopening.
 - `ruled-head-masthead-vocabulary` — The ruled head continues the masthead.
-- `ruled-head-one-advisory-entrance` — One advisory line is sync's only entrance.
+- `ruled-head-one-advisory-entrance` — One advisory line leads to the Sync group.
 - `ruled-head-panels-carry-no-fill` — Overlay panels take the paper fill.
 - `ruled-head-showing-unreceived` — Showing starts on unreceived every load.
 - `ruled-head-hand-elapsed-forward` — Hand the elapsed time forward, never re-derive it.
 - `ruled-head-range-picked` — The custom date range is picked, not typed.
 - `ruled-head-stale-clock-agreement` — The staleness clock measures agreement, not writes.
 - `date-filter-spans-ledger-views` — The date filter applies to both ledger views.
-- `action-row-is-ruled-cells` — The action row is ruled cells, not buttons.
+- `action-row-is-ruled-cells` — The action row is retired, and its cells are ruled rows.
 - `armed-reset-takes-the-row` — An armed Reset arms in place.
 - `disclosure-cells-underline-value` — Cells that open something underline their value.
 - `history-sync-close-each-other` — History and Sync close each other.
 - `upload-zone-opens-when-empty` — The upload zone opens only on an empty ledger.
 - `sync-line-toggles-its-panel` — The sync line is also the panel's way out.
-- `merge-is-the-primary-sync-action` — Merge is the primary sync action.
-- `sync-panel-is-two-column-grid` — The sync panel is a two-column option grid.
+- `merge-is-the-primary-sync-action` — Retired 2026-10-12: Merge left the UI.
+- `sync-panel-is-two-column-grid` — The sync panel is server status, last sync and a key box.
 - `sync-particulars-ruled-values` — Sync particulars are ruled label and value pairs.
-- `token-field-is-sixteen-pixels` — The token field is 16px to stop iOS zoom.
+- `token-field-is-sixteen-pixels` — The key field is 16px to stop iOS zoom.
 
 ## Motion
 
@@ -250,7 +250,7 @@ The register is stationery, not software. One rule governs all of it: nothing ma
 - `motion-letterhead-composes-once` — The letterhead composes itself once per load.
 - `motion-masthead-bar-sweeps-once` — The masthead bar turns green a beat late.
 - `motion-the-stamp-lands` — The RECEIVED stamp lands, it does not appear.
-- `motion-the-switch-is-one-object` — The view switch moves one object, not three lights.
+- `motion-the-switch-is-one-object` — The active view moves one object, not three lights.
 - `motion-use-just-became` — useJustBecame guards every celebration animation.
 
 ## The masthead, the cards and the palette
@@ -262,7 +262,7 @@ Where the page holds its shape, and where every colour comes from.
 - `card-the-bar-is-out-of-flow` — The package progress bar sits out of flow.
 - `design-form-controls-no-inherit` — Form controls need their own font rule.
 - `design-parchment-ledger` — The palette is parchment ledger.
-- `design-view-switch-equal-thirds` — The view switch is equal thirds.
+- `design-view-switch-equal-thirds` — The view switch is retired. Its chrome rules still hold.
 - `masthead-is-one-letterhead` — The masthead is one letterhead, not stacked boxes.
 - `masthead-sizing-by-clamp` — Masthead sizing uses clamp, never breakpoints.
 - `masthead-tallies-unequal-thirds` — The tally cells are not sized equally.

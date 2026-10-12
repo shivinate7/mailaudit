@@ -2,9 +2,9 @@
 
 A canceled order leaves the list. It also leaves every count. The app keeps it on record for audit.
 
-**Holds while:** `src/app.jsx` shows `{canceledCount} canceled` as a button in the Find row, and it shows the reference section while `showCanceled` is set.
+**Holds while:** `src/app.jsx` shows `{canceledCount} canceled` as a button in the ruled row above the list, and it shows the reference section while `showCanceled` is set.
 
-The Find row shows `N canceled` with a caret, in a ruled cell beside the search. The caret shows whether the section is open. It is not an underlined link on a line of its own. Tapping the cell opens a dashed reference section below the list, and scrolls to it. That section supports refund auditing.
+On the list views (Tally and Packages), the ruled row above the list shows `N canceled` with a caret, right-aligned. The caret shows whether the section is open. It is not an underlined link on a line of its own. The row shows only while the ledger holds items, and only while a canceled order (or, on Packages, a stamped one) needs it. Tapping the cell opens a dashed reference section below the list, and scrolls to it. That section supports refund auditing. The Find pill above the bottom bar replaced the old Find row (`phone-nav-is-bottom-bar`).
 
 Tracked and untracked orders show a dot in the header meta. ● means tracked. ○ means untracked. The dot sits beside a word.
 

@@ -2,6 +2,8 @@
 
 The merge and the push refuse different in-progress states. The difference is deliberate. The push and the merge guard on different things, and the difference is the point.
 
+**Status:** the Push and Merge controls left the UI on 2026-10-12. The guards below now apply to `autoPush` and `autoMerge`, which run on their own.
+
 **Holds while:** `autoPush` in `src/app.jsx` does not check `composing` or `undo`, and `autoMerge` checks both. The held apply of a Worker reply checks the same `mergeBlocked` value as `autoMerge`.
 
 The merge refuses while `composing`, `undo`, or any armed confirm is live. The merge applies a remote ledger. That would erase in-progress work. `applyBackup` nulls the first two flags. A Worker reply goes through the same merge, and it applies only after 10 s with no input. The Worker POST itself refuses nothing, because it changes nothing on this device.

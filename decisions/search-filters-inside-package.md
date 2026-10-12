@@ -8,7 +8,7 @@ The app keeps `revealed`, a set of package `gk` values. Packages in that set ign
 
 In Packages, a filtered card carries this footer: `+4 more lines in this order · show all`. It reveals that package only. The other results stay filtered. So near-duplicate candidates can be compared side by side.
 
-In Tally, each source copy's order id is an underlined control with a `›`. It reveals that order, switches to Packages and scrolls to it. It leaves the search untouched, so one tap on the view switch comes straight back.
+In Tally, each source copy's order id is an underlined control with a `›`. It reveals that order, switches to Packages and scrolls to it. It leaves the search untouched, so one tap on the Tally tab comes straight back.
 
 The Find search matches the card name, the set, the seller and the order. A stamp's label and note are part of the Packages search. A package-level hit keeps every line of its order. Filtering those lines would recreate the one-line lie. Group 32 covers the reveal.
 

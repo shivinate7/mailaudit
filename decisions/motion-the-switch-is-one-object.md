@@ -1,19 +1,19 @@
-# The view switch moves one object, not three lights
+# The active view moves one object, not three lights
 
-**Ruled, not built:** on phone, the bottom bar replaces this switch (`phone-nav-is-bottom-bar`). The bar's active tab is a card-colour pill. The owner has not ruled whether that pill slides as one object. Until the bar is built, this record holds for the top switch.
+The ruling: the active-view fill is a single element that slides between thirds. Three buttons never light up on their own. That ruling was for the top view switch. L11a retired the switch and its violet fill. The bar has no sliding fill, and this ruling covers the bar only if the owner rules that it does.
 
-The active-view fill is a single element that slides between thirds. Three buttons never light up on their own.
+**Status:** open. The owner has not ruled whether the bar's active pill slides as one object. The build sets no transition on the active tab.
 
-**Holds while:** `.mdl-thumb` is the only element that paints the active view. `data-view` is set on `.mdl-switch` in `src/app.jsx`. Tests 43.1 and 43.2 pin `data-view`.
+**Holds while:** the bar marks the current tab with `aria-current="page"` on its button. Tests 43.1 and 43.2 pin it. The retired switch used a violet thumb element and `data-view`. Both are gone.
 
-`.mdl-thumb` is the violet fill. It is absolutely positioned at exactly a third of the track. It translates by whole multiples of its own width, so it lands on the thirds the grid already defines. It cannot drift out of step with them.
+`aria-current` is the only thing that says which tab is active. Drop it, and the bar shows no active tab. Every tab still looks correct in a DOM dump.
 
-The buttons paint no background of their own. A button that did would leave a fill behind wherever the thumb had just been. There would be two fills mid-slide.
-
-The consequence: `data-view` on `.mdl-switch` is the only thing that says which segment is active. Drop that attribute, and the app has no active-view indicator at all. Every button still looks correct in a DOM dump. Tests 43.1–43.2 pin it.
+The retired thumb sat at exactly a third of the track. It moved by whole multiples of its own width, so it stayed on the thirds the grid defined. The buttons painted no background of their own, so no second fill showed mid-slide. L11a removed the thumb and its transition.
 
 ## See also
 
-- `switch-thirds-and-seal` — the measured thirds and thumb offset this object slides between.
-- `design-view-switch-equal-thirds` — the layout ruling this animation moves across.
-- `phone-nav-is-bottom-bar` — the bar that replaces this switch on phone. When it lands, tests 43.1 and 43.2 are re-pointed in the same commit.
+- `switch-thirds-and-seal` — the retired thirds and thumb figures.
+- `design-view-switch-equal-thirds` — the retired switch layout.
+- `phone-nav-is-bottom-bar` — the bar that now holds the active tab.
+
+**Pinned by:** 43.1 and 43.2 (the current tab follows the view).

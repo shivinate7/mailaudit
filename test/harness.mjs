@@ -624,6 +624,11 @@ export const background = async () => {
     configurable: true,
   });
 };
+/* autoPush is a chain of awaits (status, peek, then the write), and a single
+   act() flush does not reach its end. Pump the queue until the chain settles. */
+export const drain = async (turns = 30) => {
+  for (let i = 0; i < turns; i++) await act(async () => await sleep(0));
+};
 export const foreground = async () => {
   Object.defineProperty(win.document, "visibilityState", {
     value: "visible",
@@ -705,25 +710,74 @@ export { act };
 let pass = 0;
 const fails = [];
 
+/* A stalled await never reaches report(), so the run would end silent or hang.
+   The watchdog is idle-based: every assertion re-arms it, so a run that is making
+   progress never trips it, and one that stops for WATCHDOG_MS reports the failure
+   and the live handle kinds. It is unref'd, so it never keeps a finished run alive. */
+const WATCHDOG_MS = Number(process.env.MAILDAY_TEST_WATCHDOG_MS) || 300_000;
+/* Node's own timers, captured here: the virtual clock below swaps globalThis.setTimeout
+   for groups 53 to 56, and a watchdog on that clock would only fire when time is advanced. */
+const wdSetTimeout = globalThis.setTimeout;
+const wdClearTimeout = globalThis.clearTimeout;
+let watchdog = null;
+let reported = false;
+function arm() {
+  wdClearTimeout(watchdog);
+  watchdog = wdSetTimeout(() => stalled(`no assertion for ${WATCHDOG_MS / 1000} s, so the run stalled`), WATCHDOG_MS);
+  watchdog.unref();
+}
+
 export function ok(cond, label) {
+  arm();
   if (cond) pass++;
   else fails.push(label);
 }
 
 export function eq(actual, expected, label) {
+  arm();
   const a = JSON.stringify(actual);
   const e = JSON.stringify(expected);
   if (a === e) pass++;
   else fails.push(`${label}\n     expected ${e}\n     actual   ${a}`);
 }
 
+/* A run that ends with a live timer or socket never exits, so it hangs until
+   something kills it, and a hang reports nothing. Node names each live handle
+   by kind. The TTY and the stdio pipes are not ours to close, so they are skipped. */
+const STDIO_KINDS = new Set(["TTYWrap", "PipeWrap"]);
+export function liveHandleKinds() {
+  return process.getActiveResourcesInfo().filter((k) => !STDIO_KINDS.has(k));
+}
+
 export function report() {
+  reported = true;
+  wdClearTimeout(watchdog);
+  win.close(); // jsdom keeps the process alive otherwise
+  const live = liveHandleKinds();
+  if (live.length)
+    fails.push(`${live.length} live handle(s) after the run, so the process would hang: ${live.join(", ")}`);
   console.log(`\n${pass} passed, ${fails.length} failed`);
   for (const f of fails) console.log(`  ✗ ${f}`);
-  win.close(); // jsdom keeps the process alive otherwise
+  console.log(`live handles: ${live.length ? live.join(", ") : "none"}`);
   if (fails.length) process.exit(1);
   console.log("all green");
 }
+
+/* The run ended or stalled without report(). Print what it had, name the live
+   handles, and exit red. Once only: report() and this path never both speak. */
+function stalled(why) {
+  if (reported) return;
+  reported = true;
+  win.close();
+  const live = liveHandleKinds();
+  fails.push(`${why}; live handles: ${live.length ? live.join(", ") : "none"}`);
+  console.log(`\n${pass} passed, ${fails.length} failed`);
+  for (const f of fails) console.log(`  ✗ ${f}`);
+  process.exit(1);
+}
+/* a run whose last await never settled can end with nothing alive: beforeExit still fires */
+process.once("beforeExit", () => stalled("the run ended without reaching report()"));
+arm();
 
 /* ---------- DOM helpers ---------- */
 
@@ -839,7 +893,42 @@ export const type = async (input, value) => {
    micro-label, so they're addressable without reaching for structure. */
 export const cell = (re) => buttons().find((b) => re.test(b.textContent.trim()));
 
-export const toggleShowing = () => click(cell(/^Showing/), "showing cell");
+/* The Ledger tab holds the options (decision ledger-tab-holds-options). Each
+   helper finds its control on the current screen first, and visits the Ledger
+   tab only when the control is absent, so one helper serves the base and the
+   built page. onLedger returns the working view it came from, so a helper that
+   only flips a setting can hand that view back. */
+const viewTabEls = () =>
+  [...(document.querySelector('nav[aria-label="Views"]')?.querySelectorAll("button") ?? [])];
+const tabLabel = (b) => b.textContent.replace(/\d+$/, "").trim();
+export const onLedger = async () => {
+  const cur = viewTabEls().find(
+    (b) => b.getAttribute("aria-current") && b.getAttribute("aria-current") !== "false"
+  );
+  const prev = cur ? tabLabel(cur) : null;
+  const ledgerTab = viewTabEls().find((b) => tabLabel(b) === "Ledger");
+  if (prev !== "Ledger" && ledgerTab) await click(ledgerTab, "Ledger tab");
+  return prev;
+};
+/* Visit the Ledger tab only when a control matching `re` is not on screen. */
+export const reachFor = async (re) => {
+  if (!buttons().some((b) => re.test(b.textContent.trim()))) await onLedger();
+};
+export const showingText = async () => {
+  await reachFor(/^Showing/);
+  return cell(/^Showing/)?.textContent ?? "";
+};
+export const backTo = async (prev) => {
+  if (!prev || prev === "Ledger") return;
+  const t = viewTabEls().find((b) => tabLabel(b) === prev);
+  if (t) await click(t, `${prev} tab`);
+};
+
+export const toggleShowing = async () => {
+  const prev = cell(/^Showing/) ? null : await onLedger();
+  await click(cell(/^Showing/), "showing cell");
+  await backTo(prev);
+};
 
 /* Background the page for `awayMs` and bring it back — what iOS actually does
    when you switch apps and return, which is not a remount. Composes the
@@ -860,51 +949,69 @@ export async function backgroundFor(awayMs) {
 }
 
 export const openRange = async () => {
+  if (!cell(/^Orders from/)) await onLedger();
   const c = cell(/^Orders from/);
-  if (!c) throw new Error("no range cell on screen");
+  if (!c) {
+    fails.push("no range cell on screen");
+    return;
+  }
   if (c.getAttribute("aria-expanded") !== "true") await click(c, "open range");
 };
 
 /* Sort is a panel of options now, not a <select>, so pick by visible label. */
 export const pickSort = async (label) => {
+  const prev = cell(/^Sorted by/) ? null : await onLedger();
   const c = cell(/^Sorted by/);
   if (!c) {
     fails.push("no sort cell on screen");
+    await backTo(prev);
     return;
   }
   if (c.getAttribute("aria-expanded") !== "true") await click(c, "open sort");
   const opt = buttons().find((b) => b.textContent.trim() === label);
   if (!opt) {
     fails.push(`no sort option "${label}"`);
+    await backTo(prev);
     return;
   }
   await click(opt, `sort ${label}`);
+  await backTo(prev);
 };
 
-/* Push, Pull and Merge are the repair kit now, and its only entrance is the
-   broken-line — there is no Sync chip any more, because on the happy path
-   there is nothing about sync on screen at all. Idempotent, so tests can just
-   call it; note it only works while sync IS broken, which in a fresh fixture
-   means "this device has no key", the state every test starts in. */
+/* Opens the Sync panel, which holds the GitHub key field. Push, Pull and Merge
+   left the UI (owner ruling 2026-10-12): GitHub is a mirror that runs itself,
+   so tests reach it through background() and assert pushes() instead. */
 export const openSync = async () => {
-  if (!btn(/^Push$/)) await click(btn(/tap to/), "open the repair kit");
+  /* idempotent on the panel being open: the key field is its own mark, and
+     the Sync cell's aria-expanded says it when the field is not shown */
+  if (
+    cell(/^Sync/)?.getAttribute("aria-expanded") === "true" ||
+    document.querySelector('input[aria-label="GitHub access token"]')
+  )
+    return;
+  /* the advisory line, while it shows, opens the same panel; otherwise the
+     Sync cell on the Ledger tab does (decision ledger-tab-holds-options) */
+  if (btn(/tap to/)) await click(btn(/tap to/), "open the repair kit");
+  else {
+    await onLedger();
+    await click(cell(/^Sync/), "open Sync");
+  }
 };
 
-/* Backup and Backup + photos moved out of the Sync panel and into History —
-   they are version actions, and the Sync panel is a repair kit now that only
-   opens on failure. Idempotent, like openSync. */
+/* Idempotent, like openSync. History is a cell on the Ledger tab; its panel
+   opens inside that tab. */
 export const openHistory = async () => {
-  if (!btn(/^Backup$/)) await click(btn(/^History/), "open history");
+  if (cell(/^History/)?.getAttribute("aria-expanded") === "true") return;
+  if (!cell(/^History/)) await onLedger();
+  await click(cell(/^History/), "open history");
 };
 
-/* The key field is uncontrolled by design (the token must never reach React
-   state), so a plain .value assignment is exactly what a paste does. */
+/* The GitHub token field left the UI (owner ruling 2026-10-12, group 64: the
+   Sync panel holds the Worker's device key and nothing for GitHub). A device
+   gets its GitHub key the way the owner's devices do, before the mount
+   (boot's remoteKey) or on the adapter, so this sets it on the adapter. */
 export const saveGitHubKey = async (token = "github_pat_testtoken") => {
-  await openSync();
-  const el = document.querySelector('input[aria-label="GitHub access token"]');
-  if (!el) throw new Error("no GitHub key field on screen");
-  el.value = token;
-  await click(btn(/^Save key$/), "save key");
+  await win.remote.setKey(token);
 };
 
 /* Setting input.files isn't practical in jsdom, so file input goes through the
@@ -1009,6 +1116,10 @@ export async function boot(state, photos, opts = {}) {
   else win.remote = remoteApi;
   /* a fresh device has no sync key; each boot is a new device */
   sync = syncFresh();
+  /* set before the mount, so the cold-open GET already fails: a boot-time Worker
+     reply that never arrives (group 66). A setter called before boot is erased
+     by the fresh mock above, so it must be an option. */
+  if (opts.syncNetFail) sync.netFail = true;
   /* the Worker adapter ships in every real build, so a test that needs it opts
      in. Without it the app sees no adapter, and no sync-key entrance is offered
      to a keyless device, which is what groups 1-52 were written against. */
@@ -1067,6 +1178,9 @@ export const choose = async (labelRe, value) => {
 
 /** Record an envelope, tapping suggestions where they exist. */
 export async function record(names, note) {
+  /* the envelope form lives on the Orphaned tab; a test may arrive from the
+     Ledger tab (openHistory leaves the app there) */
+  if (!btn(/Record an envelope/)) await goTo("orphaned");
   await click(btn(/Record an envelope/), "new envelope");
   for (const n of names) {
     await type(cardInput(), n.slice(0, 9));

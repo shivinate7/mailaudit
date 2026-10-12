@@ -10,6 +10,8 @@ Removing the Sync cell had removed the only control that could close it. Worse, 
 
 While the panel is open, the line is the panel's header. When sync is healthy, the line goes quiet. It reads `Backed up 09-06 — tap to close` in transparent text, not manila. It does not vanish.
 
+On the Ledger tab the Sync row is that header: while the panel is open and healthy, its sub-line keeps `— tap to close`.
+
 A header that said "not backed up" over a ledger that just pushed would be a lie. Tests 28.8–28.12 pin both halves.
 
 ## See also
