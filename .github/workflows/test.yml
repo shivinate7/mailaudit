@@ -63,6 +63,8 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci
+      - run: npm run check:rules
+      - run: npm run test:rules
       - run: npm run test:check-docs
       - run: npm run test:worker
       - run: npm run test:send-key
@@ -163,20 +165,23 @@ jobs:
         run: |
           native=true
           if [ "$EVENT" = push ] || [ "$EVENT" = pull_request ]; then
-            if files=$(git diff --name-only "$BASE" HEAD 2>/dev/null) && [ -n "$files" ]; then
+            if files=$(git -c core.quotePath=false diff --no-renames --name-only "$BASE" HEAD 2>/dev/null) && [ -n "$files" ]; then
               grep -Eq '^(native/|shared/|src/view-rules\.mjs$|\.github/workflows/test\.yml$)' <<< "$files" || native=false
             fi
           fi
+          echo "scope verdict: event=$EVENT native=$native"
           echo "native=$native" >> "$GITHUB_OUTPUT"
 
   # Decision native-ci-on-hosted-macos: the Swift package tests (ST) on a
-  # hosted macOS runner. Skips drafts (decision ci-skips-draft-prs). The 15 min
-  # timeout is a placeholder: set it to 2x the slowest green run.
+  # hosted macOS runner. Skips drafts (decision ci-skips-draft-prs). The 3 min
+  # timeout is 2x the 53s green run, rounded up (macOS queue time not counted).
   native:
     needs: [suite, scope]
-    if: ${{ needs.scope.outputs.native == 'true' && !github.event.pull_request.draft }}
+    # always() lets it run when scope itself broke (fail safe); the suite
+    # result check keeps the cheap-first rule: a red suite skips native.
+    if: ${{ always() && needs.suite.result == 'success' && (needs.scope.result != 'success' || needs.scope.outputs.native == 'true') && !github.event.pull_request.draft }}
     runs-on: macos-26
-    timeout-minutes: 15
+    timeout-minutes: 3
     concurrency:
       group: native-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
