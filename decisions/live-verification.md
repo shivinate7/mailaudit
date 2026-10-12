@@ -74,8 +74,7 @@ It is worth moving to vitest and testing-library if this grows much further. The
 
 A probe deploy sets its own Durable Object name with the STORE_NAME variable, so a probe never touches the real store. Each lane names its probe below. A probe name is never ledger-v3, the real store, or ledger-v2, which holds an earlier probe's data.
 
-- **W2a photo route, probe-w2a.** Still to run on Cloudflare: the photos table is created through the Durable Object's SQLite API. A POST then a GET return the same bytes, with the type from the name. A second POST keeps the first bytes. A photo over 1.9 MB gets 413.
-- **W3a daily snapshots and /health, probe-w3a.** Still to run on Cloudflare: the snapshots table is created. The first changing write of a UTC day stores one snapshot, and a later one stores none. GET /health with no key returns only the last write time. The list and get snapshot routes answer with a device key.
+- **W2a photo route and W3a daily snapshots and /health: run on 2026-10-12.** See "Worker probe results" below. W2a and W3a need no second run.
 - **W2b, W3b, W3c, W3d and W3e.** No probe is named. Each waits for its brief.
 
 No test runs the Durable Object adapter. So the SQLite calls in worker/index.mjs are unproven until a probe runs.
@@ -86,3 +85,20 @@ No test runs the Durable Object adapter. So the SQLite calls in worker/index.mjs
 - `pull-needs-a-key-too`, why every device needs a token for reads too.
 - `pushforce-sha-only-after-write`, the bug this file's coverage gap describes.
 - `watchdog-catches-silent-failure`, the alarm mentioned in the setup steps.
+
+## Worker probe results
+
+Run on 2026-10-12 with wrangler 4.149.0, against `https://manifest-probe.shivamsemwal01.workers.dev`. The Worker name is `manifest-probe`, the store is `probe-live6`, and the key is a fresh random key whose hash is the Worker secret. The live Worker `manifestnumberone` was not touched. The probe Worker stays deployed. All checks PASS.
+
+- POST /ledger to the empty store: 200, rev 1. A changed ledger: 200, rev 2.
+- GET /snapshots: 200, one entry for the day, no ledger body. After the first write, the list is empty. The snapshot is taken at the first changing write.
+- GET /snapshots/<day>: 200, the ledger as it was before the second write, rev 1.
+- GET /health with no key: 200, only `at`.
+- POST /photos/pho-probe1.jpg: 200. GET /photos: 200, the name carries `.jpg`. GET of the photo: 200, `image/jpeg`, same bytes. A second POST with other bytes: 200, and the first bytes stay.
+- POST of 1,900,001 bytes: 413. DELETE /photos/x: 405.
+- /ledger, /snapshots, /photos and a photo GET with no key: 401.
+
+Two traps found while probing. Both are about a probe deploy, not about the code.
+
+- A secret change does not reach a Durable Object that is already running. The key got 401 until a deploy followed the secret change. Set the secret, then deploy.
+- A deploy that changes STORE_NAME serves both names for a short while. Ledger and photo writes then land in different stores and read back as missing. Deploy the same STORE_NAME twice before the probe, so every live version agrees.
