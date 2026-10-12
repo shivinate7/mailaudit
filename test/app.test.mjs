@@ -8340,6 +8340,27 @@ try {
   ok(false, `68.6 threw: ${e.message}`);
 }
 
+/* 68.6b the same damaged reply, then a check-in and a foreground: neither sends, because
+   the copy is still missing. Every send path is gated, not only the retry timer. */
+try {
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+    versions: VERS67(),
+    failPut: true,
+    syncAdapter: true,
+    syncKey: KEY68,
+    syncLedger: withField67("received", ["x"]),
+  });
+  await sleep(SAVE_WAIT);
+  await click(btn(/Mark all received/), "check in while the damaged copy is missing");
+  await sleep(POST_WAIT);
+  await foreground();
+  await drain();
+  await sleep(POST_WAIT);
+  eq(postCount(), 0, "68.6b a check-in and a foreground send nothing while the copy of a damaged reply is missing");
+} catch (e) {
+  ok(false, `68.6b threw: ${e.message}`);
+}
+
 /* 68.7 F3: a History restore from a refused load whose copy cannot be written says the copy
    failed, the same line Re-import gives, and does not call the version corrupt. */
 try {
@@ -8357,6 +8378,29 @@ try {
   eq(savedText(), RAW67, "68.7b a History restore whose copy fails changes nothing");
 } catch (e) {
   ok(false, `68.7 threw: ${e.message}`);
+}
+
+/* 68.8 F3, the branch's own history: an older version restored from a refused load whose
+   copy cannot be written says the copy failed, not that the version is corrupt. */
+try {
+  await boot(null, null, { raw: RAW67, versions: VERS67(), failPut: true, syncAdapter: true, syncKey: KEY67, remoteKey: GH67 });
+  await sleep(SAVE_WAIT);
+  ok(FALLBACK67.test(text()), "68.8pre the load is refused, so the branch restore case means something");
+  const H68 = "ledger: good version, from the branch";
+  remote.history.push({ sha: "sha-68-branch", at: Date.now() - 3600_000, message: H68, text: VER67_TEXT });
+  await openHistory();
+  await click(btn(/Load older versions/), "ask for the branch's versions");
+  await settle();
+  await click(buttons().find((b) => b.textContent.includes(H68)), "expand the branch version");
+  await click(btn(/Restore this version/), "arm restore of the branch version");
+  if (btn(/Tap again to replace/)) await click(btn(/Tap again to replace/), "confirm restore");
+  await settle();
+  await sleep(SAVE_WAIT);
+  ok(COPY68.test(text()), "68.8 a branch restore whose copy cannot be saved shows the copy-failed line");
+  ok(!/looks corrupt/.test(text()), "68.8a the branch restore does not call the version corrupt");
+  eq(savedText(), RAW67, "68.8b a branch restore whose copy fails changes nothing");
+} catch (e) {
+  ok(false, `68.8 threw: ${e.message}`);
 }
 
 report();
