@@ -18,8 +18,12 @@ npm run check:records # do the records' citations and fences hold?
 npm run check:screens # screen verdicts in a real browser
 npm run test:send-key # the send-key script's own test
 npm run test:view-rules # the view rules' own test
+npm run test:golden   # the golden files' own test
+npm run check:golden  # do the golden files match what scripts/gen-golden.mjs writes now?
 npm run deploy        # build + test, then a branch holding only index.html, pushed, with a PR to main
 ```
+
+`scripts/gen-golden.mjs` is not an npm script. After a change to `src/view-rules.mjs`, run `node scripts/gen-golden.mjs` to rewrite the golden files. `npm run check:golden` fails until you do.
 
 `scripts/send-key.mjs` is not an npm script. Run it with node and one argument. The argument `mac` opens the sync link on this Mac. The argument `iphone` shows a QR code for the iPhone. The key rules live in `sync-revamp-cloudflare`.
 

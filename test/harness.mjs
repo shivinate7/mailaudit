@@ -5,6 +5,7 @@
    The app is deliberately hard to unit-test (one file, no exports but the
    component) and that's fine: every behaviour worth protecting here is a
    behaviour you can see, so the assertions read the DOM the way a user would. */
+import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
@@ -1085,47 +1086,14 @@ export const envelopeCount = () => allBtns(/^Discard$/).length;
 
 /* ---------- fixture ---------- */
 
-const mk = (orderId, seller, date, tracking, rows) =>
-  rows.map(([name, qty, price], i) => ({
-    key: `${orderId}|${i}|p${name.replace(/\W/g, "")}`,
-    orderId,
-    seller,
-    name,
-    set: "Test Set",
-    condition: "Near Mint",
-    finish: "",
-    qty,
-    price,
-    date,
-    tracking,
-    line: "Magic",
-  }));
-
-/* Alpha and Beta are deliberate near-duplicates — identical contents from
-   different sellers. That's the case invariant orphaned-mail-never-decides exists for, and it's normal
-   for this user, so it belongs in the baseline fixture rather than one test. */
-export const ITEMS = [
-  ...mk("A1", "Alpha Cards", "2026-07-01", "without tracking", [
-    ["Lightning Bolt", 1, 1.0],
-    ["Counterspell", 1, 2.0],
-    ["Brainstorm", 2, 0.5],
-  ]),
-  ...mk("B1", "Beta Games", "2026-07-02", "without tracking", [
-    ["Lightning Bolt", 1, 1.0],
-    ["Counterspell", 1, 2.0],
-    ["Brainstorm", 2, 0.5],
-  ]),
-  ...mk("C1", "Gamma Cards", "2026-06-01", "with tracking", [
-    ["Lightning Bolt", 1, 1.0],
-    ["Path to Exile", 1, 3.0],
-    ["Swords to Plowshares", 1, 4.0],
-    ["Ponder", 1, 0.75],
-    ["Preordain", 1, 0.75],
-  ]),
-  ...mk("D1", "Delta Cards", "2026-05-01", "without tracking", [
-    ["Urza's Saga", 1, 50.0], // straight apostrophe, as the CSV has it
-  ]),
-];
+/* Alpha and Beta are deliberate near-duplicates: identical contents from
+   different sellers. That is the case invariant orphaned-mail-never-decides exists for,
+   and it is normal for this user, so it belongs in the baseline fixture.
+   The fixture is shared/fixtures/ledger.json, so the native app reads the same one
+   (decision shared-tokens-and-fixtures). */
+export const ITEMS = JSON.parse(
+  readFileSync(path.join(ROOT, "shared", "fixtures", "ledger.json"), "utf8")
+).items;
 export const TOTAL_CARDS = ITEMS.reduce((s, it) => s + it.qty, 0); // 14
 
 /* distinguishable bytes, including high ones — a JPEG is not UTF-8, and an

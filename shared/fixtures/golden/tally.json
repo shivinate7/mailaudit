@@ -1,0 +1,274 @@
+[
+  {
+    "name": "Lightning Bolt",
+    "items": [
+      {
+        "key": "B1|0|pLightningBolt",
+        "orderId": "B1",
+        "seller": "Beta Games",
+        "name": "Lightning Bolt",
+        "set": "Test Set",
+        "condition": "Near Mint",
+        "finish": "",
+        "qty": 1,
+        "price": 1,
+        "date": "2026-07-29",
+        "tracking": "without tracking",
+        "line": "Magic"
+      },
+      {
+        "key": "A1|0|pLightningBolt",
+        "orderId": "A1",
+        "seller": "Alpha Cards",
+        "name": "Lightning Bolt",
+        "set": "Test Set",
+        "condition": "Near Mint",
+        "finish": "",
+        "qty": 1,
+        "price": 1,
+        "date": "2026-07-01",
+        "tracking": "without tracking",
+        "line": "Magic"
+      },
+      {
+        "key": "C1|0|pLightningBolt",
+        "orderId": "C1",
+        "seller": "Gamma Cards",
+        "name": "Lightning Bolt",
+        "set": "Test Set",
+        "condition": "Near Mint",
+        "finish": "",
+        "qty": 1,
+        "price": 1,
+        "date": "2026-06-01",
+        "tracking": "with tracking",
+        "line": "Magic"
+      }
+    ],
+    "sets": [
+      "Test Set"
+    ],
+    "qty": 3,
+    "basis": 3,
+    "avg": 1,
+    "sellerCount": 3,
+    "orderCount": 3
+  },
+  {
+    "name": "Counterspell",
+    "items": [
+      {
+        "key": "B1|1|pCounterspell",
+        "orderId": "B1",
+        "seller": "Beta Games",
+        "name": "Counterspell",
+        "set": "Test Set",
+        "condition": "Near Mint",
+        "finish": "",
+        "qty": 1,
+        "price": 2,
+        "date": "2026-07-29",
+        "tracking": "without tracking",
+        "line": "Magic"
+      },
+      {
+        "key": "A1|1|pCounterspell",
+        "orderId": "A1",
+        "seller": "Alpha Cards",
+        "name": "Counterspell",
+        "set": "Test Set",
+        "condition": "Near Mint",
+        "finish": "",
+        "qty": 1,
+        "price": 2,
+        "date": "2026-07-01",
+        "tracking": "without tracking",
+        "line": "Magic"
+      }
+    ],
+    "sets": [
+      "Test Set"
+    ],
+    "qty": 2,
+    "basis": 4,
+    "avg": 2,
+    "sellerCount": 2,
+    "orderCount": 2
+  },
+  {
+    "name": "Brainstorm",
+    "items": [
+      {
+        "key": "B1|2|pBrainstorm",
+        "orderId": "B1",
+        "seller": "Beta Games",
+        "name": "Brainstorm",
+        "set": "Test Set",
+        "condition": "Near Mint",
+        "finish": "",
+        "qty": 2,
+        "price": 0.5,
+        "date": "2026-07-29",
+        "tracking": "without tracking",
+        "line": "Magic"
+      },
+      {
+        "key": "A1|2|pBrainstorm",
+        "orderId": "A1",
+        "seller": "Alpha Cards",
+        "name": "Brainstorm",
+        "set": "Test Set",
+        "condition": "Near Mint",
+        "finish": "",
+        "qty": 2,
+        "price": 0.5,
+        "date": "2026-07-01",
+        "tracking": "without tracking",
+        "line": "Magic"
+      }
+    ],
+    "sets": [
+      "Test Set"
+    ],
+    "qty": 4,
+    "basis": 2,
+    "avg": 0.5,
+    "sellerCount": 2,
+    "orderCount": 2
+  },
+  {
+    "name": "Path to Exile",
+    "items": [
+      {
+        "key": "C1|1|pPathtoExile",
+        "orderId": "C1",
+        "seller": "Gamma Cards",
+        "name": "Path to Exile",
+        "set": "Test Set",
+        "condition": "Near Mint",
+        "finish": "",
+        "qty": 1,
+        "price": 3,
+        "date": "2026-06-01",
+        "tracking": "with tracking",
+        "line": "Magic"
+      }
+    ],
+    "sets": [
+      "Test Set"
+    ],
+    "qty": 1,
+    "basis": 3,
+    "avg": 3,
+    "sellerCount": 1,
+    "orderCount": 1
+  },
+  {
+    "name": "Swords to Plowshares",
+    "items": [
+      {
+        "key": "C1|2|pSwordstoPlowshares",
+        "orderId": "C1",
+        "seller": "Gamma Cards",
+        "name": "Swords to Plowshares",
+        "set": "Test Set",
+        "condition": "Near Mint",
+        "finish": "",
+        "qty": 1,
+        "price": 4,
+        "date": "2026-06-01",
+        "tracking": "with tracking",
+        "line": "Magic"
+      }
+    ],
+    "sets": [
+      "Test Set"
+    ],
+    "qty": 1,
+    "basis": 4,
+    "avg": 4,
+    "sellerCount": 1,
+    "orderCount": 1
+  },
+  {
+    "name": "Ponder",
+    "items": [
+      {
+        "key": "C1|3|pPonder",
+        "orderId": "C1",
+        "seller": "Gamma Cards",
+        "name": "Ponder",
+        "set": "Test Set",
+        "condition": "Near Mint",
+        "finish": "",
+        "qty": 1,
+        "price": 0.75,
+        "date": "2026-06-01",
+        "tracking": "with tracking",
+        "line": "Magic"
+      }
+    ],
+    "sets": [
+      "Test Set"
+    ],
+    "qty": 1,
+    "basis": 0.75,
+    "avg": 0.75,
+    "sellerCount": 1,
+    "orderCount": 1
+  },
+  {
+    "name": "Preordain",
+    "items": [
+      {
+        "key": "C1|4|pPreordain",
+        "orderId": "C1",
+        "seller": "Gamma Cards",
+        "name": "Preordain",
+        "set": "Test Set",
+        "condition": "Near Mint",
+        "finish": "",
+        "qty": 1,
+        "price": 0.75,
+        "date": "2026-06-01",
+        "tracking": "with tracking",
+        "line": "Magic"
+      }
+    ],
+    "sets": [
+      "Test Set"
+    ],
+    "qty": 1,
+    "basis": 0.75,
+    "avg": 0.75,
+    "sellerCount": 1,
+    "orderCount": 1
+  },
+  {
+    "name": "Urza's Saga",
+    "items": [
+      {
+        "key": "D1|0|pUrzasSaga",
+        "orderId": "D1",
+        "seller": "Delta Cards",
+        "name": "Urza's Saga",
+        "set": "Test Set",
+        "condition": "Near Mint",
+        "finish": "",
+        "qty": 1,
+        "price": 50,
+        "date": "2026-05-01",
+        "tracking": "without tracking",
+        "line": "Magic"
+      }
+    ],
+    "sets": [
+      "Test Set"
+    ],
+    "qty": 1,
+    "basis": 50,
+    "avg": 50,
+    "sellerCount": 1,
+    "orderCount": 1
+  }
+]
