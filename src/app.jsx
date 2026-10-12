@@ -2123,7 +2123,7 @@ function PhotoStrip({ ids, onRemove, epoch = 0 }) {
    every keystroke drops characters with the iOS keyboard up. */
 function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draftRef }) {
   /* reopen on the draft the app kept for this target, if there is one */
-  const kept = draftRef.current?.target === target ? draftRef.current : null;
+  const kept = draftRef.current.get(target) ?? null;
   const [draft, setDraft] = useState(kept?.draft ?? "");
   const [entries, setEntries] = useState(
     () => kept?.entries ?? (initial?.entries || []).map((e) => ({ ...e }))
@@ -2139,7 +2139,9 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
       note !== (initial?.note || "") ||
       JSON.stringify(entries) !== JSON.stringify(initial?.entries || []) ||
       photos.join() !== (initial?.photos || []).join();
-    draftRef.current = dirty ? { target, draft, entries, note, photos } : null;
+    /* delete then set, so the last key is the most recently touched composer */
+    draftRef.current.delete(target);
+    if (dirty) draftRef.current.set(target, { target, draft, entries, note, photos });
   }, [draft, entries, note, photos, initial, target, draftRef]);
   const [busy, setBusy] = useState(false);
   const camera = useRef(null);
@@ -2568,31 +2570,65 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
         >
           Edit
         </button>
-        {confirmDiscard && (
+        {/* The arm must not shrink or move the label or Edit
+            (ux-press-moves-nothing). So the long ask cannot sit in this row:
+            Discard keeps its width, and the ask and its Cancel open as a
+            panel that hangs below the row without taking space. */}
+        <span style={{ position: "relative", display: "flex" }}>
           <button
-            autoFocus
-            onClick={disarm}
-            style={{ ...miniBtn, fontSize: 11, padding: "5px 9px" }}
+            onClick={() => arm(setConfirmDiscard, true)}
+            style={{
+              ...miniBtn,
+              fontSize: 11,
+              padding: "5px 9px",
+              color: confirmDiscard ? C.card : C.red,
+              background: confirmDiscard ? C.red : C.card,
+              borderColor: confirmDiscard ? C.red : C.redSoft,
+            }}
           >
-            Cancel
+            Discard
           </button>
-        )}
-        <button
-          onClick={() =>
-            confirmDiscard ? onDiscard(env.id) : arm(setConfirmDiscard, true)
-          }
-          style={{
-            ...miniBtn,
-            fontSize: 11,
-            padding: "5px 9px",
-            color: confirmDiscard ? C.card : C.red,
-            background: confirmDiscard ? C.red : C.card,
-            borderColor: confirmDiscard ? C.red : C.redSoft,
-            fontWeight: confirmDiscard ? 700 : 400,
-          }}
-        >
-          {confirmDiscard ? `Tap again to discard ${cardsOf(total)}` : "Discard"}
-        </button>
+          {confirmDiscard && (
+            <span
+              style={{
+                position: "absolute",
+                top: "calc(100% + 4px)",
+                right: 0,
+                zIndex: 5,
+                display: "flex",
+                gap: 6,
+                padding: 4,
+                background: C.card,
+                border: `1px solid ${C.redSoft}`,
+                borderRadius: 8,
+                boxShadow: `0 2px 6px ${C.shadow}`,
+              }}
+            >
+              <button
+                autoFocus
+                onClick={disarm}
+                style={{ ...miniBtn, fontSize: 11, padding: "5px 9px" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => onDiscard(env.id)}
+                style={{
+                  ...miniBtn,
+                  fontSize: 11,
+                  padding: "5px 9px",
+                  whiteSpace: "nowrap",
+                  color: C.card,
+                  background: C.red,
+                  borderColor: C.red,
+                  fontWeight: 700,
+                }}
+              >
+                {`Tap again to discard ${cardsOf(total)}`}
+              </button>
+            </span>
+          )}
+        </span>
       </div>
 
       <div style={{ padding: "0 14px 10px" }}>
@@ -2961,7 +2997,8 @@ export default function MailDayLedger() {
      under the iOS keyboard. It lives here so a change of view does not destroy
      it (ux-keep-what-was-made). It is never saved: no storage key, no ledger
      field. */
-  const composerDraft = useRef(null);
+  const composerDraft = useRef(new Map()); // composer target -> its draft
+  const resumeTarget = useRef(null); // the composer open when the person left Orphaned
   const [undo, setUndo] = useState(null); // last assignment, reversible
   const [backupBusy, setBackupBusy] = useState(false);
   const [photoUsage, setPhotoUsage] = useState(null);
@@ -3406,7 +3443,7 @@ export default function MailDayLedger() {
             if (b) await window.photos.put(id, b).catch(() => {});
           }
         })();
-      composerDraft.current = null;
+      composerDraft.current.clear();
       setComposing(null);
       setUndo(null);
       if (data.dateFilter) setDateFilter(data.dateFilter);
@@ -3679,7 +3716,7 @@ export default function MailDayLedger() {
     setEnvelopes([]);
     setStamps({});
     setShowStamped(false);
-    composerDraft.current = null;
+    composerDraft.current.clear();
     setComposing(null);
     setUndo(null);
     setSticky(new Set());
@@ -3911,17 +3948,24 @@ export default function MailDayLedger() {
     (v) => {
       /* Leaving drops the flag, so sync is not held off while the draft waits
          in the ref; coming back reopens the composer on it. */
-      if (view === "mystery" && v !== "mystery") setComposing(null);
-      const d = composerDraft.current;
-      if (
-        v === "mystery" &&
-        d &&
-        (d.target === "new" || liveEnvelopes.some((e) => e.id === d.target))
-      )
-        setComposing(d.target);
+      if (view === "mystery" && v !== "mystery") {
+        resumeTarget.current = composing;
+        setComposing(null);
+      }
+      /* only a composer that was open when the person left comes back; one
+         closed with Cancel keeps its draft but stays closed */
+      const t = resumeTarget.current;
+      if (v === "mystery" && t) {
+        resumeTarget.current = null;
+        if (
+          composerDraft.current.has(t) &&
+          (t === "new" || liveEnvelopes.some((e) => e.id === t))
+        )
+          setComposing(t);
+      }
       setView(v);
     },
-    [view, liveEnvelopes]
+    [view, liveEnvelopes, composing]
   );
 
   const flashTimer = useRef(null);
@@ -4991,7 +5035,7 @@ export default function MailDayLedger() {
             ...prev,
           ]
     );
-    composerDraft.current = null;
+    composerDraft.current.delete(draft.id ?? "new");
     setComposing(null);
   }, []);
 
@@ -5009,7 +5053,7 @@ export default function MailDayLedger() {
          effect and a timer armed two seconds earlier would delete the very
          photos we just downloaded. The ref is set synchronously; the state
          behind syncBusy is not. */
-      if (syncingRef.current || composerDraft.current) return;
+      if (syncingRef.current || composerDraft.current.size) return;
       window.photos.sweep(keep).catch(() => {});
     }, 2000);
     return () => clearTimeout(t);
@@ -5337,6 +5381,11 @@ export default function MailDayLedger() {
      exclude canceled orders, since rangedItems already does. */
   const totals = useMemo(() => totalsOf(rangedItems, received), [rangedItems, received]);
   const ledgerCards = useMemo(() => items.reduce((n, it) => n + it.qty, 0), [items]);
+  /* Reset also clears the envelopes, so its count must include their cards */
+  const envelopeCards = useMemo(
+    () => liveEnvelopes.reduce((n, e) => n + e.entries.reduce((m, x) => m + x.qty, 0), 0),
+    [liveEnvelopes]
+  );
 
   /* Packages fully checked in, for the masthead tally. */
   const pkgsDone = useMemo(() => packagesDone(packages, received), [packages, received]);
@@ -5598,6 +5647,9 @@ export default function MailDayLedger() {
            third, 11px by 760. */
         .mdl-acts { display: grid; grid-auto-flow: column;
                     grid-auto-columns: minmax(0, 1fr); }
+        /* armed: Cancel takes what it needs, the ask takes the rest, so the
+           count in "Tap again to clear N cards" is never cut off */
+        .mdl-acts.arming { grid-template-columns: auto minmax(0, 1fr); }
         .mdl-act { height: 40px; min-width: 0; padding: 0 6px; border: 0;
                    border-right: 1px solid ${C.line}; background: transparent;
                    font-family: ${mono}; font-size: clamp(10px, 2.7vw, 11px);
@@ -6418,7 +6470,7 @@ export default function MailDayLedger() {
                     : "The backup needs attention — tap to fix"}
                 </button>
               )}
-              <div className="mdl-acts">
+              <div className={confirmReset ? "mdl-acts arming" : "mdl-acts"}>
                 {(items.length > 0 || liveEnvelopes.length > 0) && !confirmReset && (
                   <button
                     onClick={() => setShowUpload((s) => !s)}
@@ -6474,7 +6526,7 @@ export default function MailDayLedger() {
                   >
                     <span>
                       {confirmReset
-                        ? `Tap again to clear ${cardsOf(ledgerCards)}`
+                        ? `Tap again to clear ${cardsOf(ledgerCards + envelopeCards)}`
                         : "Reset"}
                     </span>
                   </button>
@@ -6996,10 +7048,7 @@ export default function MailDayLedger() {
                 target="new"
                 draftRef={composerDraft}
                 onSave={saveEnvelope}
-                onCancel={() => {
-                  composerDraft.current = null;
-                  setComposing(null);
-                }}
+                onCancel={() => setComposing(null)}
               />
             ) : (
               <button
@@ -7046,10 +7095,7 @@ export default function MailDayLedger() {
                     target={env.id}
                     draftRef={composerDraft}
                     onSave={saveEnvelope}
-                    onCancel={() => {
-                      composerDraft.current = null;
-                      setComposing(null);
-                    }}
+                    onCancel={() => setComposing(null)}
                   />
                 ) : (
                   <EnvelopeCard
