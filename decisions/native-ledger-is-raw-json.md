@@ -39,13 +39,19 @@ Lane N3 landed in PR #80 with a test for each item above, in LedgerStoreTests, u
 
 Lane N3b adds six tests in LedgerStoreTests: testLoadRefusesArrayReceivedAndSaveWritesNothing, testLoadRefusesStringReceivedAndSaveWritesNothing, and the same pair for receivedAt and stamps. Each writes a seed with the bad field, then checks that load throws, save throws, and the file bytes stay as written. Each starts from a fresh store, so no test covers a failed reload of these fields after a good load. A JSON `null` in these fields, the missing-file case and the unwrapped-error sentence in Load and save are read from the code, not tested.
 
-## Known gap: the Worker merge drops unknown top-level fields
+## Known gap: the Worker merge and shape check
 
-**Open, for a later lane.** Measured 2026-10-12 by calling `mergeLedger` from `src/merge-rules.mjs` with a ledger that holds one top-level field the client does not know. The merged output did not contain it. Re-measured at f3e36cd: the field is dropped whether it sits in the local ledger or the incoming one. `mergeLedger` builds its output from a fixed list of keys.
+**Open, for a later lane.** The merge gap below is still open. The shape refusal further down is built. Measured 2026-10-12 by calling `mergeLedger` from `src/merge-rules.mjs` with a ledger that holds one top-level field the client does not know. The merged output did not contain it. Re-measured at f3e36cd: the field is dropped whether it sits in the local ledger or the incoming one. `mergeLedger` builds its output from a fixed list of keys.
 
 The Worker POST handler in `worker/core.mjs` stores the merged ledger whenever a ledger already exists, and returns it. So an unknown top-level field survives only the first write to an empty store. Nested unknown fields inside an envelope or a stamp are unmeasured.
 
 Proposed fix: `mergeLedger` carries unknown top-level keys through, with a test. The owner decides.
+
+**Built, not deployed: the Worker refuses a bad shape.** The change is in PR #88, a draft, not merged. Owner ruling 2026-10-12 ("Keep a copy, then go on"): the Worker refuses to store a ledger with a bad shape, so one app's bug cannot reach the other. The live deploy needs the owner's word.
+
+A POST to the ledger route returns 400 `{error:"bad shape"}` in two cases. The first is when `received`, `receivedAt` or `stamps` is not a plain object. The second is when `envelopes` is not an array. Null, arrays and other types fail the first three fields. An absent field passes. The check runs after the `bad ledger` check and before the store is read. So a refused POST never reads or writes the store (read from the code). The check tests the type of the whole field only. A single bad entry inside a valid field passes, for example a `received` object whose value is a string. The Worker does not check that `envelopes` holds objects. The native store does.
+
+Test 3.3 in `worker/core.test.mjs` proves the following on a seeded store. The POST gets 400 and a plain error string. It makes no write, broadcast or snapshot. The store is unchanged. It covers an array, a string, a number, `true` and null for the first three fields. For `envelopes` it covers an object, a string, a number, `true` and null. Test 3.4 proves the 400 and no write on an empty store. Tests 3.5 and 3.6 prove that a well-shaped ledger and a ledger with a missing field are stored.
 
 ## Known bandaid: Swift names are unbackticked
 
