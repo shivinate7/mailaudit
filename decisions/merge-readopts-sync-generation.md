@@ -4,7 +4,7 @@
 
 **Holds while:** `doMerge` in `src/app.jsx` accepts exactly one `syncGen` bump from `applyBackup`, and test 34.29 in `test/app.test.mjs` uploads a photo that the merge adopts.
 
-`doPull` never noticed this. A pull ends with its apply, so the missing guard never mattered there. A merge pushes afterward. So the photo phase and the `Pushed ✓` flash silently did nothing. Only test 34.29 found it. It asserts that a photo the merge adopts is uploaded, not skipped.
+`doPull`, deleted in L11c, never noticed this. A pull ends with its apply, so the missing guard never mattered there. A merge pushes afterward. So the photo phase and the `Pushed ✓` flash silently did nothing. The flash is retired now. Only test 34.29 found it. It asserts that a photo the merge adopts is uploaded, not skipped.
 
 ## See also
 

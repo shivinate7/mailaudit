@@ -1,14 +1,14 @@
 # Prove the two-device merge before trusting auto-push
 
-Setup ends with an actual conflict test. It does not end with a successful push. The two steps below are part of the one-time setup.
+Setup ends with an actual conflict test. It does not end with a successful push. No screen path is left for these steps. The Push and Merge & push controls left the UI on 2026-10-12. The mirror push and the automatic merge run on their own, and only test proof covers them (group 34). The two steps below are part of the one-time setup.
 
-**Holds while:** `src/app.jsx` has no auto-push toggle, and the conflict control reads "Merge & push".
+**Holds while:** `src/app.jsx` has no auto-push toggle, and no control renders Merge or Merge & push (removed 2026-10-12). The conflict runs `doMerge(true)` on its own.
 
-5. In the app: Sync → paste → Save key → Push. Expect `Pushed ✓`. Check that `mailaudit` gained no commit at all. With photos in the ledger, expect `mailaudit-data` to gain one commit per photo on `main`. The button stays on `Pushing…` until they are done. Each takes roughly a second. The ledger and the photos share one repo's write budget and one `spaceWrites()` clock.
+5. No screen path is left (see above). On a device with a key, the mirror push runs on its own. Check that `mailaudit` gained no commit at all. With photos in the ledger, expect `mailaudit-data` to gain one commit per photo on `main`. The button stays on `Pushing…` until they are done. Each takes roughly a second. The ledger and the photos share one repo's write budget and one `spaceWrites()` clock.
 
-   Then run the test worth doing. Pull onto a second device or origin, and confirm the thumbnails render. This is the one path where a wrong order fails silently. The ledger comes back looking perfect, with every photo id quietly stripped.
+   Then run the test worth doing. A second device or origin must pull the ledger (the automatic merge does it on a fresh session), and confirm the thumbnails render. This is the one path where a wrong order fails silently. The ledger comes back looking perfect, with every photo id quietly stripped.
 
-6. Prove the merge before trusting auto-push. Auto-push's conflict recovery is that same path, running unattended. On A, check a card in, then Push. On B, without pulling, import a CSV that adds lines, then Push. Expect the conflict. Then tap **Merge & push**. B must end holding A's check-in and its own new lines. A's next Merge must agree.
+6. Prove the merge before trusting auto-push. Auto-push's conflict recovery is that same path, running unattended. On A, check a card in, then Push. On B, without pulling, import a CSV that adds lines, then Push. Expect the conflict. Then the automatic merge runs on B. No control is left. B must end holding A's check-in and its own new lines. A's next merge must agree.
 
    Sync is unconditional now. There is no toggle to enable. So this proof is a prerequisite for running the app on two devices at all, not only for enabling a feature.
 
@@ -21,7 +21,7 @@ Mutants confirmed red:
 - a photo phase that surveys the pre-merge reference list;
 - a conflict during the merged push that leaves no button.
 
-Group 40 also kills a quiet merge that announces itself.
+Group 40 also kills a quiet merge that announces itself. Test 40.13 still asserts a Merge & push button, which no longer renders. A builder must re-point it.
 
 ## See also
 

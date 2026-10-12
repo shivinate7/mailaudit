@@ -10,7 +10,7 @@ Every feature has one scope: both clients, web-only or native-only. A feature th
 
 Each client draws its own screen. The logic has one home, see `rules-run-in-javascriptcore`.
 
-- Packages, Tally and Orphaned, and the view switch.
+- Packages, Tally and Orphaned, and the bottom bar that switches between them (`phone-nav-is-bottom-bar`).
 - Search, hide-received, the date filter, the six Tally sort keys and the package sort.
 - Lost-mail flags, outstanding value per level, and canceled orders.
 - Check-in and un-check, the steppers and the bulk row.
@@ -27,11 +27,11 @@ Each client draws its own screen. The logic has one home, see `rules-run-in-java
 |---|---|---|
 | Public seed (`window.seed`) | web-only | It serves site visitors, and visitors do not use native. Its future is open, see `worker-keeps-snapshots`. |
 | GitHub mirror to the data branch, and History from the branch | web-only, until lane W3 ships | They need a GitHub token. Native never holds one. Worker snapshots replace both for both clients. |
-| GitHub sync path: pull, push, sha, peek, two-tap | web-only | Cloudflare retires it. Native never had it. |
+| GitHub sync path: pull, push, sha, peek | web-only | Cloudflare retires it. The two-tap confirms left the UI on 2026-10-12. Native never had it. |
 | Photo sync through the GitHub Contents API | web-only | The Worker photo route replaces it for both clients. |
 | CSV import and the upload zone | web-only | A port gives `parser-filters` a second home, see `csv-import-stays-web`. |
 | Restore from a backup file | web-only | The web path stays the one recovery tool. |
-| Key paste field, the `#k=` link, the 16px token field | web-only | Native takes the key by URL into the Keychain, see `native-key-via-url-scheme`. |
+| Key paste field, the `#k=` link, the 16px key field | web-only | Native takes the key by URL into the Keychain, see `native-key-via-url-scheme`. |
 | The `mailday:` namespace and the frozen storage keys | web-only | They are web storage. Native has its own frozen file names, see `native-files-are-frozen`. |
 | check:build, check:seed, the favicon and theme-color | web-only | They are Pages artifacts. |
 | Keychain key, class AfterFirstUnlockThisDeviceOnly | native-only | The rebuild ruling asks for it. |

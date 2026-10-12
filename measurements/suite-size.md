@@ -1,6 +1,6 @@
 # Test suite assertion count and run time
 
-**Status:** re-measure blocked. At commit `12e8721` (L11b), `npm test` crashes at `test/app.test.mjs` line 137, in group 2, inside the `record()` helper. The error is `'set value' called on an object that is not a valid instance of HTMLInputElement`. The crash happens under the machine zone and under `TZ=UTC`, on a clean `npm ci`. No count is taken here. The 1031 and 1030 figures below predate L11b and are unverified on this commit. `check:docs` runs this suite first, so it fails before it checks any path or name.
+**Status:** re-measure blocked at `b62aebd`, checked 2026-10-12. `npm test` and `TZ=UTC npm test` both stop at `test/app.test.mjs` line 2210 (test 17.4), with `TypeError: Cannot read properties of undefined (reading 'photos')`. The stop is the same in both zones. Groups 18 onward do not run, so no assertion count is taken on this commit. The 1031 and 1030 figures below predate L11b and are unverified. `check:docs` runs this suite first, so it fails before it checks any path or name.
 
 This record holds the assertion count and the run time for `npm test`. The suite runs 1031 assertions and takes about 200 seconds. The earlier figure of 110 seconds is stale. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 

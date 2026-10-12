@@ -2,6 +2,8 @@
 
 `pushForce` hands its looked-up sha to the PUT. It does not store that sha first. The rule exists because an earlier version called `saveRec({ sha })` before it wrote. That made the force the one remaining place that recorded a claim to hold bytes it had not written. When the PUT then failed, the device kept a current sha over stale data. The failure could come from being offline, from throttling, or from a 409 raised by racing the photo repo. The next auto-push was then accepted with no conflict raised. This is the same incident as the pull path, reached through the force path.
 
+**Status:** no caller reaches `pushForce`. `doPush` is called with `force` false at both call sites, and `confirmForce` is never set. The rule holds for the adapter if a force returns.
+
 **Holds while:** `pushForce` in `src/entry.jsx` passes its sha to `push()`. `push()` saves the sha only after its PUT, and tests 35.6 and 35.7 cover this.
 
 `push()` takes an optional sha override for this case. It records that sha only after the bytes reach GitHub.

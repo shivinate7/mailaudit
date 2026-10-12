@@ -6,7 +6,7 @@
 
 Each Ledger tab row shows its label and a sub line on the left. It shows its value in mono on the right. A row that opens a panel shows `aria-expanded`. A row that toggles a state shows `aria-pressed`. Re-import CSV and History carry the open state. The Reset row sits in its own box.
 
-The Sync cell is gone from the working screens. The advisory line is the working screens' way to the Sync group (`ruled-head-one-advisory-entrance`). Re-import CSV and Reset keep the narrower gate. See `recovery-control-not-state-gated`.
+The Sync cell is gone from the working screens. The advisory line is the working screens' way to the Sync group (`ruled-head-one-advisory-entrance`). Re-import CSV and Reset show on every ledger, and the View cells keep the narrower gate. See `recovery-control-not-state-gated`.
 
 ## See also
 

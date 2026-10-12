@@ -84,21 +84,21 @@ Sync runs itself. These records say what it refuses to do, and why each refusal 
 - `peek-is-three-valued` — peek is three-valued, not a guess.
 - `listphotos-is-three-valued` — listPhotos is three-valued too.
 - `offline-is-decided-by-fetch` — Offline is decided by a failed fetch.
-- `pull-needs-a-key-too` — Pull now needs the same key.
-- `stale-push-conflict-pull-two-tap` — Pull gets the two-tap, push does not.
-- `merge-carries-no-two-tap-arm` — Merge never needs a two-tap arm.
+- `pull-needs-a-key-too` — A pull needs the same key.
+- `stale-push-conflict-pull-two-tap` — A stale push merges, and it never overwrites.
+- `merge-carries-no-two-tap-arm` — Merge runs unattended, with no two-tap arm.
 - `max-cannot-express-an-uncheck` — A per-key time lets an un-check beat an older check.
 - `envelope-deletion-unrepresented` — A discarded envelope leaves a tombstone that a stale copy cannot revive.
 - `two-device-merge-proven-first` — Prove the two-device merge before trusting auto-push.
 - `merge-readopts-sync-generation` — A merge re-adopts the sync generation.
-- `push-flash-waits-for-photos` — Pushed shows only after the photos.
+- `push-flash-waits-for-photos` — Retired 2026-10-12: the Pushed flash has no control.
 - `remote-sync-is-off-the-save-path` — Remote sync never touches the save indicator.
 - `fine-grained-token-single-repo` — One fine-grained token, scoped to one repo.
 - `token-lives-outside-namespace` — The access token sits outside the storage namespace.
 - `one-repo-for-both-halves` — The source repo is public and holds no data.
 - `data-branch-setup` — The data branch is the ledger's history, not a scratch file.
 - `photo-branch-must-preexist` — The photo branch must exist before any upload.
-- `pull-fetches-photos-before-apply` — A pull fetches photos before it applies.
+- `pull-fetches-photos-before-apply` — A merge fetches photos before it applies.
 - `ledger-and-photos-share-a-repo` — The ledger and the photos share one repo.
 - `photo-writes-wait-one-second` — Photo writes wait one second after the ledger.
 - `null-remote-info-is-not-no-key` — A null remote status is not a missing key.
@@ -228,10 +228,10 @@ The control region is the masthead's own vocabulary continued. Read these before
 - `history-sync-close-each-other` — History and Sync close each other.
 - `upload-zone-opens-when-empty` — The upload zone opens only on an empty ledger.
 - `sync-line-toggles-its-panel` — The sync line is also the panel's way out.
-- `merge-is-the-primary-sync-action` — Merge is the primary sync action.
+- `merge-is-the-primary-sync-action` — Retired 2026-10-12: Merge left the UI.
 - `sync-panel-is-two-column-grid` — The sync panel is server status, last sync and a key box.
 - `sync-particulars-ruled-values` — Sync particulars are ruled label and value pairs.
-- `token-field-is-sixteen-pixels` — The token field is 16px to stop iOS zoom.
+- `token-field-is-sixteen-pixels` — The key field is 16px to stop iOS zoom.
 
 ## Motion
 

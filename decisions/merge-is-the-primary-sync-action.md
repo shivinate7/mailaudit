@@ -1,20 +1,16 @@
 # Merge is the primary sync action
 
-Merge is the primary sync action. Push anyway stays advisory.
+**Status:** retired 2026-10-12. The owner ruled that Pull, Push anyway, Push and Merge leave the UI. No control renders Merge or Push anyway now. The merge still runs on its own (`merge-carries-no-two-tap-arm`), so the reasons below still hold for that path.
 
-**Holds while:** `src/app.jsx` sets `on: true` on the Merge action, and it styles the Push anyway action in manila.
+The merge was the safe resolution, so it was the primary control. Its label read "Merge & push" on a conflict, and "Merge" otherwise. It appeared on a conflict, and when `peek()` said the other device was ahead.
 
-Merge appears on a conflict, and when `peek()` says the other device is ahead. The two entrances are set out in `merge-carries-no-two-tap-arm`. Merge covers the case that the automatic path could not finish.
+Push anyway was the only force in the feature. It stayed advisory, in manila beside Merge. The force existed so that a device holding the copy worth keeping was not stuck behind a conflict. Every push is a commit, so what a force overwrote stayed in the branch's history. No code path passes a force now (`pushforce-sha-only-after-write`).
 
-Merge is filled accent violet. That is the app's colour for the live control. Merge is the safe resolution, so it is the primary one. Its label reads "Merge & push" on a conflict. Otherwise it reads "Merge".
-
-Push anyway sits beside Merge, in advisory manila. It takes a two-tap arm. It is the only force in the feature.
-
-The force exists so that a device holding the copy worth keeping is not stuck behind a conflict. Every push is a commit. So what the force overwrites stays in the branch's history.
+**Holds while:** `src/app.jsx` renders no button labelled Merge, Merge & push or Push anyway. A control with one of those labels would undo this retirement.
 
 ## See also
 
-- `merge-carries-no-two-tap-arm` — why Merge takes no two-tap arm.
-- `stale-push-conflict-pull-two-tap` — why Pull takes a two-tap arm, and Push does not.
-- `push-and-merge-guard-differently` — the states that Push and Merge each refuse.
-- `sync-panel-is-two-column-grid` — the grid these actions sit in.
+- `merge-carries-no-two-tap-arm` — why the merge that runs on its own takes no two-tap arm.
+- `stale-push-conflict-pull-two-tap` — the stale-push rule the mirror path still runs.
+- `push-and-merge-guard-differently` — the guards on the automatic push and merge.
+- `sync-panel-is-two-column-grid` — the grid these actions used to sit in.

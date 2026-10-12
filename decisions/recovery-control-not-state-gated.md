@@ -11,6 +11,7 @@ If the data an action works on is absent, its recovery control must not hide. Ot
 - The View group (Showing, Sorted by, Orders from) shows only for a ledger with items. The filters describe a list that is not there, so they keep the narrower gate.
 - The Sync row shows for a device with a remote or a Worker. On an empty ledger it shows alone, with the device key box inside it.
 - The History row shows for a device with the versions adapter or the remote. It holds the control that undoes a Reset. Gating it on `items.length` would hide it just after a Reset.
+- The bar shows on an empty ledger, so the Ledger tab is one tap away. Orchestrator default, 2026-10-12 (`phone-nav-is-bottom-bar`).
 
 ## The rule
 

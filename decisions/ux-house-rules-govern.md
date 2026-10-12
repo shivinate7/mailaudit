@@ -22,7 +22,7 @@ The **house UX audit of 2026-10-11** is the source of the lane labels L1 to L10 
 - L8: an axe check at 375px and 760px.
 - L9: CI paths and timeouts.
 - L10: the Dependabot cooldown and zizmor.
-- L11: bottom bar D on the web, the CSS version of the phone bar in `phone-nav-is-bottom-bar`. It has four tabs, Ledger first, and a floating Find pill above the bar. Its tabs meet the 44px floor, as L6 does. Bottom padding keeps the last card clear of the bar. The bar moves no content, under `no-layout-shift-under-pointer`. L11a built the bar and the pill (commit `250823d`). L11b built the Ledger tab (commit `12e8721`). The ruled gear icon is not built. The bar still draws the rays icon.
+- L11: bottom bar D on the web, the CSS version of the phone bar in `phone-nav-is-bottom-bar`. It has four tabs, Ledger first, and a floating Find pill above the bar. Its tabs meet the 44px floor, as L6 does. Bottom padding keeps the last card clear of the bar. The bar moves no content, under `no-layout-shift-under-pointer`. L11a built the bar and the pill (commit `250823d`). L11b built the Ledger tab (commit `12e8721`). L11c drew the gear icon (commit `b62aebd`).
 
 ## The rules that the 2026-10-11 rulings apply
 
@@ -34,6 +34,8 @@ The **house UX audit of 2026-10-11** is the source of the lane labels L1 to L10 
 
 Orchestrator default, 2026-10-11, not an owner ruling: every ask names the count of cards it removes, and that count is true. The asks and their counts are in `armed-reset-takes-the-row`, `orphan-entry-takes-one-input`, `stamp-band-opens-the-editor` and `history-restores-a-saved-version`.
 
+**Polish, 2026-10-12.** The owner ruled that the orchestrator makes the polish calls on the screens, judged by these house UX rules, and merges them. The orchestrator keeps a before-and-after screenshot gallery for the owner, so each call can be checked. The owner may overrule a call. `orchestrator-may-merge` allows merges of green, reviewed PRs to `main`, and says a change to a gate, a rule or product code still needs a fresh reviewer's pass before the merge. The polish ruling does not reconcile with that. Whether a polish merge skips the reviewer's pass is the owner's call.
+
 The gap for the Pull and Push anyway asks is closed. On 2026-10-12 the owner removed the GitHub controls from the UI, so their asks no longer exist (`stale-push-conflict-pull-two-tap`). The ask rule still applies to each ask that remains.
 
 **Pinned by:**
@@ -43,6 +45,7 @@ The gap for the Pull and Push anyway asks is closed. On 2026-10-12 the owner rem
 - `check:screens`, claim 3: the Discard arm moves nothing.
 - `check:screens`, claim 4: the Reset ask is not cut off.
 - `check:screens`, claim 5: the bottom bar's geometry at 375px and 760px.
+- Tests 65.1 to 65.4 keep the removed GitHub verbs off every screen. Test 65.8 pins the armed Reset's Cancel after Reset.
 
 Tests 21.4 and 62.1 to 62.10 pin the bar. Tests 63.4 to 63.7 pin the Ledger tab's order and its current tab. Tests 63.21 to 63.24 pin the armed Reset's count, its neighbours and its first focus. Tests 61.8 to 61.9, 61.11 to 61.16, 61.41 to 61.42 and 61.43 to 61.57 pin the other rules. Tests 61.33 to 61.35 cover a draft that survives a tab change. The test pins check the DOM, not geometry.
 

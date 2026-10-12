@@ -12,7 +12,7 @@ Two other reasons once backed the split. One is retired. "Git is permanent while
 
 The other reason still holds. GitHub's 409 on rapid successive Contents writes is per-repo. `push()` waits on `spaceWrites()` before the photo uploads, so the code handles it. See `photo-writes-wait-one-second`.
 
-Push and Pull each do both legs in one tap. The ledger goes first, and the photos go after.
+A push and a pull each do both legs in one pass, with no tap. The Push control left the UI on 2026-10-12. The ledger goes first, and the photos go after.
 
 ## See also
 

@@ -28,7 +28,7 @@ The count stays **five**, not six. The download and the GitHub push share one pa
 
 **Plus one outside `app.jsx`.** `mergeLedger` in `merge-rules.mjs` builds the merged ledger from named fields. So a key that it does not name is dropped by every merge. The merge applies that result as a full replace, and it pushes the result. Both devices lose the key. `stamps` was the first key added after that builder existed. Test 37.62 pins the key's presence. `receivedAt` is named there too, and group 49 pins it.
 
-A related rollout hazard exists. An older build's `snapshot()` omits `stamps`. So its next push publishes a ledger without them. A Pull onto the new build then wipes them. A Merge keeps the local ones. Update both devices before stamping anything.
+A related rollout hazard exists. An older build's `snapshot()` omits `stamps`. So its next push publishes a ledger without them. A pull onto the new build then wipes them. A merge keeps the local ones. Update both devices before stamping anything.
 
 A second rollout hazard exists for stage 4a. An old build shows a tombstone as an empty envelope. Its push drops `receivedAt`, so an un-check can come back. Update both devices before you un-check or discard anything.
 

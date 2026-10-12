@@ -2,10 +2,7 @@
 
 The owner ruled on 2026-10-11: "bottom bar D is gorgeous! yes go for it". On a phone, navigation is a floating glass capsule in the parchment palette. This is variant D. It has four tabs, from left to right: Ledger, Orphaned, Tally and Packages. The owner ruled the order on 2026-10-11: "move ledger to be most left on the bottom bar". The bar replaces the top view switch at every width.
 
-**Status:** built in L11a, commit `250823d`. The Ledger tab is built in L11b, commit `12e8721`. The owner approved mockup G on 2026-10-11: "G looks decent", and "this is the right direction go". The owner expects polish of the Ledger view and the app after the build. Two questions are open for the owner:
-
-- The Ledger icon. The bar ruling names a gear icon. The code still draws a circle with eight rays (`BAR_ICONS.ledger`). L11b did not redraw it. Keep the gear, or accept the rays.
-- Should the bar show on a ledger with nothing in it? Today it shows, so Re-import and Reset stay reachable. The owner has not ruled it.
+**Status:** built in L11a, commit `250823d`. The Ledger tab is built in L11b, commit `12e8721`. The gear icon is built in L11c, commit `b62aebd`. The owner approved mockup G on 2026-10-11: "G looks decent", and "this is the right direction go". The owner expects polish of the Ledger view and the app after the build. The orchestrator made two calls on the bar on 2026-10-12, as defaults the owner may overrule (see Defaults).
 
 **Holds while:** `src/app.jsx` renders the bar as a `nav` labelled Views. It holds four tabs in the order Ledger, Orphaned, Tally, Packages. It marks the current tab with `aria-current`. The native target is iOS 26, as `native-swift-rebuild` sets it. The web palette is the parchment ledger, as `design-parchment-ledger` sets it.
 
@@ -43,6 +40,8 @@ The canceled-orders reference and the stamped filter keep their own ruled row. T
 
 - Above phone width, the same bar and pill show, centred with a 480px maximum width. This is an orchestrator default of 2026-10-11 that keeps one layout. The owner may overrule it.
 - Re-import CSV and Reset stay reachable on an empty ledger and from every screen. `recovery-control-not-state-gated` requires it. L11b moved both to the Ledger tab. One tap on the bar reaches that tab from any screen.
+- The Ledger icon is a gear, as in mockup G. `BAR_ICONS.ledger` in `src/app.jsx` draws a gear outline around a centre circle. It replaced the circle with eight rays. Orchestrator default, 2026-10-12. Unpinned: no test reads the icon.
+- The bar shows on an empty ledger, so Re-import CSV and Reset stay one tap away. Orchestrator default, 2026-10-12. It follows `recovery-control-not-state-gated`. Pinned by 62.9 (the four tabs on an empty ledger) and 63.16 to 63.20 (the Ledger tab reaches Sync, History, Re-import CSV, Backup and Reset on an empty ledger).
 
 **Pinned by:** 21.4 (tab order, Ledger first), 62.1 to 62.10 (the nav landmark, the current tab, the Ledger tab without a package, the pill, the retired switch, four tabs on an empty ledger, the Orphaned count), 63.4 to 63.7 (the Ledger tab's options and its current tab), 63.16 to 63.20 (the Ledger tab is reachable on an empty ledger), 43.1 and 43.2 (the current tab follows the view), and `npm run check:screens` (claim 5, the bar's geometry at 375px and 760px).
 

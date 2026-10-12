@@ -1,6 +1,6 @@
 # View switch, seal, and tally headroom
 
-**Status:** re-measure pending. L11a (commit `250823d`) retired the view switch. The switch thirds, the label fit and the thumb offset below have no subject now. They stand only as readings from before L11a. The seal and tally figures also predate L11a. Nothing has re-measured them since. L11b (commit `12e8721`) changed the page around the tally cells, so those figures need a fresh reading too.
+**Status:** retired with the view switch. L11a (commit `250823d`) removed the switch. The thirds, the label fit and the thumb offset below have no subject now. They stand only as readings from before L11a.
 
 This record holds the view switch thirds, the thumb offset, the seal size, the tally cell headroom, and the horizontal overflow. Re-measure at 375px after a change to the switch, the seal's clamp curve, or the tally cell widths.
 

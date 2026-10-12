@@ -38,11 +38,11 @@ The setup steps are:
 
    Set repository permissions to **Contents → Read and write**. Metadata → Read-only appears automatically, and it is required. Grant nothing else. **Fine-grained PATs cap at 366 days.** Set a real expiry and a calendar reminder. When the token lapses, the only symptom is a push that stops working.
 
-5. In the app, go to Sync → paste → Save key → Push. Expect `Pushed ✓`. Check that `mailaudit` gained no commit at all. With photos in the ledger, expect `mailaudit-data` to gain one commit per photo on `main`. The button stays on `Pushing…` until they are done. Each takes roughly a second. The ledger and the photos share one repo's write budget and one `spaceWrites()` clock.
+5. No screen path is left for this step. The Push control left the UI on 2026-10-12, and the mirror push runs on its own. Check that `mailaudit` gained no commit at all. With photos in the ledger, expect `mailaudit-data` to gain one commit per photo on `main`. The button stays on `Pushing…` until they are done. Each takes roughly a second. The ledger and the photos share one repo's write budget and one `spaceWrites()` clock.
 
-   Then run the test that matters most. Pull onto a second device or origin, and confirm the thumbnails render. That is the one path where a wrong order fails silently. The ledger would come back looking perfect, with every photo id quietly stripped.
+   Then run the test that matters most. A second device or origin must pull the ledger (the automatic merge does it on a fresh session), and confirm the thumbnails render. That is the one path where a wrong order fails silently. The ledger would come back looking perfect, with every photo id quietly stripped.
 
-6. Prove the merge before trusting auto-push. Auto-push's conflict recovery is that same path, running unattended. On A, check a card in, then Push. On B, without pulling, import a CSV that adds lines, then Push. Expect the conflict. Then tap **Merge & push**. B must end holding A's check-in *and* its own new lines. A's next Merge must agree. Sync is unconditional now. There is no toggle to enable. So this proof is a prerequisite for running the app on two devices at all. It is not only a prerequisite for enabling a feature.
+6. Prove the merge before trusting auto-push. Auto-push's conflict recovery is that same path, running unattended. On A, check a card in, then Push. On B, without pulling, import a CSV that adds lines, then Push. Expect the conflict. Then the automatic merge runs on B. No control is left. B must end holding A's check-in *and* its own new lines. A's next merge must agree. Sync is unconditional now. There is no toggle to enable. So this proof is a prerequisite for running the app on two devices at all. It is not only a prerequisite for enabling a feature.
 
    `file://` and `http://localhost:4173` are two separate origins with two separate ledgers. So they can act as two devices, without a second phone. See "Running it locally".
 

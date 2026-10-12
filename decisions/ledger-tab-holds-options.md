@@ -4,7 +4,7 @@ The owner ruled on 2026-10-11: "E for sure". The bar in `phone-nav-is-bottom-bar
 
 The owner ruled on 2026-10-12, on GitHub sync: "i thought we are eliminating push and pull". The GitHub controls leave the UI. This follows the 2026-10-11 ruling "Cloudflare does it all" (`sync-revamp-cloudflare`).
 
-**Status:** built in L11b, commit `12e8721`, on `web/l11-bottom-bar`. The look of the Ledger screen is not ruled.
+**Status:** built in L11b, commit `12e8721`, on `web/l11-bottom-bar`, and carried by L11c, commit `b62aebd`. The look of the Ledger screen is not ruled.
 
 **Holds while:** `src/app.jsx` renders the Ledger tab as a `section` labelled "Ledger options". The working screens render no option rows. The advisory line stays on the working screens.
 
@@ -42,8 +42,8 @@ The GitHub mirror push still runs in the background. `worker-keeps-snapshots` re
 ## Defaults and invariants
 
 - Backup sits in the Data group, after Re-import CSV. This is an orchestrator default of 2026-10-11, because Backup is a data action. The owner's mockup G, approved on 2026-10-11, has no Backup row.
-- The Ledger tab, Re-import CSV and Reset stay reachable on an empty ledger. `recovery-control-not-state-gated` requires it. The View group hides on an empty ledger, under the narrower gate that the filters keep.
-- The Ledger tab holds the Sync and History rows inside the Data group. This record keeps that grouping.
+- The Ledger tab, Re-import CSV and Reset stay reachable on an empty ledger. `recovery-control-not-state-gated` requires it. Orchestrator default, 2026-10-12: the View group hides on an empty ledger, under the narrower gate that the filters keep. Pinned by 23.4 and 23.5 (search and sort stay hidden with no items).
+- The Ledger tab holds the Sync and History rows inside the Data group, after the View cells. This record keeps that grouping. Orchestrator default, 2026-10-12. Pinned by 63.4, which checks the ruled order.
 - The count and Cancel default for Pull's ask and Push anyway's ask no longer applies. Both asks left the UI on 2026-10-12.
 - The advisory line goes to the Ledger tab. It opens the Sync group and closes History (`ruled-head-one-advisory-entrance`).
 
