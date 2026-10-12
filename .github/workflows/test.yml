@@ -19,6 +19,7 @@ on:
       - "test/**"
       - "worker/**"
       - "shared/**"
+      - "native/**"
       - "scripts/**"
       - "package.json"
       - "build.mjs"
@@ -34,6 +35,11 @@ on:
       - ".github/dependabot.yml"
   pull_request:
     branches: [main]
+    # ready_for_review starts the native job once a draft is marked ready.
+    types: [opened, synchronize, reopened, ready_for_review]
+  # Nightly full run: the native job runs whatever the diff says.
+  schedule:
+    - cron: "17 5 * * *"
   workflow_dispatch:
 
 permissions:
@@ -137,6 +143,49 @@ jobs:
         timeout-minutes: 2
       - run: npm run build
       - run: npm run check:screens
+
+  # Decision native-ci-on-hosted-macos: says whether the native job has work.
+  # Nightly and dispatch run it; so does a diff that cannot be read (fail safe).
+  scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      native: ${{ steps.d.outputs.native }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - id: d
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          native=true
+          if [ "$EVENT" = push ] || [ "$EVENT" = pull_request ]; then
+            if files=$(git diff --name-only "$BASE" HEAD 2>/dev/null) && [ -n "$files" ]; then
+              grep -Eq '^(native/|shared/|src/view-rules\.mjs$|\.github/workflows/test\.yml$)' <<< "$files" || native=false
+            fi
+          fi
+          echo "native=$native" >> "$GITHUB_OUTPUT"
+
+  # Decision native-ci-on-hosted-macos: the Swift package tests (ST) on a
+  # hosted macOS runner. Skips drafts (decision ci-skips-draft-prs). The 15 min
+  # timeout is a placeholder: set it to 2x the slowest green run.
+  native:
+    needs: [suite, scope]
+    if: ${{ needs.scope.outputs.native == 'true' && !github.event.pull_request.draft }}
+    runs-on: macos-26
+    timeout-minutes: 15
+    concurrency:
+      group: native-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - run: xcodebuild -version && swift --version
+      - run: swift test --package-path native/ManifestKit
 
   # Audits the workflows and the dependabot config. Same command as local:
   # zizmor .github/workflows .github/dependabot.yml (online-audits off; the action still passes github.token).
