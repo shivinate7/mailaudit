@@ -2,6 +2,8 @@
 
 **Status:** ruled. The owner accepted a typed enum plan on 2026-10-11. The orchestrator default of 2026-10-12 replaced that enum with a raw dictionary. Owner ruling 2026-10-12 ("Refuse all four"): a damaged `received`, `receivedAt`, `stamps` or `envelopes` value makes load throw. The store then stays unsaveable, and the file is unchanged. Lane N3 landed in PR #80 as LedgerStore. Lane N3b adds the refusal for the first three fields. Owner ruling 2026-10-12 ("Web refuses too"): the web app also refuses a damaged list on load, says so, and offers History and Backup. That web lane is not built yet. The Worker side is open, see Known gap.
 
+**2026-10-12, web lane built:** PR #87 builds the web lane of the "Web refuses too" ruling. On load, the web app refuses a damaged `received`, `receivedAt`, `stamps` or `envelopes`, says so in plain words, and offers History and Backup. This line supersedes the sentence above that says the web lane is not built yet. The web behaviour is in `saved-state-shape`. The Re-import and sync-reply paths are not ruled, see `damaged-other-paths-open`.
+
 The native store holds the ledger as `[String: Any]`, parsed and written with `JSONSerialization`. No typed struct or enum holds a field. A save writes the whole dictionary, so a field the client does not name survives a save of the file. An edit changes only the fields it names.
 
 **Holds while:** `saved-state-shape` names the saved ledger shape, the Worker rejects a `mailday` other than 1, and no lane needs a typed value. Add a typed value when a lane needs one, not before (YAGNI).

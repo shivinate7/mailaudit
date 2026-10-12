@@ -34,7 +34,7 @@ A related rollout hazard exists. An older build's `snapshot()` omits `stamps`. S
 
 A second rollout hazard exists for stage 4a. An old build shows a tombstone as an empty envelope. Its push drops `receivedAt`, so an un-check can come back. Update both devices before you un-check or discard anything.
 
-**Pinned by:** 9.1–9.3 (envelopes survive a reload), 37.48 (stamps survive a reload), 37.49 (a save from before stamps loads clean), 37.50 (Reset clears them), 37.51 (the pushed payload carries them), 37.62–37.63 (the merged ledger keeps the stamps key), 39.8 and 39.8b (a version holds the whole saved shape, and a version built from its own payload rather than `snapshot()` fails both), group 49 (un-checks and deletes travel between devices).
+**Pinned by:** 9.1–9.3 (envelopes survive a reload), 37.48 (stamps survive a reload), 37.49 (a save from before stamps loads clean), 37.50 (Reset clears them), 37.51 (the pushed payload carries them), 37.62–37.63 (the merged ledger keeps the stamps key), 39.8 and 39.8b (a version holds the whole saved shape, and a version built from its own payload rather than `snapshot()` fails both), group 49 (un-checks and deletes travel between devices). The web load refusal: group 67 and 67.7.
 
 Mutants confirmed red:
 - `mergeLedger` not naming `stamps` (37.62–37.68);
@@ -42,4 +42,21 @@ Mutants confirmed red:
 - `snapshot()` dropping `envelopes` (groups 25 to 27).
 
 Test 37.62 asserts that `merged.stamps` deep-equals `{}`. Merely truthy is not enough. `undefined` is what the builder produces when it forgets the key.
+
+## The web load refuses a damaged list
+
+Owner ruling 2026-10-12 ("Web refuses too"), built in PR #87, home `native-ledger-is-raw-json`. On load, a `received`, `receivedAt`, `stamps` or `envelopes` value stops the load when it is present and has the wrong shape. The right shapes are an object for `received`, `receivedAt` and `stamps`, and a list of objects for `envelopes`. JSON `null` is damaged. An absent field is not damage, and it loads with its default.
+
+A refused load does four things:
+
+- The page says in plain words that the saved data is damaged and was not loaded.
+- Nothing is written back to the saved ledger. No Worker push starts, and no GitHub push starts.
+- No milestone is overwritten.
+- History and Backup stay reachable.
+
+The refused load keeps the raw saved text. A History restore replaces the damaged field, and that restore clears the refusal. Backup parses the saved text and exports it again. The data is the same, but whitespace may differ.
+
+**Pinned by (web):** group 67 (the damaged-load and absent-field loops) and 67.7 (a History restore from a refused load lands).
+
+Read from the code, not run: the Backup export, and the rule that no version is taken while a load is refused. Only the load path is ruled. The Re-import and sync-reply paths are open, see `damaged-other-paths-open`.
 
