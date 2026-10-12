@@ -1,6 +1,6 @@
 # The native build runs in ordered lanes
 
-**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. W1 landed in PR #61 and S1 in PR #62. S2 landed in PR #63, S3 in PR #64 and S4 in PR #65. N1 landed in PR #75, C1 in PR #76, W2a in PR #77 and W3a in PR #78. N2 landed in PR #81 and N3 in PR #80. Their rows have left this table. No other lane has landed. The rows below carry the 2026-10-11 changes and the 2026-10-12 orchestrator defaults. They are ruled or named, and not built.
+**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. W1 landed in PR #61 and S1 in PR #62. S2 landed in PR #63, S3 in PR #64 and S4 in PR #65. N1 landed in PR #75, C1 in PR #76, W2a in PR #77 and W3a in PR #78. N2 landed in PR #81, N3 in PR #80 and N5 in PR #82. Their rows have left this table. No other lane has landed. The rows below carry the 2026-10-11 changes and the 2026-10-12 orchestrator defaults. They are ruled or named, and not built.
 
 The native rebuild splits into lanes. W lanes change the Worker. S lanes change shared files and extract the rules. The C lane changes CI. N lanes build the native client. A lane that lands leaves this table, and git keeps its history.
 
@@ -25,10 +25,9 @@ The native rebuild splits into lanes. W lanes change the Worker. S lanes change 
 | W3e, not briefed | Not briefed. No scope is recorded here. | Not yet briefed. | Not yet briefed. | Not yet briefed. |
 | N4a Sync over HTTP | the sync client, a stub URL protocol | The Bearer header. The `{ledger}` body. The generation rule. A 401 stops calls. The 413 line. A 404 seeds by POST. A timeout reads as unknown. Backoff. Stop cancels an in-flight push or pull. | ST | N2 (landed), N3 (landed), W1 (landed), the stage 4b switch |
 | N4b Socket, idle gate, resume | the sync client socket | A rev that is not newer gives no GET. A newer rev with a changed ledger POSTs. The idle gate is 10 seconds. A cold reply applies at once after a key save. Resume does one GET. | ST | N4a |
-| N5 Shell and Packages | native/Manifest (App, Packages), native/ManifestUITests | Rows equal the golden files. A check-in calls the ledger store. No key in the ledger or in view state (a Mirror scan; N3 landed without it). The scheme is registered and a link calls `KeyIntake.accept`, see `native-key-via-url-scheme`. UI test: other row frames do not move on a check-in, at 375pt and 760pt. performAccessibilityAudit on each screen. A 44pt hit region on each tab and on the rows. Phone navigation is the system tab bar with four tabs, per `phone-nav-is-bottom-bar`. The Ledger tab holds the options, per `ledger-tab-holds-options`. Ruled, not built. | ST and `xcodebuild test -scheme Manifest -destination 'platform=iOS Simulator,name=iPhone 17'` | N3 (landed) |
-| N6 Tally and filters | Tally and Filters views | Sort keys. Search and hide-received do not change Tally counts. The copies list. performAccessibilityAudit. The sort label does not truncate at 375pt. An empty search shows one Clear control. | same as N5 | N5 |
-| N7 Orphaned | Orphaned views | One input records an envelope. No auto-assign. A tie has no emphasis. A partial-quantity assign. Undo removes only its delta. performAccessibilityAudit. Assign has Undo and no arm. The composer draft survives a view change. The empty state is one sentence. | same as N5 | N5 |
-| N8 Masthead and backup | Masthead views, the backup file code | The export bytes equal the snapshot. No key in the export (a Mirror scan). Reduced motion shows the final frame. The save slot has a fixed width. performAccessibilityAudit. Backup is a 44pt control. | same as N5 | N5 |
+| N6 Tally and filters | Tally and Filters views | Sort keys. Search and hide-received do not change Tally counts. The copies list. performAccessibilityAudit. The sort label does not truncate at 375pt. An empty search shows one Clear control. | ST and `xcodebuild test -scheme Manifest -destination 'platform=iOS Simulator,name=iPhone 17'` | N5 (landed) |
+| N7 Orphaned | Orphaned views | One input records an envelope. No auto-assign. A tie has no emphasis. A partial-quantity assign. Undo removes only its delta. performAccessibilityAudit. Assign has Undo and no arm. The composer draft survives a view change. The empty state is one sentence. | ST and `xcodebuild test -scheme Manifest -destination 'platform=iOS Simulator,name=iPhone 17'` | N5 (landed) |
+| N8 Masthead and backup | Masthead views, the backup file code | The export bytes equal the snapshot. No key in the export (a Mirror scan). Reduced motion shows the final frame. The save slot has a fixed width. performAccessibilityAudit. Backup is a 44pt control. | ST and `xcodebuild test -scheme Manifest -destination 'platform=iOS Simulator,name=iPhone 17'` | N5 (landed) |
 | N9 Milestones | the versions code | A milestone is saved before a reset and before an apply that removes something. The prune equals `keptIds`. The list shows each milestone, and a restore takes a milestone first and passes the same apply path. Errors show in the pressed row. The reset ask names its count and has Cancel. | ST | N4a |
 | N10 Photos | Photos views | A downscale to 2000px. A photo blob never enters the ledger. The viewer is modal, with Escape and focus return. The photo upload has Stop. | ST | W2a |
 | N11 Device check | none | The owner checks on a device. The ios-adblock phone-apps list gets the new entry. The hand checks are named: VoiceOver order, Dynamic Type, the draft kept when the app leaves, and the iPhone Camera opening a `manifestledger://` QR code (see `native-key-via-url-scheme`). If the Camera fails the scheme, the universal-link fallback in that record is built. | the owner | all |
@@ -40,8 +39,8 @@ W2 and W3 come from the owner's rulings, not from the first plan. W2a and W3a ha
 - Batch 1: W1, S1, S2, S3 and S4 (all landed). W2a and W3a ran beside them and landed. S4 ran after S3, because each one rebuilds index.html.
 - Batch 2: C1 and N1, after S4 (both landed).
 - Batch 3: N2 and N3 (both landed).
-- Batch 4: N5, beside N4a.
-- Batch 5: N6, N7 and N8 after N5, with N4b and N9.
+- Batch 4: N5 (landed), beside N4a.
+- Batch 5: N6, N7 and N8 after N5 (landed), with N4b and N9.
 - N4a waits for the stage 4b switch, see `sync-revamp-cloudflare`.
 - N10 waits for W2a, because the owner ruled the Worker photo route first.
 
@@ -59,7 +58,15 @@ Other risks live in the record for their lane:
 
 - `native-reply-waits-generation` holds the socket test limit.
 - `native-key-via-url-scheme` holds the runner keychain.
-- `native-swift-rebuild` holds the empty start of a new app.
+- `native-swift-rebuild` holds the platform minimums. The app target does not match them yet, see Still open.
+
+## Still open
+
+- The app target sets iOS 17.0 and bundle id `com.shivinate.manifest`. `native-swift-rebuild` sets iOS 26 and `dev.shivinate.manifest`. Open, owner to rule.
+- The Ledger tab is a placeholder. No lane builds its options, see `ledger-tab-holds-options`. Open, owner to name a lane.
+- The native job runs ST only. The UI tests, the xcodegen step and the `xcodebuild` builds are not in CI, see `native-ci-on-hosted-macos`.
+- The key scan covers the Packages model, its rows and the ledger file. No lane scans SwiftUI view state. Open, owner to name a lane.
+- The 760pt UI case skips on an iPhone 17 simulator, see `screens-checked-headless-in-ci`.
 
 ## See also
 

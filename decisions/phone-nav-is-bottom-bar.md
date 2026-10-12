@@ -2,7 +2,7 @@
 
 The owner ruled on 2026-10-11: "bottom bar D is gorgeous! yes go for it". On a phone, navigation is a floating glass capsule in the parchment palette. This is variant D. It has four tabs, from left to right: Ledger, Orphaned, Tally and Packages. The owner ruled the order on 2026-10-11: "move ledger to be most left on the bottom bar". The bar replaces the top view switch on phone.
 
-**Status:** ruled, not built. The owner approved mockup G on 2026-10-11: "G looks decent", and "this is the right direction go". The owner expects polish of the Ledger view and the app after the build.
+**Status:** ruled. The native bar is built in lane N5 (PR #82). The web bar is not built. The owner approved mockup G on 2026-10-11: "G looks decent", and "this is the right direction go". The owner expects polish of the Ledger view and the app after the build.
 
 **Holds while:** the native target is iOS 26, as `native-swift-rebuild` sets it. The web palette is the parchment ledger, as `design-parchment-ledger` sets it. `src/app.jsx` has no bottom bar element yet.
 
@@ -21,7 +21,7 @@ The web lane is L11 in `ux-house-rules-govern`.
 
 ## The native bar
 
-The Swift app uses the system tab bar. The system tab bar gives the real iOS 26 glass. The native lane is N5 in `native-build-lanes`.
+The Swift app uses the system tab bar, built in lane N5, see `native-build-lanes`. The system tab bar gives the real iOS 26 glass. In N5, Ledger, Orphaned and Tally are placeholder screens. Tally and Orphaned are built in lanes N6 and N7. The Ledger tab has no lane yet.
 
 ## The Ledger tab
 
@@ -43,5 +43,5 @@ Find is a floating search field above the bar, in the same glass style (mockup G
 - `motion-the-switch-is-one-object` — the motion of the top switch. The bar's motion is not ruled.
 - `three-views-share-one-switch` — the three views that the bar's first three tabs name.
 - `ux-house-rules-govern` — the house rules that the web lane L11 cites.
-- `native-build-lanes` — lane N5, the native tab bar.
+- `native-build-lanes` — lane N5, which built the native tab bar.
 - `no-layout-shift-under-pointer` — the invariant the bar must keep.
