@@ -32,7 +32,8 @@
    so JavaScriptCore and the web app share one home):
      toggleCount(got, qty) -> the count a check-in writes: 0 when the line is
                               already in (got >= qty), else qty
-     countLabel(got, qty) -> "N of M" with N clamped to M, so "3 of 2" never shows */
+     countLabel(got, qty) -> "N of M" with N clamped to M, so "3 of 2" never shows
+     isDone(got, qty) -> true when got >= qty, the done state a row shows */
 
 const DAY = 86400000;
 const loaded = await import("../src/view-rules.mjs").then(
@@ -67,6 +68,7 @@ const outstandingNames = fn("outstandingNames");
 const packagesDone = fn("packagesDone");
 const toggleCount = fn("toggleCount");
 const countLabel = fn("countLabel");
+const isDone = fn("isDone");
 
 /* ---------- assertion helpers ---------- */
 
@@ -1056,6 +1058,14 @@ eq(countLabel(3, 3), "3 of 3", "V14.5c full");
 
 /* V14.6 mutant: the label prints the raw count, so an over-count reads "3 of 2" */
 eq(countLabel(3, 2), "2 of 2", "V14.6 an over-count clamps to the quantity, never 3 of 2");
+
+/* V14.7 isDone is true exactly when the count is in: the done state the rows show */
+eq(isDone(0, 1), false, "V14.7a nothing in is not done");
+eq(isDone(1, 1), true, "V14.7b a full line is done");
+eq(isDone(1, 3), false, "V14.7c a partial line is not done");
+eq(isDone(3, 2), true, "V14.7d an over-count is done");
+/* V14.8 mutant: done as `got > qty` would leave a full line not done */
+eq(isDone(2, 2), true, "V14.8 a full multi-copy line is done, not only an over-count");
 
 /* ---------- report ---------- */
 

@@ -9,10 +9,11 @@
 // A failed save is surfaced: PackagesModel.checkInError holds the message, so the view
 // can show it. The view's `try?` is what drops it today.
 //
-// The names PackagesModel.toggle(key:) and PackagesModel.checkInError exist now.
-// The fault cases at the end (toggle rule throws or returns a non-integer; label
-// refresh fails after a good save) are red: the toggle fault leaves checkInError nil,
-// and the refresh fault leaves checkInError nil after the save clears it.
+// The fault cases (toggle rule throws or returns a non-integer; label refresh fails
+// after a good save) surface checkInError and pass on 7f1ff6b. The done-state cases
+// assert model.done[key] matches the saved count. The refresh-fault done case is red
+// on 7f1ff6b: refreshLabel throws at countLabel before it reaches isDone, so done
+// keeps its load-time value after the save has already written the count.
 //
 // Fake fixtures only. No Keychain item is read.
 
@@ -61,6 +62,26 @@ final class PackagesToggleTests: XCTestCase {
         let obj = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
         let received = try XCTUnwrap(obj["received"] as? [String: Any])
         XCTAssertEqual(received[Self.checkedKey] as? Int, Self.sentinel, "the saved file did not take the bundle's count")
+    }
+
+    /// A successful toggle through the real bundle sets done to match the count it wrote:
+    /// a tap on an empty line checks it in (done), a second tap un-checks it (not done).
+    func testSuccessfulToggleSetsDoneToMatchTheCount() async throws {
+        let url = try freshLedgerURL()
+        let store = LedgerStore(fileURL: url, now: { 1_786_543_380_000 })
+        let engine = try RulesEngine(bundleURL: RulesGoldenTests.bundleURL)
+        try store.load()
+        let model = PackagesModel(engine: engine, store: store)
+        try await model.load()
+        XCTAssertEqual(model.done[Self.checkedKey], false, "an empty line is not done")
+
+        try await model.toggle(key: Self.checkedKey)
+        XCTAssertEqual(store.received()[Self.checkedKey], 1, "the first tap writes the full quantity")
+        XCTAssertEqual(model.done[Self.checkedKey], true, "a saved full line must read as done")
+
+        try await model.toggle(key: Self.checkedKey)
+        XCTAssertEqual(store.received()[Self.checkedKey] ?? 0, 0, "the second tap un-checks to zero")
+        XCTAssertEqual(model.done[Self.checkedKey], false, "an un-checked line must not read as done")
     }
 
     /// A failed save is kept on the model, so the view can show it.
@@ -154,5 +175,10 @@ final class PackagesToggleTests: XCTestCase {
         let received = try XCTUnwrap(obj["received"] as? [String: Any])
         XCTAssertEqual(received[Self.checkedKey] as? Int, 1, "the save before the refresh must stand")
         XCTAssertNotNil(model.checkInError, "a label refresh failure after a good save must surface checkInError")
+
+        // The fixture qty for checkedKey is 1, so the saved count of 1 is done.
+        let saved = received[Self.checkedKey] as? Int ?? 0
+        XCTAssertEqual(model.done[Self.checkedKey], saved >= 1,
+                       "done must match the saved count even when the label refresh fails")
     }
 }
