@@ -1364,7 +1364,7 @@ const STORED_68 = [
   { stamps: { "100::Seller": "x" } },
 ];
 for (const [i, over] of STORED_68.entries()) {
-  await test(`68.${i + 1} a stored ledger with a bad field, ${JSON.stringify(over)}, takes a POST: 200, a clean write, the original kept as the day's snapshot`, async () => {
+  await test(`68.${i + 1} a stored ledger with a bad field, ${JSON.stringify(over)}, takes a POST: 200, a clean write, the original kept before the write and as the day's snapshot`, async () => {
     const damaged = ledger(over);
     const s = fakeStore({ ledger: damaged, rev: 3 });
     const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: ledger({ received: { "100|1|555": 1 } }) } });
@@ -1373,7 +1373,9 @@ for (const [i, over] of STORED_68.entries()) {
     ok(salvageLedger(s.writes[0]?.ledger ?? {}).dropped === 0, `stored ${i}: the written ledger has no unreadable field`);
     eq(s.snapWrites.length, 1, `stored ${i}: snapshot writes`);
     eq(s.snapWrites[0]?.ledger, damaged, `stored ${i}: the snapshot holds the original damaged ledger`);
-    eq(s.order, ["snapshot", "write", "broadcast"], `stored ${i}: order`);
+    eq(s.keptWrites.length, 1, `stored ${i}: kept writes`);
+    eq(s.keptWrites[0]?.ledger, damaged, `stored ${i}: kept holds the original damaged ledger`);
+    eq(s.order, ["kept", "snapshot", "write", "broadcast"], `stored ${i}: order`);
   });
 }
 

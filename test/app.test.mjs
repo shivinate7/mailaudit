@@ -8318,8 +8318,9 @@ try {
   ok(false, `68.5 threw: ${e.message}`);
 }
 
-/* 68.6 F1: a sync reply that holds damage, whose copy cannot be written to History. The reply
-   is not applied, and sends go on: the Worker keeps its own copy of the damaged original. */
+/* 68.6 F1: a sync reply that holds damage, whose copy cannot be written to History. The damaged
+   reply is not applied, and sends go on: the Worker keeps its own copy of the damaged original,
+   and its clean reply to the send is what applies. */
 try {
   const local68 = { ...GOOD67, items: ITEMS.slice(0, 3) };
   await boot(local68, null, {
@@ -8332,11 +8333,14 @@ try {
   await sleep(SAVE_WAIT);
   const saved68 = savedText();
   ok(syncCalls().some((c) => c.op === "get"), "68.6pre the device read the damaged reply, so the rest means something");
+  ok(JSON.parse(saved68).items.length === 3, "68.6pre the damaged reply was not applied before its copy: the saved text still holds the local three items");
   await backgroundFor(5 * 60_000);
   await drain();
   await sleep(SAVE_WAIT);
   ok(postCount() > 0, "68.6 a damaged reply whose copy cannot be saved does not stop sends: the device POSTs, and the Worker keeps its own copy");
-  eq(savedText(), saved68, "68.6a the saved text is unchanged: the damaged reply is not applied");
+  const after68 = JSON.parse(savedText());
+  ok(after68.received !== null && typeof after68.received === "object" && !Array.isArray(after68.received), "68.6a the Worker's reply is clean: the saved received is an object, not the damaged array");
+  ok(after68.items.length > 3, "68.6a the clean merged reply applies: the saved text carries the Worker's items, not only the local three");
 } catch (e) {
   ok(false, `68.6 threw: ${e.message}`);
 }
@@ -8405,9 +8409,9 @@ try {
   ok(false, `68.8 threw: ${e.message}`);
 }
 
-/* 68.9 F1: a Worker copy that cannot be saved, then the Worker answers 404 on the retry, so the
-   device is a mirror again. A GitHub conflict on a mirror push merges, then calls the Worker
-   directly. That call goes: a copy that cannot be saved never holds the send. */
+/* 68.9 F1: a Worker copy that cannot be saved, then the device retries with a POST. A GitHub
+   conflict on a mirror push merges, then calls the Worker directly. That call goes: a copy that
+   cannot be saved never holds the send. */
 try {
   await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
     versions: VERS67(),
@@ -8423,7 +8427,7 @@ try {
   await backgroundFor(5 * 60_000);
   await drain();
   await sleep(SAVE_WAIT);
-  ok(syncCalls().filter((c) => c.op === "get").length >= 2, "68.9pre the retry read the Worker and got its 404");
+  ok(postCount() > 0, "68.9pre the retry after the failed copy was a POST, not a read: the copy gate is past");
   const posts68b = postCount();
   const pushes68b = remote.calls.filter((c) => c.op === "push").length;
   await click(btn(/Mark all received/), "check in on the mirror");
@@ -8437,8 +8441,8 @@ try {
   ok(false, `68.9 threw: ${e.message}`);
 }
 
-/* 68.10a F3: a Worker copy that cannot be saved, then the Worker answers 404 on the retry. An
-   empty store is healthy, so the next edit POSTs. A copy that cannot be saved never holds sends. */
+/* 68.10a F3: a Worker copy that cannot be saved, then the Worker store is emptied. An empty
+   store is healthy, so the next edit POSTs. A copy that cannot be saved never holds sends. */
 try {
   await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
     versions: VERS67(),
@@ -8452,11 +8456,11 @@ try {
   await backgroundFor(5 * 60_000);
   await drain();
   await sleep(SAVE_WAIT);
-  ok(syncCalls().filter((c) => c.op === "get").length >= 2, "68.10pre the retry read the Worker and got its 404");
+  ok(postCount() > 0, "68.10pre the retry after the failed copy was a POST, not a read: the copy gate is past");
   const posts10a = postCount();
-  await click(btn(/Mark all received/), "check in after the 404");
+  await click(btn(/Mark all received/), "check in with the store emptied");
   await sleep(POST_WAIT);
-  ok(postCount() > posts10a, "68.10a after a 404 the next edit POSTs: a failed copy never holds sends");
+  ok(postCount() > posts10a, "68.10a with the store emptied, the next edit POSTs: a failed copy never holds sends");
 } catch (e) {
   ok(false, `68.10a threw: ${e.message}`);
 }
