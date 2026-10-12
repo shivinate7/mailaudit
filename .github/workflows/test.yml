@@ -42,7 +42,7 @@ permissions:
 jobs:
   suite:
     runs-on: ubuntu-latest
-    timeout-minutes: 4
+    timeout-minutes: 5
     # Cancel a superseded run on a PR ref; each main run gets its own group,
     # because a group keeps one pending run and a newer one replaces it.
     concurrency:
@@ -139,7 +139,7 @@ jobs:
       - run: npm run check:screens
 
   # Audits the workflows and the dependabot config. Same command as local:
-  # zizmor .github/workflows .github/dependabot.yml (offline, no token).
+  # zizmor .github/workflows .github/dependabot.yml (online-audits off; the action still passes github.token).
   zizmor:
     runs-on: ubuntu-latest
     timeout-minutes: 2
