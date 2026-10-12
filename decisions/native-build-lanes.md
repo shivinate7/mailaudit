@@ -47,7 +47,7 @@ W2 and W3 come from the owner's rulings, not from the first plan. Their files, t
 
 ## N1 notes
 
-- The golden file parse-items.json has no native test, by orchestrator default of 2026-10-12. Native never parses CSV. The reason lives in `rules-run-in-javascriptcore`.
+- parse-items.json exclusion: `rules-run-in-javascriptcore`, its one home.
 
 ## Risk
 

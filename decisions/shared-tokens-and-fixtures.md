@@ -19,7 +19,7 @@ The palette and the test data have one home each. The web build and the Swift cl
 - `test/harness.mjs` reads its `ITEMS` from shared/fixtures/ledger.json. The native app reads the same file.
 - The script scripts/gen-golden.mjs writes the golden files from src/view-rules.mjs, on a fixed clock of 2026-08-12T14:03:00Z. The lost-mail and date-range files therefore do not change with the wall clock. Given a folder argument, it writes there instead.
 - The golden set is these eight files: parse-items, packages, tally, totals, lost-mail, date-range, sort-packages and sort-tally.
-- Swift tests assert seven of the eight golden files. By orchestrator default of 2026-10-12, parse-items has no native test, because native never parses CSV, see `csv-import-stays-web`. See `rules-run-in-javascriptcore`.
+- Swift tests assert seven of the eight golden files. The eighth, parse-items, is excluded in `rules-run-in-javascriptcore`, the one home of that exclusion.
 - `npm run check:golden` runs the generator into a temp folder and diffs the result against shared/fixtures/golden, in both directions. It goes red on a hand-edited golden file, and on a generator that writes nothing. Its output reads `golden ok (N files)` when they match. `npm run test:golden` holds its own tests. CI runs both.
 - A change to view-rules output needs `node scripts/gen-golden.mjs` and the golden diff in the same commit, or CI goes red.
 

@@ -21,8 +21,16 @@ Degen did a full Swift rewrite with server-side parsing. MANIFEST cannot copy th
 
 ## Proof
 
-- Swift tests assert that the rules engine output equals the golden files, except parse-items.json, see `shared-tokens-and-fixtures`. By orchestrator default of 2026-10-12, parse-items.json has no native test, because native never parses CSV, see `csv-import-stays-web`.
+- Swift tests assert that the rules engine output equals the golden files, except parse-items.json. The exclusion is in its own section, below.
 - `check:rules` goes red when the committed bundle is stale.
+
+## The parse-items exclusion
+
+parse-items.json is one of the eight golden files. Swift tests do not check it. By orchestrator default of 2026-10-12, not an owner ruling, native has no parse-items test, because native never parses CSV. CSV import stays on the web app, see `csv-import-stays-web`.
+
+**Holds while:** native never parses CSV.
+
+This section is the one home of the exclusion. Other records cite `rules-run-in-javascriptcore` and do not restate it.
 
 ## Rejected
 
