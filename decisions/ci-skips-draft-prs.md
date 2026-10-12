@@ -12,7 +12,13 @@ The rest of the change covers those four jobs and adds draft state to the concur
 
 ## Scratch PR result
 
-Not run yet. The lane that runs the scratch PR records its result here.
+Run on 2026-10-12 as scratch PR #83, closed unmerged. Draft run 38265934901 and ready run 38266281235.
+
+- While draft, suite, scope, screens and zizmor ran and passed. Native skipped. The merge state read CLEAN.
+- After ready, the same four jobs ran. Native skipped again, because the diff was README only and the scope job said no native change.
+- Main requires only suite and screens. Both ran on the draft, so no required check was skipped.
+
+The proof is incomplete. It shows that a skipped native job does not block a merge, because native is not required. It does not show how a skipped required check reads. That needs a draft guard on suite or screens, and a second scratch PR.
 
 ## See also
 
