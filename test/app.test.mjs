@@ -7265,5 +7265,30 @@ eq(document.querySelector('input[aria-label="Envelope note"]')?.value, "first dr
 await tapL1(/^Edit$/, "return to the second composer");
 eq(document.querySelector('input[aria-label="Envelope note"]')?.value, "second draft note", "61.53 and the second composer's note is kept");
 
+/* A live draft holds the photo sweep off (the composerDraft check inside the
+   sweep timer). Cancel closes the composer and keeps its draft, so the sweep
+   re-arms with no composer open, and only the draft check stops it deleting a
+   blob that no envelope references yet. The control runs first: with no draft,
+   the same unreferenced blob is swept, so the held case is not vacuous. */
+await boot({ items: ITEMS, received: {} }, [["pho-draft", jpeg()]]);
+await goTo("orphaned");
+await sleep(SWEEP_WAIT);
+eq(photoKeys(), [], "61.54 control: with no draft open, the sweep removes an unreferenced blob");
+
+await boot({ items: ITEMS, received: {} }, [["pho-draft", jpeg()]]);
+await goTo("orphaned");
+await tapL1(/Record an envelope/, "open the composer for the held draft");
+await type(cardInput(), "Zyzzyva");
+await tapL1(/^Add “/, "add the card to the held draft");
+await type(document.querySelector('input[aria-label="Envelope note"]'), "draft holds the sweep");
+const heldFootL1 = btn(/Save envelope/)?.parentElement;
+const heldCancelL1 = [...(heldFootL1?.querySelectorAll("button") ?? [])].find(
+  (b) => b.textContent.trim() === "Cancel"
+);
+await click(heldCancelL1, "cancel the composer, keeping its draft");
+ok(!btn(/Save envelope/), "61.55 the composer is closed, its draft is not");
+await sleep(SWEEP_WAIT);
+eq(photoKeys(), ["pho-draft"], "61.56 a live draft holds the sweep off an unreferenced blob");
+
 uninstallClock();
 report();
