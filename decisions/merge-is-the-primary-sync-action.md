@@ -6,6 +6,8 @@ The merge was the safe resolution, so it was the primary control. Its label read
 
 Push anyway was the only force in the feature. It stayed advisory, in manila beside Merge. The force existed so that a device holding the copy worth keeping was not stuck behind a conflict. Every push is a commit, so what a force overwrote stayed in the branch's history. No code path passes a force now (`pushforce-sha-only-after-write`).
 
+**Retired:** test 34.2 (the Merge & push button as the way out), on 2026-10-12.
+
 **Holds while:** `src/app.jsx` renders no button labelled Merge, Merge & push or Push anyway. A control with one of those labels would undo this retirement.
 
 ## See also

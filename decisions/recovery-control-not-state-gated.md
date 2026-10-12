@@ -26,4 +26,6 @@ The Pull that recovers an empty device is gone (owner ruling 2026-10-12). The Sy
 - `unwritable-store-says-so` — another control that must stay visible on failure.
 - `pull-needs-a-key-too` — the recovery that the Sync group no longer offers.
 
+**Retired:** test 28.2 (Pull from GitHub on an empty ledger), on 2026-10-12. The mirror's own merge on a fresh resume is the recovery now.
+
 **Pinned by:** 63.16 to 63.20 (an empty ledger still reaches Sync, History, Re-import CSV, Backup and Reset), 64.7 (an empty ledger still reaches the device key box), and 23.1 (Backup survives an empty item list).

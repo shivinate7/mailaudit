@@ -8,6 +8,8 @@ The field is a write-on rule, like the Find pill's input. It is not a box. The v
 
 The old 12px box zoomed on every paste. The 16px size stops that. The GitHub token field this rule first covered has no screen path now (test 65.1), so the rule covers the sync key field.
 
+**Retired:** tests 25.3, 25.5, 25.6 and 25.22, with the GitHub key field, on 2026-10-12.
+
 **Pinned by:** 36.8. It is the one style assertion in the suite. It pins an iOS behaviour, not a look. Focusing any smaller input zooms the page.
 
 ## See also

@@ -4,6 +4,8 @@
 
 **Status:** no caller reaches `pushForce`. `doPush` is called with `force` false at both call sites, and `confirmForce` is never set. The rule holds for the adapter if a force returns.
 
+**Retired:** tests 25.18, 25.19 and 25.20, with Push anyway, on 2026-10-12.
+
 **Holds while:** `pushForce` in `src/entry.jsx` passes its sha to `push()`. `push()` saves the sha only after its PUT, and tests 35.6 and 35.7 cover this.
 
 `push()` takes an optional sha override for this case. It records that sha only after the bytes reach GitHub.

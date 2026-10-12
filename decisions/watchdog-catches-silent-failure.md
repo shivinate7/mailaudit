@@ -10,6 +10,12 @@ Both sides of the comparison call `fromJSON` first. Step outputs are strings. A 
 
 The phone's "Backed up" line is only as honest as the phone. A device whose token expired, whose storage is unreadable, or that simply never gets opened has no way to tell you it stopped.
 
+## Orchestrator default 5, 2026-10-12
+
+The user sees no GitHub state at all: no refused or expired token, no rate limit, no server error, no unknown peek. This watchdog is what catches a stopped mirror. It is an orchestrator default, not an owner ruling.
+
+**Status:** not fully built, at 6b1c668. Built: the sync line, the advisory and the merge notice are silent (tests 65.3, 65.6, 65.7 and 40.13 pin this), and the unknown peek raises no line. Open: History errors still show GitHub copy (`REMOTE_SAYS`), and the photo line still shows GitHub copy and names a removed control (`PHOTO_SAYS`). Test 37.69, which pins the merge's silence, is red at 6b1c668.
+
 ## See also
 
 - `data-branch-setup` — the branch the watchdog reads

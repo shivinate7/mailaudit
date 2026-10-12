@@ -11,25 +11,23 @@ Tapping the line closes History, opens the Sync group, and takes the view to the
 `syncBroken` decides whether the line shows. It checks these cases in priority order:
 
 1. The page shows the public seed.
-2. An errored last attempt. `remoteMsg` holds the error. A GitHub code can reach this case (see the orchestrator default below).
-3. The last Worker call failed as unknown, refused the key, or found the ledger too big. Mirror mode is then off.
-4. This device's photos could not be read.
-5. The backup could not be checked: the peek came back unknown twice.
-6. A GitHub token but no Worker key on this device, while the sync panel is closed.
-7. Never synced.
-8. A last agreement with the remote that is older than `SYNC_STALE_MS`.
+2. The last Worker call failed as unknown, refused the key, or found the ledger too big. Mirror mode is then off.
+3. This device's photos could not be read.
+4. A GitHub token but no Worker key on this device, while the sync panel is closed.
+5. Never synced.
+6. A last agreement with the remote that is older than `SYNC_STALE_MS`.
 
-The conflict case, the behind case, the no-key case and the no-access case were removed on 2026-10-12, with the GitHub states.
+The conflict case, the behind case, the no-key case, the no-access case, the errored-attempt case (the old remote message) and the backup-unknown case were removed on 2026-10-12 (default 5), with the GitHub states.
 
-Orchestrator default, 2026-10-12: the sync advisory and `remoteMsg` speak only of the Worker. A conflict, a behind copy, a missing GitHub key and an unreachable GitHub copy show nothing to the user. The mirror resolves a conflict itself, and a missing GitHub token only stops the mirror. Pinned by 65.3, 65.6 and 65.7.
+Orchestrator default, 2026-10-12 (default 5): the sync advisory speaks only of the Worker. The old remote message is gone (6b1c668). A conflict, a behind copy, a missing GitHub key and an unreachable GitHub copy show nothing to the user. The mirror resolves a conflict itself, and a missing GitHub token only stops the mirror. Pinned by 65.3, 65.6 and 65.7.
 
-Built in L11c, with one gap. `REMOTE_SAYS` still gives GitHub copy for `server`, `rate-limit`, `forbidden`, `bad-key`, `auth`, `missing` and `no-branch`. `setRemoteMsg` sends those codes to `remoteMsg`, and the Sync group shows its text (`src/app.jsx`, the `remoteMsg` block near line 6388). So a GitHub copy still reaches the user for those codes. A builder or the owner must decide them. Under case 2, `auth` raises the line.
+Built in 6b1c668 (default 5), with two gaps. (1) History errors: `REMOTE_SAYS` feeds `setVersionMsg` in `src/app.jsx`, near lines 3865 and 3902, and that copy shows in History. It names GitHub and gives the rate-limit, server and token errors. (2) The photo line: `PHOTO_SAYS` feeds `photoMsg`, and its copy names GitHub and says "tap Push again", a control that no longer renders. Both gaps are open for a builder or an owner ruling.
 
-"I could not look" is never silent. The photo-unreadable and backup-unknown cases used to return with no sign, so a blind push looked the same as a working one. An unknown peek retries once before the backup-unknown case shows, so one failed request does not raise the line. The retry is immediate, so it does not cover a network that is still waking up. A no-access or rate-limit answer is not retried, because a retry cannot change it. Group 48 pins these cases, and pins that a healthy device shows none of them.
+"I could not look" is never silent for the photos. The photo-unreadable case used to return with no sign, so a blind push looked the same as a working one. The backup-unknown line was removed on 2026-10-12 (default 5). An unknown peek now shows nothing, and the backup watchdog is what catches a stopped mirror (`watchdog-catches-silent-failure`). Group 48 pins the photo case, and pins that a healthy device shows none of them.
 
-Case 3 names the server. Its copy is `The sync server could not be reached — tap to fix`. The failure turns mirror mode off, so the plain GitHub path runs. Test 53.8b pins that the line names the server. A 413 reply does the same, and its copy is `The ledger is too big for the sync server — tap to fix`. Test 55.8 pins it. A 401 from the Worker shows the key-refused copy, and group 56 pins it.
+Case 2 names the server. Its copy is `The sync server could not be reached — tap to fix`. The failure turns mirror mode off, so the plain GitHub path runs. Test 53.8b pins that the line names the server. A 413 reply does the same, and its copy is `The ledger is too big for the sync server — tap to fix`. Test 55.8 pins it. A 401 from the Worker shows the key-refused copy, and group 56 pins it.
 
-Case 6 is the entrance to the sync key field when no other line shows. The home-screen app keeps its own storage, so a key set in Safari does not reach it. Its copy is `This device has no sync key — tap to paste it`. The Sync group holds a masked key field and `Save sync key`. Group 59 pins the copy. See `sync-revamp-cloudflare`.
+Case 4 is the entrance to the sync key field when no other line shows. The home-screen app keeps its own storage, so a key set in Safari does not reach it. Its copy is `This device has no sync key — tap to paste it`. The Sync group holds a masked key field and `Save sync key`. Group 59 pins the copy. See `sync-revamp-cloudflare`.
 
 A Worker reply that waits for the idle gate shows no line. Test 55.5 pins it.
 
@@ -50,7 +48,7 @@ The line is deliberately **not gated on local data**. A device with an empty led
 - `auto-apply-happens-now` — why the automatic merge runs on a fresh session only.
 - `sync-runs-itself` — the automatic push that declines while behind.
 - `ruled-head-hand-elapsed-forward` — the fresh-session signal the merge reads.
-- `sync-revamp-cloudflare` — the Worker whose failure case 3 names.
+- `sync-revamp-cloudflare` — the Worker whose failure case 2 names.
 - `worker-keeps-snapshots` — the Worker that replaces the GitHub mirror.
 
 **Pinned by:** 63.14 (the line takes the tab to Ledger), 63.15 (and opens the Sync panel there), 63.16 (an empty ledger still reaches Sync), 64.7 (an empty ledger still reaches the key box), 38b.1–38b.3 (the 24-hour and ahead cases), 53.8b (the server copy), 54.1c (no behind line with a key), 65.3 (no GitHub verb in the open Sync panel), 65.6 and 65.7 (no GitHub copy on the line).

@@ -1,18 +1,26 @@
 # Test suite assertion count and run time
 
-**Status:** re-measure blocked at `b62aebd`, checked 2026-10-12. `npm test` and `TZ=UTC npm test` both stop at `test/app.test.mjs` line 2210 (test 17.4), with `TypeError: Cannot read properties of undefined (reading 'photos')`. The stop is the same in both zones. Groups 18 onward do not run, so no assertion count is taken on this commit. The 1031 and 1030 figures below predate L11b and are unverified. `check:docs` runs this suite first, so it fails before it checks any path or name.
+**Status:** measured at `6b1c668`, checked 2026-10-12. The suite is red. 41 of its 1069 assertions fail, in groups 23, 28, 34, 36, 37 and 39, so `npm test` exits 1. The figures below count passed plus failed. They move when those groups are fixed.
 
-This record holds the assertion count and the run time for `npm test`. The suite runs 1031 assertions and takes about 200 seconds. The earlier figure of 110 seconds is stale. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+This record holds the assertion count and the run time for `npm test`. The suite runs 1069 assertions under New York time, and 1068 under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
-The count depends on the clock's zone. Under UTC the suite runs 1030, because test 38.9 has nothing to claim there. So the zone is pinned to `America/New_York`. In CI, the test step sets `TZ`. Locally, `npm run check:docs` sets it for its own suite run. `check:docs` grades the figure in this sentence.
+The count depends on the clock's zone, so the zone is pinned to `America/New_York`. In CI, the test step sets `TZ`. Locally, `npm run check:docs` sets it for its own suite run. `check:docs` grades the figure in this sentence.
 
-`npm test` has no test framework. It runs 1031 assertions in about 200s. Groups 30 to 31 spend a few seconds in real timers, on purpose. Groups 53 onward run on the harness virtual clock, see `harness-waits-past-debounces`. The sweep race can only be reached by letting the clock run. `test/app.test.mjs` runs top to bottom. It either prints "all green" or exits 1. `test/harness.mjs` holds the jsdom setup, the storage mocks, the DOM helpers, and the fixture's loader. The fixture itself is `shared/fixtures/ledger.json`.
+`npm test` has no test framework. It runs `test/app.test.mjs` top to bottom. It prints `N passed, M failed`, and it exits 1 when M is not zero. Groups 30 to 31 spend a few seconds in real timers, on purpose. Groups 53 onward run on the harness virtual clock, see `harness-waits-past-debounces`. The sweep race can only be reached by letting the clock run. `test/harness.mjs` holds the jsdom setup, the storage mocks, the DOM helpers, and the fixture's loader. The fixture itself is `shared/fixtures/ledger.json`.
 
 The harness bundles `app.jsx` with esbuild. It sets `platform: "node"` and `format: "cjs"`. The bundle goes to `node_modules/.mailday-test/app.bundle.cjs`. jsdom is a devDependency, and the harness runs in it. The harness is committed on purpose. Three earlier harnesses were improvised and thrown away. The same assertions were rewritten from scratch each time. The app has no exports except the component. So every behaviour worth protecting is visible. The assertions read the DOM the way the user does.
 
 ## How to re-measure
 
-Run `npm test` and read its own summary line for the assertion count. A passing run under New York time prints `1031 passed, 0 failed` and `all green`. Under UTC it prints `1030 passed, 0 failed`. Checked 2026-10-12 at commit 250823d: 206 seconds under the machine's zone (CDT), by verdict's timer. The UTC run took 194 seconds. Another UTC run shared the checkout for part of that time, so it reads high. The bare name `harness.mjs` refers to `test/harness.mjs`. Time the run with the shell's own timer. Expect a run near 200 seconds, because groups 30 to 31 hold real-timer waits on purpose.
+Run `npm test` and read its summary line. The count is passed plus failed. A green run prints `all green` and exits 0. Time the run with the shell's own timer.
+
+Measured at `6b1c668`:
+
+- New York zone: 1028 passed, 41 failed. 134 s by verdict's timer. Exit 1.
+- Machine zone (CDT): 1028 passed, 41 failed. 223 s by the shell's timer.
+- UTC: 1027 passed, 41 failed. 167 s by the shell's timer.
+
+The run time varies on this machine (134 s to 223 s at this commit), and the spread is not explained. Take several runs before you compare a time. Groups 30 to 31 hold real-timer waits on purpose, so a run near 200 seconds is normal.
 
 ## Reader
 

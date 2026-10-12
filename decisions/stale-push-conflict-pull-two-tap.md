@@ -20,4 +20,6 @@ A stale push reports the conflict and changes nothing. Every push is a commit, s
 - `worker-keeps-snapshots` — the Worker that replaces the GitHub mirror.
 - `merge-later-change-wins` — the merge rule that the mirror conflict runs.
 
+**Retired:** tests 25.16 (a push over a remote this device never pulled conflicts), 26.14 (a push blocked as in group 25), 26.15 (the push after a pull is not blocked) and 34.1 (a blocked Push), on 2026-10-12 with the Push and Pull controls.
+
 **Pinned by:** 54.3a (the stale write goes first, then one merged write under the sha the remote holds) and 54.3b (the merged write carries both devices). Groups 25, 26, 28 and 30 were re-pointed off the removed asks (commit `224a29e`). Test 54.3c asserts that no Push anyway is on screen. That is true by construction now, so it is not cited here.

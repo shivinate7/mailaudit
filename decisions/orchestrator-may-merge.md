@@ -2,6 +2,8 @@
 
 The owner granted standing merge authority on 2026-10-10. A session that orchestrates work here may merge a pull request to `main` without asking first. Every other rule still applies. The PR must pass the required checks `suite` and `screens`. A change to a gate, a rule or product code needs a fresh reviewer's pass before the merge. Green PRs merge together through one integration branch.
 
+**Process-only, orchestrator default, 2026-10-12:** a polish merge (see `ux-house-rules-govern`) keeps the fresh-reviewer pass. The owner's polish grant covers taste, not review.
+
 **Holds while:** the owner has not withdrawn the grant, and branch protection on `main` requires `suite` and `screens` for every PR, admins included.
 
 ## See also

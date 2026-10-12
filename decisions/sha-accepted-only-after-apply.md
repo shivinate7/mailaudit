@@ -12,7 +12,9 @@ The incident happened on the first day of real two-device use. It cost a check-i
 
 Failing to accept leaves the device merely behind. The next push then conflicts loudly. That is the direction this must fail in.
 
-**Pinned by:** group 35. Its three mutants were each confirmed red. The first is the adapter advancing the sha inside `pull()` again. The second is `doMerge` never accepting it. The third is `doPull` never accepting it. `doPull` was deleted in L11c (`b62aebd`), so that mutant no longer applies. Tests 35.4, 35.5 and 40.6 also kill `acceptPull` dropped from `doMerge`. Test 26.16 kills a pull that does not refresh the sha.
+**Pinned by:** group 35. Its three mutants were each confirmed red. The first is the adapter advancing the sha inside `pull()` again. The second is `doMerge` never accepting it. The third is the old pull never accepting it. The old pull was deleted in L11c (`b62aebd`), so that mutant no longer applies. Tests 35.4, 35.5 and 40.6 also kill `acceptPull` dropped from `doMerge`.
+
+**Retired:** test 26.16 killed a pull that did not refresh the sha. It left with the Pull control on 2026-10-12.
 
 When a sync bug is reported, check what the sha did. Do not check only what the merge computed. A pull that did not land must not license a push.
 

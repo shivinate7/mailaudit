@@ -20,4 +20,6 @@ Discard arms in place (`orphan-entry-takes-one-input`). It is the pattern this r
 - `ruled-head-heights` — the measured width of the armed row, to re-measure.
 - `ux-house-rules-govern` — the house rules this record applies.
 
+**Retired:** tests 26.18 (Pull arms) and 26.19 (the Pull arm disarming Reset), on 2026-10-12. The Pull arm left the UI.
+
 **Pinned by:** 63.21 (the arm names the 14 ledger cards), 63.22 (the other cells stay in place), 63.23 (Cancel takes first focus), 63.24 (Cancel disarms, and nothing is cleared). 61.4 (the count), 61.41 and 61.42 (the count with envelope cards), and 65.8 (an armed Reset keeps its place, and Cancel sits after it).

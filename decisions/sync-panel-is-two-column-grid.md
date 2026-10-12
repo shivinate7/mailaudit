@@ -4,11 +4,11 @@ The sync panel has no option grid. L11b removed its GitHub controls (owner rulin
 
 **Holds while:** the Sync panel in `src/app.jsx` renders a particulars grid, `partGrid`. Its rows are "Server", "Last sync", and "Sync key". The key row shows only when the Worker key state is known. Photo progress and remote notes can show above the grid while they last.
 
-`syncActions` was deleted from `src/app.jsx` in L11c (`b62aebd`), with `doPull`, `confirmPull` and `pullState`.
+The sync actions, the old pull and its confirm, and the pull state were deleted from `src/app.jsx` in L11c (`b62aebd`).
 
 The Auto-push cell is gone. Sync runs unconditionally now. See `sync-runs-itself`.
 
-The sort and range panels still lay out cells with `optGrid`. Two columns are used for the sort panel, and four for the range panel. The odd-count rule still holds there: an odd last cell spans the row. Tests 47.3, 47.4 and 47.7 name the sync grid. The panel has no option grid now, so a builder should check them.
+The sort and range panels still lay out cells with `optGrid`. Two columns are used for the sort panel, and four for the range panel. The odd-count rule still holds there: an odd last cell spans the row. Tests 47.3, 47.4 and 47.7 measured the sync grid. They retired on 2026-10-12 with its Push, Merge and Pull cells. No test pins the sync panel's columns.
 
 ## See also
 

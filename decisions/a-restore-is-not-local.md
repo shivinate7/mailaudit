@@ -12,7 +12,9 @@ A restore takes its own `before restore` milestone on the way in. So tapping the
 
 A restore does not touch the sha. Rolling the sha back would be the real mistake. It would 409 the next push against a remote that this device is not behind. That sends the next push into a conflict, which the automatic merge resolves. Merge unions line items and never drops one. So it would silently re-add the very lines the rollback removed. The repair path would undo the repair.
 
-**Pinned by:** group 39. Mutant confirmed red: a restore that bypasses `applyBackup`. `parseLedger`, which `applyBackup` calls, validates the payload. Test 26.8 kills a mutant that removes the whole check. Test 35.1 kills a mutant that skips only the `mailday` check, because its payload carries `items` but no `mailday`. See `every-restore-passes-applybackup`.
+**Pinned by:** group 39. Mutant confirmed red: a restore that bypasses `applyBackup`. `parseLedger`, which `applyBackup` calls, validates the payload. Test 35.1 kills a mutant that skips only the `mailday` check, because its payload carries `items` but no `mailday`. See `every-restore-passes-applybackup`.
+
+**Retired:** test 26.8 killed a mutant that removes the whole `parseLedger` check. It left with the Pull control on 2026-10-12. The whole-check mutant has no named pin now.
 
 ## See also
 

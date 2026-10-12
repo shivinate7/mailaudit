@@ -2,7 +2,7 @@
 
 A pull makes the local ledger identical to the remote one. That happens whether or not the push that followed actually landed. So an assertion that compares payloads after a pull passes in both cases. It proves nothing.
 
-**Holds while:** test 26.16 in `test/app.test.mjs` asserts on the sha, not on the payload.
+**Holds while:** a pull that is asserted on checks the sha, not the payload. Test 26.16 did that, and it retired on 2026-10-12 with the Pull control.
 
 A mutation check caught a real gap here too. The first draft of "pulling refreshes the sha" asserted on the payload. A pull makes this device's ledger identical to the remote's. So the assertion was true whether the push landed or not. The mutant survived. The test now asserts on the **sha advancing**. That is the only thing that tells the two outcomes apart.
 
