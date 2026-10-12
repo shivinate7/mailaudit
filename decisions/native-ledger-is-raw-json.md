@@ -1,6 +1,6 @@
 # The native client keeps the ledger as raw JSON
 
-**Status:** ruled. The owner accepted a typed enum plan on 2026-10-11. The orchestrator default of 2026-10-12 replaced that enum with a raw dictionary. Lane N3 landed in PR #80 as LedgerStore. The Worker side is open, see Known gap.
+**Status:** ruled. The owner accepted a typed enum plan on 2026-10-11. The orchestrator default of 2026-10-12 replaced that enum with a raw dictionary. Lane N3 landed in PR #80 as LedgerStore. The Worker side is open, see Known gap. The malformed-field question is open, see Still open.
 
 The native store holds the ledger as `[String: Any]`, parsed and written with `JSONSerialization`. No typed struct or enum holds a field. A save writes the whole dictionary, so a field the client does not name survives a save of the file. An edit changes only the fields it names.
 
@@ -29,7 +29,7 @@ An edit changes only `received`, `receivedAt`, `envelopes` and `stamps`. The res
 
 ## Proof
 
-Lane N3 landed in PR #80 with a test for each item above, in LedgerStoreTests, under `native/ManifestKit/`. The unknown-field test proves the round trip through a file save. It does not prove a Worker POST, see Known gap. The two failed-reload tests, testFailedReloadOfTopLevelArrayLeavesStoreUnloaded and testFailedReloadOfInvalidJSONLeavesStoreUnloaded, prove the failed-reload rule. Each checks that the reload throws, the save throws, and the file bytes stay as written.
+Lane N3 landed in PR #80 with a test for each item above, in LedgerStoreTests, under `native/ManifestKit/`. The unknown-field test proves the round trip through a file save. It does not prove a Worker POST, see Known gap. The two failed-reload tests, testFailedReloadOfTopLevelArrayLeavesStoreUnloaded and testFailedReloadOfInvalidJSONLeavesStoreUnloaded, prove the failed-reload rule. Each checks that the reload throws, the save throws, and the file bytes stay as written. The missing-file case and the unwrapped-error sentence in Load and save are read from the code, not tested.
 
 ## Known gap: the Worker merge drops unknown top-level fields
 
@@ -45,7 +45,7 @@ The Swift names in this record (LedgerStore, LedgerStoreTests) are unbackticked.
 
 ## Still open
 
-- Malformed fields, for the owner. `received`, `receivedAt` and `stamps` that are not objects become `{}` on load, with no error. A malformed `envelopes` throws. A save then writes the `{}` over the bad value. Options: (a) throw for all four, so a bad file is refused and nothing is written; (b) keep the current split. Recommended: (a). Checked at f3e36cd: "It does not throw for these" holds, so it stays until the owner rules.
+- Malformed fields, for the owner. `received`, `receivedAt` and `stamps` that are not objects become `{}` on load, with no error. A malformed `envelopes` throws. A malformed `received` becomes `{}`, and the next save erases the check-ins it held. Options: (a) a present field that is not an object throws, while a missing one still defaults to `{}`; (b) keep the current split. Recommended: (a). Checked at f3e36cd: "It does not throw for these" holds, so it stays until the owner rules.
 
 ## See also
 
