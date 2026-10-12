@@ -4,6 +4,7 @@
 // failNextAdd makes the next add throw, as a real SecItemAdd can, so a test can
 // check what a failed write leaves behind. failAdds is sticky: every add throws
 // until it is set false, as a Keychain that refuses writes does.
+// failUpdates is sticky too: every update throws until it is set false.
 // setUnreadable makes copy throw for one item, as an item the Keychain cannot
 // decrypt does. update replaces an existing item's data, as SecItemUpdate does.
 
@@ -19,6 +20,7 @@ final class FakeKeychain: KeychainBackend, @unchecked Sendable {
     private var added: [[String: Any]] = []
     private var failAdd = false
     private var failEvery = false
+    private var failUpd = false
     private var unreadableIds: Set<String> = []
 
     /// When true, the next add throws Failure.injected, stores nothing, and clears itself.
@@ -31,6 +33,12 @@ final class FakeKeychain: KeychainBackend, @unchecked Sendable {
     var failAdds: Bool {
         get { lock.withLock { failEvery } }
         set { lock.withLock { failEvery = newValue } }
+    }
+
+    /// When true, every update throws Failure.injected and changes nothing, until set false.
+    var failUpdates: Bool {
+        get { lock.withLock { failUpd } }
+        set { lock.withLock { failUpd = newValue } }
     }
 
     /// Makes copy throw Failure.unreadable for one service and account until set false.
@@ -76,6 +84,7 @@ final class FakeKeychain: KeychainBackend, @unchecked Sendable {
     /// Replaces the data of the item that matches query. Throws Failure.missing when none does.
     func update(_ query: [String: Any], _ attributes: [String: Any]) throws {
         try lock.withLock {
+            if failUpd { throw Failure.injected }
             let id = identity(query)
             guard items[id] != nil else { throw Failure.missing }
             items[id] = attributes[kSecValueData as String] as? Data

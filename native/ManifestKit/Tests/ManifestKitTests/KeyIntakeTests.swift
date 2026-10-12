@@ -83,20 +83,21 @@ final class KeyIntakeTests: XCTestCase {
         XCTAssertEqual(read, "OLDfakeKey_1")
     }
 
-    // A failed add must report a refusal and keep the stored key. save() deletes the
-    // old item before it adds the new one, so a failed add leaves the store empty
-    // unless the old key is put back.
-    func testFailedAddReportsRefusalAndKeepsTheStoredKey() async throws {
+    // A failed write must report a refusal and keep the stored key. save() updates the
+    // item in place, then tries an add if the update fails. With both failing, the
+    // save throws, intake refuses, and the old key is still there.
+    func testFailedWriteReportsRefusalAndKeepsTheStoredKey() async throws {
         let backend = FakeKeychain()
         let store = KeyStore(service: "test.manifest.sync", account: "device-key", backend: backend)
         try store.save("OLDfakeKey_1")
-        backend.failNextAdd = true
+        backend.failUpdates = true
+        backend.failAdds = true
         let url = try link("k=\(Self.fakeKey)")
         let e = try engine()
         let outcome = await KeyIntake.accept(url, engine: e, store: store)
-        XCTAssertEqual(outcome, .refused, "a failed add must be reported as a refusal")
+        XCTAssertEqual(outcome, .refused, "a failed write must be reported as a refusal")
         let read = try store.key()
-        XCTAssertEqual(read, "OLDfakeKey_1", "a failed add must keep the stored key")
+        XCTAssertEqual(read, "OLDfakeKey_1", "a failed write must keep the stored key")
     }
 
     // The edges of the alphabet pass: upper, lower, digit, underscore, hyphen.

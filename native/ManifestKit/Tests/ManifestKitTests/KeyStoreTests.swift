@@ -70,16 +70,19 @@ final class KeyStoreTests: XCTestCase {
         XCTAssertEqual(backend.itemCount, 1)
     }
 
-    // While adds fail, a save throws and the old key stays readable. Clearing the
-    // failure lets the next save through.
-    func testSaveKeepsTheOldKeyWhileAddsFail() throws {
+    // save() updates the item in place, and adds one only when the update fails. While
+    // both fail, a save throws and the old key stays readable. Clearing the failures
+    // lets the next save through.
+    func testSaveKeepsTheOldKeyWhileUpdatesAndAddsFail() throws {
         let backend = FakeKeychain()
         let store = makeStore(backend)
         try store.save("OLDfakeKey_1")
+        backend.failUpdates = true
         backend.failAdds = true
         XCTAssertThrowsError(try store.save("NEWfakeKey_2"))
         let during = try store.key()
         XCTAssertEqual(during, "OLDfakeKey_1")
+        backend.failUpdates = false
         backend.failAdds = false
         let after = try store.key()
         XCTAssertEqual(after, "OLDfakeKey_1")
