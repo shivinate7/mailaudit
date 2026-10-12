@@ -58,15 +58,14 @@ Other risks live in the record for their lane:
 
 - `native-reply-waits-generation` holds the socket test limit.
 - `native-key-via-url-scheme` holds the runner keychain.
-- `native-swift-rebuild` holds the platform minimums. The app target does not match them yet, see Still open.
+- `native-swift-rebuild` holds the platform minimums.
 
 ## Still open
 
-- The app target sets iOS 17.0 and bundle id `com.shivinate.manifest`. `native-swift-rebuild` sets iOS 26 and `dev.shivinate.manifest`. Open, owner to rule.
+- Orchestrator default, 2026-10-12, N5: the app is iPhone-only (TARGETED_DEVICE_FAMILY 1), iOS 26.0, bundle id `dev.shivinate.manifest`, as `native-swift-rebuild` says. The Ledger tab icon is the gear (`gearshape`). The native 760pt UI case is removed; the web screens check keeps 760pt (`screens-checked-headless-in-ci`). The check-in toggle and the "N of M" clamp live in `src/view-rules.mjs`, and Swift calls them through RulesEngine. A key link that beats the engine waits in a queue. A failed check-in save leaves the store as it was and shows an error.
 - The Ledger tab is a placeholder. No lane builds its options, see `ledger-tab-holds-options`. Open, owner to name a lane.
 - The native job runs ST only. The UI tests, the xcodegen step and the `xcodebuild` builds are not in CI, see `native-ci-on-hosted-macos`.
 - The key scan covers the Packages model, its rows and the ledger file. No lane scans SwiftUI view state. Open, owner to name a lane.
-- The 760pt UI case skips on an iPhone 17 simulator, see `screens-checked-headless-in-ci`.
 
 ## See also
 

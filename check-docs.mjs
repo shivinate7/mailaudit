@@ -333,7 +333,7 @@ for (const entry of allSpans) {
    `name()`) must occur as a whole word somewhere in the code roots below.
    A renamed function then turns every record that cites it red. Names the
    code cannot hold are listed in EXTERNAL, one reason each. */
-const CODE_ROOTS = ["src", "test", "build.mjs", "check-records.mjs", "icon", "package.json", ".github"];
+const CODE_ROOTS = ["src", "test", "build.mjs", "check-records.mjs", "icon", "native", "package.json", ".github"];
 const EXTERNAL = new Set([
   "currentTime", // Web Animations API, set by hand when measuring motion
   "getAnimations", // Web Animations API, used by hand when measuring motion

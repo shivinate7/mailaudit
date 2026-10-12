@@ -21,6 +21,10 @@ public final class PackagesModel {
     @ObservationIgnored private let store: LedgerStore
     public private(set) var rows: [Package] = []
     public private(set) var received: [String: Int] = [:]
+    /// "N of M" per item key, from the bundle's countLabel.
+    public private(set) var labels: [String: String] = [:]
+    /// Set when the last check-in could not be saved; nil after one that was.
+    public private(set) var checkInError: String?
 
     public init(engine: RulesEngine, store: LedgerStore) {
         self.engine = engine
@@ -38,11 +42,30 @@ public final class PackagesModel {
         let sorted = try await engine.call("sortPackages", "[\(grouped),\"newest\",\(try json(got))]")
         rows = try JSONDecoder().decode([Package].self, from: Data(sorted.utf8))
         received = got
+        labels = [:]
+        for p in rows { for it in p.items { try await refreshLabel(it) } }
+    }
+
+    private func refreshLabel(_ it: LedgerItem) async throws {
+        let out = try await engine.call("countLabel", "[\(received[it.key] ?? 0),\(it.qty)]")
+        labels[it.key] = try JSONSerialization.jsonObject(with: Data(out.utf8), options: [.fragmentsAllowed]) as? String
+    }
+
+    /// A tap: the bundle's toggleCount picks the count to write.
+    public func toggle(key: String) async throws {
+        guard let item = rows.lazy.flatMap(\.items).first(where: { $0.key == key }) else { return }
+        let out = try await engine.call("toggleCount", "[\(received[key] ?? 0),\(item.qty)]")
+        guard let count = Int(out) else { throw RulesEngine.Failure.threw("toggleCount gave \(out)") }
+        try await checkIn(key: key, count: count)
     }
 
     public func checkIn(key: String, count: Int) async throws {
-        store.setReceived(key, count: count)
-        try store.save()
+        do { try store.commitReceived(key, count: count) } catch {
+            checkInError = "Could not save the check-in. \(error.localizedDescription)"
+            throw error
+        }
+        checkInError = nil
         received = store.received()
+        if let item = rows.lazy.flatMap(\.items).first(where: { $0.key == key }) { try await refreshLabel(item) }
     }
 }

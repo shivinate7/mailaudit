@@ -24,6 +24,8 @@ async function buildRules() {
     minify: true,
     format: "iife",
     globalName: "Rules",
+    // esbuild exports are getter-only; a plain copy lets a test swap one rule (PackagesToggleTests).
+    footer: { js: "Rules=Object.assign({},Rules);" },
     write: false,
   });
   return r.outputFiles[0].text;

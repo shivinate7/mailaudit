@@ -10,7 +10,7 @@ struct RootView: View {
 
     var body: some View {
         TabView {
-            Placeholder(title: "Ledger").tabItem { Label("Ledger", systemImage: "book.closed") }
+            Placeholder(title: "Ledger").tabItem { Label("Ledger", systemImage: "gearshape") }
             Placeholder(title: "Orphaned").tabItem { Label("Orphaned", systemImage: "envelope.badge") }
             Placeholder(title: "Tally").tabItem { Label("Tally", systemImage: "number") }
             Group {

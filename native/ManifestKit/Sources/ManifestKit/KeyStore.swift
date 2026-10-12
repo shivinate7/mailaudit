@@ -91,7 +91,7 @@ public struct KeyStore: Sendable {
     func clear() throws { try backend.delete(identity) }
 }
 
-public enum KeyIntakeOutcome: Equatable { case stored, refused, ignored }
+public enum KeyIntakeOutcome: Equatable, Sendable { case stored, refused, ignored }
 
 public enum KeyIntake {
     /// Reads the raw fragment of a manifestledger://sync link and asks keyFromHash

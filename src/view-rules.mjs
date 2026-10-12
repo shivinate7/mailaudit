@@ -429,3 +429,8 @@ export function outstandingNames(items, received) {
 
 export const packagesDone = (pkgs, received) =>
   pkgs.filter((p) => p.items.every((it) => gotOfItem(it, received) >= it.qty)).length;
+
+/* Lane N5: the check-in toggle and the "N of M" label. Swift calls both through
+   RulesEngine (rules-run-in-javascriptcore). A line that is in toggles to 0, else to qty. */
+export const toggleCount = (got, qty) => (got >= qty ? 0 : qty);
+export const countLabel = (got, qty) => `${Math.min(got, qty)} of ${qty}`;

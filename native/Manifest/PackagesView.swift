@@ -15,6 +15,12 @@ struct PackagesView: View {
                 }
             }
         }
+        .overlay(alignment: .bottom) {
+            if let e = model.checkInError {
+                Text(e).font(.footnote).padding(12).frame(maxWidth: .infinity)
+                    .background(.regularMaterial).accessibilityIdentifier("checkin-error")
+            }
+        }
     }
 }
 
@@ -31,15 +37,15 @@ struct PackageRow: View {
                 HStack {
                     VStack(alignment: .leading) {
                         Text(item.name)
-                        Text("\(got) of \(item.qty)").font(.caption).monospacedDigit()
+                        Text(model.labels[item.key] ?? "").font(.caption).monospacedDigit()
                             .foregroundStyle(.primary)
                     }
                     Spacer()
                     Button {
-                        Task { try? await model.checkIn(key: item.key, count: got >= item.qty ? 0 : item.qty) }
+                        Task { try? await model.toggle(key: item.key) }  // the failure shows in model.checkInError
                     } label: {
                         Image(systemName: got >= item.qty ? "checkmark.circle.fill" : "circle")
-                            .frame(width: 44, height: 44).foregroundStyle(.primary)
+                            .frame(width: 45, height: 45).foregroundStyle(.primary)  // 45: layout rounding made a 44pt frame read 43.99999
                     }
                     .accessibilityLabel("\(got >= item.qty ? "Undo check in" : "Check in") \(item.name)")
                     .accessibilityIdentifier("checkin:\(item.key)")

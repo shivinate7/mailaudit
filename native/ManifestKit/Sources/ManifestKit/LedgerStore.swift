@@ -52,6 +52,13 @@ public final class LedgerStore {
         generation += 1
     }
 
+    /// setReceived then save. If the save fails, the store goes back to what it was.
+    public func commitReceived(_ key: String, count: Int) throws {
+        let (oldDoc, oldGen) = (doc, generation)
+        setReceived(key, count: count)
+        do { try save() } catch { doc = oldDoc; generation = oldGen; throw error }
+    }
+
     public func setStamp(_ key: String, kind: String, note: String, at: String) {
         var s = doc["stamps"] as? [String: Any] ?? [:]
         s[key] = ["kind": kind, "note": note, "at": at, "updatedAt": now()] as [String: Any]
