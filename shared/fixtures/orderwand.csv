@@ -2,9 +2,9 @@ Type,Vendor,Account,Order Id,Ordered At,Shipping Amount,Tax Amount,Item Number,P
 Purchase,TCGplayer,me,A1,2026-07-01,0,0,0,Lightning Bolt,Test Set,TST,Near Mint,,1.00,1,1.00,USD,Magic,Singles,Alpha Cards,without tracking,,,0,0
 Purchase,TCGplayer,me,A1,2026-07-01,0,0,1,Counterspell,Test Set,TST,Near Mint,,2.00,1,2.00,USD,Magic,Singles,Alpha Cards,without tracking,,,0,0
 Purchase,TCGplayer,me,A1,2026-07-01,0,0,2,Brainstorm,Test Set,TST,Near Mint,,0.50,2,1.00,USD,Magic,Singles,Alpha Cards,without tracking,,,0,0
-Purchase,TCGplayer,me,B1,2026-07-02,0,0,0,Lightning Bolt,Test Set,TST,Near Mint,,1.00,1,1.00,USD,Magic,Singles,Beta Games,without tracking,,,0,0
-Purchase,TCGplayer,me,B1,2026-07-02,0,0,1,Counterspell,Test Set,TST,Near Mint,,2.00,1,2.00,USD,Magic,Singles,Beta Games,without tracking,,,0,0
-Purchase,TCGplayer,me,B1,2026-07-02,0,0,2,Brainstorm,Test Set,TST,Near Mint,,0.50,2,1.00,USD,Magic,Singles,Beta Games,without tracking,,,0,0
+Purchase,TCGplayer,me,B1,2026-07-29,0,0,0,Lightning Bolt,Test Set,TST,Near Mint,,1.00,1,1.00,USD,Magic,Singles,Beta Games,without tracking,,,0,0
+Purchase,TCGplayer,me,B1,2026-07-29,0,0,1,Counterspell,Test Set,TST,Near Mint,,2.00,1,2.00,USD,Magic,Singles,Beta Games,without tracking,,,0,0
+Purchase,TCGplayer,me,B1,2026-07-29,0,0,2,Brainstorm,Test Set,TST,Near Mint,,0.50,2,1.00,USD,Magic,Singles,Beta Games,without tracking,,,0,0
 Purchase,TCGplayer,me,C1,2026-06-01,0,0,0,Lightning Bolt,Test Set,TST,Near Mint,,1.00,1,1.00,USD,Magic,Singles,Gamma Cards,with tracking,,,0,0
 Purchase,TCGplayer,me,C1,2026-06-01,0,0,1,Path to Exile,Test Set,TST,Near Mint,,3.00,1,3.00,USD,Magic,Singles,Gamma Cards,with tracking,,,0,0
 Purchase,TCGplayer,me,C1,2026-06-01,0,0,2,Swords to Plowshares,Test Set,TST,Near Mint,,4.00,1,4.00,USD,Magic,Singles,Gamma Cards,with tracking,,,0,0
