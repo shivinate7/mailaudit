@@ -16,6 +16,8 @@
          G1.3 one hand-edited digit fails, and the output names that file
      G2  a generator that writes nothing (scripts/gen-golden.mjs empty, exit 0)
          G2.1 must fail the check, and the output names a golden file
+         G2.2 an empty golden dir plus that empty generator must fail the check,
+              and the output says no golden files were found
 
    A missing script or a missing generator fails each case on an assertion, so
    no case passes by accident because the check did not run at all. */
@@ -24,6 +26,7 @@ import { spawnSync } from "node:child_process";
 import {
   cpSync,
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
@@ -149,6 +152,25 @@ ok(names.length > 0, "G1.1 shared/fixtures/golden holds at least one golden file
       failed(r) && Boolean(target) && r.out.includes(target),
       "G2.1 an empty generator that exits 0 must fail the check, and the output names a golden file",
       `target ${target ?? "(none)"}; exit ${r.status}\n     ${tail(r.out)}`
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/* ---------- G2.2: an empty golden dir and a generator that writes nothing ---------- */
+
+{
+  const dir = sandbox(EMPTY_GENERATOR);
+  try {
+    const goldenDir = path.join(dir, GOLDEN_REL);
+    rmSync(goldenDir, { recursive: true, force: true });
+    mkdirSync(goldenDir, { recursive: true });
+    const r = runCheck(dir);
+    ok(
+      failed(r) && r.out.includes("no golden files"),
+      "G2.2 an empty golden dir and a generator that writes nothing must fail the check, and the output says no golden files",
+      `exit ${r.status}\n     ${tail(r.out)}`
     );
   } finally {
     rmSync(dir, { recursive: true, force: true });
