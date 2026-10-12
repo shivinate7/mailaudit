@@ -925,13 +925,13 @@ await test("12.1 GET /photos on an empty store replies 200 with no ids", async (
   eq((await res.json()).ids, [], "ids");
 });
 
-await test("12.2 GET /photos lists the ids of every stored photo", async () => {
+await test("12.2 GET /photos lists every stored photo as its file name, extension included", async () => {
   const s = empty();
   s.photos.set("pho-aaa111", { mime: "image/jpeg", bytes: PHO_JPG });
   s.photos.set("pho-bbb222", { mime: "image/png", bytes: PHO_OTHER });
   const res = await sendPhoto(s, "GET", "/photos", { key: KEY_PHONE });
   eq(res.status, 200, "status");
-  eq(((await res.json()).ids || []).slice().sort(), ["pho-aaa111", "pho-bbb222"], "ids");
+  eq(((await res.json()).ids || []).slice().sort(), ["pho-aaa111.jpg", "pho-bbb222.png"], "names");
 });
 
 await test("12.3 a POST stores the bytes, and GET serves them with the type from the name", async () => {
@@ -958,6 +958,7 @@ await test("12.5 a name that is not pho-id plus a known extension is refused wit
     const res = await sendPhoto(s, "POST", `/photos/${name}`, { key: KEY_PHONE, bytes: PHO_JPG });
     eq(res.status, 400, `status for ${name}`);
     eq(s.photos.size, 0, `photos stored for ${name}`);
+    eq(s.photoWrites.length, 0, `photoPut calls for ${name}`);
   }
 });
 
@@ -968,6 +969,7 @@ await test("12.6 a second POST to the same name keeps the first bytes", async ()
   ok(again.status >= 200 && again.status < 300, `repeat status ${again.status} is 2xx`);
   const kept = s.photos.get("pho-aaa111");
   eq(kept ? Array.from(kept.bytes) : null, Array.from(PHO_JPG), "stored bytes after the repeat");
+  eq(s.photoWrites, ["pho-aaa111"], "photoPut calls: the repeat must not write again");
 });
 
 await test("12.7 a photo over MAX_PHOTO_BYTES is refused with 413 photo-too-large; one at the limit is kept", async () => {
@@ -980,6 +982,7 @@ await test("12.7 a photo over MAX_PHOTO_BYTES is refused with 413 photo-too-larg
   eq(over.status, 413, "status over the limit");
   eq((await over.json()).error, "photo-too-large", "error over the limit");
   eq(s.photos.size, 0, "nothing stored over the limit");
+  eq(s.photoWrites.length, 0, "photoPut calls over the limit");
   const at = await sendPhoto(s, "POST", "/photos/pho-big222.jpg", { key: KEY_PHONE, bytes: new Uint8Array(LIM) });
   ok(at.status >= 200 && at.status < 300, `status at the limit ${at.status} is 2xx`);
   eq(s.photos.has("pho-big222"), true, "stored at the limit");
@@ -1014,6 +1017,52 @@ await test("12.10 photo routes need a device key, and a missing id replies 404",
   eq((await sendPhoto(s, "GET", "/photos/pho-aaa111.jpg", {})).status, 401, "GET photo without a key");
   eq((await sendPhoto(s, "GET", "/photos", { key: KEY_STRANGER })).status, 401, "GET list with a key not on the list");
   eq((await sendPhoto(s, "GET", "/photos/pho-zzz999.jpg", { key: KEY_PHONE })).status, 404, "missing id");
+});
+
+await test("12.11 a path that is not valid percent-encoding is refused with 400, never thrown, for GET and POST", async () => {
+  for (const path of ["/photos/%", "/photos/%ZZ.jpg"]) {
+    const s = empty();
+    const got = await sendPhoto(s, "GET", path, { key: KEY_PHONE });
+    eq(got.status, 400, `GET status for ${path}`);
+    eq((await got.json()).error, "bad photo name", `GET error for ${path}`);
+    const up = await sendPhoto(s, "POST", path, { key: KEY_PHONE, bytes: PHO_JPG });
+    eq(up.status, 400, `POST status for ${path}`);
+    eq(s.photoWrites.length, 0, `photoPut calls for ${path}`);
+  }
+});
+
+await test("12.12 a photo is served with the mime on its stored row, not one re-derived from the URL", async () => {
+  const s = empty();
+  await sendPhoto(s, "POST", "/photos/pho-fff666.jpg", { key: KEY_PHONE, bytes: PHO_JPG, type: "image/png" });
+  eq(s.photos.get("pho-fff666")?.mime, "image/jpeg", "row mime from the name, not the upload's claim");
+  const got = await sendPhoto(s, "GET", "/photos/pho-fff666.jpg", { key: KEY_PHONE });
+  eq(got.headers.get("Content-Type"), "image/jpeg", "served mime for a .jpg upload");
+  s.photos.set("pho-eee555", { mime: "image/png", bytes: PHO_OTHER });
+  const row = await sendPhoto(s, "GET", "/photos/pho-eee555.jpg", { key: KEY_PHONE });
+  eq(row.status, 200, "status for a row stored as image/png");
+  eq(row.headers.get("Content-Type"), "image/png", "served mime is the stored row's, not image/jpeg from the name");
+});
+
+await test("12.13 a POST whose Content-Length is over MAX_PHOTO_BYTES gets 413 before its body is read", async () => {
+  const s = empty();
+  let bodyRead = false;
+  const r = {
+    method: "POST",
+    url: BASE + "/photos/pho-big333.jpg",
+    headers: new Headers({
+      Authorization: `Bearer ${KEY_PHONE}`,
+      "Content-Type": "application/octet-stream",
+      "Content-Length": String(MAX_PHOTO_BYTES + 1),
+    }),
+    arrayBuffer: async () => {
+      bodyRead = true;
+      return new ArrayBuffer(0);
+    },
+  };
+  const res = await route(r, ENV, s);
+  eq(res.status, 413, "status");
+  eq(bodyRead, false, "body read before the size check");
+  eq(s.photoWrites.length, 0, "photoPut calls");
 });
 
 report();
