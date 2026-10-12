@@ -25,7 +25,7 @@ Each client draws its own screen. The logic has one home, see `rules-run-in-java
 
 | Feature | Scope | Reason |
 |---|---|---|
-| Public seed (`window.seed`) | web-only | It serves site visitors, and visitors do not use native. Its future is open, see `worker-keeps-snapshots`. |
+| Public seed (`window.seed`) | web-only | It serves site visitors, and visitors do not use native. It goes away, as the owner ruled on 2026-10-11, see `worker-keeps-snapshots`. |
 | GitHub mirror to the data branch, and History from the branch | web-only, until lane W3 ships | They need a GitHub token. Native never holds one. Worker snapshots replace both for both clients. |
 | GitHub sync path: pull, push, sha, peek, two-tap | web-only | Cloudflare retires it. Native never had it. |
 | Photo sync through the GitHub Contents API | web-only | The Worker photo route replaces it for both clients. |
