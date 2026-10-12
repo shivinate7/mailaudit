@@ -34,7 +34,7 @@ A related rollout hazard exists. An older build's `snapshot()` omits `stamps`. S
 
 A second rollout hazard exists for stage 4a. An old build shows a tombstone as an empty envelope. Its push drops `receivedAt`, so an un-check can come back. Update both devices before you un-check or discard anything.
 
-**Pinned by:** 9.1–9.3 (envelopes survive a reload), 37.48 (stamps survive a reload), 37.49 (a save from before stamps loads clean), 37.50 (Reset clears them), 37.51 (the pushed payload carries them), 37.62–37.63 (the merged ledger keeps the stamps key), 39.8 and 39.8b (a version holds the whole saved shape, and a version built from its own payload rather than `snapshot()` fails both), group 49 (un-checks and deletes travel between devices). The web load refusal: group 67 and 67.7.
+**Pinned by:** 9.1–9.3 (envelopes survive a reload), 37.48 (stamps survive a reload), 37.49 (a save from before stamps loads clean), 37.50 (Reset clears them), 37.51 (the pushed payload carries them), 37.62–37.63 (the merged ledger keeps the stamps key), 39.8 and 39.8b (a version holds the whole saved shape, and a version built from its own payload rather than `snapshot()` fails both), group 49 (un-checks and deletes travel between devices). The web salvage and fallbacks: group 67 (the load, Re-import and sync reply cases; 67.F1 to 67.F3; 67.7).
 
 Mutants confirmed red:
 - `mergeLedger` not naming `stamps` (37.62–37.68);
@@ -50,11 +50,17 @@ Owner ruling 2026-10-12 ("Keep a copy, then go on"), home `native-ledger-is-raw-
 On every path data comes in (load, Re-import, a sync reply, a pull), the client does three things:
 
 - It saves the data as it came in to History as a milestone, and waits for the write.
-- It keeps every entry it can read. `salvageLedger` in `view-rules.mjs` does this, as one pure function, so the Swift client gets it in `rules.js`.
-- It shows one line: "N entries could not be read; the original is in History."
+- It keeps every entry it can read. `salvageLedger` in `view-rules.mjs` does this. It is the only mender. Its callers are the load effect, `readLedger` (restore, pull, merge) and `settleReply` (sync reply). The Worker POST calls it only to refuse. `rules.js` carries it for Swift, which does not call it yet.
+- It shows one line: "N entries could not be read; the original is in History." A dropped whole field counts 1, and each dropped entry counts 1.
 
 The Worker refuses a POST with a bad shape (400), so one app's bug cannot reach the other.
 
-**Orchestrator defaults 2026-10-12, not owner rulings.** The client refuses as before, and changes nothing, when the milestone cannot be written or the saved text is not JSON. The page says the saved ledger is damaged and was not loaded, keeps the raw text, and offers History and Backup. While refused: no sync call or apply (rev, key save, reply), no CSV import, no push. Reset puts the raw text in History first. A History restore clears the refusal.
+**Orchestrator defaults 2026-10-12, not owner rulings.** These fallbacks refuse and change nothing. They apply when the copy cannot be written, or the saved text is not JSON.
 
-**Pinned by (web):** group 67. Worker: 67.1, 67.2.
+- Load: the page says the saved ledger is damaged and was not loaded. It keeps the raw text and offers History and Backup. While refused, nothing is sent: no sync call or apply, no CSV import, no push. Reset puts the raw text in History first, or does not reset. A History restore clears the refusal. It sends the refused text to History first, best effort, and does not wait for that write.
+- Re-import: when the versions store is missing, Re-import shows the "could not be saved to History" message and changes nothing. A write that fails shows `That file isn’t a Mail Day backup.` instead. Read from code, not tested.
+- Sync reply: the reply counts as a failed call, and nothing is applied. Read from code, not tested.
+
+**Pinned by (web):** group 67 (the 67 labels for load, Re-import and sync reply; 67.F1 to 67.F3; 67.7 and 67.7a). 67.F1b, 67.F1c, 67.F2b and 67.F2c check that no push starts. Worker: 67.1 and 67.2, run by `npm run test:worker`, not `npm test`.
+
+**Read from code, not tested:** the pull and merge fallbacks, the sync and apply guards, Reset with the raw text, and the CSV block.

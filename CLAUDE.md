@@ -355,7 +355,6 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 - `recent-checks-can-be-undone` — Recent actions can be undone by tap.
 - `sync-revamp-cloudflare` — Sync moves from GitHub to Cloudflare, and orders arrive with no export.
 - `merge-later-change-wins` — Clock skew can pin a merge key. Accepted risk.
-- `damaged-other-paths-open` — A damaged list on Re-import or sync reply is not ruled.
 
 ## Measurements
 

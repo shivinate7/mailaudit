@@ -1,14 +1,16 @@
 # The native client keeps the ledger as raw JSON
 
-**Status:** ruled. The owner accepted a typed enum plan on 2026-10-11. The orchestrator default of 2026-10-12 replaced that enum with a raw dictionary. Owner ruling 2026-10-12 ("Refuse all four"): a damaged `received`, `receivedAt`, `stamps` or `envelopes` value makes load throw. The store then stays unsaveable, and the file is unchanged. Lane N3 landed in PR #80 as LedgerStore. Lane N3b adds the refusal for the first three fields. Owner ruling 2026-10-12 ("Web refuses too"): the web app also refuses a damaged list on load, says so, and offers History and Backup. That web lane is not built yet. The Worker side is open, see Known gap.
+**Status:** ruled. The owner accepted a typed enum plan on 2026-10-11. The orchestrator default of 2026-10-12 replaced that enum with a raw dictionary. Owner ruling 2026-10-12 ("Keep a copy, then go on") replaces "Refuse all four" and "Web refuses too". It holds for every client and every path data comes in. A `received`, `receivedAt`, `stamps` or `envelopes` value of the wrong shape (a whole field or one entry; JSON `null` counts) is first saved to History as a milestone. Then every readable entry is kept, and one line says how many could not be read. The web detail and its fallbacks are in `saved-state-shape`.
 
-**2026-10-12, web lane built:** owner ruling "Keep a copy, then go on" replaces "Refuse all four" and "Web refuses too". The web client keeps a copy of a damaged ledger in History, mends it and says so, on load, Re-import and sync reply. The Worker refuses a bad shape. See `saved-state-shape`.
+**Built state, 2026-10-12:** web is built on draft PR #87, not merged. The Worker refuses a bad shape with 400 (tests 67.1 and 67.2, run by `npm run test:worker`). Swift is not built. The native store still throws, as `Load and save` below describes, and no Swift code calls `salvageLedger` from `rules.js` yet. The unknown-field gap in Known gap is still open.
 
 The native store holds the ledger as `[String: Any]`, parsed and written with `JSONSerialization`. No typed struct or enum holds a field. A save writes the whole dictionary, so a field the client does not name survives a save of the file. An edit changes only the fields it names.
 
 **Holds while:** `saved-state-shape` names the saved ledger shape, the Worker rejects a `mailday` other than 1, and no lane needs a typed value. Add a typed value when a lane needs one, not before (YAGNI).
 
 ## Load and save
+
+The Swift client's rules today. The 2026-10-12 ruling is not built here yet, see Status.
 
 - A load throws when the top level is not an object.
 - A load throws when `mailday` is present and is not the integer 1. A missing `mailday` is accepted and saved as 1.

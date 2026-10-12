@@ -1,8 +1,8 @@
 # Test suite assertion count and run time
 
-**Status:** measured at `7505fbe`, checked 2026-10-12. All 1194 assertions pass under New York time, and all 1193 pass under UTC. Both runs exit 0 by themselves, with no live handles left.
+**Status:** measured at `1f230e9`, checked 2026-10-12. All 1205 assertions pass under New York time, and all 1204 pass under UTC. Both runs exit 0 by themselves, with no live handles left.
 
-This record holds the assertion count and the run time for `npm test`. The suite runs 1194 assertions under New York time, and 1193 under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+This record holds the assertion count and the run time for `npm test`. The suite runs 1205 assertions under New York time, and 1204 under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
 The count depends on the clock's zone, so the zone is pinned to `America/New_York`. In CI, the test step sets `TZ`, and it names one New York run's output in `CHECK_DOCS_SUITE_LOG`. `check:docs` grades the figure in this sentence. Locally, `npm run check:docs` runs the suite itself and waits for it to end.
 
@@ -12,16 +12,16 @@ The harness bundles `app.jsx` with esbuild. It sets `platform: "node"` and `form
 
 ## How to re-measure
 
-Run `npm test` and read its summary line. The count is passed plus failed. A green run prints `all green`. Time the run with the shell's own timer.
+Run `npm test` and read its summary line. The count is passed plus failed. A green run prints `all green`. Time the run with the shell's own timer, or with `verdict`, which prints the elapsed seconds.
 
 At `f956873`, the New York process printed its summary and `all green`, then stayed alive with no CPU use for 13 minutes. It was killed by hand. The UTC and machine-zone processes were stopped by hand just after their summaries. Their exit codes are unmeasured, and so is the cause.
 
-Measured on 2026-10-12, at `7505fbe`, the head of PR #87 (the web load refusal):
+Measured on 2026-10-12, at `1f230e9`, the head of PR #87 (the web salvage lane):
 
-- New York zone (`TZ=America/New_York`): 1194 passed, 0 failed, exit 0. About 134 s locally.
-- UTC (`TZ=UTC`): 1193 passed, 0 failed, exit 0. About 135 s locally.
+- New York zone (`TZ=America/New_York`): 1205 passed, 0 failed, exit 0. 218.9 s by the `verdict` timer.
+- UTC (`TZ=UTC`): 1204 passed, 0 failed, exit 0. 220.5 s by the `verdict` timer.
 
-Each zone ran once, so each time is one reading. The run time varies on this machine. Take several runs before you compare a time. Groups 30 to 31 hold real-timer waits on purpose.
+Each zone ran once, so each time is one reading. The run time varies on this machine. The New York run took 218.9 s here, against about 134 s at `7505fbe`. The cause is unmeasured. Take several runs before you compare a time. Groups 30 to 31 hold real-timer waits on purpose.
 
 ## Reader
 
