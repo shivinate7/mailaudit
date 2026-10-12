@@ -6,6 +6,10 @@ The app presents itself as MANIFEST.
 
 **Live site:** https://shivinate7.github.io/mailaudit/
 
+**Status:** live. The native client is in progress.
+
+**Audience:** developers who build, test or change this repo. The app's user is the owner.
+
 ## Build and test
 
 Run these commands from the repository root.

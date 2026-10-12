@@ -10,6 +10,12 @@ The Tally jump sets `revealed` and `view` in one handler. A `view` dependency wo
 
 **Pinned by:** group 32. Mutant confirmed red: the order-id button losing its `stopPropagation`. That turns a look into a check-in.
 
+## The order id stays visible
+
+The order id stays visible. The owner ruled on 2026-10-11, accept all: keep the order id visible, with the 10px floor in `typography-cochin-and-mono`. Open: what counts as visible at narrow widths is not defined.
+
+**Status:** ruled 2026-10-11, not built. Build: no lane yet.
+
 ## See also
 
 - `search-filters-inside-package` — the feature this control belongs to.

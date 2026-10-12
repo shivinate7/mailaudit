@@ -1,5 +1,7 @@
 # Ruled head control region heights
 
+**Status:** re-measure pending. The 4px grid ruling in `spacing-on-4px-grid` will change this region. The figures below describe the code now, and `CTL_H` (34px) is off the 4px step. They are unmeasured after that change.
+
 This record holds the control region height at 375px, in each state. States are: at rest, with a panel open, and with the action row empty or full. It also holds the one width bug the region had, at 377px. Re-measure at 375px after a change to the region's cells, panels, or the action row.
 
 ## How to re-measure

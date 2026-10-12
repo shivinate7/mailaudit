@@ -47,7 +47,7 @@ Not logged: a CSV import, a merge or live apply, a restore, a pull, a Reset, and
 
 ## What a row shows
 
-A row uses the ledger's own vocabulary. It has no artwork and no fill (`ruled-head-panels-carry-no-fill`). Its colours come from `C` (`design-parchment-ledger`).
+A row uses the ledger's own vocabulary. It has no artwork and no fill of its own. The panel that holds it takes the paper fill (`ruled-head-panels-carry-no-fill`). Its colours come from `C` (`design-parchment-ledger`).
 
 - A mono uppercase micro-label names the action: `CHECKED`, `UN-CHECKED`, `COUNT 2 → 3`, `PACKAGE CHECKED`, `STAMP · REFUNDED`, `STAMP REMOVED`, `ENVELOPE RECORDED`, `ENVELOPE EDITED`, `ENVELOPE DISCARDED`, `ASSIGNED`.
 - Cochin sets the subject: the card name, or the seller and order for a package or stamp, or the envelope's note. Mono sets the numbers, such as `1 of 4`, and the time `14:32` (`typography-cochin-and-mono`).
@@ -66,7 +66,7 @@ Rows run newest first. One group holds one local calendar day, never a UTC day (
 
 Rows from two devices sort by their own device clocks. The clock-skew risk of `merge-later-change-wins` applies to the order of rows.
 
-The panel has a bounded height, and its rows scroll inside it. Up to 200 rows would otherwise push every package off the screen.
+The panel overlays the list and does not push it (`motion-disclosure-panels-arrive`). It has a bounded height, and its rows scroll inside it. Up to 200 rows would otherwise cover every package on the screen.
 
 ## No layout shift
 
@@ -134,7 +134,7 @@ Ruled: a field in the ledger, named recent. The owner chose it on 2026-10-11, wi
 
 ## Where the entrance sits
 
-The entrance is a `Recent ▾` cell in the ruled action row, left of History. It uses `.mdl-act`, `aria-expanded` and the caret that History carries (`action-row-is-ruled-cells`). Its panel opens in the same slot as History, with the same fade and no new motion (`motion-disclosure-panels-arrive`). Recent, History and Sync close one another (`history-sync-close-each-other`). An armed Reset hides the cell, as it hides History (`armed-reset-takes-the-row`).
+The entrance is a `Recent ▾` cell in the ruled action row, left of History. It uses `.mdl-act`, `aria-expanded` and the caret that History carries (`action-row-is-ruled-cells`). Its panel overlays the list in the same slot as History, with the same fade and no new motion (`motion-disclosure-panels-arrive`). Recent, History and Sync close one another (`history-sync-close-each-other`). An armed Reset does not hide the cell, and, by an orchestrator default of 2026-10-11, it does not hide History either (`armed-reset-takes-the-row`).
 
 The cell shows whenever the ledger holds items or envelopes, as Reset does. It never waits on the log, so the row does not re-divide when the first entry lands (`recovery-control-not-state-gated`). An empty log shows one line in the panel.
 

@@ -1,5 +1,7 @@
 # A build needs the data remote to seed the page
 
+**Status:** ruled 2026-10-11, not built. Source: `ux-house-rules-govern`. Owner ruling, accept all: if the seed fetch fails, deploy stops. Today `package.json` runs the fetch with `|| true`, so a failed fetch still builds a seedless page. Build: web lane L3, in draft PR #68, not merged.
+
 A fresh clone needs a git remote that points at the private data repository. The data branch must be fetched before the build can bake in a seed. Without that remote, the build runs seedless. The seed checker reports that rather than failing outright.
 
 **Holds while:** `build.mjs` reads the seed through `SEED_REF`, from the `ledger` remote. When that ref resolves, `--check-seed` fails a seedless page.
@@ -15,6 +17,10 @@ git remote add ledger https://github.com/shivinate7/mailaudit-data.git && git fe
 ```
 
 Without the remote, the build is seedless. `npm run check:seed` reports that instead of failing. On a machine where the ref does resolve, a seedless committed page is a hard failure. The build dropped a seed it could have made.
+
+## Deploy
+
+A failed `git fetch ledger data` stops `npm run deploy` before the build.
 
 ## See also
 
