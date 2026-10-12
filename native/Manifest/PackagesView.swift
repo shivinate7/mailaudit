@@ -24,22 +24,22 @@ struct PackageRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("\(pkg.seller), \(pkg.orderId)").font(.headline).lineLimit(1)
+            Text("\(pkg.seller), \(pkg.orderId)").font(.headline)
                 .frame(minHeight: 44, alignment: .leading)
             ForEach(pkg.items, id: \.key) { item in
                 let got = model.received[item.key] ?? 0
                 HStack {
                     VStack(alignment: .leading) {
-                        Text(item.name).lineLimit(1)
+                        Text(item.name)
                         Text("\(got) of \(item.qty)").font(.caption).monospacedDigit()
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.primary)
                     }
                     Spacer()
                     Button {
                         Task { try? await model.checkIn(key: item.key, count: got >= item.qty ? 0 : item.qty) }
                     } label: {
                         Image(systemName: got >= item.qty ? "checkmark.circle.fill" : "circle")
-                            .frame(width: 44, height: 44)
+                            .frame(width: 44, height: 44).foregroundStyle(.primary)
                     }
                     .accessibilityLabel("\(got >= item.qty ? "Undo check in" : "Check in") \(item.name)")
                     .accessibilityIdentifier("checkin:\(item.key)")
