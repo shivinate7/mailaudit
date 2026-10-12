@@ -4,7 +4,7 @@
 // from walking the real files. Records hold current text only; git keeps
 // history. Run with `npm run check:records`.
 //
-// Six claims, each with its own section below:
+// Seven claims, each with its own section below:
 //   1. every citation resolves
 //   2. no fence is broken
 //   3. no duplicate slug across the three folders
@@ -12,6 +12,8 @@
 //   5. no orphan and no dead index entry
 //   6. every invariant names the test that pins it, and no record cites an
 //      invariant by number
+//   7. every decision holds a "Holds while" line, every open thread a
+//      "Status" line, and the index lists no slug twice
 
 import { readFileSync, readdirSync } from "fs";
 import { execFileSync } from "child_process";
@@ -398,6 +400,43 @@ function closestSlug(token, slugs) {
   }
   failures += bad;
   console.log(`check:records: pins check — ${bad} problem(s)`);
+}
+
+/* ---------- claim 7: decisions hold while something; open threads carry a status; the index lists a slug once ----------
+   Every decisions/*.md holds a "**Holds while:**" line (the fact that dates it,
+   see records-name-what-dates-them). Every record CLAUDE.md lists under
+   "## Open threads" holds a "**Status:**" line. CLAUDE.md lists no slug twice. */
+{
+  let bad = 0;
+  const claude = readFileSync("CLAUDE.md", "utf8");
+  for (const r of records) {
+    if (r.folder === "decisions" && !/^\*\*Holds while:\*\*/m.test(r.text)) {
+      console.error(`check:records: ${r.path}: no "**Holds while:**" line`);
+      bad++;
+    }
+  }
+  if (!/^## Open threads$/m.test(claude)) {
+    console.error('check:records: CLAUDE.md has no "## Open threads" heading, so no status line can be judged');
+    bad++;
+  }
+  const open = (claude.split(/^## Open threads$/m)[1] ?? "").split(/^## /m)[0];
+  for (const m of open.matchAll(/^- `([a-z0-9-]+)`/gm)) {
+    const r = records.find((x) => x.slug === m[1]);
+    if (r && !/^\*\*Status:\*\*/m.test(r.text)) {
+      console.error(`check:records: ${r.path}: open record has no "**Status:**" line`);
+      bad++;
+    }
+  }
+  const seen = new Set();
+  for (const m of claude.matchAll(/^- `([a-z0-9-]+)`/gm)) {
+    if (seen.has(m[1])) {
+      console.error(`check:records: CLAUDE.md lists \`${m[1]}\` more than once`);
+      bad++;
+    }
+    seen.add(m[1]);
+  }
+  failures += bad;
+  console.log(`check:records: holds-while, status and index-once check - ${bad} problem(s)`);
 }
 
 if (failures) {

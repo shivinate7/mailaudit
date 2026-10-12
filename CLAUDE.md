@@ -206,7 +206,8 @@ House UX rules that govern the screens. Read these before changing a screen.
 
 - `ux-house-rules-govern` — MANIFEST screens follow the house UX rules.
 - `spacing-on-4px-grid` — Spacing moves to a 4px grid with an 8px card radius.
-- `phone-nav-awaits-mockup` — Phone navigation waits for a mockup.
+- `phone-nav-is-bottom-bar` — Phone navigation is a bottom glass bar, ruled and not built.
+- `ledger-tab-holds-options` — The Ledger tab holds the options, ruled and not built.
 
 ## The ruled head
 
