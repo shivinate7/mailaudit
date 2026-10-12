@@ -68,6 +68,7 @@ import {
   fireSyncRev,
   fireSyncRevOnly,
   holdSyncPosts,
+  clearSyncStore,
   holdRemotePushes,
   installClock,
   uninstallClock,
@@ -5320,7 +5321,7 @@ const milestoneCount = () => versionMetas().filter((m) => m.kind === "milestone"
 const newestMilestone = () => versionMetas().find((m) => m.kind === "milestone") ?? null;
 /* the advisory line is whichever button carries a sync sentence */
 const ADVISORY_RE =
-  /tap to|^Backed up|^Not backed up|^Nothing has been backed up|newer lines|can’t see|could not be checked|needs attention|snapshot of someone/i;
+  /tap to|^Backed up|^Not backed up|^Nothing has been backed up|newer lines|can’t see|could not be checked|needs attention|snapshot of someone|refused this ledger/i;
 const advisory = () => buttons().map((b) => b.textContent).find((t) => ADVISORY_RE.test(t)) ?? "";
 const ERROR_COPY_RE = /server|could not|needs attention/i;
 const pageshow = () =>
@@ -8401,6 +8402,94 @@ try {
   eq(savedText(), RAW67, "68.8b a branch restore whose copy fails changes nothing");
 } catch (e) {
   ok(false, `68.8 threw: ${e.message}`);
+}
+
+/* 68.9 F1 bypass: a Worker copy that cannot be saved, then the Worker answers 404 on the retry,
+   so the device is a mirror again while the copy is still missing. A GitHub conflict on a mirror
+   push merges, then calls the Worker directly. That call must not go while the copy is missing. */
+try {
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+    versions: VERS67(),
+    failPut: true,
+    syncAdapter: true,
+    syncKey: KEY68,
+    remoteKey: GH67,
+    remote: VER67_TEXT,
+    syncLedger: withField67("received", ["x"]),
+  });
+  await sleep(SAVE_WAIT);
+  clearSyncStore();
+  await backgroundFor(5 * 60_000);
+  await drain();
+  await sleep(SAVE_WAIT);
+  ok(syncCalls().filter((c) => c.op === "get").length >= 2, "68.9pre the retry read the Worker and got its 404");
+  const posts68b = postCount();
+  const pushes68b = remote.calls.filter((c) => c.op === "push").length;
+  await click(btn(/Mark all received/), "check in on the mirror");
+  await sleep(POST_WAIT);
+  await background();
+  await drain();
+  await sleep(POST_WAIT);
+  ok(remote.calls.filter((c) => c.op === "push").length > pushes68b, "68.9pre the mirror pushed to GitHub, so the conflict path runs");
+  eq(postCount(), posts68b, "68.9 a GitHub conflict on a mirror push sends no Worker POST while the copy is missing");
+} catch (e) {
+  ok(false, `68.9 threw: ${e.message}`);
+}
+
+/* 68.10a F3: a Worker copy that cannot be saved, then the Worker answers 404 on the retry. An
+   empty store is healthy, so the next edit may POST. The copy gate must not hold for ever. */
+try {
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+    versions: VERS67(),
+    failPut: true,
+    syncAdapter: true,
+    syncKey: KEY68,
+    syncLedger: withField67("received", ["x"]),
+  });
+  await sleep(SAVE_WAIT);
+  clearSyncStore();
+  await backgroundFor(5 * 60_000);
+  await drain();
+  await sleep(SAVE_WAIT);
+  ok(syncCalls().filter((c) => c.op === "get").length >= 2, "68.10pre the retry read the Worker and got its 404");
+  const posts10a = postCount();
+  await click(btn(/Mark all received/), "check in after the 404");
+  await sleep(POST_WAIT);
+  ok(postCount() > posts10a, "68.10a after a 404 the next edit POSTs, so a failed copy does not hold the device for ever");
+} catch (e) {
+  ok(false, `68.10a threw: ${e.message}`);
+}
+
+/* 68.10b F3: a Worker copy that cannot be saved, then a new sync key is saved while the Worker
+   cannot be read. The save clears the gate, so the next retry POSTs. The read is down, so the
+   retry is the only path a POST can take. */
+const KEY68B = "device-68-key-b";
+try {
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+    versions: VERS67(),
+    failPut: true,
+    syncAdapter: true,
+    syncKey: KEY68,
+    syncLedger: withField67("received", ["x"]),
+  });
+  await sleep(SAVE_WAIT);
+  ok(syncCalls().some((c) => c.op === "get"), "68.10bpre the cold read was made, so the copy failure is in place");
+  setSyncNetFail(true);
+  await openSync();
+  await settle();
+  const gets10b = syncCalls().filter((c) => c.op === "get").length;
+  await type(document.querySelector('input[aria-label="Sync key"]'), KEY68B);
+  await click(btn(/^Save sync key$/), "save a new sync key");
+  await sleep(SAVE_WAIT);
+  ok(syncCalls().filter((c) => c.op === "get").length > gets10b, "68.10bpre the save read the Worker again");
+  const posts10b = postCount();
+  await backgroundFor(5 * 60_000);
+  await drain();
+  await sleep(SAVE_WAIT);
+  setSyncNetFail(false);
+  ok(postCount() > posts10b, "68.10b after a new sync key is saved, the retry POSTs instead of holding for a copy that never comes");
+} catch (e) {
+  ok(false, `68.10b threw: ${e.message}`);
 }
 
 report();

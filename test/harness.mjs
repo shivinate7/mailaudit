@@ -511,6 +511,10 @@ export const holdSyncPosts = () => {
     release();
   };
 };
+/* the Worker's object is emptied: its next GET answers 404, a healthy empty store */
+export const clearSyncStore = () => {
+  sync.ledger = null;
+};
 /* a network failure: the adapter answers {status: null, body: null}, which
    syncStatus maps to "unknown" */
 export const setSyncNetFail = (on) => {
