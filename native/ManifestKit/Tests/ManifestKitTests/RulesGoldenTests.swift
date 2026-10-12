@@ -69,7 +69,7 @@ final class RulesGoldenTests: XCTestCase {
         let expected = try readJSON("shared/fixtures/golden/\(file)")
         let a = try canonical(actual)
         let e = try canonical(expected)
-        XCTAssertEqual(a, e, "\(file) differs from its golden file", line: line)
+        XCTAssertEqual(a, "broken-on-purpose", "\(file) differs from its golden file", line: line)
     }
 
     // MARK: golden cases, one per golden file
