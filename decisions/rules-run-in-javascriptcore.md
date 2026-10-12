@@ -1,8 +1,8 @@
 # The Swift client runs the view rules in JavaScriptCore
 
-**Status:** ruled. The owner ruled on 2026-10-11: "Run the JS in Swift". S2 landed in PR #63 and moved the first view rules to `src/view-rules.mjs`. S3 landed in PR #64 and moved the rest of the pure view rules there. N1 landed in PR #75, and the bridge runs the rules bundle in JavaScriptCore.
+**Status:** ruled. The owner ruled on 2026-10-11: "Run the JS in Swift". S2 landed in PR #63 and moved the first view rules to `src/view-rules.mjs`. S3 landed in PR #64 and moved the rest of the pure view rules there. N1 is in PR #75, open. Its bridge runs the rules bundle in JavaScriptCore.
 
-JavaScriptCore runs the same JavaScript rules module that the web app uses, so the view logic has one home. The Swift client holds no copy of a view rule. Lanes S2 and S3 (both landed) and N1 (PR #75) build this.
+JavaScriptCore runs the same JavaScript rules module that the web app uses, so the view logic has one home. The Swift client holds no copy of a view rule. Lanes S2 and S3 (both landed) and N1 (PR #75, open) build this.
 
 **Holds while:** the view rules are JavaScript under `src/`, and the native client must run them offline on the device.
 
@@ -21,7 +21,7 @@ Degen did a full Swift rewrite with server-side parsing. MANIFEST cannot copy th
 
 ## Proof
 
-- Swift tests assert that the rules engine output equals the golden files, see `shared-tokens-and-fixtures`.
+- Swift tests assert that the rules engine output equals the golden files, except parse-items.json, see `shared-tokens-and-fixtures`. By orchestrator default of 2026-10-12, parse-items.json has no native test, because native never parses CSV, see `csv-import-stays-web`.
 - `check:rules` goes red when the committed bundle is stale.
 
 ## Rejected
