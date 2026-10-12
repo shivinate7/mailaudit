@@ -410,8 +410,15 @@ await click(btn(/^Discard$/), "arm discard");
 ok(/Tap again to discard/.test(text()), "16.1 discard armed");
 await click(btn(/^This one$/), "arm assign");
 ok(!/Tap again to check in/.test(text()), "16.2 assign is not armed: one tap checks in");
-ok(!/Tap again to discard/.test(text()), "16.3 arming one disarms the other");
-eq(envelopeCount(), 1, "16.4 nothing actually fired");
+/* 16.3 was decoration once assign became one tap: the envelope left the pile,
+   so its armed Discard left with it. Now it asserts that no two-tap ask is
+   still armed after the tap. */
+ok(!/Tap again to discard/.test(text()), "16.3 no two-tap ask is left armed after the tap");
+/* 16.4 re-pointed (ux-claims-are-true): assign is one tap now, so the card
+   must land on that tap. The old count-of-envelopes check also passed when the
+   tap fired nothing, which is why the card count is asserted too. */
+eq(text().match(/cards\s*(\d+)\/14/)?.[1], "1", "16.4 one tap checked the card in");
+eq(envelopeCount(), 0, "16.4b and the envelope left the pile on that tap");
 
 /* ── 17. photos live outside the ledger and get swept when orphaned ────── */
 
@@ -7169,6 +7176,94 @@ ok(
   "61.40 and it shares a row with the control that failed"
 );
 remote.fail = null;
+
+/* ── 61.41+ (orchestrator defaults, 2026-10-11 — defaults, not owner rulings) ──
+   Reset's count and the Discard arm's structure, and drafts held per composer.
+   Geometry (no shrink, no move) is jsdom-blind: it is measured headless in
+   check:screens, and these cases assert only the DOM that would change it. */
+
+/* Reset counts every card it clears, envelope cards included (ux-ask-or-undo). */
+await boot({
+  items: [],
+  received: {},
+  envelopes: [
+    {
+      id: "env-reset-only",
+      createdAt: Date.parse("2026-08-01"),
+      note: "",
+      photos: [],
+      entries: [{ name: "Ponder", qty: 1 }],
+    },
+  ],
+});
+await tapL1(/^Reset$/, "arm reset with one envelope card and no ledger cards");
+eq(btn(/^Tap again to clear/)?.textContent.trim(), "Tap again to clear 1 card", "61.41 Reset counts the envelope card: exactly 1 card");
+await tapL1(/^Cancel$/, "cancel the reset");
+
+await fresh();
+await goTo("orphaned");
+await record(["Ponder"]);
+await tapL1(/^Reset$/, "arm reset with ledger cards and one envelope card");
+eq(btn(/^Tap again to clear/)?.textContent.trim(), "Tap again to clear 15 cards", "61.42 Reset counts the 14 ledger cards and the 1 envelope card");
+await tapL1(/^Cancel$/, "cancel the reset");
+
+/* Discard arm: the arm changes its own label in place. It adds no element to
+   the envelope header row, and the header label and Edit keep their nodes. */
+await fresh();
+await goTo("orphaned");
+await record(["Ponder"]);
+const headLabelL1 = () =>
+  [...document.querySelectorAll("span")].find((s) => /^Envelope ·/.test(s.textContent.trim()));
+const headRowL1 = headLabelL1()?.parentElement;
+const headLabelBefore = headLabelL1();
+const headEditBefore = [...(headRowL1?.children ?? [])].find((b) => b.textContent.trim() === "Edit");
+const headKidsBefore = headRowL1?.childElementCount;
+await tapL1(/^Discard$/, "arm discard");
+const headRowAfterL1 = headLabelL1()?.parentElement;
+ok(headRowAfterL1 === headRowL1, "61.43 the arm keeps the envelope header row's node");
+ok(headLabelL1() === headLabelBefore, "61.44 the arm keeps the envelope label's node");
+ok(
+  !!headEditBefore && [...(headRowAfterL1?.children ?? [])].includes(headEditBefore),
+  "61.45 the arm keeps the Edit control's node in the header row"
+);
+eq(headRowAfterL1?.childElementCount, headKidsBefore, "61.46 the arm adds no element to the header row");
+
+/* Cancel closes the composer and keeps its draft (ux-keep-what-was-made).
+   Only Discard or Save ends a draft. */
+await fresh();
+await goTo("orphaned");
+await tapL1(/Record an envelope/, "open the composer");
+await type(cardInput(), "Zyzzyva");
+await tapL1(/^Add “/, "add the card as typed");
+await type(document.querySelector('input[aria-label="Envelope note"]'), "cancel keeps this");
+const composerFootL1 = () => btn(/Save envelope/)?.parentElement;
+const composerCancelL1 = [...(composerFootL1()?.querySelectorAll("button") ?? [])].find(
+  (b) => b.textContent.trim() === "Cancel"
+);
+ok(!!composerCancelL1, "61.47 the composer has its own Cancel");
+await click(composerCancelL1, "cancel the composer");
+ok(!btn(/Save envelope/), "61.48 Cancel closes the composer");
+await tapL1(/Record an envelope/, "reopen the composer");
+eq(document.querySelector('input[aria-label="Envelope note"]')?.value, "cancel keeps this", "61.49 the reopened composer keeps its note");
+ok(/Zyzzyva/.test(text()), "61.50 and the card it held");
+await sleep(SAVE_WAIT);
+eq(saved().envelopes?.length ?? 0, 0, "61.51 Cancel wrote no envelope");
+
+/* Drafts are held per composer: opening a second composer never loses the
+   first composer's draft (ux-keep-what-was-made). */
+await fresh();
+await goTo("orphaned");
+await record(["Lightning Bolt"]);
+await tapL1(/Record an envelope/, "open the first composer, the new record");
+await type(cardInput(), "Zyzzyva");
+await tapL1(/^Add “/, "add a card to the first composer");
+await type(document.querySelector('input[aria-label="Envelope note"]'), "first draft note");
+await tapL1(/^Edit$/, "open a second composer on the saved envelope");
+await type(document.querySelector('input[aria-label="Envelope note"]'), "second draft note");
+await tapL1(/Record an envelope/, "return to the first composer");
+eq(document.querySelector('input[aria-label="Envelope note"]')?.value, "first draft note", "61.52 the first composer's note is kept");
+await tapL1(/^Edit$/, "return to the second composer");
+eq(document.querySelector('input[aria-label="Envelope note"]')?.value, "second draft note", "61.53 and the second composer's note is kept");
 
 uninstallClock();
 report();
