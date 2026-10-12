@@ -1,4 +1,5 @@
-// Send the sync key to a device. Usage: node scripts/send-key.mjs mac|iphone
+// Send the sync key to a device. Usage: node scripts/send-key.mjs mac|iphone [--native]
+// --native sends manifestledger://sync#k=<key> for the native app, not the Pages URL.
 // mac: open the sync URL here. iphone: show a QR of it, scan it, press Enter.
 // The key and URL are never printed. The URL is passed as argv, never a shell string.
 import { execFile } from "node:child_process";
@@ -8,6 +9,7 @@ import { rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline";
+import { KEY_RE } from "../src/sync-rules.mjs";
 
 const run = promisify(execFile);
 const ACCOUNTS = { mac: "macbook", iphone: "iphone" };
@@ -30,8 +32,10 @@ end run`;
 
 const device = process.argv[2];
 const account = ACCOUNTS[device];
-if (!account) {
-  console.error("Usage: send-key.mjs mac|iphone");
+const flags = process.argv.slice(3);
+const native = flags.includes("--native");
+if (!account || flags.some((f) => f !== "--native")) {
+  console.error("Usage: send-key.mjs mac|iphone [--native]");
   process.exit(1);
 }
 
@@ -49,7 +53,8 @@ try {
   } catch {
     throw new Error(`Could not read the ${device} key from the Keychain.`);
   }
-  const url = `https://shivinate7.github.io/mailaudit/#k=${key}`;
+  if (native && !KEY_RE.test(key)) throw new Error("Could not use the Keychain key: it has characters the sync key cannot hold.");
+  const url = native ? `manifestledger://sync#k=${key}` : `https://shivinate7.github.io/mailaudit/#k=${key}`;
   if (device === "mac") {
     await run("open", [url]);
     console.log("Opened the sync link on this Mac.");
