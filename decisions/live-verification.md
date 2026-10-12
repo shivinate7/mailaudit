@@ -74,6 +74,8 @@ It is worth moving to vitest and testing-library if this grows much further. The
 
 A probe deploy sets its own Durable Object name with the STORE_NAME variable, so a probe never touches the real store. Each lane names its probe below. A probe name is never ledger-v3, the real store, or ledger-v2, which holds an earlier probe's data.
 
+Owner ruling, 2026-10-12: a probe deploy of the Worker is granted, under its own name and store. A live deploy needs the owner's word again.
+
 - **W2a photo route, probe-w2a.** Still to run on Cloudflare: the photos table is created through the Durable Object's SQLite API. A POST then a GET return the same bytes, with the type from the name. A second POST keeps the first bytes. A photo over 1.9 MB gets 413.
 - **W3a daily snapshots and /health, probe-w3a.** Still to run on Cloudflare: the snapshots table is created. The first changing write of a UTC day stores one snapshot, and a later one stores none. GET /health with no key returns only the last write time. The list and get snapshot routes answer with a device key.
 - **W2b, W3b, W3c, W3d and W3e.** No probe is named. Each waits for its brief.
