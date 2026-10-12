@@ -15,7 +15,12 @@ import { join, dirname, resolve } from "node:path";
 import { spawnSync, execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const CHECK = resolve(dirname(fileURLToPath(import.meta.url)), "..", "check-docs.mjs");
+// CHECK_DOCS_SCRIPT lets a run point the cases at another copy of the script,
+// such as an older one, to prove a case red. The copy must sit inside the repo
+// tree so its imports resolve. Unset, the cases run the repo's own script.
+const CHECK =
+  process.env.CHECK_DOCS_SCRIPT ??
+  resolve(dirname(fileURLToPath(import.meta.url)), "..", "check-docs.mjs");
 
 let failures = 0;
 function expect(label, cond) {
@@ -108,6 +113,30 @@ const broken = runCorpus({
 });
 expect("unparseable source makes check:docs exit non-zero", broken.status !== 0);
 expect("...and the failure names src/broken.jsx", broken.out.includes("src/broken.jsx"));
+
+// Link check: a lone backtick must not hide a link on the lines after it. The
+// closing `plain` span gives the lone backtick a partner to pair with, which is
+// what let the old span regex cross lines and hide the link.
+const loneTick = runCorpus({
+  "README.md": "# Readme\n\nA lone ` on this line\n[x](missing-a.md) on the next line\nand a closing `plain` span.\n",
+});
+expect(
+  "link-flagged: a lone backtick does not hide a link on the next line (exit non-zero)",
+  loneTick.status !== 0
+);
+expect(
+  "link-flagged: ...and the output names missing-a.md",
+  loneTick.out.includes("missing-a.md")
+);
+
+// Link check: a code span on one line hides a link inside it, as sample text.
+const spanSkipped = runCorpus({
+  "README.md": "# Readme\n\nSample text: `[x](missing-b.md)` is shown, not linked.\n",
+});
+expect(
+  "link-span-skipped: a [x](y) inside a code span on one line is not reported",
+  !spanSkipped.out.includes("missing-b.md")
+);
 
 if (failures) {
   console.log(`check-docs stripper: ${failures} failure(s)`);
