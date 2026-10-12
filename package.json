@@ -6,6 +6,7 @@
   "scripts": {
     "build": "node build.mjs",
     "check:build": "node build.mjs --check",
+    "check:rules": "node build.mjs --check-rules",
     "check:seed": "node build.mjs --check-seed",
     "check:docs": "node check-docs.mjs",
     "test:check-docs": "node test/check-docs.test.mjs",
@@ -13,6 +14,7 @@
     "test:send-key": "node test/send-key.test.mjs",
     "test:view-rules": "node test/view-rules.test.mjs",
     "test:golden": "node test/golden.test.mjs",
+    "test:rules": "node test/rules.test.mjs",
     "check:golden": "node scripts/check-golden.mjs",
     "worker:deploy": "cd worker && npx --yes wrangler@4.149.0 deploy",
     "worker:dev": "cd worker && npx --yes wrangler@4.149.0 dev",
@@ -20,7 +22,7 @@
     "check:screens": "node test/screens.mjs",
     "test": "node test/app.test.mjs",
     "serve": "node dev-server.mjs",
-    "deploy": "git fetch ledger data --quiet || { echo 'deploy: seed fetch from the ledger remote failed; fix the remote or network, then retry' >&2; exit 1; } && { git cat-file -e ledger/data:ledger.json || { echo 'deploy: ledger/data:ledger.json is missing; a seedless page would ship' >&2; exit 1; }; } && npm run build && npm run check:seed && npm test && git switch -c deploy/$(date +%Y%m%d%H%M%S)-$$ && git add index.html && git commit -m \"deploy: rebuild index.html\" && git push -u origin HEAD && gh pr create --fill --base main && git switch -"
+    "deploy": "git fetch ledger data --quiet || { echo 'deploy: seed fetch from the ledger remote failed; fix the remote or network, then retry' >&2; exit 1; } && { git cat-file -e ledger/data:ledger.json || { echo 'deploy: ledger/data:ledger.json is missing; a seedless page would ship' >&2; exit 1; }; } && npm run build && npm run check:seed && npm test && git switch -c deploy/$(date +%Y%m%d%H%M%S)-$$ && git add index.html native/ManifestKit/Resources/rules.js && git commit -m \"deploy: rebuild index.html\" && git push -u origin HEAD && gh pr create --fill --base main && git switch -"
   },
   "devDependencies": {
     "esbuild": "^0.24.0",

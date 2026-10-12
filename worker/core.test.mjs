@@ -15,9 +15,9 @@ import { readFileSync } from "node:fs";
 import { mergeLedger } from "../src/merge-rules.mjs";
 
 /* A missing or broken core fails in one clear line, not a raw stack trace. */
-let route, keyAllowed, wsAuthorized, MAX_LEDGER_BYTES;
+let route, keyAllowed, wsAuthorized, MAX_LEDGER_BYTES, MAX_PHOTO_BYTES;
 try {
-  ({ route, keyAllowed, wsAuthorized, MAX_LEDGER_BYTES } = await import("./core.mjs"));
+  ({ route, keyAllowed, wsAuthorized, MAX_LEDGER_BYTES, MAX_PHOTO_BYTES } = await import("./core.mjs"));
 } catch (e) {
   console.log(
     `FAIL worker/core.mjs does not load (expected until the core is built): ${e.message.split("\n")[0]}`
@@ -130,6 +130,14 @@ const dayOf = (t) => new Date(t).toISOString().slice(0, 10);
    not recorded there. */
 /* initial is {ledger, rev, at?} or null for an empty store. A missing `at`
    defaults to PREV. snaps is [[day, {ledger, rev, at}], ...]. */
+/* initial is {ledger, rev} or null for an empty store. The photo half of the
+   store is three methods, named here as the contract the Durable Object
+   adapter (worker/index.mjs) must provide:
+     photoList()            -> [{id, mime}, ...]   (the mime rides on the row, so a list needs no bytes)
+     photoGet(id)           -> {mime, bytes} | null
+     photoPut(id, mime, bytes) -> void   (the route, not the store, enforces write-once)
+   photoWrites counts every photoPut call, so a route that writes twice shows.
+   photoGets counts every photoGet call, so a list that reads bytes shows. */
 function fakeStore(initial = null, snaps = []) {
   const s = {
     state: initial ? clone({ at: PREV, ...initial }) : null,
@@ -138,6 +146,19 @@ function fakeStore(initial = null, snaps = []) {
     order: [],
     snaps: new Map(snaps.map(([day, v]) => [day, clone(v)])),
     snapWrites: [],
+    photos: new Map(),
+    photoWrites: [],
+    photoGets: [],
+  };
+  s.photoList = async () => [...s.photos.entries()].map(([id, p]) => ({ id, mime: p.mime }));
+  s.photoGet = async (id) => {
+    s.photoGets.push(id);
+    const p = s.photos.get(id);
+    return p ? { mime: p.mime, bytes: p.bytes.slice() } : null;
+  };
+  s.photoPut = async (id, mime, bytes) => {
+    s.photoWrites.push(id);
+    s.photos.set(id, { mime, bytes: new Uint8Array(bytes) });
   };
   s.read = async () => (s.state ? clone(s.state) : null);
   s.write = async (l, rev, at) => {
@@ -180,6 +201,17 @@ function req(method, path, o = {}) {
 /* o.now sets the clock for one call; every call defaults to NOW. */
 const send = (store, method, path, o = {}) =>
   route(req(method, path, o), ENV, store, o.now ?? NOW);
+
+/* A photo request: raw bytes, no JSON content type, so the route must take the
+   media type from the file name, not from the request. */
+const photoReq = (method, path, { key, bytes, type = "application/octet-stream" } = {}) => {
+  const headers = { "Content-Type": type };
+  if (key !== undefined) headers.Authorization = `Bearer ${key}`;
+  return new Request(BASE + path, { method, headers, body: bytes });
+};
+const sendPhoto = (store, method, path, o) => route(photoReq(method, path, o), ENV, store);
+const PHO_JPG = new Uint8Array([0xff, 0xd8, 0xff, 1, 2, 3]);
+const PHO_OTHER = new Uint8Array([9, 8, 7, 6]);
 
 const list = (v) =>
   (v || "")
@@ -1096,6 +1128,166 @@ await test("13.9 a changing POST keeps exactly 180 snapshots: today and the 179 
   eq([...days].sort(), kept.sort(), "today and the 179 days before it remain");
   ok(!days.includes(dayAgo(180)), "the 180-day-old snapshot is pruned");
   ok(!days.includes(dayAgo(181)), "the 181-day-old snapshot is pruned");
+});
+
+/* ---------- 12. photos: write-once blobs beside the ledger, never in it ---------- */
+/* Group 11 is the W1 stats group on main, so the photo route takes group 12.
+   Ids are pho-<tag>; the name carries the type, so mime comes from the name. */
+await test("12.1 GET /photos on an empty store replies 200 with no ids", async () => {
+  const s = empty();
+  const res = await sendPhoto(s, "GET", "/photos", { key: KEY_PHONE });
+  eq(res.status, 200, "status");
+  eq((await res.json()).ids, [], "ids");
+});
+
+await test("12.2 GET /photos lists every stored photo as its file name, extension included", async () => {
+  const s = empty();
+  s.photos.set("pho-aaa111", { mime: "image/jpeg", bytes: PHO_JPG });
+  s.photos.set("pho-bbb222", { mime: "image/png", bytes: PHO_OTHER });
+  const res = await sendPhoto(s, "GET", "/photos", { key: KEY_PHONE });
+  eq(res.status, 200, "status");
+  eq(((await res.json()).ids || []).slice().sort(), ["pho-aaa111.jpg", "pho-bbb222.png"], "names");
+});
+
+await test("12.3 a POST stores the bytes, and GET serves them with the type from the name", async () => {
+  const s = empty();
+  const up = await sendPhoto(s, "POST", "/photos/pho-aaa111.jpg", { key: KEY_PHONE, bytes: PHO_JPG });
+  ok(up.status >= 200 && up.status < 300, `upload status ${up.status} is 2xx`);
+  const got = await sendPhoto(s, "GET", "/photos/pho-aaa111.jpg", { key: KEY_PHONE });
+  eq(got.status, 200, "status");
+  eq(got.headers.get("Content-Type"), "image/jpeg", "content type from the name");
+  eq(Array.from(new Uint8Array(await got.arrayBuffer())), Array.from(PHO_JPG), "bytes");
+});
+
+await test("12.4 a .heic photo is served as image/heic, whatever type the upload claimed", async () => {
+  const s = empty();
+  await sendPhoto(s, "POST", "/photos/pho-ccc333.heic", { key: KEY_PHONE, bytes: PHO_OTHER, type: "image/jpeg" });
+  const got = await sendPhoto(s, "GET", "/photos/pho-ccc333.heic", { key: KEY_PHONE });
+  eq(got.status, 200, "status");
+  eq(got.headers.get("Content-Type"), "image/heic", "content type from the name");
+});
+
+await test("12.5 a name that is not pho-id plus a known extension is refused with 400 and stores nothing", async () => {
+  for (const name of ["notes.jpg", "pho-aaa111.exe", "pho-aaa111"]) {
+    const s = empty();
+    const res = await sendPhoto(s, "POST", `/photos/${name}`, { key: KEY_PHONE, bytes: PHO_JPG });
+    eq(res.status, 400, `status for ${name}`);
+    eq(s.photos.size, 0, `photos stored for ${name}`);
+    eq(s.photoWrites.length, 0, `photoPut calls for ${name}`);
+  }
+});
+
+await test("12.6 a second POST to the same name keeps the first bytes", async () => {
+  const s = empty();
+  await sendPhoto(s, "POST", "/photos/pho-aaa111.jpg", { key: KEY_PHONE, bytes: PHO_JPG });
+  const again = await sendPhoto(s, "POST", "/photos/pho-aaa111.jpg", { key: KEY_LAPTOP, bytes: PHO_OTHER });
+  ok(again.status >= 200 && again.status < 300, `repeat status ${again.status} is 2xx`);
+  const kept = s.photos.get("pho-aaa111");
+  eq(kept ? Array.from(kept.bytes) : null, Array.from(PHO_JPG), "stored bytes after the repeat");
+  eq(s.photoWrites, ["pho-aaa111"], "photoPut calls: the repeat must not write again");
+});
+
+await test("12.7 a photo over MAX_PHOTO_BYTES is refused with 413 photo-too-large; one at the limit is kept", async () => {
+  ok(typeof MAX_PHOTO_BYTES === "number", "worker/core.mjs exports MAX_PHOTO_BYTES");
+  if (typeof MAX_PHOTO_BYTES !== "number") return;
+  const LIM = MAX_PHOTO_BYTES;
+  eq(LIM, 1_900_000, "limit is 1.9 MB");
+  const s = empty();
+  const over = await sendPhoto(s, "POST", "/photos/pho-big111.jpg", { key: KEY_PHONE, bytes: new Uint8Array(LIM + 1) });
+  eq(over.status, 413, "status over the limit");
+  eq((await over.json()).error, "photo-too-large", "error over the limit");
+  eq(s.photos.size, 0, "nothing stored over the limit");
+  eq(s.photoWrites.length, 0, "photoPut calls over the limit");
+  const at = await sendPhoto(s, "POST", "/photos/pho-big222.jpg", { key: KEY_PHONE, bytes: new Uint8Array(LIM) });
+  ok(at.status >= 200 && at.status < 300, `status at the limit ${at.status} is 2xx`);
+  eq(s.photos.has("pho-big222"), true, "stored at the limit");
+});
+
+await test("12.8 there is no delete route: DELETE on a photo or the list replies 405 and keeps the bytes", async () => {
+  const s = empty();
+  await sendPhoto(s, "POST", "/photos/pho-aaa111.jpg", { key: KEY_PHONE, bytes: PHO_JPG });
+  eq((await sendPhoto(s, "DELETE", "/photos/pho-aaa111.jpg", { key: KEY_PHONE })).status, 405, "DELETE on a photo");
+  eq((await sendPhoto(s, "DELETE", "/photos", { key: KEY_PHONE })).status, 405, "DELETE on the list");
+  eq(s.photos.has("pho-aaa111"), true, "photo kept");
+});
+
+await test("12.9 a photo POST writes no ledger, sends no broadcast and leaves rev alone", async () => {
+  const s = fakeStore({ ledger: ledger(), rev: 3 });
+  const before = canon(s.state);
+  const res = await sendPhoto(s, "POST", "/photos/pho-aaa111.jpg", { key: KEY_PHONE, bytes: PHO_JPG });
+  ok(res.status >= 200 && res.status < 300, `status ${res.status} is 2xx`);
+  eq(s.writes.length, 0, "ledger writes");
+  eq(s.broadcasts.length, 0, "broadcasts");
+  eq(canon(s.state), before, "stored ledger and rev");
+});
+
+await test("12.10 photo routes need a device key, and a missing id replies 404", async () => {
+  const s = empty();
+  s.photos.set("pho-aaa111", { mime: "image/jpeg", bytes: PHO_JPG });
+  const good = await sendPhoto(s, "POST", "/photos/pho-ddd444.jpg", { key: KEY_LAPTOP, bytes: PHO_OTHER });
+  ok(good.status >= 200 && good.status < 300, `positive control: keyed POST is 2xx, got ${good.status}`);
+  eq((await sendPhoto(s, "POST", "/photos/pho-bbb222.jpg", { bytes: PHO_OTHER })).status, 401, "POST without a key");
+  eq(s.photos.has("pho-bbb222"), false, "nothing stored without a key");
+  eq((await sendPhoto(s, "GET", "/photos", {})).status, 401, "GET list without a key");
+  eq((await sendPhoto(s, "GET", "/photos/pho-aaa111.jpg", {})).status, 401, "GET photo without a key");
+  eq((await sendPhoto(s, "GET", "/photos", { key: KEY_STRANGER })).status, 401, "GET list with a key not on the list");
+  eq((await sendPhoto(s, "GET", "/photos/pho-zzz999.jpg", { key: KEY_PHONE })).status, 404, "missing id");
+});
+
+await test("12.11 a path that is not valid percent-encoding is refused with 400, never thrown, for GET and POST", async () => {
+  for (const path of ["/photos/%", "/photos/%ZZ.jpg"]) {
+    const s = empty();
+    const got = await sendPhoto(s, "GET", path, { key: KEY_PHONE });
+    eq(got.status, 400, `GET status for ${path}`);
+    eq((await got.json()).error, "bad photo name", `GET error for ${path}`);
+    const up = await sendPhoto(s, "POST", path, { key: KEY_PHONE, bytes: PHO_JPG });
+    eq(up.status, 400, `POST status for ${path}`);
+    eq(s.photoWrites.length, 0, `photoPut calls for ${path}`);
+  }
+});
+
+await test("12.12 a photo is served with the mime on its stored row, not one re-derived from the URL", async () => {
+  const s = empty();
+  await sendPhoto(s, "POST", "/photos/pho-fff666.jpg", { key: KEY_PHONE, bytes: PHO_JPG, type: "image/png" });
+  eq(s.photos.get("pho-fff666")?.mime, "image/jpeg", "row mime from the name, not the upload's claim");
+  const got = await sendPhoto(s, "GET", "/photos/pho-fff666.jpg", { key: KEY_PHONE });
+  eq(got.headers.get("Content-Type"), "image/jpeg", "served mime for a .jpg upload");
+  s.photos.set("pho-eee555", { mime: "image/png", bytes: PHO_OTHER });
+  const row = await sendPhoto(s, "GET", "/photos/pho-eee555.jpg", { key: KEY_PHONE });
+  eq(row.status, 200, "status for a row stored as image/png");
+  eq(row.headers.get("Content-Type"), "image/png", "served mime is the stored row's, not image/jpeg from the name");
+});
+
+await test("12.13 a POST whose Content-Length is over MAX_PHOTO_BYTES gets 413 before its body is read", async () => {
+  const s = empty();
+  let bodyRead = false;
+  const r = {
+    method: "POST",
+    url: BASE + "/photos/pho-big333.jpg",
+    headers: new Headers({
+      Authorization: `Bearer ${KEY_PHONE}`,
+      "Content-Type": "application/octet-stream",
+      "Content-Length": String(MAX_PHOTO_BYTES + 1),
+    }),
+    arrayBuffer: async () => {
+      bodyRead = true;
+      return new ArrayBuffer(0);
+    },
+  };
+  const res = await route(r, ENV, s);
+  eq(res.status, 413, "status");
+  eq(bodyRead, false, "body read before the size check");
+  eq(s.photoWrites.length, 0, "photoPut calls");
+});
+
+await test("12.14 GET /photos reads no photo bytes: zero photoGet calls, and the names still carry the extension", async () => {
+  const s = empty();
+  s.photos.set("pho-aaa111", { mime: "image/jpeg", bytes: PHO_JPG });
+  s.photos.set("pho-bbb222", { mime: "image/png", bytes: PHO_OTHER });
+  const res = await sendPhoto(s, "GET", "/photos", { key: KEY_PHONE });
+  eq(res.status, 200, "status");
+  eq(s.photoGets.length, 0, "photoGet calls on the list");
+  eq(((await res.json()).ids || []).slice().sort(), ["pho-aaa111.jpg", "pho-bbb222.png"], "names");
 });
 
 report();

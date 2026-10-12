@@ -3,3 +3,5 @@ dist-bundle.js
 .claude/settings.local.json
 .DS_Store
 .claude/worktrees/
+native/ManifestKit/.build/
+native/*.xcodeproj
