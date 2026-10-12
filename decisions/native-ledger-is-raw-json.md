@@ -1,6 +1,6 @@
 # The native client keeps the ledger as raw JSON
 
-**Status:** ruled. The owner accepted a typed enum plan on 2026-10-11. The orchestrator default of 2026-10-12 replaced that enum with a raw dictionary. Lane N3 built the dictionary in PR #80, as LedgerStore. The Worker side is open, see Known gap.
+**Status:** ruled. The owner accepted a typed enum plan on 2026-10-11. The orchestrator default of 2026-10-12 replaced that enum with a raw dictionary. Lane N3 built the dictionary as LedgerStore on PR #80, which was an open draft on 2026-10-12. The Worker side is open, see Known gap.
 
 The native store holds the ledger as `[String: Any]`, parsed and written with `JSONSerialization`. No typed struct or enum holds a field. A save writes the whole dictionary, so a field the client does not name survives a save of the file. An edit changes only the fields it names.
 
@@ -29,7 +29,7 @@ An edit changes only `received`, `receivedAt`, `envelopes` and `stamps`. The res
 
 ## Proof
 
-Lane N3 landed in PR #80 with a test for each item above, in LedgerStoreTests, under `native/ManifestKit/`. The unknown-field test proves the round trip through a file save. It does not prove a Worker POST, see Known gap.
+Lane N3 has a test for each item above, in LedgerStoreTests, under `native/ManifestKit/`, on PR #80 (open draft on 2026-10-12). The unknown-field test proves the round trip through a file save. It does not prove a Worker POST, see Known gap.
 
 ## Known gap: the Worker merge drops unknown top-level fields
 
