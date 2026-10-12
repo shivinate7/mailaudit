@@ -1,6 +1,55 @@
 name: Manifest
 options:
-  bundleIdPrefix: com.shivinate
+  bundleIdPrefix: dev.shivinate
+  deploymentTarget:
+    iOS: "26.0"
 packages:
   ManifestKit:
     path: ManifestKit
+targets:
+  Manifest:
+    type: application
+    platform: iOS
+    sources:
+      - Manifest
+      # rules.js is the bundled web rules. ledger.json is the fake seed for -ManifestUITestSeed.
+      - path: ManifestKit/Resources/rules.js
+        buildPhase: resources
+      - path: ../shared/fixtures/ledger.json
+        buildPhase: resources
+    dependencies:
+      - package: ManifestKit
+    info:
+      path: Manifest/Info.plist
+      properties:
+        UILaunchScreen: {}
+        CFBundleDisplayName: MANIFEST
+        CFBundleURLTypes:
+          - CFBundleURLName: dev.shivinate.manifest.key
+            CFBundleURLSchemes: [manifestledger]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.shivinate.manifest
+        SWIFT_VERSION: "6.0"
+        TARGETED_DEVICE_FAMILY: "1"
+  ManifestUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [ManifestUITests]
+    dependencies:
+      - target: Manifest
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.shivinate.manifest.uitests
+        TEST_TARGET_NAME: Manifest
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: "6.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        IPHONEOS_DEPLOYMENT_TARGET: "26.0"
+schemes:
+  Manifest:
+    build:
+      targets:
+        Manifest: all
+    test:
+      targets: [ManifestUITests]
