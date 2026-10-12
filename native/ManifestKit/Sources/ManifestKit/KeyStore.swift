@@ -6,6 +6,8 @@ import Security
 protocol KeychainBackend: Sendable {
     /// SecItemAdd. Throws when an item with the same service and account exists.
     func add(_ attributes: [String: Any]) throws
+    /// SecItemUpdate. Throws when no item matches the query.
+    func update(_ query: [String: Any], _ attributes: [String: Any]) throws
     /// SecItemCopyMatching with kSecReturnData. nil when no item matches.
     func copy(_ query: [String: Any]) throws -> Data?
     /// SecItemDelete. No throw when the item is absent.
@@ -17,6 +19,11 @@ struct SystemKeychain: KeychainBackend {
 
     func add(_ attributes: [String: Any]) throws {
         let s = SecItemAdd(attributes as CFDictionary, nil)
+        if s != errSecSuccess { throw Failure(status: s) }
+    }
+
+    func update(_ query: [String: Any], _ attributes: [String: Any]) throws {
+        let s = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
         if s != errSecSuccess { throw Failure(status: s) }
     }
 
@@ -52,23 +59,19 @@ struct KeyStore {
     }
 
     /// Replaces any stored key. Writes kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly.
-    /// If the add fails, the old key is put back and the error is rethrown.
+    /// Updates the item in place, so a failed write leaves the old key. If the
+    /// update fails, it adds a new item; if that fails too, the error is thrown.
+    /// It never reads the old key, so an unreadable old item cannot block it.
     func save(_ key: String) throws {
-        let old = try self.key()
-        try backend.delete(identity)
+        let change: [String: Any] = [
+            kSecValueData as String: Data(key.utf8),
+            kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+        ]
         do {
-            try backend.add(attributes(for: key))
+            try backend.update(identity, change)
         } catch {
-            if let old { try? backend.add(attributes(for: old)) }
-            throw error
+            try backend.add(identity.merging(change) { $1 })
         }
-    }
-
-    private func attributes(for key: String) -> [String: Any] {
-        var attrs = identity
-        attrs[kSecValueData as String] = Data(key.utf8)
-        attrs[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        return attrs
     }
 
     func key() throws -> String? {
