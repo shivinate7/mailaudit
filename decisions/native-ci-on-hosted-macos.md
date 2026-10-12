@@ -18,9 +18,9 @@ The native job in `.github/workflows/test.yml` runs the Swift package tests on a
 
 ## Required check
 
-Owner ruling, 2026-10-11 ("accept all"): the job becomes a required check when the owner says so. A scope job and a nightly run gate it.
+Owner ruling, 2026-10-11 ("accept all"): a scope job and a nightly run gate the job once it is required.
 
-Owner ruling, 2026-10-12: the owner did not grant required status now. Until the owner says so, the job is not required, and a red native run can merge.
+Owner ruling, 2026-10-12: asked whether the job becomes required now, the owner did not grant it. The job stays not required until the owner says so. Until then, a red native run can merge.
 
 ## Cost
 
