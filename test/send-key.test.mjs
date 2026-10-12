@@ -17,6 +17,12 @@
 //   - The PNG sits in a fresh directory, mode 0700 while it exists. Both the
 //     PNG and its directory are removed before the script exits.
 //   - A failure prints plain text and opens nothing.
+//   - With --native (given after the device name) the URL is
+//     manifestledger://sync#k=<key> in place of the Pages URL. Nothing else
+//     changes: the same Keychain read, the same open or QR path, the same cleanup.
+//   - --native with a Keychain key outside KEY_RE is refused before any open or
+//     QR. KEY_RE is imported from src/sync-rules.mjs, never copied.
+//   - An unknown flag exits non-zero before any Keychain read.
 //
 // Every case is gated on the script file existing, so a missing script fails
 // each case, not just the ones that need it.
@@ -41,7 +47,9 @@ const SCRIPT_PRESENT = existsSync(SCRIPT);
 
 const FAKE_KEY = "f4k3K3y0a1b2c3d4e5f60718293a4b5c6d";
 const URL_WITH_KEY = `https://shivinate7.github.io/mailaudit/#k=${FAKE_KEY}`;
-const LEAK_TOKENS = [FAKE_KEY, FAKE_KEY.slice(0, 8), FAKE_KEY.slice(-8), URL_WITH_KEY];
+const NATIVE_URL = `manifestledger://sync#k=${FAKE_KEY}`;
+const LEAK_TOKENS = [FAKE_KEY, FAKE_KEY.slice(0, 8), FAKE_KEY.slice(-8), URL_WITH_KEY, NATIVE_URL];
+const BAD_KEY = "bad key/x"; // fails KEY_RE: a space and a slash
 const ACCOUNTS = { mac: "macbook", iphone: "iphone" };
 
 let failures = 0;
@@ -292,6 +300,110 @@ function runThenInterrupt(sb, args) {
   } finally {
     cleanup(sb);
   }
+}
+
+// --native, mac: the same Keychain read as without the flag. Only the URL changes.
+{
+  const sb = sandbox();
+  try {
+    const r = run(sb, ["mac", "--native"]);
+    expect("mac --native: exits 0", r.status === 0 && !r.timedOut);
+    expect(
+      "mac --native: security read is the same argv (-a macbook)",
+      readLog(sb, "security.log") === securityLine(ACCOUNTS.mac)
+    );
+    expect(
+      "mac --native: open got exactly the native URL",
+      readLog(sb, "open.log") === `${NATIVE_URL}\n`
+    );
+    expect("mac --native: no QR drawn", readLog(sb, "osascript.log") === null);
+    expect("mac --native: no key bytes in stdout or stderr", !leaks(r.out + r.err));
+  } finally {
+    cleanup(sb);
+  }
+}
+
+// --native, iphone: the QR holds the native URL. The PNG cleanup is unchanged.
+{
+  const sb = sandbox();
+  try {
+    const r = run(sb, ["iphone", "--native"]);
+    expect("iphone --native: exits 0", r.status === 0 && !r.timedOut);
+    expect(
+      "iphone --native: security read is the same argv (-a iphone)",
+      readLog(sb, "security.log") === securityLine(ACCOUNTS.iphone)
+    );
+    const drawn = readLog(sb, "osascript.log") ?? "";
+    expect("iphone --native: osascript drew the native URL", drawn.includes(NATIVE_URL));
+    expect("iphone --native: no Pages URL was drawn", !drawn.includes(URL_WITH_KEY));
+    const rows = (readLog(sb, "open-png.log") ?? "").split("\n").filter((l) => l !== "");
+    const [png, existed] = (rows[0] ?? "").split("\t");
+    expect(
+      "iphone --native: open got exactly one PNG, and it existed",
+      rows.length === 1 && existed === "yes"
+    );
+    expect(
+      "iphone --native: PNG and its directory gone after exit",
+      Boolean(png) && !existsSync(png) && !existsSync(dirname(png))
+    );
+    expect("iphone --native: no key bytes in stdout or stderr", !leaks(r.out + r.err));
+  } finally {
+    cleanup(sb);
+  }
+}
+
+// An unknown flag exits non-zero before any Keychain read.
+{
+  const sb = sandbox();
+  try {
+    const r = run(sb, ["mac", "--nativ"]);
+    expect("unknown flag: exits non-zero", r.status !== 0 && !r.timedOut);
+    expect("unknown flag: security never called", readLog(sb, "security.log") === null);
+    expect(
+      "unknown flag: nothing opened or drawn",
+      readLog(sb, "open.log") === null && readLog(sb, "osascript.log") === null
+    );
+    expect("unknown flag: plain message on stderr", plainMessage(r.err));
+  } finally {
+    cleanup(sb);
+  }
+}
+
+// --native with a Keychain key outside KEY_RE: refused before any open or QR.
+// This security fake prints BAD_KEY and logs its argv like the usual fake.
+function runWithKeychainKey(sb, args, printed) {
+  writeFake(
+    sb.bin,
+    "security",
+    `#!/bin/sh\nprintf '%s\\n' "$*" >> "$FAKE_LOG_DIR/security.log"\nprintf '%s\\n' '${printed}'\n`
+  );
+  return run(sb, args);
+}
+for (const dev of ["mac", "iphone"]) {
+  const sb = sandbox();
+  try {
+    const r = runWithKeychainKey(sb, [dev, "--native"], BAD_KEY);
+    expect(`${dev} --native, bad Keychain key: exits non-zero`, r.status !== 0 && !r.timedOut);
+    expect(`${dev} --native, bad Keychain key: plain message on stderr`, plainMessage(r.err));
+    expect(`${dev} --native, bad Keychain key: nothing opened`, readLog(sb, "open.log") === null);
+    expect(`${dev} --native, bad Keychain key: no QR drawn`, readLog(sb, "osascript.log") === null);
+    expect(
+      `${dev} --native, bad Keychain key: the bad key is not echoed`,
+      !(r.out + r.err).includes(BAD_KEY)
+    );
+  } finally {
+    cleanup(sb);
+  }
+}
+
+// The script takes KEY_RE from the web app's module and keeps no copy of the alphabet.
+{
+  const src = SCRIPT_PRESENT ? readFileSync(SCRIPT, "utf8") : "";
+  expect(
+    "script imports KEY_RE from src/sync-rules.mjs",
+    /import\s*\{[^}]*\bKEY_RE\b[^}]*\}\s*from\s*["']\.\.\/src\/sync-rules\.mjs["']/.test(src)
+  );
+  expect("script keeps no copy of the key alphabet", !src.includes("A-Za-z0-9_-"));
 }
 
 if (failures > 0) {
