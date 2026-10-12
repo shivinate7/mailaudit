@@ -14,15 +14,15 @@ Saved envelopes sit in a pile, newest first. They touch nothing in the ledger.
 
 Each composer keeps its own draft. Its key is the envelope id, or `new` for a new record. Opening a second composer never loses the first one's draft. Cancel closes the composer and keeps its draft, under ux-keep-what-was-made. Only Discard or Save ends a draft. That rule is an orchestrator default of 2026-10-11, not an owner ruling.
 
-While any draft is held, the photo sweep does not run. The sweep keeps only the photos that a saved envelope lists. Without the hold, a draft's photo would be deleted. The hold keeps it. The hold covers every blob, not only the draft's own photos. Drafts live in memory only, so a reload clears them. Orchestrator default, 2026-10-11, not an owner ruling. The owner may overrule it.
+Owner ruling, 2026-10-12: a closed draft holds the photos it references, and the photo sweep keeps them. The sweep takes every other unused blob. An open composer still holds the sweep off. The sweep reads each draft's photos when its timer fires. Drafts live in memory only, so a reload clears them.
 
-**Status:** open. Built: the per-composer keys, the Cancel rule, Save, which ends its draft, and the sweep hold. Not built: Discard does not end a draft. `discardEnvelope` in `src/app.jsx` never clears it, so the sweep hold stays on. Open: Reset, and every restore, pull or merge that applies, clears all drafts. `applyBackup` and `resetAll` clear the draft map. The default allows neither. Owner to rule.
+**Status:** open. Built: the per-composer keys, the Cancel rule, Save, which ends its draft, and the sweep rule for drafts above. Not built: Discard does not end a draft. `discardEnvelope` in `src/app.jsx` never clears it, so the draft keeps its own photos until reload. Open: Reset, and every restore, pull or merge that applies, clears all drafts. `applyBackup` and `resetAll` clear the draft map. The default allows neither. Owner to rule. The default allows neither. Owner to rule.
 
 ## Discard
 
 Discard sits on each saved envelope. Its ask arms in place. The ask reads "Tap again to discard N cards", where N is the envelope's cards. Cancel takes first focus. The ask hangs below the row, so the arm does not shrink or move the envelope header or the Edit control (ux-press-moves-nothing). The count and the arm are built. The count is an orchestrator default of 2026-10-11.
 
-**Pinned by:** tests 61.8 and 61.9 (the Discard ask names the cards, first focus on Cancel), 61.43 to 61.46 (the arm keeps the header row's nodes), 61.47 to 61.53 (Cancel keeps a draft, and drafts are held per composer), and 61.54 to 61.56 (a live draft holds the photo sweep, with a control that runs without a draft). Geometry is not pinned here. Check 3 of `check:screens` measures it at 375px.
+**Pinned by:** tests 61.8 and 61.9 (the Discard ask names the cards, first focus on Cancel), 61.43 to 61.46 (the arm keeps the header row's nodes), 61.47 to 61.53 (Cancel keeps a draft, and drafts are held per composer), and 61.54 to 61.57 (61.54 is the control, with no draft, so an unused blob is swept; 61.55 a closed composer keeps its draft; 61.56 a closed draft keeps its photo and the sweep takes the rest; 61.57 an open composer holds the sweep off). Geometry is not pinned here. Check 3 of `check:screens` measures it at 375px.
 
 ## See also
 

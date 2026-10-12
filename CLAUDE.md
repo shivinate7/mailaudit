@@ -133,7 +133,7 @@ A photo is a picture of a mailing label. It never enters the ledger, and it can 
 - `photo-sweep-two-guards` — The photo sweep has two guards.
 - `pull-warns-on-what-it-drops` — A pull warns about the photos it would drop.
 - `label-photos-downscale-to-2000px` — Label photos downscale to 2000px.
-- `orphan-sweep-drops-unused-photos` — The sweep drops photos no envelope uses.
+- `orphan-sweep-drops-unused-photos` — The sweep drops photos no envelope or draft uses.
 
 ## Saved versions and recovery
 
