@@ -70,6 +70,50 @@ final class KeyStoreTests: XCTestCase {
         XCTAssertEqual(backend.itemCount, 1)
     }
 
+    // While adds fail, a save throws and the old key stays readable. Clearing the
+    // failure lets the next save through.
+    func testSaveKeepsTheOldKeyWhileAddsFail() throws {
+        let backend = FakeKeychain()
+        let store = makeStore(backend)
+        try store.save("OLDfakeKey_1")
+        backend.failAdds = true
+        XCTAssertThrowsError(try store.save("NEWfakeKey_2"))
+        let during = try store.key()
+        XCTAssertEqual(during, "OLDfakeKey_1")
+        backend.failAdds = false
+        let after = try store.key()
+        XCTAssertEqual(after, "OLDfakeKey_1")
+        try store.save("NEWfakeKey_2")
+        let saved = try store.key()
+        XCTAssertEqual(saved, "NEWfakeKey_2")
+    }
+
+    // An old item the Keychain cannot read must not block a save of a valid key.
+    // The save replaces it, and the new key reads back.
+    func testSaveReplacesAnUnreadableOldItem() throws {
+        let backend = FakeKeychain()
+        let store = makeStore(backend)
+        try store.save("OLDfakeKey_1")
+        backend.setUnreadable(service: Self.service, account: Self.account, true)
+        try store.save("NEWfakeKey_2")
+        backend.setUnreadable(service: Self.service, account: Self.account, false)
+        let current = try store.key()
+        XCTAssertEqual(current, "NEWfakeKey_2")
+        XCTAssertEqual(backend.itemCount, 1)
+    }
+
+    // The fake's update replaces an existing item's data and throws when none exists,
+    // as SecItemUpdate does. A save test built on update relies on this.
+    func testFakeUpdateReplacesDataOrThrowsWhenMissing() throws {
+        let backend = FakeKeychain()
+        let query: [String: Any] = [kSecAttrService as String: Self.service, kSecAttrAccount as String: Self.account]
+        XCTAssertThrowsError(try backend.update(query, [kSecValueData as String: Data("x".utf8)]))
+        try makeStore(backend).save("OLDfakeKey_1")
+        try backend.update(query, [kSecValueData as String: Data("NEWfakeKey_2".utf8)])
+        let current = try makeStore(backend).key()
+        XCTAssertEqual(current, "NEWfakeKey_2")
+    }
+
     // Positive control for the Mirror scan: it must find a planted key at depth,
     // inside a Data blob, and inside a URL, or a scan that always says "absent" passes.
     func testMirrorScanFindsAPlantedKey() {

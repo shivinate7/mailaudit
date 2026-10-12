@@ -23,6 +23,10 @@
 //   - --native with a Keychain key outside KEY_RE is refused before any open or
 //     QR. KEY_RE is imported from src/sync-rules.mjs, never copied.
 //   - An unknown flag exits non-zero before any Keychain read.
+//   - --native before the device name (reversed order) is refused before any
+//     Keychain read.
+//   - --native accepts a key with each printable ASCII character exactly when
+//     KEY_RE accepts it (a sweep over all 95 characters, not a substring check).
 //
 // Every case is gated on the script file existing, so a missing script fails
 // each case, not just the ones that need it.
@@ -41,6 +45,7 @@ import { join, dirname, resolve } from "node:path";
 import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { buildSync } from "esbuild";
+import { KEY_RE } from "../src/sync-rules.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SCRIPT = join(REPO, "scripts", "send-key.mjs");
@@ -96,6 +101,13 @@ for a in "$@"; do
 done
 `;
 
+// The sweep's security fake prints whatever key the case sets in FAKE_PRINTED_KEY,
+// so a key can hold any printable character, quotes included.
+const FAKE_SECURITY_ENV = String.raw`#!/bin/sh
+printf '%s\n' "$*" >> "$FAKE_LOG_DIR/security.log"
+printf '%s\n' "$FAKE_PRINTED_KEY"
+`;
+
 function writeFake(dir, name, body) {
   const p = join(dir, name);
   writeFileSync(p, body);
@@ -126,7 +138,7 @@ function readLog(sb, name) {
   return existsSync(p) ? readFileSync(p, "utf8") : null;
 }
 
-function run(sb, args, { stdin = "\n", securityFails = false } = {}) {
+function run(sb, args, { stdin = "\n", securityFails = false, extraEnv = {} } = {}) {
   const r = spawnSync(process.execPath, [SCRIPT, ...args], {
     cwd: REPO,
     input: stdin,
@@ -138,6 +150,7 @@ function run(sb, args, { stdin = "\n", securityFails = false } = {}) {
       TMPDIR: sb.tmp,
       FAKE_LOG_DIR: sb.logs,
       FAKE_SECURITY_FAIL: securityFails ? "1" : "",
+      ...extraEnv,
     },
   });
   return {
@@ -397,6 +410,73 @@ for (const dev of ["mac", "iphone"]) {
   }
 }
 
+// Reversed order, --native before the device: refused before any Keychain read.
+for (const args of [["--native", "mac"], ["--native", "iphone"]]) {
+  const sb = sandbox();
+  const label = args.join(" ");
+  try {
+    const r = run(sb, args);
+    expect(`${label}: exits non-zero`, r.status !== 0 && !r.timedOut);
+    expect(`${label}: security never called`, readLog(sb, "security.log") === null);
+    expect(
+      `${label}: nothing opened or drawn`,
+      readLog(sb, "open.log") === null && readLog(sb, "osascript.log") === null
+    );
+    expect(`${label}: plain message on stderr`, plainMessage(r.err));
+  } finally {
+    cleanup(sb);
+  }
+}
+
+// Behaviour sweep. For every printable ASCII character c, a key "a<c>b" must be
+// accepted by --native exactly when KEY_RE accepts it. The sweep takes an accepts
+// function, so the same comparison runs on the real script and on a self-case.
+const PRINTABLE = Array.from({ length: 0x7e - 0x20 + 1 }, (_, i) => String.fromCharCode(0x20 + i));
+
+function alphabetMismatches(accepts) {
+  return PRINTABLE.filter((c) => {
+    const key = `a${c}b`;
+    return accepts(key) !== KEY_RE.test(key);
+  });
+}
+
+// Runs the real script with --native and a Keychain key of the given value. The
+// key is accepted when the script opens the native URL with that key and exits 0.
+function scriptAccepts(key) {
+  const sb = sandbox();
+  try {
+    writeFake(sb.bin, "security", FAKE_SECURITY_ENV);
+    const r = run(sb, ["mac", "--native"], { extraEnv: { FAKE_PRINTED_KEY: key } });
+    return r.status === 0 && readLog(sb, "open.log") === `manifestledger://sync#k=${key}\n`;
+  } finally {
+    cleanup(sb);
+  }
+}
+
+// Self-case: a reordered copy of the alphabet agrees with KEY_RE, and the same
+// copy with one character changed is caught by the sweep.
+const REORDERED = /^[0-9A-Za-z_-]+$/;
+const REORDERED_ONE_CHANGED = /^[0-9A-Za-z_+]+$/;
+selfCheck(
+  "sweep: a reordered copy of the alphabet agrees with KEY_RE",
+  alphabetMismatches((k) => REORDERED.test(k)).length === 0
+);
+selfCheck(
+  "sweep: a reordered copy with one character changed fails (+ and - differ)",
+  alphabetMismatches((k) => REORDERED_ONE_CHANGED.test(k)).join("") === "+-"
+);
+
+{
+  const mismatches = alphabetMismatches(scriptAccepts);
+  if (mismatches.length > 0) {
+    console.log(`     mismatched characters: ${JSON.stringify(mismatches)}`);
+  }
+  expect(
+    "send-key --native accepts a key with each printable ASCII character exactly when KEY_RE does",
+    mismatches.length === 0
+  );
+}
+
 // The import check parses the source with esbuild's JS parser. It bundles with every
 // import external, so the parser counts real import statements only. Comments,
 // string literals and template literals never count. The printed import clauses
@@ -489,7 +569,6 @@ selfCheck(
     "script with its KEY_RE import commented out fails the import check",
     commented !== src && !probe(commented).importsKeyRe
   );
-  expect("script keeps no copy of the key alphabet", !probe(src).text.includes("A-Za-z0-9_-"));
 }
 
 if (failures > 0) {
