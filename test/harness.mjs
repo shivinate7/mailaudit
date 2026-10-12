@@ -722,10 +722,22 @@ export function eq(actual, expected, label) {
   else fails.push(`${label}\n     expected ${e}\n     actual   ${a}`);
 }
 
+/* A run that ends with a live timer or socket never exits, so it hangs until
+   something kills it, and a hang reports nothing. Node names each live handle
+   by kind. The TTY and the stdio pipes are not ours to close, so they are skipped. */
+const STDIO_KINDS = new Set(["TTYWrap", "PipeWrap"]);
+export function liveHandleKinds() {
+  return process.getActiveResourcesInfo().filter((k) => !STDIO_KINDS.has(k));
+}
+
 export function report() {
+  win.close(); // jsdom keeps the process alive otherwise
+  const live = liveHandleKinds();
+  if (live.length)
+    fails.push(`${live.length} live handle(s) after the run, so the process would hang: ${live.join(", ")}`);
   console.log(`\n${pass} passed, ${fails.length} failed`);
   for (const f of fails) console.log(`  ✗ ${f}`);
-  win.close(); // jsdom keeps the process alive otherwise
+  console.log(`live handles: ${live.length ? live.join(", ") : "none"}`);
   if (fails.length) process.exit(1);
   console.log("all green");
 }

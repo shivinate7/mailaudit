@@ -7763,7 +7763,7 @@ ok(
    two labels side by side cannot run together and hide a word. STYLE and SCRIPT
    are not rendered. The words are the owner's list, exactly as ruled. "Merges"
    is not on the list, so a local verb passes. */
-const NO_GITHUB_WORDS66 = /\bgithub\b|\bpush\b|\bpull(ing|ed)?\b|\brepo\b|private repo|your key/i;
+const NO_GITHUB_WORDS66 = /\bgithub\b|\bpush(es|ed|ing)?\b|\bpull(s|ed|ing)?\b|\brepo(sitory)?\b|\btokens?\b|your key/i;
 const renderedText66 = () => {
   const walker = document.createTreeWalker(document.body, win.NodeFilter.SHOW_TEXT);
   const parts = [];
@@ -7848,8 +7848,23 @@ await sleep(60);
 await openSync();
 await settle();
 ok(panelOpen66(), "66.9pre the Sync panel is open");
-ok(/Photos need/i.test(text()), "66.9pre2 the photo line says photos need something");
-guardWords66("66.9 photo key missing");
+/* The photo copy is read from the leaf elements that mention photos. A 404 on
+   the photo path is not a missing key, so the line must not name one. */
+const photoLeaves66 = () =>
+  [...document.querySelectorAll("body *")]
+    .filter((el) => el.children.length === 0 && /photo/i.test(el.textContent))
+    .map((el) => el.textContent)
+    .join(" | ");
+ok(photoLeaves66() !== "", "66.9pre3 a photo line is rendered");
+ok(
+  /photos?[^|]*(could not|couldn.t|didn.t) sync/i.test(photoLeaves66()),
+  "66.9pre2 the photo line says photos could not sync"
+);
+ok(
+  !/\b(keys?|tokens?|credentials?|passwords?|sign.?in)\b/i.test(photoLeaves66()),
+  "66.9 and the photo line names no credential"
+);
+guardWords66("66.9 photo path 404");
 
 /* 66.4 the last Worker agreement survives a reload, and a boot-time reply that
    fails cannot replace it. The agreement is written by a real session first. */
