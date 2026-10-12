@@ -124,16 +124,20 @@ export async function route(request, env, store, now = Date.now()) {
   /* a received, receivedAt, stamps or envelopes of the wrong shape never reaches the store */
   if (salvageLedger(incoming).dropped) return json({ error: "bad ledger" }, 400);
 
-  const cur = await store.read();
+  /* a stored ledger saved before the shape check shipped is mended before the merge;
+     the original stays as the day's snapshot below */
+  const stored = await store.read();
+  const mend = stored ? salvageLedger(stored.ledger) : null;
+  const cur = mend?.dropped ? { ...stored, ledger: mend.data } : stored;
   const merge = cur ? mergeLedger(cur.ledger, incoming) : null;
   const ledger = merge ? merge.merged : incoming;
   // No merge runs against an empty store, so there is nothing to count.
   const stats = merge ? merge.stats : mergeLedger({}, {}).stats;
   if (new TextEncoder().encode(JSON.stringify(ledger)).length > MAX_LEDGER_BYTES) return json({ error: "too-large" }, 413);
-  if (cur && canon(ledger) === canon(cur.ledger)) return json({ ledger, rev: cur.rev, stats });
+  if (cur && !mend.dropped && canon(ledger) === canon(cur.ledger)) return json({ ledger, rev: cur.rev, stats });
   const rev = (cur?.rev ?? 0) + 1;
   const day = dayOf(now);
-  if (cur && !(await store.hasSnapshot(day))) await store.writeSnapshot(day, { ledger: cur.ledger, rev: cur.rev, at: cur.at });
+  if (cur && !(await store.hasSnapshot(day))) await store.writeSnapshot(day, { ledger: stored.ledger, rev: stored.rev, at: stored.at });
   await store.pruneSnapshots(dayOf(now - (SNAPSHOT_DAYS - 1) * DAY_MS));
   await store.write(ledger, rev, new Date(now).toISOString());
   await store.broadcast({ rev });

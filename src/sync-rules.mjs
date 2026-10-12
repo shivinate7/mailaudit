@@ -29,6 +29,7 @@ export function syncStatus(status) {
   if (status === 401) return "no-access";
   if (status === 404) return "empty";
   if (status === 413) return "too-big";
+  if (status === 400) return "bad-shape"; /* the Worker refused the ledger's shape: retrying cannot help */
   return "unknown";
 }
 

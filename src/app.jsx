@@ -2905,7 +2905,11 @@ export default function MailDayLedger() {
         0
       );
     } catch {}
-    await window.versions.put({ text, label: "damaged, as it came in", kind: "milestone", lines, checked });
+    try {
+      await window.versions.put({ text, label: "damaged, as it came in", kind: "milestone", lines, checked });
+    } catch {
+      throw new Error("unsaved"); /* callers tell "no copy" from "not a ledger" by this message */
+    }
     keptRef.current.add(text);
   };
   const mendNotice = (n) =>
@@ -3151,6 +3155,9 @@ export default function MailDayLedger() {
            in History, then go on with every entry that can be read. If the copy
            cannot be written, refuse as before (fallback 1).
            native-ledger-is-raw-json */
+        /* valid JSON that is not an object (null, 5, a list) is not usable either */
+        if (!refused && value && !(parsed && typeof parsed === "object" && !Array.isArray(parsed)))
+          refused = true;
         const { data, dropped } = salvageLedger(parsed);
         if (!refused && dropped) {
           try {
@@ -3319,6 +3326,8 @@ syncBroken === "seeded"
                     ? "This device’s sync key was refused — tap to fix"
                     : syncBroken === "too-big"
                     ? "The ledger is too big for the sync server — tap to fix"
+                    : syncBroken === "bad-shape"
+                    ? "The sync server refused this ledger’s shape, so it is not backed up — tap to fix"
                     : syncBroken === "photos-unreadable"
                     ? "This device’s photos could not be read, so no new photos were backed up — tap to fix"
                     : !syncBroken
@@ -3338,6 +3347,8 @@ syncBroken === "seeded"
       ? "No sync key on this device"
       : serverDown === "no-access"
       ? "Sync key refused"
+      : serverDown === "bad-shape"
+      ? "Ledger shape refused"
       : serverDown === "too-big"
       ? "Ledger too big for the server"
       : serverDown
@@ -3496,8 +3507,9 @@ syncBroken === "seeded"
       const data = await readLedger(text);
       const remote = source === "remote";
       /* a restore ends a refused load and its first save must not be skipped; the
-         refused text goes to History first, if it can (best effort) */
-      if (damagedRef.current) keep(damagedRef.current).catch(() => {});
+         refused text goes to History first, and if it cannot be copied the restore
+         changes nothing (as Reset does) */
+      if (damagedRef.current) await keep(damagedRef.current);
       skipFirstSave.current = false;
       setDamaged(null);
       /* AFTER the parse and before the first setState: a payload that isn't a
@@ -4732,7 +4744,12 @@ syncBroken === "seeded"
     }
     tooBigRef.current = r.code === "too-big";
     mirrorRef.current = false;
-    setServerDown(r.code === "too-big" || r.code === "no-access" ? r.code : "unknown");
+    setServerDown(["too-big", "no-access", "bad-shape"].includes(r.code) ? r.code : "unknown");
+    if (r.code === "bad-shape") {
+      /* a refused shape stays refused: no backoff retry. The next change POSTs again. */
+      clearTimeout(retryTimer.current);
+      return r;
+    }
     if (r.code === "no-access") {
       /* a refused key stays refused: stop POSTs, retries and the socket */
       refusedRef.current = true;
