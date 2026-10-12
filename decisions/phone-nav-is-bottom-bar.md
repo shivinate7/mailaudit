@@ -2,7 +2,7 @@
 
 The owner ruled on 2026-10-11: "bottom bar D is gorgeous! yes go for it". On a phone, navigation is a floating glass capsule in the parchment palette. This is variant D. It has four tabs: Orphaned, Tally, Packages and Ledger. The bar replaces the top view switch on phone.
 
-**Status:** ruled, not built. Open: the order of the first three tabs, the look of the Find field, and the layout above phone width. See "Open" below.
+**Status:** ruled, not built. Open: the order of the first three tabs, and the owner's word on the look of the Find field (mockup G). See "Open" below.
 
 **Holds while:** the native target is iOS 26, as `native-swift-rebuild` sets it. The web palette is the parchment ledger, as `design-parchment-ledger` sets it. `src/app.jsx` has no bottom bar element yet.
 
@@ -34,9 +34,9 @@ Find is a floating search field above the bar, in the same glass style. The plac
 ## Open
 
 - The order of Orphaned, Tally and Packages is open. Today the order is Orphaned, Tally, Packages. The owner has not answered whether Packages goes left.
-- The layout above phone width is not ruled. The owner has not said whether the bar or the top switch shows there.
+- Above phone width, the same capsule and search pill show, centred with a 480px maximum width. This is an orchestrator default of 2026-10-11 that keeps one layout. The owner may overrule it.
 - The look of the Find field waits for the mockup.
-- Re-import CSV and Reset must stay reachable on an empty ledger and from Orphaned. The owner has not ruled that for the bar. See `recovery-control-not-state-gated`.
+- Re-import CSV and Reset stay reachable on an empty ledger and from Orphaned, through the Ledger tab. `recovery-control-not-state-gated` requires it.
 
 ## See also
 

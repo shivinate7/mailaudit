@@ -26,10 +26,10 @@ The sync advisory line still shows on the working screen. It shows only when som
 
 Find is not in the Ledger tab. It is a floating search field above the bar, as `phone-nav-is-bottom-bar` rules.
 
-## Open
+## Defaults and invariants
 
-- Backup has no home in the ruling. Backup sits on the action row today, as `three-views-share-one-switch` records. The owner's two groups do not name it.
-- The Ledger tab and Reset must stay reachable on an empty ledger. `recovery-control-not-state-gated` requires it. The owner has not ruled that for the Ledger tab.
+- Backup sits in the Data group, after Re-import CSV. This is an orchestrator default of 2026-10-11, because Backup is a data action.
+- The Ledger tab, Re-import CSV and Reset stay reachable on an empty ledger. `recovery-control-not-state-gated` requires it, so this needs no new ruling.
 - The look of the Ledger screen is not ruled.
 
 ## See also
@@ -38,3 +38,7 @@ Find is not in the Ledger tab. It is a floating search field above the bar, as `
 - `recovery-control-not-state-gated` — the rule that Reset and Re-import must stay reachable.
 - `ruled-head-showing-unreceived` — the Showing control, now in the Ledger tab.
 - `history-sync-close-each-other` — History and Sync, now in the Ledger tab.
+
+## Records that change when lane L11 builds
+
+These still put the controls on the working screen, which is true until L11 ships. L11 rewrites them in place: `action-row-is-ruled-cells`, `armed-reset-takes-the-row`, `ruled-head-showing-unreceived`, `history-sync-close-each-other`, `sync-panel-is-two-column-grid` and `ruled-head-one-advisory-entrance`.
