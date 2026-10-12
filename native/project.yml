@@ -39,10 +39,12 @@ targets:
       - target: Manifest
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.shivinate.manifest.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: dev.shivinate.manifest.uitests
         TEST_TARGET_NAME: Manifest
         GENERATE_INFOPLIST_FILE: YES
         SWIFT_VERSION: "6.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        IPHONEOS_DEPLOYMENT_TARGET: "26.0"
 schemes:
   Manifest:
     build:

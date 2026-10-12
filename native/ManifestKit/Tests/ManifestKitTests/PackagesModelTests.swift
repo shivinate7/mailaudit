@@ -143,6 +143,33 @@ final class PackagesModelTests: XCTestCase {
         XCTAssertFalse(bytes.contains(Self.fakeKey), "the ledger file holds the key")
     }
 
+    // MARK: a failed save changes nothing the user sees
+
+    /// A save that fails leaves the model's received map, and the store's copy, as they were.
+    func testFailedSaveLeavesReceivedAndStoreUnchanged() async throws {
+        let url = try freshLedgerURL()
+        let dir = url.deletingLastPathComponent()
+        let store = LedgerStore(fileURL: url, now: { 1_786_543_380_000 })
+        let engine = try RulesEngine(bundleURL: RulesGoldenTests.bundleURL)
+        let model = try await loadedModel(store, engine)
+        let rowsBefore = model.rows
+        let receivedBefore = model.received
+        let storeBefore = store.received()
+
+        // The atomic write needs a new file beside the ledger, so a read-only folder makes the save throw.
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: dir.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: dir.path) }
+
+        do {
+            try await model.checkIn(key: Self.checkedKey, count: 1)
+            XCTFail("a check-in must throw when the save fails")
+        } catch {}
+
+        XCTAssertEqual(model.rows, rowsBefore, "the rows changed on a failed save")
+        XCTAssertEqual(model.received, receivedBefore, "the model's received map changed on a failed save")
+        XCTAssertEqual(store.received(), storeBefore, "the store kept the failed check-in in memory")
+    }
+
     // MARK: positive controls for the mirror scan
 
     /// The scan must see a key held by a class property, or the test above proves nothing.
