@@ -57,16 +57,17 @@ The Worker refuses a POST with a bad shape (400), so one app's bug cannot reach 
 
 **Open: the Worker keeps no copy on a day that has a snapshot.** The Worker keeps the damaged stored ledger as the day's snapshot only when today has none. When today already has one, the merged ledger overwrites the damaged one, and no copy of it is kept. Worker 68.1 to 68.3 cover only the no-snapshot case. The owner decides the fix.
 
-**Gaps on PR #87, each with its pins** (items 1 to 5 closed in `d359c91`; items 6 to 8 in `7c4cdbe`, and item 7 is still open):
+**Gaps on PR #87, each with its pins** (items 1 to 5 closed in `d359c91`; items 6 and 8 in `7c4cdbe`; item 7 at `b9e3f1c`; item 9 is open):
 
 1. A restore copies the refused text to History first and waits. If the copy fails, it changes nothing. Pinned by 68.1, 68.1a to 68.1c.
 2. A re-import whose copy cannot be saved says so, and does not say "not a backup". Pinned by 68.2, 68.2a, 68.2b.
 3. Saved text that is valid JSON but not an object is refused. Pinned by 68.3.
 4. The Worker mends a damaged stored ledger before the merge. Pinned by Worker 68.1 to 68.3.
 5. A Worker 400 is its own sync status, `bad-shape`. It is not retried on backoff. The next change POSTs again. It shows one plain line. Pinned by 68.4, 68.5, 68.5a, 68.5b.
-6. A damaged sync reply whose copy cannot be saved sends nothing. While the copy is missing, `postRef` sends no POST, so a check-in and a foreground send nothing either. A GET re-reads the reply when the retry is due, and the copy is tried again. Pinned by 68.6pre, 68.6, 68.6a, 68.6b.
-7. A Worker 400 (`bad-shape`) shows one line, and the line offers no fix: "The sync server refused this ledger’s shape, so it is not backed up." Pinned by 68.5b. At `7c4cdbe` 68.5b fails: the line reads empty when the test reads it. This item is open until 68.5b passes.
+6. A damaged sync reply whose copy cannot be saved sends nothing. While the copy is missing, `sendPost` throws, so a check-in and a foreground send nothing either. `sendPost` is the one Worker sender. Its only call to `window.sync.post` is inside it. It has two callers: `postRef`, and the mirror-conflict path, which item 9 covers. The gate clears on a 404 (`settleReply`, on the reply `empty`) and on a sync key save (`saveSyncKey`). A GET re-reads the reply when the retry is due, and the copy is tried again. Pinned by 68.6pre, 68.6, 68.6a, 68.6b, by 68.10a for the clear on a 404, and by 68.10b for the clear on a key save.
+7. A Worker 400 (`bad-shape`) shows one line, and the line offers no fix: "The sync server refused this ledger’s shape, so it is not backed up." Pinned by 68.5b. Closed at `b9e3f1c`: 68.5b passes in New York and UTC. At `7c4cdbe` it failed, because the line read empty when the test read it.
 8. A History restore and a branch restore whose copy cannot be saved show the Re-import copy-failed line, not "looks corrupt", and change nothing. Pinned by 68.7pre, 68.7, 68.7a, 68.7b, 68.8pre, 68.8, 68.8a, 68.8b.
+9. **Open: the mirror-conflict path.** At `b9e3f1c` 68.9 fails: a GitHub conflict on a mirror push sends 2 Worker POSTs while the copy is missing, where 0 are expected (`eq` reads actual 2, expected 0). Test 68.9 sets up a 404 on the retry, as 68.10a does. 68.10a says that 404 clears the gate, so its next edit POSTs. 68.9 says the copy is still missing after it. The two tests cannot both hold. The owner or the test author decides which rule holds: 68.9's fixture changes, or the clear on a 404 changes. Open until one of them is decided and 68.9 passes. Pinned by 68.9pre and 68.9, against 68.10pre and 68.10a.
 
 **Orchestrator defaults 2026-10-12, not owner rulings.** These fallbacks refuse and change nothing. They apply when the copy cannot be written, or the saved text is not JSON, or it is JSON that is not an object (`null`, a number, a list).
 
@@ -75,6 +76,6 @@ The Worker refuses a POST with a bad shape (400), so one app's bug cannot reach 
 - Re-import: when the copy cannot be saved, the page shows "A copy of that file could not be saved to History, so nothing was changed." This happens when the versions store is missing or a write fails. Any other failure shows `That file isn’t a Mail Day backup.`
 - Sync reply: a reply with unreadable entries is copied to History first. If the copy fails, the reply counts as a failed call and nothing is applied. While that copy is missing, nothing is POSTed. A GET re-reads the reply when the retry is due.
 
-**Pinned by (web):** group 67 (the 67 labels for load, Re-import and sync reply; 67.F1 to 67.F3; 67.7 and 67.7a). 67.F1b, 67.F1c, 67.F2b and 67.F2c check that no push starts. Worker: 67.1 and 67.2, run by `npm run test:worker`, not `npm test`. Items 1 to 8 above: tests 68.1 to 68.8 in `test/app.test.mjs`, run by `npm test`. Worker 68.1 to 68.3, run by `npm run test:worker`.
+**Pinned by (web):** group 67 (the 67 labels for load, Re-import and sync reply; 67.F1 to 67.F3; 67.7 and 67.7a). 67.F1b, 67.F1c, 67.F2b and 67.F2c check that no push starts. Worker: 67.1 and 67.2, run by `npm run test:worker`, not `npm test`. Items 1 to 8 above: tests 68.1 to 68.8, and 68.10pre to 68.10b, in `test/app.test.mjs`, run by `npm test`. Item 9: 68.9pre and 68.9, in the same file, red at `b9e3f1c`. Worker 68.1 to 68.3, run by `npm run test:worker`.
 
 **Read from code, not tested:** the pull and merge fallbacks, and the sync and apply guards. Reset with the raw text, and the CSV block.
