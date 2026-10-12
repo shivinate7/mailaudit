@@ -134,7 +134,7 @@ Ruled: a field in the ledger, named recent. The owner chose it on 2026-10-11, wi
 
 ## Where the entrance sits
 
-The entrance is a `Recent ▾` cell in the ruled action row, left of History. It uses `.mdl-act`, `aria-expanded` and the caret that History carries (`action-row-is-ruled-cells`). Its panel overlays the list in the same slot as History, with the same fade and no new motion (`motion-disclosure-panels-arrive`). Recent, History and Sync close one another (`history-sync-close-each-other`). An armed Reset does not hide the cell, and it does not hide History either (`armed-reset-takes-the-row`).
+The entrance is a `Recent ▾` cell in the ruled action row, left of History. It uses `.mdl-act`, `aria-expanded` and the caret that History carries (`action-row-is-ruled-cells`). Its panel overlays the list in the same slot as History, with the same fade and no new motion (`motion-disclosure-panels-arrive`). Recent, History and Sync close one another (`history-sync-close-each-other`). An armed Reset does not hide the cell, and, by an orchestrator default of 2026-10-11, it does not hide History either (`armed-reset-takes-the-row`).
 
 The cell shows whenever the ledger holds items or envelopes, as Reset does. It never waits on the log, so the row does not re-divide when the first entry lands (`recovery-control-not-state-gated`). An empty log shows one line in the panel.
 

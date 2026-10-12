@@ -10,7 +10,18 @@ The owner ruled on 2026-10-11: "apply the latest from claude settings' ux guidel
 
 A repo design record can add to a house rule. It cannot cancel one.
 
-The **house UX audit of 2026-10-11** is the source of the lane labels in these records, such as L1, L3 and L6.
+The **house UX audit of 2026-10-11** is the source of the lane labels in these records, such as L1, L3 and L6. The web lanes are:
+
+- L1: copy and asks. Counts and Cancel in asks, a Clear control in empty states, a shorter Tally sort label, and the 10px label floor.
+- L2: component state. The envelope draft survives a view change, and errors show in the pressed row.
+- L3: the deploy guard. Deploy stops when the seed fetch fails.
+- L4: record text.
+- L5: record and link checks.
+- L6: 44px touch hit areas, with no visual change.
+- L7: semantics. Names that match labels, a modal photo viewer, and disabled controls that give a reason.
+- L8: an axe check at 375px and 760px.
+- L9: CI paths and timeouts.
+- L10: the Dependabot cooldown and zizmor.
 
 ## The rules that the 2026-10-11 rulings apply
 

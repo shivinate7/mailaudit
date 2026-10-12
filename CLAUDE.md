@@ -25,9 +25,11 @@ records your task needs. Do not read them all.
 - `measurements/` holds a measured figure and how to re-measure it. 8 records.
 
 A record cites another record by slug, never by a path, so a record survives a
-move. `npm run check:records` proves six things. This index cites every record.
+move. `npm run check:records` proves seven things. This index cites every record.
 Every citation resolves. No slug repeats. No fence is broken. Every record
-carries its shape. Every invariant names the test that pins it.
+carries its shape. Every invariant names the test that pins it. Every decision
+holds a Holds-while line, every open thread a Status line, and the index lists
+no slug twice.
 
 An open question carries a `**Status:**` line. That line is the only thing that
 separates a question still open from a ruling already settled, so keep it.

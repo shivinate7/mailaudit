@@ -2,7 +2,7 @@
 
 Reset is red text at rest. Armed, it shows a red fill and the words "Tap again to clear everything". The other two cells keep their places.
 
-The armed Reset names its count, and first focus goes to Cancel. The house rule ux-ask-or-undo asks for both. The native reset ask in lane N9 also names its count and has Cancel (`native-build-lanes`).
+The armed Reset is to name its count and put first focus on Cancel, which the house rule ux-ask-or-undo asks for. This is an orchestrator default of 2026-10-11, not built: today the arm has neither. The native reset ask in lane N9 also names its count and has Cancel (`native-build-lanes`).
 
 **Status:** ruled 2026-10-11, not built. The owner ruled under press movement, "Fix both": Reset arms in place and does not collapse the action row. Today the code collapses the row. The other two cells step out for the four seconds the arm lasts. That is the old behaviour.
 
