@@ -1,6 +1,7 @@
 /* The pure half of the sync server: route(request, env, store) -> Response.
    No Worker, no Durable Object, no network. The merge is the app's own. */
 import { mergeLedger, canon } from "../src/merge-rules.mjs";
+import { salvageLedger } from "../src/view-rules.mjs";
 import { photoIdFromName, mimeFromName, photoName } from "../src/photo-rules.mjs";
 
 const hex = async (s) =>
@@ -120,6 +121,8 @@ export async function route(request, env, store, now = Date.now()) {
   }
   if (!incoming || incoming.mailday !== 1 || !Array.isArray(incoming.items))
     return json({ error: "bad ledger" }, 400);
+  /* a received, receivedAt, stamps or envelopes of the wrong shape never reaches the store */
+  if (salvageLedger(incoming).dropped) return json({ error: "bad ledger" }, 400);
 
   const cur = await store.read();
   const merge = cur ? mergeLedger(cur.ledger, incoming) : null;

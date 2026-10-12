@@ -43,20 +43,18 @@ Mutants confirmed red:
 
 Test 37.62 asserts that `merged.stamps` deep-equals `{}`. Merely truthy is not enough. `undefined` is what the builder produces when it forgets the key.
 
-## The web load refuses a damaged list
+## A damaged list is kept, mended and told
 
-Owner ruling 2026-10-12 ("Web refuses too"), built in PR #87, home `native-ledger-is-raw-json`. On load, a `received`, `receivedAt`, `stamps` or `envelopes` value stops the load when it is present and has the wrong shape. The right shapes are an object for `received`, `receivedAt` and `stamps`, and a list of objects for `envelopes`. JSON `null` is damaged. An absent field is not damage, and it loads with its default.
+Owner ruling 2026-10-12 ("Keep a copy, then go on"), home `native-ledger-is-raw-json`. A `received`, `receivedAt`, `stamps` or `envelopes` value of the wrong shape is damage, whole field or single entry. JSON `null` is damaged. An absent field is not. The right shapes: numbers in `received` and `receivedAt`, objects in `stamps`, objects with a string `id` in `envelopes`.
 
-A refused load does four things:
+On every path data comes in (load, Re-import, a sync reply, a pull), the client does three things:
 
-- The page says in plain words that the saved data is damaged and was not loaded.
-- Nothing is written back to the saved ledger. No Worker push starts, and no GitHub push starts.
-- No milestone is overwritten.
-- History and Backup stay reachable.
+- It saves the data as it came in to History as a milestone, and waits for the write.
+- It keeps every entry it can read. `salvageLedger` in `view-rules.mjs` does this, as one pure function, so the Swift client gets it in `rules.js`.
+- It shows one line: "N entries could not be read; the original is in History."
 
-The refused load keeps the raw saved text. A History restore replaces the damaged field, and that restore clears the refusal. Backup parses the saved text and exports it again. The data is the same, but whitespace may differ.
+The Worker refuses a POST with a bad shape (400), so one app's bug cannot reach the other.
 
-**Pinned by (web):** group 67 (the damaged-load and absent-field loops) and 67.7 (a History restore from a refused load lands).
+**Orchestrator defaults 2026-10-12, not owner rulings.** The client refuses as before, and changes nothing, when the milestone cannot be written or the saved text is not JSON. The page says the saved ledger is damaged and was not loaded, keeps the raw text, and offers History and Backup. While refused: no sync call or apply (rev, key save, reply), no CSV import, no push. Reset puts the raw text in History first. A History restore clears the refusal.
 
-Read from the code, not run: the Backup export, and the rule that no version is taken while a load is refused. Only the load path is ruled. The Re-import and sync-reply paths are open, see `damaged-other-paths-open`.
-
+**Pinned by (web):** group 67. Worker: 67.1, 67.2.
