@@ -1,0 +1,6 @@
+name: Manifest
+options:
+  bundleIdPrefix: com.shivinate
+packages:
+  ManifestKit:
+    path: ManifestKit

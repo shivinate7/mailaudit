@@ -145,7 +145,7 @@ Rejected entrances:
 
 ## Both clients
 
-- The log rules are one pure module under src/: add an entry, merge same-card entries, the cap, the guards and the inverse of each kind. The web app calls it. The rules bundle carries it, and the Swift client runs it in JavaScriptCore (`rules-run-in-javascriptcore`). The Swift client holds no copy.
+- The log rules are one pure module under src/: add an entry, merge same-card entries, the cap, the guards and the inverse of each kind. The web app calls it. The rules bundle does not carry it yet. Once the log lands, the bundle carries it and the Swift client runs it in JavaScriptCore (`rules-run-in-javascriptcore`). The Swift client holds no copy.
 - The merge stays on the Worker. Native never loads `src/merge-rules.mjs`, so the log union has one home.
 - Each client draws its own screen. The rows, the words, the grouping and the end states are the same.
 - The Worker has no new route. Its tests gain the union and the cap, because the Worker runs `mergeLedger`.
