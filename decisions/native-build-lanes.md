@@ -1,6 +1,6 @@
 # The native build runs in ordered lanes
 
-**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. W1 landed in PR #61, S1 in PR #62, S2 in PR #63, and S3 in PR #64. S4 landed in PR #65, and N1 is in PR #75, open. Their rows have left this table. No other lane has landed. The rows below carry the 2026-10-11 changes. They are ruled and not built.
+**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. W1 landed in PR #61, S1 in PR #62, S2 in PR #63, and S3 in PR #64. S4 landed in PR #65, and N1 landed in PR #75. Their rows have left this table. No other lane has landed. The rows below carry the 2026-10-11 changes. They are ruled and not built.
 
 The native rebuild splits into lanes. W lanes change the Worker. S lanes change shared files and extract the rules. The C lane changes CI. N lanes build the native client. A lane that lands leaves this table, and git keeps its history.
 
@@ -21,8 +21,8 @@ The native rebuild splits into lanes. W lanes change the Worker. S lanes change 
 | W2 Worker photo route | Worker files, not yet briefed | Not yet briefed. | Not yet briefed. | none |
 | W3 Worker daily snapshots | Worker files, not yet briefed | Not yet briefed. | Not yet briefed. | none |
 | C1 Native CI job | .github/workflows/test.yml | Proof: the job goes red on a broken Swift test in a PR. | The PR's native job is green. It becomes a required check after its first green run, gated by a scope job and a nightly run. Its timeout is set from that run. The draft guard follows `ci-skips-draft-prs`. | S4 (landed) |
-| N2 Key store and intake | the key store, the URL handler, scripts/send-key.mjs, test/send-key.test.mjs | The accessibility class. `hasKey` is a Bool. A bad key is refused. The key is absent from the ledger, the backup and the model (a Mirror scan). The `--native` URL. | ST and `npm run test:send-key` | N1 (PR #75, open) |
-| N3 Ledger store | the ledger store, the JSON value type | An unknown field round-trips. An un-check writes `receivedAt` and drops `received`. A stamp removal writes `kind:""`. A discard writes a tombstone. Each edit bumps the generation. A load sets defaults. | ST | N1 (PR #75, open) |
+| N2 Key store and intake | the key store, the URL handler, scripts/send-key.mjs, test/send-key.test.mjs | The accessibility class. `hasKey` is a Bool. A bad key is refused. The key is absent from the ledger, the backup and the model (a Mirror scan). The `--native` URL. | ST and `npm run test:send-key` | N1 (landed) |
+| N3 Ledger store | the ledger store, the JSON value type | An unknown field round-trips. An un-check writes `receivedAt` and drops `received`. A stamp removal writes `kind:""`. A discard writes a tombstone. Each edit bumps the generation. A load sets defaults. | ST | N1 (landed) |
 | N4a Sync over HTTP | the sync client, a stub URL protocol | The Bearer header. The `{ledger}` body. The generation rule. A 401 stops calls. The 413 line. A 404 seeds by POST. A timeout reads as unknown. Backoff. Stop cancels an in-flight push or pull. | ST | N2, N3, W1 (landed), the stage 4b switch |
 | N4b Socket, idle gate, resume | the sync client socket | A rev that is not newer gives no GET. A newer rev with a changed ledger POSTs. The idle gate is 10 seconds. A cold reply applies at once after a key save. Resume does one GET. | ST | N4a |
 | N5 Shell and Packages | native/Manifest (App, Packages), native/ManifestUITests | Rows equal the golden files. A check-in calls the ledger store. UI test: other row frames do not move on a check-in, at 375pt and 760pt. performAccessibilityAudit on each screen. A 44pt hit region on each tab and on the rows. Phone navigation is the system tab bar with four tabs, per `phone-nav-is-bottom-bar`. The Ledger tab holds the options, per `ledger-tab-holds-options`. Ruled, not built. | ST and `xcodebuild test -scheme Manifest -destination 'platform=iOS Simulator,name=iPhone 17'` | N3 |
@@ -38,7 +38,7 @@ W2 and W3 come from the owner's rulings, not from the first plan. Their files, t
 ## Order
 
 - Batch 1: W1, S1, S2, S3 and S4 (all landed), with W2 and W3 free to start. S4 ran after S3, because each one rebuilds index.html.
-- Batch 2: C1 and N1, after S4 (landed). N1 is in PR #75, open. C1 has not landed.
+- Batch 2: C1 and N1, after S4 (landed). N1 landed in PR #75. C1 has not landed.
 - Batch 3: N2 and N3.
 - Batch 4: N5, beside N4a.
 - Batch 5: N6, N7 and N8 after N5, with N4b and N9.
@@ -47,7 +47,7 @@ W2 and W3 come from the owner's rulings, not from the first plan. Their files, t
 
 ## N1 notes
 
-- The golden file parse-items.json has no native test, by orchestrator default of 2026-10-12. Native never parses CSV. The reason lives in `rules-run-in-javascriptcore`.
+- parse-items.json exclusion: `rules-run-in-javascriptcore`, its one home.
 
 ## Risk
 
