@@ -41,15 +41,20 @@ struct SystemKeychain: KeychainBackend {
     }
 }
 
-struct KeyStore {
+public struct KeyStore: Sendable {
     let service: String
     let account: String
     let backend: any KeychainBackend
 
-    init(service: String, account: String, backend: any KeychainBackend = SystemKeychain()) {
+    init(service: String, account: String, backend: any KeychainBackend) {
         self.service = service
         self.account = account
         self.backend = backend
+    }
+
+    /// The app's own init: the system Keychain.
+    public init(service: String, account: String) {
+        self.init(service: service, account: account, backend: SystemKeychain())
     }
 
     private var identity: [String: Any] {
@@ -81,17 +86,17 @@ struct KeyStore {
         return try backend.copy(q).flatMap { String(data: $0, encoding: .utf8) }
     }
 
-    func hasKey() -> Bool { ((try? key()) ?? nil) != nil }
+    public func hasKey() -> Bool { ((try? key()) ?? nil) != nil }
 
     func clear() throws { try backend.delete(identity) }
 }
 
-enum KeyIntakeOutcome: Equatable { case stored, refused, ignored }
+public enum KeyIntakeOutcome: Equatable, Sendable { case stored, refused, ignored }
 
-enum KeyIntake {
+public enum KeyIntake {
     /// Reads the raw fragment of a manifestledger://sync link and asks keyFromHash
     /// in the rules bundle to check it. The fragment is raw, not percent-decoded.
-    static func accept(_ url: URL, engine: RulesEngine, store: KeyStore) async -> KeyIntakeOutcome {
+    public static func accept(_ url: URL, engine: RulesEngine, store: KeyStore) async -> KeyIntakeOutcome {
         guard url.scheme == "manifestledger", url.host() == "sync" else { return .ignored }
         guard let fragment = url.fragment(percentEncoded: true),
               let arg = try? JSONSerialization.data(withJSONObject: ["#" + fragment]),

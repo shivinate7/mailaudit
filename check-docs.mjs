@@ -333,7 +333,7 @@ for (const entry of allSpans) {
    `name()`) must occur as a whole word somewhere in the code roots below.
    A renamed function then turns every record that cites it red. Names the
    code cannot hold are listed in EXTERNAL, one reason each. */
-const CODE_ROOTS = ["src", "test", "build.mjs", "check-records.mjs", "icon", "package.json", ".github"];
+const CODE_ROOTS = ["src", "test", "build.mjs", "check-records.mjs", "icon", "native", "package.json", ".github"];
 const EXTERNAL = new Set([
   "currentTime", // Web Animations API, set by hand when measuring motion
   "getAnimations", // Web Animations API, used by hand when measuring motion
@@ -344,7 +344,7 @@ const EXTERNAL = new Set([
 function walk(path, out) {
   if (!existsSync(path)) return;
   if (statSync(path).isDirectory()) {
-    for (const n of readdirSync(path)) if (n !== "node_modules") walk(`${path}/${n}`, out);
+    for (const n of readdirSync(path)) if (n !== "node_modules" && !n.startsWith(".")) walk(`${path}/${n}`, out);
   } else if (!/\.(png|jpe?g)$/i.test(path)) {
     let t = readFileSync(path, "utf8");
     // A name in a comment is prose, not code: esbuild drops JS comments (it
