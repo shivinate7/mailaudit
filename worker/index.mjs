@@ -7,7 +7,16 @@ export class Ledger extends DurableObject {
      per-value cap is 2MB). */
   store = {
     read: () => this.ctx.storage.get("state").then((s) => s ?? null),
-    write: (ledger, rev) => this.ctx.storage.put("state", { ledger, rev }),
+    write: (ledger, rev, at) => this.ctx.storage.put("state", { ledger, rev, at }),
+    hasSnapshot: async (day) => this.sql.exec("SELECT 1 FROM snapshots WHERE day = ?", day).toArray().length > 0,
+    writeSnapshot: async (day, { ledger, rev, at }) =>
+      void this.sql.exec("INSERT INTO snapshots (day, rev, at, ledger) VALUES (?, ?, ?, ?)", day, rev, at ?? null, JSON.stringify(ledger)),
+    readSnapshot: async (day) => {
+      const r = this.sql.exec("SELECT rev, at, ledger FROM snapshots WHERE day = ?", day).toArray()[0];
+      return r ? { ledger: JSON.parse(r.ledger), rev: r.rev, at: r.at } : null;
+    },
+    listSnapshots: async () => this.sql.exec("SELECT day, rev, at FROM snapshots").toArray(),
+    pruneSnapshots: async (beforeDay) => void this.sql.exec("DELETE FROM snapshots WHERE day < ?", beforeDay),
     photoList: async () => this.ctx.storage.sql.exec("SELECT id, mime FROM photos").toArray().map((r) => ({ id: r.id, mime: r.mime })),
     photoGet: async (id) => {
       const r = this.ctx.storage.sql.exec("SELECT mime, bytes FROM photos WHERE id = ?", id).toArray()[0];
@@ -26,6 +35,8 @@ export class Ledger extends DurableObject {
 
   constructor(ctx, env) {
     super(ctx, env);
+    this.sql = ctx.storage.sql;
+    this.sql.exec("CREATE TABLE IF NOT EXISTS snapshots (day TEXT PRIMARY KEY, rev INTEGER, at TEXT, ledger TEXT)");
     ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS photos (id TEXT PRIMARY KEY, mime TEXT NOT NULL, bytes BLOB NOT NULL)");
   }
 

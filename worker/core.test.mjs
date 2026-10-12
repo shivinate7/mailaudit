@@ -107,6 +107,29 @@ const ledger = (over = {}) => ({
 });
 const clone = (v) => structuredClone(v);
 
+/* Clock. route() takes `now` as epoch milliseconds. PREV is the stored
+   state's last write; NOW is the clock send() uses by default. Both are UTC. */
+const DAY = 864e5;
+const PREV = Date.UTC(2026, 9, 11, 18, 0);
+const NOW = Date.UTC(2026, 9, 12, 9, 0);
+const dayOf = (t) => new Date(t).toISOString().slice(0, 10);
+
+/* Store contract the Durable Object store in index.mjs must match. The fake
+   takes and returns plain objects; turning the ledger into TEXT is the
+   Durable Object's job. `at` is compared with new Date(at).getTime(), so
+   the format (ISO string or epoch ms) is not pinned here.
+     read() -> {ledger, rev, at} | null
+     write(ledger, rev, at)               replaces the ledger row
+     broadcast(obj)
+     hasSnapshot(day) -> boolean
+     writeSnapshot(day, {ledger, rev, at})
+     readSnapshot(day) -> {ledger, rev, at} | null
+     listSnapshots() -> [{day, rev, at}]  no ledger bodies, any order
+     pruneSnapshots(beforeDay)            drops days before beforeDay
+   The fake's `order` records "snapshot", "write" and "broadcast". Prune is
+   not recorded there. */
+/* initial is {ledger, rev, at?} or null for an empty store. A missing `at`
+   defaults to PREV. snaps is [[day, {ledger, rev, at}], ...]. */
 /* initial is {ledger, rev} or null for an empty store. The photo half of the
    store is three methods, named here as the contract the Durable Object
    adapter (worker/index.mjs) must provide:
@@ -115,12 +138,14 @@ const clone = (v) => structuredClone(v);
      photoPut(id, mime, bytes) -> void   (the route, not the store, enforces write-once)
    photoWrites counts every photoPut call, so a route that writes twice shows.
    photoGets counts every photoGet call, so a list that reads bytes shows. */
-function fakeStore(initial = null) {
+function fakeStore(initial = null, snaps = []) {
   const s = {
-    state: initial ? clone(initial) : null,
+    state: initial ? clone({ at: PREV, ...initial }) : null,
     writes: [],
     broadcasts: [],
     order: [],
+    snaps: new Map(snaps.map(([day, v]) => [day, clone(v)])),
+    snapWrites: [],
     photos: new Map(),
     photoWrites: [],
     photoGets: [],
@@ -136,14 +161,25 @@ function fakeStore(initial = null) {
     s.photos.set(id, { mime, bytes: new Uint8Array(bytes) });
   };
   s.read = async () => (s.state ? clone(s.state) : null);
-  s.write = async (l, rev) => {
+  s.write = async (l, rev, at) => {
     s.order.push("write");
-    s.writes.push({ ledger: clone(l), rev });
-    s.state = { ledger: clone(l), rev };
+    s.writes.push({ ledger: clone(l), rev, at });
+    s.state = { ledger: clone(l), rev, at };
   };
   s.broadcast = async (obj) => {
     s.order.push("broadcast");
     s.broadcasts.push(clone(obj));
+  };
+  s.hasSnapshot = async (day) => s.snaps.has(day);
+  s.writeSnapshot = async (day, snap) => {
+    s.order.push("snapshot");
+    s.snapWrites.push({ day, ...clone(snap) });
+    s.snaps.set(day, clone(snap));
+  };
+  s.readSnapshot = async (day) => (s.snaps.has(day) ? clone(s.snaps.get(day)) : null);
+  s.listSnapshots = async () => [...s.snaps].map(([day, v]) => ({ day, rev: v.rev, at: v.at }));
+  s.pruneSnapshots = async (beforeDay) => {
+    for (const day of [...s.snaps.keys()]) if (day < beforeDay) s.snaps.delete(day);
   };
   return s;
 }
@@ -162,8 +198,9 @@ function req(method, path, o = {}) {
   return new Request(BASE + path, { method, headers, body });
 }
 
-const send = (store, method, path, o) =>
-  route(req(method, path, o), ENV, store);
+/* o.now sets the clock for one call; every call defaults to NOW. */
+const send = (store, method, path, o = {}) =>
+  route(req(method, path, o), ENV, store, o.now ?? NOW);
 
 /* A photo request: raw bytes, no JSON content type, so the route must take the
    media type from the file name, not from the request. */
@@ -514,7 +551,8 @@ await test("4.8 every successful POST writes, then broadcasts {rev} once", async
   const merge = fakeStore({ ledger: ledger(), rev: 4 });
   await send(merge, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: ledger() } });
   eq(merge.broadcasts, [{ rev: 5 }], "merge broadcast");
-  eq(merge.order, ["write", "broadcast"], "merge order");
+  /* The merge is the first change on NOW's UTC day, so it snapshots first (group 13). */
+  eq(merge.order, ["snapshot", "write", "broadcast"], "merge order");
 });
 
 /* An un-check is a key that is absent from `received`, stamped with a later
@@ -760,7 +798,7 @@ await test("9.3 the limit is checked on the merged ledger: a small incoming that
   eq(res.headers.get("Access-Control-Allow-Origin"), PAGES, "CORS header on the 413");
   eq(s.writes.length, 0, "writes");
   eq(s.broadcasts.length, 0, "broadcasts");
-  ok(canon(s.state) === canon({ ledger: stored, rev: 3 }), "stored state unchanged");
+  ok(canon(s.state) === canon({ ledger: stored, rev: 3, at: PREV }), "stored state unchanged");
 });
 
 /* "é" is one character and two UTF-8 bytes, and JSON.stringify leaves it
@@ -856,7 +894,7 @@ await test("10.3 a POST that changes the stored ledger writes rev 4, then broadc
   eq(res.status, 200, "status");
   eq(s.writes.map((w) => w.rev), [4], "write rev");
   eq(s.broadcasts, [{ rev: 4 }], "broadcast");
-  eq(s.order, ["write", "broadcast"], "order");
+  eq(s.order, ["snapshot", "write", "broadcast"], "order");
   eq((await res.json()).rev, 4, "response rev");
 });
 
@@ -916,6 +954,180 @@ await test("11.4 a first POST to an empty store replies with zero stats", async 
   const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: ledger() } });
   eq(res.status, 200, "status");
   eq((await res.json()).stats, ZERO_STATS, "reply stats");
+});
+
+/* ---------- 13. daily snapshots, /health, and the snapshot routes ---------- */
+/* A snapshot is the ledger as it was before the first changing POST of a UTC
+   day. A changing POST runs snapshot, then write, then broadcast. A no-op,
+   a 413, a 400 and a first POST to an empty store take none. */
+const withCard = (n) =>
+  ledger({ items: [item("100|1|555", "Alpha Card", 2), item(`${n}|1|555`, `Card ${n}`)] });
+const changes = (stored, incoming) =>
+  canon(mergeLedger(clone(stored), clone(incoming)).merged) !== canon(stored);
+const snapOf = (day, rev) => ({
+  ledger: ledger({ received: { [day]: rev } }),
+  rev,
+  at: Date.parse(`${day}T12:00:00Z`),
+});
+/* GET /snapshots as a list of days. A non-array body fails here, not later. */
+async function listDays(s) {
+  const body = await (await send(s, "GET", "/snapshots", { key: KEY_PHONE })).json();
+  ok(Array.isArray(body), "GET /snapshots returns an array");
+  return Array.isArray(body) ? body.map((e) => e.day) : [];
+}
+
+await test("13.1 the first changing POST of a UTC day snapshots the ledger as it was before the write", async () => {
+  const stored = ledger();
+  ok(changes(stored, withCard(200)), "fixture: the POST changes the stored ledger");
+  const s = fakeStore({ ledger: stored, rev: 3, at: PREV });
+  const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: withCard(200) } });
+  eq(res.status, 200, "status");
+  eq(s.snapWrites.length, 1, "snapshot writes");
+  eq(s.snapWrites[0]?.day, "2026-10-12", "snapshot day");
+  eq(s.snapWrites[0]?.ledger, stored, "snapshot holds the pre-write ledger");
+  eq(s.snapWrites[0]?.rev, 3, "snapshot rev is the pre-write rev");
+  ok(new Date(s.snapWrites[0]?.at).getTime() === PREV, "snapshot at is the pre-write write time");
+  eq(s.order, ["snapshot", "write", "broadcast"], "order");
+  eq(s.writes.map((w) => w.rev), [4], "write rev");
+  ok(new Date(s.writes[0]?.at).getTime() === NOW, "write at is the POST's time");
+});
+
+await test("13.2 a second changing POST on the same UTC day writes no snapshot, and the first snapshot stays", async () => {
+  const stored = ledger();
+  const s = fakeStore({ ledger: stored, rev: 3, at: PREV });
+  await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: withCard(200) } });
+  eq(s.snapWrites.length, 1, "fixture: the first POST took the day's snapshot");
+  const afterFirst = clone(s.state.ledger);
+  s.order.length = 0;
+  ok(changes(afterFirst, withCard(300)), "fixture: the second POST changes the ledger");
+  const res = await send(s, "POST", "/ledger", {
+    key: KEY_PHONE,
+    now: NOW + 3 * 3600e3,
+    json: { ledger: withCard(300) },
+  });
+  eq(res.status, 200, "status");
+  eq(s.order, ["write", "broadcast"], "second POST order: no snapshot");
+  eq(s.snapWrites.length, 1, "snapshot writes after the second POST");
+  eq(s.snapWrites[0]?.ledger, stored, "the day's snapshot is still the pre-first-write ledger");
+  eq(s.writes.map((w) => w.rev), [4, 5], "write revs");
+});
+
+await test("13.3 a changing POST on a new UTC day snapshots again, including across midnight UTC", async () => {
+  const stored = ledger();
+  const s = fakeStore({ ledger: stored, rev: 3, at: PREV });
+  const late = Date.UTC(2026, 9, 12, 23, 59);
+  const early = Date.UTC(2026, 9, 13, 0, 1);
+  await send(s, "POST", "/ledger", { key: KEY_PHONE, now: late, json: { ledger: withCard(200) } });
+  const afterLate = clone(s.state.ledger);
+  s.order.length = 0;
+  ok(changes(afterLate, withCard(300)), "fixture: the second POST changes the ledger");
+  const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, now: early, json: { ledger: withCard(300) } });
+  eq(res.status, 200, "status");
+  eq(s.order, ["snapshot", "write", "broadcast"], "order on the new day");
+  eq(s.snapWrites.map((w) => w.day), ["2026-10-12", "2026-10-13"], "one snapshot per UTC day");
+  eq(s.snapWrites[1]?.ledger, afterLate, "the new day's snapshot is the ledger before that write");
+  eq(s.snapWrites[1]?.rev, 4, "the new day's snapshot rev is the pre-write rev");
+});
+
+await test("13.4 a no-op, a 413, a 400 and a first POST to an empty store take no snapshot; a later changing POST still does", async () => {
+  /* Every ledger the current app sends carries receivedAt (state at src/app.jsx ~2836). A save from before receivedAt shipped may lack it; the merge then adds {}, so the no-op looks like a change. */
+  const stored = ledger({ receivedAt: {} });
+  ok(!changes(stored, stored), "fixture: the no-op POST changes nothing");
+  const s = fakeStore({ ledger: stored, rev: 3, at: PREV });
+  await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: stored } });
+  eq(s.snapWrites.length, 0, "no-op: snapshot writes");
+  await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: sized(LIM + 1) } });
+  eq(s.snapWrites.length, 0, "413: snapshot writes");
+  for (const b of BAD_BODIES) await send(s, "POST", "/ledger", { key: KEY_PHONE, ...b });
+  eq(s.snapWrites.length, 0, "400: snapshot writes");
+  eq(s.writes.length, 0, "fixture: none of those wrote the ledger");
+  await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: withCard(200) } });
+  eq(s.snapWrites.length, 1, "anchor: the first changing POST of the day still snapshots once");
+
+  const e = empty();
+  await send(e, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: ledger() } });
+  eq(e.snapWrites.length, 0, "empty store: snapshot writes");
+  eq(e.writes.length, 1, "empty store: the ledger is still written");
+});
+
+await test("13.5 GET /snapshots lists days newest first, each with only day, rev and at", async () => {
+  const days = ["2026-10-09", "2026-10-11", "2026-10-10"];
+  const s = fakeStore(
+    { ledger: ledger(), rev: 3, at: PREV },
+    days.map((d) => [d, snapOf(d, 1)])
+  );
+  const res = await send(s, "GET", "/snapshots", { key: KEY_PHONE });
+  eq(res.status, 200, "status");
+  const body = await res.json();
+  ok(Array.isArray(body), "body is an array");
+  const list = Array.isArray(body) ? body : [];
+  eq(list.map((e) => e.day), ["2026-10-11", "2026-10-10", "2026-10-09"], "newest first");
+  for (const e of list) eq(Object.keys(e).sort(), ["at", "day", "rev"], `keys of ${e.day}`);
+  ok(!JSON.stringify(body).includes('"ledger"'), "no ledger body in the list");
+  ok(new Date(list[0]?.at).getTime() === Date.parse("2026-10-11T12:00:00Z"), "at is passed through");
+});
+
+await test("13.6 GET /snapshots/<day> returns that day's ledger, rev and at; an unknown day is 404", async () => {
+  const day = "2026-10-11";
+  const snap = snapOf(day, 7);
+  const s = fakeStore({ ledger: ledger(), rev: 3, at: PREV }, [[day, snap]]);
+  const res = await send(s, "GET", `/snapshots/${day}`, { key: KEY_PHONE });
+  eq(res.status, 200, "known day status");
+  const body = await res.json();
+  eq(body.ledger, snap.ledger, "ledger");
+  eq(body.rev, 7, "rev");
+  ok(new Date(body.at).getTime() === snap.at, "at");
+  eq((await send(s, "GET", "/snapshots/2026-10-01", { key: KEY_PHONE })).status, 404, "unknown day status");
+});
+
+await test("13.7 both snapshot routes need the key: 401 with none or a stranger's, 200 with a device key", async () => {
+  const day = "2026-10-11";
+  const s = fakeStore({ ledger: ledger(), rev: 3, at: PREV }, [[day, snapOf(day, 1)]]);
+  for (const path of ["/snapshots", `/snapshots/${day}`, "/snapshots/2026-10-01"]) {
+    eq((await send(s, "GET", path, {})).status, 401, `${path} no key`);
+    eq((await send(s, "GET", path, { key: KEY_STRANGER })).status, 401, `${path} stranger`);
+  }
+  eq((await send(s, "GET", "/snapshots", { key: KEY_PHONE })).status, 200, "anchor: GET /snapshots with a device key");
+  eq((await send(s, "GET", `/snapshots/${day}`, { key: KEY_PHONE })).status, 200, "anchor: GET /snapshots/<day> with a device key");
+});
+
+await test("13.8 GET /health with no key returns only {at}, the last write time; a no-op does not move it", async () => {
+  const s = seeded();
+  const res = await send(s, "GET", "/health", {});
+  eq(res.status, 200, "status");
+  const body = await res.json();
+  eq(Object.keys(body), ["at"], "keys: only at");
+  ok(new Date(body.at).getTime() === PREV, "at is the stored state's last write time");
+
+  await send(s, "POST", "/ledger", { key: KEY_PHONE, now: NOW, json: { ledger: withCard(200) } });
+  const after = await (await send(s, "GET", "/health", {})).json();
+  ok(new Date(after.at).getTime() === NOW, "after a changing POST, at is that write's time");
+
+  const current = clone(s.state.ledger);
+  ok(!changes(current, current), "fixture: the repeat POST changes nothing");
+  await send(s, "POST", "/ledger", { key: KEY_PHONE, now: NOW + 3600e3, json: { ledger: current } });
+  const noop = await (await send(s, "GET", "/health", {})).json();
+  ok(new Date(noop.at).getTime() === NOW, "a no-op POST does not move at");
+});
+
+await test("13.9 a changing POST keeps exactly 180 snapshots: today and the 179 days before it; the 180-day-old and older go", async () => {
+  /* Snapshots for 1 to 185 days ago, so the boundary and the older ones are all present. */
+  const ages = Array.from({ length: 185 }, (_, i) => i + 1);
+  const dayAgo = (k) => dayOf(NOW - k * DAY);
+  const s = fakeStore(
+    { ledger: ledger(), rev: 3, at: PREV },
+    ages.map((k) => [dayAgo(k), snapOf(dayAgo(k), 1)])
+  );
+  ok(changes(ledger(), withCard(200)), "fixture: the POST changes the ledger");
+  const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: withCard(200) } });
+  eq(res.status, 200, "status");
+  eq(s.snapWrites.map((w) => w.day), [dayOf(NOW)], "fixture: this POST takes today's snapshot");
+  const days = await listDays(s);
+  const kept = [dayOf(NOW), ...ages.filter((k) => k <= 179).map(dayAgo)];
+  eq(days.length, 180, "exactly 180 snapshots remain");
+  eq([...days].sort(), kept.sort(), "today and the 179 days before it remain");
+  ok(!days.includes(dayAgo(180)), "the 180-day-old snapshot is pruned");
+  ok(!days.includes(dayAgo(181)), "the 181-day-old snapshot is pruned");
 });
 
 /* ---------- 12. photos: write-once blobs beside the ledger, never in it ---------- */

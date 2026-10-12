@@ -330,7 +330,7 @@ A fact an agent needs, that argues nothing. Read the CSV record before touching 
 - `harness-jsdom-setup-gotchas` — The harness supplies what jsdom lacks.
 - `harness-push-race-one-shot` — A push conflict needs a one-shot failure.
 - `harness-waits-past-debounces` — Tests wait past the debounces.
-- `live-verification` — What has run against real GitHub or a real device.
+- `live-verification` — What has run against real GitHub, a real device or a Worker probe.
 - `orderwand-csv` — The OrderWand CSV schema and quirks.
 
 ## Open threads
