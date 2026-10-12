@@ -4,9 +4,10 @@
 // argument. CLAUDE.md is now an index; the records under
 // decisions/, invariants/ and measurements/ hold the prose this file used to
 // check. So this walks CLAUDE.md plus every `.md` file in those three
-// folders, and checks the same two claims as before, now against the whole
-// corpus: the suite's published assertion count, and every repo path named
-// in backticks. Run with `npm run check:docs`. Text inside a code fence is
+// folders, and checks four claims against the whole
+// corpus: the suite's published assertion count, every repo path named in
+// backticks, every code name in backticks, and every link target in
+// README.md and CLAUDE.md. Run with `npm run check:docs`. Text inside a code fence is
 // never judged: it is sample code, not a claim about the repo.
 //
 // What this deliberately does NOT check: the measured page figures in "The
@@ -388,16 +389,24 @@ console.log(`check:docs: ${namesJudged} code name(s) judged against the code`);
 
 /* ---------- claim 4: markdown link targets in README.md and CLAUDE.md resolve ----------
    [text](target): a relative file target must exist. URLs and bare #anchors are
-   not judged. A #fragment on a file target is stripped; the file is judged. */
+   not judged. A #fragment on a file target is stripped; the file is judged.
+   Fences are already blank. Code spans are blanked here too (same length, so
+   line numbers hold), so a `[x](y)` shown as sample text is not a link.
+   Titled links `[x](y "t")` judge y. A path with spaces must use the
+   `[x](<a b.md>)` form. Reference-style links `[x][ref]` / `[ref]: y` are
+   NOT checked: the repo uses none. */
 {
   let links = 0;
+  const blankSpans = (t) =>
+    t.replace(/(`+)(?!`)[\s\S]*?[^`]\1(?!`)/g, (m) => m.replace(/[^\n]/g, " "));
   for (const f of prose.filter((x) => x.path === "README.md" || x.path === "CLAUDE.md")) {
-    for (const m of f.prose.matchAll(/\]\(([^)\s]+)\)/g)) {
-      const t = m[1].split("#")[0];
+    const text = blankSpans(f.prose);
+    for (const m of text.matchAll(/\]\(\s*(?:<([^>\n]+)>|([^)\s]+))/g)) {
+      const t = (m[1] ?? m[2]).split("#")[0];
       if (!t || /^[a-z][a-z0-9+.-]*:/i.test(t)) continue;
       links++;
       if (!existsSync(t)) {
-        console.error(`check:docs: ${f.path}:${lineAt(f.prose, m.index)} links to \`${t}\`, which does not exist`);
+        console.error(`check:docs: ${f.path}:${lineAt(text, m.index)} links to \`${t}\`, which does not exist`);
         failures++;
       }
     }

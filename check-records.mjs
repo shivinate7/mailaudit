@@ -4,7 +4,7 @@
 // from walking the real files. Records hold current text only; git keeps
 // history. Run with `npm run check:records`.
 //
-// Six claims, each with its own section below:
+// Seven claims, each with its own section below:
 //   1. every citation resolves
 //   2. no fence is broken
 //   3. no duplicate slug across the three folders
@@ -12,6 +12,8 @@
 //   5. no orphan and no dead index entry
 //   6. every invariant names the test that pins it, and no record cites an
 //      invariant by number
+//   7. every decision holds a "Holds while" line, every open thread a
+//      "Status" line, and the index lists no slug twice
 
 import { readFileSync, readdirSync } from "fs";
 import { execFileSync } from "child_process";
@@ -412,6 +414,10 @@ function closestSlug(token, slugs) {
       console.error(`check:records: ${r.path}: no "**Holds while:**" line`);
       bad++;
     }
+  }
+  if (!/^## Open threads$/m.test(claude)) {
+    console.error('check:records: CLAUDE.md has no "## Open threads" heading, so no status line can be judged');
+    bad++;
   }
   const open = (claude.split(/^## Open threads$/m)[1] ?? "").split(/^## /m)[0];
   for (const m of open.matchAll(/^- `([a-z0-9-]+)`/gm)) {
