@@ -39,7 +39,7 @@ Degen's self-hosted runner. On a public repo, a fork PR would run on the owner's
 
 ## Still open
 
-- Lane N5 landed without these steps. Its diff does not touch `.github/workflows/test.yml`, so the native job still runs ST only. Still to add, after ST and in this order: the `xcode-select` pin for Xcode; xcodegen; `xcodebuild build` for macOS and for the iOS Simulator with `CODE_SIGNING_ALLOWED=NO`; the UI tests. The 3-minute timeout was set for ST alone. The local build and UI tests took 26 s and 139 s, so the change that adds them must set a new timeout.
+- Lane N5 landed without these steps. Its diff does not touch `.github/workflows/test.yml`, so the native job still runs ST only. Still to add, under lane C2 in `native-build-lanes`, after ST and in this order: the `xcode-select` pin for Xcode; xcodegen; `xcodebuild build` for macOS and for the iOS Simulator with `CODE_SIGNING_ALLOWED=NO`; the UI tests. The 3-minute timeout was set for ST alone. The local build and UI tests took 26 s and 139 s, so the change that adds them must set a new timeout.
 - Unmeasured: how a required check reads a job that the draft guard skipped. The scratch PR measures this.
 
 ## See also

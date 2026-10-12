@@ -1,6 +1,6 @@
 # The native build runs in ordered lanes
 
-**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. W1 landed in PR #61 and S1 in PR #62. S2 landed in PR #63, S3 in PR #64 and S4 in PR #65. N1 landed in PR #75, C1 in PR #76, W2a in PR #77 and W3a in PR #78. N2 landed in PR #81, N3 in PR #80 and N5 in PR #82. Their rows have left this table. No other lane has landed. The rows below carry the 2026-10-11 changes and the 2026-10-12 orchestrator defaults. They are ruled or named, and not built.
+**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. W1 landed in PR #61 and S1 in PR #62. S2 landed in PR #63, S3 in PR #64 and S4 in PR #65. N1 landed in PR #75, C1 in PR #76, W2a in PR #77 and W3a in PR #78. N2 landed in PR #81, N3 in PR #80 and N5 in PR #82. Their rows have left this table. No other lane has landed. The rows below carry the 2026-10-11 changes. The 2026-10-12 orchestrator defaults sit in N5 notes below. The rows are ruled or named, and not built.
 
 The native rebuild splits into lanes. W lanes change the Worker. S lanes change shared files and extract the rules. The C lane changes CI. N lanes build the native client. A lane that lands leaves this table, and git keeps its history.
 
@@ -31,6 +31,7 @@ The native rebuild splits into lanes. W lanes change the Worker. S lanes change 
 | N9 Milestones | the versions code | A milestone is saved before a reset and before an apply that removes something. The prune equals `keptIds`. The list shows each milestone, and a restore takes a milestone first and passes the same apply path. Errors show in the pressed row. The reset ask names its count and has Cancel. | ST | N4a |
 | N10 Photos | Photos views | A downscale to 2000px. A photo blob never enters the ledger. The viewer is modal, with Escape and focus return. The photo upload has Stop. | ST | W2a |
 | N11 Device check | none | The owner checks on a device. The ios-adblock phone-apps list gets the new entry. The hand checks are named: VoiceOver order, Dynamic Type, the draft kept when the app leaves, and the iPhone Camera opening a `manifestledger://` QR code (see `native-key-via-url-scheme`). If the Camera fails the scheme, the universal-link fallback in that record is built. | the owner | all |
+| C2 UI tests in CI, not built | The native job in `.github/workflows/test.yml` | Not yet briefed. The N5 UI test in `native/ManifestUITests/PackagesShellUITests.swift` already exists. | The native job runs the steps in `native-ci-on-hosted-macos` after ST, green on a hosted macOS runner, with a new timeout. | C1 (landed), N5 (landed) |
 
 W2 and W3 come from the owner's rulings, not from the first plan. W2a and W3a have landed. Their tests are groups 12 and 13 in `worker/core.test.mjs`. W2b, W3b, W3c, W3d and W3e have no full brief, so their files, tests and done checks are not set.
 
@@ -48,6 +49,15 @@ W2 and W3 come from the owner's rulings, not from the first plan. W2a and W3a ha
 
 - parse-items.json exclusion: `rules-run-in-javascriptcore`, its one home.
 
+## N5 notes
+
+- Orchestrator default, 2026-10-12: the app is iPhone-only (`TARGETED_DEVICE_FAMILY` 1), iOS 26.0, bundle id `dev.shivinate.manifest`, as `native-swift-rebuild` says.
+- Orchestrator default, 2026-10-12: the Ledger tab icon is the gear (`gearshape`), see `phone-nav-is-bottom-bar`.
+- Orchestrator default, 2026-10-12: the native 760pt UI case is removed. `PackagesShellUITests` runs at 375pt only. The web screens check keeps 760pt, see `screens-checked-headless-in-ci`.
+- Orchestrator default, 2026-10-12: the check-in toggle (`toggleCount`) and the "N of M" clamp (`countLabel`) live in `src/view-rules.mjs`. `PackagesModel` calls them through `RulesEngine`.
+- Orchestrator default, 2026-10-12: a key link that beats the engine waits in `PendingKeyLinks`. `ManifestApp` logs each outcome, with no key text.
+- Orchestrator default, 2026-10-12: a failed check-in save rolls the store back in `commitReceived`. `PackagesModel` sets `checkInError`, and `PackagesView` shows it in an overlay.
+
 ## Risk
 
 S2 and S3 (landed) changed `src/app.jsx`, the largest file in the repo. The sticky rows and the frozen sort must stay in the component, see `no-layout-shift-under-pointer`.
@@ -62,9 +72,8 @@ Other risks live in the record for their lane:
 
 ## Still open
 
-- Orchestrator default, 2026-10-12, N5: the app is iPhone-only (TARGETED_DEVICE_FAMILY 1), iOS 26.0, bundle id `dev.shivinate.manifest`, as `native-swift-rebuild` says. The Ledger tab icon is the gear (`gearshape`). The native 760pt UI case is removed; the web screens check keeps 760pt (`screens-checked-headless-in-ci`). The check-in toggle and the "N of M" clamp live in `src/view-rules.mjs`, and Swift calls them through RulesEngine. A key link that beats the engine waits in a queue. A failed check-in save leaves the store as it was and shows an error.
 - The Ledger tab is a placeholder. No lane builds its options, see `ledger-tab-holds-options`. Open, owner to name a lane.
-- The native job runs ST only. The UI tests, the xcodegen step and the `xcodebuild` builds are not in CI, see `native-ci-on-hosted-macos`.
+- The native job runs ST only. The UI tests, the xcodegen step and the `xcodebuild` builds are not in CI, see `native-ci-on-hosted-macos`. Lane C2, the table row above, adds them. Not built.
 - The key scan covers the Packages model, its rows and the ledger file. No lane scans SwiftUI view state. Open, owner to name a lane.
 
 ## See also

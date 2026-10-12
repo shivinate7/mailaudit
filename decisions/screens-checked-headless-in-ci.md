@@ -6,9 +6,9 @@ Each view (Orphaned, Tally, Packages) is checked in a headless browser at 375px 
 
 ## The native client
 
-Lane N5 added a UI test, `native/ManifestUITests/PackagesShellUITests.swift`. It runs on the iOS Simulator at 375pt and 760pt. It is not yet in the native job. The test fails when another row frame moves on a check-in. It guards `no-layout-shift-under-pointer` for the native client, as the web check does for the web app. The native job is in `native-ci-on-hosted-macos`.
+Lane N5 added a UI test, `native/ManifestUITests/PackagesShellUITests.swift`. It runs on the iOS Simulator at 375pt only. The native 760pt case is removed, see `native-build-lanes`. The web check keeps 760pt. The UI test is not yet in the native job. The test fails when another row frame moves on a check-in. It guards `no-layout-shift-under-pointer` for the native client, as the web check does for the web app. The native job is in `native-ci-on-hosted-macos`.
 
-- Measured on 2026-10-12 on an iPhone 17 simulator: the 375pt case passed. The 760pt case skipped, because the test's own check found the window narrower than 760pt. The 760pt check is unknown until it runs on a device at least 760pt wide.
+- Measured on 2026-10-12 on an iPhone 17 simulator: the 375pt case passed. The 760pt case skipped, because the test's own check found the window narrower than 760pt. The case has since been removed, see `native-build-lanes`.
 - Still open: the N5 test covers Packages only. Each native view needs the same test, so the briefs for lanes N6 and N7 must add it for Tally and Orphaned.
 
 ## See also
