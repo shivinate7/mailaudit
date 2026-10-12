@@ -1,12 +1,10 @@
 # The staleness clock measures agreement, not writes
 
-The staleness clock is the last time this device agreed with the backup, in either direction. It is not the last time the device wrote. `syncedAt` is `max(pushedAt, pulledAt)`. That value is defined once. The decision and the line's own copy both read it. So the two cannot drift apart.
+The staleness clock is the last time this device agreed with the Worker. `syncedAt` is `workerSyncedAt`: the time of the last successful Worker reply, kept in the saved state so a reload keeps it. It never reads `pushedAt`, `pulledAt` or a GitHub peek (owner ruling 2026-10-12, default 5: the UI shows no GitHub state). That value is defined once. The decision, the line's copy and the Last sync row all read it.
 
-**Holds while:** `syncedAt` in `src/app.jsx` is `max(pushedAt, pulledAt)`, and `acceptPull` in `src/entry.jsx` records `pulledAt`.
+**Holds while:** `syncedAt` in `src/app.jsx` is `workerSyncedAt`, and the save payload carries `workerSyncedAt`.
 
-Measuring `pushedAt` alone is wrong. The line answers "are my bytes on GitHub?" The field `pushedAt` answers "did I write recently?" Those differ when two devices have different jobs. The laptop is where editing happens. It pushes, and it never goes stale. The phone mostly merges. `acceptPull` records `pulledAt`, not `pushedAt`. So a phone in step with the remote can report itself as stale. One phone reported "Not backed up since 09-16" while it held the laptop's newest lines. Both facts were true at once. That showed the error.
-
-Taking the later of the two cannot hide a real problem. The reason is structural, not luck. Every branch above this one outranks it. Unpushed local work against a moved remote is `behind`. A push that failed is `error`. Once those are clear, what is left is a device that holds the remote's bytes. That is what "backed up" means. Group 45 covers this. Test 45.3 pins the ordering: a fresh `pulledAt` must never mask being behind.
+The clock measures agreement, not writes. A phone that only merges still agrees with the Worker, so it never reports itself stale. No agreement yet is a call in flight, or a failure that `serverDown` already raised. So there is no "never" state. `workerSyncedAt` is device-local: it is in the save payload and the load effect, and not in `snapshot()`, the backup or the merge.
 
 **Pinned by:** 45.1–45.3. Staleness measured off `pushedAt` alone kills 45.1 and 45.2. Test 45.3 pins the ordering. A fresh `pulledAt` must never mask being behind. The `remoteInfo` effect keys on `[loaded, syncOpen]`. So a test must toggle the panel before it asserts. See `testing-check-something-rereads`.
 

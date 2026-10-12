@@ -1835,24 +1835,17 @@ const keySave = {
    backup rather than a sync, and the ledger on the device is still the real
    one. */
 const REMOTE_SAYS = {
-  "no-key": "This device has no key for the backup.",
-  /* the private-repo case. GitHub hides a repo you cannot see behind a 404, so
-     without this the app would say "no ledger has been pushed yet" to someone
-     whose ledger is sitting safely on a branch they simply cannot read — an
-     invitation to push over it, or to conclude the backup never worked. */
-  "no-access":
-    "This device can’t read the backup with its key.",
-  "bad-key":
-    "That doesn’t look like a GitHub token — they start with github_pat_ or ghp_.",
-  auth: "That key has expired or been revoked. Paste a new one.",
-  forbidden:
-    "That key can’t write to the ledger repo. It needs Contents: read & write on mailaudit-data.",
-  "rate-limit": "GitHub is throttling requests. Try again shortly.",
+  "no-key": "Older versions can’t be loaded on this device.",
+  "no-access": "Older versions can’t be loaded on this device.",
+  "bad-key": "Older versions can’t be loaded on this device.",
+  auth: "Older versions can’t be loaded on this device.",
+  forbidden: "Older versions can’t be loaded on this device.",
+  "rate-limit": "Too many requests. Try again shortly.",
   conflict: "The backup changed in the meantime.",
-  missing: "No ledger has been pushed yet.",
-  "no-branch": "The data branch doesn’t exist yet — see the setup notes.",
+  missing: "There are no older versions yet.",
+  "no-branch": "There are no older versions yet.",
   offline: "No connection. The ledger is safe on this device.",
-  server: "GitHub is having trouble. Try again.",
+  server: "The backup service is having trouble. Try again.",
   "bad-response":
     "That isn’t a Mail Day ledger. Nothing on this device was changed.",
 };
@@ -1874,22 +1867,21 @@ async function peekTwice() {
    photo upload through the ledger's error path would offer the user a button
    that silently discards another device's check-ins. Photos must never be able
    to arm that. */
+const NO_PHOTO_BACKUP =
+  "Some photos are not backed up yet. They stay on this device and sync again on their own.";
 const PHOTO_SAYS = {
   "no-access":
     "Photos need your key — they live in a private repo, so pulling them isn’t anonymous.",
   "no-key": "Photos need a key to sync. The ledger above is safe either way.",
-  auth: "That key can’t reach the photo repo. Check it covers mailaudit-data.",
-  forbidden:
-    "That key can’t write photos. It needs Contents: read & write on mailaudit-data.",
-  "rate-limit":
-    "GitHub is throttling photo uploads. The ledger is pushed — tap Push again shortly.",
-  "no-branch":
-    "The photo repo has no main branch yet — create it with a README first.",
-  missing: "The photo repo isn’t reachable. Create mailaudit-data first.",
+  auth: NO_PHOTO_BACKUP,
+  forbidden: NO_PHOTO_BACKUP,
+  "rate-limit": NO_PHOTO_BACKUP,
+  "no-branch": NO_PHOTO_BACKUP,
+  missing: NO_PHOTO_BACKUP,
   offline: "No connection, so photos didn’t sync. Nothing was lost.",
   unreadable: "This device’s photos could not be read, so no new photos were backed up.",
-  conflict: "GitHub is busy. The ledger is pushed — tap Push again to finish the photos.",
-  server: "GitHub had trouble with the photos. Tap Push again to finish.",
+  conflict: NO_PHOTO_BACKUP,
+  server: NO_PHOTO_BACKUP,
 };
 
 /* The ONE place a payload is turned into a ledger, and the only thing standing
@@ -3120,6 +3112,9 @@ export default function MailDayLedger() {
           );
           // absent on anything saved before stamps shipped
           setStamps(sanitizeStamps(data.stamps));
+          // device-local, never in snapshot(): when the Worker last agreed
+          if (data.workerSyncedAt)
+            setWorkerSyncedAt((p) => Math.max(p || 0, data.workerSyncedAt));
           if (data.dateFilter) setDateFilter(data.dateFilter);
           if (data.sortBy) setSortBy(data.sortBy);
           // cardSort: the key this setting shipped under before the rename
@@ -3156,6 +3151,7 @@ export default function MailDayLedger() {
             dateFilter,
             sortBy,
             itemSort,
+            workerSyncedAt,
             savedAt: Date.now(),
           })
         );
@@ -3166,6 +3162,25 @@ export default function MailDayLedger() {
     }, 500);
     return () => clearTimeout(saveTimer.current);
   }, [items, received, receivedAt, envelopes, stamps, dateFilter, sortBy, itemSort, loaded]);
+
+  /* The last Worker agreement is device-local and survives a reload, but a
+     successful sync must not flash the save indicator (decision
+     remote-sync-is-off-the-save-path). So it has its own silent write, which
+     reads the newest ledger fields from a ref. */
+  const payloadRef = useRef(null);
+  payloadRef.current = { items, received, receivedAt, envelopes, stamps, dateFilter, sortBy, itemSort };
+  useEffect(() => {
+    if (!loaded || !workerSyncedAt) return;
+    const t = setTimeout(() => {
+      window.storage
+        .set(
+          STORAGE_KEY,
+          JSON.stringify({ ...payloadRef.current, workerSyncedAt, savedAt: Date.now() })
+        )
+        .catch(() => {});
+    }, 500);
+    return () => clearTimeout(t);
+  }, [workerSyncedAt, loaded]);
 
   /* ONE payload builder, shared by the file download and the GitHub push.
      Keeping it single is a documentation requirement as much as a DRY one:
@@ -3202,60 +3217,31 @@ export default function MailDayLedger() {
      Pull that recovers it — the "a control that recovers state must not be
      gated on that state existing" rule that widened Backup once and Sync twice
      already. */
-  /* The last time this device and the backup agreed, in EITHER direction.
-     One definition, read by the decision below and by the line's own copy, so
-     a change to what "backed up" means cannot leave the sentence saying
-     something else. */
-  const syncedAt = useMemo(
-    () => Math.max(remoteInfo?.pushedAt || 0, remoteInfo?.pulledAt || 0) || null,
-    [remoteInfo]
-  );
+  /* The last time this device and the Worker agreed. One definition, read by
+     the decision below, by the line's own copy and by the Last sync row. It
+     reads the Worker only (owner ruling 2026-10-12, default 5): the GitHub
+     mirror's push and pull times never reach the screen. */
+  const syncedAt = workerSyncedAt;
 
   const syncBroken = useMemo(() => {
-    if (!window.remote) return null;
+    if (!window.sync && !window.remote) return null;
     /* A visitor is not an unbacked-up device, and "tap to set it up" is
        meaningless advice to someone looking at a copy of someone else's
-       ledger. Their own key would not help them; there is nothing of theirs to
-       back up. Say what is actually true instead — see the line's copy. */
+       ledger. Say what is actually true instead. */
     if (seedShown) return "seeded";
     if (serverDown)
       return serverDown === "unknown" ? "server" : serverDown === "no-access" ? "key-refused" : serverDown;
-    /* The GitHub mirror raises nothing here: a refused token, a moved remote
-       (behind) and an unknown peek are the watchdog's to catch, not the
-       user's. */
     if (photoUnreadable) return "photos-unreadable";
-    /* remoteInfo is null until its effect runs, which is one commit after the
-       first paint. Reading that as "no key" flashes the manila banner on every
-       cold start of a perfectly configured device — the same "I could not
-       look" ≠ "all clear" rule peek and listPhotos follow. */
-    if (!remoteInfo) return null;
-    /* A device with a GitHub token but no Worker key: the sync line is the one
-       entrance for pasting it (the home-screen app keeps its own storage). Just
-       below the Worker failures and every GitHub failure, above "never" and
-       "stale". It always shows: the adapter exists only where a Worker key can
-       be pasted. With the panel open the line is that panel's header and says the
-       truth about the backup; the field is in the panel. */
-    if (workerKeySet === false && remoteInfo.hasKey && !syncOpen) return "sync-key";
-    /* **The clock is the last time this device AGREED with the backup, not the
-       last time it wrote to it.** It used to read `pushedAt` alone, which asks
-       "did I write recently?" when the question is "are my bytes on GitHub?".
-       Those come apart the moment the two devices have different jobs: the
-       laptop is where the editing happens, so it pushes; the phone mostly
-       merges what the laptop sent. A phone in perfect step — same sha, nothing
-       outstanding — reported "Not backed up since 09-16" for as long as it went
-       without writing, which is affirmatively wrong rather than merely
-       unhelpful, and it is the line whose whole job is to be believed.
-
-       `acceptPull` records `pulledAt` for exactly this, and a merge goes
-       through it. Taking the later of the two cannot paper over a real problem,
-       because every branch above outranks this one: unpushed local work against
-       a moved remote is `behind`, and a push that failed is `error`. What is
-       left when both of those are clear is a device holding the remote's bytes,
-       which is what "backed up" means. */
-    if (!syncedAt) return "never";
-    if (Date.now() - syncedAt > SYNC_STALE_MS) return "stale";
+    /* null until the key lookup has run: "I could not look" is not "no key" */
+    if (workerKeySet === null) return null;
+    /* no sync key on this device: the line is the one entrance for pasting it */
+    if (workerKeySet === false) return syncOpen ? null : "sync-key";
+    /* **The clock is the last time this device AGREED with the Worker**
+       (decision ruled-head-stale-clock-agreement). No agreement yet is a call
+       in flight, or a failure that serverDown already raised above. */
+    if (syncedAt && Date.now() - syncedAt > SYNC_STALE_MS) return "stale";
     return null;
-  }, [pushState, remoteInfo, ahead, seedShown, syncedAt, photoUnreadable, serverDown, workerKeySet, syncOpen]);
+  }, [seedShown, syncedAt, photoUnreadable, serverDown, workerKeySet, syncOpen]);
 
   /* One sentence per sync state: the advisory line on a working screen says it
      whole, and the Sync row on the Ledger tab says it without the "tap to". */
@@ -3278,13 +3264,11 @@ syncBroken === "seeded"
                           ? ` ${new Date(syncedAt).toISOString().slice(0, 10)}`
                           : ""
                       } — tap to close`
-                    : syncBroken === "never"
-                    ? "Nothing has been backed up yet — tap to fix"
                     : syncBroken === "stale"
                     ? `Not backed up since ${new Date(syncedAt)
                         .toISOString()
                         .slice(0, 10)} — tap to fix`
-                    : "The backup needs attention — tap to fix"
+                    : "The sync server needs attention — tap to fix"
   );
   /* Sync group particulars: the Cloudflare server's state, from the last
      Worker call, and when that call last succeeded. */
@@ -3300,9 +3284,8 @@ syncBroken === "seeded"
       : workerKeySet
       ? "Connected"
       : "Not checked";
-  const lastSyncAt = workerSyncedAt || syncedAt;
-  const lastSyncText = lastSyncAt
-    ? new Date(lastSyncAt).toLocaleString([], {
+  const lastSyncText = syncedAt
+    ? new Date(syncedAt).toLocaleString([], {
         month: "short",
         day: "numeric",
         hour: "numeric",
@@ -4097,7 +4080,7 @@ syncBroken === "seeded"
             tone: "advice",
             text:
               done > 0
-                ? `Ledger pushed · ${done} of ${batch.length} photos. ${
+                ? `${done} of ${batch.length} photos synced. ${
                     PHOTO_SAYS[code] || PHOTO_SAYS.server
                   }`
                 : PHOTO_SAYS[code] || PHOTO_SAYS.server,
@@ -4304,18 +4287,18 @@ syncBroken === "seeded"
       const notes = [];
       if (stranded)
         notes.push(
-          `${stranded} photo${stranded === 1 ? "" : "s"} the remote copy doesn’t ${
-            stranded === 1 ? "know about was" : "know about were"
-          } never pushed, and ${stranded === 1 ? "is" : "are"} now gone.`
+          `${stranded} photo${stranded === 1 ? " had" : "s had"} no other copy and ${
+            stranded === 1 ? "is" : "are"
+          } now gone.`
         );
       if (plan.lost.length)
         notes.push(
           `${plan.lost.length} photo${
-            plan.lost.length === 1 ? " is" : "s are"
-          } not on GitHub either.`
+            plan.lost.length === 1 ? " has" : "s have"
+          } no copy left on any device and ${plan.lost.length === 1 ? "was" : "were"} lost.`
         );
       const left = plan.toPull.length - batch.length;
-      if (left > 0) notes.push(`${left} more will arrive on the next Pull.`);
+      if (left > 0) notes.push(`${left} more will arrive on the next sync.`);
       if (notes.length) setPhotoMsg({ tone: "advice", text: notes.join(" ") });
 
       /* every id the remote holds, not just the ones fetched this time: a GET
@@ -4630,7 +4613,7 @@ syncBroken === "seeded"
       nextTry.current = 0;
       clearTimeout(retryTimer.current);
       setServerDown(false);
-      setWorkerSyncedAt(Date.now());
+      setWorkerSyncedAt((p) => Math.max(p || 0, Date.now())); // never moves back
       if (r.code === "ok") holdReply(r);
       return;
     }
@@ -4787,7 +4770,12 @@ syncBroken === "seeded"
   }, []);
   useEffect(() => {
     if (!loaded) return;
-    const go = () => postRef.current();
+    /* a resume, a pageshow or coming online is a reason to try now: the
+       backoff paces the retry timer, not the person returning to the app */
+    const go = () => {
+      nextTry.current = 0;
+      postRef.current();
+    };
     coldRef.current();
     const vis = () => document.visibilityState === "visible" && go();
     document.addEventListener("visibilitychange", vis);
@@ -6276,13 +6264,15 @@ syncBroken === "seeded"
               {(window.remote || window.sync) && (
                 <LedgerRow
                   label="Sync"
-                  sub={syncSays.replace(/ — tap.*$/, "")}
+                  sub={syncOpen && !syncBroken ? syncSays : syncSays.replace(/ — tap.*$/, "")}
                   value={
-                    !syncBroken
+                    workerKeySet === false
+                      ? "Set up"
+                      : !syncBroken
                       ? "On"
                       : syncBroken === "sync-key"
                       ? "Set up"
-                      : "Needs attention"
+                      : "Check"
                   }
                   accent={syncBroken ? C.manilaInk : undefined}
                   expanded={syncOpen}

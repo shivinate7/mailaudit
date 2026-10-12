@@ -1,8 +1,8 @@
 # Test suite assertion count and run time
 
-**Status:** measured at `6b1c668`, checked 2026-10-12. The suite is red. 41 of its 1069 assertions fail, in groups 23, 28, 34, 36, 37 and 39, so `npm test` exits 1. The figures below count passed plus failed. They move when those groups are fixed.
+**Status:** measured at `6b1c668`, checked 2026-10-12. The suite is green: all 1060 assertions pass and `npm test` exits 0.
 
-This record holds the assertion count and the run time for `npm test`. The suite runs 1069 assertions under New York time, and 1068 under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+This record holds the assertion count and the run time for `npm test`. The suite runs 1060 assertions under New York time, and 1059 under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
 The count depends on the clock's zone, so the zone is pinned to `America/New_York`. In CI, the test step sets `TZ`. Locally, `npm run check:docs` sets it for its own suite run. `check:docs` grades the figure in this sentence.
 
