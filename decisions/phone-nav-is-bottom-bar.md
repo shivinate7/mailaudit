@@ -1,8 +1,8 @@
 # Phone navigation is a bottom glass bar
 
-The owner ruled on 2026-10-11: "bottom bar D is gorgeous! yes go for it". On a phone, navigation is a floating glass capsule in the parchment palette. This is variant D. It has four tabs: Orphaned, Tally, Packages and Ledger. The bar replaces the top view switch on phone.
+The owner ruled on 2026-10-11: "bottom bar D is gorgeous! yes go for it". On a phone, navigation is a floating glass capsule in the parchment palette. This is variant D. It has four tabs, from left to right: Ledger, Orphaned, Tally and Packages. The owner ruled the order on 2026-10-11: "move ledger to be most left on the bottom bar". The bar replaces the top view switch on phone.
 
-**Status:** ruled, not built. Open: the order of the first three tabs, and the owner's word on the look of the Find field (mockup G). See "Open" below.
+**Status:** ruled, not built. The owner approved mockup G on 2026-10-11: "G looks decent", and "this is the right direction go". The owner expects polish of the Ledger view and the app after the build.
 
 **Holds while:** the native target is iOS 26, as `native-swift-rebuild` sets it. The web palette is the parchment ledger, as `design-parchment-ledger` sets it. `src/app.jsx` has no bottom bar element yet.
 
@@ -29,13 +29,11 @@ The fourth tab is Ledger, with a gear icon. The working screens lose their contr
 
 ## Find
 
-Find is a floating search field above the bar, in the same glass style. The placement is ruled. The exact look waits for a mockup now in progress.
+Find is a floating search field above the bar, in the same glass style (mockup G). It is a full-width glass pill, inset 24px, 8px above the capsule and about 48px tall, with a magnifier icon. Its border turns accent while it has focus. It hides on the Ledger tab.
 
-## Open
+## Defaults and invariants
 
-- The order of Orphaned, Tally and Packages is open. Today the order is Orphaned, Tally, Packages. The owner has not answered whether Packages goes left.
 - Above phone width, the same capsule and search pill show, centred with a 480px maximum width. This is an orchestrator default of 2026-10-11 that keeps one layout. The owner may overrule it.
-- The look of the Find field waits for the mockup.
 - Re-import CSV and Reset stay reachable on an empty ledger and from Orphaned, through the Ledger tab. `recovery-control-not-state-gated` requires it.
 
 ## See also
