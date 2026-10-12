@@ -4,9 +4,11 @@ The staleness clock is the last time this device agreed with the Worker. `synced
 
 **Holds while:** `syncedAt` in `src/app.jsx` is `workerSyncedAt`, and the save payload carries `workerSyncedAt`.
 
-The clock measures agreement, not writes. A phone that only merges still agrees with the Worker, so it never reports itself stale. No agreement yet is a call in flight, or a failure that `serverDown` already raised. So there is no "never" state. `workerSyncedAt` is device-local: it is in the save payload and the load effect, and not in `snapshot()`, the backup or the merge.
+The clock measures agreement, not writes. A phone that only merges still agrees with the Worker, so it never reports itself stale. No agreement yet is a call in flight, or a failure that `serverDown` already raised. So there is no "never" state for the line. The Sync row reads `Not synced yet` until the first agreement (f956873), and that is copy only. `workerSyncedAt` is device-local: it is in the save payload and the load effect, and not in `snapshot()`, the backup or the merge.
 
 **Pinned by:** 45.1–45.3. Staleness measured off `pushedAt` alone kills 45.1 and 45.2. Test 45.3 pins the ordering. A fresh `pulledAt` must never mask being behind. The `remoteInfo` effect keys on `[loaded, syncOpen]`. So a test must toggle the panel before it asserts. See `testing-check-something-rereads`.
+
+**Guard:** `guardWords66` (group 66) reads the rendered Sync panel, which holds the Last sync row, at five sync states. It does not reach the stale state. See `ruled-head-one-advisory-entrance`.
 
 ## See also
 

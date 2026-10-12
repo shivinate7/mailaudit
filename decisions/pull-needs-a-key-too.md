@@ -8,6 +8,8 @@ Push needs a fine-grained personal access token. It needs `Contents: read & writ
 
 **Holds while:** `remote.pull` in `src/entry.jsx` sends the GitHub token, and `doMerge` in `src/app.jsx` calls it. The `no-access` code stops the mirror. It shows no line (default 5).
 
+**Guard:** `guardWords66` (group 66) reaches the no-key case at 66.5 and the photos with no access case at 66.9. See `ruled-head-one-advisory-entrance` for the states it misses.
+
 Closing the ledger repo cost one property, knowingly. A fresh device can no longer recover before it is configured with a key. A device with no key can do nothing remote at all. A `no-access` answer used to raise its own advisory line. Orchestrator default, 2026-10-12: GitHub states show nothing to the user, so it raises none now. A missing GitHub token only stops the mirror.
 
 ## See also

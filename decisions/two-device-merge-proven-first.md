@@ -21,7 +21,7 @@ Mutants confirmed red:
 - a photo phase that surveys the pre-merge reference list;
 - a conflict during the merged push that leaves no button.
 
-Group 40 also kills a quiet merge that announces itself. Test 40.13 now asserts that the user is shown no GitHub copy or verb while the mirror waits (default 5).
+Group 40 also kills a quiet merge that announces itself. Test 40.13 now asserts that the user is shown no GitHub copy or verb while the mirror waits (default 5). The word guard, `guardWords66` (group 66), does not reach that waiting state. See `ruled-head-one-advisory-entrance`.
 
 ## See also
 

@@ -1,10 +1,10 @@
 # Test suite assertion count and run time
 
-**Status:** measured at `6b1c668`, checked 2026-10-12. The suite is green: all 1060 assertions pass and `npm test` exits 0.
+**Status:** measured at `f956873`, checked 2026-10-12. All 1079 assertions pass under New York time, and all 1078 pass under UTC. Exit codes are unmeasured: the New York process did not end after its summary.
 
-This record holds the assertion count and the run time for `npm test`. The suite runs 1060 assertions under New York time, and 1059 under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+This record holds the assertion count and the run time for `npm test`. The suite runs 1079 assertions under New York time, and 1078 under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
-The count depends on the clock's zone, so the zone is pinned to `America/New_York`. In CI, the test step sets `TZ`. Locally, `npm run check:docs` sets it for its own suite run. `check:docs` grades the figure in this sentence.
+The count depends on the clock's zone, so the zone is pinned to `America/New_York`. In CI, the test step sets `TZ`, and it names one New York run's output in `CHECK_DOCS_SUITE_LOG`. `check:docs` grades the figure in this sentence. Locally, `npm run check:docs` runs the suite itself and waits for it to end. At `f956873` the New York run did not end. So the check needs `CHECK_DOCS_SUITE_LOG` set to a saved New York log.
 
 `npm test` has no test framework. It runs `test/app.test.mjs` top to bottom. It prints `N passed, M failed`, and it exits 1 when M is not zero. Groups 30 to 31 spend a few seconds in real timers, on purpose. Groups 53 onward run on the harness virtual clock, see `harness-waits-past-debounces`. The sweep race can only be reached by letting the clock run. `test/harness.mjs` holds the jsdom setup, the storage mocks, the DOM helpers, and the fixture's loader. The fixture itself is `shared/fixtures/ledger.json`.
 
@@ -12,15 +12,17 @@ The harness bundles `app.jsx` with esbuild. It sets `platform: "node"` and `form
 
 ## How to re-measure
 
-Run `npm test` and read its summary line. The count is passed plus failed. A green run prints `all green` and exits 0. Time the run with the shell's own timer.
+Run `npm test` and read its summary line. The count is passed plus failed. A green run prints `all green`. Time the run with the shell's own timer.
 
-Measured at `6b1c668`:
+At `f956873`, the New York process printed its summary and `all green`, then stayed alive with no CPU use for 13 minutes. It was killed by hand. The UTC and machine-zone processes were stopped by hand just after their summaries. Their exit codes are unmeasured, and so is the cause.
 
-- New York zone: 1028 passed, 41 failed. 134 s by verdict's timer. Exit 1.
-- Machine zone (CDT): 1028 passed, 41 failed. 223 s by the shell's timer.
-- UTC: 1027 passed, 41 failed. 167 s by the shell's timer.
+Measured at `f956873`, 2026-10-12:
 
-The run time varies on this machine (134 s to 223 s at this commit), and the spread is not explained. Take several runs before you compare a time. Groups 30 to 31 hold real-timer waits on purpose, so a run near 200 seconds is normal.
+- New York zone (`TZ=America/New_York`): 1079 passed, 0 failed. About 2 min from the verdict log's first line to its last output.
+- UTC (`TZ=UTC`): 1078 passed, 0 failed. About 2 min by the same measure.
+- Machine zone (CDT, plain `npm test`): 1079 passed, 0 failed. About 2 min by the same measure.
+
+The run time varies on this machine. Take several runs before you compare a time. Groups 30 to 31 hold real-timer waits on purpose.
 
 ## Reader
 
