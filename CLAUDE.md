@@ -174,7 +174,7 @@ Packages, Tally and Orphaned read one check-in map. These records say what each 
 - `lost-mail-flags-use-order-date` — Lost-mail flags count from the order date.
 - `orphaned-colours-by-meaning` — Orphaned uses colour for the same meanings.
 - `undo-removes-only-its-delta` — Undo subtracts its own delta, not a snapshot.
-- `three-views-share-one-switch` — Three views share one switch.
+- `three-views-share-one-switch` — The bar's working views share one check-in state.
 - `search-hide-keep-tally-counts` — Search and hide-received never change shown Tally counts.
 - `tally-row-lists-its-copies` — A Tally row lists every copy it counts.
 - `tally-sort-keys-are-six` — The Tally view sorts on six keys.
@@ -206,7 +206,7 @@ House UX rules that govern the screens. Read these before changing a screen.
 
 - `ux-house-rules-govern` — MANIFEST screens follow the house UX rules.
 - `spacing-on-4px-grid` — Spacing moves to a 4px grid with an 8px card radius.
-- `phone-nav-is-bottom-bar` — Phone navigation is a bottom glass bar, ruled and not built.
+- `phone-nav-is-bottom-bar` — Phone navigation is a bottom glass bar, built in L11a.
 - `ledger-tab-holds-options` — The Ledger tab holds the options, ruled and not built.
 
 ## The ruled head
@@ -250,7 +250,7 @@ The register is stationery, not software. One rule governs all of it: nothing ma
 - `motion-letterhead-composes-once` — The letterhead composes itself once per load.
 - `motion-masthead-bar-sweeps-once` — The masthead bar turns green a beat late.
 - `motion-the-stamp-lands` — The RECEIVED stamp lands, it does not appear.
-- `motion-the-switch-is-one-object` — The view switch moves one object, not three lights.
+- `motion-the-switch-is-one-object` — The active view moves one object, not three lights.
 - `motion-use-just-became` — useJustBecame guards every celebration animation.
 
 ## The masthead, the cards and the palette
@@ -262,7 +262,7 @@ Where the page holds its shape, and where every colour comes from.
 - `card-the-bar-is-out-of-flow` — The package progress bar sits out of flow.
 - `design-form-controls-no-inherit` — Form controls need their own font rule.
 - `design-parchment-ledger` — The palette is parchment ledger.
-- `design-view-switch-equal-thirds` — The view switch is equal thirds.
+- `design-view-switch-equal-thirds` — The view switch is retired. Its chrome rules still hold.
 - `masthead-is-one-letterhead` — The masthead is one letterhead, not stacked boxes.
 - `masthead-sizing-by-clamp` — Masthead sizing uses clamp, never breakpoints.
 - `masthead-tallies-unequal-thirds` — The tally cells are not sized equally.

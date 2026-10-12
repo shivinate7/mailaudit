@@ -1,12 +1,12 @@
 # Ruled head control region heights
 
-**Status:** re-measure pending. The 4px grid ruling in `spacing-on-4px-grid` will change this region. The figures below describe the code now, and `CTL_H` (34px) is off the 4px step. They are unmeasured after that change.
+**Status:** re-measure pending. The 4px grid ruling in `spacing-on-4px-grid` will change this region. `CTL_H` (34px) is off the 4px step. L11a removed the view switch that every figure starts from. It also moved Find out of the ruled row, into a pill above the bottom bar. The figures predate L11a, and they are unmeasured after the grid ruling.
 
 This record holds the control region height at 375px, in each state. States are: at rest, with a panel open, and with the action row empty or full. It also holds the one width bug the region had, at 377px. Re-measure at 375px after a change to the region's cells, panels, or the action row.
 
 ## How to re-measure
 
-Open the built page at a 375px viewport. Load a real ledger. Measure from the top of the view switch to the top of the first package card. Do this for each state named below. Compare the result against the figures below. The prose gives no script name. Re-run this by hand in a real browser. jsdom has no layout and cannot do this measurement.
+Open the built page at a 375px viewport. Load a real ledger. The start mark was the top of the view switch, which L11a removed, so set a new start mark first. Measure from it to the top of the first package card. Do this for each state named below. Compare the result against the figures below. The prose gives no script name. Re-run this by hand in a real browser. jsdom has no layout and cannot do this measurement.
 
 ## Reader
 
@@ -18,7 +18,7 @@ No reader. A test cannot hold this claim, because jsdom has no layout.
 - `text-overflow: ellipsis` does nothing on a flex container. It has to sit on the text child. That child also needs `min-width: 0`, or it refuses to shrink.
 - Measured before this was fixed: a 25-character sort label took its cell from 114px to 182px. It pushed the document to **377px in a 375px viewport**.
 - jsdom has no layout, so **no assertion can catch a regression here**. Re-measure at 375px if you touch it.
-- The Find row holds two cells with `flexShrink: 0`. The search input absorbs the loss. Re-measure at 375px if either label grows.
+- Before L11a, the Find row held two cells with `flexShrink: 0`, and the search input absorbed the loss. L11a moved Find into the pill above the bottom bar, so that input is no longer in this region.
 
 ## Control height
 

@@ -1,18 +1,20 @@
-# Three views share one switch
+# The bar's working views share one check-in state
 
-**Ruled, not built:** on phone, the bottom bar replaces this switch and adds a Ledger tab (`phone-nav-is-bottom-bar`). The empty-ledger rule below carries to the bar only once the owner rules it there.
+The bottom bar replaces the top view switch at every width (`phone-nav-is-bottom-bar`). It switches between three working views: Orphaned, Tally and Packages. Tally and Packages share one `received` map, the date filter, search and Showing.
 
-The top of the app holds one switch. It moves between three views: Orphaned, Tally and Packages. The Tally and Packages views share one `received` map, the date filter, search and Showing.
+**Holds while:** `src/app.jsx` renders the bar with its three working tabs, Orphaned, Tally and Packages, after the Ledger tab. Test 62.8 pins that no in-page switch remains.
 
-**Holds while:** `src/app.jsx` labels the three views `Orphaned`, `Tally` and `Packages` in its view switch.
+Orphaned hides the shared controls, because they apply to nothing there. That covers the date filter, the list, the canceled reference and the search pill. The bar survives an empty ledger, so pending envelopes cannot be stranded. The Orphaned tab carries a count badge while envelopes wait.
 
-Orphaned hides the shared controls, because they apply to nothing there. It keeps Re-import, Backup and Reset reachable. The switch survives an empty ledger, so pending envelopes cannot be stranded. The switch carries a count badge while envelopes wait.
+Re-import, Backup and Reset must stay reachable from Orphaned. No test pins that. It is unverified.
 
 The old Hide received control is now Showing. See `ruled-head-showing-unreceived`.
 
+**Pinned by:** 21.4 (tab order), 62.8 to 62.10 (no in-page switch; four tabs on an empty ledger; the Orphaned count).
+
 ## See also
 
-- `recovery-control-not-state-gated` — why the switch must stay up on an empty ledger.
-- `design-view-switch-equal-thirds` — the layout of the switch.
-- `ruled-head-showing-unreceived` — the Showing control the switch shares.
+- `recovery-control-not-state-gated` — why the bar must stay up on an empty ledger.
+- `phone-nav-is-bottom-bar` — the bar that now holds these tabs.
+- `ruled-head-showing-unreceived` — the Showing control the working views share.
 - `orphaned-mail-never-decides` — the Orphaned view's limit on what it may decide.

@@ -22,21 +22,29 @@ The **house UX audit of 2026-10-11** is the source of the lane labels L1 to L10 
 - L8: an axe check at 375px and 760px.
 - L9: CI paths and timeouts.
 - L10: the Dependabot cooldown and zizmor.
-- L11: bottom bar D on the web, the CSS version of the phone bar in `phone-nav-is-bottom-bar`. It has four tabs, the Ledger tab with a gear icon, and a floating Find field above the bar. Its tabs meet the 44px floor, as L6 does. Bottom padding keeps the last card clear of the bar. The bar moves no content, under `no-layout-shift-under-pointer`. Ruled, not built. Not yet briefed.
+- L11: bottom bar D on the web, the CSS version of the phone bar in `phone-nav-is-bottom-bar`. It has four tabs, Ledger first, and a floating Find pill above the bar. Its tabs meet the 44px floor, as L6 does. Bottom padding keeps the last card clear of the bar. The bar moves no content, under `no-layout-shift-under-pointer`. L11a built the bar and the pill (commit `250823d`). The Ledger tab is an empty placeholder until L11b. The ruled gear icon is not built yet.
 
 ## The rules that the 2026-10-11 rulings apply
 
 - ux-press-moves-nothing: a press moves no other content. The records `armed-reset-takes-the-row` and `motion-disclosure-panels-arrive` apply it.
 - ux-a11y-floor: a touch target is 44 by 44 CSS px on touch. The record `action-row-is-ruled-cells` applies it.
-- ux-thumb-zone: the main action on a phone sits in reach of the thumb. The bar in `phone-nav-is-bottom-bar` applies it. The tab order is still open.
+- ux-thumb-zone: the main action on a phone sits in reach of the thumb. The bar in `phone-nav-is-bottom-bar` applies it. The tab order is ruled: Ledger, Orphaned, Tally, Packages.
 - ux-ask-or-undo: a destructive press asks first or offers Undo, never both or neither. An ask names the act and its count, with first focus on Cancel. The record `armed-reset-takes-the-row` applies it.
 - ux-keep-what-was-made: typed input survives a close, a back, a tab change or a leave. The record `orphan-entry-takes-one-input` applies it to the envelope draft.
 
 Orchestrator default, 2026-10-11, not an owner ruling: every ask names the count of cards it removes, and that count is true. The asks and their counts are in `armed-reset-takes-the-row`, `orphan-entry-takes-one-input`, `stamp-band-opens-the-editor` and `history-restores-a-saved-version`.
 
-Known gap under that default: Pull's ask, "Tap again to replace", and Push anyway's ask, "Tap again to overwrite", each name no count and have no Cancel. See `stale-push-conflict-pull-two-tap`. The gap closes in lane L11, where Sync moves into the Ledger tab (`ledger-tab-holds-options`), which gives both asks a count and a Cancel.
+Known gap under that default: Pull's ask, "Tap again to replace", and Push anyway's ask, "Tap again to overwrite", each name no count and have no Cancel. See `stale-push-conflict-pull-two-tap`. The gap closes in lane L11b, where Sync moves into the Ledger tab (`ledger-tab-holds-options`), which gives both asks a count and a Cancel.
 
-**Pinned by:** `check:screens` (its four claims: no sideways overflow at 375px and 760px, no row shift on check-in, the Discard arm moves nothing, and the Reset ask is not cut off), and tests 61.8 to 61.9, 61.11 to 61.16, 61.33 to 61.35 (a draft survives a tab change), 61.41 to 61.42, and 61.43 to 61.57. The test pins check the DOM, not geometry.
+**Pinned by:**
+
+- `check:screens`, claim 1: no sideways overflow at 375px and 760px.
+- `check:screens`, claim 2: no row shift on check-in.
+- `check:screens`, claim 3: the Discard arm moves nothing.
+- `check:screens`, claim 4: the Reset ask is not cut off.
+- `check:screens`, claim 5: the bottom bar's geometry at 375px and 760px.
+
+Tests 21.4 and 62.1 to 62.10 pin the bar. Tests 61.8 to 61.9, 61.11 to 61.16, 61.41 to 61.42 and 61.43 to 61.57 pin the other rules. Tests 61.33 to 61.35 cover a draft that survives a tab change. The test pins check the DOM, not geometry.
 
 ## See also
 
