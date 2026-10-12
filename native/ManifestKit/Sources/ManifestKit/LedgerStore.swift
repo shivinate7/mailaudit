@@ -35,6 +35,12 @@ public final class LedgerStore {
         try data.write(to: fileURL, options: .atomic)
     }
 
+    /// The raw `items` array, as the rules take it.
+    public func items() -> [[String: Any]] { doc["items"] as? [[String: Any]] ?? [] }
+
+    /// The `received` map, key to count.
+    public func received() -> [String: Int] { (doc["received"] as? [String: Any] ?? [:]).compactMapValues { $0 as? Int } }
+
     /// count 0 is an un-check: drop `received`, stamp `receivedAt`.
     public func setReceived(_ key: String, count: Int) {
         var r = doc["received"] as? [String: Any] ?? [:]
