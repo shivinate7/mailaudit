@@ -1857,12 +1857,8 @@ const REMOTE_SAYS = {
     "That isn’t a Mail Day ledger. Nothing on this device was changed.",
 };
 
-/* GitHub states the user is never told: the mirror resolves a conflict itself,
-   and a missing GitHub token only stops the mirror. */
-const GITHUB_QUIET = new Set(["conflict", "no-key", "no-access"]);
-
 /* One retry on an unknown look, shared by the foreground check and autoPush:
-   a single transient failure must not raise the backup-unknown line. */
+   a single transient failure must not read as "behind" or "ahead". */
 async function peekTwice() {
   const look = () => window.remote.peek().catch(() => null);
   const p = await look();
@@ -2970,15 +2966,14 @@ export default function MailDayLedger() {
      nag about a device that has since been caught up with. */
   const [ahead, setAhead] = useState(false);
   const [photoTarget, setPhotoTarget] = useState(null);
-  const [remoteMsg, setRemoteMsg] = useState(null); // { tone, text }
   /* Photos get their own message and their own progress. See PHOTO_SAYS: a
      photo failure that reached `pushState` could arm "Push anyway" and
      overwrite the ledger. */
   const [photoMsg, setPhotoMsg] = useState(null); // { tone, text }
-  /* "I could not look" states. Each rides the one advisory line (syncBroken),
-     and each clears when a later look succeeds. Neither touches pushState. */
+  /* "I could not look" at the photo store rides the one advisory line
+     (syncBroken) and clears when a later look succeeds. It never touches
+     pushState. The GitHub peek raises nothing: the user sees no GitHub state. */
   const [photoUnreadable, setPhotoUnreadable] = useState(false);
-  const [backupUnknown, setBackupUnknown] = useState(false);
   const [photoSync, setPhotoSync] = useState(null); // { dir, done, total }
   /* Bumped by every write to the photo store, so thumbnails re-resolve after a
      pull that kept the same ids — see usePhotoUrls. */
@@ -3223,30 +3218,12 @@ export default function MailDayLedger() {
        ledger. Their own key would not help them; there is nothing of theirs to
        back up. Say what is actually true instead — see the line's copy. */
     if (seedShown) return "seeded";
-    if (remoteMsg?.tone === "error") return "error";
     if (serverDown)
       return serverDown === "unknown" ? "server" : serverDown === "no-access" ? "key-refused" : serverDown;
-    /* a device that cannot SEE the backup is as unbacked-up as one that cannot
-       write to it, and on a private repo that is what a missing key looks like */
-    /* Being behind IS broken, and this was the worst hole the silent-sync
-       change opened. Auto-push declines while `ahead`, and the auto-merge only
-       fires on a fresh session — so a device that goes behind mid-session
-       stops backing up entirely, for the rest of that session, with nothing on
-       screen. The manila "your other device has pushed newer lines" advisory
-       does still exist — but it lives INSIDE the sync panel, whose only
-       entrance is this very line, so it can only be found by someone who
-       already knew to go looking.
-
-       The staleness branch below cannot rescue it either: this memo only
-       recomputes when one of its deps changes, and a stalled device changes
-       none of them, so the `Date.now()` comparison is frozen too. */
+    /* The GitHub mirror raises nothing here: a refused token, a moved remote
+       (behind) and an unknown peek are the watchdog's to catch, not the
+       user's. */
     if (photoUnreadable) return "photos-unreadable";
-    /* No key outranks "could not check": a keyless device on the private repo
-       cannot look at all, and "add its key" is the true, actionable answer.
-       With a key, the order is unchanged. A keyless device can do nothing
-       remote at all now that the ledger lives in the private repo, so it
-       genuinely is not backed up, and saying so is honest not naggy. */
-    if (backupUnknown) return "backup-unknown";
     /* remoteInfo is null until its effect runs, which is one commit after the
        first paint. Reading that as "no key" flashes the manila banner on every
        cold start of a perfectly configured device — the same "I could not
@@ -3278,7 +3255,7 @@ export default function MailDayLedger() {
     if (!syncedAt) return "never";
     if (Date.now() - syncedAt > SYNC_STALE_MS) return "stale";
     return null;
-  }, [pushState, remoteMsg, remoteInfo, ahead, seedShown, syncedAt, photoUnreadable, backupUnknown, serverDown, workerKeySet, syncOpen]);
+  }, [pushState, remoteInfo, ahead, seedShown, syncedAt, photoUnreadable, serverDown, workerKeySet, syncOpen]);
 
   /* One sentence per sync state: the advisory line on a working screen says it
      whole, and the Sync row on the Ledger tab says it without the "tap to". */
@@ -3295,8 +3272,6 @@ syncBroken === "seeded"
                     ? "The ledger is too big for the sync server — tap to fix"
                     : syncBroken === "photos-unreadable"
                     ? "This device’s photos could not be read, so no new photos were backed up — tap to fix"
-                    : syncBroken === "backup-unknown"
-                    ? "The backup could not be checked — tap to fix"
                     : !syncBroken
                     ? `Backed up${
                         syncedAt
@@ -4145,14 +4120,13 @@ syncBroken === "seeded"
   const doPush = useCallback(
     async (force, quiet = false, mirror = false) => {
       if (!window.remote) return;
-      /* doPull and doMerge both clear this; doPush did not. A "Pushed ✓" flash
+      /* doMerge clears this too. A "Pushed ✓" flash
          from 2s ago would otherwise fire mid-way through the next push and
          reset a freshly-set "conflict" to idle — taking Merge, Push anyway and
          the advisory line off the screen with it, leaving a real conflict with
          no surface at all. */
       clearTimeout(flashTimer.current);
       disarm();
-      setRemoteMsg(null);
       setPushState("pushing");
       /* Every push, mirror or not, writes the merge with the last server ledger
          once one is known, never a raw snapshot: a snapshot that has not yet
@@ -4218,15 +4192,13 @@ syncBroken === "seeded"
         /* the mirror treats a stale sha as a forced write, so no conflict state */
         if (mirror && code === "conflict") return { ok: false, code };
         setPushState(code === "conflict" ? "conflict" : "idle");
-        if (!GITHUB_QUIET.has(code))
-          setRemoteMsg({ code, tone: "error", text: REMOTE_SAYS[code] || REMOTE_SAYS.server });
         /* `quiet` is auto-push, and this is the same reasoning doMerge's quiet
            mode already encodes: nobody tapped anything, and setKeyOpen swaps
            "saved on this device" for an empty field, which reads as *your key
            is gone*. An expired token would otherwise flip the panel into that
            state unattended, with (until now) no cancel to get out of it.
-           The remoteMsg above is NOT suppressed — an unattended failure is
-           exactly what the advisory line exists to surface. */
+           No GitHub failure reaches the screen; the watchdog catches a stopped
+           mirror. */
         if (!quiet && (code === "no-key" || code === "auth")) setKeyOpen(true);
         /* returned rather than only rendered, so the auto path can resolve a
            conflict by merging instead of leaving a button armed on a screen
@@ -4236,7 +4208,7 @@ syncBroken === "seeded"
         syncingRef.current = false;
         setSyncBusy(false);
         setPhotoSync(null);
-        /* same reason as doPull's: a generation guard can return out of the
+        /* same reason as doMerge's: a generation guard can return out of the
            middle and leave the label reading "Pushing…" forever. Only the
            in-flight label is cleared here — "pushed" and "conflict" are
            outcomes and must survive. */
@@ -4371,7 +4343,6 @@ syncBroken === "seeded"
       if (!reply && !window.remote) return { ok: false, code: "server" };
       clearTimeout(flashTimer.current);
       disarm();
-      setRemoteMsg(null);
       setPhotoMsg(null);
       setMergeState("merging");
       let gen = ++syncGen.current;
@@ -4381,10 +4352,10 @@ syncBroken === "seeded"
         /* this also refreshes the device sha, which is the thing that actually
            clears the conflict — the merged push below is no longer stale */
         const res = reply ? { text: JSON.stringify(reply) } : await window.remote.pull();
-        /* photos BEFORE applying, the same ordering doPull depends on: the
+        /* photos BEFORE applying: the
            merge unions both devices' envelopes, so ids arriving from the other
            device have no blob here yet and applyBackup would strip every one of
-           them. Tests 30.5-30.9 pin the same trap on the pull path. */
+           them. Tests 30.5-30.9 pin the same trap. */
         /* photos stay on GitHub (L4b): keep every merged id, as applyBackup's
            "keeping an id costs a blank tile, stripping it costs the photo" */
         const extraPresent = reply ? null : await pullPhotos(res.text, gen);
@@ -4427,8 +4398,7 @@ syncBroken === "seeded"
         if (reply) setSeedShown(false); /* seed-load-guards: no longer someone else's ledger */
         /* applyBackup bumps syncGen — it has to, since a restore replaces the
            world and anything still in flight against the old one must not land.
-           doPull is unaffected because applying is the last thing it does; a
-           merge PUSHES afterwards, so without re-adopting the generation here
+           A merge PUSHES after applying, so without re-adopting the generation here
            every gen-guarded step below bails and the photo phase and the
            "Pushed ✓" flash silently never run. Exactly one bump is ours; any
            other number means something really did move on. */
@@ -4481,12 +4451,6 @@ syncBroken === "seeded"
              device" for an empty field, which reads as *your key is gone*.
              Suppressing costs nothing, because a failed merge lands nothing —
              applyBackup throws before its first setState. */
-          if (!GITHUB_QUIET.has(code))
-            setRemoteMsg({
-              code,
-              tone: code === "missing" ? "advice" : "error",
-              text: REMOTE_SAYS[code] || REMOTE_SAYS["bad-response"],
-            });
           if (code === "auth" || code === "no-key") setKeyOpen(true);
         }
         return { ok: false, code };
@@ -4887,7 +4851,6 @@ syncBroken === "seeded"
          return so the merge below sits INSIDE the known branch rather than
          beside it: an unknown remote cannot license reading it any more than
          writing it, and the structure is what says so. */
-      setBackupUnknown(!p || !p.known);
       if (!p || !p.known) return;
       setAhead(!!p.ahead);
       /* Not awaited: check() has nothing left to do, and doMerge returns a code
@@ -4960,7 +4923,6 @@ syncBroken === "seeded"
       /* "could not look" means DO NOT PUSH. This is the whole reason peek is
          three-valued: pushing on an unknown remote state is how a device
          overwrites the other one. */
-      setBackupUnknown(!p || !p.known);
       if (!p || !p.known) return;
       if (p.ahead) {
         setAhead(true);
@@ -5011,27 +4973,9 @@ syncBroken === "seeded"
     return () => document.removeEventListener("visibilitychange", onHide);
   }, [loaded]);
 
-  const saveKey = useCallback(async () => {
-    if (!window.remote) return;
-    try {
-      await window.remote.setKey(keyInput.current?.value || "");
-      if (keyInput.current) keyInput.current.value = "";
-      setKeyOpen(false);
-      setRemoteMsg(null);
-      setRemoteInfo(await window.remote.status().catch(() => null));
-    } catch (e) {
-      setRemoteMsg({
-        tone: "error",
-        text: REMOTE_SAYS[e?.code] || REMOTE_SAYS["bad-key"],
-      });
-    }
-  }, []);
-
-
   const clearKey = useCallback(async () => {
     if (!window.remote) return;
     await window.remote.clearKey().catch(() => {});
-    setRemoteMsg(null);
     setKeyOpen(true);
     setRemoteInfo(await window.remote.status().catch(() => null));
   }, []);
@@ -6082,6 +6026,7 @@ syncBroken === "seeded"
                    that has happened. It shows only when something is wrong
                    (ledger-tab-holds-options). */
                 <button
+                  aria-expanded={syncOpen}
                   onClick={() => {
                     setHistoryOpen(false);
                     setSyncOpen(true);
@@ -6383,21 +6328,6 @@ syncBroken === "seeded"
                       }}
                     >
                       {photoMsg.text}
-                    </div>
-                  )}
-                  {remoteMsg && (
-                    <div
-                      style={{
-                        fontFamily: cochin,
-                        fontSize: 13.5,
-                        lineHeight: 1.4,
-                        padding: "8px 10px",
-                        borderRadius: 8,
-                        background: remoteMsg.tone === "error" ? C.redSoft : C.manila,
-                        color: remoteMsg.tone === "error" ? C.red : C.manilaInk,
-                      }}
-                    >
-                      {remoteMsg.text}
                     </div>
                   )}
                   <div style={partGrid}>
