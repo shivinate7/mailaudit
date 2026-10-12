@@ -10,10 +10,9 @@
 // can show it. The view's `try?` is what drops it today.
 //
 // The fault cases (toggle rule throws or returns a non-integer; label refresh fails
-// after a good save) surface checkInError and pass on 7f1ff6b. The done-state cases
-// assert model.done[key] matches the saved count. The refresh-fault done case is red
-// on 7f1ff6b: refreshLabel throws at countLabel before it reaches isDone, so done
-// keeps its load-time value after the save has already written the count.
+// after a good save) surface checkInError. The done-state cases assert model.done[key]
+// matches the saved count. The isDone-throw case is red on 45863d6 until the builder fixes it: refreshLabel
+// runs isDone first, so a throw there stops countLabel and labels keep their load-time value.
 //
 // Fake fixtures only. No Keychain item is read.
 
@@ -180,5 +179,31 @@ final class PackagesToggleTests: XCTestCase {
         let saved = received[Self.checkedKey] as? Int ?? 0
         XCTAssertEqual(model.done[Self.checkedKey], saved >= 1,
                        "done must match the saved count even when the label refresh fails")
+    }
+
+    /// When the bundle's isDone throws during a label refresh, the label still refreshes from
+    /// countLabel, and checkInError is set. The save stands.
+    func testIsDoneThrowStillRefreshesLabelAndSurfacesError() async throws {
+        let url = try freshLedgerURL()
+        let store = LedgerStore(fileURL: url, now: { 1_786_543_380_000 })
+        let engine = try RulesEngine(bundleURL: try overriddenBundle(
+            "Rules=Object.assign({},Rules,{isDone:function(r,q){"
+            + "if(r>0)throw new Error('done boom');return false;}});"))
+        try store.load()
+        let model = PackagesModel(engine: engine, store: store)
+        try await model.load()
+        XCTAssertEqual(model.labels[Self.checkedKey], "0 of 1", "an empty line reads 0 of 1 at load")
+
+        do {
+            try await model.checkIn(key: Self.checkedKey, count: 1)
+            XCTFail("a label refresh that fails at isDone must throw")
+        } catch {}
+
+        let obj = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        let received = try XCTUnwrap(obj["received"] as? [String: Any])
+        XCTAssertEqual(received[Self.checkedKey] as? Int, 1, "the save before the refresh must stand")
+        XCTAssertNotNil(model.checkInError, "an isDone throw during refresh must surface checkInError")
+        XCTAssertEqual(model.labels[Self.checkedKey], "1 of 1",
+                       "an isDone throw must not stop the label refreshing from countLabel")
     }
 }
