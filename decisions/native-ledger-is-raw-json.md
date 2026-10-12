@@ -1,12 +1,16 @@
 # The native client keeps the ledger as raw JSON
 
-**Status:** ruled. The owner accepted a typed enum plan on 2026-10-11. The orchestrator default of 2026-10-12 replaced that enum with a raw dictionary. Owner ruling 2026-10-12 ("Refuse all four"): a damaged `received`, `receivedAt`, `stamps` or `envelopes` value makes load throw. The store then stays unsaveable, and the file is unchanged. Lane N3 landed in PR #80 as LedgerStore. Lane N3b adds the refusal for the first three fields. Owner ruling 2026-10-12 ("Web refuses too"): the web app also refuses a damaged list on load, says so, and offers History and Backup. That web lane is not built yet. The Worker side is open, see Known gap.
+**Status:** ruled. The owner accepted a typed enum plan on 2026-10-11. The orchestrator default of 2026-10-12 replaced that enum with a raw dictionary. Owner ruling 2026-10-12 ("Keep a copy, then go on") holds for every client and every path data comes in. A `received`, `receivedAt`, `stamps` or `envelopes` value of the wrong shape (a whole field or one entry; JSON `null` counts) is first saved to History as a milestone. Then every readable entry is kept, and one line says how many could not be read. The web detail and its fallbacks are in `saved-state-shape`.
+
+**Built state, 2026-10-12:** web is built on draft PR #87 at `d359c91`, not merged and not deployed. Deploy needs the owner's word. The Worker refuses a bad incoming shape with 400 (tests 67.1 and 67.2). It mends a damaged stored ledger before its merge (tests 68.1 to 68.3). Both run by `npm run test:worker`. Swift does not build the ruling yet. The native store still throws on a damaged field, as `Load and save` below describes, and no Swift code calls `salvageLedger` from `rules.js` yet. The unknown-field gap in Known gap is still open.
 
 The native store holds the ledger as `[String: Any]`, parsed and written with `JSONSerialization`. No typed struct or enum holds a field. A save writes the whole dictionary, so a field the client does not name survives a save of the file. An edit changes only the fields it names.
 
 **Holds while:** `saved-state-shape` names the saved ledger shape, the Worker rejects a `mailday` other than 1, and no lane needs a typed value. Add a typed value when a lane needs one, not before (YAGNI).
 
 ## Load and save
+
+The Swift client's rules today. Native load still throws on these cases until the native lane builds the 2026-10-12 ruling. The rules below are the ones in force now, not the ruling.
 
 - A load throws when the top level is not an object.
 - A load throws when `mailday` is present and is not the integer 1. A missing `mailday` is accepted and saved as 1.
@@ -40,6 +44,8 @@ Lane N3 landed in PR #80 with a test for each item above, in LedgerStoreTests, u
 Lane N3b adds six tests in LedgerStoreTests: testLoadRefusesArrayReceivedAndSaveWritesNothing, testLoadRefusesStringReceivedAndSaveWritesNothing, and the same pair for receivedAt and stamps. Each writes a seed with the bad field, then checks that load throws, save throws, and the file bytes stay as written. Each starts from a fresh store, so no test covers a failed reload of these fields after a good load. A JSON `null` in these fields, the missing-file case and the unwrapped-error sentence in Load and save are read from the code, not tested.
 
 ## Known gap: the Worker merge drops unknown top-level fields
+
+The Worker's shape refusal and its mend of stored damage are built on PR #87, not deployed (see Built state). This gap is separate from them, and it stays open.
 
 **Open, for a later lane.** Measured 2026-10-12 by calling `mergeLedger` from `src/merge-rules.mjs` with a ledger that holds one top-level field the client does not know. The merged output did not contain it. Re-measured at f3e36cd: the field is dropped whether it sits in the local ledger or the incoming one. `mergeLedger` builds its output from a fixed list of keys.
 

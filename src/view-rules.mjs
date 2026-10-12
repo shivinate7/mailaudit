@@ -435,3 +435,42 @@ export const packagesDone = (pkgs, received) =>
 export const isDone = (got, qty) => got >= qty;
 export const toggleCount = (got, qty) => (isDone(got, qty) ? 0 : qty);
 export const countLabel = (got, qty) => `${Math.min(got, qty)} of ${qty}`;
+
+/* Lane B1 (saved-state-shape, native-ledger-is-raw-json): keep every entry of a
+   ledger that can be read, drop the rest. Pure: data -> { data, dropped }; the
+   input is never changed. Checked fields are received and receivedAt (counts and
+   times, numbers), stamps (objects), envelopes (objects with a string id). A field
+   that is absent is not damage; a field of the wrong shape, JSON null included,
+   is dropped whole and counts 1. Each dropped entry counts 1. */
+const isRecord = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+const SALVAGE = {
+  received: (v) => typeof v === "number" && Number.isFinite(v),
+  receivedAt: (v) => typeof v === "number" && Number.isFinite(v),
+  stamps: isRecord,
+  envelopes: (e) => isRecord(e) && typeof e.id === "string",
+};
+export function salvageLedger(data) {
+  if (!isRecord(data)) return { data, dropped: 0 };
+  const out = { ...data };
+  let dropped = 0;
+  for (const [k, ok] of Object.entries(SALVAGE)) {
+    const v = data[k];
+    if (v === undefined) continue;
+    if (k === "envelopes") {
+      if (!Array.isArray(v)) {
+        delete out[k];
+        dropped++;
+      } else {
+        out[k] = v.filter(ok);
+        dropped += v.length - out[k].length;
+      }
+    } else if (!isRecord(v)) {
+      delete out[k];
+      dropped++;
+    } else {
+      out[k] = Object.fromEntries(Object.entries(v).filter(([, x]) => ok(x)));
+      dropped += Object.keys(v).length - Object.keys(out[k]).length;
+    }
+  }
+  return { data: out, dropped };
+}

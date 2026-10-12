@@ -13,6 +13,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { mergeLedger } from "../src/merge-rules.mjs";
+import { salvageLedger } from "../src/view-rules.mjs";
 
 /* A missing or broken core fails in one clear line, not a raw stack trace. */
 let route, keyAllowed, wsAuthorized, MAX_LEDGER_BYTES, MAX_PHOTO_BYTES;
@@ -126,7 +127,11 @@ const dayOf = (t) => new Date(t).toISOString().slice(0, 10);
      readSnapshot(day) -> {ledger, rev, at} | null
      listSnapshots() -> [{day, rev, at}]  no ledger bodies, any order
      pruneSnapshots(beforeDay)            drops days before beforeDay
-   The fake's `order` records "snapshot", "write" and "broadcast". Prune is
+     writeKept(at, {ledger, rev})         keeps a damaged original, keyed by ISO time
+     readKept(at) -> {ledger, rev} | null
+     listKept() -> [{at, rev}]            no ledger bodies
+     pruneKept(beforeDay)                 drops kept rows whose day is before beforeDay
+   The fake's `order` records "snapshot", "kept", "write" and "broadcast". Prune is
    not recorded there. */
 /* initial is {ledger, rev, at?} or null for an empty store. A missing `at`
    defaults to PREV. snaps is [[day, {ledger, rev, at}], ...]. */
@@ -180,6 +185,18 @@ function fakeStore(initial = null, snaps = []) {
   s.listSnapshots = async () => [...s.snaps].map(([day, v]) => ({ day, rev: v.rev, at: v.at }));
   s.pruneSnapshots = async (beforeDay) => {
     for (const day of [...s.snaps.keys()]) if (day < beforeDay) s.snaps.delete(day);
+  };
+  s.kept = new Map();
+  s.keptWrites = [];
+  s.writeKept = async (at, v) => {
+    s.order.push("kept");
+    s.keptWrites.push({ at, ...clone(v) });
+    s.kept.set(at, clone(v));
+  };
+  s.readKept = async (at) => (s.kept.has(at) ? clone(s.kept.get(at)) : null);
+  s.listKept = async () => [...s.kept].map(([at, v]) => ({ at, rev: v.rev }));
+  s.pruneKept = async (beforeDay) => {
+    for (const at of [...s.kept.keys()]) if (at.slice(0, 10) < beforeDay) s.kept.delete(at);
   };
   return s;
 }
@@ -370,6 +387,51 @@ await test("3.2 the same bad bodies on an empty store write nothing", async () =
     eq(s.writes.length, 0, `bad body ${i}: writes`);
     eq(s.state, null, `bad body ${i}: store still empty`);
   }
+});
+
+/* 67. The Worker refuses a ledger whose received, receivedAt, stamps or envelopes has
+   the wrong shape, whole field or one entry, so one app's bug cannot reach the other
+   device (owner ruling 2026-10-12, "Keep a copy, then go on"). An absent field is not
+   damage. Records: saved-state-shape, native-ledger-is-raw-json. */
+const SHAPE_67 = [
+  { received: "x" },
+  { received: [] },
+  { received: null },
+  { received: 7 },
+  { receivedAt: "x" },
+  { receivedAt: null },
+  { stamps: [] },
+  { stamps: null },
+  { envelopes: {} },
+  { envelopes: null },
+  { received: { "100|1|555": "x" } },
+  { receivedAt: { "100|1|555": null } },
+  { stamps: { "100::Seller": "x" } },
+  { envelopes: ["x"] },
+  { envelopes: [[1]] },
+];
+await test("67.1 a ledger with a received, receivedAt, stamps or envelopes of the wrong shape gets 400 and stores nothing, on a stored or an empty store", async () => {
+  for (const [i, over] of SHAPE_67.entries()) {
+    const body = { key: KEY_PHONE, json: { ledger: ledger(over) } };
+    const s = seeded();
+    const before = clone(s.state);
+    const res = await send(s, "POST", "/ledger", body);
+    eq(res.status, 400, `bad shape ${i}: status on a stored ledger`);
+    eq(s.writes.length, 0, `bad shape ${i}: writes on a stored ledger`);
+    eq(s.state, before, `bad shape ${i}: stored ledger unchanged`);
+    const e = empty();
+    const res2 = await send(e, "POST", "/ledger", body);
+    eq(res2.status, 400, `bad shape ${i}: status on an empty store`);
+    eq(e.state, null, `bad shape ${i}: empty store still empty`);
+  }
+});
+
+await test("67.2 a ledger with none of the four fields is accepted, because an absent field is not damage", async () => {
+  const bare = { mailday: 1, items: [item("100|1|555", "Alpha Card", 2)] };
+  const s = empty();
+  const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: bare } });
+  eq(res.status, 200, "status");
+  eq(s.writes.length, 1, "writes");
 });
 
 /* ---------- 4. POST /ledger writes and merges ---------- */
@@ -1288,6 +1350,119 @@ await test("12.14 GET /photos reads no photo bytes: zero photoGet calls, and the
   eq(res.status, 200, "status");
   eq(s.photoGets.length, 0, "photoGet calls on the list");
   eq(((await res.json()).ids || []).slice().sort(), ["pho-aaa111.jpg", "pho-bbb222.png"], "names");
+});
+
+/* 68. A stored ledger that is already damaged (saved before the shape check shipped)
+   takes a POST: the POST is answered 200, the write is clean, and the original is the
+   day's snapshot, kept before the write. Records: native-ledger-is-raw-json,
+   saved-state-shape. */
+/* Each shape here is one the head gets wrong: envelopes {} throws in the merge, and a
+   stamps that is not an object, or holds a bad entry, is written back as damage. */
+const STORED_68 = [
+  { envelopes: {} },
+  { stamps: "x" },
+  { stamps: { "100::Seller": "x" } },
+];
+for (const [i, over] of STORED_68.entries()) {
+  await test(`68.${i + 1} a stored ledger with a bad field, ${JSON.stringify(over)}, takes a POST: 200, a clean write, the original kept before the write and as the day's snapshot`, async () => {
+    const damaged = ledger(over);
+    const s = fakeStore({ ledger: damaged, rev: 3 });
+    const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: ledger({ received: { "100|1|555": 1 } }) } });
+    eq(res.status, 200, `stored ${i}: status`);
+    eq(s.writes.length, 1, `stored ${i}: writes`);
+    ok(salvageLedger(s.writes[0]?.ledger ?? {}).dropped === 0, `stored ${i}: the written ledger has no unreadable field`);
+    eq(s.snapWrites.length, 1, `stored ${i}: snapshot writes`);
+    eq(s.snapWrites[0]?.ledger, damaged, `stored ${i}: the snapshot holds the original damaged ledger`);
+    eq(s.keptWrites.length, 1, `stored ${i}: kept writes`);
+    eq(s.keptWrites[0]?.ledger, damaged, `stored ${i}: kept holds the original damaged ledger`);
+    eq(s.order, ["kept", "snapshot", "write", "broadcast"], `stored ${i}: order`);
+  });
+}
+
+/* 69. A mend keeps the damaged original in `kept`, whatever the snapshots say. The copy is
+   written before the write, so a mend whose copy fails writes nothing. A healthy POST keeps
+   nothing. kept rows follow the same 180-day window as snapshots. Records: saved-state-shape,
+   milestones-taken-before-risk. */
+const DAMAGED_69 = ledger({ envelopes: {} });
+const KEPT_POST_69 = () => ({ ledger: ledger({ received: { "100|1|555": 1 } }) });
+
+await test("69.1 a mend keeps the original in kept, before the write, even when today's snapshot already exists", async () => {
+  const s = fakeStore({ ledger: DAMAGED_69, rev: 3 }, [[dayOf(NOW), snapOf(dayOf(NOW), 1)]]);
+  const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: KEPT_POST_69() });
+  eq(res.status, 200, "status");
+  eq(s.snapWrites.length, 0, "fixture: today's snapshot already exists, so no snapshot is written");
+  eq(s.keptWrites.length, 1, "kept writes");
+  eq(s.keptWrites[0]?.ledger, DAMAGED_69, "kept holds the original damaged ledger");
+  eq(s.keptWrites[0]?.rev, 3, "kept rev is the stored rev");
+  ok(new Date(s.keptWrites[0]?.at).getTime() === NOW, "kept is keyed by the ISO time it was kept");
+  ok(s.order.indexOf("kept") >= 0 && s.order.indexOf("kept") < s.order.indexOf("write"), "kept is written before the write");
+  eq(s.writes.length, 1, "the clean write still happens");
+});
+
+await test("69.2 a healthy stored ledger takes a changing POST and keeps nothing in kept", async () => {
+  const s = fakeStore({ ledger: ledger(), rev: 3 });
+  const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: withCard(200) } });
+  eq(res.status, 200, "status");
+  eq(s.keptWrites.length, 0, "kept writes");
+  eq(s.order, ["snapshot", "write", "broadcast"], "order has no kept");
+});
+
+await test("69.3 GET /kept lists the kept row with no ledger body; GET /kept/<at> returns the original and its rev", async () => {
+  const s = fakeStore({ ledger: DAMAGED_69, rev: 3 });
+  await send(s, "POST", "/ledger", { key: KEY_PHONE, json: KEPT_POST_69() });
+  const res = await send(s, "GET", "/kept", { key: KEY_PHONE });
+  eq(res.status, 200, "list status");
+  const body = await res.json();
+  ok(Array.isArray(body), "list body is an array");
+  const rows = Array.isArray(body) ? body : [];
+  eq(rows.length, 1, "one kept row after one mend");
+  eq(rows[0]?.rev, 3, "list rev");
+  ok(!JSON.stringify(body).includes('"ledger"'), "no ledger body in the list");
+  const at = rows[0]?.at;
+  const one = await send(s, "GET", `/kept/${at}`, { key: KEY_PHONE });
+  eq(one.status, 200, "GET /kept/<at> status");
+  const got = await one.json();
+  eq(got.ledger, DAMAGED_69, "GET /kept/<at> returns the original damaged ledger");
+  eq(got.rev, 3, "GET /kept/<at> returns the rev");
+  eq((await send(s, "GET", "/kept/2026-10-01T00:00:00.000Z", { key: KEY_PHONE })).status, 404, "unknown kept time is 404");
+});
+
+await test("69.4 both kept routes need the key: 401 with none or a stranger's, 200 with a device key", async () => {
+  const s = fakeStore({ ledger: DAMAGED_69, rev: 3 });
+  await send(s, "POST", "/ledger", { key: KEY_PHONE, json: KEPT_POST_69() });
+  const at = (await (await send(s, "GET", "/kept", { key: KEY_PHONE })).json())[0]?.at;
+  for (const path of ["/kept", `/kept/${at}`]) {
+    eq((await send(s, "GET", path, {})).status, 401, `${path} no key`);
+    eq((await send(s, "GET", path, { key: KEY_STRANGER })).status, 401, `${path} stranger`);
+  }
+  eq((await send(s, "GET", "/kept", { key: KEY_PHONE })).status, 200, "anchor: GET /kept with a device key");
+});
+
+await test("69.5 a mend prunes kept to 180 rows: today and the 179 days before it; the 180-day-old and older go", async () => {
+  const ages = Array.from({ length: 185 }, (_, i) => i + 1);
+  const keptAt = (k) => new Date(NOW - k * DAY).toISOString();
+  const s = fakeStore({ ledger: DAMAGED_69, rev: 3, at: PREV });
+  for (const k of ages) s.kept.set(keptAt(k), { ledger: DAMAGED_69, rev: 1 });
+  const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: KEPT_POST_69() });
+  eq(res.status, 200, "status");
+  const body = await (await send(s, "GET", "/kept", { key: KEY_PHONE })).json();
+  ok(Array.isArray(body), "GET /kept returns an array");
+  const days = (Array.isArray(body) ? body : []).map((e) => dayOf(e.at));
+  const kept = [dayOf(NOW), ...ages.filter((k) => k <= 179).map((k) => dayOf(NOW - k * DAY))];
+  eq(days.length, 180, "exactly 180 kept rows remain");
+  eq([...days].sort(), kept.sort(), "today and the 179 days before it remain");
+  ok(!days.includes(dayOf(NOW - 180 * DAY)), "the 180-day-old kept row is pruned");
+});
+
+await test("69.6 a mend whose kept copy cannot be written writes nothing: the stored ledger is unchanged", async () => {
+  const s = fakeStore({ ledger: DAMAGED_69, rev: 3 });
+  s.writeKept = async () => {
+    throw new Error("kept write failed");
+  };
+  const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: KEPT_POST_69() }).catch((e) => e);
+  ok(!(res instanceof Response) || res.status !== 200, "a failed kept write is not answered 200");
+  eq(s.writes.length, 0, "no write happens after a failed kept write");
+  eq(s.state?.ledger, DAMAGED_69, "the stored ledger is unchanged");
 });
 
 report();

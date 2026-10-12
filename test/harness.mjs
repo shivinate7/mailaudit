@@ -462,7 +462,7 @@ win.remote = remoteApi;
    `sync.key`, outside `store`, so storage.list() cannot see it.
    HARNESS CONTRACT ONLY. entry.jsx is not bundled here, so these cases prove
    this mock, not the adapter. */
-const syncFresh = () => ({ key: null, ledger: null, rev: 0, netFail: false, tooBig: false, refused: false, calls: [], onRev: null });
+const syncFresh = () => ({ key: null, ledger: null, rev: 0, netFail: false, tooBig: false, badShape: false, badShapes: 0, refused: false, calls: [], onRev: null });
 let sync = syncFresh();
 export const syncCalls = () => sync.calls;
 /* how many close functions connect() has handed out and that were called.
@@ -511,6 +511,10 @@ export const holdSyncPosts = () => {
     release();
   };
 };
+/* the Worker's object is emptied: its next GET answers 404, a healthy empty store */
+export const clearSyncStore = () => {
+  sync.ledger = null;
+};
 /* a network failure: the adapter answers {status: null, body: null}, which
    syncStatus maps to "unknown" */
 export const setSyncNetFail = (on) => {
@@ -521,6 +525,12 @@ export const setSyncNetFail = (on) => {
 export const setSyncTooBig = (on) => {
   sync.tooBig = !!on;
 };
+/* a POST the Worker refuses as a bad shape: the real 400 body, which syncStatus maps
+   to "bad-shape". syncBadShapeCount() counts the 400s served, so a test can see one. */
+export const setSyncBadShape = (on) => {
+  sync.badShape = !!on;
+};
+export const syncBadShapeCount = () => sync.badShapes;
 /* the Worker refuses this device's key: every call answers 401 */
 export const setSyncKeyRefused = (on) => {
   sync.refused = !!on;
@@ -552,6 +562,10 @@ const syncApi = {
     if (sync.netFail) return syncReply(null, null);
     if (sync.refused || !sync.key) return syncReply(401, { error: "unauthorized" });
     if (sync.tooBig) return syncReply(413, { error: "too-big" });
+    if (sync.badShape) {
+      sync.badShapes += 1;
+      return syncReply(400, { error: "bad ledger" });
+    }
     if (!ledger || ledger.mailday !== 1 || !Array.isArray(ledger.items))
       return syncReply(400, { error: "bad ledger" });
     const merged = sync.ledger ? mergeLedger(sync.ledger, ledger).merged : ledger;
@@ -697,6 +711,8 @@ const versionsApi = {
 };
 export const getPhoto = (id) => photoStore.get(id);
 export const saved = () => JSON.parse(store["mailday:v1"] || "{}");
+/* the saved text exactly as stored, unparsed: a refusal must leave it byte for byte */
+export const savedText = () => store["mailday:v1"] ?? null;
 
 const React = require("react");
 const { createRoot } = require("react-dom/client");
@@ -1094,6 +1110,10 @@ export async function boot(state, photos, opts = {}) {
   else delete win.seed;
   versionStore = new Map(opts.versions || []);
   if (opts.noVersions) delete win.versions;
+  /* failPut: every version write rejects, as IndexedDB does under quota or in private
+     browsing. A milestone that cannot be written (67.F1) is the case it serves. */
+  else if (opts.failPut)
+    win.versions = { ...versionsApi, async put() { throw new Error("quota exceeded"); } };
   else win.versions = versionsApi;
   /* `remoteAtBoot` seeds BEFORE the app mounts, which is the cold-start case:
      this device opens against a remote that is already ahead. `remote` seeds
@@ -1133,6 +1153,9 @@ export async function boot(state, photos, opts = {}) {
     sync.rev = 1;
   }
   if (state) store["mailday:v1"] = JSON.stringify(state);
+  /* the saved text as it is, not parsed: an unparseable saved text (67.F2) cannot
+     be written as a state */
+  if (opts.raw != null) store["mailday:v1"] = opts.raw;
   document.getElementById("root").innerHTML = "";
   await act(async () => {
     root = createRoot(document.getElementById("root"));

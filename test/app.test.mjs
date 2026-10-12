@@ -54,9 +54,13 @@ import {
   report,
   saveGitHubKey,
   saved,
+  savedText,
+  versionStore,
   sleep,
   setSyncNetFail,
   setSyncTooBig,
+  setSyncBadShape,
+  syncBadShapeCount,
   setSyncKeyRefused,
   syncCalls,
   syncCloseCount,
@@ -64,6 +68,7 @@ import {
   fireSyncRev,
   fireSyncRevOnly,
   holdSyncPosts,
+  clearSyncStore,
   holdRemotePushes,
   installClock,
   uninstallClock,
@@ -5316,7 +5321,7 @@ const milestoneCount = () => versionMetas().filter((m) => m.kind === "milestone"
 const newestMilestone = () => versionMetas().find((m) => m.kind === "milestone") ?? null;
 /* the advisory line is whichever button carries a sync sentence */
 const ADVISORY_RE =
-  /tap to|^Backed up|^Not backed up|^Nothing has been backed up|newer lines|can’t see|could not be checked|needs attention|snapshot of someone/i;
+  /tap to|^Backed up|^Not backed up|^Nothing has been backed up|newer lines|can’t see|could not be checked|needs attention|snapshot of someone|refused this ledger/i;
 const advisory = () => buttons().map((b) => b.textContent).find((t) => ADVISORY_RE.test(t)) ?? "";
 const ERROR_COPY_RE = /server|could not|needs attention/i;
 const pageshow = () =>
@@ -7900,5 +7905,595 @@ eq(
   fmt66(OLD66),
   "66.4 after a reload whose Worker reply fails, Last sync still shows the saved Worker agreement"
 );
+
+/* ── 67. owner ruling 2026-10-12 ("Keep a copy, then go on"): a damaged list is mended
+   and kept, never refused. Refused only when the saved text is not JSON or the copy
+   cannot be written (the orchestrator defaults of 2026-10-12, not owner rulings). ──
+   Damage is a received, receivedAt, stamps or envelopes value of the wrong shape. It is
+   entry-level (one entry that is not the right kind) or whole-field (the field itself is
+   not an object, or not a list for envelopes). JSON null counts as damaged. An absent
+   field is not damage.
+   On every path the data comes in (load, Re-import, a sync reply):
+     1. the data as it came in is saved to History as a milestone, before any save;
+     2. every entry that can be read is kept, and only the broken ones are dropped;
+     3. one plain line says how many entries could not be read, and where the original is.
+   The app keeps working: a check-in can be made and saved.
+   Records: native-ledger-is-raw-json, saved-state-shape, milestones-taken-before-risk,
+   every-restore-passes-applybackup, recovery-control-not-state-gated. */
+const NOTICE67 = /(?:(\d+) entr(?:y|ies) )?could not be read; the original is in History/;
+const FALLBACK67 = /Your saved ledger is damaged and was not loaded/;
+const KEY67 = "device-67-key";
+const GH67 = "github_pat_testtoken";
+const MILESTONE67 = "before reset";
+const VER67_TEXT = JSON.stringify({
+  mailday: 1,
+  items: ITEMS,
+  received: {},
+  receivedAt: {},
+  envelopes: [],
+  stamps: {},
+});
+const VERS67 = () => [
+  [
+    "ver-67",
+    {
+      meta: {
+        id: "ver-67",
+        at: Date.now() - 3600_000,
+        label: MILESTONE67,
+        kind: "milestone",
+        lines: 3,
+        checked: 0,
+        bytes: VER67_TEXT.length,
+      },
+      text: VER67_TEXT,
+    },
+  ],
+];
+const GOOD67 = { mailday: 1, items: ITEMS, received: {}, receivedAt: {}, envelopes: [], stamps: {} };
+const FIELDS67 = ["received", "receivedAt", "stamps", "envelopes"];
+/* Item keys by position. Alpha Cards holds 0 to 2, so the check-in below (Alpha's
+   "Mark all received") leaves the broken keys in Gamma (9, 10) and the good key in
+   Delta (11) alone. */
+const K67 = ITEMS.map((it) => it.key);
+const GK67_C = "C1::Gamma Cards";
+const GK67_D = "D1::Delta Cards";
+const STAMP67 = { kind: "claim", at: "2026-10-01", note: "", updatedAt: 1 };
+const ENV67 = (id) => ({
+  id,
+  createdAt: 1,
+  note: "",
+  entries: [{ name: "Brainstorm", qty: 1 }],
+  photos: [],
+  updatedAt: 1,
+});
+const RAW67 = '{"mailday":1,"items":[';
+const isObj67 = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+/* canonical JSON, so key order does not decide whether two copies are the same */
+const canon67 = (v) =>
+  JSON.stringify(v, (_, x) =>
+    isObj67(x) ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, x[k]])) : x
+  );
+/* a version of kind milestone whose text is `want` once parsed */
+const milestoneHolds67 = (want) =>
+  [...versionStore.values()].some((v) => {
+    if (v.meta.kind !== "milestone") return false;
+    try {
+      return canon67(JSON.parse(v.text)) === canon67(want);
+    } catch {
+      return false;
+    }
+  });
+const noticeMatch67 = () => text().match(NOTICE67);
+const noticeLines67 = () => (text().match(/could not be read/g) || []).length;
+const numbersOnly67 = (m) => Object.values(m || {}).every((v) => typeof v === "number");
+/* the saved ledger is whole after a save: the right shapes, and every item still there */
+const sane67 = (s) =>
+  s.items?.length === ITEMS.length &&
+  numbersOnly67(s.received) &&
+  numbersOnly67(s.receivedAt) &&
+  isObj67(s.stamps) &&
+  Object.values(s.stamps).every(isObj67) &&
+  Array.isArray(s.envelopes) &&
+  /* an envelope is an object with a string id: a string or a list coerced into an object is junk */
+  s.envelopes.every((e) => isObj67(e) && typeof e.id === "string");
+/* the check-in a mail day makes: Alpha Cards, the first package */
+const checkInAlpha67 = async () => {
+  await goTo("packages");
+  await click(inCard(card(/Alpha Cards/), /^Mark all received$/), "check the Alpha Cards package in");
+  await settle();
+  await sleep(SAVE_WAIT);
+};
+/* the broken entries, per field, and what the good ones must still say after a save */
+const ENTRY67 = [
+  {
+    field: "received",
+    value: { [K67[11]]: 1, [K67[9]]: null, [K67[10]]: "x" },
+    n: 2,
+    kept: (s) => s.received?.[K67[11]] === 1,
+  },
+  {
+    field: "receivedAt",
+    value: { [K67[11]]: 1000, [K67[10]]: "x" },
+    n: 1,
+    kept: (s) => s.receivedAt?.[K67[11]] === 1000,
+  },
+  {
+    field: "stamps",
+    value: { [GK67_D]: STAMP67, [GK67_C]: "x" },
+    n: 1,
+    kept: (s) => canon67(s.stamps?.[GK67_D]) === canon67(STAMP67),
+  },
+  {
+    field: "envelopes",
+    value: [ENV67("env-keep"), "x", [1], null],
+    n: 3,
+    kept: (s) => s.envelopes?.length === 1 && s.envelopes[0].id === "env-keep",
+  },
+];
+/* whole-field damage: the field itself has the wrong shape, so no entry is kept from it */
+const WHOLE67 = [
+  ["received", ["x"]],
+  ["received", null],
+  ["receivedAt", 7],
+  ["stamps", []],
+  ["envelopes", {}],
+  ["envelopes", null],
+];
+/* the field value as the saved text holds it, with one good and one broken entry */
+const withField67 = (field, value) => ({ ...GOOD67, [field]: value });
+
+/* ---- load: the saved text is read at mount ---- */
+const loadCase67 = async (label, seeded, n, kept) => {
+  await boot(seeded, null, { versions: VERS67(), syncAdapter: true, syncKey: KEY67, remoteKey: GH67 });
+  /* the background cycles that could write the damaged text back run here, as group 66 drives them */
+  await backgroundFor(5 * 60_000);
+  await drain();
+  await sleep(SAVE_WAIT);
+  const m = noticeMatch67();
+  ok(!!m, `${label}: one plain line says entries could not be read, and the original is in History`);
+  if (n != null) eq(m?.[1], String(n), `${label}: the line counts the entries it dropped`);
+  eq(noticeLines67(), 1, `${label}: the notice is one line`);
+  ok(milestoneHolds67(seeded), `${label}: the original is held in History as a milestone`);
+  ok(!FALLBACK67.test(text()), `${label}: the page is not refused`);
+  await checkInAlpha67();
+  ok(kept(saved()) && sane67(saved()), `${label}: after a check-in the good entries are kept, the broken ones are gone`);
+};
+
+for (const c of ENTRY67) {
+  const label = `67 load ${c.field} with broken entries`;
+  try {
+    await loadCase67(label, withField67(c.field, c.value), c.n, c.kept);
+  } catch (e) {
+    ok(false, `${label} threw: ${e.message}`);
+  }
+}
+for (const [field, value] of WHOLE67) {
+  const label = `67 load ${field}=${JSON.stringify(value)} (whole field)`;
+  try {
+    await loadCase67(label, withField67(field, value), null, sane67);
+  } catch (e) {
+    ok(false, `${label} threw: ${e.message}`);
+  }
+}
+
+/* An absent field is not damage. Each one, and all four together, loads with no notice. */
+for (const field of [...FIELDS67, "all four"]) {
+  const label = `67 ${field} absent`;
+  const state = { ...GOOD67 };
+  if (field === "all four") for (const k of FIELDS67) delete state[k];
+  else delete state[field];
+  try {
+    await boot(state, null, { versions: VERS67() });
+    await sleep(SAVE_WAIT);
+    ok(!/could not be read|damaged/.test(text()), `${label}: loads with no notice and no refusal`);
+    ok(text().includes(ITEMS[0].name), `${label}: the items still show`);
+  } catch (e) {
+    ok(false, `${label} threw: ${e.message}`);
+  }
+}
+
+/* ---- Re-import: a backup file goes through applyBackup ---- */
+const reimport67 = async (label, payload, n) => {
+  await boot({ ...GOOD67, items: ITEMS.slice(0, 3) }, null, {
+    versions: VERS67(),
+    syncAdapter: true,
+    syncKey: KEY67,
+    remoteKey: GH67,
+  });
+  await sleep(SAVE_WAIT);
+  await reachFor(/Re-import CSV/);
+  await click(btn(/Re-import CSV/), "show upload zone");
+  await dropFile("mailday-backup.json", JSON.stringify(payload));
+  await sleep(SAVE_WAIT);
+  const m = noticeMatch67();
+  ok(!!m, `${label}: one plain line says entries could not be read, and the original is in History`);
+  if (n != null) eq(m?.[1], String(n), `${label}: the line counts the entries it dropped`);
+  eq(noticeLines67(), 1, `${label}: the notice is one line`);
+  ok(milestoneHolds67(payload), `${label}: the file as it came in is held in History as a milestone`);
+  eq(saved().items?.length, ITEMS.length, `${label}: the Re-import lands its items`);
+  await checkInAlpha67();
+  ok(sane67(saved()), `${label}: after a check-in the saved ledger is whole`);
+};
+for (const c of ENTRY67) {
+  const label = `67 Re-import ${c.field} with broken entries`;
+  try {
+    await reimport67(label, { ...withField67(c.field, c.value), items: ITEMS }, c.n);
+  } catch (e) {
+    ok(false, `${label} threw: ${e.message}`);
+  }
+}
+try {
+  await reimport67("67 Re-import received=null (whole field)", { ...withField67("received", null), items: ITEMS }, null);
+} catch (e) {
+  ok(false, `67 Re-import received=null threw: ${e.message}`);
+}
+
+/* ---- a sync reply: the Worker's GET is applied after the idle wait ---- */
+const sync67 = async (label, incoming, n) => {
+  await boot({ ...GOOD67, items: ITEMS.slice(0, 3) }, null, { noRemote: true, syncKey: KEY67 });
+  await settle();
+  await pageshow();
+  await sleep(APPLY_WAIT);
+  await fireSyncRev(2, incoming);
+  await sleep(APPLY_WAIT + 1000);
+  const m = noticeMatch67();
+  ok(!!m, `${label}: one plain line says entries could not be read, and the original is in History`);
+  if (n != null) eq(m?.[1], String(n), `${label}: the line counts the entries it dropped`);
+  eq(noticeLines67(), 1, `${label}: the notice is one line`);
+  ok(milestoneHolds67(incoming), `${label}: the reply as it came in is held in History as a milestone`);
+  eq(saved().items?.length, ITEMS.length, `${label}: the reply's items merge in`);
+  await checkInAlpha67();
+  ok(sane67(saved()), `${label}: after a check-in the saved ledger is whole`);
+};
+for (const c of ENTRY67.filter((c) => c.field === "received" || c.field === "envelopes")) {
+  const label = `67 sync reply ${c.field} with broken entries`;
+  try {
+    await sync67(label, { ...withField67(c.field, c.value), items: ITEMS }, c.n);
+  } catch (e) {
+    ok(false, `${label} threw: ${e.message}`);
+  }
+}
+
+/* ---- fallback 1: the milestone cannot be written, so the load is refused as before ---- */
+try {
+  const seeded = withField67("received", { [K67[11]]: 1, [K67[10]]: "x" });
+  await boot(seeded, null, { versions: VERS67(), failPut: true, syncAdapter: true, syncKey: KEY67, remoteKey: GH67 });
+  await backgroundFor(5 * 60_000);
+  await drain();
+  await sleep(SAVE_WAIT);
+  ok(FALLBACK67.test(text()), "67.F1 a milestone that cannot be written refuses the load and says the data is damaged");
+  eq(savedText(), JSON.stringify(seeded), "67.F1a the saved text is not changed");
+  eq(postCount(), 0, "67.F1b no Worker push starts");
+  eq(pushes().length, 0, "67.F1c no GitHub push starts");
+  await openHistory();
+  ok(!!btn(/^Backup$/), "67.F1d History opens and Backup is reachable");
+} catch (e) {
+  ok(false, `67.F1 threw: ${e.message}`);
+}
+
+/* ---- fallback 2: the saved text is not JSON, so the load is refused and nothing is overwritten ---- */
+try {
+  await boot(null, null, { raw: RAW67, versions: VERS67(), syncAdapter: true, syncKey: KEY67, remoteKey: GH67 });
+  await backgroundFor(5 * 60_000);
+  await drain();
+  await sleep(SAVE_WAIT);
+  ok(FALLBACK67.test(text()), "67.F2 a saved text that is not JSON refuses the load and says the data is damaged");
+  eq(savedText(), RAW67, "67.F2a the raw text is kept byte for byte");
+  eq(postCount(), 0, "67.F2b no Worker push starts");
+  eq(pushes().length, 0, "67.F2c no GitHub push starts");
+  await openHistory();
+  ok(!!btn(/^Backup$/), "67.F2d History opens and Backup is reachable");
+} catch (e) {
+  ok(false, `67.F2 threw: ${e.message}`);
+}
+
+/* ---- fallback 2 across the sync rev: a reply that arrives and then idles must not overwrite the refused text ---- */
+try {
+  await boot(null, null, { raw: RAW67, versions: VERS67(), syncAdapter: true, syncKey: KEY67 });
+  await settle();
+  await pageshow();
+  await sleep(APPLY_WAIT);
+  await fireSyncRev(2, { ...GOOD67, items: ITEMS.slice(0, 4) });
+  await sleep(APPLY_WAIT + 1000);
+  eq(savedText(), RAW67, "67.F3 a sync reply that arrives and then idles does not overwrite the refused text");
+  ok(FALLBACK67.test(text()), "67.F3a the refusal still shows");
+} catch (e) {
+  ok(false, `67.F3 threw: ${e.message}`);
+}
+
+/* ---- a History restore from a refused load lands, and clears the refusal ---- */
+try {
+  await boot(null, null, { raw: RAW67, versions: VERS67(), syncAdapter: true, syncKey: KEY67 });
+  await sleep(SAVE_WAIT);
+  await openHistory();
+  await click(btn(new RegExp(MILESTONE67)), "expand the milestone");
+  await click(btn(/Restore this version/), "arm restore");
+  if (btn(/Tap again to replace/)) await click(btn(/Tap again to replace/), "confirm restore");
+  await settle();
+  await sleep(SAVE_WAIT);
+  eq(saved().items?.length, ITEMS.length, "67.7 a History restore from a refused load brings the version's items back");
+  ok(!FALLBACK67.test(text()), "67.7a and the refusal clears");
+} catch (e) {
+  ok(false, `67.7 threw: ${e.message}`);
+}
+
+/* ── 68. Refused loads, and the copy that comes before a refusal changes anything ──
+   Owner ruling 2026-10-12, "Keep a copy, then go on". Four gaps the build left open.
+   Each case is red on the head it was written against. Records: saved-state-shape,
+   native-ledger-is-raw-json, milestones-taken-before-risk. */
+const KEY68 = "device-68-key";
+const COPY68 = /A copy of that file could not be saved to History, so nothing was changed\./;
+const NOT_BACKUP68 = /isn[’']t a Mail Day backup/;
+
+/* 68.1 a file restore from a refused load: when the raw text cannot be copied, the restore changes nothing. */
+try {
+  await boot(null, null, { raw: RAW67, versions: VERS67(), failPut: true, syncAdapter: true, syncKey: KEY67, remoteKey: GH67 });
+  await sleep(SAVE_WAIT);
+  ok(FALLBACK67.test(text()), "68.1pre the load is refused, so the restore case means something");
+  await reachFor(/Re-import CSV/);
+  await click(btn(/Re-import CSV/), "show upload zone on a refused load");
+  ok(!!document.querySelector('div[style*="dashed"]'), "68.1pre2 the upload zone is open on a refused load");
+  await dropFile("mailday-backup.json", JSON.stringify({ ...GOOD67, items: ITEMS.slice(0, 3) }));
+  await sleep(SAVE_WAIT);
+  eq(savedText(), RAW67, "68.1 a file restore whose copy of the refused text fails changes nothing: the raw text is kept byte for byte");
+  ok(FALLBACK67.test(text()), "68.1a and the refusal still holds");
+} catch (e) {
+  ok(false, `68.1 threw: ${e.message}`);
+}
+
+/* 68.1b a History restore from a refused load: the same rule. */
+try {
+  await boot(null, null, { raw: RAW67, versions: VERS67(), failPut: true, syncAdapter: true, syncKey: KEY67, remoteKey: GH67 });
+  await sleep(SAVE_WAIT);
+  ok(FALLBACK67.test(text()), "68.1bpre the load is refused, so the History case means something");
+  await openHistory();
+  await click(btn(new RegExp(MILESTONE67)), "expand the milestone");
+  await click(btn(/Restore this version/), "arm restore on a refused load");
+  if (btn(/Tap again to replace/)) await click(btn(/Tap again to replace/), "confirm restore");
+  await settle();
+  await sleep(SAVE_WAIT);
+  eq(savedText(), RAW67, "68.1b a History restore whose copy of the refused text fails changes nothing");
+  ok(FALLBACK67.test(text()), "68.1c and the refusal still holds");
+} catch (e) {
+  ok(false, `68.1b threw: ${e.message}`);
+}
+
+/* 68.2 a re-import of a damaged file whose copy cannot be saved: the message is the copy's, not "not a backup". */
+try {
+  const before68 = { ...GOOD67, items: ITEMS.slice(0, 3) };
+  await boot(before68, null, { versions: VERS67(), failPut: true, syncAdapter: true, syncKey: KEY67, remoteKey: GH67 });
+  await sleep(SAVE_WAIT);
+  const savedBefore68 = savedText();
+  await reachFor(/Re-import CSV/);
+  await click(btn(/Re-import CSV/), "show upload zone");
+  await dropFile("mailday-backup.json", JSON.stringify({ ...withField67("received", "x"), items: ITEMS }));
+  await sleep(SAVE_WAIT);
+  ok(!NOT_BACKUP68.test(text()), "68.2 a damaged file whose copy cannot be saved is not called “not a Mail Day backup”");
+  ok(COPY68.test(text()), "68.2a the line says a copy could not be saved, and nothing was changed");
+  eq(savedText(), savedBefore68, "68.2b the saved text is unchanged");
+} catch (e) {
+  ok(false, `68.2 threw: ${e.message}`);
+}
+
+/* 68.3 saved text that is valid JSON but not an object is not usable: refuse, keep it as it is. */
+for (const raw of ["null", "5", "[]"]) {
+  const label = `68.3 saved text ${raw}`;
+  try {
+    await boot(null, null, { raw, versions: VERS67(), syncAdapter: true, syncKey: KEY67, remoteKey: GH67 });
+    await backgroundFor(5 * 60_000);
+    await drain();
+    await sleep(SAVE_WAIT);
+    ok(FALLBACK67.test(text()), `${label}: is refused and says the data is damaged`);
+    eq(savedText(), raw, `${label}: the saved text is kept as it is`);
+    eq(postCount(), 0, `${label}: no Worker push starts`);
+    await openHistory();
+    ok(!!btn(/^Backup$/), `${label}: History opens and Backup is reachable`);
+  } catch (e) {
+    ok(false, `${label} threw: ${e.message}`);
+  }
+}
+
+/* 68.4 the rules: a 400 is its own status, not unknown and not ok. */
+ok(sr("syncStatus", 400) !== "unknown" && sr("syncStatus", 400) !== "ok", "68.4 a 400 is its own status, not unknown and not ok");
+
+/* 68.5 a 400 from the Worker is a bad shape: no retry on backoff, and one plain line. A 5xx still retries (56.1). */
+try {
+  await boot({ items: ITEMS, received: {} }, null, { syncKey: KEY68 });
+  await settle();
+  setSyncBadShape(true);
+  try {
+    await click(btn(/Mark all received/), "check in, so a POST is refused as a bad shape");
+    await sleep(POST_WAIT);
+    ok(syncBadShapeCount() > 0, "68.5pre a POST was refused with a 400, so the rest means something");
+    const posts68 = postCount();
+    await sleep(8000);
+    eq(postCount(), posts68, "68.5a no retry follows a 400: the POST count does not grow while the device waits");
+    const line68 = advisory();
+    eq(line68, "The sync server refused this ledger’s shape, so it is not backed up.", "68.5b the 400 shows its exact line: it names the refusal and offers no fix it does not have");
+  } finally {
+    setSyncBadShape(false);
+  }
+} catch (e) {
+  ok(false, `68.5 threw: ${e.message}`);
+}
+
+/* 68.6 F1: a sync reply that holds damage, whose copy cannot be written to History. The damaged
+   reply is not applied, and sends go on: the Worker keeps its own copy of the damaged original,
+   and its clean reply to the send is what applies. */
+try {
+  const local68 = { ...GOOD67, items: ITEMS.slice(0, 3) };
+  await boot(local68, null, {
+    versions: VERS67(),
+    failPut: true,
+    syncAdapter: true,
+    syncKey: KEY68,
+    syncLedger: withField67("received", ["x"]),
+  });
+  await sleep(SAVE_WAIT);
+  const saved68 = savedText();
+  ok(syncCalls().some((c) => c.op === "get"), "68.6pre the device read the damaged reply, so the rest means something");
+  ok(JSON.parse(saved68).items.length === 3, "68.6pre the damaged reply was not applied before its copy: the saved text still holds the local three items");
+  await backgroundFor(5 * 60_000);
+  await drain();
+  await sleep(SAVE_WAIT);
+  ok(postCount() > 0, "68.6 a damaged reply whose copy cannot be saved does not stop sends: the device POSTs, and the Worker keeps its own copy");
+  const after68 = JSON.parse(savedText());
+  ok(after68.received !== null && typeof after68.received === "object" && !Array.isArray(after68.received), "68.6a the Worker's reply is clean: the saved received is an object, not the damaged array");
+  ok(after68.items.length > 3, "68.6a the clean merged reply applies: the saved text carries the Worker's items, not only the local three");
+} catch (e) {
+  ok(false, `68.6 threw: ${e.message}`);
+}
+
+/* 68.6b the same damaged reply, then a check-in: the check-in still POSTs while the copy is
+   missing. No send path is gated on the copy. */
+try {
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+    versions: VERS67(),
+    failPut: true,
+    syncAdapter: true,
+    syncKey: KEY68,
+    syncLedger: withField67("received", ["x"]),
+  });
+  await sleep(SAVE_WAIT);
+  const posts68b0 = postCount();
+  await click(btn(/Mark all received/), "check in while the damaged copy is missing");
+  await sleep(POST_WAIT);
+  await foreground();
+  await drain();
+  await sleep(POST_WAIT);
+  ok(postCount() > posts68b0, "68.6b a check-in while the copy of a damaged reply is missing still POSTs");
+} catch (e) {
+  ok(false, `68.6b threw: ${e.message}`);
+}
+
+/* 68.7 F3: a History restore from a refused load whose copy cannot be written says the copy
+   failed, the same line Re-import gives, and does not call the version corrupt. */
+try {
+  await boot(null, null, { raw: RAW67, versions: VERS67(), failPut: true, syncAdapter: true, syncKey: KEY67, remoteKey: GH67 });
+  await sleep(SAVE_WAIT);
+  ok(FALLBACK67.test(text()), "68.7pre the load is refused, so the restore case means something");
+  await openHistory();
+  await click(btn(new RegExp(MILESTONE67)), "expand the milestone");
+  await click(btn(/Restore this version/), "arm restore on a refused load");
+  if (btn(/Tap again to replace/)) await click(btn(/Tap again to replace/), "confirm restore");
+  await settle();
+  await sleep(SAVE_WAIT);
+  ok(COPY68.test(text()), "68.7 a History restore whose copy cannot be saved shows the copy-failed line");
+  ok(!/looks corrupt/.test(text()), "68.7a the restore does not call the version corrupt");
+  eq(savedText(), RAW67, "68.7b a History restore whose copy fails changes nothing");
+} catch (e) {
+  ok(false, `68.7 threw: ${e.message}`);
+}
+
+/* 68.8 F3, the branch's own history: an older version restored from a refused load whose
+   copy cannot be written says the copy failed, not that the version is corrupt. */
+try {
+  await boot(null, null, { raw: RAW67, versions: VERS67(), failPut: true, syncAdapter: true, syncKey: KEY67, remoteKey: GH67 });
+  await sleep(SAVE_WAIT);
+  ok(FALLBACK67.test(text()), "68.8pre the load is refused, so the branch restore case means something");
+  const H68 = "ledger: good version, from the branch";
+  remote.history.push({ sha: "sha-68-branch", at: Date.now() - 3600_000, message: H68, text: VER67_TEXT });
+  await openHistory();
+  await click(btn(/Load older versions/), "ask for the branch's versions");
+  await settle();
+  await click(buttons().find((b) => b.textContent.includes(H68)), "expand the branch version");
+  await click(btn(/Restore this version/), "arm restore of the branch version");
+  if (btn(/Tap again to replace/)) await click(btn(/Tap again to replace/), "confirm restore");
+  await settle();
+  await sleep(SAVE_WAIT);
+  ok(COPY68.test(text()), "68.8 a branch restore whose copy cannot be saved shows the copy-failed line");
+  ok(!/looks corrupt/.test(text()), "68.8a the branch restore does not call the version corrupt");
+  eq(savedText(), RAW67, "68.8b a branch restore whose copy fails changes nothing");
+} catch (e) {
+  ok(false, `68.8 threw: ${e.message}`);
+}
+
+/* 68.9 F1: a Worker copy that cannot be saved, then the device retries with a POST. A GitHub
+   conflict on a mirror push merges, then calls the Worker directly. That call goes: a copy that
+   cannot be saved never holds the send. */
+try {
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+    versions: VERS67(),
+    failPut: true,
+    syncAdapter: true,
+    syncKey: KEY68,
+    remoteKey: GH67,
+    remote: VER67_TEXT,
+    syncLedger: withField67("received", ["x"]),
+  });
+  await sleep(SAVE_WAIT);
+  clearSyncStore();
+  await backgroundFor(5 * 60_000);
+  await drain();
+  await sleep(SAVE_WAIT);
+  ok(postCount() > 0, "68.9pre the retry after the failed copy was a POST, not a read: the copy gate is past");
+  const posts68b = postCount();
+  const pushes68b = remote.calls.filter((c) => c.op === "push").length;
+  await click(btn(/Mark all received/), "check in on the mirror");
+  await sleep(POST_WAIT);
+  await background();
+  await drain();
+  await sleep(POST_WAIT);
+  ok(remote.calls.filter((c) => c.op === "push").length > pushes68b, "68.9pre the mirror pushed to GitHub, so the conflict path runs");
+  ok(postCount() > posts68b, "68.9 a GitHub conflict on a mirror push still POSTs to the Worker while the copy is missing");
+} catch (e) {
+  ok(false, `68.9 threw: ${e.message}`);
+}
+
+/* 68.10a F3: a Worker copy that cannot be saved, then the Worker store is emptied. An empty
+   store is healthy, so the next edit POSTs. A copy that cannot be saved never holds sends. */
+try {
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+    versions: VERS67(),
+    failPut: true,
+    syncAdapter: true,
+    syncKey: KEY68,
+    syncLedger: withField67("received", ["x"]),
+  });
+  await sleep(SAVE_WAIT);
+  clearSyncStore();
+  await backgroundFor(5 * 60_000);
+  await drain();
+  await sleep(SAVE_WAIT);
+  ok(postCount() > 0, "68.10pre the retry after the failed copy was a POST, not a read: the copy gate is past");
+  const posts10a = postCount();
+  await click(btn(/Mark all received/), "check in with the store emptied");
+  await sleep(POST_WAIT);
+  ok(postCount() > posts10a, "68.10a with the store emptied, the next edit POSTs: a failed copy never holds sends");
+} catch (e) {
+  ok(false, `68.10a threw: ${e.message}`);
+}
+
+/* 68.10b F3: a Worker copy that cannot be saved, then a new sync key is saved while the Worker
+   cannot be read. The next retry POSTs: a failed copy never holds sends, with or without a key save. */
+const KEY68B = "device-68-key-b";
+try {
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+    versions: VERS67(),
+    failPut: true,
+    syncAdapter: true,
+    syncKey: KEY68,
+    syncLedger: withField67("received", ["x"]),
+  });
+  await sleep(SAVE_WAIT);
+  ok(syncCalls().some((c) => c.op === "get"), "68.10bpre the cold read was made, so the copy failure is in place");
+  setSyncNetFail(true);
+  await openSync();
+  await settle();
+  const gets10b = syncCalls().filter((c) => c.op === "get").length;
+  await type(document.querySelector('input[aria-label="Sync key"]'), KEY68B);
+  await click(btn(/^Save sync key$/), "save a new sync key");
+  await sleep(SAVE_WAIT);
+  ok(syncCalls().filter((c) => c.op === "get").length > gets10b, "68.10bpre the save read the Worker again");
+  const posts10b = postCount();
+  await backgroundFor(5 * 60_000);
+  await drain();
+  await sleep(SAVE_WAIT);
+  setSyncNetFail(false);
+  ok(postCount() > posts10b, "68.10b after a new sync key is saved, the retry POSTs: a failed copy never holds sends");
+} catch (e) {
+  ok(false, `68.10b threw: ${e.message}`);
+}
 
 report();

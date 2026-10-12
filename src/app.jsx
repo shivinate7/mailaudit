@@ -5,7 +5,7 @@ import {
   parseItems, lostMail, normName, isUntracked, gkOf, groupPackages, rankCandidates,
   dateRange, inRange, dropCanceled, dropGks, canceledPackagesOf, stampedPackagesOf,
   tallyGroups, sortTally, sortPackages, filterPackages, filterTally,
-  totalsOf, outstandingOf, outstandingNames as outstandingNamesOf, packagesDone,
+  totalsOf, outstandingOf, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger,
 } from "./view-rules.mjs";
 import { photoPlan } from "./photo-rules.mjs";
 import { shouldSnapshot } from "./version-rules.mjs";
@@ -2879,7 +2879,41 @@ export default function MailDayLedger() {
   /* item key -> ms of its last check or un-check; what lets the two-device merge
      carry an un-check. Persisted: invariant saved-state-shape. */
   const [receivedAt, setReceivedAt] = useState({});
-  const [loaded, setLoaded] = useState(false);
+  const [opened, setLoaded] = useState(false);
+  /* the raw saved text when a list field is present but the wrong shape; the
+     load stopped, so `loaded` stays false and nothing writes or syncs. */
+  const [damaged, setDamaged] = useState(null);
+  const loaded = opened && !damaged;
+  const damagedRef = useRef(null);
+  damagedRef.current = damaged;
+  /* Lane B1: the one line a mend leaves, and the originals already kept this page */
+  const [mended, setMended] = useState("");
+  const keptRef = useRef(new Set());
+  /* save the ledger as it came in to History, and wait for it. Throws when it
+     cannot be written: the caller then refuses and changes nothing.
+     milestones-taken-before-risk */
+  const keep = async (text) => {
+    if (keptRef.current.has(text)) return;
+    if (!window.versions) throw new Error("unsaved");
+    let lines = 0;
+    let checked = 0;
+    try {
+      const d = JSON.parse(text);
+      lines = Array.isArray(d.items) ? d.items.length : 0;
+      checked = Object.values(d.received && typeof d.received === "object" ? d.received : {}).reduce(
+        (n, v) => n + (typeof v === "number" ? v : 0),
+        0
+      );
+    } catch {}
+    try {
+      await window.versions.put({ text, label: "damaged, as it came in", kind: "milestone", lines, checked });
+    } catch {
+      throw new Error("unsaved"); /* callers tell "no copy" from "not a ledger" by this message */
+    }
+    keptRef.current.add(text);
+  };
+  const mendNotice = (n) =>
+    `${n} entr${n === 1 ? "y" : "ies"} could not be read; the original is in History.`;
   const [saving, setSaving] = useState("idle"); // idle | saving | saved | error
   const [query, setQuery] = useState("");
   /* the date range collapses to one control; this opens the chip set. Not
@@ -3027,7 +3061,7 @@ export default function MailDayLedger() {
        shell, so the sentinel isn't in the DOM yet and this would attach to
        nothing and never retry. Depending on it re-runs the effect once the
        real masthead mounts. */
-  }, [loaded]);
+  }, [opened]);
   const [itemSort, setItemSort] = useState("missing");
   /* orphaned mail: cards recorded off an unidentifiable envelope, parked until
      the user ties them to a package by hand */
@@ -3107,8 +3141,36 @@ export default function MailDayLedger() {
             }
           }
         }
+        /* Not JSON at all: refuse, keep the text untouched (fallback 2). */
+        let parsed = null;
+        let refused = false;
         if (value) {
-          const data = JSON.parse(value);
+          try {
+            parsed = JSON.parse(value);
+          } catch {
+            refused = true;
+          }
+        }
+        /* A field of the wrong shape (null counts): keep a copy of the original
+           in History, then go on with every entry that can be read. If the copy
+           cannot be written, refuse as before (fallback 1).
+           native-ledger-is-raw-json */
+        /* valid JSON that is not an object (null, 5, a list) is not usable either */
+        if (!refused && value && !(parsed && typeof parsed === "object" && !Array.isArray(parsed)))
+          refused = true;
+        const { data, dropped } = salvageLedger(parsed);
+        if (!refused && dropped) {
+          try {
+            await keep(value);
+            setMended(mendNotice(dropped));
+            skipFirstSave.current = false; /* the mended ledger replaces the damaged text */
+          } catch {
+            refused = true;
+          }
+        }
+        if (refused) {
+          setDamaged(value);
+        } else if (data) {
           setItems(data.items || []);
           setReceived(data.received || {});
           // absent on anything saved before receivedAt shipped
@@ -3264,6 +3326,8 @@ syncBroken === "seeded"
                     ? "This device’s sync key was refused — tap to fix"
                     : syncBroken === "too-big"
                     ? "The ledger is too big for the sync server — tap to fix"
+                    : syncBroken === "bad-shape"
+                    ? "The sync server refused this ledger’s shape, so it is not backed up."
                     : syncBroken === "photos-unreadable"
                     ? "This device’s photos could not be read, so no new photos were backed up — tap to fix"
                     : !syncBroken
@@ -3283,6 +3347,8 @@ syncBroken === "seeded"
       ? "No sync key on this device"
       : serverDown === "no-access"
       ? "Sync key refused"
+      : serverDown === "bad-shape"
+      ? "Ledger shape refused"
       : serverDown === "too-big"
       ? "Ledger too big for the server"
       : serverDown
@@ -3319,8 +3385,9 @@ syncBroken === "seeded"
      aids that would multiply the file size, so they're opt-in. */
   const backup = useCallback(
     async (withPhotos) => {
-      const payload = snapshot();
-      if (withPhotos && window.photos) {
+      /* a refused load holds nothing in state: export the saved text as it is */
+      const payload = damaged ? null : snapshot();
+      if (payload && withPhotos && window.photos) {
         setBackupBusy(true);
         const out = {};
         for (const id of referencedPhotoIds) {
@@ -3333,7 +3400,7 @@ syncBroken === "seeded"
         payload.photos = out;
         setBackupBusy(false);
       }
-      const blob = new Blob([JSON.stringify(payload)], {
+      const blob = new Blob([payload ? JSON.stringify(payload) : damaged], {
         type: "application/json",
       });
       const a = document.createElement("a");
@@ -3343,7 +3410,7 @@ syncBroken === "seeded"
       a.click();
       URL.revokeObjectURL(a.href);
     },
-    [snapshot, referencedPhotoIds]
+    [snapshot, referencedPhotoIds, damaged]
   );
 
   /* The one restore path, shared by a dropped file and a GitHub pull.
@@ -3369,6 +3436,20 @@ syncBroken === "seeded"
     }
   }, []);
 
+  /* The chokepoint for ledger text coming in (a restore, a pull, a merge):
+     parse, keep a copy of the original when something is unreadable, mend.
+     Throws, with nothing changed, when it is not a ledger or the copy cannot be
+     written. */
+  const readLedger = async (text) => {
+    const { data, dropped } = salvageLedger(parseLedger(text));
+    if (dropped) {
+      await keep(text);
+      refreshVersions();
+      setMended(mendNotice(dropped));
+    }
+    return data;
+  };
+
   /* Save a version of where the ledger stands right now.
 
      Built from snapshot() and nothing else — the same payload the download and
@@ -3387,7 +3468,7 @@ syncBroken === "seeded"
      Nothing the user is doing should block on a backup of it. */
   const takeVersion = useCallback(
     (label, kind = "recent") => {
-      if (!window.versions) return;
+      if (!window.versions || damaged) return;
       if (!shouldSnapshot(kind, lastVersionAt.current)) return;
       lastVersionAt.current = Date.now();
       const payload = snapshot();
@@ -3418,13 +3499,19 @@ syncBroken === "seeded"
           lastVersionAt.current = null;
         });
     },
-    [snapshot, refreshVersions]
+    [snapshot, refreshVersions, damaged]
   );
 
   const applyBackup = useCallback(
     async (text, source /* "file" | "remote" | "merge" | "server" */, extraPresent = null, notice = null) => {
-      const data = parseLedger(text);
+      const data = await readLedger(text);
       const remote = source === "remote";
+      /* a restore ends a refused load and its first save must not be skipped; the
+         refused text goes to History first, and if it cannot be copied the restore
+         changes nothing (as Reset does) */
+      if (damagedRef.current) await keep(damagedRef.current);
+      skipFirstSave.current = false;
+      setDamaged(null);
       /* AFTER the parse and before the first setState: a payload that isn't a
          ledger throws above this line, so a rejected restore doesn't spend a
          version slot, and a restore about to land always has the world it is
@@ -3556,15 +3643,21 @@ syncBroken === "seeded"
         // restore from a Mail Day backup
         const reader = new FileReader();
         reader.onload = () => {
-          applyBackup(reader.result, "file").catch(() =>
+          applyBackup(reader.result, "file").catch((e) =>
             setUploadErr(
-              "That file isn\u2019t a Mail Day backup. Use a backup downloaded from the Backup button, or an OrderWand CSV."
+              e?.message === "unsaved"
+                ? "A copy of that file could not be saved to History, so nothing was changed."
+                : "That file isn\u2019t a Mail Day backup. Use a backup downloaded from the Backup button, or an OrderWand CSV."
             )
           );
         };
         reader.onerror = () =>
           setUploadErr("Couldn\u2019t read that file. Try again.");
         reader.readAsText(file);
+        return;
+      }
+      if (damagedRef.current) {
+        setUploadErr("Your saved ledger is damaged and was not loaded. Restore a saved version first.");
         return;
       }
       Papa.parse(file, {
@@ -3767,6 +3860,17 @@ syncBroken === "seeded"
     }
     clearTimeout(resetTimer.current);
     disarm();
+    /* a refused load holds nothing in state: keep its raw text first, or do not reset */
+    if (damagedRef.current) {
+      try {
+        await keep(damagedRef.current);
+        refreshVersions();
+      } catch {
+        setVersionsDown("Versions can't be saved on this device right now — a Reset would not be undoable.");
+        return;
+      }
+      setDamaged(null);
+    }
     /* The most valuable version this app takes. Reset is the one control that
        destroys everything, and versions deliberately survive it — so a Reset
        tapped twice by accident is recoverable rather than final. */
@@ -3825,9 +3929,13 @@ syncBroken === "seeded"
            should carry exactly the warnings one does. */
         await applyBackup(text, "file", null, null);
         setOpenVersion(null);
-      } catch {
+      } catch (e) {
         setVersionMsgAt(id);
-        setVersionMsg("That version could not be restored — it looks corrupt.");
+        setVersionMsg(
+          e?.message === "unsaved"
+            ? "A copy of that file could not be saved to History, so nothing was changed."
+            : "That version could not be restored — it looks corrupt."
+        );
       }
     },
     [confirmRestore, arm, disarm, applyBackup]
@@ -3895,9 +4003,13 @@ syncBroken === "seeded"
       try {
         await applyBackup(text, "file", null, null);
         setOpenVersion(null);
-      } catch {
+      } catch (e) {
         setVersionMsgAt(sha);
-        setVersionMsg("That version could not be restored — it looks corrupt.");
+        setVersionMsg(
+          e?.message === "unsaved"
+            ? "A copy of that file could not be saved to History, so nothing was changed."
+            : "That version could not be restored — it looks corrupt."
+        );
       }
     },
     [confirmRestore, arm, disarm, applyBackup]
@@ -3913,8 +4025,8 @@ syncBroken === "seeded"
   });
 
   useEffect(() => {
-    if (loaded) refreshVersions();
-  }, [loaded, refreshVersions]);
+    if (opened) refreshVersions();
+  }, [opened, refreshVersions]);
 
   /* The rolling half of the list. Deliberately only the fields that are REAL
      data — the same ones the auto-push debounce watches, and for the same
@@ -4108,7 +4220,7 @@ syncBroken === "seeded"
 
   const doPush = useCallback(
     async (force, quiet = false, mirror = false) => {
-      if (!window.remote) return;
+      if (!window.remote || damagedRef.current) return;
       /* doMerge clears this too. A "Pushed ✓" flash
          from 2s ago would otherwise fire mid-way through the next push and
          reset a freshly-set "conflict" to idle — taking Merge, Push anyway and
@@ -4145,7 +4257,7 @@ syncBroken === "seeded"
              being pushed, write under the fresh sha, and give the Worker the
              merge. Never write a copy that has not merged what GitHub holds. */
           const res = await window.remote.pull();
-          const merged = mergeLedger(JSON.parse(text), parseLedger(res.text)).merged;
+          const merged = mergeLedger(JSON.parse(text), await readLedger(res.text)).merged;
           text = JSON.stringify(merged);
           await window.remote.push(text, message, res.sha);
           /* the merge is the newest ledger this device knows, whatever the Worker
@@ -4154,7 +4266,7 @@ syncBroken === "seeded"
           tryApplyRef.current();
           if (window.sync) {
             try {
-              settleReply(await withTimeout(window.sync.post(merged)), true);
+              await settleReply(await withTimeout(sendPost(merged)), true);
             } catch {
               mirrorRef.current = false;
             }
@@ -4329,7 +4441,7 @@ syncBroken === "seeded"
     async (alsoPush, quiet = false, reply = null) => {
       /* `reply` is a ledger the Worker answered a POST with: the same merge, a
          different source. No pull, no photo download, no sha to accept. */
-      if (!reply && !window.remote) return { ok: false, code: "server" };
+      if ((!reply && !window.remote) || damagedRef.current) return { ok: false, code: "server" };
       clearTimeout(flashTimer.current);
       disarm();
       setPhotoMsg(null);
@@ -4349,7 +4461,7 @@ syncBroken === "seeded"
            "keeping an id costs a blank tile, stripping it costs the photo" */
         const extraPresent = reply ? null : await pullPhotos(res.text, gen);
         if (syncGen.current !== gen) return { ok: false, code: "server" };
-        const { merged, stats } = mergeLedger(snapshot(), parseLedger(res.text));
+        const { merged, stats } = mergeLedger(snapshot(), await readLedger(res.text));
         const text = JSON.stringify(merged);
         const before = syncGen.current;
         /* An unattended merge that added and removed nothing has nothing to report, and
@@ -4517,7 +4629,7 @@ syncBroken === "seeded"
   const tryApplyRef = useRef(null);
   tryApplyRef.current = () => {
     clearTimeout(applyTimer.current);
-    if (!pendingReply.current) return;
+    if (!pendingReply.current || damagedRef.current) return;
     /* a pasted key is a tap the user just made: its first reply applies at once */
     const idle = applyNow.current || idleReady(lastActivity.current, Date.now());
     /* an import notice holds the apply; the notice a server apply left does not */
@@ -4606,12 +4718,28 @@ syncBroken === "seeded"
   /* One verdict for every Worker reply. empty (404) is a healthy server with
      nothing stored yet. Anything else but ok is a failure: mirror off, the
      advisory state set, and the retry follows backoffMs, not every save. */
-  const settleReply = (r, fromPost = false) => {
+  const settleReply = async (r, fromPost = false) => {
+    /* Lane B1: a reply with unreadable entries is kept in History as it came, then
+       mended before it is held. No copy, no reply: it counts as a failed call, and local work and sends go on. */
+    if (r.code === "ok" && r.body?.ledger) {
+      const { data, dropped } = salvageLedger(r.body.ledger);
+      if (dropped) {
+        try {
+          await keep(JSON.stringify(r.body.ledger));
+          refreshVersions();
+          setMended(mendNotice(dropped));
+          r = { ...r, body: { ...r.body, ledger: data } };
+        } catch {
+          /* the copy failed: the reply is not applied. Sends go on; the Worker keeps its own copy. */
+          r = { ...r, code: "unknown" };
+        }
+      }
+    }
     if (r.code === "ok" || r.code === "empty") {
       /* only a successful POST clears a too-big state; a GET still holds its reply */
       if (tooBigRef.current && !(fromPost && r.code === "ok")) {
         if (r.code === "ok") holdReply(r);
-        return;
+        return r;
       }
       tooBigRef.current = false;
       mirrorRef.current = true;
@@ -4621,40 +4749,47 @@ syncBroken === "seeded"
       setServerDown(false);
       setWorkerSyncedAt((p) => Math.max(p || 0, Date.now())); // never moves back
       if (r.code === "ok") holdReply(r);
-      return;
+      return r;
     }
     tooBigRef.current = r.code === "too-big";
     mirrorRef.current = false;
-    setServerDown(r.code === "too-big" || r.code === "no-access" ? r.code : "unknown");
+    setServerDown(["too-big", "no-access", "bad-shape"].includes(r.code) ? r.code : "unknown");
+    if (r.code === "bad-shape") {
+      /* a refused shape stays refused: no backoff retry. The next change POSTs again. */
+      clearTimeout(retryTimer.current);
+      return r;
+    }
     if (r.code === "no-access") {
       /* a refused key stays refused: stop POSTs, retries and the socket */
       refusedRef.current = true;
       clearTimeout(retryTimer.current);
       if (closeRef.current) closeRef.current();
       closeRef.current = null;
-      return;
+      return r;
     }
     const wait = backoffMs(failN.current++);
     nextTry.current = Date.now() + wait;
     clearTimeout(retryTimer.current);
     retryTimer.current = bgTimeout(() => postRef.current(), wait);
+    return r;
   };
   const postRef = useRef(null);
+  const sendPost = (ledger) => window.sync.post(ledger);
   postRef.current = () => {
     const p = (async () => {
       if (!window.sync || !(await window.sync.hasKey())) return;
       /* 50 ms of slack: a timer that fires a hair early still retries */
       /* a page that shows the seed holds someone else's ledger: it never POSTs
          (seed-load-guards) */
-      if (seedShown || refusedRef.current || Date.now() < nextTry.current - 50) return;
+      if (seedShown || damagedRef.current || refusedRef.current || Date.now() < nextTry.current - 50) return;
       postsInFlight.current++;
       let r;
       try {
-        r = await withTimeout(window.sync.post(snapshot()));
+        r = await withTimeout(sendPost(snapshot()));
       } finally {
         postsInFlight.current--;
       }
-      settleReply(r, true);
+      await settleReply(r, true);
       /* a rev heard while the POST was out is this device's own write if the
          reply carries it; only a higher one is another device's */
       if (postsInFlight.current === 0) {
@@ -4681,9 +4816,8 @@ syncBroken === "seeded"
   };
   const coldCycle = async () => {
     {
-      if (!window.sync || !(await window.sync.hasKey())) return;
-      const r = await withTimeout(window.sync.get());
-      settleReply(r);
+      if (!window.sync || !(await window.sync.hasKey()) || damagedRef.current) return;
+      const r = await settleReply(await withTimeout(window.sync.get()));
       /* a cold open where this device holds something the server lacks (on an
          empty store, any check-ins, envelopes or stamps) sends it within a beat of the first reply */
       const send =
@@ -4742,12 +4876,12 @@ syncBroken === "seeded"
       heldRev.current = Math.max(heldRev.current, rev);
       return;
     }
-    if (refusedRef.current) return;
+    if (refusedRef.current || damagedRef.current) return;
     if (rev <= Math.max(lastRev.current, inflightRev.current)) return;
     inflightRev.current = rev;
     const r = await withTimeout(window.sync.get());
     if (r.code !== "ok") inflightRev.current = lastRev.current;
-    settleReply(r);
+    await settleReply(r);
   };
   /* a guard clearing is a reason to look again now, not at the next poll */
   useEffect(() => {
@@ -5379,7 +5513,7 @@ syncBroken === "seeded"
 
   const remaining = totals.total - totals.got;
 
-  if (!loaded)
+  if (!opened)
     return (
       <div
         style={{
@@ -6642,6 +6776,16 @@ syncBroken === "seeded"
             />
           </div>
         )}
+
+        {damaged && (
+          <Notice>
+            Your saved ledger is damaged and was not loaded. Nothing has been
+            changed or sent. Open History to restore a saved version, or use
+            Backup to keep a copy of what is saved.
+          </Notice>
+        )}
+
+        {mended && <Notice onDismiss={() => setMended("")}>{mended}</Notice>}
 
         {importMsg && (
           <Notice onDismiss={() => setImportMsg("")}>{importMsg}</Notice>
