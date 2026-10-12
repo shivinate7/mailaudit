@@ -199,8 +199,19 @@ const overflowOf = () => ({
 
 /* Every element's box, in document coordinates, so a scroll between the two
    snapshots reads as no move. Kept on window: the before-snapshot outlives
-   the evaluate call that takes it. */
+   the evaluate call that takes it. A sticky or fixed element is the exception:
+   a scroll moves it on screen while its place in the layout stays put, so it
+   is marked `pinned` and skipped. Its descendants move with it, so an element
+   inside a pinned one is marked too. */
+/* page.evaluate serialises this function, so the helper lives inside it. */
 const snapshotBoxes = () => {
+  const isPinned = (el) => {
+    for (let n = el; n && n !== document.documentElement; n = n.parentElement) {
+      const p = getComputedStyle(n).position;
+      if (p === "sticky" || p === "fixed") return true;
+    }
+    return false;
+  };
   const boxes = new Map();
   document.querySelectorAll("body *").forEach((el) => {
     const r = el.getBoundingClientRect();
@@ -209,6 +220,7 @@ const snapshotBoxes = () => {
       left: r.left + window.scrollX,
       w: r.width,
       h: r.height,
+      pinned: isPinned(el),
     });
   });
   window.__screenBoxes = boxes;
@@ -223,6 +235,7 @@ const boxesMovedSince = (tol) => {
       gone++;
       continue;
     }
+    if (b.pinned) continue; // sticky or fixed: a scroll moves it, not a layout change
     const r = el.getBoundingClientRect();
     const d = Math.max(
       Math.abs(r.top + window.scrollY - b.top),

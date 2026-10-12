@@ -7115,7 +7115,7 @@ await fresh();
 await goTo("tally");
 await click(cell(/^Sorted by/), "open the Tally sort");
 const sortLabelsL1 = [...document.querySelectorAll(".mdl-panel button")].map((b) => b.textContent.trim());
-ok(sortLabelsL1.length >= 5, "61.27 the Tally sort panel lists its options");
+eq(sortLabelsL1.length, 6, "61.27 the Tally sort panel lists its six keys (tally-sort-keys-are-six)");
 eq(sortLabelsL1.filter((l) => l.length > 12), [], "61.28 every Tally sort label is 12 characters or fewer");
 
 /* the 10px label floor (typography-cochin-and-mono), on the views a person reads */
@@ -7265,30 +7265,58 @@ eq(document.querySelector('input[aria-label="Envelope note"]')?.value, "first dr
 await tapL1(/^Edit$/, "return to the second composer");
 eq(document.querySelector('input[aria-label="Envelope note"]')?.value, "second draft note", "61.53 and the second composer's note is kept");
 
-/* A live draft holds the photo sweep off (the composerDraft check inside the
-   sweep timer). Cancel closes the composer and keeps its draft, so the sweep
-   re-arms with no composer open, and only the draft check stops it deleting a
-   blob that no envelope references yet. The control runs first: with no draft,
-   the same unreferenced blob is swept, so the held case is not vacuous. */
+/* Owner ruling (sweep holds only for live work): a closed composer draft holds
+   the photos it references, and nothing else. A draft holding photo A does not
+   freeze the sweep: A survives and an unused photo B is swept. An open composer
+   still holds the sweep off (61.57). The control runs first: with no draft, the
+   unreferenced blob is swept, so the held case is not vacuous. */
 await boot({ items: ITEMS, received: {} }, [["pho-draft", jpeg()]]);
 await goTo("orphaned");
 await sleep(SWEEP_WAIT);
 eq(photoKeys(), [], "61.54 control: with no draft open, the sweep removes an unreferenced blob");
 
-await boot({ items: ITEMS, received: {} }, [["pho-draft", jpeg()]]);
+/* Photo A is referenced only by the draft: the envelope that first carried it
+   is discarded after the draft is closed, so no live envelope holds A. */
+await boot(
+  {
+    items: ITEMS,
+    received: {},
+    envelopes: [
+      {
+        id: "env-h",
+        createdAt: Date.parse("2026-08-01"),
+        note: "",
+        photos: ["pho-held"],
+        entries: [{ name: "Ponder", qty: 1 }],
+      },
+    ],
+  },
+  [
+    ["pho-held", jpeg()], // photo A: the closed draft holds it
+    ["pho-loose", jpeg()], // photo B: referenced by nothing
+  ]
+);
 await goTo("orphaned");
-await tapL1(/Record an envelope/, "open the composer for the held draft");
-await type(cardInput(), "Zyzzyva");
-await tapL1(/^Add “/, "add the card to the held draft");
-await type(document.querySelector('input[aria-label="Envelope note"]'), "draft holds the sweep");
-const heldFootL1 = btn(/Save envelope/)?.parentElement;
+await tapL1(/^Edit$/, "open the composer on the envelope that holds photo A");
+await type(document.querySelector('input[aria-label="Envelope note"]'), "draft holds photo A");
+const heldFootL1 = btn(/Save changes/)?.parentElement;
 const heldCancelL1 = [...(heldFootL1?.querySelectorAll("button") ?? [])].find(
   (b) => b.textContent.trim() === "Cancel"
 );
 await click(heldCancelL1, "cancel the composer, keeping its draft");
-ok(!btn(/Save envelope/), "61.55 the composer is closed, its draft is not");
+ok(!btn(/Save changes/), "61.55 the composer is closed, its draft is not");
+await click(btn(/^Discard$/), "discard the envelope, so only the draft holds photo A");
+await click(btn(/Tap again to discard/), "confirm the discard");
 await sleep(SWEEP_WAIT);
-eq(photoKeys(), ["pho-draft"], "61.56 a live draft holds the sweep off an unreferenced blob");
+eq(photoKeys(), ["pho-held"], "61.56 a closed draft keeps its photo A; unused photo B is swept");
+
+/* An open composer still holds the sweep off, even with no photo at all. */
+await boot({ items: ITEMS, received: {} }, [["pho-loose", jpeg()]]);
+await goTo("orphaned");
+await tapL1(/Record an envelope/, "open a composer and leave it open");
+await type(document.querySelector('input[aria-label="Envelope note"]'), "composer stays open");
+await sleep(SWEEP_WAIT);
+eq(photoKeys(), ["pho-loose"], "61.57 an open composer holds the sweep off an unreferenced blob");
 
 uninstallClock();
 report();
