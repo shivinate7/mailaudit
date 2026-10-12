@@ -54,6 +54,8 @@ import {
   report,
   saveGitHubKey,
   saved,
+  savedText,
+  versionStore,
   sleep,
   setSyncNetFail,
   setSyncTooBig,
@@ -7901,15 +7903,22 @@ eq(
   "66.4 after a reload whose Worker reply fails, Last sync still shows the saved Worker agreement"
 );
 
-/* ── 67. owner ruling 2026-10-12 ("Web refuses too"): a damaged saved field stops the load ──
-   A received, receivedAt, stamps or envelopes value that is present but not the right
-   shape stops the load. The page says so in plain words, writes nothing back, starts no
-   sync push, and keeps History and Backup reachable. An absent field still loads with its
-   default. JSON null counts as damaged, as native-ledger-is-raw-json rules.
-   Only the load path is ruled here. The Re-import and sync-reply paths are not tested.
-   Records: native-ledger-is-raw-json, saved-state-shape, recovery-control-not-state-gated,
-   every-restore-passes-applybackup. */
-const REFUSE67 = /damaged|corrupt|can.t be (read|loaded)|could not be (read|loaded)|won.t load/i;
+/* ── 67. owner ruling 2026-10-12 ("Keep a copy, then go on"): a damaged list is mended
+   and kept, never refused. Refused only when the saved text is not JSON or the copy
+   cannot be written (the orchestrator defaults of 2026-10-12, not owner rulings). ──
+   Damage is a received, receivedAt, stamps or envelopes value of the wrong shape. It is
+   entry-level (one entry that is not the right kind) or whole-field (the field itself is
+   not an object, or not a list for envelopes). JSON null counts as damaged. An absent
+   field is not damage.
+   On every path the data comes in (load, Re-import, a sync reply):
+     1. the data as it came in is saved to History as a milestone, before any save;
+     2. every entry that can be read is kept, and only the broken ones are dropped;
+     3. one plain line says how many entries could not be read, and where the original is.
+   The app keeps working: a check-in can be made and saved.
+   Records: native-ledger-is-raw-json, saved-state-shape, milestones-taken-before-risk,
+   every-restore-passes-applybackup, recovery-control-not-state-gated. */
+const NOTICE67 = /(?:(\d+) entr(?:y|ies) )?could not be read; the original is in History/;
+const FALLBACK67 = /Your saved ledger is damaged and was not loaded/;
 const KEY67 = "device-67-key";
 const GH67 = "github_pat_testtoken";
 const MILESTONE67 = "before reset";
@@ -7938,66 +7947,261 @@ const VERS67 = () => [
     },
   ],
 ];
-const GOOD67 = { mailday: 1, items: ITEMS.slice(0, 3), received: {}, receivedAt: {}, envelopes: [], stamps: {} };
-/* present but the wrong shape: a string, an array, JSON null, a number. Envelopes
-   take an object and a non-object list too, since they are a list of objects. */
-const DAMAGED67 = {
-  received: ["x", [], null, 7],
-  receivedAt: ["x", [], null, 7],
-  stamps: ["x", [], null, 7],
-  envelopes: ["x", {}, null, [1]],
+const GOOD67 = { mailday: 1, items: ITEMS, received: {}, receivedAt: {}, envelopes: [], stamps: {} };
+const FIELDS67 = ["received", "receivedAt", "stamps", "envelopes"];
+/* Item keys by position. Alpha Cards holds 0 to 2, so the check-in below (Alpha's
+   "Mark all received") leaves the broken keys in Gamma (9, 10) and the good key in
+   Delta (11) alone. */
+const K67 = ITEMS.map((it) => it.key);
+const GK67_C = "C1::Gamma Cards";
+const GK67_D = "D1::Delta Cards";
+const STAMP67 = { kind: "claim", at: "2026-10-01", note: "", updatedAt: 1 };
+const ENV67 = (id) => ({
+  id,
+  createdAt: 1,
+  note: "",
+  entries: [{ name: "Brainstorm", qty: 1 }],
+  photos: [],
+  updatedAt: 1,
+});
+const RAW67 = '{"mailday":1,"items":[';
+const isObj67 = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+/* canonical JSON, so key order does not decide whether two copies are the same */
+const canon67 = (v) =>
+  JSON.stringify(v, (_, x) =>
+    isObj67(x) ? Object.fromEntries(Object.keys(x).sort().map((k) => [k, x[k]])) : x
+  );
+/* a version of kind milestone whose text is `want` once parsed */
+const milestoneHolds67 = (want) =>
+  [...versionStore.values()].some((v) => {
+    if (v.meta.kind !== "milestone") return false;
+    try {
+      return canon67(JSON.parse(v.text)) === canon67(want);
+    } catch {
+      return false;
+    }
+  });
+const noticeMatch67 = () => text().match(NOTICE67);
+const noticeLines67 = () => (text().match(/could not be read/g) || []).length;
+const numbersOnly67 = (m) => Object.values(m || {}).every((v) => typeof v === "number");
+/* the saved ledger is whole after a save: the right shapes, and every item still there */
+const sane67 = (s) =>
+  s.items?.length === ITEMS.length &&
+  numbersOnly67(s.received) &&
+  numbersOnly67(s.receivedAt) &&
+  isObj67(s.stamps) &&
+  Object.values(s.stamps).every(isObj67) &&
+  Array.isArray(s.envelopes) &&
+  /* an envelope is an object with a string id: a string or a list coerced into an object is junk */
+  s.envelopes.every((e) => isObj67(e) && typeof e.id === "string");
+/* the check-in a mail day makes: Alpha Cards, the first package */
+const checkInAlpha67 = async () => {
+  await goTo("packages");
+  await click(inCard(card(/Alpha Cards/), /^Mark all received$/), "check the Alpha Cards package in");
+  await settle();
+  await sleep(SAVE_WAIT);
+};
+/* the broken entries, per field, and what the good ones must still say after a save */
+const ENTRY67 = [
+  {
+    field: "received",
+    value: { [K67[11]]: 1, [K67[9]]: null, [K67[10]]: "x" },
+    n: 2,
+    kept: (s) => s.received?.[K67[11]] === 1,
+  },
+  {
+    field: "receivedAt",
+    value: { [K67[11]]: 1000, [K67[10]]: "x" },
+    n: 1,
+    kept: (s) => s.receivedAt?.[K67[11]] === 1000,
+  },
+  {
+    field: "stamps",
+    value: { [GK67_D]: STAMP67, [GK67_C]: "x" },
+    n: 1,
+    kept: (s) => canon67(s.stamps?.[GK67_D]) === canon67(STAMP67),
+  },
+  {
+    field: "envelopes",
+    value: [ENV67("env-keep"), "x", [1], null],
+    n: 3,
+    kept: (s) => s.envelopes?.length === 1 && s.envelopes[0].id === "env-keep",
+  },
+];
+/* whole-field damage: the field itself has the wrong shape, so no entry is kept from it */
+const WHOLE67 = [
+  ["received", ["x"]],
+  ["received", null],
+  ["receivedAt", 7],
+  ["stamps", []],
+  ["envelopes", {}],
+  ["envelopes", null],
+];
+/* the field value as the saved text holds it, with one good and one broken entry */
+const withField67 = (field, value) => ({ ...GOOD67, [field]: value });
+
+/* ---- load: the saved text is read at mount ---- */
+const loadCase67 = async (label, seeded, n, kept) => {
+  await boot(seeded, null, { versions: VERS67(), syncAdapter: true, syncKey: KEY67, remoteKey: GH67 });
+  /* the background cycles that could write the damaged text back run here, as group 66 drives them */
+  await backgroundFor(5 * 60_000);
+  await drain();
+  await sleep(SAVE_WAIT);
+  const m = noticeMatch67();
+  ok(!!m, `${label}: one plain line says entries could not be read, and the original is in History`);
+  if (n != null) eq(m?.[1], String(n), `${label}: the line counts the entries it dropped`);
+  eq(noticeLines67(), 1, `${label}: the notice is one line`);
+  ok(milestoneHolds67(seeded), `${label}: the original is held in History as a milestone`);
+  ok(!FALLBACK67.test(text()), `${label}: the page is not refused`);
+  await checkInAlpha67();
+  ok(kept(saved()) && sane67(saved()), `${label}: after a check-in the good entries are kept, the broken ones are gone`);
 };
 
-for (const [field, values] of Object.entries(DAMAGED67)) {
-  for (const value of values) {
-    const label = `67 ${field}=${JSON.stringify(value)}`;
-    const seeded = { ...GOOD67, [field]: value };
-    try {
-      await boot(seeded, null, {
-        versions: VERS67(),
-        syncAdapter: true,
-        syncKey: KEY67,
-        remoteKey: GH67,
-      });
-      /* the paths that leak on the old code: the Worker's silent write and the
-         GitHub auto-push both run on a background cycle, as group 66 drives them */
-      await backgroundFor(5 * 60_000);
-      await drain();
-      await sleep(SAVE_WAIT);
-      ok(REFUSE67.test(text()), `${label}: the page says the saved data is damaged`);
-      eq(saved(), seeded, `${label}: the saved ledger is not written back`);
-      eq(postCount(), 0, `${label}: no Worker push starts`);
-      eq(pushes().length, 0, `${label}: no GitHub push starts`);
-      eq(versionText(MILESTONE67), VER67_TEXT, `${label}: the milestone is not overwritten`);
-      await openHistory();
-      ok(!!btn(/^Backup$/), `${label}: History opens and Backup is reachable`);
-    } catch (e) {
-      ok(false, `${label} threw: ${e.message}`);
-    }
+for (const c of ENTRY67) {
+  const label = `67 load ${c.field} with broken entries`;
+  try {
+    await loadCase67(label, withField67(c.field, c.value), c.n, c.kept);
+  } catch (e) {
+    ok(false, `${label} threw: ${e.message}`);
+  }
+}
+for (const [field, value] of WHOLE67) {
+  const label = `67 load ${field}=${JSON.stringify(value)} (whole field)`;
+  try {
+    await loadCase67(label, withField67(field, value), null, sane67);
+  } catch (e) {
+    ok(false, `${label} threw: ${e.message}`);
   }
 }
 
-/* An absent field is not damage. Each one, and all four together, still loads. */
-for (const field of [...Object.keys(DAMAGED67), "all four"]) {
+/* An absent field is not damage. Each one, and all four together, loads with no notice. */
+for (const field of [...FIELDS67, "all four"]) {
   const label = `67 ${field} absent`;
-  const base = { mailday: 1, items: ITEMS.slice(0, 3) };
   const state = { ...GOOD67 };
-  if (field === "all four") for (const k of Object.keys(DAMAGED67)) delete state[k];
+  if (field === "all four") for (const k of FIELDS67) delete state[k];
   else delete state[field];
   try {
-    await boot(field === "all four" ? base : state, null);
+    await boot(state, null, { versions: VERS67() });
     await sleep(SAVE_WAIT);
-    ok(!REFUSE67.test(text()), `${label}: loads with no refusal`);
+    ok(!/could not be read|damaged/.test(text()), `${label}: loads with no notice and no refusal`);
     ok(text().includes(ITEMS[0].name), `${label}: the items still show`);
   } catch (e) {
     ok(false, `${label} threw: ${e.message}`);
   }
 }
 
-/* A History restore from a refused load lands. Otherwise the refusal would leave the
-   user with no way back to a good ledger. */
+/* ---- Re-import: a backup file goes through applyBackup ---- */
+const reimport67 = async (label, payload, n) => {
+  await boot({ ...GOOD67, items: ITEMS.slice(0, 3) }, null, {
+    versions: VERS67(),
+    syncAdapter: true,
+    syncKey: KEY67,
+    remoteKey: GH67,
+  });
+  await sleep(SAVE_WAIT);
+  await reachFor(/Re-import CSV/);
+  await click(btn(/Re-import CSV/), "show upload zone");
+  await dropFile("mailday-backup.json", JSON.stringify(payload));
+  await sleep(SAVE_WAIT);
+  const m = noticeMatch67();
+  ok(!!m, `${label}: one plain line says entries could not be read, and the original is in History`);
+  if (n != null) eq(m?.[1], String(n), `${label}: the line counts the entries it dropped`);
+  eq(noticeLines67(), 1, `${label}: the notice is one line`);
+  ok(milestoneHolds67(payload), `${label}: the file as it came in is held in History as a milestone`);
+  eq(saved().items?.length, ITEMS.length, `${label}: the Re-import lands its items`);
+  await checkInAlpha67();
+  ok(sane67(saved()), `${label}: after a check-in the saved ledger is whole`);
+};
+for (const c of ENTRY67) {
+  const label = `67 Re-import ${c.field} with broken entries`;
+  try {
+    await reimport67(label, { ...withField67(c.field, c.value), items: ITEMS }, c.n);
+  } catch (e) {
+    ok(false, `${label} threw: ${e.message}`);
+  }
+}
 try {
-  await boot({ ...GOOD67, received: "x" }, null, { versions: VERS67(), syncAdapter: true, syncKey: KEY67 });
+  await reimport67("67 Re-import received=null (whole field)", { ...withField67("received", null), items: ITEMS }, null);
+} catch (e) {
+  ok(false, `67 Re-import received=null threw: ${e.message}`);
+}
+
+/* ---- a sync reply: the Worker's GET is applied after the idle wait ---- */
+const sync67 = async (label, incoming, n) => {
+  await boot({ ...GOOD67, items: ITEMS.slice(0, 3) }, null, { noRemote: true, syncKey: KEY67 });
+  await settle();
+  await pageshow();
+  await sleep(APPLY_WAIT);
+  await fireSyncRev(2, incoming);
+  await sleep(APPLY_WAIT + 1000);
+  const m = noticeMatch67();
+  ok(!!m, `${label}: one plain line says entries could not be read, and the original is in History`);
+  if (n != null) eq(m?.[1], String(n), `${label}: the line counts the entries it dropped`);
+  eq(noticeLines67(), 1, `${label}: the notice is one line`);
+  ok(milestoneHolds67(incoming), `${label}: the reply as it came in is held in History as a milestone`);
+  eq(saved().items?.length, ITEMS.length, `${label}: the reply's items merge in`);
+  await checkInAlpha67();
+  ok(sane67(saved()), `${label}: after a check-in the saved ledger is whole`);
+};
+for (const c of ENTRY67.filter((c) => c.field === "received" || c.field === "envelopes")) {
+  const label = `67 sync reply ${c.field} with broken entries`;
+  try {
+    await sync67(label, { ...withField67(c.field, c.value), items: ITEMS }, c.n);
+  } catch (e) {
+    ok(false, `${label} threw: ${e.message}`);
+  }
+}
+
+/* ---- fallback 1: the milestone cannot be written, so the load is refused as before ---- */
+try {
+  const seeded = withField67("received", { [K67[11]]: 1, [K67[10]]: "x" });
+  await boot(seeded, null, { versions: VERS67(), failPut: true, syncAdapter: true, syncKey: KEY67, remoteKey: GH67 });
+  await backgroundFor(5 * 60_000);
+  await drain();
+  await sleep(SAVE_WAIT);
+  ok(FALLBACK67.test(text()), "67.F1 a milestone that cannot be written refuses the load and says the data is damaged");
+  eq(savedText(), JSON.stringify(seeded), "67.F1a the saved text is not changed");
+  eq(postCount(), 0, "67.F1b no Worker push starts");
+  eq(pushes().length, 0, "67.F1c no GitHub push starts");
+  await openHistory();
+  ok(!!btn(/^Backup$/), "67.F1d History opens and Backup is reachable");
+} catch (e) {
+  ok(false, `67.F1 threw: ${e.message}`);
+}
+
+/* ---- fallback 2: the saved text is not JSON, so the load is refused and nothing is overwritten ---- */
+try {
+  await boot(null, null, { raw: RAW67, versions: VERS67(), syncAdapter: true, syncKey: KEY67, remoteKey: GH67 });
+  await backgroundFor(5 * 60_000);
+  await drain();
+  await sleep(SAVE_WAIT);
+  ok(FALLBACK67.test(text()), "67.F2 a saved text that is not JSON refuses the load and says the data is damaged");
+  eq(savedText(), RAW67, "67.F2a the raw text is kept byte for byte");
+  eq(postCount(), 0, "67.F2b no Worker push starts");
+  eq(pushes().length, 0, "67.F2c no GitHub push starts");
+  await openHistory();
+  ok(!!btn(/^Backup$/), "67.F2d History opens and Backup is reachable");
+} catch (e) {
+  ok(false, `67.F2 threw: ${e.message}`);
+}
+
+/* ---- fallback 2 across the sync rev: a reply that arrives and then idles must not overwrite the refused text ---- */
+try {
+  await boot(null, null, { raw: RAW67, versions: VERS67(), syncAdapter: true, syncKey: KEY67 });
+  await settle();
+  await pageshow();
+  await sleep(APPLY_WAIT);
+  await fireSyncRev(2, { ...GOOD67, items: ITEMS.slice(0, 4) });
+  await sleep(APPLY_WAIT + 1000);
+  eq(savedText(), RAW67, "67.F3 a sync reply that arrives and then idles does not overwrite the refused text");
+  ok(FALLBACK67.test(text()), "67.F3a the refusal still shows");
+} catch (e) {
+  ok(false, `67.F3 threw: ${e.message}`);
+}
+
+/* ---- a History restore from a refused load lands, and clears the refusal ---- */
+try {
+  await boot(null, null, { raw: RAW67, versions: VERS67(), syncAdapter: true, syncKey: KEY67 });
   await sleep(SAVE_WAIT);
   await openHistory();
   await click(btn(new RegExp(MILESTONE67)), "expand the milestone");
@@ -8005,8 +8209,8 @@ try {
   if (btn(/Tap again to replace/)) await click(btn(/Tap again to replace/), "confirm restore");
   await settle();
   await sleep(SAVE_WAIT);
-  eq(saved().received, {}, "67.7 a History restore from a refused load replaces the damaged field");
   eq(saved().items?.length, ITEMS.length, "67.7 a History restore from a refused load brings the version's items back");
+  ok(!FALLBACK67.test(text()), "67.7a and the refusal clears");
 } catch (e) {
   ok(false, `67.7 threw: ${e.message}`);
 }

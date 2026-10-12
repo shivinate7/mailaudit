@@ -372,6 +372,51 @@ await test("3.2 the same bad bodies on an empty store write nothing", async () =
   }
 });
 
+/* 67. The Worker refuses a ledger whose received, receivedAt, stamps or envelopes has
+   the wrong shape, whole field or one entry, so one app's bug cannot reach the other
+   device (owner ruling 2026-10-12, "Keep a copy, then go on"). An absent field is not
+   damage. Records: saved-state-shape, native-ledger-is-raw-json. */
+const SHAPE_67 = [
+  { received: "x" },
+  { received: [] },
+  { received: null },
+  { received: 7 },
+  { receivedAt: "x" },
+  { receivedAt: null },
+  { stamps: [] },
+  { stamps: null },
+  { envelopes: {} },
+  { envelopes: null },
+  { received: { "100|1|555": "x" } },
+  { receivedAt: { "100|1|555": null } },
+  { stamps: { "100::Seller": "x" } },
+  { envelopes: ["x"] },
+  { envelopes: [[1]] },
+];
+await test("67.1 a ledger with a received, receivedAt, stamps or envelopes of the wrong shape gets 400 and stores nothing, on a stored or an empty store", async () => {
+  for (const [i, over] of SHAPE_67.entries()) {
+    const body = { key: KEY_PHONE, json: { ledger: ledger(over) } };
+    const s = seeded();
+    const before = clone(s.state);
+    const res = await send(s, "POST", "/ledger", body);
+    eq(res.status, 400, `bad shape ${i}: status on a stored ledger`);
+    eq(s.writes.length, 0, `bad shape ${i}: writes on a stored ledger`);
+    eq(s.state, before, `bad shape ${i}: stored ledger unchanged`);
+    const e = empty();
+    const res2 = await send(e, "POST", "/ledger", body);
+    eq(res2.status, 400, `bad shape ${i}: status on an empty store`);
+    eq(e.state, null, `bad shape ${i}: empty store still empty`);
+  }
+});
+
+await test("67.2 a ledger with none of the four fields is accepted, because an absent field is not damage", async () => {
+  const bare = { mailday: 1, items: [item("100|1|555", "Alpha Card", 2)] };
+  const s = empty();
+  const res = await send(s, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: bare } });
+  eq(res.status, 200, "status");
+  eq(s.writes.length, 1, "writes");
+});
+
 /* ---------- 4. POST /ledger writes and merges ---------- */
 await test("4.1 the first ledger on an empty store is written verbatim at rev 1", async () => {
   const incoming = ledger({ received: { "100|1|555": 1 } });

@@ -697,6 +697,8 @@ const versionsApi = {
 };
 export const getPhoto = (id) => photoStore.get(id);
 export const saved = () => JSON.parse(store["mailday:v1"] || "{}");
+/* the saved text exactly as stored, unparsed: a refusal must leave it byte for byte */
+export const savedText = () => store["mailday:v1"] ?? null;
 
 const React = require("react");
 const { createRoot } = require("react-dom/client");
@@ -1094,6 +1096,10 @@ export async function boot(state, photos, opts = {}) {
   else delete win.seed;
   versionStore = new Map(opts.versions || []);
   if (opts.noVersions) delete win.versions;
+  /* failPut: every version write rejects, as IndexedDB does under quota or in private
+     browsing. A milestone that cannot be written (67.F1) is the case it serves. */
+  else if (opts.failPut)
+    win.versions = { ...versionsApi, async put() { throw new Error("quota exceeded"); } };
   else win.versions = versionsApi;
   /* `remoteAtBoot` seeds BEFORE the app mounts, which is the cold-start case:
      this device opens against a remote that is already ahead. `remote` seeds
@@ -1133,6 +1139,9 @@ export async function boot(state, photos, opts = {}) {
     sync.rev = 1;
   }
   if (state) store["mailday:v1"] = JSON.stringify(state);
+  /* the saved text as it is, not parsed: an unparseable saved text (67.F2) cannot
+     be written as a state */
+  if (opts.raw != null) store["mailday:v1"] = opts.raw;
   document.getElementById("root").innerHTML = "";
   await act(async () => {
     root = createRoot(document.getElementById("root"));
