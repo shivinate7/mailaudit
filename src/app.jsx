@@ -2879,7 +2879,11 @@ export default function MailDayLedger() {
   /* item key -> ms of its last check or un-check; what lets the two-device merge
      carry an un-check. Persisted: invariant saved-state-shape. */
   const [receivedAt, setReceivedAt] = useState({});
-  const [loaded, setLoaded] = useState(false);
+  const [opened, setLoaded] = useState(false);
+  /* the raw saved text when a list field is present but the wrong shape; the
+     load stopped, so `loaded` stays false and nothing writes or syncs. */
+  const [damaged, setDamaged] = useState(null);
+  const loaded = opened && !damaged;
   const [saving, setSaving] = useState("idle"); // idle | saving | saved | error
   const [query, setQuery] = useState("");
   /* the date range collapses to one control; this opens the chip set. Not
@@ -3027,7 +3031,7 @@ export default function MailDayLedger() {
        shell, so the sentinel isn't in the DOM yet and this would attach to
        nothing and never retry. Depending on it re-runs the effect once the
        real masthead mounts. */
-  }, [loaded]);
+  }, [opened]);
   const [itemSort, setItemSort] = useState("missing");
   /* orphaned mail: cards recorded off an unidentifiable envelope, parked until
      the user ties them to a package by hand */
@@ -3107,8 +3111,20 @@ export default function MailDayLedger() {
             }
           }
         }
-        if (value) {
-          const data = JSON.parse(value);
+        const data = value ? JSON.parse(value) : null;
+        /* present but not the right shape (null counts): refuse, keep the
+           saved text untouched. Absent is fine. native-ledger-is-raw-json */
+        const bad = (k, ok) => data[k] !== undefined && !ok(data[k]);
+        const isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+        if (
+          data &&
+          (bad("received", isObj) ||
+            bad("receivedAt", isObj) ||
+            bad("stamps", isObj) ||
+            bad("envelopes", (v) => Array.isArray(v) && v.every(isObj)))
+        ) {
+          setDamaged(value);
+        } else if (data) {
           setItems(data.items || []);
           setReceived(data.received || {});
           // absent on anything saved before receivedAt shipped
@@ -3319,7 +3335,8 @@ syncBroken === "seeded"
      aids that would multiply the file size, so they're opt-in. */
   const backup = useCallback(
     async (withPhotos) => {
-      const payload = snapshot();
+      /* a refused load holds nothing in state: export the saved text as it is */
+      const payload = damaged ? JSON.parse(damaged) : snapshot();
       if (withPhotos && window.photos) {
         setBackupBusy(true);
         const out = {};
@@ -3343,7 +3360,7 @@ syncBroken === "seeded"
       a.click();
       URL.revokeObjectURL(a.href);
     },
-    [snapshot, referencedPhotoIds]
+    [snapshot, referencedPhotoIds, damaged]
   );
 
   /* The one restore path, shared by a dropped file and a GitHub pull.
@@ -3387,7 +3404,7 @@ syncBroken === "seeded"
      Nothing the user is doing should block on a backup of it. */
   const takeVersion = useCallback(
     (label, kind = "recent") => {
-      if (!window.versions) return;
+      if (!window.versions || damaged) return;
       if (!shouldSnapshot(kind, lastVersionAt.current)) return;
       lastVersionAt.current = Date.now();
       const payload = snapshot();
@@ -3418,13 +3435,16 @@ syncBroken === "seeded"
           lastVersionAt.current = null;
         });
     },
-    [snapshot, refreshVersions]
+    [snapshot, refreshVersions, damaged]
   );
 
   const applyBackup = useCallback(
     async (text, source /* "file" | "remote" | "merge" | "server" */, extraPresent = null, notice = null) => {
       const data = parseLedger(text);
       const remote = source === "remote";
+      /* a restore ends a refused load, and its first save must not be skipped */
+      skipFirstSave.current = false;
+      setDamaged(null);
       /* AFTER the parse and before the first setState: a payload that isn't a
          ledger throws above this line, so a rejected restore doesn't spend a
          version slot, and a restore about to land always has the world it is
@@ -3913,8 +3933,8 @@ syncBroken === "seeded"
   });
 
   useEffect(() => {
-    if (loaded) refreshVersions();
-  }, [loaded, refreshVersions]);
+    if (opened) refreshVersions();
+  }, [opened, refreshVersions]);
 
   /* The rolling half of the list. Deliberately only the fields that are REAL
      data — the same ones the auto-push debounce watches, and for the same
@@ -5379,7 +5399,7 @@ syncBroken === "seeded"
 
   const remaining = totals.total - totals.got;
 
-  if (!loaded)
+  if (!opened)
     return (
       <div
         style={{
@@ -6641,6 +6661,14 @@ syncBroken === "seeded"
               replacing={items.length > 0}
             />
           </div>
+        )}
+
+        {damaged && (
+          <Notice>
+            Your saved ledger is damaged and was not loaded. Nothing has been
+            changed or sent. Open History to restore a saved version, or use
+            Backup to keep a copy of what is saved.
+          </Notice>
         )}
 
         {importMsg && (
