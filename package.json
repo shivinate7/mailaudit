@@ -6,6 +6,7 @@
   "scripts": {
     "build": "node build.mjs",
     "check:build": "node build.mjs --check",
+    "check:rules": "node build.mjs --check-rules",
     "check:seed": "node build.mjs --check-seed",
     "check:docs": "node check-docs.mjs",
     "test:check-docs": "node test/check-docs.test.mjs",
