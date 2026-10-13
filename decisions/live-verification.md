@@ -115,3 +115,11 @@ Run on 2026-10-12 at 15:39 UTC from main at 2cecd18, with wrangler 4.149.0. The 
 - Before and after, the ledger read rev 3, 908 items and 4 envelopes.
 - The Durable Object ran the old code for about 3 minutes after the deploy, then the new code. Measured: /health gave 401 until 15:40:31, then 200 by 15:43:09. Check again after a few minutes before calling a deploy failed.
 - After: GET /health with no key gave 200 with only `at`. GET /snapshots gave `[]`. GET /photos gave `{"ids":[]}`. /ledger and /photos with no key gave 401.
+
+## Live deploy of the shape check and kept copies
+
+Run on 2026-10-13 at about 01:10 UTC, from main at e1ea8ac, with wrangler 4.149.0, on the owner's word ("Deploy live"). The new version is fdea6a6b. The rollback version is 85a7a137.
+
+- Before, a read-only probe ran `salvageLedger` on the live ledger: rev 3, 908 items, 4 envelopes, 0 damaged.
+- The new code answered at 01:13:52 UTC, a few minutes after the deploy.
+- After: GET /kept with the key gave `[]`. /kept with no key gave 401. A POST with `received: null` gave 400 `bad ledger`, and the ledger stayed at rev 3, 908 items, 4 envelopes, 0 damaged. GET /health gave `{"at":null}`.
