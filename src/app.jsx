@@ -994,12 +994,14 @@ function PackageCard({
                 key={k}
                 onClick={() => setKind(k)}
                 aria-pressed={kind === k}
+                className="mdl-chip"
                 style={stampKindCell(kind === k)}
               >
                 {label}
               </button>
             ))}
           </div>
+          <Fld style={{ marginTop: 10 }}>
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
@@ -1008,7 +1010,6 @@ function PackageCard({
             style={{
               width: "100%",
               boxSizing: "border-box",
-              marginTop: 10,
               fontFamily: cochin,
               /* 16px or focusing it zooms the page on iOS */
               fontSize: 16,
@@ -1020,6 +1021,7 @@ function PackageCard({
               outline: "none",
             }}
           />
+          </Fld>
           <div
             style={{
               display: "flex",
@@ -1822,11 +1824,21 @@ const partVal = {
   minWidth: 0,
   overflowWrap: "anywhere",
 };
+/* A text field's touch hit area (ux-a11y-floor). An input takes no pseudo-element,
+   so the label around it grows instead, and a tap on a label focuses its field.
+   The label is a flex box with no styling of its own, so it adds no line-box
+   strut and the field's drawn box does not move. The margin belongs on the
+   label, not the field. */
+const Fld = ({ style, children }) => (
+  <label className="mdl-fld" style={{ display: "flex", ...style }}>
+    {children}
+  </label>
+);
 /* The token field is a write-on rule like FIND, not a box. 16px is not a
    choice: iOS zooms the page on focusing any input smaller than that, and the
    viewport meta deliberately leaves the user able to zoom. */
 const keyField = {
-  flex: "1 1 140px",
+  flex: "1 1 0",
   minWidth: 0,
   height: CTL_H,
   boxSizing: "border-box",
@@ -2329,6 +2341,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
         }}
         style={{ padding: "0 14px" }}
       >
+        <Fld>
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -2354,6 +2367,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
             outline: "none",
           }}
         />
+        </Fld>
       </form>
 
       {draft.trim() && (
@@ -2508,6 +2522,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
       )}
 
       <div style={{ padding: "10px 14px 0" }}>
+        <Fld>
         <input
           value={note}
           onChange={(e) => setNote(e.target.value)}
@@ -2526,6 +2541,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
             outline: "none",
           }}
         />
+        </Fld>
       </div>
 
       {window.photos && (
@@ -5973,6 +5989,17 @@ syncBroken === "seeded"
              takes touches for a frame after a scroll; its 3px reach above
              the line must win that slot */
           button.mdl-adv::after { z-index: 31; }
+          /* A text field takes no pseudo-element, so its label carries the hit
+             area (see Fld). */
+          label.mdl-fld { position: relative; }
+          label.mdl-fld::after { content: ""; position: absolute; left: 0; right: 0;
+                          top: 50%; height: max(100%, 45px);
+                          transform: translateY(-50%); z-index: 1; }
+          /* The stamp kinds wrap 6px apart, so two stacked hit areas may reach
+             3px each into the gap and no further (the +8px is the 32px padding
+             box plus 3px a side, centred): a tap in the gap goes to the nearer
+             chip. Rows 34px tall at a 40px pitch cannot reach 44px both ways. */
+          button.mdl-chip::after { height: calc(100% + 8px); }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -6570,6 +6597,7 @@ syncBroken === "seeded"
                             minWidth: 0,
                           }}
                         >
+                          <Fld style={{ flex: "1 1 140px", minWidth: 0 }}>
                           <input
                             ref={syncKeyInput}
                             type="password"
@@ -6580,6 +6608,7 @@ syncBroken === "seeded"
                             autoCapitalize="off"
                             style={keyField}
                           />
+                          </Fld>
                           <button onClick={saveSyncKey} style={keySave}>
                             Save sync key
                           </button>

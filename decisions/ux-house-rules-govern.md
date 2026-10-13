@@ -51,9 +51,10 @@ The gap for the Pull and Push anyway asks is closed. On 2026-10-12 the owner rem
 - `check:screens`, claim 5: the bottom bar's geometry at 375px and 760px.
 - `check:screens`, claim 6: the gap above the Ledger title is 16px, a multiple of 4px (`spacing-on-4px-grid`).
 - `check:screens`, claim 7: the Sync panel on the Ledger tab opens, holds no GitHub control, and causes no sideways overflow.
-- `check:screens`, claim 8 (L8): an axe scan at 375px and 760px in six states (Ledger, Orphaned, Tally, Tally with one row open, Packages, the photo viewer) has no serious or critical violation, and no `label-content-name-mismatch` at any impact.
-- `check:screens`, claim 9 (L6): at 375px on a touch device, every visible interactive element is hit at least 44 by 44 CSS px.
-- `check:screens`, claim 10 (L6): at 375px, every painted box matches `test/a11y-base-boxes.json`, recorded from the base commit. A grown hit area moves no drawn box.
+- `check:screens`, claim 8 (L8): an axe scan at 375px and 760px in nine states (the eight screen states of claim 9 and the photo viewer) has no serious or critical violation, and no `label-content-name-mismatch` at any impact.
+- `check:screens`, claim 9 (L6): at 375px on a touch device, in each of the eight states of `SCREEN_STATES` (Ledger, Orphaned, Tally, Tally with one row open, Packages, the stamp editor, the envelope composer, the Sync panel), each visible interactive element is hit at least 44 by 44 CSS px. A text field's tap goes to its label, so the label carries the hit area. The check does not cover the photo viewer or any other state.
+- `check:screens`, claim 10 (L6): at 375px, in the same eight states, the painted box of each interactive element matches `test/a11y-base-boxes.json`, recorded from the base commit. A grown hit area moves no drawn box. Other painted boxes are not recorded.
+- `check:screens`, claim 11 (L6): at 375px, in the same eight states, a tap 1px outside the midpoint of a control's side, where that control is the nearest, lands on that control or on no control. The probe samples four points per control, so it does not prove the gaps between them.
 - Test group 70 (L7, `test/app.test.mjs`): 70.1 and 70.2 name the four bar tabs and the Ledger rows by their visible labels, with a count as its own word. 70.3 pins the photo viewer as a modal dialog that takes focus on open, closes on Escape, and returns focus to its thumbnail. 70.4 pins that each disabled control names its reason through `aria-describedby`.
 - Tests 65.1 to 65.4 keep the removed GitHub verbs off every screen. Test 65.8 pins the armed Reset's Cancel after Reset.
 
