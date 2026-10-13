@@ -798,11 +798,11 @@ arm();
 /* ---------- DOM helpers ---------- */
 
 /* ── the virtual clock (harness only) ──
-   Groups 53 to 56 drive the app's timers on demand, not in real time. While
+   Groups 53 to 61 and 67 to 68 drive the app's timers on demand, not in real time. While
    the clock is installed, Date.now and every setTimeout of 1 ms or more run on
    a virtual clock. sleep(ms) advances that clock by ms, and fires each timer
    that comes due, in order. A zero delay, and every real wait, stays real.
-   Groups 1 to 52 never install it, so their real timers are untouched.
+   Groups 1 to 52 and 62 to 66 never install it, so their real timers are untouched.
    Node's own timers are captured first, so the harness can always wait for
    real. No src/ code changes. */
 const realSetTimeout = globalThis.setTimeout;
