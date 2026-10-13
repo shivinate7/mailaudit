@@ -11,8 +11,8 @@
 //
 // The fault cases (toggle rule throws or returns a non-integer; label refresh fails
 // after a good save) surface checkInError. The done-state cases assert model.done[key]
-// matches the saved count. The isDone-throw case is red on 45863d6 until the builder fixes it: refreshLabel
-// runs isDone first, so a throw there stops countLabel and labels keep their load-time value.
+// matches the saved count. A throwing isDone does not stop the label refresh: countLabel
+// still runs, and checkInError is set (testIsDoneThrowStillRefreshesLabelAndSurfacesError).
 //
 // Fake fixtures only. No Keychain item is read.
 

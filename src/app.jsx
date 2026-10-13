@@ -4658,6 +4658,8 @@ syncBroken === "seeded"
   const failN = useRef(0);
   const nextTry = useRef(0);
   const retryTimer = useRef(null);
+  const coldPostTimer = useRef(null);
+  const coldGone = useRef(false);
   const postsInFlight = useRef(0);
   const heldRev = useRef(0); // the highest rev heard while a POST was in flight
   const refusedRef = useRef(false); // a 401: no more calls until the page reloads
@@ -4824,7 +4826,7 @@ syncBroken === "seeded"
         r.code === "ok"
           ? r.body?.ledger && lacksRef.current(r.body.ledger)
           : r.code === "empty" && holdsUserDataRef.current();
-      if (send) bgTimeout(() => postRef.current(), SYNC_COLD_POST_MS);
+      if (send && !coldGone.current) coldPostTimer.current = bgTimeout(() => postRef.current(), SYNC_COLD_POST_MS);
     }
   };
   /* Paste a Worker key. The field is validated by the same rule as a #k= link,
@@ -4916,6 +4918,7 @@ syncBroken === "seeded"
       nextTry.current = 0;
       postRef.current();
     };
+    coldGone.current = false;
     coldRef.current();
     const vis = () => document.visibilityState === "visible" && go();
     document.addEventListener("visibilitychange", vis);
@@ -4927,6 +4930,8 @@ syncBroken === "seeded"
       window.removeEventListener("online", go);
       clearTimeout(applyTimer.current);
       clearTimeout(retryTimer.current);
+      coldGone.current = true;
+      clearTimeout(coldPostTimer.current);
     };
   }, [loaded]);
   useEffect(() => {
@@ -5714,7 +5719,7 @@ syncBroken === "seeded"
            mono value right, a chevron drawn by CSS so it never enters the
            row's text. Each row is a 52px target. Reset sits in its own card;
            armed, it fills in place beside Cancel and nothing around it moves. */
-        .mdl-lh { margin: 18px 0 0; text-align: center; font-weight: 400;
+        .mdl-lh { margin: 16px 0 0; text-align: center; font-weight: 400;
                   font-family: ${mono}; font-size: 12px; letter-spacing: .3em;
                   text-indent: .3em; text-transform: uppercase; color: ${C.inkSoft}; }
         .mdl-lg { margin: 16px 4px 8px; font-family: ${mono}; font-size: 11px;

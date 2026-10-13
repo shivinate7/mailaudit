@@ -36,6 +36,8 @@ Orchestrator default, 2026-10-11, not an owner ruling: every ask names the count
 
 **Polish, 2026-10-12.** The owner ruled that the orchestrator makes the polish calls on the screens, judged by these house UX rules, and merges them. The orchestrator keeps a before-and-after screenshot gallery for the owner, so each call can be checked. The owner may overrule a call.
 
+**Polish call, orchestrator decision 2026-10-12 under Decide, gallery:** the Ledger title gap is 16px, not 18px. The rule is `spacing-on-4px-grid`: every gap is a multiple of 4px. The figures sit in that record. The pin is claim 6 below. No before-and-after gallery entry is in this work. The owner may overrule this call.
+
 **Process-only, orchestrator default, 2026-10-12, not an owner ruling:** a polish merge keeps the fresh-reviewer pass that `orchestrator-may-merge` requires for a change to a gate, a rule or product code. The owner's polish grant covers taste, not review. The owner may overrule this.
 
 The gap for the Pull and Push anyway asks is closed. On 2026-10-12 the owner removed the GitHub controls from the UI, so their asks no longer exist (`stale-push-conflict-pull-two-tap`). The ask rule still applies to each ask that remains.
@@ -47,6 +49,7 @@ The gap for the Pull and Push anyway asks is closed. On 2026-10-12 the owner rem
 - `check:screens`, claim 3: the Discard arm moves nothing.
 - `check:screens`, claim 4: the Reset ask is not cut off.
 - `check:screens`, claim 5: the bottom bar's geometry at 375px and 760px.
+- `check:screens`, claim 6: the gap above the Ledger title is a multiple of 4px and under 18px. It does not pin 16px.
 - Tests 65.1 to 65.4 keep the removed GitHub verbs off every screen. Test 65.8 pins the armed Reset's Cancel after Reset.
 
 Tests 21.4 and 62.1 to 62.10 pin the bar. Tests 63.4 to 63.7 pin the Ledger tab's order and its current tab. Tests 63.21 to 63.24 pin the armed Reset's count, its neighbours and its first focus. Tests 61.8 to 61.9, 61.11 to 61.16, 61.41 to 61.42 and 61.43 to 61.57 pin the other rules. Tests 61.33 to 61.35 cover a draft that survives a tab change. The test pins check the DOM, not geometry.
