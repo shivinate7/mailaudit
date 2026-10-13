@@ -29,11 +29,23 @@
         ruling 2026-10-12) at 375px and 760px: the panel opens from its Sync cell,
         holds no GitHub control (Pull from GitHub, Push, Push anyway, Merge & push),
         and causes no sideways overflow.
+     8. An axe scan (ux-house-rules-govern L8) at 375px and 760px in every view:
+        the Ledger tab, Orphaned, Tally, Tally with a card open, Packages, and
+        the open photo viewer. Fails on any serious or critical violation, and
+        on the experimental label-content-name-mismatch rule.
+     9. Touch targets (ux-a11y-floor, L6) at 375px on a touch device: every
+        visible interactive element is hit at least 44 by 44 CSS px, measured by
+        elementFromPoint from its centre, so a padding or pseudo-element grow
+        counts and a neighbour that cuts it short is a finding.
+    10. Drawn boxes (L6, no visual change): every element's painted box at 375px
+        matches test/a11y-base-boxes.json, recorded from the base commit with
+        `A11Y_RECORD=1 node test/screens.mjs`. A grown hit area never grows it.
 
    Reduced motion is on, so animation does not skew the numbers. Exit 0 when all
    checks pass; exit 1 with one `FAIL` line per failure and one summary line. */
 import { chromium } from "playwright";
-import { existsSync } from "node:fs";
+import AxeBuilder from "@axe-core/playwright";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
 
@@ -284,10 +296,11 @@ const failures = [];
 let checks = 0;
 const fail = (name, detail) => failures.push(`FAIL ${name}: ${detail}`);
 
-async function openSeeded(browser, width) {
+async function openSeeded(browser, width, opts = {}) {
   const ctx = await browser.newContext({
     viewport: { width, height: 812 },
     reducedMotion: "reduce",
+    ...(opts.touch ? { hasTouch: true, isMobile: true } : {}),
   });
   await ctx.addInitScript(
     ([key, value]) => {
@@ -297,7 +310,7 @@ async function openSeeded(browser, width) {
         /* storage blocked: the page renders its empty state and the load check fails */
       }
     },
-    [STORE_KEY, JSON.stringify(LEDGER)]
+    [STORE_KEY, JSON.stringify(opts.ledger || LEDGER)]
   );
   const page = await ctx.newPage();
   const pageErrors = [];
@@ -777,6 +790,274 @@ async function syncPanelCheck(browser, width) {
   }
 }
 
+/* ---------- L8: axe, and L6: touch targets and drawn boxes ---------- */
+
+/* Each state a screen can be in, opened from the bar. The photo viewer is the
+   last state, because it overlays the page and the states after it would open
+   on top of it. */
+const SCREEN_STATES = ["Ledger", "Orphaned", "Tally", "Tally card open", "Packages"];
+const AXE_STATES = [...SCREEN_STATES, "Photo viewer"];
+const AXE_BLOCKING = new Set(["serious", "critical"]);
+const AXE_PHOTO_ID = "pho-axe";
+/* One stamped package, so the stamp band on Packages is in the scan. Its
+   button is named "Edit stamp on <seller>" over a visible kind and note, the
+   name-versus-label mismatch that the seeded page shows and this fixture
+   did not. */
+const AXE_LEDGER = {
+  ...LEDGER,
+  envelopes: [{ ...LEDGER.envelopes[0], photos: [AXE_PHOTO_ID] }],
+  stamps: { "A1::Alpha Cards": { kind: "claim", at: "2026-07-01", note: "", updatedAt: 1 } },
+};
+
+/* The 44px floor is half-width 22px from the drawn centre, on each axis. */
+const TOUCH_HALF_PX = 22;
+const TOUCH_SELECTOR =
+  'button, a[href], input:not([type="hidden"]), select, textarea, [role="button"], [role="tab"], [role="checkbox"], summary, [tabindex]:not([tabindex="-1"])';
+const BASE_BOXES = path.join(ROOT, "test", "a11y-base-boxes.json");
+const BOX_TOL_PX = 0.5;
+const RECORD = process.env.A11Y_RECORD === "1";
+
+/* Opens one state; false when it does not open, so the caller fails loudly. */
+async function openScreenState(page, state) {
+  if (state === "Tally card open") {
+    if (!(await showView(page, "Tally"))) return false;
+    await page.locator("button", { hasText: "Lightning Bolt" }).first().click();
+    await page.waitForTimeout(250);
+    return true;
+  }
+  if (state === "Photo viewer") {
+    if (!(await showView(page, "Orphaned"))) return false;
+    try {
+      await page.getByRole("button", { name: "View photo" }).first().click({ timeout: 3000 });
+      await page.waitForSelector('img[alt="Envelope photo"]', { timeout: 4000 });
+    } catch {
+      return false;
+    }
+    return true;
+  }
+  return showView(page, state);
+}
+
+/* Writes one small PNG into the photo store the app reads (mailday-photos,
+   store photos), keyed by the envelope's photo id. The page reloads after, so
+   the thumbnail resolves its blob. */
+async function seedPhotoBlob(page) {
+  await page.evaluate(async (id) => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 8;
+    canvas.height = 8;
+    const blob = await new Promise((r) => canvas.toBlob(r, "image/png"));
+    const db = await new Promise((resolve, reject) => {
+      const req = indexedDB.open("mailday-photos", 1);
+      req.onupgradeneeded = () => {
+        if (!req.result.objectStoreNames.contains("photos"))
+          req.result.createObjectStore("photos");
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction("photos", "readwrite");
+      tx.objectStore("photos").put(blob, id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  }, AXE_PHOTO_ID);
+}
+
+async function axeCheck(browser, width) {
+  const { ctx, page, pageErrors } = await openSeeded(browser, width, { ledger: AXE_LEDGER });
+  try {
+    if (!(await loadedOk(page))) {
+      fail(`axe ${width}px`, "seeded ledger did not render; no view can be scanned");
+      return;
+    }
+    await seedPhotoBlob(page);
+    await page.reload();
+    if (!(await loadedOk(page))) {
+      fail(`axe ${width}px`, "seeded ledger did not render after the photo was stored");
+      return;
+    }
+    for (const state of AXE_STATES) {
+      const name = `axe ${state} ${width}px`;
+      checks++;
+      if (!(await openScreenState(page, state))) {
+        fail(name, "the state did not open, so it cannot be scanned");
+        continue;
+      }
+      await page.waitForTimeout(150);
+      const results = await new AxeBuilder({ page })
+        .options({ rules: { "label-content-name-mismatch": { enabled: true } } })
+        .analyze();
+      for (const v of results.violations) {
+        if (!AXE_BLOCKING.has(v.impact) && v.id !== "label-content-name-mismatch") continue;
+        fail(name, `${v.id} (${v.impact}) on ${v.nodes.length} node(s)`);
+      }
+    }
+    for (const e of pageErrors) fail(`axe ${width}px`, `page error: ${e}`);
+  } finally {
+    await ctx.close();
+  }
+}
+
+/* Runs in the page, once per state. Scrolls each visible interactive element to
+   the centre, then reads its painted box and how far its hit area reaches from
+   the drawn centre on each side. Serialised by Playwright, so self-contained. */
+const measureTouch = ({ selector, half }) => {
+  const isPinned = (el) => {
+    for (let n = el; n && n !== document.documentElement; n = n.parentElement) {
+      const p = getComputedStyle(n).position;
+      if (p === "sticky" || p === "fixed") return true;
+    }
+    return false;
+  };
+  const hitsTarget = (el, x, y) => {
+    const h = document.elementFromPoint(x, y);
+    return !!h && (h === el || el.contains(h));
+  };
+  const els = [...document.querySelectorAll(selector)].filter((el) => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== "hidden";
+  });
+  return els.map((el, i) => {
+    el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
+    const cs = getComputedStyle(el);
+    const paints =
+      cs.backgroundColor !== "rgba(0, 0, 0, 0)" ||
+      cs.backgroundImage !== "none" ||
+      (cs.borderTopStyle !== "none" && parseFloat(cs.borderTopWidth) > 0) ||
+      cs.boxShadow !== "none";
+    /* A painted element is drawn by its border box. Otherwise only its contents
+       are drawn, and a Range over them ignores padding. */
+    let box = el.getBoundingClientRect();
+    if (!paints) {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const rr = range.getBoundingClientRect();
+      if (rr.width > 0 && rr.height > 0) box = rr;
+    }
+    const pinned = isPinned(el);
+    const ex = el.getBoundingClientRect();
+    const cx = ex.left + ex.width / 2;
+    const cy = ex.top + ex.height / 2;
+    const ext = { l: 0, r: 0, u: 0, d: 0 };
+    let offscreen = false;
+    for (const [dir, dx, dy] of [
+      ["r", 1, 0],
+      ["l", -1, 0],
+      ["d", 0, 1],
+      ["u", 0, -1],
+    ]) {
+      for (let s = 1; s <= half; s++) {
+        const px = cx + dx * s;
+        const py = cy + dy * s;
+        if (px < 0 || py < 0 || px > window.innerWidth || py > window.innerHeight) {
+          offscreen = true;
+          break;
+        }
+        if (!hitsTarget(el, px, py)) break;
+        ext[dir] = s;
+      }
+    }
+    const text = (el.innerText || el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 60);
+    return {
+      key: `${i}|${el.tagName.toLowerCase()}|${text}`,
+      text,
+      pinned,
+      x: pinned ? box.left : box.left + window.scrollX,
+      y: pinned ? box.top : box.top + window.scrollY,
+      w: box.width,
+      h: box.height,
+      ext,
+      offscreen,
+    };
+  });
+};
+
+/* The two L6 claims in one touch context: the hit floor and the drawn boxes.
+   In record mode it writes the base boxes instead of comparing them. */
+async function touchCheck(browser) {
+  const name = "touch 375px";
+  const { ctx, page, pageErrors } = await openSeeded(browser, 375, { touch: true });
+  const recorded = {};
+  try {
+    if (!(await loadedOk(page))) {
+      fail(name, "seeded ledger did not render");
+      return;
+    }
+    const coarse = await page.evaluate(() => matchMedia("(pointer: coarse)").matches);
+    if (!coarse) {
+      fail(name, "the page does not report a coarse pointer, so the 44px floor is not measured on touch");
+      return;
+    }
+    const base = RECORD ? null : JSON.parse(readFileSync(BASE_BOXES, "utf8"))["375"];
+    for (const state of SCREEN_STATES) {
+      const stateName = `touch ${state} 375px`;
+      checks++;
+      if (!(await openScreenState(page, state))) {
+        fail(stateName, "the state did not open, so it cannot be measured");
+        continue;
+      }
+      await page.waitForTimeout(150);
+      const items = await page.evaluate(measureTouch, { selector: TOUCH_SELECTOR, half: TOUCH_HALF_PX });
+      const measured = items.filter((it) => !it.offscreen);
+      if (measured.length < items.length)
+        console.log(`note ${stateName}: ${items.length - measured.length} target(s) at the viewport edge not measured`);
+      const small = measured.filter(
+        (it) => it.ext.l + it.ext.r < 2 * TOUCH_HALF_PX || it.ext.u + it.ext.d < 2 * TOUCH_HALF_PX
+      );
+      if (small.length) {
+        const first = small[0];
+        fail(
+          stateName,
+          `${small.length} of ${measured.length} targets under 44px; first is "${first.text}" (${first.key.split("|")[1]}) with a hit area ${first.ext.l + first.ext.r}x${first.ext.u + first.ext.d}px`
+        );
+      }
+      if (RECORD) {
+        recorded[state] = {};
+        for (const it of items) recorded[state][it.key] = { x: it.x, y: it.y, w: it.w, h: it.h, pinned: it.pinned };
+        continue;
+      }
+      const want = base && base[state];
+      if (!want) {
+        fail(stateName, "no base boxes for this state; re-record with A11Y_RECORD=1 on the base commit");
+        continue;
+      }
+      const wantKeys = Object.keys(want);
+      if (wantKeys.length !== items.length) {
+        fail(stateName, `${items.length} interactive elements, the base has ${wantKeys.length}`);
+        continue;
+      }
+      const moved = [];
+      for (const it of items) {
+        const b = want[it.key];
+        if (!b) {
+          moved.push(`${it.key} is new`);
+          continue;
+        }
+        const d = Math.max(
+          Math.abs(it.x - b.x),
+          Math.abs(it.y - b.y),
+          Math.abs(it.w - b.w),
+          Math.abs(it.h - b.h)
+        );
+        if (d > BOX_TOL_PX) moved.push(`${it.key} moved or resized by ${d.toFixed(2)}px`);
+      }
+      if (moved.length)
+        fail(stateName, `${moved.length} drawn box(es) changed from the base; first: ${moved[0]}`);
+    }
+    if (RECORD) {
+      const out = { 375: recorded };
+      writeFileSync(BASE_BOXES, JSON.stringify(out, null, 1) + "\n");
+      console.log(`recorded ${Object.values(recorded).reduce((n, s) => n + Object.keys(s).length, 0)} base boxes to test/a11y-base-boxes.json`);
+    }
+    for (const e of pageErrors) fail(name, `page error: ${e}`);
+  } finally {
+    await ctx.close();
+  }
+}
+
 async function main() {
   const t0 = Date.now();
   if (!existsSync(PAGE)) {
@@ -795,8 +1076,12 @@ async function main() {
     return;
   }
   try {
-    const phases = [
+    const phases = RECORD
+      ? [() => touchCheck(browser)]
+      : [
       () => overflowChecks(browser),
+      ...WIDTHS.map((width) => () => axeCheck(browser, width)),
+      () => touchCheck(browser),
       ...WIDTHS.map((width) => () => barCheck(browser, width)),
       ...WIDTHS.map((width) => () => ledgerCheck(browser, width)),
       ...WIDTHS.map((width) => () => syncPanelCheck(browser, width)),

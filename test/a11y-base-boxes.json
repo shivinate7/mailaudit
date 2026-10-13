@@ -1,0 +1,728 @@
+{
+ "375": {
+  "Ledger": {
+   "0|button|LEDGER": {
+    "x": 30,
+    "y": 742,
+    "w": 77.25,
+    "h": 52,
+    "pinned": true
+   },
+   "1|button|ORPHANED 1": {
+    "x": 120.1875,
+    "y": 748,
+    "w": 55.375,
+    "h": 38,
+    "pinned": true
+   },
+   "2|button|TALLY": {
+    "x": 209.8125,
+    "y": 750,
+    "w": 34.609375,
+    "h": 36,
+    "pinned": true
+   },
+   "3|button|PACKAGES": {
+    "x": 278.6875,
+    "y": 750,
+    "w": 55.375,
+    "h": 36,
+    "pinned": true
+   },
+   "4|button|Showing ● Unreceived": {
+    "x": 33,
+    "y": 373.484375,
+    "w": 309,
+    "h": 23,
+    "pinned": false
+   },
+   "5|button|Sorted by $ remaining": {
+    "x": 17,
+    "y": 410.984375,
+    "w": 341,
+    "h": 52,
+    "pinned": false
+   },
+   "6|button|Orders from 15 lines · 1206 outside Custom": {
+    "x": 17,
+    "y": 462.984375,
+    "w": 341,
+    "h": 63.546875,
+    "pinned": false
+   },
+   "7|button|Sync This device has no sync key Set up": {
+    "x": 33,
+    "y": 575.53125,
+    "w": 290.484375,
+    "h": 42.546875,
+    "pinned": false
+   },
+   "8|button|History Saved versions": {
+    "x": 17,
+    "y": 628.078125,
+    "w": 341,
+    "h": 52,
+    "pinned": false
+   },
+   "9|button|Re-import CSV Merges": {
+    "x": 17,
+    "y": 680.078125,
+    "w": 341,
+    "h": 52,
+    "pinned": false
+   },
+   "10|button|Backup": {
+    "x": 17,
+    "y": 732.078125,
+    "w": 341,
+    "h": 52,
+    "pinned": false
+   },
+   "11|button|Reset": {
+    "x": 33,
+    "y": 820.578125,
+    "w": 309,
+    "h": 23,
+    "pinned": false
+   }
+  },
+  "Orphaned": {
+   "0|button|LEDGER": {
+    "x": 47.859375,
+    "y": 750,
+    "w": 41.53125,
+    "h": 36,
+    "pinned": true
+   },
+   "1|button|ORPHANED 1": {
+    "x": 109.25,
+    "y": 742,
+    "w": 77.25,
+    "h": 52,
+    "pinned": true
+   },
+   "2|button|TALLY": {
+    "x": 209.8125,
+    "y": 750,
+    "w": 34.609375,
+    "h": 36,
+    "pinned": true
+   },
+   "3|button|PACKAGES": {
+    "x": 278.6875,
+    "y": 750,
+    "w": 55.375,
+    "h": 36,
+    "pinned": true
+   },
+   "4|button|This device has no sync key — tap to paste it": {
+    "x": 16,
+    "y": 291.984375,
+    "w": 343,
+    "h": 38.890625,
+    "pinned": false
+   },
+   "5|button|+ Record an envelope": {
+    "x": 16,
+    "y": 347.875,
+    "w": 343,
+    "h": 44,
+    "pinned": false
+   },
+   "6|button|Edit": {
+    "x": 223.140625,
+    "y": 416.375,
+    "w": 46.5,
+    "h": 25,
+    "pinned": false
+   },
+   "7|button|Discard": {
+    "x": 277.640625,
+    "y": 416.375,
+    "w": 66.359375,
+    "h": 25,
+    "pinned": false
+   },
+   "8|button|This one": {
+    "x": 255.609375,
+    "y": 578.375,
+    "w": 77.390625,
+    "h": 32,
+    "pinned": false
+   },
+   "9|button|This one": {
+    "x": 255.609375,
+    "y": 659.375,
+    "w": 77.390625,
+    "h": 32,
+    "pinned": false
+   },
+   "10|button|This one": {
+    "x": 255.609375,
+    "y": 740.375,
+    "w": 77.390625,
+    "h": 32,
+    "pinned": false
+   },
+   "11|button|show 4 more candidates": {
+    "x": 31,
+    "y": 800.875,
+    "w": 145.703125,
+    "h": 13,
+    "pinned": false
+   }
+  },
+  "Tally": {
+   "0|button|LEDGER": {
+    "x": 47.859375,
+    "y": 750,
+    "w": 41.53125,
+    "h": 36,
+    "pinned": true
+   },
+   "1|button|ORPHANED 1": {
+    "x": 120.1875,
+    "y": 748,
+    "w": 55.375,
+    "h": 38,
+    "pinned": true
+   },
+   "2|button|TALLY": {
+    "x": 188.5,
+    "y": 742,
+    "w": 77.25,
+    "h": 52,
+    "pinned": true
+   },
+   "3|button|PACKAGES": {
+    "x": 278.6875,
+    "y": 750,
+    "w": 55.375,
+    "h": 36,
+    "pinned": true
+   },
+   "4|input|": {
+    "x": 73,
+    "y": 681,
+    "w": 259,
+    "h": 46,
+    "pinned": true
+   },
+   "5|button|This device has no sync key — tap to paste it": {
+    "x": 16,
+    "y": 291.984375,
+    "w": 343,
+    "h": 38.890625,
+    "pinned": false
+   },
+   "6|button|▶ Counterspell 3 sellers · 3 orders · Test Set 0/3 $2.00 / c": {
+    "x": 31,
+    "y": 360.875,
+    "w": 313,
+    "h": 46,
+    "pinned": false
+   },
+   "7|button|▶ Lightning Bolt 6 sellers · 6 orders · Commander Legends Ba": {
+    "x": 31,
+    "y": 444.875,
+    "w": 618.6875,
+    "h": 46,
+    "pinned": false
+   },
+   "8|button|▶ Path to Exile 1 seller · 1 order · Test Set 0/1 $3.00 / co": {
+    "x": 31,
+    "y": 528.875,
+    "w": 313,
+    "h": 46,
+    "pinned": false
+   },
+   "9|button|▶ Brainstorm 3 sellers · 3 orders · Test Set 0/5 $0.50 / cop": {
+    "x": 31,
+    "y": 612.875,
+    "w": 313,
+    "h": 46,
+    "pinned": false
+   },
+   "10|button|▶ Ponder 2 sellers · 2 orders · Commander Legends Battle for": {
+    "x": 31,
+    "y": 696.875,
+    "w": 618.6875,
+    "h": 46,
+    "pinned": false
+   }
+  },
+  "Tally card open": {
+   "0|button|LEDGER": {
+    "x": 47.859375,
+    "y": 750,
+    "w": 41.53125,
+    "h": 36,
+    "pinned": true
+   },
+   "1|button|ORPHANED 1": {
+    "x": 120.1875,
+    "y": 748,
+    "w": 55.375,
+    "h": 38,
+    "pinned": true
+   },
+   "2|button|TALLY": {
+    "x": 188.5,
+    "y": 742,
+    "w": 77.25,
+    "h": 52,
+    "pinned": true
+   },
+   "3|button|PACKAGES": {
+    "x": 278.6875,
+    "y": 750,
+    "w": 55.375,
+    "h": 36,
+    "pinned": true
+   },
+   "4|input|": {
+    "x": 73,
+    "y": 681,
+    "w": 259,
+    "h": 46,
+    "pinned": true
+   },
+   "5|button|This device has no sync key — tap to paste it": {
+    "x": 16,
+    "y": 291.984375,
+    "w": 343,
+    "h": 38.890625,
+    "pinned": false
+   },
+   "6|button|▶ Counterspell 3 sellers · 3 orders · Test Set 0/3 $2.00 / c": {
+    "x": 31,
+    "y": 360.875,
+    "w": 313,
+    "h": 46,
+    "pinned": false
+   },
+   "7|button|▶ Lightning Bolt 6 sellers · 6 orders · Commander Legends Ba": {
+    "x": 28.515625,
+    "y": 444.875,
+    "w": 621.171875,
+    "h": 46,
+    "pinned": false
+   },
+   "8|button|Mark all received": {
+    "x": 200.296875,
+    "y": 520.875,
+    "w": 143.703125,
+    "h": 32,
+    "pinned": false
+   },
+   "9|button|": {
+    "x": 31,
+    "y": 574.875,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "10|button|H1 ›": {
+    "x": 73,
+    "y": 617.765625,
+    "w": 23.984375,
+    "h": 12,
+    "pinned": false
+   },
+   "11|button|": {
+    "x": 31,
+    "y": 664.765625,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "12|button|G1 ›": {
+    "x": 73,
+    "y": 707.65625,
+    "w": 23.984375,
+    "h": 12,
+    "pinned": false
+   },
+   "13|button|": {
+    "x": 31,
+    "y": 754.65625,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "14|button|B1 ›": {
+    "x": 73,
+    "y": 801.546875,
+    "w": 23.984375,
+    "h": 12,
+    "pinned": false
+   },
+   "15|button|": {
+    "x": 31,
+    "y": 848.546875,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "16|button|A1 ›": {
+    "x": 73,
+    "y": 895.4375,
+    "w": 23.984375,
+    "h": 12,
+    "pinned": false
+   },
+   "17|button|": {
+    "x": 31,
+    "y": 942.4375,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "18|button|F1 ›": {
+    "x": 73,
+    "y": 989.328125,
+    "w": 23.984375,
+    "h": 12,
+    "pinned": false
+   },
+   "19|button|": {
+    "x": 31,
+    "y": 1036.328125,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "20|button|E1 ›": {
+    "x": 73,
+    "y": 1079.21875,
+    "w": 23.984375,
+    "h": 12,
+    "pinned": false
+   },
+   "21|button|▶ Path to Exile 1 seller · 1 order · Test Set 0/1 $3.00 / co": {
+    "x": 31,
+    "y": 1138.21875,
+    "w": 313,
+    "h": 46,
+    "pinned": false
+   },
+   "22|button|▶ Brainstorm 3 sellers · 3 orders · Test Set 0/5 $0.50 / cop": {
+    "x": 31,
+    "y": 1222.21875,
+    "w": 313,
+    "h": 46,
+    "pinned": false
+   },
+   "23|button|▶ Ponder 2 sellers · 2 orders · Commander Legends Battle for": {
+    "x": 31,
+    "y": 1306.21875,
+    "w": 618.6875,
+    "h": 46,
+    "pinned": false
+   }
+  },
+  "Packages": {
+   "0|button|LEDGER": {
+    "x": 47.859375,
+    "y": 750,
+    "w": 41.53125,
+    "h": 36,
+    "pinned": true
+   },
+   "1|button|ORPHANED 1": {
+    "x": 120.1875,
+    "y": 748,
+    "w": 55.375,
+    "h": 38,
+    "pinned": true
+   },
+   "2|button|TALLY": {
+    "x": 209.8125,
+    "y": 750,
+    "w": 34.609375,
+    "h": 36,
+    "pinned": true
+   },
+   "3|button|PACKAGES": {
+    "x": 267.75,
+    "y": 742,
+    "w": 77.25,
+    "h": 52,
+    "pinned": true
+   },
+   "4|input|": {
+    "x": 73,
+    "y": 681,
+    "w": 259,
+    "h": 46,
+    "pinned": true
+   },
+   "5|button|This device has no sync key — tap to paste it": {
+    "x": 16,
+    "y": 291.984375,
+    "w": 343,
+    "h": 38.890625,
+    "pinned": false
+   },
+   "6|button|▶ Eta Cards 2026-07-05 · ● tracked · G1 2 left · $4.00": {
+    "x": 28.515625,
+    "y": 360.875,
+    "w": 315.484375,
+    "h": 31,
+    "pinned": false
+   },
+   "7|button|Stamp": {
+    "x": 31,
+    "y": 403.875,
+    "w": 60.625,
+    "h": 46,
+    "pinned": false
+   },
+   "8|button|Mark all received": {
+    "x": 200.296875,
+    "y": 403.875,
+    "w": 143.703125,
+    "h": 46,
+    "pinned": false
+   },
+   "9|button|": {
+    "x": 31,
+    "y": 471.875,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "10|button|": {
+    "x": 31,
+    "y": 530.765625,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "11|button|▶ Beta Games ⚠ 103d — refund window closing, contact seller ": {
+    "x": 28.515625,
+    "y": 601.65625,
+    "w": 535.125,
+    "h": 31,
+    "pinned": false
+   },
+   "12|button|Stamp": {
+    "x": 31,
+    "y": 644.65625,
+    "w": 60.625,
+    "h": 46,
+    "pinned": false
+   },
+   "13|button|Mark all received": {
+    "x": 200.296875,
+    "y": 644.65625,
+    "w": 143.703125,
+    "h": 46,
+    "pinned": false
+   },
+   "14|button|": {
+    "x": 31,
+    "y": 712.65625,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "15|button|–": {
+    "x": 73,
+    "y": 753.546875,
+    "w": 34,
+    "h": 34,
+    "pinned": false
+   },
+   "16|button|+": {
+    "x": 163,
+    "y": 753.546875,
+    "w": 34,
+    "h": 34,
+    "pinned": false
+   },
+   "17|button|": {
+    "x": 31,
+    "y": 813.546875,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "18|button|": {
+    "x": 31,
+    "y": 872.4375,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "19|button|▶ Alpha Cards ⚠ 104d — refund window closing, contact seller": {
+    "x": 28.515625,
+    "y": 943.328125,
+    "w": 535.125,
+    "h": 31,
+    "pinned": false
+   },
+   "20|button|Stamp": {
+    "x": 31,
+    "y": 986.328125,
+    "w": 60.625,
+    "h": 46,
+    "pinned": false
+   },
+   "21|button|Mark all received": {
+    "x": 200.296875,
+    "y": 986.328125,
+    "w": 143.703125,
+    "h": 46,
+    "pinned": false
+   },
+   "22|button|": {
+    "x": 31,
+    "y": 1054.328125,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "23|button|–": {
+    "x": 73,
+    "y": 1095.21875,
+    "w": 34,
+    "h": 34,
+    "pinned": false
+   },
+   "24|button|+": {
+    "x": 163,
+    "y": 1095.21875,
+    "w": 34,
+    "h": 34,
+    "pinned": false
+   },
+   "25|button|": {
+    "x": 31,
+    "y": 1155.21875,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "26|button|": {
+    "x": 31,
+    "y": 1214.109375,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "27|button|▶ Epsilon Cards 2026-06-15 · ● tracked · E1 3 left · $3.75": {
+    "x": 28.515625,
+    "y": 1285,
+    "w": 315.484375,
+    "h": 31,
+    "pinned": false
+   },
+   "28|button|Stamp": {
+    "x": 31,
+    "y": 1328,
+    "w": 60.625,
+    "h": 46,
+    "pinned": false
+   },
+   "29|button|Mark all received": {
+    "x": 200.296875,
+    "y": 1328,
+    "w": 143.703125,
+    "h": 46,
+    "pinned": false
+   },
+   "30|button|": {
+    "x": 31,
+    "y": 1396,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "31|button|": {
+    "x": 31,
+    "y": 1454.890625,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "32|button|": {
+    "x": 31,
+    "y": 1513.78125,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "33|button|▶ CollectorsVaultTradingCardEmporiumOutletSuperStoreOfficial": {
+    "x": 28.515625,
+    "y": 1584.671875,
+    "w": 471.328125,
+    "h": 31,
+    "pinned": false
+   },
+   "34|button|Stamp": {
+    "x": 31,
+    "y": 1627.671875,
+    "w": 60.625,
+    "h": 46,
+    "pinned": false
+   },
+   "35|button|Mark all received": {
+    "x": 200.296875,
+    "y": 1627.671875,
+    "w": 143.703125,
+    "h": 46,
+    "pinned": false
+   },
+   "36|button|": {
+    "x": 31,
+    "y": 1695.671875,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "37|button|": {
+    "x": 31,
+    "y": 1754.5625,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "38|button|▶ Zeta Games ⚠ 115d — refund window closing, contact seller ": {
+    "x": 28.515625,
+    "y": 1825.453125,
+    "w": 535.125,
+    "h": 31,
+    "pinned": false
+   },
+   "39|button|Stamp": {
+    "x": 31,
+    "y": 1868.453125,
+    "w": 60.625,
+    "h": 46,
+    "pinned": false
+   },
+   "40|button|Mark all received": {
+    "x": 200.296875,
+    "y": 1868.453125,
+    "w": 143.703125,
+    "h": 46,
+    "pinned": false
+   },
+   "41|button|": {
+    "x": 31,
+    "y": 1936.453125,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "42|button|": {
+    "x": 31,
+    "y": 1995.34375,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   }
+  }
+ }
+}
