@@ -5,7 +5,7 @@
 // so these cases read the bundled rules.js and copy no rule.
 //
 // Red-first. The bundle has no toggleCount or countLabel until the builder runs
-// `npm run build`, which regenerates native/ManifestKit/Resources/rules.js. Until
+// `npm run build`, which regenerates native/ManifestKit/Sources/ManifestKit/rules.js. Until
 // then each call throws unknownFunction and the case fails on an XCTFail.
 //
 // Contract the tests name (exports in src/view-rules.mjs):
