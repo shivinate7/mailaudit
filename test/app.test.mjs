@@ -8501,5 +8501,43 @@ try {
   ok(false, `68.10b threw: ${e.message}`);
 }
 
+/* 69.1 P2. A cold open that owes the Worker its check-ins arms a POST for
+   SYNC_COLD_POST_MS. An unmount before that moment cancels it. The control
+   shows the POST fires when nothing unmounts, so the unmounted case means something. */
+const KEY69 = "device-69-key";
+const COLD69 = { mailday: 1, items: ITEMS.slice(0, 3), received: {}, envelopes: [] };
+const HELD69 = { "C1|3|pPonder": 1 };
+try {
+  await boot({ items: ITEMS.slice(0, 3), received: HELD69 }, null, {
+    noRemote: true,
+    syncKey: KEY69,
+    syncLedger: COLD69,
+  });
+  await sleep(SR.SYNC_COLD_POST_MS + 500);
+  ok(postCount() > 0, "69.1a0 the control: with no unmount, the cold open POSTs the check-ins it holds");
+} catch (e) {
+  ok(false, `69.1a0 threw: ${e.message}`);
+}
+try {
+  await boot({ items: ITEMS.slice(0, 3), received: HELD69 }, null, {
+    noRemote: true,
+    syncKey: KEY69,
+    syncLedger: COLD69,
+  });
+  await sleep(50);
+  ok(syncCalls().some((c) => c.op === "get"), "69.1b0 the cold GET was made, so the POST timer is armed");
+  /* the next mount holds the same key and nothing the server lacks, so it sends
+     nothing of its own: any POST it sees came from the first mount's timer */
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+    noRemote: true,
+    syncKey: KEY69,
+    syncLedger: COLD69,
+  });
+  await sleep(SR.SYNC_COLD_POST_MS + 500);
+  eq(postCount(), 0, "69.1b an unmount before the cold-open POST is due cancels it");
+} catch (e) {
+  ok(false, `69.1b threw: ${e.message}`);
+}
+
 uninstallClock();
 report();
