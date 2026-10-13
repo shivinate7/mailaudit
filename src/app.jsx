@@ -4659,6 +4659,7 @@ syncBroken === "seeded"
   const nextTry = useRef(0);
   const retryTimer = useRef(null);
   const coldPostTimer = useRef(null);
+  const coldGone = useRef(false);
   const postsInFlight = useRef(0);
   const heldRev = useRef(0); // the highest rev heard while a POST was in flight
   const refusedRef = useRef(false); // a 401: no more calls until the page reloads
@@ -4825,7 +4826,7 @@ syncBroken === "seeded"
         r.code === "ok"
           ? r.body?.ledger && lacksRef.current(r.body.ledger)
           : r.code === "empty" && holdsUserDataRef.current();
-      if (send) coldPostTimer.current = bgTimeout(() => postRef.current(), SYNC_COLD_POST_MS);
+      if (send && !coldGone.current) coldPostTimer.current = bgTimeout(() => postRef.current(), SYNC_COLD_POST_MS);
     }
   };
   /* Paste a Worker key. The field is validated by the same rule as a #k= link,
@@ -4917,6 +4918,7 @@ syncBroken === "seeded"
       nextTry.current = 0;
       postRef.current();
     };
+    coldGone.current = false;
     coldRef.current();
     const vis = () => document.visibilityState === "visible" && go();
     document.addEventListener("visibilitychange", vis);
@@ -4928,6 +4930,7 @@ syncBroken === "seeded"
       window.removeEventListener("online", go);
       clearTimeout(applyTimer.current);
       clearTimeout(retryTimer.current);
+      coldGone.current = true;
       clearTimeout(coldPostTimer.current);
     };
   }, [loaded]);
