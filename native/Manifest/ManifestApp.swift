@@ -6,6 +6,7 @@ import SwiftUI
 struct ManifestApp: App {
     @State private var model: PackagesModel?
     @State private var failure: String?
+    @State private var notice: String?
     private let keys = KeyStore(service: "dev.shivinate.manifest", account: "device-key")
     @State private var engine: RulesEngine?
     private let links = PendingKeyLinks()
@@ -13,7 +14,7 @@ struct ManifestApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(model: model, failure: failure, width: Self.forcedWidth)
+            RootView(model: model, failure: failure, notice: notice, width: Self.forcedWidth)
                 .task { await boot() }
                 .onOpenURL { url in
                     // The key goes to the Keychain and the URL is dropped (native-key-via-url-scheme).
@@ -40,8 +41,9 @@ struct ManifestApp: App {
         do {
             guard let rules = Bundle.main.url(forResource: "rules", withExtension: "js") else { throw CocoaError(.fileNoSuchFile) }
             let e = try RulesEngine(bundleURL: rules)
-            let store = LedgerStore(fileURL: try Self.ledgerURL(), now: { Date().timeIntervalSince1970 * 1000 })
+            let store = LedgerStore(fileURL: try Self.ledgerURL(), now: { Date().timeIntervalSince1970 * 1000 }, rulesURL: rules)
             try store.load()
+            notice = LedgerNotice.damagedLine(dropped: store.droppedCount)
             let m = PackagesModel(engine: e, store: store)
             try await m.load()
             engine = e

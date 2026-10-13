@@ -24,7 +24,7 @@ final class RulesGoldenTests: XCTestCase {
         .deletingLastPathComponent()  // native
         .deletingLastPathComponent()  // repo root
 
-    static let bundleURL = root.appending(path: "native/ManifestKit/Resources/rules.js")
+    static let bundleURL = root.appending(path: "native/ManifestKit/Sources/ManifestKit/rules.js")
 
     /// Date.parse("2026-08-12T14:03:00Z"). The same fixed clock as scripts/gen-golden.mjs.
     static let now: Double = 1_786_543_380_000

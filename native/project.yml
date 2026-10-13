@@ -13,7 +13,7 @@ targets:
     sources:
       - Manifest
       # rules.js is the bundled web rules. ledger.json is the fake seed for -ManifestUITestSeed.
-      - path: ManifestKit/Resources/rules.js
+      - path: ManifestKit/Sources/ManifestKit/rules.js
         buildPhase: resources
       - path: ../shared/fixtures/ledger.json
         buildPhase: resources

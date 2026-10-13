@@ -1,5 +1,5 @@
 /* Contract tests for `npm run check:rules`, the guard on the committed rules
-   bundle native/ManifestKit/Resources/rules.js (rules-run-in-javascriptcore).
+   bundle native/ManifestKit/Sources/ManifestKit/rules.js (rules-run-in-javascriptcore).
    Run: npm run test:rules. Exits 1 on any failure.
 
    The check rebuilds the bundle from src/ into a temp dir and fails if the
@@ -38,7 +38,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const BUNDLE_REL = path.join("native", "ManifestKit", "Resources", "rules.js");
+const BUNDLE_REL = path.join("native", "ManifestKit", "Sources", "ManifestKit", "rules.js");
 const SRC_REL = path.join("src", "view-rules.mjs");
 // a visible code change: the regex literal survives esbuild, so the bundle bytes move
 const STALE_FROM = "/^without tracking$/i";
@@ -102,7 +102,7 @@ const tail = (s) => s.trim().split("\n").slice(-4).join("\n     ");
   try {
     ok(
       existsSync(path.join(dir, BUNDLE_REL)),
-      "R1.1 the committed bundle native/ManifestKit/Resources/rules.js must exist",
+      "R1.1 the committed bundle native/ManifestKit/Sources/ManifestKit/rules.js must exist",
       `looked in ${path.join(ROOT, BUNDLE_REL)}`
     );
   } finally {
