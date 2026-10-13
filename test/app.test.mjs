@@ -8577,5 +8577,112 @@ try {
   ok(false, `69.2a threw: ${e.message}`);
 }
 
+/* ── 70. L7 semantics (ux-house-rules-govern, L7). A control's accessible name reads
+   as its visible label does, the photo viewer is a modal dialog that focus enters and
+   Escape leaves, and a disabled control says why, through aria-describedby. ── */
+const navTab = (re) =>
+  [...document.querySelectorAll('nav[aria-label="Views"] button')].find((b) =>
+    re.test(b.textContent.trim())
+  );
+/* the accessible name, approximated: aria-label when set, else the text in reading order */
+const accName = (el) => (el.getAttribute("aria-label") || el.textContent || "").replace(/\s+/g, " ").trim();
+
+try {
+  await boot({
+    items: ITEMS,
+    received: {},
+    envelopes: [
+      { id: "env-70", createdAt: Date.parse("2026-08-01"), note: "", photos: [], entries: [{ name: "Ponder", qty: 1 }] },
+    ],
+  });
+  await sleep(50);
+  const tabs = [...document.querySelectorAll('nav[aria-label="Views"] button')];
+  eq(tabs.length, 4, "70.1a the bar holds four tabs");
+  for (const t of tabs) {
+    const label = [...t.childNodes]
+      .filter((n) => n.nodeType === 3)
+      .map((n) => n.textContent)
+      .join("")
+      .trim();
+    const badge = t.querySelector("b")?.textContent.trim() || "";
+    /* the count is a visible badge, so its name is a word of its own after the label */
+    const want = badge ? `${label} ${badge}` : label;
+    eq(accName(t), want, `70.1 the ${label} tab is named as it reads, a count as its own word`);
+  }
+  await click(navTab(/^Ledger/), "Ledger tab");
+  const rows = [...document.querySelectorAll("button.mdl-lrow")];
+  ok(rows.length > 0, "70.2a the Ledger tab has rows to name");
+  for (const r of rows) {
+    const label = (r.querySelector(".t")?.textContent || "").trim();
+    ok(label && accName(r).startsWith(label), `70.2 the Ledger row "${label}" is named by its label`);
+  }
+} catch (e) {
+  ok(false, `70.1 threw: ${e.message}`);
+}
+
+try {
+  await boot(
+    {
+      items: ITEMS,
+      received: {},
+      envelopes: [
+        { id: "env-70p", createdAt: Date.parse("2026-08-01"), note: "", photos: ["pho-70"], entries: [{ name: "Ponder", qty: 1 }] },
+      ],
+    },
+    [["pho-70", jpeg()]]
+  );
+  await goTo("orphaned");
+  await sleep(60);
+  const thumb = document.querySelector('button[aria-label="View photo"]');
+  ok(!!thumb, "70.3a0 the envelope shows its photo thumbnail");
+  thumb?.focus();
+  await click(thumb, "View photo");
+  await sleep(60);
+  const img = document.querySelector('img[alt="Envelope photo"]');
+  ok(!!img, "70.3a0 a tap on the thumbnail opens the photo");
+  const dlg = img?.closest('[role="dialog"]');
+  ok(!!dlg, "70.3a the photo viewer is a role dialog");
+  ok(dlg?.getAttribute("aria-modal") === "true", "70.3b and it is aria-modal");
+  ok(!!dlg && dlg.contains(document.activeElement), "70.3c focus moves into the viewer when it opens");
+  await act(async () => {
+    (document.activeElement || document.body).dispatchEvent(
+      new win.KeyboardEvent("keydown", { key: "Escape", bubbles: true })
+    );
+  });
+  await sleep(30);
+  ok(!document.querySelector('img[alt="Envelope photo"]'), "70.3d Escape closes the viewer");
+  ok(
+    !document.querySelector('img[alt="Envelope photo"]') && document.activeElement === thumb,
+    "70.3e and focus returns to the thumbnail that opened it"
+  );
+} catch (e) {
+  ok(false, `70.3 threw: ${e.message}`);
+}
+
+/* a disabled control's reason: aria-describedby names an element with text */
+const reasonOf = (b) =>
+  (b.getAttribute("aria-describedby") || "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((id) => document.getElementById(id)?.textContent.trim() || "")
+    .join(" ")
+    .trim();
+const sweepDisabled = (state) => {
+  const dis = [...document.querySelectorAll("button:disabled")];
+  ok(dis.length > 0, `70.4 ${state}: a disabled control is on screen to check`);
+  for (const b of dis) ok(reasonOf(b).length > 0, `70.4 ${state}: the disabled "${b.textContent.trim()}" says why`);
+};
+try {
+  await boot({ items: ITEMS, received: {}, envelopes: [] });
+  await goTo("orphaned");
+  await click(btn(/Record an envelope/), "new envelope");
+  sweepDisabled("the envelope composer with no card");
+  await goTo("packages");
+  await click(btn(/^Stamp$/), "stamp the first package");
+  sweepDisabled("the stamp editor with no kind");
+} catch (e) {
+  ok(false, `70.4 threw: ${e.message}`);
+}
+
 uninstallClock();
 report();
