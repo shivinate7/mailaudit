@@ -68,6 +68,8 @@ import {
   fireSyncRev,
   fireSyncRevOnly,
   holdSyncPosts,
+  releaseSyncGet,
+  unmountApp,
   clearSyncStore,
   holdRemotePushes,
   installClock,
@@ -5291,7 +5293,7 @@ ok(
   "52.10 the mock's own post record never carries the key"
 );
 
-/* The virtual clock covers groups 53 to 61, then 67 to 68 (see harness.mjs).
+/* The virtual clock covers groups 53 to 61, then 67 to 69 (see harness.mjs).
    Installed here, removed after group 61, and installed again before group 67.
    Groups 1 to 52 and 62 to 66 keep real timers. */
 installClock();
@@ -7907,8 +7909,8 @@ eq(
   "66.4 after a reload whose Worker reply fails, Last sync still shows the saved Worker agreement"
 );
 
-/* Groups 67 and 68 wait out the idle apply gate and the retry backoff, so they run on the
-   virtual clock too. Removed after group 68. */
+/* Groups 67 to 69 wait out the idle apply gate, the retry backoff and the cold-open POST
+   delay, so they run on the virtual clock too. Removed after group 69. */
 installClock();
 
 /* ── 67. owner ruling 2026-10-12 ("Keep a copy, then go on"): a damaged list is mended
@@ -8537,6 +8539,42 @@ try {
   eq(postCount(), 0, "69.1b an unmount before the cold-open POST is due cancels it");
 } catch (e) {
   ok(false, `69.1b threw: ${e.message}`);
+}
+
+/* 69.2 P2. The cold-open GET is still out when the app unmounts. The cleanup has already
+   run, so there is no POST timer for it to clear. When the GET settles, the cold path
+   arms one anyway, and that POST fires from an unmounted app. The control holds the same
+   GET with no unmount: its release arms the POST, so the held GET is a real cold open. */
+try {
+  await boot({ items: ITEMS.slice(0, 3), received: HELD69 }, null, {
+    noRemote: true,
+    syncKey: KEY69,
+    syncLedger: COLD69,
+    holdGet: true,
+  });
+  await sleep(50);
+  ok(syncCalls().some((c) => c.op === "get"), "69.2a0 the cold GET is out and held");
+  releaseSyncGet();
+  await sleep(SR.SYNC_COLD_POST_MS + 500);
+  ok(postCount() > 0, "69.2a0 the control: a held GET released with no unmount still POSTs");
+} catch (e) {
+  ok(false, `69.2a0 threw: ${e.message}`);
+}
+try {
+  await boot({ items: ITEMS.slice(0, 3), received: HELD69 }, null, {
+    noRemote: true,
+    syncKey: KEY69,
+    syncLedger: COLD69,
+    holdGet: true,
+  });
+  await sleep(50);
+  ok(syncCalls().some((c) => c.op === "get"), "69.2a0b the cold GET is out and held before the unmount");
+  await unmountApp();
+  releaseSyncGet();
+  await sleep(SR.SYNC_COLD_POST_MS + 500);
+  eq(postCount(), 0, "69.2a an unmount while the cold GET is out arms no POST when the reply lands");
+} catch (e) {
+  ok(false, `69.2a threw: ${e.message}`);
 }
 
 uninstallClock();

@@ -511,6 +511,20 @@ export const holdSyncPosts = () => {
     release();
   };
 };
+/* holds the cold-open GET until releaseSyncGet() is called. boot()'s holdGet option sets
+   it before the mount, so the first GET of that mount is the one held (group 69.2). */
+let syncGetRelease = null;
+export const releaseSyncGet = () => {
+  syncGetRelease?.();
+  syncGetRelease = null;
+};
+/* unmounts the app now, as leaving the page does, so a test can resolve a request the
+   app still has out after its cleanup has run (group 69.2) */
+export const unmountApp = async () => {
+  if (!root) return;
+  await act(async () => root.unmount());
+  root = null;
+};
 /* the Worker's object is emptied: its next GET answers 404, a healthy empty store */
 export const clearSyncStore = () => {
   sync.ledger = null;
@@ -550,6 +564,8 @@ const syncApi = {
   },
   async get() {
     sync.calls.push({ op: "get", keyed: !!sync.key });
+    /* held by boot()'s holdGet option: the GET is out until releaseSyncGet() */
+    if (sync.holdGet) await sync.holdGet;
     if (sync.netFail) return syncReply(null, null);
     if (sync.refused || !sync.key) return syncReply(401, { error: "unauthorized" });
     if (sync.ledger == null) return syncReply(404, { error: "empty" });
@@ -798,7 +814,7 @@ arm();
 /* ---------- DOM helpers ---------- */
 
 /* ── the virtual clock (harness only) ──
-   Groups 53 to 61 and 67 to 68 drive the app's timers on demand, not in real time. While
+   Groups 53 to 61 and 67 to 69 drive the app's timers on demand, not in real time. While
    the clock is installed, Date.now and every setTimeout of 1 ms or more run on
    a virtual clock. sleep(ms) advances that clock by ms, and fires each timer
    that comes due, in order. A zero delay, and every real wait, stays real.
@@ -1148,6 +1164,7 @@ export async function boot(state, photos, opts = {}) {
   /* a seeded device key and server ledger, set before mount so the app sees
      them at its first read. The server is at rev 1 once it holds a ledger. */
   if (opts.syncKey) sync.key = opts.syncKey;
+  if (opts.holdGet) sync.holdGet = new Promise((r) => (syncGetRelease = r));
   if (opts.syncLedger) {
     sync.ledger = opts.syncLedger;
     sync.rev = 1;

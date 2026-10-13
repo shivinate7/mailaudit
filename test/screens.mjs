@@ -22,8 +22,8 @@
         34px home indicator, the search pill 8px above it, and the last row of
         Tally and Packages clear of both when scrolled to the bottom.
      6. The Ledger tab (decision ledger-tab-holds-options) at 375px and 760px:
-        each option is a 44px target, Reset is red, the gap above its title is a
-        multiple of 4px under 18px (decision spacing-on-4px-grid), and Reset ends
+        each option is a 44px target, Reset is red, the gap above its title is
+        16px (decision spacing-on-4px-grid), and Reset ends
         above the bar stack when the tab is scrolled to the bottom.
      7. The Sync panel on the Ledger tab (decision ledger-tab-holds-options, owner
         ruling 2026-10-12) at 375px and 760px: the panel opens from its Sync cell,
@@ -694,8 +694,8 @@ async function ledgerCheck(browser, width) {
     await page.locator(BAR_SEL).getByRole("button", { name: /^Ledger/ }).click();
     await page.waitForTimeout(250);
     const controls = await page.evaluate(ledgerState);
-    /* the gap from the ruled head to the Ledger title is on the 4px grid and is
-       closed under its old 18px (decision spacing-on-4px-grid, ruled 2026-10-11). */
+    /* the gap from the ruled head to the Ledger title is pinned to its decided 16px
+       (decision spacing-on-4px-grid, ruled 2026-10-12). */
     const titleGap = await page.evaluate(() => {
       const h = [...document.querySelectorAll("h2.mdl-lh")].find((x) => x.textContent.trim() === "Ledger");
       if (!h) return null;
@@ -705,8 +705,8 @@ async function ledgerCheck(browser, width) {
       return h.getBoundingClientRect().top - prev.getBoundingClientRect().bottom;
     });
     if (titleGap === null) fail(name, "no Ledger title above the options");
-    else if (Math.round(titleGap) % 4 !== 0 || Math.round(titleGap) >= 18)
-      fail(name, `the gap above the Ledger title is ${titleGap.toFixed(1)}px; want a multiple of 4 under 18px`);
+    else if (Math.round(titleGap) !== 16)
+      fail(name, `the gap above the Ledger title is ${titleGap.toFixed(1)}px; want 16px`);
     for (const re of LEDGER_OPTIONS) {
       const c = controls.find((x) => re.test(x.name));
       if (!c) {
