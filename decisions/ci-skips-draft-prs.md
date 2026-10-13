@@ -6,7 +6,7 @@ The owner ruled on 2026-10-11 that CI skips draft PRs. The ruling has one condit
 
 The `pull_request` trigger in `.github/workflows/test.yml` lists four types: `opened`, `synchronize`, `reopened` and `ready_for_review`. The native job has a draft guard. The suite, scope, screens and zizmor jobs have none, so a draft PR runs them.
 
-The rest of the change covers those four jobs and adds draft state to the concurrency keys, the native job's included. It lands as one change, after the scratch PR.
+Draft state is in the concurrency keys of the suite, screens and native jobs, so a draft run and a ready run on one head never cancel each other. Owner ruling 2026-10-12 ("Land it now, alone"): the keys land before the draft skip, because they stop a cancelled run at each merge and they skip no check. The draft guards for the other four jobs still wait for the second scratch PR.
 
 **Holds while:** as of 2026-10-12, only the native job in `.github/workflows/test.yml` has a draft guard, and native is not a required check.
 
