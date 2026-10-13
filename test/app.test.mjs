@@ -5291,8 +5291,9 @@ ok(
   "52.10 the mock's own post record never carries the key"
 );
 
-/* The virtual clock covers groups 53 to 57 (see harness.mjs). Installed here,
-   removed after group 57, so groups 1 to 52 keep real timers. */
+/* The virtual clock covers groups 53 to 61, then 67 to 68 (see harness.mjs).
+   Installed here, removed after group 61, and installed again before group 67.
+   Groups 1 to 52 and 62 to 66 keep real timers. */
 installClock();
 
 /* ── 53. the Stage 4b sync path, through the app (harness contract only) ──
@@ -7906,6 +7907,10 @@ eq(
   "66.4 after a reload whose Worker reply fails, Last sync still shows the saved Worker agreement"
 );
 
+/* Groups 67 and 68 wait out the idle apply gate and the retry backoff, so they run on the
+   virtual clock too. Removed after group 68. */
+installClock();
+
 /* ── 67. owner ruling 2026-10-12 ("Keep a copy, then go on"): a damaged list is mended
    and kept, never refused. Refused only when the saved text is not JSON or the copy
    cannot be written (the orchestrator defaults of 2026-10-12, not owner rulings). ──
@@ -8496,4 +8501,5 @@ try {
   ok(false, `68.10b threw: ${e.message}`);
 }
 
+uninstallClock();
 report();
