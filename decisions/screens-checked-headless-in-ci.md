@@ -4,7 +4,7 @@ Each view (Ledger tab, Orphaned, Tally, Packages) is checked in a headless brows
 
 The check runs once, as a required CI job on a macOS runner. Cochin ships only with macOS, so a Linux, cloud or Windows machine would measure the wrong fonts. It does not run at deploy time, because one check in one place is enough, and a local check cannot be enforced.
 
-The check fails on any sideways overflow, and on any row that moves when a card is checked in. It also scans each view for accessibility violations. At 375px on touch it checks, in eight listed screen states, the 44px floor of each interactive element, that no interactive element's painted box has moved, and a tap probe at each control's edges. Those are claims 8 to 11 of the `check:screens` header, pinned in `ux-house-rules-govern`. The checks cover the listed states only.
+The check fails on any sideways overflow, and on any row that moves when a card is checked in. It also scans each view for accessibility violations. At 375px on touch, it checks the 44px floor of each interactive element in eight screen states. In the same states, each painted box must match the base within 0.5px. It also runs a tap probe 1px outside the midpoint of each control's side. The eight states are: Ledger; Orphaned; Tally; Tally card open; Packages; Stamp editor open; Envelope composer open; Sync panel open. Those are claims 8 to 11 of the `check:screens` header, pinned in `ux-house-rules-govern`. The checks cover the named states only.
 
 Before this ruling, every layout figure was measured by hand, and a regression showed up only when someone measured again. The owner ruled this on 2026-10-10. The axe and touch checks enforce the 2026-10-11 house rulings L8 and L6.
 
