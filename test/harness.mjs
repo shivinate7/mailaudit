@@ -697,6 +697,8 @@ const versionsApi = {
 };
 export const getPhoto = (id) => photoStore.get(id);
 export const saved = () => JSON.parse(store["mailday:v1"] || "{}");
+/* the saved text exactly as it sits in storage, or null: unparseable bytes too */
+export const savedRaw = () => store["mailday:v1"] ?? null;
 
 const React = require("react");
 const { createRoot } = require("react-dom/client");
@@ -1133,6 +1135,8 @@ export async function boot(state, photos, opts = {}) {
     sync.rev = 1;
   }
   if (state) store["mailday:v1"] = JSON.stringify(state);
+  /* opts.raw seeds the saved text as it is, for bytes that are not JSON at all */
+  if (opts.raw != null) store["mailday:v1"] = opts.raw;
   document.getElementById("root").innerHTML = "";
   await act(async () => {
     root = createRoot(document.getElementById("root"));

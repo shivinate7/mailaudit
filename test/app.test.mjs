@@ -54,6 +54,7 @@ import {
   report,
   saveGitHubKey,
   saved,
+  savedRaw,
   sleep,
   setSyncNetFail,
   setSyncTooBig,
@@ -7906,7 +7907,11 @@ eq(
    shape stops the load. The page says so in plain words, writes nothing back, starts no
    sync push, and keeps History and Backup reachable. An absent field still loads with its
    default. JSON null counts as damaged, as native-ledger-is-raw-json rules.
-   Only the load path is ruled here. The Re-import and sync-reply paths are not tested.
+   67.8-67.12 are orchestrator defaults (2026-10-12), not owner rulings: while refused,
+   no sync apply runs (rev, key save, reply); Reset takes a milestone of the raw saved text
+   first; unparseable saved JSON is refused like a damaged field, keeping its raw text; a CSV
+   drop is refused while refused. History and Backup stay reachable. The Re-import and
+   sync-reply refusal of damaged files stay open (damaged-other-paths-open), not tested here.
    Records: native-ledger-is-raw-json, saved-state-shape, recovery-control-not-state-gated,
    every-restore-passes-applybackup. */
 const REFUSE67 = /damaged|corrupt|can.t be (read|loaded)|could not be (read|loaded)|won.t load/i;
@@ -8009,6 +8014,104 @@ try {
   eq(saved().items?.length, ITEMS.length, "67.7 a History restore from a refused load brings the version's items back");
 } catch (e) {
   ok(false, `67.7 threw: ${e.message}`);
+}
+
+/* 67.8-67.12: the five paths the refusal leaks through, one case each. The saved
+   text is seeded raw, so it can be bytes that are not JSON at all. */
+const DAMAGED_RAW67 = JSON.stringify({ ...GOOD67, received: "x" });
+const LEDGER67 = {
+  mailday: 1,
+  items: ITEMS.slice(0, 4),
+  received: { [ITEMS[0].key]: 1 },
+  receivedAt: {},
+  envelopes: [],
+  stamps: {},
+};
+const milestoneTexts67 = () => versionMetas().map((m) => versionText(m.label));
+
+/* 67.8 a rev from another device, applied after the idle gate, must not replace a refused load */
+try {
+  await boot(null, null, { raw: DAMAGED_RAW67, syncAdapter: true, syncKey: KEY67 });
+  await sleep(SAVE_WAIT);
+  ok(REFUSE67.test(text()), "67.8a the refusal shows before any rev arrives");
+  await fireSyncRev(2, LEDGER67);
+  await sleep(APPLY_WAIT + SAVE_WAIT);
+  ok(REFUSE67.test(text()), "67.8b a rev, then idle past the apply gate, leaves the refusal up");
+  eq(savedRaw(), DAMAGED_RAW67, "67.8c a rev, then idle past the apply gate, leaves the saved text as it was");
+} catch (e) {
+  ok(false, `67.8 threw: ${e.message}`);
+}
+
+/* 67.9 saving a Worker key while refused must not apply the server's ledger over the saved text */
+try {
+  await boot(null, null, { raw: DAMAGED_RAW67, syncAdapter: true, syncLedger: LEDGER67 });
+  await sleep(SAVE_WAIT);
+  ok(REFUSE67.test(text()), "67.9a the refusal shows on a keyless device");
+  await openSync();
+  await type(document.querySelector('input[aria-label="Sync key"]'), KEY67);
+  await click(btn(/^Save sync key$/), "save the sync key");
+  await settle();
+  await sleep(SAVE_WAIT);
+  ok(/Sync key saved/.test(text()), "67.9a the key is saved, so the reply path runs");
+  ok(REFUSE67.test(text()), "67.9b saving a key while refused leaves the refusal up");
+  eq(savedRaw(), DAMAGED_RAW67, "67.9c saving a key while refused leaves the saved text as it was");
+} catch (e) {
+  ok(false, `67.9 threw: ${e.message}`);
+}
+
+/* 67.10 Reset from a refused load takes a milestone of the raw saved text before it clears anything */
+try {
+  await boot(null, null, { raw: DAMAGED_RAW67, versions: [] });
+  await sleep(SAVE_WAIT);
+  await reachFor(/^Reset$/);
+  await click(btn(/^Reset$/), "arm reset");
+  await click(btn(/Tap again to clear \d+ cards?/), "confirm reset");
+  await settle();
+  await sleep(SAVE_WAIT);
+  ok(
+    milestoneTexts67().includes(DAMAGED_RAW67),
+    "67.10 Reset from a refused load keeps a milestone holding the raw saved text"
+  );
+} catch (e) {
+  ok(false, `67.10 threw: ${e.message}`);
+}
+
+/* 67.11 unparseable saved JSON is refused like a damaged field, and an edit does not overwrite it */
+const UNPARSEABLE67 = "{not json";
+try {
+  await boot(null, null, { raw: UNPARSEABLE67, versions: [] });
+  await sleep(SAVE_WAIT);
+  ok(REFUSE67.test(text()), "67.11a unparseable saved JSON: the page says the saved data is damaged");
+  eq(savedRaw(), UNPARSEABLE67, "67.11b unparseable saved JSON is kept on load");
+  /* a drop is the edit the old fresh start would have saved over the bytes */
+  if (document.querySelector('div[style*="dashed"]'))
+    await dropFile(
+      "orders.csv",
+      csv([{ "Product Name": "Zephyr Card 67", "Order Id": "O67-11" }])
+    );
+  await sleep(SAVE_WAIT);
+  eq(savedRaw(), UNPARSEABLE67, "67.11c an edit does not overwrite unparseable saved JSON");
+  await openHistory();
+  ok(!!btn(/^Backup$/), "67.11d History opens and Backup is reachable");
+} catch (e) {
+  ok(false, `67.11 threw: ${e.message}`);
+}
+
+/* 67.12 a CSV drop while refused adds no card and does not clear the refusal */
+try {
+  await boot(null, null, { raw: DAMAGED_RAW67, versions: [] });
+  await sleep(SAVE_WAIT);
+  ok(REFUSE67.test(text()), "67.12a the refusal shows before the drop");
+  if (document.querySelector('div[style*="dashed"]'))
+    await dropFile(
+      "orders.csv",
+      csv([{ "Product Name": "Zephyr Card 67", "Order Id": "O67-12" }])
+    );
+  await sleep(SAVE_WAIT);
+  ok(!text().includes("Zephyr Card 67"), "67.12b a CSV drop while refused adds no card to the page");
+  ok(REFUSE67.test(text()), "67.12c the refusal is still up after a CSV drop");
+} catch (e) {
+  ok(false, `67.12 threw: ${e.message}`);
 }
 
 report();
