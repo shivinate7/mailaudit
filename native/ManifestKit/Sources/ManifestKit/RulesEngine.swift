@@ -8,7 +8,7 @@ public enum RulesFailure: Error, Equatable {
     case threw(String)
 }
 
-/// The synchronous core: the bundled web rules (Resources/rules.js) in one JSContext.
+/// The synchronous core: the bundled web rules (Sources/ManifestKit/rules.js) in one JSContext.
 /// Not thread-safe. RulesEngine wraps it in an actor; LedgerStore.load uses it
 /// directly because load is synchronous (rules-run-in-javascriptcore).
 final class RulesCore {

@@ -8,7 +8,7 @@ This file holds the npm scripts and what each asks. It also holds what the build
 
 ```
 npm install
-npm run build         # -> index.html and native/ManifestKit/Resources/rules.js
+npm run build         # -> index.html and native/ManifestKit/Sources/ManifestKit/rules.js
 npm test              # behaviour suite, must be green before deploying
 npm run serve         # optional local server on :4173
 npm run check:build   # is the committed index.html the code in this repo?
@@ -22,7 +22,7 @@ npm run test:golden   # the golden files' own test
 npm run check:golden  # do the golden files match what scripts/gen-golden.mjs writes now?
 npm run check:rules   # is the committed rules bundle in step with src/?
 npm run test:rules    # the contract tests for check:rules
-npm run deploy        # build + test, then a branch holding only index.html and native/ManifestKit/Resources/rules.js, pushed, with a PR to main
+npm run deploy        # build + test, then a branch holding only index.html and native/ManifestKit/Sources/ManifestKit/rules.js, pushed, with a PR to main
 ```
 
 `scripts/gen-golden.mjs` is not an npm script. After a change to `src/view-rules.mjs`, run `node scripts/gen-golden.mjs` to rewrite the golden files. `npm run check:golden` fails until you do.
@@ -31,7 +31,7 @@ npm run deploy        # build + test, then a branch holding only index.html and 
 
 ## What the build writes
 
-`build.mjs` bundles `src/entry.jsx` with esbuild. It inlines the JavaScript into a self-contained `index.html`, with iOS home-screen-app meta tags. `index.html` is the build output, and it is committed to the repo. `build.mjs` also writes `native/ManifestKit/Resources/rules.js`, the rules bundle the Swift client loads. It is committed beside `index.html`. When the bundle is stale, `check:rules` goes red. See `rules-run-in-javascriptcore`, why the bundle exists. GitHub Pages serves it at https://shivinate7.github.io/mailaudit/. The owner runs it as an iOS home-screen web app. `dev-server.mjs` is the optional static server behind `npm run serve`.
+`build.mjs` bundles `src/entry.jsx` with esbuild. It inlines the JavaScript into a self-contained `index.html`, with iOS home-screen-app meta tags. `index.html` is the build output, and it is committed to the repo. `build.mjs` also writes `native/ManifestKit/Sources/ManifestKit/rules.js`, the rules bundle the Swift client loads. It is committed beside `index.html`. When the bundle is stale, `check:rules` goes red. See `rules-run-in-javascriptcore`, why the bundle exists. GitHub Pages serves it at https://shivinate7.github.io/mailaudit/. The owner runs it as an iOS home-screen web app. `dev-server.mjs` is the optional static server behind `npm run serve`.
 
 ## Why check:build ignores the seed, and the Pages quirk
 
@@ -49,7 +49,7 @@ A stale seed is harmless. A visitor sees a slightly older ledger, and the next d
 
 GitHub Pages serves from the main branch root. Quirk: if the Pages workflow sits Queued >10 min, do not re-run the same run. Cancel it, and push a trivial commit to start a fresh run.
 
-`npm run deploy` fetches the ledger branch for the seed, builds, and runs the suite. Then it makes a branch named `deploy/<YYYYMMDDHHMMSS>-<pid>` and commits only `index.html` and `native/ManifestKit/Resources/rules.js` there. It pushes that branch and opens a pull request to main. If every step succeeded, it switches back to the branch you started on. When that PR merges, Pages deploys. You must commit source and doc changes yourself first.
+`npm run deploy` fetches the ledger branch for the seed, builds, and runs the suite. Then it makes a branch named `deploy/<YYYYMMDDHHMMSS>-<pid>` and commits only `index.html` and `native/ManifestKit/Sources/ManifestKit/rules.js` there. It pushes that branch and opens a pull request to main. If every step succeeded, it switches back to the branch you started on. When that PR merges, Pages deploys. You must commit source and doc changes yourself first.
 
 ## See also
 

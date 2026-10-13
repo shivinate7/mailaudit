@@ -11,7 +11,7 @@ import { gzipSync, gunzipSync } from "zlib";
    home, the Worker. Built in memory (write:false), so --check-rules compares
    bytes without touching the tree. This runs before the seed and the app
    build, so the check needs neither git nor a ledger remote. */
-const RULES_OUT = "native/ManifestKit/Resources/rules.js";
+const RULES_OUT = "native/ManifestKit/Sources/ManifestKit/rules.js";
 async function buildRules() {
   const r = await build({
     stdin: {
@@ -283,7 +283,7 @@ if (process.argv.includes("--check")) {
   process.exit(checkSeed());
 } else {
   writeFileSync("index.html", html);
-  mkdirSync("native/ManifestKit/Resources", { recursive: true });
+  mkdirSync("native/ManifestKit/Sources/ManifestKit", { recursive: true });
   writeFileSync(RULES_OUT, await buildRules());
   console.log(`index.html built (${(html.length / 1024).toFixed(0)} KB)`);
 }
