@@ -29,17 +29,23 @@
         ruling 2026-10-12) at 375px and 760px: the panel opens from its Sync cell,
         holds no GitHub control (Pull from GitHub, Push, Push anyway, Merge & push),
         and causes no sideways overflow.
-     8. An axe scan (ux-house-rules-govern L8) at 375px and 760px in every view:
-        the Ledger tab, Orphaned, Tally, Tally with a card open, Packages, and
-        the open photo viewer. Fails on any serious or critical violation, and
-        on the experimental label-content-name-mismatch rule.
-     9. Touch targets (ux-a11y-floor, L6) at 375px on a touch device: every
-        visible interactive element is hit at least 44 by 44 CSS px, measured by
-        elementFromPoint from its centre, so a padding or pseudo-element grow
-        counts and a neighbour that cuts it short is a finding.
-    10. Drawn boxes (L6, no visual change): every element's painted box at 375px
-        matches test/a11y-base-boxes.json, recorded from the base commit with
-        `A11Y_RECORD=1 node test/screens.mjs`. A grown hit area never grows it.
+     8. An axe scan (ux-house-rules-govern L8) at 375px and 760px in every state
+        of SCREEN_STATES, and in the open photo viewer. Fails on any serious or
+        critical violation, and on the experimental label-content-name-mismatch rule.
+     9. Touch targets (ux-a11y-floor, L6) at 375px on a touch device, in every
+        state of SCREEN_STATES: each visible interactive element is hit at least
+        44 by 44 CSS px, measured by elementFromPoint from its centre. A tap that
+        lands on a label counts for the field the label owns. A padding or
+        pseudo-element grow counts, and a neighbour that cuts it short is a finding.
+    10. Drawn boxes (L6, no visual change): in every state of SCREEN_STATES, each
+        element's painted box at 375px matches test/a11y-base-boxes.json, recorded
+        from the base commit f7d51ba with `A11Y_RECORD=1 node test/screens.mjs
+        <base index.html>`. A grown hit area never grows it.
+    11. Overlap (L6, F2): in the same states, a tap 1px outside the midpoint of a
+        control's side, where that point is strictly nearer to that control than
+        to any other control, lands on that control or on no control. A tap that
+        lands on a neighbour is a finding. The probe must test at least one tap
+        per state, or the state fails.
 
    Reduced motion is on, so animation does not skew the numbers. Exit 0 when all
    checks pass; exit 1 with one `FAIL` line per failure and one summary line. */
@@ -795,7 +801,16 @@ async function syncPanelCheck(browser, width) {
 /* Each state a screen can be in, opened from the bar. The photo viewer is the
    last state, because it overlays the page and the states after it would open
    on top of it. */
-const SCREEN_STATES = ["Ledger", "Orphaned", "Tally", "Tally card open", "Packages"];
+const SCREEN_STATES = [
+  "Ledger",
+  "Orphaned",
+  "Tally",
+  "Tally card open",
+  "Packages",
+  "Stamp editor open",
+  "Envelope composer open",
+  "Sync panel open",
+];
 const AXE_STATES = [...SCREEN_STATES, "Photo viewer"];
 const AXE_BLOCKING = new Set(["serious", "critical"]);
 const AXE_PHOTO_ID = "pho-axe";
@@ -830,6 +845,42 @@ async function openScreenState(page, state) {
     try {
       await page.getByRole("button", { name: "View photo" }).first().click({ timeout: 3000 });
       await page.waitForSelector('img[alt="Envelope photo"]', { timeout: 4000 });
+    } catch {
+      return false;
+    }
+    return true;
+  }
+  /* Each opener waits for the control it is for, so a state that opens empty
+     fails here rather than passing on an empty page. */
+  if (state === "Stamp editor open") {
+    if (!(await showView(page, "Packages"))) return false;
+    try {
+      /* Beta Games is unstamped in both fixtures, so its bulk row has "Stamp" */
+      await page.locator("button", { hasText: "Beta Games" }).first().click({ timeout: 3000 });
+      await page.waitForTimeout(250);
+      await page.getByRole("button", { name: "Stamp", exact: true }).first().click({ timeout: 3000 });
+      await page.waitForSelector('input[aria-label="Stamp note"]', { timeout: 4000 });
+    } catch {
+      return false;
+    }
+    return true;
+  }
+  if (state === "Envelope composer open") {
+    if (!(await showView(page, "Orphaned"))) return false;
+    try {
+      await page.getByRole("button", { name: "+ Record an envelope" }).click({ timeout: 3000 });
+      await page.waitForSelector('input[aria-label="Card name"]', { timeout: 4000 });
+    } catch {
+      return false;
+    }
+    return true;
+  }
+  if (state === "Sync panel open") {
+    if (!(await showView(page, "Ledger"))) return false;
+    try {
+      await page.locator("button", { hasText: /^Sync/ }).first().click({ timeout: 3000 });
+      /* the key field renders only once hasKey() resolves, so wait for it */
+      await page.waitForSelector('input[aria-label="Sync key"]', { timeout: 4000 });
     } catch {
       return false;
     }
@@ -903,7 +954,9 @@ async function axeCheck(browser, width) {
 
 /* Runs in the page, once per state. Scrolls each visible interactive element to
    the centre, then reads its painted box and how far its hit area reaches from
-   the drawn centre on each side. Serialised by Playwright, so self-contained. */
+   the drawn centre on each side. Then it taps 1px outside each side of that
+   element and checks that no neighbour takes the tap. Serialised by Playwright,
+   so self-contained. */
 const measureTouch = ({ selector, half }) => {
   const isPinned = (el) => {
     for (let n = el; n && n !== document.documentElement; n = n.parentElement) {
@@ -912,24 +965,26 @@ const measureTouch = ({ selector, half }) => {
     }
     return false;
   };
-  const hitsTarget = (el, x, y) => {
-    const h = document.elementFromPoint(x, y);
-    return !!h && (h === el || el.contains(h));
+  /* The control a hit belongs to. A label hands its tap to its field, so a
+     label that grows its own hit area grows the field's (inputs take no
+     pseudo-elements, so the label is the place to grow). */
+  const ownerOf = (h) => {
+    if (!h) return null;
+    const own = h.closest(selector);
+    if (own) return own;
+    const lab = h.closest("label");
+    return (lab && lab.control) || null;
   };
-  const els = [...document.querySelectorAll(selector)].filter((el) => {
-    const r = el.getBoundingClientRect();
-    return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== "hidden";
-  });
-  return els.map((el, i) => {
-    el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
+  const hitsTarget = (el, x, y) => ownerOf(document.elementFromPoint(x, y)) === el;
+  /* A painted element is drawn by its border box. Otherwise only its contents
+     are drawn, and a Range over them ignores padding. */
+  const drawnBox = (el) => {
     const cs = getComputedStyle(el);
     const paints =
       cs.backgroundColor !== "rgba(0, 0, 0, 0)" ||
       cs.backgroundImage !== "none" ||
       (cs.borderTopStyle !== "none" && parseFloat(cs.borderTopWidth) > 0) ||
       cs.boxShadow !== "none";
-    /* A painted element is drawn by its border box. Otherwise only its contents
-       are drawn, and a Range over them ignores padding. */
     let box = el.getBoundingClientRect();
     if (!paints) {
       const range = document.createRange();
@@ -937,6 +992,24 @@ const measureTouch = ({ selector, half }) => {
       const rr = range.getBoundingClientRect();
       if (rr.width > 0 && rr.height > 0) box = rr;
     }
+    return box;
+  };
+  /* Distance from a point to a box; 0 when the point is inside it. */
+  const gapTo = (r, x, y) =>
+    Math.hypot(Math.max(r.left - x, 0, x - r.right), Math.max(r.top - y, 0, y - r.bottom));
+  const label = (el) =>
+    `"${(el.innerText || el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 40)}" (${el.tagName.toLowerCase()})`;
+  const els = [...document.querySelectorAll(selector)].filter((el) => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== "hidden";
+  });
+  const overlaps = [];
+  let probed = 0;
+  const items = els.map((el, i) => {
+    el.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
+    /* every drawn box is read again after this scroll, for the overlap probe */
+    const boxes = els.map((e) => drawnBox(e));
+    const box = boxes[i];
     const pinned = isPinned(el);
     const ex = el.getBoundingClientRect();
     const cx = ex.left + ex.width / 2;
@@ -960,6 +1033,37 @@ const measureTouch = ({ selector, half }) => {
         ext[dir] = s;
       }
     }
+    /* Overlap probe: a tap 1px outside the midpoint of a side. It counts only
+       when this element is strictly the nearest control to it. */
+    const mx = box.left + box.width / 2;
+    const my = box.top + box.height / 2;
+    for (const [side, px, py] of [
+      ["top", mx, box.top - 1],
+      ["bottom", mx, box.bottom + 1],
+      ["left", box.left - 1, my],
+      ["right", box.right + 1, my],
+    ]) {
+      if (px < 0 || py < 0 || px > window.innerWidth || py > window.innerHeight) continue;
+      const d = gapTo(box, px, py);
+      if (els.some((_, j) => j !== i && gapTo(boxes[j], px, py) <= d)) continue;
+      probed++;
+      const owner = ownerOf(document.elementFromPoint(px, py));
+      if (owner && owner !== el) {
+        /* the neighbour's layout box and its drawn box, so a failure shows
+           whether its padding or a pseudo-element took the tap */
+        const lb = owner.getBoundingClientRect();
+        const db = drawnBox(owner);
+        overlaps.push({
+          side,
+          of: label(el),
+          hit: label(owner),
+          x: Math.round(px * 10) / 10,
+          y: Math.round(py * 10) / 10,
+          layout: `${Math.round(lb.top * 10) / 10}-${Math.round(lb.bottom * 10) / 10}`,
+          drawn: `${Math.round(db.top * 10) / 10}-${Math.round(db.bottom * 10) / 10}`,
+        });
+      }
+    }
     const text = (el.innerText || el.textContent || "").replace(/\s+/g, " ").trim().slice(0, 60);
     return {
       key: `${i}|${el.tagName.toLowerCase()}|${text}`,
@@ -973,6 +1077,7 @@ const measureTouch = ({ selector, half }) => {
       offscreen,
     };
   });
+  return { items, overlaps, probed };
 };
 
 /* The two L6 claims in one touch context: the hit floor and the drawn boxes.
@@ -1000,7 +1105,10 @@ async function touchCheck(browser) {
         continue;
       }
       await page.waitForTimeout(150);
-      const items = await page.evaluate(measureTouch, { selector: TOUCH_SELECTOR, half: TOUCH_HALF_PX });
+      const { items, overlaps, probed } = await page.evaluate(measureTouch, {
+        selector: TOUCH_SELECTOR,
+        half: TOUCH_HALF_PX,
+      });
       const measured = items.filter((it) => !it.offscreen);
       if (measured.length < items.length)
         console.log(`note ${stateName}: ${items.length - measured.length} target(s) at the viewport edge not measured`);
@@ -1008,11 +1116,18 @@ async function touchCheck(browser) {
         (it) => it.ext.l + it.ext.r < 2 * TOUCH_HALF_PX || it.ext.u + it.ext.d < 2 * TOUCH_HALF_PX
       );
       if (small.length) {
-        const first = small[0];
-        fail(
-          stateName,
-          `${small.length} of ${measured.length} targets under 44px; first is "${first.text}" (${first.key.split("|")[1]}) with a hit area ${first.ext.l + first.ext.r}x${first.ext.u + first.ext.d}px`
+        const list = small.map(
+          (it) => `"${it.text}" (${it.key.split("|")[1]}) ${it.ext.l + it.ext.r}x${it.ext.u + it.ext.d}px`
         );
+        fail(stateName, `${small.length} of ${measured.length} targets under 44px: ${list.join("; ")}`);
+      }
+      if (!probed) fail(stateName, "the overlap probe tested no tap, so this state proves nothing about neighbours");
+      if (overlaps.length) {
+        const list = overlaps.slice(0, 4).map(
+          (o) =>
+            `${o.side} edge of ${o.of} at (${o.x}, ${o.y}) lands on ${o.hit} (its layout ${o.layout}, drawn ${o.drawn})`
+        );
+        fail(stateName, `${overlaps.length} tap(s) 1px outside a control land on a neighbour: ${list.join("; ")}`);
       }
       if (RECORD) {
         recorded[state] = {};

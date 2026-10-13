@@ -723,6 +723,530 @@
     "h": 30,
     "pinned": false
    }
+  },
+  "Stamp editor open": {
+   "0|button|LEDGER": {
+    "x": 47.859375,
+    "y": 750,
+    "w": 41.53125,
+    "h": 36,
+    "pinned": true
+   },
+   "1|button|ORPHANED 1": {
+    "x": 120.1875,
+    "y": 748,
+    "w": 55.375,
+    "h": 38,
+    "pinned": true
+   },
+   "2|button|TALLY": {
+    "x": 209.8125,
+    "y": 750,
+    "w": 34.609375,
+    "h": 36,
+    "pinned": true
+   },
+   "3|button|PACKAGES": {
+    "x": 267.75,
+    "y": 742,
+    "w": 77.25,
+    "h": 52,
+    "pinned": true
+   },
+   "4|input|": {
+    "x": 73,
+    "y": 681,
+    "w": 259,
+    "h": 46,
+    "pinned": true
+   },
+   "5|button|This device has no sync key — tap to paste it": {
+    "x": 16,
+    "y": 291.984375,
+    "w": 343,
+    "h": 38.890625,
+    "pinned": false
+   },
+   "6|button|▶ Eta Cards 2026-07-05 · ● tracked · G1 2 left · $4.00": {
+    "x": 28.515625,
+    "y": 360.875,
+    "w": 315.484375,
+    "h": 31,
+    "pinned": false
+   },
+   "7|button|Claim filed": {
+    "x": 31,
+    "y": 423.875,
+    "w": 98.171875,
+    "h": 34,
+    "pinned": false
+   },
+   "8|button|Refunded": {
+    "x": 135.171875,
+    "y": 423.875,
+    "w": 77.390625,
+    "h": 34,
+    "pinned": false
+   },
+   "9|button|Seller contacted": {
+    "x": 31,
+    "y": 463.875,
+    "w": 132.78125,
+    "h": 34,
+    "pinned": false
+   },
+   "10|button|Reshipped": {
+    "x": 169.78125,
+    "y": 463.875,
+    "w": 84.3125,
+    "h": 34,
+    "pinned": false
+   },
+   "11|button|Partial refund": {
+    "x": 31,
+    "y": 503.875,
+    "w": 118.9375,
+    "h": 34,
+    "pinned": false
+   },
+   "12|button|Other": {
+    "x": 155.9375,
+    "y": 503.875,
+    "w": 56.625,
+    "h": 34,
+    "pinned": false
+   },
+   "13|input|": {
+    "x": 31,
+    "y": 547.875,
+    "w": 313,
+    "h": 38,
+    "pinned": false
+   },
+   "14|button|Cancel": {
+    "x": 214.75,
+    "y": 593.875,
+    "w": 67.546875,
+    "h": 32,
+    "pinned": false
+   },
+   "15|button|Save": {
+    "x": 290.296875,
+    "y": 593.875,
+    "w": 53.703125,
+    "h": 32,
+    "pinned": false
+   },
+   "16|button|Mark all received": {
+    "x": 200.296875,
+    "y": 637.875,
+    "w": 143.703125,
+    "h": 46,
+    "pinned": false
+   },
+   "17|button|": {
+    "x": 31,
+    "y": 705.875,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "18|button|": {
+    "x": 31,
+    "y": 764.765625,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "19|button|▶ Beta Games ⚠ 103d — refund window closing, contact seller ": {
+    "x": 31,
+    "y": 835.65625,
+    "w": 532.640625,
+    "h": 31,
+    "pinned": false
+   },
+   "20|button|▶ Alpha Cards ⚠ 104d — refund window closing, contact seller": {
+    "x": 28.515625,
+    "y": 904.65625,
+    "w": 535.125,
+    "h": 31,
+    "pinned": false
+   },
+   "21|button|Stamp": {
+    "x": 31,
+    "y": 947.65625,
+    "w": 60.625,
+    "h": 46,
+    "pinned": false
+   },
+   "22|button|Mark all received": {
+    "x": 200.296875,
+    "y": 947.65625,
+    "w": 143.703125,
+    "h": 46,
+    "pinned": false
+   },
+   "23|button|": {
+    "x": 31,
+    "y": 1015.65625,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "24|button|–": {
+    "x": 73,
+    "y": 1056.546875,
+    "w": 34,
+    "h": 34,
+    "pinned": false
+   },
+   "25|button|+": {
+    "x": 163,
+    "y": 1056.546875,
+    "w": 34,
+    "h": 34,
+    "pinned": false
+   },
+   "26|button|": {
+    "x": 31,
+    "y": 1116.546875,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "27|button|": {
+    "x": 31,
+    "y": 1175.4375,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "28|button|▶ Epsilon Cards 2026-06-15 · ● tracked · E1 3 left · $3.75": {
+    "x": 28.515625,
+    "y": 1246.328125,
+    "w": 315.484375,
+    "h": 31,
+    "pinned": false
+   },
+   "29|button|Stamp": {
+    "x": 31,
+    "y": 1289.328125,
+    "w": 60.625,
+    "h": 46,
+    "pinned": false
+   },
+   "30|button|Mark all received": {
+    "x": 200.296875,
+    "y": 1289.328125,
+    "w": 143.703125,
+    "h": 46,
+    "pinned": false
+   },
+   "31|button|": {
+    "x": 31,
+    "y": 1357.328125,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "32|button|": {
+    "x": 31,
+    "y": 1416.21875,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "33|button|": {
+    "x": 31,
+    "y": 1475.109375,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "34|button|▶ CollectorsVaultTradingCardEmporiumOutletSuperStoreOfficial": {
+    "x": 28.515625,
+    "y": 1546,
+    "w": 471.328125,
+    "h": 31,
+    "pinned": false
+   },
+   "35|button|Stamp": {
+    "x": 31,
+    "y": 1589,
+    "w": 60.625,
+    "h": 46,
+    "pinned": false
+   },
+   "36|button|Mark all received": {
+    "x": 200.296875,
+    "y": 1589,
+    "w": 143.703125,
+    "h": 46,
+    "pinned": false
+   },
+   "37|button|": {
+    "x": 31,
+    "y": 1657,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "38|button|": {
+    "x": 31,
+    "y": 1715.890625,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "39|button|▶ Zeta Games ⚠ 115d — refund window closing, contact seller ": {
+    "x": 28.515625,
+    "y": 1786.78125,
+    "w": 535.125,
+    "h": 31,
+    "pinned": false
+   },
+   "40|button|Stamp": {
+    "x": 31,
+    "y": 1829.78125,
+    "w": 60.625,
+    "h": 46,
+    "pinned": false
+   },
+   "41|button|Mark all received": {
+    "x": 200.296875,
+    "y": 1829.78125,
+    "w": 143.703125,
+    "h": 46,
+    "pinned": false
+   },
+   "42|button|": {
+    "x": 31,
+    "y": 1897.78125,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   },
+   "43|button|": {
+    "x": 31,
+    "y": 1956.671875,
+    "w": 30,
+    "h": 30,
+    "pinned": false
+   }
+  },
+  "Envelope composer open": {
+   "0|button|LEDGER": {
+    "x": 47.859375,
+    "y": 750,
+    "w": 41.53125,
+    "h": 36,
+    "pinned": true
+   },
+   "1|button|ORPHANED 1": {
+    "x": 109.25,
+    "y": 742,
+    "w": 77.25,
+    "h": 52,
+    "pinned": true
+   },
+   "2|button|TALLY": {
+    "x": 209.8125,
+    "y": 750,
+    "w": 34.609375,
+    "h": 36,
+    "pinned": true
+   },
+   "3|button|PACKAGES": {
+    "x": 278.6875,
+    "y": 750,
+    "w": 55.375,
+    "h": 36,
+    "pinned": true
+   },
+   "4|button|This device has no sync key — tap to paste it": {
+    "x": 16,
+    "y": 291.984375,
+    "w": 343,
+    "h": 38.890625,
+    "pinned": false
+   },
+   "5|input|": {
+    "x": 31,
+    "y": 381.875,
+    "w": 313,
+    "h": 40,
+    "pinned": false
+   },
+   "6|input|": {
+    "x": 31,
+    "y": 431.875,
+    "w": 313,
+    "h": 38,
+    "pinned": false
+   },
+   "7|button|Photo of the label": {
+    "x": 31,
+    "y": 479.875,
+    "w": 150.625,
+    "h": 32,
+    "pinned": false
+   },
+   "8|button|Cancel": {
+    "x": 152.4375,
+    "y": 521.875,
+    "w": 67.546875,
+    "h": 32,
+    "pinned": false
+   },
+   "9|button|Save envelope": {
+    "x": 227.984375,
+    "y": 521.875,
+    "w": 116.015625,
+    "h": 32,
+    "pinned": false
+   },
+   "10|button|Edit": {
+    "x": 223.140625,
+    "y": 591.375,
+    "w": 46.5,
+    "h": 25,
+    "pinned": false
+   },
+   "11|button|Discard": {
+    "x": 277.640625,
+    "y": 591.375,
+    "w": 66.359375,
+    "h": 25,
+    "pinned": false
+   },
+   "12|button|This one": {
+    "x": 255.609375,
+    "y": 753.375,
+    "w": 77.390625,
+    "h": 32,
+    "pinned": false
+   },
+   "13|button|This one": {
+    "x": 255.609375,
+    "y": 834.375,
+    "w": 77.390625,
+    "h": 32,
+    "pinned": false
+   },
+   "14|button|This one": {
+    "x": 255.609375,
+    "y": 915.375,
+    "w": 77.390625,
+    "h": 32,
+    "pinned": false
+   },
+   "15|button|show 4 more candidates": {
+    "x": 31,
+    "y": 975.875,
+    "w": 145.703125,
+    "h": 13,
+    "pinned": false
+   }
+  },
+  "Sync panel open": {
+   "0|button|LEDGER": {
+    "x": 30,
+    "y": 742,
+    "w": 77.25,
+    "h": 52,
+    "pinned": true
+   },
+   "1|button|ORPHANED 1": {
+    "x": 120.1875,
+    "y": 748,
+    "w": 55.375,
+    "h": 38,
+    "pinned": true
+   },
+   "2|button|TALLY": {
+    "x": 209.8125,
+    "y": 750,
+    "w": 34.609375,
+    "h": 36,
+    "pinned": true
+   },
+   "3|button|PACKAGES": {
+    "x": 278.6875,
+    "y": 750,
+    "w": 55.375,
+    "h": 36,
+    "pinned": true
+   },
+   "4|button|Showing ● Unreceived": {
+    "x": 33,
+    "y": 373.484375,
+    "w": 309,
+    "h": 23,
+    "pinned": false
+   },
+   "5|button|Sorted by $ remaining": {
+    "x": 17,
+    "y": 410.984375,
+    "w": 341,
+    "h": 52,
+    "pinned": false
+   },
+   "6|button|Orders from 15 lines · 1206 outside Custom": {
+    "x": 17,
+    "y": 462.984375,
+    "w": 341,
+    "h": 63.546875,
+    "pinned": false
+   },
+   "7|button|Sync Not synced yet — tap to close Set up": {
+    "x": 33,
+    "y": 575.53125,
+    "w": 290.484375,
+    "h": 42.546875,
+    "pinned": false
+   },
+   "8|input|": {
+    "x": 109.171875,
+    "y": 680.078125,
+    "w": 239.828125,
+    "h": 34,
+    "pinned": false
+   },
+   "9|button|Save sync key": {
+    "x": 109.171875,
+    "y": 722.078125,
+    "w": 116.015625,
+    "h": 34,
+    "pinned": false
+   },
+   "10|button|History Saved versions": {
+    "x": 17,
+    "y": 792.078125,
+    "w": 341,
+    "h": 52,
+    "pinned": false
+   },
+   "11|button|Re-import CSV Merges": {
+    "x": 17,
+    "y": 844.078125,
+    "w": 341,
+    "h": 52,
+    "pinned": false
+   },
+   "12|button|Backup": {
+    "x": 17,
+    "y": 896.078125,
+    "w": 341,
+    "h": 52,
+    "pinned": false
+   },
+   "13|button|Reset": {
+    "x": 33,
+    "y": 984.578125,
+    "w": 309,
+    "h": 23,
+    "pinned": false
+   }
   }
  }
 }
