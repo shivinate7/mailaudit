@@ -1,8 +1,8 @@
 # Test suite assertion count and run time
 
-**Status:** measured at `eb61351`, checked 2026-10-12. The suite is green at this head. New York: 1256 passed, 0 failed, exit 0. UTC: 1255 passed, 0 failed, exit 0. Neither run hit the 400 s alarm.
+**Status:** measured at `db28eda`, checked 2026-10-12. The suite is green at this head. New York: 1260 passed, 0 failed, exit 0. UTC: 1259 passed, 0 failed, exit 0. Neither run hit the 400 s alarm.
 
-This record holds the assertion count and the run time for `npm test`. The suite runs 1256 assertions under New York time, and 1255 under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+This record holds the assertion count and the run time for `npm test`. The suite runs 1260 assertions under New York time, and 1259 under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
 The count depends on the clock's zone, so the zone is pinned to `America/New_York`. In CI, the test step sets `TZ`, and it names one New York run's output in `CHECK_DOCS_SUITE_LOG`. `check:docs` grades the figure in this sentence. Locally, `npm run check:docs` runs the suite itself and waits for it to end.
 
@@ -16,10 +16,10 @@ Run `npm test` and read its summary line. The count is passed plus failed. A gre
 
 At `f956873`, the New York process printed its summary and `all green`, then stayed alive with no CPU use for 13 minutes. It was killed by hand. The UTC and machine-zone processes were stopped by hand just after their summaries. Their exit codes are unmeasured, and so is the cause.
 
-Measured on 2026-10-12 at `eb61351`, the head of `web/polish-pass`. Group 69 is new since `c9e4c4f`, the last measure:
+Measured on 2026-10-12 at `db28eda`, the head of `web/polish-pass`. Group 69 is new since `c9e4c4f`. The 1-minute load was about 7 to 17:
 
-- New York zone (`TZ=America/New_York`): 1256 passed, 0 failed, exit 0. 125.3 s.
-- UTC (`TZ=UTC`): 1255 passed, 0 failed, exit 0. 123.8 s.
+- New York zone (`TZ=America/New_York`): 1260 passed, 0 failed, exit 0. 126 s.
+- UTC (`TZ=UTC`): 1259 passed, 0 failed, exit 0. 124 s.
 
 Each zone ran once, so each time is one reading. Groups 67 and 68 moved to the virtual clock at `c9e4c4f`, and the New York run went from 267.2 s to 123.9 s, back to back, under a 1-minute load of about 5 to 11. Their idle and retry waits had run in real time. Take several runs before you compare a time. Groups 30 to 31 hold real-timer waits on purpose.
 
