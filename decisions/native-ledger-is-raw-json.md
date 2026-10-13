@@ -1,8 +1,12 @@
 # The native client keeps the ledger as raw JSON
 
-**Status:** ruled. The owner accepted a typed enum plan on 2026-10-11. The orchestrator default of 2026-10-12 replaced that enum with a raw dictionary. Owner ruling 2026-10-12 ("Keep a copy, then go on") holds for every client and every path data comes in. A `received`, `receivedAt`, `stamps` or `envelopes` value of the wrong shape (a whole field or one entry; JSON `null` counts) is first copied. Then every readable entry is kept. The web copy goes to History as a milestone. The native copy is a kept file beside ledger.json, because native has no versions store yet. The web detail and its fallbacks are in `saved-state-shape`.
+**Status:** ruled. The owner accepted a typed enum plan on 2026-10-11. The orchestrator default of 2026-10-12 replaced that enum with a raw dictionary. Owner ruling 2026-10-12 ("Keep a copy, then go on") holds for every client and every path data comes in. A `received`, `receivedAt`, `stamps` or `envelopes` value of the wrong shape (a whole field or one entry; JSON `null` counts) is first copied. Then every readable entry is kept. The web copy goes to History as a milestone. The web detail and its fallbacks are in `saved-state-shape`.
 
-**Built state, 2026-10-12:** web is built in PR #87, merged to main at `eb48278`. Whether it is deployed is unverified here. Deploy needs the owner's word. The Worker refuses a bad incoming shape with 400 (tests 67.1 and 67.2). It keeps every mended original in `kept` (group 69). It mends a damaged stored ledger before its merge (tests 68.1 to 68.3). Both run by `npm run test:worker`. Native is built on `native/salvage-damaged`, not merged. Native load mends as the web does (see Load and save). The app shows one plain line from the count, built by LedgerNotice and shown by the Packages tab. Default of the orchestrator, 2026-10-12, not an owner ruling: the mend is saved at once after the copy, the kept name carries milliseconds, and a numeric suffix settles a name that exists. The unknown-field gap in Known gap is still open.
+Orchestrator defaults of 2026-10-12, not owner rulings: native has no versions store or History yet. So the native copy is a kept file beside ledger.json. The mended ledger is saved at once after the copy. The kept name carries milliseconds, and a numeric suffix settles a name that exists.
+
+**Built state, 2026-10-12:** web is built in PR #87, merged to main at `eb48278`. Whether it is deployed is unverified here. Deploy needs the owner's word. The Worker refuses a bad incoming shape with 400 (tests 67.1 and 67.2). It keeps every mended original in `kept` (group 69). It mends a damaged stored ledger before its merge (tests 68.1 to 68.3). Both run by `npm run test:worker`. Native is built in draft PR #89, not merged. Native load mends as the web does (see Load and save). The unknown-field gap in Known gap is still open.
+
+**Notice line:** after a load that drops entries, the Packages tab shows one footnote line at its top. LedgerNotice.damagedLine builds it from the dropped count, and boot sets it once. For one entry the text is "1 entry could not be read; the original is kept on this device." Two or more gives "entries", so 3 gives "3 entries could not be read; the original is kept on this device." At 0 there is no line. The line names no sync words.
 
 The native store holds the ledger as `[String: Any]`, parsed and written with `JSONSerialization`. No typed struct or enum holds a field. A save writes the whole dictionary, so a field the client does not name survives a save of the file. An edit changes only the fields it names.
 
@@ -10,16 +14,16 @@ The native store holds the ledger as `[String: Any]`, parsed and written with `J
 
 ## Load and save
 
-The Swift client's rules, as built on `native/salvage-damaged`. The web rules are in `saved-state-shape`.
+The Swift client's rules, as built in draft PR #89. The web rules are in `saved-state-shape`.
 
 - A load throws when the bytes are not a JSON object. A top level of `null`, a number, a string or a list is refused the same way. No copy is made.
 - A load throws when `mailday` is present and is not the integer 1. No copy is made. A missing `mailday` is accepted and saved as 1.
 - A damaged `received`, `receivedAt`, `stamps` or `envelopes` is mended, not refused. Damage is a whole field of the wrong shape, JSON `null` included, or one entry of the wrong shape. An absent field is not damage. The right shapes are numbers in `received` and `receivedAt`, objects in `stamps`, and objects with a string `id` in `envelopes`.
   - The mend is `salvageLedger` in `rules.js`, called through RulesCore. The Swift client holds no copy of the rule (`rules-run-in-javascriptcore`).
-  - If any entry is dropped, the original bytes are written first to ledger.kept-<time>.json beside ledger.json. The write does not overwrite. The time part is an ISO 8601 UTC time with milliseconds from the store's clock, with the colons removed. If the name exists, a suffix -2, -3 and on is added until the write succeeds. If the write fails, load throws, the store stays unloaded, and nothing is mended. The copy is what stops a mend from erasing the check-ins the file held.
+  - If any entry is dropped, the original bytes are written first to ledger.kept-<time>.json beside ledger.json. The write does not overwrite. The time part is an ISO 8601 UTC time with milliseconds from the store's clock, with the colons removed (orchestrator default of 2026-10-12). If the name exists, a suffix -2, -3 and on is added until the write succeeds (orchestrator default of 2026-10-12). If the write fails, load throws, the store stays unloaded, and nothing is mended. The copy is what stops a mend from erasing the check-ins the file held.
   - A damaged whole field counts 1. Each dropped entry counts 1. The dropped count holds the total from the last good load. It is 0 when nothing was damaged.
   - A field the mend removes becomes empty. A missing `received`, `receivedAt` or `stamps` becomes an empty object. A missing `envelopes` becomes an empty list.
-- After the copy is written, load saves the mended ledger at once. A relaunch then reads a clean file and makes no second copy. If that save fails, load throws and the store stays unloaded.
+- After the copy is written, load saves the mended ledger at once (orchestrator default of 2026-10-12). Once that save succeeds, a relaunch reads a clean file and makes no second copy. If the save fails, the copy stays on disk, load throws, and the store stays unloaded. The next launch then writes another copy under a new name.
 - `items` gets no default. The Worker refuses a POST with no `items` list.
 - A failed load clears the loaded flag first, whatever the cause:
   - a missing or unreadable file, or invalid JSON;
@@ -57,7 +61,17 @@ The 2026-10-12 ruling is pinned in the same file by these tests:
 
 The mend tests check the count, the kept copy's bytes and the saved field. The refusal tests check that the file bytes stay as written.
 
-Also tested: a JSON `null` in `receivedAt`, `stamps` and `envelopes`; a clean load makes no copy; the mend is saved at load; a relaunch makes no second copy; two damaged loads in one instant both succeed (LedgerStoreTests); the notice line (LedgerNoticeTests). Read from code, not tested: the missing-file case, the unwrapped-error sentence in Load and save, and the app passing its own rules.js to the store (proved by an xcodebuild of the app, not by a test).
+The orchestrator defaults of 2026-10-12 are pinned by these tests:
+
+- testCleanLoadMakesNoCopyAndCountsZero: a clean load keeps no copy and counts 0.
+- testLoadSavesTheMendAtOnce: the mended `received` is on disk before any edit.
+- testRelaunchAfterMendMakesNoSecondCopy: after a saved mend, a relaunch drops nothing and keeps one copy.
+- testTwoDamagedLoadsInOneSecondBothSucceed: two loads at one fixed instant each keep their own copy, so this pins the suffix path. The name says one second, but the clock is fixed.
+- testReceivedAtNullIsDamagedNotAbsent, testStampsNullIsDamagedNotAbsent, testEnvelopesNullIsDamagedNotAbsent: a JSON `null` is damage in each field.
+
+The notice line is pinned by LedgerNoticeTests: testNoLineWhenNothingWasDropped, testOneLineNamesTheCountAndTheKeptCopy, testSingularCountReadsAsOneEntry, testLineNamesNoSyncWords.
+
+Not pinned by a test: the millisecond kept-name format, the missing-file case, and the unwrapped-error sentence in Load and save. The millisecond format is read from LedgerStore.load, because keptCopies matches the prefix and extension only. The app passing its own rules.js to the store is not pinned either (ManifestApp.swift, boot).
 
 ## Known gap: the Worker merge drops unknown top-level fields
 
