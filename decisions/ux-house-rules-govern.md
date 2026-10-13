@@ -17,9 +17,9 @@ The **house UX audit of 2026-10-11** is the source of the lane labels L1 to L10 
 - L3: the deploy guard. Deploy stops when the seed fetch fails.
 - L4: record text.
 - L5: record and link checks.
-- L6: 44px touch hit areas, with no visual change.
-- L7: semantics. Names that match labels, a modal photo viewer, and disabled controls that give a reason.
-- L8: an axe check at 375px and 760px.
+- L6: 44px touch hit areas, with no visual change. L6 built (commit `2857876`).
+- L7: semantics. Names that match labels, a modal photo viewer, and disabled controls that give a reason. L7 built (commit `2857876`).
+- L8: an axe check at 375px and 760px. L8 built (commit `2857876`).
 - L9: CI paths and timeouts.
 - L10: the Dependabot cooldown and zizmor.
 - L11: bottom bar D on the web, the CSS version of the phone bar in `phone-nav-is-bottom-bar`. It has four tabs, Ledger first, and a floating Find pill above the bar. Its tabs meet the 44px floor, as L6 does. Bottom padding keeps the last card clear of the bar. The bar moves no content, under `no-layout-shift-under-pointer`. L11a built the bar and the pill (commit `250823d`). L11b built the Ledger tab (commit `12e8721`). L11c drew the gear icon (commit `b62aebd`).
@@ -49,7 +49,12 @@ The gap for the Pull and Push anyway asks is closed. On 2026-10-12 the owner rem
 - `check:screens`, claim 3: the Discard arm moves nothing.
 - `check:screens`, claim 4: the Reset ask is not cut off.
 - `check:screens`, claim 5: the bottom bar's geometry at 375px and 760px.
-- `check:screens`, claim 6: the gap above the Ledger title is a multiple of 4px and under 18px. It does not pin 16px.
+- `check:screens`, claim 6: the gap above the Ledger title is 16px, a multiple of 4px (`spacing-on-4px-grid`).
+- `check:screens`, claim 7: the Sync panel on the Ledger tab opens, holds no GitHub control, and causes no sideways overflow.
+- `check:screens`, claim 8 (L8): an axe scan at 375px and 760px in six states (Ledger, Orphaned, Tally, Tally with one row open, Packages, the photo viewer) has no serious or critical violation, and no `label-content-name-mismatch` at any impact.
+- `check:screens`, claim 9 (L6): at 375px on a touch device, every visible interactive element is hit at least 44 by 44 CSS px.
+- `check:screens`, claim 10 (L6): at 375px, every painted box matches `test/a11y-base-boxes.json`, recorded from the base commit. A grown hit area moves no drawn box.
+- Test group 70 (L7, `test/app.test.mjs`): 70.1 and 70.2 name the four bar tabs and the Ledger rows by their visible labels, with a count as its own word. 70.3 pins the photo viewer as a modal dialog that takes focus on open, closes on Escape, and returns focus to its thumbnail. 70.4 pins that each disabled control names its reason through `aria-describedby`.
 - Tests 65.1 to 65.4 keep the removed GitHub verbs off every screen. Test 65.8 pins the armed Reset's Cancel after Reset.
 
 Tests 21.4 and 62.1 to 62.10 pin the bar. Tests 63.4 to 63.7 pin the Ledger tab's order and its current tab. Tests 63.21 to 63.24 pin the armed Reset's count, its neighbours and its first focus. Tests 61.8 to 61.9, 61.11 to 61.16, 61.41 to 61.42 and 61.43 to 61.57 pin the other rules. Tests 61.33 to 61.35 cover a draft that survives a tab change. The test pins check the DOM, not geometry.

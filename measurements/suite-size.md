@@ -1,12 +1,12 @@
 # Test suite assertion count and run time
 
-**Status:** measured at `db28eda`, checked 2026-10-12. The suite is green at this head. New York: 1260 passed, 0 failed, exit 0. UTC: 1259 passed, 0 failed, exit 0. Neither run hit the 400 s alarm.
+**Status:** measured at `2857876`, checked 2026-10-12. The suite is green at this head. New York: 1284 passed, 0 failed, exit 0. UTC: 1283 passed, 0 failed, exit 0. Both runs finished under 400 s.
 
-This record holds the assertion count and the run time for `npm test`. The suite runs 1260 assertions under New York time, and 1259 under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+This record holds the assertion count and the run time for `npm test`. The suite runs 1284 assertions under New York time, and 1283 under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
 The count depends on the clock's zone, so the zone is pinned to `America/New_York`. In CI, the test step sets `TZ`, and it names one New York run's output in `CHECK_DOCS_SUITE_LOG`. `check:docs` grades the figure in this sentence. Locally, `npm run check:docs` runs the suite itself and waits for it to end.
 
-`npm test` has no test framework. It runs `test/app.test.mjs` top to bottom. It prints `N passed, M failed`, and it exits 1 when M is not zero. Groups 30 to 31 spend a few seconds in real timers, on purpose. Groups 53 to 61 and 67 to 69 run on the harness virtual clock. Groups 62 to 66 keep real timers, see `harness-waits-past-debounces`. The sweep race can only be reached by letting the clock run. `test/harness.mjs` holds the jsdom setup, the storage mocks, the DOM helpers, and the fixture's loader. The fixture itself is `shared/fixtures/ledger.json`.
+`npm test` has no test framework. It runs `test/app.test.mjs` top to bottom. It prints `N passed, M failed`, and it exits 1 when M is not zero. Groups 30 to 31 spend a few seconds in real timers, on purpose. Groups 53 to 61 and 67 to 69 run on the harness virtual clock. Groups 62 to 66 and 70 keep real timers, see `harness-waits-past-debounces`. The sweep race can only be reached by letting the clock run. `test/harness.mjs` holds the jsdom setup, the storage mocks, the DOM helpers, and the fixture's loader. The fixture itself is `shared/fixtures/ledger.json`.
 
 The harness bundles `app.jsx` with esbuild. It sets `platform: "node"` and `format: "cjs"`. The bundle goes to `node_modules/.mailday-test/app.bundle.cjs`. jsdom is a devDependency, and the harness runs in it. The harness is committed on purpose. Three earlier harnesses were improvised and thrown away. The same assertions were rewritten from scratch each time. The app has no exports except the component. So every behaviour worth protecting is visible. The assertions read the DOM the way the user does.
 
@@ -16,10 +16,10 @@ Run `npm test` and read its summary line. The count is passed plus failed. A gre
 
 At `f956873`, the New York process printed its summary and `all green`, then stayed alive with no CPU use for 13 minutes. It was killed by hand. The UTC and machine-zone processes were stopped by hand just after their summaries. Their exit codes are unmeasured, and so is the cause.
 
-Measured on 2026-10-12 at `db28eda`, the head of `web/polish-pass`. Group 69 is new since `c9e4c4f`. The 1-minute load was about 7 to 17:
+Measured on 2026-10-12 at `2857876`, the head of `web/a11y-floor`. Group 70 is new since `db28eda`. The 1-minute load, read just after the runs, was about 92, so the times may be inflated:
 
-- New York zone (`TZ=America/New_York`): 1260 passed, 0 failed, exit 0. 126 s.
-- UTC (`TZ=UTC`): 1259 passed, 0 failed, exit 0. 124 s.
+- New York zone (`TZ=America/New_York`): 1284 passed, 0 failed, exit 0. 169 s.
+- UTC (`TZ=UTC`): 1283 passed, 0 failed, exit 0. 178 s.
 
 Each zone ran once, so each time is one reading. Groups 67 and 68 moved to the virtual clock at `c9e4c4f`, and the New York run went from 267.2 s to 123.9 s, back to back, under a 1-minute load of about 5 to 11. Their idle and retry waits had run in real time. Take several runs before you compare a time. Groups 30 to 31 hold real-timer waits on purpose.
 
