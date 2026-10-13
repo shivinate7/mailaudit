@@ -49,10 +49,10 @@ jobs:
   suite:
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Cancel a superseded run on a PR ref; each main run gets its own group,
-    # because a group keeps one pending run and a newer one replaces it.
+    # Cancel a superseded run on a PR ref. The PR draft state is in the group, so a draft run never cancels a ready run;
+    # each main run gets its own group, because a group keeps one pending run and a newer one replaces it.
     concurrency:
-      group: suite-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+      group: suite-${{ github.ref == 'refs/heads/main' && github.sha || format('{0}-{1}', github.ref, github.event.pull_request.draft) }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -126,10 +126,10 @@ jobs:
   screens:
     runs-on: macos-latest
     timeout-minutes: 3
-    # Cancel a superseded run on a PR ref; never cancel a run on main, where
+    # Cancel a superseded run on a PR ref (draft state in the group); never cancel a run on main, where
     # each merge needs its own verdict (own group per sha on main).
     concurrency:
-      group: screens-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+      group: screens-${{ github.ref == 'refs/heads/main' && github.sha || format('{0}-{1}', github.ref, github.event.pull_request.draft) }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -187,7 +187,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 3
     concurrency:
-      group: native-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+      group: native-${{ github.ref == 'refs/heads/main' && github.sha || format('{0}-{1}', github.ref, github.event.pull_request.draft) }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
