@@ -1,6 +1,6 @@
 # Native file names freeze on first ship
 
-**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Lane N3 landed in PR #80 with a store that takes its file URL from the caller. Lane N5 creates the Application Support folder and `ledger.json`. No app code yet creates the versions or photos folders. No native build has shipped. The kept-copy name was added at `2dcfc64`, before any build shipped.
+**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Lane N3 landed in PR #80 with a store that takes its file URL from the caller. Lane N5 creates the Application Support folder and `ledger.json`. No app code yet creates the versions or photos folders. No native build has shipped. The kept-copy name was added, and given milliseconds, before any build shipped.
 
 The native client keeps its data in the folder Application Support. The file ledger.json holds the ledger, and it is written atomically. The folders versions and photos sit beside it. The kept copies of a mended ledger sit there too. These names freeze when the first native build ships.
 
@@ -13,7 +13,7 @@ A renamed file orphans the data that a device already holds. The web app has the
 ## What lives there
 
 - ledger.json holds the raw ledger, see `native-ledger-is-raw-json`.
-- ledger.kept-<time>.json holds the original bytes of a ledger that load mended. The copy is written before the mend, and it is never overwritten. The time part is an ISO 8601 UTC time with the colons removed. See `native-ledger-is-raw-json`.
+- ledger.kept-<time>.json holds the original bytes of a ledger that load mended. The copy is written before the mend, and it is never overwritten. The time part is an ISO 8601 UTC time with milliseconds and the colons removed. A suffix -2, -3 and on settles a name that exists. See `native-ledger-is-raw-json`.
 - versions holds the local versions, including the milestones.
 - photos holds the label photos. A photo blob never enters the ledger, see `photos-stay-out-of-the-ledger`.
 - The device key is not in this folder. It lives in the Keychain, see `native-key-via-url-scheme`.

@@ -6,6 +6,7 @@ import SwiftUI
 struct RootView: View {
     let model: PackagesModel?
     let failure: String?
+    let notice: String?
     let width: CGFloat?
 
     var body: some View {
@@ -14,7 +15,7 @@ struct RootView: View {
             Placeholder(title: "Orphaned").tabItem { Label("Orphaned", systemImage: "envelope.badge") }
             Placeholder(title: "Tally").tabItem { Label("Tally", systemImage: "number") }
             Group {
-                if let model { PackagesView(model: model) } else { Placeholder(title: failure ?? "Opening the ledger") }
+                if let model { PackagesView(model: model).safeAreaInset(edge: .top) { if let notice { Text(notice).font(.footnote).padding(8) } } } else { Placeholder(title: failure ?? "Opening the ledger") }
             }
             .tabItem { Label("Packages", systemImage: "shippingbox") }
         }

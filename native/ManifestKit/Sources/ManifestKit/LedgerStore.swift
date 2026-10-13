@@ -5,14 +5,18 @@ import Foundation
 public final class LedgerStore {
     private let fileURL: URL
     private let now: () -> Double
+    private let rulesURL: URL?
     private var doc: [String: Any] = [:]
     private var loaded = false
     public private(set) var generation = 0
     /// Entries the last load dropped from a damaged field; 0 when nothing was damaged.
     public private(set) var droppedCount = 0
 
-    public init(fileURL: URL, now: @escaping () -> Double) {
+    /// The app passes the rules.js it ships. Without one, the package resource is used
+    /// (tests); Bundle.module traps if that resource is missing.
+    public init(fileURL: URL, now: @escaping () -> Double, rulesURL: URL? = nil) {
         self.fileURL = fileURL
+        self.rulesURL = rulesURL
         self.now = now
     }
 
@@ -26,7 +30,7 @@ public final class LedgerStore {
         if let m = obj["mailday"], (m as? Int) != 1 { throw CocoaError(.fileReadCorruptFile) }
         // The mend is salvageLedger in rules.js, the one home of the rule. The original
         // text goes in as the argument, so no number is re-formatted on the way.
-        guard let bundle = Bundle.module.url(forResource: "rules", withExtension: "js"),
+        guard let bundle = rulesURL ?? Bundle.module.url(forResource: "rules", withExtension: "js"),
               let text = String(data: data, encoding: .utf8) else { throw CocoaError(.fileReadCorruptFile) }
         let out = try RulesCore(bundleURL: bundle).call("salvageLedger", "[" + text + "]")
         guard let res = try JSONSerialization.jsonObject(with: Data(out.utf8)) as? [String: Any],
@@ -35,11 +39,17 @@ public final class LedgerStore {
         }
         if dropped > 0 {
             // Copy first. If the copy fails, load throws and nothing is mended.
-            let stamp = ISO8601DateFormatter().string(from: Date(timeIntervalSince1970: now() / 1000))
+            let f = ISO8601DateFormatter()
+            f.formatOptions.insert(.withFractionalSeconds)
+            let stamp = f.string(from: Date(timeIntervalSince1970: now() / 1000))
                 .replacingOccurrences(of: ":", with: "")
-            let keep = fileURL.deletingLastPathComponent()
-                .appending(path: "ledger.kept-\(stamp).json")
-            try data.write(to: keep, options: .withoutOverwriting)
+            let dir = fileURL.deletingLastPathComponent()
+            var n = 1
+            while true {
+                let name = "ledger.kept-\(stamp)" + (n == 1 ? "" : "-\(n)") + ".json"
+                do { try data.write(to: dir.appending(path: name), options: .withoutOverwriting); break }
+                catch let e as CocoaError where e.code == .fileWriteFileExists { n += 1 }
+            }
         }
         doc = mended
         droppedCount = dropped
@@ -47,6 +57,8 @@ public final class LedgerStore {
         for k in ["received", "receivedAt", "stamps"] where doc[k] == nil { doc[k] = [String: Any]() }
         if doc["envelopes"] as? [[String: Any]] == nil { doc["envelopes"] = [[String: Any]]() }
         loaded = true
+        // Save the mend now, so a relaunch reads it and makes no second copy.
+        if dropped > 0 { do { try save() } catch { loaded = false; throw error } }
     }
 
     public func save() throws {
