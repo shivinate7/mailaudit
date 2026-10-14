@@ -3670,8 +3670,10 @@ syncBroken === "seeded"
         localIds === null || source === "server"
           ? null
           : new Set([...localIds, ...inlinedIds, ...(extraPresent || [])]);
-      /* an apply carries the applied ledger's time; its own save keeps it */
-      savedAtRef.current = typeof data.savedAt === "number" ? data.savedAt : null;
+      /* a merge or server apply carries the applied ledger's time; its own save keeps it.
+         A restore (backup file, saved version) is a fresh save of that ledger: it stamps
+         now, so it wins unknown-key conflicts afterwards (owner ruling 2026-10-14) */
+      savedAtRef.current = replacing ? Date.now() : typeof data.savedAt === "number" ? data.savedAt : null;
       keepSavedAt.current = true;
       setItems(data.items);
       setReceived(data.received || {});

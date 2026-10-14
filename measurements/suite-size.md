@@ -1,8 +1,8 @@
 # Test suite assertion count and run time
 
-**Status:** measured on `web/carry-savedat` at `787e822` (cut from `971e229`), checked 2026-10-14. The suite is green there. New York: 1329 passed, 0 failed, exit 0, 125.1 s. UTC: 1328 passed, 0 failed, exit 0, 124.0 s.
+**Status:** measured on `web/carry-savedat` after the restore stamp, checked 2026-10-14. The suite is green there. Machine zone (CDT): 1334 passed, 0 failed, exit 0, 129.2 s. UTC: unmeasured, expected one lower.
 
-This record holds the assertion count and the run time for `npm test`. The suite runs 1329 assertions under New York time, where 38.9 runs, and 1328 under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+This record holds the assertion count and the run time for `npm test`. The suite runs 1334 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
 The count depends on the clock's zone, so the zone is pinned to `America/New_York`. In CI, the test step sets `TZ`, and it names one New York run's output in `CHECK_DOCS_SUITE_LOG`. `check:docs` grades the figure in this sentence. Locally, `npm run check:docs` runs the suite itself and waits for it to end.
 
@@ -27,7 +27,7 @@ On `web/carry-savedat` at `787e822`, measured 2026-10-14:
 - UTC (`TZ=UTC`): 1328 passed, 0 failed, exit 0. 124.0 s.
 - Machine zone (CDT, not the pinned zone): 1329 passed, 0 failed, exit 0. 126.5 s.
 
-The rise from 1318 to 1329 is the `savedAt` cases. They are 13.7, 13.8pre, 13.8, 33.51 to 33.53, 58.N6pre and 58.N6a to 58.N6d. No file under `test/`, `src/` or `worker/` differs between `e641956` and `971e229`.
+The rise from 1318 to 1329 is the `savedAt` cases. They are 13.7, 13.8pre, 13.8, 33.51 to 33.53, 58.N6pre and 58.N6a to 58.N6d. The rise from 1329 to 1334 is 58.N6e to 58.N6h and 58.N6g-pre; the count was taken in the machine zone. No file under `test/`, `src/` or `worker/` differs between `e641956` and `971e229`.
 
 At `b28e282`, the head of `web/merge-unknown-keys`: New York 1312 passed, 130.8 s. UTC 1311 passed, 135.5 s. Group 33 gained 33.31 to 33.50 since `75a96b8`.
 
