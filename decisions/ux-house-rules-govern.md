@@ -67,6 +67,7 @@ Tests 21.4 and 62.1 to 62.10 pin the bar. Tests 63.4 to 63.7 pin the Ledger tab'
 ## Holes, named
 
 - A tap within 0.25px of a chip gap midpoint can go to either chip. Claim 12 allows that reach (owner ruling 2026-10-13).
+- Claim 12 passes a chip hit area of 43.75px with a 0.25px centring offset. Three chips (Claim filed, Refunded, Seller contacted) measure that on the lane build. The other three measure 44px.
 - Claim 9 reads fractional box edges up to 1px high. A 43.5px box reads as 44px, so claim 9 can pass a box just under 44px.
 
 ## See also
