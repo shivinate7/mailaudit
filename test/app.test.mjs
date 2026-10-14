@@ -8439,7 +8439,8 @@ try {
   const pushes68b = remote.calls.filter((c) => c.op === "push").length;
   const pulls68b = remote.calls.filter((c) => c.op === "pull").length;
   await click(btn(/Mark all received/), "check in on the mirror");
-  /* the background event runs auto-push at once, with no save timer or retry in the window.
+  /* the background event runs auto-push at once. The 3 s save timer also fires in the wait, but
+     its POST is gated off by the lastServer check (growServer set lastServer before the cut).
      The only POST in that window is the conflict branch's own call to the Worker. */
   await drain();
   await background();
