@@ -12,6 +12,12 @@ The cost is two pinned dev dependencies, Playwright and `@axe-core/playwright`. 
 
 **Holds while:** `.github/workflows/test.yml` runs the `screens` job on `macos-latest`. `npm run check:screens` checks 375px and 760px, with the axe, touch and drawn-box checks.
 
+Kind: build
+
+Plan: decisions/screens-checked-headless-in-ci.md#the-axe-scan (web)
+
+Plan: decisions/screens-checked-headless-in-ci.md#the-native-client (native)
+
 ## The axe scan
 
 The scan uses `@axe-core/playwright`, pinned exact at 4.13.0, published 2026-08-11. It runs axe-core's default rules with no tag filter. It also enables `label-content-name-mismatch`, an experimental rule.
@@ -25,7 +31,7 @@ The scan covers nine states at 375px and 760px. They are the eight screen states
 Lane N5 added a UI test, `native/ManifestUITests/PackagesShellUITests.swift`. It runs on the iOS Simulator at 375pt only. The native 760pt case is removed, see `native-build-lanes`. The web check keeps 760pt. The UI test is not yet in the native job. The test fails when another row frame moves on a check-in. It guards `no-layout-shift-under-pointer` for the native client, as the web check does for the web app. The native job is in `native-ci-on-hosted-macos`.
 
 - Measured on 2026-10-12 on an iPhone 17 simulator: the 375pt case passed. The 760pt case skipped, because the test's own check found the window narrower than 760pt. The case has since been removed, see `native-build-lanes`.
-- Still open: the N5 test covers Packages only. Each native view needs the same test, so the briefs for lanes N6 and N7 must add it for Tally and Orphaned.
+- Still open: the N5 test covers Packages only. Each native view needs the same test, so the briefs for lanes N6 and N7 must add it for Tally and Orphaned. Debt: `native-lanes-n6-to-n9-unbuilt`.
 
 ## See also
 

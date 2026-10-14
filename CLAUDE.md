@@ -395,6 +395,9 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `discard-keeps-draft` — Discard does not end a composer draft.
 - `type-floor-unbuilt` — Some labels are below the 10px floor.
 - `universal-link-unbuilt` — The universal-link key fallback is not built.
+- `native-runner-image-unverified` — Whether the hosted runner image has Xcode 27 and xcodegen is unverified.
+- `native-runner-keychain-unverified` — Whether the hosted runner keychain is unlocked is unverified.
+- `native-job-hosted-time-unmeasured` — The native job's time on a hosted runner is unmeasured.
 
 ## Measurements
 

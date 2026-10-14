@@ -1,6 +1,6 @@
 # The native job runs on a hosted macOS runner
 
-**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Lane C1 landed the job in PR #76. The owner has not made it a required check, see Required check. Two facts are unknown, see Unmeasured.
+**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Lane C1 landed the job in PR #76. The owner has not made it a required check, see Required check. Its unmeasured facts are debts, see Unmeasured: `native-runner-image-unverified`, `native-runner-keychain-unverified` and `native-job-hosted-time-unmeasured`.
 
 The native job in `.github/workflows/test.yml` runs the Swift package tests on a hosted macOS runner. Degen's self-hosted runner is not copied. The rest of the native checks are in Still open.
 
@@ -28,7 +28,7 @@ Owner ruling, 2026-10-12: asked whether the job becomes required now, the owner 
 
 ## Cost
 
-- The real costs are queue time and wall time. The estimate for the full job is 8 to 15 minutes a run. It is unmeasured.
+- The real costs are queue time and wall time. The estimate for the full job is 8 to 15 minutes a run. It is unmeasured. Debt: `native-job-hosted-time-unmeasured`.
 - The last screens job took 37 seconds (run 38169582645).
 - Measured on 2026-10-12, on this Mac and not a hosted runner (Xcode 27.0, an iPhone 17 simulator on iOS 27.0): `build-for-testing` took 26 s. The N5 UI tests took 139 s wall and 78.6 s in XCTest. Five tests ran: 4 passed, 1 skipped (the 760pt case), 0 failed.
 - If the repo goes private, GitHub bills macOS minutes at a multiple of Linux minutes. The rate was not checked. See `ledger-private-source-public`.
@@ -39,9 +39,9 @@ Degen's self-hosted runner. On a public repo, a fork PR would run on the owner's
 
 ## Unmeasured
 
-- Whether the runner image has Xcode 27 and xcodegen. If it lacks xcodegen, the job installs a pinned version.
-- Whether the runner keychain is unlocked. The key store tests use their own service name, see `native-key-via-url-scheme`.
-- The hosted-runner time of the UI tests. The 139 s figure in Cost is local.
+- Whether the runner image has Xcode 27 and xcodegen. If it lacks xcodegen, the job installs a pinned version. Debt: `native-runner-image-unverified`.
+- Whether the runner keychain is unlocked. The key store tests use their own service name, see `native-key-via-url-scheme`. Debt: `native-runner-keychain-unverified`.
+- The hosted-runner time of the UI tests. The 139 s figure in Cost is local. Debt: `native-job-hosted-time-unmeasured`.
 
 ## Still open
 

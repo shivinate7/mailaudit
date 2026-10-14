@@ -1,10 +1,10 @@
 # The Worker keeps daily snapshots, and GitHub leaves the sync role
 
-**Status:** ruled. The owner ruled on 2026-10-11: "Cloudflare does it all". Lane W3a builds the snapshots on draft PR #78. Group 13 (tests 13.1 to 13.9) holds the snapshot tests, and `npm run test:worker` reads 312 passed, 0 failed. W3a has not landed.
+**Status:** ruled. The owner ruled on 2026-10-11: "Cloudflare does it all". Lane W3a built the snapshots. It landed on main in PR #79. Group 13 (tests 13.1 to 13.9) holds the snapshot tests, and `npm run test:worker` reads 312 passed, 0 failed.
 
 GitHub leaves the sync role entirely. The Worker keeps daily snapshots of the ledger for History and for backup. The backup watchdog checks the Worker. The public seed goes away. The owner ruled on 2026-10-11 to drop it, so the ledger stops being public and a visitor sees an empty app.
 
-**Holds while:** the Worker serves only `/ledger` and `/ws`, and `src/entry.jsx` still mirrors the ledger to the GitHub `data` branch.
+**Holds while:** web devices still mirror the ledger to the GitHub `data` branch, in mirror mode in `src/app.jsx`.
 
 Kind: build
 
@@ -24,7 +24,7 @@ Today only web devices push to the `data` branch. Once both devices run the nati
 
 ## Snapshot defaults
 
-Orchestrator defaults of 2026-10-12, not owner rulings. None is on main yet.
+Orchestrator defaults of 2026-10-12, not owner rulings. They landed on main with W3a, in PR #79.
 
 - A snapshot holds the ledger as it was before the first changing write of its UTC day. Later changing writes that day write no snapshot.
 - A snapshot is kept while it is within 180 days: today and the 179 days before it stay. A changing write removes the 180-day-old and older snapshots.
