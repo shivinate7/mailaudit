@@ -988,7 +988,7 @@ function PackageCard({
             <span style={{ flex: 1, height: 1, background: C.line }} />
           </div>
           {/* six cells will not fit one row at 375px; wrapping is the plan */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", rowGap: 10, columnGap: 6 }}>
             {STAMP_KINDS.map(([k, label]) => (
               <button
                 key={k}
@@ -1023,6 +1023,7 @@ function PackageCard({
           />
           </Fld>
           <div
+            className="mdl-edact"
             style={{
               display: "flex",
               alignItems: "center",
@@ -5995,11 +5996,18 @@ syncBroken === "seeded"
           label.mdl-fld::after { content: ""; position: absolute; left: 0; right: 0;
                           top: 50%; height: max(100%, 45px);
                           transform: translateY(-50%); z-index: 1; }
-          /* The stamp kinds wrap 6px apart, so two stacked hit areas may reach
-             3px each into the gap and no further (the +8px is the 32px padding
-             box plus 3px a side, centred): a tap in the gap goes to the nearer
-             chip. Rows 34px tall at a 40px pitch cannot reach 44px both ways. */
-          button.mdl-chip::after { height: calc(100% + 8px); }
+          /* The note field sits 8px above the editor's buttons, and a tap 1px
+             below the field must stay on the field. So these areas are 44px
+             tall (not 45), centred 0.5px low: a point hit-test reaches 1px up. */
+          .mdl-edact > button::after { height: max(100%, 44px);
+                          transform: translate(-50%, calc(-50% + .5px)); }
+          /* The stamp kinds wrap 10px apart, a deliberate gap so each chip gets the
+             full 44px. The area is 44px tall, 4.5px above the drawn box and
+             5.5px below it (top is measured from the 32px padding box). Both
+             edges end at the gap midpoint, so it overlaps no neighbour. A point
+             hit-test reaches 1px up, so this reads as centred. */
+          button.mdl-chip::after { top: -5.5px; height: calc(100% + 12px);
+                                   transform: translateX(-50%); }
         }
 
         @media (prefers-reduced-motion: reduce) {
