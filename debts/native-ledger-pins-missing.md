@@ -5,3 +5,5 @@ No test pins the millisecond kept-name format, the missing-file case, or the unw
 **Status:** open.
 
 **Decision:** `native-ledger-is-raw-json`.
+
+**Decision:** `native-files-are-frozen`.

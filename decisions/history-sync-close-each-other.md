@@ -1,5 +1,9 @@
 # History and Sync close each other
 
+Kind: process
+
+Home: decisions/history-sync-close-each-other.md
+
 **Status:** ruled 2026-10-11, built in L11b, commit `12e8721`. One point is an orchestrator default, not an owner ruling: an armed Reset does not close either panel.
 
 Opening History closes Sync. Opening Sync closes History. The two panels never stand open together. The Sorted by and Orders from panels close each other the same way.
@@ -19,4 +23,4 @@ The Sync row is not gated on Reset. An open Sync panel keeps its own close contr
 - `armed-reset-takes-the-row` — the armed Reset, arming in place.
 - `ruled-head-panels-carry-no-fill` — the panel fill both share. An overlay takes the paper fill (orchestrator default).
 
-**Pinned by:** 63.12 (opening History closes an open Sync), 63.13 (History is open after the tap), 63.26 (an armed Reset leaves History open). No test pins that an armed Reset leaves Sync open. Test 36.3 pinned that on the old code. It is for a builder to re-point.
+**Pinned by:** 63.12 (opening History closes an open Sync), 63.13 (History is open after the tap), 63.26 (an armed Reset leaves History open). Debt: `reset-leaves-sync-unpinned`.

@@ -8,6 +8,13 @@ Home: decisions/debts-hold-known-gaps.md
 
 **Holds while:** `check-records.mjs` reads `debts/` (claim 8), and CLAUDE.md lists that folder.
 
+## Holes, named
+
+Two holes stay open after review round 3. Each is a debt, and each fix is builder work in CI config or tests.
+
+- `ci-misses-check-records-test`: CI never runs `npm run test:check-records`, so a claim 8 regression stays green.
+- `check-records-no-record-branch`: the claim 8 branch for a Decision with no record has no test.
+
 ## See also
 
 - `records-hold-current-text-only` — a rewrite keeps current text only, and git keeps the history.
