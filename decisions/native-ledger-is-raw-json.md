@@ -18,7 +18,7 @@ The native store holds the ledger as `[String: Any]`, parsed and written with `J
 
 ## Load and save
 
-The Swift client's rules, as built in draft PR #89. The web rules are in `saved-state-shape`.
+The Swift client's rules, as built in PR #89. The web rules are in `saved-state-shape`.
 
 - A load throws when the bytes are not a JSON object. A top level of `null`, a number, a string or a list is refused the same way. No copy is made.
 - A load throws when `mailday` is present and is not the integer 1. No copy is made. A missing `mailday` is accepted and saved as 1.
