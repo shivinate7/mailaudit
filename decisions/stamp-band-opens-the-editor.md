@@ -8,11 +8,11 @@ The band is a rotated chip, built like the RECEIVED stamp. It is manila, not gre
 
 The first stamp comes from a `Stamp` button. That button sits first in the expanded card's action row. Once a stamp exists, the button goes away. The band takes its place and shows a trailing `›`, as the Tally order-id link does.
 
-The editor offers the six kinds as option cells, in the month picker's treatment. `Other` comes last. It covers anything the fixed five do not name. The free line carries the detail.
+The editor offers the six kinds as option cells, in the month picker's treatment. `Other` comes last. It covers anything the fixed five do not name. The free line carries the detail. The six kind chips sit in rows 10px apart, so each chip keeps a 44px hit area. The call is recorded in `ux-house-rules-govern`.
 
 The editor also has a note field at 16px, so iOS does not zoom. It has a two-tap Remove stamp control, and Cancel and Save buttons. The Remove stamp arm reads "Tap again to remove stamp from N cards", where N is the package's cards. First focus goes to Cancel. The count is an orchestrator default of 2026-10-11, and it is built. Unmeasured: whether the longer arm label moves Cancel or Save at 375px.
 
-**Pinned by:** tests 37.1 and 37.3 (the Stamp entrance, and the editor offers six stamps with Other included), 37.8 (the band replaces the Stamp button), and 61.11 to 61.13 (the band opens an editor whose Remove stamp ask shows a card count, puts first focus on Cancel, and keeps the stamp on Cancel). Test 61.11 pins that a count is shown, not that the count is right.
+**Pinned by:** tests 37.1 and 37.3 (the Stamp entrance, and the editor offers six stamps with Other included), 37.8 (the band replaces the Stamp button), and 61.11 to 61.13 (the band opens an editor whose Remove stamp ask shows a card count, puts first focus on Cancel, and keeps the stamp on Cancel). `check:screens` claim 12 pins the chip hit areas. Test 61.11 pins that a count is shown, not that the count is right.
 
 ## See also
 
