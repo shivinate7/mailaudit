@@ -10,6 +10,7 @@
     "check:seed": "node build.mjs --check-seed",
     "check:docs": "node check-docs.mjs",
     "test:check-docs": "node test/check-docs.test.mjs",
+    "test:check-records": "node test/check-records.test.mjs",
     "test:worker": "node worker/core.test.mjs",
     "test:send-key": "node test/send-key.test.mjs",
     "test:view-rules": "node test/view-rules.test.mjs",
