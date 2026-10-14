@@ -426,7 +426,7 @@ function ItemRow({
         display: "flex",
         alignItems: "flex-start",
         gap: 12,
-        padding: "12px 14px",
+        padding: "12px 12px",
         borderTop: `1px solid ${C.line}`,
         background: done ? C.greenSoft : "transparent",
         transition: "background 160ms ease",
@@ -443,7 +443,7 @@ function ItemRow({
         style={{
           width: 30,
           height: 30,
-          marginTop: 1,
+          marginTop: 0,
           flexShrink: 0,
           borderRadius: 8,
           border: `2px solid ${done ? C.green : partial ? C.manilaInk : C.inkSoft}`,
@@ -488,7 +488,7 @@ function ItemRow({
       </button>
 
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: "flex", gap: 10, alignItems: "baseline" }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
           <div
             style={{
               flex: 1,
@@ -518,7 +518,7 @@ function ItemRow({
         </div>
         <div
           style={{
-            marginTop: 2,
+            marginTop: 4,
             fontSize: 11.5,
             color: C.inkSoft,
             overflow: "hidden",
@@ -557,13 +557,13 @@ function ItemRow({
               aria-label={`Show the whole order ${item.orderId}`}
               title={item.orderId}
               style={{
-                marginTop: 1,
+                marginTop: 0,
                 minHeight: 30,
                 width: "100%",
                 display: "flex",
                 alignItems: "center",
-                gap: 5,
-                padding: "6px 0",
+                gap: 4,
+                padding: "4px 0",
                 border: 0,
                 background: "transparent",
                 fontFamily: mono,
@@ -592,7 +592,7 @@ function ItemRow({
           ) : (
             <div
               style={{
-                marginTop: 1,
+                marginTop: 0,
                 fontFamily: mono,
                 fontSize: 10.5,
                 color: C.inkSoft,
@@ -612,7 +612,7 @@ function ItemRow({
               marginTop: 8,
               display: "flex",
               alignItems: "center",
-              gap: 6,
+              gap: 4,
               fontFamily: mono,
               fontSize: 13,
               cursor: "default",
@@ -669,7 +669,7 @@ const stepBtn = {
    carrying its own rule. Referenced lazily, so it may sit above optCell. */
 const stampKindCell = (on) => ({
   ...optCell(on),
-  padding: "0 10px",
+  padding: "0 8px",
   border: `1px solid ${on ? C.accent : C.line}`,
 });
 const stampChip = {
@@ -680,7 +680,7 @@ const stampChip = {
   color: C.manilaInk,
   border: `2px solid ${C.manilaInk}`,
   borderRadius: 4,
-  padding: "3px 8px",
+  padding: "4px 8px",
   transform: "rotate(-3deg)",
   /* read by the shared landing keyframes, so this chip and the RECEIVED stamp
      share one animation and each returns to its own angle */
@@ -780,7 +780,7 @@ function PackageCard({
         position: "relative",
         background: C.card,
         border: `1px solid ${done ? C.green : C.line}`,
-        borderRadius: 10,
+        borderRadius: 8,
         overflow: "clip",
         boxShadow: `0 1px 2px ${C.shadow}`,
         /* clears the 46px running head when the Tally view scrolls us here */
@@ -804,10 +804,10 @@ function PackageCard({
           background: "transparent",
           border: "none",
           cursor: "pointer",
-          padding: "12px 14px",
+          padding: "12px 12px",
           display: "flex",
           alignItems: "center",
-          gap: 10,
+          gap: 8,
         }}
       >
         <span
@@ -889,7 +889,7 @@ function PackageCard({
               color: C.green,
               border: `2px solid ${C.green}`,
               borderRadius: 4,
-              padding: "3px 8px",
+              padding: "4px 8px",
               transform: "rotate(-4deg)",
               /* the angle the landing returns to, read by the shared keyframes */
               "--rest": "-4deg",
@@ -913,7 +913,7 @@ function PackageCard({
               color: refunded ? C.manilaInk : C.red,
               background: refunded ? C.manila : C.redSoft,
               borderRadius: 999,
-              padding: "3px 10px",
+              padding: "4px 8px",
               flexShrink: 0,
             }}
           >
@@ -935,11 +935,11 @@ function PackageCard({
             width: "100%",
             display: "flex",
             alignItems: "center",
-            gap: 10,
-            /* 3px of the bottom padding lie over the next row (margin -3),
+            gap: 8,
+            /* 4px of the bottom padding lie over the next row (margin -4),
                which moves this band's centre 44px clear of the header's */
-            padding: "0 14px 13px",
-            marginBottom: -3,
+            padding: "0 12px 12px",
+            marginBottom: -4,
             border: 0,
             background: "transparent",
             textAlign: "left",
@@ -982,13 +982,13 @@ function PackageCard({
         </button>
       )}
       {editing && (
-        <div style={{ padding: "0 14px 12px" }}>
+        <div style={{ padding: "0 12px 12px" }}>
           <div style={{ ...subHead, margin: "0 0 8px" }}>
             <span style={cellLab}>Stamp</span>
             <span style={{ flex: 1, height: 1, background: C.line }} />
           </div>
           {/* six cells will not fit one row at 375px; wrapping is the plan */}
-          <div style={{ display: "flex", flexWrap: "wrap", rowGap: 10, columnGap: 6 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", rowGap: 12, columnGap: 4 }}>
             {STAMP_KINDS.map(([k, label]) => (
               <button
                 key={k}
@@ -1001,7 +1001,7 @@ function PackageCard({
               </button>
             ))}
           </div>
-          <Fld style={{ marginTop: 10 }}>
+          <Fld style={{ marginTop: 12 }}>
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
@@ -1013,7 +1013,7 @@ function PackageCard({
               fontFamily: cochin,
               /* 16px or focusing it zooms the page on iOS */
               fontSize: 16,
-              padding: "9px 12px",
+              padding: "8px 12px",
               borderRadius: 8,
               border: `1px solid ${C.line}`,
               background: C.card,
@@ -1042,7 +1042,7 @@ function PackageCard({
                 style={{
                   ...miniBtn,
                   fontSize: 11,
-                  padding: "5px 9px",
+                  padding: "4px 8px",
                   color: confirmRemove ? C.card : C.red,
                   background: confirmRemove ? C.red : C.card,
                   borderColor: confirmRemove ? C.red : C.redSoft,
@@ -1104,7 +1104,7 @@ function PackageCard({
               "--i": 0,
               display: "flex",
               gap: 8,
-              padding: "0 14px 8px",
+              padding: "0 12px 8px",
               justifyContent: "flex-end",
               /* held at its tallest state so the row never changes height when
                  a button joins or leaves it — see BULK_ROW_H */
@@ -1155,7 +1155,7 @@ function PackageCard({
               style={{
                 width: "100%",
                 minHeight: CTL_H,
-                padding: "8px 14px",
+                padding: "8px 12px",
                 textAlign: "left",
                 border: 0,
                 borderTop: `1px solid ${C.line}`,
@@ -1223,7 +1223,7 @@ function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder, stampedGks }
         position: "relative",
         background: C.card,
         border: `1px solid ${done ? C.green : C.line}`,
-        borderRadius: 10,
+        borderRadius: 8,
         overflow: "clip",
         boxShadow: `0 1px 2px ${C.shadow}`,
       }}
@@ -1236,10 +1236,10 @@ function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder, stampedGks }
           background: "transparent",
           border: "none",
           cursor: "pointer",
-          padding: "12px 14px",
+          padding: "12px 12px",
           display: "flex",
           alignItems: "center",
-          gap: 10,
+          gap: 8,
         }}
       >
         <span
@@ -1348,7 +1348,7 @@ function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder, stampedGks }
             className={justOpened ? "mdl-reveal" : undefined}
             style={{
               "--i": 0,
-              padding: "0 14px 6px",
+              padding: "0 12px 4px",
               fontFamily: mono,
               fontSize: 10.5,
               color: C.inkSoft,
@@ -1370,7 +1370,7 @@ function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder, stampedGks }
               "--i": 1,
               display: "flex",
               gap: 8,
-              padding: "0 14px 8px",
+              padding: "0 12px 8px",
               justifyContent: "flex-end",
             }}
           >
@@ -1562,7 +1562,7 @@ const cellVal = {
   color: C.ink,
   display: "flex",
   alignItems: "baseline",
-  gap: 5,
+  gap: 4,
   minWidth: 0,
 };
 const cellValText = {
@@ -1581,10 +1581,10 @@ const cellFig = {
 /* `last` drops the divider on the right-hand cell */
 const headCell = (last) => ({
   minHeight: 46,
-  padding: "7px 9px 8px",
+  padding: "8px 8px 8px",
   display: "flex",
   flexDirection: "column",
-  gap: 3,
+  gap: 4,
   border: 0,
   borderRight: last ? "none" : `1px solid ${C.line}`,
   background: "transparent",
@@ -1654,7 +1654,7 @@ const ITEM_SORTS = [
    grid still reads: optGrid paints C.line and each optCell paints C.card over
    it, so the cells sit slightly raised against the page. */
 const panelWrap = {
-  padding: "4px 9px 11px",
+  padding: "4px 8px 12px",
   borderTop: `1px solid ${C.line}`,
 };
 /* the 1px gap over a `line` background IS the grid — cells paint `card` over it */
@@ -1664,10 +1664,10 @@ const optGrid = (cols) => ({
   gap: 1,
   background: C.line,
   border: `1px solid ${C.line}`,
-  marginTop: 10,
+  marginTop: 8,
 });
-const subRow = { display: "flex", alignItems: "center", gap: 9, marginTop: 10 };
-const subHead = { display: "flex", alignItems: "center", gap: 9, margin: "11px 0 8px" };
+const subRow = { display: "flex", alignItems: "center", gap: 8, marginTop: 8 };
+const subHead = { display: "flex", alignItems: "center", gap: 8, margin: "12px 0 8px" };
 /* the rule is an inset shadow, not a border: a 1px border eats the content box
    and leaves the − and + at 32px, under the app's own touch floor */
 const well = {
@@ -1703,8 +1703,8 @@ const exactToggle = {
   height: CTL_H,
   display: "flex",
   alignItems: "center",
-  gap: 7,
-  marginTop: 11,
+  gap: 8,
+  marginTop: 12,
   border: 0,
   background: "transparent",
   fontFamily: mono,
@@ -1718,13 +1718,13 @@ const cancCell = (on) => ({
   border: 0,
   borderLeft: `1px solid ${C.line}`,
   background: "transparent",
-  padding: "0 10px",
+  padding: "0 8px",
   fontFamily: mono,
   fontSize: 10,
   color: on ? C.ink : C.inkSoft,
   display: "inline-flex",
   alignItems: "center",
-  gap: 5,
+  gap: 4,
   whiteSpace: "nowrap",
   cursor: "pointer",
 });
@@ -1776,9 +1776,9 @@ const partGrid = {
   display: "grid",
   gridTemplateColumns: "auto minmax(0, 1fr)",
   columnGap: 12,
-  rowGap: 6,
+  rowGap: 4,
   alignItems: "baseline",
-  marginTop: 2,
+  marginTop: 0,
 };
 const partLab = { ...cellLab, whiteSpace: "nowrap" };
 
@@ -1851,7 +1851,7 @@ const keyField = {
   fontSize: 16,
   color: C.ink,
   outline: "none",
-  padding: "0 2px",
+  padding: "0",
 };
 /* the month chips' treatment: an option cell carrying its own rule */
 const keySave = {
@@ -1958,7 +1958,7 @@ function UploadZone({ onFile, error, replacing }) {
         border: `2px dashed ${drag ? C.green : C.inkSoft}`,
         borderRadius: 12,
         background: drag ? C.greenSoft : C.card,
-        padding: "42px 24px",
+        padding: "40px 24px",
         textAlign: "center",
         transition: "all 140ms ease",
       }}
@@ -1967,7 +1967,7 @@ function UploadZone({ onFile, error, replacing }) {
       <div style={{ fontWeight: 700, fontSize: 16, color: C.ink }}>
         Drop your OrderWand CSV here
       </div>
-      <div style={{ fontSize: 13, color: C.inkSoft, margin: "6px 0 16px" }}>
+      <div style={{ fontSize: 13, color: C.inkSoft, margin: "4px 0 16px" }}>
         {replacing
           ? "CSV imports merge with what\u2019s here; a .json backup restores everything."
           : "In OrderWand: pick \u201COrderWand CSV\u201D from the drop list, click File, then bring it here."}
@@ -1982,7 +1982,7 @@ function UploadZone({ onFile, error, replacing }) {
           color: C.card,
           border: "none",
           borderRadius: 8,
-          padding: "10px 20px",
+          padding: "8px 20px",
           cursor: "pointer",
         }}
       >
@@ -2002,7 +2002,7 @@ function UploadZone({ onFile, error, replacing }) {
       {error && (
         <div
           style={{
-            marginTop: 14,
+            marginTop: 12,
             color: C.red,
             background: C.redSoft,
             borderRadius: 8,
@@ -2026,21 +2026,21 @@ function Notice({ children, actionLabel, onAction, onDismiss }) {
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 10,
+        gap: 8,
         background: C.greenSoft,
         border: `1px solid ${C.green}`,
         color: C.ink,
         borderRadius: 8,
-        padding: "9px 12px",
+        padding: "8px 12px",
         fontSize: 13,
-        marginBottom: 14,
+        marginBottom: 12,
       }}
     >
       <span style={{ flex: 1 }}>{children}</span>
       {actionLabel && (
         <button
           onClick={onAction}
-          style={{ ...miniBtn, fontSize: 11.5, padding: "5px 10px", flexShrink: 0 }}
+          style={{ ...miniBtn, fontSize: 11.5, padding: "4px 8px", flexShrink: 0 }}
         >
           {actionLabel}
         </button>
@@ -2055,7 +2055,7 @@ function Notice({ children, actionLabel, onAction, onDismiss }) {
             cursor: "pointer",
             color: C.inkSoft,
             fontSize: 14,
-            padding: 2,
+            padding: 0,
           }}
         >
           ✕
@@ -2170,7 +2170,7 @@ function PhotoStrip({ ids, onRemove, epoch = 0 }) {
   if (!ids?.length) return null;
   return (
     <>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
         {ids.map((id) => (
           <div key={id} style={{ position: "relative" }}>
             <button
@@ -2317,7 +2317,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
       style={{
         background: C.card,
         border: `1px solid ${C.ink}`,
-        borderRadius: 10,
+        borderRadius: 8,
         overflow: "clip",
         boxShadow: `0 1px 2px ${C.shadow}`,
       }}
@@ -2329,7 +2329,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
           letterSpacing: "0.14em",
           textTransform: "uppercase",
           color: C.inkSoft,
-          padding: "12px 14px 8px",
+          padding: "12px 12px 8px",
         }}
       >
         {initial ? "Edit envelope" : "New envelope"}
@@ -2340,7 +2340,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
           e.preventDefault();
           addName(draft);
         }}
-        style={{ padding: "0 14px" }}
+        style={{ padding: "0 12px" }}
       >
         <Fld>
         <input
@@ -2360,7 +2360,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
             fontFamily: cochin,
             /* 16px or iOS Safari zooms the page on focus and never zooms back */
             fontSize: 16,
-            padding: "10px 12px",
+            padding: "8px 12px",
             borderRadius: 8,
             border: `1px solid ${C.line}`,
             background: C.card,
@@ -2374,7 +2374,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
       {draft.trim() && (
         <div
           style={{
-            margin: "8px 14px 0",
+            margin: "8px 12px 0",
             border: `1px solid ${C.line}`,
             borderRadius: 8,
             maxHeight: "40vh",
@@ -2392,7 +2392,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
                 width: "100%",
                 textAlign: "left",
                 alignItems: "center",
-                gap: 10,
+                gap: 8,
                 minHeight: 44,
                 padding: "8px 12px",
                 border: "none",
@@ -2455,7 +2455,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
       )}
 
       {entries.length > 0 && (
-        <div style={{ marginTop: 10, borderTop: `1px solid ${C.line}` }}>
+        <div style={{ marginTop: 8, borderTop: `1px solid ${C.line}` }}>
           {entries.map((e) => {
             const nk = normName(e.name);
             return (
@@ -2464,8 +2464,8 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 10,
-                  padding: "7px 14px",
+                  gap: 8,
+                  padding: "8px 12px",
                   borderBottom: `1px solid ${C.line}`,
                 }}
               >
@@ -2487,7 +2487,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: 6,
+                    gap: 4,
                     flexShrink: 0,
                   }}
                 >
@@ -2522,7 +2522,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
         </div>
       )}
 
-      <div style={{ padding: "10px 14px 0" }}>
+      <div style={{ padding: "8px 12px 0" }}>
         <Fld>
         <input
           value={note}
@@ -2534,7 +2534,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
             boxSizing: "border-box",
             fontFamily: cochin,
             fontSize: 16,
-            padding: "9px 12px",
+            padding: "8px 12px",
             borderRadius: 8,
             border: `1px solid ${C.line}`,
             background: C.card,
@@ -2548,10 +2548,10 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
       {window.photos && (
         <div
           style={{
-            padding: "10px 14px 0",
+            padding: "12px 12px 0",
             display: "flex",
             alignItems: "center",
-            gap: 10,
+            gap: 8,
             flexWrap: "wrap",
           }}
         >
@@ -2588,7 +2588,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
           display: "flex",
           alignItems: "center",
           gap: 8,
-          padding: "10px 14px 12px",
+          padding: "12px 12px 12px",
         }}
       >
         <span style={{ fontFamily: mono, fontSize: 11, color: C.inkSoft }}>
@@ -2651,7 +2651,7 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
       style={{
         background: C.card,
         border: `1px solid ${C.line}`,
-        borderRadius: 10,
+        borderRadius: 8,
         overflow: "clip",
         boxShadow: `0 1px 2px ${C.shadow}`,
       }}
@@ -2661,7 +2661,7 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
           display: "flex",
           alignItems: "center",
           gap: 8,
-          padding: "11px 14px 8px",
+          padding: "12px 12px 8px",
         }}
       >
         <span
@@ -2679,7 +2679,7 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
         </span>
         <button
           onClick={() => onEdit(env.id)}
-          style={{ ...miniBtn, fontSize: 11, padding: "5px 9px" }}
+          style={{ ...miniBtn, fontSize: 11, padding: "4px 8px" }}
         >
           Edit
         </button>
@@ -2693,7 +2693,7 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
             style={{
               ...miniBtn,
               fontSize: 11,
-              padding: "5px 9px",
+              padding: "4px 8px",
               color: confirmDiscard ? C.card : C.red,
               background: confirmDiscard ? C.red : C.card,
               borderColor: confirmDiscard ? C.red : C.redSoft,
@@ -2709,7 +2709,7 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
                 right: 0,
                 zIndex: 5,
                 display: "flex",
-                gap: 6,
+                gap: 4,
                 padding: 4,
                 background: C.card,
                 border: `1px solid ${C.redSoft}`,
@@ -2720,7 +2720,7 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
               <button
                 autoFocus
                 onClick={disarm}
-                style={{ ...miniBtn, fontSize: 11, padding: "5px 9px" }}
+                style={{ ...miniBtn, fontSize: 11, padding: "4px 8px" }}
               >
                 Cancel
               </button>
@@ -2729,7 +2729,7 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
                 style={{
                   ...miniBtn,
                   fontSize: 11,
-                  padding: "5px 9px",
+                  padding: "4px 8px",
                   whiteSpace: "nowrap",
                   color: C.card,
                   background: C.red,
@@ -2744,7 +2744,7 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
         </span>
       </div>
 
-      <div style={{ padding: "0 14px 10px" }}>
+      <div style={{ padding: "0 12px 8px" }}>
         {env.entries.map((e) => {
           const nk = normName(e.name);
           return (
@@ -2756,7 +2756,7 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
                 gap: 8,
                 fontSize: 13.5,
                 color: C.ink,
-                padding: "2px 0",
+                padding: "0 0",
               }}
             >
               <span style={{ flex: 1, minWidth: 0 }}>
@@ -2771,7 +2771,7 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
                     color: C.manilaInk,
                     background: C.manila,
                     borderRadius: 999,
-                    padding: "1px 7px",
+                    padding: "0 8px",
                     flexShrink: 0,
                   }}
                 >
@@ -2784,7 +2784,7 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
         {env.note && (
           <div
             style={{
-              marginTop: 6,
+              marginTop: 4,
               fontFamily: mono,
               fontSize: 11,
               color: C.inkSoft,
@@ -2801,7 +2801,7 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
         )}
       </div>
 
-      <div style={{ borderTop: `1px solid ${C.line}`, padding: "10px 14px 12px" }}>
+      <div style={{ borderTop: `1px solid ${C.line}`, padding: "8px 12px 12px" }}>
         {list.length === 0 ? (
           <div style={{ fontSize: 13, color: C.inkSoft }}>
             No outstanding package accounts for any of these. It'll start
@@ -2828,7 +2828,7 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
                   color: C.manilaInk,
                   background: C.manila,
                   borderRadius: 6,
-                  padding: "6px 10px",
+                  padding: "4px 8px",
                   marginBottom: 8,
                 }}
               >
@@ -2844,10 +2844,10 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: 10,
+                      gap: 8,
                       border: `1px solid ${C.line}`,
                       borderRadius: 8,
-                      padding: "8px 10px",
+                      padding: "8px 8px",
                     }}
                   >
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -2900,7 +2900,7 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
                         ...miniBtn,
                         flexShrink: 0,
                         fontSize: 11.5,
-                        padding: "8px 10px",
+                        padding: "8px 8px",
                       }}
                     >
                       This one
@@ -5636,7 +5636,7 @@ syncBroken === "seeded"
         fontFamily: cochin,
         fontSize: 13.5,
         lineHeight: 1.4,
-        padding: "8px 10px",
+        padding: "8px 8px",
         background: C.redSoft,
         color: C.red,
       }}
@@ -5673,9 +5673,9 @@ syncBroken === "seeded"
            that property — it is only a value, not a new layout mode. Each
            curve is tuned to hit its two design sizes at 375px and at 760px,
            which is where the content column stops growing. */
-        .mdl-head { text-align: center; padding: 14px 8px 0; }
+        .mdl-head { text-align: center; padding: 12px 8px 0; }
         .mdl-rule { display: flex; align-items: center; justify-content: center;
-                    gap: 13px; max-width: 270px; margin: 0 auto 11px; }
+                    gap: 12px; max-width: 270px; margin: 0 auto 12px; }
         .mdl-rule i { flex: 1; height: 1px; background: ${C.gold}; opacity: .75; }
         .mdl-seal { width: clamp(36px, calc(20px + 4.2vw), 52px); height: auto; }
         .mdl-title { margin: 0; font-weight: 400; text-transform: uppercase;
@@ -5683,11 +5683,11 @@ syncBroken === "seeded"
                      letter-spacing: .22em; text-indent: .22em; line-height: 1.06; }
         .mdl-house { font-family: ${mono}; letter-spacing: .26em;
                      font-size: 10px;
-                     text-transform: uppercase; color: ${C.inkSoft}; margin-top: 9px; }
+                     text-transform: uppercase; color: ${C.inkSoft}; margin-top: 8px; }
 
-        .mdl-tallies { border-top: 1px solid ${C.line}; margin-top: 13px;
-                       padding-top: 11px; text-align: left; }
-        .mdl-thirds { display: flex; text-align: center; margin-bottom: 9px; }
+        .mdl-tallies { border-top: 1px solid ${C.line}; margin-top: 12px;
+                       padding-top: 12px; text-align: left; }
+        .mdl-thirds { display: flex; text-align: center; margin-bottom: 8px; }
         /* NOT equal thirds. Measured at 375px: the content column is 343px, the
            two counts are 7 characters ("559/905") and the value is 15
            ("$38.32k/$47.94k") — about 55px against 117px at mono 13px. Equal
@@ -5699,18 +5699,18 @@ syncBroken === "seeded"
            cell. At 1.7, measured at 375px, all three land on the SAME headroom
            — 23.3 / 23.3 / 23.2px — and the six-figure case fits exactly rather
            than clipping. Re-measure if the type size or padding changes. */
-        .mdl-thirds > div { flex: 1; min-width: 0; padding: 0 6px; }
+        .mdl-thirds > div { flex: 1; min-width: 0; padding: 0 4px; }
         .mdl-thirds .mdl-wide { flex: 1.7; }
         .mdl-thirds .mdl-mid { border-left: 1px solid ${C.line};
                                border-right: 1px solid ${C.line}; }
         .mdl-k { font-family: ${mono}; font-size: 10px; letter-spacing: .16em;
                  text-transform: uppercase; color: ${C.inkSoft}; }
-        .mdl-fig { font-family: ${mono}; font-size: 13px; margin-top: 3px;
+        .mdl-fig { font-family: ${mono}; font-size: 13px; margin-top: 4px;
                    white-space: nowrap; }
         .mdl-fig b { color: ${C.accent}; font-weight: 700; }
         .mdl-fig span { color: ${C.inkSoft}; }
         .mdl-foot { display: flex; justify-content: space-between; flex-wrap: wrap;
-                    gap: 2px 12px; margin-top: 8px; font-family: ${mono};
+                    gap: 0 12px; margin-top: 8px; font-family: ${mono};
                     font-size: 10.5px; color: ${C.inkSoft}; }
 
         /* Fixed height, always in flow, bled to the column edges so content
@@ -5724,7 +5724,7 @@ syncBroken === "seeded"
            ever goes away, give the masthead an explicit marginBottom instead. */
         .mdl-sticky { position: sticky; top: 0; z-index: 30; height: 46px;
                       margin: 0 -16px; padding: 0 16px;
-                      display: flex; align-items: center; gap: 10px;
+                      display: flex; align-items: center; gap: 8px;
                       background: ${C.paper};
                       border-bottom: 1px solid ${C.line};
                       opacity: 0; pointer-events: none;
@@ -5743,7 +5743,7 @@ syncBroken === "seeded"
         .mdl-bar { position: fixed; z-index: 50; left: 24px; right: 24px;
                    max-width: 480px; margin: 0 auto; height: 64px;
                    bottom: calc(12px + env(safe-area-inset-bottom));
-                   display: flex; gap: 2px; padding: 5px;
+                   display: flex; gap: 0; padding: 4px;
                    box-sizing: border-box; border: 1px solid ${C.line};
                    border-radius: 999px;
                    background: color-mix(in srgb, ${C.paper} 62%, transparent);
@@ -5752,7 +5752,7 @@ syncBroken === "seeded"
                    box-shadow: 0 8px 24px ${C.shadow}, 0 1px 3px ${C.shadow}; }
         .mdl-bar button { position: relative; flex: 1; min-width: 44px;
                    min-height: 44px; display: flex; flex-direction: column;
-                   align-items: center; justify-content: center; gap: 3px;
+                   align-items: center; justify-content: center; gap: 4px;
                    padding: 0; border: 0; border-radius: 999px;
                    background: transparent; color: ${C.ink}; cursor: pointer;
                    font-family: ${mono}; font-size: 10px; letter-spacing: .09em;
@@ -5763,13 +5763,13 @@ syncBroken === "seeded"
         .mdl-bar button.on { background: color-mix(in srgb, ${C.card} 90%, transparent);
                    color: ${C.accent}; box-shadow: inset 0 0 0 1px ${C.line}; }
         .mdl-bar button b { position: absolute; top: 6px; left: 50%;
-                   margin-left: 13px; font-size: 10px; font-weight: 700;
+                   margin-left: 12px; font-size: 10px; font-weight: 700;
                    color: ${C.red}; }
         .mdl-pill { position: fixed; z-index: 50; left: 24px; right: 24px;
                    max-width: 480px; margin: 0 auto; height: 48px;
                    bottom: calc(12px + 64px + 8px + env(safe-area-inset-bottom));
-                   display: flex; align-items: center; gap: 10px;
-                   padding: 0 18px; box-sizing: border-box;
+                   display: flex; align-items: center; gap: 8px;
+                   padding: 0 16px; box-sizing: border-box;
                    border: 1px solid ${C.line}; border-radius: 999px;
                    background: color-mix(in srgb, ${C.paper} 62%, transparent);
                    -webkit-backdrop-filter: blur(18px) saturate(1.8);
@@ -5794,13 +5794,13 @@ syncBroken === "seeded"
         .mdl-lg { margin: 16px 4px 8px; font-family: ${mono}; font-size: 11px;
                   letter-spacing: .2em; text-transform: uppercase; color: ${C.inkSoft}; }
         .mdl-lcard { background: ${C.card}; border: 1px solid ${C.line};
-                     border-radius: 16px; overflow: hidden; }
+                     border-radius: 8px; overflow: hidden; }
         .mdl-lrow { display: flex; align-items: center; gap: 12px; width: 100%;
-                    min-height: 52px; padding: 10px 16px; border: 0;
+                    min-height: 52px; padding: 8px 16px; border: 0;
                     border-top: 1px solid ${C.line}; background: transparent;
                     text-align: left; color: ${C.ink}; cursor: pointer; }
         .mdl-lcard > :first-child { border-top: 0; }
-        .mdl-lrow > .l { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+        .mdl-lrow > .l { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
         .mdl-lrow .t { font-size: 20px; line-height: 1.15; }
         .mdl-lrow .s { font-size: 13.5px; line-height: 1.3; color: ${C.inkSoft}; }
         .mdl-lrow .v { font-family: ${mono}; font-size: 14px; color: ${C.accent};
@@ -5812,7 +5812,7 @@ syncBroken === "seeded"
         .mdl-lrow[aria-expanded="true"]::after { transform: rotate(90deg); }
         .mdl-lrow:disabled { opacity: .6; cursor: default; }
         .mdl-reset { display: flex; }
-        .mdl-act { flex: 1; min-width: 0; min-height: 52px; padding: 10px 16px;
+        .mdl-act { flex: 1; min-width: 0; min-height: 52px; padding: 8px 16px;
                    border: 0; background: transparent; text-align: left;
                    font-size: 20px; color: ${C.ink}; cursor: pointer; }
         .mdl-act > span { display: block; min-width: 0; overflow: hidden;
@@ -5979,8 +5979,8 @@ syncBroken === "seeded"
              would overlap. On touch the cell is the top 30px of its row and
              draws its rule as ::before, so the text and the rule stay put. */
           .mdl-cell { align-self: flex-start !important; height: 30px;
-                      padding: 10px 10px 0 11px !important;
-                      border-left: 0 !important; }
+                      padding: 8px 8px 0 !important;
+                      border-left-color: transparent !important; }
           .mdl-cell::before { content: ""; position: absolute; left: 0; top: 0;
                               width: 1px; height: 40px; background: ${C.line}; }
           button:not(.mdl-lrow)::after { content: ""; position: absolute; left: 50%; top: 50%;
@@ -6001,15 +6001,16 @@ syncBroken === "seeded"
              tall (not 45), centred 0.5px low: a point hit-test reaches 1px up. */
           .mdl-edact > button::after { height: max(100%, 44px);
                           transform: translate(-50%, calc(-50% + .5px)); }
-          /* The stamp kinds wrap 10px apart. In headless Chromium (measured at
-             one chip offset), a point hit-test reads about 0.75px past an
-             area's top edge and 0.25px short of its bottom edge. So the area
-             runs 4.25px above the drawn box and 5.25px below it (top is
-             measured from the 32px padding box, inside a 1px border). It reads
-             5px up and 5px down at most. The area ends at the gap midpoint. At
+          /* The stamp kinds wrap 12px apart (12, not the 8 that the 4px grid
+             would pick: a 34px chip needs 10px of gap to reach 44px). In
+             headless Chromium (measured at one chip offset), a point hit-test
+             reads about 0.75px past an area's top edge and 0.25px short of its
+             bottom edge. So the area runs 5.25px above the drawn box and
+             6.25px below it (top is measured from the 32px padding box, inside
+             a 1px border). It reads 6px up and 6px down at most. The area ends at the gap midpoint. At
              fractional row offsets, hit-test rounding can move that by up to
              0.25px, and a finger cannot aim that fine. */
-          button.mdl-chip::after { top: -5.25px; height: calc(100% + 11.5px);
+          button.mdl-chip::after { top: -6.25px; height: calc(100% + 13.5px);
                                    transform: translateX(-50%); }
         }
 
@@ -6298,7 +6299,7 @@ syncBroken === "seeded"
                     fontFamily: cochin,
                     fontSize: 13.5,
                     lineHeight: 1.4,
-                    padding: "9px 9px 10px",
+                    padding: "8px 8px 8px",
                     border: 0,
                     borderTop: `1px solid ${C.line}`,
                     background: C.manila,
@@ -6457,7 +6458,7 @@ syncBroken === "seeded"
                             <span style={{ flex: 1, height: 1, background: C.line }} />
                           </div>
                           <div
-                            style={{ display: "flex", flexWrap: "wrap", gap: 5 }}
+                            style={{ display: "flex", flexWrap: "wrap", gap: 4 }}
                           >
                             {months.map((k) => (
                               <button
@@ -6466,7 +6467,7 @@ syncBroken === "seeded"
                                 aria-pressed={monthKey === k}
                                 style={{
                                   ...optCell(monthKey === k),
-                                  padding: "0 10px",
+                                  padding: "0 8px",
                                   border: `1px solid ${
                                     monthKey === k ? C.accent : C.line
                                   }`,
@@ -6491,7 +6492,7 @@ syncBroken === "seeded"
                               style={{
                                 display: "flex",
                                 alignItems: "center",
-                                gap: 7,
+                                gap: 8,
                                 flexWrap: "wrap",
                               }}
                             >
@@ -6579,7 +6580,7 @@ syncBroken === "seeded"
                   {photoMsg && (
                     <div
                       style={{
-                        padding: "7px 9px",
+                        padding: "8px 8px",
                         borderRadius: 8,
                         background: C.manila,
                         color: C.manilaInk,
@@ -6669,7 +6670,7 @@ syncBroken === "seeded"
                         fontFamily: cochin,
                         fontSize: 13.5,
                         lineHeight: 1.4,
-                        padding: "8px 10px",
+                        padding: "8px 8px",
                         background: C.manila,
                         color: C.manilaInk,
                       }}
@@ -6678,7 +6679,7 @@ syncBroken === "seeded"
                     </div>
                   )}
                   {versionList.length === 0 && !versionsDown && (
-                    <div style={{ ...partVal, marginTop: 2 }}>
+                    <div style={{ ...partVal, marginTop: 0 }}>
                       No versions saved on this device yet.
                     </div>
                   )}
@@ -6936,8 +6937,8 @@ syncBroken === "seeded"
                   background: C.ink,
                   color: C.card,
                   border: "none",
-                  borderRadius: 10,
-                  padding: "13px 20px",
+                  borderRadius: 8,
+                  padding: "12px 20px",
                   cursor: "pointer",
                 }}
               >
@@ -7096,7 +7097,7 @@ syncBroken === "seeded"
                 ? "No items match that search."
                 : "No cards match that search."}
               {query && (
-                <div style={{ marginTop: 10 }}>
+                <div style={{ marginTop: 8 }}>
                   <button onClick={() => setQuery("")} style={linkBtn}>
                     Clear search
                   </button>
@@ -7116,19 +7117,19 @@ syncBroken === "seeded"
                 letterSpacing: "0.14em",
                 textTransform: "uppercase",
                 color: C.inkSoft,
-                marginBottom: 10,
+                marginBottom: 8,
               }}
             >
               Canceled orders — for cross-checking refunds
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {canceledPackages.map((p) => (
                 <div
                   key={p.gk}
                   style={{
                     border: `1px dashed ${C.inkSoft}`,
-                    borderRadius: 10,
-                    padding: "10px 14px",
+                    borderRadius: 8,
+                    padding: "8px 12px",
                     opacity: 0.85,
                   }}
                 >
@@ -7136,7 +7137,7 @@ syncBroken === "seeded"
                     style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: 10,
+                      gap: 8,
                       marginBottom: 4,
                     }}
                   >
@@ -7177,7 +7178,7 @@ syncBroken === "seeded"
                         color: C.red,
                         border: `1.5px solid ${C.red}`,
                         borderRadius: 4,
-                        padding: "2px 7px",
+                        padding: "0 8px",
                         flexShrink: 0,
                       }}
                     >
@@ -7193,7 +7194,7 @@ syncBroken === "seeded"
                         alignItems: "baseline",
                         fontSize: 12.5,
                         color: C.inkSoft,
-                        padding: "3px 0",
+                        padding: "4px 0",
                       }}
                     >
                       <span style={{ flex: 1, minWidth: 0 }}>
