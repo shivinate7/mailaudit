@@ -4,6 +4,8 @@ Kind: build
 
 Plan: decisions/native-ledger-is-raw-json.md#known-gap-the-worker-merge-dropped-unknown-top-level-fields (web)
 
+Plan: decisions/native-ledger-is-raw-json.md#known-gap-the-worker-merge-dropped-unknown-top-level-fields (worker)
+
 **Status:** ruled. The owner accepted a typed enum plan on 2026-10-11. The orchestrator default of 2026-10-12 replaced that enum with a raw dictionary. Owner ruling 2026-10-12 ("Keep a copy, then go on") holds for every client and every path data comes in. A `received`, `receivedAt`, `stamps` or `envelopes` value of the wrong shape (a whole field or one entry; JSON `null` counts) is first copied. Then every readable entry is kept. The web copy goes to History as a milestone. The web detail and its fallbacks are in `saved-state-shape`.
 
 Orchestrator defaults of 2026-10-12, not owner rulings: native has no versions store or History yet. So the native copy is a kept file beside ledger.json. The mended ledger is saved at once after the copy. The kept name carries milliseconds, and a numeric suffix settles a name that exists.
