@@ -1,6 +1,10 @@
 # CI skips draft pull requests after a proof
 
-**Status:** ruled 2026-10-11. The native job skips drafts (lane C1). The other jobs still run on drafts. Their skip waits for a scratch PR. The scratch PR must show that a skipped required check does not read as passing. Owner ruling, 2026-10-12: the scratch-PR proof is granted. A separate lane runs it and records the result below. No result is recorded yet.
+Kind: build
+
+Plan: decisions/ci-skips-draft-prs.md#still-to-build (web)
+
+**Status:** ruled 2026-10-11. The native job skips drafts (lane C1). The other jobs still run on drafts. Their skip waits for a scratch PR, which must show that a skipped required check does not read as passing. Owner ruling, 2026-10-12: the scratch-PR proof is granted. Scratch PR #83 ran on 2026-10-12, and its result is below. The proof is incomplete. Debt: `draft-skip-required-unmeasured`.
 
 The owner ruled on 2026-10-11 that CI skips draft PRs. The ruling has one condition. The skip for the other jobs waits until a scratch PR shows that a skipped required check does not read as passing. Until then, drafts keep running CI in those jobs. Native stays not a required check until the owner says so, see `native-ci-on-hosted-macos`.
 
@@ -19,6 +23,10 @@ Run on 2026-10-12 as scratch PR #83, closed unmerged. Draft run 38265934901 and 
 - Main requires only suite and screens. Both ran on the draft, so no required check was skipped.
 
 The proof is incomplete. It shows that a skipped native job does not block a merge, because native is not required. It does not show how a skipped required check reads. That needs a draft guard on suite or screens, and a second scratch PR.
+
+## Still to build
+
+- A draft guard on the suite, scope, screens and zizmor jobs. It waits for a second scratch PR that shows how a skipped required check reads. Debt: `draft-skip-required-unmeasured`.
 
 ## See also
 

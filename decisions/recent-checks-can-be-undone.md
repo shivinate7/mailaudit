@@ -1,6 +1,6 @@
 # Recent actions can be undone by tap
 
-**Status:** open. The owner ruled on 2026-10-11 that the log is "Synced across devices", and accepted the reach, the gesture, the redo rule and the entrance, see Ruled. The owner ruled the shape on 2026-10-11: "Inside the ledger". Nothing is built. Debts: `recent-log-unbuilt` and `recent-log-unmeasured`.
+**Status:** ruled. The owner ruled on 2026-10-11 that the log is "Synced across devices", and accepted the reach, the gesture, the redo rule and the entrance, see Ruled. The owner ruled the shape on 2026-10-11: "Inside the ledger". Nothing is built. Debts: `recent-log-unbuilt` and `recent-log-unmeasured`.
 
 **Holds while:** `src/app.jsx` keeps no action log, and `undoAssign` is its only undo.
 

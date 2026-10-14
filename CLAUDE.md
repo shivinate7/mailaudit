@@ -104,6 +104,7 @@ Sync runs itself. These records say what it refuses to do, and why each refusal 
 - `photo-writes-wait-one-second` — Photo writes wait one second after the ledger.
 - `null-remote-info-is-not-no-key` — A null remote status is not a missing key.
 - `worker-keeps-snapshots` — The Worker keeps daily snapshots, and GitHub leaves the sync role.
+- `sync-revamp-cloudflare` — Sync moves from GitHub to Cloudflare, and orders arrive with no export.
 
 ## The native client
 
@@ -152,6 +153,7 @@ A milestone is taken before the risky step, never after. Read these before chang
 - `history-restores-a-saved-version` — History lists saved versions and restores one.
 - `backup-files-restore-two-ways` — Backup files restore with or without photos.
 - `every-restore-passes-applybackup` — Every restore passes through applyBackup.
+- `recent-checks-can-be-undone` — Recent actions can be undone by tap.
 
 ## The public seed
 
@@ -352,8 +354,6 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 - `watchdog-lives-in-private-repo` — The backup watchdog lives in the private repo.
 - `the-write-budget-is-shared` — The write budget is shared with the ledger push.
 - `vendor-toggle-undecided` — The vendor toggle stays undecided.
-- `recent-checks-can-be-undone` — Recent actions can be undone by tap.
-- `sync-revamp-cloudflare` — Sync moves from GitHub to Cloudflare, and orders arrive with no export.
 - `merge-later-change-wins` — Clock skew can pin a merge key. Accepted risk.
 
 ## Debts
@@ -388,7 +388,7 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `recent-log-unmeasured` — The recent-actions log has three measurements to take.
 - `armed-reset-mistap-unmeasured` — A mis-tap beside the armed Reset box is unmeasured.
 - `orphaned-reach-unpinned` — Re-import, Backup and Reset on Orphaned have no test.
-- `native-ledger-pins-missing` — Three native ledger behaviours have no test.
+- `native-ledger-pins-missing` — Four native ledger behaviours have no test.
 - `panels-overlay-unbuilt` — Disclosure panels still push the list.
 - `panel-paper-fill-unbuilt` — Overlay panels carry no paper fill.
 - `order-id-visible-unbuilt` — The order id has no narrow-width rule.
@@ -398,6 +398,11 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `native-runner-image-unverified` — Whether the hosted runner image has Xcode 27 and xcodegen is unverified.
 - `native-runner-keychain-unverified` — Whether the hosted runner keychain is unlocked is unverified.
 - `native-job-hosted-time-unmeasured` — The native job's time on a hosted runner is unmeasured.
+- `n4b-socket-idle-gate-unbuilt` — Lane N4b, the socket, idle gate and resume, is not built.
+- `n10-photos-unbuilt` — Lane N10, native photos, is not built.
+- `n11-device-check-not-run` — The owner's native device check has not run.
+- `sync-switch-pending` — The Cloudflare switch is pending, so web still mirrors to GitHub.
+- `cloudflare-access-login-untested` — A Cloudflare Access login in an iOS home-screen app is untested.
 
 ## Measurements
 

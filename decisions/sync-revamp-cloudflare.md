@@ -8,7 +8,7 @@ Plan: decisions/sync-revamp-cloudflare.md#worker-work-ahead (worker)
 
 Plan: decisions/sync-revamp-cloudflare.md#worker-work-ahead (native)
 
-**Status:** open. Stage 4b is built, and the switch is pending. The server runs at `manifestnumberone.shivamsemwal01.workers.dev`. A device sends its ledger there once it has its key. The switch is the move to the new Durable Object, see Stage 4b rulings.
+**Status:** ruled 2026-10-10. Stage 4b is built, and the switch is pending. Debt: `sync-switch-pending`. The server runs at `manifestnumberone.shivamsemwal01.workers.dev`. A device sends its ledger there once it has its key. The switch is the move to the new Durable Object, see Stage 4b rulings.
 
 GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Deliberately a manual backup, not continuous sync." Auto-push and merge grew on top of it later, and no one chose a sync base again. A fresh choice, made on 2026-10-10, picked Cloudflare.
 
@@ -91,7 +91,8 @@ The native build needs these changes to the Worker. On main the Worker serves `/
 
 ## Still open
 
-- Whether a Cloudflare Access login survives in an iOS home-screen app. This is untested.
+- The switch to the new Durable Object is pending, see Stage 4b rulings. Debt: `sync-switch-pending`.
+- Whether a Cloudflare Access login survives in an iOS home-screen app. This is untested. Debt: `cloudflare-access-login-untested`.
 - A restore keeps the old receivedAt today, so a later server reply can undo it. Debt: `restore-stamps-new-change-times`.
 - Live updates use a WebSocket. A new rev from the other device starts one GET, and the reply waits for the idle gate.
 - A 413 from the Worker turns mirror mode off, as an unknown answer does. The advisory line names the size problem.

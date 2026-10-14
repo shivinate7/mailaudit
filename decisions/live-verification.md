@@ -80,11 +80,11 @@ A probe deploy sets its own Durable Object name with the STORE_NAME variable, so
 
 Owner ruling, 2026-10-12: a probe deploy of the Worker is granted, under its own name and store. A live deploy needs the owner's word again.
 
-- **W2a photo route, probe-w2a.** Still to run on Cloudflare: the photos table is created through the Durable Object's SQLite API. A POST then a GET return the same bytes, with the type from the name. A second POST keeps the first bytes. A photo over 1.9 MB gets 413.
-- **W3a daily snapshots and /health, probe-w3a.** Still to run on Cloudflare: the snapshots table is created. The first changing write of a UTC day stores one snapshot, and a later one stores none. GET /health with no key returns only the last write time. The list and get snapshot routes answer with a device key.
-
-Update, 2026-10-12: both probes above ran on the probe Worker and passed. The owner then granted the live deploy ("Deploy live"). See "Worker probe results" and "Live deploy" below.
+- **W2a photo route, probe-w2a.** Ran on the probe Worker on 2026-10-12 and passed. The photos table is created through the Durable Object's SQLite API. A POST then a GET return the same bytes, with the type from the name. A second POST keeps the first bytes. A photo over 1.9 MB gets 413.
+- **W3a daily snapshots and /health, probe-w3a.** Ran on the probe Worker on 2026-10-12 and passed. The snapshots table is created. The first changing write of a UTC day stores one snapshot, and a later one stores none. GET /health with no key returns only the last write time. The list and get snapshot routes answer with a device key.
 - **W2b, W3b, W3c, W3d and W3e.** No probe is named. Each waits for its brief. The open work is in debts `restore-stamps-new-change-times` (W2b, W3b) and `dopush-mirror-conflict-path` (W3c to W3e).
+
+The owner then granted the live deploy ("Deploy live"). See "Worker probe results" and "Live deploy" below.
 
 No test runs the Durable Object adapter. So the SQLite calls in worker/index.mjs are unproven until a probe runs.
 

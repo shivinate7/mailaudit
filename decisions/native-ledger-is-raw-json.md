@@ -2,7 +2,7 @@
 
 Kind: build
 
-Plan: decisions/native-ledger-is-raw-json.md#known-gap-the-worker-merge-dropped-unknown-top-level-fields (web)
+Plan: decisions/native-ledger-is-raw-json.md#known-gap-the-worker-merge-dropped-unknown-top-level-fields (worker)
 
 Plan: decisions/native-ledger-is-raw-json.md#known-gap-the-worker-merge-dropped-unknown-top-level-fields (worker)
 
@@ -77,7 +77,7 @@ The orchestrator defaults of 2026-10-12 are pinned by these tests:
 
 The notice line is pinned by LedgerNoticeTests: testNoLineWhenNothingWasDropped, testOneLineNamesTheCountAndTheKeptCopy, testSingularCountReadsAsOneEntry, testLineNamesNoSyncWords.
 
-Three behaviours have no test. Debt: `native-ledger-pins-missing`.
+Four behaviours have no test. Debt: `native-ledger-pins-missing`.
 
 ## Known gap: the Worker merge dropped unknown top-level fields
 

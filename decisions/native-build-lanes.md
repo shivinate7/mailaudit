@@ -47,7 +47,7 @@ W2 and W3 come from the owner's rulings, not from the first plan. W2a and W3a ha
 - Batch 4: N5 (landed), beside N4a.
 - Batch 5: N6, N7 and N8 after N5 (landed), with N4b and N9.
 - N4a waits for the stage 4b switch, see `sync-revamp-cloudflare`.
-- N10 waits for W2a, because the owner ruled the Worker photo route first.
+- N10 waited for W2a, which landed in PR #77, because the owner ruled the Worker photo route first.
 
 ## N1 notes
 
@@ -79,6 +79,9 @@ Other risks live in the record for their lane:
 - The Ledger tab is a placeholder, see `ledger-tab-holds-options`. Debt: `native-ledger-tab-unbuilt`.
 - The native job runs ST only. Debt: `native-ui-tests-not-in-ci`.
 - The key scan skips SwiftUI view state. Debt: `native-key-scan-skips-views`.
+- Lane N4b, the socket, idle gate and resume, is not built. Debt: `n4b-socket-idle-gate-unbuilt`.
+- Lane N10, native photos, is not built. Debt: `n10-photos-unbuilt`.
+- Lane N11, the owner's device check, has not run. Debt: `n11-device-check-not-run`.
 
 ## See also
 
