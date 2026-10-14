@@ -178,8 +178,8 @@ export function mergeStamps(base, incoming) {
    Builds `merged` from NAMED fields, then carries every top-level key it does
    not know, so a key a newer build writes is not dropped by an older build's
    merge, applied as a full replace, and pushed back. A carried key held by one
-   side is kept. Held by both with different values, the side with the later
-   `savedAt` wins and a tie keeps incoming. Known keys are unchanged. A new
+   side is kept. Held by both with different values, incoming wins; no
+   merge input carries `savedAt`, so no time is compared. Known keys are unchanged. A new
    persisted key still needs invariant saved-state-shape's five sites in
    app.jsx; this file only keeps an unnamed one alive.
 
@@ -193,16 +193,14 @@ const KNOWN_KEYS = new Set([
 ]);
 
 function carryUnknownKeys(local, incoming) {
-  const out = {};
-  const newer = (Number(incoming?.savedAt) || 0) >= (Number(local?.savedAt) || 0) ? incoming : local;
-  for (const side of [local, incoming])
-    for (const k of Object.keys(side || {})) {
-      if (KNOWN_KEYS.has(k) || k in out) continue;
-      const inL = local && k in local;
-      const inI = incoming && k in incoming;
-      out[k] = inL && inI ? newer[k] : inL ? local[k] : incoming[k];
-    }
-  return out;
+  // Own-property checks and fromEntries keep names like constructor, toString
+  // and __proto__ as data. `k in` and `out[k] =` would read or move the prototype.
+  const keys = new Set([...Object.keys(local || {}), ...Object.keys(incoming || {})]);
+  return Object.fromEntries(
+    [...keys]
+      .filter((k) => !KNOWN_KEYS.has(k))
+      .map((k) => [k, incoming && Object.hasOwn(incoming, k) ? incoming[k] : local[k]])
+  );
 }
 
 export function mergeLedger(local, incoming) {
