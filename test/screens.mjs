@@ -37,15 +37,33 @@
         44 by 44 CSS px, measured by elementFromPoint from its centre. A tap that
         lands on a label counts for the field the label owns. A padding or
         pseudo-element grow counts, and a neighbour that cuts it short is a finding.
+        A target whose 44px reach runs past the viewport edge is skipped by this
+        floor only: the run prints one `note` line for it. Its drawn box and its
+        overlap probe still count.
     10. Drawn boxes (L6, no visual change): in every state of SCREEN_STATES, each
         element's painted box at 375px matches test/a11y-base-boxes.json, recorded
         from the base commit f7d51ba with `A11Y_RECORD=1 node test/screens.mjs
-        <base index.html>`. A grown hit area never grows it.
-    11. Overlap (L6, F2): in the same states, a tap 1px outside the midpoint of a
-        control's side, where that point is strictly nearer to that control than
-        to any other control, lands on that control or on no control. A tap that
-        lands on a neighbour is a finding. The probe must test at least one tap
-        per state, or the state fails.
+        <base index.html>`. A grown hit area never grows it. Keys mask digits in
+        their text, so a day count in a card does not move a key. In the Stamp
+        editor state, each gap between chip rows grows by STAMP_ROW_EXTRA_PX (the
+        10px row gap, orchestrator decision 2026-10-13); items below the chips move
+        with it, and nothing else moves. Set STAMP_ROW_EXTRA_PX to 0 once the base
+        for that state is re-recorded from the builder's head with
+        `A11Y_RECORD=1 A11Y_RECORD_ONLY="Stamp editor open" node test/screens.mjs`.
+    11. Overlap (L6, F2): in the same states, a tap 1px outside any point of a
+        control's side, corner to corner, counts when that point is strictly
+        nearer to that control than to any other control. So the walk along a side
+        stops at the gap midpoint. A tap that lands inside another control's own
+        border box counts for that control. A tap that lands on a neighbour's
+        pseudo-element, outside its border box, is a finding. The probe must test
+        at least one tap per state, or the state fails.
+    12. Stamp chips (L6, decision 2026-10-13): at 375px touch, in the Stamp editor
+        state, each of the six kind chips has a hit area at least 44px tall, centred
+        on its drawn box, that ends at the gap midpoint to the chip above and to the
+        chip below. Reach is walked from the drawn box in 0.5px steps.
+    13. Ledger rule (L6, item 2): at 375px touch on the Ledger tab, each tap on the
+        painted 1px top rule of "Sorted by" (corner to corner, every 0.25px down)
+        returns "Sorted by", not the row above it.
 
    Reduced motion is on, so animation does not skew the numbers. Exit 0 when all
    checks pass; exit 1 with one `FAIL` line per failure and one summary line. */
@@ -830,7 +848,17 @@ const TOUCH_SELECTOR =
   'button, a[href], input:not([type="hidden"]), select, textarea, [role="button"], [role="tab"], [role="checkbox"], summary, [tabindex]:not([tabindex="-1"])';
 const BASE_BOXES = path.join(ROOT, "test", "a11y-base-boxes.json");
 const BOX_TOL_PX = 0.5;
+/* The Stamp editor's chip row gap goes from 6px to 10px (orchestrator decision
+   2026-10-13): each gap between chip rows adds this much to the items below it.
+   Set to 0 once the base for that state is re-recorded from the builder's head. */
+const STAMP_ROW_EXTRA_PX = 4;
 const RECORD = process.env.A11Y_RECORD === "1";
+/* A base key masks the digits in its text, so a day count does not move it.
+   The index and tag stay as they are, so repeated labels stay apart. */
+const keyMasked = (key) => {
+  const [i, tag, ...rest] = key.split("|");
+  return [i, tag, rest.join("|").replace(/\d+/g, "#")].join("|");
+};
 
 /* Opens one state; false when it does not open, so the caller fails loudly. */
 async function openScreenState(page, state) {
@@ -1033,25 +1061,42 @@ const measureTouch = ({ selector, half }) => {
         ext[dir] = s;
       }
     }
-    /* Overlap probe: a tap 1px outside the midpoint of a side. It counts only
-       when this element is strictly the nearest control to it. */
-    const mx = box.left + box.width / 2;
-    const my = box.top + box.height / 2;
-    for (const [side, px, py] of [
-      ["top", mx, box.top - 1],
-      ["bottom", mx, box.bottom + 1],
-      ["left", box.left - 1, my],
-      ["right", box.right + 1, my],
-    ]) {
-      if (px < 0 || py < 0 || px > window.innerWidth || py > window.innerHeight) continue;
-      const d = gapTo(box, px, py);
-      if (els.some((_, j) => j !== i && gapTo(boxes[j], px, py) <= d)) continue;
-      probed++;
-      const owner = ownerOf(document.elementFromPoint(px, py));
-      if (owner && owner !== el) {
+    /* Overlap probe: a tap 1px outside any point of a side, corner to corner.
+       It counts only when this element is strictly the nearest control to it,
+       so the walk along a side stops at the gap midpoint. A tap inside another
+       control's own border box counts for that control; only a tap a neighbour
+       takes with a pseudo-element, outside its border box, is a finding. */
+    const sideTaps = (side) => {
+      const pts = [];
+      const span = (a, b) => {
+        const out = [];
+        for (let t = a; t < b; t += 1) out.push(t);
+        out.push(b);
+        return out;
+      };
+      if (side === "top") for (const x of span(box.left, box.right)) pts.push([x, box.top - 1]);
+      if (side === "bottom") for (const x of span(box.left, box.right)) pts.push([x, box.bottom + 1]);
+      if (side === "left") for (const y of span(box.top, box.bottom)) pts.push([box.left - 1, y]);
+      if (side === "right") for (const y of span(box.top, box.bottom)) pts.push([box.right + 1, y]);
+      return pts;
+    };
+    const seen = new Set();
+    for (const side of ["top", "bottom", "left", "right"]) {
+      for (const [px, py] of sideTaps(side)) {
+        if (px < 0 || py < 0 || px > window.innerWidth || py > window.innerHeight) continue;
+        const d = gapTo(box, px, py);
+        if (els.some((_, j) => j !== i && gapTo(boxes[j], px, py) <= d)) continue;
+        probed++;
+        const owner = ownerOf(document.elementFromPoint(px, py));
+        if (!owner || owner === el) continue;
+        const lb = owner.getBoundingClientRect();
+        if (px >= lb.left && px <= lb.right && py >= lb.top && py <= lb.bottom) continue;
+        /* one line per side and neighbour, so a long edge does not flood the report */
+        const k = `${side}|${owner.tagName}|${label(owner)}`;
+        if (seen.has(k)) continue;
+        seen.add(k);
         /* the neighbour's layout box and its drawn box, so a failure shows
            whether its padding or a pseudo-element took the tap */
-        const lb = owner.getBoundingClientRect();
         const db = drawnBox(owner);
         overlaps.push({
           side,
@@ -1068,6 +1113,7 @@ const measureTouch = ({ selector, half }) => {
     return {
       key: `${i}|${el.tagName.toLowerCase()}|${text}`,
       text,
+      chip: el.classList.contains("mdl-chip"),
       pinned,
       x: pinned ? box.left : box.left + window.scrollX,
       y: pinned ? box.top : box.top + window.scrollY,
@@ -1139,34 +1185,177 @@ async function touchCheck(browser) {
         fail(stateName, "no base boxes for this state; re-record with A11Y_RECORD=1 on the base commit");
         continue;
       }
-      const wantKeys = Object.keys(want);
-      if (wantKeys.length !== items.length) {
-        fail(stateName, `${items.length} interactive elements, the base has ${wantKeys.length}`);
+      const wantByKey = Object.fromEntries(Object.entries(want).map(([k, v]) => [keyMasked(k), v]));
+      if (Object.keys(wantByKey).length !== items.length) {
+        fail(stateName, `${items.length} interactive elements, the base has ${Object.keys(wantByKey).length}`);
         continue;
       }
+      /* In the Stamp editor the chip rows sit STAMP_ROW_EXTRA_PX further apart
+         per row boundary, and everything below them moves with the taller grid.
+         Chip tops come from the base, so the boundaries are the base's own. */
+      const chipTops = [];
+      for (const it of items) {
+        const b = wantByKey[keyMasked(it.key)];
+        if (it.chip && b) chipTops.push(Math.round(b.y));
+      }
+      const rowTops = state === "Stamp editor open" ? [...new Set(chipTops)].sort((p, q) => p - q) : [];
+      const extraAbove = (baseY) => STAMP_ROW_EXTRA_PX * rowTops.slice(1).filter((t) => t <= baseY + 0.5).length;
       const moved = [];
       for (const it of items) {
-        const b = want[it.key];
+        const b = wantByKey[keyMasked(it.key)];
         if (!b) {
           moved.push(`${it.key} is new`);
           continue;
         }
+        /* a pinned item sits in the viewport, so the list's growth does not move it */
+        const ey = b.y + (it.pinned ? 0 : extraAbove(b.y));
         const d = Math.max(
           Math.abs(it.x - b.x),
-          Math.abs(it.y - b.y),
+          Math.abs(it.y - ey),
           Math.abs(it.w - b.w),
           Math.abs(it.h - b.h)
         );
         if (d > BOX_TOL_PX) moved.push(`${it.key} moved or resized by ${d.toFixed(2)}px`);
       }
       if (moved.length)
-        fail(stateName, `${moved.length} drawn box(es) changed from the base; first: ${moved[0]}`);
+        fail(stateName, `${moved.length} drawn box(es) changed from the base; first: ${moved.slice(0, 3).join("; ")}`);
     }
     if (RECORD) {
-      const out = { 375: recorded };
-      writeFileSync(BASE_BOXES, JSON.stringify(out, null, 1) + "\n");
-      console.log(`recorded ${Object.values(recorded).reduce((n, s) => n + Object.keys(s).length, 0)} base boxes to test/a11y-base-boxes.json`);
+      /* A11Y_RECORD_ONLY="<state>" writes that state alone and keeps the rest of
+         the file, so one state can be re-recorded without moving the others. */
+      const only = process.env.A11Y_RECORD_ONLY || "";
+      if (only && !recorded[only]) fail(name, `A11Y_RECORD_ONLY names no state: "${only}"`);
+      const prior = existsSync(BASE_BOXES) ? JSON.parse(readFileSync(BASE_BOXES, "utf8")) : {};
+      const keep = { ...(prior["375"] || {}) };
+      for (const [state, boxes] of Object.entries(recorded)) if (!only || state === only) keep[state] = boxes;
+      writeFileSync(BASE_BOXES, JSON.stringify({ 375: keep }, null, 1) + "\n");
+      const n = Object.entries(recorded).reduce((c, [s, b]) => (!only || s === only ? c + Object.keys(b).length : c), 0);
+      console.log(`recorded ${n} base boxes to test/a11y-base-boxes.json`);
     }
+    for (const e of pageErrors) fail(name, `page error: ${e}`);
+  } finally {
+    await ctx.close();
+  }
+}
+
+/* Claim 12 (L6): the six stamp kind chips at 375px touch. Runs in the page.
+   Each chip's reach is walked from its drawn box in 0.5px steps, stopping at
+   the first point another control owns. Neighbours are the chips that share
+   a horizontal span and sit directly above or below. */
+const STAMP_CHIPS = 6;
+const CHIP_MIN_PX = 44;
+const chipReach = (chipIndex) => {
+  const chips = [...document.querySelectorAll("button.mdl-chip")];
+  const c = chips[chipIndex];
+  c.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
+  const rects = chips.map((el) => el.getBoundingClientRect());
+  const r = rects[chipIndex];
+  const cx = r.left + r.width / 2;
+  const walk = (dir) => {
+    let last = 0;
+    for (let t = 0.5; t <= 40; t += 0.5) {
+      const y = dir < 0 ? r.top - t : r.bottom + t;
+      const h = document.elementFromPoint(cx, y);
+      if (!h || h.closest("button") !== c) break;
+      last = t;
+    }
+    return last;
+  };
+  const across = (o) => o.left < r.right && o.right > r.left;
+  let above = null;
+  let below = null;
+  rects.forEach((o, j) => {
+    if (j === chipIndex || !across(o)) return;
+    if (o.bottom <= r.top + 0.5 && (!above || o.bottom > rects[above].bottom)) above = j;
+    if (o.top >= r.bottom - 0.5 && (!below || o.top < rects[below].top)) below = j;
+  });
+  return {
+    label: c.textContent.trim(),
+    height: r.height,
+    up: walk(-1),
+    down: walk(1),
+    gapUp: above === null ? null : r.top - rects[above].bottom,
+    gapDown: below === null ? null : rects[below].top - r.bottom,
+  };
+};
+
+async function stampChipCheck(browser) {
+  const name = "stamp chips 375px";
+  checks++;
+  const { ctx, page, pageErrors } = await openSeeded(browser, 375, { touch: true });
+  try {
+    if (!(await loadedOk(page))) {
+      fail(name, "seeded ledger did not render");
+      return;
+    }
+    if (!(await openScreenState(page, "Stamp editor open"))) {
+      fail(name, "the Stamp editor did not open, so its chips cannot be measured");
+      return;
+    }
+    await page.waitForTimeout(150);
+    const count = await page.evaluate(() => document.querySelectorAll("button.mdl-chip").length);
+    if (count !== STAMP_CHIPS) {
+      fail(name, `${count} stamp chips, want ${STAMP_CHIPS}`);
+      return;
+    }
+    const tol = TAP_TOLERANCE_PX;
+    for (let i = 0; i < STAMP_CHIPS; i++) {
+      const c = await page.evaluate(chipReach, i);
+      const span = c.height + c.up + c.down;
+      if (span < CHIP_MIN_PX - tol)
+        fail(name, `"${c.label}" hit is ${span.toFixed(1)}px tall, under ${CHIP_MIN_PX}px`);
+      if (Math.abs(c.up - c.down) > tol)
+        fail(name, `"${c.label}" hit is off centre: ${c.up.toFixed(1)}px up, ${c.down.toFixed(1)}px down`);
+      if (c.gapUp !== null && c.up > c.gapUp / 2 + tol)
+        fail(name, `"${c.label}" reaches ${c.up.toFixed(1)}px up, past the gap midpoint at ${(c.gapUp / 2).toFixed(1)}px`);
+      if (c.gapDown !== null && c.down > c.gapDown / 2 + tol)
+        fail(name, `"${c.label}" reaches ${c.down.toFixed(1)}px down, past the gap midpoint at ${(c.gapDown / 2).toFixed(1)}px`);
+    }
+    for (const e of pageErrors) fail(name, `page error: ${e}`);
+  } finally {
+    await ctx.close();
+  }
+}
+
+/* Claim 13 (L6, item 2): on the Ledger tab at 375px touch, each tap on the
+   painted 1px top rule of "Sorted by" lands on "Sorted by". Sampled every 0.25px
+   down the rule and every 4px across the row, inset 2px from each end. */
+async function ledgerRuleCheck(browser) {
+  const name = "ledger rule 375px";
+  checks++;
+  const { ctx, page, pageErrors } = await openSeeded(browser, 375, { touch: true });
+  try {
+    if (!(await loadedOk(page))) {
+      fail(name, "seeded ledger did not render");
+      return;
+    }
+    if (!(await showView(page, "Ledger"))) {
+      fail(name, "the Ledger tab did not open");
+      return;
+    }
+    await page.waitForTimeout(150);
+    const res = await page.evaluate(() => {
+      const row = [...document.querySelectorAll("button.mdl-lrow")].find((b) =>
+        b.textContent.trim().startsWith("Sorted by")
+      );
+      if (!row) return { missing: true, taps: 0, misses: [] };
+      row.scrollIntoView({ block: "center", inline: "center", behavior: "instant" });
+      const r = row.getBoundingClientRect();
+      const misses = [];
+      let taps = 0;
+      for (let y = r.top; y < r.top + 1; y += 0.25) {
+        for (let x = r.left + 2; x <= r.right - 2; x += 4) {
+          taps++;
+          const h = document.elementFromPoint(x, y);
+          const b = h && h.closest("button");
+          if (b !== row) misses.push(`(${x.toFixed(1)}, ${y.toFixed(2)}) lands on ${b ? b.textContent.trim().slice(0, 20) : "nothing"}`);
+        }
+      }
+      return { missing: false, taps, misses };
+    });
+    if (res.missing) fail(name, 'no "Sorted by" row on the Ledger tab');
+    else if (res.misses.length)
+      fail(name, `${res.misses.length} of ${res.taps} taps on the "Sorted by" top rule go elsewhere; first: ${res.misses[0]}`);
     for (const e of pageErrors) fail(name, `page error: ${e}`);
   } finally {
     await ctx.close();
@@ -1197,6 +1386,8 @@ async function main() {
       () => overflowChecks(browser),
       ...WIDTHS.map((width) => () => axeCheck(browser, width)),
       () => touchCheck(browser),
+      () => stampChipCheck(browser),
+      () => ledgerRuleCheck(browser),
       ...WIDTHS.map((width) => () => barCheck(browser, width)),
       ...WIDTHS.map((width) => () => ledgerCheck(browser, width)),
       ...WIDTHS.map((width) => () => syncPanelCheck(browser, width)),
