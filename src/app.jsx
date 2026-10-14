@@ -3181,6 +3181,13 @@ export default function MailDayLedger() {
   }, []);
   const saveTimer = useRef(null);
   const skipFirstSave = useRef(true);
+  /* When the ledger was last saved by a hand edit. It rides snapshot(), so the
+     merge can pick the later side of an unknown key. A ref, not state: it changes
+     only alongside the ledger, and a re-render for it would be churn. After an
+     apply (restore, pull, merge) the next save keeps the time the applied ledger
+     carries, because an apply is not an edit. null: never saved. */
+  const savedAtRef = useRef(null);
+  const keepSavedAt = useRef(false);
   /* "what you are looking at is a snapshot of someone else's ledger" — true
      only for a visitor, since seeding requires no key on the device */
   const [seedShown, setSeedShown] = useState(false);
@@ -3263,6 +3270,7 @@ export default function MailDayLedger() {
           );
           // absent on anything saved before stamps shipped
           setStamps(sanitizeStamps(data.stamps));
+          if (typeof data.savedAt === "number") savedAtRef.current = data.savedAt;
           // device-local, never in snapshot(): when the Worker last agreed
           if (data.workerSyncedAt)
             setWorkerSyncedAt((p) => Math.max(p || 0, data.workerSyncedAt));
@@ -3291,6 +3299,9 @@ export default function MailDayLedger() {
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
       try {
+        const at = keepSavedAt.current && savedAtRef.current != null ? savedAtRef.current : Date.now();
+        keepSavedAt.current = false;
+        savedAtRef.current = at;
         await window.storage.set(
           STORAGE_KEY,
           JSON.stringify({
@@ -3303,7 +3314,7 @@ export default function MailDayLedger() {
             sortBy,
             itemSort,
             workerSyncedAt,
-            savedAt: Date.now(),
+            savedAt: at,
           })
         );
         setSaving("saved");
@@ -3326,7 +3337,7 @@ export default function MailDayLedger() {
       window.storage
         .set(
           STORAGE_KEY,
-          JSON.stringify({ ...payloadRef.current, workerSyncedAt, savedAt: Date.now() })
+          JSON.stringify({ ...payloadRef.current, workerSyncedAt, savedAt: savedAtRef.current ?? undefined })
         )
         .catch((e) => console.warn("workerSyncedAt save failed", e));
     }, 500);
@@ -3337,9 +3348,8 @@ export default function MailDayLedger() {
      Keeping it single is a documentation requirement as much as a DRY one:
      invariant saved-state-shape says adding a persisted key means touching five sites, and a
      second builder would quietly make it six — with the next person to add a
-     key missing one. Note there is deliberately no timestamp in here; the push
-     puts one in the commit message instead, so the payload shape stays frozen
-     and identical to what the Backup file has always contained. */
+     key missing one. savedAt rides in here (owner ruling 2026-10-14); the push
+     also puts a time in the commit message. */
   /* One list, three readers: the backup packer, the sweep, and photo sync. They
      were three separate flatMaps over the same field, which is three chances
      for them to disagree about what "in use" means. */
@@ -3457,6 +3467,7 @@ syncBroken === "seeded"
       dateFilter,
       sortBy,
       itemSort,
+      ...(savedAtRef.current != null && { savedAt: savedAtRef.current }),
     }),
     [items, received, receivedAt, envelopes, stamps, dateFilter, sortBy, itemSort]
   );
@@ -3659,6 +3670,11 @@ syncBroken === "seeded"
         localIds === null || source === "server"
           ? null
           : new Set([...localIds, ...inlinedIds, ...(extraPresent || [])]);
+      /* a merge or server apply carries the applied ledger's time; its own save keeps it.
+         A restore (backup file, saved version) is a fresh save of that ledger: it stamps
+         now, so it wins unknown-key conflicts afterwards (owner ruling 2026-10-14) */
+      savedAtRef.current = replacing ? Date.now() : typeof data.savedAt === "number" ? data.savedAt : null;
+      keepSavedAt.current = true;
       setItems(data.items);
       setReceived(data.received || {});
       setReceivedAt(data.receivedAt || {});
@@ -3961,6 +3977,8 @@ syncBroken === "seeded"
        bail: otherwise a mid-flight pull would finish and cheerfully restore the
        ledger that was just cleared. */
     syncGen.current++;
+    savedAtRef.current = null;
+    keepSavedAt.current = false;
     setItems([]);
     setReceived({});
     setReceivedAt({});
@@ -4319,9 +4337,7 @@ syncBroken === "seeded"
           ? mergeLedger(snapshot(), lastServer.current).merged
           : snapshot()
       );
-      /* the timestamp goes here rather than into the payload, so the pushed
-         shape stays byte-identical to the Backup file's — and it lands where
-         it's actually useful, in the commit list */
+      /* the commit message carries a time that lands where it's useful, in the commit list */
       const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
       const message = `ledger ${stamp} · ${items.length} lines · ${liveEnvelopes.length} envelopes`;
       const gen = ++syncGen.current;
@@ -4565,7 +4581,9 @@ syncBroken === "seeded"
         if (reply) {
           /* nothing to merge: no apply, no milestone. Canonical compare, so a
              note, a photo id or a receivedAt that differs alone still counts. */
-          if (canon(merged) === canon(snapshot())) {
+          /* savedAt is a save time, not ledger content: two ledgers equal but for it are equal */
+          const noTime = ({ savedAt, ...rest }) => rest;
+          if (canon(noTime(merged)) === canon(noTime(snapshot()))) {
             setSeedShown(false); /* a server ledger has landed: this page is the owner's now */
             return { ok: true };
           }
