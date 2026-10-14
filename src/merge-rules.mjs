@@ -175,16 +175,36 @@ export function mergeStamps(base, incoming) {
 
 /* `local` is the device running the merge and wins every tie.
 
-   Builds `merged` from NAMED fields. That is deliberate — a payload is never
-   spread through, so nothing unexpected rides along — but it means a new
-   persisted key that is not named here is dropped by every merge, applied
-   locally as a full replace, and then pushed. Invariant saved-state-shape's five sites in
-   app.jsx are this file's sixth.
+   Builds `merged` from NAMED fields, then carries every top-level key it does
+   not know, so a key a newer build writes is not dropped by an older build's
+   merge, applied as a full replace, and pushed back. A carried key held by one
+   side is kept. Held by both with different values, the side with the later
+   `savedAt` wins and a tie keeps incoming. Known keys are unchanged. A new
+   persisted key still needs invariant saved-state-shape's five sites in
+   app.jsx; this file only keeps an unnamed one alive.
 
    The three view preferences are deliberately NOT merged — local keeps its own.
    They describe how this screen is sorted and filtered, not what is true about
    the mail, and syncing them makes the phone's sort order jump because the
    laptop happened to be sorted differently. */
+const KNOWN_KEYS = new Set([
+  "mailday", "items", "received", "receivedAt", "envelopes", "stamps",
+  "dateFilter", "sortBy", "itemSort",
+]);
+
+function carryUnknownKeys(local, incoming) {
+  const out = {};
+  const newer = (Number(incoming?.savedAt) || 0) >= (Number(local?.savedAt) || 0) ? incoming : local;
+  for (const side of [local, incoming])
+    for (const k of Object.keys(side || {})) {
+      if (KNOWN_KEYS.has(k) || k in out) continue;
+      const inL = local && k in local;
+      const inI = incoming && k in incoming;
+      out[k] = inL && inI ? newer[k] : inL ? local[k] : incoming[k];
+    }
+  return out;
+}
+
 export function mergeLedger(local, incoming) {
   const items = mergeItems(local?.items, incoming?.items);
   const received = mergeReceived(
@@ -197,6 +217,7 @@ export function mergeLedger(local, incoming) {
   const stamps = mergeStamps(local?.stamps, incoming?.stamps);
   return {
     merged: {
+      ...carryUnknownKeys(local, incoming),
       mailday: 1,
       items: items.items,
       received: received.received,
