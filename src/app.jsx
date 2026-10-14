@@ -6006,7 +6006,9 @@ syncBroken === "seeded"
              area's top edge and 0.25px short of its bottom edge. So the area
              runs 4.25px above the drawn box and 5.25px below it (top is
              measured from the 32px padding box, inside a 1px border). It reads
-             5px up and 5px down at most, never past the gap midpoint. */
+             5px up and 5px down at most. The area ends at the gap midpoint. At
+             fractional row offsets, hit-test rounding can move that by up to
+             0.25px, and a finger cannot aim that fine. */
           button.mdl-chip::after { top: -5.25px; height: calc(100% + 11.5px);
                                    transform: translateX(-50%); }
         }
