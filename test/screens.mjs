@@ -64,6 +64,14 @@
     13. Ledger rule (L6, Sorted by top rule): at 375px touch on the Ledger tab, each tap in the
         top 1px band of the "Sorted by" row, inset 2px from each end (every 0.25px
         down, every 4px across), returns "Sorted by", not the row above it.
+    14. Spacing grid (decision spacing-on-4px-grid, owner ruling 2026-10-11 "Re-space
+        to the grid"): at 375px and 760px, and at 375px touch (the pointer: coarse
+        block sets its own padding), in every state of SCREEN_STATES, each visible
+        element's computed margin, padding, row-gap and column-gap is a multiple of
+        4px. Auto margins are skipped and gap "normal" counts as 0. Each card's four
+        corners are 8px. A card is a DIV on the card surface (#FCF6EA) with a 1px
+        border. Pseudo-elements are not walked. Exemptions are named in GRID_EXEMPT,
+        each with its reason.
 
    Reduced motion is on, so animation does not skew the numbers. Exit 0 when all
    checks pass; exit 1 with one `FAIL` line per failure and one summary line. */
@@ -1356,6 +1364,110 @@ async function ledgerRuleCheck(browser) {
   }
 }
 
+/* Claim 14 (decision spacing-on-4px-grid): the grid and the 8px card corner.
+   The card surface is C.card (#FCF6EA). GRID_EXEMPT names each element the
+   brief puts out of scope, with its reason. It is empty: no offender at the
+   lane head is out of scope, and none is a UA default. */
+const CARD_BG = "rgb(252, 246, 234)";
+const GRID_STEP_PX = 4;
+const CARD_RADIUS_PX = 8;
+const GRID_EXEMPT = [];
+
+/* Runs in the page. Reads each visible element's spacing as used px, so margin
+   and padding come back as px, and "auto" is read from the computed style map. */
+const gridProbe = ({ exempt, cardBg, step, radius }) => {
+  const EPS = 0.01;
+  const SPACING = [
+    "margin-top", "margin-right", "margin-bottom", "margin-left",
+    "padding-top", "padding-right", "padding-bottom", "padding-left",
+    "row-gap", "column-gap",
+  ];
+  const CORNERS = [
+    "border-top-left-radius", "border-top-right-radius",
+    "border-bottom-right-radius", "border-bottom-left-radius",
+  ];
+  const describe = (el) => {
+    const cls = [...el.classList].map((c) => "." + c).join("");
+    const text = (el.textContent || "").trim().replace(/\s+/g, " ").slice(0, 24);
+    return el.tagName.toLowerCase() + cls + (text ? ` "${text}"` : "");
+  };
+  const out = {
+    visible: 0,
+    cards: 0,
+    coarse: matchMedia("(pointer: coarse)").matches,
+    offenders: [],
+    badRadius: [],
+  };
+  for (const el of [document.body, ...document.body.querySelectorAll("*")]) {
+    if (!el.checkVisibility({ visibilityProperty: true })) continue;
+    out.visible++;
+    const cs = getComputedStyle(el);
+    const map = el.computedStyleMap();
+    if (el.tagName === "DIV" && cs.backgroundColor === cardBg && parseFloat(cs.borderTopWidth) === 1) {
+      out.cards++;
+      const bad = CORNERS.map((p) => cs.getPropertyValue(p)).filter(
+        (v) => Math.abs(parseFloat(v) - radius) > EPS
+      );
+      if (bad.length) out.badRadius.push(`${describe(el)} corners ${bad.join("/")}`);
+    }
+    if (exempt.some((sel) => el.matches(sel))) continue;
+    for (const prop of SPACING) {
+      const kw = map.get(prop);
+      if (kw && kw.value === "auto") continue;
+      const raw = cs.getPropertyValue(prop);
+      const v = raw === "normal" ? 0 : parseFloat(raw);
+      const onGrid = !Number.isNaN(v) && Math.abs(v - Math.round(v / step) * step) <= EPS;
+      if (!onGrid) out.offenders.push(`${describe(el)} ${prop} ${raw}`);
+    }
+  }
+  return out;
+};
+
+/* 375px and 760px, plus 375px touch: the pointer: coarse block in the stylesheet
+   sets its own spacing, so a plain pass would miss it. */
+async function gridCheck(browser, { width, touch = false }) {
+  const tag = `${width}px${touch ? " touch" : ""}`;
+  const { ctx, page, pageErrors } = await openSeeded(browser, width, { touch, ledger: AXE_LEDGER });
+  try {
+    if (!(await loadedOk(page))) {
+      fail(`grid ${tag}`, "seeded ledger did not render; no state can be measured");
+      return;
+    }
+    const exempt = GRID_EXEMPT.map((e) => e.sel);
+    for (const state of SCREEN_STATES) {
+      const name = `grid ${tag} ${state}`;
+      checks++;
+      if (!(await openScreenState(page, state))) {
+        fail(name, "the state did not open, so it cannot be measured");
+        continue;
+      }
+      await page.waitForTimeout(150);
+      const res = await page.evaluate(gridProbe, {
+        exempt,
+        cardBg: CARD_BG,
+        step: GRID_STEP_PX,
+        radius: CARD_RADIUS_PX,
+      });
+      if (touch && !res.coarse) fail(name, "the touch context does not match (pointer: coarse)");
+      if (res.cards === 0) fail(name, "no card found, so the radius half cannot pass");
+      const offenders = [...new Set(res.offenders)];
+      if (res.offenders.length)
+        fail(
+          name,
+          `${res.offenders.length} off-grid spacing values, ${offenders.length} distinct: ${offenders.slice(0, 8).join("; ")}`
+        );
+      if (res.badRadius.length)
+        fail(
+          name,
+          `${res.badRadius.length} of ${res.cards} cards not ${CARD_RADIUS_PX}px: ${res.badRadius.slice(0, 4).join("; ")}`
+        );
+    }
+    for (const e of pageErrors) fail(`grid ${tag}`, `page error: ${e}`);
+  } finally {
+    await ctx.close();
+  }
+}
+
 async function main() {
   const t0 = Date.now();
   if (!existsSync(PAGE)) {
@@ -1385,6 +1497,8 @@ async function main() {
       ...WIDTHS.map((width) => () => barCheck(browser, width)),
       ...WIDTHS.map((width) => () => ledgerCheck(browser, width)),
       ...WIDTHS.map((width) => () => syncPanelCheck(browser, width)),
+      ...WIDTHS.map((width) => () => gridCheck(browser, { width })),
+      () => gridCheck(browser, { width: 375, touch: true }),
       () => rowShiftCheck(browser, { view: "Packages", anchorText: "Alpha Cards", expand: false }),
       () => rowShiftCheck(browser, { view: "Tally", anchorText: "Lightning Bolt", expand: true }),
       () => discardArmCheck(browser),
