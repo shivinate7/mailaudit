@@ -142,7 +142,7 @@ Error generating stack: `+i.message+`
                    stroke-linecap: round; stroke-linejoin: round; }
         .mdl-bar button.on { background: color-mix(in srgb, ${d.card} 90%, transparent);
                    color: ${d.accent}; box-shadow: inset 0 0 0 1px ${d.line}; }
-        .mdl-bar button b { position: absolute; top: 6px; left: 50%;
+        .mdl-bar button b { position: absolute; top: 4px; left: 50%;
                    margin-left: 12px; font-size: 10px; font-weight: 700;
                    color: ${d.red}; }
         .mdl-pill { position: fixed; z-index: 50; left: 24px; right: 24px;
@@ -180,6 +180,7 @@ Error generating stack: `+i.message+`
                     border-top: 1px solid ${d.line}; background: transparent;
                     text-align: left; color: ${d.ink}; cursor: pointer; }
         .mdl-lcard > :first-child { border-top: 0; }
+        /* gap 4, not 0: a tap 1px outside a capsule corner stays off the control beneath */
         .mdl-lrow > .l { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
         .mdl-lrow .t { font-size: 20px; line-height: 1.15; }
         .mdl-lrow .s { font-size: 13.5px; line-height: 1.3; color: ${d.inkSoft}; }
@@ -357,7 +358,8 @@ Error generating stack: `+i.message+`
           button:not(.mdl-lrow) { position: relative; }
           /* The ruled cells sit 40px above the sync line, so two 44px areas
              would overlap. On touch the cell is the top 30px of its row and
-             draws its rule as ::before, so the text and the rule stay put. */
+             draws its rule as ::before, so the text and the rule stay put.
+             padding-left 8 beside a transparent 3px left border keeps the text in place. */
           .mdl-cell { align-self: flex-start !important; height: 30px;
                       padding: 8px 8px 0 !important;
                       border-left-color: transparent !important; }

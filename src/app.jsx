@@ -518,6 +518,7 @@ function ItemRow({
         </div>
         <div
           style={{
+            /* 4, not 0: a tap 1px outside a capsule corner stays off the control beneath */
             marginTop: 4,
             fontSize: 11.5,
             color: C.inkSoft,
@@ -988,6 +989,7 @@ function PackageCard({
             <span style={{ flex: 1, height: 1, background: C.line }} />
           </div>
           {/* six cells will not fit one row at 375px; wrapping is the plan */}
+          {/* rowGap 12, not the grid's 8: a 34px chip needs 10px of gap to keep a 44px target */}
           <div style={{ display: "flex", flexWrap: "wrap", rowGap: 12, columnGap: 4 }}>
             {STAMP_KINDS.map(([k, label]) => (
               <button
@@ -1001,6 +1003,7 @@ function PackageCard({
               </button>
             ))}
           </div>
+          {/* margin 12, not 8: keeps the chips' 44px target clear of the field */}
           <Fld style={{ marginTop: 12 }}>
           <input
             value={note}
@@ -2548,6 +2551,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
       {window.photos && (
         <div
           style={{
+            /* top 12, not 8: keeps the 44px target of the controls above */
             padding: "12px 12px 0",
             display: "flex",
             alignItems: "center",
@@ -2588,6 +2592,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
           display: "flex",
           alignItems: "center",
           gap: 8,
+          /* 12 top and bottom, not 8: keeps a 44px target for the controls here */
           padding: "12px 12px 12px",
         }}
       >
@@ -5762,7 +5767,7 @@ syncBroken === "seeded"
                    stroke-linecap: round; stroke-linejoin: round; }
         .mdl-bar button.on { background: color-mix(in srgb, ${C.card} 90%, transparent);
                    color: ${C.accent}; box-shadow: inset 0 0 0 1px ${C.line}; }
-        .mdl-bar button b { position: absolute; top: 6px; left: 50%;
+        .mdl-bar button b { position: absolute; top: 4px; left: 50%;
                    margin-left: 12px; font-size: 10px; font-weight: 700;
                    color: ${C.red}; }
         .mdl-pill { position: fixed; z-index: 50; left: 24px; right: 24px;
@@ -5800,6 +5805,7 @@ syncBroken === "seeded"
                     border-top: 1px solid ${C.line}; background: transparent;
                     text-align: left; color: ${C.ink}; cursor: pointer; }
         .mdl-lcard > :first-child { border-top: 0; }
+        /* gap 4, not 0: a tap 1px outside a capsule corner stays off the control beneath */
         .mdl-lrow > .l { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
         .mdl-lrow .t { font-size: 20px; line-height: 1.15; }
         .mdl-lrow .s { font-size: 13.5px; line-height: 1.3; color: ${C.inkSoft}; }
@@ -5977,7 +5983,8 @@ syncBroken === "seeded"
           button:not(.mdl-lrow) { position: relative; }
           /* The ruled cells sit 40px above the sync line, so two 44px areas
              would overlap. On touch the cell is the top 30px of its row and
-             draws its rule as ::before, so the text and the rule stay put. */
+             draws its rule as ::before, so the text and the rule stay put.
+             padding-left 8 beside a transparent 3px left border keeps the text in place. */
           .mdl-cell { align-self: flex-start !important; height: 30px;
                       padding: 8px 8px 0 !important;
                       border-left-color: transparent !important; }
