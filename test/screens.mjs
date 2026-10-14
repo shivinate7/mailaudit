@@ -1239,9 +1239,11 @@ async function touchCheck(browser) {
 }
 
 /* Claim 12 (L6): the six stamp kind chips at 375px touch. Runs in the page.
-   Each chip's reach is walked from its drawn box in 0.5px steps, stopping at
-   the first point another control owns. Neighbours are the chips that share
-   a horizontal span and sit directly above or below. */
+   Each chip's reach is walked from its drawn box in 0.25px steps, down the
+   chip's centre column, stopping at the first point another control owns.
+   Neighbours are the chips that share a horizontal span and sit directly above
+   or below. The claim takes no tolerance: a 0.25px overshoot past the gap
+   midpoint is a finding. */
 const STAMP_CHIPS = 6;
 const CHIP_MIN_PX = 44;
 const chipReach = (chipIndex) => {
@@ -1253,7 +1255,7 @@ const chipReach = (chipIndex) => {
   const cx = r.left + r.width / 2;
   const walk = (dir) => {
     let last = 0;
-    for (let t = 0.5; t <= 40; t += 0.5) {
+    for (let t = 0.25; t <= 40; t += 0.25) {
       const y = dir < 0 ? r.top - t : r.bottom + t;
       const h = document.elementFromPoint(cx, y);
       if (!h || h.closest("button") !== c) break;
@@ -1266,8 +1268,8 @@ const chipReach = (chipIndex) => {
   let below = null;
   rects.forEach((o, j) => {
     if (j === chipIndex || !across(o)) return;
-    if (o.bottom <= r.top + 0.5 && (!above || o.bottom > rects[above].bottom)) above = j;
-    if (o.top >= r.bottom - 0.5 && (!below || o.top < rects[below].top)) below = j;
+    if (o.bottom <= r.top + 0.5 && (above === null || o.bottom > rects[above].bottom)) above = j;
+    if (o.top >= r.bottom - 0.5 && (below === null || o.top < rects[below].top)) below = j;
   });
   return {
     label: c.textContent.trim(),
@@ -1298,7 +1300,8 @@ async function stampChipCheck(browser) {
       fail(name, `${count} stamp chips, want ${STAMP_CHIPS}`);
       return;
     }
-    const tol = TAP_TOLERANCE_PX;
+    /* claim 12 takes no tolerance (see the header) */
+    const tol = 0;
     for (let i = 0; i < STAMP_CHIPS; i++) {
       const c = await page.evaluate(chipReach, i);
       const span = c.height + c.up + c.down;
