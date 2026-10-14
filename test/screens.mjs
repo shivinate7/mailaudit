@@ -49,7 +49,8 @@
         grid lane head, commit 528bbde (the re-space build under
         spacing-on-4px-grid), with `A11Y_RECORD=1 node test/screens.mjs`. The six
         touch states that the tab badge top 6px to 4px moved were re-recorded at
-        dc73fc3 with `A11Y_RECORD_ONLY`. It is no
+        dc73fc3 with `A11Y_RECORD_ONLY`. "Tally card open" was re-recorded at
+        a95b180 with `A11Y_RECORD_ONLY`, after the Tally row shift fix. It is no
         longer the f7d51ba base: the grid is a deliberate visual change, so this
         check now guards drift from the grid head, not the grid change itself. A
         grown hit area never grows it. Keys mask digits in their text, so a day
@@ -61,8 +62,12 @@
         nearer to that control than to any other control. So the walk along a side
         stops at the gap midpoint. A tap that lands inside another control's own
         border box counts for that control. A tap that lands on a neighbour's
-        pseudo-element, outside its border box, is a finding. The probe must test
-        at least one tap per state, or the state fails.
+        pseudo-element, outside its border box, is a finding. A pair is skipped
+        when exactly one control is position: fixed (the search pill, the bottom
+        bar) and the other is scrolling content, not fixed (owner ruling
+        2026-10-14 08:10 CDT). A sticky control is not fixed, so its pairs are still
+        checked. Named hole: no check covers a tap just past a fixed control's
+        edge. The probe must test at least one tap per state, or the state fails.
     12. Stamp chips (L6, decision 2026-10-13): at 375px touch, in the Stamp editor
         state, each of the six kind chips has a hit area at least 44px tall, centred
         on its drawn box, that ends at the gap midpoint to the chip above and to the
@@ -1096,6 +1101,14 @@ const measureTouch = ({ selector, half }) => {
     }
     return false;
   };
+  /* position: fixed only (claim 11, owner ruling 2026-10-14 08:10 CDT). A sticky
+     control is not fixed, so its pairs are still checked. */
+  const isFixed = (el) => {
+    for (let n = el; n && n !== document.documentElement; n = n.parentElement) {
+      if (getComputedStyle(n).position === "fixed") return true;
+    }
+    return false;
+  };
   /* The control a hit belongs to. A label hands its tap to its field, so a
      label that grows its own hit area grows the field's (inputs take no
      pseudo-elements, so the label is the place to grow). */
@@ -1142,6 +1155,7 @@ const measureTouch = ({ selector, half }) => {
     const boxes = els.map((e) => drawnBox(e));
     const box = boxes[i];
     const pinned = isPinned(el);
+    const elFixed = isFixed(el);
     const ex = el.getBoundingClientRect();
     /* whole-pixel centre and steps: a fractional sample just outside a box's top
        or left edge hits the box in this browser, which reads one px extra */
@@ -1194,8 +1208,12 @@ const measureTouch = ({ selector, half }) => {
         if (px < 0 || py < 0 || px > window.innerWidth || py > window.innerHeight) continue;
         const d = gapTo(box, px, py);
         if (els.some((_, j) => j !== i && gapTo(boxes[j], px, py) <= d)) continue;
-        probed++;
         const owner = ownerOf(document.elementFromPoint(px, py));
+        /* claim 11 skips a pair where exactly one control is fixed: a fixed
+           control's edge tap that lands on scrolling content, or the reverse.
+           A skipped tap tests nothing, so it does not count toward probed. */
+        if (owner && owner !== el && elFixed !== isFixed(owner)) continue;
+        probed++;
         if (!owner || owner === el) continue;
         const lb = owner.getBoundingClientRect();
         if (px >= lb.left && px <= lb.right && py >= lb.top && py <= lb.bottom) continue;
