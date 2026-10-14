@@ -2043,6 +2043,103 @@ ok(
   "33.22 and one that did says what arrived"
 );
 
+/* a key a newer build writes must survive an older build's merge. Otherwise the
+   older build drops it, applies the result as a full replace, and pushes the
+   loss back (saved-state-shape). Rule for lane web/merge-unknown-keys (orchestrator
+   call 2026-10-14, owner to confirm): a key on one side only is kept; a key on both
+   sides with different values takes the incoming side. No merge input carries
+   savedAt, so no time is compared. */
+const UNK_NOTE = { note: "from a newer build" };
+const UNK_LOCAL_ONLY = { ...PHONE, futureKey: UNK_NOTE };
+eq(
+  mergeLedger(UNK_LOCAL_ONLY, LAPTOP).merged.futureKey,
+  UNK_NOTE,
+  "33.23 a key only the local side holds survives the merge"
+);
+eq(
+  mergeLedger(LAPTOP, UNK_LOCAL_ONLY).merged.futureKey,
+  UNK_NOTE,
+  "33.24 and a key only the incoming side holds survives it too"
+);
+eq(
+  mergeLedger(mergeLedger(UNK_LOCAL_ONLY, LAPTOP).merged, LAPTOP).merged.futureKey,
+  UNK_NOTE,
+  "33.25 and it survives the next merge, so the older build cannot push the loss back"
+);
+/* The first argument holds the later savedAt on purpose. A rule that still reads
+   savedAt keeps that side's value, and 33.26 goes red. */
+const UNK_FIRST = { ...PHONE, futureKey: "first", savedAt: 200 };
+const UNK_SECOND = { ...LAPTOP, futureKey: "second", savedAt: 100 };
+eq(
+  mergeLedger(UNK_FIRST, UNK_SECOND).merged.futureKey,
+  "second",
+  "33.26 on both sides and different, incoming wins though local holds the later savedAt"
+);
+eq(
+  mergeLedger(UNK_SECOND, UNK_FIRST).merged.futureKey,
+  "first",
+  "33.27 and in the other argument order incoming wins again"
+);
+const UNK_TIE_A = { ...PHONE, futureKey: "a", savedAt: 300 };
+const UNK_TIE_B = { ...LAPTOP, futureKey: "b", savedAt: 300 };
+eq(
+  mergeLedger(UNK_TIE_A, UNK_TIE_B).merged.futureKey,
+  "b",
+  "33.28 with equal savedAt, incoming still wins"
+);
+eq(
+  mergeLedger(UNK_TIE_B, UNK_TIE_A).merged.futureKey,
+  "a",
+  "33.29 and in the other argument order incoming wins too"
+);
+/* the known keys are the same whether or not an unknown key rides along */
+const unkKnownOf = (m) => ({
+  mailday: m.mailday,
+  items: m.items,
+  received: m.received,
+  receivedAt: m.receivedAt,
+  envelopes: m.envelopes,
+  stamps: m.stamps,
+  dateFilter: m.dateFilter,
+  sortBy: m.sortBy,
+  itemSort: m.itemSort,
+});
+eq(
+  unkKnownOf(
+    mergeLedger({ ...PHONE, futureKey: "x", savedAt: 1 }, { ...LAPTOP, futureKey: "y", savedAt: 2 })
+      .merged
+  ),
+  unkKnownOf(m33.merged),
+  "33.30 the known keys merge exactly as they do with no unknown key"
+);
+
+/* Keys named like Object.prototype members. `k in out` was true for each of
+   these, so the carry skipped them and the merged ledger lost the key. The inputs
+   are built with defineProperty, because an object literal reads `__proto__` as
+   the prototype, not as a key. A fix that assigns `__proto__` would move the
+   prototype instead, so the last case of each name checks that Object.prototype
+   is still the merged object's prototype. Ids: constructor 33.31 to 33.35,
+   toString 33.36 to 33.40, hasOwnProperty 33.41 to 33.45, __proto__ 33.46 to 33.50. */
+const ownKey = (base, k, v) =>
+  Object.defineProperty({ ...base }, k, { value: v, enumerable: true, writable: true, configurable: true });
+const ownValue = (o, k) => (Object.prototype.hasOwnProperty.call(o, k) ? o[k] : undefined);
+["constructor", "toString", "hasOwnProperty", "__proto__"].forEach((name, i) => {
+  const val = (side) => (name === "__proto__" ? { side } : side);
+  const at = (n) => `33.${31 + 5 * i + n} ${name}:`;
+  const fromLocal = mergeLedger(ownKey(PHONE, name, val("local")), LAPTOP);
+  const fromIncoming = mergeLedger(LAPTOP, ownKey(PHONE, name, val("incoming")));
+  const bothAB = mergeLedger(ownKey(PHONE, name, val("local")), ownKey(LAPTOP, name, val("incoming")));
+  const bothBA = mergeLedger(ownKey(LAPTOP, name, val("incoming")), ownKey(PHONE, name, val("local")));
+  eq(ownValue(fromLocal.merged, name), val("local"), `${at(0)} a key only the local side holds is carried as its own key`);
+  eq(ownValue(fromIncoming.merged, name), val("incoming"), `${at(1)} a key only the incoming side holds is carried as its own key`);
+  eq(ownValue(bothAB.merged, name), val("incoming"), `${at(2)} on both sides and different, incoming wins`);
+  eq(ownValue(bothBA.merged, name), val("local"), `${at(3)} and in the other argument order incoming wins again`);
+  ok(
+    [fromLocal, fromIncoming, bothAB, bothBA].every((r) => Object.getPrototypeOf(r.merged) === Object.prototype),
+    `${at(4)} the merged ledger keeps Object.prototype as its prototype`
+  );
+});
+
 /* ── 34. the conflict stops being a trap ──────────────────────────────────
    Group 25 proves a stale push is BLOCKED. This proves it can now be resolved
    without either device losing work — which is the entire point, because both
