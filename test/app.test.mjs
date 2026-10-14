@@ -514,6 +514,33 @@ await click(btn(/Re-import CSV/), "show upload zone");
 await dropFile("mailday-backup.json", plainText);
 ok(/pending envelope was replaced/.test(text()), "13.6 restore warns about replaced envelopes");
 
+/* savedAt rides the backup (owner ruling 2026-10-14): the file carries the time the
+   ledger was last saved, and a restore keeps the time the file carries. The save
+   wait is before the second backup, so a build that restamps on the restore's own
+   save shows its new time here and fails 13.8. */
+await fresh();
+await goTo("orphaned");
+await record(["Ponder"], "stamp me");
+await sleep(SAVE_WAIT);
+await openHistory();
+await click(btn(/^Backup$/), "backup, for savedAt");
+ok(typeof JSON.parse(await captured.text()).savedAt === "number", "13.7 the backup file carries a numeric savedAt");
+
+const STAMPED_13 = 777;
+await fresh();
+await reachFor(/Re-import CSV/);
+await click(btn(/Re-import CSV/), "show upload zone");
+await dropFile(
+  "stamped-backup.json",
+  JSON.stringify({ mailday: 1, items: ITEMS.slice(0, 3), received: {}, envelopes: [], stamps: {}, savedAt: STAMPED_13 })
+);
+await sleep(SAVE_WAIT);
+await openHistory();
+await click(btn(/^Backup$/), "backup after the restore");
+const restored13 = JSON.parse(await captured.text());
+ok(restored13.items.length === 3, "13.8pre the restore landed, so the savedAt check means something");
+eq(restored13.savedAt, STAMPED_13, "13.8 a restore keeps the savedAt the file carries");
+
 /* ── 14. undo composes with a later hand edit ──────────────────────────── */
 
 await fresh();
@@ -979,7 +1006,8 @@ ok(!btn(/^Sync/), "25.1 no Sync control when the platform has no remote");
 await openHistory();
 ok(!!btn(/^Backup$/), "25.2 and Backup is still reachable in that case");
 
-await fresh();
+/* a ledger that was saved at 555 (owner ruling 2026-10-14: savedAt rides the synced ledger) */
+await boot({ items: ITEMS, received: {}, savedAt: 555 });
 await openSync();
 /* 25.3 retired: the Sync panel no longer opens onto a GitHub key field (group 64) */
 await background();
@@ -997,9 +1025,10 @@ eq(pushed.mailday, 1, "25.8 the payload is a Mail Day backup");
 eq(pushed.items.length, ITEMS.length, "25.9 carrying every line");
 for (const k of ["received", "envelopes", "stamps", "dateFilter", "sortBy", "itemSort"])
   ok(k in pushed, `25.10 and the ${k} key`);
-ok(
-  !("savedAt" in pushed),
-  "25.11 but no timestamp — the payload shape stays frozen"
+eq(
+  pushed.savedAt,
+  555,
+  "25.11 the save time the ledger loaded with rides the pushed payload"
 );
 ok(
   /^ledger \d{4}-\d\d-\d\d/.test(pushes()[0].message) &&
@@ -2045,10 +2074,9 @@ ok(
 
 /* a key a newer build writes must survive an older build's merge. Otherwise the
    older build drops it, applies the result as a full replace, and pushes the
-   loss back (saved-state-shape). Rule for lane web/merge-unknown-keys (orchestrator
-   call 2026-10-14, owner to confirm): a key on one side only is kept; a key on both
-   sides with different values takes the incoming side. No merge input carries
-   savedAt, so no time is compared. */
+   loss back (saved-state-shape). A key on one side only is kept. A key on both
+   sides with different values takes the side with the later savedAt (owner ruling
+   2026-10-14, carryUnknownKeys). A tie, or a side with no savedAt, keeps incoming. */
 const UNK_NOTE = { note: "from a newer build" };
 const UNK_LOCAL_ONLY = { ...PHONE, futureKey: UNK_NOTE };
 eq(
@@ -2066,19 +2094,19 @@ eq(
   UNK_NOTE,
   "33.25 and it survives the next merge, so the older build cannot push the loss back"
 );
-/* The first argument holds the later savedAt on purpose. A rule that still reads
-   savedAt keeps that side's value, and 33.26 goes red. */
+/* The first argument holds the later savedAt on purpose. A rule that ignores
+   savedAt keeps incoming, and 33.26 goes red. */
 const UNK_FIRST = { ...PHONE, futureKey: "first", savedAt: 200 };
 const UNK_SECOND = { ...LAPTOP, futureKey: "second", savedAt: 100 };
 eq(
   mergeLedger(UNK_FIRST, UNK_SECOND).merged.futureKey,
-  "second",
-  "33.26 on both sides and different, incoming wins though local holds the later savedAt"
+  "first",
+  "33.26 on both sides and different, the later savedAt wins: local holds 200 over incoming's 100"
 );
 eq(
   mergeLedger(UNK_SECOND, UNK_FIRST).merged.futureKey,
   "first",
-  "33.27 and in the other argument order incoming wins again"
+  "33.27 and in the other argument order the later savedAt still wins: incoming holds 200"
 );
 const UNK_TIE_A = { ...PHONE, futureKey: "a", savedAt: 300 };
 const UNK_TIE_B = { ...LAPTOP, futureKey: "b", savedAt: 300 };
@@ -2091,6 +2119,23 @@ eq(
   mergeLedger(UNK_TIE_B, UNK_TIE_A).merged.futureKey,
   "a",
   "33.29 and in the other argument order incoming wins too"
+);
+/* a side with no savedAt keeps incoming, even against a local side that holds one.
+   A rule that reads a missing savedAt as 0 lets the local side win and goes red here. */
+eq(
+  mergeLedger({ ...PHONE, futureKey: "a", savedAt: 999 }, { ...LAPTOP, futureKey: "b" }).merged.futureKey,
+  "b",
+  "33.51 a local side that holds a savedAt loses to an incoming side with none"
+);
+eq(
+  mergeLedger({ ...PHONE, futureKey: "a" }, { ...LAPTOP, futureKey: "b", savedAt: 1 }).merged.futureKey,
+  "b",
+  "33.52 and a local side with no savedAt loses to an incoming side that holds one"
+);
+eq(
+  mergeLedger(UNK_FIRST, UNK_SECOND).merged.savedAt,
+  200,
+  "33.53 the merged ledger carries the later savedAt, so two devices converge on one time"
 );
 /* the known keys are the same whether or not an unknown key rides along */
 const unkKnownOf = (m) => ({
@@ -6516,6 +6561,40 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     await sleep(10000);
     await settle();
     eq(count58("post") - posts5b, 0, "58.N5b a cold open on a store equal to local sends no POST");
+  }
+
+  /* N6. Two ledgers equal but for savedAt send nothing and show nothing. savedAt is a
+     save time and changes on every save, so the POST gate (dataOf, which holds no
+     savedAt) and the merge notice must both ignore it. Cold open on the server copy,
+     then a later rev with the same data and a later savedAt, and count the POSTs. */
+  {
+    const K6 = ITEMS[0].key;
+    const DATA6 = {
+      items: ITEMS.slice(0, 3),
+      received: { [K6]: 1 },
+      receivedAt: { [K6]: 100 },
+      envelopes: [],
+      stamps: {},
+    };
+    const POST6 = (SR?.SYNC_POST_MS ?? 3000) + 300;
+    await boot({ ...DATA6, savedAt: 100 }, null, {
+      syncKey: KEY58,
+      syncLedger: { mailday: 1, ...DATA6, savedAt: 200 },
+    });
+    await settle();
+    ok(count58("get") > 0, "58.N6pre the cold GET was made, so the equal-but-savedAt check means something");
+    const posts6 = count58("post");
+    await sleep(POST6);
+    await settle();
+    eq(count58("post") - posts6, 0, "58.N6a a cold open on a server copy equal but for savedAt sends no POST");
+    ok(!/Merged —/.test(text()), "58.N6b and shows no merge notice");
+
+    await fireSyncRev(syncRev() + 1, { mailday: 1, ...DATA6, savedAt: 300 });
+    await sleep(APPLY_WAIT);
+    await sleep(POST6);
+    await settle();
+    eq(count58("post") - posts6, 0, "58.N6c a later rev with the same data and a later savedAt sends no POST");
+    ok(!/Merged —/.test(text()), "58.N6d and still shows no merge notice");
   }
 
   /* P1, a port of the reviewer's probe. 6 local lines meet 12 remote ones, so the
