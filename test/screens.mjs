@@ -43,7 +43,9 @@
     10. Drawn boxes (L6): in every state of SCREEN_STATES, each element's painted
         box at 375px matches test/a11y-base-boxes.json. The base is recorded at the
         grid lane head, commit 528bbde (the re-space build under
-        spacing-on-4px-grid), with `A11Y_RECORD=1 node test/screens.mjs`. It is no
+        spacing-on-4px-grid), with `A11Y_RECORD=1 node test/screens.mjs`. The six
+        touch states that the tab badge top 6px to 4px moved were re-recorded at
+        dc73fc3 with `A11Y_RECORD_ONLY`. It is no
         longer the f7d51ba base: the grid is a deliberate visual change, so this
         check now guards drift from the grid head, not the grid change itself. A
         grown hit area never grows it. Keys mask digits in their text, so a day
