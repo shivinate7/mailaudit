@@ -515,9 +515,10 @@ await dropFile("mailday-backup.json", plainText);
 ok(/pending envelope was replaced/.test(text()), "13.6 restore warns about replaced envelopes");
 
 /* savedAt rides the backup (owner ruling 2026-10-14): the file carries the time the
-   ledger was last saved, and a restore keeps the time the file carries. The save
-   wait is before the second backup, so a build that restamps on the restore's own
-   save shows its new time here and fails 13.8. */
+   ledger was last saved. A restore stamps a new time, as a fresh save would, so the
+   backup after it carries the restore's own time, not the one the file held. The
+   save wait is before the second backup, so that new time is on it. A build that
+   keeps the file's time fails 13.8. */
 await fresh();
 await goTo("orphaned");
 await record(["Ponder"], "stamp me");
@@ -530,6 +531,7 @@ const STAMPED_13 = 777;
 await fresh();
 await reachFor(/Re-import CSV/);
 await click(btn(/Re-import CSV/), "show upload zone");
+const restoreAt13 = Date.now();
 await dropFile(
   "stamped-backup.json",
   JSON.stringify({ mailday: 1, items: ITEMS.slice(0, 3), received: {}, envelopes: [], stamps: {}, savedAt: STAMPED_13 })
@@ -539,7 +541,7 @@ await openHistory();
 await click(btn(/^Backup$/), "backup after the restore");
 const restored13 = JSON.parse(await captured.text());
 ok(restored13.items.length === 3, "13.8pre the restore landed, so the savedAt check means something");
-eq(restored13.savedAt, STAMPED_13, "13.8 a restore keeps the savedAt the file carries");
+ok(restored13.savedAt >= restoreAt13, "13.8 a restore stamps a new savedAt, not the time the file carried");
 
 /* ── 14. undo composes with a later hand edit ──────────────────────────── */
 
@@ -6588,6 +6590,12 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     await settle();
     eq(count58("post") - posts6, 0, "58.N6a a cold open on a server copy equal but for savedAt sends no POST");
     ok(!/Merged —/.test(text()), "58.N6b and shows no merge notice");
+    /* the cold reply is held until the idle gate opens, so wait past it before reading
+       the store. An equal reply applies nothing, so the stored time stays the local one.
+       A build that drops the noTime strip applies the server copy and stores its 200. */
+    await sleep(APPLY_WAIT);
+    await settle();
+    eq(saved().savedAt, 100, "58.N6e and the equal cold reply leaves the stored savedAt at the local 100");
 
     await fireSyncRev(syncRev() + 1, { mailday: 1, ...DATA6, savedAt: 300 });
     await sleep(APPLY_WAIT);
@@ -6595,6 +6603,24 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     await settle();
     eq(count58("post") - posts6, 0, "58.N6c a later rev with the same data and a later savedAt sends no POST");
     ok(!/Merged —/.test(text()), "58.N6d and still shows no merge notice");
+    eq(saved().savedAt, 100, "58.N6f and the equal later rev leaves the stored savedAt at the local 100");
+
+    /* N6g. The local copy holds the later savedAt and the server copy is equal in data.
+       A POST gate that keeps savedAt in dataOf reads the local side as newer and sends.
+       N6a and N6c miss that, since their later savedAt sits on the server. */
+    await boot({ ...DATA6, savedAt: 300 }, null, {
+      syncKey: KEY58,
+      syncLedger: { mailday: 1, ...DATA6, savedAt: 200 },
+    });
+    await settle();
+    ok(count58("get") > 0, "58.N6g-pre the cold GET was made against a local copy later by savedAt");
+    const posts6g = count58("post");
+    await sleep(POST6);
+    await settle();
+    eq(count58("post") - posts6g, 0, "58.N6g a cold open on a local copy later by savedAt, equal in data, sends no POST");
+    await sleep(APPLY_WAIT);
+    await settle();
+    eq(saved().savedAt, 300, "58.N6h and that equal reply keeps the local later savedAt");
   }
 
   /* P1, a port of the reviewer's probe. 6 local lines meet 12 remote ones, so the
