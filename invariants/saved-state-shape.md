@@ -28,16 +28,21 @@ The count stays **five**, not six. The download and the GitHub push share one pa
 
 **One device-local field.** `workerSyncedAt` (when the Worker last agreed) rides the save payload and the load effect only. It is not in `snapshot()`, `backup`, the restore branches or the merge, because it describes this device and not the ledger. It is optional and defaulted on load.
 
-**Plus one outside `app.jsx`.** `mergeLedger` in `merge-rules.mjs` builds the merged ledger from named fields. So a key that it does not name is dropped by every merge. The merge applies that result as a full replace, and it pushes the result. Both devices lose the key. `stamps` was the first key added after that builder existed. Test 37.62 pins the key's presence. `receivedAt` is named there too, and group 49 pins it.
+**Plus one outside `app.jsx`.** `mergeLedger` in `merge-rules.mjs` builds the merged ledger from named fields, then carries every top-level key it does not name. The merge applies that result as a full replace, and it pushes the result, so a carried key reaches both devices. `stamps` was the first key added after the named fields existed. Test 37.62 pins the key's presence. `receivedAt` is named there too, and group 49 pins it. A key that needs a real merge needs a named line in `mergeLedger`. An unnamed key gets the carry only.
+
+**Orchestrator call 2026-10-14, not an owner ruling: unknown keys are carried.** A merge keeps every top-level key that is not one of the nine known keys: `mailday`, `items`, `received`, `receivedAt`, `envelopes`, `stamps`, `dateFilter`, `sortBy` and `itemSort`. A key that one side holds is kept. A key that both sides hold with different values keeps the incoming side. No merge input carries `savedAt` or `workerSyncedAt`, because `snapshot()` omits both, so no time is compared until the owner names a clock. The carry uses own-property checks, so a key named like an `Object.prototype` member (`constructor`, `toString`, `hasOwnProperty`, `__proto__`) is kept as data and the merged ledger keeps `Object.prototype`. Known keys merge as before. The Worker calls the same function, so it carries too. A build before `75a96b8` still drops unknown keys in its merge. Update both devices before a newer build writes one. The owner's word on the incoming-wins rule is pending, see `native-ledger-is-raw-json` (its Known gap).
 
 A related rollout hazard exists. An older build's `snapshot()` omits `stamps`. So its next push publishes a ledger without them. A pull onto the new build then wipes them. A merge keeps the local ones. Update both devices before stamping anything.
 
 A second rollout hazard exists for stage 4a. An old build shows a tombstone as an empty envelope. Its push drops `receivedAt`, so an un-check can come back. Update both devices before you un-check or discard anything.
 
-**Pinned by:** 9.1–9.3 (envelopes survive a reload), 37.48 (stamps survive a reload), 37.49 (a save from before stamps loads clean), 37.50 (Reset clears them), 37.51 (the pushed payload carries them), 37.62–37.63 (the merged ledger keeps the stamps key), 39.8 and 39.8b (a version holds the whole saved shape, and a version built from its own payload rather than `snapshot()` fails both), group 49 (un-checks and deletes travel between devices). The web salvage and fallbacks: group 67 (the load, Re-import and sync reply cases; 67.F1 to 67.F3; 67.7).
+**Pinned by:** 9.1–9.3 (envelopes survive a reload), 37.48 (stamps survive a reload), 37.49 (a save from before stamps loads clean). 37.50 (Reset clears them), 37.51 (the pushed payload carries them), 37.62–37.63 (the merged ledger keeps the stamps key). 33.23–33.30 (a merge carries a key no build names, and incoming wins a conflict). Group 33 pins a key named like an `Object.prototype` member; its ids are built in code, so the lint cannot read them. 39.8 and 39.8b (a version holds the whole saved shape, and a version built from its own payload rather than `snapshot()` fails both). Group 49 (un-checks and deletes travel between devices). The web salvage and fallbacks: group 67 (the load, Re-import and sync reply cases; 67.F1 to 67.F3; 67.7).
 
 Mutants confirmed red:
 - `mergeLedger` not naming `stamps` (37.62–37.68);
+- `mergeLedger` with no carry, as before `75a96b8` (33.23–33.29 red, 33.30 green). 33.26 to 33.29 went red only because the key was missing;
+- `carryUnknownKeys` testing `k in out`, so prototype-named keys are dropped (33.31–33.34, 33.36–33.39, 33.41–33.44 and 33.46–33.49 red);
+- a rule that keeps the later `savedAt`, as at `36e8ed3`: 33.26 red, as it expects `second` and gets `first`;
 - `snapshot()` dropping `stamps` (25.10, 37.51, 37.68);
 - `snapshot()` dropping `envelopes` (groups 25 to 27).
 
