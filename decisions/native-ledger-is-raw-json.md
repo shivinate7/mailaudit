@@ -1,10 +1,14 @@
 # The native client keeps the ledger as raw JSON
 
+Kind: build
+
+Plan: decisions/native-ledger-is-raw-json.md#known-gap-the-worker-merge-dropped-unknown-top-level-fields (web)
+
 **Status:** ruled. The owner accepted a typed enum plan on 2026-10-11. The orchestrator default of 2026-10-12 replaced that enum with a raw dictionary. Owner ruling 2026-10-12 ("Keep a copy, then go on") holds for every client and every path data comes in. A `received`, `receivedAt`, `stamps` or `envelopes` value of the wrong shape (a whole field or one entry; JSON `null` counts) is first copied. Then every readable entry is kept. The web copy goes to History as a milestone. The web detail and its fallbacks are in `saved-state-shape`.
 
 Orchestrator defaults of 2026-10-12, not owner rulings: native has no versions store or History yet. So the native copy is a kept file beside ledger.json. The mended ledger is saved at once after the copy. The kept name carries milliseconds, and a numeric suffix settles a name that exists.
 
-**Built state, 2026-10-12:** web is built in PR #87, merged to main at `eb48278`. The Worker half is live since 2026-10-12, version fdea6a6b, see `live-verification`. The Worker refuses a bad incoming shape with 400 (tests 67.1 and 67.2). It keeps every mended original in `kept` (group 69). It mends a damaged stored ledger before its merge (tests 68.1 to 68.3). Both run by `npm run test:worker`. Native is built in draft PR #89, not merged. Native load mends as the web does (see Load and save). The unknown-field gap in Known gap is still open.
+**Built state, 2026-10-12:** web is built in PR #87, merged to main at `eb48278`. The Worker half is live since 2026-10-12, version fdea6a6b, see `live-verification`. The Worker refuses a bad incoming shape with 400 (tests 67.1 and 67.2). It keeps every mended original in `kept` (group 69). It mends a damaged stored ledger before its merge (tests 68.1 to 68.3). Both run by `npm run test:worker`. Native is built in draft PR #89, not merged. Native load mends as the web does (see Load and save). The unknown-field gap (Known gap) is fixed on `web/merge-unknown-keys`, pending the owner's word.
 
 **Notice line:** after a load that drops entries, the Packages tab shows one footnote line at its top. LedgerNotice.damagedLine builds it from the dropped count, and boot sets it once. For one entry the text is "1 entry could not be read; the original is kept on this device." Two or more gives "entries", so 3 gives "3 entries could not be read; the original is kept on this device." At 0 there is no line. The line names no sync words.
 
@@ -73,15 +77,17 @@ The notice line is pinned by LedgerNoticeTests: testNoLineWhenNothingWasDropped,
 
 Not pinned by a test: the millisecond kept-name format, the missing-file case, and the unwrapped-error sentence in Load and save. The millisecond format is read from LedgerStore.load, because keptCopies matches the prefix and extension only. The app passing its own rules.js to the store is not pinned either (ManifestApp.swift, boot).
 
-## Known gap: the Worker merge drops unknown top-level fields
+## Known gap: the Worker merge dropped unknown top-level fields
 
-The Worker's shape refusal and its mend of stored damage are built on PR #87, merged (see Built state). This gap is separate from them, and it stays open.
+The Worker's shape refusal and its mend of stored damage are built on PR #87, merged (see Built state). This gap is separate from them.
 
-**Open, for a later lane.** Measured 2026-10-12 by calling `mergeLedger` from `src/merge-rules.mjs` with a ledger that holds one top-level field the client does not know. The merged output did not contain it. Re-measured at f3e36cd: the field is dropped whether it sits in the local ledger or the incoming one. `mergeLedger` builds its output from a fixed list of keys.
+**Status:** open, pending the owner's word. The fix is built on `web/merge-unknown-keys`. It is not merged or deployed. The live Worker runs the pre-fix merge until the next `worker:deploy`.
 
-The Worker POST handler in `worker/core.mjs` stores the merged ledger whenever a ledger already exists, and returns it. So an unknown top-level field survives only the first write to an empty store. Nested unknown fields inside an envelope or a stamp are unmeasured.
+Orchestrator call of 2026-10-14, not an owner ruling: `mergeLedger` carries unknown top-level keys, and it drops the `savedAt` comparison. A key that both sides hold with different values keeps the incoming side. The owner confirms or rejects that rule. Its rule and pins are in `saved-state-shape`.
 
-Proposed fix: `mergeLedger` carries unknown top-level keys through, with a test. The owner decides.
+Before the fix, measured 2026-10-12, `mergeLedger` dropped an unknown top-level field. The measurement used a ledger that held one top-level field the client does not know. The merged output did not contain it, whether the field sat in the local ledger or the incoming one. Re-measured at f3e36cd with the same result. `mergeLedger` built its output from a fixed list of keys.
+
+The Worker POST handler in `worker/core.mjs` stored the merged ledger whenever a ledger already existed. So such a field survived only the first write to an empty store. Nested unknown fields inside an envelope or a stamp are unmeasured.
 
 ## Known bandaid: Swift names are unbackticked
 
