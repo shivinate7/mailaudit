@@ -8,7 +8,8 @@
 //
 // Scanner cases: the fence-quoted case covers a comment opener inside a
 // backtick span, a /* that opens no comment in a fence, a multi-line template
-// literal inside a fence, and a lone quote in prose.
+// literal inside a fence, a lone quote in prose, and a # opener in a quoted
+// string and in a backtick span on the Status and Decision lines.
 //
 // Run: npm run test:check-records. Exits 1 on any failure.
 // CHECK_RECORDS_SCRIPT points the cases at another copy of the checker, such as
@@ -75,7 +76,7 @@ const SCANNER_STRINGS = [
   "",
   "Prose with a lone quote, don't, and the owner's word, plus `/* not a comment` and `// nor this`.",
   "",
-  "**Status:** open.",
+  '**Status:** open; a "# sign" in a string and `# note` in a span.',
   "",
   "````markdown",
   "A quoted sample, not a rule:",
@@ -89,7 +90,7 @@ const SCANNER_STRINGS = [
   "`;",
   "````",
   "",
-  "**Decision:** `fixture-decision-holds`",
+  '**Decision:** `fixture-decision-holds`, with a "# note" in a string.',
   "",
 ].join("\n");
 
@@ -213,6 +214,16 @@ const RED = [
     { "fixture-debt-self-cite": debt({ decision: "**Decision:** `fixture-debt-self-cite`" }) },
     {},
     "fixture-debt-self-cite",
+  ],
+  [
+    "a second Decision line cites a slug that does not exist",
+    {
+      "fixture-debt-two-decisions": debt({
+        tail: "**Decision:** `fixture-no-such-decision`",
+      }),
+    },
+    {},
+    "fixture-debt-two-decisions",
   ],
   [
     "Decision cites another debt, not a decision",
