@@ -521,6 +521,10 @@ function ItemRow({
             /* 4, not 0: a tap 1px outside a capsule corner stays off the control beneath */
             marginTop: 4,
             fontSize: 11.5,
+            /* fixed: with `normal` the ⚠ glyph falls back to a taller font and the
+               line grows 4px while the warning shows, then shrinks when the row is
+               checked in and the warning goes (no-layout-shift-under-pointer) */
+            lineHeight: "13px",
             color: C.inkSoft,
             overflow: "hidden",
             textOverflow: "ellipsis",
@@ -1316,19 +1320,22 @@ function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder, stampedGks }
           >
             {money(item.avg)} / copy
           </div>
-          {!done && (
-            <div
-              style={{
-                fontFamily: cochin,
-                fontSize: 12,
-                fontWeight: 700,
-                color: C.red,
-                whiteSpace: "nowrap",
-              }}
-            >
-              {totalQty - gotQty} left · {money(missingVal)}
-            </div>
-          )}
+          {/* kept mounted but hidden once done: unmounting it took 13.5px off the
+              header on the tap that completes the copy, and with it every row
+              below (invariant no-layout-shift-under-pointer) */}
+          <div
+            aria-hidden={done || undefined}
+            style={{
+              fontFamily: cochin,
+              fontSize: 12,
+              fontWeight: 700,
+              color: C.red,
+              whiteSpace: "nowrap",
+              visibility: done ? "hidden" : undefined,
+            }}
+          >
+            {totalQty - gotQty} left · {money(missingVal)}
+          </div>
         </div>
       </button>
 
