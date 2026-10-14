@@ -59,9 +59,9 @@
     12. Stamp chips (L6, decision 2026-10-13): at 375px touch, in the Stamp editor
         state, each of the six kind chips has a hit area at least 44px tall, centred
         on its drawn box, that ends at the gap midpoint to the chip above and to the
-        chip below. Reach is walked from the drawn box in 0.25px steps, with no
-        tolerance.
-    13. Ledger rule (L6, item 2): at 375px touch on the Ledger tab, each tap in the
+        chip below. Reach is walked from the drawn box in 0.25px steps. The span,
+        centring and midpoint checks allow 0.25px (cause in the claim 12 header).
+    13. Ledger rule (L6, Sorted by top rule): at 375px touch on the Ledger tab, each tap in the
         top 1px band of the "Sorted by" row, inset 2px from each end (every 0.25px
         down, every 4px across), returns "Sorted by", not the row above it.
 
@@ -1228,11 +1228,14 @@ async function touchCheck(browser) {
    Each chip's reach is walked from its drawn box in 0.25px steps, up and down
    the chip's centre column, stopping at the first point another control owns.
    Neighbours are the chips that share a horizontal span and sit directly above
-   or below. The claim takes no tolerance: a 0.25px overshoot past the gap
-   midpoint is a finding. Known limit: Chromium reads hit edges to whole pixels
-   at a fractional chip top, so a design sitting exactly on the midpoints can read
-   about 1px off. A pass fixture for this claim is not yet calibrated. */
+   or below. The span, centring and midpoint checks allow a 0.25px tolerance
+   (STAMP_TOL_PX). Measured cause: chip rows sit at fractional offsets (the
+   chip at y=388.875), and Chromium rounds hit-tests near the gap midpoint, so
+   up to 0.25px past the midpoint can return the farther chip (689 of 55,161
+   samples at 0.125px steps). No CSS removes it, and a finger cannot aim that
+   fine. Owner ruling 2026-10-13 22:20 CDT. */
 const STAMP_CHIPS = 6;
+const STAMP_TOL_PX = 0.25;
 const CHIP_MIN_PX = 44;
 const chipReach = (chipIndex) => {
   const chips = [...document.querySelectorAll("button.mdl-chip")];
@@ -1288,8 +1291,8 @@ async function stampChipCheck(browser) {
       fail(name, `${count} stamp chips, want ${STAMP_CHIPS}`);
       return;
     }
-    /* claim 12 takes no tolerance (see the header) */
-    const tol = 0;
+    /* a 0.25px tolerance, measured cause in the claim 12 header */
+    const tol = STAMP_TOL_PX;
     for (let i = 0; i < STAMP_CHIPS; i++) {
       const c = await page.evaluate(chipReach, i);
       const span = c.height + c.up + c.down;
@@ -1308,7 +1311,7 @@ async function stampChipCheck(browser) {
   }
 }
 
-/* Claim 13 (L6, item 2): on the Ledger tab at 375px touch, each tap on the
+/* Claim 13 (L6, Sorted by top rule): on the Ledger tab at 375px touch, each tap on the
    painted 1px top rule of "Sorted by" lands on "Sorted by". Sampled every 0.25px
    down the rule and every 4px across the row, inset 2px from each end. */
 async function ledgerRuleCheck(browser) {
