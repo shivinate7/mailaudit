@@ -790,245 +790,245 @@
    },
    "9|button|Seller contacted": {
     "x": 31,
-    "y": 463.875,
+    "y": 467.875,
     "w": 132.78125,
     "h": 34,
     "pinned": false
    },
    "10|button|Reshipped": {
     "x": 169.78125,
-    "y": 463.875,
+    "y": 467.875,
     "w": 84.3125,
     "h": 34,
     "pinned": false
    },
    "11|button|Partial refund": {
     "x": 31,
-    "y": 503.875,
+    "y": 511.875,
     "w": 118.9375,
     "h": 34,
     "pinned": false
    },
    "12|button|Other": {
     "x": 155.9375,
-    "y": 503.875,
+    "y": 511.875,
     "w": 56.625,
     "h": 34,
     "pinned": false
    },
    "13|input|": {
     "x": 31,
-    "y": 547.875,
+    "y": 555.875,
     "w": 313,
     "h": 38,
     "pinned": false
    },
    "14|button|Cancel": {
     "x": 214.75,
-    "y": 593.875,
+    "y": 601.875,
     "w": 67.546875,
     "h": 32,
     "pinned": false
    },
    "15|button|Save": {
     "x": 290.296875,
-    "y": 593.875,
+    "y": 601.875,
     "w": 53.703125,
     "h": 32,
     "pinned": false
    },
    "16|button|Mark all received": {
     "x": 200.296875,
-    "y": 637.875,
+    "y": 645.875,
     "w": 143.703125,
     "h": 46,
     "pinned": false
    },
    "17|button|": {
     "x": 31,
-    "y": 705.875,
+    "y": 713.875,
     "w": 30,
     "h": 30,
     "pinned": false
    },
    "18|button|": {
     "x": 31,
-    "y": 764.765625,
+    "y": 772.765625,
     "w": 30,
     "h": 30,
     "pinned": false
    },
-   "19|button|▶ Beta Games ⚠ 103d — refund window closing, contact seller ": {
+   "19|button|▶ Beta Games ⚠ 104d — refund window closing, contact seller ": {
     "x": 31,
-    "y": 835.65625,
+    "y": 843.65625,
     "w": 532.640625,
     "h": 31,
     "pinned": false
    },
-   "20|button|▶ Alpha Cards ⚠ 104d — refund window closing, contact seller": {
+   "20|button|▶ Alpha Cards ⚠ 105d — refund window closing, contact seller": {
     "x": 28.515625,
-    "y": 904.65625,
+    "y": 912.65625,
     "w": 535.125,
     "h": 31,
     "pinned": false
    },
    "21|button|Stamp": {
     "x": 31,
-    "y": 947.65625,
+    "y": 955.65625,
     "w": 60.625,
     "h": 46,
     "pinned": false
    },
    "22|button|Mark all received": {
     "x": 200.296875,
-    "y": 947.65625,
+    "y": 955.65625,
     "w": 143.703125,
     "h": 46,
     "pinned": false
    },
    "23|button|": {
     "x": 31,
-    "y": 1015.65625,
+    "y": 1023.65625,
     "w": 30,
     "h": 30,
     "pinned": false
    },
    "24|button|–": {
     "x": 73,
-    "y": 1056.546875,
+    "y": 1064.546875,
     "w": 34,
     "h": 34,
     "pinned": false
    },
    "25|button|+": {
     "x": 163,
-    "y": 1056.546875,
+    "y": 1064.546875,
     "w": 34,
     "h": 34,
     "pinned": false
    },
    "26|button|": {
     "x": 31,
-    "y": 1116.546875,
+    "y": 1124.546875,
     "w": 30,
     "h": 30,
     "pinned": false
    },
    "27|button|": {
     "x": 31,
-    "y": 1175.4375,
+    "y": 1183.4375,
     "w": 30,
     "h": 30,
     "pinned": false
    },
    "28|button|▶ Epsilon Cards 2026-06-15 · ● tracked · E1 3 left · $3.75": {
     "x": 28.515625,
-    "y": 1246.328125,
+    "y": 1254.328125,
     "w": 315.484375,
     "h": 31,
     "pinned": false
    },
    "29|button|Stamp": {
     "x": 31,
-    "y": 1289.328125,
+    "y": 1297.328125,
     "w": 60.625,
     "h": 46,
     "pinned": false
    },
    "30|button|Mark all received": {
     "x": 200.296875,
-    "y": 1289.328125,
+    "y": 1297.328125,
     "w": 143.703125,
     "h": 46,
     "pinned": false
    },
    "31|button|": {
     "x": 31,
-    "y": 1357.328125,
+    "y": 1365.328125,
     "w": 30,
     "h": 30,
     "pinned": false
    },
    "32|button|": {
     "x": 31,
-    "y": 1416.21875,
+    "y": 1424.21875,
     "w": 30,
     "h": 30,
     "pinned": false
    },
    "33|button|": {
     "x": 31,
-    "y": 1475.109375,
+    "y": 1483.109375,
     "w": 30,
     "h": 30,
     "pinned": false
    },
    "34|button|▶ CollectorsVaultTradingCardEmporiumOutletSuperStoreOfficial": {
     "x": 28.515625,
-    "y": 1546,
+    "y": 1554,
     "w": 471.328125,
     "h": 31,
     "pinned": false
    },
    "35|button|Stamp": {
     "x": 31,
-    "y": 1589,
+    "y": 1597,
     "w": 60.625,
     "h": 46,
     "pinned": false
    },
    "36|button|Mark all received": {
     "x": 200.296875,
-    "y": 1589,
+    "y": 1597,
     "w": 143.703125,
     "h": 46,
     "pinned": false
    },
    "37|button|": {
     "x": 31,
-    "y": 1657,
+    "y": 1665,
     "w": 30,
     "h": 30,
     "pinned": false
    },
    "38|button|": {
     "x": 31,
-    "y": 1715.890625,
+    "y": 1723.890625,
     "w": 30,
     "h": 30,
     "pinned": false
    },
-   "39|button|▶ Zeta Games ⚠ 115d — refund window closing, contact seller ": {
+   "39|button|▶ Zeta Games ⚠ 116d — refund window closing, contact seller ": {
     "x": 28.515625,
-    "y": 1786.78125,
+    "y": 1794.78125,
     "w": 535.125,
     "h": 31,
     "pinned": false
    },
    "40|button|Stamp": {
     "x": 31,
-    "y": 1829.78125,
+    "y": 1837.78125,
     "w": 60.625,
     "h": 46,
     "pinned": false
    },
    "41|button|Mark all received": {
     "x": 200.296875,
-    "y": 1829.78125,
+    "y": 1837.78125,
     "w": 143.703125,
     "h": 46,
     "pinned": false
    },
    "42|button|": {
     "x": 31,
-    "y": 1897.78125,
+    "y": 1905.78125,
     "w": 30,
     "h": 30,
     "pinned": false
    },
    "43|button|": {
     "x": 31,
-    "y": 1956.671875,
+    "y": 1964.671875,
     "w": 30,
     "h": 30,
     "pinned": false

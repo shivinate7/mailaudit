@@ -44,11 +44,10 @@
         element's painted box at 375px matches test/a11y-base-boxes.json, recorded
         from the base commit f7d51ba with `A11Y_RECORD=1 node test/screens.mjs
         <base index.html>`. A grown hit area never grows it. Keys mask digits in
-        their text, so a day count in a card does not move a key. In the Stamp
-        editor state, each gap between chip rows grows by STAMP_ROW_EXTRA_PX (the
-        10px row gap, orchestrator decision 2026-10-13); items below the chips move
-        with it, and nothing else moves. Set STAMP_ROW_EXTRA_PX to 0 once the base
-        for that state is re-recorded from the builder's head with
+        their text, so a day count in a card does not move a key. One state is the
+        exception: the Stamp editor is recorded from the lane head, under the 10px
+        chip row gap (orchestrator decision 2026-10-13), because its base rows sit
+        6px apart. Re-record only that state with
         `A11Y_RECORD=1 A11Y_RECORD_ONLY="Stamp editor open" node test/screens.mjs`.
     11. Overlap (L6, F2): in the same states, a tap 1px outside any point of a
         control's side, corner to corner, counts when that point is strictly
@@ -849,10 +848,6 @@ const TOUCH_SELECTOR =
   'button, a[href], input:not([type="hidden"]), select, textarea, [role="button"], [role="tab"], [role="checkbox"], summary, [tabindex]:not([tabindex="-1"])';
 const BASE_BOXES = path.join(ROOT, "test", "a11y-base-boxes.json");
 const BOX_TOL_PX = 0.5;
-/* The Stamp editor's chip row gap goes from 6px to 10px (orchestrator decision
-   2026-10-13): each gap between chip rows adds this much to the items below it.
-   Set to 0 once the base for that state is re-recorded from the builder's head. */
-const STAMP_ROW_EXTRA_PX = 4;
 const RECORD = process.env.A11Y_RECORD === "1";
 /* A base key masks the digits in its text, so a day count does not move it.
    The index and tag stay as they are, so repeated labels stay apart. */
@@ -1119,7 +1114,6 @@ const measureTouch = ({ selector, half }) => {
     return {
       key: `${i}|${el.tagName.toLowerCase()}|${text}`,
       text,
-      chip: el.classList.contains("mdl-chip"),
       pinned,
       x: pinned ? box.left : box.left + window.scrollX,
       y: pinned ? box.top : box.top + window.scrollY,
@@ -1194,16 +1188,6 @@ async function touchCheck(browser) {
         fail(stateName, `${items.length} interactive elements, the base has ${Object.keys(wantByKey).length}`);
         continue;
       }
-      /* In the Stamp editor the chip rows sit STAMP_ROW_EXTRA_PX further apart
-         per row boundary, and everything below them moves with the taller grid.
-         Chip tops come from the base, so the boundaries are the base's own. */
-      const chipTops = [];
-      for (const it of items) {
-        const b = wantByKey[keyMasked(it.key)];
-        if (it.chip && b) chipTops.push(Math.round(b.y));
-      }
-      const rowTops = state === "Stamp editor open" ? [...new Set(chipTops)].sort((p, q) => p - q) : [];
-      const extraAbove = (baseY) => STAMP_ROW_EXTRA_PX * rowTops.slice(1).filter((t) => t <= baseY + 0.5).length;
       const moved = [];
       for (const it of items) {
         const b = wantByKey[keyMasked(it.key)];
@@ -1211,11 +1195,9 @@ async function touchCheck(browser) {
           moved.push(`${it.key} is new`);
           continue;
         }
-        /* a pinned item sits in the viewport, so the list's growth does not move it */
-        const ey = b.y + (it.pinned ? 0 : extraAbove(b.y));
         const d = Math.max(
           Math.abs(it.x - b.x),
-          Math.abs(it.y - ey),
+          Math.abs(it.y - b.y),
           Math.abs(it.w - b.w),
           Math.abs(it.h - b.h)
         );
