@@ -20,4 +20,4 @@ Snapshots are gzipped with `CompressionStream`. That is built into Safari, so it
 
 The real ledger blob is 235KB. All 19 pushes of it bundle to 39KB. Git deltas near-identical JSON to roughly 2KB a version. At tens of pushes a mail day, that is single-digit MB a year.
 
-`receivedAt` is never pruned, and its size is unmeasured.
+`receivedAt` is never pruned. Its size is debt `received-at-size-unmeasured`.

@@ -55,13 +55,13 @@ The rest-height change moves the drawn boxes of the open Tally card. Claim 10 re
 
 **Action row content at rest.** With "Stamp" and "Mark all received" showing, the row needs **32px** of content at each of 320, 360, 375, 390, 430 and 760px. The reserved row box is 54px: 46px of `min-height` in content-box, plus the 8px bottom padding.
 
-**Action row content at the tallest state (not re-measured).** Before the grid lane, the content need against the 46px reservation was 57px at 320px and 46px at 360, 375 and 390px. It was 31px at 430px and at 760px. The record writer's probe did not reproduce the three-button state, with "Clear check-ins" showing. So this table is unmeasured at `f97e423`.
+**Action row content at the tallest state (not re-measured).** Before the grid lane, the content need against the 46px reservation was 57px at 320px and 46px at 360, 375 and 390px. It was 31px at 430px and at 760px. The record writer's probe did not reproduce the three-button state, with "Clear check-ins" showing. So this table is unmeasured at `f97e423`. Debt: `card-action-row-unmeasured`.
 
 At the 46px reservation, the first check-in moves no item row at 360, 375 or 390px: 0.00px at `f97e423`.
 
 ## The 320px exception
 
-At `1607933` the Packages card moves 0.00px at 320px. The three-button state this paragraph describes was not reproduced, so the 11px step is unmeasured at the grid head. The Tally card does move at 320px, by 14px on check-ins 1 and 6 (see Figures). That is a named limit. No shipped check reads 320px: claim 2 runs at 375px and 760px only.
+At `1607933` the Packages card moves 0.00px at 320px. The three-button state this paragraph describes was not reproduced, so the 11px step is unmeasured at the grid head (debt `card-eleven-px-step-unmeasured`). The Tally card does move at 320px, by 14px on check-ins 1 and 6 (see Figures). That is debt `tally-card-moves-at-320px`. No shipped check reads 320px: claim 2 runs at 375px and 760px only.
 
 **320px is the one width this does not fully fix.** Three buttons wrap to a *third* line there, and the row still steps 11px. The bar half is width-independent, so at 320px the shift falls from 28px to 11px. This is left deliberately. 320px is below the app's stated 380px floor. It is not a viewport that current iOS runs. Reserving 57px would fix 320px by spending 26px of dead space in every expanded card at the widths that are real.
 

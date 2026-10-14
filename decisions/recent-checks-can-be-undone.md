@@ -1,8 +1,14 @@
 # Recent actions can be undone by tap
 
-**Status:** open. The owner ruled on 2026-10-11 that the log is "Synced across devices", and accepted the reach, the gesture, the redo rule and the entrance, see Ruled. The owner ruled the shape on 2026-10-11: "Inside the ledger". Still open: three measurements the build must take. Nothing is built.
+**Status:** ruled. The owner ruled on 2026-10-11 that the log is "Synced across devices", and accepted the reach, the gesture, the redo rule and the entrance, see Ruled. The owner ruled the shape on 2026-10-11: "Inside the ledger". Nothing is built. Debts: `recent-log-unbuilt` and `recent-log-unmeasured`.
 
 **Holds while:** `src/app.jsx` keeps no action log, and `undoAssign` is its only undo.
+
+Kind: build
+
+Plan: decisions/recent-checks-can-be-undone.md#ruled (web)
+
+Plan: decisions/recent-checks-can-be-undone.md#both-clients (native)
 
 ## The problem
 
@@ -97,7 +103,7 @@ Today's `undo` is different. `applyBackup` clears it for every source. The log i
 
 ## How far back
 
-The log keeps the newest 200 rows and nothing older than 14 days. Undo entries do not count toward 200. An undo entry whose row is gone is dropped with it. The owner accepted both limits on 2026-10-11. Neither was measured. How many actions a heavy mail day makes is unmeasured.
+The log keeps the newest 200 rows and nothing older than 14 days. Undo entries do not count toward 200. An undo entry whose row is gone is dropped with it. The owner accepted both limits on 2026-10-11. Neither was measured, see `recent-log-unmeasured`.
 
 ## The shape of the synced log
 
@@ -125,7 +131,7 @@ Ruled: a field in the ledger, named recent. The owner chose it on 2026-10-11, wi
 - `native-parity-table`. It gains one row for the log, with the scope both clients.
 - `storage-keys-are-frozen` is not touched. The log lives inside the ledger key. The allowed new key is not used, and test 25.27 stands.
 
-**Size.** The log rides in every POST, GET, version, backup and mirror push. Its size is unmeasured. The ledger is near 235 KB, and `MAX_LEDGER_BYTES` is 1,800,000. Bulk rows are the largest. The build measures a worst case of 200 bulk rows. If that case is large, a byte cap joins the two caps.
+**Size.** The log rides in every POST, GET, version, backup and mirror push. Its size is unmeasured, see `recent-log-unmeasured`. The ledger is near 235 KB, and `MAX_LEDGER_BYTES` is 1,800,000. Bulk rows are the largest. The build measures a worst case of 200 bulk rows. If that case is large, a byte cap joins the two caps.
 
 **Rejected shapes.**
 
@@ -166,6 +172,8 @@ The owner ruled on 2026-10-11 that the native app lists and restores its saved m
 Neither list holds the other's items. A restore is not a Recent row.
 
 ## Measurements the build must take
+
+Debt: `recent-log-unmeasured`.
 
 - Whether four cells fit in the action row at 375px. The code sizes a third at 114px. Four cells are about 86px, and "Re-import CSV" may ellipsize. Re-take `ruled-head-heights`, and run `npm run check:screens`. If four cells clip, the owner picks which cell gives way.
 - The height of a row, recorded in `ruled-head-heights`.

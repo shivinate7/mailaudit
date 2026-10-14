@@ -6,11 +6,19 @@ The bottom bar replaces the top view switch at every width (`phone-nav-is-bottom
 
 Orphaned hides the shared controls, because they apply to nothing there. That covers the date filter, the list, the canceled reference and the search pill. The bar survives an empty ledger, so pending envelopes cannot be stranded. The Orphaned tab carries a count badge while envelopes wait.
 
-Re-import, Backup and Reset must stay reachable from Orphaned. No test pins that. It is unverified.
+Re-import, Backup and Reset must stay reachable from Orphaned. No test pins that. Debt: `orphaned-reach-unpinned`.
 
 The old Hide received control is now Showing. See `ruled-head-showing-unreceived`.
 
+Kind: build
+
+Plan: decisions/three-views-share-one-switch.md#web-plan (web)
+
 **Pinned by:** 21.4 (tab order), 62.8 to 62.10 (no in-page switch; four tabs on an empty ledger; the Orphaned count).
+
+## Web plan
+
+The bar in `src/app.jsx` holds the Ledger tab and three working tabs: Orphaned, Tally and Packages. Tally and Packages read one `received` map. Orphaned hides the shared controls.
 
 ## See also
 

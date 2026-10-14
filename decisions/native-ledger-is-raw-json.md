@@ -2,8 +2,6 @@
 
 Kind: build
 
-Plan: decisions/native-ledger-is-raw-json.md#known-gap-the-worker-merge-dropped-unknown-top-level-fields (web)
-
 Plan: decisions/native-ledger-is-raw-json.md#known-gap-the-worker-merge-dropped-unknown-top-level-fields (worker)
 
 **Status:** ruled. The owner accepted a typed enum plan on 2026-10-11. The orchestrator default of 2026-10-12 replaced that enum with a raw dictionary. Owner ruling 2026-10-12 ("Keep a copy, then go on") holds for every client and every path data comes in. A `received`, `receivedAt`, `stamps` or `envelopes` value of the wrong shape (a whole field or one entry; JSON `null` counts) is first copied. Then every readable entry is kept. The web copy goes to History as a milestone. The web detail and its fallbacks are in `saved-state-shape`.
@@ -20,7 +18,7 @@ The native store holds the ledger as `[String: Any]`, parsed and written with `J
 
 ## Load and save
 
-The Swift client's rules, as built in draft PR #89. The web rules are in `saved-state-shape`.
+The Swift client's rules, as built in PR #89. The web rules are in `saved-state-shape`.
 
 - A load throws when the bytes are not a JSON object. A top level of `null`, a number, a string or a list is refused the same way. No copy is made.
 - A load throws when `mailday` is present and is not the integer 1. No copy is made. A missing `mailday` is accepted and saved as 1.
@@ -77,13 +75,15 @@ The orchestrator defaults of 2026-10-12 are pinned by these tests:
 
 The notice line is pinned by LedgerNoticeTests: testNoLineWhenNothingWasDropped, testOneLineNamesTheCountAndTheKeptCopy, testSingularCountReadsAsOneEntry, testLineNamesNoSyncWords.
 
-Not pinned by a test: the millisecond kept-name format, the missing-file case, and the unwrapped-error sentence in Load and save. The millisecond format is read from LedgerStore.load, because keptCopies matches the prefix and extension only. The app passing its own rules.js to the store is not pinned either (ManifestApp.swift, boot).
+Four behaviours have no test. Debt: `native-ledger-pins-missing`.
+
+No native view opens the kept copy that the notice line names. Debt: `native-kept-copy-has-no-route`.
 
 ## Known gap: the Worker merge dropped unknown top-level fields
 
 The Worker's shape refusal and its mend of stored damage are built on PR #87, merged (see Built state). This gap is separate from them.
 
-**Status:** ruled. The carry is on main (`75a96b8`); the `savedAt` rule is built on `web/carry-savedat`. The live Worker runs the pre-fix merge until the next `worker:deploy`; whether that ran is unmeasured.
+**Status:** ruled. The carry is on main (`75a96b8`); the `savedAt` rule is built on `web/carry-savedat`. The live Worker runs the pre-fix merge until the next `worker:deploy`; whether that ran is unmeasured. Debt: `worker-merge-fix-not-deployed`.
 
 Owner ruling 2026-10-14: `mergeLedger` carries unknown top-level keys, and `savedAt` joins the synced ledger. A key that both sides hold with different values keeps the side with the later `savedAt`; a tie, or a side with no `savedAt`, keeps incoming. Its rule and pins are in `saved-state-shape`.
 
@@ -91,9 +91,9 @@ Before the fix, measured 2026-10-12, `mergeLedger` dropped an unknown top-level 
 
 The Worker POST handler in `worker/core.mjs` stored the merged ledger whenever a ledger already existed. So such a field survived only the first write to an empty store. Nested unknown fields inside an envelope or a stamp are unmeasured.
 
-## Known bandaid: Swift names are unbackticked
+## Swift names in this record
 
-The Swift names in this record (LedgerStore, LedgerStoreTests, RulesCore, droppedCount) are unbackticked. `check-docs.mjs` judges a backticked name against CODE_ROOTS, and CODE_ROOTS omits `native/`. So a backticked LedgerStore fails the check. Follow-up: add `native/` to CODE_ROOTS in `check-docs.mjs`. That is a code change for a builder.
+The Swift names in this record (LedgerStore, LedgerStoreTests, RulesCore, droppedCount) are unbackticked. They were plain because `check-docs.mjs` did not read `native/`. Its CODE_ROOTS lists `native/` now, so a backticked Swift name is checked.
 
 ## See also
 

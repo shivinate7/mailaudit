@@ -1,24 +1,26 @@
-// A checked reader for the record corpus under invariants/, measurements/
-// and decisions/ — the files CLAUDE.md was split into. Same spirit as
+// A checked reader for the record corpus under invariants/, measurements/,
+// decisions/ and debts/ — the files CLAUDE.md was split into. Same spirit as
 // check-docs.mjs: nothing here is hand-maintained data. Every count comes
 // from walking the real files. Records hold current text only; git keeps
 // history. Run with `npm run check:records`.
 //
-// Seven claims, each with its own section below:
+// Eight claims, each with its own section below:
 //   1. every citation resolves
 //   2. no fence is broken
-//   3. no duplicate slug across the three folders
+//   3. no duplicate slug across the record folders
 //   4. every record has its shape (title, own prose first, sentence-case title)
 //   5. no orphan and no dead index entry
 //   6. every invariant names the test that pins it, and no record cites an
 //      invariant by number
 //   7. every decision holds a "Holds while" line, every open thread a
 //      "Status" line, and the index lists no slug twice
+//   8. every debt holds a "Status" line and a "Decision" line that names an
+//      existing non-debt record or says "none", and CLAUDE.md lists debts/
 
 import { readFileSync, readdirSync } from "fs";
 import { execFileSync } from "child_process";
 
-const FOLDERS = ["invariants", "measurements", "decisions"];
+const FOLDERS = ["invariants", "measurements", "decisions", "debts"];
 
 let failures = 0;
 let checked = 0;
@@ -437,6 +439,56 @@ function closestSlug(token, slugs) {
   }
   failures += bad;
   console.log(`check:records: holds-while, status and index-once check - ${bad} problem(s)`);
+}
+
+/* ---------- claim 8: debts point at their decision ----------
+   Owner ruling 2026-10-14: each known gap is one file under debts/, and it
+   points at the decision it belongs to (global rule roles-holes-are-debts).
+   A debt holds a "**Status:**" line and one or more "**Decision:**" lines, all
+   outside any fence. Every Decision line backticks the slug of a record in invariants/,
+   measurements/ or decisions/ (never another debt, never itself), or says
+   "none" for a gap with no decision. Claim 1 cannot judge this: it refuses a
+   slug that is far from every real one. CLAUDE.md lists the debts/ folder. */
+{
+  let bad = 0;
+  const debts = records.filter((r) => r.folder === "debts");
+  const targets = new Set(records.filter((r) => r.folder !== "debts").map((r) => r.slug));
+  for (const r of debts) {
+    const { fences } = parseFences(r.text);
+    const fenced = new Set();
+    for (const f of fences) for (let i = f.startLine; i <= f.endLine; i++) fenced.add(i);
+    const prose = r.text.split("\n").filter((_, i) => !fenced.has(i + 1));
+    if (!prose.some((l) => /^\*\*Status:\*\*/.test(l))) {
+      console.error(`check:records: ${r.path}: no "**Status:**" line`);
+      bad++;
+    }
+    const lines = prose.filter((l) => /^\*\*Decision:\*\*/.test(l));
+    if (!lines.length) {
+      console.error(`check:records: ${r.path}: no "**Decision:**" line`);
+      bad++;
+      continue;
+    }
+    for (const line of lines) {
+      // Only a slug-shaped span is a citation; `# note` is prose in a span.
+      const cited = [...line.matchAll(/`([a-z0-9-]+)`/g)].map((m) => m[1]);
+      if (!cited.length && !/^\*\*Decision:\*\*\s*none\b/i.test(line)) {
+        console.error(`check:records: ${r.path}: "Decision" names no record and does not say "none"`);
+        bad++;
+      }
+      for (const slug of cited) {
+        if (!targets.has(slug)) {
+          console.error(`check:records: ${r.path}: Decision cites \`${slug}\`, which is not a record in invariants/, measurements/ or decisions/`);
+          bad++;
+        }
+      }
+    }
+  }
+  if (!/\bdebts\//.test(readFileSync("CLAUDE.md", "utf8"))) {
+    console.error("check:records: CLAUDE.md does not list the debts/ folder");
+    bad++;
+  }
+  failures += bad;
+  console.log(`check:records: debts check - ${debts.length} debt(s), ${bad} problem(s)`);
 }
 
 if (failures) {

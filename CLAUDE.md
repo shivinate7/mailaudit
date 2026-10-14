@@ -23,13 +23,14 @@ records your task needs. Do not read them all.
 - `invariants/` holds a rule that must not break. 8 records.
 - `decisions/` holds a ruling and the reason it still holds.
 - `measurements/` holds a measured figure and how to re-measure it. 8 records.
+- `debts/` holds one known gap or to-do per file, each pointing at its decision.
 
 A record cites another record by slug, never by a path, so a record survives a
-move. `npm run check:records` proves seven things. This index cites every record.
+move. `npm run check:records` proves eight things. This index cites every record.
 Every citation resolves. No slug repeats. No fence is broken. Every record
 carries its shape. Every invariant names the test that pins it. Every decision
 holds a Holds-while line, every open thread a Status line, and the index lists
-no slug twice.
+no slug twice. Every debt holds a Status line and a Decision line.
 
 An open question carries a `**Status:**` line. That line is the only thing that
 separates a question still open from a ruling already settled, so keep it.
@@ -103,6 +104,7 @@ Sync runs itself. These records say what it refuses to do, and why each refusal 
 - `photo-writes-wait-one-second` — Photo writes wait one second after the ledger.
 - `null-remote-info-is-not-no-key` — A null remote status is not a missing key.
 - `worker-keeps-snapshots` — The Worker keeps daily snapshots, and GitHub leaves the sync role.
+- `sync-revamp-cloudflare` — Sync moves from GitHub to Cloudflare, and orders arrive with no export.
 
 ## The native client
 
@@ -151,6 +153,7 @@ A milestone is taken before the risky step, never after. Read these before chang
 - `history-restores-a-saved-version` — History lists saved versions and restores one.
 - `backup-files-restore-two-ways` — Backup files restore with or without photos.
 - `every-restore-passes-applybackup` — Every restore passes through applyBackup.
+- `recent-checks-can-be-undone` — Recent actions can be undone by tap.
 
 ## The public seed
 
@@ -291,6 +294,7 @@ What each check asks, and the two traps in the icon pipeline.
 - `main-moves-only-by-pr` — Main moves only by pull request, admins included.
 - `screens-checked-headless-in-ci` — Each view is checked headless at 375 and 760px.
 - `records-hold-current-text-only` — Records hold current text only; git keeps history.
+- `debts-hold-known-gaps` — Known gaps and to-dos live in debts, one file each.
 - `records-name-what-dates-them` — Each decision names the fact that would date it.
 - `readme-is-minimal` — The README is minimal, and carries no license.
 - `orchestrator-may-merge` — The orchestrating session may merge green, reviewed PRs.
@@ -342,9 +346,7 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 - `ci-runs-in-utc` — CI runs the suite outside UTC, so test 38.9 runs there.
 - `itp-may-clear-storage` — ITP may clear storage after seven idle days.
 - `nothing-recovers-without-the-key` — Nothing recovers without the key.
-- `peek-is-verified-only-on-refusal` — `peek()` is verified only on its refusal path.
 - `photos-in-git-are-permanent` — Photos in git are permanent.
-- `the-conflict-guard-is-unverified` — The conflict guard is unverified against real GitHub.
 - `ledger-private-source-public` — The ledger repo is private, the source repo is public.
 - `token-expires-without-warning` — The token expires with no warning.
 - `token-sits-on-shared-origin` — The token sits on a shared origin.
@@ -352,9 +354,63 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 - `watchdog-lives-in-private-repo` — The backup watchdog lives in the private repo.
 - `the-write-budget-is-shared` — The write budget is shared with the ledger push.
 - `vendor-toggle-undecided` — The vendor toggle stays undecided.
-- `recent-checks-can-be-undone` — Recent actions can be undone by tap.
-- `sync-revamp-cloudflare` — Sync moves from GitHub to Cloudflare, and orders arrive with no export.
 - `merge-later-change-wins` — Clock skew can pin a merge key. Accepted risk.
+
+## Debts
+
+One known gap or to-do per file under `debts/`. Each carries a Status line and a Decision line that names its record or says none.
+
+- `claim-11-fixed-edge-taps` — Claim 11 skips taps at a fixed control's edge.
+- `chip-gap-tolerance-at-12px` — The chip-gap tolerance needs a 12px re-measure.
+- `claim-9-fractional-box-edges` — Claim 9 can pass a box just under 44px.
+- `tally-card-moves-at-320px` — The Tally card moves 14px at 320px.
+- `restore-stamps-new-change-times` — A restore does not stamp new change times yet.
+- `dopush-mirror-conflict-path` — Is the doPush mirror-conflict path dead code?
+- `native-ui-tests-not-in-ci` — Native UI tests and builds are not in CI.
+- `n4a-sync-over-http-unbuilt` — Lane N4a, sync over HTTP, is not built.
+- `native-lanes-n6-to-n9-unbuilt` — Native lanes N6 to N9 are not built.
+- `native-kept-copy-has-no-route` — The native app has no route to the kept copy.
+- `key-re-accepts-token-shape` — The key check accepts a GitHub token's shape.
+- `tests-33-35-40-45-cannot-fail` — Tests 33.35, 33.40 and 33.45 cannot fail.
+- `worker-merge-fix-not-deployed` — The Worker merge fix is merged but not deployed.
+- `received-at-size-unmeasured` — The size of receivedAt is unmeasured.
+- `suite-hang-cause-unmeasured` — The 13-minute hang after the suite summary is unexplained.
+- `card-action-row-unmeasured` — The action row at its tallest state is unmeasured.
+- `card-eleven-px-step-unmeasured` — The 11px row step at 320px is unmeasured.
+- `reset-leaves-sync-unpinned` — No test pins that an armed Reset leaves Sync open.
+- `reset-all-keeps-token-unpinned` — No test pins that resetAll keeps the GitHub token.
+- `token-state-and-bundle-unpinned` — Nothing pins the token's React-state or bundle guarantees.
+- `token-export-and-view-unpinned` — Nothing pins the device key in the backup export or view state.
+- `reimport-received-unpinned` — Nothing pins that received survives a re-import.
+- `native-dialog-ban-unpinned` — Nothing pins the ban on native dialogs.
+- `ci-misses-check-records-test` — CI never runs the claim 8 test.
+- `check-records-no-record-branch` — The claim 8 branch for a Decision with no record has no test.
+- `ruled-head-heights-unremeasured` — The ruled head heights have not been re-measured.
+- `photo-put-unrun-on-github` — Photo PUT and photo pull have never run on GitHub.
+- `peek-is-verified-only-on-refusal` — The successful peek path is unverified on GitHub.
+- `the-conflict-guard-is-unverified` — The 409 conflict path is unverified on GitHub.
+- `native-ledger-tab-unbuilt` — The native Ledger tab is a placeholder.
+- `native-key-scan-skips-views` — The native key scan skips SwiftUI view state.
+- `draft-skip-required-unmeasured` — A required check on a draft-skipped job is unmeasured.
+- `recent-log-unbuilt` — The recent-actions log is not built.
+- `recent-log-unmeasured` — The recent-actions log has three measurements to take.
+- `armed-reset-mistap-unmeasured` — A mis-tap beside the armed Reset box is unmeasured.
+- `orphaned-reach-unpinned` — Re-import, Backup and Reset on Orphaned have no test.
+- `native-ledger-pins-missing` — Four native ledger behaviours have no test.
+- `panels-overlay-unbuilt` — Disclosure panels still push the list.
+- `panel-paper-fill-unbuilt` — Overlay panels carry no paper fill.
+- `order-id-visible-unbuilt` — The order id has no narrow-width rule.
+- `discard-keeps-draft` — Discard does not end a composer draft.
+- `type-floor-unbuilt` — Some labels are below the 10px floor.
+- `universal-link-unbuilt` — The universal-link key fallback is not built.
+- `native-runner-image-unverified` — Whether the hosted runner image has Xcode 27 and xcodegen is unverified.
+- `native-runner-keychain-unverified` — Whether the hosted runner keychain is unlocked is unverified.
+- `native-job-hosted-time-unmeasured` — The native job's time on a hosted runner is unmeasured.
+- `n4b-socket-idle-gate-unbuilt` — Lane N4b, the socket, idle gate and resume, is not built.
+- `n10-photos-unbuilt` — Lane N10, native photos, is not built.
+- `n11-device-check-not-run` — The owner's native device check has not run.
+- `sync-switch-pending` — The Cloudflare switch is pending, so web still mirrors to GitHub.
+- `cloudflare-access-login-untested` — A Cloudflare Access login in an iOS home-screen app is untested.
 
 ## Measurements
 

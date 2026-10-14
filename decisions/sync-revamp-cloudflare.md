@@ -8,7 +8,7 @@ Plan: decisions/sync-revamp-cloudflare.md#worker-work-ahead (worker)
 
 Plan: decisions/sync-revamp-cloudflare.md#worker-work-ahead (native)
 
-**Status:** open. Stage 4b is built, and the switch is pending. The server runs at `manifestnumberone.shivamsemwal01.workers.dev`. A device sends its ledger there once it has its key. The switch is the move to the new Durable Object, see Stage 4b rulings.
+**Status:** ruled 2026-10-10. Stage 4b is built, and the switch is pending. Debt: `sync-switch-pending`. The server runs at `manifestnumberone.shivamsemwal01.workers.dev`. A device sends its ledger there once it has its key. The switch is the move to the new Durable Object, see Stage 4b rulings.
 
 GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Deliberately a manual backup, not continuous sync." Auto-push and merge grew on top of it later, and no one chose a sync base again. A fresh choice, made on 2026-10-10, picked Cloudflare.
 
@@ -82,17 +82,18 @@ The record closes when the base carries both. Then those paths leave the web bui
 
 ## Worker work ahead
 
-The native build needs these changes to the Worker. On main the Worker serves only `/ledger` and `/ws`, with no photo route and no import route. Lanes W2a and W3a add routes on draft PRs #77 and #78, and neither has landed. The lanes are in `native-build-lanes`.
+The native build needs these changes to the Worker. On main the Worker serves `/ledger` and `/ws`, with no import route. Lanes W2a and W3a added the photo route and the snapshot routes on main, in PRs #77 and #79. The lanes are in `native-build-lanes`.
 
 - **Stats in the reply (lane W1, landed in PR #61):** the POST reply carries `stats` from `mergeLedger`, as it carries the ledger and the rev now. A first POST to an empty store replies with zero stats, so the seeding device sees nothing as new (owner-delegated ruling, 2026-10-11). A client then shows the merge notice without running the merge.
-- **Photo route (lane W2):** the owner ruled on 2026-10-11: "Build server photo route first". The route serves both clients before native photo lane N10. It stores photos as rows by photo id, as the design section says. Lane W2a builds it on draft PR #77, not merged. Orchestrator defaults of 2026-10-12, not owner rulings: a photo over 1.9 MB is refused with 413, there is no delete route, and a repeat POST keeps the first bytes.
-- **Daily snapshots (lane W3):** the Worker keeps exactly 180 daily snapshots for History and backup, see `worker-keeps-snapshots`. Lane W3a builds them on draft PR #78. Group 13 (tests 13.1 to 13.9) holds the snapshot tests, and `npm run test:worker` reads 312 passed, 0 failed. Lanes W3b to W3e are named in `native-build-lanes`. W3b is blocked.
+- **Photo route (lane W2):** the owner ruled on 2026-10-11: "Build server photo route first". The route serves both clients before native photo lane N10. It stores photos as rows by photo id, as the design section says. Lane W2a built it, in PR #77. Orchestrator defaults of 2026-10-12, not owner rulings: a photo over 1.9 MB is refused with 413, there is no delete route, and a repeat POST keeps the first bytes.
+- **Daily snapshots (lane W3):** the Worker keeps exactly 180 daily snapshots for History and backup, see `worker-keeps-snapshots`. Lane W3a built them, in PR #79. Group 13 (tests 13.1 to 13.9) holds the snapshot tests. At W3a, `npm run test:worker` read 312 passed, 0 failed. Lanes W3b to W3e are named in `native-build-lanes`. W3b is blocked.
 - **Universal-link file:** the universal-link fallback needs a Worker route for the apple-app-site-association file. The owner ruled the fallback on 2026-10-11. Neither the route nor the fallback is built. The fallback is built only if the N11 Camera check fails the custom scheme, see `native-key-via-url-scheme`.
 
 ## Still open
 
-- Whether a Cloudflare Access login survives in an iOS home-screen app. This is untested.
-- A restore keeps the old receivedAt today, so a later server reply can undo it. The fix is lane W3b, which is blocked, see `native-build-lanes`.
+- The switch to the new Durable Object is pending, see Stage 4b rulings. Debt: `sync-switch-pending`.
+- Whether a Cloudflare Access login survives in an iOS home-screen app. This is untested. Debt: `cloudflare-access-login-untested`.
+- A restore keeps the old receivedAt today, so a later server reply can undo it. Debt: `restore-stamps-new-change-times`.
 - Live updates use a WebSocket. A new rev from the other device starts one GET, and the reply waits for the idle gate.
 - A 413 from the Worker turns mirror mode off, as an unknown answer does. The advisory line names the size problem.
 

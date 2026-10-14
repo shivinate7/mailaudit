@@ -1,10 +1,14 @@
 # The native build runs in ordered lanes
 
-**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. W1 landed in PR #61 and S1 in PR #62. S2 landed in PR #63, S3 in PR #64 and S4 in PR #65. N1 landed in PR #75, C1 in PR #76, W2a in PR #77 and W3a in PR #78. N2 landed in PR #81, N3 in PR #80 and N5 in PR #82. Their rows have left this table. No other lane has landed. The rows below carry the 2026-10-11 changes and the 2026-10-12 Mirror scan move (N8 row). The 2026-10-12 N5 defaults sit in N5 notes below. The rows are ruled or named, and not built.
+**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. W1 landed in PR #61 and S1 in PR #62. S2 landed in PR #63, S3 in PR #64 and S4 in PR #65. N1 landed in PR #75, C1 in PR #76, W2a in PR #77 and W3a in PR #79. N2 landed in PR #81, N3 in PR #80 and N5 in PR #82. Their rows have left this table. No other lane has landed. The rows below carry the 2026-10-11 changes and the 2026-10-12 Mirror scan move (N8 row). The 2026-10-12 N5 defaults sit in N5 notes below. The rows are ruled or named, and not built.
 
 The native rebuild splits into lanes. W lanes change the Worker. S lanes change shared files and extract the rules. The C lane changes CI. N lanes build the native client. A lane that lands leaves this table, and git keeps its history.
 
 **Holds while:** the lanes in this table have not landed.
+
+Kind: build
+
+Plan: decisions/native-build-lanes.md#still-open (native)
 
 ## How every lane runs
 
@@ -43,7 +47,7 @@ W2 and W3 come from the owner's rulings, not from the first plan. W2a and W3a ha
 - Batch 4: N5 (landed), beside N4a.
 - Batch 5: N6, N7 and N8 after N5 (landed), with N4b and N9.
 - N4a waits for the stage 4b switch, see `sync-revamp-cloudflare`.
-- N10 waits for W2a, because the owner ruled the Worker photo route first.
+- N10 waited for W2a, which landed in PR #77, because the owner ruled the Worker photo route first.
 
 ## N1 notes
 
@@ -72,9 +76,12 @@ Other risks live in the record for their lane:
 
 ## Still open
 
-- The Ledger tab is a placeholder. No lane builds its options, see `ledger-tab-holds-options`. Open, owner to name a lane.
-- The native job runs ST only. The UI tests, the xcodegen step and the `xcodebuild` builds are not in CI, see `native-ci-on-hosted-macos`. Lane C2, the table row above, adds them. Not built.
-- The key scan covers the Packages model, its rows and the ledger file. No lane scans SwiftUI view state. Open, owner to name a lane.
+- The Ledger tab is a placeholder, see `ledger-tab-holds-options`. Debt: `native-ledger-tab-unbuilt`.
+- The native job runs ST only. Debt: `native-ui-tests-not-in-ci`.
+- The key scan skips SwiftUI view state. Debt: `native-key-scan-skips-views`.
+- Lane N4b, the socket, idle gate and resume, is not built. Debt: `n4b-socket-idle-gate-unbuilt`.
+- Lane N10, native photos, is not built. Debt: `n10-photos-unbuilt`.
+- Lane N11, the owner's device check, has not run. Debt: `n11-device-check-not-run`.
 
 ## See also
 

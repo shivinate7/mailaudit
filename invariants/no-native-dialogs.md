@@ -8,6 +8,6 @@ The main component has two armable controls, Reset and Restore. Arming one **dis
 
 `PackageCard` has its own local pair for Remove stamp. `EnvelopeCard` has its own local pair for Discard. Each card runs one timer and has one armed control. The timer clears on unmount.
 
-**Pinned by:** 16.1–16.3 (group 16: only one two-tap confirm is armed at a time), 26.17 (Reset arms), 39.14–39.15 (a restore arms; Reset arms and takes the row), 41.5 (one tap does not restore a remote version). Nothing pins the ban on `window.confirm` and `alert` itself.
+**Pinned by:** 16.1–16.3 (group 16: only one two-tap confirm is armed at a time), 26.17 (Reset arms), 39.14–39.15 (a restore arms; Reset arms and takes the row), 41.5 (one tap does not restore a remote version). Debt: `native-dialog-ban-unpinned`.
 
 Mutants confirmed red: Restore firing on one tap, local or remote (39.14 and 41.5). The Pull mutants (Pull firing on one tap, and arming Pull no longer disarming Reset) left with the Pull control.

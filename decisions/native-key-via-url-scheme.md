@@ -1,8 +1,12 @@
 # The native client takes its key through a custom URL scheme
 
-**Status:** ruled. The owner accepted this on 2026-10-11 with "all seem fine". N2 landed in PR #81 and N5 in PR #82. The universal-link fallback is ruled and not built. One fact is unmeasured: whether the iPhone Camera opens a custom scheme from a QR code.
+**Status:** ruled. The owner accepted this on 2026-10-11 with "all seem fine". N2 landed in PR #81 and N5 in PR #82. The universal-link fallback is ruled and not built, see `universal-link-unbuilt`. One fact is unmeasured: whether the iPhone Camera opens a custom scheme from a QR code.
 
 The key reaches the native app by URL, with no typing. The app stores the key in its own Keychain and drops the URL.
+
+Kind: build
+
+Plan: decisions/native-key-via-url-scheme.md#the-universal-link-fallback (native)
 
 **Holds while:** no device has scanned a custom-scheme QR. The device check is lane N11 in `native-build-lanes`.
 

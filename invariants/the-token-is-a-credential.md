@@ -8,7 +8,9 @@ Three structural guarantees keep them out. They are listed from strongest to wea
 2. The GitHub key input is **uncontrolled**. It is a `ref`. The app reads it once on submit, then clears it. So the token is never in a state snapshot or a DevTools dump. The device key never reaches React state either. `window.sync` reads it from storage, and `hasKey()` returns only a boolean.
 3. The payload is built from named fields. It never spreads state.
 
-`resetAll` deliberately does **not** clear either credential. The GitHub token is a device credential. Dropping the stored sha with it would make the very next push fail with a 422, for no reason. No test pins that `resetAll` keeps the token.
+`resetAll` deliberately does **not** clear either credential. The GitHub token is a device credential. Dropping the stored sha with it would make the very next push fail with a 422, for no reason. Debt: `reset-all-keeps-token-unpinned`.
+
+The key check accepts a GitHub token's shape. Debt: `key-re-accepts-token-shape`.
 
 ## The native client
 
@@ -19,4 +21,4 @@ The native client holds only the device key. It never holds a GitHub token, see 
 - The key never goes into SwiftUI state (State or Published), the ledger or a backup.
 - The key arrives by URL and the app drops the URL, see `native-key-via-url-scheme`.
 
-**Pinned by:** 25.24–25.27 (the GitHub token stays out of the saved ledger, the pushed payload, a backup file and the storage namespace), 51.26–51.27 (the device key's name sits outside the namespace), and 52.4–52.7 (the device key stays out of those places, on the harness mock only). Nothing pins the React-state or bundle guarantees, or the `resetAll` rule above. The N2 Swift tests pin the key's Keychain class, that a saved key reads back, and that `hasKey` follows save and clear (Swift suite KeyStoreTests). They also pin that a bad fragment stores nothing and that a refused link keeps the stored key (Swift suite KeyIntakeTests). `PackagesModelTests.testNoKeyInModelRowsOrLedgerAfterCheckIn` (lane N5) pins that the key stays out of the Packages model, its rows and the ledger file after a check-in. Nothing yet pins the backup export or SwiftUI view state. Lane N8 owns the export, see `native-build-lanes`. The Mirror scan is called by the N2 KeyStore tests and by that N5 test.
+**Pinned by:** 25.24–25.27 (the GitHub token stays out of the saved ledger, the pushed payload, a backup file and the storage namespace), 51.26–51.27 (the device key's name sits outside the namespace), and 52.4–52.7 (the device key stays out of those places, on the harness mock only). Debt: `token-state-and-bundle-unpinned`, and `reset-all-keeps-token-unpinned` for the `resetAll` rule. The N2 Swift tests pin the key's Keychain class, that a saved key reads back, and that `hasKey` follows save and clear (Swift suite KeyStoreTests). They also pin that a bad fragment stores nothing and that a refused link keeps the stored key (Swift suite KeyIntakeTests). `PackagesModelTests.testNoKeyInModelRowsOrLedgerAfterCheckIn` (lane N5) pins that the key stays out of the Packages model, its rows and the ledger file after a check-in. Debt: `token-export-and-view-unpinned`. The Mirror scan is called by the N2 KeyStore tests and by that N5 test.
