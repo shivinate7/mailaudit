@@ -2043,6 +2043,73 @@ ok(
   "33.22 and one that did says what arrived"
 );
 
+/* a key a newer build writes must survive an older build's merge. Otherwise the
+   older build drops it, applies the result as a full replace, and pushes the
+   loss back (saved-state-shape). Rule for lane web/merge-unknown-keys, owner to
+   confirm: a key on one side only is kept; a key on both sides with different
+   values keeps the side with the later savedAt; a tie keeps incoming. */
+const UNK_NOTE = { note: "from a newer build" };
+const UNK_LOCAL_ONLY = { ...PHONE, futureKey: UNK_NOTE };
+eq(
+  mergeLedger(UNK_LOCAL_ONLY, LAPTOP).merged.futureKey,
+  UNK_NOTE,
+  "33.23 a key only the local side holds survives the merge"
+);
+eq(
+  mergeLedger(LAPTOP, UNK_LOCAL_ONLY).merged.futureKey,
+  UNK_NOTE,
+  "33.24 and a key only the incoming side holds survives it too"
+);
+eq(
+  mergeLedger(mergeLedger(UNK_LOCAL_ONLY, LAPTOP).merged, LAPTOP).merged.futureKey,
+  UNK_NOTE,
+  "33.25 and it survives the next merge, so the older build cannot push the loss back"
+);
+const UNK_OLDER = { ...PHONE, futureKey: "older", savedAt: 100 };
+const UNK_NEWER = { ...LAPTOP, futureKey: "newer", savedAt: 200 };
+eq(
+  mergeLedger(UNK_OLDER, UNK_NEWER).merged.futureKey,
+  "newer",
+  "33.26 on both sides and different, the later savedAt wins when it is incoming"
+);
+eq(
+  mergeLedger(UNK_NEWER, UNK_OLDER).merged.futureKey,
+  "newer",
+  "33.27 and the later savedAt wins when it is local"
+);
+const UNK_TIE_LOCAL = { ...PHONE, futureKey: "local", savedAt: 300 };
+const UNK_TIE_INCOMING = { ...LAPTOP, futureKey: "incoming", savedAt: 300 };
+eq(
+  mergeLedger(UNK_TIE_LOCAL, UNK_TIE_INCOMING).merged.futureKey,
+  "incoming",
+  "33.28 a tie on savedAt keeps incoming"
+);
+eq(
+  mergeLedger(UNK_TIE_INCOMING, UNK_TIE_LOCAL).merged.futureKey,
+  "local",
+  "33.29 and in the other order the value passed second is the one kept"
+);
+/* the known keys are the same whether or not an unknown key rides along */
+const unkKnownOf = (m) => ({
+  mailday: m.mailday,
+  items: m.items,
+  received: m.received,
+  receivedAt: m.receivedAt,
+  envelopes: m.envelopes,
+  stamps: m.stamps,
+  dateFilter: m.dateFilter,
+  sortBy: m.sortBy,
+  itemSort: m.itemSort,
+});
+eq(
+  unkKnownOf(
+    mergeLedger({ ...PHONE, futureKey: "x", savedAt: 1 }, { ...LAPTOP, futureKey: "y", savedAt: 2 })
+      .merged
+  ),
+  unkKnownOf(m33.merged),
+  "33.30 the known keys merge exactly as they do with no unknown key"
+);
+
 /* ── 34. the conflict stops being a trap ──────────────────────────────────
    Group 25 proves a stale push is BLOCKED. This proves it can now be resolved
    without either device losing work — which is the entire point, because both
