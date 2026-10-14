@@ -1,12 +1,12 @@
 # Ruled head control region heights
 
-**Status:** re-measure pending. The 4px grid ruling in `spacing-on-4px-grid` will change this region. `CTL_H` (34px) is off the 4px step. L11a removed the view switch that every figure starts from. It also moved Find out of the ruled row, into a pill above the bottom bar. L11b (commit `12e8721`) moved the option rows into the Ledger tab. It also retired the action row (`action-row-is-ruled-cells`). The region measured below no longer exists at 375px. The figures predate L11a and L11b. They are unmeasured after the grid ruling.
+**Status:** re-measure pending, and no start mark is named. The 4px grid lane (`528bbde`) changed this region's spacing. `CTL_H` is still 34px at `f97e423`. It is a control height, not a spacing value, so the grid lane left it. L11a removed the view switch that every figure starts from. It also moved Find out of the ruled row, into a pill above the bottom bar. L11b (commit `12e8721`) moved the option rows into the Ledger tab. It also retired the action row (`action-row-is-ruled-cells`). The region measured below no longer exists at 375px. At `f97e423` the Packages view holds only the masthead and the sync line above its first card. The figures predate L11a and L11b. They are unmeasured after the grid ruling.
 
 This record holds the control region height at 375px, in each state. States are: at rest, with a panel open, and with the action row empty or full. It also holds the one width bug the region had, at 377px. Re-measure at 375px after a change to the region's cells, panels, or the action row.
 
 ## How to re-measure
 
-Open the built page at a 375px viewport. Load a real ledger. The start mark was the top of the view switch, which L11a removed, so set a new start mark first. Measure from it to the top of the first package card. Do this for each state named below. Compare the result against the figures below. The prose gives no script name. Re-run this by hand in a real browser. jsdom has no layout and cannot do this measurement.
+Open the built page at a 375px viewport. Load a real ledger. The start mark was the top of the view switch, which L11a removed, so set a new start mark first. No new start mark is named yet, so no figure is taken at `f97e423`. Measure from it to the top of the first package card. Do this for each state named below. Compare the result against the figures below. The prose gives no script name. Re-run this by hand in a real browser. jsdom has no layout and cannot do this measurement.
 
 ## Reader
 
