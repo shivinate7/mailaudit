@@ -44,14 +44,14 @@ Tally and Packages figures are at `1607933`, measured 2026-10-14. Action-row fig
 
 **Packages card (Alpha Cards, 3 rows).** At rest and after each of the three check-ins, the card is **335.67px** tall at 320, 375 and 760px. That includes the check-in that completes the package. Every other row moves **0.00px** on every step. Its rows measure the same at `c07ae27`. At `f97e423` the card held 335.67px, with 0.00px of row shift and no horizontal overflow at 320, 360, 375, 390, 430 and 760px.
 
-**Tally card (Lightning Bolt, 6 copies), at `1607933`.** At 375px and 760px the card is **673.34px** at rest and after every check-in. Other rows move **0.00px** on every step. At 320px it is 673.34px at rest, 687.34px after check-ins 1 to 5, and 673.34px after check-in 6. Rows move **14px** down on check-in 1 and **14px** back up on check-in 6. The 320px step is the one-line claim failing at that width, as above.
+**Tally card (Lightning Bolt, 6 copies), at `1607933`.** At 375px and 760px the card is **673.34px** at rest and after every check-in. Other rows move **0.00px** on every step. At 320px it is 673.34px at rest, 687.34px after check-ins 1 to 5, and 673.34px after check-in 6. Rows move **14px** down on check-in 1 and **14px** back up on check-in 6. The 320px step is a named limit (see The 320px exception).
 
 At `c07ae27`, before the fix, the same probe gave 685.34px at rest at 375px and 760px. After check-ins 1 to 6 the card was 685.34, 685.34, 681.34, 677.34, 673.34 and 659.84px. Other rows moved **4px** up on check-ins 3, 4 and 5, and **13.5px** up on check-in 6. At 320px, check-in 1 moved them 14px down and check-in 6 moved them 27.5px up. There were two causes, each fixed on its own:
 
-- **The warning line on a copy row.** `ItemRow` set its meta line to `normal` line height. The ⚠ glyph falls back to a taller font, so a row with the warning grows 4px. Three rows were 4px taller at rest, so the rest height was 12px more. `ItemRow` now sets 13px. Rows without the warning measure the same, so Packages did not change.
+- **The warning line on a copy row.** `ItemRow` set its meta line to `normal` line height. The ⚠ glyph falls back to a taller font, so a row with the warning grows 4px, from 13px to 17px. Three rows were 4px taller at rest, so the rest height was 12px more. `ItemRow` now sets 13px. Rows without the warning measure the same, so Packages did not change.
 - **The outstanding line in the header.** `ItemTotalRow` unmounted its "N left · $" line on the tap that completes the copy. That took 13.5px off the header, and every row moved up. The line now stays mounted and hidden. See `card-tally-row-counts-first`.
 
-The rest-height change moves the drawn boxes of the open Tally card. Claims 10 and 11 read those boxes. They were red at `1607933` against base boxes recorded before this change.
+The rest-height change moves the drawn boxes of the open Tally card. Claim 10 reads those boxes. It was red at `1607933` against base boxes recorded before this change, and its base was re-recorded at `a95b180` and committed in `f426c12`. Claim 11 was red at `1607933` too, but for another cause: a scroll-position artifact at the search pill's edge. Its fixed-versus-content pairs are skipped now (see `ux-house-rules-govern`, the house UX decision).
 
 **Action row content at rest.** With "Stamp" and "Mark all received" showing, the row needs **32px** of content at each of 320, 360, 375, 390, 430 and 760px. The reserved row box is 54px: 46px of `min-height` in content-box, plus the 8px bottom padding.
 
@@ -61,7 +61,7 @@ At the 46px reservation, the first check-in moves no item row at 360, 375 or 390
 
 ## The 320px exception
 
-At `1607933` the Packages card moves 0.00px at 320px. The three-button state this paragraph describes was not reproduced, so the 11px step is unmeasured at the grid head. The Tally card does move at 320px (see Figures).
+At `1607933` the Packages card moves 0.00px at 320px. The three-button state this paragraph describes was not reproduced, so the 11px step is unmeasured at the grid head. The Tally card does move at 320px, by 14px on check-ins 1 and 6 (see Figures). That is a named limit. No shipped check reads 320px: claim 2 runs at 375px and 760px only.
 
 **320px is the one width this does not fully fix.** Three buttons wrap to a *third* line there, and the row still steps 11px. The bar half is width-independent, so at 320px the shift falls from 28px to 11px. This is left deliberately. 320px is below the app's stated 380px floor. It is not a viewport that current iOS runs. Reserving 57px would fix 320px by spending 26px of dead space in every expanded card at the widths that are real.
 
