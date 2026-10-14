@@ -1,5 +1,13 @@
 # Sync moves from GitHub to Cloudflare
 
+Kind: build
+
+Plan: decisions/sync-revamp-cloudflare.md#web-plan (web)
+
+Plan: decisions/sync-revamp-cloudflare.md#worker-work-ahead (worker)
+
+Plan: decisions/sync-revamp-cloudflare.md#worker-work-ahead (native)
+
 **Status:** open. Stage 4b is built, and the switch is pending. The server runs at `manifestnumberone.shivamsemwal01.workers.dev`. A device sends its ledger there once it has its key. The switch is the move to the new Durable Object, see Stage 4b rulings.
 
 GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Deliberately a manual backup, not continuous sync." Auto-push and merge grew on top of it later, and no one chose a sync base again. A fresh choice, made on 2026-10-10, picked Cloudflare.
@@ -57,11 +65,20 @@ The orchestrator made these under the owner's grant to run the stages, on 2026-1
 - **The mirror pushes the merged ledger:** it merges the local ledger with the last server reply. On a conflict it reads the GitHub ledger and merges that in too, then writes with the fresh sha. It never force-writes its own copy, so no device can shrink the GitHub copy. That holds even when the server store starts empty.
 - **The server copy only grows:** the device keeps the last server ledger as a merge of every reply. An older reply can never replace a newer one, so no push can shrink GitHub.
 - **An empty store gets seeded:** a cold open that finds the store empty POSTs local check-ins, envelopes and stamps. That is the switch-day path.
-- **The seed POST is cancelled on unmount:** the cold-open timer is held in a ref, and the sync effect's cleanup clears it. It already ran through `bgTimeout`, so it was unref'd. The defect was that it was untracked. Orchestrator decision 2026-10-12. It is a defect fix, and Decide, gallery does not cover it. Pinned by 69.1, which was red before the fix and is green after. Its control 69.1a0 is green both times.
+- **The seed POST is cancelled on unmount:** the cold-open timer is held in a ref, and the sync effect's cleanup clears it. It already ran through `bgTimeout`, so it was unref'd. The defect was that it was untracked. Orchestrator decision 2026-10-12. It is a defect fix, and Decide, gallery does not cover it. Two cold cycles can overlap: a second paste of the key can arm while the first GET is still out. Each arm used to overwrite the one ref, so the first timer outlived the unmount. Now a cycle clears the prior handle before it arms (`cbac3a0`). That overlap fix is a defect fix in this lane, not a ruling. Pinned by 69.1 and 69.3b, each red before its fix and green after. Its controls 69.1a0 and 69.3a0 are green both times.
 - **A failed merge POST peeks once:** the next push takes the GitHub path and its peek, even if mirror mode returns.
 - **A refused key says so:** a 401 shows its own advisory line.
 - **iPhone key:** the home-screen app keeps its own storage, so a QR scan reaches Safari only. The sync panel holds a masked key field. The owner pastes the key there from the Mac clipboard, and the clipboard is cleared after. Claude never types or pastes a key.
 - **QR code:** macOS draws it with its own image tools. No new package is installed.
+
+## Web plan
+
+The switch to the new Durable Object is pending. Until the Cloudflare base carries the ledger and the photos, two web paths stay on GitHub:
+
+- Each web device still pushes the merged ledger to the GitHub `data` branch, once the server has answered.
+- `src/entry.jsx` still sends photos through the GitHub Contents API, and it mirrors the ledger there.
+
+The record closes when the base carries both. Then those paths leave the web build. The switch itself is in Stage 4b rulings.
 
 ## Worker work ahead
 

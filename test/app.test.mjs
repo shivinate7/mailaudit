@@ -8534,11 +8534,16 @@ try {
   ok(postCount() > 0, "68.9pre the retry after the failed copy was a POST, not a read: the copy gate is past");
   const posts68b = postCount();
   const pushes68b = remote.calls.filter((c) => c.op === "push").length;
+  const pulls68b = remote.calls.filter((c) => c.op === "pull").length;
   await click(btn(/Mark all received/), "check in on the mirror");
-  await sleep(POST_WAIT);
+  /* the background event runs auto-push at once. The 3 s save timer also fires in the wait, but
+     its POST is gated off by the lastServer check (growServer set lastServer before the cut).
+     The only POST in that window is the conflict branch's own call to the Worker. */
+  await drain();
   await background();
   await drain();
   await sleep(POST_WAIT);
+  ok(remote.calls.filter((c) => c.op === "pull").length > pulls68b, "68.9pre the mirror push met a moved sha, so the conflict path read GitHub");
   ok(remote.calls.filter((c) => c.op === "push").length > pushes68b, "68.9pre the mirror pushed to GitHub, so the conflict path runs");
   ok(postCount() > posts68b, "68.9 a GitHub conflict on a mirror push still POSTs to the Worker while the copy is missing");
 } catch (e) {
@@ -8561,6 +8566,13 @@ try {
   await drain();
   await sleep(SAVE_WAIT);
   ok(postCount() > 0, "68.10pre the retry after the failed copy was a POST, not a read: the copy gate is past");
+  /* the retry POST refilled the store, so empty it again, then make the device read it: a rev
+     above the last one seen is one GET, and the Worker answers 404, a healthy empty store */
+  clearSyncStore();
+  const gets10a = syncCalls().filter((c) => c.op === "get").length;
+  await fireSyncRev(100);
+  await sleep(SAVE_WAIT);
+  ok(syncCalls().filter((c) => c.op === "get").length > gets10a, "68.10apre the device read the emptied store, so the 404 is the reply it saw");
   const posts10a = postCount();
   await click(btn(/Mark all received/), "check in with the store emptied");
   await sleep(POST_WAIT);
@@ -8672,6 +8684,55 @@ try {
   eq(postCount(), 0, "69.2a an unmount while the cold GET is out arms no POST when the reply lands");
 } catch (e) {
   ok(false, `69.2a threw: ${e.message}`);
+}
+
+/* 69.3 P2. Two paste-the-key cold cycles overlap: the second paste starts while the first GET
+   is still out. Each cycle that owes the Worker its check-ins arms a POST timer, and the second
+   arm overwrites the one handle the first left behind. The unmount clears only that last handle,
+   so the first timer still fires, from an unmounted app. The control runs the same two cycles
+   with no unmount. Release before unmount: an unmount first blocks both arms, and proves nothing. */
+const pasteKeyTwice69 = async () => {
+  await openSync();
+  await settle();
+  await type(document.querySelector('input[aria-label="Sync key"]'), KEY69);
+  await click(btn(/^Save sync key$/), "paste the key: the first cold cycle");
+  await type(document.querySelector('input[aria-label="Sync key"]'), KEY69);
+  await click(btn(/^Save sync key$/), "paste the key again before the first GET settles");
+};
+try {
+  await boot({ items: ITEMS.slice(0, 3), received: HELD69 }, null, {
+    noRemote: true,
+    syncAdapter: true,
+    syncLedger: COLD69,
+    holdGet: true,
+  });
+  await sleep(50);
+  await pasteKeyTwice69();
+  ok(syncCalls().filter((c) => c.op === "get").length >= 2, "69.3pre two cold cycles are out and held, so they overlap");
+  releaseSyncGet();
+  await sleep(SR.SYNC_COLD_POST_MS + 500);
+  ok(postCount() > 0, "69.3a0 the control: two overlapping cold cycles with no unmount still POST");
+} catch (e) {
+  ok(false, `69.3a0 threw: ${e.message}`);
+}
+try {
+  await boot({ items: ITEMS.slice(0, 3), received: HELD69 }, null, {
+    noRemote: true,
+    syncAdapter: true,
+    syncLedger: COLD69,
+    holdGet: true,
+  });
+  await sleep(50);
+  await pasteKeyTwice69();
+  ok(syncCalls().filter((c) => c.op === "get").length >= 2, "69.3bpre two cold cycles are out and held before the release");
+  releaseSyncGet();
+  await drain();
+  await sleep(50);
+  await unmountApp();
+  await sleep(SR.SYNC_COLD_POST_MS + 500);
+  eq(postCount(), 0, "69.3b an unmount after two overlapping cold cycles arms no POST: no timer is left to fire");
+} catch (e) {
+  ok(false, `69.3b threw: ${e.message}`);
 }
 
 /* ── 70. L7 semantics (ux-house-rules-govern, L7). A control's accessible name reads

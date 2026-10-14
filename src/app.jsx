@@ -4907,7 +4907,11 @@ syncBroken === "seeded"
         r.code === "ok"
           ? r.body?.ledger && lacksRef.current(r.body.ledger)
           : r.code === "empty" && holdsUserDataRef.current();
-      if (send && !coldGone.current) coldPostTimer.current = bgTimeout(() => postRef.current(), SYNC_COLD_POST_MS);
+      if (send && !coldGone.current) {
+        /* an overlapping cycle re-arms: drop the earlier handle, or the unmount clears only the last */
+        clearTimeout(coldPostTimer.current);
+        coldPostTimer.current = bgTimeout(() => postRef.current(), SYNC_COLD_POST_MS);
+      }
     }
   };
   /* Paste a Worker key. The field is validated by the same rule as a #k= link,
