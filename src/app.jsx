@@ -6001,14 +6001,13 @@ syncBroken === "seeded"
              tall (not 45), centred 0.5px low: a point hit-test reaches 1px up. */
           .mdl-edact > button::after { height: max(100%, 44px);
                           transform: translate(-50%, calc(-50% + .5px)); }
-          /* The stamp kinds wrap 10px apart. Chromium's point hit-test reaches
-             about 0.75px past an area's top edge and stops 0.25px short of its
-             bottom edge. So the area runs 4px above the drawn box and 5px below
-             it (top is measured from the 32px padding box, inside a 1px border):
-             it reads 4.75px each way, and no read passes the gap midpoint at
-             5px. Reads on a 0.25px grid cannot give 44px here: two chips 10px
-             apart can claim at most 9.75px between them. */
-          button.mdl-chip::after { top: -5px; height: calc(100% + 11px);
+          /* The stamp kinds wrap 10px apart. In headless Chromium (measured at
+             one chip offset), a point hit-test reads about 0.75px past an
+             area's top edge and 0.25px short of its bottom edge. So the area
+             runs 4.25px above the drawn box and 5.25px below it (top is
+             measured from the 32px padding box, inside a 1px border). It reads
+             5px up and 5px down at most, never past the gap midpoint. */
+          button.mdl-chip::after { top: -5.25px; height: calc(100% + 11.5px);
                                    transform: translateX(-50%); }
         }
 
