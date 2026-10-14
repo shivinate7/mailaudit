@@ -291,6 +291,20 @@ for (const [label, debts, opts, slug] of RED) {
     scanner.status === 0,
     `exit ${scanner.status}: ${tail(scanner.out)}`
   );
+
+  // A non-slug code span on a Decision line is prose, not a citation. Only the
+  // slug beside it counts. Under a regex that takes any span, `# note` is
+  // cited, is not a record, and this case goes red.
+  const span = runCorpus({
+    "fixture-debt-note-span": debt({
+      decision: "**Decision:** `fixture-decision-holds`, with a `# note` span beside the slug.",
+    }),
+  });
+  expect(
+    "green: a non-slug code span beside a valid slug on a Decision line exits 0",
+    span.status === 0,
+    `exit ${span.status}: ${span.out.match(/.*Decision cites.*/)?.[0] ?? tail(span.out)}`
+  );
 }
 
 if (failures) {
