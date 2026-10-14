@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback, useId } from "react";
 import Papa from "papaparse";
 import tokens from "../shared/tokens.json";
 import {
@@ -741,6 +741,7 @@ function PackageCard({
 
   /* the stamp editor, local to the card. Two-tap on Remove, the same pair
      EnvelopeCard carries: one timer, one armed control, cleared on unmount. */
+  const whyId = useId();
   const [editing, setEditing] = useState(false);
   const [kind, setKind] = useState("");
   const [note, setNote] = useState("");
@@ -780,7 +781,7 @@ function PackageCard({
         background: C.card,
         border: `1px solid ${done ? C.green : C.line}`,
         borderRadius: 10,
-        overflow: "hidden",
+        overflow: "clip",
         boxShadow: `0 1px 2px ${C.shadow}`,
         /* clears the 46px running head when the Tally view scrolls us here */
         scrollMarginTop: 58,
@@ -929,13 +930,16 @@ function PackageCard({
       {stamped && !editing && (
         <button
           onClick={openEditor}
-          aria-label={`Edit stamp on ${pkg.seller}`}
+          aria-label={`Edit stamp on ${pkg.seller}: ${STAMP_LABEL[stamp.kind].toUpperCase()} · ${(stamp.at || "").slice(5)} ${stamp.note || ""}`.trim()}
           style={{
             width: "100%",
             display: "flex",
             alignItems: "center",
             gap: 10,
-            padding: "0 14px 10px",
+            /* 3px of the bottom padding lie over the next row (margin -3),
+               which moves this band's centre 44px clear of the header's */
+            padding: "0 14px 13px",
+            marginBottom: -3,
             border: 0,
             background: "transparent",
             textAlign: "left",
@@ -984,18 +988,20 @@ function PackageCard({
             <span style={{ flex: 1, height: 1, background: C.line }} />
           </div>
           {/* six cells will not fit one row at 375px; wrapping is the plan */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", rowGap: 10, columnGap: 6 }}>
             {STAMP_KINDS.map(([k, label]) => (
               <button
                 key={k}
                 onClick={() => setKind(k)}
                 aria-pressed={kind === k}
+                className="mdl-chip"
                 style={stampKindCell(kind === k)}
               >
                 {label}
               </button>
             ))}
           </div>
+          <Fld style={{ marginTop: 10 }}>
           <input
             value={note}
             onChange={(e) => setNote(e.target.value)}
@@ -1004,7 +1010,6 @@ function PackageCard({
             style={{
               width: "100%",
               boxSizing: "border-box",
-              marginTop: 10,
               fontFamily: cochin,
               /* 16px or focusing it zooms the page on iOS */
               fontSize: 16,
@@ -1016,7 +1021,9 @@ function PackageCard({
               outline: "none",
             }}
           />
+          </Fld>
           <div
+            className="mdl-edact"
             style={{
               display: "flex",
               alignItems: "center",
@@ -1055,6 +1062,7 @@ function PackageCard({
                 closeEditor();
               }}
               disabled={!kind}
+              aria-describedby={kind ? undefined : `${whyId}-kind`}
               style={{
                 ...miniBtn,
                 background: kind ? C.ink : C.card,
@@ -1066,6 +1074,7 @@ function PackageCard({
             >
               Save
             </button>
+            {!kind && <Why id={`${whyId}-kind`}>Pick a stamp first.</Why>}
           </div>
         </div>
       )}
@@ -1215,7 +1224,7 @@ function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder, stampedGks }
         background: C.card,
         border: `1px solid ${done ? C.green : C.line}`,
         borderRadius: 10,
-        overflow: "hidden",
+        overflow: "clip",
         boxShadow: `0 1px 2px ${C.shadow}`,
       }}
     >
@@ -1407,6 +1416,19 @@ const dateInput = {
 
 /* "14 cards" */
 const cardsOf = (n) => `${n} card${n === 1 ? "" : "s"}`;
+
+/* Why a control is disabled, read by aria-describedby. Clipped, not
+   display:none, so it stays in the accessibility tree and takes no room. */
+function Why({ id, children }) {
+  return (
+    <span
+      id={id}
+      style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)", whiteSpace: "nowrap" }}
+    >
+      {children}
+    </span>
+  );
+}
 
 const miniBtn = {
   fontFamily: mono,
@@ -1803,11 +1825,21 @@ const partVal = {
   minWidth: 0,
   overflowWrap: "anywhere",
 };
+/* A text field's touch hit area (ux-a11y-floor). An input takes no pseudo-element,
+   so the label around it grows instead, and a tap on a label focuses its field.
+   The label is a flex box with no styling of its own, so it adds no line-box
+   strut and the field's drawn box does not move. The margin belongs on the
+   label, not the field. */
+const Fld = ({ style, children }) => (
+  <label className="mdl-fld" style={{ display: "flex", ...style }}>
+    {children}
+  </label>
+);
 /* The token field is a write-on rule like FIND, not a box. 16px is not a
    choice: iOS zooms the page on focusing any input smaller than that, and the
    viewport meta deliberately leaves the user able to zoom. */
 const keyField = {
-  flex: "1 1 140px",
+  flex: "1 1 0",
   minWidth: 0,
   height: CTL_H,
   boxSizing: "border-box",
@@ -2087,9 +2119,54 @@ function usePhotoUrls(ids, epoch = 0) {
   return urls;
 }
 
+/* The photo viewer is a modal dialog: focus moves in on open, Escape or a tap
+   on the scrim closes it, and the strip returns focus to the thumbnail. The
+   picture is the only thing to reach, so Tab stays on the dialog. */
+function PhotoViewer({ src, onClose }) {
+  const ref = useRef(null);
+  useEffect(() => ref.current?.focus(), []);
+  return (
+    <div
+      ref={ref}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Envelope photo viewer"
+      tabIndex={-1}
+      onClick={onClose}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClose();
+        else if (e.key === "Tab") e.preventDefault();
+      }}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: C.scrim,
+        zIndex: 50,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+        cursor: "zoom-out",
+        outline: "none",
+      }}
+    >
+      <img
+        src={src}
+        alt="Envelope photo"
+        style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: 8 }}
+      />
+    </div>
+  );
+}
+
 function PhotoStrip({ ids, onRemove, epoch = 0 }) {
   const urls = usePhotoUrls(ids, epoch);
   const [zoom, setZoom] = useState("");
+  const opener = useRef(null);
+  const closeViewer = () => {
+    setZoom("");
+    opener.current?.focus();
+  };
   if (!ids?.length) return null;
   return (
     <>
@@ -2097,7 +2174,10 @@ function PhotoStrip({ ids, onRemove, epoch = 0 }) {
         {ids.map((id) => (
           <div key={id} style={{ position: "relative" }}>
             <button
-              onClick={() => setZoom(id)}
+              onClick={(e) => {
+                opener.current = e.currentTarget;
+                setZoom(id);
+              }}
               aria-label="View photo"
               style={{
                 width: 56,
@@ -2137,26 +2217,7 @@ function PhotoStrip({ ids, onRemove, epoch = 0 }) {
         ))}
       </div>
       {zoom && urls[zoom] && (
-        <div
-          onClick={() => setZoom("")}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: C.scrim,
-            zIndex: 50,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-            cursor: "zoom-out",
-          }}
-        >
-          <img
-            src={urls[zoom]}
-            alt="Envelope photo"
-            style={{ maxWidth: "100%", maxHeight: "100%", borderRadius: 8 }}
-          />
-        </div>
+        <PhotoViewer src={urls[zoom]} onClose={closeViewer} />
       )}
     </>
   );
@@ -2188,6 +2249,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
     draftRef.current.delete(target);
     if (dirty) draftRef.current.set(target, { target, draft, entries, note, photos });
   }, [draft, entries, note, photos, initial, target, draftRef]);
+  const whyId = useId();
   const [busy, setBusy] = useState(false);
   const camera = useRef(null);
 
@@ -2256,7 +2318,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
         background: C.card,
         border: `1px solid ${C.ink}`,
         borderRadius: 10,
-        overflow: "hidden",
+        overflow: "clip",
         boxShadow: `0 1px 2px ${C.shadow}`,
       }}
     >
@@ -2280,6 +2342,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
         }}
         style={{ padding: "0 14px" }}
       >
+        <Fld>
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -2305,6 +2368,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
             outline: "none",
           }}
         />
+        </Fld>
       </form>
 
       {draft.trim() && (
@@ -2459,6 +2523,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
       )}
 
       <div style={{ padding: "10px 14px 0" }}>
+        <Fld>
         <input
           value={note}
           onChange={(e) => setNote(e.target.value)}
@@ -2477,6 +2542,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
             outline: "none",
           }}
         />
+        </Fld>
       </div>
 
       {window.photos && (
@@ -2537,6 +2603,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
             onSave({ id: initial?.id, entries, note: note.trim(), photos })
           }
           disabled={entries.length === 0}
+          aria-describedby={entries.length ? undefined : `${whyId}-cards`}
           style={{
             ...miniBtn,
             background: entries.length ? C.ink : C.card,
@@ -2548,6 +2615,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
         >
           {initial ? "Save changes" : "Save envelope"}
         </button>
+        {entries.length === 0 && <Why id={`${whyId}-cards`}>Add a card first.</Why>}
       </div>
     </div>
   );
@@ -2584,7 +2652,7 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
         background: C.card,
         border: `1px solid ${C.line}`,
         borderRadius: 10,
-        overflow: "hidden",
+        overflow: "clip",
         boxShadow: `0 1px 2px ${C.shadow}`,
       }}
     >
@@ -2845,7 +2913,8 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
               <button
                 onClick={() => setShowAll((s) => !s)}
                 style={{
-                  marginTop: 8,
+                  /* the 8px above is padding now, so the hit centre sits higher and
+                     the card edge does not cut the hit area short */
                   fontFamily: mono,
                   fontSize: 11,
                   color: C.inkSoft,
@@ -2854,7 +2923,7 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
                   cursor: "pointer",
                   textDecoration: "underline",
                   textUnderlineOffset: 2,
-                  padding: 0,
+                  padding: "8px 0 0",
                 }}
               >
                 {showAll
@@ -5901,6 +5970,49 @@ syncBroken === "seeded"
           to   { opacity: 1; transform: none; }
         }
 
+        /* Touch hit areas (ux-a11y-floor): every button is hit at least 44 by 44
+           px around its drawn centre (45 clears the half-open edge). The pseudo-element is transparent and out
+           of flow, so the drawn box and the layout never change. */
+        @media (pointer: coarse) {
+          button:not(.mdl-lrow) { position: relative; }
+          /* The ruled cells sit 40px above the sync line, so two 44px areas
+             would overlap. On touch the cell is the top 30px of its row and
+             draws its rule as ::before, so the text and the rule stay put. */
+          .mdl-cell { align-self: flex-start !important; height: 30px;
+                      padding: 10px 10px 0 11px !important;
+                      border-left: 0 !important; }
+          .mdl-cell::before { content: ""; position: absolute; left: 0; top: 0;
+                              width: 1px; height: 40px; background: ${C.line}; }
+          button:not(.mdl-lrow)::after { content: ""; position: absolute; left: 50%; top: 50%;
+                          width: max(100%, 45px); height: max(100%, 45px);
+                          transform: translate(-50%, -50%); z-index: 1; }
+          /* the line sits right under the running head, whose hidden slot
+             takes touches for a frame after a scroll; its 3px reach above
+             the line must win that slot */
+          button.mdl-adv::after { z-index: 31; }
+          /* A text field takes no pseudo-element, so its label carries the hit
+             area (see Fld). */
+          label.mdl-fld { position: relative; }
+          label.mdl-fld::after { content: ""; position: absolute; left: 0; right: 0;
+                          top: 50%; height: max(100%, 45px);
+                          transform: translateY(-50%); z-index: 1; }
+          /* The note field sits 8px above the editor's buttons, and a tap 1px
+             below the field must stay on the field. So these areas are 44px
+             tall (not 45), centred 0.5px low: a point hit-test reaches 1px up. */
+          .mdl-edact > button::after { height: max(100%, 44px);
+                          transform: translate(-50%, calc(-50% + .5px)); }
+          /* The stamp kinds wrap 10px apart. In headless Chromium (measured at
+             one chip offset), a point hit-test reads about 0.75px past an
+             area's top edge and 0.25px short of its bottom edge. So the area
+             runs 4.25px above the drawn box and 5.25px below it (top is
+             measured from the 32px padding box, inside a 1px border). It reads
+             5px up and 5px down at most. The area ends at the gap midpoint. At
+             fractional row offsets, hit-test rounding can move that by up to
+             0.25px, and a finger cannot aim that fine. */
+          button.mdl-chip::after { top: -5.25px; height: calc(100% + 11.5px);
+                                   transform: translateX(-50%); }
+        }
+
         @media (prefers-reduced-motion: reduce) {
           .mdl-sticky { transition: none; transform: none; }
             /* Each of these rests at its own final frame, so switching the
@@ -6077,7 +6189,10 @@ syncBroken === "seeded"
               <svg viewBox="0 0 24 24" aria-hidden="true">{d}</svg>
               {label}
               {v === "mystery" && liveEnvelopes.length > 0 && (
-                <b>{liveEnvelopes.length}</b>
+                <>
+                  {" "}
+                  <b>{liveEnvelopes.length}</b>
+                </>
               )}
             </button>
           ))}
@@ -6126,6 +6241,7 @@ syncBroken === "seeded"
                       <button
                         onClick={() => setShowCanceled((s) => !s)}
                         aria-expanded={showCanceled}
+                        className="mdl-cell"
                         style={cancCell(showCanceled)}
                       >
                         {canceledCount} canceled
@@ -6140,6 +6256,7 @@ syncBroken === "seeded"
                       <button
                         onClick={() => setShowStamped((s) => !s)}
                         aria-pressed={showStamped}
+                        className="mdl-cell"
                         style={cancCell(showStamped)}
                       >
                         {stampedCount} stamped
@@ -6167,6 +6284,7 @@ syncBroken === "seeded"
                    that has happened. It shows only when something is wrong
                    (ledger-tab-holds-options). */
                 <button
+                  className="mdl-adv"
                   aria-expanded={syncOpen}
                   onClick={() => {
                     setHistoryOpen(false);
@@ -6490,6 +6608,7 @@ syncBroken === "seeded"
                             minWidth: 0,
                           }}
                         >
+                          <Fld style={{ flex: "1 1 140px", minWidth: 0 }}>
                           <input
                             ref={syncKeyInput}
                             type="password"
@@ -6500,6 +6619,7 @@ syncBroken === "seeded"
                             autoCapitalize="off"
                             style={keyField}
                           />
+                          </Fld>
                           <button onClick={saveSyncKey} style={keySave}>
                             Save sync key
                           </button>

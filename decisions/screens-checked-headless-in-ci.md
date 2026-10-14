@@ -1,8 +1,24 @@
 # Screens are checked headless in CI
 
-Each view (Orphaned, Tally, Packages) is checked in a headless browser at 375px and 760px. The check runs once, as a required CI job on a macOS runner. Cochin ships only with macOS, so a Linux, cloud or Windows machine would measure the wrong fonts. It does not run at deploy time, because one check in one place is enough, and a local check cannot be enforced. The check fails on any sideways overflow, and on any row that moves when a card is checked in. Before this ruling, every layout figure was measured by hand, and a regression showed up only when someone measured again. The cost is one pinned dev dependency, Playwright, and about a minute of CI, plus the slower queue of a macOS runner. The owner ruled this on 2026-10-10.
+Each view (Ledger tab, Orphaned, Tally, Packages) is checked in a headless browser at 375px and 760px.
 
-**Holds while:** `.github/workflows/test.yml` runs the `screens` job on `macos-latest`, and `npm run check:screens` checks 375px and 760px.
+The check runs once, as a required CI job on a macOS runner. Cochin ships only with macOS, so a Linux, cloud or Windows machine would measure the wrong fonts. It does not run at deploy time, because one check in one place is enough, and a local check cannot be enforced.
+
+The check fails on any sideways overflow, and on any row that moves when a card is checked in. It also scans each view for accessibility violations. At 375px on touch, it checks the 44px floor of each interactive element in eight screen states. In the same states, each painted box must match the base within 0.5px. It also runs a tap probe 1px outside the midpoint of each control's side. The eight states are: Ledger; Orphaned; Tally; Tally card open; Packages; Stamp editor open; Envelope composer open; Sync panel open. Those are claims 8 to 11 of the `check:screens` header, pinned in `ux-house-rules-govern`. The checks cover the named states only.
+
+Before this ruling, every layout figure was measured by hand, and a regression showed up only when someone measured again. The owner ruled this on 2026-10-10. The axe and touch checks enforce the 2026-10-11 house rulings L8 and L6.
+
+The cost is two pinned dev dependencies, Playwright and `@axe-core/playwright`. Locally the check took about 31 s on a Mac, one reading under a 1-minute load of about 92. CI time is not measured. It also costs the slower queue of a macOS runner.
+
+**Holds while:** `.github/workflows/test.yml` runs the `screens` job on `macos-latest`. `npm run check:screens` checks 375px and 760px, with the axe, touch and drawn-box checks.
+
+## The axe scan
+
+The scan uses `@axe-core/playwright`, pinned exact at 4.13.0, published 2026-08-11. It runs axe-core's default rules with no tag filter. It also enables `label-content-name-mismatch`, an experimental rule.
+
+The severity floor: the check fails on any `serious` or `critical` violation. It also fails on any `label-content-name-mismatch` at any impact. `moderate` and `minor` violations do not fail it. A page error during a scan also fails it.
+
+The scan covers nine states at 375px and 760px. They are the eight screen states (Ledger, Orphaned, Tally, Tally with one row open, Packages, the stamp editor, the envelope composer, the Sync panel) and the photo viewer.
 
 ## The native client
 
@@ -16,3 +32,4 @@ Lane N5 added a UI test, `native/ManifestUITests/PackagesShellUITests.swift`. It
 - `native-ci-on-hosted-macos` — the job that runs the native UI test.
 - `testing-jsdom-has-no-layout` — why the behaviour suite cannot catch a layout shift.
 - `no-layout-shift-under-pointer` — the invariant this check guards.
+- `ux-house-rules-govern` — the house rulings L6 and L8 that the touch and axe checks enforce.
