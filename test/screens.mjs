@@ -34,12 +34,12 @@
         critical violation, and on the experimental label-content-name-mismatch rule.
      9. Touch targets (ux-a11y-floor, L6) at 375px on a touch device, in every
         state of SCREEN_STATES: each visible interactive element is hit at least
-        44 by 44 CSS px, measured by elementFromPoint from its centre. A tap that
-        lands on a label counts for the field the label owns. A padding or
-        pseudo-element grow counts, and a neighbour that cuts it short is a finding.
-        A target whose 44px reach runs past the viewport edge is skipped by this
-        floor only: the run prints one `note` line for it. Its drawn box and its
-        overlap probe still count.
+        44 by 44 CSS px, measured by elementFromPoint from its centre, the centre
+        sample included. A tap that lands on a label counts for the field the label
+        owns. A padding or pseudo-element grow counts, and a neighbour that cuts it
+        short is a finding. A target whose 44px reach runs past the viewport edge is
+        skipped by this floor only: each state prints one `note` line with the number
+        of such targets. Its drawn box and its overlap probe still count.
     10. Drawn boxes (L6, no visual change): in every state of SCREEN_STATES, each
         element's painted box at 375px matches test/a11y-base-boxes.json, recorded
         from the base commit f7d51ba with `A11Y_RECORD=1 node test/screens.mjs
@@ -60,10 +60,11 @@
     12. Stamp chips (L6, decision 2026-10-13): at 375px touch, in the Stamp editor
         state, each of the six kind chips has a hit area at least 44px tall, centred
         on its drawn box, that ends at the gap midpoint to the chip above and to the
-        chip below. Reach is walked from the drawn box in 0.5px steps.
-    13. Ledger rule (L6, item 2): at 375px touch on the Ledger tab, each tap on the
-        painted 1px top rule of "Sorted by" (corner to corner, every 0.25px down)
-        returns "Sorted by", not the row above it.
+        chip below. Reach is walked from the drawn box in 0.25px steps, with no
+        tolerance.
+    13. Ledger rule (L6, item 2): at 375px touch on the Ledger tab, each tap in the
+        top 1px band of the "Sorted by" row, inset 2px from each end (every 0.25px
+        down, every 4px across), returns "Sorted by", not the row above it.
 
    Reduced motion is on, so animation does not skew the numbers. Exit 0 when all
    checks pass; exit 1 with one `FAIL` line per failure and one summary line. */
@@ -1040,9 +1041,14 @@ const measureTouch = ({ selector, half }) => {
     const box = boxes[i];
     const pinned = isPinned(el);
     const ex = el.getBoundingClientRect();
-    const cx = ex.left + ex.width / 2;
-    const cy = ex.top + ex.height / 2;
+    /* whole-pixel centre and steps: a fractional sample just outside a box's top
+       or left edge hits the box in this browser, which reads one px extra */
+    const cx = Math.floor(ex.left + ex.width / 2);
+    const cy = Math.floor(ex.top + ex.height / 2);
     const ext = { l: 0, r: 0, u: 0, d: 0 };
+    /* the centre sample is the origin of both walks; it counts as one px only
+       when the element itself is hit there */
+    const centre = hitsTarget(el, cx, cy) ? 1 : 0;
     let offscreen = false;
     for (const [dir, dx, dy] of [
       ["r", 1, 0],
@@ -1120,6 +1126,8 @@ const measureTouch = ({ selector, half }) => {
       w: box.width,
       h: box.height,
       ext,
+      hitX: ext.l + ext.r + centre,
+      hitY: ext.u + ext.d + centre,
       offscreen,
     };
   });
@@ -1158,13 +1166,9 @@ async function touchCheck(browser) {
       const measured = items.filter((it) => !it.offscreen);
       if (measured.length < items.length)
         console.log(`note ${stateName}: ${items.length - measured.length} target(s) at the viewport edge not measured`);
-      const small = measured.filter(
-        (it) => it.ext.l + it.ext.r < 2 * TOUCH_HALF_PX || it.ext.u + it.ext.d < 2 * TOUCH_HALF_PX
-      );
+      const small = measured.filter((it) => it.hitX < 2 * TOUCH_HALF_PX || it.hitY < 2 * TOUCH_HALF_PX);
       if (small.length) {
-        const list = small.map(
-          (it) => `"${it.text}" (${it.key.split("|")[1]}) ${it.ext.l + it.ext.r}x${it.ext.u + it.ext.d}px`
-        );
+        const list = small.map((it) => `"${it.text}" (${it.key.split("|")[1]}) ${it.hitX}x${it.hitY}px`);
         fail(stateName, `${small.length} of ${measured.length} targets under 44px: ${list.join("; ")}`);
       }
       if (!probed) fail(stateName, "the overlap probe tested no tap, so this state proves nothing about neighbours");
@@ -1239,11 +1243,13 @@ async function touchCheck(browser) {
 }
 
 /* Claim 12 (L6): the six stamp kind chips at 375px touch. Runs in the page.
-   Each chip's reach is walked from its drawn box in 0.25px steps, down the
-   chip's centre column, stopping at the first point another control owns.
+   Each chip's reach is walked from its drawn box in 0.25px steps, up and down
+   the chip's centre column, stopping at the first point another control owns.
    Neighbours are the chips that share a horizontal span and sit directly above
    or below. The claim takes no tolerance: a 0.25px overshoot past the gap
-   midpoint is a finding. */
+   midpoint is a finding. Known limit: Chromium reads hit edges to whole pixels
+   at a fractional chip top, so a design sitting exactly on the midpoints can read
+   about 1px off. A pass fixture for this claim is not yet calibrated. */
 const STAMP_CHIPS = 6;
 const CHIP_MIN_PX = 44;
 const chipReach = (chipIndex) => {
