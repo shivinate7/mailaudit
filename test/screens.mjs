@@ -40,15 +40,18 @@
         short is a finding. A target whose 44px reach runs past the viewport edge is
         skipped by this floor only: each state prints one `note` line with the number
         of such targets. Its drawn box and its overlap probe still count.
-    10. Drawn boxes (L6, no visual change): in every state of SCREEN_STATES, each
-        element's painted box at 375px matches test/a11y-base-boxes.json, recorded
-        from the base commit f7d51ba with `A11Y_RECORD=1 node test/screens.mjs
-        <base index.html>`. A grown hit area never grows it. Keys mask digits in
-        their text, so a day count in a card does not move a key. One state is the
-        exception: the Stamp editor is recorded from the lane head, under the 10px
-        chip row gap (orchestrator decision 2026-10-13), because its base rows sit
-        6px apart. Re-record only that state with
-        `A11Y_RECORD=1 A11Y_RECORD_ONLY="Stamp editor open" node test/screens.mjs`.
+    10. Drawn boxes (L6): in every state of SCREEN_STATES, each element's painted
+        box at 375px matches test/a11y-base-boxes.json. The base is recorded at the
+        grid lane head, commit 528bbde (the re-space build under
+        spacing-on-4px-grid), with `A11Y_RECORD=1 node test/screens.mjs`. The six
+        touch states that the tab badge top 6px to 4px moved were re-recorded at
+        dc73fc3 with `A11Y_RECORD_ONLY`. It is no
+        longer the f7d51ba base: the grid is a deliberate visual change, so this
+        check now guards drift from the grid head, not the grid change itself. A
+        grown hit area never grows it. Keys mask digits in their text, so a day
+        count in a card does not move a key. After any deliberate visual change,
+        re-record every state the same way; A11Y_RECORD_ONLY="<state>" re-records
+        one.
     11. Overlap (L6, F2): in the same states, a tap 1px outside any point of a
         control's side, corner to corner, counts when that point is strictly
         nearer to that control than to any other control. So the walk along a side
@@ -64,6 +67,14 @@
     13. Ledger rule (L6, Sorted by top rule): at 375px touch on the Ledger tab, each tap in the
         top 1px band of the "Sorted by" row, inset 2px from each end (every 0.25px
         down, every 4px across), returns "Sorted by", not the row above it.
+    14. Spacing grid (decision spacing-on-4px-grid, owner ruling 2026-10-11 "Re-space
+        to the grid"): at 375px and 760px, and at 375px touch (the pointer: coarse
+        block sets its own padding), in every state of SCREEN_STATES, each visible
+        element's computed margin, padding, row-gap and column-gap is a multiple of
+        4px. Auto margins are skipped and gap "normal" counts as 0. Each card's four
+        corners are 8px. A card is a DIV on the card surface (#FCF6EA) with a 1px
+        border. Pseudo-elements are not walked. Exemptions are named in GRID_EXEMPT,
+        each with its reason.
 
    Reduced motion is on, so animation does not skew the numbers. Exit 0 when all
    checks pass; exit 1 with one `FAIL` line per failure and one summary line. */
@@ -201,18 +212,19 @@ const LEDGER = {
 /* ---------- in-page probes (self-contained: Playwright serialises them) ---------- */
 
 /* The card holding the first element whose header button mentions `anchorText`.
-   Cards carry border-radius: 10px. A row is an ItemRow: it sets --i (its reveal
-   index) AND a top rule. The card's bulk action row also sets --i, but it has no
-   top rule, so the rule is what keeps it out of the measurement. Packages and
-   Tally rows both match. */
-/* (the selector is written out inside each probe: Playwright serialises the
-   function, so a module-level constant would not exist in the page) */
-const measureRows = (anchorText) => {
+   Cards carry the radius CARD_RADIUS_PX (decision spacing-on-4px-grid, 8px). A row
+   is an ItemRow: it sets --i (its reveal index) AND a top rule. The card's bulk
+   action row also sets --i, but it has no top rule, so the rule is what keeps it
+   out of the measurement. Packages and Tally rows both match. */
+/* (the radius is passed in and the regex is built inside each probe: Playwright
+   serialises the function, so a module-level constant would not exist in the page) */
+const measureRows = ({ anchorText, radius }) => {
   const anchor = [...document.querySelectorAll("button")].find((b) =>
     b.textContent.includes(anchorText)
   );
   let card = anchor;
-  while (card && !/border-radius:\s*10px/.test(card.getAttribute("style") || ""))
+  const cardStyle = new RegExp(`border-radius:\\s*${radius}px`);
+  while (card && !cardStyle.test(card.getAttribute("style") || ""))
     card = card.parentElement;
   if (!card) return null;
   return [...card.querySelectorAll('div[style*="--i"][style*="border-top"]')].map((r) => {
@@ -221,7 +233,7 @@ const measureRows = (anchorText) => {
   });
 };
 
-const markRow = ({ anchorText, index }) => {
+const markRow = ({ anchorText, index, radius }) => {
   document
     .querySelectorAll("[data-screen-tap]")
     .forEach((e) => e.removeAttribute("data-screen-tap"));
@@ -229,7 +241,8 @@ const markRow = ({ anchorText, index }) => {
     b.textContent.includes(anchorText)
   );
   let card = anchor;
-  while (card && !/border-radius:\s*10px/.test(card.getAttribute("style") || ""))
+  const cardStyle = new RegExp(`border-radius:\\s*${radius}px`);
+  while (card && !cardStyle.test(card.getAttribute("style") || ""))
     card = card.parentElement;
   const row = card && card.querySelectorAll('div[style*="--i"][style*="border-top"]')[index];
   if (!row) return false;
@@ -417,13 +430,13 @@ async function rowShiftCheck(browser, { view, anchorText, expand }) {
       await page.locator("button", { hasText: anchorText }).first().click();
       await page.waitForTimeout(250);
     }
-    const before = await page.evaluate(measureRows, anchorText);
+    const before = await page.evaluate(measureRows, { anchorText, radius: CARD_RADIUS_PX });
     if (!before || before.length < 3) {
       fail(name, `expected an expanded card with 3+ rows, found ${before ? before.length : "no card"}`);
       return;
     }
     const tapIndex = 0;
-    const marked = await page.evaluate(markRow, { anchorText, index: tapIndex });
+    const marked = await page.evaluate(markRow, { anchorText, index: tapIndex, radius: CARD_RADIUS_PX });
     if (!marked) {
       fail(name, "could not locate the first row to tap");
       return;
@@ -436,7 +449,7 @@ async function rowShiftCheck(browser, { view, anchorText, expand }) {
       return;
     }
     await page.waitForTimeout(300);
-    const after = await page.evaluate(measureRows, anchorText);
+    const after = await page.evaluate(measureRows, { anchorText, radius: CARD_RADIUS_PX });
     if (!after || after.length !== before.length) {
       fail(name, `row count changed from ${before.length} to ${after ? after.length : "none"}`);
       return;
@@ -1180,7 +1193,7 @@ async function touchCheck(browser) {
       }
       const want = base && base[state];
       if (!want) {
-        fail(stateName, "no base boxes for this state; re-record with A11Y_RECORD=1 on the base commit");
+        fail(stateName, "no base boxes for this state; re-record with A11Y_RECORD=1 on the grid lane head (claim 10)");
         continue;
       }
       const wantByKey = Object.fromEntries(Object.entries(want).map(([k, v]) => [keyMasked(k), v]));
@@ -1356,6 +1369,110 @@ async function ledgerRuleCheck(browser) {
   }
 }
 
+/* Claim 14 (decision spacing-on-4px-grid): the grid and the 8px card corner.
+   The card surface is C.card (#FCF6EA). GRID_EXEMPT names each element the
+   brief puts out of scope, with its reason. It is empty: no offender at the
+   lane head is out of scope, and none is a UA default. */
+const CARD_BG = "rgb(252, 246, 234)";
+const GRID_STEP_PX = 4;
+const CARD_RADIUS_PX = 8;
+const GRID_EXEMPT = [];
+
+/* Runs in the page. Reads each visible element's spacing as used px, so margin
+   and padding come back as px, and "auto" is read from the computed style map. */
+const gridProbe = ({ exempt, cardBg, step, radius }) => {
+  const EPS = 0.01;
+  const SPACING = [
+    "margin-top", "margin-right", "margin-bottom", "margin-left",
+    "padding-top", "padding-right", "padding-bottom", "padding-left",
+    "row-gap", "column-gap",
+  ];
+  const CORNERS = [
+    "border-top-left-radius", "border-top-right-radius",
+    "border-bottom-right-radius", "border-bottom-left-radius",
+  ];
+  const describe = (el) => {
+    const cls = [...el.classList].map((c) => "." + c).join("");
+    const text = (el.textContent || "").trim().replace(/\s+/g, " ").slice(0, 24);
+    return el.tagName.toLowerCase() + cls + (text ? ` "${text}"` : "");
+  };
+  const out = {
+    visible: 0,
+    cards: 0,
+    coarse: matchMedia("(pointer: coarse)").matches,
+    offenders: [],
+    badRadius: [],
+  };
+  for (const el of [document.body, ...document.body.querySelectorAll("*")]) {
+    if (!el.checkVisibility({ visibilityProperty: true })) continue;
+    out.visible++;
+    const cs = getComputedStyle(el);
+    const map = el.computedStyleMap();
+    if (el.tagName === "DIV" && cs.backgroundColor === cardBg && parseFloat(cs.borderTopWidth) === 1) {
+      out.cards++;
+      const bad = CORNERS.map((p) => cs.getPropertyValue(p)).filter(
+        (v) => Math.abs(parseFloat(v) - radius) > EPS
+      );
+      if (bad.length) out.badRadius.push(`${describe(el)} corners ${bad.join("/")}`);
+    }
+    if (exempt.some((sel) => el.matches(sel))) continue;
+    for (const prop of SPACING) {
+      const kw = map.get(prop);
+      if (kw && kw.value === "auto") continue;
+      const raw = cs.getPropertyValue(prop);
+      const v = raw === "normal" ? 0 : parseFloat(raw);
+      const onGrid = !Number.isNaN(v) && Math.abs(v - Math.round(v / step) * step) <= EPS;
+      if (!onGrid) out.offenders.push(`${describe(el)} ${prop} ${raw}`);
+    }
+  }
+  return out;
+};
+
+/* 375px and 760px, plus 375px touch: the pointer: coarse block in the stylesheet
+   sets its own spacing, so a plain pass would miss it. */
+async function gridCheck(browser, { width, touch = false }) {
+  const tag = `${width}px${touch ? " touch" : ""}`;
+  const { ctx, page, pageErrors } = await openSeeded(browser, width, { touch, ledger: AXE_LEDGER });
+  try {
+    if (!(await loadedOk(page))) {
+      fail(`grid ${tag}`, "seeded ledger did not render; no state can be measured");
+      return;
+    }
+    const exempt = GRID_EXEMPT.map((e) => e.sel);
+    for (const state of SCREEN_STATES) {
+      const name = `grid ${tag} ${state}`;
+      checks++;
+      if (!(await openScreenState(page, state))) {
+        fail(name, "the state did not open, so it cannot be measured");
+        continue;
+      }
+      await page.waitForTimeout(150);
+      const res = await page.evaluate(gridProbe, {
+        exempt,
+        cardBg: CARD_BG,
+        step: GRID_STEP_PX,
+        radius: CARD_RADIUS_PX,
+      });
+      if (touch && !res.coarse) fail(name, "the touch context does not match (pointer: coarse)");
+      if (res.cards === 0) fail(name, "no card found, so the radius half cannot pass");
+      const offenders = [...new Set(res.offenders)];
+      if (res.offenders.length)
+        fail(
+          name,
+          `${res.offenders.length} off-grid spacing values, ${offenders.length} distinct: ${offenders.slice(0, 8).join("; ")}`
+        );
+      if (res.badRadius.length)
+        fail(
+          name,
+          `${res.badRadius.length} of ${res.cards} cards not ${CARD_RADIUS_PX}px: ${res.badRadius.slice(0, 4).join("; ")}`
+        );
+    }
+    for (const e of pageErrors) fail(`grid ${tag}`, `page error: ${e}`);
+  } finally {
+    await ctx.close();
+  }
+}
+
 async function main() {
   const t0 = Date.now();
   if (!existsSync(PAGE)) {
@@ -1385,6 +1502,8 @@ async function main() {
       ...WIDTHS.map((width) => () => barCheck(browser, width)),
       ...WIDTHS.map((width) => () => ledgerCheck(browser, width)),
       ...WIDTHS.map((width) => () => syncPanelCheck(browser, width)),
+      ...WIDTHS.map((width) => () => gridCheck(browser, { width })),
+      () => gridCheck(browser, { width: 375, touch: true }),
       () => rowShiftCheck(browser, { view: "Packages", anchorText: "Alpha Cards", expand: false }),
       () => rowShiftCheck(browser, { view: "Tally", anchorText: "Lightning Bolt", expand: true }),
       () => discardArmCheck(browser),

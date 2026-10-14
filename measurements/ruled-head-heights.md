@@ -1,12 +1,22 @@
 # Ruled head control region heights
 
-**Status:** re-measure pending. The 4px grid ruling in `spacing-on-4px-grid` will change this region. `CTL_H` (34px) is off the 4px step. L11a removed the view switch that every figure starts from. It also moved Find out of the ruled row, into a pill above the bottom bar. L11b (commit `12e8721`) moved the option rows into the Ledger tab. It also retired the action row (`action-row-is-ruled-cells`). The region measured below no longer exists at 375px. The figures predate L11a and L11b. They are unmeasured after the grid ruling.
+**Status:** measured at the 4px grid head, at 375px and 760px. The figures under "Grid head figures" are from the round-1 builder. They come from headless Chromium on the scratch fixture, with the start mark at the top of the page. The records writer did not re-measure them. The 4px grid lane (`528bbde`) changed this region's spacing. `CTL_H` is still 34px. It is a control height, not a spacing value, so the grid lane left it. L11a removed the view switch that the older figures start from. It also moved Find out of the ruled row, into a pill above the bottom bar. L11b (commit `12e8721`) moved the option rows into the Ledger tab. It also retired the action row (`action-row-is-ruled-cells`). The old region, from the view switch, no longer exists at 375px. At `f97e423` the Packages view holds only the masthead and the sync line above its first card. The figures under "Measured heights" and "Action row" predate L11a and L11b. They are history, not the page now.
 
 This record holds the control region height at 375px, in each state. States are: at rest, with a panel open, and with the action row empty or full. It also holds the one width bug the region had, at 377px. Re-measure at 375px after a change to the region's cells, panels, or the action row.
 
+## Grid head figures
+
+Round-1 builder figures at 375px on the grid lane. Headless Chromium on the scratch fixture, with the start mark at the top of the page. The records writer did not re-measure them.
+
+- First card top: 200.98px before the grid change, 198.98px after.
+- Ledger tab ends: 859.08px before, 851.08px after.
+- Open Sync panel: 164px before, 159px after. At 760px: 122px before, 117px after.
+- `CTL_H` is 34px.
+- Horizontal overflow is 0 in every state.
+
 ## How to re-measure
 
-Open the built page at a 375px viewport. Load a real ledger. The start mark was the top of the view switch, which L11a removed, so set a new start mark first. Measure from it to the top of the first package card. Do this for each state named below. Compare the result against the figures below. The prose gives no script name. Re-run this by hand in a real browser. jsdom has no layout and cannot do this measurement.
+Open the built page at a 375px viewport. Load a real ledger, or the scratch fixture the grid figures used. Set the start mark at the top of the page. Measure from it to each mark named under "Grid head figures", and to the top of the first package card. Do this for each state named below. Compare the result against the figures. The prose gives no script name. Re-run this by hand in a real browser. jsdom has no layout and cannot do this measurement.
 
 ## Reader
 
@@ -30,9 +40,9 @@ The boxed `ctl` and `chip` controls the constant was written for are gone. The l
 
 `keyField` sets `boxSizing: border-box`. Inputs are content-box by default, while buttons are not. Without this rule, the field renders 2px taller than the Save cell beside it.
 
-## Measured heights
+## Measured heights, before L11a (2026-10-11)
 
-Measured at 375px against 281 real lines across 150 orders, from the view switch to the first package card:
+These figures start from the view switch, which L11a removed. Measured at 375px against 281 real lines across 150 orders, from the view switch to the first package card:
 
 - **185px at rest.**
 - 282px with the range panel open.
@@ -43,7 +53,7 @@ Horizontal overflow is 0 in every state, and no option string clips.
 
 The resting figure is **14px worse than the 171px it replaced**. That is a deliberate trade. Both native controls are gone. The state reads at a glance, instead of being inferred from four separate controls. Nothing in the region wraps or reflows when the view changes. If the height ever has to come back, the `.fig` line and the cell padding are where to look.
 
-## Action row
+## Action row, retired by L11b (2026-10-11 figures)
 
 The action row was re-measured in real Chromium. The test used the user's actual ledger: 793 lines and 3 envelopes. The old build and the new build ran through the same script. The measure runs from the top of the view switch to the top of the first card.
 
