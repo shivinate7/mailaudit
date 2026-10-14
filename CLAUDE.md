@@ -23,13 +23,14 @@ records your task needs. Do not read them all.
 - `invariants/` holds a rule that must not break. 8 records.
 - `decisions/` holds a ruling and the reason it still holds.
 - `measurements/` holds a measured figure and how to re-measure it. 8 records.
+- `debts/` holds one known gap or to-do per file, each pointing at its decision.
 
 A record cites another record by slug, never by a path, so a record survives a
-move. `npm run check:records` proves seven things. This index cites every record.
+move. `npm run check:records` proves eight things. This index cites every record.
 Every citation resolves. No slug repeats. No fence is broken. Every record
 carries its shape. Every invariant names the test that pins it. Every decision
 holds a Holds-while line, every open thread a Status line, and the index lists
-no slug twice.
+no slug twice. Every debt holds a Status line and a Decision line.
 
 An open question carries a `**Status:**` line. That line is the only thing that
 separates a question still open from a ruling already settled, so keep it.
@@ -355,6 +356,10 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 - `recent-checks-can-be-undone` — Recent actions can be undone by tap.
 - `sync-revamp-cloudflare` — Sync moves from GitHub to Cloudflare, and orders arrive with no export.
 - `merge-later-change-wins` — Clock skew can pin a merge key. Accepted risk.
+
+## Debts
+
+One known gap or to-do per file under `debts/`. Each carries a Status line and a Decision line that names its record or says none.
 
 ## Measurements
 
