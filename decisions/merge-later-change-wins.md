@@ -1,10 +1,14 @@
 # The later change wins in a two-device merge.
 
+Kind: build
+
+Plan: decisions/merge-later-change-wins.md#the-later-change-wins-in-a-two-device-merge (web)
+
 **Status:** accepted risk. A device clock set far ahead can pin a merge key.
 
 A merge never drops a line from `items`. A check-in or an envelope goes only when a later write wins. A check-in count falls only that way. An un-check is one such write. A merge that silently dropped 35 imported lines would look the same as one that worked, so the rule matters. Running the merge again is harmless.
 
-**Holds while:** `mergeReceived` in `src/merge-rules.mjs` takes the later time per key. A timed absence beats an untimed count. With no time on either side, it takes the per-key max. `mergeLedger` builds its result from named fields.
+**Holds while:** `mergeReceived` in `src/merge-rules.mjs` takes the later time per key. A timed absence beats an untimed count. With no time on either side, it takes the per-key max. `mergeLedger` builds its result from named fields, then carries every key it does not name. For a key both sides hold, the later `savedAt` wins; a tie or a missing time keeps incoming.
 
 `src/merge-rules.mjs` reconciles two devices' ledgers. It is pure and directly tested. It is the piece that fails by producing a plausible wrong ledger.
 
@@ -17,7 +21,7 @@ A merge never drops a line from `items`. A check-in or an envelope goes only whe
 
 Removals are the exceptions. A removed stamp travels as a tombstone, and it beats an older stamp. An un-check and a discarded envelope win the same way, by time. Each is the user's own write winning by freshness. The merge does not decide anything here. The stamp tombstone exists because a resurrected `refunded` stamp would silently pull money back out of the tally.
 
-`mergeLedger` builds the merged ledger from **named fields**. So a persisted key it does not name is dropped by every merge. It names `receivedAt`. The merge applies the result locally as a full replace, and then pushes it. That makes this file a sixth site for `saved-state-shape`, after the five sites in `app.jsx`.
+`mergeLedger` builds the merged ledger from **named fields**, then carries every top-level key it does not name (`carryUnknownKeys`, since `75a96b8`). It names `receivedAt`. The merge applies the result locally as a full replace, and then pushes it. A key that needs a real merge needs a named line. That makes this file a sixth site for `saved-state-shape`, after the five sites in `app.jsx`.
 
 **Retired:** test 37.53 (a pull replaces the stamps in full, not as a union), on 2026-10-12. The merge rule carries it now, in tests 37.65 to 37.68.
 
