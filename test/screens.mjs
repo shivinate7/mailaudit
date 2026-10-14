@@ -8,9 +8,13 @@
      1. No sideways overflow, in every view, at 375px and 760px. The head's
         three ruled cells must hold the longest sort label (decisions: the ruled
         head, `minmax(0, 1fr)`; measurements/ruled-head-heights.md).
-     2. Checking one card in moves no other row in that card (invariant no-layout-shift-under-pointer;
-        measurements/card-reserved-geometry.md). Measured at 375px in Packages
-        and in Tally.
+     2. Every check-in moves no other row in its card (invariant
+        no-layout-shift-under-pointer; measurement card-reserved-geometry). Each
+        card is checked in row by row through completion, at 375px and 760px: Tally
+        under Unreceived and under Everything, and Packages under Everything.
+        Packages under Unreceived is checked one line short of completion, since
+        its completed package drops out (view-rules filterPackages). A failing
+        check-in names each moved row and its shift.
      3. Arming Discard on an envelope card moves no element on the page and
         causes no sideways overflow. The arm adds a panel; it takes no space.
         Measured at 375px in Orphaned, the view that holds envelope cards.
@@ -227,13 +231,26 @@ const measureRows = ({ anchorText, radius }) => {
   while (card && !cardStyle.test(card.getAttribute("style") || ""))
     card = card.parentElement;
   if (!card) return null;
+  /* top is taken from the card's own top, so a card that moves as a whole does not
+     read as a row that moved. key is the row's title (seller in Tally, line name in
+     Packages); done is its check button's state; height is its own box. */
+  const cardTop = card.getBoundingClientRect().top;
   return [...card.querySelectorAll('div[style*="--i"][style*="border-top"]')].map((r) => {
     const box = r.getBoundingClientRect();
-    return { text: r.textContent.slice(0, 60), top: box.top + window.scrollY };
+    const title = r.querySelector('div[style*="font-weight: 600"]');
+    return {
+      key: (title || r).textContent.trim().slice(0, 60),
+      top: box.top - cardTop,
+      height: box.height,
+      done: !!r.querySelector('button[aria-label="Mark as not received"]'),
+    };
   });
 };
 
-const markRow = ({ anchorText, index, radius }) => {
+/* The first row in the card that is not yet received, marked for the tap. Its
+   own button is "Mark as received" until it is checked in. Scrolled to the middle
+   of the viewport, so a fixed bar cannot cover the row the tap is sent to. */
+const markFirstUndone = ({ anchorText, radius }) => {
   document
     .querySelectorAll("[data-screen-tap]")
     .forEach((e) => e.removeAttribute("data-screen-tap"));
@@ -244,16 +261,23 @@ const markRow = ({ anchorText, index, radius }) => {
   const cardStyle = new RegExp(`border-radius:\\s*${radius}px`);
   while (card && !cardStyle.test(card.getAttribute("style") || ""))
     card = card.parentElement;
-  const row = card && card.querySelectorAll('div[style*="--i"][style*="border-top"]')[index];
-  if (!row) return false;
+  if (!card) return null;
+  const rows = [...card.querySelectorAll('div[style*="--i"][style*="border-top"]')];
+  const index = rows.findIndex((r) => r.querySelector('button[aria-label="Mark as received"]'));
+  if (index < 0) return null;
+  const row = rows[index];
   row.setAttribute("data-screen-tap", "");
-  return true;
+  row.scrollIntoView({ block: "center" });
+  const title = row.querySelector('div[style*="font-weight: 600"]');
+  return { index, key: (title || row).textContent.trim().slice(0, 60) };
 };
 
-const savedReceivedPositive = (key) => {
+/* True once `n` rows hold a received count above zero. Counts rows, not the sum,
+   because one tap sets a qty-2 line to 2. */
+const receivedKeysAtLeast = ([key, n]) => {
   try {
     const s = JSON.parse(localStorage.getItem(key) || "{}");
-    return Object.values(s.received || {}).some((v) => v > 0);
+    return Object.values(s.received || {}).filter((v) => v > 0).length >= n;
   } catch {
     return false;
   }
@@ -415,59 +439,129 @@ async function overflowChecks(browser) {
   }
 }
 
-/* Expand one card, record its rows, check the first one in, record again. */
-async function rowShiftCheck(browser, { view, anchorText, expand }) {
-  const name = `rowshift ${view} 375px`;
+/* Checks in every row of one card, one at a time, through completion. Before each
+   tap the card's rows are measured; after the save and a settle past the 400ms
+   just-checked tick (useJustBecame), they are measured again. No row other than the
+   tapped one may move within its card (invariant no-layout-shift-under-pointer). A
+   failing check-in names each moved row and its shift.
+
+   Under Unreceived, a package drops at once when its last line is checked
+   (view-rules filterPackages), so that card is measured through one line short of
+   completion. With Showing set to Everything the completed card stays, and it is
+   measured through completion. A Tally card stays under Unreceived while its copies
+   are just-checked (sticky), so it is measured through completion there. */
+async function rowShiftCheck(browser, { view, anchorText, expand, showAll, stopShort, width }) {
+  const name = `rowshift ${view}${showAll ? " (everything)" : ""} ${width}px`;
   checks++;
-  const { ctx, page, pageErrors } = await openSeeded(browser, 375);
+  const { ctx, page, pageErrors } = await openSeeded(browser, width);
   try {
     if (!(await loadedOk(page))) {
       fail(name, "seeded ledger did not render");
       return;
+    }
+    if (showAll) {
+      await showView(page, "Ledger");
+      try {
+        await page.locator("button.mdl-lrow", { hasText: "Showing" }).click({ timeout: 3000 });
+        await page.waitForFunction(
+          () =>
+            [...document.querySelectorAll("button.mdl-lrow")].some((b) =>
+              b.textContent.includes("Everything")
+            ),
+          null,
+          { timeout: 3000 }
+        );
+      } catch {
+        fail(name, 'the Ledger "Showing" row did not switch to Everything');
+        return;
+      }
     }
     await showView(page, view);
     if (expand) {
       await page.locator("button", { hasText: anchorText }).first().click();
       await page.waitForTimeout(250);
     }
-    const before = await page.evaluate(measureRows, { anchorText, radius: CARD_RADIUS_PX });
-    if (!before || before.length < 3) {
-      fail(name, `expected an expanded card with 3+ rows, found ${before ? before.length : "no card"}`);
+    const start = await page.evaluate(measureRows, { anchorText, radius: CARD_RADIUS_PX });
+    if (!start || start.length < 3) {
+      fail(name, `expected a card with 3+ rows, found ${start ? start.length : "no card"}`);
       return;
     }
-    const tapIndex = 0;
-    const marked = await page.evaluate(markRow, { anchorText, index: tapIndex, radius: CARD_RADIUS_PX });
-    if (!marked) {
-      fail(name, "could not locate the first row to tap");
-      return;
-    }
-    await page.locator("[data-screen-tap]").click();
-    try {
-      await page.waitForFunction(savedReceivedPositive, STORE_KEY, { timeout: 4000 });
-    } catch {
-      fail(name, "the tap did not check a card in (nothing saved to received)");
-      return;
-    }
-    await page.waitForTimeout(300);
-    const after = await page.evaluate(measureRows, { anchorText, radius: CARD_RADIUS_PX });
-    if (!after || after.length !== before.length) {
-      fail(name, `row count changed from ${before.length} to ${after ? after.length : "none"}`);
-      return;
-    }
-    for (let i = 0; i < before.length; i++) {
-      if (i === tapIndex) continue;
-      const moved = after[i].top - before[i].top;
-      if (Math.abs(moved) > TAP_TOLERANCE_PX)
+    const total = start.length;
+    const steps = stopShort ? total - 1 : total;
+    for (let step = 1; step <= steps; step++) {
+      const label = `check-in ${step}/${total}`;
+      const before = await page.evaluate(measureRows, { anchorText, radius: CARD_RADIUS_PX });
+      if (!before) {
+        fail(name, `${label}: the card is gone before the tap`);
+        return;
+      }
+      const tapped = await page.evaluate(markFirstUndone, { anchorText, radius: CARD_RADIUS_PX });
+      if (!tapped) {
+        fail(name, `${label}: no row left to tap`);
+        return;
+      }
+      try {
+        await page.locator("[data-screen-tap]").click({ timeout: 4000 });
+      } catch (e) {
+        fail(name, `${label}: the tap on "${tapped.key}" did not land (${e.message.split("\n")[0]})`);
+        return;
+      }
+      try {
+        await page.waitForFunction(receivedKeysAtLeast, [STORE_KEY, step], { timeout: 4000 });
+      } catch {
+        fail(name, `${label}: the tap on "${tapped.key}" did not save to received`);
+        return;
+      }
+      await page.waitForTimeout(600);
+      const after = await page.evaluate(measureRows, { anchorText, radius: CARD_RADIUS_PX });
+      if (!after) {
+        fail(name, `${label}: the card is gone after the tap on "${tapped.key}"`);
+        return;
+      }
+      if (after.length !== before.length) {
+        fail(name, `${label}: row count changed from ${before.length} to ${after.length}`);
+        return;
+      }
+      const moved = [];
+      for (let i = 0; i < before.length; i++) {
+        if (i === tapped.index) continue;
+        if (before[i].key !== after[i].key) {
+          fail(name, `${label}: row ${i} "${before[i].key}" is now "${after[i].key}"; rows changed order`);
+          return;
+        }
+        const d = after[i].top - before[i].top;
+        if (Math.abs(d) > TAP_TOLERANCE_PX)
+          moved.push(`row ${i} "${before[i].key}" ${d > 0 ? "+" : ""}${d.toFixed(2)}px`);
+      }
+      if (moved.length) {
+        const own = after[tapped.index].height - before[tapped.index].height;
         fail(
           name,
-          `row ${i} ("${before[i].text.split("$")[0].trim()}") moved ${moved.toFixed(2)}px after the first check-in`
+          `${label} on "${tapped.key}" (its own height ${own >= 0 ? "+" : ""}${own.toFixed(2)}px): ${moved.join("; ")}`
         );
+      }
     }
+    const end = await page.evaluate(measureRows, { anchorText, radius: CARD_RADIUS_PX });
+    const undone = end ? end.filter((r) => !r.done).length : -1;
+    if (undone !== total - steps)
+      fail(name, `after check-in ${steps}/${total}, ${undone} row(s) not received; want ${total - steps}`);
     for (const e of pageErrors) fail(name, `page error: ${e}`);
   } finally {
     await ctx.close();
   }
 }
+
+/* Packages under Unreceived (stops one line short: its completed package drops),
+   Packages under Everything (through completion, the card stays), and Tally under
+   Unreceived and under Everything (through completion: the card stays while its
+   copies are just-checked, and the measurement record's Tally steps ran under
+   Everything). */
+const ROW_SHIFT_CARDS = [
+  { view: "Packages", anchorText: "Alpha Cards", expand: false, showAll: false, stopShort: true },
+  { view: "Packages", anchorText: "Alpha Cards", expand: false, showAll: true, stopShort: false },
+  { view: "Tally", anchorText: "Lightning Bolt", expand: true, showAll: false, stopShort: false },
+  { view: "Tally", anchorText: "Lightning Bolt", expand: true, showAll: true, stopShort: false },
+];
 
 /* Arm Discard on the first envelope card. Nothing on the page may move, and
    the page may not widen. The Discard panel is absolutely placed, so it is
@@ -1504,8 +1598,9 @@ async function main() {
       ...WIDTHS.map((width) => () => syncPanelCheck(browser, width)),
       ...WIDTHS.map((width) => () => gridCheck(browser, { width })),
       () => gridCheck(browser, { width: 375, touch: true }),
-      () => rowShiftCheck(browser, { view: "Packages", anchorText: "Alpha Cards", expand: false }),
-      () => rowShiftCheck(browser, { view: "Tally", anchorText: "Lightning Bolt", expand: true }),
+      ...ROW_SHIFT_CARDS.flatMap((card) =>
+        WIDTHS.map((width) => () => rowShiftCheck(browser, { ...card, width }))
+      ),
       () => discardArmCheck(browser),
       ...RESET_VIEWS.map((view) => () => resetAskCheck(browser, view)),
     ];
