@@ -40,15 +40,16 @@
         short is a finding. A target whose 44px reach runs past the viewport edge is
         skipped by this floor only: each state prints one `note` line with the number
         of such targets. Its drawn box and its overlap probe still count.
-    10. Drawn boxes (L6, no visual change): in every state of SCREEN_STATES, each
-        element's painted box at 375px matches test/a11y-base-boxes.json, recorded
-        from the base commit f7d51ba with `A11Y_RECORD=1 node test/screens.mjs
-        <base index.html>`. A grown hit area never grows it. Keys mask digits in
-        their text, so a day count in a card does not move a key. One state is the
-        exception: the Stamp editor is recorded from the lane head, under the 10px
-        chip row gap (orchestrator decision 2026-10-13), because its base rows sit
-        6px apart. Re-record only that state with
-        `A11Y_RECORD=1 A11Y_RECORD_ONLY="Stamp editor open" node test/screens.mjs`.
+    10. Drawn boxes (L6): in every state of SCREEN_STATES, each element's painted
+        box at 375px matches test/a11y-base-boxes.json. The base is recorded at the
+        grid lane head, commit 528bbde (the re-space build under
+        spacing-on-4px-grid), with `A11Y_RECORD=1 node test/screens.mjs`. It is no
+        longer the f7d51ba base: the grid is a deliberate visual change, so this
+        check now guards drift from the grid head, not the grid change itself. A
+        grown hit area never grows it. Keys mask digits in their text, so a day
+        count in a card does not move a key. After any deliberate visual change,
+        re-record every state the same way; A11Y_RECORD_ONLY="<state>" re-records
+        one.
     11. Overlap (L6, F2): in the same states, a tap 1px outside any point of a
         control's side, corner to corner, counts when that point is strictly
         nearer to that control than to any other control. So the walk along a side
@@ -209,18 +210,19 @@ const LEDGER = {
 /* ---------- in-page probes (self-contained: Playwright serialises them) ---------- */
 
 /* The card holding the first element whose header button mentions `anchorText`.
-   Cards carry border-radius: 10px. A row is an ItemRow: it sets --i (its reveal
-   index) AND a top rule. The card's bulk action row also sets --i, but it has no
-   top rule, so the rule is what keeps it out of the measurement. Packages and
-   Tally rows both match. */
-/* (the selector is written out inside each probe: Playwright serialises the
-   function, so a module-level constant would not exist in the page) */
-const measureRows = (anchorText) => {
+   Cards carry the radius CARD_RADIUS_PX (decision spacing-on-4px-grid, 8px). A row
+   is an ItemRow: it sets --i (its reveal index) AND a top rule. The card's bulk
+   action row also sets --i, but it has no top rule, so the rule is what keeps it
+   out of the measurement. Packages and Tally rows both match. */
+/* (the radius is passed in and the regex is built inside each probe: Playwright
+   serialises the function, so a module-level constant would not exist in the page) */
+const measureRows = ({ anchorText, radius }) => {
   const anchor = [...document.querySelectorAll("button")].find((b) =>
     b.textContent.includes(anchorText)
   );
   let card = anchor;
-  while (card && !/border-radius:\s*10px/.test(card.getAttribute("style") || ""))
+  const cardStyle = new RegExp(`border-radius:\\s*${radius}px`);
+  while (card && !cardStyle.test(card.getAttribute("style") || ""))
     card = card.parentElement;
   if (!card) return null;
   return [...card.querySelectorAll('div[style*="--i"][style*="border-top"]')].map((r) => {
@@ -229,7 +231,7 @@ const measureRows = (anchorText) => {
   });
 };
 
-const markRow = ({ anchorText, index }) => {
+const markRow = ({ anchorText, index, radius }) => {
   document
     .querySelectorAll("[data-screen-tap]")
     .forEach((e) => e.removeAttribute("data-screen-tap"));
@@ -237,7 +239,8 @@ const markRow = ({ anchorText, index }) => {
     b.textContent.includes(anchorText)
   );
   let card = anchor;
-  while (card && !/border-radius:\s*10px/.test(card.getAttribute("style") || ""))
+  const cardStyle = new RegExp(`border-radius:\\s*${radius}px`);
+  while (card && !cardStyle.test(card.getAttribute("style") || ""))
     card = card.parentElement;
   const row = card && card.querySelectorAll('div[style*="--i"][style*="border-top"]')[index];
   if (!row) return false;
@@ -425,13 +428,13 @@ async function rowShiftCheck(browser, { view, anchorText, expand }) {
       await page.locator("button", { hasText: anchorText }).first().click();
       await page.waitForTimeout(250);
     }
-    const before = await page.evaluate(measureRows, anchorText);
+    const before = await page.evaluate(measureRows, { anchorText, radius: CARD_RADIUS_PX });
     if (!before || before.length < 3) {
       fail(name, `expected an expanded card with 3+ rows, found ${before ? before.length : "no card"}`);
       return;
     }
     const tapIndex = 0;
-    const marked = await page.evaluate(markRow, { anchorText, index: tapIndex });
+    const marked = await page.evaluate(markRow, { anchorText, index: tapIndex, radius: CARD_RADIUS_PX });
     if (!marked) {
       fail(name, "could not locate the first row to tap");
       return;
@@ -444,7 +447,7 @@ async function rowShiftCheck(browser, { view, anchorText, expand }) {
       return;
     }
     await page.waitForTimeout(300);
-    const after = await page.evaluate(measureRows, anchorText);
+    const after = await page.evaluate(measureRows, { anchorText, radius: CARD_RADIUS_PX });
     if (!after || after.length !== before.length) {
       fail(name, `row count changed from ${before.length} to ${after ? after.length : "none"}`);
       return;
@@ -1188,7 +1191,7 @@ async function touchCheck(browser) {
       }
       const want = base && base[state];
       if (!want) {
-        fail(stateName, "no base boxes for this state; re-record with A11Y_RECORD=1 on the base commit");
+        fail(stateName, "no base boxes for this state; re-record with A11Y_RECORD=1 on the grid lane head (claim 10)");
         continue;
       }
       const wantByKey = Object.fromEntries(Object.entries(want).map(([k, v]) => [keyMasked(k), v]));
