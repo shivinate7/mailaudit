@@ -444,8 +444,8 @@ function closestSlug(token, slugs) {
 /* ---------- claim 8: debts point at their decision ----------
    Owner ruling 2026-10-14: each known gap is one file under debts/, and it
    points at the decision it belongs to (global rule roles-holes-are-debts).
-   A debt holds a "**Status:**" line and a "**Decision:**" line, both outside
-   any fence. The Decision line backticks the slug of a record in invariants/,
+   A debt holds a "**Status:**" line and one or more "**Decision:**" lines, all
+   outside any fence. Every Decision line backticks the slug of a record in invariants/,
    measurements/ or decisions/ (never another debt, never itself), or says
    "none" for a gap with no decision. Claim 1 cannot judge this: it refuses a
    slug that is far from every real one. CLAUDE.md lists the debts/ folder. */
@@ -462,21 +462,24 @@ function closestSlug(token, slugs) {
       console.error(`check:records: ${r.path}: no "**Status:**" line`);
       bad++;
     }
-    const line = prose.find((l) => /^\*\*Decision:\*\*/.test(l));
-    if (!line) {
+    const lines = prose.filter((l) => /^\*\*Decision:\*\*/.test(l));
+    if (!lines.length) {
       console.error(`check:records: ${r.path}: no "**Decision:**" line`);
       bad++;
       continue;
     }
-    const cited = [...line.matchAll(/`([^`]+)`/g)].map((m) => m[1]);
-    if (!cited.length && !/^\*\*Decision:\*\*\s*none\b/i.test(line)) {
-      console.error(`check:records: ${r.path}: "Decision" names no record and does not say "none"`);
-      bad++;
-    }
-    for (const slug of cited) {
-      if (!targets.has(slug)) {
-        console.error(`check:records: ${r.path}: Decision cites \`${slug}\`, which is not a record in invariants/, measurements/ or decisions/`);
+    for (const line of lines) {
+      // Only a slug-shaped span is a citation; `# note` is prose in a span.
+      const cited = [...line.matchAll(/`([a-z0-9-]+)`/g)].map((m) => m[1]);
+      if (!cited.length && !/^\*\*Decision:\*\*\s*none\b/i.test(line)) {
+        console.error(`check:records: ${r.path}: "Decision" names no record and does not say "none"`);
         bad++;
+      }
+      for (const slug of cited) {
+        if (!targets.has(slug)) {
+          console.error(`check:records: ${r.path}: Decision cites \`${slug}\`, which is not a record in invariants/, measurements/ or decisions/`);
+          bad++;
+        }
       }
     }
   }

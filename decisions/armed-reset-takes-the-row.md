@@ -6,11 +6,17 @@ The count and the first focus on Cancel are an orchestrator default of 2026-10-1
 
 **Status:** ruled 2026-10-11. Built in L11b, commit `12e8721`: the in-place arm, the count, Cancel and first focus. The owner ruled under press movement, "Fix both". Reset arms in place and does not collapse any row. Cancel moved after Reset in L11c, commit `b62aebd`.
 
-**Holds while:** `src/app.jsx` shows "Tap again to clear N cards" on the armed Reset. N is the ledger cards plus the live envelope cards. The shared `arm` helper clears the arm after 4000 ms. The armed box holds Reset, then Cancel, side by side. The count is not cut off. That width is not re-measured here.
+**Holds while:** `src/app.jsx` shows "Tap again to clear N cards" on the armed Reset. N is the ledger cards plus the live envelope cards. The shared `arm` helper clears the arm after 4000 ms. The armed box holds Reset, then Cancel, side by side. The count is not cut off. The width and a mis-tap beside the armed box are unmeasured. Debt: `armed-reset-mistap-unmeasured`. The arm no longer hides the Data group.
 
-A mis-tap on a control next to the armed box is unmeasured. The arm no longer hides the Data group.
+Kind: build
+
+Plan: decisions/armed-reset-takes-the-row.md#web-plan (web)
 
 Discard arms in place (`orphan-entry-takes-one-input`). It is the pattern this record asks for.
+
+## Web plan
+
+Build the arm in `src/app.jsx` as the shared `arm` helper sets it: Reset arms in place, shows the count, and Cancel sits after Reset and takes first focus. Tests 63.21 to 63.24 pin it.
 
 ## See also
 

@@ -14,7 +14,11 @@ The Tally jump sets `revealed` and `view` in one handler. A `view` dependency wo
 
 The order id stays visible. The owner ruled on 2026-10-11, accept all: keep the order id visible, with the 10px floor in `typography-cochin-and-mono`. Open: what counts as visible at narrow widths is not defined.
 
-**Status:** ruled 2026-10-11, not built. Build: no lane yet.
+**Status:** ruled 2026-10-11, not built. Debt: `order-id-visible-unbuilt`.
+
+Kind: build
+
+Plan: decisions/order-id-button-stops-propagate.md#the-order-id-stays-visible (web)
 
 ## See also
 

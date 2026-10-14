@@ -75,7 +75,7 @@ The orchestrator defaults of 2026-10-12 are pinned by these tests:
 
 The notice line is pinned by LedgerNoticeTests: testNoLineWhenNothingWasDropped, testOneLineNamesTheCountAndTheKeptCopy, testSingularCountReadsAsOneEntry, testLineNamesNoSyncWords.
 
-Not pinned by a test: the millisecond kept-name format, the missing-file case, and the unwrapped-error sentence in Load and save. The millisecond format is read from LedgerStore.load, because keptCopies matches the prefix and extension only. The app passing its own rules.js to the store is not pinned either (ManifestApp.swift, boot).
+Three behaviours have no test. Debt: `native-ledger-pins-missing`.
 
 ## Known gap: the Worker merge dropped unknown top-level fields
 

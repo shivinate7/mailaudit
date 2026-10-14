@@ -381,6 +381,20 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `photo-put-unrun-on-github` — Photo PUT and photo pull have never run on GitHub.
 - `peek-is-verified-only-on-refusal` — The successful peek path is unverified on GitHub.
 - `the-conflict-guard-is-unverified` — The 409 conflict path is unverified on GitHub.
+- `native-ledger-tab-unbuilt` — The native Ledger tab is a placeholder.
+- `native-key-scan-skips-views` — The native key scan skips SwiftUI view state.
+- `draft-skip-required-unmeasured` — A required check on a draft-skipped job is unmeasured.
+- `recent-log-unbuilt` — The recent-actions log is not built.
+- `recent-log-unmeasured` — The recent-actions log has three measurements to take.
+- `armed-reset-mistap-unmeasured` — A mis-tap beside the armed Reset box is unmeasured.
+- `orphaned-reach-unpinned` — Re-import, Backup and Reset on Orphaned have no test.
+- `native-ledger-pins-missing` — Three native ledger behaviours have no test.
+- `panels-overlay-unbuilt` — Disclosure panels still push the list.
+- `panel-paper-fill-unbuilt` — Overlay panels carry no paper fill.
+- `order-id-visible-unbuilt` — The order id has no narrow-width rule.
+- `discard-keeps-draft` — Discard does not end a composer draft.
+- `type-floor-unbuilt` — Some labels are below the 10px floor.
+- `universal-link-unbuilt` — The universal-link key fallback is not built.
 
 ## Measurements
 

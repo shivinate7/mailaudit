@@ -22,7 +22,7 @@ import { readFileSync, readdirSync } from "fs";
 import { existsSync, statSync } from "fs";
 import { execFileSync } from "child_process";
 
-const FOLDERS = ["decisions", "invariants", "measurements"];
+const FOLDERS = ["debts", "decisions", "invariants", "measurements"];
 
 // ---------- load the corpus: CLAUDE.md plus every record ----------
 

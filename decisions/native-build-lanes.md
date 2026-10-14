@@ -76,9 +76,9 @@ Other risks live in the record for their lane:
 
 ## Still open
 
-- The Ledger tab is a placeholder. No lane builds its options, see `ledger-tab-holds-options`. Open, owner to name a lane.
+- The Ledger tab is a placeholder, see `ledger-tab-holds-options`. Debt: `native-ledger-tab-unbuilt`.
 - The native job runs ST only. Debt: `native-ui-tests-not-in-ci`.
-- The key scan covers the Packages model, its rows and the ledger file. No lane scans SwiftUI view state. Open, owner to name a lane.
+- The key scan skips SwiftUI view state. Debt: `native-key-scan-skips-views`.
 
 ## See also
 

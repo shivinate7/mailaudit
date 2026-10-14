@@ -2,6 +2,10 @@
 
 The Orphaned view records an envelope from one input. The input is autofocused when the view opens. Suggestions come from the cards still outstanding.
 
+Kind: build
+
+Plan: decisions/orphan-entry-takes-one-input.md#the-composers-draft (web)
+
 **Holds while:** `outstandingNames` in `src/app.jsx` still supplies the suggestions for the envelope input. Its logic is `outstandingNames` in `src/view-rules.mjs` (V11.8 to V11.10).
 
 A tap adds a suggested card. A second tap bumps its quantity. The input clears and keeps focus, so the iOS keyboard never drops. The return key, or an "Add … as typed" row, records anything that is not in the ledger.
@@ -16,7 +20,7 @@ Each composer keeps its own draft. Its key is the envelope id, or `new` for a ne
 
 Owner ruling, 2026-10-12 ("make it exact fix then"): a closed draft holds the photos it references, and the photo sweep keeps them. The sweep takes every other unused blob. An open composer still holds the sweep off. The sweep reads each draft's photos when its timer fires. Drafts live in memory only, so a reload clears them.
 
-**Status:** open. Built: the per-composer keys, the Cancel rule, Save, which ends its draft, and the sweep rule for drafts above. Not built: Discard does not end a draft. `discardEnvelope` in `src/app.jsx` never clears it, so the draft keeps its own photos until reload. Open: Reset, and every restore, pull or merge that applies, clears all drafts. `applyBackup` and `resetAll` clear the draft map. The default allows neither. Owner to rule. The default allows neither. Owner to rule.
+**Status:** open. Built: the per-composer keys, the Cancel rule, Save, which ends its draft, and the sweep rule for drafts above. Not built: Discard does not end a draft, see `discard-keeps-draft`. Open: Reset, and every restore, pull or merge that applies, clears all drafts. `applyBackup` and `resetAll` clear the draft map. The default allows neither. Owner to rule. The default allows neither. Owner to rule.
 
 ## Discard
 

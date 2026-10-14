@@ -46,7 +46,7 @@ Degen's self-hosted runner. On a public repo, a fork PR would run on the owner's
 ## Still open
 
 - Update, 2026-10-12: lane N5 landed without the steps. Its diff does not touch the workflow, so the native job still runs ST only. Debt: `native-ui-tests-not-in-ci`.
-- Unmeasured: how a required check reads a job that the draft guard skipped. The scratch PR measures this. The owner granted the scratch PR on 2026-10-12. A separate lane runs it and records the result in `ci-skips-draft-prs`.
+- How a required check reads a job that the draft guard skipped is unmeasured. Debt: `draft-skip-required-unmeasured`.
 
 ## See also
 
