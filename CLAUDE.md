@@ -292,6 +292,7 @@ What each check asks, and the two traps in the icon pipeline.
 - `main-moves-only-by-pr` — Main moves only by pull request, admins included.
 - `screens-checked-headless-in-ci` — Each view is checked headless at 375 and 760px.
 - `records-hold-current-text-only` — Records hold current text only; git keeps history.
+- `debts-hold-known-gaps` — Known gaps and to-dos live in debts, one file each.
 - `records-name-what-dates-them` — Each decision names the fact that would date it.
 - `readme-is-minimal` — The README is minimal, and carries no license.
 - `orchestrator-may-merge` — The orchestrating session may merge green, reviewed PRs.
@@ -343,9 +344,7 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 - `ci-runs-in-utc` — CI runs the suite outside UTC, so test 38.9 runs there.
 - `itp-may-clear-storage` — ITP may clear storage after seven idle days.
 - `nothing-recovers-without-the-key` — Nothing recovers without the key.
-- `peek-is-verified-only-on-refusal` — `peek()` is verified only on its refusal path.
 - `photos-in-git-are-permanent` — Photos in git are permanent.
-- `the-conflict-guard-is-unverified` — The conflict guard is unverified against real GitHub.
 - `ledger-private-source-public` — The ledger repo is private, the source repo is public.
 - `token-expires-without-warning` — The token expires with no warning.
 - `token-sits-on-shared-origin` — The token sits on a shared origin.
@@ -360,6 +359,28 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 ## Debts
 
 One known gap or to-do per file under `debts/`. Each carries a Status line and a Decision line that names its record or says none.
+
+- `claim-11-fixed-edge-taps` — Claim 11 skips taps at a fixed control's edge.
+- `chip-gap-tolerance-at-12px` — The chip-gap tolerance needs a 12px re-measure.
+- `claim-9-fractional-box-edges` — Claim 9 can pass a box just under 44px.
+- `tally-card-moves-at-320px` — The Tally card moves 14px at 320px.
+- `restore-stamps-new-change-times` — A restore does not stamp new change times yet.
+- `dopush-mirror-conflict-path` — Is the doPush mirror-conflict path dead code?
+- `native-ui-tests-not-in-ci` — Native UI tests and builds are not in CI.
+- `n4a-sync-over-http-unbuilt` — Lane N4a, sync over HTTP, is not built.
+- `native-lanes-n6-to-n9-unbuilt` — Native lanes N6 to N9 are not built.
+- `native-kept-copy-has-no-route` — The native app has no route to the kept copy.
+- `key-re-accepts-token-shape` — The key check accepts a GitHub token's shape.
+- `tests-33-35-40-45-cannot-fail` — Tests 33.35, 33.40 and 33.45 cannot fail.
+- `worker-merge-fix-not-deployed` — The Worker merge fix is merged but not deployed.
+- `received-at-size-unmeasured` — The size of receivedAt is unmeasured.
+- `suite-hang-cause-unmeasured` — The 13-minute hang after the suite summary is unexplained.
+- `card-action-row-unmeasured` — The action row at its tallest state is unmeasured.
+- `card-eleven-px-step-unmeasured` — The 11px row step at 320px is unmeasured.
+- `ruled-head-heights-unremeasured` — The ruled head heights have not been re-measured.
+- `photo-put-unrun-on-github` — Photo PUT and photo pull have never run on GitHub.
+- `peek-is-verified-only-on-refusal` — The successful peek path is unverified on GitHub.
+- `the-conflict-guard-is-unverified` — The 409 conflict path is unverified on GitHub.
 
 ## Measurements
 

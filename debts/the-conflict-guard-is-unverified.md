@@ -2,6 +2,8 @@
 
 **Status:** open.
 
+**Decision:** `stale-push-conflict-pull-two-tap`.
+
 The automatic merge on a conflict and auto-push both depend on GitHub's 409 conflict response. The Merge & push control left the UI on 2026-10-12. That response has never been triggered for real. The transport itself works, since real authenticated pushes have landed. The ledger repo has taken them, and `git log origin/data` shows them. What is unproven is the 409 itself. Getting the sha bookkeeping wrong here would let one device silently overwrite another's data.
 
 **Holds while:** `classifyStatus` in `src/remote-rules.mjs` maps status 409 to `conflict`. A real GitHub 409, seen on a device, closes this record.

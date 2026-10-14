@@ -4,6 +4,10 @@ This file draws the line between proven and unproven. It lists what has run agai
 
 **Holds while:** the repo `mailaudit-data` is private. An anonymous request gets 404 for it, gets 200 for `mailaudit`, and the Pages site answers 200. Checked 2026-10-10.
 
+Kind: build
+
+Plan: decisions/live-verification.md#worker-probes-still-needed (worker)
+
 ## The GitHub backup one-time setup
 
 The target is `shivinate7/mailaudit-data`. The ledger lives on branch **`data`**, in the file `ledger.json`. The photos live on branch **`main`**, in the directory `photos/`. Two constant objects sit at the top of the `window.remote` block in `entry.jsx`.
@@ -64,7 +68,7 @@ Photo sync has had its read paths verified live and without a key. The raw media
 
 **The ledger repo's own private path is now verified live too.** This is the first real-GitHub confirmation of anything on the read side since the repo was closed. From the deployed Pages origin with no key, `pull()`, `listVersions()`, and `peek()` all return `no-access`. `peek()` answers `{known: false}`, not "nobody is ahead". That reading matters. Otherwise a keyless device could push straight over the one that can see. Measured at the same time, the site still serves **200** to an anonymous request. But `raw.githubusercontent.com/.../data/ledger.json` and the repo API both **404**. That is the whole point of the private/Pro arrangement, and it is now confirmed rather than assumed. So `peek()` comes off the unverified list.
 
-**Still never run against real GitHub: an authenticated photo PUT, a photo pull that returns bytes, and a ledger conflict.**
+**Still never run against real GitHub:** a photo PUT and a photo pull (debt `photo-put-unrun-on-github`), and a ledger conflict (debt `the-conflict-guard-is-unverified`).
 
 That same session is what surfaced the group-28 bug: Pull was unreachable on an empty ledger. Worth remembering as a method: the suite was all green. The feature was still broken in its single most important scenario, because every test booted a ledger that already had data in it.
 
@@ -80,7 +84,7 @@ Owner ruling, 2026-10-12: a probe deploy of the Worker is granted, under its own
 - **W3a daily snapshots and /health, probe-w3a.** Still to run on Cloudflare: the snapshots table is created. The first changing write of a UTC day stores one snapshot, and a later one stores none. GET /health with no key returns only the last write time. The list and get snapshot routes answer with a device key.
 
 Update, 2026-10-12: both probes above ran on the probe Worker and passed. The owner then granted the live deploy ("Deploy live"). See "Worker probe results" and "Live deploy" below.
-- **W2b, W3b, W3c, W3d and W3e.** No probe is named. Each waits for its brief.
+- **W2b, W3b, W3c, W3d and W3e.** No probe is named. Each waits for its brief. The open work is in debts `restore-stamps-new-change-times` (W2b, W3b) and `dopush-mirror-conflict-path` (W3c to W3e).
 
 No test runs the Durable Object adapter. So the SQLite calls in worker/index.mjs are unproven until a probe runs.
 

@@ -6,6 +6,10 @@ GitHub leaves the sync role entirely. The Worker keeps daily snapshots of the le
 
 **Holds while:** the Worker serves only `/ledger` and `/ws`, and `src/entry.jsx` still mirrors the ledger to the GitHub `data` branch.
 
+Kind: build
+
+Plan: decisions/worker-keeps-snapshots.md#snapshot-defaults (worker)
+
 ## Why
 
 Today only web devices push to the `data` branch. Once both devices run the native client, nobody pushes there. The seed, the watchdog and History would go stale. Native never holds a GitHub token, see `the-token-is-a-credential`.
@@ -28,7 +32,7 @@ Orchestrator defaults of 2026-10-12, not owner rulings. None is on main yet.
 - GET /health needs no key. It replies only with the last write time. A no-op does not move it.
 - The snapshot routes need a device key. The list gives only the day, rev and time of each snapshot, newest day first.
 - The data branch is frozen when it retires. It is not deleted.
-- A restore stamps new change times. Not built. Its lane is W3b, which is blocked, see `native-build-lanes`.
+- A restore stamps new change times. Not built. Debt: `restore-stamps-new-change-times`.
 
 ## Rejected
 

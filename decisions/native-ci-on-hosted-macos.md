@@ -6,6 +6,10 @@ The native job in `.github/workflows/test.yml` runs the Swift package tests on a
 
 **Holds while:** this repo is public on GitHub, so hosted macOS minutes cost nothing.
 
+Kind: build
+
+Plan: decisions/native-ci-on-hosted-macos.md#still-open (native)
+
 ## The job
 
 - The job is named native. It runs on `macos-26`. Its timeout is 3 minutes, about 3.4x the 53 s first green run, for macOS start-up variance.
@@ -41,8 +45,7 @@ Degen's self-hosted runner. On a public repo, a fork PR would run on the owner's
 
 ## Still open
 
-- Lane N5 adds to the native job: the `xcode-select` pin for Xcode. Then, after ST, in this order: xcodegen; `xcodebuild build` for macOS and for the iOS Simulator with `CODE_SIGNING_ALLOWED=NO`; the UI tests.
-- Update, 2026-10-12: lane N5 landed without those steps. Its diff does not touch the workflow, so the native job still runs ST only. The steps move to lane C2 in `native-build-lanes`.
+- Update, 2026-10-12: lane N5 landed without the steps. Its diff does not touch the workflow, so the native job still runs ST only. Debt: `native-ui-tests-not-in-ci`.
 - Unmeasured: how a required check reads a job that the draft guard skipped. The scratch PR measures this. The owner granted the scratch PR on 2026-10-12. A separate lane runs it and records the result in `ci-skips-draft-prs`.
 
 ## See also

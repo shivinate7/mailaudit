@@ -81,7 +81,7 @@ Not pinned by a test: the millisecond kept-name format, the missing-file case, a
 
 The Worker's shape refusal and its mend of stored damage are built on PR #87, merged (see Built state). This gap is separate from them.
 
-**Status:** open, pending the owner's word. The fix is built on `web/merge-unknown-keys`. It is not merged or deployed. The live Worker runs the pre-fix merge until the next `worker:deploy`.
+**Status:** open, pending the owner's word. The fix is on main, merged in PR #96. It is not deployed. The live Worker runs the pre-fix merge until the next `worker:deploy`. Debt: `worker-merge-fix-not-deployed`.
 
 Orchestrator call of 2026-10-14, not an owner ruling: `mergeLedger` carries unknown top-level keys, and it drops the `savedAt` comparison. A key that both sides hold with different values keeps the incoming side. The owner confirms or rejects that rule. Its rule and pins are in `saved-state-shape`.
 
@@ -89,9 +89,9 @@ Before the fix, measured 2026-10-12, `mergeLedger` dropped an unknown top-level 
 
 The Worker POST handler in `worker/core.mjs` stored the merged ledger whenever a ledger already existed. So such a field survived only the first write to an empty store. Nested unknown fields inside an envelope or a stamp are unmeasured.
 
-## Known bandaid: Swift names are unbackticked
+## Swift names in this record
 
-The Swift names in this record (LedgerStore, LedgerStoreTests, RulesCore, droppedCount) are unbackticked. `check-docs.mjs` judges a backticked name against CODE_ROOTS, and CODE_ROOTS omits `native/`. So a backticked LedgerStore fails the check. Follow-up: add `native/` to CODE_ROOTS in `check-docs.mjs`. That is a code change for a builder.
+The Swift names in this record (LedgerStore, LedgerStoreTests, RulesCore, droppedCount) are unbackticked. They were plain because `check-docs.mjs` did not read `native/`. Its CODE_ROOTS lists `native/` now, so a backticked Swift name is checked.
 
 ## See also
 

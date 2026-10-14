@@ -6,6 +6,10 @@ The native rebuild splits into lanes. W lanes change the Worker. S lanes change 
 
 **Holds while:** the lanes in this table have not landed.
 
+Kind: build
+
+Plan: decisions/native-build-lanes.md#still-open (native)
+
 ## How every lane runs
 
 - A Sonnet test-author works in its own worktree and lands the tests red.
@@ -73,7 +77,7 @@ Other risks live in the record for their lane:
 ## Still open
 
 - The Ledger tab is a placeholder. No lane builds its options, see `ledger-tab-holds-options`. Open, owner to name a lane.
-- The native job runs ST only. The UI tests, the xcodegen step and the `xcodebuild` builds are not in CI, see `native-ci-on-hosted-macos`. Lane C2, the table row above, adds them. Not built.
+- The native job runs ST only. Debt: `native-ui-tests-not-in-ci`.
 - The key scan covers the Packages model, its rows and the ledger file. No lane scans SwiftUI view state. Open, owner to name a lane.
 
 ## See also

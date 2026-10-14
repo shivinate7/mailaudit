@@ -14,7 +14,7 @@ The harness bundles `app.jsx` with esbuild. It sets `platform: "node"` and `form
 
 Run `npm test` and read its summary line. The count is passed plus failed. A green run prints `all green`. Time the run with the shell's own timer, or with `verdict`, which prints the elapsed seconds.
 
-At `f956873`, the New York process printed its summary and `all green`, then stayed alive with no CPU use for 13 minutes. It was killed by hand. The UTC and machine-zone processes were stopped by hand just after their summaries. Their exit codes are unmeasured, and so is the cause.
+At `f956873`, the New York process printed its summary and `all green`, then stayed alive with no CPU use for 13 minutes. It was killed by hand. The UTC and machine-zone processes were stopped by hand just after their summaries. Their exit codes and the cause are debt `suite-hang-cause-unmeasured`.
 
 Measured on 2026-10-14 at `e641956`, the merge of `web/tally-shift`, `web/merge-unknown-keys` and `web/weak-tests-68`. The count was 1312 at `b28e282`. It rose by 6 because groups 68 and 69 changed in `web/weak-tests-68`. Tests 68.9 and 68.10a were rewritten, and 69.3 was added. The 1-minute load was about 8 to 10 during the runs. The times may be inflated:
 

@@ -92,7 +92,7 @@ The native build needs these changes to the Worker. On main the Worker serves on
 ## Still open
 
 - Whether a Cloudflare Access login survives in an iOS home-screen app. This is untested.
-- A restore keeps the old receivedAt today, so a later server reply can undo it. The fix is lane W3b, which is blocked, see `native-build-lanes`.
+- A restore keeps the old receivedAt today, so a later server reply can undo it. Debt: `restore-stamps-new-change-times`.
 - Live updates use a WebSocket. A new rev from the other device starts one GET, and the reply waits for the idle gate.
 - A 413 from the Worker turns mirror mode off, as an unknown answer does. The advisory line names the size problem.
 
