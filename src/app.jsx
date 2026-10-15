@@ -7,7 +7,7 @@ import {
   tallyGroups, sortTally, sortPackages, filterPackages, filterTally,
   totalsOf, outstandingOf, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger,
 } from "./view-rules.mjs";
-import { photoPlan, photoName, photoIdFromName } from "./photo-rules.mjs";
+import { photoPlan } from "./photo-rules.mjs";
 import { shouldSnapshot } from "./version-rules.mjs";
 import { KEY_RE, SYNC_POST_MS, SYNC_COLD_POST_MS, SYNC_TIMEOUT_MS, IDLE_APPLY_MS, idleReady, backoffMs } from "./sync-rules.mjs";
 import {
@@ -4132,8 +4132,6 @@ syncBroken === "seeded"
      swallowed by the caller's catch and surfaced as a generic ledger error. */
   const photoSyncAvailable =
     !!window.sync && typeof window.sync.photoList === "function";
-  /* id -> the name the Worker holds it under (id.ext), from the last list */
-  const photoNames = useRef(new Map());
   /* A photo call answers {status, code}. status null is "could not reach the
      Worker"; 401 is a refused key. PHOTO_SAYS speaks for each. */
   const NO_REPLY = { status: null, code: "unknown" };
@@ -4163,15 +4161,8 @@ syncBroken === "seeded"
       }
       const r = await window.sync.photoList().catch(() => NO_REPLY);
       let remote;
-      if (r.code === "ok" && Array.isArray(r.body?.ids)) {
-        const names = new Map();
-        for (const n of r.body.ids) {
-          const id = photoIdFromName(n);
-          if (id) names.set(id, n);
-        }
-        photoNames.current = names;
-        remote = { known: true, ids: [...names.keys()] };
-      } else remote = { known: false, reason: photoReason(r) };
+      if (r.code === "ok" && Array.isArray(r.body?.ids)) remote = { known: true, ids: r.body.ids };
+      else remote = { known: false, reason: photoReason(r) };
       return { plan: photoPlan({ referenced, local, remote }), remote };
     },
     [photoSyncAvailable]
@@ -4254,7 +4245,7 @@ syncBroken === "seeded"
           return;
         }
         if (!blob) continue; /* swept or reset out from under us */
-        const r = await window.sync.photoPut(photoName(id, blob.type), blob).catch(() => NO_REPLY);
+        const r = await window.sync.photoPut(id, blob).catch(() => NO_REPLY);
         if (r.code === "too-big") {
           /* one photo over the Worker's cap must not block the ones behind it */
           tooBig = true;
@@ -4341,7 +4332,7 @@ syncBroken === "seeded"
       for (const id of batch) {
         if (syncGen.current !== gen) return;
         try {
-          const r = await window.sync.photoGet(photoNames.current.get(id));
+          const r = await window.sync.photoGet(id);
           if (r.code !== "ok" || !r.body?.blob) throw new Error("photo-read");
           await window.photos.put(id, r.body.blob);
           got.push(id);

@@ -914,10 +914,12 @@ const syncCall = (method, ledger) =>
     },
     readJson
   );
-/* The photo route (worker/core.mjs, /photos). A photo is named id.ext; the type
-   lives in the name, so a read builds its Blob from the bytes and the name and
-   never from the response header. ponytail: the 10 s call limit also covers a
+/* The photo route (worker/core.mjs, /photos). The app speaks ids and blobs. A photo
+   is named id.ext on the wire; the type lives in the name, so a read builds its Blob
+   from the bytes and the name and never from the response header. `heldNames` is
+   id -> name from the last list, so a read asks for the name the Worker holds. ponytail: the 10 s call limit also covers a
    photo (up to 1.9 MB); a slow link fails the call and the next sync retries. */
+const heldNames = new Map();
 const photoCall = (method, name, blob) =>
   workerCall(
     name ? `/photos/${name}` : "/photos",
@@ -952,14 +954,21 @@ window.sync = {
   /* the Worker's photos: list the names it holds, read one, write one (once per name) */
   async photoList() {
     const r = await photoCall("GET");
+    const code = syncStatus(r.status);
+    if (code !== "ok" || !Array.isArray(r.body?.ids)) return { ...r, code };
+    heldNames.clear();
+    for (const n of r.body.ids) {
+      const id = photoIdFromName(n);
+      if (id) heldNames.set(id, n);
+    }
+    return { ...r, body: { ...r.body, ids: [...heldNames.keys()] }, code };
+  },
+  async photoGet(id) {
+    const r = await photoCall("GET", heldNames.get(id) || photoName(id, "image/jpeg"));
     return { ...r, code: syncStatus(r.status) };
   },
-  async photoGet(name) {
-    const r = await photoCall("GET", name);
-    return { ...r, code: syncStatus(r.status) };
-  },
-  async photoPut(name, blob) {
-    const r = await photoCall("POST", name, blob);
+  async photoPut(id, blob) {
+    const r = await photoCall("POST", photoName(id, blob.type), blob);
     return { ...r, code: syncStatus(r.status) };
   },
   /* onRev(rev) fires on each pushed {rev}. Returns a close function. */
