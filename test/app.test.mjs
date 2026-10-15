@@ -73,6 +73,9 @@ import {
   fireSyncRev,
   fireSyncRevOnly,
   holdSyncPosts,
+  holdSyncPhotoPuts,
+  addSyncPhoto,
+  photoStore,
   releaseSyncGet,
   unmountApp,
   clearSyncStore,
@@ -1155,9 +1158,10 @@ eq(
 await sleep(SWEEP_WAIT);
 eq(photoKeys(), ["pho-9"], "26.12 and the sweep leaves the blob alone");
 
-/* The other half of the same rule. The Worker's photo list is read, and three values
-   come back: held, not held, or unreadable. Stripping is allowed only after a read that
-   says the id is not held. An unreadable list keeps the id (photo-ids-unreadable-local). */
+/* The Worker's photo list is read, and three values come back: held, not held, or
+   unreadable. A server apply keeps the id in all three cases. Another device may still be
+   uploading the blob, and this one cannot tell, so no read of the list strips it
+   (photo-ids-unreadable-local). */
 const GONE_LEDGER = {
   mailday: 1,
   items: ITEMS,
@@ -1185,8 +1189,8 @@ ok(
 );
 eq(
   saved().envelopes[0].photos,
-  [],
-  "26.13 an id the Worker's photo list was read and found not to hold is stripped"
+  ["pho-gone"],
+  "26.13 an id the Worker does not hold yet is kept on a server apply"
 );
 
 /* and the case that used to be conflated with it: the list cannot be read */
@@ -1201,6 +1205,7 @@ eq(
   ["pho-gone"],
   "26.13b but the list is unreadable, so the id is KEPT, not lost"
 );
+await openSync();
 /* Re-pointed (owner ruling 2026-10-12, default 5): the copy may not say "your key"
    or name a repo. Group 66 guards the words, so this asserts only that the line
    says photos need something, not what that something is named. */
@@ -1614,11 +1619,11 @@ eq(
   "30.17 and both ids survive into the saved ledger"
 );
 
-/* The "gone" warning, both ways round. A merge that replaces the ledger makes a
-   photo the CURRENT ledger references and the incoming one does not about to
-   stop existing — and if it was never sent, that was the last copy. But a photo
-   BOTH ledgers reference survives untouched, and saying otherwise is a false
-   alarm at the exact moment nothing is wrong. */
+/* 30.18 is retired (owner ruling 2026-10-15): the photo only the CURRENT ledger names
+   survives the merge, because envelopes union, so its "now gone" warning was a false
+   alarm. 30.18s and 30.18t keep that survival as the proof. The warning goes with the
+   builder's change to pullPhotos (its stranded count). A photo BOTH ledgers reference
+   survives untouched, and saying otherwise is a false alarm (30.19, 30.20). */
 await boot(
   {
     items: ITEMS,
@@ -1637,11 +1642,13 @@ await boot(
   { syncKey: KEY30, syncLedger: SERVER30(withPhoto(["pho-a"])) } /* incoming references pho-a, never pho-local */
 );
 await resume30();
-await openSync();
-ok(
-  /photo/i.test(text()) && /gone|lost|no other copy|only copy/i.test(text()) && !/GitHub|never pushed/i.test(text()),
-  "30.18 a photo the incoming ledger doesn't know about gets a GitHub-free last-copy warning (default 5)"
+eq(
+  saved().envelopes?.find((e) => e.id === "env-local")?.photos ?? null,
+  ["pho-local"],
+  "30.18s the photo only the current ledger names is still named after the merge"
 );
+await sleep(SWEEP_WAIT);
+ok(photoKeys().includes("pho-local"), "30.18t and its blob survives the sweep");
 
 /* the inverse: both ledgers reference it and the blob is here, so it survives
    the merge completely — warning here would be a false alarm */
@@ -4745,6 +4752,9 @@ const freshKeyed49 = () => boot({ items: ITEMS, received: {} }, null, { syncKey:
   await freshKeyed49();
   await reachFor(/Re-import CSV/);
   await click(btn(/Re-import CSV/), "show upload zone");
+  /* a restore is a change made now, so the time it lands wins a later Worker reply
+     (restore-must-stick, owner ruling 2026-10-15). The file's own time does not survive. */
+  const before50 = Date.now();
   await dropFile(
     "mailday-backup.json",
     JSON.stringify({
@@ -4757,7 +4767,10 @@ const freshKeyed49 = () => boot({ items: ITEMS, received: {} }, null, { syncKey:
     })
   );
   await sleep(SAVE_WAIT);
-  eq(saved().receivedAt?.[K], 1234567, "50.B4 a restore brings each key's time back");
+  ok(
+    typeof saved().receivedAt?.[K] === "number" && saved().receivedAt[K] >= before50,
+    "50.B4 a restore into an empty device stamps the time it lands, not the file's"
+  );
 
   await freshKeyed49();
   await goTo("orphaned");
@@ -7527,7 +7540,8 @@ try {
   ok(FALLBACK67.test(text()), "67.F1 a milestone that cannot be written refuses the load and says the data is damaged");
   eq(savedText(), JSON.stringify(seeded), "67.F1a the saved text is not changed");
   eq(postCount(), 0, "67.F1b no Worker push starts");
-  eq(pushes().length, 0, "67.F1c no GitHub push starts");
+  /* GitHub leaves the sync role (owner ruling 2026-10-14): no GitHub verb runs, not only a push */
+  eq(githubOps(), [], "67.F1c no GitHub op runs");
   await openHistory();
   ok(!!btn(/^Backup$/), "67.F1d History opens and Backup is reachable");
 } catch (e) {
@@ -7543,7 +7557,7 @@ try {
   ok(FALLBACK67.test(text()), "67.F2 a saved text that is not JSON refuses the load and says the data is damaged");
   eq(savedText(), RAW67, "67.F2a the raw text is kept byte for byte");
   eq(postCount(), 0, "67.F2b no Worker push starts");
-  eq(pushes().length, 0, "67.F2c no GitHub push starts");
+  eq(githubOps(), [], "67.F2c no GitHub op runs");
   await openHistory();
   ok(!!btn(/^Backup$/), "67.F2d History opens and Backup is reachable");
 } catch (e) {
@@ -8195,15 +8209,17 @@ try {
 
 /* ── 72. a restore stamps new change times, so a later Worker reply cannot undo it ──
    Debt restore-stamps-new-change-times; decision a-restore-is-not-local. A restore keeps the
-   old change times today, so a Worker reply that carries an older server copy can undo the
-   restore. Red at the lane head, for each of the four kinds (check-in, uncheck, stamp,
-   envelope), on both restore paths (History and a file drop), and on both reply routes (the
-   POST merge and a rev-gated GET).
+   old change times where the device's copy is unchanged or never held, so a Worker reply that
+   carries an older server copy can undo the restore. Red at the lane head for each kind
+   (check-in, uncheck, stamp, envelope) in three forms: changed (the device's copy differs from
+   the version), unchanged (the restore leaves it as it was), and never-held (the device has no
+   copy). Each case runs on both restore paths (History and a file drop) and both reply routes
+   (the POST merge and a rev-gated GET).
 
-   The times are ordered: the version's are 5, the device's are 20, the server's are 30, and
-   the restore moment is the virtual clock, far later. A restore that stamps new change times
-   wins against 30; one that keeps the old times loses to it. The server copy is set after the
-   restore, so it is the older copy that predates the restore. */
+   The times are ordered: the version's are 5 (the device's are 20 in the changed forms), the
+   server's are 30, and the restore moment is the virtual clock, far later. The server copy
+   predates the restore, so a restore that stamps new change times wins against 30; one that
+   keeps the old times loses to it. The server copy is set after the restore. */
 installClock();
 const K72 = ITEMS[0].key;
 const GK72 = GK_A;
@@ -8246,6 +8262,55 @@ const CASES72 = {
     server: { envelopes: [{ ...ENV72, updatedAt: 30 }] },
     restored: (x) => (x.envelopes ?? []).filter((e) => !e.deletedAt).length === 0,
     undone: (x) => (x.envelopes ?? []).some((e) => !e.deletedAt),
+  },
+  "checkin-unchanged": {
+    cur: { received: { [K72]: 1 }, receivedAt: { [K72]: 5 } },
+    version: { received: { [K72]: 1 }, receivedAt: { [K72]: 5 } },
+    server: { received: {}, receivedAt: { [K72]: 30 } },
+    restored: (x) => x.received?.[K72] === 1,
+    undone: (x) => x.received?.[K72] === undefined,
+  },
+  "checkin-never-held": {
+    cur: { received: {}, receivedAt: {} },
+    version: { received: { [K72]: 1 }, receivedAt: { [K72]: 5 } },
+    server: { received: {}, receivedAt: { [K72]: 30 } },
+    restored: (x) => x.received?.[K72] === 1,
+    undone: (x) => x.received?.[K72] === undefined,
+  },
+  "uncheck-unchanged": {
+    cur: { received: {}, receivedAt: { [K72]: 5 } },
+    version: { received: {}, receivedAt: { [K72]: 5 } },
+    server: { received: { [K72]: 1 }, receivedAt: { [K72]: 30 } },
+    restored: (x) => x.received?.[K72] === undefined,
+    undone: (x) => x.received?.[K72] === 1,
+  },
+  "stamp-unchanged": {
+    cur: { stamps: { [GK72]: S("claim", 5) } },
+    version: { stamps: { [GK72]: S("claim", 5) } },
+    server: { stamps: { [GK72]: TOMB(30) } },
+    restored: (x) => x.stamps?.[GK72]?.kind === "claim",
+    undone: (x) => !x.stamps?.[GK72]?.kind,
+  },
+  "stamp-never-held": {
+    cur: { stamps: {} },
+    version: { stamps: { [GK72]: S("claim", 5) } },
+    server: { stamps: { [GK72]: TOMB(30) } },
+    restored: (x) => x.stamps?.[GK72]?.kind === "claim",
+    undone: (x) => !x.stamps?.[GK72]?.kind,
+  },
+  "envelope-unchanged": {
+    cur: { envelopes: [{ ...ENV72, updatedAt: 5 }] },
+    version: { envelopes: [{ ...ENV72, updatedAt: 5 }] },
+    server: { envelopes: [{ ...ENV72, updatedAt: 30, deletedAt: 30, entries: [], photos: [] }] },
+    restored: (x) => (x.envelopes ?? []).some((e) => !e.deletedAt),
+    undone: (x) => !(x.envelopes ?? []).some((e) => !e.deletedAt),
+  },
+  "envelope-never-held": {
+    cur: { envelopes: [] },
+    version: { envelopes: [{ ...ENV72, updatedAt: 5 }] },
+    server: { envelopes: [{ ...ENV72, updatedAt: 30, deletedAt: 30, entries: [], photos: [] }] },
+    restored: (x) => (x.envelopes ?? []).some((e) => !e.deletedAt),
+    undone: (x) => !(x.envelopes ?? []).some((e) => !e.deletedAt),
   },
 };
 const KEY72 = "device-72-key";
@@ -8331,6 +8396,101 @@ await sleep(PHOTO_WAIT73);
 ok(workerPosts().length > 0, "73.1pre the ledger POST went out first");
 eq(syncPhotoNames(), ["pho-n.jpg"], "73.1 a new photo reaches the Worker after the POST");
 
+/* ── 74. no photo is lost to a server apply, or to a POST made during a photo push ──
+   Findings (2) and (3) of the 2026-10-15 review. A server apply strips an id the Worker does
+   not hold, so a device without the blob drops a photo another device is still uploading. A
+   POST made while a photo push is in flight loses its photo phase: the timer finds the push
+   busy and never runs again. Red at the lane head. */
+const KEY74 = "device-74-key";
+const ENV74 = {
+  id: "env-74",
+  createdAt: 1,
+  note: "",
+  entries: [{ name: "Ponder", qty: 1 }],
+  photos: ["pho-74"],
+};
+
+/* 74.1 device A holds the photo, and its ledger reaches the Worker. The blob upload fails,
+   so the Worker lacks the photo. */
+await boot({ items: ITEMS, received: {}, envelopes: [ENV74] }, [["pho-74", jpeg()]], {
+  syncKey: KEY74,
+});
+setSyncPhotoFail(true);
+await wakeWorker();
+await sleep(PHOTO_WAIT73);
+ok(
+  syncLedgerNow()?.envelopes?.some((e) => e.id === "env-74"),
+  "74.1pre the ledger that names the photo reached the Worker"
+);
+eq(syncPhotoNames(), [], "74.1pre and the Worker still lacks the photo");
+const WORKER74 = syncLedgerNow();
+
+/* 74.2 device B has no copy of the photo, and the Worker does not hold it yet. B's server
+   apply must keep the id, because A may still upload the blob. */
+await boot({ items: ITEMS, received: {} }, null, { syncKey: KEY74, syncLedger: WORKER74 });
+await resume30();
+eq(
+  saved().envelopes?.find((e) => e.id === "env-74")?.photos ?? null,
+  ["pho-74"],
+  "74.2 a server apply keeps an id the Worker does not hold yet"
+);
+
+/* 74.3 A's upload lands. The Worker now holds the blob, and B's next apply fetches it. */
+addSyncPhoto("pho-74.jpg", jpeg());
+setServerLedger({ ...WORKER74, received: { [ITEMS[0].key]: 1 } });
+await resume30();
+ok(saved().received?.[ITEMS[0].key] === 1, "74.3pre the newer ledger applied");
+ok(photoKeys().includes("pho-74"), "74.3a the device fetches the photo the Worker now holds");
+await sleep(SWEEP_WAIT);
+ok(photoKeys().includes("pho-74"), "74.3 and the sweep keeps it, because its envelope still names it");
+
+/* 74.4 a POST made while a photo push is in flight still gets its photos pushed. The first
+   push is held at its one photo. A second photo lands during the hold, and POST2's photo
+   phase finds the push busy. */
+const ENV74B = {
+  id: "env-74b",
+  createdAt: 2,
+  note: "",
+  entries: [{ name: "Brainstorm", qty: 1 }],
+  photos: ["pho-74b"],
+};
+await boot({ items: ITEMS, received: {}, envelopes: [ENV74, ENV74B] }, [["pho-74", jpeg()]], {
+  syncKey: KEY74,
+});
+const releasePut74 = holdSyncPhotoPuts();
+await wakeWorker();
+await sleep(1500); /* POST1 lands, its photo phase starts, and the put for pho-74 is held */
+ok(
+  syncCalls().some((c) => c.op === "photoPut"),
+  "74.4pre the first photo put is in flight"
+);
+photoStore.set("pho-74b", jpeg()); /* the second photo lands on this device */
+await wakeWorker(); /* POST2 goes out while the put is held */
+await sleep(1500);
+ok(workerPosts().length >= 2, "74.4a the second POST went out during the hold");
+releasePut74();
+await sleep(3000);
+ok(
+  syncPhotoNames().includes("pho-74b.jpg"),
+  "74.4 and the photo that landed during the push reaches the Worker"
+);
+
+/* 73.3 no photo call reaches GitHub. A device with a GitHub key and no Worker key is the
+   path the switch removes: keyless GitHub sync goes (owner ruling 2026-10-14). Green at the
+   lane head, where nothing reaches GitHub; red on main, where a hidden page writes the photo to
+   GitHub. The guard is read against that red, so it is not spent. */
+await boot(withPhoto(["pho-n"]), [["pho-n", jpegOf(4)]], { remoteKey: GH73 });
+ok(text().length > 0, "73.3pre the page renders, so the GitHub check below means something");
+ok(!!photoKeys().includes("pho-n"), "73.3pre the device holds the photo its ledger names");
+await background();
+await drain();
+await sleep(PHOTO_WAIT73);
+eq(
+  githubOps().filter((op) => /Photo/.test(op)),
+  [],
+  "73.3 no photo call reaches GitHub (pushPhoto, listPhotos, pullPhoto)"
+);
+
 /* 73.2 the other device fetches a photo before a reply applies. The photo download is
    held (setSyncPhotoDelay), so the reply that names it must wait for the download. */
 const SERVER73 = {
@@ -8340,7 +8500,11 @@ const SERVER73 = {
   sortBy: "newest",
   itemSort: "missing",
 };
-await boot({ items: ITEMS, received: {} }, null, { syncKey: KEY73 });
+/* the Worker holds pho-o, so there is a photo for the device to fetch */
+await boot({ items: ITEMS, received: {} }, null, {
+  syncKey: KEY73,
+  syncPhotos: [["pho-o.jpg", jpegOf(1)]],
+});
 await settle();
 setServerLedger(SERVER73);
 setSyncPhotoDelay(5000);
@@ -8361,21 +8525,6 @@ try {
 } finally {
   setSyncPhotoDelay(0);
 }
-
-/* 73.3 no photo call reaches GitHub. A device with a GitHub key and no Worker key is the
-   path the switch removes: keyless GitHub sync goes (owner ruling 2026-10-14). Green at the
-   lane head, where nothing reaches GitHub; red on main, where a hidden page writes the photo to
-   GitHub. The guard is read against that red, so it is not spent. */
-await boot(withPhoto(["pho-n"]), [["pho-n", jpegOf(4)]], { remoteKey: GH73 });
-ok(!!photoKeys().includes("pho-n"), "73.3pre the device holds the photo its ledger names");
-await background();
-await drain();
-await sleep(PHOTO_WAIT73);
-eq(
-  githubOps().filter((op) => /Photo/.test(op)),
-  [],
-  "73.3 no photo call reaches GitHub (pushPhoto, listPhotos, pullPhoto)"
-);
 
 uninstallClock();
 report();

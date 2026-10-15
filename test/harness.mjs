@@ -527,6 +527,20 @@ export const holdSyncPosts = () => {
     release();
   };
 };
+/* holds every photo write until the returned release() is called, so a test can POST while
+   a photo push is in flight. Set after boot(), which resets `sync`. */
+export const holdSyncPhotoPuts = () => {
+  let release;
+  sync.photoHold = new Promise((r) => (release = r));
+  return () => {
+    sync.photoHold = null;
+    release();
+  };
+};
+/* a peer's upload: the Worker holds `name` from now on, as a second device would see it */
+export const addSyncPhoto = (name, blob) => {
+  sync.photos.set(name, blob);
+};
 /* holds the cold-open GET until releaseSyncGet() is called. boot()'s holdGet option sets
    it before the mount, so the first GET of that mount is the one held (group 69.2). */
 let syncGetRelease = null;
@@ -642,6 +656,8 @@ const syncApi = {
     sync.calls.push({ op: "photoPut", name, keyed: !!sync.key });
     if (sync.netFail) return syncReply(null, null);
     if (sync.refused || !sync.key) return syncReply(401, { error: "unauthorized" });
+    /* held by holdSyncPhotoPuts(): the write is in flight until the test releases it */
+    if (sync.photoHold) await sync.photoHold;
     if (sync.photoFail) return syncReply(null, null);
     if (blob.size > MAX_PHOTO_BYTES) return syncReply(413, { error: "photo-too-large" });
     if (!sync.photos.has(name)) sync.photos.set(name, blob);
