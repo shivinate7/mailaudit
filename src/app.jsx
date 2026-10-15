@@ -3577,7 +3577,7 @@ syncBroken === "seeded"
   );
 
   const applyBackup = useCallback(
-    async (text, source /* "file" | "remote" | "merge" | "server" */, extraPresent = null, notice = null) => {
+    async (text, source /* "file" | "remote" | "merge" | "server" */, notice = null) => {
       const data = await readLedger(text);
       const remote = source === "remote";
       /* a restore ends a refused load and its first save must not be skipped; the
@@ -3613,16 +3613,9 @@ syncBroken === "seeded"
          the blobs from IndexedDB two seconds later, with nothing to restore
          from.
 
-         `extraPresent` widens that to a third case: ids the REMOTE is known to
-         hold. A pull downloads before it applies, so the blobs are usually
-         local by now and this changes nothing — but it is what saves the two
-         cases where they aren't. One GET out of twelve failing would otherwise
-         strip that one id, the debounced save would write the stripped ledger,
-         and the next push would publish it — destroying the link to a photo
-         sitting safe on GitHub that a retry would have fetched. And when the
-         photo repo can't be reached at all (no key, offline), every id would go
-         at once. Keeping an id costs a blank tile until the next pull; stripping
-         it costs the photo. */
+         A server apply strips nothing (below): another device may still be
+         uploading the blob. Keeping an id costs a blank tile until the next
+         sync; stripping it costs the photo. */
       const inlined =
         data.photos && typeof data.photos === "object" ? data.photos : null;
       const inlinedIds = Object.keys(inlined || {});
@@ -3646,13 +3639,15 @@ syncBroken === "seeded"
           localIds = null;
         }
       } else localIds = [];
-      /* null keeps every id: the local store would not answer. A server apply is
-         not an exception now: its photos travel by the Worker, and doMerge hands
-         over the ids the Worker holds (extraPresent) after it reads the list. */
+      /* null keeps every id: the local store would not answer. A server apply
+         keeps every id too. The Worker not holding a blob yet does not say that
+         no device holds it: the device that took the photo may still be
+         uploading, and a stripped id is gone for every device, since the sweep
+         then drops the blob. */
       const present =
-        localIds === null
+        localIds === null || source === "server"
           ? null
-          : new Set([...localIds, ...inlinedIds, ...(extraPresent || [])]);
+          : new Set([...localIds, ...inlinedIds]);
       /* a merge or server apply carries the applied ledger's time; its own save keeps it.
          A restore (backup file, saved version) is a fresh save of that ledger: it stamps
          now, so it wins unknown-key conflicts afterwards (owner ruling 2026-10-14) */
@@ -3993,7 +3988,7 @@ syncBroken === "seeded"
       try {
         /* "file" and not a fourth source: this IS a local full replace, and it
            should carry exactly the warnings one does. */
-        await applyBackup(text, "file", null, null);
+        await applyBackup(text, "file", null);
         setOpenVersion(null);
       } catch (e) {
         setVersionMsgAt(id);
@@ -4067,7 +4062,7 @@ syncBroken === "seeded"
         return;
       }
       try {
-        await applyBackup(text, "file", null, null);
+        await applyBackup(text, "file", null);
         setOpenVersion(null);
       } catch (e) {
         setVersionMsgAt(sha);
@@ -4291,9 +4286,9 @@ syncBroken === "seeded"
     [surveyPhotos, referencedPhotoIds]
   );
 
-  /* Returns the ids applyBackup should treat as present, and downloads what it
-     can first. Never throws: a photo problem must not abort the ledger pull,
-     which is the part that matters. */
+  /* Downloads the photos the reply names that the Worker holds, before the apply.
+     Never throws: a photo problem must not abort the ledger pull, which is the
+     part that matters. */
   const pullPhotos = useCallback(
     async (text, gen) => {
       /* A SECOND parse site, deliberately non-authoritative. applyBackup owns
@@ -4314,55 +4309,37 @@ syncBroken === "seeded"
           ),
         ];
       } catch {
-        return null;
+        return;
       }
-      if (!incoming.length) return null;
+      if (!incoming.length) return;
 
       const survey = await surveyPhotos(incoming);
-      if (!survey || syncGen.current !== gen) return null;
+      if (!survey || syncGen.current !== gen) return;
       if (survey.unreadable) {
         setPhotoUnreadable(true);
-        return null;
+        return;
       }
       setPhotoUnreadable(false);
       setPhotoMsg((m) => (m?.text === PHOTO_SAYS.unreadable ? null : m));
       const { plan, remote } = survey;
 
       if (!plan.known) {
-        /* We could not see the store, so we know nothing — and "I can't see it"
-           must never be reported as "it's gone". Keep every id: the bytes are
-           very likely on GitHub, and a blank tile until the next pull is a far
-           smaller loss than the photo. */
+        /* We could not see the store, so we know nothing, and "I can't see it"
+           must never be reported as "it's gone". The ids stay (a server apply
+           strips none); a blank tile until the next sync is the cost. */
         setPhotoMsg({
           tone: "advice",
           text: PHOTO_SAYS[remote.reason] || PHOTO_SAYS.server,
         });
-        return incoming;
+        return;
       }
-
-      /* What this pull is about to destroy: photos the CURRENT ledger references
-         and the incoming one does not. applyBackup replaces envelopes wholesale,
-         so those ids simply stop existing and the sweep deletes their blobs two
-         seconds later — and if they were never pushed, that is the last copy.
-
-         Measured against `incoming`, deliberately, NOT against plan.toPush.
-         `plan` is keyed on the incoming ledger's ids, so its toPush is the set
-         that is referenced, held here and not yet uploaded — precisely the set
-         that SURVIVES this pull untouched. Warning on that told the user their
-         photos were gone at the exact moment they were safe, and said nothing
-         in the case that actually loses them. */
-      const incomingSet = new Set(incoming);
-      const remoteSet = new Set(remote.ids || []);
-      const stranded = referencedPhotoIds.filter(
-        (id) => !incomingSet.has(id) && !remoteSet.has(id)
-      ).length;
 
       const batch = plan.toPull.slice(0, PHOTO_BATCH);
       if (batch.length) setPhotoSync({ dir: "pull", done: 0, total: batch.length });
       let done = 0;
       const got = [];
       for (const id of batch) {
-        if (syncGen.current !== gen) return null;
+        if (syncGen.current !== gen) return;
         try {
           const r = await window.sync.photoGet(photoNames.current.get(id));
           if (r.code !== "ok" || !r.body?.blob) throw new Error("photo-read");
@@ -4377,12 +4354,6 @@ syncBroken === "seeded"
       if (got.length) setPhotoEpoch((n) => n + 1);
 
       const notes = [];
-      if (stranded)
-        notes.push(
-          `${stranded} photo${stranded === 1 ? " had" : "s had"} no other copy and ${
-            stranded === 1 ? "is" : "are"
-          } now gone.`
-        );
       if (plan.lost.length)
         notes.push(
           `${plan.lost.length} photo${
@@ -4392,12 +4363,8 @@ syncBroken === "seeded"
       const left = plan.toPull.length - batch.length;
       if (left > 0) notes.push(`${left} more will arrive on the next sync.`);
       if (notes.length) setPhotoMsg({ tone: "advice", text: notes.join(" ") });
-
-      /* every id the remote holds, not just the ones fetched this time: a GET
-         that failed is a retry, not a reason to sever the link */
-      return [...got, ...plan.toPull];
     },
-    [surveyPhotos, referencedPhotoIds]
+    [surveyPhotos]
   );
 
   /* ---- merge: the Worker's reply, applied ----
@@ -4434,7 +4401,7 @@ syncBroken === "seeded"
            arriving from the other device have no blob here yet and the apply would
            strip every one of them. The ids the Worker holds are kept even when a
            download fails (a retry beats a lost link). */
-        const extraPresent = await pullPhotos(replyText, gen);
+        await pullPhotos(replyText, gen);
         if (syncGen.current !== gen) return { ok: false, code: "server" };
         /* a tap during the downloads: applying now would shift the list under the
            pointer (no-layout-shift-under-pointer), and the merge above no longer
@@ -4465,7 +4432,7 @@ syncBroken === "seeded"
         const notice = changed ? mergeSummary(stats) : "";
         /* remembered so the next apply can tell this notice from an import's */
         serverNotice.current = notice;
-        await applyBackup(JSON.stringify(merged), "server", extraPresent, notice);
+        await applyBackup(JSON.stringify(merged), "server", notice);
         setSeedShown(false); /* seed-load-guards: no longer someone else's ledger */
         /* applyBackup bumps syncGen, and exactly one bump is ours. Any other
            number means something really did move on. */
@@ -4651,6 +4618,7 @@ syncBroken === "seeded"
   };
   const postRef = useRef(null);
   const photosBusy = useRef(false); // one photo push at a time
+  const photosAgain = useRef(false); // a POST landed during a push: one more pass
   const photoTimer = useRef(null);
   const pushPhotosRef = useRef(null);
   pushPhotosRef.current = pushPhotos;
@@ -4683,10 +4651,17 @@ syncBroken === "seeded"
       if (r.code === "ok" && !photoTimer.current)
         photoTimer.current = bgTimeout(async () => {
           photoTimer.current = null;
-          if (photosBusy.current) return;
+          if (photosBusy.current) {
+            photosAgain.current = true;
+            return;
+          }
           photosBusy.current = true;
           try {
-            await pushPhotosRef.current(syncGen.current);
+            /* a POST made during a push may name photos that push never surveyed */
+            do {
+              photosAgain.current = false;
+              await pushPhotosRef.current(syncGen.current);
+            } while (photosAgain.current);
           } finally {
             photosBusy.current = false;
             setPhotoSync(null);
