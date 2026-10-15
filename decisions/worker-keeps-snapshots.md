@@ -2,7 +2,7 @@
 
 **Status:** ruled. The owner ruled on 2026-10-11: "Cloudflare does it all". Lane W3a built the snapshots. It landed on main in PR #79. Group 13 (tests 13.1 to 13.9) holds the snapshot tests. At W3a, `npm run test:worker` read 312 passed, 0 failed.
 
-GitHub leaves the sync role entirely. The Worker keeps daily snapshots of the ledger for History and for backup. The backup watchdog checks the Worker. The public seed goes away. The owner ruled on 2026-10-11 to drop it, so the ledger stops being public and a visitor sees an empty app.
+GitHub leaves the sync role entirely. The Worker keeps daily snapshots of the ledger for History and for backup. The backup watchdog checks the Worker. The public seed is gone. The owner ruled on 2026-10-11 to drop it, and `82e45d4` removed it, so the ledger stops being public and a visitor sees an empty app.
 
 **Holds while:** web devices still mirror the ledger to the GitHub `data` branch, in mirror mode in `src/app.jsx`.
 

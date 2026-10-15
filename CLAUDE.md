@@ -360,6 +360,7 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 
 One known gap or to-do per file under `debts/`. Each carries a Status line and a Decision line that names its record or says none.
 
+- `seed-in-public-history` — The seed stays in git history, deferred by the owner.
 - `claim-11-fixed-edge-taps` — Claim 11 skips taps at a fixed control's edge.
 - `chip-gap-tolerance-at-12px` — The chip-gap tolerance needs a 12px re-measure.
 - `claim-9-fractional-box-edges` — Claim 9 can pass a box just under 44px.
@@ -415,7 +416,7 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 Each figure was measured in a real viewport or on a real device. A test cannot hold most of them, and each record says how to take the number again.
 
 - `card-reserved-geometry` — Card reserved geometry heights.
-- `ledger-and-seed-sizes` — Ledger, seed, and version sizes.
+- `ledger-and-seed-sizes` — Ledger and version sizes.
 - `masthead-foot-slot` — Masthead foot save-slot width.
 - `motion-timings` — Motion sheet durations and beats.
 - `palette-contrast` — Palette token contrast ratios.

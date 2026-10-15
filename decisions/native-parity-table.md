@@ -1,5 +1,11 @@
 # Each feature has one scope in the native rebuild
 
+Kind: build
+
+Plan: decisions/native-parity-table.md#rows-with-one-scope (web)
+
+Plan: decisions/native-parity-table.md#both-clients (native)
+
 **Status:** ruled. The owner ruled on 2026-10-11 to follow Degen's D32 rule, and accepted the defaults below with "all seem fine". No native code exists yet.
 
 Every feature has one scope: both clients, web-only or native-only. A feature that both clients need has one home for its logic, and each client draws its own screen. The lanes in `native-build-lanes` name the native test for each feature.
@@ -25,7 +31,7 @@ Each client draws its own screen. The logic has one home, see `rules-run-in-java
 
 | Feature | Scope | Reason |
 |---|---|---|
-| Public seed (`window.seed`) | web-only | It serves site visitors, and visitors do not use native. It goes away, as the owner ruled on 2026-10-11, see `worker-keeps-snapshots`. |
+| Public seed (`window.seed`) | web-only | It served site visitors, and visitors do not use native. It is gone: the owner ruled it out on 2026-10-11, and `82e45d4` removed it, see `worker-keeps-snapshots`. |
 | GitHub mirror to the data branch, and History from the branch | web-only, until lane W3 ships | They need a GitHub token. Native never holds one. Worker snapshots replace both for both clients. |
 | GitHub sync path: pull, push, sha, peek | web-only | Cloudflare retires it. The two-tap confirms left the UI on 2026-10-12. Native never had it. |
 | Photo sync through the GitHub Contents API | web-only | The Worker photo route replaces it for both clients. |

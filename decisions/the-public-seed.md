@@ -8,7 +8,7 @@ Plan: decisions/the-public-seed.md#the-removal (web)
 
 The site is public and the ledger repo is not. Pages serves the `main` root and has never served the `data` branch. The Pages site is world-readable, and git keeps every version. A visitor with empty storage gets the empty state: the masthead and "Drop your OrderWand CSV here". Tests 38d.0 and 38d.4 pin it.
 
-Git history still holds the seed. `git log -S'<script id="seed"' --oneline -- index.html` finds `10f9499` and `82e45d4`, and the commits between them carry the tag. Removing it from history needs the owner's word.
+Git history still holds the seed. `git log -S'<script id="seed"' --oneline -- index.html` finds `10f9499` and `82e45d4`, and the commits between them carry the tag. Removing it from history needs the owner's word. Debt: `seed-in-public-history`.
 
 **Holds while:** `build.mjs` writes no `<script id="seed">` tag, and `src/` loads no seed. Test 38d.5 pins the committed page.
 

@@ -18,7 +18,7 @@ The **house UX audit of 2026-10-11** is the source of the lane labels L1 to L10 
 
 - L1: copy and asks. Counts and Cancel in asks, a Clear control in empty states, a shorter Tally sort label, and the 10px label floor.
 - L2: component state. The envelope draft survives a view change, and errors show in the pressed row.
-- L3: the deploy guard. Deploy stops when the seed fetch fails.
+- L3: the deploy guard. Deploy stops when `check:seed` finds ledger data in `index.html`. Deploy no longer fetches the ledger remote.
 - L4: record text.
 - L5: record and link checks.
 - L6: 44px touch hit areas, with no visual change but the Stamp editor chip row gap (below). L6 built (commit `2857876`). The chip gap built at commit `6438460`. The chip hit area was cut back so it no longer crosses the gap midpoint, at commits `475c0d1` and `94d5acc`.
