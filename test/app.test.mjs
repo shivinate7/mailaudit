@@ -8948,4 +8948,106 @@ try {
 }
 
 uninstallClock();
+
+/* ── 71. the switch: once the Worker holds the key, GitHub takes no write and no read ──
+   Owner ruling 2026-10-14 21:12 CDT, decision sync-revamp-cloudflare (stage 4b, the switch).
+   The Worker is the only sync path. GitHub stops being a live second copy, and the Worker's
+   daily snapshots are the backup (worker-keeps-snapshots). The forbidden set is every call
+   that writes GitHub or reads its ledger or photos. History's reads stay allowed:
+   listVersions and getVersion read the frozen data branch.
+   Red on the pre-switch build: its mirror timer pushes to GitHub, and its resume peeks.
+   Each case first checks a precondition that holds before and after the switch (a Worker
+   POST, or a Worker call that fails), so a red here means GitHub was called. */
+const KEY71 = "device-71-key";
+const GH71 = "github_pat_testtoken";
+const GITHUB_CALLS71 = new Set([
+  "push",
+  "pushForce",
+  "pushPhoto",
+  "peek",
+  "pull",
+  "acceptPull",
+  "listPhotos",
+  "pullPhoto",
+]);
+const githubCalls71 = () => [
+  ...new Set(remote.calls.filter((c) => GITHUB_CALLS71.has(c.op)).map((c) => c.op)),
+];
+const checkIn71 = () => click(btn(/Mark all received/), "check in with a Worker key and a GitHub key");
+
+/* 71.1 a check-in, the 90s mirror window, and a resume after an absence. The Worker
+   answers, and GitHub holds a key. */
+installClock();
+try {
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { remoteKey: GH71, syncKey: KEY71 });
+  await settle();
+  await checkIn71();
+  await sleep(POST_WAIT);
+  ok(postCount() > 0, "71.1pre the Worker is POSTed the check-in within SYNC_POST_MS");
+  ok(syncRev() > 0, "71.1b and the Worker holds it, so the ledger still reaches the Worker");
+  await sleep(AUTO_MS + 1000);
+  await backgroundFor(5 * 60_000);
+  await settle();
+  eq(
+    githubCalls71().join(", "),
+    "",
+    "71.1a with a Worker key, a check-in, an idle 90s and a resume make no GitHub call"
+  );
+} catch (e) {
+  ok(false, `71.1 threw: ${e.message}`);
+}
+
+/* 71.2 the Worker does not answer. The write must not fall back to GitHub: the
+   pre-switch build peeks and pushes when the Worker is down. */
+try {
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+    remoteKey: GH71,
+    syncKey: KEY71,
+    syncNetFail: true,
+  });
+  await settle();
+  await checkIn71();
+  await sleep(POST_WAIT);
+  ok(postCount() > 0, "71.2pre the Worker is called, and it does not answer");
+  await sleep(AUTO_MS + 1000);
+  await backgroundFor(5 * 60_000);
+  await settle();
+  eq(githubCalls71().join(", "), "", "71.2a with the Worker down, GitHub still takes no call");
+} catch (e) {
+  ok(false, `71.2 threw: ${e.message}`);
+}
+
+/* 71.3 keep green: a fresh keyed device recovers from the Worker alone, so the switch
+   leaves recovery on a new device without a GitHub read. */
+try {
+  await boot(null, null, {
+    remoteKey: GH71,
+    syncKey: KEY71,
+    syncLedger: { mailday: 1, items: ITEMS.slice(0, 4), received: {}, envelopes: [] },
+  });
+  await settle();
+  await pageshow();
+  await sleep(APPLY_WAIT);
+  eq(saved().items?.length ?? 0, 4, "71.3a a fresh keyed device restores the Worker's ledger");
+  eq(githubCalls71().join(", "), "", "71.3b and it makes no GitHub call to do so");
+} catch (e) {
+  ok(false, `71.3 threw: ${e.message}`);
+}
+
+/* 71.4 keep green: History reaches the screen on a keyed device with no version store.
+   The gate is window.versions || window.remote (recovery-control-not-state-gated).
+   The versions-only side is 63.17, a device with no remote. */
+try {
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+    remoteKey: GH71,
+    syncKey: KEY71,
+    noVersions: true,
+  });
+  await onLedger();
+  ok(!!cell(/^History/), "71.4 a keyed device with no version store still reaches History");
+} catch (e) {
+  ok(false, `71.4 threw: ${e.message}`);
+}
+
+uninstallClock();
 report();
