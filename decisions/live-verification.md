@@ -127,3 +127,11 @@ Run on 2026-10-13 at about 01:10 UTC, from main at e1ea8ac, with wrangler 4.149.
 - Before, a read-only probe ran `salvageLedger` on the live ledger: rev 3, 908 items, 4 envelopes, 0 damaged.
 - The new code answered at 01:13:52 UTC, a few minutes after the deploy.
 - After: GET /kept with the key gave `[]`. /kept with no key gave 401. A POST with `received: null` gave 400 `bad ledger`, and the ledger stayed at rev 3, 908 items, 4 envelopes, 0 damaged. GET /health gave `{"at":null}`.
+
+## Live deploy of 2026-10-14
+
+Run from main `7729d31` at 21:15 CDT on 2026-10-14 (02:15 UTC on 2026-10-15), on the owner's word of 21:12 CDT. The new version is `65bc7095-2142-4569-a699-47d0ce7a5c0d`. The rollback version is `fdea6a6b`.
+
+- The probe read the live store: GET /kept with the key gave 200, and with no key gave 401. GET /ledger read rev 3, 908 items and 4 envelopes.
+- The deploy includes the merge fix from PR #96, which keeps unknown top-level keys in a merge. The probe did not exercise that path, so the fix is unmeasured on live data.
+- Recorded from the owner's word. This lane made no live call, so the probe is not re-run here.

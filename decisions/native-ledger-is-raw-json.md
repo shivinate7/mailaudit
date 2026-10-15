@@ -83,7 +83,7 @@ No native view opens the kept copy that the notice line names. Debt: `native-kep
 
 The Worker's shape refusal and its mend of stored damage are built on PR #87, merged (see Built state). This gap is separate from them.
 
-**Status:** ruled. The carry is on main (`75a96b8`); the `savedAt` rule is built on `web/carry-savedat`. The live Worker runs the pre-fix merge until the next `worker:deploy`; whether that ran is unmeasured. Debt: `worker-merge-fix-not-deployed`.
+**Status:** ruled. The carry is on main (`75a96b8`); the `savedAt` rule is built on `web/carry-savedat`. The Worker deploy of 2026-10-14, from main `7729d31`, carries the merge fix (PR #96). Whether a live unknown field survives is unmeasured, see `live-verification`.
 
 Owner ruling 2026-10-14: `mergeLedger` carries unknown top-level keys, and `savedAt` joins the synced ledger. A key that both sides hold with different values keeps the side with the later `savedAt`; a tie, or a side with no `savedAt`, keeps incoming. Its rule and pins are in `saved-state-shape`.
 

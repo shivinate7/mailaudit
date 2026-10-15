@@ -1,10 +1,10 @@
 # The Worker keeps daily snapshots, and GitHub leaves the sync role
 
-**Status:** ruled. The owner ruled on 2026-10-11: "Cloudflare does it all". Lane W3a built the snapshots. It landed on main in PR #79. Group 13 (tests 13.1 to 13.9) holds the snapshot tests. At W3a, `npm run test:worker` read 312 passed, 0 failed.
+**Status:** ruled. The owner ruled on 2026-10-11: "Cloudflare does it all". The owner ruled on 2026-10-14 that the snapshots are the backup, see `sync-revamp-cloudflare`. Lane W3a built the snapshots. It landed on main in PR #79. Group 13 (tests 13.1 to 13.9) holds the snapshot tests. At W3a, `npm run test:worker` read 312 passed, 0 failed.
 
 GitHub leaves the sync role entirely. The Worker keeps daily snapshots of the ledger for History and for backup. The backup watchdog checks the Worker. The public seed goes away. The owner ruled on 2026-10-11 to drop it, so the ledger stops being public and a visitor sees an empty app.
 
-**Holds while:** web devices still mirror the ledger to the GitHub `data` branch, in mirror mode in `src/app.jsx`.
+**Holds while:** the public seed, the backup watchdog and History still read the GitHub `data` branch.
 
 Kind: build
 
@@ -12,14 +12,14 @@ Plan: decisions/worker-keeps-snapshots.md#snapshot-defaults (worker)
 
 ## Why
 
-Today only web devices push to the `data` branch. Once both devices run the native client, nobody pushes there. The seed, the watchdog and History would go stale. Native never holds a GitHub token, see `the-token-is-a-credential`.
+Since the switch, no device pushes to the `data` branch. The seed, the watchdog and History read that frozen branch. Native never holds a GitHub token, see `the-token-is-a-credential`.
 
 ## What the ruling means
 
 - The Worker holds the truth and its history. It needs no GitHub token.
-- History and backup read Worker snapshots, for the web app and for the native client.
+- History and backup read Worker snapshots, for the web app and for the native client. Web History does not read them yet, see `web-reads-no-worker-snapshots`.
 - The watchdog checks the Worker in place of the `data` branch history.
-- Web devices keep the GitHub mirror only until the replacement ships. The Stage 4b mirror rulings in `sync-revamp-cloudflare` describe that web path and retire with it.
+- The web mirror is off since the switch. `sync-revamp-cloudflare` no longer carries mirror rulings.
 - The Worker keeps exactly 180 daily snapshots: the window is today and the 179 days before it, with at most one snapshot per UTC day. They sit in a SQLite table of its Durable Object. The defaults are in the next section.
 
 ## Snapshot defaults
@@ -46,7 +46,7 @@ These records stay true until then. Each one needs a rewrite or a removal when l
 - `the-public-seed` and `ledger-remote-needed-for-seed` — the seed and the build step that reads the data remote.
 - `watchdog-catches-silent-failure` and `watchdog-lives-in-private-repo` — the watchdog that reads the `data` branch.
 - `older-versions-come-off-branch` and `history-restores-a-saved-version` — History that reads the branch.
-- `data-branch-setup` — the branch that the mirror writes.
+- `data-branch-setup` — the branch the mirror wrote before the switch.
 
 ## See also
 
