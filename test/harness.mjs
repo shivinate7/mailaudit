@@ -16,7 +16,7 @@ import { prunePlan } from "../src/version-rules.mjs";
 import { syncStatus } from "../src/sync-rules.mjs";
 import { mergeLedger } from "../src/merge-rules.mjs";
 /* the Worker's real size cap, so the mock refuses what the server refuses */
-import { MAX_LEDGER_BYTES } from "../worker/core.mjs";
+import { MAX_LEDGER_BYTES, MAX_PHOTO_BYTES } from "../worker/core.mjs";
 
 export const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -462,7 +462,16 @@ win.remote = remoteApi;
    `sync.key`, outside `store`, so storage.list() cannot see it.
    HARNESS CONTRACT ONLY. entry.jsx is not bundled here, so these cases prove
    this mock, not the adapter. */
-const syncFresh = () => ({ key: null, ledger: null, rev: 0, netFail: false, tooBig: false, badShape: false, badShapes: 0, refused: false, calls: [], onRev: null });
+const syncFresh = () => ({ key: null, ledger: null, rev: 0, netFail: false, tooBig: false, badShape: false, badShapes: 0, refused: false, calls: [], onRev: null, photos: new Map() });
+/* the photo names the Worker holds (worker/core.mjs, /photos): what a test asserts on */
+export const syncPhotoNames = () => [...sync.photos.keys()];
+/* photoFail: every photo write fails at the network. photoDelay: ms each photo read waits */
+export const setSyncPhotoFail = (on) => {
+  sync.photoFail = !!on;
+};
+export const setSyncPhotoDelay = (ms) => {
+  sync.photoDelay = ms;
+};
 let sync = syncFresh();
 export const syncCalls = () => sync.calls;
 /* how many close functions connect() has handed out and that were called.
@@ -599,6 +608,37 @@ const syncApi = {
     return () => {
       syncCloses += 1;
     };
+  },
+  /* The Worker's photo routes (worker/core.mjs, /photos). Method names are the
+     harness contract for the builder: photoList() = GET /photos, photoGet(name) =
+     GET /photos/<name>, photoPut(name, blob) = POST /photos/<name>. The write is
+     once per name, as the route is. A refused key answers 401, a network failure
+     answers status null. */
+  async photoList() {
+    sync.calls.push({ op: "photoList", keyed: !!sync.key });
+    if (sync.netFail) return syncReply(null, null);
+    if (sync.refused || !sync.key) return syncReply(401, { error: "unauthorized" });
+    /* syncPhotosRefused: the ledger reads and the photo list does not (a photo-only refusal) */
+    if (sync.photoRefused) return syncReply(401, { error: "unauthorized" });
+    return syncReply(200, { ids: [...sync.photos.keys()] });
+  },
+  async photoGet(name) {
+    sync.calls.push({ op: "photoGet", name, keyed: !!sync.key });
+    if (sync.netFail) return syncReply(null, null);
+    if (sync.refused || !sync.key) return syncReply(401, { error: "unauthorized" });
+    /* photoDelay: a slow download, the only way to put the 2s sweep between two arrivals */
+    if (sync.photoDelay) await sleep(sync.photoDelay);
+    const blob = sync.photos.get(name);
+    return blob ? syncReply(200, { blob }) : syncReply(404, { error: "not found" });
+  },
+  async photoPut(name, blob) {
+    sync.calls.push({ op: "photoPut", name, keyed: !!sync.key });
+    if (sync.netFail) return syncReply(null, null);
+    if (sync.refused || !sync.key) return syncReply(401, { error: "unauthorized" });
+    if (sync.photoFail) return syncReply(null, null);
+    if (blob.size > MAX_PHOTO_BYTES) return syncReply(413, { error: "photo-too-large" });
+    if (!sync.photos.has(name)) sync.photos.set(name, blob);
+    return syncReply(200, { id: name });
   },
 };
 win.sync = syncApi;
@@ -1164,6 +1204,9 @@ export async function boot(state, photos, opts = {}) {
   /* a seeded device key and server ledger, set before mount so the app sees
      them at its first read. The server is at rev 1 once it holds a ledger. */
   if (opts.syncKey) sync.key = opts.syncKey;
+  /* the Worker's stored photos, as [name, Blob] pairs (the /photos route) */
+  if (opts.syncPhotos) sync.photos = new Map(opts.syncPhotos);
+  if (opts.syncPhotosRefused) sync.photoRefused = true;
   if (opts.holdGet) sync.holdGet = new Promise((r) => (syncGetRelease = r));
   if (opts.syncLedger) {
     sync.ledger = opts.syncLedger;
