@@ -5859,10 +5859,10 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     await settle();
     await sleep(AUTO58 - POST58 - 5000);
     await touchP5();
-    await fireSyncRev(syncRev() + 1, ledgerP5(REMOTE58)); /* the newer reply: 12 lines */
-    await fireSyncRev(syncRev() + 1, ledgerP5(REMOTE58.slice(0, 2))); /* the older one: 2 of them */
+    await fireSyncRev(syncRev() + 1, ledgerP5(REMOTE58.slice(0, 2))); /* the older reply: 2 of them */
+    await fireSyncRev(syncRev() + 1, ledgerP5(REMOTE58)); /* the newer reply: 12 lines, last to arrive */
     eq(saved().items?.length, 6, "58.P5a0 both replies are held by the touch, so the local copy still has 6 lines");
-    await sleep(6000);
+    await sleep(11000); /* past IDLE_APPLY_MS (10000), so the held reply applies */
     await settle();
     ok(workerPosts().length > 0, "58.P5a1 a POST ran while the replies were held");
     eq(
@@ -7182,30 +7182,36 @@ ok(panelOpen66(), "66.7pre the Sync panel is open");
 ok(/could not be reached/i.test(text()), "66.7pre2 the Worker cannot be reached, and the page says so");
 guardWords66("66.7 Worker failing");
 
-/* 66.8 photos: 26 queued, one batch of 25 per tap (PHOTO_BATCH) */
+/* 66.8 photos: 26 queued, one batch of 25 per tap (PHOTO_BATCH). The Worker route takes
+   the batch. The no-GitHub-photo guard is 73.3, the one that main fails. */
+const PHOTO_WAIT66 = 1500; /* the photo phase follows the ledger POST by one second */
 const MANY66 = Array.from({ length: 26 }, (_, i) => `pho-m${i}`);
-await boot(withPhoto(MANY66), MANY66.map((id, i) => [id, jpegOf(i + 1)]), { remoteKey: GH66 });
+await boot(withPhoto(MANY66), MANY66.map((id, i) => [id, jpegOf(i + 1)]), {
+  syncKey: KEY66,
+  remoteKey: GH66,
+});
 await background();
 await drain();
-await sleep(60);
+await wakeWorker();
+await sleep(PHOTO_WAIT66);
 eq(
-  remote.calls.filter((c) => c.op === "pushPhoto").length,
+  syncCalls().filter((c) => c.op === "photoPut").length,
   25,
-  "66.8pre one tap sends a batch of 25 while 26 are queued"
+  "66.8pre one tap sends a batch of 25 to the Worker while 26 are queued"
 );
 await openSync();
 await settle();
 ok(panelOpen66(), "66.8pre2 the Sync panel is open");
 guardWords66("66.8 over 25 photos queued");
 
-/* 66.9 photo key missing: the photo repo cannot be read without a key */
+/* 66.9 photo route refused: the Worker answers 401 to the photo list, so the photo line
+   says photos could not sync and names no credential */
 await boot(withPhoto(["pho-nk"]), [["pho-nk", jpegOf(1)]], {
-  remoteKey: GH66,
-  photosUnknown: "no-access",
+  syncKey: KEY66,
+  syncPhotosRefused: true,
 });
-await background();
-await drain();
-await sleep(60);
+await wakeWorker();
+await sleep(PHOTO_WAIT66);
 await openSync();
 await settle();
 ok(panelOpen66(), "66.9pre the Sync panel is open");
@@ -7225,7 +7231,7 @@ ok(
   !/\b(keys?|tokens?|credentials?|passwords?|sign.?in)\b/i.test(photoLeaves66()),
   "66.9 and the photo line names no credential"
 );
-guardWords66("66.9 photo path 404");
+guardWords66("66.9 photo route refused");
 
 /* 66.4 the last Worker agreement survives a reload, and a boot-time reply that
    fails cannot replace it. The agreement is written by a real session first. */
@@ -8356,11 +8362,15 @@ try {
   setSyncPhotoDelay(0);
 }
 
-/* 73.3 no photo call reaches GitHub, with a Worker key and a GitHub key both present */
-await boot(withPhoto(["pho-n"]), [["pho-n", jpegOf(4)]], { syncKey: KEY73, remoteKey: GH73 });
-await wakeWorker();
+/* 73.3 no photo call reaches GitHub. A device with a GitHub key and no Worker key is the
+   path the switch removes: keyless GitHub sync goes (owner ruling 2026-10-14). Green at the
+   lane head, where nothing reaches GitHub; red on main, where a hidden page writes the photo to
+   GitHub. The guard is read against that red, so it is not spent. */
+await boot(withPhoto(["pho-n"]), [["pho-n", jpegOf(4)]], { remoteKey: GH73 });
+ok(!!photoKeys().includes("pho-n"), "73.3pre the device holds the photo its ledger names");
+await background();
+await drain();
 await sleep(PHOTO_WAIT73);
-ok(workerPosts().length > 0, "73.3pre the ledger POST went out");
 eq(
   githubOps().filter((op) => /Photo/.test(op)),
   [],
