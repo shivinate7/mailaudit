@@ -1,7 +1,7 @@
-# The Cloudflare switch is pending, so web still mirrors to GitHub
+# Web photos still go through GitHub until the Worker carries them
 
-The switch moves the Worker to a new, empty Durable Object, as ruled in `sync-revamp-cloudflare` (Stage 4b rulings). Until it lands, each web device still pushes the merged ledger to the GitHub `data` branch, and `src/entry.jsx` still sends photos through the GitHub Contents API. Lane N4a waits for the switch too. The gap closes when the switch ships, the Cloudflare base carries the ledger and the photos, and the web paths leave the build.
+The web ledger now syncs through the Worker alone, as ruled in `sync-revamp-cloudflare`. The mirror, auto-push, the foreground peek and the GitHub merge are gone from `src/app.jsx`. Photos are not moved yet. `src/entry.jsx` has no photo methods on `window.sync`, and the app's photo helpers still target `window.remote`, which nothing calls now. So a new label photo stays on the device that took it, and no backup holds it. Slice S2 adds list, put and get against the Worker `/photos` route, and it ships in the same batch as the switch. Slice S3 removes the dead GitHub write paths from the adapter.
 
-**Status:** open. Stage 4b is built. The switch is not.
+**Status:** open. The ledger switch is built. Photos (S2) and the adapter clean-up (S3) are not.
 
 **Decision:** `sync-revamp-cloudflare`.

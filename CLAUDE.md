@@ -365,7 +365,6 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `claim-9-fractional-box-edges` — Claim 9 can pass a box just under 44px.
 - `tally-card-moves-at-320px` — The Tally card moves 14px at 320px.
 - `restore-stamps-new-change-times` — A restore does not stamp new change times yet.
-- `dopush-mirror-conflict-path` — Is the doPush mirror-conflict path dead code?
 - `native-ui-tests-not-in-ci` — Native UI tests and builds are not in CI.
 - `n4a-sync-over-http-unbuilt` — Lane N4a, sync over HTTP, is not built.
 - `native-lanes-n6-to-n9-unbuilt` — Native lanes N6 to N9 are not built.
@@ -407,7 +406,8 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `n4b-socket-idle-gate-unbuilt` — Lane N4b, the socket, idle gate and resume, is not built.
 - `n10-photos-unbuilt` — Lane N10, native photos, is not built.
 - `n11-device-check-not-run` — The owner's native device check has not run.
-- `sync-switch-pending` — The Cloudflare switch is pending, so web still mirrors to GitHub.
+- `sync-switch-pending` — Web photos still go through GitHub until the Worker carries them.
+- `web-reads-no-worker-snapshots` — Web History reads no Worker snapshot.
 - `cloudflare-access-login-untested` — A Cloudflare Access login in an iOS home-screen app is untested.
 
 ## Measurements

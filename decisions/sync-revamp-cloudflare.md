@@ -8,11 +8,11 @@ Plan: decisions/sync-revamp-cloudflare.md#worker-work-ahead (worker)
 
 Plan: decisions/sync-revamp-cloudflare.md#worker-work-ahead (native)
 
-**Status:** ruled 2026-10-10. Stage 4b is built, and the switch is pending. Debt: `sync-switch-pending`. The server runs at `manifestnumberone.shivamsemwal01.workers.dev`. A device sends its ledger there once it has its key. The switch is the move to the new Durable Object, see Stage 4b rulings.
+**Status:** ruled 2026-10-10. The ledger switch is built, on the owner's word of 2026-10-14. Web syncs the ledger through the Worker alone. Debt: `sync-switch-pending` (photos and the adapter clean-up). The server runs at `manifestnumberone.shivamsemwal01.workers.dev`. A device sends its ledger there once it has its key.
 
 GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Deliberately a manual backup, not continuous sync." Auto-push and merge grew on top of it later, and no one chose a sync base again. A fresh choice, made on 2026-10-10, picked Cloudflare.
 
-**Holds while:** `src/entry.jsx` still sends photos through the GitHub Contents API, and it mirrors the ledger there. The record closes when the Cloudflare base carries the ledger and the photos, and this file is rewritten as current text.
+**Holds while:** `src/entry.jsx` still sends photos through the GitHub Contents API. The record closes when the Cloudflare base carries the photos, and this file is rewritten as current text.
 
 ## Outcomes the revamp must give
 
@@ -30,7 +30,7 @@ GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Del
 - **The site stays on GitHub Pages.** The Worker answers the Pages origin across CORS. So no device moves to a new origin, and no device loses its stored ledger.
 - **Sign-in:** one key per device. A Cloudflare Access email code is the backup way in. The key stays a credential, see `the-token-is-a-credential`.
 - **Key delivery:** the keys live in the Mac's Keychain. A script opens the app on the Mac with its key in the URL fragment, which no server receives. The app stores the key and clears the fragment. For the iPhone, the Mac shows the same link as a QR code. No key is printed.
-- **GitHub leaves the sync role.** The owner ruled on 2026-10-11: "Cloudflare does it all". The Worker keeps daily snapshots for History and backup, and the watchdog checks the Worker. The public seed goes away, as the owner ruled on 2026-10-11. Until that replacement ships, each web device still pushes the merged ledger to the GitHub `data` branch, once the server has answered. So the public seed, the backup watchdog and History keep working meanwhile. The Worker needs no GitHub token, and native never holds one. The Durable Object holds the truth, so a GitHub conflict resolves by reading the new sha and writing again. The mirror rulings under Stage 4b describe that web path and retire with it. See `worker-keeps-snapshots`.
+- **GitHub leaves the sync role.** The owner ruled on 2026-10-11: "Cloudflare does it all". The Worker keeps daily snapshots for History and backup, and the watchdog checks the Worker. The public seed goes away, as the owner ruled on 2026-10-11. Web no longer writes the ledger to GitHub: the mirror, auto-push and the GitHub peek and merge left the build. The `data` branch is frozen, and History still reads it. The Worker needs no GitHub token, and native never holds one. See `worker-keeps-snapshots`.
 - **Live updates wait for a pause.** A change from the other device applies when this device has had no input for 10 seconds. No line says an update is waiting; the merge notice after the apply names what changed. A waiting line would have cost 40px of empty space at rest. This keeps `no-layout-shift-under-pointer`. One exception: the cold reply to a saved key applies at once, because the owner just tapped Save. The next reply waits again.
 - **Un-checks and deletes:** each check-in key carries the time of its last change in a new saved key, and the later change wins. A discarded or assigned envelope stays as a tombstone with a deletion time, and every reader skips it. A ledger without these fields merges by today's rules, so an older build stays safe. The new key follows the six sites in `saved-state-shape`.
 - **Orders:** a nightly job on HA Green replaces the OrderWand export. The owner chose HA Green over the MacBook. On 2026-10-11 the owner said of the job: `we're gonna figure out how to just pull the tcgplayer orders list after we understood how orderwand did it`. The native client has no CSV import. Orders reach it through the Worker, see `csv-import-stays-web`. The job reads `store.tcgplayer.com/myaccount/orderhistory` with the owner's login cookie, as OrderWand 4.4.0 does. It GETs a form token, POSTs a date range, then reads each page. It sends the orders to the Worker. The Worker runs the same parser filters and the same merge, so `parser-filters` and `imports-merge-never-replace` still hold.
@@ -61,24 +61,17 @@ The orchestrator made these under the owner's grant to run the stages, on 2026-1
 
 - **Switch:** the Worker moves to a new, empty Durable Object. Each device's first POST seeds it. The old object stays as the rollback copy. A re-seed from the old object could bring back an un-check through the per-key max.
 - **Milestones on a live apply:** a live apply takes a milestone only when it removes something. Otherwise the recent version is enough. A milestone on every apply would fill the 60-slot list in one mail day.
-- **Mirror mode needs a healthy server:** GitHub becomes a mirror only after the Worker answers `ok` or `empty` in this session. Any failure turns mirror mode off, and the device then runs the plain GitHub path. Worker retries wait on `backoffMs`. A per-cycle fallback merge pulled and took a milestone on every save, so it is gone.
-- **The mirror pushes the merged ledger:** it merges the local ledger with the last server reply. On a conflict it reads the GitHub ledger and merges that in too, then writes with the fresh sha. It never force-writes its own copy, so no device can shrink the GitHub copy. That holds even when the server store starts empty.
+- **A Worker failure never falls back to GitHub:** any failure sets the advisory state, and Worker retries wait on `backoffMs`.
 - **The server copy only grows:** the device keeps the last server ledger as a merge of every reply. An older reply can never replace a newer one, so no push can shrink GitHub.
 - **An empty store gets seeded:** a cold open that finds the store empty POSTs local check-ins, envelopes and stamps. That is the switch-day path.
 - **The seed POST is cancelled on unmount:** the cold-open timer is held in a ref, and the sync effect's cleanup clears it. It already ran through `bgTimeout`, so it was unref'd. The defect was that it was untracked. Orchestrator decision 2026-10-12. It is a defect fix, and Decide, gallery does not cover it. Two cold cycles can overlap: a second paste of the key can arm while the first GET is still out. Each arm used to overwrite the one ref, so the first timer outlived the unmount. Now a cycle clears the prior handle before it arms (`cbac3a0`). That overlap fix is a defect fix in this lane, not a ruling. Pinned by 69.1 and 69.3b, each red before its fix and green after. Its controls 69.1a0 and 69.3a0 are green both times.
-- **A failed merge POST peeks once:** the next push takes the GitHub path and its peek, even if mirror mode returns.
 - **A refused key says so:** a 401 shows its own advisory line.
 - **iPhone key:** the home-screen app keeps its own storage, so a QR scan reaches Safari only. The sync panel holds a masked key field. The owner pastes the key there from the Mac clipboard, and the clipboard is cleared after. Claude never types or pastes a key.
 - **QR code:** macOS draws it with its own image tools. No new package is installed.
 
 ## Web plan
 
-The switch to the new Durable Object is pending. Until the Cloudflare base carries the ledger and the photos, two web paths stay on GitHub:
-
-- Each web device still pushes the merged ledger to the GitHub `data` branch, once the server has answered.
-- `src/entry.jsx` still sends photos through the GitHub Contents API, and it mirrors the ledger there.
-
-The record closes when the base carries both. Then those paths leave the web build. The switch itself is in Stage 4b rulings.
+The ledger switch is built. One web path stays on GitHub: `src/entry.jsx` still sends photos through the GitHub Contents API, and no caller reaches it now. The record closes when the Worker `/photos` route carries them. Then that path leaves the web build. The switch itself is in Stage 4b rulings.
 
 ## Worker work ahead
 
@@ -91,11 +84,11 @@ The native build needs these changes to the Worker. On main the Worker serves `/
 
 ## Still open
 
-- The switch to the new Durable Object is pending, see Stage 4b rulings. Debt: `sync-switch-pending`.
+- Web photos move to the Worker `/photos` route, and the GitHub adapter leaves the build. Debt: `sync-switch-pending`.
 - Whether a Cloudflare Access login survives in an iOS home-screen app. This is untested. Debt: `cloudflare-access-login-untested`.
 - A restore keeps the old receivedAt today, so a later server reply can undo it. Debt: `restore-stamps-new-change-times`.
 - Live updates use a WebSocket. A new rev from the other device starts one GET, and the reply waits for the idle gate.
-- A 413 from the Worker turns mirror mode off, as an unknown answer does. The advisory line names the size problem.
+- A 413 from the Worker sets the advisory state, as an unknown answer does. The advisory line names the size problem.
 
 ## See also
 
