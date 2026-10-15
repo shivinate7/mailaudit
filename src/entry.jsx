@@ -879,23 +879,21 @@ const syncSave = (k) => {
     } catch {}
   }
 }
-/* reply: {status: HTTP status or null on a network failure, body, code} */
-const syncCall = async (method, ledger) => {
+/* One Worker call: reply is {status: HTTP status or null on a network failure, body}.
+   `read` turns the response into the body. The ledger and the photos share it, so
+   the key, the timeout and the unreachable rule have one home. */
+const workerCall = async (path, init, read) => {
   const key = syncKey();
   if (!key) return { status: 401, body: { error: "unauthorized" } };
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), SYNC_TIMEOUT_MS);
   try {
-    const res = await fetch(`${SYNC_URL}/ledger`, {
+    const res = await fetch(`${SYNC_URL}${path}`, {
       signal: ctl.signal,
-      method,
-      headers: {
-        Authorization: `Bearer ${key}`,
-        ...(ledger ? { "Content-Type": "application/json" } : {}),
-      },
-      body: ledger ? JSON.stringify({ ledger }) : undefined,
+      ...init,
+      headers: { Authorization: `Bearer ${key}`, ...init.headers },
     });
-    const body = await res.json().catch(() => null);
+    const body = await read(res);
     /* a 200 with no readable body is not an answer: count it as unreachable */
     if (res.status === 200 && !body) return { status: null, body: null };
     return { status: res.status, body };
@@ -905,6 +903,30 @@ const syncCall = async (method, ledger) => {
     clearTimeout(timer);
   }
 };
+const readJson = (res) => res.json().catch(() => null);
+const syncCall = (method, ledger) =>
+  workerCall(
+    "/ledger",
+    {
+      method,
+      headers: ledger ? { "Content-Type": "application/json" } : {},
+      body: ledger ? JSON.stringify({ ledger }) : undefined,
+    },
+    readJson
+  );
+/* The photo route (worker/core.mjs, /photos). A photo is named id.ext; the type
+   lives in the name, so a read builds its Blob from the bytes and the name and
+   never from the response header. ponytail: the 10 s call limit also covers a
+   photo (up to 1.9 MB); a slow link fails the call and the next sync retries. */
+const photoCall = (method, name, blob) =>
+  workerCall(
+    name ? `/photos/${name}` : "/photos",
+    blob ? { method, headers: { "Content-Type": blob.type || "application/octet-stream" }, body: blob } : { method },
+    async (res) =>
+      method === "GET" && name && res.status === 200
+        ? { blob: new Blob([await res.arrayBuffer()], { type: mimeFromName(name) }) }
+        : readJson(res)
+  );
 window.sync = {
   async hasKey() {
     return !!syncKey();
@@ -925,6 +947,19 @@ window.sync = {
   },
   async post(ledger) {
     const r = await syncCall("POST", ledger);
+    return { ...r, code: syncStatus(r.status) };
+  },
+  /* the Worker's photos: list the names it holds, read one, write one (once per name) */
+  async photoList() {
+    const r = await photoCall("GET");
+    return { ...r, code: syncStatus(r.status) };
+  },
+  async photoGet(name) {
+    const r = await photoCall("GET", name);
+    return { ...r, code: syncStatus(r.status) };
+  },
+  async photoPut(name, blob) {
+    const r = await photoCall("POST", name, blob);
     return { ...r, code: syncStatus(r.status) };
   },
   /* onRev(rev) fires on each pushed {rev}. Returns a close function. */

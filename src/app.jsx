@@ -7,7 +7,7 @@ import {
   tallyGroups, sortTally, sortPackages, filterPackages, filterTally,
   totalsOf, outstandingOf, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger,
 } from "./view-rules.mjs";
-import { photoPlan } from "./photo-rules.mjs";
+import { photoPlan, photoName, photoIdFromName } from "./photo-rules.mjs";
 import { shouldSnapshot } from "./version-rules.mjs";
 import { KEY_RE, SYNC_POST_MS, SYNC_COLD_POST_MS, SYNC_TIMEOUT_MS, IDLE_APPLY_MS, idleReady, backoffMs } from "./sync-rules.mjs";
 import {
@@ -15,6 +15,7 @@ import {
   mergeLedger,
   isLiveEnvelope,
   tombstoneOf,
+  restampRestore,
   mergeSummary,
   canon,
 } from "./merge-rules.mjs";
@@ -3645,10 +3646,11 @@ syncBroken === "seeded"
           localIds = null;
         }
       } else localIds = [];
-      /* a server apply keeps every id: its photos travel by GitHub (L4b), and
-         keeping an id costs a blank tile, stripping it costs the photo */
+      /* null keeps every id: the local store would not answer. A server apply is
+         not an exception now: its photos travel by the Worker, and doMerge hands
+         over the ids the Worker holds (extraPresent) after it reads the list. */
       const present =
-        localIds === null || source === "server"
+        localIds === null
           ? null
           : new Set([...localIds, ...inlinedIds, ...(extraPresent || [])]);
       /* a merge or server apply carries the applied ledger's time; its own save keeps it.
@@ -3656,20 +3658,23 @@ syncBroken === "seeded"
          now, so it wins unknown-key conflicts afterwards (owner ruling 2026-10-14) */
       savedAtRef.current = replacing ? Date.now() : typeof data.savedAt === "number" ? data.savedAt : null;
       keepSavedAt.current = true;
+      /* a restore stamps the change times of what it moves (a-restore-is-not-local),
+         so a later Worker reply cannot undo it */
+      const stamped = replacing ? restampRestore(snapshot(), { ...data, stamps: sanitizeStamps(data.stamps) }, Date.now()) : data;
       setItems(data.items);
       setReceived(data.received || {});
-      setReceivedAt(data.receivedAt || {});
+      setReceivedAt(stamped.receivedAt || {});
       setEnvelopes(
-        (data.envelopes || []).map((e) => ({
+        (stamped.envelopes || []).map((e) => ({
           ...e,
           /* present === null is "the store would not answer" — keep every id
              rather than publishing a ledger with the links cut out */
           photos: present
-            ? (e.photos || []).filter((id) => present.has(id))
+            ? (e.photos || []).filter((id) => typeof id !== "string" || present.has(id))
             : e.photos || [],
         }))
       );
-      setStamps(sanitizeStamps(data.stamps));
+      setStamps(sanitizeStamps(stamped.stamps));
       if (inlinedIds.length && window.photos)
         (async () => {
           for (const [id, url] of Object.entries(inlined)) {
@@ -3711,7 +3716,7 @@ syncBroken === "seeded"
       );
       setShowUpload(false);
     },
-    [liveEnvelopes, takeVersion]
+    [liveEnvelopes, takeVersion, snapshot]
   );
 
   const handleFile = useCallback(
@@ -4131,13 +4136,20 @@ syncBroken === "seeded"
      a window.remote without these methods, and an undefined call here would be
      swallowed by the caller's catch and surfaced as a generic ledger error. */
   const photoSyncAvailable =
-    !!window.remote && typeof window.remote.listPhotos === "function";
+    !!window.sync && typeof window.sync.photoList === "function";
+  /* id -> the name the Worker holds it under (id.ext), from the last list */
+  const photoNames = useRef(new Map());
+  /* A photo call answers {status, code}. status null is "could not reach the
+     Worker"; 401 is a refused key. PHOTO_SAYS speaks for each. */
+  const NO_REPLY = { status: null, code: "unknown" };
+  const photoReason = (r) =>
+    r.status === null ? "offline" : r.code === "no-access" ? "no-access" : "server";
 
-  /* Per tap, so a first-ever backfill can't sit uploading for an hour: GitHub
-     allows 500 content-generating requests an hour and the ledger push shares
-     that budget. The set difference makes the next tap resume rather than
-     repeat. */
+  /* Per sync, so a first-ever backfill can't sit uploading for minutes. The set
+     difference makes the next sync resume rather than repeat. */
   const PHOTO_BATCH = 25;
+  /* the photo phase starts this long after a ledger POST lands */
+  const PHOTO_AFTER_POST_MS = 1000;
 
   const surveyPhotos = useCallback(
     async (referenced) => {
@@ -4154,10 +4166,17 @@ syncBroken === "seeded"
       } catch {
         return { unreadable: true };
       }
-      const remote = await window.remote.listPhotos().catch((e) => ({
-        known: false,
-        reason: e?.code || "server",
-      }));
+      const r = await window.sync.photoList().catch(() => NO_REPLY);
+      let remote;
+      if (r.code === "ok" && Array.isArray(r.body?.ids)) {
+        const names = new Map();
+        for (const n of r.body.ids) {
+          const id = photoIdFromName(n);
+          if (id) names.set(id, n);
+        }
+        photoNames.current = names;
+        remote = { known: true, ids: [...names.keys()] };
+      } else remote = { known: false, reason: photoReason(r) };
       return { plan: photoPlan({ referenced, local, remote }), remote };
     },
     [photoSyncAvailable]
@@ -4228,6 +4247,7 @@ syncBroken === "seeded"
       if (!batch.length) return;
       setPhotoSync({ dir: "push", done: 0, total: batch.length });
       let done = 0;
+      let tooBig = false;
       for (const id of batch) {
         if (syncGen.current !== gen) return;
         let blob;
@@ -4239,31 +4259,33 @@ syncBroken === "seeded"
           return;
         }
         if (!blob) continue; /* swept or reset out from under us */
-        try {
-          await window.remote.pushPhoto(id, blob, `photo ${id}`);
-          done++;
-          setPhotoSync({ dir: "push", done, total: batch.length });
-        } catch (e) {
-          const code = e?.code || "server";
+        const r = await window.sync.photoPut(photoName(id, blob.type), blob).catch(() => NO_REPLY);
+        if (r.code === "too-big") {
+          /* one photo over the Worker's cap must not block the ones behind it */
+          tooBig = true;
+          continue;
+        }
+        if (r.code !== "ok") {
+          const say = PHOTO_SAYS[photoReason(r)];
           setPhotoMsg({
             tone: "advice",
             text:
               done > 0
-                ? `${done} of ${batch.length} photos synced. ${
-                    PHOTO_SAYS[code] || PHOTO_SAYS.server
-                  }`
-                : PHOTO_SAYS[code] || PHOTO_SAYS.server,
+                ? `${done} of ${batch.length} photos synced. ${say}`
+                : say,
           });
-          /* stop, don't grind: GitHub's guidance on a throttle is to back off,
-             and continuing the loop extends the block */
+          /* stop, don't grind: the next sync resumes from the set difference */
           return;
         }
+        done++;
+        setPhotoSync({ dir: "push", done, total: batch.length });
       }
+      if (tooBig) setPhotoMsg({ tone: "advice", text: PHOTO_SAYS.server });
       const left = plan.toPush.length - batch.length;
       if (left > 0)
         setPhotoMsg({
           tone: "advice",
-          text: `${done} photos sent · ${left} still to go — tap to send the rest.`,
+          text: `${done} photos sent · ${left} still to go — they send on the next sync.`,
         });
     },
     [surveyPhotos, referencedPhotoIds]
@@ -4288,6 +4310,7 @@ syncBroken === "seeded"
             (Array.isArray(data?.envelopes) ? data.envelopes : [])
               .filter(isLiveEnvelope)
               .flatMap((e) => e?.photos || [])
+              .filter((id) => typeof id === "string")
           ),
         ];
       } catch {
@@ -4341,8 +4364,9 @@ syncBroken === "seeded"
       for (const id of batch) {
         if (syncGen.current !== gen) return null;
         try {
-          const blob = await window.remote.pullPhoto(id);
-          await window.photos.put(id, blob);
+          const r = await window.sync.photoGet(photoNames.current.get(id));
+          if (r.code !== "ok" || !r.body?.blob) throw new Error("photo-read");
+          await window.photos.put(id, r.body.blob);
           got.push(id);
           done++;
           setPhotoSync({ dir: "pull", done, total: batch.length });
@@ -4380,19 +4404,47 @@ syncBroken === "seeded"
 
      The later change wins per key, see merge-rules.mjs, and the notice names
      any removal, so it needs no two-tap confirm and is safe to re-run. `reply`
-     is the ledger the Worker answered with. There is no pull, no photo download
-     and no sha: the Worker is the only sync path (sync-revamp-cloudflare). */
+     is the ledger the Worker answered with. The photos it names are read from the
+     Worker first. There is no pull and no sha: the Worker is the only sync path
+     (sync-revamp-cloudflare). */
   const doMerge = useCallback(
     async (reply) => {
       if (damagedRef.current) return { ok: false, code: "server" };
       disarm();
       setPhotoMsg(null);
-      syncGen.current++;
+      const gen = ++syncGen.current;
       syncingRef.current = true;
       setSyncBusy(true);
+      /* the last input before the photo reads: a tap after it holds the reply again */
+      const touched = lastActivity.current;
       try {
-        const { merged, stats } = mergeLedger(snapshot(), await readLedger(JSON.stringify(reply)));
-        const text = JSON.stringify(merged);
+        const replyText = JSON.stringify(reply);
+        const incoming = await readLedger(replyText);
+        /* savedAt is a save time, not ledger content: two ledgers equal but for it are equal */
+        const noTime = ({ savedAt, ...rest }) => rest;
+        const { merged, stats } = mergeLedger(snapshot(), incoming);
+        /* nothing to merge: no photo read, no apply, no milestone. Canonical
+           compare, so a note, a photo id or a receivedAt that differs alone still
+           counts. */
+        if (canon(noTime(merged)) === canon(noTime(snapshot()))) {
+          setSeedShown(false); /* a server ledger has landed: this page is the owner's now */
+          return { ok: true };
+        }
+        /* photos BEFORE applying: the merge unions both devices' envelopes, so ids
+           arriving from the other device have no blob here yet and the apply would
+           strip every one of them. The ids the Worker holds are kept even when a
+           download fails (a retry beats a lost link). */
+        const extraPresent = await pullPhotos(replyText, gen);
+        if (syncGen.current !== gen) return { ok: false, code: "server" };
+        /* a tap during the downloads: applying now would shift the list under the
+           pointer (no-layout-shift-under-pointer), and the merge above no longer
+           matches the device. Hold the reply for the idle gate; the blobs are here
+           by then, so the next try is quick. */
+        if (lastActivity.current !== touched) {
+          growServer(reply);
+          tryApplyRef.current();
+          return { ok: false, code: "held" };
+        }
         const before = syncGen.current;
         /* A merge that added and removed nothing has nothing to report, and
            reporting it anyway is worse than silence. When it DID add or remove
@@ -4407,21 +4459,13 @@ syncBroken === "seeded"
             (stats.stampsRemoved || 0) +
             (stats.stampsAdded || 0) >
           0;
-        /* nothing to merge: no apply, no milestone. Canonical compare, so a
-           note, a photo id or a receivedAt that differs alone still counts. */
-        /* savedAt is a save time, not ledger content: two ledgers equal but for it are equal */
-        const noTime = ({ savedAt, ...rest }) => rest;
-        if (canon(noTime(merged)) === canon(noTime(snapshot()))) {
-          setSeedShown(false); /* a server ledger has landed: this page is the owner's now */
-          return { ok: true };
-        }
         /* a milestone only in front of a removal, and before the apply */
         if (stats.checkInsRemoved + stats.envelopesRemoved + (stats.stampsRemoved || 0) > 0)
           takeVersion("before sync", "milestone");
         const notice = changed ? mergeSummary(stats) : "";
         /* remembered so the next apply can tell this notice from an import's */
         serverNotice.current = notice;
-        await applyBackup(text, "server", null, notice);
+        await applyBackup(JSON.stringify(merged), "server", extraPresent, notice);
         setSeedShown(false); /* seed-load-guards: no longer someone else's ledger */
         /* applyBackup bumps syncGen, and exactly one bump is ours. Any other
            number means something really did move on. */
@@ -4438,7 +4482,7 @@ syncBroken === "seeded"
         setPhotoSync(null);
       }
     },
-    [disarm, applyBackup, snapshot, takeVersion]
+    [disarm, applyBackup, pullPhotos, snapshot, takeVersion]
   );
 
   /* Whether a held reply may apply now: not while a half-built envelope, a
@@ -4606,6 +4650,10 @@ syncBroken === "seeded"
     return r;
   };
   const postRef = useRef(null);
+  const photosBusy = useRef(false); // one photo push at a time
+  const photoTimer = useRef(null);
+  const pushPhotosRef = useRef(null);
+  pushPhotosRef.current = pushPhotos;
   const sendPost = (ledger) => window.sync.post(ledger);
   postRef.current = () => {
     const p = (async () => {
@@ -4629,6 +4677,21 @@ syncBroken === "seeded"
         heldRev.current = 0;
         if (held > lastRev.current) revRef.current(held);
       }
+      /* the ledger is on the Worker: now the photos it names. POSTs close together
+         share one phase, and the Worker takes each name once, so a repeat sends
+         nothing. */
+      if (r.code === "ok" && !photoTimer.current)
+        photoTimer.current = bgTimeout(async () => {
+          photoTimer.current = null;
+          if (photosBusy.current) return;
+          photosBusy.current = true;
+          try {
+            await pushPhotosRef.current(syncGen.current);
+          } finally {
+            photosBusy.current = false;
+            setPhotoSync(null);
+          }
+        }, PHOTO_AFTER_POST_MS);
     })();
     cycleRef.current = p;
     return p;
@@ -4786,7 +4849,7 @@ syncBroken === "seeded"
   /* unmount stops every pending background timer, so none fires into a dead app */
   useEffect(
     () => () => {
-      for (const r of [resetTimer, saveTimer, applyTimer, postTimer, retryTimer])
+      for (const r of [resetTimer, saveTimer, applyTimer, postTimer, retryTimer, photoTimer])
         clearTimeout(r.current);
     },
     []

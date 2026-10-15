@@ -247,6 +247,48 @@ export function mergeLedger(local, incoming) {
   };
 }
 
+/* A restore is a change the person made now, so every check-in key, stamp and
+   envelope it moves takes `now` as its change time. Without that the restored
+   copy keeps its old times, and a later reply from the other device (older than
+   the restore, newer than the version) wins the merge and undoes the restore.
+   `cur` is the ledger being replaced, `data` the one restored. Anything the
+   restore leaves as it was keeps its time, and so does a key or stamp this device
+   never held: there is no earlier change of its own to undo. A discarded envelope
+   or removed stamp becomes a tombstone, so the removal travels like any other. */
+export function restampRestore(cur, data, now) {
+  const receivedAt = { ...(data.receivedAt || {}) };
+  const rc = cur.received || {};
+  const rd = data.received || {};
+  const at = cur.receivedAt || {};
+  for (const k of new Set([...Object.keys(rc), ...Object.keys(rd)]))
+    if ((k in rc || k in at) && (Number(rc[k]) || 0) !== (Number(rd[k]) || 0)) receivedAt[k] = now;
+
+  const sc = cur.stamps || {};
+  const sd = data.stamps || {};
+  const same = (a, b) =>
+    (a?.kind || "") === (b?.kind || "") && (a?.note || "") === (b?.note || "") && (a?.at || "") === (b?.at || "");
+  const stamps = { ...sd };
+  for (const gk of new Set([...Object.keys(sc), ...Object.keys(sd)])) {
+    if (!sc[gk]) continue; // never held here: keep the restored stamp as it is
+    if (same(sc[gk], sd[gk])) {
+      if (!sd[gk]) stamps[gk] = sc[gk]; // keep a tombstone the restore lacks
+    } else
+      stamps[gk] = sd[gk]?.kind
+        ? { ...sd[gk], updatedAt: now }
+        : { kind: "", note: "", at: "", updatedAt: now };
+  }
+
+  const noTime = ({ updatedAt, ...rest }) => rest;
+  const byId = new Map((cur.envelopes || []).map((e) => [e.id, e]));
+  const envelopes = (data.envelopes || []).map((e) => {
+    const c = byId.get(e.id);
+    byId.delete(e.id);
+    return c && canon(noTime(c)) !== canon(noTime(e)) ? { ...e, updatedAt: now } : e;
+  });
+  for (const c of byId.values()) envelopes.push(isLiveEnvelope(c) ? tombstoneOf(c, now) : c);
+  return { receivedAt, stamps, envelopes };
+}
+
 /* Phrasing for the merge notice. Here rather than in app.jsx because it is
    pure, it is the thing the user actually reads to decide whether the merge did
    what they wanted, and "nothing new" is a genuinely useful thing to be told
