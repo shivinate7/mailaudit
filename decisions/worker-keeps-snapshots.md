@@ -12,7 +12,7 @@ Plan: decisions/worker-keeps-snapshots.md#snapshot-defaults (worker)
 
 ## Why
 
-Today only web devices push to the `data` branch. Once both devices run the native client, nobody pushes there. The seed, the watchdog and History would go stale. Native never holds a GitHub token, see `the-token-is-a-credential`.
+Today only web devices push to the `data` branch. Once both devices run the native client, nobody pushes there. The watchdog and History would go stale. Native never holds a GitHub token, see `the-token-is-a-credential`.
 
 ## What the ruling means
 
@@ -37,7 +37,7 @@ Orchestrator defaults of 2026-10-12, not owner rulings. The snapshot, `/health` 
 ## Rejected
 
 - A Worker cron that mirrors to the `data` branch. It would put a GitHub token in a Worker secret.
-- The Mac browser as the one mirror. The seed, History and the watchdog would go stale once both devices are native.
+- The Mac browser as the one mirror. History and the watchdog would go stale once both devices are native.
 
 ## Records that this dates when the replacement ships
 
