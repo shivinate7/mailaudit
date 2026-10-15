@@ -65,6 +65,7 @@ import {
   syncCalls,
   syncPhotoNames,
   syncLedgerNow,
+  setServerLedger,
   setSyncPhotoFail,
   setSyncPhotoDelay,
   syncCloseCount,
@@ -125,6 +126,8 @@ const GITHUB_OPS = new Set(["push", "pushForce", "pushPhoto", "peek", "pull", "a
 const githubOps = () => [...new Set(remote.calls.filter((c) => GITHUB_OPS.has(c.op)).map((c) => c.op))];
 /* the ledger bodies this run POSTed to the Worker, oldest first */
 const workerPosts = () => syncCalls().filter((c) => c.op === "post").map((c) => JSON.parse(c.body));
+/* the 90 s idle window of the old mirror timer. Group 71 still waits it out. */
+const AUTO_MS = 90000; // AUTO_PUSH_MS in src/app.jsx
 /* a page wake starts the Worker POST at once (pageshow, a visible resume or online run
    postRef in src/app.jsx). background() alone does not, since it never goes visible. */
 const wakeWorker = () =>
@@ -3500,19 +3503,10 @@ await settle();
 await sleep(SAVE_WAIT);
 eq(saved().items?.length ?? 0, ITEMS.length, "40.11 once the thought is finished, the next resume merges");
 
-/* ---- a cold mount is a fresh session too ----
-   On iOS reopening is usually a resume, which is everything above — but sometimes
-   the page really was discarded, and that is the same boundary. A fresh phone
-   comes back already reconciled. */
-await boot(PHONE_STATE, null, { syncKey: KEY40, syncLedger: SERVER40 });
-await settle();
-await sleep(10_500); /* the held apply: IDLE_APPLY_MS is 10 s (sync-rules) */
-eq(saved().items?.length ?? 0, ITEMS.length, "40.14 opening the app to an ahead Worker merges");
-eq(
-  saved().received?.[ITEMS[0].key] ?? null,
-  1,
-  "40.15 keeping this device's check-ins through the cold start"
-);
+/* ---- a cold mount is a fresh session too: retired (the switch) ----
+   40.14 and 40.15 read a cold open with local check-ins against an ahead Worker. The
+   cold reply is held for the idle gate, and 53.3 pins the same merge: the reply applied
+   as mergeLedger(snapshot, reply), with this device's check-ins kept. */
 
 /* ---- and it says nothing when it did nothing ----
    A POST or a read can carry a copy that adds nothing, and the user is not told
@@ -4358,6 +4352,11 @@ eq(
   );
 }
 
+/* the device key for groups 49 and 50, and a keyed fresh start (the Worker holds nothing
+   until setServerLedger sets it) */
+const KEY49 = "device-49-key";
+const freshKeyed49 = () => boot({ items: ITEMS, received: {} }, null, { syncKey: KEY49 });
+
 /* ---- 49 through the app: a stale copy on the other device ---- */
 {
   const K = ITEMS[0].key; /* Lightning Bolt, in Alpha Cards */
@@ -4367,10 +4366,10 @@ eq(
       b.parentElement?.textContent.includes(name)
     );
   /* what GitHub holds: the push format, which carries mailday (parseLedger needs it) */
-  const asRemote = (s) => JSON.stringify({ mailday: 1, ...s });
+  const asRemote = (s) => ({ mailday: 1, ...s });
 
   /* an un-check outlives a stale copy that still has the card checked */
-  await fresh();
+  await freshKeyed49();
   await click(lineRow(/Alpha Cards/, "Lightning Bolt"), "check Lightning Bolt in");
   await sleep(SAVE_WAIT);
   const checkedCopy = saved(); /* what the other device holds */
@@ -4378,9 +4377,7 @@ eq(
   await click(lineRow(/Alpha Cards/, "Lightning Bolt"), "un-check Lightning Bolt");
   await sleep(SAVE_WAIT);
   ok(typeof saved().receivedAt?.[K] === "number", "49.A1 an un-check writes its time");
-  remote.content = utf8ToBase64(asRemote(checkedCopy));
-  remote.sha = "sha-0";
-  await saveGitHubKey();
+  setServerLedger(asRemote(checkedCopy));
   /* Re-pointed: Push and Merge & push left the UI (owner ruling 2026-10-12).
      The stale copy is ahead, and a fresh session is what merges it. The
      mirror write after the merge is what carries the merged copy to GitHub. */
@@ -4391,7 +4388,7 @@ eq(
   eq(saved().received ?? {}, {}, "49.A2 a merge with the stale copy keeps the card un-checked");
   ok(/cards\s*0\/14/.test(text()), "49.A3 and the screen shows nothing checked");
   eq(
-    JSON.parse(remoteText()).received ?? {},
+    syncLedgerNow().received ?? {},
     {},
     "49.A4 and the merged copy on GitHub has no check either"
   );
@@ -4400,8 +4397,8 @@ eq(
 {
   /* a discarded envelope stays gone when the old copy comes back */
   const liveEnvs = (s) => (s.envelopes || []).filter((e) => !e.deletedAt);
-  const asRemote = (s) => JSON.stringify({ mailday: 1, ...s });
-  await fresh();
+  const asRemote = (s) => ({ mailday: 1, ...s });
+  await freshKeyed49();
   await goTo("orphaned");
   await record(["Ponder", "Preordain"], "discard me");
   await sleep(SAVE_WAIT);
@@ -4415,9 +4412,7 @@ eq(
     ),
     "49.B1 a discard leaves a tombstone with its time"
   );
-  remote.content = utf8ToBase64(asRemote(liveCopy));
-  remote.sha = "sha-0";
-  await saveGitHubKey();
+  setServerLedger(asRemote(liveCopy));
   /* Re-pointed: Push and Merge & push left the UI (owner ruling 2026-10-12).
      A fresh session merges the stale copy in, with no tap. */
   await backgroundFor(5 * 60_000);
@@ -4442,16 +4437,15 @@ eq(
     [...card(pkgRe).querySelectorAll('button[aria-label^="Mark as"]')].find((b) =>
       b.parentElement?.textContent.includes(name)
     );
-  await fresh();
+  await freshKeyed49();
   await click(lineRow(/Alpha Cards/, "Lightning Bolt"), "check Lightning Bolt in");
   await sleep(SAVE_WAIT);
   ok(typeof saved().receivedAt?.[K] === "number", "49.C1 a check-in writes its time");
-  await boot(saved());
+  await boot(saved(), null, { syncKey: KEY49 });
 
   await openSync();
-  await saveGitHubKey();
   await wakePush();
-  const pushed = pushes()[0] ? JSON.parse(pushes()[0].text) : {};
+  const pushed = workerPosts().at(-1) ?? {};
   ok(typeof pushed.receivedAt?.[K] === "number", "49.C2 the pushed payload carries it");
 
   let backupBlob = null;
@@ -4488,7 +4482,7 @@ eq(
     [...card(pkgRe).querySelectorAll('button[aria-label^="Mark as"]')].find((b) =>
       b.parentElement?.textContent.includes(name)
     );
-  const asRemote = (s) => JSON.stringify({ mailday: 1, ...s });
+  const asRemote = (s) => ({ mailday: 1, ...s });
   const led = (received, receivedAt, envelopes) => ({
     items: ITEMS,
     received,
@@ -4620,15 +4614,13 @@ eq(
 
   /* A2 through the app: the other device un-checked later, and this device
      still holds the check. The manual merge applies the removal. */
-  await fresh();
+  await freshKeyed49();
   await click(lineRow(/Alpha Cards/, "Lightning Bolt"), "check Lightning Bolt in");
   await sleep(SAVE_WAIT);
   const checkedAt = saved().receivedAt[K];
-  remote.content = utf8ToBase64(
+  setServerLedger(
     asRemote({ ...saved(), received: {}, receivedAt: { [K]: checkedAt + 1000 } })
   );
-  remote.sha = "sha-0";
-  await saveGitHubKey();
   /* Re-pointed: Push and Merge & push left the UI (owner ruling 2026-10-12). A
      fresh session merges the stale copy in, with no tap. */
   await backgroundFor(5 * 60_000);
@@ -4638,13 +4630,13 @@ eq(
   ok(uncheckedOne(), "50.A2j and the notice says un-checked 1 card, not 'nothing new'");
 
   /* the other device discarded an envelope this device still holds live */
-  await fresh();
+  await freshKeyed49();
   await goTo("orphaned");
   await record(["Ponder", "Preordain"], "kept");
   await sleep(SAVE_WAIT);
   const live = saved().envelopes.find((e) => !e.deletedAt);
   const discardedAt = (live.updatedAt || 0) + 1000;
-  remote.content = utf8ToBase64(
+  setServerLedger(
     asRemote({
       ...saved(),
       envelopes: [
@@ -4652,8 +4644,6 @@ eq(
       ],
     })
   );
-  remote.sha = "sha-0";
-  await saveGitHubKey();
   /* Re-pointed: Push and Merge & push left the UI (owner ruling 2026-10-12). A
      fresh session merges the stale copy in, with no tap. */
   await backgroundFor(5 * 60_000);
@@ -4669,15 +4659,14 @@ eq(
   /* the quiet unattended merge: a removal alone must still leave a notice */
   /* seeded checked, not checked in here: a check-in leaves an Undo notice, and
      autoMerge stands down while one is open */
-  await boot({ items: ITEMS, received: { [K]: 1 }, receivedAt: { [K]: 100 } }, null, KEY);
+  await boot({ items: ITEMS, received: { [K]: 1 }, receivedAt: { [K]: 100 } }, null, { syncKey: KEY49 });
   await openSync();
   await wakePush();
   await sleep(60);
   const local = saved();
-  remote.content = utf8ToBase64(
+  setServerLedger(
     asRemote({ ...local, received: {}, receivedAt: { [K]: 1100 } })
   );
-  remote.sha = "sha-other"; /* the other device pushed since: peek says ahead */
   await backgroundFor(5 * 60_000);
   await settle();
   await sleep(SAVE_WAIT); /* the merged state is saved on a debounce */
@@ -4685,12 +4674,10 @@ eq(
   ok(uncheckedOne(), "50.A2n and the quiet merge still leaves a notice saying un-checked 1 card");
 
   /* A4 through the app: the other device removed a stamp this device still holds */
-  await boot({ items: ITEMS, received: {}, stamps: STAMPED50 });
-  remote.content = utf8ToBase64(
+  await boot({ items: ITEMS, received: {}, stamps: STAMPED50 }, null, { syncKey: KEY49 });
+  setServerLedger(
     asRemote({ items: ITEMS, received: {}, receivedAt: {}, envelopes: [], stamps: STAMP_GONE50 })
   );
-  remote.sha = "sha-0";
-  await saveGitHubKey();
   /* Re-pointed: Push and Merge & push left the UI (owner ruling 2026-10-12). A
      fresh session merges the stale copy in, with no tap. */
   await backgroundFor(5 * 60_000);
@@ -4700,14 +4687,13 @@ eq(
   ok(noticeNamesRemoval(), "50.A4d and the notice names the removal");
 
   /* the quiet unattended merge, whose only change is that stamp removal */
-  await boot({ items: ITEMS, received: {}, stamps: STAMPED50 }, null, KEY);
+  await boot({ items: ITEMS, received: {}, stamps: STAMPED50 }, null, { syncKey: KEY49 });
   await openSync();
   await wakePush();
   await sleep(60);
-  remote.content = utf8ToBase64(
+  setServerLedger(
     asRemote({ items: ITEMS, received: {}, receivedAt: {}, envelopes: [], stamps: STAMP_GONE50 })
   );
-  remote.sha = "sha-other"; /* the other device pushed since: peek says ahead */
   await backgroundFor(5 * 60_000);
   await settle();
   await sleep(SAVE_WAIT);
@@ -4716,14 +4702,13 @@ eq(
 
   /* A5 through the app: an incoming tombstone for a stamp this device never
      had. The quiet merge takes it, and leaves no notice. */
-  await boot({ items: ITEMS, received: {} }, null, KEY);
+  await boot({ items: ITEMS, received: {} }, null, { syncKey: KEY49 });
   await openSync();
   await wakePush();
   await sleep(60);
-  remote.content = utf8ToBase64(
+  setServerLedger(
     asRemote({ items: ITEMS, received: {}, receivedAt: {}, envelopes: [], stamps: STAMP_GONE50 })
   );
-  remote.sha = "sha-other";
   await backgroundFor(5 * 60_000);
   await settle();
   await sleep(SAVE_WAIT);
@@ -4731,7 +4716,7 @@ eq(
   ok(!REMOVED.test(text()) && !/Merged/.test(text()), "50.A5d and leaves no notice");
 
   /* B: write sites that already stamp receivedAt */
-  await fresh();
+  await freshKeyed49();
   await goTo("packages");
   await click(allBtns(/^Mark all received$/)[0], "mark a package all received");
   await sleep(SAVE_WAIT);
@@ -4741,7 +4726,7 @@ eq(
     "50.B1 a bulk check-in writes a time for each key it sets"
   );
 
-  await fresh();
+  await freshKeyed49();
   await goTo("orphaned");
   await record(["Brainstorm"]);
   await assign(0);
@@ -4757,7 +4742,7 @@ eq(
   eq(saved().received[key], undefined, "50.B3a undo deletes the key");
   ok(saved().receivedAt?.[key] > tAssign, "50.B3b and undo writes a later time, so the un-check travels");
 
-  await fresh();
+  await freshKeyed49();
   await reachFor(/Re-import CSV/);
   await click(btn(/Re-import CSV/), "show upload zone");
   await dropFile(
@@ -4774,7 +4759,7 @@ eq(
   await sleep(SAVE_WAIT);
   eq(saved().receivedAt?.[K], 1234567, "50.B4 a restore brings each key's time back");
 
-  await fresh();
+  await freshKeyed49();
   await goTo("orphaned");
   await record(["Path to Exile", "Swords to Plowshares", "Ponder", "Lightning Bolt"]);
   await assign(0);
@@ -4899,10 +4884,10 @@ await wakePush();
 await openHistory();
 await click(btn(/^Backup$/), "backup with a sync key set");
 await sleep(SAVE_WAIT);
-ok(pushes().length > 0, "52.4a the push happened, so the next check means something");
+ok(workerPosts().length > 0, "52.4a the POST happened, so the next check means something");
 ok(!!captured, "52.4b the backup happened, so the next check means something");
 ok(!SYNC_LEAK.test(JSON.stringify(saved())), "52.4 the sync key is not in the saved ledger");
-ok(!SYNC_LEAK.test(pushes()[0]?.text ?? ""), "52.5 nor in the pushed payload");
+ok(!SYNC_LEAK.test(JSON.stringify(workerPosts())), "52.5 nor in the POSTed payload");
 ok(!SYNC_LEAK.test(await captured.text()), "52.6 nor in a backup file");
 eq(
   (await win.storage.list()).keys,
@@ -4927,6 +4912,17 @@ ok(
    Installed here, removed after group 61, and installed again before group 67.
    Groups 1 to 52 and 62 to 66 keep real timers. */
 installClock();
+
+/* the other device's copy, as the Worker holds it (groups 52 to 56; it was the GitHub copy) */
+const LAPTOP_PUSHED = {
+  mailday: 1,
+  items: ITEMS,
+  received: {},
+  envelopes: [],
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+};
 
 /* ── 53. the Stage 4b sync path, through the app (harness contract only) ──
    Stage 4b moves sync from the GitHub adapter to window.sync. These cases pin
@@ -5109,25 +5105,24 @@ await sleep(POST_WAIT);
 eq((await win.sync.get()).code, "ok", "53.6c the first POST seeds the store");
 ok(!ERROR_COPY_RE.test(advisory()), "53.6d and the advisory line still shows no sync error");
 
-/* 7. with no sync key, nothing calls sync.post, and today's GitHub push runs
-   unchanged. Green on today's code by design: this is a guard, not a red case. */
+/* 7. with no sync key, nothing calls sync.post, and nothing reaches GitHub either
+   (the switch). Green on the switched code by design: this is a guard, not a red case. */
 await boot({ items: ITEMS.slice(0, 3), received: {} });
 await settle();
 await click(btn(/Mark all received/), "check in with no sync key");
 await sleep(POST_WAIT);
 ok(Object.keys(saved().received ?? {}).length === 3, "53.7a0 the check-in happened, so the next check means something");
 eq(postCount(), 0, "53.7a with no sync key, a check-in makes no POST");
-await saveGitHubKey();
 await wakePush();
 await sleep(SAVE_WAIT);
-ok(pushes().length > 0, "53.7b the GitHub push still runs with no sync key");
+eq(githubOps(), [], "53.7b and with no Worker key, GitHub takes no write either (the switch)");
 
 /* 8. a POST that fails as unknown (the network) falls back to today's GitHub
    merge for that cycle, and the advisory line says the server failed. The
    fallback is decided on code === "unknown". Green on today's code for the pull
    alone, since a fresh foreground already merges over GitHub: 53.8b is the red
    claim. */
-await boot(PHONE_STATE, null, { remote: LAPTOP_PUSHED, syncKey: KEY53 });
+await boot(PHONE_STATE, null, { syncLedger: LAPTOP_PUSHED, syncKey: KEY53 });
 await settle();
 setSyncNetFail(true);
 const remoteBefore = remote.calls.length;
@@ -5140,173 +5135,54 @@ try {
   setSyncNetFail(false);
 }
 await settle();
-ok(remote.calls.slice(remoteBefore).some((c) => c.op === "pull"), "53.8a the failed cycle falls back to the GitHub merge");
+eq(githubOps(), [], "53.8a and the failed cycle makes no GitHub call: there is no fallback to GitHub (the switch)");
 ok(/server/i.test(advisory()), "53.8b and the advisory line says the server failed");
 
-/* ── 54. with a Worker key, GitHub is a mirror (harness contract only) ──
-   Stage 4b, decision sync-revamp-cloudflare: the Worker holds the truth, and
-   GitHub gets the merged snapshot on the mirror timer. With a key, GitHub
-   decides nothing. No peek, no auto-merge, no "behind" line, and a stale sha
-   is a merged write, never a two-tap.
-
-   The mirror timer is AUTO_PUSH_MS (90s) in src/app.jsx. This suite has no
-   fake timers, so only a delay of exactly 90000 is caught here, and the test
-   fires it on demand. sleep() and the save debounce pass through untouched.
-
-   Case 54.4 (no key) needs no case of its own. Today's behaviour is pinned by
-   groups 34 (34.11 to 34.23: the behind line, the peek, the conflict merge),
-   38b.2 (the behind line), and 40.4 (a fresh absence merges without a tap).
-
-   Case 54.5 is a suspected bug, not a ruling: the autoPush effect's deps
-   (src/app.jsx, near line 4729) are [items, received, envelopes, loaded], and
-   they omit stamps. */
+/* ── 54. with a Worker key, GitHub takes no write and no read (the switch) ──
+   Owner ruling 2026-10-14 21:12 CDT, decision sync-revamp-cloudflare. The Worker is the
+   only sync path. GitHub is no longer a mirror, so the mirror timer (AUTO_PUSH_MS) is
+   gone. 54.1 and 54.2 re-point: a keyed device makes no GitHub call, and the Worker POST
+   carries the merged snapshot. 54.3 and 54.5 are retired. 54.3 pinned a stale sha
+   merged into GitHub, and 54.5 pinned the mirror timer for a stamp alone. A stale POST
+   merges on the server, which 34.23 pins. */
 const KEY54 = "device-54-key";
-const GH54 = "github_pat_testtoken";
-const AUTO_MS = 90000; // AUTO_PUSH_MS in src/app.jsx
-let autoLive54 = null; // null = not catching; else the armed timers not yet run or cleared
-let autoArmed54 = 0; // every AUTO_PUSH_MS timer armed while catching
-const realSetTimeout54 = globalThis.setTimeout;
-const realClearTimeout54 = globalThis.clearTimeout;
-const catchAutoTimers = () => {
-  autoLive54 = [];
-  autoArmed54 = 0;
-  globalThis.setTimeout = (fn, ms, ...rest) => {
-    if (ms !== AUTO_MS) return realSetTimeout54(fn, ms, ...rest);
-    const h = { fn };
-    autoLive54.push(h);
-    autoArmed54 += 1;
-    return h;
-  };
-  globalThis.clearTimeout = (h) => {
-    if (autoLive54) autoLive54 = autoLive54.filter((x) => x !== h);
-    return realClearTimeout54(h);
-  };
-};
-const releaseAutoTimers = () => {
-  autoLive54 = null;
-  globalThis.setTimeout = realSetTimeout54;
-  globalThis.clearTimeout = realClearTimeout54;
-};
-/* runs the newest live mirror timer, as the 90s wait would. false if none */
-const fireAutoTimer = async () => {
-  const h = autoLive54?.pop();
-  if (!h) return false;
-  await act(async () => {
-    await h.fn();
-    await sleep(0);
-  });
-  return true;
-};
 
-/* 54.1 with a key, GitHub is not read at all. A remote that holds a sha this
-   device never saw is ahead, and with a key it raises no "behind" line. Red
-   today: the foreground peek reads it as ahead, and the resume merges it. */
+/* 54.1 with a key, GitHub is not read at all. A device that holds a copy the Worker
+   lacks makes no GitHub call on a resume either. */
 await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
-  remote: LAPTOP_PUSHED,
-  remoteKey: GH54,
+  syncLedger: LAPTOP_PUSHED,
   syncKey: KEY54,
 });
 await settle();
-/* read before the resume, which would merge the remote away and make the
-   line's absence mean nothing */
-ok(!btn(/newer lines/), "54.1c a remote that is ahead raises no behind line");
+/* read before the resume, which would merge the Worker away and make the line's
+   absence mean nothing */
+ok(!btn(/newer lines/), "54.1c a Worker copy that is ahead raises no behind line");
 await backgroundFor(5 * 60_000);
 await settle();
-eq(peeks().length, 0, "54.1a with a key, nothing peeks at GitHub");
+eq(githubOps(), [], "54.1a with a Worker key, nothing reads or writes GitHub");
+
+/* 54.2 with a key, the POST carries the merged snapshot: the four lines the Worker reply
+   carried, not the three this device held. */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+  syncKey: KEY54,
+  syncLedger: { mailday: 1, items: ITEMS.slice(0, 4), received: {}, envelopes: [] },
+});
+await settle();
+await pageshow();
+await sleep(APPLY_WAIT);
+await wakeWorker();
+await drain();
 eq(
-  remote.calls.filter((c) => c.op === "pull").length,
-  0,
-  "54.1b and a resume after an absence merges nothing from GitHub"
+  workerPosts().at(-1)?.items?.length ?? 0,
+  4,
+  "54.2c the POST carries the merged snapshot, four lines"
 );
+eq(githubOps(), [], "54.2d and GitHub takes no write for it");
 
-/* 54.2 with a key, the mirror push runs on AUTO_PUSH_MS, and what it pushes is
-   the merged snapshot: the four lines the Worker reply carried, not the three
-   this device held. Red today: no reply is applied, so the mirror holds three,
-   and nothing arms the timer. */
-catchAutoTimers();
-try {
-  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
-    remoteKey: GH54,
-    syncKey: KEY54,
-    syncLedger: { mailday: 1, items: ITEMS.slice(0, 4), received: {}, envelopes: [] },
-  });
-  await settle();
-  await pageshow();
-  await sleep(APPLY_WAIT);
-  ok(autoArmed54 > 0, "54.2a the merged lines arm the mirror timer, which is AUTO_PUSH_MS");
-  ok(await fireAutoTimer(), "54.2b and the timer is live, so the mirror push can run");
-  await settle();
-  const sent = pushes();
-  const last = sent[sent.length - 1];
-  eq(
-    last ? JSON.parse(last.text).items.length : 0,
-    4,
-    "54.2c the mirror pushes the merged snapshot, four lines"
-  );
-} finally {
-  releaseAutoTimers();
-}
-
-/* 54.3 with a key, a mirror push that meets a stale sha re-reads the sha, merges
-   GitHub's ledger in, and writes the merge under the fresh sha. It arms no two-tap and shows no conflict
-   line. Red today: autoPush peeks first, reads the remote as ahead, and never
-   pushes at all. */
-catchAutoTimers();
-try {
-  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
-    remote: LAPTOP_PUSHED,
-    remoteKey: GH54,
-    syncKey: KEY54,
-  });
-  await settle();
-  await click(btn(/Mark all received/), "check in with a key");
-  await fireAutoTimer();
-  await settle();
-  eq(
-    pushes().map((p) => p.sha),
-    [null, "sha-0"],
-    "54.3a the stale write goes first, then one merged write under the sha the remote holds"
-  );
-  eq(
-    remote.history.map((h) => JSON.parse(h.text).items.length),
-    [ITEMS.length],
-    "54.3b the merged write carries this device and GitHub, not this device's copy alone"
-  );
-  /* Re-pointed (owner ruling 2026-10-12): "Push anyway" left the UI, so it could
-     never fail. A two-tap copy on screen is the live way to arm a stale sha. */
-  ok(!btn(/^Tap again to/), "54.3c a stale sha arms no two-tap");
-  ok(
-    !buttons().some((b) => /needs attention/.test(b.textContent)) &&
-      !/remote copy changed/.test(text()),
-    "54.3d and no conflict line shows"
-  );
-} finally {
-  releaseAutoTimers();
-}
-
-/* 54.5 (suspected bug, no sync key on this device) a stamp alone arms the
-   mirror push. The autoPush effect omits stamps from its deps, so a stamp-only
-   change arms no timer and no push follows. Red on today's code if the omission
-   is real. */
-catchAutoTimers();
-try {
-  await boot({ items: ITEMS, received: {} }, null, { remoteKey: GH54 });
-  await settle();
-  const armedBefore = autoArmed54;
-  await stampPkg(/Alpha Cards/, "Other", "package split");
-  await sleep(SAVE_WAIT);
-  eq(
-    Object.keys(saved().stamps ?? {}).length,
-    1,
-    "54.5a the stamp is saved, so the next check means something"
-  );
-  ok(autoArmed54 > armedBefore, "54.5b a stamp alone arms the mirror timer");
-  ok(await fireAutoTimer(), "54.5c and the timer is live, so a push can follow");
-  await settle();
-  ok(pushes().length > 0, "54.5d and the timer pushes the stamped ledger to GitHub");
-} finally {
-  releaseAutoTimers();
-}
+/* retired: 54.3 (a stale sha re-reads the sha and writes the merge under it, the
+   mirror's conflict path). The Worker merges server-side; 34.23 pins that. */
+/* retired: 54.5 (a stamp alone arms the mirror timer, with no key). Keyless, and the
+   timer is gone with GitHub's mirror. */
 
 /* ── 55. live updates: connect, a rev-gated GET, a held apply (harness contract only) ──
    Stage 4b lane L5, decision sync-revamp-cloudflare (Stage 4b rulings). The
@@ -5431,7 +5307,7 @@ eq(saved().items?.length ?? 0, 4, "55.4e and the apply runs once the notice is d
    does, that cycle falls back to the GitHub merge, and the advisory line names
    the size problem. Pattern from 53.8. */
 const bigLine55 = () => buttons().map((b) => b.textContent).find((t) => /too big/i.test(t)) ?? "";
-await boot(PHONE_STATE, null, { remote: LAPTOP_PUSHED, syncKey: KEY55 });
+await boot(PHONE_STATE, null, { syncLedger: LAPTOP_PUSHED, syncKey: KEY55 });
 await settle();
 setSyncTooBig(true);
 const remoteBefore55 = remote.calls.length;
@@ -5444,7 +5320,7 @@ try {
   setSyncTooBig(false);
 }
 await settle();
-ok(remote.calls.slice(remoteBefore55).some((c) => c.op === "pull"), "55.8a the too-big cycle falls back to the GitHub merge");
+eq(githubOps(), [], "55.8a the too-big cycle makes no GitHub call: there is no fallback (the switch)");
 ok(/too big/i.test(bigLine55()), "55.8b and the advisory line says the data is too big");
 ok(/tap to/i.test(bigLine55()), "55.8c and the advisory line says tap to, as group 53's helper expects");
 
@@ -5465,7 +5341,6 @@ eq(connectCount(), 0, "55.7 with no key, sync.connect is never called");
 
 const KEY56 = "device-56-key";
 const GH56 = "github_pat_testtoken";
-const pullCount56 = () => remote.calls.filter((c) => c.op === "pull").length;
 const backoff56 = (k) => SR?.backoffMs?.(k) ?? 1000 * 2 ** k;
 const pick56 = (x) => ({
   items: x.items,
@@ -5493,10 +5368,9 @@ for (const [label, setFail] of [
   ["unknown", setSyncNetFail],
   ["too-big", setSyncTooBig],
 ]) {
-  await boot({ items: ITEMS, received: {} }, null, { remote: LAPTOP_PUSHED, syncKey: KEY56 });
+  await boot({ items: ITEMS, received: {} }, null, { syncLedger: LAPTOP_PUSHED, syncKey: KEY56 });
   await settle();
-  const pulls0 = pullCount56();
-  const ms0 = milestoneCount();
+    const ms0 = milestoneCount();
   const attempts = [];
   const realPost56 = win.sync.post;
   win.sync.post = async (ledger) => {
@@ -5519,18 +5393,15 @@ for (const [label, setFail] of [
     attempts.every((t, k) => k === 0 || t - attempts[k - 1] >= backoff56(k - 1) - 200),
     `56.1${label[0]}a retries to the Worker follow backoffMs, not every save (${label})`
   );
-  ok(pullCount56() - pulls0 <= 1, `56.1${label[0]}b at most one GitHub pull in 20 s (${label})`);
+  eq(githubOps(), [], `56.1${label[0]}b and GitHub takes no read or write in those 20 s (${label})`);
   eq(milestoneCount() - ms0, 0, `56.1${label[0]}c no milestone, since nothing was removed (${label})`);
 }
 
 /* 56.2 B2. The Worker answers 401 to this device's key. The advisory line says
-   the key was refused, and tap to. The GitHub peek and merge still run, as they
-   do on a device with no Worker key. */
-await boot(PHONE_STATE, null, { remote: LAPTOP_PUSHED, syncKey: KEY56 });
+   the key was refused, and tap to. GitHub takes no call either (the switch). */
+await boot(PHONE_STATE, null, { syncLedger: LAPTOP_PUSHED, syncKey: KEY56 });
 await settle();
 const posts56b = postCount();
-const peeks56b = peeks().length;
-const pulls56b = pullCount56();
 setSyncKeyRefused(true);
 try {
   await backgroundFor(5 * 60_000);
@@ -5543,38 +5414,27 @@ ok(postCount() > posts56b, "56.2a0 the POST was refused, so the key check means 
 const keyLine56 = advisoryWith56(/key/i);
 ok(/key/i.test(keyLine56), "56.2b the advisory line says the device's sync key was refused");
 ok(/tap to/i.test(keyLine56), "56.2b2 and the advisory line says tap to");
-ok(peeks().length > peeks56b, "56.2c the GitHub peek still runs");
-ok(pullCount56() > pulls56b, "56.2d and the GitHub merge still runs");
+eq(githubOps(), [], "56.2c a refused key sends GitHub no read or write either (the switch)");
+/* 56.2d retired: it asserted the GitHub peek and merge still run for a refused key. */
 
-/* 56.3 B3. A healthy Worker holds 12 lines, and this device holds 3. The mirror
-   push must never write fewer than 12 lines to GitHub: it pushes the merge of
-   the local snapshot with the last server ledger, never the raw snapshot. The
-   POST reply arrives first, so mirror mode is on before the push. */
-catchAutoTimers();
-try {
-  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
-    remoteKey: GH56,
-    syncKey: KEY56,
-    syncLedger: { mailday: 1, items: ITEMS, received: {}, envelopes: [] },
-  });
-  await settle();
-  await click(inCard(card(/Alpha Cards/), /^Mark all received$/), "a change that arms the mirror timer");
-  await settle();
-  await pageshow();
-  await sleep(POST_WAIT);
-  ok(await fireAutoTimer(), "56.3a0 the mirror timer is live, so the push can run");
-  await settle();
-  ok(pushes().length > 0, "56.3a1 a mirror push reached GitHub, so the line count means something");
-  let lines56 = 0;
-  try {
-    lines56 = JSON.parse(remoteText() ?? "null")?.items?.length ?? 0;
-  } catch {
-    lines56 = 0;
-  }
-  ok(lines56 >= 12, `56.3b the mirror push wrote ${lines56} lines to GitHub, never fewer than the server's 12`);
-} finally {
-  releaseAutoTimers();
-}
+/* 56.3 B3. A healthy Worker holds 12 lines, and this device holds 3. The POST merges
+   on the server, so the Worker never ends with fewer than 12 lines. (The mirror push that
+   B3 guarded is gone with GitHub's mirror, the switch.) */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+  syncKey: KEY56,
+  syncLedger: { mailday: 1, items: ITEMS, received: {}, envelopes: [] },
+});
+await settle();
+await click(inCard(card(/Alpha Cards/), /^Mark all received$/), "a change that sends a POST");
+await settle();
+await wakeWorker();
+await sleep(POST_WAIT);
+ok(workerPosts().length > 0, "56.3a0 a POST went out, so the line count means something");
+ok(
+  (syncLedgerNow()?.items?.length ?? 0) >= 12,
+  `56.3b the Worker still holds ${syncLedgerNow()?.items?.length ?? 0} lines, never fewer than its 12`
+);
+eq(githubOps(), [], "56.3c and GitHub takes no write for it");
 
 /* 56.4 S1. A reply that differs only in an envelope note, an envelope photo id
    or receivedAt is applied. Each difference alone is a case, and the local ends
@@ -5770,65 +5630,19 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
    boot() swaps in a fresh sync mock. */
 {
   const KEY58 = "device-58-key";
-  const GH58 = "github_pat_testtoken";
   const AUTO58 = 90000; /* AUTO_PUSH_MS in src/app.jsx */
   const POST58 = (SR?.SYNC_POST_MS ?? 3000) + 300;
   const count58 = (op) => syncCalls().filter((c) => c.op === op).length;
-  const asRemote58 = (items) =>
-    JSON.stringify({
-      mailday: 1,
-      items,
-      received: {},
-      envelopes: [],
-      dateFilter: { preset: "all", from: "", to: "" },
-      sortBy: "newest",
-      itemSort: "missing",
-    });
   const LOCAL58 = ITEMS.slice(0, 3);
-  /* GitHub holds 12 lines this device has never seen, so the union is 15 */
+  /* the Worker holds 12 lines this device has never seen */
   const REMOTE58 = ITEMS.map((it) => ({ ...it, orderId: `R${it.orderId}`, key: `R${it.key}` }));
 
-  /* F1. On a mirror push conflict the device reads GitHub, merges it in, writes
-     with the fresh sha, and POSTs the merge. It never writes its own copy alone. */
-  await boot({ items: LOCAL58, received: {} }, null, {
-    remote: asRemote58(REMOTE58),
-    remoteKey: GH58,
-    syncKey: KEY58,
-  });
-  await settle();
-  await click(btn(/Mark all received/), "check in, so a POST and a mirror push go out");
-  await sleep(AUTO58 + 1000);
-  await settle();
-  eq(
-    new Set(JSON.parse(remoteText()).items.map((i) => i.key)).size,
-    15,
-    "58.F1a GitHub ends with the union, all 15 lines"
-  );
-  ok(
-    remote.history.length > 0 &&
-      remote.history.every((h) => JSON.parse(h.text).items.length >= 12),
-    "58.F1b no GitHub write ever holds fewer than 12 lines"
-  );
-  eq(
-    new Set(((await win.sync.get()).body?.ledger?.items ?? []).map((i) => i.key)).size,
-    15,
-    "58.F1c the Worker store also ends with the union"
-  );
+  /* F1 retired by the switch (owner ruling 2026-10-14): a mirror push conflict, read and
+     merged through GitHub. The Worker merges server-side, so 34.23 carries the merge. */
 
-  /* F2. A Worker call that never answers times out at SYNC_TIMEOUT_MS, and the
-     GitHub peek and push go ahead. */
+  /* F2. A Worker call that never answers times out at SYNC_TIMEOUT_MS. 58.F2b, a GitHub
+     push after the timeout, is retired by the switch: GitHub takes no write. */
   eq(SR?.SYNC_TIMEOUT_MS ?? "MISSING", 10000, "58.F2a SYNC_TIMEOUT_MS is 10000, exported from sync-rules");
-  await boot({ items: LOCAL58, received: {} }, null, { remoteKey: GH58, syncKey: KEY58 });
-  await settle();
-  const release58 = holdSyncPosts();
-  try {
-    await click(btn(/Mark all received/), "check in, and the POST never answers");
-    await sleep(AUTO58 + 1000);
-    await settle();
-    ok(pushes().length > 0, "58.F2b a GitHub push goes ahead after the Worker times out");
-  } finally {
-    release58();
-  }
 
   /* F4. After a 413, a successful GET must not clear the too-big line. Only a
      successful POST does. */
@@ -5869,90 +5683,9 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     release58b();
   }
 
-  /* F-A. A check-in made while a mirror push is in flight is not lost: a second
-     mirror push follows the release, and it carries the check-in. */
-  await boot({ items: ITEMS.slice(0, 6), received: {} }, null, { remoteKey: GH58, syncKey: KEY58 });
-  await settle();
-  const releaseA = holdRemotePushes();
-  try {
-    await click(allBtns(/^Mark all received$/)[0], "first check-in, the mirror push goes out and is held");
-    await sleep(AUTO58 + 1000);
-    await settle();
-    eq(pushes().length, 1, "58.FA0 one mirror push is in flight, so the check-in during it means something");
-    await click(allBtns(/^Mark all received$/)[0], "a check-in while the push is in flight");
-    releaseA();
-    await sleep(AUTO58 + 1000);
-    await settle();
-    ok(pushes().length >= 2, "58.FA1 a second mirror push follows the release");
-    eq(
-      Object.keys(JSON.parse(pushes().at(-1).text).received ?? {}).length,
-      6,
-      "58.FA2 and it carries the check-in made in flight"
-    );
-  } finally {
-    releaseA();
-  }
-
-  /* F-B. On a mirror conflict the merge POST to the Worker fails (unknown). Mirror
-     mode turns off, and the next push takes the GitHub path. GitHub keeps its
-     own lines: it is never written with fewer than it held. */
-  await boot({ items: LOCAL58, received: {} }, null, {
-    remote: asRemote58(REMOTE58),
-    remoteKey: GH58,
-    syncKey: KEY58,
-  });
-  await settle();
-  await click(btn(/Mark all received/), "check in, so the Worker holds this device's copy");
-  await sleep(POST58);
-  await settle();
-  ok(count58("post") > 0, "58.FB0 the Worker holds this device's copy, so mirror mode is on");
-  setSyncNetFail(true);
-  try {
-    await sleep(AUTO58 + 1000); /* the push meets the stale sha, merges, and the merge POST fails */
-    await settle();
-    const peeks0 = peeks().length;
-    setSyncNetFail(false); /* the Worker answers again; mirror mode stays off until a reply */
-    await sleep(AUTO58 + 1000); /* mirror mode is off, so this push takes the GitHub path */
-    await settle();
-    ok(pushes().length >= 2, "58.FB1a the device reaches a second push, so the line check means something");
-    ok(
-      remote.history.every((h) => JSON.parse(h.text).items.length >= 12),
-      "58.FB1 a failed merge POST never leaves GitHub with fewer than its 12 lines"
-    );
-    ok(peeks().length > peeks0, "58.FB2 with mirror mode off, the next push takes the GitHub path, which peeks");
-  } finally {
-    setSyncNetFail(false);
-  }
-
-  /* G1 (F-B gap). A mirror conflict, then the merge POST fails, and the page hides
-     at once. The GitHub push that follows must carry the merged ledger: 3 local
-     lines and 12 GitHub lines, 15 in all. Never fewer than GitHub held. */
-  await boot({ items: LOCAL58, received: {} }, null, {
-    remote: asRemote58(REMOTE58),
-    remoteKey: GH58,
-    syncKey: KEY58,
-  });
-  await settle();
-  await click(btn(/Mark all received/), "check in, so the Worker holds this device's copy");
-  await sleep(POST58);
-  await settle();
-  setSyncNetFail(true);
-  try {
-    await sleep(AUTO58 + 1000); /* the conflict, then the merge POST fails */
-    await settle();
-    await background(); /* the page hides at once, before any held apply runs */
-    setSyncNetFail(false);
-    await sleep(AUTO58 + 1000);
-    await settle();
-  } finally {
-    setSyncNetFail(false);
-  }
-  const lastG1 = remote.history.at(-1);
-  eq(
-    lastG1 ? JSON.parse(lastG1.text).items.length : 0,
-    15,
-    "58.G1 the GitHub push after a failed merge POST carries the merged ledger, 15 lines"
-  );
+  /* F-A, F-B and G1 retired by the switch (owner ruling 2026-10-14): a mirror push in
+     flight, a mirror conflict, and a failed merge POST that the mirror then retries. The
+     mirror is gone; a POST merges on the server (34.23). */
 
   /* E3. Empty store on cold open. Local holds data, the first GET answers 404
      empty, and the device POSTs its ledger within about 1 s (ledger-v3 starts empty). */
@@ -6109,80 +5842,8 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     eq(saved().savedAt, 300, "58.N6h and that equal reply keeps the local later savedAt");
   }
 
-  /* P1, a port of the reviewer's probe. 6 local lines meet 12 remote ones, so the
-     union is 18. A touch 6 s before the conflict holds the apply, the merge POST
-     fails, nothing hides, and the net comes back. A second check-in then makes
-     the retry reply older than the held merge. GitHub never holds fewer lines
-     than before: the head wrote 18, then 6. */
-  {
-    const touchP1 = () => act(async () => { win.dispatchEvent(new win.Event("pointerdown")); await sleep(0); });
-    const lensP1 = () => remote.history.map((h) => JSON.parse(h.text).items.length);
-    await boot({ items: ITEMS.slice(0, 6), received: {} }, null, { remote: asRemote58(REMOTE58), remoteKey: GH58, syncKey: KEY58 });
-    await settle();
-    await click(btn(/Mark all received/), "check in, so the Worker holds this device's copy");
-    await sleep(POST58);
-    await settle();
-    setSyncNetFail(true);
-    try {
-      await sleep(AUTO58 - POST58 - 5000);
-      await touchP1();
-      await sleep(6000);
-      await settle();
-    } finally {
-      setSyncNetFail(false);
-    }
-    await sleep(15000);
-    await settle();
-    await sleep(1000);
-    await settle();
-    await click(allBtns(/^Mark all received$/)[0], "second change");
-    await sleep(AUTO58 + 1000);
-    await settle();
-    await sleep(AUTO58 + 1000);
-    await settle();
-    const LP1 = lensP1();
-    ok(LP1.length > 0, "58.P1a0 GitHub was written, so the shrink check means something");
-    ok(
-      LP1.every((n, i) => i === 0 || n >= LP1[i - 1]),
-      `58.P1a GitHub never holds fewer lines than before (writes: ${JSON.stringify(LP1)})`
-    );
-    eq(saved().items?.length, 18, "58.P1c the local copy ends with the union, 18 lines");
-    eq((await win.sync.get()).body?.ledger?.items?.length, 18, "58.P1d and the Worker ends with the union, 18 lines");
-  }
-
-  /* P4, a port of the reviewer's probe. 3 local lines meet 12 remote ones, so the
-     union is 15. A touch 6 s before the conflict holds the apply, the merge POST
-     fails, the page hides, and the net comes back. No write to GitHub holds fewer
-     than before: a mutant that gates the merged text on mirror mode wrote 15, then 3. */
-  {
-    const touchP4 = () => act(async () => { win.dispatchEvent(new win.Event("pointerdown")); await sleep(0); });
-    const lensP4 = () => remote.history.map((h) => JSON.parse(h.text).items.length);
-    await boot({ items: LOCAL58, received: {} }, null, { remote: asRemote58(REMOTE58), remoteKey: GH58, syncKey: KEY58 });
-    await settle();
-    await click(btn(/Mark all received/), "check in, so the Worker holds this device's copy");
-    await sleep(POST58);
-    await settle();
-    setSyncNetFail(true);
-    try {
-      await sleep(AUTO58 - POST58 - 5000);
-      await touchP4();
-      await sleep(6000);
-      await settle();
-      await background();
-      await settle();
-    } finally {
-      setSyncNetFail(false);
-    }
-    await sleep(AUTO58 + 1000);
-    await settle();
-    const LP4 = lensP4();
-    ok(LP4.length > 0, "58.P4a0 GitHub was written, so the no-short-write check means something");
-    ok(
-      LP4.every((n, i) => i === 0 || n >= LP4[i - 1]),
-      `58.P4a GitHub never holds fewer lines than before (writes: ${JSON.stringify(LP4)})`
-    );
-    eq(LP4.at(-1), 15, "58.P4b and the last write holds the union, 15 lines");
-  }
+  /* P1 and P4 retired by the switch (owner ruling 2026-10-14): they read the lines the
+     mirror wrote to GitHub. The Worker's no-short-write claim is 56.3b. */
 
   /* P5. Two Worker replies arrive while a recent touch holds the apply: the
      bigger first, then one that lacks its lines. The mirror push that runs while
@@ -6191,7 +5852,7 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   {
     const touchP5 = () => act(async () => { win.dispatchEvent(new win.Event("pointerdown")); await sleep(0); });
     const ledgerP5 = (items) => ({ mailday: 1, items, received: {}, envelopes: [] });
-    await boot({ items: ITEMS.slice(0, 6), received: {} }, null, { remoteKey: GH58, syncKey: KEY58 });
+    await boot({ items: ITEMS.slice(0, 6), received: {} }, null, { syncKey: KEY58 });
     await settle();
     await click(btn(/Mark all received/), "check in, so the mirror push is due");
     await sleep(POST58);
@@ -6203,11 +5864,11 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     eq(saved().items?.length, 6, "58.P5a0 both replies are held by the touch, so the local copy still has 6 lines");
     await sleep(6000);
     await settle();
-    ok(pushes().length > 0, "58.P5a1 a mirror push ran while the replies were held");
+    ok(workerPosts().length > 0, "58.P5a1 a POST ran while the replies were held");
     eq(
-      JSON.parse(pushes().at(-1).text).items.length,
+      saved().items?.length ?? 0,
       18,
-      "58.P5a the push carries the newer reply's lines: 6 local and 12 from the Worker"
+      "58.P5a the device ends with both sides' lines: 6 local and 12 from the newer reply"
     );
   }
 }
@@ -6888,11 +6549,11 @@ const underFloorL1 = () =>
    same card wins" copy went with the Merge button; the rule itself is pinned
    by 49.1 to 49.4 and 50.A1. */
 await boot(PHONE_STATE, null, {
-  remoteAtBoot: LAPTOP_PUSHED,
-  remoteKey: "github_pat_testtoken",
+  syncLedger: LAPTOP_PUSHED,
+  syncKey: "device-61-key",
 });
 await settle();
-await sleep(SAVE_WAIT);
+await sleep(10_500); /* the held apply: IDLE_APPLY_MS is 10 s (sync-rules) */
 ok(/Merged/.test(text()), "61.1 a cold open against a newer remote says what the merge took");
 ok(!GITHUB_STATE_TEXT.test(text()), "61.2 and shows no GitHub copy for the same state");
 ok(!/nothing here is replaced/.test(text()), "61.3 and it no longer says nothing here is replaced");
@@ -8104,17 +7765,14 @@ try {
   ok(false, `68.8 threw: ${e.message}`);
 }
 
-/* 68.9 F1: a Worker copy that cannot be saved, then the device retries with a POST. A GitHub
-   conflict on a mirror push merges, then calls the Worker directly. That call goes: a copy that
-   cannot be saved never holds the send. */
+/* 68.9 F1: a Worker copy that cannot be saved, then the device retries with a POST. A check-in
+   after the failed copy still POSTs to the Worker, and GitHub takes no call (the switch). */
 try {
   await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
     versions: VERS67(),
     failPut: true,
     syncAdapter: true,
     syncKey: KEY68,
-    remoteKey: GH67,
-    remote: VER67_TEXT,
     syncLedger: withField67("received", ["x"]),
   });
   await sleep(SAVE_WAIT);
@@ -8124,19 +7782,13 @@ try {
   await sleep(SAVE_WAIT);
   ok(postCount() > 0, "68.9pre the retry after the failed copy was a POST, not a read: the copy gate is past");
   const posts68b = postCount();
-  const pushes68b = remote.calls.filter((c) => c.op === "push").length;
-  const pulls68b = remote.calls.filter((c) => c.op === "pull").length;
-  await click(btn(/Mark all received/), "check in on the mirror");
-  /* the background event runs auto-push at once. The 3 s save timer also fires in the wait, but
-     its POST is gated off by the lastServer check (growServer set lastServer before the cut).
-     The only POST in that window is the conflict branch's own call to the Worker. */
+  await click(btn(/Mark all received/), "check in with the Worker key");
   await drain();
-  await background();
+  await wakeWorker();
   await drain();
   await sleep(POST_WAIT);
-  ok(remote.calls.filter((c) => c.op === "pull").length > pulls68b, "68.9pre the mirror push met a moved sha, so the conflict path read GitHub");
-  ok(remote.calls.filter((c) => c.op === "push").length > pushes68b, "68.9pre the mirror pushed to GitHub, so the conflict path runs");
-  ok(postCount() > posts68b, "68.9 a GitHub conflict on a mirror push still POSTs to the Worker while the copy is missing");
+  ok(postCount() > posts68b, "68.9 a check-in after a failed copy still POSTs to the Worker");
+  eq(githubOps(), [], "68.9a and GitHub takes no call (the switch)");
 } catch (e) {
   ok(false, `68.9 threw: ${e.message}`);
 }

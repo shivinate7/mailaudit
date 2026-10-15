@@ -467,6 +467,11 @@ const syncFresh = () => ({ key: null, ledger: null, rev: 0, netFail: false, tooB
 export const syncPhotoNames = () => [...sync.photos.keys()];
 /* the ledger the Worker holds now, after any POST merge (what a second device would read) */
 export const syncLedgerNow = () => sync.ledger;
+/* the other device's copy, as the Worker would hold it now: the next resume reads it */
+export const setServerLedger = (ledger) => {
+  sync.ledger = ledger;
+  sync.rev += 1;
+};
 /* photoFail: every photo write fails at the network. photoDelay: ms each photo read waits */
 export const setSyncPhotoFail = (on) => {
   sync.photoFail = !!on;
