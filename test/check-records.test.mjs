@@ -266,6 +266,32 @@ for (const [label, debts, opts, slug] of RED) {
   );
 }
 
+// Claim 8's no-record branch. Its message is pinned, so a red here is that branch
+// and no other. A mutant that cites any span still exits non-zero, but it
+// prints a different message, and only the pinned text catches it.
+const noRecord = (path) => `${path}: "Decision" names no record and does not say "none"`;
+{
+  const plain = runCorpus({
+    "fixture-debt-no-record": debt({ decision: "**Decision:** the owner's word, with no record named." }),
+  });
+  expect(
+    'red: a Decision line naming no record and not "none" exits non-zero with the branch message',
+    plain.status !== 0 && plain.out.includes(noRecord("debts/fixture-debt-no-record.md")),
+    `exit ${plain.status}: ${tail(plain.out)}`
+  );
+
+  const spansOnly = runCorpus({
+    "fixture-debt-spans-only": debt({
+      decision: "**Decision:** the owner's word, `# note`, `/* not a slug` and `// nor this`.",
+    }),
+  });
+  expect(
+    'red: a Decision line whose spans are not slugs, beside a lone quote, exits non-zero with the branch message',
+    spansOnly.status !== 0 && spansOnly.out.includes(noRecord("debts/fixture-debt-spans-only.md")),
+    `exit ${spansOnly.status}: ${tail(spansOnly.out)}`
+  );
+}
+
 // Green cases. A valid shape must pass, including the forms the checker must
 // not mistake for a defect.
 {
