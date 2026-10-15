@@ -465,6 +465,8 @@ win.remote = remoteApi;
 const syncFresh = () => ({ key: null, ledger: null, rev: 0, netFail: false, tooBig: false, badShape: false, badShapes: 0, refused: false, calls: [], onRev: null, photos: new Map() });
 /* the photo names the Worker holds (worker/core.mjs, /photos): what a test asserts on */
 export const syncPhotoNames = () => [...sync.photos.keys()];
+/* the ledger the Worker holds now, after any POST merge (what a second device would read) */
+export const syncLedgerNow = () => sync.ledger;
 /* photoFail: every photo write fails at the network. photoDelay: ms each photo read waits */
 export const setSyncPhotoFail = (on) => {
   sync.photoFail = !!on;
