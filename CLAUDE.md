@@ -155,14 +155,14 @@ A milestone is taken before the risky step, never after. Read these before chang
 - `every-restore-passes-applybackup` — Every restore passes through applyBackup.
 - `recent-checks-can-be-undone` — Recent actions can be undone by tap.
 
-## The public seed
+## The public seed, removed
 
-The site is public and the ledger repo is not. The seed closes that gap, and one check says what it publishes.
+The site is public and the ledger repo is not. The page publishes no ledger data, and one check refuses it.
 
-- `the-public-seed` — A public seed hydrates a visitor's empty ledger.
-- `seed-load-guards` — The seed never overwrites a keyed device.
-- `check-seed-backstop-not-proof` — Check the built seed by decoding it, not by reading the code.
-- `ledger-remote-needed-for-seed` — A build needs the data remote to seed the page.
+- `the-public-seed` — The public seed is removed.
+- `seed-load-guards` — The seed load guards are retired.
+- `check-seed-backstop-not-proof` — Check the built page, not the code that builds it.
+- `ledger-remote-needed-for-seed` — The ledger remote is not needed for a build.
 
 ## The three views
 
@@ -283,7 +283,7 @@ Where the page holds its shape, and where every colour comes from.
 
 What each check asks, and the two traps in the icon pipeline.
 
-- `check-build-ignores-seed` — The build check compares code, and ignores the seed.
+- `check-build-ignores-seed` — The build check compares the whole page.
 - `ci-filters-guarantee-no-rebuild` — CI filters replace the old no-workflows guarantee.
 - `ci-skips-draft-prs` — CI skips draft pull requests after a proof.
 - `watchdog-catches-silent-failure` — A scheduled watchdog checks the backup, not the phone.
@@ -430,7 +430,7 @@ npm install
 npm run build          # -> index.html
 npm test               # the behaviour suite
 npm run check:build    # is the committed index.html this repo's code?
-npm run check:seed     # what does the seed in that page publish?
+npm run check:seed     # does the built page carry any ledger data?
 npm run check:docs     # do this file's numbers and paths hold?
 npm run check:records  # does the record corpus hold together?
 npm run deploy         # build, test, then open a pull request

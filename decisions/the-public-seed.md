@@ -1,32 +1,24 @@
-# A public seed hydrates a visitor's empty ledger
+# The public seed is removed
 
-The site and the ledger repository are different artifacts. The site is public, and the ledger is not. Pages serves the `main` root and has never served the `data` branch.
+Kind: build
 
-**Holds while:** `SEED_KEEP` in `build.mjs` names `items`, `received`, `stamps`, `dateFilter`, `sortBy` and `itemSort`, and not `envelopes`.
+Plan: decisions/the-public-seed.md#the-removal (web)
 
-Sharing the URL alone gives a visitor the app with nothing in it. Their browser's localStorage is their own and empty. The fetch for the ledger 404s. Measured on the live site with storage cleared, the whole page was the masthead and "Drop your OrderWand CSV here".
+**Status:** retired 2026-10-14, built in `82e45d4`. The owner ruled that the public seed goes. That carries out the 2026-10-11 ruling in `worker-keeps-snapshots`.
 
-The seed closes that gap without reopening the repo. A snapshot is baked into `index.html` at build time. A visitor gets the app and the data in one public file. The visitor hydrates into their own storage and can do as they like with it. They still cannot push. Pushing needs a token they do not have. That was always true, and it was never the gap.
+The site is public and the ledger repo is not. Pages serves the `main` root and has never served the `data` branch. The Pages site is world-readable, and git keeps every version. A visitor with empty storage gets the empty state: the masthead and "Drop your OrderWand CSV here". Tests 38d.0 and 38d.4 pin it.
 
-## What the seed publishes
+Git history still holds the seed. `git log -S'<script id="seed"' --oneline -- index.html` finds `10f9499` and `82e45d4`, and the commits between them carry the tag. Removing it from history needs the owner's word.
 
-Exactly `SEED_KEEP` is published. That is `items`, `received`, `stamps`, and the three view preferences. It is order ids, seller names, card names, prices and dates. That data is the point of sharing the ledger.
+**Holds while:** `build.mjs` writes no `<script id="seed">` tag, and `src/` loads no seed. Test 38d.5 pins the committed page.
 
-These are withheld:
+## The removal
 
-- **`envelopes` entirely.** Envelopes hold hand-typed notes. The project file says that tracking numbers and sender names are written there.
-- **Stamp `note` text.** The kind and date stay, so the status band still reads.
-
-Photos never went near the ledger.
-
-Widen `SEED_KEEP` only on purpose. The Pages site is world-readable, and git is permanent.
-
-## How the build bakes it in
-
-The seed comes from `git show ledger/data:ledger.json`, reduced to `SEED_KEEP`. That read needs the `ledger` remote, as `ledger-remote-needed-for-seed` describes. The build gzips the result and base64 encodes it. It writes the result into a `<script id="seed">` tag in `index.html`.
+The web build writes no seed. `src/app.jsx` and `src/entry.jsx` carry no seed load or inflate. `npm run deploy` does not fetch the `ledger` remote. `check:build` compares the whole page.
 
 ## See also
 
-- `check-seed-backstop-not-proof` — the check that verifies what this seed actually publishes
-- `seed-load-guards` — the guards that keep this seed off a keyed device
-- `ledger-remote-needed-for-seed` — the remote a build needs to bake this seed in
+- `worker-keeps-snapshots` — the 2026-10-11 ruling this carries out
+- `check-seed-backstop-not-proof` — the check that still refuses ledger data in the page
+- `seed-load-guards` — the guards for the removed load, retired
+- `ledger-remote-needed-for-seed` — the remote the removed build step read, retired
