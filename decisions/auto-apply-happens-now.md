@@ -1,8 +1,12 @@
 # Auto-apply happens now, and why that changed
 
+Kind: process
+
+Home: decisions/sync-revamp-cloudflare.md
+
 **Status:** open. The design is settled, but it is a risk accepted on purpose and worth re-checking as the app changes.
 
-**Holds while:** `RESUME_RESET_MS` is 60 seconds and `AUTO_PUSH_MS` is 90 seconds in `src/app.jsx`. A change to either value calls for a fresh look at this record. The record names no closing fact, only a re-check trigger.
+**Holds while:** `RESUME_RESET_MS` is 60 seconds in `src/app.jsx`. The 90-second push debounce, which the old AUTO_PUSH_MS constant set, left with the GitHub mirror. A change to `RESUME_RESET_MS` calls for a fresh look at this record. The record names no closing fact, only a re-check trigger.
 
 The app applies a remote change on its own. The real constraint is not that applying is unsafe. The constraint is that the app must not change the list while a check-in is in progress. Merging forty new CSV lines into the package list under a thumb would cause the cascading mis-tap that `no-layout-shift-under-pointer` prevents. `RESUME_RESET_MS` is the threshold that separates a real absence from a short glance away. It is the same threshold that resets the Showing filter on resume, so the merge reuses that signal.
 

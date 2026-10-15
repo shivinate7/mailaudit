@@ -1,7 +1,7 @@
-# Web photos reach no backup until the Worker carries them
+# Web photos reach no backup until the GitHub copy runs
 
-The web ledger syncs through the Worker alone, as ruled in `sync-revamp-cloudflare`. Photos do not. The GitHub photo methods on `window.remote` are defined, but no caller reaches them. So a new label photo stays on the device that took it, and no backup holds it. `window.sync` has no photo methods. Slice S2 adds list, put and get against the Worker `/photos` route. Slice S3 removes the dead GitHub write paths from the adapter.
+Web photos now go to the Worker's `/photos` route. The 8 photos on the GitHub photo branch are not on the Worker until the one-time copy runs. `scripts/copy-photos-to-worker.mjs` makes that copy, and it is a dry run by default. Slice S3, the adapter clean-up, is not done. The GitHub photo methods on `window.remote` stay defined in `src/entry.jsx`.
 
-**Status:** open. The ledger switch is built. Photos (S2) and the adapter clean-up (S3) are not.
+**Status:** open. Slice S2 is built in the switch lane. The copy has not run, and the orchestrator runs it. S3 is not done.
 
 **Decision:** `sync-revamp-cloudflare`.

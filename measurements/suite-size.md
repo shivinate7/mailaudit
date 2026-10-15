@@ -1,8 +1,8 @@
 # Test suite assertion count and run time
 
-**Status:** measured on `web/carry-savedat` at `c722dd9`, checked 2026-10-14. The suite is green there. New York (the pinned zone): 1334 passed, 0 failed, exit 0, 129.8 s. UTC: 1333 passed, 0 failed, exit 0, 128.3 s.
+**Status:** red at `8268a67`, the head of `web/sync-switch`, measured 2026-10-15. New York (the pinned zone): 1336 passed, 3 failed, exit 1, 157.3 s. UTC: 1335 passed, 3 failed, exit 1, 153.9 s. The failures are 26.13c, 73.2b and 73.2c. The last green run was at `c722dd9` on 2026-10-14, recorded below.
 
-This record holds the assertion count and the run time for `npm test`. The suite runs 1334 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+This record holds the assertion count and the run time for `npm test`. The suite runs 1339 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
 The count depends on the clock's zone, so the zone is pinned to `America/New_York`. In CI, the test step sets `TZ`, and it names one New York run's output in `CHECK_DOCS_SUITE_LOG`. `check:docs` grades the figure in this sentence. Locally, `npm run check:docs` runs the suite itself and waits for it to end.
 
@@ -15,6 +15,12 @@ The harness bundles `app.jsx` with esbuild. It sets `platform: "node"` and `form
 Run `npm test` and read its summary line. The count is passed plus failed. A green run prints `all green`. Time the run with the shell's own timer, or with `verdict`, which prints the elapsed seconds.
 
 At `f956873`, the New York process printed its summary and `all green`, then stayed alive with no CPU use for 13 minutes. It was killed by hand. The UTC and machine-zone processes were stopped by hand just after their summaries. Their exit codes and the cause are debt `suite-hang-cause-unmeasured`.
+
+Measured 2026-10-15 at `8268a67`, the head of `web/sync-switch`, which is red:
+
+- New York (`TZ=America/New_York`): 1336 passed, 3 failed, exit 1. 157.3 s.
+- UTC (`TZ=UTC`): 1335 passed, 3 failed, exit 1. 153.9 s.
+- The failures are 26.13c, 73.2b and 73.2c. The photo and restore cases are in groups 26 and 73.
 
 Measured on 2026-10-14 at `e641956`, the merge of `web/tally-shift`, `web/merge-unknown-keys` and `web/weak-tests-68`. The count was 1312 at `b28e282`. It rose by 6 because groups 68 and 69 changed in `web/weak-tests-68`. Tests 68.9 and 68.10a were rewritten, and 69.3 was added. The 1-minute load was about 8 to 10 during the runs. The times may be inflated:
 

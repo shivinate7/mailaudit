@@ -8,11 +8,11 @@ Plan: decisions/sync-revamp-cloudflare.md#worker-work-ahead (worker)
 
 Plan: decisions/sync-revamp-cloudflare.md#worker-work-ahead (native)
 
-**Status:** ruled 2026-10-10. Owner ruling 2026-10-14 21:12 CDT: build the switch. Web syncs through Cloudflare only. The GitHub mirror stops being a live second copy, and the Worker's daily snapshots become the backup. The switch is built in the `web/sync-switch` lane. Debt: `web-photos-have-no-backup`. The server runs at `manifestnumberone.shivamsemwal01.workers.dev`. A device sends its ledger there once it has its key.
+**Status:** ruled 2026-10-10. Owner ruling 2026-10-14 21:12 CDT: build the switch. Web syncs through Cloudflare only. The GitHub mirror stops being a live second copy, and the Worker's daily snapshots become the backup. Owner ruling 2026-10-14 21:55 CDT: photos move to the Worker, and the 8 photos on the GitHub photo branch are copied there once. The switch and the photo move are built in the `web/sync-switch` lane and not yet merged. The copy has not run. Debt: `web-photos-have-no-backup`. The server runs at `manifestnumberone.shivamsemwal01.workers.dev`. A device sends its ledger there once it has its key.
 
 GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Deliberately a manual backup, not continuous sync." Auto-push and merge grew on top of it later, and no one chose a sync base again. A fresh choice, made on 2026-10-10, picked Cloudflare.
 
-**Holds while:** `src/entry.jsx` still defines the GitHub photo methods on `window.remote`, and no caller reaches them. The record closes when the Cloudflare base carries the photos, and this file is rewritten as current text.
+**Holds while:** `src/entry.jsx` still defines the GitHub photo adapter on `window.remote` (`PHOTOS`, `photoTarget` and the rest), and `src/app.jsx` still reads its `photoTarget` for the photo line. History still reads the frozen `data` branch through `window.remote.listVersions` and `getVersion`. The record closes when the GitHub adapter leaves the web build, the photo copy has run, and this file is rewritten as current text.
 
 ## Outcomes the revamp must give
 
@@ -26,11 +26,11 @@ GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Del
 ## The design
 
 - **Sync base:** one Cloudflare Durable Object holds the ledger in SQLite. It holds the photos too, one row per photo id. The free plan gives 5 GB. On 2026-10-11 the photo repo held 8 photos in 5.3 MB, near 660 KB each, so 5 GB holds about 7,500 of them. R2 is not used: it must be turned on in the dashboard by accepting terms, and the Durable Object already has the room. Devices connect over a WebSocket and resync on resume. The free tier covers this app many times over. Durable Object point-in-time recovery gives 30 days of history. The photo route is a Worker route that serves both the web app and the native client, see Worker work ahead.
-- **Rejected:** hardened GitHub (no live updates, and it rests on a conflict reply that has never run, see `the-conflict-guard-is-unverified`); a server on HA Green (no backups, and a full disk stops the house DNS); Supabase (pauses after a week idle, no free backups); Firebase (photos and jobs need billing); Yjs or Automerge (a large rewrite for flat keyed data); hosted local-first services (shutting down or too young).
+- **Rejected:** hardened GitHub (no live updates, and it rests on a GitHub conflict reply that never ran live); a server on HA Green (no backups, and a full disk stops the house DNS); Supabase (pauses after a week idle, no free backups); Firebase (photos and jobs need billing); Yjs or Automerge (a large rewrite for flat keyed data); hosted local-first services (shutting down or too young).
 - **The site stays on GitHub Pages.** The Worker answers the Pages origin across CORS. So no device moves to a new origin, and no device loses its stored ledger.
 - **Sign-in:** one key per device. A Cloudflare Access email code is the backup way in. The key stays a credential, see `the-token-is-a-credential`.
 - **Key delivery:** the keys live in the Mac's Keychain. A script opens the app on the Mac with its key in the URL fragment, which no server receives. The app stores the key and clears the fragment. For the iPhone, the Mac shows the same link as a QR code. No key is printed.
-- **GitHub leaves the sync role.** The owner ruled on 2026-10-11: "Cloudflare does it all". The Worker keeps daily snapshots for History and backup, and the watchdog checks the Worker. The public seed goes away, as the owner ruled on 2026-10-11. Web no longer writes the ledger to GitHub: the mirror, auto-push and the GitHub peek and merge left the build. The `data` branch is frozen, and History still reads it. The Worker needs no GitHub token, and native never holds one. See `worker-keeps-snapshots`.
+- **GitHub leaves the sync role.** The owner ruled on 2026-10-11: "Cloudflare does it all". The Worker keeps daily snapshots for History and backup. The owner ruled on 2026-10-14 that the backup watchdog in the private repo is turned off, and the orchestrator does that. No alarm then watches the backup, see `backup-unwatched`. The public seed goes away, as the owner ruled on 2026-10-11. Web no longer writes the ledger to GitHub: the mirror, auto-push and the GitHub peek and merge left the build. The `data` branch is frozen, and History still reads it. The Worker needs no GitHub token, and native never holds one. See `worker-keeps-snapshots`.
 - **Live updates wait for a pause.** A change from the other device applies when this device has had no input for 10 seconds. No line says an update is waiting; the merge notice after the apply names what changed. A waiting line would have cost 40px of empty space at rest. This keeps `no-layout-shift-under-pointer`. One exception: the cold reply to a saved key applies at once, because the owner just tapped Save. The next reply waits again.
 - **Un-checks and deletes:** each check-in key carries the time of its last change in a new saved key, and the later change wins. A discarded or assigned envelope stays as a tombstone with a deletion time, and every reader skips it. A ledger without these fields merges by today's rules, so an older build stays safe. The new key follows the six sites in `saved-state-shape`.
 - **Orders:** a nightly job on HA Green replaces the OrderWand export. The owner chose HA Green over the MacBook. On 2026-10-11 the owner said of the job: `we're gonna figure out how to just pull the tcgplayer orders list after we understood how orderwand did it`. The native client has no CSV import. Orders reach it through the Worker, see `csv-import-stays-web`. The job reads `store.tcgplayer.com/myaccount/orderhistory` with the owner's login cookie, as OrderWand 4.4.0 does. It GETs a form token, POSTs a date range, then reads each page. It sends the orders to the Worker. The Worker runs the same parser filters and the same merge, so `parser-filters` and `imports-merge-never-replace` still hold.
@@ -70,7 +70,7 @@ The orchestrator made these under the owner's grant to run the stages, on 2026-1
 
 ## Web plan
 
-The ledger switch is built. Photos are the one web path left, and they reach no backup. The GitHub photo methods on `window.remote` stay defined in `src/entry.jsx`, and no caller reaches them. The record closes when the Worker `/photos` route carries the photos. Then the GitHub adapter leaves the web build. Debt: `web-photos-have-no-backup`. The switch itself is in Stage 4b rulings.
+Slice S1 built the ledger switch. Slice S2 moves photos in the same lane: `window.sync` has `photoList`, `photoGet` and `photoPut` against the Worker `/photos` route. A held reply downloads the photos it names before it applies, and a photo push follows a ledger POST. `scripts/copy-photos-to-worker.mjs` copies the GitHub photo branch once, and it is a dry run by default. The copy has not run. Slice S3 removes the GitHub adapter's photo and write paths. Until then the adapter stays defined on `window.remote` in `src/entry.jsx`. Debt: `web-photos-have-no-backup`. The switch itself is in Stage 4b rulings.
 
 ## Worker work ahead
 
@@ -83,15 +83,16 @@ The native build needs these changes to the Worker. On main the Worker serves `/
 
 ## Still open
 
-- Web photos move to the Worker `/photos` route, and the GitHub adapter leaves the build. Debt: `web-photos-have-no-backup`.
+- Web photos: the one-time copy of the 8 GitHub photos has not run, and the GitHub adapter's photo and write paths (slice S3) are not removed. Debt: `web-photos-have-no-backup`.
+- A restore stamps new change times. The switch lane builds it (`restampRestore`, called from `applyBackup`). The owner ruled that this History-restore fix lands before the switch merges.
+- No alarm watches the Worker backup, since the owner turned the watchdog off. Debt: `backup-unwatched`.
 - Whether a Cloudflare Access login survives in an iOS home-screen app. This is untested. Debt: `cloudflare-access-login-untested`.
-- A restore keeps the old receivedAt today, so a later server reply can undo it. Debt: `restore-stamps-new-change-times`.
 - Live updates use a WebSocket. A new rev from the other device starts one GET, and the reply waits for the idle gate.
 - A 413 from the Worker sets the advisory state, as an unknown answer does. The advisory line names the size problem.
 
 ## See also
 
-- `sync-runs-itself` — the GitHub sync this replaces.
+- `sync-runs-itself` — the retired GitHub sync rule. Its no-toggle rule still stands.
 - `ledger-private-source-public` — the private ledger repo the move retires.
 - `orderwand-csv` — the CSV the nightly job replaces.
 - `ruled-head-one-advisory-entrance` — the one line that names a failed server.

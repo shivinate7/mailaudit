@@ -68,7 +68,7 @@ Photo sync has had its read paths verified live and without a key. The raw media
 
 **The ledger repo's own private path is now verified live too.** This is the first real-GitHub confirmation of anything on the read side since the repo was closed. From the deployed Pages origin with no key, `pull()`, `listVersions()`, and `peek()` all return `no-access`. `peek()` answers `{known: false}`, not "nobody is ahead". That reading matters. Otherwise a keyless device could push straight over the one that can see. Measured at the same time, the site still serves **200** to an anonymous request. But `raw.githubusercontent.com/.../data/ledger.json` and the repo API both **404**. That is the whole point of the private/Pro arrangement, and it is now confirmed rather than assumed. So `peek()` comes off the unverified list.
 
-**Still never run against real GitHub:** a photo PUT and a photo pull (debt `photo-put-unrun-on-github`), and a ledger conflict (debt `the-conflict-guard-is-unverified`).
+**Still never run against real GitHub:** a photo PUT and a photo pull (debt `photo-put-unrun-on-github`), and a ledger conflict. The conflict now runs on the Worker, and no live run of it is recorded (debt `worker-two-device-proof-unrun`).
 
 That same session is what surfaced the group-28 bug: Pull was unreachable on an empty ledger. Worth remembering as a method: the suite was all green. The feature was still broken in its single most important scenario, because every test booted a ledger that already had data in it.
 
@@ -82,7 +82,7 @@ Owner ruling, 2026-10-12: a probe deploy of the Worker is granted, under its own
 
 - **W2a photo route, probe-w2a.** Ran on the probe Worker on 2026-10-12 and passed. The photos table is created through the Durable Object's SQLite API. A POST then a GET return the same bytes, with the type from the name. A second POST keeps the first bytes. A photo over 1.9 MB gets 413.
 - **W3a daily snapshots and /health, probe-w3a.** Ran on the probe Worker on 2026-10-12 and passed. The snapshots table is created. The first changing write of a UTC day stores one snapshot, and a later one stores none. GET /health with no key returns only the last write time. The list and get snapshot routes answer with a device key.
-- **W2b, W3b, W3c, W3d and W3e.** No probe is named. Each waits for its brief. The open work is in debt `restore-stamps-new-change-times` (W2b, W3b).
+- **W2b, W3b, W3c, W3d and W3e.** No probe is named. Each waits for its brief. The restore stamp that W2b and W3b waited on is built in the switch lane (`restampRestore`).
 
 The owner then granted the live deploy ("Deploy live"). See "Worker probe results" and "Live deploy" below.
 
