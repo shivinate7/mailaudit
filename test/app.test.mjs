@@ -8187,5 +8187,185 @@ try {
   ok(false, `71.4 threw: ${e.message}`);
 }
 
+/* ── 72. a restore stamps new change times, so a later Worker reply cannot undo it ──
+   Debt restore-stamps-new-change-times; decision a-restore-is-not-local. A restore keeps the
+   old change times today, so a Worker reply that carries an older server copy can undo the
+   restore. Red at the lane head, for each of the four kinds (check-in, uncheck, stamp,
+   envelope), on both restore paths (History and a file drop), and on both reply routes (the
+   POST merge and a rev-gated GET).
+
+   The times are ordered: the version's are 5, the device's are 20, the server's are 30, and
+   the restore moment is the virtual clock, far later. A restore that stamps new change times
+   wins against 30; one that keeps the old times loses to it. The server copy is set after the
+   restore, so it is the older copy that predates the restore. */
+installClock();
+const K72 = ITEMS[0].key;
+const GK72 = GK_A;
+const ENV72 = { id: "env-72", createdAt: 20, updatedAt: 20, note: "", entries: [{ name: "Ponder", qty: 1 }], photos: [] };
+const LEDGER72 = (fields) => ({
+  mailday: 1,
+  items: ITEMS.slice(0, 3),
+  received: {},
+  envelopes: [],
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+  ...fields,
+});
+const CASES72 = {
+  checkin: {
+    cur: { received: { [K72]: 1 }, receivedAt: { [K72]: 20 } },
+    version: { received: {}, receivedAt: {} },
+    server: { received: { [K72]: 1 }, receivedAt: { [K72]: 30 } },
+    restored: (x) => x.received?.[K72] === undefined,
+    undone: (x) => x.received?.[K72] === 1,
+  },
+  uncheck: {
+    cur: { received: {}, receivedAt: { [K72]: 20 } },
+    version: { received: { [K72]: 1 }, receivedAt: { [K72]: 5 } },
+    server: { received: {}, receivedAt: { [K72]: 30 } },
+    restored: (x) => x.received?.[K72] === 1,
+    undone: (x) => x.received?.[K72] === undefined,
+  },
+  stamp: {
+    cur: { stamps: { [GK72]: S("claim", 20) } },
+    version: { stamps: {} },
+    server: { stamps: { [GK72]: S("claim", 30) } },
+    restored: (x) => !x.stamps?.[GK72]?.kind,
+    undone: (x) => x.stamps?.[GK72]?.kind === "claim",
+  },
+  envelope: {
+    cur: { envelopes: [ENV72] },
+    version: { envelopes: [] },
+    server: { envelopes: [{ ...ENV72, updatedAt: 30 }] },
+    restored: (x) => (x.envelopes ?? []).filter((e) => !e.deletedAt).length === 0,
+    undone: (x) => (x.envelopes ?? []).some((e) => !e.deletedAt),
+  },
+};
+const KEY72 = "device-72-key";
+const SRV72 = (fields) => LEDGER72({ ...fields, items: ITEMS.slice(0, 4) });
+
+for (const [kind, c] of Object.entries(CASES72)) {
+  for (const path of ["history", "file"]) {
+    for (const reply of ["post", "rev"]) {
+      const tag = `72.${kind}.${path}.${reply}`;
+      try {
+        /* the device, with no server copy yet: its cold GET must not apply anything here */
+        await boot(LEDGER72(c.cur), null, { syncKey: KEY72 });
+        await settle();
+        if (path === "history") {
+          /* the frozen branch holds the version (a fixture, not a device write) */
+          remote.history.push({
+            sha: `sha-72-${kind}`,
+            at: Date.parse("2026-08-12T14:03:00Z"),
+            message: `ledger 72 ${kind} version`,
+            text: JSON.stringify(LEDGER72(c.version)),
+          });
+          await openHistory();
+          await click(btn(/Load older versions/), "ask for the branch's versions");
+          await settle();
+          await click(
+            buttons().find((b) => b.textContent.includes(`ledger 72 ${kind} version`)),
+            "expand the version"
+          );
+          await click(btn(/Restore this version/), "arm restore");
+          if (btn(/Tap again to replace/)) await click(btn(/Tap again to replace/), "confirm restore");
+        } else {
+          await reachFor(/Re-import CSV/);
+          if (cell(/^Re-import CSV/)?.getAttribute("aria-expanded") !== "true")
+            await click(btn(/Re-import CSV/), "open the upload zone");
+          await dropFile("backup.json", JSON.stringify(LEDGER72(c.version)));
+          if (btn(/Tap again to replace/)) await click(btn(/Tap again to replace/), "confirm restore");
+        }
+        await settle();
+        await sleep(SAVE_WAIT);
+        ok(c.restored(saved()), `${tag}.pre the restore put the version's ${kind} on the device`);
+        /* a restore leaves its notice open, and an open notice holds the apply (mergeBlocked,
+           importMsg). Dismiss it, as the person would, so the reply can land at all. */
+        for (let i = 0; i < 3; i++) {
+          const d = document.querySelector('button[aria-label="Dismiss"]');
+          if (!d) break;
+          await click(d, "dismiss the restore notice");
+        }
+        /* the other device's copy, which predates the restore moment. It holds one line
+           more than the version, so the apply is visible, and the resume applies it at once
+           (34.23, 40.4). A POST reply is held for the idle gate, so the resume forces it. */
+        if (reply === "post") {
+          setServerLedger(SRV72(c.server));
+          await wakeWorker();
+          await drain();
+        } else {
+          await fireSyncRev(syncRev() + 1, SRV72(c.server));
+        }
+        await backgroundFor(5 * 60_000);
+        await drain();
+        await sleep(SAVE_WAIT);
+        ok(saved().items?.length === 4, `${tag}.applied the reply applied its extra line, so the check below means something`);
+        eq(c.undone(saved()), false, `${tag} the Worker reply does not undo the restored ${kind}`);
+      } catch (e) {
+        ok(false, `${tag} threw: ${e.message}`);
+      }
+    }
+  }
+}
+
+/* ── 73. photos go to the Worker, and no photo call reaches GitHub ──
+   The switch (owner ruling 2026-10-14 21:55 CDT: photos move to the Worker's /photos route,
+   decision sync-revamp-cloudflare). Red at the lane head: the app still sends photos through
+   GitHub's photo calls and has no Worker photo client. The Worker mock is the contract
+   (photoList, photoGet, photoPut in test/harness.mjs). */
+const PHOTO_WAIT73 = 1500; /* the photo phase follows the ledger POST by one second */
+const KEY73 = "device-73-key";
+const GH73 = "github_pat_testtoken";
+
+/* 73.1 a new photo reaches the Worker after the ledger POST */
+await boot(withPhoto(["pho-n"]), [["pho-n", jpegOf(4)]], { syncKey: KEY73 });
+await wakeWorker();
+await sleep(PHOTO_WAIT73);
+ok(workerPosts().length > 0, "73.1pre the ledger POST went out first");
+eq(syncPhotoNames(), ["pho-n.jpg"], "73.1 a new photo reaches the Worker after the POST");
+
+/* 73.2 the other device fetches a photo before a reply applies. The photo download is
+   held (setSyncPhotoDelay), so the reply that names it must wait for the download. */
+const SERVER73 = {
+  mailday: 1,
+  ...withPhoto(["pho-o"]),
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+};
+await boot({ items: ITEMS, received: {} }, null, { syncKey: KEY73 });
+await settle();
+setServerLedger(SERVER73);
+setSyncPhotoDelay(5000);
+try {
+  await backgroundFor(5 * 60_000);
+  await sleep(1000);
+  ok(
+    !(saved().envelopes ?? []).some((e) => (e.photos ?? []).includes("pho-o")),
+    "73.2a the reply has not applied while the photo is still in flight"
+  );
+  await sleep(6000);
+  ok(photoKeys().includes("pho-o"), "73.2b the photo is fetched from the Worker before the apply");
+  eq(
+    saved().envelopes?.[0]?.photos ?? null,
+    ["pho-o"],
+    "73.2c and the reply then applies with its id kept"
+  );
+} finally {
+  setSyncPhotoDelay(0);
+}
+
+/* 73.3 no photo call reaches GitHub, with a Worker key and a GitHub key both present */
+await boot(withPhoto(["pho-n"]), [["pho-n", jpegOf(4)]], { syncKey: KEY73, remoteKey: GH73 });
+await wakeWorker();
+await sleep(PHOTO_WAIT73);
+ok(workerPosts().length > 0, "73.3pre the ledger POST went out");
+eq(
+  githubOps().filter((op) => /Photo/.test(op)),
+  [],
+  "73.3 no photo call reaches GitHub (pushPhoto, listPhotos, pullPhoto)"
+);
+
 uninstallClock();
 report();
