@@ -138,6 +138,55 @@ expect(
   !spanSkipped.out.includes("missing-b.md")
 );
 
+// Debts. check-docs.mjs reads debts/ as well as the records. A corpus with no
+// debts/ folder reads as empty, and a debt names its paths like a record, so a
+// missing one fails at the debt's own line.
+{
+  const none = runCorpus({ "decisions/none.md": "# None\n\nNo code names are cited here.\n" });
+  expect(
+    "debts: a corpus with no debts/ folder exits 0 and finishes its normal run",
+    none.status === 0 && /the corpus's numbers and paths check out/.test(none.out)
+  );
+
+  const present = runCorpus({
+    "src/present.mjs": "export const ok = 1;\n",
+    "debts/fixture-debt-present-path.md": [
+      "# Fixture debt names a path that exists",
+      "",
+      "The gap cites `src/present.mjs`, which is in the repo.",
+      "",
+      "**Status:** open.",
+      "",
+      "**Decision:** none",
+      "",
+    ].join("\n"),
+  });
+  expect(
+    "debts: a debt naming an existing path exits 0 and finishes its normal run",
+    present.status === 0 && /the corpus's numbers and paths check out/.test(present.out)
+  );
+
+  const missing = runCorpus({
+    "debts/fixture-debt-missing-path.md": [
+      "# Fixture debt names a path that is gone",
+      "",
+      "The gap cites `src/missing-file.mjs`, which is not in the repo.",
+      "",
+      "**Status:** open.",
+      "",
+      "**Decision:** none",
+      "",
+    ].join("\n"),
+  });
+  expect(
+    "debts: a debt naming a missing path fails at the debt's own line",
+    missing.status !== 0 &&
+      missing.out.includes(
+        "debts/fixture-debt-missing-path.md:3 names `src/missing-file.mjs`, which does not exist in this repo"
+      )
+  );
+}
+
 if (failures) {
   console.log(`check-docs stripper: ${failures} failure(s)`);
   process.exit(1);

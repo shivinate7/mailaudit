@@ -383,8 +383,6 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `token-export-and-view-unpinned` — Nothing pins the device key in the backup export or view state.
 - `reimport-received-unpinned` — Nothing pins that received survives a re-import.
 - `native-dialog-ban-unpinned` — Nothing pins the ban on native dialogs.
-- `ci-misses-check-records-test` — CI never runs the claim 8 test.
-- `check-records-no-record-branch` — The claim 8 branch for a Decision with no record has no test.
 - `ruled-head-heights-unremeasured` — The ruled head heights have not been re-measured.
 - `photo-put-unrun-on-github` — Photo PUT and photo pull have never run on GitHub.
 - `peek-is-verified-only-on-refusal` — The successful peek path is unverified on GitHub.
