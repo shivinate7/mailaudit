@@ -1118,10 +1118,19 @@ export async function boot(state, photos, opts = {}) {
      leaks straight into 31 */
   remotePhotos = new Map(opts.remotePhotos || []);
   photosUnknown = opts.photosUnknown || null;
-  /* the snapshot build.mjs bakes into index.html. Mocked as plain text: the
-     gzip+base64 packing is the platform layer's business, exactly as it is for
-     the version store, and jsdom has no DecompressionStream. */
-  if (opts.seed) win.seed = { async load() { return opts.seed; } };
+  /* a seed planted for 38d, which proves the app never reads one. The build step
+     that baked a snapshot into index.html is gone (ruling 2026-10-14). Mocked as
+     plain text: the packing is the platform layer's business, and jsdom has no
+     DecompressionStream. */
+  /* `loads` counts reads: a page that reads the seed at load bumps it. */
+  if (opts.seed)
+    win.seed = {
+      loads: 0,
+      async load() {
+        this.loads++;
+        return opts.seed;
+      },
+    };
   else if (opts.noSeed === false) delete win.seed;
   else delete win.seed;
   versionStore = new Map(opts.versions || []);
