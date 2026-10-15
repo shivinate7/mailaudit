@@ -4,9 +4,9 @@
 
 `window.sync` is transport too. It posts the ledger object to the Worker. Since slice S2 it has `photoList`, `photoGet` and `photoPut` against `/photos`, and each photo call takes a file name.
 
-**Status:** not met at 8268a67. `src/app.jsx` imports `photoName` and `photoIdFromName` from `src/photo-rules.mjs`, and it passes `photoName(id, type)` to `window.sync.photoPut`. So the app learns filenames. Open question for the owner: keep this rule and move the naming into `src/entry.jsx`, or amend the rule. The record stays as ruled until then.
+**Status:** not met at 49b6911. `src/app.jsx` imports `photoName` and `photoIdFromName` from `src/photo-rules.mjs` (line 10), and it passes `photoName(id, type)` to `window.sync.photoPut`. So the app learns filenames. Open question for the owner: keep this rule and move the naming into `src/entry.jsx`, or amend the rule. The record stays as ruled until then.
 
-**Holds while:** within `src/`, only `src/entry.jsx` imports the naming helpers from `src/photo-rules.mjs`. Within `worker/`, only `worker/core.mjs` does. `src/app.jsx` never contains `ledger.json`, and `window.storage` uses localStorage. The first clause is false at 8268a67, see Status.
+**Holds while:** within `src/`, only `src/entry.jsx` imports the naming helpers from `src/photo-rules.mjs`. Within `worker/`, only `worker/core.mjs` does. `src/app.jsx` never contains `ledger.json`, and `window.storage` uses localStorage. The first clause is false at 49b6911, see Status.
 
 localStorage remains the source of truth on each device. With a Worker key, the Worker holds the shared ledger. The GitHub `data` branch is frozen, and no device writes it. The app works fully offline either way.
 

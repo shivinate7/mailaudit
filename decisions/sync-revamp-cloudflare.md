@@ -30,7 +30,7 @@ GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Del
 - **The site stays on GitHub Pages.** The Worker answers the Pages origin across CORS. So no device moves to a new origin, and no device loses its stored ledger.
 - **Sign-in:** one key per device. A Cloudflare Access email code is the backup way in. The key stays a credential, see `the-token-is-a-credential`.
 - **Key delivery:** the keys live in the Mac's Keychain. A script opens the app on the Mac with its key in the URL fragment, which no server receives. The app stores the key and clears the fragment. For the iPhone, the Mac shows the same link as a QR code. No key is printed.
-- **GitHub leaves the sync role.** The owner ruled on 2026-10-11: "Cloudflare does it all". The Worker keeps daily snapshots for History and backup. The owner ruled on 2026-10-14 that the backup watchdog in the private repo is turned off, and the orchestrator does that. No alarm then watches the backup, see `backup-unwatched`. The public seed goes away, as the owner ruled on 2026-10-11. Web no longer writes the ledger to GitHub: the mirror, auto-push and the GitHub peek and merge left the build. The `data` branch is frozen, and History still reads it. The Worker needs no GitHub token, and native never holds one. See `worker-keeps-snapshots`.
+- **GitHub leaves the sync role.** The owner ruled on 2026-10-11: "Cloudflare does it all". The Worker keeps daily snapshots for History and backup. The owner ruled on 2026-10-14 that the backup watchdog in the private repo is turned off, and the orchestrator does that. No alarm then watches the backup, see `backup-unwatched`. The public seed goes away, as the owner ruled on 2026-10-11 and on 2026-10-14/15. The web build still bakes it in: `build.mjs` reads the ledger remote. Web no longer writes the ledger to GitHub, and it no longer calls the mirror, auto-push, or the GitHub peek and merge. `window.remote` still defines them until slice S3 removes them. The `data` branch is frozen, and History still reads it. The Worker needs no GitHub token, and native never holds one. See `worker-keeps-snapshots`.
 - **Live updates wait for a pause.** A change from the other device applies when this device has had no input for 10 seconds. No line says an update is waiting; the merge notice after the apply names what changed. A waiting line would have cost 40px of empty space at rest. This keeps `no-layout-shift-under-pointer`. One exception: the cold reply to a saved key applies at once, because the owner just tapped Save. The next reply waits again.
 - **Un-checks and deletes:** each check-in key carries the time of its last change in a new saved key, and the later change wins. A discarded or assigned envelope stays as a tombstone with a deletion time, and every reader skips it. A ledger without these fields merges by today's rules, so an older build stays safe. The new key follows the six sites in `saved-state-shape`.
 - **Orders:** a nightly job on HA Green replaces the OrderWand export. The owner chose HA Green over the MacBook. On 2026-10-11 the owner said of the job: `we're gonna figure out how to just pull the tcgplayer orders list after we understood how orderwand did it`. The native client has no CSV import. Orders reach it through the Worker, see `csv-import-stays-web`. The job reads `store.tcgplayer.com/myaccount/orderhistory` with the owner's login cookie, as OrderWand 4.4.0 does. It GETs a form token, POSTs a date range, then reads each page. It sends the orders to the Worker. The Worker runs the same parser filters and the same merge, so `parser-filters` and `imports-merge-never-replace` still hold.
@@ -84,11 +84,14 @@ The native build needs these changes to the Worker. On main the Worker serves `/
 ## Still open
 
 - Web photos: the one-time copy of the 8 GitHub photos has not run, and the GitHub adapter's photo and write paths (slice S3) are not removed. Debt: `web-photos-have-no-backup`.
-- A restore stamps new change times. The switch lane builds it (`restampRestore`, called from `applyBackup`). The owner ruled that this History-restore fix lands before the switch merges.
-- No alarm watches the Worker backup, since the owner turned the watchdog off. Debt: `backup-unwatched`.
+- The History-restore fix is built in this lane (`restampRestore`, called from `applyBackup`). It lands before the switch merges, as the owner ruled.
 - Whether a Cloudflare Access login survives in an iOS home-screen app. This is untested. Debt: `cloudflare-access-login-untested`.
 - Live updates use a WebSocket. A new rev from the other device starts one GET, and the reply waits for the idle gate.
 - A 413 from the Worker sets the advisory state, as an unknown answer does. The advisory line names the size problem.
+
+## Named limits
+
+- No alarm watches the Worker backup. The owner accepted that on 2026-10-14 at 21:55 CDT, after turning the watchdog off. Named limit, not an open item: `backup-unwatched`.
 
 ## See also
 

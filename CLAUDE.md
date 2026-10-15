@@ -133,7 +133,7 @@ A photo is a picture of a mailing label. It never enters the ledger, and it can 
 - `photo-ids-unreadable-local` — An unreadable local photo store keeps ids.
 - `photo-thumbnails-and-viewer` — Thumbnails are 56px squares, and the viewer is a scrim.
 - `photo-sweep-two-guards` — The photo sweep has two guards.
-- `pull-warns-on-what-it-drops` — A pull warns about the photos it would drop.
+- `pull-warns-on-what-it-drops` — The pull reports photos with no copy left, after its fetch.
 - `label-photos-downscale-to-2000px` — Label photos downscale to 2000px.
 - `orphan-sweep-drops-unused-photos` — The sweep drops photos no envelope or draft uses.
 

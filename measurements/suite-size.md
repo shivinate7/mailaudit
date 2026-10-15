@@ -1,8 +1,8 @@
 # Test suite assertion count and run time
 
-**Status:** red at `8268a67`, the head of `web/sync-switch`, measured 2026-10-15. New York (the pinned zone): 1336 passed, 3 failed, exit 1, 157.3 s. UTC: 1335 passed, 3 failed, exit 1, 153.9 s. The failures are 26.13c, 73.2b and 73.2c. The last green run was at `c722dd9` on 2026-10-14, recorded below.
+**Status:** red at `49b6911`, the head of `web/sync-switch`, measured 2026-10-15. New York (the pinned zone): 1433 passed, 1 failed, exit 1, 166.5 s. UTC: 1432 passed, 1 failed, exit 1, 166.0 s. The failure is 30.10. The last green run was at `c722dd9` on 2026-10-14, recorded below.
 
-This record holds the assertion count and the run time for `npm test`. The suite runs 1339 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+This record holds the assertion count and the run time for `npm test`. The suite runs 1434 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
 The count depends on the clock's zone, so the zone is pinned to `America/New_York`. In CI, the test step sets `TZ`, and it names one New York run's output in `CHECK_DOCS_SUITE_LOG`. `check:docs` grades the figure in this sentence. Locally, `npm run check:docs` runs the suite itself and waits for it to end.
 
@@ -16,7 +16,14 @@ Run `npm test` and read its summary line. The count is passed plus failed. A gre
 
 At `f956873`, the New York process printed its summary and `all green`, then stayed alive with no CPU use for 13 minutes. It was killed by hand. The UTC and machine-zone processes were stopped by hand just after their summaries. Their exit codes and the cause are debt `suite-hang-cause-unmeasured`.
 
-Measured 2026-10-15 at `8268a67`, the head of `web/sync-switch`, which is red:
+Measured 2026-10-15 at `49b6911`, the head of `web/sync-switch`, which is red:
+
+- New York (`TZ=America/New_York`): 1433 passed, 1 failed, exit 1. 166.5 s.
+- UTC (`TZ=UTC`): 1432 passed, 1 failed, exit 1. 166.0 s.
+- The failure is 30.10, "a photo missing everywhere is dropped from the envelope". The suite reports `expected []` and `actual ["pho-a"]`.
+- `npm run check:docs` cannot exit 0 while the suite exits 1, because it runs the suite and fails on its exit. This figure was checked with `CHECK_DOCS_SUITE_LOG` set to the New York run's log, which is the CI path.
+
+Measured 2026-10-15 at `8268a67`, the head of `web/sync-switch`, which was red:
 
 - New York (`TZ=America/New_York`): 1336 passed, 3 failed, exit 1. 157.3 s.
 - UTC (`TZ=UTC`): 1335 passed, 3 failed, exit 1. 153.9 s.

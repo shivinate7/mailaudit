@@ -2,19 +2,19 @@
 
 This file draws the line between proven and unproven. It lists what has run against the live GitHub API, a real device and a Worker probe. It also names what has not. Read it before you claim a path is safe. Keep the split exactly as this file draws it.
 
-**Holds while:** the repo `mailaudit-data` is private. An anonymous request gets 404 for it, gets 200 for `mailaudit`, and the Pages site answers 200. Checked 2026-10-10.
+**Holds while:** the repo `mailaudit-data` is private. An anonymous request gets 404 for it, gets 200 for `mailaudit`, and the Pages site answers 200. Checked 2026-10-10. Not re-checked in this lane: no live call was made.
 
 Kind: build
 
 Plan: decisions/live-verification.md#worker-probes-still-needed (worker)
 
-## The GitHub backup one-time setup
+## The GitHub backup, retired by the switch
 
-The target is `shivinate7/mailaudit-data`. The ledger lives on branch **`data`**, in the file `ledger.json`. The photos live on branch **`main`**, in the directory `photos/`. Two constant objects sit at the top of the `window.remote` block in `entry.jsx`.
+Web no longer writes to GitHub, and no device holds a GitHub token. The target is `shivinate7/mailaudit-data`, a private repo. The ledger lives on branch **`data`**, in the file `ledger.json`, and that branch is frozen: no device writes it, and History still reads it. The photos still sit on branch **`main`**, in the directory `photos/`, until the one-time copy runs. Two constant objects sit above the `window.remote` block in `entry.jsx`: `REMOTE` and `PHOTOS`.
 
-**`mailaudit` is PUBLIC and holds no data.** This arrangement is what the setup exists to produce. It is also what makes Actions and Pages free. Measured anonymously after the move, the Pages site answers **200**. But `api.github.com/repos/shivinate7/mailaudit-data` and `raw.githubusercontent.com/shivinate7/mailaudit-data/data/ledger.json` both answer **404**. The ledger repo stays private for hygiene, not secrecy. A backup store does not belong in the repo that serves a public site. The consequence is real, though. **Every device needs the key for everything.** GitHub hides a repo that you cannot see behind a 404, not a 403.
+**`mailaudit` is PUBLIC and holds no data.** It is also what makes Actions and Pages free. Measured anonymously after the move, the Pages site answers **200**. But `api.github.com/repos/shivinate7/mailaudit-data` and `raw.githubusercontent.com/shivinate7/mailaudit-data/data/ledger.json` both answer **404**. The ledger repo stays private for hygiene, not secrecy. A backup store does not belong in the repo that serves a public site. The consequence was real: **every device needed a GitHub token for everything.** GitHub hides a repo that you cannot see behind a 404, not a 403.
 
-A clone also needs a remote named `ledger` for the seed to build:
+Until the seed removal lands (owner ruling 2026-10-14/15), a clone also needs a remote named `ledger` for the seed to build:
 
 ```bash
 git remote add ledger https://github.com/shivinate7/mailaudit-data.git && git fetch ledger data
@@ -22,33 +22,25 @@ git remote add ledger https://github.com/shivinate7/mailaudit-data.git && git fe
 
 Without that remote, the build is seedless. `npm run check:seed` reports this, but it does not fail. On a machine where the ref *does* resolve, though, a seedless committed page is a hard failure. That means that the build dropped a seed it could have made.
 
-The setup steps are:
+Still true on the GitHub side:
 
-1. The `data` branch already exists in `mailaudit-data`. It carries the ledger's full history: 130 commits at the time of the move. Its tip blob is identical to the old repo's. Blob shas are content-addressed. So no device needed re-keying. To recreate the branch from scratch, run:
+- The `data` branch carries the ledger's history, 130 commits at the time of the move. Its tip blob is identical to the old repo's. Blob shas are content-addressed, so no device needed re-keying.
+- Pages on `mailaudit` is set to deploy from `main` `(root)`. Nothing the app writes touches that repo, so a backup cannot trigger a site rebuild. Not re-checked in this lane.
 
-   ```bash
-   git switch --orphan data && git commit --allow-empty -m "data branch: ledger backups live here, never merge to main" && git push -u origin data && git switch main
-   ```
+- `.github/workflows` holds one file, `test.yml`. The guarantee that a ledger push triggers nothing rests on its filters. `test.yml` has `branches: [main]` plus a paths filter. Nothing under `src/` or `test/` ever changes on `data`, which carries one file. It deliberately does **not** trigger on `index.html`, because `npm run deploy` commits that file separately. Re-running the suite on the build output would double every deploy for no new information. `test.yml` also checks that the committed `index.html` still matches what the sources build. A local deploy can skip that check by accident. The check runs through `check:build`, which compares the code and ignores the seed. A second step runs `check:seed`, which decodes the seed the committed page carries and refuses anything outside `SEED_KEEP`. The two steps together ask two questions: is the page this repo's code, and what does its data publish? Read the filters before you add a workflow.
 
-2. In Settings → Pages on **`mailaudit`**, the source should read "Deploy from a branch: `main` / `(root)`". Nothing the app writes touches that repo any more. So a backup can no longer trigger a site rebuild. That is by construction, not by branch discipline.
+- The backup watchdog is turned off (owner ruling 2026-10-14). It lived in the private repo. Its alarm was measured to fire once, on issue #4. No alarm watches the backup: see `backup-unwatched`.
 
-   **The repo used to have no `.github/workflows` at all. That absence was the guarantee that a ledger push triggers nothing.** There are two workflows now. So that guarantee rests on their filters instead. Read the filters before you add a third workflow. `test.yml` has `branches: [main]` plus a paths filter. Nothing under `src/` or `test/` ever changes on `data`, which carries one file. It deliberately does **not** trigger on `index.html`. `npm run deploy` commits that file separately. Re-running the suite on the build output would double every deploy for no new information. `test.yml` also checks that the committed `index.html` still matches what the sources build. A local deploy can skip that check by accident. The check runs through `check:build`. It compares the code and ignores the seed, for the reasons above. A second step runs `check:seed`. That step decodes the seed the committed page carries. It refuses anything outside `SEED_KEEP`. The two steps together ask two questions. Is the page this repo's code? And what does its data publish?
+- The photos sit on the **`main`** branch of `mailaudit-data`, in `photos/`, until the one-time copy runs. `scripts/copy-photos-to-worker.mjs` makes that copy, and it is a dry run by default. Private is not optional: these are pictures of mailing labels with the delivery address on them.
 
-   `backup-watchdog.yml` is the check the app cannot do for itself. It reads the `data` branch's own history on a daily schedule. If nothing has landed in four days, it opens an issue. **Its alarm has been seen to fire.** It was dispatched once with `threshold=0`. That opened issue #4, which was verified and closed. A green run proves only that the watchdog stayed quiet. The `threshold` input exists so the other half can be proven too. Both sides of the comparison call `fromJSON` first. Step outputs are strings. A string/number compare that silently evaluates false is exactly how an alarm ends up never going off. The phone's "Backed up" line is only as honest as the phone. A device with an expired token, with unreadable storage, or that never gets opened cannot tell you it stopped. This watchdog cannot be fooled by anything that happens on a device.
+- Devices held one fine-grained token each, scoped to `mailaudit-data` only. GitHub caps fine-grained tokens at 366 days. The web app no longer uses one.
 
-3. The photos live on the **`main`** branch of `mailaudit-data`, in `photos/`. That branch must exist before any Contents PUT. A PUT into a repo with no commits is not a path worth relying on. If you recreate the branch, initialise it with a README. Private is not optional. These are pictures of mailing labels with the delivery address on them.
+- The Push control left the UI on 2026-10-12. The web app writes no commit to `mailaudit`. The adapter keeps `spaceWrites()`, a one-second write gap, until slice S3.
+- A second device must pull the ledger and show its thumbnails. That is the one path where a wrong order fails silently: the ledger comes back looking perfect, with every photo id quietly stripped.
 
-4. Create a fine-grained token at Settings → Developer settings → Personal access tokens → **Fine-grained**. Name it per device, for example `mailday-iphone`. Then one device's token can be revoked alone. Select repositories: **`mailaudit-data` only.** One repo is the point. The token used to span two repositories, and that was a listed open thread. `mailaudit` is public, and the app never writes to it.
+- The two-device merge proof runs on the Worker now, and it is unrun: see `worker-two-device-proof-unrun`. Sync has no toggle, so that proof is a prerequisite for running the app on two devices at all.
 
-   Set repository permissions to **Contents → Read and write**. Metadata → Read-only appears automatically, and it is required. Grant nothing else. **Fine-grained PATs cap at 366 days.** Set a real expiry and a calendar reminder. When the token lapses, the only symptom is a push that stops working.
-
-5. No screen path is left for this step. The Push control left the UI on 2026-10-12, and the mirror push runs on its own. Check that `mailaudit` gained no commit at all. With photos in the ledger, expect `mailaudit-data` to gain one commit per photo on `main`. The button stays on `Pushing…` until they are done. Each takes roughly a second. The ledger and the photos share one repo's write budget and one `spaceWrites()` clock.
-
-   Then run the test that matters most. A second device or origin must pull the ledger (the automatic merge does it on a fresh session), and confirm the thumbnails render. That is the one path where a wrong order fails silently. The ledger would come back looking perfect, with every photo id quietly stripped.
-
-6. Prove the merge before trusting auto-push. Auto-push's conflict recovery is that same path, running unattended. On A, check a card in, then Push. On B, without pulling, import a CSV that adds lines, then Push. Expect the conflict. Then the automatic merge runs on B. No control is left. B must end holding A's check-in *and* its own new lines. A's next merge must agree. Sync is unconditional now. There is no toggle to enable. So this proof is a prerequisite for running the app on two devices at all. It is not only a prerequisite for enabling a feature.
-
-   `file://` and `http://localhost:4173` are two separate origins with two separate ledgers. So they can act as two devices, without a second phone. See "Running it locally".
+`file://` and `http://localhost:4173` are two separate origins with two separate ledgers, so they can act as two devices without a second phone. See `file-protocol-works-locally`.
 
 ## The coverage gap at the adapter seam
 
