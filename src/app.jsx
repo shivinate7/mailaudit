@@ -3577,7 +3577,7 @@ export default function MailDayLedger() {
       const inlinedIds = Object.keys(inlined || {});
       let present = null; /* null keeps every id */
       if (replacing) {
-        let localIds = [];
+        let localIds = null; /* no photo global reads as unreadable: keep every id */
         if (window.photos) {
           try {
             localIds = await window.photos.keys();
