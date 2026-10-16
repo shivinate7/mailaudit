@@ -6,7 +6,7 @@ A device that lacks a blob does not show that no device holds it. A restore rest
 
 A pushed payload never carries photos, because photos stay local. So a restore on the device that took a photo keeps its id, because the blob is here. Keeping an id this device lacks costs a blank manila tile until a sync brings the blob. Stripping it costs the photo. A blob inlined in a backup file is written to this device on restore, so its id stays.
 
-**Holds while:** `applyBackup` in `src/app.jsx` drops an envelope photo id on a restore (`replacing`). It does so when the local photo store lists neither that id nor an inlined blob. It keeps every id on a merge or a server apply, and when `photos.keys()` throws (`present` stays null).
+**Holds while:** `applyBackup` in `src/app.jsx` drops an envelope photo id on a restore (`replacing`). It does so when the local photo store lists neither that id nor an inlined blob. It keeps every id on a merge or a server apply. It also keeps every id when `window.photos` is absent or `photos.keys()` throws (`present` stays null).
 
 **Pinned by:**
 
@@ -17,6 +17,7 @@ A pushed payload never carries photos, because photos stay local. So a restore o
 - 26.13 and 26.13b: a server apply keeps an id the Worker lacks, and an unreadable list keeps it too.
 - 26.13c: the Sync panel says photos need something, not that they are lost.
 - 30.10 and 30.13: a photo the Worker lacks stays on the envelope, and an unreadable store keeps every id.
+- 47.8 and 47.8pre: a restore with no photo store at all keeps the id (`photo-ids-unreadable-local`).
 
 Kind: build
 
@@ -25,6 +26,6 @@ Plan: decisions/sync-revamp-cloudflare.md#web-plan (web)
 ## See also
 
 - `photo-ids-unreadable-local` — the local half of the same keep-or-strip rule.
-- `pull-fetches-photos-before-apply` — the order that keeps the ids a pull needs.
+- `pull-fetches-photos-before-apply` — the order that puts a merge's blobs on this device before the ledger lands.
 - `photos-stay-out-of-the-ledger` — the boundary this rule protects.
 - `a-restore-is-not-local` — the restore path this rule guards.

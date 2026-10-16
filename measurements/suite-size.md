@@ -1,8 +1,8 @@
 # Test suite assertion count and run time
 
-**Status:** measured 2026-10-15 at `e3891fe`, the head of `web/restore-drop-unheld`, which is green. New York (the pinned zone): 1436 passed, 0 failed, exit 0, 168.3 s. UTC: 1435 passed, 0 failed, exit 0, 170.3 s. Not measured in the machine zone at this head. The count is 2 above `4db47be`, because 19.13pre and 19.13 were added in `8c23d39`. Earlier figures are below.
+**Status:** measured 2026-10-16 at `99d521c`, the head of `web/restore-drop-unheld`, which is green. New York (the pinned zone): 1438 passed, 0 failed, exit 0, 170.3 s. UTC: 1437 passed, 0 failed, exit 0, 170.1 s. Not measured in the machine zone at this head. The count is 2 above `e3891fe`, because 47.8pre and 47.8 were added in `1ab4286`. Earlier figures are below.
 
-This record holds the assertion count and the run time for `npm test`. The suite runs 1436 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+This record holds the assertion count and the run time for `npm test`. The suite runs 1438 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
 The count depends on the clock's zone, so the zone is pinned to `America/New_York`. In CI, the test step sets `TZ`, and it names one New York run's output in `CHECK_DOCS_SUITE_LOG`. `check:docs` grades the figure in this sentence. Locally, `npm run check:docs` runs the suite itself and waits for it to end.
 
@@ -15,6 +15,11 @@ The harness bundles `app.jsx` with esbuild. It sets `platform: "node"` and `form
 Run `npm test` and read its summary line. The count is passed plus failed. A green run prints `all green`. Time the run with the shell's own timer, or with `verdict`, which prints the elapsed seconds.
 
 At `f956873`, the New York process printed its summary and `all green`, then stayed alive with no CPU use for 13 minutes. It was killed by hand. The UTC and machine-zone processes were stopped by hand just after their summaries. Their exit codes and the cause are debt `suite-hang-cause-unmeasured`.
+
+Measured 2026-10-15 at `e3891fe`, the head of `web/restore-drop-unheld` before the photo-id tests, which was green. Its count was 2 above `4db47be`, because 19.13pre and 19.13 were added in `8c23d39`:
+
+- New York (`TZ=America/New_York`): 1436 passed, 0 failed, exit 0. 168.3 s.
+- UTC (`TZ=UTC`): 1435 passed, 0 failed, exit 0. 170.3 s.
 
 Measured 2026-10-15 at `4db47be`, the head of `web/sync-switch`, which was green:
 

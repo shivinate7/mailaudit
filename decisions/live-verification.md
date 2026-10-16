@@ -30,7 +30,7 @@ Still true on the GitHub side:
 - Devices held one fine-grained token each, scoped to `mailaudit-data` only. GitHub caps fine-grained tokens at 366 days. The web app no longer uses one.
 
 - The Push control left the UI on 2026-10-12. The web app writes no commit to `mailaudit`. The adapter keeps `spaceWrites()`, a one-second write gap, until slice S3.
-- A second device must pull the ledger and show its thumbnails. That is the one path where a wrong order fails silently: the ledger comes back looking perfect, with every photo id quietly stripped.
+- A second device must pull the ledger and show its thumbnails. A merge keeps every photo id, so a blob that has not arrived shows as a blank thumbnail until a sync brings it (`pull-fetches-photos-before-apply`).
 
 - The two-device merge proof runs on the Worker now, and it is unrun: see `worker-two-device-proof-unrun`. Sync has no toggle, so that proof is a prerequisite for running the app on two devices at all.
 
