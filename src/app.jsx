@@ -3567,50 +3567,15 @@ export default function MailDayLedger() {
       /* a restore replaces everything, so anything still in flight against the
          old world must not land on the new one */
       syncGen.current++;
-      /* Keep a photo id when its blob is inlined in this payload OR already on
-         this device; strip only the rest. The old rule was all-or-nothing on
-         `data.photos`, which is right for a file restore onto a fresh origin
-         and silent data loss everywhere else: a pushed payload never carries
-         photos (they stay local by design), so pulling onto the very device
-         that took them stripped every id — and the sweep effect then deleted
-         the blobs from IndexedDB two seconds later, with nothing to restore
-         from.
-
-         A server apply strips nothing (below): another device may still be
-         uploading the blob. Keeping an id costs a blank tile until the next
-         sync; stripping it costs the photo. */
+      /* Every restore keeps every photo id. This device lacking a blob does not
+         say that no device holds it, and a stripped id is gone for every device:
+         the restore restamps its envelopes, so it wins the merge, and the holder's
+         sweep then drops the blob. Keeping an id costs a blank tile until a sync
+         brings the blob; stripping it costs the photo. Blobs inlined in a backup
+         file are written to this device below. */
       const inlined =
         data.photos && typeof data.photos === "object" ? data.photos : null;
       const inlinedIds = Object.keys(inlined || {});
-      /* a union, not a read-back after the writes below: those go in through a
-         fire-and-forget IIFE that hasn't run yet when this set is built */
-      /* Three-valued, for the same reason `listPhotos` is. `.catch(() => [])`
-         read "I could not look" as "this device holds nothing" — so with
-         IndexedDB unavailable (private browsing, quota, storage pressure) every
-         id not already on the photo remote was stripped below, the debounced
-         save wrote the stripped ledger, and the next push published it. That
-         severs the link to photos sitting safe on another device or waiting to
-         be uploaded. The remote half of this rule is argued at length above
-         ("keeping an id costs a blank tile, stripping it costs the photo") and
-         test 26.13b pins it; the LOCAL read never got the same treatment.
-         `null` here means unreadable, and unreadable keeps everything. */
-      let localIds = null;
-      if (window.photos) {
-        try {
-          localIds = await window.photos.keys();
-        } catch {
-          localIds = null;
-        }
-      } else localIds = [];
-      /* null keeps every id: the local store would not answer. A server apply
-         keeps every id too. The Worker not holding a blob yet does not say that
-         no device holds it: the device that took the photo may still be
-         uploading, and a stripped id is gone for every device, since the sweep
-         then drops the blob. */
-      const present =
-        localIds === null || source === "server"
-          ? null
-          : new Set([...localIds, ...inlinedIds]);
       /* a merge or server apply carries the applied ledger's time; its own save keeps it.
          A restore (backup file, saved version) is a fresh save of that ledger: it stamps
          now, so it wins unknown-key conflicts afterwards (owner ruling 2026-10-14) */
@@ -3622,16 +3587,7 @@ export default function MailDayLedger() {
       setItems(data.items);
       setReceived(data.received || {});
       setReceivedAt(stamped.receivedAt || {});
-      setEnvelopes(
-        (stamped.envelopes || []).map((e) => ({
-          ...e,
-          /* present === null is "the store would not answer" — keep every id
-             rather than publishing a ledger with the links cut out */
-          photos: present
-            ? (e.photos || []).filter((id) => typeof id !== "string" || present.has(id))
-            : e.photos || [],
-        }))
-      );
+      setEnvelopes((stamped.envelopes || []).map((e) => ({ ...e, photos: e.photos || [] })));
       setStamps(sanitizeStamps(stamped.stamps));
       if (inlinedIds.length && window.photos)
         (async () => {
@@ -4307,16 +4263,10 @@ export default function MailDayLedger() {
       }
       if (got.length) setPhotoEpoch((n) => n + 1);
 
-      const notes = [];
-      if (plan.lost.length)
-        notes.push(
-          `${plan.lost.length} photo${
-            plan.lost.length === 1 ? " has" : "s have"
-          } no copy left on any device and ${plan.lost.length === 1 ? "was" : "were"} lost.`
-        );
+      /* plan.lost is not reported: the Worker lacking a blob does not say that no
+         device holds it, since the one that took the photo may still be uploading */
       const left = plan.toPull.length - batch.length;
-      if (left > 0) notes.push(`${left} more will arrive on the next sync.`);
-      if (notes.length) setPhotoMsg({ tone: "advice", text: notes.join(" ") });
+      if (left > 0) setPhotoMsg({ tone: "advice", text: `${left} more will arrive on the next sync.` });
     },
     [surveyPhotos]
   );
