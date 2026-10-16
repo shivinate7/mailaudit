@@ -382,7 +382,7 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `reimport-received-unpinned` — Nothing pins that received survives a re-import.
 - `native-dialog-ban-unpinned` — Nothing pins the ban on native dialogs.
 - `ruled-head-heights-unremeasured` — The ruled head heights have not been re-measured.
-- `photo-put-unrun-on-github` — Photo PUT and photo pull have never run on GitHub.
+- `photo-put-unrun-on-github` — The GitHub photo PUT and pull have never run.
 - `native-ledger-tab-unbuilt` — The native Ledger tab is a placeholder.
 - `native-key-scan-skips-views` — The native key scan skips SwiftUI view state.
 - `draft-skip-required-unmeasured` — A required check on a draft-skipped job is unmeasured.
@@ -403,7 +403,7 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `n4b-socket-idle-gate-unbuilt` — Lane N4b, the socket, idle gate and resume, is not built.
 - `n10-photos-unbuilt` — Lane N10, native photos, is not built.
 - `n11-device-check-not-run` — The owner's native device check has not run.
-- `web-photos-have-no-backup` — Web photos reach no backup until the GitHub copy runs.
+- `web-photos-have-no-backup` — No Worker snapshot covers a web photo.
 - `web-reads-no-worker-snapshots` — Web History reads no Worker snapshot.
 - `cloudflare-access-login-untested` — A Cloudflare Access login in an iOS home-screen app is untested.
 - `backup-unwatched` — No alarm watches the backup after the watchdog is off.
@@ -411,6 +411,8 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `photoget-list-fallback-untested` — The photoGet list-first fallback has no test.
 - `sweep-settle-masks-30-13-stall` — The SWEEP_WAIT settle after 19.6 hides a stall at 30.13.
 - `unheld-photo-never-reported` — A lost photo is never reported.
+- `tests-47-6-and-30-15-cannot-fail` — Tests 47.6 and 30.15 cannot fail.
+- `merge-comment-says-apply-strips` — The doMerge comment says an apply strips photo ids.
 
 ## Measurements
 

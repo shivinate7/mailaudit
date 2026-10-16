@@ -10,7 +10,7 @@ Plan: decisions/live-verification.md#worker-probes-still-needed (worker)
 
 ## The GitHub backup, retired by the switch
 
-Web no longer writes to GitHub, and no device holds a GitHub token. The target is `shivinate7/mailaudit-data`, a private repo. The ledger lives on branch **`data`**, in the file `ledger.json`, and that branch is frozen: no device writes it, and History still reads it. The photos still sit on branch **`main`**, in the directory `photos/`, until the one-time copy runs. Two constant objects sit above the `window.remote` block in `entry.jsx`: `REMOTE` and `PHOTOS`.
+Web no longer writes to GitHub, and no device holds a GitHub token. The target is `shivinate7/mailaudit-data`, a private repo. The ledger lives on branch **`data`**, in the file `ledger.json`, and that branch is frozen: no device writes it, and History still reads it. The photos sat on branch **`main`**, in the directory `photos/`, until the one-time copy ran on 2026-10-16 (see the last section). Two constant objects sit above the `window.remote` block in `entry.jsx`: `REMOTE` and `PHOTOS`.
 
 **`mailaudit` is PUBLIC and holds no data.** It is also what makes Actions and Pages free. Measured anonymously after the move, the Pages site answers **200**. But `api.github.com/repos/shivinate7/mailaudit-data` and `raw.githubusercontent.com/shivinate7/mailaudit-data/data/ledger.json` both answer **404**. The ledger repo stays private for hygiene, not secrecy. A backup store does not belong in the repo that serves a public site. The consequence was real: **every device needed a GitHub token for everything.** GitHub hides a repo that you cannot see behind a 404, not a 403.
 
@@ -25,7 +25,7 @@ Still true on the GitHub side:
 
 - The backup watchdog is turned off (owner ruling 2026-10-14). It lived in the private repo. Its alarm was measured to fire once, on issue #4. No alarm watches the backup: see `backup-unwatched`.
 
-- The photos sit on the **`main`** branch of `mailaudit-data`, in `photos/`, until the one-time copy runs. `scripts/copy-photos-to-worker.mjs` makes that copy, and it is a dry run by default. Private is not optional: these are pictures of mailing labels with the delivery address on them.
+- The photos sat on the **`main`** branch of `mailaudit-data`, in `photos/`, until the one-time copy ran on 2026-10-16. `scripts/copy-photos-to-worker.mjs` made that copy, and it is a dry run by default. Private is not optional: these are pictures of mailing labels with the delivery address on them.
 
 - Devices held one fine-grained token each, scoped to `mailaudit-data` only. GitHub caps fine-grained tokens at 366 days. The web app no longer uses one.
 
@@ -54,7 +54,7 @@ Photo sync has had its read paths verified live and without a key. The raw media
 
 **The ledger repo's own private path is now verified live too.** This is the first real-GitHub confirmation of anything on the read side since the repo was closed. From the deployed Pages origin with no key, `pull()`, `listVersions()`, and `peek()` all return `no-access`. `peek()` answers `{known: false}`, not "nobody is ahead". That reading matters. Otherwise a keyless device could push straight over the one that can see. Measured at the same time, the site still serves **200** to an anonymous request. But `raw.githubusercontent.com/.../data/ledger.json` and the repo API both **404**. That is the whole point of the private/Pro arrangement, and it is now confirmed rather than assumed. So `peek()` comes off the unverified list.
 
-**Still never run against real GitHub:** a photo PUT and a photo pull (debt `photo-put-unrun-on-github`), and a ledger conflict. The conflict now runs on the Worker, and no live run of it is recorded (debt `worker-two-device-proof-unrun`).
+**Still never run against real GitHub:** `pushPhoto` and `pullPhoto` on `window.remote` (`src/entry.jsx`), the GitHub photo PUT and pull. No web code calls them. `listPhotos`, `pushPhoto` and `pullPhoto` have no caller in `src/`. Photos use `window.sync`, whose `photoList`, `photoGet` and `photoPut` talk to the Worker. The one-time copy script did read the GitHub photo branch live on 2026-10-16. That read is not `pullPhoto`, so it does not close this gap. Debt: `photo-put-unrun-on-github`. And a ledger conflict. The conflict now runs on the Worker, and no live run of it is recorded (debt `worker-two-device-proof-unrun`).
 
 That same session is what surfaced the group-28 bug: Pull was unreachable on an empty ledger. Worth remembering as a method: the suite was all green. The feature was still broken in its single most important scenario, because every test booted a ledger that already had data in it.
 
@@ -121,3 +121,12 @@ Run from main `7729d31` at 21:15 CDT on 2026-10-14 (02:15 UTC on 2026-10-15), on
 - The probe read the live store: GET /kept with the key gave 200, and with no key gave 401. GET /ledger read rev 3, 908 items and 4 envelopes.
 - The deploy includes the merge fix from PR #96, which keeps unknown top-level keys in a merge. The probe did not exercise that path, so the fix is unmeasured on live data.
 - Recorded from the owner's word. This lane made no live call, so the probe is not re-run here.
+
+## Switch and photo copy, 2026-10-16
+
+Recorded from the orchestrator's report. This lane made no live call.
+
+- PR #100 merged as `a214855`, committed at 03:02:14 CDT. The web app syncs through Cloudflare only. Photos are on the Worker, the public seed is removed, and the restore rules are in. That merge changed no file under `worker/`, so the Worker was not redeployed. The live Worker stays at version `65bc7095`.
+- Between 03:02 and 03:08 CDT (exact minutes unmeasured) the one-time photo copy ran as a dry run, then with `--apply`. It copied 8 photos and failed 0. A second dry run read 0 to copy and 8 on the Worker. The run used a scratch copy of the script, because the script accepts only `github_pat_` and `ghp_` tokens. The `gh` login token is a `gho_` OAuth token, and it reads the photo repo.
+- Between 03:02 and 03:08 CDT the backup watchdog workflow (id `356631798`) in `shivinate7/mailaudit-data` was disabled with `gh workflow disable`. The owner ruled on 2026-10-14 at 21:55 CDT that it is turned off. See `backup-unwatched`.
+- Between 03:02 and 03:08 CDT a probe read the live Worker. `/kept` gave 401 without the key and 200 with it. `/photos` listed 8 photos. `/ledger` read rev 4, 908 items and 4 envelopes.

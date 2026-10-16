@@ -254,6 +254,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `discard-keeps-draft` | `discardEnvelope` in `src/app.jsx` never clears the draft. | [`debts/discard-keeps-draft.md`](../debts/discard-keeps-draft.md) |
 | `draft-skip-required-unmeasured` | It is unmeasured how a required check reads a job that the draft guard skipped. | [`debts/draft-skip-required-unmeasured.md`](../debts/draft-skip-required-unmeasured.md) |
 | `key-re-accepts-token-shape` | A GitHub token uses only letters, digits and underscores, so the key check accepts a token as a key. | [`debts/key-re-accepts-token-shape.md`](../debts/key-re-accepts-token-shape.md) |
+| `merge-comment-says-apply-strips` | The comment above `pullPhotos` in `doMerge` (`src/app.jsx`, lines 4319 to 4322) says that an apply before the photo download would strip every id the other device sent. | [`debts/merge-comment-says-apply-strips.md`](../debts/merge-comment-says-apply-strips.md) |
 | `n10-photos-unbuilt` | Lane N10 is ruled in `native-build-lanes`, and it is not built. | [`debts/n10-photos-unbuilt.md`](../debts/n10-photos-unbuilt.md) |
 | `n11-device-check-not-run` | Lane N11 is the owner's check on a device, as ruled in `native-build-lanes`, and it has not run. | [`debts/n11-device-check-not-run.md`](../debts/n11-device-check-not-run.md) |
 | `n4a-sync-over-http-unbuilt` | No sync source exists under `native/` on main. | [`debts/n4a-sync-over-http-unbuilt.md`](../debts/n4a-sync-over-http-unbuilt.md) |
@@ -272,7 +273,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `orphaned-reach-unpinned` | No test pins that Re-import, Backup and Reset must stay reachable from Orphaned, and it is unverified. | [`debts/orphaned-reach-unpinned.md`](../debts/orphaned-reach-unpinned.md) |
 | `panel-paper-fill-unbuilt` | Overlay panels carry no `paper` fill: `panelWrap` in `src/app.jsx` sets padding and a top border, and no background. | [`debts/panel-paper-fill-unbuilt.md`](../debts/panel-paper-fill-unbuilt.md) |
 | `panels-overlay-unbuilt` | Today a panel takes layout space and pushes the list down. | [`debts/panels-overlay-unbuilt.md`](../debts/panels-overlay-unbuilt.md) |
-| `photo-put-unrun-on-github` | An authenticated photo PUT and a photo pull that returns bytes have never run against real GitHub. | [`debts/photo-put-unrun-on-github.md`](../debts/photo-put-unrun-on-github.md) |
+| `photo-put-unrun-on-github` | `pushPhoto` and `pullPhoto` on `window.remote` (`src/entry.jsx`) have never run against real GitHub. | [`debts/photo-put-unrun-on-github.md`](../debts/photo-put-unrun-on-github.md) |
 | `photoget-list-fallback-untested` | No test runs the `photoGet` list-first fallback. | [`debts/photoget-list-fallback-untested.md`](../debts/photoget-list-fallback-untested.md) |
 | `received-at-size-unmeasured` | `receivedAt` is never pruned, and its size has not been measured. | [`debts/received-at-size-unmeasured.md`](../debts/received-at-size-unmeasured.md) |
 | `recent-log-unbuilt` | The log, its merge rule, its panel and its undo are ruled and not built, in either client. | [`debts/recent-log-unbuilt.md`](../debts/recent-log-unbuilt.md) |
@@ -286,11 +287,12 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `sweep-settle-masks-30-13-stall` | The `SWEEP_WAIT` settle after 19.6 hides a stall at 30.13, and it does not explain it. | [`debts/sweep-settle-masks-30-13-stall.md`](../debts/sweep-settle-masks-30-13-stall.md) |
 | `tally-card-moves-at-320px` | At 320px the Tally card moves 14px on check-ins 1 and 6. | [`debts/tally-card-moves-at-320px.md`](../debts/tally-card-moves-at-320px.md) |
 | `tests-33-35-40-45-cannot-fail` | Tests 33.35, 33.40 and 33.45 cannot fail on a plausible mutant. | [`debts/tests-33-35-40-45-cannot-fail.md`](../debts/tests-33-35-40-45-cannot-fail.md) |
+| `tests-47-6-and-30-15-cannot-fail` | Test 47.6 says in its comment that it kills a survey that reads the photo store as empty. | [`debts/tests-47-6-and-30-15-cannot-fail.md`](../debts/tests-47-6-and-30-15-cannot-fail.md) |
 | `token-export-and-view-unpinned` | Nothing yet pins the native device key in the backup export or in SwiftUI view state. | [`debts/token-export-and-view-unpinned.md`](../debts/token-export-and-view-unpinned.md) |
 | `token-state-and-bundle-unpinned` | Nothing pins the React-state or bundle guarantees. | [`debts/token-state-and-bundle-unpinned.md`](../debts/token-state-and-bundle-unpinned.md) |
 | `type-floor-unbuilt` | Some labels are smaller than the 10px floor today. | [`debts/type-floor-unbuilt.md`](../debts/type-floor-unbuilt.md) |
 | `unheld-photo-never-reported` | The app never names a lost photo to the owner. | [`debts/unheld-photo-never-reported.md`](../debts/unheld-photo-never-reported.md) |
 | `universal-link-unbuilt` | Neither the link handler nor the Worker route that serves the apple-app-site-association file exists. | [`debts/universal-link-unbuilt.md`](../debts/universal-link-unbuilt.md) |
-| `web-photos-have-no-backup` | The 8 photos on the GitHub photo branch are not on the Worker until the one-time copy runs. | [`debts/web-photos-have-no-backup.md`](../debts/web-photos-have-no-backup.md) |
+| `web-photos-have-no-backup` | Web photos go to the Worker's `/photos` route. | [`debts/web-photos-have-no-backup.md`](../debts/web-photos-have-no-backup.md) |
 | `web-reads-no-worker-snapshots` | Web does not read the Worker `/snapshots` or `/kept` routes. | [`debts/web-reads-no-worker-snapshots.md`](../debts/web-reads-no-worker-snapshots.md) |
 | `worker-two-device-proof-unrun` | No written proof runs two devices against the Worker merge, so the first real two-device case is unchecked. | [`debts/worker-two-device-proof-unrun.md`](../debts/worker-two-device-proof-unrun.md) |
