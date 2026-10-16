@@ -273,6 +273,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `orphaned-reach-unpinned` | No test pins that Re-import, Backup and Reset must stay reachable from Orphaned, and it is unverified. | [`debts/orphaned-reach-unpinned.md`](../debts/orphaned-reach-unpinned.md) |
 | `panel-paper-fill-unbuilt` | Overlay panels carry no `paper` fill: `panelWrap` in `src/app.jsx` sets padding and a top border, and no background. | [`debts/panel-paper-fill-unbuilt.md`](../debts/panel-paper-fill-unbuilt.md) |
 | `panels-overlay-unbuilt` | Today a panel takes layout space and pushes the list down. | [`debts/panels-overlay-unbuilt.md`](../debts/panels-overlay-unbuilt.md) |
+| `photo-put-unrun-on-github` | `pushPhoto` and `pullPhoto` on `window.remote` (`src/entry.jsx`) have never run against real GitHub. | [`debts/photo-put-unrun-on-github.md`](../debts/photo-put-unrun-on-github.md) |
 | `photoget-list-fallback-untested` | No test runs the `photoGet` list-first fallback. | [`debts/photoget-list-fallback-untested.md`](../debts/photoget-list-fallback-untested.md) |
 | `received-at-size-unmeasured` | `receivedAt` is never pruned, and its size has not been measured. | [`debts/received-at-size-unmeasured.md`](../debts/received-at-size-unmeasured.md) |
 | `recent-log-unbuilt` | The log, its merge rule, its panel and its undo are ruled and not built, in either client. | [`debts/recent-log-unbuilt.md`](../debts/recent-log-unbuilt.md) |

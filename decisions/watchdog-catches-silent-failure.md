@@ -1,6 +1,6 @@
 # A scheduled watchdog checks the backup, not the phone
 
-**Status:** retired. The owner ruled on 2026-10-14 that the backup watchdog is turned off, and the orchestrator disabled the workflow on 2026-10-16 at 03:12 CDT (id `356631798`). No check watches the backup now, see `backup-unwatched`.
+**Status:** retired. The owner ruled on 2026-10-14 that the backup watchdog is turned off, and the orchestrator disabled the workflow on 2026-10-16, between 03:02 and 03:08 CDT (id `356631798`). No check watches the backup now, see `backup-unwatched`.
 
 The principle stands for any future alarm. A backup alarm must not depend on the phone being honest about its own state. The phone's "Backed up" line is only as honest as the phone. A device whose token expired, whose storage is unreadable, or that is never opened has no way to say it stopped.
 

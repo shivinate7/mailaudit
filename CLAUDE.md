@@ -382,6 +382,7 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `reimport-received-unpinned` — Nothing pins that received survives a re-import.
 - `native-dialog-ban-unpinned` — Nothing pins the ban on native dialogs.
 - `ruled-head-heights-unremeasured` — The ruled head heights have not been re-measured.
+- `photo-put-unrun-on-github` — The GitHub photo PUT and pull have never run.
 - `native-ledger-tab-unbuilt` — The native Ledger tab is a placeholder.
 - `native-key-scan-skips-views` — The native key scan skips SwiftUI view state.
 - `draft-skip-required-unmeasured` — A required check on a draft-skipped job is unmeasured.
