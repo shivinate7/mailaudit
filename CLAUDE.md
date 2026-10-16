@@ -129,11 +129,11 @@ A photo is a picture of a mailing label. It never enters the ledger, and it can 
 - `photos-stay-out-of-the-ledger` — Photo blobs never enter the ledger.
 - `photo-sync-cannot-conflict` — Photo sync cannot conflict by design.
 - `photo-errors-never-hit-pushstate` — A photo error never reaches pushState.
-- `photo-ids-restore-keep-if-known` — A restore keeps a photo id when known.
+- `photo-ids-restore-keep-if-known` — A restore keeps every photo id. Open: the owner has not confirmed it.
 - `photo-ids-unreadable-local` — An unreadable local photo store keeps ids.
 - `photo-thumbnails-and-viewer` — Thumbnails are 56px squares, and the viewer is a scrim.
 - `photo-sweep-two-guards` — The photo sweep has two guards.
-- `pull-warns-on-what-it-drops` — The pull reports photos with no copy left, after its fetch.
+- `pull-warns-on-what-it-drops` — A pull names no photo as lost.
 - `label-photos-downscale-to-2000px` — Label photos downscale to 2000px.
 - `orphan-sweep-drops-unused-photos` — The sweep drops photos no envelope or draft uses.
 

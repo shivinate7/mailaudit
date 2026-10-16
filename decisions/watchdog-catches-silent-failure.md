@@ -1,6 +1,6 @@
 # A scheduled watchdog checks the backup, not the phone
 
-**Status:** retired by the owner's ruling of 2026-10-14, which turns the backup watchdog off. The orchestrator turns it off. No check watches the backup now, see `backup-unwatched`.
+**Status:** retired. The owner ruled on 2026-10-14 that the backup watchdog is turned off, and the orchestrator carried that out. No check watches the backup now, see `backup-unwatched`.
 
 The principle stands for any future alarm. A backup alarm must not depend on the phone being honest about its own state. The phone's "Backed up" line is only as honest as the phone. A device whose token expired, whose storage is unreadable, or that is never opened has no way to say it stopped.
 
@@ -8,7 +8,7 @@ The alarm was proven to fire once. A dispatch with `threshold=0` opened issue #4
 
 The sync advisory and the merge notice name no GitHub. See `ruled-head-one-advisory-entrance`.
 
-**Holds while:** `backup-watchdog.yml` in `mailaudit-data` still runs on its daily cron, until the orchestrator turns it off.
+**Holds while:** no alarm watches the backup. The watchdog workflow, `backup-watchdog.yml` in `mailaudit-data`, is off, see `backup-unwatched`.
 
 Kind: process
 

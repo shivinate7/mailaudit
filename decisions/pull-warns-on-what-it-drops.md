@@ -1,8 +1,8 @@
-# The pull reports photos with no copy left
+# A pull names no photo as lost
 
-A pull names the photos that have no copy left on any device or on the Worker, after its fetch. The pull does not warn before it replaces the ledger (owner ruling 2026-10-15). Tests 30.18s and 30.18t pin that a photo the current ledger names survives the sync.
+A pull does not report any photo as lost. The Worker lacking a blob does not mean no device holds it, because the device that took the photo may still be uploading. The pull does not warn before it replaces the ledger (owner ruling 2026-10-15). Tests 30.18s and 30.18t pin that a photo the current ledger names survives the sync.
 
-**Holds while:** `pullPhotos` in `src/app.jsx` names photos with no copy left after its fetch, from `plan.lost` in `photoPlan`, and test 30.10b pins it. `doMerge` calls `pullPhotos`, so that report reaches a merge too. Test 30.19 keeps a photo that both ledgers reference, and test 30.20 does not report that photo as gone.
+**Holds while:** `pullPhotos` in `src/app.jsx` shows only the "more will arrive on the next sync" line, with no lost wording. `photoPlan` in `src/photo-rules.mjs` still returns `lost`, and nothing reads it. Test 30.10b pins that no "no copy left" wording shows for a photo the Worker lacks. Test 30.20 pins that a photo both ledgers reference is not reported gone. `doMerge` calls `pullPhotos`, so the same holds for a merge. Test 30.19 keeps a photo that both ledgers reference.
 
 Kind: build
 

@@ -2,7 +2,7 @@
 
 **Status:** ruled. The owner ruled on 2026-10-11: "Cloudflare does it all". The owner ruled on 2026-10-14 that the snapshots are the backup, see `sync-revamp-cloudflare`, and that the backup watchdog in the private repo is turned off, which the orchestrator carries out. Lane W3a built the snapshots. It landed on main in PR #79. Group 13 (tests 13.1 to 13.9) holds the snapshot tests. At W3a, `npm run test:worker` read 312 passed, 0 failed.
 
-GitHub leaves the sync role entirely. The Worker keeps daily snapshots of the ledger for History and for backup. The owner turned the backup watchdog off on 2026-10-14. The public seed is gone. The owner ruled on 2026-10-11 to drop it, and `82e45d4` removed it, so the ledger stops being public and a visitor sees an empty app.
+GitHub leaves the sync role entirely. The Worker keeps daily snapshots of the ledger for History and for backup. The owner turned the backup watchdog off on 2026-10-14. The public seed is gone. The owner ruled on 2026-10-11 and on 2026-10-14/15 to drop it, and `82e45d4` removed it. The page carries no ledger, so a visitor sees an empty app. The seed stays in public git history, see debt `seed-in-public-history`.
 
 **Holds while:** History still reads the frozen `data` branch (`window.remote.listVersions` and `getVersion` in `src/app.jsx`), and no web code reads the Worker snapshot routes (`web-reads-no-worker-snapshots`).
 

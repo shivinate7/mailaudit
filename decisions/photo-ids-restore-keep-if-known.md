@@ -1,18 +1,18 @@
-# A restore keeps a photo id when known
+# A restore keeps every photo id
 
-A file restore keeps a photo id when its blob is in the payload or already live on this device. Strip the rest. A server apply keeps every id. The Worker may not hold a blob that a device is still uploading, and a stripped id is gone for every device. If the local photo store is unreadable, keep every id, as `photo-ids-unreadable-local` sets out.
+A restore keeps every photo id, and so does a server apply. A device that lacks a blob does not show that no device holds it. A restore restamps its envelopes, so a stripped id wins the merge, and the holder's sweep then drops the blob. A pushed payload never carries photos, because photos stay local, so a restore on the device that took them would strip every id. Keeping an id costs a blank manila tile until a sync brings the blob. Stripping it costs the photo. A blob inlined in a backup file is written to this device on restore. An unreadable local photo store keeps every id too, as `photo-ids-unreadable-local` sets out.
 
-**Holds while:** `applyBackup` in `src/app.jsx` keeps the union of local ids and inlined ids on a file restore. It keeps every id on a server apply (`source === "server"`), and every id when the local read returns `null`.
+**Status:** open. The owner has not confirmed the file-restore rule that commit 7f86322 built. That rule keeps every id on a file restore, and test 19.6 pins it. Owner question: keep every id on every restore, or strip an id on a file restore. Strip only when this device lacks the blob and the store was read. Recommendation: keep every id.
 
-The old rule was all-or-nothing on `data.photos`. That is right for a file restore onto a fresh origin. Everywhere else it is silent data loss. A pushed payload never carries photos, because photos stay local by design. So pulling onto the very device that took them stripped every id. The sweep effect then deleted the JPEGs from IndexedDB two seconds later, with nothing to restore from.
+**Holds while:** `applyBackup` in `src/app.jsx` writes the envelope photo ids through unchanged on a file restore and on a server apply.
 
-The same bug was latent on the file path, a plain Backup followed by restore on the same device. It was rarely exercised there. Tests 19.11–19.12, 26.11–26.13.
+**Pinned by:**
 
-The third arm, a set of ids the photo remote confirmed, came with the GitHub photo sync. `applyBackup` no longer takes it. Its reasons still hold for a server apply. One GET fails out of twelve. That would strip one id. The debounced save would write the stripped ledger, and the next push would publish it. That severs the link to a photo that a retry would have fetched. If the photo store cannot be reached at all, every id would go at once.
-
-Keeping an id costs a blank manila tile until the next pull. Stripping it costs the photo. An id is stripped only on a file restore, when the store was read and did not hold it. An id is kept on a server apply (26.13), and when the store could not be read (26.13b).
-
-**Pinned by:** 26.11–26.13 for the ids. Mutant confirmed red: a pull that reuses the old all-or-nothing predicate.
+- 19.6 and 19.11–19.12: a photo-less restore keeps the ids, and the sweep leaves the blob.
+- 26.11–26.12: a merge keeps ids whose blob is on this device.
+- 26.13 and 26.13b: a server apply keeps an id the Worker lacks, and an unreadable list keeps it too.
+- 26.13c: the Sync panel says photos need something, not that they are lost.
+- 30.10 and 30.13: a photo the Worker lacks stays on the envelope, and an unreadable store keeps every id.
 
 Kind: build
 
