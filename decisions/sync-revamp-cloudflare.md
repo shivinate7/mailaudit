@@ -8,7 +8,7 @@ Plan: decisions/sync-revamp-cloudflare.md#worker-work-ahead (worker)
 
 Plan: decisions/sync-revamp-cloudflare.md#worker-work-ahead (native)
 
-**Status:** ruled 2026-10-10. Owner ruling 2026-10-14 21:12 CDT: build the switch. Web syncs through Cloudflare only. The GitHub mirror stops being a live second copy, and the Worker's daily snapshots become the backup. Owner ruling 2026-10-14 21:55 CDT: photos move to the Worker, and the 8 photos on the GitHub photo branch are copied there once. The switch and the photo move merged in PR #100 (a214855). The copy has not run. Debt: `web-photos-have-no-backup`. The server runs at `manifestnumberone.shivamsemwal01.workers.dev`. A device sends its ledger there once it has its key.
+**Status:** ruled 2026-10-10. Owner ruling 2026-10-14 21:12 CDT: build the switch. Web syncs through Cloudflare only. The GitHub mirror stops being a live second copy, and the Worker's daily snapshots become the backup. Owner ruling 2026-10-14 21:55 CDT: photos move to the Worker, and the 8 photos on the GitHub photo branch are copied there once. The switch and the photo move merged in PR #100 (a214855). The copy ran on 2026-10-16 at 03:10 CDT. Debt: `web-photos-have-no-backup`. The server runs at `manifestnumberone.shivamsemwal01.workers.dev`. A device sends its ledger there once it has its key.
 
 GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Deliberately a manual backup, not continuous sync." Auto-push and merge grew on top of it later, and no one chose a sync base again. A fresh choice, made on 2026-10-10, picked Cloudflare.
 
@@ -70,7 +70,7 @@ The orchestrator made these under the owner's grant to run the stages, on 2026-1
 
 ## Web plan
 
-Slice S1 built the ledger switch. Slice S2 moves photos in the same lane: `window.sync` has `photoList`, `photoGet` and `photoPut` against the Worker `/photos` route. A held reply downloads the photos it names before it applies, and a photo push follows a ledger POST. `scripts/copy-photos-to-worker.mjs` copies the GitHub photo branch once, and it is a dry run by default. The copy has not run. Slice S3 removes the GitHub adapter's photo and write paths. Until then the adapter stays defined on `window.remote` in `src/entry.jsx`. Debt: `web-photos-have-no-backup`. The switch itself is in Stage 4b rulings.
+Slice S1 built the ledger switch. Slice S2 moves photos in the same lane: `window.sync` has `photoList`, `photoGet` and `photoPut` against the Worker `/photos` route. A held reply downloads the photos it names before it applies, and a photo push follows a ledger POST. `scripts/copy-photos-to-worker.mjs` copies the GitHub photo branch once, and it is a dry run by default. The copy ran on 2026-10-16 at 03:10 CDT. Slice S3 removes the GitHub adapter's photo and write paths. Until then the adapter stays defined on `window.remote` in `src/entry.jsx`. Debt: `web-photos-have-no-backup`. The switch itself is in Stage 4b rulings.
 
 ## Worker work ahead
 
@@ -83,7 +83,7 @@ The native build needs these changes to the Worker. On main the Worker serves `/
 
 ## Still open
 
-- Web photos: the one-time copy of the 8 GitHub photos has not run, and the GitHub adapter's photo and write paths (slice S3) are not removed. Debt: `web-photos-have-no-backup`.
+- Web photos: the one-time copy of the 8 GitHub photos ran on 2026-10-16 at 03:10 CDT. The GitHub adapter's photo and write paths (slice S3) are not removed. Debt: `web-photos-have-no-backup`.
 - The History-restore fix is built in this lane (`restampRestore`, called from `applyBackup`). It lands before the switch merges, as the owner ruled.
 - Whether a Cloudflare Access login survives in an iOS home-screen app. This is untested. Debt: `cloudflare-access-login-untested`.
 - Live updates use a WebSocket. A new rev from the other device starts one GET, and the reply waits for the idle gate.
