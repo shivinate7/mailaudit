@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 /* the REAL codec, not a mock of it — see the note on the remote mock below */
 import { utf8ToBase64, base64ToUtf8, blobToBase64 } from "../src/b64.mjs";
-import { photoName, mimeFromName } from "../src/photo-rules.mjs";
+import { photoName, photoIdFromName, mimeFromName } from "../src/photo-rules.mjs";
 import { prunePlan } from "../src/version-rules.mjs";
 import { syncStatus } from "../src/sync-rules.mjs";
 import { mergeLedger } from "../src/merge-rules.mjs";
@@ -465,6 +465,8 @@ win.remote = remoteApi;
 const syncFresh = () => ({ key: null, ledger: null, rev: 0, netFail: false, tooBig: false, badShape: false, badShapes: 0, refused: false, calls: [], onRev: null, photos: new Map() });
 /* the photo names the Worker holds (worker/core.mjs, /photos): what a test asserts on */
 export const syncPhotoNames = () => [...sync.photos.keys()];
+/* the wire name the Worker holds for an id, or null: the photo route is named id.ext */
+const wireNameOf = (id) => [...sync.photos.keys()].find((k) => photoIdFromName(k) === id) ?? null;
 /* the ledger the Worker holds now, after any POST merge (what a second device would read) */
 export const syncLedgerNow = () => sync.ledger;
 /* the other device's copy, as the Worker would hold it now: the next resume reads it */
@@ -630,30 +632,34 @@ const syncApi = {
       syncCloses += 1;
     };
   },
-  /* The Worker's photo routes (worker/core.mjs, /photos). Method names are the
-     harness contract for the builder: photoList() = GET /photos, photoGet(name) =
-     GET /photos/<name>, photoPut(name, blob) = POST /photos/<name>. The write is
-     once per name, as the route is. A refused key answers 401, a network failure
-     answers status null. */
+  /* The Worker's photo routes (worker/core.mjs, /photos). The app speaks ids and blobs.
+     The wire speaks file names, id.ext, and the Worker keeps each photo under its name.
+     So the harness answers in ids and stores under photoName(id, type). An app that builds
+     a file name itself hands this mock a name where it expects an id, and the tests fail.
+     photoList() = GET /photos, photoGet(id) = GET /photos/<name>, photoPut(id, blob) =
+     POST /photos/<name>. The write is once per name, as the route is. A refused key answers
+     401, a network failure answers status null. */
   async photoList() {
     sync.calls.push({ op: "photoList", keyed: !!sync.key });
     if (sync.netFail) return syncReply(null, null);
     if (sync.refused || !sync.key) return syncReply(401, { error: "unauthorized" });
     /* syncPhotosRefused: the ledger reads and the photo list does not (a photo-only refusal) */
     if (sync.photoRefused) return syncReply(401, { error: "unauthorized" });
-    return syncReply(200, { ids: [...sync.photos.keys()] });
+    return syncReply(200, { ids: [...sync.photos.keys()].map(photoIdFromName).filter(Boolean) });
   },
-  async photoGet(name) {
-    sync.calls.push({ op: "photoGet", name, keyed: !!sync.key });
+  async photoGet(id) {
+    const name = wireNameOf(id);
+    sync.calls.push({ op: "photoGet", id, name, keyed: !!sync.key });
     if (sync.netFail) return syncReply(null, null);
     if (sync.refused || !sync.key) return syncReply(401, { error: "unauthorized" });
     /* photoDelay: a slow download, the only way to put the 2s sweep between two arrivals */
     if (sync.photoDelay) await sleep(sync.photoDelay);
-    const blob = sync.photos.get(name);
+    const blob = name ? sync.photos.get(name) : undefined;
     return blob ? syncReply(200, { blob }) : syncReply(404, { error: "not found" });
   },
-  async photoPut(name, blob) {
-    sync.calls.push({ op: "photoPut", name, keyed: !!sync.key });
+  async photoPut(id, blob) {
+    const name = photoName(id, blob.type);
+    sync.calls.push({ op: "photoPut", id, name, keyed: !!sync.key });
     if (sync.netFail) return syncReply(null, null);
     if (sync.refused || !sync.key) return syncReply(401, { error: "unauthorized" });
     /* held by holdSyncPhotoPuts(): the write is in flight until the test releases it */
@@ -661,7 +667,7 @@ const syncApi = {
     if (sync.photoFail) return syncReply(null, null);
     if (blob.size > MAX_PHOTO_BYTES) return syncReply(413, { error: "photo-too-large" });
     if (!sync.photos.has(name)) sync.photos.set(name, blob);
-    return syncReply(200, { id: name });
+    return syncReply(200, { id });
   },
 };
 win.sync = syncApi;

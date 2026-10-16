@@ -1461,6 +1461,8 @@ const SERVER30 = (state) => ({
 });
 const workerPhotoCalls30 = () => syncCalls().filter((c) => /^photo/.test(c.op));
 const photoPuts30 = () => syncCalls().filter((c) => c.op === "photoPut");
+/* the ids the app handed the photo route, per op: the harness records each call's id */
+const photoIds30 = (op) => syncCalls().filter((c) => c.op === op).map((c) => c.id);
 /* a photo write waits one second after the ledger (photo-writes-wait-one-second) */
 const PHOTO_WAIT30 = 1500;
 /* a fresh resume: the page was away, and on return the Worker is read and merged */
@@ -1482,6 +1484,7 @@ await wakeWorker();
 await drain();
 await sleep(PHOTO_WAIT30);
 eq(syncPhotoNames(), ["pho-a.jpg"], "30.2 a push sends a photo the Worker lacks");
+eq(photoIds30("photoPut"), ["pho-a"], "30.2b the app hands the photo route an id, not a file name");
 
 /* pushing again must send NOTHING: the set difference is what makes a repeat
    tap cheap, and what makes a partial upload resumable */
@@ -1520,6 +1523,7 @@ eq(
   "30.5 a merge onto a device with no blobs KEEPS the id"
 );
 eq(photoKeys(), ["pho-a"], "30.6 because it downloaded the blob first");
+eq(photoIds30("photoGet"), ["pho-a"], "30.6b the app asks the photo route for the id, not a file name");
 const got30 = getPhoto("pho-a");
 eq(
   got30 ? await bytesOf(got30) : null,
