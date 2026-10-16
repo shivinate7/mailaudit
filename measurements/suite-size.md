@@ -1,6 +1,6 @@
 # Test suite assertion count and run time
 
-**Status:** red at `49b6911`, the head of `web/sync-switch`, measured 2026-10-15. New York (the pinned zone): 1433 passed, 1 failed, exit 1, 166.5 s. UTC: 1432 passed, 1 failed, exit 1, 166.0 s. The failure is 30.10. The last green run was at `c722dd9` on 2026-10-14, recorded below.
+**Status:** measured on `web/sync-switch` after the drop-seed merge, 2026-10-15. The suite is green there. New York (the pinned zone): 1434 passed, 0 failed, exit 0, 168.2 s. America/Chicago: 1434 passed, 0 failed, exit 0, 168.2 s. UTC: unmeasured.
 
 This record holds the assertion count and the run time for `npm test`. The suite runs 1434 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
