@@ -24,7 +24,7 @@ Since the switch, no device writes the `data` branch. History reads that frozen 
 
 ## Snapshot defaults
 
-Orchestrator defaults of 2026-10-12, not owner rulings. The snapshot, `/health` and snapshot-route bullets landed on main with W3a, in PR #79. The last two bullets, on the data branch and on restore, are in the switch lane and not yet merged.
+Orchestrator defaults of 2026-10-12, not owner rulings. The snapshot, `/health` and snapshot-route bullets landed on main with W3a, in PR #79. The last two bullets, on the data branch and on restore, merged in PR #100 (a214855).
 
 - A snapshot holds the ledger as it was before the first changing write of its UTC day. Later changing writes that day write no snapshot.
 - A snapshot is kept while it is within 180 days: today and the 179 days before it stay. A changing write removes the 180-day-old and older snapshots.
@@ -32,7 +32,7 @@ Orchestrator defaults of 2026-10-12, not owner rulings. The snapshot, `/health` 
 - GET /health needs no key. It replies only with the last write time. A no-op does not move it.
 - The snapshot routes need a device key. The list gives only the day, rev and time of each snapshot, newest day first.
 - The data branch is frozen. It is not deleted.
-- A restore stamps new change times. The switch lane builds it (`restampRestore` in `src/merge-rules.mjs`, called from `applyBackup`). The owner ruled that this fix lands before the switch merges.
+- A restore stamps new change times. PR #100 (a214855) built it (`restampRestore` in `src/merge-rules.mjs`, called from `applyBackup`). The owner ruled that this fix lands before the switch merges.
 
 ## Rejected
 

@@ -8,7 +8,7 @@ Plan: decisions/sync-revamp-cloudflare.md#worker-work-ahead (worker)
 
 Plan: decisions/sync-revamp-cloudflare.md#worker-work-ahead (native)
 
-**Status:** ruled 2026-10-10. Owner ruling 2026-10-14 21:12 CDT: build the switch. Web syncs through Cloudflare only. The GitHub mirror stops being a live second copy, and the Worker's daily snapshots become the backup. Owner ruling 2026-10-14 21:55 CDT: photos move to the Worker, and the 8 photos on the GitHub photo branch are copied there once. The switch and the photo move are built in the `web/sync-switch` lane and not yet merged. The copy has not run. Debt: `web-photos-have-no-backup`. The server runs at `manifestnumberone.shivamsemwal01.workers.dev`. A device sends its ledger there once it has its key.
+**Status:** ruled 2026-10-10. Owner ruling 2026-10-14 21:12 CDT: build the switch. Web syncs through Cloudflare only. The GitHub mirror stops being a live second copy, and the Worker's daily snapshots become the backup. Owner ruling 2026-10-14 21:55 CDT: photos move to the Worker, and the 8 photos on the GitHub photo branch are copied there once. The switch and the photo move merged in PR #100 (a214855). The copy has not run. Debt: `web-photos-have-no-backup`. The server runs at `manifestnumberone.shivamsemwal01.workers.dev`. A device sends its ledger there once it has its key.
 
 GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Deliberately a manual backup, not continuous sync." Auto-push and merge grew on top of it later, and no one chose a sync base again. A fresh choice, made on 2026-10-10, picked Cloudflare.
 

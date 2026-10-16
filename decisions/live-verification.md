@@ -54,7 +54,7 @@ Photo sync has had its read paths verified live and without a key. The raw media
 
 **The ledger repo's own private path is now verified live too.** This is the first real-GitHub confirmation of anything on the read side since the repo was closed. From the deployed Pages origin with no key, `pull()`, `listVersions()`, and `peek()` all return `no-access`. `peek()` answers `{known: false}`, not "nobody is ahead". That reading matters. Otherwise a keyless device could push straight over the one that can see. Measured at the same time, the site still serves **200** to an anonymous request. But `raw.githubusercontent.com/.../data/ledger.json` and the repo API both **404**. That is the whole point of the private/Pro arrangement, and it is now confirmed rather than assumed. So `peek()` comes off the unverified list.
 
-**Still never run against real GitHub:** a photo PUT and a photo pull (debt `photo-put-unrun-on-github`), and a ledger conflict. The conflict now runs on the Worker, and no live run of it is recorded (debt `worker-two-device-proof-unrun`).
+**Still never run against real GitHub:** a photo PUT and a photo pull. No web code calls either: the GitHub photo methods on `window.remote` (`listPhotos`, `photoGet`, `photoPut` and `pullPhoto` in `src/entry.jsx`) have no caller in `src/app.jsx`, and photos use `window.sync`. And a ledger conflict. The conflict now runs on the Worker, and no live run of it is recorded (debt `worker-two-device-proof-unrun`).
 
 That same session is what surfaced the group-28 bug: Pull was unreachable on an empty ledger. Worth remembering as a method: the suite was all green. The feature was still broken in its single most important scenario, because every test booted a ledger that already had data in it.
 
