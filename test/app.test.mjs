@@ -732,16 +732,17 @@ const big = JSON.parse(bigText);
 ok(!!big.photos?.["pho-3"], "19.4 photo backup inlines the image");
 ok(/^data:/.test(big.photos["pho-3"]), "19.5 as a data URL");
 
-/* a photo-less restore keeps the ids. This device lacks the blob, but another device or the
-   Worker may hold it, and a stripped id is lost for every device: the holder's sweep then
-   drops the blob. The settle before the next fresh() stopped an intermittent stall at 30.13
-   (3 of 5 runs stalled without it, 0 of 2 with it). */
+/* a restore drops the photo ids this device does not hold (owner ruling 2026-10-15). This
+   device lacks the pho-3 blob, so the id goes. The cost accepted: another device that still
+   holds the blob may delete it once this restore wins the merge. The settle before the next
+   fresh() stopped an intermittent stall at 30.13 (3 of 5 runs stalled without it, 0 of 2 with
+   it). */
 await fresh();
 await reachFor(/Re-import CSV/);
 await click(btn(/Re-import CSV/), "show upload zone");
 await dropFile("plain.json", smallText);
 await sleep(SAVE_WAIT);
-eq(saved().envelopes[0].photos, ["pho-3"], "19.6 photo-less restore keeps the ids");
+eq(saved().envelopes[0].photos, [], "19.6 a restore drops a photo id this device does not hold");
 await sleep(SWEEP_WAIT);
 
 /* the migration path: land on a fresh origin, get the photos back */
@@ -751,6 +752,7 @@ await click(btn(/Re-import CSV/), "show upload zone");
 await dropFile("photos.json", bigText);
 ok(/1 photo too/.test(text()), "19.7 restore notice counts the photos");
 eq(photoKeys(), ["pho-3"], "19.8 the blob is back in the photo store");
+/* the file inlines pho-3, so this device holds it once the blob is written, and the id stays */
 await sleep(SAVE_WAIT);
 eq(saved().envelopes[0].photos, ["pho-3"], "19.9 and the envelope still points at it");
 eq(await getPhoto("pho-3").text(), "fake-jpeg-bytes", "19.10 image survived byte-for-byte");
@@ -787,6 +789,40 @@ eq(
 );
 await sleep(SWEEP_WAIT);
 eq(photoKeys(), ["pho-3"], "19.12 so the sweep leaves the blob alone");
+
+/* a History restore is a restore too (owner ruling 2026-10-15). The version names pho-h, and
+   Reset has cleared the photo store, so this device no longer holds the blob and the id drops. */
+await boot(
+  {
+    items: ITEMS,
+    received: {},
+    envelopes: [
+      {
+        id: "env-h",
+        createdAt: Date.parse("2026-08-01"),
+        note: "",
+        photos: ["pho-h"],
+        entries: [{ name: "Ponder", qty: 1 }],
+      },
+    ],
+  },
+  [["pho-h", jpeg()]]
+);
+await reachFor(/^Reset$/);
+await click(btn(/^Reset$/), "reset");
+await click(btn(/Tap again to clear \d+ cards?/), "confirm reset");
+await sleep(SAVE_WAIT);
+eq(photoKeys(), [], "19.13pre reset cleared the photo store, so pho-h is not held here");
+await openHistory();
+await click(btn(/before reset/), "expand that version");
+await click(btn(/Restore this version/), "arm restore");
+await click(btn(/Tap again to replace \d+ cards?/), "confirm restore");
+await sleep(SAVE_WAIT);
+eq(
+  saved().envelopes?.find((e) => e.id === "env-h")?.photos ?? null,
+  [],
+  "19.13 a History restore drops a photo id this device does not hold"
+);
 
 /* ── 20. a partial quantity checks in ONE copy, not the whole line ─────── */
 
