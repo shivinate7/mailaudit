@@ -1,22 +1,9 @@
 # peek is three-valued, not a guess
 
-The peek check reads only the remote's blob sha, a few hundred bytes, not the full ledger. It answers with one of three states. "Could not look" must never read as "all clear". Reading an unknown state as clear is the one state in which a push would overwrite the other device.
+**Status:** retired 2026-10-14. The app no longer calls `peek()`. The GitHub adapter still defines it in `src/entry.jsx` until slice S3 removes it. A failed Worker call reads as unknown, see `sync-revamp-cloudflare`.
 
-**Holds while:** `peek()` in `src/entry.jsx` returns `known: false` when it cannot look. `autoPush` in `src/app.jsx` returns early on `!p.known` and on `p.ahead`.
+**Holds while:** `peek()` is defined in `src/entry.jsx`, and `src/app.jsx` has no call to it.
 
-`peek()` calls `GET /git/trees/{branch}`. That returns the **blob** sha for `ledger.json`. It is the exact value `push` stores, and `rec().sha` is compared against it. The call spends a few hundred bytes of the read budget. A Contents GET downloads the whole ledger to answer the same question.
+Kind: process
 
-`peek()` runs on foreground, never on a timer. It is three-valued for the same reason `listPhotos` is.
-
-The same `peek()` call also triggers the auto-merge. So it is one read, not two. The auto-merge runs only inside the `known` branch. The foreground call does three things at once. It reports whether the remote is ahead. It licenses or refuses the merge. Through `freshSession`, it decides whether this foreground was a new session.
-
-Auto-push is unconditional. There is no toggle. It looks before every write, and it declines on `ahead` or on unknown. If a conflict opens between the look and the write, it resolves by merging. It does not arm a force on a screen nobody is watching. No force control is left (2026-10-12).
-
-Mutant confirmed red: an unknown remote read as ahead.
-
-## See also
-
-- `listphotos-is-three-valued` — the same rule applied to photos.
-- `offline-is-decided-by-fetch` — the same rule read in the other direction.
-- `sha-accepted-only-after-apply` — the sha this read compares against.
-- `ruled-head-hand-elapsed-forward` — the resume signal this read consumes.
+Home: decisions/sync-revamp-cloudflare.md

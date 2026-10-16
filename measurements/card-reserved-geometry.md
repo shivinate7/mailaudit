@@ -6,7 +6,7 @@ This record holds the package card and Tally card heights across a check-in. It 
 
 ## How to re-measure
 
-Open the built page against the seeded ledger. Step through rest, the first check-in, the second check-in, and the tap that completes the package. Measure the card height and the row displacement at each step. Repeat the action row content measurement at 320, 360, 375, 390, 430, and 760px. Re-run the card and content-height figures by hand, in a real browser. `npm run check:screens` automates the row shift at 375px and 760px. See Reader below. jsdom has no layout and cannot do this measurement.
+Open the built page against the `LEDGER` fixture in `test/screens.mjs`. Step through rest, the first check-in, the second check-in, and the tap that completes the package. Measure the card height and the row displacement at each step. Repeat the action row content measurement at 320, 360, 375, 390, 430, and 760px. Re-run the card and content-height figures by hand, in a real browser. `npm run check:screens` automates the row shift at 375px and 760px. See Reader below. jsdom has no layout and cannot do this measurement.
 
 The figures in this record were taken with headless Chromium through Playwright 1.63.0, the version in `package.json`. The page was `index.html` at `1607933` for the Tally and Packages figures, and at `f97e423` for the action-row figures. The data was the `LEDGER` fixture in `test/screens.mjs`. Motion was reduced. Each tap went to the centre of its row. The Packages steps and the Tally steps ran with the Everything filter on, so a completed card stays on screen. The Ledger tab holds that filter. The Packages card starts expanded. The Tally card opens on a tap of its header.
 

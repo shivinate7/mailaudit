@@ -5,10 +5,10 @@ This is the rule `the-token-is-a-credential`. The GitHub token and the Worker de
 Three structural guarantees keep them out. They are listed from strongest to weakest.
 
 1. Both credentials live outside the `mailday:` namespace, so no enumeration finds them.
-2. The GitHub key input is **uncontrolled**. It is a `ref`. The app reads it once on submit, then clears it. So the token is never in a state snapshot or a DevTools dump. The device key never reaches React state either. `window.sync` reads it from storage, and `hasKey()` returns only a boolean.
+2. No screen takes a GitHub token now. The old key input is not rendered, and its flag `keyOpen` is never read. So the token is never typed into the app. The device key never reaches React state either. `window.sync` reads it from storage, and `hasKey()` returns only a boolean.
 3. The payload is built from named fields. It never spreads state.
 
-`resetAll` deliberately does **not** clear either credential. The GitHub token is a device credential. Dropping the stored sha with it would make the very next push fail with a 422, for no reason. Debt: `reset-all-keeps-token-unpinned`.
+`resetAll` deliberately does **not** clear either credential. The GitHub token is still what `window.remote` reads the frozen `data` branch with. Clearing it would cut History off from its older versions. Debt: `reset-all-keeps-token-unpinned`.
 
 The key check accepts a GitHub token's shape. Debt: `key-re-accepts-token-shape`.
 

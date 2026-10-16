@@ -1,5 +1,9 @@
 # Newer features have only test proof
 
+Kind: process
+
+Home: decisions/sync-revamp-cloudflare.md
+
 Daily use verifies most features. These features are newer. Only `npm test` proves them so far:
 
 - the Tally view and cost basis;
@@ -21,5 +25,3 @@ Whether iOS fires `visibilitychange` on a home-screen app's return is WebKit's d
 
 - `live-verification` — what has run against real GitHub or a real device.
 - `sha-accepted-only-after-apply` — the sha rule that the auto-push incident broke.
-- `the-conflict-guard-is-unverified` — the conflict guard, which has never run against real GitHub.
-- `peek-is-verified-only-on-refusal` — the one peek path that has run against real GitHub.

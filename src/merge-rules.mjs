@@ -247,6 +247,32 @@ export function mergeLedger(local, incoming) {
   };
 }
 
+/* A restore is a change the person made now, so every check-in key, stamp and
+   envelope in either ledger takes `now` as its change time (owner ruling
+   2026-10-15, restore-must-stick). Without that, a later reply from the other
+   device (older than the restore, newer than the version) wins the merge and
+   undoes the restore. That holds for a key the restore leaves as it was and for
+   one this device never held, so the rule is all of them, not the ones that
+   differ. `cur` is the ledger being replaced, `data` the one restored. A
+   discarded envelope or removed stamp becomes a tombstone, so the removal
+   travels like any other. */
+export function restampRestore(cur, data, now) {
+  const receivedAt = {};
+  for (const l of [cur, data])
+    for (const k of [...Object.keys(l.received || {}), ...Object.keys(l.receivedAt || {})]) receivedAt[k] = now;
+
+  const stamps = {};
+  for (const gk of new Set([...Object.keys(cur.stamps || {}), ...Object.keys(data.stamps || {})])) {
+    const s = data.stamps?.[gk];
+    stamps[gk] = s?.kind ? { ...s, updatedAt: now } : { kind: "", note: "", at: "", updatedAt: now };
+  }
+
+  const envelopes = (data.envelopes || []).map((e) => ({ ...e, updatedAt: now }));
+  const kept = new Set(envelopes.map((e) => e.id));
+  for (const c of cur.envelopes || []) if (!kept.has(c.id)) envelopes.push(tombstoneOf(c, now));
+  return { receivedAt, stamps, envelopes };
+}
+
 /* Phrasing for the merge notice. Here rather than in app.jsx because it is
    pure, it is the thing the user actually reads to decide whether the merge did
    what they wanted, and "nothing new" is a genuinely useful thing to be told

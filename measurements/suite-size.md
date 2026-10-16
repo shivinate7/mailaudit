@@ -1,8 +1,8 @@
 # Test suite assertion count and run time
 
-**Status:** measured on `web/carry-savedat` at `c722dd9`, checked 2026-10-14. The suite is green there. New York (the pinned zone): 1334 passed, 0 failed, exit 0, 129.8 s. UTC: 1333 passed, 0 failed, exit 0, 128.3 s.
+**Status:** measured 2026-10-16 at `99d521c`, the head of `web/restore-drop-unheld`, which is green. New York (the pinned zone): 1438 passed, 0 failed, exit 0, 170.3 s. UTC: 1437 passed, 0 failed, exit 0, 170.1 s. Not measured in the machine zone at this head. The count is 2 above `e3891fe`, because 47.8pre and 47.8 were added in `1ab4286`. Earlier figures are below.
 
-This record holds the assertion count and the run time for `npm test`. The suite runs 1334 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+This record holds the assertion count and the run time for `npm test`. The suite runs 1438 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
 The count depends on the clock's zone, so the zone is pinned to `America/New_York`. In CI, the test step sets `TZ`, and it names one New York run's output in `CHECK_DOCS_SUITE_LOG`. `check:docs` grades the figure in this sentence. Locally, `npm run check:docs` runs the suite itself and waits for it to end.
 
@@ -15,6 +15,30 @@ The harness bundles `app.jsx` with esbuild. It sets `platform: "node"` and `form
 Run `npm test` and read its summary line. The count is passed plus failed. A green run prints `all green`. Time the run with the shell's own timer, or with `verdict`, which prints the elapsed seconds.
 
 At `f956873`, the New York process printed its summary and `all green`, then stayed alive with no CPU use for 13 minutes. It was killed by hand. The UTC and machine-zone processes were stopped by hand just after their summaries. Their exit codes and the cause are debt `suite-hang-cause-unmeasured`.
+
+Measured 2026-10-15 at `e3891fe`, the head of `web/restore-drop-unheld` before the photo-id tests, which was green. Its count was 2 above `4db47be`, because 19.13pre and 19.13 were added in `8c23d39`:
+
+- New York (`TZ=America/New_York`): 1436 passed, 0 failed, exit 0. 168.3 s.
+- UTC (`TZ=UTC`): 1435 passed, 0 failed, exit 0. 170.3 s.
+
+Measured 2026-10-15 at `4db47be`, the head of `web/sync-switch`, which was green:
+
+- New York (`TZ=America/New_York`): 1434 passed, 0 failed, exit 0. 168.5 s.
+- UTC (`TZ=UTC`): 1433 passed, 0 failed, exit 0. 168.1 s.
+- Machine zone (America/Chicago), measured at the drop-seed merge the same day: 1434 passed, 0 failed, exit 0. 168.2 s. Not re-run.
+
+Measured 2026-10-15 at `49b6911`, the head of `web/sync-switch`, which is red:
+
+- New York (`TZ=America/New_York`): 1433 passed, 1 failed, exit 1. 166.5 s.
+- UTC (`TZ=UTC`): 1432 passed, 1 failed, exit 1. 166.0 s.
+- The failure is 30.10, "a photo missing everywhere is dropped from the envelope". The suite reports `expected []` and `actual ["pho-a"]`.
+- `npm run check:docs` cannot exit 0 while the suite exits 1, because it runs the suite and fails on its exit. This figure was checked with `CHECK_DOCS_SUITE_LOG` set to the New York run's log, which is the CI path.
+
+Measured 2026-10-15 at `8268a67`, the head of `web/sync-switch`, which was red:
+
+- New York (`TZ=America/New_York`): 1336 passed, 3 failed, exit 1. 157.3 s.
+- UTC (`TZ=UTC`): 1335 passed, 3 failed, exit 1. 153.9 s.
+- The failures are 26.13c, 73.2b and 73.2c. The photo and restore cases are in groups 26 and 73.
 
 Measured on 2026-10-14 at `e641956`, the merge of `web/tally-shift`, `web/merge-unknown-keys` and `web/weak-tests-68`. The count was 1312 at `b28e282`. It rose by 6 because groups 68 and 69 changed in `web/weak-tests-68`. Tests 68.9 and 68.10a were rewritten, and 69.3 was added. The 1-minute load was about 8 to 10 during the runs. The times may be inflated:
 

@@ -15,6 +15,7 @@ import {
   mergeLedger,
   isLiveEnvelope,
   tombstoneOf,
+  restampRestore,
   mergeSummary,
   canon,
 } from "./merge-rules.mjs";
@@ -1892,16 +1893,6 @@ const REMOTE_SAYS = {
     "That isn’t a Mail Day ledger. Nothing on this device was changed.",
 };
 
-/* One retry on an unknown look, shared by the foreground check and autoPush:
-   a single transient failure must not read as "behind" or "ahead". */
-async function peekTwice() {
-  const look = () => window.remote.peek().catch(() => null);
-  const p = await look();
-  /* a retry cannot change either of these */
-  if (p && (p.known || p.reason === "no-access" || p.reason === "rate-limit")) return p;
-  return look();
-}
-
 /* A SEPARATE table, and photo failures get a separate piece of state, because
    the ledger's codes drive `pushState` and `pushState === "conflict"` is the
    only thing gating "Push anyway" — which force-overwrites the LEDGER. GitHub
@@ -3073,21 +3064,13 @@ export default function MailDayLedger() {
   const syncKeyInput = useRef(null);
   const [workerSyncedAt, setWorkerSyncedAt] = useState(null); // when a Worker call last succeeded
   const [serverDown, setServerDown] = useState(false); // false | "unknown" | "too-big" | "no-access": the last Worker call failed
-  const [pushState, setPushState] = useState("idle"); // idle | pushing | pushed | conflict
-  const [mergeState, setMergeState] = useState("idle"); // idle | merging
-  /* "the other device has pushed since we last looked" — set by peek() on
-     foreground, cleared by a merge or a pull. Never persisted: it is a fact
-     about the remote right now, and a stale one restored from disk would
-     nag about a device that has since been caught up with. */
-  const [ahead, setAhead] = useState(false);
   const [photoTarget, setPhotoTarget] = useState(null);
   /* Photos get their own message and their own progress. See PHOTO_SAYS: a
      photo failure that reached `pushState` could arm "Push anyway" and
      overwrite the ledger. */
   const [photoMsg, setPhotoMsg] = useState(null); // { tone, text }
   /* "I could not look" at the photo store rides the one advisory line
-     (syncBroken) and clears when a later look succeeds. It never touches
-     pushState. The GitHub peek raises nothing: the user sees no GitHub state. */
+     (syncBroken) and clears when a later look succeeds. */
   const [photoUnreadable, setPhotoUnreadable] = useState(false);
   const [photoSync, setPhotoSync] = useState(null); // { dir, done, total }
   /* Bumped by every write to the photo store, so thumbnails re-resolve after a
@@ -3188,13 +3171,6 @@ export default function MailDayLedger() {
      carries, because an apply is not an edit. null: never saved. */
   const savedAtRef = useRef(null);
   const keepSavedAt = useRef(false);
-  /* "what you are looking at is a snapshot of someone else's ledger" — true
-     only for a visitor, since seeding requires no key on the device */
-  const [seedShown, setSeedShown] = useState(false);
-  /* the notice is about PROVENANCE, not about being unsaved, so it survives
-     edits: the ledger on screen is still someone else's, however much of it the
-     visitor has since ticked off. It goes when they clear or replace it. */
-
   /* load persisted state */
   useEffect(() => {
     (async () => {
@@ -3204,30 +3180,6 @@ export default function MailDayLedger() {
           value = (await window.storage.get(STORAGE_KEY))?.value || null;
         } catch {
           /* nothing saved yet */
-        }
-        /* ---- the public seed ----
-           Nothing saved AND no key on this device: that is someone who has just
-           opened the public URL. Give them the snapshot build.mjs baked in, so
-           they land on a populated app rather than an empty one, and let them
-           do whatever they like with it — it hydrates into THEIR localStorage
-           and nothing here can reach back.
-
-           The `hasKey` half is the guard that matters. A device with a key is
-           one of the owner's, and the seed is a build-time snapshot: seeding
-           over a cleared owner-device would put stale data under a live sha,
-           and auto-push would publish it. So a keyed device gets nothing here
-           and recovers the way it always has, by pulling. */
-        if (!value && window.seed) {
-          const info = await window.remote?.status?.().catch(() => null);
-          /* a Worker key is a key too: that device is one of the owner's */
-          const workerKeyed = await window.sync?.hasKey?.().catch(() => false);
-          if (!info?.hasKey && !workerKeyed) {
-            const seeded = await window.seed.load().catch(() => null);
-            if (seeded) {
-              value = seeded;
-              setSeedShown(true);
-            }
-          }
         }
         /* Not JSON at all: refuse, keep the text untouched (fallback 2). */
         let parsed = null;
@@ -3380,16 +3332,11 @@ export default function MailDayLedger() {
      already. */
   /* The last time this device and the Worker agreed. One definition, read by
      the decision below, by the line's own copy and by the Last sync row. It
-     reads the Worker only (owner ruling 2026-10-12, default 5): the GitHub
-     mirror's push and pull times never reach the screen. */
+     reads the Worker only (owner ruling 2026-10-12, default 5). */
   const syncedAt = workerSyncedAt;
 
   const syncBroken = useMemo(() => {
     if (!window.sync && !window.remote) return null;
-    /* A visitor is not an unbacked-up device, and "tap to set it up" is
-       meaningless advice to someone looking at a copy of someone else's
-       ledger. Say what is actually true instead. */
-    if (seedShown) return "seeded";
     if (serverDown)
       return serverDown === "unknown" ? "server" : serverDown === "no-access" ? "key-refused" : serverDown;
     if (photoUnreadable) return "photos-unreadable";
@@ -3402,14 +3349,12 @@ export default function MailDayLedger() {
        in flight, or a failure that serverDown already raised above. */
     if (syncedAt && Date.now() - syncedAt > SYNC_STALE_MS) return "stale";
     return null;
-  }, [seedShown, syncedAt, photoUnreadable, serverDown, workerKeySet, syncOpen]);
+  }, [syncedAt, photoUnreadable, serverDown, workerKeySet, syncOpen]);
 
   /* One sentence per sync state: the advisory line on a working screen says it
      whole, and the Sync row on the Ledger tab says it without the "tap to". */
   const syncSays = (
-syncBroken === "seeded"
-                    ? "A snapshot of someone else’s ledger — anything you change stays on this device"
-                    : syncBroken === "server"
+    syncBroken === "server"
                     ? "The sync server could not be reached — tap to fix"
                     : syncBroken === "sync-key"
                     ? "This device has no sync key — tap to paste it"
@@ -3595,7 +3540,7 @@ syncBroken === "seeded"
   );
 
   const applyBackup = useCallback(
-    async (text, source /* "file" | "remote" | "merge" | "server" */, extraPresent = null, notice = null) => {
+    async (text, source /* "file" | "remote" | "merge" | "server" */, notice = null) => {
       const data = await readLedger(text);
       const remote = source === "remote";
       /* a restore ends a refused load and its first save must not be skipped; the
@@ -3622,73 +3567,44 @@ syncBroken === "seeded"
       /* a restore replaces everything, so anything still in flight against the
          old world must not land on the new one */
       syncGen.current++;
-      /* Keep a photo id when its blob is inlined in this payload OR already on
-         this device; strip only the rest. The old rule was all-or-nothing on
-         `data.photos`, which is right for a file restore onto a fresh origin
-         and silent data loss everywhere else: a pushed payload never carries
-         photos (they stay local by design), so pulling onto the very device
-         that took them stripped every id — and the sweep effect then deleted
-         the blobs from IndexedDB two seconds later, with nothing to restore
-         from.
-
-         `extraPresent` widens that to a third case: ids the REMOTE is known to
-         hold. A pull downloads before it applies, so the blobs are usually
-         local by now and this changes nothing — but it is what saves the two
-         cases where they aren't. One GET out of twelve failing would otherwise
-         strip that one id, the debounced save would write the stripped ledger,
-         and the next push would publish it — destroying the link to a photo
-         sitting safe on GitHub that a retry would have fetched. And when the
-         photo repo can't be reached at all (no key, offline), every id would go
-         at once. Keeping an id costs a blank tile until the next pull; stripping
-         it costs the photo. */
+      /* A restore (backup file, saved version) drops a photo id this device does not
+         hold, and keeps one whose blob is here or inlined in the payload (owner ruling
+         2026-10-15). Accepted cost: a device that still holds the blob may delete it once
+         this restore wins the merge. A merge and a server apply keep every id, and so does
+         a store that will not answer: unreadable is not empty (photo-ids-unreadable-local). */
       const inlined =
         data.photos && typeof data.photos === "object" ? data.photos : null;
       const inlinedIds = Object.keys(inlined || {});
-      /* a union, not a read-back after the writes below: those go in through a
-         fire-and-forget IIFE that hasn't run yet when this set is built */
-      /* Three-valued, for the same reason `listPhotos` is. `.catch(() => [])`
-         read "I could not look" as "this device holds nothing" — so with
-         IndexedDB unavailable (private browsing, quota, storage pressure) every
-         id not already on the photo remote was stripped below, the debounced
-         save wrote the stripped ledger, and the next push published it. That
-         severs the link to photos sitting safe on another device or waiting to
-         be uploaded. The remote half of this rule is argued at length above
-         ("keeping an id costs a blank tile, stripping it costs the photo") and
-         test 26.13b pins it; the LOCAL read never got the same treatment.
-         `null` here means unreadable, and unreadable keeps everything. */
-      let localIds = null;
-      if (window.photos) {
-        try {
-          localIds = await window.photos.keys();
-        } catch {
-          localIds = null;
+      let present = null; /* null keeps every id */
+      if (replacing) {
+        let localIds = null; /* no photo global reads as unreadable: keep every id */
+        if (window.photos) {
+          try {
+            localIds = await window.photos.keys();
+          } catch {
+            localIds = null;
+          }
         }
-      } else localIds = [];
-      /* a server apply keeps every id: its photos travel by GitHub (L4b), and
-         keeping an id costs a blank tile, stripping it costs the photo */
-      const present =
-        localIds === null || source === "server"
-          ? null
-          : new Set([...localIds, ...inlinedIds, ...(extraPresent || [])]);
+        if (localIds) present = new Set([...localIds, ...inlinedIds]);
+      }
       /* a merge or server apply carries the applied ledger's time; its own save keeps it.
          A restore (backup file, saved version) is a fresh save of that ledger: it stamps
          now, so it wins unknown-key conflicts afterwards (owner ruling 2026-10-14) */
       savedAtRef.current = replacing ? Date.now() : typeof data.savedAt === "number" ? data.savedAt : null;
       keepSavedAt.current = true;
+      /* a restore stamps the change times of what it moves (a-restore-is-not-local),
+         so a later Worker reply cannot undo it */
+      const stamped = replacing ? restampRestore(snapshot(), { ...data, stamps: sanitizeStamps(data.stamps) }, Date.now()) : data;
       setItems(data.items);
       setReceived(data.received || {});
-      setReceivedAt(data.receivedAt || {});
+      setReceivedAt(stamped.receivedAt || {});
       setEnvelopes(
-        (data.envelopes || []).map((e) => ({
+        (stamped.envelopes || []).map((e) => ({
           ...e,
-          /* present === null is "the store would not answer" — keep every id
-             rather than publishing a ledger with the links cut out */
-          photos: present
-            ? (e.photos || []).filter((id) => present.has(id))
-            : e.photos || [],
+          photos: (e.photos || []).filter((id) => !present || typeof id !== "string" || present.has(id)),
         }))
       );
-      setStamps(sanitizeStamps(data.stamps));
+      setStamps(sanitizeStamps(stamped.stamps));
       if (inlinedIds.length && window.photos)
         (async () => {
           for (const [id, url] of Object.entries(inlined)) {
@@ -3730,7 +3646,7 @@ syncBroken === "seeded"
       );
       setShowUpload(false);
     },
-    [liveEnvelopes, takeVersion]
+    [liveEnvelopes, takeVersion, snapshot]
   );
 
   const handleFile = useCallback(
@@ -3816,24 +3732,6 @@ syncBroken === "seeded"
      middle of, and dropping those would read as the app forgetting rather
      than as a fresh start. */
   const hiddenAt = useRef(null);
-  /* The one-shot "that foreground was a new session" signal, handed forward to
-     the peek effect below — which is where the automatic merge lives, because
-     the peek is already making the one network read the decision needs.
-
-     It has to be HANDED forward rather than re-derived, and this is the trap.
-     The handler below runs FIRST — it registers on the first commit, while the
-     peek effect waits on `loaded` — and nulls `hiddenAt` before returning. So
-     anything downstream that reads `hiddenAt` measures zero forever and the
-     merge never fires: no error, nothing on screen, nothing to notice.
-
-     Written on BOTH branches, so a short hop out can cancel a signal an earlier
-     long absence left standing. One-shot BY CONTRACT, enforced at the consumer
-     — see `check()`, which also runs on mount and on every `syncBusy` flip, and
-     a merge flips `syncBusy` twice.
-
-     Starts TRUE: a cold mount is a new session too, and the more valuable half
-     — a fresh phone should come back already reconciled. */
-  const freshSession = useRef(true);
   useEffect(() => {
     const onVisibility = () => {
       if (document.visibilityState === "hidden") {
@@ -3843,7 +3741,6 @@ syncBroken === "seeded"
       const away = hiddenAt.current == null ? 0 : Date.now() - hiddenAt.current;
       hiddenAt.current = null;
       const fresh = away >= RESUME_RESET_MS;
-      freshSession.current = fresh;
       /* Two consequences of one finding, landing seconds apart — this one
          synchronously, the merge after a network round trip. Two reshapes of
          the same list on one resume is fine precisely BECAUSE it is a resume:
@@ -4026,7 +3923,7 @@ syncBroken === "seeded"
       try {
         /* "file" and not a fourth source: this IS a local full replace, and it
            should carry exactly the warnings one does. */
-        await applyBackup(text, "file", null, null);
+        await applyBackup(text, "file", null);
         setOpenVersion(null);
       } catch (e) {
         setVersionMsgAt(id);
@@ -4100,7 +3997,7 @@ syncBroken === "seeded"
         return;
       }
       try {
-        await applyBackup(text, "file", null, null);
+        await applyBackup(text, "file", null);
         setOpenVersion(null);
       } catch (e) {
         setVersionMsgAt(sha);
@@ -4169,21 +4066,18 @@ syncBroken === "seeded"
      a window.remote without these methods, and an undefined call here would be
      swallowed by the caller's catch and surfaced as a generic ledger error. */
   const photoSyncAvailable =
-    !!window.remote && typeof window.remote.listPhotos === "function";
+    !!window.sync && typeof window.sync.photoList === "function";
+  /* A photo call answers {status, code}. status null is "could not reach the
+     Worker"; 401 is a refused key. PHOTO_SAYS speaks for each. */
+  const NO_REPLY = { status: null, code: "unknown" };
+  const photoReason = (r) =>
+    r.status === null ? "offline" : r.code === "no-access" ? "no-access" : "server";
 
-  /* Per tap, so a first-ever backfill can't sit uploading for an hour: GitHub
-     allows 500 content-generating requests an hour and the ledger push shares
-     that budget. The set difference makes the next tap resume rather than
-     repeat. */
+  /* Per sync, so a first-ever backfill can't sit uploading for minutes. The set
+     difference makes the next sync resume rather than repeat. */
   const PHOTO_BATCH = 25;
-
-  /* Feature-detected: a cached older bundle exposes a window.remote whose
-     pull() still advances the sha on its own, and an undefined call here would
-     be swallowed by the caller's catch and reported as a failed sync. */
-  const acceptPull = useCallback(async (sha) => {
-    if (typeof window.remote?.acceptPull === "function")
-      await window.remote.acceptPull(sha).catch(() => {});
-  }, []);
+  /* the photo phase starts this long after a ledger POST lands */
+  const PHOTO_AFTER_POST_MS = 1000;
 
   const surveyPhotos = useCallback(
     async (referenced) => {
@@ -4200,10 +4094,10 @@ syncBroken === "seeded"
       } catch {
         return { unreadable: true };
       }
-      const remote = await window.remote.listPhotos().catch((e) => ({
-        known: false,
-        reason: e?.code || "server",
-      }));
+      const r = await window.sync.photoList().catch(() => NO_REPLY);
+      let remote;
+      if (r.code === "ok" && Array.isArray(r.body?.ids)) remote = { known: true, ids: r.body.ids };
+      else remote = { known: false, reason: photoReason(r) };
       return { plan: photoPlan({ referenced, local, remote }), remote };
     },
     [photoSyncAvailable]
@@ -4211,8 +4105,8 @@ syncBroken === "seeded"
 
   /* Leaving Orphaned has to drop both mid-thought flags, because both stop
      being true the moment the view unmounts — and both silently block every
-     background sync while they are set (`autoMerge` and `autoPush` refuse on
-     them, correctly, since applyBackup nulls them).
+     a held Worker reply while they are set (mergeBlocked refuses on them,
+     correctly, since applyBackup nulls them).
 
      `composing` is the clear-cut one: EnvelopeComposer holds its entries in
      local state inside the mystery block, so a view switch has already
@@ -4221,8 +4115,8 @@ syncBroken === "seeded"
 
      `undo` is deliberately NOT dropped here. It survives a trip to Packages on
      purpose — "assign, hand-edit elsewhere, come back and undo only your own
-     delta" is a real workflow and group 14 pins it. The sync stall it used to
-     cause is fixed at the other end instead: see autoPush's guard list. */
+     delta" is a real workflow and group 14 pins it. mergeBlocked holds a
+     reply while an undo is pending, so the apply never drops it. */
   const leaveFor = useCallback(
     (v) => {
       /* Leaving drops the flag, so sync is not held off while the draft waits
@@ -4250,8 +4144,6 @@ syncBroken === "seeded"
     [view, liveEnvelopes, composing]
   );
 
-  const flashTimer = useRef(null);
-
   /* `refs` overrides what counts as referenced. The merge needs it: it applies
      a union of both devices' envelopes, and React has not committed that state
      by the time this runs — reading referencedPhotoIds here would survey the
@@ -4276,6 +4168,7 @@ syncBroken === "seeded"
       if (!batch.length) return;
       setPhotoSync({ dir: "push", done: 0, total: batch.length });
       let done = 0;
+      let tooBig = false;
       for (const id of batch) {
         if (syncGen.current !== gen) return;
         let blob;
@@ -4287,138 +4180,41 @@ syncBroken === "seeded"
           return;
         }
         if (!blob) continue; /* swept or reset out from under us */
-        try {
-          await window.remote.pushPhoto(id, blob, `photo ${id}`);
-          done++;
-          setPhotoSync({ dir: "push", done, total: batch.length });
-        } catch (e) {
-          const code = e?.code || "server";
+        const r = await window.sync.photoPut(id, blob).catch(() => NO_REPLY);
+        if (r.code === "too-big") {
+          /* one photo over the Worker's cap must not block the ones behind it */
+          tooBig = true;
+          continue;
+        }
+        if (r.code !== "ok") {
+          const say = PHOTO_SAYS[photoReason(r)];
           setPhotoMsg({
             tone: "advice",
             text:
               done > 0
-                ? `${done} of ${batch.length} photos synced. ${
-                    PHOTO_SAYS[code] || PHOTO_SAYS.server
-                  }`
-                : PHOTO_SAYS[code] || PHOTO_SAYS.server,
+                ? `${done} of ${batch.length} photos synced. ${say}`
+                : say,
           });
-          /* stop, don't grind: GitHub's guidance on a throttle is to back off,
-             and continuing the loop extends the block */
+          /* stop, don't grind: the next sync resumes from the set difference */
           return;
         }
+        done++;
+        setPhotoSync({ dir: "push", done, total: batch.length });
       }
+      if (tooBig) setPhotoMsg({ tone: "advice", text: PHOTO_SAYS.server });
       const left = plan.toPush.length - batch.length;
       if (left > 0)
         setPhotoMsg({
           tone: "advice",
-          text: `${done} photos sent · ${left} still to go — tap to send the rest.`,
+          text: `${done} photos sent · ${left} still to go — they send on the next sync.`,
         });
     },
     [surveyPhotos, referencedPhotoIds]
   );
 
-  const doPush = useCallback(
-    async (force, quiet = false, mirror = false) => {
-      if (!window.remote || damagedRef.current) return;
-      /* doMerge clears this too. A "Pushed ✓" flash
-         from 2s ago would otherwise fire mid-way through the next push and
-         reset a freshly-set "conflict" to idle — taking Merge, Push anyway and
-         the advisory line off the screen with it, leaving a real conflict with
-         no surface at all. */
-      clearTimeout(flashTimer.current);
-      disarm();
-      setPushState("pushing");
-      /* Every push, mirror or not, writes the merge with the last server ledger
-         once one is known, never a raw snapshot: a snapshot that has not yet
-         applied the server's lines holds fewer than GitHub does, and writing it
-         is how a failed merge POST once shrank GitHub from 15 lines to 3. */
-      let text = JSON.stringify(
-        lastServer.current
-          ? mergeLedger(snapshot(), lastServer.current).merged
-          : snapshot()
-      );
-      /* the commit message carries a time that lands where it's useful, in the commit list */
-      const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
-      const message = `ledger ${stamp} · ${items.length} lines · ${liveEnvelopes.length} envelopes`;
-      const gen = ++syncGen.current;
-      syncingRef.current = true;
-      setSyncBusy(true);
-      try {
-        try {
-          await (force
-            ? window.remote.pushForce(text, message)
-            : window.remote.push(text, message));
-        } catch (e) {
-          if (!(mirror && e?.code === "conflict")) throw e;
-          /* a mirror conflict: GitHub moved. Read it, merge it into the ledger
-             being pushed, write under the fresh sha, and give the Worker the
-             merge. Never write a copy that has not merged what GitHub holds. */
-          const res = await window.remote.pull();
-          const merged = mergeLedger(JSON.parse(text), await readLedger(res.text)).merged;
-          text = JSON.stringify(merged);
-          await window.remote.push(text, message, res.sha);
-          /* the merge is the newest ledger this device knows, whatever the Worker
-             answers: it is what the mirror writes next, and it is applied here */
-          growServer(merged);
-          tryApplyRef.current();
-          if (window.sync) {
-            try {
-              await settleReply(await withTimeout(sendPost(merged)), true);
-            } catch {
-              mirrorRef.current = false;
-            }
-            /* the Worker did not take the merge: the next push reconciles with
-               GitHub by the peek path, even if a retry turns mirror mode back on */
-            if (!mirrorRef.current) githubNext.current = true;
-          }
-        }
-        setRemoteInfo(await window.remote.status().catch(() => null));
-        /* Only now, after the ledger is actually on GitHub. A conflict here
-           means this device is out of sync, and spraying photos at the remote
-           while the ledger that references them was rejected is the wrong order
-           to fail in. */
-        await pushPhotos(gen);
-        if (syncGen.current !== gen) return;
-        /* the flash starts AFTER the photos, not before — "Pushed ✓" while a
-           dozen uploads are still queued is simply a lie, and it re-enables the
-           button into a second concurrent loop */
-        setPushState("pushed");
-        flashTimer.current = bgTimeout(() => setPushState("idle"), 2500);
-        return { ok: true };
-      } catch (e) {
-        const code = e?.code || "server";
-        /* the mirror treats a stale sha as a forced write, so no conflict state */
-        if (mirror && code === "conflict") return { ok: false, code };
-        setPushState(code === "conflict" ? "conflict" : "idle");
-        /* `quiet` is auto-push, and this is the same reasoning doMerge's quiet
-           mode already encodes: nobody tapped anything, and setKeyOpen swaps
-           "saved on this device" for an empty field, which reads as *your key
-           is gone*. An expired token would otherwise flip the panel into that
-           state unattended, with (until now) no cancel to get out of it.
-           No GitHub failure reaches the screen; the watchdog catches a stopped
-           mirror. */
-        if (!quiet && (code === "no-key" || code === "auth")) setKeyOpen(true);
-        /* returned rather than only rendered, so the auto path can resolve a
-           conflict by merging instead of leaving a button armed on a screen
-           nobody is looking at */
-        return { ok: false, code };
-      } finally {
-        syncingRef.current = false;
-        setSyncBusy(false);
-        setPhotoSync(null);
-        /* same reason as doMerge's: a generation guard can return out of the
-           middle and leave the label reading "Pushing…" forever. Only the
-           in-flight label is cleared here — "pushed" and "conflict" are
-           outcomes and must survive. */
-        setPushState((p) => (p === "pushing" ? "idle" : p));
-      }
-    },
-    [snapshot, items, liveEnvelopes, disarm, pushPhotos]
-  );
-
-  /* Returns the ids applyBackup should treat as present, and downloads what it
-     can first. Never throws: a photo problem must not abort the ledger pull,
-     which is the part that matters. */
+  /* Downloads the photos the reply names that the Worker holds, before the apply.
+     Never throws: a photo problem must not abort the ledger pull, which is the
+     part that matters. */
   const pullPhotos = useCallback(
     async (text, gen) => {
       /* A SECOND parse site, deliberately non-authoritative. applyBackup owns
@@ -4435,61 +4231,45 @@ syncBroken === "seeded"
             (Array.isArray(data?.envelopes) ? data.envelopes : [])
               .filter(isLiveEnvelope)
               .flatMap((e) => e?.photos || [])
+              .filter((id) => typeof id === "string")
           ),
         ];
       } catch {
-        return null;
+        return;
       }
-      if (!incoming.length) return null;
+      if (!incoming.length) return;
 
       const survey = await surveyPhotos(incoming);
-      if (!survey || syncGen.current !== gen) return null;
+      if (!survey || syncGen.current !== gen) return;
       if (survey.unreadable) {
         setPhotoUnreadable(true);
-        return null;
+        return;
       }
       setPhotoUnreadable(false);
       setPhotoMsg((m) => (m?.text === PHOTO_SAYS.unreadable ? null : m));
       const { plan, remote } = survey;
 
       if (!plan.known) {
-        /* We could not see the store, so we know nothing — and "I can't see it"
-           must never be reported as "it's gone". Keep every id: the bytes are
-           very likely on GitHub, and a blank tile until the next pull is a far
-           smaller loss than the photo. */
+        /* We could not see the store, so we know nothing, and "I can't see it"
+           must never be reported as "it's gone". The ids stay (a server apply
+           strips none); a blank tile until the next sync is the cost. */
         setPhotoMsg({
           tone: "advice",
           text: PHOTO_SAYS[remote.reason] || PHOTO_SAYS.server,
         });
-        return incoming;
+        return;
       }
-
-      /* What this pull is about to destroy: photos the CURRENT ledger references
-         and the incoming one does not. applyBackup replaces envelopes wholesale,
-         so those ids simply stop existing and the sweep deletes their blobs two
-         seconds later — and if they were never pushed, that is the last copy.
-
-         Measured against `incoming`, deliberately, NOT against plan.toPush.
-         `plan` is keyed on the incoming ledger's ids, so its toPush is the set
-         that is referenced, held here and not yet uploaded — precisely the set
-         that SURVIVES this pull untouched. Warning on that told the user their
-         photos were gone at the exact moment they were safe, and said nothing
-         in the case that actually loses them. */
-      const incomingSet = new Set(incoming);
-      const remoteSet = new Set(remote.ids || []);
-      const stranded = referencedPhotoIds.filter(
-        (id) => !incomingSet.has(id) && !remoteSet.has(id)
-      ).length;
 
       const batch = plan.toPull.slice(0, PHOTO_BATCH);
       if (batch.length) setPhotoSync({ dir: "pull", done: 0, total: batch.length });
       let done = 0;
       const got = [];
       for (const id of batch) {
-        if (syncGen.current !== gen) return null;
+        if (syncGen.current !== gen) return;
         try {
-          const blob = await window.remote.pullPhoto(id);
-          await window.photos.put(id, blob);
+          const r = await window.sync.photoGet(id);
+          if (r.code !== "ok" || !r.body?.blob) throw new Error("photo-read");
+          await window.photos.put(id, r.body.blob);
           got.push(id);
           done++;
           setPhotoSync({ dir: "pull", done, total: batch.length });
@@ -4499,76 +4279,63 @@ syncBroken === "seeded"
       }
       if (got.length) setPhotoEpoch((n) => n + 1);
 
-      const notes = [];
-      if (stranded)
-        notes.push(
-          `${stranded} photo${stranded === 1 ? " had" : "s had"} no other copy and ${
-            stranded === 1 ? "is" : "are"
-          } now gone.`
-        );
-      if (plan.lost.length)
-        notes.push(
-          `${plan.lost.length} photo${
-            plan.lost.length === 1 ? " has" : "s have"
-          } no copy left on any device and ${plan.lost.length === 1 ? "was" : "were"} lost.`
-        );
+      /* plan.lost is not reported: the Worker lacking a blob does not say that no
+         device holds it, since the one that took the photo may still be uploading */
       const left = plan.toPull.length - batch.length;
-      if (left > 0) notes.push(`${left} more will arrive on the next sync.`);
-      if (notes.length) setPhotoMsg({ tone: "advice", text: notes.join(" ") });
-
-      /* every id the remote holds, not just the ones fetched this time: a GET
-         that failed is a retry, not a reason to sever the link */
-      return [...got, ...plan.toPull];
+      if (left > 0) setPhotoMsg({ tone: "advice", text: `${left} more will arrive on the next sync.` });
     },
-    [surveyPhotos, referencedPhotoIds]
+    [surveyPhotos]
   );
 
-  /* ---- merge: the resolution the conflict path never had ----
+  /* ---- merge: the Worker's reply, applied ----
 
-     Pull and Push anyway are the two halves of the same mistake: each keeps one
-     device's work by discarding the other's. This keeps both. The later
-     change wins per key — see merge-rules.mjs — and the notice names any
-     removal, so it needs no two-tap confirm and is safe to re-run.
-
-     Two entrances, one function: the conflict (where it also completes the push
-     that was rejected) and the "other device is ahead" notice (where it does
-     not, because there may be nothing local to send and an empty commit is
-     noise). */
+     The later change wins per key, see merge-rules.mjs, and the notice names
+     any removal, so it needs no two-tap confirm and is safe to re-run. `reply`
+     is the ledger the Worker answered with. The photos it names are read from the
+     Worker first. There is no pull and no sha: the Worker is the only sync path
+     (sync-revamp-cloudflare). */
   const doMerge = useCallback(
-    async (alsoPush, quiet = false, reply = null) => {
-      /* `reply` is a ledger the Worker answered a POST with: the same merge, a
-         different source. No pull, no photo download, no sha to accept. */
-      if ((!reply && !window.remote) || damagedRef.current) return { ok: false, code: "server" };
-      clearTimeout(flashTimer.current);
+    async (reply) => {
+      if (damagedRef.current) return { ok: false, code: "server" };
       disarm();
       setPhotoMsg(null);
-      setMergeState("merging");
-      let gen = ++syncGen.current;
+      const gen = ++syncGen.current;
       syncingRef.current = true;
       setSyncBusy(true);
+      /* the last input before the photo reads: a tap after it holds the reply again */
+      const touched = lastActivity.current;
       try {
-        /* this also refreshes the device sha, which is the thing that actually
-           clears the conflict — the merged push below is no longer stale */
-        const res = reply ? { text: JSON.stringify(reply) } : await window.remote.pull();
-        /* photos BEFORE applying: the
-           merge unions both devices' envelopes, so ids arriving from the other
-           device have no blob here yet and applyBackup would strip every one of
-           them. Tests 30.5-30.9 pin the same trap. */
-        /* photos stay on GitHub (L4b): keep every merged id, as applyBackup's
-           "keeping an id costs a blank tile, stripping it costs the photo" */
-        const extraPresent = reply ? null : await pullPhotos(res.text, gen);
+        const replyText = JSON.stringify(reply);
+        const incoming = await readLedger(replyText);
+        /* savedAt is a save time, not ledger content: two ledgers equal but for it are equal */
+        const noTime = ({ savedAt, ...rest }) => rest;
+        const { merged, stats } = mergeLedger(snapshot(), incoming);
+        /* nothing to merge: no photo read, no apply, no milestone. Canonical
+           compare, so a note, a photo id or a receivedAt that differs alone still
+           counts. */
+        if (canon(noTime(merged)) === canon(noTime(snapshot()))) {
+          return { ok: true };
+        }
+        /* photos BEFORE applying: the merge unions both devices' envelopes, so ids
+           arriving from the other device have no blob here yet and the apply would
+           strip every one of them. The ids the Worker holds are kept even when a
+           download fails (a retry beats a lost link). */
+        await pullPhotos(replyText, gen);
         if (syncGen.current !== gen) return { ok: false, code: "server" };
-        const { merged, stats } = mergeLedger(snapshot(), await readLedger(res.text));
-        const text = JSON.stringify(merged);
+        /* a tap during the downloads: applying now would shift the list under the
+           pointer (no-layout-shift-under-pointer), and the merge above no longer
+           matches the device. Hold the reply for the idle gate; the blobs are here
+           by then, so the next try is quick. */
+        if (lastActivity.current !== touched) {
+          growServer(reply);
+          tryApplyRef.current();
+          return { ok: false, code: "held" };
+        }
         const before = syncGen.current;
-        /* An unattended merge that added and removed nothing has nothing to report, and
-           reporting it anyway is worse than silence — `peek` says "ahead" on
-           any new blob sha, and a push writes one whenever the ledger is
-           re-saved, so an empty-data commit elsewhere would otherwise greet the
-           user on their next resume with a notice about a merge they never
-           asked for that did nothing. When it DID add or remove something the summary
-           stays even quietly: the list just changed shape, and that sentence is
-           the only thing explaining why. */
+        /* A merge that added and removed nothing has nothing to report, and
+           reporting it anyway is worse than silence. When it DID add or remove
+           something the summary stays: the list just changed shape, and that
+           sentence is the only thing explaining why. */
         const changed =
           stats.itemsAdded +
             stats.checkInsAdded +
@@ -4578,112 +4345,35 @@ syncBroken === "seeded"
             (stats.stampsRemoved || 0) +
             (stats.stampsAdded || 0) >
           0;
-        if (reply) {
-          /* nothing to merge: no apply, no milestone. Canonical compare, so a
-             note, a photo id or a receivedAt that differs alone still counts. */
-          /* savedAt is a save time, not ledger content: two ledgers equal but for it are equal */
-          const noTime = ({ savedAt, ...rest }) => rest;
-          if (canon(noTime(merged)) === canon(noTime(snapshot()))) {
-            setSeedShown(false); /* a server ledger has landed: this page is the owner's now */
-            return { ok: true };
-          }
-          /* a milestone only in front of a removal, and before the apply */
-          if (stats.checkInsRemoved + stats.envelopesRemoved + (stats.stampsRemoved || 0) > 0)
-            takeVersion("before sync", "milestone");
-        }
-        const notice = quiet && !changed ? "" : mergeSummary(stats);
+        /* a milestone only in front of a removal, and before the apply */
+        if (stats.checkInsRemoved + stats.envelopesRemoved + (stats.stampsRemoved || 0) > 0)
+          takeVersion("before sync", "milestone");
+        const notice = changed ? mergeSummary(stats) : "";
         /* remembered so the next apply can tell this notice from an import's */
-        if (reply) serverNotice.current = notice;
-        await applyBackup(text, reply ? "server" : "merge", extraPresent, notice);
-        if (reply) setSeedShown(false); /* seed-load-guards: no longer someone else's ledger */
-        /* applyBackup bumps syncGen — it has to, since a restore replaces the
-           world and anything still in flight against the old one must not land.
-           A merge PUSHES after applying, so without re-adopting the generation here
-           every gen-guarded step below bails and the photo phase and the
-           "Pushed ✓" flash silently never run. Exactly one bump is ours; any
-           other number means something really did move on. */
+        serverNotice.current = notice;
+        await applyBackup(JSON.stringify(merged), "server", notice);
+        /* applyBackup bumps syncGen, and exactly one bump is ours. Any other
+           number means something really did move on. */
         if (syncGen.current !== before + 1) return { ok: false, code: "server" };
-        gen = syncGen.current;
-        /* the merged state is in, so this device may now claim the remote's
-           sha — and must, or the push below would conflict against itself */
-        if (!reply) {
-          await acceptPull(res.sha);
-          setAhead(false);
-          setPushState("idle");
-        }
-        if (alsoPush) {
-          const stamp = new Date().toISOString().slice(0, 16).replace("T", " ");
-          await window.remote.push(
-            text,
-            `merge ${stamp} · ${merged.items.length} lines · ${merged.envelopes.filter(isLiveEnvelope).length} envelopes`
-          );
-          setRemoteInfo(await window.remote.status().catch(() => null));
-          /* the MERGED envelopes' ids, not referencedPhotoIds — applyBackup's
-             setState has not committed yet, so the hook's value is still the
-             pre-merge list and every adopted photo would be skipped */
-          await pushPhotos(gen, [
-            ...new Set(
-              merged.envelopes
-                .filter(isLiveEnvelope)
-                .flatMap((e) => e.photos || [])
-            ),
-          ]);
-          if (syncGen.current !== gen) return { ok: false, code: "server" };
-          setPushState("pushed");
-          flashTimer.current = bgTimeout(() => setPushState("idle"), 2500);
-        }
         return { ok: true };
       } catch (e) {
-        /* parseLedger throws bare on a payload that isn't a ledger; anything
-           from the adapter carries a code. Either way the merge landed nothing,
-           because applyBackup throws before its first setState. */
-        const code = e?.code || "bad-response";
-        /* a third writer landed between our pull and our push. Re-arm the
-           conflict controls rather than leaving a bare message and no way
-           forward — merging again is the right next move, and it converges. */
-        /* NOT suppressed on the quiet path: a control, not a message. It is
-           what puts the repair kit within reach. */
-        if (code === "conflict") setPushState("conflict");
-        if (!quiet) {
-          /* Every one of these strings is phrased for someone who just tapped a
-             button — "Paste a new one", "Try again". Nobody tapped anything
-             here. setKeyOpen is the worse of the two: it swaps "saved on this
-             device" for an empty field, which reads as *your key is gone*.
-             Suppressing costs nothing, because a failed merge lands nothing —
-             applyBackup throws before its first setState. */
-          if (code === "auth" || code === "no-key") setKeyOpen(true);
-        }
-        return { ok: false, code };
+        /* parseLedger throws bare on a payload that isn't a ledger. Either way
+           the merge landed nothing, because applyBackup throws before its first
+           setState. */
+        return { ok: false, code: e?.code || "bad-response" };
       } finally {
         syncingRef.current = false;
         setSyncBusy(false);
-        setMergeState("idle");
         setPhotoSync(null);
       }
     },
-    [disarm, applyBackup, pullPhotos, pushPhotos, snapshot, acceptPull, takeVersion]
+    [disarm, applyBackup, pullPhotos, snapshot, takeVersion]
   );
 
-  /* ---- the merge, run for you ----
-
-     Declined once, and the reason was right: applying forty imported lines into
-     the package list mid-check-in is the cascading mis-tap invariant no-layout-shift-under-pointer exists
-     to prevent. What changed is not the risk but the evidence. Coming back
-     after RESUME_RESET_MS away is not mid-check-in — it is a new session, and
-     the app already stakes a list reshape on exactly that finding when it
-     resets Showing. This spends the same finding twice. And the merge keeps
-     the later change and names any removal, so the residual risk is that the
-     list changes shape, never that something is lost unreported.
-
-     Needs the key, like everything else since the ledger moved into the
-     private repo. A device that has never been set up gets `no-access` here and
-     the repair kit's line says so — which is the honest answer, where "nobody
-     is ahead" would be the dangerous one.
-
-     It does not push. `alsoPush` is false, so no empty commit is manufactured
-     for a device with nothing to send; if this device IS holding unpushed work,
-     the merge just rewrote the three deps of the auto-push debounce, so the
-     union goes out 90 seconds later through the path that peeks first. */
+  /* Whether a held reply may apply now: not while a half-built envelope, a
+     pending undo or an armed destructive button is open. The apply calls
+     setComposing(null) and setUndo(null), so a reply landing mid-composer would
+     DISCARD hand-typed entries that are in no CSV and on no remote. */
   const mergeBlocked = !!(
     composing ||
     undo ||
@@ -4691,29 +4381,6 @@ syncBroken === "seeded"
     confirmForce ||
     confirmRestore
   );
-  const autoMerge = useCallback(async () => {
-    /* The mid-thought states, and here the stake is higher than for a push —
-       this one APPLIES. applyBackup calls setComposing(null) and setUndo(null),
-       so a merge landing while a half-built envelope is open DISCARDS entries
-       that are hand-typed, in no CSV and on no remote. "Open the composer, duck
-       out to read the mailing label, come back two minutes later" is this
-       feature's own workflow, over the threshold by construction. */
-    if (mergeBlocked) return;
-    /* quiet: nobody tapped anything, so nothing may speak in the voice of
-       something that was tapped. See doMerge's catch. */
-    await doMerge(false, true);
-  }, [mergeBlocked, doMerge]);
-
-  /* Through a ref, for the reason autoPushRef exists below: doMerge's identity
-     churns on essentially every render, and its consumer is the peek effect,
-     whose deps are `[loaded, syncBusy]`. Listing it there would re-register the
-     listener on every commit AND re-run `check()`, which is a network read — so
-     a sort change would peek. Declared HERE, above that effect, so this updater
-     runs first within a commit's effect phase. */
-  const autoMergeRef = useRef(autoMerge);
-  useEffect(() => {
-    autoMergeRef.current = autoMerge;
-  });
 
   /* ---- Worker sync (stage 4b) ----
      With a key, a POST of snapshot() goes out SYNC_POST_MS after a change and on
@@ -4742,17 +4409,13 @@ syncBroken === "seeded"
     const reply = pendingReply.current;
     pendingReply.current = null;
     applyNow.current = false;
-    doMerge(false, true, reply);
+    doMerge(reply);
   };
   const serverNotice = useRef("");
   const applyNow = useRef(false);
   const lastServer = useRef(null); // the newest ledger the Worker answered with
   const lastRev = useRef(0); // the newest rev whose reply landed
   const inflightRev = useRef(0);
-  /* Mirror mode: GitHub is a mirror (no peek, no auto-merge) only while the
-     Worker answers. Off at first, on after an ok or empty reply, off again on any
-     failure. Off is today's GitHub path, unchanged. */
-  const mirrorRef = useRef(false);
   const cycleRef = useRef(null); // the Worker call in flight, for the peek to wait on
   const failN = useRef(0);
   const nextTry = useRef(0);
@@ -4764,7 +4427,6 @@ syncBroken === "seeded"
   const refusedRef = useRef(false); // a 401: no more calls until the page reloads
   const closeRef = useRef(null);
   const tooBigRef = useRef(false);
-  const githubNext = useRef(false); // the next push takes the GitHub path
   /* a Worker call that never answers counts as unreachable */
   const withTimeout = (p) => {
     let t;
@@ -4817,7 +4479,7 @@ syncBroken === "seeded"
     tryApplyRef.current();
   };
   /* One verdict for every Worker reply. empty (404) is a healthy server with
-     nothing stored yet. Anything else but ok is a failure: mirror off, the
+     nothing stored yet. Anything else but ok is a failure: the
      advisory state set, and the retry follows backoffMs, not every save. */
   const settleReply = async (r, fromPost = false) => {
     /* Lane B1: a reply with unreadable entries is kept in History as it came, then
@@ -4843,7 +4505,6 @@ syncBroken === "seeded"
         return r;
       }
       tooBigRef.current = false;
-      mirrorRef.current = true;
       failN.current = 0;
       nextTry.current = 0;
       clearTimeout(retryTimer.current);
@@ -4853,7 +4514,6 @@ syncBroken === "seeded"
       return r;
     }
     tooBigRef.current = r.code === "too-big";
-    mirrorRef.current = false;
     setServerDown(["too-big", "no-access", "bad-shape"].includes(r.code) ? r.code : "unknown");
     if (r.code === "bad-shape") {
       /* a refused shape stays refused: no backoff retry. The next change POSTs again. */
@@ -4875,14 +4535,17 @@ syncBroken === "seeded"
     return r;
   };
   const postRef = useRef(null);
+  const photosBusy = useRef(false); // one photo push at a time
+  const photosAgain = useRef(false); // a POST landed during a push: one more pass
+  const photoTimer = useRef(null);
+  const pushPhotosRef = useRef(null);
+  pushPhotosRef.current = pushPhotos;
   const sendPost = (ledger) => window.sync.post(ledger);
   postRef.current = () => {
     const p = (async () => {
       if (!window.sync || !(await window.sync.hasKey())) return;
       /* 50 ms of slack: a timer that fires a hair early still retries */
-      /* a page that shows the seed holds someone else's ledger: it never POSTs
-         (seed-load-guards) */
-      if (seedShown || damagedRef.current || refusedRef.current || Date.now() < nextTry.current - 50) return;
+      if (damagedRef.current || refusedRef.current || Date.now() < nextTry.current - 50) return;
       postsInFlight.current++;
       let r;
       try {
@@ -4898,6 +4561,28 @@ syncBroken === "seeded"
         heldRev.current = 0;
         if (held > lastRev.current) revRef.current(held);
       }
+      /* the ledger is on the Worker: now the photos it names. POSTs close together
+         share one phase, and the Worker takes each name once, so a repeat sends
+         nothing. */
+      if (r.code === "ok" && !photoTimer.current)
+        photoTimer.current = bgTimeout(async () => {
+          photoTimer.current = null;
+          if (photosBusy.current) {
+            photosAgain.current = true;
+            return;
+          }
+          photosBusy.current = true;
+          try {
+            /* a POST made during a push may name photos that push never surveyed */
+            do {
+              photosAgain.current = false;
+              await pushPhotosRef.current(syncGen.current);
+            } while (photosAgain.current);
+          } finally {
+            photosBusy.current = false;
+            setPhotoSync(null);
+          }
+        }, PHOTO_AFTER_POST_MS);
     })();
     cycleRef.current = p;
     return p;
@@ -5052,170 +4737,14 @@ syncBroken === "seeded"
     return () => clearTimeout(postTimer.current);
   }, [items, received, receivedAt, envelopes, stamps, loaded]);
 
-  /* ---- is the other device ahead? ----
-     One cheap read on foreground (see remote.peek). Deliberately NOT on a
-     timer: the app has never polled, and the question only has a consequence
-     when someone is actually looking at the screen.
-
-     A keyless device cannot read the private repo, so it cannot merge either —
-     `peek` answers {known:false} and the merge is refused rather than guessed.
-     "I could not look" must never render as "nobody is ahead": that reading is
-     what would let this device push over the one that can see. */
-  useEffect(() => {
-    if (!loaded || !window.remote || typeof window.remote.peek !== "function")
-      return;
-    const check = async () => {
-      /* Consumed synchronously, before anything can await, and on EVERY path
-         out including the early returns below. The signal is about THIS
-         foreground; letting it survive to whatever re-runs check() next is
-         precisely the failure mode, because this effect's deps are
-         `[loaded, syncBusy]` and a merge flips syncBusy twice — a surviving
-         flag would let the laptop's push land mid-session, with no resume
-         anywhere in sight. Dropping a signal costs one tap on the repair kit;
-         keeping one costs the guarantee that this only fires on a measured
-         absence. */
-      const fresh = freshSession.current;
-      freshSession.current = false;
-      if (document.visibilityState === "hidden" || syncingRef.current) return;
-      /* while the Worker answers, GitHub is a mirror: no peek, no merge. The
-         Worker call for this foreground settles first. */
-      await cycleRef.current;
-      if (mirrorRef.current) return;
-      const p = await peekTwice();
-      /* known:false is "we could not look", which must never render as "all
-         clear" — leave the flag exactly as it was. Restructured into an early
-         return so the merge below sits INSIDE the known branch rather than
-         beside it: an unknown remote cannot license reading it any more than
-         writing it, and the structure is what says so. */
-      if (!p || !p.known) return;
-      setAhead(!!p.ahead);
-      /* Not awaited: check() has nothing left to do, and doMerge returns a code
-         rather than throwing, so there is no floating rejection here. */
-      if (p.ahead && fresh) autoMergeRef.current();
-    };
-    check();
-    document.addEventListener("visibilitychange", check);
-    return () => document.removeEventListener("visibilitychange", check);
-  }, [loaded, syncBusy]);
-
-  /* ---- auto-push ----
-     Safe only because the merge above exists. Automating pushes without it
-     would turn the conflict trap from something hit occasionally into the
-     normal way the two devices meet. */
-  const AUTO_PUSH_MS = 90000;
-  const autoTimer = useRef(null);
   /* unmount stops every pending background timer, so none fires into a dead app */
   useEffect(
     () => () => {
-      for (const r of [resetTimer, saveTimer, flashTimer, applyTimer, postTimer, retryTimer, autoTimer])
+      for (const r of [resetTimer, saveTimer, applyTimer, postTimer, retryTimer, photoTimer])
         clearTimeout(r.current);
     },
     []
   );
-  const skipFirstAuto = useRef(true);
-  const mirrorDirty = useRef(false);
-
-  const autoPush = useCallback(async () => {
-    if (!window.remote || syncingRef.current) return;
-    /* Armed destructive buttons only. `composing` and `undo` are guarded for
-       the MERGE, which applies a remote ledger and nulls both — but a push
-       changes nothing on this device, and neither state makes the ledger wrong:
-       a half-built envelope is not in it yet, and a pending undo sits on top of
-       a check-in that genuinely happened and is already saved.
-       Guarding a push on them was over-broad, and it stalled: `undo` survives a
-       trip to Packages by design (group 14), so an assignment followed by a
-       view switch used to stop all backup for the rest of the session,
-       invisibly. */
-    if (
-      confirmReset ||
-      confirmForce ||
-      /* an armed Restore is an armed destructive button like the rest — and the
-         one most likely to have the ground move under it, because a merge or a
-         push takes a milestone and prepends a row, shifting every row down
-         between the user's two taps */
-      confirmRestore
-    ) {
-      /* and come back to it. The timer is otherwise only re-armed by a change
-         to the ledger, so a composer left open past the 90s mark simply dropped
-         the pending push until the next edit — a mail day can easily end that
-         way. */
-      clearTimeout(autoTimer.current);
-      autoTimer.current = bgTimeout(() => autoPushRef.current(), AUTO_PUSH_MS);
-      return;
-    }
-    const info = await window.remote.status().catch(() => null);
-    if (!info?.hasKey) return;
-    /* With a Worker key, GitHub is a mirror: no peek, no merge, and a stale sha
-       merges GitHub in and writes under the fresh sha (see doPush), no two-tap. */
-    if (mirrorRef.current && !githubNext.current) {
-      /* the mirror writes only when the ledger changed since its last write: an
-         unchanged resume must not touch GitHub, and a conflict means a merge */
-      if (!mirrorDirty.current) return;
-      /* cleared BEFORE the push: a change made in flight sets it again */
-      mirrorDirty.current = false;
-      let r;
-      try {
-        r = await doPush(false, true, true);
-      } finally {
-        if (!r?.ok) mirrorDirty.current = true;
-      }
-      return;
-    }
-    githubNext.current = false;
-    if (typeof window.remote.peek === "function") {
-      const p = await peekTwice();
-      /* "could not look" means DO NOT PUSH. This is the whole reason peek is
-         three-valued: pushing on an unknown remote state is how a device
-         overwrites the other one. */
-      if (!p || !p.known) return;
-      if (p.ahead) {
-        setAhead(true);
-        return;
-      }
-    }
-    const r = await doPush(false, true);
-    /* a conflict opened between the peek and the push — resolve it the safe
-       way rather than leaving "Push anyway" armed on an unattended screen */
-    if (r && !r.ok && r.code === "conflict") await doMerge(true);
-  }, [confirmReset, confirmForce, confirmRestore, doPush, doMerge]);
-
-  /* Through a ref, and that is the whole point: autoPush's identity changes on
-     essentially every render (it depends on doPush, which depends on snapshot),
-     so listing it as a dep would re-arm the debounce on every commit — a sort
-     change would push, and the comment below would be a lie. */
-  const autoPushRef = useRef(autoPush);
-  useEffect(() => {
-    autoPushRef.current = autoPush;
-  });
-
-  useEffect(() => {
-    if (!loaded) return;
-    /* the load effect's first commit is not a change the user made */
-    if (skipFirstAuto.current) {
-      skipFirstAuto.current = false;
-      return;
-    }
-    mirrorDirty.current = true;
-    clearTimeout(autoTimer.current);
-    autoTimer.current = bgTimeout(() => autoPushRef.current(), AUTO_PUSH_MS);
-    return () => clearTimeout(autoTimer.current);
-    /* deliberately only the three fields that are REAL data. dateFilter,
-       sortBy and itemSort are on the debounced save because they persist, but
-       re-sorting the screen is not a reason to open a network connection. */
-  }, [items, received, receivedAt, envelopes, stamps, loaded]);
-
-  /* Backgrounding is the last chance to catch a mail day that never went idle
-     for 90s. Best-effort by construction: fetch(keepalive) caps at 64KB and a
-     1000-line ledger base64s to roughly 470KB, so iOS will often kill this
-     mid-flight. The foreground catch-up above is what actually guarantees it. */
-  useEffect(() => {
-    if (!loaded) return;
-    const onHide = () => {
-      if (document.visibilityState === "hidden") autoPushRef.current();
-    };
-    document.addEventListener("visibilitychange", onHide);
-    return () => document.removeEventListener("visibilitychange", onHide);
-  }, [loaded]);
 
   const clearKey = useCallback(async () => {
     if (!window.remote) return;
@@ -6143,7 +5672,7 @@ syncBroken === "seeded"
                     has scrolled away and the thumb is on a card, so what
                     actually moves is the list: the layout shift under the
                     pointer invariant no-layout-shift-under-pointer exists to prevent, twice per check-in.
-                    Measured at 375px against the seeded ledger, 4 of 10
+                    Measured at 375px against a real ledger, 4 of 10
                     realistic figure pairs moved by 12–14px; which ones depends
                     only on where the two figures happen to fall relative to
                     the wrap point, which is why the fix is to take the
@@ -6593,8 +6122,7 @@ syncBroken === "seeded"
               {syncOpen && (window.remote || window.sync) && (
                 /* The Sync group holds the server status, the device key paste
                    box and the last sync time, and no GitHub control (owner
-                   ruling 2026-10-12). The GitHub mirror still pushes in the
-                   background; a conflict there waits for it, with no button. */
+                   ruling 2026-10-12). */
                 <div
                   className="mdl-panel"
                   style={{ ...panelWrap, display: "flex", flexDirection: "column", gap: 8 }}

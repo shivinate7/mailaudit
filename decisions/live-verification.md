@@ -2,53 +2,39 @@
 
 This file draws the line between proven and unproven. It lists what has run against the live GitHub API, a real device and a Worker probe. It also names what has not. Read it before you claim a path is safe. Keep the split exactly as this file draws it.
 
-**Holds while:** the repo `mailaudit-data` is private. An anonymous request gets 404 for it, gets 200 for `mailaudit`, and the Pages site answers 200. Checked 2026-10-10.
+**Holds while:** the repo `mailaudit-data` is private. An anonymous request gets 404 for it, gets 200 for `mailaudit`, and the Pages site answers 200. Checked 2026-10-10. Not re-checked in this lane: no live call was made.
 
 Kind: build
 
 Plan: decisions/live-verification.md#worker-probes-still-needed (worker)
 
-## The GitHub backup one-time setup
+## The GitHub backup, retired by the switch
 
-The target is `shivinate7/mailaudit-data`. The ledger lives on branch **`data`**, in the file `ledger.json`. The photos live on branch **`main`**, in the directory `photos/`. Two constant objects sit at the top of the `window.remote` block in `entry.jsx`.
+Web no longer writes to GitHub, and no device holds a GitHub token. The target is `shivinate7/mailaudit-data`, a private repo. The ledger lives on branch **`data`**, in the file `ledger.json`, and that branch is frozen: no device writes it, and History still reads it. The photos still sit on branch **`main`**, in the directory `photos/`, until the one-time copy runs. Two constant objects sit above the `window.remote` block in `entry.jsx`: `REMOTE` and `PHOTOS`.
 
-**`mailaudit` is PUBLIC and holds no data.** This arrangement is what the setup exists to produce. It is also what makes Actions and Pages free. Measured anonymously after the move, the Pages site answers **200**. But `api.github.com/repos/shivinate7/mailaudit-data` and `raw.githubusercontent.com/shivinate7/mailaudit-data/data/ledger.json` both answer **404**. The ledger repo stays private for hygiene, not secrecy. A backup store does not belong in the repo that serves a public site. The consequence is real, though. **Every device needs the key for everything.** GitHub hides a repo that you cannot see behind a 404, not a 403.
+**`mailaudit` is PUBLIC and holds no data.** It is also what makes Actions and Pages free. Measured anonymously after the move, the Pages site answers **200**. But `api.github.com/repos/shivinate7/mailaudit-data` and `raw.githubusercontent.com/shivinate7/mailaudit-data/data/ledger.json` both answer **404**. The ledger repo stays private for hygiene, not secrecy. A backup store does not belong in the repo that serves a public site. The consequence was real: **every device needed a GitHub token for everything.** GitHub hides a repo that you cannot see behind a 404, not a 403.
 
-A clone also needs a remote named `ledger` for the seed to build:
+The public seed is removed, so a clone needs no `ledger` remote to build.
 
-```bash
-git remote add ledger https://github.com/shivinate7/mailaudit-data.git && git fetch ledger data
-```
+Still true on the GitHub side:
 
-Without that remote, the build is seedless. `npm run check:seed` reports this, but it does not fail. On a machine where the ref *does* resolve, though, a seedless committed page is a hard failure. That means that the build dropped a seed it could have made.
+- The `data` branch carries the ledger's history, 130 commits at the time of the move. Its tip blob is identical to the old repo's. Blob shas are content-addressed, so no device needed re-keying.
+- Pages on `mailaudit` is set to deploy from `main` `(root)`. Nothing the app writes touches that repo, so a backup cannot trigger a site rebuild. Not re-checked in this lane.
 
-The setup steps are:
+- `.github/workflows` holds one file, `test.yml`. The guarantee that a ledger push triggers nothing rests on its filters. `test.yml` has `branches: [main]` plus a paths filter. Nothing under `src/` or `test/` ever changes on `data`, which carries one file. It deliberately does **not** trigger on `index.html`, because `npm run deploy` commits that file separately. Re-running the suite on the build output would double every deploy for no new information. `test.yml` also checks that the committed `index.html` still matches what the sources build. A local deploy can skip that check by accident. The check runs through `check:build`, which compares the whole page with the build of `src/`. A second step runs `check:seed`, which refuses a seed tag, a packed data script or a ledger payload in the committed page. The two steps together ask two questions: is the page this repo's code, and does it publish any ledger data? Read the filters before you add a workflow.
 
-1. The `data` branch already exists in `mailaudit-data`. It carries the ledger's full history: 130 commits at the time of the move. Its tip blob is identical to the old repo's. Blob shas are content-addressed. So no device needed re-keying. To recreate the branch from scratch, run:
+- The backup watchdog is turned off (owner ruling 2026-10-14). It lived in the private repo. Its alarm was measured to fire once, on issue #4. No alarm watches the backup: see `backup-unwatched`.
 
-   ```bash
-   git switch --orphan data && git commit --allow-empty -m "data branch: ledger backups live here, never merge to main" && git push -u origin data && git switch main
-   ```
+- The photos sit on the **`main`** branch of `mailaudit-data`, in `photos/`, until the one-time copy runs. `scripts/copy-photos-to-worker.mjs` makes that copy, and it is a dry run by default. Private is not optional: these are pictures of mailing labels with the delivery address on them.
 
-2. In Settings → Pages on **`mailaudit`**, the source should read "Deploy from a branch: `main` / `(root)`". Nothing the app writes touches that repo any more. So a backup can no longer trigger a site rebuild. That is by construction, not by branch discipline.
+- Devices held one fine-grained token each, scoped to `mailaudit-data` only. GitHub caps fine-grained tokens at 366 days. The web app no longer uses one.
 
-   **The repo used to have no `.github/workflows` at all. That absence was the guarantee that a ledger push triggers nothing.** There are two workflows now. So that guarantee rests on their filters instead. Read the filters before you add a third workflow. `test.yml` has `branches: [main]` plus a paths filter. Nothing under `src/` or `test/` ever changes on `data`, which carries one file. It deliberately does **not** trigger on `index.html`. `npm run deploy` commits that file separately. Re-running the suite on the build output would double every deploy for no new information. `test.yml` also checks that the committed `index.html` still matches what the sources build. A local deploy can skip that check by accident. The check runs through `check:build`. It compares the code and ignores the seed, for the reasons above. A second step runs `check:seed`. That step decodes the seed the committed page carries. It refuses anything outside `SEED_KEEP`. The two steps together ask two questions. Is the page this repo's code? And what does its data publish?
+- The Push control left the UI on 2026-10-12. The web app writes no commit to `mailaudit`. The adapter keeps `spaceWrites()`, a one-second write gap, until slice S3.
+- A second device must pull the ledger and show its thumbnails. A merge keeps every photo id, so a blob that has not arrived shows as a blank thumbnail until a sync brings it (`pull-fetches-photos-before-apply`).
 
-   `backup-watchdog.yml` is the check the app cannot do for itself. It reads the `data` branch's own history on a daily schedule. If nothing has landed in four days, it opens an issue. **Its alarm has been seen to fire.** It was dispatched once with `threshold=0`. That opened issue #4, which was verified and closed. A green run proves only that the watchdog stayed quiet. The `threshold` input exists so the other half can be proven too. Both sides of the comparison call `fromJSON` first. Step outputs are strings. A string/number compare that silently evaluates false is exactly how an alarm ends up never going off. The phone's "Backed up" line is only as honest as the phone. A device with an expired token, with unreadable storage, or that never gets opened cannot tell you it stopped. This watchdog cannot be fooled by anything that happens on a device.
+- The two-device merge proof runs on the Worker now, and it is unrun: see `worker-two-device-proof-unrun`. Sync has no toggle, so that proof is a prerequisite for running the app on two devices at all.
 
-3. The photos live on the **`main`** branch of `mailaudit-data`, in `photos/`. That branch must exist before any Contents PUT. A PUT into a repo with no commits is not a path worth relying on. If you recreate the branch, initialise it with a README. Private is not optional. These are pictures of mailing labels with the delivery address on them.
-
-4. Create a fine-grained token at Settings → Developer settings → Personal access tokens → **Fine-grained**. Name it per device, for example `mailday-iphone`. Then one device's token can be revoked alone. Select repositories: **`mailaudit-data` only.** One repo is the point. The token used to span two repositories, and that was a listed open thread. `mailaudit` is public, and the app never writes to it.
-
-   Set repository permissions to **Contents → Read and write**. Metadata → Read-only appears automatically, and it is required. Grant nothing else. **Fine-grained PATs cap at 366 days.** Set a real expiry and a calendar reminder. When the token lapses, the only symptom is a push that stops working.
-
-5. No screen path is left for this step. The Push control left the UI on 2026-10-12, and the mirror push runs on its own. Check that `mailaudit` gained no commit at all. With photos in the ledger, expect `mailaudit-data` to gain one commit per photo on `main`. The button stays on `Pushing…` until they are done. Each takes roughly a second. The ledger and the photos share one repo's write budget and one `spaceWrites()` clock.
-
-   Then run the test that matters most. A second device or origin must pull the ledger (the automatic merge does it on a fresh session), and confirm the thumbnails render. That is the one path where a wrong order fails silently. The ledger would come back looking perfect, with every photo id quietly stripped.
-
-6. Prove the merge before trusting auto-push. Auto-push's conflict recovery is that same path, running unattended. On A, check a card in, then Push. On B, without pulling, import a CSV that adds lines, then Push. Expect the conflict. Then the automatic merge runs on B. No control is left. B must end holding A's check-in *and* its own new lines. A's next merge must agree. Sync is unconditional now. There is no toggle to enable. So this proof is a prerequisite for running the app on two devices at all. It is not only a prerequisite for enabling a feature.
-
-   `file://` and `http://localhost:4173` are two separate origins with two separate ledgers. So they can act as two devices, without a second phone. See "Running it locally".
+`file://` and `http://localhost:4173` are two separate origins with two separate ledgers, so they can act as two devices without a second phone. See `file-protocol-works-locally`.
 
 ## The coverage gap at the adapter seam
 
@@ -68,7 +54,7 @@ Photo sync has had its read paths verified live and without a key. The raw media
 
 **The ledger repo's own private path is now verified live too.** This is the first real-GitHub confirmation of anything on the read side since the repo was closed. From the deployed Pages origin with no key, `pull()`, `listVersions()`, and `peek()` all return `no-access`. `peek()` answers `{known: false}`, not "nobody is ahead". That reading matters. Otherwise a keyless device could push straight over the one that can see. Measured at the same time, the site still serves **200** to an anonymous request. But `raw.githubusercontent.com/.../data/ledger.json` and the repo API both **404**. That is the whole point of the private/Pro arrangement, and it is now confirmed rather than assumed. So `peek()` comes off the unverified list.
 
-**Still never run against real GitHub:** a photo PUT and a photo pull (debt `photo-put-unrun-on-github`), and a ledger conflict (debt `the-conflict-guard-is-unverified`).
+**Still never run against real GitHub:** a photo PUT and a photo pull (debt `photo-put-unrun-on-github`), and a ledger conflict. The conflict now runs on the Worker, and no live run of it is recorded (debt `worker-two-device-proof-unrun`).
 
 That same session is what surfaced the group-28 bug: Pull was unreachable on an empty ledger. Worth remembering as a method: the suite was all green. The feature was still broken in its single most important scenario, because every test booted a ledger that already had data in it.
 
@@ -82,7 +68,7 @@ Owner ruling, 2026-10-12: a probe deploy of the Worker is granted, under its own
 
 - **W2a photo route, probe-w2a.** Ran on the probe Worker on 2026-10-12 and passed. The photos table is created through the Durable Object's SQLite API. A POST then a GET return the same bytes, with the type from the name. A second POST keeps the first bytes. A photo over 1.9 MB gets 413.
 - **W3a daily snapshots and /health, probe-w3a.** Ran on the probe Worker on 2026-10-12 and passed. The snapshots table is created. The first changing write of a UTC day stores one snapshot, and a later one stores none. GET /health with no key returns only the last write time. The list and get snapshot routes answer with a device key.
-- **W2b, W3b, W3c, W3d and W3e.** No probe is named. Each waits for its brief. The open work is in debts `restore-stamps-new-change-times` (W2b, W3b) and `dopush-mirror-conflict-path` (W3c to W3e).
+- **W2b, W3b, W3c, W3d and W3e.** No probe is named. Each waits for its brief. The restore stamp that W2b and W3b waited on is built in the switch lane (`restampRestore`).
 
 The owner then granted the live deploy ("Deploy live"). See "Worker probe results" and "Live deploy" below.
 
@@ -127,3 +113,11 @@ Run on 2026-10-13 at about 01:10 UTC, from main at e1ea8ac, with wrangler 4.149.
 - Before, a read-only probe ran `salvageLedger` on the live ledger: rev 3, 908 items, 4 envelopes, 0 damaged.
 - The new code answered at 01:13:52 UTC, a few minutes after the deploy.
 - After: GET /kept with the key gave `[]`. /kept with no key gave 401. A POST with `received: null` gave 400 `bad ledger`, and the ledger stayed at rev 3, 908 items, 4 envelopes, 0 damaged. GET /health gave `{"at":null}`.
+
+## Live deploy of 2026-10-14
+
+Run from main `7729d31` at 21:15 CDT on 2026-10-14 (02:15 UTC on 2026-10-15), on the owner's word of 21:12 CDT. The new version is `65bc7095-2142-4569-a699-47d0ce7a5c0d`. The rollback version is `fdea6a6b`.
+
+- The probe read the live store: GET /kept with the key gave 200, and with no key gave 401. GET /ledger read rev 3, 908 items and 4 envelopes.
+- The deploy includes the merge fix from PR #96, which keeps unknown top-level keys in a merge. The probe did not exercise that path, so the fix is unmeasured on live data.
+- Recorded from the owner's word. This lane made no live call, so the probe is not re-run here.

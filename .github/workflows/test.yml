@@ -85,30 +85,15 @@ jobs:
           npm test | tee "$RUNNER_TEMP/suite.log"
       # The committed index.html must match what the sources build, or the live
       # site is not the code in the repo. Cheap to check, and the one thing a
-      # local `npm run deploy` can skip by accident.
-      #
-      # This used to diff the two pages whole, and it was red for four straight
-      # runs because it cannot work that way. index.html carries the code AND a
-      # snapshot of the ledger read off `origin/data` at build time, and
-      # actions/checkout is single-branch — so the runner has no origin/data,
-      # builds a seedless page, and every comparison differs. Fetching that
-      # branch here would only trade an always-wrong check for a randomly-wrong
-      # one: the phone rewrites `data` on a 90s idle debounce, so a rebuild
-      # minutes after a deploy legitimately produces different bytes.
-      #
-      # `--check` compares the code and ignores the seed, which is data. The
-      # logic lives in build.mjs beside the template that writes the seed tag,
-      # so the two cannot drift apart — and it fails loudly rather than quietly
-      # comparing nothing if the tag's shape ever changes without it.
+      # local `npm run deploy` can skip by accident. The page is built from
+      # src/ alone, so the whole page is compared.
       - name: index.html is in step with src/
         run: npm run check:build --silent
 
-      # The other half of the same question. `check:build` asks whether the
-      # committed page is this repo's CODE; this asks what the page's DATA
-      # actually publishes — decoded, not read off the source that meant to
-      # write it, which is how the stamp-note leak was found. Cheap, and the
-      # only kind of mistake here that git makes permanent.
-      - name: the published seed withholds what it must
+      # The page publishes no ledger data. The Pages site is world-readable and
+      # git keeps every version, so a ledger payload in index.html is the one
+      # mistake here that git makes permanent.
+      - name: the published page carries no ledger data
         run: npm run check:seed --silent
 
       # CLAUDE.md's own numbers and paths, checked against the repo itself —

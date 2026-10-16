@@ -63,11 +63,19 @@ import {
   syncBadShapeCount,
   setSyncKeyRefused,
   syncCalls,
+  syncPhotoNames,
+  syncLedgerNow,
+  setServerLedger,
+  setSyncPhotoFail,
+  setSyncPhotoDelay,
   syncCloseCount,
   syncRev,
   fireSyncRev,
   fireSyncRevOnly,
   holdSyncPosts,
+  holdSyncPhotoPuts,
+  addSyncPhoto,
+  photoStore,
   releaseSyncGet,
   unmountApp,
   clearSyncStore,
@@ -113,6 +121,23 @@ import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
 const fresh = () => boot({ items: ITEMS, received: {} });
+
+/* The GitHub verbs the switch forbids (owner ruling 2026-10-14 21:12 CDT, decision
+   sync-revamp-cloudflare). Groups 25 to 58 read them through githubOps(). Group 71
+   keeps its own list, GITHUB_CALLS71. */
+const GITHUB_OPS = new Set(["push", "pushForce", "pushPhoto", "peek", "pull", "acceptPull", "listPhotos", "pullPhoto"]);
+const githubOps = () => [...new Set(remote.calls.filter((c) => GITHUB_OPS.has(c.op)).map((c) => c.op))];
+/* the ledger bodies this run POSTed to the Worker, oldest first */
+const workerPosts = () => syncCalls().filter((c) => c.op === "post").map((c) => JSON.parse(c.body));
+/* the 90 s idle window of the old mirror timer. Group 71 still waits it out. */
+const AUTO_MS = 90000; // AUTO_PUSH_MS in src/app.jsx
+/* a page wake starts the Worker POST at once (pageshow, a visible resume or online run
+   postRef in src/app.jsx). background() alone does not, since it never goes visible. */
+const wakeWorker = () =>
+  act(async () => {
+    win.dispatchEvent(new win.Event("pageshow"));
+    await sleep(0);
+  });
 
 /* The bottom bar's tabs (decision phone-nav-is-bottom-bar). Found by the nav's
    name, never by position. A tab's count badge is stripped from its name. The
@@ -707,13 +732,18 @@ const big = JSON.parse(bigText);
 ok(!!big.photos?.["pho-3"], "19.4 photo backup inlines the image");
 ok(/^data:/.test(big.photos["pho-3"]), "19.5 as a data URL");
 
-/* a photo-less restore must not leave ids pointing at blobs that exist nowhere */
+/* a restore drops the photo ids this device does not hold (owner ruling 2026-10-15). This
+   device lacks the pho-3 blob, so the id goes. The cost accepted: another device that still
+   holds the blob may delete it once this restore wins the merge. The settle before the next
+   fresh() stopped an intermittent stall at 30.13 (3 of 5 runs stalled without it, 0 of 2 with
+   it). */
 await fresh();
 await reachFor(/Re-import CSV/);
 await click(btn(/Re-import CSV/), "show upload zone");
 await dropFile("plain.json", smallText);
 await sleep(SAVE_WAIT);
-eq(saved().envelopes[0].photos, [], "19.6 photo-less restore strips the ids");
+eq(saved().envelopes[0].photos, [], "19.6 a restore drops a photo id this device does not hold");
+await sleep(SWEEP_WAIT);
 
 /* the migration path: land on a fresh origin, get the photos back */
 await fresh(); // empty photo store
@@ -722,6 +752,7 @@ await click(btn(/Re-import CSV/), "show upload zone");
 await dropFile("photos.json", bigText);
 ok(/1 photo too/.test(text()), "19.7 restore notice counts the photos");
 eq(photoKeys(), ["pho-3"], "19.8 the blob is back in the photo store");
+/* the file inlines pho-3, so this device holds it once the blob is written, and the id stays */
 await sleep(SAVE_WAIT);
 eq(saved().envelopes[0].photos, ["pho-3"], "19.9 and the envelope still points at it");
 eq(await getPhoto("pho-3").text(), "fake-jpeg-bytes", "19.10 image survived byte-for-byte");
@@ -758,6 +789,40 @@ eq(
 );
 await sleep(SWEEP_WAIT);
 eq(photoKeys(), ["pho-3"], "19.12 so the sweep leaves the blob alone");
+
+/* a History restore is a restore too (owner ruling 2026-10-15). The version names pho-h, and
+   Reset has cleared the photo store, so this device no longer holds the blob and the id drops. */
+await boot(
+  {
+    items: ITEMS,
+    received: {},
+    envelopes: [
+      {
+        id: "env-h",
+        createdAt: Date.parse("2026-08-01"),
+        note: "",
+        photos: ["pho-h"],
+        entries: [{ name: "Ponder", qty: 1 }],
+      },
+    ],
+  },
+  [["pho-h", jpeg()]]
+);
+await reachFor(/^Reset$/);
+await click(btn(/^Reset$/), "reset");
+await click(btn(/Tap again to clear \d+ cards?/), "confirm reset");
+await sleep(SAVE_WAIT);
+eq(photoKeys(), [], "19.13pre reset cleared the photo store, so pho-h is not held here");
+await openHistory();
+await click(btn(/before reset/), "expand that version");
+await click(btn(/Restore this version/), "arm restore");
+await click(btn(/Tap again to replace \d+ cards?/), "confirm restore");
+await sleep(SAVE_WAIT);
+eq(
+  saved().envelopes?.find((e) => e.id === "env-h")?.photos ?? null,
+  [],
+  "19.13 a History restore drops a photo id this device does not hold"
+);
 
 /* ── 20. a partial quantity checks in ONE copy, not the whole line ─────── */
 
@@ -992,12 +1057,24 @@ ok(
   "24.3 by date that ordering inverts, so the two sorts really differ"
 );
 
-/* ── 25. the ledger reaches GitHub on its own ──────────────────────────── */
+/* ── 25. the ledger reaches the Worker on its own ──────────────────────── */
 
-/* Push left the UI (owner ruling 2026-10-12). GitHub is written by autoPush,
-   which a hidden page runs at once, so these cases reach the write through
-   background() and assert on pushes(). Retired here: 25.3's Push button, 25.5's
-   "Add a GitHub key first" text, and 25.18 to 25.20, the Push anyway two-tap. */
+/* The switch (owner ruling 2026-10-14 21:12 CDT, decision sync-revamp-cloudflare) retires
+   the keyless GitHub-sync cases 25.3 to 25.17, 25.21 and 25.23, which needed a GitHub key.
+   25.1 and 25.2 hold. 25.13b to 25.15 and 25.7 to 25.11 re-point to the Worker POST, and
+   25.24 to 25.27 pin the Worker device key (the-token-is-a-credential). */
+const KEY25 = "device-25-key";
+/* another device's copy of the GitHub ledger. Groups 28, 34 and 63 to 64 still name it
+   while they are re-pointed; it goes once they are. */
+const OTHER_DEVICE = JSON.stringify({
+  mailday: 1,
+  items: ITEMS.slice(0, 3),
+  received: { [ITEMS[0].key]: 1 },
+  envelopes: [],
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+});
 
 /* A platform with no remote must lose nothing: the file backups stay on the
    toolbar rather than hiding behind a disclosure that isn't there. */
@@ -1009,131 +1086,48 @@ await openHistory();
 ok(!!btn(/^Backup$/), "25.2 and Backup is still reachable in that case");
 
 /* a ledger that was saved at 555 (owner ruling 2026-10-14: savedAt rides the synced ledger) */
-await boot({ items: ITEMS, received: {}, savedAt: 555 });
-await openSync();
-/* 25.3 retired: the Sync panel no longer opens onto a GitHub key field (group 64) */
-await background();
+await boot({ items: ITEMS, received: {}, savedAt: 555 }, null, { noRemote: true, syncKey: KEY25 });
+await wakeWorker();
 await drain();
-eq(pushes().length, 0, "25.4 with no key, the page never reaches GitHub");
-/* 25.5 and 25.6 retired: the GitHub key field and its "Add a GitHub key first"
-   line left the UI (owner ruling 2026-10-12, group 64). */
-
-await saveGitHubKey();
-await background();
-await drain();
-eq(pushes().length, 1, "25.7 with a key it goes");
-const pushed = JSON.parse(pushes()[0].text);
+const pushed = workerPosts()[0] ?? {};
+ok(workerPosts().length > 0, "25.7pre a keyed device POSTs its ledger to the Worker");
 eq(pushed.mailday, 1, "25.8 the payload is a Mail Day backup");
-eq(pushed.items.length, ITEMS.length, "25.9 carrying every line");
+eq(pushed.items?.length, ITEMS.length, "25.9 carrying every line");
 for (const k of ["received", "envelopes", "stamps", "dateFilter", "sortBy", "itemSort"])
   ok(k in pushed, `25.10 and the ${k} key`);
-eq(
-  pushed.savedAt,
-  555,
-  "25.11 the save time the ledger loaded with rides the pushed payload"
-);
-ok(
-  /^ledger \d{4}-\d\d-\d\d/.test(pushes()[0].message) &&
-    new RegExp(`${ITEMS.length} lines`).test(pushes()[0].message),
-  "25.12 the commit message carries the date and the counts instead"
-);
-eq(
-  pushes()[0].sha,
-  null,
-  "25.13 the first push sends no sha — nothing is there to overwrite"
-);
+eq(pushed.savedAt, 555, "25.11 the save time the ledger loaded with rides the POST");
 
-/* Non-ASCII is the reason the codec exists: btoa throws above U+00FF, card
-   names carry Æ/ö/é and iOS smart punctuation turns a typed ' into ’. The
-   harness encodes through the real utf8ToBase64, so this round trip is the
-   thing that would break. */
-await fresh();
+/* Non-ASCII is the reason the codec exists: card names carry Æ/ö/é and iOS smart
+   punctuation turns a typed ' into ’. The Worker takes the ledger as JSON, so the
+   round trip is the POST body. */
+await boot({ items: ITEMS, received: {} }, null, { noRemote: true, syncKey: KEY25 });
 await goTo("orphaned");
 await record(["Æther Vial’s Jötun"], "Séance");
 await goTo("packages");
-await saveGitHubKey();
-await background();
+await wakeWorker();
 await drain();
-/* named rather than left to crash on JSON.parse(null): with btoa in place of
-   the codec this is the assertion that should point at the problem */
-ok(!!remoteText(), "25.13b the non-ASCII payload encodes at all");
-const trip = JSON.parse(remoteText() || "{}");
+const trip = workerPosts().at(-1) ?? {};
+ok(!!trip.envelopes, "25.13b the non-ASCII payload reaches the Worker at all");
 eq(
-  trip.envelopes[0].entries[0].name,
+  trip.envelopes?.[0]?.entries?.[0]?.name,
   "Æther Vial’s Jötun",
-  "25.14 a non-ASCII envelope entry survives the push byte-for-byte"
+  "25.14 a non-ASCII envelope entry survives the POST byte-for-byte"
 );
-eq(trip.envelopes[0].note, "Séance", "25.15 and so does the note");
+eq(trip.envelopes?.[0]?.note, "Séance", "25.15 and so does the note");
 
-/* A remote this device never pulled is ahead of it. GitHub then holds its
-   copy: the page neither overwrites it nor says so (the mirror resolves a
-   conflict itself, and no GitHub state is shown). */
-const OTHER_DEVICE = JSON.stringify({
-  mailday: 1,
-  items: ITEMS.slice(0, 3),
-  received: { [ITEMS[0].key]: 1 },
-  envelopes: [],
-  dateFilter: { preset: "all", from: "", to: "" },
-  sortBy: "newest",
-  itemSort: "missing",
-});
-
-await boot({ items: ITEMS, received: {} }, null, { remote: OTHER_DEVICE });
-await openSync();
-await saveGitHubKey();
-await background();
-await drain();
-eq(
-  JSON.parse(remoteText()).items.length,
-  3,
-  "25.17 and the other device's copy is still there"
-);
-
-/* the failures the user will actually meet */
-await fresh();
-await openSync();
-await saveGitHubKey();
-remote.fail = "auth";
-await background();
-await drain();
-/* Re-pointed (owner ruling 2026-10-12, default 5): an expired GitHub key is a
-   mirror failure, and the user sees no GitHub copy. The backup watchdog catches
-   a stopped mirror instead (watchdog-catches-silent-failure). */
-ok(
-  !/expired or been revoked/.test(text()) && !GITHUB_STATE_TEXT.test(text()),
-  "25.21 an expired key shows the user no GitHub copy (default 5)"
-);
-/* 25.22 retired with the GitHub key field (owner ruling 2026-10-12, group 64) */
-
-await fresh();
-await openSync();
-await saveGitHubKey();
-remote.fail = "offline";
-await background();
-await drain();
-/* Re-pointed (owner ruling 2026-10-12): an offline mirror is a GitHub state,
-   so the user sees no line for it. The local ledger must still be whole. */
-await sleep(SAVE_WAIT);
-ok(
-  !/safe on this device/.test(text()) && !GITHUB_STATE_TEXT.test(text()),
-  "25.23 an offline mirror shows the user no GitHub line (default 5)"
-);
-eq(saved().items.length, ITEMS.length, "25.23b and nothing was lost locally");
-
-/* The token is a credential, not ledger data. It must not be in the saved
-   ledger, in a backup file, in the pushed payload, or anywhere the app's own
-   storage namespace can be enumerated. */
-await fresh();
-await openSync();
-await saveGitHubKey("github_pat_SECRETVALUE");
-await background();
+/* The credentials stay out of the saved ledger, the POST, a backup file and the
+   storage namespace (invariant the-token-is-a-credential). The device key is the
+   credential now; the GitHub key left the UI with group 64. */
+await boot({ items: ITEMS, received: {} }, null, { noRemote: true, syncKey: KEY25 });
+await wakeWorker();
 await drain();
 await openHistory();
-await click(btn(/^Backup$/), "backup after saving a key");
-const LEAK = /github_pat_|ghp_/;
+await click(btn(/^Backup$/), "backup with a Worker key set");
+const LEAK = /device-25-key/;
 await sleep(SAVE_WAIT);
-ok(!LEAK.test(JSON.stringify(saved())), "25.24 the key is not in the saved ledger");
-ok(!LEAK.test(pushes()[0].text), "25.25 nor in the pushed payload");
+ok(workerPosts().length > 0, "25.24pre the key has reached the Worker, so the leak check can fail");
+ok(!LEAK.test(JSON.stringify(saved())), "25.24 the device key is not in the saved ledger");
+ok(!LEAK.test(JSON.stringify(workerPosts())), "25.25 nor in the POSTed payload");
 ok(!LEAK.test(await captured.text()), "25.26 nor in a backup file");
 eq(
   (await win.storage.list()).keys,
@@ -1143,13 +1137,10 @@ eq(
 
 /* ── 26. a remote ledger reaches this device on a fresh resume ─────────── */
 
-/* Pull from GitHub left the UI (owner ruling 2026-10-12). Its arm, replace and
-   notice cases are retired: 26.1 to 26.7 (the button, its sentence and its
-   notice), 26.8 and 26.9 (its refusal of a non-ledger), 26.10 (its replace
-   warning), 26.14 to 26.16 (a pull that unblocks a push), 26.18 and 26.19 (the
-   Pull arm disarming Reset). The photo rules still hold on the automatic merge:
-   a fresh resume that finds GitHub ahead merges it in (autoMerge), and that
-   merge keeps the ids the same as the old pull did. These cases re-point there. */
+/* Pull from GitHub left the UI (owner ruling 2026-10-12). The switch (owner ruling
+   2026-10-14, decision sync-revamp-cloudflare) retires the GitHub merge cases 26.1 to
+   26.10, 26.14 to 26.16 and 26.18 to 26.19. 26.11 and 26.12 re-point to the Worker reply,
+   and 26.13 to 26.13c read the Worker's photo list (photoList, three-valued). */
 
 /* Re-pointed to the restore path (owner ruling 2026-10-12): a file restore runs
    parseLedger's whole-check, so a payload that is not a ledger is refused and
@@ -1165,14 +1156,15 @@ ok(/isn’t a Mail Day backup/.test(text()), "26.20 a non-ledger JSON is refused
 await sleep(SAVE_WAIT);
 eq(saved().items.length, ITEMS.length, "26.21 and nothing local moved");
 
+const KEY26 = "device-26-key";
 const freshResume = async () => {
   await backgroundFor(5 * 60_000);
   await sleep(SAVE_WAIT);
 };
 
-/* THE landmine: a pushed payload never carries photos, so a merge must not
-   strip ids whose blobs are sitting right here — and the sweep must not then
-   collect them. Push from the phone, merge on the same phone, photos gone. */
+/* THE landmine: a Worker reply never carries photos, so a merge must not strip ids
+   whose blobs are sitting right here, and the sweep must not then collect them. The
+   reply carries a check-in this device lacks, so the apply is visible. */
 const PHOTO_STATE = {
   items: ITEMS,
   received: {},
@@ -1187,15 +1179,17 @@ const PHOTO_STATE = {
   ],
 };
 await boot(PHOTO_STATE, [["pho-9", jpeg()]], {
-  remote: JSON.stringify({
-    mailday: 1,
+  syncKey: KEY26,
+  syncLedger: {
     ...PHOTO_STATE,
+    received: { [ITEMS[0].key]: 1 },
     dateFilter: { preset: "all", from: "", to: "" },
     sortBy: "newest",
     itemSort: "missing",
-  }),
+  },
 });
 await freshResume();
+ok(!!saved().received?.[ITEMS[0].key], "26.11pre the Worker's check-in applied on resume");
 eq(
   saved().envelopes[0].photos,
   ["pho-9"],
@@ -1204,14 +1198,11 @@ eq(
 await sleep(SWEEP_WAIT);
 eq(photoKeys(), ["pho-9"], "26.12 and the sweep leaves the blob alone");
 
-/* The other half of the same rule — but "nowhere" now has to be established
-   rather than assumed. Photos live in a private repo, so a device with no key
-   cannot tell an empty store from one it isn't allowed to look at, and GitHub
-   answers both with a 404. Stripping on that reading would destroy the link to
-   a photo sitting safe on GitHub; keeping it costs a blank tile until the next
-   pull. So the rule splits: strip only when the store was READ and genuinely
-   didn't have it. */
-const GONE_LEDGER = JSON.stringify({
+/* The Worker's photo list is read, and three values come back: held, not held, or
+   unreadable. A server apply keeps the id in all three cases. Another device may still be
+   uploading the blob, and this one cannot tell, so no read of the list strips it
+   (photo-ids-unreadable-local). */
+const GONE_LEDGER = {
   mailday: 1,
   items: ITEMS,
   received: {},
@@ -1227,27 +1218,34 @@ const GONE_LEDGER = JSON.stringify({
   dateFilter: { preset: "all", from: "", to: "" },
   sortBy: "newest",
   itemSort: "missing",
-});
+};
 
-await boot({ items: ITEMS, received: {} }, null, { remote: GONE_LEDGER });
+await boot({ items: ITEMS, received: {} }, [], { syncKey: KEY26, syncLedger: GONE_LEDGER });
 await openSync();
-await saveGitHubKey(); /* the key is what makes the photo store readable */
 await freshResume();
-eq(
-  saved().envelopes[0].photos,
-  [],
-  "26.13 an id the photo store was read and found not to hold is stripped"
+ok(
+  syncCalls().some((c) => c.op === "photoList"),
+  "26.13pre the app asked the Worker for its photo list"
 );
-
-/* and the case that used to be conflated with it */
-await boot({ items: ITEMS, received: {} }, null, { remote: GONE_LEDGER });
-await openSync();
-await freshResume();
 eq(
   saved().envelopes[0].photos,
   ["pho-gone"],
-  "26.13b but with no key the store is unreadable, so the id is KEPT, not lost"
+  "26.13 an id the Worker does not hold yet is kept on a server apply"
 );
+
+/* and the case that used to be conflated with it: the list cannot be read */
+await boot({ items: ITEMS, received: {} }, [], {
+  syncKey: KEY26,
+  syncLedger: GONE_LEDGER,
+  syncPhotosRefused: true,
+});
+await freshResume();
+eq(
+  saved().envelopes?.[0]?.photos ?? null,
+  ["pho-gone"],
+  "26.13b but the list is unreadable, so the id is KEPT, not lost"
+);
+await openSync();
 /* Re-pointed (owner ruling 2026-10-12, default 5): the copy may not say "your key"
    or name a repo. Group 66 guards the words, so this asserts only that the line
    says photos need something, not what that something is named. */
@@ -1342,7 +1340,8 @@ eq(
    no data was unreachable exactly when it was needed. Caught on the live site,
    not by this suite, which is why the assertion exists now. */
 await boot({ items: [], received: {}, envelopes: [] }, null, {
-  remote: OTHER_DEVICE,
+  noRemote: true,
+  syncKey: "device-28-key",
 });
 /* The Sync chip is gone — on the happy path there is no sync vocabulary on
    screen at all. The claim survives unchanged, and it is the one that matters:
@@ -1368,16 +1367,17 @@ ok(
   cell(/^Re-import CSV/)?.getAttribute("aria-expanded") === "true",
   "28.4 and Re-import CSV is open on the Ledger tab — the upload zone is already on screen"
 );
-/* 28.2 and 28.5 re-pointed: Pull from GitHub left the UI (owner ruling
-   2026-10-12). Recovery is the mirror's own merge on a fresh resume, which
-   needs the GitHub key set before the mount, as the owner's devices have it. */
+/* 28.2 retired: Pull from GitHub left the UI (owner ruling 2026-10-12). 28.5 re-points
+   to the Worker (owner ruling 2026-10-14, the switch): a fresh resume recovers the
+   empty ledger from the Worker, and GitHub takes no read. */
 await boot({ items: [], received: {}, envelopes: [] }, null, {
-  remote: OTHER_DEVICE,
-  remoteKey: "github_pat_testtoken",
+  syncKey: "device-28-key",
+  syncLedger: { mailday: 1, items: ITEMS.slice(0, 3), received: {}, envelopes: [] },
 });
 await backgroundFor(5 * 60_000);
 await sleep(SAVE_WAIT);
-eq(saved().items.length, 3, "28.5 and a fresh resume recovers the empty ledger from GitHub");
+eq(saved().items.length, 3, "28.5 and a fresh resume recovers the empty ledger from the Worker");
+eq(githubOps().join(", "), "", "28.5b and GitHub takes no read to do it");
 
 /* with no remote there is nothing to offer, so the toolbar stays away */
 await boot({ items: [], received: {}, envelopes: [] }, null, { noRemote: true });
@@ -1463,18 +1463,16 @@ ok(text().includes(DECODED), "29.6 Tally's source rows show it decoded too");
 
 /* ── 30. photos push and pull ────────────────────────────────────────
    Photo files are immutable and addressed by id, so the whole algorithm is a
-   set difference — nothing merges, nothing overwrites, and the same tap can be
-   repeated safely. What these protect is the ORDER of a merge from GitHub
+   set difference: nothing merges, nothing overwrites, and the same tap can be
+   repeated safely. What these protect is the ORDER of a merge from the Worker
    (download before replace, or every id is stripped) and the strict separation
-   of the photo error channel from the ledger's, since the ledger's `conflict`
-   used to arm a button that force-overwrote another device's check-ins.
+   of the photo error channel from the ledger's.
 
-   Push and Pull left the UI (owner ruling 2026-10-12). The push leg runs as the
-   mirror does: a hidden page writes through autoPush (background). The pull leg
-   runs as a fresh resume that finds GitHub ahead (autoMerge), so each case
-   below sets the GitHub key at boot and resumes. The retired Pull asks are
-   30.10's "not on GitHub" reading through the button, which the merge reports
-   the same way, and 30.5 to 30.10 re-point rather than delete. */
+   The switch (owner ruling 2026-10-14 21:55 CDT: photos move to the Worker's /photos
+   route, decision sync-revamp-cloudflare) re-points every case here. Each one reads the
+   Worker's photo calls (photoList, photoGet, photoPut) and the names the Worker holds.
+   Until the photo build lands, these cases are red at the lane head: the app still
+   sends photos through GitHub. */
 
 const withPhoto = (ids) => ({
   items: ITEMS,
@@ -1489,9 +1487,21 @@ const withPhoto = (ids) => ({
     },
   ],
 });
-const photoCalls = () => remote.calls.filter((c) => /Photo/.test(c.op));
-const GH30 = "github_pat_testtoken";
-/* a fresh resume: the page was away, and on return GitHub is read and merged */
+const KEY30 = "device-30-key";
+const SERVER30 = (state) => ({
+  mailday: 1,
+  ...state,
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+});
+const workerPhotoCalls30 = () => syncCalls().filter((c) => /^photo/.test(c.op));
+const photoPuts30 = () => syncCalls().filter((c) => c.op === "photoPut");
+/* the ids the app handed the photo route, per op: the harness records each call's id */
+const photoIds30 = (op) => syncCalls().filter((c) => c.op === op).map((c) => c.id);
+/* a photo write waits one second after the ledger (photo-writes-wait-one-second) */
+const PHOTO_WAIT30 = 1500;
+/* a fresh resume: the page was away, and on return the Worker is read and merged */
 const resume30 = async () => {
   await backgroundFor(5 * 60_000);
   await drain();
@@ -1499,131 +1509,129 @@ const resume30 = async () => {
 };
 
 /* a ledger with no photos in it at all */
-await boot({ items: ITEMS, received: {} }, null, { remoteKey: GH30 });
-await background();
+await boot({ items: ITEMS, received: {} }, null, { syncKey: KEY30 });
+await wakeWorker();
 await drain();
-eq(photoCalls().length, 0, "30.1 a ledger with no photos makes no photo requests");
+eq(workerPhotoCalls30().length, 0, "30.1 a ledger with no photos makes no photo requests");
 
-/* one photo, held locally, absent from the remote */
-await boot(withPhoto(["pho-a"]), [["pho-a", jpegOf(1)]], { remoteKey: GH30 });
-await background();
+/* one photo, held locally, absent from the Worker */
+await boot(withPhoto(["pho-a"]), [["pho-a", jpegOf(1)]], { syncKey: KEY30 });
+await wakeWorker();
 await drain();
-await sleep(60);
-eq(remotePhotoIds(), ["pho-a"], "30.2 a push sends a photo the remote lacks");
+await sleep(PHOTO_WAIT30);
+eq(syncPhotoNames(), ["pho-a.jpg"], "30.2 a push sends a photo the Worker lacks");
+eq(photoIds30("photoPut"), ["pho-a"], "30.2b the app hands the photo route an id, not a file name");
 
 /* pushing again must send NOTHING: the set difference is what makes a repeat
    tap cheap, and what makes a partial upload resumable */
-const sentSoFar = photoCalls().filter((c) => c.op === "pushPhoto").length;
-await background();
+const putsSoFar = photoPuts30().length;
+ok(putsSoFar > 0, "30.3pre the first push did send the photo");
+await wakeWorker();
 await drain();
-await sleep(60);
+await sleep(PHOTO_WAIT30);
 eq(
-  photoCalls().filter((c) => c.op === "pushPhoto").length,
-  sentSoFar,
+  photoPuts30().length,
+  putsSoFar,
   "30.3 pushing again sends nothing — only new bytes ever move"
 );
 
 /* a blob left behind by a discarded envelope is not ours to publish */
-await boot({ items: ITEMS, received: {} }, [["pho-orphan", jpegOf(2)]], { remoteKey: GH30 });
-await background();
+await boot({ items: ITEMS, received: {} }, [["pho-orphan", jpegOf(2)]], { syncKey: KEY30 });
+await wakeWorker();
 await drain();
-await sleep(60);
+await sleep(PHOTO_WAIT30);
+ok(workerPosts().length > 0, "30.4pre the ledger did reach the Worker");
 ok(
-  !remotePhotoIds().includes("pho-orphan"),
-  "30.4 a blob no envelope references is never pushed"
+  !syncPhotoNames().some((n) => /pho-orphan/.test(n)),
+  "30.4 a blob no envelope references is never sent"
 );
 
-/* ---- the merge from GitHub, and the ordering it depends on ---- */
-const PHOTO_LEDGER = JSON.stringify({
-  mailday: 1,
-  ...withPhoto(["pho-a"]),
-  dateFilter: { preset: "all", from: "", to: "" },
-  sortBy: "newest",
-  itemSort: "missing",
-});
-
+/* ---- the merge from the Worker, and the ordering it depends on ---- */
 await boot({ items: ITEMS, received: {} }, null, {
-  remote: PHOTO_LEDGER,
-  remoteKey: GH30,
-  remotePhotos: [["pho-a.jpg", await blobToBase64(jpegOf(1))]],
+  syncKey: KEY30,
+  syncLedger: SERVER30(withPhoto(["pho-a"])),
+  syncPhotos: [["pho-a.jpg", jpegOf(1)]],
 });
 await resume30();
 eq(
-  saved().envelopes[0].photos,
+  saved().envelopes?.[0]?.photos ?? null,
   ["pho-a"],
   "30.5 a merge onto a device with no blobs KEEPS the id"
 );
 eq(photoKeys(), ["pho-a"], "30.6 because it downloaded the blob first");
+eq(photoIds30("photoGet"), ["pho-a"], "30.6b the app asks the photo route for the id, not a file name");
+const got30 = getPhoto("pho-a");
 eq(
-  await bytesOf(getPhoto("pho-a")),
+  got30 ? await bytesOf(got30) : null,
   [...(await bytesOf(jpegOf(1)))],
   "30.7 and the bytes survived the round trip exactly"
 );
-eq(getPhoto("pho-a").type, "image/jpeg", "30.8 with its own type, not GitHub's");
+eq(got30?.type ?? null, "image/jpeg", "30.8 with its own type, not the Worker's");
 await sleep(SWEEP_WAIT);
 eq(photoKeys(), ["pho-a"], "30.9 and the sweep leaves the downloaded blob alone");
 
-/* the store is there but genuinely lacks it — the only case where dropping the
-   id is right, and it must still say so rather than fail silently */
-await boot({ items: ITEMS, received: {} }, null, { remote: PHOTO_LEDGER, remoteKey: GH30 });
+/* the store is there and the Worker lacks the blob. The id stays: another device may still
+   be uploading it, and this one cannot tell (26.13, photo-ids-unreadable-local). */
+await boot({ items: ITEMS, received: {} }, null, { syncKey: KEY30, syncLedger: SERVER30(withPhoto(["pho-a"])) });
 await resume30();
-/* Re-pointed: the Pull ask is gone, and a GitHub copy is not shown to the user
-   (owner ruling 2026-10-12, default 5). The merge still drops the id, because
-   no store holds the bytes. Whether that loss is reported to the user is an
-   open question, see the report. */
-eq(saved().envelopes[0].photos, [], "30.10 a photo missing everywhere is dropped from the envelope");
-/* Re-pointed (pull-warns-on-what-it-drops, owner ruling 2026-10-12): the warning
-   is the claim. The photo's loss is shown in the Sync panel, with no GitHub word. */
+ok(
+  workerPhotoCalls30().some((c) => c.op === "photoList"),
+  "30.10pre the app read the Worker's photo list before it decided about an id"
+);
+eq(
+  saved().envelopes?.[0]?.photos ?? null,
+  ["pho-a"],
+  "30.10 a photo the Worker lacks yet is kept on the envelope"
+);
+/* The Worker lacking a blob does not mean no device holds it, so the Sync panel must not
+   say the photo is gone. The panel-open mark proves the negative was read from the open panel. */
 await openSync();
 ok(
-  /photo/i.test(text()) && /gone|lost|no other copy|only copy/i.test(text()) && !/GitHub/.test(text()),
-  "30.10b a photo with no copy left is warned about, and no GitHub word is on screen"
+  !!document.querySelector('input[aria-label="GitHub access token"]') ||
+    cell(/^Sync/)?.getAttribute("aria-expanded") === "true",
+  "30.10c the Sync panel is open when the photo wording is read"
+);
+ok(
+  !/no copy left/i.test(text()) && !/GitHub/.test(text()),
+  "30.10b a photo the Worker lacks yet is not reported lost, and no GitHub word is on screen"
 );
 
-/* ---- the one that guards the worst bug in the feature ---- */
-await boot(withPhoto(["pho-a"]), [["pho-a", jpegOf(1)]], { remoteKey: GH30 });
-remote.photoFail = "conflict"; /* GitHub 409s rapid writes to one repo */
-await background();
+/* a photo write that fails: the Sync panel arms no two-tap and puts no Push or
+   GitHub state on screen. The ledger POST still lands. */
+await boot(withPhoto(["pho-a"]), [["pho-a", jpegOf(1)]], { syncKey: KEY30 });
+setSyncPhotoFail(true);
+await wakeWorker();
 await drain();
-await sleep(60);
-/* Re-pointed: Push anyway is gone (owner ruling 2026-10-12). What must still
-   hold is that a photo conflict puts no ask on screen at all. */
-/* Re-pointed: "Push anyway" can no longer appear, so the old check could never
-   fail. The live way a conflict could reach the user is an armed two-tap or a
-   GitHub line, and either one is what this now catches. */
-/* Re-pointed: the Sync panel is where a photo conflict would surface, so it is
-   opened and read. "Push" is a verb the UI no longer carries. */
+await sleep(PHOTO_WAIT30);
 await openSync();
 ok(
   !btn(/^Tap again to/) && !/\bPush\b/.test(text()) && forbiddenIn().length === 0 && !GITHUB_STATE_TEXT.test(text()),
-  "30.11 a photo conflict arms no two-tap and puts no Push verb or GitHub state on screen"
+  "30.11 a failed photo write arms no two-tap and puts no Push verb or GitHub state on screen"
 );
-eq(remoteText() && JSON.parse(remoteText()).items.length, ITEMS.length,
-  "30.12 and the ledger push itself still landed");
-remote.photoFail = null;
+ok(workerPosts().length > 0, "30.12 and the ledger POST still landed");
+setSyncPhotoFail(false);
 
 /* ---- the store we cannot see ---- */
 await boot({ items: ITEMS, received: {} }, null, {
-  remote: PHOTO_LEDGER,
-  photosUnknown: "no-access",
-  remoteKey: GH30,
+  syncKey: KEY30,
+  syncLedger: SERVER30(withPhoto(["pho-a"])),
+  syncPhotosRefused: true,
 });
 await resume30();
 eq(
-  saved().envelopes[0].photos,
+  saved().envelopes?.[0]?.photos ?? null,
   ["pho-a"],
   "30.13 an unreadable photo store keeps every id — it is not evidence of loss"
 );
-eq(saved().items.length, ITEMS.length, "30.14 and the ledger still applied");
+eq(saved().items?.length ?? 0, ITEMS.length, "30.14 and the ledger still applied");
 ok(!/not on GitHub/i.test(text()), "30.15 and nothing is reported as lost");
 
 /* The sweep race, which is the reason the photo phase holds it off at all. A
    merge writes blobs while `envelopes` still holds the OLD list, so nothing
    re-runs the sweep effect and a timer armed before the merge started is still
    counting down against a keep-set that knows nothing about what is arriving.
-   Two photos and a slow wire put a download on each side of that 2s timer. */
-const TWO_PHOTO_LEDGER = JSON.stringify({
-  mailday: 1,
+   Two photos and a slow read put a download on each side of that 2s timer. */
+const TWO_PHOTO_SERVER = SERVER30({
   items: ITEMS,
   received: {},
   envelopes: [
@@ -1635,40 +1643,37 @@ const TWO_PHOTO_LEDGER = JSON.stringify({
       photos: ["pho-a", "pho-b"],
     },
   ],
-  dateFilter: { preset: "all", from: "", to: "" },
-  sortBy: "newest",
-  itemSort: "missing",
 });
 await boot({ items: ITEMS, received: {} }, null, {
-  remote: TWO_PHOTO_LEDGER,
-  remoteKey: GH30,
-  remotePhotos: [
-    ["pho-a.jpg", await blobToBase64(jpegOf(1))],
-    ["pho-b.jpg", await blobToBase64(jpegOf(2))],
+  syncKey: KEY30,
+  syncLedger: TWO_PHOTO_SERVER,
+  syncPhotos: [
+    ["pho-a.jpg", jpegOf(1)],
+    ["pho-b.jpg", jpegOf(2)],
   ],
 });
-remote.photoDelay = 1200; /* first lands ~1.2s, second ~2.4s — the sweep is due at 2s */
+setSyncPhotoDelay(1200); /* first lands ~1.2s, second ~2.4s — the sweep is due at 2s */
 await backgroundFor(5 * 60_000);
 /* two 1.2s downloads, then the replace, then the debounced save — and past the
    2s mark where the pre-merge sweep was armed to fire */
 await sleep(2400 + SWEEP_WAIT);
-remote.photoDelay = 0;
+setSyncPhotoDelay(0);
 eq(
   photoKeys().sort(),
   ["pho-a", "pho-b"],
   "30.16 a sweep falling due mid-download does not eat what just arrived"
 );
 eq(
-  saved().envelopes[0].photos.sort(),
+  (saved().envelopes?.[0]?.photos ?? []).slice().sort(),
   ["pho-a", "pho-b"],
   "30.17 and both ids survive into the saved ledger"
 );
 
-/* The "gone" warning, both ways round. A merge that replaces the ledger makes a
-   photo the CURRENT ledger references and the incoming one does not about to
-   stop existing — and if it was never pushed, that was the last copy. But a
-   photo BOTH ledgers reference survives untouched, and saying otherwise is a
-   false alarm at the exact moment nothing is wrong. */
+/* 30.18 is retired (owner ruling 2026-10-15): the photo only the CURRENT ledger names
+   survives the merge, because envelopes union, so its "now gone" warning was a false
+   alarm. 30.18s and 30.18t keep that survival as the proof. The warning goes with the
+   builder's change to pullPhotos (its stranded count). A photo BOTH ledgers reference
+   survives untouched, and saying otherwise is a false alarm (30.19, 30.20). */
 await boot(
   {
     items: ITEMS,
@@ -1684,26 +1689,27 @@ await boot(
     ],
   },
   [["pho-local", jpegOf(7)]],
-  { remote: PHOTO_LEDGER, remoteKey: GH30 } /* incoming references pho-a, never pho-local */
+  { syncKey: KEY30, syncLedger: SERVER30(withPhoto(["pho-a"])) } /* incoming references pho-a, never pho-local */
 );
 await resume30();
-/* Re-pointed like 30.10: "never pushed" is a GitHub copy the user is no longer
-   shown (owner ruling 2026-10-12, default 5). Whether a last-copy loss is
-   reported at all is an open question, see the report. */
-/* Re-pointed like 30.10: the last-copy warning must appear, and carry no GitHub
-   word (default 5). Read in the Sync panel, where the warning is rendered. */
-await openSync();
-ok(
-  /photo/i.test(text()) && /gone|lost|no other copy|only copy/i.test(text()) && !/GitHub|never pushed/i.test(text()),
-  "30.18 a photo the incoming ledger doesn't know about gets a GitHub-free last-copy warning (default 5)"
+eq(
+  saved().envelopes?.find((e) => e.id === "env-local")?.photos ?? null,
+  ["pho-local"],
+  "30.18s the photo only the current ledger names is still named after the merge"
 );
+await sleep(SWEEP_WAIT);
+ok(photoKeys().includes("pho-local"), "30.18t and its blob survives the sweep");
 
 /* the inverse: both ledgers reference it and the blob is here, so it survives
    the merge completely — warning here would be a false alarm */
-await boot(withPhoto(["pho-a"]), [["pho-a", jpegOf(1)]], { remote: PHOTO_LEDGER, remoteKey: GH30 });
+await boot(withPhoto(["pho-a"]), [["pho-a", jpegOf(1)]], {
+  syncKey: KEY30,
+  syncLedger: SERVER30(withPhoto(["pho-a"])),
+  syncPhotos: [["pho-a.jpg", jpegOf(1)]],
+});
 await resume30();
 eq(
-  saved().envelopes[0].photos,
+  saved().envelopes?.[0]?.photos ?? null,
   ["pho-a"],
   "30.19 a photo both ledgers reference survives the merge"
 );
@@ -2188,14 +2194,18 @@ const ownValue = (o, k) => (Object.prototype.hasOwnProperty.call(o, k) ? o[k] : 
 });
 
 /* ── 34. the conflict stops being a trap ──────────────────────────────────
-   Group 25 proves a stale push is BLOCKED. This proves it can now be resolved
-   without either device losing work — which is the entire point, because both
-   previous resolutions were lossy and the history shows the lossy one being
-   taken. */
+   Group 25 proves a stale write is refused. This proves it can now be resolved
+   without either device losing work. On the Worker the merge happens on the
+   server: each POST is merged with the stored ledger, and the reply is applied.
 
-/* the laptop pushed an import; this phone has unpushed check-ins and a stale
-   item list — precisely the 08-22 state in the branch history */
-const LAPTOP_PUSHED = JSON.stringify({
+   The switch (owner ruling 2026-10-14, decision sync-revamp-cloudflare) retires the
+   GitHub mechanics: the peek, the sha, the pushFailOnce race and the GitHub copy.
+   Cases that pinned a claim (34.3 to 34.14, 34.19, 34.23 to 34.24b, 34.26 to 34.29,
+   34.31 and 34.32) re-point to the Worker. 34.18, 34.21, 34.22 and 34.30 are retired. */
+
+const KEY34 = "device-34-key";
+/* the other device's copy: the laptop pushed an import */
+const LAPTOP34 = {
   mailday: 1,
   items: ITEMS,
   received: {},
@@ -2203,185 +2213,117 @@ const LAPTOP_PUSHED = JSON.stringify({
   dateFilter: { preset: "all", from: "", to: "" },
   sortBy: "newest",
   itemSort: "missing",
-});
+};
 
-await boot(
-  { items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } },
-  null,
-  { remote: LAPTOP_PUSHED }
-);
-/* Re-pointed (owner ruling 2026-10-12): Push and Merge & push left the UI. The
-   stale copy is merged by the mirror on its own, on a fresh resume that finds
-   GitHub ahead. The user is shown no GitHub copy (default 5). Old 34.1 (the
-   blocked Push) and 34.2 (the Merge & push button) guarded removed controls and
-   are retired; the check below carries what they protected. */
-await saveGitHubKey();
+/* this phone has unpushed check-ins and a stale item list: the 08-22 state */
+await boot({ items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } }, null, {
+  syncKey: KEY34,
+  syncLedger: LAPTOP34,
+});
 await backgroundFor(5 * 60_000);
 await drain();
 await sleep(SAVE_WAIT);
-/* The merge applied, and the auto-push that follows it is the next background,
-   which fires it at once. AUTO_PUSH_MS is the wait a device without a switch
-   to background would take. */
-await backgroundFor(5 * 60_000);
-await drain();
-await sleep(SAVE_WAIT);
-eq(saved().items.length, ITEMS.length, "34.3 the laptop's imported lines arrive");
-eq(
-  saved().received[ITEMS[0].key],
-  1,
-  "34.4 and this device's check-ins are still here"
-);
+eq(saved().items?.length ?? 0, ITEMS.length, "34.3 the laptop's imported lines arrive");
+eq(saved().received?.[ITEMS[0].key] ?? null, 1, "34.4 and this device's check-ins are still here");
 ok(
   !GITHUB_STATE_TEXT.test(text()) && forbiddenIn().length === 0,
   "34.5 and the user is shown no GitHub copy or verb (default 5)"
 );
-/* Re-pointed (owner ruling 2026-10-12): the old check compared the remote's
-   lines with ITEMS, which LAPTOP_PUSHED already holds, so it passed with no
-   push at all. The claim is the push itself. */
-ok(
-  pushes().length > 0,
-  "34.6 the merged ledger was pushed to GitHub, so the conflict is cleared"
+ok(workerPosts().length > 0, "34.6pre the merged ledger was POSTed to the Worker");
+eq(
+  syncLedgerNow()?.received?.[ITEMS[0].key] ?? null,
+  1,
+  "34.6 so the Worker now holds this device's check-ins, and the conflict is cleared"
 );
 eq(
-  JSON.parse(remoteText()).received[ITEMS[0].key],
+  workerPosts().at(-1)?.received?.[ITEMS[0].key] ?? null,
   1,
-  "34.7 carrying the check-ins the remote had never seen"
+  "34.7 and the POST carried the check-in the other device had never seen"
 );
 
 /* In a merge the later change wins, and a merge is not a destructive act, so
-   arming it would say the opposite of what it does — and invariant
-   no-native-dialogs's two-tap pattern is for destructive actions specifically. */
-await boot(
-  { items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } },
-  null,
-  { remote: LAPTOP_PUSHED }
-);
-/* Re-pointed: the automatic merge takes the place of the Merge & push button,
-   so the armed Reset is the one that must be disarmed by it. */
-await saveGitHubKey();
+   arming it would say the opposite of what it does — and the two-tap pattern is
+   for destructive actions specifically. */
+await boot({ items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } }, null, {
+  syncKey: KEY34,
+  syncLedger: LAPTOP34,
+});
 await reachFor(/^Reset$/);
 await click(btn(/^Reset$/), "arm reset");
 ok(/Tap again to clear \d+ cards?/.test(text()), "34.8 Reset arms");
 await backgroundFor(5 * 60_000);
 await drain();
-/* Re-pointed (rulings armed-reset-takes-the-row and milestones-taken-before-risk,
-   2026-10-12): the gate holds. A merge does not run while Reset is armed, so
-   the armed Reset stays armed and the device's own ledger is not overwritten.
-   The gate itself is unchanged. */
+/* the gate holds: a merge does not run while Reset is armed, so Reset stays armed
+   and the device's own ledger is not overwritten (armed-reset-takes-the-row) */
 ok(/Tap again to clear \d+ cards?/.test(text()), "34.9 a merge waits while Reset is armed, so Reset stays armed");
 await sleep(SAVE_WAIT);
-eq(saved().items.length, 3, "34.10 and the device keeps its own ledger, not the merged one");
+eq(saved().items?.length ?? 0, 3, "34.10 and the device keeps its own ledger, not the merged one");
 
-/* the notice, and the merge that only brings in */
-/* Re-pointed: Merge left the UI (owner ruling 2026-10-12). A device that is
-   behind is merged by the mirror on its own, and shows no GitHub copy. */
-await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { remote: LAPTOP_PUSHED });
-await saveGitHubKey();
+/* the behind device: the Worker's copy is read first, and the merge brings the
+   new lines in on its own */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { syncKey: KEY34, syncLedger: LAPTOP34 });
 await settle();
 ok(!GITHUB_STATE_TEXT.test(text()), "34.11 a device that is behind is shown no GitHub copy");
-eq(peeks().length > 0, true, "34.12 which it learned from one cheap read, not a pull");
+ok(
+  syncCalls().some((c) => c.op === "get"),
+  "34.12 the Worker's copy is read before anything is applied"
+);
 await backgroundFor(5 * 60_000);
 await drain();
 await sleep(SAVE_WAIT);
-eq(saved().items.length, ITEMS.length, "34.13 the mirror brings the new lines in on its own");
+eq(saved().items?.length ?? 0, ITEMS.length, "34.13 the merge brings the new lines in on its own");
 ok(!GITHUB_STATE_TEXT.test(text()), "34.14 and still no GitHub copy after the merge");
 
-/* ---- auto-push ----
-   The reason the merge had to come first: automating pushes without it turns
-   the trap above from occasional into the normal way two devices meet. */
-
+/* ---- the push side ---- */
 await fresh();
 await openSync();
-await saveGitHubKey();
 /* There is no toggle any more, and its absence is the claim: sync is not
-   something you turn on. A per-device switch for "does this work" made the
-   thing the app is supposed to do quietly into a thing you had to opt into,
-   and an off toggle on the other device is a silent way to be unbacked-up for
-   months. */
+   something you turn on. */
 ok(!btn(/Auto-push/), "34.15 there is no toggle — sync is not opt-in");
+eq(saved().auto, undefined, "34.17 and nothing about it leaked into the ledger on its way out");
+
+/* 34.18, 34.21 and 34.22 are retired by the switch: they asserted a GitHub peek
+   before a GitHub write. The Worker merges every POST with the stored ledger, so
+   a blind write cannot overwrite the other device's lines. 34.19 carries that. */
+
+/* the Worker holds more lines than this device sends: the POST merges, and the
+   copy never shrinks */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { syncKey: KEY34, syncLedger: LAPTOP34 });
+await wakeWorker();
+await drain();
+ok(workerPosts().length > 0, "34.19pre a Worker POST went out");
 eq(
-  saved().auto,
-  undefined,
-  "34.17 and nothing about it leaked into the ledger on its way out"
-);
-
-/* Backgrounding runs auto-push straight away rather than after the 90s idle
-   debounce, so these drive that path — which is also a real one: switching away
-   mid-mail-day is the last chance to catch a session that never went idle. */
-
-/* THE safety property. "I could not look" must never be read as "all clear":
-   pushing on an unknown remote state is exactly how one device overwrites the
-   other, and it is the reason peek() is three-valued at all. */
-await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { remote: LAPTOP_PUSHED });
-await saveGitHubKey();
-await settle();
-remote.peekUnknown = "offline";
-const unseen = pushes().length;
-await background();
-eq(pushes().length, unseen, "34.18 auto-push refuses to write when it could not look");
-remote.peekUnknown = null;
-
-/* and when it CAN look and the other device is ahead, it merges before it
-   writes, so the other device's lines are never overwritten. Re-pointed: a
-   stale write no longer waits for a button (owner ruling 2026-10-12). */
-await background();
-eq(
-  JSON.parse(remoteText()).items.length,
+  syncLedgerNow()?.items?.length ?? 0,
   ITEMS.length,
   "34.19 an ahead copy is never overwritten with fewer lines"
 );
-await foreground();
+await wakeWorker();
+await drain();
 ok(!GITHUB_STATE_TEXT.test(text()), "34.20 and the user is shown no GitHub copy");
 
-/* the ordinary case: nobody is ahead, so it goes */
-await boot({ items: ITEMS, received: {} }, null, { remote: null });
-await openSync();
-await saveGitHubKey();
-await settle();
-const quiet = pushes().length;
-await background();
-ok(pushes().length > quiet, "34.21 with the remote in step, auto-push pushes");
-ok(
-  peeks().length > 0,
-  "34.22 and it looked first — the peek is what makes the push safe"
-);
-
-/* a conflict opening between the look and the write must leave no ask on a
-   screen nobody is watching. Re-pointed: Push anyway is retired (owner ruling
-   2026-10-12), so the check is that no GitHub verb is shown. */
-await boot(
-  { items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } },
-  null,
-  { remote: LAPTOP_PUSHED }
-);
-await openSync();
-await saveGitHubKey();
-await settle();
-/* peek reports all clear, but the remote moves before the PUT lands — the race
-   the optimistic sha check exists to catch */
-remote.peekUnknown = null;
-remote.deviceSha = remote.sha; /* so peek says all clear */
-remote.pushFailOnce = "conflict"; /* ...and the write disagrees */
-await background();
-await settle();
+/* a POST that merges with a copy that moved: the device resolves by merging, not
+   by forcing, and both devices' check-ins survive */
+await boot({ items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } }, null, {
+  syncKey: KEY34,
+  syncLedger: LAPTOP34,
+});
+/* the POST's reply is held for the idle gate, so a resume applies it at once */
+await wakeWorker();
+await backgroundFor(5 * 60_000);
+await drain();
 await sleep(SAVE_WAIT);
 eq(
-  saved().items.length,
+  saved().items?.length ?? 0,
   ITEMS.length,
-  "34.23 a conflict during an unattended push resolves by merging, not by forcing"
+  "34.23 a conflict during an unattended POST resolves by merging, not by forcing"
 );
-eq(
-  saved().received[ITEMS[0].key],
-  1,
-  "34.24 keeping this device's check-ins through it"
-);
+eq(saved().received?.[ITEMS[0].key] ?? null, 1, "34.24 keeping this device's check-ins through it");
 eq(forbiddenIn(), [], "34.24b and no GitHub verb is on screen after it");
 
 /* Two gaps the mutation pass found: group 33 proves mergeEnvelopes prefers the
    freshest write, but nothing proved the APP stamps one when an assignment
-   shrinks an envelope — and with both stamps equal, local wins a tie anyway, so
-   the bug hid. The stamp only earns its keep when the remote copy was touched
-   more recently than this device's last *save*, which is what this sets up. */
+   shrinks an envelope. The stamp earns its keep when the remote copy was touched
+   more recently than this device's last save, which is what this sets up. */
 const ENV_LOCAL = {
   id: "env-s",
   createdAt: 5,
@@ -2393,7 +2335,7 @@ const ENV_LOCAL = {
   ],
   photos: [],
 };
-const REMOTE_HAS_BOTH = JSON.stringify({
+const REMOTE_HAS_BOTH = {
   mailday: 1,
   items: ITEMS,
   received: {},
@@ -2402,36 +2344,31 @@ const REMOTE_HAS_BOTH = JSON.stringify({
   dateFilter: { preset: "all", from: "", to: "" },
   sortBy: "newest",
   itemSort: "missing",
-});
+};
 
 await boot({ items: ITEMS, received: {}, envelopes: [ENV_LOCAL] }, null, {
-  remote: REMOTE_HAS_BOTH,
+  syncKey: KEY34,
+  syncLedger: REMOTE_HAS_BOTH,
 });
 await goTo("orphaned");
 await assign(0); /* checks Ponder in; "Zzz Unmatched" stays as a leftover */
 eq(envelopeCount(), 1, "34.26 a partial assignment leaves the envelope behind");
-/* Re-pointed: Push and Merge & push left the UI; the mirror merges on resume */
-await saveGitHubKey();
 await backgroundFor(5 * 60_000);
 await drain();
 await sleep(SAVE_WAIT);
 eq(
   saved().envelopes?.[0]?.entries?.length ?? null,
   1,
-  "34.27 the assignment stamps the envelope, so the remote's stale copy loses"
+  "34.27 the assignment stamps the envelope, so the other device's stale copy loses"
 );
 ok(
   !/Ponder/.test(JSON.stringify(saved().envelopes)),
   "34.28 the entry that was checked in does not come back"
 );
 
-/* And the other survivor: a merge adopts the remote's envelopes, so the photo
-   phase has to survey the MERGED reference list. Reading the hook's value gives
-   the pre-merge list — React has not committed — and a photo this device holds
-   for an envelope only the remote knew about is silently never uploaded. The
-   real shape of this is a ledger push that landed while its photo upload was
-   rate-limited. */
-const REMOTE_WANTS_PHOTO = JSON.stringify({
+/* a merge adopts the other device's envelopes, so the photo phase has to survey
+   the MERGED reference list (red at the lane head until the photo build lands) */
+const REMOTE_WANTS_PHOTO = {
   mailday: 1,
   items: ITEMS,
   received: {},
@@ -2448,33 +2385,26 @@ const REMOTE_WANTS_PHOTO = JSON.stringify({
   dateFilter: { preset: "all", from: "", to: "" },
   sortBy: "newest",
   itemSort: "missing",
-});
-/* the blob is HERE; the photo repo does not have it; no local envelope
-   references it until the merge adopts the remote's */
+};
+/* the blob is HERE; the Worker does not have it; no local envelope references it */
 await boot({ items: ITEMS, received: {}, envelopes: [] }, [["pho-9", jpegOf(3)]], {
-  remote: REMOTE_WANTS_PHOTO,
+  syncKey: KEY34,
+  syncLedger: REMOTE_WANTS_PHOTO,
 });
-/* Re-pointed: the mirror merges on a fresh resume, then the next background
-   pushes the merged ledger, and the photo follows that push */
-await saveGitHubKey();
 await backgroundFor(5 * 60_000);
 await drain();
-await backgroundFor(5 * 60_000);
+await wakeWorker();
 await drain();
 await sleep(SWEEP_WAIT);
 ok(
-  remotePhotoIds().includes("pho-9"),
-  "34.29 a photo the merge adopts is uploaded, not skipped"
+  syncPhotoNames().includes("pho-9.jpg"),
+  "34.29 a photo the merge adopts is sent to the Worker, not skipped"
 );
 
-/* THE ordering the whole feature rests on, and the one the pull path already
-   pins at 30.5-30.9: a merge adopts the other device's envelopes, so their
-   photo ids arrive with no blob here yet. Apply the ledger before downloading
-   and applyBackup's present-set strips every one of them — the debounced save
-   then writes the stripped ledger and the next push publishes it over the good
-   copy. The blob below is deliberately ONLY on the remote; a local copy would
-   put the id in `present` anyway and the test would pass either way. */
-const MERGE_PHOTO_LEDGER = JSON.stringify({
+/* a merge adopts the other device's envelopes, so their photo ids arrive with no
+   blob here yet. The blob is deliberately ONLY on the Worker: a local copy would put
+   the id in `present` anyway and the test would pass either way. */
+const MERGE_PHOTO_LEDGER = {
   mailday: 1,
   items: ITEMS,
   received: {},
@@ -2491,13 +2421,12 @@ const MERGE_PHOTO_LEDGER = JSON.stringify({
   dateFilter: { preset: "all", from: "", to: "" },
   sortBy: "newest",
   itemSort: "missing",
-});
+};
 await boot({ items: ITEMS.slice(0, 3), received: {}, envelopes: [] }, null, {
-  remote: MERGE_PHOTO_LEDGER,
-  remotePhotos: [["pho-7.jpg", await blobToBase64(jpegOf(7))]],
+  syncKey: KEY34,
+  syncLedger: MERGE_PHOTO_LEDGER,
+  syncPhotos: [["pho-7.jpg", jpegOf(7)]],
 });
-/* Re-pointed: the mirror's fresh-resume merge replaces the Merge & push button */
-await saveGitHubKey();
 await backgroundFor(5 * 60_000);
 await drain();
 await sleep(SWEEP_WAIT);
@@ -2508,133 +2437,18 @@ eq(
 );
 ok(photoKeys().includes("pho-7"), "34.32 and the blob really landed on this device");
 
-/* A third writer landing between the merge's pull and its push. Leaving a bare
-   message and no button here would strand the user on a screen whose only
-   remaining options are the two lossy ones — and merging again is both the
-   right next move and convergent. */
-await boot(
-  { items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } },
-  null,
-  { remote: LAPTOP_PUSHED }
-);
-/* Re-pointed: a conflict during the mirror's merged write is resolved by
-   merging again, with no button to press (owner ruling 2026-10-12). */
-await saveGitHubKey();
-remote.pushFailOnce = "conflict";
-await backgroundFor(5 * 60_000);
-await drain();
-await sleep(SAVE_WAIT);
-ok(
-  saved().items.length === ITEMS.length && forbiddenIn().length === 0,
-  "34.30 a conflict during the merged push resolves by merging, with no GitHub verb shown"
-);
-
-/* No toggle means no "off", so the remaining refusal is the one that matters:
-   a device with no key cannot push, and must not pretend otherwise. */
-await boot({ items: ITEMS, received: {} }, null, { remote: null });
+/* no key on this device: nothing is sent to the Worker, and nothing pretends it was */
+await boot({ items: ITEMS, received: {} }, null, { syncAdapter: true });
 await openSync();
-const off = pushes().length;
-await background();
-eq(
-  pushes().length,
-  off,
-  "34.25 with no key on this device, backgrounding pushes nothing"
-);
+ok(!(await win.sync.hasKey()), "34.25pre this device holds no Worker key");
+await wakeWorker();
+eq(workerPosts().length, 0, "34.25 with no key on this device, nothing is sent to the Worker");
 
 /* ── 35. a pull that didn't land must not license a push ──────────────────
-   Found in the wild on day one, and it cost a real check-in.
-
-   The stored sha is this device's claim to be holding the remote's bytes. The
-   adapter used to write it the instant they arrived — before the app had
-   applied anything. When the apply then didn't happen, the device sat on a
-   CURRENT sha over STALE data, and its next push carried that sha and was
-   ACCEPTED: no conflict, and the other device's work gone. Auto-push made that
-   automatic and unattended.
-
-   `git log origin/data` has the receipt: a push whose blob is byte-identical to
-   a ledger six days old, landing on top of a newer one without a conflict. */
-
-/* anything the app will fetch but refuse to apply */
-const UNAPPLIABLE = JSON.stringify({ notALedger: true, items: [] });
-
-await boot({ items: ITEMS, received: { [ITEMS[0].key]: 1 } }, null, {
-  remote: UNAPPLIABLE,
-});
-/* Re-pointed (owner ruling 2026-10-12): Merge left the UI. The fresh resume
-   fetches the unappliable payload and the mirror refuses it on its own. */
-await saveGitHubKey();
-await backgroundFor(5 * 60_000);
-await drain();
-ok(
-  !/isn’t a Mail Day ledger/.test(text()) && !GITHUB_STATE_TEXT.test(text()),
-  "35.1 the refused payload shows the user no GitHub copy (default 5)"
-);
-eq(
-  remote.deviceSha,
-  null,
-  "35.2 and a refused payload does NOT advance this device's sha"
-);
-
-/* the half that actually lost the data: with the sha advanced, this push would
-   have been accepted rather than blocked */
-await background();
-ok(
-  /notALedger/.test(remoteText()),
-  "35.3 so auto-push cannot overwrite the other device with stale data"
-);
-
-/* the same guard must not break the ordinary case: a pull that DID land is
-   exactly what earns the right to push */
-await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
-  remote: LAPTOP_PUSHED,
-});
-await saveGitHubKey();
-await backgroundFor(5 * 60_000);
-await drain();
-ok(remote.deviceSha !== null, "35.4 a merge that landed does advance the sha");
-await background();
-await drain();
-eq(
-  JSON.parse(remoteText()).items.length,
-  ITEMS.length,
-  "35.5 and the following push is accepted rather than conflicting"
-);
-
-/* A FORCE that did not land must not advance the sha either. This was the last
-   place in the codebase still recording the claim before writing the bytes:
-   pushForce looked the remote up, saved that sha, and only then PUT. When the
-   PUT failed the device sat on a current sha over stale data — and its next
-   auto-push was ACCEPTED, no conflict raised, the other device's work gone.
-   Verbatim the incident this group exists for, through the force door.
-
-   The mock could never catch it, because it cleared `remote.fail` on the way
-   in, so the force could not fail. */
-await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
-  remote: LAPTOP_PUSHED,
-});
-/* Re-pointed: Push anyway is retired (owner ruling 2026-10-12). The mirror's
-   own merged write is the one that can fail, so that is the write under test. */
-await saveGitHubKey();
-/* the resume's merge may land and advance the sha legitimately; the claim is
-   about the write that FAILS after it, so the baseline is taken after the merge */
-await backgroundFor(5 * 60_000);
-await drain();
-const shaBeforeWrite = remote.deviceSha;
-const remoteBeforeWrite = remoteText();
-remote.pushFailOnce = "offline";
-await background();
-await drain();
-eq(
-  remote.deviceSha,
-  shaBeforeWrite,
-  "35.6 a write whose PUT failed does not advance the sha"
-);
-eq(
-  remoteText(),
-  remoteBeforeWrite,
-  "35.7 so the other device's ledger is still standing"
-);
-
+   Retired by the switch (owner ruling 2026-10-14 21:12 CDT, decision sync-revamp-cloudflare).
+   The web app keeps no sha and makes no GitHub PUT. The Worker merges every POST with the
+   stored ledger on the server, so a refused reply cannot license a write that overwrites it.
+   The applied-reply case stays pinned by group 34 (34.3 to 34.13). 35.1 to 35.7 are gone. */
 
 /* ── 36. the action row ───────────────────────────────────────────────────
 
@@ -2994,17 +2808,14 @@ await click(btn(/Tap again to clear \d+ cards?/), "confirm reset");
 await sleep(800); // past the debounce, which is when a stale value would reappear
 eq(saved().stamps ?? {}, {}, "37.50 Reset clears stamps and the debounce does not write them back");
 
-await fresh();
+await boot({ items: ITEMS, received: {} }, null, { syncKey: "device-37-key" });
 await stampPkg(/Alpha Cards/, "Claim filed", "pushed");
-await openSync();
-await saveGitHubKey();
-/* Re-pointed: Push left the UI (owner ruling 2026-10-12); the hidden page's
-   auto-push writes the payload instead. */
-await background();
+/* re-pointed (the switch): the Worker POST carries the stamps, with no GitHub write */
+await wakeWorker();
 await drain();
 ok(
-  pushes()[0] && JSON.parse(pushes()[0].text).stamps?.[GK_A]?.kind === "claim",
-  "37.51 the pushed payload carries the stamps"
+  workerPosts().at(-1)?.stamps?.[GK_A]?.kind === "claim",
+  "37.51 the POSTed payload carries the stamps"
 );
 
 /* Re-pointed to the History path (the retired 37.53 drove Pull from GitHub):
@@ -3124,10 +2935,10 @@ ok(
   "37.64 the notice says so"
 );
 
-/* and driven through the app, group 34's shape: a stale copy on GitHub, merged
-   by the mirror on a fresh resume (Push and Merge & push left the UI, owner
-   ruling 2026-10-12) — with a removal on the other side */
-const LAPTOP_STAMPED = JSON.stringify({
+/* and driven through the app, group 34's shape: a stale copy on the Worker, merged
+   on a fresh resume, with a removal on the other side (the switch, owner ruling
+   2026-10-14: the Worker merges, and GitHub is not read) */
+const LAPTOP_STAMPED = {
   mailday: 1,
   items: ITEMS,
   received: {},
@@ -3136,7 +2947,7 @@ const LAPTOP_STAMPED = JSON.stringify({
   dateFilter: { preset: "all", from: "", to: "" },
   sortBy: "newest",
   itemSort: "missing",
-});
+};
 await boot(
   {
     items: ITEMS.slice(0, 8),
@@ -3144,13 +2955,12 @@ await boot(
     stamps: { [GK_A]: S("claim", 10), [GK_C]: S("contacted", 10, "phone's") },
   },
   null,
-  { remote: LAPTOP_STAMPED }
+  { syncKey: "device-37-key", syncLedger: LAPTOP_STAMPED }
 );
-await saveGitHubKey();
 await backgroundFor(5 * 60_000);
 await drain();
 await sleep(SAVE_WAIT);
-/* the auto-push that follows the merge is the next background (see 34.6) */
+/* the POST that follows the merge is the next background (see 34.6) */
 await backgroundFor(5 * 60_000);
 await drain();
 await sleep(SAVE_WAIT);
@@ -3162,16 +2972,15 @@ await sleep(SAVE_WAIT);
     st[GK_A]?.kind === "",
     "37.67 and its newer removal takes this device's older stamp with it"
   );
-  const up = JSON.parse(remoteText()).stamps || {};
+  const up = syncLedgerNow()?.stamps || {};
   ok(
     up[GK_A]?.kind === "" && up[GK_C]?.kind === "contacted" && up[GK_D]?.kind === "reshipped",
-    "37.68 the merged stamps reach GitHub"
+    "37.68 the merged stamps reach the Worker"
   );
-  /* Re-pointed (default 5, sync-revamp-cloudflare): the merge notice stays, and
-     a merge that removes something says so. The notice names no GitHub. The
-     count itself is pinned by the pure mergeSummary case, 37.64. */
+  /* the merge notice stays, and a merge that removes something says so. The notice
+     names no GitHub. The count itself is pinned by the pure mergeSummary case, 37.64. */
   await onLedger();
-ok(
+  ok(
     /Merged — .*1 stamp from the other device/.test(text()) &&
       /Removed by the other device's later changes: 1 stamp/.test(text()) &&
       !/GitHub/.test(text()),
@@ -3369,53 +3178,27 @@ ok(shouldSnapshot("recent", null, NOW), "38.15 and the very first version always
    Both are the same failure: a promise the app keeps making after it has
    stopped being able to keep it. Neither had any surface at all. */
 
-/* Being BEHIND is broken. auto-push declines while `ahead`, and the merge only
-   fires on a fresh session — so a device that goes behind mid-session stops
-   backing up entirely, for the rest of that session. The old manila notice
-   used to cover that; removing it left the stall invisible, and the 24h
-   staleness backstop cannot rescue it because the memo never recomputes. */
-await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { remote: null });
-await openSync();
-await saveGitHubKey();
-/* Re-pointed: Push left the UI (owner ruling 2026-10-12). A hidden page's
-   auto-push puts the device in step instead. */
-await background();
-await drain();
-ok(!/tap to fix/.test(text()), "38b.1 in step, the line says nothing is wrong");
-/* the other device pushes while we sit here — no resume, so no auto-merge */
-remote.content = utf8ToBase64(LAPTOP_PUSHED);
-remote.sha = "sha-behind";
-await foreground();
-await settle();
-/* Re-pointed (owner ruling 2026-10-12, default 5): a GitHub copy that is ahead
-   is a mirror state, so the user is shown no line for it. The stall itself is
-   still real, and the backup watchdog is what catches it
-   (watchdog-catches-silent-failure). */
-ok(
-  !GITHUB_STATE_TEXT.test(text()) && !btn(/newer lines/),
-  "38b.2 going behind mid-session shows the user no GitHub line (default 5)"
-);
-const stalled = pushes().length;
-await background();
-eq(pushes().length, stalled, "38b.3 and it really has stopped backing up");
+/* 38b.1 to 38b.3 retired by the switch (owner ruling 2026-10-14, decision
+   sync-revamp-cloudflare). The stall they pinned was GitHub's: auto-push declined while
+   the GitHub copy was ahead. The Worker merges every POST with the stored ledger, so
+   a device that is behind is not stalled. */
 
 /* An undo survives a trip to Packages by design (group 14), and it used to
    block auto-push for the whole session as a side effect — invisibly, because
    there is no undo control outside Orphaned. The merge still guards on it
    (applying nulls it); the push does not, because a push changes nothing here
    and the check-in it would publish genuinely happened. */
-await boot({ items: ITEMS, received: {} }, null, { remote: null });
-await openSync();
-await saveGitHubKey();
+await boot({ items: ITEMS, received: {} }, null, { syncKey: "device-38b-key" });
 await goTo("orphaned");
 await record(["Ponder"]);
 await assign(0);
 await goTo("packages");
-const withUndo = pushes().length;
-await background();
+const withUndo = workerPosts().length;
+await wakeWorker();
+await drain();
 ok(
-  pushes().length > withUndo,
-  "38b.3b a pending undo does not stop the backup — only the merge guards on it"
+  workerPosts().length > withUndo,
+  "38b.3b a pending undo does not stop the Worker POST — only the merge guards on it"
 );
 
 /* A version store that cannot write makes "Reset is recoverable" false. It
@@ -3466,13 +3249,11 @@ ok(
 eq(saved().items?.length ?? 3, 3, "38c.3 and nothing on this device changed");
 remote.private = false;
 
-/* ── 38d. the public seed ─────────────────────────────────────────────────
-   The site is public and the ledger repo is not, and those are separate
-   artifacts — Pages serves `main` root and has never served `data`. So sharing
-   the URL used to hand someone the app with nothing in it. A snapshot baked
-   into index.html closes that without reopening the repo: a visitor lands on a
-   populated app, fiddles with it locally, and cannot push because pushing needs
-   a token they do not have. */
+/* ── 38d. the public seed is gone ─────────────────────────────────────────
+   Owner ruling 2026-10-14 removes the build-time snapshot that index.html used
+   to carry (carrying out the 2026-10-11 ruling). A visitor lands on the empty
+   ledger, and nothing reads a seed at load. The harness still plants one here,
+   and `loads` counts the reads, so the test shows the planted seed is never read. */
 
 const SEED = JSON.stringify({
   mailday: 1,
@@ -3483,58 +3264,31 @@ const SEED = JSON.stringify({
   itemSort: "missing",
 });
 
-/* a stranger: nothing saved, no key */
+/* control: with no seed planted, a stranger reaches the empty ledger. The checks
+   below would pass for the wrong reason if this text were not on screen. */
+await boot(null, null, { remote: null });
+await settle();
+ok(/Drop your OrderWand CSV here/.test(text()), "38d.0 control: a stranger with no seed sees the empty ledger");
+
+/* a stranger, with a seed planted: the seed is never read */
 await boot(null, null, { remote: null, seed: SEED });
 await settle();
-ok(/Lightning Bolt/.test(text()), "38d.1 a visitor lands on a populated app");
-ok(
-  /someone else’s ledger/.test(text()),
-  "38d.2 and is told whose it is, and that their changes stay put"
-);
-ok(
-  !/tap to set it up/.test(text()),
-  "38d.3 not told to set up a backup — there is nothing of theirs to back up"
-);
+eq(win.seed.loads, 0, "38d.1 nothing reads the planted seed at load");
+ok(!/Lightning Bolt/.test(text()), "38d.2 the visitor does not land on the seed's items");
+ok(!/someone else’s ledger/.test(text()), "38d.3 and is shown no snapshot notice");
+ok(/Drop your OrderWand CSV here/.test(text()), "38d.4 the upload zone opens on the empty ledger");
 
-/* it is a real working copy, not a read-only display */
-await toggleShowing();
-await click(btn(/Mark all received/), "a visitor ticks something off");
-await settle();
-await sleep(SAVE_WAIT);
-ok(saved().items.length > 0, "38d.4 their edits land in their OWN storage");
-eq(pushes().length, 0, "38d.5 and nothing was pushed anywhere");
-
-/* THE guard. A device with a key is the owner's, and the seed is a build-time
-   snapshot — hydrating it over cleared owner-storage would put stale data under
-   a live sha, and auto-push would then publish it. */
-await boot(null, null, {
-  remote: null,
-  seed: SEED,
-  remoteKey: "github_pat_testtoken",
-});
-await settle();
-ok(
-  !/Lightning Bolt/.test(text()),
-  "38d.6 a device WITH a key is never seeded — it pulls instead"
-);
-eq(saved().items?.length ?? 0, 0, "38d.7 so no stale snapshot can be published from it");
-
-/* and a device that already has a ledger keeps it */
-await boot({ items: ITEMS.slice(0, 2), received: {} }, null, {
-  remote: null,
-  seed: SEED,
-});
-await settle();
-/* the DOM first, because `saved()` alone cannot fail here: the debounced save
-   is 500ms away, so without the wait below it returns the boot fixture whether
-   or not the seed overwrote state. The overwrite mutant survived on exactly
-   that — the same shape 34.10 records. */
-ok(
-  !/Urza/.test(text()),
-  "38d.8 an existing ledger is not replaced by the seed"
-);
-await sleep(SAVE_WAIT);
-eq(saved().items.length, 2, "38d.9 and that is what persists");
+/* the committed page carries no seed tag. Parsed, not regex-scanned, so a
+   string inside the bundled code cannot fool it. Parsing runs no script. */
+{
+  const { JSDOM } = createRequire(import.meta.url)("jsdom");
+  const page = new JSDOM(readFileSync(new URL("../index.html", import.meta.url), "utf8")).window.document;
+  eq(
+    page.querySelectorAll("#seed, script[type='application/gzip-base64']").length,
+    0,
+    "38d.5 the committed index.html carries no seed tag"
+  );
+}
 
 /* ── 39. the rollback list ────────────────────────────────────────────────
    Driving the app, unlike group 36 which drives the rules. The claim is
@@ -3679,80 +3433,77 @@ ok(
 );
 
 /* ── 40. coming back to the app catches it up ─────────────────────────────
-   The merge was always the safe resolution, but it needed a tap — on a panel
-   you had to know to open. So two devices met at the conflict rather than at
-   the merge. This runs the same doMerge on the same threshold the Showing
-   reset already uses: a real absence is a new session, and a new session starts
-   by catching up.
+   The merge was always the safe resolution, but it needed a tap. This runs the
+   same merge on the same threshold the Showing reset already uses: a real absence
+   is a new session, and a new session starts by catching up.
 
    The threshold is the whole design. Applying forty imported lines into the
-   package list mid-check-in is the cascading mis-tap invariant no-layout-shift-under-pointer exists to
-   prevent; coming back after a minute away is not mid-check-in. */
+   package list mid-check-in is the cascading mis-tap that no-layout-shift-under-pointer
+   exists to prevent; coming back after a minute away is not mid-check-in.
 
+   The switch (owner ruling 2026-10-14, decision sync-revamp-cloudflare) re-points the
+   merge to the Worker: the other device's POST moves the server (fireSyncRev), and the
+   resume reads it (GET). 40.6 (sha), 40.7 (pulls), 40.12 and 40.13 (a mid-session
+   GitHub peek) are retired. Group 55 holds the idle-gated apply that 40.12 leaned on. */
+
+const KEY40 = "device-40-key";
 const PHONE_STATE = { items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } };
+/* the other device's copy, as the Worker holds it */
+const SERVER40 = {
+  mailday: 1,
+  items: ITEMS,
+  received: {},
+  envelopes: [],
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+};
 
-/* boot's `remote` option seeds AFTER the mount and glances at the page, so the
-   app knows the remote moved but has not been away — exactly the state a
-   resume test needs to start from */
-await boot(PHONE_STATE, null, { remote: LAPTOP_PUSHED });
+/* a glance: the server moves while this phone is in the foreground. A glance away
+   (5s) is the same session, so nothing is merged. */
+await boot(PHONE_STATE, null, { syncKey: KEY40 });
 await settle();
-eq(remote.deviceSha, null, "40.1 a glance at the phone merges nothing");
-
-/* "I could not look" is not "all clear" — the same property that stops
-   auto-push writing, applied to reading. Note `ahead` is already true here, so
-   an implementation that merges off the cached flag instead of a fresh peek
-   merges anyway: that is the bug this pins. */
-remote.peekUnknown = "offline";
-await backgroundFor(5 * 60_000);
-await settle();
-eq(remote.deviceSha, null, "40.2 a remote it could not read is not merged");
-remote.peekUnknown = null;
-
-/* half the threshold: a hop out to read a tracking number is the same session,
-   and replacing the ledger under a thumb is the mis-tap invariant no-layout-shift-under-pointer prevents */
+await fireSyncRev(2, SERVER40);
 await backgroundFor(5_000);
 await settle();
-eq(remote.deviceSha, null, "40.3 a glance away is still the same session");
+eq(saved().items.length, PHONE_STATE.items.length, "40.1 a glance away merges nothing");
+
+/* "I could not look" is not "all clear": a Worker it could not read is not merged */
+setSyncNetFail(true);
+await backgroundFor(5 * 60_000);
+await settle();
+eq(saved().items.length, PHONE_STATE.items.length, "40.2 a Worker it could not read is not merged");
+setSyncNetFail(false);
+
+/* half the threshold: a hop out to read a tracking number is the same session */
+await backgroundFor(5_000);
+await settle();
+eq(saved().items.length, PHONE_STATE.items.length, "40.3 a glance away is still the same session");
 
 /* and the other half, which is the whole feature */
 await backgroundFor(5 * 60_000);
 await settle();
 await sleep(SAVE_WAIT);
-eq(saved().items.length, ITEMS.length, "40.4 a real absence merges without a tap");
+eq(saved().items?.length ?? 0, ITEMS.length, "40.4 a real absence merges without a tap");
 eq(
-  saved().received[ITEMS[0].key],
+  saved().received?.[ITEMS[0].key] ?? null,
   1,
   "40.5 keeping this device's check-in through it — the later change wins"
 );
-/* group 35's rule: after a merge the payloads match either way, so payload
-   equality proves nothing. The sha advancing is the only thing that says the
-   pull LANDED, and it is what stops the next push conflicting. */
 ok(
-  remote.deviceSha !== null && remote.deviceSha === remote.sha,
-  "40.6 and the merge accepted the remote's sha"
+  syncCalls().some((c) => c.op === "get") && !!syncLedgerNow(),
+  "40.6pre the Worker was read and holds a ledger"
 );
 
-/* in step, a resume looks and stops there */
-const pulled = remote.calls.filter((c) => c.op === "pull").length;
-await backgroundFor(5 * 60_000);
-await settle();
-eq(
-  remote.calls.filter((c) => c.op === "pull").length,
-  pulled,
-  "40.7 with the two ends in step, a resume pulls nothing"
-);
-
-/* An unpaired "visible" event is not a fresh session. iOS fires more of these
+/* an unpaired "visible" event is not a fresh session. iOS fires more of these
    than you would like, and reading "no absence recorded" as an infinite one
-   would pull on every single foreground. */
-remote.content = utf8ToBase64(LAPTOP_PUSHED);
-remote.sha = "sha-laptop-2";
+   would merge on every single foreground. */
+await boot(PHONE_STATE, null, { syncKey: KEY40 });
+await settle();
+await fireSyncRev(2, SERVER40);
 await foreground();
 await settle();
-ok(
-  remote.deviceSha !== remote.sha,
-  "40.8 a foreground with no absence behind it is not a new session"
-);
+eq(saved().items.length, PHONE_STATE.items.length, "40.8 a foreground with no absence behind it is not a new session");
 
 /* ---- never mid-thought ----
    applyBackup calls setComposing(null), so a merge landing under a half-built
@@ -3760,127 +3511,78 @@ ok(
    hand-typed, in no CSV and on no remote. And "start the envelope, duck out to
    read the label, come back two minutes later" is this feature's own workflow,
    over the threshold by construction. */
-await boot(PHONE_STATE, null, { remote: LAPTOP_PUSHED });
+await boot(PHONE_STATE, null, { syncKey: KEY40 });
+await settle();
+await fireSyncRev(2, SERVER40);
 await goTo("orphaned");
 await click(btn(/Record an envelope/), "start an envelope");
 await type(cardInput(), "Lightning");
 await backgroundFor(5 * 60_000);
 await settle();
-eq(remote.deviceSha, null, "40.9 a half-built envelope holds the merge off");
+eq(saved().items.length, PHONE_STATE.items.length, "40.9 a half-built envelope holds the merge off");
 ok(!!btn(/Save envelope/), "40.10 and the envelope is still on screen, not swept away");
 
 /* the guard is the only thing holding it: finish the thought and the very next
-   resume catches up. Without this, 38.9 would pass just as well if the merge
+   resume catches up. Without this, 40.9 would pass just as well if the merge
    were broken outright. */
 await click(btn(/^Cancel$/), "abandon the envelope");
 await backgroundFor(5 * 60_000);
 await settle();
-ok(
-  remote.deviceSha !== null && remote.deviceSha === remote.sha,
-  "40.11 once the thought is finished, the next resume merges"
-);
-
-/* ---- and a mid-session sync is not a resume ----
-   `check()` re-runs on every `syncBusy` flip, not only on a visibility event,
-   and a merge flips it twice. So the fresh-session signal has to be consumed
-   the first time it is read, or the merge re-triggers itself — or worse, fires
-   here: the laptop pushing while you are sitting in the app, mid-check-in, with
-   no resume anywhere in sight. That is precisely the list-under-the-thumb
-   reshape the threshold exists to prevent.
-
-   This is the assertion the first draft of the group was missing: every other
-   test here ends with the two ends in step, where no further merge is possible
-   and a signal left standing costs nothing. */
-await boot(PHONE_STATE, null, { remote: null });
-await openSync();
-await saveGitHubKey();
-remote.content = utf8ToBase64(LAPTOP_PUSHED);
-remote.sha = "sha-mid-session";
-/* Re-pointed: Push left the UI (owner ruling 2026-10-12). A hidden page's
-   auto-push is the mid-session sync that runs now. */
-await background();
-await drain();
-eq(
-  remote.deviceSha,
-  null,
-  "40.12 a sync mid-session does not merge — only a resume does"
-);
-ok(
-  !GITHUB_STATE_TEXT.test(text()) && forbiddenIn().length === 0,
-  "40.13 and the user is shown no GitHub copy or verb while it waits (default 5)"
-);
-
-/* ---- a cold mount is a fresh session too ----
-   On iOS reopening is usually a resume, which is everything above — but
-   sometimes the page really was discarded, and that is the same boundary. It
-   is also the more valuable half: a fresh phone should come back already
-   reconciled rather than needing someone to go looking for a control. */
-await boot(PHONE_STATE, null, { remoteAtBoot: LAPTOP_PUSHED });
-await settle();
 await sleep(SAVE_WAIT);
-eq(saved().items.length, ITEMS.length, "40.14 opening the app to an ahead remote merges");
-eq(
-  saved().received[ITEMS[0].key],
-  1,
-  "40.15 keeping this device's check-ins through the cold start"
-);
+eq(saved().items?.length ?? 0, ITEMS.length, "40.11 once the thought is finished, the next resume merges");
+
+/* ---- a cold mount is a fresh session too: retired (the switch) ----
+   40.14 and 40.15 read a cold open with local check-ins against an ahead Worker. The
+   cold reply is held for the idle gate, and 53.3 pins the same merge: the reply applied
+   as mergeLedger(snapshot, reply), with this device's check-ins kept. */
 
 /* ---- and it says nothing when it did nothing ----
-   peek reports "ahead" on any new blob sha, and a push writes one whenever the
-   ledger is re-saved — so an empty-data commit on the other device would
-   otherwise greet the user with a notice about a merge they never asked for
-   that changed nothing. */
-const SAME = JSON.stringify({
+   A POST or a read can carry a copy that adds nothing, and the user is not told
+   about a merge that changed nothing. */
+const SAME40 = {
   mailday: 1,
   ...PHONE_STATE,
   envelopes: [],
   dateFilter: { preset: "all", from: "", to: "" },
   sortBy: "newest",
   itemSort: "missing",
-});
-await boot(PHONE_STATE, null, { remoteAtBoot: SAME });
+};
+await boot(PHONE_STATE, null, { syncKey: KEY40, syncLedger: SAME40 });
 await settle();
 ok(
-  remote.deviceSha !== null && remote.deviceSha === remote.sha,
-  "40.16 it still merges, so the silence below is a choice and not a no-op"
+  syncCalls().some((c) => c.op === "get"),
+  "40.16 the Worker is read, so the silence below is a choice and not a no-op"
 );
 ok(!/Merged/.test(text()), "40.17 but says nothing, because it added nothing");
 
 /* ── 41. older versions, read off the branch's own history ────────────────
-   The archive is not something the remote grew — every push has always been a
-   commit, so the branch already WAS a version history. This only makes it
-   reachable from the phone, which is the half that was missing: `git show
-   data~5:ledger.json` needs a laptop that is rarely in the room.
+   The archive is not something the Worker grew: the frozen data branch already WAS a
+   version history. This only makes it reachable from the phone.
 
-   Both calls are reads, so nothing here spends from the content-write budget
-   the push and the photos share. */
+   The switch (owner ruling 2026-10-14, decision sync-revamp-cloudflare) freezes the
+   data branch, so no device writes it. The two commits this group reads are fixtures,
+   seeded straight into the mock's history and never sent as pushes. History still reads
+   them, and both calls are reads. */
 
-await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { remote: null });
-await openSync();
-await saveGitHubKey();
+const OLDER41 = {
+  mailday: 1,
+  items: ITEMS.slice(0, 3),
+  received: {},
+  envelopes: [],
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+};
+const NEWER41 = { ...OLDER41, items: ITEMS.slice(0, 5) };
 
-/* two pushes, so the branch holds a genuinely older ledger than the current one.
-   Re-pointed: Push left the UI (owner ruling 2026-10-12); a hidden page's
-   auto-push writes each commit. */
-await background();
-await drain();
-await settle();
-const OLD_COUNT = saved().items.length;
-await reachFor(/Re-import CSV/);
-await click(btn(/Re-import CSV/), "open the upload zone");
-await dropFile(
-  "more.csv",
-  csv([
-    { "Order Id": "V1", Party: "Later Seller", "Product Name": "Ponder" },
-    { "Order Id": "V1", Party: "Later Seller", "Product Name": "Preordain" },
-  ])
+await boot({ items: ITEMS.slice(0, 5), received: {} }, null, { remote: null });
+/* the frozen branch: two commits, the older one the 3-line ledger */
+remote.history.push(
+  { sha: "sha-41-old", at: Date.parse("2026-08-12T14:03:00Z"), message: "ledger 2026-08-12 · 3 lines", text: JSON.stringify(OLDER41) },
+  { sha: "sha-41-new", at: Date.parse("2026-08-13T14:03:00Z"), message: "ledger 2026-08-13 · 5 lines", text: JSON.stringify(NEWER41) }
 );
-await settle();
-await sleep(SAVE_WAIT);
-await background();
-await drain();
-await settle();
-eq(saved().items.length, 5, "41.1 the ledger grew, and both states are on the branch");
+await openSync();
+eq(saved().items?.length ?? 0, 5, "41.1 the ledger holds the newer state, and the older one is on the branch");
 
 /* nothing is fetched until asked: two round trips for something wanted rarely,
    and the local list already answers "undo what I just did" */
@@ -3901,9 +3603,8 @@ eq(
 );
 
 /* the older of the two commits is the 3-line ledger */
-/* Matched on the FULL message, not its first word: every push message starts
-   with "ledger", so a looser match silently picks the newest row and the test
-   restores the version it already had — passing while proving nothing. */
+/* Matched on the FULL message, not its first word: a looser match silently picks the
+   newest row and the test restores the version it already had. */
 const older = remote.history[0];
 await click(
   buttons().find((b) => b.textContent.includes(older.message)),
@@ -3912,25 +3613,23 @@ await click(
 await click(btn(/Restore this version/), "arm restore");
 await settle();
 eq(
-  saved().items.length,
+  saved().items?.length ?? 0,
   5,
   "41.5 one tap does not restore — invariant no-native-dialogs applies to a remote version too"
 );
 await click(btn(/Tap again to replace \d+ cards?/), "confirm");
 await settle();
 await sleep(SAVE_WAIT);
-eq(saved().items.length, OLD_COUNT, "41.6 two taps roll the ledger back to that commit");
+eq(saved().items?.length ?? 0, OLDER41.items.length, "41.6 two taps roll the ledger back to that commit");
 ok(
   !!versionText("before restore"),
   "41.7 and it took a local milestone on the way in, so the rollback is undoable"
 );
-
-
-/* The Push button left the UI (owner ruling 2026-10-12). The GitHub write it
-   used to start is autoPush, and backgrounding the app runs autoPush at once,
-   so a test that needs the write on disk backgrounds instead of clicking. */
-const mirrorPush = async () => {
-  await background();
+/* The Push button left the UI (owner ruling 2026-10-12). Its write is now the Worker
+   POST that a page wake starts (the switch, owner ruling 2026-10-14). A keyless device
+   has no POST, so the wake changes nothing for it. */
+const wakePush = async () => {
+  await wakeWorker();
   await settle();
 };
 
@@ -4142,65 +3841,10 @@ eq(
 );
 ok(!!bar(bolt()), "44.8 and carries the bar for a partly-received item");
 
-/* ---- 45. a device that only ever MERGES is still backed up ----------------
-   Reported from the phone: "hasn't been backed up since 09-16" on a device
-   whose data was demonstrably current, with no such line on the laptop. Both
-   halves of that were true at once, which is the tell — `syncBroken` measured
-   `pushedAt` alone, so it was asking "did I write recently?" when the line it
-   renders claims "are my bytes on GitHub?".
-
-   Those come apart as soon as the two devices have different jobs. The laptop
-   is where the editing happens, so it pushes and never goes stale; the phone
-   mostly merges what the laptop sent, and `acceptPull` records `pulledAt`, not
-   `pushedAt`. A phone in perfect step reported itself unbacked-up for as long
-   as it went without writing.
-
-   Taking the later of the two cannot hide a real problem, because every branch
-   above this one outranks it — which is what 45.3 pins. */
-await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { remote: null });
-await openSync();
-await saveGitHubKey();
-await mirrorPush();
-
-/* Age the write past the 24h threshold while the READ stays fresh — a phone
-   that merged this morning and has not edited anything since.
-
-   Closing the panel is what makes this land, and it is not test noise:
-   `remoteInfo` is refreshed by an effect keyed on `[loaded, syncOpen]`, so
-   nothing else in the app re-reads the device record. The first draft set the
-   timestamps and called foreground(), which re-peeks but never re-reads
-   status — the component kept the pushedAt from the push above and the mutant
-   survived every assertion. */
-remote.pushedAt = Date.now() - 3 * 86400000;
-remote.pulledAt = Date.now();
-/* the Sync row shuts the panel: the advisory line is absent on a healthy device */
-await onLedger();
-await click(cell(/^Sync/), "close the panel, refreshing status on the way");
-await settle();
-ok(
-  !/tap to fix/.test(text()),
-  "45.1 pulled today, pushed three days ago — not stale"
-);
-ok(
-  !btn(/Not backed up since/),
-  "45.2 and it does not accuse a device that is holding the remote's bytes"
-);
-
-/* The guard that makes 45.1 safe. A fresh pulledAt must never mask a device
-   that is genuinely behind — staleness is the LAST branch for this reason. */
-remote.content = utf8ToBase64(LAPTOP_PUSHED);
-remote.sha = "sha-45-behind";
-/* The "newer lines" copy left the UI with the GitHub verbs (owner ruling
-   2026-10-12, default 5), so the guard is the live behaviour it protected: a
-   device behind GitHub does not write over it, however fresh its pulledAt. */
-const pushesBefore45 = pushes().length;
-await foreground();
-await mirrorPush();
-eq(
-  pushes().length,
-  pushesBefore45,
-  "45.3 a fresh pulledAt never masks being behind: a behind device does not write over GitHub"
-);
+/* ---- 45. retired by the switch (owner ruling 2026-10-14, decision sync-revamp-cloudflare) ----
+   45.1 to 45.3 read the GitHub clock: pushedAt and pulledAt from the data branch. The Worker
+   keeps no such pair yet, so the staleness clock has no reader to test. ruled-head-stale-clock-agreement
+   loses its pin here; the Worker's clock is unbuilt. */
 
 /* ── 46. the parser keeps only TCG purchases ───────────────────────────────
    Invariant parser-filters: a row enters the checklist only when Type is
@@ -4324,6 +3968,31 @@ try {
   win.photos.keys = realKeys;
 }
 
+/* 47.8: the same file restore with NO photo store at all (window.photos absent). A missing
+   store cannot be read, so it is unreadable, not empty (photo-ids-unreadable-local). The
+   pho-k blob is not held here, so an empty-store reading would drop the id as the 19.6 rule
+   does. The id must survive. 47.8pre pins the precondition, so this cannot pass vacuously. */
+{
+  await boot({ items: ITEMS, received: {}, envelopes: [] }, []);
+  await goTo("orphaned");
+  await reachFor(/Re-import CSV/);
+  await click(btn(/Re-import CSV/), "show upload zone");
+  const realPhotos = win.photos;
+  delete win.photos;
+  try {
+    eq(win.photos, undefined, "47.8pre the photo store is absent for this restore");
+    await dropFile("ledger.json", KEYS_DOWN_LEDGER);
+    await sleep(SAVE_WAIT);
+    eq(
+      saved().envelopes[0].photos,
+      ["pho-k"],
+      "47.8 with no photo store, a restore keeps the id it cannot check, and the saved ledger keeps it"
+    );
+  } finally {
+    win.photos = realPhotos;
+  }
+}
+
 /* 47.3, 47.4 and 47.7 retired: they measured the Sync panel's option grid
    (Push, Merge, Pull cells, odd last cell spanning the row), and that grid left
    the UI with the verbs (owner ruling 2026-10-12). Nothing renders a span now. */
@@ -4331,41 +4000,42 @@ try {
 /* The unreadable copy in PHOTO_SAYS. Module scope: 47.5 and group 48 both use it. */
 const PHOTO_UNREADABLE = /photos.*(could not|couldn.t) be read/i;
 
-/* ---- an unreadable LOCAL photo store, during a push ----
-   surveyPhotos bails when keys() rejects, so a push sends nothing and must say
-   so. The blob is real and referenced, so a READABLE store
-   would upload it, which is what makes "nothing uploaded" a real claim.
-   GUARDS, not kills: read-as-empty also sends nothing on a push, because push
-   only sends what it finds locally, and push never reports `lost`. The pull
-   case below is the one that kills that mutant. */
+/* ---- an unreadable LOCAL photo store, during a POST ----
+   The photo phase bails when keys() rejects, so no photo is sent and the device must
+   say so. The blob is real and referenced, so a READABLE store would upload it, which
+   is what makes "nothing uploaded" a real claim. The switch (owner ruling 2026-10-14)
+   moves the photo phase to the Worker's /photos route, so these re-point there.
+   GUARDS, not kills: read-as-empty also sends nothing on a POST, because the phase only
+   sends what it finds locally, and a POST never reports `lost`. 47.6 is the case that
+   kills that mutant. */
+const KEY47 = "device-47-key";
+const PHOTO_WAIT47 = 1500; /* the photo phase follows the ledger POST by one second */
 {
-  await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]]);
+  await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], { syncKey: KEY47 });
   await openSync();
-  await saveGitHubKey();
   const keysBefore = win.photos.keys;
   win.photos.keys = async () => {
     throw new Error("local photo store unreadable");
   };
-  const pushesBefore47 = pushes().length;
+  const posts47 = workerPosts().length;
   try {
-    await mirrorPush();
-    await sleep(60);
+    await wakeWorker();
+    await sleep(PHOTO_WAIT47);
   } finally {
     win.photos.keys = keysBefore;
   }
   /* every PHOTO_SAYS copy except `unreadable`, plus the pull's lost/gone notes */
   const PHOTO_LINE =
     /Photos need|photo repo|photos didn’t sync|photo uploads|to finish the photos|trouble with the photos|can’t write photos|photos sent|still to go|not on GitHub|never pushed|now gone/i;
-  const pushed = remoteText() ? JSON.parse(remoteText()) : {};
-  ok(pushes().length > pushesBefore47, "47.5 the push still finishes, with the ledger on GitHub");
+  ok(workerPosts().length > posts47, "47.5 the POST still finishes, with the ledger on the Worker");
   eq(
-    pushed.envelopes?.[0]?.photos,
+    workerPosts().at(-1)?.envelopes?.[0]?.photos ?? null,
     ["pho-k"],
-    "47.5 and the pushed ledger still references the id"
+    "47.5 and the POSTed ledger still references the id"
   );
-  eq(remotePhotoIds(), [], "47.5 and nothing is uploaded to the photo repo");
+  eq(syncPhotoNames(), [], "47.5 and nothing is uploaded to the Worker's photo store");
   /* Inverted when 48.1 landed. The unreadable line must show, and no other
-     photo copy may: the push says the right thing, not a server or repo error. */
+     photo copy may: the POST says the right thing, not a server or store error. */
   eq(
     { shown: PHOTO_UNREADABLE.test(text()), otherCopy: PHOTO_LINE.test(text()) },
     { shown: true, otherCopy: false },
@@ -4373,34 +4043,61 @@ const PHOTO_UNREADABLE = /photos.*(could not|couldn.t) be read/i;
   );
 }
 
-/* ---- the same store, on a pull ----
-   The pull's twin of the push case, on 30.10's fixture: the store is there and
-   lacks the blob, so a READABLE store would report pho-a as lost. Unreadable,
-   the pull must skip its photo phase and say nothing about photos. applyBackup's
-   own keys() read is unreadable too, so it keeps the pulled id. Read as empty,
-   the survey calls pho-a lost and the line shows: this is the kill for the
-   read-as-empty mutant. */
+/* ---- the same store, on a cold mount ----
+   The pull's twin of the push case, on 30.10's fixture: the store is there and lacks
+   the blob, so a READABLE store would report pho-a as lost. Unreadable, the merge must
+   skip its photo phase and say nothing about photos. applyBackup's own keys() read is
+   unreadable too, so it keeps the pulled id. Read as empty, the survey calls pho-a lost
+   and the line shows: this is the kill for the read-as-empty mutant. */
 {
-  /* Re-pointed: Pull left the UI (owner ruling 2026-10-12). A cold mount is a
-     fresh session, so the ahead remote merges with no tap, and the photo store
-     is made unreadable before the mount so that merge meets it. The key is what
-     makes the photo store readable. */
+  const PHOTO47 = {
+    mailday: 1,
+    ...withPhoto(["pho-a"]),
+    dateFilter: { preset: "all", from: "", to: "" },
+    sortBy: "newest",
+    itemSort: "missing",
+  };
   const keysBefore = win.photos.keys;
+  const setBefore = win.storage.set;
+  /* a SLOW read that then fails: the survey takes 1.5 s before it bails, so the held
+     apply lands late. The test waits for the ledger write that carries the id, not
+     for a clock: the apply waits IDLE_APPLY_MS (10 s, sync-rules), and the save
+     debounce adds 500 ms after it. A fixed sleep here raced that chain. */
   win.photos.keys = async () => {
+    await sleep(1500);
     throw new Error("local photo store unreadable");
   };
+  const carriesPho = (v) => {
+    try {
+      return JSON.parse(v)?.envelopes?.[0]?.photos?.includes("pho-a") === true;
+    } catch {
+      return false;
+    }
+  };
+  let onWrite;
+  const landed = new Promise((res) => (onWrite = res));
+  win.storage.set = async (k, v) => {
+    const r = await setBefore(k, v);
+    if (carriesPho(v)) onWrite();
+    return r;
+  };
+  let ceiling;
   try {
-    await boot({ items: ITEMS, received: {} }, null, {
-      remoteAtBoot: PHOTO_LEDGER,
-      remoteKey: "github_pat_testtoken",
-    });
+    /* a cold mount is a fresh session, so the ahead Worker merges with no tap */
+    await boot({ items: ITEMS, received: {} }, null, { syncKey: KEY47, syncLedger: PHOTO47 });
     await settle();
-    await sleep(SAVE_WAIT);
+    /* the ceiling only ends a run whose write never lands; the test then fails on the eq */
+    await Promise.race([
+      landed,
+      new Promise((res) => (ceiling = setTimeout(res, 20_000))),
+    ]);
   } finally {
+    clearTimeout(ceiling);
     win.photos.keys = keysBefore;
+    win.storage.set = setBefore;
   }
   eq(
-    saved().envelopes?.[0]?.photos,
+    saved().envelopes?.[0]?.photos ?? null,
     ["pho-a"],
     "47.6 an unreadable local store keeps the pulled photo id"
   );
@@ -4411,291 +4108,154 @@ const PHOTO_UNREADABLE = /photos.*(could not|couldn.t) be read/i;
    Records photo-ids-unreadable-local, photo-errors-never-hit-pushstate and
    ruled-head-one-advisory-entrance. Stage 1 of the sync revamp.
 
-   Each path below is silent today. Once fixed, the builder must put the photo
-   words on screen. The tests match the regexes, not exact copy. Any wording
-   that matches is accepted. Examples that match:
+   The switch (owner ruling 2026-10-14, decision sync-revamp-cloudflare) moves the
+   photo phase to the Worker. 48.1 to 48.3 and 48.5 re-point there: the local store
+   that cannot be read still shows its words, the ledger POST still lands, and a
+   healthy photo reaches the Worker. 48.4, 48.6, 48.7, 48.8 and 48.9 are retired: they
+   read GitHub's peek, GitHub's private repo, GitHub's listPhotos and its retry, and
+   the Worker has none of those. Retired cases name the GitHub verb they read.
 
-     photo store unreadable (48.1, 48.2, 48.3, 48.5): PHOTO_UNREADABLE
+   The tests match the regexes, not exact copy. Any wording that matches is accepted.
+   Examples that match:
+     photo store unreadable (48.1, 48.2, 48.3): PHOTO_UNREADABLE
        "This device’s photos could not be read, so they were not backed up."
-     remote unknown: BACKUP_UNKNOWN, retired from the UI by 48.4 (default 5)
 
-   The photo words may sit in the photo box (48.1, 48.3) or on the advisory
-   line (48.2). The advisory line is the one disclosure button, so `onLine`
-   looks only there.
+   The photo words may sit in the photo box (48.1, 48.3) or on the advisory line
+   (48.2). The advisory line is the one disclosure button, so `onLine` looks only there.
 
    A photo error never sets pushState, so no conflict is armed (48.1, 48.3).
-   The ledger write still finishes. "Push anyway" and "Pushed ✓" left the UI
-   (owner ruling 2026-10-12), so the write itself is what the cases count.
-
-   Each fixture carries exactly one reason for the line. A healthy push first
-   clears "never synced", so the reason under test is the only one left. The
-   priority order inside syncBroken is not pinned here. */
+   The ledger write still finishes. Each fixture carries exactly one reason for the
+   line. A healthy POST first clears "never synced", so the reason under test is the
+   only one left. */
+const KEY48 = "device-48-key";
 const BACKUP_UNKNOWN = /backup.*(could not|couldn.t) be checked/i;
 const onLine = (re) =>
   buttons().some((b) => b.hasAttribute("aria-expanded") && re.test(b.textContent));
-const KEY = { remoteKey: "github_pat_testtoken" };
 const unreadable = async () => {
   throw new Error("local photo store unreadable");
 };
+/* the photo phase follows the ledger POST by one second (photo-writes-wait-one-second) */
+const PHOTO_WAIT48 = 1500;
 
-/* ---- 48.1 a push whose photo phase cannot read the local store ---- */
-await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], KEY);
+/* ---- 48.1 a photo push whose photo phase cannot read the local store ---- */
+await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], { syncKey: KEY48 });
 await openSync();
 const keysBefore481 = win.photos.keys;
-const pushes481 = pushes().length;
+const posts481 = workerPosts().length;
 win.photos.keys = unreadable;
 try {
-  await mirrorPush();
-  await sleep(60);
+  await wakeWorker();
+  await sleep(PHOTO_WAIT48);
 } finally {
   win.photos.keys = keysBefore481;
 }
 eq(
   {
     words: PHOTO_UNREADABLE.test(text()),
-    ran: pushes().length > pushes481,
+    ran: workerPosts().length > posts481,
   },
   { words: true, ran: true },
   "48.1 an unreadable local store is said so, and the ledger still lands"
 );
 
-/* ---- 48.2 the same store, read by the unattended push, panel shut ---- */
-await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], KEY);
-await background(); /* a healthy push first, so "never synced" is not the reason */
-await settle();
+/* ---- 48.2 the same store, read by the unattended POST, panel shut ---- */
+await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], { syncKey: KEY48 });
+await wakeWorker(); /* a healthy POST first, so "never synced" is not the reason */
+await drain();
 const keysBefore482 = win.photos.keys;
-const pushesBefore482 = pushes().length;
+const posts482 = workerPosts().length;
 win.photos.keys = unreadable;
 try {
-  await background();
-  await sleep(60);
+  await wakeWorker();
+  await sleep(PHOTO_WAIT48);
 } finally {
   win.photos.keys = keysBefore482;
 }
 eq(
   {
-    ran: pushes().length > pushesBefore482,
+    ran: workerPosts().length > posts482,
     onLine: onLine(PHOTO_UNREADABLE),
   },
   { ran: true, onLine: true },
   "48.2 an unreadable local store shows on the advisory line with the panel shut"
 );
 
-/* ---- 48.3 the upload loop cannot read a blob it was told to send ---- */
-await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], KEY);
+/* ---- 48.3 the upload cannot read a blob it was told to send ---- */
+await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], { syncKey: KEY48 });
 await openSync();
 const getBefore483 = win.photos.get;
-const pushes483 = pushes().length;
+const posts483 = workerPosts().length;
 win.photos.get = unreadable;
 try {
-  await mirrorPush();
-  await sleep(60);
+  await wakeWorker();
+  await sleep(PHOTO_WAIT48);
 } finally {
   win.photos.get = getBefore483;
 }
 eq(
   {
-    ran: pushes().length > pushes483,
+    ran: workerPosts().length > posts483,
     words: PHOTO_UNREADABLE.test(text()),
-    sent: remotePhotoIds(),
+    sent: syncPhotoNames(),
   },
   { ran: true, words: true, sent: [] },
   "48.3 a blob that cannot be read is said so, not skipped as if swept"
 );
 
-/* ---- 48.4 a remote it cannot look at, on the foreground and unattended ----
-   Two boots, one per path, so a fix on one path cannot pass the other.
-   Re-pointed (owner ruling 2026-10-12, default 5): the GitHub peek's
-   "could not be checked" line is GitHub copy, so the user sees nothing. What
-   stays is the write guard: a look that cannot read writes nothing. */
-for (const [path, look] of [
-  ["foreground peek", foreground],
-  ["autoPush", background],
-]) {
-  await boot({ items: ITEMS, received: {} }, null, KEY);
-  await background(); /* a healthy push first, so "never synced" is not the reason */
-  await settle();
-  remote.peekUnknown = "offline";
-  const peeksBefore = peeks().length;
-  const pushesBefore = pushes().length;
-  await look();
-  await sleep(60);
-  remote.peekUnknown = null;
-  eq(
-    {
-      looked: peeks().length > peeksBefore,
-      wrote: pushes().length > pushesBefore,
-      copy: BACKUP_UNKNOWN.test(text()),
-    },
-    { looked: true, wrote: false, copy: false },
-    `48.4 a remote it could not look at writes nothing and shows no GitHub line (${path})`
-  );
-}
+/* retired: 48.4 (a remote it could not look at writes nothing, and shows no GitHub
+   line). It read the GitHub peek. The Worker's read failure is 40.2 and 34.19. */
 
 /* ---- 48.5 the healthy case stays quiet, so a fix that always shows fails ---- */
-await boot({ items: ITEMS, received: {} }, null, KEY);
+await boot({ items: ITEMS, received: {} }, null, { syncKey: KEY48 });
 await openSync();
-const pushes485a = pushes().length;
-await mirrorPush();
+const posts485a = workerPosts().length;
+await wakeWorker();
+await drain();
 eq(
   {
-    ran: pushes().length > pushes485a,
+    ran: workerPosts().length > posts485a,
     words: PHOTO_UNREADABLE.test(text()) || BACKUP_UNKNOWN.test(text()),
   },
   { ran: true, words: false },
   "48.5 a ledger with no photos and a readable store says nothing about photos"
 );
 
-await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], KEY);
+await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], { syncKey: KEY48 });
 await openSync();
-await mirrorPush();
-const peeksBefore485 = peeks().length;
-await foreground();
-await sleep(60);
+await wakeWorker();
+await sleep(PHOTO_WAIT48);
 eq(
   {
-    landed: remotePhotoIds(),
-    looked: peeks().length > peeksBefore485,
+    landed: syncPhotoNames(),
     words: PHOTO_UNREADABLE.test(text()) || BACKUP_UNKNOWN.test(text()),
   },
-  { landed: ["pho-k"], looked: true, words: false },
-  "48.5 a readable store and a known remote show neither line, and the photo really went up"
+  { landed: ["pho-k.jpg"], words: false },
+  "48.5 a readable store shows neither line, and the photo really went up"
 );
 
 /* the line clears once the store reads again, or it latches */
-await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], KEY);
+await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], { syncKey: KEY48 });
 await openSync();
 const keysBefore485 = win.photos.keys;
 win.photos.keys = unreadable;
 try {
-  await mirrorPush();
-  await sleep(60);
+  await wakeWorker();
+  await sleep(PHOTO_WAIT48);
 } finally {
   win.photos.keys = keysBefore485;
 }
-await mirrorPush(); /* the store reads again: the next write sends the photo */
-await sleep(60);
+await wakeWorker(); /* the store reads again: the next write sends the photo */
+await sleep(PHOTO_WAIT48);
 eq(
-  { words: PHOTO_UNREADABLE.test(text()), landed: remotePhotoIds() },
-  { words: false, landed: ["pho-k"] },
+  { words: PHOTO_UNREADABLE.test(text()), landed: syncPhotoNames() },
+  { words: false, landed: ["pho-k.jpg"] },
   "48.5 once the store reads again the words clear and the photo goes up"
 );
 
-/* ---- 48.6 a keyless cold start on the private ledger ----
-   The 38c device opened cold: the private ledger is seeded before the mount, so
-   the mount's own look is the only remote read, and it is refused. No pull runs
-   here. Re-pointed (owner ruling 2026-10-12, default 5): the missing GitHub key
-   and the unchecked backup are GitHub copy, so the user sees neither line. The
-   look itself still runs. */
-await boot({ items: ITEMS, received: {} }, null, {
-  remoteAtBoot: LAPTOP_PUSHED,
-  remotePrivate: true,
-});
-await settle();
-eq(
-  {
-    looked: peeks().length > 0,
-    noKeyLine: onLine(/tap to (set it up|add its key)/),
-    unknownWords: BACKUP_UNKNOWN.test(text()),
-  },
-  { looked: true, noKeyLine: false, unknownWords: false },
-  "48.6 a keyless cold start on the private ledger shows no GitHub line (default 5)"
-);
-
-/* ---- 48.7 an unreadable photo push, then a readable merge ----
-   The manual pull that used to clear the words left the UI with Pull. The
-   unattended merge below is the path that remains, so it is the one kept.
-   The incoming ledger references pho-k, so the readable survey really runs. */
-const photoListCalls = () => remote.calls.filter((c) => c.op === "listPhotos").length;
-const brokenLine = () => onLine(/tap to (?!close)/);
-
-/* the unattended merge: the other device is ahead, and the device is away long
-   enough to be a fresh session, so autoMerge runs with alsoPush false */
-await boot(withPhoto(["pho-k"]), [["pho-k", jpegOf(3)]], KEY);
-await openSync();
-const keysBefore487b = win.photos.keys;
-win.photos.keys = unreadable;
-try {
-  await mirrorPush();
-  await sleep(60);
-} finally {
-  win.photos.keys = keysBefore487b;
-}
-remote.sha = "sha-other"; /* the other device pushed since: peek says ahead */
-const before487b = PHOTO_UNREADABLE.test(text());
-const pushes487b = pushes().length;
-const lists487b = photoListCalls();
-await backgroundFor(5 * 60_000);
-await settle();
-await sleep(60);
-eq(
-  {
-    before: before487b,
-    listed: photoListCalls() > lists487b,
-    applied: remote.deviceSha === remote.sha,
-    pushed: pushes().length - pushes487b,
-    words: PHOTO_UNREADABLE.test(text()),
-    line: brokenLine(),
-  },
-  { before: true, listed: true, applied: true, pushed: 0, words: false, line: false },
-  "48.7 a readable unattended merge clears the unreadable-photos words (autoMerge)"
-);
-
-/* ---- 48.8 one look fails, the next succeeds, inside one check ----
-   A single transient {known:false} must not raise the line. The look is retried
-   once before the line is raised. Both looks, the foreground check and the
-   unattended autoPush, take the same path as 48.4. */
-for (const [path, look] of [
-  ["foreground peek", foreground],
-  ["autoPush", background],
-]) {
-  await boot({ items: ITEMS, received: {} }, null, KEY);
-  await background(); /* a healthy push first, so "never synced" is not the reason */
-  await settle();
-  remote.peekUnknownOnce = "offline";
-  const peeksBefore = peeks().length;
-  await look();
-  await sleep(60);
-  const consumed = remote.peekUnknownOnce === null;
-  remote.peekUnknownOnce = null;
-  eq(
-    {
-      looked: peeks().length > peeksBefore,
-      consumed,
-      words: BACKUP_UNKNOWN.test(text()),
-    },
-    { looked: true, consumed: true, words: false },
-    `48.8 one transient unknown look does not raise the line (${path})`
-  );
-}
-
-/* ---- 48.9 a look that stays unknown on both tries holds the write ----
-   The other side of the retry. Re-pointed (owner ruling 2026-10-12, default
-   5): no line is shown either way. What the case still guards is that a
-   device which could not look does not write, and that a later known look
-   lets the write through again. */
-for (const [path, look] of [
-  ["foreground peek", foreground],
-  ["autoPush", background],
-]) {
-  await boot({ items: ITEMS, received: {} }, null, KEY);
-  await background(); /* a healthy push first, so "never synced" is not the reason */
-  await settle();
-  remote.peekUnknown = "offline";
-  const pushesBefore = pushes().length;
-  await look();
-  await sleep(60);
-  remote.peekUnknown = null;
-  const held = pushes().length === pushesBefore;
-  /* the write resumes on the unattended path, the only one that writes */
-  await background();
-  await sleep(60);
-  eq(
-    { held, resumed: pushes().length > pushesBefore },
-    { held: true, resumed: true },
-    `48.9 a remote unknown on both tries holds the write, and a later known look resumes it (${path})`
-  );
-}
+/* retired: 48.6 (a keyless cold start on the private ledger). The private repo is
+   GitHub's. 48.7 (a readable unattended merge clears the words) read GitHub's
+   listPhotos and peek. 48.8 and 48.9 (one unknown look, and a look unknown on both
+   tries) read GitHub's peek and its retry. The switch retires all four. */
 
 /* ── 49. un-checks and deletes travel between devices ─────────────────────
    The merge used to only ADD. A check-in could never be undone across two
@@ -4872,6 +4432,11 @@ for (const [path, look] of [
   );
 }
 
+/* the device key for groups 49 and 50, and a keyed fresh start (the Worker holds nothing
+   until setServerLedger sets it) */
+const KEY49 = "device-49-key";
+const freshKeyed49 = () => boot({ items: ITEMS, received: {} }, null, { syncKey: KEY49 });
+
 /* ---- 49 through the app: a stale copy on the other device ---- */
 {
   const K = ITEMS[0].key; /* Lightning Bolt, in Alpha Cards */
@@ -4881,10 +4446,10 @@ for (const [path, look] of [
       b.parentElement?.textContent.includes(name)
     );
   /* what GitHub holds: the push format, which carries mailday (parseLedger needs it) */
-  const asRemote = (s) => JSON.stringify({ mailday: 1, ...s });
+  const asRemote = (s) => ({ mailday: 1, ...s });
 
   /* an un-check outlives a stale copy that still has the card checked */
-  await fresh();
+  await freshKeyed49();
   await click(lineRow(/Alpha Cards/, "Lightning Bolt"), "check Lightning Bolt in");
   await sleep(SAVE_WAIT);
   const checkedCopy = saved(); /* what the other device holds */
@@ -4892,20 +4457,18 @@ for (const [path, look] of [
   await click(lineRow(/Alpha Cards/, "Lightning Bolt"), "un-check Lightning Bolt");
   await sleep(SAVE_WAIT);
   ok(typeof saved().receivedAt?.[K] === "number", "49.A1 an un-check writes its time");
-  remote.content = utf8ToBase64(asRemote(checkedCopy));
-  remote.sha = "sha-0";
-  await saveGitHubKey();
+  setServerLedger(asRemote(checkedCopy));
   /* Re-pointed: Push and Merge & push left the UI (owner ruling 2026-10-12).
      The stale copy is ahead, and a fresh session is what merges it. The
      mirror write after the merge is what carries the merged copy to GitHub. */
   await backgroundFor(5 * 60_000);
   await settle();
   await sleep(SAVE_WAIT);
-  await mirrorPush();
+  await wakePush();
   eq(saved().received ?? {}, {}, "49.A2 a merge with the stale copy keeps the card un-checked");
   ok(/cards\s*0\/14/.test(text()), "49.A3 and the screen shows nothing checked");
   eq(
-    JSON.parse(remoteText()).received ?? {},
+    syncLedgerNow().received ?? {},
     {},
     "49.A4 and the merged copy on GitHub has no check either"
   );
@@ -4914,8 +4477,8 @@ for (const [path, look] of [
 {
   /* a discarded envelope stays gone when the old copy comes back */
   const liveEnvs = (s) => (s.envelopes || []).filter((e) => !e.deletedAt);
-  const asRemote = (s) => JSON.stringify({ mailday: 1, ...s });
-  await fresh();
+  const asRemote = (s) => ({ mailday: 1, ...s });
+  await freshKeyed49();
   await goTo("orphaned");
   await record(["Ponder", "Preordain"], "discard me");
   await sleep(SAVE_WAIT);
@@ -4929,9 +4492,7 @@ for (const [path, look] of [
     ),
     "49.B1 a discard leaves a tombstone with its time"
   );
-  remote.content = utf8ToBase64(asRemote(liveCopy));
-  remote.sha = "sha-0";
-  await saveGitHubKey();
+  setServerLedger(asRemote(liveCopy));
   /* Re-pointed: Push and Merge & push left the UI (owner ruling 2026-10-12).
      A fresh session merges the stale copy in, with no tap. */
   await backgroundFor(5 * 60_000);
@@ -4956,16 +4517,15 @@ for (const [path, look] of [
     [...card(pkgRe).querySelectorAll('button[aria-label^="Mark as"]')].find((b) =>
       b.parentElement?.textContent.includes(name)
     );
-  await fresh();
+  await freshKeyed49();
   await click(lineRow(/Alpha Cards/, "Lightning Bolt"), "check Lightning Bolt in");
   await sleep(SAVE_WAIT);
   ok(typeof saved().receivedAt?.[K] === "number", "49.C1 a check-in writes its time");
-  await boot(saved());
+  await boot(saved(), null, { syncKey: KEY49 });
 
   await openSync();
-  await saveGitHubKey();
-  await mirrorPush();
-  const pushed = pushes()[0] ? JSON.parse(pushes()[0].text) : {};
+  await wakePush();
+  const pushed = workerPosts().at(-1) ?? {};
   ok(typeof pushed.receivedAt?.[K] === "number", "49.C2 the pushed payload carries it");
 
   let backupBlob = null;
@@ -5002,7 +4562,7 @@ for (const [path, look] of [
     [...card(pkgRe).querySelectorAll('button[aria-label^="Mark as"]')].find((b) =>
       b.parentElement?.textContent.includes(name)
     );
-  const asRemote = (s) => JSON.stringify({ mailday: 1, ...s });
+  const asRemote = (s) => ({ mailday: 1, ...s });
   const led = (received, receivedAt, envelopes) => ({
     items: ITEMS,
     received,
@@ -5134,15 +4694,13 @@ for (const [path, look] of [
 
   /* A2 through the app: the other device un-checked later, and this device
      still holds the check. The manual merge applies the removal. */
-  await fresh();
+  await freshKeyed49();
   await click(lineRow(/Alpha Cards/, "Lightning Bolt"), "check Lightning Bolt in");
   await sleep(SAVE_WAIT);
   const checkedAt = saved().receivedAt[K];
-  remote.content = utf8ToBase64(
+  setServerLedger(
     asRemote({ ...saved(), received: {}, receivedAt: { [K]: checkedAt + 1000 } })
   );
-  remote.sha = "sha-0";
-  await saveGitHubKey();
   /* Re-pointed: Push and Merge & push left the UI (owner ruling 2026-10-12). A
      fresh session merges the stale copy in, with no tap. */
   await backgroundFor(5 * 60_000);
@@ -5152,13 +4710,13 @@ for (const [path, look] of [
   ok(uncheckedOne(), "50.A2j and the notice says un-checked 1 card, not 'nothing new'");
 
   /* the other device discarded an envelope this device still holds live */
-  await fresh();
+  await freshKeyed49();
   await goTo("orphaned");
   await record(["Ponder", "Preordain"], "kept");
   await sleep(SAVE_WAIT);
   const live = saved().envelopes.find((e) => !e.deletedAt);
   const discardedAt = (live.updatedAt || 0) + 1000;
-  remote.content = utf8ToBase64(
+  setServerLedger(
     asRemote({
       ...saved(),
       envelopes: [
@@ -5166,8 +4724,6 @@ for (const [path, look] of [
       ],
     })
   );
-  remote.sha = "sha-0";
-  await saveGitHubKey();
   /* Re-pointed: Push and Merge & push left the UI (owner ruling 2026-10-12). A
      fresh session merges the stale copy in, with no tap. */
   await backgroundFor(5 * 60_000);
@@ -5183,15 +4739,14 @@ for (const [path, look] of [
   /* the quiet unattended merge: a removal alone must still leave a notice */
   /* seeded checked, not checked in here: a check-in leaves an Undo notice, and
      autoMerge stands down while one is open */
-  await boot({ items: ITEMS, received: { [K]: 1 }, receivedAt: { [K]: 100 } }, null, KEY);
+  await boot({ items: ITEMS, received: { [K]: 1 }, receivedAt: { [K]: 100 } }, null, { syncKey: KEY49 });
   await openSync();
-  await mirrorPush();
+  await wakePush();
   await sleep(60);
   const local = saved();
-  remote.content = utf8ToBase64(
+  setServerLedger(
     asRemote({ ...local, received: {}, receivedAt: { [K]: 1100 } })
   );
-  remote.sha = "sha-other"; /* the other device pushed since: peek says ahead */
   await backgroundFor(5 * 60_000);
   await settle();
   await sleep(SAVE_WAIT); /* the merged state is saved on a debounce */
@@ -5199,12 +4754,10 @@ for (const [path, look] of [
   ok(uncheckedOne(), "50.A2n and the quiet merge still leaves a notice saying un-checked 1 card");
 
   /* A4 through the app: the other device removed a stamp this device still holds */
-  await boot({ items: ITEMS, received: {}, stamps: STAMPED50 });
-  remote.content = utf8ToBase64(
+  await boot({ items: ITEMS, received: {}, stamps: STAMPED50 }, null, { syncKey: KEY49 });
+  setServerLedger(
     asRemote({ items: ITEMS, received: {}, receivedAt: {}, envelopes: [], stamps: STAMP_GONE50 })
   );
-  remote.sha = "sha-0";
-  await saveGitHubKey();
   /* Re-pointed: Push and Merge & push left the UI (owner ruling 2026-10-12). A
      fresh session merges the stale copy in, with no tap. */
   await backgroundFor(5 * 60_000);
@@ -5214,14 +4767,13 @@ for (const [path, look] of [
   ok(noticeNamesRemoval(), "50.A4d and the notice names the removal");
 
   /* the quiet unattended merge, whose only change is that stamp removal */
-  await boot({ items: ITEMS, received: {}, stamps: STAMPED50 }, null, KEY);
+  await boot({ items: ITEMS, received: {}, stamps: STAMPED50 }, null, { syncKey: KEY49 });
   await openSync();
-  await mirrorPush();
+  await wakePush();
   await sleep(60);
-  remote.content = utf8ToBase64(
+  setServerLedger(
     asRemote({ items: ITEMS, received: {}, receivedAt: {}, envelopes: [], stamps: STAMP_GONE50 })
   );
-  remote.sha = "sha-other"; /* the other device pushed since: peek says ahead */
   await backgroundFor(5 * 60_000);
   await settle();
   await sleep(SAVE_WAIT);
@@ -5230,14 +4782,13 @@ for (const [path, look] of [
 
   /* A5 through the app: an incoming tombstone for a stamp this device never
      had. The quiet merge takes it, and leaves no notice. */
-  await boot({ items: ITEMS, received: {} }, null, KEY);
+  await boot({ items: ITEMS, received: {} }, null, { syncKey: KEY49 });
   await openSync();
-  await mirrorPush();
+  await wakePush();
   await sleep(60);
-  remote.content = utf8ToBase64(
+  setServerLedger(
     asRemote({ items: ITEMS, received: {}, receivedAt: {}, envelopes: [], stamps: STAMP_GONE50 })
   );
-  remote.sha = "sha-other";
   await backgroundFor(5 * 60_000);
   await settle();
   await sleep(SAVE_WAIT);
@@ -5245,7 +4796,7 @@ for (const [path, look] of [
   ok(!REMOVED.test(text()) && !/Merged/.test(text()), "50.A5d and leaves no notice");
 
   /* B: write sites that already stamp receivedAt */
-  await fresh();
+  await freshKeyed49();
   await goTo("packages");
   await click(allBtns(/^Mark all received$/)[0], "mark a package all received");
   await sleep(SAVE_WAIT);
@@ -5255,7 +4806,7 @@ for (const [path, look] of [
     "50.B1 a bulk check-in writes a time for each key it sets"
   );
 
-  await fresh();
+  await freshKeyed49();
   await goTo("orphaned");
   await record(["Brainstorm"]);
   await assign(0);
@@ -5271,9 +4822,12 @@ for (const [path, look] of [
   eq(saved().received[key], undefined, "50.B3a undo deletes the key");
   ok(saved().receivedAt?.[key] > tAssign, "50.B3b and undo writes a later time, so the un-check travels");
 
-  await fresh();
+  await freshKeyed49();
   await reachFor(/Re-import CSV/);
   await click(btn(/Re-import CSV/), "show upload zone");
+  /* a restore is a change made now, so the time it lands wins a later Worker reply
+     (restore-must-stick, owner ruling 2026-10-15). The file's own time does not survive. */
+  const before50 = Date.now();
   await dropFile(
     "mailday-backup.json",
     JSON.stringify({
@@ -5286,9 +4840,12 @@ for (const [path, look] of [
     })
   );
   await sleep(SAVE_WAIT);
-  eq(saved().receivedAt?.[K], 1234567, "50.B4 a restore brings each key's time back");
+  ok(
+    typeof saved().receivedAt?.[K] === "number" && saved().receivedAt[K] >= before50,
+    "50.B4 a restore into an empty device stamps the time it lands, not the file's"
+  );
 
-  await fresh();
+  await freshKeyed49();
   await goTo("orphaned");
   await record(["Path to Exile", "Swords to Plowshares", "Ponder", "Lightning Bolt"]);
   await assign(0);
@@ -5409,14 +4966,14 @@ await saveGitHubKey("github_pat_SECRETVALUE");
    check-in gives the mirror something to write */
 await goTo("packages");
 await click(btn(/Mark all received/), "check in a card for the mirror to write");
-await mirrorPush();
+await wakePush();
 await openHistory();
 await click(btn(/^Backup$/), "backup with a sync key set");
 await sleep(SAVE_WAIT);
-ok(pushes().length > 0, "52.4a the push happened, so the next check means something");
+ok(workerPosts().length > 0, "52.4a the POST happened, so the next check means something");
 ok(!!captured, "52.4b the backup happened, so the next check means something");
 ok(!SYNC_LEAK.test(JSON.stringify(saved())), "52.4 the sync key is not in the saved ledger");
-ok(!SYNC_LEAK.test(pushes()[0]?.text ?? ""), "52.5 nor in the pushed payload");
+ok(!SYNC_LEAK.test(JSON.stringify(workerPosts())), "52.5 nor in the POSTed payload");
 ok(!SYNC_LEAK.test(await captured.text()), "52.6 nor in a backup file");
 eq(
   (await win.storage.list()).keys,
@@ -5441,6 +4998,17 @@ ok(
    Installed here, removed after group 61, and installed again before group 67.
    Groups 1 to 52 and 62 to 66 keep real timers. */
 installClock();
+
+/* the other device's copy, as the Worker holds it (groups 52 to 56; it was the GitHub copy) */
+const LAPTOP_PUSHED = {
+  mailday: 1,
+  items: ITEMS,
+  received: {},
+  envelopes: [],
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+};
 
 /* ── 53. the Stage 4b sync path, through the app (harness contract only) ──
    Stage 4b moves sync from the GitHub adapter to window.sync. These cases pin
@@ -5623,25 +5191,24 @@ await sleep(POST_WAIT);
 eq((await win.sync.get()).code, "ok", "53.6c the first POST seeds the store");
 ok(!ERROR_COPY_RE.test(advisory()), "53.6d and the advisory line still shows no sync error");
 
-/* 7. with no sync key, nothing calls sync.post, and today's GitHub push runs
-   unchanged. Green on today's code by design: this is a guard, not a red case. */
+/* 7. with no sync key, nothing calls sync.post, and nothing reaches GitHub either
+   (the switch). Green on the switched code by design: this is a guard, not a red case. */
 await boot({ items: ITEMS.slice(0, 3), received: {} });
 await settle();
 await click(btn(/Mark all received/), "check in with no sync key");
 await sleep(POST_WAIT);
 ok(Object.keys(saved().received ?? {}).length === 3, "53.7a0 the check-in happened, so the next check means something");
 eq(postCount(), 0, "53.7a with no sync key, a check-in makes no POST");
-await saveGitHubKey();
-await mirrorPush();
+await wakePush();
 await sleep(SAVE_WAIT);
-ok(pushes().length > 0, "53.7b the GitHub push still runs with no sync key");
+eq(githubOps(), [], "53.7b and with no Worker key, GitHub takes no write either (the switch)");
 
 /* 8. a POST that fails as unknown (the network) falls back to today's GitHub
    merge for that cycle, and the advisory line says the server failed. The
    fallback is decided on code === "unknown". Green on today's code for the pull
    alone, since a fresh foreground already merges over GitHub: 53.8b is the red
    claim. */
-await boot(PHONE_STATE, null, { remote: LAPTOP_PUSHED, syncKey: KEY53 });
+await boot(PHONE_STATE, null, { syncLedger: LAPTOP_PUSHED, syncKey: KEY53 });
 await settle();
 setSyncNetFail(true);
 const remoteBefore = remote.calls.length;
@@ -5654,173 +5221,54 @@ try {
   setSyncNetFail(false);
 }
 await settle();
-ok(remote.calls.slice(remoteBefore).some((c) => c.op === "pull"), "53.8a the failed cycle falls back to the GitHub merge");
+eq(githubOps(), [], "53.8a and the failed cycle makes no GitHub call: there is no fallback to GitHub (the switch)");
 ok(/server/i.test(advisory()), "53.8b and the advisory line says the server failed");
 
-/* ── 54. with a Worker key, GitHub is a mirror (harness contract only) ──
-   Stage 4b, decision sync-revamp-cloudflare: the Worker holds the truth, and
-   GitHub gets the merged snapshot on the mirror timer. With a key, GitHub
-   decides nothing. No peek, no auto-merge, no "behind" line, and a stale sha
-   is a merged write, never a two-tap.
-
-   The mirror timer is AUTO_PUSH_MS (90s) in src/app.jsx. This suite has no
-   fake timers, so only a delay of exactly 90000 is caught here, and the test
-   fires it on demand. sleep() and the save debounce pass through untouched.
-
-   Case 54.4 (no key) needs no case of its own. Today's behaviour is pinned by
-   groups 34 (34.11 to 34.23: the behind line, the peek, the conflict merge),
-   38b.2 (the behind line), and 40.4 (a fresh absence merges without a tap).
-
-   Case 54.5 is a suspected bug, not a ruling: the autoPush effect's deps
-   (src/app.jsx, near line 4729) are [items, received, envelopes, loaded], and
-   they omit stamps. */
+/* ── 54. with a Worker key, GitHub takes no write and no read (the switch) ──
+   Owner ruling 2026-10-14 21:12 CDT, decision sync-revamp-cloudflare. The Worker is the
+   only sync path. GitHub is no longer a mirror, so the mirror timer (AUTO_PUSH_MS) is
+   gone. 54.1 and 54.2 re-point: a keyed device makes no GitHub call, and the Worker POST
+   carries the merged snapshot. 54.3 and 54.5 are retired. 54.3 pinned a stale sha
+   merged into GitHub, and 54.5 pinned the mirror timer for a stamp alone. A stale POST
+   merges on the server, which 34.23 pins. */
 const KEY54 = "device-54-key";
-const GH54 = "github_pat_testtoken";
-const AUTO_MS = 90000; // AUTO_PUSH_MS in src/app.jsx
-let autoLive54 = null; // null = not catching; else the armed timers not yet run or cleared
-let autoArmed54 = 0; // every AUTO_PUSH_MS timer armed while catching
-const realSetTimeout54 = globalThis.setTimeout;
-const realClearTimeout54 = globalThis.clearTimeout;
-const catchAutoTimers = () => {
-  autoLive54 = [];
-  autoArmed54 = 0;
-  globalThis.setTimeout = (fn, ms, ...rest) => {
-    if (ms !== AUTO_MS) return realSetTimeout54(fn, ms, ...rest);
-    const h = { fn };
-    autoLive54.push(h);
-    autoArmed54 += 1;
-    return h;
-  };
-  globalThis.clearTimeout = (h) => {
-    if (autoLive54) autoLive54 = autoLive54.filter((x) => x !== h);
-    return realClearTimeout54(h);
-  };
-};
-const releaseAutoTimers = () => {
-  autoLive54 = null;
-  globalThis.setTimeout = realSetTimeout54;
-  globalThis.clearTimeout = realClearTimeout54;
-};
-/* runs the newest live mirror timer, as the 90s wait would. false if none */
-const fireAutoTimer = async () => {
-  const h = autoLive54?.pop();
-  if (!h) return false;
-  await act(async () => {
-    await h.fn();
-    await sleep(0);
-  });
-  return true;
-};
 
-/* 54.1 with a key, GitHub is not read at all. A remote that holds a sha this
-   device never saw is ahead, and with a key it raises no "behind" line. Red
-   today: the foreground peek reads it as ahead, and the resume merges it. */
+/* 54.1 with a key, GitHub is not read at all. A device that holds a copy the Worker
+   lacks makes no GitHub call on a resume either. */
 await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
-  remote: LAPTOP_PUSHED,
-  remoteKey: GH54,
+  syncLedger: LAPTOP_PUSHED,
   syncKey: KEY54,
 });
 await settle();
-/* read before the resume, which would merge the remote away and make the
-   line's absence mean nothing */
-ok(!btn(/newer lines/), "54.1c a remote that is ahead raises no behind line");
+/* read before the resume, which would merge the Worker away and make the line's
+   absence mean nothing */
+ok(!btn(/newer lines/), "54.1c a Worker copy that is ahead raises no behind line");
 await backgroundFor(5 * 60_000);
 await settle();
-eq(peeks().length, 0, "54.1a with a key, nothing peeks at GitHub");
+eq(githubOps(), [], "54.1a with a Worker key, nothing reads or writes GitHub");
+
+/* 54.2 with a key, the POST carries the merged snapshot: the four lines the Worker reply
+   carried, not the three this device held. */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+  syncKey: KEY54,
+  syncLedger: { mailday: 1, items: ITEMS.slice(0, 4), received: {}, envelopes: [] },
+});
+await settle();
+await pageshow();
+await sleep(APPLY_WAIT);
+await wakeWorker();
+await drain();
 eq(
-  remote.calls.filter((c) => c.op === "pull").length,
-  0,
-  "54.1b and a resume after an absence merges nothing from GitHub"
+  workerPosts().at(-1)?.items?.length ?? 0,
+  4,
+  "54.2c the POST carries the merged snapshot, four lines"
 );
+eq(githubOps(), [], "54.2d and GitHub takes no write for it");
 
-/* 54.2 with a key, the mirror push runs on AUTO_PUSH_MS, and what it pushes is
-   the merged snapshot: the four lines the Worker reply carried, not the three
-   this device held. Red today: no reply is applied, so the mirror holds three,
-   and nothing arms the timer. */
-catchAutoTimers();
-try {
-  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
-    remoteKey: GH54,
-    syncKey: KEY54,
-    syncLedger: { mailday: 1, items: ITEMS.slice(0, 4), received: {}, envelopes: [] },
-  });
-  await settle();
-  await pageshow();
-  await sleep(APPLY_WAIT);
-  ok(autoArmed54 > 0, "54.2a the merged lines arm the mirror timer, which is AUTO_PUSH_MS");
-  ok(await fireAutoTimer(), "54.2b and the timer is live, so the mirror push can run");
-  await settle();
-  const sent = pushes();
-  const last = sent[sent.length - 1];
-  eq(
-    last ? JSON.parse(last.text).items.length : 0,
-    4,
-    "54.2c the mirror pushes the merged snapshot, four lines"
-  );
-} finally {
-  releaseAutoTimers();
-}
-
-/* 54.3 with a key, a mirror push that meets a stale sha re-reads the sha, merges
-   GitHub's ledger in, and writes the merge under the fresh sha. It arms no two-tap and shows no conflict
-   line. Red today: autoPush peeks first, reads the remote as ahead, and never
-   pushes at all. */
-catchAutoTimers();
-try {
-  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
-    remote: LAPTOP_PUSHED,
-    remoteKey: GH54,
-    syncKey: KEY54,
-  });
-  await settle();
-  await click(btn(/Mark all received/), "check in with a key");
-  await fireAutoTimer();
-  await settle();
-  eq(
-    pushes().map((p) => p.sha),
-    [null, "sha-0"],
-    "54.3a the stale write goes first, then one merged write under the sha the remote holds"
-  );
-  eq(
-    remote.history.map((h) => JSON.parse(h.text).items.length),
-    [ITEMS.length],
-    "54.3b the merged write carries this device and GitHub, not this device's copy alone"
-  );
-  /* Re-pointed (owner ruling 2026-10-12): "Push anyway" left the UI, so it could
-     never fail. A two-tap copy on screen is the live way to arm a stale sha. */
-  ok(!btn(/^Tap again to/), "54.3c a stale sha arms no two-tap");
-  ok(
-    !buttons().some((b) => /needs attention/.test(b.textContent)) &&
-      !/remote copy changed/.test(text()),
-    "54.3d and no conflict line shows"
-  );
-} finally {
-  releaseAutoTimers();
-}
-
-/* 54.5 (suspected bug, no sync key on this device) a stamp alone arms the
-   mirror push. The autoPush effect omits stamps from its deps, so a stamp-only
-   change arms no timer and no push follows. Red on today's code if the omission
-   is real. */
-catchAutoTimers();
-try {
-  await boot({ items: ITEMS, received: {} }, null, { remoteKey: GH54 });
-  await settle();
-  const armedBefore = autoArmed54;
-  await stampPkg(/Alpha Cards/, "Other", "package split");
-  await sleep(SAVE_WAIT);
-  eq(
-    Object.keys(saved().stamps ?? {}).length,
-    1,
-    "54.5a the stamp is saved, so the next check means something"
-  );
-  ok(autoArmed54 > armedBefore, "54.5b a stamp alone arms the mirror timer");
-  ok(await fireAutoTimer(), "54.5c and the timer is live, so a push can follow");
-  await settle();
-  ok(pushes().length > 0, "54.5d and the timer pushes the stamped ledger to GitHub");
-} finally {
-  releaseAutoTimers();
-}
+/* retired: 54.3 (a stale sha re-reads the sha and writes the merge under it, the
+   mirror's conflict path). The Worker merges server-side; 34.23 pins that. */
+/* retired: 54.5 (a stamp alone arms the mirror timer, with no key). Keyless, and the
+   timer is gone with GitHub's mirror. */
 
 /* ── 55. live updates: connect, a rev-gated GET, a held apply (harness contract only) ──
    Stage 4b lane L5, decision sync-revamp-cloudflare (Stage 4b rulings). The
@@ -5945,7 +5393,7 @@ eq(saved().items?.length ?? 0, 4, "55.4e and the apply runs once the notice is d
    does, that cycle falls back to the GitHub merge, and the advisory line names
    the size problem. Pattern from 53.8. */
 const bigLine55 = () => buttons().map((b) => b.textContent).find((t) => /too big/i.test(t)) ?? "";
-await boot(PHONE_STATE, null, { remote: LAPTOP_PUSHED, syncKey: KEY55 });
+await boot(PHONE_STATE, null, { syncLedger: LAPTOP_PUSHED, syncKey: KEY55 });
 await settle();
 setSyncTooBig(true);
 const remoteBefore55 = remote.calls.length;
@@ -5958,7 +5406,7 @@ try {
   setSyncTooBig(false);
 }
 await settle();
-ok(remote.calls.slice(remoteBefore55).some((c) => c.op === "pull"), "55.8a the too-big cycle falls back to the GitHub merge");
+eq(githubOps(), [], "55.8a the too-big cycle makes no GitHub call: there is no fallback (the switch)");
 ok(/too big/i.test(bigLine55()), "55.8b and the advisory line says the data is too big");
 ok(/tap to/i.test(bigLine55()), "55.8c and the advisory line says tap to, as group 53's helper expects");
 
@@ -5979,7 +5427,6 @@ eq(connectCount(), 0, "55.7 with no key, sync.connect is never called");
 
 const KEY56 = "device-56-key";
 const GH56 = "github_pat_testtoken";
-const pullCount56 = () => remote.calls.filter((c) => c.op === "pull").length;
 const backoff56 = (k) => SR?.backoffMs?.(k) ?? 1000 * 2 ** k;
 const pick56 = (x) => ({
   items: x.items,
@@ -6007,10 +5454,9 @@ for (const [label, setFail] of [
   ["unknown", setSyncNetFail],
   ["too-big", setSyncTooBig],
 ]) {
-  await boot({ items: ITEMS, received: {} }, null, { remote: LAPTOP_PUSHED, syncKey: KEY56 });
+  await boot({ items: ITEMS, received: {} }, null, { syncLedger: LAPTOP_PUSHED, syncKey: KEY56 });
   await settle();
-  const pulls0 = pullCount56();
-  const ms0 = milestoneCount();
+    const ms0 = milestoneCount();
   const attempts = [];
   const realPost56 = win.sync.post;
   win.sync.post = async (ledger) => {
@@ -6033,18 +5479,15 @@ for (const [label, setFail] of [
     attempts.every((t, k) => k === 0 || t - attempts[k - 1] >= backoff56(k - 1) - 200),
     `56.1${label[0]}a retries to the Worker follow backoffMs, not every save (${label})`
   );
-  ok(pullCount56() - pulls0 <= 1, `56.1${label[0]}b at most one GitHub pull in 20 s (${label})`);
+  eq(githubOps(), [], `56.1${label[0]}b and GitHub takes no read or write in those 20 s (${label})`);
   eq(milestoneCount() - ms0, 0, `56.1${label[0]}c no milestone, since nothing was removed (${label})`);
 }
 
 /* 56.2 B2. The Worker answers 401 to this device's key. The advisory line says
-   the key was refused, and tap to. The GitHub peek and merge still run, as they
-   do on a device with no Worker key. */
-await boot(PHONE_STATE, null, { remote: LAPTOP_PUSHED, syncKey: KEY56 });
+   the key was refused, and tap to. GitHub takes no call either (the switch). */
+await boot(PHONE_STATE, null, { syncLedger: LAPTOP_PUSHED, syncKey: KEY56 });
 await settle();
 const posts56b = postCount();
-const peeks56b = peeks().length;
-const pulls56b = pullCount56();
 setSyncKeyRefused(true);
 try {
   await backgroundFor(5 * 60_000);
@@ -6057,38 +5500,27 @@ ok(postCount() > posts56b, "56.2a0 the POST was refused, so the key check means 
 const keyLine56 = advisoryWith56(/key/i);
 ok(/key/i.test(keyLine56), "56.2b the advisory line says the device's sync key was refused");
 ok(/tap to/i.test(keyLine56), "56.2b2 and the advisory line says tap to");
-ok(peeks().length > peeks56b, "56.2c the GitHub peek still runs");
-ok(pullCount56() > pulls56b, "56.2d and the GitHub merge still runs");
+eq(githubOps(), [], "56.2c a refused key sends GitHub no read or write either (the switch)");
+/* 56.2d retired: it asserted the GitHub peek and merge still run for a refused key. */
 
-/* 56.3 B3. A healthy Worker holds 12 lines, and this device holds 3. The mirror
-   push must never write fewer than 12 lines to GitHub: it pushes the merge of
-   the local snapshot with the last server ledger, never the raw snapshot. The
-   POST reply arrives first, so mirror mode is on before the push. */
-catchAutoTimers();
-try {
-  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
-    remoteKey: GH56,
-    syncKey: KEY56,
-    syncLedger: { mailday: 1, items: ITEMS, received: {}, envelopes: [] },
-  });
-  await settle();
-  await click(inCard(card(/Alpha Cards/), /^Mark all received$/), "a change that arms the mirror timer");
-  await settle();
-  await pageshow();
-  await sleep(POST_WAIT);
-  ok(await fireAutoTimer(), "56.3a0 the mirror timer is live, so the push can run");
-  await settle();
-  ok(pushes().length > 0, "56.3a1 a mirror push reached GitHub, so the line count means something");
-  let lines56 = 0;
-  try {
-    lines56 = JSON.parse(remoteText() ?? "null")?.items?.length ?? 0;
-  } catch {
-    lines56 = 0;
-  }
-  ok(lines56 >= 12, `56.3b the mirror push wrote ${lines56} lines to GitHub, never fewer than the server's 12`);
-} finally {
-  releaseAutoTimers();
-}
+/* 56.3 B3. A healthy Worker holds 12 lines, and this device holds 3. The POST merges
+   on the server, so the Worker never ends with fewer than 12 lines. (The mirror push that
+   B3 guarded is gone with GitHub's mirror, the switch.) */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+  syncKey: KEY56,
+  syncLedger: { mailday: 1, items: ITEMS, received: {}, envelopes: [] },
+});
+await settle();
+await click(inCard(card(/Alpha Cards/), /^Mark all received$/), "a change that sends a POST");
+await settle();
+await wakeWorker();
+await sleep(POST_WAIT);
+ok(workerPosts().length > 0, "56.3a0 a POST went out, so the line count means something");
+ok(
+  (syncLedgerNow()?.items?.length ?? 0) >= 12,
+  `56.3b the Worker still holds ${syncLedgerNow()?.items?.length ?? 0} lines, never fewer than its 12`
+);
+eq(githubOps(), [], "56.3c and GitHub takes no write for it");
 
 /* 56.4 S1. A reply that differs only in an envelope note, an envelope photo id
    or receivedAt is applied. Each difference alone is a case, and the local ends
@@ -6284,65 +5716,19 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
    boot() swaps in a fresh sync mock. */
 {
   const KEY58 = "device-58-key";
-  const GH58 = "github_pat_testtoken";
   const AUTO58 = 90000; /* AUTO_PUSH_MS in src/app.jsx */
   const POST58 = (SR?.SYNC_POST_MS ?? 3000) + 300;
   const count58 = (op) => syncCalls().filter((c) => c.op === op).length;
-  const asRemote58 = (items) =>
-    JSON.stringify({
-      mailday: 1,
-      items,
-      received: {},
-      envelopes: [],
-      dateFilter: { preset: "all", from: "", to: "" },
-      sortBy: "newest",
-      itemSort: "missing",
-    });
   const LOCAL58 = ITEMS.slice(0, 3);
-  /* GitHub holds 12 lines this device has never seen, so the union is 15 */
+  /* the Worker holds 12 lines this device has never seen */
   const REMOTE58 = ITEMS.map((it) => ({ ...it, orderId: `R${it.orderId}`, key: `R${it.key}` }));
 
-  /* F1. On a mirror push conflict the device reads GitHub, merges it in, writes
-     with the fresh sha, and POSTs the merge. It never writes its own copy alone. */
-  await boot({ items: LOCAL58, received: {} }, null, {
-    remote: asRemote58(REMOTE58),
-    remoteKey: GH58,
-    syncKey: KEY58,
-  });
-  await settle();
-  await click(btn(/Mark all received/), "check in, so a POST and a mirror push go out");
-  await sleep(AUTO58 + 1000);
-  await settle();
-  eq(
-    new Set(JSON.parse(remoteText()).items.map((i) => i.key)).size,
-    15,
-    "58.F1a GitHub ends with the union, all 15 lines"
-  );
-  ok(
-    remote.history.length > 0 &&
-      remote.history.every((h) => JSON.parse(h.text).items.length >= 12),
-    "58.F1b no GitHub write ever holds fewer than 12 lines"
-  );
-  eq(
-    new Set(((await win.sync.get()).body?.ledger?.items ?? []).map((i) => i.key)).size,
-    15,
-    "58.F1c the Worker store also ends with the union"
-  );
+  /* F1 retired by the switch (owner ruling 2026-10-14): a mirror push conflict, read and
+     merged through GitHub. The Worker merges server-side, so 34.23 carries the merge. */
 
-  /* F2. A Worker call that never answers times out at SYNC_TIMEOUT_MS, and the
-     GitHub peek and push go ahead. */
+  /* F2. A Worker call that never answers times out at SYNC_TIMEOUT_MS. 58.F2b, a GitHub
+     push after the timeout, is retired by the switch: GitHub takes no write. */
   eq(SR?.SYNC_TIMEOUT_MS ?? "MISSING", 10000, "58.F2a SYNC_TIMEOUT_MS is 10000, exported from sync-rules");
-  await boot({ items: LOCAL58, received: {} }, null, { remoteKey: GH58, syncKey: KEY58 });
-  await settle();
-  const release58 = holdSyncPosts();
-  try {
-    await click(btn(/Mark all received/), "check in, and the POST never answers");
-    await sleep(AUTO58 + 1000);
-    await settle();
-    ok(pushes().length > 0, "58.F2b a GitHub push goes ahead after the Worker times out");
-  } finally {
-    release58();
-  }
 
   /* F4. After a 413, a successful GET must not clear the too-big line. Only a
      successful POST does. */
@@ -6383,90 +5769,9 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     release58b();
   }
 
-  /* F-A. A check-in made while a mirror push is in flight is not lost: a second
-     mirror push follows the release, and it carries the check-in. */
-  await boot({ items: ITEMS.slice(0, 6), received: {} }, null, { remoteKey: GH58, syncKey: KEY58 });
-  await settle();
-  const releaseA = holdRemotePushes();
-  try {
-    await click(allBtns(/^Mark all received$/)[0], "first check-in, the mirror push goes out and is held");
-    await sleep(AUTO58 + 1000);
-    await settle();
-    eq(pushes().length, 1, "58.FA0 one mirror push is in flight, so the check-in during it means something");
-    await click(allBtns(/^Mark all received$/)[0], "a check-in while the push is in flight");
-    releaseA();
-    await sleep(AUTO58 + 1000);
-    await settle();
-    ok(pushes().length >= 2, "58.FA1 a second mirror push follows the release");
-    eq(
-      Object.keys(JSON.parse(pushes().at(-1).text).received ?? {}).length,
-      6,
-      "58.FA2 and it carries the check-in made in flight"
-    );
-  } finally {
-    releaseA();
-  }
-
-  /* F-B. On a mirror conflict the merge POST to the Worker fails (unknown). Mirror
-     mode turns off, and the next push takes the GitHub path. GitHub keeps its
-     own lines: it is never written with fewer than it held. */
-  await boot({ items: LOCAL58, received: {} }, null, {
-    remote: asRemote58(REMOTE58),
-    remoteKey: GH58,
-    syncKey: KEY58,
-  });
-  await settle();
-  await click(btn(/Mark all received/), "check in, so the Worker holds this device's copy");
-  await sleep(POST58);
-  await settle();
-  ok(count58("post") > 0, "58.FB0 the Worker holds this device's copy, so mirror mode is on");
-  setSyncNetFail(true);
-  try {
-    await sleep(AUTO58 + 1000); /* the push meets the stale sha, merges, and the merge POST fails */
-    await settle();
-    const peeks0 = peeks().length;
-    setSyncNetFail(false); /* the Worker answers again; mirror mode stays off until a reply */
-    await sleep(AUTO58 + 1000); /* mirror mode is off, so this push takes the GitHub path */
-    await settle();
-    ok(pushes().length >= 2, "58.FB1a the device reaches a second push, so the line check means something");
-    ok(
-      remote.history.every((h) => JSON.parse(h.text).items.length >= 12),
-      "58.FB1 a failed merge POST never leaves GitHub with fewer than its 12 lines"
-    );
-    ok(peeks().length > peeks0, "58.FB2 with mirror mode off, the next push takes the GitHub path, which peeks");
-  } finally {
-    setSyncNetFail(false);
-  }
-
-  /* G1 (F-B gap). A mirror conflict, then the merge POST fails, and the page hides
-     at once. The GitHub push that follows must carry the merged ledger: 3 local
-     lines and 12 GitHub lines, 15 in all. Never fewer than GitHub held. */
-  await boot({ items: LOCAL58, received: {} }, null, {
-    remote: asRemote58(REMOTE58),
-    remoteKey: GH58,
-    syncKey: KEY58,
-  });
-  await settle();
-  await click(btn(/Mark all received/), "check in, so the Worker holds this device's copy");
-  await sleep(POST58);
-  await settle();
-  setSyncNetFail(true);
-  try {
-    await sleep(AUTO58 + 1000); /* the conflict, then the merge POST fails */
-    await settle();
-    await background(); /* the page hides at once, before any held apply runs */
-    setSyncNetFail(false);
-    await sleep(AUTO58 + 1000);
-    await settle();
-  } finally {
-    setSyncNetFail(false);
-  }
-  const lastG1 = remote.history.at(-1);
-  eq(
-    lastG1 ? JSON.parse(lastG1.text).items.length : 0,
-    15,
-    "58.G1 the GitHub push after a failed merge POST carries the merged ledger, 15 lines"
-  );
+  /* F-A, F-B and G1 retired by the switch (owner ruling 2026-10-14): a mirror push in
+     flight, a mirror conflict, and a failed merge POST that the mirror then retries. The
+     mirror is gone; a POST merges on the server (34.23). */
 
   /* E3. Empty store on cold open. Local holds data, the first GET answers 404
      empty, and the device POSTs its ledger within about 1 s (ledger-v3 starts empty). */
@@ -6623,80 +5928,8 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     eq(saved().savedAt, 300, "58.N6h and that equal reply keeps the local later savedAt");
   }
 
-  /* P1, a port of the reviewer's probe. 6 local lines meet 12 remote ones, so the
-     union is 18. A touch 6 s before the conflict holds the apply, the merge POST
-     fails, nothing hides, and the net comes back. A second check-in then makes
-     the retry reply older than the held merge. GitHub never holds fewer lines
-     than before: the head wrote 18, then 6. */
-  {
-    const touchP1 = () => act(async () => { win.dispatchEvent(new win.Event("pointerdown")); await sleep(0); });
-    const lensP1 = () => remote.history.map((h) => JSON.parse(h.text).items.length);
-    await boot({ items: ITEMS.slice(0, 6), received: {} }, null, { remote: asRemote58(REMOTE58), remoteKey: GH58, syncKey: KEY58 });
-    await settle();
-    await click(btn(/Mark all received/), "check in, so the Worker holds this device's copy");
-    await sleep(POST58);
-    await settle();
-    setSyncNetFail(true);
-    try {
-      await sleep(AUTO58 - POST58 - 5000);
-      await touchP1();
-      await sleep(6000);
-      await settle();
-    } finally {
-      setSyncNetFail(false);
-    }
-    await sleep(15000);
-    await settle();
-    await sleep(1000);
-    await settle();
-    await click(allBtns(/^Mark all received$/)[0], "second change");
-    await sleep(AUTO58 + 1000);
-    await settle();
-    await sleep(AUTO58 + 1000);
-    await settle();
-    const LP1 = lensP1();
-    ok(LP1.length > 0, "58.P1a0 GitHub was written, so the shrink check means something");
-    ok(
-      LP1.every((n, i) => i === 0 || n >= LP1[i - 1]),
-      `58.P1a GitHub never holds fewer lines than before (writes: ${JSON.stringify(LP1)})`
-    );
-    eq(saved().items?.length, 18, "58.P1c the local copy ends with the union, 18 lines");
-    eq((await win.sync.get()).body?.ledger?.items?.length, 18, "58.P1d and the Worker ends with the union, 18 lines");
-  }
-
-  /* P4, a port of the reviewer's probe. 3 local lines meet 12 remote ones, so the
-     union is 15. A touch 6 s before the conflict holds the apply, the merge POST
-     fails, the page hides, and the net comes back. No write to GitHub holds fewer
-     than before: a mutant that gates the merged text on mirror mode wrote 15, then 3. */
-  {
-    const touchP4 = () => act(async () => { win.dispatchEvent(new win.Event("pointerdown")); await sleep(0); });
-    const lensP4 = () => remote.history.map((h) => JSON.parse(h.text).items.length);
-    await boot({ items: LOCAL58, received: {} }, null, { remote: asRemote58(REMOTE58), remoteKey: GH58, syncKey: KEY58 });
-    await settle();
-    await click(btn(/Mark all received/), "check in, so the Worker holds this device's copy");
-    await sleep(POST58);
-    await settle();
-    setSyncNetFail(true);
-    try {
-      await sleep(AUTO58 - POST58 - 5000);
-      await touchP4();
-      await sleep(6000);
-      await settle();
-      await background();
-      await settle();
-    } finally {
-      setSyncNetFail(false);
-    }
-    await sleep(AUTO58 + 1000);
-    await settle();
-    const LP4 = lensP4();
-    ok(LP4.length > 0, "58.P4a0 GitHub was written, so the no-short-write check means something");
-    ok(
-      LP4.every((n, i) => i === 0 || n >= LP4[i - 1]),
-      `58.P4a GitHub never holds fewer lines than before (writes: ${JSON.stringify(LP4)})`
-    );
-    eq(LP4.at(-1), 15, "58.P4b and the last write holds the union, 15 lines");
-  }
+  /* P1 and P4 retired by the switch (owner ruling 2026-10-14): they read the lines the
+     mirror wrote to GitHub. The Worker's no-short-write claim is 56.3b. */
 
   /* P5. Two Worker replies arrive while a recent touch holds the apply: the
      bigger first, then one that lacks its lines. The mirror push that runs while
@@ -6705,23 +5938,23 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   {
     const touchP5 = () => act(async () => { win.dispatchEvent(new win.Event("pointerdown")); await sleep(0); });
     const ledgerP5 = (items) => ({ mailday: 1, items, received: {}, envelopes: [] });
-    await boot({ items: ITEMS.slice(0, 6), received: {} }, null, { remoteKey: GH58, syncKey: KEY58 });
+    await boot({ items: ITEMS.slice(0, 6), received: {} }, null, { syncKey: KEY58 });
     await settle();
     await click(btn(/Mark all received/), "check in, so the mirror push is due");
     await sleep(POST58);
     await settle();
     await sleep(AUTO58 - POST58 - 5000);
     await touchP5();
-    await fireSyncRev(syncRev() + 1, ledgerP5(REMOTE58)); /* the newer reply: 12 lines */
-    await fireSyncRev(syncRev() + 1, ledgerP5(REMOTE58.slice(0, 2))); /* the older one: 2 of them */
+    await fireSyncRev(syncRev() + 1, ledgerP5(REMOTE58.slice(0, 2))); /* the older reply: 2 of them */
+    await fireSyncRev(syncRev() + 1, ledgerP5(REMOTE58)); /* the newer reply: 12 lines, last to arrive */
     eq(saved().items?.length, 6, "58.P5a0 both replies are held by the touch, so the local copy still has 6 lines");
-    await sleep(6000);
+    await sleep(11000); /* past IDLE_APPLY_MS (10000), so the held reply applies */
     await settle();
-    ok(pushes().length > 0, "58.P5a1 a mirror push ran while the replies were held");
+    ok(workerPosts().length > 0, "58.P5a1 a POST ran while the replies were held");
     eq(
-      JSON.parse(pushes().at(-1).text).items.length,
+      saved().items?.length ?? 0,
       18,
-      "58.P5a the push carries the newer reply's lines: 6 local and 12 from the Worker"
+      "58.P5a the device ends with both sides' lines: 6 local and 12 from the newer reply"
     );
   }
 }
@@ -6858,7 +6091,7 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   await boot(SEED59, null, { remoteKey: GH59, syncAdapter: true, remote: null });
   /* the GitHub push comes first. It is a mirror now and sets no Worker agreement
      (owner ruling 2026-10-12, default 5), so the Sync row must not read Backed up. */
-  await mirrorPush();
+  await wakePush();
   await openPanel59();
   await onLedger();
   await settle();
@@ -6891,15 +6124,15 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   await closePanel59();
   ok(!/no sync key/.test(text()), "59.7c after a good save and a panel close, no 'no sync key' line remains");
 
-  /* 59.8. A device that shows the public seed holds no key of its own. A pasted key
-     must not POST the seed's ledger to the Worker. Read seed-load-guards. */
-  await boot(null, null, { remote: null, seed: SEED, syncAdapter: true });
+  /* 59.8. A device that holds nothing of its own has no key. A pasted key must not
+     POST from it to the Worker. */
+  await boot(null, null, { remote: null, syncAdapter: true });
   await settle();
-  ok(/someone else’s ledger/.test(text()), "59.8pre the device shows the public seed");
+  ok(/Drop your OrderWand CSV here/.test(text()), "59.8pre the device starts on the empty ledger");
   await openPanel59();
-  ok(!!field59(), "59.8pre2 the sync key field is reachable on the seeded device");
+  ok(!!field59(), "59.8pre2 the sync key field is reachable on the empty device");
   await pasteKey59(KEY59);
-  eq(count59("post"), 0, "59.8a a pasted key on a seeded device POSTs nothing to the Worker");
+  eq(count59("post"), 0, "59.8a a pasted key on an empty device POSTs nothing to the Worker");
 
   /* 59.9. When setKey throws, the field is cleared anyway, and the refusal shows.
      The real adapter's throw path in entry.jsx has no seam here: see the report. */
@@ -6918,9 +6151,8 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     win.sync.setKey = realSet9;
   }
 
-  /* 59.10. A seeded page with a server ledger present. A pasted good key GETs the
-     ledger and merges it. The "someone else's ledger" line goes, and a later
-     check-in POSTs a ledger that carries it. */
+  /* 59.10. An empty device with a server ledger present. A pasted good key GETs the
+     ledger and merges it, and a later check-in POSTs a ledger that carries it. */
   const SERVER59 = {
     mailday: 1,
     items: ITEMS.slice(0, 3),
@@ -6929,13 +6161,13 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     sortBy: "newest",
     itemSort: "missing",
   };
-  await boot(null, null, { remote: null, seed: SEED, syncAdapter: true, syncLedger: SERVER59 });
+  await boot(null, null, { remote: null, syncAdapter: true, syncLedger: SERVER59 });
   await settle();
-  ok(/someone else’s ledger/.test(text()), "59.10pre the device shows the public seed");
+  ok(/Drop your OrderWand CSV here/.test(text()), "59.10pre the device starts on the empty ledger");
   await openPanel59();
   await pasteKey59(KEY59);
-  ok(count59("get") > 0, "59.10a a pasted key on a seeded page with a server ledger GETs it");
-  ok(!/someone else’s ledger/.test(text()), "59.10b and the seed line is gone once the ledger merges");
+  ok(count59("get") > 0, "59.10a a pasted key on an empty device with a server ledger GETs it");
+  ok(!/Drop your OrderWand CSV here/.test(text()), "59.10b and the server ledger replaces the empty state");
   const posts10 = count59("post");
   const lastPost10 = syncCalls().filter((c) => c.op === "post").pop();
   const checkins10 = (c) => Object.keys(JSON.parse(c?.body ?? "{}").received ?? {}).length;
@@ -6995,9 +6227,8 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   await sleep(APPLY_WAIT);
   ok(saved().received?.[ITEMS[2].key] === 1, "59.13b and it applies once the idle gate opens");
 
-  /* 59.14. Gap 1: a seeded page and a server ledger that holds a check-in the seed
-     lacks. The paste applies that ledger, so the seed line goes (the clear on the
-     applied path, app.jsx ~4544), and a later check-in POSTs. */
+  /* 59.14. Gap 1: an empty device and a server ledger that holds a check-in the
+     device lacks. The paste applies that ledger, and a later check-in POSTs. */
   const SERVER14 = {
     mailday: 1,
     items: ITEMS.slice(0, 3),
@@ -7007,12 +6238,12 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     sortBy: "newest",
     itemSort: "missing",
   };
-  await boot(null, null, { remote: null, seed: SEED, syncAdapter: true, syncLedger: SERVER14 });
+  await boot(null, null, { remote: null, syncAdapter: true, syncLedger: SERVER14 });
   await settle();
-  ok(/someone else’s ledger/.test(text()), "59.14pre the device shows the public seed");
+  ok(/Drop your OrderWand CSV here/.test(text()), "59.14pre the device starts on the empty ledger");
   await openPanel59();
   await pasteKey59(KEY59);
-  ok(!/someone else’s ledger/.test(text()), "59.14a a server ledger with check-ins applies, and the seed line goes");
+  ok(!/Drop your OrderWand CSV here/.test(text()), "59.14a a server ledger with check-ins applies and replaces the empty state");
   const posts14 = count59("post");
   await toggleShowing();
   /* Mark all received is a package button: it lives on Packages, not the Ledger */
@@ -7402,11 +6633,11 @@ const underFloorL1 = () =>
    same card wins" copy went with the Merge button; the rule itself is pinned
    by 49.1 to 49.4 and 50.A1. */
 await boot(PHONE_STATE, null, {
-  remoteAtBoot: LAPTOP_PUSHED,
-  remoteKey: "github_pat_testtoken",
+  syncLedger: LAPTOP_PUSHED,
+  syncKey: "device-61-key",
 });
 await settle();
-await sleep(SAVE_WAIT);
+await sleep(10_500); /* the held apply: IDLE_APPLY_MS is 10 s (sync-rules) */
 ok(/Merged/.test(text()), "61.1 a cold open against a newer remote says what the merge took");
 ok(!GITHUB_STATE_TEXT.test(text()), "61.2 and shows no GitHub copy for the same state");
 ok(!/nothing here is replaced/.test(text()), "61.3 and it no longer says nothing here is replaced");
@@ -8035,30 +7266,36 @@ ok(panelOpen66(), "66.7pre the Sync panel is open");
 ok(/could not be reached/i.test(text()), "66.7pre2 the Worker cannot be reached, and the page says so");
 guardWords66("66.7 Worker failing");
 
-/* 66.8 photos: 26 queued, one batch of 25 per tap (PHOTO_BATCH) */
+/* 66.8 photos: 26 queued, one batch of 25 per tap (PHOTO_BATCH). The Worker route takes
+   the batch. The no-GitHub-photo guard is 73.3, the one that main fails. */
+const PHOTO_WAIT66 = 1500; /* the photo phase follows the ledger POST by one second */
 const MANY66 = Array.from({ length: 26 }, (_, i) => `pho-m${i}`);
-await boot(withPhoto(MANY66), MANY66.map((id, i) => [id, jpegOf(i + 1)]), { remoteKey: GH66 });
+await boot(withPhoto(MANY66), MANY66.map((id, i) => [id, jpegOf(i + 1)]), {
+  syncKey: KEY66,
+  remoteKey: GH66,
+});
 await background();
 await drain();
-await sleep(60);
+await wakeWorker();
+await sleep(PHOTO_WAIT66);
 eq(
-  remote.calls.filter((c) => c.op === "pushPhoto").length,
+  syncCalls().filter((c) => c.op === "photoPut").length,
   25,
-  "66.8pre one tap sends a batch of 25 while 26 are queued"
+  "66.8pre one tap sends a batch of 25 to the Worker while 26 are queued"
 );
 await openSync();
 await settle();
 ok(panelOpen66(), "66.8pre2 the Sync panel is open");
 guardWords66("66.8 over 25 photos queued");
 
-/* 66.9 photo key missing: the photo repo cannot be read without a key */
+/* 66.9 photo route refused: the Worker answers 401 to the photo list, so the photo line
+   says photos could not sync and names no credential */
 await boot(withPhoto(["pho-nk"]), [["pho-nk", jpegOf(1)]], {
-  remoteKey: GH66,
-  photosUnknown: "no-access",
+  syncKey: KEY66,
+  syncPhotosRefused: true,
 });
-await background();
-await drain();
-await sleep(60);
+await wakeWorker();
+await sleep(PHOTO_WAIT66);
 await openSync();
 await settle();
 ok(panelOpen66(), "66.9pre the Sync panel is open");
@@ -8078,7 +7315,7 @@ ok(
   !/\b(keys?|tokens?|credentials?|passwords?|sign.?in)\b/i.test(photoLeaves66()),
   "66.9 and the photo line names no credential"
 );
-guardWords66("66.9 photo path 404");
+guardWords66("66.9 photo route refused");
 
 /* 66.4 the last Worker agreement survives a reload, and a boot-time reply that
    fails cannot replace it. The agreement is written by a real session first. */
@@ -8374,7 +7611,8 @@ try {
   ok(FALLBACK67.test(text()), "67.F1 a milestone that cannot be written refuses the load and says the data is damaged");
   eq(savedText(), JSON.stringify(seeded), "67.F1a the saved text is not changed");
   eq(postCount(), 0, "67.F1b no Worker push starts");
-  eq(pushes().length, 0, "67.F1c no GitHub push starts");
+  /* GitHub leaves the sync role (owner ruling 2026-10-14): no GitHub verb runs, not only a push */
+  eq(githubOps(), [], "67.F1c no GitHub op runs");
   await openHistory();
   ok(!!btn(/^Backup$/), "67.F1d History opens and Backup is reachable");
 } catch (e) {
@@ -8390,7 +7628,7 @@ try {
   ok(FALLBACK67.test(text()), "67.F2 a saved text that is not JSON refuses the load and says the data is damaged");
   eq(savedText(), RAW67, "67.F2a the raw text is kept byte for byte");
   eq(postCount(), 0, "67.F2b no Worker push starts");
-  eq(pushes().length, 0, "67.F2c no GitHub push starts");
+  eq(githubOps(), [], "67.F2c no GitHub op runs");
   await openHistory();
   ok(!!btn(/^Backup$/), "67.F2d History opens and Backup is reachable");
 } catch (e) {
@@ -8618,17 +7856,14 @@ try {
   ok(false, `68.8 threw: ${e.message}`);
 }
 
-/* 68.9 F1: a Worker copy that cannot be saved, then the device retries with a POST. A GitHub
-   conflict on a mirror push merges, then calls the Worker directly. That call goes: a copy that
-   cannot be saved never holds the send. */
+/* 68.9 F1: a Worker copy that cannot be saved, then the device retries with a POST. A check-in
+   after the failed copy still POSTs to the Worker, and GitHub takes no call (the switch). */
 try {
   await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
     versions: VERS67(),
     failPut: true,
     syncAdapter: true,
     syncKey: KEY68,
-    remoteKey: GH67,
-    remote: VER67_TEXT,
     syncLedger: withField67("received", ["x"]),
   });
   await sleep(SAVE_WAIT);
@@ -8638,19 +7873,13 @@ try {
   await sleep(SAVE_WAIT);
   ok(postCount() > 0, "68.9pre the retry after the failed copy was a POST, not a read: the copy gate is past");
   const posts68b = postCount();
-  const pushes68b = remote.calls.filter((c) => c.op === "push").length;
-  const pulls68b = remote.calls.filter((c) => c.op === "pull").length;
-  await click(btn(/Mark all received/), "check in on the mirror");
-  /* the background event runs auto-push at once. The 3 s save timer also fires in the wait, but
-     its POST is gated off by the lastServer check (growServer set lastServer before the cut).
-     The only POST in that window is the conflict branch's own call to the Worker. */
+  await click(btn(/Mark all received/), "check in with the Worker key");
   await drain();
-  await background();
+  await wakeWorker();
   await drain();
   await sleep(POST_WAIT);
-  ok(remote.calls.filter((c) => c.op === "pull").length > pulls68b, "68.9pre the mirror push met a moved sha, so the conflict path read GitHub");
-  ok(remote.calls.filter((c) => c.op === "push").length > pushes68b, "68.9pre the mirror pushed to GitHub, so the conflict path runs");
-  ok(postCount() > posts68b, "68.9 a GitHub conflict on a mirror push still POSTs to the Worker while the copy is missing");
+  ok(postCount() > posts68b, "68.9 a check-in after a failed copy still POSTs to the Worker");
+  eq(githubOps(), [], "68.9a and GitHub takes no call (the switch)");
 } catch (e) {
   ok(false, `68.9 threw: ${e.message}`);
 }
@@ -8945,6 +8174,427 @@ try {
   sweepDisabled("the stamp editor with no kind");
 } catch (e) {
   ok(false, `70.4 threw: ${e.message}`);
+}
+
+uninstallClock();
+
+/* ── 71. the switch: once the Worker holds the key, GitHub takes no write and no read ──
+   Owner ruling 2026-10-14 21:12 CDT, decision sync-revamp-cloudflare (stage 4b, the switch).
+   The Worker is the only sync path. GitHub stops being a live second copy, and the Worker's
+   daily snapshots are the backup (worker-keeps-snapshots). The forbidden set is every call
+   that writes GitHub or reads its ledger or photos. History's reads stay allowed:
+   listVersions and getVersion read the frozen data branch.
+   Red on the pre-switch build: its mirror timer pushes to GitHub, and its resume peeks.
+   Each case first checks a precondition that holds before and after the switch (a Worker
+   POST, or a Worker call that fails), so a red here means GitHub was called. */
+const KEY71 = "device-71-key";
+const GH71 = "github_pat_testtoken";
+const GITHUB_CALLS71 = new Set([
+  "push",
+  "pushForce",
+  "pushPhoto",
+  "peek",
+  "pull",
+  "acceptPull",
+  "listPhotos",
+  "pullPhoto",
+]);
+const githubCalls71 = () => [
+  ...new Set(remote.calls.filter((c) => GITHUB_CALLS71.has(c.op)).map((c) => c.op)),
+];
+const checkIn71 = () => click(btn(/Mark all received/), "check in with a Worker key and a GitHub key");
+
+/* 71.1 a check-in, the 90s mirror window, and a resume after an absence. The Worker
+   answers, and GitHub holds a key. */
+installClock();
+try {
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { remoteKey: GH71, syncKey: KEY71 });
+  await settle();
+  await checkIn71();
+  await sleep(POST_WAIT);
+  ok(postCount() > 0, "71.1pre the Worker is POSTed the check-in within SYNC_POST_MS");
+  ok(syncRev() > 0, "71.1b and the Worker holds it, so the ledger still reaches the Worker");
+  await sleep(AUTO_MS + 1000);
+  await backgroundFor(5 * 60_000);
+  await settle();
+  eq(
+    githubCalls71().join(", "),
+    "",
+    "71.1a with a Worker key, a check-in, an idle 90s and a resume make no GitHub call"
+  );
+} catch (e) {
+  ok(false, `71.1 threw: ${e.message}`);
+}
+
+/* 71.2 the Worker does not answer. The write must not fall back to GitHub: the
+   pre-switch build peeks and pushes when the Worker is down. */
+try {
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+    remoteKey: GH71,
+    syncKey: KEY71,
+    syncNetFail: true,
+  });
+  await settle();
+  await checkIn71();
+  await sleep(POST_WAIT);
+  ok(postCount() > 0, "71.2pre the Worker is called, and it does not answer");
+  await sleep(AUTO_MS + 1000);
+  await backgroundFor(5 * 60_000);
+  await settle();
+  eq(githubCalls71().join(", "), "", "71.2a with the Worker down, GitHub still takes no call");
+} catch (e) {
+  ok(false, `71.2 threw: ${e.message}`);
+}
+
+/* 71.3 keep green: a fresh keyed device recovers from the Worker alone, so the switch
+   leaves recovery on a new device without a GitHub read. */
+try {
+  await boot(null, null, {
+    remoteKey: GH71,
+    syncKey: KEY71,
+    syncLedger: { mailday: 1, items: ITEMS.slice(0, 4), received: {}, envelopes: [] },
+  });
+  await settle();
+  await pageshow();
+  await sleep(APPLY_WAIT);
+  eq(saved().items?.length ?? 0, 4, "71.3a a fresh keyed device restores the Worker's ledger");
+  eq(githubCalls71().join(", "), "", "71.3b and it makes no GitHub call to do so");
+} catch (e) {
+  ok(false, `71.3 threw: ${e.message}`);
+}
+
+/* 71.4 keep green: History reaches the screen on a keyed device with no version store.
+   The gate is window.versions || window.remote (recovery-control-not-state-gated).
+   The versions-only side is 63.17, a device with no remote. */
+try {
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+    remoteKey: GH71,
+    syncKey: KEY71,
+    noVersions: true,
+  });
+  await onLedger();
+  ok(!!cell(/^History/), "71.4 a keyed device with no version store still reaches History");
+} catch (e) {
+  ok(false, `71.4 threw: ${e.message}`);
+}
+
+/* ── 72. a restore stamps new change times, so a later Worker reply cannot undo it ──
+   Debt restore-stamps-new-change-times; decision a-restore-is-not-local. A restore keeps the
+   old change times where the device's copy is unchanged or never held, so a Worker reply that
+   carries an older server copy can undo the restore. Red at the lane head for each kind
+   (check-in, uncheck, stamp, envelope) in three forms: changed (the device's copy differs from
+   the version), unchanged (the restore leaves it as it was), and never-held (the device has no
+   copy). Each case runs on both restore paths (History and a file drop) and both reply routes
+   (the POST merge and a rev-gated GET).
+
+   The times are ordered: the version's are 5 (the device's are 20 in the changed forms), the
+   server's are 30, and the restore moment is the virtual clock, far later. The server copy
+   predates the restore, so a restore that stamps new change times wins against 30; one that
+   keeps the old times loses to it. The server copy is set after the restore. */
+installClock();
+const K72 = ITEMS[0].key;
+const GK72 = GK_A;
+const ENV72 = { id: "env-72", createdAt: 20, updatedAt: 20, note: "", entries: [{ name: "Ponder", qty: 1 }], photos: [] };
+const LEDGER72 = (fields) => ({
+  mailday: 1,
+  items: ITEMS.slice(0, 3),
+  received: {},
+  envelopes: [],
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+  ...fields,
+});
+const CASES72 = {
+  checkin: {
+    cur: { received: { [K72]: 1 }, receivedAt: { [K72]: 20 } },
+    version: { received: {}, receivedAt: {} },
+    server: { received: { [K72]: 1 }, receivedAt: { [K72]: 30 } },
+    restored: (x) => x.received?.[K72] === undefined,
+    undone: (x) => x.received?.[K72] === 1,
+  },
+  uncheck: {
+    cur: { received: {}, receivedAt: { [K72]: 20 } },
+    version: { received: { [K72]: 1 }, receivedAt: { [K72]: 5 } },
+    server: { received: {}, receivedAt: { [K72]: 30 } },
+    restored: (x) => x.received?.[K72] === 1,
+    undone: (x) => x.received?.[K72] === undefined,
+  },
+  stamp: {
+    cur: { stamps: { [GK72]: S("claim", 20) } },
+    version: { stamps: {} },
+    server: { stamps: { [GK72]: S("claim", 30) } },
+    restored: (x) => !x.stamps?.[GK72]?.kind,
+    undone: (x) => x.stamps?.[GK72]?.kind === "claim",
+  },
+  envelope: {
+    cur: { envelopes: [ENV72] },
+    version: { envelopes: [] },
+    server: { envelopes: [{ ...ENV72, updatedAt: 30 }] },
+    restored: (x) => (x.envelopes ?? []).filter((e) => !e.deletedAt).length === 0,
+    undone: (x) => (x.envelopes ?? []).some((e) => !e.deletedAt),
+  },
+  "checkin-unchanged": {
+    cur: { received: { [K72]: 1 }, receivedAt: { [K72]: 5 } },
+    version: { received: { [K72]: 1 }, receivedAt: { [K72]: 5 } },
+    server: { received: {}, receivedAt: { [K72]: 30 } },
+    restored: (x) => x.received?.[K72] === 1,
+    undone: (x) => x.received?.[K72] === undefined,
+  },
+  "checkin-never-held": {
+    cur: { received: {}, receivedAt: {} },
+    version: { received: { [K72]: 1 }, receivedAt: { [K72]: 5 } },
+    server: { received: {}, receivedAt: { [K72]: 30 } },
+    restored: (x) => x.received?.[K72] === 1,
+    undone: (x) => x.received?.[K72] === undefined,
+  },
+  "uncheck-unchanged": {
+    cur: { received: {}, receivedAt: { [K72]: 5 } },
+    version: { received: {}, receivedAt: { [K72]: 5 } },
+    server: { received: { [K72]: 1 }, receivedAt: { [K72]: 30 } },
+    restored: (x) => x.received?.[K72] === undefined,
+    undone: (x) => x.received?.[K72] === 1,
+  },
+  "stamp-unchanged": {
+    cur: { stamps: { [GK72]: S("claim", 5) } },
+    version: { stamps: { [GK72]: S("claim", 5) } },
+    server: { stamps: { [GK72]: TOMB(30) } },
+    restored: (x) => x.stamps?.[GK72]?.kind === "claim",
+    undone: (x) => !x.stamps?.[GK72]?.kind,
+  },
+  "stamp-never-held": {
+    cur: { stamps: {} },
+    version: { stamps: { [GK72]: S("claim", 5) } },
+    server: { stamps: { [GK72]: TOMB(30) } },
+    restored: (x) => x.stamps?.[GK72]?.kind === "claim",
+    undone: (x) => !x.stamps?.[GK72]?.kind,
+  },
+  "envelope-unchanged": {
+    cur: { envelopes: [{ ...ENV72, updatedAt: 5 }] },
+    version: { envelopes: [{ ...ENV72, updatedAt: 5 }] },
+    server: { envelopes: [{ ...ENV72, updatedAt: 30, deletedAt: 30, entries: [], photos: [] }] },
+    restored: (x) => (x.envelopes ?? []).some((e) => !e.deletedAt),
+    undone: (x) => !(x.envelopes ?? []).some((e) => !e.deletedAt),
+  },
+  "envelope-never-held": {
+    cur: { envelopes: [] },
+    version: { envelopes: [{ ...ENV72, updatedAt: 5 }] },
+    server: { envelopes: [{ ...ENV72, updatedAt: 30, deletedAt: 30, entries: [], photos: [] }] },
+    restored: (x) => (x.envelopes ?? []).some((e) => !e.deletedAt),
+    undone: (x) => !(x.envelopes ?? []).some((e) => !e.deletedAt),
+  },
+};
+const KEY72 = "device-72-key";
+const SRV72 = (fields) => LEDGER72({ ...fields, items: ITEMS.slice(0, 4) });
+
+for (const [kind, c] of Object.entries(CASES72)) {
+  for (const path of ["history", "file"]) {
+    for (const reply of ["post", "rev"]) {
+      const tag = `72.${kind}.${path}.${reply}`;
+      try {
+        /* the device, with no server copy yet: its cold GET must not apply anything here */
+        await boot(LEDGER72(c.cur), null, { syncKey: KEY72 });
+        await settle();
+        if (path === "history") {
+          /* the frozen branch holds the version (a fixture, not a device write) */
+          remote.history.push({
+            sha: `sha-72-${kind}`,
+            at: Date.parse("2026-08-12T14:03:00Z"),
+            message: `ledger 72 ${kind} version`,
+            text: JSON.stringify(LEDGER72(c.version)),
+          });
+          await openHistory();
+          await click(btn(/Load older versions/), "ask for the branch's versions");
+          await settle();
+          await click(
+            buttons().find((b) => b.textContent.includes(`ledger 72 ${kind} version`)),
+            "expand the version"
+          );
+          await click(btn(/Restore this version/), "arm restore");
+          if (btn(/Tap again to replace/)) await click(btn(/Tap again to replace/), "confirm restore");
+        } else {
+          await reachFor(/Re-import CSV/);
+          if (cell(/^Re-import CSV/)?.getAttribute("aria-expanded") !== "true")
+            await click(btn(/Re-import CSV/), "open the upload zone");
+          await dropFile("backup.json", JSON.stringify(LEDGER72(c.version)));
+          if (btn(/Tap again to replace/)) await click(btn(/Tap again to replace/), "confirm restore");
+        }
+        await settle();
+        await sleep(SAVE_WAIT);
+        ok(c.restored(saved()), `${tag}.pre the restore put the version's ${kind} on the device`);
+        /* a restore leaves its notice open, and an open notice holds the apply (mergeBlocked,
+           importMsg). Dismiss it, as the person would, so the reply can land at all. */
+        for (let i = 0; i < 3; i++) {
+          const d = document.querySelector('button[aria-label="Dismiss"]');
+          if (!d) break;
+          await click(d, "dismiss the restore notice");
+        }
+        /* the other device's copy, which predates the restore moment. It holds one line
+           more than the version, so the apply is visible, and the resume applies it at once
+           (34.23, 40.4). A POST reply is held for the idle gate, so the resume forces it. */
+        if (reply === "post") {
+          setServerLedger(SRV72(c.server));
+          await wakeWorker();
+          await drain();
+        } else {
+          await fireSyncRev(syncRev() + 1, SRV72(c.server));
+        }
+        await backgroundFor(5 * 60_000);
+        await drain();
+        await sleep(SAVE_WAIT);
+        ok(saved().items?.length === 4, `${tag}.applied the reply applied its extra line, so the check below means something`);
+        eq(c.undone(saved()), false, `${tag} the Worker reply does not undo the restored ${kind}`);
+      } catch (e) {
+        ok(false, `${tag} threw: ${e.message}`);
+      }
+    }
+  }
+}
+
+/* ── 73. photos go to the Worker, and no photo call reaches GitHub ──
+   The switch (owner ruling 2026-10-14 21:55 CDT: photos move to the Worker's /photos route,
+   decision sync-revamp-cloudflare). Red at the lane head: the app still sends photos through
+   GitHub's photo calls and has no Worker photo client. The Worker mock is the contract
+   (photoList, photoGet, photoPut in test/harness.mjs). */
+const PHOTO_WAIT73 = 1500; /* the photo phase follows the ledger POST by one second */
+const KEY73 = "device-73-key";
+const GH73 = "github_pat_testtoken";
+
+/* 73.1 a new photo reaches the Worker after the ledger POST */
+await boot(withPhoto(["pho-n"]), [["pho-n", jpegOf(4)]], { syncKey: KEY73 });
+await wakeWorker();
+await sleep(PHOTO_WAIT73);
+ok(workerPosts().length > 0, "73.1pre the ledger POST went out first");
+eq(syncPhotoNames(), ["pho-n.jpg"], "73.1 a new photo reaches the Worker after the POST");
+
+/* ── 74. no photo is lost to a server apply, or to a POST made during a photo push ──
+   Findings (2) and (3) of the 2026-10-15 review. A server apply strips an id the Worker does
+   not hold, so a device without the blob drops a photo another device is still uploading. A
+   POST made while a photo push is in flight loses its photo phase: the timer finds the push
+   busy and never runs again. Red at the lane head. */
+const KEY74 = "device-74-key";
+const ENV74 = {
+  id: "env-74",
+  createdAt: 1,
+  note: "",
+  entries: [{ name: "Ponder", qty: 1 }],
+  photos: ["pho-74"],
+};
+
+/* 74.1 device A holds the photo, and its ledger reaches the Worker. The blob upload fails,
+   so the Worker lacks the photo. */
+await boot({ items: ITEMS, received: {}, envelopes: [ENV74] }, [["pho-74", jpeg()]], {
+  syncKey: KEY74,
+});
+setSyncPhotoFail(true);
+await wakeWorker();
+await sleep(PHOTO_WAIT73);
+ok(
+  syncLedgerNow()?.envelopes?.some((e) => e.id === "env-74"),
+  "74.1pre the ledger that names the photo reached the Worker"
+);
+eq(syncPhotoNames(), [], "74.1pre and the Worker still lacks the photo");
+const WORKER74 = syncLedgerNow();
+
+/* 74.2 device B has no copy of the photo, and the Worker does not hold it yet. B's server
+   apply must keep the id, because A may still upload the blob. */
+await boot({ items: ITEMS, received: {} }, null, { syncKey: KEY74, syncLedger: WORKER74 });
+await resume30();
+eq(
+  saved().envelopes?.find((e) => e.id === "env-74")?.photos ?? null,
+  ["pho-74"],
+  "74.2 a server apply keeps an id the Worker does not hold yet"
+);
+
+/* 74.3 A's upload lands. The Worker now holds the blob, and B's next apply fetches it. */
+addSyncPhoto("pho-74.jpg", jpeg());
+setServerLedger({ ...WORKER74, received: { [ITEMS[0].key]: 1 } });
+await resume30();
+ok(saved().received?.[ITEMS[0].key] === 1, "74.3pre the newer ledger applied");
+ok(photoKeys().includes("pho-74"), "74.3a the device fetches the photo the Worker now holds");
+await sleep(SWEEP_WAIT);
+ok(photoKeys().includes("pho-74"), "74.3 and the sweep keeps it, because its envelope still names it");
+
+/* 74.4 a POST made while a photo push is in flight still gets its photos pushed. The first
+   push is held at its one photo. A second photo lands during the hold, and POST2's photo
+   phase finds the push busy. */
+const ENV74B = {
+  id: "env-74b",
+  createdAt: 2,
+  note: "",
+  entries: [{ name: "Brainstorm", qty: 1 }],
+  photos: ["pho-74b"],
+};
+await boot({ items: ITEMS, received: {}, envelopes: [ENV74, ENV74B] }, [["pho-74", jpeg()]], {
+  syncKey: KEY74,
+});
+const releasePut74 = holdSyncPhotoPuts();
+await wakeWorker();
+await sleep(1500); /* POST1 lands, its photo phase starts, and the put for pho-74 is held */
+ok(
+  syncCalls().some((c) => c.op === "photoPut"),
+  "74.4pre the first photo put is in flight"
+);
+photoStore.set("pho-74b", jpeg()); /* the second photo lands on this device */
+await wakeWorker(); /* POST2 goes out while the put is held */
+await sleep(1500);
+ok(workerPosts().length >= 2, "74.4a the second POST went out during the hold");
+releasePut74();
+await sleep(3000);
+ok(
+  syncPhotoNames().includes("pho-74b.jpg"),
+  "74.4 and the photo that landed during the push reaches the Worker"
+);
+
+/* 73.3 no photo call reaches GitHub. A device with a GitHub key and no Worker key is the
+   path the switch removes: keyless GitHub sync goes (owner ruling 2026-10-14). Green at the
+   lane head, where nothing reaches GitHub; red on main, where a hidden page writes the photo to
+   GitHub. The guard is read against that red, so it is not spent. */
+await boot(withPhoto(["pho-n"]), [["pho-n", jpegOf(4)]], { remoteKey: GH73 });
+ok(text().length > 0, "73.3pre the page renders, so the GitHub check below means something");
+ok(!!photoKeys().includes("pho-n"), "73.3pre the device holds the photo its ledger names");
+await background();
+await drain();
+await sleep(PHOTO_WAIT73);
+eq(
+  githubOps().filter((op) => /Photo/.test(op)),
+  [],
+  "73.3 no photo call reaches GitHub (pushPhoto, listPhotos, pullPhoto)"
+);
+
+/* 73.2 the other device fetches a photo before a reply applies. The photo download is
+   held (setSyncPhotoDelay), so the reply that names it must wait for the download. */
+const SERVER73 = {
+  mailday: 1,
+  ...withPhoto(["pho-o"]),
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+};
+/* the Worker holds pho-o, so there is a photo for the device to fetch */
+await boot({ items: ITEMS, received: {} }, null, {
+  syncKey: KEY73,
+  syncPhotos: [["pho-o.jpg", jpegOf(1)]],
+});
+await settle();
+setServerLedger(SERVER73);
+setSyncPhotoDelay(5000);
+try {
+  await backgroundFor(5 * 60_000);
+  await sleep(1000);
+  ok(
+    !(saved().envelopes ?? []).some((e) => (e.photos ?? []).includes("pho-o")),
+    "73.2a the reply has not applied while the photo is still in flight"
+  );
+  await sleep(6000);
+  ok(photoKeys().includes("pho-o"), "73.2b the photo is fetched from the Worker before the apply");
+  eq(
+    saved().envelopes?.[0]?.photos ?? null,
+    ["pho-o"],
+    "73.2c and the reply then applies with its id kept"
+  );
+} finally {
+  setSyncPhotoDelay(0);
 }
 
 uninstallClock();

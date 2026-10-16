@@ -1,5 +1,9 @@
 # The Ledger tab holds the options
 
+Kind: process
+
+Home: decisions/sync-revamp-cloudflare.md
+
 The owner ruled on 2026-10-11: "E for sure". The bar in `phone-nav-is-bottom-bar` has a fourth tab, Ledger. The working screens hold no option rows. The Ledger tab holds the options.
 
 The owner ruled on 2026-10-12, on GitHub sync: "i thought we are eliminating push and pull". The GitHub controls leave the UI. This follows the 2026-10-11 ruling "Cloudflare does it all" (`sync-revamp-cloudflare`).
@@ -37,7 +41,7 @@ The Sync group shows three things:
 
 It holds no GitHub control. It has no Pull, no Push, no Merge, and no armed ask.
 
-The GitHub mirror push still runs in the background. `worker-keeps-snapshots` replaces it. The mirror code stays. A GitHub conflict waits for the mirror to resolve it. No button resolves it.
+The GitHub mirror left the build with the switch, so nothing runs in the background. `worker-keeps-snapshots` replaces its backup. The GitHub adapter code stays in `entry.jsx` until slice S3. No button resolves a GitHub conflict.
 
 ## Defaults and invariants
 

@@ -11,12 +11,12 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 /* the REAL codec, not a mock of it — see the note on the remote mock below */
 import { utf8ToBase64, base64ToUtf8, blobToBase64 } from "../src/b64.mjs";
-import { photoName, mimeFromName } from "../src/photo-rules.mjs";
+import { photoName, photoIdFromName, mimeFromName } from "../src/photo-rules.mjs";
 import { prunePlan } from "../src/version-rules.mjs";
 import { syncStatus } from "../src/sync-rules.mjs";
 import { mergeLedger } from "../src/merge-rules.mjs";
 /* the Worker's real size cap, so the mock refuses what the server refuses */
-import { MAX_LEDGER_BYTES } from "../worker/core.mjs";
+import { MAX_LEDGER_BYTES, MAX_PHOTO_BYTES } from "../worker/core.mjs";
 
 export const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -462,7 +462,25 @@ win.remote = remoteApi;
    `sync.key`, outside `store`, so storage.list() cannot see it.
    HARNESS CONTRACT ONLY. entry.jsx is not bundled here, so these cases prove
    this mock, not the adapter. */
-const syncFresh = () => ({ key: null, ledger: null, rev: 0, netFail: false, tooBig: false, badShape: false, badShapes: 0, refused: false, calls: [], onRev: null });
+const syncFresh = () => ({ key: null, ledger: null, rev: 0, netFail: false, tooBig: false, badShape: false, badShapes: 0, refused: false, calls: [], onRev: null, photos: new Map() });
+/* the photo names the Worker holds (worker/core.mjs, /photos): what a test asserts on */
+export const syncPhotoNames = () => [...sync.photos.keys()];
+/* the wire name the Worker holds for an id, or null: the photo route is named id.ext */
+const wireNameOf = (id) => [...sync.photos.keys()].find((k) => photoIdFromName(k) === id) ?? null;
+/* the ledger the Worker holds now, after any POST merge (what a second device would read) */
+export const syncLedgerNow = () => sync.ledger;
+/* the other device's copy, as the Worker would hold it now: the next resume reads it */
+export const setServerLedger = (ledger) => {
+  sync.ledger = ledger;
+  sync.rev += 1;
+};
+/* photoFail: every photo write fails at the network. photoDelay: ms each photo read waits */
+export const setSyncPhotoFail = (on) => {
+  sync.photoFail = !!on;
+};
+export const setSyncPhotoDelay = (ms) => {
+  sync.photoDelay = ms;
+};
 let sync = syncFresh();
 export const syncCalls = () => sync.calls;
 /* how many close functions connect() has handed out and that were called.
@@ -510,6 +528,20 @@ export const holdSyncPosts = () => {
     sync.hold = null;
     release();
   };
+};
+/* holds every photo write until the returned release() is called, so a test can POST while
+   a photo push is in flight. Set after boot(), which resets `sync`. */
+export const holdSyncPhotoPuts = () => {
+  let release;
+  sync.photoHold = new Promise((r) => (release = r));
+  return () => {
+    sync.photoHold = null;
+    release();
+  };
+};
+/* a peer's upload: the Worker holds `name` from now on, as a second device would see it */
+export const addSyncPhoto = (name, blob) => {
+  sync.photos.set(name, blob);
 };
 /* holds the cold-open GET until releaseSyncGet() is called. boot()'s holdGet option sets
    it before the mount, so the first GET of that mount is the one held (group 69.2). */
@@ -599,6 +631,43 @@ const syncApi = {
     return () => {
       syncCloses += 1;
     };
+  },
+  /* The Worker's photo routes (worker/core.mjs, /photos). The app speaks ids and blobs.
+     The wire speaks file names, id.ext, and the Worker keeps each photo under its name.
+     So the harness answers in ids and stores under photoName(id, type). An app that builds
+     a file name itself hands this mock a name where it expects an id, and the tests fail.
+     photoList() = GET /photos, photoGet(id) = GET /photos/<name>, photoPut(id, blob) =
+     POST /photos/<name>. The write is once per name, as the route is. A refused key answers
+     401, a network failure answers status null. */
+  async photoList() {
+    sync.calls.push({ op: "photoList", keyed: !!sync.key });
+    if (sync.netFail) return syncReply(null, null);
+    if (sync.refused || !sync.key) return syncReply(401, { error: "unauthorized" });
+    /* syncPhotosRefused: the ledger reads and the photo list does not (a photo-only refusal) */
+    if (sync.photoRefused) return syncReply(401, { error: "unauthorized" });
+    return syncReply(200, { ids: [...sync.photos.keys()].map(photoIdFromName).filter(Boolean) });
+  },
+  async photoGet(id) {
+    const name = wireNameOf(id);
+    sync.calls.push({ op: "photoGet", id, name, keyed: !!sync.key });
+    if (sync.netFail) return syncReply(null, null);
+    if (sync.refused || !sync.key) return syncReply(401, { error: "unauthorized" });
+    /* photoDelay: a slow download, the only way to put the 2s sweep between two arrivals */
+    if (sync.photoDelay) await sleep(sync.photoDelay);
+    const blob = name ? sync.photos.get(name) : undefined;
+    return blob ? syncReply(200, { blob }) : syncReply(404, { error: "not found" });
+  },
+  async photoPut(id, blob) {
+    const name = photoName(id, blob.type);
+    sync.calls.push({ op: "photoPut", id, name, keyed: !!sync.key });
+    if (sync.netFail) return syncReply(null, null);
+    if (sync.refused || !sync.key) return syncReply(401, { error: "unauthorized" });
+    /* held by holdSyncPhotoPuts(): the write is in flight until the test releases it */
+    if (sync.photoHold) await sync.photoHold;
+    if (sync.photoFail) return syncReply(null, null);
+    if (blob.size > MAX_PHOTO_BYTES) return syncReply(413, { error: "photo-too-large" });
+    if (!sync.photos.has(name)) sync.photos.set(name, blob);
+    return syncReply(200, { id });
   },
 };
 win.sync = syncApi;
@@ -1118,10 +1187,19 @@ export async function boot(state, photos, opts = {}) {
      leaks straight into 31 */
   remotePhotos = new Map(opts.remotePhotos || []);
   photosUnknown = opts.photosUnknown || null;
-  /* the snapshot build.mjs bakes into index.html. Mocked as plain text: the
-     gzip+base64 packing is the platform layer's business, exactly as it is for
-     the version store, and jsdom has no DecompressionStream. */
-  if (opts.seed) win.seed = { async load() { return opts.seed; } };
+  /* a seed planted for 38d, which proves the app never reads one. The build step
+     that baked a snapshot into index.html is gone (ruling 2026-10-14). Mocked as
+     plain text: the packing is the platform layer's business, and jsdom has no
+     DecompressionStream. */
+  /* `loads` counts reads: a page that reads the seed at load bumps it. */
+  if (opts.seed)
+    win.seed = {
+      loads: 0,
+      async load() {
+        this.loads++;
+        return opts.seed;
+      },
+    };
   else if (opts.noSeed === false) delete win.seed;
   else delete win.seed;
   versionStore = new Map(opts.versions || []);
@@ -1164,6 +1242,9 @@ export async function boot(state, photos, opts = {}) {
   /* a seeded device key and server ledger, set before mount so the app sees
      them at its first read. The server is at rev 1 once it holds a ledger. */
   if (opts.syncKey) sync.key = opts.syncKey;
+  /* the Worker's stored photos, as [name, Blob] pairs (the /photos route) */
+  if (opts.syncPhotos) sync.photos = new Map(opts.syncPhotos);
+  if (opts.syncPhotosRefused) sync.photoRefused = true;
   if (opts.holdGet) sync.holdGet = new Promise((r) => (syncGetRelease = r));
   if (opts.syncLedger) {
     sync.ledger = opts.syncLedger;

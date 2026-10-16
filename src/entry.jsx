@@ -269,39 +269,6 @@ window.versions = {
   },
 };
 
-/* ---- the public seed ----
-   A snapshot baked into index.html by build.mjs, so someone opening the public
-   URL lands on a populated app instead of an empty one. The ledger repo is
-   private and Pages has never served it; this is how the site carries data
-   without the repo carrying it publicly.
-
-   Read-only and one-way by construction: it hydrates into the visitor's OWN
-   localStorage, so anything they do afterwards is theirs and stays on their
-   device. Pushing back needs a token they do not have.
-
-   Inflated here rather than in app.jsx for the same reason gzip lives in the
-   version store: the app deals in ledger text and never learns how it was
-   packed. Returns null whenever there is no seed, which is every local build
-   made without the data branch to hand. */
-window.seed = {
-  async load() {
-    const tag = document.getElementById("seed");
-    const packed = tag?.textContent?.trim();
-    if (!packed) return null;
-    try {
-      const bytes = Uint8Array.from(atob(packed), (c) => c.charCodeAt(0));
-      if (typeof DecompressionStream !== "function") return null;
-      const s = new Blob([bytes]).stream().pipeThrough(
-        new DecompressionStream("gzip")
-      );
-      const text = await new Response(s).text();
-      return typeof text === "string" && text ? text : null;
-    } catch {
-      return null;
-    }
-  },
-};
-
 /* ---- remote backup: the GitHub Contents API ----
    TRANSPORT, not storage. localStorage stays the source of truth; this is a
    manual, tap-triggered push/pull so the ledger survives losing the phone, ITP
@@ -879,23 +846,21 @@ const syncSave = (k) => {
     } catch {}
   }
 }
-/* reply: {status: HTTP status or null on a network failure, body, code} */
-const syncCall = async (method, ledger) => {
+/* One Worker call: reply is {status: HTTP status or null on a network failure, body}.
+   `read` turns the response into the body. The ledger and the photos share it, so
+   the key, the timeout and the unreachable rule have one home. */
+const workerCall = async (path, init, read) => {
   const key = syncKey();
   if (!key) return { status: 401, body: { error: "unauthorized" } };
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), SYNC_TIMEOUT_MS);
   try {
-    const res = await fetch(`${SYNC_URL}/ledger`, {
+    const res = await fetch(`${SYNC_URL}${path}`, {
       signal: ctl.signal,
-      method,
-      headers: {
-        Authorization: `Bearer ${key}`,
-        ...(ledger ? { "Content-Type": "application/json" } : {}),
-      },
-      body: ledger ? JSON.stringify({ ledger }) : undefined,
+      ...init,
+      headers: { Authorization: `Bearer ${key}`, ...init.headers },
     });
-    const body = await res.json().catch(() => null);
+    const body = await read(res);
     /* a 200 with no readable body is not an answer: count it as unreachable */
     if (res.status === 200 && !body) return { status: null, body: null };
     return { status: res.status, body };
@@ -905,6 +870,32 @@ const syncCall = async (method, ledger) => {
     clearTimeout(timer);
   }
 };
+const readJson = (res) => res.json().catch(() => null);
+const syncCall = (method, ledger) =>
+  workerCall(
+    "/ledger",
+    {
+      method,
+      headers: ledger ? { "Content-Type": "application/json" } : {},
+      body: ledger ? JSON.stringify({ ledger }) : undefined,
+    },
+    readJson
+  );
+/* The photo route (worker/core.mjs, /photos). The app speaks ids and blobs. A photo
+   is named id.ext on the wire; the type lives in the name, so a read builds its Blob
+   from the bytes and the name and never from the response header. `heldNames` is
+   id -> name from the last list. ponytail: the 10 s call limit also covers a photo (up
+   to 1.9 MB); a slow link fails the call and the next sync retries. */
+const heldNames = new Map();
+const photoCall = (method, name, blob) =>
+  workerCall(
+    name ? `/photos/${name}` : "/photos",
+    blob ? { method, headers: { "Content-Type": blob.type || "application/octet-stream" }, body: blob } : { method },
+    async (res) =>
+      method === "GET" && name && res.status === 200
+        ? { blob: new Blob([await res.arrayBuffer()], { type: mimeFromName(name) }) }
+        : readJson(res)
+  );
 window.sync = {
   async hasKey() {
     return !!syncKey();
@@ -925,6 +916,35 @@ window.sync = {
   },
   async post(ledger) {
     const r = await syncCall("POST", ledger);
+    return { ...r, code: syncStatus(r.status) };
+  },
+  /* the Worker's photos: list the names it holds, read one, write one (once per name) */
+  async photoList() {
+    const r = await photoCall("GET");
+    const code = syncStatus(r.status);
+    if (code !== "ok" || !Array.isArray(r.body?.ids)) return { ...r, code };
+    heldNames.clear();
+    for (const n of r.body.ids) {
+      const id = photoIdFromName(n);
+      if (id) heldNames.set(id, n);
+    }
+    return { ...r, body: { ...r.body, ids: [...heldNames.keys()] }, code };
+  },
+  /* A read asks for the name the Worker listed, since that name carries the type. An id
+     not on the last list is listed again first; still missing, it is not there. A guessed
+     id.jpg would read a PNG back typed as a JPEG. */
+  async photoGet(id) {
+    if (!heldNames.has(id)) {
+      const l = await window.sync.photoList();
+      if (l.code !== "ok") return l;
+    }
+    const name = heldNames.get(id);
+    if (!name) return { status: 404, body: { error: "not found" }, code: "empty" };
+    const r = await photoCall("GET", name);
+    return { ...r, code: syncStatus(r.status) };
+  },
+  async photoPut(id, blob) {
+    const r = await photoCall("POST", photoName(id, blob.type), blob);
     return { ...r, code: syncStatus(r.status) };
   },
   /* onRev(rev) fires on each pushed {rev}. Returns a close function. */
