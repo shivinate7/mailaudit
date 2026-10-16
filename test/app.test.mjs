@@ -4058,16 +4058,43 @@ const PHOTO_WAIT47 = 1500; /* the photo phase follows the ledger POST by one sec
     itemSort: "missing",
   };
   const keysBefore = win.photos.keys;
+  const setBefore = win.storage.set;
+  /* a SLOW read that then fails: the survey takes 1.5 s before it bails, so the held
+     apply lands late. The test waits for the ledger write that carries the id, not
+     for a clock: the apply waits IDLE_APPLY_MS (10 s, sync-rules), and the save
+     debounce adds 500 ms after it. A fixed sleep here raced that chain. */
   win.photos.keys = async () => {
+    await sleep(1500);
     throw new Error("local photo store unreadable");
   };
+  const carriesPho = (v) => {
+    try {
+      return JSON.parse(v)?.envelopes?.[0]?.photos?.includes("pho-a") === true;
+    } catch {
+      return false;
+    }
+  };
+  let onWrite;
+  const landed = new Promise((res) => (onWrite = res));
+  win.storage.set = async (k, v) => {
+    const r = await setBefore(k, v);
+    if (carriesPho(v)) onWrite();
+    return r;
+  };
+  let ceiling;
   try {
     /* a cold mount is a fresh session, so the ahead Worker merges with no tap */
     await boot({ items: ITEMS, received: {} }, null, { syncKey: KEY47, syncLedger: PHOTO47 });
     await settle();
-    await sleep(10_500); /* the held apply: IDLE_APPLY_MS is 10 s (sync-rules) */
+    /* the ceiling only ends a run whose write never lands; the test then fails on the eq */
+    await Promise.race([
+      landed,
+      new Promise((res) => (ceiling = setTimeout(res, 20_000))),
+    ]);
   } finally {
+    clearTimeout(ceiling);
     win.photos.keys = keysBefore;
+    win.storage.set = setBefore;
   }
   eq(
     saved().envelopes?.[0]?.photos ?? null,
