@@ -1,6 +1,6 @@
 # The native key scan skips SwiftUI view state
 
-The key scan covers the Packages model, its rows and the ledger file. No lane scans SwiftUI view state. The gap closes when a lane adds that scan.
+**What.** No lane scans SwiftUI view state. The key scan covers the Packages model, its rows and the ledger file. The gap closes when a lane adds that scan.
 
 **Status:** open. The owner names the lane.
 

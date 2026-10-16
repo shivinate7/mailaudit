@@ -1,6 +1,6 @@
 # Native UI tests and builds are not in CI
 
-The native job runs the ST tests only. Its workflow runs `xcodebuild -version` and `swift --version`, and nothing else. Lane C2 adds the missing steps. In order, they are:
+**What.** The native job runs the ST tests only, so native UI tests and builds are not in CI. Its workflow runs `xcodebuild -version` and `swift --version`, and nothing else. Lane C2 adds the missing steps. In order, they are:
 
 - pin Xcode with `xcode-select`;
 - run xcodegen;

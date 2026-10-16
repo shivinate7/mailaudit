@@ -1,6 +1,6 @@
 # Re-import, Backup and Reset on Orphaned have no test
 
-Re-import, Backup and Reset must stay reachable from Orphaned. No test pins that, and it is unverified. The gap closes when a test pins all three on the Orphaned tab.
+**What.** No test pins that Re-import, Backup and Reset must stay reachable from Orphaned, and it is unverified. When a test pins all three on the Orphaned tab, the gap closes.
 
 **Status:** open.
 
