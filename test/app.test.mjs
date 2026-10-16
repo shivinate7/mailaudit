@@ -732,13 +732,17 @@ const big = JSON.parse(bigText);
 ok(!!big.photos?.["pho-3"], "19.4 photo backup inlines the image");
 ok(/^data:/.test(big.photos["pho-3"]), "19.5 as a data URL");
 
-/* a photo-less restore must not leave ids pointing at blobs that exist nowhere */
+/* a photo-less restore keeps the ids. This device lacks the blob, but another device or the
+   Worker may hold it, and a stripped id is lost for every device: the holder's sweep then
+   drops the blob. The settle before the next fresh() stopped an intermittent stall at 30.13
+   (3 of 5 runs stalled without it, 0 of 2 with it). */
 await fresh();
 await reachFor(/Re-import CSV/);
 await click(btn(/Re-import CSV/), "show upload zone");
 await dropFile("plain.json", smallText);
 await sleep(SAVE_WAIT);
-eq(saved().envelopes[0].photos, [], "19.6 photo-less restore strips the ids");
+eq(saved().envelopes[0].photos, ["pho-3"], "19.6 photo-less restore keeps the ids");
+await sleep(SWEEP_WAIT);
 
 /* the migration path: land on a fresh origin, get the photos back */
 await fresh(); // empty photo store
@@ -1526,24 +1530,30 @@ eq(got30?.type ?? null, "image/jpeg", "30.8 with its own type, not the Worker's"
 await sleep(SWEEP_WAIT);
 eq(photoKeys(), ["pho-a"], "30.9 and the sweep leaves the downloaded blob alone");
 
-/* the store is there but genuinely lacks it — the only case where dropping the
-   id is right, and it must still say so rather than fail silently */
+/* the store is there and the Worker lacks the blob. The id stays: another device may still
+   be uploading it, and this one cannot tell (26.13, photo-ids-unreadable-local). */
 await boot({ items: ITEMS, received: {} }, null, { syncKey: KEY30, syncLedger: SERVER30(withPhoto(["pho-a"])) });
 await resume30();
 ok(
   workerPhotoCalls30().some((c) => c.op === "photoList"),
-  "30.10pre the app read the Worker's photo list before it dropped an id"
+  "30.10pre the app read the Worker's photo list before it decided about an id"
 );
 eq(
   saved().envelopes?.[0]?.photos ?? null,
-  [],
-  "30.10 a photo missing everywhere is dropped from the envelope"
+  ["pho-a"],
+  "30.10 a photo the Worker lacks yet is kept on the envelope"
 );
-/* the loss is shown in the Sync panel, with no GitHub word */
+/* The Worker lacking a blob does not mean no device holds it, so the Sync panel must not
+   say the photo is gone. The panel-open mark proves the negative was read from the open panel. */
 await openSync();
 ok(
-  /photo/i.test(text()) && /gone|lost|no other copy|only copy/i.test(text()) && !/GitHub/.test(text()),
-  "30.10b a photo with no copy left is warned about, and no GitHub word is on screen"
+  !!document.querySelector('input[aria-label="GitHub access token"]') ||
+    cell(/^Sync/)?.getAttribute("aria-expanded") === "true",
+  "30.10c the Sync panel is open when the photo wording is read"
+);
+ok(
+  !/no copy left/i.test(text()) && !/GitHub/.test(text()),
+  "30.10b a photo the Worker lacks yet is not reported lost, and no GitHub word is on screen"
 );
 
 /* a photo write that fails: the Sync panel arms no two-tap and puts no Push or
