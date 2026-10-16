@@ -83,7 +83,7 @@ The native build needs these changes to the Worker. On main the Worker serves `/
 
 ## Still open
 
-- Web photos: the one-time copy of the 8 GitHub photos ran on 2026-10-16, between 03:02 and 03:08 CDT. The GitHub adapter's photo and write paths (slice S3) are not removed. Debt: `web-photos-have-no-backup`.
+- Web photos: the one-time copy of the 8 GitHub photos ran on 2026-10-16, between 03:02 and 03:08 CDT. The GitHub adapter's photo and write paths (slice S3) are not removed. Debts: `web-photos-have-no-backup`, `photo-put-unrun-on-github`.
 - The History-restore fix is built in this lane (`restampRestore`, called from `applyBackup`). It lands before the switch merges, as the owner ruled.
 - Whether a Cloudflare Access login survives in an iOS home-screen app. This is untested. Debt: `cloudflare-access-login-untested`.
 - Live updates use a WebSocket. A new rev from the other device starts one GET, and the reply waits for the idle gate.
