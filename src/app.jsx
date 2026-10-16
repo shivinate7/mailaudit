@@ -3567,15 +3567,26 @@ export default function MailDayLedger() {
       /* a restore replaces everything, so anything still in flight against the
          old world must not land on the new one */
       syncGen.current++;
-      /* Every restore keeps every photo id. This device lacking a blob does not
-         say that no device holds it, and a stripped id is gone for every device:
-         the restore restamps its envelopes, so it wins the merge, and the holder's
-         sweep then drops the blob. Keeping an id costs a blank tile until a sync
-         brings the blob; stripping it costs the photo. Blobs inlined in a backup
-         file are written to this device below. */
+      /* A restore (backup file, saved version) drops a photo id this device does not
+         hold, and keeps one whose blob is here or inlined in the payload (owner ruling
+         2026-10-15). Accepted cost: a device that still holds the blob may delete it once
+         this restore wins the merge. A merge and a server apply keep every id, and so does
+         a store that will not answer: unreadable is not empty (photo-ids-unreadable-local). */
       const inlined =
         data.photos && typeof data.photos === "object" ? data.photos : null;
       const inlinedIds = Object.keys(inlined || {});
+      let present = null; /* null keeps every id */
+      if (replacing) {
+        let localIds = [];
+        if (window.photos) {
+          try {
+            localIds = await window.photos.keys();
+          } catch {
+            localIds = null;
+          }
+        }
+        if (localIds) present = new Set([...localIds, ...inlinedIds]);
+      }
       /* a merge or server apply carries the applied ledger's time; its own save keeps it.
          A restore (backup file, saved version) is a fresh save of that ledger: it stamps
          now, so it wins unknown-key conflicts afterwards (owner ruling 2026-10-14) */
@@ -3587,7 +3598,12 @@ export default function MailDayLedger() {
       setItems(data.items);
       setReceived(data.received || {});
       setReceivedAt(stamped.receivedAt || {});
-      setEnvelopes((stamped.envelopes || []).map((e) => ({ ...e, photos: e.photos || [] })));
+      setEnvelopes(
+        (stamped.envelopes || []).map((e) => ({
+          ...e,
+          photos: (e.photos || []).filter((id) => !present || typeof id !== "string" || present.has(id)),
+        }))
+      );
       setStamps(sanitizeStamps(stamped.stamps));
       if (inlinedIds.length && window.photos)
         (async () => {
