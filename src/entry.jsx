@@ -884,8 +884,8 @@ const syncCall = (method, ledger) =>
 /* The photo route (worker/core.mjs, /photos). The app speaks ids and blobs. A photo
    is named id.ext on the wire; the type lives in the name, so a read builds its Blob
    from the bytes and the name and never from the response header. `heldNames` is
-   id -> name from the last list, so a read asks for the name the Worker holds. ponytail: the 10 s call limit also covers a
-   photo (up to 1.9 MB); a slow link fails the call and the next sync retries. */
+   id -> name from the last list. ponytail: the 10 s call limit also covers a photo (up
+   to 1.9 MB); a slow link fails the call and the next sync retries. */
 const heldNames = new Map();
 const photoCall = (method, name, blob) =>
   workerCall(
@@ -930,8 +930,17 @@ window.sync = {
     }
     return { ...r, body: { ...r.body, ids: [...heldNames.keys()] }, code };
   },
+  /* A read asks for the name the Worker listed, since that name carries the type. An id
+     not on the last list is listed again first; still missing, it is not there. A guessed
+     id.jpg would read a PNG back typed as a JPEG. */
   async photoGet(id) {
-    const r = await photoCall("GET", heldNames.get(id) || photoName(id, "image/jpeg"));
+    if (!heldNames.has(id)) {
+      const l = await window.sync.photoList();
+      if (l.code !== "ok") return l;
+    }
+    const name = heldNames.get(id);
+    if (!name) return { status: 404, body: { error: "not found" }, code: "empty" };
+    const r = await photoCall("GET", name);
     return { ...r, code: syncStatus(r.status) };
   },
   async photoPut(id, blob) {
