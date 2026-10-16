@@ -129,7 +129,7 @@ A photo is a picture of a mailing label. It never enters the ledger, and it can 
 - `photos-stay-out-of-the-ledger` — Photo blobs never enter the ledger.
 - `photo-sync-cannot-conflict` — Photo sync cannot conflict by design.
 - `photo-errors-never-hit-pushstate` — A photo error never reaches pushState.
-- `photo-ids-restore-keep-if-known` — A restore keeps every photo id. Open: the owner has not confirmed it.
+- `photo-ids-restore-keep-if-known` — A restore keeps only the photo ids this device holds.
 - `photo-ids-unreadable-local` — An unreadable local photo store keeps ids.
 - `photo-thumbnails-and-viewer` — Thumbnails are 56px squares, and the viewer is a scrim.
 - `photo-sweep-two-guards` — The photo sweep has two guards.
@@ -408,6 +408,9 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `cloudflare-access-login-untested` — A Cloudflare Access login in an iOS home-screen app is untested.
 - `backup-unwatched` — No alarm watches the backup after the watchdog is off.
 - `worker-two-device-proof-unrun` — The two-device merge is not proven against the Worker.
+- `photoget-list-fallback-untested` — The photoGet list-first fallback has no test.
+- `sweep-settle-masks-30-13-stall` — The SWEEP_WAIT settle after 19.6 hides a stall at 30.13.
+- `unheld-photo-never-reported` — A lost photo is never reported.
 
 ## Measurements
 

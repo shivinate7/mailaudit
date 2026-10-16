@@ -16,7 +16,7 @@ Plan: decisions/sync-revamp-cloudflare.md#web-plan (web)
 
 ## See also
 
-- `photo-ids-restore-keep-if-known` — the rule that keeps a photo id on restore.
+- `photo-ids-restore-keep-if-known` — the rule that keeps a photo id on restore only when this device holds it.
 - `merge-later-change-wins` — the merge that unions the envelopes.
 - `merge-carries-no-two-tap-arm` — the merge's entrances.
 - `every-restore-passes-applybackup` — the function this order protects.

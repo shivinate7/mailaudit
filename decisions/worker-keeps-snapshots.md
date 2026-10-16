@@ -1,8 +1,8 @@
 # The Worker keeps daily snapshots, and GitHub leaves the sync role
 
-**Status:** ruled. The owner ruled on 2026-10-11: "Cloudflare does it all". The owner ruled on 2026-10-14 that the snapshots are the backup, see `sync-revamp-cloudflare`, and that the backup watchdog in the private repo is turned off, which the orchestrator carries out. Lane W3a built the snapshots. It landed on main in PR #79. Group 13 (tests 13.1 to 13.9) holds the snapshot tests. At W3a, `npm run test:worker` read 312 passed, 0 failed.
+**Status:** ruled. The owner ruled on 2026-10-11: "Cloudflare does it all". The owner ruled on 2026-10-14 that the snapshots are the backup, see `sync-revamp-cloudflare`. The backup watchdog in the private repo is off by that ruling. The orchestrator carries that out. Lane W3a built the snapshots. It landed on main in PR #79. Group 13 (tests 13.1 to 13.9) holds the snapshot tests. At W3a, `npm run test:worker` read 312 passed, 0 failed.
 
-GitHub leaves the sync role entirely. The Worker keeps daily snapshots of the ledger for History and for backup. The owner turned the backup watchdog off on 2026-10-14. The public seed is gone. The owner ruled on 2026-10-11 and on 2026-10-14/15 to drop it, and `82e45d4` removed it. The page carries no ledger, so a visitor sees an empty app. The seed stays in public git history, see debt `seed-in-public-history`.
+GitHub leaves the sync role entirely. The Worker keeps daily snapshots of the ledger for History and for backup. The backup watchdog is off by the owner's ruling of 2026-10-14. The public seed is gone. The owner ruled on 2026-10-11 and on 2026-10-14/15 to drop it, and `82e45d4` removed it. The page carries no ledger, so a visitor sees an empty app. The seed stays in public git history, see debt `seed-in-public-history`.
 
 **Holds while:** History still reads the frozen `data` branch (`window.remote.listVersions` and `getVersion` in `src/app.jsx`), and no web code reads the Worker snapshot routes (`web-reads-no-worker-snapshots`).
 
@@ -18,7 +18,7 @@ Since the switch, no device writes the `data` branch. History reads that frozen 
 
 - The Worker holds the truth and its history. It needs no GitHub token.
 - History and backup read Worker snapshots, for the web app and for the native client. Web History does not read them yet, see `web-reads-no-worker-snapshots`.
-- The owner turned the backup watchdog off on 2026-10-14. No check reads the Worker's backup now, see `backup-unwatched`.
+- The backup watchdog is off by the owner's ruling of 2026-10-14. No check reads the Worker's backup now, see `backup-unwatched`.
 - The web mirror is off since the switch. `sync-revamp-cloudflare` no longer carries mirror rulings.
 - The Worker keeps exactly 180 daily snapshots: the window is today and the 179 days before it, with at most one snapshot per UTC day. They sit in a SQLite table of its Durable Object. The defaults are in the next section.
 
@@ -41,10 +41,13 @@ Orchestrator defaults of 2026-10-12, not owner rulings. The snapshot, `/health` 
 
 ## Records that the switch and the seed removal change
 
-These records stay true until their replacement ships.
+Retired. These no longer hold:
 
-- `the-public-seed` and `ledger-remote-needed-for-seed` — retired. `82e45d4` removed the seed and the build step that read the data remote.
-- `watchdog-catches-silent-failure` and `watchdog-lives-in-private-repo` — retired. The owner turned the watchdog off.
+- `the-public-seed` and `ledger-remote-needed-for-seed` — `82e45d4` removed the seed and the build step that read the data remote.
+- `watchdog-catches-silent-failure` and `watchdog-lives-in-private-repo` — the backup watchdog is off by the owner's ruling of 2026-10-14.
+
+These stay true until their replacement ships:
+
 - `older-versions-come-off-branch` and `history-restores-a-saved-version` — History that reads the branch, until web reads the snapshots.
 - `data-branch-setup` — the frozen branch.
 
