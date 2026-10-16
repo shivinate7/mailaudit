@@ -3968,6 +3968,31 @@ try {
   win.photos.keys = realKeys;
 }
 
+/* 47.8: the same file restore with NO photo store at all (window.photos absent). A missing
+   store cannot be read, so it is unreadable, not empty (photo-ids-unreadable-local). The
+   pho-k blob is not held here, so an empty-store reading would drop the id as the 19.6 rule
+   does. The id must survive. 47.8pre pins the precondition, so this cannot pass vacuously. */
+{
+  await boot({ items: ITEMS, received: {}, envelopes: [] }, []);
+  await goTo("orphaned");
+  await reachFor(/Re-import CSV/);
+  await click(btn(/Re-import CSV/), "show upload zone");
+  const realPhotos = win.photos;
+  delete win.photos;
+  try {
+    eq(win.photos, undefined, "47.8pre the photo store is absent for this restore");
+    await dropFile("ledger.json", KEYS_DOWN_LEDGER);
+    await sleep(SAVE_WAIT);
+    eq(
+      saved().envelopes[0].photos,
+      ["pho-k"],
+      "47.8 with no photo store, a restore keeps the id it cannot check, and the saved ledger keeps it"
+    );
+  } finally {
+    win.photos = realPhotos;
+  }
+}
+
 /* 47.3, 47.4 and 47.7 retired: they measured the Sync panel's option grid
    (Push, Merge, Pull cells, odd last cell spanning the row), and that grid left
    the UI with the verbs (owner ruling 2026-10-12). Nothing renders a span now. */
