@@ -14,20 +14,14 @@ Web no longer writes to GitHub, and no device holds a GitHub token. The target i
 
 **`mailaudit` is PUBLIC and holds no data.** It is also what makes Actions and Pages free. Measured anonymously after the move, the Pages site answers **200**. But `api.github.com/repos/shivinate7/mailaudit-data` and `raw.githubusercontent.com/shivinate7/mailaudit-data/data/ledger.json` both answer **404**. The ledger repo stays private for hygiene, not secrecy. A backup store does not belong in the repo that serves a public site. The consequence was real: **every device needed a GitHub token for everything.** GitHub hides a repo that you cannot see behind a 404, not a 403.
 
-Until the seed removal lands (owner ruling 2026-10-14/15), a clone also needs a remote named `ledger` for the seed to build:
-
-```bash
-git remote add ledger https://github.com/shivinate7/mailaudit-data.git && git fetch ledger data
-```
-
-Without that remote, the build is seedless. `npm run check:seed` reports this, but it does not fail. On a machine where the ref *does* resolve, though, a seedless committed page is a hard failure. That means that the build dropped a seed it could have made.
+The public seed is removed, so a clone needs no `ledger` remote to build.
 
 Still true on the GitHub side:
 
 - The `data` branch carries the ledger's history, 130 commits at the time of the move. Its tip blob is identical to the old repo's. Blob shas are content-addressed, so no device needed re-keying.
 - Pages on `mailaudit` is set to deploy from `main` `(root)`. Nothing the app writes touches that repo, so a backup cannot trigger a site rebuild. Not re-checked in this lane.
 
-- `.github/workflows` holds one file, `test.yml`. The guarantee that a ledger push triggers nothing rests on its filters. `test.yml` has `branches: [main]` plus a paths filter. Nothing under `src/` or `test/` ever changes on `data`, which carries one file. It deliberately does **not** trigger on `index.html`, because `npm run deploy` commits that file separately. Re-running the suite on the build output would double every deploy for no new information. `test.yml` also checks that the committed `index.html` still matches what the sources build. A local deploy can skip that check by accident. The check runs through `check:build`, which compares the code and ignores the seed. A second step runs `check:seed`, which decodes the seed the committed page carries and refuses anything outside `SEED_KEEP`. The two steps together ask two questions: is the page this repo's code, and what does its data publish? Read the filters before you add a workflow.
+- `.github/workflows` holds one file, `test.yml`. The guarantee that a ledger push triggers nothing rests on its filters. `test.yml` has `branches: [main]` plus a paths filter. Nothing under `src/` or `test/` ever changes on `data`, which carries one file. It deliberately does **not** trigger on `index.html`, because `npm run deploy` commits that file separately. Re-running the suite on the build output would double every deploy for no new information. `test.yml` also checks that the committed `index.html` still matches what the sources build. A local deploy can skip that check by accident. The check runs through `check:build`, which compares the whole page with the build of `src/`. A second step runs `check:seed`, which refuses a seed tag, a packed data script or a ledger payload in the committed page. The two steps together ask two questions: is the page this repo's code, and does it publish any ledger data? Read the filters before you add a workflow.
 
 - The backup watchdog is turned off (owner ruling 2026-10-14). It lived in the private repo. Its alarm was measured to fire once, on issue #4. No alarm watches the backup: see `backup-unwatched`.
 

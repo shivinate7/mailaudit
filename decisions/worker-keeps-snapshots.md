@@ -2,9 +2,9 @@
 
 **Status:** ruled. The owner ruled on 2026-10-11: "Cloudflare does it all". The owner ruled on 2026-10-14 that the snapshots are the backup, see `sync-revamp-cloudflare`, and that the backup watchdog in the private repo is turned off, which the orchestrator carries out. Lane W3a built the snapshots. It landed on main in PR #79. Group 13 (tests 13.1 to 13.9) holds the snapshot tests. At W3a, `npm run test:worker` read 312 passed, 0 failed.
 
-GitHub leaves the sync role entirely. The Worker keeps daily snapshots of the ledger for History and for backup. The owner turned the backup watchdog off on 2026-10-14. The public seed goes away. The owner ruled on 2026-10-11 to drop it, so the ledger stops being public and a visitor sees an empty app.
+GitHub leaves the sync role entirely. The Worker keeps daily snapshots of the ledger for History and for backup. The owner turned the backup watchdog off on 2026-10-14. The public seed is gone. The owner ruled on 2026-10-11 to drop it, and `82e45d4` removed it, so the ledger stops being public and a visitor sees an empty app.
 
-**Holds while:** History still reads the frozen `data` branch (`window.remote.listVersions` and `getVersion` in `src/app.jsx`), no web code reads the Worker snapshot routes (`web-reads-no-worker-snapshots`), and `build.mjs` still builds the public seed.
+**Holds while:** History still reads the frozen `data` branch (`window.remote.listVersions` and `getVersion` in `src/app.jsx`), and no web code reads the Worker snapshot routes (`web-reads-no-worker-snapshots`).
 
 Kind: build
 
@@ -12,7 +12,7 @@ Plan: decisions/worker-keeps-snapshots.md#snapshot-defaults (worker)
 
 ## Why
 
-Since the switch, no device writes the `data` branch. History and the public seed read that frozen branch. Native never holds a GitHub token, see `the-token-is-a-credential`.
+Since the switch, no device writes the `data` branch. History reads that frozen branch. Native never holds a GitHub token, see `the-token-is-a-credential`.
 
 ## What the ruling means
 
@@ -37,13 +37,13 @@ Orchestrator defaults of 2026-10-12, not owner rulings. The snapshot, `/health` 
 ## Rejected
 
 - A Worker cron that mirrors to the `data` branch. It would put a GitHub token in a Worker secret.
-- The Mac browser as the one mirror. The seed, History and the watchdog would go stale once both devices are native.
+- The Mac browser as the one mirror. History and the watchdog would go stale once both devices are native.
 
 ## Records that the switch and the seed removal change
 
 These records stay true until their replacement ships.
 
-- `the-public-seed` and `ledger-remote-needed-for-seed` — the seed and the build step that reads the data remote. The seed removal is not in this lane.
+- `the-public-seed` and `ledger-remote-needed-for-seed` — retired. `82e45d4` removed the seed and the build step that read the data remote.
 - `watchdog-catches-silent-failure` and `watchdog-lives-in-private-repo` — retired. The owner turned the watchdog off.
 - `older-versions-come-off-branch` and `history-restores-a-saved-version` — History that reads the branch, until web reads the snapshots.
 - `data-branch-setup` — the frozen branch.

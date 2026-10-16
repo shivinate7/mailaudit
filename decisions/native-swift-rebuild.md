@@ -1,5 +1,11 @@
 # MANIFEST is rebuilt as a native Swift client
 
+Kind: build
+
+Plan: decisions/native-swift-rebuild.md#what-native-changes-per-problem (native)
+
+Plan: decisions/native-swift-rebuild.md#what-the-rebuild-must-keep (web)
+
 **Status:** ruled. The owner ruled on 2026-10-11: "Make it a mandate not a leaning. WE are rebuilding". No Swift code is built yet. The lanes and their order are in `native-build-lanes`.
 
 MANIFEST is rebuilt as a native Swift client. The client talks to the same Cloudflare Worker, so the server and its merge rules carry over. The paste-key fix has landed. The Swift sync client waits for the stage 4b switch. Lanes that change only JavaScript, shared files or the Worker start first, see `native-build-lanes`.
@@ -66,7 +72,7 @@ The owner ruled on 2026-10-11 to follow the Degen repo's D32, "Native SwiftUI ap
 - The Worker is the one home of the merge. The Swift client sends its changes and renders the reply. So `src/merge-rules.mjs` is never ported to Swift.
 - The view rules run in JavaScriptCore, so they have one home too, see `rules-run-in-javascriptcore`.
 - The palette tokens and the test fixtures are shared files, built for both clients, see `shared-tokens-and-fixtures`.
-- The web app stays for any browser and for CSV import, see `csv-import-stays-web`. The public seed goes away, see `worker-keeps-snapshots`.
+- The web app stays for any browser and for CSV import, see `csv-import-stays-web`. The public seed is gone: the owner ruled it out on 2026-10-11, and `82e45d4` removed it, see `worker-keeps-snapshots`.
 
 The Mac gains the Keychain key and native storage. In Safari it had the 7-day rule, which counts days of Safari use (WebKit blog, "Full Third-Party Cookie Blocking and More", 2020). Its key also sat on the shared origin. The cost is a parity table to keep, and a shared-token build step.
 

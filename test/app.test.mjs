@@ -3213,13 +3213,11 @@ ok(
 eq(saved().items?.length ?? 3, 3, "38c.3 and nothing on this device changed");
 remote.private = false;
 
-/* ── 38d. the public seed ─────────────────────────────────────────────────
-   The site is public and the ledger repo is not, and those are separate
-   artifacts — Pages serves `main` root and has never served `data`. So sharing
-   the URL used to hand someone the app with nothing in it. A snapshot baked
-   into index.html closes that without reopening the repo: a visitor lands on a
-   populated app, fiddles with it locally, and cannot push because pushing needs
-   a token they do not have. */
+/* ── 38d. the public seed is gone ─────────────────────────────────────────
+   Owner ruling 2026-10-14 removes the build-time snapshot that index.html used
+   to carry (carrying out the 2026-10-11 ruling). A visitor lands on the empty
+   ledger, and nothing reads a seed at load. The harness still plants one here,
+   and `loads` counts the reads, so the test shows the planted seed is never read. */
 
 const SEED = JSON.stringify({
   mailday: 1,
@@ -3230,58 +3228,31 @@ const SEED = JSON.stringify({
   itemSort: "missing",
 });
 
-/* a stranger: nothing saved, no key */
+/* control: with no seed planted, a stranger reaches the empty ledger. The checks
+   below would pass for the wrong reason if this text were not on screen. */
+await boot(null, null, { remote: null });
+await settle();
+ok(/Drop your OrderWand CSV here/.test(text()), "38d.0 control: a stranger with no seed sees the empty ledger");
+
+/* a stranger, with a seed planted: the seed is never read */
 await boot(null, null, { remote: null, seed: SEED });
 await settle();
-ok(/Lightning Bolt/.test(text()), "38d.1 a visitor lands on a populated app");
-ok(
-  /someone else’s ledger/.test(text()),
-  "38d.2 and is told whose it is, and that their changes stay put"
-);
-ok(
-  !/tap to set it up/.test(text()),
-  "38d.3 not told to set up a backup — there is nothing of theirs to back up"
-);
+eq(win.seed.loads, 0, "38d.1 nothing reads the planted seed at load");
+ok(!/Lightning Bolt/.test(text()), "38d.2 the visitor does not land on the seed's items");
+ok(!/someone else’s ledger/.test(text()), "38d.3 and is shown no snapshot notice");
+ok(/Drop your OrderWand CSV here/.test(text()), "38d.4 the upload zone opens on the empty ledger");
 
-/* it is a real working copy, not a read-only display */
-await toggleShowing();
-await click(btn(/Mark all received/), "a visitor ticks something off");
-await settle();
-await sleep(SAVE_WAIT);
-ok(saved().items.length > 0, "38d.4 their edits land in their OWN storage");
-eq(pushes().length, 0, "38d.5 and nothing was pushed anywhere");
-
-/* THE guard. A device with a key is the owner's, and the seed is a build-time
-   snapshot — hydrating it over cleared owner-storage would put stale data under
-   a live sha, and auto-push would then publish it. */
-await boot(null, null, {
-  remote: null,
-  seed: SEED,
-  remoteKey: "github_pat_testtoken",
-});
-await settle();
-ok(
-  !/Lightning Bolt/.test(text()),
-  "38d.6 a device WITH a key is never seeded — it pulls instead"
-);
-eq(saved().items?.length ?? 0, 0, "38d.7 so no stale snapshot can be published from it");
-
-/* and a device that already has a ledger keeps it */
-await boot({ items: ITEMS.slice(0, 2), received: {} }, null, {
-  remote: null,
-  seed: SEED,
-});
-await settle();
-/* the DOM first, because `saved()` alone cannot fail here: the debounced save
-   is 500ms away, so without the wait below it returns the boot fixture whether
-   or not the seed overwrote state. The overwrite mutant survived on exactly
-   that — the same shape 34.10 records. */
-ok(
-  !/Urza/.test(text()),
-  "38d.8 an existing ledger is not replaced by the seed"
-);
-await sleep(SAVE_WAIT);
-eq(saved().items.length, 2, "38d.9 and that is what persists");
+/* the committed page carries no seed tag. Parsed, not regex-scanned, so a
+   string inside the bundled code cannot fool it. Parsing runs no script. */
+{
+  const { JSDOM } = createRequire(import.meta.url)("jsdom");
+  const page = new JSDOM(readFileSync(new URL("../index.html", import.meta.url), "utf8")).window.document;
+  eq(
+    page.querySelectorAll("#seed, script[type='application/gzip-base64']").length,
+    0,
+    "38d.5 the committed index.html carries no seed tag"
+  );
+}
 
 /* ── 39. the rollback list ────────────────────────────────────────────────
    Driving the app, unlike group 36 which drives the rules. The claim is
@@ -6065,15 +6036,15 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   await closePanel59();
   ok(!/no sync key/.test(text()), "59.7c after a good save and a panel close, no 'no sync key' line remains");
 
-  /* 59.8. A device that shows the public seed holds no key of its own. A pasted key
-     must not POST the seed's ledger to the Worker. Read seed-load-guards. */
-  await boot(null, null, { remote: null, seed: SEED, syncAdapter: true });
+  /* 59.8. A device that holds nothing of its own has no key. A pasted key must not
+     POST from it to the Worker. */
+  await boot(null, null, { remote: null, syncAdapter: true });
   await settle();
-  ok(/someone else’s ledger/.test(text()), "59.8pre the device shows the public seed");
+  ok(/Drop your OrderWand CSV here/.test(text()), "59.8pre the device starts on the empty ledger");
   await openPanel59();
-  ok(!!field59(), "59.8pre2 the sync key field is reachable on the seeded device");
+  ok(!!field59(), "59.8pre2 the sync key field is reachable on the empty device");
   await pasteKey59(KEY59);
-  eq(count59("post"), 0, "59.8a a pasted key on a seeded device POSTs nothing to the Worker");
+  eq(count59("post"), 0, "59.8a a pasted key on an empty device POSTs nothing to the Worker");
 
   /* 59.9. When setKey throws, the field is cleared anyway, and the refusal shows.
      The real adapter's throw path in entry.jsx has no seam here: see the report. */
@@ -6092,9 +6063,8 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     win.sync.setKey = realSet9;
   }
 
-  /* 59.10. A seeded page with a server ledger present. A pasted good key GETs the
-     ledger and merges it. The "someone else's ledger" line goes, and a later
-     check-in POSTs a ledger that carries it. */
+  /* 59.10. An empty device with a server ledger present. A pasted good key GETs the
+     ledger and merges it, and a later check-in POSTs a ledger that carries it. */
   const SERVER59 = {
     mailday: 1,
     items: ITEMS.slice(0, 3),
@@ -6103,13 +6073,13 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     sortBy: "newest",
     itemSort: "missing",
   };
-  await boot(null, null, { remote: null, seed: SEED, syncAdapter: true, syncLedger: SERVER59 });
+  await boot(null, null, { remote: null, syncAdapter: true, syncLedger: SERVER59 });
   await settle();
-  ok(/someone else’s ledger/.test(text()), "59.10pre the device shows the public seed");
+  ok(/Drop your OrderWand CSV here/.test(text()), "59.10pre the device starts on the empty ledger");
   await openPanel59();
   await pasteKey59(KEY59);
-  ok(count59("get") > 0, "59.10a a pasted key on a seeded page with a server ledger GETs it");
-  ok(!/someone else’s ledger/.test(text()), "59.10b and the seed line is gone once the ledger merges");
+  ok(count59("get") > 0, "59.10a a pasted key on an empty device with a server ledger GETs it");
+  ok(!/Drop your OrderWand CSV here/.test(text()), "59.10b and the server ledger replaces the empty state");
   const posts10 = count59("post");
   const lastPost10 = syncCalls().filter((c) => c.op === "post").pop();
   const checkins10 = (c) => Object.keys(JSON.parse(c?.body ?? "{}").received ?? {}).length;
@@ -6169,9 +6139,8 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   await sleep(APPLY_WAIT);
   ok(saved().received?.[ITEMS[2].key] === 1, "59.13b and it applies once the idle gate opens");
 
-  /* 59.14. Gap 1: a seeded page and a server ledger that holds a check-in the seed
-     lacks. The paste applies that ledger, so the seed line goes (the clear on the
-     applied path, app.jsx ~4544), and a later check-in POSTs. */
+  /* 59.14. Gap 1: an empty device and a server ledger that holds a check-in the
+     device lacks. The paste applies that ledger, and a later check-in POSTs. */
   const SERVER14 = {
     mailday: 1,
     items: ITEMS.slice(0, 3),
@@ -6181,12 +6150,12 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     sortBy: "newest",
     itemSort: "missing",
   };
-  await boot(null, null, { remote: null, seed: SEED, syncAdapter: true, syncLedger: SERVER14 });
+  await boot(null, null, { remote: null, syncAdapter: true, syncLedger: SERVER14 });
   await settle();
-  ok(/someone else’s ledger/.test(text()), "59.14pre the device shows the public seed");
+  ok(/Drop your OrderWand CSV here/.test(text()), "59.14pre the device starts on the empty ledger");
   await openPanel59();
   await pasteKey59(KEY59);
-  ok(!/someone else’s ledger/.test(text()), "59.14a a server ledger with check-ins applies, and the seed line goes");
+  ok(!/Drop your OrderWand CSV here/.test(text()), "59.14a a server ledger with check-ins applies and replaces the empty state");
   const posts14 = count59("post");
   await toggleShowing();
   /* Mark all received is a package button: it lives on Packages, not the Ledger */

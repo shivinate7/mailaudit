@@ -89,9 +89,10 @@
    checks pass; exit 1 with one `FAIL` line per failure and one summary line. */
 import { chromium } from "playwright";
 import AxeBuilder from "@axe-core/playwright";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
+import { gzipSync } from "node:zlib";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PAGE = path.resolve(process.argv[2] || path.join(ROOT, "index.html"));
@@ -355,6 +356,68 @@ const resetAskProbe = () => {
     left: span.getBoundingClientRect().left,
   };
 };
+
+/* ---------- a fresh visitor, with a seed planted ----------
+   The public seed is removed (owner ruling 2026-10-14). This plants a synthetic
+   seed tag in a copy of the page, opens the copy with nothing in storage, and
+   checks the visitor lands on the empty ledger, with no snapshot notice. It is
+   red while entry.jsx still reads the tag. The copy lives under node_modules and
+   every network request is aborted, so no Worker or GitHub call can happen. */
+async function freshVisitorCheck(browser) {
+  const name = "fresh visitor";
+  const packed = gzipSync(
+    Buffer.from(
+      JSON.stringify({
+        mailday: 1,
+        items: mk("Z9", "Probe Seller", "2026-07-01", "without tracking", [
+          ["Planted Probe Card", 1, 1.0],
+        ]),
+        received: {},
+        envelopes: [],
+        stamps: {},
+        dateFilter: { preset: "all", from: "", to: "" },
+        sortBy: "newest",
+        itemSort: "missing",
+      }),
+      "utf8"
+    )
+  ).toString("base64");
+  const stripped = readFileSync(PAGE, "utf8").replace(/<script id="seed"[^>]*>[^<]*<\/script>\n?/, "");
+  const planted = stripped.replace(
+    '<div id="root"></div>',
+    () => `<div id="root"></div>\n<script id="seed" type="application/gzip-base64">${packed}</script>`
+  );
+  if (!planted.includes(packed)) {
+    fail(name, 'the page has no <div id="root"></div> to plant the seed beside; nothing was tested');
+    return;
+  }
+  const dir = path.join(ROOT, "node_modules", ".mailday-test");
+  mkdirSync(dir, { recursive: true });
+  const probe = path.join(dir, "fresh-visitor.html");
+  writeFileSync(probe, planted);
+  const ctx = await browser.newContext({ viewport: { width: 375, height: 812 }, reducedMotion: "reduce" });
+  try {
+    await ctx.route(/^https?:\/\//, (r) => r.abort());
+    const page = await ctx.newPage();
+    await page.goto(pathToFileURL(probe).href);
+    await page
+      .getByText("Drop your OrderWand CSV here")
+      .first()
+      .waitFor({ timeout: 5000 })
+      .catch(() => {});
+    const body = await page.innerText("body");
+    checks++;
+    if (!body.includes("Drop your OrderWand CSV here"))
+      fail(name, "a fresh visitor does not land on the empty-ledger state");
+    checks++;
+    if (body.includes("Planted Probe Card"))
+      fail(name, "the planted seed's items reached a fresh visitor's screen");
+    checks++;
+    if (/someone else’s ledger/.test(body)) fail(name, "a fresh visitor is shown a snapshot notice");
+  } finally {
+    await ctx.close();
+  }
+}
 
 /* ---------- harness ---------- */
 
@@ -1621,6 +1684,7 @@ async function main() {
       ),
       () => discardArmCheck(browser),
       ...RESET_VIEWS.map((view) => () => resetAskCheck(browser, view)),
+      () => freshVisitorCheck(browser),
     ];
     for (const phase of phases) {
       try {

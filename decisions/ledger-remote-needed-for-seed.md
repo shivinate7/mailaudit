@@ -1,29 +1,18 @@
-# A build needs the data remote to seed the page
+# The ledger remote is not needed for a build
 
-**Status:** ruled 2026-10-11, built. Source: `ux-house-rules-govern`. Owner ruling, accept all: if the seed fetch fails, deploy stops. Web lane L3 built it. If the fetch fails, or `ledger/data` has no `ledger.json`, the deploy script in `package.json` stops. Before it opens a pull request, it runs `check:seed`.
+Kind: build
 
-A fresh clone needs a git remote that points at the private data repository. The data branch must be fetched before the build can bake in a seed. Without that remote, the build runs seedless. The seed checker reports that rather than failing outright.
+Plan: decisions/ledger-remote-needed-for-seed.md#retired (web)
 
-**Holds while:** `build.mjs` reads the seed through `SEED_REF`, from the `ledger` remote. When that ref resolves, `--check-seed` fails a seedless page.
+**Status:** retired 2026-10-14 with `the-public-seed`. The build reads no seed, so it needs no `ledger` remote and no data branch.
 
-On a machine where the remote does resolve, a seedless committed page is a hard failure. This means that the build dropped a seed it could have made.
+**Holds while:** `build.mjs` runs no git command (line 11 says it needs neither git nor a ledger remote), and the `deploy` script in `package.json` starts with `npm run build`, not a fetch.
 
-## Setup
+## Retired
 
-A clone needs a remote named `ledger` for the seed to build:
-
-```bash
-git remote add ledger https://github.com/shivinate7/mailaudit-data.git && git fetch ledger data
-```
-
-Without the remote, the build is seedless. `npm run check:seed` reports that instead of failing. On a machine where the ref does resolve, a seedless committed page is a hard failure. The build dropped a seed it could have made.
-
-## Deploy
-
-A failed `git fetch ledger data` stops `npm run deploy` before the build.
+Nothing here applies. The deploy guard that stopped on a failed `git fetch ledger data` is gone with the fetch.
 
 ## See also
 
-- `the-public-seed` — what the seed this remote supplies actually contains
-- `check-build-ignores-seed` — the check that reports a seedless build
-- `data-branch-setup` — the branch this remote must fetch
+- `the-public-seed` — the removal this retirement follows
+- `data-branch-setup` — the data branch, which no build reads now

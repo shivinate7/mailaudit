@@ -3171,13 +3171,6 @@ export default function MailDayLedger() {
      carries, because an apply is not an edit. null: never saved. */
   const savedAtRef = useRef(null);
   const keepSavedAt = useRef(false);
-  /* "what you are looking at is a snapshot of someone else's ledger" — true
-     only for a visitor, since seeding requires no key on the device */
-  const [seedShown, setSeedShown] = useState(false);
-  /* the notice is about PROVENANCE, not about being unsaved, so it survives
-     edits: the ledger on screen is still someone else's, however much of it the
-     visitor has since ticked off. It goes when they clear or replace it. */
-
   /* load persisted state */
   useEffect(() => {
     (async () => {
@@ -3187,30 +3180,6 @@ export default function MailDayLedger() {
           value = (await window.storage.get(STORAGE_KEY))?.value || null;
         } catch {
           /* nothing saved yet */
-        }
-        /* ---- the public seed ----
-           Nothing saved AND no key on this device: that is someone who has just
-           opened the public URL. Give them the snapshot build.mjs baked in, so
-           they land on a populated app rather than an empty one, and let them
-           do whatever they like with it — it hydrates into THEIR localStorage
-           and nothing here can reach back.
-
-           The `hasKey` half is the guard that matters. A device with a key is
-           one of the owner's, and the seed is a build-time snapshot: seeding
-           over a cleared owner-device would put stale data under a live sha,
-           and auto-push would publish it. So a keyed device gets nothing here
-           and recovers the way it always has, by pulling. */
-        if (!value && window.seed) {
-          const info = await window.remote?.status?.().catch(() => null);
-          /* a Worker key is a key too: that device is one of the owner's */
-          const workerKeyed = await window.sync?.hasKey?.().catch(() => false);
-          if (!info?.hasKey && !workerKeyed) {
-            const seeded = await window.seed.load().catch(() => null);
-            if (seeded) {
-              value = seeded;
-              setSeedShown(true);
-            }
-          }
         }
         /* Not JSON at all: refuse, keep the text untouched (fallback 2). */
         let parsed = null;
@@ -3368,10 +3337,6 @@ export default function MailDayLedger() {
 
   const syncBroken = useMemo(() => {
     if (!window.sync && !window.remote) return null;
-    /* A visitor is not an unbacked-up device, and "tap to set it up" is
-       meaningless advice to someone looking at a copy of someone else's
-       ledger. Say what is actually true instead. */
-    if (seedShown) return "seeded";
     if (serverDown)
       return serverDown === "unknown" ? "server" : serverDown === "no-access" ? "key-refused" : serverDown;
     if (photoUnreadable) return "photos-unreadable";
@@ -3384,14 +3349,12 @@ export default function MailDayLedger() {
        in flight, or a failure that serverDown already raised above. */
     if (syncedAt && Date.now() - syncedAt > SYNC_STALE_MS) return "stale";
     return null;
-  }, [seedShown, syncedAt, photoUnreadable, serverDown, workerKeySet, syncOpen]);
+  }, [syncedAt, photoUnreadable, serverDown, workerKeySet, syncOpen]);
 
   /* One sentence per sync state: the advisory line on a working screen says it
      whole, and the Sync row on the Ledger tab says it without the "tap to". */
   const syncSays = (
-syncBroken === "seeded"
-                    ? "A snapshot of someone else’s ledger — anything you change stays on this device"
-                    : syncBroken === "server"
+    syncBroken === "server"
                     ? "The sync server could not be reached — tap to fix"
                     : syncBroken === "sync-key"
                     ? "This device has no sync key — tap to paste it"
@@ -4385,7 +4348,6 @@ syncBroken === "seeded"
            compare, so a note, a photo id or a receivedAt that differs alone still
            counts. */
         if (canon(noTime(merged)) === canon(noTime(snapshot()))) {
-          setSeedShown(false); /* a server ledger has landed: this page is the owner's now */
           return { ok: true };
         }
         /* photos BEFORE applying: the merge unions both devices' envelopes, so ids
@@ -4424,7 +4386,6 @@ syncBroken === "seeded"
         /* remembered so the next apply can tell this notice from an import's */
         serverNotice.current = notice;
         await applyBackup(JSON.stringify(merged), "server", notice);
-        setSeedShown(false); /* seed-load-guards: no longer someone else's ledger */
         /* applyBackup bumps syncGen, and exactly one bump is ours. Any other
            number means something really did move on. */
         if (syncGen.current !== before + 1) return { ok: false, code: "server" };
@@ -4618,9 +4579,7 @@ syncBroken === "seeded"
     const p = (async () => {
       if (!window.sync || !(await window.sync.hasKey())) return;
       /* 50 ms of slack: a timer that fires a hair early still retries */
-      /* a page that shows the seed holds someone else's ledger: it never POSTs
-         (seed-load-guards) */
-      if (seedShown || damagedRef.current || refusedRef.current || Date.now() < nextTry.current - 50) return;
+      if (damagedRef.current || refusedRef.current || Date.now() < nextTry.current - 50) return;
       postsInFlight.current++;
       let r;
       try {
@@ -5747,7 +5706,7 @@ syncBroken === "seeded"
                     has scrolled away and the thumb is on a card, so what
                     actually moves is the list: the layout shift under the
                     pointer invariant no-layout-shift-under-pointer exists to prevent, twice per check-in.
-                    Measured at 375px against the seeded ledger, 4 of 10
+                    Measured at 375px against a real ledger, 4 of 10
                     realistic figure pairs moved by 12–14px; which ones depends
                     only on where the two figures happen to fall relative to
                     the wrap point, which is why the fix is to take the
