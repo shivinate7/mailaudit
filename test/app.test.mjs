@@ -1624,7 +1624,10 @@ eq(
   "30.13 an unreadable photo store keeps every id — it is not evidence of loss"
 );
 eq(saved().items?.length ?? 0, ITEMS.length, "30.14 and the ledger still applied");
-ok(!/not on GitHub/i.test(text()), "30.15 and nothing is reported as lost");
+/* The refused list is said so in the Sync panel (PHOTO_SAYS["no-access"]). Read as
+   known-empty, the pull plans no copy at all, and this line goes silent. */
+await openSync();
+ok(/Photos need more setup on this device/.test(text()), "30.15 a photo list that cannot be read is said so");
 
 /* The sweep race, which is the reason the photo phase holds it off at all. A
    merge writes blobs while `envelopes` still holds the OLD list, so nothing
@@ -4045,10 +4048,11 @@ const PHOTO_WAIT47 = 1500; /* the photo phase follows the ledger POST by one sec
 
 /* ---- the same store, on a cold mount ----
    The pull's twin of the push case, on 30.10's fixture: the store is there and lacks
-   the blob, so a READABLE store would report pho-a as lost. Unreadable, the merge must
-   skip its photo phase and say nothing about photos. applyBackup's own keys() read is
-   unreadable too, so it keeps the pulled id. Read as empty, the survey calls pho-a lost
-   and the line shows: this is the kill for the read-as-empty mutant. */
+   the blob, so a READABLE store would report pho-a as lost. Unreadable, the pull's photo
+   phase stops at the survey, the merge still awaits it and then applies, and the advisory
+   line says the photos could not be read. applyBackup's own keys() read is unreadable too,
+   so it keeps the pulled id. Read as empty, the survey plans on and the line never shows.
+   That absence is what the read-as-empty mutant produces. */
 {
   const PHOTO47 = {
     mailday: 1,
@@ -4082,6 +4086,7 @@ const PHOTO_WAIT47 = 1500; /* the photo phase follows the ledger POST by one sec
     return r;
   };
   let ceiling;
+  let shown = false;
   try {
     /* a cold mount is a fresh session, so the ahead Worker merges with no tap */
     await boot({ items: ITEMS, received: {} }, null, { syncKey: KEY47, syncLedger: PHOTO47 });
@@ -4091,6 +4096,9 @@ const PHOTO_WAIT47 = 1500; /* the photo phase follows the ledger POST by one sec
       landed,
       new Promise((res) => (ceiling = setTimeout(res, 20_000))),
     ]);
+    /* read before `finally` restores keys: a later survey would clear the line */
+    await drain();
+    shown = PHOTO_UNREADABLE.test(text());
   } finally {
     clearTimeout(ceiling);
     win.photos.keys = keysBefore;
@@ -4101,7 +4109,7 @@ const PHOTO_WAIT47 = 1500; /* the photo phase follows the ledger POST by one sec
     ["pho-a"],
     "47.6 an unreadable local store keeps the pulled photo id"
   );
-  ok(!/not on GitHub/i.test(text()), "47.6 and reports no photo as lost");
+  ok(shown, "47.6 the pull says the photos could not be read, and does not read the store as empty");
 }
 
 /* ── 48. "I could not look" is always visible ─────────────────────────────
