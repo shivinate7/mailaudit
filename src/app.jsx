@@ -4316,10 +4316,11 @@ export default function MailDayLedger() {
         if (canon(noTime(merged)) === canon(noTime(snapshot()))) {
           return { ok: true };
         }
-        /* photos BEFORE applying: the merge unions both devices' envelopes, so ids
-           arriving from the other device have no blob here yet and the apply would
-           strip every one of them. The ids the Worker holds are kept even when a
-           download fails (a retry beats a lost link). */
+        /* photos BEFORE applying: a merge keeps every id, so the order does not
+           decide which ids survive (photo-ids-restore-keep-if-known). It serves the
+           photo: a merged envelope whose blob is already here shows it when the
+           ledger lands, not a blank tile. A download that fails keeps its id, so a
+           later try can fetch the blob. */
         await pullPhotos(replyText, gen);
         if (syncGen.current !== gen) return { ok: false, code: "server" };
         /* a tap during the downloads: applying now would shift the list under the
