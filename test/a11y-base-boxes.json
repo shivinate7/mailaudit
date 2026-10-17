@@ -1247,6 +1247,85 @@
     "h": 23,
     "pinned": false
    }
+  },
+  "Lost photo tile": {
+   "0|button|LEDGER": {
+    "x": 47.859375,
+    "y": 749.5,
+    "w": 41.53125,
+    "h": 37,
+    "pinned": true
+   },
+   "1|button|ORPHANED 1": {
+    "x": 108.25,
+    "y": 741,
+    "w": 79.25,
+    "h": 54,
+    "pinned": true
+   },
+   "2|button|TALLY": {
+    "x": 209.8125,
+    "y": 749.5,
+    "w": 34.609375,
+    "h": 37,
+    "pinned": true
+   },
+   "3|button|PACKAGES": {
+    "x": 278.6875,
+    "y": 749.5,
+    "w": 55.375,
+    "h": 37,
+    "pinned": true
+   },
+   "4|button|+ Record an envelope": {
+    "x": 16,
+    "y": 286.984375,
+    "w": 343,
+    "h": 42,
+    "pinned": false
+   },
+   "5|button|Edit": {
+    "x": 229.140625,
+    "y": 355.484375,
+    "w": 44.5,
+    "h": 23,
+    "pinned": false
+   },
+   "6|button|Discard": {
+    "x": 281.640625,
+    "y": 355.484375,
+    "w": 64.359375,
+    "h": 23,
+    "pinned": false
+   },
+   "7|button|This one": {
+    "x": 263.609375,
+    "y": 561.984375,
+    "w": 73.390625,
+    "h": 32,
+    "pinned": false
+   },
+   "8|button|This one": {
+    "x": 263.609375,
+    "y": 629.984375,
+    "w": 73.390625,
+    "h": 32,
+    "pinned": false
+   },
+   "9|button|This one": {
+    "x": 263.609375,
+    "y": 697.984375,
+    "w": 73.390625,
+    "h": 32,
+    "pinned": false
+   },
+   "10|button|show 4 more candidates": {
+    "x": 29,
+    "y": 751.984375,
+    "w": 145.703125,
+    "h": 13,
+    "pinned": false
+   }
   }
  }
 }
