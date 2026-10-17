@@ -43,6 +43,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 |---|---|---|
 | `a-restore-is-not-local` | Restoring a version rewrites `items`, `received` and `envelopes`. | [`decisions/a-restore-is-not-local.md`](../decisions/a-restore-is-not-local.md) |
 | `armed-reset-takes-the-row` | Reset is red text at rest, in its own box at the end of the Ledger tab. | [`decisions/armed-reset-takes-the-row.md`](../decisions/armed-reset-takes-the-row.md) |
+| `b64-fails-with-plausible-data` | The base64 helpers for the Contents API get their own file, `src/b64.mjs`. | [`decisions/b64-fails-with-plausible-data.md`](../decisions/b64-fails-with-plausible-data.md) |
 | `build-and-deploy` | Kind: build | [`decisions/build-and-deploy.md`](../decisions/build-and-deploy.md) |
 | `card-tally-row-counts-first` | At iPhone width, the Tally row is tight. | [`decisions/card-tally-row-counts-first.md`](../decisions/card-tally-row-counts-first.md) |
 | `card-the-bar-is-out-of-flow` | Kind: build | [`decisions/card-the-bar-is-out-of-flow.md`](../decisions/card-the-bar-is-out-of-flow.md) |
@@ -95,7 +96,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `anchors-are-derived-not-stored` | No version carries a stored "hourly" or "daily" kind. | [`decisions/anchors-are-derived-not-stored.md`](../decisions/anchors-are-derived-not-stored.md) |
 | `assets-and-icons` | This file holds where the icon assets live, where the master and the generator sit, and the exact export commands. | [`decisions/assets-and-icons.md`](../decisions/assets-and-icons.md) |
 | `assign-checks-recorded-cards` | A one-tap assign checks in exactly the cards recorded in an envelope. | [`decisions/assign-checks-recorded-cards.md`](../decisions/assign-checks-recorded-cards.md) |
-| `b64-fails-with-plausible-data` | The base64 helpers for the Contents API get their own file, `src/b64.mjs`. | [`decisions/b64-fails-with-plausible-data.md`](../decisions/b64-fails-with-plausible-data.md) |
 | `backup-files-restore-two-ways` | A local backup downloads one JSON file. | [`decisions/backup-files-restore-two-ways.md`](../decisions/backup-files-restore-two-ways.md) |
 | `canceled-orders-leave-the-list` | A canceled order leaves the list. | [`decisions/canceled-orders-leave-the-list.md`](../decisions/canceled-orders-leave-the-list.md) |
 | `candidates-skip-date-filter` | Each pending envelope lists the outstanding packages that could explain it. | [`decisions/candidates-skip-date-filter.md`](../decisions/candidates-skip-date-filter.md) |
@@ -254,7 +254,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `discard-keeps-draft` | `discardEnvelope` in `src/app.jsx` never clears the draft. | [`debts/discard-keeps-draft.md`](../debts/discard-keeps-draft.md) |
 | `draft-skip-required-unmeasured` | It is unmeasured how a required check reads a job that the draft guard skipped. | [`debts/draft-skip-required-unmeasured.md`](../debts/draft-skip-required-unmeasured.md) |
 | `key-re-accepts-token-shape` | A GitHub token uses only letters, digits and underscores, so the key check accepts a token as a key. | [`debts/key-re-accepts-token-shape.md`](../debts/key-re-accepts-token-shape.md) |
-| `merge-comment-says-apply-strips` | The comment above `pullPhotos` in `doMerge` (`src/app.jsx`, lines 4319 to 4322) says that an apply before the photo download would strip every id the other device sent. | [`debts/merge-comment-says-apply-strips.md`](../debts/merge-comment-says-apply-strips.md) |
 | `n10-photos-unbuilt` | Lane N10 is ruled in `native-build-lanes`, and it is not built. | [`debts/n10-photos-unbuilt.md`](../debts/n10-photos-unbuilt.md) |
 | `n11-device-check-not-run` | Lane N11 is the owner's check on a device, as ruled in `native-build-lanes`, and it has not run. | [`debts/n11-device-check-not-run.md`](../debts/n11-device-check-not-run.md) |
 | `n4a-sync-over-http-unbuilt` | No sync source exists under `native/` on main. | [`debts/n4a-sync-over-http-unbuilt.md`](../debts/n4a-sync-over-http-unbuilt.md) |
@@ -274,7 +273,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `panel-paper-fill-unbuilt` | Overlay panels carry no `paper` fill: `panelWrap` in `src/app.jsx` sets padding and a top border, and no background. | [`debts/panel-paper-fill-unbuilt.md`](../debts/panel-paper-fill-unbuilt.md) |
 | `panels-overlay-unbuilt` | Today a panel takes layout space and pushes the list down. | [`debts/panels-overlay-unbuilt.md`](../debts/panels-overlay-unbuilt.md) |
 | `photo-put-unrun-on-github` | `pushPhoto` and `pullPhoto` on `window.remote` (`src/entry.jsx`) have never run against real GitHub. | [`debts/photo-put-unrun-on-github.md`](../debts/photo-put-unrun-on-github.md) |
-| `photoget-list-fallback-untested` | No test runs the `photoGet` list-first fallback. | [`debts/photoget-list-fallback-untested.md`](../debts/photoget-list-fallback-untested.md) |
+| `photoget-throw-counts-as-kill` | In `test/photoget.test.mjs`, `runCase` turns a throw into a red case, and a red case counts as a mutant kill. | [`debts/photoget-throw-counts-as-kill.md`](../debts/photoget-throw-counts-as-kill.md) |
 | `received-at-size-unmeasured` | `receivedAt` is never pruned, and its size has not been measured. | [`debts/received-at-size-unmeasured.md`](../debts/received-at-size-unmeasured.md) |
 | `recent-log-unbuilt` | The log, its merge rule, its panel and its undo are ruled and not built, in either client. | [`debts/recent-log-unbuilt.md`](../debts/recent-log-unbuilt.md) |
 | `recent-log-unmeasured` | Four figures are unmeasured. | [`debts/recent-log-unmeasured.md`](../debts/recent-log-unmeasured.md) |
@@ -287,7 +286,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `sweep-settle-masks-30-13-stall` | The `SWEEP_WAIT` settle after 19.6 hides a stall at 30.13, and it does not explain it. | [`debts/sweep-settle-masks-30-13-stall.md`](../debts/sweep-settle-masks-30-13-stall.md) |
 | `tally-card-moves-at-320px` | At 320px the Tally card moves 14px on check-ins 1 and 6. | [`debts/tally-card-moves-at-320px.md`](../debts/tally-card-moves-at-320px.md) |
 | `tests-33-35-40-45-cannot-fail` | Tests 33.35, 33.40 and 33.45 cannot fail on a plausible mutant. | [`debts/tests-33-35-40-45-cannot-fail.md`](../debts/tests-33-35-40-45-cannot-fail.md) |
-| `tests-47-6-and-30-15-cannot-fail` | Test 47.6 says in its comment that it kills a survey that reads the photo store as empty. | [`debts/tests-47-6-and-30-15-cannot-fail.md`](../debts/tests-47-6-and-30-15-cannot-fail.md) |
 | `token-export-and-view-unpinned` | Nothing yet pins the native device key in the backup export or in SwiftUI view state. | [`debts/token-export-and-view-unpinned.md`](../debts/token-export-and-view-unpinned.md) |
 | `token-state-and-bundle-unpinned` | Nothing pins the React-state or bundle guarantees. | [`debts/token-state-and-bundle-unpinned.md`](../debts/token-state-and-bundle-unpinned.md) |
 | `type-floor-unbuilt` | Some labels are smaller than the 10px floor today. | [`debts/type-floor-unbuilt.md`](../debts/type-floor-unbuilt.md) |
