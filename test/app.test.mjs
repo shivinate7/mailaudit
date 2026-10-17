@@ -4048,10 +4048,11 @@ const PHOTO_WAIT47 = 1500; /* the photo phase follows the ledger POST by one sec
 
 /* ---- the same store, on a cold mount ----
    The pull's twin of the push case, on 30.10's fixture: the store is there and lacks
-   the blob, so a READABLE store would report pho-a as lost. Unreadable, the merge must
-   stop at the survey and the advisory line says the photos could not be read. applyBackup's
-   own keys() read is unreadable too, so it keeps the pulled id. Read as empty, the survey
-   plans on and the line never shows. That absence is what the read-as-empty mutant produces. */
+   the blob, so a READABLE store would report pho-a as lost. Unreadable, the pull's photo
+   phase stops at the survey, the merge still awaits it and then applies, and the advisory
+   line says the photos could not be read. applyBackup's own keys() read is unreadable too,
+   so it keeps the pulled id. Read as empty, the survey plans on and the line never shows.
+   That absence is what the read-as-empty mutant produces. */
 {
   const PHOTO47 = {
     mailday: 1,
