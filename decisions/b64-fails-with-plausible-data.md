@@ -18,6 +18,10 @@ Groups 25 to 27 confirm red a mutant that replaces `utf8ToBase64` with `btoa`. A
 
 Group 25's non-ASCII round trip goes through an envelope entry. iOS smart punctuation enters the app there. It changes no counts.
 
+Kind: build
+
+Plan: decisions/sync-revamp-cloudflare.md#web-plan (web)
+
 ## See also
 
 - `photo-rules-fails-quietly` — the same reasoning applied to photo naming
