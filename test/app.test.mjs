@@ -1593,7 +1593,7 @@ ok(
 );
 ok(
   !/no copy left/i.test(text()) && !/GitHub/.test(text()),
-  "30.10b a photo the Worker lacks yet is not reported lost, and no GitHub word is on screen"
+  "30.10b a photo the Worker lacks shows no GitHub word and no 'no copy left' text, lost line or not"
 );
 
 /* a photo write that fails: the Sync panel arms no two-tap and puts no Push or
@@ -1671,9 +1671,10 @@ eq(
 
 /* 30.18 is retired (owner ruling 2026-10-15): the photo only the CURRENT ledger names
    survives the merge, because envelopes union, so its "now gone" warning was a false
-   alarm. 30.18s and 30.18t keep that survival as the proof. The warning goes with the
-   builder's change to pullPhotos (its stranded count). A photo BOTH ledgers reference
-   survives untouched, and saying otherwise is a false alarm (30.19, 30.20). */
+   alarm. 30.18s and 30.18t keep that survival as the proof. A pull names no photo as
+   lost (decision pull-warns-on-what-it-drops: a lost photo shows in its envelope's card
+   after 7 days, never on the pull). A photo BOTH ledgers reference survives untouched,
+   and saying otherwise is a false alarm (30.19, 30.20). */
 await boot(
   {
     items: ITEMS,
@@ -1717,6 +1718,105 @@ ok(
   !/never pushed/i.test(text()),
   "30.20 and is NOT reported as gone — that was the false alarm"
 );
+
+/* ── 30b. a lost photo shows one quiet line in its envelope's photo slot ───
+   decision pull-warns-on-what-it-drops. A photo that neither this device nor the
+   Worker holds shows the line once its envelope is more than 7 days old. Under 7
+   days, or while either copy exists, nothing shows. A pull never shows it.
+   Waits are on events: the Worker's photo survey, the photo write, the merge. */
+const LOST_RE30 = /Photo lost: neither this device nor the backup has it\./;
+const DAY30_MS = 86400000;
+/* one envelope, dated `days` ago, that names `ids` */
+const dated30 = (days, ids) => ({
+  items: ITEMS,
+  received: {},
+  envelopes: [
+    {
+      id: "env-lost",
+      createdAt: Date.now() - days * DAY30_MS,
+      note: "",
+      entries: [{ name: "Ponder", qty: 1 }],
+      photos: ids,
+    },
+  ],
+});
+/* poll for an event the app emits, bounded, then flush React. No fixed delay. */
+const waitFor30 = async (done, limit = 8000) => {
+  const t0 = Date.now();
+  while (!done() && Date.now() - t0 < limit) await act(async () => await sleep(20));
+  await drain();
+  return done();
+};
+/* the Worker has answered the photo survey, which is what the photo slot is decided on */
+const surveyed30 = () => workerPhotoCalls30().some((c) => c.op === "photoList");
+/* the envelope card that holds a photo thumbnail: the nearest ancestor with the card header */
+const cardOf30 = (el) => {
+  let c = el;
+  while (c && !/Envelope ·/.test(c.textContent)) c = c.parentElement;
+  return c;
+};
+
+/* 8 days old, and neither this device nor the Worker holds the photo */
+await boot(dated30(8, ["pho-a"]), null, { syncKey: KEY30 });
+await goTo("orphaned");
+await wakeWorker();
+await waitFor30(surveyed30);
+ok(surveyed30(), "30.21a the Worker answered the photo survey, so the absence below is real");
+const thumb30b = document.querySelector('button[aria-label="View photo"]');
+const card30b = thumb30b && cardOf30(thumb30b);
+ok(
+  !!card30b && LOST_RE30.test(card30b.textContent),
+  "30.21 an envelope 8 days old, with a photo neither this device nor the backup holds, shows the lost line in its own card"
+);
+ok(
+  !document.querySelector('[role="dialog"], [role="alertdialog"]'),
+  "30.21b and the line opens no dialog"
+);
+
+/* 2 days old, and neither copy exists: the grace period is still running */
+await boot(dated30(2, ["pho-a"]), null, { syncKey: KEY30 });
+await goTo("orphaned");
+await wakeWorker();
+await waitFor30(surveyed30);
+ok(surveyed30(), "30.22a the Worker answered the photo survey, so the absence below is real");
+ok(
+  !!document.querySelector('button[aria-label="View photo"]'),
+  "30.22b and the envelope and its photo slot are on screen"
+);
+ok(!LOST_RE30.test(text()), "30.22 an envelope 2 days old shows no lost line, even with neither copy");
+
+/* 8 days old, and this device holds the photo: it is pushed, and nothing is lost */
+await boot(dated30(8, ["pho-a"]), [["pho-a", jpegOf(1)]], { syncKey: KEY30 });
+await goTo("orphaned");
+await wakeWorker();
+await waitFor30(() => photoPuts30().length > 0);
+ok(photoPuts30().length > 0, "30.23a the photo this device holds reached the Worker");
+ok(!LOST_RE30.test(text()), "30.23 an envelope 8 days old, whose photo this device holds, shows no lost line");
+
+/* 8 days old, and the Worker holds the photo: this device does not hold it, nothing is lost */
+await boot(dated30(8, ["pho-a"]), null, { syncKey: KEY30, syncPhotos: [["pho-a.jpg", jpegOf(1)]] });
+await goTo("orphaned");
+await wakeWorker();
+await waitFor30(surveyed30);
+ok(surveyed30(), "30.24a the Worker answered the photo survey, so the absence below is real");
+ok(!LOST_RE30.test(text()), "30.24 an envelope 8 days old, whose photo the Worker holds, shows no lost line");
+
+/* a merge brings in an 8-day-old envelope whose photo neither copy holds. The merge
+   applies, and no lost line shows: the pull names nothing as lost. */
+await boot({ items: ITEMS, received: {} }, null, {
+  syncKey: KEY30,
+  syncLedger: SERVER30(dated30(8, ["pho-a"])),
+});
+await goTo("orphaned");
+await resume30();
+await waitFor30(() => surveyed30() && (saved().envelopes ?? []).some((e) => e.id === "env-lost"));
+ok(surveyed30(), "30.25a the merge surveyed the photos it named, so the absence below is real");
+eq(
+  saved().envelopes?.find((e) => e.id === "env-lost")?.photos ?? null,
+  ["pho-a"],
+  "30.25b a merge applies the envelope with its photo id kept"
+);
+ok(!LOST_RE30.test(text()), "30.25 and a merge shows no lost line, not even for an old envelope");
 
 /* ── 31. the photo rules, asserted directly ────────────────────────────────
    Same reasoning as group 27: entry.jsx mounts React on import and is
