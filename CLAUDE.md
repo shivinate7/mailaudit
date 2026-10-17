@@ -412,6 +412,7 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `photoget-throw-counts-as-kill` — A throw counts as a kill in the photoGet test.
 - `lost-photo-clock-is-envelope-age` — The lost-photo clock runs from envelope age.
 - `lost-tile-waits-for-first-post` — The lost tile waits for the first POST.
+- `failed-photo-download-no-retry` — A failed photo download is not retried.
 
 ## Measurements
 
