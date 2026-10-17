@@ -67,7 +67,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `photo-ids-unreadable-local` | An unreadable local photo store keeps every id, exactly as an unreadable remote one does. | [`decisions/photo-ids-unreadable-local.md`](../decisions/photo-ids-unreadable-local.md) |
 | `photos-in-git-are-permanent` | **Status:** open. | [`decisions/photos-in-git-are-permanent.md`](../decisions/photos-in-git-are-permanent.md) |
 | `pull-fetches-photos-before-apply` | A held Worker reply fetches the photos it names before it applies the ledger. | [`decisions/pull-fetches-photos-before-apply.md`](../decisions/pull-fetches-photos-before-apply.md) |
-| `pull-warns-on-what-it-drops` | A pull does not report any photo as lost. | [`decisions/pull-warns-on-what-it-drops.md`](../decisions/pull-warns-on-what-it-drops.md) |
+| `pull-warns-on-what-it-drops` | Owner ruling 2026-10-17: the app warns about a lost label photo after a grace period. | [`decisions/pull-warns-on-what-it-drops.md`](../decisions/pull-warns-on-what-it-drops.md) |
 | `recent-checks-can-be-undone` | **Status:** ruled. | [`decisions/recent-checks-can-be-undone.md`](../decisions/recent-checks-can-be-undone.md) |
 | `recovery-control-not-state-gated` | If the data an action works on is absent, its recovery control must not hide. | [`decisions/recovery-control-not-state-gated.md`](../decisions/recovery-control-not-state-gated.md) |
 | `remote-is-transport-not-storage` | `window.remote` is transport, not storage. | [`decisions/remote-is-transport-not-storage.md`](../decisions/remote-is-transport-not-storage.md) |
@@ -253,7 +253,10 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `cloudflare-access-login-untested` | Whether the backup sign-in survives in an iOS home-screen app has not been run on a device. | [`debts/cloudflare-access-login-untested.md`](../debts/cloudflare-access-login-untested.md) |
 | `discard-keeps-draft` | `discardEnvelope` in `src/app.jsx` never clears the draft. | [`debts/discard-keeps-draft.md`](../debts/discard-keeps-draft.md) |
 | `draft-skip-required-unmeasured` | It is unmeasured how a required check reads a job that the draft guard skipped. | [`debts/draft-skip-required-unmeasured.md`](../debts/draft-skip-required-unmeasured.md) |
+| `failed-photo-download-no-retry` | When a merge's photo download fails, the id stays in the ledger and the tile stays blank. | [`debts/failed-photo-download-no-retry.md`](../debts/failed-photo-download-no-retry.md) |
 | `key-re-accepts-token-shape` | A GitHub token uses only letters, digits and underscores, so the key check accepts a token as a key. | [`debts/key-re-accepts-token-shape.md`](../debts/key-re-accepts-token-shape.md) |
+| `lost-photo-clock-is-envelope-age` | The 7-day lost-photo clock runs from the envelope's `createdAt`. | [`debts/lost-photo-clock-is-envelope-age.md`](../debts/lost-photo-clock-is-envelope-age.md) |
+| `lost-tile-waits-for-first-post` | The lost tile shows only after the push survey that follows a successful POST. | [`debts/lost-tile-waits-for-first-post.md`](../debts/lost-tile-waits-for-first-post.md) |
 | `n10-photos-unbuilt` | Lane N10 is ruled in `native-build-lanes`, and it is not built. | [`debts/n10-photos-unbuilt.md`](../debts/n10-photos-unbuilt.md) |
 | `n11-device-check-not-run` | Lane N11 is the owner's check on a device, as ruled in `native-build-lanes`, and it has not run. | [`debts/n11-device-check-not-run.md`](../debts/n11-device-check-not-run.md) |
 | `n4a-sync-over-http-unbuilt` | No sync source exists under `native/` on main. | [`debts/n4a-sync-over-http-unbuilt.md`](../debts/n4a-sync-over-http-unbuilt.md) |
@@ -289,7 +292,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `token-export-and-view-unpinned` | Nothing yet pins the native device key in the backup export or in SwiftUI view state. | [`debts/token-export-and-view-unpinned.md`](../debts/token-export-and-view-unpinned.md) |
 | `token-state-and-bundle-unpinned` | Nothing pins the React-state or bundle guarantees. | [`debts/token-state-and-bundle-unpinned.md`](../debts/token-state-and-bundle-unpinned.md) |
 | `type-floor-unbuilt` | Some labels are smaller than the 10px floor today. | [`debts/type-floor-unbuilt.md`](../debts/type-floor-unbuilt.md) |
-| `unheld-photo-never-reported` | The app never names a lost photo to the owner. | [`debts/unheld-photo-never-reported.md`](../debts/unheld-photo-never-reported.md) |
 | `universal-link-unbuilt` | Neither the link handler nor the Worker route that serves the apple-app-site-association file exists. | [`debts/universal-link-unbuilt.md`](../debts/universal-link-unbuilt.md) |
 | `web-photos-have-no-backup` | Web photos go to the Worker's `/photos` route. | [`debts/web-photos-have-no-backup.md`](../debts/web-photos-have-no-backup.md) |
 | `web-reads-no-worker-snapshots` | Web does not read the Worker `/snapshots` or `/kept` routes. | [`debts/web-reads-no-worker-snapshots.md`](../debts/web-reads-no-worker-snapshots.md) |
