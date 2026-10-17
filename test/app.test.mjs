@@ -58,6 +58,7 @@ import {
   versionStore,
   sleep,
   setSyncNetFail,
+  setSyncPhotosRefused,
   setSyncTooBig,
   setSyncBadShape,
   syncBadShapeCount,
@@ -1722,12 +1723,16 @@ ok(
   "30.20 and is NOT reported as gone — that was the false alarm"
 );
 
-/* ── 30b. a lost photo shows one quiet line in its envelope's photo slot ───
+/* ── 30b. a lost photo shows one quiet tile in its envelope's photo slot ───
    decision pull-warns-on-what-it-drops. A photo that neither this device nor the
-   Worker holds shows the line once its envelope is more than 7 days old. Under 7
-   days, or while either copy exists, nothing shows. A pull never shows it.
+   Worker holds shows the tile once its envelope is more than 7 days old. Under 7
+   days, or while either copy exists, nothing shows. A pull never shows it, and a
+   survey that cannot say what the Worker holds clears it (30.27, 30.28).
    Waits are on events: the Worker's photo survey, the photo write, the merge. */
+/* the lost tile is a role="img" div: the sentence is its accessible name (aria-label),
+   never text, so a text search for the sentence finds nothing. The visible text is "Lost". */
 const LOST_RE30 = /Photo lost: neither this device nor the backup has it\./;
+const LOST_TILE30 = '[role="img"][aria-label^="Photo lost"]';
 const DAY30_MS = 86400000;
 /* one envelope, dated `days` ago, that names `ids` */
 const dated30 = (days, ids) => ({
@@ -1752,6 +1757,12 @@ const waitFor30 = async (done, limit = 8000) => {
 };
 /* the Worker has answered the photo survey, which is what the photo slot is decided on */
 const surveyed30 = () => workerPhotoCalls30().some((c) => c.op === "photoList");
+/* the visible "Lost" on screen, found by its text so it reads the same whatever element
+   draws it (an older build drew a span inside a button). The presence checks below use
+   this; 30.21 and 30.26 pin what element it is. */
+const lostLeaf30 = () =>
+  [...document.querySelectorAll("span, div")].find((e) => !e.children.length && e.textContent.trim() === "Lost");
+const photoLists30 = () => syncCalls().filter((c) => c.op === "photoList").length;
 /* the envelope card that holds a photo thumbnail: the nearest ancestor with the card header */
 const cardOf30 = (el) => {
   let c = el;
@@ -1765,11 +1776,11 @@ await goTo("orphaned");
 await wakeWorker();
 await waitFor30(surveyed30);
 ok(surveyed30(), "30.21a the Worker answered the photo survey, so the absence below is real");
-const thumb30b = document.querySelector('button[aria-label="View photo"]');
-const card30b = thumb30b && cardOf30(thumb30b);
+const tile30b = document.querySelector(LOST_TILE30);
+const card30b = tile30b && cardOf30(tile30b);
 ok(
-  !!card30b && LOST_RE30.test(card30b.textContent),
-  "30.21 an envelope 8 days old, with a photo neither this device nor the backup holds, shows the lost line in its own card"
+  !!card30b && LOST_RE30.test(tile30b.getAttribute("aria-label")) && tile30b.textContent.trim() === "Lost",
+  "30.21 an envelope 8 days old, with a photo neither this device nor the backup holds, shows a lost tile in its own card: named by the sentence, reading Lost"
 );
 ok(
   !document.querySelector('[role="dialog"], [role="alertdialog"]'),
@@ -1786,7 +1797,7 @@ ok(
   !!document.querySelector('button[aria-label="View photo"]'),
   "30.22b and the envelope and its photo slot are on screen"
 );
-ok(!LOST_RE30.test(text()), "30.22 an envelope 2 days old shows no lost line, even with neither copy");
+ok(!lostLeaf30(), "30.22 an envelope 2 days old shows no lost tile, even with neither copy");
 
 /* 8 days old, and this device holds the photo: it is pushed, and nothing is lost */
 await boot(dated30(8, ["pho-a"]), [["pho-a", jpegOf(1)]], { syncKey: KEY30 });
@@ -1794,7 +1805,7 @@ await goTo("orphaned");
 await wakeWorker();
 await waitFor30(() => photoPuts30().length > 0);
 ok(photoPuts30().length > 0, "30.23a the photo this device holds reached the Worker");
-ok(!LOST_RE30.test(text()), "30.23 an envelope 8 days old, whose photo this device holds, shows no lost line");
+ok(!lostLeaf30(), "30.23 an envelope 8 days old, whose photo this device holds, shows no lost tile");
 
 /* 8 days old, and the Worker holds the photo: this device does not hold it, nothing is lost */
 await boot(dated30(8, ["pho-a"]), null, { syncKey: KEY30, syncPhotos: [["pho-a.jpg", jpegOf(1)]] });
@@ -1802,7 +1813,7 @@ await goTo("orphaned");
 await wakeWorker();
 await waitFor30(surveyed30);
 ok(surveyed30(), "30.24a the Worker answered the photo survey, so the absence below is real");
-ok(!LOST_RE30.test(text()), "30.24 an envelope 8 days old, whose photo the Worker holds, shows no lost line");
+ok(!lostLeaf30(), "30.24 an envelope 8 days old, whose photo the Worker holds, shows no lost tile");
 
 /* a merge brings in an 8-day-old envelope whose photo neither copy holds. The merge
    applies, and no lost line shows: the pull names nothing as lost. */
@@ -1819,7 +1830,89 @@ eq(
   ["pho-a"],
   "30.25b a merge applies the envelope with its photo id kept"
 );
-ok(!LOST_RE30.test(text()), "30.25 and a merge shows no lost line, not even for an old envelope");
+ok(!lostLeaf30(), "30.25 and a merge shows no lost tile, not even for an old envelope");
+
+/* 30.26 the lost tile takes no tap. It is no button, so a tap opens no viewer and arms no
+   zoom. The viewer needs a picture, so the tap is checked twice: now (no dialog), and
+   after the photo arrives from the other device. An armed zoom would open the viewer by
+   itself the moment the picture lands. */
+await boot(dated30(8, ["pho-a"]), null, { syncKey: KEY30 });
+await goTo("orphaned");
+await wakeWorker();
+await waitFor30(surveyed30);
+await waitFor30(lostLeaf30, 2000);
+const leaf30 = lostLeaf30();
+ok(!!leaf30, "30.26a the lost tile is on screen");
+ok(!!leaf30 && !leaf30.closest("button"), "30.26 the lost tile is not a button and sits inside none");
+ok(
+  !document.querySelector('button[aria-label="View photo"]'),
+  "30.26b so the card offers no View photo button while the only photo is lost"
+);
+await click(leaf30, "the lost tile");
+ok(!document.querySelector('[role="dialog"]'), "30.26c a tap on the lost tile opens no viewer");
+/* the other device's ledger differs (a second envelope), so the merge runs its photo phase
+   and downloads pho-a before it applies */
+setServerLedger(
+  SERVER30({
+    ...dated30(8, ["pho-a"]),
+    envelopes: [
+      ...dated30(8, ["pho-a"]).envelopes,
+      { id: "env-peer", createdAt: Date.now(), note: "", entries: [{ name: "Ponder", qty: 1 }], photos: [] },
+    ],
+  })
+);
+addSyncPhoto("pho-a.jpg", jpegOf(1));
+await resume30();
+await waitFor30(() => !!document.querySelector('button[aria-label="View photo"]'));
+ok(
+  !!document.querySelector('button[aria-label="View photo"]'),
+  "30.26d the photo arrived, so its slot is a View photo button now"
+);
+ok(!document.querySelector('[role="dialog"]'), "30.26e and the viewer stays shut: the earlier tap armed no zoom");
+
+/* 30.27 and 30.28: a later survey that cannot say what the Worker holds clears the lost
+   tile. The Worker may hold the photo, and saying "lost" on a guess is the false alarm.
+   Two cases, one per early return in pushPhotos: the list refused (unknown), the local
+   store unreadable. Each wakes the page, which POSTs; the photo phase follows. */
+await boot(dated30(8, ["pho-a"]), null, { syncKey: KEY30 });
+await goTo("orphaned");
+await wakeWorker();
+await waitFor30(surveyed30);
+await waitFor30(lostLeaf30, 2000);
+ok(!!lostLeaf30(), "30.27a a known survey shows the lost tile first");
+const lists30 = photoLists30();
+setSyncPhotosRefused(true);
+await wakeWorker();
+await waitFor30(() => photoLists30() > lists30);
+ok(photoLists30() > lists30, "30.27b the Worker's photo list was asked again, and refused");
+ok(!lostLeaf30(), "30.27 an unknown survey clears the lost tile");
+ok(
+  !!document.querySelector('button[aria-label="View photo"]'),
+  "30.27c and the photo slot is still on screen, as a View photo button"
+);
+setSyncPhotosRefused(false);
+
+await boot(dated30(8, ["pho-a"]), null, { syncKey: KEY30 });
+await goTo("orphaned");
+await wakeWorker();
+await waitFor30(surveyed30);
+await waitFor30(lostLeaf30, 2000);
+ok(!!lostLeaf30(), "30.28a a known survey shows the lost tile first");
+const realKeys30 = win.photos.keys;
+let keyReads30 = 0;
+win.photos.keys = async () => {
+  keyReads30++;
+  throw new Error("idb unreadable");
+};
+await wakeWorker();
+await waitFor30(() => keyReads30 > 0);
+win.photos.keys = realKeys30;
+ok(keyReads30 > 0, "30.28b the next survey read this device's photo store, and it threw");
+ok(!lostLeaf30(), "30.28 an unreadable survey clears the lost tile");
+ok(
+  !!document.querySelector('button[aria-label="View photo"]'),
+  "30.28c and the photo slot is still on screen, as a View photo button"
+);
 
 /* ── 31. the photo rules, asserted directly ────────────────────────────────
    Same reasoning as group 27: entry.jsx mounts React on import and is
