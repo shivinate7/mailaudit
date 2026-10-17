@@ -566,6 +566,12 @@ export const clearSyncStore = () => {
 export const setSyncNetFail = (on) => {
   sync.netFail = !!on;
 };
+/* the Worker refuses the photo list alone (a photo-only 401): the ledger still reads and
+   writes, so the next photo survey runs and finds the list unknown. boot()'s
+   syncPhotosRefused option sets it before the mount. */
+export const setSyncPhotosRefused = (on) => {
+  sync.photoRefused = !!on;
+};
 /* a POST the server refuses as too big: a 413, which syncStatus maps to
    "too-big" */
 export const setSyncTooBig = (on) => {

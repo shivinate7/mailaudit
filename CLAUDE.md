@@ -133,7 +133,7 @@ A photo is a picture of a mailing label. It never enters the ledger, and it can 
 - `photo-ids-unreadable-local` — An unreadable local photo store keeps ids.
 - `photo-thumbnails-and-viewer` — Thumbnails are 56px squares, and the viewer is a scrim.
 - `photo-sweep-two-guards` — The photo sweep has two guards.
-- `pull-warns-on-what-it-drops` — A pull names no photo as lost.
+- `pull-warns-on-what-it-drops` — A lost photo warns after 7 days, never on the pull.
 - `label-photos-downscale-to-2000px` — Label photos downscale to 2000px.
 - `orphan-sweep-drops-unused-photos` — The sweep drops photos no envelope or draft uses.
 
@@ -409,8 +409,8 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `backup-unwatched` — No alarm watches the backup after the watchdog is off.
 - `worker-two-device-proof-unrun` — The two-device merge is not proven against the Worker.
 - `sweep-settle-masks-30-13-stall` — The SWEEP_WAIT settle after 19.6 hides a stall at 30.13.
-- `unheld-photo-never-reported` — A lost photo is never reported.
 - `photoget-throw-counts-as-kill` — A throw counts as a kill in the photoGet test.
+- `lost-photo-clock-is-envelope-age` — The lost-photo clock runs from envelope age.
 
 ## Measurements
 

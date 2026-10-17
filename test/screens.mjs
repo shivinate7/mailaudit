@@ -5,9 +5,10 @@
    its localStorage, and checks the two layout claims jsdom cannot see, because
    jsdom has no layout:
 
-     1. No sideways overflow, in every view, at 375px and 760px. The head's
-        three ruled cells must hold the longest sort label (decisions: the ruled
-        head, `minmax(0, 1fr)`; measurements/ruled-head-heights.md).
+     1. No sideways overflow, in every view, at 375px and 760px, and in the
+        lost-photo tile state (LOST_STATE). The head's three ruled cells must hold
+        the longest sort label (decisions: the ruled head, `minmax(0, 1fr)`;
+        measurements/ruled-head-heights.md).
      2. Every check-in moves no other row in its card (invariant
         no-layout-shift-under-pointer; measurement card-reserved-geometry). Each
         card is checked in row by row through completion, at 375px and 760px: Tally
@@ -36,6 +37,8 @@
      8. An axe scan (ux-house-rules-govern L8) at 375px and 760px in every state
         of SCREEN_STATES, and in the open photo viewer. Fails on any serious or
         critical violation, and on the experimental label-content-name-mismatch rule.
+        LOST_STATE is the last state of SCREEN_STATES and of the scan: it needs a key,
+        a mocked Worker and an old envelope, so it reloads the page (openLostTile).
      9. Touch targets (ux-a11y-floor, L6) at 375px on a touch device, in every
         state of SCREEN_STATES: each visible interactive element is hit at least
         44 by 44 CSS px, measured by elementFromPoint from its centre, the centre
@@ -93,6 +96,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
 import { gzipSync } from "node:zlib";
+import { SYNC_KEY_STORAGE } from "../src/sync-rules.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PAGE = path.resolve(process.argv[2] || path.join(ROOT, "index.html"));
@@ -502,6 +506,29 @@ async function overflowChecks(browser) {
       }
     }
     for (const e of pageErrors) fail("overflow page error", e);
+  } finally {
+    await ctx.close();
+  }
+}
+
+/* Claim 1 for the lost-photo tile state: it is a state, not a tab, so the per-view
+   loop above never opens it. */
+async function lostTileOverflow(browser, width) {
+  const name = `overflow ${LOST_STATE} ${width}px`;
+  const { ctx, page, pageErrors } = await openSeeded(browser, width);
+  try {
+    if (!(await loadedOk(page))) {
+      fail(name, "seeded ledger did not render");
+      return;
+    }
+    checks++;
+    if (!(await openScreenState(page, LOST_STATE))) {
+      fail(name, "the state did not open, so it cannot be measured");
+      return;
+    }
+    const { sw, iw } = await page.evaluate(overflowOf);
+    if (sw > iw) fail(name, `document is ${sw}px wide in a ${iw}px viewport`);
+    for (const e of pageErrors) fail(name, `page error: ${e}`);
   } finally {
     await ctx.close();
   }
@@ -994,7 +1021,7 @@ async function syncPanelCheck(browser, width) {
 /* Each state a screen can be in, opened from the bar. The photo viewer is the
    last state, because it overlays the page and the states after it would open
    on top of it. */
-const SCREEN_STATES = [
+const BASE_STATES = [
   "Ledger",
   "Orphaned",
   "Tally",
@@ -1004,7 +1031,12 @@ const SCREEN_STATES = [
   "Envelope composer open",
   "Sync panel open",
 ];
-const AXE_STATES = [...SCREEN_STATES, "Photo viewer"];
+/* The lost-photo tile (decision pull-warns-on-what-it-drops) comes last, after the
+   photo viewer: its opener reloads the page with a sync key, a mocked Worker and a
+   different ledger, so no later state could count on the ledger it began with. */
+const LOST_STATE = "Lost photo tile";
+const SCREEN_STATES = [...BASE_STATES, LOST_STATE];
+const AXE_STATES = [...BASE_STATES, "Photo viewer", LOST_STATE];
 const AXE_BLOCKING = new Set(["serious", "critical"]);
 const AXE_PHOTO_ID = "pho-axe";
 /* One stamped package, so the stamp band on Packages is in the scan. Its
@@ -1031,8 +1063,88 @@ const keyMasked = (key) => {
   return [i, tag, rest.join("|").replace(/\d+/g, "#")].join("|");
 };
 
+/* The lost-photo tile shows once the push survey has run: the Worker answered the
+   photo list, and the envelope's photo is held by neither this device nor the
+   Worker. So the page needs a device key (any string in the key alphabet), a Worker
+   that answers, and an envelope older than the 7-day grace. The age is relative to
+   now, because the grace is: an absolute date would drift out of the fixture. */
+const LOST_PHOTO_ID = "pho-lost";
+const LOST_DEVICE_KEY = "screens-device-key";
+const LOST_ENVELOPE_AGE_MS = 8 * 86400000;
+const lostLedger = () => ({
+  ...LEDGER,
+  envelopes: [
+    {
+      ...LEDGER.envelopes[0],
+      id: "env-lost",
+      createdAt: Date.now() - LOST_ENVELOPE_AGE_MS,
+      photos: [LOST_PHOTO_ID],
+    },
+  ],
+});
+
+/* Answers the three Worker routes the survey walks, and aborts everything else, so no
+   request, key or socket leaves the machine. A cold open reads the ledger (404, empty),
+   POSTs its own 500 ms later, and surveys the photos 1 s after that. The POST reply
+   carries no ledger: a held ledger would be applied, and an apply drops the survey. */
+async function mockWorker(ctx) {
+  const hits = { ledgerGet: 0, ledgerPost: 0, photoList: 0 };
+  const cors = {
+    "access-control-allow-origin": "*",
+    "access-control-allow-headers": "authorization, content-type",
+    "access-control-allow-methods": "GET, POST, OPTIONS",
+  };
+  await ctx.route(/^https?:\/\//, (route) => {
+    const req = route.request();
+    const { pathname } = new URL(req.url());
+    const json = (status, body) =>
+      route.fulfill({ status, headers: cors, contentType: "application/json", body: JSON.stringify(body) });
+    if (req.method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
+    if (pathname === "/ledger" && req.method() === "GET") {
+      hits.ledgerGet++;
+      return json(404, { error: "empty" });
+    }
+    if (pathname === "/ledger" && req.method() === "POST") {
+      hits.ledgerPost++;
+      return json(200, { rev: 1 });
+    }
+    if (pathname === "/photos" && req.method() === "GET") {
+      hits.photoList++;
+      return json(200, { ids: [] });
+    }
+    return route.abort();
+  });
+  /* a handler that never connects to the server mocks the socket whole */
+  await ctx.routeWebSocket(/.*/, () => {});
+  return hits;
+}
+
+/* Waits on the visible word "Lost", not on the tile's role or label: those are what
+   a fix to the tile changes. A tile that never shows prints what the Worker was asked. */
+async function openLostTile(page) {
+  const hits = await mockWorker(page.context());
+  await page.evaluate(
+    ([ledgerKey, ledger, keyKey, key]) => {
+      localStorage.setItem(ledgerKey, ledger);
+      localStorage.setItem(keyKey, key);
+    },
+    [STORE_KEY, JSON.stringify(lostLedger()), SYNC_KEY_STORAGE, LOST_DEVICE_KEY]
+  );
+  await page.reload();
+  if (!(await loadedOk(page))) return false;
+  if (!(await showView(page, "Orphaned"))) return false;
+  try {
+    await page.getByText("Lost", { exact: true }).first().waitFor({ timeout: 8000 });
+  } catch {
+    console.log(`note ${LOST_STATE}: no "Lost" tile after the survey; the Worker was asked ${JSON.stringify(hits)}`);
+    return false;
+  }
+  return true;
+}
+
 /* Opens one state; false when it does not open, so the caller fails loudly. */
 async function openScreenState(page, state) {
+  if (state === LOST_STATE) return openLostTile(page);
   if (state === "Tally card open") {
     if (!(await showView(page, "Tally"))) return false;
     await page.locator("button", { hasText: "Lightning Bolt" }).first().click();
@@ -1670,6 +1782,7 @@ async function main() {
       ? [() => touchCheck(browser)]
       : [
       () => overflowChecks(browser),
+      ...WIDTHS.map((width) => () => lostTileOverflow(browser, width)),
       ...WIDTHS.map((width) => () => axeCheck(browser, width)),
       () => touchCheck(browser),
       () => stampChipCheck(browser),

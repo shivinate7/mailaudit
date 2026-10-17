@@ -2160,7 +2160,13 @@ function PhotoViewer({ src, onClose }) {
   );
 }
 
-function PhotoStrip({ ids, onRemove, epoch = 0 }) {
+/* A photo neither this device nor the Worker holds, on an envelope past the grace
+   period (pull-warns-on-what-it-drops). The tile stays 56px: it reads "Lost" and is
+   not a button, so it takes no tap; its accessible name is the full sentence. */
+const LOST_PHOTO_SAYS = "Photo lost: neither this device nor the backup has it.";
+const LOST_GRACE_MS = 7 * 86400000;
+
+function PhotoStrip({ ids, onRemove, epoch = 0, lost }) {
   const urls = usePhotoUrls(ids, epoch);
   const [zoom, setZoom] = useState("");
   const opener = useRef(null);
@@ -2174,23 +2180,45 @@ function PhotoStrip({ ids, onRemove, epoch = 0 }) {
       <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
         {ids.map((id) => (
           <div key={id} style={{ position: "relative" }}>
-            <button
-              onClick={(e) => {
-                opener.current = e.currentTarget;
-                setZoom(id);
-              }}
-              aria-label="View photo"
-              style={{
-                width: 56,
-                height: 56,
-                padding: 0,
-                borderRadius: 8,
-                border: `1px solid ${C.line}`,
-                background: urls[id] ? `url(${urls[id]}) center/cover` : C.manila,
-                cursor: "pointer",
-                display: "block",
-              }}
-            />
+            {lost?.has(id) && !urls[id] ? (
+              <div
+                role="img"
+                aria-label={LOST_PHOTO_SAYS}
+                title={LOST_PHOTO_SAYS}
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 8,
+                  border: `1px solid ${C.line}`,
+                  background: C.manila,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 11,
+                  color: C.manilaInk,
+                }}
+              >
+                Lost
+              </div>
+            ) : (
+              <button
+                onClick={(e) => {
+                  opener.current = e.currentTarget;
+                  setZoom(id);
+                }}
+                aria-label="View photo"
+                style={{
+                  width: 56,
+                  height: 56,
+                  padding: 0,
+                  borderRadius: 8,
+                  border: `1px solid ${C.line}`,
+                  background: urls[id] ? `url(${urls[id]}) center/cover` : C.manila,
+                  cursor: "pointer",
+                  display: "block",
+                }}
+              />
+            )}
             {onRemove && (
               <button
                 onClick={() => onRemove(id)}
@@ -2626,7 +2654,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
 
 /* ---------- A recorded envelope, waiting to be tied to a package ---------- */
 
-function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) {
+function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch, lostPhotos }) {
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const timer = useRef(null);
@@ -2799,7 +2827,11 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
         )}
         {env.photos?.length > 0 && (
           <div style={{ marginTop: 8 }}>
-            <PhotoStrip ids={env.photos} epoch={photoEpoch} />
+            <PhotoStrip
+              ids={env.photos}
+              epoch={photoEpoch}
+              lost={Date.now() - env.createdAt > LOST_GRACE_MS ? lostPhotos : undefined}
+            />
           </div>
         )}
       </div>
@@ -3076,6 +3108,9 @@ export default function MailDayLedger() {
   /* Bumped by every write to the photo store, so thumbnails re-resolve after a
      pull that kept the same ids — see usePhotoUrls. */
   const [photoEpoch, setPhotoEpoch] = useState(0);
+  /* Ids the last push survey found on neither this device nor the Worker. Set only
+     there: a pull names no photo as lost (pull-warns-on-what-it-drops). */
+  const [lostPhotos, setLostPhotos] = useState(() => new Set());
   /* One flag for the whole operation, ledger phase and photo phase together.
      Without it the "Pushed ✓" flash flips Push back to enabled 2.5s in while
      uploads are still queued, and a second tap starts a CONCURRENT second loop:
@@ -4152,6 +4187,8 @@ export default function MailDayLedger() {
     async (gen, refs) => {
       const survey = await surveyPhotos(refs || referencedPhotoIds);
       if (syncGen.current !== gen) return;
+      /* an unknown or unreadable survey reports nothing lost */
+      setLostPhotos(new Set());
       setPhotoUnreadable(!!survey?.unreadable);
       if (survey?.unreadable) {
         setPhotoMsg({ tone: "advice", text: PHOTO_SAYS.unreadable });
@@ -4164,6 +4201,7 @@ export default function MailDayLedger() {
         setPhotoMsg({ tone: "advice", text: PHOTO_SAYS[remote.reason] || PHOTO_SAYS.server });
         return;
       }
+      setLostPhotos(new Set(plan.lost));
       const batch = plan.toPush.slice(0, PHOTO_BATCH);
       if (!batch.length) return;
       setPhotoSync({ dir: "push", done: 0, total: batch.length });
@@ -6553,6 +6591,7 @@ export default function MailDayLedger() {
                     onDiscard={discardEnvelope}
                     onEdit={setComposing}
                     photoEpoch={photoEpoch}
+                    lostPhotos={lostPhotos}
                   />
                 )}
               </React.Fragment>
