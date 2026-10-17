@@ -2,7 +2,7 @@
 
 Owner ruling 2026-10-15 21:25 CDT. A restore drops a photo id this device does not hold. A restore is a backup file or a saved version. An inlined blob counts as held, so its id stays. A merge and a server apply keep every id. So does an unreadable local photo store, as `photo-ids-unreadable-local` sets out.
 
-A device that lacks a blob does not show that no device holds it. A restore restamps its envelopes, so its ids win the merge, and the holder's sweep then drops the blob. So a restore can make a device that still held a photo delete it. The owner chose to drop the id, so no tile is blank after a restore, and accepted that cost. The app names no lost photo, see debt `unheld-photo-never-reported`.
+A device that lacks a blob does not show that no device holds it. A restore restamps its envelopes, so its ids win the merge, and the holder's sweep then drops the blob. So a restore can make a device that still held a photo delete it. The owner chose to drop the id, so no tile is blank after a restore, and accepted that cost. A photo that no device holds shows as lost after 7 days, see `pull-warns-on-what-it-drops`.
 
 A pushed payload never carries photos, because photos stay local. So a restore on the device that took a photo keeps its id, because the blob is here. Keeping an id this device lacks costs a blank manila tile until a sync brings the blob. Stripping it costs the photo. A blob inlined in a backup file is written to this device on restore, so its id stays.
 

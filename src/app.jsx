@@ -2160,7 +2160,21 @@ function PhotoViewer({ src, onClose }) {
   );
 }
 
-function PhotoStrip({ ids, onRemove, epoch = 0 }) {
+/* A photo neither this device nor the Worker holds, on an envelope past the grace
+   period (pull-warns-on-what-it-drops). The tile stays 56px: it reads "Lost", and
+   the full sentence is in the DOM for a screen reader, off screen. */
+const LOST_PHOTO_SAYS = "Photo lost: neither this device nor the backup has it.";
+const LOST_GRACE_MS = 7 * 86400000;
+const srOnly = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  overflow: "hidden",
+  clip: "rect(0 0 0 0)",
+  whiteSpace: "nowrap",
+};
+
+function PhotoStrip({ ids, onRemove, epoch = 0, lost }) {
   const urls = usePhotoUrls(ids, epoch);
   const [zoom, setZoom] = useState("");
   const opener = useRef(null);
@@ -2189,8 +2203,18 @@ function PhotoStrip({ ids, onRemove, epoch = 0 }) {
                 background: urls[id] ? `url(${urls[id]}) center/cover` : C.manila,
                 cursor: "pointer",
                 display: "block",
+                fontSize: 11,
+                color: C.manilaInk,
               }}
-            />
+              title={lost?.has(id) && !urls[id] ? LOST_PHOTO_SAYS : undefined}
+            >
+              {lost?.has(id) && !urls[id] ? (
+                <>
+                  <span aria-hidden="true">Lost</span>
+                  <span style={srOnly}>{LOST_PHOTO_SAYS}</span>
+                </>
+              ) : null}
+            </button>
             {onRemove && (
               <button
                 onClick={() => onRemove(id)}
@@ -2626,7 +2650,7 @@ function EnvelopeComposer({ initial, suggestions, onSave, onCancel, target, draf
 
 /* ---------- A recorded envelope, waiting to be tied to a package ---------- */
 
-function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) {
+function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch, lostPhotos }) {
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [showAll, setShowAll] = useState(false);
   const timer = useRef(null);
@@ -2799,7 +2823,11 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch }) 
         )}
         {env.photos?.length > 0 && (
           <div style={{ marginTop: 8 }}>
-            <PhotoStrip ids={env.photos} epoch={photoEpoch} />
+            <PhotoStrip
+              ids={env.photos}
+              epoch={photoEpoch}
+              lost={Date.now() - env.createdAt > LOST_GRACE_MS ? lostPhotos : undefined}
+            />
           </div>
         )}
       </div>
@@ -3076,6 +3104,9 @@ export default function MailDayLedger() {
   /* Bumped by every write to the photo store, so thumbnails re-resolve after a
      pull that kept the same ids — see usePhotoUrls. */
   const [photoEpoch, setPhotoEpoch] = useState(0);
+  /* Ids the last push survey found on neither this device nor the Worker. Set only
+     there: a pull names no photo as lost (pull-warns-on-what-it-drops). */
+  const [lostPhotos, setLostPhotos] = useState(() => new Set());
   /* One flag for the whole operation, ledger phase and photo phase together.
      Without it the "Pushed ✓" flash flips Push back to enabled 2.5s in while
      uploads are still queued, and a second tap starts a CONCURRENT second loop:
@@ -4164,6 +4195,7 @@ export default function MailDayLedger() {
         setPhotoMsg({ tone: "advice", text: PHOTO_SAYS[remote.reason] || PHOTO_SAYS.server });
         return;
       }
+      setLostPhotos(new Set(plan.lost));
       const batch = plan.toPush.slice(0, PHOTO_BATCH);
       if (!batch.length) return;
       setPhotoSync({ dir: "push", done: 0, total: batch.length });
@@ -6552,6 +6584,7 @@ export default function MailDayLedger() {
                     onDiscard={discardEnvelope}
                     onEdit={setComposing}
                     photoEpoch={photoEpoch}
+                    lostPhotos={lostPhotos}
                   />
                 )}
               </React.Fragment>

@@ -2,9 +2,9 @@
 
 Owner ruling 2026-10-17: the app warns about a lost label photo after a grace period. The grace period, the clock, the slot and the pull rule below are orchestrator defaults. The owner may redirect any of them.
 
-The grace period exists because the Worker lacking a blob does not mean no device holds it. The device that took the photo may still be uploading. Seven days gives that upload time to finish. The gap this closes is debt `unheld-photo-never-reported`, a lost photo is never reported.
+The grace period exists because the Worker lacking a blob does not mean no device holds it. The device that took the photo may still be uploading. Seven days gives that upload time to finish. Before this, no part of the app named a lost photo.
 
-**Holds while:** the build below is in place, and these stay true.
+**Holds while:** the build below is in place, and these stay true. The build is `pushPhotos` setting `lostPhotos` from `plan.lost`, and `EnvelopeCard` handing it to `PhotoStrip` when `createdAt` is over 7 days old. The tile stays 56px: it reads "Lost", with the full sentence off screen for a screen reader.
 
 - `photoPlan` in `src/photo-rules.mjs` lists a photo in `lost` only when neither this device nor the Worker holds its blob. `lost` stays empty when the Worker answer is unknown (`listphotos-is-three-valued`, a device that cannot see the Worker reports nothing lost).
 - A photo shows as lost only when its envelope's `createdAt` is more than 7 days old. Under 7 days, nothing shows. The clock is `createdAt`, so no new saved state is added (`saved-state-shape`, the saved-state shape is fixed).

@@ -94,7 +94,7 @@ The native build needs these changes to the Worker. On main the Worker serves `/
 - No alarm watches the Worker backup. The owner accepted that on 2026-10-14 at 21:55 CDT, after turning the watchdog off. Named limit, not an open item: `backup-unwatched`.
 - The `photoGet` list-first fallback in `src/entry.jsx` has no test. The harness does not bundle that file. Named limit, debt: `photoget-list-fallback-untested`.
 - The `SWEEP_WAIT` settle (2600 ms) after test 19.6 hides an unexplained stall at 30.13. Named limit, debt: `sweep-settle-masks-30-13-stall`.
-- A photo that this device and the Worker both lack is never named as lost yet. The 7-day warning is ruled, not built: see `pull-warns-on-what-it-drops`. Named limit, debt: `unheld-photo-never-reported`.
+- A photo that this device and the Worker both lack shows as lost only after its envelope is 7 days old. The clock is the envelope's age, not the time since the other device could upload. Named limit: `pull-warns-on-what-it-drops`.
 
 ## See also
 
