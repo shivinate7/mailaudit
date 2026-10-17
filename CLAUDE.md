@@ -411,6 +411,7 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `sweep-settle-masks-30-13-stall` — The SWEEP_WAIT settle after 19.6 hides a stall at 30.13.
 - `photoget-throw-counts-as-kill` — A throw counts as a kill in the photoGet test.
 - `lost-photo-clock-is-envelope-age` — The lost-photo clock runs from envelope age.
+- `lost-tile-waits-for-first-post` — The lost tile waits for the first POST.
 
 ## Measurements
 

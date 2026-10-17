@@ -20,7 +20,7 @@ The grace period exists because the Worker lacking a blob does not mean no devic
   - 30.27 and 30.28: a refused or unreadable later survey clears the tile.
   - 30.29: a photo pulled with no later survey replaces the tile at once.
 
-Named limit (debt `lost-photo-clock-is-envelope-age`): the clock is the envelope's age, not the time since the other device could upload. A device offline for more than 7 days after it made an envelope can show a warning while that upload is still pending. Restore and partial assign keep `createdAt`, so their envelopes keep their original age. The tile is set only by the push survey after a successful POST, so a session with nothing to send shows no tile until its first POST. That delays a warning; it cannot raise a false one.
+Named limit (debt `lost-photo-clock-is-envelope-age`): the clock is the envelope's age, not the time since the other device could upload. A device offline for more than 7 days after it made an envelope can show a warning while that upload is still pending. Restore and partial assign keep `createdAt`, so their envelopes keep their original age. The tile is set only by the push survey after a successful POST, so a session with nothing to send shows no tile until its first POST (debt `lost-tile-waits-for-first-post`). That delays a warning; it cannot raise a false one.
 
 Kind: build
 
