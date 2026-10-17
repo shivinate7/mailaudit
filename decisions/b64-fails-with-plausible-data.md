@@ -1,6 +1,6 @@
 # Base64 lives in its own module
 
-The base64 helpers for the Contents API get their own file, `src/b64.mjs`. A JPEG pushed through the wrong text path does not error. It silently produces corrupted bytes of the wrong length. That failure is worse than a thrown error, so the code stays pure and tested on its own. `entry.jsx` cannot load in a test, so the platform file cannot make this claim.
+The base64 helpers for the Contents API get their own file, `src/b64.mjs`. A JPEG pushed through the wrong text path does not error. It silently produces corrupted bytes of the wrong length. That failure is worse than a thrown error, so the code stays pure and tested on its own. The app suite does not load `entry.jsx`; only `test/photoget.test.mjs` bundles it, with the app stubbed. So the helpers stay out of the platform file, where the app suite can reach them.
 
 **Holds while:** `src/b64.mjs` exports `utf8ToBase64` and `blobToBase64` as separate functions. Test 31.21 in `test/app.test.mjs` asserts the JPEG case.
 
