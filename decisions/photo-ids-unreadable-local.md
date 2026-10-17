@@ -14,7 +14,7 @@ A failed `photos.keys()` must not read as an empty list. Read as empty, it turns
 
 Mutant confirmed red: an unreadable store read as empty. The absent-store case, with `window.photos` removed, was red at `1ab4286` in the test author's recorded run: 47.8 expected `pho-k` kept and got none.
 
-**Pinned by:** 47.8 and its precondition 47.8pre pin a restore with no photo global (`window.photos` absent). 47.1 and 47.2 pin a file restore with the local store unreadable, on screen and in the saved ledger. Test 26.13b pins the remote half. For the `surveyPhotos` half, 47.5 kills a push that reads the store as full. A pull that reads the store as empty survives 47.6 (debt `tests-47-6-and-30-15-cannot-fail`). A push that meets an unreadable store says that the photos could not be read. So 48.1 to 48.3 catch a push that reads the store as empty.
+**Pinned by:** 47.8 and its precondition 47.8pre pin a restore with no photo global (`window.photos` absent). 47.1 and 47.2 pin a file restore with the local store unreadable, on screen and in the saved ledger. Test 26.13b pins the remote half, and 30.15 pins that a refused photo store says photos need setup, not that they are gone. For the `surveyPhotos` half, 47.5 kills a push that reads the store as full. 47.6 kills a pull that reads the store as empty, because the unreadable-photos line must show. A push that meets an unreadable store says that the photos could not be read. So 48.1 to 48.3 catch a push that reads the store as empty.
 
 ## See also
 

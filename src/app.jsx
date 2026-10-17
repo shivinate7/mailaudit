@@ -2161,18 +2161,10 @@ function PhotoViewer({ src, onClose }) {
 }
 
 /* A photo neither this device nor the Worker holds, on an envelope past the grace
-   period (pull-warns-on-what-it-drops). The tile stays 56px: it reads "Lost", and
-   the full sentence is in the DOM for a screen reader, off screen. */
+   period (pull-warns-on-what-it-drops). The tile stays 56px: it reads "Lost" and is
+   not a button, so it takes no tap; its accessible name is the full sentence. */
 const LOST_PHOTO_SAYS = "Photo lost: neither this device nor the backup has it.";
 const LOST_GRACE_MS = 7 * 86400000;
-const srOnly = {
-  position: "absolute",
-  width: 1,
-  height: 1,
-  overflow: "hidden",
-  clip: "rect(0 0 0 0)",
-  whiteSpace: "nowrap",
-};
 
 function PhotoStrip({ ids, onRemove, epoch = 0, lost }) {
   const urls = usePhotoUrls(ids, epoch);
@@ -2188,33 +2180,45 @@ function PhotoStrip({ ids, onRemove, epoch = 0, lost }) {
       <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
         {ids.map((id) => (
           <div key={id} style={{ position: "relative" }}>
-            <button
-              onClick={(e) => {
-                opener.current = e.currentTarget;
-                setZoom(id);
-              }}
-              aria-label="View photo"
-              style={{
-                width: 56,
-                height: 56,
-                padding: 0,
-                borderRadius: 8,
-                border: `1px solid ${C.line}`,
-                background: urls[id] ? `url(${urls[id]}) center/cover` : C.manila,
-                cursor: "pointer",
-                display: "block",
-                fontSize: 11,
-                color: C.manilaInk,
-              }}
-              title={lost?.has(id) && !urls[id] ? LOST_PHOTO_SAYS : undefined}
-            >
-              {lost?.has(id) && !urls[id] ? (
-                <>
-                  <span aria-hidden="true">Lost</span>
-                  <span style={srOnly}>{LOST_PHOTO_SAYS}</span>
-                </>
-              ) : null}
-            </button>
+            {lost?.has(id) && !urls[id] ? (
+              <div
+                role="img"
+                aria-label={LOST_PHOTO_SAYS}
+                title={LOST_PHOTO_SAYS}
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: 8,
+                  border: `1px solid ${C.line}`,
+                  background: C.manila,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 11,
+                  color: C.manilaInk,
+                }}
+              >
+                Lost
+              </div>
+            ) : (
+              <button
+                onClick={(e) => {
+                  opener.current = e.currentTarget;
+                  setZoom(id);
+                }}
+                aria-label="View photo"
+                style={{
+                  width: 56,
+                  height: 56,
+                  padding: 0,
+                  borderRadius: 8,
+                  border: `1px solid ${C.line}`,
+                  background: urls[id] ? `url(${urls[id]}) center/cover` : C.manila,
+                  cursor: "pointer",
+                  display: "block",
+                }}
+              />
+            )}
             {onRemove && (
               <button
                 onClick={() => onRemove(id)}
@@ -4183,6 +4187,8 @@ export default function MailDayLedger() {
     async (gen, refs) => {
       const survey = await surveyPhotos(refs || referencedPhotoIds);
       if (syncGen.current !== gen) return;
+      /* an unknown or unreadable survey reports nothing lost */
+      setLostPhotos(new Set());
       setPhotoUnreadable(!!survey?.unreadable);
       if (survey?.unreadable) {
         setPhotoMsg({ tone: "advice", text: PHOTO_SAYS.unreadable });
@@ -4348,10 +4354,11 @@ export default function MailDayLedger() {
         if (canon(noTime(merged)) === canon(noTime(snapshot()))) {
           return { ok: true };
         }
-        /* photos BEFORE applying: the merge unions both devices' envelopes, so ids
-           arriving from the other device have no blob here yet and the apply would
-           strip every one of them. The ids the Worker holds are kept even when a
-           download fails (a retry beats a lost link). */
+        /* photos BEFORE applying: a merge keeps every id, so the order does not
+           decide which ids survive (photo-ids-restore-keep-if-known). It serves the
+           photo: a merged envelope whose blob is already here shows it when the
+           ledger lands, not a blank tile. A download that fails keeps its id, so a
+           later try can fetch the blob. */
         await pullPhotos(replyText, gen);
         if (syncGen.current !== gen) return { ok: false, code: "server" };
         /* a tap during the downloads: applying now would shift the list under the
