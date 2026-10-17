@@ -413,6 +413,7 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `unheld-photo-never-reported` — A lost photo is never reported.
 - `tests-47-6-and-30-15-cannot-fail` — Tests 47.6 and 30.15 cannot fail.
 - `merge-comment-says-apply-strips` — The doMerge comment says an apply strips photo ids.
+- `failed-photo-download-no-retry` — A failed photo download is not retried.
 
 ## Measurements
 
