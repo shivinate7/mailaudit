@@ -2186,6 +2186,7 @@ function PhotoStrip({ ids, onRemove, epoch = 0, lost }) {
                 aria-label={LOST_PHOTO_SAYS}
                 title={LOST_PHOTO_SAYS}
                 style={{
+                  boxSizing: "border-box",
                   width: 56,
                   height: 56,
                   borderRadius: 8,
