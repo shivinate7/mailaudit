@@ -1489,6 +1489,7 @@ const withPhoto = (ids) => ({
   ],
 });
 const KEY30 = "device-30-key";
+const IDLE_MS_30 = 10000; /* IDLE_APPLY_MS, sync-rules: group 51 pins it */
 const SERVER30 = (state) => ({
   mailday: 1,
   ...state,
@@ -1913,6 +1914,63 @@ ok(
   !!document.querySelector('button[aria-label="View photo"]'),
   "30.28c and the photo slot is still on screen, as a View photo button"
 );
+
+/* 30.29 the second half of the tile's condition: it shows only while this device does
+   not hold the blob. A pull names no photo as lost and never clears the lost set, so
+   once a pull lands the blob, the held blob alone gives the slot back to the thumbnail.
+   The merge here comes over the rev channel (a peer's push) from a Worker ledger that
+   already holds everything this device holds, so no POST follows the apply and no
+   survey runs: nothing but the held blob can hide the tile. A resume would POST, and the
+   push survey after it clears the lost set by itself, which hides the fault.
+   The idle gate holds the apply for IDLE_APPLY_MS, so Date.now runs 30 s ahead while the
+   merge waits (advancing, so waitFor30's own bound still elapses). The waits are on the
+   photo write and on the thumbnail. */
+await boot(dated30(8, ["pho-a"]), null, { syncKey: KEY30 });
+await goTo("orphaned");
+await wakeWorker();
+await waitFor30(surveyed30);
+await waitFor30(lostLeaf30, 2000);
+ok(!!lostLeaf30(), "30.29a a known survey shows the lost tile first");
+ok(!document.querySelector('button[aria-label="View photo"]'), "30.29b and the slot is no thumbnail yet");
+{
+  /* the Worker gets the photo only now: before the survey it would never have been lost */
+  const here = syncLedgerNow();
+  const peer = {
+    ...here,
+    envelopes: [
+      ...here.envelopes,
+      { id: "env-peer", createdAt: Date.now(), note: "", entries: [{ name: "Ponder", qty: 1 }], photos: [] },
+    ],
+  };
+  addSyncPhoto("pho-a.jpg", jpegOf(1));
+  const posts = syncCalls().filter((c) => c.op === "post").length;
+  const lists = photoLists30();
+  const realNow = Date.now;
+  Date.now = () => realNow() + 3 * IDLE_MS_30;
+  try {
+    await fireSyncRev(syncRev() + 1, peer);
+    await waitFor30(() => photoKeys().includes("pho-a"));
+    await waitFor30(() => !!document.querySelector('button[aria-label="View photo"]'), 2000);
+  } finally {
+    Date.now = realNow;
+  }
+  ok(photoKeys().includes("pho-a"), "30.29c the merge downloaded pho-a, so this device holds it");
+  eq(
+    syncCalls().filter((c) => c.op === "post").length,
+    posts,
+    "30.29d no POST followed the merge, so no push survey is due to clear the lost set"
+  );
+  eq(
+    photoLists30(),
+    lists + 1,
+    "30.29e the Worker's photo list was read once since, by the pull's own survey, which names nothing lost"
+  );
+  ok(
+    !!document.querySelector('button[aria-label="View photo"]'),
+    "30.29f the photo's slot is a View photo button now"
+  );
+  ok(!lostLeaf30(), "30.29 a photo this device holds shows no lost tile, whatever the lost set still names");
+}
 
 /* ── 31. the photo rules, asserted directly ────────────────────────────────
    Same reasoning as group 27: entry.jsx mounts React on import and is

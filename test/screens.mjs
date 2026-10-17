@@ -87,6 +87,9 @@
         corners are 8px. A card is a DIV on the card surface (#FCF6EA) with a 1px
         border. Pseudo-elements are not walked. Exemptions are named in GRID_EXEMPT,
         each with its reason.
+    15. Lost tile size (decision pull-warns-on-what-it-drops) at 375px and 760px: in a
+        strip that holds a View photo thumbnail and a lost tile, both are 56 by 56
+        drawn px (0.5px tolerance), by bounding rect. A content-box tile measures 58.
 
    Reduced motion is on, so animation does not skew the numbers. Exit 0 when all
    checks pass; exit 1 with one `FAIL` line per failure and one summary line. */
@@ -528,6 +531,47 @@ async function lostTileOverflow(browser, width) {
     }
     const { sw, iw } = await page.evaluate(overflowOf);
     if (sw > iw) fail(name, `document is ${sw}px wide in a ${iw}px viewport`);
+    for (const e of pageErrors) fail(name, `page error: ${e}`);
+  } finally {
+    await ctx.close();
+  }
+}
+
+/* Claim 15: the lost tile is the size of the thumbnails beside it. The strip holds one
+   of each: a photo the Worker holds (so a View photo button) and the lost one. Both
+   are 56 by 56 drawn px. Measured by bounding rect, so a content-box tile (56px plus a
+   1px border each side = 58) fails, and the FAIL line prints both measures. */
+async function lostTileSize(browser, width) {
+  const name = `size ${LOST_STATE} ${width}px`;
+  const { ctx, page, pageErrors } = await openSeeded(browser, width);
+  try {
+    if (!(await loadedOk(page))) {
+      fail(name, "seeded ledger did not render");
+      return;
+    }
+    checks++;
+    if (!(await openLostTile(page, { ledger: lostSizeLedger(), workerNames: [`${HELD_PHOTO_ID}.jpg`] }))) {
+      fail(name, "the state did not open, so it cannot be measured");
+      return;
+    }
+    const m = await page.evaluate((tileSel) => {
+      const size = (el) => {
+        if (!el) return null;
+        const r = el.getBoundingClientRect();
+        return { w: r.width, h: r.height };
+      };
+      return {
+        tile: size(document.querySelector(tileSel)),
+        thumb: size(document.querySelector('button[aria-label="View photo"]')),
+      };
+    }, LOST_TILE_SELECTOR);
+    const px = (b) => `${b.w}x${b.h}`;
+    const off = (a, b) => Math.abs(a.w - b.w) > BOX_TOL_PX || Math.abs(a.h - b.h) > BOX_TOL_PX;
+    const want = { w: THUMB_PX, h: THUMB_PX };
+    if (!m.tile) fail(name, `no lost tile matches ${LOST_TILE_SELECTOR}, so it cannot be measured`);
+    else if (!m.thumb) fail(name, `lost tile ${px(m.tile)}, and no View photo thumbnail beside it to compare`);
+    else if (off(m.tile, want) || off(m.tile, m.thumb))
+      fail(name, `lost tile ${px(m.tile)}, thumbnail ${px(m.thumb)}; both must be ${px(want)}`);
     for (const e of pageErrors) fail(name, `page error: ${e}`);
   } finally {
     await ctx.close();
@@ -1083,11 +1127,25 @@ const lostLedger = () => ({
   ],
 });
 
+/* The size claim needs a thumbnail beside the tile, and lostLedger() must stay as it is:
+   one more button in the lost state would move every index in its recorded boxes
+   (claim 10). So the strip has its own fixture: a photo the Worker holds, then the lost
+   one. A photo the Worker holds is not lost, and it draws as a View photo button. */
+const HELD_PHOTO_ID = "pho-held";
+const THUMB_PX = 56; /* decision photo-thumbnails-and-viewer */
+const LOST_TILE_SELECTOR = '[role="img"][aria-label^="Photo lost"]';
+const lostSizeLedger = () => {
+  const l = lostLedger();
+  return { ...l, envelopes: [{ ...l.envelopes[0], photos: [HELD_PHOTO_ID, LOST_PHOTO_ID] }] };
+};
+
 /* Answers the three Worker routes the survey walks, and aborts everything else, so no
    request, key or socket leaves the machine. A cold open reads the ledger (404, empty),
    POSTs its own 500 ms later, and surveys the photos 1 s after that. The POST reply
-   carries no ledger: a held ledger would be applied, and an apply drops the survey. */
-async function mockWorker(ctx) {
+   carries no ledger: a held ledger would be applied, and an apply drops the survey.
+   `workerNames` are the photo file names its list holds (id.ext, as the Worker lists them):
+   a photo it holds is not lost. */
+async function mockWorker(ctx, workerNames = []) {
   const hits = { ledgerGet: 0, ledgerPost: 0, photoList: 0 };
   const cors = {
     "access-control-allow-origin": "*",
@@ -1110,7 +1168,7 @@ async function mockWorker(ctx) {
     }
     if (pathname === "/photos" && req.method() === "GET") {
       hits.photoList++;
-      return json(200, { ids: [] });
+      return json(200, { ids: workerNames });
     }
     return route.abort();
   });
@@ -1121,14 +1179,14 @@ async function mockWorker(ctx) {
 
 /* Waits on the visible word "Lost", not on the tile's role or label: those are what
    a fix to the tile changes. A tile that never shows prints what the Worker was asked. */
-async function openLostTile(page) {
-  const hits = await mockWorker(page.context());
+async function openLostTile(page, { ledger = lostLedger(), workerNames = [] } = {}) {
+  const hits = await mockWorker(page.context(), workerNames);
   await page.evaluate(
     ([ledgerKey, ledger, keyKey, key]) => {
       localStorage.setItem(ledgerKey, ledger);
       localStorage.setItem(keyKey, key);
     },
-    [STORE_KEY, JSON.stringify(lostLedger()), SYNC_KEY_STORAGE, LOST_DEVICE_KEY]
+    [STORE_KEY, JSON.stringify(ledger), SYNC_KEY_STORAGE, LOST_DEVICE_KEY]
   );
   await page.reload();
   if (!(await loadedOk(page))) return false;
@@ -1783,6 +1841,7 @@ async function main() {
       : [
       () => overflowChecks(browser),
       ...WIDTHS.map((width) => () => lostTileOverflow(browser, width)),
+      ...WIDTHS.map((width) => () => lostTileSize(browser, width)),
       ...WIDTHS.map((width) => () => axeCheck(browser, width)),
       () => touchCheck(browser),
       () => stampChipCheck(browser),
