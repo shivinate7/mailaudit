@@ -21,7 +21,7 @@
     "worker:dev": "cd worker && npx --yes wrangler@4.149.0 dev",
     "check:records": "node check-records.mjs",
     "check:screens": "node test/screens.mjs",
-    "test": "node test/app.test.mjs",
+    "test": "node test/app.test.mjs && node test/photoget.test.mjs",
     "serve": "node dev-server.mjs",
     "deploy": "npm run build && npm run check:seed && npm test && git switch -c deploy/$(date +%Y%m%d%H%M%S)-$$ && git add index.html native/ManifestKit/Sources/ManifestKit/rules.js && git commit -m \"deploy: rebuild index.html\" && git push -u origin HEAD && gh pr create --fill --base main && git switch -"
   },

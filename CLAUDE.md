@@ -408,10 +408,10 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `cloudflare-access-login-untested` — A Cloudflare Access login in an iOS home-screen app is untested.
 - `backup-unwatched` — No alarm watches the backup after the watchdog is off.
 - `worker-two-device-proof-unrun` — The two-device merge is not proven against the Worker.
-- `photoget-list-fallback-untested` — The photoGet list-first fallback has no test.
 - `sweep-settle-masks-30-13-stall` — The SWEEP_WAIT settle after 19.6 hides a stall at 30.13.
 - `unheld-photo-never-reported` — A lost photo is never reported.
 - `tests-47-6-and-30-15-cannot-fail` — Tests 47.6 and 30.15 cannot fail.
+- `photoget-throw-counts-as-kill` — A throw counts as a kill in the photoGet test.
 
 ## Measurements
 
