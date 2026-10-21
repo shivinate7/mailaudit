@@ -11,10 +11,13 @@
 //     A name passed as an id would look like a photo the Worker lacks, and upload it again.
 //   - An unknown Worker list, or an unreadable local store, changes nothing and reports nothing lost.
 //   - A photo over the Worker cap (PhotoTransportError.tooLarge) must not block the ones behind it.
-//     Any other failure stops the run, and the next run resumes from the set difference.
+//     Any other upload failure stops the run, and the next run resumes from the set difference.
+//     A failed download skips that photo and the rest download (pullPhotos: "one bad fetch
+//     shouldn't cost the other eleven").
 //   - One run sends at most 25 photos (PHOTO_BATCH).
 //   - Stop: the person can stop an upload. It cancels the call in flight, starts no more, and leaves
-//     the next run free to resume. A stop with nothing running is not remembered.
+//     the next run free to resume. A stop with nothing running is not remembered. A Stop while the
+//     Worker list is being read ends the run as stopped, not as an unknown list.
 //
 // Contract the tests name:
 //   public enum PhotoTransportError: Error, Equatable, Sendable { case tooLarge }   // a 413
@@ -38,8 +41,6 @@
 //       public func pull(referenced: [String]) async -> PhotoSyncReport
 //       public func stop()                                     // cancels the run in flight, if any
 //   }
-//
-// Red-first: see PhotoStubs.swift.
 
 import Foundation
 import XCTest
@@ -49,34 +50,38 @@ struct PhotoFakeNetworkDown: Error {}
 
 /// The Worker, as the sync sees it. An actor, because the test target compiles in Swift 6 mode.
 actor PhotoFakeTransport: PhotoTransport {
-    enum ListMode { case names, unknown, down }
+    enum ListMode { case names, unknown, down, hang }
     enum PutMode { case ok, tooLarge, fail, hang }
 
     private(set) var held: [String: Data]
     private var listMode: ListMode
     private var defaultPut: PutMode
     private var putModes: [String: PutMode]
-    private var getFails: Bool
+    private var getFailNames: Set<String>
     private let onPutStart: (@Sendable (String) -> Void)?
+    private let onListStart: (@Sendable () -> Void)?
 
     private(set) var listCalls = 0
     private(set) var putStarted: [String] = []
     private(set) var putCancelled: [String] = []
     private(set) var getCalls: [String] = []
+    private(set) var listCancelled = 0
 
-    /// A put in `.hang` mode waits this long unless it is cancelled. A run that Stop does not cancel
-    /// still ends, so a missing Stop fails an assert and does not hang the suite.
+    /// A put or list in `.hang` mode waits this long unless it is cancelled. A run that Stop does not
+    /// cancel still ends, so a missing Stop fails an assert and does not hang the suite.
     static let hangSeconds = 4
 
     init(held: [String: Data] = [:], list: ListMode = .names, put: PutMode = .ok,
-         putModes: [String: PutMode] = [:], getFails: Bool = false,
-         onPutStart: (@Sendable (String) -> Void)? = nil) {
+         putModes: [String: PutMode] = [:], getFailNames: Set<String> = [],
+         onPutStart: (@Sendable (String) -> Void)? = nil,
+         onListStart: (@Sendable () -> Void)? = nil) {
         self.held = held
         self.listMode = list
         self.defaultPut = put
         self.putModes = putModes
-        self.getFails = getFails
+        self.getFailNames = getFailNames
         self.onPutStart = onPutStart
+        self.onListStart = onListStart
     }
 
     func setPut(_ name: String, _ mode: PutMode) { putModes[name] = mode }
@@ -84,10 +89,17 @@ actor PhotoFakeTransport: PhotoTransport {
 
     func list() async throws -> [String]? {
         listCalls += 1
+        onListStart?()
         switch listMode {
         case .names: return held.keys.sorted()
         case .unknown: return nil
         case .down: throw PhotoFakeNetworkDown()
+        case .hang:
+            do { try await Task.sleep(for: .seconds(Self.hangSeconds)) } catch {
+                listCancelled += 1
+                throw error
+            }
+            return held.keys.sorted()
         }
     }
 
@@ -109,7 +121,7 @@ actor PhotoFakeTransport: PhotoTransport {
 
     func get(name: String) async throws -> Data? {
         getCalls.append(name)
-        if getFails { throw PhotoFakeNetworkDown() }
+        if getFailNames.contains(name) { throw PhotoFakeNetworkDown() }
         return held[name]
     }
 }
@@ -141,15 +153,17 @@ final class PhotoSyncTests: XCTestCase {
     /// `local` is the ids this device holds. `worker` maps a Worker file name to its bytes.
     func makeRig(local: [String] = [], localPNG: [String] = [], worker: [String: Data] = [:],
                  list: PhotoFakeTransport.ListMode = .names, put: PhotoFakeTransport.PutMode = .ok,
-                 putModes: [String: PhotoFakeTransport.PutMode] = [:], getFails: Bool = false,
+                 putModes: [String: PhotoFakeTransport.PutMode] = [:], getFailNames: Set<String> = [],
                  onPutStart: (@Sendable (String) -> Void)? = nil,
+                 onListStart: (@Sendable () -> Void)? = nil,
                  storeFolder: URL? = nil) async throws -> Rig {
         let engine = try Kit.engine()
         let store = PhotoStore(folder: storeFolder ?? dir.appending(path: "photos", directoryHint: .isDirectory), engine: engine)
         for id in local { try await store.put(id: id, blob: PhotoBlob(data: data(id), mime: "image/jpeg")) }
         for id in localPNG { try await store.put(id: id, blob: PhotoBlob(data: data(id), mime: "image/png")) }
         let fake = PhotoFakeTransport(held: worker, list: list, put: put, putModes: putModes,
-                                      getFails: getFails, onPutStart: onPutStart)
+                                      getFailNames: getFailNames, onPutStart: onPutStart,
+                                      onListStart: onListStart)
         return Rig(store: store, sync: PhotoSync(store: store, transport: fake, engine: engine), fake: fake, engine: engine)
     }
 
@@ -333,6 +347,43 @@ final class PhotoSyncTests: XCTestCase {
         XCTAssertFalse(report.stopped)
     }
 
+    /// A Stop while the Worker list is being read cancels that call. The run ends as stopped, not as an
+    /// unknown list (known is false either way, so only `stopped` tells the person what happened), and
+    /// no photo moves. Push and pull share the survey, so both are run.
+    func testStopDuringTheListEndsTheRunAsStopped() async throws {
+        for pull in [false, true] {
+            let what = pull ? "pull" : "push"
+            let listing = expectation(description: "\(what): the list call began")
+            listing.assertForOverFulfill = false
+            let rig = try await makeRig(local: ["pho-a-1"], worker: ["pho-w-1.jpg": data("pho-w-1")],
+                                        list: .hang, onListStart: { listing.fulfill() })
+
+            let run = Task {
+                pull ? await rig.sync.pull(referenced: ["pho-a-1", "pho-w-1"])
+                     : await rig.sync.push(referenced: ["pho-a-1", "pho-w-1"])
+            }
+            await fulfillment(of: [listing], timeout: 3)  // a timeout fails the test by itself
+            XCTAssertTrue(rig.sync.running, what)
+
+            rig.sync.stop()
+            let report = await run.value
+
+            let cancelled = await rig.fake.listCancelled
+            XCTAssertEqual(cancelled, 1, "\(what): the list call in flight must be told to stop")
+            XCTAssertTrue(report.stopped, "\(what): a Stop during the list is a Stop")
+            XCTAssertFalse(report.failed, "\(what): a Stop is not a failure")
+            XCTAssertFalse(report.known, "\(what): the list was not read")
+            XCTAssertEqual(report.pushed, [], what)
+            XCTAssertEqual(report.pulled, [], what)
+            XCTAssertEqual(report.lost, [], what)
+            let started = await rig.fake.putStarted
+            let fetched = await rig.fake.getCalls
+            XCTAssertEqual(started, [], what)
+            XCTAssertEqual(fetched, [], what)
+            XCTAssertFalse(rig.sync.running, what)
+        }
+    }
+
     // MARK: pull
 
     /// Pull fetches what the Worker holds and this device lacks, by the Worker's own names, and keeps
@@ -356,18 +407,22 @@ final class PhotoSyncTests: XCTestCase {
         XCTAssertEqual(started, [], "a pull sends nothing")
     }
 
-    /// A download that fails stops the pull, and does not throw: a photo problem must not abort the
-    /// ledger apply that called it.
-    func testAFailedDownloadStopsThePullAndNeverThrows() async throws {
-        let rig = try await makeRig(worker: ["pho-b-1.jpg": data("pho-b-1"), "pho-c-1.jpg": data("pho-c-1")], getFails: true)
+    /// A failed download skips that photo and the rest download (pullPhotos: one bad fetch must not cost
+    /// the others). The failure is the middle photo, so a pull that stops at it shows up as a missing
+    /// third. The skipped photo is still wanted, so it is left for the next run. Whether the report also
+    /// says `failed` is not pinned: the web shows nothing for a skipped fetch.
+    func testAFailedDownloadSkipsThatPhotoAndTheRestDownload() async throws {
+        let rig = try await makeRig(
+            worker: ["pho-b-1.jpg": data("pho-b-1"), "pho-c-1.jpg": data("pho-c-1"), "pho-d-1.jpg": data("pho-d-1")],
+            getFailNames: ["pho-c-1.jpg"])
 
-        let report = await rig.sync.pull(referenced: ["pho-b-1", "pho-c-1"])
+        let report = await rig.sync.pull(referenced: ["pho-b-1", "pho-c-1", "pho-d-1"])
 
-        XCTAssertTrue(report.failed)
-        XCTAssertEqual(report.pulled, [])
+        XCTAssertEqual(report.pulled, ["pho-b-1", "pho-d-1"], "the photo after the failure still downloads")
         let fetched = await rig.fake.getCalls
-        XCTAssertEqual(fetched.count, 1, "do not grind on a Worker that is failing")
+        XCTAssertEqual(fetched, ["pho-b-1.jpg", "pho-c-1.jpg", "pho-d-1.jpg"], "every wanted photo is tried")
         let held = await rig.store.heldIds()
-        XCTAssertEqual(held, [])
+        XCTAssertEqual(held, ["pho-b-1", "pho-d-1"], "only the two photos that downloaded are stored")
+        XCTAssertEqual(report.left, 1, "the skipped photo is still wanted")
     }
 }
