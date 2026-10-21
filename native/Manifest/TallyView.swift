@@ -134,7 +134,8 @@ struct TallyRowView: View {
                 figures(.trailing)
             }
         }
-        .padding(12)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
         .frame(minHeight: 44)
         .contentShape(Rectangle())
     }
