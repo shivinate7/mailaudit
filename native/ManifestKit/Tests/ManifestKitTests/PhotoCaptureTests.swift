@@ -20,6 +20,8 @@
 //       /// and saves. A save that fails restores the store. Throws when no live envelope has that id.
 //       func commitPhoto(_ id: String, toEnvelope envelopeID: String) throws
 //   }
+// `add` must refuse a missing or discarded envelope BEFORE it writes the blob. The builder may add a
+// third LedgerStore accessor for that check (the tests do not name it).
 //
 // Red-first: see PhotoStubs.swift.
 

@@ -96,12 +96,22 @@ enum PhotoTestKit {
         ])
     }
 
-    /// The same pixels as `data`, encoded again as a JPEG at `quality`. Its size is the yardstick
-    /// for the quality test: a lower quality is smaller, a higher one is larger.
-    static func reencodedSize(_ data: Data, quality: Double) -> Int? {
-        guard let src = CGImageSourceCreateWithData(data as CFData, nil),
-              let img = CGImageSourceCreateImageAtIndex(src, 0, nil) else { return nil }
-        return encode(img, as: .jpeg, properties: [kCGImageDestinationLossyCompressionQuality: quality]).count
+    /// The quantization tables (DQT segments) of a JPEG, joined. They depend on the encode quality and
+    /// not on the picture, so equal tables mean equal quality. Nil when the bytes are not a JPEG.
+    static func quantTables(_ jpeg: Data) -> Data? {
+        let b = [UInt8](jpeg)
+        guard b.count > 4, b[0] == 0xFF, b[1] == 0xD8 else { return nil }
+        var i = 2
+        var tables = Data()
+        while i + 4 <= b.count, b[i] == 0xFF {
+            let type = b[i + 1]
+            if type == 0xDA { break }  // start of scan: no table follows
+            let len = Int(b[i + 2]) << 8 | Int(b[i + 3])
+            guard len >= 2, i + 2 + len <= b.count else { return nil }
+            if type == 0xDB { tables.append(contentsOf: b[(i + 4)..<(i + 2 + len)]) }
+            i += 2 + len
+        }
+        return tables.isEmpty ? nil : tables
     }
 
     // MARK: ledger files

@@ -105,17 +105,15 @@ final class PhotoDownscaleTests: XCTestCase {
         XCTAssertEqual(blob.mime, "application/octet-stream")
     }
 
-    /// The quality is 0.8 and not another value. The output is measured against its own pixels
-    /// encoded again at 0.5 and at 0.95 (photo-like pixels: a gradient with noise squares is not
-    /// needed, because a lower quality is smaller on any picture with detail).
-    func testQualityIsPointEightNotLowerOrHigher() throws {
-        let source = Kit.png(width: 3000, height: 2000, noise: true)
+    /// The JPEG quality is 0.8 and not another value. The quantization tables depend on the quality alone,
+    /// so the output must carry the tables an ImageIO encode at 0.8 carries, and not those of 0.5 or 1.0.
+    func testTheJpegIsEncodedAtQualityPointEight() throws {
+        let blob = PhotoDownscale.shrink(Kit.png(width: 3024, height: 4032))
 
-        let blob = PhotoDownscale.shrink(source)
-
-        let low = try XCTUnwrap(Kit.reencodedSize(blob.data, quality: 0.5))
-        let high = try XCTUnwrap(Kit.reencodedSize(blob.data, quality: 0.95))
-        XCTAssertGreaterThan(blob.data.count, low, "the output is lighter than a quality 0.5 encode")
-        XCTAssertLessThan(blob.data.count, high, "the output is heavier than a quality 0.95 encode")
+        let got = try XCTUnwrap(Kit.quantTables(blob.data), "the output is not a JPEG with tables")
+        for quality in [0.5, 0.8, 1.0] {
+            let tables = try XCTUnwrap(Kit.quantTables(Kit.jpeg(width: 64, height: 64, quality: quality)))
+            XCTAssertEqual(got == tables, quality == 0.8, "output tables equal the tables of quality \(quality)? Only 0.8 should")
+        }
     }
 }
