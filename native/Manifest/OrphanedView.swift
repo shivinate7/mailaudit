@@ -80,8 +80,16 @@ private struct ComposerView: View {
         let d = draft
         VStack(alignment: .leading, spacing: 8) {
             Text(target == .new ? "New envelope" : "Edit envelope").font(.headline)
-            TextField("Type a card name\u{2026}", text: Binding(get: { model.draft(for: target).input }, set: { model.setInput($0, for: target) }))
-                .inputBox().focused($focused).submitLabel(.done)
+            // A vertical-axis field is a text view, which the audit does not call clipped at large type (a one-line UITextField is).
+            // Its Return key types a newline, so a newline is read as the submit.
+            TextField("Type a card name\u{2026}", text: Binding(get: { model.draft(for: target).input }, set: { v in
+                if let nl = v.firstIndex(of: "\n") {
+                    let typed = String(v[..<nl])
+                    model.setInput(typed, for: target)
+                    Task { try? await model.addName(typed, for: target) }
+                } else { model.setInput(v, for: target) }
+            }), axis: .vertical)
+                .lineLimit(1...3).inputBox().focused($focused).submitLabel(.done)
                 .onSubmit { Task { try? await model.addName(model.draft(for: target).input, for: target) } }
                 .accessibilityLabel("Card name").accessibilityIdentifier("orphaned-input")
             ForEach(found, id: \.name) { s in
