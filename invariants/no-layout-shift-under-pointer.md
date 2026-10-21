@@ -7,7 +7,7 @@ Hiding a row under the user's tap caused cascading mis-taps on mobile. So checki
 - Packages never auto-collapse mid-interaction.
 - In the Tally view, the sticky rule is stricter. A *completed item* also stays until the filters change. Most items have a single copy. If it vanished on every tap, the mis-tap cascade would return.
 - The card itself must not change height on that tap. See `card-the-action-row-is-reserved` (why the action row has a fixed height) and `card-reserved-geometry` (the measured card heights). The rows inside a package are as much under the thumb as the list is. Before that was fixed, the first check-in in a package moved every remaining row in it down by 28px.
-- A remote reply never lands under a press, and never moves the row under the pointer when it lands. It waits for the press and its tail, and the page scrolls to keep the row in place. Hover and scroll are not a press (owner ruling 2026-10-20: "hover doesn't count"). See `auto-apply-happens-now`.
+- A remote reply never lands under a press, and never moves the row under the pointer when it lands. It waits for the press and its tail, and the page scrolls to keep the row in place. Hover and scroll are not a press (owner ruling 2026-10-20: "hover doesn't count"). The one ruled exception is the first reply after a pasted key is saved, which applies at once (`sync-revamp-cloudflare`). See `auto-apply-happens-now`.
 
 A row moving under the thumb is the same failure this rule exists to stop.
 

@@ -4,7 +4,7 @@ Undo keeps the deltas of an assignment, not a snapshot of the ledger. For each c
 
 A remote apply keeps the Undo bar and its plan, so Undo after a merge removes only its own change and keeps the other device's. Owner ruling 2026-10-21 13:30 CDT: "it should just be able to apply anyways why does the undo bar being open have to matter". See `auto-apply-happens-now`. A CSV import, a restore (a backup file or a saved version) and a Reset still clear the bar.
 
-**Holds while:** `undoAssign` in `src/app.jsx` subtracts the takes in `undo.plan` from `received`, and `setUndo` records the plan rather than a copy of `received`.
+**Holds while:** `undoAssign` in `src/app.jsx` subtracts the takes in `undo.plan` from `received`, and `setUndo` records the plan rather than a copy of `received`. `applyBackup` keeps `undo` when its source is `server`.
 
 Kind: build
 
