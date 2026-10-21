@@ -19,9 +19,10 @@ struct TallyView: View {
                 }
                 .padding(.horizontal, 16)
             }
-            // A scroll view that touches the bottom edge runs under the floating tab bar, and a row there
-            // lowers the contrast of the bar's labels. The rule keeps the list's end above the bar.
-            Divider()
+            // The list stops above the floating tab bar. A scroll view that touches the bottom edge runs
+            // under the bar, and the audit reads a half-hidden row's text against the bar's glass.
+            // The strip is as tall as a line of row text, so such a row's frame lands on plain page.
+            Color.clear.frame(height: 24)
         }
         .overlay(alignment: .bottom) {
             if let e = model.checkInError {
