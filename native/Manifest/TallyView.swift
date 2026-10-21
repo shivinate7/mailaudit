@@ -13,7 +13,7 @@ struct TallyView: View {
         VStack(spacing: 0) {
             controls
             ScrollView {
-                VStack(spacing: 8) {
+                LazyVStack(spacing: 8) {
                     ForEach(model.rows, id: \.name) { TallyRowView(row: $0, model: model) }
                     if model.rows.isEmpty { empty }
                 }
@@ -100,6 +100,7 @@ struct TallyRowView: View {
     let row: TallyRow
     let model: TallyModel
     @State private var open = false
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var done: Bool { row.got >= row.qty }
 
@@ -124,23 +125,36 @@ struct TallyRowView: View {
         HStack(spacing: 8) {
             Image(systemName: "chevron.right").imageScale(.small).rotationEffect(.degrees(open ? 90 : 0))
                 .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 0) {
-                Text(row.name).font(.headline)
-                // Counts first, then the sets, so a long set list is what wraps last (card-tally-row-counts-first).
-                Text(row.meta).font(.caption.monospaced())
-            }
-            Spacer(minLength: 8)
-            VStack(alignment: .trailing, spacing: 0) {
-                Text(row.ratio).font(.headline.monospacedDigit())
-                Text(row.rateLine).font(.caption.monospacedDigit())
-                // Hidden once in, never removed: unmounting it would shorten the row under the thumb.
-                Text(row.leftLine).font(.caption.monospacedDigit())
-                    .opacity(done ? 0 : 1).accessibilityHidden(done)
+            // At large text sizes the figures go under the name, so neither column squeezes the other.
+            if typeSize >= .xxxLarge {
+                VStack(alignment: .leading, spacing: 4) { title; figures(.leading) }
+            } else {
+                title
+                Spacer(minLength: 8)
+                figures(.trailing)
             }
         }
         .padding(12)
         .frame(minHeight: 44)
         .contentShape(Rectangle())
+    }
+
+    private var title: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(row.name).font(.headline)
+            // Counts first, then the sets, so a long set list is what wraps last (card-tally-row-counts-first).
+            Text(row.meta).font(.caption.monospaced())
+        }
+    }
+
+    private func figures(_ align: HorizontalAlignment) -> some View {
+        VStack(alignment: align, spacing: 0) {
+            Text(row.ratio).font(.headline.monospacedDigit())
+            Text(row.rateLine).font(.caption.monospacedDigit())
+            // Hidden once in, never removed: unmounting it would shorten the row under the thumb.
+            Text(row.leftLine).font(.caption.monospacedDigit())
+                .opacity(done ? 0 : 1).accessibilityHidden(done)
+        }
     }
 }
 
