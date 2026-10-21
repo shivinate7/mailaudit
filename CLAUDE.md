@@ -413,7 +413,6 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `lost-photo-clock-is-envelope-age` — The lost-photo clock runs from envelope age.
 - `lost-tile-waits-for-first-post` — The lost tile waits for the first POST.
 - `failed-photo-download-no-retry` — A failed photo download is not retried.
-- `undo-holds-reply-unbounded` — A pending undo holds a remote reply with no limit.
 - `half-open-socket-has-no-ping` — A half-open socket has no ping.
 - `hidden-tab-apply-delay-unmeasured` — The apply delay on a hidden tab is unmeasured.
 - `sync-latency-after-fix-unmeasured` — The sync delay with the press guard is unmeasured.

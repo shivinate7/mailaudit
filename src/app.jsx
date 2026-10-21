@@ -3665,7 +3665,9 @@ export default function MailDayLedger() {
         })();
       composerDraft.current.clear();
       setComposing(null);
-      setUndo(null);
+      /* a server apply keeps the Undo bar: Undo subtracts its own plan, so it stays right after a
+         merge (undo-removes-only-its-delta) */
+      if (source !== "server") setUndo(null);
       if (data.dateFilter) setDateFilter(data.dateFilter);
       if (data.sortBy) setSortBy(data.sortBy);
       if (data.itemSort || data.cardSort)
@@ -4166,8 +4168,7 @@ export default function MailDayLedger() {
 
      `undo` is deliberately NOT dropped here. It survives a trip to Packages on
      purpose — "assign, hand-edit elsewhere, come back and undo only your own
-     delta" is a real workflow and group 14 pins it. mergeBlocked holds a
-     reply while an undo is pending, so the apply never drops it. */
+     delta" is a real workflow and group 14 pins it. A server apply keeps it too. */
   const leaveFor = useCallback(
     (v) => {
       /* Leaving drops the flag, so sync is not held off while the draft waits
@@ -4349,7 +4350,7 @@ export default function MailDayLedger() {
      Worker first. There is no pull and no sha: the Worker is the only sync path
      (sync-revamp-cloudflare). */
   const doMerge = useCallback(
-    async (reply) => {
+    async (reply, firstOfKey = false) => {
       if (damagedRef.current) return { ok: false, code: "server" };
       disarm();
       setPhotoMsg(null);
@@ -4381,7 +4382,7 @@ export default function MailDayLedger() {
            pointer (no-layout-shift-under-pointer), and the merge above no longer
            matches the device. Hold the reply for the press gate; the blobs are here
            by then, so the next try is quick. */
-        if (press.current.seq !== touched || pressNow()) {
+        if (press.current.seq !== touched || (!firstOfKey && pressNow())) {
           growServer(reply);
           tryApplyRef.current();
           return { ok: false, code: "held" };
@@ -4405,11 +4406,14 @@ export default function MailDayLedger() {
           takeVersion("before sync", "milestone");
         /* an import notice still open keeps its sentence: this apply must not
            erase what the owner has not read */
-        const kept = importRef.current && importRef.current !== serverNotice.current ? importRef.current : "";
+        const cur = importRef.current;
+        const prev = serverNotice.current;
+        const kept = cur === prev ? "" : prev && cur.endsWith(` ${prev}`) ? cur.slice(0, -prev.length - 1) : cur;
         const merge = changed ? mergeSummary(stats) : "";
         const notice = kept && merge ? `${kept} ${merge}` : kept || merge;
-        /* remembered so the next apply can tell this notice from an import's */
-        serverNotice.current = notice;
+        /* only this apply's own sentence is remembered, so the next apply can cut it off and keep
+           the import sentence in front of it until Dismiss */
+        serverNotice.current = merge;
         /* keeps the row in view still across the apply (anchorRef) */
         anchorRef.current = pickAnchor(mouse.current);
         await applyBackup(JSON.stringify(merged), "server", notice);
@@ -4432,13 +4436,12 @@ export default function MailDayLedger() {
     [disarm, applyBackup, pullPhotos, snapshot, takeVersion]
   );
 
-  /* Whether a held reply may apply now: not while a half-built envelope, a
-     pending undo or an armed destructive button is open. The apply calls
-     setComposing(null) and setUndo(null), so a reply landing mid-composer would
-     DISCARD hand-typed entries that are in no CSV and on no remote. */
+  /* Whether a held reply may apply now: not while a half-built envelope or an armed
+     destructive button is open. The apply calls setComposing(null), so a reply landing
+     mid-composer would DISCARD hand-typed entries that are in no CSV and on no remote.
+     An open Undo bar does not hold a reply (owner ruling 2026-10-21): the apply keeps it. */
   const mergeBlocked = !!(
     composing ||
-    undo ||
     confirmReset ||
     confirmForce ||
     confirmRestore
@@ -4474,8 +4477,9 @@ export default function MailDayLedger() {
     }
     const reply = pendingReply.current;
     pendingReply.current = null;
+    const firstOfKey = applyNow.current;
     applyNow.current = false;
-    doMerge(reply);
+    doMerge(reply, firstOfKey);
   };
   const serverNotice = useRef("");
   const applyNow = useRef(false);
@@ -4791,7 +4795,7 @@ export default function MailDayLedger() {
   }, []);
   /* After a reply lands, scroll so the row the owner was on sits where it did
      (what a mouse rests on, else the first in view). Measured after layout, so the
-     notice and the new rows above are already in. WebKit does not anchor on its own. */
+     notice and the new rows above are already in. Whether WebKit anchors on its own is unmeasured. */
   useLayoutEffect(() => {
     const chain = anchorRef.current;
     if (!chain) return;
