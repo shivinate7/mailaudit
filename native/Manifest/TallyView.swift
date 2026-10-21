@@ -174,6 +174,7 @@ struct CopyView: View {
             .accessibilityIdentifier("tally-checkin:\(item.key)")
         }
         .padding(.horizontal, 12)
+        .padding(.vertical, 8)  // the order id sat on the card's border, which read as low contrast
         .frame(minHeight: 44)
         .background(isDone ? Color.green.opacity(0.12) : .clear)
         }
