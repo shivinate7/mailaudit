@@ -6,6 +6,10 @@ The native sync client applies a Worker reply only if the local ledger did not c
 
 **Holds while:** the Worker answers a POST with only the ledger and the rev, and the native sync client does not exist.
 
+Kind: build
+
+Plan: decisions/native-reply-waits-generation.md#the-client (native)
+
 ## The client
 
 - `GET /ledger` and `POST /ledger` with the body `{ledger}` both send `Authorization: Bearer`. The client also sends `mailday:1`, because the Worker requires it.

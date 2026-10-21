@@ -28,7 +28,7 @@ Plan: decisions/native-build-lanes.md#still-open (native)
 | W3d, not briefed | Not briefed. No scope is recorded here. | Not yet briefed. | Not yet briefed. | Not yet briefed. |
 | W3e, not briefed | Not briefed. No scope is recorded here. | Not yet briefed. | Not yet briefed. | Not yet briefed. |
 | N4a Sync over HTTP | the sync client, a stub URL protocol | The Bearer header. The `{ledger}` body. The generation rule. A 401 stops calls. The 413 line. A 404 seeds by POST. A timeout reads as unknown. Backoff. Stop cancels an in-flight push or pull. | ST | N2 (landed), N3 (landed), W1 (landed), the stage 4b switch |
-| N4b Socket, idle gate, resume | the sync client socket | A rev that is not newer gives no GET. A newer rev with a changed ledger POSTs. The idle gate is 10 seconds. A cold reply applies at once after a key save. Resume does one GET. | ST | N4a |
+| N4b Socket, press gate, resume | the sync client socket | A rev that is not newer gives no GET. A newer rev with a changed ledger POSTs. A reply holds while a press is down and for `PRESS_TAIL_MS` after it (`pressHeld`), and hover and scroll never hold it. A cold reply applies at once after a key save. Resume does one GET. | ST | N4a |
 | N6 Tally and filters | Tally and Filters views | Sort keys. Search and hide-received do not change Tally counts. The copies list. performAccessibilityAudit. The sort label does not truncate at 375pt. An empty search shows one Clear control. | ST and `xcodebuild test -scheme Manifest -destination 'platform=iOS Simulator,name=iPhone 17'` | N5 (landed) |
 | N7 Orphaned | Orphaned views | One input records an envelope. No auto-assign. A tie has no emphasis. A partial-quantity assign. Undo removes only its delta. performAccessibilityAudit. Assign has Undo and no arm. The composer draft survives a view change. The empty state is one sentence. | ST and `xcodebuild test -scheme Manifest -destination 'platform=iOS Simulator,name=iPhone 17'` | N5 (landed) |
 | N8 Masthead and backup | Masthead views, the backup file code | The export bytes equal the snapshot. No key in the export (a Mirror scan). Reduced motion shows the final frame. The save slot has a fixed width. performAccessibilityAudit. Backup is a 44pt control. | ST and `xcodebuild test -scheme Manifest -destination 'platform=iOS Simulator,name=iPhone 17'` | N5 (landed) |
@@ -79,7 +79,7 @@ Other risks live in the record for their lane:
 - The Ledger tab is a placeholder, see `ledger-tab-holds-options`. Debt: `native-ledger-tab-unbuilt`.
 - The native job runs ST only. Debt: `native-ui-tests-not-in-ci`.
 - The key scan skips SwiftUI view state. Debt: `native-key-scan-skips-views`.
-- Lane N4b, the socket, idle gate and resume, is not built. Debt: `n4b-socket-idle-gate-unbuilt`.
+- Lane N4b, the socket, press gate and resume, is not built. Debt: `n4b-socket-idle-gate-unbuilt`.
 - Lane N10, native photos, is not built. Debt: `n10-photos-unbuilt`.
 - Lane N11, the owner's device check, has not run. Debt: `n11-device-check-not-run`.
 
