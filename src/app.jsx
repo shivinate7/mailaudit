@@ -699,10 +699,11 @@ const stampChip = {
 
 /* ---------- Package (order + seller) group ---------- */
 
-/* TCGplayer's buyer order-history page. No per-order buyer URL is confirmed
-   (searched 2026-10-20), so the link opens the list, where the id just copied
-   finds the order. Replace this when a per-order URL is confirmed. */
-const TCGPLAYER_ORDERS = "https://store.tcgplayer.com/myaccount/orderhistory";
+/* TCGplayer's buyer order-history page, searched by order id (owner ruling
+   2026-10-21). Whether the page honours SearchString is unconfirmed; debt
+   tcgplayer-link-opens-history-list. */
+const tcgplayerOrderUrl = (id) =>
+  `https://store.tcgplayer.com/myaccount/orderhistory?SearchString=${encodeURIComponent(id)}`;
 
 function PackageCard({
   pkg,
@@ -760,25 +761,6 @@ function PackageCard({
   const timer = useRef(null);
   const cancelRef = useRef(null);
   useEffect(() => () => clearTimeout(timer.current), []);
-  /* the copy control: a write the browser refuses stamps nothing. One timer,
-     cleared on unmount, ends the stamp by itself. */
-  const [copied, setCopied] = useState(false);
-  const justCopied = useJustBecame(copied, 500);
-  const copyTimer = useRef(null);
-  useEffect(() => () => clearTimeout(copyTimer.current), []);
-  const copyId = (e) => {
-    e.stopPropagation();
-    Promise.resolve()
-      .then(() => navigator.clipboard.writeText(pkg.orderId))
-      .then(
-        () => {
-          setCopied(true);
-          clearTimeout(copyTimer.current);
-          copyTimer.current = setTimeout(() => setCopied(false), 1800);
-        },
-        () => {}
-      );
-  };
   /* an ask puts first focus on its way out (ux-ask-or-undo) */
   useEffect(() => {
     if (confirmRemove) cancelRef.current?.focus();
@@ -829,10 +811,11 @@ function PackageCard({
       {/* The header is plain text, not a button, so it selects: a drag on a Mac,
           a long-press on a phone (owner ruling 2026-10-20). A click that ends
           with text selected inside the header is the end of a selection, so it
-          does not toggle; a plain click still does. The order id and the
-          TCGplayer link are their own controls and stop their clicks here
-          (order-id-button-stops-propagate). The chevron is the keyboard's way
-          to toggle, and owns no handler: its click bubbles to this one. */}
+          does not toggle; a plain click still does. The order id is a link to
+          TCGplayer and stops its click here (order-id-button-stops-propagate).
+          The chevron is the keyboard's way to toggle. It toggles on its own,
+          selection or none, and stops its click so the header does not toggle
+          it twice. */}
       <div
         onClick={(e) => {
           const sel = window.getSelection?.();
@@ -850,6 +833,10 @@ function PackageCard({
         <button
           aria-expanded={open}
           aria-label={`${open ? "Collapse" : "Expand"} ${pkg.seller}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen((o) => !o);
+          }}
           style={{
             width: 44,
             flexShrink: 0,
@@ -973,44 +960,39 @@ function PackageCard({
               </span>
             )}
           </div>
-          {/* The order id on its own line, so a long id keeps its tail. One tap
-              copies it. The Copied stamp overlays the line's right end, out of
-              flow, so nothing moves when it shows or goes
-              (no-layout-shift-under-pointer). The 16px under the line keeps the
-              44px touch areas off the row below. */}
+          {/* The order id on its own line, so a long id keeps its tail. It is a
+              link to that order's search on TCGplayer. Its 45px touch area
+              reaches 14.5px past the 16px line, so the 16px above the line keep
+              it off the date line and the 16px under it off the row below. */}
           <div
             style={{
-              position: "relative",
               display: "flex",
               alignItems: "center",
-              gap: 20,
-              marginTop: 4,
+              marginTop: 16,
               fontFamily: mono,
               fontSize: 11,
               lineHeight: "16px",
               color: C.inkSoft,
             }}
           >
-            <button
-              onClick={copyId}
-              aria-label={`Copy order id ${pkg.orderId}`}
+            <a
+              className="mdl-tcg"
+              href={tcgplayerOrderUrl(pkg.orderId)}
+              target="_blank"
+              rel="noopener"
+              onClick={(e) => e.stopPropagation()}
+              aria-label={`Order ${pkg.orderId} on TCGplayer, opens in a new tab`}
               title={pkg.orderId}
               style={{
                 /* 45px wide at the least, so the touch area (centred on the
                    box) never reaches left over the chevron's */
                 minWidth: 45,
-                padding: 0,
-                border: 0,
-                background: "transparent",
-                font: "inherit",
                 color: "inherit",
-                textAlign: "left",
-                cursor: "pointer",
                 textDecoration: "underline",
                 textUnderlineOffset: 2,
               }}
             >
-              {/* the ellipsis sits on the text, not the button: a button that
+              {/* the ellipsis sits on the text, not the link: a link that
                   clips would cut off its touch area */}
               <span
                 style={{
@@ -1022,62 +1004,7 @@ function PackageCard({
               >
                 {pkg.orderId}
               </span>
-            </button>
-            <a
-              className="mdl-tcg"
-              href={TCGPLAYER_ORDERS}
-              target="_blank"
-              rel="noopener"
-              onClick={(e) => e.stopPropagation()}
-              aria-label="TCGplayer order history, opens in a new tab"
-              style={{
-                flexShrink: 0,
-                color: "inherit",
-                textDecoration: "underline",
-                textUnderlineOffset: 2,
-              }}
-            >
-              TCGplayer ↗
             </a>
-            <span
-              role="status"
-              style={{
-                position: "absolute",
-                right: 0,
-                top: "50%",
-                transform: "translateY(-50%)",
-                /* a fixed box, empty or stamped, so the slot never changes size */
-                width: 72,
-                height: 20,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "flex-end",
-                pointerEvents: "none",
-              }}
-            >
-              {copied && (
-                <span
-                  className={justCopied ? "mdl-land" : undefined}
-                  style={{
-                    display: "block",
-                    fontSize: 10.5,
-                    fontWeight: 700,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    color: C.green,
-                    border: `2px solid ${C.green}`,
-                    borderRadius: 4,
-                    padding: "0 8px",
-                    lineHeight: "16px",
-                    transform: "rotate(-4deg)",
-                    "--rest": "-4deg",
-                    background: C.card,
-                  }}
-                >
-                  Copied
-                </span>
-              )}
-            </span>
           </div>
         </div>
       </div>

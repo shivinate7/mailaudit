@@ -1,8 +1,8 @@
 # Test suite assertion count and run time
 
-**Status:** measured 2026-10-20 on `web/order-id-copy`, with group 75 (the package header's copy, selection and TCGplayer link) green. New York (the pinned zone): 1507 passed, 0 failed, exit 0, through `check:docs`. UTC and the machine zone are not measured at this head, and the run time is not re-measured. The count is 35 above `df00b69` (1472): group 75 adds 35. Earlier figures are below.
+**Status:** measured 2026-10-21 on `web/order-id-copy`, with group 75 (the package header's id link, selection and chevron) green. New York (the pinned zone): 1502 passed, 0 failed, exit 0, through `check:docs`. UTC and the machine zone are not measured at this head, and the run time is not re-measured. The count is 30 above `df00b69` (1472): group 75 adds 30. Earlier figures are below.
 
-This record holds the assertion count and the run time for `npm test`. The suite runs 1507 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+This record holds the assertion count and the run time for `npm test`. The suite runs 1502 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
 The count depends on the clock's zone, so the zone is pinned to `America/New_York`. In CI, the test step sets `TZ`, and it names one New York run's output in `CHECK_DOCS_SUITE_LOG`. `check:docs` grades the figure in this sentence. Locally, `npm run check:docs` runs the suite itself and waits for it to end.
 

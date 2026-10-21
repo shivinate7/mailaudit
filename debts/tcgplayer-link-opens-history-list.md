@@ -1,7 +1,7 @@
-# The TCGplayer link opens the order list, not the order
+# The TCGplayer link may not search by order id
 
-**What.** The link in the package header opens the buyer order-history page. No per-order buyer URL is confirmed (searched 2026-10-20), so the owner finds the order in the list. Whether that page searches by order number is unconfirmed. The gap closes when a per-order URL is confirmed, `TCGPLAYER_ORDERS` in `src/app.jsx` builds it from the order id, and a test pins it.
+**What.** The order id link opens `orderhistory?SearchString=<id>`, the URL the owner gave on 2026-10-21. The page sits behind sign-in and was not seen, so whether it applies `SearchString` is unconfirmed. If it does not, the link opens the plain order list. The gap closes when the owner follows the link signed in and says what opens.
 
-**Status:** open. No lane yet.
+**Status:** open. Needs the owner's check while signed in.
 
 **Decision:** `order-id-button-stops-propagate`.
