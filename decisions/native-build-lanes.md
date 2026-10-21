@@ -33,7 +33,6 @@ Plan: decisions/native-build-lanes.md#still-open (native)
 | N7 Orphaned | Orphaned views | One input records an envelope. No auto-assign. A tie has no emphasis. A partial-quantity assign. Undo removes only its delta. performAccessibilityAudit. Assign has Undo and no arm. The composer draft survives a view change. The empty state is one sentence. | ST and `xcodebuild test -scheme Manifest -destination 'platform=iOS Simulator,name=iPhone 17'` | N5 (landed) |
 | N8 Masthead and backup | Masthead views, the backup file code | The export bytes equal the snapshot. No key in the export (a Mirror scan). Reduced motion shows the final frame. The save slot has a fixed width. performAccessibilityAudit. Backup is a 44pt control. | ST and `xcodebuild test -scheme Manifest -destination 'platform=iOS Simulator,name=iPhone 17'` | N5 (landed) |
 | N9 Milestones | the versions code | A milestone is saved before a reset and before an apply that removes something. The prune equals `keptIds`. The list shows each milestone, and a restore takes a milestone first and passes the same apply path. Errors show in the pressed row. The reset ask names its count and has Cancel. | ST | N4a |
-| N10 Photos | Photos views | A downscale to 2000px. A photo blob never enters the ledger. The viewer is modal, with Escape and focus return. The photo upload has Stop. | ST | W2a |
 | N11 Device check | none | The owner checks on a device. The ios-adblock phone-apps list gets the new entry. The hand checks are named: VoiceOver order, Dynamic Type, the draft kept when the app leaves, and the iPhone Camera opening a `manifestledger://` QR code (see `native-key-via-url-scheme`). If the Camera fails the scheme, the universal-link fallback in that record is built. | the owner | all |
 | C2 UI tests in CI, not built | The native job in `.github/workflows/test.yml` | Not yet briefed. The N5 UI test in `native/ManifestUITests/PackagesShellUITests.swift` already exists. | The native job runs the steps in `native-ci-on-hosted-macos` after ST, green on a hosted macOS runner, with a new timeout. | C1 (landed), N5 (landed) |
 
@@ -80,7 +79,7 @@ Other risks live in the record for their lane:
 - The native job runs ST only. Debt: `native-ui-tests-not-in-ci`.
 - The key scan skips SwiftUI view state. Debt: `native-key-scan-skips-views`.
 - Lane N4b, the socket, idle gate and resume, is not built. Debt: `n4b-socket-idle-gate-unbuilt`.
-- Lane N10, native photos, is not built. Debt: `n10-photos-unbuilt`.
+- Native photos are built, and no screen or client calls them. Debt: `n10-photos-unwired`.
 - Lane N11, the owner's device check, has not run. Debt: `n11-device-check-not-run`.
 
 ## See also

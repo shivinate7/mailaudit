@@ -123,3 +123,37 @@ public final class LedgerStore {
         generation += 1
     }
 }
+
+public enum LedgerEditError: Error, Equatable { case noLiveEnvelope(String) }
+
+/// Photo ids in the ledger. The blob never enters it (photos-stay-out-of-the-ledger).
+public extension LedgerStore {
+    /// Ids of live envelopes, each once, in envelope order. This is `referenced` for the photo plan.
+    func photoIDs() -> [String] {
+        var seen = Set<String>()
+        return liveEnvelopes().flatMap { $0["photos"] as? [String] ?? [] }.filter { seen.insert($0).inserted }
+    }
+
+    func hasLiveEnvelope(_ id: String) -> Bool { liveIndex(id) != nil }
+
+    /// Appends `id` to the live envelope's `photos` and sets its `updatedAt`, so a merge sees an edit.
+    /// If the save fails, the store goes back to what it was.
+    func commitPhoto(_ id: String, toEnvelope envelopeID: String) throws {
+        guard let i = liveIndex(envelopeID) else { throw LedgerEditError.noLiveEnvelope(envelopeID) }
+        let (oldDoc, oldGen) = (doc, generation)
+        var list = doc["envelopes"] as? [[String: Any]] ?? []
+        list[i]["photos"] = (list[i]["photos"] as? [String] ?? []) + [id]
+        list[i]["updatedAt"] = now()
+        doc["envelopes"] = list
+        generation += 1
+        do { try save() } catch { doc = oldDoc; generation = oldGen; throw error }
+    }
+
+    private func liveEnvelopes() -> [[String: Any]] {
+        (doc["envelopes"] as? [[String: Any]] ?? []).filter { $0["deletedAt"] == nil }
+    }
+
+    private func liveIndex(_ id: String) -> Int? {
+        (doc["envelopes"] as? [[String: Any]] ?? []).firstIndex { ($0["id"] as? String) == id && $0["deletedAt"] == nil }
+    }
+}
