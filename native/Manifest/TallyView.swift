@@ -19,8 +19,9 @@ struct TallyView: View {
                 }
                 .padding(.horizontal, 16)
             }
-            // Rows scroll under the floating tab bar; a hard edge keeps its labels legible over them.
-            .scrollEdgeEffectStyle(.hard, for: .bottom)
+            // A scroll view that touches the bottom edge runs under the floating tab bar, and a row there
+            // lowers the contrast of the bar's labels. The rule keeps the list's end above the bar.
+            Divider()
         }
         .overlay(alignment: .bottom) {
             if let e = model.checkInError {
