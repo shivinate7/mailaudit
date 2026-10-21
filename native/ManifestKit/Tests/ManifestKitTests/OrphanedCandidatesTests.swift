@@ -1,5 +1,5 @@
 // Orphaned candidate tests (lane N7, native-build-lanes, orphaned-mail-never-decides,
-// candidates-skip-date-filter).
+// candidates-skip-date-filter, a-refund-leaves-every-count).
 //
 // The app may rank the packages an envelope could have come from. It never auto-assigns
 // one. A perfect fingerprint match is not an action. Equally good candidates are a tie,
@@ -156,5 +156,85 @@ final class OrphanedCandidatesTests: XCTestCase {
         XCTAssertEqual(model.envelopes.map(\.id), ["e1"], "the envelope is still waiting")
         let envelopeAfter = try JSONSerialization.data(withJSONObject: try box.savedEnvelope("e1"), options: [.sortedKeys])
         XCTAssertEqual(envelopeAfter, envelopeBefore, "no candidate was ever stored in the envelope")
+    }
+
+    // MARK: refunded packages
+
+    /// A package stamped Refunded or Partial refund leaves every count, so it is not offered and its cards
+    /// are not suggested (a-refund-leaves-every-count). Only C owes Path to Exile. A and B still owe a Lightning Bolt: the anchor.
+    func testRefundedPackagesAreNeverOffered() async throws {
+        for kind in ["refunded", "partial"] {
+            let box = try makeOrphanedSandbox()
+            try box.write(extra: [
+                "stamps": [OrphanedSandbox.c1: OrphanedSandbox.stamp(kind)],
+                "envelopes": [OrphanedSandbox.env("e-path", [("Path to Exile", 1)]), OrphanedSandbox.env("e-bolt", [("Lightning Bolt", 1)])],
+            ])
+            let (model, _) = try await box.open()
+
+            XCTAssertEqual(model.ranked(for: "e-bolt").list.map(\.pkg.gk), [OrphanedSandbox.a1, OrphanedSandbox.b1], "\(kind): C is not offered for the bolt either, A and B still are")
+            XCTAssertEqual(model.ranked(for: "e-path").list.count, 0, "\(kind): a package with a refund stamp is offered")
+            XCTAssertEqual(model.ranked(for: "e-path").explainable, Set<String>(), "\(kind): its card still counts as outstanding")
+            let found = await model.suggestions(for: "path")
+            XCTAssertEqual(found, [], "\(kind): its card is still suggested")
+            let bolt = await model.suggestions(for: "bolt")
+            XCTAssertEqual(bolt, [Suggestion(name: "Lightning Bolt", qty: 2, sellerCount: 2)], "\(kind): the pool still counts the refunded copy")
+            do {
+                try await model.assign(envelope: "e-path", to: OrphanedSandbox.c1)
+                XCTFail("\(kind): assign to a refunded package must throw")
+            } catch {}
+            XCTAssertEqual(try box.savedReceived(), [String: Int](), "\(kind): a refused assign checked a card in")
+        }
+    }
+
+    /// A refund can break a tie. A and B hold the same cards. With A refunded the envelope fits B alone, so it is
+    /// no tie and B stands out.
+    func testARefundBreaksATie() async throws {
+        let box = try makeOrphanedSandbox()
+        try box.write(extra: [
+            "stamps": [OrphanedSandbox.a1: OrphanedSandbox.stamp("refunded")],
+            "envelopes": [OrphanedSandbox.env("e-tie", [("Lightning Bolt", 1), ("Counterspell", 1), ("Brainstorm", 2)])],
+        ])
+        let (model, _) = try await box.open()
+
+        let r = model.ranked(for: "e-tie")
+        XCTAssertEqual(r.list.first?.pkg.gk, OrphanedSandbox.b1, "B is the best fit")
+        XCTAssertFalse(r.list.contains { $0.pkg.gk == OrphanedSandbox.a1 }, "the refunded A is offered")
+        XCTAssertEqual(r.tied, 1, "a refunded package still makes a tie")
+        let fit = try XCTUnwrap(r.list.first)
+        XCTAssertTrue(r.emphasized(fit), "B is the lone perfect fit")
+    }
+
+    /// Other stamps and a removed stamp are not refunds: the package stays in. These are the anchors for the
+    /// two tests above, so a rule that drops every stamped package fails here.
+    func testOnlyARefundStampTakesAPackageOut() async throws {
+        for kind in ["claim", "contacted", "reshipped", "other", ""] {
+            let box = try makeOrphanedSandbox()
+            try box.write(extra: [
+                "stamps": [OrphanedSandbox.c1: OrphanedSandbox.stamp(kind)],
+                "envelopes": [OrphanedSandbox.env("e-path", [("Path to Exile", 1)])],
+            ])
+            let (model, _) = try await box.open()
+
+            XCTAssertEqual(model.ranked(for: "e-path").list.map(\.pkg.gk), [OrphanedSandbox.c1], "kind \"\(kind)\": the package was dropped")
+            let found = await model.suggestions(for: "path")
+            XCTAssertEqual(found.map(\.name), ["Path to Exile"], "kind \"\(kind)\": its card was dropped from the suggestions")
+        }
+    }
+
+    /// The stamp is read on every load, never cached. Stamping a refund takes the package out at the next load,
+    /// and removing the stamp (the store writes a tombstone, kind "") brings it back.
+    func testStampingAndUnstampingARefundMovesThePackageOnTheNextLoad() async throws {
+        let box = try makeOrphanedSandbox()
+        try box.write(extra: ["envelopes": [OrphanedSandbox.env("e-path", [("Path to Exile", 1)])]])
+        let (model, store) = try await box.open()
+        XCTAssertEqual(model.ranked(for: "e-path").list.map(\.pkg.gk), [OrphanedSandbox.c1], "anchor: C is offered")
+
+        store.setStamp(OrphanedSandbox.c1, kind: "refunded", note: "", at: "2026-08-01")
+        try await model.load()
+        XCTAssertEqual(model.ranked(for: "e-path").list.count, 0, "a refund stamped since the last load still offers C")
+
+        store.removeStamp(OrphanedSandbox.c1)
+        try await model.load()
+        XCTAssertEqual(model.ranked(for: "e-path").list.map(\.pkg.gk), [OrphanedSandbox.c1], "removing the stamp does not bring C back")
     }
 }

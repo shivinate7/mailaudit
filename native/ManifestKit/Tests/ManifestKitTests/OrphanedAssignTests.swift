@@ -211,6 +211,54 @@ final class OrphanedAssignTests: XCTestCase {
         XCTAssertNil(model.undo)
     }
 
+    /// A refused assign or discard reaches the screen: the model sets `error` before it throws, so the view's
+    /// try? cannot hide it. The next good write clears it. Not offered, unknown envelope and unknown discard
+    /// are the three refusals a tap can reach; "changed" needs a write mid-call and has no test.
+    func testARefusedAssignOfAPackageNotOfferedSetsTheError() async throws {
+        let box = try makeOrphanedSandbox()
+        try box.write(extra: ["envelopes": [OrphanedSandbox.env("e1", [("Lightning Bolt", 1)])]])
+        let (model, _) = try await box.open()
+        XCTAssertNil(model.error, "anchor: no error before a refusal")
+
+        do {
+            try await model.assign(envelope: "e1", to: OrphanedSandbox.d1)
+            XCTFail("assign to a package that was not offered must throw")
+        } catch { XCTAssertEqual(error as? OrphanedFailure, .notOffered) }
+        XCTAssertFalse((model.error ?? "").isEmpty, "a refused assign sets no error to show")
+
+        try await model.assign(envelope: "e1", to: OrphanedSandbox.c1)
+        XCTAssertNil(model.error, "the next good write does not clear the error")
+    }
+
+    func testARefusedAssignOfAnUnknownEnvelopeSetsTheError() async throws {
+        let box = try makeOrphanedSandbox()
+        try box.write(extra: ["envelopes": [OrphanedSandbox.env("e1", [("Lightning Bolt", 1)])]])
+        let (model, _) = try await box.open()
+        XCTAssertNil(model.error, "anchor: no error before a refusal")
+
+        do {
+            try await model.assign(envelope: "no-such-envelope", to: OrphanedSandbox.a1)
+            XCTFail("assign of an unknown envelope must throw")
+        } catch { XCTAssertEqual(error as? OrphanedFailure, .unknownEnvelope) }
+        XCTAssertFalse((model.error ?? "").isEmpty, "a refused assign sets no error to show")
+    }
+
+    func testARefusedDiscardOfAnUnknownEnvelopeSetsTheError() async throws {
+        let box = try makeOrphanedSandbox()
+        try box.write(extra: ["envelopes": [OrphanedSandbox.env("e1", [("Lightning Bolt", 1)])]])
+        let (model, store) = try await box.open()
+        let bytes = try box.bytes()
+        XCTAssertNil(model.error, "anchor: no error before a refusal")
+
+        do {
+            try await model.discard(envelope: "no-such-envelope")
+            XCTFail("discard of an unknown envelope must throw")
+        } catch { XCTAssertEqual(error as? OrphanedFailure, .unknownEnvelope) }
+        XCTAssertFalse((model.error ?? "").isEmpty, "a refused discard sets no error to show")
+        XCTAssertEqual(try box.bytes(), bytes, "a refused discard writes nothing")
+        XCTAssertEqual(store.generation, 0)
+    }
+
     /// The check-in, the check-in time and the envelope change are one save. If it fails, none of them
     /// happened: not in the file, not in the store, not on screen.
     func testAFailedSaveLeavesTheAssignWhole() async throws {

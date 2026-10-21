@@ -2,7 +2,8 @@
 //
 // Web behaviour matched: orphaned-mail-never-decides, orphan-entry-takes-one-input,
 // assign-checks-recorded-cards, shrunk-envelope-gets-fresh-stamp, undo-removes-only-its-delta,
-// testing-partial-qty-needs-case, envelope-names-match-normname, candidates-skip-date-filter.
+// testing-partial-qty-needs-case, envelope-names-match-normname, candidates-skip-date-filter,
+// a-refund-leaves-every-count.
 //
 // Red-first. The builder adds the types below in native/ManifestKit/Sources/ManifestKit/.
 // Until they exist the Orphaned* test files do not compile. The red run is recorded in the
@@ -56,7 +57,7 @@
 //       public private(set) var envelopes: [Envelope]      // live only, in file order (newest first)
 //       public private(set) var undo: UndoNotice?
 //       public private(set) var composing: ComposerTarget?
-//       public private(set) var error: String?            // set when a save fails; the call also throws
+//       public private(set) var error: String?            // set when a save fails or an assign/discard is refused; the call also throws; the next good write clears it
 //       public func load() async throws                    // reads the store, ranks candidates again
 //       public func ranked(for envelopeId: String) -> Ranked   // empty Ranked for an unknown id
 //       public func suggestions(for text: String) async -> [Suggestion]   // still-outstanding cards only; async: normName is in the bundle
@@ -77,6 +78,9 @@
 //     ledger items without canceled orders. Swift holds no copy of the matching. assign
 //     writes the plan of the candidate the bundle gave (OrphanedAssignTests, the probe).
 //   - Candidates are derived on every load and after every write. Nothing about them is stored.
+//   - The packages are the ledger items without canceled orders AND without packages whose stamp
+//     (ledger `stamps`, keyed by gk) has kind "refunded" or "partial" (a-refund-leaves-every-count).
+//     Any other kind, and a removed stamp (kind ""), leave the package in. The suggestion pool reads the same items.
 //   - assign(envelope:to:) throws for a gk that is not in that envelope's candidate list.
 //   - The assign handler and undoAssign still live in src/app.jsx, not in the bundle. They
 //     are not callable from Swift today. The builder either extracts them into
@@ -136,6 +140,11 @@ final class OrphanedSandbox: @unchecked Sendable {
         ]
         for (k, v) in extra { e[k] = v }
         return e
+    }
+
+    /// One raw stamp record, as the web and the store write it. A removed stamp has kind "".
+    static func stamp(_ kind: String) -> [String: Any] {
+        ["kind": kind, "note": "", "at": "2026-08-01", "updatedAt": t0 - 1_000]
     }
 
     /// Writes ledger.json: `mailday` 1, the given items (the shared fixture by default), and any extras.

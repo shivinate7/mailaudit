@@ -16,6 +16,9 @@
 //   exact:<gk>             the "explains all" marker of a candidate; present only on an emphasized one
 //   orphaned-tie           the tie line; its label is the line
 //   orphaned-undo          the Undo button of the notice an assign leaves
+//   orphaned-undo-dismiss  the close button of that notice
+//   orphaned-add-typed     the "Add as typed" row; orphaned-note the note field
+//   discard:<id>           the Discard button of an envelope card
 //   orphaned-empty         the empty-state text of an empty pile; its label is the line
 // Behaviour: assign is one tap (no "Tap again" ask anywhere). The composer is autofocused. A view
 // change keeps the draft, and returns to the composer that was open. The Undo notice survives a
@@ -252,11 +255,7 @@ final class OrphanedUITests: XCTestCase {
     func testOrphanedControlsHaveA44ptHitRegion() throws {
         let app = launch()
         openOrphaned(app)
-        func check(_ id: String) {
-            let f = el(app, id).frame
-            XCTAssertGreaterThanOrEqual(f.width, Self.minHit, "\(id) is narrower than 44pt")
-            XCTAssertGreaterThanOrEqual(f.height, Self.minHit, "\(id) is shorter than 44pt")
-        }
+        func check(_ id: String) { assertHit(el(app, id), id) }
         check("orphaned-record")
         el(app, "orphaned-record").tap()
         XCTAssertTrue(el(app, "orphaned-save").waitForExistence(timeout: 5), "the composer has no Save")
@@ -268,5 +267,56 @@ final class OrphanedUITests: XCTestCase {
         el(app, "assign:\(Self.d1)").tap()
         XCTAssertTrue(el(app, "orphaned-undo").waitForExistence(timeout: 5), "no Undo to measure")
         check("orphaned-undo")
+        check("orphaned-undo-dismiss")
+    }
+
+    /// The hit region is the whole control, not the label inside it: a .frame after the button style leaves the
+    /// tappable area at the label's size. Every control on an envelope card is measured here, and every candidate row.
+    func testEnvelopeCardControlsHaveA44ptHitRegion() throws {
+        let app = launch()
+        openOrphaned(app)
+        // Lightning Bolt and Urza's Saga: A, B, C and D each explain one card, so four rows and a "show 1 more".
+        record(app, [("bolt", "Lightning Bolt"), ("urza", "Urza's Saga")])
+
+        assertHit(app.buttons["Edit"].firstMatch, "Edit")
+        assertHit(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "discard:")).firstMatch, "Discard")
+        assertHit(app.buttons["show 1 more candidate"], "show more")
+        let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "assign:"))
+        XCTAssertEqual(rows.count, 3, "the card shows three candidate rows before show more")
+        for i in 0..<rows.count { assertHit(rows.element(boundBy: i), "assign row \(i)") }
+
+        app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "discard:")).firstMatch.tap()
+        assertHit(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Tap again to discard")).firstMatch, "the discard ask")
+        assertHit(app.buttons["Cancel"].firstMatch, "the discard ask's Cancel")
+    }
+
+    /// The same for the composer's rows: a suggestion, "Add as typed", and the count buttons of a recorded card.
+    /// The two text fields are not measured: the frame XCUITest reports for a field (34pt and 22pt today) is not
+    /// proven to be its hit region, so no builder can be asked to match it.
+    func testComposerRowControlsHaveA44ptHitRegion() throws {
+        let app = launch()
+        openOrphaned(app)
+        el(app, "orphaned-record").tap()
+        let input = el(app, "orphaned-input")
+        XCTAssertTrue(input.waitForExistence(timeout: 5), "the composer has no input")
+        if !app.keyboards.element.exists { input.tap() }
+        input.typeText("bolt")
+
+        assertHit(el(app, "suggestion:Lightning Bolt"), "a suggestion row")
+        assertHit(el(app, "orphaned-add-typed"), "the Add as typed row")
+        el(app, "suggestion:Lightning Bolt").tap()
+        assertHit(app.buttons["Remove Lightning Bolt"], "the remove button of a single card")
+        assertHit(app.buttons["One more Lightning Bolt"], "the one-more button")
+        app.buttons["One more Lightning Bolt"].tap()
+        assertHit(app.buttons["One fewer Lightning Bolt"], "the one-fewer button")
+    }
+
+    /// A frame comes back in thirds of a point with float noise (a minHeight 44 row reads 43.99999999999997),
+    /// so the floor has half a point of slack. Every real miss measured so far is 3pt or more short.
+    func assertHit(_ e: XCUIElement, _ what: String) {
+        XCTAssertTrue(e.waitForExistence(timeout: 5), "\(what) is not on screen")
+        let f = e.frame
+        XCTAssertGreaterThanOrEqual(f.width, Self.minHit - 0.5, "\(what) is \(f.width)pt wide, under 44pt")
+        XCTAssertGreaterThanOrEqual(f.height, Self.minHit - 0.5, "\(what) is \(f.height)pt high, under 44pt")
     }
 }
