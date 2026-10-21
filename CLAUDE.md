@@ -393,7 +393,7 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `native-ledger-pins-missing` — Four native ledger behaviours have no test.
 - `panels-overlay-unbuilt` — Disclosure panels still push the list.
 - `panel-paper-fill-unbuilt` — Overlay panels carry no paper fill.
-- `order-id-visible-unbuilt` — The order id has no narrow-width rule.
+- `order-id-visible-unbuilt` — The Tally order id has no narrow-width rule.
 - `discard-keeps-draft` — Discard does not end a composer draft.
 - `type-floor-unbuilt` — Some labels are below the 10px floor.
 - `universal-link-unbuilt` — The universal-link key fallback is not built.

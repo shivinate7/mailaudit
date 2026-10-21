@@ -699,6 +699,11 @@ const stampChip = {
 
 /* ---------- Package (order + seller) group ---------- */
 
+/* TCGplayer's buyer order-history page. No per-order buyer URL is confirmed
+   (searched 2026-10-20), so the link opens the list, where the id just copied
+   finds the order. Replace this when a per-order URL is confirmed. */
+const TCGPLAYER_ORDERS = "https://store.tcgplayer.com/myaccount/orderhistory";
+
 function PackageCard({
   pkg,
   received,
@@ -755,6 +760,25 @@ function PackageCard({
   const timer = useRef(null);
   const cancelRef = useRef(null);
   useEffect(() => () => clearTimeout(timer.current), []);
+  /* the copy control: a write the browser refuses stamps nothing. One timer,
+     cleared on unmount, ends the stamp by itself. */
+  const [copied, setCopied] = useState(false);
+  const justCopied = useJustBecame(copied, 500);
+  const copyTimer = useRef(null);
+  useEffect(() => () => clearTimeout(copyTimer.current), []);
+  const copyId = (e) => {
+    e.stopPropagation();
+    Promise.resolve()
+      .then(() => navigator.clipboard.writeText(pkg.orderId))
+      .then(
+        () => {
+          setCopied(true);
+          clearTimeout(copyTimer.current);
+          copyTimer.current = setTimeout(() => setCopied(false), 1800);
+        },
+        () => {}
+      );
+  };
   /* an ask puts first focus on its way out (ux-ask-or-undo) */
   useEffect(() => {
     if (confirmRemove) cancelRef.current?.focus();
@@ -802,135 +826,264 @@ function PackageCard({
           none inside the card's existing relative/overflow-hidden box, so it
           is clipped to the card, catches no taps and moves nothing. */}
       {justStamped && <i className="mdl-gild" aria-hidden="true" />}
-      <button
-        onClick={() => setOpen((o) => !o)}
-        style={{
-          width: "100%",
-          textAlign: "left",
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          padding: "12px 12px",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
+      {/* The header is plain text, not a button, so it selects: a drag on a Mac,
+          a long-press on a phone (owner ruling 2026-10-20). A click that ends
+          with text selected inside the header is the end of a selection, so it
+          does not toggle; a plain click still does. The order id and the
+          TCGplayer link are their own controls and stop their clicks here
+          (order-id-button-stops-propagate). The chevron is the keyboard's way
+          to toggle, and owns no handler: its click bubbles to this one. */}
+      <div
+        onClick={(e) => {
+          const sel = window.getSelection?.();
+          const hdr = e.currentTarget;
+          if (
+            sel &&
+            !sel.isCollapsed &&
+            (hdr.contains(sel.anchorNode) || hdr.contains(sel.focusNode))
+          )
+            return;
+          setOpen((o) => !o);
         }}
+        style={{ display: "flex", alignItems: "stretch", cursor: "pointer" }}
       >
-        <span
+        <button
+          aria-expanded={open}
+          aria-label={`${open ? "Collapse" : "Expand"} ${pkg.seller}`}
           style={{
-            fontFamily: mono,
-            fontSize: 10,
-            color: C.inkSoft,
-            transform: open ? "rotate(90deg)" : "none",
-            /* the sheet's easing, and long enough to read: on the way closed
-               this is the only thing that moves, because the rows are gone in
-               the same commit as the tap */
-            transition: "transform 200ms cubic-bezier(.16,1,.3,1)",
-            display: "inline-block",
+            width: 44,
             flexShrink: 0,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "flex-start",
+            padding: "16px 0 0",
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
           }}
         >
-          ▶
-        </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
+          <span
             style={{
-              fontWeight: 700,
-              fontSize: 15,
-              color: C.ink,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
+              fontFamily: mono,
+              fontSize: 10,
+              color: C.inkSoft,
+              transform: open ? "rotate(90deg)" : "none",
+              /* the sheet's easing, and long enough to read: on the way closed
+                 this is the only thing that moves, because the rows are gone in
+                 the same commit as the tap */
+              transition: "transform 200ms cubic-bezier(.16,1,.3,1)",
+              display: "inline-block",
             }}
           >
-            {pkg.seller}
+            ▶
+          </span>
+        </button>
+        <div style={{ flex: 1, minWidth: 0, padding: "12px 12px 16px 4px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  fontWeight: 700,
+                  fontSize: 15,
+                  color: C.ink,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {pkg.seller}
+              </div>
+              <div
+                style={{
+                  fontFamily: mono,
+                  fontSize: 11,
+                  color: C.inkSoft,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {lost?.tier === "deadline" && (
+                  <span style={{ color: C.red, fontWeight: 700 }}>
+                    ⚠ {lost.days}d — refund window closing, contact seller ·{" "}
+                  </span>
+                )}
+                {lost?.tier === "maybe" && (
+                  <span style={{ color: C.amber, fontWeight: 700 }}>
+                    ⚠ {lost.days}d — may be lost ·{" "}
+                  </span>
+                )}
+                {pkg.date && `${pkg.date} · `}
+                {tracked === "tracked" && (
+                  <>
+                    <span style={{ color: C.green }}>●</span> tracked
+                  </>
+                )}
+                {tracked === "untracked" && (
+                  <>
+                    <span style={{ color: C.manilaInk }}>○</span> untracked
+                  </>
+                )}
+              </div>
+            </div>
+            {done ? (
+              <span
+                /* it is a stamp, so it lands like one — but only on the tap that
+                   actually completed the package. `justStamped` is false on a fresh
+                   mount, which is what keeps a view switch from restamping every
+                   finished order on the page at once. */
+                className={justStamped ? "mdl-land" : undefined}
+                style={{
+                  fontFamily: mono,
+                  fontSize: 10.5,
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  color: C.green,
+                  border: `2px solid ${C.green}`,
+                  borderRadius: 4,
+                  padding: "4px 8px",
+                  transform: "rotate(-4deg)",
+                  /* the angle the landing returns to, read by the shared keyframes */
+                  "--rest": "-4deg",
+                  flexShrink: 0,
+                  background: C.card,
+                }}
+              >
+                RECEIVED
+              </span>
+            ) : (
+              <span
+                style={{
+                  /* deliberately Cochin, not mono: the user wanted the outstanding
+                     pill to read as part of the letterhead voice rather than as
+                     tabular data. The exception to "mono for numbers". */
+                  fontFamily: cochin,
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  /* manila once refunded: the cards are still out, but no money
+                     is — the red figure would be claiming a loss that isn't one */
+                  color: refunded ? C.manilaInk : C.red,
+                  background: refunded ? C.manila : C.redSoft,
+                  borderRadius: 999,
+                  padding: "4px 8px",
+                  flexShrink: 0,
+                }}
+              >
+                {totalQty - gotQty} left · {refunded ? "refunded" : missingValLabel}
+              </span>
+            )}
           </div>
+          {/* The order id on its own line, so a long id keeps its tail. One tap
+              copies it. The Copied stamp overlays the line's right end, out of
+              flow, so nothing moves when it shows or goes
+              (no-layout-shift-under-pointer). The 16px under the line keeps the
+              44px touch areas off the row below. */}
           <div
             style={{
+              position: "relative",
+              display: "flex",
+              alignItems: "center",
+              gap: 20,
+              marginTop: 4,
               fontFamily: mono,
               fontSize: 11,
+              lineHeight: "16px",
               color: C.inkSoft,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
             }}
-            title={pkg.orderId}
           >
-            {lost?.tier === "deadline" && (
-              <span style={{ color: C.red, fontWeight: 700 }}>
-                ⚠ {lost.days}d — refund window closing, contact seller ·{" "}
+            <button
+              onClick={copyId}
+              aria-label={`Copy order id ${pkg.orderId}`}
+              title={pkg.orderId}
+              style={{
+                /* 45px wide at the least, so the touch area (centred on the
+                   box) never reaches left over the chevron's */
+                minWidth: 45,
+                padding: 0,
+                border: 0,
+                background: "transparent",
+                font: "inherit",
+                color: "inherit",
+                textAlign: "left",
+                cursor: "pointer",
+                textDecoration: "underline",
+                textUnderlineOffset: 2,
+              }}
+            >
+              {/* the ellipsis sits on the text, not the button: a button that
+                  clips would cut off its touch area */}
+              <span
+                style={{
+                  display: "block",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {pkg.orderId}
               </span>
-            )}
-            {lost?.tier === "maybe" && (
-              <span style={{ color: C.amber, fontWeight: 700 }}>
-                ⚠ {lost.days}d — may be lost ·{" "}
-              </span>
-            )}
-            {pkg.date && `${pkg.date} · `}
-            {tracked === "tracked" && (
-              <>
-                <span style={{ color: C.green }}>●</span> tracked ·{" "}
-              </>
-            )}
-            {tracked === "untracked" && (
-              <>
-                <span style={{ color: C.manilaInk }}>○</span> untracked ·{" "}
-              </>
-            )}
-            {pkg.orderId}
+            </button>
+            <a
+              className="mdl-tcg"
+              href={TCGPLAYER_ORDERS}
+              target="_blank"
+              rel="noopener"
+              onClick={(e) => e.stopPropagation()}
+              aria-label="TCGplayer order history, opens in a new tab"
+              style={{
+                flexShrink: 0,
+                color: "inherit",
+                textDecoration: "underline",
+                textUnderlineOffset: 2,
+              }}
+            >
+              TCGplayer ↗
+            </a>
+            <span
+              role="status"
+              style={{
+                position: "absolute",
+                right: 0,
+                top: "50%",
+                transform: "translateY(-50%)",
+                /* a fixed box, empty or stamped, so the slot never changes size */
+                width: 72,
+                height: 20,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-end",
+                pointerEvents: "none",
+              }}
+            >
+              {copied && (
+                <span
+                  className={justCopied ? "mdl-land" : undefined}
+                  style={{
+                    display: "block",
+                    fontSize: 10.5,
+                    fontWeight: 700,
+                    letterSpacing: "0.1em",
+                    textTransform: "uppercase",
+                    color: C.green,
+                    border: `2px solid ${C.green}`,
+                    borderRadius: 4,
+                    padding: "0 8px",
+                    lineHeight: "16px",
+                    transform: "rotate(-4deg)",
+                    "--rest": "-4deg",
+                    background: C.card,
+                  }}
+                >
+                  Copied
+                </span>
+              )}
+            </span>
           </div>
         </div>
-        {done ? (
-          <span
-            /* it is a stamp, so it lands like one — but only on the tap that
-               actually completed the package. `justStamped` is false on a fresh
-               mount, which is what keeps a view switch from restamping every
-               finished order on the page at once. */
-            className={justStamped ? "mdl-land" : undefined}
-            style={{
-              fontFamily: mono,
-              fontSize: 10.5,
-              fontWeight: 700,
-              letterSpacing: "0.1em",
-              color: C.green,
-              border: `2px solid ${C.green}`,
-              borderRadius: 4,
-              padding: "4px 8px",
-              transform: "rotate(-4deg)",
-              /* the angle the landing returns to, read by the shared keyframes */
-              "--rest": "-4deg",
-              flexShrink: 0,
-              background: C.card,
-            }}
-          >
-            RECEIVED
-          </span>
-        ) : (
-          <span
-            style={{
-              /* deliberately Cochin, not mono: the user wanted the outstanding
-                 pill to read as part of the letterhead voice rather than as
-                 tabular data. The exception to "mono for numbers". */
-              fontFamily: cochin,
-              fontSize: 12.5,
-              fontWeight: 700,
-              /* manila once refunded: the cards are still out, but no money
-                 is — the red figure would be claiming a loss that isn't one */
-              color: refunded ? C.manilaInk : C.red,
-              background: refunded ? C.manila : C.redSoft,
-              borderRadius: 999,
-              padding: "4px 8px",
-              flexShrink: 0,
-            }}
-          >
-            {totalQty - gotQty} left · {refunded ? "refunded" : missingValLabel}
-          </span>
-        )}
-      </button>
+      </div>
 
       {/* The stamp band: the order's status, visible collapsed too, and — once
-          a stamp exists — the control that edits it. A sibling of the header
-          button, above the rows, so nothing moves under a thumb mid-check-in
+          a stamp exists — the control that edits it. A sibling of the header, above the rows, so nothing moves under a thumb mid-check-in
           (invariant no-layout-shift-under-pointer); opening the editor is a deliberate tap on the band,
           the same class of move as expanding the package. */}
       {stamped && !editing && (
@@ -5578,7 +5731,7 @@ export default function MailDayLedger() {
            px around its drawn centre (45 clears the half-open edge). The pseudo-element is transparent and out
            of flow, so the drawn box and the layout never change. */
         @media (pointer: coarse) {
-          button:not(.mdl-lrow) { position: relative; }
+          button:not(.mdl-lrow), a.mdl-tcg { position: relative; }
           /* The ruled cells sit 40px above the sync line, so two 44px areas
              would overlap. On touch the cell is the top 30px of its row and
              draws its rule as ::before, so the text and the rule stay put.
@@ -5588,7 +5741,7 @@ export default function MailDayLedger() {
                       border-left-color: transparent !important; }
           .mdl-cell::before { content: ""; position: absolute; left: 0; top: 0;
                               width: 1px; height: 40px; background: ${C.line}; }
-          button:not(.mdl-lrow)::after { content: ""; position: absolute; left: 50%; top: 50%;
+          button:not(.mdl-lrow)::after, a.mdl-tcg::after { content: ""; position: absolute; left: 50%; top: 50%;
                           width: max(100%, 45px); height: max(100%, 45px);
                           transform: translate(-50%, -50%); z-index: 1; }
           /* the line sits right under the running head, whose hidden slot

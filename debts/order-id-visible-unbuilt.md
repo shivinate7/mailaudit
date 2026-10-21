@@ -1,7 +1,7 @@
-# The order id has no narrow-width rule
+# The Tally order id has no narrow-width rule
 
-**What.** What counts as visible at narrow widths is not defined. The owner ruled on 2026-10-11 to keep the order id visible, with the 10px floor. The gap closes when the rule is written and built.
+**What.** The package header gives the order id its own line (built 2026-10-20). The Tally source row still ends a long id in an ellipsis at narrow widths. The gap closes when the Tally row gets the same rule.
 
-**Status:** open. Ruled 2026-10-11, not built. No lane yet.
+**Status:** open. Ruled 2026-10-11, built for the package header only. No lane yet.
 
 **Decision:** `order-id-button-stops-propagate`.
