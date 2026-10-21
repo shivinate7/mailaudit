@@ -90,11 +90,13 @@
     15. Lost tile size (decision pull-warns-on-what-it-drops) at 375px and 760px: in a
         strip that holds a View photo thumbnail and a lost tile, both are 56 by 56
         drawn px (0.5px tolerance), by bounding rect. A content-box tile measures 58.
-    16. Order id copy (owner ruling 2026-10-20) at 375px touch and 760px, on Alpha's
-        order A1: the copy control shows Copied, drawn with motion reduced, and moves
-        no element when it shows or goes. It puts "A1" on the clipboard and leaves
-        the card open. At 760px a mouse drag from the seller name into the date line
-        selects text and leaves the card open, and a plain click still collapses it.
+    16. Order id link (owner ruling 2026-10-21) at 375px touch and 760px, on Alpha's
+        order A1: the id is the one link to tcgplayer.com, and its hit area reaches
+        neither the seller name nor the date line, so no tap meant to collapse the
+        card opens TCGplayer. The chevron toggles on a click (a tap at 375px) and on
+        Enter while the seller name is selected, open or collapsed. At 760px a mouse
+        drag from the seller name into the date line selects text and leaves the card
+        open, and a plain click still collapses it.
 
    Reduced motion is on, so animation does not skew the numbers. Exit 0 when all
    checks pass; exit 1 with one `FAIL` line per failure and one summary line. */
@@ -1733,38 +1735,80 @@ async function ledgerRuleCheck(browser) {
   }
 }
 
-/* Claim 16 (owner ruling 2026-10-20, lane web/order-id-copy): the package header
-   of Alpha's order A1 in a real browser, where jsdom has no layout and no mouse.
-   At 375px touch and at 760px:
-     a. the copy control for A1 (a button whose aria-label has "Copy" and "A1")
-        exists. A tap shows Copied, visible with motion reduced, and moves no
-        other element on the page, then or when it goes. It adds no sideways
-        overflow, leaves the card open and puts "A1" on the clipboard. A clipboard
-        that cannot be read in this run is a `note`, not a pass or a fail.
-     b. at 760px, the Mac case: a mouse drag from the seller name into the date
-        line selects text that holds "Alpha Cards" and leaves the card open. A
-        plain click still collapses the card, and the next opens it.
-   The touch area of the copy control and of the TCGplayer link is claim 9's
-   (every button and a[href] in the Packages state), and their overlap is
-   claim 11's. Phone long-press selection is unmeasured: no device in this run. */
-const ORDER_ID_COPIED_GONE_MS = 6500;
+/* Claim 16 (owner ruling 2026-10-21 00:10 CDT, lane web/order-id-copy): the package
+   header of Alpha's order A1 in a real browser, where jsdom has no layout, no mouse
+   and no key that turns into a click. At 375px touch and at 760px:
+     a. the id link: one <a> with an href on tcgplayer.com whose visible text is
+        "A1". Its touch area (claim 9 grows it to 44px) must not reach the seller
+        name or the date line: a tap meant to collapse the card must never open
+        TCGplayer. Probed by elementFromPoint on a 1px grid over the border box of
+        each line; any point that lands on the link fails. The reach in px prints as
+        a `note` whatever the outcome.
+     b. the chevron toggles while header text is selected (round-1 finding F1): a
+        click (a tap at 375px) and Enter, each on an open and on a collapsed card,
+        each flips the card once. The selection at the moment of the click is read
+        by a capture listener. A click that arrives with no selection proves nothing
+        about F1: that prints a `note`, and the case is reported unknown, not clear.
+     c. at 760px, the Mac case: a mouse drag from the seller name into the date
+        line selects text that holds "Alpha Cards" and leaves the card open. A plain
+        click still collapses the card, and the next opens it.
+   Nothing here clicks the id link: with target _blank it would open tcgplayer.com in
+   a popup, and any request to that host is aborted. The link's click is group 75.
+   The touch area of the link and of the chevron is claim 9's, and their overlap is
+   claim 11's. Phone long-press selection and a Mac double-click or triple-click are
+   unmeasured: no device in this run (debt header-gestures-unmeasured). */
 
-/* Runs in the page. True when a text node "Copied" is drawn: it and each
-   ancestor are displayed, and the opacity down the chain is at rest (above 0.99). */
-const copiedVisible = () => {
+/* Runs in the page. How far the id link's hit area reaches into the seller name and
+   the date line of Alpha's header, by elementFromPoint on a grid over each line's
+   border box (every 1px down, every 4px across). A hit on the link, on its
+   ::after, or on anything inside it counts. */
+const idLinkReach = () => {
+  const textOf = (needle) => {
+    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode())
+      if (n.textContent.includes(needle) && !/^(SCRIPT|STYLE)$/.test(n.parentElement.tagName)) return n;
+    return null;
+  };
+  const link = [...document.querySelectorAll("a")].find(
+    (a) => /tcgplayer\.com/i.test(a.href) && a.textContent.trim() === "A1"
+  );
+  const seller = textOf("Alpha Cards")?.parentElement;
+  const date = textOf("2026-07-01")?.parentElement;
+  if (!link || !seller || !date) return null;
+  seller.scrollIntoView({ block: "center", behavior: "instant" });
+  const reach = (el) => {
+    const r = el.getBoundingClientRect();
+    let points = 0;
+    let hits = 0;
+    let top = Infinity;
+    let bottom = -Infinity;
+    for (let y = Math.ceil(r.top) + 0.5; y < r.bottom; y += 1)
+      for (let x = r.left + 2; x < r.right - 2; x += 4) {
+        points++;
+        const hit = document.elementFromPoint(x, y);
+        if (hit && link.contains(hit)) {
+          hits++;
+          top = Math.min(top, y);
+          bottom = Math.max(bottom, y);
+        }
+      }
+    return { points, hits, px: hits ? Math.ceil(bottom - top + 1) : 0 };
+  };
+  return { seller: reach(seller), date: reach(date) };
+};
+
+/* Runs in the page. The seller name's text, selected. */
+const selectSeller = () => {
   const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-  for (let n = w.nextNode(); n; n = w.nextNode()) {
-    if (!/Copied/.test(n.textContent) || /^(SCRIPT|STYLE)$/.test(n.parentElement.tagName)) continue;
-    let op = 1;
-    for (let el = n.parentElement; el && el !== document.documentElement; el = el.parentElement) {
-      const cs = getComputedStyle(el);
-      if (cs.display === "none" || cs.visibility === "hidden") return false;
-      op *= Number(cs.opacity);
+  for (let n = w.nextNode(); n; n = w.nextNode())
+    if (n.textContent.includes("Alpha Cards") && !/^(SCRIPT|STYLE)$/.test(n.parentElement.tagName)) {
+      const r = document.createRange();
+      r.selectNodeContents(n);
+      getSelection().removeAllRanges();
+      getSelection().addRange(r);
+      return String(getSelection());
     }
-    const r = n.parentElement.getBoundingClientRect();
-    return op > 0.99 && r.width > 0 && r.height > 0;
-  }
-  return false;
+  return "";
 };
 
 /* Runs in the page. Where to press for the drag: the left edge of the seller
@@ -1804,7 +1848,7 @@ async function orderIdCheck(browser, width) {
   checks++;
   const { ctx, page, pageErrors } = await openSeeded(browser, width, { touch });
   try {
-    await ctx.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await ctx.route(/tcgplayer\.com/i, (route) => route.abort());
     if (!(await loadedOk(page))) {
       fail(name, "seeded ledger did not render");
       return;
@@ -1821,44 +1865,92 @@ async function orderIdCheck(browser, width) {
       return;
     }
 
-    /* a. the copy control */
-    const copy = page.locator('button[aria-label*="Copy" i][aria-label*="A1"]');
-    if ((await copy.count()) === 0) {
-      fail(name, 'no copy control for order A1 (a button whose aria-label has "Copy" and "A1")');
+    /* a. the id link, and how far its touch area reaches */
+    const links = page.locator("a[href*='tcgplayer.com' i]", { hasText: /^\s*A1\s*$/ });
+    if ((await links.count()) !== 1) {
+      fail(name, `want one link to tcgplayer.com whose text is the order id A1, found ${await links.count()}`);
     } else {
-      await copy.first().scrollIntoViewIfNeeded();
-      await page.evaluate(snapshotBoxes);
-      await copy.first().click({ timeout: 3000 });
-      let shown = true;
-      try {
-        await page.waitForFunction(copiedVisible, null, { timeout: 2000 });
-      } catch {
-        shown = false;
-        fail(name, "a tap on the copy control shows no Copied, drawn, with motion reduced");
+      const reach = await page.evaluate(idLinkReach);
+      if (!reach) {
+        fail(name, "the id link, the seller name or the date line of Alpha's header was not found");
+      } else {
+        console.log(
+          `note ${name}: the id link's hit area reaches ${reach.seller.px}px into the seller name ` +
+            `(${reach.seller.hits} of ${reach.seller.points} points) and ${reach.date.px}px into the date line ` +
+            `(${reach.date.hits} of ${reach.date.points} points)`
+        );
+        if (reach.seller.hits)
+          fail(name, `a tap on the seller name can open TCGplayer: ${reach.seller.hits} of ${reach.seller.points} points land on the id link, ${reach.seller.px}px deep`);
+        if (reach.date.hits)
+          fail(name, `a tap on the date line can open TCGplayer: ${reach.date.hits} of ${reach.date.points} points land on the id link, ${reach.date.px}px deep`);
       }
-      if (shown) {
-        const moved = await page.evaluate(boxesMovedSince, TAP_TOLERANCE_PX);
-        if (moved.count)
-          fail(name, `Copied showing moved ${moved.count} element(s); first: ${moved.first.tag} "${moved.first.text}" by ${moved.first.d.toFixed(1)}px`);
-        const o = await page.evaluate(overflowOf);
-        if (o.sw > o.iw) fail(name, `Copied showing widens the page: scrollWidth ${o.sw} over ${o.iw}`);
-        try {
-          await page.waitForFunction(`!(${copiedVisible.toString()})()`, null, { timeout: ORDER_ID_COPIED_GONE_MS });
-          const after = await page.evaluate(boxesMovedSince, TAP_TOLERANCE_PX);
-          if (after.count)
-            fail(name, `Copied going moved ${after.count} element(s); first: ${after.first.tag} "${after.first.text}" by ${after.first.d.toFixed(1)}px`);
-        } catch {
-          fail(name, `Copied is still on screen after ${ORDER_ID_COPIED_GONE_MS}ms`);
-        }
-      }
-      if ((await rowsOf()) < 3) fail(name, "a tap on the copy control collapsed Alpha's card");
-      const clip = await page.evaluate(() => navigator.clipboard.readText().catch((e) => `ERR ${e.message}`));
-      if (clip.startsWith("ERR")) console.log(`note ${name}: the clipboard could not be read (${clip}); its text is unknown`);
-      else if (clip !== "A1") fail(name, `the clipboard holds "${clip}" after the tap, want "A1"`);
     }
 
-    /* b. the Mac case: drag-select the header text. Mouse only; no touch device here. */
+    /* b. the chevron, with header text selected. One capture listener reads the
+       selection at the moment of every click. */
+    await page.evaluate(() => {
+      window.__selAtClick = [];
+      document.addEventListener("click", () => window.__selAtClick.push(String(getSelection())), true);
+    });
+    const chevron = page.locator('button[aria-expanded][aria-label$="Alpha Cards"]');
+    if ((await chevron.count()) !== 1) {
+      fail(name, `want one chevron button for Alpha's card, found ${await chevron.count()}`);
+    } else {
+      const toOpen = async (want) => {
+        /* by the header text, so a broken chevron cannot set up its own case */
+        if (((await rowsOf()) >= 3) === want) return;
+        await page.evaluate(() => getSelection().removeAllRanges());
+        const pts = await page.evaluate(headerDragPoints);
+        if (!pts) return;
+        if (touch) await page.touchscreen.tap(pts.cx, pts.cy);
+        else await page.mouse.click(pts.cx, pts.cy);
+        await page.waitForTimeout(150);
+      };
+      const acts = [
+        [
+          "Enter",
+          async () => {
+            await chevron.focus();
+            await page.keyboard.press("Enter");
+          },
+        ],
+        touch ? ["tap", () => chevron.tap({ timeout: 3000 })] : ["click", () => chevron.click({ timeout: 3000 })],
+      ];
+      for (const [how, act] of acts)
+        for (const start of [true, false]) {
+          const state = start ? "open" : "collapsed";
+          const label = `a ${how} on the chevron of a ${state} card with the seller name selected`;
+          await toOpen(start);
+          if (((await rowsOf()) >= 3) !== start) {
+            fail(name, `could not set the card ${state} by its header text, so ${label} was not run`);
+            continue;
+          }
+          await page.evaluate(() => window.__selAtClick.splice(0));
+          const picked = await page.evaluate(selectSeller);
+          if (!picked.includes("Alpha Cards")) {
+            fail(name, `could not select the seller name, so ${label} was not run`);
+            continue;
+          }
+          await act();
+          await page.waitForTimeout(150);
+          const seen = await page.evaluate(() => window.__selAtClick.splice(0));
+          const open = (await rowsOf()) >= 3;
+          if (seen.length === 0) fail(name, `${label} sent no click`);
+          else if (!seen.some((s) => s.includes("Alpha Cards")))
+            console.log(`note ${name}: ${label} arrived with the selection already cleared (unknown: it cannot show finding F1)`);
+          if (open === start) fail(name, `${label} left the card ${state}`);
+        }
+      await page.evaluate(() => getSelection().removeAllRanges());
+    }
+
+    /* c. the Mac case: drag-select the header text. Mouse only; no touch device here. */
     if (!touch) {
+      await page.evaluate(() => getSelection().removeAllRanges());
+      if ((await rowsOf()) < 3) {
+        const p = await page.evaluate(headerDragPoints);
+        if (p) await page.mouse.click(p.cx, p.cy);
+        await page.waitForTimeout(150);
+      }
       const pts = await page.evaluate(headerDragPoints);
       if (!pts) {
         fail(name, "the seller name or the date line of Alpha's header was not found");

@@ -2206,28 +2206,38 @@ ok(
   "32.16 opening an order checks nothing in"
 );
 
-/* ── 75. the order id in a package header: copy it, select the header, open TCGplayer ──
-   Owner ruling 2026-10-20 (lane web/order-id-copy). Three claims about the header
-   of a package card, which used to be one button that collapsed the card:
-     1. the order id is its own control. One tap copies it and stamps "Copied".
-        The tap never toggles the card, open or collapsed.
-     2. the header text can be selected. A click that ends with a non-empty
+/* ── 75. the order id in a package header: a link to TCGplayer, selectable header text ──
+   Owner ruling 2026-10-21 00:10 CDT (lane web/order-id-copy). It replaces the
+   2026-10-20 copy button, its Copied stamp and the separate "TCGplayer" link: all
+   three are gone. The header of a package card is plain text, not one button.
+   Four claims:
+     1. the order id is a link to that order's search on TCGplayer, in a new tab.
+        Its click never collapses or opens the card and never checks anything in.
+     2. nothing copies: no copy button, no Copied stamp, no status slot, no write to
+        the clipboard, and no second TCGplayer link.
+     3. the header text can be selected. A click that ends with a non-empty
         selection inside the header does not toggle the card. A plain click does.
-     3. a small link opens TCGplayer in a new tab.
+     4. the chevron is its own toggle. A click on it toggles the card even while
+        header text is selected (round-1 finding F1). Enter on it is claim 16 of
+        test/screens.mjs: jsdom turns no key into a click, and a case here would
+        push the build to add a key handler that toggles twice in a browser.
    The build meets this contract, and the cases find things only by it:
-     - the copy control is a button in the card with an aria-label that has "copy"
-       and the order id (the label must hold the visible text, axe rule
-       label-content-name-mismatch), and its visible text shows the id;
+     - the order id is the visible text of an <a> inside the card, and that <a> has
+       an href on tcgplayer.com. Its accessible name holds the id (axe rule
+       label-content-name-mismatch);
      - the seller name and the meta line are elements whose own text is the seller,
        or holds the date, and neither sits inside a button;
-     - the link is an <a> in the card whose href is on tcgplayer.com.
-   No per-order buyer URL on TCGplayer is confirmed (searched 2026-10-20), so the
-   link goes to the buyer order-history page. Change this href when one is.
-   Cases 75.2, 75.4, 75.10 to 75.14 and 75.24 pass at main on purpose: 75.10 to 75.14
-   stop a quick fix that blocks the toggle on any selection, or on any selection in
-   the card. The others are guards that a build could break.
-   What jsdom cannot see (that the text selects by a mouse drag, that Copied moves
-   nothing) is claim 16 of test/screens.mjs. */
+     - the chevron is the button in the card whose aria-label ends with the seller.
+   Real ids are hex and dashes (025F898A-605522-F2EDE), which encodeURIComponent
+   leaves alone, so no case feeds an id that needs escaping.
+   Cases 75.1 to 75.3, 75.6, 75.11 to 75.14, 75.16 to 75.22 and 75.25 pass at the lane
+   head on purpose. They are guards that a build could break: a second link, a link
+   with no noopener, a tap that reaches the header, a toggle that stops working. 75.17
+   to 75.20 stop a quick fix that blocks the toggle on any selection, or on any
+   selection in the card.
+   What jsdom cannot see (that the text selects by a mouse drag, the chevron under a
+   real key, the link's touch area against the date line) is claim 16 of
+   test/screens.mjs. */
 
 const own75 = (e) =>
   [...e.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("").trim();
@@ -2246,13 +2256,20 @@ const cardOf75 = (seller) => {
 /* a line name that only an open card shows */
 const open75 = (seller, line = "Brainstorm") =>
   new RegExp(line).test(cardOf75(seller)?.textContent ?? "");
-const copyBtn75 = (id) =>
-  [...document.querySelectorAll("button[aria-label]")].find((b) => {
-    const l = b.getAttribute("aria-label");
-    return /copy/i.test(l) && l.includes(id);
-  });
+const PACKS75 = [
+  ["Alpha Cards", "A1"],
+  ["Beta Games", "B1"],
+  ["Gamma Cards", "C1"],
+  ["Delta Cards", "D1"],
+];
 const tcg75 = (c) =>
   [...(c?.querySelectorAll("a") ?? [])].filter((a) => /tcgplayer\.com/i.test(a.getAttribute("href") ?? ""));
+/* the id as a person taps it: its visible text, whatever element carries it */
+const idText75 = (id) => byOwn75(id);
+const chevron75 = (seller) =>
+  [...(cardOf75(seller)?.querySelectorAll("button[aria-expanded]") ?? [])].find((b) =>
+    (b.getAttribute("aria-label") ?? "").endsWith(seller)
+  );
 /* a missing control is one red case on its own claim, not a second "no element" line */
 const tap75 = (el, label) => (el ? click(el, label) : undefined);
 const selectIn75 = (el) => {
@@ -2261,59 +2278,19 @@ const selectIn75 = (el) => {
   win.getSelection().removeAllRanges();
   win.getSelection().addRange(r);
 };
-
-/* The stylesheet is source text, so the scan that finds the reduced-motion block
-   reads it in one pass: a comment is dropped and a string is emptied, so a brace,
-   a quote or a comment opener inside either cannot move the scan. */
-const bareCss75 = (css) =>
-  css.replace(/\/\*[\s\S]*?\*\/|"(?:[^"\\]|\\[\s\S])*"|'(?:[^'\\]|\\[\s\S])*'/g, (m) => (m[0] === "/" ? " " : m[0] + m[0]));
-const reducedOf75 = (css) => {
-  const bare = bareCss75(css);
-  const at = bare.indexOf("@media (prefers-reduced-motion: reduce)");
-  if (at < 0) return { block: "", outside: bare };
-  const start = bare.indexOf("{", at);
-  let end = start;
-  for (let depth = 0; end < bare.length; end++) {
-    if (bare[end] === "{") depth++;
-    else if (bare[end] === "}" && --depth === 0) break;
-  }
-  return { block: bare.slice(start, end + 1), outside: bare.slice(0, at) + bare.slice(end + 1) };
-};
+/* jsdom would try to navigate on a click on a link; the cases are about the card */
+const noNav75 = (a) => a?.addEventListener("click", (e) => e.preventDefault());
 
 const written75 = [];
-let reject75 = false;
 Object.defineProperty(win.navigator, "clipboard", {
   configurable: true,
-  value: {
-    writeText: (t) => (reject75 ? Promise.reject(new Error("denied")) : (written75.push(t), Promise.resolve())),
-  },
+  value: { writeText: (t) => (written75.push(t), Promise.resolve()) },
 });
 const dialogs75 = [];
 const realDialogs75 = ["alert", "confirm", "prompt"].map((k) => [k, win[k]]);
 for (const [k] of realDialogs75) win[k] = global[k] = () => (dialogs75.push(k), false);
 
 try {
-  /* the stylesheet scan: an opener, a brace or a quote that is not code */
-  const RM75 = "@media (prefers-reduced-motion: reduce)";
-  const scan75 = (css) => reducedOf75(css);
-  const cssA75 = `.a::after { content: "/*"; } ${RM75} { .x { animation: none; } } /* tail */ .b { color: red; }`;
-  ok(
-    /\.x\b/.test(scan75(cssA75).block) && !/\.b\b/.test(scan75(cssA75).block),
-    "75.0a a comment opener inside a string does not open a comment"
-  );
-  const cssB75 = `${RM75} { .x::after { content: "}"; animation: none; } .z { animation: none; } }`;
-  ok(/\.z\b/.test(scan75(cssB75).block), "75.0b a brace inside a string does not close the block");
-  const cssC75 = `/* the stamp's edge */ ${RM75} { .x { animation: none; } } .y { content: 'q'; animation: z 1s; }`;
-  ok(
-    /\.x\b/.test(scan75(cssC75).block) && /\.y\b/.test(scan75(cssC75).outside),
-    "75.0c a lone quote in a comment does not open a string"
-  );
-  ok(
-    /\.x\b/.test(scan75(`/* a note\n  ${RM75} { .fake { animation: none; } }\n  over two lines */\n${RM75} {\n  .x { animation: none; }\n}`).block) &&
-      !/\.fake\b/.test(scan75(`/* a note\n  ${RM75} { .fake { animation: none; } }\n  over two lines */\n${RM75} {\n  .x { animation: none; }\n}`).block),
-    "75.0d a block named inside a multi-line comment is not the block"
-  );
-
   await fresh();
   win.getSelection().removeAllRanges();
 
@@ -2331,119 +2308,133 @@ try {
     "75.2 and no control sits inside another control"
   );
 
-  /* 1. the order id is a copy control */
-  ok(
-    ["A1", "B1", "C1", "D1"].every((id) => copyBtn75(id)?.textContent.includes(id)),
-    "75.3 every package header has a copy control that shows its order id"
+  /* 1. the order id is the link */
+  const links75 = PACKS75.map(([s]) => tcg75(cardOf75(s)));
+  eq(
+    links75.map((l) => l.length),
+    [1, 1, 1, 1],
+    "75.3 each package header has one TCGplayer link, and no second one"
   );
-  ok(!/Copied/.test(text()), "75.4 nothing says Copied before a tap");
-  await tap75(copyBtn75("A1"), "copy Alpha's order id");
-  await settle();
-  eq(written75, ["A1"], "75.5 one tap writes the order id, and only the id, to the clipboard");
   ok(
-    /Copied/.test(cardOf75("Alpha Cards")?.textContent ?? "") &&
-      !/Copied/.test(cardOf75("Beta Games")?.textContent ?? ""),
-    "75.6 and stamps Copied on that card alone"
+    PACKS75.every(([, id], i) => links75[i][0]?.textContent.trim() === id),
+    "75.4 whose visible text is the order id and nothing else"
   );
-  ok(!!copyBtn75("A1") && open75("Alpha Cards"), "75.7 the tap does not collapse the card");
-  ok(!!copyBtn75("A1") && /cards\s*0\/14/.test(text()), "75.8 and checks nothing in");
+  eq(
+    links75.map((l) => l[0]?.getAttribute("href") ?? null),
+    PACKS75.map(([, id]) => `https://store.tcgplayer.com/myaccount/orderhistory?SearchString=${encodeURIComponent(id)}`),
+    "75.5 and goes to that order's search on TCGplayer"
+  );
+  ok(
+    links75.every(([a]) => a?.getAttribute("target") === "_blank" && !!a.relList.contains("noopener")),
+    "75.6 in a new tab, with rel noopener"
+  );
+  ok(
+    PACKS75.every(([, id], i) => (links75[i][0]?.getAttribute("aria-label") ?? links75[i][0]?.textContent ?? "").includes(id)),
+    "75.7 and its accessible name holds the id"
+  );
 
-  /* 2. the header text selects. Each case sets the card's state first, so one red
-     case cannot turn the next one around. */
+  /* the owner's own example, on an order of its own */
+  await boot({
+    items: [
+      ...ITEMS,
+      { ...ITEMS[0], key: "025F898A-605522-F2EDE|0|pBolt", orderId: "025F898A-605522-F2EDE", seller: "Omega Cards", name: "Bolt" },
+    ],
+    received: {},
+  });
+  eq(
+    tcg75(cardOf75("Omega Cards"))[0]?.getAttribute("href") ?? null,
+    "https://store.tcgplayer.com/myaccount/orderhistory?SearchString=025F898A-605522-F2EDE",
+    "75.8 the owner's example id gives the owner's example URL"
+  );
+  await fresh();
+  win.getSelection().removeAllRanges();
+
+  /* 2. nothing copies. Each case states the card first, so one red case cannot
+     turn the next one around. */
   const setOpen75 = async (seller, want) => {
     win.getSelection().removeAllRanges();
     if (open75(seller) !== want) await click(byOwn75(seller), `set ${seller} ${want ? "open" : "closed"}`);
   };
+  const cards75 = PACKS75.map(([s]) => cardOf75(s));
+  ok(
+    cards75.every(
+      (c) =>
+        !!c &&
+        ![...c.querySelectorAll("button")].some(
+          (b) => /copy/i.test(b.getAttribute("aria-label") ?? "") || /copy/i.test(b.textContent)
+        )
+    ),
+    "75.9 no package header has a copy button"
+  );
+  ok(
+    cards75.every((c) => !!c && c.querySelector('[role="status"]') === null),
+    "75.10 and no status slot for a Copied stamp"
+  );
+
+  /* 1 and 2: a tap on the id, open card and collapsed card. The tap is on the
+     visible text, so it reaches the link or whatever else carries the id. */
+  await setOpen75("Alpha Cards", true);
+  const aLink75 = idText75("A1")?.closest("a");
+  noNav75(aLink75);
+  await tap75(idText75("A1"), "tap Alpha's order id");
+  await settle();
+  ok(!!idText75("A1") && open75("Alpha Cards"), "75.11 a tap on the id does not collapse an open card");
+  ok(
+    !!idText75("A1") && /cards\s*0\/14/.test(text()) && Object.keys(saved().received ?? {}).length === 0,
+    "75.12 and checks nothing in"
+  );
+  await setOpen75("Beta Games", false);
+  ok(!open75("Beta Games"), "75.13 Beta is collapsed by a plain click");
+  noNav75(idText75("B1")?.closest("a"));
+  await tap75(idText75("B1"), "tap Beta's order id while Beta is collapsed");
+  await settle();
+  ok(!!idText75("B1") && !open75("Beta Games"), "75.14 a tap on the id does not open a collapsed card");
+  ok(!!idText75("B1") && written75.length === 0 && !/Copied/.test(text()), "75.15 and copies nothing, and stamps nothing");
+
+  /* 3. the header text selects. */
   await setOpen75("Alpha Cards", true);
   selectIn75(byOwn75("Alpha Cards"));
-  ok(win.getSelection().toString().includes("Alpha Cards"), "75.9a the seller name is selected");
+  ok(win.getSelection().toString().includes("Alpha Cards"), "75.16a the seller name is selected");
   await click(byOwn75("Alpha Cards"), "click Alpha's header with its name selected");
-  ok(open75("Alpha Cards"), "75.9 a click that ends with text selected in the header does not collapse the card");
+  ok(open75("Alpha Cards"), "75.16 a click that ends with text selected in the header does not collapse the card");
   await setOpen75("Alpha Cards", true);
   await click(byOwn75("Alpha Cards"), "plain click on Alpha's header");
-  ok(!open75("Alpha Cards"), "75.10 a plain click still collapses it");
+  ok(!open75("Alpha Cards"), "75.17 a plain click still collapses it");
   await click(byOwn75("Alpha Cards"), "plain click again");
-  ok(open75("Alpha Cards"), "75.11 and opens it again");
+  ok(open75("Alpha Cards"), "75.18 and opens it again");
   await setOpen75("Alpha Cards", true);
   const line75 = [...(cardOf75("Alpha Cards")?.querySelectorAll("*") ?? [])].find((e) => own75(e) === "Brainstorm");
   if (line75) selectIn75(line75);
-  ok(win.getSelection().toString().includes("Brainstorm"), "75.12a a line name in the same card is selected");
+  ok(win.getSelection().toString().includes("Brainstorm"), "75.19a a line name in the same card is selected");
   await click(byOwn75("Alpha Cards"), "click Alpha's header with a line name selected");
-  ok(!open75("Alpha Cards"), "75.12 a selection outside the header does not block the toggle");
+  ok(!open75("Alpha Cards"), "75.19 a selection outside the header does not block the toggle");
   await setOpen75("Alpha Cards", false);
   const caretIn75 = byOwn75("Alpha Cards")?.firstChild;
   if (caretIn75) win.getSelection().collapse(caretIn75, 3);
-  ok(win.getSelection().isCollapsed && win.getSelection().rangeCount === 1, "75.13a a caret sits in the header");
+  ok(win.getSelection().isCollapsed && win.getSelection().rangeCount === 1, "75.20a a caret sits in the header");
   await click(byOwn75("Alpha Cards"), "click Alpha's header with a caret in it");
-  ok(open75("Alpha Cards"), "75.13 a caret is an empty selection, so the click toggles");
+  ok(open75("Alpha Cards"), "75.20 a caret is an empty selection, so the click toggles");
   win.getSelection().removeAllRanges();
 
-  /* the id's tap on a collapsed card */
-  await setOpen75("Beta Games", false);
-  ok(!open75("Beta Games"), "75.14 Beta is collapsed by a plain click");
-  await tap75(copyBtn75("B1"), "copy Beta's order id from its collapsed header");
-  await settle();
-  eq(written75, ["A1", "B1"], "75.15 a collapsed header copies too");
-  ok(!!copyBtn75("B1") && !open75("Beta Games"), "75.16 and the tap does not open it");
+  /* 4. the chevron is its own toggle, selection or none */
+  await setOpen75("Alpha Cards", true);
+  await tap75(chevron75("Alpha Cards"), "click Alpha's chevron");
+  ok(!!chevron75("Alpha Cards") && !open75("Alpha Cards"), "75.21 a click on the chevron collapses an open card, once");
+  await tap75(chevron75("Alpha Cards"), "click Alpha's chevron again");
+  ok(!!chevron75("Alpha Cards") && open75("Alpha Cards"), "75.22 and opens it again, once");
+  await setOpen75("Alpha Cards", true);
+  selectIn75(byOwn75("Alpha Cards"));
+  ok(win.getSelection().toString().includes("Alpha Cards"), "75.23a the seller name is selected");
+  await tap75(chevron75("Alpha Cards"), "click Alpha's chevron with its name selected");
+  ok(!!chevron75("Alpha Cards") && !open75("Alpha Cards"), "75.23 a click on the chevron collapses an open card while header text is selected");
+  await setOpen75("Alpha Cards", false);
+  selectIn75(byOwn75("Alpha Cards"));
+  ok(win.getSelection().toString().includes("Alpha Cards"), "75.24a the seller name is selected on a collapsed card");
+  await tap75(chevron75("Alpha Cards"), "click the collapsed chevron with Alpha's name selected");
+  ok(!!chevron75("Alpha Cards") && open75("Alpha Cards"), "75.24 and opens a collapsed card while header text is selected");
+  win.getSelection().removeAllRanges();
 
-  /* 3. the TCGplayer link */
-  const alphaLinks75 = tcg75(cardOf75("Alpha Cards"));
-  const link75 = alphaLinks75[0];
-  eq(alphaLinks75.length, 1, "75.17 each package header has one TCGplayer link");
-  eq(
-    link75?.getAttribute("href") ?? null,
-    "https://store.tcgplayer.com/myaccount/orderhistory",
-    "75.18 which goes to the buyer order-history page"
-  );
-  eq(link75?.getAttribute("target") ?? null, "_blank", "75.19 in a new tab");
-  ok(!!link75?.relList.contains("noopener"), "75.20 with rel noopener");
-  ok(
-    /tcgplayer/i.test(link75?.getAttribute("aria-label") || link75?.textContent || ""),
-    "75.21 and a name that says TCGplayer"
-  );
-  /* jsdom would try to navigate on the click; the case is about the card */
-  link75?.addEventListener("click", (e) => e.preventDefault());
-  await tap75(link75, "open the TCGplayer link");
-  ok(!!link75 && open75("Alpha Cards") && written75.length === 2, "75.22 a tap on the link neither collapses the card nor copies");
-
-  /* a write the browser refuses is not a copy */
-  reject75 = true;
-  await tap75(copyBtn75("C1"), "copy Gamma's order id while the clipboard refuses");
-  await settle();
-  ok(
-    !!copyBtn75("C1") && !/Copied/.test(cardOf75("Gamma Cards")?.textContent ?? "") && open75("Gamma Cards", "Preordain"),
-    "75.23 a refused write does not stamp Copied, and does not collapse the card"
-  );
-  reject75 = false;
-  eq(dialogs75, [], "75.24 none of this opens a native dialog");
-
-  /* Copied is short, and has nothing animated that reduced motion leaves on */
-  installClock();
-  try {
-    await fresh();
-    await tap75(copyBtn75("A1"), "copy Alpha's order id on the virtual clock");
-    await settle();
-    ok(/Copied/.test(text()), "75.25 Copied shows at once");
-    const stamp75 = byOwn75("Copied", true);
-    const { block: reduced75, outside: outside75 } = reducedOf75(
-      [...document.querySelectorAll("style")].map((st) => st.textContent).join("\n")
-    );
-    const animated75 = (k) => new RegExp(`\\.${k}\\b[^{}]*\\{[^}]*\\banimation(-name)?\\s*:`).test(outside75);
-    const switchedOff75 = (k) => new RegExp(`\\.${k}\\b[^{}]*\\{[^}]*\\banimation\\s*:\\s*none`).test(reduced75);
-    ok(
-      !!stamp75 &&
-        !/animation/i.test(stamp75.getAttribute("style") ?? "") &&
-        [...stamp75.classList].every((k) => !animated75(k) || switchedOff75(k)),
-      "75.26 under reduced motion the Copied stamp has no animation"
-    );
-    await sleep(500);
-    const readable75 = /Copied/.test(text());
-    ok(readable75, "75.27 Copied stays long enough to read");
-    await sleep(4600);
-    ok(readable75 && !/Copied/.test(text()), "75.28 and goes by itself within 5 s");
-  } finally {
-    uninstallClock();
-  }
+  eq(dialogs75, [], "75.25 none of this opens a native dialog");
 } finally {
   delete win.navigator.clipboard;
   for (const [k, f] of realDialogs75) {
