@@ -173,7 +173,7 @@ Packages, Tally and Orphaned read one check-in map. These records say what each 
 - `tally-pools-on-the-exact-name` — Tally pools by exact product name.
 - `search-filters-inside-package` — A search result needs a way back.
 - `a-reveal-ignores-hidedone-too` — A reveal ignores hideDone too.
-- `order-id-button-stops-propagate` — The order id link stops propagation.
+- `order-id-button-stops-propagate` — Order id controls stop their clicks.
 - `lost-mail-flags-use-order-date` — Lost-mail flags count from the order date.
 - `orphaned-colours-by-meaning` — Orphaned uses colour for the same meanings.
 - `undo-removes-only-its-delta` — Undo subtracts its own delta, not a snapshot.
@@ -393,7 +393,11 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `native-ledger-pins-missing` — Four native ledger behaviours have no test.
 - `panels-overlay-unbuilt` — Disclosure panels still push the list.
 - `panel-paper-fill-unbuilt` — Overlay panels carry no paper fill.
-- `order-id-visible-unbuilt` — The order id has no narrow-width rule.
+- `order-id-visible-unbuilt` — The Tally order id has no narrow-width rule.
+- `tcgplayer-link-opens-history-list` — The TCGplayer link may not search by order id.
+- `header-gestures-unmeasured` — Header gestures are unmeasured.
+- `ios-touch-adjust-unmeasured` — iOS touch adjustment near the order id link is unmeasured.
+- `native-order-id-link-unbuilt` — The native Packages card has no order id link yet.
 - `discard-keeps-draft` — Discard does not end a composer draft.
 - `type-floor-unbuilt` — Some labels are below the 10px floor.
 - `universal-link-unbuilt` — The universal-link key fallback is not built.

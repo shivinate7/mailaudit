@@ -1,6 +1,6 @@
 # Records index
 
-This page lists every record in this repo: the rules in `CLAUDE.md`, and the files in `decisions/`, `debts/` and `plans/`. A script writes it. Do not edit it by hand.
+This page lists every record in this repo: the rules in `CLAUDE.md`, and the files in `decisions/`, `debts/`, `deferred/` and `plans/`. A script writes it. Do not edit it by hand.
 
 The merge tool writes this page again when a pull request merges, so a pull request need not carry a fresh one. To write it by hand, run `python3 lint/hook_catalog.py` from the claude-settings checkout, with `--root` set to this repo. The check on the default branch fails when the page is stale.
 
@@ -10,6 +10,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 
 | Slug | Gist | Link |
 |---|---|---|
+| `auto-apply-happens-now` | Kind: process | [`decisions/auto-apply-happens-now.md`](../decisions/auto-apply-happens-now.md) |
 | `auto-push-safe-as-merge-exists` | **Status:** retired 2026-10-14. | [`decisions/auto-push-safe-as-merge-exists.md`](../decisions/auto-push-safe-as-merge-exists.md) |
 | `data-branch-setup` | The `data` branch in `mailaudit-data` already exists. | [`decisions/data-branch-setup.md`](../decisions/data-branch-setup.md) |
 | `debts-hold-known-gaps` | Each known gap or to-do is one file under `debts/`, and each file names the decision it belongs to. | [`decisions/debts-hold-known-gaps.md`](../decisions/debts-hold-known-gaps.md) |
@@ -42,7 +43,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 |---|---|---|
 | `a-restore-is-not-local` | Restoring a version rewrites `items`, `received` and `envelopes`. | [`decisions/a-restore-is-not-local.md`](../decisions/a-restore-is-not-local.md) |
 | `armed-reset-takes-the-row` | Reset is red text at rest, in its own box at the end of the Ledger tab. | [`decisions/armed-reset-takes-the-row.md`](../decisions/armed-reset-takes-the-row.md) |
-| `auto-apply-happens-now` | Kind: build | [`decisions/auto-apply-happens-now.md`](../decisions/auto-apply-happens-now.md) |
 | `b64-fails-with-plausible-data` | The base64 helpers for the Contents API get their own file, `src/b64.mjs`. | [`decisions/b64-fails-with-plausible-data.md`](../decisions/b64-fails-with-plausible-data.md) |
 | `build-and-deploy` | Kind: build | [`decisions/build-and-deploy.md`](../decisions/build-and-deploy.md) |
 | `card-tally-row-counts-first` | At iPhone width, the Tally row is tight. | [`decisions/card-tally-row-counts-first.md`](../decisions/card-tally-row-counts-first.md) |
@@ -60,7 +60,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-key-via-url-scheme` | **Status:** ruled. | [`decisions/native-key-via-url-scheme.md`](../decisions/native-key-via-url-scheme.md) |
 | `native-ledger-is-raw-json` | Kind: build | [`decisions/native-ledger-is-raw-json.md`](../decisions/native-ledger-is-raw-json.md) |
 | `native-parity-table` | Kind: build | [`decisions/native-parity-table.md`](../decisions/native-parity-table.md) |
-| `native-reply-waits-generation` | **Status:** ruled. | [`decisions/native-reply-waits-generation.md`](../decisions/native-reply-waits-generation.md) |
 | `native-swift-rebuild` | Kind: build | [`decisions/native-swift-rebuild.md`](../decisions/native-swift-rebuild.md) |
 | `order-id-button-stops-propagate` | The order-id button in Tally stops its click from reaching the row underneath. | [`decisions/order-id-button-stops-propagate.md`](../decisions/order-id-button-stops-propagate.md) |
 | `orphan-entry-takes-one-input` | The Orphaned view records an envelope from one input. | [`decisions/orphan-entry-takes-one-input.md`](../decisions/orphan-entry-takes-one-input.md) |
@@ -159,6 +158,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `motion-the-stamp-lands` | The stamp rocks down and settles at its resting angle, instead of blinking into place. | [`decisions/motion-the-stamp-lands.md`](../decisions/motion-the-stamp-lands.md) |
 | `motion-the-switch-is-one-object` | The ruling: the active-view fill is a single element that slides between thirds. | [`decisions/motion-the-switch-is-one-object.md`](../decisions/motion-the-switch-is-one-object.md) |
 | `motion-use-just-became` | Every celebration marks a state that a package can already be in. | [`decisions/motion-use-just-became.md`](../decisions/motion-use-just-became.md) |
+| `native-reply-waits-generation` | **Status:** ruled. | [`decisions/native-reply-waits-generation.md`](../decisions/native-reply-waits-generation.md) |
 | `nothing-recovers-without-the-key` | **Status:** open. | [`decisions/nothing-recovers-without-the-key.md`](../decisions/nothing-recovers-without-the-key.md) |
 | `null-remote-info-is-not-no-key` | A null `remoteInfo` means that the status has not loaded yet. | [`decisions/null-remote-info-is-not-no-key.md`](../decisions/null-remote-info-is-not-no-key.md) |
 | `offline-is-decided-by-fetch` | The app decides `offline` only by a failed `fetch`, and by nothing else. | [`decisions/offline-is-decided-by-fetch.md`](../decisions/offline-is-decided-by-fetch.md) |
@@ -254,8 +254,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `discard-keeps-draft` | `discardEnvelope` in `src/app.jsx` never clears the draft. | [`debts/discard-keeps-draft.md`](../debts/discard-keeps-draft.md) |
 | `draft-skip-required-unmeasured` | It is unmeasured how a required check reads a job that the draft guard skipped. | [`debts/draft-skip-required-unmeasured.md`](../debts/draft-skip-required-unmeasured.md) |
 | `failed-photo-download-no-retry` | When a merge's photo download fails, the id stays in the ledger and the tile stays blank. | [`debts/failed-photo-download-no-retry.md`](../debts/failed-photo-download-no-retry.md) |
-| `half-open-socket-has-no-ping` | A socket that stays open and hears nothing gets no ping. | [`debts/half-open-socket-has-no-ping.md`](../debts/half-open-socket-has-no-ping.md) |
-| `hidden-tab-apply-delay-unmeasured` | Nobody has timed a reply on a hidden or frozen tab. | [`debts/hidden-tab-apply-delay-unmeasured.md`](../debts/hidden-tab-apply-delay-unmeasured.md) |
 | `key-re-accepts-token-shape` | A GitHub token uses only letters, digits and underscores, so the key check accepts a token as a key. | [`debts/key-re-accepts-token-shape.md`](../debts/key-re-accepts-token-shape.md) |
 | `lost-photo-clock-is-envelope-age` | The 7-day lost-photo clock runs from the envelope's `createdAt`. | [`debts/lost-photo-clock-is-envelope-age.md`](../debts/lost-photo-clock-is-envelope-age.md) |
 | `lost-tile-waits-for-first-post` | The lost tile shows only after the push survey that follows a successful POST. | [`debts/lost-tile-waits-for-first-post.md`](../debts/lost-tile-waits-for-first-post.md) |
@@ -289,13 +287,11 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `seed-in-public-history` | The seed is readable in `index.html` history from `10f9499` to the commit before `82e45d4`, and erasing it needs a history rewrite and the owner's word. | [`debts/seed-in-public-history.md`](../debts/seed-in-public-history.md) |
 | `suite-hang-cause-unmeasured` | The cause of the 13-minute hang is unmeasured, and so are the exit codes of the UTC and machine-zone runs. | [`debts/suite-hang-cause-unmeasured.md`](../debts/suite-hang-cause-unmeasured.md) |
 | `sweep-settle-masks-30-13-stall` | The `SWEEP_WAIT` settle after 19.6 hides a stall at 30.13, and it does not explain it. | [`debts/sweep-settle-masks-30-13-stall.md`](../debts/sweep-settle-masks-30-13-stall.md) |
-| `sync-latency-after-fix-unmeasured` | No run of the probe covers lane web/sync-latency. | [`debts/sync-latency-after-fix-unmeasured.md`](../debts/sync-latency-after-fix-unmeasured.md) |
 | `tally-card-moves-at-320px` | At 320px the Tally card moves 14px on check-ins 1 and 6. | [`debts/tally-card-moves-at-320px.md`](../debts/tally-card-moves-at-320px.md) |
 | `tests-33-35-40-45-cannot-fail` | Tests 33.35, 33.40 and 33.45 cannot fail on a plausible mutant. | [`debts/tests-33-35-40-45-cannot-fail.md`](../debts/tests-33-35-40-45-cannot-fail.md) |
 | `token-export-and-view-unpinned` | Nothing yet pins the native device key in the backup export or in SwiftUI view state. | [`debts/token-export-and-view-unpinned.md`](../debts/token-export-and-view-unpinned.md) |
 | `token-state-and-bundle-unpinned` | Nothing pins the React-state or bundle guarantees. | [`debts/token-state-and-bundle-unpinned.md`](../debts/token-state-and-bundle-unpinned.md) |
 | `type-floor-unbuilt` | Some labels are smaller than the 10px floor today. | [`debts/type-floor-unbuilt.md`](../debts/type-floor-unbuilt.md) |
-| `undo-holds-reply-unbounded` | `mergeBlocked` in `src/app.jsx` holds a remote reply while an assign-undo bar is open, and that bar has no timeout. | [`debts/undo-holds-reply-unbounded.md`](../debts/undo-holds-reply-unbounded.md) |
 | `universal-link-unbuilt` | Neither the link handler nor the Worker route that serves the apple-app-site-association file exists. | [`debts/universal-link-unbuilt.md`](../debts/universal-link-unbuilt.md) |
 | `web-photos-have-no-backup` | Web photos go to the Worker's `/photos` route. | [`debts/web-photos-have-no-backup.md`](../debts/web-photos-have-no-backup.md) |
 | `web-reads-no-worker-snapshots` | Web does not read the Worker `/snapshots` or `/kept` routes. | [`debts/web-reads-no-worker-snapshots.md`](../debts/web-reads-no-worker-snapshots.md) |

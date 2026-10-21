@@ -112,7 +112,7 @@ jobs:
   # on macOS only (Cochin exists only there), and never at deploy time.
   screens:
     runs-on: macos-latest
-    timeout-minutes: 3
+    timeout-minutes: 6
     # Cancel a superseded run on a PR ref (draft state in the group); never cancel a run on main, where
     # each merge needs its own verdict (own group per sha on main).
     concurrency:

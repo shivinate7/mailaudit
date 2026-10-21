@@ -1,8 +1,8 @@
 # Test suite assertion count and run time
 
-**Status:** measured 2026-10-21 on lane `web/sync-latency`: 1534 passed, 0 failed, exit 0, about 180 s, in New York (the pinned zone). Not re-measured under UTC. The count is 62 above 2026-10-17, because the sync-latency lane added groups 51.17 to 51.19 and 75. Earlier figures are in git.
+**Status:** measured 2026-10-21 on `batch/web-two`, the merge of lanes `web/sync-latency` and `web/order-id-copy`: 1567 passed, 0 failed, exit 0, 192.3 s, in New York (the pinned zone). Not re-measured under UTC. The count is the sum of the lanes: 1534 on `web/sync-latency` plus 33 for group 76 (the package header's id link, selection and chevron). Earlier figures are in git.
 
-This record holds the assertion count and the run time for `npm test`. The suite runs 1534 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+This record holds the assertion count and the run time for `npm test`. The suite runs 1567 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
 The count depends on the clock's zone, so the zone is pinned to `America/New_York`. In CI, the test step sets `TZ`, and it names one New York run's output in `CHECK_DOCS_SUITE_LOG`. `check:docs` grades the figure in this sentence. Locally, `npm run check:docs` runs the suite itself and waits for it to end.
 
