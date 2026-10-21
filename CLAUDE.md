@@ -384,7 +384,6 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `ruled-head-heights-unremeasured` — The ruled head heights have not been re-measured.
 - `photo-put-unrun-on-github` — The GitHub photo PUT and pull have never run.
 - `native-ledger-tab-unbuilt` — The native Ledger tab is a placeholder.
-- `native-tally-audit-open-row-red` — The native Tally audit fails on contrast with a row open.
 - `native-tally-counts-every-item` — The native Tally counts every ledger item.
 - `native-filters-tally-only` — The native client has no date filter, package sort or Packages search.
 - `native-tally-copy-no-stepper` — The native Tally copy has a check-in toggle and nothing else.

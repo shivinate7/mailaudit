@@ -106,10 +106,28 @@ final class TallyUITests: XCTestCase {
         try auditNamingElements(app)
     }
 
+    /// The open row is audited alone. On the full list, opening Lightning Bolt adds three copies and pushes the last
+    /// row (Ponder) under the glass tab bar. The audit reads that cut row as a contrast failure, which says nothing about
+    /// the palette. A search that leaves one product leaves no row cut or hidden by the bar.
     func testAccessibilityAuditTallyScreenWithARowOpen() throws {
         let app = launch()
         openTally(app)
+        let search = element(app, "tally-search")
+        XCTAssertTrue(search.waitForExistence(timeout: 5), "the search field tally-search is missing")
+        search.tap()
+        search.typeText("Lightning\n")  // the return key closes the keyboard, so the tab bar shows
+        let ponderGone = NSPredicate(format: "exists == false")
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: ponderGone, object: element(app, "tally-row:Ponder"))], timeout: 5),
+                       .completed, "the search left the Ponder row on screen")
+        XCTAssertEqual(elements(app, prefix: "tally-row:").map(\.identifier), ["tally-row:Lightning Bolt"],
+                       "the search should leave one product")
         open(app, "Lightning Bolt", firstCopy: "B1|0|pLightningBolt")
+
+        let barTop = app.tabBars.firstMatch.frame.minY
+        XCTAssertGreaterThan(barTop, 0, "the tab bar is not on screen")
+        for (id, frame) in frames(app) {
+            XCTAssertLessThanOrEqual(frame.maxY, barTop, "\(id) reaches under the tab bar, so the audit would read a cut row")
+        }
         try auditNamingElements(app)
     }
 
