@@ -173,7 +173,7 @@ Packages, Tally and Orphaned read one check-in map. These records say what each 
 - `tally-pools-on-the-exact-name` — Tally pools by exact product name.
 - `search-filters-inside-package` — A search result needs a way back.
 - `a-reveal-ignores-hidedone-too` — A reveal ignores hideDone too.
-- `order-id-button-stops-propagate` — The order id link stops propagation.
+- `order-id-button-stops-propagate` — Order id controls stop their clicks.
 - `lost-mail-flags-use-order-date` — Lost-mail flags count from the order date.
 - `orphaned-colours-by-meaning` — Orphaned uses colour for the same meanings.
 - `undo-removes-only-its-delta` — Undo subtracts its own delta, not a snapshot.
@@ -394,6 +394,10 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `panels-overlay-unbuilt` — Disclosure panels still push the list.
 - `panel-paper-fill-unbuilt` — Overlay panels carry no paper fill.
 - `order-id-visible-unbuilt` — The Tally order id has no narrow-width rule.
+- `tcgplayer-link-opens-history-list` — The TCGplayer link opens the order list, not the order.
+- `header-gestures-unmeasured` — Three header gestures are unmeasured.
+- `packages-header-geometry-unmeasured` — The Packages header geometry is unmeasured.
+- `native-order-id-copy-unscoped` — The native Packages card has no ruled scope for the id copy.
 - `discard-keeps-draft` — Discard does not end a composer draft.
 - `type-floor-unbuilt` — Some labels are below the 10px floor.
 - `universal-link-unbuilt` — The universal-link key fallback is not built.
