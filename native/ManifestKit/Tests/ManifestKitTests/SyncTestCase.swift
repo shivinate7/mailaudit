@@ -47,7 +47,8 @@
 //   then the store is saved.
 // - pull() starts with a GET. A 404 with a check-in, envelope or stamp in the store seeds by POST
 //   and adopts that reply. A 404 with only lines sends nothing more and returns .empty.
-// - A 401 stops all calls for this client. A new client (a relaunch) calls again.
+// - A 401 stops all calls for this client. A different key saved in the KeyStore lifts the stop
+//   (the web does too), and so does a new client (a relaunch).
 // - A failure other than 400 and 401 (so 413, 5xx, a transport error, a timeout) schedules a retry.
 //   `retryInMs` is `backoffMs(failures so far)`. It is set, with `advisory`, before the failing call
 //   returns. The retry task calls `sleep` with it, then POSTs. While a retry is scheduled or out,
@@ -55,7 +56,7 @@
 //   `advisory`. After a 413 only a good POST does that: a good GET leaves the size state alone.
 // - A 400 sets `advisory` and schedules nothing. The next call goes out.
 // - stop() makes the calls in flight return .stopped, and abandons their requests. It sets no
-//   `advisory` and schedules no retry.
+//   `advisory` and schedules no retry. It also cancels a retry that is waiting for its delay.
 //
 // The builder also adds, and the tests do not call:
 // - a way for the client to read a constant from the bundle. RulesCore.call refuses anything
@@ -63,8 +64,8 @@
 // - a LedgerStore method that adopts a server ledger: the load mend, the kept copy, then a save.
 //
 // Open and not pinned: the wording of the native size line (the web line is `syncSays` in
-// src/app.jsx), whether a new key lifts the 401 stop (the web does, native-reply-waits-generation
-// says relaunch), the merge notice, and the idle gate (lane N4b).
+// src/app.jsx), whether saving the same key again lifts the 401 stop, the merge notice, and
+// the idle gate (lane N4b).
 
 import Foundation
 import Security

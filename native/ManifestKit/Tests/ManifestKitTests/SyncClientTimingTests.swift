@@ -116,6 +116,28 @@ final class SyncTimingTests: SyncTestCase {
         XCTAssertEqual(net.requests.count, 1)
     }
 
+    // stop() also cancels a retry that is waiting for its delay. A stop is not a failure, so the
+    // backoff goes with it: retryInMs is nil, and the next push goes out and does not read as
+    // backingOff. The release and the request count are a bounded fence and not a proof that
+    // nothing runs: a retry still alive would POST once the sleep returns, with no reply queued.
+    func testStopCancelsAPendingRetry() async throws {
+        let store = try makeStore()
+        let client = try makeClient(store)
+        net.enqueue(.status(500, Data()), ok(try ledger()))
+        let failed = await client.push()
+        XCTAssertEqual(failed, .unknown)
+        await until("the retry sleeps") { [self] in gate.delays.count == 1 }
+        XCTAssertNotNil(client.retryInMs, "a retry is pending before the stop")
+
+        client.stop()
+        XCTAssertNil(client.retryInMs, "stop cancels the pending retry")
+        gate.release()
+        let pushed = await client.push()
+        XCTAssertEqual(pushed, .applied, "the push goes out and is not backingOff")
+        XCTAssertEqual(net.requests.map(\.method), ["POST", "POST"], "the cancelled retry sent nothing")
+        XCTAssertEqual(net.strays, 0)
+    }
+
     // the-token-is-a-credential: after calls that succeeded and one that was refused, the
     // key is in no request body, not in the client, not in the store, not in the file.
     func testNoKeyTextReachesTheClientTheStoreOrABody() async throws {

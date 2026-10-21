@@ -218,7 +218,8 @@ final class SyncReplyTests: SyncTestCase {
 // MARK: the status codes
 
 final class SyncStatusTests: SyncTestCase {
-    // A 401 stops this client. No call leaves, and nothing is retried. A new client (a relaunch) calls again.
+    // A 401 stops this client. No call leaves, and nothing is retried. A different key saved
+    // (testANewKeyLiftsTheStop) or a new client (a relaunch) calls again. Without either, the stop holds.
     func testA401StopsAllCalls() async throws {
         let store = try makeStore()
         let client = try makeClient(store)
@@ -237,6 +238,50 @@ final class SyncStatusTests: SyncTestCase {
         let fresh = await relaunched.push()
         XCTAssertEqual(fresh, .applied, "a new client calls again")
         XCTAssertEqual(net.requests.count, 2)
+    }
+
+    // native-reply-waits-generation: a different key saved after a 401 lifts the stop with no
+    // relaunch, as the web does. The save goes through the KeyStore the client already holds.
+    // The next pull and push go out with the new key, and the refusal is gone. Whether
+    // saving the same key again lifts it is not pinned.
+    func testANewKeyLiftsTheStop() async throws {
+        let store = try makeStore()
+        let client = try makeClient(store)
+        net.enqueue(failure(401, "unauthorized"), ok(try ledger()), ok(try ledger()))
+        let refused = await client.push()
+        XCTAssertEqual(refused, .noAccess)
+        XCTAssertEqual(client.advisory, "no-access")
+
+        try keys.save(Self.otherFakeKey)
+        let pulled = await client.pull()
+        let pushed = await client.push()
+        XCTAssertEqual(pulled, .applied, "the new key lifts the stop for a pull")
+        XCTAssertEqual(pushed, .applied, "and for a push")
+        XCTAssertEqual(net.requests.map(\.method), ["POST", "GET", "POST"])
+        XCTAssertEqual(seen(1)?.header("Authorization"), "Bearer \(Self.otherFakeKey)")
+        XCTAssertEqual(seen(2)?.header("Authorization"), "Bearer \(Self.otherFakeKey)")
+        XCTAssertNil(client.advisory, "the refusal is cleared once a call goes through")
+        XCTAssertNil(client.retryInMs)
+    }
+
+    // The lift is for the key that was saved. If the Worker refuses that key too, the stop is back.
+    func testTheNewKeyIsRefusedToo() async throws {
+        let store = try makeStore()
+        let client = try makeClient(store)
+        net.enqueue(failure(401, "unauthorized"), failure(401, "unauthorized"), ok(try ledger()))
+        _ = await client.push()
+        try keys.save(Self.otherFakeKey)
+        let second = await client.pull()
+        XCTAssertEqual(second, .noAccess)
+        XCTAssertEqual(net.requests.count, 2, "the new key was tried once")
+        XCTAssertEqual(client.advisory, "no-access")
+        XCTAssertNil(client.retryInMs, "a refused key is not retried")
+
+        let pushed = await client.push()
+        let pulled = await client.pull()
+        XCTAssertEqual(pushed, .noAccess)
+        XCTAssertEqual(pulled, .noAccess)
+        XCTAssertEqual(net.requests.count, 2, "no call leaves after the second 401")
     }
 
     // A 413 is its own state. It is not "could not be reached", and the ledger is untouched.
