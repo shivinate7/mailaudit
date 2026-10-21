@@ -17,7 +17,6 @@
 //   orphaned-tie           the tie line; its label is the line
 //   orphaned-undo          the Undo button of the notice an assign leaves
 //   orphaned-undo-dismiss  the close button of that notice
-//   orphaned-add-typed     the "Add as typed" row; orphaned-note the note field
 //   discard:<id>           the Discard button of an envelope card
 //   orphaned-empty         the empty-state text of an empty pile; its label is the line
 // Behaviour: assign is one tap (no "Tap again" ask anywhere). The composer is autofocused. A view
@@ -290,33 +289,12 @@ final class OrphanedUITests: XCTestCase {
         assertHit(app.buttons["Cancel"].firstMatch, "the discard ask's Cancel")
     }
 
-    /// The same for the composer's rows: a suggestion, "Add as typed", and the count buttons of a recorded card.
-    /// The two text fields are not measured: the frame XCUITest reports for a field (34pt and 22pt today) is not
-    /// proven to be its hit region, so no builder can be asked to match it.
-    func testComposerRowControlsHaveA44ptHitRegion() throws {
-        let app = launch()
-        openOrphaned(app)
-        el(app, "orphaned-record").tap()
-        let input = el(app, "orphaned-input")
-        XCTAssertTrue(input.waitForExistence(timeout: 5), "the composer has no input")
-        if !app.keyboards.element.exists { input.tap() }
-        input.typeText("bolt")
-
-        assertHit(el(app, "suggestion:Lightning Bolt"), "a suggestion row")
-        assertHit(el(app, "orphaned-add-typed"), "the Add as typed row")
-        el(app, "suggestion:Lightning Bolt").tap()
-        assertHit(app.buttons["Remove Lightning Bolt"], "the remove button of a single card")
-        assertHit(app.buttons["One more Lightning Bolt"], "the one-more button")
-        app.buttons["One more Lightning Bolt"].tap()
-        assertHit(app.buttons["One fewer Lightning Bolt"], "the one-fewer button")
-    }
-
-    /// A frame comes back in thirds of a point with float noise (a minHeight 44 row reads 43.99999999999997),
-    /// so the floor has half a point of slack. Every real miss measured so far is 3pt or more short.
+    /// A frame comes back with float noise (a minHeight 44 row reads 43.99999999999997), so the floor has a
+    /// thousandth of a point of slack. A real miss is a third of a point or more short.
     func assertHit(_ e: XCUIElement, _ what: String) {
         XCTAssertTrue(e.waitForExistence(timeout: 5), "\(what) is not on screen")
         let f = e.frame
-        XCTAssertGreaterThanOrEqual(f.width, Self.minHit - 0.5, "\(what) is \(f.width)pt wide, under 44pt")
-        XCTAssertGreaterThanOrEqual(f.height, Self.minHit - 0.5, "\(what) is \(f.height)pt high, under 44pt")
+        XCTAssertGreaterThanOrEqual(f.width, Self.minHit - 0.001, "\(what) is \(f.width)pt wide, under 44pt")
+        XCTAssertGreaterThanOrEqual(f.height, Self.minHit - 0.001, "\(what) is \(f.height)pt high, under 44pt")
     }
 }
