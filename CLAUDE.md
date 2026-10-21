@@ -121,6 +121,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-files-are-frozen` — Native file names freeze on first ship.
 - `native-ci-on-hosted-macos` — The native job runs on a hosted macOS runner.
 - `csv-import-stays-web` — CSV import stays on the web app.
+- `one-simulator-per-mac` — The Mac's CPU, disk and one simulator are shared.
 
 ## Envelope photos
 
@@ -366,7 +367,9 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `claim-9-fractional-box-edges` — Claim 9 can pass a box just under 44px.
 - `tally-card-moves-at-320px` — The Tally card moves 14px at 320px.
 - `native-ui-tests-not-in-ci` — Native UI tests and builds are not in CI.
-- `n4a-sync-over-http-unbuilt` — Lane N4a, sync over HTTP, is not built.
+- `native-sync-client-unwired` — The native sync client has no caller and no screen.
+- `native-sync-live-unrun` — The native sync client has never run against the Worker.
+- `native-pull-generation-unpinned` — No test pins the generation check in a pull.
 - `native-lanes-n6-to-n9-unbuilt` — Native lanes N6 to N9 are not built.
 - `native-kept-copy-has-no-route` — The native app has no route to the kept copy.
 - `key-re-accepts-token-shape` — The key check accepts a GitHub token's shape.

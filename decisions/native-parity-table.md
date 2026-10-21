@@ -6,11 +6,11 @@ Plan: decisions/native-parity-table.md#rows-with-one-scope (web)
 
 Plan: decisions/native-parity-table.md#both-clients (native)
 
-**Status:** ruled. The owner ruled on 2026-10-11 to follow Degen's D32 rule, and accepted the defaults below with "all seem fine". No native code exists yet.
+**Status:** ruled. The owner ruled on 2026-10-11 to follow Degen's D32 rule, and accepted the defaults below with "all seem fine".
 
 Every feature has one scope: both clients, web-only or native-only. A feature that both clients need has one home for its logic, and each client draws its own screen. The lanes in `native-build-lanes` name the native test for each feature.
 
-**Holds while:** the CLAUDE.md index lists no view or control that this table does not cover, and the repo has no native folder.
+**Holds while:** the CLAUDE.md index lists no view or control that this table does not cover.
 
 ## Both clients
 
@@ -22,7 +22,7 @@ Each client draws its own screen. The logic has one home, see `rules-run-in-java
 - Check-in and un-check, the steppers and the bulk row.
 - Envelopes: record, edit, discard (a tombstone), assign, undo, and candidates with ties.
 - Stamps: the tombstone, a refund that leaves every count, and the stamped filter.
-- Worker sync: POST, GET, the WebSocket, the idle gate, resume, and the 401 and 413 advisory lines.
+- Worker sync: POST, GET, the WebSocket, the idle gate, resume, and the 401 and 413 advisory lines. `SyncClient` (lane N4a) covers POST and GET. Lane N4b builds the WebSocket, the idle gate and resume, wires the client into the app, and draws the 401 and 413 lines (orchestrator assignment 2026-10-21, process-only).
 - Backup export, the masthead and ruled head, the palette, Cochin and monospace type, and motion with reduced motion.
 - Envelope photo capture. Photo sync for both clients runs through the Worker photo route, see `sync-revamp-cloudflare`.
 - Milestones of local versions. Native saves them, prunes them by the same rule as the web app, lists them, and restores one. The owner ruled on 2026-10-11: "yeah list and restore".
