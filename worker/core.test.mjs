@@ -1494,7 +1494,9 @@ const loadLedger = async () => {
         setup(b) {
           b.onResolve({ filter: /^cloudflare:workers$/ }, () => ({ path: "cloudflare:workers", namespace: "cf-stub" }));
           b.onLoad({ filter: /.*/, namespace: "cf-stub" }, () => ({
-            contents: "export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }",
+            contents:
+              "export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }" +
+              "export class WebSocketRequestResponsePair { constructor(request, response) { this.request = request; this.response = response; } }",
             loader: "js",
           }));
         },
@@ -1516,6 +1518,8 @@ const doCtx = (state) => {
     },
     acceptWebSocket: (ws) => accepted.push(ws),
     getWebSockets: () => accepted,
+    /* a build may answer a ping without waking the object */
+    setWebSocketAutoResponse: () => {},
   };
 };
 /* runs one upgrade request through a Ledger with the fakes installed, then puts the globals back */
@@ -1524,9 +1528,11 @@ const upgrade = async (state, protocol) => {
   const ctx = doCtx(state);
   const realResponse = globalThis.Response;
   const realPair = globalThis.WebSocketPair;
+  const realReqRes = globalThis.WebSocketRequestResponsePair;
   const server = { sent: [], send(m) { this.sent.push(m); } };
   globalThis.WebSocketPair = class { constructor() { this[0] = { side: "client" }; this[1] = server; } };
   globalThis.Response = class { constructor(body, init = {}) { this.status = init.status ?? 200; this.webSocket = init.webSocket; } };
+  globalThis.WebSocketRequestResponsePair = class { constructor(request, response) { this.request = request; this.response = response; } };
   try {
     const res = await new Ledger(ctx, ENV).fetch(
       new Request(BASE + "/ws", { headers: { Upgrade: "websocket", "Sec-WebSocket-Protocol": protocol } })
@@ -1536,6 +1542,7 @@ const upgrade = async (state, protocol) => {
   } finally {
     globalThis.Response = realResponse;
     globalThis.WebSocketPair = realPair;
+    globalThis.WebSocketRequestResponsePair = realReqRes;
   }
 };
 
