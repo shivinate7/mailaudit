@@ -99,7 +99,7 @@ Two devices that undo one row offline each write one absolute count. The merge k
 
 A restore, a pull and a Reset do not clear the log. A synced log that merges by union could not clear anyway, because the other device would send the rows back. Each row guards itself. Its card or package must still hold the change the row describes. After a restore to an older version, the old rows read inert.
 
-Today's `undo` is different. `applyBackup` clears it for every source. The log is not cleared, because a clear on every live apply would empty it each time the other device pushes.
+Today's `undo` is different. `applyBackup` clears it for every source except a Worker apply, which keeps it (`auto-apply-happens-now`). The log is not cleared, because a clear on every live apply would empty it each time the other device pushes.
 
 ## How far back
 

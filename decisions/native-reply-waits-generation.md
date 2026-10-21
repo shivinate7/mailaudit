@@ -6,6 +6,10 @@ The native sync client applies a Worker reply only if the local ledger did not c
 
 **Holds while:** the Worker answers a POST with only the ledger and the rev, and the native sync client does not exist.
 
+Kind: build
+
+Plan: decisions/native-reply-waits-generation.md#the-client (native)
+
 ## The client
 
 - `GET /ledger` and `POST /ledger` with the body `{ledger}` both send `Authorization: Bearer`. The client also sends `mailday:1`, because the Worker requires it.
@@ -13,7 +17,7 @@ The native sync client applies a Worker reply only if the local ledger did not c
 - A `{rev}` message greater than the held rev starts one GET.
 - A 404 `empty` with local data starts a seed POST.
 - A 401 stops all calls until the app relaunches. A 413 shows the size line.
-- A reply from the other device waits until the device has had no input for 10 seconds (`IDLE_APPLY_MS`). The cold reply after a key save applies at once. The next reply waits again.
+- A reply from the other device waits while a press is in progress and for `PRESS_TAIL_MS` after it (`pressHeld`), see `auto-apply-happens-now`. The cold reply after a key save applies at once. The next reply waits again. An open Undo bar never holds a reply, as on the web: "it should just be able to apply anyways why does the undo bar being open have to matter" (owner, 2026-10-21 13:30 CDT).
 - Resume: when scenePhase becomes active, the client reconnects the socket and does one GET.
 - The owner ruled no background refresh in v1. A resume GET covers the need, see `native-swift-rebuild`.
 

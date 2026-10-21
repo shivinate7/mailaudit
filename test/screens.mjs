@@ -90,6 +90,18 @@
     15. Lost tile size (decision pull-warns-on-what-it-drops) at 375px and 760px: in a
         strip that holds a View photo thumbnail and a lost tile, both are 56 by 56
         drawn px (0.5px tolerance), by bounding rect. A content-box tile measures 58.
+    16. A remote reply lands without moving what the owner is looking at (invariant
+        no-layout-shift-under-pointer; owner ruling 2026-10-20 23:36 CDT, "hover doesn't
+        count"). At 375px and 760px with a mouse at rest on a row, and at 375px touch with a row
+        in view, in Packages and in Tally: a mocked Worker pushes {rev} over the socket and
+        answers the GET with a ledger that adds rows above the row. 16a: the reply is applied
+        within 1.5 s (a hover is not a press, so nothing holds it). 16b: once it has landed
+        (up to 13 s, so a build that still waits lands too), the row has moved no more than
+        0.5px and is still under the pointer, merge notice and new rows included.
+        Chromium anchors scroll natively. Whether the owner's WebKit does is unmeasured, so the
+        claim turns overflow-anchor off and measures the page's own correction either way.
+        A scroll gate and a missing correction fail separately.
+        `SCREENS_ONLY=16 node test/screens.mjs` runs this claim alone.
 
    Reduced motion is on, so animation does not skew the numbers. Exit 0 when all
    checks pass; exit 1 with one `FAIL` line per failure and one summary line. */
@@ -1144,8 +1156,9 @@ const lostSizeLedger = () => {
    POSTs its own 500 ms later, and surveys the photos 1 s after that. The POST reply
    carries no ledger: a held ledger would be applied, and an apply drops the survey.
    `workerNames` are the photo file names its list holds (id.ext, as the Worker lists them):
-   a photo it holds is not lost. */
-async function mockWorker(ctx, workerNames = []) {
+   a photo it holds is not lost. `live`, when given, is {ledger, rev, sockets}: the GET answers
+   with live.ledger once it is set, and every socket the page opens is kept in live.sockets. */
+async function mockWorker(ctx, workerNames = [], live = null) {
   const hits = { ledgerGet: 0, ledgerPost: 0, photoList: 0 };
   const cors = {
     "access-control-allow-origin": "*",
@@ -1160,11 +1173,11 @@ async function mockWorker(ctx, workerNames = []) {
     if (req.method() === "OPTIONS") return route.fulfill({ status: 204, headers: cors });
     if (pathname === "/ledger" && req.method() === "GET") {
       hits.ledgerGet++;
-      return json(404, { error: "empty" });
+      return live?.ledger ? json(200, { ledger: live.ledger, rev: live.rev }) : json(404, { error: "empty" });
     }
     if (pathname === "/ledger" && req.method() === "POST") {
       hits.ledgerPost++;
-      return json(200, { rev: 1 });
+      return json(200, { rev: live?.rev ?? 1 });
     }
     if (pathname === "/photos" && req.method() === "GET") {
       hits.photoList++;
@@ -1172,8 +1185,11 @@ async function mockWorker(ctx, workerNames = []) {
     }
     return route.abort();
   });
-  /* a handler that never connects to the server mocks the socket whole */
-  await ctx.routeWebSocket(/.*/, () => {});
+  /* a handler that never connects to the server mocks the socket whole. `live` keeps each
+     page-side socket, so a claim can push {rev} down it, and the ledger the GET answers with */
+  await ctx.routeWebSocket(/.*/, (ws) => {
+    live?.sockets.push(ws);
+  });
   return hits;
 }
 
@@ -1818,6 +1834,137 @@ async function gridCheck(browser, { width, touch = false }) {
   }
 }
 
+/* Claim 16 (invariant no-layout-shift-under-pointer; owner ruling 2026-10-20 23:36 CDT). The
+   ledger is lean (no archive) so the page loads fast. The server copy adds two Omega orders that
+   sort above every existing row in both views (Packages by $ remaining, Tally by position), dated
+   inside the fixture's custom range, so the rows the owner looks at are pushed down unless the
+   page corrects for it. The row the pointer is on is Counterspell in Epsilon's package, and the
+   Path to Exile header in Tally. */
+const SYNC16_LEDGER = { ...LEDGER, items: ITEMS };
+const SYNC16_SERVER = {
+  ...SYNC16_LEDGER,
+  items: [
+    ...ITEMS,
+    ...mk("X1", "Omega Trading", "2026-08-15", "with tracking", [
+      ["Sol Ring Prime", 2, 450],
+      ["Mana Crypt Prime", 1, 600],
+    ]),
+    ...mk("X2", "Omega Outlet", "2026-08-16", "without tracking", [["Sol Ring Prime", 1, 450]]),
+  ],
+};
+const SYNC16_LANDED_MS = 1500; /* "within about a second", plus the mocked round trips */
+const SYNC16_LATE_MS = 13000; /* long enough for the ten-second wait to end, so 16b can still measure */
+const SYNC16_CASES = [
+  ...WIDTHS.flatMap((width) => [
+    { view: "Packages", width, touch: false, card: "Epsilon Cards", title: "Counterspell", fresh: "Omega Trading" },
+    { view: "Tally", width, touch: false, title: "Path to Exile", fresh: "Sol Ring Prime" },
+  ]),
+  { view: "Packages", width: 375, touch: true, card: "Epsilon Cards", title: "Counterspell", fresh: "Omega Trading" },
+  { view: "Tally", width: 375, touch: true, title: "Path to Exile", fresh: "Sol Ring Prime" },
+];
+
+/* Runs in the page. Finds the target row by its words, never by an attribute the build might add,
+   and reports where it is. `point`, when given, is the pointer: does the row still sit under it? */
+const syncRowProbe = ({ view, card, title, point, scroll }) => {
+  let el = null;
+  if (view === "Packages") {
+    let c = [...document.querySelectorAll("button")].find((b) => b.textContent.includes(card));
+    while (c && !/border-radius:\s*8px/.test(c.getAttribute("style") || "")) c = c.parentElement;
+    el =
+      c &&
+      [...c.querySelectorAll('div[style*="--i"][style*="border-top"]')].find(
+        (r) => (r.querySelector('div[style*="font-weight: 600"]') || r).textContent.trim() === title
+      );
+  } else {
+    el = [...document.querySelectorAll("button")].find((b) => b.textContent.includes(title));
+  }
+  if (!el) return null;
+  if (scroll) el.scrollIntoView({ block: "center" });
+  const r = el.getBoundingClientRect();
+  const hit = point ? document.elementFromPoint(point.x, point.y) : null;
+  return { top: r.top, cx: r.left + r.width / 2, cy: r.top + r.height / 2, underPointer: !!(hit && el.contains(hit)) };
+};
+
+async function syncApplyCheck(browser, { view, width, touch, card, title, fresh }) {
+  const name = `syncapply ${view} ${width}px${touch ? " touch" : " mouse"}`;
+  const live = { ledger: null, rev: 1, sockets: [] };
+  const { ctx, page, pageErrors } = await openSeeded(browser, width, { touch, ledger: SYNC16_LEDGER });
+  try {
+    await mockWorker(ctx, [], live);
+    await page.evaluate(
+      ([k, key]) => localStorage.setItem(k, key),
+      [SYNC_KEY_STORAGE, LOST_DEVICE_KEY]
+    );
+    await page.reload();
+    if (!(await loadedOk(page))) {
+      fail(name, "the seeded ledger did not render, so nothing can be measured");
+      return;
+    }
+    /* Chromium keeps the row still by itself; whether the owner's WebKit does is unmeasured. Off, so
+       what is measured is the page's own correction. */
+    await page.addStyleTag({ content: "*, *::before, *::after { overflow-anchor: none !important; }" });
+    if (view !== "Packages" && !(await showView(page, view))) {
+      fail(name, `no tab opens ${view}`);
+      return;
+    }
+    /* the cold open's GET, POST and photo survey all settle first, so nothing but the push moves the page */
+    await page.waitForTimeout(2500);
+    for (let i = 0; i < 20 && !live.sockets.length; i++) await page.waitForTimeout(100);
+    checks++;
+    if (!live.sockets.length) {
+      fail(name, "the page never opened its socket, so no rev can be pushed");
+      return;
+    }
+    const spec = { view, card, title };
+    const seen = await page.evaluate(syncRowProbe, { ...spec, scroll: true });
+    if (!seen) {
+      fail(name, `no "${title}" row to look at before the push`);
+      return;
+    }
+    await page.waitForTimeout(200);
+    const at = await page.evaluate(syncRowProbe, spec);
+    if (!touch) {
+      await page.mouse.move(at.cx - 20, at.cy - 10);
+      await page.mouse.move(at.cx, at.cy, { steps: 4 });
+      await page.waitForTimeout(150);
+    }
+    const point = { x: at.cx, y: at.cy };
+    const before = await page.evaluate(syncRowProbe, { ...spec, point });
+    if (!before?.underPointer) {
+      fail(name, `the "${title}" row is not under the probe point before the push, so the fixture cannot test it`);
+      return;
+    }
+    live.ledger = SYNC16_SERVER;
+    live.rev = 2;
+    live.sockets[0].send(JSON.stringify({ rev: 2 }));
+    const landedBy = (ms) =>
+      page
+        .waitForFunction((t) => document.body.textContent.includes(t), fresh, { timeout: ms })
+        .then(() => true, () => false);
+    checks++;
+    const quick = await landedBy(SYNC16_LANDED_MS);
+    if (!quick) fail(`${name} 16a`, `the reply was not applied within ${SYNC16_LANDED_MS} ms with the ${touch ? "page untouched" : "mouse at rest"}`);
+    if (!quick && !(await landedBy(SYNC16_LATE_MS - SYNC16_LANDED_MS))) {
+      fail(`${name} 16b`, `the reply was not applied within ${SYNC16_LATE_MS} ms, so the row cannot be measured`);
+      return;
+    }
+    await page.waitForTimeout(400);
+    const after = await page.evaluate(syncRowProbe, { ...spec, point });
+    checks++;
+    if (!after) fail(`${name} 16b`, `the "${title}" row is gone after the apply`);
+    else {
+      const shift = after.top - before.top;
+      if (Math.abs(shift) > TAP_TOLERANCE_PX)
+        fail(`${name} 16b`, `the "${title}" row moved ${shift.toFixed(1)}px when the reply landed`);
+      else if (!touch && !after.underPointer)
+        fail(`${name} 16b`, `the "${title}" row is no longer under the pointer after the reply landed`);
+    }
+    for (const e of pageErrors) fail(name, `page error: ${e}`);
+  } finally {
+    await ctx.close();
+  }
+}
+
 async function main() {
   const t0 = Date.now();
   if (!existsSync(PAGE)) {
@@ -1836,7 +1983,10 @@ async function main() {
     return;
   }
   try {
-    const phases = RECORD
+    const syncApplyPhases = SYNC16_CASES.map((c) => () => syncApplyCheck(browser, c));
+    const phases = process.env.SCREENS_ONLY === "16"
+      ? syncApplyPhases
+      : RECORD
       ? [() => touchCheck(browser)]
       : [
       () => overflowChecks(browser),
@@ -1857,6 +2007,7 @@ async function main() {
       () => discardArmCheck(browser),
       ...RESET_VIEWS.map((view) => () => resetAskCheck(browser, view)),
       () => freshVisitorCheck(browser),
+      ...syncApplyPhases,
     ];
     for (const phase of phases) {
       try {

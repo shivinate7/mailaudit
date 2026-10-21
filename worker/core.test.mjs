@@ -1465,4 +1465,139 @@ await test("69.6 a mend whose kept copy cannot be written writes nothing: the st
   eq(s.state?.ledger, DAMAGED_69, "the stored ledger is unchanged");
 });
 
+/* 70. A socket is told the current rev as soon as it is accepted. The Worker broadcasts {rev} only
+   when a POST changes the ledger, so a socket that was down across a broadcast heard nothing on
+   reconnect until the next write, and the other device sat behind for as long as that took (measured
+   2026-10-20, lane web/sync-latency). The hello is the same {rev} the broadcast sends, so the client
+   (app group 75.11) needs nothing new: it fetches only a rev newer than the one it holds.
+   Ledger is in index.mjs, which imports cloudflare:workers and cannot load in node. It is bundled
+   with esbuild, that import aliased to a stub DurableObject, as test/photoget.test.mjs bundles
+   entry.jsx. The context, WebSocketPair and Response are fakes: node's Response refuses status 101. */
+const loadLedger = async () => {
+  const { build } = await import("esbuild");
+  const { mkdirSync } = await import("node:fs");
+  const { pathToFileURL, fileURLToPath } = await import("node:url");
+  const root = fileURLToPath(new URL("..", import.meta.url));
+  const dir = `${root}node_modules/.mailday-test`;
+  mkdirSync(dir, { recursive: true });
+  const outfile = `${dir}/worker-index.bundle.mjs`;
+  await build({
+    entryPoints: [`${root}worker/index.mjs`],
+    bundle: true,
+    format: "esm",
+    platform: "node",
+    outfile,
+    logLevel: "warning",
+    plugins: [
+      {
+        name: "cloudflare-workers-stub",
+        setup(b) {
+          b.onResolve({ filter: /^cloudflare:workers$/ }, () => ({ path: "cloudflare:workers", namespace: "cf-stub" }));
+          b.onLoad({ filter: /.*/, namespace: "cf-stub" }, () => ({
+            contents: "export class DurableObject { constructor(ctx, env) { this.ctx = ctx; this.env = env; } }",
+            loader: "js",
+          }));
+        },
+      },
+    ],
+  });
+  return (await import(pathToFileURL(outfile).href)).Ledger;
+};
+/* a Durable Object context: one KV value ("state"), a SQL that returns no rows, and the sockets
+   acceptWebSocket was given */
+const doCtx = (state, { readThrows = false } = {}) => {
+  const accepted = [];
+  return {
+    accepted,
+    storage: {
+      sql: { exec: () => ({ toArray: () => [] }) },
+      get: async (k) => {
+        if (readThrows) throw new Error("storage read failed");
+        return k === "state" ? state : undefined;
+      },
+      put: async () => {},
+    },
+    acceptWebSocket: (ws) => accepted.push(ws),
+    getWebSockets: () => accepted,
+  };
+};
+/* runs one upgrade request through a Ledger with the fakes installed, then puts the globals back.
+   readThrows: the stored ledger cannot be read. sendThrows: the accepted socket refuses a send.
+   An upgrade that throws is returned as `error`, so a case can name it instead of crashing. */
+const upgrade = async (state, protocol, { readThrows = false, sendThrows = false } = {}) => {
+  const Ledger = await loadLedger();
+  const ctx = doCtx(state, { readThrows });
+  const realResponse = globalThis.Response;
+  const realPair = globalThis.WebSocketPair;
+  const server = {
+    sent: [],
+    send(m) {
+      if (sendThrows) throw new Error("socket closed");
+      this.sent.push(m);
+    },
+  };
+  globalThis.WebSocketPair = class { constructor() { this[0] = { side: "client" }; this[1] = server; } };
+  globalThis.Response = class { constructor(body, init = {}) { this.status = init.status ?? 200; this.webSocket = init.webSocket; } };
+  try {
+    let res;
+    let error;
+    try {
+      res = await new Ledger(ctx, ENV).fetch(
+        new Request(BASE + "/ws", { headers: { Upgrade: "websocket", "Sec-WebSocket-Protocol": protocol } })
+      );
+    } catch (e) {
+      error = e;
+    }
+    await new Promise((r) => setTimeout(r, 0)); /* a send queued behind the response still counts */
+    return { res, error, ctx, server, heard: server.sent.map((m) => JSON.parse(m)) };
+  } finally {
+    globalThis.Response = realResponse;
+    globalThis.WebSocketPair = realPair;
+  }
+};
+
+await test("70.1 a new socket is sent the stored rev as soon as it is accepted", async () => {
+  const r = await upgrade({ ledger: ledger(), rev: 7, at: "2026-10-12T09:00:00.000Z" }, `mailaudit, ${KEY_PHONE}`);
+  eq(r.res.status, 101, "the upgrade is accepted");
+  eq(r.ctx.accepted, [r.server], "the server end of the pair is the one accepted");
+  eq(r.heard, [{ rev: 7 }], "and it is told {rev: 7} once, the shape the broadcast sends");
+});
+
+await test("70.2 a store with no ledger yet still accepts the socket, and says nothing that is not a rev", async () => {
+  const r = await upgrade(undefined, `mailaudit, ${KEY_PHONE}`);
+  eq(r.res.status, 101, "the upgrade is accepted");
+  eq(r.ctx.accepted.length, 1, "one socket accepted");
+  ok(r.heard.every((m) => typeof m.rev === "number"), "whatever it is told is a numeric rev");
+});
+
+await test("70.3 a refused key gets no socket and no rev (guard: the hello waits for the key)", async () => {
+  const r = await upgrade({ ledger: ledger(), rev: 7, at: "2026-10-12T09:00:00.000Z" }, `mailaudit, ${KEY_STRANGER}`);
+  eq(r.res.status, 401, "refused");
+  eq(r.ctx.accepted, [], "no socket accepted");
+  eq(r.heard, [], "nothing sent");
+});
+
+/* 70.4 and 70.5: the hello is a courtesy. A socket that is accepted must open whatever happens to the
+   hello, because the alternative is a device with no socket at all, and so no live updates, until the
+   page is reloaded. Red at the lane head: the hello is built and sent before the 101 returns, and a
+   throw from either step fails the upgrade. */
+await test("70.4 a stored ledger that cannot be read still upgrades, and the socket is accepted", async () => {
+  const r = await upgrade({ ledger: ledger(), rev: 7, at: "2026-10-12T09:00:00.000Z" }, `mailaudit, ${KEY_PHONE}`, {
+    readThrows: true,
+  });
+  eq(r.error?.message ?? null, null, "the upgrade does not throw");
+  eq(r.res?.status, 101, "the upgrade is accepted");
+  eq(r.ctx.accepted, [r.server], "the server end of the pair is the one accepted");
+  ok(r.heard.every((m) => typeof m.rev === "number"), "whatever it is told is a numeric rev");
+});
+
+await test("70.5 a socket that refuses the hello still upgrades", async () => {
+  const r = await upgrade({ ledger: ledger(), rev: 7, at: "2026-10-12T09:00:00.000Z" }, `mailaudit, ${KEY_PHONE}`, {
+    sendThrows: true,
+  });
+  eq(r.error?.message ?? null, null, "the upgrade does not throw");
+  eq(r.res?.status, 101, "the upgrade is accepted");
+  eq(r.ctx.accepted, [r.server], "the server end of the pair is the one accepted");
+});
+
 report();
