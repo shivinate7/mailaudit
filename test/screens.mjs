@@ -1212,10 +1212,18 @@ async function mockWorker(ctx, workerNames = []) {
    a fix to the tile changes. A tile that never shows prints what the Worker was asked. */
 async function openLostTile(page, { ledger = lostLedger(), workerNames = [] } = {}) {
   const hits = await mockWorker(page.context(), workerNames);
-  await page.evaluate(
+  /* The document that reads the ledger and the key also writes them, ahead of the app.
+     Written before the reload, under load they were sometimes missing from the new
+     document, which booted on the seed with no key. The script stays on this page: the
+     lost tile is the last state each caller opens, and nothing navigates after it. */
+  await page.addInitScript(
     ([ledgerKey, ledger, keyKey, key]) => {
-      localStorage.setItem(ledgerKey, ledger);
-      localStorage.setItem(keyKey, key);
+      try {
+        localStorage.setItem(ledgerKey, ledger);
+        localStorage.setItem(keyKey, key);
+      } catch {
+        /* storage blocked: the page boots empty and the "Lost" wait reports it */
+      }
     },
     [STORE_KEY, JSON.stringify(ledger), SYNC_KEY_STORAGE, LOST_DEVICE_KEY]
   );
