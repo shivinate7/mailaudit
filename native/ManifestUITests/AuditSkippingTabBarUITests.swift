@@ -50,6 +50,15 @@ final class AuditSkippingTabBarUITests: XCTestCase {
     /// A bar frame no element can reach.
     static let farAway = CGRect(x: 0, y: -10_000, width: 400, height: 100)
 
+    private func launchedPackages() -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ManifestUITestSeed"]
+        app.launch()
+        app.tabBars.buttons["Packages"].tap()
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "masthead").firstMatch.waitForExistence(timeout: 5), "masthead is missing")
+        return app
+    }
+
     // MARK: the cover rule, on frames
 
     func testCoverRuleSkipsOnlyWhatTheBarMostlyCovers() {
@@ -72,11 +81,7 @@ final class AuditSkippingTabBarUITests: XCTestCase {
     /// that an on-screen element would show. Skips when nothing sits under the bar, because the
     /// rule then hides nothing.
     func testTheSameIssuesFailOnceTheBarMovesAway() throws {
-        let app = XCUIApplication()
-        app.launchArguments = ["-ManifestUITestSeed"]
-        app.launch()
-        app.tabBars.buttons["Packages"].tap()
-        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "masthead").firstMatch.waitForExistence(timeout: 5), "masthead is missing")
+        let app = launchedPackages()
 
         let real = try app.auditSkippingTabBar(record: false)
         XCTAssertEqual(real.failing, [], "an issue outside the tab bar fails the Packages audit")
@@ -86,5 +91,15 @@ final class AuditSkippingTabBarUITests: XCTestCase {
         XCTAssertEqual(away.skipped, [], "a bar far from the screen still skipped an issue")
         XCTAssertEqual(away.failing.count, real.skipped.count + real.failing.count,
                        "the skipped issues did not all fail once the bar moved away")
+    }
+
+    /// The filtered audit still records an issue outside the bar. The bar is far away, so it covers
+    /// nothing and every issue is outside it. The expected failure is strict, so the test goes red
+    /// when the audit records nothing, as it does if the handler returns true for such an issue.
+    func testAnIssueOutsideTheBarIsRecorded() throws {
+        let app = launchedPackages()
+        try XCTExpectFailure("an issue outside the tab bar fails the audit", strict: true) {
+            try app.auditSkippingTabBar(bar: Self.farAway, record: true)
+        }
     }
 }
