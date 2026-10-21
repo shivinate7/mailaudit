@@ -8,8 +8,8 @@
 - a cold reply applies at once after a key save;
 - resume does one GET.
 
-Lane N4a must land first. When N4b lands with those tests, the gap closes.
+Lane N4a landed the HTTP client, `SyncClient`. Nothing in the app calls it yet. N4b wires it: a pull on launch, and a push after a change. When N4b lands with those tests and that wiring, the gap closes.
 
-**Status:** open. Waits for lane N4a.
+**Status:** open. Lane N4a landed, so N4b is free to build.
 
 **Decision:** `native-build-lanes`.

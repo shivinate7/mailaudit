@@ -366,7 +366,6 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `claim-9-fractional-box-edges` — Claim 9 can pass a box just under 44px.
 - `tally-card-moves-at-320px` — The Tally card moves 14px at 320px.
 - `native-ui-tests-not-in-ci` — Native UI tests and builds are not in CI.
-- `n4a-sync-over-http-unbuilt` — Lane N4a, sync over HTTP, is not built.
 - `native-lanes-n6-to-n9-unbuilt` — Native lanes N6 to N9 are not built.
 - `native-kept-copy-has-no-route` — The native app has no route to the kept copy.
 - `key-re-accepts-token-shape` — The key check accepts a GitHub token's shape.
