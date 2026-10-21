@@ -8,9 +8,9 @@ The check fails on any sideways overflow, and on any row that moves when a card 
 
 Before this ruling, every layout figure was measured by hand, and a regression showed up only when someone measured again. The owner ruled this on 2026-10-10. The axe and touch checks enforce the 2026-10-11 house rulings L8 and L6.
 
-The cost is two pinned dev dependencies, Playwright and `@axe-core/playwright`. Locally, at `3de6c03` on a Mac, the check took 157.1 s beside a running suite. Claim 16a sends 94,116 touches in 8 runs, and the touches and their clicks take 46.8 s of that. CI time is not measured. It also costs the slower queue of a macOS runner.
+The cost is two pinned dev dependencies, Playwright and `@axe-core/playwright`. Locally, at `3de6c03` on a Mac, the check took 157.1 s beside a running suite. Claim 16a sends 94,116 touches in 8 runs, and the touches and their clicks take 46.8 s of that. CI time of the `screens` job, measured on `main` (4 green runs, 2026-10-18 to 2026-10-21, before claim 16a): 2 m 26 s (run 39116024269), 2 m 36 s (39239789469), 2 m 43 s (39405167633), 2 m 28 s (39582234223). Claim 16a adds about 35 to 50 s, so the expected run is about 3 m 10 s to 3 m 35 s. The job limit is `timeout-minutes: 6`, about twice that. It exists to stop a hung run, not to bound normal time. The old 3 minute limit sat 17 to 34 s above the normal runs, and cancelled the lane's first run of claim 16a (run 39653575015, 4 m 03 s). Re-measure with `gh run view <run> --json jobs` after claim 16a lands on `main`. The check also costs the slower queue of a macOS runner.
 
-**Holds while:** `.github/workflows/test.yml` runs the `screens` job on `macos-latest`. `npm run check:screens` checks 375px and 760px, with the axe, touch and drawn-box checks. Claim 16a also checks 320px.
+**Holds while:** `.github/workflows/test.yml` runs the `screens` job on `macos-latest` with `timeout-minutes: 6`. `npm run check:screens` checks 375px and 760px, with the axe, touch and drawn-box checks. Claim 16a also checks 320px.
 
 Kind: build
 
