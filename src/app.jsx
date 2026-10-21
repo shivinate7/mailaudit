@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback, useId } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, useId } from "react";
 import Papa from "papaparse";
 import tokens from "../shared/tokens.json";
 import {
@@ -9,7 +9,7 @@ import {
 } from "./view-rules.mjs";
 import { photoPlan } from "./photo-rules.mjs";
 import { shouldSnapshot } from "./version-rules.mjs";
-import { KEY_RE, SYNC_POST_MS, SYNC_COLD_POST_MS, SYNC_TIMEOUT_MS, IDLE_APPLY_MS, idleReady, backoffMs } from "./sync-rules.mjs";
+import { KEY_RE, SYNC_POST_MS, SYNC_COLD_POST_MS, SYNC_TIMEOUT_MS, pressHeld, backoffMs } from "./sync-rules.mjs";
 import {
   mergeItems,
   mergeLedger,
@@ -419,6 +419,7 @@ function ItemRow({
   const lost = source ? lostMail(item.date, item.tracking, done || stamped) : null;
   return (
     <div
+      data-anchor={`r:${item.key}`}
       onClick={toggle}
       className={className}
       style={{
@@ -781,6 +782,7 @@ function PackageCard({
 
   return (
     <div
+      data-anchor={`p:${pkg.gk}`}
       ref={innerRef}
       style={{
         position: "relative",
@@ -1225,6 +1227,7 @@ function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder, stampedGks }
 
   return (
     <div
+      data-anchor={`t:${item.name}`}
       style={{
         /* the containing block for the top-edge progress bar below; PackageCard
            already had one for .mdl-gild */
@@ -1907,6 +1910,17 @@ function bgTimeout(fn, ms) {
   const t = setTimeout(fn, ms);
   t?.unref?.();
   return t;
+}
+/* The row a reply must not move: the one under a resting mouse, else the first in view, then the
+   cards around it, each with where it sits now (see useLayoutEffect on anchorRef). */
+function pickAnchor(mouse) {
+  const rows = [...document.querySelectorAll("[data-anchor]")];
+  let el = mouse && document.elementFromPoint?.(mouse.x, mouse.y)?.closest("[data-anchor]");
+  el = el || rows.find((r) => r.getBoundingClientRect().top >= 0) || rows[0];
+  const chain = [];
+  for (; el; el = el.parentElement?.closest("[data-anchor]"))
+    chain.push({ key: el.dataset.anchor, top: el.getBoundingClientRect().top });
+  return chain;
 }
 const NO_PHOTO_BACKUP =
   "Some photos are not backed up yet. They stay on this device and sync again on their own.";
@@ -2680,6 +2694,7 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch, lo
 
   return (
     <div
+      data-anchor={`e:${env.id}`}
       style={{
         background: C.card,
         border: `1px solid ${C.line}`,
@@ -4341,8 +4356,8 @@ export default function MailDayLedger() {
       const gen = ++syncGen.current;
       syncingRef.current = true;
       setSyncBusy(true);
-      /* the last input before the photo reads: a tap after it holds the reply again */
-      const touched = lastActivity.current;
+      /* the last press before the photo reads: a tap after it holds the reply again */
+      const touched = press.current.seq;
       try {
         const replyText = JSON.stringify(reply);
         const incoming = await readLedger(replyText);
@@ -4364,9 +4379,9 @@ export default function MailDayLedger() {
         if (syncGen.current !== gen) return { ok: false, code: "server" };
         /* a tap during the downloads: applying now would shift the list under the
            pointer (no-layout-shift-under-pointer), and the merge above no longer
-           matches the device. Hold the reply for the idle gate; the blobs are here
+           matches the device. Hold the reply for the press gate; the blobs are here
            by then, so the next try is quick. */
-        if (lastActivity.current !== touched) {
+        if (press.current.seq !== touched || pressNow()) {
           growServer(reply);
           tryApplyRef.current();
           return { ok: false, code: "held" };
@@ -4388,9 +4403,15 @@ export default function MailDayLedger() {
         /* a milestone only in front of a removal, and before the apply */
         if (stats.checkInsRemoved + stats.envelopesRemoved + (stats.stampsRemoved || 0) > 0)
           takeVersion("before sync", "milestone");
-        const notice = changed ? mergeSummary(stats) : "";
+        /* an import notice still open keeps its sentence: this apply must not
+           erase what the owner has not read */
+        const kept = importRef.current && importRef.current !== serverNotice.current ? importRef.current : "";
+        const merge = changed ? mergeSummary(stats) : "";
+        const notice = kept && merge ? `${kept} ${merge}` : kept || merge;
         /* remembered so the next apply can tell this notice from an import's */
         serverNotice.current = notice;
+        /* keeps the row in view still across the apply (anchorRef) */
+        anchorRef.current = pickAnchor(mouse.current);
         await applyBackup(JSON.stringify(merged), "server", notice);
         /* applyBackup bumps syncGen, and exactly one bump is ours. Any other
            number means something really did move on. */
@@ -4400,6 +4421,7 @@ export default function MailDayLedger() {
         /* parseLedger throws bare on a payload that isn't a ledger. Either way
            the merge landed nothing, because applyBackup throws before its first
            setState. */
+        anchorRef.current = null;
         return { ok: false, code: e?.code || "bad-response" };
       } finally {
         syncingRef.current = false;
@@ -4424,10 +4446,17 @@ export default function MailDayLedger() {
 
   /* ---- Worker sync (stage 4b) ----
      With a key, a POST of snapshot() goes out SYNC_POST_MS after a change and on
-     foreground, pageshow and online. The reply is held, then applied only after
-     IDLE_APPLY_MS with no input and no armed guard: applying mid-tap is the
-     layout shift no-layout-shift-under-pointer forbids. */
-  const lastActivity = useRef(Date.now());
+     foreground, pageshow and online. The reply is held only while a press is in
+     progress (and PRESS_TAIL_MS after it) or an armed guard is open, then applied.
+     A press is the one moment the list must not move; hover and scroll are not
+     (no-layout-shift-under-pointer). What is under the pointer stays put across
+     the apply because the page corrects its scroll (anchorRef). */
+  const press = useRef({ down: null, last: 0, seq: 0 });
+  const pressNow = () => pressHeld(press.current.down, press.current.last, Date.now());
+  const mouse = useRef(null);
+  const anchorRef = useRef(null);
+  const importRef = useRef("");
+  importRef.current = importMsg;
   const pendingReply = useRef(null);
   const applyTimer = useRef(null);
   const postTimer = useRef(null);
@@ -4437,13 +4466,10 @@ export default function MailDayLedger() {
     clearTimeout(applyTimer.current);
     if (!pendingReply.current || damagedRef.current) return;
     /* a pasted key is a tap the user just made: its first reply applies at once */
-    const idle = applyNow.current || idleReady(lastActivity.current, Date.now());
-    /* an import notice holds the apply; the notice a server apply left does not */
-    const noticeOpen = importMsg && importMsg !== serverNotice.current;
-    if (!idle || mergeBlocked || noticeOpen || syncingRef.current) {
-      /* wake when the idle gate opens; an armed guard is re-checked each second */
-      const left = IDLE_APPLY_MS - (Date.now() - lastActivity.current);
-      applyTimer.current = bgTimeout(() => tryApplyRef.current(), idle ? 1000 : Math.max(left, 100));
+    const pressed = !applyNow.current && pressNow();
+    if (pressed || mergeBlocked || syncingRef.current) {
+      /* re-check soon: a press ends in a tail that is short, an armed guard each second */
+      applyTimer.current = bgTimeout(() => tryApplyRef.current(), pressed ? 250 : 1000);
       return;
     }
     const reply = pendingReply.current;
@@ -4716,7 +4742,7 @@ export default function MailDayLedger() {
   /* a guard clearing is a reason to look again now, not at the next poll */
   useEffect(() => {
     tryApplyRef.current();
-  }, [mergeBlocked, importMsg]);
+  }, [mergeBlocked]);
   useEffect(() => {
     let dead = false;
     (async () => {
@@ -4730,14 +4756,55 @@ export default function MailDayLedger() {
     };
   }, []);
   useEffect(() => {
-    const touch = () => {
-      lastActivity.current = Date.now();
+    const p = press.current;
+    const on = {
+      pointerdown: () => {
+        p.down = p.last = Date.now();
+        p.seq++;
+      },
+      pointerup: () => {
+        p.down = null;
+        p.last = Date.now();
+      },
+      /* a touch drag ends in pointercancel, not pointerup */
+      pointercancel: () => {
+        p.down = null;
+        p.last = Date.now();
+      },
+      /* Enter and Space press a focused button */
+      keydown: () => {
+        p.last = Date.now();
+        p.seq++;
+      },
+      keyup: () => {
+        p.last = Date.now();
+      },
+      /* where a mouse rests, for the anchor only: moving it never holds a reply */
+      pointermove: (e) => {
+        mouse.current = e.pointerType === "mouse" ? { x: e.clientX, y: e.clientY } : null;
+      },
     };
-    const evs = ["pointerdown", "pointermove", "keydown", "scroll", "touchstart", "wheel"];
-    evs.forEach((e) => window.addEventListener(e, touch, { passive: true, capture: true }));
-    return () =>
-      evs.forEach((e) => window.removeEventListener(e, touch, { capture: true }));
+    for (const [e, f] of Object.entries(on)) window.addEventListener(e, f, { passive: true, capture: true });
+    return () => {
+      for (const [e, f] of Object.entries(on)) window.removeEventListener(e, f, { capture: true });
+    };
   }, []);
+  /* After a reply lands, scroll so the row the owner was on sits where it did
+     (what a mouse rests on, else the first in view). Measured after layout, so the
+     notice and the new rows above are already in. WebKit does not anchor on its own. */
+  useLayoutEffect(() => {
+    const chain = anchorRef.current;
+    if (!chain) return;
+    anchorRef.current = null;
+    const rows = [...document.querySelectorAll("[data-anchor]")];
+    for (const { key, top } of chain) {
+      const el = rows.find((r) => r.dataset.anchor === key);
+      if (!el) continue;
+      const d = el.getBoundingClientRect().top - top;
+      if (d) window.scrollBy(0, d);
+      return;
+    }
+  }, [items, received, envelopes, stamps, importMsg]);
   useEffect(() => {
     if (!loaded) return;
     /* a resume, a pageshow or coming online is a reason to try now: the
@@ -4768,13 +4835,15 @@ export default function MailDayLedger() {
       skipFirstPost.current = false;
       return;
     }
-    clearTimeout(postTimer.current);
+    /* armed once per burst: a change while it waits does not move it, so a run of
+       taps POSTs every SYNC_POST_MS and the POST carries the latest snapshot */
+    if (postTimer.current) return;
     postTimer.current = bgTimeout(() => {
+      postTimer.current = null;
       /* a save that left the snapshot equal to the server's ledger needs no POST */
       if (lastServer.current && !lacksRef.current(lastServer.current)) return;
       postRef.current();
     }, SYNC_POST_MS);
-    return () => clearTimeout(postTimer.current);
   }, [items, received, receivedAt, envelopes, stamps, loaded]);
 
   /* unmount stops every pending background timer, so none fires into a dead app */

@@ -413,6 +413,7 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `lost-photo-clock-is-envelope-age` — The lost-photo clock runs from envelope age.
 - `lost-tile-waits-for-first-post` — The lost tile waits for the first POST.
 - `failed-photo-download-no-retry` — A failed photo download is not retried.
+- `undo-holds-reply-unbounded` — A pending undo holds a remote reply with no limit.
 
 ## Measurements
 

@@ -55,6 +55,9 @@ export class Ledger extends DurableObject {
       if (request.headers.get("Upgrade") !== "websocket") return new Response("expected websocket", { status: 426 });
       const { 0: client, 1: server } = new WebSocketPair();
       this.ctx.acceptWebSocket(server);
+      /* a socket that was down across a broadcast heard nothing: tell it the rev now (web/sync-latency) */
+      const cur = await this.store.read();
+      if (cur) server.send(JSON.stringify({ rev: cur.rev }));
       return new Response(null, { status: 101, webSocket: client, headers: { "Sec-WebSocket-Protocol": "mailaudit" } });
     }
     return route(request, this.env, this.store);

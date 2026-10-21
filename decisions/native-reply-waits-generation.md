@@ -13,7 +13,7 @@ The native sync client applies a Worker reply only if the local ledger did not c
 - A `{rev}` message greater than the held rev starts one GET.
 - A 404 `empty` with local data starts a seed POST.
 - A 401 stops all calls until the app relaunches. A 413 shows the size line.
-- A reply from the other device waits until the device has had no input for 10 seconds (`IDLE_APPLY_MS`). The cold reply after a key save applies at once. The next reply waits again.
+- A reply from the other device waits while a press is in progress and for `PRESS_TAIL_MS` after it (`pressHeld`), see `auto-apply-happens-now`. The cold reply after a key save applies at once. The next reply waits again.
 - Resume: when scenePhase becomes active, the client reconnects the socket and does one GET.
 - The owner ruled no background refresh in v1. A resume GET covers the need, see `native-swift-rebuild`.
 
