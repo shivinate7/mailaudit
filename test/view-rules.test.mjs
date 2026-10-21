@@ -33,7 +33,12 @@
      toggleCount(got, qty) -> the count a check-in writes: 0 when the line is
                               already in (got >= qty), else qty
      countLabel(got, qty) -> "N of M" with N clamped to M, so "3 of 2" never shows
-     isDone(got, qty) -> true when got >= qty, the done state a row shows */
+     isDone(got, qty) -> true when got >= qty, the done state a row shows
+
+   Lane N8 pins one more (the native masthead calls it through RulesEngine; it moves
+   here from src/app.jsx so the web and native tallies share one home):
+     compact(n) -> the masthead's value figure: whole dollars under 1k, then k or M
+                   with at most two decimals and trailing zeros trimmed */
 
 const DAY = 86400000;
 const loaded = await import("../src/view-rules.mjs").then(
@@ -69,6 +74,7 @@ const packagesDone = fn("packagesDone");
 const toggleCount = fn("toggleCount");
 const countLabel = fn("countLabel");
 const isDone = fn("isDone");
+const compact = fn("compact");
 
 /* ---------- assertion helpers ---------- */
 
@@ -1066,6 +1072,32 @@ eq(isDone(1, 3), false, "V14.7c a partial line is not done");
 eq(isDone(3, 2), true, "V14.7d an over-count is done");
 /* V14.8 mutant: done as `got > qty` would leave a full line not done */
 eq(isDone(2, 2), true, "V14.8 a full multi-copy line is done, not only an over-count");
+
+/* ---------- N8: the masthead's compact value figure ---------- */
+
+/* V15.1 under 1k: whole dollars, rounded, never cents */
+eq(compact(0), "0", "V15.1a zero");
+eq(compact(27), "27", "V15.1b a whole figure");
+eq(compact(101.4), "101", "V15.1c cents round away");
+eq(compact(67.5), "68", "V15.1d a half rounds up");
+eq(compact(999), "999", "V15.1e the top of the whole-dollar range");
+
+/* V15.2 thousands: k, at most two decimals, trailing zeros trimmed */
+eq(compact(1000), "1k", "V15.2a exactly 1k");
+eq(compact(4000), "4k", "V15.2b a round thousand loses its zeros");
+eq(compact(63450), "63.45k", "V15.2c two decimals stay");
+eq(compact(118600), "118.6k", "V15.2d one trailing zero is trimmed");
+eq(compact(100240), "100.24k", "V15.2e the six-figure case that has to fit");
+eq(compact(12345.678), "12.35k", "V15.2f a third decimal rounds");
+
+/* V15.3 millions */
+eq(compact(1200000), "1.2M", "V15.3a millions use M");
+eq(compact(2000000), "2M", "V15.3b a round million loses its zeros");
+eq(compact(1234567), "1.23M", "V15.3c two decimals");
+
+/* V15.4 a negative figure picks its unit by size, not by sign */
+eq(compact(-4000), "-4k", "V15.4a negative thousands");
+eq(compact(-27), "-27", "V15.4b negative whole dollars");
 
 /* ---------- report ---------- */
 
