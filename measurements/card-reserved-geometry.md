@@ -1,6 +1,6 @@
 # Card reserved geometry heights
 
-**Status:** Tally figures and row shift re-measured at `1607933` (the fix commit) on 2026-10-14. The records writer took them with a scratch probe, built from the `check:screens` seed and row code. The probe is not committed. Packages figures were checked at 320, 375 and 760px on the same head. The action-row figures are from the grid head `f97e423`, and were not re-measured.
+**Status:** Tally figures and row shift re-measured at `1607933` (the fix commit) on 2026-10-14. The records writer took them with a scratch probe, built from the `check:screens` seed and row code. The probe is not committed. The Packages figures were re-measured at `3de6c03` on 2026-10-21 with a scratch probe of the same kind, at 320, 375 and 760px. The order id link has its own header line there (`order-id-button-stops-propagate`). The probe is not committed. The same probe at `3997ee9`, which has no link, gave 335.67px, so it reproduces the earlier figure. The action-row figures are from the grid head `f97e423`, and were not re-measured. `check:screens` claim 2, the row shift, passes at `3de6c03`.
 
 This record holds the package card and Tally card heights across a check-in. It holds the row displacement, the action row content needed per width, and the 320px case left unfixed. Re-measure at 375px, and at the widths listed, after a change to the progress bar or the action row.
 
@@ -8,7 +8,7 @@ This record holds the package card and Tally card heights across a check-in. It 
 
 Open the built page against the `LEDGER` fixture in `test/screens.mjs`. Step through rest, the first check-in, the second check-in, and the tap that completes the package. Measure the card height and the row displacement at each step. Repeat the action row content measurement at 320, 360, 375, 390, 430, and 760px. Re-run the card and content-height figures by hand, in a real browser. `npm run check:screens` automates the row shift at 375px and 760px. See Reader below. jsdom has no layout and cannot do this measurement.
 
-The figures in this record were taken with headless Chromium through Playwright 1.63.0, the version in `package.json`. The page was `index.html` at `1607933` for the Tally and Packages figures, and at `f97e423` for the action-row figures. The data was the `LEDGER` fixture in `test/screens.mjs`. Motion was reduced. Each tap went to the centre of its row. The Packages steps and the Tally steps ran with the Everything filter on, so a completed card stays on screen. The Ledger tab holds that filter. The Packages card starts expanded. The Tally card opens on a tap of its header.
+The figures in this record were taken with headless Chromium through Playwright 1.63.0, the version in `package.json`. The page was `index.html` at `1607933` for the Tally figures, at `3de6c03` for the Packages figures, and at `f97e423` for the action-row figures. The data was the `LEDGER` fixture in `test/screens.mjs`. The Packages probe used only Alpha's three rows from it. Motion was reduced. Each tap went to the centre of its row. The Packages steps and the Tally steps ran with the Everything filter on, so a completed card stays on screen. The Ledger tab holds that filter. The Packages card starts expanded. The Tally card opens on a tap of its header.
 
 ## Reader
 
@@ -40,9 +40,9 @@ The Tally card's row is deliberately not reserved. It has no Stamp button, so it
 
 ## Figures
 
-Tally and Packages figures are at `1607933`, measured 2026-10-14. Action-row figures are at `f97e423`.
+Tally figures are at `1607933`, measured 2026-10-14. Packages figures are at `3de6c03`, measured 2026-10-21. Action-row figures are at `f97e423`.
 
-**Packages card (Alpha Cards, 3 rows).** At rest and after each of the three check-ins, the card is **335.67px** tall at 320, 375 and 760px. That includes the check-in that completes the package. Every other row moves **0.00px** on every step. Its rows measure the same at `c07ae27`. At `f97e423` the card held 335.67px, with 0.00px of row shift and no horizontal overflow at 320, 360, 375, 390, 430 and 760px.
+**Packages card (Alpha Cards, 3 rows, at `3de6c03`).** At rest and after each of the three check-ins, the card is **395.67px** tall at 320, 375 and 760px. Its header is **115px**, and the order id link sits 71px under the header's top edge. That includes the check-in that completes the package. Every other row moves **0.00px** on every step. The page has no horizontal overflow at the three widths. A 21-character order id leaves the same figures. Its link is 139px wide, and the header leaves it 238px at 320px. Its rows measure the same at `c07ae27`. At `f97e423`, before the link, rows moved 0.00px with no horizontal overflow at 320, 360, 375, 390, 430 and 760px. The widths 360, 390 and 430 are not re-measured with the link.
 
 **Tally card (Lightning Bolt, 6 copies), at `1607933`.** At 375px and 760px the card is **673.34px** at rest and after every check-in. Other rows move **0.00px** on every step. At 320px it is 673.34px at rest, 687.34px after check-ins 1 to 5, and 673.34px after check-in 6. Rows move **14px** down on check-in 1 and **14px** back up on check-in 6. The 320px step is a named limit (see The 320px exception).
 
@@ -61,7 +61,7 @@ At the 46px reservation, the first check-in moves no item row at 360, 375 or 390
 
 ## The 320px exception
 
-At `1607933` the Packages card moves 0.00px at 320px. The three-button state this paragraph describes was not reproduced, so the 11px step is unmeasured at the grid head (debt `card-eleven-px-step-unmeasured`). The Tally card does move at 320px, by 14px on check-ins 1 and 6 (see Figures). That is debt `tally-card-moves-at-320px`. No shipped check reads 320px: claim 2 runs at 375px and 760px only.
+At `3de6c03` the Packages card moves 0.00px at 320px. The three-button state this paragraph describes was not reproduced, so the 11px step is unmeasured at the grid head (debt `card-eleven-px-step-unmeasured`). The Tally card does move at 320px, by 14px on check-ins 1 and 6 (see Figures). That is debt `tally-card-moves-at-320px`. No shipped check reads card heights at 320px: claim 2 runs at 375px and 760px only. Claim 17a reads 320px for the order id link alone.
 
 **320px is the one width this does not fully fix.** Three buttons wrap to a *third* line there, and the row still steps 11px. The bar half is width-independent, so at 320px the shift falls from 28px to 11px. This is left deliberately. 320px is below the app's stated 380px floor. It is not a viewport that current iOS runs. Reserving 57px would fix 320px by spending 26px of dead space in every expanded card at the widths that are real.
 

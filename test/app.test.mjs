@@ -123,6 +123,21 @@ import { fileURLToPath } from "node:url";
 
 const fresh = () => boot({ items: ITEMS, received: {} });
 
+/* A package card, found by its seller's text and never by its header's tag. The
+   header holds selectable text and is not a button (owner ruling 2026-10-20, group
+   75), so the old lookup, the first button that shows the seller, finds nothing.
+   A card is the nearest ancestor with the 8px corner (decision
+   spacing-on-4px-grid). No such ancestor means no card, so a filtered-out package
+   is undefined here, as it was. */
+const packageCard = (re) => {
+  const seller = [...document.body.querySelectorAll("*")].find((e) =>
+    re.test([...e.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("").trim())
+  );
+  for (let n = seller; n && n !== document.body; n = n.parentElement)
+    if (/border-radius:\s*8px/.test(n.getAttribute("style") ?? "")) return n;
+  return undefined;
+};
+
 /* The GitHub verbs the switch forbids (owner ruling 2026-10-14 21:12 CDT, decision
    sync-revamp-cloudflare). Groups 25 to 58 read them through githubOps(). Group 71
    keeps its own list, GITHUB_CALLS71. */
@@ -448,7 +463,7 @@ eq(allBtns(/^This one$/).length, 1, "11.1 Ponder's package offered");
 /* check that package off by hand elsewhere; packages render expanded, so reach
    into the right card rather than grabbing the first button on the page */
 await goTo("packages");
-const gamma = btn(/Gamma Cards/).parentElement;
+const gamma = packageCard(/Gamma Cards/);
 await click(
   [...gamma.querySelectorAll("button")].find((b) => /Mark all received/.test(b.textContent)),
   "mark Gamma received"
@@ -580,7 +595,7 @@ const ponderKey = Object.keys(saved().received)[0];
 ok(/Ponder/.test(ponderKey), "14.1 the envelope checked in Ponder");
 
 await goTo("packages");
-const gamma2 = btn(/Gamma Cards/).parentElement;
+const gamma2 = packageCard(/Gamma Cards/);
 await click(
   [...gamma2.querySelectorAll("button")].find((b) => /Mark all received/.test(b.textContent)),
   "mark Gamma received by hand"
@@ -2082,7 +2097,7 @@ const search = () =>
   document.querySelector(
     'input[aria-label="Search cards, sets, sellers and order ids"]'
   );
-const card = (re) => btn(re)?.parentElement;
+const card = packageCard;
 const revealBtn = (c) =>
   [...c.querySelectorAll("button")].find((b) =>
     /in this order|whole order/.test(b.textContent)
@@ -2197,6 +2212,270 @@ ok(
   /cards\s*0\/14/.test(text()),
   "32.16 opening an order checks nothing in"
 );
+
+/* ── 76. the order id in a package header: a link to TCGplayer, selectable header text ──
+   Owner ruling 2026-10-21 00:10 CDT (lane web/order-id-copy). It replaces the
+   2026-10-20 copy button, its Copied stamp and the separate "TCGplayer" link: all
+   three are gone. The header of a package card is plain text, not one button.
+   Five claims:
+     1. the order id is a link to that order's search on TCGplayer, in a new tab.
+        Its click never collapses or opens the card and never checks anything in.
+     2. nothing copies: no copy button, no Copied stamp, no status slot, no write to
+        the clipboard, and no second TCGplayer link.
+     3. the header text can be selected. A click that ends with a non-empty
+        selection inside the header does not toggle the card. A plain click does.
+     4. the chevron is its own toggle. A click on it toggles the card even while
+        header text is selected (round-1 finding F1). Enter on it is claim 17 of
+        test/screens.mjs: jsdom turns no key into a click, and a case here would
+        push the build to add a key handler that toggles twice in a browser.
+     5. the chevron is named by the order too: two orders from one seller have two
+        chevrons with two names (round-2 finding R3).
+   The build meets this contract, and the cases find things only by it:
+     - the order id is the visible text of an <a> inside the card, and that <a> has
+       an href on tcgplayer.com. Its accessible name holds the id (axe rule
+       label-content-name-mismatch);
+     - the seller name and the meta line are elements whose own text is the seller,
+       or holds the date, and neither sits inside a button;
+     - the chevron is the button in the card whose aria-label holds the seller. It
+       also holds the order id (round-2 finding R3): two orders from one seller
+       would otherwise have two chevrons with one name. The id's place in the
+       label is the build's choice, so no case pins the wording around it.
+   Real ids are hex and dashes (025F898A-605522-F2EDE), which encodeURIComponent
+   leaves alone, so no case feeds an id that needs escaping.
+   Cases 76.1 to 76.3, 76.6, 76.11 to 76.14, 76.16 to 76.22, 76.25 and 76.26 pass at the lane
+   head on purpose. They are guards that a build could break: a second link, a link
+   with no noopener, a tap that reaches the header, a toggle that stops working. 76.17
+   to 76.20 stop a quick fix that blocks the toggle on any selection, or on any
+   selection in the card.
+   What jsdom cannot see (that the text selects by a mouse drag, the chevron under a
+   real key, the link's touch area against the date line) is claim 17 of
+   test/screens.mjs. */
+
+const own76 = (e) =>
+  [...e.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("").trim();
+const byOwn76 = (t, has = false) =>
+  [...document.body.querySelectorAll("*")].find((e) => (has ? own76(e).includes(t) : own76(e) === t));
+/* a card is the child of the list that holds both sellers' names, so the lookup
+   works with a header that is not a button, and still finds a collapsed card */
+const cardOf76 = (seller) => {
+  const a = byOwn76(seller);
+  const b = byOwn76(seller === "Beta Games" ? "Alpha Cards" : "Beta Games");
+  if (!a || !b) return null;
+  let n = a;
+  while (n.parentElement && !n.parentElement.contains(b)) n = n.parentElement;
+  return n;
+};
+/* a line name that only an open card shows */
+const open76 = (seller, line = "Brainstorm") =>
+  new RegExp(line).test(cardOf76(seller)?.textContent ?? "");
+const PACKS76 = [
+  ["Alpha Cards", "A1"],
+  ["Beta Games", "B1"],
+  ["Gamma Cards", "C1"],
+  ["Delta Cards", "D1"],
+];
+const tcg76 = (c) =>
+  [...(c?.querySelectorAll("a") ?? [])].filter((a) => /tcgplayer\.com/i.test(a.getAttribute("href") ?? ""));
+/* the id as a person taps it: its visible text, whatever element carries it */
+const idText76 = (id) => byOwn76(id);
+const chevron76 = (seller) =>
+  [...(cardOf76(seller)?.querySelectorAll("button[aria-expanded]") ?? [])].find((b) =>
+    (b.getAttribute("aria-label") ?? "").includes(seller)
+  );
+/* a missing control is one red case on its own claim, not a second "no element" line */
+const tap76 = (el, label) => (el ? click(el, label) : undefined);
+const selectIn76 = (el) => {
+  const r = document.createRange();
+  r.selectNodeContents(el);
+  win.getSelection().removeAllRanges();
+  win.getSelection().addRange(r);
+};
+/* jsdom would try to navigate on a click on a link; the cases are about the card */
+const noNav76 = (a) => a?.addEventListener("click", (e) => e.preventDefault());
+
+const written76 = [];
+Object.defineProperty(win.navigator, "clipboard", {
+  configurable: true,
+  value: { writeText: (t) => (written76.push(t), Promise.resolve()) },
+});
+const dialogs76 = [];
+const realDialogs76 = ["alert", "confirm", "prompt"].map((k) => [k, win[k]]);
+for (const [k] of realDialogs76) win[k] = global[k] = () => (dialogs76.push(k), false);
+
+try {
+  await fresh();
+  win.getSelection().removeAllRanges();
+
+  /* the header text must be selectable: a browser will not drag-select text that
+     lives inside a button, and a button cannot hold another control */
+  const seller76 = byOwn76("Alpha Cards");
+  const meta76 = byOwn76("2026-07-01", true);
+  ok(
+    !!seller76 && !!meta76 && !seller76.closest("button") && !meta76.closest("button"),
+    "76.1 the seller name and the date line are not inside a button"
+  );
+  eq(
+    document.querySelectorAll("button button, button a, a button, [role=button] button, [role=button] a").length,
+    0,
+    "76.2 and no control sits inside another control"
+  );
+
+  /* 1. the order id is the link */
+  const links76 = PACKS76.map(([s]) => tcg76(cardOf76(s)));
+  eq(
+    links76.map((l) => l.length),
+    [1, 1, 1, 1],
+    "76.3 each package header has one TCGplayer link, and no second one"
+  );
+  ok(
+    PACKS76.every(([, id], i) => links76[i][0]?.textContent.trim() === id),
+    "76.4 whose visible text is the order id and nothing else"
+  );
+  eq(
+    links76.map((l) => l[0]?.getAttribute("href") ?? null),
+    PACKS76.map(([, id]) => `https://store.tcgplayer.com/myaccount/orderhistory?SearchString=${encodeURIComponent(id)}`),
+    "76.5 and goes to that order's search on TCGplayer"
+  );
+  ok(
+    links76.every(([a]) => a?.getAttribute("target") === "_blank" && !!a.relList.contains("noopener")),
+    "76.6 in a new tab, with rel noopener"
+  );
+  ok(
+    PACKS76.every(([, id], i) => (links76[i][0]?.getAttribute("aria-label") ?? links76[i][0]?.textContent ?? "").includes(id)),
+    "76.7 and its accessible name holds the id"
+  );
+
+  /* the owner's own example, on an order of its own */
+  await boot({
+    items: [
+      ...ITEMS,
+      { ...ITEMS[0], key: "025F898A-605522-F2EDE|0|pBolt", orderId: "025F898A-605522-F2EDE", seller: "Omega Cards", name: "Bolt" },
+    ],
+    received: {},
+  });
+  eq(
+    tcg76(cardOf76("Omega Cards"))[0]?.getAttribute("href") ?? null,
+    "https://store.tcgplayer.com/myaccount/orderhistory?SearchString=025F898A-605522-F2EDE",
+    "76.8 the owner's example id gives the owner's example URL"
+  );
+  await fresh();
+  win.getSelection().removeAllRanges();
+
+  /* 2. nothing copies. Each case states the card first, so one red case cannot
+     turn the next one around. */
+  const setOpen76 = async (seller, want) => {
+    win.getSelection().removeAllRanges();
+    if (open76(seller) !== want) await click(byOwn76(seller), `set ${seller} ${want ? "open" : "closed"}`);
+  };
+  const cards76 = PACKS76.map(([s]) => cardOf76(s));
+  ok(
+    cards76.every(
+      (c) =>
+        !!c &&
+        ![...c.querySelectorAll("button")].some(
+          (b) => /copy/i.test(b.getAttribute("aria-label") ?? "") || /copy/i.test(b.textContent)
+        )
+    ),
+    "76.9 no package header has a copy button"
+  );
+  ok(
+    cards76.every((c) => !!c && c.querySelector('[role="status"]') === null),
+    "76.10 and no status slot for a Copied stamp"
+  );
+
+  /* 1 and 2: a tap on the id, open card and collapsed card. The tap is on the
+     visible text, so it reaches the link or whatever else carries the id. */
+  await setOpen76("Alpha Cards", true);
+  const aLink76 = idText76("A1")?.closest("a");
+  noNav76(aLink76);
+  await tap76(idText76("A1"), "tap Alpha's order id");
+  await settle();
+  ok(!!idText76("A1") && open76("Alpha Cards"), "76.11 a tap on the id does not collapse an open card");
+  ok(
+    !!idText76("A1") && /cards\s*0\/14/.test(text()) && Object.keys(saved().received ?? {}).length === 0,
+    "76.12 and checks nothing in"
+  );
+  await setOpen76("Beta Games", false);
+  ok(!open76("Beta Games"), "76.13 Beta is collapsed by a plain click");
+  noNav76(idText76("B1")?.closest("a"));
+  await tap76(idText76("B1"), "tap Beta's order id while Beta is collapsed");
+  await settle();
+  ok(!!idText76("B1") && !open76("Beta Games"), "76.14 a tap on the id does not open a collapsed card");
+  ok(!!idText76("B1") && written76.length === 0 && !/Copied/.test(text()), "76.15 and copies nothing, and stamps nothing");
+
+  /* 3. the header text selects. */
+  await setOpen76("Alpha Cards", true);
+  selectIn76(byOwn76("Alpha Cards"));
+  ok(win.getSelection().toString().includes("Alpha Cards"), "76.16a the seller name is selected");
+  await click(byOwn76("Alpha Cards"), "click Alpha's header with its name selected");
+  ok(open76("Alpha Cards"), "76.16 a click that ends with text selected in the header does not collapse the card");
+  await setOpen76("Alpha Cards", true);
+  await click(byOwn76("Alpha Cards"), "plain click on Alpha's header");
+  ok(!open76("Alpha Cards"), "76.17 a plain click still collapses it");
+  await click(byOwn76("Alpha Cards"), "plain click again");
+  ok(open76("Alpha Cards"), "76.18 and opens it again");
+  await setOpen76("Alpha Cards", true);
+  const line76 = [...(cardOf76("Alpha Cards")?.querySelectorAll("*") ?? [])].find((e) => own76(e) === "Brainstorm");
+  if (line76) selectIn76(line76);
+  ok(win.getSelection().toString().includes("Brainstorm"), "76.19a a line name in the same card is selected");
+  await click(byOwn76("Alpha Cards"), "click Alpha's header with a line name selected");
+  ok(!open76("Alpha Cards"), "76.19 a selection outside the header does not block the toggle");
+  await setOpen76("Alpha Cards", false);
+  const caretIn76 = byOwn76("Alpha Cards")?.firstChild;
+  if (caretIn76) win.getSelection().collapse(caretIn76, 3);
+  ok(win.getSelection().isCollapsed && win.getSelection().rangeCount === 1, "76.20a a caret sits in the header");
+  await click(byOwn76("Alpha Cards"), "click Alpha's header with a caret in it");
+  ok(open76("Alpha Cards"), "76.20 a caret is an empty selection, so the click toggles");
+  win.getSelection().removeAllRanges();
+
+  /* 4. the chevron is its own toggle, selection or none */
+  await setOpen76("Alpha Cards", true);
+  await tap76(chevron76("Alpha Cards"), "click Alpha's chevron");
+  ok(!!chevron76("Alpha Cards") && !open76("Alpha Cards"), "76.21 a click on the chevron collapses an open card, once");
+  await tap76(chevron76("Alpha Cards"), "click Alpha's chevron again");
+  ok(!!chevron76("Alpha Cards") && open76("Alpha Cards"), "76.22 and opens it again, once");
+  await setOpen76("Alpha Cards", true);
+  selectIn76(byOwn76("Alpha Cards"));
+  ok(win.getSelection().toString().includes("Alpha Cards"), "76.23a the seller name is selected");
+  await tap76(chevron76("Alpha Cards"), "click Alpha's chevron with its name selected");
+  ok(!!chevron76("Alpha Cards") && !open76("Alpha Cards"), "76.23 a click on the chevron collapses an open card while header text is selected");
+  await setOpen76("Alpha Cards", false);
+  selectIn76(byOwn76("Alpha Cards"));
+  ok(win.getSelection().toString().includes("Alpha Cards"), "76.24a the seller name is selected on a collapsed card");
+  await tap76(chevron76("Alpha Cards"), "click the collapsed chevron with Alpha's name selected");
+  ok(!!chevron76("Alpha Cards") && open76("Alpha Cards"), "76.24 and opens a collapsed card while header text is selected");
+  win.getSelection().removeAllRanges();
+
+  eq(dialogs76, [], "76.25 none of this opens a native dialog");
+
+  /* 5. two orders from one seller (round-2 finding R3). A screen reader lists the
+     chevrons by name, and "Collapse Beta Games" twice does not say which order. */
+  await boot({
+    items: [
+      ...ITEMS,
+      { ...ITEMS.find((it) => it.orderId === "B1"), key: "B2|0|pBolt", orderId: "B2", name: "Bolt" },
+    ],
+    received: {},
+  });
+  const betaChevrons76 = [...document.body.querySelectorAll("button[aria-expanded]")].filter((b) =>
+    (b.getAttribute("aria-label") ?? "").includes("Beta Games")
+  );
+  eq(betaChevrons76.length, 2, "76.26 two orders from one seller have two chevrons");
+  /* without the verb, which differs when one card is open and the other is not */
+  const betaNames76 = betaChevrons76.map((b) => (b.getAttribute("aria-label") ?? "").replace(/^(Collapse|Expand)\s+/, ""));
+  ok(new Set(betaNames76).size === betaNames76.length, "76.27 and the two chevrons have different names");
+  ok(
+    ["B1", "B2"].every((id) => betaNames76.filter((n) => new RegExp(`\\b${id}\\b`).test(n)).length === 1),
+    "76.28 and each name holds its own order id, B1 on one and B2 on the other"
+  );
+} finally {
+  delete win.navigator.clipboard;
+  for (const [k, f] of realDialogs76) {
+    win[k] = f;
+    delete global[k];
+  }
+  win.getSelection().removeAllRanges();
+}
 
 /* ── 33. merging two devices' ledgers ─────────────────────────────────────
    Pure, imported directly, same rationale as groups 27 and 31: this is the
