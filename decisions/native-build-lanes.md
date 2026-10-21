@@ -1,6 +1,6 @@
 # The native build runs in ordered lanes
 
-**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. W1 landed in PR #61 and S1 in PR #62. S2 landed in PR #63, S3 in PR #64 and S4 in PR #65. N1 landed in PR #75, C1 in PR #76, W2a in PR #77 and W3a in PR #79. N2 landed in PR #81, N3 in PR #80 and N5 in PR #82. Their rows have left this table. No other lane has landed. The rows below carry the 2026-10-11 changes and the 2026-10-12 Mirror scan move (N8 row). The 2026-10-12 N5 defaults sit in N5 notes below. The rows are ruled or named, and not built.
+**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. W1 landed in PR #61 and S1 in PR #62. S2 landed in PR #63, S3 in PR #64 and S4 in PR #65. N1 landed in PR #75, C1 in PR #76, W2a in PR #77 and W3a in PR #79. N2 landed in PR #81, N3 in PR #80 and N5 in PR #82. N4a landed on branch `native/n4a-sync`, and its PR number is claimed at merge. Their rows have left this table. No other lane has landed. The rows below carry the 2026-10-11 changes and the 2026-10-12 Mirror scan move (N8 row). The 2026-10-12 N5 defaults sit in N5 notes below. The rows are ruled or named, and not built.
 
 The native rebuild splits into lanes. W lanes change the Worker. S lanes change shared files and extract the rules. The C lane changes CI. N lanes build the native client. A lane that lands leaves this table, and git keeps its history.
 
@@ -17,6 +17,7 @@ Plan: decisions/native-build-lanes.md#still-open (native)
 - A Sonnet builder makes the tests green on the same branch.
 - A fresh reviewer reads the lane.
 - ST in the table means `swift test --package-path native/ManifestKit`.
+- A lane that boots a simulator, or builds or runs tests for one, takes the lock in `one-simulator-per-mac`.
 
 ## The lanes
 
@@ -27,7 +28,6 @@ Plan: decisions/native-build-lanes.md#still-open (native)
 | W3c, not briefed | Not briefed. No scope is recorded here. | Not yet briefed. | Not yet briefed. | Not yet briefed. |
 | W3d, not briefed | Not briefed. No scope is recorded here. | Not yet briefed. | Not yet briefed. | Not yet briefed. |
 | W3e, not briefed | Not briefed. No scope is recorded here. | Not yet briefed. | Not yet briefed. | Not yet briefed. |
-| N4a Sync over HTTP | the sync client, a stub URL protocol | The Bearer header. The `{ledger}` body. The generation rule. A 401 stops calls. The 413 line. A 404 seeds by POST. A timeout reads as unknown. Backoff. Stop cancels an in-flight push or pull. | ST | N2 (landed), N3 (landed), W1 (landed), the stage 4b switch |
 | N4b Socket, idle gate, resume | the sync client socket | A rev that is not newer gives no GET. A newer rev with a changed ledger POSTs. The idle gate is 10 seconds. A cold reply applies at once after a key save. Resume does one GET. | ST | N4a |
 | N6 Tally and filters | Tally and Filters views | Sort keys. Search and hide-received do not change Tally counts. The copies list. performAccessibilityAudit. The sort label does not truncate at 375pt. An empty search shows one Clear control. | ST and `xcodebuild test -scheme Manifest -destination 'platform=iOS Simulator,name=iPhone 17'` | N5 (landed) |
 | N7 Orphaned | Orphaned views | One input records an envelope. No auto-assign. A tie has no emphasis. A partial-quantity assign. Undo removes only its delta. performAccessibilityAudit. Assign has Undo and no arm. The composer draft survives a view change. The empty state is one sentence. | ST and `xcodebuild test -scheme Manifest -destination 'platform=iOS Simulator,name=iPhone 17'` | N5 (landed) |
@@ -46,7 +46,6 @@ W2 and W3 come from the owner's rulings, not from the first plan. W2a and W3a ha
 - Batch 3: N2 and N3 (both landed).
 - Batch 4: N5 (landed), beside N4a.
 - Batch 5: N6, N7 and N8 after N5 (landed), with N4b and N9.
-- N4a waits for the stage 4b switch, see `sync-revamp-cloudflare`.
 - N10 waited for W2a, which landed in PR #77, because the owner ruled the Worker photo route first.
 
 ## N1 notes
@@ -88,5 +87,6 @@ Other risks live in the record for their lane:
 - `native-swift-rebuild` — the ruling and the reasons for the rebuild.
 - `native-parity-table` — the scope of each feature.
 - `native-ci-on-hosted-macos` — the job that lane C1 adds.
+- `one-simulator-per-mac` — the lock that every lane takes before it uses the simulator.
 - `rules-run-in-javascriptcore` — why S2, S3 and N1 exist.
 - `worker-keeps-snapshots` — the ruling behind lane W3.
