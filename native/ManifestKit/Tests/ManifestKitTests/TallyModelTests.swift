@@ -3,7 +3,7 @@
 // Web behaviour pinned: tally-pools-on-the-exact-name, tally-sort-keys-are-six,
 // search-hide-keep-tally-counts, tally-row-lists-its-copies, card-tally-row-counts-first.
 // The pooling, sorting and filtering rules stay in the bundle (rules.js); the model only
-// calls them. TallyBundleProbeTests proves the call. Row text is pinned by value from
+// calls them. The two probe tests at the end prove the call. Row text is pinned by value from
 // ItemTotalRow in src/app.jsx.
 //
 // Red-first. TallyRedStub.swift (this folder) stands in for the product types, with wrong

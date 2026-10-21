@@ -19,8 +19,9 @@
 //   Empty search: no row, and exactly one button whose label has "clear" in it, labelled "Clear search".
 //     The system clear button of a search field counts, so a builder using one must not add a second.
 //
-// Not proven here: that .textClipped finds a truncated sort label. testTextClippedAuditCanFail is the control for
-// that audit type. The other half of the sort-label case is the bounds check on the control.
+// testTextClippedAuditCanFail is a control, not a red-first case. It passes on main: the clipped-text audit does
+// find clipped text in the existing screens at a very narrow width. That is all it shows. No Tally view exists,
+// so no run has yet shown the audit flag a clipped sort label. The bounds check on the control is the other half.
 //
 // Every key here is fake. The tests read no Keychain item.
 
