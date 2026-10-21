@@ -22,7 +22,7 @@ The web lane is L11 in `ux-house-rules-govern`.
 
 ## The native bar
 
-The Swift app uses the system tab bar, built in lane N5, see `native-build-lanes`. The system tab bar gives the real iOS 26 glass. In N5, Ledger, Orphaned and Tally are placeholder screens. Tally and Orphaned are built in lanes N6 and N7. The Ledger tab has no lane yet.
+The Swift app uses the system tab bar, built in lane N5, see `native-build-lanes`. The system tab bar gives the real iOS 26 glass. Ledger and Orphaned are placeholder screens. Tally is built in lane N6, and Orphaned is built in lane N7. The Ledger tab has no lane yet.
 
 Orchestrator default, 2026-10-12, N5: the native app is iPhone-only (`TARGETED_DEVICE_FAMILY` 1). The four tabs, left to right, are Ledger (`gearshape`), Orphaned (`envelope.badge`), Tally (`number`) and Packages (`shippingbox`). `RootView` builds them.
 
