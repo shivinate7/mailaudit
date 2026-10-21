@@ -123,6 +123,21 @@ import { fileURLToPath } from "node:url";
 
 const fresh = () => boot({ items: ITEMS, received: {} });
 
+/* A package card, found by its seller's text and never by its header's tag. The
+   header holds selectable text and is not a button (owner ruling 2026-10-20, group
+   75), so the old lookup, the first button that shows the seller, finds nothing.
+   A card is the nearest ancestor with the 8px corner (decision
+   spacing-on-4px-grid). No such ancestor means no card, so a filtered-out package
+   is undefined here, as it was. */
+const packageCard = (re) => {
+  const seller = [...document.body.querySelectorAll("*")].find((e) =>
+    re.test([...e.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent).join("").trim())
+  );
+  for (let n = seller; n && n !== document.body; n = n.parentElement)
+    if (/border-radius:\s*8px/.test(n.getAttribute("style") ?? "")) return n;
+  return undefined;
+};
+
 /* The GitHub verbs the switch forbids (owner ruling 2026-10-14 21:12 CDT, decision
    sync-revamp-cloudflare). Groups 25 to 58 read them through githubOps(). Group 71
    keeps its own list, GITHUB_CALLS71. */
@@ -448,7 +463,7 @@ eq(allBtns(/^This one$/).length, 1, "11.1 Ponder's package offered");
 /* check that package off by hand elsewhere; packages render expanded, so reach
    into the right card rather than grabbing the first button on the page */
 await goTo("packages");
-const gamma = btn(/Gamma Cards/).parentElement;
+const gamma = packageCard(/Gamma Cards/);
 await click(
   [...gamma.querySelectorAll("button")].find((b) => /Mark all received/.test(b.textContent)),
   "mark Gamma received"
@@ -580,7 +595,7 @@ const ponderKey = Object.keys(saved().received)[0];
 ok(/Ponder/.test(ponderKey), "14.1 the envelope checked in Ponder");
 
 await goTo("packages");
-const gamma2 = btn(/Gamma Cards/).parentElement;
+const gamma2 = packageCard(/Gamma Cards/);
 await click(
   [...gamma2.querySelectorAll("button")].find((b) => /Mark all received/.test(b.textContent)),
   "mark Gamma received by hand"
@@ -2075,7 +2090,7 @@ const search = () =>
   document.querySelector(
     'input[aria-label="Search cards, sets, sellers and order ids"]'
   );
-const card = (re) => btn(re)?.parentElement;
+const card = packageCard;
 const revealBtn = (c) =>
   [...c.querySelectorAll("button")].find((b) =>
     /in this order|whole order/.test(b.textContent)
