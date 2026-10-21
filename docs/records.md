@@ -258,7 +258,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `key-re-accepts-token-shape` | A GitHub token uses only letters, digits and underscores, so the key check accepts a token as a key. | [`debts/key-re-accepts-token-shape.md`](../debts/key-re-accepts-token-shape.md) |
 | `lost-photo-clock-is-envelope-age` | The 7-day lost-photo clock runs from the envelope's `createdAt`. | [`debts/lost-photo-clock-is-envelope-age.md`](../debts/lost-photo-clock-is-envelope-age.md) |
 | `lost-tile-waits-for-first-post` | The lost tile shows only after the push survey that follows a successful POST. | [`debts/lost-tile-waits-for-first-post.md`](../debts/lost-tile-waits-for-first-post.md) |
-| `n10-photos-unbuilt` | Lane N10 is ruled in `native-build-lanes`, and it is not built. | [`debts/n10-photos-unbuilt.md`](../debts/n10-photos-unbuilt.md) |
 | `n11-device-check-not-run` | Lane N11 is the owner's check on a device, as ruled in `native-build-lanes`, and it has not run. | [`debts/n11-device-check-not-run.md`](../debts/n11-device-check-not-run.md) |
 | `n4b-socket-idle-gate-unbuilt` | Lane N4b is ruled in `native-build-lanes`, and it is not built. | [`debts/n4b-socket-idle-gate-unbuilt.md`](../debts/n4b-socket-idle-gate-unbuilt.md) |
 | `native-dialog-ban-unpinned` | Nothing pins the ban on `window.confirm` and `alert` itself. | [`debts/native-dialog-ban-unpinned.md`](../debts/native-dialog-ban-unpinned.md) |
@@ -268,6 +267,12 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-lanes-n6-to-n9-unbuilt` | `native/` holds no Tally, Orphaned, backup or milestone view on main. | [`debts/native-lanes-n6-to-n9-unbuilt.md`](../debts/native-lanes-n6-to-n9-unbuilt.md) |
 | `native-ledger-pins-missing` | No test pins the millisecond kept-name format, the missing-file case, or the unwrapped-error sentence in Load and save. | [`debts/native-ledger-pins-missing.md`](../debts/native-ledger-pins-missing.md) |
 | `native-ledger-tab-unbuilt` | No lane builds the options that `ledger-tab-holds-options` puts in the Ledger tab. | [`debts/native-ledger-tab-unbuilt.md`](../debts/native-ledger-tab-unbuilt.md) |
+| `native-merge-skips-photo-fetch` | `PhotoSync.pull` downloads the blobs that a ledger names, and it has no caller. | [`debts/native-merge-skips-photo-fetch.md`](../debts/native-merge-skips-photo-fetch.md) |
+| `native-photo-ids-kept-uncalled` | `PhotoIds.kept` holds the rule of `photo-ids-restore-keep-if-known`, and it has no caller. | [`debts/native-photo-ids-kept-uncalled.md`](../debts/native-photo-ids-kept-uncalled.md) |
+| `native-photo-screens-unwired` | Lane N10 built `PhotoStrip`, `PhotoViewer` and `PhotoSyncBar` in `native/Manifest/PhotoViews.swift`. | [`debts/native-photo-screens-unwired.md`](../debts/native-photo-screens-unwired.md) |
+| `native-photo-sweep-unbuilt` | Nothing on native removes a blob that no envelope or draft uses. | [`debts/native-photo-sweep-unbuilt.md`](../debts/native-photo-sweep-unbuilt.md) |
+| `native-photo-transport-unbuilt` | `PhotoSync` moves blobs through the `PhotoTransport` protocol, and no type implements it. | [`debts/native-photo-transport-unbuilt.md`](../debts/native-photo-transport-unbuilt.md) |
+| `native-photo-viewer-unpinned` | `PhotoViewerModelTests` pins the modal state and the focus that Escape and a tap return. | [`debts/native-photo-viewer-unpinned.md`](../debts/native-photo-viewer-unpinned.md) |
 | `native-pull-generation-unpinned` | `SyncClient` drops a GET reply when the store's generation changed, or when the user data differs from what the last reply carried. | [`debts/native-pull-generation-unpinned.md`](../debts/native-pull-generation-unpinned.md) |
 | `native-runner-image-unverified` | Whether the `macos-26` runner image has Xcode 27 and xcodegen is unknown. | [`debts/native-runner-image-unverified.md`](../debts/native-runner-image-unverified.md) |
 | `native-runner-keychain-unverified` | Whether the runner keychain is unlocked is unknown. | [`debts/native-runner-keychain-unverified.md`](../debts/native-runner-keychain-unverified.md) |
