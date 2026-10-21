@@ -95,12 +95,15 @@
         strip that holds a View photo thumbnail and a lost tile, both are 56 by 56
         drawn px (0.5px tolerance), by bounding rect. A content-box tile measures 58.
     16. Order id link (owner ruling 2026-10-21) at 375px touch and 760px, on Alpha's
-        order A1: the id is the one link to tcgplayer.com, and its hit area reaches
-        neither the seller name nor the date line, so no tap meant to collapse the
-        card opens TCGplayer. The chevron toggles on a click (a tap at 375px) and on
-        Enter while the seller name is selected, open or collapsed. At 760px a mouse
-        drag from the seller name into the date line selects text and leaves the card
-        open, and a plain click still collapses it.
+        order A1: the chevron toggles on a click (a tap at 375px) and on Enter while
+        the seller name is selected, open or collapsed. At 760px a mouse drag from the
+        seller name into the date line selects text and leaves the card open, and a
+        plain click still collapses it. Claim 16a, at 320px and 375px touch, with
+        Alpha stamped and not: no real tap on the seller name, the date line or the
+        gap down to the control under the header (the Stamp band, or the Stamp
+        button of the action row) opens TCGplayer. The taps are Chromium touches with a 1px and a 12px radius,
+        on a 1px grid within 32px of the id link's area (8px beyond), so Chromium's
+        touch adjustment is in play. The id line beside the link is not swept.
 
    Reduced motion is on, so animation does not skew the numbers. Exit 0 when all
    checks pass; exit 1 with one `FAIL` line per failure and one summary line. */
@@ -1741,65 +1744,36 @@ async function ledgerRuleCheck(browser) {
 
 /* Claim 16 (owner ruling 2026-10-21 00:10 CDT, lane web/order-id-copy): the package
    header of Alpha's order A1 in a real browser, where jsdom has no layout, no mouse
-   and no key that turns into a click. At 375px touch and at 760px:
-     a. the id link: one <a> with an href on tcgplayer.com whose visible text is
-        "A1". Its touch area (claim 9 grows it to 44px) must not reach the seller
-        name or the date line: a tap meant to collapse the card must never open
-        TCGplayer. Probed by elementFromPoint on a 1px grid over the border box of
-        each line; any point that lands on the link fails. The reach in px prints as
-        a `note` whatever the outcome.
-     b. the chevron toggles while header text is selected (round-1 finding F1): a
-        click (a tap at 375px) and Enter, each on an open and on a collapsed card,
-        each flips the card once. The selection at the moment of the click is read
-        by a capture listener. A click that arrives with no selection proves nothing
-        about F1: that prints a `note`, and the case is reported unknown, not clear.
-     c. at 760px, the Mac case: a mouse drag from the seller name into the date
-        line selects text that holds "Alpha Cards" and leaves the card open. A plain
-        click still collapses the card, and the next opens it.
-   Nothing here clicks the id link: with target _blank it would open tcgplayer.com in
-   a popup, and any request to that host is aborted. The link's click is group 75.
-   The touch area of the link and of the chevron is claim 9's, and their overlap is
-   claim 11's. Phone long-press selection and a Mac double-click or triple-click are
-   unmeasured: no device in this run (debt header-gestures-unmeasured). */
-
-/* Runs in the page. How far the id link's hit area reaches into the seller name and
-   the date line of Alpha's header, by elementFromPoint on a grid over each line's
-   border box (every 1px down, every 4px across). A hit on the link, on its
-   ::after, or on anything inside it counts. */
-const idLinkReach = () => {
-  const textOf = (needle) => {
-    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    for (let n = w.nextNode(); n; n = w.nextNode())
-      if (n.textContent.includes(needle) && !/^(SCRIPT|STYLE)$/.test(n.parentElement.tagName)) return n;
-    return null;
-  };
-  const link = [...document.querySelectorAll("a")].find(
-    (a) => /tcgplayer\.com/i.test(a.href) && a.textContent.trim() === "A1"
-  );
-  const seller = textOf("Alpha Cards")?.parentElement;
-  const date = textOf("2026-07-01")?.parentElement;
-  if (!link || !seller || !date) return null;
-  seller.scrollIntoView({ block: "center", behavior: "instant" });
-  const reach = (el) => {
-    const r = el.getBoundingClientRect();
-    let points = 0;
-    let hits = 0;
-    let top = Infinity;
-    let bottom = -Infinity;
-    for (let y = Math.ceil(r.top) + 0.5; y < r.bottom; y += 1)
-      for (let x = r.left + 2; x < r.right - 2; x += 4) {
-        points++;
-        const hit = document.elementFromPoint(x, y);
-        if (hit && link.contains(hit)) {
-          hits++;
-          top = Math.min(top, y);
-          bottom = Math.max(bottom, y);
-        }
-      }
-    return { points, hits, px: hits ? Math.ceil(bottom - top + 1) : 0 };
-  };
-  return { seller: reach(seller), date: reach(date) };
-};
+   and no key that turns into a click.
+     a. (orderIdTapSweep, 320px and 375px touch) the id link must not take a tap meant
+        for something else. A real tap is a Chromium touch, and Chromium moves a tap
+        that lands near a link onto the link (touch adjustment). elementFromPoint
+        cannot see that move, so the round-2 probe of this claim read 0px while real
+        taps 9px to 11px up the date line, and 6px under the header, opened
+        TCGplayer (finding R2). So the sweep sends real touches through the DevTools
+        protocol, with a 1px and a 12px contact radius, on a 1px grid (8px apart more
+        than 32px from the link's area). It runs on Alpha stamped (a Stamp band under
+        the header) and unstamped (the Stamp button of the action row under it). The
+        grid covers the seller name, the date line, the chevron and the gap down
+        through that control. It skips the
+        link's own 45px touch area and the id line beside it, which is within the
+        contact radius of the link: a tap there may open the link. Any other tap
+        whose click lands on the link fails. Clicks
+        are stopped at the window so no tap changes the card, and any request to
+        tcgplayer.com is aborted.
+     b. (orderIdCheck, 375px touch and 760px) the chevron toggles while header text
+        is selected (round-1 finding F1): a click (a tap at 375px) and Enter, each on
+        an open and on a collapsed card, each flips the card once. The selection at
+        the moment of the click is read by a capture listener. A click that arrives
+        with no selection proves nothing about F1: that prints a `note`, and the case
+        is reported unknown, not clear.
+     c. (orderIdCheck, 760px) the Mac case: a mouse drag from the seller name into
+        the date line selects text that holds "Alpha Cards" and leaves the card open.
+        A plain click still collapses the card, and the next opens it.
+   Nothing here clicks the id link on purpose: its click is group 75. The touch area
+   of the link and of the chevron is claim 9's, and their overlap is claim 11's. Phone
+   long-press selection and a Mac double-click or triple-click are unmeasured: no
+   device in this run (debt header-gestures-unmeasured). */
 
 /* Runs in the page. The seller name's text, selected. */
 const selectSeller = () => {
@@ -1846,6 +1820,201 @@ const headerDragPoints = () => {
   };
 };
 
+/* Runs in the page. Where Alpha's header parts are, for the tap sweep, and a window
+   capture listener that notes every click as 1 (it landed on the id link) or 0, then
+   stops it, so no tap toggles the card or opens the stamp editor and moves the
+   layout under the next tap. The listener is on the window, not on an element, so it
+   gives no element a click handler for Chromium's touch adjustment to find. The id
+   link's touch area is the larger of its box and 45px, as claim 9's CSS grows it. */
+const idTapGeometry = (stamped) => {
+  const textOf = (needle) => {
+    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode())
+      if (n.textContent.includes(needle) && !/^(SCRIPT|STYLE)$/.test(n.parentElement.tagName)) return n;
+    return null;
+  };
+  const link = [...document.querySelectorAll("a")].find(
+    (a) => /tcgplayer\.com/i.test(a.href) && a.textContent.trim() === "A1"
+  );
+  const seller = textOf("Alpha Cards")?.parentElement;
+  const date = textOf("2026-07-01")?.parentElement;
+  /* the control right under the header: the stamp band of a stamped order, else
+     the Stamp button of the card's action row (the first one after the link) */
+  const band = stamped
+    ? document.querySelector('button[aria-label^="Edit stamp on Alpha Cards"]')
+    : link &&
+      [...document.querySelectorAll("button")].find(
+        (b) => link.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING && b.textContent.trim() === "Stamp"
+      );
+  const chevron = document.querySelector('button[aria-expanded][aria-label*="Alpha Cards"]');
+  if (!link || !seller || !date || !band || !chevron) return null;
+  link.scrollIntoView({ block: "center", behavior: "instant" });
+  const box = (el) => {
+    const r = el.getBoundingClientRect();
+    return { l: r.left, t: r.top, r: r.right, b: r.bottom };
+  };
+  const l = box(link);
+  const w = Math.max(l.r - l.l, 45);
+  const h = Math.max(l.b - l.t, 45);
+  const cx = (l.l + l.r) / 2;
+  const cy = (l.t + l.b) / 2;
+  window.__idClicks = [];
+  window.addEventListener(
+    "click",
+    (e) => {
+      window.__idClicks.push(link.contains(e.target) ? 1 : 0);
+      e.stopPropagation();
+      e.preventDefault();
+    },
+    true
+  );
+  return {
+    centre: [cx, cy],
+    zone: { l: cx - w / 2, r: cx + w / 2, t: cy - h / 2, b: cy + h / 2 },
+    seller: box(seller),
+    date: box(date),
+    band: box(band),
+    chevron: box(chevron),
+  };
+};
+
+/* Claim 16a. Real touches, because Chromium moves a tap near a link onto the link
+   and only a real tap shows it. Per contact radius, one batch of taps sent down the
+   DevTools protocol without waiting for each (a tap costs a frame when awaited, and
+   a 1px grid is some ten thousand taps). Every tap makes one click, in order, so the
+   Nth click belongs to the Nth tap; a count or a control that does not match is
+   reported as unknown, not clear. Control taps, on the middle of the link (its
+   click must land on it) and at the far end of the control under the header (its
+   click must not), sit among the sweep to show the clicks still line up with the
+   taps. */
+const ID_TAP_WIDTHS = [320, 375];
+const ID_TAP_RADII = [1, 12];
+/* a tap this near the link's area (or nearer) is probed at every px; farther out,
+   every ID_TAP_FAR_PX, since a 12px contact reaches about 12px and the rest is slack */
+const ID_TAP_NEAR_PX = 32;
+const ID_TAP_FAR_PX = 8;
+const ID_TAP_SENTINEL_EVERY = 250;
+const STAMPED_LEDGER = { ...LEDGER, stamps: AXE_LEDGER.stamps };
+
+async function orderIdTapSweep(browser, width, stamped) {
+  const name = `order id taps ${width}px ${stamped ? "stamped" : "unstamped"}`;
+  const below = stamped ? "Stamp band" : "Stamp button";
+  const { ctx, page, pageErrors } = await openSeeded(browser, width, { touch: true, ledger: stamped ? STAMPED_LEDGER : LEDGER });
+  try {
+    await ctx.route(/tcgplayer\.com/i, (route) => route.abort());
+    if (!(await loadedOk(page))) {
+      checks++;
+      fail(name, "seeded ledger did not render");
+      return;
+    }
+    if (!(await showView(page, "Packages"))) {
+      checks++;
+      fail(name, "the Packages tab did not open");
+      return;
+    }
+    await page.waitForTimeout(250);
+    const g = await page.evaluate(idTapGeometry, stamped);
+    if (!g) {
+      checks++;
+      fail(name, `the id link, the seller name, the date line, the chevron or the ${below} of Alpha's header was not found`);
+      return;
+    }
+    const cdp = await ctx.newCDPSession(page);
+    const dispatch = (points, radius) =>
+      Promise.all(
+        points.flatMap(([x, y]) => [
+          cdp.send("Input.dispatchTouchEvent", {
+            type: "touchStart",
+            touchPoints: [{ x, y, radiusX: radius, radiusY: radius, force: 1, id: 1 }],
+          }),
+          cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] }),
+        ])
+      );
+    const { zone } = g;
+    const regionOf = (y) =>
+      y < g.seller.b
+        ? "seller name"
+        : y < g.date.b
+          ? "date line"
+          : y < zone.t
+            ? "gap above the link"
+            : y <= zone.b
+              ? "chevron"
+              : y < g.band.t
+                ? "header under the link"
+                : below;
+
+    for (const radius of ID_TAP_RADII) {
+      checks++;
+      const label = `${radius}px contact radius`;
+      /* rows run from the seller name's top down through the control under the header, columns
+         across the card. On the rows of the link's own touch area only the chevron's
+         columns are swept: a tap on the chevron must not open TCGplayer, while the
+         id line beside the link is within the contact radius of it and is left out. */
+      const sweep = [];
+      for (let y = Math.floor(g.seller.t); y <= Math.ceil(g.band.b); y++) {
+        const besideLink = y + 0.5 >= zone.t && y + 0.5 <= zone.b;
+        /* a tap is at x + 0.5, so the last column keeps that inside the box */
+        const xEnd = Math.floor((besideLink ? g.chevron.r : g.band.r) - 0.5);
+        for (let x = Math.ceil(g.chevron.l); x <= xEnd; ) {
+          sweep.push([x + 0.5, y + 0.5]);
+          x += x >= zone.l - ID_TAP_NEAR_PX && x <= zone.r + ID_TAP_NEAR_PX ? 1 : ID_TAP_FAR_PX;
+        }
+      }
+      /* sentinels: every ID_TAP_SENTINEL_EVERY taps, one on the middle of the link
+         (its click must land on the link) and then one at the far end of the control under the header
+         (its click must not). They show that clicks still line up with taps. */
+      const farEnd = [g.band.r - 6, (g.band.t + g.band.b) / 2];
+      const sent = [];
+      sweep.forEach((pt, i) => {
+        if (i % ID_TAP_SENTINEL_EVERY === 0) sent.push({ pt: i % (2 * ID_TAP_SENTINEL_EVERY) === 0 ? g.centre : farEnd, want: i % (2 * ID_TAP_SENTINEL_EVERY) === 0 ? 1 : 0 });
+        sent.push({ pt, want: null });
+      });
+      sent.push({ pt: g.centre, want: 1 });
+      const t0 = Date.now();
+      await dispatch(sent.map((t) => t.pt), radius);
+      let settled = true;
+      try {
+        await page.waitForFunction((n) => window.__idClicks.length >= n, sent.length, { timeout: 20000 + 2 * sent.length });
+      } catch {
+        settled = false;
+      }
+      await page.waitForTimeout(100);
+      const clicks = await page.evaluate(() => window.__idClicks.splice(0));
+      if (!settled || clicks.length !== sent.length) {
+        fail(name, `${label}: sent ${sent.length} taps and got ${clicks.length} clicks, so no click can be matched to its tap (unknown, not clear)`);
+        continue;
+      }
+      const drift = sent.findIndex((t, i) => t.want !== null && clicks[i] !== t.want);
+      if (drift >= 0) {
+        fail(name, `${label}: the ${sent[drift].want ? "link-centre" : "far-end"} control tap ${drift} of ${sent.length} got click ${clicks[drift]}, want ${sent[drift].want}, so the clicks do not line up with the taps (unknown, not clear)`);
+        continue;
+      }
+      const bad = sent.filter((t, i) => t.want === null && clicks[i]).map((t) => t.pt);
+      console.log(
+        `note ${name}: ${label}: ${bad.length} of ${sweep.length} taps meant for the header or the ${below} opened TCGplayer (${((Date.now() - t0) / 1000).toFixed(1)}s)`
+      );
+      if (bad.length) {
+        const by = new Map();
+        for (const [x, y] of bad) {
+          const k = regionOf(y);
+          const o = by.get(k) || { n: 0, x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity };
+          by.set(k, { n: o.n + 1, x0: Math.min(o.x0, x), x1: Math.max(o.x1, x), y0: Math.min(o.y0, y), y1: Math.max(o.y1, y) });
+        }
+        const parts = [...by].map(([k, o]) => `${k} ${o.n} (x ${o.x0} to ${o.x1}, y ${o.y0} to ${o.y1})`);
+        fail(
+          name,
+          `${label}: ${bad.length} of ${sweep.length} taps meant for the header or the ${below} opened TCGplayer: ${parts.join("; ")}; ` +
+            `the link's own area is x ${zone.l.toFixed(1)} to ${zone.r.toFixed(1)}, y ${zone.t.toFixed(1)} to ${zone.b.toFixed(1)}`
+        );
+      }
+    }
+    for (const e of pageErrors) fail(name, `page error: ${e}`);
+  } finally {
+    await ctx.close();
+  }
+}
+
 async function orderIdCheck(browser, width) {
   const touch = width === 375;
   const name = `order id ${width}px`;
@@ -1869,34 +2038,18 @@ async function orderIdCheck(browser, width) {
       return;
     }
 
-    /* a. the id link, and how far its touch area reaches */
+    /* the id is the one link to tcgplayer.com (the sweep below taps near it) */
     const links = page.locator("a[href*='tcgplayer.com' i]", { hasText: /^\s*A1\s*$/ });
-    if ((await links.count()) !== 1) {
+    if ((await links.count()) !== 1)
       fail(name, `want one link to tcgplayer.com whose text is the order id A1, found ${await links.count()}`);
-    } else {
-      const reach = await page.evaluate(idLinkReach);
-      if (!reach) {
-        fail(name, "the id link, the seller name or the date line of Alpha's header was not found");
-      } else {
-        console.log(
-          `note ${name}: the id link's hit area reaches ${reach.seller.px}px into the seller name ` +
-            `(${reach.seller.hits} of ${reach.seller.points} points) and ${reach.date.px}px into the date line ` +
-            `(${reach.date.hits} of ${reach.date.points} points)`
-        );
-        if (reach.seller.hits)
-          fail(name, `a tap on the seller name can open TCGplayer: ${reach.seller.hits} of ${reach.seller.points} points land on the id link, ${reach.seller.px}px deep`);
-        if (reach.date.hits)
-          fail(name, `a tap on the date line can open TCGplayer: ${reach.date.hits} of ${reach.date.points} points land on the id link, ${reach.date.px}px deep`);
-      }
-    }
 
-    /* b. the chevron, with header text selected. One capture listener reads the
+    /* the chevron, with header text selected. One capture listener reads the
        selection at the moment of every click. */
     await page.evaluate(() => {
       window.__selAtClick = [];
       document.addEventListener("click", () => window.__selAtClick.push(String(getSelection())), true);
     });
-    const chevron = page.locator('button[aria-expanded][aria-label$="Alpha Cards"]');
+    const chevron = page.locator('button[aria-expanded][aria-label*="Alpha Cards"]');
     if ((await chevron.count()) !== 1) {
       fail(name, `want one chevron button for Alpha's card, found ${await chevron.count()}`);
     } else {
@@ -1947,7 +2100,7 @@ async function orderIdCheck(browser, width) {
       await page.evaluate(() => getSelection().removeAllRanges());
     }
 
-    /* c. the Mac case: drag-select the header text. Mouse only; no touch device here. */
+    /* the Mac case: drag-select the header text. Mouse only; no touch device here. */
     if (!touch) {
       await page.evaluate(() => getSelection().removeAllRanges());
       if ((await rowsOf()) < 3) {
@@ -2125,6 +2278,9 @@ async function main() {
       ...WIDTHS.map((width) => () => gridCheck(browser, { width })),
       () => gridCheck(browser, { width: 375, touch: true }),
       ...WIDTHS.map((width) => () => orderIdCheck(browser, width)),
+      ...ID_TAP_WIDTHS.flatMap((width) =>
+        [false, true].map((stamped) => () => orderIdTapSweep(browser, width, stamped))
+      ),
       ...ROW_SHIFT_CARDS.flatMap((card) =>
         WIDTHS.map((width) => () => rowShiftCheck(browser, { ...card, width }))
       ),

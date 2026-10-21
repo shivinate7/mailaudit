@@ -2210,7 +2210,7 @@ ok(
    Owner ruling 2026-10-21 00:10 CDT (lane web/order-id-copy). It replaces the
    2026-10-20 copy button, its Copied stamp and the separate "TCGplayer" link: all
    three are gone. The header of a package card is plain text, not one button.
-   Four claims:
+   Five claims:
      1. the order id is a link to that order's search on TCGplayer, in a new tab.
         Its click never collapses or opens the card and never checks anything in.
      2. nothing copies: no copy button, no Copied stamp, no status slot, no write to
@@ -2221,16 +2221,21 @@ ok(
         header text is selected (round-1 finding F1). Enter on it is claim 16 of
         test/screens.mjs: jsdom turns no key into a click, and a case here would
         push the build to add a key handler that toggles twice in a browser.
+     5. the chevron is named by the order too: two orders from one seller have two
+        chevrons with two names (round-2 finding R3).
    The build meets this contract, and the cases find things only by it:
      - the order id is the visible text of an <a> inside the card, and that <a> has
        an href on tcgplayer.com. Its accessible name holds the id (axe rule
        label-content-name-mismatch);
      - the seller name and the meta line are elements whose own text is the seller,
        or holds the date, and neither sits inside a button;
-     - the chevron is the button in the card whose aria-label ends with the seller.
+     - the chevron is the button in the card whose aria-label holds the seller. It
+       also holds the order id (round-2 finding R3): two orders from one seller
+       would otherwise have two chevrons with one name. The id's place in the
+       label is the build's choice, so no case pins the wording around it.
    Real ids are hex and dashes (025F898A-605522-F2EDE), which encodeURIComponent
    leaves alone, so no case feeds an id that needs escaping.
-   Cases 75.1 to 75.3, 75.6, 75.11 to 75.14, 75.16 to 75.22 and 75.25 pass at the lane
+   Cases 75.1 to 75.3, 75.6, 75.11 to 75.14, 75.16 to 75.22, 75.25 and 75.26 pass at the lane
    head on purpose. They are guards that a build could break: a second link, a link
    with no noopener, a tap that reaches the header, a toggle that stops working. 75.17
    to 75.20 stop a quick fix that blocks the toggle on any selection, or on any
@@ -2268,7 +2273,7 @@ const tcg75 = (c) =>
 const idText75 = (id) => byOwn75(id);
 const chevron75 = (seller) =>
   [...(cardOf75(seller)?.querySelectorAll("button[aria-expanded]") ?? [])].find((b) =>
-    (b.getAttribute("aria-label") ?? "").endsWith(seller)
+    (b.getAttribute("aria-label") ?? "").includes(seller)
   );
 /* a missing control is one red case on its own claim, not a second "no element" line */
 const tap75 = (el, label) => (el ? click(el, label) : undefined);
@@ -2435,6 +2440,27 @@ try {
   win.getSelection().removeAllRanges();
 
   eq(dialogs75, [], "75.25 none of this opens a native dialog");
+
+  /* 5. two orders from one seller (round-2 finding R3). A screen reader lists the
+     chevrons by name, and "Collapse Beta Games" twice does not say which order. */
+  await boot({
+    items: [
+      ...ITEMS,
+      { ...ITEMS.find((it) => it.orderId === "B1"), key: "B2|0|pBolt", orderId: "B2", name: "Bolt" },
+    ],
+    received: {},
+  });
+  const betaChevrons75 = [...document.body.querySelectorAll("button[aria-expanded]")].filter((b) =>
+    (b.getAttribute("aria-label") ?? "").includes("Beta Games")
+  );
+  eq(betaChevrons75.length, 2, "75.26 two orders from one seller have two chevrons");
+  /* without the verb, which differs when one card is open and the other is not */
+  const betaNames75 = betaChevrons75.map((b) => (b.getAttribute("aria-label") ?? "").replace(/^(Collapse|Expand)\s+/, ""));
+  ok(new Set(betaNames75).size === betaNames75.length, "75.27 and the two chevrons have different names");
+  ok(
+    ["B1", "B2"].every((id) => betaNames75.filter((n) => new RegExp(`\\b${id}\\b`).test(n)).length === 1),
+    "75.28 and each name holds its own order id, B1 on one and B2 on the other"
+  );
 } finally {
   delete win.navigator.clipboard;
   for (const [k, f] of realDialogs75) {
