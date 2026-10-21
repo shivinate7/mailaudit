@@ -25,15 +25,15 @@ final class OrphanedCandidatesTests: XCTestCase {
     /// Loading writes nothing. Recording the same cards through the composer writes the
     /// envelope and checks nothing in either.
     func testAnExactMatchIsOfferedAndNothingIsCheckedIn() async throws {
-        let box = try makeSandbox()
-        try box.write(extra: ["envelopes": [Sandbox.env("e-urza", [("Urza's Saga", 1)])]])
+        let box = try makeOrphanedSandbox()
+        try box.write(extra: ["envelopes": [OrphanedSandbox.env("e-urza", [("Urza's Saga", 1)])]])
         let seeded = try box.bytes()
         let (model, store) = try await box.open()
 
         let ranked = model.ranked(for: "e-urza")
-        XCTAssertEqual(ranked.list.map(\.pkg.gk), [Sandbox.d1], "the one package that fits is offered")
+        XCTAssertEqual(ranked.list.map(\.pkg.gk), [OrphanedSandbox.d1], "the one package that fits is offered")
         XCTAssertEqual(ranked.list.first?.exact, true, "and it is a perfect fit")
-        XCTAssertEqual(ranked.list.first?.plan, [PlanStep(itemKey: Sandbox.d1Saga, take: 1)], "with the exact check-in it would apply")
+        XCTAssertEqual(ranked.list.first?.plan, [PlanStep(itemKey: OrphanedSandbox.d1Saga, take: 1)], "with the exact check-in it would apply")
         XCTAssertEqual(try box.bytes(), seeded, "a load writes nothing")
         XCTAssertEqual(store.generation, 0, "a load is not an edit")
         XCTAssertEqual(store.received(), [String: Int](), "nothing is checked in")
@@ -53,15 +53,15 @@ final class OrphanedCandidatesTests: XCTestCase {
     /// tie, and no tied candidate is emphasized. A single exact fit is emphasized, so the
     /// check can fail: it is the positive control for the tie.
     func testATieHasNoEmphasisAndASingleExactFitDoes() async throws {
-        let box = try makeSandbox()
+        let box = try makeOrphanedSandbox()
         try box.write(extra: ["envelopes": [
-            Sandbox.env("e-tie", [("Lightning Bolt", 1), ("Counterspell", 1), ("Brainstorm", 2)], updated: Sandbox.t0 - 2_000),
-            Sandbox.env("e-one", [("Urza's Saga", 1)], updated: Sandbox.t0 - 1_000),
+            OrphanedSandbox.env("e-tie", [("Lightning Bolt", 1), ("Counterspell", 1), ("Brainstorm", 2)], updated: OrphanedSandbox.t0 - 2_000),
+            OrphanedSandbox.env("e-one", [("Urza's Saga", 1)], updated: OrphanedSandbox.t0 - 1_000),
         ]])
         let (model, _) = try await box.open()
 
         let tie = model.ranked(for: "e-tie")
-        XCTAssertEqual(tie.list.prefix(2).map(\.pkg.gk), [Sandbox.a1, Sandbox.b1], "A and B fit the envelope equally well")
+        XCTAssertEqual(tie.list.prefix(2).map(\.pkg.gk), [OrphanedSandbox.a1, OrphanedSandbox.b1], "A and B fit the envelope equally well")
         XCTAssertEqual(tie.tied, 2, "the tie is counted")
         XCTAssertEqual(tie.list.prefix(2).map(\.exact), [true, true], "both are perfect fits")
         for c in tie.list {
@@ -77,17 +77,17 @@ final class OrphanedCandidatesTests: XCTestCase {
     /// The numbers come from the bundle: how many cards each package explains, what it is
     /// still owed, what the envelope has left over. Best fit first.
     func testCandidatesCarryTheBundlesRanking() async throws {
-        let box = try makeSandbox()
-        try box.write(extra: ["envelopes": [Sandbox.env("e1", [("Lightning Bolt", 1), ("Counterspell", 1)])]])
+        let box = try makeOrphanedSandbox()
+        try box.write(extra: ["envelopes": [OrphanedSandbox.env("e1", [("Lightning Bolt", 1), ("Counterspell", 1)])]])
         let (model, _) = try await box.open()
 
         let r = model.ranked(for: "e1")
-        XCTAssertEqual(r.list.map(\.pkg.gk), [Sandbox.a1, Sandbox.b1, Sandbox.c1], "two packages fit both cards, one fits one")
+        XCTAssertEqual(r.list.map(\.pkg.gk), [OrphanedSandbox.a1, OrphanedSandbox.b1, OrphanedSandbox.c1], "two packages fit both cards, one fits one")
         XCTAssertEqual(r.tied, 2)
         let a = try XCTUnwrap(r.list.first)
         XCTAssertEqual([a.matchedQty, a.entriesTotal, a.poolTotal, a.pkgLeft, a.envLeft], [2, 2, 4, 2, 0], "A explains 2 of 2 and is owed 2 more")
         XCTAssertFalse(a.exact, "A is owed more than the envelope holds, so it is not a perfect fit")
-        XCTAssertEqual(a.plan.map(\.itemKey).sorted(), [Sandbox.a1Bolt, Sandbox.a1Counter].sorted(), "the plan names the two lines")
+        XCTAssertEqual(a.plan.map(\.itemKey).sorted(), [OrphanedSandbox.a1Bolt, OrphanedSandbox.a1Counter].sorted(), "the plan names the two lines")
         let c = try XCTUnwrap(r.list.last)
         XCTAssertEqual([c.matchedQty, c.envLeft], [1, 1], "C explains one card and cannot explain the other")
     }
@@ -98,10 +98,10 @@ final class OrphanedCandidatesTests: XCTestCase {
     /// the entry is not explainable. In a mixed envelope only the entry a package can
     /// explain is explainable (the "no outstanding copy" tag).
     func testACardNobodyOwesGetsNoCandidateAndNoExplanation() async throws {
-        let box = try makeSandbox()
+        let box = try makeOrphanedSandbox()
         try box.write(extra: ["envelopes": [
-            Sandbox.env("e-none", [("Mystery Card", 1)]),
-            Sandbox.env("e-mix", [("Path to Exile", 1), ("Mystery Card", 1)]),
+            OrphanedSandbox.env("e-none", [("Mystery Card", 1)]),
+            OrphanedSandbox.env("e-mix", [("Path to Exile", 1), ("Mystery Card", 1)]),
         ]])
         let (model, _) = try await box.open()
 
@@ -111,7 +111,7 @@ final class OrphanedCandidatesTests: XCTestCase {
         XCTAssertEqual(none.explainable, Set<String>())
 
         let mix = model.ranked(for: "e-mix")
-        XCTAssertEqual(mix.list.map(\.pkg.gk), [Sandbox.c1], "only C holds Path to Exile")
+        XCTAssertEqual(mix.list.map(\.pkg.gk), [OrphanedSandbox.c1], "only C holds Path to Exile")
         XCTAssertEqual(mix.explainable, ["path to exile"], "Mystery Card has no outstanding copy anywhere")
         XCTAssertEqual(model.ranked(for: "no-such-envelope").list.count, 0, "an unknown id has no candidates")
     }
@@ -119,20 +119,20 @@ final class OrphanedCandidatesTests: XCTestCase {
     /// A canceled order is not offered and its cards are not suggested. The positive anchor is
     /// another envelope in the same ledger that does get a candidate.
     func testCanceledOrdersAreNeverOffered() async throws {
-        let box = try makeSandbox()
-        var items = try Sandbox.fixtureItems()
+        let box = try makeOrphanedSandbox()
+        var items = try OrphanedSandbox.fixtureItems()
         items.append([
             "key": "X1|0|pBlackLotus", "orderId": "X1", "seller": "Xi Cards", "name": "Black Lotus", "set": "Test Set",
             "condition": "Near Mint", "finish": "", "qty": 1, "price": 9, "date": "2026-08-01", "tracking": "Canceled",
             "line": "Magic",
         ])
         try box.write(items: items, extra: ["envelopes": [
-            Sandbox.env("e-lotus", [("Black Lotus", 1)]),
-            Sandbox.env("e-path", [("Path to Exile", 1)]),
+            OrphanedSandbox.env("e-lotus", [("Black Lotus", 1)]),
+            OrphanedSandbox.env("e-path", [("Path to Exile", 1)]),
         ]])
         let (model, _) = try await box.open()
 
-        XCTAssertEqual(model.ranked(for: "e-path").list.map(\.pkg.gk), [Sandbox.c1], "anchor: a live order is offered")
+        XCTAssertEqual(model.ranked(for: "e-path").list.map(\.pkg.gk), [OrphanedSandbox.c1], "anchor: a live order is offered")
         XCTAssertEqual(model.ranked(for: "e-lotus").list.count, 0, "a canceled order is not offered")
         let found = await model.suggestions(for: "lotus")
         XCTAssertEqual(found, [], "and its card is not suggested")
@@ -143,13 +143,13 @@ final class OrphanedCandidatesTests: XCTestCase {
     /// A package received by other means stops being offered at once, with nothing stale to
     /// clean up. The saved envelope is the same bytes before and after.
     func testAPackageReceivedByOtherMeansStopsBeingOffered() async throws {
-        let box = try makeSandbox()
-        try box.write(extra: ["envelopes": [Sandbox.env("e1", [("Path to Exile", 1)])]])
+        let box = try makeOrphanedSandbox()
+        try box.write(extra: ["envelopes": [OrphanedSandbox.env("e1", [("Path to Exile", 1)])]])
         let (model, store) = try await box.open()
-        XCTAssertEqual(model.ranked(for: "e1").list.map(\.pkg.gk), [Sandbox.c1], "anchor: C is offered first")
+        XCTAssertEqual(model.ranked(for: "e1").list.map(\.pkg.gk), [OrphanedSandbox.c1], "anchor: C is offered first")
         let envelopeBefore = try JSONSerialization.data(withJSONObject: try box.savedEnvelope("e1"), options: [.sortedKeys])
 
-        try store.commitReceived(Sandbox.c1Path, count: 1)
+        try store.commitReceived(OrphanedSandbox.c1Path, count: 1)
         try await model.load()
 
         XCTAssertEqual(model.ranked(for: "e1").list.count, 0, "C is not offered once its Path to Exile is in")

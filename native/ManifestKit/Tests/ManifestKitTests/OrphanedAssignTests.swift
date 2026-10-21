@@ -21,24 +21,24 @@ final class OrphanedAssignTests: XCTestCase {
     /// Lightning Bolt and Path to Exile go to C. C also owes Swords, Ponder and Preordain,
     /// and A and B owe a Lightning Bolt. None of those is touched. Other check-in times stay put.
     func testAssignChecksInOnlyTheRecordedCards() async throws {
-        let box = try makeSandbox()
+        let box = try makeOrphanedSandbox()
         try box.write(extra: [
-            "receivedAt": ["Z9|0|pOld": Sandbox.t0 - 5_000],
-            "envelopes": [Sandbox.env("e1", [("Lightning Bolt", 1), ("Path to Exile", 1)])],
+            "receivedAt": ["Z9|0|pOld": OrphanedSandbox.t0 - 5_000],
+            "envelopes": [OrphanedSandbox.env("e1", [("Lightning Bolt", 1), ("Path to Exile", 1)])],
         ])
         let (model, store) = try await box.open()
-        XCTAssertEqual(model.ranked(for: "e1").list.first?.pkg.gk, Sandbox.c1, "anchor: C is the best fit")
+        XCTAssertEqual(model.ranked(for: "e1").list.first?.pkg.gk, OrphanedSandbox.c1, "anchor: C is the best fit")
         let before = store.generation
-        box.clock.t = Sandbox.t0 + 1_000
+        box.clock.t = OrphanedSandbox.t0 + 1_000
 
-        try await model.assign(envelope: "e1", to: Sandbox.c1)
+        try await model.assign(envelope: "e1", to: OrphanedSandbox.c1)
 
         XCTAssertEqual(
-            try box.savedReceived(), [Sandbox.c1Bolt: 1, Sandbox.c1Path: 1],
+            try box.savedReceived(), [OrphanedSandbox.c1Bolt: 1, OrphanedSandbox.c1Path: 1],
             "exactly the two recorded cards are in: no other line of C, no line of A or B")
         XCTAssertEqual(
             try box.savedReceivedAt(),
-            ["Z9|0|pOld": Sandbox.t0 - 5_000, Sandbox.c1Bolt: Sandbox.t0 + 1_000, Sandbox.c1Path: Sandbox.t0 + 1_000],
+            ["Z9|0|pOld": OrphanedSandbox.t0 - 5_000, OrphanedSandbox.c1Bolt: OrphanedSandbox.t0 + 1_000, OrphanedSandbox.c1Path: OrphanedSandbox.t0 + 1_000],
             "each check-in is stamped with the store's clock, and other stamps stay")
         XCTAssertGreaterThan(store.generation, before, "an assign bumps the generation the sync client reads")
         XCTAssertEqual(store.received(), try box.savedReceived(), "the store and the file agree")
@@ -47,32 +47,32 @@ final class OrphanedAssignTests: XCTestCase {
     /// Group 20 on the web: a quantity-2 line takes the one copy that was recorded, not the whole line.
     /// A second recorded copy brings it to 2.
     func testPartialQuantityAssignLandsOnlyTheRecordedCopies() async throws {
-        let box = try makeSandbox()
+        let box = try makeOrphanedSandbox()
         try box.write(extra: ["envelopes": [
-            Sandbox.env("e1", [("Brainstorm", 1)], updated: Sandbox.t0 - 2_000),
-            Sandbox.env("e2", [("Brainstorm", 1)], updated: Sandbox.t0 - 1_000),
+            OrphanedSandbox.env("e1", [("Brainstorm", 1)], updated: OrphanedSandbox.t0 - 2_000),
+            OrphanedSandbox.env("e2", [("Brainstorm", 1)], updated: OrphanedSandbox.t0 - 1_000),
         ]])
         let (model, _) = try await box.open()
 
-        try await model.assign(envelope: "e1", to: Sandbox.a1)
-        XCTAssertEqual(try box.savedReceived(), [Sandbox.a1Brain: 1], "one copy of a quantity-2 line reads 1, not 2")
+        try await model.assign(envelope: "e1", to: OrphanedSandbox.a1)
+        XCTAssertEqual(try box.savedReceived(), [OrphanedSandbox.a1Brain: 1], "one copy of a quantity-2 line reads 1, not 2")
         XCTAssertEqual(model.undo?.matchedQty, 1)
 
-        try await model.assign(envelope: "e2", to: Sandbox.a1)
-        XCTAssertEqual(try box.savedReceived(), [Sandbox.a1Brain: 2], "the second recorded copy completes the line")
+        try await model.assign(envelope: "e2", to: OrphanedSandbox.a1)
+        XCTAssertEqual(try box.savedReceived(), [OrphanedSandbox.a1Brain: 2], "the second recorded copy completes the line")
     }
 
     /// A card the envelope holds more of than the package owes: the package takes what it owes,
     /// and the rest stays in the envelope.
     func testAnEnvelopeHoldingMoreThanIsOwedKeepsTheRest() async throws {
-        let box = try makeSandbox()
-        try box.write(extra: ["envelopes": [Sandbox.env("e1", [("Brainstorm", 3)])]])
+        let box = try makeOrphanedSandbox()
+        try box.write(extra: ["envelopes": [OrphanedSandbox.env("e1", [("Brainstorm", 3)])]])
         let (model, _) = try await box.open()
 
-        try await model.assign(envelope: "e1", to: Sandbox.a1)
+        try await model.assign(envelope: "e1", to: OrphanedSandbox.a1)
 
-        XCTAssertEqual(try box.savedReceived(), [Sandbox.a1Brain: 2], "A owes two copies, so it takes two")
-        XCTAssertEqual(model.envelopes.map(\.entries), [cards(("Brainstorm", 1))], "one copy stays in the envelope")
+        XCTAssertEqual(try box.savedReceived(), [OrphanedSandbox.a1Brain: 2], "A owes two copies, so it takes two")
+        XCTAssertEqual(model.envelopes.map(\.entries), [orphanedCards(("Brainstorm", 1))], "one copy stays in the envelope")
         XCTAssertEqual(model.undo?.leftoverQty, 1)
     }
 
@@ -82,27 +82,27 @@ final class OrphanedAssignTests: XCTestCase {
     /// createdAt and note, in their order. updatedAt moves to now, or the other device's larger,
     /// stale copy would win the merge and bring back the cards just checked in.
     func testAPartialAssignShrinksTheEnvelopeWithAFreshStamp() async throws {
-        let box = try makeSandbox()
-        let created = Sandbox.t0 - Sandbox.day
+        let box = try makeOrphanedSandbox()
+        let created = OrphanedSandbox.t0 - OrphanedSandbox.day
         try box.write(extra: ["envelopes": [
-            Sandbox.env("e1", [("Counterspell", 1), ("Black Lotus", 1), ("Brainstorm", 3)], created: created,
-                        updated: Sandbox.t0 - 1_000, note: "from box", photos: ["pho-1"], extra: ["colour": "manila"]),
+            OrphanedSandbox.env("e1", [("Counterspell", 1), ("Black Lotus", 1), ("Brainstorm", 3)], created: created,
+                        updated: OrphanedSandbox.t0 - 1_000, note: "from box", photos: ["pho-1"], extra: ["colour": "manila"]),
         ]])
         let (model, _) = try await box.open()
-        box.clock.t = Sandbox.t0 + 2_000
+        box.clock.t = OrphanedSandbox.t0 + 2_000
 
-        try await model.assign(envelope: "e1", to: Sandbox.a1)
+        try await model.assign(envelope: "e1", to: OrphanedSandbox.a1)
 
-        XCTAssertEqual(try box.savedReceived(), [Sandbox.a1Counter: 1, Sandbox.a1Brain: 2], "the cards A explains are in")
+        XCTAssertEqual(try box.savedReceived(), [OrphanedSandbox.a1Counter: 1, OrphanedSandbox.a1Brain: 2], "the cards A explains are in")
         let e = try box.savedEnvelope("e1")
         XCTAssertNil(e["deletedAt"], "a shrunk envelope is still live")
-        XCTAssertEqual(Sandbox.entries(of: e), cards(("Black Lotus", 1), ("Brainstorm", 1)), "the unexplained entries stay, in order")
-        XCTAssertEqual(e["updatedAt"] as? Double, Sandbox.t0 + 2_000, "a shrunk envelope gets a fresh updatedAt")
+        XCTAssertEqual(OrphanedSandbox.entries(of: e), orphanedCards(("Black Lotus", 1), ("Brainstorm", 1)), "the unexplained entries stay, in order")
+        XCTAssertEqual(e["updatedAt"] as? Double, OrphanedSandbox.t0 + 2_000, "a shrunk envelope gets a fresh updatedAt")
         XCTAssertEqual(e["createdAt"] as? Double, created, "and keeps createdAt")
         XCTAssertEqual(e["note"] as? String, "from box", "and its note")
         XCTAssertEqual(e["photos"] as? [String], ["pho-1"], "and its photos")
         XCTAssertEqual(e["colour"] as? String, "manila", "and any field the client does not name")
-        XCTAssertEqual(model.envelopes.map(\.entries), [cards(("Black Lotus", 1), ("Brainstorm", 1))])
+        XCTAssertEqual(model.envelopes.map(\.entries), [orphanedCards(("Black Lotus", 1), ("Brainstorm", 1))])
         XCTAssertEqual(model.undo, UndoNotice(matchedQty: 3, leftoverQty: 2, index: 0, pkgLabel: "Alpha Cards"))
         XCTAssertFalse(model.ranked(for: "e1").explainable.contains("black lotus"), "the Lotus has no outstanding copy anywhere")
     }
@@ -110,19 +110,19 @@ final class OrphanedAssignTests: XCTestCase {
     /// An envelope that is fully explained leaves a tombstone, not a hole: deletedAt and updatedAt
     /// are now, entries and photos are empty, and the id and createdAt stay.
     func testAFullAssignWritesATombstone() async throws {
-        let box = try makeSandbox()
-        let created = Sandbox.t0 - Sandbox.day
+        let box = try makeOrphanedSandbox()
+        let created = OrphanedSandbox.t0 - OrphanedSandbox.day
         try box.write(extra: ["envelopes": [
-            Sandbox.env("e1", [("Counterspell", 1)], created: created, updated: Sandbox.t0 - 1_000, photos: ["pho-1"]),
+            OrphanedSandbox.env("e1", [("Counterspell", 1)], created: created, updated: OrphanedSandbox.t0 - 1_000, photos: ["pho-1"]),
         ]])
         let (model, _) = try await box.open()
-        box.clock.t = Sandbox.t0 + 3_000
+        box.clock.t = OrphanedSandbox.t0 + 3_000
 
-        try await model.assign(envelope: "e1", to: Sandbox.a1)
+        try await model.assign(envelope: "e1", to: OrphanedSandbox.a1)
 
         let e = try box.savedEnvelope("e1")
-        XCTAssertEqual(e["deletedAt"] as? Double, Sandbox.t0 + 3_000, "a full assign sets deletedAt")
-        XCTAssertEqual(e["updatedAt"] as? Double, Sandbox.t0 + 3_000, "and updatedAt, so a stale copy cannot revive it")
+        XCTAssertEqual(e["deletedAt"] as? Double, OrphanedSandbox.t0 + 3_000, "a full assign sets deletedAt")
+        XCTAssertEqual(e["updatedAt"] as? Double, OrphanedSandbox.t0 + 3_000, "and updatedAt, so a stale copy cannot revive it")
         XCTAssertEqual((e["entries"] as? [Any])?.count, 0, "entries are emptied")
         XCTAssertEqual((e["photos"] as? [Any])?.count, 0, "photos are emptied")
         XCTAssertEqual(e["createdAt"] as? Double, created, "createdAt stays")
@@ -154,15 +154,15 @@ final class OrphanedAssignTests: XCTestCase {
         try (real + override).write(to: probe, atomically: true, encoding: .utf8)
         addTeardownBlock { try? FileManager.default.removeItem(at: probe) }
 
-        let box = try makeSandbox()
-        try box.write(extra: ["envelopes": [Sandbox.env("e1", [("Brainstorm", 2)])]])
+        let box = try makeOrphanedSandbox()
+        try box.write(extra: ["envelopes": [OrphanedSandbox.env("e1", [("Brainstorm", 2)])]])
         let (model, _) = try await box.open(bundle: probe)
-        let offered = model.ranked(for: "e1").list.first { $0.pkg.gk == Sandbox.a1 }
-        XCTAssertEqual(offered?.plan, [PlanStep(itemKey: Sandbox.a1Brain, take: 1)], "anchor: the model reads the probe's plan")
+        let offered = model.ranked(for: "e1").list.first { $0.pkg.gk == OrphanedSandbox.a1 }
+        XCTAssertEqual(offered?.plan, [PlanStep(itemKey: OrphanedSandbox.a1Brain, take: 1)], "anchor: the model reads the probe's plan")
 
-        try await model.assign(envelope: "e1", to: Sandbox.a1)
+        try await model.assign(envelope: "e1", to: OrphanedSandbox.a1)
 
-        XCTAssertEqual(try box.savedReceived(), [Sandbox.a1Brain: 1], "assign wrote the bundle's plan")
+        XCTAssertEqual(try box.savedReceived(), [OrphanedSandbox.a1Brain: 1], "assign wrote the bundle's plan")
     }
 
     // MARK: the notice, one call
@@ -170,18 +170,18 @@ final class OrphanedAssignTests: XCTestCase {
     /// One call checks in. Nothing is armed, nothing asks again. The Undo notice names the
     /// seller and the counts, and it sits at the pile slot the envelope left.
     func testAssignLeavesAnUndoAtTheSlotTheEnvelopeLeft() async throws {
-        let box = try makeSandbox()
+        let box = try makeOrphanedSandbox()
         try box.write(extra: ["envelopes": [
-            Sandbox.env("e0", [("Ponder", 1)]),
-            Sandbox.env("e1", [("Counterspell", 1)]),
-            Sandbox.env("e2", [("Preordain", 1)]),
+            OrphanedSandbox.env("e0", [("Ponder", 1)]),
+            OrphanedSandbox.env("e1", [("Counterspell", 1)]),
+            OrphanedSandbox.env("e2", [("Preordain", 1)]),
         ]])
         let (model, _) = try await box.open()
         XCTAssertNil(model.undo, "anchor: no notice before an assign")
 
-        try await model.assign(envelope: "e1", to: Sandbox.a1)
+        try await model.assign(envelope: "e1", to: OrphanedSandbox.a1)
 
-        XCTAssertEqual(try box.savedReceived(), [Sandbox.a1Counter: 1], "the one call checked the card in")
+        XCTAssertEqual(try box.savedReceived(), [OrphanedSandbox.a1Counter: 1], "the one call checked the card in")
         XCTAssertEqual(model.undo, UndoNotice(matchedQty: 1, leftoverQty: 0, index: 1, pkgLabel: "Alpha Cards"))
         XCTAssertEqual(model.envelopes.map(\.id), ["e0", "e2"], "the others keep their order")
     }
@@ -191,18 +191,18 @@ final class OrphanedAssignTests: XCTestCase {
     /// An assign names a package, and the package must be one the envelope was offered. D does not
     /// hold a Lightning Bolt. An unknown envelope is refused too. Nothing is written either time.
     func testAssignRefusesAPackageThatWasNotOffered() async throws {
-        let box = try makeSandbox()
-        try box.write(extra: ["envelopes": [Sandbox.env("e1", [("Lightning Bolt", 1)])]])
+        let box = try makeOrphanedSandbox()
+        try box.write(extra: ["envelopes": [OrphanedSandbox.env("e1", [("Lightning Bolt", 1)])]])
         let (model, store) = try await box.open()
         XCTAssertEqual(model.ranked(for: "e1").list.count, 3, "anchor: A, B and C are offered")
         let bytes = try box.bytes()
 
         do {
-            try await model.assign(envelope: "e1", to: Sandbox.d1)
+            try await model.assign(envelope: "e1", to: OrphanedSandbox.d1)
             XCTFail("assign to a package that was not offered must throw")
         } catch {}
         do {
-            try await model.assign(envelope: "no-such-envelope", to: Sandbox.a1)
+            try await model.assign(envelope: "no-such-envelope", to: OrphanedSandbox.a1)
             XCTFail("assign of an unknown envelope must throw")
         } catch {}
 
@@ -215,10 +215,10 @@ final class OrphanedAssignTests: XCTestCase {
     /// happened: not in the file, not in the store, not on screen.
     func testAFailedSaveLeavesTheAssignWhole() async throws {
         try XCTSkipIf(getuid() == 0, "root can write into a read-only folder")
-        let box = try makeSandbox()
+        let box = try makeOrphanedSandbox()
         try box.write(extra: ["envelopes": [
-            Sandbox.env("e1", [("Counterspell", 1), ("Black Lotus", 1)]),
-            Sandbox.env("e2", [("Ponder", 1)]),
+            OrphanedSandbox.env("e1", [("Counterspell", 1), ("Black Lotus", 1)]),
+            OrphanedSandbox.env("e2", [("Ponder", 1)]),
         ]])
         let (model, store) = try await box.open()
         let bytes = try box.bytes()
@@ -229,7 +229,7 @@ final class OrphanedAssignTests: XCTestCase {
         // The atomic write needs a new file beside the ledger, so a read-only folder makes the save throw.
         try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: box.dir.path)
         do {
-            try await model.assign(envelope: "e1", to: Sandbox.a1)
+            try await model.assign(envelope: "e1", to: OrphanedSandbox.a1)
             XCTFail("an assign must throw when the save fails")
         } catch {}
 
@@ -246,13 +246,13 @@ final class OrphanedAssignTests: XCTestCase {
     /// An edit changes only received, receivedAt and envelopes. A top-level field the client
     /// does not know, and every item, pass through an assign and its undo.
     func testAssignAndUndoPassUnknownFieldsAndItemsThrough() async throws {
-        let box = try makeSandbox()
+        let box = try makeOrphanedSandbox()
         try box.write(extra: [
             "zzFuture": ["a": [1, 2]],
-            "envelopes": [Sandbox.env("e1", [("Counterspell", 1), ("Black Lotus", 1)])],
+            "envelopes": [OrphanedSandbox.env("e1", [("Counterspell", 1), ("Black Lotus", 1)])],
         ])
         let (model, _) = try await box.open()
-        let items = try JSONSerialization.data(withJSONObject: try Sandbox.fixtureItems(), options: [.sortedKeys])
+        let items = try JSONSerialization.data(withJSONObject: try OrphanedSandbox.fixtureItems(), options: [.sortedKeys])
         let future = try JSONSerialization.data(withJSONObject: ["a": [1, 2]], options: [.sortedKeys])
 
         func assertUntouched(_ when: String) throws {
@@ -265,8 +265,8 @@ final class OrphanedAssignTests: XCTestCase {
                 try JSONSerialization.data(withJSONObject: try XCTUnwrap(saved["zzFuture"], "zzFuture after \(when)"), options: [.sortedKeys]),
                 future, "the unknown field after \(when)")
         }
-        try await model.assign(envelope: "e1", to: Sandbox.a1)
-        XCTAssertEqual(try box.savedReceived(), [Sandbox.a1Counter: 1], "anchor: the assign was written")
+        try await model.assign(envelope: "e1", to: OrphanedSandbox.a1)
+        XCTAssertEqual(try box.savedReceived(), [OrphanedSandbox.a1Counter: 1], "anchor: the assign was written")
         try assertUntouched("an assign")
         try await model.undoAssign()
         try assertUntouched("an undo")

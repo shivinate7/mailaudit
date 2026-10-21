@@ -90,14 +90,14 @@ import XCTest
 @testable import ManifestKit
 
 /// A clock the test moves. The store reads it through `now`.
-final class Clock: @unchecked Sendable {
+final class OrphanedClock: @unchecked Sendable {
     var t: Double
     init(_ t: Double) { self.t = t }
 }
 
 /// A ledger folder in the temp directory, with its own clock. The folder is removed
 /// (and made writable first) when the test ends.
-final class Sandbox: @unchecked Sendable {
+final class OrphanedSandbox: @unchecked Sendable {
     static let t0: Double = 1_786_543_380_000
     static let day: Double = 86_400_000
 
@@ -110,7 +110,7 @@ final class Sandbox: @unchecked Sendable {
     static let d1Saga = "D1|0|pUrzasSaga"
 
     let dir: URL
-    let clock = Clock(Sandbox.t0)
+    let clock = OrphanedClock(OrphanedSandbox.t0)
     var fileURL: URL { dir.appending(path: "ledger.json") }
 
     init() throws {
@@ -197,8 +197,8 @@ final class Sandbox: @unchecked Sendable {
 
 extension XCTestCase {
     /// A fresh sandbox that is removed when the test ends.
-    func makeSandbox() throws -> Sandbox {
-        let box = try Sandbox()
+    func makeOrphanedSandbox() throws -> OrphanedSandbox {
+        let box = try OrphanedSandbox()
         let dir = box.dir
         addTeardownBlock {
             try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: dir.path)
@@ -208,7 +208,7 @@ extension XCTestCase {
     }
 }
 
-/// Entries as the model reports them: cards(("Lightning Bolt", 2), ("Counterspell", 1)).
-func cards(_ pairs: (String, Int)...) -> [EnvelopeEntry] {
+/// Entries as the model reports them: orphanedCards(("Lightning Bolt", 2), ("Counterspell", 1)).
+func orphanedCards(_ pairs: (String, Int)...) -> [EnvelopeEntry] {
     pairs.map { EnvelopeEntry(name: $0.0, qty: $0.1) }
 }
