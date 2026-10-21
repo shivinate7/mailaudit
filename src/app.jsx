@@ -832,7 +832,7 @@ function PackageCard({
       >
         <button
           aria-expanded={open}
-          aria-label={`${open ? "Collapse" : "Expand"} ${pkg.seller}`}
+          aria-label={`${open ? "Collapse" : "Expand"} ${pkg.seller}, order ${pkg.orderId}`}
           onClick={(e) => {
             e.stopPropagation();
             setOpen((o) => !o);
@@ -865,7 +865,7 @@ function PackageCard({
             ▶
           </span>
         </button>
-        <div style={{ flex: 1, minWidth: 0, padding: "12px 12px 16px 4px" }}>
+        <div style={{ flex: 1, minWidth: 0, padding: "12px 12px 28px 4px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div
@@ -968,7 +968,7 @@ function PackageCard({
             style={{
               display: "flex",
               alignItems: "center",
-              marginTop: 16,
+              marginTop: 28,
               fontFamily: mono,
               fontSize: 11,
               lineHeight: "16px",
