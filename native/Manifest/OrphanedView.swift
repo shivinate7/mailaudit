@@ -81,8 +81,7 @@ private struct ComposerView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(target == .new ? "New envelope" : "Edit envelope").font(.headline)
             TextField("Type a card name\u{2026}", text: Binding(get: { model.draft(for: target).input }, set: { model.setInput($0, for: target) }))
-                .textFieldStyle(.roundedBorder).focused($focused).submitLabel(.done)
-                .frame(minHeight: 44)
+                .inputBox().focused($focused).submitLabel(.done)
                 .onSubmit { Task { try? await model.addName(model.draft(for: target).input, for: target) } }
                 .accessibilityLabel("Card name").accessibilityIdentifier("orphaned-input")
             ForEach(found, id: \.name) { s in
@@ -117,7 +116,7 @@ private struct ComposerView: View {
                 }
             }
             TextField("Note", text: Binding(get: { model.draft(for: target).note }, set: { model.setNote($0, for: target) }), axis: .vertical)
-                .textFieldStyle(.roundedBorder).frame(minHeight: 44).accessibilityIdentifier("orphaned-note")
+                .inputBox().accessibilityIdentifier("orphaned-note")
             HStack {
                 Button { model.cancel() } label: { hit("Cancel") }.accessibilityIdentifier("orphaned-cancel")
                 Spacer()
@@ -223,9 +222,11 @@ private struct CandidateRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             // One tap assigns. The row is the same size whether the candidate is tied or not.
             Button { Task { try? await model.assign(envelope: env.id, to: c.pkg.gk); await onChange() } } label: {
+                // Own fill, not .bordered: that style pads the label by a fractional amount, so tied rows came out a hair apart.
                 Text("This one").foregroundStyle(.primary).frame(minWidth: 88, minHeight: 44)
+                    .background(Color.primary.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
             }
-            .buttonStyle(.bordered).tint(.primary)
+            .buttonStyle(.plain)
                 .accessibilityLabel("This one, \(c.pkg.seller)").accessibilityIdentifier("assign:\(c.pkg.gk)")
         }
         .padding(8)
@@ -235,6 +236,14 @@ private struct CandidateRow: View {
     private var fit: String {
         c.exact ? "explains all \(c.matchedQty) \u{00B7} nothing left over"
             : "\(c.matchedQty) of \(c.entriesTotal) cards" + (c.pkgLeft > 0 ? " \u{00B7} \(c.pkgLeft) more still owed" : " \u{00B7} whole package")
+    }
+}
+
+private extension View {
+    /// The plain style, so the field's height follows its text at large Dynamic Type; the rounded-border style is a fixed-height UITextField and the audit calls its text clipped.
+    func inputBox() -> some View {
+        textFieldStyle(.plain).padding(.horizontal, 8).frame(minHeight: 44)
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(.separator))
     }
 }
 
