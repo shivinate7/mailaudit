@@ -90,6 +90,11 @@
     15. Lost tile size (decision pull-warns-on-what-it-drops) at 375px and 760px: in a
         strip that holds a View photo thumbnail and a lost tile, both are 56 by 56
         drawn px (0.5px tolerance), by bounding rect. A content-box tile measures 58.
+    16. Order id copy (owner ruling 2026-10-20) at 375px touch and 760px, on Alpha's
+        order A1: the copy control shows Copied, drawn with motion reduced, and moves
+        no element when it shows or goes. It puts "A1" on the clipboard and leaves
+        the card open. At 760px a mouse drag from the seller name into the date line
+        selects text and leaves the card open, and a plain click still collapses it.
 
    Reduced motion is on, so animation does not skew the numbers. Exit 0 when all
    checks pass; exit 1 with one `FAIL` line per failure and one summary line. */
@@ -228,7 +233,7 @@ const LEDGER = {
 
 /* ---------- in-page probes (self-contained: Playwright serialises them) ---------- */
 
-/* The card holding the first element whose header button mentions `anchorText`.
+/* The card holding the first element whose header text mentions `anchorText`.
    Cards carry the radius CARD_RADIUS_PX (decision spacing-on-4px-grid, 8px). A row
    is an ItemRow: it sets --i (its reveal index) AND a top rule. The card's bulk
    action row also sets --i, but it has no top rule, so the rule is what keeps it
@@ -236,9 +241,15 @@ const LEDGER = {
 /* (the radius is passed in and the regex is built inside each probe: Playwright
    serialises the function, so a module-level constant would not exist in the page) */
 const measureRows = ({ anchorText, radius }) => {
-  const anchor = [...document.querySelectorAll("button")].find((b) =>
-    b.textContent.includes(anchorText)
-  );
+  /* the first visible text that holds anchorText, whatever element carries it:
+     a package header is a button today and a plain element once its text selects */
+  const anchor = (() => {
+    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode())
+      if (n.textContent.includes(anchorText) && !/^(SCRIPT|STYLE)$/.test(n.parentElement.tagName))
+        return n.parentElement;
+    return null;
+  })();
   let card = anchor;
   const cardStyle = new RegExp(`border-radius:\\s*${radius}px`);
   while (card && !cardStyle.test(card.getAttribute("style") || ""))
@@ -267,9 +278,15 @@ const markFirstUndone = ({ anchorText, radius }) => {
   document
     .querySelectorAll("[data-screen-tap]")
     .forEach((e) => e.removeAttribute("data-screen-tap"));
-  const anchor = [...document.querySelectorAll("button")].find((b) =>
-    b.textContent.includes(anchorText)
-  );
+  /* the first visible text that holds anchorText, whatever element carries it:
+     a package header is a button today and a plain element once its text selects */
+  const anchor = (() => {
+    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode())
+      if (n.textContent.includes(anchorText) && !/^(SCRIPT|STYLE)$/.test(n.parentElement.tagName))
+        return n.parentElement;
+    return null;
+  })();
   let card = anchor;
   const cardStyle = new RegExp(`border-radius:\\s*${radius}px`);
   while (card && !cardStyle.test(card.getAttribute("style") || ""))
@@ -471,10 +488,12 @@ async function showView(page, view) {
 async function loadedOk(page) {
   try {
     await page.waitForFunction(
-      () =>
-        [...document.querySelectorAll("button")].some((b) =>
-          b.textContent.includes("Alpha Cards")
-        ),
+      () => {
+        const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        for (let n = w.nextNode(); n; n = w.nextNode())
+          if (n.textContent.includes("Alpha Cards") && !/^(SCRIPT|STYLE)$/.test(n.parentElement.tagName)) return true;
+        return false;
+      },
       null,
       { timeout: 8000 }
     );
@@ -1225,7 +1244,7 @@ async function openScreenState(page, state) {
     if (!(await showView(page, "Packages"))) return false;
     try {
       /* Beta Games is unstamped in both fixtures, so its bulk row has "Stamp" */
-      await page.locator("button", { hasText: "Beta Games" }).first().click({ timeout: 3000 });
+      await page.getByText("Beta Games", { exact: true }).first().click({ timeout: 3000 });
       await page.waitForTimeout(250);
       await page.getByRole("button", { name: "Stamp", exact: true }).first().click({ timeout: 3000 });
       await page.waitForSelector('input[aria-label="Stamp note"]', { timeout: 4000 });
@@ -1714,6 +1733,164 @@ async function ledgerRuleCheck(browser) {
   }
 }
 
+/* Claim 16 (owner ruling 2026-10-20, lane web/order-id-copy): the package header
+   of Alpha's order A1 in a real browser, where jsdom has no layout and no mouse.
+   At 375px touch and at 760px:
+     a. the copy control for A1 (a button whose aria-label has "Copy" and "A1")
+        exists. A tap shows Copied, visible with motion reduced, and moves no
+        other element on the page, then or when it goes. It adds no sideways
+        overflow, leaves the card open and puts "A1" on the clipboard. A clipboard
+        that cannot be read in this run is a `note`, not a pass or a fail.
+     b. at 760px, the Mac case: a mouse drag from the seller name into the date
+        line selects text that holds "Alpha Cards" and leaves the card open. A
+        plain click still collapses the card, and the next opens it.
+   The touch area of the copy control and of the TCGplayer link is claim 9's
+   (every button and a[href] in the Packages state), and their overlap is
+   claim 11's. Phone long-press selection is unmeasured: no device in this run. */
+const ORDER_ID_COPIED_GONE_MS = 6500;
+
+/* Runs in the page. True when a text node "Copied" is drawn: it and each
+   ancestor are displayed, and the opacity down the chain is at rest (above 0.99). */
+const copiedVisible = () => {
+  const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n = w.nextNode(); n; n = w.nextNode()) {
+    if (!/Copied/.test(n.textContent) || /^(SCRIPT|STYLE)$/.test(n.parentElement.tagName)) continue;
+    let op = 1;
+    for (let el = n.parentElement; el && el !== document.documentElement; el = el.parentElement) {
+      const cs = getComputedStyle(el);
+      if (cs.display === "none" || cs.visibility === "hidden") return false;
+      op *= Number(cs.opacity);
+    }
+    const r = n.parentElement.getBoundingClientRect();
+    return op > 0.99 && r.width > 0 && r.height > 0;
+  }
+  return false;
+};
+
+/* Runs in the page. Where to press for the drag: the left edge of the seller
+   name's text, and a point on the date line a little way in. Also the centre of
+   the seller name, for the plain click. */
+const headerDragPoints = () => {
+  const textOf = (needle) => {
+    const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode())
+      if (n.textContent.includes(needle) && !/^(SCRIPT|STYLE)$/.test(n.parentElement.tagName)) return n;
+    return null;
+  };
+  const rectOf = (n) => {
+    const r = document.createRange();
+    r.selectNodeContents(n);
+    return r.getBoundingClientRect();
+  };
+  const seller = textOf("Alpha Cards");
+  const meta = textOf("2026-07-01");
+  if (!seller || !meta) return null;
+  seller.parentElement.scrollIntoView({ block: "center", behavior: "instant" });
+  const s = rectOf(seller);
+  const m = rectOf(meta);
+  return {
+    x0: s.left + 1,
+    y0: s.top + s.height / 2,
+    x1: m.left + Math.min(40, m.width / 2),
+    y1: m.top + m.height / 2,
+    cx: s.left + Math.min(s.width / 2, 30),
+    cy: s.top + s.height / 2,
+  };
+};
+
+async function orderIdCheck(browser, width) {
+  const touch = width === 375;
+  const name = `order id ${width}px`;
+  checks++;
+  const { ctx, page, pageErrors } = await openSeeded(browser, width, { touch });
+  try {
+    await ctx.grantPermissions(["clipboard-read", "clipboard-write"]);
+    if (!(await loadedOk(page))) {
+      fail(name, "seeded ledger did not render");
+      return;
+    }
+    if (!(await showView(page, "Packages"))) {
+      fail(name, "the Packages tab did not open");
+      return;
+    }
+    await page.waitForTimeout(250);
+    const rowsOf = async () =>
+      ((await page.evaluate(measureRows, { anchorText: "Alpha Cards", radius: CARD_RADIUS_PX })) || []).length;
+    if ((await rowsOf()) < 3) {
+      fail(name, "Alpha's card is not open with its lines at the start");
+      return;
+    }
+
+    /* a. the copy control */
+    const copy = page.locator('button[aria-label*="Copy" i][aria-label*="A1"]');
+    if ((await copy.count()) === 0) {
+      fail(name, 'no copy control for order A1 (a button whose aria-label has "Copy" and "A1")');
+    } else {
+      await copy.first().scrollIntoViewIfNeeded();
+      await page.evaluate(snapshotBoxes);
+      await copy.first().click({ timeout: 3000 });
+      let shown = true;
+      try {
+        await page.waitForFunction(copiedVisible, null, { timeout: 2000 });
+      } catch {
+        shown = false;
+        fail(name, "a tap on the copy control shows no Copied, drawn, with motion reduced");
+      }
+      if (shown) {
+        const moved = await page.evaluate(boxesMovedSince, TAP_TOLERANCE_PX);
+        if (moved.count)
+          fail(name, `Copied showing moved ${moved.count} element(s); first: ${moved.first.tag} "${moved.first.text}" by ${moved.first.d.toFixed(1)}px`);
+        const o = await page.evaluate(overflowOf);
+        if (o.sw > o.iw) fail(name, `Copied showing widens the page: scrollWidth ${o.sw} over ${o.iw}`);
+        try {
+          await page.waitForFunction(`!(${copiedVisible.toString()})()`, null, { timeout: ORDER_ID_COPIED_GONE_MS });
+          const after = await page.evaluate(boxesMovedSince, TAP_TOLERANCE_PX);
+          if (after.count)
+            fail(name, `Copied going moved ${after.count} element(s); first: ${after.first.tag} "${after.first.text}" by ${after.first.d.toFixed(1)}px`);
+        } catch {
+          fail(name, `Copied is still on screen after ${ORDER_ID_COPIED_GONE_MS}ms`);
+        }
+      }
+      if ((await rowsOf()) < 3) fail(name, "a tap on the copy control collapsed Alpha's card");
+      const clip = await page.evaluate(() => navigator.clipboard.readText().catch((e) => `ERR ${e.message}`));
+      if (clip.startsWith("ERR")) console.log(`note ${name}: the clipboard could not be read (${clip}); its text is unknown`);
+      else if (clip !== "A1") fail(name, `the clipboard holds "${clip}" after the tap, want "A1"`);
+    }
+
+    /* b. the Mac case: drag-select the header text. Mouse only; no touch device here. */
+    if (!touch) {
+      const pts = await page.evaluate(headerDragPoints);
+      if (!pts) {
+        fail(name, "the seller name or the date line of Alpha's header was not found");
+      } else {
+        await page.mouse.move(pts.x0, pts.y0);
+        await page.mouse.down();
+        await page.mouse.move(pts.x1, pts.y1, { steps: 8 });
+        await page.mouse.up();
+        await page.waitForTimeout(150);
+        const picked = await page.evaluate(() => String(getSelection()));
+        if (!picked.includes("Alpha Cards"))
+          fail(name, `a mouse drag across Alpha's header selected ${JSON.stringify(picked.slice(0, 40))}, want text that holds "Alpha Cards"`);
+        if ((await rowsOf()) < 3) fail(name, "a mouse drag that selected text in the header collapsed the card");
+        /* each step starts from the state it needs, so one red step does not turn the next */
+        const plainClick = async () => {
+          await page.evaluate(() => getSelection().removeAllRanges());
+          await page.mouse.click(pts.cx, pts.cy);
+          await page.waitForTimeout(150);
+        };
+        if ((await rowsOf()) < 3) await plainClick();
+        await plainClick();
+        if ((await rowsOf()) !== 0) fail(name, "a plain click on the header no longer collapses the card");
+        await plainClick();
+        if ((await rowsOf()) < 3) fail(name, "a second plain click on the header does not open the card again");
+      }
+    }
+    for (const e of pageErrors) fail(name, `page error: ${e}`);
+  } finally {
+    await ctx.close();
+  }
+}
+
 /* Claim 14 (decision spacing-on-4px-grid): the grid and the 8px card corner.
    The card surface is C.card (#FCF6EA). GRID_EXEMPT names each element the
    brief puts out of scope, with its reason. It is empty: no offender at the
@@ -1851,6 +2028,7 @@ async function main() {
       ...WIDTHS.map((width) => () => syncPanelCheck(browser, width)),
       ...WIDTHS.map((width) => () => gridCheck(browser, { width })),
       () => gridCheck(browser, { width: 375, touch: true }),
+      ...WIDTHS.map((width) => () => orderIdCheck(browser, width)),
       ...ROW_SHIFT_CARDS.flatMap((card) =>
         WIDTHS.map((width) => () => rowShiftCheck(browser, { ...card, width }))
       ),
