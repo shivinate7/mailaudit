@@ -38,33 +38,42 @@ struct TallyView: View {
                 .frame(minHeight: 44)
                 .accessibilityIdentifier("tally-search")
                 .onChange(of: text) { _, new in Task { try? await model.setQuery(new) } }
-            HStack {
-                Menu {
-                    ForEach(TallySort.allCases, id: \.self) { key in
-                        Button { Task { try? await model.setSort(key) } } label: {
-                            if key == model.sort { Label(key.label, systemImage: "checkmark") } else { Text(key.label) }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        Text(model.sort.label).lineLimit(1)
-                        Image(systemName: "chevron.up.chevron.down").imageScale(.small)
-                    }
-                    .frame(minHeight: 44)
-                }
-                .accessibilityLabel("Sort")
-                .accessibilityValue(model.sort.label)
-                .accessibilityIdentifier("tally-sort")
-                Spacer()
-                Toggle("Hide received", isOn: Binding(
-                    get: { model.hideReceived },
-                    set: { on in Task { try? await model.setHideReceived(on) } }))
-                    .fixedSize()
-                    .frame(minHeight: 44)
-                    .accessibilityIdentifier("tally-hide")
+            // One row while both fit; stacked at large text sizes, so neither is clipped.
+            ViewThatFits(in: .horizontal) {
+                HStack { sortMenu; Spacer(); hideToggle }
+                VStack(alignment: .leading, spacing: 0) { sortMenu; hideToggle }
             }
         }
         .padding(.horizontal, 16)
+    }
+
+    private var sortMenu: some View {
+        Menu {
+            ForEach(TallySort.allCases, id: \.self) { key in
+                Button { Task { try? await model.setSort(key) } } label: {
+                    if key == model.sort { Label(key.label, systemImage: "checkmark") } else { Text(key.label) }
+                }
+            }
+        } label: {
+            HStack(spacing: 4) {
+                Text(model.sort.label).fixedSize()
+                Image(systemName: "chevron.up.chevron.down").imageScale(.small)
+            }
+            .frame(minHeight: 44)
+        }
+        .tint(.primary)  // the accent blue is below the contrast floor on paper
+        .accessibilityLabel("Sort")
+        .accessibilityValue(model.sort.label)
+        .accessibilityIdentifier("tally-sort")
+    }
+
+    private var hideToggle: some View {
+        Toggle("Hide received", isOn: Binding(
+            get: { model.hideReceived },
+            set: { on in Task { try? await model.setHideReceived(on) } }))
+            .fixedSize()
+            .frame(minHeight: 44)
+            .accessibilityIdentifier("tally-hide")
     }
 
     /// One sentence and one Clear control, only while a search is what empties the list.
@@ -111,16 +120,16 @@ struct TallyRowView: View {
             Image(systemName: "chevron.right").imageScale(.small).rotationEffect(.degrees(open ? 90 : 0))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 0) {
-                Text(row.name).font(.headline).lineLimit(2)
-                // Counts first, then the sets, so a long set list is what ellipsizes (card-tally-row-counts-first).
-                Text(row.meta).font(.caption.monospaced()).lineLimit(1)
+                Text(row.name).font(.headline)
+                // Counts first, then the sets, so a long set list is what wraps last (card-tally-row-counts-first).
+                Text(row.meta).font(.caption.monospaced())
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 0) {
-                Text(row.ratio).font(.headline.monospacedDigit()).lineLimit(1)
-                Text(row.rateLine).font(.caption.monospacedDigit()).lineLimit(1)
+                Text(row.ratio).font(.headline.monospacedDigit())
+                Text(row.rateLine).font(.caption.monospacedDigit())
                 // Hidden once in, never removed: unmounting it would shorten the row under the thumb.
-                Text(row.leftLine).font(.caption.monospacedDigit()).lineLimit(1)
+                Text(row.leftLine).font(.caption.monospacedDigit())
                     .opacity(done ? 0 : 1).accessibilityHidden(done)
             }
         }
