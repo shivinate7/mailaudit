@@ -8,7 +8,7 @@
 - a cold reply applies at once after a key save;
 - resume does one GET.
 
-The press gate reads its constants and `pressHeld` from the rules bundle, see `auto-apply-happens-now`. The file name keeps the old gate's name, because a record keeps its slug.
+The press gate reads its constants and `pressHeld` from the rules bundle, see `auto-apply-happens-now`.
 
 Lane N4a must land first. When N4b lands with those tests, the gap closes.
 

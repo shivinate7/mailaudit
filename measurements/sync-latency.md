@@ -2,11 +2,11 @@
 
 This record holds the time from a check-in on device A to the row changing on device B, and what held it up. Re-measure with the probe after a change to the sync timers, the apply guard or the Worker socket.
 
-**Status:** measured on 2026-10-20 at `3997ee9` (main, before lane `web/sync-latency`), three runs per case. Not measured with the lane's fix, see `sync-latency-after-fix-unmeasured`. A hidden or frozen tab is not measured, see `hidden-tab-apply-delay-unmeasured`.
+**Status:** measured on 2026-10-20 on a build of main at `3997ee9`, before lane `web/sync-latency`, three runs per case. The build differs from main in one line: `SYNC_URL` in `src/entry.jsx` points at the local Worker. Not measured with the lane's fix, see `sync-latency-after-fix-unmeasured`. A hidden or frozen tab is not measured, see `hidden-tab-apply-delay-unmeasured`.
 
 ## How to re-measure
 
-Run the probe. The probe is not in the repo yet, see `sync-latency-after-fix-unmeasured`. It drives two headless Chromium pages through Playwright at 1000 by 800: A is the phone, B is the Mac. Both use one key against a local Worker (`wrangler dev`, port 18787). Both load the built page from `dev-server.mjs` (port 18788). It never calls the live Worker.
+Run the probe. The probe is not in the repo yet, see `sync-latency-after-fix-unmeasured`. It drives two headless Chromium pages through Playwright at 1000 by 800: A is the phone, B is the Mac. Both use one key against a local Worker (`wrangler dev`, port 18787). Both load a built page from `dev-server.mjs` (port 18788), and `SYNC_URL` in `src/entry.jsx` points that build at the local Worker. The probe never calls the live Worker.
 
 A seed script POSTs 80 one-card packages. Both pages wait 13 s so the cold applies land and B is idle. The probe taps the first "Mark as received" on A. It polls B's DOM from Node every 100 ms until the count of unreceived buttons drops. Times come from Node's clock, with the tap as zero.
 
