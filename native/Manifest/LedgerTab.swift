@@ -24,8 +24,10 @@ struct LedgerTab: View {
                     failure = "Could not make the backup. \(error.localizedDescription)"
                 }
             } label: {
-                Text("Backup").frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
+                // 45, not 44: layout rounding reads a 44pt frame as 43.99999.
+                Text("Backup").frame(maxWidth: .infinity, minHeight: 45, alignment: .leading).contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
             .padding(.horizontal, 16)
             .accessibilityIdentifier("backup")
             if let failure { Text(failure).font(.footnote).foregroundStyle(.red).padding(.horizontal, 16) }

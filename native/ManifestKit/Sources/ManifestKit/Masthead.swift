@@ -59,7 +59,6 @@ public final class MastheadModel {
     @ObservationIgnored private let engine: RulesEngine
     @ObservationIgnored private let store: LedgerStore
     @ObservationIgnored private let pinned: SaveIndicator?
-    @ObservationIgnored private var saveToken = 0
     public private(set) var cells: [TallyCell] = []
     public private(set) var countLine = ""
     public private(set) var missingLine = ""
@@ -109,17 +108,12 @@ public final class MastheadModel {
         missingLine = remaining == 0 ? "ALL ACCOUNTED FOR \u{2713}" : "\(remaining) still missing \u{00B7} \(money)"
     }
 
-    public func saving() { saveToken += 1; current = .saving }
+    public func saving() { current = .saving }
 
-    /// After a check-in: the slot reads saved (or failed) and the figures follow. Saved
-    /// clears after 1.5 s; a failure stays until the next save.
+    /// After a check-in: the figures follow, and the slot reads saved or failed until the
+    /// next save, as the web slot does (a clock would be one more thing that moves).
     public func finished(failed: Bool) async {
         try? await refresh()
-        saveToken += 1
-        let mine = saveToken
         current = failed ? .failed : .saved
-        guard !failed else { return }
-        try? await Task.sleep(for: .seconds(1.5))
-        if saveToken == mine { current = .idle }
     }
 }
