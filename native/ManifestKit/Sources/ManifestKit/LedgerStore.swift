@@ -73,6 +73,9 @@ public final class LedgerStore {
     /// The `received` map, key to count.
     public func received() -> [String: Int] { (doc["received"] as? [String: Any] ?? [:]).compactMapValues { $0 as? Int } }
 
+    /// The raw `stamps` map, group key to stamp.
+    public func stamps() -> [String: [String: Any]] { (doc["stamps"] as? [String: Any] ?? [:]).compactMapValues { $0 as? [String: Any] } }
+
     /// count 0 is an un-check: drop `received`, stamp `receivedAt`.
     public func setReceived(_ key: String, count: Int) {
         var r = doc["received"] as? [String: Any] ?? [:]

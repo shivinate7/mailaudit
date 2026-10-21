@@ -17,7 +17,7 @@ struct OrphanedView: View {
                     Button { model.open(.new) } label: {
                         Text("Record an envelope").font(.headline).frame(maxWidth: .infinity, minHeight: 44)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.borderedProminent).tint(.action)
                     .accessibilityIdentifier("orphaned-record")
                 }
                 ForEach(Array(model.envelopes.enumerated()), id: \.element.id) { i, env in
@@ -31,7 +31,7 @@ struct OrphanedView: View {
                 // The pile emptied out from under the notice: it still needs somewhere to go.
                 if let u = model.undo, u.index >= model.envelopes.count { UndoNoticeView(model: model, notice: u, onChange: onChange) }
                 if model.envelopes.isEmpty && model.composing != .new {
-                    Text(OrphanedNotice.emptyLine).font(.callout).foregroundStyle(.secondary)
+                    Text(OrphanedNotice.emptyLine).font(.callout).foregroundStyle(.primary)
                         .frame(maxWidth: .infinity).multilineTextAlignment(.center)
                         .accessibilityIdentifier("orphaned-empty")
                 }
@@ -57,9 +57,9 @@ private struct UndoNoticeView: View {
         HStack(spacing: 8) {
             Text(OrphanedNotice.undoLine(matchedQty: notice.matchedQty, pkgLabel: notice.pkgLabel, leftoverQty: notice.leftoverQty))
                 .font(.footnote).frame(maxWidth: .infinity, alignment: .leading)
-            Button("Undo") { Task { try? await model.undoAssign(); await onChange() } }
-                .frame(minWidth: 44, minHeight: 44).accessibilityIdentifier("orphaned-undo")
-            Button { model.dismissUndo() } label: { Image(systemName: "xmark").frame(width: 44, height: 44) }
+            Button { Task { try? await model.undoAssign(); await onChange() } } label: { hit("Undo") }
+                .accessibilityIdentifier("orphaned-undo")
+            Button { model.dismissUndo() } label: { Image(systemName: "xmark").frame(width: 44, height: 44).foregroundStyle(.primary) }
                 .accessibilityLabel("Dismiss").accessibilityIdentifier("orphaned-undo-dismiss")
         }
         .padding(.leading, 12)
@@ -90,16 +90,16 @@ private struct ComposerView: View {
                     HStack {
                         Text(s.name).frame(maxWidth: .infinity, alignment: .leading)
                         Text("\(s.qty) out \u{00B7} \(s.sellerCount) seller\(s.sellerCount == 1 ? "" : "s")")
-                            .font(.caption).foregroundStyle(.secondary)
+                            .font(.caption).foregroundStyle(.primary)
                     }
-                    .frame(minHeight: 44)
+                    .frame(minHeight: 44).foregroundStyle(.primary)
                 }
                 .accessibilityIdentifier("suggestion:\(s.name)")
             }
             let typed = d.input.trimmingCharacters(in: .whitespacesAndNewlines)
             if !typed.isEmpty && !found.contains(where: { $0.name.caseInsensitiveCompare(typed) == .orderedSame }) {
                 Button { Task { try? await model.addName(typed, for: target) } } label: {
-                    Text("Add \u{201C}\(typed)\u{201D} as typed").frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    Text("Add \u{201C}\(typed)\u{201D} as typed").frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).foregroundStyle(.primary)
                 }
                 .accessibilityIdentifier("orphaned-add-typed")
             }
@@ -107,11 +107,11 @@ private struct ComposerView: View {
                 HStack {
                     Text(e.qty > 1 ? "\u{00D7}\(e.qty) \(e.name)" : e.name).frame(maxWidth: .infinity, alignment: .leading)
                     Button { model.setQty(e.qty - 1, at: i, for: target) } label: {
-                        Image(systemName: e.qty > 1 ? "minus.circle" : "trash").frame(width: 44, height: 44)
+                        Image(systemName: e.qty > 1 ? "minus.circle" : "trash").frame(width: 44, height: 44).foregroundStyle(.primary)
                     }
                     .accessibilityLabel(e.qty > 1 ? "One fewer \(e.name)" : "Remove \(e.name)")
                     Button { model.setQty(e.qty + 1, at: i, for: target) } label: {
-                        Image(systemName: "plus.circle").frame(width: 44, height: 44)
+                        Image(systemName: "plus.circle").frame(width: 44, height: 44).foregroundStyle(.primary)
                     }
                     .accessibilityLabel("One more \(e.name)")
                 }
@@ -119,10 +119,10 @@ private struct ComposerView: View {
             TextField("Note", text: Binding(get: { model.draft(for: target).note }, set: { model.setNote($0, for: target) }), axis: .vertical)
                 .textFieldStyle(.roundedBorder).frame(minHeight: 44).accessibilityIdentifier("orphaned-note")
             HStack {
-                Button("Cancel") { model.cancel() }.frame(minWidth: 44, minHeight: 44).accessibilityIdentifier("orphaned-cancel")
+                Button { model.cancel() } label: { hit("Cancel") }.accessibilityIdentifier("orphaned-cancel")
                 Spacer()
-                Button("Save") { Task { try? await model.save(target); await onChange() } }
-                    .buttonStyle(.borderedProminent).frame(minWidth: 44, minHeight: 44)
+                Button { Task { try? await model.save(target); await onChange() } } label: { hit("Save") }
+                    .buttonStyle(.borderedProminent).tint(.action)
                     .disabled(d.entries.isEmpty).accessibilityIdentifier("orphaned-save")
             }
         }
@@ -147,21 +147,21 @@ private struct EnvelopeCard: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Envelope \u{00B7} \(Date(timeIntervalSince1970: env.createdAt / 1000).formatted(.iso8601.year().month().day())) \u{00B7} \(total) card\(total == 1 ? "" : "s")")
-                    .font(.caption).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
-                Button("Edit") { model.open(.edit(env.id)) }.frame(minWidth: 44, minHeight: 44)
-                Button("Discard", role: .destructive) { armed.toggle() }.frame(minWidth: 44, minHeight: 44)
+                    .font(.caption).foregroundStyle(.primary).frame(maxWidth: .infinity, alignment: .leading)
+                Button { model.open(.edit(env.id)) } label: { hit("Edit") }
+                Button(role: .destructive) { armed.toggle() } label: { hit("Discard").foregroundStyle(Color.danger) }
                     .accessibilityIdentifier("discard:\(env.id)")
             }
             .overlay(alignment: .bottomTrailing) {
                 // The ask hangs below the row, so arming moves nothing (ux-press-moves-nothing).
                 if armed {
                     HStack {
-                        Button("Cancel") { armed = false }.frame(minWidth: 44, minHeight: 44)
-                        Button("Tap again to discard \(total) card\(total == 1 ? "" : "s")", role: .destructive) {
+                        Button { armed = false } label: { hit("Cancel") }
+                        Button(role: .destructive) {
                             armed = false
                             Task { try? await model.discard(envelope: env.id); await onChange() }
-                        }
-                        .buttonStyle(.borderedProminent).tint(.red).frame(minHeight: 44)
+                        } label: { Text("Tap again to discard \(total) card\(total == 1 ? "" : "s")").frame(minHeight: 44) }
+                        .buttonStyle(.borderedProminent).tint(.danger)
                     }
                     .padding(4).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
                     .offset(y: 48).zIndex(1)
@@ -172,26 +172,26 @@ private struct EnvelopeCard: View {
                 HStack {
                     Text(e.qty > 1 ? "\u{00D7}\(e.qty) \(e.name)" : e.name).frame(maxWidth: .infinity, alignment: .leading)
                     if model.hasNoOutstandingCopy(e, in: env.id) {
-                        Text("no outstanding copy").font(.caption).foregroundStyle(.secondary)
+                        Text("no outstanding copy").font(.caption).foregroundStyle(.primary)
                     }
                 }
             }
-            if !env.note.isEmpty { Text(env.note).font(.footnote).foregroundStyle(.secondary) }
+            if !env.note.isEmpty { Text(env.note).font(.footnote).foregroundStyle(.primary) }
             Divider()
             if ranked.list.isEmpty {
                 Text("No outstanding package accounts for any of these. It\u{2019}ll start matching if a later import brings in the order.")
-                    .font(.callout).foregroundStyle(.secondary)
+                    .font(.callout).foregroundStyle(.primary)
             } else {
-                Text("Could have come from").font(.caption).foregroundStyle(.secondary)
+                Text("Could have come from").font(.caption).foregroundStyle(.primary)
                 if let tie = OrphanedNotice.tieLine(tied: ranked.tied) {
                     Text(tie).font(.footnote).accessibilityIdentifier("orphaned-tie")
                 }
                 ForEach(shown, id: \.pkg.gk) { c in CandidateRow(model: model, env: env, ranked: ranked, c: c, onChange: onChange) }
                 if ranked.list.count > 3 {
-                    Button(showAll ? "show fewer" : "show \(ranked.list.count - 3) more candidate\(ranked.list.count == 4 ? "" : "s")") {
-                        showAll.toggle()
+                    Button { showAll.toggle() } label: {
+                        Text(showAll ? "show fewer" : "show \(ranked.list.count - 3) more candidate\(ranked.list.count == 4 ? "" : "s")")
+                            .font(.footnote).frame(minHeight: 44).foregroundStyle(.primary)
                     }
-                    .font(.footnote).frame(minHeight: 44)
                 }
             }
         }
@@ -216,14 +216,16 @@ private struct CandidateRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(c.pkg.seller).font(.headline)
                 Text([c.pkg.date, c.pkg.orderId].filter { !$0.isEmpty }.joined(separator: " \u{00B7} "))
-                    .font(.caption).foregroundStyle(.secondary)
-                Text(fit).font(.caption).fontWeight(sure ? .bold : .regular).foregroundStyle(sure ? Color.green : Color.secondary)
+                    .font(.caption).foregroundStyle(.primary)
+                Text(fit).font(.caption).fontWeight(sure ? .bold : .regular).foregroundStyle(sure ? Color.sure : Color.primary)
                     .accessibilityIdentifier(sure ? "exact:\(c.pkg.gk)" : "fit:\(c.pkg.gk)")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             // One tap assigns. The row is the same size whether the candidate is tied or not.
-            Button("This one") { Task { try? await model.assign(envelope: env.id, to: c.pkg.gk); await onChange() } }
-                .buttonStyle(.bordered).frame(minWidth: 88, minHeight: 44)
+            Button { Task { try? await model.assign(envelope: env.id, to: c.pkg.gk); await onChange() } } label: {
+                Text("This one").foregroundStyle(.primary).frame(minWidth: 88, minHeight: 44)
+            }
+            .buttonStyle(.bordered).tint(.primary)
                 .accessibilityLabel("This one, \(c.pkg.seller)").accessibilityIdentifier("assign:\(c.pkg.gk)")
         }
         .padding(8)
@@ -234,4 +236,19 @@ private struct CandidateRow: View {
         c.exact ? "explains all \(c.matchedQty) \u{00B7} nothing left over"
             : "\(c.matchedQty) of \(c.entriesTotal) cards" + (c.pkgLeft > 0 ? " \u{00B7} \(c.pkgLeft) more still owed" : " \u{00B7} whole package")
     }
+}
+
+/// One tap target: the 44pt frame sits in the label, so the whole frame is the hit region.
+private func hit(_ title: String) -> some View {
+    Text(title).foregroundStyle(.primary).frame(minWidth: 44, minHeight: 44)
+}
+
+/// Fills the contrast floor in both themes (palette-tokens-contrast-floor): system blue, red and green fall short of 4.5:1 on white.
+private extension Color {
+    static func adaptive(light: UIColor, dark: UIColor) -> Color {
+        Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? dark : light })
+    }
+    static let action = Color(uiColor: UIColor(red: 0, green: 0.32, blue: 0.76, alpha: 1))
+    static let danger = adaptive(light: UIColor(red: 0.70, green: 0.07, blue: 0.07, alpha: 1), dark: UIColor(red: 1, green: 0.55, blue: 0.5, alpha: 1))
+    static let sure = adaptive(light: UIColor(red: 0.05, green: 0.38, blue: 0.14, alpha: 1), dark: UIColor(red: 0.5, green: 0.92, blue: 0.55, alpha: 1))
 }

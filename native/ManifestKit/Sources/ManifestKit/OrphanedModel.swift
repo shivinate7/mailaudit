@@ -71,13 +71,25 @@ public final class OrphanedModel {
 
     private func liveRecords() -> [[String: Any]] { store.envelopeRecords().filter(Self.isLive) }
 
+    /// Drops the packages stamped Refunded or Partial refund, as the web's liveItems does
+    /// (a-refund-leaves-every-count). The group keys come from the bundle's groupPackages, not a copy of gkOf.
+    private func withoutRefunds(_ live: String) async throws -> String {
+        let refunded = Set(store.stamps().filter { ["refunded", "partial"].contains($0.value["kind"] as? String) }.keys)
+        guard !refunded.isEmpty else { return live }
+        let packages = try JSONSerialization.jsonObject(with: Data(try await engine.call("groupPackages", "[\(live)]").utf8)) as? [[String: Any]] ?? []
+        let gone = Set(packages.filter { refunded.contains($0["gk"] as? String ?? "") }
+            .flatMap { $0["items"] as? [[String: Any]] ?? [] }.compactMap { $0["key"] as? String })
+        let items = try JSONSerialization.jsonObject(with: Data(live.utf8)) as? [[String: Any]] ?? []
+        return try json(items.filter { !gone.contains($0["key"] as? String ?? "") })
+    }
+
     /// Reads the store and ranks every envelope again. Candidates are derived, never stored. The
     /// packages are the ledger without canceled orders, and the date filter does not apply
     /// (candidates-skip-date-filter).
     public func load() async throws {
         let gen = store.generation
         let got = store.received()
-        let live = try await engine.call("dropCanceled", "[\(try json(store.items()))]")
+        let live = try await withoutRefunds(try await engine.call("dropCanceled", "[\(try json(store.items()))]"))
         let grouped = try await engine.call("groupPackages", "[\(live)]")
         let names = try await engine.call("outstandingNames", "[\(live),\(try json(got))]")
         let nextPool = try JSONDecoder().decode([OutstandingName].self, from: Data(names.utf8))
@@ -185,10 +197,10 @@ public final class OrphanedModel {
     /// Records a new envelope or edits one. Nothing is checked in (orphan-entry-takes-one-input).
     public func save(_ target: ComposerTarget) async throws {
         let d = draft(for: target)
-        guard !d.entries.isEmpty else { throw OrphanedFailure.emptyEnvelope }
+        guard !d.entries.isEmpty else { throw refuse(.emptyEnvelope) }
         var edited: [String: Any]?
         if case .edit(let id) = target {
-            guard let rec = liveRecords().first(where: { ($0["id"] as? String) == id }) else { throw OrphanedFailure.unknownEnvelope }
+            guard let rec = liveRecords().first(where: { ($0["id"] as? String) == id }) else { throw refuse(.unknownEnvelope) }
             edited = rec
         }
         try write {
@@ -213,6 +225,12 @@ public final class OrphanedModel {
 
     // MARK: assign, undo, discard
 
+    /// A refusal shows on screen too: the view's try? cannot hide it. The next good write clears it.
+    private func refuse(_ f: OrphanedFailure) -> OrphanedFailure {
+        error = OrphanedNotice.refusal(f)
+        return f
+    }
+
     private func write(_ edits: () -> Void) throws {
         do { try store.commit(edits); error = nil } catch {
             self.error = "Could not save. \(error.localizedDescription)"
@@ -224,8 +242,8 @@ public final class OrphanedModel {
     /// The package must be one the envelope was offered. The check-in and the envelope change are one save.
     public func assign(envelope id: String, to gk: String) async throws {
         if store.generation != rankedAt { try await load() }
-        guard let rec = liveRecords().first(where: { ($0["id"] as? String) == id }) else { throw OrphanedFailure.unknownEnvelope }
-        guard let c = ranked(for: id).list.first(where: { $0.pkg.gk == gk }) else { throw OrphanedFailure.notOffered }
+        guard let rec = liveRecords().first(where: { ($0["id"] as? String) == id }) else { throw refuse(.unknownEnvelope) }
+        guard let c = ranked(for: id).list.first(where: { $0.pkg.gk == gk }) else { throw refuse(.notOffered) }
         let index = envelopes.firstIndex { $0.id == id } ?? 0
 
         var left: [[String: Any]] = []
@@ -233,7 +251,7 @@ public final class OrphanedModel {
             let rest = ((e["qty"] as? NSNumber)?.intValue ?? 0) - (c.perEntry[try await norm(e["name"] as? String ?? "")] ?? 0)
             if rest > 0 { e["qty"] = rest; left.append(e) }
         }
-        guard store.generation == rankedAt else { throw OrphanedFailure.changed }
+        guard store.generation == rankedAt else { throw refuse(.changed) }
 
         let owed = c.pkg.items.reduce(into: [String: Int]()) { $0[$1.key] = $1.qty }
         let got = store.received()
@@ -281,7 +299,7 @@ public final class OrphanedModel {
 
     /// Leaves a tombstone. If the Undo notice is about this envelope, there is nothing left to undo.
     public func discard(envelope id: String) async throws {
-        guard liveRecords().contains(where: { ($0["id"] as? String) == id }) else { throw OrphanedFailure.unknownEnvelope }
+        guard liveRecords().contains(where: { ($0["id"] as? String) == id }) else { throw refuse(.unknownEnvelope) }
         try write { store.discardEnvelope(id) }
         if (undoRecord?.envelope["id"] as? String) == id { undoRecord = nil; undo = nil }
         try await load()

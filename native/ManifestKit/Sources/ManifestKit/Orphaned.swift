@@ -69,6 +69,15 @@ public struct UndoNotice: Equatable, Sendable {
 public enum OrphanedNotice {
     public static let emptyLine = "Nothing waiting: record a package here when you can\u{2019}t tell who sent it."
 
+    public static func refusal(_ f: OrphanedFailure) -> String {
+        switch f {
+        case .notOffered: "That package is no longer offered for this envelope. Nothing was checked in."
+        case .changed: "The ledger changed while you tapped. Nothing was checked in; try again."
+        case .emptyEnvelope: "An envelope needs at least one card."
+        case .unknownEnvelope: "That envelope is gone."
+        }
+    }
+
     public static func tieLine(tied: Int) -> String? {
         tied > 1 ? "\(tied) packages fit these cards equally well \u{2014} pick the right one yourself." : nil
     }
