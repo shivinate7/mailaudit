@@ -1246,6 +1246,11 @@ eq(
   ["pho-gone"],
   "26.13b but the list is unreadable, so the id is KEPT, not lost"
 );
+/* Re-pointed (owner ruling 2026-10-20 23:36 CDT): a reply that merges nothing clears the photo
+   advisory when it applies, and the photo phase one second after the POST states it again. The
+   ten-second wait kept the first clear out of this read; now it lands first, so the read waits
+   for the phase. */
+await sleep(1500);
 await openSync();
 /* Re-pointed (owner ruling 2026-10-12, default 5): the copy may not say "your key"
    or name a repo. Group 66 guards the words, so this asserts only that the line
@@ -1489,7 +1494,7 @@ const withPhoto = (ids) => ({
   ],
 });
 const KEY30 = "device-30-key";
-const IDLE_MS_30 = 10000; /* IDLE_APPLY_MS, sync-rules: group 51 pins it */
+const IDLE_MS_30 = 10000; /* a clock offset for 30.29, kept from the 10 s idle gate (gone, owner ruling 2026-10-20) */
 const SERVER30 = (state) => ({
   mailday: 1,
   ...state,
@@ -1628,6 +1633,8 @@ eq(
 eq(saved().items?.length ?? 0, ITEMS.length, "30.14 and the ledger still applied");
 /* The refused list is said so in the Sync panel (PHOTO_SAYS["no-access"]). Read as
    known-empty, the pull plans no copy at all, and this line goes silent. */
+/* Re-pointed with 26.13c: the advisory is cleared by the reply and stated again by the photo phase */
+await sleep(PHOTO_WAIT30);
 await openSync();
 ok(/Photos need more setup on this device/.test(text()), "30.15 a photo list that cannot be read is said so");
 
@@ -1922,8 +1929,8 @@ ok(
    already holds everything this device holds, so no POST follows the apply and no
    survey runs: nothing but the held blob can hide the tile. A resume would POST, and the
    push survey after it clears the lost set by itself, which hides the fault.
-   The idle gate holds the apply for IDLE_APPLY_MS, so Date.now runs 30 s ahead while the
-   merge waits (advancing, so waitFor30's own bound still elapses). The waits are on the
+   Date.now runs 30 s ahead while the merge runs (advancing, so waitFor30's own bound still
+   elapses); it dates from the 10 s idle gate and is harmless now. The waits are on the
    photo write and on the thumbnail. */
 await boot(dated30(8, ["pho-a"]), null, { syncKey: KEY30 });
 await goTo("orphaned");
@@ -2498,13 +2505,16 @@ eq(
 /* In a merge the later change wins, and a merge is not a destructive act, so
    arming it would say the opposite of what it does — and the two-tap pattern is
    for destructive actions specifically. */
+/* Re-pointed (owner ruling 2026-10-20 23:36 CDT, a reply no longer waits ten quiet seconds): the
+   Worker holds nothing at the open, so no cold reply applies before Reset is armed. The laptop's
+   copy arrives after the arm, with the resume, and meets the armed Reset. */
 await boot({ items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } }, null, {
   syncKey: KEY34,
-  syncLedger: LAPTOP34,
 });
 await reachFor(/^Reset$/);
 await click(btn(/^Reset$/), "arm reset");
 ok(/Tap again to clear \d+ cards?/.test(text()), "34.8 Reset arms");
+setServerLedger(LAPTOP34);
 await backgroundFor(5 * 60_000);
 await drain();
 /* the gate holds: a merge does not run while Reset is armed, so Reset stays armed
@@ -2561,7 +2571,7 @@ await boot({ items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } }, null, 
   syncKey: KEY34,
   syncLedger: LAPTOP34,
 });
-/* the POST's reply is held for the idle gate, so a resume applies it at once */
+/* a resume POSTs at once, and the reply applies as soon as nothing holds it */
 await wakeWorker();
 await backgroundFor(5 * 60_000);
 await drain();
@@ -3787,7 +3797,7 @@ eq(saved().items?.length ?? 0, ITEMS.length, "40.11 once the thought is finished
 
 /* ---- a cold mount is a fresh session too: retired (the switch) ----
    40.14 and 40.15 read a cold open with local check-ins against an ahead Worker. The
-   cold reply is held for the idle gate, and 53.3 pins the same merge: the reply applied
+   cold reply applies as soon as nothing holds it, and 53.3 pins the same merge: the reply applied
    as mergeLedger(snapshot, reply), with this device's check-ins kept. */
 
 /* ---- and it says nothing when it did nothing ----
@@ -4316,7 +4326,7 @@ const PHOTO_WAIT47 = 1500; /* the photo phase follows the ledger POST by one sec
   const setBefore = win.storage.set;
   /* a SLOW read that then fails: the survey takes 1.5 s before it bails, so the held
      apply lands late. The test waits for the ledger write that carries the id, not
-     for a clock: the apply waits IDLE_APPLY_MS (10 s, sync-rules), and the save
+     for a clock: the apply follows the rev and the 1.5 s read, and the save
      debounce adds 500 ms after it. A fixed sleep here raced that chain. */
   win.photos.keys = async () => {
     await sleep(1500);
@@ -5171,10 +5181,25 @@ eq(sr("isNewRev", 3, 4), true, "51.14 a later revision is new");
 eq(sr("isNewRev", 4, 4), false, "51.15 the same revision is not new");
 eq(sr("isNewRev", 5, 4), false, "51.16 an older revision is not new");
 
-/* the apply waits for ten seconds without input */
-eq(sr("idleReady", 1000, 10999), false, "51.17 9,999 ms idle is not ready");
-eq(sr("idleReady", 1000, 11000), true, "51.18 10,000 ms idle is ready");
-eq(SR?.IDLE_APPLY_MS ?? "MISSING", 10000, "51.19 IDLE_APPLY_MS is 10000");
+/* Re-pointed (owner ruling 2026-10-20 23:36 CDT, "hover doesn't count"): a remote reply
+   waits for a press, not for ten quiet seconds. The outcome it protects is that the owner
+   never acts on a row the list moved from under the pointer (invariant
+   no-layout-shift-under-pointer). pressHeld(downAt, lastAt, now): downAt is the time of a
+   pointerdown with no pointerup yet (null when none), lastAt the time of the last press
+   event (down, up, cancel, key). It holds while a press is down, but never past
+   PRESS_MAX_MS, so a lost pointerup cannot hold the reply for ever; and for PRESS_TAIL_MS
+   after the last press event, so the click that follows a release lands first. Hover, scroll
+   and wheel are not press events, and the function has no argument for them. */
+const TAIL = SR?.PRESS_TAIL_MS ?? 700;
+const MAXP = SR?.PRESS_MAX_MS ?? 3000;
+eq(SR?.PRESS_TAIL_MS ?? "MISSING", 700, "51.19a PRESS_TAIL_MS is 700");
+eq(SR?.PRESS_MAX_MS ?? "MISSING", 3000, "51.19b PRESS_MAX_MS is 3000");
+eq(sr("pressHeld", null, 1000, 1000 + TAIL + 5000), false, "51.17 no press down and a quiet tail is not held");
+eq(sr("pressHeld", 1000, 1000, 1000 + MAXP - 1), true, "51.17a a press down for less than PRESS_MAX_MS is held");
+eq(sr("pressHeld", 1000, 1000, 1000 + MAXP), false, "51.17b a press down for PRESS_MAX_MS is not held: a lost pointerup cannot hold for ever");
+eq(sr("pressHeld", null, 5000, 5000 + TAIL - 1), true, "51.18 a release is held for less than PRESS_TAIL_MS after it");
+eq(sr("pressHeld", null, 5000, 5000 + TAIL), false, "51.18a and is not held from PRESS_TAIL_MS on");
+eq(sr("pressHeld", 1000, 1000 + MAXP + 100, 1000 + MAXP + 100 + TAIL - 1), true, "51.18b a press past the cap is held again by a later press event's tail");
 
 /* backoff: the first wait is 1,000 ms (attempt 0), it doubles, and it caps at
    60,000 ms. Attempt 0 is a choice, not a fact in the code yet. See Input Needed. */
@@ -5275,13 +5300,13 @@ const LAPTOP_PUSHED = {
    the contract, not entry.jsx, which is not bundled here.
 
    There are no fake timers. Only case 1 waits for the POST deadline. The other
-   cases fire pageshow, then wait out the idle apply gate (IDLE_APPLY_MS, group
-   51.19) where a live apply is claimed. */
+   cases fire pageshow, then wait APPLY_WAIT, 10.5 s and long past any hold (the
+   press tail, an armed guard), where a live apply is claimed. */
 
 const KEY53 = "device-53-key";
 const K0 = ITEMS[0].key;
 const POST_MS = SR?.SYNC_POST_MS ?? 3000;
-const IDLE_MS = SR?.IDLE_APPLY_MS ?? 10000;
+const IDLE_MS = SR?.IDLE_APPLY_MS ?? 10000; /* IDLE_APPLY_MS left sync-rules (owner ruling 2026-10-20): the fallback is a plain 10 s wait */
 const POST_TOL = POST_MS + 1000;
 const POST_WAIT = POST_MS + 300;
 const APPLY_WAIT = IDLE_MS + 500;
@@ -5532,20 +5557,31 @@ eq(githubOps(), [], "54.2d and GitHub takes no write for it");
 /* ── 55. live updates: connect, a rev-gated GET, a held apply (harness contract only) ──
    Stage 4b lane L5, decision sync-revamp-cloudflare (Stage 4b rulings). The
    Worker's rev channel reports that another device moved the server. A rev
-   above the last one seen triggers one GET. The GET reply is held, and applied
-   only after IDLE_APPLY_MS with no input and no armed guard. While a reply is
-   held, nothing on screen says so: no advisory line, no reserved slot. The
-   orchestrator dropped the "updates waiting" line (it cost 40px at rest).
+   above the last one seen triggers one GET. The GET reply is held while a press
+   is in progress (and for PRESS_TAIL_MS after it) or an armed guard is open, and
+   applied as soon as neither holds (owner ruling 2026-10-20 23:36 CDT; group 51
+   pins pressHeld, group 75 the app). While a reply is held, nothing on screen
+   says so: no advisory line, no reserved slot. The orchestrator dropped the
+   "updates waiting" line (it cost 40px at rest).
 
-   There are no fake timers. The timed cases wait real time, as group 53 does.
-   The rev channel is fired by fireSyncRev(), which the mock keeps alongside
-   connect(). */
+   The cases run on the virtual clock (see the note before group 53). The rev
+   channel is fired by fireSyncRev(), which the mock keeps alongside connect(). */
 
 const KEY55 = "device-55-key";
 const LEDGER55 = { mailday: 1, items: ITEMS.slice(0, 4), received: {}, envelopes: [] };
 const getCount = () => syncCalls().filter((c) => c.op === "get").length;
 const connectCount = () => syncCalls().filter((c) => c.op === "connect").length;
-const input55 = () => win.dispatchEvent(new win.Event("pointerdown"));
+/* A pointer event as the page gets it: aimed at <body> and bubbling, so a listener on
+   window or on document hears it. Hover is a mouse pointermove; a press is down then up. */
+const ptr = (type, init = {}) =>
+  act(async () => {
+    document.body.dispatchEvent(
+      new win.PointerEvent(type, { bubbles: true, pointerType: "mouse", clientX: 40, clientY: 80, ...init })
+    );
+    await sleep(0);
+  });
+/* long enough after a release for the tail to end, the apply to run and the save to land */
+const AFTER_UP = TAIL + SAVE_WAIT + 300;
 const slot55 = () => document.querySelector("[data-advisory-slot]");
 const dismiss55 = () => [...document.querySelectorAll('button[aria-label="Dismiss"]')][0] ?? null;
 
@@ -5586,30 +5622,32 @@ await fireSyncRev(seen55 + 1);
 await sleep(600);
 eq(getCount() - get55d, 0, "55.2d the echo of that GET's rev triggers no GET");
 
-/* 55.3 a GET reply is held, and applied only after IDLE_APPLY_MS with no input.
-   Input at 9 s restarts the wait, so nothing applies at 10 s, and the reply is
-   applied by 20.5 s: the 10 s gate after the input at 9 s, plus the 500 ms
-   debounced save. While it is held, no advisory line shows and no
-   data-advisory-slot element exists (55.5). The device POSTs once to seed the
-   empty store, then waits out the idle gate, so the seed reply is applied
-   before the timing starts. */
+/* 55.3 a GET reply is held while a press is down and for PRESS_TAIL_MS after the release, and
+   then it applies. Re-pointed from the 10 s idle gate (owner ruling 2026-10-20 23:36 CDT): the
+   hold protects the mis-tap, so it follows the press, not the clock. Held and landed are read
+   from the screen: the merge notice ("Merged —") is written in the same render as the apply,
+   so a premature apply cannot hide behind the 500 ms save. While the reply is held, no advisory
+   line shows and no data-advisory-slot element exists (55.5). The device waits out the cold open
+   first, so what the cases read is the press and nothing from the mount. */
+const landed55 = () => /Merged \u2014/.test(text());
 await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { noRemote: true, syncKey: KEY55 });
 await settle();
 await pageshow();
 await sleep(APPLY_WAIT);
-input55();
-const t055 = Date.now();
-const until55 = (ms) => sleep(Math.max(0, t055 + ms - Date.now()));
+const get55e = getCount();
+await ptr("pointerdown");
 await fireSyncRev(2, LEDGER55);
-await until55(1000);
-eq(saved().items?.length ?? 0, 3, "55.3a a GET reply is held, not applied");
+ok(getCount() > get55e, "55.3a0 the rev fetched the reply, so the hold below means something");
+await sleep(1000);
+ok(!landed55(), "55.3a a GET reply is held while a press is down");
 eq([advisory(), !!slot55()], ["", false], "55.5 while the reply is held, no advisory line shows and no data-advisory-slot element exists");
-await until55(9000);
-input55();
-await until55(10000);
-eq(saved().items?.length ?? 0, 3, "55.3b no apply at 10 s, because input at 9 s restarted the wait");
-await until55(20500);
-eq(saved().items?.length ?? 0, 4, "55.3c the held reply is applied by 20.5 s");
+await ptr("pointerup");
+await sleep(TAIL - 100);
+ok(!landed55(), "55.3b and it is still held just before PRESS_TAIL_MS after the release");
+await sleep(1100);
+ok(landed55(), "55.3c and it has applied within about a second of the tail ending");
+await sleep(SAVE_WAIT);
+eq(saved().items?.length ?? 0, 4, "55.3d and the saved ledger carries the applied line");
 
 /* 55.4 an armed Reset holds the apply. The apply runs once the hold clears, and
    the idle wait has already passed. The wait is past before the arm, so only
@@ -5628,8 +5666,11 @@ await sleep(5000);
 ok(!/Tap again to clear \d+ cards?/.test(text()), "55.4b Reset has disarmed itself");
 eq(saved().items?.length ?? 0, 4, "55.4c and the apply runs once the hold clears");
 
-/* 55.4d an open notice holds the apply, as an armed Reset does. The notice is a
-   backup import with the same lines, so it changes nothing else. */
+/* 55.4d an open import notice does not hold the apply. Re-pointed (owner ruling 2026-10-20):
+   a notice is an advisory, not a guard, and it has no timeout, so one unread notice held every
+   reply for ever. The reply applies with no Dismiss, and the notice it writes keeps the import
+   sentence beside the merge sentence, so the person who has not read the import yet still can.
+   The notice is a backup import with the same lines, so it changes nothing else. */
 await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { noRemote: true, syncKey: KEY55 });
 await settle();
 await pageshow();
@@ -5640,13 +5681,15 @@ await dropFile(
   "mailday-backup.json",
   JSON.stringify({ mailday: 1, items: ITEMS.slice(0, 3), received: {}, envelopes: [] })
 );
-ok(!!dismiss55(), "55.4d0 an import notice is open, so the hold means something");
+ok(!!dismiss55() && /Backup restored/.test(text()), "55.4d0 the import notice is open, so the check below means something");
+const get55f = getCount();
 await fireSyncRev(2, LEDGER55);
+ok(getCount() > get55f, "55.4d1 the rev fetched the reply");
 await sleep(1000);
-eq(saved().items?.length ?? 0, 3, "55.4d an open notice holds the apply");
-await click(dismiss55(), "dismiss the notice");
-await sleep(1500);
-eq(saved().items?.length ?? 0, 4, "55.4e and the apply runs once the notice is dismissed");
+ok(landed55(), "55.4d an open import notice does not hold the apply");
+ok(/Backup restored/.test(text()) && landed55(), "55.4e and the notice keeps the import sentence beside the merge sentence");
+await sleep(SAVE_WAIT);
+eq(saved().items?.length ?? 0, 4, "55.4f and the apply is saved with no Dismiss");
 
 /* 55.8 a POST the server refuses as too big (413) must not go quiet. As unknown
    does, that cycle falls back to the GitHub merge, and the advisory line names
@@ -5819,7 +5862,7 @@ eq(saved().receivedAt?.[K0] ?? null, 2000, "56.4c a receivedAt that differs alon
 eq(canon56(pick56(saved())), canon56(pick56(expected56)), "56.4d and the local ends equal to the merge, compared canonically");
 
 /* 56.5 S2. A cold open with a key calls the Worker within about 1 s, and applies
-   a server ledger with more lines once the idle gate has passed. */
+   a server ledger with more lines. */
 await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
   noRemote: true,
   syncKey: KEY56,
@@ -5832,9 +5875,9 @@ ok(
   "56.5a a cold open with a key calls the Worker within about 1 s"
 );
 await sleep(APPLY_WAIT - 1000);
-eq(saved().items?.length ?? 0, 4, "56.5b and the server's fourth line is applied after the idle gate");
+eq(saved().items?.length ?? 0, 4, "56.5b and the server's fourth line is applied");
 
-/* 56.6 S3. A second held reply applies after the idle gate, although the first
+/* 56.6 S3. A second reply applies, although the first
    apply's notice is still open. The first apply must leave a notice; that is
    checked first, so the second check means something. */
 await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
@@ -5849,7 +5892,7 @@ eq(saved().items?.length ?? 0, 4, "56.6a0 the first reply is applied");
 ok(!!dismiss55(), "56.6a1 the first apply left its notice open, so the second check means something");
 await fireSyncRev(3, { mailday: 1, items: ITEMS, received: {}, envelopes: [] });
 await sleep(2500);
-eq(saved().items?.length ?? 0, 12, "56.6b a second held reply applies after idle, though the first notice is open");
+eq(saved().items?.length ?? 0, 12, "56.6b a second reply applies, though the first notice is open");
 
 /* 56.7 S6. A late GET reply with a lower rev never replaces a newer held reply.
    The first GET is held back, the rev-3 GET lands and is held, then the rev-2
@@ -6154,7 +6197,7 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     await settle();
     eq(count58("post") - posts6, 0, "58.N6a a cold open on a server copy equal but for savedAt sends no POST");
     ok(!/Merged —/.test(text()), "58.N6b and shows no merge notice");
-    /* the cold reply is held until the idle gate opens, so wait past it before reading
+    /* wait out any hold before reading
        the store. An equal reply applies nothing, so the stored time stays the local one.
        A build that drops the noTime strip applies the server copy and stores its 200. */
     await sleep(APPLY_WAIT);
@@ -6195,7 +6238,7 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
      they are held carries the bigger one's lines too, since the server copy only
      grows. A copy that took the later reply alone would write 8 lines, not 18. */
   {
-    const touchP5 = () => act(async () => { win.dispatchEvent(new win.Event("pointerdown")); await sleep(0); });
+    const touchP5 = () => ptr("pointerdown"); /* a press with no release holds up to PRESS_MAX_MS */
     const ledgerP5 = (items) => ({ mailday: 1, items, received: {}, envelopes: [] });
     await boot({ items: ITEMS.slice(0, 6), received: {} }, null, { syncKey: KEY58 });
     await settle();
@@ -6207,7 +6250,7 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     await fireSyncRev(syncRev() + 1, ledgerP5(REMOTE58.slice(0, 2))); /* the older reply: 2 of them */
     await fireSyncRev(syncRev() + 1, ledgerP5(REMOTE58)); /* the newer reply: 12 lines, last to arrive */
     eq(saved().items?.length, 6, "58.P5a0 both replies are held by the touch, so the local copy still has 6 lines");
-    await sleep(11000); /* past IDLE_APPLY_MS (10000), so the held reply applies */
+    await sleep(11000); /* past PRESS_MAX_MS and the tail, so the held reply applies */
     await settle();
     ok(workerPosts().length > 0, "58.P5a1 a POST ran while the replies were held");
     eq(
@@ -6461,8 +6504,10 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
 
   /* 59.13. Items and no check-ins, the server empty (404), a key pasted. The 404
      answers no reply, so nothing clears applyNow. Another device's rev then waits
-     for the idle gate after the last tap, and does not apply at once. Red on head:
-     applyNow is cleared only by a reply that applies, so it stays set. */
+     for a press in progress, and does not apply while the owner's finger is down.
+     Re-pointed from the 10 s idle gate (owner ruling 2026-10-20 23:36 CDT). Red on
+     head: applyNow is cleared only by a reply that applies, so it stays set and the
+     press does not hold. */
   const OTHER13 = {
     mailday: 1,
     items: ITEMS.slice(0, 3),
@@ -6480,11 +6525,13 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   await settle();
   await openPanel59();
   await pasteKey59(KEY59);
+  await ptr("pointerdown");
   await fireSyncRev(1, OTHER13);
   await sleep(SAVE_WAIT);
-  ok(!saved().received?.[ITEMS[2].key], "59.13a after a 404 and a key, another device's rev does not apply at once");
-  await sleep(APPLY_WAIT);
-  ok(saved().received?.[ITEMS[2].key] === 1, "59.13b and it applies once the idle gate opens");
+  ok(!saved().received?.[ITEMS[2].key], "59.13a after a 404 and a key, another device's rev does not apply while a press is down");
+  await ptr("pointerup");
+  await sleep(AFTER_UP);
+  ok(saved().received?.[ITEMS[2].key] === 1, "59.13b and it applies once the press is released");
 
   /* 59.14. Gap 1: an empty device and a server ledger that holds a check-in the
      device lacks. The paste applies that ledger, and a later check-in POSTs. */
@@ -6514,8 +6561,9 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   ok(count59("post") > posts14, "59.14b and a later check-in POSTs");
 
   /* 59.15. Gap 2: the first reply after a saved key applies at once. A second reply
-     from another device waits for the idle gate after the last tap. Red on head with
-     applyNow.current = false removed (app.jsx ~4700). */
+     from another device waits for a press in progress. Re-pointed from the 10 s idle
+     gate (owner ruling 2026-10-20 23:36 CDT). Red on head with applyNow.current = false
+     removed (app.jsx ~4700). */
   const FIRST15 = {
     mailday: 1,
     items: ITEMS.slice(0, 3),
@@ -6540,11 +6588,13 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   await openPanel59();
   await pasteKey59(KEY59);
   ok(saved().received?.[ITEMS[1].key] === 1, "59.15a the first reply after a saved key applies at once");
+  await ptr("pointerdown");
   await fireSyncRev(2, SECOND15);
   await sleep(SAVE_WAIT);
-  ok(!saved().received?.[ITEMS[2].key], "59.15b a second reply from another device does not apply at once");
-  await sleep(APPLY_WAIT);
-  ok(saved().received?.[ITEMS[2].key] === 1, "59.15c and it applies once the idle gate opens");
+  ok(!saved().received?.[ITEMS[2].key], "59.15b a second reply from another device does not apply while a press is down");
+  await ptr("pointerup");
+  await sleep(AFTER_UP);
+  ok(saved().received?.[ITEMS[2].key] === 1, "59.15c and it applies once the press is released");
 
   /* 59.16. The owner's path on the home-screen app: keyless with a GitHub token, the
      panel opened to paste, a good save, and the panel still open. The line must not
@@ -6896,7 +6946,7 @@ await boot(PHONE_STATE, null, {
   syncKey: "device-61-key",
 });
 await settle();
-await sleep(10_500); /* the held apply: IDLE_APPLY_MS is 10 s (sync-rules) */
+await sleep(10_500); /* long past the apply, which waits for no press here */
 ok(/Merged/.test(text()), "61.1 a cold open against a newer remote says what the merge took");
 ok(!GITHUB_STATE_TEXT.test(text()), "61.2 and shows no GitHub copy for the same state");
 ok(!/nothing here is replaced/.test(text()), "61.3 and it no longer says nothing here is replaced");
@@ -7607,7 +7657,7 @@ eq(
   "66.4 after a reload whose Worker reply fails, Last sync still shows the saved Worker agreement"
 );
 
-/* Groups 67 to 69 wait out the idle apply gate, the retry backoff and the cold-open POST
+/* Groups 67 to 69 wait out the apply, the retry backoff and the cold-open POST
    delay, so they run on the virtual clock too. Removed after group 69. */
 installClock();
 
@@ -8681,8 +8731,8 @@ for (const [kind, c] of Object.entries(CASES72)) {
         await settle();
         await sleep(SAVE_WAIT);
         ok(c.restored(saved()), `${tag}.pre the restore put the version's ${kind} on the device`);
-        /* a restore leaves its notice open, and an open notice holds the apply (mergeBlocked,
-           importMsg). Dismiss it, as the person would, so the reply can land at all. */
+        /* a restore leaves its notice open. Dismissed as the person would; an open notice no
+           longer holds a reply (55.4d), so this is not what lets the reply land. */
         for (let i = 0; i < 3; i++) {
           const d = document.querySelector('button[aria-label="Dismiss"]');
           if (!d) break;
@@ -8690,7 +8740,7 @@ for (const [kind, c] of Object.entries(CASES72)) {
         }
         /* the other device's copy, which predates the restore moment. It holds one line
            more than the version, so the apply is visible, and the resume applies it at once
-           (34.23, 40.4). A POST reply is held for the idle gate, so the resume forces it. */
+           (34.23, 40.4). A resume POSTs at once, so the reply lands with it. */
         if (reply === "post") {
           setServerLedger(SRV72(c.server));
           await wakeWorker();
@@ -8708,6 +8758,235 @@ for (const [kind, c] of Object.entries(CASES72)) {
       }
     }
   }
+}
+
+/* ── 75. sync latency: the press guard, the burst timer, the import notice (lane web/sync-latency) ──
+   Measured 2026-10-20: a reply took 3.1 to 3.3 s to reach an idle second device, and 21 s when
+   the first device was tapped every 2 s for twenty seconds. Three of the four defects live in
+   the app and are pinned here; the fourth is the Worker's, in worker/core.test.mjs group 70.
+     a. each change re-armed the 3 s POST timer, so a burst of taps sent nothing until it stopped;
+     b. an open import notice held the apply, and a notice has no timeout (55.4d pins it);
+     d. a reply waited for 10 quiet seconds, and a hover counted as activity. Owner ruling
+        2026-10-20 23:36 CDT ("that's a bad rule that's not properly guarding the outcome it's
+        meant to protect. fix it. and, hover doesn't count"): the outcome is that the owner never
+        acts on a row the list moved from under the pointer (invariant
+        no-layout-shift-under-pointer). So a reply holds while a press is in progress, for a
+        short tail after it, and while an armed guard needs it, and for nothing else. 55.3,
+        59.13 and 59.15 are the same claim from the older groups; whether the row under the
+        pointer stays where it was is a layout claim, and check:screens claim 16 holds it
+        (testing-jsdom-has-no-layout).
+   Timing is on the virtual clock (harness-waits-past-debounces). A press is a pointer event
+   (harness-drives-resume-by-event); click() fires none, so the older groups hold no press.
+   Cases that read "held" or "applied" read the merge notice, which is written in the same
+   render as the apply, not the 500 ms save. Each held check has its precondition: the GET
+   happened, or the thing that holds is on screen.
+   The group sits before 73.2 on purpose: 73.2 holds a photo download with setSyncPhotoDelay,
+   whose sleep() runs inside the clock's own act loop and leaves React's act scope open, so a
+   boot after it renders nothing. */
+const KEY75 = "device-75-key";
+/* a device that has been open long enough that nothing from the mount (the old gate seeded its
+   clock there) holds a reply: what a case reads is what the case does */
+const quiet75 = async (opts = {}) => {
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { noRemote: true, syncKey: KEY75, ...opts });
+  await settle();
+  await sleep(APPLY_WAIT);
+};
+
+/* 75.1 hover does not hold a reply. The mouse moves over the page for the whole second after the
+   rev; the reply applies within that second. The wait after boot comes first, so the old gate is
+   open and the hover is the only thing in the way. */
+await quiet75();
+{
+  const g = getCount();
+  await ptr("pointermove");
+  await fireSyncRev(2, LEDGER55);
+  ok(getCount() > g, "75.1pre the rev fetched the reply, so the check below means something");
+  for (let i = 1; i <= 4; i++) {
+    await sleep(250);
+    await ptr("pointermove", { clientX: 40 + 10 * i, clientY: 80 + 10 * i });
+  }
+  ok(landed55(), "75.1 a mouse moving over the page does not hold a reply: it applies within a second");
+}
+
+/* 75.2 scrolling and the wheel do not hold it either: the owner moves the page to find a row,
+   and the row under the pointer is kept still by the apply, not by waiting. */
+await quiet75();
+{
+  const g = getCount();
+  await act(async () => {
+    win.dispatchEvent(new win.Event("scroll"));
+    document.body.dispatchEvent(new win.WheelEvent("wheel", { bubbles: true, deltaY: 120 }));
+    await sleep(0);
+  });
+  await fireSyncRev(2, LEDGER55);
+  ok(getCount() > g, "75.2pre the rev fetched the reply, so the check below means something");
+  await sleep(500);
+  await act(async () => {
+    win.dispatchEvent(new win.Event("scroll"));
+    await sleep(0);
+  });
+  await sleep(500);
+  ok(landed55(), "75.2 scrolling and the wheel do not hold a reply: it applies within a second");
+}
+
+/* 75.3 a press whose pointerup is lost does not hold for ever: PRESS_MAX_MS ends it. */
+await quiet75();
+{
+  const g = getCount();
+  await ptr("pointerdown");
+  await fireSyncRev(2, LEDGER55);
+  ok(getCount() > g, "75.3pre the rev fetched the reply, so the hold below means something");
+  await sleep(MAXP - 500);
+  ok(!landed55(), "75.3a a press with no release still holds the reply just before PRESS_MAX_MS");
+  await sleep(1600);
+  ok(landed55(), "75.3b and the reply applies within about a second after PRESS_MAX_MS");
+}
+
+/* 75.4 a touch drag ends in pointercancel, not pointerup: the cancel ends the hold. */
+await quiet75();
+{
+  const g = getCount();
+  await ptr("pointerdown", { pointerType: "touch" });
+  await fireSyncRev(2, LEDGER55);
+  ok(getCount() > g, "75.4pre the rev fetched the reply, so the hold below means something");
+  await sleep(500);
+  ok(!landed55(), "75.4a the reply is held while the finger is down");
+  await ptr("pointercancel", { pointerType: "touch" });
+  await sleep(TAIL + 1100);
+  ok(landed55(), "75.4b and a pointercancel ends the hold: the reply applies within about a second after the tail");
+}
+
+/* 75.5 a key press holds like a pointer press: Enter and Space tap a focused check button. */
+await quiet75();
+{
+  const g = getCount();
+  await act(async () => {
+    document.body.dispatchEvent(new win.KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    await sleep(0);
+  });
+  await fireSyncRev(2, LEDGER55);
+  ok(getCount() > g, "75.5pre the rev fetched the reply, so the hold below means something");
+  await sleep(300);
+  ok(!landed55(), "75.5a a key just pressed holds the reply");
+  await act(async () => {
+    document.body.dispatchEvent(new win.KeyboardEvent("keyup", { key: "Enter", bubbles: true }));
+    await sleep(0);
+  });
+  await sleep(TAIL + 1100);
+  ok(landed55(), "75.5b and it applies within about a second after the key is released and the tail ends");
+}
+
+/* 75.6 a device nobody is touching applies a cold-open reply within a second of the open. The old
+   gate seeded its clock at the mount, so the first ten seconds of every open were held. */
+await boot({ items: ITEMS.slice(0, 3), received: {} }, null, { noRemote: true, syncKey: KEY75, syncLedger: LEDGER55 });
+await settle();
+ok(syncCalls().some((c) => c.op === "get"), "75.6pre the cold open read the Worker, so the check below means something");
+await sleep(1000);
+ok(landed55(), "75.6 a cold-open reply on an untouched device applies within a second");
+
+/* 75.7 a press that begins while the reply's photos download holds the reply: the download is
+   the one wait in the apply path, and a tap in it must not be answered with a moved list. The
+   press is still down when the download ends, so only the press is in the way. */
+await quiet75({ syncPhotos: [["pho-o.jpg", jpegOf(1)]] });
+{
+  const realGet = win.sync.photoGet;
+  let release;
+  const gate = new Promise((r) => (release = r));
+  let asked = 0;
+  win.sync.photoGet = (id) => {
+    asked++;
+    return gate.then(() => realGet(id));
+  };
+  try {
+    await fireSyncRev(2, { mailday: 1, ...withPhoto(["pho-o"]) });
+    await sleep(300);
+    ok(asked > 0, "75.7pre the reply names a photo this device lacks, and its download is out");
+    await ptr("pointerdown");
+    release();
+    await sleep(2000);
+    ok(syncCalls().some((c) => c.op === "photoGet"), "75.7a the download finished while the press was still down");
+    ok(!landed55(), "75.7b and the reply is still held, because the press is");
+    await ptr("pointerup");
+    await sleep(AFTER_UP);
+    ok(landed55(), "75.7c and it applies once the press is released");
+  } finally {
+    win.sync.photoGet = realGet;
+    release();
+  }
+}
+
+/* 75.11 (a guard, green on main by design) the Worker's hello after a reconnect is a plain {rev}
+   (worker/core.test.mjs group 70), so the client needs nothing new for it: a hello at the rev this
+   device already holds triggers no GET, and a newer one, which a socket dropped across a broadcast
+   would otherwise miss until the next write, triggers one GET and applies. entry.jsx's reconnect
+   loop is not in the bundle (photoget.test.mjs notes why), so the hello arrives as a rev event. */
+await quiet75({ syncLedger: { mailday: 1, items: ITEMS.slice(0, 3), received: {}, envelopes: [] } });
+{
+  const g = getCount();
+  await fireSyncRevOnly(syncRev());
+  await sleep(600);
+  eq(getCount() - g, 0, "75.11a a hello at the rev this device already holds triggers no GET");
+  setServerLedger(LEDGER55);
+  await fireSyncRevOnly(syncRev());
+  await sleep(1000);
+  eq(getCount() - g, 1, "75.11b and a newer hello triggers one GET");
+  ok(landed55(), "75.11c which applies");
+}
+
+/* 75.9 a burst of taps still POSTs every SYNC_POST_MS. The timer is armed by the first change; a
+   change while it is armed does not move it, and a fire leaves it free to arm again. Ten taps two
+   seconds apart used to send nothing until 3 s after the last (21 s). The cold open has settled and
+   POSTed nothing, so every POST counted here is the burst's. */
+await boot({ items: ITEMS, received: {} }, null, { noRemote: true, syncKey: KEY75 });
+await settle();
+{
+  const real = win.sync.post;
+  const stamps = [];
+  win.sync.post = async (ledger) => {
+    stamps.push({ at: Date.now(), checked: Object.keys(ledger.received ?? {}).length });
+    return real(ledger);
+  };
+  try {
+    const t0 = Date.now();
+    let tapped = 0;
+    for (let i = 0; i < 10; i++) {
+      const b = document.querySelector('button[aria-label="Mark as received"]');
+      if (!b) break;
+      await click(b, `burst tap ${i}`);
+      tapped++;
+      await sleep(2000);
+    }
+    const tEnd = Date.now();
+    eq(tapped, 10, "75.9pre ten taps each checked a line in, so the burst is ten changes");
+    const burst = stamps.filter((s) => s.at <= tEnd);
+    ok(
+      stamps.length >= 1 && stamps[0].at - t0 <= POST_MS + 300,
+      "75.9a the first POST goes out within SYNC_POST_MS of the first tap, not after the burst"
+    );
+    ok(burst.length >= 4, `75.9b ${burst.length} POSTs went out during the twenty-second burst; one per SYNC_POST_MS and a tap means at least four`);
+    const gaps = burst.slice(1).map((s, i) => s.at - burst[i].at);
+    ok(
+      gaps.length > 0 && Math.max(...gaps) <= POST_MS + 2000 + 300,
+      "75.9c and no gap between POSTs outlasts SYNC_POST_MS plus the two seconds to the next tap"
+    );
+    await sleep(POST_WAIT + 2000);
+    eq(stamps.at(-1)?.checked, 10, "75.9d the last POST carries the last tap: arming once drops no change");
+  } finally {
+    win.sync.post = real;
+  }
+}
+
+/* 75.10 a tap whose app is unmounted before the timer fires sends no POST: arming once keeps the
+   unmount clear. Green on main by design; it guards the clear that arm-once must keep. */
+await boot({ items: ITEMS, received: {} }, null, { noRemote: true, syncKey: KEY75 });
+await settle();
+{
+  const posts = postCount();
+  await click(document.querySelector('button[aria-label="Mark as received"]'), "tap before unmount");
+  await sleep(1000);
+  await unmountApp();
+  await sleep(POST_WAIT + 2000);
+  eq(postCount() - posts, 0, "75.10 a POST timer armed by a tap is cleared when the app unmounts");
 }
 
 /* ── 73. photos go to the Worker, and no photo call reaches GitHub ──
