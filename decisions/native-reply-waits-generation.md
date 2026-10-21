@@ -4,7 +4,7 @@ Kind: build
 
 Plan: decisions/native-reply-waits-generation.md#the-client (native)
 
-**Status:** ruled. The owner accepted this on 2026-10-11 with the plan, and ruled two details on 2026-10-21. Lane N4a built the HTTP half (`SyncClient`). Lane N4b builds the socket half. Two details are open, see Still open.
+**Status:** ruled. The owner accepted this on 2026-10-11 with the plan, and ruled two details on 2026-10-21. Lane N4a built the HTTP half (`SyncClient`). Lane N4b builds the socket half. Some details are open, see Still open.
 
 The native sync client applies a Worker reply only if the local ledger did not change since the request left. If the ledger changed, the client POSTs again. This removes the in-flight race with no local merge. The merge stays on the Worker.
 
@@ -16,11 +16,11 @@ Lane N4a built these in `SyncClient`.
 
 - `GET /ledger` and `POST /ledger` with the body `{ledger}` both send `Authorization: Bearer`. The client reads the key from the KeyStore when it makes each request. The key never sits in a URL or a body.
 - The ledger in the body carries `mailday: 1`, and the Worker answers 400 without it (`worker/core.mjs`). The client sends no `mailday` header.
-- A GET reply is adopted only if the ledger did not change since the request left, and no check-in, stamp or envelope waits that an adopted reply has not carried (`imports-merge-never-replace`). Otherwise the client drops the reply and POSTs, and the Worker's merge answers. A fresh start counts everything the file holds as not carried yet, so the first pull POSTs it. The owner ruled on 2026-10-21 to keep this rule: "a GET reply never replaces a check-in, envelope or stamp no adopted reply has carried".
+- A GET reply is adopted only if the ledger did not change since the request left, and no check-in, stamp or envelope waits that an adopted reply has not carried (`imports-merge-never-replace`). Otherwise the client drops the reply and POSTs, and the Worker's merge answers. A fresh start counts everything the file holds as not carried yet. The owner ruled on 2026-10-21 to keep this rule: "a GET reply never replaces a check-in, envelope or stamp no adopted reply has carried; on a fresh start everything the file holds counts as unsent, so the first pull POSTs it".
 - A 404 `empty` with a check-in, stamp or envelope in the ledger seeds by POST. A 404 with only lines sends nothing more.
 - A reply goes through the mend and the kept copy that a load does, then the store saves (`native-ledger-is-raw-json`).
 - `syncStatus` in the rules bundle maps each status. A call times out after `SYNC_TIMEOUT_MS` and reads as unknown, as does a 200 with no readable ledger.
-- A 401 sets `advisory` to `no-access` and stops all calls made with the key the Worker refused. The client keeps a digest of that key, never the key (`the-token-is-a-credential`). The owner ruled on 2026-10-21: "A newly saved key lifts the native 401 stop, as the web does (no relaunch)." A different key saved in the KeyStore lifts the stop, and so does a new client. If the Worker refuses the new key too, the stop is back. The web lifts it in `src/app.jsx` ("a new key lifts a 401 stop").
+- A 401 sets `advisory` to `no-access` and stops all calls made with the key the Worker refused. The client keeps a digest of that key, never the key (`the-token-is-a-credential`). The owner ruled on 2026-10-21: "A newly saved key lifts the native 401 stop, as the web does (no relaunch)." A different key saved in the KeyStore lifts the stop, and so does a new client. Saving the same key again does not, see Still open. If the Worker refuses the new key too, the stop is back. The web lifts it in `src/app.jsx` ("a new key lifts a 401 stop").
 - A 413 sets `advisory` to `too-big`, and the size line shows it. No screen shows it yet, see debt `native-sync-client-unwired`.
 - A failure other than 400 and 401 schedules a retry, a POST, after `backoffMs(n)`, where n counts the failures so far. A retry that fails schedules the next. While a retry is pending, `push` sends nothing and `pull` still runs. A good POST clears it, and so does a good GET, except after a 413. A 400 schedules nothing.
 - `stop()` cancels every call in flight and the pending retry. A stop is not a failure and sets no `advisory`.
@@ -53,7 +53,7 @@ Lane W1 (PR #61) made the POST reply carry `stats` from `mergeLedger`. The clien
 
 ## Still open
 
-- Whether saving the same key again lifts the 401 stop is not ruled. The web lifts it on any save. `SyncClient` lifts it only for a different key, and no test pins the same-key case.
+- The 2026-10-21 ruling says "as the web does". The web lifts the 401 stop on any key save, with no check for an unchanged key (`saveSyncKey` in `src/app.jsx`). `SyncClient` lifts it only for a different key, and no test pins the same-key case. The two differ.
 - The wording of the native size line is not ruled. The web line is `syncSays` in `src/app.jsx`.
 - Which module holds the wording of the native merge notice is not ruled. The wording is `mergeSummary` in `src/merge-rules.mjs`, and native never loads that file. The rules bundle must either carry the function or the Worker must send the text.
 
