@@ -22,7 +22,7 @@ records your task needs. Do not read them all.
 
 - `invariants/` holds a rule that must not break. 8 records.
 - `decisions/` holds a ruling and the reason it still holds.
-- `measurements/` holds a measured figure and how to re-measure it. 8 records.
+- `measurements/` holds a measured figure and how to re-measure it. 9 records.
 - `debts/` holds one known gap or to-do per file, each pointing at its decision.
 
 A record cites another record by slug, never by a path, so a record survives a
@@ -342,7 +342,7 @@ A fact an agent needs, that argues nothing. Read the CSV record before touching 
 A question this repo has not closed, or a risk it accepted on purpose. Each record carries a status.
 
 - `a-host-migration-resets-storage` — A host migration resets phone storage.
-- `auto-apply-happens-now` — Auto-apply happens now, and why that changed.
+- `auto-apply-happens-now` — A remote reply applies as soon as no press is in progress.
 - `ci-runs-in-utc` — CI runs the suite outside UTC, so test 38.9 runs there.
 - `itp-may-clear-storage` — ITP may clear storage after seven idle days.
 - `nothing-recovers-without-the-key` — Nothing recovers without the key.
@@ -400,7 +400,7 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `native-runner-image-unverified` — Whether the hosted runner image has Xcode 27 and xcodegen is unverified.
 - `native-runner-keychain-unverified` — Whether the hosted runner keychain is unlocked is unverified.
 - `native-job-hosted-time-unmeasured` — The native job's time on a hosted runner is unmeasured.
-- `n4b-socket-idle-gate-unbuilt` — Lane N4b, the socket, idle gate and resume, is not built.
+- `n4b-socket-idle-gate-unbuilt` — Lane N4b, the socket, press gate and resume, is not built.
 - `n10-photos-unbuilt` — Lane N10, native photos, is not built.
 - `n11-device-check-not-run` — The owner's native device check has not run.
 - `web-photos-have-no-backup` — No Worker snapshot covers a web photo.
@@ -413,6 +413,9 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `lost-photo-clock-is-envelope-age` — The lost-photo clock runs from envelope age.
 - `lost-tile-waits-for-first-post` — The lost tile waits for the first POST.
 - `failed-photo-download-no-retry` — A failed photo download is not retried.
+- `half-open-socket-has-no-ping` — A half-open socket has no ping.
+- `hidden-tab-apply-delay-unmeasured` — The apply delay on a hidden tab is unmeasured.
+- `sync-latency-after-fix-unmeasured` — The sync delay with the press guard is unmeasured.
 
 ## Measurements
 
@@ -426,6 +429,7 @@ Each figure was measured in a real viewport or on a real device. A test cannot h
 - `ruled-head-heights` — Ruled head control region heights.
 - `suite-size` — Test suite assertion count and run time.
 - `switch-thirds-and-seal` — View switch, seal, and tally headroom.
+- `sync-latency` — Sync delay from a tap on one device to the row on the other.
 
 ## Build and deploy
 
