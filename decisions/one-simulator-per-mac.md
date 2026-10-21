@@ -10,7 +10,7 @@ One simulator, one CPU and one disk serve every project on this Mac. A lane take
 
 **Holds while:** the Mac has one booted simulator, the iPhone 18 Pro with id `8787FE1C-48CC-4213-9B5C-8605AFE7F9B3`, and other projects share it, its CPU and its disk.
 
-The owner's words, quoted in full, 2026-10-21 14:06 CDT:
+The owner's words of 2026-10-21 14:06 CDT, as the lane brief relayed them:
 
 ```
 Owner resource rules 2026-10-21 14:06 CDT: start a new agent or heavy command only while the CPU is under 85% busy (`top -l 2 -n 0 -s 1 | grep "CPU usage"`: idle 15% or more), else wait; the simulator runs only under 75% busy (idle over 25%), one simulator on the whole Mac behind ~/.claude/locks/ios-simulator.lock (mkdir; owner file; release right after; use only iPhone 18 Pro 8787FE1C-48CC-4213-9B5C-8605AFE7F9B3; never boot another); free disk stays at or above 15 GB; a lane removes its worktrees once it merges. Wait only with the Monitor tool or single checks; never end your turn while waiting.
