@@ -367,7 +367,7 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `tally-card-moves-at-320px` — The Tally card moves 14px at 320px.
 - `native-ui-tests-not-in-ci` — Native UI tests and builds are not in CI.
 - `n4a-sync-over-http-unbuilt` — Lane N4a, sync over HTTP, is not built.
-- `native-lanes-n6-to-n9-unbuilt` — Native lanes N6 to N9 are not built.
+- `native-lanes-n6-to-n9-unbuilt` — Native lanes N6, N7 and N9 are not built.
 - `native-kept-copy-has-no-route` — The native app has no route to the kept copy.
 - `key-re-accepts-token-shape` — The key check accepts a GitHub token's shape.
 - `tests-33-35-40-45-cannot-fail` — Tests 33.35, 33.40 and 33.45 cannot fail.
@@ -382,8 +382,14 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `native-dialog-ban-unpinned` — Nothing pins the ban on native dialogs.
 - `ruled-head-heights-unremeasured` — The ruled head heights have not been re-measured.
 - `photo-put-unrun-on-github` — The GitHub photo PUT and pull have never run.
-- `native-ledger-tab-unbuilt` — The native Ledger tab is a placeholder.
+- `native-ledger-tab-unbuilt` — The native Ledger tab holds the Backup row only.
 - `native-key-scan-skips-views` — The native key scan skips SwiftUI view state.
+- `native-masthead-packages-only` — The native masthead shows on Packages only.
+- `native-masthead-system-style` — The native masthead uses system styles.
+- `native-compose-is-one-fade` — The native letterhead composes in one fade.
+- `native-backup-has-no-photos` — Native Backup holds no photos.
+- `native-backup-ui-unpinned` — No UI test taps Backup.
+- `native-backup-web-restore-unrun` — No test restores a native backup file on the web.
 - `draft-skip-required-unmeasured` — A required check on a draft-skipped job is unmeasured.
 - `recent-log-unbuilt` — The recent-actions log is not built.
 - `recent-log-unmeasured` — The recent-actions log has three measurements to take.

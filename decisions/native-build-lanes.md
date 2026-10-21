@@ -1,6 +1,6 @@
 # The native build runs in ordered lanes
 
-**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. W1 landed in PR #61 and S1 in PR #62. S2 landed in PR #63, S3 in PR #64 and S4 in PR #65. N1 landed in PR #75, C1 in PR #76, W2a in PR #77 and W3a in PR #79. N2 landed in PR #81, N3 in PR #80 and N5 in PR #82. Their rows have left this table. No other lane has landed. The rows below carry the 2026-10-11 changes and the 2026-10-12 Mirror scan move (N8 row). The 2026-10-12 N5 defaults sit in N5 notes below. The rows are ruled or named, and not built.
+**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. W1 landed in PR #61 and S1 in PR #62. S2 landed in PR #63, S3 in PR #64 and S4 in PR #65. N1 landed in PR #75, C1 in PR #76, W2a in PR #77 and W3a in PR #79. N2 landed in PR #81, N3 in PR #80 and N5 in PR #82. N8 landed on branch `native/n8-masthead`, and its PR number is claimed at merge. Their rows have left this table. No other lane has landed. The rows below carry the 2026-10-11 changes. The 2026-10-12 N5 defaults sit in N5 notes below, and the N8 defaults sit in N8 notes. The rows are ruled or named, and not built.
 
 The native rebuild splits into lanes. W lanes change the Worker. S lanes change shared files and extract the rules. The C lane changes CI. N lanes build the native client. A lane that lands leaves this table, and git keeps its history.
 
@@ -44,7 +44,7 @@ W2 and W3 come from the owner's rulings, not from the first plan. W2a and W3a ha
 - Batch 2: C1 and N1, after S4 (both landed).
 - Batch 3: N2 and N3 (both landed).
 - Batch 4: N5 (landed), beside N4a.
-- Batch 5: N6, N7 and N8 after N5 (landed), with N4b and N9.
+- Batch 5: N6, N7 and N8 (landed) after N5 (landed), with N4b and N9.
 - N4a waits for the stage 4b switch, see `sync-revamp-cloudflare`.
 - N10 waited for W2a, which landed in PR #77, because the owner ruled the Worker photo route first.
 
@@ -61,6 +61,28 @@ W2 and W3 come from the owner's rulings, not from the first plan. W2a and W3a ha
 - Orchestrator default, 2026-10-12: a key link that beats the engine waits in `PendingKeyLinks`. `ManifestApp` logs each outcome, with no key text.
 - Orchestrator default, 2026-10-12: a failed check-in save rolls the store back in `commitReceived`. `PackagesModel` sets `checkInError`, and `PackagesView` shows it in an overlay.
 
+## N8 notes
+
+Orchestrator defaults of 2026-10-20, not owner rulings:
+
+- The masthead sits on the Packages tab only. The web masthead sits above every view.
+- The Ledger tab gets the Backup row in the Data group, and nothing else, see `ledger-tab-holds-options`.
+- `LedgerStore.backup()` exports the raw document as `save()` writes it, from memory. It writes nothing and does not move the generation. A store that is not loaded exports the file bytes as they are, so Backup has no data gate (`recovery-control-not-state-gated`). The app keeps the store before it loads it, so the Backup row works when the load throws.
+- The file name is mailday-backup-YYYY-MM-DD.json, the web name, with the UTC date of the store's clock.
+- The native backup holds no photos.
+- The launch argument `-ManifestUITestSaveState idle|saving|saved|failed` holds the save slot on one state for a whole run, so a UI test measures every state without a failing disk.
+- The count line has the Packages form only: `N packages · autosaves`. The web line also reads envelopes waiting and unique items by view, and adds "in range" under a date filter.
+
+Builder defaults of 2026-10-20 and 2026-10-21, not owner rulings:
+
+- A UI run with `-ManifestUITestSeed` draws the final letterhead frame, because the accessibility audit must not read a half-faded title. No UI test sees the compose.
+- At an accessibility text size the three tally cells stack in one column. Otherwise they weigh 1 : 1 : 1.7, as `masthead-tallies-unequal-thirds` rules.
+- After a check-in the save slot reads `saved ✓` until the next save, as the web slot does. A clock would be one more thing that moves.
+- `compact` moved from `src/app.jsx` to `src/view-rules.mjs`, so the web and the native masthead share one home, see `rules-run-in-javascriptcore`.
+- The masthead paints with system styles.
+
+Proof: BackupExportTests, MastheadModelTests and MastheadMotionTests run under ST. MastheadBackupUITests is the UI test, in `native/ManifestUITests/MastheadBackupUITests.swift`. Test V15 in `test/view-rules.test.mjs` pins `compact`.
+
 ## Risk
 
 S2 and S3 (landed) changed `src/app.jsx`, the largest file in the repo. The sticky rows and the frozen sort must stay in the component, see `no-layout-shift-under-pointer`.
@@ -75,9 +97,15 @@ Other risks live in the record for their lane:
 
 ## Still open
 
-- The Ledger tab is a placeholder, see `ledger-tab-holds-options`. Debt: `native-ledger-tab-unbuilt`.
+- The Ledger tab holds the Backup row only, see `ledger-tab-holds-options`. Debt: `native-ledger-tab-unbuilt`.
 - The native job runs ST only. Debt: `native-ui-tests-not-in-ci`.
 - The key scan skips SwiftUI view state. Debt: `native-key-scan-skips-views`.
+- The native masthead shows on Packages only. Debt: `native-masthead-packages-only`.
+- The native masthead uses system styles. Debt: `native-masthead-system-style`.
+- The native letterhead composes in one fade. Debt: `native-compose-is-one-fade`.
+- Native Backup holds no photos. Debt: `native-backup-has-no-photos`.
+- No UI test taps Backup. Debt: `native-backup-ui-unpinned`.
+- No test restores a native backup file on the web. Debt: `native-backup-web-restore-unrun`.
 - Lane N4b, the socket, idle gate and resume, is not built. Debt: `n4b-socket-idle-gate-unbuilt`.
 - Lane N10, native photos, is not built. Debt: `n10-photos-unbuilt`.
 - Lane N11, the owner's device check, has not run. Debt: `n11-device-check-not-run`.

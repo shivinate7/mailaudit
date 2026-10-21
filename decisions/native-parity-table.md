@@ -6,7 +6,7 @@ Plan: decisions/native-parity-table.md#rows-with-one-scope (web)
 
 Plan: decisions/native-parity-table.md#both-clients (native)
 
-**Status:** ruled. The owner ruled on 2026-10-11 to follow Degen's D32 rule, and accepted the defaults below with "all seem fine". No native code exists yet.
+**Status:** ruled. The owner ruled on 2026-10-11 to follow Degen's D32 rule, and accepted the defaults below with "all seem fine". The native client is under way, and `native-build-lanes` names the lanes that have landed.
 
 Every feature has one scope: both clients, web-only or native-only. A feature that both clients need has one home for its logic, and each client draws its own screen. The lanes in `native-build-lanes` name the native test for each feature.
 
@@ -23,7 +23,7 @@ Each client draws its own screen. The logic has one home, see `rules-run-in-java
 - Envelopes: record, edit, discard (a tombstone), assign, undo, and candidates with ties.
 - Stamps: the tombstone, a refund that leaves every count, and the stamped filter.
 - Worker sync: POST, GET, the WebSocket, the idle gate, resume, and the 401 and 413 advisory lines.
-- Backup export, the masthead and ruled head, the palette, Cochin and monospace type, and motion with reduced motion.
+- Backup export, the masthead and ruled head, the palette, Cochin and monospace type, and motion with reduced motion. Lane N8 built the Backup export, and the masthead with its tallies, save slot and reduced motion. It built nothing else in this line. The native masthead is on Packages only, and the Backup file holds no photos. Debts: `native-masthead-packages-only`, `native-masthead-system-style`, `native-compose-is-one-fade` and `native-backup-has-no-photos`.
 - Envelope photo capture. Photo sync for both clients runs through the Worker photo route, see `sync-revamp-cloudflare`.
 - Milestones of local versions. Native saves them, prunes them by the same rule as the web app, lists them, and restores one. The owner ruled on 2026-10-11: "yeah list and restore".
 
