@@ -1,6 +1,6 @@
 # Records index
 
-This page lists every record in this repo: the rules in `CLAUDE.md`, and the files in `decisions/`, `debts/`, `deferred/` and `plans/`. A script writes it. Do not edit it by hand.
+This page lists every record in this repo: the rules in `CLAUDE.md`, and the files in `decisions/`, `debts/` and `plans/`. A script writes it. Do not edit it by hand.
 
 The merge tool writes this page again when a pull request merges, so a pull request need not carry a fresh one. To write it by hand, run `python3 lint/hook_catalog.py` from the claude-settings checkout, with `--root` set to this repo. The check on the default branch fails when the page is stale.
 
@@ -262,12 +262,15 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `n4a-sync-over-http-unbuilt` | No sync source exists under `native/` on main. | [`debts/n4a-sync-over-http-unbuilt.md`](../debts/n4a-sync-over-http-unbuilt.md) |
 | `n4b-socket-idle-gate-unbuilt` | Lane N4b is ruled in `native-build-lanes`, and it is not built. | [`debts/n4b-socket-idle-gate-unbuilt.md`](../debts/n4b-socket-idle-gate-unbuilt.md) |
 | `native-dialog-ban-unpinned` | Nothing pins the ban on `window.confirm` and `alert` itself. | [`debts/native-dialog-ban-unpinned.md`](../debts/native-dialog-ban-unpinned.md) |
+| `native-discard-arm-unpinned` | No test pins the native Discard ask. | [`debts/native-discard-arm-unpinned.md`](../debts/native-discard-arm-unpinned.md) |
+| `native-envelope-has-no-photos` | The native Orphaned view shows no photo and has no capture control. | [`debts/native-envelope-has-no-photos.md`](../debts/native-envelope-has-no-photos.md) |
 | `native-job-hosted-time-unmeasured` | The 8 to 15 minute estimate for the full native job is unmeasured. | [`debts/native-job-hosted-time-unmeasured.md`](../debts/native-job-hosted-time-unmeasured.md) |
 | `native-kept-copy-has-no-route` | No native view opens the kept copy, and no lane records a route to it. | [`debts/native-kept-copy-has-no-route.md`](../debts/native-kept-copy-has-no-route.md) |
 | `native-key-scan-skips-views` | No lane scans SwiftUI view state. | [`debts/native-key-scan-skips-views.md`](../debts/native-key-scan-skips-views.md) |
-| `native-lanes-n6-to-n9-unbuilt` | `native/` holds no Tally, Orphaned, backup or milestone view on main. | [`debts/native-lanes-n6-to-n9-unbuilt.md`](../debts/native-lanes-n6-to-n9-unbuilt.md) |
+| `native-lanes-n6-to-n9-unbuilt` | `native/` holds no Tally, backup or milestone view on main. | [`debts/native-lanes-n6-to-n9-unbuilt.md`](../debts/native-lanes-n6-to-n9-unbuilt.md) |
 | `native-ledger-pins-missing` | No test pins the millisecond kept-name format, the missing-file case, or the unwrapped-error sentence in Load and save. | [`debts/native-ledger-pins-missing.md`](../debts/native-ledger-pins-missing.md) |
 | `native-ledger-tab-unbuilt` | No lane builds the options that `ledger-tab-holds-options` puts in the Ledger tab. | [`debts/native-ledger-tab-unbuilt.md`](../debts/native-ledger-tab-unbuilt.md) |
+| `native-orphaned-colours-unbuilt` | `native/Manifest/OrphanedView.swift` paints with system styles. | [`debts/native-orphaned-colours-unbuilt.md`](../debts/native-orphaned-colours-unbuilt.md) |
 | `native-runner-image-unverified` | Whether the `macos-26` runner image has Xcode 27 and xcodegen is unknown. | [`debts/native-runner-image-unverified.md`](../debts/native-runner-image-unverified.md) |
 | `native-runner-keychain-unverified` | Whether the runner keychain is unlocked is unknown. | [`debts/native-runner-keychain-unverified.md`](../debts/native-runner-keychain-unverified.md) |
 | `native-ui-tests-not-in-ci` | The native job runs the ST tests only, so native UI tests and builds are not in CI. | [`debts/native-ui-tests-not-in-ci.md`](../debts/native-ui-tests-not-in-ci.md) |
