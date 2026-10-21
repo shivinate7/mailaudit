@@ -205,13 +205,14 @@ final class MastheadBackupUITests: XCTestCase {
     // MARK: accessibility audit, one screen per method
 
     /// The Packages screen with the masthead on it. The masthead must exist first, so a screen
-    /// that passes the audit without one is red.
+    /// that passes the audit without one is red. Rows under the tab bar are skipped, see
+    /// AuditSkippingTabBarUITests.
     func testAccessibilityAuditMastheadOnPackages() throws {
         let app = launch(width: nil)
         openTab(app, "Packages")
         _ = try need(app, "masthead")
         _ = try need(app, "save-slot")
-        try app.performAccessibilityAudit()
+        try app.auditSkippingTabBar()
     }
 
     /// The Ledger screen with Backup on it. Backup must exist first, for the same reason.
