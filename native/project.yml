@@ -3,6 +3,11 @@ options:
   bundleIdPrefix: dev.shivinate
   deploymentTarget:
     iOS: "26.0"
+settings:
+  base:
+    DEVELOPMENT_TEAM: SFYDZG48BE
+    CODE_SIGN_STYLE: Automatic
+    CURRENT_PROJECT_VERSION: "1"
 packages:
   ManifestKit:
     path: ManifestKit
@@ -24,6 +29,8 @@ targets:
       properties:
         UILaunchScreen: {}
         CFBundleDisplayName: MANIFEST
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ITSAppUsesNonExemptEncryption: false
         CFBundleURLTypes:
           - CFBundleURLName: dev.shivinate.manifest.key
             CFBundleURLSchemes: [manifestledger]
