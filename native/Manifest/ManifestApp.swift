@@ -5,6 +5,7 @@ import SwiftUI
 @main
 struct ManifestApp: App {
     @State private var model: PackagesModel?
+    @State private var tally: TallyModel?
     @State private var failure: String?
     @State private var notice: String?
     private let keys = KeyStore(service: "dev.shivinate.manifest", account: "device-key")
@@ -14,7 +15,7 @@ struct ManifestApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(model: model, failure: failure, notice: notice, width: Self.forcedWidth)
+            RootView(model: model, tally: tally, failure: failure, notice: notice, width: Self.forcedWidth)
                 .task { await boot() }
                 .onOpenURL { url in
                     // The key goes to the Keychain and the URL is dropped (native-key-via-url-scheme).
@@ -46,8 +47,11 @@ struct ManifestApp: App {
             notice = LedgerNotice.damagedLine(dropped: store.droppedCount)
             let m = PackagesModel(engine: e, store: store)
             try await m.load()
+            let t = TallyModel(engine: e, store: store)
+            try await t.load()
             engine = e
             model = m
+            tally = t
             await applyLinks()
         } catch {
             failure = "The ledger could not be opened. \(error)"
