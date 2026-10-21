@@ -98,9 +98,10 @@
         within 1.5 s (a hover is not a press, so nothing holds it). 16b: once it has landed
         (up to 13 s, so a build that still waits lands too), the row has moved no more than
         0.5px and is still under the pointer, merge notice and new rows included.
-        Chromium anchors scroll natively and the owner's WebKit does not, so the claim turns
-        overflow-anchor off and measures the page's own correction. A scroll gate and a missing
-        correction fail separately. `SCREENS_ONLY=16 node test/screens.mjs` runs this claim alone.
+        Chromium anchors scroll natively. Whether the owner's WebKit does is unmeasured, so the
+        claim turns overflow-anchor off and measures the page's own correction either way.
+        A scroll gate and a missing correction fail separately.
+        `SCREENS_ONLY=16 node test/screens.mjs` runs this claim alone.
 
    Reduced motion is on, so animation does not skew the numbers. Exit 0 when all
    checks pass; exit 1 with one `FAIL` line per failure and one summary line. */
@@ -1899,8 +1900,8 @@ async function syncApplyCheck(browser, { view, width, touch, card, title, fresh 
       fail(name, "the seeded ledger did not render, so nothing can be measured");
       return;
     }
-    /* Chromium keeps the row still by itself; the owner's WebKit does not. Off, so what is measured
-       is the page's own correction. */
+    /* Chromium keeps the row still by itself; whether the owner's WebKit does is unmeasured. Off, so
+       what is measured is the page's own correction. */
     await page.addStyleTag({ content: "*, *::before, *::after { overflow-anchor: none !important; }" });
     if (view !== "Packages" && !(await showView(page, view))) {
       fail(name, `no tab opens ${view}`);
