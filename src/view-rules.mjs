@@ -436,6 +436,19 @@ export const isDone = (got, qty) => got >= qty;
 export const toggleCount = (got, qty) => (isDone(got, qty) ? 0 : qty);
 export const countLabel = (got, qty) => `${Math.min(got, qty)} of ${qty}`;
 
+/* Compact money for the masthead tallies, where three figures share one row at
+   375px and cents are noise. Whole dollars under 1k, then k / M with at most
+   two decimals and trailing zeros trimmed: 27, 101, 4k, 63.45k, 1.2M.
+   Lane N8: one home for the web and the native masthead. Only for display — `money()` stays the format everywhere a figure is meant to
+   be read exactly. */
+export const compact = (n) => {
+  const a = Math.abs(n);
+  const trim = (x) => String(Math.round(x * 100) / 100);
+  if (a >= 1e6) return `${trim(n / 1e6)}M`;
+  if (a >= 1e3) return `${trim(n / 1e3)}k`;
+  return String(Math.round(n));
+};
+
 /* Lane B1 (saved-state-shape, native-ledger-is-raw-json): keep every entry of a
    ledger that can be read, drop the rest. Pure: data -> { data, dropped }; the
    input is never changed. Checked fields are received and receivedAt (counts and

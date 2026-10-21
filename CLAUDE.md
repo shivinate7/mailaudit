@@ -378,7 +378,6 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `reset-leaves-sync-unpinned` — No test pins that an armed Reset leaves Sync open.
 - `reset-all-keeps-token-unpinned` — No test pins that resetAll keeps the GitHub token.
 - `token-state-and-bundle-unpinned` — Nothing pins the token's React-state or bundle guarantees.
-- `token-export-and-view-unpinned` — Nothing pins the device key in the backup export or view state.
 - `reimport-received-unpinned` — Nothing pins that received survives a re-import.
 - `native-dialog-ban-unpinned` — Nothing pins the ban on native dialogs.
 - `ruled-head-heights-unremeasured` — The ruled head heights have not been re-measured.
