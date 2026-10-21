@@ -44,7 +44,7 @@ Lane W1 makes the POST reply carry `stats` from `mergeLedger`. The client builds
 - Lane N4a's tests run `SyncClient` on a stub URL protocol, a fake Keychain and a sleep gate. No run has reached the live Worker, see debt `native-sync-live-unrun`.
 - The lanes and their tests are in `native-build-lanes`.
 
-**Pinned by:** `SyncClientTests` and `SyncClientTimingTests` in `native/ManifestKit/Tests/ManifestKitTests`. No test pins the generation check in a pull alone, see debt `native-pull-generation-unpinned`.
+**Pinned by:** `SyncWireTests`, `SyncReplyTests`, `SyncStatusTests` and `SyncTimingTests` in `native/ManifestKit/Tests/ManifestKitTests`. No test pins the generation check in a pull alone, see debt `native-pull-generation-unpinned`.
 
 ## Still open
 
