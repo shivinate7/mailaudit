@@ -55,7 +55,11 @@
         dc73fc3 with `A11Y_RECORD_ONLY`. "Tally card open" was re-recorded at
         a95b180 with `A11Y_RECORD_ONLY`, after the Tally row shift fix. It is no
         longer the f7d51ba base: the grid is a deliberate visual change, so this
-        check now guards drift from the grid head, not the grid change itself. A
+        check now guards drift from the grid head, not the grid change itself.
+        "Packages" and "Stamp editor open" were re-recorded at 2b4fd8f with
+        `A11Y_RECORD_ONLY`, after the order id became a link: each package card
+        went from one header button to a chevron button plus an id link (6 more
+        elements per state), and the header grew 12px. A
         grown hit area never grows it. Keys mask digits in their text, so a day
         count in a card does not move a key. After any deliberate visual change,
         re-record every state the same way; A11Y_RECORD_ONLY="<state>" re-records
