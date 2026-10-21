@@ -149,7 +149,7 @@ private struct EnvelopeCard: View {
                 Text("Envelope \u{00B7} \(Date(timeIntervalSince1970: env.createdAt / 1000).formatted(.iso8601.year().month().day())) \u{00B7} \(total) card\(total == 1 ? "" : "s")")
                     .font(.caption).foregroundStyle(.primary).frame(maxWidth: .infinity, alignment: .leading)
                 Button { model.open(.edit(env.id)) } label: { hit("Edit") }
-                Button(role: .destructive) { armed.toggle() } label: { hit("Discard").foregroundStyle(Color.danger) }
+                Button(role: .destructive) { armed.toggle() } label: { hit("Discard", Color.danger) }
                     .accessibilityIdentifier("discard:\(env.id)")
             }
             .overlay(alignment: .bottomTrailing) {
@@ -161,7 +161,7 @@ private struct EnvelopeCard: View {
                             armed = false
                             Task { try? await model.discard(envelope: env.id); await onChange() }
                         } label: { Text("Tap again to discard \(total) card\(total == 1 ? "" : "s")").frame(minHeight: 44) }
-                        .buttonStyle(.borderedProminent).tint(.danger)
+                        .buttonStyle(.borderedProminent).tint(.dangerFill)
                     }
                     .padding(4).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
                     .offset(y: 48).zIndex(1)
@@ -239,16 +239,18 @@ private struct CandidateRow: View {
 }
 
 /// One tap target: the 44pt frame sits in the label, so the whole frame is the hit region.
-private func hit(_ title: String) -> some View {
-    Text(title).foregroundStyle(.primary).frame(minWidth: 44, minHeight: 44)
+private func hit(_ title: String, _ color: Color = .primary) -> some View {
+    Text(title).foregroundStyle(color).frame(minWidth: 44, minHeight: 44)
 }
 
-/// Fills the contrast floor in both themes (palette-tokens-contrast-floor): system blue, red and green fall short of 4.5:1 on white.
+/// Hand-set colours for the contrast floor (palette-tokens-contrast-floor): system blue, red and green fall short of 4.5:1 on white.
+/// Measured, text on white / grouped grey / black / dark card: action 7.1 (white on it), dangerFill 7.0 (white on it), danger 7.0 / 6.3 / 9.3 / 7.6, sure 7.6 / 6.9 / 14.1 / 11.5.
 private extension Color {
     static func adaptive(light: UIColor, dark: UIColor) -> Color {
         Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? dark : light })
     }
     static let action = Color(uiColor: UIColor(red: 0, green: 0.32, blue: 0.76, alpha: 1))
+    static let dangerFill = Color(uiColor: UIColor(red: 0.70, green: 0.07, blue: 0.07, alpha: 1))
     static let danger = adaptive(light: UIColor(red: 0.70, green: 0.07, blue: 0.07, alpha: 1), dark: UIColor(red: 1, green: 0.55, blue: 0.5, alpha: 1))
     static let sure = adaptive(light: UIColor(red: 0.05, green: 0.38, blue: 0.14, alpha: 1), dark: UIColor(red: 0.5, green: 0.92, blue: 0.55, alpha: 1))
 }
