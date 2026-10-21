@@ -1,6 +1,6 @@
 # The native build runs in ordered lanes
 
-**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. W1 landed in PR #61 and S1 in PR #62. S2 landed in PR #63, S3 in PR #64 and S4 in PR #65. N1 landed in PR #75, C1 in PR #76, W2a in PR #77 and W3a in PR #79. N2 landed in PR #81, N3 in PR #80 and N5 in PR #82. N4a landed on branch `native/n4a-sync`, N10 on branch `native/n10-photos` and N6 on branch `native/n6-tally`. Their PR numbers are claimed at merge. Their rows have left this table. No other lane has landed. The rows below carry the 2026-10-11 changes and the 2026-10-12 Mirror scan move (N8 row). The 2026-10-12 N5 defaults sit in N5 notes below. The rows are ruled or named, and not built.
+**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. W1 landed in PR #61 and S1 in PR #62. S2 landed in PR #63, S3 in PR #64 and S4 in PR #65. N1 landed in PR #75, C1 in PR #76, W2a in PR #77 and W3a in PR #79. N2 landed in PR #81, N3 in PR #80 and N5 in PR #82. N4a landed on branch `native/n4a-sync`, N10 on branch `native/n10-photos` N6 on branch `native/n6-tally` and N7 on branch `native/n7-orphaned`. Their PR numbers are claimed at merge. Their rows have left this table. No other lane has landed. The rows below carry the 2026-10-11 changes and the 2026-10-12 Mirror scan move (N8 row). The 2026-10-12 N5 defaults sit in N5 notes below. The rows are ruled or named, and not built.
 
 The native rebuild splits into lanes. W lanes change the Worker. S lanes change shared files and extract the rules. The C lane changes CI. N lanes build the native client. A lane that lands leaves this table, and git keeps its history.
 
@@ -29,7 +29,6 @@ Plan: decisions/native-build-lanes.md#still-open (native)
 | W3d, not briefed | Not briefed. No scope is recorded here. | Not yet briefed. | Not yet briefed. | Not yet briefed. |
 | W3e, not briefed | Not briefed. No scope is recorded here. | Not yet briefed. | Not yet briefed. | Not yet briefed. |
 | N4b Socket, idle gate, resume | the sync client socket | A rev that is not newer gives no GET. A newer rev with a changed ledger POSTs. The idle gate is 10 seconds. A cold reply applies at once after a key save. Resume does one GET. | ST | N4a |
-| N7 Orphaned | Orphaned views | One input records an envelope. No auto-assign. A tie has no emphasis. A partial-quantity assign. Undo removes only its delta. performAccessibilityAudit. Assign has Undo and no arm. The composer draft survives a view change. The empty state is one sentence. | ST and `xcodebuild test -scheme Manifest -destination 'platform=iOS Simulator,name=iPhone 17'` | N5 (landed) |
 | N8 Masthead and backup | Masthead views, the backup file code | The export bytes equal the snapshot. No key in the export (a Mirror scan). Reduced motion shows the final frame. The save slot has a fixed width. performAccessibilityAudit. Backup is a 44pt control. | ST and `xcodebuild test -scheme Manifest -destination 'platform=iOS Simulator,name=iPhone 17'` | N5 (landed) |
 | N9 Milestones | the versions code | A milestone is saved before a reset and before an apply that removes something. The prune equals `keptIds`. The list shows each milestone, and a restore takes a milestone first and passes the same apply path. Errors show in the pressed row. The reset ask names its count and has Cancel. | ST | N4a |
 | N11 Device check | none | The owner checks on a device. The ios-adblock phone-apps list gets the new entry. The hand checks are named: VoiceOver order, Dynamic Type, the draft kept when the app leaves, and the iPhone Camera opening a `manifestledger://` QR code (see `native-key-via-url-scheme`). If the Camera fails the scheme, the universal-link fallback in that record is built. | the owner | all |
@@ -43,7 +42,7 @@ W2 and W3 come from the owner's rulings, not from the first plan. W2a and W3a ha
 - Batch 2: C1 and N1, after S4 (both landed).
 - Batch 3: N2 and N3 (both landed).
 - Batch 4: N5 (landed), beside N4a.
-- Batch 5: N6, N7 and N8 after N5 (landed), with N4b and N9.
+- Batch 5: N6 (landed), N7 (landed) and N8 after N5 (landed), with N4b and N9.
 - N10 waited for W2a, which landed in PR #77, because the owner ruled the Worker photo route first.
 
 ## N1 notes
@@ -99,6 +98,9 @@ Other risks live in the record for their lane:
   - `native-photo-sweep-unbuilt`;
   - `native-photo-viewer-unpinned`.
 - Lane N11, the owner's device check, has not run. Debt: `n11-device-check-not-run`.
+- Native envelopes have no photos. Debt: `native-envelope-has-no-photos`.
+- The native Orphaned view uses system colours. Debt: `native-orphaned-colours-unbuilt`.
+- No test pins the native Discard arm. Debt: `native-discard-arm-unpinned`.
 
 ## See also
 

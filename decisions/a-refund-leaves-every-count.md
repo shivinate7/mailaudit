@@ -6,6 +6,8 @@ A package stamped `Refunded` or `Partial refund` drops out of every count and th
 
 One shared source, `liveItems`, excludes refunded packages the way `activeItems` excludes canceled ones. Totals, Tally, and the Orphaned candidates all inherit that exclusion.
 
+The native `OrphanedModel` (lane N7) applies the same exclusion on every load, to its candidates and its suggestions. It reads `stamps` from the store and drops the packages `groupPackages` names, so no copy of `gkOf` lives in Swift. The native Packages view does not yet drop refunded packages (lane N6 and later).
+
 Stamping an order `Refunded` makes its card vanish from the list under the user's finger. The precedent is "Mark all received" under Unreceived. The `N stamped` cell is the signpost for those packages.
 
 **Pinned by:** group 37. Mutants confirmed red:

@@ -20,7 +20,7 @@ Each client draws its own screen. The logic has one home, see `rules-run-in-java
 - Search, hide-received, the date filter, the six Tally sort keys and the package sort. Native Tally has search, hide-received and the six sort keys, tested in `TallyModelTests` and `TallyUITests`. Debt: `native-filters-tally-only`.
 - Lost-mail flags, outstanding value per level, and canceled orders.
 - Check-in and un-check, the steppers and the bulk row.
-- Envelopes: record, edit, discard (a tombstone), assign, undo, and candidates with ties.
+- Envelopes: record, edit, discard (a tombstone), assign, undo, and candidates with ties, with refunded packages out of every candidate. `OrphanedModel` (lane N7) builds all of these, except the photos. Debt: `native-envelope-has-no-photos`.
 - Stamps: the tombstone, a refund that leaves every count, and the stamped filter.
 - Worker sync: POST, GET, the WebSocket, the idle gate, resume, and the 401 and 413 advisory lines. `SyncClient` (lane N4a) covers POST and GET. Lane N4b builds the WebSocket, the idle gate and resume, wires the client into the app, and draws the 401 and 413 lines (orchestrator assignment 2026-10-21, process-only).
 - Backup export, the masthead and ruled head, the palette, Cochin and monospace type, and motion with reduced motion.
