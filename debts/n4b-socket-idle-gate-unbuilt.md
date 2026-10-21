@@ -8,7 +8,7 @@
 - a cold reply applies at once after a key save;
 - resume does one GET.
 
-Lane N4a landed the HTTP client, `SyncClient`. Nothing in the app calls it yet. N4b wires it: a pull on launch, and a push after a change. When N4b lands with those tests and that wiring, the gap closes.
+Lane N4a landed. `SyncClient` keeps only the `ledger` of a reply and drops `rev` and `stats`, and N4b needs the rev. When N4b lands with those tests, the gap closes.
 
 **Status:** open. Lane N4a landed, so N4b is free to build.
 

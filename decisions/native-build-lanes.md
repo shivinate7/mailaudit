@@ -1,6 +1,6 @@
 # The native build runs in ordered lanes
 
-**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. W1 landed in PR #61 and S1 in PR #62. S2 landed in PR #63, S3 in PR #64 and S4 in PR #65. N1 landed in PR #75, C1 in PR #76, W2a in PR #77 and W3a in PR #79. N2 landed in PR #81, N3 in PR #80 and N5 in PR #82. Their rows have left this table. No other lane has landed. The rows below carry the 2026-10-11 changes and the 2026-10-12 Mirror scan move (N8 row). The 2026-10-12 N5 defaults sit in N5 notes below. The rows are ruled or named, and not built.
+**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. W1 landed in PR #61 and S1 in PR #62. S2 landed in PR #63, S3 in PR #64 and S4 in PR #65. N1 landed in PR #75, C1 in PR #76, W2a in PR #77 and W3a in PR #79. N2 landed in PR #81, N3 in PR #80 and N5 in PR #82. N4a landed on branch `native/n4a-sync`, and its PR number is claimed at merge. Their rows have left this table. No other lane has landed. The rows below carry the 2026-10-11 changes and the 2026-10-12 Mirror scan move (N8 row). The 2026-10-12 N5 defaults sit in N5 notes below. The rows are ruled or named, and not built.
 
 The native rebuild splits into lanes. W lanes change the Worker. S lanes change shared files and extract the rules. The C lane changes CI. N lanes build the native client. A lane that lands leaves this table, and git keeps its history.
 
@@ -17,6 +17,7 @@ Plan: decisions/native-build-lanes.md#still-open (native)
 - A Sonnet builder makes the tests green on the same branch.
 - A fresh reviewer reads the lane.
 - ST in the table means `swift test --package-path native/ManifestKit`.
+- A lane that boots a simulator, or builds or runs tests for one, takes the lock in `one-simulator-per-mac`.
 
 ## The lanes
 
@@ -27,11 +28,11 @@ Plan: decisions/native-build-lanes.md#still-open (native)
 | W3c, not briefed | Not briefed. No scope is recorded here. | Not yet briefed. | Not yet briefed. | Not yet briefed. |
 | W3d, not briefed | Not briefed. No scope is recorded here. | Not yet briefed. | Not yet briefed. | Not yet briefed. |
 | W3e, not briefed | Not briefed. No scope is recorded here. | Not yet briefed. | Not yet briefed. | Not yet briefed. |
-| N4b Socket, idle gate, resume | the sync client socket | A rev that is not newer gives no GET. A newer rev with a changed ledger POSTs. The idle gate is 10 seconds. A cold reply applies at once after a key save. Resume does one GET. | ST | N4a (landed) |
+| N4b Socket, idle gate, resume | the sync client socket | A rev that is not newer gives no GET. A newer rev with a changed ledger POSTs. The idle gate is 10 seconds. A cold reply applies at once after a key save. Resume does one GET. | ST | N4a |
 | N6 Tally and filters | Tally and Filters views | Sort keys. Search and hide-received do not change Tally counts. The copies list. performAccessibilityAudit. The sort label does not truncate at 375pt. An empty search shows one Clear control. | ST and `xcodebuild test -scheme Manifest -destination 'platform=iOS Simulator,name=iPhone 17'` | N5 (landed) |
 | N7 Orphaned | Orphaned views | One input records an envelope. No auto-assign. A tie has no emphasis. A partial-quantity assign. Undo removes only its delta. performAccessibilityAudit. Assign has Undo and no arm. The composer draft survives a view change. The empty state is one sentence. | ST and `xcodebuild test -scheme Manifest -destination 'platform=iOS Simulator,name=iPhone 17'` | N5 (landed) |
 | N8 Masthead and backup | Masthead views, the backup file code | The export bytes equal the snapshot. No key in the export (a Mirror scan). Reduced motion shows the final frame. The save slot has a fixed width. performAccessibilityAudit. Backup is a 44pt control. | ST and `xcodebuild test -scheme Manifest -destination 'platform=iOS Simulator,name=iPhone 17'` | N5 (landed) |
-| N9 Milestones | the versions code | A milestone is saved before a reset and before an apply that removes something. The prune equals `keptIds`. The list shows each milestone, and a restore takes a milestone first and passes the same apply path. Errors show in the pressed row. The reset ask names its count and has Cancel. | ST | N4a (landed) |
+| N9 Milestones | the versions code | A milestone is saved before a reset and before an apply that removes something. The prune equals `keptIds`. The list shows each milestone, and a restore takes a milestone first and passes the same apply path. Errors show in the pressed row. The reset ask names its count and has Cancel. | ST | N4a |
 | N10 Photos | Photos views | A downscale to 2000px. A photo blob never enters the ledger. The viewer is modal, with Escape and focus return. The photo upload has Stop. | ST | W2a |
 | N11 Device check | none | The owner checks on a device. The ios-adblock phone-apps list gets the new entry. The hand checks are named: VoiceOver order, Dynamic Type, the draft kept when the app leaves, and the iPhone Camera opening a `manifestledger://` QR code (see `native-key-via-url-scheme`). If the Camera fails the scheme, the universal-link fallback in that record is built. | the owner | all |
 | C2 UI tests in CI, not built | The native job in `.github/workflows/test.yml` | Not yet briefed. The N5 UI test in `native/ManifestUITests/PackagesShellUITests.swift` already exists. | The native job runs the steps in `native-ci-on-hosted-macos` after ST, green on a hosted macOS runner, with a new timeout. | C1 (landed), N5 (landed) |
@@ -46,23 +47,6 @@ W2 and W3 come from the owner's rulings, not from the first plan. W2a and W3a ha
 - Batch 4: N5 (landed), beside N4a.
 - Batch 5: N6, N7 and N8 after N5 (landed), with N4b and N9.
 - N10 waited for W2a, which landed in PR #77, because the owner ruled the Worker photo route first.
-
-## One simulator for the whole Mac
-
-Kind: process
-
-Home: decisions/native-build-lanes.md
-
-The owner ruled on 2026-10-20 that one simulator serves every project on this Mac. A lane takes the lock before any simulator boot, build-for-testing run, test run, launch or screenshot:
-
-- Idle CPU is over 25% in `top -l 2 -n 0 -s 1 | grep "CPU usage"`. Otherwise wait.
-- `mkdir ~/.claude/locks/ios-simulator.lock` and write `<lane> <date time>` to its `owner` file. If `mkdir` fails, read `owner` and check again every 2 minutes. After 60 minutes, give up and report.
-- Use only the booted iPhone 18 Pro, `8787FE1C-48CC-4213-9B5C-8605AFE7F9B3`. Never boot or create another simulator.
-- Release the lock with `rm -r` right after the run. Never hold it between runs.
-- A lock older than 2 hours whose owner is gone is reported, not cleared.
-- A `swift build` or an ST run on macOS needs no lock.
-
-Batch the simulator work into as few runs as possible.
 
 ## N1 notes
 
@@ -103,5 +87,6 @@ Other risks live in the record for their lane:
 - `native-swift-rebuild` — the ruling and the reasons for the rebuild.
 - `native-parity-table` — the scope of each feature.
 - `native-ci-on-hosted-macos` — the job that lane C1 adds.
+- `one-simulator-per-mac` — the lock that every lane takes before it uses the simulator.
 - `rules-run-in-javascriptcore` — why S2, S3 and N1 exist.
 - `worker-keeps-snapshots` — the ruling behind lane W3.
