@@ -93,6 +93,7 @@ public final class OrphanedModel {
             let explainable = Set(r.list.flatMap { $0.perEntry.filter { $0.value > 0 }.keys })
             next[env.id] = Ranked(list: r.list, tied: r.tied, explainable: explainable)
         }
+        for rec in recs { for e in Self.entries(of: rec) { _ = try await norm(e.name) } }
         pool = nextPool
         rankings = next
         envelopes = recs.compactMap(Self.envelope)
@@ -100,6 +101,11 @@ public final class OrphanedModel {
     }
 
     public func ranked(for envelopeId: String) -> Ranked { rankings[envelopeId] ?? .none }
+
+    /// True when no outstanding copy of this entry exists anywhere (the web's "no outstanding copy" tag).
+    public func hasNoOutstandingCopy(_ entry: EnvelopeEntry, in envelopeId: String) -> Bool {
+        !ranked(for: envelopeId).explainable.contains(norms[entry.name] ?? "")
+    }
 
     /// Cards still owed, matching every typed token, best first, six at most (the web composer).
     public func suggestions(for text: String) async -> [Suggestion] {
@@ -269,6 +275,9 @@ public final class OrphanedModel {
         undo = nil
         try await load()
     }
+
+    /// Hides the Undo notice. The assign stays, and so does its check-in.
+    public func dismissUndo() { undoRecord = nil; undo = nil }
 
     /// Leaves a tombstone. If the Undo notice is about this envelope, there is nothing left to undo.
     public func discard(envelope id: String) async throws {
