@@ -20,7 +20,7 @@ Value is compacted with `compact()`. Whole dollars show under 1k. Above that, `k
 
 The native masthead (lane N8) lays the three cells out as 1 : 1 : 1.7 in `Thirds`. It formats the value cell with `compact` from the rules bundle, see `rules-run-in-javascriptcore`. The "still missing" line stays exact money. At an accessibility text size the three cells stack in one column.
 
-Pinned by MastheadModelTests (the figures, the compact value and the exact missing line) and by `testTalliesAreUnequalThirdsAt375pt` in MastheadBackupUITests (the cell widths). Test V15 in `test/view-rules.test.mjs` pins `compact` for both clients.
+Pinned by MastheadModelTests (the figures, the compact value and the exact missing line) and by `testTalliesAreUnequalThirdsAt375pt` in MastheadBackupUITests (the cell widths). Test V16 in `test/view-rules.test.mjs` pins `compact` for both clients.
 
 ## See also
 

@@ -78,10 +78,11 @@ Builder defaults of 2026-10-20 and 2026-10-21, not owner rulings:
 - A UI run with `-ManifestUITestSeed` draws the final letterhead frame, because the accessibility audit must not read a half-faded title. No UI test sees the compose.
 - At an accessibility text size the three tally cells stack in one column. Otherwise they weigh 1 : 1 : 1.7, as `masthead-tallies-unequal-thirds` rules.
 - After a check-in the save slot reads `saved ✓` until the next save, as the web slot does. A clock would be one more thing that moves.
+- A failed `refresh()` after a check-in is not shown: `MastheadModel.finished` ignores it with `try?`. The slot reads `saved ✓` over the old figures. `native-masthead-stale-after-tabs` holds the related gap.
 - `compact` moved from `src/app.jsx` to `src/view-rules.mjs`, so the web and the native masthead share one home, see `rules-run-in-javascriptcore`.
 - The masthead paints with system styles.
 
-Proof: BackupExportTests, MastheadModelTests and MastheadMotionTests run under ST. MastheadBackupUITests is the UI test, in `native/ManifestUITests/MastheadBackupUITests.swift`. Test V15 in `test/view-rules.test.mjs` pins `compact`.
+Proof: BackupExportTests, MastheadModelTests and MastheadMotionTests run under ST. MastheadBackupUITests is the UI test, in `native/ManifestUITests/MastheadBackupUITests.swift`. Test V16 in `test/view-rules.test.mjs` pins `compact`.
 
 ## Risk
 

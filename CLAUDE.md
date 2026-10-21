@@ -390,6 +390,7 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `native-backup-has-no-photos` — Native Backup holds no photos.
 - `native-backup-ui-unpinned` — No UI test taps Backup.
 - `native-backup-web-restore-unrun` — No test restores a native backup file on the web.
+- `native-masthead-stale-after-tabs` — The native masthead and Packages go stale after another tab writes.
 - `draft-skip-required-unmeasured` — A required check on a draft-skipped job is unmeasured.
 - `recent-log-unbuilt` — The recent-actions log is not built.
 - `recent-log-unmeasured` — The recent-actions log has three measurements to take.
