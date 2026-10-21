@@ -13,16 +13,12 @@ struct TallyView: View {
         VStack(spacing: 0) {
             controls
             ScrollView {
-                LazyVStack(spacing: 8) {
+                VStack(spacing: 8) {
                     ForEach(model.rows, id: \.name) { TallyRowView(row: $0, model: model) }
                     if model.rows.isEmpty { empty }
                 }
                 .padding(.horizontal, 16)
             }
-            // The list stops above the floating tab bar. A scroll view that touches the bottom edge runs
-            // under the bar, and the audit reads a half-hidden row's text against the bar's glass.
-            // The strip is as tall as a line of row text, so such a row's frame lands on plain page.
-            Color.clear.frame(height: 24)
         }
         .overlay(alignment: .bottom) {
             if let e = model.checkInError {
@@ -30,7 +26,7 @@ struct TallyView: View {
                     .background(.regularMaterial).accessibilityIdentifier("checkin-error")
             }
         }
-        .task { try? await model.load() }  // another view may have checked something in
+        .task { try? await model.viewOpened() }  // another view may have checked something in
     }
 
     private var controls: some View {
@@ -100,7 +96,6 @@ struct TallyRowView: View {
     let row: TallyRow
     let model: TallyModel
     @State private var open = false
-    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var done: Bool { row.got >= row.qty }
 
@@ -125,37 +120,23 @@ struct TallyRowView: View {
         HStack(spacing: 8) {
             Image(systemName: "chevron.right").imageScale(.small).rotationEffect(.degrees(open ? 90 : 0))
                 .accessibilityHidden(true)
-            // At large text sizes the figures go under the name, so neither column squeezes the other.
-            if typeSize >= .xxxLarge {
-                VStack(alignment: .leading, spacing: 4) { title; figures(.leading) }
-            } else {
-                title
-                Spacer(minLength: 8)
-                figures(.trailing)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(row.name).font(.headline)
+                // Counts first, then the sets, so a long set list is what wraps last (card-tally-row-counts-first).
+                Text(row.meta).font(.caption.monospaced())
+            }
+            Spacer(minLength: 8)
+            VStack(alignment: .trailing, spacing: 0) {
+                Text(row.ratio).font(.headline.monospacedDigit())
+                Text(row.rateLine).font(.caption.monospacedDigit())
+                // Hidden once in, never removed: unmounting it would shorten the row under the thumb.
+                Text(row.leftLine).font(.caption.monospacedDigit())
+                    .opacity(done ? 0 : 1).accessibilityHidden(done)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(12)
         .frame(minHeight: 44)
         .contentShape(Rectangle())
-    }
-
-    private var title: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(row.name).font(.headline)
-            // Counts first, then the sets, so a long set list is what wraps last (card-tally-row-counts-first).
-            Text(row.meta).font(.caption.monospaced())
-        }
-    }
-
-    private func figures(_ align: HorizontalAlignment) -> some View {
-        VStack(alignment: align, spacing: 0) {
-            Text(row.ratio).font(.headline.monospacedDigit())
-            Text(row.rateLine).font(.caption.monospacedDigit())
-            // Hidden once in, never removed: unmounting it would shorten the row under the thumb.
-            Text(row.leftLine).font(.caption.monospacedDigit())
-                .opacity(done ? 0 : 1).accessibilityHidden(done)
-        }
     }
 }
 
@@ -190,7 +171,6 @@ struct CopyView: View {
             .accessibilityIdentifier("tally-checkin:\(item.key)")
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)  // the order id sat on the card's border, which read as low contrast
         .frame(minHeight: 44)
         .background(isDone ? Color.green.opacity(0.12) : .clear)
         }

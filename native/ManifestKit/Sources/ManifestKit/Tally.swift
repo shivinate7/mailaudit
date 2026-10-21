@@ -77,10 +77,17 @@ public final class TallyModel {
 
     private struct Left: Decodable { let left: Int; let value: Double }
 
-    /// Pools every item again and sorts. Also the way to pick up a change another view made.
+    /// Pools every item again and sorts.
     public func load() async throws {
         groups = try await engine.call("tallyGroups", try json([store.items()]))
         try await resort()
+    }
+
+    /// The Tally view came on screen: another view may have changed the counts. Like the web, a
+    /// view change ends the sticky copies and keeps the order.
+    public func viewOpened() async throws {
+        sticky = []
+        try await refresh()
     }
 
     public func setSort(_ key: TallySort) async throws {
