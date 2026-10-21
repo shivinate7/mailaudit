@@ -1,6 +1,6 @@
 # Records index
 
-This page lists every record in this repo: the rules in `CLAUDE.md`, and the files in `decisions/`, `debts/`, `deferred/` and `plans/`. A script writes it. Do not edit it by hand.
+This page lists every record in this repo: the rules in `CLAUDE.md`, and the files in `decisions/`, `debts/` and `plans/`. A script writes it. Do not edit it by hand.
 
 The merge tool writes this page again when a pull request merges, so a pull request need not carry a fresh one. To write it by hand, run `python3 lint/hook_catalog.py` from the claude-settings checkout, with `--root` set to this repo. The check on the default branch fails when the page is stale.
 
@@ -53,6 +53,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `ci-skips-draft-prs` | Kind: build | [`decisions/ci-skips-draft-prs.md`](../decisions/ci-skips-draft-prs.md) |
 | `ledger-remote-needed-for-seed` | Kind: build | [`decisions/ledger-remote-needed-for-seed.md`](../decisions/ledger-remote-needed-for-seed.md) |
 | `live-verification` | This file draws the line between proven and unproven. | [`decisions/live-verification.md`](../decisions/live-verification.md) |
+| `masthead-tallies-unequal-thirds` | The tallies are three ruled cells: cards, packages, and value. | [`decisions/masthead-tallies-unequal-thirds.md`](../decisions/masthead-tallies-unequal-thirds.md) |
 | `merge-later-change-wins` | Kind: build | [`decisions/merge-later-change-wins.md`](../decisions/merge-later-change-wins.md) |
 | `motion-disclosure-panels-arrive` | A disclosure panel overlays the list. | [`decisions/motion-disclosure-panels-arrive.md`](../decisions/motion-disclosure-panels-arrive.md) |
 | `native-build-lanes` | **Status:** ruled. | [`decisions/native-build-lanes.md`](../decisions/native-build-lanes.md) |
@@ -63,6 +64,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-swift-rebuild` | Kind: build | [`decisions/native-swift-rebuild.md`](../decisions/native-swift-rebuild.md) |
 | `order-id-button-stops-propagate` | The order-id button in Tally stops its click from reaching the row underneath. | [`decisions/order-id-button-stops-propagate.md`](../decisions/order-id-button-stops-propagate.md) |
 | `orphan-entry-takes-one-input` | The Orphaned view records an envelope from one input. | [`decisions/orphan-entry-takes-one-input.md`](../decisions/orphan-entry-takes-one-input.md) |
+| `phone-nav-is-bottom-bar` | The owner ruled on 2026-10-11: "bottom bar D is gorgeous! | [`decisions/phone-nav-is-bottom-bar.md`](../decisions/phone-nav-is-bottom-bar.md) |
 | `photo-ids-restore-keep-if-known` | Owner ruling 2026-10-15 21:25 CDT. | [`decisions/photo-ids-restore-keep-if-known.md`](../decisions/photo-ids-restore-keep-if-known.md) |
 | `photo-ids-unreadable-local` | An unreadable local photo store keeps every id, exactly as an unreadable remote one does. | [`decisions/photo-ids-unreadable-local.md`](../decisions/photo-ids-unreadable-local.md) |
 | `photos-in-git-are-permanent` | **Status:** open. | [`decisions/photos-in-git-are-permanent.md`](../decisions/photos-in-git-are-permanent.md) |
@@ -139,7 +141,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `masthead-running-head-sticky` | The slim running head is `position: sticky` with a fixed height. | [`decisions/masthead-running-head-sticky.md`](../decisions/masthead-running-head-sticky.md) |
 | `masthead-save-slot-reserved` | The tally footer holds `N packages · autosaves`, the exact `N still missing · $X`, and the debounced save indicator. | [`decisions/masthead-save-slot-reserved.md`](../decisions/masthead-save-slot-reserved.md) |
 | `masthead-sizing-by-clamp` | Every size in the masthead is set with `clamp()`. | [`decisions/masthead-sizing-by-clamp.md`](../decisions/masthead-sizing-by-clamp.md) |
-| `masthead-tallies-unequal-thirds` | The tallies are three ruled cells: cards, packages, and value. | [`decisions/masthead-tallies-unequal-thirds.md`](../decisions/masthead-tallies-unequal-thirds.md) |
 | `max-cannot-express-an-uncheck` | **Status:** closed, by the `receivedAt` change (`sync-revamp-cloudflare`). | [`decisions/max-cannot-express-an-uncheck.md`](../decisions/max-cannot-express-an-uncheck.md) |
 | `merge-is-the-primary-sync-action` | **Status:** retired 2026-10-12. | [`decisions/merge-is-the-primary-sync-action.md`](../decisions/merge-is-the-primary-sync-action.md) |
 | `merge-readopts-sync-generation` | `applyBackup` increments `syncGen`. | [`decisions/merge-readopts-sync-generation.md`](../decisions/merge-readopts-sync-generation.md) |
@@ -177,7 +178,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `palette-silver-stays-cool` | The `silver` token was chosen on looks, not on legibility. | [`decisions/palette-silver-stays-cool.md`](../decisions/palette-silver-stays-cool.md) |
 | `palette-theme-color-tracks-paper` | The `theme-color` value in `build.mjs` and the `<style>` page background both track the `paper` token (`#F2E9DA`). | [`decisions/palette-theme-color-tracks-paper.md`](../decisions/palette-theme-color-tracks-paper.md) |
 | `palette-tokens-contrast-floor` | The app defines one fixed set of color tokens, each with a named role. | [`decisions/palette-tokens-contrast-floor.md`](../decisions/palette-tokens-contrast-floor.md) |
-| `phone-nav-is-bottom-bar` | The owner ruled on 2026-10-11: "bottom bar D is gorgeous! | [`decisions/phone-nav-is-bottom-bar.md`](../decisions/phone-nav-is-bottom-bar.md) |
 | `photo-rules-fails-quietly` | The photo-sync rules live in `src/photo-rules.mjs`. | [`decisions/photo-rules-fails-quietly.md`](../decisions/photo-rules-fails-quietly.md) |
 | `photo-sweep-two-guards` | The photo sweep deletes blobs that no envelope or draft references. | [`decisions/photo-sweep-two-guards.md`](../decisions/photo-sweep-two-guards.md) |
 | `photo-sync-cannot-conflict` | Photo sync is a set difference over ids. | [`decisions/photo-sync-cannot-conflict.md`](../decisions/photo-sync-cannot-conflict.md) |
@@ -261,13 +261,19 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `n11-device-check-not-run` | Lane N11 is the owner's check on a device, as ruled in `native-build-lanes`, and it has not run. | [`debts/n11-device-check-not-run.md`](../debts/n11-device-check-not-run.md) |
 | `n4a-sync-over-http-unbuilt` | No sync source exists under `native/` on main. | [`debts/n4a-sync-over-http-unbuilt.md`](../debts/n4a-sync-over-http-unbuilt.md) |
 | `n4b-socket-idle-gate-unbuilt` | Lane N4b is ruled in `native-build-lanes`, and it is not built. | [`debts/n4b-socket-idle-gate-unbuilt.md`](../debts/n4b-socket-idle-gate-unbuilt.md) |
+| `native-backup-has-no-photos` | `LedgerStore.backup()` exports the ledger document only, and `LedgerTab` offers one Backup row. | [`debts/native-backup-has-no-photos.md`](../debts/native-backup-has-no-photos.md) |
+| `native-backup-ui-unpinned` | `MastheadBackupUITests` checks that the Backup row is a 44pt button and runs an accessibility audit on the Ledger tab. | [`debts/native-backup-ui-unpinned.md`](../debts/native-backup-ui-unpinned.md) |
+| `native-backup-web-restore-unrun` | The web app is the only restore path for a backup file (`native-parity-table`). | [`debts/native-backup-web-restore-unrun.md`](../debts/native-backup-web-restore-unrun.md) |
+| `native-compose-is-one-fade` | `MastheadView` animates the seal, the rules, the title and the tallies together, in one ease-out of 1.06 seconds. | [`debts/native-compose-is-one-fade.md`](../debts/native-compose-is-one-fade.md) |
 | `native-dialog-ban-unpinned` | Nothing pins the ban on `window.confirm` and `alert` itself. | [`debts/native-dialog-ban-unpinned.md`](../debts/native-dialog-ban-unpinned.md) |
 | `native-job-hosted-time-unmeasured` | The 8 to 15 minute estimate for the full native job is unmeasured. | [`debts/native-job-hosted-time-unmeasured.md`](../debts/native-job-hosted-time-unmeasured.md) |
 | `native-kept-copy-has-no-route` | No native view opens the kept copy, and no lane records a route to it. | [`debts/native-kept-copy-has-no-route.md`](../debts/native-kept-copy-has-no-route.md) |
-| `native-key-scan-skips-views` | No lane scans SwiftUI view state. | [`debts/native-key-scan-skips-views.md`](../debts/native-key-scan-skips-views.md) |
-| `native-lanes-n6-to-n9-unbuilt` | `native/` holds no Tally, Orphaned, backup or milestone view on main. | [`debts/native-lanes-n6-to-n9-unbuilt.md`](../debts/native-lanes-n6-to-n9-unbuilt.md) |
+| `native-key-scan-skips-views` | No lane scans SwiftUI view state, such as `@State` in a view. | [`debts/native-key-scan-skips-views.md`](../debts/native-key-scan-skips-views.md) |
+| `native-lanes-n6-to-n9-unbuilt` | `native/` holds no Tally, Orphaned or milestone view on main. | [`debts/native-lanes-n6-to-n9-unbuilt.md`](../debts/native-lanes-n6-to-n9-unbuilt.md) |
 | `native-ledger-pins-missing` | No test pins the millisecond kept-name format, the missing-file case, or the unwrapped-error sentence in Load and save. | [`debts/native-ledger-pins-missing.md`](../debts/native-ledger-pins-missing.md) |
-| `native-ledger-tab-unbuilt` | No lane builds the options that `ledger-tab-holds-options` puts in the Ledger tab. | [`debts/native-ledger-tab-unbuilt.md`](../debts/native-ledger-tab-unbuilt.md) |
+| `native-ledger-tab-unbuilt` | Lane N8 built the Backup row in the Data group of `native/Manifest/LedgerTab.swift`. | [`debts/native-ledger-tab-unbuilt.md`](../debts/native-ledger-tab-unbuilt.md) |
+| `native-masthead-packages-only` | `PackagesView` draws the masthead. | [`debts/native-masthead-packages-only.md`](../debts/native-masthead-packages-only.md) |
+| `native-masthead-system-style` | `native/Manifest/MastheadView.swift` paints with system styles. | [`debts/native-masthead-system-style.md`](../debts/native-masthead-system-style.md) |
 | `native-runner-image-unverified` | Whether the `macos-26` runner image has Xcode 27 and xcodegen is unknown. | [`debts/native-runner-image-unverified.md`](../debts/native-runner-image-unverified.md) |
 | `native-runner-keychain-unverified` | Whether the runner keychain is unlocked is unknown. | [`debts/native-runner-keychain-unverified.md`](../debts/native-runner-keychain-unverified.md) |
 | `native-ui-tests-not-in-ci` | The native job runs the ST tests only, so native UI tests and builds are not in CI. | [`debts/native-ui-tests-not-in-ci.md`](../debts/native-ui-tests-not-in-ci.md) |
@@ -289,7 +295,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `sweep-settle-masks-30-13-stall` | The `SWEEP_WAIT` settle after 19.6 hides a stall at 30.13, and it does not explain it. | [`debts/sweep-settle-masks-30-13-stall.md`](../debts/sweep-settle-masks-30-13-stall.md) |
 | `tally-card-moves-at-320px` | At 320px the Tally card moves 14px on check-ins 1 and 6. | [`debts/tally-card-moves-at-320px.md`](../debts/tally-card-moves-at-320px.md) |
 | `tests-33-35-40-45-cannot-fail` | Tests 33.35, 33.40 and 33.45 cannot fail on a plausible mutant. | [`debts/tests-33-35-40-45-cannot-fail.md`](../debts/tests-33-35-40-45-cannot-fail.md) |
-| `token-export-and-view-unpinned` | Nothing yet pins the native device key in the backup export or in SwiftUI view state. | [`debts/token-export-and-view-unpinned.md`](../debts/token-export-and-view-unpinned.md) |
 | `token-state-and-bundle-unpinned` | Nothing pins the React-state or bundle guarantees. | [`debts/token-state-and-bundle-unpinned.md`](../debts/token-state-and-bundle-unpinned.md) |
 | `type-floor-unbuilt` | Some labels are smaller than the 10px floor today. | [`debts/type-floor-unbuilt.md`](../debts/type-floor-unbuilt.md) |
 | `universal-link-unbuilt` | Neither the link handler nor the Worker route that serves the apple-app-site-association file exists. | [`debts/universal-link-unbuilt.md`](../debts/universal-link-unbuilt.md) |
