@@ -1868,7 +1868,10 @@ const SYNC16_CASES = [
 const syncRowProbe = ({ view, card, title, point, scroll }) => {
   let el = null;
   if (view === "Packages") {
-    let c = [...document.querySelectorAll("button")].find((b) => b.textContent.includes(card));
+    /* The seller may be plain text or only the chevron's aria-label, so match either. */
+    let c = [...document.querySelectorAll("button")].find(
+      (b) => b.textContent.includes(card) || (b.getAttribute("aria-label") || "").includes(card)
+    );
     while (c && !/border-radius:\s*8px/.test(c.getAttribute("style") || "")) c = c.parentElement;
     el =
       c &&
