@@ -88,7 +88,7 @@ public final class LedgerStore {
 
     public func save() throws {
         guard loaded else { throw CocoaError(.fileReadCorruptFile) }
-        try snapshot().write(to: fileURL, options: .atomic)
+        try snapshotData().write(to: fileURL, options: .atomic)
     }
 
     /// The raw `items` array, as the rules take it.
