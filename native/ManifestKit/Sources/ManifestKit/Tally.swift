@@ -155,18 +155,23 @@ public final class TallyModel {
         for g in shown {
             let left = try JSONDecoder().decode(Left.self, from: Data(
                 try await engine.call("outstandingOf", "[\(String(decoding: try JSONEncoder().encode(g.items), as: UTF8.self)),\(try json(got))]").utf8))
-            built.append(Self.row(g, left: left, hidden: g.items.count - g.shown.count))
+            let cash = Cash(rate: try await money(g.avg), left: try await money(left.value), basis: try await money(g.basis))
+            built.append(Self.row(g, left: left, cash: cash, hidden: g.items.count - g.shown.count))
         }
         guard mine == epoch else { return }
         rows = built.sorted { (order[$0.name] ?? .max) < (order[$1.name] ?? .max) }
         received = got
     }
 
-    private static func money(_ n: Double) -> String {
-        "$" + n.formatted(.number.precision(.fractionLength(2)).locale(Locale(identifier: "en_US")))
+    /// The bundle's money rule, the one the web calls (rules-run-in-javascriptcore).
+    private func money(_ n: Double) async throws -> String {
+        try JSONDecoder().decode(String.self, from: Data(try await engine.call("money", "[\(try json(n))]").utf8))
     }
 
-    private static func row(_ g: Group, left: Left, hidden: Int) -> TallyRow {
+    /// The three dollar figures a row writes, already formatted by the bundle.
+    private struct Cash { let rate, left, basis: String }
+
+    private static func row(_ g: Group, left: Left, cash: Cash, hidden: Int) -> TallyRow {
         let got = g.qty - left.left
         func plural(_ n: Int, _ w: String) -> String { "\(n) \(w)\(n == 1 ? "" : "s")" }
         func copies(_ n: Int) -> String { "\(n) cop\(n == 1 ? "y" : "ies")" }
@@ -178,10 +183,10 @@ public final class TallyModel {
             sellerCount: g.sellerCount, orderCount: g.orderCount, sets: g.sets, leftValue: left.value,
             copies: g.shown, hiddenCopies: hidden,
             ratio: "\(got)/\(g.qty)" + (got >= g.qty ? " \u{2713}" : ""),
-            rateLine: "\(money(g.avg)) / copy",
-            leftLine: "\(left.left) left \u{00B7} \(money(left.value))",
+            rateLine: "\(cash.rate) / copy",
+            leftLine: "\(left.left) left \u{00B7} \(cash.left)",
             meta: meta,
-            acrossLine: "\(money(g.basis)) across \(copies(g.qty)) \u{00B7} \(money(g.avg)) avg",
+            acrossLine: "\(cash.basis) across \(copies(g.qty)) \u{00B7} \(cash.rate) avg",
             hiddenNote: hidden > 0 ? "\(copies(hidden)) hidden by filters" : nil)
     }
 }

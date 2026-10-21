@@ -7,6 +7,8 @@ import SwiftUI
 struct TallyView: View {
     let model: TallyModel
     @State private var text = ""
+    /// The last view-level refresh that failed, so the rows on screen are never silently stale.
+    @State private var failure: String?
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
@@ -21,12 +23,16 @@ struct TallyView: View {
             }
         }
         .overlay(alignment: .bottom) {
-            if let e = model.checkInError {
+            if let e = model.checkInError ?? failure {
                 Text(e).font(.footnote).padding(12).frame(maxWidth: .infinity)
                     .background(.regularMaterial).accessibilityIdentifier("checkin-error")
             }
         }
-        .task { try? await model.viewOpened() }  // another view may have checked something in
+        .task { await run { try await model.viewOpened() } }  // another view may have checked something in
+    }
+
+    private func run(_ op: () async throws -> Void) async {
+        do { try await op(); failure = nil } catch { failure = "Could not update the Tally. \(error.localizedDescription)" }
     }
 
     private var controls: some View {
@@ -38,7 +44,7 @@ struct TallyView: View {
                 .textInputAutocapitalization(.never)
                 .frame(minHeight: 44)
                 .accessibilityIdentifier("tally-search")
-                .onChange(of: text) { _, new in Task { try? await model.setQuery(new) } }
+                .onChange(of: text) { _, new in Task { await run { try await model.setQuery(new) } } }
             // One row, stacked at large text sizes so neither control is clipped.
             if typeSize >= .xxxLarge {
                 VStack(alignment: .leading, spacing: 0) { sortMenu; hideToggle }
@@ -52,7 +58,7 @@ struct TallyView: View {
     private var sortMenu: some View {
         Menu {
             ForEach(TallySort.allCases, id: \.self) { key in
-                Button { Task { try? await model.setSort(key) } } label: {
+                Button { Task { await run { try await model.setSort(key) } } } label: {
                     if key == model.sort { Label(key.label, systemImage: "checkmark") } else { Text(key.label) }
                 }
             }
@@ -72,7 +78,7 @@ struct TallyView: View {
     private var hideToggle: some View {
         Toggle("Hide received", isOn: Binding(
             get: { model.hideReceived },
-            set: { on in Task { try? await model.setHideReceived(on) } }))
+            set: { on in Task { await run { try await model.setHideReceived(on) } } }))
             .frame(minHeight: 44)
             .accessibilityIdentifier("tally-hide")
     }
