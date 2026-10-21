@@ -59,8 +59,11 @@
         "Packages" and "Stamp editor open" were re-recorded at 2b4fd8f with
         `A11Y_RECORD_ONLY`, after the order id became a link: each package card
         went from one header button to a chevron button plus an id link (6 more
-        elements per state), and the header grew 12px. A
-        grown hit area never grows it. Keys mask digits in their text, so a day
+        elements per state), and the header grew 12px. Both were re-recorded again
+        at 4e61484 with `A11Y_RECORD_ONLY`, after the id line moved 12px clear of the
+        date line and the header grew 12px more: in each card the id link moved 12px
+        and each box under it 24px, on top of the cards above. Every other state
+        stayed. A grown hit area never grows it. Keys mask digits in their text, so a day
         count in a card does not move a key. After any deliberate visual change,
         re-record every state the same way; A11Y_RECORD_ONLY="<state>" re-records
         one.
