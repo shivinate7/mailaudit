@@ -24,11 +24,11 @@ On a phone each control keeps a 44px touch area (the house `::after` grow). The 
 
 **Pinned by:** group 75 (the copy, the stamp, the selection guard, the link, a refused write, the stamp's life, no control inside a control, no dialogs). `check:screens` claim 16 pins what jsdom cannot see: Copied moves nothing, the clipboard holds the id, and a mouse drag selects header text and leaves the card open. Claims 9 and 11 pin the touch areas. Nothing pins the phone long-press, a Mac double-click or triple-click, or a chevron tap while text is selected. Debt: `header-gestures-unmeasured`. The header's new height, and whether the stamp covers the link's end at narrow widths, are unmeasured. Debt: `packages-header-geometry-unmeasured`.
 
-Scope: this ruling is for the web app. No record rules whether the native Packages card gets the same three behaviours. Debt: `native-order-id-copy-unscoped`.
+Scope: the lane `web/order-id-copy` builds this ruling in the web app. No record rules whether the native Packages card gets the same three behaviours. Debt: `native-order-id-copy-unscoped`.
 
 ## The order id stays visible
 
-The order id stays visible. The owner ruled on 2026-10-11, accept all: keep the order id visible, with the 10px floor in `typography-cochin-and-mono`. In the package header the id has its own line, so it keeps its whole length down to the width of the line (a 21-character id shows whole at 375px, seen in a render). A longer id ends in an ellipsis, shows whole in its `title`, and copies whole. The Tally source row still ends a long id in an ellipsis.
+The order id stays visible. The owner ruled on 2026-10-11, accept all: keep the order id visible, with the 10px floor in `typography-cochin-and-mono`. In the package header the id has its own line, so it keeps its whole length down to the width of the line (a 21-character id shows whole at 375px, seen in a render; 320px is unmeasured, debt `packages-header-geometry-unmeasured`). A longer id ends in an ellipsis, shows whole in its `title`, and copies whole. The Tally source row still ends a long id in an ellipsis.
 
 **Status:** built for the package header on 2026-10-20. Open for the Tally source row. Debt: `order-id-visible-unbuilt`.
 
