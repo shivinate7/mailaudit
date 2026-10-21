@@ -99,11 +99,11 @@
         the seller name is selected, open or collapsed. At 760px a mouse drag from the
         seller name into the date line selects text and leaves the card open, and a
         plain click still collapses it. Claim 16a, at 320px and 375px touch, with
-        Alpha stamped and not: no real tap on the seller name, the date line or the
-        gap down to the control under the header (the Stamp band, or the Stamp
-        button of the action row) opens TCGplayer. The taps are Chromium touches with a 1px and a 12px radius,
-        on a 1px grid within 32px of the id link's area (8px beyond), so Chromium's
-        touch adjustment is in play. The id line beside the link is not swept.
+        Alpha stamped and not: no real tap on the seller name, the date line, the
+        chevron or the row under the header (the Stamp band, or the action row's
+        buttons) opens TCGplayer. The taps are Chromium touches with a 1px and a
+        12px radius, on a 1px grid within 32px of the id link's area (8px beyond), so
+        Chromium's touch adjustment is in play. Header whitespace is not swept.
 
    Reduced motion is on, so animation does not skew the numbers. Exit 0 when all
    checks pass; exit 1 with one `FAIL` line per failure and one summary line. */
@@ -1753,14 +1753,13 @@ async function ledgerRuleCheck(browser) {
         TCGplayer (finding R2). So the sweep sends real touches through the DevTools
         protocol, with a 1px and a 12px contact radius, on a 1px grid (8px apart more
         than 32px from the link's area). It runs on Alpha stamped (a Stamp band under
-        the header) and unstamped (the Stamp button of the action row under it). The
-        grid covers the seller name, the date line, the chevron and the gap down
-        through that control. It skips the
-        link's own 45px touch area and the id line beside it, which is within the
-        contact radius of the link: a tap there may open the link. Any other tap
-        whose click lands on the link fails. Clicks
-        are stopped at the window so no tap changes the card, and any request to
-        tcgplayer.com is aborted.
+        the header) and unstamped (the action row's Stamp and Mark all received
+        buttons under it). The grid covers the drawn boxes of the seller name, the
+        date line, the chevron and that row, less the link's own 45px touch area.
+        Header whitespace is not swept: a tap there, within the contact radius of
+        the link, is as likely meant for the link as for the header. Any swept tap
+        whose click lands on the link fails. Clicks are stopped at the window so no
+        tap changes the card, and any request to tcgplayer.com is aborted.
      b. (orderIdCheck, 375px touch and 760px) the chevron toggles while header text
         is selected (round-1 finding F1): a click (a tap at 375px) and Enter, each on
         an open and on a collapsed card, each flips the card once. The selection at
@@ -1875,6 +1874,7 @@ const idTapGeometry = (stamped) => {
     date: box(date),
     band: box(band),
     chevron: box(chevron),
+    vw: innerWidth,
   };
 };
 
@@ -1898,7 +1898,7 @@ const STAMPED_LEDGER = { ...LEDGER, stamps: AXE_LEDGER.stamps };
 
 async function orderIdTapSweep(browser, width, stamped) {
   const name = `order id taps ${width}px ${stamped ? "stamped" : "unstamped"}`;
-  const below = stamped ? "Stamp band" : "Stamp button";
+  const below = stamped ? "Stamp band" : "action row";
   const { ctx, page, pageErrors } = await openSeeded(browser, width, { touch: true, ledger: stamped ? STAMPED_LEDGER : LEDGER });
   try {
     await ctx.route(/tcgplayer\.com/i, (route) => route.abort());
@@ -1931,44 +1931,41 @@ async function orderIdTapSweep(browser, width, stamped) {
         ])
       );
     const { zone } = g;
-    const regionOf = (y) =>
-      y < g.seller.b
-        ? "seller name"
-        : y < g.date.b
-          ? "date line"
-          : y < zone.t
-            ? "gap above the link"
-            : y <= zone.b
-              ? "chevron"
-              : y < g.band.t
-                ? "header under the link"
-                : below;
+    /* The drawn boxes of what a tap can mean other than the link: the seller name,
+       the date line, the chevron, and the row under the header (the whole card
+       width: the stamp band, or the action row's buttons). The whitespace of the
+       header is not a box of its own, and a tap in it within the contact radius of
+       the link is as likely meant for the link, so it is left out. */
+    const boxes = [
+      ["seller name", g.seller],
+      ["date line", g.date],
+      ["chevron", g.chevron],
+      [below, { l: g.chevron.l, r: g.vw - g.chevron.l, t: g.band.t, b: g.band.b }],
+    ];
 
     for (const radius of ID_TAP_RADII) {
       checks++;
       const label = `${radius}px contact radius`;
-      /* rows run from the seller name's top down through the control under the header, columns
-         across the card. On the rows of the link's own touch area only the chevron's
-         columns are swept: a tap on the chevron must not open TCGplayer, while the
-         id line beside the link is within the contact radius of it and is left out. */
+      /* a tap sits at (x + 0.5, y + 0.5), so each box keeps that point inside it */
       const sweep = [];
-      for (let y = Math.floor(g.seller.t); y <= Math.ceil(g.band.b); y++) {
-        const besideLink = y + 0.5 >= zone.t && y + 0.5 <= zone.b;
-        /* a tap is at x + 0.5, so the last column keeps that inside the box */
-        const xEnd = Math.floor((besideLink ? g.chevron.r : g.band.r) - 0.5);
-        for (let x = Math.ceil(g.chevron.l); x <= xEnd; ) {
-          sweep.push([x + 0.5, y + 0.5]);
-          x += x >= zone.l - ID_TAP_NEAR_PX && x <= zone.r + ID_TAP_NEAR_PX ? 1 : ID_TAP_FAR_PX;
-        }
-      }
+      for (const [region, b] of boxes)
+        for (let y = Math.ceil(b.t - 0.5); y + 0.5 <= b.b; y++)
+          for (let x = Math.ceil(b.l - 0.5); x + 0.5 <= b.r; ) {
+            const inZone = x + 0.5 >= zone.l && x + 0.5 <= zone.r && y + 0.5 >= zone.t && y + 0.5 <= zone.b;
+            if (!inZone) sweep.push({ pt: [x + 0.5, y + 0.5], region });
+            x += x >= zone.l - ID_TAP_NEAR_PX && x <= zone.r + ID_TAP_NEAR_PX ? 1 : ID_TAP_FAR_PX;
+          }
       /* sentinels: every ID_TAP_SENTINEL_EVERY taps, one on the middle of the link
-         (its click must land on the link) and then one at the far end of the control under the header
-         (its click must not). They show that clicks still line up with taps. */
-      const farEnd = [g.band.r - 6, (g.band.t + g.band.b) / 2];
+         (its click must land on the link) and then one at the far end of the row under
+         the header (its click must not). They show that clicks still line up with taps. */
+      const farEnd = [g.vw - g.chevron.l - 6, (g.band.t + g.band.b) / 2];
       const sent = [];
-      sweep.forEach((pt, i) => {
-        if (i % ID_TAP_SENTINEL_EVERY === 0) sent.push({ pt: i % (2 * ID_TAP_SENTINEL_EVERY) === 0 ? g.centre : farEnd, want: i % (2 * ID_TAP_SENTINEL_EVERY) === 0 ? 1 : 0 });
-        sent.push({ pt, want: null });
+      sweep.forEach((t, i) => {
+        if (i % ID_TAP_SENTINEL_EVERY === 0) {
+          const onLink = i % (2 * ID_TAP_SENTINEL_EVERY) === 0;
+          sent.push({ pt: onLink ? g.centre : farEnd, want: onLink ? 1 : 0 });
+        }
+        sent.push({ pt: t.pt, want: null, region: t.region });
       });
       sent.push({ pt: g.centre, want: 1 });
       const t0 = Date.now();
@@ -1990,21 +1987,20 @@ async function orderIdTapSweep(browser, width, stamped) {
         fail(name, `${label}: the ${sent[drift].want ? "link-centre" : "far-end"} control tap ${drift} of ${sent.length} got click ${clicks[drift]}, want ${sent[drift].want}, so the clicks do not line up with the taps (unknown, not clear)`);
         continue;
       }
-      const bad = sent.filter((t, i) => t.want === null && clicks[i]).map((t) => t.pt);
+      const bad = sent.filter((t, i) => t.want === null && clicks[i]);
       console.log(
-        `note ${name}: ${label}: ${bad.length} of ${sweep.length} taps meant for the header or the ${below} opened TCGplayer (${((Date.now() - t0) / 1000).toFixed(1)}s)`
+        `note ${name}: ${label}: ${bad.length} of ${sweep.length} taps meant for another control opened TCGplayer (${((Date.now() - t0) / 1000).toFixed(1)}s)`
       );
       if (bad.length) {
         const by = new Map();
-        for (const [x, y] of bad) {
-          const k = regionOf(y);
-          const o = by.get(k) || { n: 0, x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity };
-          by.set(k, { n: o.n + 1, x0: Math.min(o.x0, x), x1: Math.max(o.x1, x), y0: Math.min(o.y0, y), y1: Math.max(o.y1, y) });
+        for (const { pt: [x, y], region } of bad) {
+          const o = by.get(region) || { n: 0, x0: Infinity, x1: -Infinity, y0: Infinity, y1: -Infinity };
+          by.set(region, { n: o.n + 1, x0: Math.min(o.x0, x), x1: Math.max(o.x1, x), y0: Math.min(o.y0, y), y1: Math.max(o.y1, y) });
         }
         const parts = [...by].map(([k, o]) => `${k} ${o.n} (x ${o.x0} to ${o.x1}, y ${o.y0} to ${o.y1})`);
         fail(
           name,
-          `${label}: ${bad.length} of ${sweep.length} taps meant for the header or the ${below} opened TCGplayer: ${parts.join("; ")}; ` +
+          `${label}: ${bad.length} of ${sweep.length} taps meant for another control opened TCGplayer: ${parts.join("; ")}; ` +
             `the link's own area is x ${zone.l.toFixed(1)} to ${zone.r.toFixed(1)}, y ${zone.t.toFixed(1)} to ${zone.b.toFixed(1)}`
         );
       }
