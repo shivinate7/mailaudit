@@ -1,6 +1,6 @@
 # Card reserved geometry heights
 
-**Status:** Tally figures and row shift re-measured at `1607933` (the fix commit) on 2026-10-14. The records writer took them with a scratch probe, built from the `check:screens` seed and row code. The probe is not committed. Packages figures were checked at 320, 375 and 760px on the same head. The action-row figures are from the grid head `f97e423`, and were not re-measured. The Packages figures predate the order id's own line in the header (`order-id-button-stops-propagate`) and are not re-measured. Debt: `packages-header-geometry-unmeasured`.
+**Status:** Tally figures and row shift re-measured at `1607933` (the fix commit) on 2026-10-14. The records writer took them with a scratch probe, built from the `check:screens` seed and row code. The probe is not committed. Packages figures were checked at 320, 375 and 760px on the same head. The action-row figures are from the grid head `f97e423`, and were not re-measured. The Packages card height (335.67px) predates the order id link on its own header line (`order-id-button-stops-propagate`) and is not re-measured at 320, 375 or 760px. `check:screens` claim 2, the row shift, passed with the new header at `e0df8ad`. Debt: `packages-header-geometry-unmeasured`.
 
 This record holds the package card and Tally card heights across a check-in. It holds the row displacement, the action row content needed per width, and the 320px case left unfixed. Re-measure at 375px, and at the widths listed, after a change to the progress bar or the action row.
 

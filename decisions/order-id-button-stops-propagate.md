@@ -12,18 +12,18 @@ The Tally jump sets `revealed` and `view` in one handler. A `view` dependency wo
 
 ## The package header: the id is a link, the text selects
 
-The package card's header is plain text, not one button. The owner ruled on 2026-10-21 (superseding the 2026-10-20 copy button) that the header does two things:
+The package card's header is plain text, not one button. The owner ruled on 2026-10-21 00:10 CDT, superseding the 2026-10-20 copy button: "make the order # a hyperlink and have these be the link, so as example if order is: 025F898A-605522-F2EDE link is then https://store.tcgplayer.com/myaccount/orderhistory?SearchString=025F898A-605522-F2EDE". Asked what a refused copy should show, the owner answered "see 1": the copy button and its Copied stamp go away. The header does two things:
 
-- **The order id is a link to TCGplayer.** The id sits on its own line and is an `<a>` to `https://store.tcgplayer.com/myaccount/orderhistory?SearchString=<id>` (`tcgplayerOrderUrl` in `src/app.jsx`), in a new tab with `rel="noopener"`. Its click calls `e.stopPropagation()`, so it never toggles the card or checks anything in. Nothing copies: there is no copy button, no Copied stamp and no second TCGplayer link. The owner's example: id `025F898A-605522-F2EDE` gives `...orderhistory?SearchString=025F898A-605522-F2EDE`. Whether TCGplayer honours `SearchString` on that page is unconfirmed, because the page sits behind sign-in. Debt: `tcgplayer-link-opens-history-list`.
+- **The order id is a link to TCGplayer.** The id sits on its own line. It is an `<a>` to `https://store.tcgplayer.com/myaccount/orderhistory?SearchString=<id>`, with the id passed through `encodeURIComponent` (`tcgplayerOrderUrl` in `src/app.jsx`), in a new tab with `rel="noopener"`. Its click calls `e.stopPropagation()`, so it never toggles the card or checks anything in. Nothing copies: there is no copy button, no Copied stamp, no clipboard code and no second TCGplayer link. The owner's example id `025F898A-605522-F2EDE` gives `...orderhistory?SearchString=025F898A-605522-F2EDE`. Whether TCGplayer applies `SearchString` on that page is unconfirmed, because the page sits behind sign-in. Debt: `tcgplayer-link-opens-history-list`.
 - **The header text selects.** A drag on a Mac and a long-press on a phone select the seller, the date and the tracking text. A click that ends with a non-empty selection inside the header does not toggle the card. A plain click, and a click with a bare caret, still do. The chevron is the keyboard's way to toggle. It has its own click handler that always toggles and stops its click, so a selection never swallows it and the header never toggles twice.
 
-**Holds while:** the order-id link in `PackageCard` in `src/app.jsx` calls `e.stopPropagation()`, the chevron toggles on its own click, and the header toggles from a `div` whose click handler returns early on a non-empty selection inside it.
+**Holds while:** the order-id link in `PackageCard` in `src/app.jsx` calls `e.stopPropagation()`. The chevron toggles on its own click. The header toggles from a `div`, and its click handler returns early on a non-empty selection inside it.
 
-On a phone the link keeps a 45px touch area (the house `::after` grow). It is 45px wide at least, so its area stays off the chevron's. The area reaches 14.5px past the 16px id line. The id line sits 16px under the date line and 16px above the row below, so the area reaches neither the date line nor the next row.
+On a phone the link keeps a 45px touch area (the house `::after` grow). It is 45px wide at least, so its area stays off the chevron's. The area reaches 14.5px past the 16px id line. The id line sits 16px under the date line and 16px above the row below, so the area reaches neither the date line nor the next row. Measured 2026-10-21 at `e0df8ad` by `check:screens` claim 16 (a hit test on a grid over each line): the area reaches 0px into the seller name and 0px into the date line, at 375px touch and at 760px.
 
-**Pinned by:** group 75 (the link and its URL, no copy control, the selection guard, the chevron under a selection, no dialogs). `check:screens` claim 16 pins what jsdom cannot see: the link's touch area reaches neither the seller name nor the date line, the chevron toggles under a click, a tap and Enter while text is selected, and a mouse drag selects header text and leaves the card open. Claims 9 and 11 pin the touch areas. Nothing pins the phone long-press, or a Mac double-click or triple-click. Debt: `header-gestures-unmeasured`. The header's new height is unmeasured. Debt: `packages-header-geometry-unmeasured`.
+**Pinned by:** group 75, 30 cases (the link and its URL, no copy control, the selection guard, the chevron under a selection, no dialogs). `check:screens` claim 16 pins what jsdom cannot see. The link's touch area reaches neither the seller name nor the date line. The chevron toggles under a click, a tap and Enter while text is selected. A mouse drag selects header text and leaves the card open. Claims 9 and 11 pin the touch areas. Claim 10 holds the re-recorded boxes of Packages and Stamp editor open. Nothing pins the phone long-press, or a Mac double-click or triple-click. A double-click that means "collapse" collapses once, and the owner ruled on 2026-10-21 that this stays a known gap. Debt: `header-gestures-unmeasured`. The header's new height is unmeasured. Debt: `packages-header-geometry-unmeasured`.
 
-Scope: the web app. The owner ruled on 2026-10-21 that the native app gets the same feature in a later native lane. Debt: `native-order-id-copy-unscoped`.
+Scope: both clients. The owner ruled on 2026-10-21 that the native app gets the same feature, see `native-parity-table`. The web app has it. The native app does not yet. Debt: `native-order-id-link-unbuilt`.
 
 ## The order id stays visible
 
@@ -35,7 +35,9 @@ Kind: build
 
 Plan: decisions/order-id-button-stops-propagate.md#the-order-id-stays-visible (web)
 
-Plan: decisions/order-id-button-stops-propagate.md#the-package-header-copy-the-id-select-the-text-open-tcgplayer (web)
+Plan: decisions/order-id-button-stops-propagate.md#the-package-header-the-id-is-a-link-the-text-selects (web)
+
+Plan: decisions/native-parity-table.md#both-clients (native)
 
 ## See also
 
