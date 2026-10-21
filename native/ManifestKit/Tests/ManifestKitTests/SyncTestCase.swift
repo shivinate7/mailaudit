@@ -95,7 +95,7 @@ final class MaskedKeychain: KeychainBackend, @unchecked Sendable {
 
 /// The outcome of a call the test started, or nil while it has not returned.
 @MainActor
-final class Pending {
+final class SyncCall {
     var outcome: SyncOutcome?
 }
 
@@ -236,14 +236,14 @@ class SyncTestCase: XCTestCase {
     }
 
     /// Starts a call. A call that hangs ends the test with a failure and not with a hung run.
-    func start(_ work: @escaping @MainActor () async -> SyncOutcome) -> Pending {
-        let p = Pending()
+    func start(_ work: @escaping @MainActor () async -> SyncOutcome) -> SyncCall {
+        let p = SyncCall()
         Task { p.outcome = await work() }
         return p
     }
 
     /// The outcome of a started call, or nil (and a failure) after 5 seconds.
-    func finish(_ p: Pending, line: UInt = #line) async -> SyncOutcome? {
+    func finish(_ p: SyncCall, line: UInt = #line) async -> SyncOutcome? {
         await until("the call returns", timeout: 5, line: line) { p.outcome != nil }
         return p.outcome
     }
