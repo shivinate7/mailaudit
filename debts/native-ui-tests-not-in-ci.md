@@ -5,7 +5,7 @@
 - pin Xcode with `xcode-select`;
 - run xcodegen;
 - build for macOS and for the iOS Simulator with `CODE_SIGNING_ALLOWED=NO`;
-- run the UI tests in `native/ManifestUITests/PackagesShellUITests.swift`.
+- run every UI test class in `native/ManifestUITests`.
 
 The gap closes when the job runs those steps and stays green on a hosted macOS runner.
 

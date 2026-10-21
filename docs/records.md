@@ -1,6 +1,6 @@
 # Records index
 
-This page lists every record in this repo: the rules in `CLAUDE.md`, and the files in `decisions/`, `debts/` and `plans/`. A script writes it. Do not edit it by hand.
+This page lists every record in this repo: the rules in `CLAUDE.md`, and the files in `decisions/`, `debts/`, `deferred/` and `plans/`. A script writes it. Do not edit it by hand.
 
 The merge tool writes this page again when a pull request merges, so a pull request need not carry a fresh one. To write it by hand, run `python3 lint/hook_catalog.py` from the claude-settings checkout, with `--root` set to this repo. The check on the default branch fails when the page is stale.
 
@@ -21,7 +21,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-files-are-frozen` | Kind: process | [`decisions/native-files-are-frozen.md`](../decisions/native-files-are-frozen.md) |
 | `newer-features-test-proof-only` | Kind: process | [`decisions/newer-features-test-proof-only.md`](../decisions/newer-features-test-proof-only.md) |
 | `older-versions-come-off-branch` | Every push before the switch created a commit, so the frozen `data` branch holds a full archive of past ledgers. | [`decisions/older-versions-come-off-branch.md`](../decisions/older-versions-come-off-branch.md) |
-| `one-simulator-per-mac` | Kind: process | [`decisions/one-simulator-per-mac.md`](../decisions/one-simulator-per-mac.md) |
 | `peek-is-three-valued` | **Status:** retired 2026-10-14. | [`decisions/peek-is-three-valued.md`](../decisions/peek-is-three-valued.md) |
 | `photo-branch-must-preexist` | Photos lived on the `main` branch of `mailaudit-data`, in `photos/`. | [`decisions/photo-branch-must-preexist.md`](../decisions/photo-branch-must-preexist.md) |
 | `photo-errors-never-hit-pushstate` | Kind: process | [`decisions/photo-errors-never-hit-pushstate.md`](../decisions/photo-errors-never-hit-pushstate.md) |
@@ -61,7 +60,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-key-via-url-scheme` | **Status:** ruled. | [`decisions/native-key-via-url-scheme.md`](../decisions/native-key-via-url-scheme.md) |
 | `native-ledger-is-raw-json` | Kind: build | [`decisions/native-ledger-is-raw-json.md`](../decisions/native-ledger-is-raw-json.md) |
 | `native-parity-table` | Kind: build | [`decisions/native-parity-table.md`](../decisions/native-parity-table.md) |
-| `native-reply-waits-generation` | Kind: build | [`decisions/native-reply-waits-generation.md`](../decisions/native-reply-waits-generation.md) |
 | `native-swift-rebuild` | Kind: build | [`decisions/native-swift-rebuild.md`](../decisions/native-swift-rebuild.md) |
 | `order-id-button-stops-propagate` | The order-id button in Tally stops its click from reaching the row underneath. | [`decisions/order-id-button-stops-propagate.md`](../decisions/order-id-button-stops-propagate.md) |
 | `orphan-entry-takes-one-input` | The Orphaned view records an envelope from one input. | [`decisions/orphan-entry-takes-one-input.md`](../decisions/orphan-entry-takes-one-input.md) |
@@ -160,6 +158,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `motion-the-stamp-lands` | The stamp rocks down and settles at its resting angle, instead of blinking into place. | [`decisions/motion-the-stamp-lands.md`](../decisions/motion-the-stamp-lands.md) |
 | `motion-the-switch-is-one-object` | The ruling: the active-view fill is a single element that slides between thirds. | [`decisions/motion-the-switch-is-one-object.md`](../decisions/motion-the-switch-is-one-object.md) |
 | `motion-use-just-became` | Every celebration marks a state that a package can already be in. | [`decisions/motion-use-just-became.md`](../decisions/motion-use-just-became.md) |
+| `native-reply-waits-generation` | **Status:** ruled. | [`decisions/native-reply-waits-generation.md`](../decisions/native-reply-waits-generation.md) |
 | `nothing-recovers-without-the-key` | **Status:** open. | [`decisions/nothing-recovers-without-the-key.md`](../decisions/nothing-recovers-without-the-key.md) |
 | `null-remote-info-is-not-no-key` | A null `remoteInfo` means that the status has not loaded yet. | [`decisions/null-remote-info-is-not-no-key.md`](../decisions/null-remote-info-is-not-no-key.md) |
 | `offline-is-decided-by-fetch` | The app decides `offline` only by a failed `fetch`, and by nothing else. | [`decisions/offline-is-decided-by-fetch.md`](../decisions/offline-is-decided-by-fetch.md) |
@@ -258,7 +257,9 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `key-re-accepts-token-shape` | A GitHub token uses only letters, digits and underscores, so the key check accepts a token as a key. | [`debts/key-re-accepts-token-shape.md`](../debts/key-re-accepts-token-shape.md) |
 | `lost-photo-clock-is-envelope-age` | The 7-day lost-photo clock runs from the envelope's `createdAt`. | [`debts/lost-photo-clock-is-envelope-age.md`](../debts/lost-photo-clock-is-envelope-age.md) |
 | `lost-tile-waits-for-first-post` | The lost tile shows only after the push survey that follows a successful POST. | [`debts/lost-tile-waits-for-first-post.md`](../debts/lost-tile-waits-for-first-post.md) |
+| `n10-photos-unbuilt` | Lane N10 is ruled in `native-build-lanes`, and it is not built. | [`debts/n10-photos-unbuilt.md`](../debts/n10-photos-unbuilt.md) |
 | `n11-device-check-not-run` | Lane N11 is the owner's check on a device, as ruled in `native-build-lanes`, and it has not run. | [`debts/n11-device-check-not-run.md`](../debts/n11-device-check-not-run.md) |
+| `n4a-sync-over-http-unbuilt` | No sync source exists under `native/` on main. | [`debts/n4a-sync-over-http-unbuilt.md`](../debts/n4a-sync-over-http-unbuilt.md) |
 | `n4b-socket-idle-gate-unbuilt` | Lane N4b is ruled in `native-build-lanes`, and it is not built. | [`debts/n4b-socket-idle-gate-unbuilt.md`](../debts/n4b-socket-idle-gate-unbuilt.md) |
 | `native-dialog-ban-unpinned` | Nothing pins the ban on `window.confirm` and `alert` itself. | [`debts/native-dialog-ban-unpinned.md`](../debts/native-dialog-ban-unpinned.md) |
 | `native-job-hosted-time-unmeasured` | The 8 to 15 minute estimate for the full native job is unmeasured. | [`debts/native-job-hosted-time-unmeasured.md`](../debts/native-job-hosted-time-unmeasured.md) |
@@ -267,17 +268,8 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-lanes-n6-to-n9-unbuilt` | `native/` holds no Tally, Orphaned, backup or milestone view on main. | [`debts/native-lanes-n6-to-n9-unbuilt.md`](../debts/native-lanes-n6-to-n9-unbuilt.md) |
 | `native-ledger-pins-missing` | No test pins the millisecond kept-name format, the missing-file case, or the unwrapped-error sentence in Load and save. | [`debts/native-ledger-pins-missing.md`](../debts/native-ledger-pins-missing.md) |
 | `native-ledger-tab-unbuilt` | No lane builds the options that `ledger-tab-holds-options` puts in the Ledger tab. | [`debts/native-ledger-tab-unbuilt.md`](../debts/native-ledger-tab-unbuilt.md) |
-| `native-merge-skips-photo-fetch` | `PhotoSync.pull` downloads the blobs that a ledger names, and it has no caller. | [`debts/native-merge-skips-photo-fetch.md`](../debts/native-merge-skips-photo-fetch.md) |
-| `native-photo-ids-kept-uncalled` | `PhotoIds.kept` holds the rule of `photo-ids-restore-keep-if-known`, and it has no caller. | [`debts/native-photo-ids-kept-uncalled.md`](../debts/native-photo-ids-kept-uncalled.md) |
-| `native-photo-screens-unwired` | Lane N10 built `PhotoStrip`, `PhotoViewer` and `PhotoSyncBar` in `native/Manifest/PhotoViews.swift`. | [`debts/native-photo-screens-unwired.md`](../debts/native-photo-screens-unwired.md) |
-| `native-photo-sweep-unbuilt` | Nothing on native removes a blob that no envelope or draft uses. | [`debts/native-photo-sweep-unbuilt.md`](../debts/native-photo-sweep-unbuilt.md) |
-| `native-photo-transport-unbuilt` | `PhotoSync` moves blobs through the `PhotoTransport` protocol, and no type implements it. | [`debts/native-photo-transport-unbuilt.md`](../debts/native-photo-transport-unbuilt.md) |
-| `native-photo-viewer-unpinned` | `PhotoViewerModelTests` pins the modal state and the focus that Escape and a tap return. | [`debts/native-photo-viewer-unpinned.md`](../debts/native-photo-viewer-unpinned.md) |
-| `native-pull-generation-unpinned` | `SyncClient` drops a GET reply when the store's generation changed, or when the user data differs from what the last reply carried. | [`debts/native-pull-generation-unpinned.md`](../debts/native-pull-generation-unpinned.md) |
 | `native-runner-image-unverified` | Whether the `macos-26` runner image has Xcode 27 and xcodegen is unknown. | [`debts/native-runner-image-unverified.md`](../debts/native-runner-image-unverified.md) |
 | `native-runner-keychain-unverified` | Whether the runner keychain is unlocked is unknown. | [`debts/native-runner-keychain-unverified.md`](../debts/native-runner-keychain-unverified.md) |
-| `native-sync-client-unwired` | Lane N4a built `SyncClient` in `native/ManifestKit`. | [`debts/native-sync-client-unwired.md`](../debts/native-sync-client-unwired.md) |
-| `native-sync-live-unrun` | Lane N4a's tests run `SyncClient` on a stub URL protocol, a fake Keychain and a sleep gate. | [`debts/native-sync-live-unrun.md`](../debts/native-sync-live-unrun.md) |
 | `native-ui-tests-not-in-ci` | The native job runs the ST tests only, so native UI tests and builds are not in CI. | [`debts/native-ui-tests-not-in-ci.md`](../debts/native-ui-tests-not-in-ci.md) |
 | `order-id-visible-unbuilt` | What counts as visible at narrow widths is not defined. | [`debts/order-id-visible-unbuilt.md`](../debts/order-id-visible-unbuilt.md) |
 | `orphaned-reach-unpinned` | No test pins that Re-import, Backup and Reset must stay reachable from Orphaned, and it is unverified. | [`debts/orphaned-reach-unpinned.md`](../debts/orphaned-reach-unpinned.md) |

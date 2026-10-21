@@ -27,11 +27,14 @@ final class RulesCore {
         ctx.exceptionHandler = { _, e in thrown = e?.toString() }
         ctx.evaluateScript(source)
         // One trampoline: name and args JSON in, result JSON out. "null" stands for undefined.
+        // {"$set": [...]} in the args becomes a Set, because JSON has none (filterTally's sticky).
         let glue = """
         (function (name, argsJSON) {
           var f = Rules[name];
           if (typeof f !== "function") throw new Error("unknown function: " + name);
-          var out = JSON.stringify(f.apply(null, JSON.parse(argsJSON)));
+          var out = JSON.stringify(f.apply(null, JSON.parse(argsJSON, function (k, v) {
+            return v && !Array.isArray(v) && typeof v === "object" && Array.isArray(v.$set) ? new Set(v.$set) : v;
+          })));
           return out === undefined ? "null" : out;
         })
         """

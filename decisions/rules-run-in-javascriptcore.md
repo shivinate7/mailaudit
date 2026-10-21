@@ -20,10 +20,11 @@ Degen did a full Swift rewrite with server-side parsing. MANIFEST cannot copy th
 
 - S2 and S3 moved the pure rules out of `src/app.jsx` into `src/view-rules.mjs`. These are the helper functions at the top of the component, and the logic behind the memoized lists for Packages, Tally and the date range. The memos stay in the component and call the module. V1 to V12 in `test/view-rules.test.mjs` pin the moved rules.
 - `build.mjs` adds a second esbuild IIFE. The build writes the rules bundle at native/ManifestKit/Sources/ManifestKit/rules.js. The bundle carries the view rules, `src/sync-rules.mjs`, `src/version-rules.mjs` and `src/photo-rules.mjs`.
-- Swift loads the bundle into a JSContext. RulesEngine wraps one in an actor. LedgerStore.load is synchronous, so it uses a synchronous RulesCore of its own, and the app passes it the same rules.js it ships. Data crosses as JSON strings.
+- Swift loads the bundle into a JSContext. RulesEngine wraps one in an actor. LedgerStore.load is synchronous, so it uses a synchronous RulesCore of its own, and the app passes it the same rules.js it ships. Data crosses as JSON strings. JSON has no Set, so the bridge turns an argument `{"$set": [...]}` into a Set before the rule runs. `filterTally` takes its sticky copies this way.
 - The bundle exports the sync constants: `SYNC_TIMEOUT_MS`, `IDLE_APPLY_MS`, `backoffMs` and `KEY_RE`. `SyncClient` reads `SYNC_TIMEOUT_MS` and `backoffMs` from there, and `syncStatus` maps each status. `IDLE_APPLY_MS` waits for lane N4b.
+- `money` is a view rule too: the web and the native Tally call it, so both round half up on the decimal value ($0.125 is $0.13, $1.005 is $1.01) and group in en-US. V15 pins it.
 - The merge stays on the Worker. Native never loads `src/merge-rules.mjs`, so the merge has one home.
-- Sticky rows and the frozen sort stay in the component. They hold the no-layout-shift state, see `no-layout-shift-under-pointer`.
+- Sticky rows and the frozen sort stay in the component. They hold the no-layout-shift state, see `no-layout-shift-under-pointer`. In the Swift client they stay in `TallyModel`, which calls `tallyGroups`, `sortTally`, `filterTally` and `outstandingOf`.
 
 ## Proof
 
