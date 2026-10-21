@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 
 /// How one sync call ended. The cases mirror the web's syncStatus codes plus the
@@ -27,7 +28,10 @@ public final class SyncClient {
     /// everything the file holds counts as not carried yet.
     private var carried: [String: Any] = [:]
     private var failures = 0
-    private var refused = false
+    /// A digest of the key the Worker refused with a 401, never the key (the-token-is-a-credential).
+    /// A call made with that same key stops; a different saved key lifts it.
+    private var refusedKey: SHA256.Digest?
+    private var sentKey: SHA256.Digest?
     private var retryTask: Task<Void, Never>?
     private var inflight: [UUID: Task<SyncOutcome, Never>] = [:]
 
@@ -46,12 +50,12 @@ public final class SyncClient {
     // MARK: calls
 
     public func pull() async -> SyncOutcome {
-        if refused { return .noAccess }
+        if stopped() { return .noAccess }
         return await run { await $0.pullFlow() }
     }
 
     public func push() async -> SyncOutcome {
-        if refused { return .noAccess }
+        if stopped() { return .noAccess }
         if retryInMs != nil { return .backingOff }
         return await run { await $0.postFlow(retry: false) }
     }
@@ -61,6 +65,14 @@ public final class SyncClient {
         for t in inflight.values { t.cancel() }
         cancelRetry()
     }
+
+    private func stopped() -> Bool {
+        guard let refusedKey else { return false }
+        if let now = (try? keys.key()) ?? nil, Self.digest(now) != refusedKey { self.refusedKey = nil; return false }
+        return true
+    }
+
+    private static func digest(_ key: String) -> SHA256.Digest { SHA256.hash(data: Data(key.utf8)) }
 
     private func run(_ work: @escaping @MainActor (SyncClient) async -> SyncOutcome) async -> SyncOutcome {
         let id = UUID()
@@ -163,7 +175,7 @@ public final class SyncClient {
         advisory = code
         switch code {
         case "no-access":
-            refused = true
+            refusedKey = sentKey
             cancelRetry()
             return .noAccess
         case "bad-shape":
@@ -207,6 +219,7 @@ public final class SyncClient {
 
     private func send(_ method: String, body: Data?) async -> Reply {
         guard let key = (try? keys.key()) ?? nil else { return .noKey }
+        sentKey = Self.digest(key)
         var req = URLRequest(url: baseURL.appending(path: "ledger"))
         req.httpMethod = method
         req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
