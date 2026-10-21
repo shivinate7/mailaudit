@@ -7,6 +7,7 @@ import SwiftUI
 struct TallyView: View {
     let model: TallyModel
     @State private var text = ""
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         VStack(spacing: 0) {
@@ -38,10 +39,11 @@ struct TallyView: View {
                 .frame(minHeight: 44)
                 .accessibilityIdentifier("tally-search")
                 .onChange(of: text) { _, new in Task { try? await model.setQuery(new) } }
-            // One row while both fit; stacked at large text sizes, so neither is clipped.
-            ViewThatFits(in: .horizontal) {
-                HStack { sortMenu; Spacer(); hideToggle }
+            // One row, stacked at large text sizes so neither control is clipped.
+            if typeSize >= .xxxLarge {
                 VStack(alignment: .leading, spacing: 0) { sortMenu; hideToggle }
+            } else {
+                HStack { sortMenu; Spacer(); hideToggle }
             }
         }
         .padding(.horizontal, 16)
@@ -56,7 +58,7 @@ struct TallyView: View {
             }
         } label: {
             HStack(spacing: 4) {
-                Text(model.sort.label).fixedSize()
+                Text(model.sort.label)
                 Image(systemName: "chevron.up.chevron.down").imageScale(.small)
             }
             .frame(minHeight: 44)
@@ -71,7 +73,6 @@ struct TallyView: View {
         Toggle("Hide received", isOn: Binding(
             get: { model.hideReceived },
             set: { on in Task { try? await model.setHideReceived(on) } }))
-            .fixedSize()
             .frame(minHeight: 44)
             .accessibilityIdentifier("tally-hide")
     }
