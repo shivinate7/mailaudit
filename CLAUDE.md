@@ -122,6 +122,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-ci-on-hosted-macos` — The native job runs on a hosted macOS runner.
 - `csv-import-stays-web` — CSV import stays on the web app.
 - `one-simulator-per-mac` — The Mac's CPU, disk and one simulator are shared.
+- `native-ships-via-testflight` — The iOS app ships through TestFlight.
 
 ## Envelope photos
 
@@ -327,7 +328,7 @@ Lessons this repo paid for. Each one came from a green suite that hid a real def
 A fact an agent needs, that argues nothing. Read the CSV record before touching the parser.
 
 - `assets-and-icons` — Icon files and how to export them.
-- `build-and-deploy` — Build, test and deploy commands.
+- `build-and-deploy` — Build, test and deploy commands, and `make testflight`.
 - `harness-boot-seeds-remote-late` — Boot seeds the remote after the mount.
 - `harness-drives-resume-by-event` — Drive a resume by event, not by waiting.
 - `harness-drives-the-controls` — Tests drive the controls by their labels.
@@ -423,6 +424,7 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `native-photo-sweep-unbuilt` — The native client has no photo sweep.
 - `native-photo-viewer-unpinned` — No test pins the photo viewer's traits or the Stop control.
 - `n11-device-check-not-run` — The owner's native device check has not run.
+- `testflight-app-record-missing` — The TestFlight app record does not exist.
 - `web-photos-have-no-backup` — No Worker snapshot covers a web photo.
 - `web-reads-no-worker-snapshots` — Web History reads no Worker snapshot.
 - `cloudflare-access-login-untested` — A Cloudflare Access login in an iOS home-screen app is untested.
@@ -459,6 +461,7 @@ npm run check:docs     # do this file's numbers and paths hold?
 npm run check:records  # does the record corpus hold together?
 npm run deploy         # build, test, then open a pull request
 npm run serve          # a local server on :4173
+make testflight        # iOS: Release archive, then upload to TestFlight
 ```
 
 The steps and the traps live in `build-and-deploy`. Main moves by pull request
