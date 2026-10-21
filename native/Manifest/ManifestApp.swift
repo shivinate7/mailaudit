@@ -7,6 +7,8 @@ struct ManifestApp: App {
     @State private var model: PackagesModel?
     @State private var tally: TallyModel?
     @State private var orphaned: OrphanedModel?
+    @State private var masthead: MastheadModel?
+    @State private var store: LedgerStore?
     @State private var failure: String?
     @State private var notice: String?
     private let keys = KeyStore(service: "dev.shivinate.manifest", account: "device-key")
@@ -16,7 +18,7 @@ struct ManifestApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(model: model, orphaned: orphaned, tally: tally, failure: failure, notice: notice, width: Self.forcedWidth)
+            RootView(model: model, orphaned: orphaned, tally: tally, masthead: masthead, store: store, failure: failure, notice: notice, width: Self.forcedWidth)
                 .task { await boot() }
                 .onOpenURL { url in
                     // The key goes to the Keychain and the URL is dropped (native-key-via-url-scheme).
@@ -33,6 +35,13 @@ struct ManifestApp: App {
         return CGFloat(w)
     }
 
+    /// -ManifestUITestSaveState idle|saving|saved|failed: holds the save slot on one state for the run.
+    static var pinnedSave: SaveIndicator? {
+        let a = ProcessInfo.processInfo.arguments
+        guard let i = a.firstIndex(of: "-ManifestUITestSaveState"), i + 1 < a.count else { return nil }
+        return SaveIndicator.allCases.first { "\($0)" == a[i + 1] }
+    }
+
     /// Logs each outcome, never the key.
     private func applyLinks() async {
         guard let engine else { return }
@@ -44,6 +53,7 @@ struct ManifestApp: App {
             guard let rules = Bundle.main.url(forResource: "rules", withExtension: "js") else { throw CocoaError(.fileNoSuchFile) }
             let e = try RulesEngine(bundleURL: rules)
             let store = LedgerStore(fileURL: try Self.ledgerURL(), now: { Date().timeIntervalSince1970 * 1000 }, rulesURL: rules)
+            self.store = store  // before load: Backup must work on a ledger that will not open
             try store.load()
             notice = LedgerNotice.damagedLine(dropped: store.droppedCount)
             let m = PackagesModel(engine: e, store: store)
@@ -52,6 +62,9 @@ struct ManifestApp: App {
             try await t.load()
             let o = OrphanedModel(engine: e, store: store)
             try await o.load()
+            let mast = MastheadModel(engine: e, store: store, pinned: Self.pinnedSave)
+            try await mast.refresh()
+            masthead = mast
             engine = e
             model = m
             tally = t

@@ -39,7 +39,7 @@ Reading the existing `mailaudit-sync` item from the login Keychain. The access p
 - `send-key` takes `<device> --native`, the device first. The usage check refuses `--native <device>`. The reversed-order case in `npm run test:send-key` pins that refusal.
 - Today `KeyIntake.accept` returns ignored for any link that is not `manifestledger://sync`. So an https link is ignored by that guard while the fallback is not built. The ignore test names only `otherapp://` and `manifestledger://other`.
 - Lane N5 registered the scheme and calls `KeyIntake.accept`, see `native-build-lanes`.
-- The Mirror scan moved to N3, N5 and N8. N3 landed without it. N5 scans the Packages model, its rows and the ledger file. N8 still owns the backup export scan, see `native-build-lanes`.
+- The Mirror scan moved to N3, N5 and N8. N3 landed without it. N5 scans the Packages model, its rows and the ledger file. N8 scans the backup export and the masthead model. No lane scans SwiftUI view state, see `native-build-lanes`.
 
 ## See also
 
