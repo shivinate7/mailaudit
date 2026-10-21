@@ -122,4 +122,32 @@ public final class LedgerStore {
         doc["envelopes"] = list
         generation += 1
     }
+
+    /// The store's clock, so a record written beside a check-in carries the same time.
+    func clock() -> Double { now() }
+
+    /// The raw `envelopes`, tombstones included, in file order.
+    func envelopeRecords() -> [[String: Any]] { doc["envelopes"] as? [[String: Any]] ?? [] }
+
+    /// Puts a new envelope record at the top of the pile.
+    func addEnvelope(_ record: [String: Any]) {
+        doc["envelopes"] = [record] + envelopeRecords()
+        generation += 1
+    }
+
+    /// Replaces the record with the same id where it stands, or puts it at the top.
+    func replaceEnvelope(_ record: [String: Any]) {
+        var list = envelopeRecords()
+        if let i = list.firstIndex(where: { ($0["id"] as? String) == (record["id"] as? String) }) { list[i] = record } else { list.insert(record, at: 0) }
+        doc["envelopes"] = list
+        generation += 1
+    }
+
+    /// Runs the edits, then saves once. If the save fails, every edit is undone,
+    /// the generation too. One assign touches three fields and may not land in part.
+    func commit(_ edits: () -> Void) throws {
+        let (oldDoc, oldGen) = (doc, generation)
+        edits()
+        do { try save() } catch { doc = oldDoc; generation = oldGen; throw error }
+    }
 }
