@@ -38,6 +38,7 @@ The Swift client's rules, as built in PR #89. The web rules are in `saved-state-
 
   A later save throws until a good load. A failed reload leaves the store unsaveable.
 - A save before a load throws and writes nothing.
+- `LedgerStore.backup()` hands the share sheet the document as `save()` writes it, from memory, and writes nothing. A store that is not loaded hands over the file bytes as they are. Lane N8 built it, see `native-build-lanes`.
 - A top level that is not an object throws. A bad `mailday` and a bad mend result throw `CocoaError(.fileReadCorruptFile)`. A missing file, invalid JSON and a failed copy throw whatever Foundation throws.
 
 ## What an edit may touch

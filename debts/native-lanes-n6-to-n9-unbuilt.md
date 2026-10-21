@@ -1,7 +1,7 @@
-# Native lanes N8 and N9 are not built
+# Native lane N9, milestones, is not built
 
-**What.** `native/` holds no backup or milestone view on main. Lanes N8 (masthead and backup) and N9 (milestones) are planned rows in `native-build-lanes`. Neither has landed. Lanes N6 (Tally) and N7 (Orphaned) landed on lane branches. The gap closes when each lane lands with its tests.
+**What.** `native/` holds no milestone view on main. Lane N9 (milestones) is a planned row in `native-build-lanes`. It has not landed. Lanes N6 (Tally), N7 (Orphaned) and N8 (masthead and backup) landed on lane branches. The gap closes when N9 lands with its tests.
 
-**Status:** open. Batch 5 holds N8, after N5, with N4b and N9.
+**Status:** open. Batch 5 holds N9, with N4b.
 
 **Decision:** `native-build-lanes`.

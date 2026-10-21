@@ -18,7 +18,7 @@ Degen did a full Swift rewrite with server-side parsing. MANIFEST cannot copy th
 
 ## How it works
 
-- S2 and S3 moved the pure rules out of `src/app.jsx` into `src/view-rules.mjs`. These are the helper functions at the top of the component, and the logic behind the memoized lists for Packages, Tally and the date range. The memos stay in the component and call the module. V1 to V12 in `test/view-rules.test.mjs` pin the moved rules.
+- S2 and S3 moved the pure rules out of `src/app.jsx` into `src/view-rules.mjs`. These are the helper functions at the top of the component, and the logic behind the memoized lists for Packages, Tally and the date range. The memos stay in the component and call the module. V1 to V12 in `test/view-rules.test.mjs` pin the moved rules. Lane N8 moved `compact`, the masthead's money figure, from `src/app.jsx` into the same module, and V15 pins it.
 - `build.mjs` adds a second esbuild IIFE. The build writes the rules bundle at native/ManifestKit/Sources/ManifestKit/rules.js. The bundle carries the view rules, `src/sync-rules.mjs`, `src/version-rules.mjs` and `src/photo-rules.mjs`.
 - Swift loads the bundle into a JSContext. RulesEngine wraps one in an actor. LedgerStore.load is synchronous, so it uses a synchronous RulesCore of its own, and the app passes it the same rules.js it ships. Data crosses as JSON strings. JSON has no Set, so the bridge turns an argument `{"$set": [...]}` into a Set before the rule runs. `filterTally` takes its sticky copies this way.
 - The bundle exports the sync constants: `SYNC_TIMEOUT_MS`, `IDLE_APPLY_MS`, `backoffMs` and `KEY_RE`. `SyncClient` reads `SYNC_TIMEOUT_MS` and `backoffMs` from there, and `syncStatus` maps each status. `IDLE_APPLY_MS` waits for lane N4b.

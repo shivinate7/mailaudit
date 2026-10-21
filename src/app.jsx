@@ -5,7 +5,7 @@ import {
   parseItems, lostMail, normName, isUntracked, gkOf, groupPackages, rankCandidates,
   dateRange, inRange, dropCanceled, dropGks, canceledPackagesOf, stampedPackagesOf,
   tallyGroups, sortTally, sortPackages, filterPackages, filterTally,
-  totalsOf, outstandingOf, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger, money,
+  totalsOf, outstandingOf, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger, money, compact,
 } from "./view-rules.mjs";
 import { photoPlan } from "./photo-rules.mjs";
 import { shouldSnapshot } from "./version-rules.mjs";
@@ -69,18 +69,6 @@ const BAR_ICONS = {
   ),
 };
 
-/* Compact money for the masthead tallies, where three figures share one row at
-   375px and cents are noise. Whole dollars under 1k, then k / M with at most
-   two decimals and trailing zeros trimmed: 27, 101, 4k, 63.45k, 1.2M.
-   Only for display — `money()` stays the format everywhere a figure is meant to
-   be read exactly. */
-const compact = (n) => {
-  const a = Math.abs(n);
-  const trim = (x) => String(Math.round(x * 100) / 100);
-  if (a >= 1e6) return `${trim(n / 1e6)}M`;
-  if (a >= 1e3) return `${trim(n / 1e3)}k`;
-  return String(Math.round(n));
-};
 
 /* How long a ledger may go unpushed before the app says so. A day, because the
    push is automatic and idle-debounced: anything shorter fires on an ordinary

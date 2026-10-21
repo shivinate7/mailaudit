@@ -40,7 +40,12 @@
    two clients cannot round differently):
      money(n) -> "$" + n with exactly two decimals, the thousands grouped, rounded
                  half up on the decimal value the way toLocaleString does it:
-                 0.125 -> "$0.13", 1.005 -> "$1.01" */
+                 0.125 -> "$0.13", 1.005 -> "$1.01"
+
+   Lane N8 pins one more (the native masthead calls it through RulesEngine; it moves
+   here from src/app.jsx so the web and native tallies share one home):
+     compact(n) -> the masthead's value figure: whole dollars under 1k, then k or M
+                   with at most two decimals and trailing zeros trimmed */
 
 const DAY = 86400000;
 const loaded = await import("../src/view-rules.mjs").then(
@@ -77,6 +82,7 @@ const toggleCount = fn("toggleCount");
 const countLabel = fn("countLabel");
 const isDone = fn("isDone");
 const money = fn("money");
+const compact = fn("compact");
 
 /* ---------- assertion helpers ---------- */
 
@@ -1101,6 +1107,32 @@ const tieGroup = tallyGroups([
 ])?.[0];
 eq(tieGroup?.avg, 0.125, "V15.5a control: the pooled average is exactly 0.125");
 eq(money(tieGroup?.avg), "$0.13", "V15.5b the Tally unit rate for $0.10 and $0.15 reads $0.13");
+
+/* ---------- N8: the masthead's compact value figure ---------- */
+
+/* V16.1 under 1k: whole dollars, rounded, never cents */
+eq(compact(0), "0", "V16.1a zero");
+eq(compact(27), "27", "V16.1b a whole figure");
+eq(compact(101.4), "101", "V16.1c cents round away");
+eq(compact(67.5), "68", "V16.1d a half rounds up");
+eq(compact(999), "999", "V16.1e the top of the whole-dollar range");
+
+/* V16.2 thousands: k, at most two decimals, trailing zeros trimmed */
+eq(compact(1000), "1k", "V16.2a exactly 1k");
+eq(compact(4000), "4k", "V16.2b a round thousand loses its zeros");
+eq(compact(63450), "63.45k", "V16.2c two decimals stay");
+eq(compact(118600), "118.6k", "V16.2d one trailing zero is trimmed");
+eq(compact(100240), "100.24k", "V16.2e the six-figure case that has to fit");
+eq(compact(12345.678), "12.35k", "V16.2f a third decimal rounds");
+
+/* V16.3 millions */
+eq(compact(1200000), "1.2M", "V16.3a millions use M");
+eq(compact(2000000), "2M", "V16.3b a round million loses its zeros");
+eq(compact(1234567), "1.23M", "V16.3c two decimals");
+
+/* V16.4 a negative figure picks its unit by size, not by sign */
+eq(compact(-4000), "-4k", "V16.4a negative thousands");
+eq(compact(-27), "-27", "V16.4b negative whole dollars");
 
 /* ---------- report ---------- */
 

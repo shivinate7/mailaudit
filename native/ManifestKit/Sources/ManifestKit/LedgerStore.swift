@@ -3,11 +3,11 @@ import Foundation
 /// Keeps ledger.json as raw JSON. An edit touches only `received`, `receivedAt`,
 /// `stamps` and `envelopes`; every other field passes through (native-ledger-is-raw-json).
 public final class LedgerStore {
-    private let fileURL: URL
-    private let now: () -> Double
+    let fileURL: URL  // internal, for Backup.swift
+    let now: () -> Double
     private let rulesURL: URL?
-    private var doc: [String: Any] = [:]
-    private var loaded = false
+    var doc: [String: Any] = [:]
+    var loaded = false
     public private(set) var generation = 0
     /// Entries the last load dropped from a damaged field; 0 when nothing was damaged.
     public private(set) var droppedCount = 0
@@ -88,8 +88,7 @@ public final class LedgerStore {
 
     public func save() throws {
         guard loaded else { throw CocoaError(.fileReadCorruptFile) }
-        let data = try JSONSerialization.data(withJSONObject: doc, options: [.sortedKeys])
-        try data.write(to: fileURL, options: .atomic)
+        try snapshot().write(to: fileURL, options: .atomic)
     }
 
     /// The raw `items` array, as the rules take it.
