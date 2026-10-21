@@ -2,7 +2,7 @@ import ManifestKit
 import SwiftUI
 
 /// The system tab bar, four tabs left to right (phone-nav-is-bottom-bar).
-/// Ledger is a placeholder.
+/// Ledger holds the Backup row only.
 struct RootView: View {
     let model: PackagesModel?
     let orphaned: OrphanedModel?
