@@ -33,7 +33,14 @@
      toggleCount(got, qty) -> the count a check-in writes: 0 when the line is
                               already in (got >= qty), else qty
      countLabel(got, qty) -> "N of M" with N clamped to M, so "3 of 2" never shows
-     isDone(got, qty) -> true when got >= qty, the done state a row shows */
+     isDone(got, qty) -> true when got >= qty, the done state a row shows
+
+   Lane N6 pins one more (the native Tally row writes its dollar figures through
+   RulesEngine, and the web's money() in src/app.jsx calls the same rule, so the
+   two clients cannot round differently):
+     money(n) -> "$" + n with exactly two decimals, the thousands grouped, rounded
+                 half up on the decimal value the way toLocaleString does it:
+                 0.125 -> "$0.13", 1.005 -> "$1.01" */
 
 const DAY = 86400000;
 const loaded = await import("../src/view-rules.mjs").then(
@@ -69,6 +76,7 @@ const packagesDone = fn("packagesDone");
 const toggleCount = fn("toggleCount");
 const countLabel = fn("countLabel");
 const isDone = fn("isDone");
+const money = fn("money");
 
 /* ---------- assertion helpers ---------- */
 
@@ -1066,6 +1074,33 @@ eq(isDone(1, 3), false, "V14.7c a partial line is not done");
 eq(isDone(3, 2), true, "V14.7d an over-count is done");
 /* V14.8 mutant: done as `got > qty` would leave a full line not done */
 eq(isDone(2, 2), true, "V14.8 a full multi-copy line is done, not only an over-count");
+
+/* ---------- N6: one money format for both clients ---------- */
+
+/* V15.1 a half-cent tie rounds up. 0.125 is exact in binary, so half-even
+   rounding (Swift's formatted(), Intl with roundingMode halfEven) gives "$0.12" */
+eq(money(0.125), "$0.13", "V15.1 a half-cent tie rounds up: 0.125 is $0.13, not $0.12");
+
+/* V15.2 the decimal value decides, not the binary one. 1.005 is stored a hair
+   under 1.005, so toFixed(2) and a Math.round(n * 100) port both give "$1.00" */
+eq(money(1.005), "$1.01", "V15.2 1.005 is $1.01: round on the decimal value, not the binary one");
+
+/* V15.3 mutant: no padding, so a whole figure loses its cents */
+eq(money(2.5), "$2.50", "V15.3a one decimal pads to two");
+eq(money(50), "$50.00", "V15.3b a whole figure shows .00");
+eq(money(0), "$0.00", "V15.3c zero shows $0.00");
+
+/* V15.4 mutant: toFixed(2), which drops the thousands grouping */
+eq(money(1234567.891), "$1,234,567.89", "V15.4 thousands are grouped, cents kept");
+
+/* V15.5 the Tally row's own figure: two copies at $0.10 and $0.15 average
+   $0.125, the tie the native row got wrong. The rule must round what tallyGroups hands it. */
+const tieGroup = tallyGroups([
+  priced("T1", "Tie Cards", "Tie Card", 1, 0.1, "2026-07-01", "without tracking", 0),
+  priced("T2", "Tie Games", "Tie Card", 1, 0.15, "2026-07-02", "without tracking", 0),
+])?.[0];
+eq(tieGroup?.avg, 0.125, "V15.5a control: the pooled average is exactly 0.125");
+eq(money(tieGroup?.avg), "$0.13", "V15.5b the Tally unit rate for $0.10 and $0.15 reads $0.13");
 
 /* ---------- report ---------- */
 

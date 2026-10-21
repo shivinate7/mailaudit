@@ -436,6 +436,16 @@ export const isDone = (got, qty) => got >= qty;
 export const toggleCount = (got, qty) => (isDone(got, qty) ? 0 : qty);
 export const countLabel = (got, qty) => `${Math.min(got, qty)} of ${qty}`;
 
+/* Lane N6: one money format for both clients (rules-run-in-javascriptcore). Rounded half up on
+   the decimal value, shifted by exponent so 1.005 is $1.01 and 0.125 is $0.13; toFixed and
+   Swift's formatted() round the binary value or half to even and would differ. Fixed to en-US so a
+   phone and a laptop in different locales print the same figure. */
+export const money = (n) => {
+  const [m, e = 0] = String(Math.abs(n)).split("e");
+  const cents = Math.round(Number(`${m}e${+e + 2}`));
+  return `$${n < 0 ? "-" : ""}${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+
 /* Lane B1 (saved-state-shape, native-ledger-is-raw-json): keep every entry of a
    ledger that can be read, drop the rest. Pure: data -> { data, dropped }; the
    input is never changed. Checked fields are received and receivedAt (counts and

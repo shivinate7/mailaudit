@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-public struct LedgerItem: Decodable, Equatable, Sendable {
+public struct LedgerItem: Codable, Equatable, Sendable {
     public let key, orderId, seller, name, set, condition, finish: String
     public let qty: Int
     public let price: Double
