@@ -15,7 +15,7 @@ private func decodePhoto(_ store: PhotoStore, _ id: String, maxPixel: Int) async
 }
 
 /// The envelope's photo tiles: 56pt squares (photo-thumbnails-and-viewer). A tap opens the viewer, and
-/// focus comes back to the tile that opened it. Not wired to a screen yet (debt `n10-photos-unwired`).
+/// focus comes back to the tile that opened it. Not wired to a screen yet (debt `native-photo-screens-unwired`).
 struct PhotoStrip: View {
     let ids: [String]
     let store: PhotoStore

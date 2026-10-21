@@ -4,7 +4,7 @@ import Observation
 /// A 413 from the Worker: the photo is over its cap.
 public enum PhotoTransportError: Error, Equatable, Sendable { case tooLarge }
 
-/// The Worker /photos route. The HTTP client is lane N4a's and is not built (debt `n10-photos-unwired`).
+/// The Worker /photos route. The HTTP client is lane N4a's and is not built (debt `native-photo-transport-unbuilt`).
 public protocol PhotoTransport: Sendable {
     /// File names as GET /photos gives them. Nil: the Worker could not say.
     func list() async throws -> [String]?
@@ -93,7 +93,12 @@ public final class PhotoSync {
     /// Nil when the run cannot go on; `report` then says why.
     private func survey(_ referenced: [String], _ report: inout PhotoSyncReport) async -> Plan? {
         guard let held = await store.heldIds() else { report.unreadable = true; return nil }
-        guard let listed = try? await transport.list() else { return nil }
+        let listed: [String]?
+        do { listed = try await transport.list() } catch {
+            if stopRequested { report.stopped = true }  // a Stop cancels the list call; that is not an unknown list
+            return nil
+        }
+        guard let listed else { return nil }
         var names: [String: String] = [:]
         for name in listed {
             if let id: String = await rule("photoIdFromName", [name]) { names[id] = name }
@@ -150,8 +155,9 @@ public final class PhotoSync {
                 r.pulled.append(id)
                 progress = Progress(done: r.pulled.count, total: batch.count)
             } catch {
-                if stopRequested { r.stopped = true } else { r.failed = true }
-                break
+                // A bad fetch costs that photo only (pullPhotos in src/app.jsx); the next run retries it.
+                if stopRequested { r.stopped = true; break }
+                r.failed = true
             }
         }
         r.left = plan.toPull.count - r.pulled.count
