@@ -3449,9 +3449,9 @@ ok(shouldSnapshot("recent", null, NOW), "38.15 and the very first version always
 
 /* An undo survives a trip to Packages by design (group 14), and it used to
    block auto-push for the whole session as a side effect — invisibly, because
-   there is no undo control outside Orphaned. The merge still guards on it
-   (applying nulls it); the push does not, because a push changes nothing here
-   and the check-in it would publish genuinely happened. */
+   there is no undo control outside Orphaned. Neither the push nor the merge guards on it now
+   (owner ruling 2026-10-21 13:30 CDT; 75.12 pins the merge): the check-in the push would publish
+   genuinely happened. */
 await boot({ items: ITEMS, received: {} }, null, { syncKey: "device-38b-key" });
 await goTo("orphaned");
 await record(["Ponder"]);
@@ -3462,7 +3462,7 @@ await wakeWorker();
 await drain();
 ok(
   workerPosts().length > withUndo,
-  "38b.3b a pending undo does not stop the Worker POST — only the merge guards on it"
+  "38b.3b a pending undo does not stop the Worker POST"
 );
 
 /* A version store that cannot write makes "Reset is recoverable" false. It
@@ -6596,6 +6596,39 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   await sleep(AFTER_UP);
   ok(saved().received?.[ITEMS[2].key] === 1, "59.15c and it applies once the press is released");
 
+  /* 59.15d the first reply after a saved key applies at once even when the Save tap's own press ended
+     a moment before. Tapping Save is a press: pointerdown and pointerup land, then the key is saved
+     and the first reply arrives inside the press tail (PRESS_TAIL_MS). The pasted key is a tap the
+     owner just made, so that reply is exempt (applyNow); the exemption must hold all the way through
+     the merge, not only at the first check. click() fires no pointer events, so the older cases
+     hold no press at the Save: this one presses first. Red at the lane head: the merge asks the
+     press guard again and holds the reply about 0.7 s after the tap (round 1 finding F2). */
+  await boot({ items: ITEMS.slice(0, 3), received: {} }, null, {
+    remoteKey: GH59,
+    syncAdapter: true,
+    remote: null,
+    syncLedger: FIRST15,
+  });
+  await settle();
+  await openPanel59();
+  if (field59()) await type(field59(), KEY59);
+  ok(!!btn(/^Save sync key$/), "59.15d0 the key is typed and Save is offered");
+  await ptr("pointerdown");
+  await ptr("pointerup");
+  await click(btn(/^Save sync key$/), "save the pasted key");
+  await sleep(300);
+  ok(await win.sync.hasKey(), "59.15d1 the key was saved, so the reply below is the first one");
+  ok(count59("get") > 0, "59.15d2 the cold-open path read the Worker");
+  ok(landed55(), "59.15d the first reply after the Save tap applied within 300 ms, not after the press tail");
+  /* the exemption is for that one reply: the next reply from another device meets the tail of the
+     same release, so it is held just after the first lands, and applies once the tail ends. This
+     also shows the press above was seen by the page, so the check above is not vacuous. */
+  await fireSyncRev(2, { ...FIRST15, items: ITEMS.slice(0, 5) });
+  await sleep(150);
+  ok(!/2 new lines/.test(text()), "59.15d3 a second reply inside the tail of the same release is held");
+  await sleep(AFTER_UP);
+  ok(/2 new lines/.test(text()), "59.15d4 and it applies once the tail has ended");
+
   /* 59.16. The owner's path on the home-screen app: keyless with a GitHub token, the
      panel opened to paste, a good save, and the panel still open. The line must not
      read "no sync key" after the save, with the panel open, after a close, or after a
@@ -8987,6 +9020,97 @@ await settle();
   await unmountApp();
   await sleep(POST_WAIT + 2000);
   eq(postCount() - posts, 0, "75.10 a POST timer armed by a tap is cleared when the app unmounts");
+}
+
+/* ── 75.12 to 75.14: round 2 of the lane (owner rulings 2026-10-21 13:30 CDT) ──
+   U. "it should just be able to apply anyways why does the undo bar being open have to matter".
+   An open Undo bar never holds a remote apply, and the apply keeps the bar and its delta
+   (undo-removes-only-its-delta: Undo subtracts its own plan, so it stays right after a merge). The
+   bar has no timeout, so one unread bar held every reply for ever. A half-built envelope and an
+   armed Reset still hold (40.9, 55.4): an apply would discard what they hold.
+   F1. The import sentence stays in the notice until the owner dismisses it, across any number of
+   applies. Red at the lane head: the notice an apply writes is remembered as the server's own, so
+   the next apply takes the import sentence for part of it and drops it.
+   Both read the merge notice, which is written in the same render as the apply. */
+
+/* 75.12 an open Undo bar does not hold a reply, and the bar is still offered once the reply has
+   landed. The assignment is made after a quiet open, so only the bar is in the way. */
+await boot({ items: ITEMS, received: {} }, null, { noRemote: true, syncKey: KEY75 });
+await settle();
+await sleep(APPLY_WAIT);
+await goTo("orphaned");
+await record(["Ponder"]);
+await assign(0);
+await sleep(SAVE_WAIT);
+const ponderKeys75 = Object.keys(saved().received ?? {});
+const KEY_REMOTE75 = ITEMS.map((i) => i.key).find((k) => !ponderKeys75.includes(k));
+{
+  ok(ponderKeys75.length > 0 && !!btn(/^Undo$/), "75.12pre the assignment checked cards in and left its Undo bar open");
+  const g = getCount();
+  /* the other device checked in one more card, which the assignment did not touch */
+  await fireSyncRev(syncRev() + 1, {
+    mailday: 1,
+    items: ITEMS,
+    received: { [KEY_REMOTE75]: 1 },
+    receivedAt: { [KEY_REMOTE75]: Date.now() + 5000 },
+    envelopes: [],
+  });
+  ok(getCount() > g, "75.12pre2 the rev fetched the reply, so the check below means something");
+  await sleep(1000);
+  ok(landed55(), "75.12 an open Undo bar does not hold a reply: it applies within a second");
+  ok(!!btn(/^Undo$/), "75.13a and the apply leaves the Undo bar open");
+  /* the other device's check-in is saved while the bar is still open. A build that holds the reply
+     until Undo is used applies it only after the click below, and would pass the end state alone. */
+  await sleep(SAVE_WAIT);
+  eq(saved().received?.[KEY_REMOTE75], 1, "75.13a1 the other device's check-in is saved with the Undo bar still open");
+
+  /* 75.13 Undo after the apply subtracts only its own plan, and the other device's check-in stays */
+  await click(btn(/^Undo$/), "undo the assignment after the remote apply");
+  await sleep(SAVE_WAIT);
+  eq(
+    Object.keys(saved().received ?? {}),
+    [KEY_REMOTE75],
+    "75.13 Undo after a remote apply removes only its own check-ins and keeps the other device's"
+  );
+  eq(
+    (saved().envelopes ?? []).filter((e) => !e.deletedAt).length,
+    1,
+    "75.13b and the envelope is back in the pile"
+  );
+  ok(!btn(/^Undo$/), "75.13c and the bar is gone once it has been used");
+}
+
+/* 75.14 the import sentence stays across applies and leaves with Dismiss. A restore leaves its
+   notice open; two replies with news apply after it, and then a reply that only moves a change time
+   (nothing to report, but the apply still runs). Each apply must keep the sentence the owner has not
+   read. Dismiss removes the notice; a later apply writes only its own sentence. */
+{
+  const ledgerOf = (n, extra = {}) => ({ mailday: 1, items: ITEMS.slice(0, n), received: {}, envelopes: [], ...extra });
+  await quiet75();
+  await reachFor(/Re-import CSV/);
+  await click(btn(/Re-import CSV/), "show upload zone for the notice");
+  await dropFile("mailday-backup.json", JSON.stringify(ledgerOf(3)));
+  ok(!!dismiss55() && /Backup restored/.test(text()), "75.14pre the import notice is open, so what follows means something");
+  await fireSyncRev(2, ledgerOf(4));
+  await sleep(1000);
+  ok(landed55() && /1 new line/.test(text()), "75.14a1 the first reply applied and its sentence is in the notice");
+  ok(/Backup restored/.test(text()), "75.14a and the import sentence is still there after one apply");
+  await fireSyncRev(3, ledgerOf(6));
+  await sleep(1000);
+  ok(/2 new lines/.test(text()), "75.14b1 the second reply applied and its sentence is in the notice");
+  ok(/Backup restored/.test(text()), "75.14b and the import sentence is still there after a second apply");
+  /* a change time alone: nothing new to say, yet the apply runs (the noTime compare is canonical) */
+  await fireSyncRev(4, ledgerOf(6, { receivedAt: { [ITEMS[0].key]: Date.now() + 9000 } }));
+  await sleep(SAVE_WAIT + 1000);
+  eq(saved().receivedAt?.[ITEMS[0].key] > 0, true, "75.14c1 the third reply applied: it moved a change time and nothing else");
+  ok(/Backup restored/.test(text()), "75.14c and an apply with nothing to report still keeps the import sentence");
+  ok(!!dismiss55(), "75.14d1 the notice is still open for the owner to dismiss");
+  await click(dismiss55(), "dismiss the notice");
+  ok(!/Backup restored/.test(text()) && !dismiss55(), "75.14d Dismiss removes the notice, import sentence and all");
+  await fireSyncRev(5, ledgerOf(8, { receivedAt: { [ITEMS[0].key]: Date.now() + 9000 } }));
+  await sleep(1000);
+  ok(/2 new lines/.test(text()), "75.14e1 a reply after the Dismiss applied and wrote its own sentence");
+  ok(!/Backup restored/.test(text()), "75.14e and the dismissed import sentence does not come back");
 }
 
 /* ── 73. photos go to the Worker, and no photo call reaches GitHub ──
