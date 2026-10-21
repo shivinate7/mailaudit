@@ -401,7 +401,12 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `native-runner-keychain-unverified` — Whether the hosted runner keychain is unlocked is unverified.
 - `native-job-hosted-time-unmeasured` — The native job's time on a hosted runner is unmeasured.
 - `n4b-socket-idle-gate-unbuilt` — Lane N4b, the socket, idle gate and resume, is not built.
-- `n10-photos-unwired` — Native photos are built, and no screen or client calls them.
+- `native-photo-transport-unbuilt` — No HTTP client carries native photos to the Worker.
+- `native-photo-screens-unwired` — No native screen shows a photo, and nothing takes one.
+- `native-photo-ids-kept-uncalled` — Nothing calls the native photo id rule.
+- `native-merge-skips-photo-fetch` — Nothing fetches native photos before an apply.
+- `native-photo-sweep-unbuilt` — The native client has no photo sweep.
+- `native-photo-viewer-unpinned` — No test pins the photo viewer's traits or the Stop control.
 - `n11-device-check-not-run` — The owner's native device check has not run.
 - `web-photos-have-no-backup` — No Worker snapshot covers a web photo.
 - `web-reads-no-worker-snapshots` — Web History reads no Worker snapshot.
