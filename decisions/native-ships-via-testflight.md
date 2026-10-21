@@ -25,6 +25,10 @@ Plan: decisions/build-and-deploy.md#make-testflight (native)
 - `CFBundleVersion` in `native/Manifest/Info.plist` is `$(CURRENT_PROJECT_VERSION)`. `native/project.yml` sets the default to 1 for builds that are not archives.
 - `ITSAppUsesNonExemptEncryption` is false in the same file.
 
+## The app icon
+
+The archive holds `Assets.car` and `CFBundleIconName` AppIcon, from the catalog in `native/Manifest/Assets.xcassets`. The round-1 review found the catalog missing, which App Store Connect rejects. The icon is the master, see `assets-and-icons`. Checked on a `make archive` of 2026-10-21 with `plutil`.
+
 ## What it replaces
 
 The ios-adblock repo's phone-apps list installs apps on the phone with `xcrun devicectl device install app`. MANIFEST does not join that list. The phone gets MANIFEST from TestFlight.
@@ -42,6 +46,7 @@ A TestFlight install puts a native build on the phone. So the first install is t
 
 - `build-and-deploy` — the steps and flags behind `make testflight`.
 - `native-build-lanes` — lane N11, the device check, runs on the TestFlight build.
+- `assets-and-icons` — the icon source and the archive check.
 - `native-swift-rebuild` — the signing team and the bundle id.
 - `native-files-are-frozen` — the file names that freeze at the first ship.
 - `testflight-app-record-missing` — the owner step that blocks the first upload.
