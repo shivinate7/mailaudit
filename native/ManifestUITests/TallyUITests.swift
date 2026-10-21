@@ -88,17 +88,29 @@ final class TallyUITests: XCTestCase {
 
     // MARK: accessibility audit, one screen state per method
 
+    /// The whole audit, with each issue named by its element. A bare performAccessibilityAudit() fails with
+    /// "Contrast failed" and the result bundle does not say which element (palette-tokens-contrast-floor).
+    func auditNamingElements(_ app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) throws {
+        var found: [String] = []
+        try app.performAccessibilityAudit { issue in
+            let el = issue.element
+            found.append("\(issue.compactDescription) | id=\(el?.identifier ?? "-") label=\(el?.label ?? "-") frame=\(el?.frame ?? .zero)")
+            return true  // handled here; the assertion below is the only failure
+        }
+        XCTAssertEqual(found, [], "the audit flagged these elements", file: file, line: line)
+    }
+
     func testAccessibilityAuditTallyScreenWithRows() throws {
         let app = launch()
         openTally(app)
-        try app.performAccessibilityAudit()
+        try auditNamingElements(app)
     }
 
     func testAccessibilityAuditTallyScreenWithARowOpen() throws {
         let app = launch()
         openTally(app)
         open(app, "Lightning Bolt", firstCopy: "B1|0|pLightningBolt")
-        try app.performAccessibilityAudit()
+        try auditNamingElements(app)
     }
 
     // MARK: the copies list

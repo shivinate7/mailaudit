@@ -43,6 +43,7 @@
 //       public func setHideReceived(_ on: Bool) async throws
 //       public func clearSearch() async throws                // same as setQuery("")
 //       public func checkIn(key: String, count: Int) async throws  // commitReceived, then the rows refresh
+//       public func viewOpened() async throws                 // the Tally tab came on screen: counts re-read, sticky ended, order kept
 //   }
 //
 // Rulings the tests carry:
@@ -50,6 +51,8 @@
 //     a check-in changes counts and never the order. Choosing a sort sorts again.
 //   - A copy checked in while hide-received is on stays shown (the web's `sticky` input to filterTally)
 //     until the query or hide-received changes.
+//   - Every dollar figure on a row comes from the bundle's `money` rule (src/view-rules.mjs), the rule the web's
+//     money() also calls. It rounds half up on the decimal value: 0.125 is $0.13 and 1.005 is $1.01.
 //   - Not pinned, because the row does not name them: the date range, canceled and refunded packages
 //     (N5's Packages view reads every item too), the per-copy stepper, the per-copy lost-mail flag, the bulk buttons.
 //
@@ -283,6 +286,55 @@ final class TallyModelTests: XCTestCase {
         XCTAssertNil(model.rows.first { $0.name == "Urza's Saga" }, "the sticky copy outlived a change of context")
     }
 
+    /// A new query also ends the sticky copy. B1 is in and matches "beta", so only the reset can drop its row:
+    /// Lightning Bolt has no other Beta Games copy.
+    func testJustCheckedCopyStaysShownUntilTheQueryChanges() async throws {
+        let (model, _, _) = try await makeModel()
+        try await model.setHideReceived(true)
+        try await model.checkIn(key: "B1|0|pLightningBolt", count: 1)
+        XCTAssertEqual(row(model, "Lightning Bolt")?.copies.map(\.key), ["B1|0|pLightningBolt", "C1|0|pLightningBolt"],
+                       "control: the just-checked copy is sticky")
+
+        try await model.setQuery("beta")
+        XCTAssertNil(model.rows.first { $0.name == "Lightning Bolt" }, "the sticky copy outlived a new query")
+        XCTAssertNotNil(model.rows.first { $0.name == "Brainstorm" }, "control: the query still matches an unreceived Beta Games copy")
+    }
+
+    // MARK: the Tally view opens
+
+    /// Another view checked a copy in, then the Tally tab opens: the rows show it. A copy that was sticky
+    /// before the switch is not any more (the web resets sticky on a view change).
+    func testViewOpenedReadsTheStoreAndEndsStickyCopies() async throws {
+        let (model, store, _) = try await makeModel()
+        try await model.setHideReceived(true)
+        try await model.checkIn(key: "D1|0|pUrzasSaga", count: 1)
+        XCTAssertNotNil(model.rows.first { $0.name == "Urza's Saga" }, "control: the just-checked copy is sticky")
+
+        try store.commitReceived("B1|0|pLightningBolt", count: 1)  // the Packages view checks a copy in
+        XCTAssertEqual(row(model, "Lightning Bolt")?.got, 1, "control: nothing has refreshed the rows yet")
+
+        try await model.viewOpened()
+        XCTAssertNil(model.rows.first { $0.name == "Urza's Saga" }, "the sticky copy outlived a view change")
+        if let lb = row(model, "Lightning Bolt") {
+            XCTAssertEqual(lb.got, 2, "the Tally view did not read the other view's check-in")
+            XCTAssertEqual(lb.copies.map(\.key), ["C1|0|pLightningBolt"], "the received B1 copy must now be hidden")
+        }
+    }
+
+    /// Opening the view refreshes the counts and never re-sorts: the rows keep the order they had.
+    func testViewOpenedKeepsTheFrozenOrder() async throws {
+        let (model, store, engine) = try await makeModel()
+        let before = try goldenOrder("missing")
+        try store.commitReceived("A1|2|pBrainstorm", count: 2)
+        try store.commitReceived("B1|2|pBrainstorm", count: 2)
+        let fresh = try await freshOrder(engine, store, "missing")
+        XCTAssertNotEqual(fresh, before, "control: a fresh sort must move Brainstorm, or this case cannot fail")
+
+        try await model.viewOpened()
+        XCTAssertEqual(model.rows.map(\.name), before, "opening the view re-sorted the rows")
+        XCTAssertEqual(row(model, "Brainstorm")?.ratio, "4/4 \u{2713}", "control: the counts did refresh")
+    }
+
     // MARK: pooling on the exact name
 
     /// Rows pool across sellers and orders on the byte-exact name. A case, space or trailing-space
@@ -332,6 +384,36 @@ final class TallyModelTests: XCTestCase {
             XCTAssertEqual(urza.meta, "1 seller \u{00B7} 1 order \u{00B7} Test Set")
             XCTAssertEqual(urza.acrossLine, "$50.00 across 1 copy \u{00B7} $50.00 avg")
         }
+    }
+
+    // MARK: one money format, shared with the web
+
+    /// Two copies at $0.10 and $0.15 average $0.125, a half-cent tie. The web writes $0.13 (toLocaleString
+    /// rounds half up). Swift's formatted() rounds half to even and wrote $0.12.
+    func testHalfCentAverageRoundsUpLikeTheWeb() async throws {
+        let items = [
+            item("1", order: "O1", seller: "S1", name: "Ponder", price: 0.1),
+            item("2", order: "O2", seller: "S2", name: "Ponder", price: 0.15),
+        ]
+        let (model, _, _) = try await makeModel(items: items, received: [:])
+        guard let ponder = row(model, "Ponder") else { return }
+        XCTAssertEqual(ponder.basis, 0.25, "control: the basis is exactly 0.25")
+        XCTAssertEqual(ponder.avg, 0.125, "control: the average is the exact tie 0.125")
+        XCTAssertEqual(ponder.rateLine, "$0.13 / copy")
+        XCTAssertEqual(ponder.acrossLine, "$0.25 across 2 copies \u{00B7} $0.13 avg")
+        XCTAssertEqual(ponder.leftLine, "2 left \u{00B7} $0.25")
+    }
+
+    /// 1.005 is stored a hair under 1.005. The web still writes $1.01, because it rounds the decimal value.
+    /// A port that rounds the binary value wrote $1.00.
+    func testBinaryHalfCentRoundsUpLikeTheWeb() async throws {
+        let items = [item("1", order: "O1", seller: "S1", name: "Island", price: 1.005)]
+        let (model, _, _) = try await makeModel(items: items, received: [:])
+        guard let island = row(model, "Island") else { return }
+        XCTAssertEqual(island.avg, 1.005, "control: the unit rate is the 1.005 the case names")
+        XCTAssertEqual(island.rateLine, "$1.01 / copy")
+        XCTAssertEqual(island.acrossLine, "$1.01 across 1 copy \u{00B7} $1.01 avg")
+        XCTAssertEqual(island.leftLine, "1 left \u{00B7} $1.01")
     }
 
     /// Once a row is in, its outstanding line keeps its text (the view hides it and keeps it mounted).
@@ -425,5 +507,17 @@ final class TallyModelTests: XCTestCase {
         XCTAssertEqual(model.rows.map(\.name), ["Lightning Bolt"], "the model filtered the rows itself instead of calling filterTally")
         XCTAssertEqual(model.rows.first?.copies.map(\.key), ["B1|0|pLightningBolt"])
         XCTAssertEqual(model.rows.first?.hiddenCopies, 2)
+    }
+
+    /// money put in a marker form. Every dollar figure on the row must follow it, so a model that formats
+    /// the figures itself, however well, fails here (rules-run-in-javascriptcore: one home for the format).
+    func testDollarFiguresComeFromTheBundleMoneyRule() async throws {
+        let bundle = try probeBundle("Rules.money=function(n){return \"$<\"+n+\">\"}")
+        let (model, _, _) = try await makeModel(bundle: bundle)
+        if let lb = row(model, "Lightning Bolt") {
+            XCTAssertEqual(lb.rateLine, "$<1> / copy", "the model formatted the unit rate itself instead of calling money")
+            XCTAssertEqual(lb.leftLine, "2 left \u{00B7} $<2>", "the model formatted the outstanding figure itself")
+            XCTAssertEqual(lb.acrossLine, "$<3> across 3 copies \u{00B7} $<1> avg", "the model formatted the basis or average itself")
+        }
     }
 }
