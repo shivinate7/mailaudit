@@ -19,7 +19,7 @@
 //       public func refresh() async throws           // re-reads the store: the rules totalsOf, groupPackages, packagesDone, compact
 //   }
 // and Rules.compact in the rules bundle (src/view-rules.mjs, then `npm run build`), moved out of
-// src/app.jsx so the web and the native client share one home. test/view-rules.test.mjs V15 pins
+// src/app.jsx so the web and the native client share one home. test/view-rules.test.mjs V16 pins
 // the same rule in Node.
 // Until these exist this file does not compile. The stub the builder starts from returns wrong
 // values, so each case fails on an XCTAssert and not on a compile error
@@ -182,7 +182,7 @@ final class MastheadModelTests: XCTestCase {
         }
     }
 
-    // MARK: no key in view state (the-token-is-a-credential, debt token-export-and-view-unpinned)
+    // MARK: no key in view state (the-token-is-a-credential, debt native-key-scan-skips-views)
 
     /// A key stored through KeyIntake must not reach the masthead model or its cells.
     func testNoKeyInTheMastheadModel() async throws {

@@ -1075,29 +1075,29 @@ eq(isDone(2, 2), true, "V14.8 a full multi-copy line is done, not only an over-c
 
 /* ---------- N8: the masthead's compact value figure ---------- */
 
-/* V15.1 under 1k: whole dollars, rounded, never cents */
-eq(compact(0), "0", "V15.1a zero");
-eq(compact(27), "27", "V15.1b a whole figure");
-eq(compact(101.4), "101", "V15.1c cents round away");
-eq(compact(67.5), "68", "V15.1d a half rounds up");
-eq(compact(999), "999", "V15.1e the top of the whole-dollar range");
+/* V16.1 under 1k: whole dollars, rounded, never cents */
+eq(compact(0), "0", "V16.1a zero");
+eq(compact(27), "27", "V16.1b a whole figure");
+eq(compact(101.4), "101", "V16.1c cents round away");
+eq(compact(67.5), "68", "V16.1d a half rounds up");
+eq(compact(999), "999", "V16.1e the top of the whole-dollar range");
 
-/* V15.2 thousands: k, at most two decimals, trailing zeros trimmed */
-eq(compact(1000), "1k", "V15.2a exactly 1k");
-eq(compact(4000), "4k", "V15.2b a round thousand loses its zeros");
-eq(compact(63450), "63.45k", "V15.2c two decimals stay");
-eq(compact(118600), "118.6k", "V15.2d one trailing zero is trimmed");
-eq(compact(100240), "100.24k", "V15.2e the six-figure case that has to fit");
-eq(compact(12345.678), "12.35k", "V15.2f a third decimal rounds");
+/* V16.2 thousands: k, at most two decimals, trailing zeros trimmed */
+eq(compact(1000), "1k", "V16.2a exactly 1k");
+eq(compact(4000), "4k", "V16.2b a round thousand loses its zeros");
+eq(compact(63450), "63.45k", "V16.2c two decimals stay");
+eq(compact(118600), "118.6k", "V16.2d one trailing zero is trimmed");
+eq(compact(100240), "100.24k", "V16.2e the six-figure case that has to fit");
+eq(compact(12345.678), "12.35k", "V16.2f a third decimal rounds");
 
-/* V15.3 millions */
-eq(compact(1200000), "1.2M", "V15.3a millions use M");
-eq(compact(2000000), "2M", "V15.3b a round million loses its zeros");
-eq(compact(1234567), "1.23M", "V15.3c two decimals");
+/* V16.3 millions */
+eq(compact(1200000), "1.2M", "V16.3a millions use M");
+eq(compact(2000000), "2M", "V16.3b a round million loses its zeros");
+eq(compact(1234567), "1.23M", "V16.3c two decimals");
 
-/* V15.4 a negative figure picks its unit by size, not by sign */
-eq(compact(-4000), "-4k", "V15.4a negative thousands");
-eq(compact(-27), "-27", "V15.4b negative whole dollars");
+/* V16.4 a negative figure picks its unit by size, not by sign */
+eq(compact(-4000), "-4k", "V16.4a negative thousands");
+eq(compact(-27), "-27", "V16.4b negative whole dollars");
 
 /* ---------- report ---------- */
 
