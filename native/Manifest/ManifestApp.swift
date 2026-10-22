@@ -13,13 +13,20 @@ struct ManifestApp: App {
     @State private var notice: String?
     private let keys = KeyStore(service: "dev.shivinate.manifest", account: "device-key")
     @State private var engine: RulesEngine?
+    @State private var sync: SyncClient?
+    @State private var gate: PressGate?
+    @Environment(\.scenePhase) private var scenePhase
     private let links = PendingKeyLinks()
     private static let log = Logger(subsystem: "dev.shivinate.manifest", category: "key-link")
 
     var body: some Scene {
         WindowGroup {
-            RootView(model: model, orphaned: orphaned, tally: tally, masthead: masthead, store: store, failure: failure, notice: notice, width: Self.forcedWidth)
+            RootView(model: model, orphaned: orphaned, tally: tally, masthead: masthead, store: store, sync: sync, failure: failure, notice: notice, width: Self.forcedWidth)
+                .background { PressWatcher(gate: gate) }
                 .task { await boot() }
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active { Task { _ = await sync?.resume() } }
+                }
                 .onOpenURL { url in
                     // The key goes to the Keychain and the URL is dropped (native-key-via-url-scheme).
                     // A link that beats the engine waits in the queue until boot is done.
@@ -35,6 +42,15 @@ struct ManifestApp: App {
         return CGFloat(w)
     }
 
+    /// -ManifestUITestSyncStatus <http status>: the sync client runs on a stub that answers that status.
+    static var syncStatus: Int? {
+        let a = ProcessInfo.processInfo.arguments
+        guard let i = a.firstIndex(of: "-ManifestUITestSyncStatus"), i + 1 < a.count else { return nil }
+        return Int(a[i + 1])
+    }
+
+    private static let workerURL = URL(string: "https://manifestnumberone.shivamsemwal01.workers.dev")!
+
     /// -ManifestUITestSaveState idle|saving|saved|failed: holds the save slot on one state for the run.
     static var pinnedSave: SaveIndicator? {
         let a = ProcessInfo.processInfo.arguments
@@ -45,14 +61,18 @@ struct ManifestApp: App {
     /// Logs each outcome, never the key.
     private func applyLinks() async {
         guard let engine else { return }
-        for o in await links.ready(engine: engine, store: keys) { Self.log.notice("key link: \(String(describing: o))") }
+        for o in await links.ready(engine: engine, store: keys) {
+            Self.log.notice("key link: \(String(describing: o))")
+            if o == .stored { _ = await sync?.keySaved() }
+        }
     }
 
     private func boot() async {
         do {
             guard let rules = Bundle.main.url(forResource: "rules", withExtension: "js") else { throw CocoaError(.fileNoSuchFile) }
             let e = try RulesEngine(bundleURL: rules)
-            let store = LedgerStore(fileURL: try Self.ledgerURL(), now: { Date().timeIntervalSince1970 * 1000 }, rulesURL: rules)
+            let ledgerURL = try Self.ledgerURL()
+            let store = LedgerStore(fileURL: ledgerURL, now: { Date().timeIntervalSince1970 * 1000 }, rulesURL: rules)
             self.store = store  // before load: Backup must work on a ledger that will not open
             try store.load()
             notice = LedgerNotice.damagedLine(dropped: store.droppedCount)
@@ -66,6 +86,12 @@ struct ManifestApp: App {
             try await mast.refresh()
             masthead = mast
             engine = e
+            startSync(engine: e, store: store, ledgerURL: ledgerURL, reload: {
+                try? await m.load()
+                try? await t.load()
+                try? await o.load()
+                try? await mast.refresh()
+            })
             model = m
             tally = t
             orphaned = o
@@ -73,6 +99,30 @@ struct ManifestApp: App {
         } catch {
             failure = "The ledger could not be opened. \(error)"
         }
+    }
+
+    /// A UI test run without -ManifestUITestSyncStatus has no sync client, so it stays off the network.
+    private func startSync(engine: RulesEngine, store: LedgerStore, ledgerURL: URL, reload: @escaping @MainActor () async -> Void) {
+        let sleep: @Sendable (Int) async -> Void = { try? await Task.sleep(for: .milliseconds($0)) }
+        let client: SyncClient
+        if let status = Self.syncStatus {
+            client = SyncClient(
+                baseURL: URL(string: "https://sync.test.invalid")!, session: StatusURLProtocol.session(status: status),
+                keys: .memory(holding: "ui-test-made-up-key"), store: store, engine: engine, sleep: sleep)
+        } else if ProcessInfo.processInfo.arguments.contains("-ManifestUITestSeed") {
+            return
+        } else {
+            client = SyncClient(baseURL: Self.workerURL, session: .shared, keys: keys, store: store, engine: engine, sleep: sleep)
+            client.socket = URLSessionSyncSocket(baseURL: Self.workerURL)
+            client.photoStore = PhotoStore(folder: PhotoStore.folder(besideLedger: ledgerURL), engine: engine)
+        }
+        let pressGate = PressGate(engine: engine, now: { Date().timeIntervalSince1970 * 1000 }, sleep: sleep)
+        client.pressGate = pressGate
+        client.onApplied = reload
+        gate = pressGate
+        sync = client
+        client.connect()
+        Task { _ = await client.pull() }
     }
 
     /// With -ManifestUITestSeed the ledger is a fresh copy of the bundled fake fixture.
