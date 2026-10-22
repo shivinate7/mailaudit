@@ -22,6 +22,12 @@ final class SyncSocketTests: SyncTestCase {
         fake = FakeSyncSocket()
     }
 
+    /// The Keychain stand-in that keeps the key reversed, so a scan finds a key only if the client copied it.
+    func useMaskedKeychain() throws {
+        keys = KeyStore(service: "test.manifest.sync.n4a", account: "device-key", backend: MaskedKeychain())
+        try keys.save(Self.fakeKey)
+    }
+
     func makeSocketClient(_ store: LedgerStore, bundle: URL = RulesGoldenTests.bundleURL) throws -> SyncClient {
         let client = try makeClient(store, bundle: bundle)
         client.socket = fake
@@ -43,12 +49,14 @@ final class SyncSocketTests: SyncTestCase {
     // MARK: connecting
 
     func testConnectOpensTheSocketWithTheStoredKey() async throws {
+        try useMaskedKeychain()
         let store = try makeStore()
         let client = try makeSocketClient(store)
         client.connect()
         await until("the socket connects", timeout: 1) { [fake] in fake?.liveCount == 1 }
         XCTAssertEqual(SocketLog.shared.keys, [Self.fakeKey])
         XCTAssertFalse(mirrorFinds(Self.fakeKey, in: client), "the client holds no key text")
+        XCTAssertTrue(mirrorFinds(Self.fakeKey, in: ["held": Self.fakeKey]), "control: the scan finds a key held as text")
         XCTAssertEqual(net.requests.count, 0, "connecting is not a call")
     }
 
@@ -170,6 +178,7 @@ final class SyncSocketTests: SyncTestCase {
 
     // A saved key closes the connection that carries the old key and opens one with the new.
     func testSavingAKeyReconnectsWithTheNewKey() async throws {
+        try useMaskedKeychain()
         let store = try makeStore()
         let client = try makeSocketClient(store)
         net.enqueue(ok(try ledger(), rev: 1))

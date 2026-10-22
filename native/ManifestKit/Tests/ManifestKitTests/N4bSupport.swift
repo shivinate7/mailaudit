@@ -16,6 +16,57 @@ final class PressClock: @unchecked Sendable {
     init(_ t: Double) { self.t = t }
 }
 
+/// A sleep the test controls, like SleepGate, except that a cancel ends it, as Task.sleep does. A
+/// hold that a stop cancels must not wait for the test to release the sleep.
+final class PressSleep: @unchecked Sendable {
+    private let lock = NSLock()
+    private var called: [Int] = []
+    private var waiters: [UUID: CheckedContinuation<Void, Never>] = [:]
+    private var order: [UUID] = []
+    private var credits = 0
+
+    /// The delay of every sleep asked for, in order.
+    var delays: [Int] { lock.withLock { called } }
+
+    func sleep(_ ms: Int) async {
+        let id = UUID()
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+                lock.lock()
+                called.append(ms)
+                if Task.isCancelled || credits > 0 {
+                    if credits > 0 && !Task.isCancelled { credits -= 1 }
+                    lock.unlock()
+                    c.resume()
+                    return
+                }
+                waiters[id] = c
+                order.append(id)
+                lock.unlock()
+            }
+        } onCancel: {
+            lock.lock()
+            let c = waiters.removeValue(forKey: id)
+            order.removeAll { $0 == id }
+            lock.unlock()
+            c?.resume()
+        }
+    }
+
+    /// Lets the oldest sleep return. A release made before the sleep is kept.
+    func release() {
+        lock.lock()
+        if let id = order.first, let c = waiters.removeValue(forKey: id) {
+            order.removeFirst()
+            lock.unlock()
+            c.resume()
+        } else {
+            credits += 1
+            lock.unlock()
+        }
+    }
+}
+
 /// A press gate on a clock and a sleep the test controls. The tail and the hold limit are read
 /// from the real bundle, so no test repeats the figures.
 @MainActor
@@ -24,7 +75,7 @@ final class PressRig {
     static let t0: Double = 1_786_543_380_000
 
     let clock = PressClock(PressRig.t0)
-    let sleeps = SleepGate()
+    let sleeps = PressSleep()
     let engine: RulesEngine
     let gate: PressGate
     let tail: Double

@@ -19,7 +19,8 @@
 // ---- The contract ----
 //
 // SyncClient (additions; the N4a members are unchanged, see SyncTestCase.swift)
-//   rev: Int?          The newest rev any reply carried. nil before one did. It never moves back.
+//   rev: Int?          The newest rev of a reply the client ADOPTED. nil before one was. It never moves
+//       back, and a reply that was dropped (for an edit) does not move it, or its change would never be fetched.
 //   stats: [String: Int]?   The `stats` of the last adopted reply. nil when that reply carried none.
 //   pressGate: PressGate?   Settable. nil means no press holds anything (every N4a test).
 //   socket: SyncSocket?     Settable. nil means connect() does nothing.

@@ -168,6 +168,28 @@ final class SyncRevTests: SyncTestCase {
         XCTAssertEqual(client.rev, 7)
     }
 
+    // The held rev is the rev of what was adopted. A GET reply dropped for an edit carried rev 6 but
+    // brought nothing in. If the POST that follows fails, rev 6 must still be news, or the change
+    // would never be fetched.
+    func testADroppedReplyDoesNotAdvanceTheRev() async throws {
+        let store = try makeStore()
+        let client = try makeClient(store)
+        let merged = try ledger(received: [Self.keyB: 1, Self.keyC: 1])
+        net.enqueue(.hold, .status(500, Data()), ok(merged, rev: 6), ok(merged, rev: 7))
+        let heard = startHeard { await client.receive(socketMessage: revFrame(6)) }
+        let out = await net.waitForRequests(1)
+        XCTAssertTrue(out, "the GET left")
+        store.setReceived(Self.keyB, count: 1)  // an edit, so the reply is dropped and the client POSTs
+        net.release(0, ok(try ledger(received: [Self.marker: 5]), rev: 6))
+        let outcome = await finishHeard(heard)
+        XCTAssertEqual(outcome, .unknown, "the POST failed")
+        XCTAssertNil(client.rev, "nothing was adopted, so no rev was reached")
+
+        let again = await client.receive(socketMessage: revFrame(6))
+        XCTAssertNotNil(again, "rev 6 is still news: a GET goes out")
+        XCTAssertEqual(net.requests.map(\.method).prefix(3), ["GET", "POST", "GET"])
+    }
+
     // MARK: the reply's rev and stats
 
     func testTheClientKeepsTheRevAndTheStatsOfTheReply() async throws {
