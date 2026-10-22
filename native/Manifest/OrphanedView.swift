@@ -128,11 +128,10 @@ private struct ComposerView: View {
             HStack {
                 Button { model.cancel() } label: { hit("Cancel") }.accessibilityIdentifier("orphaned-cancel")
                 Spacer()
-                // Own fills for both states: the system dims a disabled prominent button to a grey the contrast audit fails in light mode.
-                // The label is read as enabled so the system adds no dimming; the Button itself stays disabled.
+                // Own fill when ready (white on action, 7:1). Empty Save takes the system disabled look so VoiceOver reports it Disabled.
                 let ready = !d.entries.isEmpty
                 Button { Task { try? await model.save(target); await onChange() } } label: {
-                    hit("Save", ready ? .white : .primary).environment(\.isEnabled, true)
+                    hit("Save", ready ? .white : .primary)
                         .padding(.horizontal, 8)
                         .background(ready ? Color.action : Color.primary.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
                 }
