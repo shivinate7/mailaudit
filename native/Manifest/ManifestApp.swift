@@ -9,6 +9,7 @@ struct ManifestApp: App {
     @State private var orphaned: OrphanedModel?
     @State private var masthead: MastheadModel?
     @State private var store: LedgerStore?
+    @State private var versions: VersionsModel?
     @State private var failure: String?
     @State private var notice: String?
     private let keys = KeyStore(service: "dev.shivinate.manifest", account: "device-key")
@@ -21,7 +22,7 @@ struct ManifestApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(model: model, orphaned: orphaned, tally: tally, masthead: masthead, store: store, sync: sync, failure: failure, notice: notice, width: Self.forcedWidth)
+            RootView(model: model, orphaned: orphaned, tally: tally, masthead: masthead, store: store, sync: sync, versions: versions, onLedgerChange: { await reloadAll() }, failure: failure, notice: notice, width: Self.forcedWidth)
                 .background { PressWatcher(gate: gate) }
                 .task { await boot() }
                 .onChange(of: scenePhase) { _, phase in
@@ -71,9 +72,16 @@ struct ManifestApp: App {
         do {
             guard let rules = Bundle.main.url(forResource: "rules", withExtension: "js") else { throw CocoaError(.fileNoSuchFile) }
             let e = try RulesEngine(bundleURL: rules)
+            let clock = { Date().timeIntervalSince1970 * 1000 }
+            let vs = VersionStore(directory: try Self.versionsURL(), now: clock, rulesURL: rules)
             let ledgerURL = try Self.ledgerURL()
-            let store = LedgerStore(fileURL: ledgerURL, now: { Date().timeIntervalSince1970 * 1000 }, rulesURL: rules)
-            self.store = store  // before load: Backup must work on a ledger that will not open
+            let store = LedgerStore(fileURL: ledgerURL, now: clock, rulesURL: rules, versions: vs)
+            self.store = store  // before load: Backup and History must work on a ledger that will not open
+            versions = VersionsModel(store: store, versions: vs)
+            if ProcessInfo.processInfo.arguments.contains("-ManifestUITestCorruptVersion") {
+                _ = try? vs.put(Data(#"{"mailday":2,"items":[]}"#.utf8), label: "before import")
+            }
+            versions?.refresh()
             try store.load()
             notice = LedgerNotice.damagedLine(dropped: store.droppedCount)
             let m = PackagesModel(engine: e, store: store)
@@ -124,6 +132,23 @@ struct ManifestApp: App {
         sync = client
         client.connect()
         Task { _ = await client.pull() }
+    }
+
+    /// A reset or restore changed the ledger: every view reads it again.
+    private func reloadAll() async {
+        try? await model?.load()
+        try? await tally?.load()
+        try? await orphaned?.load()
+        try? await masthead?.refresh()
+    }
+
+    /// With -ManifestUITestSeed the version store starts empty, so a run never counts an earlier one.
+    private static func versionsURL() throws -> URL {
+        let fm = FileManager.default
+        let url = try fm.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+            .appending(path: "versions", directoryHint: .isDirectory)
+        if ProcessInfo.processInfo.arguments.contains("-ManifestUITestSeed") { try? fm.removeItem(at: url) }
+        return url
     }
 
     /// With -ManifestUITestSeed the ledger is a fresh copy of the bundled fake fixture.

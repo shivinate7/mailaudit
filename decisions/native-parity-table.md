@@ -26,7 +26,7 @@ Each client draws its own screen. The logic has one home, see `rules-run-in-java
 - Worker sync: POST, GET, the WebSocket, the press gate, resume, and the 401 and 413 advisory lines. `SyncClient` (lane N4a) covers POST and GET. Lane N4b built the WebSocket, the press gate and resume, wired the client into the app, and drew the 401 and 413 lines (orchestrator assignment 2026-10-21, process-only). Debts: `native-sync-live-unrun` and `native-sync-glue-unpinned`.
 - Backup export, the masthead and ruled head, the palette, Cochin and monospace type, and motion with reduced motion. Lane N8 built the Backup export, and the masthead with its tallies, save slot and reduced motion. It built nothing else in this line. The native masthead is on Packages only, and the Backup file holds no photos. Debts: `native-masthead-packages-only`, `native-masthead-system-style`, `native-compose-is-one-fade` and `native-backup-has-no-photos`.
 - Envelope photo capture, the 2000px downscale at JPEG 0.8, the 56pt tiles and the modal viewer. Photo sync for both clients runs through the Worker photo route, see `sync-revamp-cloudflare`. Native has the photo kit and its views (lane N10), and the HTTP photo transport (lane N4b). Nothing calls them yet, see `native-photo-screens-unwired`.
-- Milestones of local versions. Native saves them, prunes them by the same rule as the web app, lists them, and restores one. The owner ruled on 2026-10-11: "yeah list and restore".
+- Milestones of local versions. Native saves them, prunes them by the same rule as the web app, lists them, and restores one. The owner ruled on 2026-10-11: "yeah list and restore". Lane N9 built it, see N9 notes in `native-build-lanes`.
 
 ## Rows with one scope
 

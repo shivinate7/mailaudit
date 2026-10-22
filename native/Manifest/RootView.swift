@@ -2,7 +2,7 @@ import ManifestKit
 import SwiftUI
 
 /// The system tab bar, four tabs left to right (phone-nav-is-bottom-bar).
-/// Ledger holds the Backup row only.
+/// Ledger holds Backup, History and Reset.
 struct RootView: View {
     let model: PackagesModel?
     let orphaned: OrphanedModel?
@@ -10,13 +10,15 @@ struct RootView: View {
     let masthead: MastheadModel?
     let store: LedgerStore?
     let sync: SyncClient?
+    let versions: VersionsModel?
+    let onLedgerChange: () async -> Void
     let failure: String?
     let notice: String?
     let width: CGFloat?
 
     var body: some View {
         TabView {
-            LedgerTab(store: store).tabItem { Label("Ledger", systemImage: "gearshape") }
+            LedgerTab(store: store, versions: versions, onLedgerChange: onLedgerChange).tabItem { Label("Ledger", systemImage: "gearshape") }
             Group {
                 if let orphaned { OrphanedView(model: orphaned, onChange: { try? await model?.load() }) } else { Placeholder(title: failure ?? "Opening the ledger") }
             }
