@@ -23,6 +23,12 @@
 //
 // Each case first waits for the timer to arm, the one thing that must happen. At head that wait times
 // out and the case stops there, so the red run names one cause: nothing arms the timer.
+//
+// Restore and reset (a-restore-is-not-local, every-restore-passes-applybackup): the person's restore of a
+// saved version and the person's reset are local writes too. Each arms the timer, as the web's restore
+// POSTs after SYNC_POST_MS. They run through adoptRaw and save(), the same code a server apply uses, so
+// the last case pins the other side: a server apply (adopt) still arms nothing, or the reply to each
+// POST would arm the next POST.
 
 import Foundation
 import XCTest
@@ -216,5 +222,100 @@ final class SyncPostTimerTests: SyncTestCase {
             XCTAssertEqual(gate.delays.count, 1, "\(name) arms one timer")
             client.stop()
         }
+    }
+
+    // MARK: restore and reset
+
+    /// A store with a version store beside it, as the app builds them. The restore reads the version store.
+    private func makeVersionedStore() throws -> (store: LedgerStore, versions: VersionStore) {
+        let versions = VersionStore(directory: dir.appending(path: "versions", directoryHint: .isDirectory), now: { Self.t0 })
+        let store = LedgerStore(fileURL: ledgerURL, now: { Self.t0 }, versions: versions)
+        try store.load()
+        return (store, versions)
+    }
+
+    // A restore replaces the ledger with a saved version. It arms one timer with the bundle's delay, and
+    // the one POST after it carries the restored ledger, not the one it replaced. The probe makes the
+    // delay 1234, so a Swift copy of 3000 fails. The POST's reply arms nothing more.
+    func testARestorePostsOnceAfterTheBundleDelayWithTheRestoredLedger() async throws {
+        let probe = try probeBundle("Rules.SYNC_POST_MS=1234")
+        try writeLedger(received: [Self.keyA: 1])
+        let (store, versions) = try makeVersionedStore()
+        let client = try makeClient(store, bundle: probe)
+        let older = try ledger(received: [Self.keyC: 2])
+        let version = try versions.put(
+            JSONSerialization.data(withJSONObject: older, options: [.sortedKeys]), label: "before import")
+        net.enqueue(ok(older))
+
+        try store.restore(version.id)
+        XCTAssertEqual(store.received(), [Self.keyC: 2], "anchor: the restore was applied")
+        guard await armed("a restore arms the POST timer") else { return }
+        XCTAssertEqual(gate.delays, [1234], "one timer, and its delay comes from the bundle")
+        await settle()
+        XCTAssertEqual(net.requests.count, 0, "nothing leaves before the timer returns")
+
+        gate.release()
+        let out = await net.waitForRequests(1)
+        XCTAssertTrue(out, "the POST left when the timer returned")
+        XCTAssertEqual(seen(0)?.method, "POST")
+        XCTAssertEqual(sentReceived(seen(0))?[Self.keyC] as? Int, 2, "the POST carries the restored check-in")
+        XCTAssertNil(sentReceived(seen(0))?[Self.keyA], "and not the check-in the restore replaced")
+        await until("the reply is adopted") { [self] in client.rev == 1 }
+        await settle()
+        XCTAssertEqual(net.requests.count, 1, "one POST")
+        XCTAssertEqual(gate.delays, [1234], "the reply to the POST armed nothing more")
+        XCTAssertEqual(net.strays, 0)
+    }
+
+    // A reset clears the ledger. It arms one timer with the bundle's delay, and the one POST after it
+    // carries the empty ledger. What the Worker does with it is unmeasured (a-restore-is-not-local).
+    func testAResetPostsOnceAfterTheBundleDelayWithTheEmptyLedger() async throws {
+        let probe = try probeBundle("Rules.SYNC_POST_MS=1234")
+        try writeLedger(received: [Self.keyA: 1])
+        let (store, _) = try makeVersionedStore()
+        let client = try makeClient(store, bundle: probe)
+        net.enqueue(ok(try ledger()))
+
+        try store.reset()
+        XCTAssertEqual(store.received(), [:], "anchor: the reset was applied")
+        guard await armed("a reset arms the POST timer") else { return }
+        XCTAssertEqual(gate.delays, [1234], "one timer, and its delay comes from the bundle")
+        await settle()
+        XCTAssertEqual(net.requests.count, 0, "nothing leaves before the timer returns")
+
+        gate.release()
+        let out = await net.waitForRequests(1)
+        XCTAssertTrue(out, "the POST left when the timer returned")
+        XCTAssertEqual(seen(0)?.method, "POST")
+        let sent = seen(0)?.json?["ledger"] as? [String: Any]
+        XCTAssertEqual((sent?["received"] as? [String: Any])?.count, 0, "the POST carries the reset ledger: no check-ins")
+        XCTAssertEqual((sent?["items"] as? [Any])?.count, 0, "and no lines")
+        await until("the reply is adopted") { [self] in client.rev == 1 }
+        await settle()
+        XCTAssertEqual(net.requests.count, 1, "one POST")
+        XCTAssertEqual(gate.delays, [1234], "the reply to the POST armed nothing more")
+        XCTAssertEqual(net.strays, 0)
+    }
+
+    // A server apply goes through the same adoptRaw a restore does, and it saves the same file. It arms
+    // nothing, even when it takes away a check-in and the store puts a "before sync" milestone first. The
+    // control is the person's own check-in on the same store: it arms, so the silence above is the
+    // apply's and not a dead hook.
+    func testAServerApplyArmsNoTimerOnAStoreWithVersions() async throws {
+        try writeLedger(received: [Self.keyA: 1, Self.keyB: 1])
+        let (store, versions) = try makeVersionedStore()
+        _ = try makeClient(store)
+
+        try store.adopt(JSONSerialization.data(
+            withJSONObject: try ledger(received: [Self.keyA: 1]), options: [.sortedKeys]))
+        XCTAssertEqual(store.received(), [Self.keyA: 1], "anchor: the apply took the check-in away")
+        XCTAssertEqual(try versions.list().map(\.label), ["before sync"], "anchor: the removal path ran")
+        await settle()
+        XCTAssertEqual(gate.delays.count, 0, "a server apply is not the person's write")
+        XCTAssertEqual(net.requests.count, 0)
+
+        try store.commitReceived(Self.keyC, count: 1)
+        _ = await armed("the control: a local check-in arms the timer on this store")
+        XCTAssertEqual(gate.delays.count, 1, "one timer, from the check-in")
     }
 }
