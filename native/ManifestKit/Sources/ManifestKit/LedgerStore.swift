@@ -23,7 +23,34 @@ public final class LedgerStore {
     public func load() throws {
         loaded = false
         droppedCount = 0
-        let data = try Data(contentsOf: fileURL)
+        try ingest(Data(contentsOf: fileURL))
+        // Save the mend now, so a relaunch reads it and makes no second copy.
+        if droppedCount > 0 { do { try save() } catch { loaded = false; throw error } }
+    }
+
+    /// Takes a server ledger the way a load takes the file: the mend, the kept copy, then a
+    /// save. If any step fails, the store goes back to what it was (native-ledger-is-raw-json).
+    public func adopt(_ ledger: Data) throws {
+        let (oldDoc, oldGen, oldDropped, oldLoaded) = (doc, generation, droppedCount, loaded)
+        do {
+            try ingest(ledger)
+            try save()
+            generation += 1
+        } catch {
+            (doc, generation, droppedCount, loaded) = (oldDoc, oldGen, oldDropped, oldLoaded)
+            throw error
+        }
+    }
+
+    /// The whole ledger, unknown fields included.
+    public func snapshot() -> [String: Any] { doc }
+
+    /// The four fields an edit touches. A sync client compares this with what a reply carried.
+    public func userData() -> [String: Any] {
+        doc.filter { ["received", "receivedAt", "stamps", "envelopes"].contains($0.key) }
+    }
+
+    private func ingest(_ data: Data) throws {
         guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw CocoaError(.fileReadCorruptFile)
         }
@@ -57,8 +84,6 @@ public final class LedgerStore {
         for k in ["received", "receivedAt", "stamps"] where doc[k] == nil { doc[k] = [String: Any]() }
         if doc["envelopes"] as? [[String: Any]] == nil { doc["envelopes"] = [[String: Any]]() }
         loaded = true
-        // Save the mend now, so a relaunch reads it and makes no second copy.
-        if dropped > 0 { do { try save() } catch { loaded = false; throw error } }
     }
 
     public func save() throws {
