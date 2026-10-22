@@ -110,6 +110,7 @@ extension LedgerStore {
         loaded = true
         generation += 1
         do { try save() } catch { (doc, generation, loaded) = (oldDoc, oldGen, oldLoaded); throw error }
+        onLocalSave?()
     }
 
     /// Refuses a version that is not a ledger before it spends a milestone slot, then applies it
@@ -123,6 +124,7 @@ extension LedgerStore {
         let (held, lines, checked) = try heldBytes()
         try v.put(held, label: "before restore", kind: "milestone", lines: lines, checked: checked)
         try adoptRaw(bytes)
+        onLocalSave?()
     }
 }
 
