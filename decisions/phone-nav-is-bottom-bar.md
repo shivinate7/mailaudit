@@ -4,12 +4,6 @@ The owner ruled on 2026-10-11: "bottom bar D is gorgeous! yes go for it". On a p
 
 **Status:** built in L11a, commit `250823d`. The Ledger tab is built in L11b, commit `12e8721`. The gear icon is built in L11c, commit `b62aebd`. The owner approved mockup G on 2026-10-11: "G looks decent", and "this is the right direction go". The owner expects polish of the Ledger view and the app after the build. The orchestrator made two calls on the bar on 2026-10-12, as defaults the owner may overrule (see Defaults). The native bar is built in lane N5 (PR #82), as the system tab bar with the gear on the Ledger tab.
 
-Kind: build
-
-Plan: decisions/phone-nav-is-bottom-bar.md#the-web-bar-variant-d (web)
-
-Plan: decisions/phone-nav-is-bottom-bar.md#the-native-bar (native)
-
 **Holds while:** `src/app.jsx` renders the bar as a `nav` labelled Views. It holds four tabs in the order Ledger, Orphaned, Tally, Packages. It marks the current tab with `aria-current`. The native target is iOS 26, as `native-swift-rebuild` sets it. The web palette is the parchment ledger, as `design-parchment-ledger` sets it.
 
 Kind: build
