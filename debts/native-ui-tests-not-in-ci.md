@@ -5,8 +5,7 @@
 - pin Xcode with `xcode-select`;
 - run xcodegen;
 - build for macOS and for the iOS Simulator with `CODE_SIGNING_ALLOWED=NO`;
-- run every UI test class in `native/ManifestUITests`.
-
+o
 The gap closes when the job runs those steps and stays green on a hosted macOS runner.
 
 **Status:** open. Lane C2 is not briefed.

@@ -124,11 +124,12 @@ final class PackagesShellUITests: XCTestCase {
 
     // MARK: accessibility audit, one screen per method
 
+    /// Only the Packages screen skips rows under the tab bar, see AuditSkippingTabBarUITests.
     func auditTab(_ title: String) throws {
         let app = launch()
         tab(app, title).tap()
         XCTAssertTrue(tab(app, title).isSelected, "the \(title) tab did not open before the audit")
-        try app.performAccessibilityAudit()
+        if title == "Packages" { try app.auditSkippingTabBar() } else { try app.performAccessibilityAudit() }
     }
 
     func testAccessibilityAuditLedgerScreen() throws { try auditTab("Ledger") }

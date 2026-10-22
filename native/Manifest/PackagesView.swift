@@ -5,12 +5,14 @@ import SwiftUI
 /// a glyph inside a fixed 44pt frame, so no row changes size (no-layout-shift-under-pointer).
 struct PackagesView: View {
     let model: PackagesModel
+    let masthead: MastheadModel
 
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
+                MastheadView(model: masthead)
                 ForEach(model.rows, id: \.gk) { pkg in
-                    PackageRow(pkg: pkg, model: model)
+                    PackageRow(pkg: pkg, model: model, masthead: masthead)
                     Divider()
                 }
             }
@@ -27,6 +29,7 @@ struct PackagesView: View {
 struct PackageRow: View {
     let pkg: Package
     let model: PackagesModel
+    let masthead: MastheadModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -42,7 +45,11 @@ struct PackageRow: View {
                     }
                     Spacer()
                     Button {
-                        Task { await model.tap(key: item.key) }  // a failure shows in model.checkInError
+                        Task {
+                            masthead.saving()
+                            await model.tap(key: item.key)  // a failure shows in model.checkInError
+                            await masthead.finished(failed: model.checkInError != nil)
+                        }
                     } label: {
                         Image(systemName: isDone ? "checkmark.circle.fill" : "circle")
                             .frame(width: 45, height: 45).foregroundStyle(.primary)  // 45: layout rounding made a 44pt frame read 43.99999
