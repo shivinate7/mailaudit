@@ -1,5 +1,4 @@
-// HTTP photo transport tests (lane N4b, sync-revamp-cloudflare, listphotos-is-three-valued,
-// native-photo-transport-unbuilt).
+// HTTP photo transport tests (lane N4b, sync-revamp-cloudflare, listphotos-is-three-valued).
 //
 // PhotoSync moves blobs through the PhotoTransport protocol. This is the type that speaks to the
 // Worker /photos route, as the web does (src/entry.jsx photoList, photoGet, photoPut; worker/core.mjs):
