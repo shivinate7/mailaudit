@@ -2327,8 +2327,18 @@ async function syncApplyCheck(browser, { view, width, touch, card, title, fresh 
   const { ctx, page, pageErrors } = await openSeeded(browser, width, { touch, ledger: SYNC16_LEDGER });
   try {
     await mockWorker(ctx, [], live);
-    await page.evaluate(
-      ([k, key]) => localStorage.setItem(k, key),
+    /* The document that reads the key also writes it, ahead of the app. Written by an evaluate
+       before the reload, under load the key was sometimes missing from the new document (and
+       stayed missing), so the app never connected and no socket opened. The script stays on this
+       page: nothing navigates after the reload. */
+    await page.addInitScript(
+      ([k, key]) => {
+        try {
+          localStorage.setItem(k, key);
+        } catch {
+          /* storage blocked: the page boots without a key and the socket wait reports it */
+        }
+      },
       [SYNC_KEY_STORAGE, LOST_DEVICE_KEY]
     );
     await page.reload();
