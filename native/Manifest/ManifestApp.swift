@@ -112,7 +112,8 @@ struct ManifestApp: App {
         } else if ProcessInfo.processInfo.arguments.contains("-ManifestUITestSeed") {
             return
         } else {
-            client = SyncClient(baseURL: Self.workerURL, session: .shared, keys: keys, store: store, engine: engine, sleep: sleep)
+            // Ephemeral: the Worker sends no Cache-Control, so a shared session would cache ledger replies on disk.
+            client = SyncClient(baseURL: Self.workerURL, session: URLSession(configuration: .ephemeral), keys: keys, store: store, engine: engine, sleep: sleep)
             client.socket = URLSessionSyncSocket(baseURL: Self.workerURL)
             client.photoStore = PhotoStore(folder: PhotoStore.folder(besideLedger: ledgerURL), engine: engine)
         }
