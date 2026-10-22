@@ -65,7 +65,7 @@ Lane W1 (PR #61) made the POST reply carry `stats` from `mergeLedger`. The clien
 ## Still open
 
 - The owner has not ruled the wording of the 401 line and the 413 line. `SyncLine` holds the web's `syncSays` copy minus " — tap to fix", a builder default for parity. The line has no tap target until the Ledger tab's Sync row exists, see `native-ledger-tab-unbuilt`. `SyncLineTests` pins that each failure has its own line, that no other code has one, and that neither line names GitHub. It does not pin the prose.
-- Native has no restore yet, so the timer never meets one. When lane N9 builds it, the lane must decide whether a restore runs `onLocalSave`. The web's restore reaches the Worker after `SYNC_POST_MS` (`a-restore-is-not-local`).
+- Native `restore` (through `adoptRaw`) and `reset` (through `save`) never run `onLocalSave`, so neither arms the POST timer. They reach the Worker on the next foreground, `{rev}` frame or key save. The web's restore reaches the Worker after `SYNC_POST_MS` (`a-restore-is-not-local`). Whether native should arm the timer after a restore or reset is not ruled.
 - Which module holds the wording of the native merge notice is not ruled. The wording is `mergeSummary` in `src/merge-rules.mjs`, and native never loads that file. The rules bundle must either carry the function or the Worker must send the text. Debt: `native-merge-notice-unbuilt`.
 
 ## See also

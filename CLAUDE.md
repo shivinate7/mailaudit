@@ -372,7 +372,6 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `native-sync-glue-unpinned` — No test drives the native sync glue in the app.
 - `native-merge-notice-unbuilt` — No native screen shows the merge notice.
 - `native-pull-generation-unpinned` — No test pins the generation check in a pull.
-- `native-lanes-n6-to-n9-unbuilt` — Native lane N9, milestones, is not built.
 - `native-kept-copy-has-no-route` — The native app has no route to the kept copy.
 - `key-re-accepts-token-shape` — The key check accepts a GitHub token's shape.
 - `tests-33-35-40-45-cannot-fail` — Tests 33.35, 33.40 and 33.45 cannot fail.
@@ -387,7 +386,13 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `native-dialog-ban-unpinned` — Nothing pins the ban on native dialogs.
 - `ruled-head-heights-unremeasured` — The ruled head heights have not been re-measured.
 - `photo-put-unrun-on-github` — The GitHub photo PUT and pull have never run.
-- `native-ledger-tab-unbuilt` — The native Ledger tab holds the Backup row only.
+- `native-ledger-tab-unbuilt` — The native Ledger tab lacks the View and Sync groups.
+- `native-restore-keeps-old-times` — A native restore keeps the old change times.
+- `reset-vs-worker-copy-unmeasured` — A Reset's effect on the Worker's copy is unmeasured.
+- `native-milestone-needed-unpinned` — No test pins that a native operation needs its milestone.
+- `native-ask-has-no-cancel-focus` — The native ask does not move first focus to Cancel.
+- `native-removal-rule-is-swift` — The test for a removing reply is Swift code.
+- `native-version-names-unpinned` — No test pins the version file names.
 - `native-tally-counts-every-item` — The native Tally counts every ledger item.
 - `native-filters-tally-only` — The native client has no date filter, package sort or Packages search.
 - `native-tally-copy-no-stepper` — The native Tally copy has a check-in toggle and nothing else.
