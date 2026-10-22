@@ -370,7 +370,7 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `native-sync-client-unwired` — The native sync client has no caller and no screen.
 - `native-sync-live-unrun` — The native sync client has never run against the Worker.
 - `native-pull-generation-unpinned` — No test pins the generation check in a pull.
-- `native-lanes-n6-to-n9-unbuilt` — Native lanes N7 to N9 are not built.
+- `native-lanes-n6-to-n9-unbuilt` — Native lanes N8 and N9 are not built.
 - `native-kept-copy-has-no-route` — The native app has no route to the kept copy.
 - `key-re-accepts-token-shape` — The key check accepts a GitHub token's shape.
 - `tests-33-35-40-45-cannot-fail` — Tests 33.35, 33.40 and 33.45 cannot fail.
@@ -390,6 +390,9 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `native-tally-counts-every-item` — The native Tally counts every ledger item.
 - `native-filters-tally-only` — The native client has no date filter, package sort or Packages search.
 - `native-tally-copy-no-stepper` — The native Tally copy has a check-in toggle and nothing else.
+- `native-envelope-has-no-photos` — Native envelopes have no photos.
+- `native-orphaned-colours-unbuilt` — The native Orphaned view uses system colours.
+- `native-discard-arm-unpinned` — No test pins the native Discard arm.
 - `native-key-scan-skips-views` — The native key scan skips SwiftUI view state.
 - `draft-skip-required-unmeasured` — A required check on a draft-skipped job is unmeasured.
 - `recent-log-unbuilt` — The recent-actions log is not built.
