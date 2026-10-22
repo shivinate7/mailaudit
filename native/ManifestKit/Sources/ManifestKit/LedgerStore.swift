@@ -13,7 +13,7 @@ public final class LedgerStore {
     /// Entries the last load dropped from a damaged field; 0 when nothing was damaged.
     public private(set) var droppedCount = 0
     /// Runs after a write the person made was saved: commitReceived, commit(_:) and commitPhoto.
-    /// A load, an adopted reply and a restore do not run it. A sync client arms its POST timer here.
+    /// A load and an adopted reply do not run it; a restore and a reset do. A sync client arms its POST timer here.
     var onLocalSave: (() -> Void)?
 
     /// The app passes the rules.js it ships. Without one, the package resource is used
