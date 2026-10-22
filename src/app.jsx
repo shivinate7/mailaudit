@@ -5,7 +5,7 @@ import {
   parseItems, lostMail, normName, isUntracked, gkOf, groupPackages, rankCandidates,
   dateRange, inRange, dropCanceled, dropGks, canceledPackagesOf, stampedPackagesOf,
   tallyGroups, sortTally, sortPackages, filterPackages, filterTally,
-  totalsOf, outstandingOf, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger,
+  totalsOf, outstandingOf, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger, money,
 } from "./view-rules.mjs";
 import { photoPlan } from "./photo-rules.mjs";
 import { shouldSnapshot } from "./version-rules.mjs";
@@ -68,12 +68,6 @@ const BAR_ICONS = {
     </>
   ),
 };
-
-const money = (n) =>
-  `$${n.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
 
 /* Compact money for the masthead tallies, where three figures share one row at
    375px and cents are noise. Whole dollars under 1k, then k / M with at most

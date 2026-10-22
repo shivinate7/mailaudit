@@ -17,7 +17,7 @@ Every feature has one scope: both clients, web-only or native-only. A feature th
 Each client draws its own screen. The logic has one home, see `rules-run-in-javascriptcore`.
 
 - Packages, Tally and Orphaned, and the bottom bar that switches between them (`phone-nav-is-bottom-bar`).
-- Search, hide-received, the date filter, the six Tally sort keys and the package sort.
+- Search, hide-received, the date filter, the six Tally sort keys and the package sort. Native Tally has search, hide-received and the six sort keys, tested in `TallyModelTests` and `TallyUITests`. Debt: `native-filters-tally-only`.
 - Lost-mail flags, outstanding value per level, and canceled orders.
 - The Packages card header: the order id is a link to the TCGplayer order search, and the header text selects. The owner ruled on 2026-10-21 that native gets it, see `order-id-button-stops-propagate`. The web app has it. Native does not yet. Debt: `native-order-id-link-unbuilt`.
 - Check-in and un-check, the steppers and the bulk row.
