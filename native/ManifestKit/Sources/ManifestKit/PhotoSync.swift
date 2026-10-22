@@ -4,7 +4,7 @@ import Observation
 /// A 413 from the Worker: the photo is over its cap.
 public enum PhotoTransportError: Error, Equatable, Sendable { case tooLarge }
 
-/// The Worker /photos route. The HTTP client is lane N4a's and is not built (debt `native-photo-transport-unbuilt`).
+/// The Worker /photos route. HTTPPhotoTransport is the HTTP client.
 public protocol PhotoTransport: Sendable {
     /// File names as GET /photos gives them. Nil: the Worker could not say.
     func list() async throws -> [String]?
