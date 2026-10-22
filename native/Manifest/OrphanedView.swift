@@ -128,9 +128,15 @@ private struct ComposerView: View {
             HStack {
                 Button { model.cancel() } label: { hit("Cancel") }.accessibilityIdentifier("orphaned-cancel")
                 Spacer()
-                Button { Task { try? await model.save(target); await onChange() } } label: { hit("Save") }
-                    .buttonStyle(.borderedProminent).tint(.action)
-                    .disabled(d.entries.isEmpty).accessibilityIdentifier("orphaned-save")
+                // Own fills for both states: the system dims a disabled prominent button to a grey the contrast audit fails in light mode.
+                // The label is read as enabled so the system adds no dimming; the Button itself stays disabled.
+                let ready = !d.entries.isEmpty
+                Button { Task { try? await model.save(target); await onChange() } } label: {
+                    hit("Save", ready ? .white : .primary).environment(\.isEnabled, true)
+                        .padding(.horizontal, 8)
+                        .background(ready ? Color.action : Color.primary.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+                }
+                .buttonStyle(.plain).disabled(!ready).accessibilityIdentifier("orphaned-save")
             }
         }
         .padding(12)
