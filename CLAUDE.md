@@ -368,8 +368,9 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `claim-9-fractional-box-edges` — Claim 9 can pass a box just under 44px.
 - `tally-card-moves-at-320px` — The Tally card moves 14px at 320px.
 - `native-ui-tests-not-in-ci` — Native UI tests and builds are not in CI.
-- `native-sync-client-unwired` — The native sync client has no caller and no screen.
 - `native-sync-live-unrun` — The native sync client has never run against the Worker.
+- `native-sync-glue-unpinned` — No test drives the native sync glue in the app.
+- `native-merge-notice-unbuilt` — No native screen shows the merge notice.
 - `native-pull-generation-unpinned` — No test pins the generation check in a pull.
 - `native-lanes-n6-to-n9-unbuilt` — Native lane N9, milestones, is not built.
 - `native-kept-copy-has-no-route` — The native app has no route to the kept copy.
@@ -420,10 +421,8 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `native-runner-image-unverified` — Whether the hosted runner image has Xcode 27 and xcodegen is unverified.
 - `native-runner-keychain-unverified` — Whether the hosted runner keychain is unlocked is unverified.
 - `native-job-hosted-time-unmeasured` — The native job's time on a hosted runner is unmeasured.
-- `n4b-socket-idle-gate-unbuilt` — Lane N4b, the socket, press gate and resume, is not built.
-- `native-photo-transport-unbuilt` — No HTTP client carries native photos to the Worker.
 - `native-photo-screens-unwired` — No native screen shows a photo, and nothing takes one.
-- `native-photo-ids-kept-uncalled` — Nothing calls the native photo id rule.
+- `native-photo-ids-kept-uncalled` — The native restore does not call the photo id rule.
 - `native-merge-skips-photo-fetch` — Nothing fetches native photos before an apply.
 - `native-photo-sweep-unbuilt` — The native client has no photo sweep.
 - `native-photo-viewer-unpinned` — No test pins the photo viewer's traits or the Stop control.

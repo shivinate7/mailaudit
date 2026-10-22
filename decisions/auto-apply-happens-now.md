@@ -33,7 +33,15 @@ The merge never applies mid-thought and never applies a remote it could not read
 
 ## Native client
 
-Lane N4b takes `PRESS_TAIL_MS`, `PRESS_MAX_MS` and `pressHeld` from the rules bundle, as the web app does. That lane defines what counts as a press on iOS. Three rules hold: hover and scroll never hold, a press holds for at most `PRESS_MAX_MS`, and an open Undo bar never holds a reply (owner ruling 2026-10-21 13:30 CDT, see above). Debt: `n4b-socket-idle-gate-unbuilt`.
+Lane N4b built the native gate. `PressGate` asks `pressHeld` in the rules bundle, which holds `PRESS_TAIL_MS` and `PRESS_MAX_MS`, as the web app does. A press on iOS is a finger down until it lifts or iOS cancels it. A scroll takes the touch and cancels it, so a scroll ends the hold like a lift. `PressWatcher` in `native/Manifest/SyncViews.swift` watches every touch in the window. It recognizes nothing, cancels no touch and delays none.
+
+- Hover and scroll never hold. A press holds for at most `PRESS_MAX_MS`.
+- An open Undo bar never holds a reply (owner ruling 2026-10-21 13:30 CDT, see above). Nothing in the client reads the Undo bar.
+- The first reply after a key save applies at once, as on the web (`SyncClient.keySaved()`). The next reply waits again.
+- A held reply re-checks every 250 ms (`PressGate.recheckMs`, a Swift constant). This is a builder default and not an owner ruling. It is under the tail, so a reply lands under a second after the tail ends.
+- The gate holds for a press only. Lane N4b builds no armed guard. `OrphanedModel.load()` leaves the composer drafts alone, so an apply loses no draft. The N9 row in `native-build-lanes` names no hold for its reset or restore.
+
+Native tests: `PressGateTests`, `SyncPressHoldTests` and `SyncKeySaveTests` in `native/ManifestKit/Tests/ManifestKitTests`. No test drives a touch through `PressWatcher` to the gate, see debt `native-sync-glue-unpinned`.
 
 ## See also
 
