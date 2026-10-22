@@ -44,9 +44,14 @@ export const SYNC_COLD_POST_MS = 500;
 /* a POST goes out this long after a change */
 export const SYNC_POST_MS = 3000;
 
-/* a pushed rev is applied only after the device has sat idle this long */
-export const IDLE_APPLY_MS = 10000;
-export const idleReady = (lastActivity, now) => now - lastActivity >= IDLE_APPLY_MS;
+/* A pushed rev applies as soon as the owner is not mid-press: the list must not move between a
+   finger landing and lifting (no-layout-shift-under-pointer). Hover and scroll never hold.
+   A press holds while it is down (at most PRESS_MAX_MS, so a lost pointerup cannot hold for ever)
+   and PRESS_TAIL_MS after it ends, the beat in which a tap's own change lands. */
+export const PRESS_TAIL_MS = 700;
+export const PRESS_MAX_MS = 3000;
+export const pressHeld = (downAt, lastAt, now) =>
+  (downAt != null && now - downAt < PRESS_MAX_MS) || now - lastAt < PRESS_TAIL_MS;
 
 /* reconnect wait: 1 s, doubling, capped at 60 s */
 export const backoffMs = (attempt) => Math.min(1000 * 2 ** attempt, 60000);

@@ -1,6 +1,6 @@
 # Records index
 
-This page lists every record in this repo: the rules in `CLAUDE.md`, and the files in `decisions/`, `debts/`, `deferred/` and `plans/`. A script writes it. Do not edit it by hand.
+This page lists every record in this repo: the rules in `CLAUDE.md`, and the files in `decisions/`, `debts/` and `plans/`. A script writes it. Do not edit it by hand.
 
 The merge tool writes this page again when a pull request merges, so a pull request need not carry a fresh one. To write it by hand, run `python3 lint/hook_catalog.py` from the claude-settings checkout, with `--root` set to this repo. The check on the default branch fails when the page is stale.
 
@@ -10,7 +10,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 
 | Slug | Gist | Link |
 |---|---|---|
-| `auto-apply-happens-now` | Kind: process | [`decisions/auto-apply-happens-now.md`](../decisions/auto-apply-happens-now.md) |
 | `auto-push-safe-as-merge-exists` | **Status:** retired 2026-10-14. | [`decisions/auto-push-safe-as-merge-exists.md`](../decisions/auto-push-safe-as-merge-exists.md) |
 | `data-branch-setup` | The `data` branch in `mailaudit-data` already exists. | [`decisions/data-branch-setup.md`](../decisions/data-branch-setup.md) |
 | `debts-hold-known-gaps` | Each known gap or to-do is one file under `debts/`, and each file names the decision it belongs to. | [`decisions/debts-hold-known-gaps.md`](../decisions/debts-hold-known-gaps.md) |
@@ -43,6 +42,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 |---|---|---|
 | `a-restore-is-not-local` | Restoring a version rewrites `items`, `received` and `envelopes`. | [`decisions/a-restore-is-not-local.md`](../decisions/a-restore-is-not-local.md) |
 | `armed-reset-takes-the-row` | Reset is red text at rest, in its own box at the end of the Ledger tab. | [`decisions/armed-reset-takes-the-row.md`](../decisions/armed-reset-takes-the-row.md) |
+| `auto-apply-happens-now` | Kind: build | [`decisions/auto-apply-happens-now.md`](../decisions/auto-apply-happens-now.md) |
 | `b64-fails-with-plausible-data` | The base64 helpers for the Contents API get their own file, `src/b64.mjs`. | [`decisions/b64-fails-with-plausible-data.md`](../decisions/b64-fails-with-plausible-data.md) |
 | `build-and-deploy` | Kind: build | [`decisions/build-and-deploy.md`](../decisions/build-and-deploy.md) |
 | `card-tally-row-counts-first` | At iPhone width, the Tally row is tight. | [`decisions/card-tally-row-counts-first.md`](../decisions/card-tally-row-counts-first.md) |
@@ -60,6 +60,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-key-via-url-scheme` | **Status:** ruled. | [`decisions/native-key-via-url-scheme.md`](../decisions/native-key-via-url-scheme.md) |
 | `native-ledger-is-raw-json` | Kind: build | [`decisions/native-ledger-is-raw-json.md`](../decisions/native-ledger-is-raw-json.md) |
 | `native-parity-table` | Kind: build | [`decisions/native-parity-table.md`](../decisions/native-parity-table.md) |
+| `native-reply-waits-generation` | **Status:** ruled. | [`decisions/native-reply-waits-generation.md`](../decisions/native-reply-waits-generation.md) |
 | `native-swift-rebuild` | Kind: build | [`decisions/native-swift-rebuild.md`](../decisions/native-swift-rebuild.md) |
 | `order-id-button-stops-propagate` | The order-id button in Tally stops its click from reaching the row underneath. | [`decisions/order-id-button-stops-propagate.md`](../decisions/order-id-button-stops-propagate.md) |
 | `orphan-entry-takes-one-input` | The Orphaned view records an envelope from one input. | [`decisions/orphan-entry-takes-one-input.md`](../decisions/orphan-entry-takes-one-input.md) |
@@ -81,6 +82,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `the-public-seed` | Kind: build | [`decisions/the-public-seed.md`](../decisions/the-public-seed.md) |
 | `three-views-share-one-switch` | The bottom bar replaces the top view switch at every width (`phone-nav-is-bottom-bar`). | [`decisions/three-views-share-one-switch.md`](../decisions/three-views-share-one-switch.md) |
 | `typography-cochin-and-mono` | Cochin sets everything that is not a number. | [`decisions/typography-cochin-and-mono.md`](../decisions/typography-cochin-and-mono.md) |
+| `undo-removes-only-its-delta` | Undo keeps the deltas of an assignment, not a snapshot of the ledger. | [`decisions/undo-removes-only-its-delta.md`](../decisions/undo-removes-only-its-delta.md) |
 | `ux-house-rules-govern` | The owner ruled on 2026-10-11: "apply the latest from claude settings' ux guidelines, along with /design-review /ci-hygiene /fresh-prose". | [`decisions/ux-house-rules-govern.md`](../decisions/ux-house-rules-govern.md) |
 | `worker-keeps-snapshots` | **Status:** ruled. | [`decisions/worker-keeps-snapshots.md`](../decisions/worker-keeps-snapshots.md) |
 
@@ -158,7 +160,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `motion-the-stamp-lands` | The stamp rocks down and settles at its resting angle, instead of blinking into place. | [`decisions/motion-the-stamp-lands.md`](../decisions/motion-the-stamp-lands.md) |
 | `motion-the-switch-is-one-object` | The ruling: the active-view fill is a single element that slides between thirds. | [`decisions/motion-the-switch-is-one-object.md`](../decisions/motion-the-switch-is-one-object.md) |
 | `motion-use-just-became` | Every celebration marks a state that a package can already be in. | [`decisions/motion-use-just-became.md`](../decisions/motion-use-just-became.md) |
-| `native-reply-waits-generation` | **Status:** ruled. | [`decisions/native-reply-waits-generation.md`](../decisions/native-reply-waits-generation.md) |
 | `nothing-recovers-without-the-key` | **Status:** open. | [`decisions/nothing-recovers-without-the-key.md`](../decisions/nothing-recovers-without-the-key.md) |
 | `null-remote-info-is-not-no-key` | A null `remoteInfo` means that the status has not loaded yet. | [`decisions/null-remote-info-is-not-no-key.md`](../decisions/null-remote-info-is-not-no-key.md) |
 | `offline-is-decided-by-fetch` | The app decides `offline` only by a failed `fetch`, and by nothing else. | [`decisions/offline-is-decided-by-fetch.md`](../decisions/offline-is-decided-by-fetch.md) |
@@ -232,7 +233,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `token-field-is-sixteen-pixels` | The sync key field is set at 16px. | [`decisions/token-field-is-sixteen-pixels.md`](../decisions/token-field-is-sixteen-pixels.md) |
 | `token-lives-outside-namespace` | The GitHub access token lives at the raw localStorage key `mailday-remote:v1`. | [`decisions/token-lives-outside-namespace.md`](../decisions/token-lives-outside-namespace.md) |
 | `token-sits-on-shared-origin` | **Status:** open. | [`decisions/token-sits-on-shared-origin.md`](../decisions/token-sits-on-shared-origin.md) |
-| `undo-removes-only-its-delta` | Undo keeps the deltas of an assignment, not a snapshot of the ledger. | [`decisions/undo-removes-only-its-delta.md`](../decisions/undo-removes-only-its-delta.md) |
 | `unit-rate-is-not-the-position` | The collapsed Tally row shows the **unit rate**, not the basis. | [`decisions/unit-rate-is-not-the-position.md`](../decisions/unit-rate-is-not-the-position.md) |
 | `unwritable-store-says-so` | When IndexedDB cannot be written, every version save must fail visibly. | [`decisions/unwritable-store-says-so.md`](../decisions/unwritable-store-says-so.md) |
 | `upload-zone-opens-when-empty` | The upload zone opens when the user asks for it. | [`decisions/upload-zone-opens-when-empty.md`](../decisions/upload-zone-opens-when-empty.md) |
@@ -254,6 +254,10 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `discard-keeps-draft` | `discardEnvelope` in `src/app.jsx` never clears the draft. | [`debts/discard-keeps-draft.md`](../debts/discard-keeps-draft.md) |
 | `draft-skip-required-unmeasured` | It is unmeasured how a required check reads a job that the draft guard skipped. | [`debts/draft-skip-required-unmeasured.md`](../debts/draft-skip-required-unmeasured.md) |
 | `failed-photo-download-no-retry` | When a merge's photo download fails, the id stays in the ledger and the tile stays blank. | [`debts/failed-photo-download-no-retry.md`](../debts/failed-photo-download-no-retry.md) |
+| `half-open-socket-has-no-ping` | A socket that stays open and hears nothing gets no ping. | [`debts/half-open-socket-has-no-ping.md`](../debts/half-open-socket-has-no-ping.md) |
+| `header-gestures-unmeasured` | No device ran a phone long-press on the package header. | [`debts/header-gestures-unmeasured.md`](../debts/header-gestures-unmeasured.md) |
+| `hidden-tab-apply-delay-unmeasured` | Nobody has timed a reply on a hidden or frozen tab. | [`debts/hidden-tab-apply-delay-unmeasured.md`](../debts/hidden-tab-apply-delay-unmeasured.md) |
+| `ios-touch-adjust-unmeasured` | Claim 17a of `check:screens` sweeps real touches in Chromium. | [`debts/ios-touch-adjust-unmeasured.md`](../debts/ios-touch-adjust-unmeasured.md) |
 | `key-re-accepts-token-shape` | A GitHub token uses only letters, digits and underscores, so the key check accepts a token as a key. | [`debts/key-re-accepts-token-shape.md`](../debts/key-re-accepts-token-shape.md) |
 | `lost-photo-clock-is-envelope-age` | The 7-day lost-photo clock runs from the envelope's `createdAt`. | [`debts/lost-photo-clock-is-envelope-age.md`](../debts/lost-photo-clock-is-envelope-age.md) |
 | `lost-tile-waits-for-first-post` | The lost tile shows only after the push survey that follows a successful POST. | [`debts/lost-tile-waits-for-first-post.md`](../debts/lost-tile-waits-for-first-post.md) |
@@ -268,10 +272,11 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-lanes-n6-to-n9-unbuilt` | `native/` holds no Tally, Orphaned, backup or milestone view on main. | [`debts/native-lanes-n6-to-n9-unbuilt.md`](../debts/native-lanes-n6-to-n9-unbuilt.md) |
 | `native-ledger-pins-missing` | No test pins the millisecond kept-name format, the missing-file case, or the unwrapped-error sentence in Load and save. | [`debts/native-ledger-pins-missing.md`](../debts/native-ledger-pins-missing.md) |
 | `native-ledger-tab-unbuilt` | No lane builds the options that `ledger-tab-holds-options` puts in the Ledger tab. | [`debts/native-ledger-tab-unbuilt.md`](../debts/native-ledger-tab-unbuilt.md) |
+| `native-order-id-link-unbuilt` | The owner ruled on 2026-10-21 that the native app gets the order id link and the selectable header, as the web app has them in the lane `web/order-id-copy`. | [`debts/native-order-id-link-unbuilt.md`](../debts/native-order-id-link-unbuilt.md) |
 | `native-runner-image-unverified` | Whether the `macos-26` runner image has Xcode 27 and xcodegen is unknown. | [`debts/native-runner-image-unverified.md`](../debts/native-runner-image-unverified.md) |
 | `native-runner-keychain-unverified` | Whether the runner keychain is unlocked is unknown. | [`debts/native-runner-keychain-unverified.md`](../debts/native-runner-keychain-unverified.md) |
 | `native-ui-tests-not-in-ci` | The native job runs the ST tests only, so native UI tests and builds are not in CI. | [`debts/native-ui-tests-not-in-ci.md`](../debts/native-ui-tests-not-in-ci.md) |
-| `order-id-visible-unbuilt` | What counts as visible at narrow widths is not defined. | [`debts/order-id-visible-unbuilt.md`](../debts/order-id-visible-unbuilt.md) |
+| `order-id-visible-unbuilt` | The package header gives the order id its own line (built 2026-10-20). | [`debts/order-id-visible-unbuilt.md`](../debts/order-id-visible-unbuilt.md) |
 | `orphaned-reach-unpinned` | No test pins that Re-import, Backup and Reset must stay reachable from Orphaned, and it is unverified. | [`debts/orphaned-reach-unpinned.md`](../debts/orphaned-reach-unpinned.md) |
 | `panel-paper-fill-unbuilt` | Overlay panels carry no `paper` fill: `panelWrap` in `src/app.jsx` sets padding and a top border, and no background. | [`debts/panel-paper-fill-unbuilt.md`](../debts/panel-paper-fill-unbuilt.md) |
 | `panels-overlay-unbuilt` | Today a panel takes layout space and pushes the list down. | [`debts/panels-overlay-unbuilt.md`](../debts/panels-overlay-unbuilt.md) |
@@ -287,7 +292,9 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `seed-in-public-history` | The seed is readable in `index.html` history from `10f9499` to the commit before `82e45d4`, and erasing it needs a history rewrite and the owner's word. | [`debts/seed-in-public-history.md`](../debts/seed-in-public-history.md) |
 | `suite-hang-cause-unmeasured` | The cause of the 13-minute hang is unmeasured, and so are the exit codes of the UTC and machine-zone runs. | [`debts/suite-hang-cause-unmeasured.md`](../debts/suite-hang-cause-unmeasured.md) |
 | `sweep-settle-masks-30-13-stall` | The `SWEEP_WAIT` settle after 19.6 hides a stall at 30.13, and it does not explain it. | [`debts/sweep-settle-masks-30-13-stall.md`](../debts/sweep-settle-masks-30-13-stall.md) |
+| `sync-latency-after-fix-unmeasured` | No run of the probe covers lane web/sync-latency. | [`debts/sync-latency-after-fix-unmeasured.md`](../debts/sync-latency-after-fix-unmeasured.md) |
 | `tally-card-moves-at-320px` | At 320px the Tally card moves 14px on check-ins 1 and 6. | [`debts/tally-card-moves-at-320px.md`](../debts/tally-card-moves-at-320px.md) |
+| `tcgplayer-link-opens-history-list` | The order id link opens `orderhistory?SearchString=<id>`, the URL the owner gave on 2026-10-21 (`tcgplayerOrderUrl` encodes the id). | [`debts/tcgplayer-link-opens-history-list.md`](../debts/tcgplayer-link-opens-history-list.md) |
 | `tests-33-35-40-45-cannot-fail` | Tests 33.35, 33.40 and 33.45 cannot fail on a plausible mutant. | [`debts/tests-33-35-40-45-cannot-fail.md`](../debts/tests-33-35-40-45-cannot-fail.md) |
 | `token-export-and-view-unpinned` | Nothing yet pins the native device key in the backup export or in SwiftUI view state. | [`debts/token-export-and-view-unpinned.md`](../debts/token-export-and-view-unpinned.md) |
 | `token-state-and-bundle-unpinned` | Nothing pins the React-state or bundle guarantees. | [`debts/token-state-and-bundle-unpinned.md`](../debts/token-state-and-bundle-unpinned.md) |

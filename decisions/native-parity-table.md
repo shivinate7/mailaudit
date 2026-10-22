@@ -19,10 +19,11 @@ Each client draws its own screen. The logic has one home, see `rules-run-in-java
 - Packages, Tally and Orphaned, and the bottom bar that switches between them (`phone-nav-is-bottom-bar`).
 - Search, hide-received, the date filter, the six Tally sort keys and the package sort.
 - Lost-mail flags, outstanding value per level, and canceled orders.
+- The Packages card header: the order id is a link to the TCGplayer order search, and the header text selects. The owner ruled on 2026-10-21 that native gets it, see `order-id-button-stops-propagate`. The web app has it. Native does not yet. Debt: `native-order-id-link-unbuilt`.
 - Check-in and un-check, the steppers and the bulk row.
 - Envelopes: record, edit, discard (a tombstone), assign, undo, and candidates with ties.
 - Stamps: the tombstone, a refund that leaves every count, and the stamped filter.
-- Worker sync: POST, GET, the WebSocket, the idle gate, resume, and the 401 and 413 advisory lines.
+- Worker sync: POST, GET, the WebSocket, the press gate, resume, and the 401 and 413 advisory lines.
 - Backup export, the masthead and ruled head, the palette, Cochin and monospace type, and motion with reduced motion.
 - Envelope photo capture. Photo sync for both clients runs through the Worker photo route, see `sync-revamp-cloudflare`.
 - Milestones of local versions. Native saves them, prunes them by the same rule as the web app, lists them, and restores one. The owner ruled on 2026-10-11: "yeah list and restore".

@@ -37,9 +37,9 @@ Case 2 names the server. Its copy is `The sync server could not be reached — t
 
 Case 4 is the entrance to the sync key field when no other line shows. The home-screen app keeps its own storage, so a key set in Safari does not reach it. Its copy is `This device has no sync key — tap to paste it`. The Sync group holds a masked key field and `Save sync key`. Group 59 pins the copy. See `sync-revamp-cloudflare`.
 
-A Worker reply that waits for the idle gate shows no line. Test 55.5 pins it.
+A Worker reply that waits for a press shows no line. Test 55.5 pins it.
 
-The stale limit is 24h. Push is automatic and idle-debounced. A shorter limit would fire on an ordinary evening with the phone face down. A longer limit would stop being a warning.
+The stale limit is 24h. Sync is automatic. A shorter limit would fire on an ordinary evening with the phone face down. A longer limit would stop being a warning.
 
 Being behind used to reach this line. Auto-push declines while the remote is ahead, and the automatic merge runs only on a fresh session. So a device that fell behind mid-session stopped backing up for the rest of that session. The manila "pushed newer lines" notice sat in the sync panel, and L11b removed it with the Merge control. Being behind now raises no line (orchestrator default, 2026-10-12). With a Worker key and a healthy server, GitHub is a mirror. Then no peek runs, and a remote that is ahead raises no behind line. Test 54.1c pins that.
 

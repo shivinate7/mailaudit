@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback, useId } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, useId } from "react";
 import Papa from "papaparse";
 import tokens from "../shared/tokens.json";
 import {
@@ -9,7 +9,7 @@ import {
 } from "./view-rules.mjs";
 import { photoPlan } from "./photo-rules.mjs";
 import { shouldSnapshot } from "./version-rules.mjs";
-import { KEY_RE, SYNC_POST_MS, SYNC_COLD_POST_MS, SYNC_TIMEOUT_MS, IDLE_APPLY_MS, idleReady, backoffMs } from "./sync-rules.mjs";
+import { KEY_RE, SYNC_POST_MS, SYNC_COLD_POST_MS, SYNC_TIMEOUT_MS, pressHeld, backoffMs } from "./sync-rules.mjs";
 import {
   mergeItems,
   mergeLedger,
@@ -419,6 +419,7 @@ function ItemRow({
   const lost = source ? lostMail(item.date, item.tracking, done || stamped) : null;
   return (
     <div
+      data-anchor={`r:${item.key}`}
       onClick={toggle}
       className={className}
       style={{
@@ -699,6 +700,12 @@ const stampChip = {
 
 /* ---------- Package (order + seller) group ---------- */
 
+/* TCGplayer's buyer order-history page, searched by order id (owner ruling
+   2026-10-21). Whether the page honours SearchString is unconfirmed; debt
+   tcgplayer-link-opens-history-list. */
+const tcgplayerOrderUrl = (id) =>
+  `https://store.tcgplayer.com/myaccount/orderhistory?SearchString=${encodeURIComponent(id)}`;
+
 function PackageCard({
   pkg,
   received,
@@ -781,6 +788,7 @@ function PackageCard({
 
   return (
     <div
+      data-anchor={`p:${pkg.gk}`}
       ref={innerRef}
       style={{
         position: "relative",
@@ -802,135 +810,209 @@ function PackageCard({
           none inside the card's existing relative/overflow-hidden box, so it
           is clipped to the card, catches no taps and moves nothing. */}
       {justStamped && <i className="mdl-gild" aria-hidden="true" />}
-      <button
-        onClick={() => setOpen((o) => !o)}
-        style={{
-          width: "100%",
-          textAlign: "left",
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          padding: "12px 12px",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
+      {/* The header is plain text, not a button, so it selects: a drag on a Mac,
+          a long-press on a phone (owner ruling 2026-10-20). A click that ends
+          with text selected inside the header is the end of a selection, so it
+          does not toggle; a plain click still does. The order id is a link to
+          TCGplayer and stops its click here (order-id-button-stops-propagate).
+          The chevron is the keyboard's way to toggle. It toggles on its own,
+          selection or none, and stops its click so the header does not toggle
+          it twice. */}
+      <div
+        onClick={(e) => {
+          const sel = window.getSelection?.();
+          const hdr = e.currentTarget;
+          if (
+            sel &&
+            !sel.isCollapsed &&
+            (hdr.contains(sel.anchorNode) || hdr.contains(sel.focusNode))
+          )
+            return;
+          setOpen((o) => !o);
         }}
+        style={{ display: "flex", alignItems: "stretch", cursor: "pointer" }}
       >
-        <span
+        <button
+          aria-expanded={open}
+          aria-label={`${open ? "Collapse" : "Expand"} ${pkg.seller}, order ${pkg.orderId}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen((o) => !o);
+          }}
           style={{
-            fontFamily: mono,
-            fontSize: 10,
-            color: C.inkSoft,
-            transform: open ? "rotate(90deg)" : "none",
-            /* the sheet's easing, and long enough to read: on the way closed
-               this is the only thing that moves, because the rows are gone in
-               the same commit as the tap */
-            transition: "transform 200ms cubic-bezier(.16,1,.3,1)",
-            display: "inline-block",
+            width: 44,
             flexShrink: 0,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "flex-start",
+            padding: "16px 0 0",
+            border: "none",
+            background: "transparent",
+            cursor: "pointer",
           }}
         >
-          ▶
-        </span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
+          <span
             style={{
-              fontWeight: 700,
-              fontSize: 15,
-              color: C.ink,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
+              fontFamily: mono,
+              fontSize: 10,
+              color: C.inkSoft,
+              transform: open ? "rotate(90deg)" : "none",
+              /* the sheet's easing, and long enough to read: on the way closed
+                 this is the only thing that moves, because the rows are gone in
+                 the same commit as the tap */
+              transition: "transform 200ms cubic-bezier(.16,1,.3,1)",
+              display: "inline-block",
             }}
           >
-            {pkg.seller}
+            ▶
+          </span>
+        </button>
+        <div style={{ flex: 1, minWidth: 0, padding: "12px 12px 28px 4px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  fontWeight: 700,
+                  fontSize: 15,
+                  color: C.ink,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {pkg.seller}
+              </div>
+              <div
+                style={{
+                  fontFamily: mono,
+                  fontSize: 11,
+                  color: C.inkSoft,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {lost?.tier === "deadline" && (
+                  <span style={{ color: C.red, fontWeight: 700 }}>
+                    ⚠ {lost.days}d — refund window closing, contact seller ·{" "}
+                  </span>
+                )}
+                {lost?.tier === "maybe" && (
+                  <span style={{ color: C.amber, fontWeight: 700 }}>
+                    ⚠ {lost.days}d — may be lost ·{" "}
+                  </span>
+                )}
+                {pkg.date && `${pkg.date} · `}
+                {tracked === "tracked" && (
+                  <>
+                    <span style={{ color: C.green }}>●</span> tracked
+                  </>
+                )}
+                {tracked === "untracked" && (
+                  <>
+                    <span style={{ color: C.manilaInk }}>○</span> untracked
+                  </>
+                )}
+              </div>
+            </div>
+            {done ? (
+              <span
+                /* it is a stamp, so it lands like one — but only on the tap that
+                   actually completed the package. `justStamped` is false on a fresh
+                   mount, which is what keeps a view switch from restamping every
+                   finished order on the page at once. */
+                className={justStamped ? "mdl-land" : undefined}
+                style={{
+                  fontFamily: mono,
+                  fontSize: 10.5,
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  color: C.green,
+                  border: `2px solid ${C.green}`,
+                  borderRadius: 4,
+                  padding: "4px 8px",
+                  transform: "rotate(-4deg)",
+                  /* the angle the landing returns to, read by the shared keyframes */
+                  "--rest": "-4deg",
+                  flexShrink: 0,
+                  background: C.card,
+                }}
+              >
+                RECEIVED
+              </span>
+            ) : (
+              <span
+                style={{
+                  /* deliberately Cochin, not mono: the user wanted the outstanding
+                     pill to read as part of the letterhead voice rather than as
+                     tabular data. The exception to "mono for numbers". */
+                  fontFamily: cochin,
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  /* manila once refunded: the cards are still out, but no money
+                     is — the red figure would be claiming a loss that isn't one */
+                  color: refunded ? C.manilaInk : C.red,
+                  background: refunded ? C.manila : C.redSoft,
+                  borderRadius: 999,
+                  padding: "4px 8px",
+                  flexShrink: 0,
+                }}
+              >
+                {totalQty - gotQty} left · {refunded ? "refunded" : missingValLabel}
+              </span>
+            )}
           </div>
+          {/* The order id on its own line, so a long id keeps its tail. It is a
+              link to that order's search on TCGplayer. Its 45px touch area
+              reaches 14.5px past the 16px line, so the 16px above the line keep
+              it off the date line and the 16px under it off the row below. */}
           <div
             style={{
+              display: "flex",
+              alignItems: "center",
+              marginTop: 28,
               fontFamily: mono,
               fontSize: 11,
+              lineHeight: "16px",
               color: C.inkSoft,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
             }}
-            title={pkg.orderId}
           >
-            {lost?.tier === "deadline" && (
-              <span style={{ color: C.red, fontWeight: 700 }}>
-                ⚠ {lost.days}d — refund window closing, contact seller ·{" "}
+            <a
+              className="mdl-tcg"
+              href={tcgplayerOrderUrl(pkg.orderId)}
+              target="_blank"
+              rel="noopener"
+              onClick={(e) => e.stopPropagation()}
+              aria-label={`Order ${pkg.orderId} on TCGplayer, opens in a new tab`}
+              title={pkg.orderId}
+              style={{
+                /* 45px wide at the least, so the touch area (centred on the
+                   box) never reaches left over the chevron's */
+                minWidth: 45,
+                color: "inherit",
+                textDecoration: "underline",
+                textUnderlineOffset: 2,
+              }}
+            >
+              {/* the ellipsis sits on the text, not the link: a link that
+                  clips would cut off its touch area */}
+              <span
+                style={{
+                  display: "block",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {pkg.orderId}
               </span>
-            )}
-            {lost?.tier === "maybe" && (
-              <span style={{ color: C.amber, fontWeight: 700 }}>
-                ⚠ {lost.days}d — may be lost ·{" "}
-              </span>
-            )}
-            {pkg.date && `${pkg.date} · `}
-            {tracked === "tracked" && (
-              <>
-                <span style={{ color: C.green }}>●</span> tracked ·{" "}
-              </>
-            )}
-            {tracked === "untracked" && (
-              <>
-                <span style={{ color: C.manilaInk }}>○</span> untracked ·{" "}
-              </>
-            )}
-            {pkg.orderId}
+            </a>
           </div>
         </div>
-        {done ? (
-          <span
-            /* it is a stamp, so it lands like one — but only on the tap that
-               actually completed the package. `justStamped` is false on a fresh
-               mount, which is what keeps a view switch from restamping every
-               finished order on the page at once. */
-            className={justStamped ? "mdl-land" : undefined}
-            style={{
-              fontFamily: mono,
-              fontSize: 10.5,
-              fontWeight: 700,
-              letterSpacing: "0.1em",
-              color: C.green,
-              border: `2px solid ${C.green}`,
-              borderRadius: 4,
-              padding: "4px 8px",
-              transform: "rotate(-4deg)",
-              /* the angle the landing returns to, read by the shared keyframes */
-              "--rest": "-4deg",
-              flexShrink: 0,
-              background: C.card,
-            }}
-          >
-            RECEIVED
-          </span>
-        ) : (
-          <span
-            style={{
-              /* deliberately Cochin, not mono: the user wanted the outstanding
-                 pill to read as part of the letterhead voice rather than as
-                 tabular data. The exception to "mono for numbers". */
-              fontFamily: cochin,
-              fontSize: 12.5,
-              fontWeight: 700,
-              /* manila once refunded: the cards are still out, but no money
-                 is — the red figure would be claiming a loss that isn't one */
-              color: refunded ? C.manilaInk : C.red,
-              background: refunded ? C.manila : C.redSoft,
-              borderRadius: 999,
-              padding: "4px 8px",
-              flexShrink: 0,
-            }}
-          >
-            {totalQty - gotQty} left · {refunded ? "refunded" : missingValLabel}
-          </span>
-        )}
-      </button>
+      </div>
 
       {/* The stamp band: the order's status, visible collapsed too, and — once
-          a stamp exists — the control that edits it. A sibling of the header
-          button, above the rows, so nothing moves under a thumb mid-check-in
+          a stamp exists — the control that edits it. A sibling of the header, above the rows, so nothing moves under a thumb mid-check-in
           (invariant no-layout-shift-under-pointer); opening the editor is a deliberate tap on the band,
           the same class of move as expanding the package. */}
       {stamped && !editing && (
@@ -1225,6 +1307,7 @@ function ItemTotalRow({ item, received, onSet, onBulk, onOpenOrder, stampedGks }
 
   return (
     <div
+      data-anchor={`t:${item.name}`}
       style={{
         /* the containing block for the top-edge progress bar below; PackageCard
            already had one for .mdl-gild */
@@ -1907,6 +1990,17 @@ function bgTimeout(fn, ms) {
   const t = setTimeout(fn, ms);
   t?.unref?.();
   return t;
+}
+/* The row a reply must not move: the one under a resting mouse, else the first in view, then the
+   cards around it, each with where it sits now (see useLayoutEffect on anchorRef). */
+function pickAnchor(mouse) {
+  const rows = [...document.querySelectorAll("[data-anchor]")];
+  let el = mouse && document.elementFromPoint?.(mouse.x, mouse.y)?.closest("[data-anchor]");
+  el = el || rows.find((r) => r.getBoundingClientRect().top >= 0) || rows[0];
+  const chain = [];
+  for (; el; el = el.parentElement?.closest("[data-anchor]"))
+    chain.push({ key: el.dataset.anchor, top: el.getBoundingClientRect().top });
+  return chain;
 }
 const NO_PHOTO_BACKUP =
   "Some photos are not backed up yet. They stay on this device and sync again on their own.";
@@ -2680,6 +2774,7 @@ function EnvelopeCard({ env, ranked, onAssign, onDiscard, onEdit, photoEpoch, lo
 
   return (
     <div
+      data-anchor={`e:${env.id}`}
       style={{
         background: C.card,
         border: `1px solid ${C.line}`,
@@ -3650,7 +3745,9 @@ export default function MailDayLedger() {
         })();
       composerDraft.current.clear();
       setComposing(null);
-      setUndo(null);
+      /* a server apply keeps the Undo bar: Undo subtracts its own plan, so it stays right after a
+         merge (undo-removes-only-its-delta) */
+      if (source !== "server") setUndo(null);
       if (data.dateFilter) setDateFilter(data.dateFilter);
       if (data.sortBy) setSortBy(data.sortBy);
       if (data.itemSort || data.cardSort)
@@ -4151,8 +4248,7 @@ export default function MailDayLedger() {
 
      `undo` is deliberately NOT dropped here. It survives a trip to Packages on
      purpose — "assign, hand-edit elsewhere, come back and undo only your own
-     delta" is a real workflow and group 14 pins it. mergeBlocked holds a
-     reply while an undo is pending, so the apply never drops it. */
+     delta" is a real workflow and group 14 pins it. A server apply keeps it too. */
   const leaveFor = useCallback(
     (v) => {
       /* Leaving drops the flag, so sync is not held off while the draft waits
@@ -4334,15 +4430,15 @@ export default function MailDayLedger() {
      Worker first. There is no pull and no sha: the Worker is the only sync path
      (sync-revamp-cloudflare). */
   const doMerge = useCallback(
-    async (reply) => {
+    async (reply, firstOfKey = false) => {
       if (damagedRef.current) return { ok: false, code: "server" };
       disarm();
       setPhotoMsg(null);
       const gen = ++syncGen.current;
       syncingRef.current = true;
       setSyncBusy(true);
-      /* the last input before the photo reads: a tap after it holds the reply again */
-      const touched = lastActivity.current;
+      /* the last press before the photo reads: a tap after it holds the reply again */
+      const touched = press.current.seq;
       try {
         const replyText = JSON.stringify(reply);
         const incoming = await readLedger(replyText);
@@ -4364,9 +4460,9 @@ export default function MailDayLedger() {
         if (syncGen.current !== gen) return { ok: false, code: "server" };
         /* a tap during the downloads: applying now would shift the list under the
            pointer (no-layout-shift-under-pointer), and the merge above no longer
-           matches the device. Hold the reply for the idle gate; the blobs are here
+           matches the device. Hold the reply for the press gate; the blobs are here
            by then, so the next try is quick. */
-        if (lastActivity.current !== touched) {
+        if (press.current.seq !== touched || (!firstOfKey && pressNow())) {
           growServer(reply);
           tryApplyRef.current();
           return { ok: false, code: "held" };
@@ -4388,9 +4484,18 @@ export default function MailDayLedger() {
         /* a milestone only in front of a removal, and before the apply */
         if (stats.checkInsRemoved + stats.envelopesRemoved + (stats.stampsRemoved || 0) > 0)
           takeVersion("before sync", "milestone");
-        const notice = changed ? mergeSummary(stats) : "";
-        /* remembered so the next apply can tell this notice from an import's */
-        serverNotice.current = notice;
+        /* an import notice still open keeps its sentence: this apply must not
+           erase what the owner has not read */
+        const cur = importRef.current;
+        const prev = serverNotice.current;
+        const kept = cur === prev ? "" : prev && cur.endsWith(` ${prev}`) ? cur.slice(0, -prev.length - 1) : cur;
+        const merge = changed ? mergeSummary(stats) : "";
+        const notice = kept && merge ? `${kept} ${merge}` : kept || merge;
+        /* only this apply's own sentence is remembered, so the next apply can cut it off and keep
+           the import sentence in front of it until Dismiss */
+        serverNotice.current = merge;
+        /* keeps the row in view still across the apply (anchorRef) */
+        anchorRef.current = pickAnchor(mouse.current);
         await applyBackup(JSON.stringify(merged), "server", notice);
         /* applyBackup bumps syncGen, and exactly one bump is ours. Any other
            number means something really did move on. */
@@ -4400,6 +4505,7 @@ export default function MailDayLedger() {
         /* parseLedger throws bare on a payload that isn't a ledger. Either way
            the merge landed nothing, because applyBackup throws before its first
            setState. */
+        anchorRef.current = null;
         return { ok: false, code: e?.code || "bad-response" };
       } finally {
         syncingRef.current = false;
@@ -4410,13 +4516,12 @@ export default function MailDayLedger() {
     [disarm, applyBackup, pullPhotos, snapshot, takeVersion]
   );
 
-  /* Whether a held reply may apply now: not while a half-built envelope, a
-     pending undo or an armed destructive button is open. The apply calls
-     setComposing(null) and setUndo(null), so a reply landing mid-composer would
-     DISCARD hand-typed entries that are in no CSV and on no remote. */
+  /* Whether a held reply may apply now: not while a half-built envelope or an armed
+     destructive button is open. The apply calls setComposing(null), so a reply landing
+     mid-composer would DISCARD hand-typed entries that are in no CSV and on no remote.
+     An open Undo bar does not hold a reply (owner ruling 2026-10-21): the apply keeps it. */
   const mergeBlocked = !!(
     composing ||
-    undo ||
     confirmReset ||
     confirmForce ||
     confirmRestore
@@ -4424,10 +4529,17 @@ export default function MailDayLedger() {
 
   /* ---- Worker sync (stage 4b) ----
      With a key, a POST of snapshot() goes out SYNC_POST_MS after a change and on
-     foreground, pageshow and online. The reply is held, then applied only after
-     IDLE_APPLY_MS with no input and no armed guard: applying mid-tap is the
-     layout shift no-layout-shift-under-pointer forbids. */
-  const lastActivity = useRef(Date.now());
+     foreground, pageshow and online. The reply is held only while a press is in
+     progress (and PRESS_TAIL_MS after it) or an armed guard is open, then applied.
+     A press is the one moment the list must not move; hover and scroll are not
+     (no-layout-shift-under-pointer). What is under the pointer stays put across
+     the apply because the page corrects its scroll (anchorRef). */
+  const press = useRef({ down: null, last: 0, seq: 0 });
+  const pressNow = () => pressHeld(press.current.down, press.current.last, Date.now());
+  const mouse = useRef(null);
+  const anchorRef = useRef(null);
+  const importRef = useRef("");
+  importRef.current = importMsg;
   const pendingReply = useRef(null);
   const applyTimer = useRef(null);
   const postTimer = useRef(null);
@@ -4437,19 +4549,17 @@ export default function MailDayLedger() {
     clearTimeout(applyTimer.current);
     if (!pendingReply.current || damagedRef.current) return;
     /* a pasted key is a tap the user just made: its first reply applies at once */
-    const idle = applyNow.current || idleReady(lastActivity.current, Date.now());
-    /* an import notice holds the apply; the notice a server apply left does not */
-    const noticeOpen = importMsg && importMsg !== serverNotice.current;
-    if (!idle || mergeBlocked || noticeOpen || syncingRef.current) {
-      /* wake when the idle gate opens; an armed guard is re-checked each second */
-      const left = IDLE_APPLY_MS - (Date.now() - lastActivity.current);
-      applyTimer.current = bgTimeout(() => tryApplyRef.current(), idle ? 1000 : Math.max(left, 100));
+    const pressed = !applyNow.current && pressNow();
+    if (pressed || mergeBlocked || syncingRef.current) {
+      /* re-check soon: a press ends in a tail that is short, an armed guard each second */
+      applyTimer.current = bgTimeout(() => tryApplyRef.current(), pressed ? 250 : 1000);
       return;
     }
     const reply = pendingReply.current;
     pendingReply.current = null;
+    const firstOfKey = applyNow.current;
     applyNow.current = false;
-    doMerge(reply);
+    doMerge(reply, firstOfKey);
   };
   const serverNotice = useRef("");
   const applyNow = useRef(false);
@@ -4716,7 +4826,7 @@ export default function MailDayLedger() {
   /* a guard clearing is a reason to look again now, not at the next poll */
   useEffect(() => {
     tryApplyRef.current();
-  }, [mergeBlocked, importMsg]);
+  }, [mergeBlocked]);
   useEffect(() => {
     let dead = false;
     (async () => {
@@ -4730,14 +4840,55 @@ export default function MailDayLedger() {
     };
   }, []);
   useEffect(() => {
-    const touch = () => {
-      lastActivity.current = Date.now();
+    const p = press.current;
+    const on = {
+      pointerdown: () => {
+        p.down = p.last = Date.now();
+        p.seq++;
+      },
+      pointerup: () => {
+        p.down = null;
+        p.last = Date.now();
+      },
+      /* a touch drag ends in pointercancel, not pointerup */
+      pointercancel: () => {
+        p.down = null;
+        p.last = Date.now();
+      },
+      /* Enter and Space press a focused button */
+      keydown: () => {
+        p.last = Date.now();
+        p.seq++;
+      },
+      keyup: () => {
+        p.last = Date.now();
+      },
+      /* where a mouse rests, for the anchor only: moving it never holds a reply */
+      pointermove: (e) => {
+        mouse.current = e.pointerType === "mouse" ? { x: e.clientX, y: e.clientY } : null;
+      },
     };
-    const evs = ["pointerdown", "pointermove", "keydown", "scroll", "touchstart", "wheel"];
-    evs.forEach((e) => window.addEventListener(e, touch, { passive: true, capture: true }));
-    return () =>
-      evs.forEach((e) => window.removeEventListener(e, touch, { capture: true }));
+    for (const [e, f] of Object.entries(on)) window.addEventListener(e, f, { passive: true, capture: true });
+    return () => {
+      for (const [e, f] of Object.entries(on)) window.removeEventListener(e, f, { capture: true });
+    };
   }, []);
+  /* After a reply lands, scroll so the row the owner was on sits where it did
+     (what a mouse rests on, else the first in view). Measured after layout, so the
+     notice and the new rows above are already in. Whether WebKit anchors on its own is unmeasured. */
+  useLayoutEffect(() => {
+    const chain = anchorRef.current;
+    if (!chain) return;
+    anchorRef.current = null;
+    const rows = [...document.querySelectorAll("[data-anchor]")];
+    for (const { key, top } of chain) {
+      const el = rows.find((r) => r.dataset.anchor === key);
+      if (!el) continue;
+      const d = el.getBoundingClientRect().top - top;
+      if (d) window.scrollBy(0, d);
+      return;
+    }
+  }, [items, received, envelopes, stamps, importMsg]);
   useEffect(() => {
     if (!loaded) return;
     /* a resume, a pageshow or coming online is a reason to try now: the
@@ -4768,13 +4919,15 @@ export default function MailDayLedger() {
       skipFirstPost.current = false;
       return;
     }
-    clearTimeout(postTimer.current);
+    /* armed once per burst: a change while it waits does not move it, so a run of
+       taps POSTs every SYNC_POST_MS and the POST carries the latest snapshot */
+    if (postTimer.current) return;
     postTimer.current = bgTimeout(() => {
+      postTimer.current = null;
       /* a save that left the snapshot equal to the server's ledger needs no POST */
       if (lastServer.current && !lacksRef.current(lastServer.current)) return;
       postRef.current();
     }, SYNC_POST_MS);
-    return () => clearTimeout(postTimer.current);
   }, [items, received, receivedAt, envelopes, stamps, loaded]);
 
   /* unmount stops every pending background timer, so none fires into a dead app */
@@ -5578,7 +5731,7 @@ export default function MailDayLedger() {
            px around its drawn centre (45 clears the half-open edge). The pseudo-element is transparent and out
            of flow, so the drawn box and the layout never change. */
         @media (pointer: coarse) {
-          button:not(.mdl-lrow) { position: relative; }
+          button:not(.mdl-lrow), a.mdl-tcg { position: relative; }
           /* The ruled cells sit 40px above the sync line, so two 44px areas
              would overlap. On touch the cell is the top 30px of its row and
              draws its rule as ::before, so the text and the rule stay put.
@@ -5588,7 +5741,7 @@ export default function MailDayLedger() {
                       border-left-color: transparent !important; }
           .mdl-cell::before { content: ""; position: absolute; left: 0; top: 0;
                               width: 1px; height: 40px; background: ${C.line}; }
-          button:not(.mdl-lrow)::after { content: ""; position: absolute; left: 50%; top: 50%;
+          button:not(.mdl-lrow)::after, a.mdl-tcg::after { content: ""; position: absolute; left: 50%; top: 50%;
                           width: max(100%, 45px); height: max(100%, 45px);
                           transform: translate(-50%, -50%); z-index: 1; }
           /* the line sits right under the running head, whose hidden slot

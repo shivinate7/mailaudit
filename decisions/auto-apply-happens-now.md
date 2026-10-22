@@ -1,23 +1,42 @@
-# Auto-apply happens now, and why that changed
+# A remote reply applies as soon as no press is in progress
 
-Kind: process
+Kind: build
 
-Home: decisions/sync-revamp-cloudflare.md
+Plan: decisions/auto-apply-happens-now.md#the-press-guard (web)
+
+Plan: decisions/auto-apply-happens-now.md#native-client (native)
 
 **Status:** open. The design is settled, but it is a risk accepted on purpose and worth re-checking as the app changes.
 
-**Holds while:** `RESUME_RESET_MS` is 60 seconds in `src/app.jsx`. The 90-second push debounce, which the old AUTO_PUSH_MS constant set, left with the GitHub mirror. A change to `RESUME_RESET_MS` calls for a fresh look at this record. The record names no closing fact, only a re-check trigger.
+**Holds while:** `PRESS_TAIL_MS` is 700 and `PRESS_MAX_MS` is 3000 in `src/sync-rules.mjs`. A change to either calls for a fresh look at this record. The record names no closing fact, only a re-check trigger.
 
-The app applies a remote change on its own. The real constraint is not that applying is unsafe. The constraint is that the app must not change the list while a check-in is in progress. Merging forty new CSV lines into the package list under a thumb would cause the cascading mis-tap that `no-layout-shift-under-pointer` prevents. `RESUME_RESET_MS` is the threshold that separates a real absence from a short glance away. It is the same threshold that resets the Showing filter on resume, so the merge reuses that signal.
+The app applies a remote change on its own, as soon as the owner is not mid-press. The outcome to protect is that the owner never taps or acts on the wrong row because the list moved under the pointer. Merging forty new lines into the list under a thumb would cause the cascading mis-tap that `no-layout-shift-under-pointer` prevents.
 
-Some rules do not change. The merge never applies on a timer. It never applies mid-thought, which the five guards check. It never applies a remote that it could not read.
+Owner ruling 2026-10-20 at 23:36 CDT: the guard must protect that outcome directly, and "hover doesn't count". The delay it replaced (10 seconds with no input of any kind) is in `sync-latency`.
 
-Auto-push still refuses an `ahead` remote, on purpose. The 90s debounce measures data idleness, not the user's attention. So it fires while someone reads the screen with a reveal open. The refusal stops a device from writing over a remote that it is behind (34.19).
+## The press guard
 
-**Pinned by:** group 40. Mutant confirmed red: the mid-thought guard removed.
+- A reply holds while a press is down, for `PRESS_TAIL_MS` after it ends, and while an armed guard needs it. A press is `pointerdown` until `pointerup` or `pointercancel`. A touch scroll ends in `pointercancel`, so it ends the hold. A key press holds for `PRESS_TAIL_MS` after each keydown and keyup, because Enter and Space press a focused button.
+- A press holds for at most `PRESS_MAX_MS`, so a lost `pointerup` cannot hold a reply for ever.
+- Hover, a mouse move, scroll and the wheel never hold. A reply applies at once when no press is near. After a press it applies in under a second: the tail plus one quick re-check.
+- The first reply after a pasted key is saved applies at once. No press holds it, neither a press that is down nor the tail of the Save tap's own press, because the owner just tapped Save and a hold would only delay the first sync. An armed guard still holds it, and so does a press that starts while the photos download. The next reply waits for the press guard again.
+- The armed guards are the four conditions of `mergeBlocked` in `src/app.jsx`: a composer draft, and an armed Reset, Force or Restore. An armed Reset, Force or Restore disarms itself after 4 seconds.
+- The composer hold has no time limit. It stays, because an apply would discard hand-typed entries that are in no CSV and on no remote.
+- An open Undo bar never holds a reply, and the apply keeps the bar and its delta. Owner ruling 2026-10-21 13:30 CDT: "it should just be able to apply anyways why does the undo bar being open have to matter". Undo subtracts its own plan (`undo-removes-only-its-delta`), so it removes only its own change after a merge and keeps the remote one. A CSV import, a restore (a backup file or a saved version) and a Reset still clear the bar.
+- An open import notice does not hold the apply. A notice has no timeout, so one unread notice would hold every reply. The notice the apply writes keeps the import sentence beside the merge sentence, across any number of applies, until the owner dismisses it.
+- When the apply lands, the page scrolls so the row under a resting mouse, or else the first row in view, sits where it did. Each package card, item row, Tally row and envelope card carries `data-anchor`. The correction is measured after layout, so the new rows and the notice are already in. `npm run check:screens` turns native scroll anchoring off, so claim 16 measures the page's own correction. Whether the owner's WebKit anchors on its own is unmeasured.
+- The end-to-end delay with this guard is not measured, see `sync-latency-after-fix-unmeasured`.
+
+The merge never applies mid-thought and never applies a remote it could not read.
+
+**Pinned by:** group 40 (the mid-thought guard; mutant confirmed red: the mid-thought guard removed), 51.17 to 51.19 (`pressHeld` and the two constants), 55.3, 55.4d to 55.4f, 59.13 and 59.15 (a press holds a reply and its release ends the hold; an open import notice does not hold it; 59.15d the first reply after the Save tap applies within 300 ms, not after the press tail), group 75 (75.1 hover, 75.2 scroll and wheel, 75.3 a lost `pointerup`, 75.4 `pointercancel`, 75.5 a key press, 75.6 a cold open, 75.7a to 75.7c a press during the photo downloads, 75.12 to 75.13 an open Undo bar does not hold a reply, the apply keeps it, and Undo after the apply keeps the other device's check-in, 75.14 the import sentence stays across three applies and leaves with Dismiss), and `npm run check:screens` claim 16 (a reply lands within 1.5 s and the row in view moves no more than 0.5px).
+
+## Native client
+
+Lane N4b takes `PRESS_TAIL_MS`, `PRESS_MAX_MS` and `pressHeld` from the rules bundle, as the web app does. That lane defines what counts as a press on iOS. Three rules hold: hover and scroll never hold, a press holds for at most `PRESS_MAX_MS`, and an open Undo bar never holds a reply (owner ruling 2026-10-21 13:30 CDT, see above). Debt: `n4b-socket-idle-gate-unbuilt`.
 
 ## See also
 
-- `ruled-head-resume-is-reopening` — the resume threshold this merge now reuses
-- `push-and-merge-guard-differently` — why the merge and the push guard on different things
 - `sha-accepted-only-after-apply` — the rule that keeps an auto-applied merge honest
+- `sync-latency` — the delays measured before this guard
+- `undo-removes-only-its-delta` — why an apply can keep the Undo bar
