@@ -18,6 +18,9 @@ public enum VersionError: Error, Equatable, Sendable {
     case corrupt(String)
 }
 
+/// Saved versions of the ledger, one folder: <id>.bin holds the bytes as given, <id>.json the
+/// record. Retention is the bundle's prunePlan; Swift holds no copy of it
+/// (retention-tiers-are-unioned, milestones-taken-before-risk).
 public final class VersionStore {
     let directory: URL
     let now: () -> Double
@@ -81,6 +84,8 @@ extension LedgerStore {
         return (try snapshotData(), items().count, checked)
     }
 
+    /// True when the incoming ledger takes away something this one holds: a lowered or cleared
+    /// count, a live envelope that is gone or tombstoned, a stamp whose kind is gone or "".
     func removes(_ incoming: [String: Any]) -> Bool {
         let inRec = (incoming["received"] as? [String: Any] ?? [:]).compactMapValues { ($0 as? NSNumber)?.intValue }
         for (k, n) in received() where (inRec[k] ?? 0) < n { return true }
@@ -96,6 +101,7 @@ extension LedgerStore {
         return false
     }
 
+    /// The milestone comes first: if it cannot be saved, nothing is cleared.
     public func reset() throws {
         let (bytes, lines, checked) = try heldBytes()
         if let v = versions { try v.put(bytes, label: "before reset", kind: "milestone", lines: lines, checked: checked) }
@@ -106,6 +112,8 @@ extension LedgerStore {
         do { try save() } catch { (doc, generation, loaded) = (oldDoc, oldGen, oldLoaded); throw error }
     }
 
+    /// Refuses a version that is not a ledger before it spends a milestone slot, then applies it
+    /// through adoptRaw, the path a server reply takes (every-restore-passes-applybackup).
     public func restore(_ id: String) throws {
         guard let v = versions else { throw VersionError.unreadable(id) }
         let bytes: Data
