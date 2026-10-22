@@ -36,6 +36,7 @@
 //   -ManifestUITestCorruptVersion (new)  after the seed, the version store holds one milestone
 //                        labelled "before import" whose bytes are {"mailday":2,"items":[]}.
 // After a reset or a restore every tab reads the new ledger (the masthead cards cell is re-read).
+// An empty ledger draws no tally cells, so after a reset the cards cell is absent and reads "0/0".
 //
 // Every key here is fake. The tests read no Keychain item.
 
@@ -78,10 +79,14 @@ final class VersionsUITests: XCTestCase {
         return found
     }
 
-    /// The masthead's cards cell on Packages, as "received/total".
+    /// The masthead's cards cell on Packages, as "received/total". An empty ledger draws no tally
+    /// cells (MastheadView), so with the masthead on screen and the cell absent the ledger holds
+    /// no cards and the cell reads "0/0". A missing masthead still fails.
     func mastheadCards(_ app: XCUIApplication) throws -> String? {
         app.tabBars.buttons["Packages"].tap()
-        return try need(app, "tally-cards").value as? String
+        _ = try need(app, "masthead")
+        let cards = el(app, "tally-cards")
+        return cards.waitForExistence(timeout: 5) ? cards.value as? String : "0/0"
     }
 
     func waitFor(_ found: XCUIElement, _ format: String, _ arg: String, _ what: String) {
