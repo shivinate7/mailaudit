@@ -2,11 +2,15 @@
 
 This file holds where the icon assets live, where the master and the generator sit, and the exact export commands. Read it before touching any icon file.
 
-**Holds while:** `build.mjs` links the three icon files with relative `href` values. `icon/gen-icon.py` defines `favicon_svg()`.
+**Holds while:** `build.mjs` links the three icon files with relative `href` values. `icon/gen-icon.py` defines `favicon_svg()`. `native/project.yml` names the `AppIcon` set.
 
 ## Where the icon files live
 
 `apple-touch-icon.png` (180×180), `favicon.svg` and `icon-32.png` are committed at the repo root. The `<link>` tags in the `build.mjs` head template reference them. The 1024 master and the generator live in `icon/`. Running `python3 icon/gen-icon.py` rewrites both the master SVG and `favicon.svg`. That file's docstring has the exact Chrome and `sips` commands to re-export the PNGs. The generator uses only the standard library. It never runs during build or test.
+
+## The native app icon
+
+The iOS app holds one icon: `native/Manifest/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png`. It is a single 1024×1024 universal iOS icon, opaque, with no alpha. It is the master `icon/apple-touch-icon.svg` exported at full size with the Chrome command in `gen-icon.py`. It is not the favicon drawing. `native/project.yml` sets `ASSETCATALOG_COMPILER_APPICON_NAME` to `AppIcon`. Xcode derives every smaller size at build time. Without the catalog the archive has no `Assets.car` and no `CFBundleIconName`, and App Store Connect rejects the upload. After a `make archive`, check that the app in the archive holds `Assets.car` and that `plutil -p Info.plist` shows `CFBundleIconName` as `AppIcon`. Re-export the PNG when the master changes. The `sips` step does not apply.
 
 ## The favicon is a different drawing
 

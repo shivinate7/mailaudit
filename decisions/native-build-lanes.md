@@ -28,10 +28,9 @@ Plan: decisions/native-build-lanes.md#still-open (native)
 | W3c, not briefed | Not briefed. No scope is recorded here. | Not yet briefed. | Not yet briefed. | Not yet briefed. |
 | W3d, not briefed | Not briefed. No scope is recorded here. | Not yet briefed. | Not yet briefed. | Not yet briefed. |
 | W3e, not briefed | Not briefed. No scope is recorded here. | Not yet briefed. | Not yet briefed. | Not yet briefed. |
-| N4a Sync over HTTP | the sync client, a stub URL protocol | The Bearer header. The `{ledger}` body. The generation rule. A 401 stops calls. The 413 line. A 404 seeds by POST. A timeout reads as unknown. Backoff. Stop cancels an in-flight push or pull. | ST | N2 (landed), N3 (landed), W1 (landed), the stage 4b switch |
 | N4b Socket, press gate, resume | the sync client socket | A rev that is not newer gives no GET. A newer rev with a changed ledger POSTs. A reply holds while a press is down and for `PRESS_TAIL_MS` after it (`pressHeld`), and hover and scroll never hold it. A cold reply applies at once after a key save. Resume does one GET. | ST | N4a |
 | N9 Milestones | the versions code | A milestone is saved before a reset and before an apply that removes something. The prune equals `keptIds`. The list shows each milestone, and a restore takes a milestone first and passes the same apply path. Errors show in the pressed row. The reset ask names its count and has Cancel. | ST | N4a |
-| N11 Device check | none | The owner checks on a device. The ios-adblock phone-apps list gets the new entry. The hand checks are named: VoiceOver order, Dynamic Type, the draft kept when the app leaves, and the iPhone Camera opening a `manifestledger://` QR code (see `native-key-via-url-scheme`). If the Camera fails the scheme, the universal-link fallback in that record is built. | the owner | all |
+| N11 Device check | none | The owner checks on a device. The build comes from TestFlight, see `native-ships-via-testflight`. The hand checks are named: VoiceOver order, Dynamic Type, the draft kept when the app leaves, and the iPhone Camera opening a `manifestledger://` QR code (see `native-key-via-url-scheme`). If the Camera fails the scheme, the universal-link fallback in that record is built. | the owner | all, and the TestFlight app record (`testflight-app-record-missing`) |
 | C2 UI tests in CI, not built | The native job in `.github/workflows/test.yml` | Not yet briefed. The N5 UI test in `native/ManifestUITests/PackagesShellUITests.swift` already exists. | The native job runs the steps in `native-ci-on-hosted-macos` after ST, green on a hosted macOS runner, with a new timeout. | C1 (landed), N5 (landed) |
 
 W2 and W3 come from the owner's rulings, not from the first plan. W2a and W3a have landed. Their tests are groups 12 and 13 in `worker/core.test.mjs`. W2b, W3b, W3c, W3d and W3e have no full brief, so their files, tests and done checks are not set.
@@ -139,3 +138,4 @@ Other risks live in the record for their lane:
 - `one-simulator-per-mac` — the lock that every lane takes before it uses the simulator.
 - `rules-run-in-javascriptcore` — why S2, S3 and N1 exist.
 - `worker-keeps-snapshots` — the ruling behind lane W3.
+- `native-ships-via-testflight` — how a native build reaches the phone for lane N11.

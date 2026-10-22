@@ -5,3 +5,4 @@ dist-bundle.js
 .claude/worktrees/
 native/ManifestKit/.build/
 native/*.xcodeproj
+native/build/
