@@ -1,6 +1,6 @@
 # Test suite assertion count and run time
 
-**Status:** measured 2026-10-21 on `batch/web-three`, the merge of lanes `web/sync-latency` and `web/order-id-copy`: 1567 passed, 0 failed, exit 0, 205.7 s, in America/Chicago (the machine zone); the New York run inside check:docs also passed. Not re-measured under UTC. The count is the sum of the lanes: 1534 on `web/sync-latency` plus 33 for group 76 (the package header's id link, selection and chevron). Earlier figures are in git.
+**Status:** measured 2026-10-21 on `batch/native-seven`, the merge of the native lanes onto `batch/web-three`: 1567 passed, 0 failed, exit 0, 183.5 s, in America/Chicago (the machine zone). The native lanes add no test to `test/app.test.mjs`, so the count is the web batch's: 1534 on `web/sync-latency` plus 33 for group 76 (the package header's id link, selection and chevron). The New York run inside check:docs also passed (a first check:docs run failed 49.C4 while a second suite and a Swift build ran beside it; run alone, it passed). Not re-measured under UTC. Earlier figures are in git.
 
 This record holds the assertion count and the run time for `npm test`. The suite runs 1567 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
