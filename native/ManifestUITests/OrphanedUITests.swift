@@ -234,12 +234,39 @@ final class OrphanedUITests: XCTestCase {
     // MARK: accessibility and hit regions
 
     /// The audit runs on a view only the real Orphaned view has: first the composer, then an envelope with a tie.
+    /// The empty composer's Save is disabled, and WCAG 1.4.3 exempts inactive components, so only a contrast
+    /// issue on a disabled element is skipped. Every other issue, and any enabled element's contrast, still fails.
     func testAccessibilityAuditOrphanedComposer() throws {
         let app = launch()
         openOrphaned(app)
         el(app, "orphaned-record").tap()
         XCTAssertTrue(el(app, "orphaned-input").waitForExistence(timeout: 5), "the composer did not open before the audit")
+        try app.performAccessibilityAudit { issue in
+            issue.auditType == .contrast && issue.element?.isEnabled == false
+        }
+    }
+
+    /// The ready composer: a card is added, so Save is enabled and its contrast is audited like any control.
+    /// No issue is skipped here, so nothing in this state is exempt.
+    func testAccessibilityAuditOrphanedComposerReady() throws {
+        let app = launch()
+        openOrphaned(app)
+        el(app, "orphaned-record").tap()
+        addCard(app, typed: "urza", name: "Urza's Saga")
+        XCTAssertTrue(el(app, "orphaned-save").isEnabled, "a card is added but Save is still disabled before the audit")
         try app.performAccessibilityAudit()
+    }
+
+    /// Save reports its real state to VoiceOver: disabled while the composer holds no card, enabled once it does.
+    func testSaveReportsDisabledUntilACardIsAdded() throws {
+        let app = launch()
+        openOrphaned(app)
+        el(app, "orphaned-record").tap()
+        let save = el(app, "orphaned-save")
+        XCTAssertTrue(save.waitForExistence(timeout: 5), "the composer has no Save")
+        XCTAssertFalse(save.isEnabled, "the empty composer's Save reports enabled")
+        addCard(app, typed: "urza", name: "Urza's Saga")
+        XCTAssertTrue(save.isEnabled, "Save still reports disabled after a card was added")
     }
 
     func testAccessibilityAuditOrphanedEnvelopeWithATie() throws {
