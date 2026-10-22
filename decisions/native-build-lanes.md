@@ -94,6 +94,10 @@ Proof: BackupExportTests, MastheadModelTests and MastheadMotionTests run under S
   - PhotoViewerModelTests pins the modal state, and the focus that Escape and a tap return.
 - The SwiftUI viewer traits and the Stop control have no test, see `native-photo-viewer-unpinned`.
 
+## N7 notes
+
+- Owner ruling, 2026-10-21 22:02 CDT ("Fix test and button"): the composer contrast audit was a bad test. The full audit failed the disabled Save at 9.37:1 and never audited the ready Save, which was black on blue at 2.99:1. The ready Save is now white on `Color.action` (7.03:1). The empty Save keeps the system disabled look and reports Disabled to VoiceOver. `OrphanedUITests` skips contrast issues on disabled elements only, as WCAG 1.4.3 exempts inactive components, and audits the ready state. The evidence is the 2026-10-21 contrast judge run.
+
 ## Risk
 
 S2 and S3 (landed) changed `src/app.jsx`, the largest file in the repo. The sticky rows and the frozen sort must stay in the component, see `no-layout-shift-under-pointer`.
