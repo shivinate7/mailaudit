@@ -54,7 +54,8 @@ Lane W1 (PR #61) made the POST reply carry `stats` from `mergeLedger`. The clien
 
 ## Still open
 
-- The wording of the 401 line and the 413 line is not ruled. `SyncLine` holds placeholder text. `SyncLineTests` pins that each failure has its own line, that no other code has one, and that neither line names GitHub. The web wording is `syncSays` in `src/app.jsx`.
+- The wording of the 401 line and the 413 line is the web's `syncSays` in `src/app.jsx`, minus " — tap to fix". The minus is a builder default for parity, not an owner ruling: the native line has no tap target until `native-ledger-tab-unbuilt` is closed. `SyncLineTests` pins that each failure has its own line, that no other code has one, and that neither line names GitHub.
+- A local save arms one POST timer of `SYNC_POST_MS` (read from the rules bundle) in `SyncClient`, as the web does: later saves in the burst do not move it, a fire leaves it free to arm again, and `stop()` cancels it. A load, an adopted reply and a restore arm nothing (`sync-runs-itself`).
 - Which module holds the wording of the native merge notice is not ruled. The wording is `mergeSummary` in `src/merge-rules.mjs`, and native never loads that file. The rules bundle must either carry the function or the Worker must send the text. Debt: `native-merge-notice-unbuilt`.
 
 ## See also

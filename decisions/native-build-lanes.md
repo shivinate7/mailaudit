@@ -101,7 +101,7 @@ Test-author and builder defaults of 2026-10-22, not owner rulings:
 - A launch with `-ManifestUITestSeed` and no `-ManifestUITestSyncStatus` builds no client, so the other UI tests stay off the network.
 - The press gate re-checks every 250 ms, a Swift constant (`PressGate.recheckMs`).
 - The Worker URL in `native/Manifest/ManifestApp.swift` is a second copy of `SYNC_URL` in `src/entry.jsx`. No reason for the copy is recorded, and the owner has not ruled on it.
-- `SyncLine` holds placeholder wording, see `native-reply-waits-generation`.
+- `SyncLine` holds the web wording minus " — tap to fix", see `native-reply-waits-generation`.
 - Mutants of the test-author's oracle that stayed alive: a boolean accepted as a rev, a base URL with a path, and an unreadable photo store on `.sync`. Each is equivalent or unpinned by choice.
 
 Proof: the N4b classes run under ST, and `SyncAdvisoryUITests` is the UI test, in `native/ManifestUITests/SyncAdvisoryUITests.swift`. The list is under Pinned by in `native-reply-waits-generation`.

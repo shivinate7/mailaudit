@@ -53,6 +53,9 @@ public final class SyncClient {
     /// The newest rev heard while a call was out. One GET follows that call if its reply is older.
     private var heardRev = 0
     private var socketTask: Task<Void, Never>?
+    /// The POST timer. Set at the first local save of a burst and not moved by later ones; nil once it
+    /// fires (sync-runs-itself, auto-apply-happens-now).
+    private var postTask: Task<Void, Never>?
 
     public init(
         baseURL: URL, session: URLSession, keys: KeyStore, store: LedgerStore,
@@ -63,6 +66,21 @@ public final class SyncClient {
         self.store = store
         self.engine = engine
         self.sleep = sleep
+        store.onLocalSave = { [weak self] in Task { @MainActor in self?.armPost() } }
+    }
+
+    /// SYNC_POST_MS after a local save, one POST. A save while the timer waits does not move it. If
+    /// the constant cannot be read, no timer runs and the next foreground or {rev} frame uploads.
+    private func armPost() {
+        guard postTask == nil else { return }
+        postTask = Task { [self] in
+            guard let ms = (try? await engine.constant("SYNC_POST_MS")).flatMap({ Int($0) }) else { postTask = nil; return }
+            await sleep(ms)
+            // A stop() cancelled this timer, and a newer one may hold postTask now.
+            if Task.isCancelled { return }
+            postTask = nil
+            _ = await push()
+        }
     }
 
     // MARK: calls
@@ -78,13 +96,15 @@ public final class SyncClient {
         return await run { await $0.postFlow(retry: false, cold: false) }
     }
 
-    /// Cancels every call in flight, the pending retry and the socket. A stop is not a failure.
+    /// Cancels every call in flight, the pending retry, the POST timer and the socket. A stop is not a failure.
     /// A later connect() or call starts again.
     public func stop() {
         for t in inflight.values { t.cancel() }
         cancelRetry()
         socketTask?.cancel()
         socketTask = nil
+        postTask?.cancel()
+        postTask = nil
     }
 
     /// A key was saved (KeyIntake .stored). It lifts the 401 stop even for the same key, as the web's
