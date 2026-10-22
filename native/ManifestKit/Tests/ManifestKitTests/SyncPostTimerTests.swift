@@ -2,9 +2,8 @@
 //
 // The owner's goal is a check-in on the phone that shows on the Mac within seconds. The web POSTs
 // SYNC_POST_MS after a change. The timer arms once per burst: a change while it waits does not move
-// it, and a fire leaves it free to arm again (web tests 75.9 and 75.10). Native has no such timer:
-// nothing in the app calls push(), so a check-in uploads only on the next foreground, a {rev} frame
-// or a key save.
+// it, and a fire leaves it free to arm again (web tests 75.9 and 75.10). Native needs the same timer.
+// Without it a check-in uploads only on the next foreground, a {rev} frame or a key save.
 //
 // Red-first. No new type is named; the contract is on the types that exist:
 // - A SyncClient built with a store watches that store's local saves from then on. No call arms it,
@@ -56,6 +55,7 @@ final class SyncPostTimerTests: SyncTestCase {
         try store.commitReceived(Self.keyA, count: 1)
         guard await armed("a local check-in arms the POST timer") else { return }
         XCTAssertEqual(gate.delays, [1234], "one timer, and its delay comes from the bundle")
+        await settle()
         XCTAssertEqual(net.requests.count, 0, "nothing leaves before the timer returns")
 
         gate.release()
@@ -115,6 +115,7 @@ final class SyncPostTimerTests: SyncTestCase {
         try store.commitReceived(Self.keyB, count: 1)
         guard await armed("a check-in after the fire arms a new timer", count: 2) else { return }
         XCTAssertEqual(gate.delays, [post, post])
+        await settle()
         XCTAssertEqual(net.requests.count, 1, "the second POST waits for its timer")
         gate.release()
         let out = await net.waitForRequests(2)
@@ -176,7 +177,8 @@ final class SyncPostTimerTests: SyncTestCase {
     }
 
     // stop() cancels a timer that is waiting. The sleep is released after the stop, as a timer that
-    // ran out would be; a timer the stop did not cancel POSTs then, with no reply queued.
+    // ran out would be. One reply is queued and a push follows as a fence: a timer the stop did not
+    // cancel POSTs first and takes that reply, so the push is a stray and the request count is 2.
     func testStopCancelsAPendingPost() async throws {
         let store = try makeStore()
         let client = try makeClient(store)
@@ -184,9 +186,12 @@ final class SyncPostTimerTests: SyncTestCase {
         guard await armed("the check-in arms the POST timer") else { return }
 
         client.stop()
+        net.enqueue(ok(try ledger(received: [Self.keyA: 1])))
         gate.release()
+        let pushed = await client.push()
+        XCTAssertEqual(pushed, .applied, "the push got the one queued reply")
         await settle()
-        XCTAssertEqual(net.requests.count, 0, "the stop cancelled the pending POST")
+        XCTAssertEqual(net.requests.count, 1, "the stop cancelled the pending POST: only the push left")
         XCTAssertEqual(net.strays, 0)
         XCTAssertNil(client.advisory, "a stop is not a failure")
         XCTAssertNil(client.retryInMs, "a stop schedules no retry")
