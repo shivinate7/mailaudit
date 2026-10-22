@@ -6,16 +6,18 @@ public final class LedgerStore {
     let fileURL: URL  // internal, for Backup.swift
     let now: () -> Double
     private let rulesURL: URL?
+    let versions: VersionStore?
     var doc: [String: Any] = [:]
     var loaded = false
-    public private(set) var generation = 0
+    public internal(set) var generation = 0
     /// Entries the last load dropped from a damaged field; 0 when nothing was damaged.
     public private(set) var droppedCount = 0
 
     /// The app passes the rules.js it ships. Without one, the package resource is used
     /// (tests); Bundle.module traps if that resource is missing.
-    public init(fileURL: URL, now: @escaping () -> Double, rulesURL: URL? = nil) {
+    public init(fileURL: URL, now: @escaping () -> Double, rulesURL: URL? = nil, versions: VersionStore? = nil) {
         self.fileURL = fileURL
+        self.versions = versions
         self.rulesURL = rulesURL
         self.now = now
     }
@@ -31,6 +33,18 @@ public final class LedgerStore {
     /// Takes a server ledger the way a load takes the file: the mend, the kept copy, then a
     /// save. If any step fails, the store goes back to what it was (native-ledger-is-raw-json).
     public func adopt(_ ledger: Data) throws {
+        if let v = versions, loaded {
+            guard let obj = try JSONSerialization.jsonObject(with: ledger) as? [String: Any] else { throw CocoaError(.fileReadCorruptFile) }
+            if let m = obj["mailday"], (m as? Int) != 1 { throw CocoaError(.fileReadCorruptFile) }
+            if removes(obj) {
+                let (bytes, lines, checked) = try heldBytes()
+                try v.put(bytes, label: "before sync", kind: "milestone", lines: lines, checked: checked)
+            }
+        }
+        try adoptRaw(ledger)
+    }
+
+    func adoptRaw(_ ledger: Data) throws {
         let (oldDoc, oldGen, oldDropped, oldLoaded) = (doc, generation, droppedCount, loaded)
         do {
             try ingest(ledger)
