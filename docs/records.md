@@ -20,6 +20,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-files-are-frozen` | Kind: process | [`decisions/native-files-are-frozen.md`](../decisions/native-files-are-frozen.md) |
 | `newer-features-test-proof-only` | Kind: process | [`decisions/newer-features-test-proof-only.md`](../decisions/newer-features-test-proof-only.md) |
 | `older-versions-come-off-branch` | Every push before the switch created a commit, so the frozen `data` branch holds a full archive of past ledgers. | [`decisions/older-versions-come-off-branch.md`](../decisions/older-versions-come-off-branch.md) |
+| `one-simulator-per-mac` | Kind: process | [`decisions/one-simulator-per-mac.md`](../decisions/one-simulator-per-mac.md) |
 | `peek-is-three-valued` | **Status:** retired 2026-10-14. | [`decisions/peek-is-three-valued.md`](../decisions/peek-is-three-valued.md) |
 | `photo-branch-must-preexist` | Photos lived on the `main` branch of `mailaudit-data`, in `photos/`. | [`decisions/photo-branch-must-preexist.md`](../decisions/photo-branch-must-preexist.md) |
 | `photo-errors-never-hit-pushstate` | Kind: process | [`decisions/photo-errors-never-hit-pushstate.md`](../decisions/photo-errors-never-hit-pushstate.md) |
@@ -53,6 +54,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `ci-skips-draft-prs` | Kind: build | [`decisions/ci-skips-draft-prs.md`](../decisions/ci-skips-draft-prs.md) |
 | `ledger-remote-needed-for-seed` | Kind: build | [`decisions/ledger-remote-needed-for-seed.md`](../decisions/ledger-remote-needed-for-seed.md) |
 | `live-verification` | This file draws the line between proven and unproven. | [`decisions/live-verification.md`](../decisions/live-verification.md) |
+| `masthead-tallies-unequal-thirds` | The tallies are three ruled cells: cards, packages, and value. | [`decisions/masthead-tallies-unequal-thirds.md`](../decisions/masthead-tallies-unequal-thirds.md) |
 | `merge-later-change-wins` | Kind: build | [`decisions/merge-later-change-wins.md`](../decisions/merge-later-change-wins.md) |
 | `motion-disclosure-panels-arrive` | A disclosure panel overlays the list. | [`decisions/motion-disclosure-panels-arrive.md`](../decisions/motion-disclosure-panels-arrive.md) |
 | `native-build-lanes` | **Status:** ruled. | [`decisions/native-build-lanes.md`](../decisions/native-build-lanes.md) |
@@ -60,10 +62,12 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-key-via-url-scheme` | **Status:** ruled. | [`decisions/native-key-via-url-scheme.md`](../decisions/native-key-via-url-scheme.md) |
 | `native-ledger-is-raw-json` | Kind: build | [`decisions/native-ledger-is-raw-json.md`](../decisions/native-ledger-is-raw-json.md) |
 | `native-parity-table` | Kind: build | [`decisions/native-parity-table.md`](../decisions/native-parity-table.md) |
-| `native-reply-waits-generation` | **Status:** ruled. | [`decisions/native-reply-waits-generation.md`](../decisions/native-reply-waits-generation.md) |
+| `native-reply-waits-generation` | Kind: build | [`decisions/native-reply-waits-generation.md`](../decisions/native-reply-waits-generation.md) |
+| `native-ships-via-testflight` | The MANIFEST iOS app reaches the owner's phone through TestFlight. | [`decisions/native-ships-via-testflight.md`](../decisions/native-ships-via-testflight.md) |
 | `native-swift-rebuild` | Kind: build | [`decisions/native-swift-rebuild.md`](../decisions/native-swift-rebuild.md) |
 | `order-id-button-stops-propagate` | The order-id button in Tally stops its click from reaching the row underneath. | [`decisions/order-id-button-stops-propagate.md`](../decisions/order-id-button-stops-propagate.md) |
 | `orphan-entry-takes-one-input` | The Orphaned view records an envelope from one input. | [`decisions/orphan-entry-takes-one-input.md`](../decisions/orphan-entry-takes-one-input.md) |
+| `phone-nav-is-bottom-bar` | The owner ruled on 2026-10-11: "bottom bar D is gorgeous! | [`decisions/phone-nav-is-bottom-bar.md`](../decisions/phone-nav-is-bottom-bar.md) |
 | `photo-ids-restore-keep-if-known` | Owner ruling 2026-10-15 21:25 CDT. | [`decisions/photo-ids-restore-keep-if-known.md`](../decisions/photo-ids-restore-keep-if-known.md) |
 | `photo-ids-unreadable-local` | An unreadable local photo store keeps every id, exactly as an unreadable remote one does. | [`decisions/photo-ids-unreadable-local.md`](../decisions/photo-ids-unreadable-local.md) |
 | `photos-in-git-are-permanent` | **Status:** open. | [`decisions/photos-in-git-are-permanent.md`](../decisions/photos-in-git-are-permanent.md) |
@@ -141,7 +145,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `masthead-running-head-sticky` | The slim running head is `position: sticky` with a fixed height. | [`decisions/masthead-running-head-sticky.md`](../decisions/masthead-running-head-sticky.md) |
 | `masthead-save-slot-reserved` | The tally footer holds `N packages · autosaves`, the exact `N still missing · $X`, and the debounced save indicator. | [`decisions/masthead-save-slot-reserved.md`](../decisions/masthead-save-slot-reserved.md) |
 | `masthead-sizing-by-clamp` | Every size in the masthead is set with `clamp()`. | [`decisions/masthead-sizing-by-clamp.md`](../decisions/masthead-sizing-by-clamp.md) |
-| `masthead-tallies-unequal-thirds` | The tallies are three ruled cells: cards, packages, and value. | [`decisions/masthead-tallies-unequal-thirds.md`](../decisions/masthead-tallies-unequal-thirds.md) |
 | `max-cannot-express-an-uncheck` | **Status:** closed, by the `receivedAt` change (`sync-revamp-cloudflare`). | [`decisions/max-cannot-express-an-uncheck.md`](../decisions/max-cannot-express-an-uncheck.md) |
 | `merge-is-the-primary-sync-action` | **Status:** retired 2026-10-12. | [`decisions/merge-is-the-primary-sync-action.md`](../decisions/merge-is-the-primary-sync-action.md) |
 | `merge-readopts-sync-generation` | `applyBackup` increments `syncGen`. | [`decisions/merge-readopts-sync-generation.md`](../decisions/merge-readopts-sync-generation.md) |
@@ -178,7 +181,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `palette-silver-stays-cool` | The `silver` token was chosen on looks, not on legibility. | [`decisions/palette-silver-stays-cool.md`](../decisions/palette-silver-stays-cool.md) |
 | `palette-theme-color-tracks-paper` | The `theme-color` value in `build.mjs` and the `<style>` page background both track the `paper` token (`#F2E9DA`). | [`decisions/palette-theme-color-tracks-paper.md`](../decisions/palette-theme-color-tracks-paper.md) |
 | `palette-tokens-contrast-floor` | The app defines one fixed set of color tokens, each with a named role. | [`decisions/palette-tokens-contrast-floor.md`](../decisions/palette-tokens-contrast-floor.md) |
-| `phone-nav-is-bottom-bar` | The owner ruled on 2026-10-11: "bottom bar D is gorgeous! | [`decisions/phone-nav-is-bottom-bar.md`](../decisions/phone-nav-is-bottom-bar.md) |
 | `photo-rules-fails-quietly` | The photo-sync rules live in `src/photo-rules.mjs`. | [`decisions/photo-rules-fails-quietly.md`](../decisions/photo-rules-fails-quietly.md) |
 | `photo-sweep-two-guards` | The photo sweep deletes blobs that no envelope or draft references. | [`decisions/photo-sweep-two-guards.md`](../decisions/photo-sweep-two-guards.md) |
 | `photo-sync-cannot-conflict` | Photo sync is a set difference over ids. | [`decisions/photo-sync-cannot-conflict.md`](../decisions/photo-sync-cannot-conflict.md) |
@@ -261,20 +263,40 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `key-re-accepts-token-shape` | A GitHub token uses only letters, digits and underscores, so the key check accepts a token as a key. | [`debts/key-re-accepts-token-shape.md`](../debts/key-re-accepts-token-shape.md) |
 | `lost-photo-clock-is-envelope-age` | The 7-day lost-photo clock runs from the envelope's `createdAt`. | [`debts/lost-photo-clock-is-envelope-age.md`](../debts/lost-photo-clock-is-envelope-age.md) |
 | `lost-tile-waits-for-first-post` | The lost tile shows only after the push survey that follows a successful POST. | [`debts/lost-tile-waits-for-first-post.md`](../debts/lost-tile-waits-for-first-post.md) |
-| `n10-photos-unbuilt` | Lane N10 is ruled in `native-build-lanes`, and it is not built. | [`debts/n10-photos-unbuilt.md`](../debts/n10-photos-unbuilt.md) |
 | `n11-device-check-not-run` | Lane N11 is the owner's check on a device, as ruled in `native-build-lanes`, and it has not run. | [`debts/n11-device-check-not-run.md`](../debts/n11-device-check-not-run.md) |
-| `n4a-sync-over-http-unbuilt` | No sync source exists under `native/` on main. | [`debts/n4a-sync-over-http-unbuilt.md`](../debts/n4a-sync-over-http-unbuilt.md) |
 | `n4b-socket-idle-gate-unbuilt` | Lane N4b is ruled in `native-build-lanes`, and it is not built. | [`debts/n4b-socket-idle-gate-unbuilt.md`](../debts/n4b-socket-idle-gate-unbuilt.md) |
+| `native-backup-has-no-photos` | `LedgerStore.backup()` exports the ledger document only, and `LedgerTab` offers one Backup row. | [`debts/native-backup-has-no-photos.md`](../debts/native-backup-has-no-photos.md) |
+| `native-backup-ui-unpinned` | `MastheadBackupUITests` checks that the Backup row is a 44pt button and runs an accessibility audit on the Ledger tab. | [`debts/native-backup-ui-unpinned.md`](../debts/native-backup-ui-unpinned.md) |
+| `native-backup-web-restore-unrun` | The web app is the only restore path for a backup file (`native-parity-table`). | [`debts/native-backup-web-restore-unrun.md`](../debts/native-backup-web-restore-unrun.md) |
+| `native-compose-is-one-fade` | `MastheadView` animates the seal, the rules, the title and the tallies together, in one ease-out of 1.06 seconds. | [`debts/native-compose-is-one-fade.md`](../debts/native-compose-is-one-fade.md) |
 | `native-dialog-ban-unpinned` | Nothing pins the ban on `window.confirm` and `alert` itself. | [`debts/native-dialog-ban-unpinned.md`](../debts/native-dialog-ban-unpinned.md) |
+| `native-discard-arm-unpinned` | No test pins the native Discard ask. | [`debts/native-discard-arm-unpinned.md`](../debts/native-discard-arm-unpinned.md) |
+| `native-envelope-has-no-photos` | The native Orphaned view shows no photo and has no capture control. | [`debts/native-envelope-has-no-photos.md`](../debts/native-envelope-has-no-photos.md) |
+| `native-filters-tally-only` | Lane N6 built search, hide-received and the six sort keys on the Tally view only. | [`debts/native-filters-tally-only.md`](../debts/native-filters-tally-only.md) |
 | `native-job-hosted-time-unmeasured` | The 8 to 15 minute estimate for the full native job is unmeasured. | [`debts/native-job-hosted-time-unmeasured.md`](../debts/native-job-hosted-time-unmeasured.md) |
 | `native-kept-copy-has-no-route` | No native view opens the kept copy, and no lane records a route to it. | [`debts/native-kept-copy-has-no-route.md`](../debts/native-kept-copy-has-no-route.md) |
-| `native-key-scan-skips-views` | No lane scans SwiftUI view state. | [`debts/native-key-scan-skips-views.md`](../debts/native-key-scan-skips-views.md) |
-| `native-lanes-n6-to-n9-unbuilt` | `native/` holds no Tally, Orphaned, backup or milestone view on main. | [`debts/native-lanes-n6-to-n9-unbuilt.md`](../debts/native-lanes-n6-to-n9-unbuilt.md) |
+| `native-key-scan-skips-views` | No lane scans SwiftUI view state, such as `@State` in a view. | [`debts/native-key-scan-skips-views.md`](../debts/native-key-scan-skips-views.md) |
+| `native-lanes-n6-to-n9-unbuilt` | `native/` holds no milestone view on main. | [`debts/native-lanes-n6-to-n9-unbuilt.md`](../debts/native-lanes-n6-to-n9-unbuilt.md) |
 | `native-ledger-pins-missing` | No test pins the millisecond kept-name format, the missing-file case, or the unwrapped-error sentence in Load and save. | [`debts/native-ledger-pins-missing.md`](../debts/native-ledger-pins-missing.md) |
-| `native-ledger-tab-unbuilt` | No lane builds the options that `ledger-tab-holds-options` puts in the Ledger tab. | [`debts/native-ledger-tab-unbuilt.md`](../debts/native-ledger-tab-unbuilt.md) |
+| `native-ledger-tab-unbuilt` | Lane N8 built the Backup row in the Data group of `native/Manifest/LedgerTab.swift`. | [`debts/native-ledger-tab-unbuilt.md`](../debts/native-ledger-tab-unbuilt.md) |
+| `native-masthead-packages-only` | `PackagesView` draws the masthead. | [`debts/native-masthead-packages-only.md`](../debts/native-masthead-packages-only.md) |
+| `native-masthead-stale-after-tabs` | `MastheadModel.refresh()` runs at boot and after a Packages check-in, in `finished`. | [`debts/native-masthead-stale-after-tabs.md`](../debts/native-masthead-stale-after-tabs.md) |
+| `native-masthead-system-style` | `native/Manifest/MastheadView.swift` paints with system styles. | [`debts/native-masthead-system-style.md`](../debts/native-masthead-system-style.md) |
+| `native-merge-skips-photo-fetch` | `PhotoSync.pull` downloads the blobs that a ledger names, and it has no caller. | [`debts/native-merge-skips-photo-fetch.md`](../debts/native-merge-skips-photo-fetch.md) |
 | `native-order-id-link-unbuilt` | The owner ruled on 2026-10-21 that the native app gets the order id link and the selectable header, as the web app has them in the lane `web/order-id-copy`. | [`debts/native-order-id-link-unbuilt.md`](../debts/native-order-id-link-unbuilt.md) |
+| `native-orphaned-colours-unbuilt` | `native/Manifest/OrphanedView.swift` paints with system styles. | [`debts/native-orphaned-colours-unbuilt.md`](../debts/native-orphaned-colours-unbuilt.md) |
+| `native-photo-ids-kept-uncalled` | `PhotoIds.kept` holds the rule of `photo-ids-restore-keep-if-known`, and it has no caller. | [`debts/native-photo-ids-kept-uncalled.md`](../debts/native-photo-ids-kept-uncalled.md) |
+| `native-photo-screens-unwired` | Lane N10 built `PhotoStrip`, `PhotoViewer` and `PhotoSyncBar` in `native/Manifest/PhotoViews.swift`. | [`debts/native-photo-screens-unwired.md`](../debts/native-photo-screens-unwired.md) |
+| `native-photo-sweep-unbuilt` | Nothing on native removes a blob that no envelope or draft uses. | [`debts/native-photo-sweep-unbuilt.md`](../debts/native-photo-sweep-unbuilt.md) |
+| `native-photo-transport-unbuilt` | `PhotoSync` moves blobs through the `PhotoTransport` protocol, and no type implements it. | [`debts/native-photo-transport-unbuilt.md`](../debts/native-photo-transport-unbuilt.md) |
+| `native-photo-viewer-unpinned` | `PhotoViewerModelTests` pins the modal state and the focus that Escape and a tap return. | [`debts/native-photo-viewer-unpinned.md`](../debts/native-photo-viewer-unpinned.md) |
+| `native-pull-generation-unpinned` | `SyncClient` drops a GET reply when the store's generation changed, or when the user data differs from what the last reply carried. | [`debts/native-pull-generation-unpinned.md`](../debts/native-pull-generation-unpinned.md) |
 | `native-runner-image-unverified` | Whether the `macos-26` runner image has Xcode 27 and xcodegen is unknown. | [`debts/native-runner-image-unverified.md`](../debts/native-runner-image-unverified.md) |
 | `native-runner-keychain-unverified` | Whether the runner keychain is unlocked is unknown. | [`debts/native-runner-keychain-unverified.md`](../debts/native-runner-keychain-unverified.md) |
+| `native-sync-client-unwired` | Lane N4a built `SyncClient` in `native/ManifestKit`. | [`debts/native-sync-client-unwired.md`](../debts/native-sync-client-unwired.md) |
+| `native-sync-live-unrun` | Lane N4a's tests run `SyncClient` on a stub URL protocol, a fake Keychain and a sleep gate. | [`debts/native-sync-live-unrun.md`](../debts/native-sync-live-unrun.md) |
+| `native-tally-copy-no-stepper` | A native Tally copy shows its seller, date, set, finish, condition and order id, and one control. | [`debts/native-tally-copy-no-stepper.md`](../debts/native-tally-copy-no-stepper.md) |
+| `native-tally-counts-every-item` | `TallyModel` pools every item from `LedgerStore.items()` through `tallyGroups`. | [`debts/native-tally-counts-every-item.md`](../debts/native-tally-counts-every-item.md) |
 | `native-ui-tests-not-in-ci` | The native job runs the ST tests only, so native UI tests and builds are not in CI. | [`debts/native-ui-tests-not-in-ci.md`](../debts/native-ui-tests-not-in-ci.md) |
 | `order-id-visible-unbuilt` | The package header gives the order id its own line (built 2026-10-20). | [`debts/order-id-visible-unbuilt.md`](../debts/order-id-visible-unbuilt.md) |
 | `orphaned-reach-unpinned` | No test pins that Re-import, Backup and Reset must stay reachable from Orphaned, and it is unverified. | [`debts/orphaned-reach-unpinned.md`](../debts/orphaned-reach-unpinned.md) |
@@ -295,8 +317,8 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `sync-latency-after-fix-unmeasured` | No run of the probe covers lane web/sync-latency. | [`debts/sync-latency-after-fix-unmeasured.md`](../debts/sync-latency-after-fix-unmeasured.md) |
 | `tally-card-moves-at-320px` | At 320px the Tally card moves 14px on check-ins 1 and 6. | [`debts/tally-card-moves-at-320px.md`](../debts/tally-card-moves-at-320px.md) |
 | `tcgplayer-link-opens-history-list` | The order id link opens `orderhistory?SearchString=<id>`, the URL the owner gave on 2026-10-21 (`tcgplayerOrderUrl` encodes the id). | [`debts/tcgplayer-link-opens-history-list.md`](../debts/tcgplayer-link-opens-history-list.md) |
+| `testflight-app-record-missing` | App Store Connect has no app record for bundle id `dev.shivinate.manifest`. | [`debts/testflight-app-record-missing.md`](../debts/testflight-app-record-missing.md) |
 | `tests-33-35-40-45-cannot-fail` | Tests 33.35, 33.40 and 33.45 cannot fail on a plausible mutant. | [`debts/tests-33-35-40-45-cannot-fail.md`](../debts/tests-33-35-40-45-cannot-fail.md) |
-| `token-export-and-view-unpinned` | Nothing yet pins the native device key in the backup export or in SwiftUI view state. | [`debts/token-export-and-view-unpinned.md`](../debts/token-export-and-view-unpinned.md) |
 | `token-state-and-bundle-unpinned` | Nothing pins the React-state or bundle guarantees. | [`debts/token-state-and-bundle-unpinned.md`](../debts/token-state-and-bundle-unpinned.md) |
 | `type-floor-unbuilt` | Some labels are smaller than the 10px floor today. | [`debts/type-floor-unbuilt.md`](../debts/type-floor-unbuilt.md) |
 | `universal-link-unbuilt` | Neither the link handler nor the Worker route that serves the apple-app-site-association file exists. | [`debts/universal-link-unbuilt.md`](../debts/universal-link-unbuilt.md) |

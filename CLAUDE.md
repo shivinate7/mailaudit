@@ -121,6 +121,8 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-files-are-frozen` — Native file names freeze on first ship.
 - `native-ci-on-hosted-macos` — The native job runs on a hosted macOS runner.
 - `csv-import-stays-web` — CSV import stays on the web app.
+- `one-simulator-per-mac` — The Mac's CPU, disk and one simulator are shared.
+- `native-ships-via-testflight` — The iOS app ships through TestFlight.
 
 ## Envelope photos
 
@@ -326,7 +328,7 @@ Lessons this repo paid for. Each one came from a green suite that hid a real def
 A fact an agent needs, that argues nothing. Read the CSV record before touching the parser.
 
 - `assets-and-icons` — Icon files and how to export them.
-- `build-and-deploy` — Build, test and deploy commands.
+- `build-and-deploy` — Build, test and deploy commands, and `make testflight`.
 - `harness-boot-seeds-remote-late` — Boot seeds the remote after the mount.
 - `harness-drives-resume-by-event` — Drive a resume by event, not by waiting.
 - `harness-drives-the-controls` — Tests drive the controls by their labels.
@@ -366,8 +368,10 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `claim-9-fractional-box-edges` — Claim 9 can pass a box just under 44px.
 - `tally-card-moves-at-320px` — The Tally card moves 14px at 320px.
 - `native-ui-tests-not-in-ci` — Native UI tests and builds are not in CI.
-- `n4a-sync-over-http-unbuilt` — Lane N4a, sync over HTTP, is not built.
-- `native-lanes-n6-to-n9-unbuilt` — Native lanes N6 to N9 are not built.
+- `native-sync-client-unwired` — The native sync client has no caller and no screen.
+- `native-sync-live-unrun` — The native sync client has never run against the Worker.
+- `native-pull-generation-unpinned` — No test pins the generation check in a pull.
+- `native-lanes-n6-to-n9-unbuilt` — Native lane N9, milestones, is not built.
 - `native-kept-copy-has-no-route` — The native app has no route to the kept copy.
 - `key-re-accepts-token-shape` — The key check accepts a GitHub token's shape.
 - `tests-33-35-40-45-cannot-fail` — Tests 33.35, 33.40 and 33.45 cannot fail.
@@ -378,13 +382,25 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `reset-leaves-sync-unpinned` — No test pins that an armed Reset leaves Sync open.
 - `reset-all-keeps-token-unpinned` — No test pins that resetAll keeps the GitHub token.
 - `token-state-and-bundle-unpinned` — Nothing pins the token's React-state or bundle guarantees.
-- `token-export-and-view-unpinned` — Nothing pins the device key in the backup export or view state.
 - `reimport-received-unpinned` — Nothing pins that received survives a re-import.
 - `native-dialog-ban-unpinned` — Nothing pins the ban on native dialogs.
 - `ruled-head-heights-unremeasured` — The ruled head heights have not been re-measured.
 - `photo-put-unrun-on-github` — The GitHub photo PUT and pull have never run.
-- `native-ledger-tab-unbuilt` — The native Ledger tab is a placeholder.
+- `native-ledger-tab-unbuilt` — The native Ledger tab holds the Backup row only.
+- `native-tally-counts-every-item` — The native Tally counts every ledger item.
+- `native-filters-tally-only` — The native client has no date filter, package sort or Packages search.
+- `native-tally-copy-no-stepper` — The native Tally copy has a check-in toggle and nothing else.
+- `native-envelope-has-no-photos` — Native envelopes have no photos.
+- `native-orphaned-colours-unbuilt` — The native Orphaned view uses system colours.
+- `native-discard-arm-unpinned` — No test pins the native Discard arm.
 - `native-key-scan-skips-views` — The native key scan skips SwiftUI view state.
+- `native-masthead-packages-only` — The native masthead shows on Packages only.
+- `native-masthead-system-style` — The native masthead uses system styles.
+- `native-compose-is-one-fade` — The native letterhead composes in one fade.
+- `native-backup-has-no-photos` — Native Backup holds no photos.
+- `native-backup-ui-unpinned` — No UI test taps Backup.
+- `native-backup-web-restore-unrun` — No test restores a native backup file on the web.
+- `native-masthead-stale-after-tabs` — The native masthead and Packages go stale after another tab writes.
 - `draft-skip-required-unmeasured` — A required check on a draft-skipped job is unmeasured.
 - `recent-log-unbuilt` — The recent-actions log is not built.
 - `recent-log-unmeasured` — The recent-actions log has three measurements to take.
@@ -405,8 +421,14 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `native-runner-keychain-unverified` — Whether the hosted runner keychain is unlocked is unverified.
 - `native-job-hosted-time-unmeasured` — The native job's time on a hosted runner is unmeasured.
 - `n4b-socket-idle-gate-unbuilt` — Lane N4b, the socket, press gate and resume, is not built.
-- `n10-photos-unbuilt` — Lane N10, native photos, is not built.
+- `native-photo-transport-unbuilt` — No HTTP client carries native photos to the Worker.
+- `native-photo-screens-unwired` — No native screen shows a photo, and nothing takes one.
+- `native-photo-ids-kept-uncalled` — Nothing calls the native photo id rule.
+- `native-merge-skips-photo-fetch` — Nothing fetches native photos before an apply.
+- `native-photo-sweep-unbuilt` — The native client has no photo sweep.
+- `native-photo-viewer-unpinned` — No test pins the photo viewer's traits or the Stop control.
 - `n11-device-check-not-run` — The owner's native device check has not run.
+- `testflight-app-record-missing` — The TestFlight app record does not exist.
 - `web-photos-have-no-backup` — No Worker snapshot covers a web photo.
 - `web-reads-no-worker-snapshots` — Web History reads no Worker snapshot.
 - `cloudflare-access-login-untested` — A Cloudflare Access login in an iOS home-screen app is untested.
@@ -447,6 +469,7 @@ npm run check:docs     # do this file's numbers and paths hold?
 npm run check:records  # does the record corpus hold together?
 npm run deploy         # build, test, then open a pull request
 npm run serve          # a local server on :4173
+make testflight        # iOS: Release archive, then upload to TestFlight
 ```
 
 The steps and the traps live in `build-and-deploy`. Main moves by pull request

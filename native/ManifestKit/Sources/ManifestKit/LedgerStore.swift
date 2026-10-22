@@ -3,11 +3,11 @@ import Foundation
 /// Keeps ledger.json as raw JSON. An edit touches only `received`, `receivedAt`,
 /// `stamps` and `envelopes`; every other field passes through (native-ledger-is-raw-json).
 public final class LedgerStore {
-    private let fileURL: URL
-    private let now: () -> Double
+    let fileURL: URL  // internal, for Backup.swift
+    let now: () -> Double
     private let rulesURL: URL?
-    private var doc: [String: Any] = [:]
-    private var loaded = false
+    var doc: [String: Any] = [:]
+    var loaded = false
     public private(set) var generation = 0
     /// Entries the last load dropped from a damaged field; 0 when nothing was damaged.
     public private(set) var droppedCount = 0
@@ -23,7 +23,34 @@ public final class LedgerStore {
     public func load() throws {
         loaded = false
         droppedCount = 0
-        let data = try Data(contentsOf: fileURL)
+        try ingest(Data(contentsOf: fileURL))
+        // Save the mend now, so a relaunch reads it and makes no second copy.
+        if droppedCount > 0 { do { try save() } catch { loaded = false; throw error } }
+    }
+
+    /// Takes a server ledger the way a load takes the file: the mend, the kept copy, then a
+    /// save. If any step fails, the store goes back to what it was (native-ledger-is-raw-json).
+    public func adopt(_ ledger: Data) throws {
+        let (oldDoc, oldGen, oldDropped, oldLoaded) = (doc, generation, droppedCount, loaded)
+        do {
+            try ingest(ledger)
+            try save()
+            generation += 1
+        } catch {
+            (doc, generation, droppedCount, loaded) = (oldDoc, oldGen, oldDropped, oldLoaded)
+            throw error
+        }
+    }
+
+    /// The whole ledger, unknown fields included.
+    public func snapshot() -> [String: Any] { doc }
+
+    /// The four fields an edit touches. A sync client compares this with what a reply carried.
+    public func userData() -> [String: Any] {
+        doc.filter { ["received", "receivedAt", "stamps", "envelopes"].contains($0.key) }
+    }
+
+    private func ingest(_ data: Data) throws {
         guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw CocoaError(.fileReadCorruptFile)
         }
@@ -57,14 +84,11 @@ public final class LedgerStore {
         for k in ["received", "receivedAt", "stamps"] where doc[k] == nil { doc[k] = [String: Any]() }
         if doc["envelopes"] as? [[String: Any]] == nil { doc["envelopes"] = [[String: Any]]() }
         loaded = true
-        // Save the mend now, so a relaunch reads it and makes no second copy.
-        if dropped > 0 { do { try save() } catch { loaded = false; throw error } }
     }
 
     public func save() throws {
         guard loaded else { throw CocoaError(.fileReadCorruptFile) }
-        let data = try JSONSerialization.data(withJSONObject: doc, options: [.sortedKeys])
-        try data.write(to: fileURL, options: .atomic)
+        try snapshotData().write(to: fileURL, options: .atomic)
     }
 
     /// The raw `items` array, as the rules take it.
@@ -72,6 +96,9 @@ public final class LedgerStore {
 
     /// The `received` map, key to count.
     public func received() -> [String: Int] { (doc["received"] as? [String: Any] ?? [:]).compactMapValues { $0 as? Int } }
+
+    /// The raw `stamps` map, group key to stamp.
+    public func stamps() -> [String: [String: Any]] { (doc["stamps"] as? [String: Any] ?? [:]).compactMapValues { $0 as? [String: Any] } }
 
     /// count 0 is an un-check: drop `received`, stamp `receivedAt`.
     public func setReceived(_ key: String, count: Int) {
@@ -121,5 +148,67 @@ public final class LedgerStore {
         }
         doc["envelopes"] = list
         generation += 1
+    }
+
+    /// The store's clock, so a record written beside a check-in carries the same time.
+    func clock() -> Double { now() }
+
+    /// The raw `envelopes`, tombstones included, in file order.
+    func envelopeRecords() -> [[String: Any]] { doc["envelopes"] as? [[String: Any]] ?? [] }
+
+    /// Puts a new envelope record at the top of the pile.
+    func addEnvelope(_ record: [String: Any]) {
+        doc["envelopes"] = [record] + envelopeRecords()
+        generation += 1
+    }
+
+    /// Replaces the record with the same id where it stands, or puts it at the top.
+    func replaceEnvelope(_ record: [String: Any]) {
+        var list = envelopeRecords()
+        if let i = list.firstIndex(where: { ($0["id"] as? String) == (record["id"] as? String) }) { list[i] = record } else { list.insert(record, at: 0) }
+        doc["envelopes"] = list
+        generation += 1
+    }
+
+    /// Runs the edits, then saves once. If the save fails, every edit is undone,
+    /// the generation too. One assign touches three fields and may not land in part.
+    func commit(_ edits: () -> Void) throws {
+        let (oldDoc, oldGen) = (doc, generation)
+        edits()
+        do { try save() } catch { doc = oldDoc; generation = oldGen; throw error }
+    }
+}
+
+public enum LedgerEditError: Error, Equatable { case noLiveEnvelope(String) }
+
+/// Photo ids in the ledger. The blob never enters it (photos-stay-out-of-the-ledger).
+public extension LedgerStore {
+    /// Ids of live envelopes, each once, in envelope order. This is `referenced` for the photo plan.
+    func photoIDs() -> [String] {
+        var seen = Set<String>()
+        return liveEnvelopes().flatMap { $0["photos"] as? [String] ?? [] }.filter { seen.insert($0).inserted }
+    }
+
+    func hasLiveEnvelope(_ id: String) -> Bool { liveIndex(id) != nil }
+
+    /// Appends `id` to the live envelope's `photos` and sets its `updatedAt`, so a merge sees an edit.
+    /// If the save fails, the store goes back to what it was.
+    func commitPhoto(_ id: String, toEnvelope envelopeID: String) throws {
+        guard let i = liveIndex(envelopeID) else { throw LedgerEditError.noLiveEnvelope(envelopeID) }
+        let (oldDoc, oldGen) = (doc, generation)
+        var list = doc["envelopes"] as? [[String: Any]] ?? []
+        list[i]["photos"] = (list[i]["photos"] as? [String] ?? []) + [id]
+        list[i]["updatedAt"] = now()
+        doc["envelopes"] = list
+        generation += 1
+        do { try save() } catch { doc = oldDoc; generation = oldGen; throw error }
+    }
+
+    private func liveEnvelopes() -> [[String: Any]] {
+        (doc["envelopes"] as? [[String: Any]] ?? []).filter { $0["deletedAt"] == nil }
+    }
+
+    private func liveIndex(_ id: String) -> Int? {
+        (doc["envelopes"] as? [[String: Any]] ?? []).firstIndex { ($0["id"] as? String) == id && $0["deletedAt"] == nil }
     }
 }

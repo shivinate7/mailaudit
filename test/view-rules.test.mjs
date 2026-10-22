@@ -33,7 +33,19 @@
      toggleCount(got, qty) -> the count a check-in writes: 0 when the line is
                               already in (got >= qty), else qty
      countLabel(got, qty) -> "N of M" with N clamped to M, so "3 of 2" never shows
-     isDone(got, qty) -> true when got >= qty, the done state a row shows */
+     isDone(got, qty) -> true when got >= qty, the done state a row shows
+
+   Lane N6 pins one more (the native Tally row writes its dollar figures through
+   RulesEngine, and the web's money() in src/app.jsx calls the same rule, so the
+   two clients cannot round differently):
+     money(n) -> "$" + n with exactly two decimals, the thousands grouped, rounded
+                 half up on the decimal value the way toLocaleString does it:
+                 0.125 -> "$0.13", 1.005 -> "$1.01"
+
+   Lane N8 pins one more (the native masthead calls it through RulesEngine; it moves
+   here from src/app.jsx so the web and native tallies share one home):
+     compact(n) -> the masthead's value figure: whole dollars under 1k, then k or M
+                   with at most two decimals and trailing zeros trimmed */
 
 const DAY = 86400000;
 const loaded = await import("../src/view-rules.mjs").then(
@@ -69,6 +81,8 @@ const packagesDone = fn("packagesDone");
 const toggleCount = fn("toggleCount");
 const countLabel = fn("countLabel");
 const isDone = fn("isDone");
+const money = fn("money");
+const compact = fn("compact");
 
 /* ---------- assertion helpers ---------- */
 
@@ -1066,6 +1080,59 @@ eq(isDone(1, 3), false, "V14.7c a partial line is not done");
 eq(isDone(3, 2), true, "V14.7d an over-count is done");
 /* V14.8 mutant: done as `got > qty` would leave a full line not done */
 eq(isDone(2, 2), true, "V14.8 a full multi-copy line is done, not only an over-count");
+
+/* ---------- N6: one money format for both clients ---------- */
+
+/* V15.1 a half-cent tie rounds up. 0.125 is exact in binary, so half-even
+   rounding (Swift's formatted(), Intl with roundingMode halfEven) gives "$0.12" */
+eq(money(0.125), "$0.13", "V15.1 a half-cent tie rounds up: 0.125 is $0.13, not $0.12");
+
+/* V15.2 the decimal value decides, not the binary one. 1.005 is stored a hair
+   under 1.005, so toFixed(2) and a Math.round(n * 100) port both give "$1.00" */
+eq(money(1.005), "$1.01", "V15.2 1.005 is $1.01: round on the decimal value, not the binary one");
+
+/* V15.3 mutant: no padding, so a whole figure loses its cents */
+eq(money(2.5), "$2.50", "V15.3a one decimal pads to two");
+eq(money(50), "$50.00", "V15.3b a whole figure shows .00");
+eq(money(0), "$0.00", "V15.3c zero shows $0.00");
+
+/* V15.4 mutant: toFixed(2), which drops the thousands grouping */
+eq(money(1234567.891), "$1,234,567.89", "V15.4 thousands are grouped, cents kept");
+
+/* V15.5 the Tally row's own figure: two copies at $0.10 and $0.15 average
+   $0.125, the tie the native row got wrong. The rule must round what tallyGroups hands it. */
+const tieGroup = tallyGroups([
+  priced("T1", "Tie Cards", "Tie Card", 1, 0.1, "2026-07-01", "without tracking", 0),
+  priced("T2", "Tie Games", "Tie Card", 1, 0.15, "2026-07-02", "without tracking", 0),
+])?.[0];
+eq(tieGroup?.avg, 0.125, "V15.5a control: the pooled average is exactly 0.125");
+eq(money(tieGroup?.avg), "$0.13", "V15.5b the Tally unit rate for $0.10 and $0.15 reads $0.13");
+
+/* ---------- N8: the masthead's compact value figure ---------- */
+
+/* V16.1 under 1k: whole dollars, rounded, never cents */
+eq(compact(0), "0", "V16.1a zero");
+eq(compact(27), "27", "V16.1b a whole figure");
+eq(compact(101.4), "101", "V16.1c cents round away");
+eq(compact(67.5), "68", "V16.1d a half rounds up");
+eq(compact(999), "999", "V16.1e the top of the whole-dollar range");
+
+/* V16.2 thousands: k, at most two decimals, trailing zeros trimmed */
+eq(compact(1000), "1k", "V16.2a exactly 1k");
+eq(compact(4000), "4k", "V16.2b a round thousand loses its zeros");
+eq(compact(63450), "63.45k", "V16.2c two decimals stay");
+eq(compact(118600), "118.6k", "V16.2d one trailing zero is trimmed");
+eq(compact(100240), "100.24k", "V16.2e the six-figure case that has to fit");
+eq(compact(12345.678), "12.35k", "V16.2f a third decimal rounds");
+
+/* V16.3 millions */
+eq(compact(1200000), "1.2M", "V16.3a millions use M");
+eq(compact(2000000), "2M", "V16.3b a round million loses its zeros");
+eq(compact(1234567), "1.23M", "V16.3c two decimals");
+
+/* V16.4 a negative figure picks its unit by size, not by sign */
+eq(compact(-4000), "-4k", "V16.4a negative thousands");
+eq(compact(-27), "-27", "V16.4b negative whole dollars");
 
 /* ---------- report ---------- */
 

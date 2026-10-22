@@ -2,20 +2,30 @@ import ManifestKit
 import SwiftUI
 
 /// The system tab bar, four tabs left to right (phone-nav-is-bottom-bar).
-/// Ledger, Orphaned and Tally are placeholders in lane N5.
+/// Ledger holds the Backup row only.
 struct RootView: View {
     let model: PackagesModel?
+    let orphaned: OrphanedModel?
+    let tally: TallyModel?
+    let masthead: MastheadModel?
+    let store: LedgerStore?
     let failure: String?
     let notice: String?
     let width: CGFloat?
 
     var body: some View {
         TabView {
-            Placeholder(title: "Ledger").tabItem { Label("Ledger", systemImage: "gearshape") }
-            Placeholder(title: "Orphaned").tabItem { Label("Orphaned", systemImage: "envelope.badge") }
-            Placeholder(title: "Tally").tabItem { Label("Tally", systemImage: "number") }
+            LedgerTab(store: store).tabItem { Label("Ledger", systemImage: "gearshape") }
             Group {
-                if let model { PackagesView(model: model).safeAreaInset(edge: .top) { if let notice { Text(notice).font(.footnote).padding(8) } } } else { Placeholder(title: failure ?? "Opening the ledger") }
+                if let orphaned { OrphanedView(model: orphaned, onChange: { try? await model?.load() }) } else { Placeholder(title: failure ?? "Opening the ledger") }
+            }
+            .tabItem { Label("Orphaned", systemImage: "envelope.badge") }
+            Group {
+                if let tally { TallyView(model: tally) } else { Placeholder(title: failure ?? "Opening the ledger") }
+            }
+            .tabItem { Label("Tally", systemImage: "number") }
+            Group {
+                if let model, let masthead { PackagesView(model: model, masthead: masthead).safeAreaInset(edge: .top) { if let notice { Text(notice).font(.footnote).padding(8) } } } else { Placeholder(title: failure ?? "Opening the ledger") }
             }
             .tabItem { Label("Packages", systemImage: "shippingbox") }
         }

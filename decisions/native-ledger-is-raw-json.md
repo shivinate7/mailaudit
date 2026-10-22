@@ -38,6 +38,7 @@ The Swift client's rules, as built in PR #89. The web rules are in `saved-state-
 
   A later save throws until a good load. A failed reload leaves the store unsaveable.
 - A save before a load throws and writes nothing.
+- `LedgerStore.backup()` hands the share sheet the document as `save()` writes it, from memory, and writes nothing. A store that is not loaded hands over the file bytes as they are. Lane N8 built it, see `native-build-lanes`.
 - A top level that is not an object throws. A bad `mailday` and a bad mend result throw `CocoaError(.fileReadCorruptFile)`. A missing file, invalid JSON and a failed copy throw whatever Foundation throws.
 
 ## What an edit may touch
@@ -47,6 +48,8 @@ An edit changes only `received`, `receivedAt`, `envelopes` and `stamps`. The res
 - An un-check writes `receivedAt` and drops `received`, see `max-cannot-express-an-uncheck`.
 - A stamp removal writes a tombstone with `kind:""`, see `stamp-removal-writes-a-tombstone`.
 - A discard writes an envelope tombstone, see `envelope-deletion-unrepresented`.
+- A record puts a new envelope at the top of `envelopes`. An edit, or an assign that leaves cards in the envelope, replaces the record where it stands and sets a fresh `updatedAt`, see `shrunk-envelope-gets-fresh-stamp`. An edit keeps the `photos` and any unknown field of the record.
+- `OrphanedModel` writes the envelope and the check-ins of one action as a single save. `LedgerStore.commit` puts the document and the generation back if that save fails.
 - Each edit bumps the generation that the sync client reads, see `native-reply-waits-generation`.
 - The client sends `mailday:1`, because the Worker requires it.
 

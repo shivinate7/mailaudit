@@ -16,6 +16,7 @@ final class RulesCore {
 
     private let context: JSContext
     private let invoke: JSValue
+    private let read: JSValue
 
     init(bundleURL: URL) throws {
         guard let source = try? String(contentsOf: bundleURL, encoding: .utf8) else {
@@ -26,20 +27,34 @@ final class RulesCore {
         ctx.exceptionHandler = { _, e in thrown = e?.toString() }
         ctx.evaluateScript(source)
         // One trampoline: name and args JSON in, result JSON out. "null" stands for undefined.
+        // {"$set": [...]} in the args becomes a Set, because JSON has none (filterTally's sticky).
         let glue = """
         (function (name, argsJSON) {
           var f = Rules[name];
           if (typeof f !== "function") throw new Error("unknown function: " + name);
-          var out = JSON.stringify(f.apply(null, JSON.parse(argsJSON)));
+          var out = JSON.stringify(f.apply(null, JSON.parse(argsJSON, function (k, v) {
+            return v && !Array.isArray(v) && typeof v === "object" && Array.isArray(v.$set) ? new Set(v.$set) : v;
+          })));
           return out === undefined ? "null" : out;
         })
         """
-        guard thrown == nil, let fn = ctx.evaluateScript(glue), thrown == nil else {
+        // A constant such as SYNC_TIMEOUT_MS is not a function, so `call` refuses it.
+        let readGlue = "(function (name) { return JSON.stringify(Rules[name]); })"
+        guard thrown == nil, let fn = ctx.evaluateScript(glue), let rd = ctx.evaluateScript(readGlue), thrown == nil else {
             throw Failure.bundleDidNotLoad(thrown ?? "unknown")
         }
         ctx.exceptionHandler = nil
         context = ctx
         invoke = fn
+        read = rd
+    }
+
+    /// `Rules[name]` as JSON, for a constant.
+    func constant(_ name: String) throws -> String {
+        guard let s = read.call(withArguments: [name])?.toString(), s != "undefined" else {
+            throw Failure.unknownFunction(name)
+        }
+        return s
     }
 
     /// Calls `Rules[name](...JSON.parse(argsJSON))` and returns the result as JSON.
@@ -71,4 +86,7 @@ public actor RulesEngine {
     public func call(_ name: String, _ argsJSON: String) throws -> String {
         try core.call(name, argsJSON)
     }
+
+    /// `Rules[name]` as JSON, for a constant such as SYNC_TIMEOUT_MS.
+    public func constant(_ name: String) throws -> String { try core.constant(name) }
 }

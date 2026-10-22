@@ -28,10 +28,10 @@ The scan covers ten states at 375px and 760px. They are the nine screen states (
 
 ## The native client
 
-Lane N5 added a UI test, `native/ManifestUITests/PackagesShellUITests.swift`. It runs on the iOS Simulator at 375pt only. The native 760pt case is removed, see `native-build-lanes`. The web check keeps 760pt. The UI test is not yet in the native job. The test fails when another row frame moves on a check-in. It guards `no-layout-shift-under-pointer` for the native client, as the web check does for the web app. The native job is in `native-ci-on-hosted-macos`.
+Lane N5 added a UI test, `native/ManifestUITests/PackagesShellUITests.swift`. It runs on the iOS Simulator at 375pt only. The native 760pt case is removed, see `native-build-lanes`. The web check keeps 760pt. The UI test is not yet in the native job. The test fails when another row frame moves on a check-in. It guards `no-layout-shift-under-pointer` for the native client, as the web check does for the web app. Lane N6 added `TallyUITests`, which also runs at 375pt and fails when a Tally row moves as a copy completes. The native job is in `native-ci-on-hosted-macos`.
 
 - Measured on 2026-10-12 on an iPhone 17 simulator: the 375pt case passed. The 760pt case skipped, because the test's own check found the window narrower than 760pt. The case has since been removed, see `native-build-lanes`.
-- Still open: the N5 test covers Packages only. Each native view needs the same test, so the briefs for lanes N6 and N7 must add it for Tally and Orphaned. Debt: `native-lanes-n6-to-n9-unbuilt`.
+- Still open: lane N7 added `native/ManifestUITests/OrphanedUITests.swift`. It runs the accessibility audit and the 44pt hit check, and it checks that tied rows have one size. It has no check that a press moves another row, see `native-discard-arm-unpinned`. Lane N8 added `native/ManifestUITests/MastheadBackupUITests.swift`. Lane N9 must add the same test for its view. Debt: `native-lanes-n6-to-n9-unbuilt`.
 
 ## See also
 

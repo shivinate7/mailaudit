@@ -6,26 +6,26 @@ Plan: decisions/native-parity-table.md#rows-with-one-scope (web)
 
 Plan: decisions/native-parity-table.md#both-clients (native)
 
-**Status:** ruled. The owner ruled on 2026-10-11 to follow Degen's D32 rule, and accepted the defaults below with "all seem fine". No native code exists yet.
+**Status:** ruled. The owner ruled on 2026-10-11 to follow Degen's D32 rule, and accepted the defaults below with "all seem fine". The native client is under way, and `native-build-lanes` names the lanes that have landed.
 
 Every feature has one scope: both clients, web-only or native-only. A feature that both clients need has one home for its logic, and each client draws its own screen. The lanes in `native-build-lanes` name the native test for each feature.
 
-**Holds while:** the CLAUDE.md index lists no view or control that this table does not cover, and the repo has no native folder.
+**Holds while:** the CLAUDE.md index lists no view or control that this table does not cover.
 
 ## Both clients
 
 Each client draws its own screen. The logic has one home, see `rules-run-in-javascriptcore`.
 
 - Packages, Tally and Orphaned, and the bottom bar that switches between them (`phone-nav-is-bottom-bar`).
-- Search, hide-received, the date filter, the six Tally sort keys and the package sort.
+- Search, hide-received, the date filter, the six Tally sort keys and the package sort. Native Tally has search, hide-received and the six sort keys, tested in `TallyModelTests` and `TallyUITests`. Debt: `native-filters-tally-only`.
 - Lost-mail flags, outstanding value per level, and canceled orders.
 - The Packages card header: the order id is a link to the TCGplayer order search, and the header text selects. The owner ruled on 2026-10-21 that native gets it, see `order-id-button-stops-propagate`. The web app has it. Native does not yet. Debt: `native-order-id-link-unbuilt`.
 - Check-in and un-check, the steppers and the bulk row.
-- Envelopes: record, edit, discard (a tombstone), assign, undo, and candidates with ties.
+- Envelopes: record, edit, discard (a tombstone), assign, undo, and candidates with ties, with refunded packages out of every candidate. `OrphanedModel` (lane N7) builds all of these, except the photos. Debt: `native-envelope-has-no-photos`.
 - Stamps: the tombstone, a refund that leaves every count, and the stamped filter.
-- Worker sync: POST, GET, the WebSocket, the press gate, resume, and the 401 and 413 advisory lines.
-- Backup export, the masthead and ruled head, the palette, Cochin and monospace type, and motion with reduced motion.
-- Envelope photo capture. Photo sync for both clients runs through the Worker photo route, see `sync-revamp-cloudflare`.
+- Worker sync: POST, GET, the WebSocket, the press gate, resume, and the 401 and 413 advisory lines. `SyncClient` (lane N4a) covers POST and GET. Lane N4b builds the WebSocket, the press gate and resume, wires the client into the app, and draws the 401 and 413 lines (orchestrator assignment 2026-10-21, process-only).
+- Backup export, the masthead and ruled head, the palette, Cochin and monospace type, and motion with reduced motion. Lane N8 built the Backup export, and the masthead with its tallies, save slot and reduced motion. It built nothing else in this line. The native masthead is on Packages only, and the Backup file holds no photos. Debts: `native-masthead-packages-only`, `native-masthead-system-style`, `native-compose-is-one-fade` and `native-backup-has-no-photos`.
+- Envelope photo capture, the 2000px downscale at JPEG 0.8, the 56pt tiles and the modal viewer. Photo sync for both clients runs through the Worker photo route, see `sync-revamp-cloudflare`. Native has the photo kit and its views (lane N10). Nothing calls them yet, see `native-photo-screens-unwired` and `native-photo-transport-unbuilt`.
 - Milestones of local versions. Native saves them, prunes them by the same rule as the web app, lists them, and restores one. The owner ruled on 2026-10-11: "yeah list and restore".
 
 ## Rows with one scope
@@ -44,7 +44,8 @@ Each client draws its own screen. The logic has one home, see `rules-run-in-java
 | Keychain key, class AfterFirstUnlockThisDeviceOnly | native-only | The rebuild ruling asks for it. |
 | URL-scheme key intake | native-only | It delivers the key with no typing. |
 | Ledger file in Application Support | native-only | The WebKit storage eviction rule does not apply to it. |
-| scenePhase resume and the camera usage string | native-only | They are platform plumbing. |
+| scenePhase resume and the camera usage string | native-only | They are platform plumbing. The usage string is not in Info.plist yet, see `native-photo-screens-unwired`. |
+| Photo blobs as files in the `photos` folder | native-only | The web app keeps them in IndexedDB. Native keeps one file per blob beside the ledger, see `native-files-are-frozen`. |
 
 ## See also
 
