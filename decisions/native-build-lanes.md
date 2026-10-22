@@ -1,6 +1,6 @@
 # The native build runs in ordered lanes
 
-**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. W1 landed in PR #61 and S1 in PR #62. S2 landed in PR #63, S3 in PR #64 and S4 in PR #65. N1 landed in PR #75, C1 in PR #76, W2a in PR #77 and W3a in PR #79. N2 landed in PR #81, N3 in PR #80 and N5 in PR #82. N4a landed on branch `native/n4a-sync`, and its PR number is claimed at merge. Their rows have left this table. No other lane has landed. The rows below carry the 2026-10-11 changes and the 2026-10-12 Mirror scan move (N8 row). The 2026-10-12 N5 defaults sit in N5 notes below. The rows are ruled or named, and not built.
+**Status:** ruled. The owner accepted the plan on 2026-10-11 and ruled each open question in it. W1 landed in PR #61 and S1 in PR #62. S2 landed in PR #63, S3 in PR #64 and S4 in PR #65. N1 landed in PR #75, C1 in PR #76, W2a in PR #77 and W3a in PR #79. N2 landed in PR #81, N3 in PR #80 and N5 in PR #82. N4a landed on branch `native/n4a-sync` and N10 on branch `native/n10-photos`, and their PR numbers are claimed at merge. Their rows have left this table. No other lane has landed. The rows below carry the 2026-10-11 changes and the 2026-10-12 Mirror scan move (N8 row). The 2026-10-12 N5 defaults sit in N5 notes below. The rows are ruled or named, and not built.
 
 The native rebuild splits into lanes. W lanes change the Worker. S lanes change shared files and extract the rules. The C lane changes CI. N lanes build the native client. A lane that lands leaves this table, and git keeps its history.
 
@@ -34,7 +34,6 @@ Plan: decisions/native-build-lanes.md#still-open (native)
 | N7 Orphaned | Orphaned views | One input records an envelope. No auto-assign. A tie has no emphasis. A partial-quantity assign. Undo removes only its delta. performAccessibilityAudit. Assign has Undo and no arm. The composer draft survives a view change. The empty state is one sentence. | ST and `xcodebuild test -scheme Manifest -destination 'platform=iOS Simulator,name=iPhone 17'` | N5 (landed) |
 | N8 Masthead and backup | Masthead views, the backup file code | The export bytes equal the snapshot. No key in the export (a Mirror scan). Reduced motion shows the final frame. The save slot has a fixed width. performAccessibilityAudit. Backup is a 44pt control. | ST and `xcodebuild test -scheme Manifest -destination 'platform=iOS Simulator,name=iPhone 17'` | N5 (landed) |
 | N9 Milestones | the versions code | A milestone is saved before a reset and before an apply that removes something. The prune equals `keptIds`. The list shows each milestone, and a restore takes a milestone first and passes the same apply path. Errors show in the pressed row. The reset ask names its count and has Cancel. | ST | N4a |
-| N10 Photos | Photos views | A downscale to 2000px. A photo blob never enters the ledger. The viewer is modal, with Escape and focus return. The photo upload has Stop. | ST | W2a |
 | N11 Device check | none | The owner checks on a device. The ios-adblock phone-apps list gets the new entry. The hand checks are named: VoiceOver order, Dynamic Type, the draft kept when the app leaves, and the iPhone Camera opening a `manifestledger://` QR code (see `native-key-via-url-scheme`). If the Camera fails the scheme, the universal-link fallback in that record is built. | the owner | all |
 | C2 UI tests in CI, not built | The native job in `.github/workflows/test.yml` | Not yet briefed. The N5 UI test in `native/ManifestUITests/PackagesShellUITests.swift` already exists. | The native job runs the steps in `native-ci-on-hosted-macos` after ST, green on a hosted macOS runner, with a new timeout. | C1 (landed), N5 (landed) |
 
@@ -62,6 +61,20 @@ W2 and W3 come from the owner's rulings, not from the first plan. W2a and W3a ha
 - Orchestrator default, 2026-10-12: a key link that beats the engine waits in `PendingKeyLinks`. `ManifestApp` logs each outcome, with no key text.
 - Orchestrator default, 2026-10-12: a failed check-in save rolls the store back in `commitReceived`. `PackagesModel` sets `checkInError`, and `PackagesView` shows it in an overlay.
 
+## N10 notes
+
+- The seam: `PhotoSync` moves blobs to and from the Worker `/photos` route through the `PhotoTransport` protocol (list, put, get). A 413 on put reaches `PhotoSync` as `tooLarge`. No HTTP type implements the protocol, see `native-photo-transport-unbuilt`.
+- File names, the image type of a stored name and the push-pull plan come from the rules bundle (`photoName`, `photoIdFromName`, `mimeFromName`, `photoPlan`). Swift holds no copy, see `rules-run-in-javascriptcore`.
+- Three constants are copies of `shrinkImage` in `src/app.jsx`: the 2000px long edge, JPEG quality 0.8, and the pass-through size under 800000 bytes. `PhotoCapture.newID` copies the id shape of `newPhotoId` there. A test checks that every new id passes `photoIdFromName`. No test ties the three constants to the web.
+- The tests are the `Photo*` classes in `ManifestKitTests`, and ST runs them:
+  - PhotoDownscaleTests pins the 2000px long edge, JPEG quality 0.8 (read from the quantization tables), EXIF orientation, the small-picture pass-through, and bytes that are no picture.
+  - PhotoStoreTests pins the `photos` folder beside the ledger, the file names, and the three-valued held ids.
+  - PhotoIdsTests pins the restore rule of `photo-ids-restore-keep-if-known`.
+  - PhotoCaptureTests pins that a blob never enters ledger.json, the restamp, and the refusal that leaves no blob.
+  - PhotoSyncTests runs `PhotoSync` against a fake transport. It pins the batch of 25, a 413 that does not block the next photo, and Stop.
+  - PhotoViewerModelTests pins the modal state, and the focus that Escape and a tap return.
+- The SwiftUI viewer traits and the Stop control have no test, see `native-photo-viewer-unpinned`.
+
 ## Risk
 
 S2 and S3 (landed) changed `src/app.jsx`, the largest file in the repo. The sticky rows and the frozen sort must stay in the component, see `no-layout-shift-under-pointer`.
@@ -80,7 +93,13 @@ Other risks live in the record for their lane:
 - The native job runs ST only. Debt: `native-ui-tests-not-in-ci`.
 - The key scan skips SwiftUI view state. Debt: `native-key-scan-skips-views`.
 - Lane N4b, the socket, press gate and resume, is not built. Debt: `n4b-socket-idle-gate-unbuilt`.
-- Lane N10, native photos, is not built. Debt: `n10-photos-unbuilt`.
+- Native photos are built and tested, and nothing calls them. Debts:
+  - `native-photo-transport-unbuilt`;
+  - `native-photo-screens-unwired`;
+  - `native-photo-ids-kept-uncalled`;
+  - `native-merge-skips-photo-fetch`;
+  - `native-photo-sweep-unbuilt`;
+  - `native-photo-viewer-unpinned`.
 - Lane N11, the owner's device check, has not run. Debt: `n11-device-check-not-run`.
 
 ## See also
