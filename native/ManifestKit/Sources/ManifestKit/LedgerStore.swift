@@ -11,6 +11,9 @@ public final class LedgerStore {
     public private(set) var generation = 0
     /// Entries the last load dropped from a damaged field; 0 when nothing was damaged.
     public private(set) var droppedCount = 0
+    /// Runs after a write the person made was saved: commitReceived, commit(_:) and commitPhoto.
+    /// A load, an adopted reply and a restore do not run it. A sync client arms its POST timer here.
+    var onLocalSave: (() -> Void)?
 
     /// The app passes the rules.js it ships. Without one, the package resource is used
     /// (tests); Bundle.module traps if that resource is missing.
@@ -116,6 +119,7 @@ public final class LedgerStore {
         let (oldDoc, oldGen) = (doc, generation)
         setReceived(key, count: count)
         do { try save() } catch { doc = oldDoc; generation = oldGen; throw error }
+        onLocalSave?()
     }
 
     public func setStamp(_ key: String, kind: String, note: String, at: String) {
@@ -176,6 +180,7 @@ public final class LedgerStore {
         let (oldDoc, oldGen) = (doc, generation)
         edits()
         do { try save() } catch { doc = oldDoc; generation = oldGen; throw error }
+        onLocalSave?()
     }
 }
 
@@ -202,6 +207,7 @@ public extension LedgerStore {
         doc["envelopes"] = list
         generation += 1
         do { try save() } catch { doc = oldDoc; generation = oldGen; throw error }
+        onLocalSave?()
     }
 
     private func liveEnvelopes() -> [[String: Any]] {

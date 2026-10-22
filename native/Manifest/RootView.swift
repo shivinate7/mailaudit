@@ -9,6 +9,7 @@ struct RootView: View {
     let tally: TallyModel?
     let masthead: MastheadModel?
     let store: LedgerStore?
+    let sync: SyncClient?
     let failure: String?
     let notice: String?
     let width: CGFloat?
@@ -19,14 +20,17 @@ struct RootView: View {
             Group {
                 if let orphaned { OrphanedView(model: orphaned, onChange: { try? await model?.load() }) } else { Placeholder(title: failure ?? "Opening the ledger") }
             }
+            .syncLine(sync)
             .tabItem { Label("Orphaned", systemImage: "envelope.badge") }
             Group {
                 if let tally { TallyView(model: tally) } else { Placeholder(title: failure ?? "Opening the ledger") }
             }
+            .syncLine(sync)
             .tabItem { Label("Tally", systemImage: "number") }
             Group {
                 if let model, let masthead { PackagesView(model: model, masthead: masthead).safeAreaInset(edge: .top) { if let notice { Text(notice).font(.footnote).padding(8) } } } else { Placeholder(title: failure ?? "Opening the ledger") }
             }
+            .syncLine(sync)
             .tabItem { Label("Packages", systemImage: "shippingbox") }
         }
         .frame(width: width)
