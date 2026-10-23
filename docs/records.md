@@ -280,6 +280,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-ledger-tab-unbuilt` | The native Ledger tab holds the Backup row (lane N8), and the History row and the Reset box (lane N9), in `native/Manifest/LedgerTab.swift`. | [`debts/native-ledger-tab-unbuilt.md`](../debts/native-ledger-tab-unbuilt.md) |
 | `native-masthead-packages-only` | `PackagesView` draws the masthead. | [`debts/native-masthead-packages-only.md`](../debts/native-masthead-packages-only.md) |
 | `native-masthead-stale-after-tabs` | `MastheadModel.refresh()` runs at boot and after a Packages check-in, in `finished`. | [`debts/native-masthead-stale-after-tabs.md`](../debts/native-masthead-stale-after-tabs.md) |
+| `native-masthead-system-style` | `native/Manifest/MastheadView.swift` paints with system styles. | [`debts/native-masthead-system-style.md`](../debts/native-masthead-system-style.md) |
 | `native-merge-notice-unbuilt` | `SyncClient` keeps the `stats` of the last adopted reply (`native-reply-waits-generation`). | [`debts/native-merge-notice-unbuilt.md`](../debts/native-merge-notice-unbuilt.md) |
 | `native-merge-skips-photo-fetch` | `PhotoSync.pull` downloads the blobs that a ledger names, and it has no caller. | [`debts/native-merge-skips-photo-fetch.md`](../debts/native-merge-skips-photo-fetch.md) |
 | `native-milestone-needed-unpinned` | A native Reset, a restore and a removing sync reply each save a milestone first. | [`debts/native-milestone-needed-unpinned.md`](../debts/native-milestone-needed-unpinned.md) |
@@ -299,7 +300,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-tally-copy-no-stepper` | A native Tally copy shows its seller, date, set, finish, condition and order id, and one control. | [`debts/native-tally-copy-no-stepper.md`](../debts/native-tally-copy-no-stepper.md) |
 | `native-ui-tests-not-in-ci` | The native job runs the ST tests only, so native UI tests and builds are not in CI. | [`debts/native-ui-tests-not-in-ci.md`](../debts/native-ui-tests-not-in-ci.md) |
 | `native-version-names-unpinned` | A version is <id>.bin and <id>.json. | [`debts/native-version-names-unpinned.md`](../debts/native-version-names-unpinned.md) |
-| `order-id-chevron-tap-flake` | On CI, `check:screens` claim 17a failed twice and passed on re-run both times. | [`debts/order-id-chevron-tap-flake.md`](../debts/order-id-chevron-tap-flake.md) |
 | `order-id-visible-unbuilt` | The package header gives the order id its own line (built 2026-10-20). | [`debts/order-id-visible-unbuilt.md`](../debts/order-id-visible-unbuilt.md) |
 | `orphaned-reach-unpinned` | No test pins that Re-import, Backup and Reset must stay reachable from Orphaned, and it is unverified. | [`debts/orphaned-reach-unpinned.md`](../debts/orphaned-reach-unpinned.md) |
 | `panel-paper-fill-unbuilt` | Overlay panels carry no `paper` fill: `panelWrap` in `src/app.jsx` sets padding and a top border, and no background. | [`debts/panel-paper-fill-unbuilt.md`](../debts/panel-paper-fill-unbuilt.md) |
