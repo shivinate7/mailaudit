@@ -11,7 +11,7 @@
 //     masthead                  the whole letterhead, one element that contains the rest
 //     masthead-rule-left, masthead-seal, masthead-rule-right    one row, left to right
 //     masthead-title            label MANIFEST (any case)
-//     masthead-house            label "C.H Postal Company"
+//     masthead-house            label "C.H Postal Company" (any case, the web sets it in capitals)
 //     tally-cards, tally-packages, tally-value
 //                               label = "cards" / "packages" / "value"; value = the cell's
 //                               figure ("0/14", "0/4", "$0/$68"), see MastheadModel
@@ -103,7 +103,7 @@ final class MastheadBackupUITests: XCTestCase {
         XCTAssertGreaterThanOrEqual(house.frame.minY, title.frame.maxY - 1, "the house line is not below the title")
         XCTAssertGreaterThanOrEqual(cards.frame.minY, house.frame.maxY - 1, "the tallies are not below the house line")
         XCTAssertEqual(title.label.lowercased(), "manifest")
-        XCTAssertEqual(house.label, "C.H Postal Company")
+        XCTAssertEqual(house.label.lowercased(), "c.h postal company")
     }
 
     /// Three cells on one row: cards and packages equal, value wider (the web flex is 1.7).
