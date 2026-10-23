@@ -87,6 +87,11 @@ public actor RulesEngine {
         try core.call(name, argsJSON)
     }
 
+    /// Several calls in one actor hop. Each result stands alone: one failing call does not stop the rest.
+    public func calls(_ list: [(name: String, args: String)]) -> [Result<String, Error>] {
+        list.map { c in Result { try core.call(c.name, c.args) } }
+    }
+
     /// `Rules[name]` as JSON, for a constant such as SYNC_TIMEOUT_MS.
     public func constant(_ name: String) throws -> String { try core.constant(name) }
 }

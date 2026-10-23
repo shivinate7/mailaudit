@@ -12,7 +12,7 @@ struct PackagesView: View {
         ScrollView {
             VStack(spacing: 0) {
                 MastheadView(model: masthead)
-                VStack(spacing: 8) {
+                LazyVStack(spacing: 8) {
                     ForEach(model.rows, id: \.gk) { pkg in
                         PackageRow(pkg: pkg, model: model, masthead: masthead)
                     }
@@ -62,28 +62,17 @@ struct PackageRow: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: 8) {
-                Text(pkg.seller).font(.cochin(15).weight(.bold)).foregroundStyle(paint(.seller, packageState)).textSelection(.enabled)
-                Spacer(minLength: 0)
-                // One slot holds the pill or the stamp, so the last check-in moves nothing.
-                Group {
-                    if let pill = model.pills[pkg.gk] {
-                        Text(pill).font(.cochin(12.5).weight(.bold)).foregroundStyle(paint(.pillText, .open))
-                            .padding(.horizontal, 8).padding(.vertical, 4)
-                            .background(Capsule().fill(paint(.pillFill, .open)))
-                            .accessibilityIdentifier("card-pill:\(pkg.gk)")
-                    } else {
-                        Text("RECEIVED").font(.mono(10.5).weight(.bold)).tracking(1).foregroundStyle(paint(.border, .done))
-                            .padding(.horizontal, 8).padding(.vertical, 4)
-                            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(paint(.border, .done), lineWidth: 2))
-                            .rotationEffect(.degrees(-4))
-                    }
+            // One line, tail-truncated as on the web: a re-wrap on a check-in would move every row below.
+            Text(pkg.seller).font(.cochin(15).weight(.bold)).foregroundStyle(paint(.seller, packageState))
+                .lineLimit(1).truncationMode(.tail).textSelection(.enabled)
+            // The slot's width is reserved, so the choice between the two layouts never depends on a check-in.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) { dateLine; Spacer(minLength: 0); statusSlot }
+                VStack(alignment: .trailing, spacing: 0) {
+                    dateLine.frame(maxWidth: .infinity, alignment: .leading)
+                    statusSlot
                 }
-                .frame(minHeight: 28)
-                .fixedSize()
             }
-            Text(pkg.date).font(.mono(11)).foregroundStyle(paint(.orderId, packageState)).textSelection(.enabled)
-                .accessibilityLabel("Ordered \(pkg.date)")
             if let url = model.orderLinks[pkg.gk] {
                 HStack(spacing: 0) {
                     Link(destination: url) {
@@ -100,6 +89,35 @@ struct PackageRow: View {
         }
         .padding(.horizontal, 12)
         .padding(.top, 12)
+    }
+
+    private var dateLine: some View {
+        Text(pkg.date).font(.mono(11)).foregroundStyle(paint(.orderId, packageState)).textSelection(.enabled)
+            .accessibilityLabel("Ordered \(pkg.date)")  // a bare date failed the Dynamic Type audit
+    }
+
+    /// The pill, or the RECEIVED stamp once nothing is owed. An invisible widest pill sets the
+    /// slot's size and the live one is drawn over it, so a check-in never changes the layout.
+    private var statusSlot: some View {
+        Text("99 left \u{00B7} $99.99").font(.cochin(12.5).weight(.bold))
+            .padding(.horizontal, 8).padding(.vertical, 4)
+            .frame(minHeight: 28)
+            .hidden()
+            .overlay(alignment: .trailing) {
+                if let pill = model.pills[pkg.gk] {
+                    Text(pill).font(.cochin(12.5).weight(.bold)).foregroundStyle(paint(.pillText, .open))
+                        .padding(.horizontal, 8).padding(.vertical, 4)
+                        .background(Capsule().fill(paint(.pillFill, .open)))
+                        .fixedSize()
+                        .accessibilityIdentifier("card-pill:\(pkg.gk)")
+                } else {
+                    Text("RECEIVED").font(.mono(10.5).weight(.bold)).tracking(1).foregroundStyle(paint(.border, .done))
+                        .padding(.horizontal, 8).padding(.vertical, 4)
+                        .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(paint(.border, .done), lineWidth: 2))
+                        .rotationEffect(.degrees(-4))
+                        .fixedSize()
+                }
+            }
     }
 
     /// The thin bar on the card's top edge, out of flow: it mounts without moving a row.
@@ -143,8 +161,11 @@ private struct ItemLine: View {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(item.name).font(.cochin(14).weight(.semibold)).foregroundStyle(paint(.name, state))
                     Spacer(minLength: 0)
-                    Text(PackageCard.priceText(item.price)).font(.mono(12)).foregroundStyle(paint(.price, state)).fixedSize()
-                        .accessibilityLabel("Price \(PackageCard.priceText(item.price))")
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text(PackageCard.priceText(item.price)).font(.mono(12)).foregroundStyle(paint(.price, state)).fixedSize()
+                            .accessibilityLabel("Price \(PackageCard.priceText(item.price))")
+                        if item.qty > 1 { count }
+                    }
                 }
                 Text(model.details[item.key] ?? "").font(.cochin(11.5)).foregroundStyle(paint(.detail, state))
             }
@@ -155,6 +176,19 @@ private struct ItemLine: View {
         .frame(minHeight: 45, alignment: .top)
         .background(paint(.rowFill, state))
         .overlay(alignment: .top) { paint(.rule, state).frame(height: 1) }
+    }
+
+    /// How many of a multi-copy line are in, as the web's got/qty. An invisible qty/qty sets the width, so a
+    /// shorter figure (10/12 to 9/12) never changes the row. A partly received line is bold.
+    private var count: some View {
+        let got = min(model.received[item.key] ?? 0, item.qty)
+        return Text("\(item.qty)/\(item.qty)").font(.mono(13))
+            .hidden()
+            .overlay(alignment: .trailing) {
+                Text("\(got)/\(item.qty)").font(.mono(13).weight(state == .partial ? .bold : .regular))
+                    .foregroundStyle(paint(.name, state)).fixedSize()
+                    .accessibilityLabel("\(model.labels[item.key] ?? "\(got) of \(item.qty)") received")
+            }
     }
 
     private var box: some View {

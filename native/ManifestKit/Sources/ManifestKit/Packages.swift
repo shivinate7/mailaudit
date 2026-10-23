@@ -59,47 +59,62 @@ public final class PackagesModel {
         bars = [:]
         details = [:]
         orderLinks = [:]
-        for p in rows {
-            for it in p.items {
-                try await refreshLabel(it)
-                details[it.key] = try await text("itemDetail", String(decoding: try JSONEncoder().encode(it), as: UTF8.self))
+        for p in rows { try await refresh(p, items: p.items, withStatic: true) }
+    }
+
+    private func encode<T: Encodable>(_ value: T) throws -> String {
+        String(decoding: try JSONEncoder().encode(value), as: UTF8.self)
+    }
+
+    /// One engine hop per package: each given line's isDone and countLabel, and the package's pill and bar.
+    /// `withStatic` adds what a check-in cannot change, the detail lines and the order link.
+    /// Each call stands alone: one failing must not stop the rest. The first error is thrown.
+    private func refresh(_ p: Package, items: [LedgerItem], withStatic: Bool) async throws {
+        enum Call { case done(String), label(String), detail(String), link, pill, totals }
+        var calls: [(name: String, args: String)] = []
+        var plan: [Call] = []
+        for it in items {
+            let args = "[\(received[it.key] ?? 0),\(it.qty)]"
+            calls += [("isDone", args), ("countLabel", args)]
+            plan += [.done(it.key), .label(it.key)]
+            if withStatic {
+                calls.append(("itemDetail", "[\(try encode(it))]"))
+                plan.append(.detail(it.key))
             }
-            let link = try await text("tcgplayerOrderUrl", try json(p.orderId))
-            orderLinks[p.gk] = link.flatMap { URL(string: $0) }
-            try await refreshCard(p)
         }
-    }
-
-    /// A bundle function that returns a string, or nil for its null.
-    private func text(_ name: String, _ arg: String) async throws -> String? {
-        let out = try await engine.call(name, "[\(arg)]")
-        return try JSONSerialization.jsonObject(with: Data(out.utf8), options: [.fragmentsAllowed]) as? String
-    }
-
-    /// The pill and the bar of one package, at the stored counts.
-    private func refreshCard(_ p: Package) async throws {
-        let items = String(decoding: try JSONEncoder().encode(p.items), as: UTF8.self)
+        if withStatic {
+            calls.append(("tcgplayerOrderUrl", "[\(try json(p.orderId))]"))
+            plan.append(.link)
+        }
         // Only this package's counts cross into JavaScript.
         let own = Dictionary(p.items.compactMap { i in received[i.key].map { (i.key, $0) } }, uniquingKeysWith: { a, _ in a })
-        let args = "\(items),\(try json(own))"
-        pills[p.gk] = try await text("packagePill", args)
-        let t = try JSONSerialization.jsonObject(with: Data(try await engine.call("totalsOf", "[\(args)]").utf8)) as? [String: Any]
-        if let got = t?["got"] as? Int, let total = t?["total"] as? Int, got > 0, got < total {
-            bars[p.gk] = Double(got) / Double(total)
-        } else {
-            bars[p.gk] = nil
-        }
-    }
+        let packageArgs = "[\(try encode(p.items)),\(try json(own))]"
+        calls += [("packagePill", packageArgs), ("totalsOf", packageArgs)]
+        plan += [.pill, .totals]
 
-    /// isDone and countLabel run apart: one failing must not stop the other. The first error is thrown.
-    private func refreshLabel(_ it: LedgerItem) async throws {
-        let args = "[\(received[it.key] ?? 0),\(it.qty)]"
+        func string(_ out: String) throws -> String? {
+            try JSONSerialization.jsonObject(with: Data(out.utf8), options: [.fragmentsAllowed]) as? String
+        }
         var failure: Error?
-        do { done[it.key] = try await engine.call("isDone", args) == "true" } catch { failure = error }
-        do {
-            let out = try await engine.call("countLabel", args)
-            labels[it.key] = try JSONSerialization.jsonObject(with: Data(out.utf8), options: [.fragmentsAllowed]) as? String
-        } catch { failure = failure ?? error }
+        for (call, result) in zip(plan, await engine.calls(calls)) {
+            do {
+                let out = try result.get()
+                switch call {
+                case .done(let key): done[key] = out == "true"
+                case .label(let key): labels[key] = try string(out)
+                case .detail(let key): details[key] = try string(out)
+                case .link: orderLinks[p.gk] = try string(out).flatMap { URL(string: $0) }
+                case .pill: pills[p.gk] = try string(out)
+                case .totals:
+                    let t = try JSONSerialization.jsonObject(with: Data(out.utf8)) as? [String: Any]
+                    if let got = t?["got"] as? Int, let total = t?["total"] as? Int, got > 0, got < total {
+                        bars[p.gk] = Double(got) / Double(total)
+                    } else {
+                        bars[p.gk] = nil
+                    }
+                }
+            } catch { failure = failure ?? error }
+        }
         if let failure { throw failure }
     }
 
@@ -129,13 +144,7 @@ public final class PackagesModel {
         received = store.received()
         if let pkg = rows.first(where: { $0.items.contains { $0.key == key } }),
             let item = pkg.items.first(where: { $0.key == key }) {
-            do {
-                // Independent: a failing label must not leave the pill and bar stale.
-                var failure: Error?
-                do { try await refreshLabel(item) } catch { failure = error }
-                do { try await refreshCard(pkg) } catch { failure = failure ?? error }
-                if let failure { throw failure }
-            } catch {
+            do { try await refresh(pkg, items: [item], withStatic: false) } catch {
                 checkInError = "Saved, but the label could not refresh. \(error.localizedDescription)"
                 throw error
             }
