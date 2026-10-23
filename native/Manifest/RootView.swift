@@ -18,24 +18,28 @@ struct RootView: View {
 
     var body: some View {
         TabView {
-            LedgerTab(store: store, versions: versions, onLedgerChange: onLedgerChange).tabItem { Label("Ledger", systemImage: "gearshape") }
+            LedgerTab(store: store, versions: versions, onLedgerChange: onLedgerChange).parchmentPaper().tabItem { Label("Ledger", systemImage: "gearshape") }
             Group {
                 if let orphaned { OrphanedView(model: orphaned, onChange: { try? await model?.load() }) } else { Placeholder(title: failure ?? "Opening the ledger") }
             }
             .syncLine(sync)
+            .parchmentPaper()
             .tabItem { Label("Orphaned", systemImage: "envelope.badge") }
             Group {
                 if let tally { TallyView(model: tally) } else { Placeholder(title: failure ?? "Opening the ledger") }
             }
             .syncLine(sync)
+            .parchmentPaper()
             .tabItem { Label("Tally", systemImage: "number") }
             Group {
                 if let model, let masthead { PackagesView(model: model, masthead: masthead).safeAreaInset(edge: .top) { if let notice { Text(notice).font(.footnote).padding(8) } } } else { Placeholder(title: failure ?? "Opening the ledger") }
             }
             .syncLine(sync)
+            .parchmentPaper()
             .tabItem { Label("Packages", systemImage: "shippingbox") }
         }
         .frame(width: width)
+        .tint(Parchment.accent)
     }
 }
 

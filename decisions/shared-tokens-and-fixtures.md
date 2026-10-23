@@ -9,7 +9,7 @@ The palette and the test data have one home each. The web build and the Swift cl
 ## Tokens
 
 - The file shared/tokens.json replaces the literal `C` in `src/app.jsx`.
-- esbuild imports the JSON. Swift decodes it at launch. No Style Dictionary is used.
+- esbuild imports the JSON. Swift decodes it at launch: the app bundles the file as a resource (`native/project.yml`), and `Palette.decode` in ManifestKit reads it. No second copy exists. No Style Dictionary is used.
 - Test group 60 of `npm test` checks that the built `C` deep-equals the file (60.4). A drifted value goes red (60.5 and 60.6).
 - The palette rules still apply to the values, see `design-parchment-ledger` and `palette-tokens-contrast-floor`.
 

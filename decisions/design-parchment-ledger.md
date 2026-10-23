@@ -8,6 +8,8 @@ Every color lives in `shared/tokens.json`. `src/app.jsx` reads that file as `C`.
 
 The CSS keyword `transparent` is not a color literal. It names no color and paints nothing, so the rule does not forbid it. Its uses, as backgrounds, gradient stops and `-webkit-tap-highlight-color`, are allowed.
 
+The native client builds its colours from the decoded file through `Parchment` in `native/Manifest/Theme.swift`, and the interface is held to light (`UIUserInterfaceStyle`). It does not yet follow the no-literal rule: `OrphanedView.swift` holds hand-set colours with dark variants, and the other views use system colours. Lanes N16 (Orphaned) and N17 (Tally, Ledger and Sync), with N14 and N15 for the masthead and cards, remove them.
+
 Translucency comes from `color-mix(in srgb, <token> <percent>, transparent)` over a token, not from `rgba()`. The bar's glass fill is the paper token at 62%. Its active tab is the card token at 90%. See `phone-nav-is-bottom-bar`.
 
 **Pinned by:** 60.10 (no colour literal in the code of `src/app.jsx`).
