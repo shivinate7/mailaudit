@@ -220,6 +220,7 @@ struct MastheadView: View {
             }
             .frame(height: 8)
             .accessibilityElement(children: .ignore)
+            .accessibilityAddTraits(.isStaticText)  // as the save slot: a read-out, so the audit asks for no 44pt hit area
             .accessibilityLabel("Cards received")
             .accessibilityValue("\(Int(model.percent)) percent")
             .accessibilityIdentifier("masthead-progress")
