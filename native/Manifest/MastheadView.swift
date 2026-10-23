@@ -34,32 +34,40 @@ extension MastheadPaint.Style {
     func indent(size: CGFloat) -> CGFloat { tracking * size }
 }
 
-/// The wax seal, drawn from `MastheadPaint.seal` on the web's 100 by 100 sheet (`Seal` in src/app.jsx).
+/// A path drawn on the web's 100 by 100 sheet, scaled into whatever rect it is given.
+struct SealShape: Shape {
+    let sheet: Path
+    func path(in rect: CGRect) -> Path { sheet.applying(CGAffineTransform(scaleX: rect.width / 100, y: rect.height / 100)) }
+}
+
+/// The wax seal, one shape per layer of `MastheadPaint.seal` (`Seal` in src/app.jsx).
 struct WaxSeal: View {
+    let size: CGFloat
+
     var body: some View {
-        Canvas { context, size in
-            var ctx = context
-            ctx.scaleBy(x: size.width / 100, y: size.height / 100)
-            for layer in MastheadPaint.seal {
+        let k = size / 100
+        ZStack {
+            ForEach(MastheadPaint.seal, id: \.name) { layer in
                 let colors = layer.tokens.map(Parchment.color)
-                var c = ctx
-                c.opacity = layer.opacity
-                switch layer.name {
-                case "body":
-                    c.fill(Self.blob, with: .radialGradient(Gradient(colors: colors), center: CGPoint(x: 37, y: 30), startRadius: 0, endRadius: 78))
-                case "ring":
-                    c.stroke(Path(ellipseIn: CGRect(x: 11, y: 11, width: 78, height: 78)), with: .color(colors[0]), lineWidth: 3.5)
-                case "cut":
-                    c.stroke(Self.relief(dy: 0), with: .color(colors[0]), style: Self.round(8))
-                case "raised":
-                    c.stroke(Self.relief(dy: -3.5), with: .color(colors[0]), style: Self.round(3.4))
-                default:
-                    c.translateBy(x: 34, y: 28)
-                    c.rotate(by: .degrees(-35))
-                    c.fill(Path(ellipseIn: CGRect(x: -15, y: -9, width: 30, height: 18)), with: .color(colors[0]))
+                Group {
+                    switch layer.name {
+                    case "body":
+                        SealShape(sheet: Self.blob)
+                            .fill(RadialGradient(colors: colors, center: UnitPoint(x: 0.37, y: 0.30), startRadius: 0, endRadius: 0.78 * size))
+                    case "ring":
+                        SealShape(sheet: Path(ellipseIn: CGRect(x: 11, y: 11, width: 78, height: 78))).stroke(colors[0], lineWidth: 3.5 * k)
+                    case "cut":
+                        SealShape(sheet: Self.relief(dy: 0)).stroke(colors[0], style: Self.round(8 * k))
+                    case "raised":
+                        SealShape(sheet: Self.relief(dy: -3.5)).stroke(colors[0], style: Self.round(3.4 * k))
+                    default:
+                        SealShape(sheet: Self.shine).fill(colors[0])
+                    }
                 }
+                .opacity(layer.opacity)
             }
         }
+        .frame(width: size, height: size)
     }
 
     private static func round(_ w: CGFloat) -> StrokeStyle { StrokeStyle(lineWidth: w, lineCap: .round, lineJoin: .round) }
@@ -74,6 +82,10 @@ struct WaxSeal: View {
         p.addLine(to: CGPoint(x: 69, y: 72 + dy))
         return p
     }
+
+    /// The specular catch: an ellipse tilted 35 degrees about its centre.
+    private static let shine = Path(ellipseIn: CGRect(x: 19, y: 19, width: 30, height: 18))
+        .applying(CGAffineTransform(translationX: 34, y: 28).rotated(by: -35 * .pi / 180).translatedBy(x: -34, y: -28))
 
     /// The irregular edge: real wax is never a circle.
     private static let blob: Path = {
@@ -112,7 +124,7 @@ struct MastheadView: View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 rule.accessibilityIdentifier("masthead-rule-left")
-                WaxSeal().frame(width: Self.sealSize, height: Self.sealSize)
+                WaxSeal(size: Self.sealSize)
                     .scaleEffect(drawn.sealScale).opacity(drawn.sealOpacity)
                     .accessibilityElement(children: .ignore).accessibilityLabel("MANIFEST seal")
                     .accessibilityIdentifier("masthead-seal")
