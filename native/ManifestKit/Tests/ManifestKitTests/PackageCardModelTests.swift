@@ -22,7 +22,7 @@
 //       }
 //       /// The name of a key in shared/tokens.json, or nil for "no paint". `state` is the line's;
 //       /// for .border it is the package's, and .done means every line is in.
-//       public static func token(_ part: Part, _ state: LineState = .open) -> String?
+//       public static func token(_ part: Part, _ state: LineState) -> String?
 //       /// "$" + price.toFixed(2) as the web item row prints it: no thousands separator.
 //       public static func priceText(_ price: Double) -> String
 //   }
@@ -154,6 +154,8 @@ final class PackageCardModelTests: XCTestCase {
     /// A one-line package goes from no bar to complete, so it never shows a bar.
     func testASingleLinePackageNeverShowsABar() async throws {
         let m = try await loadedModel()
+        try await m.checkIn(key: Self.counter, count: 1)
+        XCTAssertNotNil(m.bars[Self.a1], "control: a bar that never fills would pass the nil checks below")
         try await m.checkIn(key: Self.urza, count: 1)
         XCTAssertNil(m.bars[Self.d1], "1 of 1 is complete: no bar")
         XCTAssertNil(m.pills[Self.d1])

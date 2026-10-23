@@ -68,11 +68,6 @@ final class PackageCardTokensTests: XCTestCase {
         }
     }
 
-    /// The default state is open: the call sites that do not vary with a line pass nothing.
-    func testTheDefaultStateIsOpen() {
-        for part in Part.allCases { XCTAssertEqual(PackageCard.token(part), PackageCard.token(part, .open), "\(part)") }
-    }
-
     // MARK: the tokens exist
 
     /// Parchment.color(_:) stops the app on a name that is not in the file, so a typo must fail here.
