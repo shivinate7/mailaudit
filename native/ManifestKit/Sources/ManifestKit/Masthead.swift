@@ -101,17 +101,19 @@ public final class MastheadModel {
         let done = Int(try await engine.call("packagesDone", "[\(pkgs),\(got)]")) ?? 0
         let (total, have, val, missingVal) = (t["total"] ?? 0, t["got"] ?? 0, t["val"] ?? 0, t["missingVal"] ?? 0)
         let (inVal, allVal) = (try await text("compact", val - missingVal), try await text("compact", val))
+        // The bundle's money, so the line rounds half up as the web does.
+        let money = try await text("money", missingVal)
+        // Every published field is set below with no await between, so a throw above changes none of them.
+        let left = Int(total - have)
         cells = [
             TallyCell(label: "cards", figure: "\(Int(have))/\(Int(total))"),
             TallyCell(label: "packages", figure: "\(done)/\(n)"),
             TallyCell(label: "value", figure: "$\(inVal)/$\(allVal)"),
         ]
         countLine = "\(n) packages \u{00B7} autosaves"
-        remaining = Int(total - have)
+        remaining = left
         percent = total > 0 ? have * 100 / total : 0
-        // The bundle's money, so the line rounds half up as the web does.
-        let money = try await text("money", missingVal)
-        missingLine = remaining == 0 ? "ALL ACCOUNTED FOR \u{2713}" : "\(remaining) still missing \u{00B7} \(money)"
+        missingLine = left == 0 ? "ALL ACCOUNTED FOR \u{2713}" : "\(left) still missing \u{00B7} \(money)"
     }
 
     public func saving() { current = .saving }

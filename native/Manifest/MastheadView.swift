@@ -30,7 +30,7 @@ extension MastheadPaint.Style {
         return Text(uppercase ? s.uppercased() : s).font(font).tracking(tracking * size).foregroundStyle(color)
     }
 
-    /// The web puts the letter-spacing after the last letter too, and cancels it with a text indent.
+    /// The web cancels the trailing letter-spacing with a text indent on the title only.
     func indent(size: CGFloat) -> CGFloat { tracking * size }
 }
 
@@ -138,7 +138,7 @@ struct MastheadView: View {
                 .opacity(drawn.titleOpacity).accessibilityLabel("Manifest").accessibilityIdentifier("masthead-title")
             let house = MastheadPaint.style(.house)
             house.text("C.H Postal Company", size: 10, relativeTo: .caption)
-                .lineLimit(1).minimumScaleFactor(0.5).padding(.leading, house.indent(size: 10)).padding(.top, 8)
+                .lineLimit(1).minimumScaleFactor(0.5).padding(.top, 8)
                 .opacity(drawn.titleOpacity).accessibilityLabel("C.H Postal Company").accessibilityIdentifier("masthead-house")
             if !model.cells.isEmpty { tallies.opacity(drawn.talliesOpacity) }
         }
@@ -200,7 +200,6 @@ struct MastheadView: View {
         let lead = MastheadPaint.style(.tallyLead), rest = MastheadPaint.style(.tallyRest)
         return VStack(spacing: 4) {
             label.text(cell.label, size: 10, relativeTo: .caption).lineLimit(1).minimumScaleFactor(0.6)
-                .padding(.leading, label.indent(size: 10))
             (lead.text(cell.lead, size: 13, relativeTo: .footnote) + rest.text(cell.rest, size: 13, relativeTo: .footnote))
                 .lineLimit(1).minimumScaleFactor(0.6)
         }
