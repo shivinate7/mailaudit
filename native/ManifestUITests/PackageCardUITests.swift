@@ -11,7 +11,10 @@
 //                     "TCGplayer". At least 44pt each way, and inside its package row. A tap on it
 //                     must not check anything in (never tapped here: it would leave the app).
 //   card-bar:<gk>     the card's progress bar, in the hierarchy only while the package has some but
-//                     not all copies in. It lies inside the package row, under 8pt tall.
+//                     not all copies in. It lies inside the package row, under 8pt tall. It carries a
+//                     label such as "1 of 4 copies in", so the accessibility audit finds it described.
+//                     If that audit still flags the 3pt bar, hide it and drop the presence checks here;
+//                     PackagesModel.bars still pins when it shows.
 //   card-pill:<gk>    the "N left · $X" pill; its label is the pill text. Absent when nothing is owed.
 // Launch arguments are the shell tests': -ManifestUITestSeed, -ManifestUITestWidth.
 //
