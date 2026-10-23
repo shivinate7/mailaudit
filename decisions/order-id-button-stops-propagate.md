@@ -27,7 +27,7 @@ The sweep goes red on the defect it guards. Spaced 16px from the date line and f
 
 **Pinned by:** group 76, 33 cases (the link and its URL, no copy control, the selection guard, the chevron under a selection, no dialogs). `check:screens` claim 17a pins what jsdom cannot see: no real Chromium tap meant for the seller name, the date line, the chevron or the row under the header opens TCGplayer. The chevron toggles under a click, a tap and Enter while text is selected. A mouse drag selects header text and leaves the card open. Claims 9 and 11 pin the touch areas. Claim 10 holds the re-recorded boxes of Packages and Stamp editor open. Nothing pins the phone long-press, or a Mac double-click or triple-click. A double-click that means "collapse" collapses once, and the owner ruled on 2026-10-21 that this stays a known gap. Debt: `header-gestures-unmeasured`. Nothing pins iOS WebKit's touch adjustment near the link. Debt: `ios-touch-adjust-unmeasured`.
 
-Scope: both clients. The owner ruled on 2026-10-21 that the native app gets the same feature, see `native-parity-table`. The web app has it. The native app does not yet. Debt: `native-order-id-link-unbuilt`.
+Scope: both clients. The owner ruled on 2026-10-21 that the native app gets the same feature, see `native-parity-table`. The web app has it, and the native card has it since N15: a link element of at least 44pt that opens the order search, and nothing else on the card reacts to a tap on it. `PackageCardUITests` pins the link.
 
 ## The order id stays visible
 

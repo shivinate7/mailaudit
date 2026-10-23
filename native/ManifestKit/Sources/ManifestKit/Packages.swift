@@ -25,6 +25,14 @@ public final class PackagesModel {
     public private(set) var labels: [String: String] = [:]
     /// Whether each item key is fully in, from the bundle's isDone.
     public private(set) var done: [String: Bool] = [:]
+    /// Per package gk, from the bundle's packagePill: no entry when no copy is owed.
+    public private(set) var pills: [String: String] = [:]
+    /// Per package gk, copies in over copies owed (the bundle's totalsOf): an entry only while some but not all are in.
+    public private(set) var bars: [String: Double] = [:]
+    /// Per item key, from the bundle's itemDetail.
+    public private(set) var details: [String: String] = [:]
+    /// Per package gk, from the bundle's tcgplayerOrderUrl.
+    public private(set) var orderLinks: [String: URL] = [:]
     /// Set when the last check-in could not be saved; nil after one that was.
     public private(set) var checkInError: String?
 
@@ -47,7 +55,38 @@ public final class PackagesModel {
         received = got
         labels = [:]
         done = [:]
-        for p in rows { for it in p.items { try await refreshLabel(it) } }
+        pills = [:]
+        bars = [:]
+        details = [:]
+        orderLinks = [:]
+        for p in rows {
+            for it in p.items {
+                try await refreshLabel(it)
+                details[it.key] = try await text("itemDetail", String(decoding: try JSONEncoder().encode(it), as: UTF8.self))
+            }
+            let link = try await text("tcgplayerOrderUrl", try json(p.orderId))
+            orderLinks[p.gk] = link.flatMap { URL(string: $0) }
+            try await refreshCard(p)
+        }
+    }
+
+    /// A bundle function that returns a string, or nil for its null.
+    private func text(_ name: String, _ arg: String) async throws -> String? {
+        let out = try await engine.call(name, "[\(arg)]")
+        return try JSONSerialization.jsonObject(with: Data(out.utf8), options: [.fragmentsAllowed]) as? String
+    }
+
+    /// The pill and the bar of one package, at the stored counts.
+    private func refreshCard(_ p: Package) async throws {
+        let items = String(decoding: try JSONEncoder().encode(p.items), as: UTF8.self)
+        let args = "\(items),\(try json(received))"
+        pills[p.gk] = try await text("packagePill", args)
+        let t = try JSONSerialization.jsonObject(with: Data(try await engine.call("totalsOf", "[\(args)]").utf8)) as? [String: Any]
+        if let got = t?["got"] as? Int, let total = t?["total"] as? Int, got > 0, got < total {
+            bars[p.gk] = Double(got) / Double(total)
+        } else {
+            bars[p.gk] = nil
+        }
     }
 
     /// isDone and countLabel run apart: one failing must not stop the other. The first error is thrown.
@@ -86,8 +125,15 @@ public final class PackagesModel {
         }
         checkInError = nil
         received = store.received()
-        if let item = rows.lazy.flatMap(\.items).first(where: { $0.key == key }) {
-            do { try await refreshLabel(item) } catch {
+        if let pkg = rows.first(where: { $0.items.contains { $0.key == key } }),
+            let item = pkg.items.first(where: { $0.key == key }) {
+            do {
+                // Independent: a failing label must not leave the pill and bar stale.
+                var failure: Error?
+                do { try await refreshLabel(item) } catch { failure = error }
+                do { try await refreshCard(pkg) } catch { failure = failure ?? error }
+                if let failure { throw failure }
+            } catch {
                 checkInError = "Saved, but the label could not refresh. \(error.localizedDescription)"
                 throw error
             }

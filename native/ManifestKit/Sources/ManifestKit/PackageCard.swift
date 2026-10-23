@@ -1,0 +1,45 @@
+import Foundation
+
+/// How far a line is checked in: done is the bundle's isDone (got >= qty).
+public enum LineState: Equatable, Sendable {
+    case open, partial, done
+
+    public init(got: Int, qty: Int) {
+        self = got >= qty ? .done : got > 0 ? .partial : .open
+    }
+}
+
+/// Which token of shared/tokens.json each part of the package card paints with, state by state,
+/// as the web card chooses them (src/app.jsx PackageCard, ItemRow). XCUITest cannot read a colour,
+/// so the choice lives here and has a unit test; the view maps a name through Parchment.
+public enum PackageCard {
+    public enum Part: CaseIterable, Hashable, Sendable {
+        case surface, border, seller, orderId, price, detail, rule, rowFill, name,
+             pillText, pillFill, barTrack, barFill, boxBorder, boxFill, boxMark
+    }
+
+    /// A token name, or nil for "no paint". `state` is the line's; for .border it is the package's,
+    /// and .done means every line is in.
+    public static func token(_ part: Part, _ state: LineState) -> String? {
+        switch part {
+        case .surface: return "card"
+        case .border: return state == .done ? "green" : "line"
+        case .seller: return "ink"
+        case .orderId, .price, .detail: return "inkSoft"
+        case .rule: return "line"
+        case .rowFill: return state == .done ? "greenSoft" : nil
+        case .name: return state == .done ? "inkSoft" : "ink"
+        case .pillText: return "red"
+        case .pillFill: return "redSoft"
+        case .barTrack: return "silver"
+        case .barFill: return "accent"
+        case .boxBorder: return state == .open ? "inkSoft" : state == .partial ? "manilaInk" : "green"
+        case .boxFill: return state == .open ? "card" : state == .partial ? "manila" : "green"
+        case .boxMark: return state == .open ? nil : state == .partial ? "manilaInk" : "card"
+        }
+    }
+
+    /// "$" + price.toFixed(2), as the web item row prints it: no thousands separator.
+    /// ponytail: printf rounds an exact binary tie to even where toFixed rounds up; ledger prices are cents, which never tie.
+    public static func priceText(_ price: Double) -> String { String(format: "$%.2f", price) }
+}

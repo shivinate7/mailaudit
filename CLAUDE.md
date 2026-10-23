@@ -418,7 +418,6 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `tcgplayer-link-opens-history-list` — The TCGplayer link may not search by order id.
 - `header-gestures-unmeasured` — Header gestures are unmeasured.
 - `ios-touch-adjust-unmeasured` — iOS touch adjustment near the order id link is unmeasured.
-- `native-order-id-link-unbuilt` — The native Packages card has no order id link yet.
 - `discard-keeps-draft` — Discard does not end a composer draft.
 - `type-floor-unbuilt` — Some labels are below the 10px floor.
 - `universal-link-unbuilt` — The universal-link key fallback is not built.

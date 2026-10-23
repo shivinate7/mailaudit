@@ -5,7 +5,7 @@ import {
   parseItems, lostMail, normName, isUntracked, gkOf, groupPackages, rankCandidates,
   dateRange, inRange, dropCanceled, dropGks, canceledPackagesOf, stampedPackagesOf,
   tallyGroups, sortTally, sortPackages, filterPackages, filterTally,
-  totalsOf, outstandingOf, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger, money, compact,
+  totalsOf, outstandingOf, packagePill, itemDetail, tcgplayerOrderUrl, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger, money, compact,
 } from "./view-rules.mjs";
 import { photoPlan } from "./photo-rules.mjs";
 import { shouldSnapshot } from "./version-rules.mjs";
@@ -387,14 +387,12 @@ function ItemRow({
      where this copy came from instead */
   const source = variant === "source";
   const title = source ? item.seller : item.name;
-  const meta = (item.qty > 1 ? [`×${item.qty}`] : [])
-    .concat(
-      (source
-        ? [item.date, item.set, item.finish, item.condition]
-        : [item.set, item.finish, item.condition]
-      ).filter(Boolean)
-    )
-    .join(" · ");
+  const detail = itemDetail(item);
+  const meta = source
+    ? (item.qty > 1 ? [`×${item.qty}`] : [])
+        .concat([item.date, item.set, item.finish, item.condition].filter(Boolean))
+        .join(" · ")
+    : detail === "\u2014" ? "" : detail; /* the web leaves an empty line blank; native prints the dash */
   /* `stamped`: the copy's order carries a stamp, so it is being handled and
      the warning would nag about a claim already filed — same rule as the
      package header, plumbed down because a row knows only its own item */
@@ -682,12 +680,6 @@ const stampChip = {
 
 /* ---------- Package (order + seller) group ---------- */
 
-/* TCGplayer's buyer order-history page, searched by order id (owner ruling
-   2026-10-21). Whether the page honours SearchString is unconfirmed; debt
-   tcgplayer-link-opens-history-list. */
-const tcgplayerOrderUrl = (id) =>
-  `https://store.tcgplayer.com/myaccount/orderhistory?SearchString=${encodeURIComponent(id)}`;
-
 function PackageCard({
   pkg,
   received,
@@ -712,11 +704,7 @@ function PackageCard({
     : /^without tracking$/i.test(pkg.tracking || "")
     ? "untracked"
     : null;
-  const missingVal = outstandingOf(pkg.items, received).value;
-  const missingValLabel =
-    missingVal >= 100
-      ? `$${Math.round(missingVal).toLocaleString()}`
-      : `$${missingVal.toFixed(2)}`;
+  const pill = packagePill(pkg.items, received);
   /* true only when this card is opened by hand, never when it renders already
      open — an unreceived package starts expanded (`useState(!done)`), so a
      bare class would set every open card on the page animating at once on
@@ -940,7 +928,7 @@ function PackageCard({
                   flexShrink: 0,
                 }}
               >
-                {totalQty - gotQty} left · {refunded ? "refunded" : missingValLabel}
+                {refunded ? `${totalQty - gotQty} left · refunded` : pill}
               </span>
             )}
           </div>
