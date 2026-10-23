@@ -39,7 +39,7 @@ npm run deploy        # build + test, then a branch holding only index.html and 
 
 ## make testflight
 
-`make testflight` is the iOS release path, run on this Mac after each merge. The ruling is `native-ships-via-testflight`. It is a Makefile because the steps are `xcodebuild` calls, not npm work. It builds the rules bundle, runs `xcodegen generate`, archives Release for `generic/platform=iOS` with a UTC-minute build number, then exports to App Store Connect (`native/ExportOptions.plist`). `make archive` stops after the archive. The upload runs once and is never retried. It needs the app record `dev.shivinate.manifest` in App Store Connect. Its first run failed on that missing record, see `testflight-app-record-missing`. The API key at `~/.appstoreconnect/private_keys` is passed by path and never read.
+`make testflight` is the iOS fallback path, run on this Mac when the Mac install fails. The ruling is `native-ships-via-testflight`. It is a Makefile because the steps are `xcodebuild` calls, not npm work. It builds the rules bundle, runs `xcodegen generate`, archives Release for `generic/platform=iOS` with a UTC-minute build number, then exports to App Store Connect (`native/ExportOptions.plist`). `make archive` stops after the archive. The upload runs once and is never retried. The API key at `~/.appstoreconnect/private_keys` is passed by path and never read.
 
 ## Why check:build compares the whole page, and the Pages quirk
 
@@ -59,4 +59,3 @@ GitHub Pages serves from the main branch root. Quirk: if the Pages workflow sits
 - `pages-queued-workflow-fix`, the record for the queued-run quirk.
 - `rules-run-in-javascriptcore`, why the rules bundle exists and what it holds.
 - `native-ships-via-testflight`, the ruling behind `make testflight`, and the build-number rule.
-- `testflight-app-record-missing`, the owner step the first upload waits on.

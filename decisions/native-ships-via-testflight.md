@@ -1,14 +1,14 @@
-# The iOS app ships through TestFlight
+# The iOS app ships Mac first, TestFlight as the fallback
 
-The MANIFEST iOS app reaches the owner's phone through TestFlight. A Release build is built and uploaded on this Mac after each merge. `make testflight` does both.
+After each merge, this Mac installs a Release build of MANIFEST on the owner's phone over Wi-Fi or cable. `make phone` does the install. If it fails for any reason, `make testflight` uploads the same commit to TestFlight at once.
 
-**Status:** ruled. Owner ruling, 2026-10-21 13:58 CDT, as the lane brief records it: "the MANIFEST iOS app ships to the owner's phone through TestFlight, as a Release build built and uploaded on this Mac after each merge". It replaces the planned cable install with `xcrun devicectl`. The make target is built on lane native/testflight. The first upload ran once on 2026-10-21 and failed, because the app record does not exist. Debt: `testflight-app-record-missing`.
+**Status:** ruled. Owner ruling, 2026-10-22 19:40 CDT, for every app: when the phone is on Wi-Fi and the Mac can install, take that route, with TestFlight as the fallback. It amends the ruling of 2026-10-21 13:58 CDT, which shipped through TestFlight only.
 
 Kind: build
 
 Plan: decisions/build-and-deploy.md#make-testflight (native)
 
-**Holds while:** `Makefile` has a `testflight` target that exports with `native/ExportOptions.plist`, and the owner installs MANIFEST on the phone from TestFlight.
+**Holds while:** the ios-adblock repo's `tools/reinstall-phone-apps` installs a Release build from a config file, and `Makefile` has a `testflight` target that exports with `native/ExportOptions.plist`.
 
 ## The command
 
@@ -29,9 +29,13 @@ Plan: decisions/build-and-deploy.md#make-testflight (native)
 
 The archive holds `Assets.car` and `CFBundleIconName` AppIcon, from the catalog in `native/Manifest/Assets.xcassets`. The round-1 review found the catalog missing, which App Store Connect rejects. The icon is the master, see `assets-and-icons`. Checked on a `make archive` of 2026-10-21 with `plutil`.
 
-## What it replaces
+## The Mac route
 
-The ios-adblock repo's phone-apps list installs apps on the phone with `xcrun devicectl device install app`. MANIFEST does not join that list. The phone gets MANIFEST from TestFlight.
+- The ios-adblock repo's `tools/reinstall-phone-apps` clones main, builds Release, signs it for development, and installs it with `xcrun devicectl device install app`.
+- `make phone` runs it with the one-app list in `native/phone-app.json`. MANIFEST is not in the tool's nightly list.
+- The phone must be on home Wi-Fi or cabled. The tool logs under ~/Library/Logs/ios-adblock-reinstall.
+- Any non-zero exit sends the same commit through `make testflight`. The report names the route that landed.
+- First run: 2026-10-22 19:42 CDT, installed and launched over Wi-Fi.
 
 ## Native files
 
@@ -39,8 +43,7 @@ A TestFlight install puts a native build on the phone. So the first install is t
 
 ## Unmeasured
 
-- The archive is signed with an Apple Development certificate, not a distribution one. Export is meant to re-sign it. Nobody has checked that.
-- No upload has passed yet, so TestFlight processing is unmeasured.
+- Every TestFlight build on the team expired together at 2026-10-22 08:11 CDT, across six apps. The cause is unknown.
 
 ## See also
 
@@ -49,4 +52,3 @@ A TestFlight install puts a native build on the phone. So the first install is t
 - `assets-and-icons` — the icon source and the archive check.
 - `native-swift-rebuild` — the signing team and the bundle id.
 - `native-files-are-frozen` — the file names that freeze at the first ship.
-- `testflight-app-record-missing` — the owner step that blocks the first upload.
