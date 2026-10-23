@@ -130,6 +130,14 @@ Builder defaults of 2026-10-22, not owner rulings:
 
 Proof: VersionStoreTests, VersionMilestoneTests, VersionSyncTests and VersionsModelTests run under ST. VersionSyncTests drives `before sync` through the real `SyncClient`. VersionsUITests is the UI test, in `native/ManifestUITests/VersionsUITests.swift`. The test-author's red run is in the message of the commit that adds the tests.
 
+## After N11
+
+Owner ruling, 2026-10-22 19:55 CDT, on the first device check: fix the bugs first, then restyle the native app to the web app's look.
+
+- The device check of 2026-10-22 19:50 CDT: the Camera opened `manifestledger://`, and the first pull filled Packages.
+- N12, bugs. On the phone, Tally showed "Nothing to show" and Orphaned showed no envelopes, while the web held 4. The masthead read 616 packages and $75.13k where the web read 593 and $68.16k. The web leaves canceled orders out, see `canceled-orders-leave-the-list`.
+- N13 and on, the restyle. The parchment palette, the letterhead, the cards and the stamps come over from the web. The debts named under Still open with "system" in them close here.
+
 ## Risk
 
 S2 and S3 (landed) changed `src/app.jsx`, the largest file in the repo. The sticky rows and the frozen sort must stay in the component, see `no-layout-shift-under-pointer`.
