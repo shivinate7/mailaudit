@@ -53,8 +53,9 @@
 //     until the query or hide-received changes.
 //   - Every dollar figure on a row comes from the bundle's `money` rule (src/view-rules.mjs), the rule the web's
 //     money() also calls. It rounds half up on the decimal value: 0.125 is $0.13 and 1.005 is $1.01.
-//   - Not pinned, because the row does not name them: the date range, canceled and refunded packages
-//     (N5's Packages view reads every item too), the per-copy stepper, the per-copy lost-mail flag, the bulk buttons.
+//   - Pinned in TallyPackagesLiveItemsTests: canceled orders and refunded packages leave the pooled rows.
+//   - Not pinned, because the row does not name them: the date range, the per-copy stepper, the per-copy
+//     lost-mail flag, the bulk buttons.
 //
 // Fake fixtures only. No Keychain item is read.
 

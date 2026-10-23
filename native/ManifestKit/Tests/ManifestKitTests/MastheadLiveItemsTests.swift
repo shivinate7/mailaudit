@@ -13,8 +13,7 @@
 // It passes on main on purpose; it fails a fix that drops every stamped package.
 //
 // The group key of a package is read from the bundle's groupPackages, not rebuilt here.
-// Packages and Tally read every item too (debt native-tally-counts-every-item); this file does not
-// pin them, and a fix to the masthead alone leaves the Packages row count above the masthead's.
+// Packages and Tally take the same live items; TallyPackagesLiveItemsTests pins them.
 //
 // Fake fixtures only.
 

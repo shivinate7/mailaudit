@@ -77,9 +77,10 @@ public final class TallyModel {
 
     private struct Left: Decodable { let left: Int; let value: Double }
 
-    /// Pools every item again and sorts.
+    /// Pools every live item again and sorts: canceled orders and refunded packages stay out (LiveItems).
     public func load() async throws {
-        groups = try await engine.call("tallyGroups", try json([store.items()]))
+        let live = try await LiveItems.of(store.items(), stamps: store.stamps(), engine: engine)
+        groups = try await engine.call("tallyGroups", "[\(live)]")
         try await resort()
     }
 
