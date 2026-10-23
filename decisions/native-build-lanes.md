@@ -136,7 +136,18 @@ Owner ruling, 2026-10-22 19:55 CDT, on the first device check: fix the bugs firs
 
 - The device check of 2026-10-22 19:50 CDT: the Camera opened `manifestledger://`, and the first pull filled Packages.
 - N12, bugs. On the phone, Tally showed "Nothing to show" and Orphaned showed no envelopes, while the web held 4. The masthead read 616 packages and $75.13k where the web read 593 and $68.16k. The web leaves canceled orders out, see `canceled-orders-leave-the-list`.
-- N13 and on, the restyle. The parchment palette, the letterhead, the cards and the stamps come over from the web. The debts named under Still open with "system" in them close here.
+- N13 and on, the restyle. Owner rulings, 2026-10-22 22:46 CDT: parchment always, with no dark variant, as on the web; and paint plus the web features native lacks. Fonts and spacing stay per client, outside `shared/tokens.json`. The lanes, in order:
+  - N13, tokens and type: Swift decodes `shared/tokens.json` at launch, Cochin and mono helpers, a light-only interface, the paper background.
+  - N14, masthead paint: the seal as a Shape, the gold rules, the ruled tally cells, the missing line, the progress bar. Closes `native-masthead-system-style`.
+  - N15, package card paint: Cochin names, mono prices, square checkboxes, the "N left" pill, the underlined order-id link. Closes `native-order-id-link-unbuilt`.
+  - N16, the Orphaned tab badge and Orphaned colours by meaning. Closes `native-orphaned-colours-unbuilt`.
+  - N17, Tally, Ledger and Sync paint.
+  - N18, the masthead on every view. Closes `native-masthead-packages-only`.
+  - N19, stamps: the Stamp button, the band, the editor, the tombstone.
+  - N20, Mark all received.
+  - N21, the ruled head cells, the floating search pill, and the Packages filters. Closes `native-filters-tally-only`.
+  - N22, motion. Closes `native-compose-is-one-fade`.
+- N14 to N17 touch separate files and build in parallel after N13. Their simulator runs take turns through the lock in `one-simulator-per-mac`. CI runs only `swift test`, so each colour meaning lives in a ManifestKit function with a unit test; the paint is proved by the accessibility audit and screenshots at 320 and 375.
 
 ## Risk
 
