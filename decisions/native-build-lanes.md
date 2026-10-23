@@ -28,7 +28,7 @@ Plan: decisions/native-build-lanes.md#still-open (native)
 | W3c, not briefed | Not briefed. No scope is recorded here. | Not yet briefed. | Not yet briefed. | Not yet briefed. |
 | W3d, not briefed | Not briefed. No scope is recorded here. | Not yet briefed. | Not yet briefed. | Not yet briefed. |
 | W3e, not briefed | Not briefed. No scope is recorded here. | Not yet briefed. | Not yet briefed. | Not yet briefed. |
-| N11 Device check | none | The owner checks on a device. The build comes from TestFlight, see `native-ships-via-testflight`. The hand checks are named: VoiceOver order, Dynamic Type, the draft kept when the app leaves, and the iPhone Camera opening a `manifestledger://` QR code (see `native-key-via-url-scheme`). If the Camera fails the scheme, the universal-link fallback in that record is built. | the owner | all, and the TestFlight app record (`testflight-app-record-missing`) |
+| N11 Device check | none | The owner checks on a device. The build comes from the Mac install or TestFlight, see `native-ships-via-testflight`. The hand checks are named: VoiceOver order, Dynamic Type, the draft kept when the app leaves, and the iPhone Camera opening a `manifestledger://` QR code (see `native-key-via-url-scheme`). If the Camera fails the scheme, the universal-link fallback in that record is built. | the owner | all |
 | C2 UI tests in CI, not built | The native job in `.github/workflows/test.yml` | Not yet briefed. The N5 UI test in `native/ManifestUITests/PackagesShellUITests.swift` already exists. | The native job runs the steps in `native-ci-on-hosted-macos` after ST, green on a hosted macOS runner, with a new timeout. | C1 (landed), N5 (landed) |
 
 W2 and W3 come from the owner's rulings, not from the first plan. W2a and W3a have landed. Their tests are groups 12 and 13 in `worker/core.test.mjs`. W2b, W3b, W3c, W3d and W3e have no full brief, so their files, tests and done checks are not set.
@@ -129,6 +129,14 @@ Builder defaults of 2026-10-22, not owner rulings:
 - The History row is collapsed on every launch. One version row is open at a time.
 
 Proof: VersionStoreTests, VersionMilestoneTests, VersionSyncTests and VersionsModelTests run under ST. VersionSyncTests drives `before sync` through the real `SyncClient`. VersionsUITests is the UI test, in `native/ManifestUITests/VersionsUITests.swift`. The test-author's red run is in the message of the commit that adds the tests.
+
+## After N11
+
+Owner ruling, 2026-10-22 19:55 CDT, on the first device check: fix the bugs first, then restyle the native app to the web app's look.
+
+- The device check of 2026-10-22 19:50 CDT: the Camera opened `manifestledger://`, and the first pull filled Packages.
+- N12, bugs. On the phone, Tally showed "Nothing to show" and Orphaned showed no envelopes, while the web held 4. The masthead read 616 packages and $75.13k where the web read 593 and $68.16k. The web leaves canceled orders out, see `canceled-orders-leave-the-list`.
+- N13 and on, the restyle. The parchment palette, the letterhead, the cards and the stamps come over from the web. The debts named under Still open with "system" in them close here.
 
 ## Risk
 

@@ -432,7 +432,6 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `native-photo-sweep-unbuilt` — The native client has no photo sweep.
 - `native-photo-viewer-unpinned` — No test pins the photo viewer's traits or the Stop control.
 - `n11-device-check-not-run` — The owner's native device check has not run.
-- `testflight-app-record-missing` — The TestFlight app record does not exist.
 - `web-photos-have-no-backup` — No Worker snapshot covers a web photo.
 - `web-reads-no-worker-snapshots` — Web History reads no Worker snapshot.
 - `cloudflare-access-login-untested` — A Cloudflare Access login in an iOS home-screen app is untested.

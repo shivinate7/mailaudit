@@ -63,7 +63,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-ledger-is-raw-json` | Kind: build | [`decisions/native-ledger-is-raw-json.md`](../decisions/native-ledger-is-raw-json.md) |
 | `native-parity-table` | Kind: build | [`decisions/native-parity-table.md`](../decisions/native-parity-table.md) |
 | `native-reply-waits-generation` | Kind: build | [`decisions/native-reply-waits-generation.md`](../decisions/native-reply-waits-generation.md) |
-| `native-ships-via-testflight` | The MANIFEST iOS app reaches the owner's phone through TestFlight. | [`decisions/native-ships-via-testflight.md`](../decisions/native-ships-via-testflight.md) |
+| `native-ships-via-testflight` | After each merge, this Mac installs a Release build of MANIFEST on the owner's phone over Wi-Fi or cable. | [`decisions/native-ships-via-testflight.md`](../decisions/native-ships-via-testflight.md) |
 | `native-swift-rebuild` | Kind: build | [`decisions/native-swift-rebuild.md`](../decisions/native-swift-rebuild.md) |
 | `order-id-button-stops-propagate` | The order-id button in Tally stops its click from reaching the row underneath. | [`decisions/order-id-button-stops-propagate.md`](../decisions/order-id-button-stops-propagate.md) |
 | `orphan-entry-takes-one-input` | The Orphaned view records an envelope from one input. | [`decisions/orphan-entry-takes-one-input.md`](../decisions/orphan-entry-takes-one-input.md) |
@@ -321,7 +321,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `sync-latency-after-fix-unmeasured` | No run of the probe covers lane web/sync-latency. | [`debts/sync-latency-after-fix-unmeasured.md`](../debts/sync-latency-after-fix-unmeasured.md) |
 | `tally-card-moves-at-320px` | At 320px the Tally card moves 14px on check-ins 1 and 6. | [`debts/tally-card-moves-at-320px.md`](../debts/tally-card-moves-at-320px.md) |
 | `tcgplayer-link-opens-history-list` | The order id link opens `orderhistory?SearchString=<id>`, the URL the owner gave on 2026-10-21 (`tcgplayerOrderUrl` encodes the id). | [`debts/tcgplayer-link-opens-history-list.md`](../debts/tcgplayer-link-opens-history-list.md) |
-| `testflight-app-record-missing` | App Store Connect has no app record for bundle id `dev.shivinate.manifest`. | [`debts/testflight-app-record-missing.md`](../debts/testflight-app-record-missing.md) |
 | `tests-33-35-40-45-cannot-fail` | Tests 33.35, 33.40 and 33.45 cannot fail on a plausible mutant. | [`debts/tests-33-35-40-45-cannot-fail.md`](../debts/tests-33-35-40-45-cannot-fail.md) |
 | `token-state-and-bundle-unpinned` | Nothing pins the React-state or bundle guarantees. | [`debts/token-state-and-bundle-unpinned.md`](../debts/token-state-and-bundle-unpinned.md) |
 | `type-floor-unbuilt` | Some labels are smaller than the 10px floor today. | [`debts/type-floor-unbuilt.md`](../debts/type-floor-unbuilt.md) |
