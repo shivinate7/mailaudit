@@ -49,7 +49,8 @@ permissions:
 jobs:
   suite:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # About 5x the slowest green run (229 s, 26 runs); 10 min cut run 39713600893.
+    timeout-minutes: 20
     # Cancel a superseded run on a PR ref. The PR draft state is in the group, so a draft run never cancels a ready run;
     # each main run gets its own group, because a group keeps one pending run and a newer one replaces it.
     concurrency:
@@ -112,8 +113,8 @@ jobs:
   # on macOS only (Cochin exists only there), and never at deploy time.
   screens:
     runs-on: macos-latest
-    # About 2x the estimated CI run of check:screens; it stops a hang (decision above).
-    timeout-minutes: 17
+    # About 2.7x the slowest green run (670 s, 26 runs); it stops a hang (decision above).
+    timeout-minutes: 30
     # Cancel a superseded run on a PR ref (draft state in the group); never cancel a run on main, where
     # each merge needs its own verdict (own group per sha on main).
     concurrency:
@@ -164,8 +165,8 @@ jobs:
           echo "native=$native" >> "$GITHUB_OUTPUT"
 
   # Decision native-ci-on-hosted-macos: the Swift package tests (ST) on a
-  # hosted macOS runner. Skips drafts (decision ci-skips-draft-prs). The 3 min
-  # timeout is about 3.4x the 53s green run, for macOS start-up variance.
+  # hosted macOS runner. Skips drafts (decision ci-skips-draft-prs). The 10 min
+  # timeout is about 6x the slowest green run (95 s, 18 runs), for macOS start-up variance.
   native:
     needs: [suite, scope]
     # !cancelled() lets it run when scope itself failed (fail safe) and still
@@ -173,7 +174,7 @@ jobs:
     # cheap-first rule: a red suite skips native.
     if: ${{ !cancelled() && needs.suite.result == 'success' && (needs.scope.result != 'success' || needs.scope.outputs.native == 'true') && !github.event.pull_request.draft }}
     runs-on: macos-26
-    timeout-minutes: 3
+    timeout-minutes: 10
     concurrency:
       group: native-${{ github.ref == 'refs/heads/main' && github.sha || format('{0}-{1}', github.ref, github.event.pull_request.draft) }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}

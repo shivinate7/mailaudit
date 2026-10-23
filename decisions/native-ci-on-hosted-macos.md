@@ -12,7 +12,7 @@ Plan: decisions/native-ci-on-hosted-macos.md#still-open (native)
 
 ## The job
 
-- The job is named native. It runs on `macos-26`. Its timeout is 3 minutes, about 3.4x the 53 s first green run, for macOS start-up variance.
+- The job is named native. It runs on `macos-26`. Its timeout is 10 minutes, about 6x the slowest green run (95 s, 18 runs to 2026-10-22), for macOS start-up variance. The 3 minute limit cut run 39761031029 on main.
 - It uses the same concurrency group pattern as the screens job: one group per sha on main, and cancel on a PR ref.
 - It has `needs: [suite, scope]`. The suite runs first on Ubuntu, and it runs `check:rules` and `check:golden`. A red suite skips the job. The job runs when scope reports a native change, on nightly and dispatch runs, and when scope fails (fail safe).
 - It skips draft PRs. `ready_for_review` starts it when a draft is marked ready, see `ci-skips-draft-prs`.
