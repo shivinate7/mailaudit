@@ -71,25 +71,13 @@ public final class OrphanedModel {
 
     private func liveRecords() -> [[String: Any]] { store.envelopeRecords().filter(Self.isLive) }
 
-    /// Drops the packages stamped Refunded or Partial refund, as the web's liveItems does
-    /// (a-refund-leaves-every-count). The group keys come from the bundle's groupPackages, not a copy of gkOf.
-    private func withoutRefunds(_ live: String) async throws -> String {
-        let refunded = Set(store.stamps().filter { ["refunded", "partial"].contains($0.value["kind"] as? String) }.keys)
-        guard !refunded.isEmpty else { return live }
-        let packages = try JSONSerialization.jsonObject(with: Data(try await engine.call("groupPackages", "[\(live)]").utf8)) as? [[String: Any]] ?? []
-        let gone = Set(packages.filter { refunded.contains($0["gk"] as? String ?? "") }
-            .flatMap { $0["items"] as? [[String: Any]] ?? [] }.compactMap { $0["key"] as? String })
-        let items = try JSONSerialization.jsonObject(with: Data(live.utf8)) as? [[String: Any]] ?? []
-        return try json(items.filter { !gone.contains($0["key"] as? String ?? "") })
-    }
-
     /// Reads the store and ranks every envelope again. Candidates are derived, never stored. The
     /// packages are the ledger without canceled orders, and the date filter does not apply
     /// (candidates-skip-date-filter).
     public func load() async throws {
         let gen = store.generation
         let got = store.received()
-        let live = try await withoutRefunds(try await engine.call("dropCanceled", "[\(try json(store.items()))]"))
+        let live = try await LiveItems.of(store.items(), stamps: store.stamps(), engine: engine)
         let grouped = try await engine.call("groupPackages", "[\(live)]")
         let names = try await engine.call("outstandingNames", "[\(live),\(try json(got))]")
         let nextPool = try JSONDecoder().decode([OutstandingName].self, from: Data(names.utf8))

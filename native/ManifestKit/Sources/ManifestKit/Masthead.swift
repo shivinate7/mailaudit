@@ -87,9 +87,9 @@ public final class MastheadModel {
 
     /// Re-reads the store: totalsOf, groupPackages, packagesDone and compact.
     public func refresh() async throws {
-        let items = try json(store.items())
         let got = try json(store.received())
         guard !store.items().isEmpty else { (cells, countLine, missingLine) = ([], "", ""); return }
+        let items = try await LiveItems.of(store.items(), stamps: store.stamps(), engine: engine)
         let t = try JSONSerialization.jsonObject(with: Data(try await engine.call("totalsOf", "[\(items),\(got)]").utf8)) as? [String: Double] ?? [:]
         let pkgs = try await engine.call("groupPackages", "[\(items)]")
         let n = (try JSONSerialization.jsonObject(with: Data(pkgs.utf8)) as? [Any])?.count ?? 0
