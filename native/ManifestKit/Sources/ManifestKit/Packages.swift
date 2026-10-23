@@ -79,7 +79,9 @@ public final class PackagesModel {
     /// The pill and the bar of one package, at the stored counts.
     private func refreshCard(_ p: Package) async throws {
         let items = String(decoding: try JSONEncoder().encode(p.items), as: UTF8.self)
-        let args = "\(items),\(try json(received))"
+        // Only this package's counts cross into JavaScript.
+        let own = Dictionary(p.items.compactMap { i in received[i.key].map { (i.key, $0) } }, uniquingKeysWith: { a, _ in a })
+        let args = "\(items),\(try json(own))"
         pills[p.gk] = try await text("packagePill", args)
         let t = try JSONSerialization.jsonObject(with: Data(try await engine.call("totalsOf", "[\(args)]").utf8)) as? [String: Any]
         if let got = t?["got"] as? Int, let total = t?["total"] as? Int, got > 0, got < total {

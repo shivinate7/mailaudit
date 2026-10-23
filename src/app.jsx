@@ -387,12 +387,11 @@ function ItemRow({
      where this copy came from instead */
   const source = variant === "source";
   const title = source ? item.seller : item.name;
-  const detail = itemDetail(item);
   const meta = source
     ? (item.qty > 1 ? [`×${item.qty}`] : [])
         .concat([item.date, item.set, item.finish, item.condition].filter(Boolean))
         .join(" · ")
-    : detail === "\u2014" ? "" : detail; /* the web leaves an empty line blank; native prints the dash */
+    : itemDetail(item);
   /* `stamped`: the copy's order carries a stamp, so it is being handled and
      the warning would nag about a claim already filed — same rule as the
      package header, plumbed down because a row knows only its own item */

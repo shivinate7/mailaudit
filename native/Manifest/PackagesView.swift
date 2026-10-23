@@ -12,7 +12,7 @@ struct PackagesView: View {
         ScrollView {
             VStack(spacing: 0) {
                 MastheadView(model: masthead)
-                LazyVStack(spacing: 8) {
+                VStack(spacing: 8) {
                     ForEach(model.rows, id: \.gk) { pkg in
                         PackageRow(pkg: pkg, model: model, masthead: masthead)
                     }
@@ -63,10 +63,7 @@ struct PackageRow: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 8) {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(pkg.seller).font(.cochin(15).weight(.bold)).foregroundStyle(paint(.seller, packageState)).lineLimit(1).textSelection(.enabled)
-                    Text(pkg.date).font(.mono(11)).foregroundStyle(paint(.orderId, packageState)).lineLimit(1).textSelection(.enabled)
-                }
+                Text(pkg.seller).font(.cochin(15).weight(.bold)).foregroundStyle(paint(.seller, packageState)).textSelection(.enabled)
                 Spacer(minLength: 0)
                 // One slot holds the pill or the stamp, so the last check-in moves nothing.
                 Group {
@@ -85,10 +82,12 @@ struct PackageRow: View {
                 .frame(minHeight: 28)
                 .fixedSize()
             }
+            Text(pkg.date).font(.mono(11)).foregroundStyle(paint(.orderId, packageState)).textSelection(.enabled)
+                .accessibilityLabel("Ordered \(pkg.date)")
             if let url = model.orderLinks[pkg.gk] {
                 HStack(spacing: 0) {
                     Link(destination: url) {
-                        Text(pkg.orderId).font(.mono(11)).underline().lineLimit(1)
+                        Text(pkg.orderId).font(.mono(11)).underline()
                             .foregroundStyle(paint(.orderId, packageState))
                             .frame(minWidth: 44, minHeight: 44, alignment: .leading)
                             .contentShape(Rectangle())
@@ -142,11 +141,12 @@ private struct ItemLine: View {
             .accessibilityIdentifier("checkin:\(item.key)")
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(item.name).font(.cochin(14).weight(.semibold)).foregroundStyle(paint(.name, state)).lineLimit(2)
+                    Text(item.name).font(.cochin(14).weight(.semibold)).foregroundStyle(paint(.name, state))
                     Spacer(minLength: 0)
-                    Text(PackageCard.priceText(item.price)).font(.mono(12)).foregroundStyle(paint(.price, state))
+                    Text(PackageCard.priceText(item.price)).font(.mono(12)).foregroundStyle(paint(.price, state)).fixedSize()
+                        .accessibilityLabel("Price \(PackageCard.priceText(item.price))")
                 }
-                Text(model.details[item.key] ?? "").font(.cochin(11.5)).foregroundStyle(paint(.detail, state)).lineLimit(1)
+                Text(model.details[item.key] ?? "").font(.cochin(11.5)).foregroundStyle(paint(.detail, state))
             }
             .padding(.top, 12)
             .padding(.trailing, 12)
