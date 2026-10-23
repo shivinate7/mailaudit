@@ -22,12 +22,16 @@ targets:
         buildPhase: resources
       - path: ../shared/fixtures/ledger.json
         buildPhase: resources
+      # tokens.json is the shared palette, decoded at launch (shared-tokens-and-fixtures).
+      - path: ../shared/tokens.json
+        buildPhase: resources
     dependencies:
       - package: ManifestKit
     info:
       path: Manifest/Info.plist
       properties:
         UILaunchScreen: {}
+        UIUserInterfaceStyle: Light
         CFBundleDisplayName: MANIFEST
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false

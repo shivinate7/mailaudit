@@ -36,6 +36,8 @@ struct RootView: View {
             .tabItem { Label("Packages", systemImage: "shippingbox") }
         }
         .frame(width: width)
+        .tint(Parchment.accent)
+        .background(Parchment.paper.ignoresSafeArea())
     }
 }
 

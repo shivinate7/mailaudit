@@ -8,6 +8,8 @@ The `cochin` constant is the Cochin font stack. Its last family is the generic `
 
 The root element sets `fontFamily: cochin`. Every element inherits that font. Form controls do not inherit it on their own, so they need their own rule. See `design-form-controls-no-inherit`.
 
+The native client sets words in Cochin and numbers in Menlo through `Font.cochin` and `Font.mono`. Both use `Font.custom(_:size:relativeTo:)`, so Dynamic Type scales them.
+
 ## The size floor
 
 No visible text is smaller than 10px. The owner ruled on 2026-10-11, accept all: record a 10px micro-label floor. Per `ux-house-rules-govern`, some labels are smaller than 10px today.

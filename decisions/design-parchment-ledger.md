@@ -8,6 +8,8 @@ Every color lives in `shared/tokens.json`. `src/app.jsx` reads that file as `C`.
 
 The CSS keyword `transparent` is not a color literal. It names no color and paints nothing, so the rule does not forbid it. Its uses, as backgrounds, gradient stops and `-webkit-tap-highlight-color`, are allowed.
 
+The native client follows the same rule. `Parchment` in `native/Manifest/Theme.swift` builds every `Color` from the decoded file, and it names no colour value. The interface is held to light (`UIUserInterfaceStyle`), so the paper is the only appearance.
+
 Translucency comes from `color-mix(in srgb, <token> <percent>, transparent)` over a token, not from `rgba()`. The bar's glass fill is the paper token at 62%. Its active tab is the card token at 90%. See `phone-nav-is-bottom-bar`.
 
 **Pinned by:** 60.10 (no colour literal in the code of `src/app.jsx`).

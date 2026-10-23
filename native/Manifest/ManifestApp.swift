@@ -20,6 +20,8 @@ struct ManifestApp: App {
     private let links = PendingKeyLinks()
     private static let log = Logger(subsystem: "dev.shivinate.manifest", category: "key-link")
 
+    init() { Parchment.load() }
+
     var body: some Scene {
         WindowGroup {
             RootView(model: model, orphaned: orphaned, tally: tally, masthead: masthead, store: store, sync: sync, versions: versions, onLedgerChange: { await reloadAll() }, failure: failure, notice: notice, width: Self.forcedWidth)
