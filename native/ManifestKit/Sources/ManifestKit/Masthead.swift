@@ -62,6 +62,10 @@ public final class MastheadModel {
     public private(set) var cells: [TallyCell] = []
     public private(set) var countLine = ""
     public private(set) var missingLine = ""
+    /// Cards in, as a share of all cards, 0 to 100. 0 with no cards.
+    public private(set) var percent = 0.0
+    /// Cards still out; the number the missing line prints.
+    public private(set) var remaining = 0
     private var current = SaveIndicator.idle
 
     /// `pinned` holds the slot on one state for a whole run (a UI test sets it).
@@ -77,10 +81,11 @@ public final class MastheadModel {
         String(decoding: try JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed]), as: UTF8.self)
     }
 
-    private func compact(_ n: Double) async throws -> String {
-        let out = try await engine.call("compact", "[\(n)]")
+    /// A bundle function of one number that gives a string: `compact` and `money`.
+    private func text(_ fn: String, _ n: Double) async throws -> String {
+        let out = try await engine.call(fn, "[\(n)]")
         guard let s = try JSONSerialization.jsonObject(with: Data(out.utf8), options: [.fragmentsAllowed]) as? String else {
-            throw RulesFailure.threw("compact gave \(out)")
+            throw RulesFailure.threw("\(fn) gave \(out)")
         }
         return s
     }
@@ -88,23 +93,24 @@ public final class MastheadModel {
     /// Re-reads the store: totalsOf, groupPackages, packagesDone and compact.
     public func refresh() async throws {
         let got = try json(store.received())
-        guard !store.items().isEmpty else { (cells, countLine, missingLine) = ([], "", ""); return }
+        guard !store.items().isEmpty else { (cells, countLine, missingLine, percent, remaining) = ([], "", "", 0, 0); return }
         let items = try await LiveItems.of(store.items(), stamps: store.stamps(), engine: engine)
         let t = try JSONSerialization.jsonObject(with: Data(try await engine.call("totalsOf", "[\(items),\(got)]").utf8)) as? [String: Double] ?? [:]
         let pkgs = try await engine.call("groupPackages", "[\(items)]")
         let n = (try JSONSerialization.jsonObject(with: Data(pkgs.utf8)) as? [Any])?.count ?? 0
         let done = Int(try await engine.call("packagesDone", "[\(pkgs),\(got)]")) ?? 0
         let (total, have, val, missingVal) = (t["total"] ?? 0, t["got"] ?? 0, t["val"] ?? 0, t["missingVal"] ?? 0)
-        let (inVal, allVal) = (try await compact(val - missingVal), try await compact(val))
+        let (inVal, allVal) = (try await text("compact", val - missingVal), try await text("compact", val))
         cells = [
             TallyCell(label: "cards", figure: "\(Int(have))/\(Int(total))"),
             TallyCell(label: "packages", figure: "\(done)/\(n)"),
             TallyCell(label: "value", figure: "$\(inVal)/$\(allVal)"),
         ]
         countLine = "\(n) packages \u{00B7} autosaves"
-        let remaining = Int(total - have)
-        // Exact money, with cents and thousands separators (en_US, as the card rows read).
-        let money = missingVal.formatted(.currency(code: "USD").locale(Locale(identifier: "en_US")))
+        remaining = Int(total - have)
+        percent = total > 0 ? have * 100 / total : 0
+        // The bundle's money, so the line rounds half up as the web does.
+        let money = try await text("money", missingVal)
         missingLine = remaining == 0 ? "ALL ACCOUNTED FOR \u{2713}" : "\(remaining) still missing \u{00B7} \(money)"
     }
 

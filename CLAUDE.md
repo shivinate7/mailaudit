@@ -400,7 +400,6 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `native-discard-arm-unpinned` — No test pins the native Discard arm.
 - `native-key-scan-skips-views` — The native key scan skips SwiftUI view state.
 - `native-masthead-packages-only` — The native masthead shows on Packages only.
-- `native-masthead-system-style` — The native masthead uses system styles.
 - `native-compose-is-one-fade` — The native letterhead composes in one fade.
 - `native-backup-has-no-photos` — Native Backup holds no photos.
 - `native-backup-ui-unpinned` — No UI test taps Backup.

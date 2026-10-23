@@ -138,7 +138,7 @@ Owner ruling, 2026-10-22 19:55 CDT, on the first device check: fix the bugs firs
 - N12, bugs. On the phone, Tally showed "Nothing to show" and Orphaned showed no envelopes, while the web held 4. The masthead read 616 packages and $75.13k where the web read 593 and $68.16k. The web leaves canceled orders out, see `canceled-orders-leave-the-list`.
 - N13 and on, the restyle. Owner rulings, 2026-10-22 22:46 CDT: parchment always, with no dark variant, as on the web; and paint plus the web features native lacks. Fonts and spacing stay per client, outside `shared/tokens.json`. The lanes, in order:
   - N13, tokens and type (landed): Swift decodes `shared/tokens.json` at launch, Cochin and mono helpers, a light-only interface, the paper background.
-  - N14, masthead paint: the seal as a Shape, the gold rules, the ruled tally cells, the missing line, the progress bar. Closes `native-masthead-system-style`.
+  - N14, masthead paint (landed): the seal drawn on a Canvas, the gold rules, the ruled tally cells, the missing line, the progress bar.
   - N15, package card paint: Cochin names, mono prices, square checkboxes, the "N left" pill, the underlined order-id link. Closes `native-order-id-link-unbuilt`.
   - N16, the Orphaned tab badge and Orphaned colours by meaning. Closes `native-orphaned-colours-unbuilt`.
   - N17, Tally, Ledger and Sync paint.
@@ -148,6 +148,7 @@ Owner ruling, 2026-10-22 19:55 CDT, on the first device check: fix the bugs firs
   - N21, the ruled head cells, the floating search pill, and the Packages filters. Closes `native-filters-tally-only`.
   - N22, motion. Closes `native-compose-is-one-fade`.
 - N13 notes. `Palette` in ManifestKit decodes the file (Foundation only). `Parchment` in `native/Manifest/Theme.swift` decodes the bundled copy once at launch and holds one `Color` accessor per token. `Font.cochin` and `Font.mono` (Menlo) use `Font.custom(_:size:relativeTo:)`, so Dynamic Type scales them. `UIUserInterfaceStyle: Light` sits in `project.yml`, and xcodegen writes it to Info.plist. Only the accent tint and the paper behind each tab (`parchmentPaper()`, one modifier) changed; a tab's scroll content covers a background set on the TabView. The photo viewer scrim reads the `scrim` token. The older colour literals in the views stay until N14 to N17 restyle them. `Palette` also reads `#RGB` and spaced `rgba()`. No test covers either form, and the token file uses neither. The token test names such a token loudly if one appears.
+- N14 notes. `MastheadPaint` in ManifestKit holds every colour meaning of the masthead as a token name (type, rule, bar, seal layers, tally weights), so `swift test` pins them and the view only turns a name into a `Color` with `Parchment`. The seal is one `Canvas` on the web's 100 by 100 sheet, read from `MastheadPaint.seal`; its outline and its use of the values are proved by the screenshots at 320 and 375, not by a test. The masthead has one fixed seal size, 36pt, where the web clamps 36 to 52 by viewport width; that is 36 to 38 on every iPhone. The outstanding line takes its money from the bundle's `money`, so it rounds half up as the web does (`rules-run-in-javascriptcore`). The progress element `masthead-progress` reads "N percent", rounded down. `MastheadModel.percent` is `got * 100 / total`.
 - N14 to N17 touch separate files. They build in parallel after N13. Their simulator runs take turns through the lock in `one-simulator-per-mac`. CI runs only `swift test`. So each colour meaning lives in a ManifestKit function with a unit test. The accessibility audit and screenshots at 320 and 375 prove the paint.
 
 ## Risk
@@ -168,7 +169,6 @@ Other risks live in the record for their lane:
 - The native job runs ST only. Debt: `native-ui-tests-not-in-ci`.
 - The key scan skips SwiftUI view state. Debt: `native-key-scan-skips-views`.
 - The native masthead shows on Packages only. Debt: `native-masthead-packages-only`.
-- The native masthead uses system styles. Debt: `native-masthead-system-style`.
 - The native letterhead composes in one fade. Debt: `native-compose-is-one-fade`.
 - Native Backup holds no photos. Debt: `native-backup-has-no-photos`.
 - No UI test taps Backup. Debt: `native-backup-ui-unpinned`.
