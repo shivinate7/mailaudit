@@ -69,8 +69,7 @@ struct PhotoViewer: View {
     var body: some View {
         if let id = viewer.shown {
             ZStack {
-                // The scrim is C.scrim in shared/tokens.json; the Swift decode of that file is not built.
-                Color(red: 28 / 255, green: 43 / 255, blue: 36 / 255).opacity(0.92).ignoresSafeArea()
+                Parchment.scrim.ignoresSafeArea()
                 if let image { Image(decorative: image, scale: 1).resizable().scaledToFit() }
             }
             .contentShape(Rectangle())

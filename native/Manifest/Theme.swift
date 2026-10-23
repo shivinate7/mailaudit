@@ -43,6 +43,13 @@ enum Parchment {
     static var scrim: Color { color("scrim") }
 }
 
+extension View {
+    /// Paper behind a tab's content. Each tab paints its own, because a tab's scroll content covers a background set on the TabView.
+    func parchmentPaper() -> some View {
+        scrollContentBackground(.hidden).background(Parchment.paper.ignoresSafeArea())
+    }
+}
+
 /// Cochin sets words and Menlo sets numbers (typography-cochin-and-mono). Both scale with
 /// Dynamic Type relative to a text style.
 extension Font {
