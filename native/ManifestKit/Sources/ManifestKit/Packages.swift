@@ -40,7 +40,8 @@ public final class PackagesModel {
     /// groupPackages, then sortPackages "newest" (the web default, src/app.jsx).
     public func load() async throws {
         let got = store.received()
-        let grouped = try await engine.call("groupPackages", try json([store.items()]))
+        let live = try await LiveItems.of(store.items(), stamps: store.stamps(), engine: engine)
+        let grouped = try await engine.call("groupPackages", "[\(live)]")
         let sorted = try await engine.call("sortPackages", "[\(grouped),\"newest\",\(try json(got))]")
         rows = try JSONDecoder().decode([Package].self, from: Data(sorted.utf8))
         received = got

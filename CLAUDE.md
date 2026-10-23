@@ -393,7 +393,6 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `native-ask-has-no-cancel-focus` — The native ask does not move first focus to Cancel.
 - `native-removal-rule-is-swift` — The test for a removing reply is Swift code.
 - `native-version-names-unpinned` — No test pins the version file names.
-- `native-tally-counts-every-item` — The native Tally counts every ledger item.
 - `native-filters-tally-only` — The native client has no date filter, package sort or Packages search.
 - `native-tally-copy-no-stepper` — The native Tally copy has a check-in toggle and nothing else.
 - `native-envelope-has-no-photos` — Native envelopes have no photos.
