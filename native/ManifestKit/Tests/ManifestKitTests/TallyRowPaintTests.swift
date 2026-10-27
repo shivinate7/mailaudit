@@ -74,7 +74,7 @@ final class TallyRowPaintTests: XCTestCase {
 
     /// Parchment.color(_:) stops the app on a name that is not in the file, so a typo must fail here.
     func testEveryTokenNameIsInTheSharedFile() throws {
-        let palette = try Contrast.palette()
+        let palette = try Palette.decode(Data(contentsOf: PaletteTests.tokensURL))
         for part in Part.allCases {
             for done in Self.states {
                 guard let name = TallyRowPaint.token(part, done: done) else { continue }
@@ -88,12 +88,12 @@ final class TallyRowPaintTests: XCTestCase {
     /// Every text part clears 4.5:1 on the card, open and done. The done ratio is green on card (4.80);
     /// green on paper (4.29) would fail, so the surface is the card in both states.
     func testEveryTextPairClearsTheFloor() throws {
-        let palette = try Contrast.palette()
+        let palette = try Palette.decode(Data(contentsOf: PaletteTests.tokensURL))
         for done in Self.states {
             let surface = try XCTUnwrap(TallyRowPaint.token(.surface, done: done), "the row has no surface while done is \(done)")
             for part in [Part.disclosure, .name, .meta, .ratio, .rate, .left, .across] {
                 let text = try XCTUnwrap(TallyRowPaint.token(part, done: done), "\(part) has no paint while done is \(done)")
-                let r = try Contrast.ratio(text, on: surface, palette)
+                let r = try TokenContrast.ratio(text, on: surface, palette)
                 XCTAssertGreaterThanOrEqual(r, 4.5, "\(part) on the row while done is \(done) (\(text) on \(surface))")
             }
         }

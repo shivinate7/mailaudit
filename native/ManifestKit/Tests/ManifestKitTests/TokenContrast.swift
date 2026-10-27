@@ -1,16 +1,12 @@
-// The one home of the WCAG 2 contrast check for the paint tests (palette-tokens-contrast-floor).
-// PackageCardTokensTests held it first. It moved here so every paint suite calls one copy.
+// The one home of the WCAG 2 contrast measure the token tests share (palette-tokens-contrast-floor).
+// PackageCardTokensTests, OrphanedPaintTokensTests and ControlPaintTokensTests call it, and so can
+// the next paint enum's test. A new paint test calls it, and never keeps a copy.
 
 import Foundation
 import XCTest
 @testable import ManifestKit
 
-enum Contrast {
-    /// The tokens of shared/tokens.json, as the app decodes them.
-    static func palette() throws -> Palette {
-        try Palette.decode(Data(contentsOf: PaletteTests.tokensURL))
-    }
-
+enum TokenContrast {
     /// WCAG 2 relative luminance of a token that is opaque.
     static func luminance(_ c: Palette.RGBA) -> Double {
         func channel(_ v: UInt8) -> Double {
@@ -20,6 +16,7 @@ enum Contrast {
         return 0.2126 * channel(c.red) + 0.7152 * channel(c.green) + 0.0722 * channel(c.blue)
     }
 
+    /// The ratio of two tokens by name. An unknown name fails the test through XCTUnwrap.
     static func ratio(_ a: String, on b: String, _ palette: Palette) throws -> Double {
         let x = luminance(try XCTUnwrap(palette.tokens[a], "no token \(a)"))
         let y = luminance(try XCTUnwrap(palette.tokens[b], "no token \(b)"))

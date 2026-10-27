@@ -100,6 +100,9 @@ public final class OrphanedModel {
         rankedAt = gen
     }
 
+    /// The Orphaned tab's badge: live envelopes. `envelopes` holds no tombstone, and zero hides the badge.
+    public var badgeCount: Int { envelopes.count }
+
     public func ranked(for envelopeId: String) -> Ranked { rankings[envelopeId] ?? .none }
 
     /// True when no outstanding copy of this entry exists anywhere (the web's "no outstanding copy" tag).

@@ -85,13 +85,13 @@ final class PackageCardTokensTests: XCTestCase {
     /// when done. The count sits on the row's wash, or on the card when the row has none.
     func testTheCountPartPaintsManilaInkWhilePartial() throws {
         let count = try XCTUnwrap(Self.countPart, "PackageCard.Part has no count part (debt native-partial-count-colour)")
-        let palette = try Contrast.palette()
+        let palette = try Palette.decode(Data(contentsOf: PaletteTests.tokensURL))
         let want: [LineState: String] = [.open: "ink", .partial: "manilaInk", .done: "ink"]
         for state in Self.states {
             let token = try XCTUnwrap(PackageCard.token(count, state), "count has no paint while \(state)")
             XCTAssertEqual(token, want[state], "count while \(state)")
             let row = try XCTUnwrap(PackageCard.token(.rowFill, state) ?? PackageCard.token(.surface, state))
-            let r = try Contrast.ratio(token, on: row, palette)
+            let r = try TokenContrast.ratio(token, on: row, palette)
             XCTAssertGreaterThanOrEqual(r, 4.5, "count on the \(state) row (\(token) on \(row))")
         }
     }
@@ -111,10 +111,6 @@ final class PackageCardTokensTests: XCTestCase {
 
     // MARK: contrast
 
-    func ratio(_ a: String, on b: String, _ palette: Palette) throws -> Double {
-        try Contrast.ratio(a, on: b, palette)
-    }
-
     /// Every text pair the card paints clears 4.5:1 (palette-tokens-contrast-floor), and the bar's
     /// fill clears 3:1 on its track. inkSoft on greenSoft, a done row's name, is the thinnest at 4.51.
     func testEveryTextPairClearsTheFloor() throws {
@@ -124,21 +120,21 @@ final class PackageCardTokensTests: XCTestCase {
         for state in Self.states {
             let row = t(.rowFill, state) ?? t(.surface, state)!
             for part in [Part.name, .price, .detail] {
-                let r = try ratio(t(part, state)!, on: row, palette)
+                let r = try TokenContrast.ratio(t(part, state)!, on: row, palette)
                 XCTAssertGreaterThanOrEqual(r, 4.5, "\(part) on the \(state) row (\(t(part, state)!) on \(row))")
             }
         }
         for part in [Part.seller, .orderId] {
-            let r = try ratio(t(part, .open)!, on: t(.surface, .open)!, palette)
+            let r = try TokenContrast.ratio(t(part, .open)!, on: t(.surface, .open)!, palette)
             XCTAssertGreaterThanOrEqual(r, 4.5, "\(part) on the card")
         }
-        let pill = try ratio(t(.pillText, .open)!, on: t(.pillFill, .open)!, palette)
+        let pill = try TokenContrast.ratio(t(.pillText, .open)!, on: t(.pillFill, .open)!, palette)
         XCTAssertGreaterThanOrEqual(pill, 4.5, "the pill's text on its fill")
         for state in [LineState.partial, .done] {
-            let mark = try ratio(t(.boxMark, state)!, on: t(.boxFill, state)!, palette)
+            let mark = try TokenContrast.ratio(t(.boxMark, state)!, on: t(.boxFill, state)!, palette)
             XCTAssertGreaterThanOrEqual(mark, 4.5, "the checkbox mark on its fill while \(state)")
         }
-        let bar = try ratio(t(.barFill, .open)!, on: t(.barTrack, .open)!, palette)
+        let bar = try TokenContrast.ratio(t(.barFill, .open)!, on: t(.barTrack, .open)!, palette)
         XCTAssertGreaterThanOrEqual(bar, 3, "the bar's fill on its track")
     }
 }

@@ -24,7 +24,8 @@ struct RootView: View {
             }
             .syncLine(sync)
             .parchmentPaper()
-            .tabItem { Label("Orphaned", systemImage: "envelope.badge") }
+            .tabItem { Label("Orphaned", systemImage: "envelope") }
+            .badge(orphaned?.badgeCount ?? 0)
             Group {
                 if let tally { TallyView(model: tally) } else { Placeholder(title: failure ?? "Opening the ledger") }
             }

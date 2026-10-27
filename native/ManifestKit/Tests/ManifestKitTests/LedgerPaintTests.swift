@@ -100,7 +100,7 @@ final class LedgerPaintTests: XCTestCase {
 
     /// Parchment.color(_:) stops the app on a name that is not in the file, so a typo must fail here.
     func testEveryTokenNameIsInTheSharedFile() throws {
-        let palette = try Contrast.palette()
+        let palette = try Palette.decode(Data(contentsOf: PaletteTests.tokensURL))
         for part in Part.allCases {
             for armed in Self.states {
                 guard let name = LedgerPaint.token(part, armed: armed) else { continue }
@@ -116,13 +116,13 @@ final class LedgerPaintTests: XCTestCase {
     }
 
     func assertFloor(_ text: String, on surface: String, _ what: String, _ palette: Palette, line: UInt = #line) throws {
-        let r = try Contrast.ratio(text, on: surface, palette)
+        let r = try TokenContrast.ratio(text, on: surface, palette)
         XCTAssertGreaterThanOrEqual(r, 4.5, "\(what) (\(text) on \(surface))", line: line)
     }
 
     /// The title and the group labels sit on the page, which is paper (4.68 for inkSoft).
     func testTheTitleAndGroupLabelsClearTheFloorOnPaper() throws {
-        let palette = try Contrast.palette()
+        let palette = try Palette.decode(Data(contentsOf: PaletteTests.tokensURL))
         for part in [Part.title, .groupLabel] {
             try assertFloor(try token(part), on: "paper", "\(part) on paper", palette)
         }
@@ -130,7 +130,7 @@ final class LedgerPaintTests: XCTestCase {
 
     /// Everything inside the group card, the Reset box and the open panels sits on the card fill.
     func testEveryTextOnTheCardClearsTheFloor() throws {
-        let palette = try Contrast.palette()
+        let palette = try Palette.decode(Data(contentsOf: PaletteTests.tokensURL))
         let card = try token(.cardSurface)
         for part in [Part.rowTitle, .rowSub, .rowValue, .rowValueAdvisory, .disclosure, .cancelText,
                      .versionWhen, .versionLabel, .versionLabelSoft, .versionFigure,
@@ -142,13 +142,13 @@ final class LedgerPaintTests: XCTestCase {
 
     /// The armed Reset fills its row with red and writes card on it (5.48).
     func testTheArmedResetClearsTheFloorOnItsFill() throws {
-        let palette = try Contrast.palette()
+        let palette = try Palette.decode(Data(contentsOf: PaletteTests.tokensURL))
         try assertFloor(try token(.resetText, armed: true), on: try token(.resetFill, armed: true), "the armed Reset on its fill", palette)
     }
 
     /// Restore is red on redSoft (4.76) at rest and card on red once armed. The error box is red on redSoft.
     func testTheRestoreAndErrorPairsClearTheFloor() throws {
-        let palette = try Contrast.palette()
+        let palette = try Palette.decode(Data(contentsOf: PaletteTests.tokensURL))
         for armed in Self.states {
             try assertFloor(try token(.restoreText, armed: armed), on: try token(.restoreFill, armed: armed),
                       "Restore while armed is \(armed)", palette)
