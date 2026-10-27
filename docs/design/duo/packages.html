@@ -1,0 +1,180 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Duo · Packages</title><style>
+:root{--paper:#F2E9DA;--card:#FCF6EA;--ink:#332E3F;--inkSoft:#6E6379;--line:#DCCDB6;--gold:#C9A961;--silver:#C4C3C0;--accent:#6F5CA6;--green:#2E7A5E;--greenSoft:#E6E7D7;--red:#A8443C;--redSoft:#F4E4D9;--manila:#EADBBA;--manilaInk:#695832;--amber:#846008;--wax:#A8443C;--waxLit:#C86A5F;--waxDeep:#66231D;--waxCut:#5E1F1A;--waxRaised:#E09A90;--shadow:rgba(28,43,36,0.06);--scrim:rgba(28,43,36,0.92);
+--serif:Cochin,'Hoefler Text',Palatino,Georgia,serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;--sys:-apple-system,system-ui,sans-serif;color-scheme:light}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#E7DECD;color:var(--ink);font-family:var(--sys);-webkit-text-size-adjust:100%}
+.top{position:sticky;top:0;z-index:9;background:color-mix(in srgb,#E7DECD 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;flex-direction:column;gap:8px}
+.top h1{margin:0;font:600 18px var(--sys)}
+.top p{margin:0;font-size:13px;color:var(--inkSoft);max-width:72ch}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button,.hide{font:600 12px var(--sys);min-height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.chips button[aria-pressed=false]{opacity:.5;text-decoration:line-through}
+main{display:flex;flex-direction:column;gap:32px;padding:16px;max-width:1040px;margin-inline:auto}
+.opt{display:flex;flex-direction:column;gap:8px}
+.opt[hidden]{display:none}
+.ohead{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.ohead h2{margin:0;font:600 16px var(--sys);flex:1 1 20rem}
+.var{margin:0;font-size:13px;color:var(--accent)}
+.gl{display:grid;grid-template-columns:repeat(auto-fit,minmax(16rem,1fr));gap:8px;font-size:13px}
+.gl p{margin:0;padding:8px 12px;border-radius:8px;background:var(--card);border:1px solid var(--line)}
+.gl b{font-weight:600}
+.fit{overflow:hidden;padding:12px}
+.cap{font-size:12px;color:var(--inkSoft);margin:0}
+a{color:var(--accent)}
+/* the device */
+.dev{position:relative;background:var(--paper);border-radius:32px;box-shadow:0 0 0 10px #22202a,0 16px 40px rgba(0,0,0,.25);overflow:hidden;font-family:var(--serif);margin:10px}
+.dev.open{width:951px;height:669px}.dev.closed{width:466px;height:678px}.dev.tall{width:669px;height:951px}
+.page{position:absolute;overflow:hidden}
+.page.l{left:0;top:0;bottom:0;width:469px}.page.r{left:482px;top:0;bottom:0;width:469px}
+.page.all{inset:0}.page.t{left:0;right:0;top:0;height:469px}.page.b{left:0;right:0;top:482px;bottom:0}
+.fold{position:absolute;z-index:4;background:repeating-linear-gradient(45deg,rgba(51,46,63,.10) 0 2px,transparent 2px 6px)}
+.fold.v{top:0;bottom:0;border-inline:1px dashed rgba(111,92,166,.55)}
+.fold.h{left:0;right:0;border-block:1px dashed rgba(111,92,166,.55)}
+.status{height:44px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 28px 6px;font:600 13px var(--sys)}
+.body{position:absolute;top:44px;left:0;right:0;bottom:0;padding:8px 16px 0;display:flex;flex-direction:column;gap:12px;overflow:hidden}
+.page.b .body{top:0;padding-top:12px}
+/* masthead */
+.mh{display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:4px}
+.seal-row{display:flex;align-items:center;gap:12px;width:100%;justify-content:center}
+.seal-row i{height:1px;background:var(--gold);flex:0 1 104px}
+.seal{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 40% 35%,var(--waxLit),var(--wax) 55%,var(--waxDeep));box-shadow:inset 0 0 0 4px rgba(94,31,26,.35)}
+.mh-title{font:400 32px var(--serif);letter-spacing:.2em;padding-left:.2em}
+.mh-house{font:10px var(--mono);letter-spacing:.26em;color:var(--inkSoft)}
+.tallies{display:grid;grid-template-columns:1fr 1.15fr 1.2fr;width:100%;border-top:1px solid var(--line);margin-top:4px;padding-top:8px}
+.tallies div{display:flex;flex-direction:column;align-items:center;gap:2px}
+.tallies div+div{border-left:1px solid var(--line)}
+.tallies span{font:10px var(--mono);letter-spacing:.16em;color:var(--inkSoft)}
+.tallies b{font:600 13px var(--mono);color:var(--inkSoft)}.tallies em{font-style:normal;color:var(--accent)}
+.pbar{width:100%;height:6px;border-radius:3px;background:var(--silver);overflow:hidden;margin-top:4px}.pbar i{display:block;height:100%;background:var(--accent)}
+.mh-foot{width:100%;display:flex;justify-content:space-between;font:10.5px var(--mono);color:var(--inkSoft)}.miss{color:var(--red);font-weight:700}
+/* cards */
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;flex-shrink:0;box-shadow:0 1px 2px var(--shadow)}
+.card.sel{outline:2px solid var(--accent);outline-offset:-1px}
+.card.gilt{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+.chead{display:flex;align-items:flex-start;gap:8px;padding:12px}
+.chev{font:11px var(--mono);color:var(--inkSoft);width:12px;padding-top:4px}
+.cwho{flex:1;min-width:0}
+.seller{font:700 16px var(--serif)}
+.cmeta{font:11px var(--mono);color:var(--inkSoft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.red{color:var(--red);font-weight:700}.amber{color:var(--amber);font-weight:700}.green{color:var(--green);font-weight:700}
+.chip{font:700 11px var(--mono);color:var(--red);background:var(--redSoft);border-radius:999px;padding:4px 8px;white-space:nowrap}
+.stamp{font:700 11px var(--mono);letter-spacing:.16em;color:var(--green);border:2px solid var(--green);border-radius:4px;padding:2px 8px;transform:rotate(-4deg)}
+.oid{font:11px var(--mono);color:var(--inkSoft);padding:0 12px 8px 32px}.oid u{color:var(--ink)}
+.acts{display:flex;justify-content:space-between;gap:8px;padding:0 12px 12px}
+.btn{font:12px var(--mono);border:1px solid var(--line);border-radius:6px;padding:0 12px;min-height:44px;display:inline-flex;align-items:center;background:var(--card)}
+.btn.ink{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.row{display:flex;gap:12px;align-items:flex-start;padding:12px;border-top:1px solid var(--line)}
+.cb{flex:0 0 24px;height:24px;border:2px solid var(--inkSoft);border-radius:6px;display:grid;place-items:center;color:var(--card)}
+.cb.on{background:var(--green);border-color:var(--green)}
+.rmain{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.rname{font:600 15px var(--serif)}.row.done .rname{color:var(--inkSoft)}
+.rmeta{font:11px var(--serif);color:var(--inkSoft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rmeta u{font-family:var(--mono);color:var(--ink)}
+.price{font:13px var(--mono)}
+.step{display:flex;align-items:center;gap:8px;margin-top:4px}.step i{font-style:normal;width:36px;height:32px;border:1px solid var(--line);border-radius:6px;display:grid;place-items:center}.step b{font:600 13px var(--mono)}
+/* index rows (new) */
+.idx{display:grid;grid-template-columns:1fr auto;gap:4px 8px;padding:8px 12px;min-height:56px;background:var(--card);border:1px solid var(--line);border-radius:8px;flex-shrink:0}
+.idx.sel{outline:2px solid var(--accent);outline-offset:-1px}
+.iwho{display:flex;flex-direction:column;min-width:0}.iwho b{font:700 15px var(--serif)}.iwho small{font:10.5px var(--mono);color:var(--inkSoft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.idx .chip{align-self:start}
+.ibar{grid-column:1/-1;height:3px;background:var(--silver);border-radius:2px;overflow:hidden}.ibar i{display:block;height:100%;background:var(--accent)}
+/* tally */
+.trow{display:flex;gap:8px;align-items:flex-start;padding:12px;background:var(--card);border:1px solid var(--line);border-radius:8px;flex-shrink:0}
+.trow.sel{outline:2px solid var(--accent);outline-offset:-1px}
+.twho{flex:1;min-width:0;display:flex;flex-direction:column}.twho b{font:600 16px var(--serif)}.twho small{font:11px var(--mono);color:var(--inkSoft)}
+.tfig{display:flex;flex-direction:column;align-items:flex-end}.tfig b{font:700 15px var(--mono)}.tfig small{font:11px var(--mono);color:var(--inkSoft)}.tfig small.red{color:var(--red);font-family:var(--serif)}
+/* orphaned */
+.record{background:var(--ink);color:var(--card);border-radius:8px;min-height:44px;display:grid;place-items:center;font:700 15px var(--serif);flex-shrink:0}
+.ehead{display:flex;gap:8px;align-items:center;padding:12px;font:10.5px var(--mono);letter-spacing:.06em;color:var(--inkSoft)}.ehead span:first-child{flex:1}
+.mini{font:11px var(--mono);border:1px solid var(--line);border-radius:6px;padding:4px 8px;background:var(--card);color:var(--ink);white-space:nowrap}.mini.redt{color:var(--red);border-color:var(--redSoft)}
+.ebody{padding:0 12px 8px;font-size:13.5px;display:flex;flex-direction:column;gap:2px}.enote{font:11px var(--mono);color:var(--inkSoft);margin-top:4px}
+.cands{border-top:1px solid var(--line);padding:8px 12px 12px;display:flex;flex-direction:column;gap:8px}
+.klabel{font:10.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--inkSoft)}
+.cand{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:8px}.cand>div{flex:1;display:flex;flex-direction:column}.cand b{font:700 14px var(--serif)}.cand small{font:11px var(--mono);color:var(--inkSoft)}.cand small.green{color:var(--green)}
+.cands.big .cand{padding:12px}.cands.big .cand b{font-size:16px}.cands.big .mini{min-height:44px;display:inline-flex;align-items:center;padding:0 12px}
+.comp{padding:12px;display:flex;flex-direction:column;gap:8px}.comp .acts{padding:0;justify-content:flex-end}
+.field{border:1px solid var(--accent);border-radius:8px;min-height:44px;display:flex;align-items:center;padding:0 12px;font:16px var(--serif);color:var(--inkSoft);background:var(--card)}.field.soft{border-color:var(--line);font-size:14px}
+.sugs{display:flex;flex-wrap:wrap;gap:8px}.sug{font:13px var(--serif);border:1px solid var(--line);border-radius:999px;padding:0 12px;min-height:36px;display:inline-flex;align-items:center;background:var(--paper)}
+.empty{font-size:14px;color:var(--inkSoft);text-align:center;padding:24px 16px}
+/* ledger */
+.ltitle{font:12px var(--mono);letter-spacing:.3em;text-align:center;color:var(--inkSoft);padding-top:8px}
+.group{background:var(--card);border:1px solid var(--line);border-radius:8px;flex-shrink:0}
+.cell{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:52px;padding:8px 16px}.cell+.cell{border-top:1px solid var(--line)}
+.cell.sel{background:color-mix(in srgb,var(--accent) 8%,var(--card))}
+.cell>div{display:flex;flex-direction:column}.ck{font:18px var(--serif)}.cell small{font:11px var(--serif);color:var(--inkSoft)}.cv{font:13px var(--mono);color:var(--accent);white-space:nowrap}
+.reset{border:1px solid var(--red);color:var(--red);border-radius:8px;min-height:52px;display:flex;align-items:center;padding:0 16px;font:18px var(--serif);flex-shrink:0}
+.panel{padding:12px;display:flex;flex-direction:column;gap:12px}.pairs{display:grid;grid-template-columns:auto 1fr;gap:4px 16px;font:13px var(--mono)}.pairs span{color:var(--inkSoft)}.hint{margin:0;font-size:13px;color:var(--inkSoft)}
+.spanrow .cell{min-height:56px}
+/* chrome */
+.tabbar{position:absolute;z-index:6;bottom:32px;height:64px;display:flex;align-items:stretch;padding:4px;gap:4px;border-radius:32px;border:1px solid var(--line);background:color-mix(in srgb,var(--paper) 62%,transparent);backdrop-filter:blur(14px) saturate(1.4);box-shadow:0 6px 18px var(--shadow)}
+.tabbar.under-l{left:24px;width:421px}
+.tabbar.full{left:24px;right:24px;margin-inline:auto;max-width:480px}
+.tabbar.across{left:50%;transform:translateX(-50%);width:420px}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:28px;color:var(--ink);position:relative;min-width:44px}
+.tab b{font:600 10px var(--mono);letter-spacing:.08em;text-transform:uppercase}
+.tab.on{background:color-mix(in srgb,var(--card) 90%,transparent);color:var(--accent);box-shadow:0 0 0 1px var(--line)}
+.badge{position:absolute;top:6px;right:calc(50% - 22px);font:700 9px var(--mono);font-style:normal;background:var(--red);color:var(--card);border-radius:8px;padding:1px 4px}
+.find{position:absolute;z-index:6;height:48px;bottom:104px;border-radius:24px;border:1px solid var(--line);background:var(--card);display:flex;align-items:center;gap:8px;padding:0 16px;font:16px var(--serif);color:var(--inkSoft);box-shadow:0 4px 12px var(--shadow)}
+.find.on-l{left:24px;width:421px}.find.on-r{left:506px;width:421px}.find.full{left:24px;right:24px;max-width:480px;margin-inline:auto}
+.find.top-r{bottom:auto;top:52px;left:506px;width:421px}
+.split-bar{position:absolute;z-index:6;bottom:32px;height:64px}
+.note{position:absolute;z-index:7;font:600 11px var(--sys);background:var(--accent);color:#fff;border-radius:6px;padding:4px 8px}
+.kbd{position:absolute;z-index:8;left:0;right:0;bottom:0;height:300px;background:#cfd3da;display:grid;place-items:center;font:600 13px var(--sys);color:#555;border-top:1px solid #aaa}
+.dim{opacity:.35}
+.spacer{flex:1}
+</style></head><body>
+<div class="top"><h1>Duo · Packages</h1><p>Open, flat: 951×669 pt, two pages of 469 pt. The hatched band is the fold, 13 pt at x 469 (degen test value, unmeasured). Held constant: data, scale, the tab bar under the left page, and Find over the page whose list it filters. Only the page split changes.</p><p>Light theme only: the repo ships one palette. Deep links: <code>#s=a</code>, <code>#s=b,c</code>, <code>#s=all</code>. <a href="index.html">All Duo mockups</a>.</p><div class="chips" aria-label="Options"></div></div>
+<main><section class="opt" id="a" data-short="A · index + package">
+<div class="ohead"><h2>A · Index left, open package right</h2><button type="button" class="hide">Hide A</button></div>
+<p class="var">Tests: a list of packages on one page, one package on the other.</p>
+<div class="gl"><p><b>Gain.</b> The open package never scrolls away while you check its cards. A tap on the left changes only the right page, with no Back step.</p><p><b>Loss.</b> A new one-line index row that the phone does not have. The masthead and the index share one page, so fewer packages show.</p></div>
+<div class="fit"><div class="dev open"><div class="page l"><div class="status"><span>21:19</span><span></span></div><div class="body"><header class="mh"><div class="seal-row"><i></i><span class="seal"></span><i></i></div>
+<div class="mh-title">MANIFEST</div><div class="mh-house">C.H POSTAL COMPANY</div>
+<div class="tallies"><div><span>CARDS</span><b><em>6</em>/14</b></div><div><span>PACKAGES</span><b><em>1</em>/4</b></div><div><span>VALUE</span><b><em>$61</em>/$68</b></div></div>
+<div class="pbar"><i style="width:42.9%"></i></div>
+<div class="mh-foot"><span>4 packages · autosaves</span><span class="miss">8 still missing · $7.00</span></div></header><div class="idx sel"><div class="iwho"><b>Beta Games</b><small><span class="red">⚠ 89d — refund window closing, contact seller · </span>B1 · 2026-07-29</small></div><span class="chip">4 left · $4.00</span><i class="ibar"><i style="width:0%"></i></i></div><div class="idx"><div class="iwho"><b>Gamma Cards</b><small>C1 · 2026-06-01</small></div><span class="chip">3 left · $2.50</span><i class="ibar"><i style="width:40%"></i></i></div><div class="idx"><div class="iwho"><b>Alpha Cards</b><small><span class="red">⚠ 117d — refund window closing, contact seller · </span>A1 · 2026-07-01</small></div><span class="chip">1 left · $0.50</span><i class="ibar"><i style="width:75%"></i></i></div></div></div><div class="fold v" style="left:469px;width:13px"></div><div class="page r"><div class="status"><span></span><span>●●● 84%</span></div><div class="body"><section class="card"><div class="chead"><span class="chev">▾</span><div class="cwho"><div class="seller">Beta Games</div><div class="cmeta"><span class="red">⚠ 89d — refund window closing, contact seller · </span>○ untracked</div></div><span class="chip">4 left · $4.00</span></div>
+<div class="oid"><u>B1</u> · 2026-07-29</div><div class="acts"><span class="btn">Stamp</span><span class="btn">Mark all received</span></div><div class="row"><span class="cb"></span><div class="rmain"><div class="rname">Brainstorm</div><div class="rmeta">×2 · Test Set · Near Mint</div><div class="step"><i>−</i><b>0/2</b><i>+</i></div></div><span class="price">$0.50</span></div><div class="row"><span class="cb"></span><div class="rmain"><div class="rname">Counterspell</div><div class="rmeta">Test Set · Near Mint</div></div><span class="price">$2.00</span></div><div class="row"><span class="cb"></span><div class="rmain"><div class="rname">Lightning Bolt</div><div class="rmeta">Test Set · Near Mint</div></div><span class="price">$1.00</span></div></section></div></div><nav class="tabbar under-l" aria-label="Views"><span class="tab"><svg viewBox="0 0 22 22" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="3"/><path d="M11 2.5v2.6M11 16.9v2.6M2.5 11h2.6M16.9 11h2.6M5 5l1.8 1.8M15.2 15.2 17 17M5 17l1.8-1.8M15.2 6.8 17 5"/></svg><b>ledger</b></span><span class="tab"><svg viewBox="0 0 22 22" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="17" height="12" rx="1.5"/><path d="m3 6 8 6 8-6"/></svg><b>orphaned</b><i class="badge">2</i></span><span class="tab"><svg viewBox="0 0 22 22" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4v14M9 4v14M13 4v14M17 4v14M3 15 19 7"/></svg><b>tally</b></span><span class="tab on"><svg viewBox="0 0 22 22" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5 11 3l8 4.5v8L11 20l-8-4.5z"/><path d="M3 7.5 11 12l8-4.5M11 12v8"/></svg><b>packages</b></span></nav><div class="find on-l"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>Find card, set, seller, order</div></div></div></section>
+<section class="opt" id="b" data-short="B · two columns">
+<div class="ohead"><h2>B · Two columns of cards, each card keeps its column</h2><button type="button" class="hide">Hide B</button></div>
+<p class="var">Tests: the phone list drawn twice as wide, as two fixed columns.</p>
+<div class="gl"><p><b>Gain.</b> No new component: each column is today's phone list. The most packages on screen at once.</p><p><b>Loss.</b> Reading order crosses the fold. One scroll moves both pages. An open card pushes only its own column, so the columns go uneven.</p></div>
+<div class="fit"><div class="dev open"><div class="page l"><div class="status"><span>21:19</span><span></span></div><div class="body"><header class="mh"><div class="seal-row"><i></i><span class="seal"></span><i></i></div>
+<div class="mh-title">MANIFEST</div><div class="mh-house">C.H POSTAL COMPANY</div>
+<div class="tallies"><div><span>CARDS</span><b><em>6</em>/14</b></div><div><span>PACKAGES</span><b><em>1</em>/4</b></div><div><span>VALUE</span><b><em>$61</em>/$68</b></div></div>
+<div class="pbar"><i style="width:42.9%"></i></div>
+<div class="mh-foot"><span>4 packages · autosaves</span><span class="miss">8 still missing · $7.00</span></div></header><section class="card"><div class="chead"><span class="chev">▾</span><div class="cwho"><div class="seller">Beta Games</div><div class="cmeta"><span class="red">⚠ 89d — refund window closing, contact seller · </span>○ untracked</div></div><span class="chip">4 left · $4.00</span></div>
+<div class="oid"><u>B1</u> · 2026-07-29</div><div class="acts"><span class="btn">Stamp</span><span class="btn">Mark all received</span></div><div class="row"><span class="cb"></span><div class="rmain"><div class="rname">Brainstorm</div><div class="rmeta">×2 · Test Set · Near Mint</div><div class="step"><i>−</i><b>0/2</b><i>+</i></div></div><span class="price">$0.50</span></div><div class="row"><span class="cb"></span><div class="rmain"><div class="rname">Counterspell</div><div class="rmeta">Test Set · Near Mint</div></div><span class="price">$2.00</span></div><div class="row"><span class="cb"></span><div class="rmain"><div class="rname">Lightning Bolt</div><div class="rmeta">Test Set · Near Mint</div></div><span class="price">$1.00</span></div></section></div></div><div class="fold v" style="left:469px;width:13px"></div><div class="page r"><div class="status"><span></span><span>●●● 84%</span></div><div class="body"><section class="card"><div class="chead"><span class="chev">▾</span><div class="cwho"><div class="seller">Gamma Cards</div><div class="cmeta">tracked</div></div><span class="chip">3 left · $2.50</span></div>
+<div class="oid"><u>C1</u> · 2026-06-01</div><div class="acts"><span class="btn">Stamp</span><span class="btn">Mark all received</span></div><div class="row"><span class="cb"></span><div class="rmain"><div class="rname">Lightning Bolt</div><div class="rmeta">Test Set · Near Mint</div></div><span class="price">$1.00</span></div><div class="row"><span class="cb"></span><div class="rmain"><div class="rname">Ponder</div><div class="rmeta">Test Set · Near Mint</div></div><span class="price">$0.75</span></div><div class="row"><span class="cb"></span><div class="rmain"><div class="rname">Preordain</div><div class="rmeta">Test Set · Near Mint</div></div><span class="price">$0.75</span></div></section><section class="card"><div class="chead"><span class="chev">▾</span><div class="cwho"><div class="seller">Alpha Cards</div><div class="cmeta"><span class="red">⚠ 117d — refund window closing, contact seller · </span>○ untracked</div></div><span class="chip">1 left · $0.50</span></div>
+<div class="oid"><u>A1</u> · 2026-07-01</div><div class="acts"><span class="btn">Stamp</span><span class="btn">Mark all received</span></div><div class="row"><span class="cb"></span><div class="rmain"><div class="rname">Brainstorm</div><div class="rmeta">×2 · Test Set · Near Mint</div><div class="step"><i>−</i><b>1/2</b><i>+</i></div></div><span class="price">$0.50</span></div></section></div></div><nav class="tabbar under-l" aria-label="Views"><span class="tab"><svg viewBox="0 0 22 22" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="3"/><path d="M11 2.5v2.6M11 16.9v2.6M2.5 11h2.6M16.9 11h2.6M5 5l1.8 1.8M15.2 15.2 17 17M5 17l1.8-1.8M15.2 6.8 17 5"/></svg><b>ledger</b></span><span class="tab"><svg viewBox="0 0 22 22" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="17" height="12" rx="1.5"/><path d="m3 6 8 6 8-6"/></svg><b>orphaned</b><i class="badge">2</i></span><span class="tab"><svg viewBox="0 0 22 22" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4v14M9 4v14M13 4v14M17 4v14M3 15 19 7"/></svg><b>tally</b></span><span class="tab on"><svg viewBox="0 0 22 22" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5 11 3l8 4.5v8L11 20l-8-4.5z"/><path d="M3 7.5 11 12l8-4.5M11 12v8"/></svg><b>packages</b></span></nav><div class="find on-l"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>Find card, set, seller, order</div></div></div><p class="cap">Cards go left, right, left in sort order. A card never moves to the other column, so opening one moves nothing on the other page.</p></section>
+<section class="opt" id="c" data-short="C · masthead page">
+<div class="ohead"><h2>C · Masthead left, package list right</h2><button type="button" class="hide">Hide C</button></div>
+<p class="var">Tests: the masthead pinned on its own page.</p>
+<div class="gl"><p><b>Gain.</b> The tallies and the still-missing figure stay in view on every check-in. The right page is exactly the phone list.</p><p><b>Loss.</b> About 300 pt of the left page stays empty. Fewer cards show than in B.</p></div>
+<div class="fit"><div class="dev open"><div class="page l"><div class="status"><span>21:19</span><span></span></div><div class="body"><header class="mh"><div class="seal-row"><i></i><span class="seal"></span><i></i></div>
+<div class="mh-title">MANIFEST</div><div class="mh-house">C.H POSTAL COMPANY</div>
+<div class="tallies"><div><span>CARDS</span><b><em>6</em>/14</b></div><div><span>PACKAGES</span><b><em>1</em>/4</b></div><div><span>VALUE</span><b><em>$61</em>/$68</b></div></div>
+<div class="pbar"><i style="width:42.9%"></i></div>
+<div class="mh-foot"><span>4 packages · autosaves</span><span class="miss">8 still missing · $7.00</span></div></header><div class="spacer"></div></div></div><div class="fold v" style="left:469px;width:13px"></div><div class="page r"><div class="status"><span></span><span>●●● 84%</span></div><div class="body"><section class="card"><div class="chead"><span class="chev">▾</span><div class="cwho"><div class="seller">Beta Games</div><div class="cmeta"><span class="red">⚠ 89d — refund window closing, contact seller · </span>○ untracked</div></div><span class="chip">4 left · $4.00</span></div>
+<div class="oid"><u>B1</u> · 2026-07-29</div><div class="acts"><span class="btn">Stamp</span><span class="btn">Mark all received</span></div><div class="row"><span class="cb"></span><div class="rmain"><div class="rname">Brainstorm</div><div class="rmeta">×2 · Test Set · Near Mint</div><div class="step"><i>−</i><b>0/2</b><i>+</i></div></div><span class="price">$0.50</span></div><div class="row"><span class="cb"></span><div class="rmain"><div class="rname">Counterspell</div><div class="rmeta">Test Set · Near Mint</div></div><span class="price">$2.00</span></div><div class="row"><span class="cb"></span><div class="rmain"><div class="rname">Lightning Bolt</div><div class="rmeta">Test Set · Near Mint</div></div><span class="price">$1.00</span></div></section><section class="card"><div class="chead"><span class="chev">▾</span><div class="cwho"><div class="seller">Gamma Cards</div><div class="cmeta">tracked</div></div><span class="chip">3 left · $2.50</span></div>
+<div class="oid"><u>C1</u> · 2026-06-01</div><div class="acts"><span class="btn">Stamp</span><span class="btn">Mark all received</span></div><div class="row"><span class="cb"></span><div class="rmain"><div class="rname">Lightning Bolt</div><div class="rmeta">Test Set · Near Mint</div></div><span class="price">$1.00</span></div><div class="row"><span class="cb"></span><div class="rmain"><div class="rname">Ponder</div><div class="rmeta">Test Set · Near Mint</div></div><span class="price">$0.75</span></div><div class="row"><span class="cb"></span><div class="rmain"><div class="rname">Preordain</div><div class="rmeta">Test Set · Near Mint</div></div><span class="price">$0.75</span></div></section></div></div><nav class="tabbar under-l" aria-label="Views"><span class="tab"><svg viewBox="0 0 22 22" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="3"/><path d="M11 2.5v2.6M11 16.9v2.6M2.5 11h2.6M16.9 11h2.6M5 5l1.8 1.8M15.2 15.2 17 17M5 17l1.8-1.8M15.2 6.8 17 5"/></svg><b>ledger</b></span><span class="tab"><svg viewBox="0 0 22 22" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5" width="17" height="12" rx="1.5"/><path d="m3 6 8 6 8-6"/></svg><b>orphaned</b><i class="badge">2</i></span><span class="tab"><svg viewBox="0 0 22 22" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4v14M9 4v14M13 4v14M17 4v14M3 15 19 7"/></svg><b>tally</b></span><span class="tab on"><svg viewBox="0 0 22 22" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7.5 11 3l8 4.5v8L11 20l-8-4.5z"/><path d="M3 7.5 11 12l8-4.5M11 12v8"/></svg><b>packages</b></span></nav><div class="find on-r"><svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>Find card, set, seller, order</div></div></div></section></main><script>
+(function(){
+  var opts=[].slice.call(document.querySelectorAll('.opt'));
+  var chips=document.querySelector('.chips');
+  function apply(){
+    var m=/(?:^|[#&])s=([a-z0-9,-]+)/.exec(location.hash);
+    var want=m&&m[1]!=='all'?m[1].split(','):null;
+    opts.forEach(function(o){o.hidden=!!want&&want.indexOf(o.id)<0;});
+    sync();fit();
+  }
+  function sync(){[].forEach.call(chips.querySelectorAll('button[data-o]'),function(b){b.setAttribute('aria-pressed',String(!document.getElementById(b.dataset.o).hidden));});}
+  function setHash(){var shown=opts.filter(function(o){return !o.hidden;}).map(function(o){return o.id;});history.replaceState(null,'',shown.length===opts.length?'#s=all':'#s='+shown.join(','));}
+  opts.forEach(function(o){
+    var b=document.createElement('button');b.type='button';b.dataset.o=o.id;b.textContent=o.dataset.short;
+    b.onclick=function(){o.hidden=!o.hidden;sync();setHash();fit();};chips.appendChild(b);
+    o.querySelector('.hide').onclick=function(){o.hidden=true;sync();setHash();};
+  });
+  var all=document.createElement('button');all.type='button';all.textContent='Show all';all.onclick=function(){location.hash='s=all';};chips.appendChild(all);
+  function fit(){[].forEach.call(document.querySelectorAll('.fit'),function(f){var d=f.firstElementChild;d.style.zoom=1;var w=d.offsetWidth+20;d.style.zoom=Math.min(1,(f.clientWidth-24)/w);});}
+  addEventListener('hashchange',apply);addEventListener('resize',fit);apply();
+})();</script></body></html>
