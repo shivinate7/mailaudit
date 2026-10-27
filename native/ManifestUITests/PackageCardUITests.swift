@@ -16,6 +16,12 @@
 //                     If that audit still flags the 3pt bar, hide it and drop the presence checks here;
 //                     PackagesModel.bars still pins when it shows.
 //   card-pill:<gk>    the "N left · $X" pill; its label is the pill text. Absent when nothing is owed.
+//   got-qty:<line key> the mono got/qty read-out of a line with more than one copy. Its label or its
+//                     value reads "got/qty", as the web stepper prints it. Absent on a one-copy line.
+//   card-slot:<gk>    the reserved frame that holds the pill or the RECEIVED stamp. It keeps its frame
+//                     through the check-in that completes a package.
+// Seed by name: -ManifestUITestSeed <file in shared/fixtures>. The hook must take the name; the bundled
+// ledger.json is the default. The long-seller case names ledger-long-seller.json.
 // Launch arguments are the shell tests': -ManifestUITestSeed, -ManifestUITestWidth.
 //
 // Every key here is fake. The tests read no Keychain item.
@@ -32,9 +38,10 @@ final class PackageCardUITests: XCTestCase {
 
     // MARK: helpers
 
-    func launch() -> XCUIApplication {
+    /// `seed` names a fixture file to seed from; nil seeds the bundled ledger, as every other case does.
+    func launch(seed: String? = nil) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-ManifestUITestSeed", "-ManifestUITestWidth", "375"]
+        app.launchArguments = ["-ManifestUITestSeed"] + (seed.map { [$0] } ?? []) + ["-ManifestUITestWidth", "375"]
         app.launch()
         app.tabBars.buttons["Packages"].tap()
         return app
@@ -123,5 +130,74 @@ final class PackageCardUITests: XCTestCase {
                 wait("exists == false", for: pill, "every copy is in: no pill")
             }
         }
+    }
+
+    // MARK: the got/qty read-out
+
+    /// The mono got/qty read-out shows on a line with more than one copy, as the web stepper prints it.
+    /// Brainstorm (qty 2) reads 0/2 at rest and 2/2 once checked in. Lightning Bolt and Counterspell
+    /// (qty 1) have no read-out. The shared fixture holds no qty-3 line, so the 1/3 form is not here.
+    func testMultiCopyLinesShowGotOverQtyAndSingleCopyLinesShowNone() throws {
+        let app = launch()
+        let brainstorm = "A1|2|pBrainstorm"
+        XCTAssertTrue(element(app, "package-row:\(Self.package)").waitForExistence(timeout: 5), "the A1 row is missing")
+
+        /// The read-out's label and value, or no entries when the line has no read-out.
+        func readout(_ key: String) -> [String] {
+            let el = element(app, "got-qty:\(key)")
+            guard el.exists else { return [] }
+            return [el.label, (el.value as? String) ?? ""]
+        }
+
+        XCTAssertTrue(readout(brainstorm).contains("0/2"), "Brainstorm has 2 copies: its read-out reads 0/2 at rest, got \(readout(brainstorm))")
+        let control = element(app, "checkin:\(brainstorm)")
+        XCTAssertTrue(control.waitForExistence(timeout: 5), "the check-in control for Brainstorm is missing")
+        control.tap()
+        wait("label BEGINSWITH 'Undo check in'", for: control, "the Brainstorm check-in did not land")
+        XCTAssertTrue(readout(brainstorm).contains("2/2"), "both copies in: the read-out reads 2/2, got \(readout(brainstorm))")
+
+        for key in ["A1|0|pLightningBolt", "A1|1|pCounterspell"] {
+            XCTAssertEqual(readout(key), [], "\(key) has one copy and shows no read-out")
+        }
+    }
+
+    // MARK: a long seller on a one-line card
+
+    static let longSeller = "Fictional Mega Cards Emporium and Trading Post of the Northern Realm Holdings Limited Incorporated"
+    static let longSellerSeed = "ledger-long-seller.json"
+    static let longSellerPackage = "L1::\(longSeller)"
+    static let longSellerLine = "L1|0|pTestCard"
+
+    /// A seller name far wider than the card. Its label stays one line inside the card, and the pill slot
+    /// keeps its frame when the package's only copy is checked in.
+    func testLongSellerStaysOneLineInsideTheCardAndTheSlotKeepsItsFrame() throws {
+        let app = launch(seed: Self.longSellerSeed)
+        let row = element(app, "package-row:\(Self.longSellerPackage)")
+        XCTAssertTrue(row.waitForExistence(timeout: 5), "the long-seller row is missing: the seed did not load \(Self.longSellerSeed)")
+        guard row.exists else { return }
+
+        let seller = row.descendants(matching: .any).matching(NSPredicate(format: "label == %@", Self.longSeller)).firstMatch
+        let name = row.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Test Card")).firstMatch
+        let slot = element(app, "card-slot:\(Self.longSellerPackage)")
+        XCTAssertTrue(seller.exists, "the seller label is missing from the card")
+        XCTAssertTrue(name.exists, "the one-line reference label, the item name, is missing")
+        XCTAssertTrue(slot.exists, "the pill slot card-slot:\(Self.longSellerPackage) is missing")
+        guard seller.exists, name.exists, slot.exists else { return }
+
+        // One line: the seller label is under 1.5 one-line item-name labels tall. A wrap is about two.
+        XCTAssertLessThan(seller.frame.height, 1.5 * name.frame.height,
+                          "the seller wraps: \(seller.frame.height)pt against a one-line \(name.frame.height)pt")
+        // Inside the card: the seller ends before the pill slot and inside the row.
+        XCTAssertLessThanOrEqual(seller.frame.maxX, slot.frame.minX, "the seller runs under the pill slot")
+        XCTAssertLessThanOrEqual(seller.frame.maxX, row.frame.maxX, "the seller runs past the card's edge")
+
+        // The slot keeps its frame through the check-in that completes the package.
+        let before = slot.frame
+        let control = element(app, "checkin:\(Self.longSellerLine)")
+        XCTAssertTrue(control.waitForExistence(timeout: 5), "the check-in control for the long-seller line is missing")
+        control.tap()
+        wait("label BEGINSWITH 'Undo check in'", for: control, "the check-in of the long-seller line did not land")
+        XCTAssertEqual(element(app, "card-slot:\(Self.longSellerPackage)").frame, before,
+                       "the pill slot moved when the only copy was checked in")
     }
 }
