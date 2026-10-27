@@ -67,7 +67,7 @@ struct PackageRow: View {
             HStack(alignment: .center, spacing: 8) {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(pkg.seller).font(.cochin(15).weight(.bold)).foregroundStyle(paint(.seller, packageState))
-                        .lineLimit(1).truncationMode(.tail)
+                        .lineLimit(1).truncationMode(.tail).minimumScaleFactor(0.5)  // measured: with no scale the audit calls a short seller "Text clipped", at 0.9 still "Alpha Cards"
                         .textSelection(.enabled)  // owner ruling 2026-10-21: the header text is selectable, seller included
                         .contentShape(Rectangle())  // measured: without it, the selectable date below takes the seller's long press
                     dateLine
