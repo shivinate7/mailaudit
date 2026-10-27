@@ -124,6 +124,7 @@ struct TallyRowView: View {
     let row: TallyRow
     let model: TallyModel
     @State private var open = false
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var done: Bool { row.got >= row.qty }
 
@@ -158,7 +159,7 @@ struct TallyRowView: View {
                 Text(row.name).font(.cochin(15, relativeTo: .headline).weight(.bold)).foregroundStyle(paint(.name))
                     .multilineTextAlignment(.leading)
                 // Counts first, then the sets, so a long set list is what is cut first (card-tally-row-counts-first).
-                Text(row.meta).font(.mono(11, relativeTo: .caption)).foregroundStyle(paint(.meta))
+                metaLine
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .trailing, spacing: 0) {
@@ -173,6 +174,14 @@ struct TallyRowView: View {
         .padding(12)
         .frame(minHeight: 44)
         .contentShape(Rectangle())
+    }
+
+    /// One line, cut at the column's edge as on the web, and wrapping at accessibility sizes.
+    @ViewBuilder private var metaLine: some View {
+        let text = Text(row.meta).font(.mono(11, relativeTo: .caption)).foregroundStyle(paint(.meta))
+        if typeSize.isAccessibilitySize { text } else {
+            text.fixedSize(horizontal: true, vertical: false).frame(maxWidth: .infinity, alignment: .leading).clipped()
+        }
     }
 
     /// The 3pt bar on the card's top edge, out of flow: it mounts without moving a row. Gone at none in and at all in.
