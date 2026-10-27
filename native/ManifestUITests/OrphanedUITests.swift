@@ -234,19 +234,25 @@ final class OrphanedUITests: XCTestCase {
     // MARK: accessibility and hit regions
 
     /// The audit runs on a view only the real Orphaned view has: first the composer, then an envelope with a tie.
-    /// The empty composer's Save is disabled, and WCAG 1.4.3 exempts inactive components, so only a contrast
-    /// issue on a disabled element is skipped. Every other issue, and any enabled element's contrast, still fails.
+    /// The empty composer's Save is disabled, and WCAG 1.4.3 exempts inactive components, so a contrast issue on a
+    /// disabled element is skipped. So is the ruled contrast flag on Cancel (skipMeasuredContrastFlags). Every other
+    /// issue, and any other enabled element's contrast, still fails.
     func testAccessibilityAuditOrphanedComposer() throws {
         let app = launch()
         openOrphaned(app)
         el(app, "orphaned-record").tap()
         XCTAssertTrue(el(app, "orphaned-input").waitForExistence(timeout: 5), "the composer did not open before the audit")
-        try app.auditNamingElements(skipping: Self.inactiveContrast)
+        try app.auditNamingElements(skipping: Self.composerContrastSkips)
     }
 
     /// The one exemption of the empty composer's audit: a contrast issue on a disabled element (WCAG 1.4.3).
     static func inactiveContrast(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
         issue.auditType == .contrast && issue.element?.isEnabled == false
+    }
+
+    /// What the empty composer's audits skip: a disabled element's contrast, and the ruled Cancel flag.
+    static func composerContrastSkips(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
+        inactiveContrast(issue) || skipMeasuredContrastFlags(issue)
     }
 
     /// Waits until the keyboard is on screen and its frame has held still for three reads, 0.2s apart. Returns what
@@ -291,7 +297,7 @@ final class OrphanedUITests: XCTestCase {
         try app.auditNamingElements(skipping: { issue in
             let element = issue.element.map { "id=\($0.identifier) label=\($0.label) frame=\($0.frame)" } ?? "no element"
             seen.append("\(issue.auditType.rawValue) | \(issue.compactDescription) | \(issue.detailedDescription) | \(element)")
-            return Self.inactiveContrast(issue)
+            return Self.composerContrastSkips(issue)
         })
     }
 
@@ -310,14 +316,14 @@ final class OrphanedUITests: XCTestCase {
     }
 
     /// The ready composer: a card is added, so Save is enabled and its contrast is audited like any control.
-    /// No issue is skipped here, so nothing in this state is exempt.
+    /// Only the ruled contrast flag on Cancel is skipped (skipMeasuredContrastFlags), so Save is not exempt.
     func testAccessibilityAuditOrphanedComposerReady() throws {
         let app = launch()
         openOrphaned(app)
         el(app, "orphaned-record").tap()
         addCard(app, typed: "urza", name: "Urza's Saga")
         XCTAssertTrue(el(app, "orphaned-save").isEnabled, "a card is added but Save is still disabled before the audit")
-        try app.auditNamingElements()
+        try app.auditNamingElements(skipping: skipMeasuredContrastFlags)
     }
 
     /// Save reports its real state to VoiceOver: disabled while the composer holds no card, enabled once it does.
@@ -337,7 +343,7 @@ final class OrphanedUITests: XCTestCase {
         openOrphaned(app)
         recordTie(app)
         XCTAssertTrue(el(app, "assign:\(Self.a1)").waitForExistence(timeout: 5), "the candidates did not show before the audit")
-        try app.auditNamingElements()
+        try app.auditNamingElements(skipping: skipMeasuredContrastFlags)
     }
 
     /// Every control the owner taps has a hit region of at least 44pt, and the assign Undo too.

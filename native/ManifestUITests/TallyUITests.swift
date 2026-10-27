@@ -96,7 +96,7 @@ final class TallyUITests: XCTestCase {
     func testAccessibilityAuditTallyScreenWithRows() throws {
         let app = launch()
         openTally(app)
-        try app.auditNamingElements()
+        try app.auditNamingElements(skipping: skipMeasuredContrastFlags)
     }
 
     /// The open row is audited alone. On the full list, opening Lightning Bolt adds three copies and pushes the last
@@ -121,7 +121,7 @@ final class TallyUITests: XCTestCase {
         for (id, frame) in frames(app) {
             XCTAssertLessThanOrEqual(frame.maxY, barTop, "\(id) reaches under the tab bar, so the audit would read a cut row")
         }
-        try app.auditNamingElements()
+        try app.auditNamingElements(skipping: skipMeasuredContrastFlags)
     }
 
     // MARK: the copies list

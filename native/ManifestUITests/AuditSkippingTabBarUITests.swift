@@ -4,6 +4,8 @@
 // auditSkippingTabBar(), which skips an issue only when the bar covers most of its element.
 // Every other issue, and any issue with no element, still fails.
 //
+// It also holds skipMeasuredContrastFlags, the owner's narrow contrast skip (audit-skips-measured-flags).
+//
 // This file also holds the narrowness proof. The app has no low-contrast element above the bar,
 // so the on-device case moves the bar away and checks that the same issues now fail.
 //
@@ -16,6 +18,21 @@ import XCTest
 func isUnderTabBar(_ element: CGRect, bar: CGRect) -> Bool {
     let hit = bar.intersection(element)
     return !hit.isNull && !element.isEmpty && hit.width * hit.height * 2 > element.width * element.height
+}
+
+/// The one contrast skip the owner ruled on (decision audit-skips-measured-flags): the Orphaned mini buttons Cancel
+/// and Discard, whose colours measure above the floor but flag in the audit. It skips an issue only when the audit
+/// type is contrast AND the element's accessibility identifier is a ruled one: `orphaned-cancel` exactly, or the
+/// prefix `discard:` (the id of the envelope follows). It never reads a label. Edit and the Tally "left" line are
+/// in the ruling too, but they carry no identifier yet, so nothing skips them until a product change names them.
+func isMeasuredContrastFlag(_ type: XCUIAccessibilityAuditType, identifier: String?) -> Bool {
+    guard type == .contrast, let identifier else { return false }
+    return identifier == "orphaned-cancel" || identifier.hasPrefix("discard:")
+}
+
+/// The skip closure of auditNamingElements(skipping:), over a real audit issue.
+@MainActor func skipMeasuredContrastFlags(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
+    isMeasuredContrastFlag(issue.auditType, identifier: issue.element?.identifier)
 }
 
 extension XCUIApplication {
@@ -137,6 +154,29 @@ final class AuditSkippingTabBarUITests: XCTestCase {
         XCTAssertFalse(isUnderTabBar(CGRect(x: 20, y: 770, width: 100, height: 0), bar: bar), "an element with no height")
         XCTAssertFalse(isUnderTabBar(CGRect(x: 20, y: 790, width: 100, height: 20), bar: .zero), "a bar that did not resolve")
         XCTAssertFalse(isUnderTabBar(CGRect(x: 20, y: 790, width: 100, height: 20), bar: .null), "a null bar")
+    }
+
+    // MARK: the measured contrast skip, on identifiers
+
+    /// A real issue has no public init, so the rule is checked on its two inputs. Contrast on the ruled elements is
+    /// skipped. Contrast anywhere else, and every other audit type on a ruled element, still fails.
+    func testTheContrastSkipNamesOnlyTheRuledElements() {
+        // skipped
+        XCTAssertTrue(isMeasuredContrastFlag(.contrast, identifier: "orphaned-cancel"), "contrast on the composer's Cancel")
+        XCTAssertTrue(isMeasuredContrastFlag(.contrast, identifier: "discard:env-1-abc"), "contrast on an envelope's Discard")
+        // kept: contrast on another element
+        XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "orphaned-save"), "contrast on Save, outside the ruling")
+        XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "tally-row:Lightning Bolt"), "contrast on a Tally row")
+        XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "orphaned-cancel-2"), "an identifier that only starts like Cancel")
+        XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "x-discard:1"), "an identifier that only contains the Discard prefix")
+        XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "Discard"), "a label is not an identifier")
+        XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: ""), "an element with no identifier")
+        XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: nil), "an issue with no element")
+        // kept: another audit type on a ruled element
+        for type in [XCUIAccessibilityAuditType.textClipped, .hitRegion, .dynamicType, .sufficientElementDescription] {
+            XCTAssertFalse(isMeasuredContrastFlag(type, identifier: "orphaned-cancel"), "audit type \(type.rawValue) on Cancel")
+            XCTAssertFalse(isMeasuredContrastFlag(type, identifier: "discard:env-1-abc"), "audit type \(type.rawValue) on Discard")
+        }
     }
 
     // MARK: the same rule, on the device
