@@ -57,7 +57,11 @@
                    finish and condition (empty ones left out), joined by " · ";
                    "—" when that is empty
      tcgplayerOrderUrl(orderId) -> TCGplayer's order-history search for that id,
-                   the id passed through encodeURIComponent */
+                   the id passed through encodeURIComponent
+
+   The got/qty read-out pins one more (the native package card calls it through
+   RulesEngine, and the web stepper prints the same text):
+     gotQty(got, qty) -> "got/qty" for a line with more than one copy, else null */
 
 const DAY = 86400000;
 const loaded = await import("../src/view-rules.mjs").then(
@@ -97,6 +101,7 @@ const money = fn("money");
 const compact = fn("compact");
 const packagePill = fn("packagePill");
 const itemDetail = fn("itemDetail");
+const gotQty = fn("gotQty");
 const tcgplayerOrderUrl = fn("tcgplayerOrderUrl");
 
 /* ---------- assertion helpers ---------- */
@@ -1264,6 +1269,15 @@ eq(itemDetail(detailOf(1, "", "Foil", "")), "Foil", "V19.3c only a finish");
 /* V19.4 nothing to say: a dash for one copy, the count alone for several */
 eq(itemDetail(detailOf(1, "", "", "")), "—", "V19.4a nothing: an em dash");
 eq(itemDetail(detailOf(2, "", "", "")), "×2", "V19.4b two copies and nothing else: x2, no dash");
+
+/* V20.1 a line with more than one copy reads got/qty, the way the web stepper prints it */
+eq(gotQty(1, 3), "1/3", "V20.1a one of three in: 1/3");
+eq(gotQty(0, 2), "0/2", "V20.1b none of two in: 0/2");
+eq(gotQty(2, 2), "2/2", "V20.1c both in: 2/2");
+
+/* V20.2 a one-copy line has no read-out. Mutant: "0/1" or "1/1" for qty 1 */
+eq(gotQty(0, 1), null, "V20.2a one copy, none in: null");
+eq(gotQty(1, 1), null, "V20.2b one copy, in: null");
 
 /* ---------- report ---------- */
 
