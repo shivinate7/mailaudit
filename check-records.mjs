@@ -21,6 +21,7 @@ import { readFileSync, readdirSync } from "fs";
 import { execFileSync } from "child_process";
 
 const FOLDERS = ["invariants", "measurements", "decisions", "debts"];
+const DIR = (f) => (f === "decisions" || f === "debts" ? `docs/${f}` : f); // layout: docs/decisions, docs/debts
 
 let failures = 0;
 let checked = 0;
@@ -29,10 +30,10 @@ let checked = 0;
 
 const records = []; // { slug, folder, path, text }
 for (const folder of FOLDERS) {
-  for (const name of readdirSync(folder).sort()) {
+  for (const name of readdirSync(DIR(folder)).sort()) {
     if (!name.endsWith(".md")) continue;
     const slug = name.slice(0, -3);
-    const path = `${folder}/${name}`;
+    const path = `${DIR(folder)}/${name}`;
     records.push({ slug, folder, path, text: readFileSync(path, "utf8") });
   }
 }

@@ -23,15 +23,16 @@ import { existsSync, statSync } from "fs";
 import { execFileSync } from "child_process";
 
 const FOLDERS = ["decisions", "invariants", "measurements", "debts"];
+const DIR = (f) => (f === "decisions" || f === "debts" ? `docs/${f}` : f); // layout: docs/decisions, docs/debts
 
 // ---------- load the corpus: CLAUDE.md plus every record ----------
 
 const files = ["CLAUDE.md", "README.md"].map((path) => ({ path, text: readFileSync(path, "utf8") }));
 for (const folder of FOLDERS) {
-  if (!existsSync(folder)) continue; // a missing folder reads as empty
-  for (const name of readdirSync(folder).sort()) {
+  if (!existsSync(DIR(folder))) continue; // a missing folder reads as empty
+  for (const name of readdirSync(DIR(folder)).sort()) {
     if (!name.endsWith(".md")) continue;
-    const path = `${folder}/${name}`;
+    const path = `${DIR(folder)}/${name}`;
     files.push({ path, text: readFileSync(path, "utf8") });
   }
 }
