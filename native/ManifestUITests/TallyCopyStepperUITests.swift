@@ -1,4 +1,4 @@
-// Tally copy rows UI tests (step 4, tally-row-lists-its-copies, native-tally-copy-no-stepper, no-layout-shift-under-pointer).
+// Tally copy rows UI tests (step 4, tally-row-lists-its-copies, native-tally-copy-no-flags, no-layout-shift-under-pointer).
 //
 // A Tally copy is drawn by step 3's item line, lifted to take the line state, the title, the detail and the actions,
 // so Packages and Tally call one view. The web draws the same ItemRow for a copy, and its stepper shows for qty > 1.

@@ -244,7 +244,7 @@ final class PackageCardModelTests: XCTestCase {
         for (price, want) in cases { XCTAssertEqual(PackageCard.priceText(price), want, "price \(price)") }
     }
 
-    // MARK: the stepper (debt native-card-stepper-unpinned)
+    // MARK: the stepper
 
     /// The clamp at both ends on Brainstorm (qty 2), and the readout after each step. TallyModelTests walks the same
     /// sequence on TallyModel (StepperSupport.swift). A one-unit line has no readout.

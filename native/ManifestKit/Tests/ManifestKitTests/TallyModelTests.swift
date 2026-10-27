@@ -547,7 +547,7 @@ final class TallyModelTests: XCTestCase {
         XCTAssertNil(row(model, "Brainstorm")?.barFraction, "un-checked again: no bar")
     }
 
-    // MARK: the stepper (debt native-card-stepper-unpinned)
+    // MARK: the stepper
 
     /// Brainstorm's first copy, qty 2. PackageCardModelTests walks the same sequence on PackagesModel (StepperSupport.swift).
     static let stepKey = "A1|2|pBrainstorm"
