@@ -443,6 +443,7 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `half-open-socket-has-no-ping` — A half-open socket has no ping.
 - `hidden-tab-apply-delay-unmeasured` — The apply delay on a hidden tab is unmeasured.
 - `sync-latency-after-fix-unmeasured` — The sync delay with the press guard is unmeasured.
+- `screens-45px-width-flake` — The screens check once measured every target 45px wide.
 
 ## Measurements
 
