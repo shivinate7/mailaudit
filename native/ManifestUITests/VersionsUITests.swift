@@ -255,6 +255,14 @@ final class VersionsUITests: XCTestCase {
         restore.tap()
         waitFor(el(app, "restore"), "label == %@", "Tap again to replace 0 cards", "armed")
         XCTAssertEqual(el(app, "restore").frame.minY, restoreBox.minY, accuracy: 0.5, "the armed Restore arms in place")
+        // The x of that: the second tap lands where the first did (no-layout-shift-under-pointer). The web Restore is
+        // flex:1, so its hit area spans the row and still holds the first tap when Cancel arrives before it. The leading-edge
+        // line is stricter than the web, whose edge moves right by Cancel's width and 8pt.
+        let firstTap = CGPoint(x: restoreBox.midX, y: restoreBox.midY)
+        let armedBox = el(app, "restore").frame
+        XCTAssertEqual(armedBox.minX, restoreBox.minX, accuracy: 0.5, "the armed Restore keeps its leading edge")
+        XCTAssertTrue(armedBox.contains(firstTap), "the first tap's point \(firstTap) is still inside the armed Restore \(armedBox)")
+        XCTAssertFalse(try need(app, "restore-cancel").frame.contains(firstTap), "the first tap's point is not over Cancel")
         assertHit(el(app, "restore"), "armed Restore")
         assertHit(try need(app, "restore-cancel"), "Restore's Cancel")
     }

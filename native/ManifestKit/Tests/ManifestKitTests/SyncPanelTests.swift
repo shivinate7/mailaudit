@@ -28,8 +28,9 @@
 //       public static func lastSyncText(_ at: Double?, locale: Locale, timeZone: TimeZone) -> String
 //   }
 //
-// Not pinned, and the builder's call (reported as open questions): whether lastSyncAt survives a relaunch (the web
-// keeps workerSyncedAt in its saved state) and whether it is never allowed to move back (the web uses Math.max).
+// Pinned at the end of this file: the Sync row's text and flag, and that lastSyncAt survives a relaunch (the web keeps
+// workerSyncedAt in its saved state). Not pinned, and the builder's call: whether lastSyncAt is never allowed to move
+// back (the web uses Math.max).
 //
 // Fake fixtures only: the keys are made up, the Keychain is FakeKeychain, the network is StubNet.
 
@@ -199,5 +200,116 @@ final class SyncPanelTests: SyncTestCase {
         }
         XCTAssertEqual(try text("UTC"), "Aug 12, 2:03 PM")
         XCTAssertEqual(try text("America/Chicago"), "Aug 12, 9:03 AM", "CDT is five hours behind UTC")
+    }
+
+    // MARK: the Sync row
+
+    /// The web's Sync row is `syncSays` with its tap tail cut (src/app.jsx, the Sync LedgerRow). The tail stays only
+    /// while the panel is open and nothing is broken, so only then does a line end "tap to close".
+    /// The value is "Set up" with no key, "On" when nothing is broken, else "Check". The value is manilaInk when
+    /// `syncBroken` is set, and a missing key counts as broken only while the panel is closed (`syncOpen ? null : "sync-key"`).
+    /// Every string below is the web's, apostrophes (U+2019) and dashes (U+2014) included. 1786543380000 is 2026-08-12 14:03 UTC.
+    struct RowCase {
+        let state: SyncServerState
+        let open: Bool
+        let at: Double?
+        let sub: String
+        let value: String
+        let needsFix: Bool
+    }
+
+    static let day = "2026-08-12"
+
+    func testTheRowSaysWhatTheWebSays() {
+        let t = Self.t0
+        var cases: [RowCase] = [
+            .init(state: .noKey, open: false, at: nil, sub: "This device has no sync key", value: "Set up", needsFix: true),
+            .init(state: .noKey, open: false, at: t, sub: "This device has no sync key", value: "Set up", needsFix: true),
+            .init(state: .noKey, open: true, at: nil, sub: "Not synced yet \u{2014} tap to close", value: "Set up", needsFix: false),
+            .init(state: .noKey, open: true, at: t, sub: "Backed up \(Self.day) \u{2014} tap to close", value: "Set up", needsFix: false),
+            .init(state: .connected, open: false, at: nil, sub: "Not synced yet", value: "On", needsFix: false),
+            .init(state: .connected, open: false, at: t, sub: "Backed up \(Self.day)", value: "On", needsFix: false),
+            .init(state: .connected, open: true, at: nil, sub: "Not synced yet \u{2014} tap to close", value: "On", needsFix: false),
+            .init(state: .connected, open: true, at: t, sub: "Backed up \(Self.day) \u{2014} tap to close", value: "On", needsFix: false),
+            .init(state: .notChecked, open: false, at: t, sub: "Backed up \(Self.day)", value: "On", needsFix: false),
+            .init(state: .notChecked, open: true, at: nil, sub: "Not synced yet \u{2014} tap to close", value: "On", needsFix: false),
+        ]
+        // A broken state reads the same open or closed, with or without a time: the tail is cut and nothing is added.
+        let broken: [(SyncServerState, String)] = [
+            (.refused, "This device\u{2019}s sync key was refused"),
+            (.tooBig, "The ledger is too big for the sync server"),
+            (.badShape, "The sync server refused this ledger\u{2019}s shape, so it is not backed up."),
+            (.unreachable, "The sync server could not be reached"),
+        ]
+        for (state, sub) in broken {
+            for open in [true, false] {
+                for at in [t, nil] {
+                    cases.append(RowCase(state: state, open: open, at: at, sub: sub, value: "Check", needsFix: true))
+                }
+            }
+        }
+        for c in cases {
+            let name = "\(c.state) open=\(c.open) at=\(c.at.map { String($0) } ?? "nil")"
+            let row = SyncPanel.row(c.state, open: c.open, lastSyncAt: c.at)
+            XCTAssertEqual(row.sub, c.sub, "\(name): sub")
+            XCTAssertEqual(row.value, c.value, "\(name): value")
+            XCTAssertEqual(row.needsFix, c.needsFix, "\(name): needsFix")
+        }
+    }
+
+    /// With no key the value reads "Set up" in both states, and only the closed row is an advisory. Opening the panel
+    /// is the way to the key box, so the value drops back to the plain colour.
+    func testSetUpIsAnAdvisoryOnlyWhileThePanelIsClosed() {
+        let closed = SyncPanel.row(.noKey, open: false, lastSyncAt: nil)
+        let open = SyncPanel.row(.noKey, open: true, lastSyncAt: nil)
+        XCTAssertEqual([closed.value, open.value], ["Set up", "Set up"])
+        XCTAssertTrue(closed.needsFix, "closed: Set up is the advisory colour")
+        XCTAssertFalse(open.needsFix, "open: Set up flips to the plain colour")
+    }
+
+    /// The web names the day with `new Date(syncedAt).toISOString().slice(0, 10)`, the UTC day. One millisecond
+    /// either side of UTC midnight, in a zone behind UTC and a zone ahead of it, so a local day cannot pass.
+    func testBackedUpNamesTheUTCDayInAnyTimeZone() throws {
+        let midnight = 1_786_579_200_000.0  // 2026-08-13 00:00:00.000 UTC
+        let saved = NSTimeZone.default
+        defer { NSTimeZone.default = saved }
+        for zone in ["America/Chicago", "Pacific/Auckland"] {
+            NSTimeZone.default = try XCTUnwrap(TimeZone(identifier: zone))
+            for (at, day) in [(midnight - 1, "2026-08-12"), (midnight, "2026-08-13")] {
+                XCTAssertEqual(SyncPanel.row(.connected, open: false, lastSyncAt: at).sub, "Backed up \(day)", "\(zone) at \(at)")
+            }
+        }
+    }
+
+    // MARK: the time survives a relaunch
+
+    /// The web keeps workerSyncedAt in its saved state, so the Last sync row does not read "Not yet" after a relaunch.
+    /// Contract (ManifestKit, replacing the glue in ManifestApp.startSync, which the package tests cannot reach):
+    ///   extension SyncClient { public func persistLastSync(in defaults: UserDefaults) }
+    ///       // sets lastSyncAt from the Double under "dev.shivinate.manifest.lastSyncAt" (nil when none), then keeps
+    ///       // that key current through onLastSync
+    /// The key is written out here on purpose: renaming it drops every saved time (native-files-are-frozen). The suite
+    /// is one made-up name, cleared at the start and the end, so no test touches the standard defaults and no run leaves
+    /// a new preferences file behind.
+    func testLastSyncSurvivesARelaunch() async throws {
+        let suite = "test.manifest.lastsync"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defaults.removePersistentDomain(forName: suite)
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        let first = try makeClient(try liveStore())
+        first.persistLastSync(in: defaults)
+        net.enqueue(ok(try ledger()))
+        let t0 = Self.nowMs
+        let outcome = await first.pull()
+        XCTAssertEqual(outcome, .applied)
+        try assertStamped(first.lastSyncAt, since: t0, "after a good pull")
+        let stamp = try XCTUnwrap(first.lastSyncAt)
+        XCTAssertEqual(defaults.object(forKey: "dev.shivinate.manifest.lastSyncAt") as? Double, stamp, "saved under the frozen key")
+
+        let relaunched = try makeClient(try liveStore())
+        XCTAssertNil(relaunched.lastSyncAt, "control: a new client starts with no time")
+        relaunched.persistLastSync(in: defaults)
+        XCTAssertEqual(relaunched.lastSyncAt, stamp, "the relaunch reads back the same instant")
     }
 }

@@ -54,8 +54,8 @@
 //   - Every dollar figure on a row comes from the bundle's `money` rule (src/view-rules.mjs), the rule the web's
 //     money() also calls. It rounds half up on the decimal value: 0.125 is $0.13 and 1.005 is $1.01.
 //   - Pinned in TallyPackagesLiveItemsTests: canceled orders and refunded packages leave the pooled rows.
-//   - Not pinned, because the row does not name them: the date range, the per-copy stepper, the per-copy
-//     lost-mail flag, the bulk buttons.
+//   - Not pinned, because the row does not name them: the date range, the per-copy lost-mail flag, the bulk buttons.
+//     The per-copy stepper is pinned at the end of this file.
 //
 // Fake fixtures only. No Keychain item is read.
 
@@ -545,5 +545,42 @@ final class TallyModelTests: XCTestCase {
         XCTAssertEqual(quarter, 0.25, accuracy: 1e-9, "Brainstorm is two lines of two: the bar counts copies")
         try await model.checkIn(key: "A1|2|pBrainstorm", count: 0)
         XCTAssertNil(row(model, "Brainstorm")?.barFraction, "un-checked again: no bar")
+    }
+
+    // MARK: the stepper (debt native-card-stepper-unpinned)
+
+    /// Brainstorm's first copy, qty 2. PackageCardModelTests walks the same sequence on PackagesModel (StepperSupport.swift).
+    static let stepKey = "A1|2|pBrainstorm"
+
+    /// The clamp at both ends, and the readout after each step.
+    func testStepClampsAtZeroAndAtQty() async throws {
+        let (model, _, _) = try await makeModel()
+        await assertStepperClamps(model, key: Self.stepKey)
+    }
+
+    func testStepFromAnOverCountStartsFromTheClampedFigure() async throws {
+        let (model, _, _) = try await makeModel()
+        try await assertStepFromAnOverCount(model, key: Self.stepKey)
+    }
+
+    /// A step moves the pooled row too: one of Brainstorm's four copies in reads 1/4. Only a copy with more than one
+    /// unit has a readout.
+    func testStepMovesTheRowAndOnlyAMultiUnitCopyHasAReadout() async throws {
+        let (model, _, _) = try await makeModel()
+        XCTAssertEqual(model.readouts[Self.stepKey], "0/2", "a two-unit copy reads got/qty from the first load")
+        XCTAssertEqual(model.readouts["B1|2|pBrainstorm"], "0/2")
+        XCTAssertNil(model.readouts["B1|0|pLightningBolt"], "a one-unit copy has no readout")
+
+        await model.step(key: Self.stepKey, by: 1)
+
+        XCTAssertEqual(row(model, "Brainstorm")?.ratio, "1/4", "the pooled row counts the step")
+        XCTAssertEqual(model.readouts["B1|2|pBrainstorm"], "0/2", "the other copy's readout is unmoved")
+        XCTAssertEqual(model.received[Self.stepKey], 1)
+    }
+
+    /// gotQty put in a marker form. The readout must follow it, as the web's stepper prints the bundle's text.
+    func testReadoutComesFromTheBundleGotQty() async throws {
+        let (model, _, _) = try await makeModel(bundle: try probeBundle("Rules=Object.assign({},Rules,{\(gotQtyShim)})"))
+        await assertReadoutComesFromTheBundle(model, key: Self.stepKey)
     }
 }
