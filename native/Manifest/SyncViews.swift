@@ -20,7 +20,8 @@ struct SyncAdvisoryLine: View {
                     .multilineTextAlignment(.leading)
                     .padding(8)
                     .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                    .background(paint(.advisoryFill))
+                    // A background ignores the safe area by default and would paint under the status bar.
+                    .background(paint(.advisoryFill), ignoresSafeAreaEdges: [])
                     .overlay(alignment: .top) { rule }
                     .overlay(alignment: .bottom) { rule }
                     .contentShape(Rectangle())
@@ -30,6 +31,7 @@ struct SyncAdvisoryLine: View {
             .accessibilityLabel(text)
             .accessibilityValue(code)
             .accessibilityIdentifier("sync-advisory")
+            .padding(.horizontal, 16)  // the web's column gutter, outside the element so its frame is the fill
         }
     }
 

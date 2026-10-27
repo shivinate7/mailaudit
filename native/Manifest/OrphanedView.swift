@@ -135,6 +135,7 @@ private struct ComposerView: View {
             }), prompt: Text("Type a card name\u{2026}").foregroundStyle(paint(.note)), axis: .vertical)
                 .lineLimit(2...3).inputBox().focused($focused).submitLabel(.done)
                 .onSubmit { Task { try? await model.addName(model.draft(for: target).input, for: target) } }
+                .accessibilityLabel("Card name")
                 .accessibilityIdentifier("orphaned-input")
             if !found.isEmpty || asTyped {
                 VStack(spacing: 0) {
