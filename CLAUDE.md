@@ -21,9 +21,9 @@ one record, and each record holds current text only; git keeps the history. Read
 records your task needs. Do not read them all.
 
 - `invariants/` holds a rule that must not break. 8 records.
-- `decisions/` holds a ruling and the reason it still holds.
+- `docs/decisions/` holds a ruling and the reason it still holds.
 - `measurements/` holds a measured figure and how to re-measure it. 10 records.
-- `debts/` holds one known gap or to-do per file, each pointing at its decision.
+- `docs/debts/` holds one known gap or to-do per file, each pointing at its decision.
 
 A record cites another record by slug, never by a path, so a record survives a
 move. `npm run check:records` proves eight things. This index cites every record.
@@ -360,7 +360,7 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 
 ## Debts
 
-One known gap or to-do per file under `debts/`. Each carries a Status line and a Decision line that names its record or says none.
+One known gap or to-do per file under `docs/debts/`. Each carries a Status line and a Decision line that names its record or says none.
 
 - `seed-in-public-history` — The seed stays in git history, deferred by the owner.
 - `claim-11-fixed-edge-taps` — Claim 11 skips taps at a fixed control's edge.

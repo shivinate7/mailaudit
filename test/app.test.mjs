@@ -7161,7 +7161,7 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
     ok(r >= floor, `60.7 ${fg} on ${bg} clears ${floor}:1 (measured ${r.toFixed(2)})`);
   }
 
-  const tableRows60 = [...readOr60(path.join(ROOT60, "decisions/palette-tokens-contrast-floor.md")).matchAll(
+  const tableRows60 = [...readOr60(path.join(ROOT60, "docs/decisions/palette-tokens-contrast-floor.md")).matchAll(
     /^\| `(\w+)` \| `([^`]+)` \|/gm
   )].map((m) => [m[1], m[2]]);
   ok(tableRows60.length >= 15, "60.8a the contrast record holds its token table");

@@ -27,8 +27,8 @@ on:
       - "check-docs.mjs"
       - "invariants/**"
       - "measurements/**"
-      - "decisions/**"
-      - "debts/**"
+      - "docs/decisions/**"
+      - "docs/debts/**"
       - "package-lock.json"
       - "CLAUDE.md"
       - "README.md"
@@ -104,7 +104,7 @@ jobs:
           CHECK_DOCS_SUITE_LOG: ${{ runner.temp }}/suite.log
         run: npm run check:docs --silent
 
-      # The record corpus under invariants/, measurements/, decisions/ and debts/ —
+      # The record corpus under invariants/, measurements/, docs/decisions/ and docs/debts/ —
       # see check-records.mjs for the eight claims this proves.
       - name: the record corpus checks out
         run: npm run check:records --silent
