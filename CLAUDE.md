@@ -387,6 +387,8 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `ruled-head-heights-unremeasured` — The ruled head heights have not been re-measured.
 - `photo-put-unrun-on-github` — The GitHub photo PUT and pull have never run.
 - `tally-audit-contrast-flags` — The Tally audit flags contrast and inaccessible text that the token pairs clear.
+- `web-armed-restore-moves` — The web armed Restore moves under the pointer.
+- `native-restore-pill-tap-unpinned` — No test taps the leading part of the native Restore pill.
 - `native-ledger-tab-unbuilt` — The native Ledger tab lacks the View group.
 - `native-restore-keeps-old-times` — A native restore keeps the old change times.
 - `reset-vs-worker-copy-unmeasured` — A Reset's effect on the Worker's copy is unmeasured.
