@@ -22,8 +22,8 @@ struct MiniLabel: View {
         Text(title).font(bold ? .mono(size, relativeTo: .caption).weight(.bold) : .mono(size, relativeTo: .caption))
             .foregroundStyle(text).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             .padding(.vertical, 4).padding(.horizontal, 8)
-            .background(fill, in: RoundedRectangle(cornerRadius: 5))
             .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(border, lineWidth: 1))
+            .background(fill, in: RoundedRectangle(cornerRadius: 5))
             .frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
     }
 }

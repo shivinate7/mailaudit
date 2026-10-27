@@ -64,9 +64,9 @@ private struct CardChrome: ViewModifier {
     let border: OrphanedPaint.Part
     func body(content: Content) -> some View {
         content
-            .background(paint(.cardSurface), in: RoundedRectangle(cornerRadius: 8))
+            // The shadow sits on the fill, not the card: a shadow on the card is drawn under every leaf view in it.
+            .background(RoundedRectangle(cornerRadius: 8).fill(paint(.cardSurface)).shadow(color: Parchment.shadow, radius: 2, y: 1))
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(border), lineWidth: 1))
-            .shadow(color: Parchment.shadow, radius: 2, y: 1)
     }
 }
 
@@ -92,7 +92,7 @@ private struct UndoNoticeView: View {
             Button { Task { try? await model.undoAssign(); await onChange() } } label: { MiniLabel(title: "Undo") }
                 .buttonStyle(.plain).accessibilityIdentifier("orphaned-undo")
             Button { model.dismissUndo() } label: {
-                Image(systemName: "xmark").font(.system(size: 14)).foregroundStyle(paint(.dismiss)).frame(width: 44, height: 44)
+                Image(systemName: "xmark").font(.system(size: 14)).foregroundStyle(paint(.dismiss)).frame(width: 44, height: 44).contentShape(Rectangle())
             }
             .buttonStyle(.plain).accessibilityLabel("Dismiss").accessibilityIdentifier("orphaned-undo-dismiss")
         }
@@ -205,7 +205,7 @@ private struct ComposerView: View {
     /// A bare glyph in a 44pt hit frame, as the web stepper draws it.
     private func stepper(_ glyph: String, _ label: String, _ act: @escaping () -> Void) -> some View {
         Button(action: act) {
-            Text(glyph).font(.mono(15, relativeTo: .body)).foregroundStyle(paint(.entry)).frame(width: 34, height: 44).contentShape(Rectangle())
+            Text(glyph).font(.mono(15, relativeTo: .body)).foregroundStyle(paint(.entry)).frame(width: 44, height: 44).contentShape(Rectangle())
         }
         .buttonStyle(.plain).accessibilityLabel(label)
     }
@@ -233,6 +233,8 @@ private struct EnvelopeCard: View {
                 .buttonStyle(.plain).accessibilityIdentifier("discard:\(env.id)")
             }
             .padding(.top, 12).padding(.horizontal, 12).padding(.bottom, 8)
+            // A solid backdrop under the header's buttons: the audit reads their contrast against it.
+            .background(paint(.cardSurface), in: UnevenRoundedRectangle(topLeadingRadius: 8, topTrailingRadius: 8))
             .overlay(alignment: .bottomTrailing) {
                 // The ask hangs below the row, so arming moves nothing (no-layout-shift-under-pointer).
                 if armed {
@@ -283,7 +285,7 @@ private struct EnvelopeCard: View {
                         Button { showAll.toggle() } label: {
                             Text(showAll ? "show fewer" : "show \(ranked.list.count - 3) more candidate\(ranked.list.count == 4 ? "" : "s")")
                                 .font(.mono(11, relativeTo: .caption)).underline().foregroundStyle(paint(.note))
-                                .frame(minHeight: 44, alignment: .leading)
+                                .frame(minHeight: 44, alignment: .leading).contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
                     }
@@ -310,9 +312,9 @@ private struct CandidateRow: View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(c.pkg.seller).font(.cochin(14, relativeTo: .body).weight(.bold)).foregroundStyle(paint(.seller))
-                    .lineLimit(1).truncationMode(.tail)
+
                 Text([c.pkg.date, c.pkg.orderId].filter { !$0.isEmpty }.joined(separator: " \u{00B7} "))
-                    .font(.mono(10.5, relativeTo: .caption)).foregroundStyle(paint(.candidateMeta)).lineLimit(1)
+                    .font(.mono(10.5, relativeTo: .caption)).foregroundStyle(paint(.candidateMeta))
                 Text(fit).font(sure ? .mono(11, relativeTo: .caption).weight(.bold) : .mono(11, relativeTo: .caption))
                     .foregroundStyle(paint(sure ? .fitExact : .fitPlain))
                     .accessibilityIdentifier(sure ? "exact:\(c.pkg.gk)" : "fit:\(c.pkg.gk)")
@@ -337,10 +339,11 @@ private struct CandidateRow: View {
 
 private extension View {
     /// The plain style, so the field's height follows its text at large Dynamic Type; the rounded-border style is a fixed-height UITextField and the audit calls its text clipped.
-    /// Cochin 16 stops iOS zoom on focus.
+    /// The system font, not Cochin: a custom font on a vertical-axis field makes the audit call its hit area too small (measured; open finding).
+    /// 16pt or more also stops iOS zoom on focus.
     func inputBox() -> some View {
-        textFieldStyle(.plain).font(.cochin(16, relativeTo: .body)).foregroundStyle(paint(.entry))
-            .padding(.vertical, 8).padding(.horizontal, 12).frame(minHeight: 44)
+        textFieldStyle(.plain).foregroundStyle(paint(.entry))
+            .padding(.horizontal, 12).frame(minHeight: 48)
             .background(paint(.cardSurface), in: RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.candidateBorder), lineWidth: 1))
     }
