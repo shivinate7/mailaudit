@@ -105,6 +105,8 @@ public final class OrphanedModel {
         }
         untracked = nextUntracked
         pool = nextPool
+        // A suggestion tap then adds with no hop to the rules actor, so Save is ready the moment the card shows.
+        for p in nextPool { norms[p.name] = p.nk }
         rankings = next
         envelopes = recs.compactMap(Self.envelope)
         rankedAt = gen

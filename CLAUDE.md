@@ -399,9 +399,10 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-filters-tally-only` — The native client has no date filter, package sort, Packages search or stamped filter.
 - `native-tally-copy-no-flags` — The native Tally copy has no lost-mail flag and no order id tap.
 - `native-envelope-has-no-photos` — Native envelopes have no photos.
-- `native-orphaned-colours-unbuilt` — The native Orphaned view uses system colours.
+- `native-orphaned-colours-unbuilt` — The native Orphaned audits are red.
 - `native-candidate-lines-wrap` — Native candidate seller and meta lines wrap.
 - `native-undo-notice-padding` — The native Undo notice pads 4pt, not 8pt.
+- `native-composer-fields-two-lines` — The native composer fields draw two lines tall.
 - `native-discard-arm-unpinned` — No test pins the native Discard arm.
 - `native-key-scan-skips-views` — The native key scan skips SwiftUI view state.
 - `native-masthead-packages-only` — The native masthead shows on Packages only.

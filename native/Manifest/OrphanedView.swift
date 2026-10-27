@@ -121,6 +121,7 @@ private struct ComposerView: View {
                 .accessibilityAddTraits(.isHeader)
             // A vertical-axis field is a text view, which the audit does not call clipped at large type (a one-line UITextField is).
             // Its Return key types a newline, so a newline is read as the submit.
+            // Its hit region is its line height: at two lines it clears 44pt in Cochin (one Cochin line is 18pt).
             TextField("Card name", text: Binding(get: { model.draft(for: target).input }, set: { v in
                 if let nl = v.firstIndex(of: "\n") {
                     let typed = String(v[..<nl])
@@ -128,7 +129,7 @@ private struct ComposerView: View {
                     Task { try? await model.addName(typed, for: target) }
                 } else { model.setInput(v, for: target) }
             }), prompt: Text("Type a card name\u{2026}").foregroundStyle(paint(.note)), axis: .vertical)
-                .lineLimit(1...3).inputBox().focused($focused).submitLabel(.done)
+                .lineLimit(2...3).inputBox().focused($focused).submitLabel(.done)
                 .onSubmit { Task { try? await model.addName(model.draft(for: target).input, for: target) } }
                 .accessibilityIdentifier("orphaned-input")
             if !found.isEmpty || asTyped {
@@ -179,7 +180,7 @@ private struct ComposerView: View {
             }
             TextField("Note", text: Binding(get: { model.draft(for: target).note }, set: { model.setNote($0, for: target) }),
                       prompt: Text("Note (optional) \u{2014} tracking #, sender, mailer\u{2026}").foregroundStyle(paint(.note)), axis: .vertical)
-                .inputBox().accessibilityIdentifier("orphaned-note")
+                .lineLimit(2...3).inputBox().accessibilityIdentifier("orphaned-note")
             HStack(spacing: 8) {
                 Text("\(cards) card\(cards == 1 ? "" : "s")").font(.mono(11, relativeTo: .caption)).foregroundStyle(paint(.note))
                 Spacer()
@@ -312,6 +313,7 @@ private struct CandidateRow: View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(c.pkg.seller).font(.cochin(14, relativeTo: .body).weight(.bold)).foregroundStyle(paint(.seller))
+                    .lineLimit(1).truncationMode(.tail).minimumScaleFactor(0.5)
                 Text([c.pkg.date, model.isUntracked(c.pkg.gk) ? "\u{25CB} untracked" : "", c.pkg.orderId].filter { !$0.isEmpty }.joined(separator: " \u{00B7} "))
                     .font(.mono(10.5, relativeTo: .caption)).foregroundStyle(paint(.candidateMeta))
                 Text(fit).font(sure ? .mono(11, relativeTo: .caption).weight(.bold) : .mono(11, relativeTo: .caption))
@@ -338,10 +340,9 @@ private struct CandidateRow: View {
 
 private extension View {
     /// The plain style, so the field's height follows its text at large Dynamic Type; the rounded-border style is a fixed-height UITextField and the audit calls its text clipped.
-    /// The system font, not Cochin: a custom font on a vertical-axis field makes the audit call its hit area too small (measured; open finding).
-    /// 16pt or more also stops iOS zoom on focus.
+    /// Cochin 16: 16pt or more stops iOS zoom on focus. The caller sets lineLimit(2...3), so the hit region clears 44pt.
     func inputBox() -> some View {
-        textFieldStyle(.plain).foregroundStyle(paint(.entry))
+        textFieldStyle(.plain).font(.cochin(16, relativeTo: .body)).foregroundStyle(paint(.entry))
             .padding(.horizontal, 12).frame(minHeight: 48)
             .background(paint(.cardSurface), in: RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.candidateBorder), lineWidth: 1))
