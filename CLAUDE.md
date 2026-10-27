@@ -406,6 +406,7 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-card-stepper-unpinned` — No unit test pins the native card stepper clamp or its readouts.
 - `native-card-gestures-unpinned` — No UI test pins the native card header gestures.
 - `native-card-state-in-swift` — The native card copies the line and package done rules in Swift.
+- `native-partial-count-colour` — The native partial count paints ink, where the web paints manila ink.
 - `native-backup-has-no-photos` — Native Backup holds no photos.
 - `native-backup-ui-unpinned` — No UI test taps Backup.
 - `native-backup-web-restore-unrun` — No test restores a native backup file on the web.
