@@ -1299,15 +1299,23 @@ eq(gotQty(1, 1), null, "V20.2b one copy, in: null");
        "none": typed is blank and held is null. gk and plan null, held null.
        "hold": typed names two or more open envelopes and nothing is held. gk and plan null,
                held = normName(typed).
-       "hold": a name is held and typed names no open envelope. gk and plan null, held unchanged.
-       "post": typed names exactly one open envelope P. With a held name H, P must also name H.
-               plan = matchEnvelope([H, typed] at qty 1 each, P, received).plan. gk = P.gk, held null.
-       Not pinned: typed names no open envelope while nothing is held.
+       "hold": a name is held and typed names no open envelope. That includes the held name
+               typed again. gk and plan null, held unchanged.
+       "post": typed names exactly one open envelope P.
+               If P also names the held name H: plan = matchEnvelope([H, typed] at qty 1 each,
+               P, received).plan, and held is null. When typed is H, both copies count.
+               Otherwise (P does not name H, or nothing is held): plan = matchEnvelope([typed] at
+               qty 1, P, received).plan, and held stays H (null when nothing was held). This is an
+               offer: a tap posts it.
+       Not pinned: typed names two or more open envelopes while a name is held.
      pastTransit(items, received, stampedGks, now) -> [{gk, tier, days, claimBy}, ...]
        A package is listed when it is untracked, not fully received (some item short of qty),
        not in stampedGks, and lostMail(date, tracking, false, now) is not null (14 days or more).
+       Canceled lines drop before grouping, as the web does, so a package takes its tracking
+       from its other lines.
        Order: groupPackages order, so the oldest is last. tier and days come from lostMail.
-       claimBy is the order date plus 30 days, as "YYYY-MM-DD" in UTC. Rows may hold other fields.
+       claimBy is the order's calendar date plus 30 days, as "YYYY-MM-DD", with no time zone
+       shift. Rows may hold other fields.
    Sets cross the Swift bridge as {"$set": [...]}. The Swift case is in HandRulesBundleTests.swift. */
 
 const handHits = fn("handHits");
@@ -1356,6 +1364,31 @@ eq(planOf(v32Decide), ["S1|0|pLightning Bolt=1", "S1|1|pPath to Exile=1"], "V32.
 eq(v32Decide?.held, null, "V32.4 no name is held after a post");
 eq(planOf(handStep(v31, {}, new Set(), null, "Path to Exile")), ["S1|1|pPath to Exile=1"], "V32.5 a card that names one envelope alone posts its own copy");
 
+/* V32.6 to V32.12, next-card cases. Mutants: one copy taken where two are out; the held name
+   dropped on a post; an offer that holds the card instead of posting it. */
+const takesOf = (plan) => {
+  if (!Array.isArray(plan)) return plan;
+  const sums = {};
+  for (const p of plan) sums[p?.itemKey] = (sums[p?.itemKey] || 0) + p?.take;
+  return Object.keys(sums).sort().map((k) => `${k}=${sums[k]}`);
+};
+const fieldOf = (rows, field) => (Array.isArray(rows) ? rows.map((r) => r?.[field]) : rows);
+const v32Two = group("Q1", "Alpha Cards", "2026-07-01", "with tracking", [["Lightning Bolt", 2]]);
+const v32Twin = handStep(v32Two, {}, new Set(), "Lightning Bolt", "Lightning Bolt");
+eq(v32Twin?.action, "post", "V32.6 a name held and typed again, with one envelope, posts");
+eq(v32Twin?.gk, "Q1::Alpha Cards", "V32.7 the post names that envelope");
+eq(takesOf(v32Twin?.plan), ["Q1|0|pLightning Bolt=2"], "V32.8 the plan takes both copies out");
+const v32Other = [
+  ...group("O1", "Alpha Cards", "2026-07-01", "with tracking", [["Lightning Bolt", 1]]),
+  ...group("O2", "Beta Games", "2026-07-02", "with tracking", [["Lightning Bolt", 1]]),
+  ...group("O3", "Gamma Cards", "2026-07-03", "with tracking", [["Sol Ring", 1]]),
+];
+const v32Offer = handStep(v32Other, {}, new Set(), "Lightning Bolt", "Sol Ring");
+eq(v32Offer?.action, "post", "V32.9 a card unique to another envelope offers post");
+eq(v32Offer?.gk, "O3::Gamma Cards", "V32.10 the offer names that card's envelope");
+eq(planOf(v32Offer), ["O3|0|pSol Ring=1"], "V32.11 the offer plans that card alone");
+eq(v32Offer?.held, "lightning bolt", "V32.12 the held name stays held");
+
 /* ── V33 handStep: an unmatched card gives hold, and the held name stays held. A blank card
    with nothing held is none. Mutants: the unmatched card posts alone, or replaces the held name. */
 const v33Unmatched = handStep(v31, {}, new Set(), "Lightning Bolt", "Sol Ring");
@@ -1363,6 +1396,12 @@ eq(v33Unmatched?.action, "hold", "V33.1 an unmatched card gives hold, never post
 eq(v33Unmatched?.held, "lightning bolt", "V33.2 the earlier held name is still the held name");
 eq(v33Unmatched?.plan, null, "V33.3 an unmatched card gets no plan");
 eq(handStep(v31, {}, new Set(), null, "")?.action, "none", "V33.4 a blank card with nothing held is none");
+
+/* V33.5 and V33.6, a held name typed again with no open envelope. Mutant: none, or the held name dropped. */
+const v33Again = group("R1", "Delta Cards", "2026-07-04", "with tracking", [["Lightning Bolt", 1]]);
+const v33AgainRes = handStep(v33Again, {}, new Set(["R1::Delta Cards"]), "Lightning Bolt", "Lightning Bolt");
+eq(v33AgainRes?.action, "hold", "V33.5 a held name typed again with no open envelope is held");
+eq(v33AgainRes?.held, "lightning bolt", "V33.6 the held name is kept");
 
 /* ── V34 pastTransit: untracked, unreceived, unstamped packages at 14 days or more, oldest
    last. Mutants: 13 days listed, 29 days as deadline, claimBy off by a day, received or
@@ -1384,6 +1423,16 @@ const v34Field = (field) => (Array.isArray(v34Rows) ? v34Rows.map((r) => r?.[fie
 eq(v34Field("gk"), ["T1::Alpha Cards", "T2::Beta Games", "T3::Gamma Cards", "T4::Delta Cards"], "V34.1 the 13-day, tracked, received and stamped orders are absent, oldest last");
 eq(Array.isArray(v34Rows) ? v34Rows.map((r) => [r?.tier, r?.days]) : v34Rows, [["maybe", 14], ["maybe", 29], ["deadline", 30], ["deadline", 41]], "V34.2 14 and 29 days are maybe, 30 and 41 are deadline");
 eq(v34Field("claimBy"), ["2026-08-16", "2026-08-01", "2026-07-31", "2026-07-20"], "V34.3 claimBy is the order date plus 30 days");
+
+/* V34.4 to V34.6, canceled lines and the calendar claim date. Run with TZ=America/Chicago.
+   Mutants: a canceled line first hides the untracked package; claimBy shifted by the zone. */
+const v34Now = Date.parse("2026-07-31T12:00:00Z");
+const v34CancelLine = group("U1", "Alpha Cards", "2026-07-05", "canceled", [["Lightning Bolt", 1]]);
+const v34OpenLine = group("U1", "Alpha Cards", "2026-07-05", "without tracking", [["Path to Exile", 1]]);
+eq(fieldOf(pastTransit([...v34CancelLine, ...v34OpenLine], {}, new Set(), v34Now), "gk"), ["U1::Alpha Cards"], "V34.4 a canceled line first does not hide an untracked package");
+eq(fieldOf(pastTransit([...v34OpenLine, ...v34CancelLine], {}, new Set(), v34Now), "gk"), ["U1::Alpha Cards"], "V34.5 an untracked line first lists the same package");
+const v34LateOrder = group("K1", "Kappa Cards", "2026-07-01 20:00:00", "without tracking", [["Ponder", 1]]);
+eq(fieldOf(pastTransit(v34LateOrder, {}, new Set(), v34Now), "claimBy"), ["2026-07-31"], "V34.6 claimBy is the calendar date plus 30 days, with no time zone shift");
 
 /* ---------- report ---------- */
 
