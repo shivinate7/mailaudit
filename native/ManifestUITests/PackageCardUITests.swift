@@ -18,8 +18,11 @@
 //   card-pill:<gk>    the "N left · $X" pill; its label is the pill text. Absent when nothing is owed.
 //   got-qty:<line key> the mono got/qty read-out of a line with more than one copy. Its label or its
 //                     value reads "got/qty", as the web stepper prints it. Absent on a one-copy line.
+//   step-minus:<line key>, step-plus:<line key>  the − and + buttons under a multi-copy line's detail line.
+//                     Each tap moves the count by one, never below 0 or above the line's qty.
 //   card-slot:<gk>    the reserved frame that holds the pill or the RECEIVED stamp. It keeps its frame
-//                     through the check-in that completes a package.
+//                     through the check-in that completes a package. Its value is the pill's text, or
+//                     "Received" once nothing is owed.
 // Seed by name: -ManifestUITestSeed <file in shared/fixtures>. The hook must take the name; the bundled
 // ledger.json is the default. The long-seller case names ledger-long-seller.json.
 // Launch arguments are the shell tests': -ManifestUITestSeed, -ManifestUITestWidth.
@@ -199,5 +202,80 @@ final class PackageCardUITests: XCTestCase {
         wait("label BEGINSWITH 'Undo check in'", for: control, "the check-in of the long-seller line did not land")
         XCTAssertEqual(element(app, "card-slot:\(Self.longSellerPackage)").frame, before,
                        "the pill slot moved when the only copy was checked in")
+    }
+
+    // MARK: the stepper on a multi-copy line
+
+    /// A line with more than one copy has the web's − and + stepper under its detail line. Brainstorm (×2)
+    /// reads 0/2 at rest. + takes it to 1/2 and − takes it back to 0/2. The detail line sits above the stepper.
+    func testMultiCopyLineHasAStepperUnderItsDetail() throws {
+        let app = launch()
+        let brainstorm = "A1|2|pBrainstorm"
+        let row = element(app, "package-row:\(Self.package)")
+        XCTAssertTrue(row.waitForExistence(timeout: 5), "the A1 row is missing")
+
+        let readout = element(app, "got-qty:\(brainstorm)")
+        XCTAssertEqual(readout.label, "0/2", "Brainstorm reads 0/2 at rest")
+        let minus = element(app, "step-minus:\(brainstorm)")
+        let plus = element(app, "step-plus:\(brainstorm)")
+        XCTAssertTrue(minus.waitForExistence(timeout: 3), "no − button on the Brainstorm ×2 line")
+        XCTAssertTrue(plus.waitForExistence(timeout: 3), "no + button on the Brainstorm ×2 line")
+        guard minus.exists, plus.exists else { return }
+        XCTAssertEqual(minus.elementType, .button, "− must be a button")
+        XCTAssertEqual(plus.elementType, .button, "+ must be a button")
+
+        // The detail reads "×2 · Test Set · Near Mint": the fixture's set and condition, no finish.
+        let detail = row.descendants(matching: .staticText)
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "×2 ·")).firstMatch
+        XCTAssertTrue(detail.exists, "the detail line of Brainstorm ×2 is missing")
+        guard detail.exists else { return }
+        XCTAssertLessThanOrEqual(detail.frame.maxY, minus.frame.minY,
+                                 "the detail line ends at \(detail.frame.maxY)pt, below the stepper's top at \(minus.frame.minY)pt")
+
+        plus.tap()
+        wait("label == '1/2'", for: readout, "+ did not raise Brainstorm to 1/2")
+        minus.tap()
+        wait("label == '0/2'", for: readout, "− did not lower Brainstorm back to 0/2")
+    }
+
+    // MARK: the space under a card's last line
+
+    /// The web row pads 12pt at the top and at the bottom. A one-line card keeps at least 10pt between its
+    /// last text and its bottom edge. D1 (Urza's Saga) is the one-line card in the shared fixture.
+    func testOneLineCardKeepsTenPointsBelowItsLastText() throws {
+        let app = launch()
+        let row = element(app, "package-row:D1::Delta Cards")
+        XCTAssertTrue(row.waitForExistence(timeout: 5), "the one-line D1 card is missing")
+        guard let last = row.descendants(matching: .staticText).allElementsBoundByIndex
+            .max(by: { $0.frame.maxY < $1.frame.maxY }) else {
+            XCTFail("the D1 card holds no text")
+            return
+        }
+        let space = row.frame.maxY - last.frame.maxY
+        XCTAssertGreaterThanOrEqual(space, 10,
+                                    "the last text \(last.label.debugDescription) sits \(space)pt above the card's bottom edge; the web row keeps 12pt")
+    }
+
+    // MARK: the order status value
+
+    /// The "Order status" slot carries the pill's text as its value, and "Received" once nothing is owed.
+    /// A VoiceOver reader hears the status the card shows.
+    func testOrderStatusSlotValueIsThePillTextThenReceived() throws {
+        let app = launch()
+        let gk = Self.package
+        let slot = element(app, "card-slot:\(gk)")
+        let pill = element(app, "card-pill:\(gk)")
+        XCTAssertTrue(slot.waitForExistence(timeout: 5), "the A1 status slot is missing")
+        XCTAssertEqual(pill.label, "4 left \u{00B7} $4.00", "the pill at rest")
+        XCTAssertEqual(slot.value as? String, pill.label, "the status slot's value must be the pill's text")
+
+        for key in Self.lines {
+            let control = element(app, "checkin:\(key)")
+            XCTAssertTrue(control.waitForExistence(timeout: 5), "the check-in control \(key) is missing")
+            control.tap()
+            wait("label BEGINSWITH 'Undo check in'", for: control, "the check-in of \(key) did not land")
+        }
+        wait("exists == false", for: pill, "every copy is in: no pill")
+        XCTAssertEqual(slot.value as? String, "Received", "a done package's status value must be Received")
     }
 }
