@@ -836,7 +836,10 @@ function PackageCard({
             ▶
           </span>
         </button>
-        <div style={{ flex: 1, minWidth: 0, padding: "12px 12px 28px 4px" }}>
+        {/* 16px left padding: the id link's touch area starts 16px right of the
+            chevron's box. A real tap on the chevron's edge then lies outside the
+            reach of Chromium's touch adjustment (order-id-button-stops-propagate). */}
+        <div style={{ flex: 1, minWidth: 0, padding: "12px 12px 28px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div

@@ -121,7 +121,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-files-are-frozen` — Native file names freeze on first ship.
 - `native-ci-on-hosted-macos` — The native job runs on a hosted macOS runner.
 - `csv-import-stays-web` — CSV import stays on the web app.
-- `one-simulator-per-mac` — The Mac's CPU, disk and one simulator are shared.
+- `one-simulator-per-mac` — Simulator boots and load follow the global machine rules.
 - `native-ships-via-testflight` — The iOS app ships through TestFlight.
 
 ## Envelope photos
@@ -418,7 +418,6 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `tcgplayer-link-opens-history-list` — The TCGplayer link may not search by order id.
 - `header-gestures-unmeasured` — Header gestures are unmeasured.
 - `ios-touch-adjust-unmeasured` — iOS touch adjustment near the order id link is unmeasured.
-- `order-id-chevron-tap-flake` — Claim 17a sometimes finds the chevron within reach of the order id link.
 - `discard-keeps-draft` — Discard does not end a composer draft.
 - `type-floor-unbuilt` — Some labels are below the 10px floor.
 - `universal-link-unbuilt` — The universal-link key fallback is not built.
