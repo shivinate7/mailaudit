@@ -66,6 +66,23 @@ extension XCUIApplication {
         XCTAssertTrue(inView(), "reveal: the element ends at \(element.frame), outside the free band \(top) to \(bottom)")
     }
 
+    /// The whole audit, with each issue named by its element. A bare performAccessibilityAudit() fails with
+    /// "Contrast failed" and the result bundle does not say which element (palette-tokens-contrast-floor).
+    /// `skipping` is the audit's own ignore handler: an issue it accepts is left out, every other issue is named
+    /// and fails. The default skips nothing.
+    func auditNamingElements(skipping skip: @escaping (XCUIAccessibilityAuditIssue) -> Bool = { _ in false },
+                             file: StaticString = #filePath, line: UInt = #line) throws {
+        var found: [String] = []
+        try performAccessibilityAudit { issue in
+            if !skip(issue) {
+                let el = issue.element
+                found.append("\(issue.compactDescription) | id=\(el?.identifier ?? "-") label=\(el?.label ?? "-") frame=\(el?.frame ?? .zero)")
+            }
+            return true  // handled here; the assertion below is the only failure
+        }
+        XCTAssertEqual(found, [], "the audit flagged these elements", file: file, line: line)
+    }
+
     /// The accessibility audit, minus every issue whose element the tab bar covers. The issues it
     /// skips and the issues it fails come back as text. `bar` replaces the tab bar's frame, for
     /// the narrowness test. With `record: false` no issue is recorded, so a test can read them.

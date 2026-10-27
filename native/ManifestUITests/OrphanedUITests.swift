@@ -241,9 +241,9 @@ final class OrphanedUITests: XCTestCase {
         openOrphaned(app)
         el(app, "orphaned-record").tap()
         XCTAssertTrue(el(app, "orphaned-input").waitForExistence(timeout: 5), "the composer did not open before the audit")
-        try app.performAccessibilityAudit { issue in
+        try app.auditNamingElements(skipping: { issue in
             issue.auditType == .contrast && issue.element?.isEnabled == false
-        }
+        })
     }
 
     /// The ready composer: a card is added, so Save is enabled and its contrast is audited like any control.
@@ -254,7 +254,7 @@ final class OrphanedUITests: XCTestCase {
         el(app, "orphaned-record").tap()
         addCard(app, typed: "urza", name: "Urza's Saga")
         XCTAssertTrue(el(app, "orphaned-save").isEnabled, "a card is added but Save is still disabled before the audit")
-        try app.performAccessibilityAudit()
+        try app.auditNamingElements()
     }
 
     /// Save reports its real state to VoiceOver: disabled while the composer holds no card, enabled once it does.
@@ -274,7 +274,7 @@ final class OrphanedUITests: XCTestCase {
         openOrphaned(app)
         recordTie(app)
         XCTAssertTrue(el(app, "assign:\(Self.a1)").waitForExistence(timeout: 5), "the candidates did not show before the audit")
-        try app.performAccessibilityAudit()
+        try app.auditNamingElements()
     }
 
     /// Every control the owner taps has a hit region of at least 44pt, and the assign Undo too.
