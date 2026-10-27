@@ -1,4 +1,4 @@
-# The native audit skips contrast only on measured false flags
+# The native audits skip only named, owner-ruled issues
 
 The native UI tests run Apple's accessibility audit. It flags "Contrast failed" on a few elements whose colours clear 4.5:1. The owner ruled on 2026-10-27 12:25 CDT: skip the contrast check only for the Orphaned mini buttons Cancel, Edit and Discard, and the Tally "left" line. Each skip cites the measured table. Every other audit check stays on, on every element.
 
@@ -6,7 +6,12 @@ The measurement, 2026-10-27, in a scratch app with the real views: a bordered `M
 
 The audit stays because it caught real defects in the same step: a shadow on a container, clipped text, and a dropped label.
 
-**Holds while:** the skips in `native/ManifestUITests` name only those elements and only the contrast audit type, and `TokenContrast` unit tests pin each skipped element's colour pair at 4.5:1 or more.
+Two more skips, each named by the owner:
+
+- **The system tab bar.** The owner ruled on 2026-10-21 that the Packages audit skips issues raised on the iOS tab bar, which the app does not draw. On 2026-10-27 14:26 CDT the owner extended it to the Ledger, Orphaned and Tally audits (`auditSkippingTabBar`).
+- **The system keyboard.** The owner ruled on 2026-10-27 14:26 CDT: in the two composer audits only, skip issues on the keyboard's prediction cells (`TUIPredictionViewCell`). They reported "Element has no description" in the full suite of 2026-10-27, and the app does not draw them.
+
+**Holds while:** the skips in `native/ManifestUITests` name only these elements: the contrast type on the four named elements, which `TokenContrast` unit tests pin at 4.5:1 or more; the tab bar; and the keyboard prediction cells in the two composer audits.
 
 ## See also
 
