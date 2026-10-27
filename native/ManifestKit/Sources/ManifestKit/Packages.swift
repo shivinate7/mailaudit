@@ -47,13 +47,17 @@ public final class PackagesModel {
         String(decoding: try JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed]), as: UTF8.self)
     }
 
-    /// groupPackages, then sortPackages "newest" (the web default, src/app.jsx).
+    /// groupPackages, then sortPackages "newest" (the web default, src/app.jsx). Every value is built first,
+    /// then rows and every map are set in one step after the last await, as MastheadModel.refresh does,
+    /// so the view never draws a row without its maps. A failed call leaves its entry empty and is thrown after.
     public func load() async throws {
         let got = store.received()
         let live = try await LiveItems.of(store.items(), stamps: store.stamps(), engine: engine)
         let grouped = try await engine.call("groupPackages", "[\(live)]")
         let sorted = try await engine.call("sortPackages", "[\(grouped),\"newest\",\(try json(got))]")
-        rows = try JSONDecoder().decode([Package].self, from: Data(sorted.utf8))
+        let newRows = try JSONDecoder().decode([Package].self, from: Data(sorted.utf8))
+        let (updates, failure) = try await refresh(newRows.map { ($0, $0.items) }, received: got, withStatic: true)
+        rows = newRows
         received = got
         labels = [:]
         done = [:]
@@ -62,17 +66,40 @@ public final class PackagesModel {
         readouts = [:]
         details = [:]
         orderLinks = [:]
-        try await refresh(rows.map { ($0, $0.items) }, withStatic: true)
+        apply(updates)
+        if let failure { throw failure }
     }
 
     private func encode<T: Encodable>(_ value: T) throws -> String {
         String(decoding: try JSONEncoder().encode(value), as: UTF8.self)
     }
 
+    /// One map entry from the engine. A nil value removes the entry.
+    private enum Update {
+        case done(String, Bool), label(String, String?), readout(String, String?), detail(String, String?),
+             link(String, URL?), pill(String, String?), bar(String, Double?)
+    }
+
+    /// Synchronous, so the view sees all of the updates or none of them.
+    private func apply(_ updates: [Update]) {
+        for u in updates {
+            switch u {
+            case .done(let k, let v): done[k] = v
+            case .label(let k, let v): labels[k] = v
+            case .readout(let k, let v): readouts[k] = v
+            case .detail(let k, let v): details[k] = v
+            case .link(let k, let v): orderLinks[k] = v
+            case .pill(let k, let v): pills[k] = v
+            case .bar(let k, let v): bars[k] = v
+            }
+        }
+    }
+
     /// One engine hop for the given packages: each listed line's isDone, countLabel and gotQty, and each package's
     /// pill and bar. `withStatic` adds what a check-in cannot change, the detail lines and the order link.
-    /// Each call stands alone: one failing must not stop the rest. The first error is thrown.
-    private func refresh(_ targets: [(p: Package, items: [LedgerItem])], withStatic: Bool) async throws {
+    /// It changes no state: it returns the updates and the first failed call's error. One failure must not stop the rest.
+    private func refresh(_ targets: [(p: Package, items: [LedgerItem])], received: [String: Int],
+                         withStatic: Bool) async throws -> ([Update], Error?) {
         enum Call { case done(String), label(String), readout(String), detail(String), link(String), pill(String), totals(String) }
         var calls: [(name: String, args: String)] = []
         var plan: [Call] = []
@@ -100,28 +127,29 @@ public final class PackagesModel {
         func string(_ out: String) throws -> String? {
             try JSONSerialization.jsonObject(with: Data(out.utf8), options: [.fragmentsAllowed]) as? String
         }
+        var updates: [Update] = []
         var failure: Error?
         for (call, result) in zip(plan, await engine.calls(calls)) {
             do {
                 let out = try result.get()
                 switch call {
-                case .done(let key): done[key] = out == "true"
-                case .label(let key): labels[key] = try string(out)
-                case .readout(let key): readouts[key] = try string(out)
-                case .detail(let key): details[key] = try string(out)
-                case .link(let gk): orderLinks[gk] = try string(out).flatMap { URL(string: $0) }
-                case .pill(let gk): pills[gk] = try string(out)
+                case .done(let key): updates.append(.done(key, out == "true"))
+                case .label(let key): updates.append(.label(key, try string(out)))
+                case .readout(let key): updates.append(.readout(key, try string(out)))
+                case .detail(let key): updates.append(.detail(key, try string(out)))
+                case .link(let gk): updates.append(.link(gk, try string(out).flatMap { URL(string: $0) }))
+                case .pill(let gk): updates.append(.pill(gk, try string(out)))
                 case .totals(let gk):
                     let t = try JSONSerialization.jsonObject(with: Data(out.utf8)) as? [String: Any]
                     if let got = t?["got"] as? Int, let total = t?["total"] as? Int, got > 0, got < total {
-                        bars[gk] = Double(got) / Double(total)
+                        updates.append(.bar(gk, Double(got) / Double(total)))
                     } else {
-                        bars[gk] = nil
+                        updates.append(.bar(gk, nil))
                     }
                 }
             } catch { failure = failure ?? error }
         }
-        if let failure { throw failure }
+        return (updates, failure)
     }
 
     /// A tap: the bundle's toggleCount picks the count to write. Every failure, rule or save,
@@ -141,6 +169,14 @@ public final class PackagesModel {
     /// For the view: a tap whose failure is already in checkInError.
     public func tap(key: String) async { try? await toggle(key: key) }
 
+    /// A stepper tap, as the web stepper: one copy more or fewer, kept within 0 and the line's qty.
+    /// It takes the checkbox's save path, checkIn, so a failure lands in checkInError.
+    public func step(key: String, by delta: Int) async {
+        guard let item = rows.lazy.flatMap(\.items).first(where: { $0.key == key }) else { return }
+        let got = min(received[key] ?? 0, item.qty)  // an over-count steps from the clamped figure, as on the web
+        try? await checkIn(key: key, count: min(max(got + delta, 0), item.qty))
+    }
+
     public func checkIn(key: String, count: Int) async throws {
         do { try store.commitReceived(key, count: count) } catch {
             checkInError = "Could not save the check-in. \(error.localizedDescription)"
@@ -150,7 +186,11 @@ public final class PackagesModel {
         received = store.received()
         if let pkg = rows.first(where: { $0.items.contains { $0.key == key } }),
             let item = pkg.items.first(where: { $0.key == key }) {
-            do { try await refresh([(pkg, [item])], withStatic: false) } catch {
+            do {
+                let (updates, failure) = try await refresh([(pkg, [item])], received: received, withStatic: false)
+                apply(updates)
+                if let failure { throw failure }
+            } catch {
                 checkInError = "Saved, but the label could not refresh. \(error.localizedDescription)"
                 throw error
             }

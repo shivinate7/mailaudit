@@ -5,7 +5,7 @@ import {
   parseItems, lostMail, normName, isUntracked, gkOf, groupPackages, rankCandidates,
   dateRange, inRange, dropCanceled, dropGks, canceledPackagesOf, stampedPackagesOf,
   tallyGroups, sortTally, sortPackages, filterPackages, filterTally,
-  totalsOf, outstandingOf, packagePill, itemDetail, tcgplayerOrderUrl, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger, money, compact,
+  totalsOf, outstandingOf, packagePill, itemDetail, tcgplayerOrderUrl, gotQty as gotQtyText, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger, money, compact,
 } from "./view-rules.mjs";
 import { photoPlan } from "./photo-rules.mjs";
 import { shouldSnapshot } from "./version-rules.mjs";
@@ -619,7 +619,7 @@ function ItemRow({
                 fontWeight: partial ? 700 : 400,
               }}
             >
-              {got}/{item.qty}
+              {gotQtyText(got, item.qty)}
             </span>
             <button
               onClick={() => onSet(item.key, Math.min(item.qty, got + 1))}

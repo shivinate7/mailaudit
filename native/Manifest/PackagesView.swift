@@ -68,7 +68,7 @@ struct PackageRow: View {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(pkg.seller).font(.cochin(15).weight(.bold)).foregroundStyle(paint(.seller, packageState))
                         .lineLimit(1).truncationMode(.tail)
-                        .accessibilityLabel(pkg.seller)  // measured: with textSelection and no label the audit says "Text clipped"; with both, the text wraps
+                        .textSelection(.enabled)  // owner ruling 2026-10-21: the header text is selectable, seller included
                     dateLine
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -79,7 +79,7 @@ struct PackageRow: View {
                     Link(destination: url) {
                         Text(pkg.orderId).font(.mono(11)).underline()
                             .foregroundStyle(paint(.orderId, packageState))
-                            .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+                            .frame(minWidth: 45, minHeight: 45, alignment: .leading)  // 45: layout rounding read a 44pt frame as 43.99999
                             .contentShape(Rectangle())
                     }
                     .accessibilityLabel("Order \(pkg.orderId) on TCGplayer")
@@ -108,24 +108,30 @@ struct PackageRow: View {
             // would take the union of its visible children, so the pill and the stamp would give it two frames.
             .background {
                 Color.clear.accessibilityElement().accessibilityLabel("Order status")
+                    .accessibilityValue(status.accessibilityValue)
                     .accessibilityIdentifier("card-slot:\(pkg.gk)")
             }
             .overlay(alignment: .trailing) {
-                if let pill = model.pills[pkg.gk] {
+                switch status {
+                case .pill(let pill):
                     Text(pill).font(.cochin(12.5).weight(.bold)).foregroundStyle(paint(.pillText, .open))
                         .padding(.horizontal, 8).padding(.vertical, 4)
                         .background(Capsule().fill(paint(.pillFill, .open)))
                         .fixedSize()
                         .accessibilityIdentifier("card-pill:\(pkg.gk)")
-                } else {
+                case .received:
                     Text("RECEIVED").font(.mono(10.5).weight(.bold)).tracking(1).foregroundStyle(paint(.border, .done))
                         .padding(.horizontal, 8).padding(.vertical, 4)
                         .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(paint(.border, .done), lineWidth: 2))
                         .rotationEffect(.degrees(-4))
                         .fixedSize()
+                case .blank:
+                    EmptyView()
                 }
             }
     }
+
+    private var status: PackageCard.Status { PackageCard.Status(done: packageState == .done, pill: model.pills[pkg.gk]) }
 
     /// The thin bar on the card's top edge, out of flow: it mounts without moving a row.
     @ViewBuilder private var bar: some View {
@@ -168,15 +174,13 @@ private struct ItemLine: View {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text(item.name).font(.cochin(14).weight(.semibold)).foregroundStyle(paint(.name, state))
                     Spacer(minLength: 0)
-                    VStack(alignment: .trailing, spacing: 4) {
-                        Text(PackageCard.priceText(item.price)).font(.mono(12)).foregroundStyle(paint(.price, state)).fixedSize()
-                            .accessibilityLabel("Price \(PackageCard.priceText(item.price))")
-                        if let readout = model.readouts[item.key] { count(readout) }
-                    }
+                    Text(PackageCard.priceText(item.price)).font(.mono(12)).foregroundStyle(paint(.price, state)).fixedSize()
+                        .accessibilityLabel("Price \(PackageCard.priceText(item.price))")
                 }
                 Text(model.details[item.key] ?? "").font(.cochin(11.5)).foregroundStyle(paint(.detail, state))
+                if let readout = model.readouts[item.key] { stepper(readout) }
             }
-            .padding(.top, 12)
+            .padding(.vertical, 12)  // as the web row: 12 above and below
             .padding(.trailing, 12)
         }
         .padding(.leading, 4)
@@ -185,13 +189,43 @@ private struct ItemLine: View {
         .overlay(alignment: .top) { paint(.rule, state).frame(height: 1) }
     }
 
+    /// The web stepper under the detail line: − got/qty +. Each button moves the count by one through
+    /// model.step, the checkbox's save path. A button is a 34pt square, as on the web, in a 44pt hit frame.
+    private func stepper(_ readout: String) -> some View {
+        HStack(spacing: 4) {
+            stepButton("\u{2013}", by: -1, label: "One fewer received", id: "step-minus")
+            count(readout).frame(minWidth: 44)
+            stepButton("+", by: 1, label: "One more received", id: "step-plus")
+        }
+        .padding(.top, 4)  // with the column's 4pt spacing, the web's 8pt margin
+    }
+
+    private func stepButton(_ glyph: String, by delta: Int, label: String, id: String) -> some View {
+        Button {
+            Task {
+                masthead.saving()
+                await model.step(key: item.key, by: delta)  // a failure shows in model.checkInError
+                await masthead.finished(failed: model.checkInError != nil)
+            }
+        } label: {
+            Text(glyph).font(.system(size: 16)).foregroundStyle(paint(.name, .open))
+                .frame(width: 34, height: 34)
+                .background(RoundedRectangle(cornerRadius: 8).fill(paint(.surface, .open)))
+                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.rule, .open), lineWidth: 1))
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel(label)
+        .accessibilityIdentifier("\(id):\(item.key)")
+    }
+
     /// How many of a multi-copy line are in, as the web's got/qty (the bundle's gotQty). An invisible qty/qty sets
     /// the width, so a shorter figure (10/12 to 9/12) never changes the row. A partly received line is bold.
     /// No accessibilityLabel: the text is the label, so "0/2" stays readable to the UI test.
     private func count(_ readout: String) -> some View {
         Text("\(item.qty)/\(item.qty)").font(.mono(13))
             .hidden()
-            .overlay(alignment: .trailing) {
+            .overlay {
                 Text(readout).font(.mono(13).weight(state == .partial ? .bold : .regular))
                     .foregroundStyle(paint(.name, state)).fixedSize()
                     .accessibilityIdentifier("got-qty:\(item.key)")

@@ -39,6 +39,25 @@ public enum PackageCard {
         }
     }
 
+    /// What the status slot shows. RECEIVED comes from the package being done, never from a missing pill:
+    /// a package still owed with no pill yet shows nothing.
+    public enum Status: Equatable, Sendable {
+        case pill(String), received, blank
+
+        public init(done: Bool, pill: String?) {
+            self = done ? .received : pill.map(Status.pill) ?? .blank
+        }
+
+        /// The slot's accessibility value: what the slot shows, so a VoiceOver reader hears the card's status.
+        public var accessibilityValue: String {
+            switch self {
+            case .pill(let text): return text
+            case .received: return "Received"
+            case .blank: return ""
+            }
+        }
+    }
+
     /// "$" + price.toFixed(2), as the web item row prints it: no thousands separator.
     /// ponytail: printf rounds an exact binary tie to even where toFixed rounds up; ledger prices are cents, which never tie.
     public static func priceText(_ price: Double) -> String { String(format: "$%.2f", price) }
