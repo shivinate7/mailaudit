@@ -2,7 +2,7 @@
 //
 // This used to read only CLAUDE.md, which was 2,385 lines and held every
 // argument. CLAUDE.md is now an index; the records under
-// decisions/, invariants/ and measurements/ hold the prose this file used to
+// docs/decisions/, invariants/ and measurements/ hold the prose this file used to
 // check. So this walks CLAUDE.md plus every `.md` file in those three
 // folders, and checks four claims against the whole
 // corpus: the suite's published assertion count, every repo path named in
@@ -189,7 +189,7 @@ const OTHER_REPO = new Set([
   "ledger.json", // the ledger file, on the data branch of mailaudit-data
   "photos/", // the photo directory, on main of mailaudit-data
   "backup-watchdog.yml", // the watchdog workflow, lives in mailaudit-data
-  "_studies.html", // the motion proof sheet, never committed (decisions/motion-method-side-by-side-proof.md)
+  "_studies.html", // the motion proof sheet, never committed (docs/decisions/motion-method-side-by-side-proof.md)
 ]);
 
 function excluded(s) {

@@ -1,5 +1,5 @@
 // A checked reader for the record corpus under invariants/, measurements/,
-// decisions/ and debts/ — the files CLAUDE.md was split into. Same spirit as
+// docs/decisions/ and docs/debts/ — the files CLAUDE.md was split into. Same spirit as
 // check-docs.mjs: nothing here is hand-maintained data. Every count comes
 // from walking the real files. Records hold current text only; git keeps
 // history. Run with `npm run check:records`.
@@ -15,7 +15,7 @@
 //   7. every decision holds a "Holds while" line, every open thread a
 //      "Status" line, and the index lists no slug twice
 //   8. every debt holds a "Status" line and a "Decision" line that names an
-//      existing non-debt record or says "none", and CLAUDE.md lists debts/
+//      existing non-debt record or says "none", and CLAUDE.md lists docs/debts/
 
 import { readFileSync, readdirSync } from "fs";
 import { execFileSync } from "child_process";
@@ -406,7 +406,7 @@ function closestSlug(token, slugs) {
 }
 
 /* ---------- claim 7: decisions hold while something; open threads carry a status; the index lists a slug once ----------
-   Every decisions/*.md holds a "**Holds while:**" line (the fact that dates it,
+   Every docs/decisions/*.md holds a "**Holds while:**" line (the fact that dates it,
    see records-name-what-dates-them). Every record CLAUDE.md lists under
    "## Open threads" holds a "**Status:**" line. CLAUDE.md lists no slug twice. */
 {
@@ -443,13 +443,13 @@ function closestSlug(token, slugs) {
 }
 
 /* ---------- claim 8: debts point at their decision ----------
-   Owner ruling 2026-10-14: each known gap is one file under debts/, and it
+   Owner ruling 2026-10-14: each known gap is one file under docs/debts/, and it
    points at the decision it belongs to (global rule roles-holes-are-debts).
    A debt holds a "**Status:**" line and one or more "**Decision:**" lines, all
    outside any fence. Every Decision line backticks the slug of a record in invariants/,
-   measurements/ or decisions/ (never another debt, never itself), or says
+   measurements/ or docs/decisions/ (never another debt, never itself), or says
    "none" for a gap with no decision. Claim 1 cannot judge this: it refuses a
-   slug that is far from every real one. CLAUDE.md lists the debts/ folder. */
+   slug that is far from every real one. CLAUDE.md lists the docs/debts/ folder. */
 {
   let bad = 0;
   const debts = records.filter((r) => r.folder === "debts");
@@ -478,14 +478,14 @@ function closestSlug(token, slugs) {
       }
       for (const slug of cited) {
         if (!targets.has(slug)) {
-          console.error(`check:records: ${r.path}: Decision cites \`${slug}\`, which is not a record in invariants/, measurements/ or decisions/`);
+          console.error(`check:records: ${r.path}: Decision cites \`${slug}\`, which is not a record in invariants/, measurements/ or docs/decisions/`);
           bad++;
         }
       }
     }
   }
   if (!/\bdebts\//.test(readFileSync("CLAUDE.md", "utf8"))) {
-    console.error("check:records: CLAUDE.md does not list the debts/ folder");
+    console.error("check:records: CLAUDE.md does not list the docs/debts/ folder");
     bad++;
   }
   failures += bad;
