@@ -66,7 +66,7 @@ figcaption{font-size:15px;color:var(--inkSoft);line-height:1.35;display:flex;gap
 
 /* tab bar */
 .bar{position:absolute;left:24px;right:24px;bottom:12px;height:64px;border:1px solid var(--line);border-radius:32px;background:color-mix(in srgb,var(--paper) 62%,transparent);backdrop-filter:blur(12px) saturate(1.4);box-shadow:0 4px 16px var(--shadow);display:grid;grid-template-columns:repeat(4,1fr);padding:4px;gap:4px;z-index:4}
-.bar span{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:28px;font-size:12px;color:var(--inkSoft);position:relative}
+.bar span{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:28px;font-size:12px;color:var(--inkSoft);position:relative}
 .bar span.on{background:color-mix(in srgb,var(--card) 90%,transparent);color:var(--accent)}
 .bar svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
 .bar i{position:absolute;top:4px;left:calc(50% + 6px);font:10px/16px var(--mono);font-style:normal;background:var(--accent);color:var(--card);border-radius:8px;padding:0 4px}
@@ -86,11 +86,11 @@ figcaption{font-size:15px;color:var(--inkSoft);line-height:1.35;display:flex;gap
 .hitrow small,.line small,.tie small{display:block;color:var(--inkSoft);font-size:13px}
 .hitrow .n{font-size:13px;text-align:right}
 .hand{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px}
-.hand>div{display:flex;flex-direction:column;gap:2px}
+.hand>div{display:flex;flex-direction:column;gap:4px}
 .btn{min-height:44px;min-width:44px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font:inherit;font-size:16px;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap}
 .btn.p{background:var(--accent);border-color:var(--accent);color:var(--card)}
 .btns{display:flex;gap:8px;flex-wrap:wrap}
-.susp{background:var(--manila);color:var(--manilaInk);border-radius:8px;padding:8px 12px;display:flex;flex-direction:column;gap:2px}
+.susp{background:var(--manila);color:var(--manilaInk);border-radius:8px;padding:8px 12px;display:flex;flex-direction:column;gap:4px}
 .susp .k{color:var(--manilaInk)}
 .who{font-size:30px;line-height:1.1}
 .meta{font:13px var(--mono);color:var(--inkSoft)}
@@ -342,8 +342,8 @@ figcaption{font-size:15px;color:var(--inkSoft);line-height:1.35;display:flex;gap
 <!-- ============ 4 ============ -->
 <section class="pose" data-pose="past-transit" id="past-transit">
 <h2>4 · The past-transit page</h2>
-<p>Opened from the box on the right page. Envelopes past 14 days, oldest last. Amber marks 14 days, "may be lost". Red marks 30 days, "refund window closing". Both count from the order date. Claim filed and Refunded are two of the existing stamp kinds. A stamp hides the flag. Refunded takes the envelope out of every count. Each press offers Undo, and the row keeps its place.</p>
-<div class="row"><figure>
+<p>Opened from the box on the right page. Envelopes past 14 days, oldest last. Amber marks 14 days, "may be lost". Red marks 30 days, "refund window closing". Both count from the order date. Claim filed and Refunded are two of the existing stamp kinds. The brief's Lost is drawn as an option. A stamp hides the flag. Refunded takes the envelope out of every count. Each press offers Undo, and the row keeps its place.</p>
+<div class="row wide"><figure data-opt="claim-filed">
 <div class="fit"><div class="dev inner">
   <section class="pg l">
     <div class="hd"><span>Mail day · Tue 27 Oct</span><span class="n">39 in · 19 out</span></div>
@@ -370,8 +370,12 @@ figcaption{font-size:15px;color:var(--inkSoft);line-height:1.35;display:flex;gap
     <div data-bar="Packages"></div>
   </section>
 </div></div>
-<figcaption>Tinpot was just stamped Claim filed: its flag is gone, and its row stays put until the page closes.</figcaption>
+<figcaption>Pick: the existing stamp, Claim filed. Tinpot was just stamped: its flag is gone, and its row stays put until the page closes. <button class="hidebtn" data-hide="claim-filed">Hide</button></figcaption>
+</figure>
+<figure data-opt="lost" data-copy="claim-filed" data-relabel="Claim filed|Lost">
+<figcaption>Option: the brief's word, Lost. It needs a new stamp kind, or a label that sets Claim filed. <button class="hidebtn" data-hide="lost">Hide</button></figcaption>
 </figure></div>
+<p><button class="hidebtn restore">Show hidden options</button></p>
 </section>
 
 <!-- ============ 5 ============ -->
@@ -471,7 +475,7 @@ figcaption{font-size:15px;color:var(--inkSoft);line-height:1.35;display:flex;gap
 <section class="pose" data-pose="tall" id="tall">
 <h2>8 · Held tall, pages stacked</h2>
 <p>Same stack as the laptop pose: answer on top, query and keys below. Held in the hand, the top page is in reach, so its counts are buttons again and the type is normal.</p>
-<div class="row"><figure>
+<div class="row"><figure data-opt="tall-answer-top">
 <div class="fit"><div class="dev tall">
   <section class="pg t"><div data-use="kestrelR"></div></section>
   <div class="hfold"><span>fold</span></div>
@@ -482,8 +486,21 @@ figcaption{font-size:15px;color:var(--inkSoft);line-height:1.35;display:flex;gap
     <div data-keys="sys" data-sg="Light|Lightning|Lights"></div>
   </section>
 </div></div>
-<figcaption>Held tall, 669×951 pt. Degen puts the left page on top. Here the order flips, because the keys need the bottom.</figcaption>
+<figcaption>Pick: answer on top. Held tall, 669×951 pt. Degen puts the left page on top. Here the order flips, because the keys need the bottom. <button class="hidebtn" data-hide="tall-answer-top">Hide</button></figcaption>
+</figure>
+<figure data-opt="tall-degen">
+<div class="fit"><div class="dev tall">
+  <section class="pg t"><div data-use="mailL"></div></section>
+  <div class="hfold"><span>fold</span></div>
+  <section class="pg b kbon">
+    <div class="who">Kestrel Card Co.</div>
+    <div class="line now"><div>Lightning Bolt</div><div class="step"><span class="btn">−</span><span class="n">3/4</span><span class="btn p">+</span></div></div>
+    <div data-keys="sys"></div>
+  </section>
+</div></div>
+<figcaption>Option: degen's order, query on top. The keys cover most of the envelope, so only one line shows. <button class="hidebtn" data-hide="tall-degen">Hide</button></figcaption>
 </figure></div>
+<p><button class="hidebtn restore">Show hidden options</button></p>
 </section>
 
 <!-- ============ 9 ============ -->
@@ -732,6 +749,12 @@ const ICON={Ledger:'<circle cx="11" cy="11" r="3"/><path d="M11 2v3M11 17v3M2 11
 document.querySelectorAll('[data-bar]').forEach(el=>{
   el.className='bar';if(el.dataset.bottom)el.style.bottom=el.dataset.bottom+'px';
   el.innerHTML=Object.keys(ICON).map(t=>'<span class="'+(t===el.dataset.bar?'on':'')+'"><svg viewBox="0 0 22 22">'+ICON[t]+'</svg>'+t+(t==='Orphaned'?'<i>'+(el.dataset.badge||'2')+'</i>':'')+'</span>').join('');
+});
+// a figure that differs from another only by one label is a relabelled copy
+document.querySelectorAll('[data-copy]').forEach(f=>{
+  const src=document.querySelector('[data-opt="'+f.dataset.copy+'"] .fit').cloneNode(true),[a,b]=f.dataset.relabel.split('|');
+  const w=document.createTreeWalker(src,NodeFilter.SHOW_TEXT);for(let n;(n=w.nextNode());)n.textContent=n.textContent.replace(a,b);
+  f.prepend(src);
 });
 function fit(){document.querySelectorAll('.fit').forEach(f=>{const d=f.firstElementChild,s=Math.min(1,f.clientWidth/d.offsetWidth);d.style.transform='scale('+s+')';f.style.height=d.offsetHeight*s+'px'})}
 function params(){return new URLSearchParams(location.hash.slice(1))}
