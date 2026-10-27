@@ -1,5 +1,5 @@
-# make phone: install Release on the owner's phone from this Mac, over Wi-Fi or cable. Run after each merge.
-# make testflight: Release archive, then upload to TestFlight. The fallback when make phone fails.
+# Phone install has no target: run `ios-ship install tools/ios-ship.json --app Manifest` after each merge.
+# make testflight: Release archive, then upload to TestFlight. The fallback when the install fails.
 # Only the key path is passed; the .p8 file is never read here.
 KEY_ID   := H94598Y59P
 ISSUER   := d79993df-0368-488f-8f75-db28c701f92b
@@ -8,10 +8,7 @@ AUTH     := -allowProvisioningUpdates -authenticationKeyPath $(KEY_PATH) -authen
 BUILD    := $(shell date -u +%Y%m%d%H%M)
 ARCHIVE  := native/build/Manifest-$(BUILD).xcarchive
 
-.PHONY: phone testflight archive
-# The ios-adblock repo's tool clones main and builds there, so it never touches this checkout.
-phone:
-	PHONE_APPS_JSON=$(CURDIR)/native/phone-app.json $(HOME)/Developer/ios-adblock/tools/reinstall-phone-apps
+.PHONY: testflight archive
 
 archive:
 	npm run build
