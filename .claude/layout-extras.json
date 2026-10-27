@@ -1,0 +1,7 @@
+{
+  "kinds": {
+    "invariants": { "path": "invariants", "record": true, "listed": true },
+    "measurements": { "path": "measurements", "record": true, "listed": true }
+  },
+  "waiting-page": "https://claude.ai/artifact/FBKSLCBLJsvfNGeePvDz13"
+}

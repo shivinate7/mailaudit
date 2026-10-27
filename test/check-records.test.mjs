@@ -113,10 +113,10 @@ const FENCE_ONLY = debt({
 function baseFiles(claude) {
   return {
     "CLAUDE.md": claude,
-    "decisions/fixture-decision-holds.md": DECISION,
+    "docs/decisions/fixture-decision-holds.md": DECISION,
     "measurements/fixture-measure-geometry.md": MEASURE,
     "invariants/.keep": "",
-    "debts/.keep": "",
+    "docs/debts/.keep": "",
     "src/.keep": "",
     "test/app.test.mjs": "// fixture\n",
     "build.mjs": "// fixture\n",
@@ -161,7 +161,7 @@ function runCorpus(debts, { cited = Object.keys(debts), folderListed = true } = 
   try {
     const files = baseFiles(claudeMd(cited, { folderListed }));
     for (const [slug, text] of Object.entries(debts)) {
-      files[`debts/${slug}.md`] = text;
+      files[`docs/debts/${slug}.md`] = text;
     }
     for (const [p, text] of Object.entries(files)) {
       const full = join(dir, p);
@@ -276,7 +276,7 @@ const noRecord = (path) => `${path}: "Decision" names no record and does not say
   });
   expect(
     'red: a Decision line naming no record and not "none" exits non-zero with the branch message',
-    plain.status !== 0 && plain.out.includes(noRecord("debts/fixture-debt-no-record.md")),
+    plain.status !== 0 && plain.out.includes(noRecord("docs/debts/fixture-debt-no-record.md")),
     `exit ${plain.status}: ${tail(plain.out)}`
   );
 
@@ -287,7 +287,7 @@ const noRecord = (path) => `${path}: "Decision" names no record and does not say
   });
   expect(
     'red: a Decision line whose spans are not slugs, beside a lone quote, exits non-zero with the branch message',
-    spansOnly.status !== 0 && spansOnly.out.includes(noRecord("debts/fixture-debt-spans-only.md")),
+    spansOnly.status !== 0 && spansOnly.out.includes(noRecord("docs/debts/fixture-debt-spans-only.md")),
     `exit ${spansOnly.status}: ${tail(spansOnly.out)}`
   );
 }

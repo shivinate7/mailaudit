@@ -55,7 +55,7 @@ const CITES = [
 const BASE = {
   "CLAUDE.md": "# Corpus\n",
   "README.md": "# Readme\n",
-  "decisions/.keep": "",
+  "docs/decisions/.keep": "",
   "invariants/.keep": "",
   "measurements/.keep": "",
 };
@@ -91,7 +91,7 @@ function flaggedNames(out) {
 }
 
 // Cases a to e.
-const fixture = runCorpus({ "decisions/strip-cites.md": CITES, "src/fixture.jsx": FIXTURE });
+const fixture = runCorpus({ "docs/decisions/strip-cites.md": CITES, "src/fixture.jsx": FIXTURE });
 const flagged = flaggedNames(fixture.out);
 
 expect(
@@ -108,7 +108,7 @@ expect("e2: a /* */ comment is removed, so nameF is reported", flagged.has("name
 // A source that does not parse must fail the check and name the file. The
 // record cites no names, so a non-zero exit can only come from the parse.
 const broken = runCorpus({
-  "decisions/none.md": "# None\n\nNo code names are cited here.\n",
+  "docs/decisions/none.md": "# None\n\nNo code names are cited here.\n",
   "src/broken.jsx": "export const = <div>;{{\n",
 });
 expect("unparseable source makes check:docs exit non-zero", broken.status !== 0);
@@ -142,7 +142,7 @@ expect(
 // debts/ folder reads as empty, and a debt names its paths like a record, so a
 // missing one fails at the debt's own line.
 {
-  const none = runCorpus({ "decisions/none.md": "# None\n\nNo code names are cited here.\n" });
+  const none = runCorpus({ "docs/decisions/none.md": "# None\n\nNo code names are cited here.\n" });
   expect(
     "debts: a corpus with no debts/ folder exits 0 and finishes its normal run",
     none.status === 0 && /the corpus's numbers and paths check out/.test(none.out)
@@ -150,7 +150,7 @@ expect(
 
   const present = runCorpus({
     "src/present.mjs": "export const ok = 1;\n",
-    "debts/fixture-debt-present-path.md": [
+    "docs/debts/fixture-debt-present-path.md": [
       "# Fixture debt names a path that exists",
       "",
       "The gap cites `src/present.mjs`, which is in the repo.",
@@ -167,7 +167,7 @@ expect(
   );
 
   const missing = runCorpus({
-    "debts/fixture-debt-missing-path.md": [
+    "docs/debts/fixture-debt-missing-path.md": [
       "# Fixture debt names a path that is gone",
       "",
       "The gap cites `src/missing-file.mjs`, which is not in the repo.",
@@ -182,7 +182,7 @@ expect(
     "debts: a debt naming a missing path fails at the debt's own line",
     missing.status !== 0 &&
       missing.out.includes(
-        "debts/fixture-debt-missing-path.md:3 names `src/missing-file.mjs`, which does not exist in this repo"
+        "docs/debts/fixture-debt-missing-path.md:3 names `src/missing-file.mjs`, which does not exist in this repo"
       )
   );
 }
