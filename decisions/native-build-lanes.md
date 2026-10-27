@@ -17,7 +17,7 @@ Plan: decisions/native-build-lanes.md#still-open (native)
 - A Sonnet builder makes the tests green on the same branch.
 - A fresh reviewer reads the lane.
 - ST in the table means `swift test --package-path native/ManifestKit`.
-- A lane that boots a simulator, or builds or runs tests for one, takes the lock in `one-simulator-per-mac`.
+- A lane that boots a simulator, or builds or runs tests for one, follows the simulator rules in `one-simulator-per-mac`.
 
 ## The lanes
 
@@ -149,7 +149,7 @@ Owner ruling, 2026-10-22 19:55 CDT, on the first device check: fix the bugs firs
   - N22, motion. Closes `native-compose-is-one-fade`.
 - N13 notes. `Palette` in ManifestKit decodes the file (Foundation only). `Parchment` in `native/Manifest/Theme.swift` decodes the bundled copy once at launch and holds one `Color` accessor per token. `Font.cochin` and `Font.mono` (Menlo) use `Font.custom(_:size:relativeTo:)`, so Dynamic Type scales them. `UIUserInterfaceStyle: Light` sits in `project.yml`, and xcodegen writes it to Info.plist. Only the accent tint and the paper behind each tab (`parchmentPaper()`, one modifier) changed; a tab's scroll content covers a background set on the TabView. The photo viewer scrim reads the `scrim` token. The older colour literals in the views stay until N14 to N17 restyle them. `Palette` also reads `#RGB` and spaced `rgba()`. No test covers either form, and the token file uses neither. The token test names such a token loudly if one appears.
 - N14 notes. `MastheadPaint` in ManifestKit holds every colour meaning of the masthead as a token name: type, rule, bar, seal layers and tally weights. So `swift test` pins them. The view only turns a name into a `Color` with `Parchment`. The seal is one `Shape` per layer of `MastheadPaint.seal`, on the web's 100 by 100 sheet. No test pins that the view calls `MastheadPaint`. Screenshots at 320 and 375 of the seeded ledger (0 of 14 cards, idle slot) show the seal outline, the gold rules, the ruled cells, the empty accent bar and the red missing line. No screenshot shows the green bar, "ALL ACCOUNTED FOR", the failed slot or a partly filled bar. Only the unit tests pin those colours. The masthead has one fixed seal size, 36pt, where the web clamps 36 to 52 by viewport width. That is 36 to 38 on every iPhone. The outstanding line takes its money from the bundle's `money`, so it rounds half up as the web does (`rules-run-in-javascriptcore`). `MastheadModel.refresh` sets every published field in one step after its last await, so a throw changes none of them. The progress element `masthead-progress` reads "N percent", rounded down. `MastheadModel.percent` is `got * 100 / total`.
-- N14 to N17 touch separate files. They build in parallel after N13. Their simulator runs take turns through the lock in `one-simulator-per-mac`. CI runs only `swift test`. So each colour meaning lives in a ManifestKit function with a unit test. The accessibility audit and screenshots at 320 and 375 prove the paint.
+- N14 to N17 touch separate files. They build in parallel after N13. Their simulator runs follow the rules in `one-simulator-per-mac`. CI runs only `swift test`. So each colour meaning lives in a ManifestKit function with a unit test. The accessibility audit and screenshots at 320 and 375 prove the paint.
 
 ## Risk
 
@@ -197,7 +197,7 @@ Other risks live in the record for their lane:
 - `native-swift-rebuild` — the ruling and the reasons for the rebuild.
 - `native-parity-table` — the scope of each feature.
 - `native-ci-on-hosted-macos` — the job that lane C1 adds.
-- `one-simulator-per-mac` — the lock that every lane takes before it uses the simulator.
+- `one-simulator-per-mac` — the simulator rules that every lane follows before it uses the simulator.
 - `rules-run-in-javascriptcore` — why S2, S3 and N1 exist.
 - `worker-keeps-snapshots` — the ruling behind lane W3.
 - `native-ships-via-testflight` — how a native build reaches the phone for lane N11.
