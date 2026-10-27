@@ -92,7 +92,7 @@ private struct UndoNoticeView: View {
             Button { Task { try? await model.undoAssign(); await onChange() } } label: { MiniLabel(title: "Undo") }
                 .buttonStyle(.plain).accessibilityIdentifier("orphaned-undo")
             Button { model.dismissUndo() } label: {
-                Image(systemName: "xmark").font(.system(size: 14)).foregroundStyle(paint(.dismiss)).frame(width: 44, height: 44).contentShape(Rectangle())
+                Image(systemName: "xmark").font(.footnote).foregroundStyle(paint(.dismiss)).frame(width: 44, height: 44).contentShape(Rectangle())
             }
             .buttonStyle(.plain).accessibilityLabel("Dismiss").accessibilityIdentifier("orphaned-undo-dismiss")
         }
@@ -240,7 +240,7 @@ private struct EnvelopeCard: View {
                 if armed {
                     HStack(spacing: 4) {
                         Button { armed = false } label: { MiniLabel(title: "Cancel", size: 11) }.buttonStyle(.plain)
-                        Button {
+                        Button(role: .destructive) {
                             armed = false
                             Task { try? await model.discard(envelope: env.id); await onChange() }
                         } label: {
@@ -312,8 +312,7 @@ private struct CandidateRow: View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(c.pkg.seller).font(.cochin(14, relativeTo: .body).weight(.bold)).foregroundStyle(paint(.seller))
-
-                Text([c.pkg.date, c.pkg.orderId].filter { !$0.isEmpty }.joined(separator: " \u{00B7} "))
+                Text([c.pkg.date, model.isUntracked(c.pkg.gk) ? "\u{25CB} untracked" : "", c.pkg.orderId].filter { !$0.isEmpty }.joined(separator: " \u{00B7} "))
                     .font(.mono(10.5, relativeTo: .caption)).foregroundStyle(paint(.candidateMeta))
                 Text(fit).font(sure ? .mono(11, relativeTo: .caption).weight(.bold) : .mono(11, relativeTo: .caption))
                     .foregroundStyle(paint(sure ? .fitExact : .fitPlain))
