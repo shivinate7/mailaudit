@@ -395,7 +395,7 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-removal-rule-is-swift` — The test for a removing reply is Swift code.
 - `native-version-names-unpinned` — No test pins the version file names.
 - `native-filters-tally-only` — The native client has no date filter, package sort, Packages search or stamped filter.
-- `native-tally-copy-no-stepper` — The native Tally copy has no lost-mail flag and no order id tap.
+- `native-tally-copy-no-flags` — The native Tally copy has no lost-mail flag and no order id tap.
 - `native-envelope-has-no-photos` — Native envelopes have no photos.
 - `native-orphaned-colours-unbuilt` — The native Orphaned view uses system colours.
 - `native-candidate-lines-wrap` — Native candidate seller and meta lines wrap.
@@ -406,9 +406,9 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-compose-is-one-fade` — The native letterhead composes in one fade.
 - `native-card-lost-flags-unbuilt` — The native package card has no lost-mail flag and no tracked glyph.
 - `native-seller-scale-unmeasured` — The native seller shrinks to half size, and the cause is unmeasured.
-- `native-card-stepper-unpinned` — No unit test pins the native card stepper clamp or its readouts.
 - `native-card-gestures-unpinned` — No UI test pins the native card header gestures.
 - `native-card-state-in-swift` — The native card copies the line and package done rules in Swift.
+- `native-sync-tally-rules-in-swift` — The native Sync panel and Tally row copy five view rules in Swift.
 - `native-backup-has-no-photos` — Native Backup holds no photos.
 - `native-backup-ui-unpinned` — No UI test taps Backup.
 - `native-backup-web-restore-unrun` — No test restores a native backup file on the web.
