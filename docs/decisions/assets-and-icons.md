@@ -10,7 +10,7 @@ This file holds where the icon assets live, where the master and the generator s
 
 ## The native app icon
 
-The iOS app holds one icon: `native/Manifest/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png`. It is a single 1024×1024 universal iOS icon, opaque, with no alpha. It is the master `icon/apple-touch-icon.svg` exported at full size with the Chrome command in `gen-icon.py`. It is not the favicon drawing. `native/project.yml` sets `ASSETCATALOG_COMPILER_APPICON_NAME` to `AppIcon`. Xcode derives every smaller size at build time. Without the catalog the archive has no `Assets.car` and no `CFBundleIconName`, and App Store Connect rejects the upload. After a `make archive`, check that the app in the archive holds `Assets.car` and that `plutil -p Info.plist` shows `CFBundleIconName` as `AppIcon`. Re-export the PNG when the master changes. The `sips` step does not apply.
+The iOS app holds one icon: `native/Manifest/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png`. It is a single 1024×1024 universal iOS icon, opaque, with no alpha. It is the master `icon/apple-touch-icon.svg` exported at full size with the Chrome command in `gen-icon.py`. It is not the favicon drawing. `native/project.yml` sets `ASSETCATALOG_COMPILER_APPICON_NAME` to `AppIcon`. Xcode derives every smaller size at build time. Without the catalog the archive has no `Assets.car` and no `CFBundleIconName`, and App Store Connect rejects the upload. After an `ios-ship testflight --export-only`, check that the app in the archive holds `Assets.car` and that `plutil -p Info.plist` shows `CFBundleIconName` as `AppIcon`. Re-export the PNG when the master changes. The `sips` step does not apply.
 
 ## The favicon is a different drawing
 
