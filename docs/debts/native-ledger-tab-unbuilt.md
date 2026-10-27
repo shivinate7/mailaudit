@@ -1,6 +1,6 @@
-# The native Ledger tab lacks the View and Sync groups
+# The native Ledger tab lacks the View group
 
-**What.** The native Ledger tab holds the Backup row (lane N8), and the History row and the Reset box (lane N9), in `native/Manifest/LedgerTab.swift`. No lane builds the rest of the options that `ledger-tab-holds-options` puts in the Ledger tab: the View group and the Sync row. Re-import CSV stays on the web (`csv-import-stays-web`). The sync advisory line has no tap target to the Sync row, so it lacks the web's " — tap to fix". The gap closes when a lane lands the View group, the Sync row and the tap target in the native client.
+**What.** The native Ledger tab holds the Sync row and panel, the History row, the Backup row and the Reset box, in `native/Manifest/LedgerTab.swift`. No lane builds the View group that `ledger-tab-holds-options` puts in the Ledger tab: Showing, Sorted by and Orders from. Native keeps those controls on the Tally screen until a lane builds the group. Re-import CSV stays on the web (`csv-import-stays-web`). The open History version row also lacks the web's detail line, "N lines, M checked in — K against now." The gap closes when a lane lands the View group and the detail line.
 
 **Status:** open. The owner names the lane.
 

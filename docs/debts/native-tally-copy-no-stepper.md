@@ -1,9 +1,7 @@
-# The native Tally copy has a check-in toggle and nothing else
+# The native Tally copy has no lost-mail flag and no order id tap
 
-**What.** A native Tally copy shows its seller, date, set, finish, condition and order id, and one control. The control checks the copy in with all of its qty, or out with none (`toggleCount`). The copy has no qty stepper, no lost-mail flag, and no tap on the order id to reveal its whole order. The web copy has all three. The native Packages card has the stepper, so this debt covers the Tally copy only. So a line that arrives part by part cannot be recorded from the native Tally. No N6 test pins these controls. The gap closes when a lane builds them and a test pins each one.
+**What.** A native Tally copy is drawn by the item line Packages draws, so a copy of two or more has the got/qty stepper. It shows its seller, date, set, finish, condition and order id. It has no lost-mail flag, and the order id is plain text: the web opens the whole order in Packages from it, and native has no such route. The Tally row also lacks the web's "Mark all received" and "Clear check-ins" row. The gap closes when a lane builds them and a test pins each one.
 
-**Status:** open. No lane is briefed.
+**Status:** open. No lane is briefed. Mark all received and Clear check-ins ride with their own lane.
 
 **Decision:** `tally-row-lists-its-copies`.
-
-**Decision:** `search-filters-inside-package`.

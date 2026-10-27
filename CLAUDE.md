@@ -386,7 +386,7 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-dialog-ban-unpinned` — Nothing pins the ban on native dialogs.
 - `ruled-head-heights-unremeasured` — The ruled head heights have not been re-measured.
 - `photo-put-unrun-on-github` — The GitHub photo PUT and pull have never run.
-- `native-ledger-tab-unbuilt` — The native Ledger tab lacks the View and Sync groups.
+- `native-ledger-tab-unbuilt` — The native Ledger tab lacks the View group.
 - `native-restore-keeps-old-times` — A native restore keeps the old change times.
 - `reset-vs-worker-copy-unmeasured` — A Reset's effect on the Worker's copy is unmeasured.
 - `native-milestone-needed-unpinned` — No test pins that a native operation needs its milestone.
@@ -394,7 +394,7 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-removal-rule-is-swift` — The test for a removing reply is Swift code.
 - `native-version-names-unpinned` — No test pins the version file names.
 - `native-filters-tally-only` — The native client has no date filter, package sort, Packages search or stamped filter.
-- `native-tally-copy-no-stepper` — The native Tally copy has a check-in toggle and nothing else.
+- `native-tally-copy-no-stepper` — The native Tally copy has no lost-mail flag and no order id tap.
 - `native-envelope-has-no-photos` — Native envelopes have no photos.
 - `native-discard-arm-unpinned` — No test pins the native Discard arm.
 - `native-key-scan-skips-views` — The native key scan skips SwiftUI view state.
@@ -405,7 +405,6 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-card-stepper-unpinned` — No unit test pins the native card stepper clamp or its readouts.
 - `native-card-gestures-unpinned` — No UI test pins the native card header gestures.
 - `native-card-state-in-swift` — The native card copies the line and package done rules in Swift.
-- `native-partial-count-colour` — The native partial count paints ink, where the web paints manila ink.
 - `native-backup-has-no-photos` — Native Backup holds no photos.
 - `native-backup-ui-unpinned` — No UI test taps Backup.
 - `native-backup-web-restore-unrun` — No test restores a native backup file on the web.
