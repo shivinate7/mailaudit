@@ -241,9 +241,68 @@ final class OrphanedUITests: XCTestCase {
         openOrphaned(app)
         el(app, "orphaned-record").tap()
         XCTAssertTrue(el(app, "orphaned-input").waitForExistence(timeout: 5), "the composer did not open before the audit")
+        try app.auditNamingElements(skipping: Self.inactiveContrast)
+    }
+
+    /// The one exemption of the empty composer's audit: a contrast issue on a disabled element (WCAG 1.4.3).
+    static func inactiveContrast(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
+        issue.auditType == .contrast && issue.element?.isEnabled == false
+    }
+
+    /// Waits until the keyboard is up and its frame has held still for three reads, 0.2s apart. Returns what it
+    /// saw, for the log. The composer autofocuses, so the keyboard slides up on its own after the composer opens.
+    func settleKeyboard(_ app: XCUIApplication, timeout: TimeInterval = 8) -> String {
+        let keyboard = app.keyboards.firstMatch
+        let start = Date()
+        guard keyboard.waitForExistence(timeout: timeout) else { return "no keyboard after \(timeout)s" }
+        var last = keyboard.frame, still = 0
+        while still < 3 && Date().timeIntervalSince(start) < timeout {
+            Thread.sleep(forTimeInterval: 0.2)
+            let now = keyboard.frame
+            still = now == last ? still + 1 : 0
+            last = now
+        }
+        let took = String(format: "%.1f", Date().timeIntervalSince(start))
+        return "keyboard frame \(last), still reads \(still) of 3 after \(took)s"
+    }
+
+    /// Probe for an intermittent audit issue on the composer: "Potentially inaccessible text", with no element and
+    /// a zero frame, in 3 of 5 runs. This waits for the keyboard to settle first, then audits, and logs every issue
+    /// the audit raises (the exempt ones too) with its type, element and frame, plus the screen's accessibility tree
+    /// as an attachment. It adds no skip beyond the one the empty composer's audit already has. Run it with
+    /// -test-iterations 5: green in every iteration means the settle was the cause, and a red iteration names what
+    /// the audit saw.
+    func testAccessibilityAuditOrphanedComposerAfterTheKeyboardSettles() throws {
+        let app = launch()
+        openOrphaned(app)
+        el(app, "orphaned-record").tap()
+        XCTAssertTrue(el(app, "orphaned-input").waitForExistence(timeout: 5), "the composer did not open before the audit")
+        let settled = settleKeyboard(app)
+        var seen: [String] = []
+        defer {
+            let log = (["settle: \(settled)"] + (seen.isEmpty ? ["the audit raised no issue"] : seen)).joined(separator: "\n")
+            print("PROBE-AUDIT\n\(log)")
+            add(XCTAttachment(string: log + "\n\n" + app.debugDescription))
+        }
         try app.auditNamingElements(skipping: { issue in
-            issue.auditType == .contrast && issue.element?.isEnabled == false
+            let element = issue.element.map { "id=\($0.identifier) label=\($0.label) frame=\($0.frame)" } ?? "no element"
+            seen.append("\(issue.auditType.rawValue) | \(issue.compactDescription) | \(issue.detailedDescription) | \(element)")
+            return Self.inactiveContrast(issue)
         })
+    }
+
+    /// The composer's fields keep what VoiceOver and Voice Control read: the card-name field is labelled
+    /// "Card name", and both fields expose their placeholder text.
+    func testComposerFieldsKeepTheirLabelAndPlaceholder() throws {
+        let app = launch()
+        openOrphaned(app)
+        el(app, "orphaned-record").tap()
+        let input = el(app, "orphaned-input"), note = el(app, "orphaned-note")
+        XCTAssertTrue(input.waitForExistence(timeout: 5), "the composer has no input")
+        XCTAssertTrue(note.exists, "the composer has no note field")
+        XCTAssertEqual(input.label, "Card name", "the card-name field lost its accessibility label")
+        XCTAssertFalse((input.placeholderValue ?? "").isEmpty, "orphaned-input exposes no placeholder")
+        XCTAssertFalse((note.placeholderValue ?? "").isEmpty, "orphaned-note exposes no placeholder")
     }
 
     /// The ready composer: a card is added, so Save is enabled and its contrast is audited like any control.

@@ -22,6 +22,7 @@
 //
 // Every key here is fake. The tests read no Keychain item. No request leaves the process.
 
+import UIKit
 import XCTest
 
 @MainActor
@@ -85,6 +86,66 @@ final class SyncAdvisoryUITests: XCTestCase {
         openTab(app, "Ledger")
         XCTAssertTrue(app.buttons["backup"].waitForExistence(timeout: 5), "anchor: the Ledger tab is open")
         XCTAssertFalse(line(app).exists, "the line does not show on the Ledger tab")
+    }
+
+    // MARK: where the line sits
+
+    /// The 375pt frame the launch argument sets, the web's 16pt column gutter, the portrait safe-area top of the one
+    /// simulator (iPhone 18 Pro: the line's own top edge sits there on a correct build, because the line is a top
+    /// safe-area inset), and the half point a frame's float noise is allowed.
+    static let column: CGFloat = 375, gutter: CGFloat = 16, safeTop: CGFloat = 62, slack: CGFloat = 0.5
+
+    /// The web draws the line inset to its 16pt column, never edge to edge, and never above the safe area.
+    func testTheLineSitsInsideTheGuttersAndBelowTheSafeAreaTop() throws {
+        let app = launch(status: 401)
+        let left = (app.windows.firstMatch.frame.width - Self.column) / 2 + Self.gutter
+        let right = left + Self.column - 2 * Self.gutter
+        for tab in Self.workingTabs {
+            openTab(app, tab)
+            let frame = try needLine(app, on: tab).frame
+            XCTAssertGreaterThanOrEqual(frame.minX, left - Self.slack, "the \(tab) line starts at \(frame.minX), left of the gutter at \(left)")
+            XCTAssertLessThanOrEqual(frame.maxX, right + Self.slack, "the \(tab) line ends at \(frame.maxX), right of the gutter at \(right)")
+            XCTAssertGreaterThanOrEqual(frame.minY, Self.safeTop - Self.slack, "the \(tab) line starts at \(frame.minY), above the safe area at \(Self.safeTop)")
+        }
+    }
+
+    /// The frame is not the paint: a fill drawn on the line extends behind the status bar unless it is held back.
+    /// So this reads two pixels of a screenshot, at the line's left padding: one inside the line (the anchor, which
+    /// must be the manila token, or the colour match proves nothing) and one in the status-bar band, which must not be.
+    func testTheLinePaintsNothingUnderTheStatusBar() throws {
+        let app = launch(status: 401)
+        for tab in Self.workingTabs {
+            openTab(app, tab)
+            let frame = try needLine(app, on: tab).frame
+            let shot = app.screenshot().image
+            let x = frame.minX + 4
+            let inside = Self.rgb(of: shot, at: CGPoint(x: x, y: frame.midY))
+            let band = Self.rgb(of: shot, at: CGPoint(x: x, y: 6))
+            add(XCTAttachment(string: "\(tab): inside the line \(inside), status-bar band \(band), manila \(Self.manila)"))
+            XCTAssertTrue(Self.isManila(inside), "anchor: the pixel inside the \(tab) line is \(inside), not the manila token \(Self.manila)")
+            XCTAssertFalse(Self.isManila(band), "the \(tab) line paints manila under the status bar: the pixel at y=6 is \(band)")
+        }
+    }
+
+    /// The manila token (shared/tokens.json), as sRGB bytes.
+    static let manila = (r: 234, g: 219, b: 186)
+
+    static func isManila(_ p: (r: Int, g: Int, b: Int)) -> Bool {
+        abs(p.r - manila.r) <= 4 && abs(p.g - manila.g) <= 4 && abs(p.b - manila.b) <= 4
+    }
+
+    /// The sRGB bytes of the pixel at a point (in points) of a screenshot; (-1, -1, -1) when it cannot be read.
+    static func rgb(of image: UIImage, at point: CGPoint) -> (r: Int, g: Int, b: Int) {
+        let pixel = CGRect(x: (point.x * image.scale).rounded(.down), y: (point.y * image.scale).rounded(.down), width: 1, height: 1)
+        guard let one = image.cgImage?.cropping(to: pixel), let space = CGColorSpace(name: CGColorSpace.sRGB) else { return (-1, -1, -1) }
+        var bytes = [UInt8](repeating: 0, count: 4)
+        let drawn: Bool = bytes.withUnsafeMutableBytes { raw in
+            guard let context = CGContext(data: raw.baseAddress, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4, space: space,
+                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+            context.draw(one, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+            return true
+        }
+        return drawn ? (Int(bytes[0]), Int(bytes[1]), Int(bytes[2])) : (-1, -1, -1)
     }
 
     // A server with nothing stored is healthy. No line. The sync call is asynchronous, so the screens wait

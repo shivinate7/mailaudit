@@ -39,10 +39,13 @@ final class TallyUITests: XCTestCase {
 
     // MARK: helpers
 
-    func launch(width: Int? = nil) -> XCUIApplication {
+    /// `size` is a UIContentSizeCategory name; pass it where a test depends on the default type size, so a
+    /// simulator left at another size cannot move the result.
+    func launch(width: Int? = nil, size: String? = nil) -> XCUIApplication {
         let app = XCUIApplication()
         var args = ["-ManifestUITestSeed"]
         if let width { args += ["-ManifestUITestWidth", String(width)] }
+        if let size { args += ["-UIPreferredContentSizeCategoryName", size] }
         app.launchArguments = args
         app.launch()
         return app
@@ -221,6 +224,28 @@ final class TallyUITests: XCTestCase {
         XCTAssertFalse(found.isEmpty, "the clipped-text audit found nothing at 60, 90 or 120pt")
         add(XCTAttachment(string: found.joined(separator: "\n")))
     }
+
+    // MARK: the meta line
+
+    /// The meta line of a row ("2 sellers · 2 orders · Test Set") is one line at the default type size. The line
+    /// height is the row's own rate line, a mono one-liner in the same header that cannot wrap (it is fixed to its
+    /// width). A wrapped meta line is about twice that, so the cut is one and a half. At an accessibility type size the
+    /// meta may wrap, so no case asserts there.
+    func assertMetaIsOneLine(width: Int) {
+        let app = launch(width: width, size: "UICTContentSizeCategoryL")
+        openTally(app)
+        let row = element(app, "tally-row:Counterspell")
+        let meta = row.staticTexts["2 sellers \u{00B7} 2 orders \u{00B7} Test Set"]
+        let rate = row.staticTexts.matching(NSPredicate(format: "label ENDSWITH %@", "/ copy")).firstMatch
+        XCTAssertTrue(meta.waitForExistence(timeout: 5), "the Counterspell row has no meta line")
+        XCTAssertTrue(rate.exists, "the Counterspell row has no rate line to measure a line by")
+        XCTAssertLessThan(meta.frame.height, 1.5 * rate.frame.height,
+                          "at \(width)pt the meta line is \(meta.frame.height)pt high, a wrapped line, against a one-line \(rate.frame.height)pt")
+    }
+
+    func testTheMetaLineIsOneLineAt320pt() { assertMetaIsOneLine(width: 320) }
+
+    func testTheMetaLineIsOneLineAt375pt() { assertMetaIsOneLine(width: 375) }
 
     // MARK: an empty search
 
