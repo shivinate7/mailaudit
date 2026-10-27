@@ -51,7 +51,7 @@ public final class OrphanedModel {
 
     // MARK: reading
 
-    private static func isLive(_ rec: [String: Any]) -> Bool {
+    static func isLive(_ rec: [String: Any]) -> Bool {
         let d = rec["deletedAt"]
         return d == nil || d is NSNull || (d as? NSNumber)?.doubleValue == 0
     }

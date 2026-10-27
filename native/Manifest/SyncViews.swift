@@ -38,13 +38,6 @@ struct SyncAdvisoryLine: View {
     }
 }
 
-extension View {
-    /// The advisory line above a working screen. The Ledger tab does not take it. `open` shows the Sync panel.
-    func syncLine(_ sync: SyncClient?, open: @escaping () -> Void) -> some View {
-        safeAreaInset(edge: .top, spacing: 0) { if let sync { SyncAdvisoryLine(sync: sync, open: open) } }
-    }
-}
-
 /// Tells the press gate when a finger is down and when it is up, anywhere in the window. It watches
 /// and never decides: it recognizes nothing, cancels no touch and delays none. A scroll takes the touch
 /// from the views and ends the press like a lift (auto-apply-happens-now).

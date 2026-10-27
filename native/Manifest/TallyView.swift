@@ -11,6 +11,9 @@ private func paint(_ part: TallyRowPaint.Part, done: Bool = false) -> Color {
 /// (no-layout-shift-under-pointer). The order is the model's frozen order.
 struct TallyView: View {
     let model: TallyModel
+    let masthead: MastheadModel
+    let sync: SyncClient?
+    let openSync: () -> Void
     @State private var text = ""
     @FocusState private var searching: Bool
     /// The last view-level refresh that failed, so the rows on screen are never silently stale.
@@ -18,16 +21,15 @@ struct TallyView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        VStack(spacing: 0) {
+        // Search, sort and Hide received scroll under the masthead until the Ledger tab's View group lands.
+        MastheadScreen(masthead: masthead, tab: .tally, sync: sync, openSync: openSync) {
             controls
-            ScrollView {
-                VStack(spacing: 12) {
-                    ForEach(model.rows, id: \.name) { TallyRowView(row: $0, model: model) }
-                    if model.rows.isEmpty { empty }
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
+            VStack(spacing: 12) {
+                ForEach(model.rows, id: \.name) { TallyRowView(row: $0, model: model, masthead: masthead) }
+                if model.rows.isEmpty { empty }
             }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
         }
         .overlay(alignment: .bottom) {
             if let e = model.checkInError ?? failure {
@@ -71,7 +73,7 @@ struct TallyView: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.top, 8)
+        .padding(.bottom, 8)
     }
 
     private var sortMenu: some View {
@@ -123,6 +125,7 @@ struct TallyView: View {
 struct TallyRowView: View {
     let row: TallyRow
     let model: TallyModel
+    let masthead: MastheadModel
     @State private var open = false
 
     private var done: Bool { row.got >= row.qty }
@@ -199,7 +202,15 @@ struct TallyRowView: View {
             state: LineState(got: got, qty: item.qty), name: item.name, title: item.seller, detail: meta, price: item.price,
             orderID: item.orderId, readout: model.readouts[item.key], checkInID: "tally-checkin:\(item.key)",
             copyID: "tally-copy:\(item.key)", key: item.key,
-            onTap: { await model.tap(key: item.key) },  // a failure shows in model.checkInError
-            onStep: { await model.step(key: item.key, by: $0) })
+            onTap: {
+                masthead.saving()
+                await model.tap(key: item.key)  // a failure shows in model.checkInError
+                await masthead.finished(failed: model.checkInError != nil)
+            },
+            onStep: { delta in
+                masthead.saving()
+                await model.step(key: item.key, by: delta)
+                await masthead.finished(failed: model.checkInError != nil)
+            })
     }
 }

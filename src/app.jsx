@@ -5,7 +5,7 @@ import {
   parseItems, lostMail, normName, isUntracked, gkOf, groupPackages, rankCandidates,
   dateRange, inRange, dropCanceled, dropGks, canceledPackagesOf, stampedPackagesOf,
   tallyGroups, sortTally, sortPackages, filterPackages, filterTally,
-  totalsOf, outstandingOf, packagePill, itemDetail, tcgplayerOrderUrl, gotQty as gotQtyText, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger, money, compact,
+  totalsOf, outstandingOf, packagePill, itemDetail, tcgplayerOrderUrl, gotQty as gotQtyText, countLine, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger, money, compact,
 } from "./view-rules.mjs";
 import { photoPlan } from "./photo-rules.mjs";
 import { shouldSnapshot } from "./version-rules.mjs";
@@ -5806,16 +5806,15 @@ export default function MailDayLedger() {
               />
               <div className="mdl-foot">
                 <span style={{ whiteSpace: "nowrap" }}>
-                  {view === "mystery"
-                    ? `${liveEnvelopes.length} envelope${
-                        liveEnvelopes.length === 1 ? "" : "s"
-                      } waiting`
-                    : view === "items"
-                    ? `${itemGroups.length} unique item${
-                        itemGroups.length === 1 ? "" : "s"
-                      }${range ? " in range" : ""}`
-                    : `${packages.length} packages${range ? " in range" : ""}`}
-                  {" · autosaves"}
+                  {countLine(
+                    view,
+                    {
+                      packages: packages.length,
+                      uniqueItems: itemGroups.length,
+                      envelopes: liveEnvelopes.length,
+                    },
+                    range
+                  )}
                 </span>
                 {/* the exact outstanding figure — the compacted third above
                     rounds, and this is the number the whole app exists for */}

@@ -405,7 +405,6 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-composer-fields-two-lines` — The native composer fields draw two lines tall.
 - `native-discard-arm-unpinned` — No test pins the native Discard arm.
 - `native-key-scan-skips-views` — The native key scan skips SwiftUI view state.
-- `native-masthead-packages-only` — The native masthead shows on Packages only.
 - `native-compose-is-one-fade` — The native letterhead composes in one fade.
 - `native-card-lost-flags-unbuilt` — The native package card has no lost-mail flag and no tracked glyph.
 - `native-seller-scale-unmeasured` — The native seller shrinks to half size, and the cause is unmeasured.

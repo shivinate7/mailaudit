@@ -1,8 +1,8 @@
 # Test suite assertion count and run time
 
-**Status:** measured 2026-10-26 on `wip/cards-round2`: 1569 passed, 0 failed, exit 0, 186.3 s, in America/Chicago (the machine zone). That is 1567 from the native batch plus 2 for group 77 (the clamped got/qty read-out). Not re-measured under UTC. Earlier figures are in git.
+**Status:** measured 2026-10-27 on `step5-build`: 1593 passed, 0 failed, exit 0, 474.2 s (other sessions were running), in America/Chicago (the machine zone). That is 1569 plus 24 for group 78 (the masthead count line on every tab: a literal and a rule check for each of 12 lines). Not re-measured under UTC, where it is 1592. Earlier figures are in git.
 
-This record holds the assertion count and the run time for `npm test`. The suite runs 1569 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+This record holds the assertion count and the run time for `npm test`. The suite runs 1593 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
 The count depends on the clock's zone, so the zone is pinned to `America/New_York`. In CI, the test step sets `TZ`, and it names one New York run's output in `CHECK_DOCS_SUITE_LOG`. `check:docs` grades the figure in this sentence. Locally, `npm run check:docs` runs the suite itself and waits for it to end.
 

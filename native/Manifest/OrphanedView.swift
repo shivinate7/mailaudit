@@ -11,10 +11,13 @@ private func paint(_ part: OrphanedPaint.Part) -> Color {
 /// (orphaned-mail-never-decides). `onChange` runs after a write, so Packages reads the new check-ins.
 struct OrphanedView: View {
     let model: OrphanedModel
+    let masthead: MastheadModel
+    let sync: SyncClient?
+    let openSync: () -> Void
     let onChange: () async -> Void
 
     var body: some View {
-        ScrollView {
+        MastheadScreen(masthead: masthead, tab: .orphaned, sync: sync, openSync: openSync) {
             VStack(alignment: .leading, spacing: 12) {
                 if model.composing == .new {
                     ComposerView(model: model, target: .new, onChange: onChange)
@@ -44,7 +47,8 @@ struct OrphanedView: View {
                         .accessibilityIdentifier("orphaned-empty")
                 }
             }
-            .padding(16)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 16)
         }
         .overlay(alignment: .bottom) {
             if let e = model.error {
