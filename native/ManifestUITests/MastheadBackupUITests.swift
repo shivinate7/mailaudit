@@ -29,6 +29,13 @@
 // cells are equal, and the value cell is 1.5x to 2x as wide (the web flex is 1.7). Nothing in
 // the masthead changes frame when a check-in lands or when the slot changes state.
 //
+// Step 5 (the masthead on every tab), at the foot of this class. The contract the builder meets:
+//   the masthead, with the identifiers above, is the first thing in every tab's scroll content;
+//   the foot is two fixed rows: masthead-count on row 1, masthead-missing on the left of row 2 and
+//   save-slot on the right of row 2. No part of the masthead changes frame when the tab changes, at
+//   375pt and at 320pt (-ManifestUITestWidth). Each tab's masthead-count carries that tab's count.
+// The compose-once claim is not here: no UI test can read an opacity (see MastheadComposeOnceTests).
+//
 // Not driven: the share sheet behind Backup, and Backup on a ledger that failed to open (no
 // launch argument corrupts the seed). The file bytes are pinned in BackupExportTests.
 //
@@ -190,6 +197,158 @@ final class MastheadBackupUITests: XCTestCase {
             XCTAssertEqual(now[1].minY, first[1].minY, accuracy: 0.5, "the missing line moves in \(state)")
             XCTAssertEqual(Array(now.dropFirst(2)), Array(first.dropFirst(2)), "a tally cell moves in \(state)")
         }
+    }
+
+    // MARK: step 5, the masthead on every tab
+
+    /// The tabs in the order the tests visit them. Ledger is first because the app opens on it.
+    static let tabs = ["Ledger", "Orphaned", "Tally", "Packages"]
+    /// The parts that must hold their place when the tab changes.
+    static let partIds = ["masthead", "tally-cards", "tally-packages", "tally-value", "masthead-count", "masthead-missing", "save-slot"]
+
+    /// The one live copy of `id` on the open tab. A kept-alive tab can hold a second copy, so the match is
+    /// the hittable one among those on screen, and exactly one must be left. A part that reports no
+    /// hittable element (a container, or a read-out) falls back to the ones on screen.
+    func live(_ app: XCUIApplication, _ id: String, tab: String) throws -> XCUIElement {
+        _ = try need(app, id)
+        var pick: [XCUIElement] = []
+        let deadline = Date().addingTimeInterval(5)
+        repeat {
+            let window = app.windows.firstMatch.frame
+            let shown = app.descendants(matching: .any).matching(identifier: id).allElementsBoundByIndex
+                .filter { !$0.frame.isEmpty && $0.frame.intersects(window) }
+            let hit = shown.filter(\.isHittable)
+            pick = hit.isEmpty ? shown : hit
+            if pick.count == 1 { break }
+            Thread.sleep(forTimeInterval: 0.1)  // the tab that was left may still be leaving
+        } while Date() < deadline
+        XCTAssertEqual(pick.count, 1, "\(tab): \(pick.count) live \(id) elements, not 1")
+        return try XCTUnwrap(pick.first, "\(tab): no live \(id)")
+    }
+
+    /// Opens the tab and waits until it is the selected one, so the next read is never the tab just left.
+    func show(_ app: XCUIApplication, _ tab: String) {
+        openTab(app, tab)
+        let on = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isSelected == true"), object: app.tabBars.buttons[tab])
+        XCTAssertEqual(XCTWaiter.wait(for: [on], timeout: 5), .completed, "the \(tab) tab never became the selected one")
+    }
+
+    func partFrames(_ app: XCUIApplication, tab: String) throws -> [String: CGRect] {
+        var out: [String: CGRect] = [:]
+        for id in Self.partIds { out[id] = try live(app, id, tab: tab).frame }
+        return out
+    }
+
+    /// Each tab shows the masthead, and its count line holds that tab's count: Packages and Ledger the four
+    /// packages, Tally the eight pooled products, Orphaned the zero envelopes. The digits are the fixture's
+    /// facts. The words are the bundle's, pinned in Node (V21) and in MastheadModelTests, so they are not
+    /// repeated here. Ledger also holds Backup, so a Packages copy cannot pass for the Ledger tab.
+    func testMastheadIsOnEveryTab() throws {
+        let app = launch(width: 375)
+        var lines: [String: String] = [:]
+        for tab in Self.tabs {
+            show(app, tab)
+            _ = try live(app, "masthead", tab: tab)
+            _ = try live(app, "save-slot", tab: tab)
+            lines[tab] = try live(app, "masthead-count", tab: tab).label
+        }
+
+        for (tab, digit) in [("Packages", "4"), ("Ledger", "4"), ("Tally", "8"), ("Orphaned", "0")] {
+            let line = lines[tab] ?? ""
+            XCTAssertTrue(line.hasPrefix("\(digit) "), "\(tab): the count line `\(line)` does not lead with \(digit)")
+            XCTAssertFalse(line.contains("in range"), "\(tab): native has no date filter, so no line says in range")
+        }
+        XCTAssertEqual(lines["Ledger"], lines["Packages"], "Ledger takes the Packages form")
+        XCTAssertNotEqual(lines["Tally"], lines["Packages"], "Tally has its own form")
+        XCTAssertNotEqual(lines["Orphaned"], lines["Packages"], "Orphaned has its own form")
+        XCTAssertNotEqual(lines["Orphaned"], lines["Tally"], "Orphaned and Tally differ")
+
+        show(app, "Ledger")
+        let backup = try need(app, "backup")
+        app.reveal(backup)
+        XCTAssertTrue(backup.isHittable, "the Ledger tab does not hold Backup")
+    }
+
+    /// At scroll top, every masthead part has the Packages frame on every tab. The count line is read by
+    /// its left edge, top and height only, since its text, and so its width, differs between tabs.
+    func assertNoMastheadFrameMovesOnATabSwitch(width: Int) throws {
+        let app = launch(width: width)
+        var seen: [String: [String: CGRect]] = [:]
+        for tab in Self.tabs {
+            show(app, tab)
+            seen[tab] = try partFrames(app, tab: tab)
+        }
+        let packages = try XCTUnwrap(seen["Packages"], "no Packages frames")
+        for tab in Self.tabs where tab != "Packages" {
+            let now = try XCTUnwrap(seen[tab], "no \(tab) frames")
+            for id in Self.partIds {
+                let (a, b) = (try XCTUnwrap(now[id], "no \(id) on \(tab)"), try XCTUnwrap(packages[id], "no \(id) on Packages"))
+                let what = "\(id) on \(tab) at \(width)pt"
+                XCTAssertEqual(a.minX, b.minX, accuracy: 0.5, "\(what) sits further across than on Packages")
+                XCTAssertEqual(a.minY, b.minY, accuracy: 0.5, "\(what) sits higher or lower than on Packages")
+                XCTAssertEqual(a.height, b.height, accuracy: 0.5, "\(what) changes height from Packages")
+                if id != "masthead-count" { XCTAssertEqual(a.width, b.width, accuracy: 0.5, "\(what) changes width from Packages") }
+            }
+        }
+    }
+
+    func testNoMastheadFrameMovesOnATabSwitchAt375() throws { try assertNoMastheadFrameMovesOnATabSwitch(width: 375) }
+
+    /// 320pt is the width where a long count line beside the slot used to run past the column.
+    func testNoMastheadFrameMovesOnATabSwitchAt320() throws { try assertNoMastheadFrameMovesOnATabSwitch(width: 320) }
+
+    /// The save slot sits on the missing row: its middle on the missing line's, right of it, and the count
+    /// line wholly above that row. Nothing runs past the masthead. Checked on every tab.
+    func assertTheSlotSitsOnTheMissingRow(width: Int) throws {
+        let app = launch(width: width)
+        for tab in Self.tabs {
+            show(app, tab)
+            let head = try live(app, "masthead", tab: tab).frame
+            let count = try live(app, "masthead-count", tab: tab).frame
+            let missing = try live(app, "masthead-missing", tab: tab).frame
+            let slot = try live(app, "save-slot", tab: tab).frame
+            let what = "\(tab) at \(width)pt"
+            XCTAssertEqual(slot.midY, missing.midY, accuracy: 1, "\(what): the save slot is not on the missing row")
+            XCTAssertLessThanOrEqual(count.maxY, missing.minY + 0.5, "\(what): the count line is not above the missing row")
+            XCTAssertGreaterThanOrEqual(slot.minX, missing.maxX - 0.5, "\(what): the save slot overlaps the missing line")
+            XCTAssertLessThanOrEqual(slot.maxX, head.maxX + 0.5, "\(what): the save slot runs past the masthead")
+            XCTAssertLessThanOrEqual(count.maxX, head.maxX + 0.5, "\(what): the count line runs past the masthead")
+        }
+    }
+
+    func testTheSlotSitsOnTheMissingRowAt375() throws { try assertTheSlotSitsOnTheMissingRow(width: 375) }
+
+    func testTheSlotSitsOnTheMissingRowAt320() throws { try assertTheSlotSitsOnTheMissingRow(width: 320) }
+
+    /// A Tally check-in moves the masthead's figures and its slot, and moves no part of it: the Tally tab
+    /// calls saving and finished as Packages does. The Lightning Bolt row is opened and its first copy is
+    /// scrolled fully into view first, as in the Packages test above. The Tally count line keeps its count.
+    func testATallyCheckInMovesTheMastheadFiguresWithoutMovingIt() throws {
+        let app = launch(width: 375)
+        show(app, "Tally")
+        try need(app, "tally-toggle:Lightning Bolt").tap()
+        let control = try need(app, "tally-checkin:A1|0|pLightningBolt")
+        let slot = try need(app, "save-slot")
+        let head = try need(app, "masthead")
+        let cells = try Self.cellIds.map { try need(app, $0) }
+        let count = try need(app, "masthead-count")
+        app.reveal(control, whole: true)
+        XCTAssertTrue(control.label.hasPrefix("Check in"), "the scroll checked the copy in before the baseline")
+        let fixed = [head, slot] + cells
+        let before = fixed.map(\.frame)
+        let countBefore = (label: count.label, frame: count.frame)
+
+        control.tap()
+        wait(slot, "label BEGINSWITH %@", "saved", "the slot never read saved after a Tally check-in")
+        wait(cells[0], "value == %@", "1/14", "the cards tally did not follow the Tally check-in")
+
+        XCTAssertEqual(slot.label, "saved \u{2713}")
+        XCTAssertEqual(cells.map(figure), ["1/14", "0/4", "$1/$68"])
+        XCTAssertEqual(count.label, countBefore.label, "a check-in changes no product count")
+        for (el, was) in zip(fixed, before) {
+            XCTAssertEqual(el.frame, was, "\(el.identifier) moved on a Tally check-in")
+        }
+        XCTAssertEqual(count.frame.minY, countBefore.frame.minY, accuracy: 0.5, "masthead-count moved on a Tally check-in")
     }
 
     // MARK: Backup

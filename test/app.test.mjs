@@ -7583,6 +7583,72 @@ ok(
 );
 ok(!readouts.includes("3/2"), "77.2 the raw count 3/2 is never printed");
 
+/* ── 78. the masthead's count line, on every tab, is the shared rule's text (Step 5) ──
+   countLine in src/view-rules.mjs holds the wording, and the web and the native masthead both
+   call it. Each line here is checked twice. The literal is what the web prints today, so the
+   wording cannot drift while the web moves onto the rule. The rule's own answer is the second
+   check, so a web that keeps a private copy of the wording fails once the two differ. The rule is
+   loaded dynamically: before it exists the second check fails on an assertion, and the literals
+   still run. Its words are pinned once, in test/view-rules.test.mjs (V21). */
+const rules78 = await import("../src/view-rules.mjs");
+const ruleLine78 = (view, c, range) =>
+  typeof rules78.countLine === "function" ? rules78.countLine(view, c, range) : undefined;
+const footLine78 = () => document.querySelector(".mdl-foot")?.firstElementChild?.textContent ?? null;
+/* the fixture's figures: 4 packages, 8 unique items (tally pools by exact name), no envelopes */
+const c78 = (packages, uniqueItems, envelopes) => ({ packages, uniqueItems, envelopes });
+const env78 = (id, name) => ({
+  id,
+  createdAt: Date.parse("2026-07-10T12:00:00Z"),
+  note: "",
+  entries: [{ name, qty: 1 }],
+  photos: [],
+  updatedAt: 0,
+});
+const gone78 = { id: "env-gone", createdAt: Date.parse("2026-07-10T12:00:00Z"), updatedAt: 1, deletedAt: 1, note: "", entries: [], photos: [] };
+/* one view on screen: the foot reads `literal`, and the rule gives the same line for `counts` */
+const line78 = async (view, tab, literal, counts, range, id) => {
+  await goTo(tab);
+  eq(footLine78(), literal, `78.${id}a ${view} reads ${literal}`);
+  eq(footLine78(), ruleLine78(view, counts, range), `78.${id}b and it is the rule's line`);
+};
+const RANGE78 = {
+  from: Date.parse("2026-06-10"),
+  to: Date.parse("2026-08-31") + 86399999,
+};
+
+await fresh();
+await line78("packages", "packages", "4 packages \u00B7 autosaves", c78(4, 8, 0), null, "1");
+await line78("items", "tally", "8 unique items \u00B7 autosaves", c78(4, 8, 0), null, "2");
+await line78("mystery", "orphaned", "0 envelopes waiting \u00B7 autosaves", c78(4, 8, 0), null, "3");
+await line78("ledger", "ledger", "4 packages \u00B7 autosaves", c78(4, 8, 0), null, "4");
+
+/* one of each: packages never turns singular, items and envelopes do */
+await boot({ items: [ITEMS[0]], received: {}, envelopes: [env78("env-1", "Ponder")] });
+await line78("packages", "packages", "1 packages \u00B7 autosaves", c78(1, 1, 1), null, "5");
+await line78("items", "tally", "1 unique item \u00B7 autosaves", c78(1, 1, 1), null, "6");
+await line78("mystery", "orphaned", "1 envelope waiting \u00B7 autosaves", c78(1, 1, 1), null, "7");
+
+/* two live envelopes beside a discarded one: the tombstone is not counted */
+await boot({
+  items: ITEMS,
+  received: {},
+  envelopes: [env78("env-1", "Ponder"), gone78, env78("env-2", "Preordain")],
+});
+await line78("mystery", "orphaned", "2 envelopes waiting \u00B7 autosaves", c78(4, 8, 2), null, "8");
+
+/* a date range: Jun 10 to Aug 31 keeps orders A1 and B1 (2 packages, 3 unique items). The range
+   adds "in range" before "autosaves" on every view but Orphaned, which the filter never cuts */
+await boot({
+  items: ITEMS,
+  received: {},
+  envelopes: [env78("env-1", "Ponder"), env78("env-2", "Preordain")],
+  dateFilter: { preset: "custom", from: "2026-06-10", to: "2026-08-31" },
+});
+await line78("packages", "packages", "2 packages in range \u00B7 autosaves", c78(2, 3, 2), RANGE78, "9");
+await line78("items", "tally", "3 unique items in range \u00B7 autosaves", c78(2, 3, 2), RANGE78, "10");
+await line78("mystery", "orphaned", "2 envelopes waiting \u00B7 autosaves", c78(2, 3, 2), RANGE78, "11");
+await line78("ledger", "ledger", "2 packages in range \u00B7 autosaves", c78(2, 3, 2), RANGE78, "12");
+
 /* ── 62. the bottom bar, lane L11a (decision phone-nav-is-bottom-bar) ──────
    The bar replaces the in-page view switch. It holds four tabs, Ledger,
    Orphaned, Tally and Packages, and a floating search pill sits above it.
