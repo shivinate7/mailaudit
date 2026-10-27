@@ -1279,6 +1279,112 @@ eq(gotQty(2, 2), "2/2", "V20.1c both in: 2/2");
 eq(gotQty(0, 1), null, "V20.2a one copy, none in: null");
 eq(gotQty(1, 1), null, "V20.2b one copy, in: null");
 
+/* ── V30 to V34. Card in Hand rules (duo-card-in-hand, new-envelope-ends-an-envelope,
+   lost-mail-flags-use-order-date). Red until the duo-hand-rules builder adds these exports.
+
+   CONTRACT. The exports go at the end of src/view-rules.mjs. Each takes its state as
+   arguments, and none reads the clock except through its `now`.
+     handHits(items, query, received, refundedGks) -> [gk, ...]
+       items: the parseItems shape. received: {itemKey: copies in}. refundedGks: a Set of gk.
+       A package hits when one of its items has copies outstanding (qty > received), is not
+       canceled (tracking starts "cancel"), is not in refundedGks, and lineHit(item, q) holds,
+       where q is the query trimmed and lowercased. lineHit is the web's search, in
+       src/view-rules.mjs: a substring, case-insensitive, of the name, set, seller or order id.
+       Reuse it. An empty query is not pinned.
+       Result: gk strings in groupPackages order (order date newest first, then seller name).
+     handStep(items, received, refundedGks, held, typed) -> {action, gk, plan, held}
+       held: a name or null. typed: a name. Names match by normName equality.
+       Open envelopes: the packages of items that are not canceled, not in refundedGks, and
+       hold copies still outstanding under the name.
+       "none": typed is blank and held is null. gk and plan null, held null.
+       "hold": typed names two or more open envelopes and nothing is held. gk and plan null,
+               held = normName(typed).
+       "hold": a name is held and typed names no open envelope. gk and plan null, held unchanged.
+       "post": typed names exactly one open envelope P. With a held name H, P must also name H.
+               plan = matchEnvelope([H, typed] at qty 1 each, P, received).plan. gk = P.gk, held null.
+       Not pinned: typed names no open envelope while nothing is held.
+     pastTransit(items, received, stampedGks, now) -> [{gk, tier, days, claimBy}, ...]
+       A package is listed when it is untracked, not fully received (some item short of qty),
+       not in stampedGks, and lostMail(date, tracking, false, now) is not null (14 days or more).
+       Order: groupPackages order, so the oldest is last. tier and days come from lostMail.
+       claimBy is the order date plus 30 days, as "YYYY-MM-DD" in UTC. Rows may hold other fields.
+   Sets cross the Swift bridge as {"$set": [...]}. The Swift case is in HandRulesBundleTests.swift. */
+
+const handHits = fn("handHits");
+const handStep = fn("handStep");
+const pastTransit = fn("pastTransit");
+
+/* ── V30 handHits: a typed name finds the packages that hold it, and skips received,
+   canceled and refunded mail. Mutants: no received check (H2 listed), no cancel check (H3),
+   no refund check (H4), a word-start match (the mid-word "ghtn" misses), a case-sensitive match. */
+const v30 = [
+  ...group("H1", "Alpha Cards", "2026-07-01", "with tracking", [["Lightning Bolt", 1]]),
+  ...group("H2", "Beta Games", "2026-07-02", "with tracking", [["Lightning Bolt", 1]]),
+  ...group("H3", "Gamma Cards", "2026-07-03", "canceled", [["Lightning Bolt", 1]]),
+  ...group("H4", "Delta Cards", "2026-07-04", "with tracking", [["Lightning Bolt", 1]]),
+  ...group("H5", "Epsilon Cards", "2026-07-05", "with tracking", [["Path to Exile", 1]]),
+  ...group("H6", "Zeta Cards", "2026-07-10", "without tracking", [["Lightning Bolt", 1]]),
+];
+const v30Received = { [v30[1].key]: 1 };
+const v30Refunded = new Set(["H4::Delta Cards"]);
+const hitsFor = (query) => handHits(v30, query, v30Received, v30Refunded);
+const HIT_GKS = ["H6::Zeta Cards", "H1::Alpha Cards"];
+eq(hitsFor("light"), HIT_GKS, "V30.1 a name hits; received, canceled and refunded mail is skipped");
+eq(hitsFor("bolt"), HIT_GKS, "V30.2 a word after the first hits");
+eq(hitsFor("LIGHT"), HIT_GKS, "V30.3 the match ignores case");
+eq(hitsFor("ghtn"), HIT_GKS, "V30.4 a fragment inside a word hits, as the web search does");
+eq(hitsFor("path to ex"), ["H5::Epsilon Cards"], "V30.5 a multi-word query matches a name in order");
+
+/* ── V31 handStep: a name two open envelopes share is held, with no plan.
+   Mutant: a post, or a plan, on a shared name. */
+const v31 = [
+  ...group("S1", "Alpha Cards", "2026-07-01", "with tracking", [["Lightning Bolt", 1], ["Path to Exile", 1]]),
+  ...group("S2", "Beta Games", "2026-07-02", "with tracking", [["Lightning Bolt", 1], ["Counterspell", 1]]),
+];
+const v31Shared = handStep(v31, {}, new Set(), null, "Lightning Bolt");
+eq(v31Shared?.action, "hold", "V31.1 a name two open envelopes share is held");
+eq(v31Shared?.plan, null, "V31.2 a held shared name has no plan");
+eq(v31Shared?.gk, null, "V31.3 a held shared name names no envelope");
+eq(v31Shared?.held, "lightning bolt", "V31.4 the held name is the normalized card name");
+
+/* ── V32 handStep: the next card that names one envelope decides the held name. The plan
+   takes copies from that envelope only. Mutants: a plan pooled over S1 and S2, no post. */
+const v32Decide = handStep(v31, {}, new Set(), "Lightning Bolt", "Path to Exile");
+eq(v32Decide?.action, "post", "V32.1 the next card names one envelope, so the card posts");
+eq(v32Decide?.gk, "S1::Alpha Cards", "V32.2 the post names the envelope that holds both cards");
+eq(planOf(v32Decide), ["S1|0|pLightning Bolt=1", "S1|1|pPath to Exile=1"], "V32.3 the plan takes the held copy from S1, not S2");
+eq(v32Decide?.held, null, "V32.4 no name is held after a post");
+eq(planOf(handStep(v31, {}, new Set(), null, "Path to Exile")), ["S1|1|pPath to Exile=1"], "V32.5 a card that names one envelope alone posts its own copy");
+
+/* ── V33 handStep: an unmatched card gives hold, and the held name stays held. A blank card
+   with nothing held is none. Mutants: the unmatched card posts alone, or replaces the held name. */
+const v33Unmatched = handStep(v31, {}, new Set(), "Lightning Bolt", "Sol Ring");
+eq(v33Unmatched?.action, "hold", "V33.1 an unmatched card gives hold, never post");
+eq(v33Unmatched?.held, "lightning bolt", "V33.2 the earlier held name is still the held name");
+eq(v33Unmatched?.plan, null, "V33.3 an unmatched card gets no plan");
+eq(handStep(v31, {}, new Set(), null, "")?.action, "none", "V33.4 a blank card with nothing held is none");
+
+/* ── V34 pastTransit: untracked, unreceived, unstamped packages at 14 days or more, oldest
+   last. Mutants: 13 days listed, 29 days as deadline, claimBy off by a day, received or
+   stamped mail listed, oldest first. now = 2026-07-31T12:00:00Z. */
+const v34 = [
+  ...group("T1", "Alpha Cards", "2026-07-17", "without tracking", [["Lightning Bolt", 1]]), // 14 days
+  ...group("T2", "Beta Games", "2026-07-02", "without tracking", [["Counterspell", 1]]), // 29 days
+  ...group("T3", "Gamma Cards", "2026-07-01", "without tracking", [["Path to Exile", 1]]), // 30 days
+  ...group("T4", "Delta Cards", "2026-06-20", "without tracking", [["Ponder", 1]]), // 41 days
+  ...group("T5", "Epsilon Cards", "2026-07-18", "without tracking", [["Preordain", 1]]), // 13 days
+  ...group("T6", "Zeta Cards", "2026-06-10", "with tracking", [["Brainstorm", 1]]), // tracked
+  ...group("T7", "Eta Cards", "2026-06-15", "without tracking", [["Swords to Plowshares", 1]]), // received
+  ...group("T8", "Theta Cards", "2026-06-12", "without tracking", [["Ravenous Chupacabra", 1]]), // stamped
+];
+const v34Received = { [v34[6].key]: 1 };
+const v34Stamped = new Set(["T8::Theta Cards"]);
+const v34Rows = pastTransit(v34, v34Received, v34Stamped, Date.parse("2026-07-31T12:00:00Z"));
+const v34Field = (field) => (Array.isArray(v34Rows) ? v34Rows.map((r) => r?.[field]) : v34Rows);
+eq(v34Field("gk"), ["T1::Alpha Cards", "T2::Beta Games", "T3::Gamma Cards", "T4::Delta Cards"], "V34.1 the 13-day, tracked, received and stamped orders are absent, oldest last");
+eq(Array.isArray(v34Rows) ? v34Rows.map((r) => [r?.tier, r?.days]) : v34Rows, [["maybe", 14], ["maybe", 29], ["deadline", 30], ["deadline", 41]], "V34.2 14 and 29 days are maybe, 30 and 41 are deadline");
+eq(v34Field("claimBy"), ["2026-08-16", "2026-08-01", "2026-07-31", "2026-07-20"], "V34.3 claimBy is the order date plus 30 days");
+
 /* ---------- report ---------- */
 
 console.log(`\n${pass} passed, ${fails.length} failed`);
