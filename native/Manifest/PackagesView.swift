@@ -70,6 +70,12 @@ struct PackageRow: View {
                         .lineLimit(1).truncationMode(.tail)
                         .textSelection(.enabled)  // owner ruling 2026-10-21: the header text is selectable, seller included
                         .contentShape(Rectangle())  // measured: without it, the selectable date below takes the seller's long press
+                        // measured: VoiceOver reads the seller from an element with the drawn line's frame. The selectable
+                        // text's own element reports "Text clipped" on short names, and a label on it reports the unwrapped layout.
+                        .accessibilityHidden(true)
+                        .background {
+                            Color.clear.accessibilityElement().accessibilityLabel(pkg.seller).accessibilityAddTraits(.isStaticText)
+                        }
                     dateLine
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
