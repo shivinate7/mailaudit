@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sorting Frame</title>
+<meta name="description" content="Duo concept 3: find an envelope by what you can feel, its thickness and its age, in a post-office sorting frame.">
+<style>
+:root{--paper:#F2E9DA;--card:#FCF6EA;--ink:#332E3F;--inkSoft:#6E6379;--line:#DCCDB6;--gold:#C9A961;--silver:#C4C3C0;--accent:#6F5CA6;--green:#2E7A5E;--greenSoft:#E6E7D7;--red:#A8443C;--redSoft:#F4E4D9;--manila:#EADBBA;--manilaInk:#695832;--amber:#846008;--wax:#A8443C;--waxLit:#C86A5F;--waxDeep:#66231D;--waxCut:#5E1F1A;--waxRaised:#E09A90;--shadow:rgba(28,43,36,0.06);--scrim:rgba(28,43,36,0.92);
+--serif:Cochin,"Iowan Old Style",Georgia,serif;--mono:ui-monospace,"SF Mono",Menlo,monospace}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif)}
+.wrap{max-width:1040px;margin:0 auto;padding:24px 16px 64px}
+h1{font-weight:400;font-size:34px;margin:0 0 4px}
+.lede{color:var(--inkSoft);margin:0 0 20px;font-size:18px}
+.n{font-family:var(--mono);font-variant-numeric:tabular-nums}
+figure{margin:0 0 28px}figcaption{font-size:14px;color:var(--inkSoft);margin-top:6px}
+.fit{position:relative;overflow:hidden}.fit>.dev{position:absolute;top:0;left:0;transform-origin:0 0}
+.dev{background:var(--card);border:6px solid var(--ink);border-radius:30px;overflow:hidden;position:relative;font-size:15px}
+.inner{width:963px;height:681px}.outer{width:478px;height:690px}.tall{width:681px;height:963px}
+.fold{position:absolute;top:0;bottom:0;left:465px;width:21px;border-left:1px dashed var(--silver);border-right:1px dashed var(--silver);background:repeating-linear-gradient(90deg,transparent 0 3px,rgba(110,99,121,.10) 3px 4px)}
+.hfold{position:absolute;left:0;right:0;top:465px;height:21px;border-top:1px dashed var(--silver);border-bottom:1px dashed var(--silver);background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(110,99,121,.10) 3px 4px)}
+.fold span,.hfold span{position:absolute;font:10px var(--mono);color:var(--inkSoft);white-space:nowrap}
+.fold span{top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg)}.hfold span{left:12px;top:4px}
+.pg{position:absolute;top:0;bottom:0;width:465px;padding:22px 24px;display:flex;flex-direction:column}
+.pg.l{left:0}.pg.r{left:486px}.pg.t{top:0;bottom:auto;height:465px;width:auto;left:0;right:0}.pg.b{top:486px;bottom:0;width:auto;left:0;right:0}
+.pg.solo{width:auto;right:0;left:0}
+.flat{background:linear-gradient(var(--paper),var(--card) 30%)}
+.poses{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start}.poses figure{flex:1 1 280px;min-width:0}
+.hit{outline:3px solid var(--accent);outline-offset:6px;border-radius:4px}
+.notes{display:grid;gap:4px 24px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));font-size:17px;line-height:1.45}
+.notes h2{font-weight:400;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--inkSoft);margin:16px 0 4px;border-bottom:1px solid var(--gold);padding-bottom:4px}
+.notes ol,.notes p{margin:0 0 8px}.notes ol{padding-left:22px}
+.back{display:inline-block;margin-bottom:12px;color:var(--accent);font-size:16px}
+body.embed .chrome{display:none}body.embed .wrap{padding:0;max-width:none}body.embed figure{margin:0}body.embed figcaption{display:none}
+.btn{min-height:44px;min-width:44px;padding:0 14px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font:inherit;font-size:16px;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn.p{background:var(--accent);border-color:var(--accent);color:var(--card)}
+.btn.warn{border-color:var(--red);color:var(--red);background:var(--redSoft)}
+.k{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--inkSoft)}
+.rule{border:0;border-top:1px solid var(--gold);margin:12px 0}
+.ok{color:var(--green)}.late{color:var(--amber)}.bad{color:var(--red)}
+.ann{font:11px var(--mono);color:var(--accent)}
+.line{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:52px;border-bottom:1px solid var(--line)}
+.line small{display:block;color:var(--inkSoft);font-size:13px}
+.line.now{background:var(--greenSoft);margin:0 -10px;padding:0 10px;border-radius:6px}
+.step{display:inline-flex;align-items:center;gap:6px}.step .n{min-width:42px;text-align:center;font-size:18px}
+.box{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:12px;background:var(--paper)}
+
+/* concept */
+.frame{display:grid;gap:4px;margin-top:10px;grid-template-rows:22px;grid-auto-rows:74px}
+.pg.l .frame{grid-template-columns:58px repeat(3,1fr)}.pg.r .frame{grid-template-columns:repeat(3,1fr)}
+.frame .ch{height:22px;font:12px var(--mono);color:var(--inkSoft);align-self:end;text-align:center}
+.frame>.ch{grid-row:auto}
+.cell{border:1px solid var(--line);border-radius:4px;background:var(--paper);padding:4px;box-shadow:inset 0 2px 4px var(--shadow)}
+.rl{display:flex;flex-direction:column;justify-content:center;font-size:15px}.rl small{font:11px var(--mono);color:var(--inkSoft)}
+.sel{background:rgba(111,92,166,.08);border-color:var(--accent)}
+.dim{opacity:.5}
+.env{position:relative;background:var(--manila);color:var(--manilaInk);font-size:13px;line-height:1.2;border-radius:2px;padding:14px 6px 4px;height:100%;border:1px solid transparent;overflow:hidden}
+.env::before{content:"";position:absolute;left:0;right:0;top:0;height:12px;background:linear-gradient(to bottom right,transparent 49%,rgba(105,88,50,.25) 50%,transparent 53%) left/50% 100% no-repeat,linear-gradient(to bottom left,transparent 49%,rgba(105,88,50,.25) 50%,transparent 53%) right/50% 100% no-repeat}
+.env .n{font-size:12px;display:block}
+.env.done{background:var(--greenSoft);color:var(--green)}
+.env.lateE{border-color:var(--amber);color:var(--amber)}.env.badE{border-color:var(--red);background:var(--redSoft);color:var(--red)}
+.env.cand{outline:2px solid var(--accent);outline-offset:1px}
+.seg{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--ink);border-radius:8px;overflow:hidden}
+.seg span{height:44px;display:grid;place-items:center;border-left:1px solid var(--ink)}.seg span:first-child{border-left:0}
+.seg .on{background:var(--ink);color:var(--card)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{height:44px;padding:0 10px;border:1px solid var(--line);border-radius:22px;display:inline-flex;align-items:center;font-size:14px;background:var(--card)}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--card)}
+.fitrow{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:52px;border-bottom:1px solid var(--line)}
+.fitrow small{display:block;font-size:13px;color:var(--inkSoft)}
+.panel{margin-top:auto;border-top:2px solid var(--ink);padding-top:10px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="chrome">
+<a class="back" href="index.html">All five concepts</a>
+<h1>3 · Sorting Frame</h1>
+<p class="lede">Find an envelope by what you can feel. Its thickness picks the row, its age picks the column, and each pigeonhole holds only a few envelopes.</p>
+</div>
+
+<figure data-pose="flat">
+<div class="fit" data-max="1"><div class="dev inner">
+  <section class="pg l">
+    <div style="display:flex;justify-content:space-between" class="k"><span>Expected · in transit</span><span class="n">out 18 · $7.92</span></div>
+    <div class="frame">
+      <span></span><span class="ch">0–3 d</span><span class="ch">4–6 d</span><span class="ch">7–9 d</span>
+      <div class="rl dim">Thin<small>1 card</small></div><div class="cell dim"></div><div class="cell dim"></div><div class="cell dim"></div>
+      <div class="rl" style="color:var(--accent)">Slim<small>2–4</small></div><div class="cell sel"></div><div class="cell sel"><div class="env done">Fernhill ✓<span class="n">2/2</span></div></div><div class="cell sel"></div>
+      <div class="rl dim">Fat<small>5–9</small></div><div class="cell dim"></div><div class="cell dim"></div><div class="cell dim"><div class="env">Low Tide<span class="n">0/6</span></div></div>
+      <div class="rl dim">Mailer<small>10+</small></div><div class="cell dim"></div><div class="cell dim"></div><div class="cell dim"></div>
+    </div>
+    <div class="panel">
+      <div class="k" style="margin-bottom:6px">In hand · how thick is it?</div>
+      <div class="seg"><span>Thin</span><span class="on">Slim</span><span>Fat</span><span>Mailer</span></div>
+      <div class="k" style="margin:10px 0 6px">No sender · tap the cards you see</div>
+      <div class="chips"><span class="chip on">Fellwar Stone</span><span class="chip on">Beast Within</span><span class="chip">Mind Stone</span><span class="chip">Chaos Warp</span><span class="chip">Thought Vessel</span><span class="chip">Sol Ring</span><span class="chip">Arcane Signet</span><span class="chip">+2</span></div>
+    </div>
+  </section>
+  <div class="fold"><span>fold · past usual transit (10 d, owner sets)</span></div>
+  <section class="pg r">
+    <div style="display:flex;justify-content:space-between" class="k"><span>Past usual transit</span><span>2 late · 1 claim closing</span></div>
+    <div class="frame">
+      <span class="ch">10–14 d</span><span class="ch">15–21 d</span><span class="ch">22 d +</span>
+      <div class="cell dim"></div><div class="cell dim"></div><div class="cell dim"></div>
+      <div class="cell sel"><div class="env cand">Brass Lantern<span class="n">0/4 · 2 seen</span></div></div><div class="cell sel"><div class="env lateE cand">Quillon<span class="n">0/3 · 1 seen</span></div></div><div class="cell sel"><div class="env badE">Ashgrove<span class="n">0/4 · claim Fri</span></div></div>
+      <div class="cell dim"><div class="env">Kestrel<span class="n">6/7 · 1 Bolt</span></div></div><div class="cell dim"></div><div class="cell dim"></div>
+      <div class="cell dim"></div><div class="cell dim"></div><div class="cell dim"></div>
+    </div>
+    <div class="panel">
+      <div class="k">Best fit for this envelope</div>
+      <div class="fitrow"><div>Brass Lantern TCG · <span class="n">10 d</span><small>2 of 2 seen · Mind Stone ×2 still expected</small></div><span class="btn p">File here</span></div>
+      <div class="fitrow"><div>Quillon Hobby · <span class="n">17 d</span><small>1 of 2 seen</small></div><span class="btn">File here</span></div>
+      <div style="display:flex;justify-content:space-between;margin-top:10px"><span class="btn warn">Stamp Ashgrove…</span><span class="btn">Keep aside, unknown</span></div>
+    </div>
+  </section>
+</div></div>
+<figcaption>Open flat: a slim envelope with no sender in hand. The Slim row lights, two seen cards narrow it to Brass Lantern. Inner screen 951×669 pt.</figcaption>
+</figure>
+
+<div class="poses chrome">
+<figure data-pose="closed">
+<div class="fit" data-max="1"><div class="dev outer">
+  <section class="pg solo">
+    <div class="k">What does the envelope feel like?</div>
+    <div style="display:grid;gap:8px;margin:10px 0">
+      <span class="btn" style="justify-content:space-between;height:64px">Thin · 1 card<span class="n">0 out</span></span>
+      <span class="btn p" style="justify-content:space-between;height:64px">Slim · 2–4<span class="n">3 out</span></span>
+      <span class="btn" style="justify-content:space-between;height:64px">Fat · 5–9<span class="n">2 out</span></span>
+      <span class="btn" style="justify-content:space-between;height:64px">Mailer · 10+<span class="n">0 out</span></span>
+    </div>
+    <div class="k">Slim, oldest first</div>
+    <div class="fitrow bad"><div>Ashgrove Games<small>4 cards · claim Fri</small></div><span class="n">24 d</span></div>
+    <div class="fitrow late"><div>Quillon Hobby<small>3 cards</small></div><span class="n">17 d</span></div>
+    <div class="fitrow"><div>Brass Lantern TCG<small>4 cards</small></div><span class="n">10 d</span></div>
+  </section>
+</div></div>
+<figcaption>Closed, outer screen: the four thickness rows become four big buttons, then a short list.</figcaption>
+</figure>
+<figure data-pose="laptop">
+<div class="fit" data-max="1"><div class="dev tall">
+  <section class="pg t">
+    <div class="k">The frame stands like a wall of pigeonholes</div>
+    <div class="frame" style="grid-template-columns:54px repeat(6,1fr);grid-auto-rows:80px;margin-top:6px">
+      <span></span><span class="ch">0–3</span><span class="ch">4–6</span><span class="ch">7–9</span><span class="ch">10–14</span><span class="ch">15–21</span><span class="ch">22+</span>
+      <div class="rl dim">Thin</div><div class="cell dim"></div><div class="cell dim"></div><div class="cell dim"></div><div class="cell dim"></div><div class="cell dim"></div><div class="cell dim"></div>
+      <div class="rl" style="color:var(--accent)">Slim</div><div class="cell sel"></div><div class="cell sel"><div class="env done">Fernhill</div></div><div class="cell sel"></div><div class="cell sel"><div class="env cand">Brass</div></div><div class="cell sel"><div class="env lateE cand">Quillon</div></div><div class="cell sel"><div class="env badE">Ashgrove</div></div>
+      <div class="rl dim">Fat</div><div class="cell dim"></div><div class="cell dim"></div><div class="cell dim"><div class="env">Low Tide</div></div><div class="cell dim"><div class="env">Kestrel</div></div><div class="cell dim"></div><div class="cell dim"></div>
+      <div class="rl dim">Mailer</div><div class="cell dim"></div><div class="cell dim"></div><div class="cell dim"></div><div class="cell dim"></div><div class="cell dim"></div><div class="cell dim"></div>
+    </div>
+  </section>
+  <div class="hfold"><span>fold · top stands, bottom lies flat</span></div>
+  <section class="pg b flat">
+    <div class="seg"><span>Thin</span><span class="on">Slim</span><span>Fat</span><span>Mailer</span></div>
+    <div class="chips" style="margin:12px 0"><span class="chip on">Fellwar Stone</span><span class="chip on">Beast Within</span><span class="chip">Mind Stone</span><span class="chip">Chaos Warp</span><span class="chip">Thought Vessel</span><span class="chip">+4</span></div>
+    <div class="fitrow"><div>Brass Lantern TCG<small>2 of 2 seen</small></div><span class="btn p">File here</span></div>
+    <div class="fitrow"><div>Quillon Hobby<small>1 of 2 seen</small></div><span class="btn">File here</span></div>
+  </section>
+</div></div>
+<figcaption>Laptop pose: the frame stands upright like a real sorting case; the in-hand controls lie flat.</figcaption>
+</figure>
+</div>
+
+<div class="notes chrome">
+<div>
+<h2>Central idea</h2>
+<p>Match an envelope by what your fingers already know, its thickness and its age, before you read a single card.</p>
+<h2>A mail-day session</h2>
+<ol>
+<li>Open the phone flat. Every expected envelope sits in a pigeonhole: thickness down, days out across.</li>
+<li>Pick up an envelope and feel it. Tap Slim. Only that row stays lit.</li>
+<li>A named envelope: tap its pigeonhole, then tick its cards. Kestrel shows 6/7.</li>
+<li>A blank envelope: tap two cards you see. Best fit ranks the lit envelopes.</li>
+<li>File it, or keep it aside as unknown.</li>
+<li>The right page is past usual transit. A red envelope carries its stamp: lost or refunded.</li>
+</ol>
+</div>
+<div>
+<h2>Better than a phone list</h2>
+<p>Thickness and age cut the field to two or three envelopes. The fold means something: left is in transit, right is past usual transit.</p>
+<p>Blank envelopes become a short guess, not a search.</p>
+<h2>Biggest risk</h2>
+<p>Thickness is a guess from card count; sellers pack differently. A busy week may crowd one pigeonhole with ten envelopes, and the frame stops narrowing.</p>
+</div>
+</div>
+</div>
+<script>
+function fit(){document.querySelectorAll('.fit').forEach(f=>{const d=f.firstElementChild,s=Math.min(+f.dataset.max||1,f.clientWidth/d.offsetWidth);d.style.transform='scale('+s+')';f.style.height=d.offsetHeight*s+'px'})}
+function route(){const p=new URLSearchParams(location.hash.slice(1)),pose=p.get('pose');document.body.classList.toggle('embed',p.has('embed'));document.querySelectorAll('[data-pose]').forEach(e=>e.classList.toggle('hit',e.dataset.pose===pose&&!p.has('embed')));fit();const t=document.querySelector('[data-pose="'+pose+'"]');if(t&&!p.has('embed'))t.scrollIntoView()}
+addEventListener('hashchange',route);addEventListener('resize',fit);route();
+</script>
+</body>
+</html>
