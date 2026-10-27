@@ -290,8 +290,8 @@ private struct LedgerRow: View {
 }
 
 /// A control that asks first. It arms in place; Cancel appears in a slot kept free all along, so a press
-/// moves nothing (no-layout-shift-under-pointer). Reset fills its row with red once armed. Restore is a small
-/// button on redSoft, and its Cancel appears before it (armed-reset-takes-the-row).
+/// moves nothing (no-layout-shift-under-pointer). Reset fills its row with red once armed (armed-reset-takes-the-row).
+/// Restore is a small button on redSoft. Each Cancel sits after its control.
 struct AskRow: View {
     enum Kind { case reset, restore }
     let kind: Kind
@@ -344,24 +344,26 @@ struct AskRow: View {
         }
     }
 
-    /// Restore: red on redSoft at rest; bold card on red once armed, with a Cancel before it. Both are the shared mini
-    /// button (ControlViews), in its 44pt hit frame, so the armed control keeps its top edge.
+    /// Restore: red on redSoft at rest; bold card on red once armed. Both are the shared mini button (ControlViews), in
+    /// its 44pt hit frame. Cancel takes a slot after Restore that is kept free all along, so arming moves nothing
+    /// (no-layout-shift-under-pointer). Restore's hit region spans the rest of the row, as the web's flex:1 does.
     private var restoreRow: some View {
         HStack(spacing: 8) {
-            if armed {
-                Button(action: cancel) { MiniLabel(title: "Cancel") }
-                    .buttonStyle(.plain)
-                    .accessibilityIdentifier(cancelID)
-            }
             Button(action: press) {
                 MiniLabel(title: ask ?? title, bold: armed, text: p(.restoreText), fill: p(.restoreFill), border: p(.restoreBorder))
-                    // The web's Restore is flex:1: its hit region spans the row, so Cancel arriving before it never covers the first tap.
                     .frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(ask ?? title)
             .accessibilityIdentifier(id)
-            Spacer(minLength: 0)
+            ZStack {
+                if armed {
+                    Button(action: cancel) { MiniLabel(title: "Cancel") }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier(cancelID)
+                }
+            }
+            .frame(width: cancelWidth, alignment: .trailing)
         }
     }
 }

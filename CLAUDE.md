@@ -408,7 +408,7 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-seller-scale-unmeasured` — The native seller shrinks to half size, and the cause is unmeasured.
 - `native-card-gestures-unpinned` — No UI test pins the native card header gestures.
 - `native-card-state-in-swift` — The native card copies the line and package done rules in Swift.
-- `native-sync-tally-rules-in-swift` — The native Sync panel and Tally row copy five view rules in Swift.
+- `native-sync-tally-rules-in-swift` — The native Sync panel and Tally row copy six view rules in Swift.
 - `native-backup-has-no-photos` — Native Backup holds no photos.
 - `native-backup-ui-unpinned` — No UI test taps Backup.
 - `native-backup-web-restore-unrun` — No test restores a native backup file on the web.

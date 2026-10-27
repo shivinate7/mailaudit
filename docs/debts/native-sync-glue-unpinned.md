@@ -1,10 +1,12 @@
 # No test drives the native sync glue in the app
 
-**What.** The tests run `SyncClient` and `PressGate` on fakes. Three calls in `native/Manifest` have no test:
+**What.** The tests run `SyncClient` and `PressGate` on fakes. Five calls in `native/Manifest` have no test:
 
 - `PressWatcher` reports a finger down, a lift and a cancel to `PressGate`. A broken recognizer leaves the gate open, and a reply then applies under a thumb (`auto-apply-happens-now`).
 - `scenePhase` becoming active calls `resume()`.
 - A key link that stores a key calls `keySaved()`.
+- A tap on `SyncAdvisoryLine` in `SyncViews.swift` calls `RootView.showSync`, which opens the Ledger tab with the Sync panel open and History closed.
+- `ManifestApp` calls `SyncClient.persistLastSync` at boot, so the last sync time survives a relaunch. The unit tests call `persistLastSync` themselves.
 
 The only UI tests of lane N4b cover the 401 and 413 line. The gap closes when a UI test or a hosted test pins each call.
 
