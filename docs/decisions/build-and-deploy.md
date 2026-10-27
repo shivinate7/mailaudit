@@ -39,7 +39,7 @@ npm run deploy        # build + test, then a branch holding only index.html and 
 
 ## ios-ship testflight
 
-`ios-ship testflight tools/ios-ship.json --app Manifest` is the iOS fallback path, run on this Mac when the Mac install fails. The ruling is `native-ships-via-testflight`. The shared tool runs `xcodegen generate`, archives Release for `generic/platform=iOS` with a UTC-minute build number, then uploads to App Store Connect. It does not run `npm run build`. `--export-only` exports without uploading and is the proof run. The upload runs once and is never retried. The key file, key id and issuer id live in `~/.config/ios-ship/account.json`, off the repo, and are never read or printed.
+`ios-ship testflight tools/ios-ship.json --app Manifest` is the iOS fallback path, run on this Mac when the Mac install fails. The ruling is `native-ships-via-testflight`. The shared tool runs `xcodegen generate`, archives Release for `generic/platform=iOS` with a UTC-minute build number, then uploads to App Store Connect. It does not run `npm run build`. `--export-only` exports without uploading and is the proof run. The upload runs once and is never retried. The key file, key id and issuer id live in the ios-ship account file under ~/.config, off the repo, and are never read or printed.
 
 ## Why check:build compares the whole page, and the Pages quirk
 

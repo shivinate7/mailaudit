@@ -16,7 +16,7 @@ Plan: docs/decisions/build-and-deploy.md#make-testflight (native)
 - `--export-only` stops before the upload and keeps the export in a printed folder. It is the only proof run without an upload.
 - Run it on this Mac after each merge, from a clean tree at origin/main. The tool is shared with the owner's Degen project.
 - The upload runs once. Never retry it in a loop.
-- The App Store Connect key file, key id and issuer id are credentials. They live in the ios-ship account file on this Mac, `~/.config/ios-ship/account.json`, never in this repo. Never read, copy or print the key file.
+- The App Store Connect key file, key id and issuer id are credentials. They live in the ios-ship account file on this Mac, the ios-ship account file under ~/.config, never in this repo. Never read, copy or print the key file.
 
 ## The build number
 
