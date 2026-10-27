@@ -30,5 +30,5 @@ No test reads these figures. The build re-reads the fold at run time, so the bui
 
 - Outer screen: 382 by 644 pt of safe content. Insets: bottom 34, trailing 84.
 - Fold strip: 40 pt, centred on the inner screen's 951 pt edge, at 455.5 to 495.5 pt. One reading, taken after a close. No fold was reported while open. Re-read it in the build.
-- System keyboard frame: open 951 by 263 pt. Half-open 801 by 263 pt. Outer screen 466x250 to 289.
+- System keyboard frame: open 951 by 263 pt. Half-open 801 by 263 pt. Outer screen 466 pt wide by 250 to 289 pt tall; two heights were read, likely with and without the suggestion bar.
 - The frame is full width on the open screen, so it spans the fold. The keys never showed in screenshots, likely because a hardware keyboard was attached. So the spanning rests on the frame only.
