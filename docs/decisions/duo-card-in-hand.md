@@ -57,3 +57,4 @@ A typed query matches the start of each word of the normalized name, see `envelo
 - `native-swift-rebuild` — the ruling that makes the native client.
 - `native-parity-table` — the scope of each feature in the native client.
 - `duo-fold-and-keyboard` — the fold strip, keyboard frame and outer screen figures.
+- `new-envelope-ends-an-envelope` — the New envelope control, and how a shared name is decided.
