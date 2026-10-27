@@ -522,3 +522,57 @@ export function salvageLedger(data) {
   }
   return { data: out, dropped };
 }
+
+/* ---------- Card in Hand (duo-hand-rules) ----------
+   Pure rules for the Duo's card-name entry. State comes in as arguments; none reads the clock
+   except through `now`. They reuse the web's matchers (lineHit, matchEnvelope, lostMail). */
+
+const copiesOut = (it, received) => it.qty > Math.min(it.qty, received[it.key] || 0);
+
+/* items still owed copies, in a package that is neither canceled nor refunded */
+const openItems = (items, received, refundedGks) =>
+  items.filter((it) => !CANCELED(it) && !refundedGks.has(gkOf(it)) && copiesOut(it, received));
+
+/* handHits: gk of each open package with a line the typed text hits, groupPackages order */
+export function handHits(items, query, received, refundedGks) {
+  const q = String(query || "").trim().toLowerCase();
+  if (!q) return [];
+  return groupPackages(openItems(items, received, refundedGks).filter((it) => lineHit(it, q))).map((p) => p.gk);
+}
+
+/* handStep: {action: post|hold|none, gk, plan, held}. A name two open envelopes share is held
+   until the next card names one envelope that also holds it. */
+export function handStep(items, received, refundedGks, held, typed) {
+  const open = openItems(items, received, refundedGks);
+  const envelopesOf = (nk) => groupPackages(open.filter((it) => normName(it.name) === nk));
+  /* the envelope with all its open lines, not only the ones that name the typed card */
+  const whole = (p) => groupPackages(open).find((q) => q.gk === p.gk);
+  const nk = normName(typed);
+  const hk = held ? normName(held) : null;
+  const hold = (h) => ({ action: "hold", gk: null, plan: null, held: h });
+  if (!nk) return hk ? hold(hk) : { action: "none", gk: null, plan: null, held: null };
+  const mine = envelopesOf(nk);
+  if (!hk || hk === nk) {
+    if (mine.length >= 2) return hold(nk);
+    if (mine.length === 0) return { action: "none", gk: null, plan: null, held: null };
+    const plan = matchEnvelope([{ name: typed, qty: 1 }], whole(mine[0]), received).plan;
+    return { action: "post", gk: mine[0].gk, plan, held: null };
+  }
+  const pkg = mine.length === 1 ? mine[0] : null;
+  if (!pkg || !envelopesOf(hk).some((p) => p.gk === pkg.gk)) return hold(hk);
+  const plan = matchEnvelope([{ name: held, qty: 1 }, { name: typed, qty: 1 }], whole(pkg), received).plan;
+  return { action: "post", gk: pkg.gk, plan, held: null };
+}
+
+/* pastTransit: untracked, unreceived, unstamped packages at 14+ days, oldest last */
+export function pastTransit(items, received, stampedGks, now) {
+  const rows = [];
+  for (const p of groupPackages(items)) {
+    if (!isUntracked(p) || stampedGks.has(p.gk) || !p.items.some((it) => copiesOut(it, received))) continue;
+    const lost = lostMail(p.date, p.tracking, false, now);
+    if (!lost) continue;
+    const claimBy = new Date(Date.parse(p.date) + 30 * DAY_MS).toISOString().slice(0, 10);
+    rows.push({ gk: p.gk, tier: lost.tier, days: lost.days, claimBy });
+  }
+  return rows;
+}
