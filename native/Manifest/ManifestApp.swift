@@ -20,7 +20,7 @@ struct ManifestApp: App {
     private let links = PendingKeyLinks()
     private static let log = Logger(subsystem: "dev.shivinate.manifest", category: "key-link")
 
-    init() { Parchment.load() }
+    init() { Parchment.load(); Parchment.paintTabBadge() }
 
     var body: some Scene {
         WindowGroup {

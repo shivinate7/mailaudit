@@ -1,6 +1,11 @@
 import ManifestKit
 import SwiftUI
 
+/// Orphaned's paint: a part's token name through Parchment (OrphanedPaint holds the choice and has the unit test).
+private func paint(_ part: OrphanedPaint.Part) -> Color {
+    OrphanedPaint.token(part).map(Parchment.color) ?? .clear
+}
+
 /// The Orphaned tab: envelopes parked until the owner says which package they came from.
 /// Candidates are offered and never chosen, and a tie looks the same for every tied row
 /// (orphaned-mail-never-decides). `onChange` runs after a write, so Packages reads the new check-ins.
@@ -15,9 +20,12 @@ struct OrphanedView: View {
                     ComposerView(model: model, target: .new, onChange: onChange)
                 } else {
                     Button { model.open(.new) } label: {
-                        Text("Record an envelope").font(.headline).frame(maxWidth: .infinity, minHeight: 44)
+                        Text("+ Record an envelope").font(.cochin(15, relativeTo: .body).weight(.bold))
+                            .foregroundStyle(paint(.recordText)).frame(maxWidth: .infinity, minHeight: 44)
+                            .padding(.vertical, 4)
+                            .background(paint(.recordFill), in: RoundedRectangle(cornerRadius: 8))
                     }
-                    .buttonStyle(.borderedProminent).tint(.action)
+                    .buttonStyle(.plain)
                     .accessibilityIdentifier("orphaned-record")
                 }
                 ForEach(Array(model.envelopes.enumerated()), id: \.element.id) { i, env in
@@ -31,8 +39,8 @@ struct OrphanedView: View {
                 // The pile emptied out from under the notice: it still needs somewhere to go.
                 if let u = model.undo, u.index >= model.envelopes.count { UndoNoticeView(model: model, notice: u, onChange: onChange) }
                 if model.envelopes.isEmpty && model.composing != .new {
-                    Text(OrphanedNotice.emptyLine).font(.callout).foregroundStyle(.primary)
-                        .frame(maxWidth: .infinity).multilineTextAlignment(.center)
+                    Text(OrphanedNotice.emptyLine).font(.cochin(14, relativeTo: .body)).foregroundStyle(paint(.emptyLine))
+                        .frame(maxWidth: .infinity).multilineTextAlignment(.center).padding(.vertical, 28).padding(.horizontal, 8)
                         .accessibilityIdentifier("orphaned-empty")
                 }
             }
@@ -40,12 +48,35 @@ struct OrphanedView: View {
         }
         .overlay(alignment: .bottom) {
             if let e = model.error {
-                Text(e).font(.footnote).padding(12).frame(maxWidth: .infinity)
-                    .background(.regularMaterial).accessibilityIdentifier("orphaned-error")
+                Text(e).font(.cochin(13, relativeTo: .footnote)).foregroundStyle(paint(.entry))
+                    .padding(12).frame(maxWidth: .infinity)
+                    .background(paint(.cardSurface))
+                    .overlay(alignment: .top) { Rectangle().fill(paint(.cardBorder)).frame(height: 1) }
+                    .accessibilityIdentifier("orphaned-error")
             }
         }
         .task { try? await model.load() }
     }
+}
+
+/// A raised parchment card: card fill, a 1pt border, radius 8 and the web's small shadow.
+private struct CardChrome: ViewModifier {
+    let border: OrphanedPaint.Part
+    func body(content: Content) -> some View {
+        content
+            .background(paint(.cardSurface), in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(border), lineWidth: 1))
+            .shadow(color: Parchment.shadow, radius: 2, y: 1)
+    }
+}
+
+private struct Rule: View {
+    var body: some View { Rectangle().fill(paint(.cardBorder)).frame(height: 1) }
+}
+
+/// A mono micro-label: uppercase, tracked, inkSoft.
+private func micro(_ s: String, size: CGFloat, tracking: CGFloat) -> some View {
+    Text(s.uppercased()).font(.mono(size, relativeTo: .caption)).tracking(tracking * size).foregroundStyle(paint(.microLabel))
 }
 
 private struct UndoNoticeView: View {
@@ -56,14 +87,18 @@ private struct UndoNoticeView: View {
     var body: some View {
         HStack(spacing: 8) {
             Text(OrphanedNotice.undoLine(matchedQty: notice.matchedQty, pkgLabel: notice.pkgLabel, leftoverQty: notice.leftoverQty))
-                .font(.footnote).frame(maxWidth: .infinity, alignment: .leading)
-            Button { Task { try? await model.undoAssign(); await onChange() } } label: { hit("Undo") }
-                .accessibilityIdentifier("orphaned-undo")
-            Button { model.dismissUndo() } label: { Image(systemName: "xmark").frame(width: 44, height: 44).foregroundStyle(.primary) }
-                .accessibilityLabel("Dismiss").accessibilityIdentifier("orphaned-undo-dismiss")
+                .font(.cochin(13, relativeTo: .footnote)).foregroundStyle(paint(.noticeText))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button { Task { try? await model.undoAssign(); await onChange() } } label: { MiniLabel(title: "Undo") }
+                .buttonStyle(.plain).accessibilityIdentifier("orphaned-undo")
+            Button { model.dismissUndo() } label: {
+                Image(systemName: "xmark").font(.system(size: 14)).foregroundStyle(paint(.dismiss)).frame(width: 44, height: 44)
+            }
+            .buttonStyle(.plain).accessibilityLabel("Dismiss").accessibilityIdentifier("orphaned-undo-dismiss")
         }
-        .padding(.leading, 12)
-        .background(Color(uiColor: .secondarySystemBackground), in: RoundedRectangle(cornerRadius: 8))
+        .padding(.leading, 12).padding(.vertical, 4)
+        .background(paint(.noticeFill), in: RoundedRectangle(cornerRadius: 8))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.noticeBorder), lineWidth: 1))
     }
 }
 
@@ -78,70 +113,101 @@ private struct ComposerView: View {
 
     var body: some View {
         let d = draft
+        let typed = d.input.trimmingCharacters(in: .whitespacesAndNewlines)
+        let asTyped = !typed.isEmpty && !found.contains(where: { $0.name.caseInsensitiveCompare(typed) == .orderedSame })
+        let cards = d.entries.reduce(0) { $0 + $1.qty }
         VStack(alignment: .leading, spacing: 8) {
-            Text(target == .new ? "New envelope" : "Edit envelope").font(.headline)
+            micro(target == .new ? "New envelope" : "Edit envelope", size: 11, tracking: 0.14)
+                .accessibilityAddTraits(.isHeader)
             // A vertical-axis field is a text view, which the audit does not call clipped at large type (a one-line UITextField is).
             // Its Return key types a newline, so a newline is read as the submit.
-            TextField("Type a card name\u{2026}", text: Binding(get: { model.draft(for: target).input }, set: { v in
+            TextField("Card name", text: Binding(get: { model.draft(for: target).input }, set: { v in
                 if let nl = v.firstIndex(of: "\n") {
                     let typed = String(v[..<nl])
                     model.setInput(typed, for: target)
                     Task { try? await model.addName(typed, for: target) }
                 } else { model.setInput(v, for: target) }
-            }), axis: .vertical)
+            }), prompt: Text("Type a card name\u{2026}").foregroundStyle(paint(.note)), axis: .vertical)
                 .lineLimit(1...3).inputBox().focused($focused).submitLabel(.done)
                 .onSubmit { Task { try? await model.addName(model.draft(for: target).input, for: target) } }
-                .accessibilityLabel("Card name").accessibilityIdentifier("orphaned-input")
-            ForEach(found, id: \.name) { s in
-                Button { Task { try? await model.addName(s.name, for: target) } } label: {
-                    HStack {
-                        Text(s.name).frame(maxWidth: .infinity, alignment: .leading)
-                        Text("\(s.qty) out \u{00B7} \(s.sellerCount) seller\(s.sellerCount == 1 ? "" : "s")")
-                            .font(.caption).foregroundStyle(.primary)
+                .accessibilityIdentifier("orphaned-input")
+            if !found.isEmpty || asTyped {
+                VStack(spacing: 0) {
+                    ForEach(Array(found.enumerated()), id: \.element.name) { i, s in
+                        if i > 0 { Rule() }
+                        Button { Task { try? await model.addName(s.name, for: target) } } label: {
+                            HStack {
+                                Text(s.name).font(.cochin(14, relativeTo: .body)).foregroundStyle(paint(.entry))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                Text("\(s.qty) out \u{00B7} \(s.sellerCount) seller\(s.sellerCount == 1 ? "" : "s")")
+                                    .font(.mono(10.5, relativeTo: .caption)).foregroundStyle(paint(.note))
+                            }
+                            .padding(.vertical, 8).padding(.horizontal, 12).frame(minHeight: 44).contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain).accessibilityIdentifier("suggestion:\(s.name)")
                     }
-                    .frame(minHeight: 44).foregroundStyle(.primary)
-                }
-                .accessibilityIdentifier("suggestion:\(s.name)")
-            }
-            let typed = d.input.trimmingCharacters(in: .whitespacesAndNewlines)
-            if !typed.isEmpty && !found.contains(where: { $0.name.caseInsensitiveCompare(typed) == .orderedSame }) {
-                Button { Task { try? await model.addName(typed, for: target) } } label: {
-                    Text("Add \u{201C}\(typed)\u{201D} as typed").frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).foregroundStyle(.primary)
-                }
-                .accessibilityIdentifier("orphaned-add-typed")
-            }
-            ForEach(Array(d.entries.enumerated()), id: \.offset) { i, e in
-                HStack {
-                    Text(e.qty > 1 ? "\u{00D7}\(e.qty) \(e.name)" : e.name).frame(maxWidth: .infinity, alignment: .leading)
-                    Button { model.setQty(e.qty - 1, at: i, for: target) } label: {
-                        Image(systemName: e.qty > 1 ? "minus.circle" : "trash").frame(width: 44, height: 44).foregroundStyle(.primary)
+                    if asTyped {
+                        if !found.isEmpty { Rule() }
+                        Button { Task { try? await model.addName(typed, for: target) } } label: {
+                            Text("Add \u{201C}\(typed)\u{201D} as typed").font(.cochin(13, relativeTo: .footnote))
+                                .foregroundStyle(paint(.advisoryText))
+                                .padding(.vertical, 8).padding(.horizontal, 12).frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                                .background(paint(.advisoryFill))
+                        }
+                        .buttonStyle(.plain).accessibilityIdentifier("orphaned-add-typed")
                     }
-                    .accessibilityLabel(e.qty > 1 ? "One fewer \(e.name)" : "Remove \(e.name)")
-                    Button { model.setQty(e.qty + 1, at: i, for: target) } label: {
-                        Image(systemName: "plus.circle").frame(width: 44, height: 44).foregroundStyle(.primary)
-                    }
-                    .accessibilityLabel("One more \(e.name)")
                 }
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.candidateBorder), lineWidth: 1))
             }
-            TextField("Note", text: Binding(get: { model.draft(for: target).note }, set: { model.setNote($0, for: target) }), axis: .vertical)
+            if !d.entries.isEmpty {
+                VStack(spacing: 0) {
+                    Rule()
+                    ForEach(Array(d.entries.enumerated()), id: \.offset) { i, e in
+                        HStack(spacing: 0) {
+                            Text(e.name).font(.cochin(14, relativeTo: .body)).foregroundStyle(paint(.entry))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            stepper("\u{2013}", e.qty > 1 ? "One fewer \(e.name)" : "Remove \(e.name)") { model.setQty(e.qty - 1, at: i, for: target) }
+                            Text("\(e.qty)").font(.mono(13, relativeTo: .caption)).foregroundStyle(paint(.entry)).frame(minWidth: 20)
+                            stepper("+", "One more \(e.name)") { model.setQty(e.qty + 1, at: i, for: target) }
+                        }
+                        .padding(.leading, 12)
+                        Rule()
+                    }
+                }
+                .padding(.top, 8)
+            }
+            TextField("Note", text: Binding(get: { model.draft(for: target).note }, set: { model.setNote($0, for: target) }),
+                      prompt: Text("Note (optional) \u{2014} tracking #, sender, mailer\u{2026}").foregroundStyle(paint(.note)), axis: .vertical)
                 .inputBox().accessibilityIdentifier("orphaned-note")
-            HStack {
-                Button { model.cancel() } label: { hit("Cancel") }.accessibilityIdentifier("orphaned-cancel")
+            HStack(spacing: 8) {
+                Text("\(cards) card\(cards == 1 ? "" : "s")").font(.mono(11, relativeTo: .caption)).foregroundStyle(paint(.note))
                 Spacer()
-                // Own fill when ready (white on action, 7:1). Empty Save takes the system disabled look so VoiceOver reports it Disabled.
+                Button { model.cancel() } label: { MiniLabel(title: "Cancel") }
+                    .buttonStyle(.plain).accessibilityIdentifier("orphaned-cancel")
+                // Empty Save is disabled, so VoiceOver reports it Disabled.
                 let ready = !d.entries.isEmpty
                 Button { Task { try? await model.save(target); await onChange() } } label: {
-                    hit("Save", ready ? .white : .primary)
-                        .padding(.horizontal, 8)
-                        .background(ready ? Color.action : Color.primary.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+                    ready
+                        ? MiniLabel(title: "Save envelope", bold: true, text: paint(.saveReadyText), fill: paint(.saveReadyFill), border: paint(.saveReadyFill))
+                        : MiniLabel(title: "Save envelope", text: paint(.saveEmptyText), border: paint(.saveEmptyBorder))
                 }
                 .buttonStyle(.plain).disabled(!ready).accessibilityIdentifier("orphaned-save")
             }
+            .padding(.top, 4)
         }
         .padding(12)
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(.primary))
+        .modifier(CardChrome(border: .composerBorder))
         .task(id: d.input) { found = await model.suggestions(for: d.input) }
         .onAppear { focused = true }
+    }
+
+    /// A bare glyph in a 44pt hit frame, as the web stepper draws it.
+    private func stepper(_ glyph: String, _ label: String, _ act: @escaping () -> Void) -> some View {
+        Button(action: act) {
+            Text(glyph).font(.mono(15, relativeTo: .body)).foregroundStyle(paint(.entry)).frame(width: 34, height: 44).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain).accessibilityLabel(label)
     }
 }
 
@@ -156,60 +222,77 @@ private struct EnvelopeCard: View {
         let ranked = model.ranked(for: env.id)
         let total = env.entries.reduce(0) { $0 + $1.qty }
         let shown = showAll ? ranked.list : Array(ranked.list.prefix(3))
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Envelope \u{00B7} \(Date(timeIntervalSince1970: env.createdAt / 1000).formatted(.iso8601.year().month().day())) \u{00B7} \(total) card\(total == 1 ? "" : "s")")
-                    .font(.caption).foregroundStyle(.primary).frame(maxWidth: .infinity, alignment: .leading)
-                Button { model.open(.edit(env.id)) } label: { hit("Edit") }
-                Button(role: .destructive) { armed.toggle() } label: { hit("Discard", Color.danger) }
-                    .accessibilityIdentifier("discard:\(env.id)")
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                micro("Envelope \u{00B7} \(Date(timeIntervalSince1970: env.createdAt / 1000).formatted(.iso8601.year().month().day())) \u{00B7} \(total) card\(total == 1 ? "" : "s")", size: 11, tracking: 0.12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button { model.open(.edit(env.id)) } label: { MiniLabel(title: "Edit", size: 11) }.buttonStyle(.plain)
+                Button(role: .destructive) { armed.toggle() } label: {
+                    MiniLabel(title: "Discard", size: 11, text: paint(.discardText), fill: paint(.cardSurface), border: paint(.discardBorder))
+                }
+                .buttonStyle(.plain).accessibilityIdentifier("discard:\(env.id)")
             }
+            .padding(.top, 12).padding(.horizontal, 12).padding(.bottom, 8)
             .overlay(alignment: .bottomTrailing) {
-                // The ask hangs below the row, so arming moves nothing (ux-press-moves-nothing).
+                // The ask hangs below the row, so arming moves nothing (no-layout-shift-under-pointer).
                 if armed {
-                    HStack {
-                        Button { armed = false } label: { hit("Cancel") }
-                        Button(role: .destructive) {
+                    HStack(spacing: 4) {
+                        Button { armed = false } label: { MiniLabel(title: "Cancel", size: 11) }.buttonStyle(.plain)
+                        Button {
                             armed = false
                             Task { try? await model.discard(envelope: env.id); await onChange() }
-                        } label: { Text("Tap again to discard \(total) card\(total == 1 ? "" : "s")").frame(minHeight: 44) }
-                        .buttonStyle(.borderedProminent).tint(.dangerFill)
+                        } label: {
+                            MiniLabel(title: "Tap again to discard \(total) card\(total == 1 ? "" : "s")", size: 11, bold: true,
+                                      text: paint(.armedText), fill: paint(.armedFill), border: paint(.armedFill))
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .padding(4).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
-                    .offset(y: 48).zIndex(1)
+                    .padding(4).modifier(CardChrome(border: .discardBorder))
+                    .padding(.trailing, 12).offset(y: 48).zIndex(1)
                 }
             }
             .zIndex(1)
-            ForEach(Array(env.entries.enumerated()), id: \.offset) { _, e in
-                HStack {
-                    Text(e.qty > 1 ? "\u{00D7}\(e.qty) \(e.name)" : e.name).frame(maxWidth: .infinity, alignment: .leading)
-                    if model.hasNoOutstandingCopy(e, in: env.id) {
-                        Text("no outstanding copy").font(.caption).foregroundStyle(.primary)
+            VStack(alignment: .leading, spacing: 4) {
+                ForEach(Array(env.entries.enumerated()), id: \.offset) { _, e in
+                    HStack {
+                        Text(e.qty > 1 ? "\u{00D7}\(e.qty) \(e.name)" : e.name).font(.cochin(13.5, relativeTo: .body))
+                            .foregroundStyle(paint(.entry)).frame(maxWidth: .infinity, alignment: .leading)
+                        if model.hasNoOutstandingCopy(e, in: env.id) {
+                            Text("no outstanding copy").font(.mono(10, relativeTo: .caption)).foregroundStyle(paint(.advisoryText))
+                                .padding(.horizontal, 8).background(paint(.advisoryFill), in: Capsule())
+                        }
+                    }
+                }
+                if !env.note.isEmpty {
+                    Text(env.note).font(.mono(11, relativeTo: .caption)).foregroundStyle(paint(.note)).padding(.top, 4)
+                }
+            }
+            .padding(.horizontal, 12).padding(.bottom, 8)
+            Rule()
+            VStack(alignment: .leading, spacing: 8) {
+                if ranked.list.isEmpty {
+                    Text("No outstanding package accounts for any of these. It\u{2019}ll start matching if a later import brings in the order.")
+                        .font(.cochin(13, relativeTo: .footnote)).foregroundStyle(paint(.note))
+                } else {
+                    micro("Could have come from", size: 10.5, tracking: 0.12)
+                    if let tie = OrphanedNotice.tieLine(tied: ranked.tied) {
+                        AdvisoryText(line: tie, font: .cochin(12.5, relativeTo: .footnote)).accessibilityIdentifier("orphaned-tie")
+                    }
+                    ForEach(shown, id: \.pkg.gk) { c in CandidateRow(model: model, env: env, ranked: ranked, c: c, onChange: onChange) }
+                    if ranked.list.count > 3 {
+                        Button { showAll.toggle() } label: {
+                            Text(showAll ? "show fewer" : "show \(ranked.list.count - 3) more candidate\(ranked.list.count == 4 ? "" : "s")")
+                                .font(.mono(11, relativeTo: .caption)).underline().foregroundStyle(paint(.note))
+                                .frame(minHeight: 44, alignment: .leading)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             }
-            if !env.note.isEmpty { Text(env.note).font(.footnote).foregroundStyle(.primary) }
-            Divider()
-            if ranked.list.isEmpty {
-                Text("No outstanding package accounts for any of these. It\u{2019}ll start matching if a later import brings in the order.")
-                    .font(.callout).foregroundStyle(.primary)
-            } else {
-                Text("Could have come from").font(.caption).foregroundStyle(.primary)
-                if let tie = OrphanedNotice.tieLine(tied: ranked.tied) {
-                    Text(tie).font(.footnote).accessibilityIdentifier("orphaned-tie")
-                }
-                ForEach(shown, id: \.pkg.gk) { c in CandidateRow(model: model, env: env, ranked: ranked, c: c, onChange: onChange) }
-                if ranked.list.count > 3 {
-                    Button { showAll.toggle() } label: {
-                        Text(showAll ? "show fewer" : "show \(ranked.list.count - 3) more candidate\(ranked.list.count == 4 ? "" : "s")")
-                            .font(.footnote).frame(minHeight: 44).foregroundStyle(.primary)
-                    }
-                }
-            }
+            .padding(.top, 8).padding(.horizontal, 12).padding(.bottom, 12)
         }
         .task(id: armed) { if armed { try? await Task.sleep(for: .seconds(4)); armed = false } }
-        .padding(12)
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(.separator))
+        .modifier(CardChrome(border: .cardBorder))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("envelope:\(env.id)")
     }
@@ -226,24 +309,24 @@ private struct CandidateRow: View {
         let sure = ranked.emphasized(c)
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(c.pkg.seller).font(.headline)
+                Text(c.pkg.seller).font(.cochin(14, relativeTo: .body).weight(.bold)).foregroundStyle(paint(.seller))
+                    .lineLimit(1).truncationMode(.tail)
                 Text([c.pkg.date, c.pkg.orderId].filter { !$0.isEmpty }.joined(separator: " \u{00B7} "))
-                    .font(.caption).foregroundStyle(.primary)
-                Text(fit).font(.caption).fontWeight(sure ? .bold : .regular).foregroundStyle(sure ? Color.sure : Color.primary)
+                    .font(.mono(10.5, relativeTo: .caption)).foregroundStyle(paint(.candidateMeta)).lineLimit(1)
+                Text(fit).font(sure ? .mono(11, relativeTo: .caption).weight(.bold) : .mono(11, relativeTo: .caption))
+                    .foregroundStyle(paint(sure ? .fitExact : .fitPlain))
                     .accessibilityIdentifier(sure ? "exact:\(c.pkg.gk)" : "fit:\(c.pkg.gk)")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             // One tap assigns. The row is the same size whether the candidate is tied or not.
             Button { Task { try? await model.assign(envelope: env.id, to: c.pkg.gk); await onChange() } } label: {
-                // Own fill, not .bordered: that style pads the label by a fractional amount, so tied rows came out a hair apart.
-                Text("This one").foregroundStyle(.primary).frame(minWidth: 88, minHeight: 44)
-                    .background(Color.primary.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+                MiniLabel(title: "This one")
             }
             .buttonStyle(.plain)
-                .accessibilityLabel("This one, \(c.pkg.seller)").accessibilityIdentifier("assign:\(c.pkg.gk)")
+            .accessibilityLabel("This one, \(c.pkg.seller)").accessibilityIdentifier("assign:\(c.pkg.gk)")
         }
         .padding(8)
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(.separator))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.candidateBorder), lineWidth: 1))
     }
 
     private var fit: String {
@@ -254,25 +337,11 @@ private struct CandidateRow: View {
 
 private extension View {
     /// The plain style, so the field's height follows its text at large Dynamic Type; the rounded-border style is a fixed-height UITextField and the audit calls its text clipped.
+    /// Cochin 16 stops iOS zoom on focus.
     func inputBox() -> some View {
-        textFieldStyle(.plain).padding(.horizontal, 8).frame(minHeight: 44)
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(.separator))
+        textFieldStyle(.plain).font(.cochin(16, relativeTo: .body)).foregroundStyle(paint(.entry))
+            .padding(.vertical, 8).padding(.horizontal, 12).frame(minHeight: 44)
+            .background(paint(.cardSurface), in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.candidateBorder), lineWidth: 1))
     }
-}
-
-/// One tap target: the 44pt frame sits in the label, so the whole frame is the hit region.
-private func hit(_ title: String, _ color: Color = .primary) -> some View {
-    Text(title).foregroundStyle(color).frame(minWidth: 44, minHeight: 44)
-}
-
-/// Hand-set colours for the contrast floor (palette-tokens-contrast-floor): system blue, red and green fall short of 4.5:1 on white.
-/// Measured, text on white / grouped grey / black / dark card: action 7.1 (white on it), dangerFill 7.0 (white on it), danger 7.0 / 6.3 / 9.3 / 7.6, sure 7.6 / 6.9 / 14.1 / 11.5.
-private extension Color {
-    static func adaptive(light: UIColor, dark: UIColor) -> Color {
-        Color(uiColor: UIColor { $0.userInterfaceStyle == .dark ? dark : light })
-    }
-    static let action = Color(uiColor: UIColor(red: 0, green: 0.32, blue: 0.76, alpha: 1))
-    static let dangerFill = Color(uiColor: UIColor(red: 0.70, green: 0.07, blue: 0.07, alpha: 1))
-    static let danger = adaptive(light: UIColor(red: 0.70, green: 0.07, blue: 0.07, alpha: 1), dark: UIColor(red: 1, green: 0.55, blue: 0.5, alpha: 1))
-    static let sure = adaptive(light: UIColor(red: 0.05, green: 0.38, blue: 0.14, alpha: 1), dark: UIColor(red: 0.5, green: 0.92, blue: 0.55, alpha: 1))
 }
