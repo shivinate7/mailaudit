@@ -108,6 +108,58 @@ final class OrphanedComposerTests: XCTestCase {
         XCTAssertEqual(model.draft(for: .new).entries, orphanedCards(("Mystery Card", 1)), "a blank or punctuation-only name adds nothing")
     }
 
+    // MARK: a suggestion tap does not wait on the engine
+
+    /// A model whose engine counts its normName calls. The count lives in the bundle, so the test reads it
+    /// back through the engine like any other rule constant.
+    private func countedComposer() async throws -> (model: OrphanedModel, normCalls: () async throws -> Int) {
+        let probe = try probeBundleFile(
+            "Rules.normCalls=0;(function(f){Rules.normName=function(s){Rules.normCalls++;return f(s)}})(Rules.normName)",
+            for: self)
+        let engine = try RulesEngine(bundleURL: probe)
+        let box = try makeOrphanedSandbox()
+        try box.write()
+        let (model, _) = try await box.open(engine: engine)
+        model.open(.new)
+        return (model, {
+            let json = try await engine.constant("normCalls")
+            return try XCTUnwrap(Int(json))
+        })
+    }
+
+    /// A name already in the suggestion pool adds with no normName call, so Save is ready the moment the
+    /// card shows. A hop to the rules actor first left Save disabled while the app looked idle.
+    /// Task.immediate runs addName up to its first suspension, so a draft already written when it
+    /// returns shows that no hop came first.
+    func testASuggestionTapWritesTheDraftBeforeAnyEngineCall() async throws {
+        let (model, normCalls) = try await countedComposer()
+        let before = try await normCalls()
+
+        let tap = Task.immediate { try await model.addName("Lightning Bolt", for: .new) }
+        XCTAssertEqual(
+            model.draft(for: .new).entries, orphanedCards(("Lightning Bolt", 1)), "the draft is written before the tap returns")
+        try await tap.value
+
+        let bump = Task.immediate { try await model.addName("Lightning Bolt", for: .new) }
+        XCTAssertEqual(model.draft(for: .new).entries, orphanedCards(("Lightning Bolt", 2)), "a second tap bumps with no wait too")
+        try await bump.value
+
+        let after = try await normCalls()
+        XCTAssertEqual(after, before, "a name in the pool never reaches normName")
+    }
+
+    /// A typed name that is not in the pool still goes through normName: the ledger holds no key for it.
+    func testATypedNameNotInThePoolStillGoesThroughTheEngine() async throws {
+        let (model, normCalls) = try await countedComposer()
+        let before = try await normCalls()
+
+        try await model.addName("Mystery Card", for: .new)
+
+        let after = try await normCalls()
+        XCTAssertGreaterThan(after, before, "anchor: the counter counts a normName call")
+        XCTAssertEqual(model.draft(for: .new).entries, orphanedCards(("Mystery Card", 1)), "the name still lands once the engine answers")
+    }
+
     // MARK: save
 
     /// Save records the envelope at the top of the pile, writes it to the file, and checks

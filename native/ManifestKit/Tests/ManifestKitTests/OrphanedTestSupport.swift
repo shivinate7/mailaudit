@@ -189,11 +189,14 @@ final class OrphanedSandbox: @unchecked Sendable {
     }
 
     /// The store and the model over this folder, loaded. `bundle` is the rules.js the engine runs.
+    /// A test that reads the engine itself passes `engine`, and `bundle` is then not used.
     @MainActor
-    func open(bundle: URL = RulesGoldenTests.bundleURL) async throws -> (model: OrphanedModel, store: LedgerStore) {
+    func open(
+        bundle: URL = RulesGoldenTests.bundleURL, engine: RulesEngine? = nil
+    ) async throws -> (model: OrphanedModel, store: LedgerStore) {
         let store = LedgerStore(fileURL: fileURL, now: { [clock] in clock.t })
         try store.load()
-        let model = OrphanedModel(engine: try RulesEngine(bundleURL: bundle), store: store)
+        let model = OrphanedModel(engine: try engine ?? RulesEngine(bundleURL: bundle), store: store)
         try await model.load()
         return (model, store)
     }
