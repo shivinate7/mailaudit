@@ -69,6 +69,7 @@ struct PackageRow: View {
                     Text(pkg.seller).font(.cochin(15).weight(.bold)).foregroundStyle(paint(.seller, packageState))
                         .lineLimit(1).truncationMode(.tail)
                         .textSelection(.enabled)  // owner ruling 2026-10-21: the header text is selectable, seller included
+                        .contentShape(Rectangle())  // measured: without it, the selectable date below takes the seller's long press
                     dateLine
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -94,6 +95,7 @@ struct PackageRow: View {
 
     private var dateLine: some View {
         Text(pkg.date).font(.mono(11)).foregroundStyle(paint(.orderId, packageState)).lineLimit(1).textSelection(.enabled)
+            .contentShape(Rectangle())  // keeps its long press off the seller line above
             .accessibilityLabel("Ordered \(pkg.date)")  // a bare date failed the Dynamic Type audit
     }
 
