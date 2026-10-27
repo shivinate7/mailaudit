@@ -52,7 +52,9 @@ Owner, 15:34 CDT: where the owner has not ruled, the native Duo copies the web a
 
 Two pages show only when the hinge reports a fold inside the window. Otherwise the phone shows today's one-page layout. This is the same rule as section 4.6.2 of the degen plan. Default, not owner. The owner has not ruled on it.
 
-A typed query matches the start of each word of the normalized name, see `envelope-names-match-normname`. Default, not owner.
+A typed query matches as the web search does: a case-insensitive part of the card name, set, seller or order id, through the web's one matcher. Default, not owner.
+
+Packages does not spread on the open Duo. It keeps the web's one-page layout. Default, not owner.
 
 **Holds while:** no native Duo view is built yet, and the owner's pick of Card in Hand stands. Item 22 holds until the owner reviews the test build.
 
