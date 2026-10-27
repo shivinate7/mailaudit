@@ -1,6 +1,11 @@
 import ManifestKit
 import SwiftUI
 
+/// A token of shared/tokens.json as a colour, for a part of a Tally row.
+private func paint(_ part: TallyRowPaint.Part, done: Bool = false) -> Color {
+    TallyRowPaint.token(part, done: done).map(Parchment.color) ?? .clear
+}
+
 /// One row per product name (tally-pools-on-the-exact-name). A check-in swaps a glyph inside a
 /// fixed 45pt frame and the row keeps its outstanding line mounted, so nothing moves
 /// (no-layout-shift-under-pointer). The order is the model's frozen order.
@@ -15,17 +20,20 @@ struct TallyView: View {
         VStack(spacing: 0) {
             controls
             ScrollView {
-                VStack(spacing: 8) {
+                VStack(spacing: 12) {
                     ForEach(model.rows, id: \.name) { TallyRowView(row: $0, model: model) }
                     if model.rows.isEmpty { empty }
                 }
                 .padding(.horizontal, 16)
+                .padding(.vertical, 8)
             }
         }
         .overlay(alignment: .bottom) {
             if let e = model.checkInError ?? failure {
-                Text(e).font(.footnote).padding(12).frame(maxWidth: .infinity)
-                    .background(.regularMaterial).accessibilityIdentifier("checkin-error")
+                Text(e).font(.cochin(13, relativeTo: .footnote)).foregroundStyle(paint(.name)).padding(12).frame(maxWidth: .infinity)
+                    .background(paint(.surface))
+                    .overlay(alignment: .top) { Rectangle().fill(paint(.border)).frame(height: 1) }
+                    .accessibilityIdentifier("checkin-error")
             }
         }
         .task { await run { try await model.viewOpened() } }  // another view may have checked something in
@@ -38,11 +46,14 @@ struct TallyView: View {
     private var controls: some View {
         VStack(alignment: .leading, spacing: 0) {
             // A plain field, not .searchable: its own clear button would be a second Clear control.
-            TextField("Search", text: $text)
-                .textFieldStyle(.roundedBorder)
+            TextField("Search", text: $text, prompt: Text("Find card, set, seller, order").foregroundStyle(Parchment.inkSoft))
+                .font(.cochin(16, relativeTo: .body)).foregroundStyle(paint(.name))
+                .padding(.vertical, 8).padding(.horizontal, 12)
+                .background(paint(.surface), in: RoundedRectangle(cornerRadius: 8))
+                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Parchment.line, lineWidth: 1))
+                .frame(minHeight: 44)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
-                .frame(minHeight: 44)
                 .accessibilityIdentifier("tally-search")
                 .onChange(of: text) { _, new in Task { await run { try await model.setQuery(new) } } }
             // One row, stacked at large text sizes so neither control is clipped.
@@ -53,6 +64,7 @@ struct TallyView: View {
             }
         }
         .padding(.horizontal, 16)
+        .padding(.top, 8)
     }
 
     private var sortMenu: some View {
@@ -64,23 +76,26 @@ struct TallyView: View {
             }
         } label: {
             HStack(spacing: 4) {
-                Text(model.sort.label)
-                Image(systemName: "chevron.up.chevron.down").imageScale(.small)
+                Text(model.sort.label).font(.mono(11.5, relativeTo: .caption)).foregroundStyle(Parchment.accent)
+                Image(systemName: "chevron.up.chevron.down").imageScale(.small).foregroundStyle(paint(.meta))
             }
             .frame(minHeight: 44)
         }
-        .tint(.primary)  // the accent blue is below the contrast floor on paper
         .accessibilityLabel("Sort")
         .accessibilityValue(model.sort.label)
         .accessibilityIdentifier("tally-sort")
     }
 
     private var hideToggle: some View {
-        Toggle("Hide received", isOn: Binding(
+        Toggle(isOn: Binding(
             get: { model.hideReceived },
-            set: { on in Task { await run { try await model.setHideReceived(on) } } }))
-            .frame(minHeight: 44)
-            .accessibilityIdentifier("tally-hide")
+            set: { on in Task { await run { try await model.setHideReceived(on) } } })) {
+            Text("Hide received").font(.cochin(15, relativeTo: .body)).foregroundStyle(paint(.name))
+        }
+        .tint(Parchment.accent)
+        .fixedSize()
+        .frame(minHeight: 44)
+        .accessibilityIdentifier("tally-hide")
     }
 
     /// One sentence and one Clear control, only while a search is what empties the list.
@@ -88,13 +103,14 @@ struct TallyView: View {
         VStack(spacing: 8) {
             Text(!model.query.isEmpty ? "No product matches this search."
                 : model.hideReceived ? "Everything here has been checked in." : "Nothing to show.")
+                .font(.cochin(14, relativeTo: .body)).foregroundStyle(paint(.meta)).multilineTextAlignment(.center)
             if !model.query.isEmpty {
-                Button("Clear search") { text = "" }
-                    .frame(minHeight: 44)
+                Button { text = "" } label: { MiniLabel(title: "Clear search") }
+                    .accessibilityLabel("Clear search")
                     .accessibilityIdentifier("tally-clear")
             }
         }
-        .frame(maxWidth: .infinity).padding(.vertical, 32)
+        .frame(maxWidth: .infinity).padding(.vertical, 32).padding(.horizontal, 8)
     }
 }
 
@@ -112,73 +128,73 @@ struct TallyRowView: View {
                 .accessibilityIdentifier("tally-toggle:\(row.name)")
             if open {
                 Text(row.acrossLine + (row.hiddenNote.map { " \u{00B7} \($0)" } ?? ""))
-                    .font(.caption.monospacedDigit()).padding(.horizontal, 12).padding(.bottom, 8)
-                ForEach(row.copies, id: \.key) { CopyView(item: $0, model: model) }
+                    .font(.mono(10.5, relativeTo: .caption)).foregroundStyle(paint(.across))
+                    .padding(.horizontal, 12).padding(.bottom, 4)
+                ForEach(row.copies, id: \.key) { copy in copyLine(copy) }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(done ? Color.green : Color.secondary.opacity(0.4)))
+        .overlay(alignment: .top) { bar }
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        // The shadow sits on the fill, not the card: a shadow on the card is drawn under every leaf view in it.
+        .background(RoundedRectangle(cornerRadius: 8).fill(paint(.surface)).shadow(color: Parchment.shadow, radius: 2, y: 1))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.border, done: done), lineWidth: 1))
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("tally-row:\(row.name)")
     }
 
     private var header: some View {
         HStack(spacing: 8) {
-            Image(systemName: "chevron.right").imageScale(.small).rotationEffect(.degrees(open ? 90 : 0))
+            Text("\u{25B6}").font(.mono(10, relativeTo: .caption)).foregroundStyle(paint(.disclosure))
+                .rotationEffect(.degrees(open ? 90 : 0))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 0) {
-                Text(row.name).font(.headline)
-                // Counts first, then the sets, so a long set list is what wraps last (card-tally-row-counts-first).
-                Text(row.meta).font(.caption.monospaced())
+                Text(row.name).font(.cochin(15, relativeTo: .headline).weight(.bold)).foregroundStyle(paint(.name))
+                    .lineLimit(2).multilineTextAlignment(.leading)
+                // Counts first, then the sets, so a long set list is what is cut first (card-tally-row-counts-first).
+                Text(row.meta).font(.mono(11, relativeTo: .caption)).foregroundStyle(paint(.meta))
+                    .lineLimit(1).truncationMode(.tail)
             }
-            Spacer(minLength: 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .trailing, spacing: 0) {
-                Text(row.ratio).font(.headline.monospacedDigit())
-                Text(row.rateLine).font(.caption.monospacedDigit())
+                Text(row.ratio).font(.mono(15, relativeTo: .headline).weight(.bold)).foregroundStyle(paint(.ratio, done: done))
+                Text(row.rateLine).font(.mono(11.5, relativeTo: .caption)).foregroundStyle(paint(.rate))
                 // Hidden once in, never removed: unmounting it would shorten the row under the thumb.
-                Text(row.leftLine).font(.caption.monospacedDigit())
+                Text(row.leftLine).font(.cochin(12, relativeTo: .caption).weight(.bold)).foregroundStyle(paint(.left))
                     .opacity(done ? 0 : 1).accessibilityHidden(done)
             }
+            .fixedSize(horizontal: true, vertical: false)
         }
         .padding(12)
         .frame(minHeight: 44)
         .contentShape(Rectangle())
     }
-}
 
-/// One copy the row counts: where it came from, and its own check-in control.
-struct CopyView: View {
-    let item: LedgerItem
-    let model: TallyModel
+    /// The 3pt bar on the card's top edge, out of flow: it mounts without moving a row. Gone at none in and at all in.
+    /// It uses PackageCard's bar tokens, as step 3's card does.
+    @ViewBuilder private var bar: some View {
+        if let fraction = row.barFraction {
+            paint(.barTrack, .open).frame(height: 3)
+                .overlay(alignment: .leading) {
+                    GeometryReader { g in paint(.barFill, .open).frame(width: g.size.width * fraction) }
+                }
+                .allowsHitTesting(false)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(row.got) of \(row.qty) copies in")
+                .accessibilityIdentifier("tally-bar:\(row.name)")
+        }
+    }
 
-    var body: some View {
+    /// One copy the row counts, drawn by the item line Packages draws (one home): the seller is the title.
+    private func copyLine(_ item: LedgerItem) -> some View {
         let got = min(item.qty, model.received[item.key] ?? 0)
-        let isDone = got >= item.qty
         let meta = ((item.qty > 1 ? ["\u{00D7}\(item.qty)"] : []) + [item.date, item.set, item.finish, item.condition])
             .filter { !$0.isEmpty }.joined(separator: " \u{00B7} ")
-        VStack(spacing: 0) {
-        Divider()
-        HStack {
-            VStack(alignment: .leading, spacing: 0) {
-                Text(item.seller).font(.subheadline.weight(.semibold))
-                Text(meta).font(.caption)
-                Text(item.orderId).font(.caption.monospaced())
-            }
-            .accessibilityElement(children: .combine)
-            .accessibilityIdentifier("tally-copy:\(item.key)")
-            Spacer()
-            Button {
-                Task { await model.tap(key: item.key) }  // a failure shows in model.checkInError
-            } label: {
-                Image(systemName: isDone ? "checkmark.circle.fill" : "circle")
-                    .frame(width: 45, height: 45).foregroundStyle(.primary)  // 45: layout rounding made a 44pt frame read 43.99999
-            }
-            .accessibilityLabel("\(isDone ? "Undo check in" : "Check in") \(item.name)")
-            .accessibilityIdentifier("tally-checkin:\(item.key)")
-        }
-        .padding(.horizontal, 12)
-        .frame(minHeight: 44)
-        .background(isDone ? Color.green.opacity(0.12) : .clear)
-        }
+        return ItemLine(
+            state: LineState(got: got, qty: item.qty), name: item.name, title: item.seller, detail: meta, price: item.price,
+            orderID: item.orderId, readout: model.readouts[item.key], checkInID: "tally-checkin:\(item.key)",
+            copyID: "tally-copy:\(item.key)", key: item.key,
+            onTap: { await model.tap(key: item.key) },  // a failure shows in model.checkInError
+            onStep: { await model.step(key: item.key, by: $0) })
     }
 }

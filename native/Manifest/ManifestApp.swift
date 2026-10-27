@@ -127,6 +127,12 @@ struct ManifestApp: App {
             client.socket = URLSessionSyncSocket(baseURL: Self.workerURL)
             client.photoStore = PhotoStore(folder: PhotoStore.folder(besideLedger: ledgerURL), engine: engine)
         }
+        // Last sync survives a relaunch, as the web's workerSyncedAt does. A seeded UI run starts without one, as it starts
+        // with no saved versions, so a run never reads an earlier one's time.
+        let lastSyncKey = "dev.shivinate.manifest.lastSyncAt"
+        if ProcessInfo.processInfo.arguments.contains("-ManifestUITestSeed") { UserDefaults.standard.removeObject(forKey: lastSyncKey) }
+        client.restoreLastSync(UserDefaults.standard.object(forKey: lastSyncKey) as? Double)
+        client.onLastSync = { UserDefaults.standard.set($0, forKey: lastSyncKey) }
         let pressGate = PressGate(engine: engine, now: { Date().timeIntervalSince1970 * 1000 }, sleep: sleep)
         client.pressGate = pressGate
         client.onApplied = reload

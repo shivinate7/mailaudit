@@ -29,19 +29,22 @@ public final class SyncClient {
     /// Called with each new lastSyncAt, so the app can keep it across a relaunch. Nothing is stored here.
     public var onLastSync: (@MainActor (Double) -> Void)?
 
-    /// The Server line of the Sync panel (src/app.jsx serverStatus), read on demand. The web's ladder, first match wins.
-    public var serverStatus: String {
+    /// Where the Worker stands, read on demand (src/app.jsx serverStatus). The web's ladder, first match wins.
+    public var serverState: SyncServerState {
         let key: String?
-        do { key = try keys.key() } catch { return "Not checked" }  // could not look is not no key
-        if key == nil { return "No sync key on this device" }
+        do { key = try keys.key() } catch { return .notChecked }  // could not look is not no key
+        if key == nil { return .noKey }
         switch advisory {
-        case "no-access": return "Sync key refused"
-        case "bad-shape": return "Ledger shape refused"
-        case "too-big": return "Ledger too big for the server"
-        case nil: return "Connected"
-        default: return "Could not be reached"
+        case "no-access": return .refused
+        case "bad-shape": return .badShape
+        case "too-big": return .tooBig
+        case nil: return .connected
+        default: return .unreachable
         }
     }
+
+    /// The Server line of the Sync panel.
+    public var serverStatus: String { serverState.text }
 
     /// Puts back a lastSyncAt kept from an earlier run. It does not call onLastSync.
     public func restoreLastSync(_ at: Double?) { lastSyncAt = at }
