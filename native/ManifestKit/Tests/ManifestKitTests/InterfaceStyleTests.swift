@@ -1,6 +1,6 @@
 // Lane N13, a light-only interface (owner ruling 2026-10-22: parchment always, no dark
 // variant). UIUserInterfaceStyle Light in Info.plist holds the app to its paper. The
-// plist is generated from project.yml by xcodegen (make archive), so project.yml must
+// plist is generated from project.yml by xcodegen (ios-ship testflight), so project.yml must
 // carry the key too, or the next generate drops it. Both read real files, no device.
 
 import Foundation
