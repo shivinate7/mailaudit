@@ -16,6 +16,8 @@
 //                     If that audit still flags the 3pt bar, hide it and drop the presence checks here;
 //                     PackagesModel.bars still pins when it shows.
 //   card-pill:<gk>    the "N left · $X" pill; its label is the pill text. Absent when nothing is owed.
+//   got-qty:<line key> the mono got/qty read-out of a line with more than one copy. Its label or its
+//                     value reads "got/qty", as the web stepper prints it. Absent on a one-copy line.
 // Launch arguments are the shell tests': -ManifestUITestSeed, -ManifestUITestWidth.
 //
 // Every key here is fake. The tests read no Keychain item.
@@ -122,6 +124,35 @@ final class PackageCardUITests: XCTestCase {
                 wait("exists == false", for: bar, "every copy is in: no bar at 100%")
                 wait("exists == false", for: pill, "every copy is in: no pill")
             }
+        }
+    }
+
+    // MARK: the got/qty read-out
+
+    /// The mono got/qty read-out shows on a line with more than one copy, as the web stepper prints it.
+    /// Brainstorm (qty 2) reads 0/2 at rest and 2/2 once checked in. Lightning Bolt and Counterspell
+    /// (qty 1) have no read-out. The shared fixture holds no qty-3 line, so the 1/3 form is not here.
+    func testMultiCopyLinesShowGotOverQtyAndSingleCopyLinesShowNone() throws {
+        let app = launch()
+        let brainstorm = "A1|2|pBrainstorm"
+        XCTAssertTrue(element(app, "package-row:\(Self.package)").waitForExistence(timeout: 5), "the A1 row is missing")
+
+        /// The read-out's label and value, or no entries when the line has no read-out.
+        func readout(_ key: String) -> [String] {
+            let el = element(app, "got-qty:\(key)")
+            guard el.exists else { return [] }
+            return [el.label, (el.value as? String) ?? ""]
+        }
+
+        XCTAssertTrue(readout(brainstorm).contains("0/2"), "Brainstorm has 2 copies: its read-out reads 0/2 at rest, got \(readout(brainstorm))")
+        let control = element(app, "checkin:\(brainstorm)")
+        XCTAssertTrue(control.waitForExistence(timeout: 5), "the check-in control for Brainstorm is missing")
+        control.tap()
+        wait("label BEGINSWITH 'Undo check in'", for: control, "the Brainstorm check-in did not land")
+        XCTAssertTrue(readout(brainstorm).contains("2/2"), "both copies in: the read-out reads 2/2, got \(readout(brainstorm))")
+
+        for key in ["A1|0|pLightningBolt", "A1|1|pCounterspell"] {
+            XCTAssertEqual(readout(key), [], "\(key) has one copy and shows no read-out")
         }
     }
 }
