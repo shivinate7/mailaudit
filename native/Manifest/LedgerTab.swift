@@ -33,7 +33,7 @@ struct LedgerTab: View {
                     .accessibilityAddTraits(.isHeader)
                 Text("Data").textCase(.uppercase).font(.mono(11, relativeTo: .caption)).tracking(2.2)
                     .foregroundStyle(paint(.groupLabel)).padding(.leading, 4).padding(.top, 16).padding(.bottom, 8)
-                    .accessibilityHidden(true)
+                    .accessibilityAddTraits(.isHeader)
                 VStack(alignment: .leading, spacing: 0) {
                     if let sync { syncRow(sync) }
                     if let versions { history(versions, first: sync == nil) }
@@ -344,28 +344,17 @@ struct AskRow: View {
         }
     }
 
-    /// Restore: 34pt tall, mono 11.5, red on redSoft at rest; bold card on red once armed, with a Cancel before it.
-    /// Each sits in a 44pt hit frame, so the armed control keeps its top edge.
+    /// Restore: red on redSoft at rest; bold card on red once armed, with a Cancel before it. Both are the shared mini
+    /// button (ControlViews), in its 44pt hit frame, so the armed control keeps its top edge.
     private var restoreRow: some View {
         HStack(spacing: 8) {
             if armed {
-                Button(action: cancel) {
-                    Text("Cancel").font(.mono(11.5, relativeTo: .caption)).foregroundStyle(paint(.cancelText))
-                        .padding(.horizontal, 12).frame(height: 34)
-                        .background(paint(.cardSurface), in: RoundedRectangle(cornerRadius: 5))
-                        .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(paint(.restoreBorder), lineWidth: 1))
-                        .frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier(cancelID)
+                Button(action: cancel) { MiniLabel(title: "Cancel") }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier(cancelID)
             }
             Button(action: press) {
-                Text(ask ?? title).font(armed ? .mono(11.5, relativeTo: .caption).weight(.bold) : .mono(11.5, relativeTo: .caption))
-                    .lineLimit(1).minimumScaleFactor(0.7).foregroundStyle(p(.restoreText))
-                    .padding(.horizontal, 12).frame(height: 34)
-                    .background(p(.restoreFill), in: RoundedRectangle(cornerRadius: 5))
-                    .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(p(.restoreBorder), lineWidth: 1))
-                    .frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
+                MiniLabel(title: ask ?? title, bold: armed, text: p(.restoreText), fill: p(.restoreFill), border: p(.restoreBorder))
             }
             .buttonStyle(.plain)
             .accessibilityLabel(ask ?? title)

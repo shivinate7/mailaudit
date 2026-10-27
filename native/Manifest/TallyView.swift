@@ -93,7 +93,6 @@ struct TallyView: View {
             Text("Hide received").font(.cochin(15, relativeTo: .body)).foregroundStyle(paint(.name))
         }
         .tint(Parchment.accent)
-        .fixedSize()
         .frame(minHeight: 44)
         .accessibilityIdentifier("tally-hide")
     }
