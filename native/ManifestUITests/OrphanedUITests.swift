@@ -249,29 +249,33 @@ final class OrphanedUITests: XCTestCase {
         issue.auditType == .contrast && issue.element?.isEnabled == false
     }
 
-    /// Waits until the keyboard is up and its frame has held still for three reads, 0.2s apart. Returns what it
-    /// saw, for the log. The composer autofocuses, so the keyboard slides up on its own after the composer opens.
+    /// Waits until the keyboard is on screen and its frame has held still for three reads, 0.2s apart. Returns what
+    /// it saw, for the log. The composer autofocuses, so the keyboard slides up on its own after the composer opens.
+    /// A keyboard that exists but sits below the window (its frame starts past the bottom edge) is not settled: it is
+    /// still sliding up, or it is not drawn at all. The log says which reading it ended on.
     func settleKeyboard(_ app: XCUIApplication, timeout: TimeInterval = 8) -> String {
         let keyboard = app.keyboards.firstMatch
+        let bottom = app.windows.firstMatch.frame.maxY
         let start = Date()
         guard keyboard.waitForExistence(timeout: timeout) else { return "no keyboard after \(timeout)s" }
         var last = keyboard.frame, still = 0
         while still < 3 && Date().timeIntervalSince(start) < timeout {
             Thread.sleep(forTimeInterval: 0.2)
             let now = keyboard.frame
-            still = now == last ? still + 1 : 0
+            still = now == last && now.maxY <= bottom + 1 ? still + 1 : 0
             last = now
         }
         let took = String(format: "%.1f", Date().timeIntervalSince(start))
-        return "keyboard frame \(last), still reads \(still) of 3 after \(took)s"
+        return "keyboard frame \(last) in a window \(bottom)pt high, \(last.maxY <= bottom + 1 ? "on screen" : "NOT on screen"), still reads \(still) of 3 after \(took)s"
     }
 
     /// Probe for an intermittent audit issue on the composer: "Potentially inaccessible text", with no element and
     /// a zero frame, in 3 of 5 runs. This waits for the keyboard to settle first, then audits, and logs every issue
     /// the audit raises (the exempt ones too) with its type, element and frame, plus the screen's accessibility tree
     /// as an attachment. It adds no skip beyond the one the empty composer's audit already has. Run it with
-    /// -test-iterations 5: green in every iteration means the settle was the cause, and a red iteration names what
-    /// the audit saw.
+    /// -test-iterations 5 and read the PROBE-AUDIT lines of the log: they say whether the keyboard was on screen
+    /// when the audit ran, and what each iteration's audit raised. A green run with the keyboard off screen
+    /// proves nothing about the settle.
     func testAccessibilityAuditOrphanedComposerAfterTheKeyboardSettles() throws {
         let app = launch()
         openOrphaned(app)
