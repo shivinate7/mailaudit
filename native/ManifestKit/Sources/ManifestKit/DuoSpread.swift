@@ -45,13 +45,13 @@ public enum DuoSpread: Equatable, Sendable {
         return .single
     }
 
-    /// The answer page is `right` side by side. Stacked, the answer page is the first rect, on top, so the pair
-    /// reads in the same order. nil on one page.
+    /// `right` is always the answer page, so callers place by name and never by layout. Side by side it is the right
+    /// page. Stacked it is the top page, and `left` is the bottom one. nil on one page.
     public var pageRects: (left: CGRect, right: CGRect)? {
         switch self {
         case .single: nil
         case let .sideBySide(l, r): (l, r)
-        case let .stacked(t, b): (t, b)
+        case let .stacked(t, b): (b, t)
         }
     }
 
