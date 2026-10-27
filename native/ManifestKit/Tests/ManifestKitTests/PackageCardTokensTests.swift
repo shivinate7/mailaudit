@@ -34,7 +34,14 @@ final class PackageCardTokensTests: XCTestCase {
 
     /// What each element paints with. Only these vary with the line: the card border (the package
     /// is done), the row wash, the item name, and the three parts of the checkbox.
-    static let table: [Part: Want] = [
+    static let table: [Part: Want] = {
+        var all = fixed
+        // The count joins the table once the part exists, so coverage stays green when the builder adds it.
+        if let count = countPart { all[count] = Want("ink", "manilaInk", "ink") }
+        return all
+    }()
+
+    private static let fixed: [Part: Want] = [
         .surface: Want(all: "card"),                    // the card is the raised parchment
         .border: Want("line", "line", "green"),         // green once every line is in
         .seller: Want(all: "ink"),
@@ -53,6 +60,11 @@ final class PackageCardTokensTests: XCTestCase {
         .boxMark: Want(nil, "manilaInk", "card"),       // a dash while partial, a tick when done, nothing when open
     ]
 
+    /// The got/qty count part, found by its case name. The builder adds it (debt native-partial-count-colour),
+    /// and a test file cannot stub an enum case, so until then the lookup is nil and an assertion fails
+    /// in testTheCountPartPaintsManilaInkWhilePartial, never the build.
+    static var countPart: Part? { Part.allCases.first { String(describing: $0) == "count" } }
+
     // MARK: the table
 
     /// A new element must come with a row here, so no token goes unpinned.
@@ -65,6 +77,22 @@ final class PackageCardTokensTests: XCTestCase {
             for state in Self.states {
                 XCTAssertEqual(PackageCard.token(part, state), want.of(state), "\(part) while \(state)")
             }
+        }
+    }
+
+    /// The web paints the stepper's got/qty in manilaInk on a partly received line and in ink otherwise
+    /// (src/app.jsx ItemRow, `partial ? C.manilaInk : C.ink`). Native painted the name part, which goes inkSoft
+    /// when done. The count sits on the row's wash, or on the card when the row has none.
+    func testTheCountPartPaintsManilaInkWhilePartial() throws {
+        let count = try XCTUnwrap(Self.countPart, "PackageCard.Part has no count part (debt native-partial-count-colour)")
+        let palette = try Contrast.palette()
+        let want: [LineState: String] = [.open: "ink", .partial: "manilaInk", .done: "ink"]
+        for state in Self.states {
+            let token = try XCTUnwrap(PackageCard.token(count, state), "count has no paint while \(state)")
+            XCTAssertEqual(token, want[state], "count while \(state)")
+            let row = try XCTUnwrap(PackageCard.token(.rowFill, state) ?? PackageCard.token(.surface, state))
+            let r = try Contrast.ratio(token, on: row, palette)
+            XCTAssertGreaterThanOrEqual(r, 4.5, "count on the \(state) row (\(token) on \(row))")
         }
     }
 
@@ -83,19 +111,8 @@ final class PackageCardTokensTests: XCTestCase {
 
     // MARK: contrast
 
-    /// WCAG 2 relative luminance of a token that is opaque.
-    func luminance(_ c: Palette.RGBA) -> Double {
-        func channel(_ v: UInt8) -> Double {
-            let s = Double(v) / 255
-            return s <= 0.03928 ? s / 12.92 : pow((s + 0.055) / 1.055, 2.4)
-        }
-        return 0.2126 * channel(c.red) + 0.7152 * channel(c.green) + 0.0722 * channel(c.blue)
-    }
-
     func ratio(_ a: String, on b: String, _ palette: Palette) throws -> Double {
-        let x = luminance(try XCTUnwrap(palette.tokens[a], "no token \(a)"))
-        let y = luminance(try XCTUnwrap(palette.tokens[b], "no token \(b)"))
-        return (max(x, y) + 0.05) / (min(x, y) + 0.05)
+        try Contrast.ratio(a, on: b, palette)
     }
 
     /// Every text pair the card paints clears 4.5:1 (palette-tokens-contrast-floor), and the bar's

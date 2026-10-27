@@ -521,4 +521,29 @@ final class TallyModelTests: XCTestCase {
             XCTAssertEqual(lb.acrossLine, "$<3> across 3 copies \u{00B7} $<1> avg", "the model formatted the basis or average itself")
         }
     }
+
+    // MARK: the edge bar (step 4)
+
+    /// The 3pt bar on a row's top edge shows while 0 < got < qty and holds got / qty over every copy, as
+    /// PackagesModel.bars does for a package. Gone at none in and at all in. A two-copy line counts copies.
+    /// Contract: `TallyRow.barFraction: Double?`, a computed property on the row (stub in Step4RedStubs.swift).
+    func testTheEdgeBarShowsOnlyWhilePartlyIn() async throws {
+        let (model, _, _) = try await makeModel(received: [:])
+        XCTAssertNil(row(model, "Lightning Bolt")?.barFraction, "none of three in: no bar")
+
+        try await model.checkIn(key: "A1|0|pLightningBolt", count: 1)
+        let third = try XCTUnwrap(row(model, "Lightning Bolt")?.barFraction, "one of three in: the bar shows")
+        XCTAssertEqual(third, 1.0 / 3, accuracy: 1e-9)
+        try await model.checkIn(key: "B1|0|pLightningBolt", count: 1)
+        let twoThirds = try XCTUnwrap(row(model, "Lightning Bolt")?.barFraction, "two of three in: the bar shows")
+        XCTAssertEqual(twoThirds, 2.0 / 3, accuracy: 1e-9)
+        try await model.checkIn(key: "C1|0|pLightningBolt", count: 1)
+        XCTAssertNil(row(model, "Lightning Bolt")?.barFraction, "all three in: no bar, the row is done")
+
+        try await model.checkIn(key: "A1|2|pBrainstorm", count: 1)
+        let quarter = try XCTUnwrap(row(model, "Brainstorm")?.barFraction, "one of four copies in: the bar shows")
+        XCTAssertEqual(quarter, 0.25, accuracy: 1e-9, "Brainstorm is two lines of two: the bar counts copies")
+        try await model.checkIn(key: "A1|2|pBrainstorm", count: 0)
+        XCTAssertNil(row(model, "Brainstorm")?.barFraction, "un-checked again: no bar")
+    }
 }
