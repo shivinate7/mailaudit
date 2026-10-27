@@ -63,7 +63,7 @@ enum Parchment {
 extension View {
     /// Paper behind a tab's content. Each tab paints its own, because a tab's scroll content covers a background set on the TabView.
     func parchmentPaper() -> some View {
-        scrollContentBackground(.hidden).background(Parchment.paper.ignoresSafeArea())
+        scrollContentBackground(.hidden).background(Parchment.paper.ignoresSafeArea()).duoSystemBar()
     }
 }
 
