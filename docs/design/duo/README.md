@@ -36,7 +36,7 @@ Each question shows the options and a pick. Until the owner rules, nothing is bu
 3. **Tally split** (`tally.html`). A: rows left, copies right. B: Tally left, package right. C: masthead left. **Pick A.** B changes where an order id tap goes.
 4. **Orphaned split** (`orphaned.html`). A: pile and composer. B: envelope and candidates. C: Orphaned and Packages. **Pick B.** Assigning is the decision, and candidates need room.
 5. **Ledger split** (`ledger.html`). A: Ledger and working view. B: groups and panel. C: View and Data. **Pick B.** Panels stop pushing the list.
-6. **What closing keeps** (`closed.html`). A: the right page. B: the left page. **Pick A**, as degen. You keep the card you were checking.
+6. **What closing keeps** (`closed.html`). A: the right page. B: the left page. **Pick A.** You keep the card you were checking.
 7. **Find on two pages** (`chrome.html` D, E). D: over the page with the list. E: top of the right page. **Pick D.** It stays in thumb reach.
 8. **Tall and laptop** (`poses.html`). A: masthead top. B: index top, package bottom. C: laptop, package on the stand. **Pick B** now; C after real use.
 9. **A link on the right page.** Open over the right page, as degen's grid pinned. Or slide the book one page left. **Pick: open over it.** It builds the least.
