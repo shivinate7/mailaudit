@@ -323,15 +323,17 @@ final class MastheadBackupUITests: XCTestCase {
     /// A Tally check-in moves the masthead's figures and its slot, and moves no part of it: the Tally tab
     /// calls saving and finished as Packages does. The Lightning Bolt row is opened and its first copy is
     /// scrolled fully into view first, as in the Packages test above. The Tally count line keeps its count.
+    /// The masthead parts are bound with `live`, before the scroll, so they are the Tally tab's copies
+    /// (the app opens on Ledger, and a first match could be that tab's masthead).
     func testATallyCheckInMovesTheMastheadFiguresWithoutMovingIt() throws {
         let app = launch(width: 375)
         show(app, "Tally")
         try need(app, "tally-toggle:Lightning Bolt").tap()
+        let slot = try live(app, "save-slot", tab: "Tally")
+        let head = try live(app, "masthead", tab: "Tally")
+        let cells = try Self.cellIds.map { try live(app, $0, tab: "Tally") }
+        let count = try live(app, "masthead-count", tab: "Tally")
         let control = try need(app, "tally-checkin:A1|0|pLightningBolt")
-        let slot = try need(app, "save-slot")
-        let head = try need(app, "masthead")
-        let cells = try Self.cellIds.map { try need(app, $0) }
-        let count = try need(app, "masthead-count")
         app.reveal(control, whole: true)
         XCTAssertTrue(control.label.hasPrefix("Check in"), "the scroll checked the copy in before the baseline")
         let fixed = [head, slot] + cells
@@ -358,6 +360,7 @@ final class MastheadBackupUITests: XCTestCase {
         let app = launch(width: nil)
         openTab(app, "Ledger")
         let backup = try need(app, "backup")
+        app.reveal(backup)  // the masthead now sits above the Data group, so Backup may start below the fold
 
         XCTAssertEqual(backup.elementType, .button, "Backup is not a button")
         XCTAssertEqual(backup.label, "Backup")
@@ -378,6 +381,24 @@ final class MastheadBackupUITests: XCTestCase {
         _ = try need(app, "save-slot")
         try app.auditSkippingTabBar()
     }
+
+    /// The other three tabs with the masthead on them, as the Packages audit above. The masthead must exist
+    /// first, so a tab that passes the audit without one is red. Each masthead pushes its tab's content down,
+    /// so the last rows sit under the glass bar, and auditSkippingTabBar skips only what the bar covers. The
+    /// owner ruling of 2026-10-21 names the Packages tab; these three extend it, which needs the owner's word.
+    func assertAuditMastheadSkippingTabBar(on tab: String) throws {
+        let app = launch(width: nil)
+        show(app, tab)
+        _ = try live(app, "masthead", tab: tab)
+        _ = try live(app, "save-slot", tab: tab)
+        try app.auditSkippingTabBar()
+    }
+
+    func testAccessibilityAuditMastheadOnLedger() throws { try assertAuditMastheadSkippingTabBar(on: "Ledger") }
+
+    func testAccessibilityAuditMastheadOnOrphaned() throws { try assertAuditMastheadSkippingTabBar(on: "Orphaned") }
+
+    func testAccessibilityAuditMastheadOnTally() throws { try assertAuditMastheadSkippingTabBar(on: "Tally") }
 
     /// The Ledger screen with Backup on it. Backup must exist first, for the same reason.
     func testAccessibilityAuditBackupOnLedger() throws {
