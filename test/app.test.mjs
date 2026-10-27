@@ -90,6 +90,8 @@ import {
 } from "./harness.mjs";
 /* the adapter's pure rules — see group 27 for why these are imported directly */
 import { classifyStatus, pushBody } from "../src/remote-rules.mjs";
+/* group 77 names the clamped figure gotQty gives, the rule the native read-out also uses */
+import { gotQty } from "../src/view-rules.mjs";
 import {
   photoName,
   photoIdFromName,
@@ -7562,6 +7564,24 @@ await sleep(SWEEP_WAIT);
 eq(photoKeys(), ["pho-loose"], "61.57 an open composer holds the sweep off an unreferenced blob");
 
 uninstallClock();
+
+/* ── 77. an over-count reads clamped, as gotQty gives it (the native read-out reads the same) ──
+   Brainstorm is ×2 and three copies are recorded as in. The Packages read-out
+   must print the clamped figure gotQty returns, and never the raw count. It sits here because a
+   boot after groups 72 to 75 rendered no tabs; the cause was not traced. */
+await boot({ items: ITEMS, received: { [ITEMS[2].key]: 3 } });
+await goTo("packages");
+/* a done line is hidden under Unreceived, so its read-out only draws under Everything */
+await toggleShowing();
+const readouts = [...document.querySelectorAll("span, div")]
+  .filter((el) => el.childElementCount === 0)
+  .map((el) => el.textContent.trim())
+  .filter((t) => /^\d+\/\d+$/.test(t));
+ok(
+  readouts.includes(gotQty(3, 2)),
+  `77.1 the over-count reads ${gotQty(3, 2)}, the clamped figure; shown: ${readouts.join(" ") || "none"}`
+);
+ok(!readouts.includes("3/2"), "77.2 the raw count 3/2 is never printed");
 
 /* ── 62. the bottom bar, lane L11a (decision phone-nav-is-bottom-bar) ──────
    The bar replaces the in-page view switch. It holds four tabs, Ledger,

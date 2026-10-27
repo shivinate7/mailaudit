@@ -170,6 +170,80 @@ final class PackagesModelTests: XCTestCase {
         XCTAssertEqual(store.received(), storeBefore, "the store kept the failed check-in in memory")
     }
 
+    // MARK: a reload keeps each row's data until the new rows have it
+
+    /// The real bundle, with `itemDetail` spinning for half a second on its 13th call. The first load
+    /// details the fixture's twelve lines, so the 13th call is the reload's. The spin holds the engine
+    /// inside the reload's refresh: `rows` is already replaced and the maps are not yet filled.
+    func stallingBundle() throws -> URL {
+        let real = try String(contentsOf: RulesGoldenTests.bundleURL, encoding: .utf8)
+        let probe = FileManager.default.temporaryDirectory
+            .appending(path: "n5-packages-stall-\(UUID().uuidString).js")
+        let override = """
+        ;(function () {
+          var orig = Rules.itemDetail, n = 0;
+          Rules = Object.assign({}, Rules, { itemDetail: function (it) {
+            if (++n === 13) { var t = Date.now(); while (Date.now() - t < 500) {} }
+            return orig(it);
+          } });
+        })();
+        """
+        try (real + "\n" + override + "\n").write(to: probe, atomically: true, encoding: .utf8)
+        return probe
+    }
+
+    /// The rows the view cannot draw whole: no order link, a line with no detail or no done flag, or an
+    /// owed package with no pill. The view reads a missing pill as RECEIVED, so this is the false stamp.
+    static func rowsMissingMaps(_ model: PackagesModel) -> [String] {
+        model.rows.compactMap { p in
+            let linesReady = p.items.allSatisfy { model.details[$0.key] != nil && model.done[$0.key] != nil }
+            let owed = !p.items.allSatisfy { model.done[$0.key] == true }
+            let whole = model.orderLinks[p.gk] != nil && linesReady && (!owed || model.pills[p.gk] != nil)
+            return whole ? nil : p.gk
+        }
+    }
+
+    /// A reload sets `rows`, then waits on the engine. Every map the view reads for a row must be set
+    /// in that same step. Otherwise a reload mid-scroll draws cards with no link, no detail and a
+    /// false RECEIVED. The test looks at the model at each point the reload waits.
+    func testReloadNeverShowsRowsWithoutTheirMaps() async throws {
+        let url = try freshLedgerURL()
+        let store = LedgerStore(fileURL: url, now: { 0 })
+        let engine = try RulesEngine(bundleURL: try stallingBundle())
+        let model = try await loadedModel(store, engine)
+        XCTAssertEqual(model.details.count, 12, "the first load should detail all twelve lines, so the stall lands on the reload")
+
+        let watch = ReloadWatch()
+        let reload = Task {
+            try await model.load()
+            watch.finished = true
+        }
+        var looks = 0, bareLooks = 0
+        var firstBare: [String] = []
+        func look() {
+            let bare = Self.rowsMissingMaps(model)
+            if !bare.isEmpty {
+                bareLooks += 1
+                if firstBare.isEmpty { firstBare = bare }
+            }
+        }
+        while !watch.finished && looks < 1_000_000 {
+            await Task.yield()
+            looks += 1
+            look()
+        }
+        try await reload.value
+        look()
+
+        XCTAssertEqual(bareLooks, 0, "\(bareLooks) looks saw rows without their link, detail, done flag or pill; first: \(firstBare)")
+        XCTAssertEqual(model.rows.count, 4, "the reload should leave four packages")
+    }
+
+    /// Set when the reload's task ends. Read by the test's loop on the same actor.
+    @MainActor final class ReloadWatch {
+        var finished = false
+    }
+
     // MARK: positive controls for the mirror scan
 
     /// The scan must see a key held by a class property, or the test above proves nothing.

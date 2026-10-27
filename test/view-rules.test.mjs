@@ -45,7 +45,23 @@
    Lane N8 pins one more (the native masthead calls it through RulesEngine; it moves
    here from src/app.jsx so the web and native tallies share one home):
      compact(n) -> the masthead's value figure: whole dollars under 1k, then k or M
-                   with at most two decimals and trailing zeros trimmed */
+                   with at most two decimals and trailing zeros trimmed
+
+   Lane N15 pins three more (the native package card calls them through RulesEngine;
+   they move here from src/app.jsx, and the web card calls them too, so the two
+   cards cannot print different text):
+     packagePill(items, received) -> "N left · $X" for a package's lines, or null
+                   when no copy is owed (the web shows RECEIVED then). N counts copies.
+                   X is whole dollars with grouping from $100 up, else cents.
+     itemDetail(item) -> the item row's detail line: "×qty" when qty > 1, then set,
+                   finish and condition (empty ones left out), joined by " · ";
+                   "—" when that is empty
+     tcgplayerOrderUrl(orderId) -> TCGplayer's order-history search for that id,
+                   the id passed through encodeURIComponent
+
+   The got/qty read-out pins one more (the native package card calls it through
+   RulesEngine, and the web stepper prints the same text):
+     gotQty(got, qty) -> "got/qty" for a line with more than one copy, else null */
 
 const DAY = 86400000;
 const loaded = await import("../src/view-rules.mjs").then(
@@ -83,6 +99,10 @@ const countLabel = fn("countLabel");
 const isDone = fn("isDone");
 const money = fn("money");
 const compact = fn("compact");
+const packagePill = fn("packagePill");
+const itemDetail = fn("itemDetail");
+const gotQty = fn("gotQty");
+const tcgplayerOrderUrl = fn("tcgplayerOrderUrl");
 
 /* ---------- assertion helpers ---------- */
 
@@ -1133,6 +1153,131 @@ eq(compact(1234567), "1.23M", "V16.3c two decimals");
 /* V16.4 a negative figure picks its unit by size, not by sign */
 eq(compact(-4000), "-4k", "V16.4a negative thousands");
 eq(compact(-27), "-27", "V16.4b negative whole dollars");
+
+/* ---------- N15: the package card's text forms ---------- */
+
+/* Every expected string below was produced by running the web card's own
+   expression (src/app.jsx PackageCard and ItemRow) on the same input, not worked
+   out by hand. U+00D7 is the times sign, U+00B7 the middle dot, U+2014 the em dash. */
+const ORDERS = "https://store.tcgplayer.com/myaccount/orderhistory?SearchString=";
+
+/* V17.1 the owner's own example id, unchanged */
+eq(
+  tcgplayerOrderUrl("025F898A-605522-F2EDE"),
+  `${ORDERS}025F898A-605522-F2EDE`,
+  "V17.1 the owner's example id goes through as written"
+);
+
+/* V17.2 every character a query string reads as syntax is escaped. Mutants:
+   no encoding; a query-allowed set (leaves & = + / ? raw); encodeURI (leaves
+   & = + / ? # raw). A raw + reads as a space on the server. */
+eq(tcgplayerOrderUrl("A&B=C"), `${ORDERS}A%26B%3DC`, "V17.2a & and = are escaped");
+eq(tcgplayerOrderUrl("a+b"), `${ORDERS}a%2Bb`, "V17.2b + is escaped, or the server reads a space");
+eq(tcgplayerOrderUrl("a b"), `${ORDERS}a%20b`, "V17.2c a space is %20, not +");
+eq(tcgplayerOrderUrl("a/b?c#d"), `${ORDERS}a%2Fb%3Fc%23d`, "V17.2d / ? # are escaped");
+eq(tcgplayerOrderUrl("50%"), `${ORDERS}50%25`, "V17.2e % is escaped");
+
+/* V17.3 the marks encodeURIComponent leaves alone stay literal. Mutant: an
+   alphanumerics-only escape, which prints a URL the web does not */
+eq(
+  tcgplayerOrderUrl("it's (x)!~*_.-"),
+  `${ORDERS}it's%20(x)!~*_.-`,
+  "V17.3 ' ( ) ! ~ * _ . - stay literal"
+);
+
+/* V17.4 non-ASCII is escaped as UTF-8 bytes */
+eq(tcgplayerOrderUrl("é"), `${ORDERS}%C3%A9`, "V17.4a e-acute is %C3%A9");
+eq(tcgplayerOrderUrl("日本"), `${ORDERS}%E6%97%A5%E6%9C%AC`, "V17.4b two CJK characters are six bytes");
+
+/* V17.5 no id still gives the search page, with an empty term */
+eq(tcgplayerOrderUrl(""), ORDERS, "V17.5 an empty id is an empty SearchString");
+
+/* the pill reads only key, qty and price from a line */
+const cardLine = (key, qty, price) => ({ key, qty, price });
+const CARD = [cardLine("a", 1, 1), cardLine("b", 1, 2), cardLine("c", 2, 0.5)];
+
+/* V18.1 nothing in: every copy is owed, at cents */
+eq(packagePill(CARD, {}), "4 left · $4.00", "V18.1 nothing in: 4 copies left, $4.00");
+
+/* V18.2 a whole line in leaves its copies and its price out */
+eq(packagePill(CARD, { b: 1 }), "3 left · $2.00", "V18.2 the $2 line is in: 3 left, $2.00");
+
+/* V18.3 N counts copies, not lines: one of two copies in leaves one owed */
+eq(packagePill(CARD, { c: 1 }), "3 left · $3.50", "V18.3 one of two copies in: 3 left, $3.50");
+
+/* V18.4 an over-count clamps per line, so it cannot hide copies owed on another line */
+eq(packagePill(CARD, { c: 5 }), "2 left · $3.00", "V18.4 5 of 2 counts as 2: the other lines still owe 2");
+
+/* V18.5 nothing owed: no pill, never "0 left". Mutants: the string with 0; "" */
+eq(packagePill(CARD, { a: 1, b: 1, c: 2 }), null, "V18.5a every copy in: null");
+eq(packagePill(CARD, { a: 9, b: 9, c: 9 }), null, "V18.5b every line over-counted: null");
+eq(packagePill([], {}), null, "V18.5c a package with no lines: null");
+
+/* V18.6 a count for a key the package does not hold changes nothing */
+eq(packagePill(CARD, { zzz: 4 }), "4 left · $4.00", "V18.6 a stray received key is ignored");
+
+/* V18.7 under $100 the figure keeps its cents */
+const one = (price, qty = 1) => [cardLine("x", qty, price)];
+eq(packagePill(one(99.99), {}), "1 left · $99.99", "V18.7a $99.99 keeps cents");
+eq(packagePill(one(99.5), {}), "1 left · $99.50", "V18.7b $99.50 keeps the trailing zero");
+eq(packagePill(one(0), {}), "1 left · $0.00", "V18.7c a free card is $0.00");
+
+/* V18.8 from $100 the cents go. Mutants: `> 100`; cents kept at $100 and up. 100.5
+   rounds up as Math.round does, where a half-even port prints $100 */
+eq(packagePill(one(100), {}), "1 left · $100", "V18.8a exactly $100 is whole dollars");
+eq(packagePill(one(100.4), {}), "1 left · $100", "V18.8b $100.40 rounds down");
+eq(packagePill(one(100.5), {}), "1 left · $101", "V18.8c $100.50 rounds up, not to even");
+eq(packagePill(one(60, 2), {}), "2 left · $120", "V18.8d two copies at $60 add to $120");
+
+/* V18.9 thousands are grouped, in en-US whatever the device locale. Mutant: no grouping */
+eq(packagePill(one(1234.56), {}), "1 left · $1,235", "V18.9a $1,234.56 is $1,235");
+eq(packagePill(one(12345), {}), "1 left · $12,345", "V18.9b $12,345 groups once");
+
+/* V18.10 the value counts copies still owed, not the whole line */
+eq(
+  packagePill([cardLine("x", 3, 10)], { x: 1 }),
+  "2 left · $20.00",
+  "V18.10 3 copies at $10 with 1 in: 2 left, $20.00"
+);
+
+/* the detail line reads only qty, set, finish and condition */
+const detailOf = (qty, set, finish, condition) => ({ qty, set, finish, condition });
+
+/* V19.1 one copy has no times sign; the order is set, finish, condition */
+eq(
+  itemDetail(detailOf(1, "Alpha", "Foil", "Near Mint")),
+  "Alpha · Foil · Near Mint",
+  "V19.1 one copy: set, finish, condition"
+);
+
+/* V19.2 more than one copy leads with the times sign and the count */
+eq(
+  itemDetail(detailOf(2, "Alpha", "Foil", "Near Mint")),
+  "×2 · Alpha · Foil · Near Mint",
+  "V19.2 two copies: x2 first"
+);
+
+/* V19.3 an empty part is left out with its separator. Mutant: join without filter, which prints " ·  · " */
+eq(
+  itemDetail(detailOf(3, "Alpha", "", "Near Mint")),
+  "×3 · Alpha · Near Mint",
+  "V19.3a no finish: no double separator"
+);
+eq(itemDetail(detailOf(1, "", "", "Near Mint")), "Near Mint", "V19.3b only a condition: no separator at all");
+eq(itemDetail(detailOf(1, "", "Foil", "")), "Foil", "V19.3c only a finish");
+
+/* V19.4 nothing to say: a dash for one copy, the count alone for several */
+eq(itemDetail(detailOf(1, "", "", "")), "—", "V19.4a nothing: an em dash");
+eq(itemDetail(detailOf(2, "", "", "")), "×2", "V19.4b two copies and nothing else: x2, no dash");
+
+/* V20.1 a line with more than one copy reads got/qty, the way the web stepper prints it */
+eq(gotQty(1, 3), "1/3", "V20.1a one of three in: 1/3");
+eq(gotQty(0, 2), "0/2", "V20.1b none of two in: 0/2");
+eq(gotQty(2, 2), "2/2", "V20.1c both in: 2/2");
+
+/* V20.2 a one-copy line has no read-out. Mutant: "0/1" or "1/1" for qty 1 */
+eq(gotQty(0, 1), null, "V20.2a one copy, none in: null");
+eq(gotQty(1, 1), null, "V20.2b one copy, in: null");
 
 /* ---------- report ---------- */
 

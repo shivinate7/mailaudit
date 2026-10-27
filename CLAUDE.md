@@ -22,7 +22,7 @@ records your task needs. Do not read them all.
 
 - `invariants/` holds a rule that must not break. 8 records.
 - `docs/decisions/` holds a ruling and the reason it still holds.
-- `measurements/` holds a measured figure and how to re-measure it. 9 records.
+- `measurements/` holds a measured figure and how to re-measure it. 10 records.
 - `docs/debts/` holds one known gap or to-do per file, each pointing at its decision.
 
 A record cites another record by slug, never by a path, so a record survives a
@@ -401,6 +401,12 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-key-scan-skips-views` — The native key scan skips SwiftUI view state.
 - `native-masthead-packages-only` — The native masthead shows on Packages only.
 - `native-compose-is-one-fade` — The native letterhead composes in one fade.
+- `native-card-lost-flags-unbuilt` — The native package card has no lost-mail flag and no tracked glyph.
+- `native-seller-scale-unmeasured` — The native seller shrinks to half size, and the cause is unmeasured.
+- `native-card-stepper-unpinned` — No unit test pins the native card stepper clamp or its readouts.
+- `native-card-gestures-unpinned` — No UI test pins the native card header gestures.
+- `native-card-state-in-swift` — The native card copies the line and package done rules in Swift.
+- `native-partial-count-colour` — The native partial count paints ink, where the web paints manila ink.
 - `native-backup-has-no-photos` — Native Backup holds no photos.
 - `native-backup-ui-unpinned` — No UI test taps Backup.
 - `native-backup-web-restore-unrun` — No test restores a native backup file on the web.
@@ -417,7 +423,6 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `tcgplayer-link-opens-history-list` — The TCGplayer link may not search by order id.
 - `header-gestures-unmeasured` — Header gestures are unmeasured.
 - `ios-touch-adjust-unmeasured` — iOS touch adjustment near the order id link is unmeasured.
-- `native-order-id-link-unbuilt` — The native Packages card has no order id link yet.
 - `discard-keeps-draft` — Discard does not end a composer draft.
 - `type-floor-unbuilt` — Some labels are below the 10px floor.
 - `universal-link-unbuilt` — The universal-link key fallback is not built.
@@ -453,6 +458,7 @@ Each figure was measured in a real viewport or on a real device. A test cannot h
 - `ledger-and-seed-sizes` — Ledger and version sizes.
 - `masthead-foot-slot` — Masthead foot save-slot width.
 - `motion-timings` — Motion sheet durations and beats.
+- `native-card-load-time` — Native Packages load time on 600 packages.
 - `palette-contrast` — Palette token contrast ratios.
 - `ruled-head-heights` — Ruled head control region heights.
 - `suite-size` — Test suite assertion count and run time.

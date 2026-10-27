@@ -153,13 +153,25 @@ struct ManifestApp: App {
         return url
     }
 
+    /// The fixture file a test seeds from: the argument after -ManifestUITestSeed when it is a file name,
+    /// else ledger.json. The tests pass other flags right after the seed flag, so a dash is not a name.
+    private static func seedResource() -> (name: String, ext: String) {
+        let args = ProcessInfo.processInfo.arguments
+        guard let i = args.firstIndex(of: "-ManifestUITestSeed"), i + 1 < args.count, !args[i + 1].hasPrefix("-") else {
+            return ("ledger", "json")
+        }
+        let file = args[i + 1] as NSString
+        return (file.deletingPathExtension, file.pathExtension)
+    }
+
     /// With -ManifestUITestSeed the ledger is a fresh copy of the bundled fake fixture.
     private static func ledgerURL() throws -> URL {
         let fm = FileManager.default
         let dir = try fm.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
         let url = dir.appending(path: "ledger.json")
         if ProcessInfo.processInfo.arguments.contains("-ManifestUITestSeed") {
-            guard let seed = Bundle.main.url(forResource: "ledger", withExtension: "json") else { throw CocoaError(.fileNoSuchFile) }
+            let (name, ext) = seedResource()
+            guard let seed = Bundle.main.url(forResource: name, withExtension: ext) else { throw CocoaError(.fileNoSuchFile) }
             try? fm.removeItem(at: url)
             try fm.copyItem(at: seed, to: url)
         } else if !fm.fileExists(atPath: url.path) {

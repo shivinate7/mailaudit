@@ -1,0 +1,18 @@
+{
+  "items": [
+    {
+      "key": "L1|0|pTestCard",
+      "orderId": "L1",
+      "seller": "Fictional Mega Cards Emporium and Trading Post of the Northern Realm Holdings Limited Incorporated",
+      "name": "Test Card",
+      "set": "Test Set",
+      "condition": "Near Mint",
+      "finish": "",
+      "qty": 1,
+      "price": 1,
+      "date": "2026-08-20",
+      "tracking": "without tracking",
+      "line": "Magic"
+    }
+  ]
+}

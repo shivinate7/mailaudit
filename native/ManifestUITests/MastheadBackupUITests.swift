@@ -40,6 +40,7 @@ import XCTest
 final class MastheadBackupUITests: XCTestCase {
     static let minHit: CGFloat = 44
     static let checkedId = "checkin:A1|0|pLightningBolt"
+    static let checkedPackageId = "package-row:A1::Alpha Cards"
     static let cellIds = ["tally-cards", "tally-packages", "tally-value"]
 
     // MARK: helpers
@@ -130,7 +131,9 @@ final class MastheadBackupUITests: XCTestCase {
 
     // MARK: a check-in moves the figures and nothing else
 
-    /// One check-in: the tallies and the missing line follow, the slot reads saved, no frame moves.
+    /// One check-in: the tallies and the missing line follow, the slot reads saved, no frame moves. The A1 card is
+    /// scrolled fully into view first: below the fold, the tap would scroll the list and every frame would move,
+    /// the masthead's too. The at-rest checks come after that scroll, so they also prove it checked nothing in.
     func testTalliesAndSlotFollowACheckInWithoutMoving() throws {
         let app = launch(width: 375)
         openTab(app, "Packages")
@@ -140,6 +143,8 @@ final class MastheadBackupUITests: XCTestCase {
         let cells = try Self.cellIds.map { try need(app, $0) }
         let count = try need(app, "masthead-count")
         let missing = try need(app, "masthead-missing")
+        app.reveal(try need(app, Self.checkedPackageId), whole: true)
+        XCTAssertTrue(control.label.hasPrefix("Check in"), "the scroll checked the line in before the baseline")
         let fixed = [head, slot] + cells
         let before = fixed.map(\.frame)
         let (countBefore, missingBefore) = (count.frame, missing.frame)

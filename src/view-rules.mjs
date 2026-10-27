@@ -459,6 +459,31 @@ export const compact = (n) => {
   return String(Math.round(n));
 };
 
+/* Lane N15: the package card's text forms, one home for the web and native cards.
+   TCGplayer's buyer order-history page, searched by order id (owner ruling 2026-10-21).
+   Whether the page honours SearchString is unconfirmed; debt tcgplayer-link-opens-history-list. */
+export const tcgplayerOrderUrl = (id) =>
+  `https://store.tcgplayer.com/myaccount/orderhistory?SearchString=${encodeURIComponent(id)}`;
+
+/* "N left · $X" for the copies a package still owes, or null when none is. N counts copies
+   and an over-count clamps per line (outstandingOf). X is whole dollars with grouping from
+   $100, else cents; en-US so a phone and a laptop print the same figure. */
+export function packagePill(items, received) {
+  const { left, value } = outstandingOf(items, received);
+  if (left <= 0) return null;
+  const x = value >= 100 ? `$${Math.round(value).toLocaleString("en-US")}` : `$${value.toFixed(2)}`;
+  return `${left} left · ${x}`;
+}
+
+/* An item row's detail line: "×qty" when more than one, then set, finish and condition,
+   empty ones left out; an em dash when nothing is left. */
+export const itemDetail = (it) =>
+  [it.qty > 1 ? `×${it.qty}` : "", it.set, it.finish, it.condition].filter(Boolean).join(" · ") || "\u2014";
+
+/* The mono got/qty read-out of a line with more than one copy, as the web stepper prints it;
+   null for a one-copy line, which has none. An over-count clamps, as countLabel does. */
+export const gotQty = (got, qty) => (qty > 1 ? `${Math.min(got, qty)}/${qty}` : null);
+
 /* Lane B1 (saved-state-shape, native-ledger-is-raw-json): keep every entry of a
    ledger that can be read, drop the rest. Pure: data -> { data, dropped }; the
    input is never changed. Checked fields are received and receivedAt (counts and
