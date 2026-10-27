@@ -19,6 +19,53 @@ func isUnderTabBar(_ element: CGRect, bar: CGRect) -> Bool {
 }
 
 extension XCUIApplication {
+    /// The one scroll helper of these tests. Plain: swipe up until the element can be tapped, at most 5 swipes.
+    /// `whole`: for a test that records frames before a tap. A tap on an element that is off screen scrolls the
+    /// list and moves every frame, so the element must lie fully between the status bar and the tab bar first.
+    /// It drags the list by the measured gap (a drag that holds before it lifts has no fling, so it cannot
+    /// overshoot), then waits until the element's frame stops changing. A drag can start on a control, so a
+    /// caller reads its at-rest state after this call, never before.
+    func reveal(_ element: XCUIElement, whole: Bool = false) {
+        guard whole else {
+            var swipes = 0
+            while !element.isHittable && swipes < 5 {
+                swipeUp()
+                swipes += 1
+            }
+            return
+        }
+        guard element.waitForExistence(timeout: 5), tabBars.firstMatch.exists else {
+            XCTFail("reveal: the element or the tab bar is missing")
+            return
+        }
+        let screen = windows.firstMatch.frame
+        let top = max(screen.minY, statusBars.firstMatch.exists ? statusBars.firstMatch.frame.maxY : 0)
+        let bottom = tabBars.firstMatch.frame.minY
+        func inView() -> Bool { element.frame.minY >= top && element.frame.maxY <= bottom }
+        func settle() {
+            var last = element.frame
+            for _ in 0..<25 {
+                Thread.sleep(forTimeInterval: 0.2)
+                let now = element.frame
+                if now == last { return }
+                last = now
+            }
+        }
+        for _ in 0..<5 where !inView() {
+            let gap = element.frame.midY - (top + bottom) / 2  // above zero: the list must move up
+            let span = bottom - top - 80
+            let from = gap > 0 ? bottom - 40 : top + 40
+            let to = from - max(-span, min(span, gap))
+            let x = screen.midX
+            coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: x, dy: from))
+                .press(forDuration: 0.05, thenDragTo: coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: x, dy: to)),
+                       withVelocity: .slow, thenHoldForDuration: 0.3)
+            settle()
+        }
+        settle()
+        XCTAssertTrue(inView(), "reveal: the element ends at \(element.frame), outside the free band \(top) to \(bottom)")
+    }
+
     /// The accessibility audit, minus every issue whose element the tab bar covers. The issues it
     /// skips and the issues it fails come back as text. `bar` replaces the tab bar's frame, for
     /// the narrowness test. With `record: false` no issue is recorded, so a test can read them.

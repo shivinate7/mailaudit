@@ -141,10 +141,14 @@ final class PackagesShellUITests: XCTestCase {
 
     /// Checking one line in moves nothing else at 375pt. Every package row and every
     /// check-in control is compared, including the siblings inside the checked package.
-    /// Only the tapped control is excluded, because its glyph is the thing that changes.
+    /// Only the tapped control is excluded, because its glyph is the thing that changes. The checked card is
+    /// scrolled fully into view before the baseline: below the fold, the tap would scroll the list and every
+    /// frame would move.
     func testNothingElseMovesOnCheckInAt375pt() throws {
         let app = launch(width: 375)
         let control = try checkedControl(app)
+        app.reveal(app.descendants(matching: .any).matching(identifier: Self.checkedPackageId).firstMatch, whole: true)
+        XCTAssertTrue(control.label.hasPrefix("Check in"), "the scroll checked the line in before the baseline")
         let before = layoutFrames(app)
 
         XCTAssertNotNil(before[Self.checkedPackageId], "the checked package row is missing")

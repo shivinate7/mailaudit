@@ -97,13 +97,16 @@ final class PackageCardUITests: XCTestCase {
 
     /// Checking the lines of A1 in one by one: nothing moves, not the link, not any row, not the tapped
     /// control; the bar is there after the first and second tap and gone once the package is complete;
-    /// the pill reads the model's text and goes with the last copy.
+    /// the pill reads the model's text and goes with the last copy. The A1 card is scrolled fully into view first:
+    /// below the fold, the first tap would scroll the list and every frame would move. The at-rest checks come
+    /// after that scroll, so they also prove the scroll checked nothing in.
     func testCheckInsMoveNothingWhileTheBarComesAndGoes() throws {
         let app = launch()
         let gk = Self.package
         let bar = element(app, "card-bar:\(gk)"), pill = element(app, "card-pill:\(gk)")
         let row = element(app, "package-row:\(gk)")
         XCTAssertTrue(row.waitForExistence(timeout: 5), "the A1 row is missing")
+        app.reveal(row, whole: true)
 
         XCTAssertFalse(bar.exists, "nothing is in yet: no bar")
         XCTAssertEqual(pill.label, "4 left \u{00B7} $4.00", "the pill at rest")

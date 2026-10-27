@@ -71,11 +71,7 @@ final class VersionsUITests: XCTestCase {
     /// The element, scrolled into reach on the Ledger tab.
     func reveal(_ app: XCUIApplication, _ id: String) throws -> XCUIElement {
         let found = try need(app, id)
-        var swipes = 0
-        while !found.isHittable && swipes < 5 {
-            app.swipeUp()
-            swipes += 1
-        }
+        app.reveal(found)
         return found
     }
 
