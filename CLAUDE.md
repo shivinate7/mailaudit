@@ -400,7 +400,6 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `native-discard-arm-unpinned` — No test pins the native Discard arm.
 - `native-key-scan-skips-views` — The native key scan skips SwiftUI view state.
 - `native-masthead-packages-only` — The native masthead shows on Packages only.
-- `native-masthead-system-style` — The native masthead uses system styles.
 - `native-compose-is-one-fade` — The native letterhead composes in one fade.
 - `native-backup-has-no-photos` — Native Backup holds no photos.
 - `native-backup-ui-unpinned` — No UI test taps Backup.
@@ -418,6 +417,7 @@ One known gap or to-do per file under `debts/`. Each carries a Status line and a
 - `tcgplayer-link-opens-history-list` — The TCGplayer link may not search by order id.
 - `header-gestures-unmeasured` — Header gestures are unmeasured.
 - `ios-touch-adjust-unmeasured` — iOS touch adjustment near the order id link is unmeasured.
+- `order-id-chevron-tap-flake` — Claim 17a sometimes finds the chevron within reach of the order id link.
 - `discard-keeps-draft` — Discard does not end a composer draft.
 - `type-floor-unbuilt` — Some labels are below the 10px floor.
 - `universal-link-unbuilt` — The universal-link key fallback is not built.
