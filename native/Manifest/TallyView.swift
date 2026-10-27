@@ -167,7 +167,7 @@ struct TallyRowView: View {
                 Text(row.rateLine).font(.mono(11.5, relativeTo: .caption)).foregroundStyle(paint(.rate))
                 // Hidden once in, never removed: unmounting it would shorten the row under the thumb.
                 Text(row.leftLine).font(.cochin(12, relativeTo: .caption).weight(.bold)).foregroundStyle(paint(.left))
-                    .opacity(done ? 0 : 1).accessibilityHidden(done)
+                    .opacity(done ? 0 : 1).accessibilityHidden(done).accessibilityIdentifier("tally-left:\(row.name)")
             }
             .fixedSize(horizontal: true, vertical: false)
         }
