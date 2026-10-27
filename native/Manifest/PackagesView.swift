@@ -67,7 +67,8 @@ struct PackageRow: View {
             HStack(alignment: .center, spacing: 8) {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(pkg.seller).font(.cochin(15).weight(.bold)).foregroundStyle(paint(.seller, packageState))
-                        .lineLimit(1).truncationMode(.tail).textSelection(.enabled)
+                        .lineLimit(1).truncationMode(.tail)
+                        .accessibilityLabel(pkg.seller)  // measured: with textSelection and no label the audit says "Text clipped"; with both, the text wraps
                     dateLine
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -103,6 +104,12 @@ struct PackageRow: View {
             .padding(.horizontal, 8).padding(.vertical, 4)
             .frame(minHeight: 28)
             .hidden()
+            // The slot is an element of its own, sized by the invisible pill. An accessibility container
+            // would take the union of its visible children, so the pill and the stamp would give it two frames.
+            .background {
+                Color.clear.accessibilityElement().accessibilityLabel("Order status")
+                    .accessibilityIdentifier("card-slot:\(pkg.gk)")
+            }
             .overlay(alignment: .trailing) {
                 if let pill = model.pills[pkg.gk] {
                     Text(pill).font(.cochin(12.5).weight(.bold)).foregroundStyle(paint(.pillText, .open))
@@ -118,8 +125,6 @@ struct PackageRow: View {
                         .fixedSize()
                 }
             }
-            .accessibilityElement(children: .contain)
-            .accessibilityIdentifier("card-slot:\(pkg.gk)")
     }
 
     /// The thin bar on the card's top edge, out of flow: it mounts without moving a row.
