@@ -5,9 +5,7 @@
 // the received map, the stamped set, the clock), and what it does with stamps.
 // Stamps go through the ledger store (one-stamp-per-package, stamp-removal-writes-a-tombstone).
 //
-// Red-first. PastTransitModel and PastTransitRow are not in the product yet, so this file does not
-// compile until the builder adds them under native/ManifestKit/Sources/ManifestKit. The API the
-// tests name:
+// The types live in native/ManifestKit/Sources/ManifestKit/PastTransitModel.swift. The API the tests name:
 //
 //   public struct PastTransitRow: Equatable, Sendable {
 //       public let gk: String        // "orderId::seller", the package key
@@ -32,8 +30,12 @@
 //   - The list is not a count: a refunded row keeps its place. The count rules elsewhere still drop it
 //     (a-refund-leaves-every-count).
 //   - Undo acts on one row's own stamp. No record pins the scope of Undo, so this is the default.
+//   - A canceled line never decides a package: the rule drops canceled lines before it groups.
+//   - Undo with no live stamp writes nothing. A tombstone is not a live stamp.
+//   - A same-kind re-stamp keeps its date. An empty or missing date becomes today, as the web's setStamp does.
+//   - A failed save throws, and the rows and the ledger stay as they were.
 //
-// Fake fixtures only. Each ledger file lives in a run folder (RunFolderSupport.swift).
+// Fake fixtures only. Each ledger file is a fresh temp folder from PhotoTestKit.tempDir.
 
 import Foundation
 import XCTest
@@ -57,9 +59,11 @@ final class PastTransitModelTests: XCTestCase {
 
     // MARK: helpers
 
-    /// One ledger item. The key is the item key the received map uses.
-    static func item(_ order: String, _ seller: String, date: String, tracking: String = "without tracking") -> [String: Any] {
-        ["key": "\(order)|1|p1", "orderId": order, "seller": seller, "name": "Card \(order)", "set": "Test Set",
+    /// One ledger item. The key is the item key the received map uses: order, line, product.
+    static func item(
+        _ order: String, _ seller: String, date: String, tracking: String = "without tracking", line: Int = 1
+    ) -> [String: Any] {
+        ["key": "\(order)|\(line)|p\(line)", "orderId": order, "seller": seller, "name": "Card \(order)", "set": "Test Set",
          "condition": "Near Mint", "finish": "", "qty": 1, "price": 1.0, "date": date, "tracking": tracking, "line": "Magic"]
     }
 
@@ -77,16 +81,22 @@ final class PastTransitModelTests: XCTestCase {
          item("P9", "Iota Cards", date: "2026-06-28")]
     }
 
-    /// A model on a ledger file in a run folder. Its received map and stamps are written before the load.
-    func makeModel(clock: Clock) async throws -> (model: PastTransitModel, store: LedgerStore, file: URL) {
-        let dir = try RunFolder.fresh("past-transit")
+    /// A model on a ledger file in a fresh temp folder. The received map and stamps are written before the
+    /// load. `extra` options add packages, received counts and stamps to the fixture.
+    func makeModel(
+        clock: Clock, extraItems: [[String: Any]] = [], extraReceived: [String: Any] = [:], extraStamps: [String: Any] = [:]
+    ) async throws -> (model: PastTransitModel, store: LedgerStore, file: URL) {
+        let dir = try PhotoTestKit.tempDir("past-transit")
         addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
         let file = dir.appending(path: "ledger.json")
-        let stamps: [String: Any] = [
+        var received: [String: Any] = ["P7|1|p1": 1]
+        received.merge(extraReceived) { _, new in new }
+        var stamps: [String: Any] = [
             "P8::Theta Cards": ["kind": "claim", "note": "", "at": "2026-07-20", "updatedAt": Self.start - 1000],
             "P9::Iota Cards": ["kind": "", "note": "", "at": "", "updatedAt": Self.start - 1000],
         ]
-        let doc: [String: Any] = ["mailday": 1, "items": Self.fixtureItems(), "received": ["P7|1|p1": 1], "stamps": stamps]
+        stamps.merge(extraStamps) { _, new in new }
+        let doc: [String: Any] = ["mailday": 1, "items": Self.fixtureItems() + extraItems, "received": received, "stamps": stamps]
         try JSONSerialization.data(withJSONObject: doc).write(to: file)
         let store = LedgerStore(fileURL: file, now: { clock.ms })
         try store.load()
@@ -100,6 +110,24 @@ final class PastTransitModelTests: XCTestCase {
     func savedStamp(_ file: URL, _ gk: String) throws -> [String: Any]? {
         let doc = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(contentsOf: file)) as? [String: Any])
         return (doc["stamps"] as? [String: Any])?[gk] as? [String: Any]
+    }
+
+    /// The device's local calendar day for `ms`, as YYYY-MM-DD: the day the web's todayLocal gives.
+    static func localDay(_ ms: Double) -> String {
+        let f = DateFormatter()
+        f.calendar = Calendar(identifier: .gregorian)
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.timeZone = .current
+        f.dateFormat = "yyyy-MM-dd"
+        return f.string(from: Date(timeIntervalSince1970: ms / 1000))
+    }
+
+    /// The operation must throw, because its save fails.
+    func expectSaveFailure(_ label: String, _ op: () async throws -> Void) async {
+        do {
+            try await op()
+            XCTFail("\(label) must throw when the save fails")
+        } catch {}
     }
 
     // MARK: tests
@@ -151,5 +179,93 @@ final class PastTransitModelTests: XCTestCase {
         try await model.load()
         XCTAssertEqual(model.rows.map(\.gk), Self.listed.filter { $0 != "P3::Gamma Cards" },
                        "the reload ends the sticky row, and its claim stamp hides it")
+    }
+
+    /// A canceled line first, then an owed untracked line on the same order. The order is listed, because the
+    /// rule drops the canceled line before it groups, so the canceled line does not set the order's tracking.
+    func testCanceledLineFirstStillListed() async throws {
+        let extra = [
+            Self.item("X1", "Mixed Cards", date: "2026-06-05", tracking: "Canceled", line: 1),
+            Self.item("X1", "Mixed Cards", date: "2026-06-05", line: 2),
+        ]
+        let (model, _, _) = try await makeModel(clock: Clock(Self.start), extraItems: extra)
+        XCTAssertEqual(model.rows.map(\.gk), Self.listed + ["X1::Mixed Cards"], "the owed line lists the order")
+        XCTAssertEqual(model.rows.last?.tier, "deadline")
+        XCTAssertEqual(model.rows.last?.days, 56)
+        XCTAssertEqual(model.rows.last?.claimBy, "2026-07-05")
+    }
+
+    /// A received untracked line, then an unreceived canceled line. Nothing is owed, so the order is not listed:
+    /// a canceled line never counts as owed.
+    func testReceivedLineThenCanceledNotListed() async throws {
+        let extra = [
+            Self.item("X2", "Quiet Cards", date: "2026-06-06", line: 1),
+            Self.item("X2", "Quiet Cards", date: "2026-06-06", tracking: "Canceled", line: 2),
+        ]
+        let (model, _, _) = try await makeModel(
+            clock: Clock(Self.start), extraItems: extra, extraReceived: ["X2|1|p1": 1])
+        XCTAssertEqual(model.rows.map(\.gk), Self.listed, "a received line and a canceled line leave nothing owed")
+    }
+
+    /// Undo on a package with no live stamp writes nothing: one never stamped, and one already a tombstone.
+    func testUndoWithoutLiveStampWritesNothing() async throws {
+        let (model, store, file) = try await makeModel(clock: Clock(Self.start))
+        let fileBefore = try Data(contentsOf: file)
+        let rowsBefore = model.rows
+        let keysBefore = store.stamps().keys.sorted()
+
+        try await model.undo("P1::Alpha Cards")
+        try await model.undo("P9::Iota Cards")
+
+        XCTAssertEqual(try Data(contentsOf: file), fileBefore, "no save: the ledger file is untouched")
+        XCTAssertEqual(model.rows, rowsBefore)
+        XCTAssertEqual(store.stamps().keys.sorted(), keysBefore, "no tombstone is added")
+    }
+
+    /// A same-kind re-stamp two days later keeps the first date. The clock moves, so a re-date would show.
+    func testRestampSameKindKeepsDate() async throws {
+        let clock = Clock(Self.start)
+        let (model, _, file) = try await makeModel(clock: clock)
+        let day = Self.localDay(Self.start)
+        try await model.stamp("P3::Gamma Cards", kind: "claim")
+        XCTAssertEqual(try savedStamp(file, "P3::Gamma Cards")?["at"] as? String, day, "the first stamp is dated today")
+
+        clock.ms += 2 * 86_400_000
+        try await model.stamp("P3::Gamma Cards", kind: "claim")
+        XCTAssertEqual(try savedStamp(file, "P3::Gamma Cards")?["at"] as? String, day, "the same kind keeps its date")
+    }
+
+    /// A same-kind re-stamp whose stored date is empty, or missing, takes today, as the web's setStamp does.
+    func testRestampSameKindEmptyOrMissingDateUsesToday() async throws {
+        let stamps: [String: Any] = [
+            "P1::Alpha Cards": ["kind": "claim", "note": "", "at": "", "updatedAt": Self.start - 1000],
+            "P2::Beta Games": ["kind": "claim", "note": "", "updatedAt": Self.start - 1000],
+        ]
+        let (model, _, file) = try await makeModel(clock: Clock(Self.start), extraStamps: stamps)
+        let day = Self.localDay(Self.start)
+        try await model.stamp("P1::Alpha Cards", kind: "claim")
+        try await model.stamp("P2::Beta Games", kind: "claim")
+        XCTAssertEqual(try savedStamp(file, "P1::Alpha Cards")?["at"] as? String, day, "an empty date becomes today")
+        XCTAssertEqual(try savedStamp(file, "P2::Beta Games")?["at"] as? String, day, "a missing date becomes today")
+    }
+
+    /// A failed save throws, for a stamp and for an undo. The rows and the ledger file stay as they were.
+    func testFailedSaveLeavesRowsAndLedgerUnchanged() async throws {
+        let (model, _, file) = try await makeModel(clock: Clock(Self.start))
+        try await model.stamp("P2::Beta Games", kind: "refunded")
+        let rowsBefore = model.rows
+        let fileBefore = try Data(contentsOf: file)
+
+        let dir = file.deletingLastPathComponent()
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: dir.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: dir.path) }
+
+        await expectSaveFailure("stamp") { try await model.stamp("P3::Gamma Cards", kind: "claim") }
+        XCTAssertEqual(model.rows, rowsBefore, "a failed stamp leaves the rows")
+        XCTAssertEqual(try Data(contentsOf: file), fileBefore, "a failed stamp leaves the ledger")
+
+        await expectSaveFailure("undo") { try await model.undo("P2::Beta Games") }
+        XCTAssertEqual(model.rows, rowsBefore, "a failed undo leaves the rows")
+        XCTAssertEqual(try Data(contentsOf: file), fileBefore, "a failed undo leaves the ledger")
     }
 }
