@@ -183,11 +183,8 @@ struct MastheadView: View {
             }
             .padding(.top, 12)
             bar.padding(.top, 8)
-            MastheadPaint.style(.count).text(model.countLine(for: tab), size: 10.5, relativeTo: .caption)
-                .lineLimit(1).minimumScaleFactor(0.75)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            countLine
                 .padding(.top, 8)
-                .accessibilityIdentifier("masthead-count")
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 MastheadPaint.style(.missing(remaining: model.remaining)).text(model.missingLine, size: 10.5, relativeTo: .caption)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -196,6 +193,18 @@ struct MastheadView: View {
             }
             .padding(.top, 4)
         }
+    }
+
+    /// One line held at its full width inside a clipped frame: the audit calls a one-line limit on custom-font text clipped
+    /// (measured on the Tally meta, 2026-10-27). At accessibility sizes it wraps, so the fixed height gives way there only.
+    @ViewBuilder private var countLine: some View {
+        let text = MastheadPaint.style(.count).text(model.countLine(for: tab), size: 10.5, relativeTo: .caption)
+        Group {
+            if typeSize.isAccessibilitySize { text.frame(maxWidth: .infinity, alignment: .leading) } else {
+                text.fixedSize(horizontal: true, vertical: false).frame(maxWidth: .infinity, alignment: .leading).clipped()
+            }
+        }
+        .accessibilityIdentifier("masthead-count")
     }
 
     /// Label over figure, both centred. The got figure is accent and bold, the total is soft.

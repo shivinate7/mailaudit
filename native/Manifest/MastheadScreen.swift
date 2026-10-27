@@ -14,6 +14,7 @@ struct MastheadScreen<Content: View>: View {
     var openSync: () -> Void = {}
     @ViewBuilder let content: Content
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var headHeight: CGFloat = 0
     @State private var pinned = false
 
@@ -33,23 +34,30 @@ struct MastheadScreen<Content: View>: View {
                 if let sync { SyncAdvisoryLine(sync: sync, open: openSync) }
                 content
             }
+            // A child held at its full width (a fixed-size, clipped line) must not widen the column or centre it, or the
+            // masthead would move between tabs at 320pt. The overflow runs off the trailing edge.
+            .containerRelativeFrame(.horizontal, alignment: .leading)
         }
         // Pinned once the slot's top has passed the scroll view's top edge. A short tab never scrolls that far.
         .onScrollGeometryChange(for: Bool.self, of: { pinAt > 0 && $0.contentOffset.y + $0.contentInsets.top >= pinAt }) { pinned = $1 }
         .overlay(alignment: .top) {
-            if let masthead { RunningHead(figure: masthead.runningFigure, pinned: pinned) }
+            // Mounted only while pinned: an opacity-0, accessibility-hidden copy was still read by the audit.
+            ZStack {
+                if let masthead, pinned {
+                    RunningHead(figure: masthead.runningFigure).transition(.opacity.combined(with: .offset(y: -3)))
+                }
+            }
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: pinned)
         }
     }
 }
 
 /// The letterhead's short form: seal, name and the two figures that matter, pinned over the scrolled list.
-/// Only opacity and a 3pt offset change, so its height never does; while hidden it takes no tap and is
-/// not in the accessibility tree, so the audit never reads a second, invisible "Manifest".
+/// Only opacity and a 3pt offset change, so its height never does; until it pins it is not mounted, so it takes
+/// no tap and is not in the accessibility tree, and the audit never reads a second, invisible "Manifest".
 private struct RunningHead: View {
     static let height: CGFloat = 46
     let figure: String
-    let pinned: Bool
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 8) {
@@ -66,12 +74,7 @@ private struct RunningHead: View {
         .background(Parchment.paper, ignoresSafeAreaEdges: .top)
         .overlay(alignment: .bottom) { Rectangle().fill(Parchment.line).frame(height: 1) }
         .contentShape(Rectangle())  // pinned, it takes the taps the web's pointer-events: auto takes
-        .opacity(pinned ? 1 : 0)
-        .offset(y: pinned ? 0 : -3)
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: pinned)
-        .allowsHitTesting(pinned)
         .accessibilityElement(children: .combine)
-        .accessibilityHidden(!pinned)
         .accessibilityIdentifier("running-head")
     }
 }
