@@ -2,7 +2,7 @@
 //
 // The 401 and 413 advisory lines are in both clients. SyncLine holds the web copy (`syncSays` in src/app.jsx) whole,
 // " — tap to fix" included, because the line is a button: a tap shows the Ledger tab with the Sync panel open and
-// History closed. No test taps it (native-sync-glue-unpinned). The owner has not ruled the native wording
+// History closed. No test taps it. The owner has not ruled the native wording
 // (native-reply-waits-generation, Still open). So these tests pin what is ruled and nothing about the prose: a line
 // exists for each failure, the two differ, no line shows without a failure, and the lines speak of the Worker only.
 // The web guard (`NO_GITHUB_WORDS66`) fails on GitHub, push, pull, pulling, pulled, repo, private repo and your key.

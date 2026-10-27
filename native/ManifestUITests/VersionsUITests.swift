@@ -253,10 +253,12 @@ final class VersionsUITests: XCTestCase {
         assertHit(restore, "Restore")
         let restoreBox = restore.frame
         // The x of that: the second tap lands where the first did (no-layout-shift-under-pointer). The web Restore is
-        // flex:1, so its hit region spans the row and still holds the first tap when Cancel arrives before it. The
-        // leading edge may move, as the web's does. So the check taps, twice, at the middle of the version row, which
-        // is right of where the pill is drawn, and reads what the second tap did. A Restore at its natural width has no
-        // hit region there: the first tap arms nothing. Taps and not frames, so the hit test is the app's own.
+        // flex:1, so its hit region spans the row. Cancel arrives before it and covers the row's leading part, so the
+        // tap point must lie right of Cancel; the leading edge itself may move, as the web's does. The check taps,
+        // twice, at the middle of the version row, which is right of where the pill is drawn, and reads what the second
+        // tap did. A Restore at its natural width has no hit region there: the first tap arms nothing. A tap on the
+        // pill's own leading part is not covered here: Cancel takes it in both layouts. Taps and not frames, so the hit
+        // test is the app's own.
         let firstTap = CGPoint(x: row.frame.midX, y: restoreBox.midY)
         tap(app, at: firstTap)
         waitFor(el(app, "restore"), "label == %@", "Tap again to replace 0 cards",
