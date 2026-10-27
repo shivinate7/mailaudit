@@ -316,6 +316,31 @@ final class OrphanedUITests: XCTestCase {
         assertHit(app.buttons["Cancel"].firstMatch, "the discard ask's Cancel")
     }
 
+    // MARK: tab badge
+
+    /// The Orphaned tab carries the count of live envelopes as a system badge, and none at zero
+    /// (phone-nav-is-bottom-bar). The tab is read while another tab is selected, so a selected-state
+    /// value cannot stand in for a badge, and the count is 2, so a bare dot cannot pass.
+    /// Unmeasured until a build draws one: that XCUI reports a system badge as the tab button's value,
+    /// and in what format. The check is "contains" for that reason. The first green run settles it.
+    func testTheOrphanedTabBadgeShowsTheLiveEnvelopeCount() throws {
+        let app = launch()
+        let orphaned = tab(app, "Orphaned")
+        XCTAssertTrue(orphaned.waitForExistence(timeout: 5), "the tab bar has no Orphaned tab")
+        XCTAssertNil(badge(orphaned).rangeOfCharacter(from: .decimalDigits), "an empty pile shows a badge: \(badge(orphaned))")
+
+        openOrphaned(app)
+        recordSaga(app)
+        recordSaga(app)
+        tab(app, "Tally").tap()
+
+        for _ in 0..<25 where !badge(orphaned).contains("2") { Thread.sleep(forTimeInterval: 0.2) }
+        XCTAssertTrue(badge(orphaned).contains("2"), "two envelopes in the pile, and the Orphaned tab's value is '\(badge(orphaned))'")
+    }
+
+    /// The tab button's value: a system badge's text, empty when there is none.
+    func badge(_ tab: XCUIElement) -> String { tab.value as? String ?? "" }
+
     /// A frame comes back with float noise (a minHeight 44 row reads 43.99999999999997), so the floor has a
     /// thousandth of a point of slack. A real miss is a third of a point or more short.
     func assertHit(_ e: XCUIElement, _ what: String) {
