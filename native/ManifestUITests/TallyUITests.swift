@@ -88,22 +88,12 @@ final class TallyUITests: XCTestCase {
 
     // MARK: accessibility audit, one screen state per method
 
-    /// The whole audit, with each issue named by its element. A bare performAccessibilityAudit() fails with
-    /// "Contrast failed" and the result bundle does not say which element (palette-tokens-contrast-floor).
-    func auditNamingElements(_ app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) throws {
-        var found: [String] = []
-        try app.performAccessibilityAudit { issue in
-            let el = issue.element
-            found.append("\(issue.compactDescription) | id=\(el?.identifier ?? "-") label=\(el?.label ?? "-") frame=\(el?.frame ?? .zero)")
-            return true  // handled here; the assertion below is the only failure
-        }
-        XCTAssertEqual(found, [], "the audit flagged these elements", file: file, line: line)
-    }
+    // The naming audit, app.auditNamingElements(), lives in AuditSkippingTabBarUITests.swift.
 
     func testAccessibilityAuditTallyScreenWithRows() throws {
         let app = launch()
         openTally(app)
-        try auditNamingElements(app)
+        try app.auditNamingElements()
     }
 
     /// The open row is audited alone. On the full list, opening Lightning Bolt adds three copies and pushes the last
@@ -128,7 +118,7 @@ final class TallyUITests: XCTestCase {
         for (id, frame) in frames(app) {
             XCTAssertLessThanOrEqual(frame.maxY, barTop, "\(id) reaches under the tab bar, so the audit would read a cut row")
         }
-        try auditNamingElements(app)
+        try app.auditNamingElements()
     }
 
     // MARK: the copies list
