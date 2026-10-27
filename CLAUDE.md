@@ -328,7 +328,7 @@ Lessons this repo paid for. Each one came from a green suite that hid a real def
 A fact an agent needs, that argues nothing. Read the CSV record before touching the parser.
 
 - `assets-and-icons` — Icon files and how to export them.
-- `build-and-deploy` — Build, test and deploy commands, and `make testflight`.
+- `build-and-deploy` — Build, test and deploy commands, and `ios-ship testflight`.
 - `harness-boot-seeds-remote-late` — Boot seeds the remote after the mount.
 - `harness-drives-resume-by-event` — Drive a resume by event, not by waiting.
 - `harness-drives-the-controls` — Tests drive the controls by their labels.
@@ -470,7 +470,7 @@ npm run check:docs     # do this file's numbers and paths hold?
 npm run check:records  # does the record corpus hold together?
 npm run deploy         # build, test, then open a pull request
 npm run serve          # a local server on :4173
-make testflight        # iOS: Release archive, then upload to TestFlight
+ios-ship testflight tools/ios-ship.json --app Manifest  # iOS: Release archive, then upload to TestFlight
 ```
 
 The steps and the traps live in `build-and-deploy`. Main moves by pull request
