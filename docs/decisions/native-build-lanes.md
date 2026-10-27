@@ -185,6 +185,7 @@ Other risks live in the record for their lane:
   - `native-photo-viewer-unpinned`.
 - Lane N11, the owner's device check, has not run. Debt: `n11-device-check-not-run`.
 - Native envelopes have no photos. Debt: `native-envelope-has-no-photos`.
+- The native Orphaned audits are red. Debt: `native-orphaned-colours-unbuilt`.
 - No test pins the native Discard arm. Debt: `native-discard-arm-unpinned`.
 - A native restore keeps the old change times. Debt: `native-restore-keeps-old-times`.
 - A Reset's effect on the Worker's copy is unmeasured. Debt: `reset-vs-worker-copy-unmeasured`.
