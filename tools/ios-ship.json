@@ -1,0 +1,12 @@
+{
+  "repo_url": "https://github.com/shivinate7/mailaudit.git",
+  "apps": [
+    {
+      "name": "Manifest",
+      "scheme": "Manifest",
+      "bundle_id": "dev.shivinate.manifest",
+      "project_dir": "native",
+      "project_yml": "project.yml"
+    }
+  ]
+}
