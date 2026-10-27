@@ -41,8 +41,9 @@ public final class PastTransitModel {
     /// Stamps one package and saves. A failed save leaves the ledger and the list as they were.
     public func stamp(_ gk: String, kind: String) async throws {
         let cur = store.stamps()[gk]
-        // The same kind keeps its date; a new kind re-dates it, as the web does.
-        let at = (cur?["kind"] as? String) == kind ? cur?["at"] as? String ?? "" : Self.today(store.now())
+        // The same kind keeps a non-empty date; anything else is dated today, as the web does.
+        let kept = (cur?["kind"] as? String) == kind ? cur?["at"] as? String : nil
+        let at = kept.flatMap { $0.isEmpty ? nil : $0 } ?? Self.today(store.now())
         try store.commit { store.setStamp(gk, kind: kind, note: cur?["note"] as? String ?? "", at: at) }
         sticky.insert(gk)
         try await refresh()
@@ -67,18 +68,14 @@ public final class PastTransitModel {
         return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
     }
 
-    private func json(_ value: Any) throws -> String {
-        String(decoding: try JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed]), as: UTF8.self)
-    }
-
-    /// The items go in whole. A refunded row stays listed (so LiveItems would be wrong here), and a
+    /// The items go in whole. A refunded row keeps its place until load() (so LiveItems would be wrong here), and a
     /// canceled order never passes the rule's "without tracking" test.
     private func refresh() async throws {
         epoch += 1
         let mine = epoch
         let stamps = store.stamps()
         let hidden = Set(stamps.filter { live($0.value) != nil }.keys).subtracting(sticky)
-        let args = "[\(try json(store.items())),\(try json(store.received())),\(try json(["$set": Array(hidden)])),\(store.now())]"
+        let args = "[\(try LiveItems.json(store.items())),\(try LiveItems.json(store.received())),\(try LiveItems.json(["$set": Array(hidden)])),\(store.now())]"
         let hits = try JSONDecoder().decode([Hit].self, from: Data(try await engine.call("pastTransit", args).utf8))
         guard mine == epoch else { return }
         rows = hits.map { PastTransitRow(gk: $0.gk, tier: $0.tier, days: $0.days, claimBy: $0.claimBy, stamp: live(stamps[$0.gk])) }
