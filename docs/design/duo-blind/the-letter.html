@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Letter</title>
+<meta name="description" content="Duo concept 4: the app writes you a short letter about today's mail, and you answer by touching its words.">
+<style>
+:root{--paper:#F2E9DA;--card:#FCF6EA;--ink:#332E3F;--inkSoft:#6E6379;--line:#DCCDB6;--gold:#C9A961;--silver:#C4C3C0;--accent:#6F5CA6;--green:#2E7A5E;--greenSoft:#E6E7D7;--red:#A8443C;--redSoft:#F4E4D9;--manila:#EADBBA;--manilaInk:#695832;--amber:#846008;--wax:#A8443C;--waxLit:#C86A5F;--waxDeep:#66231D;--waxCut:#5E1F1A;--waxRaised:#E09A90;--shadow:rgba(28,43,36,0.06);--scrim:rgba(28,43,36,0.92);
+--serif:Cochin,"Iowan Old Style",Georgia,serif;--mono:ui-monospace,"SF Mono",Menlo,monospace}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif)}
+.wrap{max-width:1040px;margin:0 auto;padding:24px 16px 64px}
+h1{font-weight:400;font-size:34px;margin:0 0 4px}
+.lede{color:var(--inkSoft);margin:0 0 20px;font-size:18px}
+.n{font-family:var(--mono);font-variant-numeric:tabular-nums}
+figure{margin:0 0 28px}figcaption{font-size:14px;color:var(--inkSoft);margin-top:6px}
+.fit{position:relative;overflow:hidden}.fit>.dev{position:absolute;top:0;left:0;transform-origin:0 0}
+.dev{background:var(--card);border:6px solid var(--ink);border-radius:30px;overflow:hidden;position:relative;font-size:15px}
+.inner{width:963px;height:681px}.outer{width:478px;height:690px}.tall{width:681px;height:963px}
+.fold{position:absolute;top:0;bottom:0;left:465px;width:21px;border-left:1px dashed var(--silver);border-right:1px dashed var(--silver);background:repeating-linear-gradient(90deg,transparent 0 3px,rgba(110,99,121,.10) 3px 4px)}
+.hfold{position:absolute;left:0;right:0;top:465px;height:21px;border-top:1px dashed var(--silver);border-bottom:1px dashed var(--silver);background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(110,99,121,.10) 3px 4px)}
+.fold span,.hfold span{position:absolute;font:10px var(--mono);color:var(--inkSoft);white-space:nowrap}
+.fold span{top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg)}.hfold span{left:12px;top:4px}
+.pg{position:absolute;top:0;bottom:0;width:465px;padding:22px 24px;display:flex;flex-direction:column}
+.pg.l{left:0}.pg.r{left:486px}.pg.t{top:0;bottom:auto;height:465px;width:auto;left:0;right:0}.pg.b{top:486px;bottom:0;width:auto;left:0;right:0}
+.pg.solo{width:auto;right:0;left:0}
+.flat{background:linear-gradient(var(--paper),var(--card) 30%)}
+.poses{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start}.poses figure{flex:1 1 280px;min-width:0}
+.hit{outline:3px solid var(--accent);outline-offset:6px;border-radius:4px}
+.notes{display:grid;gap:4px 24px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));font-size:17px;line-height:1.45}
+.notes h2{font-weight:400;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--inkSoft);margin:16px 0 4px;border-bottom:1px solid var(--gold);padding-bottom:4px}
+.notes ol,.notes p{margin:0 0 8px}.notes ol{padding-left:22px}
+.back{display:inline-block;margin-bottom:12px;color:var(--accent);font-size:16px}
+body.embed .chrome{display:none}body.embed .wrap{padding:0;max-width:none}body.embed figure{margin:0}body.embed figcaption{display:none}
+.btn{min-height:44px;min-width:44px;padding:0 14px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font:inherit;font-size:16px;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn.p{background:var(--accent);border-color:var(--accent);color:var(--card)}
+.btn.warn{border-color:var(--red);color:var(--red);background:var(--redSoft)}
+.k{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--inkSoft)}
+.rule{border:0;border-top:1px solid var(--gold);margin:12px 0}
+.ok{color:var(--green)}.late{color:var(--amber)}.bad{color:var(--red)}
+.ann{font:11px var(--mono);color:var(--accent)}
+.line{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:52px;border-bottom:1px solid var(--line)}
+.line small{display:block;color:var(--inkSoft);font-size:13px}
+.line.now{background:var(--greenSoft);margin:0 -10px;padding:0 10px;border-radius:6px}
+.step{display:inline-flex;align-items:center;gap:6px}.step .n{min-width:42px;text-align:center;font-size:18px}
+.box{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:12px;background:var(--paper)}
+
+/* concept */
+.letter p{font-size:18px;line-height:1.5;margin:0 0 12px}
+.date{text-align:right;font-style:italic;color:var(--inkSoft);font-size:15px;margin-bottom:8px}
+.tap{border-bottom:2px dotted var(--gold);padding:1px 0}
+.tap.focus{background:rgba(111,92,166,.14);border-bottom:2px solid var(--accent);border-radius:3px;padding:1px 3px}
+.done{text-decoration:line-through;text-decoration-color:var(--green);color:var(--inkSoft)}
+.ans{display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 12px}
+.replybar{margin-top:auto;border:1px solid var(--accent);border-radius:10px;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;background:var(--card)}
+.replybar small{display:block;font-size:13px;color:var(--inkSoft)}
+.seal{width:52px;height:52px;border-radius:50%;background:radial-gradient(circle at 35% 30%,var(--waxRaised),var(--waxLit) 22%,var(--wax) 55%,var(--waxDeep));box-shadow:inset 0 0 0 3px var(--waxCut);display:grid;place-items:center;color:var(--waxRaised);font-size:22px;font-style:italic}
+.sign{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin-top:auto;font-style:italic;font-size:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="chrome">
+<a class="back" href="index.html">All five concepts</a>
+<h1>4 · The Letter</h1>
+<p class="lede">The app writes you a short letter about today's mail. You answer by touching its words.</p>
+</div>
+
+<figure data-pose="flat">
+<div class="fit" data-max="1"><div class="dev inner">
+  <section class="pg l letter">
+    <div class="date">Monday, 26 October</div>
+    <p>Dear collector,</p>
+    <p>Six envelopes were out this morning, holding <span class="n">26</span> cards. You have opened two. <span class="n">18</span> cards, <span class="n">$7.92</span>, are still on their way.</p>
+    <p>From <b>Kestrel Card Co.</b>, sent 14 October, you have <span class="tap focus">three of four Lightning Bolt</span>, <span class="tap done">both Counterspell</span> and <span class="tap done">the Brainstorm</span>. One Bolt, <span class="n">$1.12</span>, is still owed.</p>
+    <p class="done"><b>Fernhill Cards</b> is complete: Swords to Plowshares and Path to Exile.</p>
+    <p>If more envelopes wait in the pile, they are most likely from <span class="tap">Brass Lantern</span>, with four cards, or <span class="tap">Low Tide Singles</span>, with six.</p>
+    <div class="replybar"><div>Lightning Bolt<small>Kestrel · M11 · NM · $1.12</small></div><div class="step"><span class="btn">−</span><span class="n">3 of 4</span><span class="btn p">+</span></div><span class="btn">Done</span></div>
+  </section>
+  <div class="fold"><span>fold · a letter on two leaves</span></div>
+  <section class="pg r letter">
+    <p><b class="bad">Ashgrove Games</b> has been out <span class="n">24</span> days, with four cards worth <span class="n">$2.82</span>. Its claim window closes Friday.</p>
+    <div class="ans"><span class="btn warn">Stamp it lost</span><span class="btn">Mark refunded</span><span class="btn">It came</span></div>
+    <p><b class="late">Quillon Hobby</b> is <span class="n">17</span> days out. Brass Lantern and Low Tide are not late yet.</p>
+    <p>An envelope with no name? <span class="tap">Tell me a card in it.</span> You told me <span class="tap">Fellwar Stone</span> and <span class="tap">Beast Within</span>. That fits <b>Brass Lantern</b>, two of two. Quillon fits one.</p>
+    <div class="ans"><span class="btn p">It is Brass Lantern</span><span class="btn">Keep it aside</span></div>
+    <div class="sign"><span>Yours, the ledger</span><span class="seal">✦</span></div>
+  </section>
+</div></div>
+<figcaption>Open flat: the letter on two leaves. A touched phrase opens its reply bar; done phrases strike through. Inner screen 951×669 pt.</figcaption>
+</figure>
+
+<div class="poses chrome">
+<figure data-pose="closed">
+<div class="fit" data-max="1"><div class="dev outer">
+  <section class="pg solo letter">
+    <div class="date">Monday, 26 October</div>
+    <p><span class="n">18</span> cards, <span class="n">$7.92</span>, are still on their way.</p>
+    <p>From <b>Kestrel Card Co.</b> you have <span class="tap focus">three of four Lightning Bolt</span>. One Bolt is still owed.</p>
+    <p><b class="bad">Ashgrove Games</b> has 4 days left to claim.</p>
+    <div class="ans"><span class="btn warn">Stamp it lost</span><span class="btn">It came</span></div>
+    <p style="color:var(--inkSoft);font-size:15px">Scroll for the rest of the letter.</p>
+    <div class="replybar"><div>Lightning Bolt<small>Kestrel</small></div><div class="step"><span class="btn">−</span><span class="n">3/4</span><span class="btn p">+</span></div></div>
+  </section>
+</div></div>
+<figcaption>Closed, outer screen: one leaf, scrolled. The reply bar stays at the thumb.</figcaption>
+</figure>
+<figure data-pose="laptop">
+<div class="fit" data-max="1"><div class="dev tall">
+  <section class="pg t letter">
+    <div class="date">Monday, 26 October</div>
+    <p style="font-size:24px">From <b>Kestrel Card Co.</b>, sent 14 October, you have <span class="tap focus">three of four Lightning Bolt</span>, both Counterspell and the Brainstorm.</p>
+    <p style="font-size:24px">One Bolt, <span class="n">$1.12</span>, is still owed.</p>
+  </section>
+  <div class="hfold"><span>fold · top stands, bottom lies flat</span></div>
+  <section class="pg b flat">
+    <div class="k">Your reply</div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:24px;margin:24px 0">
+      <span class="btn" style="width:96px;height:96px;font-size:36px">−</span><span class="n" style="font-size:64px">3/4</span><span class="btn p" style="width:96px;height:96px;font-size:36px">+</span>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:space-between;margin-top:auto"><span class="btn">Previous sentence</span><span class="btn p">Next sentence</span></div>
+  </section>
+</div></div>
+<figcaption>Laptop pose: the sentence stands up to be read; the reply pad lies flat.</figcaption>
+</figure>
+</div>
+
+<div class="notes chrome">
+<div>
+<h2>Central idea</h2>
+<p>The app writes today's mail as a short letter, and you answer by touching its words instead of working a list.</p>
+<h2>A mail-day session</h2>
+<ol>
+<li>Open the phone flat. The letter reads: what is out, what came, what is late.</li>
+<li>Open an envelope. Touch the sentence that names its seller.</li>
+<li>Touch a phrase like "three of four Lightning Bolt". The reply bar counts copies.</li>
+<li>A finished sentence strikes through. The letter rewrites its totals.</li>
+<li>A blank envelope: tell it one card name. The letter names the best fit.</li>
+<li>A late seller gets a paragraph with Stamp it lost and Mark refunded.</li>
+</ol>
+</div>
+<div>
+<h2>Better than a phone list</h2>
+<p>It says what matters today in plain words, with nothing to filter. Late mail and closing claims arrive as sentences you cannot miss.</p>
+<p>It reads like the stationery the palette already suggests.</p>
+<h2>Biggest risk</h2>
+<p>Prose does not scale. A 40-card order becomes a wall of words. Phrases are small tap targets, so one-handed use leans hard on the reply bar.</p>
+</div>
+</div>
+</div>
+<script>
+function fit(){document.querySelectorAll('.fit').forEach(f=>{const d=f.firstElementChild,s=Math.min(+f.dataset.max||1,f.clientWidth/d.offsetWidth);d.style.transform='scale('+s+')';f.style.height=d.offsetHeight*s+'px'})}
+function route(){const p=new URLSearchParams(location.hash.slice(1)),pose=p.get('pose');document.body.classList.toggle('embed',p.has('embed'));document.querySelectorAll('[data-pose]').forEach(e=>e.classList.toggle('hit',e.dataset.pose===pose&&!p.has('embed')));fit();const t=document.querySelector('[data-pose="'+pose+'"]');if(t&&!p.has('embed'))t.scrollIntoView()}
+addEventListener('hashchange',route);addEventListener('resize',fit);route();
+</script>
+</body>
+</html>
