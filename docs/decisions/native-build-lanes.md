@@ -42,6 +42,18 @@ W2 and W3 come from the owner's rulings, not from the first plan. W2a and W3a ha
 - Batch 5: N6, N7, N8, N4b and N9 (all landed) after N5 (landed).
 - N10 waited for W2a, which landed in PR #77, because the owner ruled the Worker photo route first.
 
+## Duo lanes
+
+Order set on 2026-10-27 for the iPhone Duo view. The governing record is `duo-card-in-hand`.
+
+- Wave 1: `duo-hand-rules`.
+- Wave 1: `duo-spread-kit`.
+- Wave 2: `duo-hand-model`.
+- Wave 2: `duo-transit-model`.
+- Wave 2: `duo-spine-shell`.
+- Wave 3: `duo-hand-screen`.
+- Wave 3: `duo-tabs-spread`.
+
 ## N1 notes
 
 - parse-items.json exclusion: `rules-run-in-javascriptcore`, its one home.

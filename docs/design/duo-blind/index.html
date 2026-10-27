@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Duo Blind Concepts</title>
+<meta name="description" content="Five root-different concepts for mail day on the iPhone Duo inner screen, open flat, side by side.">
+<style>
+:root{--paper:#F2E9DA;--card:#FCF6EA;--ink:#332E3F;--inkSoft:#6E6379;--line:#DCCDB6;--gold:#C9A961;--accent:#6F5CA6;--red:#A8443C;--redSoft:#F4E4D9;
+--serif:Cochin,"Iowan Old Style",Georgia,serif;--mono:ui-monospace,"SF Mono",Menlo,monospace}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif)}
+.wrap{padding:24px 16px 64px;max-width:2200px;margin:0 auto}
+h1{font-weight:400;font-size:34px;margin:0 0 4px}
+.lede{color:var(--inkSoft);margin:0 0 16px;font-size:18px;max-width:70ch}
+.grid{display:grid;gap:20px;grid-template-columns:repeat(auto-fill,minmax(min(100%,380px),1fr))}
+.c{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.c h2{font-weight:400;font-size:22px;margin:0;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.c h2 a{color:var(--ink)}
+.c p{margin:0;font-size:16px;line-height:1.4;color:var(--inkSoft)}
+.c iframe{width:100%;aspect-ratio:963/681;border:0;background:var(--paper);pointer-events:none}
+.tag{font:12px var(--mono);color:var(--accent);letter-spacing:.06em}
+.btn{min-height:44px;padding:0 14px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font:inherit;font-size:16px;color:var(--ink);cursor:pointer}
+.bar{display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.c[hidden]{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Mail day on the Duo · five concepts</h1>
+<p class="lede">Each concept differs at the root. All five use the same mail day: six sellers, Kestrel three of four Bolts in, one blank envelope. Tap a title for poses and notes. Hide removes one option.</p>
+<div class="bar"><button class="btn" id="all">Show all</button><span class="tag" id="count"></span></div>
+<div class="grid">
+<article class="c" data-id="card-in-hand"><h2><a href="card-in-hand.html">1 · Card in Hand</a><span class="tag">pick</span></h2><p>The card you hold is the search; the envelope is the answer.</p><iframe src="card-in-hand.html#embed" title="Card in Hand, open flat"></iframe><button class="btn hide">Hide</button></article>
+<article class="c" data-id="account-book"><h2><a href="account-book.html">2 · Account Book</a></h2><p>Each seller is an account owing you cards; balance the book to zero.</p><iframe src="account-book.html#embed" title="Account Book, open flat"></iframe><button class="btn hide">Hide</button></article>
+<article class="c" data-id="sorting-frame"><h2><a href="sorting-frame.html">3 · Sorting Frame</a></h2><p>Find an envelope by thickness and age, in a wall of pigeonholes.</p><iframe src="sorting-frame.html#embed" title="Sorting Frame, open flat"></iframe><button class="btn hide">Hide</button></article>
+<article class="c" data-id="the-letter"><h2><a href="the-letter.html">4 · The Letter</a></h2><p>Today's mail written as a letter; answer by touching its words.</p><iframe src="the-letter.html#embed" title="The Letter, open flat"></iframe><button class="btn hide">Hide</button></article>
+<article class="c" data-id="fold-to-seal"><h2><a href="fold-to-seal.html">5 · Fold to Seal</a><span class="tag">wild</span></h2><p>The phone is the envelope; close it to seal what came.</p><iframe src="fold-to-seal.html#embed" title="Fold to Seal, open flat"></iframe><button class="btn hide">Hide</button></article>
+</div>
+</div>
+<script>
+// hidden concepts live in the hash (#hide=a,b), so a culled view is one URL
+const cards=[...document.querySelectorAll('.c')];
+function hidden(){return new Set((new URLSearchParams(location.hash.slice(1)).get('hide')||'').split(',').filter(Boolean))}
+function set(h){location.hash=h.size?'hide='+[...h].join(','):''}
+function show(){const h=hidden();cards.forEach(c=>c.hidden=h.has(c.dataset.id));document.getElementById('count').textContent=h.size?h.size+' hidden':''}
+cards.forEach(c=>c.querySelector('.hide').onclick=()=>{const h=hidden();h.add(c.dataset.id);set(h)});
+document.getElementById('all').onclick=()=>set(new Set());
+addEventListener('hashchange',show);show();
+</script>
+</body>
+</html>

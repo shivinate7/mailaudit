@@ -52,6 +52,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `check-seed-backstop-not-proof` | Kind: build | [`docs/decisions/check-seed-backstop-not-proof.md`](../docs/decisions/check-seed-backstop-not-proof.md) |
 | `ci-filters-guarantee-no-rebuild` | Nothing the app writes should touch the source repository, so a backup can never trigger a site rebuild. | [`docs/decisions/ci-filters-guarantee-no-rebuild.md`](../docs/decisions/ci-filters-guarantee-no-rebuild.md) |
 | `ci-skips-draft-prs` | Kind: build | [`docs/decisions/ci-skips-draft-prs.md`](../docs/decisions/ci-skips-draft-prs.md) |
+| `duo-card-in-hand` | Kind: build | [`docs/decisions/duo-card-in-hand.md`](../docs/decisions/duo-card-in-hand.md) |
 | `ledger-remote-needed-for-seed` | Kind: build | [`docs/decisions/ledger-remote-needed-for-seed.md`](../docs/decisions/ledger-remote-needed-for-seed.md) |
 | `live-verification` | This file draws the line between proven and unproven. | [`docs/decisions/live-verification.md`](../docs/decisions/live-verification.md) |
 | `masthead-tallies-unequal-thirds` | The tallies are three ruled cells: cards, packages, and value. | [`docs/decisions/masthead-tallies-unequal-thirds.md`](../docs/decisions/masthead-tallies-unequal-thirds.md) |
@@ -65,6 +66,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-reply-waits-generation` | Kind: build | [`docs/decisions/native-reply-waits-generation.md`](../docs/decisions/native-reply-waits-generation.md) |
 | `native-ships-via-testflight` | After each merge, this Mac installs a Release build of MANIFEST on the owner's phone over Wi-Fi or cable. | [`docs/decisions/native-ships-via-testflight.md`](../docs/decisions/native-ships-via-testflight.md) |
 | `native-swift-rebuild` | Kind: build | [`docs/decisions/native-swift-rebuild.md`](../docs/decisions/native-swift-rebuild.md) |
+| `new-envelope-ends-an-envelope` | Kind: build | [`docs/decisions/new-envelope-ends-an-envelope.md`](../docs/decisions/new-envelope-ends-an-envelope.md) |
 | `order-id-button-stops-propagate` | The order-id button in Tally stops its click from reaching the row underneath. | [`docs/decisions/order-id-button-stops-propagate.md`](../docs/decisions/order-id-button-stops-propagate.md) |
 | `orphan-entry-takes-one-input` | The Orphaned view records an envelope from one input. | [`docs/decisions/orphan-entry-takes-one-input.md`](../docs/decisions/orphan-entry-takes-one-input.md) |
 | `phone-nav-is-bottom-bar` | The owner ruled on 2026-10-11: "bottom bar D is gorgeous! | [`docs/decisions/phone-nav-is-bottom-bar.md`](../docs/decisions/phone-nav-is-bottom-bar.md) |
@@ -351,6 +353,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | Slug | Gist | Link |
 |---|---|---|
 | `card-reserved-geometry` | Card reserved geometry heights | [`measurements/card-reserved-geometry.md`](../measurements/card-reserved-geometry.md) |
+| `duo-fold-and-keyboard` | Fold strip, keyboard frame and outer screen on the iPhone Duo simulator | [`measurements/duo-fold-and-keyboard.md`](../measurements/duo-fold-and-keyboard.md) |
 | `ledger-and-seed-sizes` | Ledger and version sizes | [`measurements/ledger-and-seed-sizes.md`](../measurements/ledger-and-seed-sizes.md) |
 | `masthead-foot-slot` | Masthead foot save-slot width | [`measurements/masthead-foot-slot.md`](../measurements/masthead-foot-slot.md) |
 | `motion-timings` | Motion sheet durations and beats | [`measurements/motion-timings.md`](../measurements/motion-timings.md) |
