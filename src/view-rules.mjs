@@ -527,11 +527,11 @@ export function salvageLedger(data) {
    Pure rules for the Duo's card-name entry. State comes in as arguments; none reads the clock
    except through `now`. They reuse the web's matchers (lineHit, matchEnvelope, lostMail). */
 
-const copiesOut = (it, received) => it.qty > Math.min(it.qty, received[it.key] || 0);
+const copiesOut = (it, received) => it.qty > gotOfItem(it, received);
 
 /* items still owed copies, in a package that is neither canceled nor refunded */
 const openItems = (items, received, refundedGks) =>
-  items.filter((it) => !CANCELED(it) && !refundedGks.has(gkOf(it)) && copiesOut(it, received));
+  dropGks(dropCanceled(items), refundedGks).filter((it) => copiesOut(it, received));
 
 /* handHits: gk of each open package with a line the typed text hits, groupPackages order */
 export function handHits(items, query, received, refundedGks) {
@@ -550,28 +550,37 @@ export function handStep(items, received, refundedGks, held, typed) {
   const nk = normName(typed);
   const hk = held ? normName(held) : null;
   const hold = (h) => ({ action: "hold", gk: null, plan: null, held: h });
+  const post = (pkg, entries, h) => ({
+    action: "post",
+    gk: pkg.gk,
+    plan: matchEnvelope(entries, whole(pkg), received).plan,
+    held: h,
+  });
   if (!nk) return hk ? hold(hk) : { action: "none", gk: null, plan: null, held: null };
   const mine = envelopesOf(nk);
   if (!hk || hk === nk) {
     if (mine.length >= 2) return hold(nk);
-    if (mine.length === 0) return { action: "none", gk: null, plan: null, held: null };
-    const plan = matchEnvelope([{ name: typed, qty: 1 }], whole(mine[0]), received).plan;
-    return { action: "post", gk: mine[0].gk, plan, held: null };
+    if (mine.length === 0) return hk ? hold(hk) : { action: "none", gk: null, plan: null, held: null };
+    /* a held name typed again is two cards; matchEnvelope caps it at the copies out */
+    return post(mine[0], [{ name: typed, qty: hk ? 2 : 1 }], null);
   }
-  const pkg = mine.length === 1 ? mine[0] : null;
-  if (!pkg || !envelopesOf(hk).some((p) => p.gk === pkg.gk)) return hold(hk);
-  const plan = matchEnvelope([{ name: held, qty: 1 }, { name: typed, qty: 1 }], whole(pkg), received).plan;
-  return { action: "post", gk: pkg.gk, plan, held: null };
+  if (mine.length !== 1) return hold(hk);
+  const pkg = mine[0];
+  if (!envelopesOf(hk).some((p) => p.gk === pkg.gk)) return post(pkg, [{ name: typed, qty: 1 }], hk);
+  return post(pkg, [{ name: held, qty: 1 }, { name: typed, qty: 1 }], null);
 }
 
 /* pastTransit: untracked, unreceived, unstamped packages at 14+ days, oldest last */
 export function pastTransit(items, received, stampedGks, now) {
   const rows = [];
-  for (const p of groupPackages(items)) {
+  for (const p of groupPackages(dropCanceled(items))) {
     if (!isUntracked(p) || stampedGks.has(p.gk) || !p.items.some((it) => copiesOut(it, received))) continue;
     const lost = lostMail(p.date, p.tracking, false, now);
     if (!lost) continue;
-    const claimBy = new Date(Date.parse(p.date) + 30 * DAY_MS).toISOString().slice(0, 10);
+    /* the order's calendar date, read as written, so the zone never shifts it */
+    const t = new Date(Date.parse(p.date));
+    const [, y, m, d] = /^(\d{4})-(\d\d)-(\d\d)/.exec(p.date) || [0, t.getFullYear(), t.getMonth() + 1, t.getDate()];
+    const claimBy = new Date(Date.UTC(y, m - 1, +d + 30)).toISOString().slice(0, 10);
     rows.push({ gk: p.gk, tier: lost.tier, days: lost.days, claimBy });
   }
   return rows;
