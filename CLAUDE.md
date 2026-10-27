@@ -123,6 +123,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `csv-import-stays-web` — CSV import stays on the web app.
 - `one-simulator-per-mac` — Simulator boots and load follow the global machine rules.
 - `native-ships-via-testflight` — The iOS app ships through TestFlight.
+- `duo-card-in-hand` — On the iPhone Duo, mail day is Card in Hand.
 
 ## Envelope photos
 
