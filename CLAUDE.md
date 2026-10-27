@@ -386,6 +386,7 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-dialog-ban-unpinned` — Nothing pins the ban on native dialogs.
 - `ruled-head-heights-unremeasured` — The ruled head heights have not been re-measured.
 - `photo-put-unrun-on-github` — The GitHub photo PUT and pull have never run.
+- `tally-audit-contrast-flags` — The Tally audit flags contrast and inaccessible text that the token pairs clear.
 - `native-ledger-tab-unbuilt` — The native Ledger tab lacks the View group.
 - `native-restore-keeps-old-times` — A native restore keeps the old change times.
 - `reset-vs-worker-copy-unmeasured` — A Reset's effect on the Worker's copy is unmeasured.

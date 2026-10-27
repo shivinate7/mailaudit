@@ -72,7 +72,10 @@ struct ItemLine: View {
             }
             Text(detail).font(.cochin(11.5)).foregroundStyle(paint(.detail, state))
             // The order id: the web underlines it and opens the order in Packages. Native has no such route yet, so it is plain.
-            if let orderID { Text(orderID).font(.mono(10.5)).foregroundStyle(paint(.orderId, state)) }
+            if let orderID {
+                Text(orderID).font(.mono(10.5)).foregroundStyle(paint(.orderId, state)).fixedSize()
+                    .accessibilityLabel("Order \(orderID)")  // a bare id failed the Dynamic Type audit, as a bare date did
+            }
         }
     }
 

@@ -12,6 +12,7 @@ private func paint(_ part: TallyRowPaint.Part, done: Bool = false) -> Color {
 struct TallyView: View {
     let model: TallyModel
     @State private var text = ""
+    @FocusState private var searching: Bool
     /// The last view-level refresh that failed, so the rows on screen are never silently stale.
     @State private var failure: String?
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -46,12 +47,17 @@ struct TallyView: View {
     private var controls: some View {
         VStack(alignment: .leading, spacing: 0) {
             // A plain field, not .searchable: its own clear button would be a second Clear control.
-            TextField("Search", text: $text, prompt: Text("Find card, set, seller, order").foregroundStyle(Parchment.inkSoft))
-                .font(.cochin(16, relativeTo: .body)).foregroundStyle(paint(.name))
-                .padding(.vertical, 8).padding(.horizontal, 12)
+            // A vertical-axis plain field in the system font, as Orphaned's: the audit calls the text of a one-line UITextField
+            // clipped (measured). Its Return key types a newline, so a newline is read as the submit.
+            TextField("Search", text: Binding(get: { text }, set: { v in
+                if v.contains("\n") { text = v.replacingOccurrences(of: "\n", with: ""); searching = false } else { text = v }
+            }), prompt: Text("Find card, set, seller, order").foregroundStyle(Parchment.inkSoft), axis: .vertical)
+                .lineLimit(1...3).textFieldStyle(.plain).focused($searching).submitLabel(.search)
+                .font(.body).foregroundStyle(paint(.name))
+                .padding(.horizontal, 12)
+                .frame(minHeight: 44)  // inside the box, so the field's own frame is the 44pt hit region
                 .background(paint(.surface), in: RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Parchment.line, lineWidth: 1))
-                .frame(minHeight: 44)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .accessibilityIdentifier("tally-search")
@@ -149,10 +155,9 @@ struct TallyRowView: View {
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 0) {
                 Text(row.name).font(.cochin(15, relativeTo: .headline).weight(.bold)).foregroundStyle(paint(.name))
-                    .lineLimit(2).multilineTextAlignment(.leading)
+                    .multilineTextAlignment(.leading)
                 // Counts first, then the sets, so a long set list is what is cut first (card-tally-row-counts-first).
                 Text(row.meta).font(.mono(11, relativeTo: .caption)).foregroundStyle(paint(.meta))
-                    .lineLimit(1).truncationMode(.tail)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .trailing, spacing: 0) {
