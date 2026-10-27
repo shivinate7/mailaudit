@@ -8,9 +8,9 @@ private func paint(_ part: LedgerPaint.Part, armed: Bool = false) -> Color {
 }
 
 /// The Ledger tab: the Data group (Sync, History, Backup) and the Reset box (ledger-tab-holds-options).
-/// Sync, History and Reset read their stores whether or not the ledger opened
-/// (recovery-control-not-state-gated). An ask arms in place and has its own Cancel; no native
-/// dialog appears (no-native-dialogs). Sync and History close each other (history-sync-close-each-other).
+/// History and Reset read their stores whether or not the ledger opened (recovery-control-not-state-gated);
+/// Sync has no row when the ledger will not open, because the app then starts no sync client.
+/// An ask arms in place and has its own Cancel; no native dialog appears (no-native-dialogs). Sync and History close each other (history-sync-close-each-other).
 struct LedgerTab: View {
     let store: LedgerStore?
     let versions: VersionsModel?
@@ -151,13 +151,13 @@ struct LedgerTab: View {
             // One line: time, label, then the figure at the right (src/app.jsx verRow). The texts are the elements,
             // and the row's hit region is a button behind them.
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(when).font(.mono(11, relativeTo: .caption)).foregroundStyle(paint(.versionWhen)).lineLimit(1)
+                Text(when).font(.mono(11, relativeTo: .caption)).foregroundStyle(paint(.versionWhen)).lineLimit(1).layoutPriority(1)
                     .accessibilityIdentifier("version-when:\(row.id)")
                 Text(row.label).font(.cochin(14, relativeTo: .body))
                     .foregroundStyle(paint(row.isMilestone ? .versionLabel : .versionLabelSoft)).lineLimit(1)
                     .accessibilityIdentifier("version-label:\(row.id)")
                 Spacer(minLength: 0)
-                Text(row.counts).font(.mono(10.5, relativeTo: .caption2)).foregroundStyle(paint(.versionFigure)).lineLimit(1)
+                Text(row.counts).font(.mono(10.5, relativeTo: .caption2)).foregroundStyle(paint(.versionFigure)).lineLimit(1).layoutPriority(1)
                     .accessibilityIdentifier("version-figure:\(row.id)")
             }
             .frame(minHeight: 45)
@@ -271,7 +271,7 @@ private struct LedgerRow: View {
                     .accessibilityIdentifier(valueID ?? "\(id)-value")
             }
             if let open {
-                Text("\u{203A}").font(.system(size: 22)).foregroundStyle(paint(.disclosure))
+                Text("\u{203A}").font(.cochin(22, relativeTo: .title3)).foregroundStyle(paint(.disclosure))
                     .rotationEffect(.degrees(open ? 90 : 0)).accessibilityHidden(true)
             }
         }
@@ -355,6 +355,8 @@ struct AskRow: View {
             }
             Button(action: press) {
                 MiniLabel(title: ask ?? title, bold: armed, text: p(.restoreText), fill: p(.restoreFill), border: p(.restoreBorder))
+                    // The web's Restore is flex:1: its hit region spans the row, so Cancel arriving before it never covers the first tap.
+                    .frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel(ask ?? title)

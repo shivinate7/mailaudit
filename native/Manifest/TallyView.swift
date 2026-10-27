@@ -47,13 +47,14 @@ struct TallyView: View {
     private var controls: some View {
         VStack(alignment: .leading, spacing: 0) {
             // A plain field, not .searchable: its own clear button would be a second Clear control.
-            // A vertical-axis plain field in the system font, as Orphaned's: the audit calls the text of a one-line UITextField
-            // clipped (measured). Its Return key types a newline, so a newline is read as the submit.
+            // A vertical-axis field: the audit calls the text of a one-line UITextField clipped, and a vertical field's hit
+            // region is only its line height unless it holds two lines (measured). Its Return key types a newline, so a
+            // newline is read as the submit.
             TextField("Search", text: Binding(get: { text }, set: { v in
                 if v.contains("\n") { text = v.replacingOccurrences(of: "\n", with: ""); searching = false } else { text = v }
             }), prompt: Text("Find card, set, seller, order").foregroundStyle(Parchment.inkSoft), axis: .vertical)
-                .lineLimit(1...3).textFieldStyle(.plain).focused($searching).submitLabel(.search)
-                .font(.body).foregroundStyle(paint(.name))
+                .lineLimit(2...3).textFieldStyle(.plain).focused($searching).submitLabel(.search)
+                .font(.cochin(16, relativeTo: .body)).foregroundStyle(paint(.name))
                 .padding(.horizontal, 12)
                 .frame(minHeight: 44)  // inside the box, so the field's own frame is the 44pt hit region
                 .background(paint(.surface), in: RoundedRectangle(cornerRadius: 8))
