@@ -7,6 +7,9 @@ import XCTest
 //
 // API this file pins. The builder adds it in native/ManifestKit/Sources/ManifestKit/DuoSpread.swift.
 //   public enum DuoHinge: Equatable, Sendable { case none, closed, halfOpen, flat }
+//   extension DuoHinge {
+//       public init<Status: Equatable>(status: Status?, closed: Status, partiallyOpen: Status, fullyOpen: Status)  // nil or unknown: .none
+//   }
 //   public enum DuoSpread: Equatable, Sendable {
 //       case single
 //       case sideBySide(left: CGRect, right: CGRect)   // a fold taller than wide
@@ -20,11 +23,13 @@ import XCTest
 //       public static func frame(in spread: DuoSpread, height: CGFloat) -> CGRect?
 //   }
 //
-// pageRects: the answer page is `right` side by side. When stacked, the answer page is `left`, the first rect, on top.
+// pageRects: the answer page is always `right`. Side by side it is the right page. Stacked, it is the top page,
+// so `left` is the bottom page.
 // Rects are in window points, origin top-left.
 
 final class DuoSpreadTests: XCTestCase {
-    // The open inner screen is 951 x 669 pt. Its fold is 40 pt wide, at 455.5 to 495.5 pt.
+    // The open inner screen is 951 x 669 pt. The fold, 40 pt wide at 455.5 to 495.5 pt, comes from one reading
+    // (measurement duo-fold-and-keyboard). It is not fixed: the build re-reads it.
     private let window = CGSize(width: 951, height: 669)
     private let fold = CGRect(x: 455.5, y: 0, width: 40, height: 669)
     private let leftPage = CGRect(x: 0, y: 0, width: 455.5, height: 669)
@@ -49,6 +54,23 @@ final class DuoSpreadTests: XCTestCase {
                        "a closed device shows the outer screen as one page")
     }
 
+    func testNoHingeWithFoldIsSingle() {
+        XCTAssertEqual(DuoSpread.layout(window: window, folds: [fold], hinge: DuoHinge.none), .single,
+                       "a device with no hinge stays one page, even with a fold inside the window")
+    }
+
+    func testHingeStatusMapping() {
+        // Int statuses stand in for the SDK's struct: 0 closed, 1 partially open, 2 fully open, 99 unknown.
+        func hinge(_ status: Int?) -> DuoHinge {
+            DuoHinge(status: status, closed: 0, partiallyOpen: 1, fullyOpen: 2)
+        }
+        XCTAssertEqual(hinge(0), DuoHinge.closed)
+        XCTAssertEqual(hinge(1), DuoHinge.halfOpen)
+        XCTAssertEqual(hinge(2), DuoHinge.flat)
+        XCTAssertEqual(hinge(nil), DuoHinge.none, "no status gives no hinge")
+        XCTAssertEqual(hinge(99), DuoHinge.none, "an unknown status is not flat, so it never splits the screen")
+    }
+
     func testFoldAtEdgeIsSingle() {
         // A fold that reaches an edge leaves one page empty, so it does not split the screen.
         let cases: [(size: CGSize, fold: CGRect)] = [
@@ -70,8 +92,8 @@ final class DuoSpreadTests: XCTestCase {
 
         XCTAssertEqual(spread, .stacked(top: top, bottom: bottom), "held tall, the fold stacks the pages")
         let rects = try XCTUnwrap(spread.pageRects)
-        XCTAssertEqual(rects.left, top, "the answer page is first when stacked, so it sits on top")
-        XCTAssertEqual(rects.right, bottom, "the other page is second when stacked, so it sits below")
+        XCTAssertEqual(rects.right, top, "the answer page is always right, and stacked it is the top page")
+        XCTAssertEqual(rects.left, bottom, "stacked, the other page is left, below the answer")
     }
 
     func testBarUnderRightPage() {
