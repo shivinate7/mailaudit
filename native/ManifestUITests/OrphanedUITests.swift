@@ -235,14 +235,15 @@ final class OrphanedUITests: XCTestCase {
 
     /// The audit runs on a view only the real Orphaned view has: first the composer, then an envelope with a tie.
     /// The empty composer's Save is disabled, and WCAG 1.4.3 exempts inactive components, so a contrast issue on a
-    /// disabled element is skipped. So is the ruled contrast flag on Cancel (skipMeasuredContrastFlags). Every other
-    /// issue, and any other enabled element's contrast, still fails.
+    /// disabled element is skipped. So is the ruled contrast flag on Cancel (skipMeasuredContrastFlags) and the system
+    /// keyboard's prediction cells (skipKeyboardPredictionCells). Every other issue, and any other enabled element's
+    /// contrast, still fails.
     func testAccessibilityAuditOrphanedComposer() throws {
         let app = launch()
         openOrphaned(app)
         el(app, "orphaned-record").tap()
         XCTAssertTrue(el(app, "orphaned-input").waitForExistence(timeout: 5), "the composer did not open before the audit")
-        try app.auditNamingElements(skipping: Self.composerContrastSkips)
+        try app.auditNamingElements(skipping: Self.composerAuditSkips)
     }
 
     /// The one exemption of the empty composer's audit: a contrast issue on a disabled element (WCAG 1.4.3).
@@ -253,6 +254,12 @@ final class OrphanedUITests: XCTestCase {
     /// What the empty composer's audits skip: a disabled element's contrast, and the ruled Cancel flag.
     static func composerContrastSkips(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
         inactiveContrast(issue) || skipMeasuredContrastFlags(issue)
+    }
+
+    /// What the two composer audits skip, and no other audit: the contrast skips, and the system keyboard's
+    /// prediction cells, which the open composer's keyboard draws (audit-skips-measured-flags).
+    static func composerAuditSkips(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
+        composerContrastSkips(issue) || skipKeyboardPredictionCells(issue)
     }
 
     /// Waits until the keyboard is on screen and its frame has held still for three reads, 0.2s apart. Returns what
@@ -278,7 +285,7 @@ final class OrphanedUITests: XCTestCase {
     /// Probe for an intermittent audit issue on the composer: "Potentially inaccessible text", with no element and
     /// a zero frame, in 3 of 5 runs. This waits for the keyboard to settle first, then audits, and logs every issue
     /// the audit raises (the exempt ones too) with its type, element and frame, plus the screen's accessibility tree
-    /// as an attachment. It adds no skip beyond the one the empty composer's audit already has. Run it with
+    /// as an attachment. It adds no skip beyond the ones the empty composer's audit already has. Run it with
     /// -test-iterations 5 and read the PROBE-AUDIT lines of the log: they say whether the keyboard was on screen
     /// when the audit ran, and what each iteration's audit raised. A green run with the keyboard off screen
     /// proves nothing about the settle.
@@ -297,7 +304,7 @@ final class OrphanedUITests: XCTestCase {
         try app.auditNamingElements(skipping: { issue in
             let element = issue.element.map { "id=\($0.identifier) label=\($0.label) frame=\($0.frame)" } ?? "no element"
             seen.append("\(issue.auditType.rawValue) | \(issue.compactDescription) | \(issue.detailedDescription) | \(element)")
-            return Self.composerContrastSkips(issue)
+            return Self.composerAuditSkips(issue)
         })
     }
 

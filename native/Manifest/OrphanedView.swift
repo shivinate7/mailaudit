@@ -232,7 +232,7 @@ private struct EnvelopeCard: View {
             HStack(spacing: 8) {
                 micro("Envelope \u{00B7} \(Date(timeIntervalSince1970: env.createdAt / 1000).formatted(.iso8601.year().month().day())) \u{00B7} \(total) card\(total == 1 ? "" : "s")", size: 11, tracking: 0.12)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Button { model.open(.edit(env.id)) } label: { MiniLabel(title: "Edit", size: 11) }.buttonStyle(.plain)
+                Button { model.open(.edit(env.id)) } label: { MiniLabel(title: "Edit", size: 11) }.buttonStyle(.plain).accessibilityIdentifier("orphaned-edit:\(env.id)")
                 Button(role: .destructive) { armed.toggle() } label: {
                     MiniLabel(title: "Discard", size: 11, text: paint(.discardText), fill: paint(.cardSurface), border: paint(.discardBorder))
                 }
