@@ -6,8 +6,8 @@
 // Contract the tests name (the builder implements all of it):
 //   Custom tab bar, open Duo: one view with the identifier "duo-tab-bar". Its buttons carry the tab titles
 //     Ledger, Orphaned, Tally and Packages. It sits under the right page.
-//   Ledger, open Duo: the Ledger page keeps the full width. Its running head ("running-head", the masthead of the
-//     Ledger tab, already in MastheadScreen.swift) takes the page width.
+//   Ledger, open Duo: the Ledger page keeps the full width. Ledger has no running head (the masthead shows on Packages
+//     only), so the test reads the Backup row ("backup"), which every Ledger page draws.
 //   System tab bar: on the open Duo it is absent or not hittable. On the closed Duo it shows the four tab titles.
 //   Custom tab bar, closed Duo: absent.
 //
@@ -19,6 +19,8 @@ import XCTest
 final class DuoShellUITests: XCTestCase {
     static let tabTitles = ["Ledger", "Orphaned", "Tally", "Packages"]
     static let tolerance: CGFloat = 2
+    /// How far a full-width Ledger row must reach past the fold on each side (455.5 and 495.5 at a 951 pt window).
+    static let foldMargin: CGFloat = 20
     /// The room a bottom bar may keep above the window's bottom edge. The outer screen's bottom inset is 34 pt; the inner one is unmeasured.
     static let bottomAllowance: CGFloat = 40
 
@@ -66,14 +68,15 @@ final class DuoShellUITests: XCTestCase {
         guard app.requirePose(.flat) else { return }
         XCTAssertTrue(customBar(app).waitForExistence(timeout: 5), "the custom tab bar duo-tab-bar is missing on the open Duo")
 
-        // Ledger is the selected tab at launch, so its running head is the masthead of that page.
-        let head = app.descendants(matching: .any).matching(identifier: "running-head").firstMatch
-        XCTAssertTrue(head.waitForExistence(timeout: 5), "the Ledger running head is missing")
+        // Ledger has no running head: the masthead shows on Packages only. The Backup row is drawn on every Ledger page,
+        // with or without a sync client or saved versions, and it is the anchor the other Ledger tests use.
+        let row = app.descendants(matching: .any).matching(identifier: "backup").firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5), "the Ledger Backup row is missing")
 
         let win = app.window.frame
-        let f = head.frame
-        XCTAssertLessThan(f.minX, win.midX, "the Ledger page starts right of the fold")
-        XCTAssertGreaterThan(f.maxX, win.midX, "the Ledger page stops at the fold")
+        let f = row.frame
+        XCTAssertLessThan(f.minX, win.midX - Self.foldMargin, "the Ledger page starts right of the fold")
+        XCTAssertGreaterThan(f.maxX, win.midX + Self.foldMargin, "the Ledger page stops at the fold")
         XCTAssertGreaterThan(f.width, win.width * 0.9, "the Ledger page is not full width")
     }
 
