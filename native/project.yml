@@ -17,10 +17,12 @@ targets:
     platform: iOS
     sources:
       - Manifest
-      # rules.js is the bundled web rules. ledger.json is the fake seed for -ManifestUITestSeed.
+      # rules.js is the bundled web rules. ledger.json is the fake seed for -ManifestUITestSeed; a file name after the flag picks another fixture.
       - path: ManifestKit/Sources/ManifestKit/rules.js
         buildPhase: resources
       - path: ../shared/fixtures/ledger.json
+        buildPhase: resources
+      - path: ../shared/fixtures/ledger-long-seller.json
         buildPhase: resources
       # tokens.json is the shared palette, decoded at launch (shared-tokens-and-fixtures).
       - path: ../shared/tokens.json

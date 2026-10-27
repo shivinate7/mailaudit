@@ -29,6 +29,8 @@ public final class PackagesModel {
     public private(set) var pills: [String: String] = [:]
     /// Per package gk, copies in over copies owed (the bundle's totalsOf): an entry only while some but not all are in.
     public private(set) var bars: [String: Double] = [:]
+    /// Per item key of a line with more than one copy, from the bundle's gotQty: "got/qty". No entry for a one-copy line.
+    public private(set) var readouts: [String: String] = [:]
     /// Per item key, from the bundle's itemDetail.
     public private(set) var details: [String: String] = [:]
     /// Per package gk, from the bundle's tcgplayerOrderUrl.
@@ -57,40 +59,43 @@ public final class PackagesModel {
         done = [:]
         pills = [:]
         bars = [:]
+        readouts = [:]
         details = [:]
         orderLinks = [:]
-        for p in rows { try await refresh(p, items: p.items, withStatic: true) }
+        try await refresh(rows.map { ($0, $0.items) }, withStatic: true)
     }
 
     private func encode<T: Encodable>(_ value: T) throws -> String {
         String(decoding: try JSONEncoder().encode(value), as: UTF8.self)
     }
 
-    /// One engine hop per package: each given line's isDone and countLabel, and the package's pill and bar.
-    /// `withStatic` adds what a check-in cannot change, the detail lines and the order link.
+    /// One engine hop for the given packages: each listed line's isDone, countLabel and gotQty, and each package's
+    /// pill and bar. `withStatic` adds what a check-in cannot change, the detail lines and the order link.
     /// Each call stands alone: one failing must not stop the rest. The first error is thrown.
-    private func refresh(_ p: Package, items: [LedgerItem], withStatic: Bool) async throws {
-        enum Call { case done(String), label(String), detail(String), link, pill, totals }
+    private func refresh(_ targets: [(p: Package, items: [LedgerItem])], withStatic: Bool) async throws {
+        enum Call { case done(String), label(String), readout(String), detail(String), link(String), pill(String), totals(String) }
         var calls: [(name: String, args: String)] = []
         var plan: [Call] = []
-        for it in items {
-            let args = "[\(received[it.key] ?? 0),\(it.qty)]"
-            calls += [("isDone", args), ("countLabel", args)]
-            plan += [.done(it.key), .label(it.key)]
-            if withStatic {
-                calls.append(("itemDetail", "[\(try encode(it))]"))
-                plan.append(.detail(it.key))
+        for (p, items) in targets {
+            for it in items {
+                let args = "[\(received[it.key] ?? 0),\(it.qty)]"
+                calls += [("isDone", args), ("countLabel", args), ("gotQty", args)]
+                plan += [.done(it.key), .label(it.key), .readout(it.key)]
+                if withStatic {
+                    calls.append(("itemDetail", "[\(try encode(it))]"))
+                    plan.append(.detail(it.key))
+                }
             }
+            if withStatic {
+                calls.append(("tcgplayerOrderUrl", "[\(try json(p.orderId))]"))
+                plan.append(.link(p.gk))
+            }
+            // Only this package's counts cross into JavaScript.
+            let own = Dictionary(p.items.compactMap { i in received[i.key].map { (i.key, $0) } }, uniquingKeysWith: { a, _ in a })
+            let packageArgs = "[\(try encode(p.items)),\(try json(own))]"
+            calls += [("packagePill", packageArgs), ("totalsOf", packageArgs)]
+            plan += [.pill(p.gk), .totals(p.gk)]
         }
-        if withStatic {
-            calls.append(("tcgplayerOrderUrl", "[\(try json(p.orderId))]"))
-            plan.append(.link)
-        }
-        // Only this package's counts cross into JavaScript.
-        let own = Dictionary(p.items.compactMap { i in received[i.key].map { (i.key, $0) } }, uniquingKeysWith: { a, _ in a })
-        let packageArgs = "[\(try encode(p.items)),\(try json(own))]"
-        calls += [("packagePill", packageArgs), ("totalsOf", packageArgs)]
-        plan += [.pill, .totals]
 
         func string(_ out: String) throws -> String? {
             try JSONSerialization.jsonObject(with: Data(out.utf8), options: [.fragmentsAllowed]) as? String
@@ -102,15 +107,16 @@ public final class PackagesModel {
                 switch call {
                 case .done(let key): done[key] = out == "true"
                 case .label(let key): labels[key] = try string(out)
+                case .readout(let key): readouts[key] = try string(out)
                 case .detail(let key): details[key] = try string(out)
-                case .link: orderLinks[p.gk] = try string(out).flatMap { URL(string: $0) }
-                case .pill: pills[p.gk] = try string(out)
-                case .totals:
+                case .link(let gk): orderLinks[gk] = try string(out).flatMap { URL(string: $0) }
+                case .pill(let gk): pills[gk] = try string(out)
+                case .totals(let gk):
                     let t = try JSONSerialization.jsonObject(with: Data(out.utf8)) as? [String: Any]
                     if let got = t?["got"] as? Int, let total = t?["total"] as? Int, got > 0, got < total {
-                        bars[p.gk] = Double(got) / Double(total)
+                        bars[gk] = Double(got) / Double(total)
                     } else {
-                        bars[p.gk] = nil
+                        bars[gk] = nil
                     }
                 }
             } catch { failure = failure ?? error }
@@ -144,7 +150,7 @@ public final class PackagesModel {
         received = store.received()
         if let pkg = rows.first(where: { $0.items.contains { $0.key == key } }),
             let item = pkg.items.first(where: { $0.key == key }) {
-            do { try await refresh(pkg, items: [item], withStatic: false) } catch {
+            do { try await refresh([(pkg, [item])], withStatic: false) } catch {
                 checkInError = "Saved, but the label could not refresh. \(error.localizedDescription)"
                 throw error
             }

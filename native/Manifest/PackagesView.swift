@@ -62,16 +62,16 @@ struct PackageRow: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // One line, tail-truncated as on the web: a re-wrap on a check-in would move every row below.
-            Text(pkg.seller).font(.cochin(15).weight(.bold)).foregroundStyle(paint(.seller, packageState))
-                .lineLimit(1).truncationMode(.tail).textSelection(.enabled)
-            // The slot's width is reserved, so the choice between the two layouts never depends on a check-in.
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 8) { dateLine; Spacer(minLength: 0); statusSlot }
-                VStack(alignment: .trailing, spacing: 0) {
-                    dateLine.frame(maxWidth: .infinity, alignment: .leading)
-                    statusSlot
+            // As on the web: seller and date share a column, the status slot sits at the trailing edge.
+            // The slot has a fixed size, so a long seller truncates in the column and a check-in moves nothing.
+            HStack(alignment: .center, spacing: 8) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(pkg.seller).font(.cochin(15).weight(.bold)).foregroundStyle(paint(.seller, packageState))
+                        .lineLimit(1).truncationMode(.tail).textSelection(.enabled)
+                    dateLine
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                statusSlot
             }
             if let url = model.orderLinks[pkg.gk] {
                 HStack(spacing: 0) {
@@ -92,7 +92,7 @@ struct PackageRow: View {
     }
 
     private var dateLine: some View {
-        Text(pkg.date).font(.mono(11)).foregroundStyle(paint(.orderId, packageState)).textSelection(.enabled)
+        Text(pkg.date).font(.mono(11)).foregroundStyle(paint(.orderId, packageState)).lineLimit(1).textSelection(.enabled)
             .accessibilityLabel("Ordered \(pkg.date)")  // a bare date failed the Dynamic Type audit
     }
 
@@ -118,6 +118,8 @@ struct PackageRow: View {
                         .fixedSize()
                 }
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("card-slot:\(pkg.gk)")
     }
 
     /// The thin bar on the card's top edge, out of flow: it mounts without moving a row.
@@ -164,7 +166,7 @@ private struct ItemLine: View {
                     VStack(alignment: .trailing, spacing: 4) {
                         Text(PackageCard.priceText(item.price)).font(.mono(12)).foregroundStyle(paint(.price, state)).fixedSize()
                             .accessibilityLabel("Price \(PackageCard.priceText(item.price))")
-                        if item.qty > 1 { count }
+                        if let readout = model.readouts[item.key] { count(readout) }
                     }
                 }
                 Text(model.details[item.key] ?? "").font(.cochin(11.5)).foregroundStyle(paint(.detail, state))
@@ -178,16 +180,16 @@ private struct ItemLine: View {
         .overlay(alignment: .top) { paint(.rule, state).frame(height: 1) }
     }
 
-    /// How many of a multi-copy line are in, as the web's got/qty. An invisible qty/qty sets the width, so a
-    /// shorter figure (10/12 to 9/12) never changes the row. A partly received line is bold.
-    private var count: some View {
-        let got = min(model.received[item.key] ?? 0, item.qty)
-        return Text("\(item.qty)/\(item.qty)").font(.mono(13))
+    /// How many of a multi-copy line are in, as the web's got/qty (the bundle's gotQty). An invisible qty/qty sets
+    /// the width, so a shorter figure (10/12 to 9/12) never changes the row. A partly received line is bold.
+    /// No accessibilityLabel: the text is the label, so "0/2" stays readable to the UI test.
+    private func count(_ readout: String) -> some View {
+        Text("\(item.qty)/\(item.qty)").font(.mono(13))
             .hidden()
             .overlay(alignment: .trailing) {
-                Text("\(got)/\(item.qty)").font(.mono(13).weight(state == .partial ? .bold : .regular))
+                Text(readout).font(.mono(13).weight(state == .partial ? .bold : .regular))
                     .foregroundStyle(paint(.name, state)).fixedSize()
-                    .accessibilityLabel("\(model.labels[item.key] ?? "\(got) of \(item.qty)") received")
+                    .accessibilityIdentifier("got-qty:\(item.key)")
             }
     }
 

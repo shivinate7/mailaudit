@@ -480,6 +480,10 @@ export function packagePill(items, received) {
 export const itemDetail = (it) =>
   [it.qty > 1 ? `×${it.qty}` : "", it.set, it.finish, it.condition].filter(Boolean).join(" · ") || "\u2014";
 
+/* The mono got/qty read-out of a line with more than one copy, as the web stepper prints it;
+   null for a one-copy line, which has none. An over-count clamps, as countLabel does. */
+export const gotQty = (got, qty) => (qty > 1 ? `${Math.min(got, qty)}/${qty}` : null);
+
 /* Lane B1 (saved-state-shape, native-ledger-is-raw-json): keep every entry of a
    ledger that can be read, drop the rest. Pure: data -> { data, dropped }; the
    input is never changed. Checked fields are received and receivedAt (counts and
