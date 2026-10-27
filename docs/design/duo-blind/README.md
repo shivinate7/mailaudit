@@ -17,7 +17,7 @@ degen's plan, section 4.6.2, and this repo's `shared/tokens.json`.
 ## Ranking
 
 1. **Card in Hand.** It solves the hardest job, matching, with one typed name per envelope. Blank envelopes mostly stop being special.
-2. **Sorting Frame.** Its fold means on-time against late. Thickness is a weak signal when sellers pack differently.
+2. **Sorting Frame.** Its fold splits in transit from past usual transit. Thickness is a weak signal when sellers pack differently.
 3. **Account Book.** It answers the money question best. It reads as accounting, not as opening mail.
 4. **The Letter.** It is warm and clear for a small day. Prose does not scale to 40-card orders.
 5. **Fold to Seal.** It is memorable but slow: one fold per envelope, with cards in hand.
@@ -25,7 +25,7 @@ degen's plan, section 4.6.2, and this repo's `shared/tokens.json`.
 ## Pick
 
 **Card in Hand.** Two parts are worth taking from the others.
-Take the Sorting Frame's late side for lost mail.
+Take the Sorting Frame's past-transit page for lost mail.
 Take the Account Book's Suspense line for a blank envelope that no card decides yet.
 
 ## Deep links
