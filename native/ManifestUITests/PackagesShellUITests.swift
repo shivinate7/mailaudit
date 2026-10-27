@@ -124,16 +124,16 @@ final class PackagesShellUITests: XCTestCase {
 
     // MARK: accessibility audit, one screen per method
 
-    /// Only the Packages screen skips rows under the tab bar, and only the Tally screen skips the ruled contrast flags.
-    /// Both skips live in AuditSkippingTabBarUITests.
+    /// Every tab's audit skips what the tab bar covers (owner ruling 2026-10-27, audit-skips-measured-flags), and the
+    /// Tally audit also skips the ruled contrast flags. Both skips live in AuditSkippingTabBarUITests.
     func auditTab(_ title: String) throws {
         let app = launch()
         tab(app, title).tap()
         XCTAssertTrue(tab(app, title).isSelected, "the \(title) tab did not open before the audit")
-        switch title {
-        case "Packages": try app.auditSkippingTabBar()
-        case "Tally": try app.auditNamingElements(skipping: skipMeasuredContrastFlags)
-        default: try app.performAccessibilityAudit()
+        if title == "Tally" {
+            try app.auditSkippingTabBar(ruled: skipMeasuredContrastFlags)
+        } else {
+            try app.auditSkippingTabBar()
         }
     }
 

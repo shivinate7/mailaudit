@@ -1,10 +1,12 @@
 // Accessibility audit that skips what the tab bar covers (lane N8, native-build-lanes, N8 notes,
-// owner ruling 2026-10-21). The 225pt masthead pushes the 12-item fixture down, so the last rows
-// sit under the glass tab bar and fail contrast there. The two Packages audits call
-// auditSkippingTabBar(), which skips an issue only when the bar covers most of its element.
-// Every other issue, and any issue with no element, still fails.
+// owner ruling 2026-10-21, extended 2026-10-27 to every tab). The 225pt masthead pushes the 12-item fixture down,
+// so the last rows sit under the glass tab bar and fail contrast there. The Packages audits and the Ledger,
+// Orphaned and Tally tab audits call auditSkippingTabBar(), which skips an issue only when the bar covers most of
+// its element. Every other issue, and any issue with no element, still fails.
 //
-// It also holds skipMeasuredContrastFlags, the owner's narrow contrast skip (audit-skips-measured-flags).
+// It also holds the owner's two other narrow skips (audit-skips-measured-flags): skipMeasuredContrastFlags,
+// the contrast skip on four named elements, and skipKeyboardPredictionCells, the system keyboard's cells in the
+// two composer audits.
 //
 // This file also holds the narrowness proof. The app has no low-contrast element above the bar,
 // so the on-device case moves the bar away and checks that the same issues now fail.
@@ -20,19 +22,33 @@ func isUnderTabBar(_ element: CGRect, bar: CGRect) -> Bool {
     return !hit.isNull && !element.isEmpty && hit.width * hit.height * 2 > element.width * element.height
 }
 
-/// The one contrast skip the owner ruled on (decision audit-skips-measured-flags): the Orphaned mini buttons Cancel
-/// and Discard, whose colours measure above the floor but flag in the audit. It skips an issue only when the audit
-/// type is contrast AND the element's accessibility identifier is a ruled one: `orphaned-cancel` exactly, or the
-/// prefix `discard:` (the id of the envelope follows). It never reads a label. Edit and the Tally "left" line are
-/// in the ruling too, but they carry no identifier yet, so nothing skips them until a product change names them.
+/// The contrast skip the owner ruled on (decision audit-skips-measured-flags): the Orphaned mini buttons Cancel, Edit
+/// and Discard and the Tally "left" line, whose colours measure above the floor but flag in the audit. It skips an
+/// issue only when the audit type is contrast AND the element's accessibility identifier is a ruled one:
+/// `orphaned-cancel` exactly, or the prefix `discard:`, `orphaned-edit:` or `tally-left:` (the id of the envelope or
+/// the product name follows). It never reads a label.
 func isMeasuredContrastFlag(_ type: XCUIAccessibilityAuditType, identifier: String?) -> Bool {
     guard type == .contrast, let identifier else { return false }
-    return identifier == "orphaned-cancel" || identifier.hasPrefix("discard:")
+    return identifier == "orphaned-cancel" || ["discard:", "orphaned-edit:", "tally-left:"].contains(where: identifier.hasPrefix)
 }
 
 /// The skip closure of auditNamingElements(skipping:), over a real audit issue.
 @MainActor func skipMeasuredContrastFlags(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
     isMeasuredContrastFlag(issue.auditType, identifier: issue.element?.identifier)
+}
+
+/// The system keyboard's prediction cell, which the app does not draw (decision audit-skips-measured-flags). The
+/// audit reports it with no identifier and no label, and names its class only in the detailed description:
+/// "This TUIPredictionViewCell is missing useful accessibility information." So it matches on that text, as one whole
+/// word, and ignores the audit type: the ruling skips every type on this element. A class that only contains the name
+/// does not match. Only the two composer audits use it (OrphanedUITests.composerAuditSkips).
+func isKeyboardPredictionCell(detail: String) -> Bool {
+    detail.split(whereSeparator: { !$0.isLetter && !$0.isNumber && $0 != "_" }).contains("TUIPredictionViewCell")
+}
+
+/// The skip closure of auditNamingElements(skipping:), over a real audit issue.
+@MainActor func skipKeyboardPredictionCells(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
+    isKeyboardPredictionCell(detail: issue.detailedDescription)
 }
 
 extension XCUIApplication {
@@ -103,8 +119,11 @@ extension XCUIApplication {
     /// The accessibility audit, minus every issue whose element the tab bar covers. The issues it
     /// skips and the issues it fails come back as text. `bar` replaces the tab bar's frame, for
     /// the narrowness test. With `record: false` no issue is recorded, so a test can read them.
+    /// `ruled` is another skip the owner ruled on, such as skipMeasuredContrastFlags. An issue it accepts is left
+    /// out and is not counted in `skipped`, which means "under the bar" only.
     @discardableResult
-    func auditSkippingTabBar(bar override: CGRect? = nil, record: Bool = true) throws
+    func auditSkippingTabBar(bar override: CGRect? = nil, record: Bool = true,
+                             ruled: ((XCUIAccessibilityAuditIssue) -> Bool)? = nil) throws
         -> (skipped: [String], failing: [String])
     {
         let tabBar = tabBars.firstMatch
@@ -116,6 +135,10 @@ extension XCUIApplication {
             if let frame, isUnderTabBar(frame, bar: bar) {
                 print("AUDIT-SKIP \(text)")
                 skipped.append(text)
+                return true
+            }
+            if ruled?(issue) == true {
+                print("AUDIT-RULED \(text)")
                 return true
             }
             print("AUDIT-FAIL \(text)")
@@ -164,19 +187,55 @@ final class AuditSkippingTabBarUITests: XCTestCase {
         // skipped
         XCTAssertTrue(isMeasuredContrastFlag(.contrast, identifier: "orphaned-cancel"), "contrast on the composer's Cancel")
         XCTAssertTrue(isMeasuredContrastFlag(.contrast, identifier: "discard:env-1-abc"), "contrast on an envelope's Discard")
+        XCTAssertTrue(isMeasuredContrastFlag(.contrast, identifier: "orphaned-edit:env-1-abc"), "contrast on an envelope's Edit")
+        XCTAssertTrue(isMeasuredContrastFlag(.contrast, identifier: "tally-left:Lightning Bolt"), "contrast on a Tally row's left line")
         // kept: contrast on another element
         XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "orphaned-save"), "contrast on Save, outside the ruling")
         XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "tally-row:Lightning Bolt"), "contrast on a Tally row")
+        XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "tally-toggle:Lightning Bolt"), "contrast on a Tally row's toggle")
         XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "orphaned-cancel-2"), "an identifier that only starts like Cancel")
+        XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "orphaned-edit"), "an Edit identifier with no envelope id")
+        XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "tally-leftover:x"), "an identifier that only starts like the left line")
         XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "x-discard:1"), "an identifier that only contains the Discard prefix")
+        XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "x-orphaned-edit:1"), "an identifier that only contains the Edit prefix")
+        XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "x-tally-left:1"), "an identifier that only contains the left-line prefix")
         XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "Discard"), "a label is not an identifier")
+        XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "Edit"), "the Edit label is not an identifier")
         XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: ""), "an element with no identifier")
         XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: nil), "an issue with no element")
         // kept: another audit type on a ruled element
         for type in [XCUIAccessibilityAuditType.textClipped, .hitRegion, .dynamicType, .sufficientElementDescription] {
-            XCTAssertFalse(isMeasuredContrastFlag(type, identifier: "orphaned-cancel"), "audit type \(type.rawValue) on Cancel")
-            XCTAssertFalse(isMeasuredContrastFlag(type, identifier: "discard:env-1-abc"), "audit type \(type.rawValue) on Discard")
+            for id in ["orphaned-cancel", "discard:env-1-abc", "orphaned-edit:env-1-abc", "tally-left:Lightning Bolt"] {
+                XCTAssertFalse(isMeasuredContrastFlag(type, identifier: id), "audit type \(type.rawValue) on \(id)")
+            }
         }
+    }
+
+    // MARK: the keyboard skip, on the issue's text
+
+    /// The keyboard's prediction cell is skipped by the class its detailed description names, as one whole word.
+    /// Another class, a class that only contains the name, and an issue with no text still fail. The audit type
+    /// is not an input: a ruled cell is skipped under every type (audit-skips-measured-flags).
+    func testTheKeyboardSkipNamesOnlyThePredictionCell() {
+        // skipped: the text the audit raised on 2026-10-27, and the same cell under another audit type
+        XCTAssertTrue(isKeyboardPredictionCell(detail: "This TUIPredictionViewCell is missing useful accessibility information."),
+                      "the prediction cell, as the audit reported it")
+        XCTAssertTrue(isKeyboardPredictionCell(detail: "Contrast failed for TUIPredictionViewCell"), "another audit type on the same cell")
+        // kept: the app's own element, the container, another part of the keyboard, a look-alike class
+        XCTAssertFalse(isKeyboardPredictionCell(detail: "This SwiftUI.AccessibilityNode is missing useful accessibility information."),
+                       "the app's own element with the same sentence")
+        XCTAssertFalse(isKeyboardPredictionCell(detail: "Element has no description"), "the short text, which names no class")
+        XCTAssertFalse(isKeyboardPredictionCell(detail: "This TUIPredictionView is missing useful accessibility information."),
+                       "the prediction bar, not its cell")
+        XCTAssertFalse(isKeyboardPredictionCell(detail: "This UIKeyboardLayoutStar is missing useful accessibility information."),
+                       "the keys of the keyboard")
+        XCTAssertFalse(isKeyboardPredictionCell(detail: "This TUIPredictionViewCellX is missing useful accessibility information."),
+                       "a class that only starts with the name")
+        XCTAssertFalse(isKeyboardPredictionCell(detail: "This MyTUIPredictionViewCell is missing useful accessibility information."),
+                       "a class that only ends with the name")
+        XCTAssertFalse(isKeyboardPredictionCell(detail: "This tuipredictionviewcell is missing useful accessibility information."),
+                       "the name in another case")
+        XCTAssertFalse(isKeyboardPredictionCell(detail: ""), "an issue with no text")
     }
 
     // MARK: the same rule, on the device
