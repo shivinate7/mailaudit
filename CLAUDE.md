@@ -121,7 +121,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-files-are-frozen` — Native file names freeze on first ship.
 - `native-ci-on-hosted-macos` — The native job runs on a hosted macOS runner.
 - `csv-import-stays-web` — CSV import stays on the web app.
-- `one-simulator-per-mac` — The Mac's CPU, disk and one simulator are shared.
+- `one-simulator-per-mac` — Simulator boots and load follow the global machine rules.
 - `native-ships-via-testflight` — The iOS app ships through TestFlight.
 
 ## Envelope photos
