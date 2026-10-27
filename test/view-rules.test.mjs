@@ -1434,6 +1434,21 @@ eq(fieldOf(pastTransit([...v34OpenLine, ...v34CancelLine], {}, new Set(), v34Now
 const v34LateOrder = group("K1", "Kappa Cards", "2026-07-01 20:00:00", "without tracking", [["Ponder", 1]]);
 eq(fieldOf(pastTransit(v34LateOrder, {}, new Set(), v34Now), "claimBy"), ["2026-07-31"], "V34.6 claimBy is the calendar date plus 30 days, with no time zone shift");
 
+/* V34.7 and V34.8, an M/D/YY order date: the form old OrderWand exports use (orderwand-csv).
+   The call must not throw, so it runs inside a try and the throw becomes a failed assertion.
+   Mutant: the local-getter fallback for a date that is not YYYY-MM-DD removed, so the
+   destructuring of a null match throws. */
+const v34Slash = group("M1", "Iota Cards", "7/1/26", "without tracking", [["Ponder", 1]]);
+const v34SlashRun = (() => {
+  try {
+    return { rows: pastTransit(v34Slash, {}, new Set(), v34Now) };
+  } catch (e) {
+    return { threw: `${e.name}: ${e.message}` };
+  }
+})();
+eq(v34SlashRun.threw ?? "no throw", "no throw", "V34.7 an M/D/YY order date does not throw");
+eq(fieldOf(v34SlashRun.rows, "claimBy"), ["2026-07-31"], "V34.8 claimBy for 7/1/26 is 2026-07-31");
+
 /* ---------- report ---------- */
 
 console.log(`\n${pass} passed, ${fails.length} failed`);
