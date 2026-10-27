@@ -263,6 +263,25 @@ final class MastheadModelTests: XCTestCase {
         for (tab, text) in lines { XCTAssertFalse(text.contains("in range"), "the \(tab) line says in range with no date filter") }
     }
 
+    /// Each tab's line is the bundle's answer to that tab's own view id. The Ledger line must come from a call with
+    /// view "ledger", and not be the Packages call's answer reused: the two read alike, so the comparison with the
+    /// bundle above cannot see it. The marked bundle leads each answer with the id it was asked for. Packages, Tally
+    /// and Orphaned pass at once and show the probe took, so a failure on Ledger alone names the reuse.
+    func testEveryTabAsksTheBundleForItsOwnView() async throws {
+        let box = try makeOrphanedSandbox()
+        try box.write()
+        let e = try RulesEngine(bundleURL: try MastheadRuleLine.writeMarkedBundle(in: box.dir))
+        let (_, store) = try await box.open(engine: e)
+        let mast = MastheadModel(engine: e, store: store)
+        try await mast.refresh()
+
+        for tab in MastheadTab.allCases {
+            let id = try XCTUnwrap(MastheadRuleLine.viewId[tab], "no view id for the \(tab) tab")
+            XCTAssertTrue(mast.countLine(for: tab).hasPrefix("\(id)|"),
+                          "the \(tab) line `\(mast.countLine(for: tab))` is not the bundle's answer for view \(id)")
+        }
+    }
+
     /// A Tally search and Hide received narrow the rows and change no count (search-hide-keep-tally-counts).
     /// Urza's Saga is checked in so Hide received has a row to drop, and the search then keeps one of eight.
     func testTheTallyLineIgnoresSearchAndHideReceived() async throws {

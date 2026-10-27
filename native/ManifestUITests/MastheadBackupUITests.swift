@@ -35,6 +35,10 @@
 //   save-slot on the right of row 2. No part of the masthead changes frame when the tab changes, at
 //   375pt and at 320pt (-ManifestUITestWidth). Each tab's masthead-count carries that tab's count.
 // The compose-once claim is not here: no UI test can read an opacity (see MastheadComposeOnceTests).
+// The running-head slot: the first content element of every tab (the sync advisory when it shows, else the first row or the
+// title) sits 47pt below the masthead's foot, the 46pt head and its 1pt rule. `running-head` is the head, pinned over the list
+// once the masthead has scrolled away. It is mounted only while pinned, so a test reads its existence and frame, never its
+// opacity, and pinning or unpinning it moves no other frame. Launch argument -ManifestUITestSyncStatus 401 shows the advisory.
 //
 // Not driven: the share sheet behind Backup, and Backup on a ledger that failed to open (no
 // launch argument corrupts the seed). The file bytes are pinned in BackupExportTests.
@@ -52,11 +56,12 @@ final class MastheadBackupUITests: XCTestCase {
 
     // MARK: helpers
 
-    func launch(width: Int? = 375, saveState: String? = nil) -> XCUIApplication {
+    func launch(width: Int? = 375, saveState: String? = nil, syncStatus: Int? = nil) -> XCUIApplication {
         let app = XCUIApplication()
         var args = ["-ManifestUITestSeed"]
         if let width { args += ["-ManifestUITestWidth", String(width)] }
         if let saveState { args += ["-ManifestUITestSaveState", saveState] }
+        if let syncStatus { args += ["-ManifestUITestSyncStatus", String(syncStatus)] }
         app.launchArguments = args
         app.launch()
         return app
@@ -206,25 +211,8 @@ final class MastheadBackupUITests: XCTestCase {
     /// The parts that must hold their place when the tab changes.
     static let partIds = ["masthead", "tally-cards", "tally-packages", "tally-value", "masthead-count", "masthead-missing", "save-slot"]
 
-    /// The one live copy of `id` on the open tab. A kept-alive tab can hold a second copy, so the match is
-    /// the hittable one among those on screen, and exactly one must be left. A part that reports no
-    /// hittable element (a container, or a read-out) falls back to the ones on screen.
-    func live(_ app: XCUIApplication, _ id: String, tab: String) throws -> XCUIElement {
-        _ = try need(app, id)
-        var pick: [XCUIElement] = []
-        let deadline = Date().addingTimeInterval(5)
-        repeat {
-            let window = app.windows.firstMatch.frame
-            let shown = app.descendants(matching: .any).matching(identifier: id).allElementsBoundByIndex
-                .filter { !$0.frame.isEmpty && $0.frame.intersects(window) }
-            let hit = shown.filter(\.isHittable)
-            pick = hit.isEmpty ? shown : hit
-            if pick.count == 1 { break }
-            Thread.sleep(forTimeInterval: 0.1)  // the tab that was left may still be leaving
-        } while Date() < deadline
-        XCTAssertEqual(pick.count, 1, "\(tab): \(pick.count) live \(id) elements, not 1")
-        return try XCTUnwrap(pick.first, "\(tab): no live \(id)")
-    }
+    /// The one live copy of `id` on the open tab (XCUIApplication.live, below).
+    func live(_ app: XCUIApplication, _ id: String, tab: String) throws -> XCUIElement { try app.live(id, tab: tab) }
 
     /// Opens the tab and waits until it is the selected one, so the next read is never the tab just left.
     func show(_ app: XCUIApplication, _ tab: String) {
@@ -353,6 +341,174 @@ final class MastheadBackupUITests: XCTestCase {
         XCTAssertEqual(count.frame.minY, countBefore.frame.minY, accuracy: 0.5, "masthead-count moved on a Tally check-in")
     }
 
+    // MARK: step 5, the running-head slot
+
+    /// The 46pt running head and its 1pt rule, held clear under the masthead (MastheadScreen).
+    static let slot: CGFloat = 47
+
+    /// The topmost package row. Packages is a lazy list, so only the rows near the screen exist; the first is one of them.
+    func topmostPackageRow(_ app: XCUIApplication) throws -> XCUIElement {
+        let rows = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "package-row:"))
+        _ = try XCTUnwrap(rows.firstMatch.waitForExistence(timeout: 5) ? rows.firstMatch : nil, "Packages has no package row")
+        return try XCTUnwrap(rows.allElementsBoundByIndex.min { $0.frame.minY < $1.frame.minY }, "Packages has no package row")
+    }
+
+    /// The first element under the masthead on `tab`: its first row, its search field, its record button or its title.
+    /// The sync advisory, when it shows, is read by its identifier instead. Ledger's title has no identifier, so it is
+    /// found by its label, between the masthead and the tab bar. A `ledger-title` identifier would be a product change.
+    func firstContent(_ app: XCUIApplication, tab: String, below head: CGRect) throws -> XCUIElement {
+        switch tab {
+        case "Orphaned": return try live(app, "orphaned-record", tab: tab)
+        case "Tally": return try live(app, "tally-search", tab: tab)
+        case "Packages": return try topmostPackageRow(app)
+        default:
+            let bar = app.tabBars.firstMatch.frame.minY
+            let titles = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", tab)).allElementsBoundByIndex
+                .filter { $0.frame.minY >= head.maxY && $0.frame.maxY <= bar }
+            return try XCTUnwrap(titles.min { $0.frame.minY < $1.frame.minY }, "\(tab): no title under the masthead")
+        }
+    }
+
+    /// On every tab the first content sits one slot below the masthead's foot, so the running head can pin there
+    /// without moving anything. The offset is read from the masthead's own frame, not from a figure copied here.
+    func assertTheFirstContentSitsOneSlotBelowTheMasthead(width: Int) throws {
+        let app = launch(width: width)
+        for tab in Self.tabs {
+            show(app, tab)
+            let head = try live(app, "masthead", tab: tab).frame
+            let first = try firstContent(app, tab: tab, below: head)
+            XCTAssertEqual(first.frame.minY - head.maxY, Self.slot, accuracy: 0.5,
+                           "\(tab) at \(width)pt: the first content is not one slot below the masthead")
+        }
+    }
+
+    func testTheFirstContentSitsOneSlotBelowTheMastheadAt375() throws { try assertTheFirstContentSitsOneSlotBelowTheMasthead(width: 375) }
+
+    func testTheFirstContentSitsOneSlotBelowTheMastheadAt320() throws { try assertTheFirstContentSitsOneSlotBelowTheMasthead(width: 320) }
+
+    /// With the advisory on, it is the first content on the three tabs that show it (Ledger has none), at the same slot.
+    func testTheAdvisorySitsOneSlotBelowTheMasthead() throws {
+        let app = launch(width: 375, syncStatus: 401)
+        for tab in ["Orphaned", "Tally", "Packages"] {
+            show(app, tab)
+            let head = try live(app, "masthead", tab: tab).frame
+            let advisory = try live(app, "sync-advisory", tab: tab)
+            XCTAssertEqual(advisory.frame.minY - head.maxY, Self.slot, accuracy: 0.5, "\(tab): the advisory is not one slot below the masthead")
+        }
+    }
+
+    // MARK: step 5, the running head
+
+    /// Waits until the element's frame stops changing, so a read never lands in the middle of a scroll.
+    func settle(_ el: XCUIElement) {
+        var last = el.frame
+        for _ in 0..<25 {
+            Thread.sleep(forTimeInterval: 0.2)
+            let now = el.frame
+            if now == last { return }
+            last = now
+        }
+    }
+
+    /// Drags the list up by `dy` points (down when negative) with no fling, so the offset follows the finger and the pin
+    /// point can be crossed by a known amount. It repeats the press-and-drag of XCUIApplication.reveal, which drags by an
+    /// element's gap and cannot drag a set distance. A drag down starts below the pinned head, which would take a touch
+    /// that began on it. `bandTop` is where the list starts at rest: the masthead's top.
+    func drag(_ app: XCUIApplication, up dy: CGFloat, bandTop: CGFloat) {
+        let bottom = app.tabBars.firstMatch.frame.minY
+        let x = app.windows.firstMatch.frame.midX
+        let from = dy > 0 ? bottom - 40 : bandTop + Self.slot + 40
+        let origin = app.coordinate(withNormalizedOffset: .zero)
+        origin.withOffset(CGVector(dx: x, dy: from)).press(
+            forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: x, dy: from - dy)), withVelocity: .slow, thenHoldForDuration: 0.3)
+    }
+
+    /// No tab mounts the running head until its masthead has scrolled away.
+    func testTheRunningHeadIsNotMountedAtRestOnAnyTab() throws {
+        let app = launch(width: 375)
+        for tab in Self.tabs {
+            show(app, tab)
+            _ = try live(app, "masthead", tab: tab)
+            XCTAssertFalse(find(app, "running-head").exists, "\(tab): the running head is in the accessibility tree at rest")
+        }
+    }
+
+    /// Past the masthead the head pins at the top of the list, with the cards figure. Pinning and unpinning move no
+    /// other frame: the first row keeps its one-slot gap under the masthead at rest, just short of the pin point,
+    /// pinned, and back at the top. A scroll cannot change that gap, so only a layout change can. The first row stays
+    /// loaded because the drags go only 60pt past the masthead.
+    func testTheRunningHeadPinsAtTheTopAndMovesNothing() throws {
+        let app = launch(width: 375)
+        show(app, "Packages")
+        let head = try live(app, "masthead", tab: "Packages")
+        let cardsFigure = try XCTUnwrap(figure(try live(app, "tally-cards", tab: "Packages")), "the cards cell has no figure")
+        let row = try topmostPackageRow(app)
+        let (top, pinAt) = (head.frame.minY, head.frame.height)
+        let running = find(app, "running-head")
+        func gap(_ when: String) {
+            settle(head)
+            XCTAssertEqual(row.frame.minY - head.frame.maxY, Self.slot, accuracy: 0.5, "the first row is not one slot below the masthead \(when)")
+        }
+        func unmounted(_ when: String) {
+            let none = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: running)
+            XCTAssertEqual(XCTWaiter.wait(for: [none], timeout: 5), .completed, "the running head is mounted \(when)")
+        }
+        gap("at rest")
+        unmounted("at rest")
+
+        drag(app, up: pinAt - 20, bandTop: top)
+        gap("just short of the pin point")
+        unmounted("just short of the pin point")
+
+        drag(app, up: 60, bandTop: top)
+        XCTAssertTrue(running.waitForExistence(timeout: 5), "the running head did not pin once the masthead scrolled away")
+        gap("while the running head is pinned")
+        XCTAssertEqual(running.frame.minY, top, accuracy: 1, "the running head is not at the top of the list")
+        XCTAssertLessThanOrEqual(running.frame.height, Self.slot + 0.5, "the running head is taller than its slot")
+        XCTAssertTrue(running.label.contains(cardsFigure), "the running head `\(running.label)` does not hold the cards figure \(cardsFigure)")
+
+        drag(app, up: -(pinAt + 80), bandTop: top)
+        unmounted("back at the top")
+        gap("back at the top")
+        XCTAssertEqual(head.frame.minY, top, accuracy: 0.5, "the masthead is not back where it started")
+    }
+
+    /// The screen with the head pinned, which the per-tab audits above never reach. The audit names each element it flags,
+    /// and it skips only what the tab bar covers (auditSkippingTabBar), as the Packages audits do.
+    func testAccessibilityAuditWithTheRunningHeadPinned() throws {
+        let app = launch(width: nil)
+        show(app, "Packages")
+        let head = try live(app, "masthead", tab: "Packages")
+        drag(app, up: head.frame.height + 40, bandTop: head.frame.minY)
+        XCTAssertTrue(find(app, "running-head").waitForExistence(timeout: 5), "the running head did not pin, so the audit reads the unpinned screen")
+        try app.auditSkippingTabBar()
+    }
+
+    // MARK: step 5, the masthead follows a write that is not a check-in
+
+    /// A Reset empties the ledger, so the figures and the foot (count line, outstanding line, slot) leave every tab's
+    /// masthead, and the masthead itself stays. The cards cell is read on the Ledger tab first, where the Reset is
+    /// pressed, so its own copy is the one that must refresh. VersionsUITests reads the Packages copy.
+    func testALedgerResetClearsTheMastheadOnEveryTab() throws {
+        let app = launch(width: 375)
+        show(app, "Ledger")
+        _ = try live(app, "tally-cards", tab: "Ledger")
+        let reset = try need(app, "reset")
+        app.reveal(reset)
+        reset.tap()
+        wait(reset, "label BEGINSWITH %@", "Tap again", "the Reset never armed")
+        reset.tap()
+        wait(reset, "label == %@", "Reset", "the second tap did not perform the Reset")
+
+        for tab in Self.tabs {
+            show(app, tab)
+            _ = try live(app, "masthead", tab: tab)
+            let cards = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: find(app, "tally-cards"))
+            XCTAssertEqual(XCTWaiter.wait(for: [cards], timeout: 5), .completed, "\(tab): the cards cell survived a Reset")
+            XCTAssertFalse(find(app, "masthead-count").exists, "\(tab): the count line survived a Reset")
+        }
+    }
+
     // MARK: Backup
 
     /// Backup is a button on the Ledger tab with a hit region of at least 44pt.
@@ -406,5 +562,28 @@ final class MastheadBackupUITests: XCTestCase {
         openTab(app, "Ledger")
         _ = try need(app, "backup")
         try app.performAccessibilityAudit()
+    }
+}
+
+extension XCUIApplication {
+    /// The one live copy of `id` on the open tab. A kept-alive tab can hold a second copy, so the match is
+    /// the hittable one among those on screen, and exactly one must be left. A part that reports no
+    /// hittable element (a container, or a read-out) falls back to the ones on screen.
+    func live(_ id: String, tab: String) throws -> XCUIElement {
+        let first = descendants(matching: .any).matching(identifier: id).firstMatch
+        _ = try XCTUnwrap(first.waitForExistence(timeout: 5) ? first : nil, "\(id) is missing")
+        var pick: [XCUIElement] = []
+        let deadline = Date().addingTimeInterval(5)
+        repeat {
+            let window = windows.firstMatch.frame
+            let shown = descendants(matching: .any).matching(identifier: id).allElementsBoundByIndex
+                .filter { !$0.frame.isEmpty && $0.frame.intersects(window) }
+            let hit = shown.filter(\.isHittable)
+            pick = hit.isEmpty ? shown : hit
+            if pick.count == 1 { break }
+            Thread.sleep(forTimeInterval: 0.1)  // the tab that was left may still be leaving
+        } while Date() < deadline
+        XCTAssertEqual(pick.count, 1, "\(tab): \(pick.count) live \(id) elements, not 1")
+        return try XCTUnwrap(pick.first, "\(tab): no live \(id)")
     }
 }
