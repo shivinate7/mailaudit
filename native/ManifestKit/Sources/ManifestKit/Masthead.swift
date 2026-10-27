@@ -96,6 +96,9 @@ public final class MastheadModel {
         return composed ? LetterheadMotion.final : LetterheadMotion.start(reduceMotion: reduceMotion)
     }
 
+    /// True once a masthead copy has composed, so a copy that mounts later is built on the final frame.
+    public var hasComposed: Bool { composed }
+
     private func json(_ value: Any) throws -> String {
         String(decoding: try JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed]), as: UTF8.self)
     }
@@ -134,7 +137,7 @@ public final class MastheadModel {
         // The same live records the Orphaned badge counts, so the line and the badge cannot disagree.
         let waiting = store.envelopeRecords().filter(OrphanedModel.isLive).count
         let counts = #"{"packages":\#(n),"uniqueItems":\#(unique),"envelopes":\#(waiting)}"#
-        let (packagesLine, tallyLine, orphanedLine) = (try await line("packages", counts), try await line("items", counts), try await line("mystery", counts))
+        let (packagesLine, tallyLine, orphanedLine, ledgerLine) = (try await line("packages", counts), try await line("items", counts), try await line("mystery", counts), try await line("ledger", counts))
         let (total, have, val, missingVal) = (t["total"] ?? 0, t["got"] ?? 0, t["val"] ?? 0, t["missingVal"] ?? 0)
         let (inVal, allVal) = (try await text("compact", val - missingVal), try await text("compact", val))
         // The bundle's money, so the line rounds half up as the web does.
@@ -147,7 +150,7 @@ public final class MastheadModel {
             TallyCell(label: "value", figure: "$\(inVal)/$\(allVal)"),
         ]
         countLine = packagesLine
-        lines = [.packages: packagesLine, .ledger: packagesLine, .tally: tallyLine, .orphaned: orphanedLine]
+        lines = [.packages: packagesLine, .ledger: ledgerLine, .tally: tallyLine, .orphaned: orphanedLine]
         runningFigure = "\(Int(have))/\(Int(total))" + (left == 0 ? "" : " \u{00B7} \(money)")
         remaining = left
         percent = total > 0 ? have * 100 / total : 0

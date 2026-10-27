@@ -17,7 +17,7 @@ Measured at 375px: horizontal overflow 0, switch thirds 114/114/114, all labels 
 
 **Pinned by:** group 21, which includes 21.7, 21.8 and 21.10. `test/harness.mjs` stubs `IntersectionObserver` and exports `observers`. A test can hand the callback an entry. jsdom has no layout and no real scrolling. So the group verifies only the wiring. It checks that the observer attaches after the loading shell. It checks that the stuck and unstuck condition is right. Whether a real scroller produces those entries is the browser's job.
 
-The native client follows it: `MastheadScreen` draws the running head as an overlay on each tab's scroll view, below a 47pt clear slot in the content. Opacity and a 3pt offset change; the height never does. It is not in the accessibility tree while hidden, and takes no tap.
+The native client follows it: `MastheadScreen` draws the running head as an overlay on each tab's scroll view, below a 47pt clear slot in the content. Opacity and a 3pt offset change; the height never does. It mounts only while pinned, so it is neither in the accessibility tree nor tappable at rest.
 
 ## See also
 
