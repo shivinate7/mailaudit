@@ -402,6 +402,10 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-masthead-packages-only` — The native masthead shows on Packages only.
 - `native-compose-is-one-fade` — The native letterhead composes in one fade.
 - `native-card-lost-flags-unbuilt` — The native package card has no lost-mail flag and no tracked glyph.
+- `native-seller-scale-unmeasured` — The native seller shrinks to half size, and the cause is unmeasured.
+- `native-card-stepper-unpinned` — No unit test pins the native card stepper clamp or its readouts.
+- `native-card-gestures-unpinned` — No UI test pins the native card header gestures.
+- `native-card-state-in-swift` — The native card copies the line and package done rules in Swift.
 - `native-backup-has-no-photos` — Native Backup holds no photos.
 - `native-backup-ui-unpinned` — No UI test taps Backup.
 - `native-backup-web-restore-unrun` — No test restores a native backup file on the web.
