@@ -46,8 +46,14 @@ public final class SyncClient {
     /// The Server line of the Sync panel.
     public var serverStatus: String { serverState.text }
 
-    /// Puts back a lastSyncAt kept from an earlier run. It does not call onLastSync.
-    public func restoreLastSync(_ at: Double?) { lastSyncAt = at }
+    /// The defaults key of lastSyncAt. It is frozen (native-files-are-frozen): renaming it drops every saved time.
+    public static let lastSyncKey = "dev.shivinate.manifest.lastSyncAt"
+
+    /// Keeps lastSyncAt across a relaunch, as the web keeps workerSyncedAt: reads it back now, and writes each new one.
+    public func persistLastSync(in defaults: UserDefaults) {
+        lastSyncAt = defaults.object(forKey: Self.lastSyncKey) as? Double
+        onLastSync = { defaults.set($0, forKey: Self.lastSyncKey) }
+    }
 
     /// nil: no press holds a reply.
     public var pressGate: PressGate?
