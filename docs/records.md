@@ -329,6 +329,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `tcgplayer-link-opens-history-list` | The order id link opens `orderhistory?SearchString=<id>`, the URL the owner gave on 2026-10-21 (`tcgplayerOrderUrl` encodes the id). | [`docs/debts/tcgplayer-link-opens-history-list.md`](../docs/debts/tcgplayer-link-opens-history-list.md) |
 | `tests-33-35-40-45-cannot-fail` | Tests 33.35, 33.40 and 33.45 cannot fail on a plausible mutant. | [`docs/debts/tests-33-35-40-45-cannot-fail.md`](../docs/debts/tests-33-35-40-45-cannot-fail.md) |
 | `token-state-and-bundle-unpinned` | Nothing pins the React-state or bundle guarantees. | [`docs/debts/token-state-and-bundle-unpinned.md`](../docs/debts/token-state-and-bundle-unpinned.md) |
+| `tracking-checker-unbuilt` | Today the app does not check tracking numbers. | [`docs/debts/tracking-checker-unbuilt.md`](../docs/debts/tracking-checker-unbuilt.md) |
 | `type-floor-unbuilt` | Some labels are smaller than the 10px floor today. | [`docs/debts/type-floor-unbuilt.md`](../docs/debts/type-floor-unbuilt.md) |
 | `universal-link-unbuilt` | Neither the link handler nor the Worker route that serves the apple-app-site-association file exists. | [`docs/debts/universal-link-unbuilt.md`](../docs/debts/universal-link-unbuilt.md) |
 | `web-photos-have-no-backup` | Web photos go to the Worker's `/photos` route. | [`docs/debts/web-photos-have-no-backup.md`](../docs/debts/web-photos-have-no-backup.md) |
