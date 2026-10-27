@@ -17,6 +17,7 @@ import XCTest
 @MainActor
 final class MastheadPaintUITests: XCTestCase {
     static let checkIn = "checkin:A1|0|pLightningBolt"
+    static let checkedPackageId = "package-row:A1::Alpha Cards"
     static let cellIds = ["tally-cards", "tally-packages", "tally-value"]
 
     private func launch() -> XCUIApplication {
@@ -53,11 +54,15 @@ final class MastheadPaintUITests: XCTestCase {
         XCTAssertEqual(percent(bar), 0, "nothing is in on the seeded ledger")
     }
 
-    /// One card in: the value follows, and the bar's frame does not move.
+    /// One card in: the value follows, and the bar's frame does not move. The A1 card is scrolled fully into view
+    /// first: below the fold, the tap would scroll the list and the bar would move. The at-rest check comes after
+    /// that scroll, so it also proves the scroll checked nothing in.
     func testProgressValueFollowsACheckInAndTheBarStaysPut() throws {
         let app = launch()
         let control = try need(app, Self.checkIn)
         let bar = try need(app, "masthead-progress")
+        app.reveal(try need(app, Self.checkedPackageId), whole: true)
+        XCTAssertTrue(control.label.hasPrefix("Check in"), "the scroll checked the line in before the baseline")
         let before = bar.frame
 
         control.tap()
