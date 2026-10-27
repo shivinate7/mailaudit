@@ -25,6 +25,10 @@ No global record covers these:
 3. When a lane start is refused, wait, then retry. Use a bounded wait. Never use an endless sleep loop.
 4. Never end the turn while waiting.
 
+## The Duo device
+
+The iPhone Duo simulator is `AC2E94F9`, on iOS 27.1. It is shared with degen. Fold it with `~/.local/bin/hinge`, never with Device Hub. It boots only when the orchestrator clears it.
+
 ## See also
 
 - `native-build-lanes` — the lanes that run on the simulator.
