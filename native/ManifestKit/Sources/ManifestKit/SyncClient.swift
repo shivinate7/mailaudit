@@ -23,6 +23,29 @@ public final class SyncClient {
     /// The `stats` of the last adopted reply; nil when that reply carried none.
     public private(set) var stats: [String: Int]?
 
+    /// Milliseconds since 1970 when a call last agreed with the Worker: an adopted reply, or a 404 from a healthy server
+    /// with nothing stored. nil until then. A failure leaves it alone, and it never moves back (web workerSyncedAt, Math.max).
+    public private(set) var lastSyncAt: Double?
+    /// Called with each new lastSyncAt, so the app can keep it across a relaunch. Nothing is stored here.
+    public var onLastSync: (@MainActor (Double) -> Void)?
+
+    /// The Server line of the Sync panel (src/app.jsx serverStatus), read on demand. The web's ladder, first match wins.
+    public var serverStatus: String {
+        let key: String?
+        do { key = try keys.key() } catch { return "Not checked" }  // could not look is not no key
+        if key == nil { return "No sync key on this device" }
+        switch advisory {
+        case "no-access": return "Sync key refused"
+        case "bad-shape": return "Ledger shape refused"
+        case "too-big": return "Ledger too big for the server"
+        case nil: return "Connected"
+        default: return "Could not be reached"
+        }
+    }
+
+    /// Puts back a lastSyncAt kept from an earlier run. It does not call onLastSync.
+    public func restoreLastSync(_ at: Double?) { lastSyncAt = at }
+
     /// nil: no press holds a reply.
     public var pressGate: PressGate?
     /// nil: connect() does nothing.
@@ -301,7 +324,13 @@ public final class SyncClient {
 
     private func succeeded(fromPost: Bool) {
         // After a 413 only a good POST clears the size state.
-        if fromPost || advisory != "too-big" { clearBackoff() }
+        if fromPost || advisory != "too-big" {
+            clearBackoff()
+            let now = Date().timeIntervalSince1970 * 1000
+            let at = max(lastSyncAt ?? 0, now)
+            lastSyncAt = at
+            onLastSync?(at)
+        }
     }
 
     private func clearBackoff() {

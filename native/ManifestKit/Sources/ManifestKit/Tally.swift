@@ -31,6 +31,10 @@ public struct TallyRow: Equatable, Sendable {
     public let hiddenCopies: Int
     public let ratio, rateLine, leftLine, meta, acrossLine: String
     public let hiddenNote: String?
+
+    /// The edge bar's fill: got / qty while 0 < got < qty, over every copy, as PackagesModel.bars does for a package.
+    /// nil at none in and at all in, where the bar is gone.
+    public var barFraction: Double? { got > 0 && got < qty ? Double(got) / Double(qty) : nil }
 }
 
 /// Rows for the Tally view: the rules engine over the ledger store (rules-run-in-javascriptcore).
@@ -51,6 +55,8 @@ public final class TallyModel {
     public private(set) var rows: [TallyRow] = []
     /// The counts the rows were built from, for the view's per-copy control.
     public private(set) var received: [String: Int] = [:]
+    /// Per copy key of a copy with more than one unit, from the bundle's gotQty: "got/qty". No entry for a one-unit copy.
+    public private(set) var readouts: [String: String] = [:]
     public private(set) var sort: TallySort = .missing
     public private(set) var query = ""
     public private(set) var hideReceived = false
@@ -136,6 +142,14 @@ public final class TallyModel {
     /// For the view: a tap whose failure is already in checkInError.
     public func tap(key: String) async { try? await toggle(key: key) }
 
+    /// A stepper tap, as the web stepper and PackagesModel.step: one unit more or fewer, kept within 0 and the copy's qty.
+    /// It takes the toggle's save path, checkIn, so a failure lands in checkInError.
+    public func step(key: String, by delta: Int) async {
+        guard let item = rows.lazy.flatMap(\.copies).first(where: { $0.key == key }) else { return }
+        let got = min(store.received()[key] ?? 0, item.qty)
+        try? await checkIn(key: key, count: min(max(got + delta, 0), item.qty))
+    }
+
     private func resort() async throws {
         struct Named: Decodable { let name: String }
         let sorted = try await engine.call("sortTally", "[\(groups),\(try json(sort.rawValue)),\(try json(store.received()))]")
@@ -159,9 +173,16 @@ public final class TallyModel {
             let cash = Cash(rate: try await money(g.avg), left: try await money(left.value), basis: try await money(g.basis))
             built.append(Self.row(g, left: left, cash: cash, hidden: g.items.count - g.shown.count))
         }
+        let copies = built.flatMap(\.copies)
+        let outs = await engine.calls(copies.map { ("gotQty", "[\(got[$0.key] ?? 0),\($0.qty)]") })
+        var shownReadouts: [String: String] = [:]
+        for (copy, out) in zip(copies, outs) {
+            if let text = try JSONSerialization.jsonObject(with: Data(try out.get().utf8), options: [.fragmentsAllowed]) as? String { shownReadouts[copy.key] = text }
+        }
         guard mine == epoch else { return }
         rows = built.sorted { (order[$0.name] ?? .max) < (order[$1.name] ?? .max) }
         received = got
+        readouts = shownReadouts
     }
 
     /// The bundle's money rule, the one the web calls (rules-run-in-javascriptcore).

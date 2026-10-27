@@ -14,7 +14,7 @@ public enum LineState: Equatable, Sendable {
 /// so the choice lives here and has a unit test; the view maps a name through Parchment.
 public enum PackageCard {
     public enum Part: CaseIterable, Hashable, Sendable {
-        case surface, border, seller, orderId, price, detail, rule, rowFill, name,
+        case surface, border, seller, orderId, price, detail, rule, rowFill, name, count,
              pillText, pillFill, barTrack, barFill, boxBorder, boxFill, boxMark
     }
 
@@ -29,6 +29,9 @@ public enum PackageCard {
         case .rule: return "line"
         case .rowFill: return state == .done ? "greenSoft" : nil
         case .name: return state == .done ? "inkSoft" : "ink"
+        // The stepper's got/qty: manilaInk while a line is partly in, ink otherwise (src/app.jsx ItemRow), so a done row's
+        // count does not go soft with its name.
+        case .count: return state == .partial ? "manilaInk" : "ink"
         case .pillText: return "red"
         case .pillFill: return "redSoft"
         case .barTrack: return "silver"
