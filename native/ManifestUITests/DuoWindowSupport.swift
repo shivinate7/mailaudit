@@ -43,11 +43,12 @@ extension XCUIApplication {
 }
 
 extension XCTestCase {
-    /// A screenshot kept in the result bundle, so the design review sees each pose without a second boot.
+    /// Holds the screen for the run script's shot. XCTest's own screenshots and recordings come back black on the Duo
+    /// simulator, so the script watches for the marker and captures the display with `simctl io` while the test waits.
+    /// Off unless the run sets TEST_RUNNER_DUO_SHOTS.
     func keepShot(_ app: XCUIApplication, _ name: String) {
-        let shot = XCTAttachment(screenshot: app.screenshot())
-        shot.name = name
-        shot.lifetime = .keepAlways
-        add(shot)
+        guard ProcessInfo.processInfo.environment["DUO_SHOTS"] != nil else { return }
+        print("DUO-SHOT \(name)")
+        Thread.sleep(forTimeInterval: 4)
     }
 }
