@@ -34,9 +34,6 @@ struct MastheadScreen<Content: View>: View {
                 if let sync { SyncAdvisoryLine(sync: sync, open: openSync) }
                 content
             }
-            // A child held at its full width (a fixed-size, clipped line) must not widen the column or centre it, or the
-            // masthead would move between tabs at 320pt. The overflow runs off the trailing edge.
-            .containerRelativeFrame(.horizontal, alignment: .leading)
         }
         // Pinned once the slot's top has passed the scroll view's top edge. A short tab never scrolls that far.
         .onScrollGeometryChange(for: Bool.self, of: { pinAt > 0 && $0.contentOffset.y + $0.contentInsets.top >= pinAt }) { pinned = $1 }
