@@ -187,11 +187,16 @@ struct TallyRowView: View {
         if typeSize.isAccessibilitySize {
             text.accessibilityIdentifier("tally-meta:\(row.name)")
         } else {
-            text.fixedSize(horizontal: true, vertical: false)
-                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { metaNaturalWidth = $0 }
-                .accessibilityIdentifier("tally-meta:\(row.name)")
+            // The column is sized by a hidden one-line copy, which takes the width it is offered. The visible text is
+            // laid over it at its natural width, so the row never grows with the text and the text is cut at the column.
+            Text(row.meta).font(font).lineLimit(1).hidden()
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { metaBoxWidth = $0 }
+                .overlay(alignment: .leading) {
+                    text.fixedSize(horizontal: true, vertical: false)
+                        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { metaNaturalWidth = $0 }
+                        .accessibilityIdentifier("tally-meta:\(row.name)")
+                }
                 .clipped()
                 .overlay(alignment: .trailing) {
                     if metaNaturalWidth > metaBoxWidth {
