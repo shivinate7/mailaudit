@@ -183,7 +183,11 @@ struct TallyRowView: View {
         if typeSize.isAccessibilitySize {
             text.accessibilityIdentifier("tally-meta:\(row.name)")
         } else {
+            // The wrapper is the line's one accessibility element, so the audit resolves its clipped-text finding to
+            // the `tally-meta:` identifier. A bare truncated Text yields a finding with no element at all.
             text.lineLimit(1).truncationMode(.tail).frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(row.meta)
                 .accessibilityIdentifier("tally-meta:\(row.name)")
         }
     }
