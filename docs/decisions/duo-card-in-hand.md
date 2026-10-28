@@ -56,7 +56,7 @@ A typed query matches as the web search does: a case-insensitive part of the car
 
 Packages does not spread on the open Duo. It keeps the web's one-page layout. Default, not owner.
 
-**Holds while:** no native Duo view is built yet, and the owner's pick of Card in Hand stands. Item 22 holds until the owner reviews the test build.
+**Holds while:** the owner's pick of Card in Hand stands. Item 22 holds until the owner reviews the test build.
 
 ## See also
 
