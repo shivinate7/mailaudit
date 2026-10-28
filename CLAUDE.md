@@ -452,6 +452,7 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `sync-latency-after-fix-unmeasured` — The sync delay with the press guard is unmeasured.
 - `screens-45px-width-flake` — The screens check once measured every target 45px wide.
 - `tracking-checker-unbuilt` — A future checker that passively checks tracking numbers. It blocks nothing.
+- `orders-job-unbuilt` — The Worker orders cron, its key test and its status screen are unbuilt.
 
 ## Measurements
 
