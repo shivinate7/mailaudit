@@ -208,7 +208,7 @@ struct MastheadView: View {
         let text = MastheadPaint.style(.count).text(model.countLine(for: tab), size: 10.5, relativeTo: .caption)
         Group {
             if typeSize.isAccessibilitySize { text.frame(maxWidth: .infinity, alignment: .leading) } else {
-                text.fixedSize(horizontal: true, vertical: false).frame(maxWidth: .infinity, alignment: .leading).clipped()
+                text.fixedSize(horizontal: true, vertical: false).frame(maxWidth: .infinity, alignment: .leading)
             }
         }
         .accessibilityIdentifier("masthead-count")
