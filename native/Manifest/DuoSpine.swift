@@ -86,15 +86,21 @@ private struct DuoSpine<ID: Hashable>: ViewModifier {
             .environment(\.duoCustomBar, bar != nil)
             // The bar floats over the right page, so the tabs keep clear of it as they do of the system bar.
             .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: bar == nil ? 0 : Self.barHeight) }
-            // Window space: the fold and the bar are framed from the screen's top left, whatever the safe area.
-            .background { Color.clear.ignoresSafeArea().onDuoFoldChange { fold = $0 } }
-            .overlay(alignment: .topLeading) {
-                if let bar {
-                    DuoBar(selection: $selection, items: items)
-                        .frame(width: bar.width, height: bar.height)
-                        .offset(x: bar.minX, y: bar.minY)
-                        .ignoresSafeArea()
+            // One host measures the window and draws the bar, so both share one space. A GeometryReader that ignores the safe area
+            // reports the whole window; onGeometryChange on a bare Color.clear did not, and the bar landed one safe-area height high.
+            .overlay {
+                GeometryReader { _ in
+                    Color.clear
+                        .onDuoFoldChange { fold = $0 }
+                        .overlay(alignment: .topLeading) {
+                            if let bar {
+                                DuoBar(selection: $selection, items: items)
+                                    .frame(width: bar.width, height: bar.height)
+                                    .offset(x: bar.minX, y: bar.minY)
+                            }
+                        }
                 }
+                .ignoresSafeArea()
             }
     }
 
