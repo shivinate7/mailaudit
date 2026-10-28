@@ -230,7 +230,9 @@ private struct EnvelopeCard: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Button { model.open(.edit(env.id)) } label: { MiniLabel(title: "Edit", size: 11) }.buttonStyle(.plain).accessibilityIdentifier("orphaned-edit:\(env.id)")
                 Button(role: .destructive) { armed.toggle() } label: {
-                    MiniLabel(title: "Discard", size: 11, text: paint(.discardText), fill: paint(.cardSurface), border: paint(.discardBorder))
+                    // Armed, the button itself fills red with card text, as the web's does (src/app.jsx EnvelopeCard).
+                    MiniLabel(title: "Discard", size: 11, text: paint(armed ? .armedText : .discardText),
+                              fill: paint(armed ? .armedFill : .cardSurface), border: paint(armed ? .armedFill : .discardBorder))
                 }
                 .buttonStyle(.plain).accessibilityIdentifier("discard:\(env.id)")
             }
