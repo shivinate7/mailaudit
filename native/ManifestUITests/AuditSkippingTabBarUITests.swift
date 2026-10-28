@@ -52,6 +52,13 @@ func isKeyboardPredictionCell(detail: String) -> Bool {
 }
 
 extension XCUIApplication {
+    /// The top of the band a list scrolls in: the status bar's foot, or the window's top when no status bar resolves.
+    /// A list's first frame sits below it, and a pinned running head sits on it. It is not the masthead's top, which
+    /// is a container's union frame and starts below the masthead's own padding.
+    var listTop: CGFloat {
+        max(windows.firstMatch.frame.minY, statusBars.firstMatch.exists ? statusBars.firstMatch.frame.maxY : 0)
+    }
+
     /// The one scroll helper of these tests. Plain: swipe up until the element can be tapped, at most 5 swipes.
     /// `whole`: for a test that records frames before a tap. A tap on an element that is off screen scrolls the
     /// list and moves every frame, so the element must lie fully between the status bar and the tab bar first.
@@ -72,7 +79,7 @@ extension XCUIApplication {
             return
         }
         let screen = windows.firstMatch.frame
-        let top = max(screen.minY, statusBars.firstMatch.exists ? statusBars.firstMatch.frame.maxY : 0)
+        let top = listTop
         let bottom = tabBars.firstMatch.frame.minY
         func inView() -> Bool { element.frame.minY >= top && element.frame.maxY <= bottom }
         func settle() {
@@ -256,11 +263,31 @@ final class AuditSkippingTabBarUITests: XCTestCase {
                        "the skipped issues did not all fail once the bar moved away")
     }
 
-    /// The filtered audit still records an issue outside the bar. The bar is far away, so it covers
-    /// nothing and every issue is outside it. The expected failure is strict, so the test goes red
-    /// when the audit records nothing, as it does if the handler returns true for such an issue.
+    /// Orphaned's composer, open. The audit raises issues on it by itself, and the Orphaned composer audit has to skip
+    /// them: Cancel's contrast flag (audit-skips-measured-flags, a bordered mini button flags in every container) and
+    /// the contrast of the disabled Save. The Packages screen no longer raises one, so it cannot be the planted finding.
+    /// These are the three steps OrphanedUITests runs (launch, openOrphaned, open the composer). They are repeated here
+    /// because a test class cannot call another class's helpers, and moving the test there would change its id.
+    private func launchedOrphanedComposer() -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ManifestUITestSeed"]
+        app.launch()
+        app.tabBars.buttons["Orphaned"].tap()
+        let record = app.descendants(matching: .any).matching(identifier: "orphaned-record").firstMatch
+        XCTAssertTrue(record.waitForExistence(timeout: 5), "the Orphaned view has no Record control")
+        record.tap()
+        XCTAssertTrue(app.descendants(matching: .any).matching(identifier: "orphaned-input").firstMatch.waitForExistence(timeout: 5),
+                      "the composer did not open before the audit")
+        return app
+    }
+
+    /// The filtered audit still records an issue outside the bar. The screen is a known one that raises issues (the open
+    /// Orphaned composer), so the test proves the skip lets a real finding through. The bar is far away, so it covers
+    /// nothing and every issue is outside it. The expected failure is strict, so the test goes red when the audit
+    /// records nothing, as it does if the handler returns true for such an issue. It also goes red if the composer
+    /// ever audits clean: the finding to plant is then another known one, not a looser check.
     func testAnIssueOutsideTheBarIsRecorded() throws {
-        let app = launchedPackages()
+        let app = launchedOrphanedComposer()
         try XCTExpectFailure("an issue outside the tab bar fails the audit", strict: true) {
             try app.auditSkippingTabBar(bar: Self.farAway, record: true)
         }

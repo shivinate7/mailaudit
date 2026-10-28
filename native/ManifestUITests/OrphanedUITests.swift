@@ -181,7 +181,9 @@ final class OrphanedUITests: XCTestCase {
         XCTAssertEqual(count(app, prefix: "exact:"), 0, "a tied candidate carries the exact marker")
         XCTAssertFalse(a.isSelected, "A is preselected")
         XCTAssertFalse(b.isSelected, "B is preselected")
-        XCTAssertEqual(a.frame.size, b.frame.size, "the tied rows differ in size")
+        // Layout rounding gives two equal rows frames that differ by a fraction, so a size is compared to half a point.
+        XCTAssertEqual(a.frame.width, b.frame.width, accuracy: 0.5, "the tied rows differ in width")
+        XCTAssertEqual(a.frame.height, b.frame.height, accuracy: 0.5, "the tied rows differ in height")
         XCTAssertFalse(el(app, "orphaned-undo").exists, "recording an envelope checked something in")
         XCTAssertEqual(sagaLabel(app), "Check in Urza's Saga", "the card stays unchecked")
         XCTAssertEqual(
