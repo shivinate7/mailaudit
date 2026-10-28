@@ -422,12 +422,12 @@ final class MastheadBackupUITests: XCTestCase {
 
     /// Drags the list up by `dy` points (down when negative) with no fling, so the offset follows the finger and the pin
     /// point can be crossed by a known amount. It repeats the press-and-drag of XCUIApplication.reveal, which drags by an
-    /// element's gap and cannot drag a set distance. A drag down starts below the pinned head, which would take a touch
-    /// that began on it. `bandTop` is where the list starts: XCUIApplication.listTop, the status bar's foot.
-    func drag(_ app: XCUIApplication, up dy: CGFloat, bandTop: CGFloat) {
+    /// element's gap and cannot drag a set distance. A drag down starts 40pt below the pinned head's foot, read from the
+    /// head: the head takes a touch that began on it, and the list would not move. So a drag down needs the head pinned.
+    func drag(_ app: XCUIApplication, up dy: CGFloat) {
         let bottom = app.tabBars.firstMatch.frame.minY
         let x = app.windows.firstMatch.frame.midX
-        let from = dy > 0 ? bottom - 40 : bandTop + Self.slot + 40
+        let from = dy > 0 ? bottom - 40 : find(app, "running-head").frame.maxY + 40
         let origin = app.coordinate(withNormalizedOffset: .zero)
         origin.withOffset(CGVector(dx: x, dy: from)).press(
             forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: x, dy: from - dy)), withVelocity: .slow, thenHoldForDuration: 0.3)
@@ -453,9 +453,7 @@ final class MastheadBackupUITests: XCTestCase {
         let head = try live(app, "masthead", tab: "Packages")
         let cardsFigure = try XCTUnwrap(figure(try live(app, "tally-cards", tab: "Packages")), "the cards cell has no figure")
         let row = try topmostPackageRow(app)
-        // `head` is the masthead container's union frame, so its top is the seal row's, below the list's top. The running
-        // head pins at the list's top, the status bar's foot, so it is compared with that, never with the masthead's top.
-        let (restTop, pinAt, top) = (head.frame.minY, head.frame.height, app.listTop)
+        let (restTop, pinAt, pastPin) = (head.frame.minY, head.frame.height, CGFloat(60))
         let running = find(app, "running-head")
         func gap(_ when: String) {
             settle(head)
@@ -468,61 +466,39 @@ final class MastheadBackupUITests: XCTestCase {
         gap("at rest")
         unmounted("at rest")
 
-        drag(app, up: pinAt - 20, bandTop: top)
+        drag(app, up: pinAt - 20)
         gap("just short of the pin point")
         unmounted("just short of the pin point")
 
-        drag(app, up: 60, bandTop: top)
+        drag(app, up: pastPin)
         XCTAssertTrue(running.waitForExistence(timeout: 5), "the running head did not pin once the masthead scrolled away")
         gap("while the running head is pinned")
-        XCTAssertEqual(running.frame.minY, top, accuracy: 1, "the running head is not at the top of the list, the status bar's foot at \(top)")
+        // The head pins on the list's top edge. The status bar is not in the accessibility tree on this runtime, so
+        // app.listTop reads the window's top, 0, and cannot name that edge. The masthead's foot crossed the edge during
+        // the last drag, by less than that drag, so the head's top lies that far below the foot and no farther. A head
+        // under the status bar sits above the foot, and a head hung below the edge sits farther than the drag.
+        let below = running.frame.minY - head.frame.maxY
+        XCTAssertGreaterThanOrEqual(below, -0.5, "the running head's top \(running.frame.minY) is above the masthead's foot \(head.frame.maxY), so it is not on the list's top edge")
+        XCTAssertLessThanOrEqual(below, pastPin, "the running head's top \(running.frame.minY) is \(below)pt below the masthead's foot \(head.frame.maxY), more than the \(pastPin)pt drag past the pin point")
         XCTAssertLessThanOrEqual(running.frame.height, Self.slot + 0.5, "the running head is taller than its slot")
         XCTAssertTrue(running.label.contains(cardsFigure), "the running head `\(running.label)` does not hold the cards figure \(cardsFigure)")
 
-        drag(app, up: -(pinAt + 80), bandTop: top)
+        drag(app, up: -(pinAt + 80))
         unmounted("back at the top")
         gap("back at the top")
         XCTAssertEqual(head.frame.minY, restTop, accuracy: 0.5, "the masthead is not back where it started")
     }
 
-    /// The screen with the head pinned, which the per-tab audits above never reach. The audit names each element it flags,
-    /// and it skips only what the tab bar covers (auditSkippingTabBar), as the Packages audits do.
+    /// The screen with the head pinned, which the per-tab audits above never reach. The audit skips only text that
+    /// overlaps the tab bar or lies below the window (auditSkippingTabBar), as the Packages audits do, so any other
+    /// finding fails, wherever the cards sit.
     func testAccessibilityAuditWithTheRunningHeadPinned() throws {
         let app = launch(width: nil)
         show(app, "Packages")
         let head = try live(app, "masthead", tab: "Packages")
-        drag(app, up: head.frame.height + 40, bandTop: app.listTop)
+        drag(app, up: head.frame.height + 40)
         XCTAssertTrue(find(app, "running-head").waitForExistence(timeout: 5), "the running head did not pin, so the audit reads the unpinned screen")
-        scrollCardHeadersClearOfTheBar(app)
         try app.auditSkippingTabBar()
-    }
-
-    /// Each Packages card's header: from the card's top to the foot of its order link, which every package has.
-    func cardHeaders(_ app: XCUIApplication) -> [CGRect] {
-        packageRows(app).allElementsBoundByIndex.compactMap { row in
-            let link = find(app, "order-link:\(row.identifier.dropFirst("package-row:".count))")
-            guard link.exists else { return nil }
-            return CGRect(x: row.frame.minX, y: row.frame.minY, width: row.frame.width, height: link.frame.maxY - row.frame.minY)
-        }
-    }
-
-    /// Scrolls the pinned list until no card header sits within 60pt above the tab bar. The audit can flag the text of a
-    /// header that close to the bar, and auditSkippingTabBar skips an issue only when the bar hides more than half of its
-    /// element, so a header that only meets the bar would fail the audit. That is the under-the-bar question, which waits
-    /// on the owner's ruling. This test is about the pinned head, so it must not depend on where a header happens to sit.
-    /// A header wholly under the bar is skipped by the cover rule, so it does not count. Fails if it cannot get clear.
-    func scrollCardHeadersClearOfTheBar(_ app: XCUIApplication, margin: CGFloat = 60) {
-        let bar = app.tabBars.firstMatch.frame.minY
-        func nearest() -> CGRect? {
-            cardHeaders(app).filter { $0.minY < bar && $0.maxY > bar - margin }.min { $0.minY < $1.minY }
-        }
-        for _ in 0..<4 {
-            settle(packageRows(app).firstMatch)
-            guard let near = nearest() else { return }
-            drag(app, up: near.maxY - (bar - margin) + 8, bandTop: app.listTop)
-        }
-        settle(packageRows(app).firstMatch)
-        XCTAssertNil(nearest(), "a card header is still within \(margin)pt of the tab bar at \(bar), so the audit would read it there")
     }
 
     // MARK: step 5, the masthead follows a write that is not a check-in

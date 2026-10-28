@@ -56,8 +56,10 @@ func isKeyboardPredictionCell(detail: String) -> Bool {
 
 extension XCUIApplication {
     /// The top of the band a list scrolls in: the status bar's foot, or the window's top when no status bar resolves.
-    /// A list's first frame sits below it, and a pinned running head sits on it. It is not the masthead's top, which
-    /// is a container's union frame and starts below the masthead's own padding.
+    /// The status bar is not in the app's accessibility tree on the simulator runs so far, so this reads the window's
+    /// top there, above the real band, where a list's first frame and a pinned running head sit. Only
+    /// reveal(whole:) reads it. It is not the masthead's top, which is a container's union frame and starts below the
+    /// masthead's own padding.
     var listTop: CGFloat {
         max(windows.firstMatch.frame.minY, statusBars.firstMatch.exists ? statusBars.firstMatch.frame.maxY : 0)
     }
@@ -107,23 +109,6 @@ extension XCUIApplication {
         }
         settle()
         XCTAssertTrue(inView(), "reveal: the element ends at \(element.frame), outside the free band \(top) to \(bottom)")
-    }
-
-    /// The whole audit, with each issue named by its element. A bare performAccessibilityAudit() fails with
-    /// "Contrast failed" and the result bundle does not say which element (palette-tokens-contrast-floor).
-    /// `skipping` is the audit's own ignore handler: an issue it accepts is left out, every other issue is named
-    /// and fails. The default skips nothing.
-    func auditNamingElements(skipping skip: @escaping (XCUIAccessibilityAuditIssue) -> Bool = { _ in false },
-                             file: StaticString = #filePath, line: UInt = #line) throws {
-        var found: [String] = []
-        try performAccessibilityAudit { issue in
-            if !skip(issue) {
-                let el = issue.element
-                found.append("\(issue.compactDescription) | id=\(el?.identifier ?? "-") label=\(el?.label ?? "-") frame=\(el?.frame ?? .zero)")
-            }
-            return true  // handled here; the assertion below is the only failure
-        }
-        XCTAssertEqual(found, [], "the audit flagged these elements", file: file, line: line)
     }
 
     /// The accessibility audit, minus every issue whose element touches the tab bar or lies below the window
