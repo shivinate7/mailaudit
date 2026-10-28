@@ -23,14 +23,42 @@ struct MiniLabel: View {
     /// The pill fills the width it is offered, as a web `flex: 1` button does.
     var wide = false
 
-    var body: some View {
+    /// The 44pt hit frame is drawn around the pill without taking layout space (a header row stays as tall as the web's).
+    var outsetHit = false
+
+    private var pill: some View {
         Text(title).font(bold ? .mono(size, relativeTo: .caption).weight(.bold) : .mono(size, relativeTo: .caption))
             .foregroundStyle(text).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             .padding(.vertical, vertical).padding(.horizontal, horizontal)
             .frame(maxWidth: wide ? .infinity : nil)
             .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(border, lineWidth: 1))
             .background(fill, in: RoundedRectangle(cornerRadius: 5))
-            .frame(minWidth: 44, minHeight: 44).contentShape(Rectangle())
+    }
+
+    private var framed: some View { pill.frame(minWidth: 44, minHeight: 44).contentShape(Rectangle()) }
+
+    var body: some View {
+        if outsetHit {
+            OutsetHit {
+                pill.hidden().accessibilityHidden(true)
+                framed
+            }
+        } else {
+            framed
+        }
+    }
+}
+
+/// Two subviews: the first sets the size, and the second (the same label in its 44pt hit frame) is centred on it and
+/// may overflow it. Layout reads the first only, so the hit frame costs no space.
+private struct OutsetHit: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        subviews[0].sizeThatFits(proposal)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews[0].place(at: bounds.origin, proposal: ProposedViewSize(bounds.size))
+        subviews[1].place(at: CGPoint(x: bounds.midX, y: bounds.midY), anchor: .center, proposal: ProposedViewSize(bounds.size))
     }
 }
 
@@ -43,6 +71,7 @@ struct AdvisoryText: View {
     var body: some View {
         Text(line).font(font).foregroundStyle(paint(.advisoryText))
             .padding(.vertical, 4).padding(.horizontal, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(paint(.advisoryFill), in: RoundedRectangle(cornerRadius: radius))
     }
 }
