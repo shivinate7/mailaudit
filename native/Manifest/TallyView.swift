@@ -176,11 +176,15 @@ struct TallyRowView: View {
         .contentShape(Rectangle())
     }
 
-    /// One line, cut at the column's edge as on the web, and wrapping at accessibility sizes.
+    /// One line ending in "…" at the column's edge, as on the web, and wrapping at accessibility sizes. The audit calls
+    /// truncated text clipped, so the Tally audits skip that check on `tally-meta:` elements (`audit-skips-measured-flags`).
     @ViewBuilder private var metaLine: some View {
         let text = Text(row.meta).font(.mono(11, relativeTo: .caption)).foregroundStyle(paint(.meta))
-        if typeSize.isAccessibilitySize { text } else {
-            text.fixedSize(horizontal: true, vertical: false).frame(maxWidth: .infinity, alignment: .leading).clipped()
+        if typeSize.isAccessibilitySize {
+            text.accessibilityIdentifier("tally-meta:\(row.name)")
+        } else {
+            text.lineLimit(1).truncationMode(.tail).frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityIdentifier("tally-meta:\(row.name)")
         }
     }
 
