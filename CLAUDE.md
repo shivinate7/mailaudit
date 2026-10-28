@@ -302,7 +302,7 @@ What each check asks, and the two traps in the icon pipeline.
 - `debts-hold-known-gaps` — Known gaps and to-dos live in debts, one file each.
 - `records-name-what-dates-them` — Each decision names the fact that would date it.
 - `readme-is-minimal` — The README is minimal, and carries no license.
-- `orchestrator-may-merge` — The orchestrating session may merge green, reviewed PRs.
+- `orchestrator-may-merge` — One orchestrating session batches and merges green, reviewed PRs.
 - `invariants-cited-by-slug` — Invariants are cited by slug, never by number.
 
 ## Testing method
@@ -456,6 +456,8 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `hidden-tab-apply-delay-unmeasured` — The apply delay on a hidden tab is unmeasured.
 - `sync-latency-after-fix-unmeasured` — The sync delay with the press guard is unmeasured.
 - `screens-45px-width-flake` — The screens check once measured every target 45px wide.
+- `tracking-checker-unbuilt` — A future checker that passively checks tracking numbers. It blocks nothing.
+- `orders-job-unbuilt` — The Worker orders cron, its key test and its status screen are unbuilt.
 
 ## Measurements
 
