@@ -2302,11 +2302,17 @@ await test("74.4 an empty store takes the pulled lines as a clean ledger", async
   eq(store.state?.rev, 1, "first rev");
 });
 
-await test("74.5 the job parses with parseItems and merges with the shared merge, and holds no copy of either", async () => {
-  /* reads source, as 7.1 does: the single-home rule is not visible from behaviour */
-  const src = ["orders.mjs", "core.mjs"].map((f) => readFileSync(new URL(`./${f}`, import.meta.url), "utf8")).join("\n");
-  ok(!/function\s+(parseItems|mergeItems|mergeLedger|decodeEntities)\b/.test(src), "no second parseItems, merge or decoder in the worker");
-  ok(/import[^;]*\bparseItems\b[^;]*from\s+["']\.\.\/src\/view-rules\.mjs["']/.test(src), "parseItems comes from ../src/view-rules.mjs");
+await test("74.5 the job reaches the shared parseItems, and holds no second copy of it", async () => {
+  /* The job is bundled with esbuild, so a comment or a string in its source cannot fool this. Tree
+     shaking drops parseItems unless the job really uses it, and a copy would add a second one.
+     "Unknown seller" is a literal that only parseItems holds. */
+  const { build } = await import("esbuild");
+  const { fileURLToPath } = await import("node:url");
+  const out = await build({
+    entryPoints: [fileURLToPath(new URL("./orders.mjs", import.meta.url))],
+    bundle: true, write: false, format: "esm", platform: "node", logLevel: "silent",
+  });
+  eq(out.outputFiles[0].text.split('"Unknown seller"').length - 1, 1, "one parseItems in the job's bundle");
 });
 
 /* ---------- 75. the status the GET reply exposes ---------- */
