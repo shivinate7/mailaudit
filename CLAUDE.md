@@ -22,7 +22,7 @@ records your task needs. Do not read them all.
 
 - `invariants/` holds a rule that must not break. 8 records.
 - `docs/decisions/` holds a ruling and the reason it still holds.
-- `measurements/` holds a measured figure and how to re-measure it. 10 records.
+- `measurements/` holds a measured figure and how to re-measure it. 11 records.
 - `docs/debts/` holds one known gap or to-do per file, each pointing at its decision.
 
 A record cites another record by slug, never by a path, so a record survives a
@@ -123,6 +123,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `csv-import-stays-web` — CSV import stays on the web app.
 - `one-simulator-per-mac` — Simulator boots and load follow the global machine rules.
 - `native-ships-via-testflight` — The iOS app ships through TestFlight.
+- `duo-card-in-hand` — On the iPhone Duo, Card in Hand checks cards in by name.
 
 ## Envelope photos
 
@@ -188,6 +189,7 @@ Packages, Tally and Orphaned read one check-in map. These records say what each 
 - `outstanding-value-per-level` — Each level states what is still outstanding.
 - `canceled-orders-leave-the-list` — Canceled orders leave the list, not the record.
 - `orphan-entry-takes-one-input` — Recording an envelope takes one input.
+- `new-envelope-ends-an-envelope` — The New envelope control ends the current envelope.
 - `candidates-skip-date-filter` — Candidates ignore the date filter and canceled orders.
 - `assign-checks-recorded-cards` — Assigning an envelope checks in only its recorded cards.
 - `shrunk-envelope-gets-fresh-stamp` — A partial assignment restamps the envelope.
@@ -300,7 +302,7 @@ What each check asks, and the two traps in the icon pipeline.
 - `debts-hold-known-gaps` — Known gaps and to-dos live in debts, one file each.
 - `records-name-what-dates-them` — Each decision names the fact that would date it.
 - `readme-is-minimal` — The README is minimal, and carries no license.
-- `orchestrator-may-merge` — The orchestrating session may merge green, reviewed PRs.
+- `orchestrator-may-merge` — One orchestrating session batches and merges green, reviewed PRs.
 - `invariants-cited-by-slug` — Invariants are cited by slug, never by number.
 
 ## Testing method
@@ -455,12 +457,16 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `hidden-tab-apply-delay-unmeasured` — The apply delay on a hidden tab is unmeasured.
 - `sync-latency-after-fix-unmeasured` — The sync delay with the press guard is unmeasured.
 - `screens-45px-width-flake` — The screens check once measured every target 45px wide.
+- `tracking-checker-unbuilt` — A future checker that passively checks tracking numbers. It blocks nothing.
+- `orders-job-unbuilt` — The Worker orders cron, its key test and its status screen are unbuilt.
+- `hand-type-not-serialised` — Card in Hand does not serialise typed names.
 
 ## Measurements
 
 Each figure was measured in a real viewport or on a real device. A test cannot hold most of them, and each record says how to take the number again.
 
 - `card-reserved-geometry` — Card reserved geometry heights.
+- `duo-fold-and-keyboard` — Fold strip, keyboard frame and outer screen on the iPhone Duo simulator.
 - `ledger-and-seed-sizes` — Ledger and version sizes.
 - `masthead-foot-slot` — Masthead foot save-slot width.
 - `motion-timings` — Motion sheet durations and beats.

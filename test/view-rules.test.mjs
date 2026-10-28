@@ -1338,6 +1338,175 @@ eq(countLine("packages", counts(4, 8, 2), { from: 1, to: null }), `4 packages in
 
 /* V21.8 the line is one string, since Swift reads it as JSON. Mutant: an object or an array */
 ok(typeof countLine("packages", counts(4, 8, 2), null) === "string", "V21.8 the line is a string");
+/* ── V30 to V34. Card in Hand rules (duo-card-in-hand, new-envelope-ends-an-envelope,
+   lost-mail-flags-use-order-date). Red until the duo-hand-rules builder adds these exports.
+
+   CONTRACT. The exports go at the end of src/view-rules.mjs. Each takes its state as
+   arguments, and none reads the clock except through its `now`.
+     handHits(items, query, received, refundedGks) -> [gk, ...]
+       items: the parseItems shape. received: {itemKey: copies in}. refundedGks: a Set of gk.
+       A package hits when one of its items has copies outstanding (qty > received), is not
+       canceled (tracking starts "cancel"), is not in refundedGks, and lineHit(item, q) holds,
+       where q is the query trimmed and lowercased. lineHit is the web's search, in
+       src/view-rules.mjs: a substring, case-insensitive, of the name, set, seller or order id.
+       Reuse it. An empty query is not pinned.
+       Result: gk strings in groupPackages order (order date newest first, then seller name).
+     handStep(items, received, refundedGks, held, typed) -> {action, gk, plan, held}
+       held: a name or null. typed: a name. Names match by normName equality.
+       Open envelopes: the packages of items that are not canceled, not in refundedGks, and
+       hold copies still outstanding under the name.
+       "none": typed is blank and held is null. gk and plan null, held null.
+       "hold": typed names two or more open envelopes and nothing is held. gk and plan null,
+               held = normName(typed).
+       "hold": a name is held and typed names no open envelope. That includes the held name
+               typed again. gk and plan null, held unchanged.
+       "post": typed names exactly one open envelope P.
+               If P also names the held name H: plan = matchEnvelope([H, typed] at qty 1 each,
+               P, received).plan, and held is null. When typed is H, both copies count.
+               Otherwise (P does not name H, or nothing is held): plan = matchEnvelope([typed] at
+               qty 1, P, received).plan, and held stays H (null when nothing was held). This is an
+               offer: a tap posts it.
+       Not pinned: typed names two or more open envelopes while a name is held.
+     pastTransit(items, received, stampedGks, now) -> [{gk, tier, days, claimBy}, ...]
+       A package is listed when it is untracked, not fully received (some item short of qty),
+       not in stampedGks, and lostMail(date, tracking, false, now) is not null (14 days or more).
+       Canceled lines drop before grouping, as the web does, so a package takes its tracking
+       from its other lines.
+       Order: groupPackages order, so the oldest is last. tier and days come from lostMail.
+       claimBy is the order's calendar date plus 30 days, as "YYYY-MM-DD", with no time zone
+       shift. Rows may hold other fields.
+   Sets cross the Swift bridge as {"$set": [...]}. The Swift case is in HandRulesBundleTests.swift. */
+
+const handHits = fn("handHits");
+const handStep = fn("handStep");
+const pastTransit = fn("pastTransit");
+
+/* ── V30 handHits: a typed name finds the packages that hold it, and skips received,
+   canceled and refunded mail. Mutants: no received check (H2 listed), no cancel check (H3),
+   no refund check (H4), a word-start match (the mid-word "ghtn" misses), a case-sensitive match. */
+const v30 = [
+  ...group("H1", "Alpha Cards", "2026-07-01", "with tracking", [["Lightning Bolt", 1]]),
+  ...group("H2", "Beta Games", "2026-07-02", "with tracking", [["Lightning Bolt", 1]]),
+  ...group("H3", "Gamma Cards", "2026-07-03", "canceled", [["Lightning Bolt", 1]]),
+  ...group("H4", "Delta Cards", "2026-07-04", "with tracking", [["Lightning Bolt", 1]]),
+  ...group("H5", "Epsilon Cards", "2026-07-05", "with tracking", [["Path to Exile", 1]]),
+  ...group("H6", "Zeta Cards", "2026-07-10", "without tracking", [["Lightning Bolt", 1]]),
+];
+const v30Received = { [v30[1].key]: 1 };
+const v30Refunded = new Set(["H4::Delta Cards"]);
+const hitsFor = (query) => handHits(v30, query, v30Received, v30Refunded);
+const HIT_GKS = ["H6::Zeta Cards", "H1::Alpha Cards"];
+eq(hitsFor("light"), HIT_GKS, "V30.1 a name hits; received, canceled and refunded mail is skipped");
+eq(hitsFor("bolt"), HIT_GKS, "V30.2 a word after the first hits");
+eq(hitsFor("LIGHT"), HIT_GKS, "V30.3 the match ignores case");
+eq(hitsFor("ghtn"), HIT_GKS, "V30.4 a fragment inside a word hits, as the web search does");
+eq(hitsFor("path to ex"), ["H5::Epsilon Cards"], "V30.5 a multi-word query matches a name in order");
+
+/* ── V31 handStep: a name two open envelopes share is held, with no plan.
+   Mutant: a post, or a plan, on a shared name. */
+const v31 = [
+  ...group("S1", "Alpha Cards", "2026-07-01", "with tracking", [["Lightning Bolt", 1], ["Path to Exile", 1]]),
+  ...group("S2", "Beta Games", "2026-07-02", "with tracking", [["Lightning Bolt", 1], ["Counterspell", 1]]),
+];
+const v31Shared = handStep(v31, {}, new Set(), null, "Lightning Bolt");
+eq(v31Shared?.action, "hold", "V31.1 a name two open envelopes share is held");
+eq(v31Shared?.plan, null, "V31.2 a held shared name has no plan");
+eq(v31Shared?.gk, null, "V31.3 a held shared name names no envelope");
+eq(v31Shared?.held, "lightning bolt", "V31.4 the held name is the normalized card name");
+
+/* ── V32 handStep: the next card that names one envelope decides the held name. The plan
+   takes copies from that envelope only. Mutants: a plan pooled over S1 and S2, no post. */
+const v32Decide = handStep(v31, {}, new Set(), "Lightning Bolt", "Path to Exile");
+eq(v32Decide?.action, "post", "V32.1 the next card names one envelope, so the card posts");
+eq(v32Decide?.gk, "S1::Alpha Cards", "V32.2 the post names the envelope that holds both cards");
+eq(planOf(v32Decide), ["S1|0|pLightning Bolt=1", "S1|1|pPath to Exile=1"], "V32.3 the plan takes the held copy from S1, not S2");
+eq(v32Decide?.held, null, "V32.4 no name is held after a post");
+eq(planOf(handStep(v31, {}, new Set(), null, "Path to Exile")), ["S1|1|pPath to Exile=1"], "V32.5 a card that names one envelope alone posts its own copy");
+
+/* V32.6 to V32.12, next-card cases. Mutants: one copy taken where two are out; the held name
+   dropped on a post; an offer that holds the card instead of posting it. */
+const takesOf = (plan) => {
+  if (!Array.isArray(plan)) return plan;
+  const sums = {};
+  for (const p of plan) sums[p?.itemKey] = (sums[p?.itemKey] || 0) + p?.take;
+  return Object.keys(sums).sort().map((k) => `${k}=${sums[k]}`);
+};
+const fieldOf = (rows, field) => (Array.isArray(rows) ? rows.map((r) => r?.[field]) : rows);
+const v32Two = group("Q1", "Alpha Cards", "2026-07-01", "with tracking", [["Lightning Bolt", 2]]);
+const v32Twin = handStep(v32Two, {}, new Set(), "Lightning Bolt", "Lightning Bolt");
+eq(v32Twin?.action, "post", "V32.6 a name held and typed again, with one envelope, posts");
+eq(v32Twin?.gk, "Q1::Alpha Cards", "V32.7 the post names that envelope");
+eq(takesOf(v32Twin?.plan), ["Q1|0|pLightning Bolt=2"], "V32.8 the plan takes both copies out");
+const v32Other = [
+  ...group("O1", "Alpha Cards", "2026-07-01", "with tracking", [["Lightning Bolt", 1]]),
+  ...group("O2", "Beta Games", "2026-07-02", "with tracking", [["Lightning Bolt", 1]]),
+  ...group("O3", "Gamma Cards", "2026-07-03", "with tracking", [["Sol Ring", 1]]),
+];
+const v32Offer = handStep(v32Other, {}, new Set(), "Lightning Bolt", "Sol Ring");
+eq(v32Offer?.action, "post", "V32.9 a card unique to another envelope offers post");
+eq(v32Offer?.gk, "O3::Gamma Cards", "V32.10 the offer names that card's envelope");
+eq(planOf(v32Offer), ["O3|0|pSol Ring=1"], "V32.11 the offer plans that card alone");
+eq(v32Offer?.held, "lightning bolt", "V32.12 the held name stays held");
+
+/* ── V33 handStep: an unmatched card gives hold, and the held name stays held. A blank card
+   with nothing held is none. Mutants: the unmatched card posts alone, or replaces the held name. */
+const v33Unmatched = handStep(v31, {}, new Set(), "Lightning Bolt", "Sol Ring");
+eq(v33Unmatched?.action, "hold", "V33.1 an unmatched card gives hold, never post");
+eq(v33Unmatched?.held, "lightning bolt", "V33.2 the earlier held name is still the held name");
+eq(v33Unmatched?.plan, null, "V33.3 an unmatched card gets no plan");
+eq(handStep(v31, {}, new Set(), null, "")?.action, "none", "V33.4 a blank card with nothing held is none");
+
+/* V33.5 and V33.6, a held name typed again with no open envelope. Mutant: none, or the held name dropped. */
+const v33Again = group("R1", "Delta Cards", "2026-07-04", "with tracking", [["Lightning Bolt", 1]]);
+const v33AgainRes = handStep(v33Again, {}, new Set(["R1::Delta Cards"]), "Lightning Bolt", "Lightning Bolt");
+eq(v33AgainRes?.action, "hold", "V33.5 a held name typed again with no open envelope is held");
+eq(v33AgainRes?.held, "lightning bolt", "V33.6 the held name is kept");
+
+/* ── V34 pastTransit: untracked, unreceived, unstamped packages at 14 days or more, oldest
+   last. Mutants: 13 days listed, 29 days as deadline, claimBy off by a day, received or
+   stamped mail listed, oldest first. now = 2026-07-31T12:00:00Z. */
+const v34 = [
+  ...group("T1", "Alpha Cards", "2026-07-17", "without tracking", [["Lightning Bolt", 1]]), // 14 days
+  ...group("T2", "Beta Games", "2026-07-02", "without tracking", [["Counterspell", 1]]), // 29 days
+  ...group("T3", "Gamma Cards", "2026-07-01", "without tracking", [["Path to Exile", 1]]), // 30 days
+  ...group("T4", "Delta Cards", "2026-06-20", "without tracking", [["Ponder", 1]]), // 41 days
+  ...group("T5", "Epsilon Cards", "2026-07-18", "without tracking", [["Preordain", 1]]), // 13 days
+  ...group("T6", "Zeta Cards", "2026-06-10", "with tracking", [["Brainstorm", 1]]), // tracked
+  ...group("T7", "Eta Cards", "2026-06-15", "without tracking", [["Swords to Plowshares", 1]]), // received
+  ...group("T8", "Theta Cards", "2026-06-12", "without tracking", [["Ravenous Chupacabra", 1]]), // stamped
+];
+const v34Received = { [v34[6].key]: 1 };
+const v34Stamped = new Set(["T8::Theta Cards"]);
+const v34Rows = pastTransit(v34, v34Received, v34Stamped, Date.parse("2026-07-31T12:00:00Z"));
+const v34Field = (field) => (Array.isArray(v34Rows) ? v34Rows.map((r) => r?.[field]) : v34Rows);
+eq(v34Field("gk"), ["T1::Alpha Cards", "T2::Beta Games", "T3::Gamma Cards", "T4::Delta Cards"], "V34.1 the 13-day, tracked, received and stamped orders are absent, oldest last");
+eq(Array.isArray(v34Rows) ? v34Rows.map((r) => [r?.tier, r?.days]) : v34Rows, [["maybe", 14], ["maybe", 29], ["deadline", 30], ["deadline", 41]], "V34.2 14 and 29 days are maybe, 30 and 41 are deadline");
+eq(v34Field("claimBy"), ["2026-08-16", "2026-08-01", "2026-07-31", "2026-07-20"], "V34.3 claimBy is the order date plus 30 days");
+
+/* V34.4 to V34.6, canceled lines and the calendar claim date. Run with TZ=America/Chicago.
+   Mutants: a canceled line first hides the untracked package; claimBy shifted by the zone. */
+const v34Now = Date.parse("2026-07-31T12:00:00Z");
+const v34CancelLine = group("U1", "Alpha Cards", "2026-07-05", "canceled", [["Lightning Bolt", 1]]);
+const v34OpenLine = group("U1", "Alpha Cards", "2026-07-05", "without tracking", [["Path to Exile", 1]]);
+eq(fieldOf(pastTransit([...v34CancelLine, ...v34OpenLine], {}, new Set(), v34Now), "gk"), ["U1::Alpha Cards"], "V34.4 a canceled line first does not hide an untracked package");
+eq(fieldOf(pastTransit([...v34OpenLine, ...v34CancelLine], {}, new Set(), v34Now), "gk"), ["U1::Alpha Cards"], "V34.5 an untracked line first lists the same package");
+const v34LateOrder = group("K1", "Kappa Cards", "2026-07-01 20:00:00", "without tracking", [["Ponder", 1]]);
+eq(fieldOf(pastTransit(v34LateOrder, {}, new Set(), v34Now), "claimBy"), ["2026-07-31"], "V34.6 claimBy is the calendar date plus 30 days, with no time zone shift");
+
+/* V34.7 and V34.8, an M/D/YY order date: the form old OrderWand exports use (orderwand-csv).
+   The call must not throw, so it runs inside a try and the throw becomes a failed assertion.
+   Mutant: the local-getter fallback for a date that is not YYYY-MM-DD removed, so the
+   destructuring of a null match throws. */
+const v34Slash = group("M1", "Iota Cards", "7/1/26", "without tracking", [["Ponder", 1]]);
+const v34SlashRun = (() => {
+  try {
+    return { rows: pastTransit(v34Slash, {}, new Set(), v34Now) };
+  } catch (e) {
+    return { threw: `${e.name}: ${e.message}` };
+  }
+})();
+eq(v34SlashRun.threw ?? "no throw", "no throw", "V34.7 an M/D/YY order date does not throw");
+eq(fieldOf(v34SlashRun.rows, "claimBy"), ["2026-07-31"], "V34.8 claimBy for 7/1/26 is 2026-07-31");
 
 /* ---------- report ---------- */
 
