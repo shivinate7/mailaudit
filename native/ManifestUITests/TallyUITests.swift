@@ -130,17 +130,18 @@ final class TallyUITests: XCTestCase {
     /// is hard-clipped, never truncated, so the audit raises no finding. A truncating Text raises a clipped-text issue
     /// that can come back with no identifier, so the test asserts no finding at all on the screen and does not look
     /// for one by id. The audit runs first, so a truncating build goes red there. Then the line's label is whole, and
-    /// the Text is wider than the row, so the "…" case runs on a line that really overflows.
+    /// the Text is wider than the app window, so the "…" case runs on a line that really overflows. The window is the
+    /// bound because the row's own frame is the union of its children and grows with the meta Text (measured on
+    /// 2026-10-28: meta 722pt, row 855pt, window 402pt), so it cannot tell an overflowing line from a fitting one.
     func testAccessibilityAuditTallyScreenWithATruncatedMetaLine() throws {
         let app = launch(width: 375, size: "UICTContentSizeCategoryL", seed: Self.longSetSeed)
         openTally(app, row: Self.longSetRow)
         let ruled = try app.auditNamingElements(skipping: skipTallyAuditFlags)
         XCTAssertFalse(ruled.contains { $0.contains("id=tally-meta:") }, "an audit skip covers the meta line. Skipped: \(ruled)")
         let meta = wholeLongSetMeta(app)
-        let row = element(app, "tally-row:\(Self.longSetRow)")
-        let toggle = element(app, "tally-toggle:\(Self.longSetRow)")
-        XCTAssertGreaterThan(meta.frame.width, row.frame.width,
-                             "the meta line does not overflow: meta \(meta.frame), row \(row.frame), toggle \(toggle.frame)")
+        let window = app.windows.firstMatch
+        XCTAssertGreaterThan(meta.frame.width, window.frame.width,
+                             "the meta line does not overflow: meta \(meta.frame), window \(window.frame)")
     }
 
     // MARK: the copies list
