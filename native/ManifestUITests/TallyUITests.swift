@@ -125,16 +125,22 @@ final class TallyUITests: XCTestCase {
         try app.auditNamingElements(skipping: skipTallyAuditFlags)
     }
 
-    /// The audit with a cut meta line. At the default type size the Set Card meta ends in "…", the audit calls it
-    /// clipped, and the ruled skip is what lets the audit pass. The skip must fire here (it logs `AUDIT-RULED`
-    /// with the tally-meta:Set Card id). Only a skip of that clipped-text issue can carry that id, so an audit that
-    /// raises nothing on the line means the line is not cut, and the test goes red.
+    /// The audit with an overflowing meta line. The Set Card meta is far wider than its column, so the row draws a "…"
+    /// over the column's edge (owner ruling, decision audit-skips-measured-flags). No skip covers the line: the Text
+    /// is hard-clipped, never truncated, so the audit raises no finding. A truncating Text raises a clipped-text issue
+    /// that can come back with no identifier, so the test asserts no finding at all on the screen and does not look
+    /// for one by id. The audit runs first, so a truncating build goes red there. Then the line's label is whole, and
+    /// the Text is wider than the row, so the "…" case runs on a line that really overflows.
     func testAccessibilityAuditTallyScreenWithATruncatedMetaLine() throws {
         let app = launch(width: 375, size: "UICTContentSizeCategoryL", seed: Self.longSetSeed)
         openTally(app, row: Self.longSetRow)
         let ruled = try app.auditNamingElements(skipping: skipTallyAuditFlags)
-        XCTAssertTrue(ruled.contains { $0.contains("id=tally-meta:\(Self.longSetRow) ") },
-                      "the skip never fired on tally-meta:\(Self.longSetRow), so the meta line may not be cut. Skipped: \(ruled)")
+        XCTAssertFalse(ruled.contains { $0.contains("id=tally-meta:") }, "an audit skip covers the meta line. Skipped: \(ruled)")
+        let meta = wholeLongSetMeta(app)
+        let row = element(app, "tally-row:\(Self.longSetRow)")
+        let toggle = element(app, "tally-toggle:\(Self.longSetRow)")
+        XCTAssertGreaterThan(meta.frame.width, row.frame.width,
+                             "the meta line does not overflow: meta \(meta.frame), row \(row.frame), toggle \(toggle.frame)")
     }
 
     // MARK: the copies list
@@ -266,15 +272,22 @@ final class TallyUITests: XCTestCase {
     static let longSetRow = "Set Card"
     static let longSet = "Fictional Anthology of the Northern Realm Commemorative Collector Edition Reprint Series"
 
-    /// A set name far wider than the row ends in "…" on screen (owner ruling, decision audit-skips-measured-flags). The
-    /// meta element tally-meta:<name> still holds the whole text in its label: seller count, order count and the
-    /// full set name. It is the element the Tally audits skip the clipped-text check on.
-    func testALongSetNameIsWholeInTheMetaElementsLabel() throws {
-        let app = launch(width: 375, seed: Self.longSetSeed)
-        openTally(app, row: Self.longSetRow)  // red here, not on the identifier, if the seed has no Set Card item
+    /// The long-set row's meta element, tally-meta:<name>, with its label checked: seller count, order count and the
+    /// full set name. The line is cut on screen and drawn with a "…", but the element still holds the whole text.
+    @discardableResult
+    func wholeLongSetMeta(_ app: XCUIApplication) -> XCUIElement {
         let meta = element(app, "tally-meta:\(Self.longSetRow)")
         XCTAssertTrue(meta.waitForExistence(timeout: 5), "the meta element tally-meta:\(Self.longSetRow) is missing")
         XCTAssertEqual(meta.label, "1 seller \u{00B7} 1 order \u{00B7} \(Self.longSet)", "the meta element's label is not the whole meta text")
+        return meta
+    }
+
+    /// A set name far wider than the row ends in "…" on screen (owner ruling, decision audit-skips-measured-flags), and
+    /// the meta element still holds the whole text in its label.
+    func testALongSetNameIsWholeInTheMetaElementsLabel() throws {
+        let app = launch(width: 375, seed: Self.longSetSeed)
+        openTally(app, row: Self.longSetRow)  // red here, not on the identifier, if the seed has no Set Card item
+        wholeLongSetMeta(app)
     }
 
     // MARK: an empty search
