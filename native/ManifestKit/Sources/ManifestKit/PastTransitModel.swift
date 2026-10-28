@@ -13,7 +13,7 @@ public struct PastTransitRow: Equatable, Sendable {
 
 /// Past-transit page state (duo-transit-model). The list is the bundle's pastTransit rule
 /// (rules-run-in-javascriptcore); this model passes it the ledger and the clock, and stamps through
-/// the store (one-stamp-per-package). It offers only the stamp kinds the web has.
+/// the store (one-stamp-per-package). It takes any kind; the page limits the choice to the web's six.
 @MainActor @Observable
 public final class PastTransitModel {
     @ObservationIgnored private let engine: RulesEngine
