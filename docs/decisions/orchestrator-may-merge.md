@@ -1,10 +1,15 @@
-# The orchestrating session may merge
+# One orchestrating session batches and merges
 
-The owner granted standing merge authority on 2026-10-10. A session that orchestrates work here may merge a pull request to `main` without asking first. Every other rule still applies. The PR must pass the required checks `suite` and `screens`. A change to a gate, a rule or product code needs a fresh reviewer's pass before the merge. Green PRs merge together through one integration branch.
+The owner granted standing merge authority on 2026-10-10. On 2026-10-27 at 20:24 CDT the owner named one session to hold it: the repo's orchestrator, the point guard. It may merge a pull request to `main` without asking first. Every other rule still applies.
+
+- A work session never opens an integration PR, marks a PR ready, or merges. It sends the orchestrator each lane branch that passed its local checks and its review, with the head commit, the checks run and the reviewer's verdict. Each lane PR stays a draft.
+- The orchestrator batches those branches into one integration branch. Its PR is the only one that goes ready, and its run is the only CI run for the batch.
+- The PR must pass the required checks `suite` and `screens`. A change to a gate, a rule or product code needs a fresh reviewer's pass before the merge.
+- A Dependabot PR may merge on green CI through the merge tool (owner, 2026-10-27 12:26).
 
 **Process-only, orchestrator default, 2026-10-12:** a polish merge (see `ux-house-rules-govern`) keeps the fresh-reviewer pass. The owner's polish grant covers taste, not review.
 
-**Holds while:** the owner has not withdrawn the grant, and branch protection on `main` requires `suite` and `screens` for every PR, admins included.
+**Holds while:** the owner has not withdrawn the grant or named another session, and branch protection on `main` requires `suite` and `screens` for every PR, admins included.
 
 ## See also
 
