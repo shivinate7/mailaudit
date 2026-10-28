@@ -133,6 +133,7 @@ final class TallyUITests: XCTestCase {
     /// the Text is wider than the app window, so the "…" case runs on a line that really overflows. The window is the
     /// bound because the row's own frame is the union of its children and grows with the meta Text (measured on
     /// 2026-10-28: meta 722pt, row 855pt, window 402pt), so it cannot tell an overflowing line from a fitting one.
+    /// A cut line must not widen its card: last, every card lies inside the 16pt gutters.
     func testAccessibilityAuditTallyScreenWithATruncatedMetaLine() throws {
         let app = launch(width: 375, size: "UICTContentSizeCategoryL", seed: Self.longSetSeed)
         openTally(app, row: Self.longSetRow)
@@ -142,6 +143,24 @@ final class TallyUITests: XCTestCase {
         let window = app.windows.firstMatch
         XCTAssertGreaterThan(meta.frame.width, window.frame.width,
                              "the meta line does not overflow: meta \(meta.frame), window \(window.frame)")
+
+        // Then no part of the row leaves the column. Every card keeps the 16pt gutters of the 375pt frame (the same
+        // column and gutter SyncAdvisoryUITests reads), and the header button and the outstanding line lie inside the window.
+        let gutter = SyncAdvisoryUITests.gutter, slack = SyncAdvisoryUITests.slack
+        let left = (window.frame.width - SyncAdvisoryUITests.column) / 2 + gutter
+        let right = left + SyncAdvisoryUITests.column - 2 * gutter
+        let cards = elements(app, prefix: "tally-row:")
+        XCTAssertFalse(cards.isEmpty, "the Tally tab shows no rows")
+        var outside = cards.filter { $0.frame.minX < left - slack || $0.frame.maxX > right + slack }
+            .map { "\($0.identifier) \($0.frame) (gutters \(left) to \(right))" }
+        for id in ["tally-toggle:\(Self.longSetRow)", "tally-left:\(Self.longSetRow)"] {
+            let part = element(app, id)
+            XCTAssertTrue(part.exists, "\(id) is missing")
+            if part.frame.minX < window.frame.minX - slack || part.frame.maxX > window.frame.maxX + slack {
+                outside.append("\(id) \(part.frame) (window \(window.frame))")
+            }
+        }
+        XCTAssertEqual(outside, [], "these frames lie outside their bounds")
     }
 
     // MARK: the copies list
