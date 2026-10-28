@@ -111,7 +111,7 @@ struct TallyView: View {
                 : model.hideReceived ? "Everything here has been checked in." : "Nothing to show.")
                 .font(.cochin(14, relativeTo: .body)).foregroundStyle(paint(.meta)).multilineTextAlignment(.center)
             if !model.query.isEmpty {
-                Button { text = "" } label: { MiniLabel(title: "Clear search") }
+                Button { text = "" } label: { MiniLabel(title: "Clear search", vertical: 4, horizontal: 8) }
                     .accessibilityLabel("Clear search")
                     .accessibilityIdentifier("tally-clear")
             }

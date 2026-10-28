@@ -291,7 +291,7 @@ private struct LedgerRow: View {
 
 /// A control that asks first. It arms in place; Cancel appears in a slot kept free all along, so a press
 /// moves nothing (no-layout-shift-under-pointer). Reset fills its row with red once armed (armed-reset-takes-the-row).
-/// Restore is a small button on redSoft. Each Cancel sits after its control.
+/// Restore is a full-width bar on redSoft, as the web's flex: 1 button is. Each Cancel sits after its control.
 struct AskRow: View {
     enum Kind { case reset, restore }
     let kind: Kind
@@ -346,12 +346,11 @@ struct AskRow: View {
 
     /// Restore: red on redSoft at rest; bold card on red once armed. Both are the shared mini button (ControlViews), in
     /// its 44pt hit frame. Cancel takes a slot after Restore that is kept free all along, so arming moves nothing
-    /// (no-layout-shift-under-pointer). Restore's hit region spans the rest of the row, as the web's flex:1 does.
+    /// (no-layout-shift-under-pointer). Restore is a bar across the rest of the row, as the web's flex:1 button is.
     private var restoreRow: some View {
         HStack(spacing: 8) {
             Button(action: press) {
-                MiniLabel(title: ask ?? title, bold: armed, text: p(.restoreText), fill: p(.restoreFill), border: p(.restoreBorder))
-                    .frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+                MiniLabel(title: ask ?? title, bold: armed, text: p(.restoreText), fill: p(.restoreFill), border: p(.restoreBorder), wide: true)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(ask ?? title)

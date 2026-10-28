@@ -89,7 +89,7 @@ private struct UndoNoticeView: View {
             Text(OrphanedNotice.undoLine(matchedQty: notice.matchedQty, pkgLabel: notice.pkgLabel, leftoverQty: notice.leftoverQty))
                 .font(.cochin(13, relativeTo: .footnote)).foregroundStyle(paint(.noticeText))
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Button { Task { try? await model.undoAssign(); await onChange() } } label: { MiniLabel(title: "Undo") }
+            Button { Task { try? await model.undoAssign(); await onChange() } } label: { MiniLabel(title: "Undo", vertical: 4, horizontal: 8) }
                 .buttonStyle(.plain).accessibilityIdentifier("orphaned-undo")
             Button { model.dismissUndo() } label: {
                 Image(systemName: "xmark").font(.footnote).foregroundStyle(paint(.dismiss)).frame(width: 44, height: 44).contentShape(Rectangle())
@@ -228,11 +228,12 @@ private struct EnvelopeCard: View {
             HStack(spacing: 8) {
                 micro("Envelope \u{00B7} \(Date(timeIntervalSince1970: env.createdAt / 1000).formatted(.iso8601.year().month().day())) \u{00B7} \(total) card\(total == 1 ? "" : "s")", size: 11, tracking: 0.12)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Button { model.open(.edit(env.id)) } label: { MiniLabel(title: "Edit", size: 11) }.buttonStyle(.plain).accessibilityIdentifier("orphaned-edit:\(env.id)")
+                Button { model.open(.edit(env.id)) } label: { MiniLabel(title: "Edit", size: 11, vertical: 4, horizontal: 8) }.buttonStyle(.plain).accessibilityIdentifier("orphaned-edit:\(env.id)")
                 Button(role: .destructive) { armed.toggle() } label: {
                     // Armed, the button itself fills red with card text, as the web's does (src/app.jsx EnvelopeCard).
                     MiniLabel(title: "Discard", size: 11, text: paint(armed ? .armedText : .discardText),
-                              fill: paint(armed ? .armedFill : .cardSurface), border: paint(armed ? .armedFill : .discardBorder))
+                              fill: paint(armed ? .armedFill : .cardSurface), border: paint(armed ? .armedFill : .discardBorder),
+                              vertical: 4, horizontal: 8)
                 }
                 .buttonStyle(.plain).accessibilityIdentifier("discard:\(env.id)")
             }
@@ -243,13 +244,14 @@ private struct EnvelopeCard: View {
                 // The ask hangs below the row, so arming moves nothing (no-layout-shift-under-pointer).
                 if armed {
                     HStack(spacing: 4) {
-                        Button { armed = false } label: { MiniLabel(title: "Cancel", size: 11) }.buttonStyle(.plain)
+                        Button { armed = false } label: { MiniLabel(title: "Cancel", size: 11, vertical: 4, horizontal: 8) }.buttonStyle(.plain)
                         Button(role: .destructive) {
                             armed = false
                             Task { try? await model.discard(envelope: env.id); await onChange() }
                         } label: {
                             MiniLabel(title: "Tap again to discard \(total) card\(total == 1 ? "" : "s")", size: 11, bold: true,
-                                      text: paint(.armedText), fill: paint(.armedFill), border: paint(.armedFill))
+                                      text: paint(.armedText), fill: paint(.armedFill), border: paint(.armedFill),
+                                      vertical: 4, horizontal: 8)
                         }
                         .buttonStyle(.plain)
                     }
@@ -326,7 +328,7 @@ private struct CandidateRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             // One tap assigns. The row is the same size whether the candidate is tied or not.
             Button { Task { try? await model.assign(envelope: env.id, to: c.pkg.gk); await onChange() } } label: {
-                MiniLabel(title: "This one")
+                MiniLabel(title: "This one", horizontal: 8)
             }
             .buttonStyle(.plain)
             .accessibilityLabel("This one, \(c.pkg.seller)").accessibilityIdentifier("assign:\(c.pkg.gk)")
