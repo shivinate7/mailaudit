@@ -41,3 +41,13 @@ extension XCUIApplication {
         return true
     }
 }
+
+extension XCTestCase {
+    /// A screenshot kept in the result bundle, so the design review sees each pose without a second boot.
+    func keepShot(_ app: XCUIApplication, _ name: String) {
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = name
+        shot.lifetime = .keepAlways
+        add(shot)
+    }
+}

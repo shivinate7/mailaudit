@@ -110,6 +110,7 @@ final class DuoShellUITests: XCTestCase {
         XCTAssertTrue(element(app, "backup").waitForExistence(timeout: 5), "the app does not open on Ledger (the Backup row is missing)")
         XCTAssertTrue(ledger.isSelected, "the Ledger button lacks the selected trait on Ledger")
         XCTAssertFalse(tally.isSelected, "the Tally button has the selected trait on Ledger")
+        keepShot(app, "flat-ledger")
 
         XCTAssertTrue(tally.isHittable, "the Tally button is not hittable: nothing else on the open Duo can switch tabs")
         tally.tap()
@@ -117,6 +118,7 @@ final class DuoShellUITests: XCTestCase {
                       "a tap on the Tally button did not open Tally (tally-row:Lightning Bolt is missing)")
         XCTAssertTrue(tally.isSelected, "the Tally button lacks the selected trait on Tally")
         XCTAssertFalse(ledger.isSelected, "the Ledger button keeps the selected trait on Tally")
+        keepShot(app, "flat-tally")
 
         XCTAssertTrue(ledger.isHittable, "the Ledger button is not hittable on Tally")
         ledger.tap()
@@ -138,6 +140,7 @@ final class DuoShellUITests: XCTestCase {
         for title in Self.tabTitles {
             XCTAssertTrue(system.buttons[title].exists, "the system tab bar has no \(title) tab")
         }
+        keepShot(app, "closed-ledger")
         XCTAssertFalse(customBar(app).exists, "the custom tab bar shows on a closed Duo")
     }
 }
