@@ -208,7 +208,6 @@ final class HandModelTests: XCTestCase {
         h.model.newEnvelope()
         XCTAssertNil(h.model.held, "the held name leaves the hold when the envelope ends")
         XCTAssertEqual(h.model.strays, ["lightning bolt"], "the released name is shown as a stray")
-        XCTAssertNil(h.model.offer, "no offer survives the end of the envelope")
         let after = try Data(contentsOf: h.file)
         XCTAssertEqual(after, before, "ending an envelope writes nothing")
         try await h.model.type("Path to Exile")
@@ -217,6 +216,28 @@ final class HandModelTests: XCTestCase {
                        "the stray does not join the next envelope's post")
         try await h.model.post()
         XCTAssertEqual(h.store.received(), [Self.path: 1], "a later card does not post the stray")
+    }
+
+    /// An offer pending when the envelope ends dies with it (new-envelope-ends-an-envelope). The held name was
+    /// part of that offer's plan, so a later post would check in the ended envelope's held card. The offer is
+    /// asserted real first, so the case cannot pass by never having had one.
+    func testNewEnvelopeDropsPendingOffer() async throws {
+        let h = try await makeHand()
+        try await h.model.type("Lightning Bolt")
+        try await h.model.type("Path to Exile")
+        let offer = try XCTUnwrap(h.model.offer, "the setup is real: the second card names one envelope, so an offer is pending")
+        XCTAssertEqual(offer.plan, [PlanStep(itemKey: Self.bolt, take: 1), PlanStep(itemKey: Self.path, take: 1)],
+                       "the pending offer holds the held copy, the one a surviving offer would check in")
+        let before = try Data(contentsOf: h.file)
+        let saves = HandSaveCounter()
+        h.store.onLocalSave = { saves.n += 1 }
+        h.model.newEnvelope()
+        XCTAssertNil(h.model.offer, "the end of the envelope drops the pending offer")
+        try await h.model.post()
+        XCTAssertEqual(saves.n, 0, "a post after the envelope ended saves nothing")
+        let after = try Data(contentsOf: h.file)
+        XCTAssertEqual(after, before, "the ledger file is not written")
+        XCTAssertEqual(h.store.received(), [:], "the ended envelope's held card is not checked in")
     }
 
     /// A post that cannot save throws and rolls back. The held name and the offer stay, so the post can be tried
