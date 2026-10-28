@@ -301,7 +301,7 @@ What each check asks, and the two traps in the icon pipeline.
 - `debts-hold-known-gaps` — Known gaps and to-dos live in debts, one file each.
 - `records-name-what-dates-them` — Each decision names the fact that would date it.
 - `readme-is-minimal` — The README is minimal, and carries no license.
-- `orchestrator-may-merge` — The orchestrating session may merge green, reviewed PRs.
+- `orchestrator-may-merge` — One orchestrating session batches and merges green, reviewed PRs.
 - `invariants-cited-by-slug` — Invariants are cited by slug, never by number.
 
 ## Testing method
