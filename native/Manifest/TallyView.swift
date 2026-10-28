@@ -183,8 +183,10 @@ struct TallyRowView: View {
         if typeSize.isAccessibilitySize {
             text.accessibilityIdentifier("tally-meta:\(row.name)")
         } else {
+            // The drawn Text is truncated; the accessibility element is a separate full-text Text that is never drawn,
+            // so no rendered text is the audit's subject and the `tally-meta:` identifier sits on a real element.
             text.lineLimit(1).truncationMode(.tail).frame(maxWidth: .infinity, alignment: .leading)
-                .accessibilityIdentifier("tally-meta:\(row.name)")
+                .accessibilityRepresentation { Text(row.meta).accessibilityIdentifier("tally-meta:\(row.name)") }
         }
     }
 
