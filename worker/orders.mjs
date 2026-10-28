@@ -137,7 +137,9 @@ function shipStatus(s) {
   if (t.includes("without tracking")) return "without tracking";
   if (t.includes("with tracking")) return "with tracking";
   if (t.includes("cancel")) return "canceled";
-  return "unknown";
+  /* text this code does not know is blank, not "unknown": the refresh skips a blank, so a markup
+     change cannot reset good statuses across the ledger */
+  return t.includes("not confirmed") ? "unknown" : "";
 }
 const GRADE = /^(near mint|lightly played|moderately played|heavily played|damaged)\b\s*(.*)$/i;
 
@@ -171,7 +173,7 @@ export function parse(html) {
     const block = all(w, (n) => n.name === "span" && cls(n, "orderSummary")).pop();
     const titles = block ? all(block, (n) => cls(n, "orderTitle")) : [];
     const trackEl = first(w, (n) => /trackingnumber$/i.test(n.attrs["data-aid"] || "")) || titles[titles.length - 1];
-    const status = trackEl ? shipStatus(squash(textOf(trackEl))) : "unknown";
+    const status = trackEl ? shipStatus(squash(textOf(trackEl))) : "";
     /* a TCGplayer Direct order names no seller up here; each line says "Sold by X" */
     const sellerA = !direct && block && first(block, (n) => n.name === "a" && cls(n, "nocontext"));
     const orderSeller = sellerA ? squash(textOf(sellerA)) : "";
