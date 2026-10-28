@@ -19,12 +19,47 @@ enum PhotoTestKit {
         try RulesEngine(bundleURL: RulesGoldenTests.bundleURL)
     }
 
-    /// A fresh folder under the temp dir. The caller removes it in tearDown.
+    /// The one temp root for mailaudit's native tests. Every test folder is made under it.
+    static let runFolderRoot = FileManager.default.temporaryDirectory
+        .appending(path: "mailaudit-native-test-temp", directoryHint: .isDirectory)
+
+    /// Older run folders are swept after this age.
+    static let runFolderMaxAge: TimeInterval = 24 * 60 * 60
+
+    /// This test run's folder, named <pid>-<UUID>. The first request makes it, sweeps the sibling run
+    /// folders older than a day, and arranges its removal when the test bundle finishes. Newer siblings
+    /// belong to parallel runs and stay.
+    static let runFolder: URL = {
+        let dir = runFolderRoot.appending(
+            path: "\(ProcessInfo.processInfo.processIdentifier)-\(UUID().uuidString)", directoryHint: .isDirectory)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        sweepRunFolders(root: runFolderRoot, keep: dir, now: Date())
+        XCTestObservationCenter.shared.addTestObserver(PhotoRunFolderRemoval(folder: dir))
+        return dir
+    }()
+
+    /// A fresh folder for one test, inside this run's folder. The caller removes it in tearDown.
     static func tempDir(_ label: String = "n10") throws -> URL {
-        let dir = FileManager.default.temporaryDirectory
-            .appending(path: "\(label)-\(UUID().uuidString)", directoryHint: .isDirectory)
+        let dir = runFolder.appending(path: "\(label)-\(UUID().uuidString)", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         return dir
+    }
+
+    /// Removes each sibling named like a run folder whose modification date is older than
+    /// `runFolderMaxAge`. `keep` is never removed, however old it is.
+    static func sweepRunFolders(root: URL, keep: URL, now: Date) {
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: root.path)) ?? []
+        for name in names where name != keep.lastPathComponent && isRunFolderName(name) {
+            let path = root.appending(path: name, directoryHint: .isDirectory)
+            guard let attrs = try? FileManager.default.attributesOfItem(atPath: path.path),
+                  let modified = attrs[.modificationDate] as? Date else { continue }
+            if now.timeIntervalSince(modified) > runFolderMaxAge { try? FileManager.default.removeItem(at: path) }
+        }
+    }
+
+    static func isRunFolderName(_ name: String) -> Bool {
+        name.range(of: #"^[0-9]+-[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$"#,
+                   options: .regularExpression) != nil
     }
 
     // MARK: pictures
@@ -159,5 +194,16 @@ enum PhotoTestKit {
     static func idFromName(_ name: String, engine: RulesEngine) async throws -> String? {
         let out = try await engine.call("photoIdFromName", "[\"\(name)\"]")
         return try JSONSerialization.jsonObject(with: Data(out.utf8), options: [.fragmentsAllowed]) as? String
+    }
+}
+
+/// Removes the run folder when the test bundle finishes.
+final class PhotoRunFolderRemoval: NSObject, XCTestObservation {
+    let folder: URL
+
+    init(folder: URL) { self.folder = folder }
+
+    func testBundleDidFinish(_ testBundle: Bundle) {
+        try? FileManager.default.removeItem(at: folder)
     }
 }
