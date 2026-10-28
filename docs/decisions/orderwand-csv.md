@@ -14,7 +14,7 @@ The header row has these columns, in this order: `Type, Vendor, Account, Order I
 - `Price` is per unit. This is verified: Price × Quantity == Total Amount on all rows.
 - Product and set names contain HTML entities, such as `&amp;`. The parser decodes them. Seller names (`Party`) need the same decoding. The user's real export contains `LT's Hobbies&amp;Games2`. That case was missed for a long time. The harness fixture `ITEMS` is pre-parsed. Before group 29, no test ran `parseItems`. Group 29 is the first test that drives a CSV through it. A raw entity in a seller name leaks into the package header, Tally's source rows, and the search haystack. There, the search fails silently. Searching what is on screen then matches nothing.
 - TCGplayer-Direct rows can put "Sold by X" in Set Name. The parser blanks those.
-- The order-history page carries the same fields (measured 2026-10-27, see `sync-revamp-cloudflare`). On a TCGplayer Direct order the seller sits on each line ("Sold by X").
+- The order-history page carries these fields (measured 2026-10-27, compared with an export, see `sync-revamp-cloudflare`): order id, item number (the line's position), product id (from the image URL), quantity, unit price, order date, shipping, tax, seller, product name and shipping status. It has no Type or Vendor column. On a TCGplayer Direct order the seller sits on each line ("Sold by X").
 - `Shipping Status` values are `with tracking`, `without tracking`, `unknown`, and `canceled`. The export holds no tracking numbers or carrier data.
 - Dates are ISO in current exports. Older exports used M/D/YY. `Date.parse` reads both.
 - `Condition` is "unknown" on sealed product. The parser blanks it.

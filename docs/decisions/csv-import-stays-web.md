@@ -10,11 +10,11 @@ Orders enter the ledger through the web app's CSV import. The Worker syncs them 
 
 - `parser-filters` keeps only TCG purchases. One parser enforces it. A Swift parser would need its own tests for the same rule.
 - `imports-merge-never-replace` holds for the one importer. A second importer would need the same proof.
-- The nightly orders job will replace the OrderWand export, see `sync-revamp-cloudflare`. It is a cron on the Worker that reads TCGplayer's order-history page. Its route is measured, and the job is unbuilt, debt `orders-job-unbuilt`. It adds orders in the Worker, so both clients get them through the sync. So a native import would serve only the gap before the job exists.
+- The nightly orders job will replace the OrderWand export, see `sync-revamp-cloudflare`. It is planned as a cron on the Worker that reads TCGplayer's order-history page. Part of its route is measured, and the job is unbuilt, debt `orders-job-unbuilt`. The page has no Type or Vendor column, so the job must emit Type purchase and Vendor TCG for `parser-filters` to keep the rows (design, unbuilt). It adds orders in the Worker, so both clients get them through the sync. So a native import would serve only the gap before the job exists.
 
 ## Rejected
 
-A Worker route `POST /import` that runs the parser for both clients. The Worker's own cron will fetch the orders and run the same parser filters and merge there, so no client needs an import route.
+A Worker route `POST /import` that runs the parser for both clients. The design is that the Worker's own cron fetches the orders and runs the same parser filters and merge there, so no client needs an import route. This is unbuilt.
 
 ## See also
 

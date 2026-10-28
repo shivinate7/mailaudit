@@ -1,7 +1,20 @@
 # The nightly orders job is unbuilt
 
-**What.** The page route that gives the job its orders is measured to work in a signed-in browser, and from a Worker and from the Mac with a plain client (40 pages, one run), see `sync-revamp-cloudflare`. The host is ruled: a cron on the existing Worker, with the owner's cookie as a Worker secret named TCG_COOKIE (owner ruling 2026-10-27 20:19 CDT). Four parts are unbuilt: the cron job, the secret, a test that the job builds the same item key as the CSV for the same orders, and the screen that shows job status. The Worker records the job's status. A logon redirect or a fetch failure must show in the app. How the app shows a failed or stale run is a later screen lane. Three items are unmeasured or unexplained. The CSV held two orders dated 2026-06-23 that the page lacked, at the edge of the 120-day window, and the cause is unknown. The cookie's lifetime is unknown, and the logon redirect is only assumed to mean an expired cookie. A full 120-day fetch is 60 pages. The probe fetched 40. A routes review (assumed, not measured) says the free plan allows 50 subrequests per run, and no cron run has fetched 60 pages. The gap closes when the cron posts one night's orders into the ledger, the key test is green, job status shows in the app, and the three items are measured or ruled out.
+**What.** The owner ruled on 2026-10-27 at 20:19 CDT that the job runs as a cron on the existing Worker, with the owner's cookie as a Worker secret, see `sync-revamp-cloudflare`. The secret, TCG_COOKIE, is set (measured at 20:27 CDT). Three parts are unbuilt: the cron job, a test that the job builds the same item key as the CSV for the same orders, and the screen that shows job status. Claude will deploy the cron from main after the merge (planned).
 
-**Status:** open. The fetch probe passed from a Worker and from the Mac. The host is ruled, and nothing of the job is built.
+The route is measured in two parts. A plain client (the Mac and a Worker) ran only the GET by page number, for 40 pages, and checked status, size and order count (one run). The form-token POST and the Last 120 Days filter ran only in the owner's signed-in browser, never from a plain client.
+
+The planned design is that the Worker records the job's status, and a logon redirect or a fetch failure shows in the app. That detail is unbuilt and the owner has not ruled it. How the app shows a failed or stale run is a later screen lane.
+
+Four items are unmeasured or unexplained:
+
+- Two orders dated 2026-06-23 are in the CSV and not on the page's Last 120 Days list. The cause is unmeasured.
+- The cookie's lifetime is unmeasured, and the logon redirect is only assumed to mean an expired cookie.
+- Whether a plain client can set the date range (the form POST) is unmeasured, and so is whether its pages then match the browser's list.
+- A full 120-day fetch is 60 pages. The probe fetched 40, and no cron run has fetched 60. A limit of 50 subrequests per run applies if the account is on the free plan (assumed, from a routes review). The account's Workers plan is not measured.
+
+The gap closes when the cron merges one night's orders into the ledger, the key test is green, job status shows in the app, and the four items are measured or ruled out.
+
+**Status:** open. The fetch probe passed from a Worker and from the Mac. The host is ruled and the secret is set. The cron job, the key test and the status screen are unbuilt.
 
 **Decision:** `sync-revamp-cloudflare`.
