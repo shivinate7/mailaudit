@@ -24,6 +24,7 @@ struct MastheadScreen<Content: View>: View {
     var body: some View {
         // The scroll closure runs off the main actor, so it reads a copy of the height, never the state.
         let pinAt = headHeight
+        ScrollViewReader { proxy in
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 if let masthead {
@@ -35,6 +36,8 @@ struct MastheadScreen<Content: View>: View {
                 content
             }
         }
+        // A tab's content asks for a view by id (a focused field, its Save) to be kept above the keyboard.
+        .environment(\.scrollTo, { id in withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { proxy.scrollTo(id, anchor: .bottom) } })
         // Pinned once the slot's top has passed the scroll view's top edge. A short tab never scrolls that far.
         .onScrollGeometryChange(for: Bool.self, of: { pinAt > 0 && $0.contentOffset.y + $0.contentInsets.top >= pinAt }) { pinned = $1 }
         .overlay(alignment: .top) {
@@ -46,7 +49,13 @@ struct MastheadScreen<Content: View>: View {
             }
             .animation(reduceMotion ? nil : .easeInOut(duration: 0.16), value: pinned)
         }
+        }
     }
+}
+
+extension EnvironmentValues {
+    /// Scrolls the enclosing MastheadScreen so the view with this id sits at the bottom of the space above the keyboard.
+    @Entry var scrollTo: (String) -> Void = { _ in }
 }
 
 /// The letterhead's short form: seal, name and the two figures that matter, pinned over the scrolled list.
