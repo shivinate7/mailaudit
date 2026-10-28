@@ -36,7 +36,8 @@ extension View {
     }
 
     /// Hides the system tab bar while the custom one shows. Apply inside each tab, as a bar's visibility is read from the tab's content.
-    /// Also keeps the bar horizontal where iOS 27.1 offers a vertical one (ruling 7A: the tab bar stays at the bottom).
+    /// Also keeps the system bar horizontal where iOS 27.1 offers a vertical one. It applies in every pose: a hidden bar has no
+    /// layout to change, and the stacked poses and the closed outer screen need the bottom bar (duo-card-in-hand).
     func duoSystemBar() -> some View { modifier(DuoSystemBar()) }
 }
 
@@ -74,20 +75,17 @@ private struct DuoSpine<ID: Hashable>: ViewModifier {
     @State private var hinge = DuoHinge.none
     @State private var fold = DuoFold()
 
-    /// The pill (64) and the 12 pt under it, from the mockup.
-    private static var barHeight: CGFloat { 76 }
-
     func body(content: Content) -> some View {
         let spread = DuoSpread.layout(window: fold.size, folds: fold.folds, hinge: hinge)
-        let bar = DuoTabBar.frame(in: spread, height: Self.barHeight)
+        let bar = DuoTabBar.frame(in: spread, height: DuoBarMetrics.height)
         hingeReader(content)
             .environment(\.duoHinge, hinge)
             .environment(\.duoSpread, spread)
             .environment(\.duoCustomBar, bar != nil)
             // The bar floats over the right page, so the tabs keep clear of it as they do of the system bar.
-            .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: bar == nil ? 0 : Self.barHeight) }
+            .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: bar == nil ? 0 : DuoBarMetrics.height) }
             // One host measures the window and draws the bar, so both share one space. A GeometryReader that ignores the safe area
-            // reports the whole window; onGeometryChange on a bare Color.clear did not, and the bar landed one safe-area height high.
+            // measures the whole window.
             .overlay {
                 GeometryReader { _ in
                     Color.clear
@@ -104,22 +102,18 @@ private struct DuoSpine<ID: Hashable>: ViewModifier {
             }
     }
 
-    // onHingeChange documents changes only. UIHingeInteraction.h says its handler "is invoked with the initial hinge
-    // state, and again whenever there is an update", so the probe gives the state at launch, and onHingeChange the rest.
+    // UIHingeInteraction.h says its handler "is invoked with the initial hinge state, and again whenever there is an update",
+    // so the probe is the one writer of the hinge state.
     @ViewBuilder private func hingeReader(_ content: Content) -> some View {
         if #available(iOS 27.1, *) {
-            content
-                .onHingeChange { _, now in
-                    hinge = DuoHinge(status: now.hinge?.status, closed: .closed, partiallyOpen: .partiallyOpen, fullyOpen: .fullyOpen)
-                }
-                .background(HingeProbe(hinge: $hinge))
+            content.background(HingeProbe(hinge: $hinge))
         } else {
             content
         }
     }
 }
 
-/// An empty view that carries a UIHingeInteraction, the one hinge source that reports the first state.
+/// An empty view that carries a UIHingeInteraction, the one hinge source: it reports the first state and every update.
 @available(iOS 27.1, *)
 private struct HingeProbe: UIViewRepresentable {
     @Binding var hinge: DuoHinge
@@ -134,6 +128,13 @@ private struct HingeProbe: UIViewRepresentable {
     }
 
     func updateUIView(_ view: UIView, context: Context) {}
+}
+
+/// The custom bar's pill and the gap under it, from the mockup.
+private enum DuoBarMetrics {
+    static let pill: CGFloat = 64
+    static let lift: CGFloat = 12
+    static var height: CGFloat { pill + lift }
 }
 
 /// The tab bar of the open Duo (mockup pose 11, option a): a paper pill, 24 pt in from the page edges and 12 pt up from the bottom.
@@ -164,13 +165,13 @@ private struct DuoBar<ID: Hashable>: View {
             }
         }
         .padding(4)
-        .frame(height: 64)
+        .frame(height: DuoBarMetrics.pill)
         .background(.ultraThinMaterial, in: Capsule())
         .background(Parchment.paper.opacity(0.62), in: Capsule())
         .overlay(Capsule().strokeBorder(Parchment.line, lineWidth: 1))
         .shadow(color: Parchment.shadow, radius: 8, y: 4)
         .padding(.horizontal, 24)
-        .padding(.bottom, 12)
+        .padding(.bottom, DuoBarMetrics.lift)
         .frame(maxHeight: .infinity, alignment: .bottom)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("duo-tab-bar")
@@ -180,8 +181,8 @@ private struct DuoBar<ID: Hashable>: View {
     @ViewBuilder private func badge(_ count: Int) -> some View {
         if count > 0 {
             Text("\(count)").font(.mono(10, relativeTo: .caption2)).padding(.horizontal, 4)
-                .foregroundStyle(Parchment.color(OrphanedPaint.token(.badgeText) ?? "card"))
-                .background(Parchment.color(OrphanedPaint.token(.badgeFill) ?? "red"), in: Capsule())
+                .foregroundStyle(Parchment.badgeText)
+                .background(Parchment.badgeFill, in: Capsule())
                 .offset(x: 14, y: 4)
         }
     }
