@@ -6,13 +6,14 @@ The measurement, 2026-10-27, in a scratch app with the real views: a bordered `M
 
 The audit stays because it caught real defects in the same step: a shadow on a container, clipped text, and a dropped label.
 
-Three more skips, each named by the owner:
+Four more skips, each named by the owner:
 
+- **The Tally meta line.** The owner ruled on 2026-10-27 19:28 CDT (waiting item 33): a long set name in a Tally row's meta line ends in "…", as on the web (`card-tally-row-counts-first`). The audit calls truncated text clipped, so the Tally audits skip the clipped-text check on the meta line only. Every other check stays on for that line.
 - **Disabled elements.** The owner ruled on 2026-10-21 22:02 CDT: `OrphanedUITests` skips contrast findings on disabled elements only (`inactiveContrast`), as WCAG 1.4.3 exempts inactive components. The ready state is audited in full. The ruling sits in the N7 note of `native-build-lanes`.
 - **The system tab bar.** The owner ruled on 2026-10-21 that the Packages audit skips findings raised on the iOS tab bar, which the app does not draw. On 2026-10-27 14:26 CDT the owner extended it to the Ledger, Orphaned and Tally audits (`auditSkippingTabBar`).
 - **The system keyboard.** The owner ruled on 2026-10-27 14:26 CDT: in the two composer audits only, skip findings on the keyboard's prediction cells (`TUIPredictionViewCell`). They reported "Element has no description" in the full suite of 2026-10-27, and the app does not draw them.
 
-**Holds while:** the skips in `native/ManifestUITests` name only these elements: the contrast type on the four named elements, which `TokenContrast` unit tests pin at 4.5:1 or more; contrast on disabled elements in `OrphanedUITests`; the tab bar; and the keyboard prediction cells in the two composer audits.
+**Holds while:** the skips in `native/ManifestUITests` name only these elements: the contrast type on the four named elements, which `TokenContrast` unit tests pin at 4.5:1 or more; the clipped-text check on the Tally meta line; contrast on disabled elements in `OrphanedUITests`; the tab bar; and the keyboard prediction cells in the two composer audits.
 
 ## See also
 
