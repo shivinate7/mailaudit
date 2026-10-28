@@ -1636,7 +1636,7 @@ await test("70.5 a socket that refuses the hello still upgrades", async () => {
                                       recorded, not thrown. fetchFn is injected; no test touches the network.
      status        {lastSuccessAt, lastFailure: {kind, at} | null, complete}, ISO strings. kind is
                    "signed-out" (a logon redirect), "no-cookie" (env.TCG_COOKIE unset or empty), "empty"
-                   (a 200 first page with no orders) or "other". complete (owner ruling 2026-10-27 21:46
+                   (a 200 first page with no orders) or "other". complete (orchestrator ruling 2026-10-27 21:46
                    CDT) is true only when the run reached an all-known page or the end of history with no
                    error. A failed run and a run cut at the page cap leave it false, and the next run
                    then pages on past all-known pages to the cap or the end. A failed run still merges
@@ -2225,7 +2225,7 @@ await test("72.5 with no cookie in env.TCG_COOKIE no request goes out, and the f
 });
 
 await test("72.6 a 200 first page with no orders is kind empty, its own kind, and the run is a failure that is not complete", async () => {
-  /* 72.3 pins that this is a failure; owner ruling 2026-10-27 21:46 CDT gives it a kind of its own */
+  /* 72.3 pins that this is a failure; orchestrator ruling 2026-10-27 21:46 CDT gives it a kind of its own */
   for (const [label, body] of [["a page that lists no orders", pageHtml()], ["a logon form served with 200", LOGON_PAGE_HTML]]) {
     const site = fakeTcg({ replies: { 1: { status: 200, body } } });
     const store = fakeStore({ ledger: storedLedger(), rev: 3 }, [], statusComplete);
@@ -2281,7 +2281,7 @@ await test("73.4 an empty 200 page after real pages is the end of history, and t
   ok(nKeys(2).every((k) => store.state.ledger.items.some((i) => i.key === k)), "the three orders of page 1 are in the ledger");
 });
 
-/* Owner ruling 2026-10-27 21:46 CDT: the early stop on an all-known page is safe only when the last
+/* Orchestrator ruling 2026-10-27 21:46 CDT: the early stop on an all-known page is safe only when the last
    run covered history. A run that failed after merging page 1, or was cut at the page cap, leaves
    a gap behind a page that now looks all known. */
 await test("73.5 a run that fails after merging page 1 is not complete, and the next run pages on past the now-known page 1", async () => {
@@ -2326,8 +2326,16 @@ await test("73.6 a run cut at the page cap is a success but not complete, and th
   eq((await store.readOrdersStatus())?.complete, false, "cut at the cap again, so still not complete");
 });
 
-await test("73.7 the early stop reads the stored complete flag: the same all-known pages end at page 1 when it is true, and at the end of history when it is false", async () => {
-  for (const [label, status, want] of [["complete", statusComplete, [1]], ["not complete", statusGap, [1, 2, 3, 4]]]) {
+await test("73.7 the early stop needs a stored complete:true: the same all-known pages end at page 1 then, and run to the end of history when it is false, missing or there is no status", async () => {
+  /* "only when the previous run was complete": a status saved before the flag existed, and no status at all,
+     do not say it was */
+  const rows = [
+    ["complete", statusComplete, [1]],
+    ["not complete", statusGap, [1, 2, 3, 4]],
+    ["a status with no complete key", status0, [1, 2, 3, 4]],
+    ["no status yet", null, [1, 2, 3, 4]],
+  ];
+  for (const [label, status, want] of rows) {
     const site = fakeTcg({ pages: sitePages(3, 9) });
     const store = fakeStore({ ledger: ledger({ items: nItems(range(1, 9)) }), rev: 3 }, [], status);
     await runJob({ site, store });
@@ -2404,7 +2412,7 @@ await test("74.5 the job reaches the shared parseItems, and holds no second copy
   eq(out.outputFiles[0].text.split('"Unknown seller"').length - 1, 1, "one parseItems in the job's bundle");
 });
 
-/* Owner ruling 2026-10-27 21:46 CDT: for a line whose key is already stored, the job refreshes only its
+/* Orchestrator ruling 2026-10-27 21:46 CDT: for a line whose key is already stored, the job refreshes only its
    tracking to the page's value, so "Shipping Not Confirmed" does not stay unknown after the package
    ships. Qty, price, name, set and every check-in, envelope and stamp stay. A CSV import does not change. */
 await test("74.6 a stored line takes the page's shipping status and nothing else of the page; new lines are added as before", async () => {
