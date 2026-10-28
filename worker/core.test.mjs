@@ -132,9 +132,10 @@ const dayOf = (t) => new Date(t).toISOString().slice(0, 10);
      readKept(at) -> {ledger, rev} | null
      listKept() -> [{at, rev}]            no ledger bodies
      pruneKept(beforeDay)                 drops kept rows whose day is before beforeDay
-     readOrdersStatus() -> {lastSuccessAt, lastFailure: {kind, at} | null} | null
+     readOrdersStatus() -> {lastSuccessAt, lastFailure: {kind, at} | null, complete} | null
      writeOrdersStatus(status)            the orders job's last outcome (group 71-77). Its own row,
-                                          never a key of the ledger.
+                                          never a key of the ledger. `complete` is true only when the
+                                          run reached an all-known page or the end of history.
    The fake's `order` records "snapshot", "kept", "write" and "broadcast". Prune is
    not recorded there. */
 /* initial is {ledger, rev, at?} or null for an empty store. A missing `at`
@@ -1633,8 +1634,14 @@ await test("70.5 a socket that refuses the hello still upgrades", async () => {
                                       finds through the same path as POST /ledger, and records the outcome
                                       with store.writeOrdersStatus. It never rejects: a failed run is
                                       recorded, not thrown. fetchFn is injected; no test touches the network.
-     status        {lastSuccessAt, lastFailure: {kind, at} | null}, ISO strings. kind is "signed-out"
-                   (a logon redirect), "no-cookie" (env.TCG_COOKIE unset or empty) or "other".
+     status        {lastSuccessAt, lastFailure: {kind, at} | null, complete}, ISO strings. kind is
+                   "signed-out" (a logon redirect), "no-cookie" (env.TCG_COOKIE unset or empty), "empty"
+                   (a 200 first page with no orders) or "other". complete (owner ruling 2026-10-27 21:46
+                   CDT) is true only when the run reached an all-known page or the end of history with no
+                   error. A failed run and a run cut at the page cap leave it false, and the next run
+                   then pages on past all-known pages to the cap or the end. A failed run still merges
+                   what it fetched first. For a line whose key is already stored, the job refreshes only
+                   its tracking to the page's value; a CSV import's merge does not.
      route         GET /orders/status, Bearer-authenticated, replies with that status.
      index.mjs     default.scheduled exists, and wrangler.toml has [triggers] crons. The Durable Object's
                    readOrdersStatus/writeOrdersStatus keep the status under a storage key of its own, read
@@ -2098,11 +2105,12 @@ const runJob = async ({ site, store = fakeStore(null), env = ENVC, now = NOW } =
    keep for it; only its key matters to "already known". */
 const oid = (n) => `${String(n).padStart(8, "0")}-0a0b0c-1d2e3`;
 const pid = (n, k) => 200000 + n * 10 + k;
-const nOrder = (n) =>
+const nOrder = (n, status) =>
   orderBlock({
     id: oid(n),
     date: "October 20, 2026",
     seller: `Seller ${n}`,
+    ...(status && { status }),
     lines: [1, 2].map((k) => ({ name: `Card ${n}-${k}`, price: "$1.00", pid: pid(n, k) })),
   });
 const nItem = (n, k) => ({
@@ -2115,10 +2123,10 @@ const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
 /* `total` orders, `per` to a page, newest first; a page past the last has no orders */
 const sitePages = (per, total) => (p) => {
   const first = (p - 1) * per + 1;
-  return first > total ? null : pageHtml(...range(first, Math.min(total, first + per - 1)).map(nOrder));
+  return first > total ? null : pageHtml(...range(first, Math.min(total, first + per - 1)).map((n) => nOrder(n)));
 };
 /* a site with no last page: every page brings three orders nobody has seen */
-const endlessPages = (p) => pageHtml(...range(p * 3 - 2, p * 3).map(nOrder));
+const endlessPages = (p) => pageHtml(...range(p * 3 - 2, p * 3).map((n) => nOrder(n)));
 
 const ENV_1 = { id: "env-1", createdAt: PREV, note: "n", entries: [{ name: "Card 1-1", qty: 1 }], photos: [], updatedAt: PREV };
 const STAMP_1 = { kind: "claim", at: "2026-10-01", note: "", updatedAt: PREV };
@@ -2133,6 +2141,14 @@ const storedLedger = () =>
     stamps: { [`${oid(1)}::Seller 1`]: STAMP_1 },
   });
 const status0 = { lastSuccessAt: iso(PREV), lastFailure: null };
+/* the two states a previous run can leave for the early stop to read */
+const statusComplete = { ...status0, complete: true };
+const statusGap = { ...status0, complete: false };
+/* a stored line that the page shows differently in every field but its key, and whose shipping status is stale */
+const staleLine = (n, k = 1) => ({
+  ...nItem(n, k), seller: "Old Seller", name: "Old name", set: "Old Set", condition: "Heavily Played", finish: "Foil",
+  qty: 3, price: 9.99, date: "2026-09-01", tracking: "unknown", line: "Magic",
+});
 
 /* ---------- 72. a failed pull is a recorded failure, never a quiet zero ---------- */
 await test("72.1 a logon redirect on the first page is a signed-out failure, and nothing is written", async () => {
@@ -2208,12 +2224,29 @@ await test("72.5 with no cookie in env.TCG_COOKIE no request goes out, and the f
   }
 });
 
+await test("72.6 a 200 first page with no orders is kind empty, its own kind, and the run is a failure that is not complete", async () => {
+  /* 72.3 pins that this is a failure; owner ruling 2026-10-27 21:46 CDT gives it a kind of its own */
+  for (const [label, body] of [["a page that lists no orders", pageHtml()], ["a logon form served with 200", LOGON_PAGE_HTML]]) {
+    const site = fakeTcg({ replies: { 1: { status: 200, body } } });
+    const store = fakeStore({ ledger: storedLedger(), rev: 3 }, [], statusComplete);
+    const before = clone(store.state);
+    const r = await runJob({ site, store });
+    eq(r.threw?.message ?? null, null, `${label}: the run does not reject`);
+    const st = await store.readOrdersStatus();
+    eq(st?.lastFailure?.kind, "empty", `${label}: kind`);
+    eq(st?.lastFailure?.at, iso(NOW), `${label}: when`);
+    eq(st?.lastSuccessAt, iso(PREV), `${label}: no success is stamped`);
+    eq(st?.complete, false, `${label}: a failed run is not complete`);
+    eq(store.state, before, `${label}: the ledger is untouched`);
+  }
+});
+
 /* ---------- 73. paging ---------- */
 await test("73.1 paging stops after the first page whose orders are all already in the ledger", async () => {
   const site = fakeTcg({ pages: sitePages(3, 15) });
-  const store = fakeStore({ ledger: ledger({ items: nItems(range(4, 15)) }), rev: 3 });
+  const store = fakeStore({ ledger: ledger({ items: nItems(range(4, 15)) }), rev: 3 }, [], statusComplete);
   await runJob({ site, store });
-  eq(fetched(site), [1, 2], "page 2 is all known, so page 3 is never asked for");
+  eq(fetched(site), [1, 2], "the last run was complete, so page 2 being all known ends this run before page 3");
   const keys = store.state.ledger.items.map((i) => i.key).sort();
   eq(keys, nItems(range(1, 15)).map((i) => i.key).sort(), "page 1's three orders were added, and nothing else changed");
 });
@@ -2246,6 +2279,62 @@ await test("73.4 an empty 200 page after real pages is the end of history, and t
   const st = await store.readOrdersStatus();
   eq(st?.lastSuccessAt, iso(NOW), "success time");
   ok(nKeys(2).every((k) => store.state.ledger.items.some((i) => i.key === k)), "the three orders of page 1 are in the ledger");
+});
+
+/* Owner ruling 2026-10-27 21:46 CDT: the early stop on an all-known page is safe only when the last
+   run covered history. A run that failed after merging page 1, or was cut at the page cap, leaves
+   a gap behind a page that now looks all known. */
+await test("73.5 a run that fails after merging page 1 is not complete, and the next run pages on past the now-known page 1", async () => {
+  const pages = sitePages(3, 9);
+  const store = fakeStore({ ledger: ledger({ items: nItems([99]) }), rev: 3 }, [], statusComplete);
+  const down = fakeTcg({ pages, replies: { 2: { status: 302, location: LOGON_URL } } });
+  await runJob({ site: down, store });
+  eq(fetched(down), [1, 2], "fixture: page 2 is where the first run fails");
+  let st = await store.readOrdersStatus();
+  eq(st?.complete, false, "a failed run records complete:false, whatever the run before it was");
+  eq(st?.lastFailure?.kind, "signed-out", "kind");
+  eq(st?.lastSuccessAt, iso(PREV), "no success is stamped");
+  const have = () => new Set(store.state.ledger.items.map((i) => i.key));
+  ok(nItems([1, 2, 3]).every((i) => have().has(i.key)), "the failed run still merged the three orders of page 1, fetched before the failure");
+  ok(nItems([4]).every((i) => !have().has(i.key)), "and nothing of page 2");
+
+  const retry = fakeTcg({ pages });
+  await runJob({ site: retry, store, now: NOW + DAY });
+  eq(fetched(retry), [1, 2, 3, 4], "page 1 is all known, but the last run did not finish, so this run pages on to the end of history");
+  ok(nItems(range(1, 9)).every((i) => have().has(i.key)), "all nine orders are in the ledger");
+  st = await store.readOrdersStatus();
+  eq([st?.complete, st?.lastSuccessAt], [true, iso(NOW + DAY)], "reaching the end of history is complete, and a success");
+
+  const again = fakeTcg({ pages });
+  await runJob({ site: again, store, now: NOW + 2 * DAY });
+  eq(fetched(again), [1], "after a complete run, an all-known page 1 ends the run again");
+  eq((await store.readOrdersStatus())?.complete, true, "reaching an all-known page is complete");
+});
+
+await test("73.6 a run cut at the page cap is a success but not complete, and the next run pages on to the cap again", async () => {
+  const store = fakeStore({ ledger: ledger({ items: nItems([99]) }), rev: 3 }, [], statusComplete);
+  const first = fakeTcg({ pages: endlessPages });
+  await runJob({ site: first, store });
+  const pagesRun = fetched(first);
+  ok(pagesRun.length >= 2 && pagesRun.length < 50, `fixture: the first run is cut at a cap (${pagesRun.length} pages)`);
+  let st = await store.readOrdersStatus();
+  eq(st?.lastSuccessAt, iso(NOW), "73.3 holds: reaching the cap is a success");
+  eq(st?.complete, false, "but the cap left history unread, so the run is not complete");
+  const second = fakeTcg({ pages: endlessPages });
+  await runJob({ site: second, store, now: NOW + DAY });
+  eq(fetched(second), pagesRun, "pages 1 to the cap are all known now, and the run still goes on to the cap");
+  eq((await store.readOrdersStatus())?.complete, false, "cut at the cap again, so still not complete");
+});
+
+await test("73.7 the early stop reads the stored complete flag: the same all-known pages end at page 1 when it is true, and at the end of history when it is false", async () => {
+  for (const [label, status, want] of [["complete", statusComplete, [1]], ["not complete", statusGap, [1, 2, 3, 4]]]) {
+    const site = fakeTcg({ pages: sitePages(3, 9) });
+    const store = fakeStore({ ledger: ledger({ items: nItems(range(1, 9)) }), rev: 3 }, [], status);
+    await runJob({ site, store });
+    eq(fetched(site), want, `${label}: pages asked for`);
+    const st = await store.readOrdersStatus();
+    eq([st?.complete, st?.lastSuccessAt], [true, iso(NOW)], `${label}: the run reached an all-known page or the end, so it is complete and a success`);
+  }
 });
 
 /* ---------- 74. the merge is the import's merge ---------- */
@@ -2315,6 +2404,53 @@ await test("74.5 the job reaches the shared parseItems, and holds no second copy
   eq(out.outputFiles[0].text.split('"Unknown seller"').length - 1, 1, "one parseItems in the job's bundle");
 });
 
+/* Owner ruling 2026-10-27 21:46 CDT: for a line whose key is already stored, the job refreshes only its
+   tracking to the page's value, so "Shipping Not Confirmed" does not stay unknown after the package
+   ships. Qty, price, name, set and every check-in, envelope and stamp stay. A CSV import does not change. */
+await test("74.6 a stored line takes the page's shipping status and nothing else of the page; new lines are added as before", async () => {
+  const stale = [staleLine(1), staleLine(2), staleLine(3)];
+  const stored = storedLedger();
+  stored.items = [...stale, ...stored.items.slice(1)]; /* the stale lines, then 1-2, 99-1 and 99-2 as they were */
+  const page = pageHtml(nOrder(1), nOrder(2, "Canceled"), nOrder(3, "Shipped Without Tracking"), nOrder(4, "Shipped Without Tracking"));
+  const store = fakeStore({ ledger: stored, rev: 3 });
+  await runJob({ site: fakeTcg({ pages: (p) => (p === 1 ? page : null) }), store });
+  const out = store.state.ledger;
+  const got = new Map(out.items.map((i) => [i.key, i]));
+  eq(got.get(stale[0].key), { ...stale[0], tracking: "with tracking" }, "unknown becomes with tracking; every other field of the stored line stays");
+  eq(got.get(stale[1].key), { ...stale[1], tracking: "canceled" }, "unknown becomes canceled; every other field stays");
+  eq(got.get(stale[2].key), { ...stale[2], tracking: "without tracking" }, "unknown becomes without tracking; every other field stays");
+  for (const k of [nKeys(1)[1], ...nKeys(99)]) eq(got.get(k), stored.items.find((i) => i.key === k), `${k}: the page agrees or does not show it, so it is as stored`);
+  const fresh = { [oid(2)]: "canceled", [oid(3)]: "without tracking", [oid(4)]: "without tracking" };
+  const f = ["key", "orderId", "name", "qty", "price", "tracking"];
+  for (const i of [nItem(2, 2), nItem(3, 2), nItem(4, 1), nItem(4, 2)])
+    eq(pick(got.get(i.key) ?? {}, f), pick({ ...i, tracking: fresh[i.orderId] }, f), `${i.key}: a new key is added with the page's values`);
+  eq(out.items.length, 10, "no line is lost, and only those four are new");
+  for (const k of ["received", "receivedAt", "envelopes", "stamps", "dateFilter", "sortBy", "itemSort"]) eq(out[k], stored[k], `${k} is untouched, the check-in on a refreshed line included`);
+  eq(Object.keys(out).sort(), Object.keys(stored).sort(), "the refresh leaves no new key in the ledger");
+  eq((await store.read()).rev, 4, "one write, one rev");
+});
+
+await test("74.7 the all-known page that ends the run is still read: its changed shipping status is refreshed", async () => {
+  const stale = staleLine(1);
+  const store = fakeStore({ ledger: ledger({ items: [stale, nItem(1, 2)] }), rev: 3 }, [], statusComplete);
+  const site = fakeTcg({ pages: (p) => (p === 1 ? pageHtml(nOrder(1)) : null) });
+  await runJob({ site, store });
+  eq(fetched(site), [1], "fixture: page 1 is all known and the last run was complete, so the run ends there");
+  eq(store.state.ledger.items.find((i) => i.key === stale.key), { ...stale, tracking: "with tracking" }, "the stored line took the page's status");
+});
+
+await test("74.8 a CSV re-import still keeps the stored shipping status (POST /ledger and mergeLedger are unchanged)", async () => {
+  const stale = staleLine(1);
+  const stored = ledger({ items: [stale] });
+  const reimport = ledger({ items: [{ ...stale, tracking: "with tracking" }] });
+  eq(reimport.items[0].tracking, "with tracking", "fixture: the file carries a newer status than the ledger");
+  const store = fakeStore({ ledger: stored, rev: 3 });
+  const res = await send(store, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: reimport } });
+  eq(res.status, 200, "the import is accepted");
+  eq(store.state.ledger.items, [stale], "POST /ledger: the stored line is as it was");
+  eq(mergeLedger(stored, reimport).merged.items, [stale], "mergeLedger: the same, so the app's own merge is unchanged too");
+});
+
 /* ---------- 75. the status the GET reply exposes ---------- */
 await test("75.1 a success records its time, a later failure records its kind and time, and the success time stays", async () => {
   const store = fakeStore({ ledger: storedLedger(), rev: 3 });
@@ -2382,7 +2518,7 @@ await test("77.1 the Durable Object adapter keeps the orders status in its own r
   const store = new Ledger(ctx, ENV).store;
   eq([typeof store.readOrdersStatus, typeof store.writeOrdersStatus], ["function", "function"], "the two store methods exist");
   eq(await store.readOrdersStatus(), null, "nothing recorded yet reads as null");
-  const st = { lastSuccessAt: iso(NOW), lastFailure: { kind: "other", at: iso(NOW) } };
+  const st = { lastSuccessAt: iso(NOW), lastFailure: { kind: "other", at: iso(NOW) }, complete: false };
   await store.writeOrdersStatus(st);
   eq(await store.readOrdersStatus(), st, "what was written reads back");
   ok(!ctx.puts.includes("state"), "the write did not touch the ledger's row");
