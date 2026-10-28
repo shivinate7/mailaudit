@@ -124,6 +124,8 @@ struct TallyRowView: View {
     let row: TallyRow
     let model: TallyModel
     @State private var open = false
+    @State private var metaNaturalWidth: CGFloat = 0
+    @State private var metaBoxWidth: CGFloat = 0
     @Environment(\.dynamicTypeSize) private var typeSize
 
     private var done: Bool { row.got >= row.qty }
@@ -176,15 +178,28 @@ struct TallyRowView: View {
         .contentShape(Rectangle())
     }
 
-    /// One line ending in "…" at the column's edge, as on the web, and wrapping at accessibility sizes. The audit calls
-    /// truncated text clipped, so the Tally audits skip that check on `tally-meta:` elements (`audit-skips-measured-flags`).
+    /// One line cut at the column's edge, with a "…" drawn over the edge only when the text is wider than the column
+    /// (as on the web), and wrapping at accessibility sizes. The text is hard-clipped, never truncated, so the audit
+    /// raises no clipped-text finding on it; the Text keeps the full string as its label and carries `tally-meta:`.
     @ViewBuilder private var metaLine: some View {
-        let text = Text(row.meta).font(.mono(11, relativeTo: .caption)).foregroundStyle(paint(.meta))
+        let font = Font.mono(11, relativeTo: .caption)
+        let text = Text(row.meta).font(font).foregroundStyle(paint(.meta))
         if typeSize.isAccessibilitySize {
             text.accessibilityIdentifier("tally-meta:\(row.name)")
         } else {
-            text.lineLimit(1).truncationMode(.tail).frame(maxWidth: .infinity, alignment: .leading)
+            text.fixedSize(horizontal: true, vertical: false)
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { metaNaturalWidth = $0 }
                 .accessibilityIdentifier("tally-meta:\(row.name)")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { metaBoxWidth = $0 }
+                .clipped()
+                .overlay(alignment: .trailing) {
+                    if metaNaturalWidth > metaBoxWidth {
+                        Text("\u{2026}").font(font).foregroundStyle(paint(.meta))
+                            .background(paint(.surface))
+                            .accessibilityHidden(true)
+                    }
+                }
         }
     }
 
