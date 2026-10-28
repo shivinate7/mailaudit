@@ -15,7 +15,7 @@ public struct HandOffer: Equatable, Sendable {
 public final class HandModel {
     @ObservationIgnored private let engine: RulesEngine
     @ObservationIgnored private let store: LedgerStore
-    /// normName of a card held as a stray. A post clears it, an offer does not.
+    /// normName of a held card. After a post it is whatever the rules reply still holds; New envelope makes it a stray.
     public private(set) var held: String?
     /// Names newEnvelope released. They are shown, never checked in, and decide nothing.
     public private(set) var strays: [String] = []
