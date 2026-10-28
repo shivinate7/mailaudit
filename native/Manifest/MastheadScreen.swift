@@ -29,7 +29,7 @@ struct MastheadScreen<Content: View>: View {
                 if let masthead {
                     MastheadView(model: masthead, tab: tab)
                         .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { headHeight = $0 }
-                    Color.clear.frame(height: Self.slot).accessibilityHidden(true)
+                        .padding(.bottom, Self.slot)  // after the height read, so the pin point stays the slot's top
                 }
                 if let sync { SyncAdvisoryLine(sync: sync, open: openSync) }
                 content
