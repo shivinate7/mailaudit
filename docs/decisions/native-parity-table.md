@@ -46,6 +46,7 @@ Each client draws its own screen. The logic has one home, see `rules-run-in-java
 | Ledger file in Application Support | native-only | The WebKit storage eviction rule does not apply to it. |
 | scenePhase resume and the camera usage string | native-only | They are platform plumbing. The usage string is not in Info.plist yet, see `native-photo-screens-unwired`. |
 | Photo blobs as files in the `photos` folder | native-only | The web app keeps them in IndexedDB. Native keeps one file per blob beside the ledger, see `native-files-are-frozen`. |
+| Duo two-page view: Card in Hand, the tab bar and the fold layout | native-only | The two pages read the Duo fold through a native API. See `duo-card-in-hand`. |
 
 ## See also
 

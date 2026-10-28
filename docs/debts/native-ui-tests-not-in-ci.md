@@ -7,7 +7,7 @@
 - build for macOS and for the iOS Simulator with `CODE_SIGNING_ALLOWED=NO`;
 - run every UI test class in `native/ManifestUITests`.
 
-The gap closes when the job runs those steps and stays green on a hosted macOS runner.
+The gap closes when the job runs those steps and stays green on a hosted macOS runner. The Duo pose UI tests are a local proof only. CI does not run them.
 
 **Status:** open. Lane C2 is not briefed.
 
