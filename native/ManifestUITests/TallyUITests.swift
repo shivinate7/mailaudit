@@ -125,6 +125,18 @@ final class TallyUITests: XCTestCase {
         try app.auditNamingElements(skipping: skipTallyAuditFlags)
     }
 
+    /// The audit with a cut meta line. At the default type size the Set Card meta ends in "…", the audit calls it
+    /// clipped, and the ruled skip is what lets the audit pass. The skip must fire here (it logs `AUDIT-RULED`
+    /// with the tally-meta:Set Card id). Only a skip of that clipped-text issue can carry that id, so an audit that
+    /// raises nothing on the line means the line is not cut, and the test goes red.
+    func testAccessibilityAuditTallyScreenWithATruncatedMetaLine() throws {
+        let app = launch(width: 375, size: "UICTContentSizeCategoryL", seed: Self.longSetSeed)
+        openTally(app, row: Self.longSetRow)
+        let ruled = try app.auditNamingElements(skipping: skipTallyAuditFlags)
+        XCTAssertTrue(ruled.contains { $0.contains("id=tally-meta:\(Self.longSetRow) ") },
+                      "the skip never fired on tally-meta:\(Self.longSetRow), so the meta line may not be cut. Skipped: \(ruled)")
+    }
+
     // MARK: the copies list
 
     /// An open row lists every copy it counts, with the seller, the order id, the set and the date, and a 44pt control.

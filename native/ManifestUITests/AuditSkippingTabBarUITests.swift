@@ -121,18 +121,25 @@ extension XCUIApplication {
     /// The whole audit, with each issue named by its element. A bare performAccessibilityAudit() fails with
     /// "Contrast failed" and the result bundle does not say which element (palette-tokens-contrast-floor).
     /// `skipping` is the audit's own ignore handler: an issue it accepts is left out, every other issue is named
-    /// and fails. The default skips nothing.
+    /// and fails. The default skips nothing. Each skipped issue is logged as `AUDIT-RULED` (as auditSkippingTabBar
+    /// logs it) and comes back as text, so a test can prove that a skip fired.
+    @discardableResult
     func auditNamingElements(skipping skip: @escaping (XCUIAccessibilityAuditIssue) -> Bool = { _ in false },
-                             file: StaticString = #filePath, line: UInt = #line) throws {
-        var found: [String] = []
+                             file: StaticString = #filePath, line: UInt = #line) throws -> [String] {
+        var found: [String] = [], ruled: [String] = []
         try performAccessibilityAudit { issue in
-            if !skip(issue) {
-                let el = issue.element
-                found.append("\(issue.compactDescription) | id=\(el?.identifier ?? "-") label=\(el?.label ?? "-") frame=\(el?.frame ?? .zero)")
+            let el = issue.element
+            let text = "\(issue.compactDescription) | id=\(el?.identifier ?? "-") label=\(el?.label ?? "-") frame=\(el?.frame ?? .zero)"
+            if skip(issue) {
+                print("AUDIT-RULED \(text)")
+                ruled.append(text)
+            } else {
+                found.append(text)
             }
             return true  // handled here; the assertion below is the only failure
         }
         XCTAssertEqual(found, [], "the audit flagged these elements", file: file, line: line)
+        return ruled
     }
 
     /// The accessibility audit, minus every issue whose element the tab bar covers. The issues it
