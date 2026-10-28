@@ -346,26 +346,36 @@ final class MastheadBackupUITests: XCTestCase {
     /// The 46pt running head and its 1pt rule, held clear under the masthead (MastheadScreen).
     static let slot: CGFloat = 47
 
-    /// The topmost package row. Packages is a lazy list, so only the rows near the screen exist; the first is one of them.
+    /// Every package row that exists. Packages is a lazy list, so only the rows near the screen do.
+    func packageRows(_ app: XCUIApplication) -> XCUIElementQuery {
+        app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "package-row:"))
+    }
+
+    /// The topmost package row. The first is one of the rows near the screen.
     func topmostPackageRow(_ app: XCUIApplication) throws -> XCUIElement {
-        let rows = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "package-row:"))
+        let rows = packageRows(app)
         _ = try XCTUnwrap(rows.firstMatch.waitForExistence(timeout: 5) ? rows.firstMatch : nil, "Packages has no package row")
         return try XCTUnwrap(rows.allElementsBoundByIndex.min { $0.frame.minY < $1.frame.minY }, "Packages has no package row")
     }
 
-    /// The first element under the masthead on `tab`: its first row, its search field, its record button or its title.
-    /// The sync advisory, when it shows, is read by its identifier instead. Ledger's title has no identifier, so it is
-    /// found by its label, between the masthead and the tab bar. A `ledger-title` identifier would be a product change.
-    func firstContent(_ app: XCUIApplication, tab: String, below head: CGRect) throws -> XCUIElement {
+    /// The top of the first element under the masthead on `tab`: its first row, its search box, its record button or its
+    /// title. The sync advisory, when it shows, is read by its identifier instead. Ledger's title has no identifier, so it
+    /// is found by its label, between the masthead and the tab bar. A `ledger-title` identifier would be a product change.
+    func firstContentTop(_ app: XCUIApplication, tab: String, below head: CGRect) throws -> CGFloat {
         switch tab {
-        case "Orphaned": return try live(app, "orphaned-record", tab: tab)
-        case "Tally": return try live(app, "tally-search", tab: tab)
-        case "Packages": return try topmostPackageRow(app)
+        case "Orphaned": return try live(app, "orphaned-record", tab: tab).frame.minY
+        case "Tally":
+            // `tally-search` reads the field's own frame. The field sits centred in a box of at least 44pt (TallyView's
+            // `frame(minHeight: 44)`) and is shorter than it, so it starts a few points below the box. The box is what
+            // the running head must clear, so read its top: the lesser of the field's top and 22pt above its middle.
+            let field = try live(app, "tally-search", tab: tab).frame
+            return min(field.minY, field.midY - Self.minHit / 2)
+        case "Packages": return try topmostPackageRow(app).frame.minY
         default:
             let bar = app.tabBars.firstMatch.frame.minY
             let titles = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", tab)).allElementsBoundByIndex
                 .filter { $0.frame.minY >= head.maxY && $0.frame.maxY <= bar }
-            return try XCTUnwrap(titles.min { $0.frame.minY < $1.frame.minY }, "\(tab): no title under the masthead")
+            return try XCTUnwrap(titles.min { $0.frame.minY < $1.frame.minY }, "\(tab): no title under the masthead").frame.minY
         }
     }
 
@@ -376,8 +386,8 @@ final class MastheadBackupUITests: XCTestCase {
         for tab in Self.tabs {
             show(app, tab)
             let head = try live(app, "masthead", tab: tab).frame
-            let first = try firstContent(app, tab: tab, below: head)
-            XCTAssertEqual(first.frame.minY - head.maxY, Self.slot, accuracy: 0.5,
+            let first = try firstContentTop(app, tab: tab, below: head)
+            XCTAssertEqual(first - head.maxY, Self.slot, accuracy: 0.5,
                            "\(tab) at \(width)pt: the first content is not one slot below the masthead")
         }
     }
@@ -412,12 +422,12 @@ final class MastheadBackupUITests: XCTestCase {
 
     /// Drags the list up by `dy` points (down when negative) with no fling, so the offset follows the finger and the pin
     /// point can be crossed by a known amount. It repeats the press-and-drag of XCUIApplication.reveal, which drags by an
-    /// element's gap and cannot drag a set distance. A drag down starts below the pinned head, which would take a touch
-    /// that began on it. `bandTop` is where the list starts at rest: the masthead's top.
-    func drag(_ app: XCUIApplication, up dy: CGFloat, bandTop: CGFloat) {
+    /// element's gap and cannot drag a set distance. A drag down starts 40pt below the pinned head's foot, read from the
+    /// head: the head takes a touch that began on it, and the list would not move. So a drag down needs the head pinned.
+    func drag(_ app: XCUIApplication, up dy: CGFloat) {
         let bottom = app.tabBars.firstMatch.frame.minY
         let x = app.windows.firstMatch.frame.midX
-        let from = dy > 0 ? bottom - 40 : bandTop + Self.slot + 40
+        let from = dy > 0 ? bottom - 40 : find(app, "running-head").frame.maxY + 40
         let origin = app.coordinate(withNormalizedOffset: .zero)
         origin.withOffset(CGVector(dx: x, dy: from)).press(
             forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: x, dy: from - dy)), withVelocity: .slow, thenHoldForDuration: 0.3)
@@ -443,7 +453,7 @@ final class MastheadBackupUITests: XCTestCase {
         let head = try live(app, "masthead", tab: "Packages")
         let cardsFigure = try XCTUnwrap(figure(try live(app, "tally-cards", tab: "Packages")), "the cards cell has no figure")
         let row = try topmostPackageRow(app)
-        let (top, pinAt) = (head.frame.minY, head.frame.height)
+        let (restTop, pinAt, pastPin) = (head.frame.minY, head.frame.height, CGFloat(60))
         let running = find(app, "running-head")
         func gap(_ when: String) {
             settle(head)
@@ -456,30 +466,37 @@ final class MastheadBackupUITests: XCTestCase {
         gap("at rest")
         unmounted("at rest")
 
-        drag(app, up: pinAt - 20, bandTop: top)
+        drag(app, up: pinAt - 20)
         gap("just short of the pin point")
         unmounted("just short of the pin point")
 
-        drag(app, up: 60, bandTop: top)
+        drag(app, up: pastPin)
         XCTAssertTrue(running.waitForExistence(timeout: 5), "the running head did not pin once the masthead scrolled away")
         gap("while the running head is pinned")
-        XCTAssertEqual(running.frame.minY, top, accuracy: 1, "the running head is not at the top of the list")
+        // The head pins on the list's top edge. The status bar is not in the accessibility tree on this runtime, so
+        // app.listTop reads the window's top, 0, and cannot name that edge. The masthead's foot crossed the edge during
+        // the last drag, by less than that drag, so the head's top lies that far below the foot and no farther. A head
+        // under the status bar sits above the foot, and a head hung below the edge sits farther than the drag.
+        let below = running.frame.minY - head.frame.maxY
+        XCTAssertGreaterThanOrEqual(below, -0.5, "the running head's top \(running.frame.minY) is above the masthead's foot \(head.frame.maxY), so it is not on the list's top edge")
+        XCTAssertLessThanOrEqual(below, pastPin, "the running head's top \(running.frame.minY) is \(below)pt below the masthead's foot \(head.frame.maxY), more than the \(pastPin)pt drag past the pin point")
         XCTAssertLessThanOrEqual(running.frame.height, Self.slot + 0.5, "the running head is taller than its slot")
         XCTAssertTrue(running.label.contains(cardsFigure), "the running head `\(running.label)` does not hold the cards figure \(cardsFigure)")
 
-        drag(app, up: -(pinAt + 80), bandTop: top)
+        drag(app, up: -(pinAt + 80))
         unmounted("back at the top")
         gap("back at the top")
-        XCTAssertEqual(head.frame.minY, top, accuracy: 0.5, "the masthead is not back where it started")
+        XCTAssertEqual(head.frame.minY, restTop, accuracy: 0.5, "the masthead is not back where it started")
     }
 
-    /// The screen with the head pinned, which the per-tab audits above never reach. The audit names each element it flags,
-    /// and it skips only what the tab bar covers (auditSkippingTabBar), as the Packages audits do.
+    /// The screen with the head pinned, which the per-tab audits above never reach. The audit skips only text that
+    /// overlaps the tab bar or lies below the window (auditSkippingTabBar), as the Packages audits do, so any other
+    /// finding fails, wherever the cards sit.
     func testAccessibilityAuditWithTheRunningHeadPinned() throws {
         let app = launch(width: nil)
         show(app, "Packages")
         let head = try live(app, "masthead", tab: "Packages")
-        drag(app, up: head.frame.height + 40, bandTop: head.frame.minY)
+        drag(app, up: head.frame.height + 40)
         XCTAssertTrue(find(app, "running-head").waitForExistence(timeout: 5), "the running head did not pin, so the audit reads the unpinned screen")
         try app.auditSkippingTabBar()
     }
