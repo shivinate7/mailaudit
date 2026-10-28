@@ -40,10 +40,11 @@ final class TallyUITests: XCTestCase {
     // MARK: helpers
 
     /// `size` is a UIContentSizeCategory name; pass it where a test depends on the default type size, so a
-    /// simulator left at another size cannot move the result.
-    func launch(width: Int? = nil, size: String? = nil) -> XCUIApplication {
+    /// simulator left at another size cannot move the result. `seed` names a fixture file to seed from; it must come
+    /// right after the flag. nil seeds the bundled ledger, as every other case does.
+    func launch(width: Int? = nil, size: String? = nil, seed: String? = nil) -> XCUIApplication {
         let app = XCUIApplication()
-        var args = ["-ManifestUITestSeed"]
+        var args = ["-ManifestUITestSeed"] + (seed.map { [$0] } ?? [])
         if let width { args += ["-ManifestUITestWidth", String(width)] }
         if let size { args += ["-UIPreferredContentSizeCategoryName", size] }
         app.launchArguments = args
@@ -60,13 +61,13 @@ final class TallyUITests: XCTestCase {
             .matching(NSPredicate(format: "identifier BEGINSWITH %@", prefix)).allElementsBoundByIndex
     }
 
-    /// The Tally tab, open, with its rows loaded.
-    func openTally(_ app: XCUIApplication) {
+    /// The Tally tab, open, with its rows loaded. `row` is the product whose row proves the load.
+    func openTally(_ app: XCUIApplication, row: String = "Lightning Bolt") {
         let tab = app.tabBars.buttons["Tally"]
         XCTAssertTrue(tab.waitForExistence(timeout: 5), "the Tally tab is missing")
         tab.tap()
-        XCTAssertTrue(element(app, "tally-row:Lightning Bolt").waitForExistence(timeout: 5),
-                      "the Tally tab shows no rows (tally-row:Lightning Bolt is missing)")
+        XCTAssertTrue(element(app, "tally-row:\(row)").waitForExistence(timeout: 5),
+                      "the Tally tab shows no rows (tally-row:\(row) is missing)")
     }
 
     /// Opens a row and waits for its copies.
@@ -96,7 +97,7 @@ final class TallyUITests: XCTestCase {
     func testAccessibilityAuditTallyScreenWithRows() throws {
         let app = launch()
         openTally(app)
-        try app.auditNamingElements(skipping: skipMeasuredContrastFlags)
+        try app.auditNamingElements(skipping: skipTallyAuditFlags)
     }
 
     /// The open row is audited alone. On the full list, opening Lightning Bolt adds three copies and pushes the last
@@ -121,7 +122,7 @@ final class TallyUITests: XCTestCase {
         for (id, frame) in frames(app) {
             XCTAssertLessThanOrEqual(frame.maxY, barTop, "\(id) reaches under the tab bar, so the audit would read a cut row")
         }
-        try app.auditNamingElements(skipping: skipMeasuredContrastFlags)
+        try app.auditNamingElements(skipping: skipTallyAuditFlags)
     }
 
     // MARK: the copies list
@@ -246,6 +247,23 @@ final class TallyUITests: XCTestCase {
     func testTheMetaLineIsOneLineAt320pt() { assertMetaIsOneLine(width: 320) }
 
     func testTheMetaLineIsOneLineAt375pt() { assertMetaIsOneLine(width: 375) }
+
+    /// The seed that holds a long set name: ledger-long-seller.json, whose Set Card item has one (the fixture file is
+    /// shared with PackageCardUITests, which reads only its L1 package).
+    static let longSetSeed = "ledger-long-seller.json"
+    static let longSetRow = "Set Card"
+    static let longSet = "Fictional Anthology of the Northern Realm Commemorative Collector Edition Reprint Series"
+
+    /// A set name far wider than the row ends in "…" on screen (owner ruling, decision audit-skips-measured-flags). The
+    /// meta element tally-meta:<name> still holds the whole text in its label: seller count, order count and the
+    /// full set name. It is the element the Tally audits skip the clipped-text check on.
+    func testALongSetNameIsWholeInTheMetaElementsLabel() throws {
+        let app = launch(width: 375, seed: Self.longSetSeed)
+        openTally(app, row: Self.longSetRow)  // red here, not on the identifier, if the seed has no Set Card item
+        let meta = element(app, "tally-meta:\(Self.longSetRow)")
+        XCTAssertTrue(meta.waitForExistence(timeout: 5), "the meta element tally-meta:\(Self.longSetRow) is missing")
+        XCTAssertEqual(meta.label, "1 seller \u{00B7} 1 order \u{00B7} \(Self.longSet)", "the meta element's label is not the whole meta text")
+    }
 
     // MARK: an empty search
 

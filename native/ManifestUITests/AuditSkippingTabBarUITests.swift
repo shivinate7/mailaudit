@@ -4,9 +4,10 @@
 // Orphaned and Tally tab audits call auditSkippingTabBar(), which skips an issue only when the bar covers most of
 // its element. Every other issue, and any issue with no element, still fails.
 //
-// It also holds the owner's two other narrow skips (audit-skips-measured-flags): skipMeasuredContrastFlags,
-// the contrast skip on four named elements, and skipKeyboardPredictionCells, the system keyboard's cells in the
-// two composer audits.
+// It also holds the owner's three other narrow skips (audit-skips-measured-flags): skipMeasuredContrastFlags,
+// the contrast skip on four named elements, skipTallyMetaClip, the clipped-text skip on the Tally meta line, and
+// skipKeyboardPredictionCells, the system keyboard's cells in the two composer audits. The three Tally audits call
+// skipTallyAuditFlags, which joins the first two.
 //
 // This file also holds the narrowness proof. The app has no low-contrast element above the bar,
 // so the on-device case moves the bar away and checks that the same issues now fail.
@@ -35,6 +36,24 @@ func isMeasuredContrastFlag(_ type: XCUIAccessibilityAuditType, identifier: Stri
 /// The skip closure of auditNamingElements(skipping:), over a real audit issue.
 @MainActor func skipMeasuredContrastFlags(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
     isMeasuredContrastFlag(issue.auditType, identifier: issue.element?.identifier)
+}
+
+/// The clipped-text skip the owner ruled on (decision audit-skips-measured-flags): a long set name in a Tally row's
+/// meta line ends in "…" as on the web, and the audit calls truncated text clipped. It skips an issue only when the
+/// audit type is clipped text AND the element's accessibility identifier has the prefix `tally-meta:` (the product
+/// name follows). It never reads a label. Every other check still runs on that line.
+func isTallyMetaClip(_ type: XCUIAccessibilityAuditType, identifier: String?) -> Bool {
+    type == .textClipped && identifier?.hasPrefix("tally-meta:") == true
+}
+
+/// The skip closure of auditNamingElements(skipping:), over a real audit issue.
+@MainActor func skipTallyMetaClip(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
+    isTallyMetaClip(issue.auditType, identifier: issue.element?.identifier)
+}
+
+/// What the three Tally audits skip: the ruled contrast flags and the clipped meta line. Nothing else.
+@MainActor func skipTallyAuditFlags(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
+    skipMeasuredContrastFlags(issue) || skipTallyMetaClip(issue)
 }
 
 /// The system keyboard's prediction cell, which the app does not draw (decision audit-skips-measured-flags). The
@@ -208,6 +227,38 @@ final class AuditSkippingTabBarUITests: XCTestCase {
             for id in ["orphaned-cancel", "discard:env-1-abc", "orphaned-edit:env-1-abc", "tally-left:Lightning Bolt"] {
                 XCTAssertFalse(isMeasuredContrastFlag(type, identifier: id), "audit type \(type.rawValue) on \(id)")
             }
+        }
+    }
+
+    // MARK: the Tally meta clip skip, on identifiers
+
+    /// Three tests, one per way the rule could be too wide, so each too-wide predicate fails exactly one of them:
+    /// the pair is skipped, clipped text anywhere else fails, and every other check on the meta line fails.
+    func testTheMetaClipSkipSkipsClippedTextOnTheMetaLine() {
+        XCTAssertTrue(isTallyMetaClip(.textClipped, identifier: "tally-meta:Lightning Bolt"), "clipped text on a Tally row's meta line")
+        XCTAssertTrue(isTallyMetaClip(.textClipped, identifier: "tally-meta:Urza's Saga"), "a product name with a lone quote")
+    }
+
+    func testTheMetaClipSkipKeepsClippedTextOnEveryOtherElement() {
+        let others: [String?] = [
+            "tally-left:Lightning Bolt", "tally-row:Lightning Bolt", "tally-toggle:Lightning Bolt", "tally-copy:B1|0|pLightningBolt",
+            "tally-checkin:B1|0|pLightningBolt", "tally-sort", "tally-search", "orphaned-cancel", "discard:env-1-abc",
+            "tally-meta",  // no colon, no product name
+            "tally-metadata:Lightning Bolt",  // only starts like the prefix
+            "x-tally-meta:Lightning Bolt",  // only contains the prefix
+            "Tally-Meta:Lightning Bolt",  // another case
+            "1 seller \u{00B7} 1 order \u{00B7} Test Set",  // a label is not an identifier
+            "", nil,
+        ]
+        for id in others {
+            XCTAssertFalse(isTallyMetaClip(.textClipped, identifier: id), "clipped text on \(id ?? "an issue with no element")")
+        }
+    }
+
+    func testTheMetaClipSkipKeepsEveryOtherCheckOnTheMetaLine() {
+        let others: [XCUIAccessibilityAuditType] = [.contrast, .elementDetection, .hitRegion, .sufficientElementDescription, .dynamicType, .trait]
+        for type in others {
+            XCTAssertFalse(isTallyMetaClip(type, identifier: "tally-meta:Lightning Bolt"), "audit type \(type.rawValue) on the meta line")
         }
     }
 
