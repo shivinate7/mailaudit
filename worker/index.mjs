@@ -1,6 +1,7 @@
 /* The Worker and its one Durable Object. Everything with a rule is in core.mjs. */
 import { DurableObject } from "cloudflare:workers";
 import { route, wsAuthorized } from "./core.mjs";
+import { runOrders } from "./orders.mjs";
 
 export class Ledger extends DurableObject {
   /* SQLite-backed storage; one KV value holds the whole ledger (~250KB, the
@@ -33,6 +34,9 @@ export class Ledger extends DurableObject {
     photoPut: async (id, mime, bytes) => {
       this.ctx.storage.sql.exec("INSERT OR IGNORE INTO photos (id, mime, bytes) VALUES (?, ?, ?)", id, mime, bytes);
     },
+    /* the orders job's last outcome: a key of its own, never part of the ledger */
+    readOrdersStatus: () => this.ctx.storage.get("orders-status").then((s) => s ?? null),
+    writeOrdersStatus: (status) => this.ctx.storage.put("orders-status", status),
     broadcast: async (obj) => {
       const msg = JSON.stringify(obj);
       for (const ws of this.ctx.getWebSockets()) {
@@ -47,6 +51,11 @@ export class Ledger extends DurableObject {
     this.sql.exec("CREATE TABLE IF NOT EXISTS snapshots (day TEXT PRIMARY KEY, rev INTEGER, at TEXT, ledger TEXT)");
     this.sql.exec("CREATE TABLE IF NOT EXISTS kept (at TEXT PRIMARY KEY, rev INTEGER, ledger TEXT)");
     ctx.storage.sql.exec("CREATE TABLE IF NOT EXISTS photos (id TEXT PRIMARY KEY, mime TEXT NOT NULL, bytes BLOB NOT NULL)");
+  }
+
+  /* called by the schedule through the stub (RPC); it runs here, beside the ledger it merges into */
+  runOrders() {
+    return runOrders(this.env, this.store, fetch, Date.now());
   }
 
   async fetch(request) {
@@ -66,11 +75,14 @@ export class Ledger extends DurableObject {
   }
 }
 
+const ledgerStub = (env) => env.LEDGER.get(env.LEDGER.idFromName(env.STORE_NAME || "ledger-v3"));
+
 export default {
   // Fresh store per sync-revamp-cloudflare. "ledger" is the stage-2 seed and
   // "ledger-v2" is the probe store; rolling back means an older name.
   // A probe deploy sets STORE_NAME (--var STORE_NAME:probe-1) and never touches
   // the real store. wrangler.toml does not set it, so a plain deploy is ledger-v3.
-  fetch: (request, env) =>
-    env.LEDGER.get(env.LEDGER.idFromName(env.STORE_NAME || "ledger-v3")).fetch(request),
+  fetch: (request, env) => ledgerStub(env).fetch(request),
+  // The nightly orders pull (wrangler.toml [triggers]); the job records its own failures.
+  scheduled: (event, env, ctx) => void ctx.waitUntil(ledgerStub(env).runOrders()),
 };
