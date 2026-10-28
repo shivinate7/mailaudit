@@ -187,24 +187,22 @@ struct TallyRowView: View {
         if typeSize.isAccessibilitySize {
             text.accessibilityIdentifier("tally-meta:\(row.name)")
         } else {
-            // The column is sized by a hidden one-line copy, which takes the width it is offered. The visible text is
-            // laid over it at its natural width, so the row never grows with the text and the text is cut at the column.
-            Text(row.meta).font(font).lineLimit(1).hidden()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { metaBoxWidth = $0 }
-                .overlay(alignment: .leading) {
-                    text.fixedSize(horizontal: true, vertical: false)
-                        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { metaNaturalWidth = $0 }
-                        .accessibilityIdentifier("tally-meta:\(row.name)")
+            // The Text keeps its natural width inside a Layout that offers the column its proposed width, so the row never
+            // grows with the text and the text is cut at the column. No second copy of the text is drawn.
+            CutAtColumn {
+                text.fixedSize(horizontal: true, vertical: false)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { metaNaturalWidth = $0 }
+                    .accessibilityIdentifier("tally-meta:\(row.name)")
+            }
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { metaBoxWidth = $0 }
+            .clipped()
+            .overlay(alignment: .trailing) {
+                if metaNaturalWidth > metaBoxWidth {
+                    Text("\u{2026}").font(font).foregroundStyle(paint(.meta))
+                        .background(paint(.surface))
+                        .accessibilityHidden(true)
                 }
-                .clipped()
-                .overlay(alignment: .trailing) {
-                    if metaNaturalWidth > metaBoxWidth {
-                        Text("\u{2026}").font(font).foregroundStyle(paint(.meta))
-                            .background(paint(.surface))
-                            .accessibilityHidden(true)
-                    }
-                }
+            }
         }
     }
 
@@ -234,5 +232,20 @@ struct TallyRowView: View {
             copyID: "tally-copy:\(item.key)", key: item.key,
             onTap: { await model.tap(key: item.key) },  // a failure shows in model.checkInError
             onStep: { await model.step(key: item.key, by: $0) })
+    }
+}
+
+/// One subview at its natural size, left-aligned in the width the parent offers. A concrete proposal sets the width
+/// (so the text is cut there); an unspecified one gets the natural width. A `.frame(maxWidth: .infinity)` around a
+/// fixed-size child reports that child's ideal width up, which grew the row.
+private struct CutAtColumn: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let natural = subviews[0].sizeThatFits(.unspecified)
+        guard let width = proposal.width, width.isFinite else { return natural }
+        return CGSize(width: width, height: natural.height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews[0].place(at: bounds.origin, anchor: .topLeading, proposal: .unspecified)
     }
 }
