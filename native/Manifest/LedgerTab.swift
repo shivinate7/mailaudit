@@ -23,6 +23,7 @@ struct LedgerTab: View {
     @State private var shared: SharedFile?
     @State private var failure: String?
     @State private var historyOpen = false
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var openRow: String?
 
     var body: some View {
@@ -150,17 +151,20 @@ struct LedgerTab: View {
         return VStack(alignment: .leading, spacing: 8) {
             // One line: time, label, then the figure at the right (src/app.jsx verRow). The texts are the elements,
             // and the row's hit region is a button behind them.
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(when).font(.mono(11, relativeTo: .caption)).foregroundStyle(paint(.versionWhen)).lineLimit(1).layoutPriority(1)
+            // At an accessibility size the three stack, so the label wraps instead of being cut to a letter.
+            let stacked = typeSize.isAccessibilitySize
+            let layout = stacked ? AnyLayout(VStackLayout(alignment: .leading, spacing: 4)) : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 8))
+            layout {
+                Text(when).font(.mono(11, relativeTo: .caption)).foregroundStyle(paint(.versionWhen)).lineLimit(stacked ? nil : 1).layoutPriority(1)
                     .accessibilityIdentifier("version-when:\(row.id)")
                 Text(row.label).font(.cochin(14, relativeTo: .body))
-                    .foregroundStyle(paint(row.isMilestone ? .versionLabel : .versionLabelSoft)).lineLimit(1)
+                    .foregroundStyle(paint(row.isMilestone ? .versionLabel : .versionLabelSoft)).lineLimit(stacked ? nil : 1)
                     .accessibilityIdentifier("version-label:\(row.id)")
-                Spacer(minLength: 0)
-                Text(row.counts).font(.mono(10.5, relativeTo: .caption2)).foregroundStyle(paint(.versionFigure)).lineLimit(1).layoutPriority(1)
+                if !stacked { Spacer(minLength: 0) }
+                Text(row.counts).font(.mono(10.5, relativeTo: .caption2)).foregroundStyle(paint(.versionFigure)).lineLimit(stacked ? nil : 1).layoutPriority(1)
                     .accessibilityIdentifier("version-figure:\(row.id)")
             }
-            .frame(minHeight: 45)
+            .frame(maxWidth: .infinity, minHeight: 45, alignment: .leading)
             .allowsHitTesting(false)
             .background {
                 Button {
@@ -302,6 +306,7 @@ struct AskRow: View {
     let press: () -> Void
     let cancel: () -> Void
     private let cancelWidth: CGFloat = 80
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var armed: Bool { ask != nil }
 
@@ -348,21 +353,22 @@ struct AskRow: View {
     /// its 44pt hit frame. Cancel takes a slot after Restore that is kept free all along, so arming moves nothing
     /// (no-layout-shift-under-pointer). Restore is a bar across the rest of the row, as the web's flex:1 button is.
     private var restoreRow: some View {
-        HStack(spacing: 8) {
+        let stacked = typeSize.isAccessibilitySize
+        let layout = stacked ? AnyLayout(VStackLayout(alignment: .trailing, spacing: 8)) : AnyLayout(HStackLayout(spacing: 8))
+        return layout {
             Button(action: press) {
                 MiniLabel(title: ask ?? title, bold: armed, text: p(.restoreText), fill: p(.restoreFill), border: p(.restoreBorder), wide: true)
             }
             .buttonStyle(.plain)
             .accessibilityLabel(ask ?? title)
             .accessibilityIdentifier(id)
-            ZStack {
-                if armed {
-                    Button(action: cancel) { MiniLabel(title: "Cancel") }
-                        .buttonStyle(.plain)
-                        .accessibilityIdentifier(cancelID)
-                }
-            }
-            .frame(width: cancelWidth, alignment: .trailing)
+            // Cancel is always laid out, so its slot is as wide as its text at any type size, and unarmed it is
+            // invisible and out of the accessibility tree.
+            Button(action: cancel) { MiniLabel(title: "Cancel") }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier(cancelID)
+                .opacity(armed ? 1 : 0).allowsHitTesting(armed).accessibilityHidden(!armed)
+                .frame(minWidth: stacked ? 0 : cancelWidth, alignment: .trailing)
         }
     }
 }

@@ -108,6 +108,7 @@ private struct ComposerView: View {
     let onChange: () async -> Void
     @State private var found: [Suggestion] = []
     @FocusState private var focused: Bool
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var draft: EnvelopeDraft { model.draft(for: target) }
 
@@ -182,9 +183,11 @@ private struct ComposerView: View {
             TextField("Note", text: Binding(get: { model.draft(for: target).note }, set: { model.setNote($0, for: target) }),
                       prompt: Text("Note (optional) \u{2014} tracking #, sender, mailer\u{2026}").foregroundStyle(paint(.note)), axis: .vertical)
                 .lineLimit(2...3).inputBox().accessibilityIdentifier("orphaned-note")
-            HStack(spacing: 8) {
+            // At an accessibility size the footer stacks, so no label breaks mid-word.
+            let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .trailing, spacing: 8)) : AnyLayout(HStackLayout(spacing: 8))
+            layout {
                 Text("\(cards) card\(cards == 1 ? "" : "s")").font(.mono(11, relativeTo: .caption)).foregroundStyle(paint(.note))
-                Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Button { model.cancel() } label: { MiniLabel(title: "Cancel") }
                     .buttonStyle(.plain).accessibilityIdentifier("orphaned-cancel")
                 // Empty Save is disabled, so VoiceOver reports it Disabled.
@@ -219,6 +222,7 @@ private struct EnvelopeCard: View {
     let onChange: () async -> Void
     @State private var showAll = false
     @State private var armed = false
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
         let ranked = model.ranked(for: env.id)
@@ -243,7 +247,8 @@ private struct EnvelopeCard: View {
             .overlay(alignment: .bottomTrailing) {
                 // The ask hangs below the row, so arming moves nothing (no-layout-shift-under-pointer).
                 if armed {
-                    HStack(spacing: 4) {
+                    let panel = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .trailing, spacing: 4)) : AnyLayout(HStackLayout(spacing: 4))
+                    panel {
                         Button { armed = false } label: { MiniLabel(title: "Cancel", size: 11, vertical: 4, horizontal: 8) }.buttonStyle(.plain)
                         Button(role: .destructive) {
                             armed = false
@@ -256,7 +261,8 @@ private struct EnvelopeCard: View {
                         .buttonStyle(.plain)
                     }
                     .padding(4).modifier(CardChrome(border: .discardBorder))
-                    .padding(.trailing, 12).offset(y: 48).zIndex(1)
+                    // Its top sits 4pt under the header, whatever height the header has at the current type size.
+                    .padding(.trailing, 12).alignmentGuide(.bottom) { $0[.top] - 4 }.zIndex(1)
                 }
             }
             .zIndex(1)
