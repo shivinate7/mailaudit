@@ -7,7 +7,9 @@
 //
 // It also holds the owner's two other narrow skips (audit-skips-measured-flags): skipMeasuredContrastFlags,
 // the contrast skip on four named elements, and skipKeyboardPredictionCells, the system keyboard's cells in the
-// two composer audits.
+// two composer audits. The Tally audits call skipMeasuredContrastFlags. No skip covers the Tally meta line: its audit
+// raises no finding (TallyUITests.testAccessibilityAuditTallyScreenWithATruncatedMetaLine). That test reads its
+// skips back through auditNamingElements, which is auditSkippingTabBar with each failing issue named.
 //
 // This file also holds the narrowness proof. The app has no low-contrast element above the bar,
 // so the on-device case moves the bar away and checks that the same issues now fail.
@@ -35,7 +37,7 @@ func isMeasuredContrastFlag(_ type: XCUIAccessibilityAuditType, identifier: Stri
     return identifier == "orphaned-cancel" || ["discard:", "orphaned-edit:", "tally-left:"].contains(where: identifier.hasPrefix)
 }
 
-/// The ruled: closure of auditSkippingTabBar, over a real audit issue.
+/// The ruled: closure of auditSkippingTabBar (the skipping: closure of auditNamingElements), over a real audit issue.
 @MainActor func skipMeasuredContrastFlags(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
     isMeasuredContrastFlag(issue.auditType, identifier: issue.element?.identifier)
 }
@@ -49,7 +51,7 @@ func isKeyboardPredictionCell(detail: String) -> Bool {
     detail.split(whereSeparator: { !$0.isLetter && !$0.isNumber && $0 != "_" }).contains("TUIPredictionViewCell")
 }
 
-/// The ruled: closure of auditSkippingTabBar, over a real audit issue.
+/// The ruled: closure of auditSkippingTabBar (the skipping: closure of auditNamingElements), over a real audit issue.
 @MainActor func skipKeyboardPredictionCells(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
     isKeyboardPredictionCell(detail: issue.detailedDescription)
 }
@@ -116,19 +118,19 @@ extension XCUIApplication {
     /// tab bar's and the window's frames, for the narrowness test. With `record: false` no issue is recorded, so a test
     /// can read them.
     /// `ruled` is another skip the owner ruled on, such as skipMeasuredContrastFlags. An issue it accepts is left
-    /// out and is not counted in `skipped`, which means "under the bar" only.
+    /// out and is not counted in `skipped`, which means "under the bar" only. It comes back in `ruled` instead.
     @discardableResult
     func auditSkippingTabBar(bar override: CGRect? = nil, window windowOverride: CGRect? = nil, record: Bool = true,
                              ruled: ((XCUIAccessibilityAuditIssue) -> Bool)? = nil) throws
-        -> (skipped: [String], failing: [String])
+        -> (skipped: [String], failing: [String], ruled: [String])
     {
         let tabBar = tabBars.firstMatch
         let bar = try XCTUnwrap(tabBar.waitForExistence(timeout: 5) ? override ?? tabBar.frame : nil, "the tab bar is missing")
         let window = windowOverride ?? windows.firstMatch.frame
-        var skipped: [String] = [], failing: [String] = []
+        var skipped: [String] = [], failing: [String] = [], ruledText: [String] = []
         try performAccessibilityAudit { issue in
             let frame = issue.element?.frame
-            let text = "\(issue.compactDescription) | label=\(issue.element?.label ?? "nil") | frame=\(frame.map(String.init(describing:)) ?? "nil") | bar=\(bar) | window=\(window)"
+            let text = "\(issue.compactDescription) | id=\(issue.element?.identifier ?? "nil") label=\(issue.element?.label ?? "nil") | frame=\(frame.map(String.init(describing:)) ?? "nil") | bar=\(bar) | window=\(window)"
             if isUnderTabBar(frame, bar: bar, window: window) {
                 print("AUDIT-SKIP \(text)")
                 skipped.append(text)
@@ -136,13 +138,28 @@ extension XCUIApplication {
             }
             if ruled?(issue) == true {
                 print("AUDIT-RULED \(text)")
+                ruledText.append(text)
                 return true
             }
             print("AUDIT-FAIL \(text)")
             failing.append(text)
             return !record
         }
-        return (skipped, failing)
+        return (skipped, failing, ruledText)
+    }
+
+    /// The whole audit with each failing issue named by its element: a bare performAccessibilityAudit() fails with
+    /// "Contrast failed" and the result bundle does not say which element (palette-tokens-contrast-floor). It is
+    /// auditSkippingTabBar with `skipping` as its `ruled:` skip, so the tab-bar skip and the AUDIT-* log lines have one
+    /// home. An issue the handler accepts is never recorded by the audit itself, and the assertion below is the only
+    /// failure. It returns the text of every issue let through, under the bar or ruled, so a test can prove that no
+    /// skip covers an element (the Tally meta line). The default `skipping` adds none.
+    @discardableResult
+    func auditNamingElements(skipping skip: @escaping (XCUIAccessibilityAuditIssue) -> Bool = { _ in false },
+                             file: StaticString = #filePath, line: UInt = #line) throws -> [String] {
+        let result = try auditSkippingTabBar(record: false, ruled: skip)
+        XCTAssertEqual(result.failing, [], "the audit flagged these elements", file: file, line: line)
+        return result.skipped + result.ruled
     }
 }
 
