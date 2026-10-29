@@ -53,8 +53,11 @@ struct RootView: View {
             Group {
                 if let model, let masthead { PackagesView(model: model, masthead: masthead, sync: sync, openSync: showSync, notice: notice, onChange: {
                         // A stamp changed which packages count: Tally and Orphaned read the ledger again (a-refund-leaves-every-count).
-                        try? await tally?.load()
-                        try? await orphaned?.load()
+                        // Both reads run even if one fails, and a failure goes back to the write, which marks the save slot.
+                        var readError: Error?
+                        do { try await tally?.load() } catch { readError = error }
+                        do { try await orphaned?.load() } catch { readError = error }
+                        if let readError { throw readError }
                     })
                 } else { Placeholder(title: failure ?? "Opening the ledger") }
             }

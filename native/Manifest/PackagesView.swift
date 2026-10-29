@@ -12,7 +12,7 @@ struct PackagesView: View {
     /// The damaged-ledger line, in the content below the running-head slot like the advisory.
     let notice: String?
     /// Runs after a stamp write, so the other tabs read the new stamps.
-    let onChange: () async -> Void
+    let onChange: () async throws -> Void
 
     var body: some View {
         MastheadScreen(masthead: masthead, tab: .packages, sync: sync, openSync: openSync,
@@ -43,7 +43,7 @@ struct PackageRow: View {
     let pkg: Package
     let model: PackagesModel
     let masthead: MastheadModel
-    let onChange: () async -> Void
+    let onChange: () async throws -> Void
     /// True while the armed stamp ask shows. It hangs below the editor row and, at large text, past the card's edge, so
     /// the card then draws above its neighbours.
     @State private var overhang = false

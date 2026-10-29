@@ -82,8 +82,8 @@ struct StampSection: View {
     let surface: Color
     /// True while the armed ask hangs below the card's edge, so the card lets it show (see PackageRow).
     @Binding var overhang: Bool
-    /// Runs after a write, so the Tally and Orphaned figures read the new stamps.
-    let onChange: () async -> Void
+    /// Runs after a write, so the Tally and Orphaned figures read the new stamps. It throws when a read failed.
+    let onChange: () async throws -> Void
 
     private static let rowHeight: CGFloat = 48
 
@@ -290,8 +290,10 @@ struct StampSection: View {
         masthead.saving()
         var landed = true
         do { try await act() } catch { landed = false }  // the model has put the reason in checkInError, which the screen shows
-        await onChange()
-        await masthead.finished(failed: !landed)
+        // A failed Tally or Orphaned read would leave them counting the old stamps, so the slot says the write failed.
+        var refreshed = true
+        do { try await onChange() } catch { refreshed = false }
+        await masthead.finished(failed: !landed || !refreshed)
         if landed { close() }
     }
 
