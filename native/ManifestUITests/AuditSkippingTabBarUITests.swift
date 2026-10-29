@@ -147,7 +147,9 @@ extension XCUIApplication {
 
     /// The accessibility audit, minus every issue whose element the tab bar covers. The issues it
     /// skips and the issues it fails come back as text. `bar` replaces the tab bar's frame, for
-    /// the narrowness test. With `record: false` no issue is recorded, so a test can read them.
+    /// the narrowness test, and for a state that lapses (PackageStampUITests' armed ask): the caller reads the bar first, and
+    /// with an override this reads no element, so the audit starts with no query. With `record: false` no issue is
+    /// recorded, so a test can read them.
     /// `ruled` is another skip the owner ruled on, such as skipMeasuredContrastFlags. An issue it accepts is left
     /// out and is not counted in `skipped`, which means "under the bar" only.
     @discardableResult
@@ -156,7 +158,7 @@ extension XCUIApplication {
         -> (skipped: [String], failing: [String])
     {
         let tabBar = tabBars.firstMatch
-        let bar = try XCTUnwrap(tabBar.waitForExistence(timeout: 5) ? override ?? tabBar.frame : nil, "the tab bar is missing")
+        let bar = try override ?? XCTUnwrap(tabBar.waitForExistence(timeout: 5) ? tabBar.frame : nil, "the tab bar is missing")
         var skipped: [String] = [], failing: [String] = []
         try performAccessibilityAudit { issue in
             let frame = issue.element?.frame

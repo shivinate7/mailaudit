@@ -118,13 +118,16 @@ final class PackageStampUITests: XCTestCase {
         XCTAssertTrue(el(app, "stamp-ask-confirm:\(gk)").waitForExistence(timeout: 5), "the first tap on Remove stamp did not arm it")
     }
 
-    /// The frame of every card part and stamp control on screen, by identifier.
+    /// The frame of every card part and stamp control on screen, by identifier, read from one snapshot of the app's
+    /// accessibility tree. One read, not a query per element: the armed ask disarms 4 seconds after its tap, and a query per
+    /// element took about 2 seconds, so the last frames of a compare were read after the ask had gone.
     func snapshot(_ app: XCUIApplication) -> [String: CGRect] {
         var out: [String: CGRect] = [:]
-        for prefix in Self.framed {
-            let found = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", prefix)).allElementsBoundByIndex
-            for e in found { out[e.identifier] = e.frame }
+        func walk(_ s: XCUIElementSnapshot) {
+            if Self.framed.contains(where: { s.identifier.hasPrefix($0) }) { out[s.identifier] = s.frame }
+            s.children.forEach(walk)
         }
+        do { walk(try app.snapshot()) } catch { XCTFail("no accessibility snapshot of the app: \(error)") }
         return out
     }
 
@@ -134,10 +137,12 @@ final class PackageStampUITests: XCTestCase {
         return s.mapValues { $0.offsetBy(dx: -a.minX, dy: -a.minY) }
     }
 
-    /// Every frame in `before` (already relative to the card's top) that is still on screen sits where it did.
+    /// Every frame in `before` (already relative to the card's top) that is still on screen sits where it did. `taken` is
+    /// a snapshot the caller read at the moment that matters (the armed ask is live for 4 seconds only); without it the
+    /// frames are read now.
     func assertStill(_ before: [String: CGRect], _ app: XCUIApplication, anchor: String, _ what: String,
-                     file: StaticString = #filePath, line: UInt = #line) {
-        let after = relative(snapshot(app), to: anchor)
+                     taken: [String: CGRect]? = nil, file: StaticString = #filePath, line: UInt = #line) {
+        let after = relative(taken ?? snapshot(app), to: anchor)
         let common = before.keys.filter { after[$0] != nil }
         XCTAssertGreaterThanOrEqual(common.count, 8, "too few frames to compare after \(what)", file: file, line: line)
         // Layout rounding gives one frame a float error (319.0000305 against 319.0), so each edge is compared to half a
@@ -235,16 +240,22 @@ final class PackageStampUITests: XCTestCase {
         stamp(app, gk, kind: "claim")
         app.reveal(el(app, "stamp-band:\(gk)"), whole: true)
         openEditor(app, gk)
-        let remove = el(app, "stamp-remove:\(gk)"), save = el(app, "stamp-save:\(gk)"), anchor = "package-row:\(gk)"
+        let remove = el(app, "stamp-remove:\(gk)"), anchor = "package-row:\(gk)"
         let before = relative(snapshot(app), to: anchor)
 
+        // The ask is live for 4 seconds from the tap, and arm() uses about 1.5 of them. So the armed state is read once,
+        // in one snapshot, before the Cancel tap. The label waits for the next arm.
         arm(app, gk)
         let ask = el(app, "stamp-ask-confirm:\(gk)"), askCancel = el(app, "stamp-ask-cancel:\(gk)")
-        XCTAssertEqual(ask.label, "Tap again to remove stamp from 4 cards", "the ask's label")
-        XCTAssertTrue(el(app, "stamp-editor:\(gk)").exists, "the first tap closed the editor")
-        assertStill(before, app, anchor: anchor, "Remove stamp was armed")
-        XCTAssertGreaterThan(ask.frame.minY, save.frame.midY, "the ask does not hang below the row")
-        XCTAssertGreaterThan(askCancel.frame.minY, save.frame.midY, "the ask's Cancel does not hang below the row")
+        let armed = snapshot(app)
+        guard let askBox = armed["stamp-ask-confirm:\(gk)"], let cancelBox = armed["stamp-ask-cancel:\(gk)"],
+              let saveBox = armed["stamp-save:\(gk)"] else {
+            return XCTFail("the ask, its Cancel or Save is missing from the snapshot taken after the first tap: the ask had gone")
+        }
+        XCTAssertNotNil(armed["stamp-editor:\(gk)"], "the first tap closed the editor")
+        assertStill(before, app, anchor: anchor, "Remove stamp was armed", taken: armed)
+        XCTAssertGreaterThan(askBox.minY, saveBox.midY, "the ask does not hang below the row")
+        XCTAssertGreaterThan(cancelBox.minY, saveBox.midY, "the ask's Cancel does not hang below the row")
 
         askCancel.tap()
         wait("exists == false", for: ask, "the ask's Cancel did not disarm")
@@ -252,6 +263,7 @@ final class PackageStampUITests: XCTestCase {
         assertStill(before, app, anchor: anchor, "the ask was cancelled")
 
         arm(app, gk)
+        XCTAssertEqual(ask.label, "Tap again to remove stamp from 4 cards", "the ask's label")
         wait("exists == false", for: ask, "the ask did not disarm after 4 seconds", timeout: 7)
         XCTAssertTrue(el(app, "stamp-editor:\(gk)").exists, "disarming closed the editor")
 
@@ -387,8 +399,13 @@ final class PackageStampUITests: XCTestCase {
 
         openEditor(app, gk)
         assertHitRegion(el(app, "stamp-remove:\(gk)"), "Remove stamp")
+        // The ask disarms 4 seconds after the tap. arm() uses about 1.5 of them and each assertHitRegion about 1.3 (it waits
+        // a second before it reads), so each ask button is measured in an ask armed for it. The ask is waited out in
+        // between, so the second arm taps an unarmed Remove.
         arm(app, gk)
         assertHitRegion(el(app, "stamp-ask-confirm:\(gk)"), "the armed ask's second tap")
+        wait("exists == false", for: el(app, "stamp-ask-confirm:\(gk)"), "the ask did not disarm after 4 seconds", timeout: 7)
+        arm(app, gk)
         assertHitRegion(el(app, "stamp-ask-cancel:\(gk)"), "the armed ask's Cancel")
     }
 
@@ -459,12 +476,19 @@ final class PackageStampUITests: XCTestCase {
         try app.auditSkippingTabBar()
     }
 
-    /// Remove stamp armed, with its ask on screen.
+    /// Remove stamp armed, with its ask on screen. The ask lapses 4 seconds after the tap and its lapse is not lengthened
+    /// for a test (stamp-band-opens-the-editor), so nothing slow sits between the tap and the audit: the tab bar's frame is
+    /// read before the tap and handed in, and the ask is read once, after the audit. An ask that lapsed in between fails
+    /// the case, where it would otherwise audit the editor alone and pass.
     func testAccessibilityAuditStampRemoveArmed() throws {
         let app = launch()
         stamp(app, Self.a1, kind: "claim")
         openEditor(app, Self.a1)
+        let bar = app.tabBars.firstMatch.frame
+        let armedAt = Date()
         arm(app, Self.a1)
-        try app.auditSkippingTabBar()
+        try app.auditSkippingTabBar(bar: bar)
+        XCTAssertTrue(el(app, "stamp-ask-confirm:\(Self.a1)").exists,
+                      "the ask had lapsed by the end of the audit, \(Date().timeIntervalSince(armedAt)) s after arming began, so the audit may not have seen it")
     }
 }
