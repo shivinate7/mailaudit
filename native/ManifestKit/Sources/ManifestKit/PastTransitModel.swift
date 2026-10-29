@@ -89,8 +89,8 @@ public final class PastTransitModel {
     }
 
     /// The items go in whole: a refunded row keeps its place until load() (so LiveItems would be wrong here), and
-    /// pastTransit drops canceled orders itself. The owed figures take the listed packages through the bundle's
-    /// dropCanceled and groupPackages (no Swift copy of gkOf). A figure that cannot be computed is nil; the rows still load.
+    /// pastTransit drops canceled orders itself. The owed figures take the listed packages through LiveItems (canceled
+    /// and refunded packages leave the counts at once, a-refund-leaves-every-count) and the bundle's groupPackages (no Swift copy of gkOf). A figure that cannot be computed is nil; the rows still load.
     private func refresh() async throws {
         epoch += 1
         let mine = epoch
@@ -102,7 +102,7 @@ public final class PastTransitModel {
         var cards: Int?
         var value: String?
         do {
-            let live = try await engine.call("dropCanceled", "[\(try LiveItems.json(store.items()))]")
+            let live = try await LiveItems.of(store.items(), stamps: stamps, engine: engine)
             let packages = try JSONSerialization.jsonObject(with: Data(try await engine.call("groupPackages", "[\(live)]").utf8)) as? [[String: Any]] ?? []
             let owedItems = packages.filter { listed.contains($0["gk"] as? String ?? "") }.flatMap { $0["items"] as? [[String: Any]] ?? [] }
             struct Owed: Decodable { let left: Int; let value: Double }
