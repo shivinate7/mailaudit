@@ -4,29 +4,46 @@ import UIKit
 import UIKit.UIGestureRecognizerSubclass
 
 /// The one advisory line on the working screens (ruled-head-one-advisory-entrance). It shows the 401
-/// and 413 failures. Its value is the failure's code, so a test does not depend on the wording.
+/// and 413 failures, and a tap opens the Ledger tab with the Sync panel open. Its value is the failure's code,
+/// so a test does not depend on the wording. Manila with manilaInk text, a rule above and a rule below, never red:
+/// an unbacked-up ledger is a state to fix (ControlPaint's advisory parts, LedgerPaint's rule).
 struct SyncAdvisoryLine: View {
     let sync: SyncClient
+    let open: () -> Void
 
     var body: some View {
         if let code = sync.advisory, let text = SyncLine.text(for: code) {
-            Text(text)
-                .font(.footnote)
-                .padding(8)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color(uiColor: .secondarySystemBackground))
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(text)
-                .accessibilityValue(code)
-                .accessibilityIdentifier("sync-advisory")
+            Button(action: open) {
+                Text(text)
+                    .font(.cochin(13.5, relativeTo: .footnote)).lineSpacing(3)
+                    .foregroundStyle(paint(.advisoryText))
+                    .multilineTextAlignment(.leading)
+                    .padding(8)
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    // A background ignores the safe area by default and would paint under the status bar.
+                    .background(paint(.advisoryFill), ignoresSafeAreaEdges: [])
+                    .overlay(alignment: .top) { rule }
+                    .overlay(alignment: .bottom) { rule }
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(text)
+            .accessibilityValue(code)
+            .accessibilityIdentifier("sync-advisory")
+            .padding(.horizontal, 16)  // the web's column gutter, outside the element so its frame is the fill
         }
+    }
+
+    private var rule: some View {
+        Rectangle().fill(LedgerPaint.token(.advisoryRule, armed: false).map(Parchment.color) ?? .clear).frame(height: 1)
     }
 }
 
 extension View {
-    /// The advisory line above a working screen. The Ledger tab does not take it.
-    func syncLine(_ sync: SyncClient?) -> some View {
-        safeAreaInset(edge: .top, spacing: 0) { if let sync { SyncAdvisoryLine(sync: sync) } }
+    /// The advisory line above a working screen. The Ledger tab does not take it. `open` shows the Sync panel.
+    func syncLine(_ sync: SyncClient?, open: @escaping () -> Void) -> some View {
+        safeAreaInset(edge: .top, spacing: 0) { if let sync { SyncAdvisoryLine(sync: sync, open: open) } }
     }
 }
 

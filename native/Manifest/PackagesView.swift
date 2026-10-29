@@ -30,11 +30,6 @@ struct PackagesView: View {
     }
 }
 
-/// A token of shared/tokens.json as a colour, or clear when the part has no paint.
-private func paint(_ part: PackageCard.Part, _ state: LineState) -> Color {
-    PackageCard.token(part, state).map(Parchment.color) ?? .clear
-}
-
 struct PackageRow: View {
     let pkg: Package
     let model: PackagesModel
@@ -47,7 +42,20 @@ struct PackageRow: View {
         VStack(alignment: .leading, spacing: 0) {
             header
             ForEach(pkg.items, id: \.key) { item in
-                ItemLine(item: item, state: state(item), model: model, masthead: masthead)
+                ItemLine(
+                    state: state(item), name: item.name, title: item.name, detail: model.details[item.key] ?? "",
+                    price: item.price, readout: model.readouts[item.key], checkInValue: model.labels[item.key] ?? "",
+                    checkInID: "checkin:\(item.key)", key: item.key,
+                    onTap: {
+                        masthead.saving()
+                        await model.tap(key: item.key)  // a failure shows in model.checkInError
+                        await masthead.finished(failed: model.checkInError != nil)
+                    },
+                    onStep: { delta in
+                        masthead.saving()
+                        await model.step(key: item.key, by: delta)  // a failure shows in model.checkInError
+                        await masthead.finished(failed: model.checkInError != nil)
+                    })
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -148,102 +156,5 @@ struct PackageRow: View {
                 .accessibilityLabel("\(Int((fraction * Double(total)).rounded())) of \(total) copies in")
                 .accessibilityIdentifier("card-bar:\(pkg.gk)")
         }
-    }
-}
-
-/// One item: a 45pt check-in frame holding a 30pt square box, the name and detail in Cochin, the price in mono.
-private struct ItemLine: View {
-    let item: LedgerItem
-    let state: LineState
-    let model: PackagesModel
-    let masthead: MastheadModel
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Button {
-                Task {
-                    masthead.saving()
-                    await model.tap(key: item.key)  // a failure shows in model.checkInError
-                    await masthead.finished(failed: model.checkInError != nil)
-                }
-            } label: {
-                box.frame(width: 45, height: 45)  // 45: layout rounding made a 44pt frame read 43.99999
-            }
-            .accessibilityLabel("\(state == .done ? "Undo check in" : "Check in") \(item.name)")
-            .accessibilityValue(model.labels[item.key] ?? "")
-            .accessibilityIdentifier("checkin:\(item.key)")
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(item.name).font(.cochin(14).weight(.semibold)).foregroundStyle(paint(.name, state))
-                    Spacer(minLength: 0)
-                    Text(PackageCard.priceText(item.price)).font(.mono(12)).foregroundStyle(paint(.price, state)).fixedSize()
-                        .accessibilityLabel("Price \(PackageCard.priceText(item.price))")
-                }
-                Text(model.details[item.key] ?? "").font(.cochin(11.5)).foregroundStyle(paint(.detail, state))
-                if let readout = model.readouts[item.key] { stepper(readout) }
-            }
-            .padding(.vertical, 12)  // as the web row: 12 above and below
-            .padding(.trailing, 12)
-        }
-        .padding(.leading, 4)
-        .frame(minHeight: 45, alignment: .top)
-        .background(paint(.rowFill, state))
-        .overlay(alignment: .top) { paint(.rule, state).frame(height: 1) }
-    }
-
-    /// The web stepper under the detail line: − got/qty +. Each button moves the count by one through
-    /// model.step, the checkbox's save path. A button is a 34pt square, as on the web, in a 44pt hit frame.
-    private func stepper(_ readout: String) -> some View {
-        HStack(spacing: 4) {
-            stepButton("\u{2013}", by: -1, label: "One fewer received", id: "step-minus")
-            count(readout).frame(minWidth: 44)
-            stepButton("+", by: 1, label: "One more received", id: "step-plus")
-        }
-        .padding(.top, 4)  // with the column's 4pt spacing, the web's 8pt margin
-    }
-
-    private func stepButton(_ glyph: String, by delta: Int, label: String, id: String) -> some View {
-        Button {
-            Task {
-                masthead.saving()
-                await model.step(key: item.key, by: delta)  // a failure shows in model.checkInError
-                await masthead.finished(failed: model.checkInError != nil)
-            }
-        } label: {
-            Text(glyph).font(.system(size: 16)).foregroundStyle(paint(.name, .open))
-                .frame(width: 34, height: 34)
-                .background(RoundedRectangle(cornerRadius: 8).fill(paint(.surface, .open)))
-                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.rule, .open), lineWidth: 1))
-                .frame(width: 44, height: 44)
-                .contentShape(Rectangle())
-        }
-        .accessibilityLabel(label)
-        .accessibilityIdentifier("\(id):\(item.key)")
-    }
-
-    /// How many of a multi-copy line are in, as the web's got/qty (the bundle's gotQty). An invisible qty/qty sets
-    /// the width, so a shorter figure (10/12 to 9/12) never changes the row. A partly received line is bold.
-    /// No accessibilityLabel: the text is the label, so "0/2" stays readable to the UI test.
-    private func count(_ readout: String) -> some View {
-        Text("\(item.qty)/\(item.qty)").font(.mono(13))
-            .hidden()
-            .overlay {
-                Text(readout).font(.mono(13).weight(state == .partial ? .bold : .regular))
-                    .foregroundStyle(paint(.name, state)).fixedSize()
-                    .accessibilityIdentifier("got-qty:\(item.key)")
-            }
-    }
-
-    private var box: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 8).fill(paint(.boxFill, state))
-            RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.boxBorder, state), lineWidth: 2)
-            switch state {
-            case .done: Image(systemName: "checkmark").font(.system(size: 15, weight: .heavy)).foregroundStyle(paint(.boxMark, state))
-            case .partial: Text("\u{2013}").font(.system(size: 16)).foregroundStyle(paint(.boxMark, state))
-            case .open: EmptyView()
-            }
-        }
-        .frame(width: 30, height: 30)
     }
 }

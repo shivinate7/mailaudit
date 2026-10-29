@@ -252,10 +252,25 @@ final class VersionsUITests: XCTestCase {
         let restore = try reveal(app, "restore")
         assertHit(restore, "Restore")
         let restoreBox = restore.frame
-        restore.tap()
-        waitFor(el(app, "restore"), "label == %@", "Tap again to replace 0 cards", "armed")
+        // The x of that: the second tap lands where the first did (no-layout-shift-under-pointer). The web Restore is
+        // flex:1, so its hit region spans the row. Restore fills the row, and Cancel sits in an 80pt slot after it that
+        // is kept free all along, so arming moves nothing and the tap point stays on Restore. The check taps, twice, at
+        // the middle of the version row, which is right of where the pill is drawn, and reads what the second tap did.
+        // A Restore at its natural width has no hit region there: the first tap arms nothing. A tap on the pill's own
+        // leading part is not covered here. Taps and not frames, so the hit test is the app's own.
+        let firstTap = CGPoint(x: row.frame.midX, y: restoreBox.midY)
+        tap(app, at: firstTap)
+        waitFor(el(app, "restore"), "label == %@", "Tap again to replace 0 cards",
+                "a tap at \(firstTap), the middle of the row, arms Restore: its hit region spans the row")
         XCTAssertEqual(el(app, "restore").frame.minY, restoreBox.minY, accuracy: 0.5, "the armed Restore arms in place")
         assertHit(el(app, "restore"), "armed Restore")
         assertHit(try need(app, "restore-cancel"), "Restore's Cancel")
+        tap(app, at: firstTap)
+        XCTAssertEqual(try mastheadCards(app), "0/14", "a second tap at \(firstTap) confirmed the restore: Cancel did not take it")
+    }
+
+    /// A tap at a point in the app's own coordinate space, whatever sits there.
+    func tap(_ app: XCUIApplication, at point: CGPoint) {
+        app.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: point.x, dy: point.y)).tap()
     }
 }

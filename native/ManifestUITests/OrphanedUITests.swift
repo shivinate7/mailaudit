@@ -234,27 +234,103 @@ final class OrphanedUITests: XCTestCase {
     // MARK: accessibility and hit regions
 
     /// The audit runs on a view only the real Orphaned view has: first the composer, then an envelope with a tie.
-    /// The empty composer's Save is disabled, and WCAG 1.4.3 exempts inactive components, so only a contrast
-    /// issue on a disabled element is skipped. Every other issue, and any enabled element's contrast, still fails.
+    /// The empty composer's Save is disabled, and WCAG 1.4.3 exempts inactive components, so a contrast issue on a
+    /// disabled element is skipped. So is the ruled contrast flag on Cancel (skipMeasuredContrastFlags) and the system
+    /// keyboard's prediction cells (skipKeyboardPredictionCells). Every other issue, and any other enabled element's
+    /// contrast, still fails.
     func testAccessibilityAuditOrphanedComposer() throws {
         let app = launch()
         openOrphaned(app)
         el(app, "orphaned-record").tap()
         XCTAssertTrue(el(app, "orphaned-input").waitForExistence(timeout: 5), "the composer did not open before the audit")
-        try app.performAccessibilityAudit { issue in
-            issue.auditType == .contrast && issue.element?.isEnabled == false
+        try app.auditNamingElements(skipping: Self.composerAuditSkips)
+    }
+
+    /// The one exemption of the empty composer's audit: a contrast issue on a disabled element (WCAG 1.4.3).
+    static func inactiveContrast(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
+        issue.auditType == .contrast && issue.element?.isEnabled == false
+    }
+
+    /// What the empty composer's audits skip: a disabled element's contrast, and the ruled Cancel flag.
+    static func composerContrastSkips(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
+        inactiveContrast(issue) || skipMeasuredContrastFlags(issue)
+    }
+
+    /// What the two composer audits skip, and no other audit: the contrast skips, and the system keyboard's
+    /// prediction cells, which the open composer's keyboard draws (audit-skips-measured-flags).
+    static func composerAuditSkips(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
+        composerContrastSkips(issue) || skipKeyboardPredictionCells(issue)
+    }
+
+    /// Waits until the keyboard is on screen and its frame has held still for three reads, 0.2s apart. Returns what
+    /// it saw, for the log. The composer autofocuses, so the keyboard slides up on its own after the composer opens.
+    /// A keyboard that exists but sits below the window (its frame starts past the bottom edge) is not settled: it is
+    /// still sliding up, or it is not drawn at all. The log says which reading it ended on.
+    func settleKeyboard(_ app: XCUIApplication, timeout: TimeInterval = 8) -> String {
+        let keyboard = app.keyboards.firstMatch
+        let bottom = app.windows.firstMatch.frame.maxY
+        let start = Date()
+        guard keyboard.waitForExistence(timeout: timeout) else { return "no keyboard after \(timeout)s" }
+        var last = keyboard.frame, still = 0
+        while still < 3 && Date().timeIntervalSince(start) < timeout {
+            Thread.sleep(forTimeInterval: 0.2)
+            let now = keyboard.frame
+            still = now == last && now.maxY <= bottom + 1 ? still + 1 : 0
+            last = now
         }
+        let took = String(format: "%.1f", Date().timeIntervalSince(start))
+        return "keyboard frame \(last) in a window \(bottom)pt high, \(last.maxY <= bottom + 1 ? "on screen" : "NOT on screen"), still reads \(still) of 3 after \(took)s"
+    }
+
+    /// Probe for an intermittent audit issue on the composer: "Potentially inaccessible text", with no element and
+    /// a zero frame, in 3 of 5 runs. This waits for the keyboard to settle first, then audits, and logs every issue
+    /// the audit raises (the exempt ones too) with its type, element and frame, plus the screen's accessibility tree
+    /// as an attachment. It adds no skip beyond the ones the empty composer's audit already has. Run it with
+    /// -test-iterations 5 and read the PROBE-AUDIT lines of the log: they say whether the keyboard was on screen
+    /// when the audit ran, and what each iteration's audit raised. A green run with the keyboard off screen
+    /// proves nothing about the settle.
+    func testAccessibilityAuditOrphanedComposerAfterTheKeyboardSettles() throws {
+        let app = launch()
+        openOrphaned(app)
+        el(app, "orphaned-record").tap()
+        XCTAssertTrue(el(app, "orphaned-input").waitForExistence(timeout: 5), "the composer did not open before the audit")
+        let settled = settleKeyboard(app)
+        var seen: [String] = []
+        defer {
+            let log = (["settle: \(settled)"] + (seen.isEmpty ? ["the audit raised no issue"] : seen)).joined(separator: "\n")
+            print("PROBE-AUDIT\n\(log)")
+            add(XCTAttachment(string: log + "\n\n" + app.debugDescription))
+        }
+        try app.auditNamingElements(skipping: { issue in
+            let element = issue.element.map { "id=\($0.identifier) label=\($0.label) frame=\($0.frame)" } ?? "no element"
+            seen.append("\(issue.auditType.rawValue) | \(issue.compactDescription) | \(issue.detailedDescription) | \(element)")
+            return Self.composerAuditSkips(issue)
+        })
+    }
+
+    /// The composer's fields keep what VoiceOver and Voice Control read: the card-name field is labelled
+    /// "Card name", and both fields expose their placeholder text.
+    func testComposerFieldsKeepTheirLabelAndPlaceholder() throws {
+        let app = launch()
+        openOrphaned(app)
+        el(app, "orphaned-record").tap()
+        let input = el(app, "orphaned-input"), note = el(app, "orphaned-note")
+        XCTAssertTrue(input.waitForExistence(timeout: 5), "the composer has no input")
+        XCTAssertTrue(note.exists, "the composer has no note field")
+        XCTAssertEqual(input.label, "Card name", "the card-name field lost its accessibility label")
+        XCTAssertFalse((input.placeholderValue ?? "").isEmpty, "orphaned-input exposes no placeholder")
+        XCTAssertFalse((note.placeholderValue ?? "").isEmpty, "orphaned-note exposes no placeholder")
     }
 
     /// The ready composer: a card is added, so Save is enabled and its contrast is audited like any control.
-    /// No issue is skipped here, so nothing in this state is exempt.
+    /// Only the ruled contrast flag on Cancel is skipped (skipMeasuredContrastFlags), so Save is not exempt.
     func testAccessibilityAuditOrphanedComposerReady() throws {
         let app = launch()
         openOrphaned(app)
         el(app, "orphaned-record").tap()
         addCard(app, typed: "urza", name: "Urza's Saga")
         XCTAssertTrue(el(app, "orphaned-save").isEnabled, "a card is added but Save is still disabled before the audit")
-        try app.performAccessibilityAudit()
+        try app.auditNamingElements(skipping: skipMeasuredContrastFlags)
     }
 
     /// Save reports its real state to VoiceOver: disabled while the composer holds no card, enabled once it does.
@@ -274,7 +350,7 @@ final class OrphanedUITests: XCTestCase {
         openOrphaned(app)
         recordTie(app)
         XCTAssertTrue(el(app, "assign:\(Self.a1)").waitForExistence(timeout: 5), "the candidates did not show before the audit")
-        try app.performAccessibilityAudit()
+        try app.auditNamingElements(skipping: skipMeasuredContrastFlags)
     }
 
     /// Every control the owner taps has a hit region of at least 44pt, and the assign Undo too.
@@ -298,6 +374,8 @@ final class OrphanedUITests: XCTestCase {
 
     /// The hit region is the whole control, not the label inside it: a .frame after the button style leaves the
     /// tappable area at the label's size. Every control on an envelope card is measured here, and every candidate row.
+    /// Edit and Discard must each be one element: the helpers read firstMatch, so a second element with the same id
+    /// would pass unseen. The count assertions guard that.
     func testEnvelopeCardControlsHaveA44ptHitRegion() throws {
         let app = launch()
         openOrphaned(app)
@@ -306,6 +384,8 @@ final class OrphanedUITests: XCTestCase {
 
         assertHit(app.buttons["Edit"].firstMatch, "Edit")
         assertHit(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "discard:")).firstMatch, "Discard")
+        XCTAssertEqual(count(app, prefix: "orphaned-edit:"), 1, "Edit's id is on more than one element")
+        XCTAssertEqual(count(app, prefix: "discard:"), 1, "Discard's id is on more than one element")
         assertHit(app.buttons["show 1 more candidate"], "show more")
         let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "assign:"))
         XCTAssertEqual(rows.count, 3, "the card shows three candidate rows before show more")
@@ -315,6 +395,31 @@ final class OrphanedUITests: XCTestCase {
         assertHit(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Tap again to discard")).firstMatch, "the discard ask")
         assertHit(app.buttons["Cancel"].firstMatch, "the discard ask's Cancel")
     }
+
+    // MARK: tab badge
+
+    /// The Orphaned tab carries the count of live envelopes as a system badge, and none at zero
+    /// (phone-nav-is-bottom-bar). The tab is read while another tab is selected, so a selected-state
+    /// value cannot stand in for a badge, and the count is 2, so a bare dot cannot pass.
+    /// Unmeasured until a build draws one: that XCUI reports a system badge as the tab button's value,
+    /// and in what format. The check is "contains" for that reason. The first green run settles it.
+    func testTheOrphanedTabBadgeShowsTheLiveEnvelopeCount() throws {
+        let app = launch()
+        let orphaned = tab(app, "Orphaned")
+        XCTAssertTrue(orphaned.waitForExistence(timeout: 5), "the tab bar has no Orphaned tab")
+        XCTAssertNil(badge(orphaned).rangeOfCharacter(from: .decimalDigits), "an empty pile shows a badge: \(badge(orphaned))")
+
+        openOrphaned(app)
+        recordSaga(app)
+        recordSaga(app)
+        tab(app, "Tally").tap()
+
+        for _ in 0..<25 where !badge(orphaned).contains("2") { Thread.sleep(forTimeInterval: 0.2) }
+        XCTAssertTrue(badge(orphaned).contains("2"), "two envelopes in the pile, and the Orphaned tab's value is '\(badge(orphaned))'")
+    }
+
+    /// The tab button's value: a system badge's text, empty when there is none.
+    func badge(_ tab: XCUIElement) -> String { tab.value as? String ?? "" }
 
     /// A frame comes back with float noise (a minHeight 44 row reads 43.99999999999997), so the floor has a
     /// thousandth of a point of slack. A real miss is a third of a point or more short.

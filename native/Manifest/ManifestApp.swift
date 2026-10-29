@@ -20,7 +20,7 @@ struct ManifestApp: App {
     private let links = PendingKeyLinks()
     private static let log = Logger(subsystem: "dev.shivinate.manifest", category: "key-link")
 
-    init() { Parchment.load() }
+    init() { Parchment.load(); Parchment.paintTabBadge() }
 
     var body: some Scene {
         WindowGroup {
@@ -127,6 +127,9 @@ struct ManifestApp: App {
             client.socket = URLSessionSyncSocket(baseURL: Self.workerURL)
             client.photoStore = PhotoStore(folder: PhotoStore.folder(besideLedger: ledgerURL), engine: engine)
         }
+        // A seeded UI run starts without a saved time, as it starts with no saved versions, so a run never reads an earlier one's.
+        if ProcessInfo.processInfo.arguments.contains("-ManifestUITestSeed") { UserDefaults.standard.removeObject(forKey: SyncClient.lastSyncKey) }
+        client.persistLastSync(in: .standard)
         let pressGate = PressGate(engine: engine, now: { Date().timeIntervalSince1970 * 1000 }, sleep: sleep)
         client.pressGate = pressGate
         client.onApplied = reload

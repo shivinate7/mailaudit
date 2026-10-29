@@ -280,6 +280,7 @@ Where the page holds its shape, and where every colour comes from.
 - `palette-silver-stays-cool` — Silver must stay a cool grey.
 - `palette-theme-color-tracks-paper` — The browser chrome colour must track the paper token.
 - `palette-tokens-contrast-floor` — Every colour token meets a contrast floor.
+- `audit-skips-measured-flags` — The native audits skip only named, owner-ruled findings.
 - `progress-bar-accent-then-green` — The progress bar is accent, then green at 100%.
 - `typography-cochin-and-mono` — Cochin sets words, monospace sets numbers.
 
@@ -388,7 +389,10 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-dialog-ban-unpinned` — Nothing pins the ban on native dialogs.
 - `ruled-head-heights-unremeasured` — The ruled head heights have not been re-measured.
 - `photo-put-unrun-on-github` — The GitHub photo PUT and pull have never run.
-- `native-ledger-tab-unbuilt` — The native Ledger tab lacks the View and Sync groups.
+- `tally-audit-contrast-flags` — The Tally audit flags contrast and inaccessible text that the token pairs clear.
+- `web-armed-restore-moves` — The web armed Restore moves under the pointer.
+- `native-restore-pill-tap-unpinned` — No test taps the leading part of the native Restore pill.
+- `native-ledger-tab-unbuilt` — The native Ledger tab lacks the View group.
 - `native-restore-keeps-old-times` — A native restore keeps the old change times.
 - `reset-vs-worker-copy-unmeasured` — A Reset's effect on the Worker's copy is unmeasured.
 - `native-milestone-needed-unpinned` — No test pins that a native operation needs its milestone.
@@ -396,19 +400,21 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-removal-rule-is-swift` — The test for a removing reply is Swift code.
 - `native-version-names-unpinned` — No test pins the version file names.
 - `native-filters-tally-only` — The native client has no date filter, package sort, Packages search or stamped filter.
-- `native-tally-copy-no-stepper` — The native Tally copy has a check-in toggle and nothing else.
+- `native-tally-copy-no-flags` — The native Tally copy has no lost-mail flag and no order id tap.
 - `native-envelope-has-no-photos` — Native envelopes have no photos.
-- `native-orphaned-colours-unbuilt` — The native Orphaned view uses system colours.
+- `native-orphaned-colours-unbuilt` — The native Orphaned composer audits flag text with no element.
+- `native-candidate-lines-wrap` — Native candidate seller and meta lines wrap.
+- `native-undo-notice-padding` — The native Undo notice pads 4pt, not 8pt.
+- `native-composer-fields-two-lines` — The native composer fields draw two lines tall.
 - `native-discard-arm-unpinned` — No test pins the native Discard arm.
 - `native-key-scan-skips-views` — The native key scan skips SwiftUI view state.
 - `native-masthead-packages-only` — The native masthead shows on Packages only.
 - `native-compose-is-one-fade` — The native letterhead composes in one fade.
 - `native-card-lost-flags-unbuilt` — The native package card has no lost-mail flag and no tracked glyph.
 - `native-seller-scale-unmeasured` — The native seller shrinks to half size, and the cause is unmeasured.
-- `native-card-stepper-unpinned` — No unit test pins the native card stepper clamp or its readouts.
 - `native-card-gestures-unpinned` — No UI test pins the native card header gestures.
 - `native-card-state-in-swift` — The native card copies the line and package done rules in Swift.
-- `native-partial-count-colour` — The native partial count paints ink, where the web paints manila ink.
+- `native-sync-tally-rules-in-swift` — The native Sync panel and Tally row copy six view rules in Swift.
 - `native-backup-has-no-photos` — Native Backup holds no photos.
 - `native-backup-ui-unpinned` — No UI test taps Backup.
 - `native-backup-web-restore-unrun` — No test restores a native backup file on the web.
@@ -454,6 +460,10 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `tracking-checker-unbuilt` — A future checker that passively checks tracking numbers. It blocks nothing.
 - `orders-job-unbuilt` — The Worker orders cron, its key test and its status screen are unbuilt.
 - `hand-type-not-serialised` — Card in Hand does not serialise typed names.
+- `native-tally-ellipsis-unpinned` — Nothing pins the native Tally ellipsis.
+- `native-discard-panel-covers-head` — The native armed Discard panel covers the envelope header.
+- `native-axl-rows-break` — Three native rows break at accessibility text sizes.
+- `sim-test-diagnose-and-pin` — sim-test runs simctl diagnose and can pick the Duo.
 
 ## Measurements
 

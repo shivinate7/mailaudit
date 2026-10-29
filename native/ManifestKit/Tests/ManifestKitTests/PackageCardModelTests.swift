@@ -243,4 +243,23 @@ final class PackageCardModelTests: XCTestCase {
         ]
         for (price, want) in cases { XCTAssertEqual(PackageCard.priceText(price), want, "price \(price)") }
     }
+
+    // MARK: the stepper
+
+    /// The clamp at both ends on Brainstorm (qty 2), and the readout after each step. TallyModelTests walks the same
+    /// sequence on TallyModel (StepperSupport.swift). A one-unit line has no readout.
+    func testStepClampsAtZeroAndAtQty() async throws {
+        let m = try await loadedModel()
+        XCTAssertNil(m.readouts[Self.bolt], "a one-unit line has no readout")
+        await assertStepperClamps(m, key: Self.brain)
+    }
+
+    func testStepFromAnOverCountStartsFromTheClampedFigure() async throws {
+        try await assertStepFromAnOverCount(try await loadedModel(), key: Self.brain)
+    }
+
+    /// gotQty put in a marker form. The readout must follow it, as the web's stepper prints the bundle's text.
+    func testReadoutComesFromTheBundleGotQty() async throws {
+        await assertReadoutComesFromTheBundle(try await loadedModel(rules: try shimBundle(gotQtyShim)), key: Self.brain)
+    }
 }

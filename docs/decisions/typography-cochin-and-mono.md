@@ -1,6 +1,6 @@
 # Cochin sets words, monospace sets numbers
 
-Cochin sets everything that is not a number. Monospace sets numbers, ids, and labels. The app has no sans-serif font.
+Cochin sets everything that is not a number. Monospace sets numbers, ids, and labels. The app has no sans-serif font. One exception: the Sync panel's labels are Cochin. The owner ruled on 2026-10-27 12:25 CDT to record it.
 
 **Holds while:** the `cochin` and `mono` constants are defined in `src/app.jsx`, no `sans` constant is defined there, and the root `div` sets `fontFamily: cochin`.
 

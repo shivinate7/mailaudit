@@ -23,6 +23,38 @@ public final class SyncClient {
     /// The `stats` of the last adopted reply; nil when that reply carried none.
     public private(set) var stats: [String: Int]?
 
+    /// Milliseconds since 1970 when a call last agreed with the Worker: an adopted reply, or a 404 from a healthy server
+    /// with nothing stored. nil until then. A failure leaves it alone, and it never moves back (web workerSyncedAt, Math.max).
+    public private(set) var lastSyncAt: Double?
+    /// Called with each new lastSyncAt, so the app can keep it across a relaunch. Nothing is stored here.
+    public var onLastSync: (@MainActor (Double) -> Void)?
+
+    /// Where the Worker stands, read on demand (src/app.jsx serverStatus). The web's ladder, first match wins.
+    public var serverState: SyncServerState {
+        let key: String?
+        do { key = try keys.key() } catch { return .notChecked }  // could not look is not no key
+        if key == nil { return .noKey }
+        switch advisory {
+        case "no-access": return .refused
+        case "bad-shape": return .badShape
+        case "too-big": return .tooBig
+        case nil: return .connected
+        default: return .unreachable
+        }
+    }
+
+    /// The Server line of the Sync panel.
+    public var serverStatus: String { serverState.text }
+
+    /// The defaults key of lastSyncAt. It is frozen (native-files-are-frozen): renaming it drops every saved time.
+    public static let lastSyncKey = "dev.shivinate.manifest.lastSyncAt"
+
+    /// Keeps lastSyncAt across a relaunch, as the web keeps workerSyncedAt: reads it back now, and writes each new one.
+    public func persistLastSync(in defaults: UserDefaults) {
+        lastSyncAt = defaults.object(forKey: Self.lastSyncKey) as? Double
+        onLastSync = { defaults.set($0, forKey: Self.lastSyncKey) }
+    }
+
     /// nil: no press holds a reply.
     public var pressGate: PressGate?
     /// nil: connect() does nothing.
@@ -301,7 +333,13 @@ public final class SyncClient {
 
     private func succeeded(fromPost: Bool) {
         // After a 413 only a good POST clears the size state.
-        if fromPost || advisory != "too-big" { clearBackoff() }
+        if fromPost || advisory != "too-big" {
+            clearBackoff()
+            let now = Date().timeIntervalSince1970 * 1000
+            let at = max(lastSyncAt ?? 0, now)
+            lastSyncAt = at
+            onLastSync?(at)
+        }
     }
 
     private func clearBackoff() {

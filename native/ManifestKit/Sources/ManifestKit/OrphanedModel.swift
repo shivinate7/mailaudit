@@ -18,6 +18,8 @@ public final class OrphanedModel {
     /// Set when a save fails; the call throws too. Cleared by the next save that works.
     public private(set) var error: String?
     private var rankings: [String: Ranked] = [:]
+    /// Package gks the bundle's isUntracked calls untracked, for the candidate rows' tag.
+    private var untracked: Set<String> = []
     private var drafts: [ComposerTarget: EnvelopeDraft] = [:]
     @ObservationIgnored private var pool: [OutstandingName] = []
     /// The store generation the rankings were read at. A write since makes them stale.
@@ -94,13 +96,29 @@ public final class OrphanedModel {
             next[env.id] = Ranked(list: r.list, tied: r.tied, explainable: explainable)
         }
         for rec in recs { for e in Self.entries(of: rec) { _ = try await norm(e.name) } }
+        var seen: [String: String] = [:]
+        for r in next.values { for c in r.list { seen[c.pkg.gk] = c.pkg.tracking } }
+        var nextUntracked: Set<String> = []
+        for (gk, tracking) in seen {
+            let out = try await engine.call("isUntracked", "[{\"tracking\":\(try json(tracking))}]")
+            if out == "true" { nextUntracked.insert(gk) }
+        }
+        untracked = nextUntracked
         pool = nextPool
+        // A suggestion tap then adds with no hop to the rules actor, so Save is ready the moment the card shows.
+        for p in nextPool { norms[p.name] = p.nk }
         rankings = next
         envelopes = recs.compactMap(Self.envelope)
         rankedAt = gen
     }
 
+    /// The Orphaned tab's badge: live envelopes. `envelopes` holds no tombstone, and zero hides the badge.
+    public var badgeCount: Int { envelopes.count }
+
     public func ranked(for envelopeId: String) -> Ranked { rankings[envelopeId] ?? .none }
+
+    /// The bundle's isUntracked for a candidate's package.
+    public func isUntracked(_ gk: String) -> Bool { untracked.contains(gk) }
 
     /// True when no outstanding copy of this entry exists anywhere (the web's "no outstanding copy" tag).
     public func hasNoOutstandingCopy(_ entry: EnvelopeEntry, in envelopeId: String) -> Bool {

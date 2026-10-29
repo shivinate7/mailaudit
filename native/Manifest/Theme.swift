@@ -14,6 +14,23 @@ enum Parchment {
     /// Decode at launch, so a bad bundle stops the app on the first frame and not on the first screen to paint.
     static func load() { _ = palette }
 
+    /// The tab bar's badge is the red token with card text (OrphanedPaint.badgeFill, badgeText). Only the
+    /// badge is set; the bar keeps its default glass, tint and item colours.
+    static func paintTabBadge() {
+        let item = UITabBarItemAppearance()
+        item.normal.badgeBackgroundColor = UIColor(color(OrphanedPaint.token(.badgeFill) ?? "red"))
+        item.normal.badgeTextAttributes = [.foregroundColor: UIColor(color(OrphanedPaint.token(.badgeText) ?? "card"))]
+        item.selected.badgeBackgroundColor = item.normal.badgeBackgroundColor
+        item.selected.badgeTextAttributes = item.normal.badgeTextAttributes
+        let bar = UITabBarAppearance()
+        bar.configureWithDefaultBackground()
+        bar.stackedLayoutAppearance = item
+        bar.inlineLayoutAppearance = item
+        bar.compactInlineLayoutAppearance = item
+        UITabBar.appearance().standardAppearance = bar
+        UITabBar.appearance().scrollEdgeAppearance = bar
+    }
+
     static func color(_ token: String) -> Color {
         guard let c = palette.tokens[token] else { fatalError("no token \(token) in shared/tokens.json") }
         return Color(.sRGB, red: Double(c.red) / 255, green: Double(c.green) / 255, blue: Double(c.blue) / 255, opacity: c.alpha)

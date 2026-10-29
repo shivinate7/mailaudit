@@ -138,6 +138,37 @@ final class OrphanedCandidatesTests: XCTestCase {
         XCTAssertEqual(found, [], "and its card is not suggested")
     }
 
+    // MARK: untracked tag
+
+    /// The model passes each offered package's tracking status through the bundle's isUntracked, and
+    /// holds no matching of its own. The statuses are the web's own: "without tracking" and
+    /// "with tracking" from shared/fixtures/ledger.json, and the mixed-case "Without Tracking" the
+    /// rule's V2.13 case holds. A Swift `==` on the string would miss the third. The anchor is the
+    /// offered list, so the tracked package is a real candidate and not just absent.
+    func testTheUntrackedTagFollowsTheBundlesRuleForEachOfferedPackage() async throws {
+        let box = try makeOrphanedSandbox()
+        var items = try OrphanedSandbox.fixtureItems()
+        items.append([
+            "key": "X1|0|pBlackLotus", "orderId": "X1", "seller": "Xi Cards", "name": "Black Lotus", "set": "Test Set",
+            "condition": "Near Mint", "finish": "", "qty": 1, "price": 9, "date": "2026-08-01", "tracking": "Without Tracking",
+            "line": "Magic",
+        ])
+        try box.write(items: items, extra: ["envelopes": [
+            OrphanedSandbox.env("e-bolt", [("Lightning Bolt", 1)]),
+            OrphanedSandbox.env("e-lotus", [("Black Lotus", 1)]),
+        ]])
+        let (model, _) = try await box.open()
+
+        let offered = model.ranked(for: "e-bolt").list.map(\.pkg.gk)
+        XCTAssertEqual(Set(offered), [OrphanedSandbox.a1, OrphanedSandbox.b1, OrphanedSandbox.c1], "anchor: all three packages holding the card are offered")
+        XCTAssertTrue(model.isUntracked(OrphanedSandbox.a1), "a package that ships without tracking is tagged")
+        XCTAssertTrue(model.isUntracked(OrphanedSandbox.b1), "and so is the other one")
+        XCTAssertFalse(model.isUntracked(OrphanedSandbox.c1), "a tracked package is not")
+        XCTAssertEqual(model.ranked(for: "e-lotus").list.map(\.pkg.gk), ["X1::Xi Cards"], "anchor: the mixed-case package is offered")
+        XCTAssertTrue(model.isUntracked("X1::Xi Cards"), "the bundle's rule ignores case, so the tag does too")
+        XCTAssertFalse(model.isUntracked("Z9::No Such Seller"), "an unknown package is not tagged")
+    }
+
     // MARK: derived, never stored
 
     /// A package received by other means stops being offered at once, with nothing stale to
