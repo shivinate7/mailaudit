@@ -140,4 +140,35 @@ extension XCTestCase {
         XCTAssertGreaterThan(f.maxX, win.midX + DuoMetrics.foldMargin, "the \(what) stops at the fold", file: file, line: line)
         XCTAssertGreaterThan(f.width, win.width * 0.9, "the \(what) is not full width", file: file, line: line)
     }
+
+    /// Waits up to 5 s for the system tab bar's `tab` button to become the selected one. The failure names the tab that is
+    /// selected instead, which tells a tap that never landed from a tab that switched and went back.
+    @MainActor func waitForSelectedTab(_ tab: String, in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        let on = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isSelected == true"), object: app.tabBars.buttons[tab])
+        XCTAssertEqual(XCTWaiter.wait(for: [on], timeout: 5), .completed,
+                       "the \(tab) tab never became the selected one (the selected tab is \(app.selectedTabLabel))", file: file, line: line)
+    }
+
+    /// Keeps `text` as an attachment of a named activity, so a diagnostic survives in the result bundle as well as the run log.
+    @MainActor func attachDiag(_ name: String, _ text: String) {
+        XCTContext.runActivity(named: name) { activity in
+            let note = XCTAttachment(string: text)
+            note.lifetime = .keepAlways
+            activity.add(note)
+        }
+    }
+}
+
+extension XCUIApplication {
+    /// The label of the selected button in the system tab bar, "none" when no button has the selected trait, "no tab bar" when
+    /// the bar is missing (the open Duo hides it). One snapshot, so the read is of one instant, and `try?` keeps it from
+    /// failing a test: a bar that leaves mid-read gives "no tab bar".
+    var selectedTabLabel: String {
+        guard let bar = try? tabBars.firstMatch.snapshot() else { return "no tab bar" }
+        func buttons(_ s: any XCUIElementSnapshot) -> [any XCUIElementSnapshot] {
+            s.children.flatMap { ($0.elementType == .button ? [$0] : []) + buttons($0) }
+        }
+        let on = buttons(bar).filter(\.isSelected).map(\.label)
+        return on.isEmpty ? "none" : on.joined(separator: ", ")
+    }
 }

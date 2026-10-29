@@ -394,11 +394,7 @@ final class DuoHandUITests: XCTestCase {
         }
         let text = "HAND-DIAG \(when)\n" + lines.map { "  " + $0 }.joined(separator: "\n")
         print(text)
-        XCTContext.runActivity(named: "HAND-DIAG \(when)") { activity in
-            let note = XCTAttachment(string: text)
-            note.lifetime = .keepAlways
-            activity.add(note)
-        }
+        attachDiag("HAND-DIAG \(when)", text)
     }
 
     /// The hand-hit rows, top to bottom, once exactly `count` show (a short poll: the list settles 150 ms after the last key

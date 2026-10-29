@@ -373,12 +373,42 @@ final class DuoSpreadUITests: XCTestCase {
 
     /// Pose: closed (outer screen, window 466 x 678 pt). Tally is one page: its rows run across the window, a tap opens the
     /// row in place, and there is no right page. A guard, not a red test: the app already draws one page when closed.
+    /// Diagnostics, no assertion and no re-tap (a re-tap would hide a dropped tap). Polls the selected tab every 0.1 s for
+    /// `seconds` after the tap returned and prints a TALLY-DIAG line each time it changes from `first`, then an end line, so a
+    /// tap that never switched (no change lines) reads differently from a switch that reverted (a change, then a change back).
+    /// The lines go to the run log and to an attachment, like HAND-DIAG in DuoHandUITests.
+    func watchSelectedTab(_ app: XCUIApplication, from first: String, seconds: TimeInterval = 3) {
+        var lines: [String] = []
+        func note(_ line: String) { print(line); lines.append(line) }
+        var last = first, changes = 0
+        let start = Date()
+        while true {
+            let t = Date().timeIntervalSince(start)
+            let now = app.selectedTabLabel
+            if now != last {
+                changes += 1
+                note("TALLY-DIAG t=\(String(format: "%.2f", t)) selected=\(now)")
+                last = now
+            }
+            if t >= seconds { break }
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        note("TALLY-DIAG end t=\(String(format: "%.2f", Date().timeIntervalSince(start))) selected=\(last) changes=\(changes)")
+        attachDiag("TALLY-DIAG", lines.joined(separator: "\n"))
+    }
+
     func testClosedTallyIsOnePage() {
         let app = XCUIApplication.launchedOnSeed()
+        let launchIdle = Date()
         guard app.requirePose(.closed) else { return }
         let tab = app.tabBars.buttons["Tally"]
         XCTAssertTrue(tab.waitForExistence(timeout: 5), "the system tab bar has no Tally tab on the closed Duo")
+        let before = app.selectedTabLabel
+        print("TALLY-DIAG selected=\(before)")
+        print("TALLY-DIAG launch-to-tap=\(String(format: "%.2f", Date().timeIntervalSince(launchIdle))) s (from the end of app.launch())")
         tab.tap()
+        watchSelectedTab(app, from: before)
+        waitForSelectedTab("Tally", in: app)
         let row = app.byID("tally-row:Lightning Bolt")
         XCTAssertTrue(row.waitForExistence(timeout: 5), "a tap on the Tally tab did not open Tally (tally-row:Lightning Bolt is missing)")
 

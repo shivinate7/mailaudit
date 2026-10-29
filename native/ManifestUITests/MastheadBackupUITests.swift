@@ -217,8 +217,7 @@ final class MastheadBackupUITests: XCTestCase {
     /// Opens the tab and waits until it is the selected one, so the next read is never the tab just left.
     func show(_ app: XCUIApplication, _ tab: String) {
         openTab(app, tab)
-        let on = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isSelected == true"), object: app.tabBars.buttons[tab])
-        XCTAssertEqual(XCTWaiter.wait(for: [on], timeout: 5), .completed, "the \(tab) tab never became the selected one")
+        waitForSelectedTab(tab, in: app)
     }
 
     func partFrames(_ app: XCUIApplication, tab: String) throws -> [String: CGRect] {
