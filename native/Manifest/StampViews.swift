@@ -39,6 +39,37 @@ struct StampedRow: View {
     }
 }
 
+/// The two-tap ask of a destructive control (no-native-dialogs): Cancel, then the confirm button, in a panel. It is drawn as
+/// an overlay of the row it belongs to, at `.bottomTrailing`, and hangs 4pt below that row whatever height the row has at the
+/// current type size, so arming moves nothing. The stamp's Remove and the bulk Clear both draw it.
+struct AskPanel: View {
+    let confirmTitle: String
+    let cancelID: String
+    let confirmID: String
+    let cancel: () -> Void
+    let confirm: () -> Void
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    var body: some View {
+        let panel = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .trailing, spacing: 4)) : AnyLayout(HStackLayout(spacing: 4))
+        return panel {
+            Button(action: cancel) { MiniLabel(title: "Cancel", size: 11, vertical: 4, horizontal: 8) }
+                .buttonStyle(.plain).accessibilityIdentifier(cancelID)
+            Button(role: .destructive, action: confirm) {
+                MiniLabel(title: confirmTitle, size: 11, bold: true,
+                          text: paint(.askText), fill: paint(.askFill), border: paint(.askFill), vertical: 4, horizontal: 8)
+            }
+            .buttonStyle(.plain).accessibilityIdentifier(confirmID)
+        }
+        .padding(4)
+        .background(RoundedRectangle(cornerRadius: 8).fill(paint(.askPanelFill)).shadow(color: Parchment.shadow, radius: 2, y: 1))
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.askPanelBorder), lineWidth: 1))
+        // Its top sits 4pt under the row, whatever height the row has at the current type size.
+        .alignmentGuide(.bottom) { $0[.top] - 4 }
+        .zIndex(1)
+    }
+}
+
 /// Wraps its children in rows, as the web's flex-wrap does: `column` between neighbours, `row` between lines.
 private struct Wrap: Layout {
     var column: CGFloat
@@ -104,7 +135,7 @@ struct StampSection: View {
             if editing {
                 editor
             } else if let stamp, let band = model.bands[pkg.gk] {
-                bandButton(band: band, note: stamp["note"] as? String ?? "")
+                bandButton(band: band, note: stamp["note"] as? String ?? "").background { slotMarker }
             } else {
                 HStack(spacing: 0) {
                     Button(action: open) { MiniLabel(title: "Stamp") }
@@ -112,11 +143,18 @@ struct StampSection: View {
                     Spacer(minLength: 0)
                 }
                 .padding(.horizontal, 12).frame(minHeight: Self.rowHeight)
+                .background { slotMarker }
             }
         }
-        .zIndex(1)  // the armed ask hangs over the lines below
+        .zIndex(2)  // the armed ask hangs over the bulk row and the lines below
         .task(id: armed) { if armed { try? await Task.sleep(for: .seconds(4)); armed = false } }
         .onChange(of: armed) { _, a in overhang = a }
+    }
+
+    /// The 48pt slot as one element of its own, whichever form it holds (Stamp or the band). A container would take the
+    /// union of its visible children, so its frame would follow the form; this one is the slot.
+    private var slotMarker: some View {
+        Color.clear.accessibilityElement().accessibilityLabel("Stamp slot").accessibilityIdentifier("stamp-slot:\(pkg.gk)")
     }
 
     /// The editor opens on the stamp as it is at the moment of the tap, not as it was at mount (src/app.jsx openEditor).
@@ -256,30 +294,13 @@ struct StampSection: View {
             .accessibilityHint(ready ? "" : "Pick a stamp first.")
             .accessibilityIdentifier("stamp-save:\(pkg.gk)")
         }
-        .overlay(alignment: .bottomTrailing) { if armed { ask } }
-    }
-
-    private var ask: some View {
-        let cards = "\(totalQty) card\(totalQty == 1 ? "" : "s")"
-        let panel = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .trailing, spacing: 4)) : AnyLayout(HStackLayout(spacing: 4))
-        return panel {
-            Button { armed = false } label: { MiniLabel(title: "Cancel", size: 11, vertical: 4, horizontal: 8) }
-                .buttonStyle(.plain).accessibilityIdentifier("stamp-ask-cancel:\(pkg.gk)")
-            Button(role: .destructive) {
-                armed = false
-                Task { await remove() }
-            } label: {
-                MiniLabel(title: "Tap again to remove stamp from \(cards)", size: 11, bold: true,
-                          text: paint(.askText), fill: paint(.askFill), border: paint(.askFill), vertical: 4, horizontal: 8)
+        .overlay(alignment: .bottomTrailing) {
+            if armed {
+                AskPanel(confirmTitle: "Tap again to remove stamp from \(totalQty) card\(totalQty == 1 ? "" : "s")",
+                         cancelID: "stamp-ask-cancel:\(pkg.gk)", confirmID: "stamp-ask-confirm:\(pkg.gk)",
+                         cancel: { armed = false }, confirm: { armed = false; Task { await remove() } })
             }
-            .buttonStyle(.plain).accessibilityIdentifier("stamp-ask-confirm:\(pkg.gk)")
         }
-        .padding(4)
-        .background(RoundedRectangle(cornerRadius: 8).fill(paint(.askPanelFill)).shadow(color: Parchment.shadow, radius: 2, y: 1))
-        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.askPanelBorder), lineWidth: 1))
-        // Its top sits 4pt under the row, whatever height the row has at the current type size.
-        .alignmentGuide(.bottom) { $0[.top] - 4 }
-        .zIndex(1)
     }
 
     // MARK: writes
