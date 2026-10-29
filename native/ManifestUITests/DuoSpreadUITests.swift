@@ -12,13 +12,16 @@
 // wrote them (lane duo-tabs-spread-t): they build with `xcodebuild build-for-testing`.
 // Each test names its pose and fails when the window is another size (DuoWindowSupport.swift). It never skips.
 //
-// Red now (the builder makes them pass): testFlatTallySpreadsOverBothPages, testFlatTallyRightPageFollowsTheTappedRow,
-// testFlatOrphanedSpreadsOverBothPages, testFlatBarTitlesShareOneBaseline.
+// Red on the code before the spread (the builder made them pass): testFlatTallySpreadsOverBothPages,
+// testFlatTallyRightPageFollowsTheTappedRow, testFlatOrphanedSpreadsOverBothPages, testFlatBarTitlesShareOneBaseline.
+// Red on the spread's first build (the builder's next round makes them pass): testFlatOrphanedArmedDiscardDoesNotCarryOver
+// (no .id on the right page's card, so its armed state carries over), testFlatOrphanedPickedCellIsSelected and
+// testFlatTallyPickedRowIsSelected (a colour overlay marks the pick, with no .isSelected trait).
 // Guards, green on the old code: testFlatPackagesFullWidth, testClosedTallyIsOnePage. Ledger full width has one home,
 // DuoShellUITests.testFlatLedgerFullWidth, which shares expectSpansFold with the Packages test here.
 // testFlatTallyLastRowClearsTheBar is unrun: it may pass today, and it keeps the new left page clear of the bar.
 //
-// What the tests expect of the app. Identifiers already in the app are kept. The builder adds the four marked NEW.
+// What the tests expect of the app. Identifiers already in the app are kept. The builder adds the ones marked NEW.
 //   duo-tab-bar              the custom bar (DuoShellUITests). Its buttons carry the tab titles.
 //   duo-tab-title:<title>    NEW. The title text of each bar button, as its own element that frames the text alone,
 //                            for the four titles Ledger, Orphaned, Tally and Packages. SwiftUI folds a Button's Text into the
@@ -31,13 +34,20 @@
 //                            other name are not on screen.
 //   orphaned-cell:<id>       NEW. Orphaned, flat: the envelope's cell in the left page's list. A tap on it selects the envelope.
 //                            Its envelope card envelope:<id> may sit on the right page, or not exist.
-//   orphaned-detail-title    NEW. The right page's heading for the selected envelope.
+//   orphaned-detail-title    NEW. The right page's heading for the selected envelope. Its label ends in the envelope's card count.
+//   .isSelected trait        NEW. The picked cell has it and the other cell does not: orphaned-cell:<id> itself, and on Tally the
+//                            tally-toggle:<name> button or its tally-row:<name> container, either one.
 //   assign:<gk>              Orphaned, flat: a candidate's Assign button, on the right page.
+//   discard:<id>             Orphaned: Discard sits on the right page's card only, and arms an ask "Tap again to discard N card(s)"
+//                            that lapses by itself after 4 s. A pick starts the new envelope's card unarmed.
 //   orphaned-record, orphaned-input, suggestion:<name>, orphaned-save   the composer (OrphanedRecordSupport.swift).
 //   package-row:<gk>         Packages: a row spans the fold.
 // The mockup draws no masthead, search, sort or Hide received control on Tally or Orphaned. Where they sit is unruled, so the
 // tests do not place them. They must not reach into the fold strip, and the fold scan covers the tally- and orphaned- ids.
 // The mockup draws a selected row at open. Whether the right page shows a name before any tap is unruled, so each test taps first.
+// Tally's right page holds no state of its own (no @State read by a detail or by ItemLine; check-ins live in the model), so a
+// pick has no carry-over to observe there, and no Tally case stands beside the Orphaned armed-ask one. The page's scroll offset
+// is the one carry-over left, and the seed's 3 copies at most cannot drive it.
 //
 // Every key here is fake. Launch with -ManifestUITestSeed only. Do not pass -ManifestUITestWidth: it frames the root to 375 pt.
 
@@ -72,10 +82,28 @@ final class DuoSpreadUITests: XCTestCase {
         return app
     }
 
-    func waitForLabel(_ element: XCUIElement, _ label: String) -> Bool {
+    /// Polls `holds` for up to 5 s.
+    func waitUntil(_ holds: () -> Bool) -> Bool {
         let deadline = Date().addingTimeInterval(5)
-        while element.label != label && Date() < deadline { Thread.sleep(forTimeInterval: 0.2) }
-        return element.label == label
+        while !holds() && Date() < deadline { Thread.sleep(forTimeInterval: 0.1) }
+        return holds()
+    }
+
+    func waitForLabel(_ element: XCUIElement, _ label: String) -> Bool { waitUntil { element.label == label } }
+
+    /// The open Duo on Orphaned with two envelopes recorded, so a pick has something to change. A holds Urza's Saga (1 card,
+    /// candidate D1). B holds Urza's Saga and Counterspell (2 cards, candidates A1, B1 and D1): the two headings differ by
+    /// card count, and D1 is offered on both right pages. `ids` are the two cells' identifiers, the upper cell first.
+    func openFlatOrphanedWithTwo() -> (app: XCUIApplication, ids: [String])? {
+        guard let app = openFlat("Orphaned", anchor: "orphaned-record") else { return nil }
+        app.recordEnvelope([("urza", "Urza's Saga")])
+        app.recordEnvelope([("urza", "Urza's Saga"), ("counter", "Counterspell")])
+        // recordEnvelope's own wait is already met by the first cell, so the second cell is waited for here.
+        func cells() -> [String: CGFloat] {
+            Dictionary(app.elements(prefix: "orphaned-cell:").map { ($0.identifier, $0.frame.minY) }, uniquingKeysWith: min)
+        }
+        XCTAssertTrue(waitUntil { cells().count == 2 }, "two recorded envelopes should give two cells, the app has \(cells().count)")
+        return (app, cells().sorted { $0.value < $1.value }.map(\.key))
     }
 
     func waitUntilGone(_ element: XCUIElement) -> Bool {
@@ -144,6 +172,19 @@ final class DuoSpreadUITests: XCTestCase {
         }
     }
 
+    /// Pose: flat (open Duo, window 951 x 669 pt). The picked Tally row carries the selected trait and the other row does not.
+    /// The trait sits on the tap target tally-toggle:<name> or on its row container tally-row:<name>.
+    func testFlatTallyPickedRowIsSelected() {
+        guard let app = openFlat("Tally", anchor: "tally-row:Lightning Bolt") else { return }
+        func picked(_ name: String) -> Bool { app.byID("tally-toggle:\(name)").isSelected || app.byID("tally-row:\(name)").isSelected }
+
+        for (pick, other) in [("Counterspell", "Lightning Bolt"), ("Lightning Bolt", "Counterspell")] {
+            app.byID("tally-toggle:\(pick)").tap()
+            XCTAssertTrue(waitUntil { picked(pick) }, "after a tap on \(pick), neither its toggle nor its row has the selected trait")
+            XCTAssertFalse(picked(other), "\(other) has the selected trait while \(pick) is picked")
+        }
+    }
+
     /// Pose: flat (open Duo, window 951 x 669 pt). Scrolled to the end, the last Tally row ends above the bar's top edge.
     /// The drag runs inside the left page, from the window's origin: on an open Duo, `app` coordinates land on the outer display.
     func testFlatTallyLastRowClearsTheBar() {
@@ -180,26 +221,83 @@ final class DuoSpreadUITests: XCTestCase {
                                  "scrolled to the end, \(end.id) ends at \(end.maxY) pt, below the bar's top edge at \(bar.frame.minY) pt")
     }
 
-    /// Pose: flat (open Duo, window 951 x 669 pt), mockup pose 9. Orphaned's envelope cell sits on the left page, and the
-    /// selected envelope's heading and candidates on the right page. The seed holds no envelope, so the test records one.
+    /// Pose: flat (open Duo, window 951 x 669 pt), mockup pose 9. Orphaned's envelope cells sit on the left page, and the
+    /// picked envelope's heading and candidates on the right page. A tap on a cell changes the right page and moves no cell.
+    /// The seed holds no envelope, so the test records two. Taps run upper, lower, upper: whichever envelope the right page
+    /// shows at open, at least two of the three change it, so a pick that changes nothing, or always the same one, fails.
     func testFlatOrphanedSpreadsOverBothPages() {
-        guard let app = openFlat("Orphaned", anchor: "orphaned-record") else { return }
-        app.recordEnvelope([("urza", "Urza's Saga")])  // D1 Delta Cards is its one candidate
+        guard let two = openFlatOrphanedWithTwo() else { return }
+        let app = two.app
+        let upperCell = app.byID(two.ids[0]), lowerCell = app.byID(two.ids[1])
+        let title = app.byID("orphaned-detail-title")
 
-        let cell = app.firstElement(prefix: "orphaned-cell:")
-        expect(cell, on: .left, in: app, "the envelope's list cell orphaned-cell:<id>")
-        let before = cell.frame
-        cell.tap()
-        keepShot(app, "flat-orphaned-spread")
+        expect(upperCell, on: .left, in: app, "the upper envelope's list cell \(two.ids[0])")
+        expect(lowerCell, on: .left, in: app, "the lower envelope's list cell \(two.ids[1])")
+        let upperBefore = upperCell.frame, lowerBefore = lowerCell.frame
 
-        expect(app.byID("orphaned-detail-title"), on: .right, in: app, "the right page's heading orphaned-detail-title")
+        upperCell.tap()
+        expect(title, on: .right, in: app, "the right page's heading orphaned-detail-title")
+        Thread.sleep(forTimeInterval: 0.3)  // a tap that does change the pick has rendered by now
+        let upper = title.label
         expect(app.byID("assign:D1::Delta Cards"), on: .right, in: app, "the candidate's button assign:D1::Delta Cards")
+
+        lowerCell.tap()
+        keepShot(app, "flat-orphaned-spread")
+        XCTAssertTrue(waitUntil { title.label != upper }, "a tap on the lower cell left the right page on \(upper): a pick must change the envelope it shows")
+        let lower = title.label
+        expect(app.byID("assign:D1::Delta Cards"), on: .right, in: app, "the candidate's button assign:D1::Delta Cards")
+
+        upperCell.tap()
+        XCTAssertTrue(waitForLabel(title, upper), "a tap back on the upper cell left the right page on \(lower), not \(upper)")
+
         Thread.sleep(forTimeInterval: 0.5)
-        XCTAssertTrue(sameFrame(cell.frame, before), "a tap on the cell moved it from \(before) to \(cell.frame): a row tap must change the right page only")
+        XCTAssertTrue(sameFrame(upperCell.frame, upperBefore), "a tap moved the upper cell from \(upperBefore) to \(upperCell.frame): a row tap must change the right page only")
+        XCTAssertTrue(sameFrame(lowerCell.frame, lowerBefore), "a tap moved the lower cell from \(lowerBefore) to \(lowerCell.frame): a row tap must change the right page only")
 
         let scan = app.partsInFoldStrip(prefixes: Self.orphanedPrefixes)
         XCTAssertGreaterThan(scan.seen, 0, "the fold scan found no Orphaned part, so it proves nothing")
         XCTAssertEqual(scan.inStrip, [], "Orphaned parts reach into the fold strip")
+    }
+
+    /// Pose: flat (open Duo, window 951 x 669 pt). Discard armed on one envelope does not arm the next one a pick shows: the
+    /// right page's card is that envelope's, with its own state. The ask lapses by itself after 4 s, so the pick and the check
+    /// run inside 3.5 s of arming. A slower run fails, since it cannot tell a carried ask from a lapsed one. It never passes.
+    func testFlatOrphanedArmedDiscardDoesNotCarryOver() {
+        guard let two = openFlatOrphanedWithTwo() else { return }
+        let app = two.app
+        let upperCell = app.byID(two.ids[0]), lowerCell = app.byID(two.ids[1])
+        let title = app.byID("orphaned-detail-title")
+        let ask = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Tap again to discard")).firstMatch
+
+        upperCell.tap()
+        XCTAssertTrue(title.waitForExistence(timeout: 5), "the right page's heading orphaned-detail-title is missing after a tap on the upper cell")
+        Thread.sleep(forTimeInterval: 0.3)
+        let shown = title.label
+        let discard = app.firstElement(prefix: "discard:")
+        XCTAssertTrue(discard.waitForExistence(timeout: 5), "the right page's card has no Discard (discard:<id>)")
+
+        let armedAt = Date()
+        discard.tap()
+        XCTAssertTrue(ask.waitForExistence(timeout: 2), "a tap on Discard did not arm it: there is no 'Tap again to discard' button, so the test would prove nothing")
+        lowerCell.tap()
+        XCTAssertTrue(waitUntil { title.label != shown }, "a tap on the lower cell left the right page on \(shown): no pick, so no carry-over to check")
+        let carried = ask.exists
+        let spent = Date().timeIntervalSince(armedAt)
+
+        XCTAssertFalse(carried, "Discard was armed on the envelope \(shown). A pick to \(title.label) kept the 'Tap again to discard' ask: the card's state carried over to the next envelope")
+        XCTAssertLessThan(spent, 3.5, "\(spent) s passed between arming and the check, and the ask lapses at 4 s: the absence proves nothing. Run again")
+    }
+
+    /// Pose: flat (open Duo, window 951 x 669 pt). The picked Orphaned cell carries the selected trait and the other cell does not.
+    func testFlatOrphanedPickedCellIsSelected() {
+        guard let two = openFlatOrphanedWithTwo() else { return }
+        let upperCell = two.app.byID(two.ids[0]), lowerCell = two.app.byID(two.ids[1])
+
+        for (pick, other, name) in [(upperCell, lowerCell, "upper"), (lowerCell, upperCell, "lower")] {
+            pick.tap()
+            XCTAssertTrue(waitUntil { pick.isSelected }, "after a tap on the \(name) cell it lacks the selected trait")
+            XCTAssertFalse(other.isSelected, "the other cell has the selected trait while the \(name) cell is picked")
+        }
     }
 
     /// Pose: flat (open Duo, window 951 x 669 pt), mockup pose 11. The four bar titles share one baseline: their bottoms agree
