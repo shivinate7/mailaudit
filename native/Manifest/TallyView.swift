@@ -197,7 +197,9 @@ struct TallyRowView: View {
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { metaBoxWidth = $0 }
             .clipped()
             .overlay(alignment: .trailing) {
-                if metaNaturalWidth > metaBoxWidth {
+                // Both widths must be measured, and the text must pass the column by a half point: one measured before the
+                // other, or a fit to within rounding, must never mount the "…" over text that is whole.
+                if metaBoxWidth > 0, metaNaturalWidth > metaBoxWidth + 0.5 {
                     Text("\u{2026}").font(font).foregroundStyle(paint(.meta))
                         .background(paint(.surface))
                         .accessibilityHidden(true)
