@@ -86,6 +86,11 @@ struct ManifestApp: App {
             }
             versions?.refresh()
             try store.load()
+            if ProcessInfo.processInfo.arguments.contains("-ManifestUITestLedgerUnwritable") {
+                // A directory where the file was: the next save cannot write, so a check-in fails.
+                try? FileManager.default.removeItem(at: ledgerURL)
+                try? FileManager.default.createDirectory(at: ledgerURL, withIntermediateDirectories: false)
+            }
             notice = LedgerNotice.damagedLine(dropped: store.droppedCount)
             let m = PackagesModel(engine: e, store: store)
             try await m.load()
