@@ -419,8 +419,6 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-stamp-note-field-short` — The native stamp note field is 36.7pt tall, under 44pt.
 - `native-stamp-ask-covers-row` — The native armed Remove ask covers the editor row.
 - `native-armed-audit-misses-ask` — The native armed stamp audit cannot see the ask.
-- `hand-stamp-leaves-tally-stale` — A stamp from Card in Hand leaves Tally stale.
-- `hand-reads-stamped-filter-rows` — Card in Hand reads the stamped filter's rows.
 - `debt-notes` — One-line findings not likely in normal work.
 - `native-card-gestures-unpinned` — No UI test pins the native card header gestures.
 - `native-card-state-in-swift` — The native card copies the line and package done rules in Swift.
