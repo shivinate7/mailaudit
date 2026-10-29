@@ -411,6 +411,7 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-compose-is-one-fade` — The native letterhead composes in one fade.
 - `native-card-lost-flags-unbuilt` — The native package card has no lost-mail flag and no tracked glyph.
 - `native-seller-scale-unmeasured` — The native seller shrinks to half size, and the cause is unmeasured.
+- `native-pinned-card-dynamic-type` — The pinned-head audit flags Dynamic Type on one card.
 - `native-card-gestures-unpinned` — No UI test pins the native card header gestures.
 - `native-card-state-in-swift` — The native card copies the line and package done rules in Swift.
 - `native-sync-tally-rules-in-swift` — The native Sync panel and Tally row copy six view rules in Swift.
