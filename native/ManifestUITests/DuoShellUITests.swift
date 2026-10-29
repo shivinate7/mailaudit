@@ -4,7 +4,7 @@
 // `~/.local/bin/hinge open` (flat) or `~/.local/bin/hinge close` (closed), then run only that pose's tests:
 //   xcodebuild test -project native/Manifest.xcodeproj -scheme Manifest -destination 'platform=iOS Simulator,id=<Duo UDID>' \
 //     -only-testing:ManifestUITests/DuoShellUITests/testFlatBarUnderRightPage   (and the other testFlat... cases)
-//   xcodebuild test ... -only-testing:ManifestUITests/DuoShellUITests/testClosedKeepsSystemBar
+//   xcodebuild test ... -only-testing:ManifestUITests/DuoShellUITests/testClosedKeepsSystemBar   (and testClosedTallyIsOnePage)
 // `sim-test` cannot target the Duo (record one-simulator-per-mac), so call `xcodebuild test` with the Duo's destination.
 // Each test names its pose and fails when the window is another size (DuoWindowSupport.swift). It never skips.
 //
@@ -19,6 +19,7 @@
 //     its end, the last row (and its controls) ends at or above the bar's top edge, wherever it overlaps the bar sideways.
 //     The Packages rows are package-row:<gk> with checkin:<key> controls. The last Ledger row is "reset".
 //   System tab bar: on the open Duo it is absent or not hittable. On the closed Duo it shows the four tab titles.
+//   Tally, closed Duo: a tap on the system bar's Tally button selects it and shows tally-row:Lightning Bolt, across the window.
 //   Custom tab bar, closed Duo: absent.
 //
 // Every key here is fake. Launch with -ManifestUITestSeed only. Do not pass -ManifestUITestWidth: it frames the root to 375 pt.
@@ -255,5 +256,37 @@ final class DuoShellUITests: XCTestCase {
         }
         keepShot(app, "closed-ledger")
         XCTAssertFalse(customBar(app).exists, "the custom tab bar shows on a closed Duo")
+    }
+
+    /// Pose: closed (outer screen, window 466 x 678 pt). A tap on the system tab bar's Tally button selects Tally: the button
+    /// takes the selected trait and the Tally rows draw. The regression this pins: the tap lands with no hang, and Ledger
+    /// stays selected. Then Tally is one page: its rows run across the window, a tap opens the row in place, no right page.
+    func testClosedTallyIsOnePage() {
+        let app = launch()
+        guard app.requirePose(.closed) else { return }
+        let tab = app.tabBars.buttons["Tally"]
+        XCTAssertTrue(tab.waitForExistence(timeout: 5), "the system tab bar has no Tally tab on the closed Duo")
+        tab.tap()
+        let selected = XCTNSPredicateExpectation(predicate: NSPredicate(format: "isSelected == true"), object: tab)
+        XCTAssertEqual(XCTWaiter.wait(for: [selected], timeout: 5), .completed,
+                       "a tap on the system tab bar's Tally button did not select Tally (Ledger button selected: \(app.tabBars.buttons["Ledger"].isSelected))")
+        let row = element(app, "tally-row:Lightning Bolt")
+        guard row.waitForExistence(timeout: 5) else {
+            XCTFail("a tap on the Tally tab did not open Tally (tally-row:Lightning Bolt is missing)")
+            return
+        }
+
+        let win = app.window.frame
+        XCTAssertGreaterThan(row.frame.width, win.width * 0.85, "the Tally row is \(row.frame.width) pt wide in a \(win.width) pt window: Tally should be one page")
+        element(app, "tally-toggle:Lightning Bolt").tap()
+        let copy = element(app, "tally-copy:\(TallyCopyStepperUITests.boltA)")
+        guard copy.waitForExistence(timeout: 5) else {
+            XCTFail("a tap on the Lightning Bolt row did not list its copies")
+            return
+        }
+        keepShot(app, "closed-tally")
+        let tol = Self.tolerance
+        XCTAssertTrue(row.frame.insetBy(dx: -tol, dy: -tol).contains(copy.frame),
+                      "the copy \(copy.frame) lies outside its row \(row.frame): closed, the copies open in place")
     }
 }
