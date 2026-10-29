@@ -26,7 +26,7 @@ struct StampedRow: View {
                     .overlay(alignment: .leading) { Rectangle().fill(paint(.rule)).frame(width: 1) }
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PaintedButtonStyle())
                 .disabled(count == 0 && !on)  // with nothing stamped there is nothing to show; the web hides the cell then
                 .accessibilityLabel("\(count) stamped")
                 .accessibilityHint(count == 0 && !on ? "No package carries a stamp yet." : "Shows only the packages that carry a stamp")
@@ -252,7 +252,7 @@ struct StampSection: View {
                     ? MiniLabel(title: "Save", bold: true, text: paint(.saveReadyText), fill: paint(.saveReadyFill), border: paint(.saveReadyFill))
                     : MiniLabel(title: "Save", text: paint(.saveOffText), border: paint(.saveOffBorder))
             }
-            .buttonStyle(.plain).disabled(!ready)
+            .buttonStyle(PaintedButtonStyle()).disabled(!ready)
             .accessibilityHint(ready ? "" : "Pick a stamp first.")
             .accessibilityIdentifier("stamp-save:\(pkg.gk)")
         }
