@@ -48,8 +48,9 @@
 // A lone card that names one envelope may check in by Post or by tapping its line (the mockup shows a stepper and no
 // Post). The stray case checks in by whichever the screen offers. The held case needs Post.
 //
-// Every key here is fake. Launch with -ManifestUITestSeed only (XCUIApplication.launchedOnSeed). The one exception is
-// testFailedLineCheckInShowsInHand, which adds -ManifestUITestLedgerUnwritable (Debug builds only; it makes the next save fail; see the test).
+// Every key here is fake. Launch with -ManifestUITestSeed only (XCUIApplication.launchedOnSeed). The exceptions are
+// testFailedLineCheckInShowsInHand and testPostHoldsTheLinesStillWhenItsSaveFails, which add -ManifestUITestLedgerUnwritable
+// (Debug builds only; it makes the next save fail; see the first test).
 
 import XCTest
 
@@ -372,6 +373,65 @@ final class DuoHandUITests: XCTestCase {
         keepShot(app, "hand-post-keeps-sender")
     }
 
+    /// The first lines of Gamma Cards, which sit under the offer. A Post presses above them, so none may move (no-layout-shift-under-pointer).
+    static let stillLines = [bolt, path, swords]
+
+    /// The frames of `stillLines` once the page has stopped moving. A row is its hand-line element: its top is the row's top plus a
+    /// fixed pad, so a row that moves reads as a moved frame.
+    func lineFrames(_ app: XCUIApplication) -> [String: CGRect] {
+        let rows = Self.stillLines.map { need(app, "hand-line:\($0)", "a line under the Post offer") }
+        waitUntilStill(rows)
+        return Dictionary(uniqueKeysWithValues: zip(Self.stillLines, rows.map(\.frame)))
+    }
+
+    /// Each row in `before` has its top within 1 pt of where it was. Call it only after the test saw the Post land by a sign that
+    /// does not need hand-receipt: waitUntilStill settles in 0.6 s, so a read that comes first sees rows that have not yet moved.
+    /// A failed assertion does not end the test, so one red run names every row that moved.
+    func assertLinesStayPut(_ app: XCUIApplication, _ before: [String: CGRect], after what: String) {
+        let after = lineFrames(app)
+        continueAfterFailure = true
+        for key in Self.stillLines {
+            guard let was = before[key], let now = after[key] else { return XCTFail("the line \(key) has no frame") }
+            XCTAssertEqual(now.minY, was.minY, accuracy: 1, "the line \(key) moved \(now.minY - was.minY) pt \(what): its frame was \(was) and is \(now)")
+        }
+    }
+
+    /// Pose: flat, system keys up. A Post that saves leaves the first lines under the offer where they were. The offer's slot keeps
+    /// its height as a receipt (mockup duo-hand-post-sender, #s=a-posted); without it the lines rise into the slot the finger pressed.
+    func testPostHoldsTheLinesStillWhenItSaves() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let post = offerPost(app)
+        _ = requireKeysUp(app)
+        let before = lineFrames(app)
+
+        post.tap()
+        waitForLabel(app.element("hand-checkin:\(Self.path)"), startingWith: "Undo check in", "Post did not check in Path to Exile")
+        waitGone(app.element("hand-post"), "the post is still offered after it posted")
+        assertLinesStayPut(app, before, after: "when Post saved")
+    }
+
+    /// Pose: flat, system keys up. A Post that is refused leaves the first lines where they were. A line check-in made after the
+    /// offer outdates its plan, so HandModel.post refuses, drops the offer and leaves a refused receipt in its slot.
+    func testPostHoldsTheLinesStillWhenItIsRefused() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let post = offerPost(app)
+        _ = requireKeysUp(app)
+        let held = need(app, "hand-checkin:\(Self.bolt)", "the held card's check-in control")
+        held.tap()
+        waitForLabel(held, startingWith: "Undo check in", "the line check-in did not save, so the offer is not outdated")
+        XCTAssertTrue(post.exists, "the line check-in took the offer away, so the Post below is not a refusal")
+        let before = lineFrames(app)
+
+        post.tap()
+        waitGone(app.element("hand-post"), "the refused post is still offered")
+        XCTAssertTrue(app.element("hand-checkin:\(Self.path)").label.hasPrefix("Check in "), "Path to Exile is checked in, so the post was not refused")
+        assertLinesStayPut(app, before, after: "when Post was refused")
+    }
+
     /// Pose: flat. A red row (30 days from the order date) has no claim date: the claim window is closed. Checked on every late
     /// row but the first (A1 and D1). A row is a container whose own label is empty, so the texts come from its children, and
     /// the row's seller proves the children were read. The page also carries a summary line, "<N> envelope...", with N the rows listed.
@@ -487,6 +547,22 @@ final class DuoHandUITests: XCTestCase {
         }
         XCTAssertTrue(failure.isHittable, "the failure, frame \(f), is not hittable: something covers it")
         keepShot(app, "hand-checkin-error")
+    }
+
+    /// Pose: flat, system keys up. A Post whose save fails leaves the first lines where they were. HandModel.post keeps the offer
+    /// when the save throws, so the offer's own box holds the slot and this case does not reach the receipt.
+    func testPostHoldsTheLinesStillWhenItsSaveFails() {
+        let app = XCUIApplication.launchedOnSeed(extra: [Self.ledgerUnwritable])
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let post = offerPost(app)
+        _ = requireKeysUp(app)
+        let before = lineFrames(app)
+
+        post.tap()
+        _ = need(app, "hand-error", "the failure line of a Post whose save failed")
+        XCTAssertTrue(app.element("hand-checkin:\(Self.path)").label.hasPrefix("Check in "), "Path to Exile is checked in, so the save did not fail (the app ignored \(Self.ledgerUnwritable))")
+        assertLinesStayPut(app, before, after: "when Post's save failed")
     }
 
     /// The hand-hit rows, top to bottom, once exactly `count` show (a short poll: the list settles 150 ms after the last key
