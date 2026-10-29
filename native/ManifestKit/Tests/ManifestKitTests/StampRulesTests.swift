@@ -184,4 +184,119 @@ final class StampRulesTests: XCTestCase {
         let held = String(describing: try XCTUnwrap(peek(model, "stampKinds") as [Any]?, "PackagesModel has no stampKinds"))
         XCTAssertTrue(held.contains("Shim A") && held.contains("Shim B") && !held.contains("Claim filed"), "the kinds are the bundle's STAMP_KINDS, got \(held)")
     }
+
+    // MARK: the writes, and a check-in on a refunded package (UI tests are not in CI, so these hold the model's glue)
+
+    /// The real nextStamp, dated 2026-01-02 whatever the clock, with "SHIM " put before the note of a stamp it writes.
+    /// A record built in Swift, or by LedgerStore.setStamp, carries neither.
+    static let writerShim = """
+        (function () {
+          var real = Rules.nextStamp;
+          Rules = Object.assign({}, Rules, { nextStamp: function (cur, patch, today, now) {
+            var r = real(cur, patch, "2026-01-02", now);
+            if (r && r.kind) r.note = "SHIM " + r.note;
+            return r;
+          } });
+        })();
+        """
+    static let clock = 1_786_543_380_000.0  // the clock LiveFixture.store gives the ledger
+    static let r1 = "R1::Seller R", e1 = "E1::Seller E", a1 = "A1::Seller A"
+    static let dot = "\u{00B7}"
+
+    /// stamp() writes what the bundle's nextStamp makes, with the note it was given, and then reads the ledger again:
+    /// the stamps, the count, the bands and the refunded pills all follow, and a refund leaves the list.
+    /// Fails if the writer call goes, if the note is not passed on, or if the reload after the write goes.
+    func testStampWritesTheBundlesRecordAndTheMapsFollow() async throws {
+        let engine = try RulesEngine(bundleURL: try probeBundleFile(Self.writerShim, for: self))
+        let live = try await engine.call("nextStamp", #"[null,{"kind":"claim","note":"x"},"2030-01-01",5]"#)
+        XCTAssertTrue(live.contains("SHIM x") && live.contains("2026-01-02"), "the shim must be live, or this test proves nothing: \(live)")
+        let store = try await LiveFixture.store(items: LiveFixture.base + LiveFixture.refunded, stamps: [], engine: try LiveFixture.engine())
+        let model = PackagesModel(engine: engine, store: store)
+        try await model.load()
+        XCTAssertEqual([model.stamps.count, model.stampedCount, model.bands.count, model.refundPills.count], [0, 0, 0, 0], "anchor: no stamp yet")
+        XCTAssertTrue(model.rows.map(\.gk).contains(Self.r1), "anchor: R1 is in the list before its refund")
+
+        try await model.stamp(Self.r1, kind: "refunded", note: "lost")
+        let held = try XCTUnwrap(model.stamps[Self.r1], "stamps lacks the record")
+        XCTAssertEqual(held["kind"] as? String, "refunded")
+        XCTAssertEqual(held["note"] as? String, "SHIM lost", "the record is the bundle's nextStamp, made with the note given")
+        XCTAssertEqual(held["at"] as? String, "2026-01-02", "the date is the bundle's")
+        XCTAssertEqual(held["updatedAt"] as? Double, Self.clock, "the store's clock")
+        XCTAssertEqual(store.stamps()[Self.r1]?["note"] as? String, "SHIM lost", "the ledger holds the record")
+        XCTAssertEqual(model.stampedCount, 1, "a refund is counted before the refund exclusion")
+        XCTAssertEqual(model.bands[Self.r1], "REFUNDED \(Self.dot) 01-02", "the band is the bundle's stampBandText")
+        XCTAssertEqual(model.refundPills[Self.r1], "2 left \(Self.dot) refunded", "R1 owes two copies")
+        XCTAssertFalse(model.rows.map(\.gk).contains(Self.r1), "the refunded package leaves the list")
+
+        try await model.stamp(Self.e1, kind: "claim", note: "")
+        XCTAssertEqual(model.stampedCount, 2)
+        XCTAssertEqual(model.bands[Self.e1], "CLAIM FILED \(Self.dot) 01-02")
+        XCTAssertNil(model.refundPills[Self.e1], "a claim is not a refund")
+        XCTAssertEqual(model.stamps.count, 2)
+    }
+
+    /// removeStamp() goes through the writer: a live stamp becomes a tombstone (kind, note and date cleared, the clock
+    /// stamped), and the count, the band and the refunded pill go with it. A package with no stamp gets nothing, where
+    /// LedgerStore.removeStamp alone would write a tombstone for any key. Fails if the writer call goes, if the call
+    /// skips the writer for the store, or if the reload after the write goes.
+    func testRemoveStampLeavesATombstoneAndTheMapsFollow() async throws {
+        let stamps: [LiveStamp] = [("E1", "Seller E", "claim"), ("R1", "Seller R", "refunded")]
+        let store = try await LiveFixture.store(items: LiveFixture.base + LiveFixture.refunded, stamps: stamps, engine: try LiveFixture.engine())
+        let model = PackagesModel(engine: try LiveFixture.engine(), store: store)
+        try await model.load()
+        XCTAssertEqual(model.stampedCount, 2, "anchor: two live stamps")
+        XCTAssertNotNil(model.refundPills[Self.r1], "anchor: R1 has its refunded pill")
+        XCTAssertFalse(model.rows.map(\.gk).contains(Self.r1), "anchor: R1 is out of the list")
+
+        try await model.removeStamp(Self.r1)
+        let tomb = try XCTUnwrap(model.stamps[Self.r1], "a removal keeps the key")
+        let want: [String: Any] = ["kind": "", "note": "", "at": "", "updatedAt": Self.clock]
+        XCTAssertTrue(NSDictionary(dictionary: tomb).isEqual(to: want), "a tombstone, nothing more: \(tomb)")
+        XCTAssertEqual(model.stampedCount, 1, "the tombstone is no stamp")
+        XCTAssertNil(model.bands[Self.r1])
+        XCTAssertNil(model.refundPills[Self.r1])
+        XCTAssertNotNil(model.bands[Self.e1], "the other package keeps its band")
+        XCTAssertTrue(model.rows.map(\.gk).contains(Self.r1), "a package whose refund is gone is back in the list")
+
+        try await model.removeStamp(Self.a1)
+        XCTAssertNil(store.stamps()[Self.a1], "no stamp, no tombstone")
+        XCTAssertNil(model.stamps[Self.a1])
+    }
+
+    /// With the stamped filter on, a refunded package is in the list, so a check-in on its card reaches the refund
+    /// refresh: its refunded pill follows the count. A claim-stamped package beside it never gets one. Fails if the
+    /// refresh goes, if it runs for a package the bundle does not call a refund, or if load() stops handing it the refunds.
+    func testACheckInRefreshesTheRefundedPillWithTheFilterOn() async throws {
+        let stamps: [LiveStamp] = [("A1", "Seller A", "claim"), ("R1", "Seller R", "refunded")]
+        let store = try await LiveFixture.store(items: LiveFixture.base + LiveFixture.refunded, stamps: stamps, engine: try LiveFixture.engine())
+        let model = PackagesModel(engine: try LiveFixture.engine(), store: store)
+        try await model.load()
+        try await model.toggleStamped()
+        XCTAssertTrue(model.showStamped, "anchor: the filter is on")
+        XCTAssertEqual(model.rows.map(\.gk).sorted(), [Self.a1, Self.r1], "anchor: the stamped list holds the refunded package")
+        XCTAssertEqual(model.refundPills[Self.r1], "2 left \(Self.dot) refunded", "anchor: r1 has 1 of 2 in, r2 none")
+
+        try await model.checkIn(key: "r2", count: 1)
+        XCTAssertEqual(model.refundPills[Self.r1], "1 left \(Self.dot) refunded", "the check-in moves the refunded pill")
+        try await model.checkIn(key: "a2", count: 1)
+        XCTAssertNil(model.refundPills[Self.a1], "A1 owes a copy but holds a claim: no refunded pill")
+        try await model.checkIn(key: "r1", count: 2)
+        XCTAssertNil(model.refundPills[Self.r1], "every copy in: no pill, and no entry left over")
+    }
+
+    /// The tombstone LedgerStore.removeStamp writes is the one the bundle's nextStamp makes for a removal (the web's
+    /// record). LedgerStoreTests pins the store's literal, this one pins it to the bundle, so one cannot move without the other.
+    func testTheStoresTombstoneIsTheBundlesTombstone() async throws {
+        let engine = try LiveFixture.engine()
+        let store = try await LiveFixture.store(items: LiveFixture.base, stamps: [("E1", "Seller E", "claim")], engine: engine)
+        let live = try XCTUnwrap(store.stamps()[Self.e1], "anchor: E1 holds a stamp")
+        let liveJSON = String(decoding: try JSONSerialization.data(withJSONObject: live), as: UTF8.self)
+        let out = try await engine.call("nextStamp", "[\(liveJSON),null,\"2026-07-04\",\(Int(Self.clock))]")
+        let bundle = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(out.utf8)) as? [String: Any], "nextStamp gave no tombstone: \(out)")
+        XCTAssertEqual(bundle["kind"] as? String, "", "anchor: the bundle's record is a tombstone")
+
+        store.removeStamp(Self.e1)
+        let stored = try XCTUnwrap(store.stamps()[Self.e1])
+        XCTAssertTrue(NSDictionary(dictionary: stored).isEqual(to: bundle), "the store's tombstone \(stored) is not the bundle's \(bundle)")
+    }
 }
