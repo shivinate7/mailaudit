@@ -84,7 +84,8 @@ final class PastTransitModelTests: XCTestCase {
     /// A model on a ledger file in a fresh temp folder. The received map and stamps are written before the
     /// load. `extra` options add packages, received counts and stamps to the fixture.
     func makeModel(
-        clock: Clock, extraItems: [[String: Any]] = [], extraReceived: [String: Any] = [:], extraStamps: [String: Any] = [:]
+        clock: Clock, extraItems: [[String: Any]] = [], extraReceived: [String: Any] = [:], extraStamps: [String: Any] = [:],
+        bundle: URL = RulesGoldenTests.bundleURL
     ) async throws -> (model: PastTransitModel, store: LedgerStore, file: URL) {
         let dir = try PhotoTestKit.tempDir("past-transit")
         addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
@@ -100,7 +101,7 @@ final class PastTransitModelTests: XCTestCase {
         try JSONSerialization.data(withJSONObject: doc).write(to: file)
         let store = LedgerStore(fileURL: file, now: { clock.ms })
         try store.load()
-        let engine = try RulesEngine(bundleURL: RulesGoldenTests.bundleURL)
+        let engine = try RulesEngine(bundleURL: bundle)
         let model = PastTransitModel(engine: engine, store: store)
         try await model.load()
         return (model, store, file)
@@ -267,5 +268,51 @@ final class PastTransitModelTests: XCTestCase {
         await expectSaveFailure("undo") { try await model.undo("P2::Beta Games") }
         XCTAssertEqual(model.rows, rowsBefore, "a failed undo leaves the rows")
         XCTAssertEqual(try Data(contentsOf: file), fileBefore, "a failed undo leaves the ledger")
+    }
+
+    /// The stamp record is the bundle's nextStamp (one-stamp-per-package, rules-run-in-javascriptcore): the model hands it
+    /// the stored stamp, a patch with the kind, the device's local day and the store's clock, and saves what it returns.
+    /// The shim returns a record built from its arguments, so a model that re-dates the stamp in Swift saves another
+    /// one. Packages stamps through the same writer (src/view-rules.mjs holds the rule once), so this is its proof too.
+    func testStampSavesWhatTheBundlesNextStampReturns() async throws {
+        let shim = try probeBundleFile("""
+            Rules = Object.assign({}, Rules, { nextStamp: function (cur, patch, today, now) {
+              return { kind: patch.kind, at: "1999-12-31", updatedAt: now,
+                       note: JSON.stringify({ cur: cur, patch: patch, today: today, now: now }) };
+            } });
+            """, for: self)
+        // positive control: the override is live, and answers what the contract says it is asked
+        let probe = try RulesEngine(bundleURL: shim)
+        let controlText = try await probe.call("nextStamp", #"[null,{"kind":"claim"},"2026-07-04",7]"#)
+        let control = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(controlText.utf8)) as? [String: Any])
+        XCTAssertEqual(control["at"] as? String, "1999-12-31", "the shim's override must be live, or this test proves nothing")
+
+        let held = ["kind": "claim", "note": "called twice", "at": "2026-07-20", "updatedAt": Self.start - 1000] as [String: Any]
+        let clock = Clock(Self.start)
+        let (model, _, file) = try await makeModel(clock: clock, extraStamps: ["P8::Theta Cards": held], bundle: shim)
+        try await model.stamp("P2::Beta Games", kind: "claim")
+        try await model.stamp("P8::Theta Cards", kind: "refunded")
+
+        /// What the shim saw for `gk`: the saved record's note holds its arguments as JSON.
+        func seen(_ gk: String) throws -> (saved: [String: Any], args: [String: Any]) {
+            let saved = try XCTUnwrap(try savedStamp(file, gk), "no stamp saved for \(gk)")
+            // A note that is not the shim's JSON leaves args empty, so the checks below name what is missing.
+            let args = (try? JSONSerialization.jsonObject(with: Data((saved["note"] as? String ?? "").utf8))) as? [String: Any]
+            return (saved, args ?? [:])
+        }
+        let day = Self.localDay(Self.start)
+        for gk in ["P2::Beta Games", "P8::Theta Cards"] {
+            let (saved, args) = try seen(gk)
+            XCTAssertEqual(saved["at"] as? String, "1999-12-31", "\(gk): the date is the bundle's, not worked out in Swift")
+            XCTAssertEqual(args["today"] as? String, day, "\(gk): the rule is given the device's local day")
+            XCTAssertEqual(args["now"] as? Double, Self.start, "\(gk): the rule is given the store's clock")
+        }
+        let first = try seen("P2::Beta Games").args, second = try seen("P8::Theta Cards").args
+        XCTAssertTrue(first["cur"] is NSNull, "no stored stamp reaches the rule as null, got \(String(describing: first["cur"]))")
+        XCTAssertEqual((first["patch"] as? [String: Any])?["kind"] as? String, "claim", "the patch carries the kind")
+        XCTAssertEqual((second["cur"] as? [String: Any])?["at"] as? String, "2026-07-20", "the stored stamp reaches the rule whole")
+        XCTAssertEqual((second["patch"] as? [String: Any])?["kind"] as? String, "refunded", "the patch carries the kind")
+        XCTAssertEqual((second["patch"] as? [String: Any])?["note"] as? String, "called twice",
+                       "a re-stamp from this page keeps the stored note: the page has no note field")
     }
 }

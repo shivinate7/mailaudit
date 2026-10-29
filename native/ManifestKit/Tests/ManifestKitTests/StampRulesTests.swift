@@ -1,0 +1,138 @@
+// Order stamps on the native Packages card, the model side (step 6, one-stamp-per-package,
+// a-refund-leaves-every-count, stamped-filter-on-the-pipeline, rules-run-in-javascriptcore).
+//
+// The stamp rules have one home, src/view-rules.mjs, pinned by V35 to V38 in test/view-rules.test.mjs
+// (the contract is stated at the top of that file). Swift reads them from rules.js and keeps no copy.
+// These cases pin the glue, and each proves its source with a shim, as PackageCardModelTests does for gotQty:
+// the real bundle with one export replaced, so a model that decides in Swift gives another answer.
+//
+// What each case needs from the builder:
+//   - Rules.STAMP_KINDS, hasStamp, isRefundStamp, nextStamp, stampBandText and refundedPill are exported, with
+//     the names and shapes of the V35 block. Swift calls Rules.isRefundStamp itself (a per-stamp call), not a
+//     wrapper that calls it inside the bundle, or the shim below would not reach it.
+//   - LiveItems.of drops the packages the bundle's isRefundStamp names, and no others. Packages, Tally, Orphaned,
+//     the masthead and Card in Hand all call it, so one case covers the five.
+//   - PackagesModel gains stored properties `stamps` (group key to the stored stamp), `stampedCount` (Int) and
+//     `showStamped` (Bool, false at launch). A test cannot name a property that does not exist yet, so the cases
+//     that read them go through Mirror (the way PackageCardTokensTests finds the count part by name). They read
+//     `name` or the `_name` that @Observable stores it under.
+//   - PastTransitModel.stamp saves the record the bundle's nextStamp returns: PastTransitModelTests.
+//
+// Fake fixtures only. LiveFixture (TallyPackagesLiveItemsTests.swift) builds the ledgers.
+
+import Foundation
+import XCTest
+@testable import ManifestKit
+
+@MainActor
+final class StampRulesTests: XCTestCase {
+    /// One rules call on the real bundle. A thrown error is reported as a failure, not a crash.
+    func rule(_ name: String, _ args: String) async -> Any? {
+        do {
+            let text = try await RulesEngine(bundleURL: RulesGoldenTests.bundleURL).call(name, args)
+            return try JSONSerialization.jsonObject(with: Data(text.utf8), options: [.fragmentsAllowed])
+        } catch {
+            XCTFail("\(name) threw \(error)")
+            return nil
+        }
+    }
+
+    // MARK: the bundle exports the rules
+
+    /// Each stamp rule is in the bundle and gives the value the Node cases pin (V35 to V38).
+    func testTheBundleExportsTheStampRules() async throws {
+        do {
+            let kinds = try await RulesEngine(bundleURL: RulesGoldenTests.bundleURL).constant("STAMP_KINDS")
+            let pairs = try JSONSerialization.jsonObject(with: Data(kinds.utf8)) as? [[String]]
+            XCTAssertEqual(pairs?.map { $0.joined(separator: "=") },
+                           ["claim=Claim filed", "refunded=Refunded", "contacted=Seller contacted", "reshipped=Reshipped",
+                            "partial=Partial refund", "other=Other"], "STAMP_KINDS: the six kinds in order, Other last")
+        } catch {
+            XCTFail("STAMP_KINDS is not in the bundle: \(error)")
+        }
+        let refund = await rule("isRefundStamp", #"[{"kind":"partial"}]"#)
+        XCTAssertEqual(refund as? Bool, true, "isRefundStamp: partial is a refund")
+        let claim = await rule("isRefundStamp", #"[{"kind":"claim"}]"#)
+        XCTAssertEqual(claim as? Bool, false, "isRefundStamp: a claim is not")
+        let has = await rule("hasStamp", #"[{"kind":"","note":"kept"}]"#)
+        XCTAssertEqual(has as? Bool, false, "hasStamp: a tombstone has none")
+        let band = await rule("stampBandText", #"[{"kind":"claim","note":"","at":"2026-07-04"}]"#)
+        XCTAssertEqual(band as? String, "CLAIM FILED \u{00B7} 07-04", "stampBandText")
+        let items = #"[{"key":"a","qty":1,"price":1},{"key":"b","qty":2,"price":1}]"#
+        let pill = await rule("refundedPill", "[\(items),{\"a\":1}]")
+        XCTAssertEqual(pill as? String, "2 left \u{00B7} refunded", "refundedPill: copies still owed")
+        let next = await rule("nextStamp", #"[{"kind":"claim","note":"a","at":"2026-07-01","updatedAt":5},{"kind":"refunded","note":" b "},"2026-07-04",9]"#)
+        let record = next as? [String: Any]
+        XCTAssertEqual(record?["kind"] as? String, "refunded", "nextStamp: the new kind")
+        XCTAssertEqual(record?["note"] as? String, "b", "nextStamp: the note is trimmed")
+        XCTAssertEqual(record?["at"] as? String, "2026-07-04", "nextStamp: another kind is dated today")
+        XCTAssertEqual(record?["updatedAt"] as? Double, 9, "nextStamp: the clock it was given")
+    }
+
+    // MARK: the refund kinds come from the bundle
+
+    /// "shimrefund" is the only refund the shim knows. A refunded stamp is none.
+    static let refundShim = #"Rules = Object.assign({}, Rules, { isRefundStamp: function (s) { return !!s && s.kind === "shimrefund"; } });"#
+    /// R1 / Seller R (items r1, r2) is stamped shimrefund and must go. E1 is stamped "refunded", which the shim does
+    /// not call a refund, so it must stay. The rest is the base ledger.
+    static let stamps: [LiveStamp] = [("R1", "Seller R", "shimrefund"), ("E1", "Seller E", "refunded")]
+
+    func shimmedEngine() async throws -> RulesEngine {
+        let engine = try RulesEngine(bundleURL: try probeBundleFile(Self.refundShim, for: self))
+        // positive control: the override is live, and the rest of the bundle is intact
+        let live = try await engine.call("isRefundStamp", #"[{"kind":"shimrefund"}]"#)
+        XCTAssertEqual(live, "true", "the shim's override must be live, or this test proves nothing")
+        let off = try await engine.call("isRefundStamp", #"[{"kind":"refunded"}]"#)
+        XCTAssertEqual(off, "false", "the shim must not call refunded a refund")
+        let rest = try await engine.call("outstandingOf", "[[],{}]")
+        XCTAssertEqual(rest, "{\"left\":0,\"value\":0}", "the shim must leave the other exports alone")
+        return engine
+    }
+
+    func ledger() async throws -> LedgerStore {
+        try await LiveFixture.store(items: LiveFixture.base + LiveFixture.refunded, stamps: Self.stamps, engine: try LiveFixture.engine())
+    }
+
+    /// LiveItems.of, which every count and list reads, drops the packages the bundle's isRefundStamp names. Swift's
+    /// own literal of the two refund kinds would drop E1 and keep R1 / Seller R, the opposite.
+    func testLiveItemsDropsWhatTheBundlesIsRefundStampNames() async throws {
+        let store = try await ledger()
+        let out = try await LiveItems.of(store.items(), stamps: store.stamps(), engine: try await shimmedEngine())
+        let kept = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(out.utf8)) as? [[String: Any]])
+        XCTAssertEqual(kept.compactMap { $0["key"] as? String }.sorted(), ["a1", "a2", "e1", "f1", "s1"],
+                       "the package the bundle calls a refund goes, and the one it does not stays")
+    }
+
+    /// The Packages list is built from it: no card for a package the bundle calls a refund.
+    func testPackagesModelListsWhatTheBundlesIsRefundStampKeeps() async throws {
+        let model = PackagesModel(engine: try await shimmedEngine(), store: try await ledger())
+        try await model.load()
+        XCTAssertEqual(model.rows.map(\.gk).sorted(), ["A1::Seller A", "E1::Seller E", "F1::Seller F", "R1::Seller S"])
+    }
+
+    // MARK: the stamped list and its count
+
+    /// What the Mirror finds under `name`, or under the `_name` @Observable stores it as.
+    func peek<T>(_ model: Any, _ name: String, as type: T.Type = T.self) -> T? {
+        Mirror(reflecting: model).children.first { $0.label == name || $0.label == "_" + name }?.value as? T
+    }
+
+    /// E1 holds a claim, R1 / Seller R a refund, F1 a removed stamp (a tombstone) and the canceled X1 a claim.
+    /// The cell counts E1 and the refunded R1, which the normal list has dropped: the web's stampedPackagesOf runs on the
+    /// list before the refund exclusion (stamped-filter-on-the-pipeline). A tombstone is no stamp, and a canceled
+    /// order is out of the list altogether (canceled-orders-leave-the-list). The filter is off at launch.
+    func testPackagesModelCountsLiveStampsIncludingRefundsAndNothingElse() async throws {
+        let stamps: [LiveStamp] = [("E1", "Seller E", "claim"), ("R1", "Seller R", "refunded"), ("F1", "Seller F", ""), ("X1", "Seller X", "claim")]
+        let store = try await LiveFixture.store(items: LiveFixture.base + LiveFixture.refunded + LiveFixture.canceled, stamps: stamps,
+                                                engine: try LiveFixture.engine())
+        let model = PackagesModel(engine: try LiveFixture.engine(), store: store)
+        try await model.load()
+
+        XCTAssertEqual(try XCTUnwrap(peek(model, "stampedCount") as Int?, "PackagesModel has no stampedCount"), 2,
+                       "two live stamps in the list before the refund exclusion; not the tombstone, not the canceled order")
+        let held = try XCTUnwrap(peek(model, "stamps") as [String: Any]?, "PackagesModel has no stamps map")
+        XCTAssertTrue(Set(held.keys).isSuperset(of: ["E1::Seller E", "R1::Seller R"]), "the stamps map lacks a live stamp: \(held.keys.sorted())")
+        XCTAssertEqual(peek(model, "showStamped") as Bool?, false, "the stamped filter starts off")
+        XCTAssertFalse(model.rows.map(\.gk).contains("R1::Seller R"), "the refunded package is out of the normal list")
+    }
+}
