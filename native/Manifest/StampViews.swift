@@ -27,10 +27,9 @@ struct StampedRow: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityElement(children: .ignore)
                 .accessibilityLabel("\(count) stamped")
                 .accessibilityHint("Shows only the packages that carry a stamp")
-                .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
+                .accessibilityAddTraits(on ? .isSelected : [])
                 .accessibilityIdentifier("stamped-cell")
             }
             Rectangle().fill(paint(.rule)).frame(height: 1).opacity(0.55)

@@ -399,7 +399,8 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-ask-has-no-cancel-focus` — The native ask does not move first focus to Cancel.
 - `native-removal-rule-is-swift` — The test for a removing reply is Swift code.
 - `native-version-names-unpinned` — No test pins the version file names.
-- `native-filters-tally-only` — The native client has no date filter, package sort, Packages search or stamped filter.
+- `native-filters-tally-only` — The native client has no date filter, package sort or Packages search.
+- `stamp-paint-unpinned` — No test pins StampPaint's token choices.
 - `native-tally-copy-no-flags` — The native Tally copy has no lost-mail flag and no order id tap.
 - `native-envelope-has-no-photos` — Native envelopes have no photos.
 - `native-orphaned-colours-unbuilt` — The native Orphaned composer audits flag text with no element.
