@@ -91,6 +91,8 @@ struct StampSection: View {
     @State private var kind = ""
     @State private var note = ""
     @State private var armed = false
+    /// The action row's height at the current type size, which the armed ask hangs below.
+    @State private var rowHeight: CGFloat = 0
     @FocusState private var focused: Bool
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.scrollTo) private var scrollTo
@@ -256,7 +258,9 @@ struct StampSection: View {
             .accessibilityHint(ready ? "" : "Pick a stamp first.")
             .accessibilityIdentifier("stamp-save:\(pkg.gk)")
         }
-        .overlay(alignment: .bottomTrailing) { if armed { ask } }
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { rowHeight = $0 }
+        // The overlay takes no layout space. The ask's top sits 4pt under the row, whatever height the row has now.
+        .overlay(alignment: .topTrailing) { if armed { ask.offset(y: rowHeight + 4) } }
     }
 
     private var ask: some View {
@@ -277,8 +281,6 @@ struct StampSection: View {
         .padding(4)
         .background(RoundedRectangle(cornerRadius: 8).fill(paint(.askPanelFill)).shadow(color: Parchment.shadow, radius: 2, y: 1))
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.askPanelBorder), lineWidth: 1))
-        // Its top sits 4pt under the row, whatever height the row has at the current type size.
-        .alignmentGuide(.bottom) { $0[.top] - 4 }
         .zIndex(1)
     }
 
