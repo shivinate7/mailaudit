@@ -46,6 +46,14 @@ on:
 permissions:
   contents: read
 
+# Cancel a superseded PR run whole, not job by job, so cancelled() is true in ci-done and it
+# posts no false red comment. The draft state is in the group, so a draft run never cancels a
+# ready run. Each main run gets its own group by run id: a group keeps one pending run and a newer
+# one replaces it, so a shared sha group could cancel a pending nightly or dispatch run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_id || format('{0}-{1}', github.ref, github.event.pull_request.draft) }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   suite:
     runs-on: ubuntu-latest
@@ -201,3 +209,33 @@ jobs:
           online-audits: false
           advanced-security: false
           annotations: true
+
+  # Lints the markdown a change adds or edits, in Simplified Technical English. It fails only
+  # on an error on a changed line. fetch-depth 0 lets the action diff against the base branch.
+  ste-lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60  # provisional
+    concurrency:
+      group: ste-lint-${{ github.ref == 'refs/heads/main' && github.sha || format('{0}-{1}', github.ref, github.event.pull_request.draft) }}
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: shivinate7/claude-settings/actions/ste-lint@1cc47f015bdaf073d8cb0f043a988c28d09aa3e1 # main 2026-10-29
+
+  # Rule git-ci-done-comment-wakes: a run that ends with a red job posts one PR comment, which
+  # wakes the session that watches the PR. A green run posts nothing. Keep needs: on every other job.
+  ci-done:
+    needs: [suite, screens, scope, native, zizmor, ste-lint]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read  # the workflow default, kept because a job-level block replaces it
+      pull-requests: write  # gh pr comment posts the one comment
+    steps:
+      - uses: shivinate7/claude-settings/actions/ci-done-comment@1cc47f015bdaf073d8cb0f043a988c28d09aa3e1 # main 2026-10-29
+        with:
+          needs: ${{ toJSON(needs) }}
