@@ -6,7 +6,7 @@
 //
 // It also holds the owner's two other narrow skips (audit-skips-measured-flags): skipMeasuredContrastFlags,
 // the contrast skip on four named elements, and skipKeyboardPredictionCells, the system keyboard's cells in the two
-// composer audits. The Tally audits call skipTallyAuditFlags, which is the contrast skip. No skip covers the Tally meta
+// composer audits. The Tally audits call skipMeasuredContrastFlags. No skip covers the Tally meta
 // line: its audit raises no finding (TallyUITests.testAccessibilityAuditTallyScreenWithATruncatedMetaLine).
 //
 // This file also holds the narrowness proof. The app has no low-contrast element above the bar,
@@ -36,11 +36,6 @@ func isMeasuredContrastFlag(_ type: XCUIAccessibilityAuditType, identifier: Stri
 /// The skip closure of auditNamingElements(skipping:), over a real audit issue.
 @MainActor func skipMeasuredContrastFlags(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
     isMeasuredContrastFlag(issue.auditType, identifier: issue.element?.identifier)
-}
-
-/// What the Tally audits skip: the ruled contrast flags. Nothing else.
-@MainActor func skipTallyAuditFlags(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
-    skipMeasuredContrastFlags(issue)
 }
 
 /// The system keyboard's prediction cell, which the app does not draw (decision audit-skips-measured-flags). The

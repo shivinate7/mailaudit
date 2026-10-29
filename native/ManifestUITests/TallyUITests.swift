@@ -97,7 +97,7 @@ final class TallyUITests: XCTestCase {
     func testAccessibilityAuditTallyScreenWithRows() throws {
         let app = launch()
         openTally(app)
-        try app.auditNamingElements(skipping: skipTallyAuditFlags)
+        try app.auditNamingElements(skipping: skipMeasuredContrastFlags)
     }
 
     /// The open row is audited alone. On the full list, opening Lightning Bolt adds three copies and pushes the last
@@ -122,7 +122,7 @@ final class TallyUITests: XCTestCase {
         for (id, frame) in frames(app) {
             XCTAssertLessThanOrEqual(frame.maxY, barTop, "\(id) reaches under the tab bar, so the audit would read a cut row")
         }
-        try app.auditNamingElements(skipping: skipTallyAuditFlags)
+        try app.auditNamingElements(skipping: skipMeasuredContrastFlags)
     }
 
     /// The audit with an overflowing meta line. The Set Card meta is far wider than its column, so the row draws a "…"
@@ -137,7 +137,7 @@ final class TallyUITests: XCTestCase {
     func testAccessibilityAuditTallyScreenWithATruncatedMetaLine() throws {
         let app = launch(width: 375, size: "UICTContentSizeCategoryL", seed: Self.longSetSeed)
         openTally(app, row: Self.longSetRow)
-        let ruled = try app.auditNamingElements(skipping: skipTallyAuditFlags)
+        let ruled = try app.auditNamingElements(skipping: skipMeasuredContrastFlags)
         XCTAssertFalse(ruled.contains { $0.contains("id=tally-meta:") }, "an audit skip covers the meta line. Skipped: \(ruled)")
         let meta = wholeLongSetMeta(app)
         let window = app.windows.firstMatch
