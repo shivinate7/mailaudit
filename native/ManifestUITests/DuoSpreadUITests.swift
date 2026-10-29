@@ -19,7 +19,9 @@
 // testFlatTallyPickedRowIsSelected (a colour overlay marks the pick, with no .isSelected trait).
 // Guards, green on the old code: testFlatPackagesFullWidth, testClosedTallyIsOnePage. Ledger full width has one home,
 // DuoShellUITests.testFlatLedgerFullWidth, which shares expectSpansFold with the Packages test here.
-// testFlatTallyLastRowClearsTheBar is unrun: it may pass today, and it keeps the new left page clear of the bar.
+// testFlatTallyLastRowClearsTheBar and testFlatPackagesLastRowClearsTheBar guard the bar's column: the bar sits under the right
+// page only (decision duo-card-in-hand, item 23), so a part hides under it only if it shares the bar's column. A left page row may
+// run to the window's bottom edge. The Packages case is unrun, and Ledger has no case here (its home is DuoShellUITests).
 //
 // What the tests expect of the app. Identifiers already in the app are kept. The builder adds the ones marked NEW.
 //   duo-tab-bar              the custom bar (DuoShellUITests). Its buttons carry the tab titles.
@@ -114,6 +116,38 @@ final class DuoSpreadUITests: XCTestCase {
         abs(a.minX - b.minX) <= 1 && abs(a.minY - b.minY) <= 1 && abs(a.width - b.width) <= 1 && abs(a.height - b.height) <= 1
     }
 
+    /// The bar's rule: a part is under the bar when it shares a column with the bar (overlaps its x range by more than 1 pt) and
+    /// ends below the bar's top edge. A part left of the bar never is, whatever its y. Fails when no part shares the bar's column,
+    /// since then no part could fail and the check proves nothing.
+    func expectClearsBar(_ parts: [XCUIElement], bar: XCUIElement, _ what: String, file: StaticString = #filePath, line: UInt = #line) {
+        let b = bar.frame
+        let shared = parts.filter { min($0.frame.maxX, b.maxX) - max($0.frame.minX, b.minX) > 1 }
+        XCTAssertFalse(shared.isEmpty, "no \(what) part shares a column with the bar \(b), so this proves nothing", file: file, line: line)
+        let hidden = shared.filter { $0.frame.maxY > b.minY + 0.5 }.map { "\($0.identifier) ends at \($0.frame.maxY) pt" }
+        XCTAssertEqual(hidden, [], "\(what) parts end below the bar's top edge at \(b.minY) pt", file: file, line: line)
+    }
+
+    /// Drags up on the left page's middle until the lowest part with one of `prefixes` stops moving (12 drags at most). Returns
+    /// whether the first drag moved it. The drag runs from the window's origin: on an open Duo, `app` coordinates land on the outer display.
+    func scrollToEnd(_ app: XCUIApplication, prefixes: [String]) -> Bool {
+        func lowest() -> CGFloat { prefixes.flatMap { app.elements(prefix: $0) }.map { $0.frame.maxY }.max() ?? 0 }
+        let win = app.window.frame
+        let x = (win.minX + win.midX - DuoMetrics.foldMargin) / 2 - win.minX  // the middle of the left page
+        let origin = app.window.coordinate(withNormalizedOffset: .zero)
+        var last = lowest()
+        var moved = false
+        for drag in 0..<12 {
+            origin.withOffset(CGVector(dx: x, dy: win.height - 100))
+                .press(forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: x, dy: 100)), withVelocity: .slow, thenHoldForDuration: 0.3)
+            Thread.sleep(forTimeInterval: 0.5)
+            let now = lowest()
+            if drag == 0 { moved = now < last - 0.5 }
+            if abs(now - last) < 0.5 { break }  // the list stopped moving: this is the end
+            last = now
+        }
+        return moved
+    }
+
     // MARK: open Duo, pose flat
 
     /// Pose: flat (open Duo, window 951 x 669 pt), mockup pose 9. Tally's rows sit on the left page, the selected name and its
@@ -185,40 +219,40 @@ final class DuoSpreadUITests: XCTestCase {
         }
     }
 
-    /// Pose: flat (open Duo, window 951 x 669 pt). Scrolled to the end, the last Tally row ends above the bar's top edge.
-    /// The drag runs inside the left page, from the window's origin: on an open Duo, `app` coordinates land on the outer display.
+    /// Pose: flat (open Duo, window 951 x 669 pt). The bar sits under the right page only, so scrolled to the end the left page's
+    /// rows may run to the window's bottom edge, and the right page's parts (heading, copies) end above the bar's top edge.
+    /// Both are one rule (expectClearsBar): a part that shares the bar's column ends above the bar's top. It fails if a right page
+    /// part ends under the bar, or if the bar is widened over the left page while a row sits there.
     func testFlatTallyLastRowClearsTheBar() {
         guard let app = openFlat("Tally", anchor: "tally-row:Lightning Bolt") else { return }
         let bar = app.duoBar
-        func lowest() -> (id: String, maxY: CGFloat) {
-            let last = app.elements(prefix: "tally-row:").max { $0.frame.maxY < $1.frame.maxY }
-            return (last?.identifier ?? "none", last?.frame.maxY ?? 0)
-        }
+        let rows = { app.elements(prefix: "tally-row:") }
 
-        XCTAssertEqual(app.elements(prefix: "tally-row:").count, Self.tallyRows, "the seed's Tally has \(Self.tallyRows) rows")
+        XCTAssertEqual(rows().count, Self.tallyRows, "the seed's Tally has \(Self.tallyRows) rows")
         // Without this, a list that fits above the bar passes whatever the bottom inset is.
-        XCTAssertGreaterThan(lowest().maxY, bar.frame.minY,
+        XCTAssertGreaterThan(rows().map { $0.frame.maxY }.max() ?? 0, bar.frame.minY,
                              "the \(Self.tallyRows) rows end above the bar before any scroll, so this test proves nothing: add rows to the seed")
 
-        let win = app.window.frame
-        let x = (win.minX + win.midX - DuoMetrics.foldMargin) / 2 - win.minX  // the middle of the left page
-        let origin = app.window.coordinate(withNormalizedOffset: .zero)
-        var last = lowest().maxY
-        for drag in 0..<12 {
-            origin.withOffset(CGVector(dx: x, dy: win.height - 100))
-                .press(forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: x, dy: 100)), withVelocity: .slow, thenHoldForDuration: 0.3)
-            Thread.sleep(forTimeInterval: 0.5)
-            let now = lowest().maxY
-            // A first drag that moves nothing is not "the end": the drag missed the scroll view, or the list cannot clear the bar.
-            if drag == 0 { XCTAssertLessThan(now, last - 0.5, "a drag on the left page did not move the list: \(lowest().id) stays at \(now) pt, the bar's top is \(bar.frame.minY) pt. Either the drag missed the scroll view, or the list cannot scroll far enough to clear the bar") }
-            if abs(now - last) < 0.5 { break }  // the list stopped moving: this is the end
-            last = now
-        }
+        app.byID("tally-toggle:Lightning Bolt").tap()  // the right page lists this name's copies
+        let rightIDs = ["tally-detail-title"] + Self.lightningCopies.map { "tally-copy:\($0)" }
+        for id in rightIDs { expect(app.byID(id), on: .right, in: app, "the right page part \(id)") }
+
+        // A first drag that moves nothing is not "the end": the drag missed the scroll view.
+        XCTAssertTrue(scrollToEnd(app, prefixes: ["tally-row:"]), "a drag on the left page did not move the list: the drag missed the scroll view")
         keepShot(app, "flat-tally-end")
 
-        let end = lowest()
-        XCTAssertLessThanOrEqual(end.maxY, bar.frame.minY + 0.5,
-                                 "scrolled to the end, \(end.id) ends at \(end.maxY) pt, below the bar's top edge at \(bar.frame.minY) pt")
+        expectClearsBar(rows() + rightIDs.map { app.byID($0) }, bar: bar, "Tally")
+    }
+
+    /// Pose: flat (open Duo, window 951 x 669 pt). Packages keeps the full width, so its rows share the bar's column: scrolled to
+    /// the end, the last row and check-in control end above the bar's top edge. A list that fits needs no scroll and passes.
+    func testFlatPackagesLastRowClearsTheBar() {
+        guard let app = openFlat("Packages", anchor: "package-row:") else { return }
+        let prefixes = ["package-row:", "checkin:"]
+        _ = scrollToEnd(app, prefixes: prefixes)  // a list that fits does not move, and is not a failure
+        keepShot(app, "flat-packages-end")
+
+        expectClearsBar(prefixes.flatMap { app.elements(prefix: $0) }, bar: app.duoBar, "Packages")
     }
 
     /// Pose: flat (open Duo, window 951 x 669 pt), mockup pose 9. Orphaned's envelope cells sit on the left page, and the
