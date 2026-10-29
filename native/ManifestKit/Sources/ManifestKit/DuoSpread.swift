@@ -74,3 +74,8 @@ public enum DuoTabBar {
         return CGRect(x: right.minX, y: right.maxY - height, width: right.width, height: height)
     }
 }
+
+/// The item the open Duo's right page shows: the picked one, else the first. A pick that is gone, as after a discard, falls to the first.
+public func pickedOrFirst<Item, ID: Equatable>(_ items: [Item], picked: ID?, id: (Item) -> ID) -> Item? {
+    items.first { id($0) == picked } ?? items.first
+}

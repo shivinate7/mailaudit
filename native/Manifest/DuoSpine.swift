@@ -172,6 +172,7 @@ private struct DuoBar<ID: Hashable>: View {
         HStack(spacing: 4) {
             ForEach(items, id: \.id) { item in
                 let on = item.id == selection
+                let tint = on ? Parchment.accent : Parchment.inkSoft
                 // The title is drawn beside the button, not in it: SwiftUI folds a button's text into the button, and the
                 // title needs its own element (duo-tab-title). The button keeps a hidden copy, so its layout is unchanged.
                 ZStack {
@@ -182,7 +183,7 @@ private struct DuoBar<ID: Hashable>: View {
                             Text(item.title).font(.cochin(12, relativeTo: .caption)).hidden()
                         }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .foregroundStyle(on ? Parchment.accent : Parchment.inkSoft)
+                        .foregroundStyle(tint)
                         .background(on ? Parchment.card.opacity(0.9) : .clear, in: Capsule())
                         .overlay(alignment: .top) { badge(item.badge) }
                         .contentShape(Capsule())
@@ -193,7 +194,7 @@ private struct DuoBar<ID: Hashable>: View {
                     .accessibilityAddTraits(on ? .isSelected : [])
                     VStack(spacing: 4) {
                         Color.clear.frame(width: 22, height: 22)
-                        Text(item.title).font(.cochin(12, relativeTo: .caption)).foregroundStyle(on ? Parchment.accent : Parchment.inkSoft)
+                        Text(item.title).font(.cochin(12, relativeTo: .caption)).foregroundStyle(tint)
                     }
                     .allowsHitTesting(false)
                     .accessibilityIdentifier("duo-tab-title:\(item.title)")

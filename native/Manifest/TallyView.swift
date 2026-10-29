@@ -24,7 +24,7 @@ struct TallyView: View {
     @State private var picked: String?
 
     private var pages: (left: CGRect, right: CGRect)? { spread.pages(for: .tally) }
-    private var current: TallyRow? { model.rows.first { $0.name == picked } ?? model.rows.first }
+    private var current: TallyRow? { pickedOrFirst(model.rows, picked: picked, id: \.name) }
 
     var body: some View {
         Group {
@@ -59,6 +59,7 @@ struct TallyView: View {
         ScrollView {
             if let row = current { TallyRowView(row: row, model: model, masthead: masthead, page: .detail).padding(16) }
         }
+        .id(current?.name)  // a new pick starts a fresh page: scroll and row state do not carry over
     }
 
     @ViewBuilder private var errorBar: some View {
@@ -178,6 +179,7 @@ struct TallyRowView: View {
         VStack(alignment: .leading, spacing: 0) {
             Button { if case let .cell(_, pick) = page { pick() } else { open.toggle() } } label: { header }
                 .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? .isSelected : [])
                 .accessibilityIdentifier("tally-toggle:\(row.name)")
             if isOpen {
                 across
@@ -190,8 +192,7 @@ struct TallyRowView: View {
         // The shadow sits on the fill, not the card: a shadow on the card is drawn under every leaf view in it.
         .background(RoundedRectangle(cornerRadius: 8).fill(paint(.surface)).shadow(color: Parchment.shadow, radius: 2, y: 1))
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.border, done: done), lineWidth: 1))
-        // The picked cell is marked by colour in an overlay, so picking moves nothing (no-layout-shift-under-pointer).
-        .overlay { if selected { RoundedRectangle(cornerRadius: 8).strokeBorder(Parchment.accent, lineWidth: 2).allowsHitTesting(false) } }
+        .pickedMark(selected)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("tally-row:\(row.name)")
     }

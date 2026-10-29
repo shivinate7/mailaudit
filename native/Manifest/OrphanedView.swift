@@ -20,7 +20,7 @@ struct OrphanedView: View {
     @State private var picked: String?
 
     private var pages: (left: CGRect, right: CGRect)? { spread.pages(for: .orphaned) }
-    private var current: Envelope? { model.envelopes.first { $0.id == picked } ?? model.envelopes.first }
+    private var current: Envelope? { pickedOrFirst(model.envelopes, picked: picked, id: \.id) }
 
     var body: some View {
         Group {
@@ -37,8 +37,14 @@ struct OrphanedView: View {
 
     private var detail: some View {
         ScrollView {
-            if let env = current { EnvelopeCard(model: model, env: env, onChange: onChange, page: .detail).padding(16) }
+            // While the composer is open on the left for this envelope, a card here would show a second, stale copy.
+            if let env = current, model.composing != .edit(env.id) {
+                EnvelopeCard(model: model, env: env, onChange: onChange, page: .detail).padding(16)
+            } else if current != nil {
+                emptyLine
+            }
         }
+        .id(current?.id)  // a new pick starts a fresh page: an armed Discard, show-all and scroll do not carry over
     }
 
     @ViewBuilder private var errorBar: some View {
@@ -49,6 +55,12 @@ struct OrphanedView: View {
                 .overlay(alignment: .top) { Rectangle().fill(paint(.cardBorder)).frame(height: 1) }
                 .accessibilityIdentifier("orphaned-error")
         }
+    }
+
+    private var emptyLine: some View {
+        Text(OrphanedNotice.emptyLine).font(.cochin(14, relativeTo: .body)).foregroundStyle(paint(.emptyLine))
+            .frame(maxWidth: .infinity).multilineTextAlignment(.center).padding(.vertical, 28).padding(.horizontal, 8)
+            .accessibilityIdentifier("orphaned-empty")
     }
 
     private var list: some View {
@@ -78,9 +90,7 @@ struct OrphanedView: View {
                 // The pile emptied out from under the notice: it still needs somewhere to go.
                 if let u = model.undo, u.index >= model.envelopes.count { UndoNoticeView(model: model, notice: u, onChange: onChange) }
                 if model.envelopes.isEmpty && model.composing != .new {
-                    Text(OrphanedNotice.emptyLine).font(.cochin(14, relativeTo: .body)).foregroundStyle(paint(.emptyLine))
-                        .frame(maxWidth: .infinity).multilineTextAlignment(.center).padding(.vertical, 28).padding(.horizontal, 8)
-                        .accessibilityIdentifier("orphaned-empty")
+                    emptyLine
                 }
             }
             .padding(.horizontal, 16)
@@ -276,8 +286,8 @@ private struct EnvelopeCard: View {
         if case let .cell(selected, pick) = page {
             Button(action: pick) { card }
                 .buttonStyle(.plain)
-                // The picked cell is marked by colour in an overlay, so picking moves nothing (no-layout-shift-under-pointer).
-                .overlay { if selected { RoundedRectangle(cornerRadius: 8).strokeBorder(Parchment.accent, lineWidth: 2).allowsHitTesting(false) } }
+                .pickedMark(selected)
+                .accessibilityAddTraits(selected ? .isSelected : [])
                 .accessibilityIdentifier("orphaned-cell:\(env.id)")
         } else {
             card
