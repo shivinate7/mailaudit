@@ -4,11 +4,13 @@
 // writers a line calls (toggle for a tap, step for the stepper). With the stamped filter on, `rows` is the stamped list
 // alone. toggleStamped says it "changes the list, not the counts", so a line the filter hides is still a live line
 // of the ledger, and Card in Hand can name its envelope (HandModel reads the store, not `rows`). These cases pin the
-// model half of the fix: with the filter on, a hidden live line still checks in, steps, and has the same line text
-// it has with the filter off.
+// model half of the fix: with the filter on, the live packages are still there to read, and a hidden live line still checks
+// in, steps, and has the same line text it has with the filter off.
 //
-// Not pinned here: which list Card in Hand reads its envelopes and its count line from. No unit name is ruled for it, so the
-// builder picks one. DuoHandUITests pins the screen (the envelope shows, and the count line holds every live copy).
+// The list Card in Hand reads its envelopes and its count line from is named `liveRows` here, by these cases and no decision.
+// It is a stored property of PackagesModel filled by load(), as `pills` is (a test cannot name a property that does not
+// exist yet, so the case reads it through peek, the Mirror helper of MirrorScan.swift). A builder who picks another name or shape
+// changes testLiveRowsHoldEveryLivePackageWhateverTheFilter in the same commit. DuoHandUITests pins the screen.
 //
 // LiveFixture (TallyPackagesLiveItemsTests.swift) builds the ledger. Its base ledger holds E1 with an "other" stamp, so the
 // stamped list is E1 alone. A1 / Seller A (a1, a2), R1 / Seller S (s1) and F1 are live and unstamped, so the filter hides them.
@@ -22,7 +24,7 @@ import XCTest
 
 @MainActor
 final class HandStampedFilterTests: XCTestCase {
-    static let e1 = "E1::Seller E"
+    static let e1 = "E1::Seller E", r1 = "R1::Seller R"
 
     /// Live lines the filter hides: s1 holds one copy, a2 two. Neither is in at rest (LiveFixture.received).
     static let hidden = ["s1", "a2"]
@@ -42,6 +44,26 @@ final class HandStampedFilterTests: XCTestCase {
         try await model.toggleStamped()
         XCTAssertTrue(model.showStamped, "anchor: the filter is on")
         XCTAssertEqual(model.rows.map(\.gk), [Self.e1], "anchor: the stamped list holds E1 alone")
+    }
+
+    /// `liveRows` is every live package, whatever the filter: the list the filter off shows. With the filter on, `rows` is
+    /// the stamped list, which holds a refunded package (stamped-filter-on-the-pipeline) that the filter off drops
+    /// (a-refund-leaves-every-count). The count line and the envelope lookups read the live list, so a refunded package's
+    /// copies are no more counted than a hidden one's are missed.
+    func testLiveRowsHoldEveryLivePackageWhateverTheFilter() async throws {
+        let engine = try LiveFixture.engine()
+        let store = try await LiveFixture.store(items: LiveFixture.base + LiveFixture.refunded,
+                                                stamps: LiveFixture.baseStamps + [LiveFixture.refundStamp], engine: engine)
+        let model = PackagesModel(engine: engine, store: store)
+        try await model.load()
+        let live = model.rows.map(\.gk).sorted()
+        XCTAssertEqual(live.count, 4, "anchor: the filter off lists the four live packages")
+        XCTAssertFalse(live.contains(Self.r1), "anchor: the refunded package is not live")
+
+        try await model.toggleStamped()
+        XCTAssertEqual(Set(model.rows.map(\.gk)), [Self.e1, Self.r1], "anchor: the stamped list holds E1 and the refunded R1")
+        let rows = try XCTUnwrap(peek(model, "liveRows") as [Package]?, "PackagesModel has no liveRows (stored, filled by load())")
+        XCTAssertEqual(rows.map(\.gk).sorted(), live, "liveRows is not the live list the filter off shows")
     }
 
     /// A tap on a line the filter hides checks it in: the count is written, and the line's own text follows it.
