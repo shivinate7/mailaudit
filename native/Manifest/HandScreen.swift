@@ -203,8 +203,11 @@ struct HandScreen: View {
         // keys never reach and the bar does not float, adds no row, so nothing moves under a finger (no-layout-shift-under-pointer).
         .overlay(alignment: .top) {
             if let e = packages.checkInError {
-                Text(e).font(.footnote).padding(12).frame(maxWidth: .infinity)
-                    .background(.regularMaterial).accessibilityIdentifier("hand-checkin-error")
+                Text(e).font(.cochin(13, relativeTo: .footnote)).foregroundStyle(Parchment.red).padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Parchment.paper)
+                    .overlay(alignment: .bottom) { Rectangle().fill(Parchment.line).frame(height: 1) }
+                    .accessibilityIdentifier("hand-checkin-error")
             }
         }
         .accessibilityElement(children: .contain)
