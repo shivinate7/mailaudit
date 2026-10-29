@@ -249,10 +249,15 @@ final class DuoSpreadUITests: XCTestCase {
     func testFlatPackagesLastRowClearsTheBar() {
         guard let app = openFlat("Packages", anchor: "package-row:") else { return }
         let prefixes = ["package-row:", "checkin:"]
-        _ = scrollToEnd(app, prefixes: prefixes)  // a list that fits does not move, and is not a failure
+        let bar = app.duoBar
+        let parts = { prefixes.flatMap { app.elements(prefix: $0) } }
+        let reachesBar = parts().contains { $0.frame.maxY > bar.frame.minY + 0.5 }
+        let moved = scrollToEnd(app, prefixes: prefixes)
+        // A list that fits above the bar does not move, and is not a failure. One that reaches the bar must move.
+        if reachesBar { XCTAssertTrue(moved, "a drag did not move the Packages list, which reaches the bar's top at \(bar.frame.minY) pt. Either the drag missed the scroll view, or the list cannot scroll far enough to clear the bar") }
         keepShot(app, "flat-packages-end")
 
-        expectClearsBar(prefixes.flatMap { app.elements(prefix: $0) }, bar: app.duoBar, "Packages")
+        expectClearsBar(parts(), bar: bar, "Packages")
     }
 
     /// Pose: flat (open Duo, window 951 x 669 pt), mockup pose 9. Orphaned's envelope cells sit on the left page, and the
