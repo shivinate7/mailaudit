@@ -9,7 +9,7 @@
 // The API the test names:
 //
 //   extension PastTransitModel {
-//       public static let stampKinds: [StampKind]    // the six kinds the page offers, in this order
+//       public private(set) var stampKinds: [StampKind]    // the six kinds the page offers, in this order; filled by load()
 //   }
 //   public struct StampKind: Equatable, Sendable { public let kind: String; public let label: String }
 //
@@ -21,9 +21,18 @@ import XCTest
 
 @MainActor
 final class PastTransitStampKindsTests: XCTestCase {
-    /// Kind keys and labels as the web writes them. A seventh kind, a missing one, a Lost kind or another order fails.
-    func testPageOffersTheWebsSixKindsInOrder() {
-        let offered = PastTransitModel.stampKinds.map { "\($0.kind)|\($0.label)" }
+    /// Kind keys and labels as the web writes them, read after load(). A seventh kind, a missing one, a Lost kind or
+    /// another order fails. The ledger is empty: the kinds do not depend on it.
+    func testPageOffersTheWebsSixKindsInOrder() async throws {
+        let dir = try PhotoTestKit.tempDir("stamp-kinds")
+        addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
+        let file = dir.appending(path: "ledger.json")
+        try Data(#"{"mailday":1,"items":[]}"#.utf8).write(to: file)
+        let store = LedgerStore(fileURL: file, now: { 1_786_543_380_000 })
+        try store.load()
+        let model = PastTransitModel(engine: try RulesEngine(bundleURL: RulesGoldenTests.bundleURL), store: store)
+        try await model.load()
+        let offered = model.stampKinds.map { "\($0.kind)|\($0.label)" }
         XCTAssertEqual(offered, [
             "claim|Claim filed",
             "refunded|Refunded",
