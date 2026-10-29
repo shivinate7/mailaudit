@@ -33,14 +33,8 @@ public final class PastTransitModel {
 
     /// The six kinds the page offers, read from the web's STAMP_KINDS in the rules bundle (one home). No Lost kind
     /// (duo-card-in-hand, item 25, deferred). `stamp(_:kind:)` takes any kind; the limit is this list.
-    public static let stampKinds: [StampKind] = {
-        guard let url = Bundle.module.url(forResource: "rules", withExtension: "js"),
-              let json = try? RulesCore(bundleURL: url).constant("STAMP_KINDS"),
-              let pairs = try? JSONDecoder().decode([[String]].self, from: Data(json.utf8)) else {
-            preconditionFailure("rules.js carries no STAMP_KINDS")
-        }
-        return pairs.map { StampKind(kind: $0[0], label: $0[1]) }
-    }()
+    /// Empty until the first load() reads them through the engine, so the bundle loads once.
+    public private(set) var stampKinds: [StampKind] = []
 
     private struct Hit: Decodable { let gk: String; let tier: String; let days: Int; let claimBy: String }
 
@@ -52,6 +46,10 @@ public final class PastTransitModel {
     /// The reload: re-reads the ledger and ends the sticky rows, so a stamped row now drops out.
     public func load() async throws {
         sticky = []
+        if stampKinds.isEmpty {
+            let pairs = try JSONDecoder().decode([[String]].self, from: Data(try await engine.constant("STAMP_KINDS").utf8))
+            stampKinds = pairs.map { StampKind(kind: $0[0], label: $0[1]) }
+        }
         try await refresh()
     }
 
