@@ -26,6 +26,7 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 - 2026-10-28, Duo wave 3 design review: the native screens keep the web's bordered MiniLabel buttons, which the ios-apps mockup rules call web-like; kept for parity with the web.
 - 2026-10-29, stamp ask review: the ask-below assert accepts an ask that covers the lower half of the row (`askBox.minY > saveBox.midY`; `>= saveBox.maxY` is stricter, unmeasured).
 - 2026-10-29, stamp ask review: arming Remove with the note field focused keeps the keyboard up, so the ask may sit behind it for its 4 s (unmeasured).
+- 2026-10-29, Card in Hand review: no test pins that a failed Tally or Orphaned reload marks a Hand or stamp write failed (`HandScreen.swift` `afterWrite`, `StampViews.swift` `write`).
 
 **Status:** open. Each line stays a note until a real incident.
 
