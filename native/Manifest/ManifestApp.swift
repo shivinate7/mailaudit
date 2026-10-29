@@ -87,7 +87,9 @@ struct ManifestApp: App {
             versions?.refresh()
             try store.load()
             #if DEBUG  // a Release build has no way to wreck its own ledger
-            if ProcessInfo.processInfo.arguments.contains("-ManifestUITestLedgerUnwritable") {
+            // Only on a seeded ledger: without -ManifestUITestSeed this would delete the real ledger.json.
+            if ProcessInfo.processInfo.arguments.contains("-ManifestUITestLedgerUnwritable"),
+               ProcessInfo.processInfo.arguments.contains("-ManifestUITestSeed") {
                 // A directory where the file was: the next save cannot write, so a check-in fails.
                 try? FileManager.default.removeItem(at: ledgerURL)
                 try? FileManager.default.createDirectory(at: ledgerURL, withIntermediateDirectories: false)
