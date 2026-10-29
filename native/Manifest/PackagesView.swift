@@ -13,6 +13,8 @@ struct PackagesView: View {
     let notice: String?
     /// Runs after a stamp write, so the other tabs read the new stamps.
     let onChange: () async throws -> Void
+    /// Set only on two pages side by side: the control that opens Card in Hand (duo-card-in-hand).
+    var openHand: (() -> Void)?
 
     var body: some View {
         MastheadScreen(masthead: masthead, tab: .packages, sync: sync, openSync: openSync,
@@ -20,6 +22,13 @@ struct PackagesView: View {
                            Task { try? await model.toggleStamped() }  // a failed read is in model.checkInError, shown below
                        })) {
             VStack(spacing: 0) {
+                if let openHand {
+                    HStack {
+                        Spacer(minLength: 0)
+                        Button(action: openHand) { MiniLabel(title: "Card in Hand") }.buttonStyle(.plain).accessibilityIdentifier("hand-open")
+                    }
+                    .padding(.horizontal, 16)
+                }
                 if let notice { Text(notice).font(.footnote).padding(8) }
                 LazyVStack(spacing: 8) {
                     ForEach(model.rows, id: \.gk) { pkg in

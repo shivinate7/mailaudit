@@ -12,6 +12,7 @@ struct ManifestApp: App {
     @State private var versions: VersionsModel?
     @State private var failure: String?
     @State private var notice: String?
+    @State private var handKit: HandKit?
     private let keys = KeyStore(service: "dev.shivinate.manifest", account: "device-key")
     @State private var engine: RulesEngine?
     @State private var sync: SyncClient?
@@ -24,7 +25,7 @@ struct ManifestApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(model: model, orphaned: orphaned, tally: tally, masthead: masthead, store: store, sync: sync, versions: versions, onLedgerChange: { await reloadAll() }, failure: failure, notice: notice, width: Self.forcedWidth)
+            RootView(model: model, orphaned: orphaned, tally: tally, masthead: masthead, store: store, sync: sync, versions: versions, onLedgerChange: { await reloadAll() }, failure: failure, notice: notice, handKit: handKit, width: Self.forcedWidth)
                 .background { PressWatcher(gate: gate) }
                 .task { await boot() }
                 .onChange(of: scenePhase) { _, phase in
@@ -102,6 +103,7 @@ struct ManifestApp: App {
                 try? await o.load()
                 try? await mast.refresh()
             })
+            handKit = HandKit(hand: HandModel(engine: e, store: store), transit: PastTransitModel(engine: e, store: store))
             model = m
             tally = t
             orphaned = o

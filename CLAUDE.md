@@ -472,7 +472,15 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `duo-fold-change-unpinned` — No test folds the Duo while the app runs.
 - `duo-tab-items-twice` — The Duo tab bar repeats the tab titles in RootView.
 - `duo-bar-dynamic-type-clips` — The Duo tab bar may clip at large text sizes.
-- `hand-type-not-serialised` — Card in Hand does not serialise typed names.
+- `duo-stacked-poses-unbuilt` — The Duo has no stacked poses.
+- `duo-hand-mockup-gaps` — Eight parts of the Card in Hand mockup are not built.
+- `hand-checkin-error-hidden` — A failed check-in in Card in Hand shows nowhere.
+- `hand-stray-keeps-tie` — A released card leaves its tie on the answer page.
+- `hand-post-scroll-hides-sender` — The Post offer scrolls the sender off the page.
+- `hand-notice-cuts-match-row` — A Suspense or Released box pushes the match under the keys.
+- `hand-suspense-tap-shift` — A Suspense tap shifts the match list under the finger.
+- `duo-left-page-dead-margin` — The Duo left page scrolls 76 pt past its end.
+- `duo-checkin-error-under-bar` — A Packages check-in error can sit under the Duo bar.
 - `native-tally-ellipsis-unpinned` — Nothing pins the native Tally ellipsis.
 - `native-discard-panel-covers-head` — The native armed Discard panel covers the envelope header.
 - `native-axl-rows-break` — Three native rows break at accessibility text sizes.

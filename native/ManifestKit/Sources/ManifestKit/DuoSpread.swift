@@ -16,8 +16,8 @@ extension DuoHinge {
     }
 }
 
-/// The tabs that can show on an open Duo.
-public enum DuoTab: Equatable, Sendable { case ledger, tally, orphaned, cardInHand }
+/// The tabs that can show on an open Duo. `.packages` is the Packages tab as it is, the web's one-page layout, and is not `.cardInHand`.
+public enum DuoTab: Equatable, Sendable { case ledger, tally, orphaned, cardInHand, packages }
 
 /// How the inner screen splits at the fold. Rects are in window points, origin top-left, and never cover the fold.
 public enum DuoSpread: Equatable, Sendable {
@@ -55,8 +55,14 @@ public enum DuoSpread: Equatable, Sendable {
         }
     }
 
-    /// The Ledger tab holds options and stays full width. The other tabs spread over both pages.
-    public static func spreads(tab: DuoTab) -> Bool { tab != .ledger }
+    /// The Ledger tab holds options and stays full width. Packages keeps the web's one page until Card in Hand is built
+    /// (decision duo-card-in-hand, Defaults). The other tabs spread over both pages.
+    public static func spreads(tab: DuoTab) -> Bool {
+        switch tab {
+        case .ledger, .packages: false
+        case .tally, .orphaned, .cardInHand: true
+        }
+    }
 }
 
 /// Where the custom tab bar goes on an open Duo. The system bar spans the middle of the inner screen, across the fold,
@@ -67,4 +73,9 @@ public enum DuoTabBar {
         guard case let .sideBySide(_, right) = spread else { return nil }
         return CGRect(x: right.minX, y: right.maxY - height, width: right.width, height: height)
     }
+}
+
+/// The item the open Duo's right page shows: the picked one, else the first. A pick that is gone, as after a discard, falls to the first.
+public func pickedOrFirst<Item, ID: Equatable>(_ items: [Item], picked: ID?, id: (Item) -> ID) -> Item? {
+    items.first { id($0) == picked } ?? items.first
 }
