@@ -229,9 +229,11 @@ private struct EnvelopeCard: View {
         let total = env.entries.reduce(0) { $0 + $1.qty }
         let shown = showAll ? ranked.list : Array(ranked.list.prefix(3))
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
+            // At accessibility sizes the label takes the row and the two buttons stack under it, so no word breaks.
+            (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8)) : AnyLayout(HStackLayout(spacing: 8))) {
                 micro("Envelope \u{00B7} \(Date(timeIntervalSince1970: env.createdAt / 1000).formatted(.iso8601.year().month().day())) \u{00B7} \(total) card\(total == 1 ? "" : "s")", size: 11, tracking: 0.12)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                HStack(spacing: 8) {
                 Button { model.open(.edit(env.id)) } label: { MiniLabel(title: "Edit", size: 11, vertical: 4, horizontal: 8, outsetHit: true, identifier: "orphaned-edit:\(env.id)") }.buttonStyle(.plain).accessibilityIdentifier("orphaned-edit:\(env.id)")
                 Button(role: .destructive) { armed.toggle() } label: {
                     // Armed, the button itself fills red with card text, as the web's does (src/app.jsx EnvelopeCard).
@@ -240,6 +242,7 @@ private struct EnvelopeCard: View {
                               vertical: 4, horizontal: 8, outsetHit: true, identifier: "discard:\(env.id)")
                 }
                 .buttonStyle(.plain).accessibilityIdentifier("discard:\(env.id)")
+                }
             }
             .padding(.top, 12).padding(.horizontal, 12).padding(.bottom, 8)
             // A solid backdrop under the header's buttons: the audit reads their contrast against it.
