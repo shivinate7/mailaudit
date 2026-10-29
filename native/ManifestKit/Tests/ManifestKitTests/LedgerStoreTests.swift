@@ -220,6 +220,29 @@ final class LedgerStoreTests: XCTestCase {
         XCTAssertEqual(stamp["updatedAt"] as? Double, Self.t0 + 5_000, "a removal writes a fresh updatedAt")
     }
 
+    /// The web's removal writes `{kind: "", note: "", at: "", updatedAt}` (src/app.jsx setStamp), so a restore or a
+    /// backup cannot bring the removed stamp's note or date back. Native kept both and blanked only kind. The store is
+    /// the one writer of the tombstone (stamp-removal-writes-a-tombstone), so the check is here, saved and in memory.
+    func testStampRemovalClearsTheNoteAndTheDateAsTheWebDoes() throws {
+        try writeSeed(extra: [
+            "stamps": [Self.packageKey: ["kind": "claim", "at": "2026-08-01", "note": "called twice", "updatedAt": Self.t0 - 1_000]],
+        ])
+        let store = makeStore()
+        try store.load()
+        clock = Self.t0 + 5_000
+        store.removeStamp(Self.packageKey)
+        try store.save()
+
+        let saved = try XCTUnwrap((try readSaved()["stamps"] as? [String: Any])?[Self.packageKey] as? [String: Any],
+                                  "a removal keeps the key as a tombstone")
+        for (label, stamp) in [("saved", saved), ("in memory", try XCTUnwrap(store.stamps()[Self.packageKey]))] {
+            XCTAssertEqual(stamp["kind"] as? String, "", "\(label): kind is cleared")
+            XCTAssertEqual(stamp["note"] as? String, "", "\(label): the note is cleared, not kept")
+            XCTAssertEqual(stamp["at"] as? String, "", "\(label): the date is cleared, not kept")
+            XCTAssertEqual(stamp["updatedAt"] as? Double, Self.t0 + 5_000, "\(label): a fresh updatedAt")
+        }
+    }
+
     // MARK: envelopes
 
     /// A discard leaves the record in `envelopes` as a tombstone. It sets `deletedAt`,

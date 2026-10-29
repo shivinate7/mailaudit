@@ -2,11 +2,11 @@
 
 A package stamped `Refunded` or `Partial refund` drops out of every count and the normal package list. A canceled order leaves the same way. The money already came back, so nothing about that package stays outstanding.
 
-**Holds while:** `liveItems` in `src/app.jsx` calls `dropGks` in `src/view-rules.mjs` (V12.18 to V12.20) to drop refunded packages, and `activeItems` calls `dropCanceled` there (V12.14 and V12.15) to drop canceled orders. `isRefundStamp` matches the `refunded` and `partial` stamp kinds.
+**Holds while:** `liveItems` in `src/app.jsx` calls `dropGks` in `src/view-rules.mjs` (V12.18 to V12.20) to drop refunded packages, and `activeItems` calls `dropCanceled` there (V12.14 and V12.15) to drop canceled orders. `isRefundStamp` in `src/view-rules.mjs` matches the `refunded` and `partial` stamp kinds (V35.3).
 
 One shared source, `liveItems`, excludes refunded packages the way `activeItems` excludes canceled ones. Totals, Tally, and the Orphaned candidates all inherit that exclusion.
 
-The native `LiveItems` applies the same exclusion. The masthead, `OrphanedModel`, `TallyModel` and `PackagesModel` read it on every load. It reads `stamps` from the store and drops the packages `groupPackages` names, so no copy of `gkOf` lives in Swift. The refund kinds, refunded and partial, are a Swift literal: no test ties them to the web's list.
+The native `LiveItems` applies the same exclusion. The masthead, `OrphanedModel`, `TallyModel` and `PackagesModel` read it on every load. It reads `stamps` from the store and drops the packages `groupPackages` names, so no copy of `gkOf` lives in Swift. Swift asks the bundle's `isRefundStamp` about each stamp and keeps no list of refund kinds (`StampRulesTests`).
 
 Stamping an order `Refunded` makes its card vanish from the list under the user's finger. The precedent is "Mark all received" under Unreceived. The `N stamped` cell is the signpost for those packages.
 

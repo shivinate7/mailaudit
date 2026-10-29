@@ -11,12 +11,6 @@ public struct PastTransitRow: Equatable, Sendable {
     public let stamp: String?
 }
 
-/// One stamp kind on the page: the ledger's key and the label the web shows.
-public struct StampKind: Equatable, Sendable {
-    public let kind: String
-    public let label: String
-}
-
 /// Past-transit page state (duo-transit-model). The list is the bundle's pastTransit rule
 /// (rules-run-in-javascriptcore); this model passes it the ledger and the clock, and stamps through
 /// the store (one-stamp-per-package). It takes any kind; the page limits the choice to the web's six.
@@ -52,19 +46,15 @@ public final class PastTransitModel {
     public func load() async throws {
         sticky = []
         if stampKinds.isEmpty {
-            let pairs = try JSONDecoder().decode([[String]].self, from: Data(try await engine.constant("STAMP_KINDS").utf8))
-            stampKinds = pairs.map { StampKind(kind: $0[0], label: $0[1]) }
+            stampKinds = try await StampRules.kinds(engine: engine)
         }
         try await refresh()
     }
 
-    /// Stamps one package and saves. A failed save leaves the ledger and the list as they were.
+    /// Stamps one package and saves, through the one stamp writer (StampWriter). A failed save leaves the ledger and
+    /// the list as they were.
     public func stamp(_ gk: String, kind: String) async throws {
-        let cur = store.stamps()[gk]
-        // The same kind keeps a non-empty date; anything else is dated today, as the web does.
-        let kept = (cur?["kind"] as? String) == kind ? cur?["at"] as? String : nil
-        let at = kept.flatMap { $0.isEmpty ? nil : $0 } ?? Self.today(store.now())
-        try store.commit { store.setStamp(gk, kind: kind, note: cur?["note"] as? String ?? "", at: at) }
+        try await StampWriter.write(gk, kind: kind, store: store, engine: engine)
         sticky.insert(gk)
         try await refresh()
     }
@@ -72,30 +62,21 @@ public final class PastTransitModel {
     /// Writes a tombstone for the package's own stamp (stamp-removal-writes-a-tombstone). The row
     /// is listed again from the next load.
     public func undo(_ gk: String) async throws {
-        guard live(store.stamps()[gk]) != nil else { return }
-        try store.commit { store.removeStamp(gk) }
+        try await StampWriter.remove(gk, store: store, engine: engine)
         try await refresh()
     }
 
-    private func live(_ stamp: [String: Any]?) -> String? {
-        guard let kind = stamp?["kind"] as? String, !kind.isEmpty else { return nil }
-        return kind
-    }
-
-    /// The device's local day as YYYY-MM-DD, like the web's todayLocal.
-    private static func today(_ ms: Double) -> String {
-        let c = Calendar.current.dateComponents([.year, .month, .day], from: Date(timeIntervalSince1970: ms / 1000))
-        return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
-    }
-
     /// The items go in whole: a refunded row keeps its place until load() (so LiveItems would be wrong here), and
-    /// pastTransit drops canceled orders itself. The owed figures take the listed packages through LiveItems (canceled
-    /// and refunded packages leave the counts at once, a-refund-leaves-every-count) and the bundle's groupPackages (no Swift copy of gkOf). A figure that cannot be computed is nil; the rows still load.
+    /// pastTransit drops canceled orders itself, so a canceled order never passes the rule's "without tracking" test.
+    /// The owed figures take the listed packages through LiveItems (canceled and refunded packages leave the counts
+    /// at once, a-refund-leaves-every-count) and the bundle's groupPackages (no Swift copy of gkOf). A figure that
+    /// cannot be computed is nil; the rows still load.
     private func refresh() async throws {
         epoch += 1
         let mine = epoch
         let stamps = store.stamps()
-        let hidden = Set(stamps.filter { live($0.value) != nil }.keys).subtracting(sticky)
+        let stamped = try await StampRules.keys(where: "hasStamp", in: stamps, engine: engine)
+        let hidden = stamped.subtracting(sticky)
         let args = "[\(try LiveItems.json(store.items())),\(try LiveItems.json(store.received())),\(try LiveItems.json(["$set": Array(hidden)])),\(store.now())]"
         let hits = try JSONDecoder().decode([Hit].self, from: Data(try await engine.call("pastTransit", args).utf8))
         let listed = Set(hits.map(\.gk))
@@ -113,6 +94,6 @@ public final class PastTransitModel {
         guard mine == epoch else { return }
         owedCards = cards
         owedValue = value
-        rows = hits.map { PastTransitRow(gk: $0.gk, tier: $0.tier, days: $0.days, claimBy: $0.claimBy, stamp: live(stamps[$0.gk])) }
+        rows = hits.map { PastTransitRow(gk: $0.gk, tier: $0.tier, days: $0.days, claimBy: $0.claimBy, stamp: stamped.contains($0.gk) ? stamps[$0.gk]?["kind"] as? String : nil) }
     }
 }

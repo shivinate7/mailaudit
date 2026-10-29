@@ -52,7 +52,15 @@ struct RootView: View {
             .tabItem { Label("Tally", systemImage: "number") }
             .tag(Tab.tally)
             Group {
-                if let model, let masthead { PackagesTab(model: model, masthead: masthead, sync: sync, openSync: showSync, notice: notice, kit: handKit) } else { Placeholder(title: failure ?? "Opening the ledger") }
+                if let model, let masthead { PackagesTab(model: model, masthead: masthead, sync: sync, openSync: showSync, notice: notice, kit: handKit, onChange: {
+                        // A stamp changed which packages count: Tally and Orphaned read the ledger again (a-refund-leaves-every-count).
+                        // Both reads run even if one fails, and a failure goes back to the write, which marks the save slot.
+                        var readError: Error?
+                        do { try await tally?.load() } catch { readError = error }
+                        do { try await orphaned?.load() } catch { readError = error }
+                        if let readError { throw readError }
+                    })
+                } else { Placeholder(title: failure ?? "Opening the ledger") }
             }
             .parchmentPaper()
             .tabItem { Label("Packages", systemImage: "shippingbox") }

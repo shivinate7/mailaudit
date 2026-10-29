@@ -74,7 +74,32 @@
                    packages and ledger: "N packages", always plural ("1 packages")
                    items:               "N unique item(s)"
                    mystery:             "N envelope(s) waiting"
-                   then " \u00B7 autosaves" (U+00B7, a space each side) */
+                   then " \u00B7 autosaves" (U+00B7, a space each side)
+
+   Step 6 pins the order-stamp rules (one-stamp-per-package, a-refund-leaves-every-count,
+   stamp-band-opens-the-editor). They move here from src/app.jsx, where STAMP_KINDS, hasStamp,
+   isRefundStamp and the re-date rule inside setStamp live today. The web calls them from here,
+   and the native Packages card, LiveItems and PastTransitModel read them through RulesEngine, so
+   no Swift file keeps a copy. Swift calls each by its exported name (Rules.isRefundStamp, not a
+   wrapper that calls it inside the bundle), so a test can replace one export and see the effect.
+     STAMP_KINDS -> [[kind, label], ...] in this order: claim "Claim filed", refunded "Refunded",
+                   contacted "Seller contacted", reshipped "Reshipped", partial "Partial refund",
+                   other "Other". A constant, not a function. Other comes last.
+     hasStamp(stamp) -> true when stamp.kind is non-empty. A tombstone (kind "") has none.
+     isRefundStamp(stamp) -> true for kind refunded and partial, and for no other kind.
+     nextStamp(cur, patch, today, now) -> the record a stamp write stores, from the stored stamp
+                   (or null), the patch ({kind, note} or null to remove), the LOCAL day
+                   "YYYY-MM-DD" the caller read, and the clock in ms. Nothing here reads a clock.
+                   patch: {kind, note: trimmed, at, updatedAt: now}. at is cur.at when cur holds
+                   the same kind and a non-empty at, else today (a note-only edit keeps the date,
+                   another kind re-dates it). patch null: the tombstone
+                   {kind: "", note: "", at: "", updatedAt: now}, or null when cur holds no
+                   stamp (nothing to remove, so nothing is written).
+     stampBandText(stamp) -> "KIND \u00B7 MM-DD": the kind's label upper-cased, " \u00B7 " (U+00B7), then
+                   stamp.at without its year.
+     refundedPill(items, received) -> "N left \u00B7 refunded" (U+00B7), N the copies a package still
+                   owes (outstandingOf, an over-count clamps per line), or null when none is owed,
+                   as packagePill does. It takes the same two arguments as packagePill. */
 
 const DAY = 86400000;
 const loaded = await import("../src/view-rules.mjs").then(
@@ -117,6 +142,11 @@ const itemDetail = fn("itemDetail");
 const gotQty = fn("gotQty");
 const countLine = fn("countLine");
 const tcgplayerOrderUrl = fn("tcgplayerOrderUrl");
+const hasStamp = fn("hasStamp");
+const isRefundStamp = fn("isRefundStamp");
+const nextStamp = fn("nextStamp");
+const stampBandText = fn("stampBandText");
+const refundedPill = fn("refundedPill");
 
 /* ---------- assertion helpers ---------- */
 
@@ -1509,6 +1539,110 @@ const v34SlashRun = (() => {
 })();
 eq(v34SlashRun.threw ?? "no throw", "no throw", "V34.7 an M/D/YY order date does not throw");
 eq(fieldOf(v34SlashRun.rows, "claimBy"), ["2026-07-31"], "V34.8 claimBy for 7/1/26 is 2026-07-31");
+
+/* ── V35 the stamp vocabulary (one-stamp-per-package). Mutants: a kind dropped, renamed or
+   reordered; Other not last; hasStamp true for a tombstone or for key presence alone;
+   isRefundStamp true for reshipped, or false for partial. */
+eq(
+  loaded.STAMP_KINDS,
+  [
+    ["claim", "Claim filed"],
+    ["refunded", "Refunded"],
+    ["contacted", "Seller contacted"],
+    ["reshipped", "Reshipped"],
+    ["partial", "Partial refund"],
+    ["other", "Other"],
+  ],
+  "V35.1 STAMP_KINDS is the six kinds, in order, Other last"
+);
+eq(hasStamp({ kind: "claim", note: "", at: "2026-07-04", updatedAt: 1 }), true, "V35.2a a live stamp has a stamp");
+eq(hasStamp({ kind: "", note: "kept", at: "2026-07-04", updatedAt: 1 }), false, "V35.2b a tombstone has none, whatever else it holds");
+eq(hasStamp({}), false, "V35.2c a record with no kind has none");
+eq(hasStamp(null), false, "V35.2d null has none");
+eq(hasStamp(undefined), false, "V35.2e undefined has none");
+for (const kind of ["claim", "refunded", "contacted", "reshipped", "partial", "other"]) {
+  eq(isRefundStamp({ kind }), kind === "refunded" || kind === "partial", `V35.3 isRefundStamp for ${kind} is true only for refunded and partial`);
+}
+eq(isRefundStamp({ kind: "" }), false, "V35.4a a tombstone is not a refund");
+eq(isRefundStamp(null), false, "V35.4b null is not a refund");
+eq(isRefundStamp(undefined), false, "V35.4c undefined is not a refund");
+eq(isRefundStamp({ kind: "Refunded" }), false, "V35.4d the kind is matched exactly");
+
+/* ── V36 nextStamp: the one writer's record (the setStamp rule in src/app.jsx). today and now are
+   arguments, so the case needs no clock. Mutants: a note-only edit re-dates; a new kind keeps the
+   old date; an empty stored date kept; the note not trimmed; updatedAt not the clock; the date read
+   from a clock instead of today; the tombstone keeps the note or the date; a removal with no stamp
+   writes a tombstone. */
+const v36Cur = { kind: "claim", note: "called twice", at: "2026-07-01", updatedAt: 5 };
+eq(
+  nextStamp(undefined, { kind: "claim", note: "  filed online  " }, "2026-07-04", 111),
+  { kind: "claim", note: "filed online", at: "2026-07-04", updatedAt: 111 },
+  "V36.1 a first stamp is dated today, its note trimmed, and carries the clock"
+);
+eq(
+  nextStamp(null, { kind: "other" }, "2026-07-04", 111),
+  { kind: "other", note: "", at: "2026-07-04", updatedAt: 111 },
+  "V36.2 a missing note is empty, and null cur is no stamp"
+);
+eq(
+  nextStamp(v36Cur, { kind: "claim", note: "called three times" }, "2026-07-04", 222),
+  { kind: "claim", note: "called three times", at: "2026-07-01", updatedAt: 222 },
+  "V36.3 the same kind keeps its date (a note-only edit)"
+);
+eq(
+  nextStamp(v36Cur, { kind: "refunded", note: "called twice" }, "2026-07-04", 222),
+  { kind: "refunded", note: "called twice", at: "2026-07-04", updatedAt: 222 },
+  "V36.4 another kind re-dates the stamp"
+);
+eq(
+  nextStamp({ kind: "claim", note: "", at: "", updatedAt: 5 }, { kind: "claim", note: "" }, "2026-07-04", 222)?.at,
+  "2026-07-04",
+  "V36.5a the same kind with an empty stored date is dated today"
+);
+eq(
+  nextStamp({ kind: "claim", note: "", updatedAt: 5 }, { kind: "claim", note: "" }, "2026-07-04", 222)?.at,
+  "2026-07-04",
+  "V36.5b the same kind with no stored date is dated today"
+);
+eq(
+  nextStamp({ kind: "", note: "", at: "2026-07-01", updatedAt: 5 }, { kind: "claim", note: "" }, "2026-07-04", 222)?.at,
+  "2026-07-04",
+  "V36.6 a tombstone's old date is not kept: the stamp after a removal is dated today"
+);
+eq(
+  nextStamp(v36Cur, null, "2026-07-04", 333),
+  { kind: "", note: "", at: "", updatedAt: 333 },
+  "V36.7 a removal is a tombstone: kind, note and date cleared, a fresh updatedAt"
+);
+eq(nextStamp(undefined, null, "2026-07-04", 333), null, "V36.8a removing from no stamp writes nothing");
+eq(
+  nextStamp({ kind: "", note: "", at: "", updatedAt: 5 }, null, "2026-07-04", 333),
+  null,
+  "V36.8b removing from a tombstone writes nothing"
+);
+
+/* ── V37 stampBandText: the chip's text on the card (src/app.jsx PackageCard band). Mutants: the
+   label not upper-cased; the separator a hyphen or no spaces; the year kept; the kind slug shown. */
+eq(stampBandText({ kind: "claim", note: "x", at: "2026-07-04" }), "CLAIM FILED · 07-04", "V37.1 Claim filed, month and day");
+eq(stampBandText({ kind: "partial", note: "", at: "2026-12-31" }), "PARTIAL REFUND · 12-31", "V37.2 Partial refund");
+eq(stampBandText({ kind: "contacted", note: "", at: "2026-01-09" }), "SELLER CONTACTED · 01-09", "V37.3 the longest label, a leading zero kept");
+eq(
+  (loaded.STAMP_KINDS ?? []).map(([kind]) => stampBandText({ kind, note: "", at: "2026-03-05" })),
+  ["CLAIM FILED", "REFUNDED", "SELLER CONTACTED", "RESHIPPED", "PARTIAL REFUND", "OTHER"].map((l) => `${l} · 03-05`),
+  "V37.4 every kind reads its own label"
+);
+
+/* ── V38 refundedPill: "N left · refunded" replaces the red figure once a package is refunded
+   (stamped-filter-on-the-pipeline). N follows packagePill's count. Mutants: the dollar figure kept;
+   N counts lines, not copies; an over-count hides copies owed on another line; "0 left" printed. */
+eq(refundedPill(CARD, {}), "4 left · refunded", "V38.1 nothing in: 4 copies left");
+eq(refundedPill(CARD, { b: 1 }), "3 left · refunded", "V38.2 one line in: 3 left");
+eq(refundedPill(CARD, { c: 1 }), "3 left · refunded", "V38.3 one of two copies in: 3 left, copies not lines");
+eq(refundedPill(CARD, { c: 5 }), "2 left · refunded", "V38.4 5 of 2 counts as 2: the other lines still owe 2");
+eq(refundedPill(CARD, { zzz: 4 }), "4 left · refunded", "V38.5 a stray received key is ignored");
+eq(refundedPill(one(1, 1), {}), "1 left · refunded", "V38.6 one copy: 1 left, no plural form");
+eq(refundedPill(CARD, { a: 1, b: 1, c: 2 }), null, "V38.7a every copy in: no pill, never 0 left");
+eq(refundedPill([], {}), null, "V38.7b a package with no lines: no pill");
 
 /* ---------- report ---------- */
 

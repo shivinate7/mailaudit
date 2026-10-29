@@ -11,11 +11,16 @@ struct PackagesView: View {
     let openSync: () -> Void
     /// The damaged-ledger line, in the content below the running-head slot like the advisory.
     let notice: String?
+    /// Runs after a stamp write, so the other tabs read the new stamps.
+    let onChange: () async throws -> Void
     /// Set only on two pages side by side: the control that opens Card in Hand (duo-card-in-hand).
     var openHand: (() -> Void)?
 
     var body: some View {
-        MastheadScreen(masthead: masthead, tab: .packages, sync: sync, openSync: openSync) {
+        MastheadScreen(masthead: masthead, tab: .packages, sync: sync, openSync: openSync,
+                       ruledRow: AnyView(StampedRow(count: model.stampedCount, on: model.showStamped) {
+                           Task { try? await model.toggleStamped() }  // a failed read is in model.checkInError, shown below
+                       })) {
             VStack(spacing: 0) {
                 if let openHand {
                     HStack {
@@ -27,7 +32,7 @@ struct PackagesView: View {
                 if let notice { Text(notice).font(.footnote).padding(8) }
                 LazyVStack(spacing: 8) {
                     ForEach(model.rows, id: \.gk) { pkg in
-                        PackageRow(pkg: pkg, model: model, masthead: masthead)
+                        PackageRow(pkg: pkg, model: model, masthead: masthead, onChange: onChange)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -47,6 +52,10 @@ struct PackageRow: View {
     let pkg: Package
     let model: PackagesModel
     let masthead: MastheadModel
+    let onChange: () async throws -> Void
+    /// True while the armed stamp ask shows. It hangs below the editor row and, at large text, past the card's edge, so
+    /// the card then draws above its neighbours.
+    @State private var overhang = false
 
     private func state(_ item: LedgerItem) -> LineState { LineState(got: model.received[item.key] ?? 0, qty: item.qty) }
     private var packageState: LineState { pkg.items.allSatisfy { state($0) == .done } ? .done : .open }
@@ -54,6 +63,25 @@ struct PackageRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
+            StampSection(pkg: pkg, model: model, masthead: masthead, surface: paint(.surface, packageState),
+                         overhang: $overhang, onChange: onChange)
+            lines
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        // The shadow sits on the fill, not the card: a shadow on the card would be drawn under every leaf view in it.
+        .background(RoundedRectangle(cornerRadius: 8).fill(paint(.surface, packageState))
+            .shadow(color: Parchment.shadow, radius: 1, y: 1))
+        .overlay(alignment: .top) { bar.clipShape(UnevenRoundedRectangle(topLeadingRadius: 8, topTrailingRadius: 8)) }
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.border, packageState), lineWidth: 1))
+        .zIndex(overhang ? 1 : 0)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("package-row:\(pkg.gk)")
+    }
+
+    /// The item lines, clipped to the card's bottom corners because their fills are square. The card clips nothing
+    /// else, so the armed stamp ask can hang past its edge.
+    private var lines: some View {
+        VStack(alignment: .leading, spacing: 0) {
             ForEach(pkg.items, id: \.key) { item in
                 ItemLine(
                     state: state(item), name: item.name, title: item.name, detail: model.details[item.key] ?? "",
@@ -71,14 +99,7 @@ struct PackageRow: View {
                     })
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(paint(.surface, packageState))
-        .overlay(alignment: .top) { bar }
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.border, packageState), lineWidth: 1))
-        .shadow(color: Parchment.shadow, radius: 1, y: 1)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("package-row:\(pkg.gk)")
+        .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 8, bottomTrailingRadius: 8))
     }
 
     private var header: some View {
@@ -123,7 +144,7 @@ struct PackageRow: View {
     /// The pill, or the RECEIVED stamp once nothing is owed. An invisible widest pill sets the
     /// slot's size and the live one is drawn over it, so a check-in never changes the layout.
     private var statusSlot: some View {
-        Text("99 left \u{00B7} $99.99").font(.cochin(12.5).weight(.bold))
+        Text("99 left \u{00B7} refunded").font(.cochin(12.5).weight(.bold))
             .padding(.horizontal, 8).padding(.vertical, 4)
             .frame(minHeight: 28)
             .hidden()
@@ -142,6 +163,12 @@ struct PackageRow: View {
                         .background(Capsule().fill(paint(.pillFill, .open)))
                         .fixedSize()
                         .accessibilityIdentifier("card-pill:\(pkg.gk)")
+                case .refunded(let pill):
+                    Text(pill).font(.cochin(12.5).weight(.bold)).foregroundStyle(paint(.refundPillText, .open))
+                        .padding(.horizontal, 8).padding(.vertical, 4)
+                        .background(Capsule().fill(paint(.refundPillFill, .open)))
+                        .fixedSize()
+                        .accessibilityIdentifier("card-pill:\(pkg.gk)")
                 case .received:
                     Text("RECEIVED").font(.mono(10.5).weight(.bold)).tracking(1).foregroundStyle(paint(.border, .done))
                         .padding(.horizontal, 8).padding(.vertical, 4)
@@ -154,7 +181,7 @@ struct PackageRow: View {
             }
     }
 
-    private var status: PackageCard.Status { PackageCard.Status(done: packageState == .done, pill: model.pills[pkg.gk]) }
+    private var status: PackageCard.Status { PackageCard.Status(done: packageState == .done, pill: model.pills[pkg.gk], refundPill: model.refundPills[pkg.gk]) }
 
     /// The thin bar on the card's top edge, out of flow: it mounts without moving a row.
     @ViewBuilder private var bar: some View {
