@@ -461,6 +461,8 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `orders-job-unbuilt` — The Worker orders cron, its key test and its status screen are unbuilt.
 - `hand-type-not-serialised` — Card in Hand does not serialise typed names.
 - `native-tally-ellipsis-unpinned` — Nothing pins the native Tally ellipsis.
+- `native-discard-panel-covers-head` — The native armed Discard panel covers the envelope header.
+- `native-axl-rows-break` — Three native rows break at accessibility text sizes.
 
 ## Measurements
 
