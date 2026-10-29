@@ -209,8 +209,16 @@ final class TallyUITests: XCTestCase {
                        .completed, "the check-in did not land")
         let after = frames(app)
 
+        // Frames are fractional, so each edge and size is compared to half a point, not the whole rect exactly.
         for (id, frame) in before where id != controlId {
-            XCTAssertEqual(after[id], frame, "\(id) moved when the copy completed")
+            guard let now = after[id] else {  // a throw would skip every id after this one
+                XCTFail("\(id) left the screen when the copy completed")
+                continue
+            }
+            for (part, was, then) in [("x", frame.minX, now.minX), ("y", frame.minY, now.minY),
+                                      ("width", frame.width, now.width), ("height", frame.height, now.height)] {
+                XCTAssertEqual(then, was, accuracy: 0.5, "\(id) moved when the copy completed (\(part))")
+            }
         }
     }
 

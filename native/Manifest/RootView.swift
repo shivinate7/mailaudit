@@ -28,27 +28,31 @@ struct RootView: View {
 
     var body: some View {
         TabView(selection: $tab) {
-            LedgerTab(store: store, versions: versions, sync: sync, syncOpen: $syncOpen, onLedgerChange: onLedgerChange).parchmentPaper()
+            LedgerTab(masthead: masthead, store: store, versions: versions, sync: sync, syncOpen: $syncOpen, onLedgerChange: onLedgerChange).parchmentPaper()
                 .tabItem { Label("Ledger", systemImage: "gearshape") }.tag(Tab.ledger)
             Group {
-                if let orphaned { OrphanedView(model: orphaned, onChange: { try? await model?.load() }) } else { Placeholder(title: failure ?? "Opening the ledger") }
+                if let orphaned, let masthead {
+                    OrphanedView(model: orphaned, masthead: masthead, sync: sync, openSync: showSync, onChange: {
+                        // The write has landed: Packages reads the new check-ins, and the figures, the Orphaned line and the slot follow.
+                        masthead.saving()
+                        try? await model?.load()
+                        await masthead.finished(failed: orphaned.error != nil)
+                    })
+                } else { Placeholder(title: failure ?? "Opening the ledger") }
             }
-            .syncLine(sync, open: showSync)
             .parchmentPaper()
             .tabItem { Label("Orphaned", systemImage: "envelope") }
             .tag(Tab.orphaned)
             .badge(orphaned?.badgeCount ?? 0)
             Group {
-                if let tally { TallyView(model: tally) } else { Placeholder(title: failure ?? "Opening the ledger") }
+                if let tally, let masthead { TallyView(model: tally, masthead: masthead, sync: sync, openSync: showSync) } else { Placeholder(title: failure ?? "Opening the ledger") }
             }
-            .syncLine(sync, open: showSync)
             .parchmentPaper()
             .tabItem { Label("Tally", systemImage: "number") }
             .tag(Tab.tally)
             Group {
-                if let model, let masthead { PackagesView(model: model, masthead: masthead).safeAreaInset(edge: .top) { if let notice { Text(notice).font(.footnote).padding(8) } } } else { Placeholder(title: failure ?? "Opening the ledger") }
+                if let model, let masthead { PackagesView(model: model, masthead: masthead, sync: sync, openSync: showSync, notice: notice) } else { Placeholder(title: failure ?? "Opening the ledger") }
             }
-            .syncLine(sync, open: showSync)
             .parchmentPaper()
             .tabItem { Label("Packages", systemImage: "shippingbox") }
             .tag(Tab.packages)

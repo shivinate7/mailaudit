@@ -12,6 +12,7 @@ private func paint(_ part: LedgerPaint.Part, armed: Bool = false) -> Color {
 /// Sync has no row when the ledger will not open, because the app then starts no sync client.
 /// An ask arms in place and has its own Cancel; no native dialog appears (no-native-dialogs). Sync and History close each other (history-sync-close-each-other).
 struct LedgerTab: View {
+    let masthead: MastheadModel?
     let store: LedgerStore?
     let versions: VersionsModel?
     /// nil when the app runs without a sync client: the Sync row is then not drawn.
@@ -27,10 +28,11 @@ struct LedgerTab: View {
     @State private var openRow: String?
 
     var body: some View {
-        ScrollView {
+        MastheadScreen(masthead: masthead, tab: .ledger) {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Ledger").textCase(.uppercase).font(.mono(12, relativeTo: .caption)).tracking(3.6)
-                    .foregroundStyle(paint(.title)).frame(maxWidth: .infinity).padding(.top, 16)
+                    .foregroundStyle(paint(.title)).frame(maxWidth: .infinity)
+                    .padding(.top, masthead == nil ? 16 : 0)
                     .accessibilityAddTraits(.isHeader)
                 Text("Data").textCase(.uppercase).font(.mono(11, relativeTo: .caption)).tracking(2.2)
                     .foregroundStyle(paint(.groupLabel)).padding(.leading, 4).padding(.top, 16).padding(.bottom, 8)

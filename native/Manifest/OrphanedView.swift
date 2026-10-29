@@ -11,10 +11,13 @@ private func paint(_ part: OrphanedPaint.Part) -> Color {
 /// (orphaned-mail-never-decides). `onChange` runs after a write, so Packages reads the new check-ins.
 struct OrphanedView: View {
     let model: OrphanedModel
+    let masthead: MastheadModel
+    let sync: SyncClient?
+    let openSync: () -> Void
     let onChange: () async -> Void
 
     var body: some View {
-        ScrollView {
+        MastheadScreen(masthead: masthead, tab: .orphaned, sync: sync, openSync: openSync) {
             VStack(alignment: .leading, spacing: 12) {
                 if model.composing == .new {
                     ComposerView(model: model, target: .new, onChange: onChange)
@@ -44,7 +47,8 @@ struct OrphanedView: View {
                         .accessibilityIdentifier("orphaned-empty")
                 }
             }
-            .padding(16)
+            .padding(.horizontal, 16)
+            .padding(.bottom, 16)
         }
         .overlay(alignment: .bottom) {
             if let e = model.error {
@@ -107,9 +111,12 @@ private struct ComposerView: View {
     let target: ComposerTarget
     let onChange: () async -> Void
     @State private var found: [Suggestion] = []
-    @FocusState private var focused: Bool
+    private enum Field { case name, note }
+    @FocusState private var focused: Field?
+    @Environment(\.scrollTo) private var scrollTo
     @Environment(\.dynamicTypeSize) private var typeSize
 
+    private static let saveRow = "orphaned-composer-save-row"
     private var draft: EnvelopeDraft { model.draft(for: target) }
 
     var body: some View {
@@ -130,7 +137,7 @@ private struct ComposerView: View {
                     Task { try? await model.addName(typed, for: target) }
                 } else { model.setInput(v, for: target) }
             }), prompt: Text("Type a card name\u{2026}").foregroundStyle(paint(.note)), axis: .vertical)
-                .lineLimit(2...3).inputBox().focused($focused).submitLabel(.done)
+                .lineLimit(2...3).inputBox().focused($focused, equals: .name).submitLabel(.done)
                 .onSubmit { Task { try? await model.addName(model.draft(for: target).input, for: target) } }
                 .accessibilityLabel("Card name")
                 .accessibilityIdentifier("orphaned-input")
@@ -182,7 +189,7 @@ private struct ComposerView: View {
             }
             TextField("Note", text: Binding(get: { model.draft(for: target).note }, set: { model.setNote($0, for: target) }),
                       prompt: Text("Note (optional) \u{2014} tracking #, sender, mailer\u{2026}").foregroundStyle(paint(.note)), axis: .vertical)
-                .lineLimit(2...3).inputBox().accessibilityIdentifier("orphaned-note")
+                .lineLimit(2...3).inputBox().focused($focused, equals: .note).accessibilityIdentifier("orphaned-note")
             // At an accessibility size the footer stacks, so no label breaks mid-word.
             let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .trailing, spacing: 8)) : AnyLayout(HStackLayout(spacing: 8))
             layout {
@@ -200,11 +207,18 @@ private struct ComposerView: View {
                 .buttonStyle(.plain).disabled(!ready).accessibilityIdentifier("orphaned-save")
             }
             .padding(.top, 4)
+            .id(Self.saveRow)
         }
         .padding(12)
         .modifier(CardChrome(border: .composerBorder))
+        // The masthead puts the composer low on the page, so the keyboard would cover the lower fields and Save. A scroll
+        // view does not follow focus, so on a focus change, and again once the keyboard has opened, bring the Save row up.
+        .onChange(of: focused) { _, f in if f != nil { scrollTo(Self.saveRow) } }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardDidShowNotification)) { _ in
+            if focused != nil { scrollTo(Self.saveRow) }
+        }
         .task(id: d.input) { found = await model.suggestions(for: d.input) }
-        .onAppear { focused = true }
+        .onAppear { focused = .name }
     }
 
     /// A bare glyph in a 44pt hit frame, as the web stepper draws it.

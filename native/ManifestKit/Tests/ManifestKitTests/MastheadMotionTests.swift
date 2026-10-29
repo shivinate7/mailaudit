@@ -95,3 +95,56 @@ final class SaveSlotTests: XCTestCase {
         }
     }
 }
+
+// Step 5: the letterhead composes once per launch, not once per tab (motion-letterhead-composes-once).
+// The masthead sits on four tabs, so four copies of the view exist, and each held its own "composed" flag.
+// The flag moves above the views, onto the model, which a launch builds once. The first copy to appear
+// asks the model for its first frame and gets the animated one. Every later copy gets the final frame and
+// draws at once. XCUITest cannot read an opacity or a scale, and a seeded run draws the final frame, so no
+// UI test can see this; the claim is pinned here, on the value each copy draws from.
+//
+// Red-first. The builder adds, in native/ManifestKit/Sources/ManifestKit/ (Step5RedStubs.swift holds the stub):
+//   extension MastheadModel {
+//       /// The first frame a masthead copy draws. The first call on a model gives
+//       /// LetterheadMotion.start(reduceMotion:). Every later call gives LetterheadMotion.final.
+//       public func claimStartFrame(reduceMotion: Bool) -> LetterheadFrame
+//   }
+// and MastheadView calls it in place of reading LetterheadMotion.start itself.
+
+@MainActor
+final class MastheadComposeOnceTests: XCTestCase {
+    /// A model with no ledger behind it: the compose flag reads nothing from the store.
+    func model() throws -> MastheadModel {
+        let url = FileManager.default.temporaryDirectory.appending(path: "step5-compose-\(UUID().uuidString).json")
+        return MastheadModel(engine: try RulesEngine(bundleURL: RulesGoldenTests.bundleURL), store: LedgerStore(fileURL: url, now: { 0 }))
+    }
+
+    /// The first copy composes. The second, third and fourth copies (one per remaining tab) start drawn.
+    func testTheFirstCopyComposesAndEveryLaterCopyStartsDrawn() throws {
+        let m = try model()
+
+        XCTAssertEqual(m.claimStartFrame(reduceMotion: false), LetterheadMotion.start(reduceMotion: false), "the first copy does not compose")
+        for copy in 2...4 {
+            XCTAssertEqual(m.claimStartFrame(reduceMotion: false), LetterheadMotion.final, "copy \(copy) composes again")
+        }
+    }
+
+    /// A launch builds a new model, so the next launch composes again.
+    func testANewLaunchComposesAgain() throws {
+        let first = try model()
+        _ = first.claimStartFrame(reduceMotion: false)
+        _ = first.claimStartFrame(reduceMotion: false)
+
+        let next = try model()
+        XCTAssertEqual(next.claimStartFrame(reduceMotion: false), LetterheadMotion.start(reduceMotion: false), "the flag outlived its launch")
+    }
+
+    /// Reduced motion draws the final frame at once, for the first copy and every later one.
+    func testReducedMotionStartsEveryCopyDrawn() throws {
+        let m = try model()
+
+        for copy in 1...3 {
+            XCTAssertEqual(m.claimStartFrame(reduceMotion: true), LetterheadMotion.final, "copy \(copy) is not drawn under reduced motion")
+        }
+    }
+}

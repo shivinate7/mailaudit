@@ -61,7 +61,20 @@
 
    The got/qty read-out pins one more (the native package card calls it through
    RulesEngine, and the web stepper prints the same text):
-     gotQty(got, qty) -> "got/qty" for a line with more than one copy, else null */
+     gotQty(got, qty) -> "got/qty" for a line with more than one copy, else null
+
+   Step 5 pins one more (the masthead is on every tab, and the native masthead calls this
+   through RulesEngine, so the web and native cannot word the count line differently). It moves
+   here from the inline JSX at the foot of the masthead in src/app.jsx, and the web calls it too:
+     countLine(view, counts, range) -> the masthead's count line, in the web's own view ids:
+                   view   "packages" | "ledger" | "items" (Tally) | "mystery" (Orphaned)
+                   counts {packages, uniqueItems, envelopes}, each the figure its view counts
+                   range  the date range (dateRange's {from, to}) or null; a truthy range adds
+                          " in range" on every view except Orphaned
+                   packages and ledger: "N packages", always plural ("1 packages")
+                   items:               "N unique item(s)"
+                   mystery:             "N envelope(s) waiting"
+                   then " \u00B7 autosaves" (U+00B7, a space each side) */
 
 const DAY = 86400000;
 const loaded = await import("../src/view-rules.mjs").then(
@@ -102,6 +115,7 @@ const compact = fn("compact");
 const packagePill = fn("packagePill");
 const itemDetail = fn("itemDetail");
 const gotQty = fn("gotQty");
+const countLine = fn("countLine");
 const tcgplayerOrderUrl = fn("tcgplayerOrderUrl");
 
 /* ---------- assertion helpers ---------- */
@@ -1279,6 +1293,51 @@ eq(gotQty(2, 2), "2/2", "V20.1c both in: 2/2");
 eq(gotQty(0, 1), null, "V20.2a one copy, none in: null");
 eq(gotQty(1, 1), null, "V20.2b one copy, in: null");
 
+/* V21 the masthead's count line, one wording for the web and native (Step 5). Every expected
+   string is a literal with \u00B7 spelled out, so a lookalike dot cannot pass. The counts hold a
+   different number in each field, so a view that reads another view's count fails. */
+const DOT = "\u00B7";
+const counts = (packages, uniqueItems, envelopes) => ({ packages, uniqueItems, envelopes });
+const RANGE = { from: Date.parse("2026-06-10"), to: Date.parse("2026-08-31") + 86399999 };
+
+/* V21.1 Packages: "N packages", plural at every N. Mutant: "1 package" */
+eq(countLine("packages", counts(4, 8, 2), null), `4 packages ${DOT} autosaves`, "V21.1a four packages");
+eq(countLine("packages", counts(1, 8, 2), null), `1 packages ${DOT} autosaves`, "V21.1b one package still reads packages");
+eq(countLine("packages", counts(0, 8, 2), null), `0 packages ${DOT} autosaves`, "V21.1c none reads 0 packages");
+
+/* V21.2 Ledger takes the Packages form. Mutant: the Tally or Orphaned form, or an empty line */
+eq(countLine("ledger", counts(4, 8, 2), null), `4 packages ${DOT} autosaves`, "V21.2a ledger, four packages");
+eq(countLine("ledger", counts(1, 8, 2), null), `1 packages ${DOT} autosaves`, "V21.2b ledger, one package, still plural");
+
+/* V21.3 Tally: "N unique item(s)", singular at 1 only. Mutants: always plural, plural at 1 */
+eq(countLine("items", counts(4, 8, 2), null), `8 unique items ${DOT} autosaves`, "V21.3a eight unique items");
+eq(countLine("items", counts(4, 1, 2), null), `1 unique item ${DOT} autosaves`, "V21.3b one unique item is singular");
+eq(countLine("items", counts(4, 2, 2), null), `2 unique items ${DOT} autosaves`, "V21.3c two unique items");
+eq(countLine("items", counts(4, 0, 2), null), `0 unique items ${DOT} autosaves`, "V21.3d none is plural");
+
+/* V21.4 Orphaned: "N envelope(s) waiting", singular at 1 only */
+eq(countLine("mystery", counts(4, 8, 2), null), `2 envelopes waiting ${DOT} autosaves`, "V21.4a two envelopes waiting");
+eq(countLine("mystery", counts(4, 8, 1), null), `1 envelope waiting ${DOT} autosaves`, "V21.4b one envelope is singular");
+eq(countLine("mystery", counts(4, 8, 0), null), `0 envelopes waiting ${DOT} autosaves`, "V21.4c none is plural");
+
+/* V21.5 a range adds " in range" before " · autosaves" on Packages, Ledger and Tally. Mutant: after autosaves */
+eq(countLine("packages", counts(2, 3, 1), RANGE), `2 packages in range ${DOT} autosaves`, "V21.5a packages in range");
+eq(countLine("ledger", counts(2, 3, 1), RANGE), `2 packages in range ${DOT} autosaves`, "V21.5b ledger in range");
+eq(countLine("items", counts(2, 3, 1), RANGE), `3 unique items in range ${DOT} autosaves`, "V21.5c tally in range");
+eq(countLine("items", counts(2, 1, 1), RANGE), `1 unique item in range ${DOT} autosaves`, "V21.5d one unique item in range");
+
+/* V21.6 Orphaned never says "in range": envelopes are not cut by the date filter */
+eq(countLine("mystery", counts(2, 3, 2), RANGE), `2 envelopes waiting ${DOT} autosaves`, "V21.6 orphaned ignores the range");
+
+/* V21.7 the range is read as present or not. null and undefined add nothing, so native, which
+   has no date filter yet, passes null and never prints "in range". Mutant: any object test that
+   lets an undefined range through */
+eq(countLine("packages", counts(4, 8, 2)), `4 packages ${DOT} autosaves`, "V21.7a no range argument adds nothing");
+eq(countLine("items", counts(4, 8, 2), undefined), `8 unique items ${DOT} autosaves`, "V21.7b an undefined range adds nothing");
+eq(countLine("packages", counts(4, 8, 2), { from: 1, to: null }), `4 packages in range ${DOT} autosaves`, "V21.7c an open-ended range counts as a range");
+
+/* V21.8 the line is one string, since Swift reads it as JSON. Mutant: an object or an array */
+ok(typeof countLine("packages", counts(4, 8, 2), null) === "string", "V21.8 the line is a string");
 /* ── V30 to V34. Card in Hand rules (duo-card-in-hand, new-envelope-ends-an-envelope,
    lost-mail-flags-use-order-date). Red until the duo-hand-rules builder adds these exports.
 

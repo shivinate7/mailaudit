@@ -484,6 +484,19 @@ export const itemDetail = (it) =>
    null for a one-copy line, which has none. An over-count clamps, as countLabel does. */
 export const gotQty = (got, qty) => (qty > 1 ? `${Math.min(got, qty)}/${qty}` : null);
 
+/* The masthead's count line, one wording for the web and the native client (rules-run-in-javascriptcore).
+   `view` is the web's view id: Tally is "items" and Orphaned is "mystery". "packages" is never
+   singular. A range adds " in range" on every view but Orphaned, which the date filter never cuts. */
+export const countLine = (view, { packages, uniqueItems, envelopes }, range) => {
+  const noun = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  const ranged = range ? " in range" : "";
+  const head =
+    view === "mystery" ? `${noun(envelopes, "envelope")} waiting`
+    : view === "items" ? `${noun(uniqueItems, "unique item")}${ranged}`
+    : `${packages} packages${ranged}`;
+  return `${head} \u00B7 autosaves`;
+};
+
 /* Lane B1 (saved-state-shape, native-ledger-is-raw-json): keep every entry of a
    ledger that can be read, drop the rest. Pure: data -> { data, dropped }; the
    input is never changed. Checked fields are received and receivedAt (counts and

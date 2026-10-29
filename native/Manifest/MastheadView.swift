@@ -104,13 +104,23 @@ struct WaxSeal: View {
 }
 
 /// One letterhead: seal between two rules, the title, the house line, the three tallies,
-/// the bar, then the count line, the outstanding line and the save slot (masthead-is-one-letterhead).
-/// Nothing here changes size when a figure or the slot changes (no-layout-shift-under-pointer).
+/// the bar, then the foot: the count line on row 1, the outstanding line and the save slot on row 2
+/// (masthead-is-one-letterhead). Nothing here changes size when a figure or the slot changes, or
+/// when the tab changes (no-layout-shift-under-pointer): the count line is one line, so its text can
+/// differ between tabs and its height cannot.
 struct MastheadView: View {
     let model: MastheadModel
+    let tab: MastheadTab
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var frame: LetterheadFrame?
+
+    /// A copy built after the compose starts on the final frame, so a first visit to a later tab never draws the blank one.
+    init(model: MastheadModel, tab: MastheadTab) {
+        self.model = model
+        self.tab = tab
+        _frame = State(initialValue: model.hasComposed ? LetterheadMotion.final : nil)
+    }
 
     /// A seeded UI test run draws the final frame: the audit must not read a half-faded title.
     /// ponytail: tests cannot read an opacity, so this hides the compose from them.
@@ -142,13 +152,13 @@ struct MastheadView: View {
                 .opacity(drawn.titleOpacity).accessibilityLabel("C.H Postal Company").accessibilityIdentifier("masthead-house")
             if !model.cells.isEmpty { tallies.opacity(drawn.talliesOpacity) }
         }
-        .padding(.horizontal, 16).padding(.top, 12).padding(.bottom, 16)
+        .padding(.horizontal, 24).padding(.top, 12)  // 24 from each edge, as the web's letterhead sits
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("masthead")
         .onAppear {
             guard frame == nil else { return }
-            frame = LetterheadMotion.start(reduceMotion: reduceMotion)
+            frame = model.claimStartFrame(reduceMotion: reduceMotion)  // the first copy composes; later copies start drawn
             withAnimation(.easeOut(duration: LetterheadMotion.duration(reduceMotion: reduceMotion))) { frame = LetterheadMotion.final }
         }
     }
@@ -180,18 +190,29 @@ struct MastheadView: View {
             }
             .padding(.top, 12)
             bar.padding(.top, 8)
-            HStack(alignment: .firstTextBaseline) {
-                MastheadPaint.style(.count).text(model.countLine, size: 10.5, relativeTo: .caption)
-                    .accessibilityIdentifier("masthead-count")
-                Spacer(minLength: 8)
+            countLine
+                .padding(.top, 8)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                MastheadPaint.style(.missing(remaining: model.remaining)).text(model.missingLine, size: 10.5, relativeTo: .caption)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityIdentifier("masthead-missing")
                 SaveSlot(indicator: model.indicator)
             }
-            .padding(.top, 8)
-            MastheadPaint.style(.missing(remaining: model.remaining)).text(model.missingLine, size: 10.5, relativeTo: .caption)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 4)
-                .accessibilityIdentifier("masthead-missing")
+            .padding(.top, 4)
         }
+    }
+
+    /// One line held at its full width inside a clipped frame: the audit calls a one-line limit on custom-font text clipped
+    /// (measured on the Tally meta, 2026-10-27). At accessibility sizes it wraps, so the fixed height gives way there only.
+    @ViewBuilder private var countLine: some View {
+        let text = MastheadPaint.style(.count).text(model.countLine(for: tab), size: 10.5, relativeTo: .caption)
+        Group {
+            if typeSize.isAccessibilitySize { text.frame(maxWidth: .infinity, alignment: .leading) } else {
+                // minWidth 0: the frame takes the column's width, not the line's, so a long line never widens the column.
+                text.fixedSize(horizontal: true, vertical: false).frame(minWidth: 0, maxWidth: .infinity, alignment: .leading).clipped()
+            }
+        }
+        .accessibilityIdentifier("masthead-count")
     }
 
     /// Label over figure, both centred. The got figure is accent and bold, the total is soft.

@@ -7,18 +7,22 @@ import SwiftUI
 struct PackagesView: View {
     let model: PackagesModel
     let masthead: MastheadModel
+    let sync: SyncClient?
+    let openSync: () -> Void
+    /// The damaged-ledger line, in the content below the running-head slot like the advisory.
+    let notice: String?
 
     var body: some View {
-        ScrollView {
+        MastheadScreen(masthead: masthead, tab: .packages, sync: sync, openSync: openSync) {
             VStack(spacing: 0) {
-                MastheadView(model: masthead)
+                if let notice { Text(notice).font(.footnote).padding(8) }
                 LazyVStack(spacing: 8) {
                     ForEach(model.rows, id: \.gk) { pkg in
                         PackageRow(pkg: pkg, model: model, masthead: masthead)
                     }
                 }
                 .padding(.horizontal, 16)
-                .padding(.vertical, 8)
+                .padding(.bottom, 8)
             }
         }
         .overlay(alignment: .bottom) {

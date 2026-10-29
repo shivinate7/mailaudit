@@ -408,16 +408,21 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-composer-fields-two-lines` — The native composer fields draw two lines tall.
 - `native-discard-arm-unpinned` — No test pins the native Discard arm.
 - `native-key-scan-skips-views` — The native key scan skips SwiftUI view state.
-- `native-masthead-packages-only` — The native masthead shows on Packages only.
 - `native-compose-is-one-fade` — The native letterhead composes in one fade.
 - `native-card-lost-flags-unbuilt` — The native package card has no lost-mail flag and no tracked glyph.
 - `native-seller-scale-unmeasured` — The native seller shrinks to half size, and the cause is unmeasured.
+- `native-pinned-card-dynamic-type` — The pinned-head audit flags Dynamic Type on one card.
+- `native-cold-launch-ledger-shift` — The Ledger tab may jump at cold launch.
+- `native-masthead-foot-row-gap` — The native masthead foot's second row sits 4.6pt low.
+- `native-masthead-axl-clips` — The native masthead wraps and clips at accessibility text sizes.
+- `debt-notes` — One-line findings not likely in normal work.
 - `native-card-gestures-unpinned` — No UI test pins the native card header gestures.
 - `native-card-state-in-swift` — The native card copies the line and package done rules in Swift.
 - `native-sync-tally-rules-in-swift` — The native Sync panel and Tally row copy six view rules in Swift.
 - `native-backup-has-no-photos` — Native Backup holds no photos.
 - `native-backup-ui-unpinned` — No UI test taps Backup.
 - `native-backup-web-restore-unrun` — No test restores a native backup file on the web.
+- `native-count-line-clips` — The native count line clips with no ellipsis at 4-digit counts.
 - `native-masthead-stale-after-tabs` — The native masthead and Packages go stale after another tab writes.
 - `draft-skip-required-unmeasured` — A required check on a draft-skipped job is unmeasured.
 - `recent-log-unbuilt` — The recent-actions log is not built.

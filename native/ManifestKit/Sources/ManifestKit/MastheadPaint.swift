@@ -20,7 +20,7 @@ public enum MastheadPaint {
     }
 
     public enum Role {
-        case title, house, tallyLabel, tallyLead, tallyRest, count
+        case title, house, tallyLabel, tallyLead, tallyRest, count, runningTitle, runningFigure
         case missing(remaining: Int)
         case slot(SaveIndicator)
     }
@@ -29,6 +29,8 @@ public enum MastheadPaint {
         switch role {
         case .title: Style("ink", .cochin, uppercase: true, tracking: 0.22)
         case .house: Style("inkSoft", .mono, uppercase: true, tracking: 0.26)
+        case .runningTitle: Style("ink", .cochin, uppercase: true, tracking: 0.18)
+        case .runningFigure: Style("inkSoft", .mono)
         case .tallyLabel: Style("inkSoft", .mono, uppercase: true, tracking: 0.16)
         case .tallyLead: Style("accent", .mono, bold: true)
         case .tallyRest: Style("inkSoft", .mono)

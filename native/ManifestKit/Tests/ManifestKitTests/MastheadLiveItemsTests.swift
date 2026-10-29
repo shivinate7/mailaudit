@@ -125,4 +125,18 @@ final class MastheadLiveItemsTests: XCTestCase {
         let stamps = Self.baseStamps.merging(["R1": "refunded", "P1": "partial"]) { $1 }
         assertBase(try await masthead(items: base + canceled + refunded + partial, stamps: stamps))
     }
+
+    /// Step 5. The Packages and Tally lines read the same live items the cells read: with the canceled, refunded
+    /// and partial lines in the ledger, each tab still counts the base's 3 packages and 4 unique items. A line
+    /// that counted the raw items would read 6 packages and 7 unique items. Compared with the bundle's own line.
+    func testTheTabLinesCountLiveItemsOnly() async throws {
+        let stamps = Self.baseStamps.merging(["R1": "refunded", "P1": "partial"]) { $1 }
+        let m = try await masthead(items: base + canceled + refunded + partial, stamps: stamps)
+
+        for tab in MastheadTab.allCases {
+            let expected = await MastheadRuleLine.line(tab, packages: 3, items: 4, envelopes: 0)
+            XCTAssertNotNil(expected, "the bundle has no countLine, so the \(tab) tab has nothing to match")
+            XCTAssertEqual(m.countLine(for: tab), expected, "the \(tab) line counts a canceled or refunded line")
+        }
+    }
 }
