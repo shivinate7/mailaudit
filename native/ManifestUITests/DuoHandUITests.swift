@@ -363,13 +363,42 @@ final class DuoHandUITests: XCTestCase {
         let envelope = need(app, "hand-new-envelope", "the New envelope button")
         let before = envelope.frame
 
+        logHandState(app, "before the tap on \(rows[1].identifier)", hittable: true)
         app.element(rows[1].identifier).tap()  // by id, so the tap is the 2nd row whatever order the query lists them in
+        logHandState(app, "right after the tap")
+        Thread.sleep(forTimeInterval: 0.6)  // past the 150 ms settle of the query task
+        logHandState(app, "0.6 s after the tap")
         _ = waitForHits(app, count: 1, "tapping Path to Exile must leave that one match")
         XCTAssertEqual(app.element("hand-query").value as? String, "Path to Exile", "the tap did not fill the query")
         XCTAssertFalse(app.element("hand-held").exists, "a Suspense line opened above the button: the 2nd match is a shared name, so the seed no longer makes this test fair")
         let after = envelope.frame
         XCTAssertEqual(after.minY, before.minY, accuracy: 0.5, "New envelope moved from \(before) to \(after) when the match list shrank from 3 rows to 1")
         keepShot(app, "hand-match-tap-holds-new-envelope")
+    }
+
+    /// Diagnostics, no assertion. Prints what the match tap did as HAND-DIAG lines for the run log (an xcresult kept no attachment
+    /// for this test) and keeps the same text as an attachment. It tells the two causes apart: the tap missed (the query is still
+    /// "to" and a row's centre lies under the keys) or the query filled and the hits did not follow. Every read is a snapshot
+    /// taken with `try?`, so a row that leaves between the listing and the read cannot fail the test. `hittable` adds isHittable,
+    /// which is only safe while the list is not changing.
+    func logHandState(_ app: XCUIApplication, _ when: String, hittable: Bool = false) {
+        func snap(_ el: XCUIElement) -> (any XCUIElementSnapshot)? { try? el.snapshot() }
+        let query = snap(app.element("hand-query")).flatMap { $0.value as? String }
+        let keys = app.keyboards.firstMatch
+        let keyFrame = keys.exists ? snap(keys)?.frame : nil
+        var lines = ["hand-query value: \(query.map { "\"\($0)\"" } ?? "unreadable")", "keyboard frame: \(keyFrame.map { "\($0)" } ?? "none")"]
+        for row in app.elements(prefix: "hand-hit:") {
+            guard let s = snap(row) else { continue }
+            let under = keyFrame.map { $0.contains(CGPoint(x: s.frame.midX, y: s.frame.midY)) } ?? false
+            lines.append("\(s.identifier) frame \(s.frame), centre under the keys: \(under)" + (hittable ? ", isHittable: \(row.exists && row.isHittable)" : ""))
+        }
+        let text = "HAND-DIAG \(when)\n" + lines.map { "  " + $0 }.joined(separator: "\n")
+        print(text)
+        XCTContext.runActivity(named: "HAND-DIAG \(when)") { activity in
+            let note = XCTAttachment(string: text)
+            note.lifetime = .keepAlways
+            activity.add(note)
+        }
     }
 
     /// The hand-hit rows, top to bottom, once exactly `count` show (a short poll: the list settles 150 ms after the last key
