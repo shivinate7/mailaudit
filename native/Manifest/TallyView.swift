@@ -142,7 +142,7 @@ struct TallyView: View {
                 : model.hideReceived ? "Everything here has been checked in." : "Nothing to show.")
                 .font(.cochin(14, relativeTo: .body)).foregroundStyle(paint(.meta)).multilineTextAlignment(.center)
             if !model.query.isEmpty {
-                Button { text = "" } label: { MiniLabel(title: "Clear search") }
+                Button { text = "" } label: { MiniLabel(title: "Clear search", vertical: 4, horizontal: 8) }
                     .accessibilityLabel("Clear search")
                     .accessibilityIdentifier("tally-clear")
             }
@@ -165,6 +165,8 @@ struct TallyRowView: View {
     let masthead: MastheadModel
     var page = Page.inline
     @State private var open = false
+    @State private var metaNaturalWidth: CGFloat = 0
+    @State private var metaBoxWidth: CGFloat = 0
     @Environment(\.dynamicTypeSize) private var typeSize
 
     private var done: Bool { row.got >= row.qty }
@@ -246,12 +248,33 @@ struct TallyRowView: View {
         .contentShape(Rectangle())
     }
 
-    /// One line, cut at the column's edge as on the web, and wrapping at accessibility sizes.
+    /// One line cut at the column's edge, with a "…" drawn over the edge only when the text is wider than the column
+    /// (as on the web), and wrapping at accessibility sizes. The text is hard-clipped, never truncated, so the audit
+    /// raises no clipped-text finding on it; the Text keeps the full string as its label and carries `tally-meta:`.
     @ViewBuilder private var metaLine: some View {
-        let text = Text(row.meta).font(.mono(11, relativeTo: .caption)).foregroundStyle(paint(.meta))
-        if typeSize.isAccessibilitySize { text } else {
-            // minWidth 0: the frame takes the column's width, not the line's, so a long meta never widens the row.
-            text.fixedSize(horizontal: true, vertical: false).frame(minWidth: 0, maxWidth: .infinity, alignment: .leading).clipped()
+        let font = Font.mono(11, relativeTo: .caption)
+        let text = Text(row.meta).font(font).foregroundStyle(paint(.meta))
+        if typeSize.isAccessibilitySize {
+            text.accessibilityIdentifier("tally-meta:\(row.name)")
+        } else {
+            // The Text keeps its natural width inside a Layout that offers the column its proposed width, so the row never
+            // grows with the text and the text is cut at the column. No second copy of the text is drawn.
+            CutAtColumn {
+                text.fixedSize(horizontal: true, vertical: false)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { metaNaturalWidth = $0 }
+                    .accessibilityIdentifier("tally-meta:\(row.name)")
+            }
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { metaBoxWidth = $0 }
+            .clipped()
+            .overlay(alignment: .trailing) {
+                // Both widths must be measured, and the text must pass the column by a half point: one measured before the
+                // other, or a fit to within rounding, must never mount the "…" over text that is whole.
+                if metaBoxWidth > 0, metaNaturalWidth > metaBoxWidth + 0.5 {
+                    Text("\u{2026}").font(font).foregroundStyle(paint(.meta))
+                        .background(paint(.surface))
+                        .accessibilityHidden(true)
+                }
+            }
         }
     }
 
@@ -289,5 +312,20 @@ struct TallyRowView: View {
                 await model.step(key: item.key, by: delta)
                 await masthead.finished(failed: model.checkInError != nil)
             })
+    }
+}
+
+/// One subview at its natural size, left-aligned in the width the parent offers. A concrete proposal sets the width
+/// (so the text is cut there); an unspecified one gets the natural width. A `.frame(maxWidth: .infinity)` around a
+/// fixed-size child reports that child's ideal width up, which grew the row.
+private struct CutAtColumn: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let natural = subviews[0].sizeThatFits(.unspecified)
+        guard let width = proposal.width, width.isFinite else { return natural }
+        return CGSize(width: width, height: natural.height)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        subviews[0].place(at: bounds.origin, anchor: .topLeading, proposal: .unspecified)
     }
 }

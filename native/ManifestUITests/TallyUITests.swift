@@ -40,10 +40,11 @@ final class TallyUITests: XCTestCase {
     // MARK: helpers
 
     /// `size` is a UIContentSizeCategory name; pass it where a test depends on the default type size, so a
-    /// simulator left at another size cannot move the result.
-    func launch(width: Int? = nil, size: String? = nil) -> XCUIApplication {
+    /// simulator left at another size cannot move the result. `seed` names a fixture file to seed from; it must come
+    /// right after the flag. nil seeds the bundled ledger, as every other case does.
+    func launch(width: Int? = nil, size: String? = nil, seed: String? = nil) -> XCUIApplication {
         let app = XCUIApplication()
-        var args = ["-ManifestUITestSeed"]
+        var args = ["-ManifestUITestSeed"] + (seed.map { [$0] } ?? [])
         if let width { args += ["-ManifestUITestWidth", String(width)] }
         if let size { args += ["-UIPreferredContentSizeCategoryName", size] }
         app.launchArguments = args
@@ -60,13 +61,13 @@ final class TallyUITests: XCTestCase {
             .matching(NSPredicate(format: "identifier BEGINSWITH %@", prefix)).allElementsBoundByIndex
     }
 
-    /// The Tally tab, open, with its rows loaded.
-    func openTally(_ app: XCUIApplication) {
+    /// The Tally tab, open, with its rows loaded. `row` is the product whose row proves the load.
+    func openTally(_ app: XCUIApplication, row: String = "Lightning Bolt") {
         let tab = app.tabBars.buttons["Tally"]
         XCTAssertTrue(tab.waitForExistence(timeout: 5), "the Tally tab is missing")
         tab.tap()
-        XCTAssertTrue(element(app, "tally-row:Lightning Bolt").waitForExistence(timeout: 5),
-                      "the Tally tab shows no rows (tally-row:Lightning Bolt is missing)")
+        XCTAssertTrue(element(app, "tally-row:\(row)").waitForExistence(timeout: 5),
+                      "the Tally tab shows no rows (tally-row:\(row) is missing)")
     }
 
     /// Opens a row and waits for its copies.
@@ -91,12 +92,12 @@ final class TallyUITests: XCTestCase {
 
     // MARK: accessibility audit, one screen state per method
 
-    // The audit, app.auditSkippingTabBar(ruled:), lives in AuditSkippingTabBarUITests.swift.
+    // The naming audit, app.auditNamingElements(), lives in AuditSkippingTabBarUITests.swift.
 
     func testAccessibilityAuditTallyScreenWithRows() throws {
         let app = launch()
         openTally(app)
-        try app.auditSkippingTabBar(ruled: skipMeasuredContrastFlags)
+        try app.auditNamingElements(skipping: skipMeasuredContrastFlags)
     }
 
     /// The open row is audited alone. On the full list, opening Lightning Bolt adds three copies and pushes the last
@@ -121,7 +122,45 @@ final class TallyUITests: XCTestCase {
         for (id, frame) in frames(app) {
             XCTAssertLessThanOrEqual(frame.maxY, barTop, "\(id) reaches under the tab bar, so the audit would read a cut row")
         }
-        try app.auditSkippingTabBar(ruled: skipMeasuredContrastFlags)
+        try app.auditNamingElements(skipping: skipMeasuredContrastFlags)
+    }
+
+    /// The audit with an overflowing meta line. The Set Card meta is far wider than its column, so the row draws a "…"
+    /// over the column's edge (owner ruling, decision audit-skips-measured-flags). No skip covers the line: the Text
+    /// is hard-clipped, never truncated, so the audit raises no finding. A truncating Text raises a clipped-text issue
+    /// that can come back with no identifier, so the test asserts no finding at all on the screen and does not look
+    /// for one by id. The audit runs first, so a truncating build goes red there. Then the line's label is whole, and
+    /// the Text is wider than the app window, so the "…" case runs on a line that really overflows. The window is the
+    /// bound because the row's own frame is the union of its children and grows with the meta Text (measured on
+    /// 2026-10-28: meta 722pt, row 855pt, window 402pt), so it cannot tell an overflowing line from a fitting one.
+    /// A cut line must not widen its card: last, every card lies inside the 16pt gutters.
+    func testAccessibilityAuditTallyScreenWithATruncatedMetaLine() throws {
+        let app = launch(width: 375, size: "UICTContentSizeCategoryL", seed: Self.longSetSeed)
+        openTally(app, row: Self.longSetRow)
+        let ruled = try app.auditNamingElements(skipping: skipMeasuredContrastFlags)
+        XCTAssertFalse(ruled.contains { $0.contains("id=tally-meta:") }, "an audit skip covers the meta line. Skipped: \(ruled)")
+        let meta = wholeLongSetMeta(app)
+        let window = app.windows.firstMatch
+        XCTAssertGreaterThan(meta.frame.width, window.frame.width,
+                             "the meta line does not overflow: meta \(meta.frame), window \(window.frame)")
+
+        // Then no part of the row leaves the column. Every card keeps the 16pt gutters of the 375pt frame (the same
+        // column and gutter SyncAdvisoryUITests reads), and the header button and the outstanding line lie inside the window.
+        let gutter = SyncAdvisoryUITests.gutter, slack = SyncAdvisoryUITests.slack
+        let left = (window.frame.width - SyncAdvisoryUITests.column) / 2 + gutter
+        let right = left + SyncAdvisoryUITests.column - 2 * gutter
+        let cards = elements(app, prefix: "tally-row:")
+        XCTAssertFalse(cards.isEmpty, "the Tally tab shows no rows")
+        var outside = cards.filter { $0.frame.minX < left - slack || $0.frame.maxX > right + slack }
+            .map { "\($0.identifier) \($0.frame) (gutters \(left) to \(right))" }
+        for id in ["tally-toggle:\(Self.longSetRow)", "tally-left:\(Self.longSetRow)"] {
+            let part = element(app, id)
+            XCTAssertTrue(part.exists, "\(id) is missing")
+            if part.frame.minX < window.frame.minX - slack || part.frame.maxX > window.frame.maxX + slack {
+                outside.append("\(id) \(part.frame) (window \(window.frame))")
+            }
+        }
+        XCTAssertEqual(outside, [], "these frames lie outside their bounds")
     }
 
     // MARK: the copies list
@@ -254,6 +293,30 @@ final class TallyUITests: XCTestCase {
     func testTheMetaLineIsOneLineAt320pt() { assertMetaIsOneLine(width: 320) }
 
     func testTheMetaLineIsOneLineAt375pt() { assertMetaIsOneLine(width: 375) }
+
+    /// The seed that holds a long set name: ledger-long-seller.json, whose Set Card item has one (the fixture file is
+    /// shared with PackageCardUITests, which reads only its L1 package).
+    static let longSetSeed = "ledger-long-seller.json"
+    static let longSetRow = "Set Card"
+    static let longSet = "Fictional Anthology of the Northern Realm Commemorative Collector Edition Reprint Series"
+
+    /// The long-set row's meta element, tally-meta:<name>, with its label checked: seller count, order count and the
+    /// full set name. The line is cut on screen and drawn with a "…", but the element still holds the whole text.
+    @discardableResult
+    func wholeLongSetMeta(_ app: XCUIApplication) -> XCUIElement {
+        let meta = element(app, "tally-meta:\(Self.longSetRow)")
+        XCTAssertTrue(meta.waitForExistence(timeout: 5), "the meta element tally-meta:\(Self.longSetRow) is missing")
+        XCTAssertEqual(meta.label, "1 seller \u{00B7} 1 order \u{00B7} \(Self.longSet)", "the meta element's label is not the whole meta text")
+        return meta
+    }
+
+    /// A set name far wider than the row ends in "…" on screen (owner ruling, decision audit-skips-measured-flags), and
+    /// the meta element still holds the whole text in its label.
+    func testALongSetNameIsWholeInTheMetaElementsLabel() throws {
+        let app = launch(width: 375, seed: Self.longSetSeed)
+        openTally(app, row: Self.longSetRow)  // red here, not on the identifier, if the seed has no Set Card item
+        wholeLongSetMeta(app)
+    }
 
     // MARK: an empty search
 

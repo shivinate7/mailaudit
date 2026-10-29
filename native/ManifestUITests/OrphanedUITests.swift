@@ -229,7 +229,7 @@ final class OrphanedUITests: XCTestCase {
         openOrphaned(app)
         el(app, "orphaned-record").tap()
         XCTAssertTrue(el(app, "orphaned-input").waitForExistence(timeout: 5), "the composer did not open before the audit")
-        try app.auditSkippingTabBar(ruled: Self.composerAuditSkips)
+        try app.auditNamingElements(skipping: Self.composerAuditSkips)
     }
 
     /// The one exemption of the empty composer's audit: a contrast issue on a disabled element (WCAG 1.4.3).
@@ -270,9 +270,8 @@ final class OrphanedUITests: XCTestCase {
 
     /// Probe for an intermittent audit issue on the composer: "Potentially inaccessible text", with no element and
     /// a zero frame, in 3 of 5 runs. This waits for the keyboard to settle first, then audits, and logs every issue
-    /// the audit raises (the exempt ones too, except the tab bar's, which print as AUDIT-SKIP lines) with its type,
-    /// element and frame, plus the screen's accessibility tree as an attachment. It adds no skip beyond the ones the
-    /// empty composer's audit already has. Run it with
+    /// the audit raises (the exempt ones too) with its type, element and frame, plus the screen's accessibility tree
+    /// as an attachment. It adds no skip beyond the ones the empty composer's audit already has. Run it with
     /// -test-iterations 5 and read the PROBE-AUDIT lines of the log: they say whether the keyboard was on screen
     /// when the audit ran, and what each iteration's audit raised. A green run with the keyboard off screen
     /// proves nothing about the settle.
@@ -288,7 +287,7 @@ final class OrphanedUITests: XCTestCase {
             print("PROBE-AUDIT\n\(log)")
             add(XCTAttachment(string: log + "\n\n" + app.debugDescription))
         }
-        try app.auditSkippingTabBar(ruled: { issue in
+        try app.auditNamingElements(skipping: { issue in
             let element = issue.element.map { "id=\($0.identifier) label=\($0.label) frame=\($0.frame)" } ?? "no element"
             seen.append("\(issue.auditType.rawValue) | \(issue.compactDescription) | \(issue.detailedDescription) | \(element)")
             return Self.composerAuditSkips(issue)
@@ -317,7 +316,7 @@ final class OrphanedUITests: XCTestCase {
         el(app, "orphaned-record").tap()
         addCard(app, typed: "urza", name: "Urza's Saga")
         XCTAssertTrue(el(app, "orphaned-save").isEnabled, "a card is added but Save is still disabled before the audit")
-        try app.auditSkippingTabBar(ruled: skipMeasuredContrastFlags)
+        try app.auditNamingElements(skipping: skipMeasuredContrastFlags)
     }
 
     /// Save reports its real state to VoiceOver: disabled while the composer holds no card, enabled once it does.
@@ -337,7 +336,7 @@ final class OrphanedUITests: XCTestCase {
         openOrphaned(app)
         recordTie(app)
         XCTAssertTrue(el(app, "assign:\(Self.a1)").waitForExistence(timeout: 5), "the candidates did not show before the audit")
-        try app.auditSkippingTabBar(ruled: skipMeasuredContrastFlags)
+        try app.auditNamingElements(skipping: skipMeasuredContrastFlags)
     }
 
     /// Every control the owner taps has a hit region of at least 44pt, and the assign Undo too.
@@ -361,6 +360,8 @@ final class OrphanedUITests: XCTestCase {
 
     /// The hit region is the whole control, not the label inside it: a .frame after the button style leaves the
     /// tappable area at the label's size. Every control on an envelope card is measured here, and every candidate row.
+    /// Edit and Discard must each be one element: the helpers read firstMatch, so a second element with the same id
+    /// would pass unseen. The count assertions guard that.
     func testEnvelopeCardControlsHaveA44ptHitRegion() throws {
         let app = launch()
         openOrphaned(app)
@@ -369,6 +370,8 @@ final class OrphanedUITests: XCTestCase {
 
         assertHit(app.buttons["Edit"].firstMatch, "Edit")
         assertHit(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "discard:")).firstMatch, "Discard")
+        XCTAssertEqual(count(app, prefix: "orphaned-edit:"), 1, "Edit's id is on more than one element")
+        XCTAssertEqual(count(app, prefix: "discard:"), 1, "Discard's id is on more than one element")
         assertHit(app.buttons["show 1 more candidate"], "show more")
         let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "assign:"))
         XCTAssertEqual(rows.count, 3, "the card shows three candidate rows before show more")
