@@ -172,9 +172,10 @@ async function dataUrlToBlob(url) {
 /* ---------- order stamps ----------
    One stamp per package — a status the user sets by hand ("claim filed",
    "refunded"), dated the day it was set, with an optional free line. The
-   vocabulary is fixed and module-level for the same reason RANGES and
-   PKG_SORTS are: the chips in the editor and the band on the card read one
-   table, so they cannot drift.
+   vocabulary is fixed (STAMP_KINDS in view-rules.mjs, so the native
+   client reads it too) for the same reason RANGES and PKG_SORTS are: the
+   chips in the editor and the band on the card read one table, so they
+   cannot drift.
    A removed stamp is a TOMBSTONE — `kind: ""` with a fresh `updatedAt` —
    rather than a deleted key, so the removal itself survives the two-device
    merge (see mergeStamps in merge-rules.mjs). Every reader goes through

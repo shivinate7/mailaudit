@@ -12,8 +12,9 @@ The New envelope control ends the current envelope. It belongs to the iPhone Duo
 - A name held because two envelopes share it is decided by the next card from the same envelope.
 - Nothing is checked in until the user taps to post.
 - A held name still undecided when New envelope is tapped moves to a visible strays list. It saves nothing and no longer decides. Default, not owner, the same as held cards staying held when Card in Hand closes.
+- Default, not owner: a name posted after it was released as a stray leaves the strays list. A stray checked in by a line tap stays listed as released.
 
-**Holds while:** no native Duo view is built yet, and the round 2 answer on item 26 stands.
+**Holds while:** `HandModel.newEnvelope` moves the held name to `strays`, and the round 2 answer on item 26 stands.
 
 ## See also
 
