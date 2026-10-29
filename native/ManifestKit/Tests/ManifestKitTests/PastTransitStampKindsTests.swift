@@ -3,6 +3,8 @@
 //
 // The list is the web's STAMP_KINDS (src/app.jsx, "order stamps"), in the web's order, with the web's labels. The web side
 // pins the six labels in test/app.test.mjs (case 37.3, the stamp editor). This file pins the Swift copy the page reads.
+// Why a second copy: STAMP_KINDS lives in app.jsx, outside the rules bundle, so RulesEngine.constant cannot read it. Moving
+// it into the bundle would make one home; that is the owner's call and it changes web code (raised in the lane report).
 //
 // The API the test names (NEW, the builder adds it; PastTransitModel.swift says "the page limits the choice to the web's six"):
 //

@@ -32,8 +32,12 @@
 //   - One post is one save: one LedgerStore onLocalSave call, the store's own hook for a saved write.
 //   - Typed text is the query for hits and the typed name for handStep. Blank text is not pinned here.
 //   - Two type() calls in flight together end as if they ran one after the other: the later call reads the held name
-//     the earlier one left, and a slow earlier call never overwrites a later call's hits, offer or held.
-//     NOT pinned: whether post() waits for a type() still in flight. No record rules on it.
+//     the earlier one left, and a slow earlier call never overwrites a later call's hits, offer or held. The calls queue
+//     in call order. A fix that drops the earlier reply instead (the epoch PastTransitModel keeps) fails
+//     testOverlappingTypesReadEachOthersHeld on purpose: the dropped hold loses the held card.
+//   - A type() still in flight when a post runs never brings back a held name the post checked in. Two fixes both pass:
+//     post() waits for the type() ahead of it, or a type reply that a write has outdated is dropped. NOT pinned, as no
+//     record rules on it: which of the two, and what a refused type() reports.
 //
 // Fake fixtures only. These tests read no Keychain item. Temp files live in PhotoTestKit's run folder.
 
@@ -96,15 +100,29 @@ final class HandModelTests: XCTestCase {
     }
 
     /// A ledger folder in this run's folder, loaded, with a model over it. The folder is removed at teardown.
-    func makeHand(extra: [[String: Any]] = []) async throws -> HandFixture {
+    func makeHand(extra: [[String: Any]] = [], bundle: URL = RulesGoldenTests.bundleURL) async throws -> HandFixture {
         let dir = try PhotoTestKit.tempDir("hand")
         addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
         let file = dir.appending(path: "ledger.json")
         try Self.seed(extra: extra).write(to: file)
         let store = LedgerStore(fileURL: file, now: { Self.t0 })
         try store.load()
-        let model = HandModel(engine: try RulesEngine(bundleURL: RulesGoldenTests.bundleURL), store: store)
+        let model = HandModel(engine: try RulesEngine(bundleURL: bundle), store: store)
         return HandFixture(model: model, store: store, file: file, dir: dir)
+    }
+
+    /// The real rules bundle with one change: handStep takes 150 ms when a name is already held and Lightning Bolt is
+    /// typed. That holds a type() inside its last engine call, so a test can run a post while the call is in flight.
+    func slowHandStepBundle() throws -> URL {
+        let dir = try PhotoTestKit.tempDir("hand-bundle")
+        addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
+        let slow = """
+
+        Rules.handStep=(function(o){return function(){if(arguments[3]!==null&&arguments[4]==="Lightning Bolt"){var t=Date.now();while(Date.now()-t<150){}}return o.apply(null,arguments)}})(Rules.handStep);
+        """
+        let url = dir.appending(path: "rules-slow.js")
+        try (try String(contentsOf: RulesGoldenTests.bundleURL, encoding: .utf8) + slow).write(to: url, atomically: true, encoding: .utf8)
+        return url
     }
 
     /// The `received` counts the file holds now. An absent field reads as empty.
@@ -349,5 +367,26 @@ final class HandModelTests: XCTestCase {
         XCTAssertEqual(offer.plan, [PlanStep(itemKey: Self.counter, take: 1)], "the offer takes the later card alone")
         XCTAssertEqual(h.model.hits, ["S1::Alpha Cards"], "the hits are the later call's")
         XCTAssertNil(h.model.held, "the later call holds nothing")
+    }
+
+    /// A type() still in flight when a post runs never brings back the held name that post checked in (the debt's
+    /// "held card can come back after a post cleared it"). The in-flight call read the held name and the received
+    /// map before the post, so its reply, applied after the post, holds a name the ledger already counts. The slow
+    /// bundle keeps that call inside its last engine call while the post runs, 60 ms in. Either order is allowed:
+    /// the post first, or the type first and the post then finding no offer. Nothing is left half posted.
+    func testTypeInFlightNeverRevivesWhatAPostCheckedIn() async throws {
+        let h = try await makeHand(bundle: try slowHandStepBundle())
+        try await h.model.type("Lightning Bolt")
+        try await h.model.type("Path to Exile")
+        XCTAssertEqual(try XCTUnwrap(h.model.offer, "the setup is real: a post is pending").plan,
+                       [PlanStep(itemKey: Self.bolt, take: 1), PlanStep(itemKey: Self.path, take: 1)])
+        let inFlight = Task { try await h.model.type("Lightning Bolt") }
+        try await Task.sleep(for: .milliseconds(60))
+        try await h.model.post()
+        do { try await inFlight.value } catch {}  // a fix may refuse the outdated reply
+        let got = h.store.received()
+        XCTAssertTrue(got.isEmpty || got == [Self.bolt: 1, Self.path: 1], "the post left the ledger half posted: \(got)")
+        XCTAssertFalse(got[Self.bolt] == 1 && h.model.held == "lightning bolt",
+                       "the held name came back after a post checked its copy in")
     }
 }
