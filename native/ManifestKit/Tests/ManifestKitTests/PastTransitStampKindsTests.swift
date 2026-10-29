@@ -1,12 +1,12 @@
 // Past-transit page: the stamp kinds it offers (duo-card-in-hand, item 25, deferred at 15:34 CDT: "the past-transit page
 // uses the existing stamp list, with no Lost kind"; one-stamp-per-package).
 //
-// The list is the web's STAMP_KINDS (src/app.jsx, "order stamps"), in the web's order, with the web's labels. The web side
-// pins the six labels in test/app.test.mjs (case 37.3, the stamp editor). This file pins the Swift copy the page reads.
-// Why a second copy: STAMP_KINDS lives in app.jsx, outside the rules bundle, so RulesEngine.constant cannot read it. Moving
-// it into the bundle would make one home; that is the owner's call and it changes web code (raised in the lane report).
+// The list is the web's STAMP_KINDS (src/view-rules.mjs, "order stamps"), in the web's order, with the web's labels. The
+// web side pins the six labels in test/app.test.mjs (case 37.3, the stamp editor). This file pins what the page reads.
+// One home: STAMP_KINDS lives in the rules bundle, so the web editor and the page read the same list, and the page reads
+// it through the engine (RulesEngine.constant), not from a copy.
 //
-// The API the test names (NEW, the builder adds it; PastTransitModel.swift says "the page limits the choice to the web's six"):
+// The API the test names:
 //
 //   extension PastTransitModel {
 //       public static let stampKinds: [StampKind]    // the six kinds the page offers, in this order
@@ -15,8 +15,6 @@
 //
 // A struct or a labelled tuple with `kind` and `label` both satisfy the test. `stamp(_:kind:)` keeps taking any kind: the
 // limit lives in the list, not in the model (PastTransitModel.stamp). No Lost kind exists, so none is listed.
-//
-// Until the builder adds `stampKinds`, ManifestKitTests does not compile: this file is the red, and the error names the member.
 
 import XCTest
 @testable import ManifestKit
