@@ -178,8 +178,8 @@ struct TallyRowView: View {
         .contentShape(Rectangle())
     }
 
-    /// One line cut at the column's edge, with a "…" drawn over the edge only when the text is wider than the column
-    /// (as on the web), and wrapping at accessibility sizes. The text is hard-clipped, never truncated, so the audit
+    /// One line cut at the column's edge. Only when the text is wider than the column, its last 14pt fade and a "…" is
+    /// drawn over the edge with no fill behind it (as on the web), and wrapping at accessibility sizes. The text is hard-clipped, never truncated, so the audit
     /// raises no clipped-text finding on it; the Text keeps the full string as its label and carries `tally-meta:`.
     @ViewBuilder private var metaLine: some View {
         let font = Font.mono(11, relativeTo: .caption)
@@ -196,15 +196,22 @@ struct TallyRowView: View {
             }
             .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { metaBoxWidth = $0 }
             .clipped()
+            .mask(LinearGradient(stops: [
+                .init(color: .black, location: 0),
+                .init(color: .black, location: metaOverflows ? max(0, 1 - 14 / metaBoxWidth) : 1),
+                .init(color: .clear, location: 1),
+            ], startPoint: .leading, endPoint: .trailing))
             .overlay(alignment: .trailing) {
-                if metaNaturalWidth > metaBoxWidth {
-                    Text("\u{2026}").font(font).foregroundStyle(paint(.meta))
-                        .background(paint(.surface))
-                        .accessibilityHidden(true)
+                if metaOverflows {
+                    Text("\u{2026}").font(font).foregroundStyle(paint(.meta)).accessibilityHidden(true)
                 }
             }
         }
     }
+
+    /// True only once both widths are measured and the text passes the column by half a point, so a fit to within
+    /// rounding, or one width measured before the other, never fades or marks text that is whole.
+    private var metaOverflows: Bool { metaBoxWidth > 0 && metaNaturalWidth > metaBoxWidth + 0.5 }
 
     /// The 3pt bar on the card's top edge, out of flow: it mounts without moving a row. Gone at none in and at all in.
     /// It uses PackageCard's bar tokens, as step 3's card does.
