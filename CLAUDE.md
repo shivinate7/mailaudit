@@ -206,6 +206,7 @@ One stamp per package, set by hand. A refund takes the package out of every coun
 - `stamped-package-hides-lost-flag` — A stamp hides the lost-mail warning.
 - `stamp-band-opens-the-editor` — The stamp band is the control.
 - `stamped-filter-on-the-pipeline` — The stamped filter sits on the normal pipeline.
+- `native-bulk-check-in` — Native Mark all received and Clear check-ins share the card row with Stamp.
 
 ## House UX
 
