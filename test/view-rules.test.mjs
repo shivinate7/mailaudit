@@ -99,7 +99,25 @@
                    stamp.at without its year.
      refundedPill(items, received) -> "N left \u00B7 refunded" (U+00B7), N the copies a package still
                    owes (outstandingOf, an over-count clamps per line), or null when none is owed,
-                   as packagePill does. It takes the same two arguments as packagePill. */
+                   as packagePill does. It takes the same two arguments as packagePill.
+
+   Step 7 pins the bulk rules of Mark all received and Clear check-ins (undo-removes-only-its-delta,
+   recent-checks-can-be-undone). They move here from the inline setReceived calls in src/app.jsx bulkSet and
+   undoAssign, so the web and the native Packages card and Tally row share one home. `items` is a package's lines,
+   or a Tally row's every copy (item.items, filtered ones too). `received` maps item key to count. None of the
+   three mutates its input, and none reads a clock:
+     bulkApply(items, on, received) -> a new received map. on: each line's key is its qty (an over-count is
+                   lowered to qty, as bulkSet does). off: each line's key is deleted, never stored as 0.
+                   Keys that are no line of `items` are kept as they are.
+     bulkTakes(items, received) -> [{itemKey, take, qty}], one per line a Mark all adds copies to:
+                   take = qty minus the line's count now, the count clamped to qty. A line with nothing to add
+                   may be left out or listed with take 0, and the cases ignore it. The caller keeps the list
+                   for the Undo, so the undo removes this press's delta and no more.
+     undoBulk(takes, received) -> a new received map. Each take's key is clamp(now - take, 0, qty), and a key
+                   that reaches 0 is deleted, never stored as 0. Keys with no take are kept as they are, so a
+                   hand edit made after the press survives. A snapshot restore would erase it.
+   The Clear ask's "N" is not a new export. It is totalsOf(items, received).got: the copies in now, each line
+   clamped to its qty, a stray key ignored. It is neither the lines in nor totalQty. V39.8 pins it. */
 
 const DAY = 86400000;
 const loaded = await import("../src/view-rules.mjs").then(
@@ -147,6 +165,9 @@ const isRefundStamp = fn("isRefundStamp");
 const nextStamp = fn("nextStamp");
 const stampBandText = fn("stampBandText");
 const refundedPill = fn("refundedPill");
+const bulkApply = fn("bulkApply");
+const bulkTakes = fn("bulkTakes");
+const undoBulk = fn("undoBulk");
 
 /* ---------- assertion helpers ---------- */
 
@@ -1643,6 +1664,86 @@ eq(refundedPill(CARD, { zzz: 4 }), "4 left · refunded", "V38.5 a stray received
 eq(refundedPill(one(1, 1), {}), "1 left · refunded", "V38.6 one copy: 1 left, no plural form");
 eq(refundedPill(CARD, { a: 1, b: 1, c: 2 }), null, "V38.7a every copy in: no pill, never 0 left");
 eq(refundedPill([], {}), null, "V38.7b a package with no lines: no pill");
+
+/* ── V39 the bulk rules: Mark all received, Clear check-ins and the Undo of a Mark all. bulkApply is the web's
+   bulkSet (src/app.jsx) as a pure rule. A missing key is `lacksKey`, because eq cannot tell a deleted key from one
+   set to undefined, and JSON drops both. Mutants: a stored 0 for a cleared key; qty - got added to the count
+   instead of qty written; a key outside the package touched; the input mutated. */
+const hasKey = (m, k) => !!m && typeof m === "object" && Object.hasOwn(m, k);
+/* absence needs a map to be absent from, so a missing export cannot pass an absence case */
+const lacksKey = (m, k) => !!m && typeof m === "object" && !Object.hasOwn(m, k);
+/* every line a Mark all adds to; a take of 0 is ignored, as the contract says. No list at all is no empty list. */
+const bulkTakesOf = (items, rec) => {
+  const t = bulkTakes(items, rec);
+  return Array.isArray(t) ? t.filter((x) => x.take > 0) : "bulkTakes returned no list";
+};
+
+eq(bulkApply(CARD, true, {}), { a: 1, b: 1, c: 2 }, "V39.1 Mark all writes every line's qty");
+eq(bulkApply(CARD, true, { a: 1, c: 1 }), { a: 1, b: 1, c: 2 }, "V39.1b a line part in goes to its qty, not qty added to it");
+eq(bulkApply(CARD, true, { zzz: 3 }), { a: 1, b: 1, c: 2, zzz: 3 }, "V39.2 a key that is no line of the package is kept");
+eq(bulkApply(CARD, true, { c: 5 }), { a: 1, b: 1, c: 2 }, "V39.3 an over-count is lowered to qty, as bulkSet does");
+{
+  const out = bulkApply(CARD, false, { a: 1, b: 1, c: 1, zzz: 3 });
+  eq(out, { zzz: 3 }, "V39.4a Clear deletes every line's key and keeps the stray one");
+  ok(lacksKey(out, "a") && lacksKey(out, "b") && lacksKey(out, "c") && hasKey(out, "zzz"), "V39.4b Clear deletes the keys, it does not store 0");
+}
+eq(bulkApply(CARD, false, {}), {}, "V39.5 Clear on a package with nothing in writes no key");
+eq(bulkApply([], true, { a: 1 }), { a: 1 }, "V39.6 a package with no lines changes nothing");
+{
+  const rec = { a: 1, zzz: 3 };
+  const on = bulkApply(CARD, true, rec), off = bulkApply(CARD, false, rec);
+  ok(!!on && !!off && on !== rec && off !== rec && show(rec) === show({ a: 1, zzz: 3 }), "V39.7 the input map is not mutated, and a new map comes back");
+}
+
+/* V39.8 the Clear ask's N: totalsOf's got, which exists today. Lines in a: 1, c: 2 are 2, the card's totalQty is 4,
+   and N is 3. Mutants: N counts lines; N is totalQty; an over-count or a stray key adds to N. */
+eq(totalsOf(CARD, { a: 1, c: 2 }).got, 3, "V39.8a N counts copies: 3, not the 2 lines in and not totalQty 4");
+eq(totalsOf(CARD, { c: 5 }).got, 2, "V39.8b an over-count clamps to the line's qty");
+eq(totalsOf(CARD, { zzz: 4 }).got, 0, "V39.8c a stray key is no check-in");
+eq(totalsOf(CARD, {}).got, 0, "V39.8d nothing in: N is 0, and Clear is hidden");
+
+/* V39.9 bulkTakes: what a Mark all adds, per line. Mutants: take = qty; the clamp dropped, so an over-count gives a negative take. */
+eq(bulkTakesOf(CARD, {}), [{ itemKey: "a", take: 1, qty: 1 }, { itemKey: "b", take: 1, qty: 1 }, { itemKey: "c", take: 2, qty: 2 }], "V39.9a nothing in: every line's qty is taken");
+eq(bulkTakesOf(CARD, { a: 1, c: 1 }), [{ itemKey: "b", take: 1, qty: 1 }, { itemKey: "c", take: 1, qty: 2 }], "V39.9b a line already in takes nothing, a part-in line takes the rest");
+eq(bulkTakesOf(CARD, { a: 1, b: 1, c: 5 }), [], "V39.9c every line in or over: nothing taken, and no negative take");
+eq(bulkTakesOf(CARD, { c: 5 }), [{ itemKey: "a", take: 1, qty: 1 }, { itemKey: "b", take: 1, qty: 1 }], "V39.9d an over-count takes nothing: the clamped figure, not 5");
+eq(bulkTakesOf([], {}), [], "V39.9e a package with no lines takes nothing");
+
+/* V39.10 undoBulk subtracts the delta. Mutants: the key stored as 0; undo restores a snapshot; the upper clamp dropped. */
+{
+  const out = undoBulk(bulkTakesOf(CARD, {}), { a: 1, b: 1, c: 2 });
+  eq(out, {}, "V39.10a undoing a press that took everything leaves nothing in");
+  ok(lacksKey(out, "a") && lacksKey(out, "b") && lacksKey(out, "c"), "V39.10b a key that falls to 0 is deleted, not stored as 0");
+}
+eq(undoBulk([{ itemKey: "c", take: 1, qty: 2 }], { c: 2 }), { c: 1 }, "V39.11 2 minus the 1 the press took is 1");
+eq(undoBulk([{ itemKey: "c", take: 2, qty: 2 }], { c: 1 }), {}, "V39.12a a count already below the take falls to 0, never negative");
+ok(lacksKey(undoBulk([{ itemKey: "c", take: 2, qty: 2 }], { c: 1 }), "c"), "V39.12b and its key is deleted");
+eq(undoBulk([{ itemKey: "c", take: 1, qty: 2 }], { c: 5 }), { c: 2 }, "V39.13 a count over qty is clamped to qty, never left above it");
+eq(undoBulk(bulkTakesOf(CARD, {}), { zzz: 3 }), { zzz: 3 }, "V39.14 a key with no take is kept");
+{
+  const rec = { a: 1, b: 1, c: 2 };
+  const out = undoBulk(bulkTakesOf(CARD, {}), rec);
+  ok(!!out && out !== rec && show(rec) === show({ a: 1, b: 1, c: 2 }), "V39.15 the input map is not mutated, and a new map comes back");
+}
+eq(undoBulk([], { a: 1 }), { a: 1 }, "V39.16 no takes: the map is as it was");
+
+/* V39.17 a hand edit made after the press survives (undo-removes-only-its-delta, web test 14.5). The ledger held a and
+   half of c. The press took b and the other half of c. Then the owner un-checked a and checked zzz. Undo takes back b
+   and that half of c, and leaves the later edits. A snapshot restore gives { a: 1, c: 1 }, bringing a back and losing zzz.
+   It is the only case here a fixture of all-zero lines could not tell apart. */
+{
+  const before = { a: 1, c: 1 };
+  const takes = bulkTakesOf(CARD, before);
+  const afterPress = bulkApply(CARD, true, before);
+  eq(afterPress, { a: 1, b: 1, c: 2 }, "V39.17a anchor: the press filled every line");
+  const edited = { b: 1, c: 2, zzz: 1 }; // a un-checked, zzz checked, after the press
+  eq(undoBulk(takes, edited), { c: 1, zzz: 1 }, "V39.17b undo removes only the press's delta: a stays un-checked, zzz stays in");
+}
+
+/* V39.18 a Mark all and its undo round trip, from any start where no line is over qty. */
+for (const start of [{}, { a: 1 }, { c: 1 }, { a: 1, b: 1, c: 1 }, { b: 1, zzz: 2 }]) {
+  eq(undoBulk(bulkTakesOf(CARD, start), bulkApply(CARD, true, start)), start, `V39.18 undo of Mark all from ${JSON.stringify(start)} gives the start back`);
+}
 
 /* ---------- report ---------- */
 

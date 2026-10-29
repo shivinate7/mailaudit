@@ -82,8 +82,10 @@ enum LiveFixture {
 
     static func engine() throws -> RulesEngine { try RulesEngine(bundleURL: RulesGoldenTests.bundleURL) }
 
-    /// A loaded store over a ledger file with the items, the shared received map and the stamps.
-    static func store(items: [[String: Any]], stamps: [LiveStamp], engine e: RulesEngine) async throws -> LedgerStore {
+    /// A loaded store over a ledger file with the items, the received map and the stamps. `received` is the shared map and
+    /// `now` the fixed clock unless a case passes its own (the bulk cases move the clock and count the saves).
+    static func store(items: [[String: Any]], stamps: [LiveStamp], engine e: RulesEngine, received: [String: Int] = LiveFixture.received,
+                      now: @escaping () -> Double = { 1_786_543_380_000 }) async throws -> LedgerStore {
         let itemsJSON = String(decoding: try JSONSerialization.data(withJSONObject: items), as: UTF8.self)
         let grouped = try await e.call("groupPackages", "[\(itemsJSON)]")
         let packages = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(grouped.utf8)) as? [[String: Any]])
@@ -96,7 +98,7 @@ enum LiveFixture {
         let url = try PhotoTestKit.tempDir("n12b-live").appending(path: "ledger.json")
         let doc: [String: Any] = ["mailday": 1, "items": items, "received": received, "stamps": stamped]
         try JSONSerialization.data(withJSONObject: doc).write(to: url)
-        let store = LedgerStore(fileURL: url, now: { 1_786_543_380_000 })
+        let store = LedgerStore(fileURL: url, now: now)
         try store.load()
         return store
     }

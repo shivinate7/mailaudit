@@ -35,10 +35,11 @@
 //   - A refunded or partial-refund card leaves the normal list on the Save tap (a-refund-leaves-every-count) and every
 //     count follows it; the stamped filter brings it back (stamped-filter-on-the-pipeline). The filter turns off by
 //     itself when the stamped count reaches 0 (spec, Wiring).
-//   - "No card move on Save: the space is reserved" is read as: the card at rest, its editor closed, has the same size
-//     with and without a stamp, and nothing below it moves, whichever way the stamp goes (Save, then Remove). The editor
-//     is taller than either state, and opening it moves the lines on a deliberate tap, as on the web. A scroll between two
-//     readings moves every frame alike, so frames are compared relative to the card's own top.
+//   - The band is a row of its own above the bulk row (the owner's pick of 2026-10-29: Stamp joins the bulk row, which
+//     replaces step 6's one 48pt slot for Stamp or band). A Save grows the card by the band's own height and moves the bulk
+//     row, the lines and the cards below down by exactly that, and nothing above the band moves. A Remove takes it all back.
+//     The editor is taller than either state, and opening it moves the lines on a deliberate tap, as on the web. A scroll
+//     between two readings moves every frame alike, so frames are compared relative to the card's own top.
 //   - The ask names N cards. The web counts the package's cards (totalQty); the mockup's armed state counts the copies
 //     still owed. At rest in the shared fixture the two are equal, so the cases read A1 (4) and D1 (1) at rest.
 //
@@ -63,47 +64,27 @@ final class PackageStampUITests: XCTestCase {
     static let kinds = ["claim", "refunded", "contacted", "reshipped", "partial", "other"]
     static let dot = "\u{00B7}"
     /// The ids whose frames the no-shift cases read: the cards' own, and every stamp control.
-    static let framed = ["package-row:", "checkin:", "order-link:", "stamp-button:", "stamp-band:", "stamp-editor:", "stamp-kind:",
+    static let framed = ["package-row:", "checkin:", "order-link:", "card-slot:", "bulk-row:", "stamp-button:", "stamp-band:", "stamp-editor:", "stamp-kind:",
                          "stamp-note:", "stamp-save:", "stamp-cancel:", "stamp-remove:", "stamp-ask-"]
 
-    // MARK: helpers (each test class carries its own launch and element helpers, as the others do)
+    // MARK: helpers (the steps are ScreenKit's, shared with PackageBulkUITests; each is one line here)
 
-    func launch(width: Int = 375) -> XCUIApplication {
-        let app = XCUIApplication()
-        app.launchArguments = ["-ManifestUITestSeed", "-ManifestUITestWidth", String(width)]
-        app.launch()
-        app.tabBars.buttons["Packages"].tap()
-        return app
+    func launch(width: Int = 375) -> XCUIApplication { ScreenKit.launch(width: width) }
+
+    func el(_ app: XCUIApplication, _ id: String) -> XCUIElement { ScreenKit.el(app, id) }
+
+    func wait(_ predicate: String, for e: XCUIElement, _ message: String, timeout: TimeInterval = 5,
+              file: StaticString = #filePath, line: UInt = #line) {
+        ScreenKit.wait(predicate, for: e, message, timeout: timeout, file: file, line: line)
     }
 
-    func el(_ app: XCUIApplication, _ id: String) -> XCUIElement {
-        app.descendants(matching: .any).matching(identifier: id).firstMatch
-    }
-
-    func wait(_ predicate: String, for e: XCUIElement, _ message: String, timeout: TimeInterval = 5) {
-        let done = XCTNSPredicateExpectation(predicate: NSPredicate(format: predicate), object: e)
-        XCTAssertEqual(XCTWaiter.wait(for: [done], timeout: timeout), .completed, message)
-    }
-
-    /// Waits for the element, scrolls it into reach when it is not hittable, taps it.
     func tap(_ app: XCUIApplication, _ id: String, file: StaticString = #filePath, line: UInt = #line) {
-        let e = el(app, id)
-        XCTAssertTrue(e.waitForExistence(timeout: 5), "\(id) is missing", file: file, line: line)
-        if !e.isHittable { app.reveal(e) }
-        e.tap()
+        ScreenKit.tap(app, id, file: file, line: line)
     }
 
     /// The first stamp: Stamp, a kind, an optional note, Save. It ends with the editor gone.
-    func stamp(_ app: XCUIApplication, _ gk: String, kind: String, note: String? = nil) {
-        XCTAssertTrue(el(app, "package-row:\(gk)").waitForExistence(timeout: 5), "\(gk) is not on the list")
-        tap(app, "stamp-button:\(gk)")
-        tap(app, "stamp-kind:\(gk)|\(kind)")
-        if let note {
-            tap(app, "stamp-note:\(gk)")
-            el(app, "stamp-note:\(gk)").typeText(note)
-        }
-        tap(app, "stamp-save:\(gk)")
-        wait("exists == false", for: el(app, "stamp-editor:\(gk)"), "Save did not close the editor on \(gk)")
+    func stamp(_ app: XCUIApplication, _ gk: String, kind: String, note: String? = nil, file: StaticString = #filePath, line: UInt = #line) {
+        ScreenKit.stamp(app, gk, kind: kind, note: note, file: file, line: line)
     }
 
     /// Opens the editor of a stamped card from its band.
@@ -118,41 +99,16 @@ final class PackageStampUITests: XCTestCase {
         XCTAssertTrue(el(app, "stamp-ask-confirm:\(gk)").waitForExistence(timeout: 5), "the first tap on Remove stamp did not arm it")
     }
 
-    /// The frame of every card part and stamp control on screen, by identifier, read from one snapshot of the app's
-    /// accessibility tree. One read, not a query per element: the armed ask disarms 4 seconds after its tap, and a query per
-    /// element took about 2 seconds, so the last frames of a compare were read after the ask had gone.
+    /// The frame of every card part and stamp control on screen, by identifier, from one snapshot of the app's tree.
     func snapshot(_ app: XCUIApplication) -> [String: CGRect] {
-        var out: [String: CGRect] = [:]
-        func walk(_ s: XCUIElementSnapshot) {
-            if Self.framed.contains(where: { s.identifier.hasPrefix($0) }) { out[s.identifier] = s.frame }
-            s.children.forEach(walk)
-        }
-        do { walk(try app.snapshot()) } catch { XCTFail("no accessibility snapshot of the app: \(error)") }
-        return out
+        ScreenKit.snapshot(app, prefixes: Self.framed).mapValues(\.frame)
     }
 
-    /// Each frame with `anchor`'s top left taken off, so a scroll between two snapshots changes nothing.
-    func relative(_ s: [String: CGRect], to anchor: String) -> [String: CGRect] {
-        guard let a = s[anchor] else { return [:] }
-        return s.mapValues { $0.offsetBy(dx: -a.minX, dy: -a.minY) }
-    }
+    func relative(_ s: [String: CGRect], to anchor: String) -> [String: CGRect] { ScreenKit.relative(s, to: anchor) }
 
-    /// Every frame in `before` (already relative to the card's top) that is still on screen sits where it did. `taken` is
-    /// a snapshot the caller read at the moment that matters (the armed ask is live for 4 seconds only); without it the
-    /// frames are read now.
     func assertStill(_ before: [String: CGRect], _ app: XCUIApplication, anchor: String, _ what: String,
                      taken: [String: CGRect]? = nil, file: StaticString = #filePath, line: UInt = #line) {
-        let after = relative(taken ?? snapshot(app), to: anchor)
-        let common = before.keys.filter { after[$0] != nil }
-        XCTAssertGreaterThanOrEqual(common.count, 8, "too few frames to compare after \(what)", file: file, line: line)
-        // Layout rounding gives one frame a float error (319.0000305 against 319.0), so each edge is compared to half a
-        // point, as the other frame checks here are. A 1pt move shifts an edge by 1.0 and still fails.
-        for id in common {
-            guard let was = before[id], let now = after[id] else { continue }
-            for (edge, a, b) in [("minX", now.minX, was.minX), ("minY", now.minY, was.minY), ("maxX", now.maxX, was.maxX), ("maxY", now.maxY, was.maxY)] {
-                XCTAssertEqual(a, b, accuracy: 0.5, "\(id) moved when \(what): \(edge) \(b) to \(a)", file: file, line: line)
-            }
-        }
+        ScreenKit.assertStill(before, app, anchor: anchor, what, prefixes: Self.framed, taken: taken, file: file, line: line)
     }
 
     /// Today's local day as the band prints it: MM-dd.
@@ -409,18 +365,37 @@ final class PackageStampUITests: XCTestCase {
         assertHitRegion(el(app, "stamp-ask-cancel:\(gk)"), "the armed ask's Cancel")
     }
 
-    /// Nothing moves because a stamp is saved or removed: the card at rest has one size and one place for its lines
-    /// with or without a stamp, and the cards below stay where they were. Compared relative to the card's top, so a
-    /// scroll to reach a control is not a move.
-    func testNothingMovesWhenAStampIsSavedOrRemoved() throws {
+    /// A Save puts the band above the bulk row and moves nothing else on its own: the card grows by the band's own
+    /// height, the bulk row, the lines and the cards below move down by exactly that, and the header (the order link and the
+    /// status slot) stays. A Remove takes it all back. Compared relative to the card's top, so a scroll to reach a control is
+    /// not a move. This re-points step 6's "a Save moves nothing", which read one 48pt slot for Stamp or the band: the owner's
+    /// pick of 2026-10-29 (Stamp shares the bulk row, the band sits above it) makes the first Save add the band's row at rest.
+    /// Red today, where nothing moves and there is no bulk row.
+    func testASaveAddsTheBandsHeightBelowItAndARemoveTakesItBack() throws {
         let app = launch()
         let gk = Self.a1, anchor = "package-row:\(Self.a1)"
         app.reveal(el(app, anchor), whole: true)
         let rest = relative(snapshot(app).filter { !$0.key.hasPrefix("stamp-") }, to: anchor)
+        let moved = ["bulk-row:\(gk)", "checkin:A1|0|pLightningBolt", "checkin:A1|1|pCounterspell", "checkin:A1|2|pBrainstorm"]
+        for id in moved { XCTAssertNotNil(rest[id], "control: \(id) is on the card at rest") }
 
         stamp(app, gk, kind: "claim")
-        wait("exists == true", for: el(app, "stamp-band:\(gk)"), "no band after Save")
-        assertStill(rest, app, anchor: anchor, "the stamp was saved")
+        let band = el(app, "stamp-band:\(gk)")
+        wait("exists == true", for: band, "no band after Save")
+        let h = band.frame.height
+        XCTAssertGreaterThanOrEqual(h, 44 - 0.001, "the band is \(h)pt high, under 44pt")
+        let after = relative(snapshot(app).filter { !$0.key.hasPrefix("stamp-") }, to: anchor)
+        for id in moved { XCTAssertNotNil(after[id], "\(id) is missing after Save") }
+        for (id, was) in rest {
+            guard let now = after[id] else { continue }
+            let header = (id.hasPrefix("order-link:") || id.hasPrefix("card-slot:")) && id.hasSuffix(gk)
+            let dTop: CGFloat = header || id == anchor ? 0 : h  // the card's own top stays, and so does the header above the band
+            let dBottom: CGFloat = header ? 0 : h  // the card's bottom moves with its new row
+            XCTAssertEqual(now.minX, was.minX, accuracy: 0.5, "\(id) moved sideways when the stamp was saved")
+            XCTAssertEqual(now.maxX, was.maxX, accuracy: 0.5, "\(id) changed width when the stamp was saved")
+            XCTAssertEqual(now.minY, was.minY + dTop, accuracy: 0.5, "\(id) top: \(was.minY) to \(now.minY), the band is \(h)pt high")
+            XCTAssertEqual(now.maxY, was.maxY + dBottom, accuracy: 0.5, "\(id) bottom: \(was.maxY) to \(now.maxY), the band is \(h)pt high")
+        }
 
         openEditor(app, gk)
         arm(app, gk)
