@@ -23,10 +23,8 @@ struct MiniLabel: View {
     /// The pill fills the width it is offered, as a web `flex: 1` button does.
     var wide = false
 
-    /// The 44pt hit frame is drawn around the pill without taking layout space (a header row stays as tall as the web's).
-    var outsetHit = false
-
-    private var pill: some View {
+    /// The pill with no hit frame: the size `outsetHit(sizedBy:)` lays a control out at.
+    var pill: some View {
         Text(title).font(bold ? .mono(size, relativeTo: .caption).weight(.bold) : .mono(size, relativeTo: .caption))
             .foregroundStyle(text).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
             .padding(.vertical, vertical).padding(.horizontal, horizontal)
@@ -37,21 +35,22 @@ struct MiniLabel: View {
 
     private var framed: some View { pill.frame(minWidth: 44, minHeight: 44).contentShape(Rectangle()) }
 
-    var body: some View {
-        if outsetHit {
-            // .combine folds the hit frame into the Button's one element, which carries the Button's id and the title.
-            OutsetHit {
-                pill.hidden().accessibilityHidden(true)
-                framed
-            }
-            .accessibilityElement(children: .combine)
-        } else {
-            framed
+    var body: some View { framed }
+}
+
+extension View {
+    /// Lays this control out at the size of `sizer` (a MiniLabel's bare pill) and centres it there, so its 44pt hit
+    /// frame overflows and costs no layout space (a header row stays as tall as the web's). The control itself is the
+    /// overflowing view, so it stays the one accessibility element, and its frame is the 44pt one.
+    func outsetHit(sizedBy sizer: some View) -> some View {
+        OutsetHit {
+            sizer.hidden().accessibilityHidden(true)
+            self
         }
     }
 }
 
-/// Two subviews: the first sets the size, and the second (the same label in its 44pt hit frame) is centred on it and
+/// Two subviews: the first sets the size, and the second (the control in its 44pt hit frame) is centred on it and
 /// may overflow it. Layout reads the first only, so the hit frame costs no space.
 private struct OutsetHit: Layout {
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {

@@ -232,14 +232,16 @@ private struct EnvelopeCard: View {
             HStack(spacing: 8) {
                 micro("Envelope \u{00B7} \(Date(timeIntervalSince1970: env.createdAt / 1000).formatted(.iso8601.year().month().day())) \u{00B7} \(total) card\(total == 1 ? "" : "s")", size: 11, tracking: 0.12)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Button { model.open(.edit(env.id)) } label: { MiniLabel(title: "Edit", size: 11, vertical: 4, horizontal: 8, outsetHit: true) }.buttonStyle(.plain).accessibilityIdentifier("orphaned-edit:\(env.id)")
-                Button(role: .destructive) { armed.toggle() } label: {
-                    // Armed, the button itself fills red with card text, as the web's does (src/app.jsx EnvelopeCard).
-                    MiniLabel(title: "Discard", size: 11, text: paint(armed ? .armedText : .discardText),
-                              fill: paint(armed ? .armedFill : .cardSurface), border: paint(armed ? .armedFill : .discardBorder),
-                              vertical: 4, horizontal: 8, outsetHit: true)
-                }
-                .buttonStyle(.plain).accessibilityIdentifier("discard:\(env.id)")
+                let edit = MiniLabel(title: "Edit", size: 11, vertical: 4, horizontal: 8)
+                Button { model.open(.edit(env.id)) } label: { edit }.buttonStyle(.plain).accessibilityIdentifier("orphaned-edit:\(env.id)")
+                    .outsetHit(sizedBy: edit.pill)
+                // Armed, the button itself fills red with card text, as the web's does (src/app.jsx EnvelopeCard).
+                let discard = MiniLabel(title: "Discard", size: 11, text: paint(armed ? .armedText : .discardText),
+                                        fill: paint(armed ? .armedFill : .cardSurface), border: paint(armed ? .armedFill : .discardBorder),
+                                        vertical: 4, horizontal: 8)
+                Button(role: .destructive) { armed.toggle() } label: { discard }
+                    .buttonStyle(.plain).accessibilityIdentifier("discard:\(env.id)")
+                    .outsetHit(sizedBy: discard.pill)
             }
             .padding(.top, 12).padding(.horizontal, 12).padding(.bottom, 8)
             // A solid backdrop under the header's buttons: the audit reads their contrast against it.
