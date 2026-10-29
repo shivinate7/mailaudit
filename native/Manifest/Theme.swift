@@ -18,8 +18,8 @@ enum Parchment {
     /// badge is set; the bar keeps its default glass, tint and item colours.
     static func paintTabBadge() {
         let item = UITabBarItemAppearance()
-        item.normal.badgeBackgroundColor = UIColor(color(OrphanedPaint.token(.badgeFill) ?? "red"))
-        item.normal.badgeTextAttributes = [.foregroundColor: UIColor(color(OrphanedPaint.token(.badgeText) ?? "card"))]
+        item.normal.badgeBackgroundColor = UIColor(badgeFill)
+        item.normal.badgeTextAttributes = [.foregroundColor: UIColor(badgeText)]
         item.selected.badgeBackgroundColor = item.normal.badgeBackgroundColor
         item.selected.badgeTextAttributes = item.normal.badgeTextAttributes
         let bar = UITabBarAppearance()
@@ -30,6 +30,9 @@ enum Parchment {
         UITabBar.appearance().standardAppearance = bar
         UITabBar.appearance().scrollEdgeAppearance = bar
     }
+
+    static var badgeFill: Color { color(OrphanedPaint.token(.badgeFill) ?? "red") }
+    static var badgeText: Color { color(OrphanedPaint.token(.badgeText) ?? "card") }
 
     static func color(_ token: String) -> Color {
         guard let c = palette.tokens[token] else { fatalError("no token \(token) in shared/tokens.json") }
@@ -63,7 +66,7 @@ enum Parchment {
 extension View {
     /// Paper behind a tab's content. Each tab paints its own, because a tab's scroll content covers a background set on the TabView.
     func parchmentPaper() -> some View {
-        scrollContentBackground(.hidden).background(Parchment.paper.ignoresSafeArea())
+        scrollContentBackground(.hidden).background(Parchment.paper.ignoresSafeArea()).duoSystemBar()
     }
 }
 

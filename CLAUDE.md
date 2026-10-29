@@ -464,6 +464,10 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `screens-45px-width-flake` — The screens check once measured every target 45px wide.
 - `tracking-checker-unbuilt` — A future checker that passively checks tracking numbers. It blocks nothing.
 - `orders-job-unbuilt` — The Worker orders cron, its key test and its status screen are unbuilt.
+- `duo-keyboard-gap-unmeasured` — The Duo keyboard gap above the keys is unmeasured.
+- `duo-fold-change-unpinned` — No test folds the Duo while the app runs.
+- `duo-tab-items-twice` — The Duo tab bar repeats the tab titles in RootView.
+- `duo-bar-dynamic-type-clips` — The Duo tab bar may clip at large text sizes.
 - `hand-type-not-serialised` — Card in Hand does not serialise typed names.
 - `native-tally-ellipsis-unpinned` — Nothing pins the native Tally ellipsis.
 - `native-discard-panel-covers-head` — The native armed Discard panel covers the envelope header.
