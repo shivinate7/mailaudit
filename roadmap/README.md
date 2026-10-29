@@ -1,0 +1,13 @@
+# Roadmap
+
+`data/` holds one JSON file per document: `data/steps/<id>.json`, `data/topics/<id>.json` and
+`data/meta/<name>.json`. A step file holds the fields `title`, `status` (`todo`, `active`, `done`),
+`phase`, `order`, `why`, `note`, `ask` and `updatedAt`.
+
+The page builder is `skills/roadmap` in claude-settings. Build the page from this repo's checkout:
+
+    python3 ~/.claude/skills/roadmap/build.py --repo <checkout> --out FILE
+
+The builder runs without live work. Triage adds `--live live.json` at each publish, after the
+publisher writes `live.json`. The skill says what that file holds, and what the page shows without
+it. Build again after each edit to `data/`.
