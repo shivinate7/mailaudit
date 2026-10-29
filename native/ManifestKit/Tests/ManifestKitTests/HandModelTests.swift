@@ -50,6 +50,7 @@
 // Fake fixtures only. These tests read no Keychain item. Temp files live in PhotoTestKit's run folder.
 
 import Foundation
+import JavaScriptCore
 import XCTest
 @testable import ManifestKit
 
@@ -58,6 +59,7 @@ import XCTest
 struct HandFixture {
     let model: HandModel
     let store: LedgerStore
+    let engine: RulesEngine
     let file: URL
     let dir: URL
 }
@@ -65,6 +67,39 @@ struct HandFixture {
 /// Counts the store's saved writes, through its onLocalSave hook.
 final class HandSaveCounter {
     var n = 0
+}
+
+/// Holds a rules call inside its handStep until the test lets go. The gated bundle calls `__gate()` there, and the call
+/// blocks in it on the engine's thread, with no clock to race. It is a latch: once opened it stays open, so a read that
+/// runs again passes straight through. The wait is capped at 10 s, so a gate nobody opens cannot block an engine thread for good.
+final class HandStepGate: @unchecked Sendable {
+    private let cond = NSCondition()
+    private var isEntered = false
+    private var isOpen = false
+
+    /// True once a call is blocked in the gate. A poll reads it on the main actor and never waits on it there: a call
+    /// hops back to the main actor between its engine calls.
+    var entered: Bool { cond.lock(); defer { cond.unlock() }; return isEntered }
+
+    /// Runs on the engine's thread, inside the JS call.
+    func hold() {
+        cond.lock()
+        defer { cond.unlock() }
+        isEntered = true
+        let deadline = Date(timeIntervalSinceNow: 10)
+        while !isOpen && cond.wait(until: deadline) {}
+    }
+
+    func open() {
+        cond.lock()
+        isOpen = true
+        cond.broadcast()
+        cond.unlock()
+    }
+
+    /// The JS function `__gate`. It is built here, off the main actor: a block made inside a @MainActor test is main-actor
+    /// isolated and traps when JavaScriptCore calls it from the engine's thread.
+    var jsFunction: @convention(block) () -> Void { { [self] in hold() } }
 }
 
 @MainActor
@@ -120,22 +155,47 @@ final class HandModelTests: XCTestCase {
         try Self.seed(extra: extra).write(to: file)
         let store = LedgerStore(fileURL: file, now: { Self.t0 })
         try store.load()
-        let model = HandModel(engine: try RulesEngine(bundleURL: bundle), store: store)
-        return HandFixture(model: model, store: store, file: file, dir: dir)
+        let engine = try RulesEngine(bundleURL: bundle)
+        let model = HandModel(engine: engine, store: store)
+        return HandFixture(model: model, store: store, engine: engine, file: file, dir: dir)
     }
 
-    /// The real rules bundle with one change: handStep takes 150 ms when `name` is typed (by default only when a name is
-    /// already held too). That holds a type() inside its last engine call, so a test can land a write while the call is in flight.
-    func slowHandStepBundle(typing name: String = "Lightning Bolt", needsHeld: Bool = true) throws -> URL {
+    /// The real rules bundle with one change: handStep calls the global `__gate()` when `name` is typed (by default only when a
+    /// name is already held too). The call blocks there, inside its last engine call, until a test opens the gate.
+    func gatedHandStepBundle(typing name: String, needsHeld: Bool) throws -> URL {
         let dir = try PhotoTestKit.tempDir("hand-bundle")
         addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
-        let slow = """
+        let gated = """
 
-        Rules.handStep=(function(o){return function(){if(\(needsHeld ? "arguments[3]!==null&&" : "")arguments[4]==="\(name)"){var t=Date.now();while(Date.now()-t<150){}}return o.apply(null,arguments)}})(Rules.handStep);
+        Rules.handStep=(function(o){return function(){if(\(needsHeld ? "arguments[3]!==null&&" : "")arguments[4]==="\(name)"){__gate()}return o.apply(null,arguments)}})(Rules.handStep);
         """
-        let url = dir.appending(path: "rules-slow.js")
-        try (try String(contentsOf: RulesGoldenTests.bundleURL, encoding: .utf8) + slow).write(to: url, atomically: true, encoding: .utf8)
+        let url = dir.appending(path: "rules-gated.js")
+        try (try String(contentsOf: RulesGoldenTests.bundleURL, encoding: .utf8) + gated).write(to: url, atomically: true, encoding: .utf8)
         return url
+    }
+
+    /// A hand whose handStep blocks on the returned gate when `name` is typed. A case starts the call, waits for it to enter the gate
+    /// (`waitForGate`), acts while the call is held there, then opens the gate. The gate also opens at teardown, so a failed case
+    /// leaves no engine thread blocked.
+    /// RulesEngine keeps its JSContext private and has no hook for a test. Mirror reaches it with no product code, and a renamed
+    /// field fails here with the message below, never as a pass.
+    func makeGatedHand(typing name: String = "Lightning Bolt", needsHeld: Bool = true) async throws -> (hand: HandFixture, gate: HandStepGate) {
+        let h = try await makeHand(bundle: try gatedHandStepBundle(typing: name, needsHeld: needsHeld))
+        let gate = HandStepGate()
+        addTeardownBlock { gate.open() }
+        let core = try XCTUnwrap(Mirror(reflecting: h.engine).children.first { $0.label == "core" }?.value as? RulesCore,
+                                 "RulesEngine no longer keeps its RulesCore in a field named core")
+        let context = try XCTUnwrap(Mirror(reflecting: core).children.first { $0.label == "context" }?.value as? JSContext,
+                                    "RulesCore no longer keeps its JSContext in a field named context")
+        context.setObject(unsafeBitCast(gate.jsFunction, to: AnyObject.self), forKeyedSubscript: "__gate" as NSString)
+        return (h, gate)
+    }
+
+    /// Waits until a call is blocked in the gate. That proves the setup the cases name: the call has read the ledger generation, the
+    /// held name and the received map, and sits in its last engine call. It polls (`eventually`, 3 s) and never blocks the main actor.
+    func waitForGate(_ gate: HandStepGate) async throws {
+        try await eventually { gate.entered }
+        XCTAssertTrue(gate.entered, "the setup is real: the call entered its handStep and is held there")
     }
 
     /// The `received` counts the file holds now. An absent field reads as empty.
@@ -384,18 +444,19 @@ final class HandModelTests: XCTestCase {
 
     /// A type() still in flight when a post runs never brings back the held name that post checked in. The in-flight
     /// call read the held name and the received map before the post, so its reply, applied after the post, holds a
-    /// name the ledger already counts. The slow
-    /// bundle keeps that call inside its last engine call while the post runs, 60 ms in. Either order is allowed:
+    /// name the ledger already counts. The gated
+    /// bundle holds that call inside its last engine call while the post runs. Either order is allowed:
     /// the post first, or the type first and the post then finding no offer. Nothing is left half posted.
     func testTypeInFlightNeverRevivesWhatAPostCheckedIn() async throws {
-        let h = try await makeHand(bundle: try slowHandStepBundle())
+        let (h, gate) = try await makeGatedHand()
         try await h.model.type("Lightning Bolt")
         try await h.model.type("Path to Exile")
         XCTAssertEqual(try XCTUnwrap(h.model.offer, "the setup is real: a post is pending").plan,
                        [PlanStep(itemKey: Self.bolt, take: 1), PlanStep(itemKey: Self.path, take: 1)])
         let inFlight = Task { try await h.model.type("Lightning Bolt") }
-        try await Task.sleep(for: .milliseconds(60))
+        try await waitForGate(gate)
         try await h.model.post()
+        gate.open()
         do { try await inFlight.value } catch {}  // a fix may refuse the outdated reply
         let got = h.store.received()
         XCTAssertTrue(got.isEmpty || got == [Self.bolt: 1, Self.path: 1], "the post left the ledger half posted: \(got)")
@@ -413,18 +474,19 @@ final class HandModelTests: XCTestCase {
         }
     }
 
-    /// The first card is typed while `write` lands in the store, with the call inside its slow handStep. The write moves the
+    /// The first card is typed while `write` lands in the store, with the call held inside its handStep. The write moves the
     /// generation, so the call's reply is outdated. The card must still end held, and its reply must be the one that
     /// stands: the next card offers both copies and its post is not stale. A fix that drops the reply and keeps nothing
     /// loses the hold, so the next card offers its own copy alone.
     func holdSurvivesAWrite(_ write: (HandFixture) throws -> Void) async throws {
-        let h = try await makeHand(bundle: try slowHandStepBundle(typing: "Lightning Bolt", needsHeld: false))
+        let (h, gate) = try await makeGatedHand(needsHeld: false)
         let inFlight = Task { try await h.model.type("Lightning Bolt") }
-        try await Task.sleep(for: .milliseconds(60))  // the call is inside its slow handStep
+        try await waitForGate(gate)
         XCTAssertNil(h.model.held, "the setup is real: the call is still reading when the write lands")
         let gen = h.store.generation
         try write(h)
         XCTAssertGreaterThan(h.store.generation, gen, "the setup is real: the write moved the generation under the call")
+        gate.open()
         _ = try? await inFlight.value  // a fix may settle the call later or refuse the first reply; the end state decides
         try await eventually { h.model.held == "lightning bolt" }
         XCTAssertEqual(h.model.held, "lightning bolt", "the typed card keeps its hold across a write that landed while it was read")
@@ -451,12 +513,13 @@ final class HandModelTests: XCTestCase {
     /// held name, no stray. The hits the ended envelope's last card showed are gone too, not left standing. The earlier
     /// card is asserted real first, so the case cannot pass by never having had hits.
     func testNewEnvelopeDuringATypeDropsItsReplyAndEmptiesHits() async throws {
-        let h = try await makeHand(bundle: try slowHandStepBundle(typing: "Sol Ring", needsHeld: false))
+        let (h, gate) = try await makeGatedHand(typing: "Sol Ring", needsHeld: false)
         try await h.model.type("Counterspell")
         XCTAssertEqual(h.model.hits, ["S1::Alpha Cards"], "the setup is real: the earlier card left hits standing")
         let inFlight = Task { try await h.model.type("Sol Ring") }
-        try await Task.sleep(for: .milliseconds(60))  // the call is inside its slow handStep
+        try await waitForGate(gate)
         h.model.newEnvelope()
+        gate.open()
         _ = try? await inFlight.value
         XCTAssertEqual(h.model.hits, [], "the ended envelope's hits are gone, and the dropped reply's are not shown")
         XCTAssertNil(h.model.offer, "the dropped reply offers nothing")
@@ -466,13 +529,14 @@ final class HandModelTests: XCTestCase {
 
     /// A type() called before New envelope belongs to the envelope that ended, even when it is still queued behind a
     /// slow call as the envelope ends. Its reply must not reach the new envelope: a late read of the envelope counter
-    /// takes the bumped value as its own and applies. The slow first call keeps the second queued while New envelope lands.
+    /// takes the bumped value as its own and applies. The held first call keeps the second queued while New envelope lands.
     func testTypeQueuedBeforeNewEnvelopeNeverReachesTheNewOne() async throws {
-        let h = try await makeHand(bundle: try slowHandStepBundle(typing: "Lightning Bolt", needsHeld: false))
+        let (h, gate) = try await makeGatedHand(needsHeld: false)
         let slow = Task { try await h.model.type("Lightning Bolt") }
         let queued = Task { try await h.model.type("Path to Exile") }
-        try await Task.sleep(for: .milliseconds(60))  // the first call is inside its slow handStep, the second waits behind it
+        try await waitForGate(gate)  // the first call is held in its handStep, the second waits behind it
         h.model.newEnvelope()
+        gate.open()
         _ = try? await slow.value
         _ = try? await queued.value
         XCTAssertNil(h.model.offer, "the queued card was typed for the ended envelope, so it offers nothing to the new one")
