@@ -37,6 +37,9 @@
 //             There is no button labelled "Lost" (item 25, deferred). past-transit-summary (the page's count line; its label
 //             starts "<N> envelope"). A red row (30 days from the order date) shows no "claim by" in any of its texts.
 //   Keys      With the system keys up, hand-post lies wholly above the keyboard's top edge, with no scroll by the user.
+//   Sender    With the offer shown and the keys up, the "It came from" line and hand-who lie below the status bar and above the
+//             keyboard's top edge, hittable, together with hand-post. The "It came from" line has no identifier: the test finds it
+//             by its label, any case (the screen sets it in capitals).
 //   Failure   hand-checkin-error (a text overlaid at the top of the right (envelope) page of Card in Hand, where the line
 //             check-ins are; present only after a line check-in whose save failed;
 //             its label is the failure line PackagesModel.checkInError holds, which starts "Could not save the check-in.").
@@ -54,6 +57,9 @@ import XCTest
 final class DuoHandUITests: XCTestCase {
     static let tolerance = DuoShellUITests.tolerance
     static let foldMargin = DuoShellUITests.foldMargin
+    /// The least a status bar takes at the window's top. The Duo's inner-screen top inset is unmeasured (duo-fold-and-keyboard lists
+    /// none), so this floor stands in when the status bar is not in the accessibility tree (XCUIApplication.listTop).
+    static let statusBarFloor: CGFloat = 20
 
     static let bolt = "C1|0|pLightningBolt"
     static let path = "C1|1|pPathtoExile"
@@ -138,6 +144,31 @@ final class DuoHandUITests: XCTestCase {
         _ = need(app, "hand-held", "the Suspense line of a held name")
         typeCard(app, "Path to Exile")
         return need(app, "hand-post", "the post the next card offers")
+    }
+
+    /// The system keys are up, whole inside the window: waits for them and returns their frame. A keyboard that is missing or off
+    /// the window proves nothing about the space above it, so each of those fails.
+    func requireKeysUp(_ app: XCUIApplication) -> CGRect {
+        let keys = app.keyboards.firstMatch
+        XCTAssertTrue(keys.waitForExistence(timeout: 5), "the system keys are not up, so nothing here shows the offer clears them; with a hardware keyboard attached the keys never draw (Simulator, I/O, Keyboard, Connect Hardware Keyboard off)")
+        let k = keys.frame, win = app.window.frame
+        XCTAssertGreaterThan(k.height, 200, "the keyboard frame \(k) is too short to be the keys (measured 263 pt on the open Duo)")
+        XCTAssertGreaterThanOrEqual(k.minY, win.minY, "the keyboard frame \(k) starts above the window \(win)")
+        XCTAssertLessThanOrEqual(k.maxY, win.maxY + Self.tolerance, "the keyboard frame \(k) ends below the window \(win): the keys are not up")
+        return k
+    }
+
+    /// Waits until every element's frame has held for 3 reads, 0.2 s apart, so a read never lands in the keys' slide or the offer's
+    /// scroll. Copied from MastheadBackupUITests.settle, which is an instance method of another XCTestCase and cannot be called here.
+    func waitUntilStill(_ els: [XCUIElement]) {
+        var last = els.map(\.frame), held = 0
+        for _ in 0..<40 {
+            Thread.sleep(forTimeInterval: 0.2)
+            let now = els.map(\.frame)
+            held = now == last ? held + 1 : 0
+            if held >= 3 { return }
+            last = now
+        }
     }
 
     /// Card in Hand, then the past-transit page on the right page.
@@ -299,16 +330,42 @@ final class DuoHandUITests: XCTestCase {
         openHand(app)
         let post = offerPost(app)
 
-        let keys = app.keyboards.firstMatch
-        XCTAssertTrue(keys.waitForExistence(timeout: 5), "the system keys are not up, so nothing here shows the offer clears them; with a hardware keyboard attached the keys never draw (Simulator, I/O, Keyboard, Connect Hardware Keyboard off)")
-        let k = keys.frame, win = app.window.frame
-        XCTAssertGreaterThan(k.height, 200, "the keyboard frame \(k) is too short to be the keys (measured 263 pt on the open Duo)")
-        XCTAssertGreaterThanOrEqual(k.minY, win.minY, "the keyboard frame \(k) starts above the window \(win)")
-        XCTAssertLessThanOrEqual(k.maxY, win.maxY + Self.tolerance, "the keyboard frame \(k) ends below the window \(win): the keys are not up")
+        let k = requireKeysUp(app)
         let f = post.frame
         XCTAssertLessThanOrEqual(f.maxY, k.minY, "the Post button, frame \(f), is under the keys, which start at y \(k.minY): the owner must scroll to reach it")
         XCTAssertTrue(post.isHittable, "the Post button, frame \(f), is not hittable with the keys up and no scroll")
         keepShot(app, "hand-post-clears-keys")
+    }
+
+    /// Pose: flat, system keys up. A held card's Post offer shows with "It came from" and the seller still on the page: below the
+    /// status bar, above the keys, hittable, and the Post button hittable at the same time. Without the sender, "Post ... here" names
+    /// no envelope. The test never taps or scrolls: it reads frames once the offer and the keys have stopped moving. After the keys
+    /// are checked, a failed assertion does not end the test, so one red run reports the sender, the seller and the offer together.
+    func testPostOfferKeepsTheSenderOnThePage() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let post = offerPost(app)
+        let came = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "It came from")).firstMatch
+        let who = app.element("hand-who")
+        let keys = app.keyboards.firstMatch
+        _ = requireKeysUp(app)
+        waitUntilStill([keys, post, came, who].filter(\.exists))
+
+        let keysTop = keys.frame.minY
+        let barFoot = max(app.listTop, app.window.frame.minY + Self.statusBarFloor)
+        continueAfterFailure = true
+        func clear(_ el: XCUIElement, _ what: String) {
+            guard el.exists else { return XCTFail("\(what) is not on the answer page at all, so the owner cannot read it") }
+            let f = el.frame
+            XCTAssertGreaterThanOrEqual(f.minY, barFoot, "\(what), frame \(f), starts above y \(barFoot), the foot of the status bar: it is scrolled off the top or under the clock and status icons")
+            XCTAssertLessThanOrEqual(f.maxY, keysTop, "\(what), frame \(f), is under the keys, which start at y \(keysTop)")
+            XCTAssertTrue(el.isHittable, "\(what), frame \(f), is not hittable with the keys up and no scroll: it is off the page or covered")
+        }
+        clear(came, "the \"It came from\" line")
+        clear(who, "the seller name (hand-who)")
+        clear(post, "the Post button (hand-post)")
+        keepShot(app, "hand-post-keeps-sender")
     }
 
     /// Pose: flat. A red row (30 days from the order date) has no claim date: the claim window is closed. Checked on every late
