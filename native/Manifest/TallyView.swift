@@ -124,8 +124,6 @@ struct TallyRowView: View {
     let row: TallyRow
     let model: TallyModel
     @State private var open = false
-    @State private var metaNaturalWidth: CGFloat = 0
-    @State private var metaBoxWidth: CGFloat = 0
     @Environment(\.dynamicTypeSize) private var typeSize
 
     private var done: Bool { row.got >= row.qty }
@@ -188,21 +186,17 @@ struct TallyRowView: View {
             text.accessibilityIdentifier("tally-meta:\(row.name)")
         } else {
             // The Text keeps its natural width inside a Layout that offers the column its proposed width, so the row never
-            // grows with the text and the text is cut at the column. No second copy of the text is drawn.
+            // grows with the text and the text is cut at the column. The Layout also decides, in the same pass that
+            // places the text, whether the "…" sits on the column's edge or off it (clipped away): no measured state,
+            // so no frame in which the "…" is drawn over text that fits.
             CutAtColumn {
                 text.fixedSize(horizontal: true, vertical: false)
-                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { metaNaturalWidth = $0 }
                     .accessibilityIdentifier("tally-meta:\(row.name)")
+                Text("\u{2026}").font(font).foregroundStyle(paint(.meta))
+                    .background(paint(.surface))
+                    .accessibilityHidden(true)
             }
-            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { metaBoxWidth = $0 }
             .clipped()
-            .overlay(alignment: .trailing) {
-                if metaNaturalWidth > metaBoxWidth {
-                    Text("\u{2026}").font(font).foregroundStyle(paint(.meta))
-                        .background(paint(.surface))
-                        .accessibilityHidden(true)
-                }
-            }
         }
     }
 
@@ -235,9 +229,11 @@ struct TallyRowView: View {
     }
 }
 
-/// One subview at its natural size, left-aligned in the width the parent offers. A concrete proposal sets the width
-/// (so the text is cut there); an unspecified one gets the natural width. A `.frame(maxWidth: .infinity)` around a
-/// fixed-size child reports that child's ideal width up, which grew the row.
+/// Two subviews: the text at its natural size, left-aligned in the width the parent offers, and the "…" mark. A
+/// concrete proposal sets the width (so the text is cut there); an unspecified one gets the natural width. A
+/// `.frame(maxWidth: .infinity)` around a fixed-size child reports that child's ideal width up, which grew the row.
+/// The mark takes the trailing edge when the text is wider than the column, and sits far outside it otherwise, where
+/// the parent's `.clipped()` hides it.
 private struct CutAtColumn: Layout {
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let natural = subviews[0].sizeThatFits(.unspecified)
@@ -247,5 +243,9 @@ private struct CutAtColumn: Layout {
 
     func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
         subviews[0].place(at: bounds.origin, anchor: .topLeading, proposal: .unspecified)
+        let mark = subviews[1].sizeThatFits(.unspecified)
+        let overflows = subviews[0].sizeThatFits(.unspecified).width > bounds.width + 0.5
+        subviews[1].place(at: CGPoint(x: overflows ? bounds.maxX - mark.width : bounds.maxX + 10_000, y: bounds.minY),
+                          anchor: .topLeading, proposal: .unspecified)
     }
 }
