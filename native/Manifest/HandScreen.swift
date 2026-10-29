@@ -51,6 +51,10 @@ struct HandScreen: View {
     /// The envelope the answer page shows. A post leaves it, so the lines you checked in stay under your finger until the next card.
     @State private var shown: String?
     @State private var pastTransit = false
+    /// Where the system keys begin and where the right page ends, both in window space.
+    @State private var keysTop = CGFloat.infinity
+    @State private var pageBottom: CGFloat = 0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var hand: HandModel { kit.hand }
 
@@ -95,8 +99,10 @@ struct HandScreen: View {
                 if let h = hand.held { notice(id: "hand-held", title: "Suspense", line: h.localizedCapitalized, foot: "Not checked in.") }
                 if !hand.strays.isEmpty {
                     notice(id: "hand-strays", title: "Released, not checked in",
-                           line: hand.strays.map(\.localizedCapitalized).joined(separator: ", "), foot: "They no longer decide an envelope.")
+                           line: hand.strays.map(\.localizedCapitalized).joined(separator: ", "),
+                           foot: hand.strays.count == 1 ? "It no longer decides an envelope." : "They no longer decide an envelope.")
                 }
+                matches
                 HStack {
                     Text("This envelope").font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.inkSoft)
                     Spacer(minLength: 8)
@@ -106,18 +112,27 @@ struct HandScreen: View {
                 if let e = hand.error {
                     Text(e).font(.cochin(13, relativeTo: .footnote)).foregroundStyle(Parchment.red).accessibilityIdentifier("hand-error")
                 }
-                // Below the controls, so a list that grows while you type moves nothing you press (no-layout-shift-under-pointer).
-                ForEach(hitNames, id: \.self) { name in
-                    Button { query = name } label: {
-                        Text(name).font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.ink)
-                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain).accessibilityIdentifier("hand-hit:\(name)")
-                }
             }
             .padding(16)
         }
         .scrollDismissesKeyboard(.interactively)
+    }
+
+    /// The names the typed text matches, under their own heading and above "This envelope", so a card you only released does
+    /// not read as part of the envelope (mockup pose 2 puts the matches above the envelope line too). The list opens as you
+    /// type, and the pointer is on the keys then.
+    @ViewBuilder private var matches: some View {
+        let names = hitNames
+        if !names.isEmpty {
+            micro("Matches").accessibilityAddTraits(.isHeader).accessibilityIdentifier("hand-matches-heading")
+            ForEach(names, id: \.self) { name in
+                Button { query = name } label: {
+                    Text(name).font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.ink)
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain).accessibilityIdentifier("hand-hit:\(name)")
+            }
+        }
     }
 
     /// The manila advisory box (a card waiting, cards released): manilaInk on manila.
@@ -153,21 +168,54 @@ struct HandScreen: View {
 
     // MARK: right page
 
+    /// The system keys span both pages, and the right page does not reflow for them, so the page keeps its own inset: its
+    /// content ends where the keys begin. The inset is the overlap of the keys with this page's frame (read in window
+    /// space), so it is 0 with no keys and the left page is untouched.
     private var rightPage: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                if pastTransit {
-                    PastTransitPage(model: kit.transit, back: { pastTransit = false }, onChange: afterWrite)
-                } else {
-                    answer
-                    if !kit.transit.rows.isEmpty { transitBox }
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    if pastTransit {
+                        PastTransitPage(model: kit.transit, back: { pastTransit = false }, onChange: afterWrite)
+                    } else {
+                        answer
+                        if !kit.transit.rows.isEmpty { transitBox }
+                    }
                 }
+                .padding(16)
             }
-            .padding(16)
+            .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: keysInset) }
+            .onChange(of: offerVisible) { _, shown in if shown { revealOffer(proxy) } }
+            .onChange(of: keysInset) { _, _ in if offerVisible { revealOffer(proxy) } }
         }
+        .ignoresSafeArea(.keyboard, edges: .bottom)
+        .background(GeometryReader { g in Color.clear.onChange(of: g.frame(in: .global).maxY, initial: true) { _, y in pageBottom = y } })
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { note in
+            keysTop = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect)?.minY ?? .infinity
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in keysTop = .infinity }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("hand-answer")
     }
+
+    private var keysInset: CGFloat { max(0, pageBottom - keysTop) }
+
+    /// The post offer is on the page: the envelope is the one answer and its held card has an offer here.
+    private var offerVisible: Bool {
+        guard !pastTransit, hand.hits.count < 2, let gk = shown, let o = hand.offer else { return false }
+        return o.gk == gk && o.heldCopies > 0
+    }
+
+    /// Brings the offer to the foot of the space above the keys. Waits one turn, so the inset has laid out first.
+    private func revealOffer(_ proxy: ScrollViewProxy) {
+        Task { @MainActor in
+            await Task.yield()
+            if reduceMotion { proxy.scrollTo(Self.offerID, anchor: .bottom) }
+            else { withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(Self.offerID, anchor: .bottom) } }
+        }
+    }
+
+    private static let offerID = "hand-offer"
 
     @ViewBuilder private var answer: some View {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
@@ -254,6 +302,7 @@ struct HandScreen: View {
         }
         .padding(12).frame(maxWidth: .infinity, alignment: .leading)
         .background(Parchment.manila.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+        .id(Self.offerID)
     }
 
     private func post() async {
@@ -308,6 +357,9 @@ private struct PastTransitPage: View {
                 Spacer(minLength: 8)
                 Button(action: back) { MiniLabel(title: "Back") }.buttonStyle(.plain).accessibilityIdentifier("past-transit-back")
             }
+            let n = model.rows.count, cards = model.owedCards
+            Text("\(n) envelope\(n == 1 ? "" : "s") \u{00B7} \(cards) card\(cards == 1 ? "" : "s") \u{00B7} \(model.owedValue) \u{00B7} oldest last")
+                .font(.mono(11, relativeTo: .caption)).foregroundStyle(Parchment.inkSoft).accessibilityIdentifier("past-transit-summary")
             ForEach(model.rows, id: \.gk) { row in PastTransitRowView(row: row, kinds: model.stampKinds, stamp: stamp, undo: undo) }
             Text("Days count from the order date. TCGplayer counts 30 days from the delivery estimate, so its window can close later.")
                 .font(.cochin(12.5, relativeTo: .footnote)).foregroundStyle(Parchment.inkSoft)
@@ -346,7 +398,8 @@ private struct PastTransitRowView: View {
                 Spacer(minLength: 8)
                 Text("\(row.days) d").font(.mono(12, relativeTo: .caption).weight(.bold)).foregroundStyle(flag)
             }
-            Text(row.tier == "deadline" ? "refund window closing \u{00B7} claim by \(row.claimBy)" : "claim by \(row.claimBy)")
+            // A red row is past 30 days from the order date, so its claim-by date can already be past: it says only that the window is closing.
+            Text(row.tier == "deadline" ? "refund window closing" : "claim by \(row.claimBy)")
                 .font(.mono(11, relativeTo: .caption)).foregroundStyle(row.tier == "deadline" ? Parchment.red : Parchment.inkSoft)
             // The buttons and the stamp line share one 44pt slot, so a press changes no row height.
             HStack(spacing: 8) {

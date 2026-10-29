@@ -30,6 +30,10 @@ public final class PastTransitModel {
     /// Bumped by each refresh, so a refresh that a newer one overtook drops its result.
     @ObservationIgnored private var epoch = 0
     public private(set) var rows: [PastTransitRow] = []
+    /// Copies still owed in the listed packages, and their price as the web writes it ("$9.55"), from the bundle's
+    /// outstandingOf and money over the same rows. 0 and "$0.00" while the list is empty.
+    public private(set) var owedCards = 0
+    public private(set) var owedValue = "$0.00"
 
     /// The six kinds the page offers, read from the web's STAMP_KINDS in the rules bundle (one home). No Lost kind
     /// (duo-card-in-hand, item 25, deferred). `stamp(_:kind:)` takes any kind; the limit is this list.
@@ -92,7 +96,14 @@ public final class PastTransitModel {
         let hidden = Set(stamps.filter { live($0.value) != nil }.keys).subtracting(sticky)
         let args = "[\(try LiveItems.json(store.items())),\(try LiveItems.json(store.received())),\(try LiveItems.json(["$set": Array(hidden)])),\(store.now())]"
         let hits = try JSONDecoder().decode([Hit].self, from: Data(try await engine.call("pastTransit", args).utf8))
+        let listed = Set(hits.map(\.gk))
+        let owedItems = store.items().filter { listed.contains("\($0["orderId"] as? String ?? "")::\($0["seller"] as? String ?? "")") }
+        struct Owed: Decodable { let left: Int; let value: Double }
+        let owed = try JSONDecoder().decode(Owed.self, from: Data(try await engine.call("outstandingOf", "[\(try LiveItems.json(owedItems)),\(try LiveItems.json(store.received()))]").utf8))
+        let money = try JSONDecoder().decode(String.self, from: Data(try await engine.call("money", "[\(owed.value)]").utf8))
         guard mine == epoch else { return }
+        owedCards = owed.left
+        owedValue = money
         rows = hits.map { PastTransitRow(gk: $0.gk, tier: $0.tier, days: $0.days, claimBy: $0.claimBy, stamp: live(stamps[$0.gk])) }
     }
 }
