@@ -65,15 +65,15 @@ struct ItemLine: View {
     private var lines: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
-                Text(title).font(.cochin(14).weight(.semibold)).foregroundStyle(paint(.name, state))
+                Text(title).font(.cochin(14, relativeTo: .body).weight(.semibold)).foregroundStyle(paint(.name, state))
                 Spacer(minLength: 0)
-                Text(PackageCard.priceText(price)).font(.mono(12)).foregroundStyle(paint(.price, state)).fixedSize()
+                Text(PackageCard.priceText(price)).font(.mono(12, relativeTo: .caption)).foregroundStyle(paint(.price, state)).fixedSize()
                     .accessibilityLabel("Price \(PackageCard.priceText(price))")
             }
-            Text(detail).font(.cochin(11.5)).foregroundStyle(paint(.detail, state))
+            Text(detail).font(.cochin(11.5, relativeTo: .caption)).foregroundStyle(paint(.detail, state))
             // The order id: the web underlines it and opens the order in Packages. Native has no such route yet, so it is plain.
             if let orderID {
-                Text(orderID).font(.mono(10.5)).foregroundStyle(paint(.orderId, state)).fixedSize()
+                Text(orderID).font(.mono(10.5, relativeTo: .caption)).foregroundStyle(paint(.orderId, state)).fixedSize()
                     .accessibilityLabel("Order \(orderID)")  // a bare id failed the Dynamic Type audit, as a bare date did
             }
         }
@@ -109,10 +109,10 @@ struct ItemLine: View {
     /// the width, so a shorter figure (10/12 to 9/12) never changes the row. A partly received line is bold, in manilaInk.
     /// No accessibilityLabel: the text is the label, so "0/2" stays readable to the UI test.
     private func count(_ readout: String) -> some View {
-        Text(readout.split(separator: "/").last.map { "\($0)/\($0)" } ?? readout).font(.mono(13))
+        Text(readout.split(separator: "/").last.map { "\($0)/\($0)" } ?? readout).font(.mono(13, relativeTo: .caption))
             .hidden()
             .overlay {
-                Text(readout).font(.mono(13).weight(state == .partial ? .bold : .regular))
+                Text(readout).font(.mono(13, relativeTo: .caption).weight(state == .partial ? .bold : .regular))
                     .foregroundStyle(paint(.count, state)).fixedSize()
                     .accessibilityIdentifier("got-qty:\(key)")
             }
