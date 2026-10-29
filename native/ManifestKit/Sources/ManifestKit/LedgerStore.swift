@@ -117,12 +117,12 @@ public final class LedgerStore {
     /// The raw `stamps` map, group key to stamp.
     public func stamps() -> [String: [String: Any]] { (doc["stamps"] as? [String: Any] ?? [:]).compactMapValues { $0 as? [String: Any] } }
 
-    /// count 0 is an un-check: drop `received`, stamp `receivedAt`.
-    public func setReceived(_ key: String, count: Int) {
+    /// count 0 is an un-check: drop `received`, stamp `receivedAt`. `time` is the time to stamp; the store's clock when nil.
+    public func setReceived(_ key: String, count: Int, at time: Double? = nil) {
         var r = doc["received"] as? [String: Any] ?? [:]
         var at = doc["receivedAt"] as? [String: Any] ?? [:]
         if count > 0 { r[key] = count } else { r.removeValue(forKey: key) }
-        at[key] = now()
+        at[key] = time ?? now()
         doc["received"] = r
         doc["receivedAt"] = at
         generation += 1
@@ -134,6 +134,14 @@ public final class LedgerStore {
         setReceived(key, count: count)
         do { try save() } catch { doc = oldDoc; generation = oldGen; throw error }
         onLocalSave?()
+    }
+
+    /// Mark all, Clear and an Undo: every key goes to its count (0 un-checks it) in one save at one clock reading, as the
+    /// web's single touchReceived call stamps every key. A failed save leaves the ledger as it was.
+    public func commitReceived(_ counts: [String: Int]) throws {
+        guard !counts.isEmpty else { return }
+        let time = now()
+        try commit { for (key, count) in counts { setReceived(key, count: count, at: time) } }
     }
 
     public func setStamp(_ key: String, kind: String, note: String, at: String) {

@@ -52,6 +52,12 @@ public final class PackagesModel {
     public private(set) var stampKinds: [StampKind] = []
     /// The packages the bundle's isRefundStamp names, so a check-in can refresh a refunded package's pill.
     @ObservationIgnored private var refundGks: Set<String> = []
+    /// Per package gk, the copies in now (the bundle's totalsOf got, each line clamped to its qty): the Clear ask's N.
+    public private(set) var gots: [String: Int] = [:]
+    /// The package the held Mark all Undo is for. nil when there is none: the next write on this device, a newer bulk, a
+    /// Clear or endBulkUndo() ends it (undo-removes-only-its-delta). A Worker apply does not.
+    public private(set) var bulkUndoGk: String?
+    @ObservationIgnored private var bulkUndoTakes: [BulkTake] = []
 
     public init(engine: RulesEngine, store: LedgerStore) {
         self.engine = engine
@@ -101,6 +107,7 @@ public final class PackagesModel {
         orderLinks = [:]
         bands = [:]
         refundPills = [:]
+        gots = [:]
         apply(updates)
         if let failure { throw failure }
     }
@@ -148,7 +155,7 @@ public final class PackagesModel {
     /// One map entry from the engine. A nil value removes the entry.
     private enum Update {
         case done(String, Bool), label(String, String?), readout(String, String?), detail(String, String?),
-             link(String, URL?), pill(String, String?), bar(String, Double?), band(String, String?), refundPill(String, String?)
+             link(String, URL?), pill(String, String?), bar(String, Double?), got(String, Int), band(String, String?), refundPill(String, String?)
     }
 
     /// Synchronous, so the view sees all of the updates or none of them.
@@ -162,6 +169,7 @@ public final class PackagesModel {
             case .link(let k, let v): orderLinks[k] = v
             case .pill(let k, let v): pills[k] = v
             case .bar(let k, let v): bars[k] = v
+            case .got(let k, let v): gots[k] = v
             case .band(let k, let v): bands[k] = v
             case .refundPill(let k, let v): refundPills[k] = v
             }
@@ -214,6 +222,7 @@ public final class PackagesModel {
                 case .pill(let gk): updates.append(.pill(gk, try string(out)))
                 case .totals(let gk):
                     let t = try JSONSerialization.jsonObject(with: Data(out.utf8)) as? [String: Any]
+                    updates.append(.got(gk, t?["got"] as? Int ?? 0))
                     if let got = t?["got"] as? Int, let total = t?["total"] as? Int, got > 0, got < total {
                         updates.append(.bar(gk, Double(got) / Double(total)))
                     } else {
@@ -256,24 +265,73 @@ public final class PackagesModel {
             throw error
         }
         checkInError = nil
+        bulkUndoGk = nil
         received = store.received()
         if let pkg = rows.first(where: { $0.items.contains { $0.key == key } }),
             let item = pkg.items.first(where: { $0.key == key }) {
-            do {
-                var (updates, failure) = try await refresh([(pkg, [item])], received: received, withStatic: false)
-                if refundGks.contains(pkg.gk) {
-                    let (texts, textFailure) = await stampTexts([pkg], held: stamps, refunds: [pkg.gk], received: received)
-                    updates += texts.filter { if case .refundPill = $0 { return true } else { return false } }
-                    failure = failure ?? textFailure
-                }
-                apply(updates)
-                if let failure { throw failure }
-            } catch {
-                checkInError = "Saved, but the label could not refresh. \(error.localizedDescription)"
-                throw error
-            }
+            try await reread(pkg, items: [item])
         }
     }
+
+    /// The package's labels, pill and bar (and a refunded package's pill) from the counts now in `received`.
+    private func reread(_ pkg: Package, items: [LedgerItem]) async throws {
+        do {
+            var (updates, failure) = try await refresh([(pkg, items)], received: received, withStatic: false)
+            if refundGks.contains(pkg.gk) {
+                let (texts, textFailure) = await stampTexts([pkg], held: stamps, refunds: [pkg.gk], received: received)
+                updates += texts.filter { if case .refundPill = $0 { return true } else { return false } }
+                failure = failure ?? textFailure
+            }
+            apply(updates)
+            if let failure { throw failure }
+        } catch {
+            checkInError = "Saved, but the label could not refresh. \(error.localizedDescription)"
+            throw error
+        }
+    }
+
+    /// Mark all received (on) or Clear check-ins (off) on one package: every line goes to its qty or to 0, in one save at one
+    /// time. A Mark all keeps what it added for the Undo; a Clear ends the Undo and leaves none. A failure, rule or save, lands
+    /// in checkInError and is thrown.
+    public func bulk(gk: String, on: Bool) async throws {
+        guard let pkg = rows.first(where: { $0.gk == gk }) else { return }
+        let takes: [BulkTake]
+        do {
+            let before = store.received()
+            let counts = try await BulkRules.counts(pkg.items, on: on, received: before, engine: engine)
+            takes = on ? try await BulkRules.takes(pkg.items, received: before, engine: engine) : []
+            try store.commitReceived(counts)
+        } catch {
+            checkInError = "Could not save the check-in. \(error.localizedDescription)"
+            throw error
+        }
+        checkInError = nil
+        bulkUndoTakes = takes
+        bulkUndoGk = takes.isEmpty ? nil : gk
+        received = store.received()
+        try await reread(pkg, items: pkg.items)
+    }
+
+    /// Takes back the last Mark all's own delta and keeps every later edit. With nothing held it writes nothing.
+    public func undoBulk() async throws {
+        guard let gk = bulkUndoGk else { return }
+        let takes = bulkUndoTakes
+        bulkUndoGk = nil
+        bulkUndoTakes = []
+        do {
+            let counts = try await BulkRules.undone(takes, received: store.received(), engine: engine)
+            try store.commitReceived(counts)
+        } catch {
+            checkInError = "Could not take back the check-ins. \(error.localizedDescription)"
+            throw error
+        }
+        checkInError = nil
+        received = store.received()
+        if let pkg = rows.first(where: { $0.gk == gk }) { try await reread(pkg, items: pkg.items) }
+    }
+
+    /// A tab change, a restore or a Reset: the held Undo is gone.
+    public func endBulkUndo() { bulkUndoGk = nil }
 
     /// Stamps the package (the one stamp writer, StampWriter), then reads the ledger again: a refund leaves the list,
     /// and the stamped count and the bands follow. A failure lands in checkInError and is thrown.
@@ -303,6 +361,7 @@ public final class PackagesModel {
             checkInError = "\(failure) \(error.localizedDescription)"
             throw error
         }
+        bulkUndoGk = nil
         do { try await load() } catch {
             checkInError = "Saved, but the list could not refresh. \(error.localizedDescription)"
             throw error
