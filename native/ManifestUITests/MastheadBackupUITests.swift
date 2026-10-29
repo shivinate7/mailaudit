@@ -490,7 +490,7 @@ final class MastheadBackupUITests: XCTestCase {
     }
 
     /// The screen with the head pinned, which the per-tab audits above never reach. The audit skips only text that
-    /// overlaps the tab bar or lies below the window (auditSkippingTabBar), as the Packages audits do, so any other
+    /// the tab bar covers by more than half (auditSkippingTabBar), as the Packages audits do, so any other
     /// finding fails, wherever the cards sit.
     func testAccessibilityAuditWithTheRunningHeadPinned() throws {
         let app = launch(width: nil)
