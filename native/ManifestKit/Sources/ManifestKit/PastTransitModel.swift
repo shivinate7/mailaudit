@@ -38,13 +38,10 @@ public final class PastTransitModel {
         try await refresh()
     }
 
-    /// Stamps one package and saves. A failed save leaves the ledger and the list as they were.
+    /// Stamps one package and saves, through the one stamp writer (StampWriter). A failed save leaves the ledger and
+    /// the list as they were.
     public func stamp(_ gk: String, kind: String) async throws {
-        let cur = store.stamps()[gk]
-        // The same kind keeps a non-empty date; anything else is dated today, as the web does.
-        let kept = (cur?["kind"] as? String) == kind ? cur?["at"] as? String : nil
-        let at = kept.flatMap { $0.isEmpty ? nil : $0 } ?? Self.today(store.now())
-        try store.commit { store.setStamp(gk, kind: kind, note: cur?["note"] as? String ?? "", at: at) }
+        try await StampWriter.write(gk, kind: kind, store: store, engine: engine)
         sticky.insert(gk)
         try await refresh()
     }
@@ -52,20 +49,8 @@ public final class PastTransitModel {
     /// Writes a tombstone for the package's own stamp (stamp-removal-writes-a-tombstone). The row
     /// is listed again from the next load.
     public func undo(_ gk: String) async throws {
-        guard live(store.stamps()[gk]) != nil else { return }
-        try store.commit { store.removeStamp(gk) }
+        try await StampWriter.remove(gk, store: store, engine: engine)
         try await refresh()
-    }
-
-    private func live(_ stamp: [String: Any]?) -> String? {
-        guard let kind = stamp?["kind"] as? String, !kind.isEmpty else { return nil }
-        return kind
-    }
-
-    /// The device's local day as YYYY-MM-DD, like the web's todayLocal.
-    private static func today(_ ms: Double) -> String {
-        let c = Calendar.current.dateComponents([.year, .month, .day], from: Date(timeIntervalSince1970: ms / 1000))
-        return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
     }
 
     /// The items go in whole. A refunded row keeps its place until load() (so LiveItems would be wrong here), and a
@@ -74,10 +59,11 @@ public final class PastTransitModel {
         epoch += 1
         let mine = epoch
         let stamps = store.stamps()
-        let hidden = Set(stamps.filter { live($0.value) != nil }.keys).subtracting(sticky)
+        let stamped = try await StampRules.keys(where: "hasStamp", in: stamps, engine: engine)
+        let hidden = stamped.subtracting(sticky)
         let args = "[\(try LiveItems.json(store.items())),\(try LiveItems.json(store.received())),\(try LiveItems.json(["$set": Array(hidden)])),\(store.now())]"
         let hits = try JSONDecoder().decode([Hit].self, from: Data(try await engine.call("pastTransit", args).utf8))
         guard mine == epoch else { return }
-        rows = hits.map { PastTransitRow(gk: $0.gk, tier: $0.tier, days: $0.days, claimBy: $0.claimBy, stamp: live(stamps[$0.gk])) }
+        rows = hits.map { PastTransitRow(gk: $0.gk, tier: $0.tier, days: $0.days, claimBy: $0.claimBy, stamp: stamped.contains($0.gk) ? stamps[$0.gk]?["kind"] as? String : nil) }
     }
 }
