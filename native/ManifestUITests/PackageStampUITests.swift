@@ -410,12 +410,13 @@ final class PackageStampUITests: XCTestCase {
         assertHitRegion(el(app, "stamp-cancel:\(gk)"), "Cancel")
         assertHitRegion(el(app, "stamp-save:\(gk)"), "Save")
 
-        // The tap lands inside the box, half way up the margin the box leaves over the field's own frame (1pt in when the
-        // field fills the box). No keyboard is up before it, and Return ends the edit so the pick below meets none.
+        // The tap lands inside the box, half way up the margin the box leaves over the field's own frame, so it is outside
+        // the field's frame. No keyboard is up before it, and Return ends the edit so the pick below meets none.
         XCTAssertFalse(app.keyboards.element.exists, "a keyboard is up before the note box was tapped")
-        let margin = max(field.frame.minY - box.frame.minY, 0)
-        box.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0)).withOffset(CGVector(dx: 0, dy: max(margin / 2, 1))).tap()
-        XCTAssertTrue(app.keyboards.element.waitForExistence(timeout: 5), "a tap \(max(margin / 2, 1))pt inside the note box's top edge, \(margin)pt over the field, did not focus the field")
+        let margin = field.frame.minY - box.frame.minY
+        XCTAssertGreaterThan(margin, 1, "the field's own frame reaches the box's top edge: no margin outside it to tap")
+        box.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0)).withOffset(CGVector(dx: 0, dy: margin / 2)).tap()
+        XCTAssertTrue(app.keyboards.element.waitForExistence(timeout: 5), "a tap \(margin / 2)pt inside the note box's top edge, outside the field's frame, did not focus the field")
         field.typeText(XCUIKeyboardKey.return.rawValue)
         wait("exists == false", for: app.keyboards.element, "Return did not end the note edit")
 
