@@ -471,6 +471,8 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `duo-stacked-poses-unbuilt` — The Duo has no stacked poses.
 - `duo-hand-mockup-gaps` — Five parts of the Card in Hand mockup are not built.
 - `hand-suspense-tap-shift` — A Suspense tap shifts the match list under the finger.
+- `duo-left-page-dead-margin` — The Duo left page scrolls 76 pt past its end.
+- `duo-checkin-error-under-bar` — A Packages check-in error can sit under the Duo bar.
 - `native-tally-ellipsis-unpinned` — Nothing pins the native Tally ellipsis.
 - `native-discard-panel-covers-head` — The native armed Discard panel covers the envelope header.
 - `native-axl-rows-break` — Three native rows break at accessibility text sizes.
