@@ -1368,6 +1368,7 @@ eq(countLine("packages", counts(4, 8, 2), { from: 1, to: null }), `4 packages in
 
 /* V21.8 the line is one string, since Swift reads it as JSON. Mutant: an object or an array */
 ok(typeof countLine("packages", counts(4, 8, 2), null) === "string", "V21.8 the line is a string");
+
 /* ── V30 to V34. Card in Hand rules (duo-card-in-hand, new-envelope-ends-an-envelope,
    lost-mail-flags-use-order-date). Red until the duo-hand-rules builder adds these exports.
 
@@ -1410,6 +1411,7 @@ ok(typeof countLine("packages", counts(4, 8, 2), null) === "string", "V21.8 the 
 const handHits = fn("handHits");
 const handStep = fn("handStep");
 const pastTransit = fn("pastTransit");
+
 
 /* ── V30 handHits: a typed name finds the packages that hold it, and skips received,
    canceled and refunded mail. Mutants: no received check (H2 listed), no cancel check (H3),
