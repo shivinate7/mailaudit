@@ -40,8 +40,6 @@ struct OrphanedView: View {
             // While the composer is open on the left for this envelope, a card here would show a second, stale copy.
             if let env = current, model.composing != .edit(env.id) {
                 EnvelopeCard(model: model, env: env, onChange: onChange, page: .detail).padding(16)
-            } else if current != nil {
-                emptyLine
             }
         }
         .id(current?.id)  // a new pick starts a fresh page: an armed Discard, show-all and scroll do not carry over
