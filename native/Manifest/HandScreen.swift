@@ -82,7 +82,7 @@ struct HandScreen: View {
                     Spacer(minLength: 8)
                     Text("\(counts.inCount) in \u{00B7} \(counts.out) out").font(.mono(12, relativeTo: .caption))
                         .foregroundStyle(Parchment.inkSoft).accessibilityIdentifier("hand-count")
-                    Button(action: close) { MiniLabel(title: "Close") }.buttonStyle(.plain).accessibilityIdentifier("hand-close")
+                    Button { hand.close(); close() } label: { MiniLabel(title: "Close") }.buttonStyle(.plain).accessibilityIdentifier("hand-close")
                 }
                 TextField("Type the card in hand", text: $query)
                     .textFieldStyle(.plain).font(.cochin(16, relativeTo: .body)).foregroundStyle(Parchment.ink)
@@ -195,12 +195,12 @@ struct HandScreen: View {
     private var tie: some View {
         VStack(alignment: .leading, spacing: 8) {
             micro("\(hand.hits.count) envelopes hold this card")
-            Text("Name the next card from this envelope. It tells them apart. Nothing checks in until you post.")
+            Text("Name the next card from this envelope to tell them apart. Nothing checks in until you post.")
                 .font(.cochin(13, relativeTo: .footnote)).foregroundStyle(Parchment.inkSoft)
             ForEach(hand.hits.compactMap { gk in packages.rows.first { $0.gk == gk } }, id: \.gk) { pkg in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(pkg.seller).font(.cochin(15, relativeTo: .body).weight(.bold)).foregroundStyle(Parchment.ink)
-                    Text("ordered \(pkg.date) \u{00B7} \(owed(pkg)) cards out").font(.mono(11, relativeTo: .caption)).foregroundStyle(Parchment.inkSoft)
+                    Text("ordered \(pkg.date) \u{00B7} \(owed(pkg)) \(owed(pkg) == 1 ? "card" : "cards") out").font(.mono(11, relativeTo: .caption)).foregroundStyle(Parchment.inkSoft)
                 }
                 .padding(12).frame(maxWidth: .infinity, alignment: .leading)
                 .background(Parchment.card, in: RoundedRectangle(cornerRadius: 8))
@@ -316,7 +316,7 @@ private struct PastTransitPage: View {
                 Spacer(minLength: 8)
                 Button(action: back) { MiniLabel(title: "Back") }.buttonStyle(.plain).accessibilityIdentifier("past-transit-back")
             }
-            ForEach(model.rows, id: \.gk) { row in PastTransitRowView(row: row, stamp: stamp, undo: undo) }
+            ForEach(model.rows, id: \.gk) { row in PastTransitRowView(row: row, kinds: model.stampKinds, stamp: stamp, undo: undo) }
             Text("Days count from the order date. TCGplayer counts 30 days from the delivery estimate, so its window can close later.")
                 .font(.cochin(12.5, relativeTo: .footnote)).foregroundStyle(Parchment.inkSoft)
         }
@@ -338,13 +338,14 @@ private struct PastTransitPage: View {
 
 private struct PastTransitRowView: View {
     let row: PastTransitRow
+    let kinds: [StampKind]
     let stamp: (String, String) async -> Void
     let undo: (String) async -> Void
 
     /// gkOf is "orderId::seller".
     private var seller: String { row.gk.components(separatedBy: "::").dropFirst().joined(separator: "::") }
     private var flag: Color { row.tier == "deadline" ? Parchment.red : Parchment.amber }
-    private var stampLabel: String? { row.stamp.map { kind in PastTransitModel.stampKinds.first { $0.kind == kind }?.label ?? kind } }
+    private var stampLabel: String? { row.stamp.map { kind in kinds.first { $0.kind == kind }?.label ?? kind } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -362,7 +363,6 @@ private struct PastTransitRowView: View {
                     Spacer(minLength: 8)
                     Button { Task { await undo(row.gk) } } label: { MiniLabel(title: "Undo") }.buttonStyle(.plain)
                 } else {
-                    let kinds = PastTransitModel.stampKinds
                     ForEach(kinds.prefix(2), id: \.kind) { k in
                         Button { Task { await stamp(row.gk, k.kind) } } label: { MiniLabel(title: k.label) }.buttonStyle(.plain)
                     }
