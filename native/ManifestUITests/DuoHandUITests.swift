@@ -12,6 +12,12 @@
 //   Path to Exile is only in C1 (Gamma Cards), with Lightning Bolt, Swords to Plowshares, Ponder and Preordain.
 //   A1, B1 and D1 (Delta Cards) have no tracking, are dated 2026-07-01, 2026-07-29 and 2026-05-01. C1 has tracking.
 //   Nothing is received. The past-transit test needs the simulator clock later than 2026-08-12.
+//   The live copies at rest are 14: A1 holds 4, B1 4, C1 5 and D1 1. Lightning Bolt owes 3 (one per A1, B1, C1).
+//
+// The last three cases pin the debts hand-reads-stamped-filter-rows and hand-stamp-leaves-tally-stale. They name no new
+// identifier: they use hand-*, past-transit-*, stamped-cell, package-row:<gk> and tally-left:<name>, all of which exist.
+// The stamped filter is on the Packages page (stamped-cell), which is hidden from XCUITest while Card in Hand is open, so
+// those cases stamp, close Card in Hand, switch the filter on, and open Card in Hand again.
 //
 // Contract the tests name (the builder implements it). Every id is an accessibility identifier. <key> is the item key
 // the other screens use ("C1|1|pPathtoExile"); <gk> is the package key ("C1::Gamma Cards").
@@ -142,6 +148,33 @@ final class DuoHandUITests: XCTestCase {
         open.tap()
         let page = need(app, "past-transit-page", "the past-transit page")
         onRightPage(page, app, "the past-transit page")
+    }
+
+    /// Taps `kind` ("Claim filed" or "Refunded") on a late package's row of the past-transit page, then waits until the row no
+    /// longer offers it: the stamp is saved. It waits on the buttons going, not on the "Stamped <kind>" text, because the reload
+    /// that follows the write can drop the row (PastTransitModel.load ends the sticky rows).
+    func stampLate(_ app: XCUIApplication, _ gk: String, _ kind: String) {
+        let row = need(app, "past-transit-row:\(gk)", "a late package")
+        let button = row.buttons[kind]
+        XCTAssertTrue(button.exists, "the row \(gk) has no \(kind) button")
+        button.tap()
+        waitGone(button, "the \(kind) stamp on \(gk) was not saved: the row still offers it")
+    }
+
+    /// A1 stamped Claim filed from the past-transit page, the stamped filter turned on, and Card in Hand open again. A claim
+    /// leaves A1 live, so the live ledger is the seed's and only the filter differs: the Packages list is A1 alone. It waits for
+    /// B1, the newest package and the list's first card, to leave the list, so Card in Hand never opens on the list before the filter.
+    func openHandWithStampedFilterOn(_ app: XCUIApplication) {
+        openPastTransit(app)
+        stampLate(app, "A1::Alpha Cards", "Claim filed")
+        need(app, "hand-close", "the Close control of Card in Hand").tap()
+        let cell = need(app, "stamped-cell", "the stamped cell of the Packages page, shown once Card in Hand is closed")
+        waitForLabel(cell, startingWith: "1 stamped", "the stamp did not reach the Packages page")
+        let newest = app.element("package-row:B1::Beta Games")
+        XCTAssertTrue(newest.waitForExistence(timeout: 5), "control: with the filter off the Packages list holds B1, its newest package")
+        cell.tap()
+        waitGone(newest, "the stamped filter did not narrow the Packages list to A1")
+        openHand(app)
     }
 
     // MARK: the cases
@@ -370,6 +403,60 @@ final class DuoHandUITests: XCTestCase {
         let after = envelope.frame
         XCTAssertEqual(after.minY, before.minY, accuracy: 0.5, "New envelope moved from \(before) to \(after) when the match list shrank from 3 rows to 1")
         keepShot(app, "hand-match-tap-holds-new-envelope")
+    }
+
+    /// Pose: flat. With the stamped filter on, the count line still counts every live copy, not the stamped packages alone.
+    /// A1 is stamped, so the Packages list is A1 (4 copies) and the count line reads "0 in . 4 out" today. It must read the
+    /// seed's 14 copies, as it does with the filter off (debt hand-reads-stamped-filter-rows).
+    func testStampedFilterLeavesTheHandCountAtEveryLiveCopy() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHandWithStampedFilterOn(app)
+
+        let count = need(app, "hand-count", "the left page's count line")
+        XCTAssertEqual(count.label, "0 in \u{00B7} 14 out", "with the stamped filter on, the count line reads the stamped list's copies, not the 14 live copies")
+        keepShot(app, "hand-count-stamped-filter")
+    }
+
+    /// Pose: flat. With the stamped filter on, a card that is only in an unstamped envelope is found, and it checks in. Path to
+    /// Exile is only in C1 (Gamma Cards), which holds no stamp. Today the screen reads "No open envelope holds ..." and shows no
+    /// hand-who, because it looks the envelope up in the stamped list. The line's tap is then the model's toggle, which also
+    /// reads that list (HandStampedFilterTests), so the check-in and the count line are asserted too.
+    func testStampedFilterDoesNotHideAnUnstampedCardInHand() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHandWithStampedFilterOn(app)
+
+        typeCard(app, "Path to Exile")
+        let who = need(app, "hand-who", "the envelope of a card that only an unstamped package holds (the screen says no open envelope holds it)")
+        XCTAssertEqual(who.label, "Gamma Cards", "Path to Exile is only in order C1 from Gamma Cards")
+        onRightPage(who, app, "the seller")
+        _ = need(app, "hand-line:\(Self.path)", "the typed card's line")
+
+        checkInTypedCard(app, key: Self.path)
+        waitForLabel(app.element("hand-checkin:\(Self.path)"), startingWith: "Undo check in", "the tap on the line of an unstamped package checked nothing in")
+        let count = app.element("hand-count")
+        waitForLabel(count, startingWith: "1 in", "the count line did not follow the check-in")
+        XCTAssertEqual(count.label, "1 in \u{00B7} 13 out", "one of the 14 live copies is in")
+    }
+
+    /// Pose: flat. A Refunded stamp from the past-transit page takes the package out of the Tally (a-refund-leaves-every-count):
+    /// Lightning Bolt owes 3 at rest (A1, B1, C1) and 2 once A1 is refunded. Today the page writes the stamp and reloads Packages
+    /// and the late list, but not Tally, so Tally keeps the 3 until it loads again (debt hand-stamp-leaves-tally-stale).
+    func testARefundStampedFromHandLeavesTally() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        let bar = need(app, "duo-tab-bar", "the custom tab bar of the open Duo")
+        bar.buttons["Tally"].tap()
+        waitForLabel(need(app, "tally-left:Lightning Bolt", "the Lightning Bolt row of Tally"), startingWith: "3 left",
+                     "control: Tally owes 3 Lightning Bolt at rest")
+
+        openPastTransit(app)
+        stampLate(app, "A1::Alpha Cards", "Refunded")
+        bar.buttons["Tally"].tap()
+        waitForLabel(need(app, "tally-left:Lightning Bolt", "the Lightning Bolt row of Tally"), startingWith: "2 left",
+                     "Tally still counts the refunded package's Lightning Bolt")
+        keepShot(app, "hand-refund-leaves-tally")
     }
 
     /// The hand-hit rows, top to bottom, once exactly `count` show (a short poll: the list settles 150 ms after the last key
