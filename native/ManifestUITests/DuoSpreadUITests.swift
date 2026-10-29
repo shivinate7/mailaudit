@@ -163,11 +163,13 @@ final class DuoSpreadUITests: XCTestCase {
         let x = (win.minX + win.midX - DuoMetrics.foldMargin) / 2 - win.minX  // the middle of the left page
         let origin = app.window.coordinate(withNormalizedOffset: .zero)
         var last = lowest().maxY
-        for _ in 0..<12 {
+        for drag in 0..<12 {
             origin.withOffset(CGVector(dx: x, dy: win.height - 100))
                 .press(forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: x, dy: 100)), withVelocity: .slow, thenHoldForDuration: 0.3)
             Thread.sleep(forTimeInterval: 0.5)
             let now = lowest().maxY
+            // A first drag that moves nothing is not "the end": the drag missed the scroll view, or the list cannot clear the bar.
+            if drag == 0 { XCTAssertLessThan(now, last - 0.5, "a drag on the left page did not move the list: \(lowest().id) stays at \(now) pt, the bar's top is \(bar.frame.minY) pt. Either the drag missed the scroll view, or the list cannot scroll far enough to clear the bar") }
             if abs(now - last) < 0.5 { break }  // the list stopped moving: this is the end
             last = now
         }
