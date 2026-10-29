@@ -244,25 +244,30 @@ private struct EnvelopeCard: View {
             .padding(.top, 12).padding(.horizontal, 12).padding(.bottom, 8)
             // A solid backdrop under the header's buttons: the audit reads their contrast against it.
             .background(paint(.cardSurface), in: UnevenRoundedRectangle(topLeadingRadius: 8, topTrailingRadius: 8))
-            .overlay(alignment: .bottomTrailing) {
-                // The ask hangs below the row, so arming moves nothing (no-layout-shift-under-pointer).
+            .overlay(alignment: .bottom) {
+                // The ask hangs below the row, so arming moves nothing (no-layout-shift-under-pointer). A zero-height strip
+                // on the header's bottom edge is the anchor: the panel's top aligns to it and overflows downward, whatever
+                // height the header has at the current type size (a .bottom alignment guide here left the panel's bottom
+                // on the header's, covering the date, Edit and Discard).
                 if armed {
                     let panel = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .trailing, spacing: 4)) : AnyLayout(HStackLayout(spacing: 4))
-                    panel {
-                        Button { armed = false } label: { MiniLabel(title: "Cancel", size: 11, vertical: 4, horizontal: 8) }.buttonStyle(.plain)
-                        Button(role: .destructive) {
-                            armed = false
-                            Task { try? await model.discard(envelope: env.id); await onChange() }
-                        } label: {
-                            MiniLabel(title: "Tap again to discard \(total) card\(total == 1 ? "" : "s")", size: 11, bold: true,
-                                      text: paint(.armedText), fill: paint(.armedFill), border: paint(.armedFill),
-                                      vertical: 4, horizontal: 8)
+                    Color.clear.frame(height: 0).overlay(alignment: .topTrailing) {
+                        panel {
+                            Button { armed = false } label: { MiniLabel(title: "Cancel", size: 11, vertical: 4, horizontal: 8) }.buttonStyle(.plain)
+                            Button(role: .destructive) {
+                                armed = false
+                                Task { try? await model.discard(envelope: env.id); await onChange() }
+                            } label: {
+                                MiniLabel(title: "Tap again to discard \(total) card\(total == 1 ? "" : "s")", size: 11, bold: true,
+                                          text: paint(.armedText), fill: paint(.armedFill), border: paint(.armedFill),
+                                          vertical: 4, horizontal: 8)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
+                        .padding(4).modifier(CardChrome(border: .discardBorder))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.trailing, 12).offset(y: 4).zIndex(1)
                     }
-                    .padding(4).modifier(CardChrome(border: .discardBorder))
-                    // Its top sits 4pt under the header, whatever height the header has at the current type size.
-                    .padding(.trailing, 12).alignmentGuide(.bottom) { $0[.top] - 4 }.zIndex(1)
                 }
             }
             .zIndex(1)
