@@ -10,7 +10,7 @@ Deep links: `#s=today`, `#s=a`, `#s=a-posted`, `#s=b`, `#s=folded`. No hash show
 - `layout.py devices` gives `unknown` for this repo. So the open pose is drawn at the brief's size: 951 by 669 pt, fold 40 pt at 455.5 to 495.5 pt (`duo-fold-and-keyboard`).
 - The keys top is the brief's 405 pt: the panel draws there, 44 pt above the 449 pt frame (`duo-keyboard-gap-unmeasured`).
 - The status bar foot on the inner screen is unmeasured. It is drawn at 20 pt, the floor in `DuoHandUITests.statusBarFloor`.
-- Row heights come from the code at the default text size, and are estimates. Sender block: 16 + 13 + 8 + 27 + 8 + 14 = 86 pt to the date's foot. One-copy `ItemLine`: about 64 pt. Offer box (`HandScreen.postBox`): about 110 pt. With these, today's drawing puts "It came from" at y -152 and the seller at y -131, as the simulator measured.
+- Row heights come from the code at the default text size, and are estimates. Sender block: 16 + 13 + 8 + 27 + 8 + 14 = 86 pt to the date's foot. One-copy `ItemLine`: about 64 pt. Offer box (`HandScreen.postBox`): about 110 pt. The Today frame is offset so "It came from" sits at y -152, as the simulator measured. The seller at y -131 then checks only the sender block, not the row or box heights, so the row counts below are estimates.
 - Theme: one. The native app is held to light (`design-parchment-ledger`).
 - Apple pages read 2026-10-29, each answered 200: Layout (respect the system safe areas), Buttons (a hit region of at least 44x44 pt), Accessibility (44x44 pt default control size on iOS).
 
@@ -25,13 +25,14 @@ Deep links: `#s=today`, `#s=a`, `#s=a-posted`, `#s=b`, `#s=folded`. No hash show
    - Owner grant: no.
 
 2. **What scrolls.**
-   - A replaces `scrollTo(offerID, anchor: .bottom)` with `scrollTo(senderID, anchor: .top)` when the offer shows. It drops both `onScrollGeometryChange` handlers and `revealPending`. The page then sits at its top, so no row is under the status bar. Gain: less code, and no read of the keyboard. Loss: none found.
+   - A replaces `scrollTo(offerID, anchor: .bottom)` with a scroll to the page top when the offer shows: the scroll position at edge `.top`, or an id on the padded VStack. Not an id on the sender text, which could align it to the bounds top, under the status bar. It drops both `onScrollGeometryChange` handlers and `revealPending`. The page then sits at its top, so no row is under the status bar. Gain: less code, and no read of the keyboard. Loss: none found.
    - Pick: A.
    - Owner grant: no.
 
 3. **After Post.**
    - Today (`HandModel.post` sets `offer = nil`): the box leaves. In A, the lines would then rise into the slot the finger just pressed. In B, they would grow down into it.
-   - New: a receipt of the same height takes the slot, "2 cards checked in · 1 was held". It holds until the next card is typed, or New envelope ends the envelope. The view keeps it in its own state; the model does not change. Gain: nothing moves under the finger (`no-layout-shift-under-pointer`). Loss: one more state to build and test.
+   - `HandModel.post` also refuses when the ledger changed since the offer (a line check-in or a sync reply). It then sets `offer = nil` too, and the box leaves the same way.
+   - New: a receipt of the same height takes the slot on either outcome. On success it reads "2 cards checked in · 1 was held". On a refusal it holds the refusal line. It holds until the next card is typed, or New envelope ends the envelope. The view keeps it in its own state; the model does not change. Precedent: the round-2 mockup's posted pose puts the receipt where the press was. Gain: nothing moves under the finger (`no-layout-shift-under-pointer`). Loss: one more state to build and test.
    - Pick: the receipt.
    - Departs from: today's box that leaves on Post (`HandModel.post`). Not blocking.
    - Owner grant: no.
@@ -44,4 +45,4 @@ Deep links: `#s=today`, `#s=a`, `#s=a-posted`, `#s=b`, `#s=folded`. No hash show
 
 ## SwiftUI change implied by A
 
-In `HandScreen.envelope`, move `postBox` up, under the date, above the lines. Scroll to the sender, top anchor, when the offer shows. Drop the two geometry handlers. Keep the slot as a receipt after Post.
+In `HandScreen.envelope`, move `postBox` up, under the date, above the lines. Scroll to the page top when the offer shows. Drop the two geometry handlers. Keep the slot as a receipt after Post, on success and on refusal.
