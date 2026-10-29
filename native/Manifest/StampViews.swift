@@ -208,11 +208,12 @@ struct StampSection: View {
 
     private var noteField: some View {
         // A vertical-axis field wraps its text and its placeholder and grows with Dynamic Type, where a one-line field cut
-        // them. A note is still one line: Return ends the edit and a pasted line break is dropped, so the band's line holds.
+        // them. Its hit region is only its line height unless it holds two lines (measured), so it reserves two, as Tally's
+        // search does. A note is still one line: Return ends the edit and a pasted line break becomes a space.
         TextField("", text: $note,
                   prompt: Text("Anything else \u{2014} what they said, when\u{2026}").foregroundStyle(paint(.notePlaceholder)),
                   axis: .vertical)
-            .lineLimit(1...6)
+            .lineLimit(2...6)
             .font(.cochin(16, relativeTo: .body)).foregroundStyle(paint(.noteText))  // 16pt or more stops iOS zoom on focus
             .textFieldStyle(.plain).focused($focused).submitLabel(.done).onSubmit { focused = false }
             .onChange(of: note) { _, n in
@@ -221,7 +222,8 @@ struct StampSection: View {
                     focused = false
                 }
             }
-            .padding(.vertical, 8).padding(.horizontal, 12).frame(minHeight: 44)
+            .padding(.horizontal, 12)
+            .frame(minHeight: 44)  // inside the box, so the field's own frame is the 44pt hit region
             .background(paint(.noteFill), in: RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.noteBorder), lineWidth: 1))
             .accessibilityLabel("Stamp note")
