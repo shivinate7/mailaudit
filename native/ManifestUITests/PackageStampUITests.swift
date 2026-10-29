@@ -476,12 +476,19 @@ final class PackageStampUITests: XCTestCase {
         try app.auditSkippingTabBar()
     }
 
-    /// Remove stamp armed, with its ask on screen.
+    /// Remove stamp armed, with its ask on screen. The ask lapses 4 seconds after the tap and its lapse is not lengthened
+    /// for a test (stamp-band-opens-the-editor), so nothing slow sits between the tap and the audit: the tab bar's frame is
+    /// read before the tap and handed in, and the ask is read once, after the audit. An ask that lapsed in between fails
+    /// the case, where it would otherwise audit the editor alone and pass.
     func testAccessibilityAuditStampRemoveArmed() throws {
         let app = launch()
         stamp(app, Self.a1, kind: "claim")
         openEditor(app, Self.a1)
+        let bar = app.tabBars.firstMatch.frame
+        let armedAt = Date()
         arm(app, Self.a1)
-        try app.auditSkippingTabBar()
+        try app.auditSkippingTabBar(bar: bar)
+        XCTAssertTrue(el(app, "stamp-ask-confirm:\(Self.a1)").exists,
+                      "the ask had lapsed by the end of the audit, \(Date().timeIntervalSince(armedAt)) s after arming began, so the audit may not have seen it")
     }
 }
