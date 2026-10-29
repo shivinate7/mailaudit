@@ -102,7 +102,6 @@ struct HandScreen: View {
                            line: hand.strays.map(\.localizedCapitalized).joined(separator: ", "),
                            foot: hand.strays.count == 1 ? "It no longer decides an envelope." : "They no longer decide an envelope.")
                 }
-                matches
                 HStack {
                     Text("This envelope").font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.inkSoft)
                     Spacer(minLength: 8)
@@ -112,15 +111,17 @@ struct HandScreen: View {
                 if let e = hand.error {
                     Text(e).font(.cochin(13, relativeTo: .footnote)).foregroundStyle(Parchment.red).accessibilityIdentifier("hand-error")
                 }
+                matches
             }
             .padding(16)
         }
         .scrollDismissesKeyboard(.interactively)
     }
 
-    /// The names the typed text matches, under their own heading and above "This envelope", so a card you only released does
-    /// not read as part of the envelope (mockup pose 2 puts the matches above the envelope line too). The list opens as you
-    /// type, and the pointer is on the keys then.
+    /// The names the typed text matches, under their own heading, so a card you only released does not read as part of the
+    /// envelope. The matches sit below the envelope row because no-layout-shift-under-pointer outranks mockup pose 2: a
+    /// tapped match collapses the list, and a list above would lift New envelope from under the finger.
+    /// Departs from: mockup pose 2 (matches above the envelope).
     @ViewBuilder private var matches: some View {
         let names = hitNames
         if !names.isEmpty {
@@ -357,8 +358,10 @@ private struct PastTransitPage: View {
                 Spacer(minLength: 8)
                 Button(action: back) { MiniLabel(title: "Back") }.buttonStyle(.plain).accessibilityIdentifier("past-transit-back")
             }
-            let n = model.rows.count, cards = model.owedCards
-            Text("\(n) envelope\(n == 1 ? "" : "s") \u{00B7} \(cards) card\(cards == 1 ? "" : "s") \u{00B7} \(model.owedValue) \u{00B7} oldest last")
+            let n = model.rows.count
+            let parts = ["\(n) envelope\(n == 1 ? "" : "s")", model.owedCards.map { "\($0) card\($0 == 1 ? "" : "s")" },
+                         model.owedValue, "oldest last"].compactMap { $0 }
+            Text(parts.joined(separator: " \u{00B7} "))
                 .font(.mono(11, relativeTo: .caption)).foregroundStyle(Parchment.inkSoft).accessibilityIdentifier("past-transit-summary")
             ForEach(model.rows, id: \.gk) { row in PastTransitRowView(row: row, kinds: model.stampKinds, stamp: stamp, undo: undo) }
             Text("Days count from the order date. TCGplayer counts 30 days from the delivery estimate, so its window can close later.")
