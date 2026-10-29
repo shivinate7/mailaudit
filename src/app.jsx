@@ -5,7 +5,7 @@ import {
   parseItems, lostMail, normName, isUntracked, gkOf, groupPackages, rankCandidates,
   dateRange, inRange, dropCanceled, dropGks, canceledPackagesOf, stampedPackagesOf,
   tallyGroups, sortTally, sortPackages, filterPackages, filterTally,
-  totalsOf, outstandingOf, packagePill, refundedPill, STAMP_KINDS, hasStamp, isRefundStamp, nextStamp, stampBandText, itemDetail, tcgplayerOrderUrl, gotQty as gotQtyText, countLine, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger, money, compact,
+  totalsOf, bulkApply, outstandingOf, packagePill, refundedPill, STAMP_KINDS, hasStamp, isRefundStamp, nextStamp, stampBandText, itemDetail, tcgplayerOrderUrl, gotQty as gotQtyText, countLine, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger, money, compact,
 } from "./view-rules.mjs";
 import { photoPlan } from "./photo-rules.mjs";
 import { shouldSnapshot } from "./version-rules.mjs";
@@ -3886,14 +3886,7 @@ export default function MailDayLedger() {
 
   const bulkSet = useCallback((pkgItems, on) => {
     touchReceived(pkgItems.map((it) => it.key));
-    setReceived((prev) => {
-      const next = { ...prev };
-      for (const it of pkgItems) {
-        if (on) next[it.key] = it.qty;
-        else delete next[it.key];
-      }
-      return next;
-    });
+    setReceived((prev) => bulkApply(pkgItems, on, prev));
   }, []);
 
   /* The one writer for stamps, so `updatedAt` — what the two-device merge
