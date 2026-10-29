@@ -25,9 +25,6 @@ struct MiniLabel: View {
 
     /// The 44pt hit frame is drawn around the pill without taking layout space (a header row stays as tall as the web's).
     var outsetHit = false
-    /// The id the button carries. With `outsetHit`, the hit frame is a child of the Button, and the audit reports that
-    /// child, so the id is set on it too (the audit's measured-contrast skip matches by this id).
-    var identifier: String?
 
     private var pill: some View {
         Text(title).font(bold ? .mono(size, relativeTo: .caption).weight(.bold) : .mono(size, relativeTo: .caption))
@@ -42,10 +39,12 @@ struct MiniLabel: View {
 
     var body: some View {
         if outsetHit {
+            // .combine folds the hit frame into the Button's one element, which carries the Button's id and the title.
             OutsetHit {
                 pill.hidden().accessibilityHidden(true)
-                if let identifier { framed.accessibilityIdentifier(identifier) } else { framed }
+                framed
             }
+            .accessibilityElement(children: .combine)
         } else {
             framed
         }
