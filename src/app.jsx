@@ -5,7 +5,7 @@ import {
   parseItems, lostMail, normName, isUntracked, gkOf, groupPackages, rankCandidates,
   dateRange, inRange, dropCanceled, dropGks, canceledPackagesOf, stampedPackagesOf,
   tallyGroups, sortTally, sortPackages, filterPackages, filterTally,
-  totalsOf, outstandingOf, packagePill, itemDetail, tcgplayerOrderUrl, gotQty as gotQtyText, countLine, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger, money, compact,
+  totalsOf, outstandingOf, packagePill, refundedPill, STAMP_KINDS, hasStamp, isRefundStamp, nextStamp, stampBandText, itemDetail, tcgplayerOrderUrl, gotQty as gotQtyText, countLine, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger, money, compact,
 } from "./view-rules.mjs";
 import { photoPlan } from "./photo-rules.mjs";
 import { shouldSnapshot } from "./version-rules.mjs";
@@ -179,21 +179,7 @@ async function dataUrlToBlob(url) {
    rather than a deleted key, so the removal itself survives the two-device
    merge (see mergeStamps in merge-rules.mjs). Every reader goes through
    hasStamp, never key presence. */
-const STAMP_KINDS = [
-  ["claim", "Claim filed"],
-  ["refunded", "Refunded"],
-  ["contacted", "Seller contacted"],
-  ["reshipped", "Reshipped"],
-  ["partial", "Partial refund"],
-  /* the escape hatch for anything the fixed five don't name — the note field
-     carries the detail, this just keeps the order out of "nothing's wrong" */
-  ["other", "Other"],
-];
 const STAMP_LABEL = Object.fromEntries(STAMP_KINDS);
-const hasStamp = (s) => !!(s && s.kind);
-/* both refund kinds take the package out of the ledger's counts, exactly as a
-   canceled order is — the money is back, so nothing is outstanding */
-const isRefundStamp = (s) => s?.kind === "refunded" || s?.kind === "partial";
 /* the LOCAL calendar day, deliberately not toISOString(): at 8pm Central a
    claim filed today would be dated tomorrow. Same trap the month picker
    documents (test 23.16), same side of it. */
@@ -930,7 +916,7 @@ function PackageCard({
                   flexShrink: 0,
                 }}
               >
-                {refunded ? `${totalQty - gotQty} left · refunded` : pill}
+                {refunded ? refundedPill(pkg.items, received) : pill}
               </span>
             )}
           </div>
@@ -990,7 +976,7 @@ function PackageCard({
       {stamped && !editing && (
         <button
           onClick={openEditor}
-          aria-label={`Edit stamp on ${pkg.seller}: ${STAMP_LABEL[stamp.kind].toUpperCase()} · ${(stamp.at || "").slice(5)} ${stamp.note || ""}`.trim()}
+          aria-label={`Edit stamp on ${pkg.seller}: ${stampBandText(stamp)} ${stamp.note || ""}`.trim()}
           style={{
             width: "100%",
             display: "flex",
@@ -1010,7 +996,7 @@ function PackageCard({
             className={justBanded ? "mdl-land" : undefined}
             style={stampChip}
           >
-            {STAMP_LABEL[stamp.kind].toUpperCase()} · {(stamp.at || "").slice(5)}
+            {stampBandText(stamp)}
           </span>
           {/* ellipsis has to sit on the text child, which needs min-width 0 */}
           <span
@@ -3916,17 +3902,8 @@ export default function MailDayLedger() {
      "refunded on the 4th" is a different fact from "claim filed on the 1st". */
   const setStamp = useCallback((gk, patch) => {
     setStamps((prev) => {
-      const cur = prev[gk];
-      if (!patch && !hasStamp(cur)) return prev; // nothing to remove
-      const next = patch
-        ? {
-            kind: patch.kind,
-            note: (patch.note || "").trim(),
-            at: cur?.kind === patch.kind && cur.at ? cur.at : todayLocal(),
-            updatedAt: Date.now(),
-          }
-        : { kind: "", note: "", at: "", updatedAt: Date.now() };
-      return { ...prev, [gk]: next };
+      const next = nextStamp(prev[gk], patch, todayLocal(), Date.now());
+      return next ? { ...prev, [gk]: next } : prev; // null: nothing to remove
     });
   }, []);
 

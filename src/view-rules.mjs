@@ -260,6 +260,46 @@ export function canceledPackagesOf(items) {
   return arr;
 }
 
+/* ---------- order stamps ----------
+   One stamp per package, set by hand. The vocabulary is fixed and module-level, so the
+   editor's chips and the card's band read one table. A removed stamp is a TOMBSTONE
+   (`kind: ""` with a fresh `updatedAt`) so the removal survives the two-device merge.
+   Every reader goes through hasStamp, never key presence. The native Packages card,
+   LiveItems and PastTransitModel read these through the bundle. */
+export const STAMP_KINDS = [
+  ["claim", "Claim filed"],
+  ["refunded", "Refunded"],
+  ["contacted", "Seller contacted"],
+  ["reshipped", "Reshipped"],
+  ["partial", "Partial refund"],
+  /* the escape hatch for anything the fixed five don't name; the note carries the detail */
+  ["other", "Other"],
+];
+const STAMP_LABEL = Object.fromEntries(STAMP_KINDS);
+export const hasStamp = (s) => !!(s && s.kind);
+/* both refund kinds take the package out of the ledger's counts, as a canceled order is:
+   the money is back, so nothing is outstanding */
+export const isRefundStamp = (s) => s?.kind === "refunded" || s?.kind === "partial";
+
+/* The record a stamp write stores. `today` is the caller's LOCAL day and `now` its clock, so
+   nothing here reads one. A note-only edit keeps the date; another kind re-dates it, since
+   "refunded on the 4th" is a different fact from "claim filed on the 1st". A null patch
+   removes: a tombstone, or null when there is no stamp to remove. */
+export function nextStamp(cur, patch, today, now) {
+  if (!patch) return hasStamp(cur) ? { kind: "", note: "", at: "", updatedAt: now } : null;
+  return {
+    kind: patch.kind,
+    note: (patch.note || "").trim(),
+    at: cur?.kind === patch.kind && cur.at ? cur.at : today,
+    updatedAt: now,
+  };
+}
+
+/* The band chip's text: "CLAIM FILED · 07-04", the kind's label upper-cased, then the date
+   without its year. */
+export const stampBandText = (s) =>
+  `${(STAMP_LABEL[s.kind] ?? s.kind).toUpperCase()} · ${(s.at || "").slice(5)}`;
+
 /* callers pass the range-applied, refund-inclusive items, so a refunded
    package is in the stamped list (stamped-filter-on-the-pipeline) */
 export const stampedPackagesOf = (items, gks) =>
@@ -473,6 +513,13 @@ export function packagePill(items, received) {
   if (left <= 0) return null;
   const x = value >= 100 ? `$${Math.round(value).toLocaleString("en-US")}` : `$${value.toFixed(2)}`;
   return `${left} left · ${x}`;
+}
+
+/* "N left · refunded" for a refunded package: the cards are still out, but no money is. N is
+   packagePill's count, or null when none is owed. */
+export function refundedPill(items, received) {
+  const { left } = outstandingOf(items, received);
+  return left > 0 ? `${left} left · refunded` : null;
 }
 
 /* An item row's detail line: "×qty" when more than one, then set, finish and condition,
