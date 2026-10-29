@@ -463,6 +463,8 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `duo-fold-change-unpinned` — No test folds the Duo while the app runs.
 - `duo-tab-items-twice` — The Duo tab bar repeats the tab titles in RootView.
 - `duo-bar-dynamic-type-clips` — The Duo tab bar may clip at large text sizes.
+- `duo-stacked-poses-unbuilt` — The Duo has no stacked poses.
+- `duo-hand-mockup-gaps` — Five parts of the Card in Hand mockup are not built.
 
 ## Measurements
 
