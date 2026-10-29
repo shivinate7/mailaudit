@@ -71,6 +71,8 @@ private struct DuoSystemBar: ViewModifier {
 
     func body(content: Content) -> some View {
         content.toolbarVisibility(custom ? .hidden : .automatic, for: .tabBar).duoHorizontalBars()
+            // The bar floats over the right page. The inset sits inside the tab, as an outer one never reaches the tab's ScrollView.
+            .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: custom ? DuoBarMetrics.height : 0) }
     }
 }
 
@@ -107,8 +109,6 @@ private struct DuoSpine<ID: Hashable>: ViewModifier {
             .environment(\.duoHinge, hinge)
             .environment(\.duoSpread, spread)
             .environment(\.duoCustomBar, bar != nil)
-            // The bar floats over the right page, so the tabs keep clear of it as they do of the system bar.
-            .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: bar == nil ? 0 : DuoBarMetrics.height) }
             // One host measures the window and draws the bar, so both share one space. A GeometryReader that ignores the safe area
             // measures the whole window.
             .overlay {
