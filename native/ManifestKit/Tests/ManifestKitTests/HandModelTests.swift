@@ -335,15 +335,15 @@ final class HandModelTests: XCTestCase {
     /// need one more engine call (LiveItems.of runs groupPackages), so the call that starts while the stamp stands has
     /// more to wait for than the call that starts after it is gone. The stamp names no real package. The two cards are
     /// unrelated, so held plays no part: only the order of the replies decides the end state.
+    /// The later call runs inline, so it starts before the slow call can take its next step.
     func testSlowEarlierTypeNeverOverwritesLaterOne() async throws {
         let h = try await makeHand()
         h.store.setStamp("Z9::Nobody", kind: "refunded", note: "", at: "2026-07-01")
         let slow = Task { try await h.model.type("Sol Ring") }
         await Task.yield()  // the slow call starts and reads the stamp
         h.store.removeStamp("Z9::Nobody")
-        let quick = Task { try await h.model.type("Counterspell") }
+        try await h.model.type("Counterspell")
         try await slow.value
-        try await quick.value
         let offer = try XCTUnwrap(h.model.offer, "the later card names one envelope, so it offers a post")
         XCTAssertEqual(offer.gk, "S1::Alpha Cards", "the offer is the later call's, not the slow call's Sol Ring")
         XCTAssertEqual(offer.plan, [PlanStep(itemKey: Self.counter, take: 1)], "the offer takes the later card alone")
