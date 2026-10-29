@@ -143,6 +143,9 @@ struct ManifestApp: App {
 
     /// A reset or restore changed the ledger: every view reads it again.
     private func reloadAll() async {
+        // A restore or a Reset ends the held Mark all Undo; a Worker apply (startSync's reload) does not.
+        model?.endBulkUndo()
+        tally?.endBulkUndo()
         try? await model?.load()
         try? await tally?.load()
         try? await orphaned?.load()

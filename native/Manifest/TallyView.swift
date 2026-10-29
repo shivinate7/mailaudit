@@ -165,6 +165,8 @@ struct TallyRowView: View {
     let masthead: MastheadModel
     var page = Page.inline
     @State private var open = false
+    /// True while the armed Clear ask hangs below the bulk row, so the card draws above its neighbours.
+    @State private var overhang = false
 
     private var done: Bool { row.got >= row.qty }
     private var isOpen: Bool { if case .inline = page { open } else { false } }
@@ -182,16 +184,19 @@ struct TallyRowView: View {
                 .accessibilityIdentifier("tally-toggle:\(row.name)")
             if isOpen {
                 across
-                copyLines
+                bulkRow
+                VStack(alignment: .leading, spacing: 0) { copyLines }.clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 8, bottomTrailingRadius: 8))
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .top) { bar }
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        // The card clips its lines and its bar, not itself: the armed ask hangs below the bulk row and may reach past a
+        // short card's edge (as on the Packages card).
+        .overlay(alignment: .top) { bar.clipShape(UnevenRoundedRectangle(topLeadingRadius: 8, topTrailingRadius: 8)) }
         // The shadow sits on the fill, not the card: a shadow on the card is drawn under every leaf view in it.
         .background(RoundedRectangle(cornerRadius: 8).fill(paint(.surface)).shadow(color: Parchment.shadow, radius: 2, y: 1))
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.border, done: done), lineWidth: 1))
         .pickedMark(selected)
+        .zIndex(overhang ? 1 : 0)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("tally-row:\(row.name)")
     }
@@ -204,9 +209,25 @@ struct TallyRowView: View {
                 .accessibilityAddTraits(.isHeader)
                 .accessibilityIdentifier("tally-detail-title")
             across
+            bulkRow
             copyLines
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Mark all received and Clear check-ins on every copy of the product, the ones a filter hides included. The Tally has no
+    /// Stamp, so the row holds the two controls alone (native-bulk-check-in).
+    private var bulkRow: some View {
+        func run(_ act: @escaping () async throws -> Void) async {
+            masthead.saving()
+            do { try await act() } catch {}  // the model has put the reason in checkInError, which the screen shows
+            await masthead.finished(failed: model.checkInError != nil)
+        }
+        return BulkRow(prefix: "tally-bulk", key: row.name, scope: "of \(row.name)", totalCopies: row.qty, canMark: row.got < row.qty,
+                       copiesIn: row.got, undoOffered: model.bulkUndoName == row.name, overhang: $overhang,
+                       mark: { await run { try await model.bulk(name: row.name, on: true) } },
+                       undo: { await run { try await model.undoBulk() } },
+                       clear: { await run { try await model.bulk(name: row.name, on: false) } })
     }
 
     private var across: some View {

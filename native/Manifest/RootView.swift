@@ -68,6 +68,11 @@ struct RootView: View {
         }
         .frame(width: width)
         .tint(Parchment.accent)
+        // A tab change ends the held Mark all Undo of both views (undo-removes-only-its-delta).
+        .onChange(of: tab) { _, _ in
+            model?.endBulkUndo()
+            tally?.endBulkUndo()
+        }
         .duoSpine(selection: $tab, items: [
             .init(id: .ledger, title: "Ledger", symbol: "gearshape"), .init(id: .orphaned, title: "Orphaned", symbol: "envelope", badge: orphaned?.badgeCount ?? 0),
             .init(id: .tally, title: "Tally", symbol: "number"), .init(id: .packages, title: "Packages", symbol: "shippingbox"),

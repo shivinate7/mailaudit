@@ -56,15 +56,19 @@ struct PackageRow: View {
     /// True while the armed stamp ask shows. It hangs below the editor row and, at large text, past the card's edge, so
     /// the card then draws above its neighbours.
     @State private var overhang = false
+    /// The same for the armed Clear ask under the bulk row.
+    @State private var bulkOverhang = false
 
     private func state(_ item: LedgerItem) -> LineState { LineState(got: model.received[item.key] ?? 0, qty: item.qty) }
     private var packageState: LineState { pkg.items.allSatisfy { state($0) == .done } ? .done : .open }
+    private var totalQty: Int { pkg.items.reduce(0) { $0 + $1.qty } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
             StampSection(pkg: pkg, model: model, masthead: masthead, surface: paint(.surface, packageState),
                          overhang: $overhang, onChange: onChange)
+            bulkRow
             lines
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -73,9 +77,28 @@ struct PackageRow: View {
             .shadow(color: Parchment.shadow, radius: 1, y: 1))
         .overlay(alignment: .top) { bar.clipShape(UnevenRoundedRectangle(topLeadingRadius: 8, topTrailingRadius: 8)) }
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.border, packageState), lineWidth: 1))
-        .zIndex(overhang ? 1 : 0)
+        .zIndex(overhang || bulkOverhang ? 1 : 0)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("package-row:\(pkg.gk)")
+    }
+
+    /// Mark all received and Clear check-ins, in a row of their own under the Stamp slot (native-bulk-check-in). Each press is a
+    /// write as a stamp is: the slot says saving, the figures follow, then the other tabs read the new counts.
+    private var bulkRow: some View {
+        BulkRow(prefix: "bulk", key: pkg.gk, scope: "from \(pkg.seller)", totalCopies: totalQty, canMark: packageState != .done,
+                copiesIn: model.gots[pkg.gk] ?? 0, undoOffered: model.bulkUndoGk == pkg.gk, overhang: $bulkOverhang,
+                mark: { await write { try await model.bulk(gk: pkg.gk, on: true) } },
+                undo: { await write { try await model.undoBulk() } },
+                clear: { await write { try await model.bulk(gk: pkg.gk, on: false) } })
+    }
+
+    private func write(_ act: () async throws -> Void) async {
+        masthead.saving()
+        var landed = true
+        do { try await act() } catch { landed = false }  // the model has put the reason in checkInError, which the screen shows
+        var refreshed = true
+        do { try await onChange() } catch { refreshed = false }  // a failed Tally or Orphaned read would leave them counting the old check-ins
+        await masthead.finished(failed: !landed || !refreshed)
     }
 
     /// The item lines, clipped to the card's bottom corners because their fills are square. The card clips nothing
