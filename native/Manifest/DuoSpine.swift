@@ -31,7 +31,9 @@ struct DuoPages<Left: View, Right: View>: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            left.frame(width: pages.left.width)
+            // The bar sits under the right page only, and its inset lives inside each tab (DuoSystemBar), so the left page takes it back.
+            // .container only: the keyboard region stays as SwiftUI sets it.
+            left.frame(width: pages.left.width).ignoresSafeArea(.container, edges: .bottom)
             Color.clear.frame(width: pages.right.minX - pages.left.maxX)
             right.frame(width: pages.right.width)
         }
