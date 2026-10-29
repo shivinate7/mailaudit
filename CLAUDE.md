@@ -474,8 +474,9 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `duo-bar-dynamic-type-clips` — The Duo tab bar may clip at large text sizes.
 - `duo-stacked-poses-unbuilt` — The Duo has no stacked poses.
 - `duo-hand-mockup-gaps` — Eight parts of the Card in Hand mockup are not built.
-- `hand-checkin-error-hidden` — A failed check-in in Card in Hand shows nowhere.
 - `hand-stray-keeps-tie` — A released card leaves its tie on the answer page.
+- `hand-stale-checkin-error` — A good post leaves an old check-in error showing.
+- `checkin-error-bar-is-sans` — The native check-in error bar is set in sans on material.
 - `hand-post-scroll-hides-sender` — The Post offer scrolls the sender off the page.
 - `hand-notice-cuts-match-row` — A Suspense or Released box pushes the match under the keys.
 - `hand-suspense-tap-shift` — A Suspense tap shifts the match list under the finger.
