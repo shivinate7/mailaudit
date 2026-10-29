@@ -10,6 +10,21 @@ import XCTest
 //
 // The sizes come from the duo-card-in-hand mockup README and degen's Duo window helper. They are not re-measured here.
 
+/// Numbers every Duo UI test shares.
+enum DuoMetrics {
+    static let tolerance: CGFloat = 2
+    /// Half the fold strip (40 pt, centred): how far a full-width row must reach past the middle on each side
+    /// (455.5 and 495.5 at a 951 pt window), and how far right of the middle the right page starts.
+    static let foldMargin: CGFloat = 20
+    /// The tallest the custom bar's view may be: the pill (64 pt) and the 12 pt under it.
+    static let barHeight: CGFloat = 76
+    /// The room a bottom bar may keep above the window's bottom edge. The outer screen's bottom inset is 34 pt; the inner one is unmeasured.
+    static let bottomAllowance: CGFloat = 40
+}
+
+/// A page of the open Duo's spread: left of the fold strip, or right of it.
+enum DuoPage { case left, right }
+
 enum DuoPose {
     case flat, closed
 
@@ -63,5 +78,66 @@ extension XCTestCase {
         guard ProcessInfo.processInfo.environment["DUO_SHOTS"] != nil else { return }
         print("DUO-SHOT \(name)")
         Thread.sleep(forTimeInterval: 4)
+    }
+}
+
+extension XCUIApplication {
+    /// The custom tab bar of the open Duo.
+    var duoBar: XCUIElement { byID("duo-tab-bar") }
+
+    func byID(_ id: String) -> XCUIElement { element(id) }
+
+    func elements(prefix: String) -> [XCUIElement] {
+        descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", prefix)).allElementsBoundByIndex
+    }
+
+    /// The first element whose identifier starts with `prefix`. It resolves when used, so a caller can wait for it.
+    func firstElement(prefix: String) -> XCUIElement {
+        descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", prefix)).firstMatch
+    }
+
+    /// Of every element whose identifier starts with one of `prefixes`: how many exist, and the identifiers whose frame
+    /// reaches more than 1 pt into the fold strip (the window's middle, `foldMargin` each side). A caller asserts
+    /// `seen > 0` too, so a scan that found nothing cannot pass.
+    func partsInFoldStrip(prefixes: [String]) -> (seen: Int, inStrip: [String]) {
+        let win = window.frame
+        let lo = win.midX - DuoMetrics.foldMargin, hi = win.midX + DuoMetrics.foldMargin
+        var seen = 0
+        var inStrip: [String] = []
+        for prefix in prefixes {
+            for part in elements(prefix: prefix) {
+                seen += 1
+                let f = part.frame
+                if min(f.maxX, hi) - max(f.minX, lo) > 1 { inStrip.append("\(part.identifier) \(f)") }
+            }
+        }
+        return (seen, inStrip)
+    }
+}
+
+extension XCTestCase {
+    /// Waits for `element`, then checks its frame lies on `page` of the flat Duo: between the window's left edge and the fold strip,
+    /// or between the strip and the window's right edge.
+    @MainActor func expect(_ element: XCUIElement, on page: DuoPage, in app: XCUIApplication, _ what: String,
+                           file: StaticString = #filePath, line: UInt = #line) {
+        XCTAssertTrue(element.waitForExistence(timeout: 5), "\(what) is missing", file: file, line: line)
+        let win = app.window.frame, f = element.frame, tol = DuoMetrics.tolerance, margin = DuoMetrics.foldMargin
+        switch page {
+        case .left:
+            XCTAssertGreaterThanOrEqual(f.minX, win.minX - tol, "\(what) starts left of the window: \(f)", file: file, line: line)
+            XCTAssertLessThanOrEqual(f.maxX, win.midX - margin + tol, "\(what) is not on the left page, it reaches \(f.maxX) pt: \(f)", file: file, line: line)
+        case .right:
+            XCTAssertGreaterThanOrEqual(f.minX, win.midX + margin - tol, "\(what) is not on the right page, it starts at \(f.minX) pt: \(f)", file: file, line: line)
+            XCTAssertLessThanOrEqual(f.maxX, win.maxX + tol, "\(what) runs past the window's right edge: \(f)", file: file, line: line)
+        }
+    }
+
+    /// A page that keeps the full width: `element` starts left of the fold strip, ends right of it, and covers most of the window.
+    @MainActor func expectSpansFold(_ element: XCUIElement, in app: XCUIApplication, _ what: String,
+                                    file: StaticString = #filePath, line: UInt = #line) {
+        let win = app.window.frame, f = element.frame
+        XCTAssertLessThan(f.minX, win.midX - DuoMetrics.foldMargin, "the \(what) starts right of the fold", file: file, line: line)
+        XCTAssertGreaterThan(f.maxX, win.midX + DuoMetrics.foldMargin, "the \(what) stops at the fold", file: file, line: line)
+        XCTAssertGreaterThan(f.width, win.width * 0.9, "the \(what) is not full width", file: file, line: line)
     }
 }

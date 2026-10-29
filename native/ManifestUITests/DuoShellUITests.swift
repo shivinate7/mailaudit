@@ -25,20 +25,17 @@ import XCTest
 @MainActor
 final class DuoShellUITests: XCTestCase {
     static let tabTitles = ["Ledger", "Orphaned", "Tally", "Packages"]
-    static let tolerance: CGFloat = 2
-    /// Half the fold strip (40 pt, centred): how far a full-width Ledger row must reach past the middle on each side
-    /// (455.5 and 495.5 at a 951 pt window), and how far right of the middle the right page starts.
-    static let foldMargin: CGFloat = 20
-    /// The tallest the custom bar's view may be: the pill (64 pt) and the 12 pt under it.
-    static let barHeight: CGFloat = 76
-    /// The room a bottom bar may keep above the window's bottom edge. The outer screen's bottom inset is 34 pt; the inner one is unmeasured.
-    static let bottomAllowance: CGFloat = 40
+    // The numbers live in DuoMetrics (DuoWindowSupport.swift), shared with the other Duo UI tests.
+    static let tolerance = DuoMetrics.tolerance
+    static let foldMargin = DuoMetrics.foldMargin
+    static let barHeight = DuoMetrics.barHeight
+    static let bottomAllowance = DuoMetrics.bottomAllowance
 
     func launch() -> XCUIApplication { .launchedOnSeed() }
 
-    func customBar(_ app: XCUIApplication) -> XCUIElement { app.element("duo-tab-bar") }
+    func customBar(_ app: XCUIApplication) -> XCUIElement { app.duoBar }
 
-    func element(_ app: XCUIApplication, _ id: String) -> XCUIElement { app.element(id) }
+    func element(_ app: XCUIApplication, _ id: String) -> XCUIElement { app.byID(id) }
 
     // MARK: open Duo, pose flat
 
@@ -79,11 +76,7 @@ final class DuoShellUITests: XCTestCase {
         let row = element(app, "backup")
         XCTAssertTrue(row.waitForExistence(timeout: 5), "the Ledger Backup row is missing")
 
-        let win = app.window.frame
-        let f = row.frame
-        XCTAssertLessThan(f.minX, win.midX - Self.foldMargin, "the Ledger page starts right of the fold")
-        XCTAssertGreaterThan(f.maxX, win.midX + Self.foldMargin, "the Ledger page stops at the fold")
-        XCTAssertGreaterThan(f.width, win.width * 0.9, "the Ledger page is not full width")
+        expectSpansFold(row, in: app, "Ledger page")
     }
 
     /// Pose: flat (open Duo, window 951 x 669 pt). The custom bar is the only navigation: a tap on Tally opens Tally,

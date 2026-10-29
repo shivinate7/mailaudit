@@ -27,10 +27,7 @@ struct PackagesTab: View {
     @Environment(\.duoSpread) private var spread
     @State private var handOpen = false
 
-    private var twoPages: Bool {
-        if case .sideBySide = spread { return true }
-        return false
-    }
+    private var twoPages: Bool { spread.pages(for: .cardInHand) != nil }
 
     var body: some View {
         let open = handOpen && twoPages
@@ -58,16 +55,11 @@ struct HandScreen: View {
     private var hand: HandModel { kit.hand }
 
     var body: some View {
-        if case let .sideBySide(left, right) = spread {
-            HStack(spacing: 0) {
-                leftPage.frame(width: left.width)
-                Color.clear.frame(width: right.minX - left.maxX)
-                rightPage.frame(width: right.width)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Parchment.paper.ignoresSafeArea())
-            .contentShape(Rectangle())
-            .task { try? await kit.transit.load() }
+        if let pages = spread.pages(for: .cardInHand) {
+            DuoPages(pages: pages) { leftPage } right: { rightPage }
+                .background(Parchment.paper.ignoresSafeArea())
+                .contentShape(Rectangle())
+                .task { try? await kit.transit.load() }
         }
     }
 

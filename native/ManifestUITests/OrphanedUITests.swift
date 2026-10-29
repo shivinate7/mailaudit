@@ -64,27 +64,11 @@ final class OrphanedUITests: XCTestCase {
         XCTAssertTrue(el(app, "orphaned-record").waitForExistence(timeout: 5), "the Orphaned view has no Record control")
     }
 
-    /// Types `typed` into the one input and taps the suggestion named `name`.
-    func addCard(_ app: XCUIApplication, typed: String, name: String) {
-        let input = el(app, "orphaned-input")
-        XCTAssertTrue(input.waitForExistence(timeout: 5), "the composer has no input")
-        if !app.keyboards.element.exists { input.tap() }
-        input.typeText(typed)
-        let row = el(app, "suggestion:\(name)")
-        XCTAssertTrue(row.waitForExistence(timeout: 5), "typing \(typed) did not suggest \(name)")
-        row.tap()
-    }
+    /// Types `typed` into the one input and taps the suggestion named `name` (OrphanedRecordSupport.swift).
+    func addCard(_ app: XCUIApplication, typed: String, name: String) { app.addEnvelopeCard(typed: typed, name: name) }
 
-    /// Records one envelope through the UI: open the composer, add each card, Save.
-    func record(_ app: XCUIApplication, _ cards: [(typed: String, name: String)]) {
-        el(app, "orphaned-record").tap()
-        for c in cards { addCard(app, typed: c.typed, name: c.name) }
-        let save = el(app, "orphaned-save")
-        XCTAssertTrue(save.waitForExistence(timeout: 5), "the composer has no Save")
-        save.tap()
-        let pile = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "envelope:")).firstMatch
-        XCTAssertTrue(pile.waitForExistence(timeout: 5), "Save did not put an envelope in the pile")
-    }
+    /// Records one envelope through the UI: open the composer, add each card, Save (OrphanedRecordSupport.swift).
+    func record(_ app: XCUIApplication, _ cards: [(typed: String, name: String)]) { app.recordEnvelope(cards) }
 
     func recordSaga(_ app: XCUIApplication) { record(app, [("urza", "Urza's Saga")]) }
 
