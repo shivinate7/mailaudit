@@ -411,6 +411,11 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-compose-is-one-fade` — The native letterhead composes in one fade.
 - `native-card-lost-flags-unbuilt` — The native package card has no lost-mail flag and no tracked glyph.
 - `native-seller-scale-unmeasured` — The native seller shrinks to half size, and the cause is unmeasured.
+- `native-pinned-card-dynamic-type` — The pinned-head audit flags Dynamic Type on one card.
+- `native-cold-launch-ledger-shift` — The Ledger tab may jump at cold launch.
+- `native-masthead-foot-row-gap` — The native masthead foot's second row sits 4.6pt low.
+- `native-masthead-axl-clips` — The native masthead wraps and clips at accessibility text sizes.
+- `debt-notes` — One-line findings not likely in normal work.
 - `native-card-gestures-unpinned` — No UI test pins the native card header gestures.
 - `native-card-state-in-swift` — The native card copies the line and package done rules in Swift.
 - `native-sync-tally-rules-in-swift` — The native Sync panel and Tally row copy six view rules in Swift.
@@ -464,6 +469,10 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `duo-tab-items-twice` — The Duo tab bar repeats the tab titles in RootView.
 - `duo-bar-dynamic-type-clips` — The Duo tab bar may clip at large text sizes.
 - `hand-type-not-serialised` — Card in Hand does not serialise typed names.
+- `native-tally-ellipsis-unpinned` — Nothing pins the native Tally ellipsis.
+- `native-discard-panel-covers-head` — The native armed Discard panel covers the envelope header.
+- `native-axl-rows-break` — Three native rows break at accessibility text sizes.
+- `sim-test-diagnose-and-pin` — sim-test runs simctl diagnose and can pick the Duo.
 
 ## Measurements
 
