@@ -37,10 +37,16 @@
 //             There is no button labelled "Lost" (item 25, deferred). past-transit-summary (the page's count line; its label
 //             starts "<N> envelope"). A red row (30 days from the order date) shows no "claim by" in any of its texts.
 //   Keys      With the system keys up, hand-post lies wholly above the keyboard's top edge, with no scroll by the user.
+//   Failure   hand-checkin-error (a text overlaid at the top of the right (envelope) page of Card in Hand, where the line
+//             check-ins are; present only after a line check-in whose save failed;
+//             its label is the failure line PackagesModel.checkInError holds, which starts "Could not save the check-in.").
+//             Packages' own checkin-error sits under the opaque Card in Hand page and Packages is hidden from accessibility
+//             while it shows, so that id cannot pass.
 // A lone card that names one envelope may check in by Post or by tapping its line (the mockup shows a stepper and no
 // Post). The stray case checks in by whichever the screen offers. The held case needs Post.
 //
-// Every key here is fake. Launch with -ManifestUITestSeed only (XCUIApplication.launchedOnSeed).
+// Every key here is fake. Launch with -ManifestUITestSeed only (XCUIApplication.launchedOnSeed). The one exception is
+// testFailedLineCheckInShowsInHand, which adds -ManifestUITestLedgerUnwritable (Debug builds only; it makes the next save fail; see the test).
 
 import XCTest
 
@@ -370,6 +376,56 @@ final class DuoHandUITests: XCTestCase {
         let after = envelope.frame
         XCTAssertEqual(after.minY, before.minY, accuracy: 0.5, "New envelope moved from \(before) to \(after) when the match list shrank from 3 rows to 1")
         keepShot(app, "hand-match-tap-holds-new-envelope")
+    }
+
+    /// The launch flag that makes a save fail. In a Debug build launched with -ManifestUITestSeed, ManifestApp.boot removes the
+    /// ledger file after `store.load()` and puts an empty folder at its path, so the next save throws. A read-only file would
+    /// not do: the ledger is written atomically, so it still saves. The next seeded boot removes the folder with the seed copy,
+    /// so no restore step is needed. The model's own test of this way to fail a save is
+    /// PackagesToggleTests.testFailedTapLeavesTheSaveFailureLineAndSavesNothing.
+    static let ledgerUnwritable = "-ManifestUITestLedgerUnwritable"
+
+    /// Pose: flat, system keys up. A line check-in made from the envelope page whose save fails shows the failure inside Card in
+    /// Hand. Packages draws the same failure as checkin-error, but under Card in Hand's opaque page and hidden from accessibility,
+    /// so only an element Card in Hand draws, hand-checkin-error, can pass. This test goes red for two reasons, told apart by the
+    /// line's own label after the tap: "Undo check in" means the save did not fail (the seam above did not act); "Check in"
+    /// means the save failed and Card in Hand shows nothing. The test taps the line's control and not Post, and
+    /// reads frames only after the failure shows: a scroll by the test would hide a failure the owner's thumb cannot reach.
+    func testFailedLineCheckInShowsInHand() {
+        let app = XCUIApplication.launchedOnSeed(extra: [Self.ledgerUnwritable])
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let count = need(app, "hand-count", "the left page's count line").label
+
+        typeCard(app, "Path to Exile")
+        XCTAssertEqual(need(app, "hand-who", "the envelope of the typed card").label, "Gamma Cards", "Path to Exile is only in order C1 from Gamma Cards")
+        let control = need(app, "hand-checkin:\(Self.path)", "the typed card's check-in control")
+        XCTAssertEqual(control.label, "Check in Path to Exile", "the line starts checked in, so the tap below is a check-in")
+        XCTAssertFalse(app.element("hand-checkin-error").exists, "a failure shows before any check-in")
+        control.tap()
+
+        let failure = app.element("hand-checkin-error")
+        let shown = failure.waitForExistence(timeout: 5)
+        keepShot(app, "hand-checkin-failed")  // before the checks, so a red run still leaves its shot
+        let line = control.label
+        XCTAssertFalse(line.hasPrefix("Undo check in"), "the check-in saved, so the save did not fail: the app ignored \(Self.ledgerUnwritable) (the seam is not built)")
+        XCTAssertTrue(shown, "the save failed (the line still reads \"\(line)\") and Card in Hand shows no failure: hand-checkin-error is missing")
+        XCTAssertEqual(app.element("hand-count").label, count, "the failed check-in changed the count")
+
+        let text = failure.label
+        XCTAssertTrue(text.hasPrefix("Could not save the check-in."), "the failure reads \"\(text)\", not the line PackagesModel.checkInError holds for a failed save")
+        let f = failure.frame, win = app.window.frame
+        XCTAssertFalse(f.isEmpty, "the failure has no size: frame \(f)")
+        XCTAssertTrue(win.insetBy(dx: -Self.tolerance, dy: -Self.tolerance).contains(f), "the failure, frame \(f), is not on screen: the window is \(win)")
+        let strip = app.partsInFoldStrip(prefixes: ["hand-checkin-error"])
+        XCTAssertGreaterThan(strip.seen, 0, "the fold-strip scan found no hand-checkin-error")
+        XCTAssertEqual(strip.inStrip, [], "the failure reaches into the fold strip")
+        let keys = app.keyboards.firstMatch
+        if keys.exists {
+            XCTAssertLessThanOrEqual(f.maxY, keys.frame.minY, "the failure, frame \(f), is under the keys, which start at y \(keys.frame.minY)")
+        }
+        XCTAssertTrue(failure.isHittable, "the failure, frame \(f), is not hittable: something covers it")
+        keepShot(app, "hand-checkin-error")
     }
 
     /// The hand-hit rows, top to bottom, once exactly `count` show (a short poll: the list settles 150 ms after the last key

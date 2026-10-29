@@ -201,6 +201,17 @@ struct HandScreen: View {
                 if new < old, offerVisible { revealOffer(proxy) }
             }
         }
+        // The line check-ins are on this page. Packages' own checkin-error sits under this screen. An overlay at the top, where the
+        // keys never reach and the bar does not float, adds no row, so nothing moves under a finger (no-layout-shift-under-pointer).
+        .overlay(alignment: .top) {
+            if let e = packages.checkInError {
+                Text(e).font(.cochin(13, relativeTo: .footnote)).foregroundStyle(Parchment.red).padding(12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Parchment.paper)
+                    .overlay(alignment: .bottom) { Rectangle().fill(Parchment.line).frame(height: 1) }
+                    .accessibilityIdentifier("hand-checkin-error")
+            }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("hand-answer")
     }

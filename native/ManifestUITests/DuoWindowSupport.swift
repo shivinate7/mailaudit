@@ -38,9 +38,10 @@ enum DuoPose {
 
 extension XCUIApplication {
     /// The app launched on the fake seed (shared/fixtures/ledger.json). Never -ManifestUITestWidth: it frames the root to 375 pt.
-    @MainActor static func launchedOnSeed() -> XCUIApplication {
+    /// `extra` flags follow the seed flag, which the app reads as a fixture name only when the next argument has no dash.
+    @MainActor static func launchedOnSeed(extra: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-ManifestUITestSeed"]
+        app.launchArguments = ["-ManifestUITestSeed"] + extra
         app.launch()
         return app
     }
