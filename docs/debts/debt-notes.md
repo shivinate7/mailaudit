@@ -16,6 +16,8 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 - 2026-10-28, Duo wave 3 design review: "refund window closing" shows at 181 days; the web text is the same.
 - 2026-10-28, Duo wave 3 design review: the past-transit page has no track bars, no claim-by dates and no "Under 14 days" list on the left page.
 - 2026-10-29, wave 3 CI race fix: `PackagesModelTests.swift` still uses a fixed sleep against a 500 ms JS busy-wait, the pattern that failed HandModelTests on the hosted runner; the HandModelTests gate reaches the engine's private context through `Mirror`, which a small engine test hook would replace.
+- 2026-10-29, check-in error design review: on a scrolled Card in Hand envelope page, the top error banner covers the first line rows until the next good save.
+- 2026-10-29, check-in error design review: the check-in error text carries the system's `localizedDescription` (for example "The file 'ledger.json' doesn't exist."), which is technical; Packages shows the same text.
 - 2026-10-28, Duo wave 3 design review: the native screens keep the web's bordered MiniLabel buttons, which the ios-apps mockup rules call web-like; kept for parity with the web.
 
 **Status:** open. Each line stays a note until a real incident.
