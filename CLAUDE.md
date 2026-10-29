@@ -416,8 +416,6 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-masthead-foot-row-gap` — The native masthead foot's second row sits 4.6pt low.
 - `native-masthead-axl-clips` — The native masthead wraps and clips at accessibility text sizes.
 - `native-stamp-load-unmeasured` — The native Packages load with stamps is unmeasured.
-- `native-stamp-note-field-short` — The native stamp note field is 36.7pt tall, under 44pt.
-- `native-stamp-ask-covers-row` — The native armed Remove ask covers the editor row.
 - `native-armed-audit-misses-ask` — The native armed stamp audit cannot see the ask.
 - `hand-stamp-leaves-tally-stale` — A stamp from Card in Hand leaves Tally stale.
 - `hand-reads-stamped-filter-rows` — Card in Hand reads the stamped filter's rows.
