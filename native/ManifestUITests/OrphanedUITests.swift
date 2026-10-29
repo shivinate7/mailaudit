@@ -374,8 +374,8 @@ final class OrphanedUITests: XCTestCase {
 
     /// The hit region is the whole control, not the label inside it: a .frame after the button style leaves the
     /// tappable area at the label's size. Every control on an envelope card is measured here, and every candidate row.
-    /// Edit and Discard each match exactly one element: the id sits on the Button and on the outset child inside it
-    /// (OrphanedView, ControlViews), and the helpers read firstMatch, so a second element would pass unseen.
+    /// Edit and Discard must each be one element: the helpers read firstMatch, so a second element with the same id
+    /// would pass unseen. The count assertions guard that.
     func testEnvelopeCardControlsHaveA44ptHitRegion() throws {
         let app = launch()
         openOrphaned(app)
