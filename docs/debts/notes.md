@@ -27,6 +27,9 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 - 2026-10-29, stamp ask review: the ask-below assert accepts an ask that covers the lower half of the row (`askBox.minY > saveBox.midY`; `>= saveBox.maxY` is stricter, unmeasured).
 - 2026-10-29, stamp ask review: arming Remove with the note field focused keeps the keyboard up, so the ask may sit behind it for its 4 s (unmeasured).
 - 2026-10-29, Card in Hand review: no test pins that a failed Tally or Orphaned reload marks a Hand or stamp write failed (`HandScreen.swift` `afterWrite`, `StampViews.swift` `write`).
+- 2026-10-29, CI wiring review round 2: no run has shown that `cancelled()` reads true in the ci-done job after a superseded PR run is cancelled. The first double push on a PR settles it. A false value posts a false red comment.
+- 2026-10-29, CI wiring review round 2: the job groups on main still key by commit, so a third run on one commit can replace a pending job, such as a nightly. The harm is one cancelled job.
+- 2026-10-29, CI wiring review round 2: `ci-skips-draft-prs` names the draft state in the keys of three jobs only. The ste-lint key and the workflow key carry it too.
 
 **Status:** open. Each line stays a note until a real incident.
 
