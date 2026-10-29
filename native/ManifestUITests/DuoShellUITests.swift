@@ -184,17 +184,20 @@ final class DuoShellUITests: XCTestCase {
         Dictionary(rows().map { ($0.identifier, $0.frame) }, uniquingKeysWith: { $1 })
     }
 
-    /// The frames, read again until two reads in a row agree, so a drag's last glide is over.
-    func settled(_ rows: () -> [XCUIElement]) -> [String: CGRect] {
+    /// The frames once two reads `gap` seconds apart agree, so a drag's last glide is over. Nil when they still differ after 25 tries.
+    func stillFrames(_ rows: () -> [XCUIElement], gap: TimeInterval = 0.2) -> [String: CGRect]? {
         var last = frames(rows)
         for _ in 0..<25 {
-            Thread.sleep(forTimeInterval: 0.2)
+            Thread.sleep(forTimeInterval: gap)
             let now = frames(rows)
             if now == last { return now }
             last = now
         }
-        return last
+        return nil
     }
+
+    /// The frames, read again until two reads in a row agree. When they never do, the latest read.
+    func settled(_ rows: () -> [XCUIElement]) -> [String: CGRect] { stillFrames(rows) ?? frames(rows) }
 
     /// One drag up the right page, from 80 % to 15 % of the window's height. It starts above the bar (which starts at 89 %),
     /// and it holds before it lifts, so it has no fling (as reveal(_:whole:) does).
@@ -270,13 +273,17 @@ final class DuoShellUITests: XCTestCase {
     static let minDrag: CGFloat = 40
     /// How far in from the band's top edge a control's centre must lie, so a centre on the edge does not count.
     static let bandMargin: CGFloat = 8
+    /// The gap between the two reads that prove the controls are still. iOS drops a tap that lands on a list that is still moving.
+    static let stillGap: TimeInterval = 0.3
 
     /// Pose: flat (open Duo, window 951 x 669 pt), system keys up. The tab keeps room for the custom bar, and that room must not
     /// take taps. With the keys up it lies in the 76 pt just above them, over the rows. The test opens Tally and its Lightning Bolt
     /// row, focuses the search field, and scrolls one unchecked copy's check-in control (a 45 pt square at the left page's edge,
     /// clear of the fold) until its centre lies in that band and it ends above the keys. The control must be hittable, and a tap on
-    /// it must check the copy in. Red on a238f64: the room is an inset view that sits over the band, so the control is not
-    /// hittable and the tap is dropped. The tap goes to a window coordinate, as element.tap() may scroll a covered element clear first.
+    /// it must check the copy in. Red where the room takes a tap in that band (on main the tap is dropped). The tap goes to a window
+    /// coordinate, as element.tap() may scroll a covered element clear first. The tap lands only on a still control: after each
+    /// drag the test waits until the controls' frames agree across two reads stillGap apart, and just before the tap it reads the
+    /// control's frame twice, stillGap apart, and fails when they differ or the control has left the band.
     func testFlatTapAboveKeysLands() {
         let app = launch()
         guard app.requirePose(.flat) else { return }
@@ -322,7 +329,10 @@ final class DuoShellUITests: XCTestCase {
                 XCTFail("the keys went down before a control reached the band: a drag dismissed them")
                 return
             }
-            _ = settled { controls() + [keys] }
+            guard stillFrames({ controls() + [keys] }, gap: Self.stillGap) != nil else {
+                XCTFail("the check-in controls or the keys were still moving after pass \(drag), so a tap cannot be tried on a still control (see the INSET-DIAG lines)")
+                return
+            }
             k = keys.frame
             guard k.height > 100, k.minY >= win.minY, k.maxY <= win.maxY + Self.tolerance else {
                 XCTFail("the keyboard frame \(k) is not the keys up on the window \(win)")
@@ -350,15 +360,24 @@ final class DuoShellUITests: XCTestCase {
             return
         }
 
+        // Read the control's frame twice, stillGap apart. The second read is the one the tap aims at.
         let control = element(app, id)
+        let before = control.frame
+        Thread.sleep(forTimeInterval: Self.stillGap)
         let f = control.frame
         let hittable = control.isHittable
         print("INSET-DIAG window=\(win) keys=\(k) band=y\(k.minY - Self.barHeight)...\(k.minY) control=\(id) frame=\(f) hit=(\(f.midX), \(f.midY)) hittable=\(hittable)")
+        print("INSET-DIAG pre-tap control=\(id) read1=\(before) read2=\(f) gap=\(Self.stillGap)s still=\(before == f) inBand=\(inKeysBand(f, keys: k))")
         keepShot(app, "flat-tap-above-keys")
+        guard before == f, inKeysBand(f, keys: k) else {
+            XCTFail("the check-in control \(id) moved or left the band just before the tap (read 1 \(before), read 2 \(f), band y\(Int(k.minY - Self.barHeight))...\(Int(k.minY))), so the tap cannot be tried on a still control")
+            return
+        }
         XCTAssertTrue(hittable, "the check-in control \(id), frame \(f), is not hittable. Its centre lies \(Int(k.minY - f.midY)) pt above the keys' top (y \(Int(k.minY))), inside the \(Int(Self.barHeight)) pt band the bar's room takes, so a view lies over it")
 
         app.window.coordinate(withNormalizedOffset: CGVector(dx: (f.midX - win.minX) / win.width, dy: (f.midY - win.minY) / win.height)).tap()
         for _ in 0..<25 where !control.label.hasPrefix("Undo check in") { Thread.sleep(forTimeInterval: 0.2) }
+        print("INSET-DIAG post-tap control=\(id) frame=\(control.frame) label=\(control.label) hittable=\(control.isHittable) keys=\(keys.exists ? "\(keys.frame)" : "down")")
         XCTAssertTrue(control.label.hasPrefix("Undo check in"),
                       "a tap at (\(Int(f.midX)), \(Int(f.midY))) on \(id), \(Int(k.minY - f.midY)) pt above the keys, was dropped: the control still reads \"\(control.label)\"")
     }
