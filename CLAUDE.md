@@ -463,6 +463,7 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-tally-ellipsis-unpinned` — Nothing pins the native Tally ellipsis.
 - `native-discard-panel-covers-head` — The native armed Discard panel covers the envelope header.
 - `native-axl-rows-break` — Three native rows break at accessibility text sizes.
+- `sim-test-diagnose-and-pin` — sim-test runs simctl diagnose and can pick the Duo.
 
 ## Measurements
 
