@@ -417,8 +417,6 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-masthead-axl-clips` — The native masthead wraps and clips at accessibility text sizes.
 - `native-stamp-load-unmeasured` — The native Packages load with stamps is unmeasured.
 - `native-armed-audit-misses-ask` — The native armed stamp audit cannot see the ask.
-- `hand-stamp-leaves-tally-stale` — A stamp from Card in Hand leaves Tally stale.
-- `hand-reads-stamped-filter-rows` — Card in Hand reads the stamped filter's rows.
 - `debt-notes` — One-line findings not likely in normal work.
 - `native-card-gestures-unpinned` — No UI test pins the native card header gestures.
 - `native-card-state-in-swift` — The native card copies the line and package done rules in Swift.
