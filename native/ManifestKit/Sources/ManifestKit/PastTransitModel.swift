@@ -11,6 +11,12 @@ public struct PastTransitRow: Equatable, Sendable {
     public let stamp: String?
 }
 
+/// One stamp kind on the page: the ledger's key and the label the web shows.
+public struct StampKind: Equatable, Sendable {
+    public let kind: String
+    public let label: String
+}
+
 /// Past-transit page state (duo-transit-model). The list is the bundle's pastTransit rule
 /// (rules-run-in-javascriptcore); this model passes it the ledger and the clock, and stamps through
 /// the store (one-stamp-per-package). It takes any kind; the page limits the choice to the web's six.
@@ -24,6 +30,17 @@ public final class PastTransitModel {
     /// Bumped by each refresh, so a refresh that a newer one overtook drops its result.
     @ObservationIgnored private var epoch = 0
     public private(set) var rows: [PastTransitRow] = []
+
+    /// The six kinds the page offers, read from the web's STAMP_KINDS in the rules bundle (one home). No Lost kind
+    /// (duo-card-in-hand, item 25, deferred). `stamp(_:kind:)` takes any kind; the limit is this list.
+    public static let stampKinds: [StampKind] = {
+        guard let url = Bundle.module.url(forResource: "rules", withExtension: "js"),
+              let json = try? RulesCore(bundleURL: url).constant("STAMP_KINDS"),
+              let pairs = try? JSONDecoder().decode([[String]].self, from: Data(json.utf8)) else {
+            preconditionFailure("rules.js carries no STAMP_KINDS")
+        }
+        return pairs.map { StampKind(kind: $0[0], label: $0[1]) }
+    }()
 
     private struct Hit: Decodable { let gk: String; let tier: String; let days: Int; let claimBy: String }
 

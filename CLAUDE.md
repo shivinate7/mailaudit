@@ -463,7 +463,6 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `duo-fold-change-unpinned` — No test folds the Duo while the app runs.
 - `duo-tab-items-twice` — The Duo tab bar repeats the tab titles in RootView.
 - `duo-bar-dynamic-type-clips` — The Duo tab bar may clip at large text sizes.
-- `hand-type-not-serialised` — Card in Hand does not serialise typed names.
 
 ## Measurements
 

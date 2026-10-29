@@ -2,7 +2,7 @@
 
 A stamp shows as a band under the package header. Once a stamp exists, the band itself opens the editor.
 
-**Holds while:** `STAMP_KINDS` in `src/app.jsx` lists six kinds, and `Other` comes last.
+**Holds while:** `STAMP_KINDS` in `src/view-rules.mjs` lists six kinds, and `Other` comes last.
 
 The band is a rotated chip, built like the RECEIVED stamp. It is manila, not green. It carries the note in Cochin italic. It stays visible while the package is collapsed.
 

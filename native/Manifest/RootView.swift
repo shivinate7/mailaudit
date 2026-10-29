@@ -14,6 +14,7 @@ struct RootView: View {
     let onLedgerChange: () async -> Void
     let failure: String?
     let notice: String?
+    let handKit: HandKit?
     let width: CGFloat?
 
     private enum Tab { case ledger, orphaned, tally, packages }
@@ -51,7 +52,7 @@ struct RootView: View {
             .tabItem { Label("Tally", systemImage: "number") }
             .tag(Tab.tally)
             Group {
-                if let model, let masthead { PackagesView(model: model, masthead: masthead, sync: sync, openSync: showSync, notice: notice) } else { Placeholder(title: failure ?? "Opening the ledger") }
+                if let model, let masthead { PackagesTab(model: model, masthead: masthead, sync: sync, openSync: showSync, notice: notice, kit: handKit) } else { Placeholder(title: failure ?? "Opening the ledger") }
             }
             .parchmentPaper()
             .tabItem { Label("Packages", systemImage: "shippingbox") }

@@ -4,7 +4,7 @@ Kind: build
 
 Plan: docs/design/duo-blind/README.md#pick (native)
 
-**Status:** ruled on 2026-10-27 at 12:25 CDT. Round 2 answers came on 2026-10-27 at 14:26 CDT, on the waiting page. Defaults and deferrals came at 15:34 CDT. Item 22 is provisional. Item 25 (the Lost stamp) is deferred. Item 27 (held Suspense cards) is default, not owner. The Duo shell (the tab bar under the right page) is built; Card in Hand and the spread tabs are not. The round 2 design is PR 144, the Duo round 2 design pull request.
+**Status:** ruled on 2026-10-27 at 12:25 CDT. Round 2 answers came on 2026-10-27 at 14:26 CDT, on the waiting page. Defaults and deferrals came at 15:34 CDT. Item 22 is provisional. Item 25 (the Lost stamp) is deferred. Item 27 (held Suspense cards) is default, not owner. The Duo shell (the tab bar under the right page) and Card in Hand with its past-transit page are built; the spread tabs are not. The round 2 design is PR 144, the Duo round 2 design pull request.
 
 On the iPhone Duo, Card in Hand checks cards in by name. The concept comes from PR 139, the Duo blind-design pull request. The card you hold is the search, and the envelope is the answer. Two parts come from other concepts in the same PR: the past-transit page from the Sorting Frame, and the Suspense line from the Account Book.
 
@@ -55,6 +55,10 @@ Two pages show only when the hinge reports a fold inside the window. Otherwise t
 A typed query matches as the web search does: a case-insensitive part of the card name, set, seller or order id, through the web's one matcher. Default, not owner.
 
 Packages does not spread on the open Duo. It keeps the web's one-page layout. Default, not owner.
+
+Card in Hand opens from a `hand-open` control at the top of Packages, on two pages side by side only, and covers both pages. The mockup makes it the Packages tab itself. Default, not owner. The owner is being asked.
+
+A unique name shows its envelope with a check-in tap on each line. Post shows only when a held card came with the typed one, and it never runs by itself. Default, not owner.
 
 **Holds while:** the owner's pick of Card in Hand stands. Item 22 holds until the owner reviews the test build.
 

@@ -196,6 +196,15 @@ public final class LedgerStore {
         do { try save() } catch { doc = oldDoc; generation = oldGen; throw error }
         onLocalSave?()
     }
+
+    /// The save path of a model that shows its failure (OrphanedModel, HandModel): one home for the "Could not save." line.
+    /// A good save clears `failure`; a bad one sets it and rethrows.
+    func commit(noting failure: inout String?, _ edits: () -> Void) throws {
+        do { try commit(edits); failure = nil } catch {
+            failure = "Could not save. \(error.localizedDescription)"
+            throw error
+        }
+    }
 }
 
 public enum LedgerEditError: Error, Equatable { case noLiveEnvelope(String) }

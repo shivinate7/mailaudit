@@ -5,7 +5,7 @@ import {
   parseItems, lostMail, normName, isUntracked, gkOf, groupPackages, rankCandidates,
   dateRange, inRange, dropCanceled, dropGks, canceledPackagesOf, stampedPackagesOf,
   tallyGroups, sortTally, sortPackages, filterPackages, filterTally,
-  totalsOf, outstandingOf, packagePill, itemDetail, tcgplayerOrderUrl, gotQty as gotQtyText, countLine, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger, money, compact,
+  totalsOf, outstandingOf, packagePill, itemDetail, tcgplayerOrderUrl, gotQty as gotQtyText, countLine, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger, money, compact, STAMP_KINDS,
 } from "./view-rules.mjs";
 import { photoPlan } from "./photo-rules.mjs";
 import { shouldSnapshot } from "./version-rules.mjs";
@@ -172,23 +172,14 @@ async function dataUrlToBlob(url) {
 /* ---------- order stamps ----------
    One stamp per package — a status the user sets by hand ("claim filed",
    "refunded"), dated the day it was set, with an optional free line. The
-   vocabulary is fixed and module-level for the same reason RANGES and
-   PKG_SORTS are: the chips in the editor and the band on the card read one
-   table, so they cannot drift.
+   vocabulary is fixed (STAMP_KINDS in view-rules.mjs, so the native
+   client reads it too) for the same reason RANGES and PKG_SORTS are: the
+   chips in the editor and the band on the card read one table, so they
+   cannot drift.
    A removed stamp is a TOMBSTONE — `kind: ""` with a fresh `updatedAt` —
    rather than a deleted key, so the removal itself survives the two-device
    merge (see mergeStamps in merge-rules.mjs). Every reader goes through
    hasStamp, never key presence. */
-const STAMP_KINDS = [
-  ["claim", "Claim filed"],
-  ["refunded", "Refunded"],
-  ["contacted", "Seller contacted"],
-  ["reshipped", "Reshipped"],
-  ["partial", "Partial refund"],
-  /* the escape hatch for anything the fixed five don't name — the note field
-     carries the detail, this just keeps the order out of "nothing's wrong" */
-  ["other", "Other"],
-];
 const STAMP_LABEL = Object.fromEntries(STAMP_KINDS);
 const hasStamp = (s) => !!(s && s.kind);
 /* both refund kinds take the package out of the ledger's counts, exactly as a
