@@ -216,9 +216,10 @@ struct StampSection: View {
                   prompt: Text("Anything else \u{2014} what they said, when\u{2026}").foregroundStyle(paint(.notePlaceholder)),
                   axis: .vertical)
             .lineLimit(2...6)
-            // 16pt or more stops iOS zoom on focus. 20pt, because two lines of the field are 2 x 1.15 x size tall and its own
-            // frame (not the box around it) is the hit region: 16pt measured 36.7pt, and 20pt reaches 44pt with margin.
-            .font(.cochin(20, relativeTo: .body)).foregroundStyle(paint(.noteText))
+            .font(.cochin(16, relativeTo: .body)).foregroundStyle(paint(.noteText))  // 16pt or more stops iOS zoom on focus
+            // The field's own frame, not the box around it, is the hit region. Two lines at 16pt measured 36.7pt, and the
+            // gap between them adds 8pt, so the two reserved lines reach 44pt.
+            .lineSpacing(8)
             .textFieldStyle(.plain).focused($focused).submitLabel(.done).onSubmit { focused = false }
             .onChange(of: note) { _, n in
                 if n.contains("\n") {
@@ -226,7 +227,8 @@ struct StampSection: View {
                     focused = false
                 }
             }
-            .padding(.horizontal, 12).padding(.vertical, 4)
+            .padding(.horizontal, 12)
+            .frame(minHeight: 44)
             .background(paint(.noteFill), in: RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.noteBorder), lineWidth: 1))
             .accessibilityLabel("Stamp note")
