@@ -9,16 +9,19 @@
 //   @MainActor @Observable public final class HandModel {
 //       public init(engine: RulesEngine, store: LedgerStore)
 //       public private(set) var held: String?       // normName of a card held as a stray; nil when none
-//       public private(set) var strays: [String]    // normNames released by newEnvelope; shown, never checked in, never decide
+//       public private(set) var strays: [String]    // normNames released by newEnvelope; shown, never checked in, never decide;
+//                                                   // a name leaves when a post checks it in
 //       public private(set) var hits: [String]      // gk of each package holding the typed name, handHits order
 //       public private(set) var offer: HandOffer?   // set only when the typed card names one open envelope
 //       public private(set) var error: String?      // set when a post cannot save; the next save that works clears it
-//       public func type(_ name: String) async throws  // runs handHits and handStep; writes nothing
+//       public func type(_ name: String) async throws  // runs handHits and handStep; writes nothing; calls in flight
+//                                                      // together apply in call order (testOverlappingTypesReadEachOthersHeld)
 //       public func post() async throws                 // writes offer.plan in one save, then clears offer and held
 //       public func newEnvelope()                       // ends the current envelope: held moves to strays, offer clears; writes nothing
 //       public func close()                             // the sheet closes: clears offer, keeps held and strays; writes nothing
 //   }
-//   public struct HandOffer: Equatable, Sendable { public let gk: String; public let plan: [PlanStep] }
+//   public struct HandOffer: Equatable, Sendable { gk: String; plan: [PlanStep]; heldCopies: Int }
+//                                                   // heldCopies: how many of the plan's copies are the held card's
 //   PlanStep is the one in Orphaned.swift: itemKey and take.
 //
 // Behaviour the contract does not show:
@@ -29,10 +32,25 @@
 //     sets error, and throws.
 //   - One post is one save: one LedgerStore onLocalSave call, the store's own hook for a saved write.
 //   - Typed text is the query for hits and the typed name for handStep. Blank text is not pinned here.
+//   - Two type() calls in flight together end as if they ran one after the other: the later call reads the held name
+//     the earlier one left, and a slow earlier call never overwrites a later call's hits, offer or held. The calls queue
+//     in call order. A fix that drops the earlier reply instead (the epoch PastTransitModel keeps) fails
+//     testOverlappingTypesReadEachOthersHeld on purpose: the dropped hold loses the held card.
+//   - A type() still in flight when a post runs never brings back a held name the post checked in. Two fixes both pass:
+//     post() waits for the type() ahead of it, or a type reply that a write has outdated is dropped. NOT pinned, as no
+//     record rules on it: which of the two, and what a refused type() reports.
+//   - A write that lands while a type() reads (a sync apply, a line tap) outdates the reply, but the typed card keeps its
+//     hold: once it settles, the card's reply applies against the new generation, so the next post is not stale
+//     (testWriteDuringATypeKeepsTheTypedHold*).
+//   - New envelope ends every type() called before it, a call reading when it lands and a call queued behind one alike:
+//     each drops its reply, and hits is empty (testNewEnvelopeDuringATypeDropsItsReply, testTypeQueuedBeforeNewEnvelopeNeverReachesTheNewOne).
+//   - offer.heldCopies is the plan's copies beyond the typed card's own, and 0 when the hold stays or one copy is out
+//     (the four testOfferHeldCopies* cases).
 //
 // Fake fixtures only. These tests read no Keychain item. Temp files live in PhotoTestKit's run folder.
 
 import Foundation
+import JavaScriptCore
 import XCTest
 @testable import ManifestKit
 
@@ -41,6 +59,7 @@ import XCTest
 struct HandFixture {
     let model: HandModel
     let store: LedgerStore
+    let engine: RulesEngine
     let file: URL
     let dir: URL
 }
@@ -48,6 +67,39 @@ struct HandFixture {
 /// Counts the store's saved writes, through its onLocalSave hook.
 final class HandSaveCounter {
     var n = 0
+}
+
+/// Holds a rules call inside its handStep until the test lets go. The gated bundle calls `__gate()` there, and the call
+/// blocks in it on the engine's thread, with no clock to race. It is a latch: once opened it stays open, so a read that
+/// runs again passes straight through. The wait is capped at 10 s, so a gate nobody opens cannot block an engine thread for good.
+final class HandStepGate: @unchecked Sendable {
+    private let cond = NSCondition()
+    private var isEntered = false
+    private var isOpen = false
+
+    /// True once a call is blocked in the gate. A poll reads it on the main actor and never waits on it there: a call
+    /// hops back to the main actor between its engine calls.
+    var entered: Bool { cond.lock(); defer { cond.unlock() }; return isEntered }
+
+    /// Runs on the engine's thread, inside the JS call.
+    func hold() {
+        cond.lock()
+        defer { cond.unlock() }
+        isEntered = true
+        let deadline = Date(timeIntervalSinceNow: 10)
+        while !isOpen && cond.wait(until: deadline) {}
+    }
+
+    func open() {
+        cond.lock()
+        isOpen = true
+        cond.broadcast()
+        cond.unlock()
+    }
+
+    /// The JS function `__gate`. It is built here, off the main actor: a block made inside a @MainActor test is main-actor
+    /// isolated and traps when JavaScriptCore calls it from the engine's thread.
+    var jsFunction: @convention(block) () -> Void { { [self] in hold() } }
 }
 
 @MainActor
@@ -80,20 +132,70 @@ final class HandModelTests: XCTestCase {
         ]
     }
 
-    static func seed() throws -> Data {
-        try JSONSerialization.data(withJSONObject: ["mailday": 1, "items": items()], options: [.sortedKeys])
+    /// `extra` adds lines to the shared fixture, for a case that needs more than it holds.
+    static func seed(extra: [[String: Any]] = []) throws -> Data {
+        try JSONSerialization.data(withJSONObject: ["mailday": 1, "items": items() + extra], options: [.sortedKeys])
+    }
+
+    static let stone = "S1|3|pMind Stone"
+    static let stoneS2 = "S2|1|pMind Stone"
+
+    /// Mind Stone in S1 and S2: a second name that two open envelopes share. `s1Qty` is how many copies S1 owes.
+    static func mindStones(s1Qty: Int = 1) -> [[String: Any]] {
+        var s1 = item("S1", "Alpha Cards", 3, "Mind Stone", date: "2026-07-01")
+        s1["qty"] = s1Qty
+        return [s1, item("S2", "Beta Games", 1, "Mind Stone", date: "2026-07-02")]
     }
 
     /// A ledger folder in this run's folder, loaded, with a model over it. The folder is removed at teardown.
-    func makeHand() async throws -> HandFixture {
+    func makeHand(extra: [[String: Any]] = [], bundle: URL = RulesGoldenTests.bundleURL) async throws -> HandFixture {
         let dir = try PhotoTestKit.tempDir("hand")
         addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
         let file = dir.appending(path: "ledger.json")
-        try Self.seed().write(to: file)
+        try Self.seed(extra: extra).write(to: file)
         let store = LedgerStore(fileURL: file, now: { Self.t0 })
         try store.load()
-        let model = HandModel(engine: try RulesEngine(bundleURL: RulesGoldenTests.bundleURL), store: store)
-        return HandFixture(model: model, store: store, file: file, dir: dir)
+        let engine = try RulesEngine(bundleURL: bundle)
+        let model = HandModel(engine: engine, store: store)
+        return HandFixture(model: model, store: store, engine: engine, file: file, dir: dir)
+    }
+
+    /// The real rules bundle with one change: handStep calls the global `__gate()` when `name` is typed (by default only when a
+    /// name is already held too). The call blocks there, inside its last engine call, until a test opens the gate.
+    func gatedHandStepBundle(typing name: String, needsHeld: Bool) throws -> URL {
+        let dir = try PhotoTestKit.tempDir("hand-bundle")
+        addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
+        let gated = """
+
+        Rules.handStep=(function(o){return function(){if(\(needsHeld ? "arguments[3]!==null&&" : "")arguments[4]==="\(name)"){__gate()}return o.apply(null,arguments)}})(Rules.handStep);
+        """
+        let url = dir.appending(path: "rules-gated.js")
+        try (try String(contentsOf: RulesGoldenTests.bundleURL, encoding: .utf8) + gated).write(to: url, atomically: true, encoding: .utf8)
+        return url
+    }
+
+    /// A hand whose handStep blocks on the returned gate when `name` is typed. A case starts the call, waits for it to enter the gate
+    /// (`waitForGate`), acts while the call is held there, then opens the gate. The gate also opens at teardown, so a failed case
+    /// leaves no engine thread blocked.
+    /// RulesEngine keeps its JSContext private and has no hook for a test. Mirror reaches it with no product code, and a renamed
+    /// field fails here with the message below, never as a pass.
+    func makeGatedHand(typing name: String = "Lightning Bolt", needsHeld: Bool = true) async throws -> (hand: HandFixture, gate: HandStepGate) {
+        let h = try await makeHand(bundle: try gatedHandStepBundle(typing: name, needsHeld: needsHeld))
+        let gate = HandStepGate()
+        addTeardownBlock { gate.open() }
+        let core = try XCTUnwrap(Mirror(reflecting: h.engine).children.first { $0.label == "core" }?.value as? RulesCore,
+                                 "RulesEngine no longer keeps its RulesCore in a field named core")
+        let context = try XCTUnwrap(Mirror(reflecting: core).children.first { $0.label == "context" }?.value as? JSContext,
+                                    "RulesCore no longer keeps its JSContext in a field named context")
+        context.setObject(unsafeBitCast(gate.jsFunction, to: AnyObject.self), forKeyedSubscript: "__gate" as NSString)
+        return (h, gate)
+    }
+
+    /// Waits until a call is blocked in the gate. That proves the setup the cases name: the call has read the ledger generation, the
+    /// held name and the received map, and sits in its last engine call. It polls (`eventually`, 3 s) and never blocks the main actor.
+    func waitForGate(_ gate: HandStepGate) async throws {
+        try await eventually { gate.entered }
+        XCTAssertTrue(gate.entered, "the setup is real: the call entered its handStep and is held there")
     }
 
     /// The `received` counts the file holds now. An absent field reads as empty.
@@ -280,5 +382,216 @@ final class HandModelTests: XCTestCase {
         let offer = try XCTUnwrap(h.model.offer, "the next card still decides the held name")
         XCTAssertEqual(offer.plan, [PlanStep(itemKey: Self.bolt, take: 1), PlanStep(itemKey: Self.path, take: 1)],
                        "the held copy comes back with the decision")
+    }
+
+    // MARK: strays, and typed names in call order (new-envelope-ends-an-envelope; the order is pinned by the two overlapping-type cases below)
+
+    /// A name New envelope released is a stray. When it is held again and a post checks it in, the ledger shows it
+    /// received, so it leaves the strays. A stray no post named stays: Mind Stone is the second stray, so a post that
+    /// cleared every stray fails here. Checked after the post only, as no record says when a retyped stray leaves.
+    func testPostedNameLeavesStrays() async throws {
+        let h = try await makeHand(extra: Self.mindStones())
+        for name in ["Lightning Bolt", "Mind Stone"] {
+            try await h.model.type(name)
+            h.model.newEnvelope()
+        }
+        XCTAssertEqual(h.model.strays, ["lightning bolt", "mind stone"], "the setup is real: both names were released as strays")
+        try await h.model.type("Lightning Bolt")
+        XCTAssertEqual(h.model.held, "lightning bolt", "the retyped stray is held again")
+        try await h.model.type("Path to Exile")
+        let offer = try XCTUnwrap(h.model.offer, "the setup is real: the next card names S1, so a post is offered")
+        XCTAssertEqual(offer.plan, [PlanStep(itemKey: Self.bolt, take: 1), PlanStep(itemKey: Self.path, take: 1)],
+                       "the setup is real: the offer takes the retyped copy as well")
+        try await h.model.post()
+        XCTAssertEqual(h.store.received(), [Self.bolt: 1, Self.path: 1], "the post checked the retyped name in")
+        XCTAssertEqual(h.model.strays, ["mind stone"], "the checked-in name leaves the strays, and the stray no post named stays")
+    }
+
+    /// Two type() calls started together end as if the second ran after the first: it reads the name the first
+    /// held, so its offer takes both copies. Run on its own, the second call would offer its own copy only.
+    func testOverlappingTypesReadEachOthersHeld() async throws {
+        let h = try await makeHand()
+        let first = Task { try await h.model.type("Lightning Bolt") }
+        let second = Task { try await h.model.type("Path to Exile") }
+        try await first.value
+        try await second.value
+        let offer = try XCTUnwrap(h.model.offer, "the second card names one envelope, so it offers a post")
+        XCTAssertEqual(offer.plan, [PlanStep(itemKey: Self.bolt, take: 1), PlanStep(itemKey: Self.path, take: 1)],
+                       "the offer takes the copy the first call held, not the second card alone")
+        XCTAssertEqual(h.model.held, "lightning bolt", "the held name stays held until the post")
+        XCTAssertEqual(h.model.hits, ["S1::Alpha Cards"], "the hits are the second card's")
+    }
+
+    /// A slow earlier call never overwrites a later call's hits, offer or held. A refunded stamp makes the rules input
+    /// need one more engine call (LiveItems.of runs groupPackages), so the call that starts while the stamp stands has
+    /// more to wait for than the call that starts after it is gone. The stamp names no real package. The two cards are
+    /// unrelated, so held plays no part: only the order of the replies decides the end state.
+    /// The later call runs inline, so it starts before the slow call can take its next step.
+    func testSlowEarlierTypeNeverOverwritesLaterOne() async throws {
+        let h = try await makeHand()
+        h.store.setStamp("Z9::Nobody", kind: "refunded", note: "", at: "2026-07-01")
+        let slow = Task { try await h.model.type("Sol Ring") }
+        await Task.yield()  // the slow call starts and reads the stamp
+        h.store.removeStamp("Z9::Nobody")
+        try await h.model.type("Counterspell")
+        try await slow.value
+        let offer = try XCTUnwrap(h.model.offer, "the later card names one envelope, so it offers a post")
+        XCTAssertEqual(offer.gk, "S1::Alpha Cards", "the offer is the later call's, not the slow call's Sol Ring")
+        XCTAssertEqual(offer.plan, [PlanStep(itemKey: Self.counter, take: 1)], "the offer takes the later card alone")
+        XCTAssertEqual(h.model.hits, ["S1::Alpha Cards"], "the hits are the later call's")
+        XCTAssertNil(h.model.held, "the later call holds nothing")
+    }
+
+    /// A type() still in flight when a post runs never brings back the held name that post checked in. The in-flight
+    /// call read the held name and the received map before the post, so its reply, applied after the post, holds a
+    /// name the ledger already counts. The gated
+    /// bundle holds that call inside its last engine call while the post runs. Either order is allowed:
+    /// the post first, or the type first and the post then finding no offer. Nothing is left half posted.
+    func testTypeInFlightNeverRevivesWhatAPostCheckedIn() async throws {
+        let (h, gate) = try await makeGatedHand()
+        try await h.model.type("Lightning Bolt")
+        try await h.model.type("Path to Exile")
+        XCTAssertEqual(try XCTUnwrap(h.model.offer, "the setup is real: a post is pending").plan,
+                       [PlanStep(itemKey: Self.bolt, take: 1), PlanStep(itemKey: Self.path, take: 1)])
+        let inFlight = Task { try await h.model.type("Lightning Bolt") }
+        try await waitForGate(gate)
+        try await h.model.post()
+        gate.open()
+        do { try await inFlight.value } catch {}  // a fix may refuse the outdated reply
+        let got = h.store.received()
+        XCTAssertTrue(got.isEmpty || got == [Self.bolt: 1, Self.path: 1], "the post left the ledger half posted: \(got)")
+        XCTAssertFalse(got[Self.bolt] == 1 && h.model.held == "lightning bolt",
+                       "the held name came back after a post checked its copy in")
+    }
+
+    // MARK: a write or New envelope landing while a type() reads
+
+    /// Polls up to 3 s for `cond`, so a reply that settles after type() returned is still caught. It asserts nothing.
+    func eventually(_ cond: @escaping @MainActor () -> Bool) async throws {
+        for _ in 0..<60 {
+            if cond() { return }
+            try await Task.sleep(for: .milliseconds(50))
+        }
+    }
+
+    /// The first card is typed while `write` lands in the store, with the call held inside its handStep. The write moves the
+    /// generation, so the call's reply is outdated. The card must still end held, and its reply must be the one that
+    /// stands: the next card offers both copies and its post is not stale. A fix that drops the reply and keeps nothing
+    /// loses the hold, so the next card offers its own copy alone.
+    func holdSurvivesAWrite(_ write: (HandFixture) throws -> Void) async throws {
+        let (h, gate) = try await makeGatedHand(needsHeld: false)
+        let inFlight = Task { try await h.model.type("Lightning Bolt") }
+        try await waitForGate(gate)
+        XCTAssertNil(h.model.held, "the setup is real: the call is still reading when the write lands")
+        let gen = h.store.generation
+        try write(h)
+        XCTAssertGreaterThan(h.store.generation, gen, "the setup is real: the write moved the generation under the call")
+        gate.open()
+        _ = try? await inFlight.value  // a fix may settle the call later or refuse the first reply; the end state decides
+        try await eventually { h.model.held == "lightning bolt" }
+        XCTAssertEqual(h.model.held, "lightning bolt", "the typed card keeps its hold across a write that landed while it was read")
+        XCTAssertEqual(h.model.hits, ["S2::Beta Games", "S1::Alpha Cards"], "the typed card's hits are shown")
+        try await h.model.type("Path to Exile")
+        XCTAssertEqual(h.model.offer?.plan, [PlanStep(itemKey: Self.bolt, take: 1), PlanStep(itemKey: Self.path, take: 1)],
+                       "the next card offers the held copy as well: the hold was not lost")
+        do { try await h.model.post() } catch { XCTFail("the settled reply applies against the new generation, so the post is not stale: \(error)") }
+        XCTAssertEqual(h.store.received()[Self.bolt], 1, "the post checked the held copy in")
+        XCTAssertEqual(h.store.received()[Self.path], 1, "the post checked the typed copy in")
+    }
+
+    /// A sync apply lands while the card is read.
+    func testWriteDuringATypeKeepsTheTypedHoldAfterASyncApply() async throws {
+        try await holdSurvivesAWrite { try $0.store.adopt(try Self.seed()) }
+    }
+
+    /// A line tap lands while the card is read. Sol Ring is in another envelope, so only the generation moves.
+    func testWriteDuringATypeKeepsTheTypedHoldAfterALineTap() async throws {
+        try await holdSurvivesAWrite { try $0.store.commitReceived(Self.sol, count: 1) }
+    }
+
+    /// New envelope lands while a card is read. The reply belongs to the ended envelope, so it is dropped: no offer, no
+    /// held name, no stray. The hits the ended envelope's last card showed are gone too, not left standing. The earlier
+    /// card is asserted real first, so the case cannot pass by never having had hits.
+    func testNewEnvelopeDuringATypeDropsItsReplyAndEmptiesHits() async throws {
+        let (h, gate) = try await makeGatedHand(typing: "Sol Ring", needsHeld: false)
+        try await h.model.type("Counterspell")
+        XCTAssertEqual(h.model.hits, ["S1::Alpha Cards"], "the setup is real: the earlier card left hits standing")
+        let inFlight = Task { try await h.model.type("Sol Ring") }
+        try await waitForGate(gate)
+        h.model.newEnvelope()
+        gate.open()
+        _ = try? await inFlight.value
+        XCTAssertEqual(h.model.hits, [], "the ended envelope's hits are gone, and the dropped reply's are not shown")
+        XCTAssertNil(h.model.offer, "the dropped reply offers nothing")
+        XCTAssertNil(h.model.held, "the dropped reply holds nothing")
+        XCTAssertEqual(h.model.strays, [], "nothing was held, so nothing is released")
+    }
+
+    /// A type() called before New envelope belongs to the envelope that ended, even when it is still queued behind a
+    /// slow call as the envelope ends. Its reply must not reach the new envelope: a late read of the envelope counter
+    /// takes the bumped value as its own and applies. The held first call keeps the second queued while New envelope lands.
+    func testTypeQueuedBeforeNewEnvelopeNeverReachesTheNewOne() async throws {
+        let (h, gate) = try await makeGatedHand(needsHeld: false)
+        let slow = Task { try await h.model.type("Lightning Bolt") }
+        let queued = Task { try await h.model.type("Path to Exile") }
+        try await waitForGate(gate)  // the first call is held in its handStep, the second waits behind it
+        h.model.newEnvelope()
+        gate.open()
+        _ = try? await slow.value
+        _ = try? await queued.value
+        XCTAssertNil(h.model.offer, "the queued card was typed for the ended envelope, so it offers nothing to the new one")
+        XCTAssertEqual(h.model.hits, [], "the queued card's hits are not shown on the new envelope")
+        XCTAssertNil(h.model.held, "nothing is held on the new envelope")
+        XCTAssertEqual(h.model.strays, [], "the dropped replies release nothing")
+        XCTAssertEqual(h.store.received(), [:], "nothing is checked in")
+    }
+
+    // MARK: the held count on an offer (what the post button shows; HandScreen reads offer.heldCopies)
+
+    /// Every case here is a guard on the old code: they pin the count before its source moves out of HandModel into the rules.
+    /// The held card and the typed card post together: one of the two copies is the held card's.
+    func testOfferHeldCopiesCountsTheHeldCardPostedWithTheTyped() async throws {
+        let h = try await makeHand()
+        try await h.model.type("Lightning Bolt")
+        try await h.model.type("Path to Exile")
+        XCTAssertEqual(h.model.offer?.plan, [PlanStep(itemKey: Self.bolt, take: 1), PlanStep(itemKey: Self.path, take: 1)],
+                       "the setup is real: the offer takes both copies")
+        XCTAssertEqual(h.model.offer?.heldCopies, 1, "one of the two copies is the held card's")
+    }
+
+    /// The hold stays when the typed card names another envelope: the offer carries the typed copy alone.
+    func testOfferHeldCopiesIsZeroWhenTheHoldStays() async throws {
+        let h = try await makeHand()
+        try await h.model.type("Lightning Bolt")
+        try await h.model.type("Sol Ring")
+        XCTAssertEqual(h.model.offer?.plan, [PlanStep(itemKey: Self.sol, take: 1)], "the setup is real: the offer takes the typed copy alone")
+        XCTAssertEqual(h.model.held, "lightning bolt", "the hold stays")
+        XCTAssertEqual(h.model.offer?.heldCopies, 0, "no copy of the offer is the held card's")
+    }
+
+    /// The same name twice: S1 owes two Mind Stones and S2 one, so the first card is held. S2's copy is then checked in by
+    /// a line tap, which leaves S1 the only envelope. The held name typed again is two cards, so the offer takes both copies.
+    func testOfferHeldCopiesCountsTheSameNameTypedTwice() async throws {
+        let h = try await makeHand(extra: Self.mindStones(s1Qty: 2))
+        try await h.model.type("Mind Stone")
+        XCTAssertEqual(h.model.held, "mind stone", "the setup is real: two open envelopes share the name, so it is held")
+        try h.store.commitReceived(Self.stoneS2, count: 1)
+        try await h.model.type("Mind Stone")
+        XCTAssertEqual(h.model.offer?.gk, "S1::Alpha Cards", "the name now names one envelope")
+        XCTAssertEqual(h.model.offer?.plan, [PlanStep(itemKey: Self.stone, take: 2)], "both typed cards are copies of the one line")
+        XCTAssertEqual(h.model.offer?.heldCopies, 1, "one of the two copies is the held card's")
+    }
+
+    /// The same set-up with one of S1's two copies already checked in: one copy is left out, so the offer takes one and
+    /// none of it is the held card's. The line's own tap checks that copy in, so the post needs no button.
+    func testOfferHeldCopiesIsZeroWhenOneCopyIsLeftOut() async throws {
+        let h = try await makeHand(extra: Self.mindStones(s1Qty: 2))
+        try await h.model.type("Mind Stone")
+        XCTAssertEqual(h.model.held, "mind stone", "the setup is real: the name is held")
+        try h.store.commitReceived(Self.stoneS2, count: 1)
+        try h.store.commitReceived(Self.stone, count: 1)
+        try await h.model.type("Mind Stone")
+        XCTAssertEqual(h.model.offer?.plan, [PlanStep(itemKey: Self.stone, take: 1)], "the offer is capped at the one copy left out")
+        XCTAssertEqual(h.model.offer?.heldCopies, 0, "the offer carries no held copy")
     }
 }

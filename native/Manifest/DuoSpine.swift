@@ -14,6 +14,33 @@ extension EnvironmentValues {
     @Entry var duoCustomBar = false
 }
 
+extension DuoSpread {
+    /// The two pages when `tab` spreads on pages side by side, else nil and the tab draws its one page.
+    /// Default, not owner: stacked pages (held tall) keep one page. Pose 9 of the mockup draws the side-by-side spread only.
+    func pages(for tab: DuoTab) -> (left: CGRect, right: CGRect)? {
+        guard DuoSpread.spreads(tab: tab), case let .sideBySide(left, right) = self else { return nil }
+        return (left, right)
+    }
+}
+
+/// A tab's two pages with the fold strip between them empty. Each page is as wide as the spread says.
+struct DuoPages<Left: View, Right: View>: View {
+    let pages: (left: CGRect, right: CGRect)
+    @ViewBuilder let left: Left
+    @ViewBuilder let right: Right
+
+    var body: some View {
+        HStack(spacing: 0) {
+            // The bar sits under the right page only, and its inset lives inside each tab (DuoSystemBar), so the left page takes it back.
+            // .container only: the keyboard region stays as SwiftUI sets it.
+            left.frame(width: pages.left.width).ignoresSafeArea(.container, edges: .bottom)
+            Color.clear.frame(width: pages.right.minX - pages.left.maxX)
+            right.frame(width: pages.right.width)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
 /// The view's size and the fold regions that cross it, in its own space.
 struct DuoFold: Equatable {
     var size = CGSize.zero
@@ -46,8 +73,9 @@ private struct DuoSystemBar: ViewModifier {
 
     func body(content: Content) -> some View {
         content.toolbarVisibility(custom ? .hidden : .automatic, for: .tabBar).duoHorizontalBars()
-            // The bar floats over the right page. The inset sits inside the tab, as an outer one never reaches the tab's ScrollView.
-            .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: custom ? DuoBarMetrics.height : 0) }
+            // The bar floats over the right page. The room is a scroll margin, not an inset: an inset shrinks the layout box, and with
+            // the keys up it stacked on the keyboard's own avoidance and dropped taps in the band above them (duo-card-in-hand).
+            .contentMargins(.bottom, custom ? DuoBarMetrics.height : 0, for: .scrollContent)
     }
 }
 
@@ -147,21 +175,34 @@ private struct DuoBar<ID: Hashable>: View {
         HStack(spacing: 4) {
             ForEach(items, id: \.id) { item in
                 let on = item.id == selection
-                Button { selection = item.id } label: {
-                    VStack(spacing: 4) {
-                        Image(systemName: item.symbol).font(.system(size: 20))
-                        Text(item.title).font(.cochin(12, relativeTo: .caption))
+                let tint = on ? Parchment.accent : Parchment.inkSoft
+                // The title is drawn beside the button, not in it: SwiftUI folds a button's text into the button, and the
+                // title needs its own element (duo-tab-title). The button keeps a hidden copy, so its layout is unchanged.
+                ZStack {
+                    Button { selection = item.id } label: {
+                        VStack(spacing: 4) {
+                            // A fixed icon box, so every title shares one baseline (the mockup's 22 pt icon box).
+                            Image(systemName: item.symbol).font(.system(size: 20)).frame(width: 22, height: 22)
+                            Text(item.title).font(.cochin(12, relativeTo: .caption)).hidden()
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .foregroundStyle(tint)
+                        .background(on ? Parchment.card.opacity(0.9) : .clear, in: Capsule())
+                        .overlay(alignment: .top) { badge(item.badge) }
+                        .contentShape(Capsule())
                     }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .foregroundStyle(on ? Parchment.accent : Parchment.inkSoft)
-                    .background(on ? Parchment.card.opacity(0.9) : .clear, in: Capsule())
-                    .overlay(alignment: .top) { badge(item.badge) }
-                    .contentShape(Capsule())
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(item.title)
+                    .accessibilityValue(item.badge > 0 ? "\(item.badge)" : "")
+                    .accessibilityAddTraits(on ? .isSelected : [])
+                    VStack(spacing: 4) {
+                        Color.clear.frame(width: 22, height: 22)
+                        Text(item.title).font(.cochin(12, relativeTo: .caption)).foregroundStyle(tint)
+                            .fixedSize()
+                            .accessibilityIdentifier("duo-tab-title:\(item.title)")
+                    }
+                    .allowsHitTesting(false)
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(item.title)
-                .accessibilityValue(item.badge > 0 ? "\(item.badge)" : "")
-                .accessibilityAddTraits(on ? .isSelected : [])
             }
         }
         .padding(4)

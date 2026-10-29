@@ -11,10 +11,19 @@ struct PackagesView: View {
     let openSync: () -> Void
     /// The damaged-ledger line, in the content below the running-head slot like the advisory.
     let notice: String?
+    /// Set only on two pages side by side: the control that opens Card in Hand (duo-card-in-hand).
+    var openHand: (() -> Void)?
 
     var body: some View {
         MastheadScreen(masthead: masthead, tab: .packages, sync: sync, openSync: openSync) {
             VStack(spacing: 0) {
+                if let openHand {
+                    HStack {
+                        Spacer(minLength: 0)
+                        Button(action: openHand) { MiniLabel(title: "Card in Hand") }.buttonStyle(.plain).accessibilityIdentifier("hand-open")
+                    }
+                    .padding(.horizontal, 16)
+                }
                 if let notice { Text(notice).font(.footnote).padding(8) }
                 LazyVStack(spacing: 8) {
                     ForEach(model.rows, id: \.gk) { pkg in

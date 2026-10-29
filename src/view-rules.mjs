@@ -536,6 +536,18 @@ export function salvageLedger(data) {
   return { data: out, dropped };
 }
 
+/* the order-stamp vocabulary, one home: the web's editor and the native past-transit page both read it */
+export const STAMP_KINDS = [
+  ["claim", "Claim filed"],
+  ["refunded", "Refunded"],
+  ["contacted", "Seller contacted"],
+  ["reshipped", "Reshipped"],
+  ["partial", "Partial refund"],
+  /* the escape hatch for anything the fixed five don't name — the note field
+     carries the detail, this just keeps the order out of "nothing's wrong" */
+  ["other", "Other"],
+];
+
 /* ---------- Card in Hand (duo-hand-rules) ----------
    Pure rules for the Duo's card-name entry. State comes in as arguments; none reads the clock
    except through `now`. They reuse the web's matchers (lineHit, matchEnvelope, lostMail). */

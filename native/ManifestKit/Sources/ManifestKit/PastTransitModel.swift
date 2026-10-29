@@ -11,6 +11,12 @@ public struct PastTransitRow: Equatable, Sendable {
     public let stamp: String?
 }
 
+/// One stamp kind on the page: the ledger's key and the label the web shows.
+public struct StampKind: Equatable, Sendable {
+    public let kind: String
+    public let label: String
+}
+
 /// Past-transit page state (duo-transit-model). The list is the bundle's pastTransit rule
 /// (rules-run-in-javascriptcore); this model passes it the ledger and the clock, and stamps through
 /// the store (one-stamp-per-package). It takes any kind; the page limits the choice to the web's six.
@@ -24,6 +30,16 @@ public final class PastTransitModel {
     /// Bumped by each refresh, so a refresh that a newer one overtook drops its result.
     @ObservationIgnored private var epoch = 0
     public private(set) var rows: [PastTransitRow] = []
+    /// Copies still owed in the listed packages, and their price as the web writes it ("$9.55"), from the bundle's
+    /// outstandingOf and money over the same rows. 0 and "$0.00" while the list is empty; nil when the bundle
+    /// could not compute them (the rows still load).
+    public private(set) var owedCards: Int? = 0
+    public private(set) var owedValue: String? = "$0.00"
+
+    /// The six kinds the page offers, read from the web's STAMP_KINDS in the rules bundle (one home). No Lost kind
+    /// (duo-card-in-hand, item 25, deferred). `stamp(_:kind:)` takes any kind; the limit is this list.
+    /// Empty until the first load() reads them through the engine, so the bundle loads once.
+    public private(set) var stampKinds: [StampKind] = []
 
     private struct Hit: Decodable { let gk: String; let tier: String; let days: Int; let claimBy: String }
 
@@ -35,6 +51,10 @@ public final class PastTransitModel {
     /// The reload: re-reads the ledger and ends the sticky rows, so a stamped row now drops out.
     public func load() async throws {
         sticky = []
+        if stampKinds.isEmpty {
+            let pairs = try JSONDecoder().decode([[String]].self, from: Data(try await engine.constant("STAMP_KINDS").utf8))
+            stampKinds = pairs.map { StampKind(kind: $0[0], label: $0[1]) }
+        }
         try await refresh()
     }
 
@@ -68,8 +88,9 @@ public final class PastTransitModel {
         return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
     }
 
-    /// The items go in whole. A refunded row keeps its place until load() (so LiveItems would be wrong here), and a
-    /// canceled order never passes the rule's "without tracking" test.
+    /// The items go in whole: a refunded row keeps its place until load() (so LiveItems would be wrong here), and
+    /// pastTransit drops canceled orders itself. The owed figures take the listed packages through LiveItems (canceled
+    /// and refunded packages leave the counts at once, a-refund-leaves-every-count) and the bundle's groupPackages (no Swift copy of gkOf). A figure that cannot be computed is nil; the rows still load.
     private func refresh() async throws {
         epoch += 1
         let mine = epoch
@@ -77,7 +98,21 @@ public final class PastTransitModel {
         let hidden = Set(stamps.filter { live($0.value) != nil }.keys).subtracting(sticky)
         let args = "[\(try LiveItems.json(store.items())),\(try LiveItems.json(store.received())),\(try LiveItems.json(["$set": Array(hidden)])),\(store.now())]"
         let hits = try JSONDecoder().decode([Hit].self, from: Data(try await engine.call("pastTransit", args).utf8))
+        let listed = Set(hits.map(\.gk))
+        var cards: Int?
+        var value: String?
+        do {
+            let live = try await LiveItems.of(store.items(), stamps: stamps, engine: engine)
+            let packages = try JSONSerialization.jsonObject(with: Data(try await engine.call("groupPackages", "[\(live)]").utf8)) as? [[String: Any]] ?? []
+            let owedItems = packages.filter { listed.contains($0["gk"] as? String ?? "") }.flatMap { $0["items"] as? [[String: Any]] ?? [] }
+            struct Owed: Decodable { let left: Int; let value: Double }
+            let owed = try JSONDecoder().decode(Owed.self, from: Data(try await engine.call("outstandingOf", "[\(try LiveItems.json(owedItems)),\(try LiveItems.json(store.received()))]").utf8))
+            value = try JSONDecoder().decode(String.self, from: Data(try await engine.call("money", "[\(owed.value)]").utf8))
+            cards = owed.left
+        } catch {}
         guard mine == epoch else { return }
+        owedCards = cards
+        owedValue = value
         rows = hits.map { PastTransitRow(gk: $0.gk, tier: $0.tier, days: $0.days, claimBy: $0.claimBy, stamp: live(stamps[$0.gk])) }
     }
 }
