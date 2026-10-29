@@ -217,9 +217,6 @@ struct StampSection: View {
                   axis: .vertical)
             .lineLimit(2...6)
             .font(.cochin(16, relativeTo: .body)).foregroundStyle(paint(.noteText))  // 16pt or more stops iOS zoom on focus
-            // The field's own frame, not the box around it, is the hit region. Two lines at 16pt measured 36.7pt, and the
-            // gap between them adds 8pt, so the two reserved lines reach 44pt.
-            .lineSpacing(8)
             .textFieldStyle(.plain).focused($focused).submitLabel(.done).onSubmit { focused = false }
             .onChange(of: note) { _, n in
                 if n.contains("\n") {
@@ -227,12 +224,18 @@ struct StampSection: View {
                     focused = false
                 }
             }
+            .accessibilityLabel("Stamp note")
+            .accessibilityIdentifier("stamp-note:\(pkg.gk)")
+            // The field's own frame is only its two lines (36.7pt), so the whole box is the hit region: a tap anywhere in
+            // it focuses the field. The box only contains the field, so VoiceOver still reads one "Stamp note" element.
             .padding(.horizontal, 12)
             .frame(minHeight: 44)
             .background(paint(.noteFill), in: RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.noteBorder), lineWidth: 1))
-            .accessibilityLabel("Stamp note")
-            .accessibilityIdentifier("stamp-note:\(pkg.gk)")
+            .contentShape(Rectangle())
+            .onTapGesture { focused = true }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("stamp-note-box:\(pkg.gk)")
     }
 
     /// Remove stamp (only when stamped) leads, then Cancel and Save. The armed ask hangs below this row, so arming moves
