@@ -303,6 +303,7 @@ What each check asks, and the two traps in the icon pipeline.
 - `records-name-what-dates-them` — Each decision names the fact that would date it.
 - `readme-is-minimal` — The README is minimal, and carries no license.
 - `orchestrator-may-merge` — The batch runner batches and merges green, reviewed PRs.
+- `session-tiers-adopted` — This repo runs the session tiers, with the record branch `roadmap`.
 - `invariants-cited-by-slug` — Invariants are cited by slug, never by number.
 
 ## Testing method
