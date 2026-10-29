@@ -29,8 +29,9 @@
 //             "Undo check in <name>", as checkin: is), hand-tie (the tie of envelopes that hold a held shared name;
 //             present instead of hand-who), hand-post (the Post button; its label starts with "Post"; present exactly
 //             while HandModel.offer is set), hand-past-transit-open (the Open control of the "Past 14 days" box).
-//   Match list hand-matches-heading (the heading over the hand-hit:<name> rows; present while the list shows; above the
-//             "This envelope" row, whose New envelope button is hand-new-envelope).
+//   Match list hand-matches-heading (the heading over the hand-hit:<name> rows; present while the list shows; BELOW the
+//             "This envelope" row, whose New envelope button is hand-new-envelope: the list opens and shrinks as you type, and
+//             the row above it must not move under the pointer, no-layout-shift-under-pointer).
 //   Past transit   past-transit-page (the right page while it shows), past-transit-row:<gk> (one row per late package, a
 //             container whose children are reachable), and inside a row the buttons labelled "Claim filed" and "Refunded".
 //             There is no button labelled "Lost" (item 25, deferred). past-transit-summary (the page's count line; its label
@@ -328,9 +329,10 @@ final class DuoHandUITests: XCTestCase {
         XCTAssertEqual(Int(text[digits]), Self.lateMail.count, "the summary \"\(text)\" counts a different number of envelopes than the page lists")
     }
 
-    /// Pose: flat. The match list (the hand-hit rows) has its own heading, over the list and above the "This envelope" row, so
-    /// the hits do not read as that envelope's. The row is anchored by its New envelope button, which sits in it.
-    func testMatchListHasItsOwnHeadingAboveThisEnvelope() {
+    /// Pose: flat. The match list (the hand-hit rows) has its own heading, over the list and below the "This envelope" row, so
+    /// the hits do not read as that envelope's and the row does not sit under a list that grows and shrinks as you type. The row
+    /// is anchored by its New envelope button, which sits in it.
+    func testMatchListHasItsOwnHeadingBelowThisEnvelope() {
         let app = XCUIApplication.launchedOnSeed()
         guard app.requirePose(.flat) else { return }
         openHand(app)
@@ -340,8 +342,47 @@ final class DuoHandUITests: XCTestCase {
         XCTAssertTrue(hit.waitForExistence(timeout: 5), "typing Path to Exile listed no match (hand-hit:...)")
         let heading = need(app, "hand-matches-heading", "the heading over the match list")
         let envelope = need(app, "hand-new-envelope", "the This envelope row's New envelope button")
-        XCTAssertLessThan(heading.frame.minY, envelope.frame.minY, "the match heading, frame \(heading.frame), is not above the This envelope row, frame \(envelope.frame)")
+        XCTAssertLessThanOrEqual(envelope.frame.maxY, heading.frame.minY + Self.tolerance, "the This envelope row, frame \(envelope.frame), is not above the match heading, frame \(heading.frame)")
         XCTAssertLessThanOrEqual(heading.frame.maxY, hit.frame.minY + Self.tolerance, "the match heading, frame \(heading.frame), is not over its list, whose first row is at \(hit.frame)")
         keepShot(app, "hand-matches-heading")
+    }
+
+    /// Pose: flat. A tap on a match fills the query and the list shrinks, but the New envelope button, which the owner's
+    /// thumb reaches for next, does not move (no-layout-shift-under-pointer). "to" hits Brainstorm (two envelopes), Path to Exile
+    /// and Swords to Plowshares in the seed, so the list has 3 rows. The 2nd, Path to Exile, is only in C1: it holds no name, so no
+    /// Suspense line opens above the button. Typing the whole name leaves 1 match, so the list loses 2 rows. With the list above
+    /// the row, the button moves up by those rows and this fails.
+    func testTappingAMatchDoesNotMoveNewEnvelope() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        typeCard(app, "to")
+
+        let rows = waitForHits(app, count: 3, "typing \"to\" must list Brainstorm, Path to Exile and Swords to Plowshares")
+        XCTAssertEqual(rows.map(\.identifier), ["hand-hit:Brainstorm", "hand-hit:Path to Exile", "hand-hit:Swords to Plowshares"], "the seed's matches for \"to\", top to bottom")
+        let envelope = need(app, "hand-new-envelope", "the New envelope button")
+        let before = envelope.frame
+
+        app.element(rows[1].identifier).tap()  // by id, so the tap is the 2nd row whatever order the query lists them in
+        _ = waitForHits(app, count: 1, "tapping Path to Exile must leave that one match")
+        XCTAssertEqual(app.element("hand-query").value as? String, "Path to Exile", "the tap did not fill the query")
+        XCTAssertFalse(app.element("hand-held").exists, "a Suspense line opened above the button: the 2nd match is a shared name, so the seed no longer makes this test fair")
+        let after = envelope.frame
+        XCTAssertEqual(after.minY, before.minY, accuracy: 0.5, "New envelope moved from \(before) to \(after) when the match list shrank from 3 rows to 1")
+        keepShot(app, "hand-match-tap-holds-new-envelope")
+    }
+
+    /// The hand-hit rows, top to bottom, once exactly `count` show (a short poll: the list settles 150 ms after the last key
+    /// or tap). Fails with `message` when it never does.
+    func waitForHits(_ app: XCUIApplication, count: Int, _ message: String) -> [XCUIElement] {
+        func rows() -> [XCUIElement] {
+            var seen = Set<String>()
+            return app.elements(prefix: "hand-hit:").filter { seen.insert($0.identifier).inserted }.sorted { $0.frame.minY < $1.frame.minY }
+        }
+        let deadline = Date().addingTimeInterval(5)
+        while rows().count != count && Date() < deadline { Thread.sleep(forTimeInterval: 0.1) }
+        let got = rows()
+        XCTAssertEqual(got.count, count, "\(message); the rows are \(got.map(\.identifier))")
+        return got
     }
 }

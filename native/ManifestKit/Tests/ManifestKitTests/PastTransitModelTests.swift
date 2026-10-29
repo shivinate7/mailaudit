@@ -17,6 +17,8 @@
 //   @MainActor @Observable public final class PastTransitModel {
 //       public init(engine: RulesEngine, store: LedgerStore)   // the clock is store.now
 //       public private(set) var rows: [PastTransitRow]         // pastTransit, oldest last
+//       public private(set) var owedCards: Int?                // copies still owed in the listed packages; nil if the bundle fails
+//       public private(set) var owedValue: String?             // their price as the web writes it ("$9.55"); nil if the bundle fails
 //       public func load() async throws                        // the reload: re-reads, ends the sticky rows
 //       public func stamp(_ gk: String, kind: String) async throws   // setStamp, saved
 //       public func undo(_ gk: String) async throws                  // removeStamp: a tombstone, saved
@@ -34,6 +36,9 @@
 //   - Undo with no live stamp writes nothing. A tombstone is not a live stamp.
 //   - A same-kind re-stamp keeps its date. An empty or missing date becomes today, as the web's setStamp does.
 //   - A failed save throws, and the rows and the ledger stay as they were.
+//   - The counts (owedCards, owedValue) are the copies still owed: a partly received package counts only what it
+//     owes, a canceled line never counts, and a refunded or partial-refund package leaves them at once, even
+//     while its sticky row keeps its place (a-refund-leaves-every-count, no-layout-shift-under-pointer).
 //
 // Fake fixtures only. Each ledger file is a fresh temp folder from PhotoTestKit.tempDir.
 
@@ -61,10 +66,11 @@ final class PastTransitModelTests: XCTestCase {
 
     /// One ledger item. The key is the item key the received map uses: order, line, product.
     static func item(
-        _ order: String, _ seller: String, date: String, tracking: String = "without tracking", line: Int = 1
+        _ order: String, _ seller: String, date: String, tracking: String = "without tracking", line: Int = 1,
+        qty: Int = 1, price: Double = 1.0
     ) -> [String: Any] {
         ["key": "\(order)|\(line)|p\(line)", "orderId": order, "seller": seller, "name": "Card \(order)", "set": "Test Set",
-         "condition": "Near Mint", "finish": "", "qty": 1, "price": 1.0, "date": date, "tracking": tracking, "line": "Magic"]
+         "condition": "Near Mint", "finish": "", "qty": qty, "price": price, "date": date, "tracking": tracking, "line": "Magic"]
     }
 
     /// P1 to P4 and P9 are listed. P5 is 13 days old. P6 is tracked. P7 is fully received. P8 holds a live
@@ -267,5 +273,67 @@ final class PastTransitModelTests: XCTestCase {
         await expectSaveFailure("undo") { try await model.undo("P2::Beta Games") }
         XCTAssertEqual(model.rows, rowsBefore, "a failed undo leaves the rows")
         XCTAssertEqual(try Data(contentsOf: file), fileBefore, "a failed undo leaves the ledger")
+    }
+
+    // MARK: owed counts
+
+    /// The five listed packages owe one $1.00 copy each. Every count test starts from this line.
+    func testOwedCountsTheListedCopies() async throws {
+        let (model, _, _) = try await makeModel(clock: Clock(Self.start))
+        XCTAssertEqual(model.owedCards, 5, "five listed packages owe one copy each")
+        XCTAssertEqual(model.owedValue, "$5.00")
+    }
+
+    /// A partly received package counts only the copies it still owes. X3 line 1 orders 3 at $2.50 and has 1 in,
+    /// so it owes 2 ($5.00). Line 2 orders 2 at $4.00 and has both in, so it owes none. Counting the ordered
+    /// copies would give 10 cards and $18.00.
+    func testPartlyReceivedPackageCountsOnlyTheCopiesStillOwed() async throws {
+        let extra = [
+            Self.item("X3", "Partial Cards", date: "2026-06-05", line: 1, qty: 3, price: 2.5),
+            Self.item("X3", "Partial Cards", date: "2026-06-05", line: 2, qty: 2, price: 4.0),
+        ]
+        let (model, _, _) = try await makeModel(
+            clock: Clock(Self.start), extraItems: extra, extraReceived: ["X3|1|p1": 1, "X3|2|p2": 2])
+        XCTAssertEqual(model.rows.map(\.gk), Self.listed + ["X3::Partial Cards"], "the part-received package is listed")
+        XCTAssertEqual(model.owedCards, 5 + 2, "only the 2 copies of line 1 still owed count")
+        XCTAssertEqual(model.owedValue, "$10.00", "$5.00 listed + 2 x $2.50")
+    }
+
+    /// A canceled line in a late package never counts, though the package is listed for its other, owed line.
+    /// X1 line 1 is canceled (2 at $9.00); line 2 is owed (1 at $2.00). The canceled line would add 2 cards and $18.00.
+    func testCanceledLineOfALatePackageIsNotCounted() async throws {
+        let extra = [
+            Self.item("X1", "Mixed Cards", date: "2026-06-05", tracking: "Canceled", line: 1, qty: 2, price: 9.0),
+            Self.item("X1", "Mixed Cards", date: "2026-06-05", line: 2, qty: 1, price: 2.0),
+        ]
+        let (model, _, _) = try await makeModel(clock: Clock(Self.start), extraItems: extra)
+        XCTAssertEqual(model.rows.map(\.gk), Self.listed + ["X1::Mixed Cards"], "the owed line lists the package")
+        XCTAssertEqual(model.owedCards, 5 + 1, "the canceled line's 2 copies are not owed")
+        XCTAssertEqual(model.owedValue, "$7.00", "$5.00 listed + the owed $2.00 line")
+    }
+
+    /// A refund takes the package out of the counts at once (a-refund-leaves-every-count), though its sticky row keeps
+    /// its place until load() (no-layout-shift-under-pointer). P2 owes one $1.00 copy. After the reload the row is
+    /// gone and the counts are as they were.
+    func testRefundedStickyRowLeavesTheCountsAtOnce() async throws {
+        let (model, _, _) = try await makeModel(clock: Clock(Self.start))
+        try await model.stamp("P2::Beta Games", kind: "refunded")
+        XCTAssertEqual(model.rows.map(\.gk), Self.listed, "the refunded row keeps its place")
+        XCTAssertEqual(model.owedCards, 4, "the refunded package's copy still counts")
+        XCTAssertEqual(model.owedValue, "$4.00")
+
+        try await model.load()
+        XCTAssertEqual(model.rows.map(\.gk), Self.listed.filter { $0 != "P2::Beta Games" }, "the reload drops the refunded row")
+        XCTAssertEqual(model.owedCards, 4)
+        XCTAssertEqual(model.owedValue, "$4.00")
+    }
+
+    /// The record names Partial refund with Refunded. Same case, P3.
+    func testPartialRefundStickyRowLeavesTheCountsAtOnce() async throws {
+        let (model, _, _) = try await makeModel(clock: Clock(Self.start))
+        try await model.stamp("P3::Gamma Cards", kind: "partial")
+        XCTAssertEqual(model.rows.map(\.gk), Self.listed, "the partly refunded row keeps its place")
+        XCTAssertEqual(model.owedCards, 4, "the partly refunded package's copy still counts")
+        XCTAssertEqual(model.owedValue, "$4.00")
     }
 }
