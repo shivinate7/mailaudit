@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hand Post Sender</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light, so this page has one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --manila:#EADBBA; --manilaInk:#695832; --gold:#C9A961;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  /* Status bar foot: unmeasured on the Duo inner screen. Drawn at the UI test's 20 pt floor (DuoHandUITests.statusBarFloor). */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --keys-top: 405px;  /* the keyboard panel draws from about y 405 pt (debt duo-keyboard-gap-unmeasured); its frame starts at 449 */
+  --new:#2E7A5E; --today:#A8443C;
+}
+* { box-sizing: border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
+main { max-width:1040px; margin:0 auto; padding:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:24px; margin:16px 0 4px; }
+.sub { color:var(--inkSoft); margin:0 0 12px; }
+nav { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+nav a, nav button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+figure { margin:24px 0; }
+figure[hidden] { display:none; }
+figcaption { margin-top:8px; }
+figcaption b { font-family:var(--cochin); font-size:18px; }
+.fit { width:100%; overflow:hidden; }
+ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14px; }
+
+/* ---- device: iPhone Duo inner screen, open, 951 x 669 pt, 1 CSS px = 1 pt ---- */
+.duo { position:relative; width:951px; height:669px; background:var(--paper); border:1px solid var(--ink); border-radius:12px; overflow:hidden;
+  font-family:-apple-system, system-ui, sans-serif; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 16px; font-size:12px; font-weight:600; z-index:5; }
+.page { position:absolute; top:0; bottom:0; width:455.5px; overflow:hidden; }
+.page.l { left:0; } .page.r { left:495.5px; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); }
+.fold span { position:absolute; top:200px; left:50%; transform:translateX(-50%) rotate(-90deg); font:10.5px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; }
+/* The system keyboard: iOS chrome, not an app colour, so these three greys sit outside the tokens. */
+.keys { position:absolute; left:0; right:0; top:var(--keys-top); bottom:0; background:#D2D0D6; z-index:6; padding:8px 6px; }
+.keys .row { display:flex; gap:6px; margin-bottom:8px; justify-content:center; }
+.keys .k { height:42px; flex:0 0 42px; background:#FFFFFF; border-radius:6px; display:grid; place-items:center; font-size:18px; color:#111; }
+.keys .k.w { flex-basis:300px; font-size:14px; }
+.keys .note { position:absolute; left:12px; top:-1px; transform:translateY(-100%); font:10.5px var(--mono); color:var(--inkSoft); background:var(--paper); padding:2px 4px; }
+.guide { position:absolute; left:0; right:0; height:0; border-top:1px dashed var(--accent); z-index:7; }
+.guide span { position:absolute; left:120px; top:-14px; font:10.5px var(--mono); color:var(--accent); background:var(--paper); padding:0 2px; }
+
+/* ---- app content: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono) ---- */
+.content { position:absolute; left:16px; right:16px; top:calc(var(--sat) + 16px); display:flex; flex-direction:column; gap:12px; font-family:var(--cochin); }
+.r .content { gap:8px; }
+.micro { font:10.5px/13px var(--mono); letter-spacing:1.2px; text-transform:uppercase; color:var(--inkSoft); height:13px; }
+.who { font-size:22px; line-height:27px; font-weight:700; height:27px; }
+.meta { font:11px/14px var(--mono); color:var(--inkSoft); height:14px; }
+.pill { font:12px var(--mono); border:1px solid var(--line); background:var(--card); border-radius:8px; padding:6px 10px; color:var(--ink); white-space:nowrap; }
+.hit { min-height:44px; min-width:44px; display:inline-flex; align-items:center; justify-content:center; }
+.lines { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.line { display:flex; gap:8px; height:64px; padding-left:4px; border-top:1px solid var(--line); background:var(--card); }
+.line:first-child { border-top:0; }
+.line .box { flex:0 0 45px; height:45px; display:grid; place-items:center; }
+.line .box i { width:30px; height:30px; border:1.5px solid var(--inkSoft); border-radius:6px; display:block; }
+.line .t { flex:1; padding:12px 12px 12px 0; }
+.line .t b { font-size:14px; font-weight:600; display:flex; justify-content:space-between; gap:8px; }
+.line .t b span { font:12px var(--mono); color:var(--inkSoft); font-weight:400; }
+.line .t small { font-size:11.5px; color:var(--inkSoft); display:block; margin-top:4px; }
+.line.done { background:var(--greenSoft); }
+.line.done .box i { background:var(--green); border-color:var(--green); position:relative; }
+.line.done .box i::after { content:""; position:absolute; left:9px; top:4px; width:8px; height:14px; border:solid var(--card); border-width:0 3px 3px 0; transform:rotate(45deg); }
+.offer { height:110px; background:color-mix(in srgb, var(--manila) 50%, transparent); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; }
+.offer p { margin:0; font-size:13px; line-height:17px; height:34px; }
+.offer .post { font:700 12px var(--mono); background:var(--accent); border-color:var(--accent); color:var(--card); }
+.offer .receipt { height:44px; display:flex; align-items:center; font:12px var(--mono); color:var(--green); }
+.notice { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:2px; }
+.notice .micro { color:var(--manilaInk); }
+.notice b { font-size:15px; } .notice small { font-size:12.5px; }
+.field { height:48px; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:0 12px; display:flex; align-items:center; font-size:16px; }
+.field::after { content:""; width:2px; height:20px; background:var(--accent); margin-left:1px; }
+.rowx { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.rowx .soft { color:var(--inkSoft); font-size:14px; }
+.match { min-height:44px; display:flex; align-items:center; font-size:14px; }
+.count { font:12px var(--mono); color:var(--inkSoft); }
+
+/* option B: the sender head is pinned above the scroll view; the offer is pinned above the keys */
+.head { position:absolute; left:0; right:0; top:var(--sat); padding:16px 16px 8px; display:flex; flex-direction:column; gap:8px; font-family:var(--cochin);
+  border-bottom:1px solid var(--line); background:var(--paper); z-index:2; }
+.mid { position:absolute; left:16px; right:16px; top:calc(var(--sat) + 94px); bottom:calc(669px - var(--keys-top) + 126px); overflow:hidden; padding-top:8px; font-family:var(--cochin); }
+.foot { position:absolute; left:16px; right:16px; bottom:calc(669px - var(--keys-top)); padding:8px 0; font-family:var(--cochin); }
+
+/* tags: dashed outline on what exists today, and on what an option adds */
+[data-tag] { position:relative; }
+[data-tag]::before { content:attr(data-tag); position:absolute; right:4px; top:-9px; font:600 10.5px/14px -apple-system, system-ui, sans-serif; padding:0 4px;
+  background:var(--paper); z-index:4; white-space:nowrap; }
+.head[data-tag]::before { top:auto; bottom:-8px; }
+.tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tag-new::before { color:var(--new); }
+.tag-today { outline:2px dashed var(--today); outline-offset:2px; } .tag-today::before { color:var(--today); }
+
+/* folded frame: the outer screen, 382 x 644 pt of safe content (duo-fold-and-keyboard), drawn at half size */
+.folded { position:relative; width:191px; height:322px; border:1px solid var(--ink); border-radius:12px; background:var(--paper);
+  padding:calc(env(safe-area-inset-top) + 12px) 12px calc(env(safe-area-inset-bottom) + 12px); font-size:12px; color:var(--inkSoft); }
+.folded b { font-family:var(--cochin); color:var(--ink); font-size:14px; display:block; margin-bottom:4px; }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No figure, seller, card or count on this page is real. Row heights are estimates from the code, not measurements.</div>
+<h1>Card in Hand: the Post offer keeps the sender</h1>
+<p class="sub">iPhone Duo, open pose, 951 x 669 pt, fold 40 pt at 455.5 pt. Keys up; the panel draws from y 405 pt. Status bar foot drawn at 20 pt (unmeasured). Light theme only: the native app is held to light. Debt <code>hand-post-scroll-hides-sender</code>.</p>
+
+<nav aria-label="States">
+  <a href="#s=today">Today</a>
+  <a href="#s=a">A: offer under the sender (pick)</a>
+  <a href="#s=a-posted">A after Post</a>
+  <a href="#s=b">B: pinned head and foot</a>
+  <a href="#s=folded">Folded</a>
+  <a href="#">All</a>
+  <button type="button" data-hide="a">Hide option A</button>
+  <button type="button" data-hide="b">Hide option B</button>
+</nav>
+
+<!-- Folded first (ios-apps, Mockups). Card in Hand does not open folded. -->
+<figure id="s-folded" data-state="folded">
+  <div class="folded" data-device="iphone-duo-folded">
+    <b>Folded: unchanged</b>
+    Card in Hand opens only on two pages side by side (<code>PackagesTab.twoPages</code>). The folded screen keeps today's one-page Packages. Nothing to draw.
+  </div>
+  <figcaption><b>Folded.</b> No change in this lane.</figcaption>
+</figure>
+
+<template id="left-held">
+  <div class="page l"><div class="content">
+    <div class="rowx"><span style="font-weight:700;font-size:17px">Mail day</span><span class="count">41 in · 23 out</span><span class="hit"><span class="pill">Close</span></span></div>
+    <div class="field">Path to Exile</div>
+    <div class="notice"><span class="micro">Suspense</span><b>Lightning Bolt</b><small>Not checked in.</small></div>
+    <div class="rowx"><span class="soft">This envelope</span><span class="hit"><span class="pill">New envelope</span></span></div>
+    <span class="micro">Matches</span>
+    <div class="match">Path to Exile</div>
+  </div></div>
+</template>
+<template id="left-posted">
+  <div class="page l"><div class="content">
+    <div class="rowx"><span style="font-weight:700;font-size:17px">Mail day</span><span class="count">43 in · 21 out</span><span class="hit"><span class="pill">Close</span></span></div>
+    <div class="field">Path to Exile</div>
+    <div class="rowx"><span class="soft">This envelope</span><span class="hit"><span class="pill">New envelope</span></span></div>
+  </div></div>
+</template>
+<template id="lines-open">
+  <div class="lines">
+    <div class="line"><span class="box"><i></i></span><span class="t"><b>Lightning Bolt<span>$0.42</span></b><small>Sample Set · NM</small></span></div>
+    <div class="line"><span class="box"><i></i></span><span class="t"><b>Path to Exile<span>$0.31</span></b><small>Sample Set · NM</small></span></div>
+    <div class="line"><span class="box"><i></i></span><span class="t"><b>Swords to Plowshares<span>$0.55</span></b><small>Sample Set · LP</small></span></div>
+    <div class="line"><span class="box"><i></i></span><span class="t"><b>Ponder<span>$0.18</span></b><small>Sample Set · NM</small></span></div>
+    <div class="line"><span class="box"><i></i></span><span class="t"><b>Preordain<span>$0.20</span></b><small>Sample Set · NM</small></span></div>
+  </div>
+</template>
+<template id="lines-posted">
+  <div class="lines">
+    <div class="line done"><span class="box"><i></i></span><span class="t"><b>Lightning Bolt<span>$0.42</span></b><small>Sample Set · NM</small></span></div>
+    <div class="line done"><span class="box"><i></i></span><span class="t"><b>Path to Exile<span>$0.31</span></b><small>Sample Set · NM</small></span></div>
+    <div class="line"><span class="box"><i></i></span><span class="t"><b>Swords to Plowshares<span>$0.55</span></b><small>Sample Set · LP</small></span></div>
+    <div class="line"><span class="box"><i></i></span><span class="t"><b>Ponder<span>$0.18</span></b><small>Sample Set · NM</small></span></div>
+    <div class="line"><span class="box"><i></i></span><span class="t"><b>Preordain<span>$0.20</span></b><small>Sample Set · NM</small></span></div>
+  </div>
+</template>
+<template id="chrome">
+  <div class="fold"><span>FOLD</span></div>
+  <div class="status"><span>9:41</span><span>●●● 100%</span></div>
+  <div class="guide" style="top:var(--sat)"><span>y 20 · status bar foot (unmeasured)</span></div>
+  <div class="keys">
+    <span class="note">keys panel from y 405 · frame from y 449</span>
+    <div class="row"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">y</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+    <div class="row"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+    <div class="row"><span class="k">z</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span></div>
+    <div class="row"><span class="k w">space</span><span class="k" style="flex-basis:90px;font-size:14px">done</span></div>
+  </div>
+</template>
+
+<!-- Today: measured on the simulator, "It came from" at y -152 and the seller at y -131. -->
+<figure id="s-today" data-state="today">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="left-held chrome">
+    <div class="page r">
+      <div class="content" style="transform:translateY(-188px)">
+        <span class="micro tag-today" data-tag="Today: y -152, off the page">It came from</span>
+        <span class="who">Gamma Cards</span>
+        <span class="meta">ordered 2026-07-01</span>
+        <div data-fill="lines-open"></div>
+        <div class="offer tag-today" data-tag="Today: scrolled to the keys frame">
+          <p>Your held card came with this envelope. Nothing is checked in until you post.</p>
+          <span class="hit" style="align-self:flex-start"><span class="pill post">Post 2 cards here, 1 held</span></span>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <figcaption><b>Today.</b> <code>revealOffer</code> scrolls the offer to the foot of the space above the keys. The sender leaves the top; rows run under the clock. "Post … here" names no envelope.</figcaption>
+</figure>
+
+<!-- Option A (pick): the offer sits under the sender, above the lines. Nothing needs the keyboard figure. -->
+<figure id="s-a" data-state="a" data-opt="a">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="left-held chrome">
+    <div class="page r">
+      <div class="content">
+        <span class="micro tag-today" data-tag="Today: It came from">It came from</span>
+        <span class="who" id="a-who">Gamma Cards</span>
+        <span class="meta">ordered 2026-07-01</span>
+        <div class="offer tag-new" id="focus-a" data-tag="New: offer under the sender, y 114 to 224">
+          <p>Your held card came with this envelope. Nothing is checked in until you post.</p>
+          <span class="hit" style="align-self:flex-start"><span class="pill post">Post 2 cards here, 1 held</span></span>
+        </div>
+        <div data-fill="lines-open"></div>
+      </div>
+    </div>
+  </div></div>
+  <figcaption><b>Option A, the pick: offer under the sender.</b> Sender at y 36 to 106, Post hit frame at y 168 to 212, all far above the keys at 405. Below the offer: 2 whole lines, and the third shows its top 44 pt before the keys. 0 lines above the offer. The page sits at its top, so nothing is under the status bar.</figcaption>
+  <ul class="tags"><li>Lines scroll as today. The offer is in the scroll content, not pinned.</li><li>Fits with no keyboard figure: the Post button clears the keys by 193 pt.</li></ul>
+</figure>
+
+<figure id="s-a-posted" data-state="a-posted" data-opt="a">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="left-posted chrome">
+    <div class="page r">
+      <div class="content">
+        <span class="micro">It came from</span>
+        <span class="who">Gamma Cards</span>
+        <span class="meta">ordered 2026-07-01</span>
+        <div class="offer tag-new" id="focus-a-posted" data-tag="New: receipt holds the slot">
+          <p>Posted with this envelope. The next card you type clears this line.</p>
+          <span class="receipt">2 cards checked in · 1 was held</span>
+        </div>
+        <div data-fill="lines-posted"></div>
+      </div>
+    </div>
+  </div></div>
+  <figcaption><b>Option A after Post.</b> A same-height receipt takes the offer's slot, so the lines stay put and no line slides under the finger that pressed Post. It goes when the next card is typed or New envelope ends the envelope.</figcaption>
+</figure>
+
+<!-- Option B: sender pinned above the scroll view, offer pinned above the keys. Rests on the unmeasured 44 pt figure. -->
+<figure id="s-b" data-state="b" data-opt="b">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="left-held chrome">
+    <div class="page r">
+      <div class="head tag-new" data-tag="New: pinned sender head">
+        <span class="micro">It came from</span>
+        <span class="who">Gamma Cards</span>
+        <span class="meta">ordered 2026-07-01</span>
+      </div>
+      <div class="mid"><div data-fill="lines-open"></div></div>
+      <div class="foot">
+        <div class="offer tag-new" id="focus-b" data-tag="New: offer pinned above the keys">
+          <p>Your held card came with this envelope. Nothing is checked in until you post.</p>
+          <span class="hit" style="align-self:flex-start"><span class="pill post">Post 2 cards here, 1 held</span></span>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <figcaption><b>Option B: pinned head and foot.</b> Sender head y 20 to 114, lines scroll in y 114 to 279, offer y 287 to 397. 2 whole lines above the offer, and the top 28 pt of a third. Keeps today's order (offer under the lines).</figcaption>
+  <ul class="tags"><li>SwiftUI's keyboard inset ends at the keys frame, y 449. The foot clears the drawn panel at 405 only with a 44 pt pad, an unmeasured figure. If the panel draws higher, Post sits under the keys and cannot be scrolled to.</li><li>After Post it needs the same receipt as A, or the lines grow into the slot under the finger.</li></ul>
+</figure>
+</main>
+
+<script>
+// Fill each frame from its templates, so the shared parts are drawn once.
+document.querySelectorAll('[data-fill]').forEach(el => {
+  el.getAttribute('data-fill').split(' ').forEach(id => el.append(document.getElementById(id).content.cloneNode(true)));
+});
+// Scale each 951 pt frame to the page width; the page never scrolls sideways.
+function fit() {
+  document.querySelectorAll('.fit').forEach(w => { const d = w.firstElementChild; const s = Math.min(1, w.clientWidth / 951);
+    d.style.zoom = s; });
+}
+// Deep link: #s=<state> shows one state; no hash shows all. A hide button removes one option.
+const hidden = new Set();
+function route() {
+  const m = location.hash.match(/s=([\w-]+)/), s = m && m[1];
+  document.querySelectorAll('figure').forEach(f => {
+    f.hidden = (s && f.dataset.state !== s) || hidden.has(f.dataset.opt);
+  });
+  document.querySelectorAll('nav a').forEach(a => a.setAttribute('aria-current', String(a.getAttribute('href') === (location.hash || '#'))));
+  fit();
+}
+document.querySelectorAll('[data-hide]').forEach(b => b.addEventListener('click', () => {
+  const o = b.dataset.hide; hidden.has(o) ? hidden.delete(o) : hidden.add(o);
+  b.textContent = (hidden.has(o) ? 'Show option ' : 'Hide option ') + o.toUpperCase(); route();
+}));
+addEventListener('hashchange', route); addEventListener('resize', fit); route();
+</script>
+</body>
+</html>
