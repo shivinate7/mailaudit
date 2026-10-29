@@ -60,6 +60,8 @@ Card in Hand opens from a `hand-open` control at the top of Packages, on two pag
 
 A unique name shows its envelope with a check-in tap on each line. Post shows only when a held card came with the typed one, and it never runs by itself. Default, not owner.
 
+On Card in Hand, the match list and its "Matches" heading sit below the envelope row and New envelope. Mockup pose 2 draws them above. With the list above, a tap on a match shrinks the list and moves New envelope under the finger. The invariant `no-layout-shift-under-pointer` outranks the mockup. Departs from: mockup pose 2. Settled by the invariant, not the owner. An open gap on the Suspense box is `hand-suspense-tap-shift`.
+
 **Holds while:** the owner's pick of Card in Hand stands. Item 22 holds until the owner reviews the test build. The `hand-open` entry holds until the owner answers item 35.
 
 ## See also
