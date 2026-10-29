@@ -291,6 +291,7 @@ public final class PackagesModel {
     public func toggleStamped() async throws {
         showStamped.toggle()
         do { try await load() } catch {
+            showStamped.toggle()  // the rows on screen are still the old filter's, so the cell says that filter
             checkInError = "Could not read the list. \(error.localizedDescription)"
             throw error
         }
