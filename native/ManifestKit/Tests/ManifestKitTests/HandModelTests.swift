@@ -9,11 +9,13 @@
 //   @MainActor @Observable public final class HandModel {
 //       public init(engine: RulesEngine, store: LedgerStore)
 //       public private(set) var held: String?       // normName of a card held as a stray; nil when none
-//       public private(set) var strays: [String]    // normNames released by newEnvelope; shown, never checked in, never decide
+//       public private(set) var strays: [String]    // normNames released by newEnvelope; shown, never checked in, never decide;
+//                                                   // a name leaves when a post checks it in
 //       public private(set) var hits: [String]      // gk of each package holding the typed name, handHits order
 //       public private(set) var offer: HandOffer?   // set only when the typed card names one open envelope
 //       public private(set) var error: String?      // set when a post cannot save; the next save that works clears it
-//       public func type(_ name: String) async throws  // runs handHits and handStep; writes nothing
+//       public func type(_ name: String) async throws  // runs handHits and handStep; writes nothing; calls in flight
+//                                                      // together apply in call order (the debt hand-type-not-serialised)
 //       public func post() async throws                 // writes offer.plan in one save, then clears offer and held
 //       public func newEnvelope()                       // ends the current envelope: held moves to strays, offer clears; writes nothing
 //       public func close()                             // the sheet closes: clears offer, keeps held and strays; writes nothing
@@ -29,6 +31,9 @@
 //     sets error, and throws.
 //   - One post is one save: one LedgerStore onLocalSave call, the store's own hook for a saved write.
 //   - Typed text is the query for hits and the typed name for handStep. Blank text is not pinned here.
+//   - Two type() calls in flight together end as if they ran one after the other: the later call reads the held name
+//     the earlier one left, and a slow earlier call never overwrites a later call's hits, offer or held.
+//     NOT pinned: whether post() waits for a type() still in flight. No record rules on it.
 //
 // Fake fixtures only. These tests read no Keychain item. Temp files live in PhotoTestKit's run folder.
 
@@ -80,16 +85,22 @@ final class HandModelTests: XCTestCase {
         ]
     }
 
-    static func seed() throws -> Data {
-        try JSONSerialization.data(withJSONObject: ["mailday": 1, "items": items()], options: [.sortedKeys])
+    /// `extra` adds lines to the shared fixture, for a case that needs more than it holds.
+    static func seed(extra: [[String: Any]] = []) throws -> Data {
+        try JSONSerialization.data(withJSONObject: ["mailday": 1, "items": items() + extra], options: [.sortedKeys])
+    }
+
+    /// Mind Stone in S1 and S2: a second name that two open envelopes share.
+    static func mindStones() -> [[String: Any]] {
+        [item("S1", "Alpha Cards", 3, "Mind Stone", date: "2026-07-01"), item("S2", "Beta Games", 1, "Mind Stone", date: "2026-07-02")]
     }
 
     /// A ledger folder in this run's folder, loaded, with a model over it. The folder is removed at teardown.
-    func makeHand() async throws -> HandFixture {
+    func makeHand(extra: [[String: Any]] = []) async throws -> HandFixture {
         let dir = try PhotoTestKit.tempDir("hand")
         addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
         let file = dir.appending(path: "ledger.json")
-        try Self.seed().write(to: file)
+        try Self.seed(extra: extra).write(to: file)
         let store = LedgerStore(fileURL: file, now: { Self.t0 })
         try store.load()
         let model = HandModel(engine: try RulesEngine(bundleURL: RulesGoldenTests.bundleURL), store: store)
@@ -280,5 +291,63 @@ final class HandModelTests: XCTestCase {
         let offer = try XCTUnwrap(h.model.offer, "the next card still decides the held name")
         XCTAssertEqual(offer.plan, [PlanStep(itemKey: Self.bolt, take: 1), PlanStep(itemKey: Self.path, take: 1)],
                        "the held copy comes back with the decision")
+    }
+
+    // MARK: strays, and typed names in call order (new-envelope-ends-an-envelope, the debt hand-type-not-serialised)
+
+    /// A name New envelope released is a stray. When it is held again and a post checks it in, the ledger shows it
+    /// received, so it leaves the strays. A stray no post named stays: Mind Stone is the second stray, so a post that
+    /// cleared every stray fails here. Checked after the post only, as no record says when a retyped stray leaves.
+    func testPostedNameLeavesStrays() async throws {
+        let h = try await makeHand(extra: Self.mindStones())
+        for name in ["Lightning Bolt", "Mind Stone"] {
+            try await h.model.type(name)
+            h.model.newEnvelope()
+        }
+        XCTAssertEqual(h.model.strays, ["lightning bolt", "mind stone"], "the setup is real: both names were released as strays")
+        try await h.model.type("Lightning Bolt")
+        XCTAssertEqual(h.model.held, "lightning bolt", "the retyped stray is held again")
+        try await h.model.type("Path to Exile")
+        let offer = try XCTUnwrap(h.model.offer, "the setup is real: the next card names S1, so a post is offered")
+        XCTAssertEqual(offer.plan, [PlanStep(itemKey: Self.bolt, take: 1), PlanStep(itemKey: Self.path, take: 1)],
+                       "the setup is real: the offer takes the retyped copy as well")
+        try await h.model.post()
+        XCTAssertEqual(h.store.received(), [Self.bolt: 1, Self.path: 1], "the post checked the retyped name in")
+        XCTAssertEqual(h.model.strays, ["mind stone"], "the checked-in name leaves the strays, and the stray no post named stays")
+    }
+
+    /// Two type() calls started together end as if the second ran after the first: it reads the name the first
+    /// held, so its offer takes both copies. Run on its own, the second call would offer its own copy only.
+    func testOverlappingTypesReadEachOthersHeld() async throws {
+        let h = try await makeHand()
+        let first = Task { try await h.model.type("Lightning Bolt") }
+        let second = Task { try await h.model.type("Path to Exile") }
+        try await first.value
+        try await second.value
+        let offer = try XCTUnwrap(h.model.offer, "the second card names one envelope, so it offers a post")
+        XCTAssertEqual(offer.plan, [PlanStep(itemKey: Self.bolt, take: 1), PlanStep(itemKey: Self.path, take: 1)],
+                       "the offer takes the copy the first call held, not the second card alone")
+        XCTAssertEqual(h.model.held, "lightning bolt", "the held name stays held until the post")
+        XCTAssertEqual(h.model.hits, ["S1::Alpha Cards"], "the hits are the second card's")
+    }
+
+    /// A slow earlier call never overwrites a later call's hits, offer or held. A refunded stamp makes the rules input
+    /// need one more engine call (LiveItems.of runs groupPackages), so the call that starts while the stamp stands has
+    /// more to wait for than the call that starts after it is gone. The stamp names no real package. The two cards are
+    /// unrelated, so held plays no part: only the order of the replies decides the end state.
+    func testSlowEarlierTypeNeverOverwritesLaterOne() async throws {
+        let h = try await makeHand()
+        h.store.setStamp("Z9::Nobody", kind: "refunded", note: "", at: "2026-07-01")
+        let slow = Task { try await h.model.type("Sol Ring") }
+        await Task.yield()  // the slow call starts and reads the stamp
+        h.store.removeStamp("Z9::Nobody")
+        let quick = Task { try await h.model.type("Counterspell") }
+        try await slow.value
+        try await quick.value
+        let offer = try XCTUnwrap(h.model.offer, "the later card names one envelope, so it offers a post")
+        XCTAssertEqual(offer.gk, "S1::Alpha Cards", "the offer is the later call's, not the slow call's Sol Ring")
+        XCTAssertEqual(offer.plan, [PlanStep(itemKey: Self.counter, take: 1)], "the offer takes the later card alone")
+        XCTAssertEqual(h.model.hits, ["S1::Alpha Cards"], "the hits are the later call's")
+        XCTAssertNil(h.model.held, "the later call holds nothing")
     }
 }

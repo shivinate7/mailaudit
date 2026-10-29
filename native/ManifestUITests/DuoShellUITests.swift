@@ -34,20 +34,11 @@ final class DuoShellUITests: XCTestCase {
     /// The room a bottom bar may keep above the window's bottom edge. The outer screen's bottom inset is 34 pt; the inner one is unmeasured.
     static let bottomAllowance: CGFloat = 40
 
-    func launch() -> XCUIApplication {
-        let app = XCUIApplication()
-        app.launchArguments = ["-ManifestUITestSeed"]
-        app.launch()
-        return app
-    }
+    func launch() -> XCUIApplication { .launchedOnSeed() }
 
-    func customBar(_ app: XCUIApplication) -> XCUIElement {
-        app.descendants(matching: .any).matching(identifier: "duo-tab-bar").firstMatch
-    }
+    func customBar(_ app: XCUIApplication) -> XCUIElement { app.element("duo-tab-bar") }
 
-    func element(_ app: XCUIApplication, _ id: String) -> XCUIElement {
-        app.descendants(matching: .any).matching(identifier: id).firstMatch
-    }
+    func element(_ app: XCUIApplication, _ id: String) -> XCUIElement { app.element(id) }
 
     // MARK: open Duo, pose flat
 

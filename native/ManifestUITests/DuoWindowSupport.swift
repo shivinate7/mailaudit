@@ -22,6 +22,19 @@ enum DuoPose {
 }
 
 extension XCUIApplication {
+    /// The app launched on the fake seed (shared/fixtures/ledger.json). Never -ManifestUITestWidth: it frames the root to 375 pt.
+    @MainActor static func launchedOnSeed() -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ManifestUITestSeed"]
+        app.launch()
+        return app
+    }
+
+    /// The first element with this accessibility identifier, whatever its type.
+    func element(_ id: String) -> XCUIElement {
+        descendants(matching: .any).matching(identifier: id).firstMatch
+    }
+
     /// The window the app draws on. Frames and taps anchor here: on an open Duo, `app` coordinates land on the outer display.
     var window: XCUIElement { windows.firstMatch }
 

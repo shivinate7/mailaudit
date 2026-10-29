@@ -1,0 +1,271 @@
+// Card in Hand UI tests on the open iPhone Duo (decisions duo-card-in-hand and new-envelope-ends-an-envelope; mockup
+// poses 1, 2, 4 and 6 of docs/design/duo-card-in-hand on origin/design/duo-round2). The model is HandModel and
+// PastTransitModel in ManifestKit; their unit tests are HandModelTests and PastTransitModelTests.
+//
+// Red-first and NOT RUN by the test-author (the Duo is another agent's to boot). They compile against this branch
+// and fail on a missing element. The builder runs them red, then green. How to run: DuoShellUITests.swift, same
+// destination and the same hinge command. These tests need the pose flat (open Duo, window 951 x 669 pt), set with
+// `~/.local/bin/hinge open`. A run in another pose fails on the window size (DuoWindowSupport.swift). It never skips.
+//
+// The seed is shared/fixtures/ledger.json. What the tests rely on in it:
+//   Lightning Bolt is in three envelopes: A1 Alpha Cards, B1 Beta Games and C1 Gamma Cards. So is a shared name.
+//   Path to Exile is only in C1 (Gamma Cards), with Lightning Bolt, Swords to Plowshares, Ponder and Preordain.
+//   A1, B1 and D1 (Delta Cards) have no tracking, are dated 2026-07-01, 2026-07-29 and 2026-05-01. C1 has tracking.
+//   Nothing is received. The past-transit test needs the simulator clock later than 2026-08-12.
+//
+// Contract the tests name (the builder implements it). Every id is an accessibility identifier. <key> is the item key
+// the other screens use ("C1|1|pPathtoExile"); <gk> is the package key ("C1::Gamma Cards").
+//   Entry     After a tap on Packages in duo-tab-bar, the screen shows hand-query. If it does not, the test taps
+//             hand-open (a button on the Packages page). The decision record does not say which: the mockup README says
+//             "On the open Duo, Card in Hand is the Packages tab", its Defaults say Packages keeps one page, and HandModel
+//             speaks of a sheet. Either entry passes. Neither passes if hand-query never shows.
+//   Left page hand-query (the text field, placeholder "Type the card in hand"), hand-count (the "N in . M out" line;
+//             its label is the text), hand-held (the Suspense line; present only while a name is held; its label holds
+//             the held name, any case), hand-strays (the strays list; present only while a stray exists; its label holds
+//             each stray name, any case), hand-new-envelope (the New envelope button).
+//   Right page hand-answer (the whole right page), hand-who (the envelope's seller; present only when one envelope is
+//             named; its label is the seller alone), hand-line:<key> (each line of that envelope, the typed card and
+//             its envelope-mates), hand-checkin:<key> (the line's check-in control, labelled "Check in <name>" or
+//             "Undo check in <name>", as checkin: is), hand-tie (the tie of envelopes that hold a held shared name;
+//             present instead of hand-who), hand-post (the Post button; its label starts with "Post"; present exactly
+//             while HandModel.offer is set), hand-past-transit-open (the Open control of the "Past 14 days" box).
+//   Past transit   past-transit-page (the right page while it shows), past-transit-row:<gk> (one row per late package, a
+//             container whose children are reachable), and inside a row the buttons labelled "Claim filed" and "Refunded".
+//             There is no button labelled "Lost" (item 25, deferred).
+// A lone card that names one envelope may check in by Post or by tapping its line (the mockup shows a stepper and no
+// Post). The stray case checks in by whichever the screen offers. The held case needs Post.
+//
+// Every key here is fake. Launch with -ManifestUITestSeed only (XCUIApplication.launchedOnSeed).
+
+import XCTest
+
+@MainActor
+final class DuoHandUITests: XCTestCase {
+    static let tolerance = DuoShellUITests.tolerance
+    static let foldMargin = DuoShellUITests.foldMargin
+
+    static let bolt = "C1|0|pLightningBolt"
+    static let path = "C1|1|pPathtoExile"
+    static let swords = "C1|2|pSwordstoPlowshares"
+    static let boltOfAlpha = "A1|0|pLightningBolt"
+
+    override func setUp() {
+        super.setUp()
+        continueAfterFailure = false  // a missing control ends the test, so no later tap lands on nothing
+    }
+
+    // MARK: helpers
+
+    /// An element that must show within 5 s.
+    func need(_ app: XCUIApplication, _ id: String, _ what: String) -> XCUIElement {
+        let el = app.element(id)
+        XCTAssertTrue(el.waitForExistence(timeout: 5), "\(id) is missing: \(what)")
+        return el
+    }
+
+    /// The open Duo with Card in Hand showing. Packages in the bar first; if the query is not there, the hand-open button.
+    func openHand(_ app: XCUIApplication) {
+        let bar = need(app, "duo-tab-bar", "the custom tab bar of the open Duo")
+        bar.buttons["Packages"].tap()
+        if !app.element("hand-query").waitForExistence(timeout: 3) {
+            let open = app.element("hand-open")
+            XCTAssertTrue(open.waitForExistence(timeout: 2), "Card in Hand did not open: after a tap on Packages there is neither hand-query nor hand-open")
+            open.tap()
+        }
+        _ = need(app, "hand-query", "the query field of Card in Hand")
+    }
+
+    /// Replaces the query with `text`: a tap at the field's right end (the caret lands after the old text), the old text
+    /// deleted, the new text typed. An empty field's value reads as its placeholder, so that is not text to delete.
+    func typeCard(_ app: XCUIApplication, _ text: String) {
+        let query = app.element("hand-query")
+        query.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        if let old = query.value as? String, !old.isEmpty, old != query.placeholderValue {
+            query.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: old.count))
+        }
+        query.typeText(text)
+    }
+
+    func onLeftPage(_ el: XCUIElement, _ app: XCUIApplication, _ what: String) {
+        let f = el.frame, mid = app.window.frame.midX
+        XCTAssertLessThanOrEqual(f.maxX, mid - Self.foldMargin + Self.tolerance, "\(what) is not on the left page: its frame is \(f), the fold starts at \(mid - Self.foldMargin)")
+    }
+
+    func onRightPage(_ el: XCUIElement, _ app: XCUIApplication, _ what: String) {
+        let f = el.frame, mid = app.window.frame.midX
+        XCTAssertGreaterThanOrEqual(f.minX, mid + Self.foldMargin - Self.tolerance, "\(what) is not on the right page: its frame is \(f), the fold ends at \(mid + Self.foldMargin)")
+    }
+
+    /// Waits until the element's label starts with `prefix`.
+    func waitForLabel(_ el: XCUIElement, startingWith prefix: String, _ message: String) {
+        let done = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label BEGINSWITH %@", prefix), object: el)
+        XCTAssertEqual(XCTWaiter.wait(for: [done], timeout: 5), .completed, "\(message); the label is \"\(el.label)\"")
+    }
+
+    /// Waits until the element is gone.
+    func waitGone(_ el: XCUIElement, _ message: String) {
+        let done = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: el)
+        XCTAssertEqual(XCTWaiter.wait(for: [done], timeout: 5), .completed, message)
+    }
+
+    /// Checks in the card the query names, when it alone names the envelope: by Post when the screen offers it, else by the line's own control.
+    func checkInTypedCard(_ app: XCUIApplication, key: String) {
+        let post = app.element("hand-post")
+        if post.waitForExistence(timeout: 3) {
+            post.tap()
+        } else {
+            let control = need(app, "hand-checkin:\(key)", "the line of the typed card")
+            control.tap()
+        }
+    }
+
+    // MARK: the cases
+
+    /// Pose: flat. Card in Hand opens: the query on the left page, the answer on the right, the bar under the right page
+    /// with Packages selected.
+    func testOpensOnTheFlatDuo() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+
+        onLeftPage(app.element("hand-query"), app, "the query field")
+        _ = need(app, "hand-count", "the left page's count line")
+        let answer = need(app, "hand-answer", "the right page")
+        onRightPage(answer, app, "the answer page")
+        XCTAssertGreaterThan(answer.frame.width, app.window.frame.width * 0.3, "the answer page is narrower than a page")
+
+        let bar = app.element("duo-tab-bar")
+        XCTAssertTrue(bar.buttons["Packages"].isSelected, "the Packages button lacks the selected trait while Card in Hand shows")
+        onRightPage(bar, app, "the tab bar")
+        keepShot(app, "hand-open")
+    }
+
+    /// Pose: flat. A name that only one envelope holds shows that envelope on the right page, with its envelope-mates,
+    /// and checks nothing in.
+    func testTypingShowsTheEnvelope() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let count = need(app, "hand-count", "the left page's count line").label
+
+        typeCard(app, "Path to Exile")
+        let who = need(app, "hand-who", "the envelope the typed card came from")
+        XCTAssertEqual(who.label, "Gamma Cards", "Path to Exile is only in order C1 from Gamma Cards")
+        onRightPage(who, app, "the seller")
+        let typed = need(app, "hand-line:\(Self.path)", "the typed card's line")
+        onRightPage(typed, app, "the typed card's line")
+        let mate = need(app, "hand-line:\(Self.swords)", "an envelope-mate of the typed card")
+        onRightPage(mate, app, "the envelope-mate's line")
+        XCTAssertFalse(app.element("hand-line:\(Self.boltOfAlpha)").exists, "a line of another envelope (A1) shows on the answer page")
+
+        XCTAssertEqual(app.element("hand-checkin:\(Self.path)").label, "Check in Path to Exile", "typing checked the card in")
+        XCTAssertEqual(app.element("hand-count").label, count, "typing changed the count: it saved something")
+        keepShot(app, "hand-envelope")
+    }
+
+    /// Pose: flat. A name three envelopes share is held. No envelope is named, the tie shows, no post is offered, and nothing is saved.
+    func testSharedNameIsHeldWithNoPost() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let count = need(app, "hand-count", "the left page's count line").label
+
+        typeCard(app, "Lightning Bolt")
+        let held = need(app, "hand-held", "the Suspense line of a held name")
+        XCTAssertTrue(held.label.lowercased().contains("lightning bolt"), "the Suspense line does not name Lightning Bolt: \"\(held.label)\"")
+        onLeftPage(held, app, "the Suspense line")
+        let tie = need(app, "hand-tie", "the envelopes that hold the shared name")
+        onRightPage(tie, app, "the tie")
+        XCTAssertFalse(app.element("hand-who").exists, "a tie named one envelope")
+        XCTAssertFalse(app.element("hand-post").exists, "a held shared name offered a post")
+        XCTAssertEqual(app.element("hand-count").label, count, "holding a name changed the count: it saved something")
+        keepShot(app, "hand-tie")
+    }
+
+    /// Pose: flat. The next card, unique to one envelope that also holds the held name, offers a post. Nothing is
+    /// checked in until Post is tapped. Post checks in the held copy and the typed copy and clears the hold.
+    func testNextCardOffersPostAndPostChecksIn() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let count = need(app, "hand-count", "the left page's count line").label
+
+        typeCard(app, "Lightning Bolt")
+        _ = need(app, "hand-held", "the Suspense line of a held name")
+        typeCard(app, "Path to Exile")
+        let post = need(app, "hand-post", "the post the next card offers")
+        XCTAssertTrue(post.label.hasPrefix("Post"), "the post button reads \"\(post.label)\"")
+        onRightPage(post, app, "the Post button")
+        XCTAssertEqual(app.element("hand-who").label, "Gamma Cards", "the next card names order C1")
+        XCTAssertEqual(app.element("hand-checkin:\(Self.bolt)").label, "Check in Lightning Bolt", "the offer checked the held copy in")
+        XCTAssertEqual(app.element("hand-checkin:\(Self.path)").label, "Check in Path to Exile", "the offer checked the typed copy in")
+        XCTAssertEqual(app.element("hand-count").label, count, "the offer changed the count: nothing is checked in until Post")
+        keepShot(app, "hand-post")
+
+        post.tap()
+        waitForLabel(app.element("hand-checkin:\(Self.bolt)"), startingWith: "Undo check in", "Post did not check in the held Lightning Bolt")
+        waitForLabel(app.element("hand-checkin:\(Self.path)"), startingWith: "Undo check in", "Post did not check in Path to Exile")
+        XCTAssertNotEqual(app.element("hand-count").label, count, "Post saved nothing: the count line is as before")
+        waitGone(app.element("hand-held"), "the post that named the held name left it held")
+        waitGone(app.element("hand-post"), "the post is still offered after it posted")
+    }
+
+    /// Pose: flat. New envelope releases a held name as a stray: it is listed, it no longer decides, and it saves
+    /// nothing. The next card then checks in alone, and the stray's copy stays unchecked.
+    func testNewEnvelopeMakesAStray() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let count = need(app, "hand-count", "the left page's count line").label
+
+        typeCard(app, "Lightning Bolt")
+        _ = need(app, "hand-held", "the Suspense line of a held name")
+        let newEnvelope = need(app, "hand-new-envelope", "the New envelope button")
+        onLeftPage(newEnvelope, app, "the New envelope button")
+        newEnvelope.tap()
+        let strays = need(app, "hand-strays", "the list of released names")
+        XCTAssertTrue(strays.label.lowercased().contains("lightning bolt"), "the strays do not list Lightning Bolt: \"\(strays.label)\"")
+        onLeftPage(strays, app, "the strays list")
+        waitGone(app.element("hand-held"), "the name is still held after New envelope")
+        waitGone(app.element("hand-post"), "New envelope left a post offered")
+        XCTAssertEqual(app.element("hand-count").label, count, "New envelope changed the count: it saved something")
+        keepShot(app, "hand-stray")
+
+        typeCard(app, "Path to Exile")
+        XCTAssertEqual(need(app, "hand-who", "the envelope of the next card").label, "Gamma Cards", "the next card names order C1")
+        XCTAssertEqual(app.element("hand-checkin:\(Self.bolt)").label, "Check in Lightning Bolt", "the stray's copy is checked in before the post")
+        checkInTypedCard(app, key: Self.path)
+        waitForLabel(app.element("hand-checkin:\(Self.path)"), startingWith: "Undo check in", "the next card was not checked in")
+        XCTAssertTrue(app.element("hand-checkin:\(Self.bolt)").label.hasPrefix("Check in "), "the stray joined the next envelope's check-in")
+        XCTAssertTrue(app.element("hand-strays").exists, "the stray left the list while no post named it")
+    }
+
+    /// Pose: flat. The past-transit page lists the late mail, oldest last, on the right page. A tracked package is not
+    /// on it. Each row offers Claim filed and Refunded, and nothing offers Lost.
+    func testPastTransitListsLateMailOldestLast() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+
+        let open = need(app, "hand-past-transit-open", "the Open control of the Past 14 days box")
+        onRightPage(open, app, "the Open control")
+        open.tap()
+        let page = need(app, "past-transit-page", "the past-transit page")
+        onRightPage(page, app, "the past-transit page")
+
+        let order = ["B1::Beta Games", "A1::Alpha Cards", "D1::Delta Cards"]  // dated 2026-07-29, 2026-07-01, 2026-05-01
+        var tops: [CGFloat] = []
+        for gk in order {
+            let row = need(app, "past-transit-row:\(gk)", "a late package")
+            onRightPage(row, app, "the row \(gk)")
+            XCTAssertTrue(row.buttons["Claim filed"].exists, "the row \(gk) has no Claim filed button")
+            XCTAssertTrue(row.buttons["Refunded"].exists, "the row \(gk) has no Refunded button")
+            tops.append(row.frame.minY)
+        }
+        XCTAssertEqual(tops, tops.sorted(), "the rows are not oldest last: B1 (29 Jul), A1 (1 Jul), D1 (1 May) must read top to bottom")
+        XCTAssertEqual(Set(tops).count, 3, "two rows share a place")
+        XCTAssertFalse(app.element("past-transit-row:C1::Gamma Cards").exists, "a tracked package is listed as late mail")
+        XCTAssertFalse(app.buttons["Lost"].exists, "a Lost button shows: the page offers the existing stamps only")
+        keepShot(app, "hand-past-transit")
+    }
+}
