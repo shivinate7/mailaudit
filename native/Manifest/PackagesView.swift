@@ -78,7 +78,7 @@ struct PackageRow: View {
             // The slot has a fixed size, so a long seller truncates in the column and a check-in moves nothing.
             HStack(alignment: .center, spacing: 8) {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(pkg.seller).font(.cochin(15, relativeTo: .body).weight(.bold)).foregroundStyle(paint(.seller, packageState))
+                    Text(pkg.seller).font(.cochin(15).weight(.bold)).foregroundStyle(paint(.seller, packageState))
                         .lineLimit(1).truncationMode(.tail).minimumScaleFactor(0.5)  // measured: with no scale the audit calls a short seller "Text clipped", at 0.9 still "Alpha Cards"
                         .textSelection(.enabled)  // owner ruling 2026-10-21: the header text is selectable, seller included
                         .contentShape(Rectangle())  // measured: without it, the selectable date below takes the seller's long press
@@ -90,7 +90,7 @@ struct PackageRow: View {
             if let url = model.orderLinks[pkg.gk] {
                 HStack(spacing: 0) {
                     Link(destination: url) {
-                        Text(pkg.orderId).font(.mono(11, relativeTo: .caption)).underline()
+                        Text(pkg.orderId).font(.mono(11)).underline()
                             .foregroundStyle(paint(.orderId, packageState))
                             .frame(minWidth: 45, minHeight: 45, alignment: .leading)  // 45: layout rounding read a 44pt frame as 43.99999
                             .contentShape(Rectangle())
@@ -106,7 +106,7 @@ struct PackageRow: View {
     }
 
     private var dateLine: some View {
-        Text(pkg.date).font(.mono(11, relativeTo: .caption)).foregroundStyle(paint(.orderId, packageState)).lineLimit(1).textSelection(.enabled)
+        Text(pkg.date).font(.mono(11)).foregroundStyle(paint(.orderId, packageState)).lineLimit(1).textSelection(.enabled)
             .contentShape(Rectangle())  // keeps its long press off the seller line above
             .accessibilityLabel("Ordered \(pkg.date)")  // a bare date failed the Dynamic Type audit
     }
@@ -114,7 +114,7 @@ struct PackageRow: View {
     /// The pill, or the RECEIVED stamp once nothing is owed. An invisible widest pill sets the
     /// slot's size and the live one is drawn over it, so a check-in never changes the layout.
     private var statusSlot: some View {
-        Text("99 left \u{00B7} $99.99").font(.cochin(12.5, relativeTo: .footnote).weight(.bold))
+        Text("99 left \u{00B7} $99.99").font(.cochin(12.5).weight(.bold))
             .padding(.horizontal, 8).padding(.vertical, 4)
             .frame(minHeight: 28)
             .hidden()
@@ -128,13 +128,13 @@ struct PackageRow: View {
             .overlay(alignment: .trailing) {
                 switch status {
                 case .pill(let pill):
-                    Text(pill).font(.cochin(12.5, relativeTo: .footnote).weight(.bold)).foregroundStyle(paint(.pillText, .open))
+                    Text(pill).font(.cochin(12.5).weight(.bold)).foregroundStyle(paint(.pillText, .open))
                         .padding(.horizontal, 8).padding(.vertical, 4)
                         .background(Capsule().fill(paint(.pillFill, .open)))
                         .fixedSize()
                         .accessibilityIdentifier("card-pill:\(pkg.gk)")
                 case .received:
-                    Text("RECEIVED").font(.mono(10.5, relativeTo: .caption).weight(.bold)).tracking(1).foregroundStyle(paint(.border, .done))
+                    Text("RECEIVED").font(.mono(10.5).weight(.bold)).tracking(1).foregroundStyle(paint(.border, .done))
                         .padding(.horizontal, 8).padding(.vertical, 4)
                         .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(paint(.border, .done), lineWidth: 2))
                         .rotationEffect(.degrees(-4))
