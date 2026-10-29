@@ -377,6 +377,8 @@ final class OrphanedUITests: XCTestCase {
 
     /// The hit region is the whole control, not the label inside it: a .frame after the button style leaves the
     /// tappable area at the label's size. Every control on an envelope card is measured here, and every candidate row.
+    /// Edit and Discard must each be one element: the helpers read firstMatch, so a second element with the same id
+    /// would pass unseen. The count assertions guard that.
     func testEnvelopeCardControlsHaveA44ptHitRegion() throws {
         let app = launch()
         openOrphaned(app)
@@ -385,6 +387,8 @@ final class OrphanedUITests: XCTestCase {
 
         assertHit(app.buttons["Edit"].firstMatch, "Edit")
         assertHit(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "discard:")).firstMatch, "Discard")
+        XCTAssertEqual(count(app, prefix: "orphaned-edit:"), 1, "Edit's id is on more than one element")
+        XCTAssertEqual(count(app, prefix: "discard:"), 1, "Discard's id is on more than one element")
         assertHit(app.buttons["show 1 more candidate"], "show more")
         let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "assign:"))
         XCTAssertEqual(rows.count, 3, "the card shows three candidate rows before show more")

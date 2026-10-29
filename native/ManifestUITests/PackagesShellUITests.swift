@@ -125,7 +125,8 @@ final class PackagesShellUITests: XCTestCase {
     // MARK: accessibility audit, one screen per method
 
     /// Every tab's audit skips what the tab bar covers (owner ruling 2026-10-27, audit-skips-measured-flags), and the
-    /// Tally audit also skips the ruled contrast flags. Both skips live in AuditSkippingTabBarUITests.
+    /// Tally audit also skips the ruled contrast flags. No skip covers the Tally meta line. The skips live in
+    /// AuditSkippingTabBarUITests.
     func auditTab(_ title: String) throws {
         let app = launch()
         tab(app, title).tap()
