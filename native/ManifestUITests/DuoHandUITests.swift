@@ -29,9 +29,13 @@
 //             "Undo check in <name>", as checkin: is), hand-tie (the tie of envelopes that hold a held shared name;
 //             present instead of hand-who), hand-post (the Post button; its label starts with "Post"; present exactly
 //             while HandModel.offer is set), hand-past-transit-open (the Open control of the "Past 14 days" box).
+//   Match list hand-matches-heading (the heading over the hand-hit:<name> rows; present while the list shows; above the
+//             "This envelope" row, whose New envelope button is hand-new-envelope).
 //   Past transit   past-transit-page (the right page while it shows), past-transit-row:<gk> (one row per late package, a
 //             container whose children are reachable), and inside a row the buttons labelled "Claim filed" and "Refunded".
-//             There is no button labelled "Lost" (item 25, deferred).
+//             There is no button labelled "Lost" (item 25, deferred). past-transit-summary (the page's count line; its label
+//             starts "<N> envelope"). A red row (30 days from the order date) shows no "claim by" in any of its texts.
+//   Keys      With the system keys up, hand-post lies wholly above the keyboard's top edge, with no scroll by the user.
 // A lone card that names one envelope may check in by Post or by tapping its line (the mockup shows a stepper and no
 // Post). The stray case checks in by whichever the screen offers. The held case needs Post.
 //
@@ -48,6 +52,8 @@ final class DuoHandUITests: XCTestCase {
     static let path = "C1|1|pPathtoExile"
     static let swords = "C1|2|pSwordstoPlowshares"
     static let boltOfAlpha = "A1|0|pLightningBolt"
+    /// The late packages in the seed, oldest last: dated 2026-07-29, 2026-07-01 and 2026-05-01. The last two are 30 days or more on any clock the page needs.
+    static let lateMail = ["B1::Beta Games", "A1::Alpha Cards", "D1::Delta Cards"]
 
     override func setUp() {
         super.setUp()
@@ -117,6 +123,24 @@ final class DuoHandUITests: XCTestCase {
             let control = need(app, "hand-checkin:\(key)", "the line of the typed card")
             control.tap()
         }
+    }
+
+    /// Holds Lightning Bolt, then names Path to Exile: the next card offers a post. Returns the Post button, unscrolled and untapped.
+    func offerPost(_ app: XCUIApplication) -> XCUIElement {
+        typeCard(app, "Lightning Bolt")
+        _ = need(app, "hand-held", "the Suspense line of a held name")
+        typeCard(app, "Path to Exile")
+        return need(app, "hand-post", "the post the next card offers")
+    }
+
+    /// Card in Hand, then the past-transit page on the right page.
+    func openPastTransit(_ app: XCUIApplication) {
+        openHand(app)
+        let open = need(app, "hand-past-transit-open", "the Open control of the Past 14 days box")
+        onRightPage(open, app, "the Open control")
+        open.tap()
+        let page = need(app, "past-transit-page", "the past-transit page")
+        onRightPage(page, app, "the past-transit page")
     }
 
     // MARK: the cases
@@ -190,10 +214,7 @@ final class DuoHandUITests: XCTestCase {
         openHand(app)
         let count = need(app, "hand-count", "the left page's count line").label
 
-        typeCard(app, "Lightning Bolt")
-        _ = need(app, "hand-held", "the Suspense line of a held name")
-        typeCard(app, "Path to Exile")
-        let post = need(app, "hand-post", "the post the next card offers")
+        let post = offerPost(app)
         XCTAssertTrue(post.label.hasPrefix("Post"), "the post button reads \"\(post.label)\"")
         onRightPage(post, app, "the Post button")
         XCTAssertEqual(app.element("hand-who").label, "Gamma Cards", "the next card names order C1")
@@ -245,17 +266,10 @@ final class DuoHandUITests: XCTestCase {
     func testPastTransitListsLateMailOldestLast() {
         let app = XCUIApplication.launchedOnSeed()
         guard app.requirePose(.flat) else { return }
-        openHand(app)
+        openPastTransit(app)
 
-        let open = need(app, "hand-past-transit-open", "the Open control of the Past 14 days box")
-        onRightPage(open, app, "the Open control")
-        open.tap()
-        let page = need(app, "past-transit-page", "the past-transit page")
-        onRightPage(page, app, "the past-transit page")
-
-        let order = ["B1::Beta Games", "A1::Alpha Cards", "D1::Delta Cards"]  // dated 2026-07-29, 2026-07-01, 2026-05-01
         var tops: [CGFloat] = []
-        for gk in order {
+        for gk in Self.lateMail {
             let row = need(app, "past-transit-row:\(gk)", "a late package")
             onRightPage(row, app, "the row \(gk)")
             XCTAssertTrue(row.buttons["Claim filed"].exists, "the row \(gk) has no Claim filed button")
@@ -267,5 +281,67 @@ final class DuoHandUITests: XCTestCase {
         XCTAssertFalse(app.element("past-transit-row:C1::Gamma Cards").exists, "a tracked package is listed as late mail")
         XCTAssertFalse(app.buttons["Lost"].exists, "a Lost button shows: the page offers the existing stamps only")
         keepShot(app, "hand-past-transit")
+    }
+
+    /// Pose: flat, system keys up. The Post offer lies wholly above the keys, hittable, with no scroll by the test. A tap or a
+    /// scrollToVisible on it would scroll it into view, which the owner's thumb does not, so after the offer shows this test
+    /// reads frames only. The keys must really be up: a keyboard that is missing or off the window proves nothing and fails.
+    func testPostOfferClearsTheKeys() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let post = offerPost(app)
+
+        let keys = app.keyboards.firstMatch
+        XCTAssertTrue(keys.waitForExistence(timeout: 5), "the system keys are not up, so nothing here shows the offer clears them; with a hardware keyboard attached the keys never draw (Simulator, I/O, Keyboard, Connect Hardware Keyboard off)")
+        let k = keys.frame, win = app.window.frame
+        XCTAssertGreaterThan(k.height, 200, "the keyboard frame \(k) is too short to be the keys (measured 263 pt on the open Duo)")
+        XCTAssertGreaterThanOrEqual(k.minY, win.minY, "the keyboard frame \(k) starts above the window \(win)")
+        XCTAssertLessThanOrEqual(k.maxY, win.maxY + Self.tolerance, "the keyboard frame \(k) ends below the window \(win): the keys are not up")
+        let f = post.frame
+        XCTAssertLessThanOrEqual(f.maxY, k.minY, "the Post button, frame \(f), is under the keys, which start at y \(k.minY): the owner must scroll to reach it")
+        XCTAssertTrue(post.isHittable, "the Post button, frame \(f), is not hittable with the keys up and no scroll")
+        keepShot(app, "hand-post-clears-keys")
+    }
+
+    /// Pose: flat. A red row (30 days from the order date) has no claim date: the claim window is closed. Checked on every late
+    /// row but the first (A1 and D1). A row is a container whose own label is empty, so the texts come from its children, and
+    /// the row's seller proves the children were read. The page also carries a summary line, "<N> envelope...", with N the rows listed.
+    func testRedPastTransitRowsShowNoClaimDate() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openPastTransit(app)
+
+        for gk in Self.lateMail.dropFirst() {
+            let row = need(app, "past-transit-row:\(gk)", "a red package")
+            let texts = ([row.label] + row.descendants(matching: .any).allElementsBoundByIndex.map(\.label)).joined(separator: " | ")
+            let seller = gk.components(separatedBy: "::").last ?? gk
+            XCTAssertTrue(texts.contains(seller), "the texts of row \(gk) were not read: \"\(texts)\" lacks the seller")
+            XCTAssertFalse(texts.localizedCaseInsensitiveContains("claim by"), "the red row \(gk) still shows a claim date: \"\(texts)\"")
+        }
+
+        let summary = need(app, "past-transit-summary", "the page's count of late envelopes")
+        let text = summary.label
+        guard let digits = text.range(of: #"^[0-9]+(?= envelope)"#, options: .regularExpression) else {
+            return XCTFail("the summary label does not start with a count and \"envelope\": \"\(text)\"")
+        }
+        XCTAssertEqual(Int(text[digits]), Self.lateMail.count, "the summary \"\(text)\" counts a different number of envelopes than the page lists")
+    }
+
+    /// Pose: flat. The match list (the hand-hit rows) has its own heading, over the list and above the "This envelope" row, so
+    /// the hits do not read as that envelope's. The row is anchored by its New envelope button, which sits in it.
+    func testMatchListHasItsOwnHeadingAboveThisEnvelope() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        typeCard(app, "Path to Exile")
+
+        let hit = app.firstElement(prefix: "hand-hit:")
+        XCTAssertTrue(hit.waitForExistence(timeout: 5), "typing Path to Exile listed no match (hand-hit:...)")
+        let heading = need(app, "hand-matches-heading", "the heading over the match list")
+        let envelope = need(app, "hand-new-envelope", "the This envelope row's New envelope button")
+        XCTAssertLessThan(heading.frame.minY, envelope.frame.minY, "the match heading, frame \(heading.frame), is not above the This envelope row, frame \(envelope.frame)")
+        XCTAssertLessThanOrEqual(heading.frame.maxY, hit.frame.minY + Self.tolerance, "the match heading, frame \(heading.frame), is not over its list, whose first row is at \(hit.frame)")
+        keepShot(app, "hand-matches-heading")
     }
 }
