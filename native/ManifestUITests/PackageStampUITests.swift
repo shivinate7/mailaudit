@@ -140,7 +140,14 @@ final class PackageStampUITests: XCTestCase {
         let after = relative(snapshot(app), to: anchor)
         let common = before.keys.filter { after[$0] != nil }
         XCTAssertGreaterThanOrEqual(common.count, 8, "too few frames to compare after \(what)", file: file, line: line)
-        for id in common { XCTAssertEqual(after[id], before[id], "\(id) moved when \(what)", file: file, line: line) }
+        // Layout rounding gives one frame a float error (319.0000305 against 319.0), so each edge is compared to half a
+        // point, as the other frame checks here are. A 1pt move shifts an edge by 1.0 and still fails.
+        for id in common {
+            guard let was = before[id], let now = after[id] else { continue }
+            for (edge, a, b) in [("minX", now.minX, was.minX), ("minY", now.minY, was.minY), ("maxX", now.maxX, was.maxX), ("maxY", now.maxY, was.maxY)] {
+                XCTAssertEqual(a, b, accuracy: 0.5, "\(id) moved when \(what): \(edge) \(b) to \(a)", file: file, line: line)
+            }
+        }
     }
 
     /// Today's local day as the band prints it: MM-dd.
