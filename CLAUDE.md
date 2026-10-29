@@ -416,6 +416,9 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-masthead-foot-row-gap` — The native masthead foot's second row sits 4.6pt low.
 - `native-masthead-axl-clips` — The native masthead wraps and clips at accessibility text sizes.
 - `native-stamp-load-unmeasured` — The native Packages load with stamps is unmeasured.
+- `native-stamp-note-field-short` — The native stamp note field is 36.7pt tall, under 44pt.
+- `native-stamp-ask-covers-row` — The native armed Remove ask covers the editor row.
+- `native-armed-audit-misses-ask` — The native armed stamp audit cannot see the ask.
 - `debt-notes` — One-line findings not likely in normal work.
 - `native-card-gestures-unpinned` — No UI test pins the native card header gestures.
 - `native-card-state-in-swift` — The native card copies the line and package done rules in Swift.
