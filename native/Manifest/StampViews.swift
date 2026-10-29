@@ -27,8 +27,9 @@ struct StampedRow: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .disabled(count == 0 && !on)  // with nothing stamped there is nothing to show; the web hides the cell then
                 .accessibilityLabel("\(count) stamped")
-                .accessibilityHint("Shows only the packages that carry a stamp")
+                .accessibilityHint(count == 0 && !on ? "No package carries a stamp yet." : "Shows only the packages that carry a stamp")
                 .accessibilityAddTraits(on ? .isSelected : [])
                 .accessibilityIdentifier("stamped-cell")
             }
@@ -79,6 +80,8 @@ struct StampSection: View {
     let masthead: MastheadModel
     /// The card's surface, which the band note's "…" sits on.
     let surface: Color
+    /// True while the armed ask hangs below the card's edge, so the card lets it show (see PackageRow).
+    @Binding var overhang: Bool
     /// Runs after a write, so the Tally and Orphaned figures read the new stamps.
     let onChange: () async -> Void
 
@@ -113,6 +116,7 @@ struct StampSection: View {
         }
         .zIndex(1)  // the armed ask hangs over the lines below
         .task(id: armed) { if armed { try? await Task.sleep(for: .seconds(4)); armed = false } }
+        .onChange(of: armed) { _, a in overhang = a }
     }
 
     /// The editor opens on the stamp as it is at the moment of the tap, not as it was at mount (src/app.jsx openEditor).
@@ -282,10 +286,11 @@ struct StampSection: View {
     /// figures read the new stamps (a-refund-leaves-every-count). The editor closes only on a save that landed.
     private func write(_ act: () async throws -> Void) async {
         masthead.saving()
-        try? await act()
+        var landed = true
+        do { try await act() } catch { landed = false }  // the model has put the reason in checkInError, which the screen shows
         await onChange()
-        await masthead.finished(failed: model.checkInError != nil)
-        if model.checkInError == nil { close() }
+        await masthead.finished(failed: !landed)
+        if landed { close() }
     }
 
     private func save() async { await write { try await model.stamp(pkg.gk, kind: kind, note: note) } }

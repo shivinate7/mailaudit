@@ -287,9 +287,14 @@ public final class PackagesModel {
     }
 
     /// Turns the stamped filter on or off and reads the list again. It changes the list, not the counts.
+    /// A failed read lands in checkInError and is thrown.
     public func toggleStamped() async throws {
         showStamped.toggle()
-        try await load()
+        do { try await load() } catch {
+            checkInError = "Could not read the list. \(error.localizedDescription)"
+            throw error
+        }
+        checkInError = nil
     }
 
     private func write(_ failure: String, _ act: () async throws -> Void) async throws {
@@ -297,7 +302,10 @@ public final class PackagesModel {
             checkInError = "\(failure) \(error.localizedDescription)"
             throw error
         }
+        do { try await load() } catch {
+            checkInError = "Saved, but the list could not refresh. \(error.localizedDescription)"
+            throw error
+        }
         checkInError = nil
-        try await load()
     }
 }

@@ -17,7 +17,7 @@ struct PackagesView: View {
     var body: some View {
         MastheadScreen(masthead: masthead, tab: .packages, sync: sync, openSync: openSync,
                        ruledRow: AnyView(StampedRow(count: model.stampedCount, on: model.showStamped) {
-                           Task { try? await model.toggleStamped() }
+                           Task { try? await model.toggleStamped() }  // a failed read is in model.checkInError, shown below
                        })) {
             VStack(spacing: 0) {
                 if let notice { Text(notice).font(.footnote).padding(8) }
@@ -44,6 +44,9 @@ struct PackageRow: View {
     let model: PackagesModel
     let masthead: MastheadModel
     let onChange: () async -> Void
+    /// True while the armed stamp ask shows. It hangs below the editor row and, at large text, past the card's edge, so
+    /// the card then draws above its neighbours.
+    @State private var overhang = false
 
     private func state(_ item: LedgerItem) -> LineState { LineState(got: model.received[item.key] ?? 0, qty: item.qty) }
     private var packageState: LineState { pkg.items.allSatisfy { state($0) == .done } ? .done : .open }
@@ -51,7 +54,25 @@ struct PackageRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            StampSection(pkg: pkg, model: model, masthead: masthead, surface: paint(.surface, packageState), onChange: onChange)
+            StampSection(pkg: pkg, model: model, masthead: masthead, surface: paint(.surface, packageState),
+                         overhang: $overhang, onChange: onChange)
+            lines
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        // The shadow sits on the fill, not the card: a shadow on the card would be drawn under every leaf view in it.
+        .background(RoundedRectangle(cornerRadius: 8).fill(paint(.surface, packageState))
+            .shadow(color: Parchment.shadow, radius: 1, y: 1))
+        .overlay(alignment: .top) { bar.clipShape(UnevenRoundedRectangle(topLeadingRadius: 8, topTrailingRadius: 8)) }
+        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.border, packageState), lineWidth: 1))
+        .zIndex(overhang ? 1 : 0)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("package-row:\(pkg.gk)")
+    }
+
+    /// The item lines, clipped to the card's bottom corners because their fills are square. The card clips nothing
+    /// else, so the armed stamp ask can hang past its edge.
+    private var lines: some View {
+        VStack(alignment: .leading, spacing: 0) {
             ForEach(pkg.items, id: \.key) { item in
                 ItemLine(
                     state: state(item), name: item.name, title: item.name, detail: model.details[item.key] ?? "",
@@ -69,14 +90,7 @@ struct PackageRow: View {
                     })
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(paint(.surface, packageState))
-        .overlay(alignment: .top) { bar }
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.border, packageState), lineWidth: 1))
-        .shadow(color: Parchment.shadow, radius: 1, y: 1)
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("package-row:\(pkg.gk)")
+        .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 8, bottomTrailingRadius: 8))
     }
 
     private var header: some View {
