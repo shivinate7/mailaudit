@@ -20,6 +20,8 @@
 //     The Packages rows are package-row:<gk> with checkin:<key> controls. The last Ledger row is "reset".
 //   System tab bar: on the open Duo it is absent or not hittable. On the closed Duo it shows the four tab titles.
 //   Custom tab bar, closed Duo: absent.
+//   Taps above the keys, open Duo: with the system keys up, a control whose centre lies in the 76 pt above them (the bar's room in
+//     the tab) takes a tap. The test uses Tally's check-in control (tally-checkin:<key>) on the open Lightning Bolt row.
 //
 // Every key here is fake. Launch with -ManifestUITestSeed only. Do not pass -ManifestUITestWidth: it frames the root to 375 pt.
 
@@ -196,11 +198,14 @@ final class DuoShellUITests: XCTestCase {
 
     /// One drag up the right page, from 80 % to 15 % of the window's height. It starts above the bar (which starts at 89 %),
     /// and it holds before it lifts, so it has no fling (as reveal(_:whole:) does).
-    func dragListUp(_ app: XCUIApplication) {
+    func dragListUp(_ app: XCUIApplication) { dragList(app, from: 0.8, to: 0.15) }
+
+    /// One slow drag of the right page from `from` to `to`, each a fraction of the window's height. It holds before it lifts (no fling).
+    func dragList(_ app: XCUIApplication, from: CGFloat, to: CGFloat) {
         let window = app.window
-        let from = window.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.8))
-        let to = window.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.15))
-        from.press(forDuration: 0.05, thenDragTo: to, withVelocity: .slow, thenHoldForDuration: 0.3)
+        let start = window.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: from))
+        let end = window.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: to))
+        start.press(forDuration: 0.05, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.3)
     }
 
     /// Drags a list up until a drag moves nothing, and returns its lowest row. A list whose rows reach the bar must move on
@@ -256,4 +261,132 @@ final class DuoShellUITests: XCTestCase {
         keepShot(app, "closed-ledger")
         XCTAssertFalse(customBar(app).exists, "the custom tab bar shows on a closed Duo")
     }
+
+    // MARK: open Duo, taps above the keys
+
+    /// Most drags the test spends bringing a control into the band above the keys.
+    static let maxPlacementDrags = 6
+    /// A drag shorter than this does not pass the scroll slop and moves nothing, so a smaller move is a longer drag and its way back.
+    static let minDrag: CGFloat = 40
+    /// How far in from the band's top edge a control's centre must lie, so a centre on the edge does not count.
+    static let bandMargin: CGFloat = 8
+
+    /// Pose: flat (open Duo, window 951 x 669 pt), system keys up. The tab keeps room for the custom bar, and that room must not
+    /// take taps. With the keys up it lies in the 76 pt just above them, over the rows. The test opens Tally and its Lightning Bolt
+    /// row, focuses the search field, and scrolls one unchecked copy's check-in control (a 45 pt square at the left page's edge,
+    /// clear of the fold) until its centre lies in that band and it ends above the keys. The control must be hittable, and a tap on
+    /// it must check the copy in. Red on a238f64: the room is an inset view that sits over the band, so the control is not
+    /// hittable and the tap is dropped. The tap goes to a window coordinate, as element.tap() may scroll a covered element clear first.
+    func testFlatTapAboveKeysLands() {
+        let app = launch()
+        guard app.requirePose(.flat) else { return }
+        let bar = customBar(app)
+        guard bar.waitForExistence(timeout: 5) else {
+            XCTFail("the custom tab bar duo-tab-bar is missing on the open Duo")
+            return
+        }
+
+        bar.buttons["Tally"].tap()
+        let toggle = element(app, "tally-toggle:Lightning Bolt")
+        guard toggle.waitForExistence(timeout: 5) else {
+            XCTFail("a tap on the Tally button did not open Tally (tally-toggle:Lightning Bolt is missing)")
+            return
+        }
+        tapNearLeft(toggle)
+        let query = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "tally-checkin:"))
+        guard query.firstMatch.waitForExistence(timeout: 5) else {
+            XCTFail("a tap on tally-toggle:Lightning Bolt listed no copy, so there is no check-in control")
+            return
+        }
+        let controls = { query.allElementsBoundByIndex }
+
+        let search = element(app, "tally-search")
+        guard search.waitForExistence(timeout: 5) else {
+            XCTFail("the search field tally-search is missing")
+            return
+        }
+        tapNearLeft(search)
+        let keys = app.keyboards.firstMatch
+        guard keys.waitForExistence(timeout: 5) else {
+            XCTFail("the system keys are not up; with a hardware keyboard attached they never draw (Simulator, I/O, Keyboard, Connect Hardware Keyboard off)")
+            return
+        }
+        let win = app.window.frame
+        for _ in 0..<25 where keys.frame.maxY > win.maxY + Self.tolerance { Thread.sleep(forTimeInterval: 0.2) }  // the keys slide up from the bottom edge
+
+        // Bring a control to rest in the band. Each pass reads the keys and the controls once they stop moving, and a drag may have put the keys down.
+        var target: String?
+        var k = CGRect.zero
+        for drag in 0...Self.maxPlacementDrags {
+            guard keys.exists else {
+                XCTFail("the keys went down before a control reached the band: a drag dismissed them")
+                return
+            }
+            _ = settled { controls() + [keys] }
+            k = keys.frame
+            guard k.height > 100, k.minY >= win.minY, k.maxY <= win.maxY + Self.tolerance else {
+                XCTFail("the keyboard frame \(k) is not the keys up on the window \(win)")
+                return
+            }
+            let free = controls().filter { $0.label.hasPrefix("Check in") }
+            let listing = free.map { "\($0.identifier) \($0.frame)" }
+            print("INSET-DIAG pass \(drag) keys=\(k) band=y\(k.minY - Self.barHeight)...\(k.minY) controls=\(listing)")
+            if let hit = free.first(where: { inKeysBand($0.frame, keys: k) }) {
+                target = hit.identifier
+                break
+            }
+            if drag == Self.maxPlacementDrags { break }
+            // The centre of the span a 45 pt control's centre may take. A control a little above it still counts as below, so the drag is up.
+            let aim = k.minY - 44
+            let below = free.filter { $0.frame.midY >= aim - 20 }
+            guard let next = below.min(by: { $0.frame.midY < $1.frame.midY }) ?? free.max(by: { $0.frame.midY < $1.frame.midY }) else {
+                XCTFail("every copy of the open row is checked in already, so there is no control to tap")
+                return
+            }
+            scrollRows(app, by: aim - next.frame.midY, keys: k)
+        }
+        guard let id = target else {
+            XCTFail("no check-in control came to rest in the \(Int(Self.barHeight)) pt above the keys after \(Self.maxPlacementDrags) drags, so the tap cannot be tried (see the INSET-DIAG lines)")
+            return
+        }
+
+        let control = element(app, id)
+        let f = control.frame
+        let hittable = control.isHittable
+        print("INSET-DIAG window=\(win) keys=\(k) band=y\(k.minY - Self.barHeight)...\(k.minY) control=\(id) frame=\(f) hit=(\(f.midX), \(f.midY)) hittable=\(hittable)")
+        keepShot(app, "flat-tap-above-keys")
+        XCTAssertTrue(hittable, "the check-in control \(id), frame \(f), is not hittable. Its centre lies \(Int(k.minY - f.midY)) pt above the keys' top (y \(Int(k.minY))), inside the \(Int(Self.barHeight)) pt band the bar's room takes, so a view lies over it")
+
+        app.window.coordinate(withNormalizedOffset: CGVector(dx: (f.midX - win.minX) / win.width, dy: (f.midY - win.minY) / win.height)).tap()
+        for _ in 0..<25 where !control.label.hasPrefix("Undo check in") { Thread.sleep(forTimeInterval: 0.2) }
+        XCTAssertTrue(control.label.hasPrefix("Undo check in"),
+                      "a tap at (\(Int(f.midX)), \(Int(f.midY))) on \(id), \(Int(k.minY - f.midY)) pt above the keys, was dropped: the control still reads \"\(control.label)\"")
+    }
+
+    /// True when the control's centre lies in the band above the keys that the bar's room takes (a little in from its top edge), and
+    /// the control ends at or above the keys' top. A control partly under the keys is no test of the room: it stays unhittable once the room is gone.
+    func inKeysBand(_ f: CGRect, keys: CGRect) -> Bool {
+        f.midY >= keys.minY - Self.barHeight + Self.bandMargin && f.maxY <= keys.minY + Self.tolerance
+    }
+
+    /// Moves the rows by `dy` points (negative scrolls them up) with slow drags that start above the band. A drag that starts in the
+    /// band starts on the bar's room, the thing under test, and one that starts on the keys does not scroll (dragListUp starts at 80 %
+    /// of the window's height, which is on the keys).
+    func scrollRows(_ app: XCUIApplication, by dy: CGFloat, keys: CGRect) {
+        let sign: CGFloat = dy < 0 ? -1 : 1
+        if abs(dy) < Self.minDrag {
+            scrollRows(app, by: dy + sign * Self.minDrag, keys: keys)
+            scrollRows(app, by: -sign * Self.minDrag, keys: keys)
+            return
+        }
+        let win = app.window.frame
+        let top = win.minY + 100  // below the pinned running head
+        let ceiling = keys.minY - Self.barHeight - 12
+        let from = sign < 0 ? ceiling : top
+        let to = from + sign * min(abs(dy), ceiling - top)
+        dragList(app, from: (from - win.minY) / win.height, to: (to - win.minY) / win.height)
+    }
+
+    /// Taps `el` a tenth of its width in from its left edge. A full-width element's centre lies on the fold strip, and no test here has measured a tap there.
+    func tapNearLeft(_ el: XCUIElement) { el.coordinate(withNormalizedOffset: CGVector(dx: 0.1, dy: 0.5)).tap() }
 }
