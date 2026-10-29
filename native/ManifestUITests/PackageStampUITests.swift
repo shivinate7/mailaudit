@@ -19,14 +19,17 @@
 //   stamp-editor:<gk>       the editor. It replaces the band, between the header and the item lines.
 //   stamp-kind:<gk>|<kind>  the six kind chips, in STAMP_KINDS order read left to right, top to bottom. The picked one
 //                           reports isSelected.
-//   stamp-note:<gk>         the note field. Its value is the typed text.
+//   stamp-note-box:<gk>     the box around the note field: 44pt each way at least. A tap anywhere in it, the margin
+//                           around the field's own frame included, gives the field keyboard focus.
+//   stamp-note:<gk>         the note field. Its value is the typed text. Its own frame may be shorter than the box.
 //   stamp-save:<gk>         Save. Disabled until a kind is picked.
 //   stamp-cancel:<gk>       Cancel. It closes the editor and drops the pick.
 //   stamp-remove:<gk>       Remove stamp. Only when the card is stamped. The first tap arms it.
 //   stamp-ask-cancel:<gk>   Cancel in the armed ask.
 //   stamp-ask-confirm:<gk>  the armed ask's second tap, labelled "Tap again to remove stamp from N cards". The ask hangs
-//                           below the editor row (an overlay, as Orphaned's Discard ask does) and disarms after 4 seconds.
-//   stamped-cell            the ruled row's "N stamped" cell. A button. Its label starts "N stamped". isSelected while the
+//                           below the editor row (an overlay, as Orphaned's Discard ask does) and disarms after 4 seconds. The editor's
+//                           frame spans the armed ask: its top, left and right edges hold, its bottom grows to the ask's.
+//   stamped-cell           the ruled row's "N stamped" cell. A button. Its label starts "N stamped". isSelected while the
 //                           stamped filter is on. 44pt each way at least.
 //   card-pill:<gk>, card-slot:<gk>  hold "N left \u{00B7} refunded" (label of the pill, value of the slot) on a refunded card.
 // Launch arguments are the shell tests': -ManifestUITestSeed, -ManifestUITestWidth.
@@ -62,6 +65,9 @@ final class PackageStampUITests: XCTestCase {
     static let a1 = "A1::Alpha Cards", b1 = "B1::Beta Games", c1 = "C1::Gamma Cards", d1 = "D1::Delta Cards"
     static let kinds = ["claim", "refunded", "contacted", "reshipped", "partial", "other"]
     static let dot = "\u{00B7}"
+    /// The padding of the armed ask's panel (StampViews `ask`). The panel has no identifier, so its bottom is read as the
+    /// lower of its two buttons' bottoms plus this.
+    static let askPanelPad: CGFloat = 4
     /// The ids whose frames the no-shift cases read: the cards' own, and every stamp control.
     static let framed = ["package-row:", "checkin:", "order-link:", "stamp-button:", "stamp-band:", "stamp-editor:", "stamp-kind:",
                          "stamp-note:", "stamp-save:", "stamp-cancel:", "stamp-remove:", "stamp-ask-"]
@@ -139,9 +145,11 @@ final class PackageStampUITests: XCTestCase {
 
     /// Every frame in `before` (already relative to the card's top) that is still on screen sits where it did. `taken` is
     /// a snapshot the caller read at the moment that matters (the armed ask is live for 4 seconds only); without it the
-    /// frames are read now.
+    /// frames are read now. `growsTo` names a frame whose maxY may grow, to the value given (relative to the card's top)
+    /// and no further, and never shrink; its other three edges hold like every other frame's.
     func assertStill(_ before: [String: CGRect], _ app: XCUIApplication, anchor: String, _ what: String,
-                     taken: [String: CGRect]? = nil, file: StaticString = #filePath, line: UInt = #line) {
+                     taken: [String: CGRect]? = nil, growsTo: [String: CGFloat] = [:],
+                     file: StaticString = #filePath, line: UInt = #line) {
         let after = relative(taken ?? snapshot(app), to: anchor)
         let common = before.keys.filter { after[$0] != nil }
         XCTAssertGreaterThanOrEqual(common.count, 8, "too few frames to compare after \(what)", file: file, line: line)
@@ -150,7 +158,12 @@ final class PackageStampUITests: XCTestCase {
         for id in common {
             guard let was = before[id], let now = after[id] else { continue }
             for (edge, a, b) in [("minX", now.minX, was.minX), ("minY", now.minY, was.minY), ("maxX", now.maxX, was.maxX), ("maxY", now.maxY, was.maxY)] {
-                XCTAssertEqual(a, b, accuracy: 0.5, "\(id) moved when \(what): \(edge) \(b) to \(a)", file: file, line: line)
+                if edge == "maxY", let limit = growsTo[id] {
+                    XCTAssertGreaterThanOrEqual(a, b - 0.5, "\(id) shrank when \(what): \(edge) \(b) to \(a)", file: file, line: line)
+                    XCTAssertLessThanOrEqual(a, limit + 0.5, "\(id) grew past the ask when \(what): \(edge) \(b) to \(a), the ask ends at \(limit)", file: file, line: line)
+                } else {
+                    XCTAssertEqual(a, b, accuracy: 0.5, "\(id) moved when \(what): \(edge) \(b) to \(a)", file: file, line: line)
+                }
             }
         }
     }
@@ -249,11 +262,14 @@ final class PackageStampUITests: XCTestCase {
         let ask = el(app, "stamp-ask-confirm:\(gk)"), askCancel = el(app, "stamp-ask-cancel:\(gk)")
         let armed = snapshot(app)
         guard let askBox = armed["stamp-ask-confirm:\(gk)"], let cancelBox = armed["stamp-ask-cancel:\(gk)"],
-              let saveBox = armed["stamp-save:\(gk)"] else {
+              let saveBox = armed["stamp-save:\(gk)"], let cardBox = armed[anchor] else {
             return XCTFail("the ask, its Cancel or Save is missing from the snapshot taken after the first tap: the ask had gone")
         }
         XCTAssertNotNil(armed["stamp-editor:\(gk)"], "the first tap closed the editor")
-        assertStill(before, app, anchor: anchor, "Remove stamp was armed", taken: armed)
+        // The ask is an overlay inside the editor, so the editor's frame spans it: its bottom grows to the ask's and nothing
+        // else moves. Every other frame, the editor's other three edges included, holds.
+        let askEnd = max(askBox.maxY, cancelBox.maxY) + Self.askPanelPad - cardBox.minY
+        assertStill(before, app, anchor: anchor, "Remove stamp was armed", taken: armed, growsTo: ["stamp-editor:\(gk)": askEnd])
         XCTAssertGreaterThan(askBox.minY, saveBox.midY, "the ask does not hang below the row")
         XCTAssertGreaterThan(cancelBox.minY, saveBox.midY, "the ask's Cancel does not hang below the row")
 
@@ -368,9 +384,10 @@ final class PackageStampUITests: XCTestCase {
 
     // MARK: sizes
 
-    /// Every control the owner taps has a hit region of at least 44pt each way: Stamp, the six chips, the note field,
+    /// Every control the owner taps has a hit region of at least 44pt each way: Stamp, the six chips, the note box,
     /// Cancel, Save, Remove stamp, the band (over the card's full width), the stamped cell and the armed ask's two
-    /// buttons. The chips' frames do not overlap: each is a 44pt frame on a 34pt chip, inside the gap.
+    /// buttons. The chips' frames do not overlap: each is a 44pt frame on a 34pt chip, inside the gap. The field's own frame
+    /// is shorter than 44pt, so the box is its hit region: a tap near the box's top edge, outside the field's frame, focuses it.
     func testEveryStampControlHasA44ptHitRegion() throws {
         let app = launch()
         let gk = Self.a1
@@ -387,9 +404,20 @@ final class PackageStampUITests: XCTestCase {
                 XCTAssertTrue(hit.isNull || hit.width * hit.height < 0.5, "the frames of \(a.identifier) and \(b.identifier) overlap: \(a.frame), \(b.frame)")
             }
         }
-        assertHitRegion(el(app, "stamp-note:\(gk)"), "the note field")
+        let box = el(app, "stamp-note-box:\(gk)"), field = el(app, "stamp-note:\(gk)")
+        assertHitRegion(box, "the note box")
+        XCTAssertTrue(field.exists, "the note field has lost its identifier")
         assertHitRegion(el(app, "stamp-cancel:\(gk)"), "Cancel")
         assertHitRegion(el(app, "stamp-save:\(gk)"), "Save")
+
+        // The tap lands inside the box, half way up the margin the box leaves over the field's own frame (1pt in when the
+        // field fills the box). No keyboard is up before it, and Return ends the edit so the pick below meets none.
+        XCTAssertFalse(app.keyboards.element.exists, "a keyboard is up before the note box was tapped")
+        let margin = max(field.frame.minY - box.frame.minY, 0)
+        box.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0)).withOffset(CGVector(dx: 0, dy: max(margin / 2, 1))).tap()
+        XCTAssertTrue(app.keyboards.element.waitForExistence(timeout: 5), "a tap \(max(margin / 2, 1))pt inside the note box's top edge, \(margin)pt over the field, did not focus the field")
+        field.typeText(XCUIKeyboardKey.return.rawValue)
+        wait("exists == false", for: app.keyboards.element, "Return did not end the note edit")
 
         tap(app, "stamp-kind:\(gk)|claim")
         tap(app, "stamp-save:\(gk)")
