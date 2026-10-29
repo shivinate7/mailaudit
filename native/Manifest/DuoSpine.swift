@@ -195,9 +195,10 @@ private struct DuoBar<ID: Hashable>: View {
                     VStack(spacing: 4) {
                         Color.clear.frame(width: 22, height: 22)
                         Text(item.title).font(.cochin(12, relativeTo: .caption)).foregroundStyle(tint)
+                            .fixedSize()
+                            .accessibilityIdentifier("duo-tab-title:\(item.title)")
                     }
                     .allowsHitTesting(false)
-                    .accessibilityIdentifier("duo-tab-title:\(item.title)")
                 }
             }
         }
