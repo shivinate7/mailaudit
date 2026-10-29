@@ -12,10 +12,18 @@
 //     wrapper that calls it inside the bundle, or the shim below would not reach it.
 //   - LiveItems.of drops the packages the bundle's isRefundStamp names, and no others. Packages, Tally, Orphaned,
 //     the masthead and Card in Hand all call it, so one case covers the five.
-//   - PackagesModel gains stored properties `stamps` (group key to the stored stamp), `stampedCount` (Int) and
-//     `showStamped` (Bool, false at launch). A test cannot name a property that does not exist yet, so the cases
-//     that read them go through Mirror (the way PackageCardTokensTests finds the count part by name). They read
-//     `name` or the `_name` that @Observable stores it under.
+//   - PackagesModel gains stored properties, all filled by load() the way `pills` and `details` are, from the
+//     bundle and never from Swift text:
+//       stamps        group key to the stored stamp
+//       stampedCount  Int: the live stamps (the bundle's hasStamp) among the packages of the list before the refund
+//                     exclusion, canceled orders left out
+//       showStamped   Bool, false at launch
+//       bands         [String: String]: group key to the bundle's stampBandText, one per live stamp counted above
+//       refundPills   [String: String]: group key to the bundle's refundedPill(items, received), one per package
+//                     the bundle's isRefundStamp names, none when no copy is owed
+//       stampKinds    the bundle's STAMP_KINDS constant, in its order (the element type is the builder's)
+//     A test cannot name a property that does not exist yet, so the cases that read them go through Mirror (the way
+//     PackageCardTokensTests finds the count part by name). They read `name` or the `_name` @Observable stores it under.
 //   - PastTransitModel.stamp saves the record the bundle's nextStamp returns: PastTransitModelTests.
 //
 // Fake fixtures only. LiveFixture (TallyPackagesLiveItemsTests.swift) builds the ledgers.
@@ -134,5 +142,46 @@ final class StampRulesTests: XCTestCase {
         XCTAssertTrue(Set(held.keys).isSuperset(of: ["E1::Seller E", "R1::Seller R"]), "the stamps map lacks a live stamp: \(held.keys.sorted())")
         XCTAssertEqual(peek(model, "showStamped") as Bool?, false, "the stamped filter starts off")
         XCTAssertFalse(model.rows.map(\.gk).contains("R1::Seller R"), "the refunded package is out of the normal list")
+    }
+
+    // MARK: the count, the band, the pill and the kinds come from the bundle
+
+    /// Two kinds of the shim's own, a hasStamp that knows only them, and marker text for the band and the pill.
+    static let textShim = """
+        Rules = Object.assign({}, Rules, {
+          STAMP_KINDS: [["shimA", "Shim A"], ["shimB", "Shim B"]],
+          hasStamp: function (s) { return !!s && (s.kind === "shimA" || s.kind === "shimB"); },
+          isRefundStamp: function (s) { return !!s && s.kind === "shimB"; },
+          stampBandText: function (s) { return "BAND " + s.kind + " " + s.at; },
+          refundedPill: function (items) { return "PILL " + items.length; }
+        });
+        """
+
+    /// E1 holds shimA, R1 / Seller R shimB (a refund to the shim, two lines), and F1 a "claim", which the shim's hasStamp
+    /// does not call a stamp. Swift text for any of the four would give another answer: the real bundle counts F1 and reads
+    /// "CLAIM FILED", and the real pill is "N left \u{00B7} refunded".
+    func testPackagesModelReadsTheStampTextFromTheBundle() async throws {
+        let engine = try RulesEngine(bundleURL: try probeBundleFile(Self.textShim, for: self))
+        // positive control: the overrides are live
+        let kinds = try await engine.constant("STAMP_KINDS")
+        XCTAssertTrue(kinds.contains("Shim A") && !kinds.contains("Claim filed"), "the shim's STAMP_KINDS must be live, or this test proves nothing")
+        let has = try await engine.call("hasStamp", #"[{"kind":"claim"}]"#)
+        XCTAssertEqual(has, "false", "the shim's hasStamp must be live")
+
+        let stamps: [LiveStamp] = [("E1", "Seller E", "shimA"), ("R1", "Seller R", "shimB"), ("F1", "Seller F", "claim")]
+        let store = try await LiveFixture.store(items: LiveFixture.base + LiveFixture.refunded, stamps: stamps, engine: try LiveFixture.engine())
+        let model = PackagesModel(engine: engine, store: store)
+        try await model.load()
+
+        XCTAssertEqual(peek(model, "stampedCount") as Int?, 2, "the count is the bundle's hasStamp: E1 and R1 / Seller R, not F1's claim")
+        let bands = try XCTUnwrap(peek(model, "bands") as [String: String]?, "PackagesModel has no bands map")
+        XCTAssertEqual(bands["E1::Seller E"], "BAND shimA 2026-07-02", "the band text is the bundle's stampBandText")
+        XCTAssertEqual(bands["R1::Seller R"], "BAND shimB 2026-07-02", "a refunded package has its band too")
+        XCTAssertNil(bands["F1::Seller F"], "no band for what the bundle's hasStamp does not call a stamp")
+        let pills = try XCTUnwrap(peek(model, "refundPills") as [String: String]?, "PackagesModel has no refundPills map")
+        XCTAssertEqual(pills["R1::Seller R"], "PILL 2", "the refunded pill is the bundle's refundedPill, given the package's two lines")
+        XCTAssertNil(pills["E1::Seller E"], "a package the bundle's isRefundStamp does not name has no refunded pill")
+        let held = String(describing: try XCTUnwrap(peek(model, "stampKinds") as [Any]?, "PackagesModel has no stampKinds"))
+        XCTAssertTrue(held.contains("Shim A") && held.contains("Shim B") && !held.contains("Claim filed"), "the kinds are the bundle's STAMP_KINDS, got \(held)")
     }
 }

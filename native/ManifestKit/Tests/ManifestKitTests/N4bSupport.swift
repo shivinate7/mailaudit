@@ -105,8 +105,7 @@ final class PressRig {
 /// The real bundle with extra JavaScript after it, in a folder the test removes.
 func probeBundleFile(_ js: String, for test: XCTestCase) throws -> URL {
     let real = try String(contentsOf: RulesGoldenTests.bundleURL, encoding: .utf8)
-    let dir = FileManager.default.temporaryDirectory.appending(path: "n4b-probe-\(UUID().uuidString)")
-    try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    let dir = try PhotoTestKit.tempDir("n4b-probe")
     test.addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
     let url = dir.appending(path: "rules.js")
     try (real + "\n;" + js + ";\n").write(to: url, atomically: true, encoding: .utf8)

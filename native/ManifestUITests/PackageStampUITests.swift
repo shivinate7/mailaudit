@@ -59,7 +59,6 @@ import XCTest
 
 @MainActor
 final class PackageStampUITests: XCTestCase {
-    static let minHit: CGFloat = 44
     static let a1 = "A1::Alpha Cards", b1 = "B1::Beta Games", c1 = "C1::Gamma Cards", d1 = "D1::Delta Cards"
     static let kinds = ["claim", "refunded", "contacted", "reshipped", "partial", "other"]
     static let dot = "\u{00B7}"
@@ -142,15 +141,6 @@ final class PackageStampUITests: XCTestCase {
         let common = before.keys.filter { after[$0] != nil }
         XCTAssertGreaterThanOrEqual(common.count, 8, "too few frames to compare after \(what)", file: file, line: line)
         for id in common { XCTAssertEqual(after[id], before[id], "\(id) moved when \(what)", file: file, line: line) }
-    }
-
-    /// A frame comes back with float noise (a minHeight 44 row reads 43.99999999999997), so the floor has a thousandth
-    /// of a point of slack. A real miss is a third of a point or more short.
-    func assertHit(_ e: XCUIElement, _ what: String, file: StaticString = #filePath, line: UInt = #line) {
-        XCTAssertTrue(e.waitForExistence(timeout: 5), "\(what) is not on screen", file: file, line: line)
-        let f = e.frame
-        XCTAssertGreaterThanOrEqual(f.width, Self.minHit - 0.001, "\(what) is \(f.width)pt wide, under 44pt", file: file, line: line)
-        XCTAssertGreaterThanOrEqual(f.height, Self.minHit - 0.001, "\(what) is \(f.height)pt high, under 44pt", file: file, line: line)
     }
 
     /// Today's local day as the band prints it: MM-dd.
@@ -365,34 +355,34 @@ final class PackageStampUITests: XCTestCase {
     func testEveryStampControlHasA44ptHitRegion() throws {
         let app = launch()
         let gk = Self.a1
-        assertHit(el(app, "stamped-cell"), "the stamped cell")
-        assertHit(el(app, "stamp-button:\(gk)"), "Stamp")
+        assertHitRegion(el(app, "stamped-cell"), "the stamped cell")
+        assertHitRegion(el(app, "stamp-button:\(gk)"), "Stamp")
 
         tap(app, "stamp-button:\(gk)")
         XCTAssertTrue(el(app, "stamp-editor:\(gk)").waitForExistence(timeout: 5), "Stamp did not open the editor")
         let chips = Self.kinds.map { el(app, "stamp-kind:\(gk)|\($0)") }
-        for (kind, chip) in zip(Self.kinds, chips) { assertHit(chip, "the \(kind) chip") }
+        for (kind, chip) in zip(Self.kinds, chips) { assertHitRegion(chip, "the \(kind) chip") }
         for (i, a) in chips.enumerated() {
             for b in chips[(i + 1)...] {
                 let hit = a.frame.intersection(b.frame)
                 XCTAssertTrue(hit.isNull || hit.width * hit.height < 0.5, "the frames of \(a.identifier) and \(b.identifier) overlap: \(a.frame), \(b.frame)")
             }
         }
-        assertHit(el(app, "stamp-note:\(gk)"), "the note field")
-        assertHit(el(app, "stamp-cancel:\(gk)"), "Cancel")
-        assertHit(el(app, "stamp-save:\(gk)"), "Save")
+        assertHitRegion(el(app, "stamp-note:\(gk)"), "the note field")
+        assertHitRegion(el(app, "stamp-cancel:\(gk)"), "Cancel")
+        assertHitRegion(el(app, "stamp-save:\(gk)"), "Save")
 
         tap(app, "stamp-kind:\(gk)|claim")
         tap(app, "stamp-save:\(gk)")
         let band = el(app, "stamp-band:\(gk)"), row = el(app, "package-row:\(gk)")
-        assertHit(band, "the band")
+        assertHitRegion(band, "the band")
         XCTAssertGreaterThanOrEqual(band.frame.width, row.frame.width - 1, "the band is narrower than its card: \(band.frame.width)pt of \(row.frame.width)pt")
 
         openEditor(app, gk)
-        assertHit(el(app, "stamp-remove:\(gk)"), "Remove stamp")
+        assertHitRegion(el(app, "stamp-remove:\(gk)"), "Remove stamp")
         arm(app, gk)
-        assertHit(el(app, "stamp-ask-confirm:\(gk)"), "the armed ask's second tap")
-        assertHit(el(app, "stamp-ask-cancel:\(gk)"), "the armed ask's Cancel")
+        assertHitRegion(el(app, "stamp-ask-confirm:\(gk)"), "the armed ask's second tap")
+        assertHitRegion(el(app, "stamp-ask-cancel:\(gk)"), "the armed ask's Cancel")
     }
 
     /// Nothing moves because a stamp is saved or removed: the card at rest has one size and one place for its lines
