@@ -10,15 +10,18 @@
 // Red-first. The builder makes these pass. Every one fails today on a missing element. They compile with
 // build-for-testing and run on the simulator later.
 //
-// The owner's picks the cases carry (2026-10-29): Clear asks and Mark all offers Undo; a control that does not apply keeps
-// its slot, hidden; Stamp shares the bulk row (the band, when stamped, sits above the row).
+// The picks the cases carry (2026-10-29): Clear asks and Mark all offers Undo; a control that does not apply keeps its slot,
+// hidden; step 6's one 48pt slot for Stamp or the band stays as it is and the bulk row sits under it (mockup option R-B), so
+// a stamp's Save or Remove moves neither the slot nor the bulk row (no-layout-shift-under-pointer).
 //
 // Contract the tests name, besides the identifiers of PackageCardUITests, PackagesShellUITests and PackageStampUITests
 // (package-row:<gk>, checkin:<key>, card-slot:<gk>, stamp-button:<gk>, stamp-band:<gk>, stamp-editor:<gk>, tally-cards).
 // <gk> is "orderId::seller". On the Tally row <name> is the product name, and each id takes a "tally-" prefix, as the
 // Tally's check-in does (tally-checkin:), so a query for one tab never meets the other.
-//   bulk-row:<gk>               the action row, one container: Stamp (while unstamped and not editing) leads, then the two
-//                               bulk slots. Its frame is the row's, the ask's top hangs below its bottom.
+//   stamp-slot:<gk>             step 6's 48pt slot, one container that holds the Stamp button or the band. There while the
+//                               editor is closed. A new id: the slot had none.
+//   bulk-row:<gk>               the bulk action row, one container under the stamp slot: only the two bulk slots, no Stamp.
+//                               Its frame is the row's, the ask's top hangs below its bottom.
 //   bulk-mark:<gk>              Mark all received. Only while a line is owed. 44pt each way.
 //   bulk-undo:<gk>              Undo mark all, in Mark all's own slot (same frame), from the press until the next write
 //                               on this device. Not there after a hand check-in, a Clear or a stamp.
@@ -36,8 +39,8 @@
 //   - The seed is the shared fixture: A1 / Alpha Cards holds Lightning Bolt (1), Counterspell (1) and Brainstorm (2), four
 //     cards. Brainstorm is two lines of qty 2 on the Tally (A1 and B1), the Tally copies of A1 and B1 each qty 2.
 //   - The ask reads Brainstorm alone in on A1: N is 2 copies, where the lines in are 1 and the card's total is 4. The three
-//     readings differ, so the label tells which one the build counts. A label for N = 1 is not read: the spec gives no
-//     singular form ("1 check-ins"), and that is a question for the owner, not a case.
+//     readings differ, so the label tells which one the build counts. N = 1 reads "Tap again to clear 1 check-in", singular,
+//     as the stamp ask reads "1 card" (coordinator, 2026-10-29); D1 / Delta Cards has the one line of qty 1 for it.
 //   - The armed ask is live 4 seconds from the tap, so it is read once, in one snapshot (ScreenKit.snapshot), right after it
 //     appears, and never lengthened. The lapse is waited for after that.
 //   - "Nothing moves" compares each frame to half a point, relative to the card's own top, as the stamp cases do. What mounts
@@ -58,11 +61,12 @@ import XCTest
 
 @MainActor
 final class PackageBulkUITests: XCTestCase {
-    static let a1 = "A1::Alpha Cards"
+    static let a1 = "A1::Alpha Cards", d1 = "D1::Delta Cards"
+    static let urza = "D1|0|pUrzasSaga"
     static let bolt = "A1|0|pLightningBolt", counter = "A1|1|pCounterspell", brain = "A1|2|pBrainstorm"
     static let brainA = "A1|2|pBrainstorm", brainB = "B1|2|pBrainstorm"
     /// What the Packages cases read from a snapshot: the cards' own parts, the stamp controls and every bulk control.
-    static let framed = ["package-row:", "checkin:", "order-link:", "card-slot:", "stamp-button:", "stamp-band:", "stamp-editor:", "bulk-"]
+    static let framed = ["package-row:", "checkin:", "order-link:", "card-slot:", "stamp-slot:", "stamp-button:", "stamp-band:", "stamp-editor:", "bulk-"]
     /// What the Tally cases read: the rows, their check-ins and the six tally-bulk ids.
     static let tallyFramed = ["tally-row:", "tally-checkin:", "tally-bulk-"]
 
@@ -137,12 +141,12 @@ final class PackageBulkUITests: XCTestCase {
             let app = launch(width: width)
             let gk = Self.a1
             checkIn(app, Self.bolt)  // one copy in: Mark all and Clear both apply
-            let mark = el(app, "bulk-mark:\(gk)"), clear = el(app, "bulk-clear:\(gk)"), stamp = el(app, "stamp-button:\(gk)")
+            let mark = el(app, "bulk-mark:\(gk)"), clear = el(app, "bulk-clear:\(gk)")
             assertHitRegion(mark, "Mark all at \(width)pt")
             assertHitRegion(clear, "Clear check-ins at \(width)pt")
 
             let card = el(app, "package-row:\(gk)").frame.insetBy(dx: -1, dy: 0), row = el(app, "bulk-row:\(gk)").frame.insetBy(dx: -1, dy: -1)
-            let parts = [("Stamp", stamp), ("Mark all", mark), ("Clear", clear)]
+            let parts = [("Mark all", mark), ("Clear", clear)]
             for (what, e) in parts {
                 XCTAssertTrue(e.frame.minX >= card.minX && e.frame.maxX <= card.maxX, "\(what) at \(width)pt is \(e.frame.minX) to \(e.frame.maxX), outside the card \(card.minX) to \(card.maxX)")
                 XCTAssertTrue(row.contains(e.frame), "\(what) at \(width)pt, \(e.frame), is not in the bulk row, \(row)")
@@ -278,6 +282,19 @@ final class PackageBulkUITests: XCTestCase {
         ScreenKit.assertStill(before, app, anchor: anchor, "Clear was confirmed", prefixes: Self.framed)
     }
 
+    /// One copy in reads "1 check-in", singular, as the stamp ask reads "1 card" (testTheAskNamesOneCardInTheSingular in
+    /// PackageStampUITests). D1 / Delta Cards holds the one line of qty 1. The label is read from one snapshot, inside the
+    /// ask's 4 seconds.
+    func testTheClearAskNamesOneCheckInInTheSingular() throws {
+        let app = launch()
+        let gk = Self.d1
+        checkIn(app, Self.urza)
+        tap(app, "bulk-clear:\(gk)")
+        XCTAssertTrue(el(app, "bulk-clear-confirm:\(gk)").waitForExistence(timeout: 5), "the first tap on Clear did not arm it")
+        let armed = snap(app)
+        XCTAssertEqual(armed["bulk-clear-confirm:\(gk)"]?.label, "Tap again to clear 1 check-in", "the ask's label for one copy in")
+    }
+
     // MARK: nothing moves
 
     /// Mark all, Undo and a confirmed Clear move nothing: the card keeps its size, the lines keep their places, the cards
@@ -310,7 +327,7 @@ final class PackageBulkUITests: XCTestCase {
 
     /// A control that does not apply keeps its slot, hidden: it is out of the accessibility tree, and the control beside it
     /// stays put. At rest Clear is hidden, and Mark all must not slide to the trailing edge for it. Once the card is whole
-    /// by hand Mark all is hidden, and Clear must not move for that. Stamp, at the leading edge, stays through both.
+    /// by hand Mark all is hidden, and Clear must not move for that. The bulk row and the Stamp slot above it stay through both.
     func testAnInapplicableControlKeepsItsSlotHidden() throws {
         let app = launch()
         let gk = Self.a1, anchor = "package-row:\(gk)"
@@ -318,12 +335,14 @@ final class PackageBulkUITests: XCTestCase {
         func place(_ id: String) -> CGRect? { ScreenKit.relative(frames(snap(app)), to: anchor)[id] }
 
         XCTAssertFalse(el(app, "bulk-clear:\(gk)").exists, "nothing is in, and Clear is still there")
-        let markAtRest = place("bulk-mark:\(gk)"), stampAtRest = place("stamp-button:\(gk)")
+        let markAtRest = place("bulk-mark:\(gk)"), slotAtRest = place("stamp-slot:\(gk)"), rowAtRest = place("bulk-row:\(gk)")
         XCTAssertNotNil(markAtRest, "control: Mark all is on the card at rest")
+        XCTAssertNotNil(slotAtRest, "control: the Stamp slot is on the card at rest")
 
         checkIn(app, Self.bolt)
         wait("exists == true", for: el(app, "bulk-clear:\(gk)"), "Clear does not show once a copy is in")
         assertSame(place("bulk-mark:\(gk)"), markAtRest, "Mark all moved when Clear showed")
+        assertSame(place("bulk-row:\(gk)"), rowAtRest, "the bulk row moved when Clear showed")
         let clearBoth = place("bulk-clear:\(gk)")
 
         checkIn(app, Self.counter)
@@ -331,37 +350,52 @@ final class PackageBulkUITests: XCTestCase {
         wait("exists == false", for: el(app, "bulk-mark:\(gk)"), "Mark all stays on a whole card")
         XCTAssertFalse(el(app, "bulk-undo:\(gk)").exists, "a card made whole by hand offers an Undo")
         assertSame(place("bulk-clear:\(gk)"), clearBoth, "Clear moved when Mark all went")
-        assertSame(place("stamp-button:\(gk)"), stampAtRest, "Stamp moved with the bulk controls")
+        assertSame(place("bulk-row:\(gk)"), rowAtRest, "the bulk row moved when Mark all went")
+        assertSame(place("stamp-slot:\(gk)"), slotAtRest, "the Stamp slot moved with the bulk controls")
     }
 
-    // MARK: Stamp shares the row
+    // MARK: the stamp slot keeps its place
 
-    /// Stamp joins the bulk row and leads it. Opening the editor takes Stamp out and puts the editor above the row. A saved
-    /// stamp leaves a band above the row, with no Stamp button, and Mark all stays in the row.
-    func testStampSharesTheBulkRowAndTheBandSitsAboveIt() throws {
+    /// Step 6's 48pt slot for Stamp or the band stays as it is, and the bulk row sits under it with Mark all and Clear
+    /// only. A stamp's Save or Remove moves neither the slot nor the bulk row, nor any line: Save does not move under the
+    /// thumb (no-layout-shift-under-pointer). The editor, when open, sits above the bulk row.
+    func testAStampSaveOrRemoveMovesNeitherTheSlotNorTheBulkRow() throws {
         let app = launch()
-        let gk = Self.a1
-        let row = el(app, "bulk-row:\(gk)"), stamp = el(app, "stamp-button:\(gk)"), mark = el(app, "bulk-mark:\(gk)")
-        XCTAssertTrue(row.waitForExistence(timeout: 5), "the card has no bulk row")
-        let box = row.frame.insetBy(dx: -1, dy: -1)
-        XCTAssertTrue(box.contains(stamp.frame), "Stamp is not in the bulk row: \(stamp.frame) against \(row.frame)")
-        XCTAssertTrue(box.contains(mark.frame), "Mark all is not in the bulk row: \(mark.frame) against \(row.frame)")
-        XCTAssertLessThanOrEqual(stamp.frame.maxX, mark.frame.minX + 0.5, "Stamp does not lead the row: \(stamp.frame) against \(mark.frame)")
+        let gk = Self.a1, anchor = "package-row:\(gk)"
+        let row = el(app, "bulk-row:\(gk)"), slot = el(app, "stamp-slot:\(gk)"), stamp = el(app, "stamp-button:\(gk)"), mark = el(app, "bulk-mark:\(gk)")
+        XCTAssertTrue(row.waitForExistence(timeout: 5) && slot.waitForExistence(timeout: 5), "the card has no bulk row or no Stamp slot")
+        app.reveal(el(app, anchor), whole: true)
+        let boxOf = { (f: CGRect) in f.insetBy(dx: -1, dy: -1) }
+        XCTAssertTrue(boxOf(slot.frame).contains(stamp.frame), "Stamp is not in its slot: \(stamp.frame) against \(slot.frame)")
+        XCTAssertTrue(boxOf(row.frame).contains(mark.frame), "Mark all is not in the bulk row: \(mark.frame) against \(row.frame)")
+        XCTAssertFalse(boxOf(row.frame).contains(stamp.frame), "Stamp is in the bulk row, not in its own slot above it")
+        XCTAssertLessThanOrEqual(slot.frame.maxY, row.frame.minY + 0.5, "the bulk row is not under the Stamp slot: \(row.frame) against \(slot.frame)")
+        // The Stamp button leaves its slot on Save, so it is the one id not compared. The slot itself is.
+        let rest = ScreenKit.relative(frames(snap(app)).filter { !$0.key.hasPrefix("stamp-button:") }, to: anchor)
+        XCTAssertNotNil(rest["stamp-slot:\(gk)"], "control: the slot is in the snapshot at rest")
+        XCTAssertNotNil(rest["bulk-row:\(gk)"], "control: the bulk row is in the snapshot at rest")
 
-        tap(app, "stamp-button:\(gk)")
-        let editor = el(app, "stamp-editor:\(gk)")
-        XCTAssertTrue(editor.waitForExistence(timeout: 5), "Stamp did not open the editor")
-        XCTAssertFalse(stamp.exists, "Stamp stays in the row beside its own editor")
-        XCTAssertLessThanOrEqual(editor.frame.maxY, row.frame.minY + 0.5, "the editor does not sit above the bulk row: \(editor.frame) against \(row.frame)")
-        XCTAssertTrue(mark.exists, "Mark all left the row while the editor is open")
-
-        tap(app, "stamp-kind:\(gk)|claim")
-        tap(app, "stamp-save:\(gk)")
+        // Save: the slot holds a band now, and nothing else has moved.
+        ScreenKit.stamp(app, gk, kind: "claim")
         let band = el(app, "stamp-band:\(gk)")
         XCTAssertTrue(band.waitForExistence(timeout: 5), "Save did not leave a band")
         XCTAssertFalse(stamp.exists, "a stamped card still offers the Stamp button")
-        XCTAssertLessThanOrEqual(band.frame.maxY, row.frame.minY + 0.5, "the band does not sit above the bulk row: \(band.frame) against \(row.frame)")
-        XCTAssertTrue(mark.exists && row.exists, "Mark all left the row after the stamp")
+        XCTAssertTrue(boxOf(slot.frame).contains(band.frame), "the band is not in the Stamp slot: \(band.frame) against \(slot.frame)")
+        ScreenKit.assertStill(rest, app, anchor: anchor, "the stamp was saved", prefixes: Self.framed)
+        XCTAssertTrue(mark.exists, "Mark all left the bulk row after the stamp")
+
+        // The open editor sits above the bulk row.
+        tap(app, "stamp-band:\(gk)")
+        let editor = el(app, "stamp-editor:\(gk)")
+        XCTAssertTrue(editor.waitForExistence(timeout: 5), "the band did not open the editor")
+        XCTAssertLessThanOrEqual(editor.frame.maxY, row.frame.minY + 0.5, "the editor does not sit above the bulk row: \(editor.frame) against \(row.frame)")
+
+        // Remove: back to the Stamp button in the same slot, and nothing else has moved.
+        tap(app, "stamp-remove:\(gk)")
+        XCTAssertTrue(el(app, "stamp-ask-confirm:\(gk)").waitForExistence(timeout: 5), "the first tap on Remove stamp did not arm it")
+        tap(app, "stamp-ask-confirm:\(gk)")
+        wait("exists == true", for: stamp, "no Stamp button after Remove")
+        ScreenKit.assertStill(rest, app, anchor: anchor, "the stamp was removed", prefixes: Self.framed)
     }
 
     // MARK: the open Tally row

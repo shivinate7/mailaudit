@@ -35,11 +35,10 @@
 //   - A refunded or partial-refund card leaves the normal list on the Save tap (a-refund-leaves-every-count) and every
 //     count follows it; the stamped filter brings it back (stamped-filter-on-the-pipeline). The filter turns off by
 //     itself when the stamped count reaches 0 (spec, Wiring).
-//   - The band is a row of its own above the bulk row (the owner's pick of 2026-10-29: Stamp joins the bulk row, which
-//     replaces step 6's one 48pt slot for Stamp or band). A Save grows the card by the band's own height and moves the bulk
-//     row, the lines and the cards below down by exactly that, and nothing above the band moves. A Remove takes it all back.
-//     The editor is taller than either state, and opening it moves the lines on a deliberate tap, as on the web. A scroll
-//     between two readings moves every frame alike, so frames are compared relative to the card's own top.
+//   - "No card move on Save: the space is reserved" is read as: the card at rest, its editor closed, has the same size
+//     with and without a stamp, and nothing below it moves, whichever way the stamp goes (Save, then Remove). The editor
+//     is taller than either state, and opening it moves the lines on a deliberate tap, as on the web. A scroll between two
+//     readings moves every frame alike, so frames are compared relative to the card's own top.
 //   - The ask names N cards. The web counts the package's cards (totalQty); the mockup's armed state counts the copies
 //     still owed. At rest in the shared fixture the two are equal, so the cases read A1 (4) and D1 (1) at rest.
 //
@@ -64,7 +63,7 @@ final class PackageStampUITests: XCTestCase {
     static let kinds = ["claim", "refunded", "contacted", "reshipped", "partial", "other"]
     static let dot = "\u{00B7}"
     /// The ids whose frames the no-shift cases read: the cards' own, and every stamp control.
-    static let framed = ["package-row:", "checkin:", "order-link:", "card-slot:", "bulk-row:", "stamp-button:", "stamp-band:", "stamp-editor:", "stamp-kind:",
+    static let framed = ["package-row:", "checkin:", "order-link:", "stamp-button:", "stamp-band:", "stamp-editor:", "stamp-kind:",
                          "stamp-note:", "stamp-save:", "stamp-cancel:", "stamp-remove:", "stamp-ask-"]
 
     // MARK: helpers (the steps are ScreenKit's, shared with PackageBulkUITests; each is one line here)
@@ -365,37 +364,18 @@ final class PackageStampUITests: XCTestCase {
         assertHitRegion(el(app, "stamp-ask-cancel:\(gk)"), "the armed ask's Cancel")
     }
 
-    /// A Save puts the band above the bulk row and moves nothing else on its own: the card grows by the band's own
-    /// height, the bulk row, the lines and the cards below move down by exactly that, and the header (the order link and the
-    /// status slot) stays. A Remove takes it all back. Compared relative to the card's top, so a scroll to reach a control is
-    /// not a move. This re-points step 6's "a Save moves nothing", which read one 48pt slot for Stamp or the band: the owner's
-    /// pick of 2026-10-29 (Stamp shares the bulk row, the band sits above it) makes the first Save add the band's row at rest.
-    /// Red today, where nothing moves and there is no bulk row.
-    func testASaveAddsTheBandsHeightBelowItAndARemoveTakesItBack() throws {
+    /// Nothing moves because a stamp is saved or removed: the card at rest has one size and one place for its lines
+    /// with or without a stamp, and the cards below stay where they were. Compared relative to the card's top, so a
+    /// scroll to reach a control is not a move.
+    func testNothingMovesWhenAStampIsSavedOrRemoved() throws {
         let app = launch()
         let gk = Self.a1, anchor = "package-row:\(Self.a1)"
         app.reveal(el(app, anchor), whole: true)
         let rest = relative(snapshot(app).filter { !$0.key.hasPrefix("stamp-") }, to: anchor)
-        let moved = ["bulk-row:\(gk)", "checkin:A1|0|pLightningBolt", "checkin:A1|1|pCounterspell", "checkin:A1|2|pBrainstorm"]
-        for id in moved { XCTAssertNotNil(rest[id], "control: \(id) is on the card at rest") }
 
         stamp(app, gk, kind: "claim")
-        let band = el(app, "stamp-band:\(gk)")
-        wait("exists == true", for: band, "no band after Save")
-        let h = band.frame.height
-        XCTAssertGreaterThanOrEqual(h, 44 - 0.001, "the band is \(h)pt high, under 44pt")
-        let after = relative(snapshot(app).filter { !$0.key.hasPrefix("stamp-") }, to: anchor)
-        for id in moved { XCTAssertNotNil(after[id], "\(id) is missing after Save") }
-        for (id, was) in rest {
-            guard let now = after[id] else { continue }
-            let header = (id.hasPrefix("order-link:") || id.hasPrefix("card-slot:")) && id.hasSuffix(gk)
-            let dTop: CGFloat = header || id == anchor ? 0 : h  // the card's own top stays, and so does the header above the band
-            let dBottom: CGFloat = header ? 0 : h  // the card's bottom moves with its new row
-            XCTAssertEqual(now.minX, was.minX, accuracy: 0.5, "\(id) moved sideways when the stamp was saved")
-            XCTAssertEqual(now.maxX, was.maxX, accuracy: 0.5, "\(id) changed width when the stamp was saved")
-            XCTAssertEqual(now.minY, was.minY + dTop, accuracy: 0.5, "\(id) top: \(was.minY) to \(now.minY), the band is \(h)pt high")
-            XCTAssertEqual(now.maxY, was.maxY + dBottom, accuracy: 0.5, "\(id) bottom: \(was.maxY) to \(now.maxY), the band is \(h)pt high")
-        }
+        wait("exists == true", for: el(app, "stamp-band:\(gk)"), "no band after Save")
+        assertStill(rest, app, anchor: anchor, "the stamp was saved")
 
         openEditor(app, gk)
         arm(app, gk)
