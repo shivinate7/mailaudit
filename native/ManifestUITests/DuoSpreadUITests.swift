@@ -12,9 +12,11 @@
 // wrote them (lane duo-tabs-spread-t): they build with `xcodebuild build-for-testing`.
 // Each test names its pose and fails when the window is another size (DuoWindowSupport.swift). It never skips.
 //
-// Red now (the builder makes them pass): testFlatTallySpreadsOverBothPages, testFlatTallyRightPageFollowsTheTappedRow,
-// testFlatOrphanedSpreadsOverBothPages, testFlatBarTitlesShareOneBaseline, testFlatOrphanedArmedDiscardDoesNotCarryOver,
-// testFlatOrphanedPickedCellIsSelected, testFlatTallyPickedRowIsSelected.
+// Red on the code before the spread (the builder made them pass): testFlatTallySpreadsOverBothPages,
+// testFlatTallyRightPageFollowsTheTappedRow, testFlatOrphanedSpreadsOverBothPages, testFlatBarTitlesShareOneBaseline.
+// Red on the spread's first build (the builder's next round makes them pass): testFlatOrphanedArmedDiscardDoesNotCarryOver
+// (no .id on the right page's card, so its armed state carries over), testFlatOrphanedPickedCellIsSelected and
+// testFlatTallyPickedRowIsSelected (a colour overlay marks the pick, with no .isSelected trait).
 // Guards, green on the old code: testFlatPackagesFullWidth, testClosedTallyIsOnePage. Ledger full width has one home,
 // DuoShellUITests.testFlatLedgerFullWidth, which shares expectSpansFold with the Packages test here.
 // testFlatTallyLastRowClearsTheBar is unrun: it may pass today, and it keeps the new left page clear of the bar.
@@ -44,7 +46,8 @@
 // tests do not place them. They must not reach into the fold strip, and the fold scan covers the tally- and orphaned- ids.
 // The mockup draws a selected row at open. Whether the right page shows a name before any tap is unruled, so each test taps first.
 // Tally's right page holds no state of its own (no @State read by a detail or by ItemLine; check-ins live in the model), so a
-// pick has no carry-over to observe there, and no Tally case stands beside the Orphaned armed-ask one.
+// pick has no carry-over to observe there, and no Tally case stands beside the Orphaned armed-ask one. The page's scroll offset
+// is the one carry-over left, and the seed's 3 copies at most cannot drive it.
 //
 // Every key here is fake. Launch with -ManifestUITestSeed only. Do not pass -ManifestUITestWidth: it frames the root to 375 pt.
 
