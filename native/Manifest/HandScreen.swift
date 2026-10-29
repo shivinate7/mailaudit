@@ -37,7 +37,7 @@ struct PackagesTab: View {
         PackagesView(model: model, masthead: masthead, sync: sync, openSync: openSync, notice: notice, onChange: onChange, openHand: opener)
             .accessibilityHidden(open)
             .overlay {
-                if open, let kit { HandScreen(kit: kit, packages: model, masthead: masthead, close: { handOpen = false }) }
+                if open, let kit { HandScreen(kit: kit, packages: model, masthead: masthead, onChange: onChange, close: { handOpen = false }) }
             }
     }
 }
@@ -46,6 +46,8 @@ struct HandScreen: View {
     let kit: HandKit
     let packages: PackagesModel
     let masthead: MastheadModel
+    /// PackagesTab's onChange: runs after a write, so Tally and Orphaned read the ledger again (a-refund-leaves-every-count).
+    let onChange: () async throws -> Void
     let close: () -> Void
 
     @Environment(\.duoSpread) private var spread
@@ -150,9 +152,9 @@ struct HandScreen: View {
         .accessibilityElement(children: .combine).accessibilityIdentifier(id)
     }
 
-    /// Copies in and copies still owed, over the packages the Packages tab lists.
+    /// Copies in and copies still owed, over every live package, whatever the stamped filter.
     private var counts: (inCount: Int, out: Int) {
-        packages.rows.flatMap(\.items).reduce(into: (0, 0)) { sum, it in
+        packages.liveRows.flatMap(\.items).reduce(into: (0, 0)) { sum, it in
             let got = min(packages.received[it.key] ?? 0, it.qty)
             sum = (sum.0 + got, sum.1 + it.qty - got)
         }
@@ -163,7 +165,7 @@ struct HandScreen: View {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
         guard !q.isEmpty else { return [] }
         var seen = Set<String>()
-        return hand.hits.compactMap { gk in packages.rows.first { $0.gk == gk } }.flatMap(\.items)
+        return hand.hits.compactMap { gk in packages.liveRows.first { $0.gk == gk } }.flatMap(\.items)
             .filter { (packages.received[$0.key] ?? 0) < $0.qty && $0.name.lowercased().contains(q) }
             .map(\.name).filter { seen.insert($0).inserted }
     }
@@ -237,7 +239,7 @@ struct HandScreen: View {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
         if hand.hits.count >= 2 {
             tie
-        } else if let pkg = shown.flatMap({ gk in packages.rows.first { $0.gk == gk } }) {
+        } else if let pkg = shown.flatMap({ gk in packages.liveRows.first { $0.gk == gk } }) {
             envelope(pkg)
         } else if trimmed.isEmpty {
             Text("Type the card in hand. The envelope it came from shows here.")
@@ -253,7 +255,7 @@ struct HandScreen: View {
             micro("\(hand.hits.count) envelopes hold this card")
             Text("Name the next card from this envelope to tell them apart. Nothing checks in until you post.")
                 .font(.cochin(13, relativeTo: .footnote)).foregroundStyle(Parchment.inkSoft)
-            ForEach(hand.hits.compactMap { gk in packages.rows.first { $0.gk == gk } }, id: \.gk) { pkg in
+            ForEach(hand.hits.compactMap { gk in packages.liveRows.first { $0.gk == gk } }, id: \.gk) { pkg in
                 VStack(alignment: .leading, spacing: 2) {
                     Text(pkg.seller).font(.cochin(15, relativeTo: .body).weight(.bold)).foregroundStyle(Parchment.ink)
                     Text("ordered \(pkg.date) \u{00B7} \(owed(pkg)) \(owed(pkg) == 1 ? "card" : "cards") out").font(.mono(11, relativeTo: .caption)).foregroundStyle(Parchment.inkSoft)
@@ -331,7 +333,10 @@ struct HandScreen: View {
     private func afterWrite(failed: Bool) async {
         try? await packages.load()
         try? await kit.transit.load()
-        await masthead.finished(failed: failed)
+        // Tally and Orphaned too; a failed read marks the write failed, as StampSection.write does.
+        var refreshed = true
+        do { try await onChange() } catch { refreshed = false }
+        await masthead.finished(failed: failed || !refreshed)
     }
 
     private var transitBox: some View {
