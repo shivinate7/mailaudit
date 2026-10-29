@@ -1,4 +1,4 @@
-# Debt notes
+# Notes
 
 One line per finding that is not likely in normal work. A note becomes a debt after a real incident.
 
@@ -19,7 +19,7 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 - 2026-10-28, Duo wave 3 design review: on the open Duo, the Ledger seal, wordmark and "LEDGER" sit on the fold; round 2 item 24 accepted Ledger at full width.
 - 2026-10-28, Duo wave 3 design review: "refund window closing" shows at 181 days; the web text is the same.
 - 2026-10-28, Duo wave 3 design review: the past-transit page has no track bars, no claim-by dates and no "Under 14 days" list on the left page.
-- 2026-10-29, wave 3 CI race fix: `PackagesModelTests.swift` still uses a fixed sleep against a 500 ms JS busy-wait, the pattern that failed HandModelTests on the hosted runner; the HandModelTests gate reaches the engine's private context through `Mirror`, which a small engine test hook would replace.
+- 2026-10-29, wave 3 CI race fix: `PackagesModelTests.swift` still uses a fixed sleep against a 500 ms JS busy-wait. That pattern failed HandModelTests on the hosted runner. The HandModelTests wait reaches the engine's private context through `Mirror`, and a small engine test hook would replace that.
 - 2026-10-29, check-in error design review round 2: the Card in Hand error banner's text starts about 4 pt left of the envelope page's column; a 16 pt side inset would align it.
 - 2026-10-29, check-in error design review: on a scrolled Card in Hand envelope page, the top error banner covers the first line rows until the next good save.
 - 2026-10-29, check-in error design review: the check-in error text carries the system's `localizedDescription` (for example "The file 'ledger.json' doesn't exist."), which is technical; Packages shows the same text.

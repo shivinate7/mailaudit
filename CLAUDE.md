@@ -302,7 +302,7 @@ What each check asks, and the two traps in the icon pipeline.
 - `debts-hold-known-gaps` — Known gaps and to-dos live in debts, one file each.
 - `records-name-what-dates-them` — Each decision names the fact that would date it.
 - `readme-is-minimal` — The README is minimal, and carries no license.
-- `orchestrator-may-merge` — One orchestrating session batches and merges green, reviewed PRs.
+- `orchestrator-may-merge` — The batch runner batches and merges green, reviewed PRs.
 - `invariants-cited-by-slug` — Invariants are cited by slug, never by number.
 
 ## Testing method
@@ -417,7 +417,7 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-masthead-axl-clips` — The native masthead wraps and clips at accessibility text sizes.
 - `native-stamp-load-unmeasured` — The native Packages load with stamps is unmeasured.
 - `native-armed-audit-misses-ask` — The native armed stamp audit cannot see the ask.
-- `debt-notes` — One-line findings not likely in normal work.
+- `notes` — One-line findings not likely in normal work.
 - `native-card-gestures-unpinned` — No UI test pins the native card header gestures.
 - `native-card-state-in-swift` — The native card copies the line and package done rules in Swift.
 - `native-sync-tally-rules-in-swift` — The native Sync panel and Tally row copy six view rules in Swift.
