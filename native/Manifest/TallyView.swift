@@ -162,20 +162,25 @@ struct TallyRowView: View {
                     .multilineTextAlignment(.leading)
                 // Counts first, then the sets, so a long set list is what is cut first (card-tally-row-counts-first).
                 metaLine
+                // At accessibility sizes the numbers drop under the name, so the name keeps the row's width and no word breaks.
+                if typeSize.isAccessibilitySize { numbers(alignment: .leading).padding(.top, 4) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            VStack(alignment: .trailing, spacing: 0) {
-                Text(row.ratio).font(.mono(15, relativeTo: .headline).weight(.bold)).foregroundStyle(paint(.ratio, done: done))
-                Text(row.rateLine).font(.mono(11.5, relativeTo: .caption)).foregroundStyle(paint(.rate))
-                // Hidden once in, never removed: unmounting it would shorten the row under the thumb.
-                Text(row.leftLine).font(.cochin(12, relativeTo: .caption).weight(.bold)).foregroundStyle(paint(.left))
-                    .opacity(done ? 0 : 1).accessibilityHidden(done).accessibilityIdentifier("tally-left:\(row.name)")
-            }
-            .fixedSize(horizontal: true, vertical: false)
+            if !typeSize.isAccessibilitySize { numbers(alignment: .trailing).fixedSize(horizontal: true, vertical: false) }
         }
         .padding(12)
         .frame(minHeight: 44)
         .contentShape(Rectangle())
+    }
+
+    private func numbers(alignment: HorizontalAlignment) -> some View {
+        VStack(alignment: alignment, spacing: 0) {
+            Text(row.ratio).font(.mono(15, relativeTo: .headline).weight(.bold)).foregroundStyle(paint(.ratio, done: done))
+            Text(row.rateLine).font(.mono(11.5, relativeTo: .caption)).foregroundStyle(paint(.rate))
+            // Hidden once in, never removed: unmounting it would shorten the row under the thumb.
+            Text(row.leftLine).font(.cochin(12, relativeTo: .caption).weight(.bold)).foregroundStyle(paint(.left))
+                .opacity(done ? 0 : 1).accessibilityHidden(done).accessibilityIdentifier("tally-left:\(row.name)")
+        }
     }
 
     /// One line cut at the column's edge, with a "…" drawn over the edge only when the text is wider than the column
