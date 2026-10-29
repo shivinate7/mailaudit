@@ -299,4 +299,121 @@ final class StampRulesTests: XCTestCase {
         let stored = try XCTUnwrap(store.stamps()[Self.e1])
         XCTAssertTrue(NSDictionary(dictionary: stored).isEqual(to: bundle), "the store's tombstone \(stored) is not the bundle's \(bundle)")
     }
+
+    // MARK: a failed write or reload says so and keeps the maps (no-native-dialogs, stamp-band-opens-the-editor)
+
+    /// What the stamp maps and the list hold, to compare before and after a failure.
+    struct Held: Equatable {
+        let stamps: NSDictionary
+        let count: Int
+        let bands, pills: [String: String]
+        let rows: [String]
+    }
+
+    func held(_ m: PackagesModel) -> Held {
+        Held(stamps: NSDictionary(dictionary: m.stamps), count: m.stampedCount, bands: m.bands, pills: m.refundPills,
+             rows: m.rows.map(\.gk))
+    }
+
+    /// The writers the view calls, each with a test that its record reached the ledger. A1 holds no stamp, so a stamp on it
+    /// is new and dated today; the removal of E1's claim leaves a tombstone.
+    typealias Act = (name: String, run: (PackagesModel) async throws -> Void, landed: (LedgerStore) -> Bool)
+    func acts() -> [Act] {
+        [("stamp", { try await $0.stamp(Self.a1, kind: "claim", note: "x") }, { $0.stamps()[Self.a1]?["kind"] as? String == "claim" }),
+         ("removeStamp", { try await $0.removeStamp(Self.e1) }, { $0.stamps()[Self.e1]?["kind"] as? String == "" })]
+    }
+
+    /// A model loaded on a ledger holding E1's claim and R1's refund, so every map has an entry to lose.
+    func heldModel(_ engine: RulesEngine) async throws -> (PackagesModel, LedgerStore) {
+        let stamps: [LiveStamp] = [("E1", "Seller E", "claim"), ("R1", "Seller R", "refunded")]
+        let store = try await LiveFixture.store(items: LiveFixture.base + LiveFixture.refunded, stamps: stamps, engine: try LiveFixture.engine())
+        let model = PackagesModel(engine: engine, store: store)
+        try await model.load()
+        XCTAssertEqual([model.stamps.count, model.stampedCount, model.bands.count, model.refundPills.count], [2, 2, 2, 1], "anchor: every map holds its entries")
+        XCTAssertNil(model.checkInError, "anchor: no error before the act")
+        return (model, store)
+    }
+
+    /// hasStamp throws on a stamp dated other than LiveFixture's 2026-07-02, so on a stamp, a tombstone or a planted record
+    /// the model's own writer or the test makes (today, or no date). It is the first hop of load() that reads the stamps,
+    /// before load() sets any map, so a failure there is a reload that changed nothing.
+    static let reloadShim = """
+        (function () {
+          var real = Rules.hasStamp;
+          Rules = Object.assign({}, Rules, { hasStamp: function (s) {
+            if (s && s.at !== "2026-07-02") throw new Error("reload boom");
+            return real(s);
+          } });
+        })();
+        """
+
+    func reloadEngine() async throws -> RulesEngine {
+        let engine = try RulesEngine(bundleURL: try probeBundleFile(Self.reloadShim, for: self))
+        // positive control: the fixture's stamps load, a stamp of any other date fails, and the writer still works
+        let own = try await engine.call("hasStamp", #"[{"kind":"claim","at":"2026-07-02"}]"#)
+        XCTAssertEqual(own, "true", "the shim must pass the fixture's own stamps, or the first load fails")
+        do {
+            let other = try await engine.call("hasStamp", #"[{"kind":"claim","at":"2026-08-12"}]"#)
+            XCTFail("the shim's hasStamp must throw on another date, or this test proves nothing: \(other)")
+        } catch {}
+        let next = try await engine.call("nextStamp", #"[null,{"kind":"claim","note":"x"},"2026-08-12",5]"#)
+        XCTAssertTrue(next.contains("claim"), "nextStamp must be left alone, so the write lands and only the reload fails: \(next)")
+        return engine
+    }
+
+    /// A save that fails writes nothing: the error reaches the caller and checkInError, and every map stays as it was.
+    /// The atomic write needs a new file beside the ledger, so a read-only folder makes the save throw.
+    func testAFailedStampWriteOrRemovalSetsTheErrorAndLeavesTheMaps() async throws {
+        for act in acts() {
+            let (model, store) = try await heldModel(try LiveFixture.engine())
+            let before = held(model)
+            let dir = store.fileURL.deletingLastPathComponent()
+            try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: dir.path)
+            defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: dir.path) }
+
+            var thrown: Error?
+            do { try await act.run(model) } catch { thrown = error }
+            XCTAssertNotNil(thrown, "\(act.name): a write that cannot be saved must throw to the caller")
+            XCTAssertNotNil(model.checkInError, "\(act.name): a failed save must leave checkInError for the view to show")
+            XCTAssertEqual(held(model), before, "\(act.name): a failed save changed the stamp maps")
+            XCTAssertFalse(act.landed(store), "\(act.name): the ledger kept a write that failed")
+        }
+    }
+
+    /// A reload that fails after a good save: the save stands, the error reaches the caller and checkInError, and the maps
+    /// stay as they were, because load() sets none of them when it throws before its last step.
+    func testAFailedReloadAfterAStampWriteOrRemovalSetsTheErrorAndLeavesTheMaps() async throws {
+        for act in acts() {
+            let (model, store) = try await heldModel(try await reloadEngine())
+            let before = held(model)
+
+            var thrown: Error?
+            do { try await act.run(model) } catch { thrown = error }
+            XCTAssertNotNil(thrown, "\(act.name): a reload that fails must throw to the caller")
+            XCTAssertNotNil(model.checkInError, "\(act.name): a failed reload must leave checkInError for the view to show")
+            XCTAssertTrue(act.landed(store), "\(act.name): the save must stand, or the reload was not what failed")
+            XCTAssertEqual(held(model), before, "\(act.name): a failed reload changed the stamp maps")
+        }
+    }
+
+    /// The stamped filter's reload fails: the error reaches the caller and checkInError, and showStamped is the value it had,
+    /// from off and from on. A flag left at the new value would show the filter on over a list that is not filtered.
+    func testAFailedStampedFilterReloadPutsTheFlagBack() async throws {
+        for was in [false, true] {
+            let what = "filter \(was ? "on" : "off")"
+            let (model, store) = try await heldModel(try await reloadEngine())
+            if was { try await model.toggleStamped() }
+            XCTAssertEqual(model.showStamped, was, "anchor: the \(what)")
+            let before = held(model)
+            // a stamp the shim rejects, put in the ledger behind the model's back, so the reload is the only thing that fails
+            store.setStamp(Self.a1, kind: "claim", note: "", at: "2026-08-12")
+
+            var thrown: Error?
+            do { try await model.toggleStamped() } catch { thrown = error }
+            XCTAssertNotNil(thrown, "\(what): a reload that fails must throw to the caller")
+            XCTAssertNotNil(model.checkInError, "\(what): a failed reload must leave checkInError for the view to show")
+            XCTAssertEqual(model.showStamped, was, "\(what): a failed toggle left the flag at \(model.showStamped)")
+            XCTAssertEqual(held(model), before, "\(what): a failed toggle changed the maps or the list")
+        }
+    }
 }
