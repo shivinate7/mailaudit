@@ -37,7 +37,8 @@
 //             There is no button labelled "Lost" (item 25, deferred). past-transit-summary (the page's count line; its label
 //             starts "<N> envelope"). A red row (30 days from the order date) shows no "claim by" in any of its texts.
 //   Keys      With the system keys up, hand-post lies wholly above the keyboard's top edge, with no scroll by the user.
-//   Failure   hand-checkin-error (a text on either page of Card in Hand; present only after a line check-in whose save failed;
+//   Failure   hand-checkin-error (a text overlaid at the top of the right (envelope) page of Card in Hand, where the line
+//             check-ins are; present only after a line check-in whose save failed;
 //             its label is the failure line PackagesModel.checkInError holds, which starts "Could not save the check-in.").
 //             Packages' own checkin-error sits under the opaque Card in Hand page and Packages is hidden from accessibility
 //             while it shows, so that id cannot pass.
@@ -45,7 +46,7 @@
 // Post). The stray case checks in by whichever the screen offers. The held case needs Post.
 //
 // Every key here is fake. Launch with -ManifestUITestSeed only (XCUIApplication.launchedOnSeed). The one exception is
-// testFailedLineCheckInShowsInHand, which adds -ManifestUITestLedgerUnwritable (a seam the app does not have yet; see the test).
+// testFailedLineCheckInShowsInHand, which adds -ManifestUITestLedgerUnwritable (Debug builds only; it makes the next save fail; see the test).
 
 import XCTest
 
@@ -377,18 +378,18 @@ final class DuoHandUITests: XCTestCase {
         keepShot(app, "hand-match-tap-holds-new-envelope")
     }
 
-    /// The launch flag that makes a save fail. The app has no such seam yet (no flag, seed or file can fail a save today: the
-    /// ledger is written atomically, so a read-only file still saves). The builder adds it in ManifestApp.boot, right after
-    /// `store.load()`: with this flag, remove the ledger file and put an empty folder at its path, so the next save throws. The
-    /// next seeded boot removes the folder with the seed copy, so no restore step is needed. The model's own test of this
-    /// way to fail a save is PackagesToggleTests.testFailedTapLeavesTheSaveFailureLineAndSavesNothing.
+    /// The launch flag that makes a save fail. In a Debug build launched with -ManifestUITestSeed, ManifestApp.boot removes the
+    /// ledger file after `store.load()` and puts an empty folder at its path, so the next save throws. A read-only file would
+    /// not do: the ledger is written atomically, so it still saves. The next seeded boot removes the folder with the seed copy,
+    /// so no restore step is needed. The model's own test of this way to fail a save is
+    /// PackagesToggleTests.testFailedTapLeavesTheSaveFailureLineAndSavesNothing.
     static let ledgerUnwritable = "-ManifestUITestLedgerUnwritable"
 
     /// Pose: flat, system keys up. A line check-in made from the envelope page whose save fails shows the failure inside Card in
     /// Hand. Packages draws the same failure as checkin-error, but under Card in Hand's opaque page and hidden from accessibility,
     /// so only an element Card in Hand draws, hand-checkin-error, can pass. This test goes red for two reasons, told apart by the
-    /// line's own label after the tap: "Undo check in" means the save did not fail (the seam above is not built); "Check in"
-    /// means the save failed and Card in Hand shows nothing (the debt). The test taps the line's control and not Post, and
+    /// line's own label after the tap: "Undo check in" means the save did not fail (the seam above did not act); "Check in"
+    /// means the save failed and Card in Hand shows nothing. The test taps the line's control and not Post, and
     /// reads frames only after the failure shows: a scroll by the test would hide a failure the owner's thumb cannot reach.
     func testFailedLineCheckInShowsInHand() {
         let app = XCUIApplication.launchedOnSeed(extra: [Self.ledgerUnwritable])
