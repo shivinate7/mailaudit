@@ -20,8 +20,8 @@
 //     The Packages rows are package-row:<gk> with checkin:<key> controls. The last Ledger row is "reset".
 //   System tab bar: on the open Duo it is absent or not hittable. On the closed Duo it shows the four tab titles.
 //   Custom tab bar, closed Duo: absent.
-//   Taps above the keys, open Duo: with the system keys up, a control whose centre lies in the 76 pt above them (the bar's room in
-//     the tab) takes a tap. The test uses Tally's check-in control (tally-checkin:<key>) on the open Lightning Bolt row.
+//   Taps above the keys, open Duo: with the system keys up, a control that lies wholly in the 76 pt above the keyboard panel's top (the
+//     bar's room in the tab) takes a tap. The test uses Tally's check-in control (tally-checkin:<key>) on the open Lightning Bolt row.
 //
 // Every key here is fake. Launch with -ManifestUITestSeed only. Do not pass -ManifestUITestWidth: it frames the root to 375 pt.
 
@@ -271,19 +271,23 @@ final class DuoShellUITests: XCTestCase {
     static let maxPlacementDrags = 6
     /// A drag shorter than this does not pass the scroll slop and moves nothing, so a smaller move is a longer drag and its way back.
     static let minDrag: CGFloat = 40
-    /// How far in from the band's top edge a control's centre must lie, so a centre on the edge does not count.
-    static let bandMargin: CGFloat = 8
-    /// The gap between the two reads that prove the controls are still. iOS drops a tap that lands on a list that is still moving.
+    /// How far above app.keyboards.firstMatch.frame's top the keyboard panel starts. The panel draws full width and carries a strip
+    /// with the "•••" control, and the reported frame leaves out that strip and the side margins. Measured on the open Duo in
+    /// wave3-open-hand-matches-heading.png (2853 x 2007 px for the 951 x 669 pt window, 3 px per pt): the panel's top is at about
+    /// y 1215 px, 405 pt, where the reported frame's minY is 449.
+    static let keyStrip: CGFloat = 44
+    /// The gap between the two reads that prove the controls are still, so the tap is tried on a list that is not moving.
     static let stillGap: TimeInterval = 0.3
 
     /// Pose: flat (open Duo, window 951 x 669 pt), system keys up. The tab keeps room for the custom bar, and that room must not
-    /// take taps. With the keys up it lies in the 76 pt just above them, over the rows. The test opens Tally and its Lightning Bolt
-    /// row, focuses the search field, and scrolls one unchecked copy's check-in control (a 45 pt square at the left page's edge,
-    /// clear of the fold) until its centre lies in that band and it ends above the keys. The control must be hittable, and a tap on
-    /// it must check the copy in. Red where the room takes a tap in that band (on main the tap is dropped). The tap goes to a window
-    /// coordinate, as element.tap() may scroll a covered element clear first. The tap lands only on a still control: after each
-    /// drag the test waits until the controls' frames agree across two reads stillGap apart, and just before the tap it reads the
-    /// control's frame twice, stillGap apart, and fails when they differ or the control has left the band.
+    /// take taps. With the keys up it lies in the 76 pt just above the keyboard panel's top (keyStrip above the reported keyboard
+    /// frame), over the rows. The test opens Tally and its Lightning Bolt row, focuses the search field, and scrolls one unchecked
+    /// copy's check-in control (a 45 pt square at the left page's edge, clear of the fold) until its whole frame lies in that band.
+    /// The control must be hittable, and a tap on it must check the copy in. Red where the room takes a tap in that band (on main
+    /// the tap is dropped). The tap goes to a window coordinate, as element.tap() may scroll a covered element clear first. The tap
+    /// lands only on a still control: after each drag the test waits until the controls' frames agree across two reads stillGap
+    /// apart, and just before the tap it reads the control's frame twice, stillGap apart, and fails when they differ or the control
+    /// has left the band.
     func testFlatTapAboveKeysLands() {
         let app = launch()
         guard app.requirePose(.flat) else { return }
@@ -340,14 +344,15 @@ final class DuoShellUITests: XCTestCase {
             }
             let free = controls().filter { $0.label.hasPrefix("Check in") }
             let listing = free.map { "\($0.identifier) \($0.frame)" }
-            print("INSET-DIAG pass \(drag) keys=\(k) band=y\(k.minY - Self.barHeight)...\(k.minY) controls=\(listing)")
+            let top = k.minY - Self.keyStrip  // the keyboard panel's top
+            print("INSET-DIAG pass \(drag) keys=\(k) panelTop=\(top) band=y\(top - Self.barHeight)...\(top) controls=\(listing)")
             if let hit = free.first(where: { inKeysBand($0.frame, keys: k) }) {
                 target = hit.identifier
                 break
             }
             if drag == Self.maxPlacementDrags { break }
-            // The centre of the span a 45 pt control's centre may take. A control a little above it still counts as below, so the drag is up.
-            let aim = k.minY - 44
+            // The centre of the band, where a control's centre should lie. A control a little above it still counts as below, so the drag is up.
+            let aim = top - Self.barHeight / 2
             let below = free.filter { $0.frame.midY >= aim - 20 }
             guard let next = below.min(by: { $0.frame.midY < $1.frame.midY }) ?? free.max(by: { $0.frame.midY < $1.frame.midY }) else {
                 XCTFail("every copy of the open row is checked in already, so there is no control to tap")
@@ -356,7 +361,7 @@ final class DuoShellUITests: XCTestCase {
             scrollRows(app, by: aim - next.frame.midY, keys: k)
         }
         guard let id = target else {
-            XCTFail("no check-in control came to rest in the \(Int(Self.barHeight)) pt above the keys after \(Self.maxPlacementDrags) drags, so the tap cannot be tried (see the INSET-DIAG lines)")
+            XCTFail("no check-in control came to rest in the \(Int(Self.barHeight)) pt above the keyboard panel after \(Self.maxPlacementDrags) drags, so the tap cannot be tried (see the INSET-DIAG lines)")
             return
         }
 
@@ -366,26 +371,28 @@ final class DuoShellUITests: XCTestCase {
         Thread.sleep(forTimeInterval: Self.stillGap)
         let f = control.frame
         let hittable = control.isHittable
-        print("INSET-DIAG window=\(win) keys=\(k) band=y\(k.minY - Self.barHeight)...\(k.minY) control=\(id) frame=\(f) hit=(\(f.midX), \(f.midY)) hittable=\(hittable)")
+        let top = k.minY - Self.keyStrip
+        print("INSET-DIAG window=\(win) keys=\(k) panelTop=\(top) band=y\(top - Self.barHeight)...\(top) control=\(id) frame=\(f) hit=(\(f.midX), \(f.midY)) hittable=\(hittable)")
         print("INSET-DIAG pre-tap control=\(id) read1=\(before) read2=\(f) gap=\(Self.stillGap)s still=\(before == f) inBand=\(inKeysBand(f, keys: k))")
         keepShot(app, "flat-tap-above-keys")
         guard before == f, inKeysBand(f, keys: k) else {
-            XCTFail("the check-in control \(id) moved or left the band just before the tap (read 1 \(before), read 2 \(f), band y\(Int(k.minY - Self.barHeight))...\(Int(k.minY))), so the tap cannot be tried on a still control")
+            XCTFail("the check-in control \(id) moved or left the band just before the tap (read 1 \(before), read 2 \(f), band y\(Int(top - Self.barHeight))...\(Int(top))), so the tap cannot be tried on a still control")
             return
         }
-        XCTAssertTrue(hittable, "the check-in control \(id), frame \(f), is not hittable. Its centre lies \(Int(k.minY - f.midY)) pt above the keys' top (y \(Int(k.minY))), inside the \(Int(Self.barHeight)) pt band the bar's room takes, so a view lies over it")
+        XCTAssertTrue(hittable, "the check-in control \(id), frame \(f), is not hittable. Its centre lies \(Int(top - f.midY)) pt above the keyboard panel's top (y \(Int(top))), inside the \(Int(Self.barHeight)) pt band the bar's room takes, so a view lies over it")
 
         app.window.coordinate(withNormalizedOffset: CGVector(dx: (f.midX - win.minX) / win.width, dy: (f.midY - win.minY) / win.height)).tap()
         for _ in 0..<25 where !control.label.hasPrefix("Undo check in") { Thread.sleep(forTimeInterval: 0.2) }
         print("INSET-DIAG post-tap control=\(id) frame=\(control.frame) label=\(control.label) hittable=\(control.isHittable) keys=\(keys.exists ? "\(keys.frame)" : "down")")
         XCTAssertTrue(control.label.hasPrefix("Undo check in"),
-                      "a tap at (\(Int(f.midX)), \(Int(f.midY))) on \(id), \(Int(k.minY - f.midY)) pt above the keys, was dropped: the control still reads \"\(control.label)\"")
+                      "a tap at (\(Int(f.midX)), \(Int(f.midY))) on \(id), \(Int(top - f.midY)) pt above the keyboard panel, was dropped: the control still reads \"\(control.label)\"")
     }
 
-    /// True when the control's centre lies in the band above the keys that the bar's room takes (a little in from its top edge), and
-    /// the control ends at or above the keys' top. A control partly under the keys is no test of the room: it stays unhittable once the room is gone.
+    /// True when the control's whole frame lies in the band above the keyboard panel that the bar's room takes. A control partly
+    /// under the panel is no test of the room: it stays unhittable once the room is gone.
     func inKeysBand(_ f: CGRect, keys: CGRect) -> Bool {
-        f.midY >= keys.minY - Self.barHeight + Self.bandMargin && f.maxY <= keys.minY + Self.tolerance
+        let top = keys.minY - Self.keyStrip
+        return f.minY >= top - Self.barHeight && f.maxY <= top
     }
 
     /// Moves the rows by `dy` points (negative scrolls them up) with slow drags that start above the band. A drag that starts in the
@@ -400,7 +407,7 @@ final class DuoShellUITests: XCTestCase {
         }
         let win = app.window.frame
         let top = win.minY + 100  // below the pinned running head
-        let ceiling = keys.minY - Self.barHeight - 12
+        let ceiling = keys.minY - Self.keyStrip - Self.barHeight - 12
         let from = sign < 0 ? ceiling : top
         let to = from + sign * min(abs(dy), ceiling - top)
         dragList(app, from: (from - win.minY) / win.height, to: (to - win.minY) / win.height)
