@@ -280,7 +280,7 @@ Where the page holds its shape, and where every colour comes from.
 - `palette-silver-stays-cool` — Silver must stay a cool grey.
 - `palette-theme-color-tracks-paper` — The browser chrome colour must track the paper token.
 - `palette-tokens-contrast-floor` — Every colour token meets a contrast floor.
-- `audit-skips-measured-flags` — The native audit skips contrast only on measured false flags.
+- `audit-skips-measured-flags` — The native audits skip only named, owner-ruled findings.
 - `progress-bar-accent-then-green` — The progress bar is accent, then green at 100%.
 - `typography-cochin-and-mono` — Cochin sets words, monospace sets numbers.
 
@@ -402,7 +402,7 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-filters-tally-only` — The native client has no date filter, package sort, Packages search or stamped filter.
 - `native-tally-copy-no-flags` — The native Tally copy has no lost-mail flag and no order id tap.
 - `native-envelope-has-no-photos` — Native envelopes have no photos.
-- `native-orphaned-colours-unbuilt` — The native Orphaned audits are red.
+- `native-orphaned-colours-unbuilt` — The native Orphaned composer audits flag text with no element.
 - `native-candidate-lines-wrap` — Native candidate seller and meta lines wrap.
 - `native-undo-notice-padding` — The native Undo notice pads 4pt, not 8pt.
 - `native-composer-fields-two-lines` — The native composer fields draw two lines tall.
@@ -417,6 +417,7 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-backup-has-no-photos` — Native Backup holds no photos.
 - `native-backup-ui-unpinned` — No UI test taps Backup.
 - `native-backup-web-restore-unrun` — No test restores a native backup file on the web.
+- `native-count-line-clips` — The native count line clips with no ellipsis at 4-digit counts.
 - `native-masthead-stale-after-tabs` — The native masthead and Packages go stale after another tab writes.
 - `draft-skip-required-unmeasured` — A required check on a draft-skipped job is unmeasured.
 - `recent-log-unbuilt` — The recent-actions log is not built.

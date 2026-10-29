@@ -115,6 +115,13 @@ struct MastheadView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var frame: LetterheadFrame?
 
+    /// A copy built after the compose starts on the final frame, so a first visit to a later tab never draws the blank one.
+    init(model: MastheadModel, tab: MastheadTab) {
+        self.model = model
+        self.tab = tab
+        _frame = State(initialValue: model.hasComposed ? LetterheadMotion.final : nil)
+    }
+
     /// A seeded UI test run draws the final frame: the audit must not read a half-faded title.
     /// ponytail: tests cannot read an opacity, so this hides the compose from them.
     private var reduceMotion: Bool { systemReduceMotion || ProcessInfo.processInfo.arguments.contains("-ManifestUITestSeed") }
@@ -201,7 +208,8 @@ struct MastheadView: View {
         let text = MastheadPaint.style(.count).text(model.countLine(for: tab), size: 10.5, relativeTo: .caption)
         Group {
             if typeSize.isAccessibilitySize { text.frame(maxWidth: .infinity, alignment: .leading) } else {
-                text.fixedSize(horizontal: true, vertical: false).frame(maxWidth: .infinity, alignment: .leading).clipped()
+                // minWidth 0: the frame takes the column's width, not the line's, so a long line never widens the column.
+                text.fixedSize(horizontal: true, vertical: false).frame(minWidth: 0, maxWidth: .infinity, alignment: .leading).clipped()
             }
         }
         .accessibilityIdentifier("masthead-count")

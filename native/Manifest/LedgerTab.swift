@@ -31,6 +31,7 @@ struct LedgerTab: View {
             VStack(alignment: .leading, spacing: 0) {
                 Text("Ledger").textCase(.uppercase).font(.mono(12, relativeTo: .caption)).tracking(3.6)
                     .foregroundStyle(paint(.title)).frame(maxWidth: .infinity)
+                    .padding(.top, masthead == nil ? 16 : 0)
                     .accessibilityAddTraits(.isHeader)
                 Text("Data").textCase(.uppercase).font(.mono(11, relativeTo: .caption)).tracking(2.2)
                     .foregroundStyle(paint(.groupLabel)).padding(.leading, 4).padding(.top, 16).padding(.bottom, 8)

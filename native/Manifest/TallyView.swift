@@ -170,7 +170,7 @@ struct TallyRowView: View {
                 Text(row.rateLine).font(.mono(11.5, relativeTo: .caption)).foregroundStyle(paint(.rate))
                 // Hidden once in, never removed: unmounting it would shorten the row under the thumb.
                 Text(row.leftLine).font(.cochin(12, relativeTo: .caption).weight(.bold)).foregroundStyle(paint(.left))
-                    .opacity(done ? 0 : 1).accessibilityHidden(done)
+                    .opacity(done ? 0 : 1).accessibilityHidden(done).accessibilityIdentifier("tally-left:\(row.name)")
             }
             .fixedSize(horizontal: true, vertical: false)
         }
@@ -183,7 +183,8 @@ struct TallyRowView: View {
     @ViewBuilder private var metaLine: some View {
         let text = Text(row.meta).font(.mono(11, relativeTo: .caption)).foregroundStyle(paint(.meta))
         if typeSize.isAccessibilitySize { text } else {
-            text.fixedSize(horizontal: true, vertical: false).frame(maxWidth: .infinity, alignment: .leading).clipped()
+            // minWidth 0: the frame takes the column's width, not the line's, so a long meta never widens the row.
+            text.fixedSize(horizontal: true, vertical: false).frame(minWidth: 0, maxWidth: .infinity, alignment: .leading).clipped()
         }
     }
 
