@@ -51,7 +51,7 @@ struct PackageRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
-            StampSection(pkg: pkg, model: model, masthead: masthead, onChange: onChange)
+            StampSection(pkg: pkg, model: model, masthead: masthead, surface: paint(.surface, packageState), onChange: onChange)
             ForEach(pkg.items, id: \.key) { item in
                 ItemLine(
                     state: state(item), name: item.name, title: item.name, detail: model.details[item.key] ?? "",

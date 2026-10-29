@@ -77,6 +77,8 @@ struct StampSection: View {
     let pkg: Package
     let model: PackagesModel
     let masthead: MastheadModel
+    /// The card's surface, which the band note's "…" sits on.
+    let surface: Color
     /// Runs after a write, so the Tally and Orphaned figures read the new stamps.
     let onChange: () async -> Void
 
@@ -142,8 +144,9 @@ struct StampSection: View {
                     .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(paint(.bandChip), lineWidth: 2))
                     .rotationEffect(.degrees(-3))
                     .layoutPriority(1)
-                Text(note).font(.cochin(13.5, relativeTo: .body).italic()).foregroundStyle(paint(.bandNote))
-                    .lineLimit(1).truncationMode(.tail).frame(maxWidth: .infinity, alignment: .leading)
+                CutLine(text: note, font: .cochin(13.5, relativeTo: .body).italic(), color: paint(.bandNote), fill: surface,
+                        identifier: "stamp-note-text:\(pkg.gk)")
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Text("\u{203A}").font(.mono(12, relativeTo: .caption)).foregroundStyle(paint(.bandChevron))
             }
             .padding(.horizontal, 12)
