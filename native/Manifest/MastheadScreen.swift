@@ -12,6 +12,8 @@ struct MastheadScreen<Content: View>: View {
     /// The advisory line's source and its way out to the Sync panel. nil draws no line.
     var sync: SyncClient?
     var openSync: () -> Void = {}
+    /// A ruled row of the tab's own between the running-head slot and the advisory line (Packages' stamped cell).
+    var ruledRow: AnyView?
     @ViewBuilder let content: Content
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -32,6 +34,7 @@ struct MastheadScreen<Content: View>: View {
                         .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { headHeight = $0 }
                     Color.clear.frame(height: Self.slot).accessibilityHidden(true)
                 }
+                if let ruledRow { ruledRow }
                 if let sync { SyncAdvisoryLine(sync: sync, open: openSync) }
                 content
             }

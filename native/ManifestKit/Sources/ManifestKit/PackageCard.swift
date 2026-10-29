@@ -15,7 +15,7 @@ public enum LineState: Equatable, Sendable {
 public enum PackageCard {
     public enum Part: CaseIterable, Hashable, Sendable {
         case surface, border, seller, orderId, price, detail, rule, rowFill, name, count,
-             pillText, pillFill, barTrack, barFill, boxBorder, boxFill, boxMark
+             pillText, pillFill, refundPillText, refundPillFill, barTrack, barFill, boxBorder, boxFill, boxMark
     }
 
     /// A token name, or nil for "no paint". `state` is the line's; for .border it is the package's,
@@ -34,6 +34,9 @@ public enum PackageCard {
         case .count: return state == .partial ? "manilaInk" : "ink"
         case .pillText: return "red"
         case .pillFill: return "redSoft"
+        // Refunded: the cards are still out but no money is, so manila, not the red figure (src/app.jsx PackageCard).
+        case .refundPillText: return "manilaInk"
+        case .refundPillFill: return "manila"
         case .barTrack: return "silver"
         case .barFill: return "accent"
         case .boxBorder: return state == .open ? "inkSoft" : state == .partial ? "manilaInk" : "green"
@@ -43,18 +46,19 @@ public enum PackageCard {
     }
 
     /// What the status slot shows. RECEIVED comes from the package being done, never from a missing pill:
-    /// a package still owed with no pill yet shows nothing.
+    /// a package still owed with no pill yet shows nothing. A refunded package shows the bundle's refundedPill
+    /// ("N left, refunded") where the others show the dollar figure.
     public enum Status: Equatable, Sendable {
-        case pill(String), received, blank
+        case pill(String), refunded(String), received, blank
 
-        public init(done: Bool, pill: String?) {
-            self = done ? .received : pill.map(Status.pill) ?? .blank
+        public init(done: Bool, pill: String?, refundPill: String? = nil) {
+            self = done ? .received : refundPill.map(Status.refunded) ?? pill.map(Status.pill) ?? .blank
         }
 
         /// The slot's accessibility value: what the slot shows, so a VoiceOver reader hears the card's status.
         public var accessibilityValue: String {
             switch self {
-            case .pill(let text): return text
+            case .pill(let text), .refunded(let text): return text
             case .received: return "Received"
             case .blank: return ""
             }

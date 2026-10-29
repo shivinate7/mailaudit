@@ -343,7 +343,7 @@ final class OrphanedUITests: XCTestCase {
     func testOrphanedControlsHaveA44ptHitRegion() throws {
         let app = launch()
         openOrphaned(app)
-        func check(_ id: String) { assertHit(el(app, id), id) }
+        func check(_ id: String) { assertHitRegion(el(app, id), id) }
         check("orphaned-record")
         el(app, "orphaned-record").tap()
         XCTAssertTrue(el(app, "orphaned-save").waitForExistence(timeout: 5), "the composer has no Save")
@@ -368,18 +368,18 @@ final class OrphanedUITests: XCTestCase {
         // Lightning Bolt and Urza's Saga: A, B, C and D each explain one card, so four rows and a "show 1 more".
         record(app, [("bolt", "Lightning Bolt"), ("urza", "Urza's Saga")])
 
-        assertHit(app.buttons["Edit"].firstMatch, "Edit")
-        assertHit(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "discard:")).firstMatch, "Discard")
+        assertHitRegion(app.buttons["Edit"].firstMatch, "Edit")
+        assertHitRegion(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "discard:")).firstMatch, "Discard")
         XCTAssertEqual(count(app, prefix: "orphaned-edit:"), 1, "Edit's id is on more than one element")
         XCTAssertEqual(count(app, prefix: "discard:"), 1, "Discard's id is on more than one element")
-        assertHit(app.buttons["show 1 more candidate"], "show more")
+        assertHitRegion(app.buttons["show 1 more candidate"], "show more")
         let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "assign:"))
         XCTAssertEqual(rows.count, 3, "the card shows three candidate rows before show more")
-        for i in 0..<rows.count { assertHit(rows.element(boundBy: i), "assign row \(i)") }
+        for i in 0..<rows.count { assertHitRegion(rows.element(boundBy: i), "assign row \(i)") }
 
         app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "discard:")).firstMatch.tap()
-        assertHit(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Tap again to discard")).firstMatch, "the discard ask")
-        assertHit(app.buttons["Cancel"].firstMatch, "the discard ask's Cancel")
+        assertHitRegion(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Tap again to discard")).firstMatch, "the discard ask")
+        assertHitRegion(app.buttons["Cancel"].firstMatch, "the discard ask's Cancel")
     }
 
     // MARK: tab badge
@@ -406,13 +406,4 @@ final class OrphanedUITests: XCTestCase {
 
     /// The tab button's value: a system badge's text, empty when there is none.
     func badge(_ tab: XCUIElement) -> String { tab.value as? String ?? "" }
-
-    /// A frame comes back with float noise (a minHeight 44 row reads 43.99999999999997), so the floor has a
-    /// thousandth of a point of slack. A real miss is a third of a point or more short.
-    func assertHit(_ e: XCUIElement, _ what: String) {
-        XCTAssertTrue(e.waitForExistence(timeout: 5), "\(what) is not on screen")
-        let f = e.frame
-        XCTAssertGreaterThanOrEqual(f.width, Self.minHit - 0.001, "\(what) is \(f.width)pt wide, under 44pt")
-        XCTAssertGreaterThanOrEqual(f.height, Self.minHit - 0.001, "\(what) is \(f.height)pt high, under 44pt")
-    }
 }

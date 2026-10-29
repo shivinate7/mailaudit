@@ -137,21 +137,21 @@ public final class LedgerStore {
     }
 
     public func setStamp(_ key: String, kind: String, note: String, at: String) {
+        putStamp(key, ["kind": kind, "note": note, "at": at, "updatedAt": now()])
+    }
+
+    /// Stores a stamp record as the bundle's nextStamp made it (StampWriter), so the record is built in one place.
+    func putStamp(_ key: String, _ record: [String: Any]) {
         var s = doc["stamps"] as? [String: Any] ?? [:]
-        s[key] = ["kind": kind, "note": note, "at": at, "updatedAt": now()] as [String: Any]
+        s[key] = record
         doc["stamps"] = s
         generation += 1
     }
 
-    /// A removal keeps the key with kind "" so it wins a merge.
+    /// A removal keeps the key as a tombstone with kind, note and date cleared, so it wins a merge and a restore or
+    /// a backup cannot bring the old note back (stamp-removal-writes-a-tombstone). The web writes the same record.
     public func removeStamp(_ key: String) {
-        var s = doc["stamps"] as? [String: Any] ?? [:]
-        var st = s[key] as? [String: Any] ?? [:]
-        st["kind"] = ""
-        st["updatedAt"] = now()
-        s[key] = st
-        doc["stamps"] = s
-        generation += 1
+        putStamp(key, ["kind": "", "note": "", "at": "", "updatedAt": now()])
     }
 
     /// A discard leaves a tombstone: deletedAt set, entries and photos emptied.

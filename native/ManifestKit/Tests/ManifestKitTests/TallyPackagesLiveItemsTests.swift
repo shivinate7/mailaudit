@@ -93,10 +93,7 @@ enum LiveFixture {
             let gk = try XCTUnwrap(package?["gk"] as? String, "no package for \(s.order) / \(s.seller)")
             stamped[gk] = ["kind": s.kind, "note": "", "at": "2026-07-02", "updatedAt": 1_786_543_380_000] as [String: Any]
         }
-        let dir = FileManager.default.temporaryDirectory
-            .appending(path: "n12b-live-\(UUID().uuidString)", directoryHint: .isDirectory)
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        let url = dir.appending(path: "ledger.json")
+        let url = try PhotoTestKit.tempDir("n12b-live").appending(path: "ledger.json")
         let doc: [String: Any] = ["mailday": 1, "items": items, "received": received, "stamps": stamped]
         try JSONSerialization.data(withJSONObject: doc).write(to: url)
         let store = LedgerStore(fileURL: url, now: { 1_786_543_380_000 })

@@ -38,8 +38,14 @@ final class PackageCardTokensTests: XCTestCase {
         var all = fixed
         // The count joins the table once the part exists, so coverage stays green when the builder adds it.
         if let count = countPart { all[count] = Want("ink", "manilaInk", "ink") }
+        // Step 6's refunded pill joins the same way. The web paints "N left · refunded" manilaInk on manila.
+        if let text = part(named: "refundPillText") { all[text] = Want(all: "manilaInk") }
+        if let fill = part(named: "refundPillFill") { all[fill] = Want(all: "manila") }
         return all
     }()
+
+    /// A Part by its case name, for the same reason as countPart: a test file cannot stub an enum case.
+    static func part(named name: String) -> Part? { Part.allCases.first { String(describing: $0) == name } }
 
     private static let fixed: [Part: Want] = [
         .surface: Want(all: "card"),                    // the card is the raised parchment
@@ -94,6 +100,21 @@ final class PackageCardTokensTests: XCTestCase {
             let r = try TokenContrast.ratio(token, on: row, palette)
             XCTAssertGreaterThanOrEqual(r, 4.5, "count on the \(state) row (\(token) on \(row))")
         }
+    }
+
+    /// A refunded package's pill reads manilaInk on manila, not the red figure: the cards are still out, but the money
+    /// is back (src/app.jsx PackageCard, `refunded ? C.manilaInk : C.red`). Step 6 adds the two parts. The colour is
+    /// the same whatever the line state, because the pill is the package's, so each state gets the same token.
+    func testTheRefundedPillPaintsManilaInkOnManila() throws {
+        let text = try XCTUnwrap(Self.part(named: "refundPillText"), "PackageCard.Part has no refundPillText part (step 6)")
+        let fill = try XCTUnwrap(Self.part(named: "refundPillFill"), "PackageCard.Part has no refundPillFill part (step 6)")
+        for state in Self.states {
+            XCTAssertEqual(PackageCard.token(text, state), "manilaInk", "the refunded pill's text while \(state)")
+            XCTAssertEqual(PackageCard.token(fill, state), "manila", "the refunded pill's fill while \(state)")
+        }
+        let palette = try Palette.decode(Data(contentsOf: PaletteTests.tokensURL))
+        let r = try TokenContrast.ratio("manilaInk", on: "manila", palette)
+        XCTAssertGreaterThanOrEqual(r, 4.5, "the refunded pill's text on its fill")
     }
 
     // MARK: the tokens exist

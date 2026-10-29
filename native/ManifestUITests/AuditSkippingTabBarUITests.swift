@@ -54,6 +54,16 @@ func isKeyboardPredictionCell(detail: String) -> Bool {
     isKeyboardPredictionCell(detail: issue.detailedDescription)
 }
 
+/// The element is on screen and its frame is at least 44pt each way: the hit region of every control the owner taps.
+/// A frame comes back with float noise (a minHeight 44 row reads 43.99999999999997), so the floor has a thousandth
+/// of a point of slack. A real miss is a third of a point or more short. OrphanedUITests and PackageStampUITests call it.
+@MainActor func assertHitRegion(_ e: XCUIElement, _ what: String, file: StaticString = #filePath, line: UInt = #line) {
+    XCTAssertTrue(e.waitForExistence(timeout: 5), "\(what) is not on screen", file: file, line: line)
+    let f = e.frame
+    XCTAssertGreaterThanOrEqual(f.width, 44 - 0.001, "\(what) is \(f.width)pt wide, under 44pt", file: file, line: line)
+    XCTAssertGreaterThanOrEqual(f.height, 44 - 0.001, "\(what) is \(f.height)pt high, under 44pt", file: file, line: line)
+}
+
 extension XCUIApplication {
     /// The top of the band a list scrolls in: the status bar's foot, or the window's top when no status bar resolves.
     /// The status bar is not in the app's accessibility tree on the simulator runs so far, so this reads the window's

@@ -399,7 +399,7 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-ask-has-no-cancel-focus` — The native ask does not move first focus to Cancel.
 - `native-removal-rule-is-swift` — The test for a removing reply is Swift code.
 - `native-version-names-unpinned` — No test pins the version file names.
-- `native-filters-tally-only` — The native client has no date filter, package sort, Packages search or stamped filter.
+- `native-filters-tally-only` — The native client has no date filter, package sort or Packages search.
 - `native-tally-copy-no-flags` — The native Tally copy has no lost-mail flag and no order id tap.
 - `native-envelope-has-no-photos` — Native envelopes have no photos.
 - `native-orphaned-colours-unbuilt` — The native Orphaned composer audits flag text with no element.
@@ -415,6 +415,12 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-cold-launch-ledger-shift` — The Ledger tab may jump at cold launch.
 - `native-masthead-foot-row-gap` — The native masthead foot's second row sits 4.6pt low.
 - `native-masthead-axl-clips` — The native masthead wraps and clips at accessibility text sizes.
+- `native-stamp-load-unmeasured` — The native Packages load with stamps is unmeasured.
+- `native-stamp-note-field-short` — The native stamp note field is 36.7pt tall, under 44pt.
+- `native-stamp-ask-covers-row` — The native armed Remove ask covers the editor row.
+- `native-armed-audit-misses-ask` — The native armed stamp audit cannot see the ask.
+- `hand-stamp-leaves-tally-stale` — A stamp from Card in Hand leaves Tally stale.
+- `hand-reads-stamped-filter-rows` — Card in Hand reads the stamped filter's rows.
 - `debt-notes` — One-line findings not likely in normal work.
 - `native-card-gestures-unpinned` — No UI test pins the native card header gestures.
 - `native-card-state-in-swift` — The native card copies the line and package done rules in Swift.

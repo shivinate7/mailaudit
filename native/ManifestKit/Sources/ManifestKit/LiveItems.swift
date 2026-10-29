@@ -7,12 +7,12 @@ enum LiveItems {
         String(decoding: try JSONSerialization.data(withJSONObject: v, options: [.fragmentsAllowed]), as: UTF8.self)
     }
 
-    /// The ledger the web counts: canceled orders dropped, then the packages stamped Refunded or
-    /// Partial refund (canceled-orders-leave-the-list, a-refund-leaves-every-count). The group keys
-    /// come from the bundle's groupPackages, not a copy of gkOf. Returns the items as JSON.
+    /// The ledger the web counts: canceled orders dropped, then the packages the bundle's isRefundStamp names
+    /// (canceled-orders-leave-the-list, a-refund-leaves-every-count). The group keys come from the bundle's
+    /// groupPackages, not a copy of gkOf. Returns the items as JSON.
     static func of(_ items: [[String: Any]], stamps: [String: [String: Any]], engine: RulesEngine) async throws -> String {
         let live = try await engine.call("dropCanceled", "[\(try json(items))]")
-        let refunded = Set(stamps.filter { ["refunded", "partial"].contains($0.value["kind"] as? String) }.keys)
+        let refunded = try await StampRules.keys(where: "isRefundStamp", in: stamps, engine: engine)
         guard !refunded.isEmpty else { return live }
         let packages = try JSONSerialization.jsonObject(with: Data(try await engine.call("groupPackages", "[\(live)]").utf8)) as? [[String: Any]] ?? []
         let gone = Set(packages.filter { refunded.contains($0["gk"] as? String ?? "") }

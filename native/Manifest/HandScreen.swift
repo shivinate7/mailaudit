@@ -23,6 +23,8 @@ struct PackagesTab: View {
     let openSync: () -> Void
     let notice: String?
     let kit: HandKit?
+    /// Handed to PackagesView: runs after a stamp write (a-refund-leaves-every-count).
+    let onChange: () async throws -> Void
 
     @Environment(\.duoSpread) private var spread
     @State private var handOpen = false
@@ -32,7 +34,7 @@ struct PackagesTab: View {
     var body: some View {
         let open = handOpen && twoPages
         let opener: (() -> Void)? = kit != nil && twoPages ? { handOpen = true } : nil
-        PackagesView(model: model, masthead: masthead, sync: sync, openSync: openSync, notice: notice, openHand: opener)
+        PackagesView(model: model, masthead: masthead, sync: sync, openSync: openSync, notice: notice, onChange: onChange, openHand: opener)
             .accessibilityHidden(open)
             .overlay {
                 if open, let kit { HandScreen(kit: kit, packages: model, masthead: masthead, close: { handOpen = false }) }
