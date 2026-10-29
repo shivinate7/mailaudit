@@ -51,9 +51,8 @@ struct HandScreen: View {
     /// The envelope the answer page shows. A post leaves it, so the lines you checked in stay under your finger until the next card.
     @State private var shown: String?
     @State private var pastTransit = false
-    /// Where the system keys begin and where the right page ends, both in window space.
-    @State private var keysTop = CGFloat.infinity
-    @State private var pageBottom: CGFloat = 0
+    /// The offer has shown and has not yet been scrolled to after its layout.
+    @State private var revealPending = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var hand: HandModel { kit.hand }
@@ -169,9 +168,10 @@ struct HandScreen: View {
 
     // MARK: right page
 
-    /// The system keys span both pages, and the right page does not reflow for them, so the page keeps its own inset: its
-    /// content ends where the keys begin. The inset is the overlap of the keys with this page's frame (read in window
-    /// space), so it is 0 with no keys and the left page is untouched.
+    /// The system keys span both pages. The right page keeps SwiftUI's own keyboard avoidance, the house pattern of
+    /// OrphanedView and MastheadScreen's scrollTo, so the space above the keys is the scroll view's own, and the offer scrolls
+    /// to its foot. The left page's content keeps its place: its scroll view only gets shorter, at offset 0
+    /// (no-layout-shift-under-pointer).
     private var rightPage: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -185,21 +185,23 @@ struct HandScreen: View {
                 }
                 .padding(16)
             }
-            .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: keysInset) }
-            .onChange(of: offerVisible) { _, shown in if shown { revealOffer(proxy) } }
-            .onChange(of: keysInset) { _, _ in if offerVisible { revealOffer(proxy) } }
+            .onChange(of: offerVisible) { _, shown in
+                revealPending = shown
+                if shown { revealOffer(proxy) }
+            }
+            // Once more after the offer is laid out: the content grows by the post box. One shot, so a later change in
+            // the content never scrolls the page under a finger.
+            .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentSize.height }) { _, _ in
+                if revealPending { revealPending = false; revealOffer(proxy) }
+            }
+            // The keys opened or grew while the offer shows: the space above them shrank. Never when it grows, as the keys close.
+            .onScrollGeometryChange(for: CGFloat.self, of: { $0.containerSize.height - $0.contentInsets.bottom }) { old, new in
+                if new < old, offerVisible { revealOffer(proxy) }
+            }
         }
-        .ignoresSafeArea(.keyboard, edges: .bottom)
-        .background(GeometryReader { g in Color.clear.onChange(of: g.frame(in: .global).maxY, initial: true) { _, y in pageBottom = y } })
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { note in
-            keysTop = (note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect)?.minY ?? .infinity
-        }
-        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in keysTop = .infinity }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("hand-answer")
     }
-
-    private var keysInset: CGFloat { max(0, pageBottom - keysTop) }
 
     /// The post offer is on the page: the envelope is the one answer and its held card has an offer here.
     private var offerVisible: Bool {
@@ -207,12 +209,12 @@ struct HandScreen: View {
         return o.gk == gk && o.heldCopies > 0
     }
 
-    /// Brings the offer to the foot of the space above the keys. Waits one turn, so the inset has laid out first.
+    /// Brings the offer to the foot of the space above the keys, as MastheadScreen's scrollTo does. Waits one turn, so the
+    /// offer is in the scroll view first.
     private func revealOffer(_ proxy: ScrollViewProxy) {
         Task { @MainActor in
             await Task.yield()
-            if reduceMotion { proxy.scrollTo(Self.offerID, anchor: .bottom) }
-            else { withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(Self.offerID, anchor: .bottom) } }
+            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { proxy.scrollTo(Self.offerID, anchor: .bottom) }
         }
     }
 
