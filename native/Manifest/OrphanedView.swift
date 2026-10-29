@@ -15,8 +15,43 @@ struct OrphanedView: View {
     let sync: SyncClient?
     let openSync: () -> Void
     let onChange: () async -> Void
+    @Environment(\.duoSpread) private var spread
+    /// The envelope the open Duo's right page shows. nil until a cell is tapped, which shows the first (the mockup selects one at open).
+    @State private var picked: String?
+
+    private var pages: (left: CGRect, right: CGRect)? { spread.pages(for: .orphaned) }
+    private var current: Envelope? { model.envelopes.first { $0.id == picked } ?? model.envelopes.first }
 
     var body: some View {
+        Group {
+            if let pages {
+                // The mockup (pose 9) draws one cell per envelope on the left page, and the envelope's heading, candidates and Assign on the right.
+                // The masthead and the record control are not drawn there. Default, not owner: they keep the one-page order, at the top of the left page.
+                DuoPages(pages: pages) { list.overlay(alignment: .bottom) { errorBar } } right: { detail }
+            } else {
+                list.overlay(alignment: .bottom) { errorBar }
+            }
+        }
+        .task { try? await model.load() }
+    }
+
+    private var detail: some View {
+        ScrollView {
+            if let env = current { EnvelopeCard(model: model, env: env, onChange: onChange, page: .detail).padding(16) }
+        }
+    }
+
+    @ViewBuilder private var errorBar: some View {
+        if let e = model.error {
+            Text(e).font(.cochin(13, relativeTo: .footnote)).foregroundStyle(paint(.entry))
+                .padding(12).frame(maxWidth: .infinity)
+                .background(paint(.cardSurface))
+                .overlay(alignment: .top) { Rectangle().fill(paint(.cardBorder)).frame(height: 1) }
+                .accessibilityIdentifier("orphaned-error")
+        }
+    }
+
+    private var list: some View {
         MastheadScreen(masthead: masthead, tab: .orphaned, sync: sync, openSync: openSync) {
             VStack(alignment: .leading, spacing: 12) {
                 if model.composing == .new {
@@ -36,7 +71,8 @@ struct OrphanedView: View {
                     if model.composing == .edit(env.id) {
                         ComposerView(model: model, target: .edit(env.id), onChange: onChange)
                     } else {
-                        EnvelopeCard(model: model, env: env, onChange: onChange)
+                        EnvelopeCard(model: model, env: env, onChange: onChange,
+                                     page: pages == nil ? .full : .cell(selected: env.id == current?.id) { picked = env.id })
                     }
                 }
                 // The pile emptied out from under the notice: it still needs somewhere to go.
@@ -50,16 +86,6 @@ struct OrphanedView: View {
             .padding(.horizontal, 16)
             .padding(.bottom, 16)
         }
-        .overlay(alignment: .bottom) {
-            if let e = model.error {
-                Text(e).font(.cochin(13, relativeTo: .footnote)).foregroundStyle(paint(.entry))
-                    .padding(12).frame(maxWidth: .infinity)
-                    .background(paint(.cardSurface))
-                    .overlay(alignment: .top) { Rectangle().fill(paint(.cardBorder)).frame(height: 1) }
-                    .accessibilityIdentifier("orphaned-error")
-            }
-        }
-        .task { try? await model.load() }
     }
 }
 
@@ -228,25 +254,54 @@ private struct ComposerView: View {
 }
 
 private struct EnvelopeCard: View {
+    /// Where the card is drawn. `.full` is the one-page card. On the open Duo the left page draws `.cell`, the heading and the
+    /// entries, and a tap picks the envelope. The right page draws `.detail`, which is the full card.
+    enum Page {
+        case full
+        case cell(selected: Bool, pick: () -> Void)
+        case detail
+    }
+
     let model: OrphanedModel
     let env: Envelope
     let onChange: () async -> Void
+    var page = Page.full
     @State private var showAll = false
     @State private var armed = false
 
+    private var isCell: Bool { if case .cell = page { true } else { false } }
+    private var isDetail: Bool { if case .detail = page { true } else { false } }
+
     var body: some View {
+        if case let .cell(selected, pick) = page {
+            Button(action: pick) { card }
+                .buttonStyle(.plain)
+                // The picked cell is marked by colour in an overlay, so picking moves nothing (no-layout-shift-under-pointer).
+                .overlay { if selected { RoundedRectangle(cornerRadius: 8).strokeBorder(Parchment.accent, lineWidth: 2).allowsHitTesting(false) } }
+                .accessibilityIdentifier("orphaned-cell:\(env.id)")
+        } else {
+            card
+                .accessibilityElement(children: .contain)
+                .accessibilityIdentifier("envelope:\(env.id)")
+        }
+    }
+
+    private var card: some View {
         let ranked = model.ranked(for: env.id)
         let total = env.entries.reduce(0) { $0 + $1.qty }
         let shown = showAll ? ranked.list : Array(ranked.list.prefix(3))
-        VStack(alignment: .leading, spacing: 0) {
+        return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
                 micro("Envelope \u{00B7} \(Date(timeIntervalSince1970: env.createdAt / 1000).formatted(.iso8601.year().month().day())) \u{00B7} \(total) card\(total == 1 ? "" : "s")", size: 11, tracking: 0.12)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Button { model.open(.edit(env.id)) } label: { MiniLabel(title: "Edit", size: 11) }.buttonStyle(.plain).accessibilityIdentifier("orphaned-edit:\(env.id)")
-                Button(role: .destructive) { armed.toggle() } label: {
-                    MiniLabel(title: "Discard", size: 11, text: paint(.discardText), fill: paint(.cardSurface), border: paint(.discardBorder))
+                    .identified(isDetail ? "orphaned-detail-title" : nil)
+                if !isCell {
+                    Button { model.open(.edit(env.id)) } label: { MiniLabel(title: "Edit", size: 11) }.buttonStyle(.plain).accessibilityIdentifier("orphaned-edit:\(env.id)")
+                    Button(role: .destructive) { armed.toggle() } label: {
+                        MiniLabel(title: "Discard", size: 11, text: paint(.discardText), fill: paint(.cardSurface), border: paint(.discardBorder))
+                    }
+                    .buttonStyle(.plain).accessibilityIdentifier("discard:\(env.id)")
                 }
-                .buttonStyle(.plain).accessibilityIdentifier("discard:\(env.id)")
             }
             .padding(.top, 12).padding(.horizontal, 12).padding(.bottom, 8)
             // A solid backdrop under the header's buttons: the audit reads their contrast against it.
@@ -285,7 +340,8 @@ private struct EnvelopeCard: View {
                     Text(env.note).font(.mono(11, relativeTo: .caption)).foregroundStyle(paint(.note)).padding(.top, 4)
                 }
             }
-            .padding(.horizontal, 12).padding(.bottom, 8)
+            .padding(.horizontal, 12).padding(.bottom, isCell ? 12 : 8)
+            if !isCell {
             Rule()
             VStack(alignment: .leading, spacing: 8) {
                 if ranked.list.isEmpty {
@@ -308,11 +364,10 @@ private struct EnvelopeCard: View {
                 }
             }
             .padding(.top, 8).padding(.horizontal, 12).padding(.bottom, 12)
+            }
         }
         .task(id: armed) { if armed { try? await Task.sleep(for: .seconds(4)); armed = false } }
         .modifier(CardChrome(border: .cardBorder))
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier("envelope:\(env.id)")
     }
 }
 
@@ -354,6 +409,11 @@ private struct CandidateRow: View {
 }
 
 private extension View {
+    /// The view with an accessibility identifier, or as it is when `id` is nil.
+    @ViewBuilder func identified(_ id: String?) -> some View {
+        if let id { accessibilityIdentifier(id) } else { self }
+    }
+
     /// The plain style, so the field's height follows its text at large Dynamic Type; the rounded-border style is a fixed-height UITextField and the audit calls its text clipped.
     /// Cochin 16: 16pt or more stops iOS zoom on focus. The caller sets lineLimit(2...3), so the hit region clears 44pt.
     func inputBox() -> some View {
