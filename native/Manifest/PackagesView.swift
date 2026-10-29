@@ -11,14 +11,19 @@ struct PackagesView: View {
     let openSync: () -> Void
     /// The damaged-ledger line, in the content below the running-head slot like the advisory.
     let notice: String?
+    /// Runs after a stamp write, so the other tabs read the new stamps.
+    let onChange: () async -> Void
 
     var body: some View {
-        MastheadScreen(masthead: masthead, tab: .packages, sync: sync, openSync: openSync) {
+        MastheadScreen(masthead: masthead, tab: .packages, sync: sync, openSync: openSync,
+                       ruledRow: AnyView(StampedRow(count: model.stampedCount, on: model.showStamped) {
+                           Task { try? await model.toggleStamped() }
+                       })) {
             VStack(spacing: 0) {
                 if let notice { Text(notice).font(.footnote).padding(8) }
                 LazyVStack(spacing: 8) {
                     ForEach(model.rows, id: \.gk) { pkg in
-                        PackageRow(pkg: pkg, model: model, masthead: masthead)
+                        PackageRow(pkg: pkg, model: model, masthead: masthead, onChange: onChange)
                     }
                 }
                 .padding(.horizontal, 16)
@@ -38,6 +43,7 @@ struct PackageRow: View {
     let pkg: Package
     let model: PackagesModel
     let masthead: MastheadModel
+    let onChange: () async -> Void
 
     private func state(_ item: LedgerItem) -> LineState { LineState(got: model.received[item.key] ?? 0, qty: item.qty) }
     private var packageState: LineState { pkg.items.allSatisfy { state($0) == .done } ? .done : .open }
@@ -45,6 +51,7 @@ struct PackageRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
+            StampSection(pkg: pkg, model: model, masthead: masthead, onChange: onChange)
             ForEach(pkg.items, id: \.key) { item in
                 ItemLine(
                     state: state(item), name: item.name, title: item.name, detail: model.details[item.key] ?? "",
@@ -114,7 +121,7 @@ struct PackageRow: View {
     /// The pill, or the RECEIVED stamp once nothing is owed. An invisible widest pill sets the
     /// slot's size and the live one is drawn over it, so a check-in never changes the layout.
     private var statusSlot: some View {
-        Text("99 left \u{00B7} $99.99").font(.cochin(12.5).weight(.bold))
+        Text("99 left \u{00B7} refunded").font(.cochin(12.5).weight(.bold))
             .padding(.horizontal, 8).padding(.vertical, 4)
             .frame(minHeight: 28)
             .hidden()
@@ -133,6 +140,12 @@ struct PackageRow: View {
                         .background(Capsule().fill(paint(.pillFill, .open)))
                         .fixedSize()
                         .accessibilityIdentifier("card-pill:\(pkg.gk)")
+                case .refunded(let pill):
+                    Text(pill).font(.cochin(12.5).weight(.bold)).foregroundStyle(paint(.refundPillText, .open))
+                        .padding(.horizontal, 8).padding(.vertical, 4)
+                        .background(Capsule().fill(paint(.refundPillFill, .open)))
+                        .fixedSize()
+                        .accessibilityIdentifier("card-pill:\(pkg.gk)")
                 case .received:
                     Text("RECEIVED").font(.mono(10.5).weight(.bold)).tracking(1).foregroundStyle(paint(.border, .done))
                         .padding(.horizontal, 8).padding(.vertical, 4)
@@ -145,7 +158,7 @@ struct PackageRow: View {
             }
     }
 
-    private var status: PackageCard.Status { PackageCard.Status(done: packageState == .done, pill: model.pills[pkg.gk]) }
+    private var status: PackageCard.Status { PackageCard.Status(done: packageState == .done, pill: model.pills[pkg.gk], refundPill: model.refundPills[pkg.gk]) }
 
     /// The thin bar on the card's top edge, out of flow: it mounts without moving a row.
     @ViewBuilder private var bar: some View {

@@ -51,7 +51,12 @@ struct RootView: View {
             .tabItem { Label("Tally", systemImage: "number") }
             .tag(Tab.tally)
             Group {
-                if let model, let masthead { PackagesView(model: model, masthead: masthead, sync: sync, openSync: showSync, notice: notice) } else { Placeholder(title: failure ?? "Opening the ledger") }
+                if let model, let masthead { PackagesView(model: model, masthead: masthead, sync: sync, openSync: showSync, notice: notice, onChange: {
+                        // A stamp changed which packages count: Tally and Orphaned read the ledger again (a-refund-leaves-every-count).
+                        try? await tally?.load()
+                        try? await orphaned?.load()
+                    })
+                } else { Placeholder(title: failure ?? "Opening the ledger") }
             }
             .parchmentPaper()
             .tabItem { Label("Packages", systemImage: "shippingbox") }
