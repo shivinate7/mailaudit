@@ -46,8 +46,10 @@ private struct DuoSystemBar: ViewModifier {
 
     func body(content: Content) -> some View {
         content.toolbarVisibility(custom ? .hidden : .automatic, for: .tabBar).duoHorizontalBars()
-            // The bar floats over the right page. The inset sits inside the tab, as an outer one never reaches the tab's ScrollView.
-            .safeAreaInset(edge: .bottom, spacing: 0) { Color.clear.frame(height: custom ? DuoBarMetrics.height : 0) }
+            // The bar floats over the right page. The room sits inside the tab, as an outer one never reaches the tab's ScrollView.
+            // Padding, not an inset view: an inset view is a layer above the tab, and with the keys up it sits over the rows
+            // that lie above them and drops their taps.
+            .safeAreaPadding(.bottom, custom ? DuoBarMetrics.height : 0)
     }
 }
 
