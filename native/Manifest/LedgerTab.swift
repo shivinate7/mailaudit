@@ -325,7 +325,8 @@ struct AskRow: View {
         HStack(spacing: 0) {
             Button(action: press) {
                 Text(ask ?? title).font(armed ? .cochin(15, relativeTo: .body).weight(.bold) : .cochin(20, relativeTo: .title3))
-                    .lineLimit(1).minimumScaleFactor(0.7).foregroundStyle(p(.resetText))
+                    // One line at default sizes; at accessibility sizes the ask wraps rather than cutting to an ellipsis.
+                    .lineLimit(typeSize.isAccessibilitySize ? nil : 1).minimumScaleFactor(0.7).foregroundStyle(p(.resetText))
                     .padding(.horizontal, 16)
                     .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
                     .background(p(.resetFill))
@@ -334,19 +335,29 @@ struct AskRow: View {
             .buttonStyle(.plain)
             .accessibilityLabel(ask ?? title)
             .accessibilityIdentifier(id)
+            // The Cancel cell is at least cancelWidth wide and grows with its text at accessibility sizes. An unseen copy of the
+            // text keeps that width at rest, so arming moves nothing (no-layout-shift-under-pointer).
             ZStack {
+                cancelText.hidden()
                 if armed {
                     Button(action: cancel) {
-                        Text("Cancel").font(.cochin(20, relativeTo: .title3)).foregroundStyle(paint(.cancelText))
-                            .frame(width: cancelWidth, height: 52).contentShape(Rectangle())
+                        cancelText.frame(minWidth: cancelWidth, maxHeight: .infinity).contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier(cancelID)
                     .overlay(alignment: .leading) { Rectangle().fill(paint(.rowRule)).frame(width: 1) }
                 }
             }
-            .frame(width: cancelWidth, height: 52)
+            .frame(minWidth: cancelWidth, maxHeight: .infinity)
         }
+        .frame(minHeight: 52)
+    }
+
+    private var cancelText: some View {
+        Text("Cancel").font(.cochin(20, relativeTo: .title3)).foregroundStyle(paint(.cancelText))
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.horizontal, typeSize.isAccessibilitySize ? 12 : 0)
+            .frame(minWidth: cancelWidth, minHeight: 52)
     }
 
     /// Restore: red on redSoft at rest; bold card on red once armed. Both are the shared mini button (ControlViews), in
