@@ -1,0 +1,12 @@
+{
+  "baseUrl": "http://localhost:4173",
+  "routes": [
+    { "name": "Packages", "path": "/" },
+    { "name": "Tally", "path": "/" },
+    { "name": "Orphaned", "path": "/" }
+  ],
+  "sizes": [375, 760],
+  "themes": ["light"],
+  "height": 812,
+  "note": "Start the app first: npm run serve (port 4173). The app is one page: a view opens by its tab button (Packages, Tally, Orphaned), not by URL, and the ledger is seeded through localStorage. shoot cannot click or seed, so every route shoots the default Packages view of an empty ledger. Sizes: decision screens-checked-headless-in-ci. Themes: the app ships light only."
+}
