@@ -105,9 +105,29 @@ final class PackageStampUITests: XCTestCase {
 
     func relative(_ s: [String: CGRect], to anchor: String) -> [String: CGRect] { ScreenKit.relative(s, to: anchor) }
 
+    /// Every frame in `before` (already relative to the card's top) that is still on screen sits where it did. `taken` is
+    /// a snapshot the caller read at the moment that matters (the armed ask is live for 4 seconds only); without it the
+    /// frames are read now. `growsTo` names a frame whose maxY may grow, to the value given (relative to the card's top)
+    /// and no further, and never shrink; its other three edges hold like every other frame's.
     func assertStill(_ before: [String: CGRect], _ app: XCUIApplication, anchor: String, _ what: String,
-                     taken: [String: CGRect]? = nil, file: StaticString = #filePath, line: UInt = #line) {
-        ScreenKit.assertStill(before, app, anchor: anchor, what, prefixes: Self.framed, taken: taken, file: file, line: line)
+                     taken: [String: CGRect]? = nil, growsTo: [String: CGFloat] = [:],
+                     file: StaticString = #filePath, line: UInt = #line) {
+        let after = relative(taken ?? snapshot(app), to: anchor)
+        let common = before.keys.filter { after[$0] != nil }
+        XCTAssertGreaterThanOrEqual(common.count, 8, "too few frames to compare after \(what)", file: file, line: line)
+        // Layout rounding gives one frame a float error (319.0000305 against 319.0), so each edge is compared to half a
+        // point, as the other frame checks here are. A 1pt move shifts an edge by 1.0 and still fails.
+        for id in common {
+            guard let was = before[id], let now = after[id] else { continue }
+            for (edge, a, b) in [("minX", now.minX, was.minX), ("minY", now.minY, was.minY), ("maxX", now.maxX, was.maxX), ("maxY", now.maxY, was.maxY)] {
+                if edge == "maxY", let limit = growsTo[id] {
+                    XCTAssertGreaterThanOrEqual(a, b - 0.5, "\(id) shrank when \(what): \(edge) \(b) to \(a)", file: file, line: line)
+                    XCTAssertLessThanOrEqual(a, limit + 0.5, "\(id) grew past the ask when \(what): \(edge) \(b) to \(a), the ask ends at \(limit)", file: file, line: line)
+                } else {
+                    XCTAssertEqual(a, b, accuracy: 0.5, "\(id) moved when \(what): \(edge) \(b) to \(a)", file: file, line: line)
+                }
+            }
+        }
     }
 
     /// Today's local day as the band prints it: MM-dd.
