@@ -23,7 +23,8 @@ records your task needs. Do not read them all.
 - `invariants/` holds a rule that must not break. 8 records.
 - `docs/decisions/` holds a ruling and the reason it still holds.
 - `measurements/` holds a measured figure and how to re-measure it. 11 records.
-- `docs/debts/` holds one known gap or to-do per file, each pointing at its decision.
+- `docs/debts/` holds one known gap per file, each pointing at its decision.
+- `docs/plans/` holds work not yet shipped. `docs/specs/` holds how a shipped feature works now. `docs/todo.md` holds tasks a session caught and did not do. `.claude/rules/` holds rules for one folder.
 
 A record cites another record by slug, never by a path, so a record survives a
 move. `npm run check:records` proves eight things. This index cites every record.
@@ -299,7 +300,7 @@ What each check asks, and the two traps in the icon pipeline.
 - `main-moves-only-by-pr` — Main moves only by pull request, admins included.
 - `screens-checked-headless-in-ci` — Each view is checked headless at 375 and 760px.
 - `records-hold-current-text-only` — Records hold current text only; git keeps history.
-- `debts-hold-known-gaps` — Known gaps and to-dos live in debts, one file each.
+- `debts-hold-known-gaps` — Known gaps live in debts, one file each. Caught tasks live in `docs/todo.md`.
 - `records-name-what-dates-them` — Each decision names the fact that would date it.
 - `readme-is-minimal` — The README is minimal, and carries no license.
 - `orchestrator-may-merge` — The batch runner batches and merges green, reviewed PRs.
@@ -364,7 +365,7 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 
 ## Debts
 
-One known gap or to-do per file under `docs/debts/`. Each carries a Status line and a Decision line that names its record or says none.
+One known gap per file under `docs/debts/`. Each carries a Status line and a Decision line that names its record or says none.
 
 - `seed-in-public-history` — The seed stays in git history, deferred by the owner.
 - `claim-11-fixed-edge-taps` — Claim 11 skips taps at a fixed control's edge.
