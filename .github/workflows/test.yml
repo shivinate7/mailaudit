@@ -120,7 +120,7 @@ jobs:
   # Decision screens-checked-headless-in-ci: the screen check runs once, here,
   # on macOS only (Cochin exists only there), and never at deploy time.
   screens:
-    runs-on: macos-latest
+    runs-on: macos-26
     # About 2.7x the slowest green run (670 s, 26 runs); it stops a hang (decision above).
     timeout-minutes: 30
     # Cancel a superseded run on a PR ref (draft state in the group); never cancel a run on main, where
