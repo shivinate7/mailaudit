@@ -280,9 +280,9 @@ struct TallyRowView: View {
                     GeometryReader { g in paint(.barFill, .open).frame(width: g.size.width * fraction) }
                 }
                 .allowsHitTesting(false)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(row.got) of \(row.qty) copies in")
-                .accessibilityIdentifier("tally-bar:\(row.name)")
+                // Hidden for the audit's hit-area check (see PackageRow.bar). The row's header, a button, speaks the ratio
+                // as its text (got/qty), and the open row's Clear control speaks "N of M copies in" as its value.
+                .accessibilityHidden(true)
         }
     }
 

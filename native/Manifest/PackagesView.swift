@@ -209,15 +209,14 @@ struct PackageRow: View {
     /// The thin bar on the card's top edge, out of flow: it mounts without moving a row.
     @ViewBuilder private var bar: some View {
         if let fraction = model.bars[pkg.gk] {
-            let total = pkg.items.reduce(0) { $0 + $1.qty }
             paint(.barTrack, .open).frame(height: 3)
                 .overlay(alignment: .leading) {
                     GeometryReader { g in paint(.barFill, .open).frame(width: g.size.width * fraction) }
                 }
                 .allowsHitTesting(false)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(Int((fraction * Double(total)).rounded())) of \(total) copies in")
-                .accessibilityIdentifier("card-bar:\(pkg.gk)")
+                // The audit reads a 3pt element with a label as a control with a hit area too small. The fact it draws, copies
+                // in of copies held, is spoken by the Clear control's value (BulkRow), which shows while any copy is in.
+                .accessibilityHidden(true)
         }
     }
 }

@@ -89,6 +89,7 @@ struct BulkRow: View {
                         .buttonStyle(.plain)
                         .accessibilityLabel("Clear check-ins")
                         .accessibilityHint("Asks first. Clears \(checkIns(copiesIn)) \(scope)")
+                        .accessibilityValue("\(copiesIn) of \(totalCopies) copies in")  // the progress bar's fact: the bar is hidden from the audit
                         .accessibilityIdentifier(id("clear"))
                 }
             }
