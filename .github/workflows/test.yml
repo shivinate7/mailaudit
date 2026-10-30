@@ -190,41 +190,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - run: xcodebuild -version && swift --version
+      # -showsdks puts the image's SDKs in the log (debts native-runner-image-unverified, app-build-waits-xcode-27).
+      - run: xcodebuild -version && xcodebuild -showsdks && swift --version
       - run: swift test --package-path native/ManifestKit
-
-  # Decision native-ci-on-hosted-macos: compiles the app for the iOS Simulator. It compiles
-  # only: no `xcodebuild test`, because UI tests run once per batch on the Mac (ios-apps standard).
-  # Same needs, gate and concurrency pattern as native; it skips drafts, so a draft run never
-  # shows it. The 15 min timeout is a provisional guess: no hosted run has timed it (debt
-  # native-job-hosted-time-unmeasured).
-  app-build:
-    needs: [suite, scope]
-    if: ${{ !cancelled() && needs.suite.result == 'success' && (needs.scope.result != 'success' || needs.scope.outputs.native == 'true') && !github.event.pull_request.draft }}
-    runs-on: macos-26
-    timeout-minutes: 15  # provisional, unmeasured
-    concurrency:
-      group: app-build-${{ github.ref == 'refs/heads/main' && github.sha || format('{0}-{1}', github.ref, github.event.pull_request.draft) }}
-      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      # The image may lack xcodegen (debt native-runner-image-unverified); install it only when missing.
-      - name: xcodegen is present
-        run: command -v xcodegen || brew install xcodegen
-      - name: generate the Xcode project
-        working-directory: native
-        run: xcodegen generate --spec project.yml
-      # generic/platform names no simulator model, so the image's runtimes cannot break it.
-      - name: compile the app for the iOS Simulator
-        working-directory: native
-        run: >
-          xcodebuild build
-          -project Manifest.xcodeproj
-          -scheme Manifest
-          -destination 'generic/platform=iOS Simulator'
-          CODE_SIGNING_ALLOWED=NO
 
   # Audits the workflows and the dependabot config. Same command as local:
   # zizmor .github/workflows .github/dependabot.yml (online-audits off; the action still passes github.token).
@@ -261,7 +229,7 @@ jobs:
   # Rule git-ci-done-comment-wakes: a run that ends with a red job posts one PR comment, which
   # wakes the session that watches the PR. A green run posts nothing. Keep needs: on every other job.
   ci-done:
-    needs: [suite, screens, scope, native, app-build, zizmor, ste-lint]
+    needs: [suite, screens, scope, native, zizmor, ste-lint]
     if: ${{ !cancelled() && github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5

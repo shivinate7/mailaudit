@@ -1,7 +1,9 @@
 # Whether the hosted runner image has Xcode 27 and xcodegen is unverified
 
-**What.** Whether the `macos-26` runner image has Xcode 27 and xcodegen is unknown. The native job runs on `macos-26`. The `app-build` job installs xcodegen with brew when `command -v xcodegen` finds none, and brew gives no pinned version. The gap closes when a hosted run log shows the tools the image holds, and the workflow is set to match. The `app-build` job has not run on a hosted runner yet.
+**What.** Whether the `macos-26` runner image has Xcode 27 and xcodegen is unknown. The native job runs on `macos-26`. If it lacks xcodegen, the job installs a pinned version. The gap closes when a hosted run log shows the tools the image holds, and the workflow is set to match.
 
-**Status:** open.
+**Read, not run.** The runner-images readme for image 20261013.0424.1, read on 2026-10-30, lists default Xcode 26.6 and newest simulator SDK 26.5. It lists no 27.x and does not list xcodegen. This is a read of the readme, not a log of a run. The native job now prints `xcodebuild -showsdks`, so its next run log shows the SDKs the image holds. See `app-build-waits-xcode-27`.
+
+**Status:** open. The readme read says the image lacks Xcode 27; a hosted run log is still needed.
 
 **Decision:** `native-ci-on-hosted-macos`.

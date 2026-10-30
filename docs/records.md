@@ -247,6 +247,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 
 | Slug | Gist | Link |
 |---|---|---|
+| `app-build-waits-xcode-27` | CI compiles no app, because the app needs the iOS 27.1 SDK and the hosted image has none. | [`docs/debts/app-build-waits-xcode-27.md`](../docs/debts/app-build-waits-xcode-27.md) |
 | `armed-reset-mistap-unmeasured` | A mis-tap on a control next to the armed Reset box is unmeasured, and so is the width of the armed row. | [`docs/debts/armed-reset-mistap-unmeasured.md`](../docs/debts/armed-reset-mistap-unmeasured.md) |
 | `backup-unwatched` | Once the watchdog is off, no check reads the Worker's snapshots or the `data` branch, so a stopped backup raises no alarm. | [`docs/debts/backup-unwatched.md`](../docs/debts/backup-unwatched.md) |
 | `card-action-row-unmeasured` | The action row's content need at its tallest state is not measured at `f97e423`. | [`docs/debts/card-action-row-unmeasured.md`](../docs/debts/card-action-row-unmeasured.md) |
@@ -304,7 +305,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-sync-glue-unpinned` | The tests run `SyncClient` and `PressGate` on fakes. | [`docs/debts/native-sync-glue-unpinned.md`](../docs/debts/native-sync-glue-unpinned.md) |
 | `native-sync-live-unrun` | The tests of lanes N4a and N4b run `SyncClient` on a stub URL protocol, a fake socket, a fake Keychain and a sleep gate. | [`docs/debts/native-sync-live-unrun.md`](../docs/debts/native-sync-live-unrun.md) |
 | `native-tally-copy-no-stepper` | A native Tally copy shows its seller, date, set, finish, condition and order id, and one control. | [`docs/debts/native-tally-copy-no-stepper.md`](../docs/debts/native-tally-copy-no-stepper.md) |
-| `native-ui-tests-not-in-ci` | Native UI tests are not in CI; the `app-build` job compiles only. | [`docs/debts/native-ui-tests-not-in-ci.md`](../docs/debts/native-ui-tests-not-in-ci.md) |
+| `native-ui-tests-not-in-ci` | The native job runs the ST tests only, so native UI tests and builds are not in CI. | [`docs/debts/native-ui-tests-not-in-ci.md`](../docs/debts/native-ui-tests-not-in-ci.md) |
 | `native-version-names-unpinned` | A version is <id>.bin and <id>.json. | [`docs/debts/native-version-names-unpinned.md`](../docs/debts/native-version-names-unpinned.md) |
 | `order-id-visible-unbuilt` | The package header gives the order id its own line (built 2026-10-20). | [`docs/debts/order-id-visible-unbuilt.md`](../docs/debts/order-id-visible-unbuilt.md) |
 | `orders-job-unbuilt` | The owner ruled on 2026-10-27 at 20:19 CDT that the job runs as a cron on the existing Worker. | [`docs/debts/orders-job-unbuilt.md`](../docs/debts/orders-job-unbuilt.md) |

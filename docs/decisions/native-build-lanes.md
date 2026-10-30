@@ -182,7 +182,7 @@ Other risks live in the record for their lane:
 ## Still open
 
 - The Ledger tab holds Backup, History and Reset. The View and Sync groups are not built, see `ledger-tab-holds-options`. Debt: `native-ledger-tab-unbuilt`.
-- Native UI tests are not in CI; the `app-build` job compiles only. Debt: `native-ui-tests-not-in-ci`.
+- The native job runs ST only. Debt: `native-ui-tests-not-in-ci`.
 - The key scan skips SwiftUI view state. Debt: `native-key-scan-skips-views`.
 - The native letterhead composes in one fade. Debt: `native-compose-is-one-fade`.
 - Native Backup holds no photos. Debt: `native-backup-has-no-photos`.
