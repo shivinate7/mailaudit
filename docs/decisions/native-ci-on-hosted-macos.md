@@ -1,6 +1,6 @@
 # The native job runs on a hosted macOS runner
 
-**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Lane C1 landed the job in PR #76. The owner has not made it a required check, see Required check. Its unmeasured facts are debts, see Unmeasured: `native-runner-image-unverified`, `native-runner-keychain-unverified` and `native-job-hosted-time-unmeasured`.
+**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Lane C1 landed the job in PR #76. The `all-jobs-passed` rollup needs it, so it is required, see Required check. Its unmeasured facts are debts, see Unmeasured: `native-runner-image-unverified`, `native-runner-keychain-unverified` and `native-job-hosted-time-unmeasured`.
 
 The native job in `.github/workflows/test.yml` runs the Swift package tests on a hosted macOS runner. Degen's self-hosted runner is not copied. The rest of the native checks are in Still open.
 
@@ -14,17 +14,16 @@ Plan: docs/decisions/native-ci-on-hosted-macos.md#still-open (native)
 
 - The job is named native. It runs on `macos-26`. Its timeout is 10 minutes, about 6x the slowest green run (95 s, 18 runs to 2026-10-22), for macOS start-up variance. The 3 minute limit cut run 39761031029 on main.
 - It uses the same concurrency group pattern as the screens job: one group per sha on main, and cancel on a PR ref.
-- It has `needs: [suite, scope]`. The suite runs first on Ubuntu, and it runs `check:rules` and `check:golden`. A red suite skips the job. The job runs when scope reports a native change, on nightly and dispatch runs, and when scope fails (fail safe).
-- It skips draft PRs. `ready_for_review` starts it when a draft is marked ready, see `ci-skips-draft-prs`.
+- It has `needs: [suite, scope]`. The suite runs first on Ubuntu, and it runs `check:rules` and `check:golden`. A red suite skips the job; the rollup is red then anyway.
+- The job has work when scope reports a native change, on nightly and dispatch runs, and when scope fails (fail safe). A draft PR has no work, see `ci-skips-draft-prs`. `ready_for_review` starts a new run when a draft is marked ready.
+- With no work, the job still runs and passes, so the rollup reads it as success, not skipped. It runs on `ubuntu-latest` and skips its steps. With work, it runs on `macos-26`. One condition picks the runner and gates the steps.
 - Steps, in order: print the Xcode and Swift versions, then ST.
 - ST means `swift test --package-path native/ManifestKit`, see `native-build-lanes`.
 - The paths filter for native and shared files is in `ci-filters-guarantee-no-rebuild`.
 
 ## Required check
 
-Owner ruling, 2026-10-11 ("accept all"): a scope job and a nightly run decide whether the job runs once it is required.
-
-Owner ruling, 2026-10-12: asked whether the job becomes required now, the owner did not grant it. The job stays not required until the owner says so. Until then, a red native run can merge.
+Owner ruling, 2026-10-30 15:03 CDT: branch protection requires one check, `all-jobs-passed`, and that job needs every job. The native job is one of them, so a red native run blocks a merge. This replaces the 2026-10-12 ruling that kept native not required. The 2026-10-11 ruling still holds: the scope job and the nightly run decide whether the job has work.
 
 ## Cost
 
@@ -46,7 +45,6 @@ Degen's self-hosted runner. On a public repo, a fork PR would run on the owner's
 ## Still open
 
 - Update, 2026-10-12: lane N5 landed without the steps. Its diff does not touch the workflow, so the native job still runs ST only. Debt: `native-ui-tests-not-in-ci`.
-- How a required check reads a job that the draft guard skipped is unmeasured. Debt: `draft-skip-required-unmeasured`.
 
 ## See also
 

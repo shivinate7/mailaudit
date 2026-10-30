@@ -429,7 +429,6 @@ One known gap per file under `docs/debts/`. Each carries a Status line and a Dec
 - `native-backup-web-restore-unrun` — No test restores a native backup file on the web.
 - `native-count-line-clips` — The native count line clips with no ellipsis at 4-digit counts.
 - `native-masthead-stale-after-tabs` — The native masthead and Packages go stale after another tab writes.
-- `draft-skip-required-unmeasured` — A required check on a draft-skipped job is unmeasured.
 - `recent-log-unbuilt` — The recent-actions log is not built.
 - `recent-log-unmeasured` — The recent-actions log has three measurements to take.
 - `armed-reset-mistap-unmeasured` — A mis-tap beside the armed Reset box is unmeasured.

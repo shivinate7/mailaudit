@@ -1,35 +1,29 @@
-# CI skips draft pull requests after a proof
+# CI skips draft pull requests at step level
 
 Kind: build
 
 Plan: docs/decisions/ci-skips-draft-prs.md#still-to-build (web)
 
-**Status:** ruled 2026-10-11. The native job skips drafts (lane C1). The other jobs still run on drafts. Their skip waits for a scratch PR, which must show that a skipped required check does not read as passing. Owner ruling, 2026-10-12: the scratch-PR proof is granted. Scratch PR #83 ran on 2026-10-12, and its result is below. The proof is incomplete. Debt: `draft-skip-required-unmeasured`.
+**Status:** ruled 2026-10-11. The native job skips its work on drafts (lane C1). The other jobs still run their work on drafts.
 
-The owner ruled on 2026-10-11 that CI skips draft PRs. The ruling has one condition. The skip for the other jobs waits until a scratch PR shows that a skipped required check does not read as passing. Until then, drafts keep running CI in those jobs. Native stays not a required check until the owner says so, see `native-ci-on-hosted-macos`.
+The owner ruled on 2026-10-11 that CI skips draft PRs. The ruling had one condition: a skip must not make a required check read as passing. Owner ruling, 2026-10-30 15:03 CDT: branch protection requires one check, `all-jobs-passed`. It runs on `if: always()` and fails when a job it needs is skipped. So a draft skip lives at step level. The job runs, skips its steps and passes, and the required check itself never skips. That meets the condition by design.
 
-The `pull_request` trigger in `.github/workflows/test.yml` lists four types: `opened`, `synchronize`, `reopened` and `ready_for_review`. The native job has a draft guard. The suite, scope, screens, zizmor, ste-lint and ci-done jobs have none, so a draft PR runs them.
+The `pull_request` trigger in `.github/workflows/test.yml` lists four types: `opened`, `synchronize`, `reopened` and `ready_for_review`. The native job has the draft guard. On a draft it runs on `ubuntu-latest` and skips its steps, so no macOS runner starts, see `native-ci-on-hosted-macos`. The suite, scope, screens, zizmor, ste-lint and ci-done jobs have no guard, so a draft PR runs them.
 
-Draft state is in the concurrency keys of the suite, screens and native jobs, so a draft run and a ready run on one head never cancel each other. Owner ruling 2026-10-12 ("Land it now, alone"): the keys land before the draft skip, because they stop a cancelled run at each merge and they skip no check. The draft guards for the other four jobs still wait for the second scratch PR.
+Draft state is in the concurrency keys of the suite, screens and native jobs, so a draft run and a ready run on one head never cancel each other. Owner ruling 2026-10-12 ("Land it now, alone"): the keys landed before any other draft skip, because they stop a cancelled run at each merge and they skip no check.
 
-**Holds while:** as of 2026-10-12, only the native job in `.github/workflows/test.yml` has a draft guard, and native is not a required check.
+**Holds while:** as of 2026-10-30, branch protection on `main` requires `all-jobs-passed` alone, that job needs every check job and runs on `if: always()`, and only the native job in `.github/workflows/test.yml` has a draft guard.
 
 ## Scratch PR result
 
-Run on 2026-10-12 as scratch PR #83, closed unmerged. Draft run 38265934901 and ready run 38266281235.
-
-- While draft, suite, scope, screens and zizmor ran and passed. Native skipped. The merge state read CLEAN.
-- After ready, the same four jobs ran. Native skipped again, because the diff was README only and the scope job said no native change.
-- Main requires only suite and screens. Both ran on the draft, so no required check was skipped.
-
-The proof is incomplete. It shows that a skipped native job does not block a merge, because native is not required. It does not show how a skipped required check reads. That needs a draft guard on suite or screens, and a second scratch PR.
+Run on 2026-10-12 as scratch PR #83, closed unmerged. Draft run 38265934901 and ready run 38266281235. While draft, suite, scope, screens and zizmor ran and passed, native skipped, and the merge state read CLEAN. Native was not required then. The PR did not measure how a skipped required check reads. Under the rollup, no required check skips, so that question no longer applies.
 
 ## Still to build
 
-- A draft guard on the suite, scope, screens, zizmor, ste-lint and ci-done jobs. It waits for a second scratch PR that shows how a skipped required check reads. Debt: `draft-skip-required-unmeasured`.
+- A step-level draft guard on the suite, screens, zizmor and ste-lint jobs, in the shape of the native job's. No proof waits on it now.
 
 ## See also
 
-- `native-ci-on-hosted-macos` — the native job, which takes the same draft rule.
+- `native-ci-on-hosted-macos` — the native job, which carries the draft guard.
 - `ci-filters-guarantee-no-rebuild` — the trigger filters the change must keep.
 - `screens-checked-headless-in-ci` — the screens job, which the change also covers.
