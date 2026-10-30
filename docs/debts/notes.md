@@ -35,3 +35,6 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 **Status:** open. Each line stays a note until a real incident.
 
 **Decision:** `debts-hold-known-gaps`.
+- 2026-10-30, all-jobs-passed review round 1: `stripComment` in `test/ci-wiring.test.mjs` cuts at a `#` after an escaped quote, and opens a false quote after `, : [ -` in plain text. No line of `.github/workflows/test.yml` hits either case.
+- 2026-10-30, all-jobs-passed review round 1: the scope job's native pattern omits `src/sync-rules.mjs`, `src/version-rules.mjs` and `src/photo-rules.mjs`, which `build.mjs` bundles into `rules.js`. `check:rules` forces `rules.js` into the same diff, and `native/` matches it.
+- 2026-10-30, all-jobs-passed review round 1: just after `ready_for_review`, a draft run's skipped `all-jobs-passed` may read as passing until the new run reports it. The merge tool waits on that run, so only a merge pressed by hand in GitHub in those seconds is exposed. Unmeasured.
