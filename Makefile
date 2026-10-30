@@ -9,7 +9,7 @@ CONFIG := tools/ios-ship.json
 
 .PHONY: tokens-check kit-test project app-build ui-test native-check phone testflight
 
-# The web build and the rules bundle read shared/tokens.json. A stale build means the committed pages disagree with it.
+# index.html embeds shared/tokens.json. This check proves the committed index.html matches this repo's code.
 tokens-check:
 	npm run check:build
 
