@@ -27,6 +27,9 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 - 2026-10-29, stamp ask review: the ask-below assert accepts an ask that covers the lower half of the row (`askBox.minY > saveBox.midY`; `>= saveBox.maxY` is stricter, unmeasured).
 - 2026-10-29, stamp ask review: arming Remove with the note field focused keeps the keyboard up, so the ask may sit behind it for its 4 s (unmeasured).
 - 2026-10-29, Card in Hand review: no test pins that a failed Tally or Orphaned reload marks a Hand or stamp write failed (`HandScreen.swift` `afterWrite`, `StampViews.swift` `write`).
+- 2026-10-30, Post-offer review round 1: no test pins the receipt text or when it clears (`HandScreen.swift`).
+- 2026-10-30, Post-offer review round 1: at accessibility text sizes a long refused line can overflow the receipt slot, and Post then sits below the keys and needs a manual scroll.
+- 2026-10-30, Post-offer review round 1: `DuoHandUITests`' 20 pt status-bar floor is unmeasured, and `waitUntilStill` returns silently after 8 s.
 
 **Status:** open. Each line stays a note until a real incident.
 

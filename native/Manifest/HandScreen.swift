@@ -320,7 +320,8 @@ struct HandScreen: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text(r.refused ? "Not posted. The next card you type clears this line." : "Posted with this envelope. The next card you type clears this line.")
                     .font(.cochin(13, relativeTo: .footnote)).foregroundStyle(Parchment.ink)
-                Text(r.line).font(.mono(12, relativeTo: .caption)).foregroundStyle(r.refused ? Parchment.red : Parchment.green)
+                Text(r.line).font(r.refused ? .cochin(13, relativeTo: .footnote) : .mono(12, relativeTo: .caption))
+                    .foregroundStyle(r.refused ? Parchment.red : Parchment.manilaInk)
                     .frame(minHeight: 44, alignment: .leading)
             }
         })
@@ -339,9 +340,12 @@ struct HandScreen: View {
         do { try await hand.post() } catch {}  // the model shows the failure in hand.error
         let total = o.plan.reduce(0) { $0 + $1.take }
         let held = o.heldCopies
-        receipt = hand.error == nil
+        // A failed save keeps the offer, so its slot still holds the button and no receipt is stored.
+        if hand.offer == nil {
+            receipt = hand.error == nil
             ? Receipt(offer: o, line: "\(total) \(total == 1 ? "card" : "cards") checked in \u{00B7} \(held) \(held == 1 ? "was" : "were") held", refused: false)
             : Receipt(offer: o, line: hand.error ?? "", refused: true)
+        }
         await afterWrite(failed: hand.error != nil)
     }
 

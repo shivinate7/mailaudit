@@ -2,7 +2,7 @@
 
 This record holds the fold strip, the system keyboard frame and the outer screen's safe content on the iPhone Duo simulator. Re-measure after a change to the fold reading or the keyboard layout. The decision that uses these figures is `duo-card-in-hand`.
 
-**Status:** measured 2026-10-27 at 14:03 CDT on the iPhone Duo simulator, iOS 27.1. The fold strip is one reading, taken after a close. The keyboard figures rest on the frame only.
+**Status:** measured 2026-10-27 at 14:03 CDT on the iPhone Duo simulator, iOS 27.1. The fold strip is one reading, taken after a close. The keyboard frame is one reading; the drawn panel top is one screenshot reading, 2026-10-28.
 
 ## How to re-measure
 
@@ -19,6 +19,8 @@ In the probe app, read the reservedRegions call with kind division and options i
 ```
 reservedRegions(kind: .division, options: .includeInactive)
 ```
+
+For the 44 pt strip, open the Duo with the keys up and take a simulator screenshot. Read the panel's top edge in the screenshot against the keyboard frame the probe reports.
 
 Never drive Device Hub.
 
