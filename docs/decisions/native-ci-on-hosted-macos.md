@@ -22,7 +22,7 @@ Plan: docs/decisions/native-ci-on-hosted-macos.md#still-open (native)
 
 ## Required check
 
-Owner ruling, 2026-10-11 ("accept all"): a scope job and a nightly run gate the job once it is required.
+Owner ruling, 2026-10-11 ("accept all"): a scope job and a nightly run decide whether the job runs once it is required.
 
 Owner ruling, 2026-10-12: asked whether the job becomes required now, the owner did not grant it. The job stays not required until the owner says so. Until then, a red native run can merge.
 

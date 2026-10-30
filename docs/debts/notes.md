@@ -1,4 +1,4 @@
-# Debt notes
+# Notes
 
 One line per finding that is not likely in normal work. A note becomes a debt after a real incident.
 
@@ -19,8 +19,18 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 - 2026-10-28, Duo wave 3 design review: on the open Duo, the Ledger seal, wordmark and "LEDGER" sit on the fold; round 2 item 24 accepted Ledger at full width.
 - 2026-10-28, Duo wave 3 design review: "refund window closing" shows at 181 days; the web text is the same.
 - 2026-10-28, Duo wave 3 design review: the past-transit page has no track bars, no claim-by dates and no "Under 14 days" list on the left page.
-- 2026-10-29, wave 3 CI race fix: `PackagesModelTests.swift` still uses a fixed sleep against a 500 ms JS busy-wait, the pattern that failed HandModelTests on the hosted runner; the HandModelTests gate reaches the engine's private context through `Mirror`, which a small engine test hook would replace.
+- 2026-10-29, wave 3 CI race fix: `PackagesModelTests.swift` still uses a fixed sleep against a 500 ms JS busy-wait. That pattern failed HandModelTests on the hosted runner. The HandModelTests wait reaches the engine's private context through `Mirror`, and a small engine test hook would replace that.
+- 2026-10-29, check-in error design review round 2: the Card in Hand error banner's text starts about 4 pt left of the envelope page's column; a 16 pt side inset would align it.
+- 2026-10-29, check-in error design review: on a scrolled Card in Hand envelope page, the top error banner covers the first line rows until the next good save.
+- 2026-10-29, check-in error design review: the check-in error text carries the system's `localizedDescription` (for example "The file 'ledger.json' doesn't exist."), which is technical; Packages shows the same text.
 - 2026-10-28, Duo wave 3 design review: the native screens keep the web's bordered MiniLabel buttons, which the ios-apps mockup rules call web-like; kept for parity with the web.
+- 2026-10-29, stamp ask review: the ask-below assert accepts an ask that covers the lower half of the row (`askBox.minY > saveBox.midY`; `>= saveBox.maxY` is stricter, unmeasured).
+- 2026-10-29, stamp ask review: arming Remove with the note field focused keeps the keyboard up, so the ask may sit behind it for its 4 s (unmeasured).
+- 2026-10-29, Card in Hand review: no test pins that a failed Tally or Orphaned reload marks a Hand or stamp write failed (`HandScreen.swift` `afterWrite`, `StampViews.swift` `write`).
+- 2026-10-29, CI wiring review round 2: no run has shown that `cancelled()` reads true in the ci-done job after a superseded PR run is cancelled. The first double push on a PR settles it. A false value posts a false red comment.
+- 2026-10-29, CI wiring review round 2: the job groups on main still key by commit, so a third run on one commit can replace a pending job, such as a nightly. The harm is one cancelled job.
+- 2026-10-29, CI wiring review round 2: `ci-skips-draft-prs` names the draft state in the keys of three jobs only. The ste-lint key and the workflow key carry it too.
+- 2026-10-30, shoot config review: Tally, Orphaned and Ledger have no shot because no URL reaches them; a deep-link route waits for its own decision.
 
 **Status:** open. Each line stays a note until a real incident.
 
