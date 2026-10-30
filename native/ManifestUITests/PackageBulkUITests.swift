@@ -288,6 +288,7 @@ final class PackageBulkUITests: XCTestCase {
     func testTheClearAskNamesOneCheckInInTheSingular() throws {
         let app = launch()
         let gk = Self.d1
+        XCTAssertTrue(ScreenKit.mount(app, "package-row:\(gk)"), "\(gk) is not on the list")  // the fourth card: the lazy list mounts it on a scroll
         checkIn(app, Self.urza)
         tap(app, "bulk-clear:\(gk)")
         XCTAssertTrue(el(app, "bulk-clear-confirm:\(gk)").waitForExistence(timeout: 5), "the first tap on Clear did not arm it")

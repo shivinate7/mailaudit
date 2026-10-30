@@ -74,7 +74,8 @@ extension XCUIApplication {
         max(windows.firstMatch.frame.minY, statusBars.firstMatch.exists ? statusBars.firstMatch.frame.maxY : 0)
     }
 
-    /// The one scroll helper of these tests. Plain: swipe up until the element can be tapped, at most 5 swipes.
+    /// The one scroll helper of these tests. Plain: swipe up until the element exists and can be tapped, at most 5 swipes.
+    /// A lazy list mounts a row only near the screen, so an element not there yet is swiped toward, a second at a time.
     /// `whole`: for a test that records frames before a tap. A tap on an element that is off screen scrolls the
     /// list and moves every frame, so the element must lie fully between the status bar and the tab bar first.
     /// It drags the list by the measured gap (a drag that holds before it lifts has no fling, so it cannot
@@ -83,9 +84,10 @@ extension XCUIApplication {
     func reveal(_ element: XCUIElement, whole: Bool = false) {
         guard whole else {
             var swipes = 0
-            while !element.isHittable && swipes < 5 {
+            while !(element.exists && element.isHittable) && swipes < 5 {
                 swipeUp()
                 swipes += 1
+                _ = element.waitForExistence(timeout: 1)
             }
             return
         }

@@ -47,10 +47,18 @@ enum ScreenKit {
         e.tap()
     }
 
+    /// Waits 2 seconds for the element, then scrolls toward it with reveal: the Packages list is lazy, so a card far down is not
+    /// in the accessibility tree until the list has scrolled near it. Returns whether it exists.
+    @MainActor @discardableResult static func mount(_ app: XCUIApplication, _ id: String) -> Bool {
+        let e = el(app, id)
+        if !e.waitForExistence(timeout: 2) { app.reveal(e) }
+        return e.exists
+    }
+
     /// The first stamp: Stamp, a kind, an optional note, Save. It ends with the editor gone.
     @MainActor static func stamp(_ app: XCUIApplication, _ gk: String, kind: String, note: String? = nil,
                                  file: StaticString = #filePath, line: UInt = #line) {
-        XCTAssertTrue(el(app, "package-row:\(gk)").waitForExistence(timeout: 5), "\(gk) is not on the list", file: file, line: line)
+        XCTAssertTrue(mount(app, "package-row:\(gk)"), "\(gk) is not on the list", file: file, line: line)
         tap(app, "stamp-button:\(gk)", file: file, line: line)
         tap(app, "stamp-kind:\(gk)|\(kind)", file: file, line: line)
         if let note {
