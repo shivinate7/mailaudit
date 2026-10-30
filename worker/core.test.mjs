@@ -12,8 +12,9 @@
    in the core's hashing fails a test instead of matching itself. */
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
+import Papa from "papaparse";
 import { mergeLedger } from "../src/merge-rules.mjs";
-import { salvageLedger } from "../src/view-rules.mjs";
+import { salvageLedger, parseItems } from "../src/view-rules.mjs";
 
 /* A missing or broken core fails in one clear line, not a raw stack trace. */
 let route, keyAllowed, wsAuthorized, MAX_LEDGER_BYTES, MAX_PHOTO_BYTES;
@@ -131,6 +132,10 @@ const dayOf = (t) => new Date(t).toISOString().slice(0, 10);
      readKept(at) -> {ledger, rev} | null
      listKept() -> [{at, rev}]            no ledger bodies
      pruneKept(beforeDay)                 drops kept rows whose day is before beforeDay
+     readOrdersStatus() -> {lastSuccessAt, lastFailure: {kind, at} | null, complete} | null
+     writeOrdersStatus(status)            the orders job's last outcome (group 71-77). Its own row,
+                                          never a key of the ledger. `complete` is true only when the
+                                          run reached an all-known page or the end of history.
    The fake's `order` records "snapshot", "kept", "write" and "broadcast". Prune is
    not recorded there. */
 /* initial is {ledger, rev, at?} or null for an empty store. A missing `at`
@@ -143,9 +148,11 @@ const dayOf = (t) => new Date(t).toISOString().slice(0, 10);
      photoPut(id, mime, bytes) -> void   (the route, not the store, enforces write-once)
    photoWrites counts every photoPut call, so a route that writes twice shows.
    photoGets counts every photoGet call, so a list that reads bytes shows. */
-function fakeStore(initial = null, snaps = []) {
+function fakeStore(initial = null, snaps = [], status = null) {
   const s = {
     state: initial ? clone({ at: PREV, ...initial }) : null,
+    status: status ? clone(status) : null,
+    statusWrites: [],
     writes: [],
     broadcasts: [],
     order: [],
@@ -197,6 +204,11 @@ function fakeStore(initial = null, snaps = []) {
   s.listKept = async () => [...s.kept].map(([at, v]) => ({ at, rev: v.rev }));
   s.pruneKept = async (beforeDay) => {
     for (const at of [...s.kept.keys()]) if (at.slice(0, 10) < beforeDay) s.kept.delete(at);
+  };
+  s.readOrdersStatus = async () => (s.status ? clone(s.status) : null);
+  s.writeOrdersStatus = async (v) => {
+    s.statusWrites.push(clone(v));
+    s.status = clone(v);
   };
   return s;
 }
@@ -1473,7 +1485,8 @@ await test("69.6 a mend whose kept copy cannot be written writes nothing: the st
    Ledger is in index.mjs, which imports cloudflare:workers and cannot load in node. It is bundled
    with esbuild, that import aliased to a stub DurableObject, as test/photoget.test.mjs bundles
    entry.jsx. The context, WebSocketPair and Response are fakes: node's Response refuses status 101. */
-const loadLedger = async () => {
+/* The whole bundled module, so one bundle gives both the Ledger class and the default export. */
+const loadWorker = async () => {
   const { build } = await import("esbuild");
   const { mkdirSync } = await import("node:fs");
   const { pathToFileURL, fileURLToPath } = await import("node:url");
@@ -1501,21 +1514,29 @@ const loadLedger = async () => {
       },
     ],
   });
-  return (await import(pathToFileURL(outfile).href)).Ledger;
+  return import(pathToFileURL(outfile).href);
 };
+const loadLedger = async () => (await loadWorker()).Ledger;
 /* a Durable Object context: one KV value ("state"), a SQL that returns no rows, and the sockets
    acceptWebSocket was given */
 const doCtx = (state, { readThrows = false } = {}) => {
   const accepted = [];
+  const kv = new Map(); /* every key but "state" lands here, so a test can read back what a store method wrote */
+  const puts = []; /* every key put was called with, "state" included */
   return {
     accepted,
+    kv,
+    puts,
     storage: {
       sql: { exec: () => ({ toArray: () => [] }) },
       get: async (k) => {
         if (readThrows) throw new Error("storage read failed");
-        return k === "state" ? state : undefined;
+        return k === "state" ? state : kv.get(k);
       },
-      put: async () => {},
+      put: async (k, v) => {
+        puts.push(k);
+        if (k !== "state") kv.set(k, structuredClone(v));
+      },
     },
     acceptWebSocket: (ws) => accepted.push(ws),
     getWebSockets: () => accepted,
@@ -1598,6 +1619,954 @@ await test("70.5 a socket that refuses the hello still upgrades", async () => {
   eq(r.error?.message ?? null, null, "the upgrade does not throw");
   eq(r.res?.status, 101, "the upgrade is accepted");
   eq(r.ctx.accepted, [r.server], "the server end of the pair is the one accepted");
+});
+
+/* ---------- 71-77. the orders job: TCGplayer purchase history -> ledger ----------
+   Owner ruling 2026-10-27 20:19 CDT: the Worker pulls the owner's TCGplayer purchase history on a
+   schedule and merges it into the ledger, in place of the manual OrderWand CSV import. The names
+   below are fixed by these tests; the page facts are from the 2026-10-27 spike.
+
+     worker/orders.mjs
+       parse(html) -> rows            OrderWand-shaped, every value a string, one row per order line,
+                                      in page order. Feed them to parseItems (parser-filters has one home).
+       runOrders(env, store, fetchFn, now) -> Promise
+                                      Pages through order history with env.TCG_COOKIE, merges what it
+                                      finds through the same path as POST /ledger, and records the outcome
+                                      with store.writeOrdersStatus. It never rejects: a failed run is
+                                      recorded, not thrown. fetchFn is injected; no test touches the network.
+     status        {lastSuccessAt, lastFailure: {kind, at} | null, complete}, ISO strings. kind is
+                   "signed-out" (a logon redirect), "no-cookie" (env.TCG_COOKIE unset or empty), "empty"
+                   (a 200 first page with no orders) or "other". complete (orchestrator ruling 2026-10-27 21:46
+                   CDT) is true only when the run reached an all-known page or the end of history with no
+                   error. A failed run and a run cut at the page cap leave it false, and the next run
+                   then pages on past all-known pages to the cap or the end. A failed run still merges
+                   what it fetched first. For a line whose key is already stored, the job refreshes only
+                   its tracking to the page's value; a CSV import's merge does not.
+     route         GET /orders/status, Bearer-authenticated, replies with that status.
+     index.mjs     default.scheduled exists, and wrangler.toml has [triggers] crons. The Durable Object's
+                   readOrdersStatus/writeOrdersStatus keep the status under a storage key of its own, read
+                   back as null when nothing was written.
+
+   Every page below is synthetic: invented names and ids, and a made-up cookie. The markup follows the
+   structure of the masked page sample (selectors in each builder). The listing note's real markup is
+   not in that sample, so the fixture puts it in a plain element and the tests pin only that it does not
+   leak into the name or the set. */
+let ORD = null;
+let ordersErr = "";
+try {
+  ORD = await import("./orders.mjs");
+} catch (e) {
+  ordersErr = e.message.split("\n")[0];
+}
+const need = (name) => {
+  if (!ORD) throw new Error(`worker/orders.mjs does not load (expected until the job is built): ${ordersErr}`);
+  if (typeof ORD[name] !== "function") throw new Error(`worker/orders.mjs does not export ${name}()`);
+  return ORD[name];
+};
+
+const iso = (t) => new Date(t).toISOString();
+const num = (v) => parseFloat(v) || 0;
+const pick = (o, ks) => Object.fromEntries(ks.map((k) => [k, o[k]]));
+
+/* new Date("October 25, 2026") is local midnight, so a parser that goes through it and toISOString
+   reads the 24th east of UTC. Every parse here runs on a UTC+9 clock. */
+const inZone = async (tz, fn) => {
+  const was = process.env.TZ;
+  process.env.TZ = tz;
+  try {
+    return await fn();
+  } finally {
+    if (was === undefined) delete process.env.TZ;
+    else process.env.TZ = was;
+  }
+};
+
+/* ---- page builders: div.orderWrap > div.orderHeader (three spans) + div.orderContent ---- */
+const rowHtml = ({ name, set = "Test Set", cond = "Near Mint", price = "$1.00", qty = 1, pid, note = "", soldBy = "", odd = false, decoyFirst = false }) => {
+  const img = decoyFirst
+    ? `<img class="orderThumbnail lazy" onerror="this.src='https://img.example.invalid/product/0_25w.jpg'" src="https://img.example.invalid/product/${pid}_25w.jpg" width="21" alt="${name}"/>`
+    : `<img src="https://img.example.invalid/product/${pid}_25w.jpg" data-original="https://img.example.invalid/product/${pid}_25w.jpg" width="21" onerror="this.src='https://img.example.invalid/product/0_25w.jpg'" class="orderThumbnail lazy" alt="${name}"/>`;
+  return `
+                        <tr class="${odd ? "trOdd" : "trEven"}">
+                            <td class="orderHistoryItems">
+                                    <div>
+                                        ${img}
+                                    </div>
+                                <span style="display: block; padding-left: 30px;">
+                                        <a class="nocontext" href="/magic/test-set/${pid}" title="${name}" target="_blank">${name}</a><br />
+
+${set}
+                                        ${note}
+                                        ${soldBy ? `<span class="orderSoldby">Sold by <a href="/sellerprofile/${pid}">${soldBy}</a></span>` : ""}
+                                </span>
+                            </td>
+                            <td class="orderHistoryDetail">
+                                    Rarity: Rare<br />
+                                    Condition: ${cond}
+                            </td>
+                            <td class="orderHistoryPrice" style="vertical-align:middle;">${price}</td>
+                            <td class="orderHistoryQuantity" style="vertical-align:middle;">${qty}</td>
+                        </tr>`;
+};
+
+/* ship / tax null leaves that summary row out, as the page does when there is none */
+const orderBlock = ({ id, date = "October 25, 2026", direct = false, seller = "Acme Cards", status = "Shipped With Tracking:", ship = "$3.99", tax = "$0.62", lines }) => `
+<div class="orderWrap">
+    <div class="orderHeader">
+        <span style="display: inline-block; width: 20%;">
+            <span class="orderTitle">
+                Order Date
+            </span><br />
+            <span data-aid="spn-orderhistory-orderdate">
+                ${date}
+            </span>
+        </span>
+        <span style="display: inline-block; width: 20%;">
+            <span class="orderTitle">
+                Source
+            </span><br />
+            <span data-aid="spn-orderhistory-source">
+                TCG Marketplace
+            </span>
+        </span>
+        <span style="display: inline-block; width: 20%;">
+            <span class="orderTitle">
+                     ${direct ? "TCGPLAYER DIRECT #" : "Order Number"}
+            </span><br />
+            ${id}
+        </span>
+        <span style="float: right;">
+                    <input type="button" class="catalogBlueButton" value="View Order" onclick="location.href = '/myaccount/orderhistory/order/${id}?x=1'" />
+
+         <input type="button" class="catalogBlueButton" style="margin-left: 16px;" value="Print Invoice" id="print_${id}" onclick="printOrder('Print Invoice', 'Print', '${id}', 'abc');" />
+        </span>
+    </div>
+    <div class="orderContent">
+        <span class="orderSummary">
+            <span class="orderTitle">Order Summary</span><br />
+            <table width="100%" data-aid="tbl-summary">
+                <tr>
+                    <td>Quantity:</td>
+                    <td style="text-align: right">${lines.reduce((n, l) => n + (l.qty ?? 1), 0)}</td>
+                </tr>
+                <tr>
+                    <td>Subtotal:</td>
+                    <td style="text-align: right">$9.99</td>
+                </tr>
+                ${ship === null ? "" : `<tr>
+                        <td>Shipping:</td>
+                        <td style="text-align: right">${ship}</td>
+                    </tr>`}
+                ${tax === null ? "" : `<tr>
+                    <td>
+                             Sales Tax (WA):
+
+                    </td>
+                    <td style="text-align: right">
+                             ${tax}
+                    </td>
+                </tr>`}
+                <tr>
+                    <td><b>Total:</b></td>
+                    <td style="text-align: right"><b>$99.99</b></td>
+                </tr>
+            </table>
+        </span>
+        <span class="orderSummary breakword" data-aid="addr-ship">
+                <span class="orderTitle">Ship To</span><br />
+                 Test Person<br />
+                 1 Test Lane<br />
+                 Testville, WA 00000<br />
+                 US
+        </span>
+        <span class="orderSummary breakword" data-aid="addr-bill">
+            <span class="orderTitle">Bill To</span><br />
+            Test Person<br />
+            1 Test Lane<br />
+            Testville, WA 00000<br />
+            US
+        </span>
+        <span class="orderSummary breakword" style="margin-right:0px; width: 165px;white-space: normal;">
+            ${
+              direct
+                ? `<span class="orderTitle">Sold By</span><br />
+                <a href="https://help.example.invalid/direct" target="_blank">
+                    <span style="font-weight: bold; float: left;"><img style="vertical-align: middle;" src="/images/logos/direct_logo_sm.png" alt="TCGplayer Direct" /></span>
+                    <span style="float: left;">&nbsp;TCGplayer Direct&nbsp;</span>
+                    <span class="filterIcon iconQuestion" style="float: left;"></span>
+                </a><br />`
+                : `<span class="orderTitle">Sold By</span><br />
+                    <span data-aid="spn-orderhistory-seller">
+                                <a class="nocontext" href="/sellerprofile/s1" target="_blank">${seller}</a><br />
+                    </span>`
+            }
+            <span style="height: 8px; display: block;">&nbsp;</span>
+                <span class="orderTitle" data-aid="spn-sellerorderwidget-trackingnumber">${status}</span><br />
+                ${/^Shipped With/.test(status) ? `<a class="nocontext" href="https://track.example.invalid/t/0000" title="Track" target="_blank">0000000000000000</a><br />` : ""}
+                     Carrier (est. delivery on November 1, 2026) - $3.99
+        </span>
+
+            <br /><br />
+
+        <table class="orderTable" data-aid="tbl-items">
+            <thead>
+                <tr>
+                    <th class="orderHistoryItems">Item</th>
+                    <th class="orderHistoryDetail">Detail</th>
+                    <th class="orderHistoryPrice">Price</th>
+                    <th class="orderHistoryQuantity">Quantity</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${lines.map((l, i) => rowHtml({ ...l, odd: i % 2 === 0 })).join("")}
+            </tbody>
+        </table>
+    </div>
+</div>
+<br />
+`;
+
+/* A full page. The shell holds three look-alike orders (an HTML comment, a script template literal and
+   a style rule) that are not orders, and text that opens a comment or a quote. parse must skip them. */
+const fakeOrder = (id) => orderBlock({ id, lines: [{ name: "FAKE", pid: 999999 }] });
+const pageHtml = (...blocks) =>
+  [
+    "<!-- sample: page -->",
+    "<!DOCTYPE html><html><head><title>Order History</title>",
+    "<style type=\"text/css\">.orderWrap { border: 1px solid #ccc; } /* it's a comment */ .orderHeader > span { color: red; }</style>",
+    "<script>",
+    "var tpl = `",
+    fakeOrder("FAKE-SCRIPT-ORDER"),
+    "  it's a lone quote, a // comment opener and a /* block opener",
+    "`;",
+    "</script></head><body>",
+    `<!-- ${fakeOrder("FAKE-COMMENT-ORDER")} -->`,
+    ...blocks,
+    "</body></html>",
+  ].join("\n");
+
+/* ---- the six orders of the parse tests ---- */
+const OID = {
+  A: "00a1bc23-4de5fa-6b789",
+  B: "11b2cd34-5ef6ab-7c890",
+  C: "482913-ab3k",
+  D: "22c3de45-6fa7bc-8d901",
+  E: "33d4ef56-7ab8cd-9e012",
+  F: "44e5fa67-8bc9de-0f123",
+};
+const NOTE_A1 = "Ships in a toploader, thanks!";
+const NOTE_A2 = "Mailed flat, no sleeve.";
+const NAME_A1 = "Moe's Gambit // Fire #7 /* x */ &lt;!-- y";
+const ORDER_A = orderBlock({
+  id: OID.A,
+  date: "October 25, 2026",
+  seller: "Moe&#39;s Cards&amp;Games9",
+  lines: [
+    { name: NAME_A1, set: "Test Set One", cond: "Near Mint Foil", price: "$1,250.00", qty: 1, pid: 100001, note: `<em>${NOTE_A1}</em>`, decoyFirst: true },
+    { name: "Plain Card", set: "Test &amp; Set Two", cond: "Lightly Played", price: "$0.25", qty: 4, pid: 100002, note: `<div style="font-size:smaller">${NOTE_A2}</div>` },
+  ],
+});
+const ORDER_B = orderBlock({
+  id: OID.B,
+  date: "September 3, 2026",
+  seller: "Beta Cards",
+  status: "Shipped Without Tracking",
+  ship: null,
+  tax: null,
+  lines: [{ name: "Solo Card", set: "Test Set Three", cond: "Moderately Played Reverse Holofoil", price: "$2.00", qty: 2, pid: 100003 }],
+});
+const ORDER_C = orderBlock({
+  id: OID.C,
+  date: "October 23, 2026",
+  direct: true,
+  lines: [
+    { name: "Direct One", set: "Test Set Four", price: "$3.00", qty: 1, pid: 100004, soldBy: "Gamma Games" },
+    { name: "Direct Two", set: "Test Set Five", price: "$4.00", qty: 2, pid: 100005, soldBy: "Delta Cards" },
+    { name: "Direct Three", set: "Test Set Six", price: "$5.00", qty: 1, pid: 100006, soldBy: "Gamma Games" },
+  ],
+});
+const ORDER_D = orderBlock({ id: OID.D, date: "October 21, 2026", status: "Canceled", lines: [{ name: "Canceled Card", price: "$1.50", pid: 100007 }] });
+const ORDER_E = orderBlock({ id: OID.E, date: "October 22, 2026", status: "Shipping Not Confirmed", lines: [{ name: "Pending Card", price: "$1.75", pid: 100008 }] });
+const ORDER_F = orderBlock({ id: OID.F, date: "October 24, 2026", status: "Shipped With Tracking", lines: [{ name: "Tracked Card", price: "$6.00", pid: 100009 }] });
+const PAGE_ALL = pageHtml(ORDER_A, ORDER_B, ORDER_C, ORDER_D, ORDER_E, ORDER_F);
+
+const COOKIE = "ASP.NET_SessionId=zzSENTINELzz; TCGAuthTicket_Production=9f8e7d6c5b4a-synthetic";
+const ENVC = { ...ENV, TCG_COOKIE: COOKIE };
+const TCG_HOST = "store.tcgplayer.com";
+const LOGON_URL = "https://accounts.example.invalid/logon?ReturnUrl=%2Fmyaccount%2Forderhistory";
+const LOGON_PAGE_HTML = `<html><body><form action="/logon" method="post"><input name="Email"><input type="password" name="Password"></form></body></html>`;
+
+const COLS = [
+  "Type", "Vendor", "Order Id", "Ordered At", "Item Number", "Product Name", "Set Name", "Condition", "Finish",
+  "Price", "Quantity", "Party", "Shipping Status", "Vendor Product Id", "Shipping Amount", "Tax Amount",
+];
+const GRADES = ["Near Mint", "Lightly Played", "Moderately Played", "Heavily Played", "Damaged"];
+const parseAll = async (html = PAGE_ALL) => inZone("Asia/Tokyo", async () => need("parse")(html));
+const ROW_IDS = [
+  `${OID.A}#1`, `${OID.A}#2`, `${OID.B}#1`, `${OID.C}#1`, `${OID.C}#2`, `${OID.C}#3`, `${OID.D}#1`, `${OID.E}#1`, `${OID.F}#1`,
+];
+
+/* ---------- 71. parse: page HTML -> OrderWand-shaped rows ---------- */
+await test("71.1 parse reads a page into one purchase row per order line, in page order, and skips look-alike orders", async () => {
+  const rows = await parseAll();
+  eq(rows.map((r) => `${r["Order Id"]}#${r["Item Number"]}`), ROW_IDS, "order id and 1-based line position, in page order");
+  for (const r of rows) {
+    for (const c of COLS) ok(typeof r[c] === "string", `${r["Order Id"]}#${r["Item Number"]} has a string ${c}`);
+    eq(r.Type, "purchase", "Type");
+    eq(r.Vendor, "TCG", "Vendor");
+  }
+  eq(
+    rows.map((r) => r["Vendor Product Id"]),
+    ["100001", "100002", "100003", "100004", "100005", "100006", "100007", "100008", "100009"],
+    "the product id is the row image's src, not the onerror fallback (product 0), whatever the attribute order"
+  );
+  eq(
+    rows.map((r) => r["Ordered At"]),
+    ["2026-10-25", "2026-10-25", "2026-09-03", "2026-10-23", "2026-10-23", "2026-10-23", "2026-10-21", "2026-10-22", "2026-10-24"],
+    "dates are ISO days, with a zero-padded day, on a UTC+9 clock"
+  );
+  eq(rows.map((r) => num(r.Price)), [1250, 0.25, 2, 3, 4, 5, 1.5, 1.75, 6], "Price is per unit, and $1,250.00 reads as 1250");
+  eq(rows.map((r) => r.Quantity), ["1", "4", "2", "1", "2", "1", "1", "1", "1"], "Quantity");
+  ok(!JSON.stringify(rows).includes("FAKE"), "an order inside an HTML comment, a script template literal or a style rule is not an order");
+});
+
+await test("71.2 a line's name and set come from their own cells; the seller's listing note leaks into neither", async () => {
+  const rows = await parseAll();
+  const items = parseItems(rows);
+  eq(items.length, rows.length, "parseItems keeps every row");
+  eq(items[0].name, "Moe's Gambit // Fire #7 /* x */ <!-- y", "an apostrophe, //, #, /* and an entity-encoded <!-- survive in the name");
+  eq(items[0].set, "Test Set One", "set name of line 1");
+  eq(items[0].seller, "Moe's Cards&Games9", "the seller's entities are decoded once parseItems has run");
+  eq(items[1].name, "Plain Card", "name of line 2");
+  eq(items[1].set, "Test & Set Two", "an entity in the set name is decoded");
+  eq(items.slice(0, 2).map((i) => [i.qty, i.price]), [[1, 1250], [4, 0.25]], "qty and unit price");
+  for (const [i, note] of [[0, "toploader"], [1, "sleeve"]]) {
+    ok(!rows[i]["Product Name"].includes(note), `line ${i + 1}: the note is not in Product Name`);
+    ok(!rows[i]["Set Name"].includes(note), `line ${i + 1}: the note is not in Set Name`);
+  }
+});
+
+await test("71.3 condition and finish rebuild the cell text, and condition is one TCG grade", async () => {
+  const rows = await parseAll();
+  const cells = {
+    [`${OID.A}#1`]: "Near Mint Foil",
+    [`${OID.A}#2`]: "Lightly Played",
+    [`${OID.B}#1`]: "Moderately Played Reverse Holofoil",
+    [`${OID.D}#1`]: "Near Mint",
+  };
+  for (const r of rows) {
+    const cell = cells[`${r["Order Id"]}#${r["Item Number"]}`];
+    if (!cell) continue;
+    eq([r.Condition, r.Finish].filter(Boolean).join(" "), cell, `${r["Order Id"]}: condition and finish together`);
+    ok(GRADES.includes(r.Condition), `${r["Order Id"]}: ${r.Condition} is a TCG grade`);
+  }
+  ok(/foil/i.test(rows[0].Finish), "a foil line carries its finish");
+  ok(!/foil/i.test(rows[1].Finish), "a non-foil line does not");
+});
+
+await test("71.4 a TCGplayer Direct order reads its seller per line and its id without the Direct label", async () => {
+  const rows = (await parseAll()).filter((r) => r["Order Id"] === OID.C);
+  eq(rows.map((r) => r["Item Number"]), ["1", "2", "3"], "line positions");
+  eq(rows.map((r) => r.Party), ["Gamma Games", "Delta Cards", "Gamma Games"], "each line's Sold-by seller, not TCGplayer Direct");
+  eq(rows.map((r) => r["Set Name"]), ["Test Set Four", "Test Set Five", "Test Set Six"], "the set name, not the Sold-by text");
+  eq(rows.map((r) => r["Product Name"]), ["Direct One", "Direct Two", "Direct Three"], "names");
+  const [first] = parseItems(rows);
+  eq(first.key, `${OID.C}|1|100004`, "item key");
+});
+
+await test("71.5 the four shipping texts map to OrderWand's four statuses, with or without the trailing colon", async () => {
+  const rows = await parseAll();
+  const by = (id) => [...new Set(rows.filter((r) => r["Order Id"] === id).map((r) => r["Shipping Status"]))];
+  eq(by(OID.A), ["with tracking"], "Shipped With Tracking:");
+  eq(by(OID.F), ["with tracking"], "Shipped With Tracking");
+  eq(by(OID.B), ["without tracking"], "Shipped Without Tracking");
+  eq(by(OID.E), ["unknown"], "Shipping Not Confirmed");
+  eq(by(OID.D), ["canceled"], "Canceled");
+  eq(by(OID.C), ["with tracking"], "a Direct order has its status too");
+});
+
+await test("71.6 shipping and sales tax are read from the summary, and an absent row is zero", async () => {
+  const rows = await parseAll();
+  const first = (id) => rows.find((r) => r["Order Id"] === id);
+  eq([num(first(OID.A)["Shipping Amount"]), num(first(OID.A)["Tax Amount"])], [3.99, 0.62], "Shipping: $3.99 and Sales Tax (WA): $0.62");
+  eq([num(first(OID.B)["Shipping Amount"]), num(first(OID.B)["Tax Amount"])], [0, 0], "no summary row for either");
+});
+
+await test("71.7 the rows give the same item keys and fields as the OrderWand CSV import of the same orders", async () => {
+  /* the CSV is what OrderWand writes for these orders (Direct keeps "Sold by X" in Set Name), read the way
+     the app reads a dropped file: Papa with header and skipEmptyLines, then parseItems */
+  const base = { Type: "purchase", Vendor: "TCGplayer", Currency: "USD", "Product Line": "Magic" };
+  const csvRow = (o) => ({ ...base, ...o });
+  const wand = [
+    csvRow({ "Order Id": OID.A, "Ordered At": "2026-10-25", "Item Number": "1", "Vendor Product Id": "100001", "Product Name": NAME_A1, Price: "1250.00", Quantity: "1", Party: "Moe's Cards&amp;Games9", "Shipping Status": "with tracking" }),
+    csvRow({ "Order Id": OID.A, "Ordered At": "2026-10-25", "Item Number": "2", "Vendor Product Id": "100002", "Product Name": "Plain Card", Price: "0.25", Quantity: "4", Party: "Moe's Cards&amp;Games9", "Shipping Status": "with tracking" }),
+    csvRow({ "Order Id": OID.B, "Ordered At": "2026-09-03", "Item Number": "1", "Vendor Product Id": "100003", "Product Name": "Solo Card", Price: "2.00", Quantity: "2", Party: "Beta Cards", "Shipping Status": "without tracking" }),
+    csvRow({ "Order Id": OID.C, "Ordered At": "2026-10-23", "Item Number": "1", "Vendor Product Id": "100004", "Product Name": "Direct One", "Set Name": "Sold by Gamma Games", Price: "3.00", Quantity: "1", Party: "Gamma Games", "Shipping Status": "with tracking" }),
+    csvRow({ "Order Id": OID.C, "Ordered At": "2026-10-23", "Item Number": "2", "Vendor Product Id": "100005", "Product Name": "Direct Two", "Set Name": "Sold by Delta Cards", Price: "4.00", Quantity: "2", Party: "Delta Cards", "Shipping Status": "with tracking" }),
+    csvRow({ "Order Id": OID.C, "Ordered At": "2026-10-23", "Item Number": "3", "Vendor Product Id": "100006", "Product Name": "Direct Three", "Set Name": "Sold by Gamma Games", Price: "5.00", Quantity: "1", Party: "Gamma Games", "Shipping Status": "with tracking" }),
+    csvRow({ "Order Id": OID.D, "Ordered At": "2026-10-21", "Item Number": "1", "Vendor Product Id": "100007", "Product Name": "Canceled Card", Price: "1.50", Quantity: "1", Party: "Acme Cards", "Shipping Status": "canceled" }),
+    csvRow({ "Order Id": OID.E, "Ordered At": "2026-10-22", "Item Number": "1", "Vendor Product Id": "100008", "Product Name": "Pending Card", Price: "1.75", Quantity: "1", Party: "Acme Cards", "Shipping Status": "unknown" }),
+    csvRow({ "Order Id": OID.F, "Ordered At": "2026-10-24", "Item Number": "1", "Vendor Product Id": "100009", "Product Name": "Tracked Card", Price: "6.00", Quantity: "1", Party: "Acme Cards", "Shipping Status": "with tracking" }),
+  ];
+  const fields = [...new Set(wand.flatMap(Object.keys))];
+  const csvText = Papa.unparse({ fields, data: wand.map((r) => fields.map((f) => r[f] ?? "")) });
+  const viaCsv = parseItems(Papa.parse(csvText, { header: true, skipEmptyLines: true }).data);
+  const viaPage = parseItems(await parseAll());
+  const f = ["key", "orderId", "seller", "name", "qty", "price", "date", "tracking"];
+  eq(viaPage.map((i) => pick(i, f)), viaCsv.map((i) => pick(i, f)), "key, order, seller, name, qty, price, date and status of every line");
+  eq(viaPage.map((i) => i.key), ROW_IDS.map((s) => s.replace("#", "|")).map((s, i) => `${s}|${100001 + i}`), "keys are orderId|position|productId");
+});
+
+await test("71.8 a page with no orders gives no rows, and a cut-off order block does not throw", async () => {
+  const parse = need("parse");
+  eq(await parseAll(pageHtml()), [], "a page holding only look-alike orders");
+  eq(await parseAll(""), [], "an empty string");
+  eq(await parseAll(LOGON_PAGE_HTML), [], "a logon page");
+  const cut = await parse('<div class="orderWrap"><div class="orderHeader"><span>');
+  ok(Array.isArray(cut), "a block cut off mid-tag still returns an array");
+});
+
+/* ---------- the fetch stub, the job runner and the page sets used by groups 72 to 77 ---------- */
+/* A stand-in for fetch that acts like the real one. A request without the session cookie gets 302 to a
+   logon URL on another host. With redirect "manual" the 302 comes back as it is. With the default it is
+   followed: the same headers are sent to the new URL, and the reply is that page's 200 with redirected
+   set. So a job that follows the redirect shows up twice: it has no signed-out answer, and its cookie
+   went to another host. `calls` records every request that went out, hops included.
+     pages(n) -> html | null     the page body for PageNumber n; null is a page with no orders
+     replies[n]                  {status, body, location} or {throws} to override page n */
+const pageNo = (u) => Number(u.searchParams.get("PageNumber"));
+function fakeTcg({ pages = () => null, replies = {}, session = COOKIE } = {}) {
+  const calls = [];
+  const serve = (u, cookie) => {
+    if (u.host !== TCG_HOST || u.pathname !== "/myaccount/orderhistory")
+      return u.host === "accounts.example.invalid" ? { status: 200, body: LOGON_PAGE_HTML } : { status: 404, body: "not here" };
+    if (cookie !== session) return { status: 302, location: LOGON_URL };
+    return replies[pageNo(u)] ?? { status: 200, body: pages(pageNo(u)) ?? pageHtml() };
+  };
+  const fetchFn = async (input, init) => {
+    let req = input instanceof Request ? input : new Request(input, init);
+    const mode = req.redirect;
+    for (let hop = 0; hop < 5; hop++) {
+      const u = new URL(req.url);
+      calls.push({ host: u.host, url: u, method: req.method, cookie: req.headers.get("cookie"), redirect: mode });
+      if (calls.length > 200) throw new Error("runaway: more than 200 requests");
+      const spec = serve(u, req.headers.get("cookie"));
+      if (spec.throws) throw spec.throws;
+      const res = new Response(spec.body ?? null, { status: spec.status, headers: spec.location ? { Location: spec.location } : {} });
+      if (spec.status < 300 || spec.status >= 400) {
+        if (hop > 0) {
+          Object.defineProperty(res, "redirected", { value: true });
+          Object.defineProperty(res, "url", { value: u.href });
+        }
+        return res;
+      }
+      if (mode === "manual") return res;
+      if (mode === "error") throw new TypeError("unexpected redirect");
+      req = new Request(new URL(spec.location, u), { headers: req.headers });
+    }
+    throw new TypeError("too many redirects");
+  };
+  return { fetch: fetchFn, calls, pages };
+}
+const fetched = (site) => site.calls.filter((c) => c.host === TCG_HOST).map((c) => pageNo(c.url));
+const cookieStayedHome = (site) => site.calls.filter((c) => c.cookie).every((c) => c.host === TCG_HOST);
+
+const show = (x) => {
+  if (typeof x === "string") return x;
+  if (x instanceof Error) return `${x.message}\n${x.stack}`;
+  try {
+    return JSON.stringify(x);
+  } catch {
+    return String(x);
+  }
+};
+/* runs the job once. Console output is captured, a rejection is returned as `threw`. */
+const runJob = async ({ site, store = fakeStore(null), env = ENVC, now = NOW } = {}) => {
+  const runOrders = need("runOrders");
+  const lines = [];
+  const kept = {};
+  for (const k of ["log", "info", "warn", "error", "debug", "trace"]) {
+    kept[k] = console[k];
+    console[k] = (...a) => void lines.push(a.map(show).join(" "));
+  }
+  let threw = null;
+  let value;
+  try {
+    value = await runOrders(env, store, site.fetch, now);
+  } catch (e) {
+    threw = e;
+  } finally {
+    Object.assign(console, kept);
+  }
+  return { store, site, lines, threw, value };
+};
+
+/* order n has two lines, so a page of three orders has six. nItem is the ledger line the import would
+   keep for it; only its key matters to "already known". */
+const oid = (n) => `${String(n).padStart(8, "0")}-0a0b0c-1d2e3`;
+const pid = (n, k) => 200000 + n * 10 + k;
+const nOrder = (n, status) =>
+  orderBlock({
+    id: oid(n),
+    date: "October 20, 2026",
+    seller: `Seller ${n}`,
+    ...(status && { status }),
+    lines: [1, 2].map((k) => ({ name: `Card ${n}-${k}`, price: "$1.00", pid: pid(n, k) })),
+  });
+const nItem = (n, k) => ({
+  key: `${oid(n)}|${k}|${pid(n, k)}`, orderId: oid(n), seller: `Seller ${n}`, name: `Card ${n}-${k}`, set: "Test Set",
+  condition: "Near Mint", finish: "", qty: 1, price: 1, date: "2026-10-20", tracking: "with tracking", line: "",
+});
+const nKeys = (n) => [1, 2].map((k) => nItem(n, k).key);
+const nItems = (ns) => ns.flatMap((n) => [1, 2].map((k) => nItem(n, k)));
+const range = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => a + i);
+/* `total` orders, `per` to a page, newest first; a page past the last has no orders */
+const sitePages = (per, total) => (p) => {
+  const first = (p - 1) * per + 1;
+  return first > total ? null : pageHtml(...range(first, Math.min(total, first + per - 1)).map((n) => nOrder(n)));
+};
+/* a site with no last page: every page brings three orders nobody has seen */
+const endlessPages = (p) => pageHtml(...range(p * 3 - 2, p * 3).map((n) => nOrder(n)));
+
+const ENV_1 = { id: "env-1", createdAt: PREV, note: "n", entries: [{ name: "Card 1-1", qty: 1 }], photos: [], updatedAt: PREV };
+const STAMP_1 = { kind: "claim", at: "2026-10-01", note: "", updatedAt: PREV };
+/* a ledger that holds every field the import must leave alone: one check-in, one envelope, one stamp,
+   and a line from before TCGplayer's 120-day window (order 99), which no page shows */
+const storedLedger = () =>
+  ledger({
+    items: nItems([1, 99]),
+    received: { [nKeys(1)[0]]: 1 },
+    receivedAt: { [nKeys(1)[0]]: PREV },
+    envelopes: [ENV_1],
+    stamps: { [`${oid(1)}::Seller 1`]: STAMP_1 },
+  });
+const status0 = { lastSuccessAt: iso(PREV), lastFailure: null };
+/* the two states a previous run can leave for the early stop to read */
+const statusComplete = { ...status0, complete: true };
+const statusGap = { ...status0, complete: false };
+/* a stored line that the page shows differently in every field but its key, and whose shipping status is stale */
+const staleLine = (n, k = 1) => ({
+  ...nItem(n, k), seller: "Old Seller", name: "Old name", set: "Old Set", condition: "Heavily Played", finish: "Foil",
+  qty: 3, price: 9.99, date: "2026-09-01", tracking: "unknown", line: "Magic",
+});
+
+/* ---------- 72. a failed pull is a recorded failure, never a quiet zero ---------- */
+await test("72.1 a logon redirect on the first page is a signed-out failure, and nothing is written", async () => {
+  const site = fakeTcg({ pages: sitePages(3, 9), session: "an-expired-session" });
+  const store = fakeStore({ ledger: storedLedger(), rev: 3 }, [], status0);
+  const before = clone(store.state);
+  const r = await runJob({ site, store });
+  eq(r.threw?.message ?? null, null, "the run does not reject");
+  const st = await store.readOrdersStatus();
+  eq(st?.lastFailure?.kind, "signed-out", "kind");
+  eq(st?.lastFailure?.at, iso(NOW), "when");
+  eq(st?.lastSuccessAt, iso(PREV), "a failed run leaves the last success time alone");
+  eq(store.state, before, "the ledger is untouched");
+  eq(store.writes.length + store.snapWrites.length + store.broadcasts.length, 0, "no write, snapshot or broadcast");
+  ok(cookieStayedHome(site), "the cookie went only to store.tcgplayer.com, even when the redirect points elsewhere");
+});
+
+await test("72.2 a 503, a 403 and a failed fetch are failures of kind other, not signed-out and not success", async () => {
+  const cases = [
+    ["503", { status: 503, body: "Service Unavailable" }],
+    ["403 challenge page", { status: 403, body: "<html><body>Just a moment...</body></html>" }],
+    ["fetch rejects", { throws: new TypeError("fetch failed") }],
+  ];
+  for (const [label, reply] of cases) {
+    const site = fakeTcg({ pages: sitePages(3, 9), replies: { 1: reply } });
+    const store = fakeStore({ ledger: storedLedger(), rev: 3 }, [], status0);
+    const before = clone(store.state);
+    const r = await runJob({ site, store });
+    eq(r.threw?.message ?? null, null, `${label}: the run does not reject`);
+    const st = await store.readOrdersStatus();
+    eq(st?.lastFailure?.kind, "other", `${label}: kind`);
+    eq(st?.lastSuccessAt, iso(PREV), `${label}: no success is stamped`);
+    eq(store.state, before, `${label}: the ledger is untouched`);
+  }
+});
+
+await test("72.3 a 200 page that has no orders and is not the end of history is a failure, not a run with zero orders", async () => {
+  const site = fakeTcg({ replies: { 1: { status: 200, body: LOGON_PAGE_HTML } } });
+  const store = fakeStore({ ledger: storedLedger(), rev: 3 }, [], status0);
+  const before = clone(store.state);
+  const r = await runJob({ site, store });
+  eq(r.threw?.message ?? null, null, "the run does not reject");
+  const st = await store.readOrdersStatus();
+  eq(typeof st?.lastFailure?.kind, "string", "a failure kind is recorded");
+  eq(st?.lastSuccessAt, iso(PREV), "no success is stamped");
+  eq(store.state, before, "the ledger is untouched");
+});
+
+await test("72.4 a failure on a later page is recorded, stamps no success, and drops nothing already stored", async () => {
+  const site = fakeTcg({ pages: sitePages(3, 9), replies: { 2: { status: 302, location: LOGON_URL } } });
+  const stored = storedLedger();
+  const store = fakeStore({ ledger: stored, rev: 3 }, [], status0);
+  const r = await runJob({ site, store });
+  eq(r.threw?.message ?? null, null, "the run does not reject");
+  const st = await store.readOrdersStatus();
+  eq(st?.lastFailure?.kind, "signed-out", "kind");
+  eq(st?.lastSuccessAt, iso(PREV), "a half-done run is not a success");
+  const have = new Set(store.state.ledger.items.map((i) => i.key));
+  ok(stored.items.every((i) => have.has(i.key)), "every stored line is still there");
+  eq(store.state.ledger.received, stored.received, "the check-ins are untouched");
+  ok(cookieStayedHome(site), "the cookie went only to store.tcgplayer.com");
+});
+
+await test("72.5 with no cookie in env.TCG_COOKIE no request goes out, and the failure is kind no-cookie", async () => {
+  const decoys = { COOKIE: COOKIE, Cookie: COOKIE, TCG_COOKIES: COOKIE, TCG_COOKIE_OLD: COOKIE };
+  for (const [label, env] of [["unset", { ...ENV, ...decoys }], ["empty", { ...ENV, ...decoys, TCG_COOKIE: "" }]]) {
+    const site = fakeTcg({ pages: sitePages(3, 9) });
+    const store = fakeStore({ ledger: storedLedger(), rev: 3 }, [], status0);
+    const r = await runJob({ site, store, env });
+    eq(r.threw?.message ?? null, null, `${label}: the run does not reject`);
+    eq(site.calls.length, 0, `${label}: no request, and no other variable stands in for the cookie`);
+    eq((await store.readOrdersStatus())?.lastFailure?.kind, "no-cookie", `${label}: kind`);
+  }
+});
+
+await test("72.6 a 200 first page with no orders is kind empty, its own kind, and the run is a failure that is not complete", async () => {
+  /* 72.3 pins that this is a failure; orchestrator ruling 2026-10-27 21:46 CDT gives it a kind of its own */
+  for (const [label, body] of [["a page that lists no orders", pageHtml()], ["a logon form served with 200", LOGON_PAGE_HTML]]) {
+    const site = fakeTcg({ replies: { 1: { status: 200, body } } });
+    const store = fakeStore({ ledger: storedLedger(), rev: 3 }, [], statusComplete);
+    const before = clone(store.state);
+    const r = await runJob({ site, store });
+    eq(r.threw?.message ?? null, null, `${label}: the run does not reject`);
+    const st = await store.readOrdersStatus();
+    eq(st?.lastFailure?.kind, "empty", `${label}: kind`);
+    eq(st?.lastFailure?.at, iso(NOW), `${label}: when`);
+    eq(st?.lastSuccessAt, iso(PREV), `${label}: no success is stamped`);
+    eq(st?.complete, false, `${label}: a failed run is not complete`);
+    eq(store.state, before, `${label}: the ledger is untouched`);
+  }
+});
+
+/* ---------- 73. paging ---------- */
+await test("73.1 paging stops after the first page whose orders are all already in the ledger", async () => {
+  const site = fakeTcg({ pages: sitePages(3, 15) });
+  const store = fakeStore({ ledger: ledger({ items: nItems(range(4, 15)) }), rev: 3 }, [], statusComplete);
+  await runJob({ site, store });
+  eq(fetched(site), [1, 2], "the last run was complete, so page 2 being all known ends this run before page 3");
+  const keys = store.state.ledger.items.map((i) => i.key).sort();
+  eq(keys, nItems(range(1, 15)).map((i) => i.key).sort(), "page 1's three orders were added, and nothing else changed");
+});
+
+await test("73.2 a page with one new order among known ones does not stop the run", async () => {
+  const site = fakeTcg({ pages: sitePages(3, 9) });
+  const store = fakeStore({ ledger: ledger({ items: nItems([4, 5]) }), rev: 3 });
+  await runJob({ site, store });
+  ok(fetched(site).includes(3), "page 3 is fetched after the mixed page 2");
+  const have = new Set(store.state.ledger.items.map((i) => i.key));
+  ok(nItems(range(1, 9)).every((i) => have.has(i.key)), "all nine orders are in the ledger");
+});
+
+await test("73.3 a site with no last page is cut at a page cap that keeps the run under 50 subrequests", async () => {
+  const site = fakeTcg({ pages: endlessPages });
+  const store = fakeStore({ ledger: storedLedger(), rev: 3 });
+  const r = await runJob({ site, store });
+  eq(r.threw?.message ?? null, null, "the run does not reject");
+  ok(site.calls.length >= 2, `it pages past the first page (${site.calls.length} requests)`);
+  ok(site.calls.length < 50, `it stays under the free plan's 50 subrequests (${site.calls.length} requests)`);
+  eq(fetched(site), range(1, site.calls.length), "pages are asked for in order from 1, none twice");
+  eq((await store.readOrdersStatus())?.lastSuccessAt, iso(NOW), "reaching the cap is a success");
+});
+
+await test("73.4 an empty 200 page after real pages is the end of history, and the run is a success", async () => {
+  const site = fakeTcg({ pages: sitePages(3, 3) });
+  const store = fakeStore({ ledger: storedLedger(), rev: 3 });
+  await runJob({ site, store });
+  eq(fetched(site), [1, 2], "page 2 is asked for, found empty, and the run stops");
+  const st = await store.readOrdersStatus();
+  eq(st?.lastSuccessAt, iso(NOW), "success time");
+  ok(nKeys(2).every((k) => store.state.ledger.items.some((i) => i.key === k)), "the three orders of page 1 are in the ledger");
+});
+
+/* Orchestrator ruling 2026-10-27 21:46 CDT: the early stop on an all-known page is safe only when the last
+   run covered history. A run that failed after merging page 1, or was cut at the page cap, leaves
+   a gap behind a page that now looks all known. */
+await test("73.5 a run that fails after merging page 1 is not complete, and the next run pages on past the now-known page 1", async () => {
+  const pages = sitePages(3, 9);
+  const store = fakeStore({ ledger: ledger({ items: nItems([99]) }), rev: 3 }, [], statusComplete);
+  const down = fakeTcg({ pages, replies: { 2: { status: 302, location: LOGON_URL } } });
+  await runJob({ site: down, store });
+  eq(fetched(down), [1, 2], "fixture: page 2 is where the first run fails");
+  let st = await store.readOrdersStatus();
+  eq(st?.complete, false, "a failed run records complete:false, whatever the run before it was");
+  eq(st?.lastFailure?.kind, "signed-out", "kind");
+  eq(st?.lastSuccessAt, iso(PREV), "no success is stamped");
+  const have = () => new Set(store.state.ledger.items.map((i) => i.key));
+  ok(nItems([1, 2, 3]).every((i) => have().has(i.key)), "the failed run still merged the three orders of page 1, fetched before the failure");
+  ok(nItems([4]).every((i) => !have().has(i.key)), "and nothing of page 2");
+
+  const retry = fakeTcg({ pages });
+  await runJob({ site: retry, store, now: NOW + DAY });
+  eq(fetched(retry), [1, 2, 3, 4], "page 1 is all known, but the last run did not finish, so this run pages on to the end of history");
+  ok(nItems(range(1, 9)).every((i) => have().has(i.key)), "all nine orders are in the ledger");
+  st = await store.readOrdersStatus();
+  eq([st?.complete, st?.lastSuccessAt], [true, iso(NOW + DAY)], "reaching the end of history is complete, and a success");
+
+  const again = fakeTcg({ pages });
+  await runJob({ site: again, store, now: NOW + 2 * DAY });
+  eq(fetched(again), [1], "after a complete run, an all-known page 1 ends the run again");
+  eq((await store.readOrdersStatus())?.complete, true, "reaching an all-known page is complete");
+});
+
+await test("73.6 a run cut at the page cap is a success but not complete, and the next run pages on to the cap again", async () => {
+  const store = fakeStore({ ledger: ledger({ items: nItems([99]) }), rev: 3 }, [], statusComplete);
+  const first = fakeTcg({ pages: endlessPages });
+  await runJob({ site: first, store });
+  const pagesRun = fetched(first);
+  ok(pagesRun.length >= 2 && pagesRun.length < 50, `fixture: the first run is cut at a cap (${pagesRun.length} pages)`);
+  let st = await store.readOrdersStatus();
+  eq(st?.lastSuccessAt, iso(NOW), "73.3 holds: reaching the cap is a success");
+  eq(st?.complete, false, "but the cap left history unread, so the run is not complete");
+  const second = fakeTcg({ pages: endlessPages });
+  await runJob({ site: second, store, now: NOW + DAY });
+  eq(fetched(second), pagesRun, "pages 1 to the cap are all known now, and the run still goes on to the cap");
+  eq((await store.readOrdersStatus())?.complete, false, "cut at the cap again, so still not complete");
+});
+
+await test("73.7 the early stop needs a stored complete:true: the same all-known pages end at page 1 then, and run to the end of history when it is false, missing or there is no status", async () => {
+  /* "only when the previous run was complete": a status saved before the flag existed, and no status at all,
+     do not say it was */
+  const rows = [
+    ["complete", statusComplete, [1]],
+    ["not complete", statusGap, [1, 2, 3, 4]],
+    ["a status with no complete key", status0, [1, 2, 3, 4]],
+    ["no status yet", null, [1, 2, 3, 4]],
+  ];
+  for (const [label, status, want] of rows) {
+    const site = fakeTcg({ pages: sitePages(3, 9) });
+    const store = fakeStore({ ledger: ledger({ items: nItems(range(1, 9)) }), rev: 3 }, [], status);
+    await runJob({ site, store });
+    eq(fetched(site), want, `${label}: pages asked for`);
+    const st = await store.readOrdersStatus();
+    eq([st?.complete, st?.lastSuccessAt], [true, iso(NOW)], `${label}: the run reached an all-known page or the end, so it is complete and a success`);
+  }
+});
+
+/* ---------- 74. the merge is the import's merge ---------- */
+await test("74.1 the job writes what the same orders sent as an import (POST /ledger) write", async () => {
+  const pages = sitePages(3, 6);
+  const rows = (await need("parse")(pages(1))).concat(await need("parse")(pages(2)));
+  const incoming = ledger({ items: parseItems(rows), received: {}, envelopes: [], stamps: {} });
+  const viaPost = fakeStore({ ledger: storedLedger(), rev: 3 });
+  const res = await send(viaPost, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: incoming } });
+  eq(res.status, 200, "fixture: the import is accepted");
+  const viaJob = fakeStore({ ledger: storedLedger(), rev: 3 });
+  await runJob({ site: fakeTcg({ pages }), store: viaJob });
+  eq(viaJob.state, viaPost.state, "stored ledger, rev and time");
+  eq(viaJob.order, viaPost.order, "the same writes in the same order (snapshot, write, broadcast)");
+  eq(viaJob.snapWrites, viaPost.snapWrites, "the same daily snapshot of what was there");
+  eq(viaJob.broadcasts, viaPost.broadcasts, "the same broadcast");
+});
+
+await test("74.2 check-ins, envelopes, stamps and old lines survive, and the ledger gains no key", async () => {
+  const stored = storedLedger();
+  const store = fakeStore({ ledger: stored, rev: 3 });
+  await runJob({ site: fakeTcg({ pages: sitePages(3, 6) }), store });
+  const out = store.state.ledger;
+  for (const k of ["received", "receivedAt", "envelopes", "stamps", "dateFilter", "sortBy", "itemSort"]) eq(out[k], stored[k], `${k} is untouched`);
+  const byKey = new Map(out.items.map((i) => [i.key, i]));
+  for (const it of stored.items) eq(byKey.get(it.key), it, `stored line ${it.key} is kept as it was, including order 99, which no page shows`);
+  eq([...byKey.keys()].sort(), nItems([1, 2, 3, 4, 5, 6, 99]).map((i) => i.key).sort(), "stored lines plus the five new orders");
+  eq(Object.keys(out).sort(), Object.keys(stored).sort(), "the status and the pull leave no new key in the ledger");
+  eq((await store.read()).rev, 4, "one write, one rev");
+});
+
+await test("74.3 running the job again over the same pages changes nothing", async () => {
+  const store = fakeStore({ ledger: storedLedger(), rev: 3 });
+  const pages = sitePages(3, 6);
+  await runJob({ site: fakeTcg({ pages }), store });
+  const after = clone(store.state);
+  const writes = store.writes.length;
+  await runJob({ site: fakeTcg({ pages }), store, now: NOW + DAY });
+  eq(store.state, after, "ledger, rev and time are as the first run left them");
+  eq(store.writes.length, writes, "no second write");
+  eq(store.broadcasts.length, 1, "no second broadcast");
+  eq(store.snapWrites.length, 1, "no second snapshot");
+  eq((await store.readOrdersStatus())?.lastSuccessAt, iso(NOW + DAY), "the second run is still a success");
+});
+
+await test("74.4 an empty store takes the pulled lines as a clean ledger", async () => {
+  const store = fakeStore(null);
+  const pages = sitePages(3, 3);
+  await runJob({ site: fakeTcg({ pages }), store });
+  const out = store.state?.ledger;
+  eq(out?.mailday, 1, "mailday");
+  eq(out?.items?.map((i) => i.key).sort(), nKeys(1).concat(nKeys(2), nKeys(3)).sort(), "items");
+  eq(salvageLedger(out ?? {}).dropped, 0, "no field of the written ledger is unreadable");
+  eq(store.state?.rev, 1, "first rev");
+});
+
+await test("74.5 the job reaches the shared parseItems, and holds no second copy of it", async () => {
+  /* The job is bundled with esbuild, so a comment or a string in its source cannot fool this. Tree
+     shaking drops parseItems unless the job really uses it, and a copy would add a second one.
+     "Unknown seller" is a literal that only parseItems holds. */
+  const { build } = await import("esbuild");
+  const { fileURLToPath } = await import("node:url");
+  const out = await build({
+    entryPoints: [fileURLToPath(new URL("./orders.mjs", import.meta.url))],
+    bundle: true, write: false, format: "esm", platform: "node", logLevel: "silent",
+  });
+  eq(out.outputFiles[0].text.split('"Unknown seller"').length - 1, 1, "one parseItems in the job's bundle");
+});
+
+/* Orchestrator ruling 2026-10-27 21:46 CDT: for a line whose key is already stored, the job refreshes only its
+   tracking to the page's value, so "Shipping Not Confirmed" does not stay unknown after the package
+   ships. Qty, price, name, set and every check-in, envelope and stamp stay. A CSV import does not change. */
+await test("74.6 a stored line takes the page's shipping status and nothing else of the page; new lines are added as before", async () => {
+  const stale = [staleLine(1), staleLine(2), staleLine(3)];
+  const stored = storedLedger();
+  stored.items = [...stale, ...stored.items.slice(1)]; /* the stale lines, then 1-2, 99-1 and 99-2 as they were */
+  const page = pageHtml(nOrder(1), nOrder(2, "Canceled"), nOrder(3, "Shipped Without Tracking"), nOrder(4, "Shipped Without Tracking"));
+  const store = fakeStore({ ledger: stored, rev: 3 });
+  await runJob({ site: fakeTcg({ pages: (p) => (p === 1 ? page : null) }), store });
+  const out = store.state.ledger;
+  const got = new Map(out.items.map((i) => [i.key, i]));
+  eq(got.get(stale[0].key), { ...stale[0], tracking: "with tracking" }, "unknown becomes with tracking; every other field of the stored line stays");
+  eq(got.get(stale[1].key), { ...stale[1], tracking: "canceled" }, "unknown becomes canceled; every other field stays");
+  eq(got.get(stale[2].key), { ...stale[2], tracking: "without tracking" }, "unknown becomes without tracking; every other field stays");
+  for (const k of [nKeys(1)[1], ...nKeys(99)]) eq(got.get(k), stored.items.find((i) => i.key === k), `${k}: the page agrees or does not show it, so it is as stored`);
+  const fresh = { [oid(2)]: "canceled", [oid(3)]: "without tracking", [oid(4)]: "without tracking" };
+  const f = ["key", "orderId", "name", "qty", "price", "tracking"];
+  for (const i of [nItem(2, 2), nItem(3, 2), nItem(4, 1), nItem(4, 2)])
+    eq(pick(got.get(i.key) ?? {}, f), pick({ ...i, tracking: fresh[i.orderId] }, f), `${i.key}: a new key is added with the page's values`);
+  eq(out.items.length, 10, "no line is lost, and only those four are new");
+  for (const k of ["received", "receivedAt", "envelopes", "stamps", "dateFilter", "sortBy", "itemSort"]) eq(out[k], stored[k], `${k} is untouched, the check-in on a refreshed line included`);
+  eq(Object.keys(out).sort(), Object.keys(stored).sort(), "the refresh leaves no new key in the ledger");
+  eq((await store.read()).rev, 4, "one write, one rev");
+});
+
+await test("74.7 the all-known page that ends the run is still read: its changed shipping status is refreshed", async () => {
+  const stale = staleLine(1);
+  const store = fakeStore({ ledger: ledger({ items: [stale, nItem(1, 2)] }), rev: 3 }, [], statusComplete);
+  const site = fakeTcg({ pages: (p) => (p === 1 ? pageHtml(nOrder(1)) : null) });
+  await runJob({ site, store });
+  eq(fetched(site), [1], "fixture: page 1 is all known and the last run was complete, so the run ends there");
+  eq(store.state.ledger.items.find((i) => i.key === stale.key), { ...stale, tracking: "with tracking" }, "the stored line took the page's status");
+});
+
+await test("74.8 a CSV re-import still keeps the stored shipping status (POST /ledger and mergeLedger are unchanged)", async () => {
+  const stale = staleLine(1);
+  const stored = ledger({ items: [stale] });
+  const reimport = ledger({ items: [{ ...stale, tracking: "with tracking" }] });
+  eq(reimport.items[0].tracking, "with tracking", "fixture: the file carries a newer status than the ledger");
+  const store = fakeStore({ ledger: stored, rev: 3 });
+  const res = await send(store, "POST", "/ledger", { key: KEY_PHONE, json: { ledger: reimport } });
+  eq(res.status, 200, "the import is accepted");
+  eq(store.state.ledger.items, [stale], "POST /ledger: the stored line is as it was");
+  eq(mergeLedger(stored, reimport).merged.items, [stale], "mergeLedger: the same, so the app's own merge is unchanged too");
+});
+
+/* ---------- 75. the status the GET reply exposes ---------- */
+await test("75.1 a success records its time, a later failure records its kind and time, and the success time stays", async () => {
+  const store = fakeStore({ ledger: storedLedger(), rev: 3 });
+  await runJob({ site: fakeTcg({ pages: sitePages(3, 3) }), store });
+  let st = await store.readOrdersStatus();
+  eq(st?.lastSuccessAt, iso(NOW), "success time is the run's clock, as an ISO string");
+  ok(!st?.lastFailure, "no failure yet");
+  await runJob({ site: fakeTcg({ pages: sitePages(3, 3), session: "gone" }), store, now: NOW + DAY });
+  st = await store.readOrdersStatus();
+  eq(st?.lastFailure, { kind: "signed-out", at: iso(NOW + DAY) }, "failure kind and time");
+  eq(st?.lastSuccessAt, iso(NOW), "the earlier success time is kept");
+});
+
+await test("75.2 GET /orders/status gives the stored status to a device key, and nothing to anyone else", async () => {
+  const st = { lastSuccessAt: iso(PREV), lastFailure: { kind: "signed-out", at: iso(NOW) } };
+  const s = fakeStore({ ledger: ledger(), rev: 3 }, [], st);
+  const ok200 = await send(s, "GET", "/orders/status", { key: KEY_PHONE });
+  eq(ok200.status, 200, "status");
+  eq(pick(await ok200.json(), ["lastSuccessAt", "lastFailure"]), st, "the stored success time and failure");
+  const fresh = await send(fakeStore({ ledger: ledger(), rev: 3 }), "GET", "/orders/status", { key: KEY_PHONE });
+  eq(fresh.status, 200, "before any run: status");
+  const body = await fresh.json();
+  eq([body.lastSuccessAt ?? null, body.lastFailure ?? null], [null, null], "before any run: nothing recorded yet");
+  const none = await send(s, "GET", "/orders/status", {});
+  eq(none.status, 401, "no key");
+  ok(!(await none.text()).includes("lastSuccessAt"), "and no status in the 401 body");
+  eq((await send(s, "GET", "/orders/status", { key: KEY_STRANGER })).status, 401, "a key not in the list");
+});
+
+/* ---------- 76. the cookie ---------- */
+await test("76.1 every request is a GET to store.tcgplayer.com order history, page 1 up, carrying env.TCG_COOKIE exactly", async () => {
+  const site = fakeTcg({ pages: sitePages(3, 3) });
+  await runJob({ site, store: fakeStore(null) });
+  eq(site.calls.length, 2, "page 1 holds orders, page 2 is empty");
+  for (const c of site.calls) {
+    eq([c.host, c.url.pathname, c.method], [TCG_HOST, "/myaccount/orderhistory", "GET"], "host, path and method");
+    eq(c.cookie, COOKIE, "the cookie, byte for byte");
+  }
+  eq(site.calls.map((c) => pageNo(c.url)), [1, 2], "PageNumber");
+});
+
+await test("76.2 the cookie is in no stored status, no reply, no log line, no ledger and no returned value, on any outcome", async () => {
+  const scenarios = [
+    ["a good run", { pages: sitePages(3, 6) }],
+    ["a logon redirect", { pages: sitePages(3, 6), session: "gone" }],
+    ["a 503 that echoes the request", { replies: { 1: { status: 503, body: `upstream error, request cookie was ${COOKIE}` } } }],
+    ["a failed fetch whose message carries the header", { replies: { 1: { throws: new TypeError(`fetch failed (Cookie: ${COOKIE})`) } } }],
+  ];
+  for (const [label, opts] of scenarios) {
+    const store = fakeStore({ ledger: storedLedger(), rev: 3 });
+    const r = await runJob({ site: fakeTcg(opts), store });
+    const reply = await route(req("GET", "/orders/status", { key: KEY_PHONE }), ENVC, store, NOW);
+    const everything = JSON.stringify({
+      status: store.status, statusWrites: store.statusWrites, state: store.state, snaps: [...store.snaps], kept: [...store.kept],
+      broadcasts: store.broadcasts, lines: r.lines, value: show(r.value), threw: r.threw && show(r.threw), reply: await reply.text(),
+    });
+    ok(!everything.includes("zzSENTINELzz") && !everything.includes("9f8e7d6c5b4a"), `${label}: no part of the cookie is anywhere`);
+  }
+});
+
+/* ---------- 77. the schedule is reachable ---------- */
+await test("77.1 the Durable Object adapter keeps the orders status in its own row, never in the ledger", async () => {
+  const Ledger = await loadLedger();
+  const ctx = doCtx({ ledger: ledger(), rev: 7, at: "2026-10-12T09:00:00.000Z" });
+  const store = new Ledger(ctx, ENV).store;
+  eq([typeof store.readOrdersStatus, typeof store.writeOrdersStatus], ["function", "function"], "the two store methods exist");
+  eq(await store.readOrdersStatus(), null, "nothing recorded yet reads as null");
+  const st = { lastSuccessAt: iso(NOW), lastFailure: { kind: "other", at: iso(NOW) }, complete: false };
+  await store.writeOrdersStatus(st);
+  eq(await store.readOrdersStatus(), st, "what was written reads back");
+  ok(!ctx.puts.includes("state"), "the write did not touch the ledger's row");
+});
+
+await test("77.2 the Worker has a scheduled handler", async () => {
+  const mod = await loadWorker();
+  eq(typeof mod.default?.scheduled, "function", "default.scheduled");
+  eq(typeof mod.default?.fetch, "function", "default.fetch is still there");
+});
+
+/* One pass over TOML text: strings are set aside whole and comments dropped, so a # inside a string stays
+   text and a quote inside a comment opens nothing. Returns the cron strings of the [triggers] table. */
+const tomlCrons = (text) => {
+  const strs = [];
+  let out = "";
+  for (let i = 0; i < text.length; ) {
+    const rest = text.slice(i);
+    const m = /^#[^\n]*/.exec(rest) || /^("""|''')[\s\S]*?\1/.exec(rest) || /^"(?:[^"\\\n]|\\.)*"/.exec(rest) || /^'[^'\n]*'/.exec(rest);
+    if (m && m[0][0] === "#") i += m[0].length;
+    else if (m) {
+      out += `\u0001${strs.push(m[0]) - 1}\u0002`;
+      i += m[0].length;
+    } else out += text[i++];
+  }
+  const at = out.search(/^\[triggers\]/m);
+  if (at < 0) return [];
+  const body = out.slice(at).split(/\n(?=\[)/)[0];
+  const arr = /crons\s*=\s*\[([^\]]*)\]/.exec(body);
+  return arr ? [...arr[1].matchAll(/\u0001(\d+)\u0002/g)].map((x) => strs[x[1]].slice(1, -1)) : [];
+};
+
+await test("77.3 wrangler.toml declares a cron trigger (the reader skips comments and multi-line strings)", async () => {
+  eq(tomlCrons('# crons = ["0 6 * * *"]\n[triggers]\n# crons = ["1 1 * * *"]\n'), [], "a commented-out crons line is not a trigger");
+  eq(tomlCrons('name = "a # b"\n[triggers]\ncrons = ["0 6 * * *"] # nightly, don\'t skip\n'), ["0 6 * * *"], "a # inside a string, and a lone quote in a comment");
+  eq(tomlCrons("# don't\n[triggers]\ncrons = [\n  \"0 6 * * *\",\n  \"30 18 * * *\",\n]\n"), ["0 6 * * *", "30 18 * * *"], "a lone apostrophe in a comment; a multi-line array");
+  eq(tomlCrons("note = '''\n[triggers]\ncrons = [\"9 9 * * *\"]\n'''\n"), [], "a multi-line literal string is not a table");
+  const crons = tomlCrons(readFileSync(new URL("./wrangler.toml", import.meta.url), "utf8"));
+  ok(crons.length >= 1, "wrangler.toml has [triggers] with at least one cron");
+  ok(crons.every((c) => c.trim().split(/\s+/).length === 5), `each cron has five fields (${crons.join(" | ")})`);
 });
 
 report();

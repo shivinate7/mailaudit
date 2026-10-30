@@ -12,3 +12,7 @@ class_name = "Ledger"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["Ledger"]
+
+# Cloudflare cron runs in UTC: 09:00 UTC is 04:00 CDT.
+[triggers]
+crons = ["0 9 * * *"]

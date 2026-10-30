@@ -115,6 +115,9 @@ export async function route(request, env, store, now = Date.now()) {
     return json({ id });
   }
 
+  if (request.method === "GET" && path === "/orders/status")
+    return json((await store.readOrdersStatus()) ?? { lastSuccessAt: null, lastFailure: null, complete: false });
+
   if (path !== "/ledger") return json({ error: "not found" }, 404);
 
   if (request.method === "GET") {
@@ -129,22 +132,35 @@ export async function route(request, env, store, now = Date.now()) {
   } catch {
     return json({ error: "bad body" }, 400);
   }
+  const r = await mergeIntoStore(incoming, store, now);
+  return json(r.body, r.status);
+}
+
+/* The one merge path: POST /ledger and the orders job both end here.
+   `refresh` (the job only) maps a key to the shipping status the page shows now. A stored line
+   whose key is in it takes that status and nothing else; a CSV import passes none, so its merge
+   keeps the stored status. Returns {status, body}. */
+export async function mergeIntoStore(incoming, store, now, refresh = null) {
   if (!incoming || incoming.mailday !== 1 || !Array.isArray(incoming.items))
-    return json({ error: "bad ledger" }, 400);
+    return { status: 400, body: { error: "bad ledger" } };
   /* a received, receivedAt, stamps or envelopes of the wrong shape never reaches the store */
-  if (salvageLedger(incoming).dropped) return json({ error: "bad ledger" }, 400);
+  if (salvageLedger(incoming).dropped) return { status: 400, body: { error: "bad ledger" } };
 
   /* a stored ledger saved before the shape check shipped is mended before the merge;
      the original is kept below */
   const stored = await store.read();
   const mend = stored ? salvageLedger(stored.ledger) : null;
   const cur = mend?.dropped ? { ...stored, ledger: mend.data } : stored;
-  const merge = cur ? mergeLedger(cur.ledger, incoming) : null;
+  const base =
+    refresh && cur
+      ? { ledger: { ...cur.ledger, items: cur.ledger.items.map((it) => (refresh.get(it.key) && refresh.get(it.key) !== it.tracking ? { ...it, tracking: refresh.get(it.key) } : it)) } }
+      : cur;
+  const merge = base ? mergeLedger(base.ledger, incoming) : null;
   const ledger = merge ? merge.merged : incoming;
   // No merge runs against an empty store, so there is nothing to count.
   const stats = merge ? merge.stats : mergeLedger({}, {}).stats;
-  if (new TextEncoder().encode(JSON.stringify(ledger)).length > MAX_LEDGER_BYTES) return json({ error: "too-large" }, 413);
-  if (cur && !mend.dropped && canon(ledger) === canon(cur.ledger)) return json({ ledger, rev: cur.rev, stats });
+  if (new TextEncoder().encode(JSON.stringify(ledger)).length > MAX_LEDGER_BYTES) return { status: 413, body: { error: "too-large" } };
+  if (cur && !mend.dropped && canon(ledger) === canon(cur.ledger)) return { status: 200, body: { ledger, rev: cur.rev, stats } };
   const rev = (cur?.rev ?? 0) + 1;
   const day = dayOf(now);
   /* a mend always keeps the damaged original, whatever the snapshots hold */
@@ -154,5 +170,5 @@ export async function route(request, env, store, now = Date.now()) {
   await store.pruneKept(dayOf(now - (SNAPSHOT_DAYS - 1) * DAY_MS));
   await store.write(ledger, rev, new Date(now).toISOString());
   await store.broadcast({ rev });
-  return json({ ledger, rev, stats });
+  return { status: 200, body: { ledger, rev, stats } };
 }
