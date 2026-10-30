@@ -15,8 +15,8 @@ Plan: docs/decisions/native-ci-on-hosted-macos.md#still-open (native)
 - The job is named native. It runs on `macos-26`. Its timeout is 10 minutes, about 6x the slowest green run (95 s, 18 runs to 2026-10-22), for macOS start-up variance. The 3 minute limit cut run 39761031029 on main.
 - It uses the same concurrency group pattern as the screens job: one group per sha on main, and cancel on a PR ref.
 - It has `needs: [suite, scope]`. The suite runs first on Ubuntu, and it runs `check:rules` and `check:golden`. A red suite skips the job; the rollup is red then anyway.
-- The job has work when scope reports a native change, on nightly and dispatch runs, and when scope fails (fail safe). A draft PR has no work, see `ci-skips-draft-prs`. `ready_for_review` starts a new run when a draft is marked ready.
-- With no work, the job still runs and passes, so the rollup reads it as success, not skipped. It runs on `ubuntu-latest` and skips its steps. With work, it runs on `macos-26`. One condition picks the runner and gates the steps.
+- The job skips draft PRs, as every job does, see `ci-skips-draft-prs`. `ready_for_review` starts a new run when a draft is marked ready.
+- The job has work when scope reports a native change, on nightly and dispatch runs, and when scope fails (fail safe). With no work, the job still runs and passes, so the rollup reads it as success, not skipped. It runs on `ubuntu-latest` and skips its steps. With work, it runs on `macos-26`. One condition picks the runner and gates the steps.
 - Steps, in order: print the Xcode and Swift versions, then ST.
 - ST means `swift test --package-path native/ManifestKit`, see `native-build-lanes`.
 - The paths filter for native and shared files is in `ci-filters-guarantee-no-rebuild`.

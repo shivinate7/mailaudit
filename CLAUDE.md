@@ -291,7 +291,7 @@ What each check asks, and the two traps in the icon pipeline.
 
 - `check-build-ignores-seed` — The build check compares the whole page.
 - `ci-filters-guarantee-no-rebuild` — CI filters replace the old no-workflows guarantee.
-- `ci-skips-draft-prs` — CI skips draft pull requests after a proof.
+- `ci-skips-draft-prs` — CI skips draft pull requests, and the rollup with them.
 - `watchdog-catches-silent-failure` — Retired: the owner turned the backup watchdog off.
 - `pages-queued-workflow-fix` — A stuck Pages deploy needs a new commit, not a re-run.
 - `favicon-is-a-different-drawing` — The favicon is redrawn, not the master shrunk.
