@@ -36,9 +36,9 @@ on:
       - ".github/dependabot.yml"
   pull_request:
     branches: [main]
-    # ready_for_review starts the native job once a draft is marked ready.
+    # A draft starts no job. ready_for_review starts the jobs once a draft is marked ready.
     types: [opened, synchronize, reopened, ready_for_review]
-  # Nightly full run: the native job runs whatever the diff says.
+  # Nightly full run: the native and screens jobs run whatever the diff says.
   schedule:
     - cron: "17 5 * * *"
   workflow_dispatch:
@@ -56,6 +56,7 @@ concurrency:
 
 jobs:
   suite:
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     # About 5x the slowest green run (229 s, 26 runs); 10 min cut run 39713600893.
     timeout-minutes: 20
@@ -80,6 +81,7 @@ jobs:
       - run: npm run test:worker
       - run: npm run test:send-key
       - run: npm run test:view-rules
+      - run: npm run test:ci-wiring
       - run: npm run test:golden
       - name: golden files are in step with src/view-rules.mjs
         run: npm run check:golden --silent
@@ -119,8 +121,15 @@ jobs:
 
   # Decision screens-checked-headless-in-ci: the screen check runs once, here,
   # on macOS only (Cochin exists only there), and never at deploy time.
+  # Scope says whether a change can move a screen. With no such change the job
+  # starts an ubuntu runner and skips every step, so it passes and no Mac starts.
+  # !cancelled() lets it run when scope itself failed (fail safe).
   screens:
-    runs-on: macos-26
+    needs: [scope]
+    if: ${{ !cancelled() && !github.event.pull_request.draft }}
+    runs-on: ${{ (needs.scope.result != 'success' || needs.scope.outputs.screens == 'true') && 'macos-26' || 'ubuntu-latest' }}
+    env:
+      WORK: ${{ needs.scope.result != 'success' || needs.scope.outputs.screens == 'true' }}
     # About 2.7x the slowest green run (670 s, 26 runs); it stops a hang (decision above).
     timeout-minutes: 30
     # Cancel a superseded run on a PR ref (draft state in the group); never cancel a run on main, where
@@ -130,26 +139,34 @@ jobs:
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: env.WORK == 'true'
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: env.WORK == 'true'
         with:
           node-version: "22"
           cache: npm
       - run: npm ci
+        if: env.WORK == 'true'
       - name: install Chromium
+        if: env.WORK == 'true'
         run: npx playwright install chromium
         timeout-minutes: 2
       - run: npm run build
+        if: env.WORK == 'true'
       - run: npm run check:screens
+        if: env.WORK == 'true'
 
-  # Decision native-ci-on-hosted-macos: says whether the native job has work.
-  # Nightly and dispatch run it; so does a diff that cannot be read (fail safe).
+  # Decision native-ci-on-hosted-macos: says whether the native and screens jobs have work.
+  # Nightly and dispatch run both; so does a diff that cannot be read (fail safe).
   scope:
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
     outputs:
       native: ${{ steps.d.outputs.native }}
+      screens: ${{ steps.d.outputs.screens }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -161,41 +178,53 @@ jobs:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
           native=true
+          screens=true
           if [ "$EVENT" = push ] || [ "$EVENT" = pull_request ]; then
             # NUL-separated, so a quoted path (a double quote in a name) still matches.
-            # A failed or empty diff leaves files empty, and native stays true.
+            # A failed or empty diff leaves files empty, and both stay true.
             files=$(git diff --no-renames --name-only -z "$BASE" HEAD | tr '\0' '\n')
             if [ -n "$files" ]; then
               grep -Eq '^(native/|shared/|src/view-rules\.mjs$|\.github/workflows/test\.yml$)' <<< "$files" || native=false
+              # Paths that can change a screen: the page source, its build and its screen check.
+              grep -Eq '^(src/|shared/|build\.mjs$|package(-lock)?\.json$|test/screens\.mjs$|test/a11y-base-boxes\.json$|\.github/workflows/test\.yml$)' <<< "$files" || screens=false
             fi
           fi
-          echo "scope verdict: event=$EVENT native=$native"
+          echo "scope verdict: event=$EVENT native=$native screens=$screens"
           echo "native=$native" >> "$GITHUB_OUTPUT"
+          echo "screens=$screens" >> "$GITHUB_OUTPUT"
 
   # Decision native-ci-on-hosted-macos: the Swift package tests (ST) on a
   # hosted macOS runner. Skips drafts (decision ci-skips-draft-prs). The 10 min
   # timeout is about 6x the slowest green run (95 s, 18 runs), for macOS start-up variance.
+  # Scope says whether the change can move native code. With no such change the job starts an
+  # ubuntu runner and skips every step, so it passes and no Mac starts.
   native:
     needs: [suite, scope]
     # !cancelled() lets it run when scope itself failed (fail safe) and still
     # stops it on a cancelled run; the suite result check keeps the
     # cheap-first rule: a red suite skips native.
-    if: ${{ !cancelled() && needs.suite.result == 'success' && (needs.scope.result != 'success' || needs.scope.outputs.native == 'true') && !github.event.pull_request.draft }}
-    runs-on: macos-26
+    if: ${{ !cancelled() && needs.suite.result == 'success' && !github.event.pull_request.draft }}
+    runs-on: ${{ (needs.scope.result != 'success' || needs.scope.outputs.native == 'true') && 'macos-26' || 'ubuntu-latest' }}
+    env:
+      WORK: ${{ needs.scope.result != 'success' || needs.scope.outputs.native == 'true' }}
     timeout-minutes: 10
     concurrency:
       group: native-${{ github.ref == 'refs/heads/main' && github.sha || format('{0}-{1}', github.ref, github.event.pull_request.draft) }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: env.WORK == 'true'
         with:
           persist-credentials: false
       - run: xcodebuild -version && swift --version
+        if: env.WORK == 'true'
       - run: swift test --package-path native/ManifestKit
+        if: env.WORK == 'true'
 
   # Audits the workflows and the dependabot config. Same command as local:
   # zizmor .github/workflows .github/dependabot.yml (online-audits off; the action still passes github.token).
   zizmor:
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
@@ -213,6 +242,7 @@ jobs:
   # Lints the markdown a change adds or edits, in Simplified Technical English. It fails only
   # on an error on a changed line. fetch-depth 0 lets the action diff against the base branch.
   ste-lint:
+    if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 60  # provisional
     concurrency:
@@ -225,11 +255,25 @@ jobs:
           persist-credentials: false
       - uses: shivinate7/claude-settings/actions/ste-lint@1cc47f015bdaf073d8cb0f043a988c28d09aa3e1 # main 2026-10-29
 
+  # The one check branch protection requires. It fails when a needed job failed, was cancelled
+  # or was skipped. always() makes it run when a needed job fails, and a draft skips it with
+  # every other job. It has no name key, so its check name is its id.
+  all-jobs-passed:
+    needs: [suite, screens, scope, native, zizmor, ste-lint]
+    if: ${{ always() && !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: shivinate7/claude-settings/actions/all-jobs-passed@1cc47f015bdaf073d8cb0f043a988c28d09aa3e1 # main 2026-10-29
+        with:
+          needs: ${{ toJSON(needs) }}
+
   # Rule git-ci-done-comment-wakes: a run that ends with a red job posts one PR comment, which
   # wakes the session that watches the PR. A green run posts nothing. Keep needs: on every other job.
+  # A draft run posts nothing, because its jobs skip on purpose.
   ci-done:
-    needs: [suite, screens, scope, native, zizmor, ste-lint]
-    if: ${{ !cancelled() && github.event_name == 'pull_request' }}
+    needs: [suite, screens, scope, native, zizmor, ste-lint, all-jobs-passed]
+    if: ${{ !cancelled() && !github.event.pull_request.draft && github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
