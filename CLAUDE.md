@@ -24,6 +24,7 @@ records your task needs. Do not read them all.
 - `docs/decisions/` holds a ruling and the reason it still holds.
 - `measurements/` holds a measured figure and how to re-measure it. 11 records.
 - `docs/debts/` holds one known gap or to-do per file, each pointing at its decision.
+- `docs/plans/` holds work not yet shipped. `docs/specs/` holds how a shipped feature works now. `docs/todo.md` holds tasks a session caught and did not do. `.claude/rules/` holds rules for one folder.
 
 A record cites another record by slug, never by a path, so a record survives a
 move. `npm run check:records` proves eight things. This index cites every record.
