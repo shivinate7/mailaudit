@@ -1,14 +1,11 @@
-# Native UI tests and builds are not in CI
+# Native UI tests are not in CI
 
-**What.** The native job runs the ST tests only, so native UI tests and builds are not in CI. Its workflow runs `xcodebuild -version` and `swift --version`, and nothing else. Lane C2 adds the missing steps. In order, they are:
+**What.** The `app-build` job compiles the app for the iOS Simulator, with xcodegen and `CODE_SIGNING_ALLOWED=NO`. Nothing in CI runs the UI tests in `native/ManifestUITests`. That is by design: UI tests run once per batch on the Mac, through `sim-test` (the ios-apps standard). The `app-build` job has not run yet. It skips drafts, so it is unproven until a non-draft run.
 
-- pin Xcode with `xcode-select`;
-- run xcodegen;
-- build for macOS and for the iOS Simulator with `CODE_SIGNING_ALLOWED=NO`;
-- run every UI test class in `native/ManifestUITests`.
+The gap closes when the owner rules that a UI test class runs in CI, and a hosted run shows it green. If the owner keeps UI tests on the Mac, close this debt and say so in `native-ci-on-hosted-macos`.
 
-The gap closes when the job runs those steps and stays green on a hosted macOS runner. The Duo pose UI tests are a local proof only. CI does not run them.
+The Duo pose UI tests are a local proof only. CI does not run them.
 
-**Status:** open. Lane C2 is not briefed.
+**Status:** open. The compile landed; the UI tests are not in CI.
 
 **Decision:** `native-ci-on-hosted-macos`.

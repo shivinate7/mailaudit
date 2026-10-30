@@ -1,8 +1,8 @@
 # The native job runs on a hosted macOS runner
 
-**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Lane C1 landed the job in PR #76. The owner has not made it a required check, see Required check. Its unmeasured facts are debts, see Unmeasured: `native-runner-image-unverified`, `native-runner-keychain-unverified` and `native-job-hosted-time-unmeasured`.
+**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Lane C1 landed the job in PR #76. A later lane added the `app-build` job. The owner has not made it a required check, see Required check. Its unmeasured facts are debts, see Unmeasured: `native-runner-image-unverified`, `native-runner-keychain-unverified` and `native-job-hosted-time-unmeasured`.
 
-The native job in `.github/workflows/test.yml` runs the Swift package tests on a hosted macOS runner. Degen's self-hosted runner is not copied. The rest of the native checks are in Still open.
+The native job in `.github/workflows/test.yml` runs the Swift package tests on a hosted macOS runner. The `app-build` job compiles the app for the iOS Simulator on the same runner image. Degen's self-hosted runner is not copied. The rest of the native checks are in Still open.
 
 **Holds while:** this repo is public on GitHub, so hosted macOS minutes cost nothing.
 
@@ -19,6 +19,14 @@ Plan: docs/decisions/native-ci-on-hosted-macos.md#still-open (native)
 - Steps, in order: print the Xcode and Swift versions, then ST.
 - ST means `swift test --package-path native/ManifestKit`, see `native-build-lanes`.
 - The paths filter for native and shared files is in `ci-filters-guarantee-no-rebuild`.
+
+## The app-build job
+
+- It is its own job, so the 10 minute cap of `native` stays tied to the 95 s `swift test` figure. Its cap is 15 minutes, provisional and unmeasured, because no hosted run has timed it. Debt: `native-job-hosted-time-unmeasured`.
+- It has the same `needs`, `if` gate (skips drafts) and concurrency pattern as `native`, and it runs on `macos-26`.
+- Steps, in order: if `command -v xcodegen` finds none, install xcodegen with brew. Then run `xcodegen generate` in `native/`. Then run `xcodebuild build` for the scheme Manifest, destination `generic/platform=iOS Simulator`, with `CODE_SIGNING_ALLOWED=NO`.
+- It never runs `xcodebuild test`: UI tests run once per batch on the Mac (ios-apps standard).
+- It skips drafts, so it is unproven until a non-draft run. The `screens` job moved from `macos-latest` to `macos-26` in the same change, see `screens-checked-headless-in-ci`.
 
 ## Required check
 
@@ -39,17 +47,17 @@ Degen's self-hosted runner. On a public repo, a fork PR would run on the owner's
 
 ## Unmeasured
 
-- Whether the runner image has Xcode 27 and xcodegen. If it lacks xcodegen, the job installs a pinned version. Debt: `native-runner-image-unverified`.
+- Whether the runner image has Xcode 27 and xcodegen. If it lacks xcodegen, `app-build` installs the brew version. Debt: `native-runner-image-unverified`.
 - Whether the runner keychain is unlocked. The key store tests use their own service name, see `native-key-via-url-scheme`. Debt: `native-runner-keychain-unverified`.
-- The hosted-runner time of the UI tests. The 139 s figure in Cost is local. Debt: `native-job-hosted-time-unmeasured`.
+- The hosted-runner time of `app-build` and of the UI tests. The 139 s figure in Cost is local. Debt: `native-job-hosted-time-unmeasured`.
 
 ## Still open
 
-- Update, 2026-10-12: lane N5 landed without the steps. Its diff does not touch the workflow, so the native job still runs ST only. Debt: `native-ui-tests-not-in-ci`.
+- Native UI tests are not in CI. The `app-build` job compiles only. Debt: `native-ui-tests-not-in-ci`.
 - How a required check reads a job that the draft guard skipped is unmeasured. Debt: `draft-skip-required-unmeasured`.
 
 ## See also
 
-- `screens-checked-headless-in-ci` — the other macOS job. The native UI test (`native/ManifestUITests/PackagesShellUITests.swift`) is not in this job yet, see Still open.
+- `screens-checked-headless-in-ci` — the other macOS job. The native UI test (`native/ManifestUITests/PackagesShellUITests.swift`) is not in CI, see Still open.
 - `ci-filters-guarantee-no-rebuild` — the trigger filters that the new job must respect.
 - `ledger-private-source-public` — why the repo is public.
