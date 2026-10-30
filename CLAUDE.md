@@ -419,6 +419,7 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-stamp-load-unmeasured` — The native Packages load with stamps is unmeasured.
 - `native-armed-audit-misses-ask` — The native armed stamp audit cannot see the ask.
 - `notes` — One-line findings not likely in normal work.
+- `app-build-waits-xcode-27` — CI compiles no app, because the app needs the iOS 27.1 SDK.
 - `native-card-gestures-unpinned` — No UI test pins the native card header gestures.
 - `native-card-state-in-swift` — The native card copies the line and package done rules in Swift.
 - `native-sync-tally-rules-in-swift` — The native Sync panel and Tally row copy six view rules in Swift.

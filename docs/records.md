@@ -247,6 +247,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 
 | Slug | Gist | Link |
 |---|---|---|
+| `app-build-waits-xcode-27` | CI compiles no app, because the app needs the iOS 27.1 SDK and the hosted image has none. | [`docs/debts/app-build-waits-xcode-27.md`](../docs/debts/app-build-waits-xcode-27.md) |
 | `armed-reset-mistap-unmeasured` | A mis-tap on a control next to the armed Reset box is unmeasured, and so is the width of the armed row. | [`docs/debts/armed-reset-mistap-unmeasured.md`](../docs/debts/armed-reset-mistap-unmeasured.md) |
 | `backup-unwatched` | Once the watchdog is off, no check reads the Worker's snapshots or the `data` branch, so a stopped backup raises no alarm. | [`docs/debts/backup-unwatched.md`](../docs/debts/backup-unwatched.md) |
 | `card-action-row-unmeasured` | The action row's content need at its tallest state is not measured at `f97e423`. | [`docs/debts/card-action-row-unmeasured.md`](../docs/debts/card-action-row-unmeasured.md) |
