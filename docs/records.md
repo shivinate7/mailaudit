@@ -142,7 +142,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `ledger-private-source-public` | **Status:** open. | [`docs/decisions/ledger-private-source-public.md`](../docs/decisions/ledger-private-source-public.md) |
 | `listphotos-is-three-valued` | `listPhotos()` answers in one of two shapes: `{known:true, ids}` or `{known:false, reason}`. | [`docs/decisions/listphotos-is-three-valued.md`](../docs/decisions/listphotos-is-three-valued.md) |
 | `lost-mail-flags-use-order-date` | An untracked, unreceived package gets an amber "may be lost" flag at 14d from the order date. | [`docs/decisions/lost-mail-flags-use-order-date.md`](../docs/decisions/lost-mail-flags-use-order-date.md) |
-| `main-moves-only-by-pr` | Every change reaches `main` through a pull request that passes the required `suite` check. | [`docs/decisions/main-moves-only-by-pr.md`](../docs/decisions/main-moves-only-by-pr.md) |
+| `main-moves-only-by-pr` | Every change reaches `main` through a pull request that passes the required `all-jobs-passed` check. | [`docs/decisions/main-moves-only-by-pr.md`](../docs/decisions/main-moves-only-by-pr.md) |
 | `masthead-is-not-project-name` | The app presents itself as **MANIFEST**, under a C.H Postal Company letterhead. | [`docs/decisions/masthead-is-not-project-name.md`](../docs/decisions/masthead-is-not-project-name.md) |
 | `masthead-is-one-letterhead` | The top of the page is one composed letterhead, not stacked boxes. | [`docs/decisions/masthead-is-one-letterhead.md`](../docs/decisions/masthead-is-one-letterhead.md) |
 | `masthead-running-head-sticky` | The slim running head is `position: sticky` with a fixed 46px height and a 1px rule, 47px drawn. | [`docs/decisions/masthead-running-head-sticky.md`](../docs/decisions/masthead-running-head-sticky.md) |
@@ -260,7 +260,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `claim-9-fractional-box-edges` | A 43.5px box reads as 44px, so claim 9 can pass a box just under 44px. | [`docs/debts/claim-9-fractional-box-edges.md`](../docs/debts/claim-9-fractional-box-edges.md) |
 | `cloudflare-access-login-untested` | Whether the backup sign-in survives in an iOS home-screen app has not been run on a device. | [`docs/debts/cloudflare-access-login-untested.md`](../docs/debts/cloudflare-access-login-untested.md) |
 | `discard-keeps-draft` | `discardEnvelope` in `src/app.jsx` never clears the draft. | [`docs/debts/discard-keeps-draft.md`](../docs/debts/discard-keeps-draft.md) |
-| `draft-skip-required-unmeasured` | It is unmeasured how a required check reads a job that the draft guard skipped. | [`docs/debts/draft-skip-required-unmeasured.md`](../docs/debts/draft-skip-required-unmeasured.md) |
 | `duo-bar-dynamic-type-clips` | The open Duo's tab bar is a fixed 64 pt pill, while its labels scale with Dynamic Type. | [`docs/debts/duo-bar-dynamic-type-clips.md`](../docs/debts/duo-bar-dynamic-type-clips.md) |
 | `duo-checkin-error-under-bar` | On the open Duo, the Packages `checkin-error` overlay sits at the tab's bottom edge. | [`docs/debts/duo-checkin-error-under-bar.md`](../docs/debts/duo-checkin-error-under-bar.md) |
 | `duo-fold-change-unpinned` | The shell UI tests launch MANIFEST in one pose and check the tab bar. | [`docs/debts/duo-fold-change-unpinned.md`](../docs/debts/duo-fold-change-unpinned.md) |
