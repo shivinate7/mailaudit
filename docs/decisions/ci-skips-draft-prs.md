@@ -8,7 +8,7 @@ The owner ruled on 2026-10-11 that CI skips draft PRs. The ruling had one condit
 
 Each job has `!github.event.pull_request.draft` in its job-level `if:`, so a draft starts no runner. The `pull_request` trigger lists four types: `opened`, `synchronize`, `reopened` and `ready_for_review`. `ready_for_review` starts a new run when a draft is marked ready, and in that run every job and the rollup run.
 
-A skip for any reason other than a draft lives at step level, because the rollup would read it as a failure on a run that should pass. See `native-ci-on-hosted-macos` and `screens-checked-headless-in-ci`.
+A skip on a run that should pass lives at step level, because the rollup reads a skipped job as a failure. A job that skips because a needed job went red may skip at job level: the rollup is red then anyway. See `native-ci-on-hosted-macos` and `screens-checked-headless-in-ci`.
 
 Draft state is in the concurrency keys of the suite, screens, native and ste-lint jobs, so a draft run and a ready run on one head never cancel each other. Owner ruling 2026-10-12 ("Land it now, alone"): the keys landed before the draft skip, because they stop a cancelled run at each merge.
 

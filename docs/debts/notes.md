@@ -29,12 +29,12 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 - 2026-10-29, Card in Hand review: no test pins that a failed Tally or Orphaned reload marks a Hand or stamp write failed (`HandScreen.swift` `afterWrite`, `StampViews.swift` `write`).
 - 2026-10-29, CI wiring review round 2: no run has shown that `cancelled()` reads true in the ci-done job after a superseded PR run is cancelled. The first double push on a PR settles it. A false value posts a false red comment.
 - 2026-10-29, CI wiring review round 2: the job groups on main still key by commit, so a third run on one commit can replace a pending job, such as a nightly. The harm is one cancelled job.
-- 2026-10-29, CI wiring review round 2: `ci-skips-draft-prs` names the draft state in the keys of three jobs only. The ste-lint key and the workflow key carry it too.
+- 2026-10-29, CI wiring review round 2: `ci-skips-draft-prs` names the draft state in the keys of four jobs. The workflow key carries it too.
 - 2026-10-30, shoot config review: Tally, Orphaned and Ledger have no shot because no URL reaches them; a deep-link route waits for its own decision.
+- 2026-10-30, all-jobs-passed review round 1: `stripComment` in `test/ci-wiring.test.mjs` cuts at a `#` after an escaped quote, and opens a false quote after `, : [ -` in plain text. No line of `.github/workflows/test.yml` hits either case.
+- 2026-10-30, all-jobs-passed review round 1: the scope job's native pattern omits `src/sync-rules.mjs`, `src/version-rules.mjs` and `src/photo-rules.mjs`, which `build.mjs` bundles into `rules.js`. `check:rules` forces `rules.js` into the same diff, and `native/` matches it.
+- 2026-10-30, all-jobs-passed review round 1: just after `ready_for_review`, a draft run's skipped `all-jobs-passed` may read as passing until the new run reports it. The merge tool waits on that run, so only a merge pressed by hand in GitHub in those seconds is exposed. Unmeasured.
 
 **Status:** open. Each line stays a note until a real incident.
 
 **Decision:** `debts-hold-known-gaps`.
-- 2026-10-30, all-jobs-passed review round 1: `stripComment` in `test/ci-wiring.test.mjs` cuts at a `#` after an escaped quote, and opens a false quote after `, : [ -` in plain text. No line of `.github/workflows/test.yml` hits either case.
-- 2026-10-30, all-jobs-passed review round 1: the scope job's native pattern omits `src/sync-rules.mjs`, `src/version-rules.mjs` and `src/photo-rules.mjs`, which `build.mjs` bundles into `rules.js`. `check:rules` forces `rules.js` into the same diff, and `native/` matches it.
-- 2026-10-30, all-jobs-passed review round 1: just after `ready_for_review`, a draft run's skipped `all-jobs-passed` may read as passing until the new run reports it. The merge tool waits on that run, so only a merge pressed by hand in GitHub in those seconds is exposed. Unmeasured.
