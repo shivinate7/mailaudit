@@ -25,9 +25,7 @@ public enum PackageCard {
         case .surface: return "card"
         case .border: return state == .done ? "green" : "line"
         case .seller: return "ink"
-        case .orderId, .price: return "inkSoft"
-        // A done row's detail is ink: inkSoft on greenSoft is 4.51, and at 11.5pt the audit reads it as under the floor.
-        case .detail: return state == .done ? "ink" : "inkSoft"
+        case .orderId, .price, .detail: return "inkSoft"
         case .rule: return "line"
         case .rowFill: return state == .done ? "greenSoft" : nil
         case .name: return state == .done ? "inkSoft" : "ink"
