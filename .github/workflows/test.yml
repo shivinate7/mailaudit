@@ -190,8 +190,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # -showsdks puts the image's SDKs in the log (debts native-runner-image-unverified, app-build-waits-xcode-27).
-      - run: xcodebuild -version && xcodebuild -showsdks && swift --version
+      - run: xcodebuild -version && swift --version
       - run: swift test --package-path native/ManifestKit
 
   # Audits the workflows and the dependabot config. Same command as local:
