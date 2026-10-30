@@ -10,7 +10,7 @@ The cell sits beside `N canceled`. It uses the Showing cell's style: `○/●` w
 
 Refunded packages come back while this filter is on. `stampedPackages` reads `rangedActive`, which holds the in-range items before the refund exclusion. Each one shows a manila `N left · refunded` pill, in place of the red figure.
 
-The native Packages tab draws the cell in a ruled row of its own that is always there, even at 0 stamped, so the first stamp does not push the list down (`no-layout-shift-under-pointer`). The web draws that row only while a stamp or a canceled order exists. The filter turns itself off when the count reaches 0, on both.
+The native Packages tab draws the cell in a ruled row of its own that is always there, even at 0 stamped. So the first stamp does not push the list down (`no-layout-shift-under-pointer`). The web draws that row only while a stamp or a canceled order exists. The filter turns itself off when the count reaches 0, on both.
 
 This is the only place a refund can be found and un-stamped. `packageOrder` ranks whichever source is live. Otherwise a refunded package would sort last under every order.
 
