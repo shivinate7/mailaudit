@@ -6,7 +6,7 @@ Home: docs/decisions/one-simulator-per-mac.md
 
 **Status:** ruled. The owner ruled on 2026-10-26 at 16:35 CDT that the global load brake governs mailaudit. The owner ruled on 2026-10-28 at 02:31 CDT that simulator tests run through the shared `sim-test`.
 
-**Holds while:** the global load brake and the simulator boot cap stay in force, no rule checks load outside a lane, and `bin/sim-test` in claude-settings still reuses a booted iPhone and shuts down only what it booted.
+**Holds while:** the global load brake and the simulator boot cap stay in force and no rule checks load outside a lane. Also, `bin/sim-test` in claude-settings still reuses a booted iPhone and shuts down only what it booted.
 
 Mailaudit's load and simulator rules come from the owner's global settings. This record keeps only the steps those rules do not cover.
 
@@ -32,7 +32,7 @@ These stay with the lane:
 4. Never end the turn while waiting.
 5. If `sim-test` exits 1 without printing a `sim-test: using` line, its boot failed and no test ran. Read the `simctl` error. Retry once after a bounded wait only when the error says the machine is busy. Never rerun in a loop.
 
-The tool takes no lock and waits for no load. The boot guard reads the command word of a Bash call, so it does not see the boot inside `sim-test`, and the cap of two booted is not enforced on that path. Check `xcrun simctl list devices booted` before a run.
+The tool takes no lock and waits for no load. The boot guard reads the command word of a Bash call, so it does not see the boot inside `sim-test`. The cap of two booted is not enforced on that path. Check `xcrun simctl list devices booted` before a run.
 
 ## The Duo device
 
