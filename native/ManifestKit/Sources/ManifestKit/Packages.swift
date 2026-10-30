@@ -20,6 +20,9 @@ public final class PackagesModel {
     @ObservationIgnored private let engine: RulesEngine
     @ObservationIgnored private let store: LedgerStore
     public private(set) var rows: [Package] = []
+    /// Every live package, whatever the stamped filter: the groupPackages of LiveItems.of, so canceled and refunded
+    /// packages are out. Card in Hand reads it, not `rows` (stamped-filter-on-the-pipeline).
+    public private(set) var liveRows: [Package] = []
     public private(set) var received: [String: Int] = [:]
     /// "N of M" per item key, from the bundle's countLabel.
     public private(set) var labels: [String: String] = [:]
@@ -82,16 +85,22 @@ public final class PackagesModel {
         let stampedRaw = try await engine.call("stampedPackagesOf", "[\(active),\(try json(["$set": Array(stampedGks)]))]")
         let stamped = try JSONDecoder().decode([Package].self, from: Data(stampedRaw.utf8))
         let on = showStamped && !stamped.isEmpty
-        let grouped = on ? stampedRaw : try await engine.call("groupPackages", "[\(live)]")
+        let liveGrouped = try await engine.call("groupPackages", "[\(live)]")
+        let newLive = try JSONDecoder().decode([Package].self, from: Data(liveGrouped.utf8))
+        let grouped = on ? stampedRaw : liveGrouped
         let sorted = try await engine.call("sortPackages", "[\(grouped),\"newest\",\(try json(got))]")
         let newRows = try JSONDecoder().decode([Package].self, from: Data(sorted.utf8))
         let refunds = try await StampRules.keys(where: "isRefundStamp", in: held, engine: engine)
         let kinds = try await StampRules.kinds(engine: engine)
-        var (updates, failure) = try await refresh(newRows.map { ($0, $0.items) }, received: got, withStatic: true)
+        // The maps cover the live lines the filter hides too, and the refunded packages the stamped list adds.
+        let liveGks = Set(newLive.map(\.gk))
+        let covered = newLive + newRows.filter { !liveGks.contains($0.gk) }
+        var (updates, failure) = try await refresh(covered.map { ($0, $0.items) }, received: got, withStatic: true)
         let (texts, textFailure) = await stampTexts(stamped, held: held, refunds: refunds, received: got)
         updates += texts
         failure = failure ?? textFailure
         rows = newRows
+        liveRows = newLive
         received = got
         stamps = held
         stampedCount = stamped.count
@@ -234,10 +243,15 @@ public final class PackagesModel {
         return (updates, failure)
     }
 
+    /// The package that holds the line: a live one, or a refunded one the stamped list shows.
+    private func package(holding key: String) -> Package? {
+        (liveRows + rows).first { $0.items.contains { $0.key == key } }
+    }
+
     /// A tap: the bundle's toggleCount picks the count to write. Every failure, rule or save,
     /// lands in checkInError and is thrown.
     public func toggle(key: String) async throws {
-        guard let item = rows.lazy.flatMap(\.items).first(where: { $0.key == key }) else { return }
+        guard let item = package(holding: key)?.items.first(where: { $0.key == key }) else { return }
         do {
             let out = try await engine.call("toggleCount", "[\(received[key] ?? 0),\(item.qty)]")
             guard let count = Int(out) else { throw RulesEngine.Failure.threw("toggleCount gave \(out)") }
@@ -254,7 +268,7 @@ public final class PackagesModel {
     /// A stepper tap, as the web stepper: one copy more or fewer, kept within 0 and the line's qty.
     /// It takes the checkbox's save path, checkIn, so a failure lands in checkInError.
     public func step(key: String, by delta: Int) async {
-        guard let item = rows.lazy.flatMap(\.items).first(where: { $0.key == key }) else { return }
+        guard let item = package(holding: key)?.items.first(where: { $0.key == key }) else { return }
         let got = min(received[key] ?? 0, item.qty)  // an over-count steps from the clamped figure, as on the web
         try? await checkIn(key: key, count: min(max(got + delta, 0), item.qty))
     }
@@ -267,8 +281,7 @@ public final class PackagesModel {
         checkInError = nil
         bulkUndoGk = nil
         received = store.received()
-        if let pkg = rows.first(where: { $0.items.contains { $0.key == key } }),
-            let item = pkg.items.first(where: { $0.key == key }) {
+        if let pkg = package(holding: key), let item = pkg.items.first(where: { $0.key == key }) {
             try await reread(pkg, items: [item])
         }
     }

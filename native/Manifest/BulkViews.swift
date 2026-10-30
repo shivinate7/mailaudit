@@ -48,12 +48,10 @@ struct BulkRow: View {
         .frame(maxWidth: .infinity, minHeight: 48, alignment: .trailing)
         // The row as one element of its own: a container would take the union of its visible children and follow them.
         .background { Color.clear.accessibilityElement().accessibilityLabel("Check-in controls").accessibilityIdentifier(id("row")) }
-        .overlay(alignment: .bottomTrailing) {
-            if armed {
-                AskPanel(confirmTitle: "Tap again to clear \(checkIns(copiesIn))", cancelID: id("clear-cancel"), confirmID: id("clear-confirm"),
-                         cancel: { armed = false }, confirm: { armed = false; Task { await clear() } })
-                    .padding(.trailing, 12)
-            }
+        .hangingAsk(armed) {
+            AskPanel(confirmTitle: "Tap again to clear \(checkIns(copiesIn))", cancelID: id("clear-cancel"), confirmID: id("clear-confirm"),
+                     cancel: { armed = false }, confirm: { armed = false; Task { await clear() } })
+                .padding(.trailing, 12)
         }
         .zIndex(1)  // the armed ask hangs over the lines below
         .task(id: armed) { if armed { try? await Task.sleep(for: .seconds(4)); armed = false } }

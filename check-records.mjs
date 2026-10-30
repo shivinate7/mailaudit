@@ -289,6 +289,9 @@ function closestSlug(token, slugs) {
   }
 }
 
+// An index entry is a bullet that opens with a backticked slug: "- `slug` — ...".
+const INDEX_BULLET = /^- `([a-z0-9-]+)`/gm;
+
 /* ---------- claim 5: no orphan, and no dead index entry ----------
    CLAUDE.md on this branch is still the long file it always was, not the
    index it is about to become — so this claim is behind an env switch,
@@ -304,10 +307,11 @@ function closestSlug(token, slugs) {
 {
   const claude = readFileSync("CLAUDE.md", "utf8");
   const slugSet = new Set(records.map((r) => r.slug));
+  // Only an index bullet counts, so a slug named in prose is still an orphan.
+  // The pattern is the one claim 7 reads, so both claims agree on what the
+  // index lists.
   const citedInIndex = new Set(
-    [...claude.matchAll(/`([a-z0-9]+(?:-[a-z0-9]+)+)`/g)]
-      .map((m) => m[1])
-      .filter((s) => slugSet.has(s))
+    [...claude.matchAll(INDEX_BULLET)].map((m) => m[1]).filter((s) => slugSet.has(s))
   );
   const orphans = records.filter((r) => !citedInIndex.has(r.slug));
   const deadEntries = [...claude.matchAll(/`([a-z0-9]+(?:-[a-z0-9]+)+)`/g)]
@@ -423,7 +427,7 @@ function closestSlug(token, slugs) {
     bad++;
   }
   const open = (claude.split(/^## Open threads$/m)[1] ?? "").split(/^## /m)[0];
-  for (const m of open.matchAll(/^- `([a-z0-9-]+)`/gm)) {
+  for (const m of open.matchAll(INDEX_BULLET)) {
     const r = records.find((x) => x.slug === m[1]);
     if (r && !/^\*\*Status:\*\*/m.test(r.text)) {
       console.error(`check:records: ${r.path}: open record has no "**Status:**" line`);
@@ -431,7 +435,7 @@ function closestSlug(token, slugs) {
     }
   }
   const seen = new Set();
-  for (const m of claude.matchAll(/^- `([a-z0-9-]+)`/gm)) {
+  for (const m of claude.matchAll(INDEX_BULLET)) {
     if (seen.has(m[1])) {
       console.error(`check:records: CLAUDE.md lists \`${m[1]}\` more than once`);
       bad++;

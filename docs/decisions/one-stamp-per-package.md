@@ -2,7 +2,7 @@
 
 Each package holds at most one order stamp. Stamps are set by hand from a fixed list of kinds: `Claim filed · Refunded · Seller contacted · Reshipped · Partial refund · Other`.
 
-**Holds while:** `STAMP_KINDS` in `src/view-rules.mjs` lists the six kinds (V35.1), `nextStamp` there builds every stamp record (V36), the web's `setStamp` and the native `StampWriter` both call it, and `stamps` is keyed by the package key from `gkOf` in `src/view-rules.mjs`. V4.4 in `test/view-rules.test.mjs` pins the split by seller that this key relies on.
+**Holds while:** `STAMP_KINDS` in `src/view-rules.mjs` lists the six kinds (V35.1), `nextStamp` there builds every stamp record (V36). The web's `setStamp` and the native `StampWriter` both call it, and `stamps` is keyed by the package key from `gkOf` in `src/view-rules.mjs`. V4.4 in `test/view-rules.test.mjs` pins the split by seller that this key relies on.
 
 A stamp is dated the day it was set. The date is the local calendar day, not UTC. This is the same trap the month picker documents. A stamp can also carry an optional free line.
 

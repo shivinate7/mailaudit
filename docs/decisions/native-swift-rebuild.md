@@ -56,7 +56,7 @@ Every claim below rests on an Apple or WebKit source. None was measured on the o
 - The client must build each item key exactly as the parser does, see `saved-state-shape`.
 - Every invariant that touches data must hold in the Swift client too. These are `imports-merge-never-replace`, `saved-state-shape` and `the-token-is-a-credential`.
 - The signing team is paid. It is not a free Personal Team, whatever Degen's spec says. The local profiles are valid from 2026-10-11 to 2027-10-11, and a paid team allows Associated Domains.
-- Signing works on this Mac with `xcodebuild -allowProvisioningUpdates DEVELOPMENT_TEAM=SFYDZG48BE CODE_SIGN_STYLE=Automatic`. The phone gets the app through TestFlight, see `native-ships-via-testflight`.
+- Signing works on this Mac with `ios-ship`, which passes the team from the account file to the build as its signing team and sets `CODE_SIGN_STYLE=Automatic`. The phone gets the app through TestFlight, see `native-ships-via-testflight`.
 
 ## Costs the rebuild accepts
 

@@ -1,7 +1,16 @@
 {
+  "rolled-out": true,
   "kinds": {
-    "invariants": { "path": "invariants", "record": true, "listed": true },
-    "measurements": { "path": "measurements", "record": true, "listed": true }
+    "invariants": { "path": "invariants", "record": true, "listed": true, "about": "One record per rule that must not break, each naming the test that pins it." },
+    "measurements": { "path": "measurements", "record": true, "listed": true, "about": "One record per measured figure, with the way to measure it again." },
+    "icon": { "path": "icon", "about": "The 1024px app icon master and the script that redraws it." },
+    "native": { "path": "native", "about": "The Swift iOS client: the app, ManifestKit, UI tests and the XcodeGen project file." },
+    "scripts": { "path": "scripts", "about": "Node scripts run by hand or by npm: golden files, the one-time photo copy and the sync key sender." },
+    "shared": { "path": "shared", "about": "The palette tokens and the test fixtures that the web and Swift clients both read." },
+    "src": { "path": "src", "about": "The web app: the React component, the platform layer and the pure rule modules." },
+    "test": { "path": "test", "about": "The behaviour suites, their jsdom harness and the headless screens check." },
+    "tools": { "path": "tools", "about": "The config that the ios-ship tool reads to archive and upload the iOS app." },
+    "worker": { "path": "worker", "about": "The Cloudflare Worker that syncs the ledger, with its pure rules and tests." }
   },
   "waiting-page": "https://claude.ai/artifact/FBKSLCBLJsvfNGeePvDz13"
 }

@@ -40,8 +40,8 @@ struct StampedRow: View {
 }
 
 /// The two-tap ask of a destructive control (no-native-dialogs): Cancel, then the confirm button, in a panel. It is drawn as
-/// an overlay of the row it belongs to, at `.bottomTrailing`, and hangs 4pt below that row whatever height the row has at the
-/// current type size, so arming moves nothing. The stamp's Remove and the bulk Clear both draw it.
+/// an overlay of the row it belongs to, hung below it by `hangingAsk`, so arming moves nothing. The stamp's Remove and the
+/// bulk Clear both draw it.
 struct AskPanel: View {
     let confirmTitle: String
     let cancelID: String
@@ -64,9 +64,29 @@ struct AskPanel: View {
         .padding(4)
         .background(RoundedRectangle(cornerRadius: 8).fill(paint(.askPanelFill)).shadow(color: Parchment.shadow, radius: 2, y: 1))
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.askPanelBorder), lineWidth: 1))
-        // Its top sits 4pt under the row, whatever height the row has at the current type size.
-        .alignmentGuide(.bottom) { $0[.top] - 4 }
         .zIndex(1)
+    }
+}
+
+extension View {
+    /// Draws `ask` as an overlay of this row, its top 4pt under the row's bottom edge whatever height the row has at the
+    /// current type size, so arming takes no layout space and moves nothing. The stamp's Remove and the bulk Clear both hang
+    /// their AskPanel through this. The offset is the measured row height: an alignment guide on the overlay put the panel
+    /// above the row.
+    func hangingAsk<Ask: View>(_ armed: Bool, @ViewBuilder ask: () -> Ask) -> some View {
+        modifier(HangingAsk(armed: armed, ask: armed ? ask() : nil))
+    }
+}
+
+private struct HangingAsk<Ask: View>: ViewModifier {
+    let armed: Bool
+    let ask: Ask?
+    @State private var rowHeight: CGFloat = 0
+
+    func body(content: Content) -> some View {
+        content
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { rowHeight = $0 }
+            .overlay(alignment: .topTrailing) { if armed, let ask { ask.offset(y: rowHeight + 4) } }
     }
 }
 
@@ -260,12 +280,18 @@ struct StampSection: View {
                     focused = false
                 }
             }
-            .padding(.horizontal, 12)
-            .frame(minHeight: 44)  // inside the box, so the field's own frame is the 44pt hit region
-            .background(paint(.noteFill), in: RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.noteBorder), lineWidth: 1))
             .accessibilityLabel("Stamp note")
             .accessibilityIdentifier("stamp-note:\(pkg.gk)")
+            // The field's own frame is only its two lines (36.7pt), so the whole box is the hit region: a tap anywhere in
+            // it focuses the field. The box only contains the field, so VoiceOver still reads one "Stamp note" element.
+            .padding(.horizontal, 12)
+            .frame(minHeight: 44)
+            .background(paint(.noteFill), in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.noteBorder), lineWidth: 1))
+            .contentShape(Rectangle())
+            .onTapGesture { focused = true }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("stamp-note-box:\(pkg.gk)")
     }
 
     /// Remove stamp (only when stamped) leads, then Cancel and Save. The armed ask hangs below this row, so arming moves
@@ -294,12 +320,10 @@ struct StampSection: View {
             .accessibilityHint(ready ? "" : "Pick a stamp first.")
             .accessibilityIdentifier("stamp-save:\(pkg.gk)")
         }
-        .overlay(alignment: .bottomTrailing) {
-            if armed {
-                AskPanel(confirmTitle: "Tap again to remove stamp from \(totalQty) card\(totalQty == 1 ? "" : "s")",
-                         cancelID: "stamp-ask-cancel:\(pkg.gk)", confirmID: "stamp-ask-confirm:\(pkg.gk)",
-                         cancel: { armed = false }, confirm: { armed = false; Task { await remove() } })
-            }
+        .hangingAsk(armed) {
+            AskPanel(confirmTitle: "Tap again to remove stamp from \(totalQty) card\(totalQty == 1 ? "" : "s")",
+                     cancelID: "stamp-ask-cancel:\(pkg.gk)", confirmID: "stamp-ask-confirm:\(pkg.gk)",
+                     cancel: { armed = false }, confirm: { armed = false; Task { await remove() } })
         }
     }
 

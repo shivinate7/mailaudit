@@ -114,11 +114,6 @@ final class StampRulesTests: XCTestCase {
 
     // MARK: the stamped list and its count
 
-    /// What the Mirror finds under `name`, or under the `_name` @Observable stores it as.
-    func peek<T>(_ model: Any, _ name: String, as type: T.Type = T.self) -> T? {
-        Mirror(reflecting: model).children.first { $0.label == name || $0.label == "_" + name }?.value as? T
-    }
-
     /// E1 holds a claim, R1 / Seller R a refund, F1 a removed stamp (a tombstone) and the canceled X1 a claim.
     /// The cell counts E1 and the refunded R1, which the normal list has dropped: the web's stampedPackagesOf runs on the
     /// list before the refund exclusion (stamped-filter-on-the-pipeline). A tombstone is no stamp, and a canceled

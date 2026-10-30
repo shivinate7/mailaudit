@@ -65,7 +65,7 @@ At `75a96b8`, measured 2026-10-14 with a 1-minute load of about 3.3: New York 12
 
 Before `75a96b8`, the 2026-10-12 run at `2857876` gave these figures. New York: 1284 passed, 169 s. UTC: 1283 passed, 178 s. The 1-minute load was about 92.
 
-Each zone ran once, so each time is one reading. Groups 67 and 68 moved to the virtual clock at `c9e4c4f`, and the New York run went from 267.2 s to 123.9 s, back to back, under a 1-minute load of about 5 to 11. Their idle and retry waits had run in real time. Take several runs before you compare a time. Groups 30 to 31 hold real-timer waits on purpose.
+Each zone ran once, so each time is one reading. Groups 67 and 68 moved to the virtual clock at `c9e4c4f`. The New York run went from 267.2 s to 123.9 s, back to back, under a 1-minute load of about 5 to 11. Their idle and retry waits had run in real time. Take several runs before you compare a time. Groups 30 to 31 hold real-timer waits on purpose.
 
 ## Reader
 
