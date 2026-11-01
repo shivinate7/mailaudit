@@ -2,6 +2,13 @@
 paths:
   - "src/app.jsx"
   - "src/view-rules.mjs"
+  - "src/merge-rules.mjs"
+  - "shared/tokens.json"
+  - "build.mjs"
+  - "test/screens.mjs"
+  - "test/a11y-base-boxes.json"
+  - "native/Manifest/Theme.swift"
+  - "native/ManifestKit/Sources/ManifestKit/LedgerStore.swift"
 ---
 
 # Screens
@@ -121,6 +128,5 @@ Where the page holds its shape, and where every colour comes from.
 - `palette-silver-stays-cool` — Silver must stay a cool grey.
 - `palette-theme-color-tracks-paper` — The browser chrome colour must track the paper token.
 - `palette-tokens-contrast-floor` — Every colour token meets a contrast floor.
-- `audit-skips-measured-flags` — The native audits skip only named, owner-ruled findings.
 - `progress-bar-accent-then-green` — The progress bar is accent, then green at 100%.
 - `typography-cochin-and-mono` — Cochin sets words, monospace sets numbers.

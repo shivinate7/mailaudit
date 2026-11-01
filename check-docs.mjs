@@ -7,7 +7,7 @@
 // and in .claude/rules/, and checks four claims against the whole
 // corpus: the suite's published assertion count, every repo path named in
 // backticks, every code name in backticks, and every link target in
-// README.md and CLAUDE.md. Run with `npm run check:docs`. Text inside a code fence is
+// README.md, CLAUDE.md and the rule files. Run with `npm run check:docs`. Text inside a code fence is
 // never judged: it is sample code, not a claim about the repo.
 //
 // What this deliberately does NOT check: the measured page figures in "The
@@ -20,6 +20,7 @@
 import * as esbuild from "esbuild";
 import { readFileSync, readdirSync } from "fs";
 import { existsSync, statSync } from "fs";
+import { dirname, join } from "path";
 import { execFileSync } from "child_process";
 
 const FOLDERS = ["decisions", "invariants", "measurements", "debts"];
@@ -412,7 +413,7 @@ for (const { file, span, index, prose: fileProse } of allSpans) {
 }
 console.log(`check:docs: ${namesJudged} code name(s) judged against the code`);
 
-/* ---------- claim 4: markdown link targets in README.md and CLAUDE.md resolve ----------
+/* ---------- claim 4: markdown link targets in README.md, CLAUDE.md and the rule files resolve ----------
    [text](target): a relative file target must exist. URLs and bare #anchors are
    not judged. A #fragment on a file target is stripped; the file is judged.
    Fences are already blank. Code spans are blanked here too (same length, so
@@ -424,13 +425,14 @@ console.log(`check:docs: ${namesJudged} code name(s) judged against the code`);
   let links = 0;
   const blankSpans = (t) =>
     t.replace(/(`+)(?!`)[^\n]*?[^`]\1(?!`)/g, (m) => m.replace(/[^\n]/g, " "));
-  for (const f of prose.filter((x) => x.path === "README.md" || x.path === "CLAUDE.md")) {
+  for (const f of prose.filter((x) => x.path === "README.md" || x.path === "CLAUDE.md" || x.rule)) {
     const text = blankSpans(f.prose);
     for (const m of text.matchAll(/\]\(\s*(?:<([^>\n]+)>|([^)\s]+))/g)) {
       const t = (m[1] ?? m[2]).split("#")[0];
       if (!t || /^[a-z][a-z0-9+.-]*:/i.test(t)) continue;
       links++;
-      if (!existsSync(t)) {
+      // A target resolves from the linking file's folder, as a markdown reader does.
+      if (!existsSync(join(dirname(f.path), t))) {
         console.error(`check:docs: ${f.path}:${lineAt(text, m.index)} links to \`${t}\`, which does not exist`);
         failures++;
       }
