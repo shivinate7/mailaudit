@@ -23,12 +23,12 @@ const CHECK =
   resolve(dirname(fileURLToPath(import.meta.url)), "..", "check-docs.mjs");
 
 let failures = 0;
-function expect(label, cond) {
+function expect(label, cond, detail = "") {
   if (cond) {
     console.log(`ok   ${label}`);
   } else {
     failures++;
-    console.log(`FAIL ${label}`);
+    console.log(`FAIL ${label}${detail ? `\n     ${detail}` : ""}`);
   }
 }
 
@@ -184,6 +184,36 @@ expect(
       missing.out.includes(
         "docs/debts/fixture-debt-missing-path.md:3 names `src/missing-file.mjs`, which does not exist in this repo"
       )
+  );
+}
+
+// Path-scoped rule files. check-docs.mjs judges the paths a rule file names, as
+// it does for a record. The rule's valid path on line 8 must not be flagged. The
+// missing path on line 9 must fail at its own line.
+{
+  const rule = runCorpus({
+    "src/present.mjs": "export const ok = 1;\n",
+    ".claude/rules/x.md": [
+      "---",
+      "paths:",
+      '  - "src/**"',
+      "---",
+      "",
+      "# Fixture rule names paths",
+      "",
+      "The rule cites `src/present.mjs`, which is in the repo.",
+      "The rule cites `src/missing-rule-file.mjs`, which is not in the repo.",
+      "",
+    ].join("\n"),
+  });
+  expect(
+    "rules: a rule file naming a missing path fails at the rule's own line, and its valid path is not flagged",
+    rule.status !== 0 &&
+      rule.out.includes(
+        ".claude/rules/x.md:9 names `src/missing-rule-file.mjs`, which does not exist in this repo"
+      ) &&
+      !rule.out.includes("src/present.mjs"),
+    `exit ${rule.status}: ${rule.out.trim().split("\n").slice(-2).join(" | ")}`
   );
 }
 
