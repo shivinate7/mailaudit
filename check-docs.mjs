@@ -3,8 +3,8 @@
 // This used to read only CLAUDE.md, which was 2,385 lines and held every
 // argument. CLAUDE.md is now an index; the records under
 // docs/decisions/, invariants/ and measurements/ hold the prose this file used to
-// check. So this walks CLAUDE.md plus every `.md` file in those three
-// folders, and checks four claims against the whole
+// check. So this walks CLAUDE.md plus every `.md` file in those folders
+// and in .claude/rules/, and checks four claims against the whole
 // corpus: the suite's published assertion count, every repo path named in
 // backticks, every code name in backticks, and every link target in
 // README.md and CLAUDE.md. Run with `npm run check:docs`. Text inside a code fence is
@@ -28,6 +28,17 @@ const DIR = (f) => (f === "decisions" || f === "debts" ? `docs/${f}` : f); // la
 // ---------- load the corpus: CLAUDE.md plus every record ----------
 
 const files = ["CLAUDE.md", "README.md"].map((path) => ({ path, text: readFileSync(path, "utf8") }));
+// A path-scoped rule file holds claims like a record does, so it is walked too.
+// check-records.mjs lists the same folder for its index; the two checkers share no module.
+const RULES_DIR = ".claude/rules";
+let ruleCount = 0;
+if (existsSync(RULES_DIR)) {
+  for (const name of readdirSync(RULES_DIR).sort()) {
+    if (!name.endsWith(".md")) continue;
+    files.push({ path: `${RULES_DIR}/${name}`, text: readFileSync(`${RULES_DIR}/${name}`, "utf8"), rule: true });
+    ruleCount++;
+  }
+}
 for (const folder of FOLDERS) {
   if (!existsSync(DIR(folder))) continue; // a missing folder reads as empty
   for (const name of readdirSync(DIR(folder)).sort()) {
@@ -92,7 +103,19 @@ function withoutFences(text) {
   return lines.join("\n");
 }
 
-const prose = files.map((f) => ({ ...f, prose: withoutFences(f.text) }));
+/* A rule file opens with YAML front matter (`paths:` globs). Those globs are
+   config, not claims about files in the repo, so the block is blanked line for
+   line, like a fence, and later line numbers stay true. */
+function withoutFrontMatter(text) {
+  const lines = text.split("\n");
+  if (lines[0] !== "---") return text;
+  const end = lines.indexOf("---", 1);
+  if (end === -1) return text;
+  for (let i = 0; i <= end; i++) lines[i] = " ".repeat(lines[i].length);
+  return lines.join("\n");
+}
+
+const prose = files.map((f) => ({ ...f, prose: withoutFences(f.rule ? withoutFrontMatter(f.text) : f.text) }));
 
 function lineAt(text, index) {
   return text.slice(0, index).split("\n").length;
@@ -416,7 +439,9 @@ console.log(`check:docs: ${namesJudged} code name(s) judged against the code`);
   console.log(`check:docs: ${links} markdown link target(s) checked`);
 }
 
-console.log(`check:docs: walked ${files.length} file(s) (CLAUDE.md, README.md + ${files.length - 2} record(s))`);
+console.log(
+  `check:docs: walked ${files.length} file(s) (CLAUDE.md, README.md + ${ruleCount} rule file(s) + ${files.length - 2 - ruleCount} record(s))`
+);
 console.log(`check:docs: ${checked} path(s) checked against the filesystem, outside any fence`);
 console.log(`check:docs: ${refused.size} backtick span(s) refused as not path-like`);
 if (process.env.CHECK_DOCS_VERBOSE) {
