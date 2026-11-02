@@ -733,16 +733,17 @@ function shellStrip(line) {
   return line;
 }
 
-// The make -n expansion of one make line, with the UI_TEST that its step sets.
-function expandLine(makefile, targets, uiTest) {
+// The make -n expansion of one make line, with the UI_TEST that its step sets and any extra env.
+function expandLine(makefile, targets, uiTest, extraEnv = {}) {
   if (targets.length === 0) return { error: "a make line names no target" };
-  const env = uiTest === undefined ? {} : { UI_TEST: uiTest };
+  const env = uiTest === undefined ? { ...extraEnv } : { ...extraEnv, UI_TEST: uiTest };
   const r = makeRun(makefile, ["-n", ...targets], env);
   return r.ok ? { text: joinContinued(r.out) } : { error: `make -n ${targets.join(" ")} failed: ${r.err}` };
 }
 
 // What one job runs: the expansion of each make line in its run scripts, or the error that stopped it.
-function jobTests(job, makefile, classes) {
+// extraEnv is the runner's env for the make run, such as SIM_UDID from $GITHUB_ENV.
+function jobTests(job, makefile, classes, extraEnv = {}) {
   const parts = [];
   for (const step of steps(job)) {
     if (typeof step.run !== "string") continue;
@@ -753,7 +754,7 @@ function jobTests(job, makefile, classes) {
         .split(/\s+/)
         .slice(1)
         .filter((t) => t !== "" && !t.startsWith("-") && !t.includes("="));
-      parts.push(expandLine(makefile, targets, uiTest));
+      parts.push(expandLine(makefile, targets, uiTest, extraEnv));
     }
   }
   const error = parts.find((p) => p.error)?.error;
@@ -765,7 +766,51 @@ function jobTests(job, makefile, classes) {
   return { error, text, ui: UI_RUN.test(text), selected: base.filter((c) => !skip.has(c)).sort() };
 }
 
-// The checks k1 to k5. Each reads one input: the Makefile through make, the Swift classes, or the
+// The simulator id that CI sets in $GITHUB_ENV. A test runs make and the shell with this fake one.
+const CI_UDID = "TEST-UDID-1234";
+const CI_DESTINATION = `platform=iOS Simulator,id=${CI_UDID}`;
+
+// The argument list that xcodebuild gets from one printed command. sh runs the line, with xcodebuild
+// set to a shell function that prints each argument on its own line, so no Xcode runs. sh expands
+// $SIM_UDID from the environment, as the runner's shell does.
+function xcodebuildArgs(line) {
+  const shim = 'xcodebuild() { for a in "$@"; do printf "%s\\n" "$a"; done; }';
+  const r = spawnSync("sh", ["-c", `${shim}\n${line}`], {
+    cwd: ROOT,
+    encoding: "utf8",
+    env: { ...process.env, SIM_UDID: CI_UDID },
+  });
+  if (r.error) throw new Error(`sh cannot run (${r.error.message})`);
+  if (r.status !== 0) throw new Error(`sh could not run the line (${(r.stderr ?? "").trim()})`);
+  return r.stdout.replace(/\n$/, "").split("\n");
+}
+
+// The value after -destination in an argument list, or undefined when there is none.
+function destinationOf(argv) {
+  const i = argv.indexOf("-destination");
+  return i < 0 ? undefined : argv[i + 1] ?? "";
+}
+
+// k6 for one UI-test job: each xcodebuild test line in its make expansion must get the real UDID.
+function udidOfJob(job) {
+  if (job.error) return { ok: false, detail: job.error };
+  const lines = job.text.split("\n").filter((l) => /\bxcodebuild test\b/.test(l));
+  if (lines.length === 0) return { ok: false, detail: "no xcodebuild test line in its make expansion" };
+  const seen = [];
+  for (const line of lines) {
+    try {
+      seen.push(destinationOf(xcodebuildArgs(line)) ?? "no -destination");
+    } catch (e) {
+      return { ok: false, detail: e.message };
+    }
+  }
+  return {
+    ok: seen.every((d) => d === CI_DESTINATION),
+    detail: `xcodebuild gets destination ${seen.join(" | ")}; want ${CI_DESTINATION}`,
+  };
+}
+
+// The checks k1 to k6. Each reads one input: the Makefile through make, the Swift classes, or the
 // milestone workflow's jobs. A read that fails makes its check fail, and the detail says why.
 function uiTestChecks({ makefile, classes, msDoc, msErr }) {
   const LABEL = {
@@ -774,6 +819,7 @@ function uiTestChecks({ makefile, classes, msDoc, msErr }) {
     k3: "k3 milestone.yml has two UI-test jobs, timeout-minutes 45 and 50, and neither runs a Duo class",
     k4: "k4 each UI-test job creates its simulator on runtime iOS-27-1",
     k5: "k5 each UI test class is in exactly one of UI_TESTS_A, the B set and DUO_UI_TESTS; no class drops out",
+    k6: "k6 each UI-test job's xcodebuild gets the simulator id that CI sets",
   };
   const out = [];
   const add = (id, fn) => {
@@ -823,7 +869,7 @@ function uiTestChecks({ makefile, classes, msDoc, msErr }) {
   let ran = [];
   let ranErr;
   try {
-    ran = (jobs ?? []).map(([id, job]) => ({ id, job, ...jobTests(job, makefile, classes) }));
+    ran = (jobs ?? []).map(([id, job]) => ({ id, job, ...jobTests(job, makefile, classes, { SIM_UDID: CI_UDID }) }));
   } catch (e) {
     ranErr = e.message;
   }
@@ -891,6 +937,16 @@ function uiTestChecks({ makefile, classes, msDoc, msErr }) {
         `twice ${twice.join(" ") || "none"}`,
     };
   });
+
+  // k6 has one result per UI-test job, so a red shows which job's destination is wrong.
+  const gated6 = gate();
+  if (gated6) out.push({ label: `${LABEL.k6}: ${gated6.detail}`, ok: false, detail: gated6.detail });
+  else if (uiJobs.length === 0) out.push({ label: `${LABEL.k6}: no UI-test job`, ok: false, detail: "" });
+  else
+    for (const j of uiJobs) {
+      const r = udidOfJob(j);
+      out.push({ label: `k6 ${j.id} the simulator id reaches xcodebuild as the real UDID`, ok: r.ok, detail: r.detail });
+    }
 
   return out;
 }
@@ -1161,23 +1217,31 @@ function fixtureMakefile(o = {}) {
   const uiB =
     o.uiB ??
     `xcodebuild test -skip-testing:ManifestUITests/${duo} -skip-testing:ManifestUITests/AuditSkippingTabBarUITests`;
+  // The UI recipes run $(UI_TEST) with the test's arguments, as the Makefile does. Each uiA or uiB
+  // text starts with "xcodebuild test", and that word is what the recipe swaps for $(UI_TEST).
+  const runIt = (text) => `\t$(UI_TEST)${text.slice("xcodebuild test".length)}`;
   return [
     `DUO_UI_TESTS := ${duo}`,
     ...(o.noA ? [] : [`UI_TESTS_A := ${a}`]),
     "ui-test:",
     `\t@echo ${uiTest}`,
     "ui-a:",
-    `\t@echo ${uiA}`,
+    runIt(uiA),
     "ui-b:",
-    `\t@echo ${uiB}`,
+    runIt(uiB),
     "",
   ].join("\n");
 }
 const FIX_MAKEFILE = fixtureMakefile();
 const FIX_INPUTS = { makefile: FIX_MAKEFILE, classes: FIX_CLASSES };
 const SIM_RUNTIME = "com.apple.CoreSimulator.SimRuntime.iOS-27-1";
-// One UI-test job. Its run creates the simulator with the line `sim` and runs one make line.
-function msJob(id, minutes, target, sim = `xcrun simctl create ci-sim "iPhone 18 Pro" ${SIM_RUNTIME}`) {
+// The UI_TEST value that milestone.yml sets: a $$ in the value is one $ after make expands it. The
+// broken form has one $, so make reads $S and prints id=IM_UDID.
+const UI_TEST_FIXED = 'xcodebuild test -destination "platform=iOS Simulator,id=$$SIM_UDID" -collect-test-diagnostics never';
+const UI_TEST_BROKEN = 'xcodebuild test -destination "platform=iOS Simulator,id=$SIM_UDID" -collect-test-diagnostics never';
+// One UI-test job. Its run creates the simulator with the line `sim` and runs one make line with the
+// step env UI_TEST set to `ui`.
+function msJob(id, minutes, target, sim = `xcrun simctl create ci-sim "iPhone 18 Pro" ${SIM_RUNTIME}`, ui = UI_TEST_FIXED) {
   return [
     `  ${id}:`,
     "    if: ${{ !github.event.pull_request.draft }}",
@@ -1192,6 +1256,8 @@ function msJob(id, minutes, target, sim = `xcrun simctl create ci-sim "iPhone 18
     "        run: |",
     `          ${sim}`,
     "      - name: the UI tests",
+    "        env:",
+    `          UI_TEST: ${ui}`,
     `        run: ${target}`,
   ];
 }
@@ -1295,8 +1361,12 @@ const MS_RED = [
       }),
     },
   ],
+  // k6: the UI_TEST value reaches xcodebuild with a wrong or empty id, or no xcodebuild runs at all.
+  ["k6: part-a's destination is id=IM_UDID", msFile(msJob("part-a", 45, "make ui-a", undefined, UI_TEST_BROKEN), msJob("part-b", 50, "make ui-b")), "k6"],
+  ["k6: part-b's destination is id=IM_UDID", msFile(msJob("part-a", 45, "make ui-a"), msJob("part-b", 50, "make ui-b", undefined, UI_TEST_BROKEN)), "k6"],
+  ["k6: part-b's UI_TEST is sim-test, so no xcodebuild runs", msFile(msJob("part-a", 45, "make ui-a"), msJob("part-b", 50, "make ui-b", undefined, "sim-test")), "k6"],
 ];
-const MS_CHECKS = ["a", "a2", "b", "c", "k1", "k2", "k3", "k4", "k5"];
+const MS_CHECKS = ["a", "a2", "b", "c", "k1", "k2", "k3", "k4", "k5", "k6"];
 for (const [name, text, id, extra = {}] of MS_RED) {
   const results = milestoneChecks({ msText: text, wfText: null, read: () => null, ...FIX_INPUTS, ...extra });
   const bad = results.filter((r) => !r.ok);
@@ -1310,7 +1380,7 @@ for (const [name, text, id, extra = {}] of MS_RED) {
   const results = milestoneChecks({ msText: MS_GOOD, wfText: null, read: () => null, ...FIX_INPUTS });
   const bad = results.filter((r) => MS_CHECKS.includes(r.label.split(" ")[0]) && !r.ok);
   expect(
-    "fixture good: the two-job milestone file passes a, a2, b, c and k1 to k5",
+    "fixture good: the two-job milestone file passes a, a2, b, c and k1 to k6",
     bad.length === 0,
     bad.map((r) => `${r.label} (${r.detail})`).join("; ")
   );
@@ -1320,6 +1390,13 @@ const MS_GREEN = [
     "a run line with a quoted hash before the create, which is not a comment",
     msFile(
       msJob("part-a", 45, "make ui-a", `echo "#" && xcrun simctl create ci-sim "iPhone 18 Pro" ${SIM_RUNTIME}`),
+      msJob("part-b", 50, "make ui-b")
+    ),
+  ],
+  [
+    "a braced make reference to SIM_UDID, which make expands from the environment, reaches xcodebuild too",
+    msFile(
+      msJob("part-a", 45, "make ui-a", undefined, UI_TEST_BROKEN.replace("$SIM_UDID", "${SIM_UDID}")),
       msJob("part-b", 50, "make ui-b")
     ),
   ],
