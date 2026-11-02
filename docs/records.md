@@ -57,6 +57,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `live-verification` | This file draws the line between proven and unproven. | [`docs/decisions/live-verification.md`](../docs/decisions/live-verification.md) |
 | `masthead-tallies-unequal-thirds` | The tallies are three ruled cells: cards, packages, and value. | [`docs/decisions/masthead-tallies-unequal-thirds.md`](../docs/decisions/masthead-tallies-unequal-thirds.md) |
 | `merge-later-change-wins` | Kind: build | [`docs/decisions/merge-later-change-wins.md`](../docs/decisions/merge-later-change-wins.md) |
+| `milestone-runs-full-suite` | **Status:** ruled. | [`docs/decisions/milestone-runs-full-suite.md`](../docs/decisions/milestone-runs-full-suite.md) |
 | `motion-disclosure-panels-arrive` | A disclosure panel overlays the list. | [`docs/decisions/motion-disclosure-panels-arrive.md`](../docs/decisions/motion-disclosure-panels-arrive.md) |
 | `native-build-lanes` | **Status:** ruled. | [`docs/decisions/native-build-lanes.md`](../docs/decisions/native-build-lanes.md) |
 | `native-ci-on-hosted-macos` | **Status:** ruled. | [`docs/decisions/native-ci-on-hosted-macos.md`](../docs/decisions/native-ci-on-hosted-macos.md) |
