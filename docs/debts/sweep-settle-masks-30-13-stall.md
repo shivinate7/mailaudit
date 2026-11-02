@@ -4,4 +4,8 @@
 
 **Status:** open. Named limit from the sync switch, round 3. Not reproduced locally; the settle stays until a stall is seen again.
 
+**Assigned:** the mailaudit coordinator session.
+
+**Fix by:** 2026-12-01.
+
 **Decision:** `harness-waits-past-debounces`.
