@@ -4,4 +4,8 @@
 
 **Status:** open, intermittent, not reproduced since 2026-10-27: the composer findings are unclassified and the cause is unfound. Neither tree reproduced them in the 2026-10-28 runs, so the measurement does not tie them to step 4.
 
+**Assigned:** the mailaudit coordinator session.
+
+**Fix by:** 2026-12-01.
+
 **Decision:** `orphaned-colours-by-meaning`.

@@ -17,7 +17,6 @@ One known gap per file under `docs/debts/`. Each carries a Status line and a Dec
 - `claim-9-fractional-box-edges` — Claim 9 can pass a box just under 44px.
 - `tally-card-moves-at-320px` — The Tally card moves 14px at 320px.
 - `key-re-accepts-token-shape` — The key check accepts a GitHub token's shape.
-- `tests-33-35-40-45-cannot-fail` — Tests 33.35, 33.40 and 33.45 cannot fail.
 - `received-at-size-unmeasured` — The size of receivedAt is unmeasured.
 - `suite-hang-cause-unmeasured` — The 13-minute hang after the suite summary is unexplained.
 - `card-action-row-unmeasured` — The action row at its tallest state is unmeasured.
@@ -59,5 +58,7 @@ One known gap per file under `docs/debts/`. Each carries a Status line and a Dec
 - `hidden-tab-apply-delay-unmeasured` — The apply delay on a hidden tab is unmeasured.
 - `sync-latency-after-fix-unmeasured` — The sync delay with the press guard is unmeasured.
 - `screens-45px-width-flake` — The screens check once measured every target 45px wide.
+- `screens-touch-context-flake` — The nightly screens check once failed the touch context.
 - `tracking-checker-unbuilt` — A future checker that passively checks tracking numbers. It blocks nothing.
 - `orders-job-unbuilt` — The Worker orders cron, its key test and its status screen are unbuilt.
+- `claim-17a-ci-red-unexplained` — Claim 17a failed twice on CI, and why only those runs is unknown.
