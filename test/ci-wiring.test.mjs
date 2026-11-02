@@ -85,7 +85,7 @@ const CI_DONE = "ci-done";
 const ACTIONS = "shivinate7/claude-settings/actions/";
 const ALARM_ACTION = ACTIONS + "ci-alarm";
 // The shared action pin. Every claude-settings pin in test.yml carries this sha.
-const ACTION_PIN = "17492e58853703168d025128a2da315e9936ee90";
+const ACTION_PIN = "49a41651a3f8182b211db3b1a4596933ca4eca58";
 const ROLLUP_IF = "always() && !github.event.pull_request.draft";
 const DRAFT_GUARD = "!github.event.pull_request.draft";
 // A needed job may read the draft guard, since a draft run skips it on purpose. An
