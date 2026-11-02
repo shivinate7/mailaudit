@@ -15,6 +15,15 @@
 //      job-level if:, so a draft starts no runner;
 //   8  the screens job needs scope, and its job-level if: reads no .outputs.
 //
+// The milestone workflow (.github/workflows/milestone.yml) and its job in test.yml
+// are checked the same way, with letter ids:
+//   a   its triggers are exactly workflow_dispatch and pull_request limited to its own path;
+//   a2  it has one job, and that job's if: has the draft guard;
+//   b   its job runs on xcode-27 and selects Xcode 27.1;
+//   c   its job runs make native-check;
+//   d   scope and milestone-due read one native path regex file, and neither job inlines it;
+//   f   the rollup needs milestone-due, and that job exists in test.yml.
+//
 // No YAML library is in node_modules, and none may be added. The workflow is read as
 // text by indentation: jobs sit under jobs: at 2 spaces, job keys at 4, step keys at 8.
 // A # starts a comment only after a space and outside a quoted scalar. A quote starts a
@@ -25,8 +34,8 @@
 // red fixtures hide a forbidden word after a quoted comment opener and after a lone
 // apostrophe. A scanner that cuts at any # goes green on a red case it must catch.
 //
-// Run: npm run test:ci-wiring. Exits 1 on any failure. CI_WORKFLOW and CI_STAMP name
-// other files; a relative path resolves from the repo root.
+// Run: npm run test:ci-wiring. Exits 1 on any failure. CI_WORKFLOW, CI_STAMP and
+// MILESTONE_WORKFLOW name other files; a relative path resolves from the repo root.
 
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -35,6 +44,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const WORKFLOW = resolve(ROOT, process.env.CI_WORKFLOW || ".github/workflows/test.yml");
 const STAMP = resolve(ROOT, process.env.CI_STAMP || ".github/stamp.json");
+const MILESTONE = resolve(ROOT, process.env.MILESTONE_WORKFLOW || ".github/workflows/milestone.yml");
 
 const ROLLUP = "all-jobs-passed";
 const CI_DONE = "ci-done";
@@ -78,7 +88,7 @@ function stripComment(line) {
 }
 
 // Reads the workflow subset: mappings, lists, flow lists, quoted and plain scalars,
-// and block scalars (skipped as text). Anything else throws, so a shape the checks do
+// and block scalars (kept as text). Anything else throws, so a shape the checks do
 // not understand fails loudly instead of passing by accident.
 function parseWorkflow(text) {
   const lines = text.split(/\r?\n/).map((raw) => ({
@@ -107,13 +117,17 @@ function parseWorkflow(text) {
     }
     return unquote(s);
   }
-  // A block scalar's lines are blank or indented past the key that opened it.
-  function skipBlock(n) {
+  // A block scalar's lines are blank or indented past the key that opened it. Its text is
+  // kept as written, trimmed per line, so a run script reads as its lines.
+  function blockText(n) {
+    const got = [];
     while (p < lines.length) {
       const { raw } = lines[p];
       if (raw.trim() !== "" && raw.length - raw.trimStart().length <= n) break;
+      got.push(raw.trim());
       p++;
     }
+    return got.join("\n");
   }
   function child(n, itemsAtSameIndent) {
     skip();
@@ -137,10 +151,8 @@ function parseWorkflow(text) {
       const rest = m[2] ?? "";
       p++;
       if (rest === "") out[m[1]] = child(n, true);
-      else if (BLOCK.test(rest)) {
-        skipBlock(n);
-        out[m[1]] = "";
-      } else out[m[1]] = scalar(rest);
+      else if (BLOCK.test(rest)) out[m[1]] = blockText(n);
+      else out[m[1]] = scalar(rest);
     }
   }
   function seq(n) {
@@ -321,6 +333,116 @@ function checkAll(workflowText, stampText) {
   );
 }
 
+// The milestone workflow (decision tci-5: the full Swift suite at milestones) and the
+// milestone-due job, which reads the same native path regex file as scope.
+const MILESTONE_OWN = ".github/workflows/milestone.yml";
+const MILESTONE_DUE = "milestone-due";
+const XCODE = "xcode-27";
+const XCODE_SELECT = "xcode-select -s /Applications/Xcode_27.1.app";
+const MAKE_TARGET = "make native-check";
+// The regex file must hold every alternative of the native path regex scope uses today.
+const NATIVE_HOLDS = ["native/", "shared/", "view-rules", "test\\.yml"];
+// A job that inlines that regex carries one of these fragments of it.
+const NATIVE_INLINE = ["native/|", "|shared/", "view-rules"];
+
+const readRepo = (rel) => readOrNull(resolve(ROOT, rel));
+const runsOf = (job) => steps(job).filter((s) => typeof s.run === "string").map((s) => s.run);
+const runText = (job) => runsOf(job).join("\n");
+
+// The repo files a run script names. A token counts when read() finds it. Quotes, ;, |, &,
+// $ and brackets end a token, so a path inside "..." or beside a lone apostrophe still counts.
+function filesNamedIn(text, read) {
+  const found = new Set();
+  for (const tok of text.split(/[\s"'`;|&()<>=$]+/)) {
+    if (!/[./]/.test(tok) || tok.startsWith("/") || tok.includes("..")) continue;
+    const rel = tok.replace(/^\.\//, "");
+    if (rel !== "" && read(rel) !== null) found.add(rel);
+  }
+  return found;
+}
+
+// Assertion a: the only triggers are workflow_dispatch and pull_request on its own path.
+function triggerCheck(doc) {
+  const on = isMap(doc.on) ? doc.on : {};
+  const events = Object.keys(on).sort();
+  const pr = isMap(on.pull_request) ? on.pull_request : {};
+  const ok =
+    JSON.stringify(events) === JSON.stringify(["pull_request", "workflow_dispatch"]) &&
+    JSON.stringify(pr.paths) === JSON.stringify([MILESTONE_OWN]);
+  return {
+    ok,
+    detail: `events: ${events.join(", ") || "none"}; pull_request paths: ${JSON.stringify(pr.paths ?? null)}`,
+  };
+}
+
+// Assertion d: scope and milestone-due read one regex file, and neither job inlines it.
+function sharedRegexCheck({ scopeJob, milestoneJob, read }) {
+  const scopeRun = runText(scopeJob);
+  const msRun = runText(milestoneJob);
+  const msFiles = filesNamedIn(msRun, read);
+  const shared = [...filesNamedIn(scopeRun, read)].filter((f) => msFiles.has(f));
+  const holder = shared.find((f) => NATIVE_HOLDS.every((s) => read(f).includes(s)));
+  const inline = NATIVE_INLINE.filter((frag) => scopeRun.includes(frag) || msRun.includes(frag));
+  return {
+    ok: holder !== undefined && inline.length === 0,
+    detail:
+      `files both read: ${shared.join(", ") || "none"}; ` +
+      `one of them holds every alternative: ${holder ?? "none"}; ` +
+      `inline fragments: ${inline.join(", ") || "none"}`,
+  };
+}
+
+// Assertion f: the rollup needs milestone-due, and that job exists in test.yml.
+function rollupCheck(jobs) {
+  const needs = needsOf(jobs[ROLLUP]);
+  const present = Object.hasOwn(jobs, MILESTONE_DUE);
+  return {
+    ok: present && needs.includes(MILESTONE_DUE),
+    detail: `job present: ${present}; rollup needs: ${needs.join(", ") || "none"}`,
+  };
+}
+
+// Returns { label, ok, detail } for a, a2, b, c, d and f. A missing or unparsable file
+// fails every check that reads it.
+function milestoneChecks({ msText, wfText, read }) {
+  const parsed = (text, what) => {
+    if (text === null) return { err: `${what} is missing` };
+    try {
+      return { doc: parseWorkflow(text) };
+    } catch (e) {
+      return { err: `${what} does not parse: ${e.message}` };
+    }
+  };
+  const ms = parsed(msText, MILESTONE_OWN);
+  const wf = parsed(wfText, ".github/workflows/test.yml");
+  const onlyJobs = ms.doc && isMap(ms.doc.jobs) ? Object.values(ms.doc.jobs) : [];
+  const job = onlyJobs.length === 1 && isMap(onlyJobs[0]) ? onlyJobs[0] : undefined;
+  const jobs = wf.doc && isMap(wf.doc.jobs) ? wf.doc.jobs : {};
+  const onMs = (label, fn) => (ms.doc ? { label, ...fn() } : { label, ok: false, detail: ms.err });
+  const onWf = (label, fn) => (wf.doc ? { label, ...fn() } : { label, ok: false, detail: wf.err });
+  return [
+    onMs("a milestone.yml triggers are exactly workflow_dispatch plus pull_request on its own path", () =>
+      triggerCheck(ms.doc)
+    ),
+    onMs("a2 milestone.yml has one job, and its job-level if: has the draft guard", () => ({
+      ok: job !== undefined && ifText(job).replace(/\s+/g, "").includes(DRAFT_GUARD),
+      detail: `jobs: ${onlyJobs.length}; if: ${JSON.stringify(ifText(job))}`,
+    })),
+    onMs("b the job runs on xcode-27 and selects Xcode 27.1", () => ({
+      ok: job !== undefined && job["runs-on"] === XCODE && runText(job).includes(XCODE_SELECT),
+      detail: `runs-on: ${JSON.stringify(job?.["runs-on"] ?? null)}; selects Xcode 27.1: ${runText(job).includes(XCODE_SELECT)}`,
+    })),
+    onMs("c the job runs make native-check", () => ({
+      ok: job !== undefined && runText(job).split("\n").some((l) => l.trim() === MAKE_TARGET),
+      detail: "no run line is exactly make native-check",
+    })),
+    onWf("d scope and milestone-due read one regex file, and neither job inlines it", () =>
+      sharedRegexCheck({ scopeJob: jobs.scope, milestoneJob: jobs[MILESTONE_DUE], read })
+    ),
+    onWf("f the rollup needs milestone-due, and that job exists in test.yml", () => rollupCheck(jobs)),
+  ];
+}
+
 let failures = 0;
 function expect(label, cond, detail = "") {
   if (cond) {
@@ -346,6 +468,16 @@ const readOrNull = (path) => {
   if (wf === null) expect(`cannot read ${WORKFLOW}`, false);
   if (st === null) expect(`cannot read ${STAMP}`, false);
   for (const r of checkAll(wf, st)) expect(r.label, r.ok, r.detail);
+}
+
+// The milestone workflow and the milestone-due job, read from the repo.
+{
+  const results = milestoneChecks({
+    msText: readOrNull(MILESTONE),
+    wfText: readOrNull(WORKFLOW),
+    read: readRepo,
+  });
+  for (const r of results) expect(r.label, r.ok, r.detail);
 }
 
 // Self-test. Fixture text is built from arrays, not template literals, so the YAML
@@ -546,6 +678,173 @@ const GREEN = [
 for (const [name, text, stamp] of GREEN) {
   const bad = checkAll(text, stamp).filter((r) => !r.ok);
   expect(`fixture green: ${name} passes`, bad.length === 0, bad.map((r) => r.label).join("; "));
+}
+
+// Milestone fixtures. Each red case varies one field of a good file, so it fails only the
+// assertion it names.
+const MS_GOOD = [
+  "name: milestone",
+  "on:",
+  "  workflow_dispatch:",
+  "  pull_request:",
+  "    paths:",
+  `      - ${MILESTONE_OWN}`,
+  "permissions:",
+  "  contents: read",
+  "jobs:",
+  "  full-suite:",
+  "    if: ${{ !github.event.pull_request.draft }}",
+  "    runs-on: xcode-27",
+  "    timeout-minutes: 60",
+  "    steps:",
+  "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
+  "        with:",
+  "          persist-credentials: false",
+  "      - name: select Xcode 27.1",
+  "        run: |",
+  "          sudo xcode-select -s /Applications/Xcode_27.1.app",
+  "          xcodebuild -version",
+  "      - name: boot the simulator",
+  '        run: xcrun simctl boot "iPhone 18 Pro" || true',
+  "      - name: the full native check",
+  "        run: make native-check",
+].join("\n") + "\n";
+
+const MS_RED = [
+  ["a: a push trigger is added", mutate(MS_GOOD, "on:\n", "on:\n  push:\n    branches: [main]\n"), "a"],
+  ["a: a schedule trigger is added", mutate(MS_GOOD, "on:\n", 'on:\n  schedule:\n    - cron: "0 5 * * *"\n'), "a"],
+  ["a: the pull_request path is widened", mutate(MS_GOOD, `      - ${MILESTONE_OWN}`, '      - "src/**"'), "a"],
+  ["a: pull_request has no paths", mutate(MS_GOOD, "    paths:\n      - .github/workflows/milestone.yml\n", ""), "a"],
+  ["a2: the job-level if: has no draft guard", mutate(MS_GOOD, "    if: ${{ !github.event.pull_request.draft }}\n", ""), "a2"],
+  ["a2: a second job is added", MS_GOOD + "  extra:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n", "a2"],
+  ["b: the job runs on macos-26", mutate(MS_GOOD, "runs-on: xcode-27", "runs-on: macos-26"), "b"],
+  ["b: Xcode 26 is selected", mutate(MS_GOOD, "Xcode_27.1", "Xcode_26.4"), "b"],
+  ["c: the job runs make kit-test, not make native-check", mutate(MS_GOOD, "run: make native-check", "run: make kit-test"), "c"],
+  ["c: make native-check is only in a comment", mutate(MS_GOOD, "run: make native-check", "run: echo ok # make native-check"), "c"],
+];
+
+for (const [name, text, id] of MS_RED) {
+  const results = milestoneChecks({ msText: text, wfText: null, read: () => null });
+  const bad = results.filter((r) => !r.ok);
+  expect(
+    `fixture red: ${name} fails assertion ${id}`,
+    bad.some((r) => r.label.split(" ")[0] === id),
+    `failing: ${bad.map((r) => r.label.split(" ")[0]).join(", ") || "none"}`
+  );
+}
+
+{
+  const results = milestoneChecks({ msText: MS_GOOD, wfText: null, read: () => null });
+  const ids = ["a", "a2", "b", "c"];
+  const bad = results.filter((r) => ids.includes(r.label.split(" ")[0]) && !r.ok);
+  expect(
+    "fixture good: the milestone file passes a, a2, b and c",
+    bad.length === 0,
+    bad.map((r) => `${r.label} (${r.detail})`).join("; ")
+  );
+}
+
+// Assertion d fixtures. The reader is a fake, so each case names exactly the files it has.
+const NATIVE_FILE = "^(native/|shared/|src/view-rules\\.mjs$|\\.github/workflows/test\\.yml$)\n";
+const fakeRead = (files) => (rel) => (Object.hasOwn(files, rel) ? files[rel] : null);
+const READ = fakeRead({
+  ".github/native-paths.regex": NATIVE_FILE,
+  ".github/other.regex": NATIVE_FILE,
+  ".github/short.regex": "^(native/)$\n",
+});
+const jobRun = (...runs) => ({ steps: runs.map((run) => ({ run })) });
+const SHARED_READ = 'grep -Eq -f .github/native-paths.regex <<< "$files"';
+const scopeGood = jobRun(`${SHARED_READ} || native=false`);
+const msGood = jobRun(`${SHARED_READ} || echo skip`);
+const dCheck = (scopeJob, msJob) => sharedRegexCheck({ scopeJob, milestoneJob: msJob, read: READ });
+
+expect("fixture good: scope and milestone-due read one regex file and inline none", dCheck(scopeGood, msGood).ok, dCheck(scopeGood, msGood).detail);
+{
+  const cases = [
+    [
+      "scope reads the file and also inlines the regex",
+      jobRun(`${SHARED_READ} || grep -Eq '^(native/|shared/)' <<< "$files"`),
+      msGood,
+    ],
+    [
+      "milestone-due inlines its own regex and reads no file",
+      scopeGood,
+      jobRun("grep -Eq '^(native/|shared/|src/view-rules\\.mjs$)' <<< \"$files\""),
+    ],
+    [
+      "the two jobs read different regex files",
+      scopeGood,
+      jobRun('grep -Eq -f .github/other.regex <<< "$files"'),
+    ],
+    [
+      "the shared file does not hold every alternative",
+      jobRun('grep -Eq -f .github/short.regex <<< "$files"'),
+      jobRun('grep -Eq -f .github/short.regex <<< "$files"'),
+    ],
+    ["milestone-due job is missing", scopeGood, undefined],
+  ];
+  for (const [name, s, m] of cases) {
+    const r = dCheck(s, m);
+    expect(`fixture red: ${name} fails assertion d`, !r.ok, r.detail);
+  }
+}
+
+// Assertion f fixtures, on the real test.yml shape.
+const MS_JOB_TEXT = [
+  `  ${MILESTONE_DUE}:`,
+  "    if: ${{ !github.event.pull_request.draft }}",
+  "    runs-on: ubuntu-latest",
+  "    steps:",
+  "      - run: node scripts/milestone-due.mjs",
+].join("\n") + "\n";
+const fJobs = (text) => parseWorkflow(text).jobs;
+expect(
+  "fixture good: the rollup needs milestone-due and the job exists",
+  rollupCheck(fJobs(PRE_TEXT + MS_JOB_TEXT + rollupJob({ needs: [...NEEDS, MILESTONE_DUE] }))).ok
+);
+expect(
+  "fixture red: the rollup does not need milestone-due, though the job exists",
+  !rollupCheck(fJobs(PRE_TEXT + MS_JOB_TEXT + rollupJob({ needs: NEEDS }))).ok
+);
+expect(
+  "fixture red: the rollup needs milestone-due, but the job is missing",
+  !rollupCheck(fJobs(PRE_TEXT + rollupJob({ needs: [...NEEDS, MILESTONE_DUE] }))).ok
+);
+
+// Scanner cases for the new readers. A comment opener inside quotes, a lone apostrophe and a
+// second line of a block must each leave the path or the text in place.
+{
+  const fake = fakeRead({ "package.json": "{}\n" });
+  expect(
+    "path finder: a path after a quoted comment opener is found",
+    filesNamedIn('echo "# x" package.json', fake).has("package.json")
+  );
+  expect(
+    "path finder: a path beside a lone apostrophe is found",
+    filesNamedIn("echo don't package.json", fake).has("package.json")
+  );
+  expect(
+    "path finder: a path on a later line of a block is found",
+    filesNamedIn("set -e\necho\n  package.json\n", fake).has("package.json")
+  );
+  const doc = parseWorkflow(
+    [
+      "jobs:",
+      "  j:",
+      "    steps:",
+      "      - run: |",
+      '          echo "# not a comment"',
+      "          echo don't",
+      "          make native-check",
+      "",
+    ].join("\n")
+  );
+  const got = runText(doc.jobs.j).split("\n");
+  expect(
+    "block scalar: a quoted comment opener, a lone apostrophe and a later line all stay as run text",
+    got.includes('echo "# not a comment"') && got.includes("echo don't") && got.includes("make native-check"),
+    JSON.stringify(got)
+  );
 }
 
 if (failures) {
