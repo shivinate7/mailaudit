@@ -72,7 +72,7 @@ jobs:
       # The Makefile is the one home of the run. UI_TEST replaces sim-test, which only the owner's Mac has.
       - name: the page check, the Kit tests and the first UI test classes
         env:
-          UI_TEST: xcodebuild test -destination "platform=iOS Simulator,id=$SIM_UDID" -collect-test-diagnostics never
+          UI_TEST: xcodebuild test -destination "platform=iOS Simulator,id=$$SIM_UDID" -collect-test-diagnostics never
         run: make tokens-check kit-test ui-a
       # The recorded result of the job. It also runs after a red check.
       - name: record the result
@@ -133,7 +133,7 @@ jobs:
       # The Makefile is the one home of the run. UI_TEST replaces sim-test, which only the owner's Mac has.
       - name: the other UI test classes
         env:
-          UI_TEST: xcodebuild test -destination "platform=iOS Simulator,id=$SIM_UDID" -collect-test-diagnostics never
+          UI_TEST: xcodebuild test -destination "platform=iOS Simulator,id=$$SIM_UDID" -collect-test-diagnostics never
         run: make ui-b
       # The recorded result of the job. It also runs after a red check.
       - name: record the result
