@@ -25,7 +25,8 @@
 //   d   scope and milestone-due read one native path regex file, and neither job inlines it;
 //   f   the rollup needs milestone-due, and that job exists in test.yml;
 //   g   every step of milestone-due has an if: that requires a push to main;
-//   h   scope's native regex file matches its own path, and README.md does not match it.
+//   h   scope's native regex file matches its own path, and README.md does not match it;
+//   n   every checkout step of milestone-due has fetch-depth: 0, so its git log reaches back.
 //
 // The milestone-proof job fails a pull request until the newest milestone run on main passed.
 // It is checked with these ids:
@@ -452,6 +453,21 @@ function pushOnlyStepsCheck(jobs) {
   };
 }
 
+// Assertion n: every checkout step of milestone-due has fetch-depth: 0, and the job has one. The
+// dispatch step runs git log back to the last milestone's base commit, and a shallow checkout may
+// not hold that commit, so the step fails and main goes red.
+const CHECKOUT_ACTION = "actions/checkout@";
+function checkoutHistoryCheck(jobs) {
+  const job = isMap(jobs[MILESTONE_DUE]) ? jobs[MILESTONE_DUE] : undefined;
+  if (job === undefined) return { ok: false, detail: `no ${MILESTONE_DUE} job` };
+  const checkouts = steps(job).filter((s) => typeof s.uses === "string" && s.uses.startsWith(CHECKOUT_ACTION));
+  const shallow = checkouts.filter((s) => !isMap(s.with) || String(s.with["fetch-depth"]) !== "0");
+  return {
+    ok: checkouts.length > 0 && shallow.length === 0,
+    detail: `checkout steps: ${checkouts.length}; without fetch-depth: 0: ${shallow.length}`,
+  };
+}
+
 // Assertion h: scope counts a change to its native regex file as native. scope greps the changed
 // paths with that file as its pattern, so the file's own path must match it. README.md is a
 // control: a regex that matched every path would pass the first half alone.
@@ -469,7 +485,7 @@ function nativeSelfCheck({ scopeJob, read }) {
   return selfMatchCheck(file, read(file));
 }
 
-// Returns { label, ok, detail } for a, a2, b, c, d, f, g and h. A missing or unparsable file
+// Returns { label, ok, detail } for a, a2, b, c, d, f, g, h and n. A missing or unparsable file
 // fails every check that reads it.
 function milestoneChecks({ msText, wfText, read, makefile, classes }) {
   const parsed = (text, what) => {
@@ -507,6 +523,9 @@ function milestoneChecks({ msText, wfText, read, makefile, classes }) {
     ),
     onWf("f the rollup needs milestone-due, and that job exists in test.yml", () => rollupCheck(jobs)),
     onWf("g every step of milestone-due has an if: that requires a push to main", () => pushOnlyStepsCheck(jobs)),
+    onWf("n every checkout step of milestone-due has fetch-depth: 0, so its git log reaches back", () =>
+      checkoutHistoryCheck(jobs)
+    ),
     onWf("h scope counts its native regex file as native, and README.md as not native", () =>
       nativeSelfCheck({ scopeJob: jobs.scope, read })
     ),
@@ -646,7 +665,7 @@ function dispatchCheck(wfText) {
   };
 }
 
-// ---- The UI-test checks k1 to k5, and the readers they use ----
+// ---- The UI-test checks k1 to k6, and the readers they use ----
 // GNU make reads the Makefile itself. make -f - takes the text on stdin, so no file is written, and
 // make -n prints a recipe without running it. A make that cannot run throws, and the check that
 // needed it fails with that reason.
@@ -1713,6 +1732,73 @@ const gOf = (jobText) => pushOnlyStepsCheck(fJobs(PRE_TEXT + jobText));
   for (const [name, text] of reds) {
     const r = gOf(text);
     expect(`fixture red: ${name} fails assertion g`, !r.ok, r.detail);
+  }
+}
+
+// Assertion n fixtures. The checkout block is cut from MS_JOB_TEXT, so each case edits one copy of it.
+// The controls hold a lone apostrophe in a step name and in a trailing comment, a quoted comment
+// opener in an earlier with: value, and a run: | block that names fetch-depth: 1. The red cases remove
+// the line, make it shallow, put a comment that names the value, move the value into another step's
+// run block, add a second checkout without it, or remove the checkout.
+const nOf = (jobText) => checkoutHistoryCheck(fJobs(PRE_TEXT + jobText));
+{
+  const CHECKOUT_BLOCK = MS_JOB_TEXT.slice(
+    MS_JOB_TEXT.indexOf("      - uses: actions/checkout@"),
+    MS_JOB_TEXT.indexOf("      - name: dispatch")
+  );
+  const FD0 = "          fetch-depth: 0\n";
+  const good = nOf(MS_JOB_TEXT);
+  expect("fixture good: the milestone-due checkout carries fetch-depth: 0", good.ok, good.detail);
+  const noteWith = (runLine) =>
+    `      - name: don't skip the history\n${PUSH_MAIN_IF}\n        run: |\n          ${runLine}\n`;
+  const controls = [
+    [
+      "a lone apostrophe in a step name, and a run: | block that names fetch-depth: 1",
+      mutate(MS_JOB_TEXT, "      - name: dispatch", `${noteWith('echo "fetch-depth: 1 # don\'t"')}      - name: dispatch`),
+    ],
+    [
+      "a quoted comment opener in an earlier with: value of the checkout",
+      mutate(MS_JOB_TEXT, FD0, `          ref: "main # not a comment"\n${FD0}`),
+    ],
+    [
+      "a lone apostrophe in the trailing comment of fetch-depth",
+      mutate(MS_JOB_TEXT, FD0, "          fetch-depth: 0 # don't\n"),
+    ],
+    [
+      "a full-line comment above the checkout that names the step",
+      mutate(MS_JOB_TEXT, "      - uses: actions/checkout@", "      # don't drop this: git log needs the base commit\n      - uses: actions/checkout@"),
+    ],
+  ];
+  for (const [name, text] of controls) {
+    const r = nOf(text);
+    expect(`fixture good: ${name} still passes n`, r.ok, r.detail);
+  }
+  const reds = [
+    ["the checkout step has no fetch-depth line", mutate(MS_JOB_TEXT, FD0, "")],
+    ["the checkout step is shallow, fetch-depth: 1", mutate(MS_JOB_TEXT, FD0, "          fetch-depth: 1\n")],
+    [
+      "a comment names fetch-depth: 0, but the value is 1",
+      mutate(MS_JOB_TEXT, FD0, "          fetch-depth: 1 # fetch-depth: 0\n"),
+    ],
+    [
+      "fetch-depth: 0 sits in a run: | block of another step, not in the checkout",
+      mutate(
+        mutate(MS_JOB_TEXT, FD0, ""),
+        "      - name: dispatch",
+        `${noteWith('echo "fetch-depth: 0"')}      - name: dispatch`
+      ),
+    ],
+    [
+      "a second checkout step has no fetch-depth",
+      mutate(MS_JOB_TEXT, "      - name: dispatch", `${CHECKOUT_BLOCK.replace(FD0, "")}      - name: dispatch`),
+    ],
+    ["the milestone-due job has no checkout step", mutate(MS_JOB_TEXT, CHECKOUT_BLOCK, "")],
+    ["the milestone-due job is missing", ""],
+    ["the milestone-due job has no steps", `  ${MILESTONE_DUE}:\n    runs-on: ubuntu-latest\n`],
+  ];
+  for (const [name, text] of reds) {
+    const r = nOf(text);
+    expect(`fixture red: ${name} fails assertion n`, !r.ok, r.detail);
   }
 }
 
