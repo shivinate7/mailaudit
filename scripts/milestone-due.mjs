@@ -6,13 +6,13 @@
 //
 // CLI, for the milestone-due job in test.yml, on a push to main only:
 //   node scripts/milestone-due.mjs --native-paths <file>
-// It reads the dispatched milestone runs on main (one API read with GITHUB_TOKEN), counts the
+// It reads the dispatched milestone runs on main (one API read with GITHUB_TOKEN, through milestoneRuns), counts the
 // native commits since countBase (one git log), and dispatches milestone.yml
 // when due. A read that fails exits 1: an unknown read is red in CI.
 //
-// CLI, for the milestone-gate job in test.yml, on every event:
-//   node scripts/milestone-due.mjs gate
-// It reads the same runs and exits 1 unless gateVerdict passes.
+// CLI, for the milestone-proof job in test.yml, on every event:
+//   node scripts/milestone-due.mjs proof
+// It reads the same runs and exits 1 unless proofVerdict passes.
 
 import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync } from "node:fs";
@@ -41,7 +41,7 @@ export function milestoneDue({ runs, nativeMerges, n }) {
     : { due: false, reason: `${nativeMerges} native merges since the last success, below ${n}` };
 }
 
-// The merge gate. Only a successful milestone run is proof, so a run that timed out, was
+// The milestone proof. Only a successful milestone run is proof, so a run that timed out, was
 // cancelled or was never taken reads as no proof (decision milestone-runs-full-suite). runs are the
 // dispatched milestone runs on main, newest first; now is epoch ms. Walking from the newest:
 //   - a run that is not completed is in flight. Fresh, it is skipped, since its result is not in yet.
@@ -49,7 +49,7 @@ export function milestoneDue({ runs, nativeMerges, n }) {
 //     An in-flight re-run (runAttempt above 1) is never skipped: fail.
 //   - the first completed run decides: success passes, anything else fails.
 //   - no completed run, and no stale one, is the bootstrap: pass. The first run has nothing older to prove.
-export function gateVerdict({ runs, now, staleMinutes = 90 }) {
+export function proofVerdict({ runs, now, staleMinutes = 90 }) {
   for (const run of runs) {
     if (run.status === "completed") {
       return run.conclusion === "success"
@@ -101,16 +101,23 @@ function need(name) {
 }
 
 const RETRY_CAP_MS = 10_000;
+const MILESTONE_FILE = ".github/workflows/milestone.yml";
+
+// The pieces of one GitHub API session. fetch and wait are parameters so a test drives the reader
+// with no network and no pause.
+function session({ repo, token, fetch = globalThis.fetch, wait = (ms) => new Promise((done) => setTimeout(done, ms)) }) {
+  return { repo, token, fetch, wait };
+}
 
 // A read that hits a 5xx, a rate limit or a network error waits once, then tries once more. The wait is the
 // Retry-After header, capped at RETRY_CAP_MS, or 2 s with none. A second failure throws, so the
 // job still fails closed. A POST is never retried: a dispatch that did land must not run twice.
-async function api(path, init = {}) {
-  const url = `https://api.github.com/repos/${need("GITHUB_REPOSITORY")}/${path}`;
+async function api(ctx, path, init = {}) {
+  const url = `https://api.github.com/repos/${ctx.repo}/${path}`;
   const options = {
     ...init,
     headers: {
-      authorization: `Bearer ${need("GITHUB_TOKEN")}`,
+      authorization: `Bearer ${ctx.token}`,
       accept: "application/vnd.github+json",
       "x-github-api-version": "2022-11-28",
     },
@@ -119,7 +126,7 @@ async function api(path, init = {}) {
   let res = null;
   let netError = null;
   try {
-    res = await fetch(url, options);
+    res = await ctx.fetch(url, options);
   } catch (e) {
     if (!isRead) throw e;
     netError = e;
@@ -127,48 +134,56 @@ async function api(path, init = {}) {
   const limited = res !== null && (res.status === 429 || (res.status === 403 && res.headers.get("x-ratelimit-remaining") === "0"));
   if (isRead && (netError !== null || (!res.ok && (res.status >= 500 || limited)))) {
     const asked = res === null ? NaN : Number(res.headers.get("retry-after"));
-    const wait = Number.isFinite(asked) && asked > 0 ? Math.min(asked * 1000, RETRY_CAP_MS) : 2000;
-    console.log(`milestone-due: GitHub API ${path}: ${netError ? netError.message : `HTTP ${res.status}`}, retrying once in ${wait} ms`);
-    await new Promise((done) => setTimeout(done, wait));
-    res = await fetch(url, options);
+    const pause = Number.isFinite(asked) && asked > 0 ? Math.min(asked * 1000, RETRY_CAP_MS) : 2000;
+    console.log(`milestone-due: GitHub API ${path}: ${netError ? netError.message : `HTTP ${res.status}`}, retrying once in ${pause} ms`);
+    await ctx.wait(pause);
+    res = await ctx.fetch(url, options);
   }
   if (!res.ok) throw new Error(`GitHub API ${path}: HTTP ${res.status}`);
   return res.status === 204 ? null : res.json();
 }
 
-// Only dispatched runs on the branch count. A pull_request run of the file proves nothing about main.
-async function milestoneRuns(branch) {
-  const body = await api(
-    `actions/workflows/milestone.yml/runs?branch=${encodeURIComponent(branch)}&event=workflow_dispatch&per_page=30`
-  );
-  return body.workflow_runs.map((r) => ({
-    status: r.status,
-    conclusion: r.conclusion,
-    headSha: r.head_sha,
-    createdAt: r.created_at,
-    runAttempt: r.run_attempt,
-    runStartedAt: r.run_started_at,
-  }));
+// The one reader of the milestone runs, for the proof CLI and milestone-due. It reads the repo's run
+// list on main, which answers even when the workflow file is not on main yet (a per-workflow
+// endpoint would 404), and keeps the dispatched runs of the milestone file. Only the first page is
+// read: 100 runs, newest first. A pull_request run of the file proves nothing about main, so the
+// event filter drops it.
+export async function milestoneRuns(opts) {
+  const body = await api(session(opts), "actions/runs?branch=main&event=workflow_dispatch&per_page=100");
+  return body.workflow_runs
+    .filter((r) => String(r.path).split("@")[0] === MILESTONE_FILE)
+    .map((r) => ({
+      status: r.status,
+      conclusion: r.conclusion,
+      headSha: r.head_sha,
+      createdAt: r.created_at,
+      runAttempt: r.run_attempt,
+      runStartedAt: r.run_started_at,
+    }));
 }
 
-// The milestone-gate job: fails a pull request or a push until the milestone run on main passed.
-// The branch is main, named here: on a pull_request GITHUB_REF_NAME is "<n>/merge".
-async function gate() {
-  const verdict = gateVerdict({ runs: await milestoneRuns("main"), now: Date.now() });
-  const line = `milestone-gate: ${verdict.pass ? "pass" : "fail"}: ${verdict.reason}`;
+function envSession() {
+  return session({ repo: need("GITHUB_REPOSITORY"), token: need("GITHUB_TOKEN") });
+}
+
+// The milestone-proof job: fails a pull request or a push until the milestone run on main passed.
+async function proof() {
+  const verdict = proofVerdict({ runs: await milestoneRuns(envSession()), now: Date.now() });
+  const line = `milestone-proof: ${verdict.pass ? "pass" : "fail"}: ${verdict.reason}`;
   console.log(line);
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${line}\n`);
   if (!verdict.pass) process.exitCode = 1;
 }
 
 async function cli(argv) {
-  if (argv[0] === "gate") return gate();
+  if (argv[0] === "proof") return proof();
   const at = argv.indexOf("--native-paths");
   if (at < 0 || !argv[at + 1]) throw new Error("usage: milestone-due.mjs --native-paths <file>");
   // The file is a grep -E regex that JS reads the same: no lookaround, no backreference.
   const nativeRe = new RegExp(readFileSync(argv[at + 1], "utf8").trim());
   const ref = need("GITHUB_REF_NAME");
-  const runs = await milestoneRuns(ref);
+  const ctx = envSession();
+  const runs = await milestoneRuns(ctx);
 
   const base = countBase(runs);
   const range = base ? [`${base}..HEAD`] : [];
@@ -184,7 +199,7 @@ async function cli(argv) {
   console.log(line);
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${line}\n`);
   if (verdict.due) {
-    await api("actions/workflows/milestone.yml/dispatches", {
+    await api(ctx, "actions/workflows/milestone.yml/dispatches", {
       method: "POST",
       body: JSON.stringify({ ref }),
     });
