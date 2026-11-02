@@ -22,7 +22,9 @@
 //   b   its job runs on xcode-27 and selects Xcode 27.1;
 //   c   its job runs make native-check;
 //   d   scope and milestone-due read one native path regex file, and neither job inlines it;
-//   f   the rollup needs milestone-due, and that job exists in test.yml.
+//   f   the rollup needs milestone-due, and that job exists in test.yml;
+//   g   every step of milestone-due has an if: that can be true only on a push to main;
+//   h   scope's native regex file matches its own path, and README.md does not match it.
 //
 // No YAML library is in node_modules, and none may be added. The workflow is read as
 // text by indentation: jobs sit under jobs: at 2 spaces, job keys at 4, step keys at 8.
@@ -37,6 +39,7 @@
 // Run: npm run test:ci-wiring. Exits 1 on any failure. CI_WORKFLOW, CI_STAMP and
 // MILESTONE_WORKFLOW name other files; a relative path resolves from the repo root.
 
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -66,6 +69,8 @@ const needsOf = (job) => {
   if (Array.isArray(v)) return v.filter((x) => typeof x === "string");
   return [];
 };
+// An if: expression with its ${{ }} wrapper and all spacing removed.
+const normIf = (s) => s.trim().replace(/^\$\{\{([\s\S]*)\}\}$/, "$1").replace(/\s+/g, "");
 
 // A # starts a comment only after a space and outside a quoted scalar. A quote starts
 // a scalar only where a YAML value or list item starts, so a lone apostrophe in plain
@@ -214,10 +219,7 @@ function workflowChecks(text) {
   );
 
   const ifRaw = roll?.if;
-  const ifNorm =
-    typeof ifRaw === "string"
-      ? ifRaw.trim().replace(/^\$\{\{([\s\S]*)\}\}$/, "$1").replace(/\s+/g, "")
-      : null;
+  const ifNorm = typeof ifRaw === "string" ? normIf(ifRaw) : null;
   add(
     "2",
     `rollup job-level if: is exactly "${ROLLUP_IF}", bare or in a \${{ }} wrapper, spacing ignored`,
@@ -375,13 +377,16 @@ function triggerCheck(doc) {
   };
 }
 
+// The first file in files that holds every alternative of the native path regex.
+const holderIn = (files, read) => [...files].find((f) => NATIVE_HOLDS.every((s) => read(f).includes(s)));
+
 // Assertion d: scope and milestone-due read one regex file, and neither job inlines it.
 function sharedRegexCheck({ scopeJob, milestoneJob, read }) {
   const scopeRun = runText(scopeJob);
   const msRun = runText(milestoneJob);
   const msFiles = filesNamedIn(msRun, read);
   const shared = [...filesNamedIn(scopeRun, read)].filter((f) => msFiles.has(f));
-  const holder = shared.find((f) => NATIVE_HOLDS.every((s) => read(f).includes(s)));
+  const holder = holderIn(shared, read);
   const inline = NATIVE_INLINE.filter((frag) => scopeRun.includes(frag) || msRun.includes(frag));
   return {
     ok: holder !== undefined && inline.length === 0,
@@ -402,7 +407,49 @@ function rollupCheck(jobs) {
   };
 }
 
-// Returns { label, ok, detail } for a, a2, b, c, d and f. A missing or unparsable file
+// Assertion g: every step of milestone-due has an if: that can be true only on a push to main.
+// The job holds actions: write on every event, so an unguarded step can run on a pull request.
+const PUSH_MAIN_TERMS = ["github.event_name=='push'", "github.ref=='refs/heads/main'"];
+// True when the expression is an && of both terms and has no ||. Parentheses are dropped.
+function pushToMainOnly(cond) {
+  const norm = normIf(cond).replace(/"/g, "'");
+  if (norm.includes("||")) return false;
+  const terms = norm.replace(/[()]/g, "").split("&&");
+  return PUSH_MAIN_TERMS.every((t) => terms.includes(t));
+}
+function pushOnlyStepsCheck(jobs) {
+  const job = isMap(jobs[MILESTONE_DUE]) ? jobs[MILESTONE_DUE] : undefined;
+  if (job === undefined) return { ok: false, detail: `no ${MILESTONE_DUE} job` };
+  const list = Array.isArray(job.steps) ? job.steps : [];
+  if (list.length === 0) return { ok: false, detail: `${MILESTONE_DUE} has no steps` };
+  const bad = [];
+  list.forEach((s, i) => {
+    if (!isMap(s) || !pushToMainOnly(ifText(s))) bad.push(String(s?.name ?? s?.uses ?? `step ${i + 1}`));
+  });
+  return {
+    ok: bad.length === 0,
+    detail: `steps: ${list.length}; without the push-to-main guard: ${bad.join(", ") || "none"}`,
+  };
+}
+
+// Assertion h: scope counts a change to its native regex file as native. scope greps the changed
+// paths with that file as its pattern, so the file's own path must match it. README.md is a
+// control: a regex that matched every path would pass the first half alone.
+const NATIVE_CONTROL = "README.md";
+function selfMatchCheck(path, text) {
+  if (text === null) return { ok: false, detail: `no regex text for ${path}` };
+  const hits = (p) => spawnSync("grep", ["-Eq", "-e", text.trim()], { input: `${p}\n` }).status === 0;
+  const self = hits(path);
+  const control = hits(NATIVE_CONTROL);
+  return { ok: self && !control, detail: `${path} matches: ${self}; ${NATIVE_CONTROL} matches: ${control}` };
+}
+function nativeSelfCheck({ scopeJob, read }) {
+  const file = holderIn(filesNamedIn(runText(scopeJob), read), read);
+  if (file === undefined) return { ok: false, detail: "scope names no native regex file that holds every alternative" };
+  return selfMatchCheck(file, read(file));
+}
+
+// Returns { label, ok, detail } for a, a2, b, c, d, f, g and h. A missing or unparsable file
 // fails every check that reads it.
 function milestoneChecks({ msText, wfText, read }) {
   const parsed = (text, what) => {
@@ -440,6 +487,10 @@ function milestoneChecks({ msText, wfText, read }) {
       sharedRegexCheck({ scopeJob: jobs.scope, milestoneJob: jobs[MILESTONE_DUE], read })
     ),
     onWf("f the rollup needs milestone-due, and that job exists in test.yml", () => rollupCheck(jobs)),
+    onWf("g every step of milestone-due has an if: that requires a push to main", () => pushOnlyStepsCheck(jobs)),
+    onWf("h scope counts its native regex file as native, and README.md as not native", () =>
+      nativeSelfCheck({ scopeJob: jobs.scope, read })
+    ),
   ];
 }
 
@@ -789,14 +840,30 @@ expect("fixture good: scope and milestone-due read one regex file and inline non
   }
 }
 
-// Assertion f fixtures, on the real test.yml shape.
+// The milestone-due job as test.yml has it: each step carries the push-to-main guard. The f and g
+// fixtures build on this one text. Each g red case changes one guard with mutate().
+const PUSH_MAIN_IF = "        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}";
 const MS_JOB_TEXT = [
   `  ${MILESTONE_DUE}:`,
   "    if: ${{ !github.event.pull_request.draft }}",
   "    runs-on: ubuntu-latest",
+  "    timeout-minutes: 5",
+  "    permissions:",
+  "      contents: read",
+  "      actions: write",
   "    steps:",
-  "      - run: node scripts/milestone-due.mjs",
+  "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
+  PUSH_MAIN_IF,
+  "        with:",
+  "          fetch-depth: 0",
+  "          persist-credentials: false",
+  "      - name: dispatch the full Swift suite when it is due",
+  PUSH_MAIN_IF,
+  "        env:",
+  "          GITHUB_TOKEN: ${{ github.token }}",
+  "        run: node scripts/milestone-due.mjs --native-paths .github/native-paths.regex",
 ].join("\n") + "\n";
+// Assertion f fixtures, on the real test.yml shape.
 const fJobs = (text) => parseWorkflow(text).jobs;
 expect(
   "fixture good: the rollup needs milestone-due and the job exists",
@@ -810,6 +877,83 @@ expect(
   "fixture red: the rollup needs milestone-due, but the job is missing",
   !rollupCheck(fJobs(PRE_TEXT + rollupJob({ needs: [...NEEDS, MILESTONE_DUE] }))).ok
 );
+
+// Assertion g fixtures. The controls keep a valid guard that holds a comment opener or an
+// apostrophe. Each red case changes one guard, or removes the job.
+const gOf = (jobText) => pushOnlyStepsCheck(fJobs(PRE_TEXT + jobText));
+{
+  const good = gOf(MS_JOB_TEXT);
+  expect("fixture good: every milestone-due step carries the push-to-main guard", good.ok, good.detail);
+  const controls = [
+    [
+      "a lone apostrophe in the trailing comment of a guard",
+      mutate(MS_JOB_TEXT, `${PUSH_MAIN_IF}\n        with:`, `${PUSH_MAIN_IF} # don't\n        with:`),
+    ],
+    [
+      "a comment opener inside the quotes of a double-quoted guard",
+      mutate(
+        MS_JOB_TEXT,
+        `${PUSH_MAIN_IF}\n        env:`,
+        "        if: \"${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && github.ref != 'x # y' }}\"\n        env:"
+      ),
+    ],
+  ];
+  for (const [name, text] of controls) {
+    const r = gOf(text);
+    expect(`fixture good: ${name} still reads as the push guard`, r.ok, r.detail);
+  }
+  const reds = [
+    ["the checkout step has no if:", mutate(MS_JOB_TEXT, `${PUSH_MAIN_IF}\n        with:`, "        with:")],
+    ["the dispatch step has no if:", mutate(MS_JOB_TEXT, `${PUSH_MAIN_IF}\n        env:`, "        env:")],
+    [
+      "the guard exists only in a trailing comment",
+      mutate(
+        MS_JOB_TEXT,
+        `${PUSH_MAIN_IF}\n        env:`,
+        "        if: ${{ !github.event.pull_request.draft }} # github.event_name == 'push' && github.ref == 'refs/heads/main'\n        env:"
+      ),
+    ],
+    [
+      "the guard needs push or main, not both",
+      mutate(
+        MS_JOB_TEXT,
+        `${PUSH_MAIN_IF}\n        env:`,
+        "        if: ${{ github.event_name == 'push' || github.ref == 'refs/heads/main' }}\n        env:"
+      ),
+    ],
+    [
+      "the guard also admits a pull_request event",
+      mutate(
+        MS_JOB_TEXT,
+        `${PUSH_MAIN_IF}\n        env:`,
+        "        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'pull_request' }}\n        env:"
+      ),
+    ],
+    ["the milestone-due job is missing", ""],
+    ["the milestone-due job has no steps", `  ${MILESTONE_DUE}:\n    runs-on: ubuntu-latest\n`],
+  ];
+  for (const [name, text] of reds) {
+    const r = gOf(text);
+    expect(`fixture red: ${name} fails assertion g`, !r.ok, r.detail);
+  }
+}
+
+// Assertion h fixtures. The fake reader holds the regex under the scope job's own file name. The
+// first regex names its own path, so it passes. The second does not name it. The third matches
+// every path, so it fails on README.md.
+const NATIVE_SELF =
+  "^(native/|shared/|src/view-rules\\.mjs$|\\.github/workflows/test\\.yml$|\\.github/native-paths\\.regex$)\n";
+const NATIVE_ANY = "^(native/|shared/|view-rules|test\\.yml|.*)$\n";
+const hOf = (regexText) =>
+  nativeSelfCheck({ scopeJob: scopeGood, read: fakeRead({ ".github/native-paths.regex": regexText }) });
+{
+  const good = hOf(NATIVE_SELF);
+  expect("fixture good: the regex that names its own path matches it, and README.md does not", good.ok, good.detail);
+  const noSelf = hOf(NATIVE_FILE);
+  expect("fixture red: the regex without its own path does not match it", !noSelf.ok, noSelf.detail);
+  const everything = hOf(NATIVE_ANY);
+  expect("fixture red: a regex that matches every path is not a pass", !everything.ok, everything.detail);
+}
 
 // Scanner cases for the new readers. A comment opener inside quotes, a lone apostrophe and a
 // second line of a block must each leave the path or the text in place.
