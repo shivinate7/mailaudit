@@ -26,12 +26,12 @@
 //   g   every step of milestone-due has an if: that can be true only on a push to main;
 //   h   scope's native regex file matches its own path, and README.md does not match it.
 //
-// The milestone-gate job (see milestoneGateChecks) fails a pull request until the newest
+// The milestone-proof job (see milestoneProofChecks) fails a pull request until the newest
 // milestone run on main passed. It is checked with these ids:
 //   i1  the job exists;
 //   i2  the rollup needs it;
 //   i3  its permissions are a map with actions: read and no write value;
-//   i4  one run line is node scripts/milestone-due.mjs gate, with arguments allowed after it;
+//   i4  one run line is node scripts/milestone-due.mjs proof, with arguments allowed after it;
 //   i5  no if: in the job or its steps names github.event_name or github.ref;
 //   j   ci-done needs it too, as every other job does.
 //
@@ -503,53 +503,53 @@ function milestoneChecks({ msText, wfText, read }) {
   ];
 }
 
-// The milestone-gate job fails a pull request until the newest milestone run on main passed. A
-// gate that cannot read its proof must fail, so the job runs on every event and no if: narrows
+// The milestone-proof job fails a pull request until the newest milestone run on main passed. A
+// job that cannot read its proof must fail, so the job runs on every event and no if: narrows
 // it. Its token holds no write scope.
-const GATE = "milestone-gate";
-const GATE_RUN = "node scripts/milestone-due.mjs gate";
-const GATE_EVENT_TERMS = ["github.event_name", "github.ref"];
+const PROOF = "milestone-proof";
+const PROOF_RUN = "node scripts/milestone-due.mjs proof";
+const PROOF_EVENT_TERMS = ["github.event_name", "github.ref"];
 // Assertions i1 to i5 and j, on a parsed jobs map.
-function milestoneGateChecks(jobs) {
+function milestoneProofChecks(jobs) {
   const map = isMap(jobs) ? jobs : {};
-  const job = isMap(map[GATE]) ? map[GATE] : undefined;
+  const job = isMap(map[PROOF]) ? map[PROOF] : undefined;
   const perms = isMap(job?.permissions) ? job.permissions : undefined;
   const writes = perms ? Object.keys(perms).filter((k) => perms[k] === "write") : [];
   const runLines = runText(job).split("\n").map((l) => l.trim());
-  const ran = runLines.some((l) => l === GATE_RUN || l.startsWith(`${GATE_RUN} `));
+  const ran = runLines.some((l) => l === PROOF_RUN || l.startsWith(`${PROOF_RUN} `));
   const conds = [ifText(job), ...steps(job).map((s) => ifText(s))].map((c) => c.replace(/\s+/g, ""));
-  const narrowed = conds.filter((c) => GATE_EVENT_TERMS.some((t) => c.includes(t)));
+  const narrowed = conds.filter((c) => PROOF_EVENT_TERMS.some((t) => c.includes(t)));
   const rollNeeds = needsOf(map[ROLLUP]);
   const doneNeeds = needsOf(map[CI_DONE]);
   return [
     {
-      label: `i1 job ${GATE} exists in test.yml`,
+      label: `i1 job ${PROOF} exists in test.yml`,
       ok: job !== undefined,
       detail: `job present: ${job !== undefined}`,
     },
     {
-      label: `i2 the rollup needs ${GATE}`,
-      ok: rollNeeds.includes(GATE),
+      label: `i2 the rollup needs ${PROOF}`,
+      ok: rollNeeds.includes(PROOF),
       detail: `rollup needs: ${rollNeeds.join(", ") || "none"}`,
     },
     {
-      label: `i3 ${GATE} has permissions with actions: read and no write value`,
+      label: `i3 ${PROOF} has permissions with actions: read and no write value`,
       ok: perms !== undefined && perms.actions === "read" && writes.length === 0,
       detail: `permissions: ${JSON.stringify(perms ?? null)}; write values: ${writes.join(", ") || "none"}`,
     },
     {
-      label: `i4 ${GATE} has a run line that starts with ${GATE_RUN}`,
+      label: `i4 ${PROOF} has a run line that starts with ${PROOF_RUN}`,
       ok: ran,
-      detail: `no run line starts with ${GATE_RUN}`,
+      detail: `no run line starts with ${PROOF_RUN}`,
     },
     {
-      label: `i5 ${GATE} names no event or ref in any if:, so it is not limited to push`,
+      label: `i5 ${PROOF} names no event or ref in any if:, so it is not limited to push`,
       ok: job !== undefined && narrowed.length === 0,
       detail: `if: ${JSON.stringify(conds)}`,
     },
     {
-      label: `j ${CI_DONE} needs ${GATE}, as every other job does`,
-      ok: doneNeeds.includes(GATE),
+      label: `j ${CI_DONE} needs ${PROOF}, as every other job does`,
+      ok: doneNeeds.includes(PROOF),
       detail: `${CI_DONE} needs: ${doneNeeds.join(", ") || "none"}`,
     },
   ];
@@ -592,7 +592,7 @@ const readOrNull = (path) => {
   for (const r of results) expect(r.label, r.ok, r.detail);
 }
 
-// The milestone-gate job and its place in the rollup and ci-done, read from the repo.
+// The milestone-proof job and its place in the rollup and ci-done, read from the repo.
 {
   let jobs;
   try {
@@ -601,8 +601,8 @@ const readOrNull = (path) => {
   } catch {
     jobs = undefined;
   }
-  if (jobs === undefined) expect(`${GATE} checks: ${WORKFLOW} parses`, false, "no parsed jobs map");
-  else for (const r of milestoneGateChecks(jobs)) expect(r.label, r.ok, r.detail);
+  if (jobs === undefined) expect(`${PROOF} checks: ${WORKFLOW} parses`, false, "no parsed jobs map");
+  else for (const r of milestoneProofChecks(jobs)) expect(r.label, r.ok, r.detail);
 }
 
 // Self-test. Fixture text is built from arrays, not template literals, so the YAML
@@ -1029,12 +1029,12 @@ const hOf = (regexText) =>
   expect("fixture red: a regex that matches every path is not a pass", !everything.ok, everything.detail);
 }
 
-// Assertions i and j fixtures. GATE_JOB_TEXT is the job as the gate needs it: a draft guard,
+// Assertions i and j fixtures. PROOF_JOB_TEXT is the job as the proof needs it: a draft guard,
 // contents and actions read, a checkout, and one run line. Each red case changes one piece of
 // it with mutate(). The green controls keep a valid run that holds a comment opener, a lone
 // apostrophe or a CLI argument.
-const GATE_JOB_TEXT = [
-  `  ${GATE}:`,
+const PROOF_JOB_TEXT = [
+  `  ${PROOF}:`,
   "    if: ${{ !github.event.pull_request.draft }}",
   "    runs-on: ubuntu-latest",
   "    timeout-minutes: 5",
@@ -1048,18 +1048,18 @@ const GATE_JOB_TEXT = [
   "      - name: fail unless the newest milestone run on main passed",
   "        env:",
   "          GITHUB_TOKEN: ${{ github.token }}",
-  `        run: ${GATE_RUN}`,
+  `        run: ${PROOF_RUN}`,
 ].join("\n") + "\n";
-const GATE_BASE = mutate(
-  PRE_TEXT + MS_JOB_TEXT + GATE_JOB_TEXT + rollupJob({ needs: [...NEEDS, MILESTONE_DUE, GATE] }),
+const PROOF_BASE = mutate(
+  PRE_TEXT + MS_JOB_TEXT + PROOF_JOB_TEXT + rollupJob({ needs: [...NEEDS, MILESTONE_DUE, PROOF] }),
   "  ci-done:\n    needs: [suite, screens, scope, native, zizmor, ste-lint]\n",
-  "  ci-done:\n    needs: [suite, screens, scope, native, zizmor, ste-lint, milestone-due, milestone-gate]\n"
+  "  ci-done:\n    needs: [suite, screens, scope, native, zizmor, ste-lint, milestone-due, milestone-proof]\n"
 );
-const gateResults = (text) => milestoneGateChecks(fJobs(text));
+const proofResults = (text) => milestoneProofChecks(fJobs(text));
 {
-  const r = gateResults(GATE_BASE);
+  const r = proofResults(PROOF_BASE);
   expect(
-    "fixture good: the gate job, the rollup need and the ci-done need pass i1 to j",
+    "fixture good: the proof job, the rollup need and the ci-done need pass i1 to j",
     r.every((x) => x.ok),
     r
       .filter((x) => !x.ok)
@@ -1067,49 +1067,49 @@ const gateResults = (text) => milestoneGateChecks(fJobs(text));
       .join("; ")
   );
 }
-const GATE_RED = [
-  ["the gate job is missing", mutate(GATE_BASE, GATE_JOB_TEXT, ""), "i1"],
-  ["the rollup does not need the gate", mutate(GATE_BASE, "      - milestone-gate\n", ""), "i2"],
+const PROOF_RED = [
+  ["the proof job is missing", mutate(PROOF_BASE, PROOF_JOB_TEXT, ""), "i1"],
+  ["the rollup does not need the proof", mutate(PROOF_BASE, "      - milestone-proof\n", ""), "i2"],
   [
-    "the gate's permissions are write-all",
-    mutate(GATE_BASE, "    permissions:\n      contents: read\n      actions: read\n", "    permissions: write-all\n"),
+    "the proof's permissions are write-all",
+    mutate(PROOF_BASE, "    permissions:\n      contents: read\n      actions: read\n", "    permissions: write-all\n"),
     "i3",
   ],
-  ["the gate has actions: write", mutate(GATE_BASE, "      actions: read\n", "      actions: write\n"), "i3"],
+  ["the proof has actions: write", mutate(PROOF_BASE, "      actions: read\n", "      actions: write\n"), "i3"],
   [
-    "the gate also has id-token: write",
-    mutate(GATE_BASE, "      actions: read\n", "      actions: read\n      id-token: write\n"),
+    "the proof also has id-token: write",
+    mutate(PROOF_BASE, "      actions: read\n", "      actions: read\n      id-token: write\n"),
     "i3",
   ],
-  ["the gate has no actions: read", mutate(GATE_BASE, "      actions: read\n", ""), "i3"],
+  ["the proof has no actions: read", mutate(PROOF_BASE, "      actions: read\n", ""), "i3"],
   [
-    "the gate has no permissions block",
-    mutate(GATE_BASE, "    permissions:\n      contents: read\n      actions: read\n", ""),
+    "the proof has no permissions block",
+    mutate(PROOF_BASE, "    permissions:\n      contents: read\n      actions: read\n", ""),
     "i3",
   ],
   [
-    "the gate runs the native-paths form",
+    "the proof runs the native-paths form",
     mutate(
-      GATE_BASE,
-      `        run: ${GATE_RUN}`,
+      PROOF_BASE,
+      `        run: ${PROOF_RUN}`,
       "        run: node scripts/milestone-due.mjs --native-paths .github/native-paths.regex"
     ),
     "i4",
   ],
   [
-    "the gate command is only in a trailing YAML comment",
-    mutate(GATE_BASE, `        run: ${GATE_RUN}`, `        run: echo ok # ${GATE_RUN}`),
+    "the proof command is only in a trailing YAML comment",
+    mutate(PROOF_BASE, `        run: ${PROOF_RUN}`, `        run: echo ok # ${PROOF_RUN}`),
     "i4",
   ],
   [
-    "the gate command is only after a quoted comment opener in a block",
-    mutate(GATE_BASE, `        run: ${GATE_RUN}`, `        run: |\n          echo "# ${GATE_RUN}"`),
+    "the proof command is only after a quoted comment opener in a block",
+    mutate(PROOF_BASE, `        run: ${PROOF_RUN}`, `        run: |\n          echo "# ${PROOF_RUN}"`),
     "i4",
   ],
   [
-    "the gate step has the push-to-main guard",
+    "the proof step has the push-to-main guard",
     mutate(
-      GATE_BASE,
+      PROOF_BASE,
       "      - name: fail unless the newest milestone run on main passed\n",
       `      - name: fail unless the newest milestone run on main passed\n${PUSH_MAIN_IF}\n`
     ),
@@ -1118,7 +1118,7 @@ const GATE_RED = [
   [
     "the checkout step has an event guard",
     mutate(
-      GATE_BASE,
+      PROOF_BASE,
       "          persist-credentials: false\n      - name: fail unless",
       "          persist-credentials: false\n        if: ${{ github.event_name == 'push' }}\n      - name: fail unless"
     ),
@@ -1127,27 +1127,27 @@ const GATE_RED = [
   [
     "the job-level if names the push event",
     mutate(
-      GATE_BASE,
-      "  milestone-gate:\n    if: ${{ !github.event.pull_request.draft }}\n",
-      "  milestone-gate:\n    if: ${{ !github.event.pull_request.draft && github.event_name == 'push' }}\n"
+      PROOF_BASE,
+      "  milestone-proof:\n    if: ${{ !github.event.pull_request.draft }}\n",
+      "  milestone-proof:\n    if: ${{ !github.event.pull_request.draft && github.event_name == 'push' }}\n"
     ),
     "i5",
   ],
   [
     "the job-level if reads a ref",
     mutate(
-      GATE_BASE,
-      "  milestone-gate:\n    if: ${{ !github.event.pull_request.draft }}\n",
-      "  milestone-gate:\n    if: ${{ !github.event.pull_request.draft && github.ref == 'refs/heads/main' }}\n"
+      PROOF_BASE,
+      "  milestone-proof:\n    if: ${{ !github.event.pull_request.draft }}\n",
+      "  milestone-proof:\n    if: ${{ !github.event.pull_request.draft && github.ref == 'refs/heads/main' }}\n"
     ),
     "i5",
   ],
-  ["ci-done does not need the gate", mutate(GATE_BASE, "milestone-due, milestone-gate]", "milestone-due]"), "j"],
+  ["ci-done does not need the proof", mutate(PROOF_BASE, "milestone-due, milestone-proof]", "milestone-due]"), "j"],
 ];
-for (const [name, text, id] of GATE_RED) {
+for (const [name, text, id] of PROOF_RED) {
   let r;
   try {
-    r = gateResults(text);
+    r = proofResults(text);
   } catch (e) {
     r = [{ label: `0 parse: ${e.message}`, ok: false, detail: e.message }];
   }
@@ -1158,26 +1158,26 @@ for (const [name, text, id] of GATE_RED) {
     `failing: ${bad.map((x) => x.label.split(" ")[0]).join(", ") || "none"}`
   );
 }
-const GATE_GREEN = [
+const PROOF_GREEN = [
   [
-    "the gate command on a later line of a block, after a quoted comment opener and a lone apostrophe",
+    "the proof command on a later line of a block, after a quoted comment opener and a lone apostrophe",
     mutate(
-      GATE_BASE,
-      `        run: ${GATE_RUN}`,
-      `        run: |\n          echo "# not a comment"\n          echo don't\n          ${GATE_RUN}`
+      PROOF_BASE,
+      `        run: ${PROOF_RUN}`,
+      `        run: |\n          echo "# not a comment"\n          echo don't\n          ${PROOF_RUN}`
     ),
   ],
   [
-    "the gate command with a branch argument",
-    mutate(GATE_BASE, `        run: ${GATE_RUN}`, `        run: ${GATE_RUN} --branch main`),
+    "the proof command with a branch argument",
+    mutate(PROOF_BASE, `        run: ${PROOF_RUN}`, `        run: ${PROOF_RUN} --branch main`),
   ],
   [
-    "the gate command with a YAML trailing comment holding a lone apostrophe",
-    mutate(GATE_BASE, `        run: ${GATE_RUN}`, `        run: ${GATE_RUN} # don't`),
+    "the proof command with a YAML trailing comment holding a lone apostrophe",
+    mutate(PROOF_BASE, `        run: ${PROOF_RUN}`, `        run: ${PROOF_RUN} # don't`),
   ],
 ];
-for (const [name, text] of GATE_GREEN) {
-  const r = gateResults(text);
+for (const [name, text] of PROOF_GREEN) {
+  const r = proofResults(text);
   expect(
     `fixture good: ${name} passes i1 to j`,
     r.every((x) => x.ok),

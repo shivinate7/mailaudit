@@ -18,7 +18,7 @@
 //   otherwise the newest successful run's sha; a cancelled run is not a failure;
 //   only cancelled, queued or in-progress runs -> null.
 //
-// gateVerdict takes the milestone runs on main, newest first (createdAt is an ISO string), the
+// proofVerdict takes the milestone runs on main, newest first (createdAt is an ISO string), the
 // time now (epoch ms) and staleMinutes. It returns { pass, reason }. It proves:
 //   no run at all -> pass, with the reason "no milestone run yet";
 //   newest judged run succeeded -> pass; failure, timed_out, cancelled, neutral, skipped -> fail;
@@ -36,9 +36,10 @@
 let milestoneDue;
 let N;
 let countBase;
-let gateVerdict;
+let proofVerdict;
+let milestoneRuns;
 try {
-  ({ milestoneDue, N, countBase, gateVerdict } = await import("../scripts/milestone-due.mjs"));
+  ({ milestoneDue, N, countBase, proofVerdict, milestoneRuns } = await import("../scripts/milestone-due.mjs"));
 } catch (e) {
   console.log(`FAIL scripts/milestone-due.mjs cannot be loaded (${e.code ?? e.message})`);
   process.exit(1);
@@ -56,7 +57,7 @@ function expect(label, cond, detail = "") {
 
 const sha = (c) => c.repeat(40);
 const SHA = sha("a");
-// The clock for gateVerdict. ago(m) is a createdAt m minutes before it.
+// The clock for proofVerdict. ago(m) is a createdAt m minutes before it.
 const NOW = Date.parse("2026-11-01T19:00:00Z");
 const ago = (minutes) => new Date(NOW - minutes * 60_000).toISOString();
 const done = (conclusion, headSha = SHA, createdAt) => ({ status: "completed", conclusion, headSha, createdAt });
@@ -158,9 +159,9 @@ for (const [label, runs, want] of BASE_CASES) {
   expect(`countBase: ${label}`, got === want, `got ${JSON.stringify(got)}, want ${JSON.stringify(want)}`);
 }
 
-// gateVerdict cases. Runs are newest first; ago(m) is how many minutes old each run is. A case
+// proofVerdict cases. Runs are newest first; ago(m) is how many minutes old each run is. A case
 // with no staleMinutes uses the default. A reason of a RegExp must match; a string must be exact.
-const GATE_CASES = [
+const PROOF_CASES = [
   { label: "no run at all: pass, with the bootstrap reason", runs: [], pass: true, reason: "no milestone run yet" },
   { label: "newest run succeeded: pass", runs: [done("success", SHA, ago(300))], pass: true },
   { label: "newest run failed: fail", runs: [done("failure", SHA, ago(300))], pass: false },
@@ -282,17 +283,17 @@ const GATE_CASES = [
 ];
 
 expect(
-  "gateVerdict is exported as a function",
-  typeof gateVerdict === "function",
-  `the export is ${typeof gateVerdict}`
+  "proofVerdict is exported as a function",
+  typeof proofVerdict === "function",
+  `the export is ${typeof proofVerdict}`
 );
-for (const c of GATE_CASES) {
+for (const c of PROOF_CASES) {
   let got;
-  if (typeof gateVerdict !== "function") {
-    got = "no gateVerdict export";
+  if (typeof proofVerdict !== "function") {
+    got = "no proofVerdict export";
   } else {
     try {
-      got = gateVerdict({ runs: c.runs, now: NOW, staleMinutes: c.staleMinutes });
+      got = proofVerdict({ runs: c.runs, now: NOW, staleMinutes: c.staleMinutes });
     } catch (e) {
       got = `threw ${e.message}`;
     }
@@ -302,9 +303,139 @@ for (const c of GATE_CASES) {
     c.reason === undefined ||
     (typeof c.reason === "string" ? got?.reason === c.reason : c.reason.test(got?.reason ?? ""));
   expect(
-    `gateVerdict: ${c.label}`,
+    `proofVerdict: ${c.label}`,
     shaped && got.pass === c.pass && reasonOk,
     `got ${JSON.stringify(got)}, want pass ${c.pass}${c.reason ? ` with reason ${c.reason}` : ""}`
+  );
+}
+
+// The run reader, end to end. milestoneRuns({ repo, token, fetch, wait }) reads the milestone runs
+// on main through the fetch it is given, so no case touches the network. wait is the pause before a
+// retry, and the cases pass a no-op. Each stub answer is a response object, or an Error to throw.
+// It proves:
+//   (a) one GET to /repos/<repo>/actions/runs?branch=main&event=workflow_dispatch, and it keeps
+//       only the runs whose path is .github/workflows/milestone.yml;
+//   (b) run_attempt, run_started_at and created_at map to runAttempt, runStartedAt and createdAt;
+//   (c) one thrown network error on the GET is retried, and the retry succeeds; two throws reject;
+//   (d) an attempt-2 in-flight run read this way makes proofVerdict fail.
+const REPO = "owner/mail-ledger";
+const RUNS_PATH = `/repos/${REPO}/actions/runs`;
+const MILESTONE_PATH = ".github/workflows/milestone.yml";
+const apiRun = (over) => ({
+  status: "completed",
+  conclusion: "success",
+  head_sha: SHA,
+  created_at: ago(300),
+  run_started_at: ago(300),
+  run_attempt: 1,
+  path: MILESTONE_PATH,
+  ...over,
+});
+const okJson = (body) => ({ ok: true, status: 200, headers: { get: () => null }, json: async () => body });
+// Records each call. Answers are used in order, and the last one repeats if the reader asks again.
+function stubFetch(answers) {
+  const calls = [];
+  const fetch = async (url, init = {}) => {
+    calls.push({ url: String(url), method: init.method ?? "GET" });
+    const answer = answers[Math.min(calls.length, answers.length) - 1];
+    if (answer instanceof Error) throw answer;
+    return answer;
+  };
+  return { fetch, calls };
+}
+async function readRuns(answers) {
+  const stub = stubFetch(answers);
+  if (typeof milestoneRuns !== "function") return { err: "no milestoneRuns export", calls: stub.calls };
+  try {
+    const runs = await milestoneRuns({ repo: REPO, token: "test-token", fetch: stub.fetch, wait: async () => {} });
+    return { runs, calls: stub.calls };
+  } catch (e) {
+    return { err: e, calls: stub.calls };
+  }
+}
+
+// (a) The endpoint, the filter by path.
+{
+  const body = {
+    workflow_runs: [
+      apiRun({ created_at: ago(42), head_sha: sha("c") }),
+      apiRun({ path: ".github/workflows/test.yml", head_sha: sha("d") }),
+      apiRun({ path: ".github/workflows/milestone-old.yml", head_sha: sha("e") }),
+    ],
+  };
+  const { runs, err, calls } = await readRuns([okJson(body)]);
+  const url = calls.length > 0 ? new URL(calls[0].url) : undefined;
+  expect(
+    "reader (a): one GET, to the list endpoint on main for dispatched runs",
+    calls.length === 1 &&
+      calls[0].method === "GET" &&
+      url !== undefined &&
+      url.hostname === "api.github.com" &&
+      url.pathname === RUNS_PATH &&
+      url.searchParams.get("branch") === "main" &&
+      url.searchParams.get("event") === "workflow_dispatch",
+    `calls: ${calls.map((c) => `${c.method} ${c.url}`).join("; ") || "none"}`
+  );
+  expect(
+    "reader (a): keeps only the runs whose path is .github/workflows/milestone.yml",
+    !err && Array.isArray(runs) && runs.length === 1 && runs[0].createdAt === ago(42),
+    `err ${String(err)}; kept ${JSON.stringify(runs)}`
+  );
+}
+
+// (b) The field mapping.
+{
+  const body = {
+    workflow_runs: [
+      apiRun({ status: "in_progress", conclusion: null, run_attempt: 3, run_started_at: ago(40), created_at: ago(42) }),
+    ],
+  };
+  const { runs, err } = await readRuns([okJson(body)]);
+  const r = Array.isArray(runs) ? runs[0] : undefined;
+  expect(
+    "reader (b): run_attempt, run_started_at and created_at map to runAttempt, runStartedAt and createdAt",
+    !err &&
+      r !== undefined &&
+      r.status === "in_progress" &&
+      r.runAttempt === 3 &&
+      r.runStartedAt === ago(40) &&
+      r.createdAt === ago(42),
+    `err ${String(err)}; got ${JSON.stringify(r)}`
+  );
+}
+
+// (c) The retry on a thrown network error.
+{
+  const body = { workflow_runs: [apiRun({})] };
+  const once = await readRuns([new TypeError("fetch failed"), okJson(body)]);
+  expect(
+    "reader (c): one thrown network error on the GET is retried, and the retry succeeds",
+    !once.err && Array.isArray(once.runs) && once.runs.length === 1 && once.calls.length === 2,
+    `err ${String(once.err)}; GETs ${once.calls.length}`
+  );
+  const twice = await readRuns([new TypeError("fetch failed"), new TypeError("fetch failed")]);
+  expect(
+    "reader (c): two thrown network errors reject, after exactly two GETs",
+    twice.err !== undefined && twice.calls.length === 2,
+    `err ${String(twice.err)}; GETs ${twice.calls.length}`
+  );
+}
+
+// (d) An attempt-2 in-flight run, read through the stub, fails the proof. The run is fresh by both
+// timestamps, so only the re-run rule can fail it. An older success sits below it.
+{
+  const body = {
+    workflow_runs: [
+      apiRun({ status: "in_progress", conclusion: null, run_attempt: 2, run_started_at: ago(5), created_at: ago(5) }),
+      apiRun({ created_at: ago(900) }),
+    ],
+  };
+  const { runs, err } = await readRuns([okJson(body)]);
+  const verdict = err === undefined && typeof proofVerdict === "function" ? proofVerdict({ runs, now: NOW }) : undefined;
+  expect(
+    "reader (d): an attempt-2 in-flight run read this way makes proofVerdict fail, as a re-run",
+    verdict !== undefined && verdict.pass === false && /re-run/.test(verdict.reason),
+    `err ${String(err)}; verdict ${JSON.stringify(verdict)}`
   );
 }
 
