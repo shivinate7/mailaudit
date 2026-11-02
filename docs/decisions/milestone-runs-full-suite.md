@@ -55,7 +55,7 @@ The merge tool reads a timed-out run as green and judges completed runs only, so
 
 A re-run keeps its `createdAt` and raises its attempt number. A re-run in flight (attempt above 1) is never skipped: the check fails it as "re-run of a failed run; no proof yet". Staleness reads the time the run started, and `createdAt` when a run has none. Staleness is 90 minutes, and no measure backs it.
 
-Recovery from a failed proof is a dispatch by hand of `milestone.yml`. Merges are blocked, so no push to main follows, and `milestone-due` dispatches nothing. If the `xcode-27` runner never takes a run, the stale run fails the proof of every pull request, and the fix pull request is blocked too. Then recovery is a hand dispatch, or the owner's bypass of branch protection. A pull request that went red during recovery needs a re-run of its checks once `milestone.yml` has a green run.
+Recovery from a failed proof is a dispatch by hand of `milestone.yml` on main. A dispatch on another branch is not read. Merges are blocked, so no push to main follows, and `milestone-due` dispatches nothing. If the `xcode-27` runner never takes a run, the stale run fails the proof of every pull request, and the fix pull request is blocked too. Then recovery is a hand dispatch, or the owner's bypass of branch protection. A pull request that went red during recovery needs a re-run of its checks once `milestone.yml` has a green run.
 
 A pull request can edit its own copy of the proof script, so it can pass itself. The check guards a mistake, not an attacker (rule `guard-guards-mistakes-only`). Branch protection and review hold the rest.
 
