@@ -33,7 +33,7 @@
 //   i3  its permissions are a map with actions: read and no write value;
 //   i4  one run line is node scripts/milestone-due.mjs proof, with arguments allowed after it;
 //   i5  no if: in the job or its steps names github.event_name or github.ref;
-//   j   ci-done needs it too, as every other job does.
+//   j   it stays out of ci-done too until its first green hosted run (staged with i2).
 //
 // No YAML library is in node_modules, and none may be added. The workflow is read as
 // text by indentation: jobs sit under jobs: at 2 spaces, job keys at 4, step keys at 8.
@@ -549,9 +549,9 @@ function milestoneProofChecks(jobs) {
       detail: `if: ${JSON.stringify(conds)}`,
     },
     {
-      label: `j ${CI_DONE} needs ${PROOF}, as every other job does`,
-      ok: doneNeeds.includes(PROOF),
-      detail: `${CI_DONE} needs: ${doneNeeds.join(", ") || "none"}`,
+      label: `j ${PROOF} stays out of ${ROLLUP} and ${CI_DONE} until its first green hosted run (coordinator 2026-11-01 22:06)`,
+      ok: !doneNeeds.includes(PROOF) && !rollNeeds.includes(PROOF),
+      detail: `${CI_DONE} needs: ${doneNeeds.join(", ") || "none"}; ${ROLLUP} needs: ${rollNeeds.join(", ") || "none"}`,
     },
   ];
 }
@@ -1558,7 +1558,7 @@ const PROOF_JOB_TEXT = [
 const PROOF_BASE = mutate(
   PRE_TEXT + MS_JOB_TEXT + PROOF_JOB_TEXT + rollupJob({ needs: [...NEEDS, MILESTONE_DUE] }),
   "  ci-done:\n    needs: [suite, screens, scope, native, zizmor, ste-lint]\n",
-  "  ci-done:\n    needs: [suite, screens, scope, native, zizmor, ste-lint, milestone-due, milestone-proof]\n"
+  "  ci-done:\n    needs: [suite, screens, scope, native, zizmor, ste-lint, milestone-due]\n"
 );
 const proofResults = (text) => milestoneProofChecks(fJobs(text));
 {
@@ -1651,7 +1651,11 @@ const PROOF_RED = [
     ),
     "i5",
   ],
-  ["ci-done does not need the proof", mutate(PROOF_BASE, "milestone-due, milestone-proof]", "milestone-due]"), "j"],
+  [
+    "ci-done needs the proof before its first green run",
+    mutate(PROOF_BASE, "ste-lint, milestone-due]", "ste-lint, milestone-due, milestone-proof]"),
+    "j",
+  ],
 ];
 for (const [name, text, id] of PROOF_RED) {
   let r;
