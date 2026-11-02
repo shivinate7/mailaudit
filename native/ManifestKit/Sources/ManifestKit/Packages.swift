@@ -281,26 +281,8 @@ public final class PackagesModel {
         checkInError = nil
         bulkUndoGk = nil
         received = store.received()
-<<<<<<< HEAD
-        if let pkg = rows.first(where: { $0.items.contains { $0.key == key } }),
-            let item = pkg.items.first(where: { $0.key == key }) {
-            try await reread(pkg, items: [item])
-=======
         if let pkg = package(holding: key), let item = pkg.items.first(where: { $0.key == key }) {
-            do {
-                var (updates, failure) = try await refresh([(pkg, [item])], received: received, withStatic: false)
-                if refundGks.contains(pkg.gk) {
-                    let (texts, textFailure) = await stampTexts([pkg], held: stamps, refunds: [pkg.gk], received: received)
-                    updates += texts.filter { if case .refundPill = $0 { return true } else { return false } }
-                    failure = failure ?? textFailure
-                }
-                apply(updates)
-                if let failure { throw failure }
-            } catch {
-                checkInError = "Saved, but the label could not refresh. \(error.localizedDescription)"
-                throw error
-            }
->>>>>>> origin/main
+            try await reread(pkg, items: [item])
         }
     }
 

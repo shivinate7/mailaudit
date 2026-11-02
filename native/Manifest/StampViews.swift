@@ -40,8 +40,8 @@ struct StampedRow: View {
 }
 
 /// The two-tap ask of a destructive control (no-native-dialogs): Cancel, then the confirm button, in a panel. It is drawn as
-/// an overlay of the row it belongs to, at `.bottomTrailing`, and hangs 4pt below that row whatever height the row has at the
-/// current type size, so arming moves nothing. The stamp's Remove and the bulk Clear both draw it.
+/// an overlay of the row it belongs to, hung below it by `hangingAsk`, so arming moves nothing. The stamp's Remove and the
+/// bulk Clear both draw it.
 struct AskPanel: View {
     let confirmTitle: String
     let cancelID: String
@@ -64,9 +64,29 @@ struct AskPanel: View {
         .padding(4)
         .background(RoundedRectangle(cornerRadius: 8).fill(paint(.askPanelFill)).shadow(color: Parchment.shadow, radius: 2, y: 1))
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.askPanelBorder), lineWidth: 1))
-        // Its top sits 4pt under the row, whatever height the row has at the current type size.
-        .alignmentGuide(.bottom) { $0[.top] - 4 }
         .zIndex(1)
+    }
+}
+
+extension View {
+    /// Draws `ask` as an overlay of this row, its top 4pt under the row's bottom edge whatever height the row has at the
+    /// current type size, so arming takes no layout space and moves nothing. The stamp's Remove and the bulk Clear both hang
+    /// their AskPanel through this. The offset is the measured row height: an alignment guide on the overlay put the panel
+    /// above the row.
+    func hangingAsk<Ask: View>(_ armed: Bool, @ViewBuilder ask: () -> Ask) -> some View {
+        modifier(HangingAsk(armed: armed, ask: armed ? ask() : nil))
+    }
+}
+
+private struct HangingAsk<Ask: View>: ViewModifier {
+    let armed: Bool
+    let ask: Ask?
+    @State private var rowHeight: CGFloat = 0
+
+    func body(content: Content) -> some View {
+        content
+            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { rowHeight = $0 }
+            .overlay(alignment: .topTrailing) { if armed, let ask { ask.offset(y: rowHeight + 4) } }
     }
 }
 
@@ -122,8 +142,6 @@ struct StampSection: View {
     @State private var kind = ""
     @State private var note = ""
     @State private var armed = false
-    /// The action row's height at the current type size, which the armed ask hangs below.
-    @State private var rowHeight: CGFloat = 0
     @FocusState private var focused: Bool
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.scrollTo) private var scrollTo
@@ -302,40 +320,11 @@ struct StampSection: View {
             .accessibilityHint(ready ? "" : "Pick a stamp first.")
             .accessibilityIdentifier("stamp-save:\(pkg.gk)")
         }
-<<<<<<< HEAD
-        .overlay(alignment: .bottomTrailing) {
-            if armed {
-                AskPanel(confirmTitle: "Tap again to remove stamp from \(totalQty) card\(totalQty == 1 ? "" : "s")",
-                         cancelID: "stamp-ask-cancel:\(pkg.gk)", confirmID: "stamp-ask-confirm:\(pkg.gk)",
-                         cancel: { armed = false }, confirm: { armed = false; Task { await remove() } })
-=======
-        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { rowHeight = $0 }
-        // The overlay takes no layout space. The ask's top sits 4pt under the row, whatever height the row has now.
-        .overlay(alignment: .topTrailing) { if armed { ask.offset(y: rowHeight + 4) } }
-    }
-
-    private var ask: some View {
-        let cards = "\(totalQty) card\(totalQty == 1 ? "" : "s")"
-        let panel = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(alignment: .trailing, spacing: 4)) : AnyLayout(HStackLayout(spacing: 4))
-        return panel {
-            Button { armed = false } label: { MiniLabel(title: "Cancel", size: 11, vertical: 4, horizontal: 8) }
-                .buttonStyle(.plain).accessibilityIdentifier("stamp-ask-cancel:\(pkg.gk)")
-            Button(role: .destructive) {
-                armed = false
-                Task { await remove() }
-            } label: {
-                MiniLabel(title: "Tap again to remove stamp from \(cards)", size: 11, bold: true,
-                          text: paint(.askText), fill: paint(.askFill), border: paint(.askFill), vertical: 4, horizontal: 8)
->>>>>>> origin/main
-            }
+        .hangingAsk(armed) {
+            AskPanel(confirmTitle: "Tap again to remove stamp from \(totalQty) card\(totalQty == 1 ? "" : "s")",
+                     cancelID: "stamp-ask-cancel:\(pkg.gk)", confirmID: "stamp-ask-confirm:\(pkg.gk)",
+                     cancel: { armed = false }, confirm: { armed = false; Task { await remove() } })
         }
-<<<<<<< HEAD
-=======
-        .padding(4)
-        .background(RoundedRectangle(cornerRadius: 8).fill(paint(.askPanelFill)).shadow(color: Parchment.shadow, radius: 2, y: 1))
-        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.askPanelBorder), lineWidth: 1))
-        .zIndex(1)
->>>>>>> origin/main
     }
 
     // MARK: writes
