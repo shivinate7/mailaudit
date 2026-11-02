@@ -3,6 +3,7 @@
 // The rollup is the one check branch protection requires, so it must report on
 // every run that should pass. These checks read .github/workflows/test.yml and
 // .github/stamp.json. They prove:
+//   0  the workflow file is readable and parses in the indentation subset;
 //   1  the rollup job exists with no name key, so its check name is its id;
 //   2  its job-level if: is exactly always() && !github.event.pull_request.draft;
 //   3a its step pins the shared action to a 40-hex sha;
@@ -17,23 +18,36 @@
 //
 // The milestone workflow (.github/workflows/milestone.yml) and its job in test.yml
 // are checked the same way, with letter ids:
-//   a   its only trigger is workflow_dispatch (staged until its first green run, see the case);
-//   a2  it has one job, and that job's if: has the draft guard;
-//   b   its job runs on xcode-27 and selects Xcode 27.1;
-//   c   its job runs make native-check;
+//   a   its only trigger is workflow_dispatch; any other trigger fails it;
+//   a2  it has two jobs, and each job-level if: has the draft guard;
+//   b   every job runs on xcode-27 and selects Xcode 27.1;
+//   c   every job has a run line that starts with make;
 //   d   scope and milestone-due read one native path regex file, and neither job inlines it;
 //   f   the rollup needs milestone-due, and that job exists in test.yml;
-//   g   every step of milestone-due has an if: that can be true only on a push to main;
+//   g   every step of milestone-due has an if: that requires a push to main;
 //   h   scope's native regex file matches its own path, and README.md does not match it.
 //
-// The milestone-proof job (see milestoneProofChecks) fails a pull request until the newest
-// milestone run on main passed. It is checked with these ids:
+// The milestone-proof job fails a pull request until the newest milestone run on main passed.
+// It is checked with these ids:
 //   i1  the job exists;
 //   i2  the rollup does not need it until its first green hosted run (coordinator 2026-11-01 22:06);
 //   i3  its permissions are a map with actions: read and no write value;
 //   i4  one run line is node scripts/milestone-due.mjs proof, with arguments allowed after it;
 //   i5  no if: in the job or its steps names github.event_name or github.ref;
-//   j   it stays out of ci-done too until its first green hosted run (staged with i2).
+//   j   it stays out of ci-done and the rollup until its first green hosted run (staged with i2).
+//
+// The UI-test checks read the Makefile through make, the Swift classes and milestone.yml:
+//   k1  DUO_UI_TESTS in the Makefile lists exactly the Duo classes in native/ManifestUITests;
+//   k2  make -n ui-test skips each Duo class;
+//   k3  milestone.yml has two UI-test jobs, timeout-minutes 45 and 50, and neither runs a Duo class;
+//   k4  each UI-test job creates its simulator on runtime iOS-27-1;
+//   k5  UI_TESTS_A holds no Duo class, the 45-minute job runs it, and the 50-minute job runs the rest;
+//   k6  each UI-test job's xcodebuild gets the simulator id that CI sets, as its -destination.
+//
+// The dispatch switch and the merge ignore list are read from the repo:
+//   m1  milestone-due's dispatch step needs MILESTONE_AUTO_DISPATCH to be 'on', and that env
+//       value is 'on' exactly when milestone-proof is in the rollup's needs;
+//   m2  no merge.ignoreChecks entry in the stamp names a workflow, a job the rollup needs, or a required check.
 //
 // No YAML library is in node_modules, and none may be added. The workflow is read as
 // text by indentation: jobs sit under jobs: at 2 spaces, job keys at 4, step keys at 8.
