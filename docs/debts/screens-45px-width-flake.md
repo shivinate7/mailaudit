@@ -4,7 +4,7 @@
 
 **Status:** open, cause unknown.
 
-**Owner:** the mailaudit coordinator session.
+**Assigned:** the mailaudit coordinator session.
 
 **Fix by:** 2026-12-01.
 

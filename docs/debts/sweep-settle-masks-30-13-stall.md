@@ -4,7 +4,7 @@
 
 **Status:** open. Named limit from the sync switch, round 3. Not reproduced locally; the settle stays until a stall is seen again.
 
-**Owner:** the mailaudit coordinator session.
+**Assigned:** the mailaudit coordinator session.
 
 **Fix by:** 2026-12-01.
 

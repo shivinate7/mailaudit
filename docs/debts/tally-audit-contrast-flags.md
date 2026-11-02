@@ -4,7 +4,7 @@
 
 **Status:** open, intermittent, not reproduced since 2026-10-27. The owner ruled a contrast skip on the "N left" line (2026-10-27 12:25 CDT, `audit-skips-measured-flags`). The full suite at `c596d83` (2026-10-27 18:50 CDT) passed all three audits. An isolated run of 2026-10-27 15:51 CDT, on view and test files that match `c596d83`, failed all three on the meta, sort-label and across lines, which no skip covers. On 2026-10-28, through `sim-test` on the iPhone 18 Pro simulator, the three audits ran 5 times each on main `1796200` and on step 4 `dc0e30b`. Main passed 15 of 15, and step 4 passed 15 of 15. The cause is unfound. Neither tree reproduced the flake, so the measurement does not tie it to step 4. With the step 5 masthead on Tally, the flags return on every measured run (2 of 2, 2026-10-28 19:16 and 21:12 CDT). They are contrast on the meta line and the "Most missing" sort label in the shell and rows audits. They also include a contrast finding with no element in `MastheadBackupUITests.testAccessibilityAuditMastheadOnTally`. Step 4 without the masthead does not flag them. Step 5 merges with these open.
 
-**Owner:** the mailaudit coordinator session.
+**Assigned:** the mailaudit coordinator session.
 
 **Fix by:** 2026-12-01.
 
