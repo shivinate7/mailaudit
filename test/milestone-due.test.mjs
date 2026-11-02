@@ -26,7 +26,10 @@
 //   a queued or in-progress run younger than staleMinutes is skipped, and the next run judged;
 //   fresh runs over a success pass; a fresh in-progress run over a failure fails;
 //   a queued or in-progress run older than staleMinutes -> fail, reason "not taken";
-//   staleMinutes is the cut-off when given, and 90 when omitted.
+//   staleMinutes is the cut-off when given, and 90 when omitted;
+//   an in-flight run with runAttempt above 1 is never skipped: fail, "re-run ... no proof yet";
+//   staleness reads runStartedAt when the run has one, and createdAt when it does not;
+//   a completed re-run that succeeded passes.
 //
 // Run: npm run test:milestone-due. Exits 1 on any failure. A missing script fails once.
 
@@ -229,6 +232,52 @@ const GATE_CASES = [
     runs: [queued(SHA, ago(91)), done("success", SHA, ago(300))],
     pass: false,
     reason: /not taken/,
+  },
+  // Re-runs. A run with runAttempt above 1 is a re-run of a run that failed, so its createdAt is
+  // old and its result is not in yet. An in-flight re-run is never skipped. A run's staleness reads
+  // runStartedAt when the run has one, and createdAt when it does not.
+  {
+    label: "a re-run in flight (attempt 2, 30 minutes old) over a success: fail, no proof yet",
+    runs: [{ ...inProgress(SHA, ago(30)), runAttempt: 2 }, done("success", SHA, ago(300))],
+    pass: false,
+    reason: /re-run/,
+  },
+  {
+    label: "a re-run in flight (attempt 2, fresh by createdAt and runStartedAt) over a success: fail",
+    runs: [
+      { ...inProgress(SHA, ago(5)), runAttempt: 2, runStartedAt: ago(5) },
+      done("success", SHA, ago(300)),
+    ],
+    pass: false,
+    reason: /re-run/,
+  },
+  {
+    label: "a queued re-run (attempt 2, 5 minutes old) over a success: fail, no proof yet",
+    runs: [{ ...queued(SHA, ago(5)), runAttempt: 2 }, done("success", SHA, ago(300))],
+    pass: false,
+    reason: /re-run/,
+  },
+  {
+    label: "a re-run in flight (attempt 2, 30 minutes old) alone: fail, no proof yet",
+    runs: [{ ...inProgress(SHA, ago(30)), runAttempt: 2 }],
+    pass: false,
+    reason: /re-run/,
+  },
+  {
+    label: "a first attempt fresh by runStartedAt, though createdAt is 300 minutes old: skipped, pass",
+    runs: [{ ...inProgress(SHA, ago(300)), runAttempt: 1, runStartedAt: ago(30) }, done("success", SHA, ago(600))],
+    pass: true,
+  },
+  {
+    label: "a first attempt stale by runStartedAt, though createdAt is 5 minutes old: fail, not taken",
+    runs: [{ ...inProgress(SHA, ago(5)), runAttempt: 1, runStartedAt: ago(120) }, done("success", SHA, ago(600))],
+    pass: false,
+    reason: /not taken/,
+  },
+  {
+    label: "a completed re-run that succeeded (attempt 2): pass",
+    runs: [{ ...done("success", SHA, ago(300)), runAttempt: 2 }],
+    pass: true,
   },
 ];
 
