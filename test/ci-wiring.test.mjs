@@ -14,6 +14,12 @@
 //   7  every job, ci-done included, has !github.event.pull_request.draft in its
 //      job-level if:, so a draft starts no runner;
 //   8  the screens job needs scope, and its job-level if: reads no .outputs.
+//   9  ci-alarm.yml triggers are schedule (one cron, after test.yml's nightly cron)
+//      and workflow_dispatch, nothing else;
+//  10  its permissions are exactly actions: read and issues: write, at job or
+//      workflow level;
+//  11  its one job has one step, which uses the shared ci-alarm action at the shared
+//      pin, with no checkout and a timeout-minutes.
 //
 // No YAML library is in node_modules, and none may be added. The workflow is read as
 // text by indentation: jobs sit under jobs: at 2 spaces, job keys at 4, step keys at 8.
@@ -35,10 +41,14 @@ import { fileURLToPath } from "node:url";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const WORKFLOW = resolve(ROOT, process.env.CI_WORKFLOW || ".github/workflows/test.yml");
 const STAMP = resolve(ROOT, process.env.CI_STAMP || ".github/stamp.json");
+const ALARM = resolve(ROOT, ".github/workflows/ci-alarm.yml");
 
 const ROLLUP = "all-jobs-passed";
 const CI_DONE = "ci-done";
 const ACTIONS = "shivinate7/claude-settings/actions/";
+const ALARM_ACTION = ACTIONS + "ci-alarm";
+// The shared action pin. Every claude-settings pin in test.yml carries this sha.
+const ACTION_PIN = "17492e58853703168d025128a2da315e9936ee90";
 const ROLLUP_IF = "always() && !github.event.pull_request.draft";
 const DRAFT_GUARD = "!github.event.pull_request.draft";
 // A needed job may read the draft guard, since a draft run skips it on purpose. An
@@ -104,6 +114,20 @@ function parseWorkflow(text) {
     if (s.startsWith("[") && s.endsWith("]")) {
       const inner = s.slice(1, -1).trim();
       return inner === "" ? [] : inner.split(",").map((x) => unquote(x.trim()));
+    }
+    if (s.startsWith("{") && s.endsWith("}")) {
+      // A flat flow map, such as {actions: read, issues: write}.
+      const inner = s.slice(1, -1).trim();
+      const out = {};
+      if (inner === "") return out;
+      for (const entry of inner.split(",")) {
+        const i = entry.indexOf(":");
+        if (i < 0) throw new Error(`flow map entry has no key: ${entry.trim()}`);
+        const key = entry.slice(0, i).trim();
+        if (Object.hasOwn(out, key)) throw new Error(`flow map repeats key ${key}`);
+        out[key] = unquote(entry.slice(i + 1).trim());
+      }
+      return out;
     }
     return unquote(s);
   }
@@ -314,6 +338,82 @@ function stampCheck(text) {
   ];
 }
 
+// Assertions 9 to 11 read the alarm workflow. The nightly cron comes from test.yml, its
+// one home, so the alarm keeps running after it when that cron moves.
+const ALARM_WHAT = {
+  9: "ci-alarm.yml triggers are schedule (one cron, after test.yml's nightly cron) and workflow_dispatch, nothing else",
+  10: "ci-alarm.yml permissions are exactly actions: read and issues: write, at job or workflow level",
+  11: "ci-alarm.yml has one job with one step, which uses the shared ci-alarm action at the shared pin, with no checkout and a timeout-minutes",
+};
+const CRON_TIME = /^(\d{1,2}) (\d{1,2}) \* \* \*$/;
+const minutesOf = (m) => Number(m[2]) * 60 + Number(m[1]);
+const cronTimeOk = (m) => m !== null && Number(m[1]) < 60 && Number(m[2]) < 24;
+
+function alarmChecks(alarmText, nightlyText) {
+  const out = [];
+  const add = (id, ok, detail = "") =>
+    out.push({ id, label: `${id} ${ALARM_WHAT[id]}`, ok: Boolean(ok), detail });
+
+  if (alarmText === null) {
+    for (const id of ["9", "10", "11"]) add(id, false, "no readable ci-alarm.yml");
+    return out;
+  }
+  let alarm;
+  try {
+    alarm = parseWorkflow(alarmText);
+  } catch (e) {
+    for (const id of ["9", "10", "11"]) add(id, false, `does not parse: ${e.message}`);
+    return out;
+  }
+  let nightlyCron = null;
+  try {
+    nightlyCron = parseWorkflow(nightlyText)?.on?.schedule?.[0]?.cron ?? null;
+  } catch {
+    nightlyCron = null;
+  }
+
+  const on = isMap(alarm.on) ? alarm.on : {};
+  const triggers = Object.keys(on).sort();
+  const sched = Array.isArray(on.schedule) ? on.schedule : [];
+  const entry = sched.length === 1 && isMap(sched[0]) ? sched[0] : {};
+  const cron = typeof entry.cron === "string" ? entry.cron : null;
+  const mine = cron === null ? null : CRON_TIME.exec(cron);
+  const nightly = CRON_TIME.exec(nightlyCron ?? "");
+  const after = cronTimeOk(mine) && cronTimeOk(nightly) && minutesOf(mine) > minutesOf(nightly);
+  const oneCron = sched.length === 1 && Object.keys(entry).join() === "cron";
+  add(
+    "9",
+    triggers.join() === "schedule,workflow_dispatch" && oneCron && after,
+    `triggers: ${triggers.join(", ") || "none"}; schedule entries: ${sched.length}; ` +
+      `cron: ${JSON.stringify(cron)}; nightly test.yml cron: ${JSON.stringify(nightlyCron)}`
+  );
+
+  const jobs = isMap(alarm.jobs) ? alarm.jobs : {};
+  const jobIds = Object.keys(jobs);
+  const job = jobIds.length === 1 && isMap(jobs[jobIds[0]]) ? jobs[jobIds[0]] : null;
+  // A job-level permissions map replaces the workflow-level one for that job.
+  const perms = job && Object.hasOwn(job, "permissions") ? job.permissions : alarm.permissions;
+  const permsOk =
+    isMap(perms) && Object.keys(perms).length === 2 && perms.actions === "read" && perms.issues === "write";
+  add("10", permsOk, `effective permissions: ${JSON.stringify(perms ?? null)}`);
+
+  const steps = Array.isArray(job?.steps) ? job.steps : [];
+  const step = steps.length === 1 && isMap(steps[0]) ? steps[0] : {};
+  const uses = typeof step.uses === "string" ? step.uses : null;
+  const checkout = steps.some(
+    (s) => isMap(s) && typeof s.uses === "string" && s.uses.startsWith("actions/checkout")
+  );
+  const timeout = job?.["timeout-minutes"] ?? step["timeout-minutes"];
+  const timeoutOk = typeof timeout === "string" && /^[1-9]\d*$/.test(timeout);
+  add(
+    "11",
+    job !== null && steps.length === 1 && uses === ALARM_ACTION + "@" + ACTION_PIN && !checkout && timeoutOk,
+    `jobs: ${jobIds.length}; steps: ${steps.length}; uses: ${JSON.stringify(uses)}; ` +
+      `checkout: ${checkout}; timeout-minutes: ${JSON.stringify(timeout ?? null)}`
+  );
+  return out;
+}
+
 // Each result is { id, label, ok, detail }. The ids are the assertion numbers above.
 function checkAll(workflowText, stampText) {
   return [...workflowChecks(workflowText), ...stampCheck(stampText)].sort(
@@ -343,15 +443,16 @@ const readOrNull = (path) => {
 {
   const wf = readOrNull(WORKFLOW);
   const st = readOrNull(STAMP);
+  const al = readOrNull(ALARM);
   if (wf === null) expect(`cannot read ${WORKFLOW}`, false);
   if (st === null) expect(`cannot read ${STAMP}`, false);
   for (const r of checkAll(wf, st)) expect(r.label, r.ok, r.detail);
+  for (const r of alarmChecks(al, wf)) expect(r.label, r.ok, r.detail);
 }
 
 // Self-test. Fixture text is built from arrays, not template literals, so the YAML
 // ${{ }} expressions are never read as JS interpolation.
-const ACTION_PIN = "17492e58853703168d025128a2da315e9936ee90";
-const NEEDS = ["suite", "screens", "scope", "native", "zizmor", "ste-lint"];
+const NEEDS =["suite", "screens", "scope", "native", "zizmor", "ste-lint"];
 const DRAFT_IF = "    if: ${{ !github.event.pull_request.draft }}";
 const NATIVE_IF =
   "    if: ${{ !cancelled() && needs.suite.result == 'success' && !github.event.pull_request.draft }} don't # github.event_name is only a comment here";
@@ -546,6 +647,172 @@ const GREEN = [
 for (const [name, text, stamp] of GREEN) {
   const bad = checkAll(text, stamp).filter((r) => !r.ok);
   expect(`fixture green: ${name} passes`, bad.length === 0, bad.map((r) => r.label).join("; "));
+}
+
+// The alarm fixtures. Each red case changes one field of the good text, through mutate.
+const NIGHTLY_FIXTURE = [
+  "name: test",
+  "on:",
+  "  schedule:",
+  '    - cron: "17 5 * * *"',
+  "  workflow_dispatch:",
+  "jobs:",
+  "  suite:",
+  "    runs-on: ubuntu-latest",
+  "    steps:",
+  "      - run: npm test",
+].join("\n") + "\n";
+const NIGHTLY_LATER = NIGHTLY_FIXTURE.replace('"17 5 * * *"', '"50 8 * * *"');
+
+// The comment, the quoted #, the lone apostrophe and the block scalar are the scanner
+// controls: each must read as text, not as a comment, a quote or a key.
+const GOOD_ALARM = [
+  "name: CI alarm",
+  "# A lone apostrophe in this comment (don't) is text, not a quote.",
+  "description: >",
+  "  Opens one issue when main is red. Nothing here runs on a pull request, and don't add a checkout.",
+  "  # this line is block text, not a comment",
+  "on:",
+  "  schedule:",
+  '    - cron: "47 7 * * *" # 07:47 UTC, after the nightly run at 05:17',
+  "  workflow_dispatch:",
+  "permissions:",
+  "  actions: read",
+  "  issues: write",
+  "jobs:",
+  "  alarm:",
+  "    runs-on: ubuntu-latest",
+  "    timeout-minutes: 5",
+  "    steps:",
+  '      - name: "Alarm # on a red main"',
+  `        uses: ${ALARM_ACTION}@${ACTION_PIN} # main 2026-11-01`,
+].join("\n") + "\n";
+
+{
+  const bad = alarmChecks(GOOD_ALARM, NIGHTLY_FIXTURE).filter((r) => !r.ok);
+  expect(
+    "fixture good: alarm text passes 9, 10 and 11, with the comment, quote and block-scalar controls",
+    bad.length === 0,
+    bad.map((r) => `${r.label} (${r.detail})`).join("; ")
+  );
+}
+
+{
+  const failing = alarmChecks(null, NIGHTLY_FIXTURE)
+    .filter((r) => !r.ok)
+    .map((r) => r.id)
+    .join(",");
+  expect("fixture red: a missing alarm file fails 9, 10 and 11", failing === "9,10,11", `failing: ${failing}`);
+}
+
+const ALARM_RED = [
+  ["cron moved before the nightly cron", mutate(GOOD_ALARM, '"47 7 * * *"', '"47 4 * * *"'), NIGHTLY_FIXTURE, "9"],
+  ["cron equal to the nightly cron", mutate(GOOD_ALARM, '"47 7 * * *"', '"17 5 * * *"'), NIGHTLY_FIXTURE, "9"],
+  ["cron is not a daily time", mutate(GOOD_ALARM, '"47 7 * * *"', '"47 7 * * 1"'), NIGHTLY_FIXTURE, "9"],
+  ["cron is before a later nightly cron", GOOD_ALARM, NIGHTLY_LATER, "9"],
+  [
+    "two cron entries",
+    mutate(GOOD_ALARM, "  workflow_dispatch:\n", '    - cron: "0 12 * * *"\n  workflow_dispatch:\n'),
+    NIGHTLY_FIXTURE,
+    "9",
+  ],
+  ["push trigger added", mutate(GOOD_ALARM, "  workflow_dispatch:\n", "  push:\n  workflow_dispatch:\n"), NIGHTLY_FIXTURE, "9"],
+  ["workflow_dispatch missing", mutate(GOOD_ALARM, "  workflow_dispatch:\n", ""), NIGHTLY_FIXTURE, "9"],
+  [
+    "permissions gain contents: read",
+    mutate(GOOD_ALARM, "  issues: write\n", "  issues: write\n  contents: read\n"),
+    NIGHTLY_FIXTURE,
+    "10",
+  ],
+  [
+    "permissions are write-all",
+    mutate(GOOD_ALARM, "permissions:\n  actions: read\n  issues: write\n", "permissions: write-all\n"),
+    NIGHTLY_FIXTURE,
+    "10",
+  ],
+  ["issues is read, not write", mutate(GOOD_ALARM, "  issues: write", "  issues: read"), NIGHTLY_FIXTURE, "10"],
+  ["issues permission missing", mutate(GOOD_ALARM, "  issues: write\n", ""), NIGHTLY_FIXTURE, "10"],
+  [
+    "permissions are an empty map",
+    mutate(GOOD_ALARM, "permissions:\n  actions: read\n  issues: write\n", "permissions: {}\n"),
+    NIGHTLY_FIXTURE,
+    "10",
+  ],
+  [
+    "job-level permissions drop issues",
+    mutate(GOOD_ALARM, "    timeout-minutes: 5\n", "    permissions: {actions: read}\n    timeout-minutes: 5\n"),
+    NIGHTLY_FIXTURE,
+    "10",
+  ],
+  [
+    "flow map repeats a key",
+    mutate(GOOD_ALARM, "permissions:\n  actions: read\n  issues: write\n", "permissions: {actions: read, actions: write, issues: write}\n"),
+    NIGHTLY_FIXTURE,
+    "10",
+  ],
+  ["pinned to @main", mutate(GOOD_ALARM, "@" + ACTION_PIN, "@main"), NIGHTLY_FIXTURE, "11"],
+  ["pinned to another sha", mutate(GOOD_ALARM, ACTION_PIN, "f".repeat(40)), NIGHTLY_FIXTURE, "11"],
+  [
+    "checkout step added",
+    mutate(
+      GOOD_ALARM,
+      "    steps:\n",
+      "    steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n"
+    ),
+    NIGHTLY_FIXTURE,
+    "11",
+  ],
+  ["second step added", GOOD_ALARM + "      - run: echo hi\n", NIGHTLY_FIXTURE, "11"],
+  ["timeout-minutes missing", mutate(GOOD_ALARM, "    timeout-minutes: 5\n", ""), NIGHTLY_FIXTURE, "11"],
+  ["timeout-minutes is not a number", mutate(GOOD_ALARM, "timeout-minutes: 5", "timeout-minutes: soon"), NIGHTLY_FIXTURE, "11"],
+  [
+    "second job added",
+    GOOD_ALARM + "  other:\n    runs-on: ubuntu-latest\n    timeout-minutes: 5\n    steps:\n      - run: echo hi\n",
+    NIGHTLY_FIXTURE,
+    "11",
+  ],
+  ["file does not parse", mutate(GOOD_ALARM, "jobs:\n", "jobs:\n  ??? broken\n"), NIGHTLY_FIXTURE, "9"],
+];
+
+for (const [name, text, nightly, id] of ALARM_RED) {
+  const bad = alarmChecks(text, nightly).filter((r) => !r.ok);
+  expect(
+    `fixture red: alarm ${name} fails assertion ${id}`,
+    bad.some((r) => r.id === id),
+    `failing: ${bad.map((r) => r.id).join(", ") || "none"}`
+  );
+}
+
+const ALARM_GREEN = [
+  [
+    "permissions in flow form",
+    mutate(GOOD_ALARM, "permissions:\n  actions: read\n  issues: write\n", "permissions: {actions: read, issues: write}\n"),
+  ],
+  [
+    "permissions at job level only",
+    mutate(
+      mutate(GOOD_ALARM, "permissions:\n  actions: read\n  issues: write\n", ""),
+      "    timeout-minutes: 5\n",
+      "    permissions: {actions: read, issues: write}\n    timeout-minutes: 5\n"
+    ),
+  ],
+  [
+    "timeout-minutes on the step",
+    mutate(
+      mutate(GOOD_ALARM, "    timeout-minutes: 5\n", ""),
+      "        uses: ",
+      "        timeout-minutes: 5\n        uses: "
+    ),
+  ],
+];
+
+for (const [name, text] of ALARM_GREEN) {
+  const bad = alarmChecks(text, NIGHTLY_FIXTURE).filter((r) => !r.ok);
+  expect(
+    `fixture green: alarm ${name} passes 9, 10 and 11`,
+    bad.length === 0,
+    bad.map((r) => `${r.label} (${r.detail})`).join("; ")
+  );
 }
 
 if (failures) {
