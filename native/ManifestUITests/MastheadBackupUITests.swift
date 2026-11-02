@@ -489,8 +489,8 @@ final class MastheadBackupUITests: XCTestCase {
         XCTAssertEqual(head.frame.minY, restTop, accuracy: 0.5, "the masthead is not back where it started")
     }
 
-    /// The screen with the head pinned, which the per-tab audits above never reach. The audit skips only text that
-    /// the tab bar covers by more than half (auditSkippingTabBar), as the Packages audits do, so any other
+    /// The screen with the head pinned, which the per-tab audits above never reach. The audit skips only an element that
+    /// overlaps the tab bar or lies below the window (auditSkippingTabBar), as the Packages audits do, so any other
     /// finding fails, wherever the cards sit.
     func testAccessibilityAuditWithTheRunningHeadPinned() throws {
         let app = launch(width: nil)
