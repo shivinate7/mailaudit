@@ -26,7 +26,7 @@ Run 41379087325, the first hosted run on 2026-11-02, hit its 50-minute cap. 102 
 
 ## When a run is due
 
-`scripts/milestone-due.mjs` holds `milestoneDue`, a pure function, and a CLI mode. The `milestone-due` job in `test.yml` runs the CLI on a push to main. Its dispatch step runs only when the job's `MILESTONE_AUTO_DISPATCH` is `on`. It is `off` until the pull request that adds `milestone-proof` to all-jobs-passed, and a wiring test pins the two together (coordinator 2026-11-01 23:00, process-only). It reads the dispatched milestone runs on main, counts the first-parent commits that touch native paths since a base sha, and, if the run is due, dispatches `milestone.yml`:
+`scripts/milestone-due.mjs` holds `milestoneDue`, a pure function, and a CLI mode. The `milestone-due` job in `test.yml` runs the CLI on a push to main. Its dispatch step needs the job's `MILESTONE_AUTO_DISPATCH` to be `on`. It is `off` until the pull request that adds `milestone-proof` to all-jobs-passed, and a wiring test pins the two together (coordinator 2026-11-01 23:00, process-only). It reads the dispatched milestone runs on main, counts the first-parent commits that touch native paths since a base sha, and, if the run is due, dispatches `milestone.yml`:
 
 - If the newest completed run failed or timed out, the base sha is its head. Otherwise it is the head of the newest successful run. With neither, every commit counts.
 - No run yet: due.
@@ -46,7 +46,7 @@ Minutes are $0 on a public repo. The costs that hold are wall time and queue tim
 
 ## Milestone proof
 
-The proof joins all-jobs-passed only after the first green hosted run. Until then it is outside branch protection's required check, but a red run still stops merges through the merge tool, so the first hand dispatch waits for the known reds to clear. Coordinator 2026-11-01 22:06, process-only, can be undone: the `milestone-proof` job joins all-jobs-passed in the pull request after the first green hosted run. A test in `test/ci-wiring.test.mjs` pins that order.
+The proof joins all-jobs-passed only after the first green hosted run. Until then it is outside branch protection's required check. But a red run still stops merges through the merge tool. So the first hand dispatch waits for the known reds to clear. Coordinator 2026-11-01 22:06, process-only, can be undone: the `milestone-proof` job joins all-jobs-passed in the pull request after the first green hosted run. A test in `test/ci-wiring.test.mjs` pins that order.
 
 Coordinator 2026-11-01 19:35, process-only. It comes from the global rule `verification-report-unknown-reads`: a read that could not run is unknown, never clear. Once the proof is in all-jobs-passed, a milestone run that timed out, was cancelled, or was dispatched and never taken is no proof. It blocks merges until a run passes.
 
