@@ -138,6 +138,33 @@ expect(
   !spanSkipped.out.includes("missing-b.md")
 );
 
+// Rule-file links. A link in a rule file resolves from that rule's own folder,
+// as a markdown reader does, so ../../README.md from .claude/rules/ is the repo
+// README. The front matter is blank, so its lines do not shift the count.
+{
+  const ruleLinks = runCorpus({
+    ".claude/rules/x.md": [
+      "---",
+      "paths:",
+      '  - "src/x.mjs"',
+      "---",
+      "",
+      "# Fixture rule links",
+      "",
+      "Good: [readme](../../README.md). Bad: [gone](missing-r.md).",
+      "",
+    ].join("\n"),
+  });
+  expect(
+    "rule links: a bad link fails at the rule's own line, and the good link is not flagged",
+    ruleLinks.status !== 0 &&
+      ruleLinks.out.includes(".claude/rules/x.md:8") &&
+      ruleLinks.out.includes("missing-r.md") &&
+      !ruleLinks.out.includes("../../README.md"),
+    `exit ${ruleLinks.status}: ${ruleLinks.out.trim().split("\n").slice(-2).join(" | ")}`
+  );
+}
+
 // Debts. check-docs.mjs reads debts/ as well as the records. A corpus with no
 // debts/ folder reads as empty, and a debt names its paths like a record, so a
 // missing one fails at the debt's own line.
