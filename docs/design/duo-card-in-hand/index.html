@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Card in Hand, round 2</title>
+<meta name="description" content="MANIFEST on the iPhone Duo, round 2: every screen and pose of Card in Hand.">
+<style>
+:root{--paper:#F2E9DA;--card:#FCF6EA;--ink:#332E3F;--inkSoft:#6E6379;--line:#DCCDB6;--gold:#C9A961;--silver:#C4C3C0;--accent:#6F5CA6;--green:#2E7A5E;--greenSoft:#E6E7D7;--red:#A8443C;--redSoft:#F4E4D9;--manila:#EADBBA;--manilaInk:#695832;--amber:#846008;--wax:#A8443C;--waxLit:#C86A5F;--waxDeep:#66231D;--waxCut:#5E1F1A;--waxRaised:#E09A90;--shadow:rgba(28,43,36,0.06);--scrim:rgba(28,43,36,0.92);
+--serif:Cochin,"Iowan Old Style",Georgia,serif;--mono:ui-monospace,"SF Mono",Menlo,monospace}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif)}
+.wrap{max-width:1040px;margin:0 auto;padding:24px 16px 64px;display:flex;flex-direction:column;gap:40px}
+h1{font-weight:400;font-size:34px;margin:0}
+h2{font-weight:400;font-size:26px;margin:0}
+.lede{color:var(--inkSoft);margin:0;font-size:18px;line-height:1.4}
+.intro{display:flex;flex-direction:column;gap:12px}
+.toc{display:flex;flex-wrap:wrap;gap:8px}
+.toc a{min-height:44px;display:inline-flex;align-items:center;padding:0 12px;border:1px solid var(--line);border-radius:8px;color:var(--accent);text-decoration:none;font-size:16px;background:var(--card)}
+.pose{display:flex;flex-direction:column;gap:12px;scroll-margin-top:16px}
+.pose.hit{outline:2px solid var(--accent);outline-offset:8px;border-radius:8px}
+.pose>p{margin:0;font-size:17px;line-height:1.45;max-width:72ch}
+.pose>p.pick{border-left:2px solid var(--gold);padding-left:12px}
+.row{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.row>figure{flex:1 1 300px;min-width:0;margin:0;display:flex;flex-direction:column;gap:8px}
+.row.wide>figure{flex-basis:440px}
+.row>figure:has(.tall),.row>figure:has(.outer){flex:0 1 360px}
+figcaption{font-size:15px;color:var(--inkSoft);line-height:1.35;display:flex;gap:8px;align-items:flex-start;justify-content:space-between}
+.hidebtn{flex:none;min-height:44px;min-width:44px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);font:inherit;font-size:15px;color:var(--ink)}
+.restore{display:none}.restore.on{display:inline-flex}
+.fit{position:relative;overflow:hidden}.fit>.dev{position:absolute;top:0;left:0;transform-origin:0 0}
+.n{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.ok{color:var(--green)}.amb{color:var(--amber)}.bad{color:var(--red)}.soft{color:var(--inkSoft)}
+
+/* device frames, from round 1 */
+.dev{background:var(--card);border:6px solid var(--ink);border-radius:32px;overflow:hidden;position:relative;font-size:15px;line-height:1.3}
+.inner{width:963px;height:681px}.outer{width:478px;height:690px}.tall{width:681px;height:963px}
+.fold,.hfold{position:absolute;z-index:3;background:repeating-linear-gradient(90deg,transparent 0 3px,color-mix(in srgb,var(--inkSoft) 10%,transparent) 3px 4px)}
+.fold{top:0;bottom:0;left:465px;width:21px;border-left:1px dashed var(--silver);border-right:1px dashed var(--silver)}
+.hfold{left:0;right:0;top:465px;height:21px;border-top:1px dashed var(--silver);border-bottom:1px dashed var(--silver);background:repeating-linear-gradient(0deg,transparent 0 3px,color-mix(in srgb,var(--inkSoft) 10%,transparent) 3px 4px)}
+.fold span,.hfold span{position:absolute;font:10px var(--mono);color:var(--inkSoft);white-space:nowrap}
+.fold span{top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg)}.hfold span{left:12px;top:4px}
+.pg{position:absolute;top:0;bottom:0;width:465px;padding:16px 24px;display:flex;flex-direction:column;gap:12px}
+.pg.l{left:0}.pg.r{left:486px}
+.pg.t{top:0;bottom:auto;height:465px;width:auto;left:0;right:0}.pg.b{top:486px;bottom:0;width:auto;left:0;right:0}
+.pg.solo{left:0;right:0;width:auto}
+.pg.kbon{padding-bottom:272px}.pg.baron{padding-bottom:96px}
+.push{margin-top:auto}
+
+/* keys */
+.kb{position:absolute;left:0;right:0;bottom:0;height:256px;padding:8px 4px;display:flex;flex-direction:column;gap:8px;background:color-mix(in srgb,var(--silver) 55%,var(--card));z-index:2}
+.kb .sg{height:40px;display:grid;grid-template-columns:repeat(3,1fr);align-items:center;text-align:center;font-size:15px}
+.kb .sg span+span{border-left:1px solid var(--silver)}
+.kb .ks{flex:1;display:grid;grid-template-columns:repeat(10,1fr);grid-auto-rows:44px;gap:8px 4px}
+.kb .ks span{background:var(--card);border-radius:6px;display:grid;place-items:center;font-size:18px;box-shadow:0 1px 0 var(--shadow);white-space:nowrap;overflow:hidden}
+.kb .w2{grid-column:span 2}.kb .w3{grid-column:span 3}.kb .w4{grid-column:span 4}.kb .w5{grid-column:span 5}.kb .w6{grid-column:span 6}
+.kb .ks span.fn{font-size:14px;background:color-mix(in srgb,var(--silver) 30%,var(--card))}
+.kb.pad{background:var(--paper);border-top:1px solid var(--ink)}
+.kb.pad .ks span{border:1px solid var(--line);box-shadow:none}
+.kb.pad .ks span.fn{background:var(--card)}
+.kb.pad .ks span.go{background:var(--accent);border-color:var(--accent);color:var(--card);font-size:15px}
+.kb.pad .sg{display:flex;gap:8px;text-align:left}
+.kb.pad .sg span{border:1px solid var(--accent)!important;border-radius:8px;padding:0 12px;min-height:40px;display:flex;align-items:center;color:var(--accent);background:var(--card)}
+.kb.span{z-index:2}
+.kb.span .ks{grid-template-columns:repeat(10,1fr)}
+
+/* tab bar */
+.bar{position:absolute;left:24px;right:24px;bottom:12px;height:64px;border:1px solid var(--line);border-radius:32px;background:color-mix(in srgb,var(--paper) 62%,transparent);backdrop-filter:blur(12px) saturate(1.4);box-shadow:0 4px 16px var(--shadow);display:grid;grid-template-columns:repeat(4,1fr);padding:4px;gap:4px;z-index:4}
+.bar span{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:28px;font-size:12px;color:var(--inkSoft);position:relative}
+.bar span.on{background:color-mix(in srgb,var(--card) 90%,transparent);color:var(--accent)}
+.bar svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.bar i{position:absolute;top:4px;left:calc(50% + 6px);font:10px/16px var(--mono);font-style:normal;background:var(--accent);color:var(--card);border-radius:8px;padding:0 4px}
+
+/* screen parts */
+.hd,.k{font:12px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--inkSoft)}
+.hd{display:flex;justify-content:space-between;gap:8px}
+.q{display:flex;align-items:center;gap:8px;border-bottom:2px solid var(--ink);min-height:56px}
+.q b{font-weight:400;font-size:36px;letter-spacing:.04em;flex:1;white-space:nowrap;overflow:hidden}
+.q b::after{content:"";display:inline-block;width:2px;height:32px;background:var(--accent);vertical-align:-4px;margin-left:2px}
+.q.empty b{color:var(--inkSoft);font-size:24px;letter-spacing:0}
+.q.empty b::after{display:none}
+.q .x{width:44px;height:44px;display:grid;place-items:center;font-size:24px;color:var(--inkSoft)}
+.hits{display:flex;flex-direction:column;gap:4px}
+.hitrow{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:52px;padding:4px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card)}
+.hitrow.on{border-color:var(--accent)}
+.hitrow small,.line small,.tie small{display:block;color:var(--inkSoft);font-size:13px}
+.hitrow .n{font-size:13px;text-align:right}
+.hand{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px}
+.hand>div{display:flex;flex-direction:column;gap:4px}
+.btn{min-height:44px;min-width:44px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font:inherit;font-size:16px;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap}
+.btn.p{background:var(--accent);border-color:var(--accent);color:var(--card)}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.susp{background:var(--manila);color:var(--manilaInk);border-radius:8px;padding:8px 12px;display:flex;flex-direction:column;gap:4px}
+.susp .k{color:var(--manilaInk)}
+.who{font-size:30px;line-height:1.1}
+.meta{font:13px var(--mono);color:var(--inkSoft)}
+.rule{border:0;border-top:1px solid var(--gold);margin:0;width:100%}
+.dbl{border-top:3px double var(--gold)}
+.lines{display:flex;flex-direction:column}
+.line{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:52px;border-bottom:1px solid var(--line)}
+.line.now{background:var(--greenSoft);border-radius:8px;padding:0 8px;margin:0 -8px}
+.line.held{background:color-mix(in srgb,var(--manila) 55%,var(--card));border-radius:8px;padding:0 8px;margin:0 -8px}
+.step{display:inline-flex;align-items:center;gap:4px}.step .n{min-width:44px;text-align:center;font-size:18px}
+.owed{margin:0;font-size:16px}
+.box{border:1px solid var(--line);border-radius:8px;padding:12px;background:var(--paper);display:flex;flex-direction:column;gap:8px}
+.box.link{flex-direction:row;align-items:center;justify-content:space-between;gap:12px}
+.tie{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tie>div{border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px;background:var(--card)}
+.mini{display:flex;justify-content:space-between;gap:8px;font-size:14px;border-bottom:1px solid var(--line);min-height:28px;align-items:center}
+.note{font-size:14px;color:var(--inkSoft);margin:0}
+.big{font:96px/1 var(--mono)}
+
+/* past-transit page */
+.legend{display:flex;gap:16px;font:12px var(--mono);color:var(--inkSoft);align-items:center}
+.legend i{display:inline-block;width:2px;height:12px;vertical-align:-2px;margin-right:4px}
+.pt{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:8px 0;border-bottom:1px solid var(--line);align-items:center}
+.pt>div:first-child{display:flex;flex-direction:column;gap:4px;min-width:0}
+.pt .nm{display:flex;justify-content:space-between;gap:8px;font-size:17px}
+.track{position:relative;height:12px}
+.track::before{content:"";position:absolute;left:0;right:0;top:6px;border-top:1px solid var(--line)}
+.track i{position:absolute;top:0;width:2px;height:12px}
+.track b{position:absolute;top:2px;width:8px;height:8px;border-radius:4px;margin-left:-4px;background:var(--ink)}
+.t14{left:40%;background:var(--amber)}.t30{left:85.7%;background:var(--red)}
+.stamp{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:44px;padding:0 0 0 12px;border-left:3px solid var(--inkSoft);font-size:15px}
+
+/* other tabs */
+.cell{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:52px;border-bottom:1px solid var(--line)}
+.cell u{text-decoration-color:var(--inkSoft);text-underline-offset:3px}
+.cell.sel{background:color-mix(in srgb,var(--accent) 8%,transparent);border-radius:8px;padding:0 8px;margin:0 -8px}
+.wide-col{position:absolute;top:0;bottom:0;left:235px;width:480px;padding:16px 24px;display:flex;flex-direction:column;gap:12px;border-inline:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="intro">
+<h1>Card in Hand, round 2</h1>
+<p class="lede">MANIFEST on the iPhone Duo. The card you hold is the search. The open phone answers with its envelope and its envelope-mates. On the open Duo this is the Packages tab. Informed lane, directed by the owner's pick of 2026-10-27.</p>
+<p class="lede">Mail day is Tue 27 Oct. Seven envelopes from 4 sellers hold 40 ordered cards, and 39 arrive. 4 more sellers have envelopes still out. All data is invented. Light theme only. Inner screen 951×669 pt, outer 466×678 pt.</p>
+<nav class="toc" aria-label="Screens">
+<a href="#pose=flat">1 Open flat</a><a href="#pose=stray">2 Stray</a><a href="#pose=suspense">3 Suspense</a><a href="#pose=past-transit">4 Past transit</a><a href="#pose=end">5 End of day</a><a href="#pose=closed">6 Closed</a><a href="#pose=laptop">7 Laptop</a><a href="#pose=tall">8 Held tall</a><a href="#pose=tabs">9 Other tabs</a><a href="#pose=keys">10 Keys</a><a href="#pose=tabbar">11 Tab bar</a>
+</nav>
+</header>
+
+<!-- ============ templates ============ -->
+<template id="mailL">
+  <div class="hd"><span>Mail day · Tue 27 Oct</span><span class="n">30 in · 28 out</span></div>
+  <div class="q"><b>LIGH</b><span class="x" aria-label="Clear">×</span></div>
+  <div class="hits">
+    <div class="hitrow on"><div>Lightning Bolt<small>Magic 2011 · NM</small></div><span class="n">Kestrel<br>14 Oct</span></div>
+    <div class="hitrow"><div>Lightning Greaves<small>Commander Legends · NM</small></div><span class="n ok">Low Tide<br>all in</span></div>
+  </div>
+  <div class="hand"><div><span class="k">This envelope</span><span>Lightning Bolt ×3 · Counterspell ×2</span></div><span class="btn">New envelope</span></div>
+</template>
+
+<template id="kestrelR">
+  <div class="k">It came from</div>
+  <div class="who">Kestrel Card Co.</div>
+  <div class="meta">ordered 14 Oct · 13 d · order …5E91A</div>
+  <hr class="rule">
+  <div class="k">In this envelope</div>
+  <div class="lines">
+    <div class="line now"><div>Lightning Bolt<small>Magic 2011 · NM · <span class="n">$1.12</span> each</small></div><div class="step"><span class="btn">−</span><span class="n">3/4</span><span class="btn p">+</span></div></div>
+    <div class="line"><div>Counterspell<small>Dominaria Remastered · NM · <span class="n">$0.48</span> each</small></div><span class="n ok">2/2 ✓</span></div>
+    <div class="line"><div>Brainstorm<small>Commander Masters · LP · <span class="n">$0.62</span></small></div><div class="step"><span class="btn">−</span><span class="n">0/1</span><span class="btn">+</span></div></div>
+  </div>
+  <p class="owed">Still owed here: 1 Lightning Bolt, 1 Brainstorm · <span class="n">$1.74</span></p>
+  <div class="box link"><div>Past 14 days: <span class="n">4</span> envelopes, <span class="n">16</span> cards<br><span class="bad">1 refund window closing</span></div><span class="btn">Open</span></div>
+</template>
+
+<template id="endR">
+  <div class="k">Not normal today</div>
+  <div class="lines">
+    <div class="line"><div>Kestrel Card Co. came 1 short<small>14 Oct · 1 Lightning Bolt · <span class="n">$1.12</span> · 13 d</small></div><span class="btn">Open</span></div>
+    <div class="line"><div><span class="n">4</span> envelopes past 14 days<small><span class="n">16</span> cards · <span class="n">$9.55</span> · <span class="bad">1 refund window closing</span></small></div><span class="btn">Open</span></div>
+  </div>
+  <hr class="rule">
+  <div class="k">Still out</div>
+  <p class="owed"><span class="n">19</span> cards, <span class="n">$11.07</span>, in <span class="n">6</span> envelopes. Cost only: shipping and tax stay out.</p>
+</template>
+
+<template id="endL">
+  <div class="hd"><span>Mail day · Tue 27 Oct</span><span class="n">39 in · 19 out</span></div>
+  <div class="q empty"><b>Type the card in hand</b></div>
+  <div class="k">Today's pile · <span class="n">7</span> envelopes · <span class="n">39</span> cards · <span class="n">$19.79</span></div>
+  <div class="lines">
+    <div class="line"><span>Fernhill Cards <span class="meta">20 Oct</span></span><span class="n ok">8/8 ✓</span></div>
+    <div class="line"><span>Fernhill Cards <span class="meta">22 Oct</span></span><span class="n ok">6/6 ✓</span></div>
+    <div class="line"><span>Kestrel Card Co. <span class="meta">21 Oct</span></span><span class="n ok">6/6 ✓</span></div>
+    <div class="line"><span>Low Tide Singles <span class="meta">22 Oct</span></span><span class="n ok">5/5 ✓</span></div>
+    <div class="line"><span>Kestrel Card Co. <span class="meta">14 Oct</span></span><span class="n">6/7</span></div>
+    <div class="line"><span>Brass Lantern TCG <span class="meta">16 Oct</span></span><span class="n ok">5/5 ✓</span></div>
+    <div class="line"><span>Low Tide Singles <span class="meta">19 Oct</span></span><span class="n ok">3/3 ✓</span></div>
+  </div>
+</template>
+
+<!-- ============ 1 ============ -->
+<section class="pose" data-pose="flat" id="flat">
+<h2>1 · Open flat, mid-pile</h2>
+<p>The query is on the left page. The envelope it came from is on the right, with its envelope-mates. Three of four Lightning Bolt are in. Brainstorm still waits for its tap. The app shows the envelope, and the owner's taps check the cards in.</p>
+<div class="row"><figure>
+<div class="fit"><div class="dev inner">
+  <section class="pg l kbon"><div data-use="mailL"></div><div data-keys="sys"></div></section>
+  <div class="fold"><span>fold · strip width unmeasured</span></div>
+  <section class="pg r baron"><div data-use="kestrelR"></div><div data-bar="Packages"></div></section>
+</div></div>
+<figcaption>Inner screen 951×669 pt. System keys inside the left page (case A). Tab bar under the right page (pick, screen 11).</figcaption>
+</figure></div>
+</section>
+
+<!-- ============ 2 ============ -->
+<section class="pose" data-pose="stray" id="stray">
+<h2>2 · A stray</h2>
+<p>Beast Within and Fellwar Stone are in two open envelopes. Hold puts each one on the Suspense line, not checked in. The two envelopes show as a tie, with equal weight. The next card from the same envelope decides it. Mind Stone is only in Brass Lantern. The app then offers to post the held cards there. It never posts them by itself.</p>
+<div class="row wide">
+<figure>
+<div class="fit"><div class="dev inner">
+  <section class="pg l kbon">
+    <div class="hd"><span>Mail day · Tue 27 Oct</span><span class="n">31 in · 27 out</span></div>
+    <div class="q"><b>FELLW</b><span class="x">×</span></div>
+    <div class="hits"><div class="hitrow on"><div>Fellwar Stone<small>Dominaria · NM · in 2 open envelopes</small></div><span class="btn">Hold</span></div></div>
+    <div class="susp"><span class="k">Suspense</span><span>Beast Within</span><small>Fits 2 envelopes. Not checked in.</small></div>
+    <div class="hand"><div><span class="k">This envelope</span><span class="soft">Nothing checked in yet</span></div><span class="btn">New envelope</span></div>
+    <div data-keys="sys" data-sg="Fellwar|Fellow|Fell"></div>
+  </section>
+  <div class="fold"><span>fold</span></div>
+  <section class="pg r baron">
+    <div class="k">Two envelopes hold Fellwar Stone</div>
+    <p class="note">Name the next card from this envelope. It tells them apart.</p>
+    <div class="tie">
+      <div><div>Brass Lantern TCG<small class="n">16 Oct · 11 d</small></div>
+        <div class="mini"><span>Beast Within</span><span class="n">held</span></div>
+        <div class="mini"><span>Fellwar Stone</span><span class="n">in hand</span></div>
+        <div class="mini"><span>Mind Stone</span><span class="n">0/2</span></div>
+        <div class="mini"><span>Chaos Warp</span><span class="n">0/1</span></div>
+        <span class="btn push">Post here</span></div>
+      <div><div>Quillon Hobby<small class="n">10 Oct · 17 d</small></div>
+        <div class="mini"><span>Beast Within</span><span class="n">held</span></div>
+        <div class="mini"><span>Fellwar Stone</span><span class="n">in hand</span></div>
+        <div class="mini"><span>Swiftfoot Boots</span><span class="n">0/1</span></div>
+        <span class="btn push">Post here</span></div>
+    </div>
+    <p class="note">A tie has no first choice. Nothing checks in until you post.</p>
+    <div data-bar="Packages"></div>
+  </section>
+</div></div>
+<figcaption>Held: Beast Within waits on the Suspense line. Fellwar Stone is a tie too.</figcaption>
+</figure>
+<figure>
+<div class="fit"><div class="dev inner">
+  <section class="pg l kbon">
+    <div class="hd"><span>Mail day · Tue 27 Oct</span><span class="n">33 in · 25 out</span></div>
+    <div class="q"><b>MIND ST</b><span class="x">×</span></div>
+    <div class="hits"><div class="hitrow on"><div>Mind Stone<small>Commander Masters · NM</small></div><span class="n">Brass Lantern<br>only</span></div></div>
+    <div class="susp"><span class="k">Suspense</span><span>Beast Within · Fellwar Stone</span><small>Not checked in.</small></div>
+    <div class="hand"><div><span class="k">This envelope</span><span>Mind Stone ×2</span></div><span class="btn">New envelope</span></div>
+    <div data-keys="sys" data-sg="Mind|Minds|Mindful"></div>
+  </section>
+  <div class="fold"><span>fold</span></div>
+  <section class="pg r baron">
+    <div class="k">It came from</div>
+    <div class="who">Brass Lantern TCG</div>
+    <div class="meta">ordered 16 Oct · 11 d · order …2B7C4</div>
+    <hr class="rule">
+    <div class="lines">
+      <div class="line now"><div>Mind Stone<small>Commander Masters · NM · <span class="n">$0.29</span> each</small></div><span class="n ok">2/2 ✓</span></div>
+      <div class="line held"><div>Beast Within<small>on the Suspense line</small></div><span class="n">0/1</span></div>
+      <div class="line held"><div>Fellwar Stone<small>on the Suspense line</small></div><span class="n">0/1</span></div>
+      <div class="line"><div>Chaos Warp<small>Commander 2011 · NM · <span class="n">$0.42</span></small></div><div class="step"><span class="btn">−</span><span class="n">0/1</span><span class="btn">+</span></div></div>
+    </div>
+    <div class="box"><div>Mind Stone is only in this envelope. Your 2 held cards came with it.</div>
+      <div class="btns"><span class="btn p">Post 2 held cards here</span><span class="btn">Keep held</span></div></div>
+    <div data-bar="Packages"></div>
+  </section>
+</div></div>
+<figcaption>Decided: the next card names one envelope. The owner posts the held cards with one tap.</figcaption>
+</figure>
+</div>
+</section>
+
+<!-- ============ 3 ============ -->
+<section class="pose" data-pose="suspense" id="suspense">
+<h2>3 · Suspense</h2>
+<p>An envelope with no sender, and every card in it is in two envelopes. Its cards are named onto the Suspense line. The right page ranks the accounts it fits by named copies. Low Tide ordered two Arcane Signet and Tinpot one, so Low Tide fits 3 of 3. Post checks in the named cards only. A line left at the end of the day becomes an envelope on the Orphaned tab.</p>
+<div class="row wide">
+<figure>
+<div class="fit"><div class="dev inner">
+  <section class="pg l kbon">
+    <div class="hd"><span>Mail day · Tue 27 Oct</span><span class="n">36 in · 22 out</span></div>
+    <div class="q"><b>COMMAND T</b><span class="x">×</span></div>
+    <div class="hits"><div class="hitrow on"><div>Command Tower<small>Commander Masters · NM · in 2 open envelopes</small></div><span class="n">held</span></div></div>
+    <div class="susp"><span class="k">Suspense · <span class="n">3</span> cards</span><span>Arcane Signet ×2 · Command Tower</span><small>Not checked in.</small></div>
+    <div class="hand"><div><span class="k">This envelope</span><span class="soft">Nothing checked in yet</span></div><span class="btn">New envelope</span></div>
+    <div data-keys="sys" data-sg="Command|Commander|Commands"></div>
+  </section>
+  <div class="fold"><span>fold</span></div>
+  <section class="pg r baron">
+    <div class="k">Suspense</div>
+    <div class="who">One envelope, no sender</div>
+    <div class="meta">named today · 3 cards</div>
+    <hr class="rule">
+    <div class="k">Accounts it fits</div>
+    <div class="lines">
+      <div class="line"><div>Low Tide Singles<small><span class="n">19 Oct · 8 d</span> · fits 3 of 3</small></div><span class="btn p">Post 3 cards</span></div>
+      <div class="line"><div>Tinpot Cards<small><span class="n">6 Oct · 21 d</span> · fits 2 of 3 · ordered 1 Arcane Signet</small></div><span class="btn">Post 2 cards</span></div>
+    </div>
+    <p class="note">Post checks in only the cards named here. A card that does not fit stays on the line.</p>
+    <div class="btns"><span class="btn">Leave in Suspense</span></div>
+    <div data-bar="Packages"></div>
+  </section>
+</div></div>
+<figcaption>Named: three cards on the line. The fit list is ranked, and the top fit is not a tie.</figcaption>
+</figure>
+<figure>
+<div class="fit"><div class="dev inner">
+  <section class="pg l kbon">
+    <div class="hd"><span>Mail day · Tue 27 Oct</span><span class="n">39 in · 19 out</span></div>
+    <div class="q empty"><b>Type the card in hand</b></div>
+    <div class="hand"><div><span class="k">This envelope</span><span>Arcane Signet ×2 · Command Tower</span></div><span class="btn">New envelope</span></div>
+    <div data-keys="sys" data-sg="I|The|A"></div>
+  </section>
+  <div class="fold"><span>fold</span></div>
+  <section class="pg r baron">
+    <div class="box link"><div>Posted 3 cards from Suspense.</div><span class="btn">Undo</span></div>
+    <div class="k">It came from</div>
+    <div class="who">Low Tide Singles</div>
+    <div class="meta">ordered 19 Oct · 8 d · order …9F03D</div>
+    <hr class="rule dbl">
+    <div class="lines">
+      <div class="line"><div>Arcane Signet<small>Commander Masters · NM · <span class="n">$0.45</span> each</small></div><span class="n ok">2/2 ✓</span></div>
+      <div class="line"><div>Command Tower<small>Commander Masters · NM · <span class="n">$0.25</span></small></div><span class="n ok">1/1 ✓</span></div>
+    </div>
+    <p class="owed ok">This envelope is complete.</p>
+    <div data-bar="Packages"></div>
+  </section>
+</div></div>
+<figcaption>Posted: the Suspense line is gone, and Undo shows where the press was.</figcaption>
+</figure>
+</div>
+</section>
+
+<!-- ============ 4 ============ -->
+<section class="pose" data-pose="past-transit" id="past-transit">
+<h2>4 · The past-transit page</h2>
+<p>Opened from the box on the right page. Envelopes past 14 days, oldest last. Amber marks 14 days, "may be lost". Red marks 30 days, "refund window closing". Both count from the order date. Claim filed and Refunded are two of the existing stamp kinds. The brief's Lost is drawn as an option. A stamp hides the flag. Refunded takes the envelope out of every count. Each press offers Undo, and the row keeps its place.</p>
+<div class="row wide"><figure data-opt="claim-filed">
+<div class="fit"><div class="dev inner">
+  <section class="pg l">
+    <div class="hd"><span>Mail day · Tue 27 Oct</span><span class="n">39 in · 19 out</span></div>
+    <div class="q empty"><b>Type the card in hand</b></div>
+    <div class="k">Under 14 days</div>
+    <div class="lines">
+      <div class="line"><div>Kestrel Card Co.<small><span class="n">14 Oct · 13 d</span> · 1 Lightning Bolt short</small></div><span class="n">6/7</span></div>
+      <div class="line"><div>Ashgrove Games<small><span class="n">23 Oct · 4 d</span> · Farseek ×2</small></div><span class="n">0/2</span></div>
+    </div>
+  </section>
+  <div class="fold"><span>fold</span></div>
+  <section class="pg r baron">
+    <div class="hand"><span class="who">Past 14 days</span><span class="btn">Back</span></div>
+    <div class="meta"><span class="n">4</span> envelopes · <span class="n">16</span> cards · <span class="n">$9.55</span> · oldest last</div>
+    <div class="legend"><span><i class="t14" style="position:static;display:inline-block"></i>14 d</span><span><i class="t30" style="position:static;display:inline-block"></i>30 d</span><span>scale 0–35 d</span></div>
+    <div>
+      <div class="pt"><div><div class="nm"><span>Quillon Hobby</span><span class="n amb">17 d</span></div><span class="meta">10 Oct · 3 cards · $1.95 · claim by Mon 9 Nov</span><div class="track"><i class="t14"></i><i class="t30"></i><b style="left:48.6%;background:var(--amber)"></b></div></div><div class="btns"><span class="btn">Claim filed</span><span class="btn">Refunded</span></div></div>
+      <div class="pt"><div><div class="nm"><span>Tinpot Cards</span><span class="n">21 d</span></div><span class="meta">6 Oct · 4 cards · $2.09</span><div class="track"><i class="t14"></i><i class="t30"></i><b style="left:60%"></b></div></div><div></div>
+        <div class="stamp"><span>Stamped Claim filed · today</span><span class="btn">Undo</span></div></div>
+      <div class="pt"><div><div class="nm"><span>Ashgrove Games</span><span class="n amb">25 d</span></div><span class="meta">2 Oct · 4 cards · $3.60 · claim by Sun 1 Nov</span><div class="track"><i class="t14"></i><i class="t30"></i><b style="left:71.4%;background:var(--amber)"></b></div></div><div class="btns"><span class="btn">Claim filed</span><span class="btn">Refunded</span></div></div>
+      <div class="pt"><div><div class="nm"><span>Marrow &amp; Vine</span><span class="n bad">31 d</span></div><span class="meta bad">26 Sep · 5 cards · $1.91 · refund window closing</span><div class="track"><i class="t14"></i><i class="t30"></i><b style="left:88.6%;background:var(--red)"></b></div></div><div class="btns"><span class="btn">Claim filed</span><span class="btn">Refunded</span></div></div>
+    </div>
+    <p class="note">Days count from the order date. TCGplayer counts 30 days from the delivery estimate, so its window can close later.</p>
+    <div data-bar="Packages"></div>
+  </section>
+</div></div>
+<figcaption>Pick: the existing stamp, Claim filed. Tinpot was just stamped: its flag is gone, and its row stays put until the page closes. <button class="hidebtn" data-hide="claim-filed">Hide</button></figcaption>
+</figure>
+<figure data-opt="lost" data-copy="claim-filed" data-relabel="Claim filed|Lost">
+<figcaption>Option: the brief's word, Lost. It needs a new stamp kind, or a label that sets Claim filed. <button class="hidebtn" data-hide="lost">Hide</button></figcaption>
+</figure></div>
+<p><button class="hidebtn restore">Show hidden options</button></p>
+</section>
+
+<!-- ============ 5 ============ -->
+<section class="pose" data-pose="end" id="end">
+<h2>5 · The end of mail day</h2>
+<p>The pile is done and the Suspense line is clear. The left page lists today's envelopes. The right page names only what is not normal. A name that matches no open envelope gets one sentence and one control.</p>
+<div class="row wide">
+<figure>
+<div class="fit"><div class="dev inner">
+  <section class="pg l"><div data-use="endL"></div></section>
+  <div class="fold"><span>fold</span></div>
+  <section class="pg r baron"><div data-use="endR"></div><div data-bar="Packages"></div></section>
+</div></div>
+<figcaption>Pile done. Keys down. Six envelopes complete, one came 1 short.</figcaption>
+</figure>
+<figure>
+<div class="fit"><div class="dev inner">
+  <section class="pg l kbon">
+    <div class="hd"><span>Mail day · Tue 27 Oct</span><span class="n">39 in · 19 out</span></div>
+    <div class="q"><b>SMOTHERING T</b><span class="x">×</span></div>
+    <div class="box"><div>No open envelope holds Smothering Tithe.</div><div class="btns"><span class="btn">Hold in Suspense</span></div></div>
+    <div data-keys="sys" data-sg="Smothering|Smother|Smothered"></div>
+  </section>
+  <div class="fold"><span>fold</span></div>
+  <section class="pg r baron"><div data-use="endR"></div><div data-bar="Packages"></div></section>
+</div></div>
+<figcaption>Nothing matches. The answer shows at the query, not on the far page.</figcaption>
+</figure>
+</div>
+</section>
+
+<!-- ============ 6 ============ -->
+<section class="pose" data-pose="closed" id="closed">
+<h2>6 · Closed, on the outer screen</h2>
+<p>Closing keeps the right page, as in degen. The query rides on top of it, so mail day goes on with one page. The tab bar stays at the bottom of the outer screen. The keys cover it while you type.</p>
+<div class="row">
+<figure>
+<div class="fit"><div class="dev outer">
+  <section class="pg solo kbon">
+    <div class="q"><b>LIGH</b><span class="x">×</span></div>
+    <div><div class="who" style="font-size:24px">Kestrel Card Co.</div><div class="meta">14 Oct · 13 d · Lightning Bolt</div></div>
+    <div class="lines">
+      <div class="line now"><div>Lightning Bolt<small><span class="n">$1.12</span> each</small></div><div class="step"><span class="btn">−</span><span class="n">3/4</span><span class="btn p">+</span></div></div>
+      <div class="line"><div>Counterspell</div><span class="n ok">2/2 ✓</span></div>
+      <div class="line"><div>Brainstorm</div><div class="step"><span class="btn">−</span><span class="n">0/1</span><span class="btn">+</span></div></div>
+    </div>
+    <div data-keys="sys" data-sg="Light|Lightning|Lights"></div>
+  </section>
+</div></div>
+<figcaption>Outer screen 466×678 pt, typing. Only the top hit shows, as its envelope.</figcaption>
+</figure>
+<figure>
+<div class="fit"><div class="dev outer">
+  <section class="pg solo baron">
+    <div class="hd"><span>Mail day</span><span class="n">30 in · 28 out</span></div>
+    <div class="q empty"><b>Type the card in hand</b></div>
+    <div><div class="who" style="font-size:24px">Kestrel Card Co.</div><div class="meta">14 Oct · 13 d</div></div>
+    <div class="lines">
+      <div class="line"><div>Lightning Bolt</div><div class="step"><span class="btn">−</span><span class="n">3/4</span><span class="btn">+</span></div></div>
+      <div class="line"><div>Counterspell</div><span class="n ok">2/2 ✓</span></div>
+      <div class="line"><div>Brainstorm</div><div class="step"><span class="btn">−</span><span class="n">0/1</span><span class="btn">+</span></div></div>
+    </div>
+    <div class="box link"><div>Past 14 days: <span class="n">4</span> envelopes</div><span class="btn">Open</span></div>
+    <div data-bar="Packages"></div>
+  </section>
+</div></div>
+<figcaption>Keys down: the tab bar shows at the bottom, as degen rules for the outer screen.</figcaption>
+</figure>
+</div>
+</section>
+
+<!-- ============ 7 ============ -->
+<section class="pose" data-pose="laptop" id="laptop">
+<h2>7 · Laptop pose</h2>
+<p>The top page stands and only shows. It reads at arm's length, so its type is large. Every touch is on the flat bottom page: the query, the hit, the count and the keys.</p>
+<div class="row"><figure>
+<div class="fit"><div class="dev tall">
+  <section class="pg t">
+    <div class="k">It came from Kestrel Card Co. · <span class="n">14 Oct · 13 d</span></div>
+    <div style="font-size:44px">Lightning Bolt</div>
+    <div class="big">3<span class="soft">/4</span></div>
+    <div style="font-size:20px">Counterspell <span class="n ok">2/2 ✓</span> · Brainstorm <span class="n">0/1</span></div>
+    <div style="font-size:20px">Still owed here: <span class="n">$1.74</span></div>
+  </section>
+  <div class="hfold"><span>fold · top stands, bottom lies flat</span></div>
+  <section class="pg b kbon">
+    <div class="q"><b>LIGH</b><span class="btn">−</span><span class="btn p">+</span></div>
+    <div class="hitrow on"><div>Lightning Bolt<small>Kestrel · 14 Oct</small></div><span class="btn">Brainstorm +</span></div>
+    <div data-keys="sys" data-sg="Light|Lightning|Lights"></div>
+  </section>
+</div></div>
+<figcaption>Laptop pose, 669×951 pt turned. The keys fit inside the bottom page. The tab bar returns under the bottom page when the keys go down.</figcaption>
+</figure></div>
+</section>
+
+<!-- ============ 8 ============ -->
+<section class="pose" data-pose="tall" id="tall">
+<h2>8 · Held tall, pages stacked</h2>
+<p>Same stack as the laptop pose: answer on top, query and keys below. Held in the hand, the top page is in reach, so its counts are buttons again and the type is normal.</p>
+<div class="row"><figure data-opt="tall-answer-top">
+<div class="fit"><div class="dev tall">
+  <section class="pg t"><div data-use="kestrelR"></div></section>
+  <div class="hfold"><span>fold</span></div>
+  <section class="pg b kbon">
+    <div class="hd"><span>Mail day · Tue 27 Oct</span><span class="n">30 in · 28 out</span></div>
+    <div class="q"><b>LIGH</b><span class="x">×</span></div>
+    <div class="hitrow on"><div>Lightning Bolt<small>Magic 2011 · NM</small></div><span class="n">Kestrel · 14 Oct</span></div>
+    <div data-keys="sys" data-sg="Light|Lightning|Lights"></div>
+  </section>
+</div></div>
+<figcaption>Pick: answer on top. Held tall, 669×951 pt. Degen puts the left page on top. Here the order flips, because the keys need the bottom. <button class="hidebtn" data-hide="tall-answer-top">Hide</button></figcaption>
+</figure>
+<figure data-opt="tall-degen">
+<div class="fit"><div class="dev tall">
+  <section class="pg t"><div data-use="mailL"></div></section>
+  <div class="hfold"><span>fold</span></div>
+  <section class="pg b kbon">
+    <div class="who">Kestrel Card Co.</div>
+    <div class="line now"><div>Lightning Bolt</div><div class="step"><span class="btn">−</span><span class="n">3/4</span><span class="btn p">+</span></div></div>
+    <div data-keys="sys"></div>
+  </section>
+</div></div>
+<figcaption>Option: degen's order, query on top. The keys cover most of the envelope, so only one line shows. <button class="hidebtn" data-hide="tall-degen">Hide</button></figcaption>
+</figure></div>
+<p><button class="hidebtn restore">Show hidden options</button></p>
+</section>
+
+<!-- ============ 9 ============ -->
+<section class="pose" data-pose="tabs" id="tabs">
+<h2>9 · The other tabs on the open Duo</h2>
+<p class="pick">One rule: a tab spreads when it has a list and a thing you open from it. The list goes left, the opened thing goes right. A row tap changes the right page only. Tally, Orphaned and Ledger all have both, so all three spread. With no fold reported, each stays one page, as today.</p>
+<div class="row wide">
+<figure data-opt="tally">
+<div class="fit"><div class="dev inner">
+  <section class="pg l">
+    <div class="hd"><span>Tally · unreceived</span><span class="n">16 names · 19 cards</span></div>
+    <div class="lines">
+      <div class="cell sel"><span>Arcane Signet</span><span class="n">2/3</span></div>
+      <div class="cell"><span>Beast Within</span><span class="n">1/2</span></div>
+      <div class="cell"><span>Command Tower</span><span class="n">1/2</span></div>
+      <div class="cell"><span>Cultivate</span><span class="n">0/2</span></div>
+      <div class="cell"><span>Eternal Witness</span><span class="n">0/1</span></div>
+      <div class="cell"><span>Farseek</span><span class="n">0/2</span></div>
+      <div class="cell"><span>Fellwar Stone</span><span class="n">1/2</span></div>
+      <div class="cell"><span>Harmonize</span><span class="n">0/1</span></div>
+      <div class="cell"><span>Kodama's Reach</span><span class="n">0/1</span></div>
+      <div class="cell"><span>Lightning Bolt</span><span class="n">3/4</span></div>
+    </div>
+  </section>
+  <div class="fold"><span>fold</span></div>
+  <section class="pg r baron">
+    <div class="who">Arcane Signet</div>
+    <div class="meta">bought 3 · in 2 · basis $1.32 · <span class="bad">out $0.42</span></div>
+    <hr class="rule">
+    <div class="k">Copies</div>
+    <div class="lines">
+      <div class="line"><div>Low Tide Singles<small><span class="n">19 Oct · 2 × $0.45</span></small></div><span class="n ok">2/2 ✓</span></div>
+      <div class="line"><div>Tinpot Cards<small><span class="n">6 Oct · 1 × $0.42</span> · stamped Claim filed</small></div><span class="n">0/1</span></div>
+    </div>
+    <div data-bar="Tally"></div>
+  </section>
+</div></div>
+<figcaption>Tally spreads: names left, the copies of one name right. <button class="hidebtn" data-hide="tally">Hide</button></figcaption>
+</figure>
+<figure data-opt="orphaned">
+<div class="fit"><div class="dev inner">
+  <section class="pg l">
+    <div class="hd"><span>Orphaned</span><span class="n">2 envelopes</span></div>
+    <div class="lines">
+      <div class="cell sel"><div>Envelope · <span class="n">24 Oct</span><br><span class="meta">Cultivate ×2</span></div><span class="n">2 cards</span></div>
+      <div class="cell"><div>Envelope · <span class="n">23 Oct</span><br><span class="meta">Llanowar Elves</span></div><span class="n">1 card</span></div>
+    </div>
+  </section>
+  <div class="fold"><span>fold</span></div>
+  <section class="pg r baron">
+    <div class="who">Envelope of 24 Oct</div>
+    <div class="meta">Cultivate ×2 · no sender</div>
+    <hr class="rule">
+    <div class="k">Could have come from</div>
+    <div class="lines">
+      <div class="line"><div>Ashgrove Games<small><span class="n">2 Oct · 25 d</span> · fits 2 of 2</small></div><span class="btn">Assign</span></div>
+    </div>
+    <p class="note">Assign checks in only the 2 recorded cards.</p>
+    <div data-bar="Orphaned" data-badge="2"></div>
+  </section>
+</div></div>
+<figcaption>Orphaned spreads: envelopes left, the one you opened and its candidates right. <button class="hidebtn" data-hide="orphaned">Hide</button></figcaption>
+</figure>
+<figure data-opt="ledger-spread">
+<div class="fit"><div class="dev inner">
+  <section class="pg l">
+    <div class="hd"><span>Ledger</span><span></span></div>
+    <div class="lines">
+      <div class="cell"><span>Showing</span><span>● Unreceived</span></div>
+      <div class="cell"><span>Sorted by</span><u>Order date</u></div>
+      <div class="cell"><span>Dates</span><u>All</u></div>
+      <div class="cell sel"><span>Sync</span><u>Up to date</u></div>
+      <div class="cell"><span>History</span><u><span class="n">14</span> saved</u></div>
+      <div class="cell"><span>Backup</span><u>Save a file</u></div>
+      <div class="cell"><span>Re-import CSV</span><u>Choose a file</u></div>
+      <div class="cell"><span>Reset</span><span class="btn">Reset</span></div>
+    </div>
+  </section>
+  <div class="fold"><span>fold</span></div>
+  <section class="pg r baron">
+    <div class="who">Sync</div>
+    <div class="lines">
+      <div class="cell"><span>Server</span><span>Reachable</span></div>
+      <div class="cell"><span>Last sync</span><span class="n">12:31 today</span></div>
+      <div class="cell"><span>Key</span><span>Saved</span></div>
+    </div>
+    <div class="btns"><span class="btn">Replace key</span></div>
+    <div data-bar="Ledger"></div>
+  </section>
+</div></div>
+<figcaption>Ledger spreads: option rows left, the open panel right. History and Sync open on the right page. <button class="hidebtn" data-hide="ledger-spread">Hide</button></figcaption>
+</figure>
+<figure data-opt="ledger-full">
+<div class="fit"><div class="dev inner">
+  <div class="wide-col">
+    <div class="hd"><span>Ledger</span><span></span></div>
+    <div class="lines">
+      <div class="cell"><span>Showing</span><span>● Unreceived</span></div>
+      <div class="cell"><span>Sorted by</span><u>Order date</u></div>
+      <div class="cell"><span>Dates</span><u>All</u></div>
+      <div class="cell"><span>Sync</span><u>Up to date</u></div>
+      <div class="cell"><span>History</span><u><span class="n">14</span> saved</u></div>
+      <div class="cell"><span>Backup</span><u>Save a file</u></div>
+    </div>
+  </div>
+  <div class="fold"><span>fold · rows cross it</span></div>
+  <div data-bar="Ledger" style="left:259px;right:259px"></div>
+</div></div>
+<figcaption>Option: Ledger stays full width, as degen keeps Settings. Every row crosses the fold. <button class="hidebtn" data-hide="ledger-full">Hide</button></figcaption>
+</figure>
+</div>
+<p><button class="hidebtn restore">Show hidden options</button></p>
+</section>
+
+<!-- ============ 10 ============ -->
+<section class="pose" data-pose="keys" id="keys">
+<h2>10 · Two keyboard cases</h2>
+<p>Which case is real is unmeasured. Degen measured the system tab bar at 29–71% of the inner width. Nobody has measured the keyboard. Case A: the system keys stay inside the left page. Case B: the system keys span the fold. B's answer is drawn two ways. B1 is an in-app key pad on the left page. B2 lets the system keys span, and moves the query down to sit on them.</p>
+<p class="pick">Pick: build for A. If B is real, take B1, with a System keys key that switches to B2. B1 loses autocorrect, dictation, swipe typing and other keyboards. It must label every key for VoiceOver. Autocorrect matters least here: card names are not dictionary words, and B1's top row offers open-order names instead. B1 keys are 42 pt wide, under the 44 pt floor. Their height is 44 pt.</p>
+<div class="row wide">
+<figure data-opt="a">
+<div class="fit"><div class="dev inner">
+  <section class="pg l kbon"><div data-use="mailL"></div><div data-keys="sys"></div></section>
+  <div class="fold"><span>fold</span></div>
+  <section class="pg r baron"><div data-use="kestrelR"></div><div data-bar="Packages"></div></section>
+</div></div>
+<figcaption>Flat, case A: system keys in the left page. Nothing to fix. <button class="hidebtn" data-hide="a">Hide</button></figcaption>
+</figure>
+<figure data-opt="b1">
+<div class="fit"><div class="dev inner">
+  <section class="pg l kbon"><div data-use="mailL"></div><div data-keys="pad" data-sg="Lightning Bolt|Lightning Greaves"></div></section>
+  <div class="fold"><span>fold</span></div>
+  <section class="pg r baron"><div data-use="kestrelR"></div><div data-bar="Packages"></div></section>
+</div></div>
+<figcaption>Flat, case B1 (pick for B): in-app keys on the left page. The top row offers names from open orders. <button class="hidebtn" data-hide="b1">Hide</button></figcaption>
+</figure>
+<figure data-opt="b2">
+<div class="fit"><div class="dev inner">
+  <section class="pg l kbon">
+    <div class="hd"><span>Mail day · Tue 27 Oct</span><span class="n">30 in · 28 out</span></div>
+    <div class="hand"><div><span class="k">This envelope</span><span>Lightning Bolt ×3 · Counterspell ×2</span></div><span class="btn">New envelope</span></div>
+    <div class="hitrow on push"><div>Lightning Bolt<small>Magic 2011 · NM</small></div><span class="n">Kestrel · 14 Oct</span></div>
+    <div class="q"><b>LIGH</b><span class="x">×</span></div>
+  </section>
+  <div class="fold"><span>fold · keys cross it</span></div>
+  <section class="pg r kbon">
+    <div class="who">Kestrel Card Co.</div>
+    <div class="lines">
+      <div class="line now"><div>Lightning Bolt</div><div class="step"><span class="btn">−</span><span class="n">3/4</span><span class="btn p">+</span></div></div>
+      <div class="line"><div>Counterspell</div><span class="n ok">2/2 ✓</span></div>
+      <div class="line"><div>Brainstorm</div><div class="step"><span class="btn">−</span><span class="n">0/1</span><span class="btn">+</span></div></div>
+    </div>
+  </section>
+  <div data-keys="span"></div>
+</div></div>
+<figcaption>Flat, case B2: system keys span both pages. The query moves down onto them. The right page keeps 3 lines and loses the rest. <button class="hidebtn" data-hide="b2">Hide</button></figcaption>
+</figure>
+<figure data-opt="lap-a">
+<div class="fit"><div class="dev tall">
+  <section class="pg t">
+    <div class="k">It came from Kestrel Card Co.</div>
+    <div style="font-size:44px">Lightning Bolt</div>
+    <div class="big">3<span class="soft">/4</span></div>
+  </section>
+  <div class="hfold"><span>fold</span></div>
+  <section class="pg b kbon">
+    <div class="q"><b>LIGH</b><span class="btn">−</span><span class="btn p">+</span></div>
+    <div class="hitrow on"><div>Lightning Bolt<small>Kestrel · 14 Oct</small></div><span class="btn">Brainstorm +</span></div>
+    <div data-keys="sys"></div>
+  </section>
+</div></div>
+<figcaption>Laptop, case A: about 256 pt of keys fits the 465 pt bottom page. This is the likely case. <button class="hidebtn" data-hide="lap-a">Hide</button></figcaption>
+</figure>
+<figure data-opt="lap-b">
+<div class="fit"><div class="dev tall">
+  <section class="pg t">
+    <div class="k">It came from Kestrel Card Co.</div>
+    <div style="font-size:44px">Lightning Bolt</div>
+    <div class="big">3<span class="soft">/4</span></div>
+  </section>
+  <div class="hfold"><span>fold</span></div>
+  <section class="pg b kbon">
+    <div class="q"><b>LIGH</b><span class="btn">−</span><span class="btn p">+</span></div>
+    <div class="hitrow on"><div>Lightning Bolt<small>Kestrel · 14 Oct</small></div><span class="btn">Brainstorm +</span></div>
+    <div data-keys="pad" data-sg="Lightning Bolt|Lightning Greaves"></div>
+  </section>
+</div></div>
+<figcaption>Laptop, case B: only if the system keys reach past the fold. The same in-app keys fill the bottom page. <button class="hidebtn" data-hide="lap-b">Hide</button></figcaption>
+</figure>
+</div>
+<p><button class="hidebtn restore">Show hidden options</button></p>
+</section>
+
+<!-- ============ 11 ============ -->
+<section class="pose" data-pose="tabbar" id="tabbar">
+<h2>11 · The tab bar on two pages</h2>
+<p>Degen puts a custom 4-tab bar under the left page. Here the keys use the left page, so the bar has three places to go. Each is drawn while typing.</p>
+<p class="pick">Pick: a, under the right page. It never moves when the keys rise or fall, and it shows on every tab. It loses degen's place, so the two apps differ. Next card moves to the return key.</p>
+<div class="row wide">
+<figure data-opt="bar-a">
+<div class="fit"><div class="dev inner">
+  <section class="pg l kbon"><div data-use="mailL"></div><div data-keys="sys"></div></section>
+  <div class="fold"><span>fold</span></div>
+  <section class="pg r baron"><div data-use="kestrelR"></div><div data-bar="Packages"></div></section>
+</div></div>
+<figcaption>a (pick): under the right page, always. <button class="hidebtn" data-hide="bar-a">Hide</button></figcaption>
+</figure>
+<figure data-opt="bar-b">
+<div class="fit"><div class="dev inner">
+  <section class="pg l" style="padding-bottom:348px"><div data-use="mailL"></div><div data-keys="sys"></div><div data-bar="Packages" data-bottom="268"></div></section>
+  <div class="fold"><span>fold</span></div>
+  <section class="pg r"><div data-use="kestrelR"></div></section>
+</div></div>
+<figcaption>b: under the left page, riding on top of the keys. It jumps 256 pt each time the keys rise or fall, and crowds the query. <button class="hidebtn" data-hide="bar-b">Hide</button></figcaption>
+</figure>
+<figure data-opt="bar-c">
+<div class="fit"><div class="dev inner">
+  <section class="pg l kbon"><div data-use="mailL"></div><div data-keys="sys"></div></section>
+  <div class="fold"><span>fold</span></div>
+  <section class="pg r"><div data-use="kestrelR"></div></section>
+</div></div>
+<figcaption>c: under the left page, as degen does. The keys cover it, so on mail day you must drop the keys to change tabs. <button class="hidebtn" data-hide="bar-c">Hide</button></figcaption>
+</figure>
+</div>
+<p><button class="hidebtn restore">Show hidden options</button></p>
+</section>
+
+</div>
+<script>
+// one copy of each repeated part: templates, keys and bar are filled here
+document.querySelectorAll('[data-use]').forEach(el=>el.replaceWith(document.getElementById(el.dataset.use).content.cloneNode(true)));
+const ROWS=['QWERTYUIOP','ASDFGHJKL\'','⇧ZXCVBNM-⌫'];
+function keys(kind,sg){
+  const top=sg.map(s=>'<span>'+s+'</span>').join('');
+  let ks=ROWS.map(r=>[...r].map(c=>'<span'+('⇧⌫'.includes(c)?' class="fn"':'')+'>'+c+'</span>').join('')).join('');
+  ks+= kind==='pad'
+    ? '<span class="fn w3">System keys</span><span class="w4">space</span><span class="go w3">Next card</span>'
+    : '<span class="fn w2">123</span><span class="w5">space</span><span class="fn w3">next</span>';
+  return '<div class="sg">'+top+'</div><div class="ks">'+ks+'</div>';
+}
+document.querySelectorAll('[data-keys]').forEach(el=>{
+  const kind=el.dataset.keys,sg=(el.dataset.sg||(kind==='pad'?'':'Light|Lightning|Lights')).split('|').filter(Boolean);
+  el.className='kb'+(kind==='pad'?' pad':kind==='span'?' span':'');el.innerHTML=keys(kind,sg);
+});
+const ICON={Ledger:'<circle cx="11" cy="11" r="3"/><path d="M11 2v3M11 17v3M2 11h3M17 11h3M4.6 4.6l2.1 2.1M15.3 15.3l2.1 2.1M4.6 17.4l2.1-2.1M15.3 6.7l2.1-2.1"/>',Orphaned:'<rect x="2" y="5" width="18" height="12" rx="1"/><path d="M2 6l9 6 9-6"/>',Tally:'<path d="M5 4v14M9 4v14M13 4v14M17 4v14M3 15l16-8"/>',Packages:'<path d="M3 7l8-4 8 4v9l-8 4-8-4z"/><path d="M3 7l8 4 8-4M11 11v9"/>'};
+document.querySelectorAll('[data-bar]').forEach(el=>{
+  el.className='bar';if(el.dataset.bottom)el.style.bottom=el.dataset.bottom+'px';
+  el.innerHTML=Object.keys(ICON).map(t=>'<span class="'+(t===el.dataset.bar?'on':'')+'"><svg viewBox="0 0 22 22">'+ICON[t]+'</svg>'+t+(t==='Orphaned'?'<i>'+(el.dataset.badge||'2')+'</i>':'')+'</span>').join('');
+});
+// a figure that differs from another only by one label is a relabelled copy
+document.querySelectorAll('[data-copy]').forEach(f=>{
+  const src=document.querySelector('[data-opt="'+f.dataset.copy+'"] .fit').cloneNode(true),[a,b]=f.dataset.relabel.split('|');
+  const w=document.createTreeWalker(src,NodeFilter.SHOW_TEXT);for(let n;(n=w.nextNode());)n.textContent=n.textContent.replace(a,b);
+  f.prepend(src);
+});
+function fit(){document.querySelectorAll('.fit').forEach(f=>{const d=f.firstElementChild,s=Math.min(1,f.clientWidth/d.offsetWidth);d.style.transform='scale('+s+')';f.style.height=d.offsetHeight*s+'px'})}
+function params(){return new URLSearchParams(location.hash.slice(1))}
+function hidden(){return new Set((params().get('hide')||'').split(',').filter(Boolean))}
+function setHidden(h){const p=params();h.size?p.set('hide',[...h].join(',')):p.delete('hide');p.delete('pose');location.hash=p.toString().replace(/%2C/g,',')}
+document.querySelectorAll('[data-hide]').forEach(b=>b.onclick=()=>{const h=hidden();h.add(b.dataset.hide);setHidden(h)});
+document.querySelectorAll('.restore').forEach(b=>b.onclick=()=>{const own=[...b.closest('.pose').querySelectorAll('[data-opt]')].map(f=>f.dataset.opt),h=hidden();own.forEach(o=>h.delete(o));setHidden(h)});
+function route(){
+  const pose=params().get('pose'),h=hidden();
+  document.querySelectorAll('[data-opt]').forEach(f=>f.hidden=h.has(f.dataset.opt));
+  document.querySelectorAll('.pose').forEach(s=>{s.classList.toggle('hit',s.dataset.pose===pose);const r=s.querySelector('.restore');if(r)r.classList.toggle('on',[...s.querySelectorAll('[data-opt]')].some(f=>f.hidden))});
+  fit();const t=document.querySelector('[data-pose="'+pose+'"]');if(t)t.scrollIntoView();
+}
+addEventListener('hashchange',route);addEventListener('resize',fit);route();
+</script>
+</body>
+</html>
