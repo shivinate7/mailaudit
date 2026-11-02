@@ -8,7 +8,7 @@
 //   3a its step pins the shared action to a 40-hex sha;
 //   3b its with: needs is ${{ toJSON(needs) }};
 //   3c every other claude-settings pin in the file has the rollup's sha;
-//   4  its needs are every other job except ci-done;
+//   4  its needs are every other job except ci-done and milestone-proof (staged, see i2);
 //   5  no job it needs has a job-level if: with github.event_name or .outputs.;
 //   6  the stamp's merge.requiredChecks is exactly ["all-jobs-passed"];
 //   7  every job, ci-done included, has !github.event.pull_request.draft in its
@@ -29,7 +29,7 @@
 // The milestone-proof job (see milestoneProofChecks) fails a pull request until the newest
 // milestone run on main passed. It is checked with these ids:
 //   i1  the job exists;
-//   i2  the rollup needs it;
+//   i2  the rollup does not need it until its first green hosted run (coordinator 2026-11-01 22:06);
 //   i3  its permissions are a map with actions: read and no write value;
 //   i4  one run line is node scripts/milestone-due.mjs proof, with arguments allowed after it;
 //   i5  no if: in the job or its steps names github.event_name or github.ref;
@@ -49,8 +49,8 @@
 // MILESTONE_WORKFLOW name other files; a relative path resolves from the repo root.
 
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { readFileSync, readdirSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -274,13 +274,15 @@ function workflowChecks(text) {
   // Assertions 5 and 8 check the set assertion 4 names, so they still bite when the
   // rollup is missing or short.
   const expected = ids.filter((id) => id !== ROLLUP && id !== CI_DONE).sort();
+  // milestone-proof stays out of the rollup until its first green hosted run (coordinator 2026-11-01 22:06).
+  const expectedNeeds = expected.filter((id) => id !== PROOF);
   const needs = needsOf(roll);
-  const missing = expected.filter((id) => !needs.includes(id));
-  const extra = needs.filter((id) => !expected.includes(id));
+  const missing = expectedNeeds.filter((id) => !needs.includes(id));
+  const extra = needs.filter((id) => !expectedNeeds.includes(id));
   const dup = needs.length !== new Set(needs).size;
   add(
     "4",
-    `rollup needs are every other job except ${CI_DONE}`,
+    `rollup needs are every other job except ${CI_DONE} and ${PROOF}, which is staged out`,
     roll && missing.length === 0 && extra.length === 0 && !dup,
     `missing: ${missing.join(", ") || "none"}; extra: ${extra.join(", ") || "none"}` +
       (dup ? "; a job is listed twice" : "")
@@ -350,7 +352,6 @@ const MILESTONE_OWN = ".github/workflows/milestone.yml";
 const MILESTONE_DUE = "milestone-due";
 const XCODE = "xcode-27";
 const XCODE_SELECT = "xcode-select -s /Applications/Xcode_27.1.app";
-const MAKE_TARGET = "make native-check";
 // The regex file must hold every alternative of the native path regex scope uses today.
 const NATIVE_HOLDS = ["native/", "shared/", "view-rules", "test\\.yml"];
 // A job that inlines that regex carries one of these fragments of it.
@@ -460,7 +461,7 @@ function nativeSelfCheck({ scopeJob, read }) {
 
 // Returns { label, ok, detail } for a, a2, b, c, d, f, g and h. A missing or unparsable file
 // fails every check that reads it.
-function milestoneChecks({ msText, wfText, read }) {
+function milestoneChecks({ msText, wfText, read, makefile, classes }) {
   const parsed = (text, what) => {
     if (text === null) return { err: `${what} is missing` };
     try {
@@ -471,8 +472,7 @@ function milestoneChecks({ msText, wfText, read }) {
   };
   const ms = parsed(msText, MILESTONE_OWN);
   const wf = parsed(wfText, ".github/workflows/test.yml");
-  const onlyJobs = ms.doc && isMap(ms.doc.jobs) ? Object.values(ms.doc.jobs) : [];
-  const job = onlyJobs.length === 1 && isMap(onlyJobs[0]) ? onlyJobs[0] : undefined;
+  const msJobList = ms.doc && isMap(ms.doc.jobs) ? Object.values(ms.doc.jobs).filter(isMap) : [];
   const jobs = wf.doc && isMap(wf.doc.jobs) ? wf.doc.jobs : {};
   const onMs = (label, fn) => (ms.doc ? { label, ...fn() } : { label, ok: false, detail: ms.err });
   const onWf = (label, fn) => (wf.doc ? { label, ...fn() } : { label, ok: false, detail: wf.err });
@@ -480,17 +480,17 @@ function milestoneChecks({ msText, wfText, read }) {
     onMs("a milestone.yml triggers are exactly workflow_dispatch plus pull_request on its own path", () =>
       triggerCheck(ms.doc)
     ),
-    onMs("a2 milestone.yml has one job, and its job-level if: has the draft guard", () => ({
-      ok: job !== undefined && ifText(job).replace(/\s+/g, "").includes(DRAFT_GUARD),
-      detail: `jobs: ${onlyJobs.length}; if: ${JSON.stringify(ifText(job))}`,
+    onMs("a2 milestone.yml has two jobs, and each job-level if: has the draft guard", () => ({
+      ok: msJobList.length === 2 && msJobList.every((j) => ifText(j).replace(/\s+/g, "").includes(DRAFT_GUARD)),
+      detail: `jobs: ${msJobList.length}; if: ${JSON.stringify(msJobList.map((j) => ifText(j)))}`,
     })),
-    onMs("b the job runs on xcode-27 and selects Xcode 27.1", () => ({
-      ok: job !== undefined && job["runs-on"] === XCODE && runText(job).includes(XCODE_SELECT),
-      detail: `runs-on: ${JSON.stringify(job?.["runs-on"] ?? null)}; selects Xcode 27.1: ${runText(job).includes(XCODE_SELECT)}`,
+    onMs("b every job runs on xcode-27 and selects Xcode 27.1", () => ({
+      ok: msJobList.length > 0 && msJobList.every((j) => j["runs-on"] === XCODE && runText(j).includes(XCODE_SELECT)),
+      detail: `runs-on: ${JSON.stringify(msJobList.map((j) => j["runs-on"] ?? null))}`,
     })),
-    onMs("c the job runs make native-check", () => ({
-      ok: job !== undefined && runText(job).split("\n").some((l) => l.trim() === MAKE_TARGET),
-      detail: "no run line is exactly make native-check",
+    onMs("c every job reaches its tests through a make target", () => ({
+      ok: msJobList.length > 0 && msJobList.every((j) => shellLines(runText(j)).some((l) => /^make(\s|$)/.test(l))),
+      detail: "a job has no run line that starts with make",
     })),
     onWf("d scope and milestone-due read one regex file, and neither job inlines it", () =>
       sharedRegexCheck({ scopeJob: jobs.scope, milestoneJob: jobs[MILESTONE_DUE], read })
@@ -500,6 +500,7 @@ function milestoneChecks({ msText, wfText, read }) {
     onWf("h scope counts its native regex file as native, and README.md as not native", () =>
       nativeSelfCheck({ scopeJob: jobs.scope, read })
     ),
+    ...uiTestChecks({ makefile, classes, msDoc: ms.doc, msErr: ms.err }),
   ];
 }
 
@@ -528,8 +529,8 @@ function milestoneProofChecks(jobs) {
       detail: `job present: ${job !== undefined}`,
     },
     {
-      label: `i2 the rollup needs ${PROOF}`,
-      ok: rollNeeds.includes(PROOF),
+      label: `i2 ${PROOF} stays out of ${ROLLUP} until its first green hosted run (coordinator 2026-11-01 22:06)`,
+      ok: !rollNeeds.includes(PROOF),
       detail: `rollup needs: ${rollNeeds.join(", ") || "none"}`,
     },
     {
@@ -553,6 +554,349 @@ function milestoneProofChecks(jobs) {
       detail: `${CI_DONE} needs: ${doneNeeds.join(", ") || "none"}`,
     },
   ];
+}
+
+// ---- The UI-test checks k1 to k5, and the readers they use ----
+// GNU make reads the Makefile itself. make -f - takes the text on stdin, so no file is written, and
+// make -n prints a recipe without running it. A make that cannot run throws, and the check that
+// needed it fails with that reason.
+const MAKEFILE = resolve(ROOT, "Makefile");
+const UI_DIR = resolve(ROOT, "native/ManifestUITests");
+// An xcodebuild test run, or the sim-test wrapper that runs one.
+const UI_RUN = /xcodebuild test\b|\bsim-test\b/;
+const SIM_IOS_27_1 = /\bxcrun simctl create\b.*\bcom\.apple\.CoreSimulator\.SimRuntime\.iOS-27-1(?![\w-])/;
+const ONLY_FLAG = /-only-testing:ManifestUITests\/(\w+)/g;
+const SKIP_FLAG = /-skip-testing:ManifestUITests\/(\w+)/g;
+const JOB_MINUTES = [45, 50];
+const duoOf = (classes) => classes.filter((c) => c.startsWith("Duo")).sort();
+const listOf = (value) => value.split(/\s+/).filter((w) => w !== "");
+const flagsIn = (text, re) => new Set([...text.matchAll(re)].map((m) => m[1]));
+const joinContinued = (text) => text.replace(/\\\r?\n/g, " ");
+const sameList = (a, b) => JSON.stringify([...a].sort()) === JSON.stringify([...b].sort());
+const stepEnv = (job, step, name) => {
+  if (isMap(step.env) && typeof step.env[name] === "string") return step.env[name];
+  if (isMap(job.env) && typeof job.env[name] === "string") return job.env[name];
+  return undefined;
+};
+
+// Runs make with the Makefile text on stdin. A UI_TEST from the environment is dropped, so the
+// Makefile's own default applies unless a step sets one.
+function makeRun(makefile, args, env = {}) {
+  const base = { ...process.env };
+  delete base.UI_TEST;
+  const r = spawnSync("make", ["-f", "-", ...args], {
+    input: makefile,
+    cwd: ROOT,
+    encoding: "utf8",
+    env: { ...base, ...env },
+  });
+  if (r.error) throw new Error(`make cannot run (${r.error.message})`);
+  return { ok: r.status === 0, out: r.stdout ?? "", err: (r.stderr ?? "").trim() };
+}
+
+// The value and origin of each named Makefile variable. An origin of "undefined" means the name is
+// not set. The probe is $(info) text at the end of the file, so no shell reads a value.
+function makeVars(makefile, names) {
+  const probe = names.map((n) => `$(info CI_VAR ${n}=$(origin ${n})|$(${n}))`).join("\n");
+  const r = makeRun(`${makefile}\n.DEFAULT_GOAL := ci-wiring-probe\nci-wiring-probe: ;\n${probe}\n`, ["-n"]);
+  if (!r.ok) throw new Error(`make could not read the Makefile: ${r.err}`);
+  const vars = {};
+  for (const line of r.out.split("\n")) {
+    const m = /^CI_VAR (\w+)=(\w+)\|(.*)$/.exec(line);
+    if (m) vars[m[1]] = { origin: m[2], value: m[3].trim() };
+  }
+  return vars;
+}
+
+// Swift source with comments removed and string contents blanked, so a class word in either is never
+// read as code. A \( ... ) interpolation is code, and the quotes in it do not end the string around
+// it. Block comments nest. A """ string ends at its own """, and a #"..."# raw string ends at "#.
+function swiftCode(src) {
+  let i = 0;
+  const n = src.length;
+  const at = (s) => src.startsWith(s, i);
+  const isRawStart = (k) => {
+    let j = k;
+    while (src[j] === "#") j++;
+    return j > k && src[j] === '"';
+  };
+  function blockComment() {
+    let depth = 0;
+    do {
+      if (at("/*")) {
+        depth++;
+        i += 2;
+      } else if (at("*/")) {
+        depth--;
+        i += 2;
+      } else i++;
+    } while (depth > 0 && i < n);
+  }
+  function literal(hashes) {
+    const multi = hashes === 0 && at('"""');
+    const close = (multi ? '"""' : '"') + "#".repeat(hashes);
+    const interp = `\\${"#".repeat(hashes)}(`;
+    i += multi ? 3 : 1;
+    while (i < n) {
+      if (!multi && src[i] === "\n") return;
+      if (at(interp)) {
+        i += interp.length;
+        code(true);
+      } else if (hashes === 0 && src[i] === "\\") {
+        i += 2;
+      } else if (at(close)) {
+        i += close.length;
+        return;
+      } else i++;
+    }
+  }
+  function code(inInterp) {
+    let out = "";
+    let depth = 0;
+    while (i < n) {
+      if (at("//")) {
+        while (i < n && src[i] !== "\n") i++;
+      } else if (at("/*")) {
+        blockComment();
+        out += " ";
+      } else if (src[i] === '"') {
+        literal(0);
+        out += '""';
+      } else if (src[i] === "#" && isRawStart(i)) {
+        const start = i;
+        while (src[i] === "#") i++;
+        literal(i - start);
+        out += '""';
+      } else {
+        if (inInterp && src[i] === "(") depth++;
+        if (inInterp && src[i] === ")") {
+          if (depth === 0) {
+            i++;
+            return out;
+          }
+          depth--;
+        }
+        out += src[i];
+        i++;
+      }
+    }
+    return out;
+  }
+  return code(false);
+}
+
+const SWIFT_DECL = /\bclass\s+(\w+)\s*:\s*(\w+)/g;
+const swiftDecls = (src) => [...swiftCode(src).matchAll(SWIFT_DECL)].map((m) => ({ name: m[1], superclass: m[2] }));
+
+// The test classes: each class whose superclass is XCTestCase or another test class.
+function testClassesOf(decls) {
+  const tests = new Set();
+  for (let grew = true; grew; ) {
+    grew = false;
+    for (const d of decls) {
+      if (!tests.has(d.name) && (d.superclass === "XCTestCase" || tests.has(d.superclass))) {
+        tests.add(d.name);
+        grew = true;
+      }
+    }
+  }
+  return [...tests].sort();
+}
+
+// The UI test classes in every Swift file of a folder. An extension is not a class, so it adds none.
+function swiftTestClasses(dir) {
+  const files = readdirSync(dir).filter((f) => f.endsWith(".swift")).sort();
+  return testClassesOf(files.flatMap((f) => swiftDecls(readFileSync(join(dir, f), "utf8"))));
+}
+// The UI test classes of this repo, or undefined when the folder cannot be read.
+function repoTestClasses() {
+  try {
+    return swiftTestClasses(UI_DIR);
+  } catch {
+    return undefined;
+  }
+}
+
+// The commands of a run script, one per line. A backslash at a line end joins the next line. A #
+// starts a comment only outside quotes and after a space, as sh reads it.
+function shellLines(text) {
+  return joinContinued(String(text)).split("\n").map(shellStrip).map((l) => l.trim());
+}
+function shellStrip(line) {
+  let quote = null;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (quote) {
+      if (c === quote) quote = null;
+    } else if (c === '"' || c === "'") {
+      quote = c;
+    } else if (c === "#" && (i === 0 || /\s/.test(line[i - 1]))) {
+      return line.slice(0, i);
+    }
+  }
+  return line;
+}
+
+// The make -n expansion of one make line, with the UI_TEST that its step sets.
+function expandLine(makefile, targets, uiTest) {
+  if (targets.length === 0) return { error: "a make line names no target" };
+  const env = uiTest === undefined ? {} : { UI_TEST: uiTest };
+  const r = makeRun(makefile, ["-n", ...targets], env);
+  return r.ok ? { text: joinContinued(r.out) } : { error: `make -n ${targets.join(" ")} failed: ${r.err}` };
+}
+
+// What one job runs: the expansion of each make line in its run scripts, or the error that stopped it.
+function jobTests(job, makefile, classes) {
+  const parts = [];
+  for (const step of steps(job)) {
+    if (typeof step.run !== "string") continue;
+    const uiTest = stepEnv(job, step, "UI_TEST");
+    for (const line of shellLines(step.run)) {
+      if (!/^make(\s|$)/.test(line)) continue;
+      const targets = line
+        .split(/\s+/)
+        .slice(1)
+        .filter((t) => t !== "" && !t.startsWith("-") && !t.includes("="));
+      parts.push(expandLine(makefile, targets, uiTest));
+    }
+  }
+  const error = parts.find((p) => p.error)?.error;
+  const text = parts.map((p) => p.text ?? "").join("\n");
+  // The classes a run selects: the -only-testing set, or every class, less the -skip-testing set.
+  const only = flagsIn(text, ONLY_FLAG);
+  const skip = flagsIn(text, SKIP_FLAG);
+  const base = only.size > 0 ? [...only] : classes;
+  return { error, text, ui: UI_RUN.test(text), selected: base.filter((c) => !skip.has(c)).sort() };
+}
+
+// The checks k1 to k5. Each reads one input: the Makefile through make, the Swift classes, or the
+// milestone workflow's jobs. A read that fails makes its check fail, and the detail says why.
+function uiTestChecks({ makefile, classes, msDoc, msErr }) {
+  const LABEL = {
+    k1: "k1 DUO_UI_TESTS in the Makefile equals the Duo classes scanned from native/ManifestUITests",
+    k2: "k2 make -n ui-test skips each Duo class",
+    k3: "k3 milestone.yml has two UI-test jobs, timeout-minutes 45 and 50, and neither runs a Duo class",
+    k4: "k4 each UI-test job creates its simulator on runtime iOS-27-1",
+    k5: "k5 each UI test class is in exactly one of UI_TESTS_A, the B set and DUO_UI_TESTS; no class drops out",
+  };
+  const out = [];
+  const add = (id, fn) => {
+    let r;
+    try {
+      r = fn();
+    } catch (e) {
+      r = { ok: false, detail: e.message };
+    }
+    out.push({ label: LABEL[id], ok: Boolean(r.ok), detail: r.detail ?? "" });
+  };
+  if (typeof makefile !== "string" || !Array.isArray(classes)) {
+    const why = [typeof makefile === "string" ? "" : "no Makefile", Array.isArray(classes) ? "" : "no UI test sources"]
+      .filter(Boolean)
+      .join("; ");
+    for (const id of Object.keys(LABEL)) out.push({ label: LABEL[id], ok: false, detail: why });
+    return out;
+  }
+  const duo = duoOf(classes);
+
+  add("k1", () => {
+    const v = makeVars(makefile, ["DUO_UI_TESTS"]).DUO_UI_TESTS;
+    if (v.origin === "undefined") {
+      return { ok: false, detail: `DUO_UI_TESTS is not set in the Makefile; scanned Duo classes: ${duo.join(" ") || "none"}` };
+    }
+    const listed = listOf(v.value);
+    const missing = duo.filter((c) => !listed.includes(c));
+    const extra = listed.filter((c) => !duo.includes(c));
+    return {
+      ok: missing.length === 0 && extra.length === 0,
+      detail: `not listed: ${missing.join(" ") || "none"}; listed but not a Duo class: ${extra.join(" ") || "none"}`,
+    };
+  });
+
+  add("k2", () => {
+    const r = makeRun(makefile, ["-n", "ui-test"]);
+    if (!r.ok) return { ok: false, detail: `make -n ui-test failed: ${r.err}` };
+    const skipped = flagsIn(joinContinued(r.out), SKIP_FLAG);
+    const missing = duo.filter((c) => !skipped.has(c));
+    return {
+      ok: duo.length > 0 && missing.length === 0,
+      detail: `ui-test does not skip: ${missing.join(" ") || (duo.length ? "none" : "no Duo class scanned")}`,
+    };
+  });
+
+  const jobs = msDoc && isMap(msDoc.jobs) ? Object.entries(msDoc.jobs).filter(([, j]) => isMap(j)) : undefined;
+  let ran = [];
+  let ranErr;
+  try {
+    ran = (jobs ?? []).map(([id, job]) => ({ id, job, ...jobTests(job, makefile, classes) }));
+  } catch (e) {
+    ranErr = e.message;
+  }
+  const uiJobs = ran.filter((j) => j.ui);
+  const gate = () => {
+    if (jobs === undefined) return { ok: false, detail: msErr ?? "no milestone workflow" };
+    if (ranErr !== undefined) return { ok: false, detail: ranErr };
+    return null;
+  };
+
+  add("k3", () => {
+    const gated = gate();
+    if (gated) return gated;
+    const errs = ran.filter((j) => j.error).map((j) => `${j.id}: ${j.error}`);
+    if (errs.length > 0) return { ok: false, detail: errs.join("; ") };
+    const minutes = uiJobs.map((j) => Number(j.job["timeout-minutes"])).sort((x, y) => x - y);
+    const duoRuns = uiJobs.flatMap((j) =>
+      j.selected.filter((c) => c.startsWith("Duo")).map((c) => `${j.id} runs ${c}`)
+    );
+    const shape = uiJobs.map((j) => `${j.id} (timeout ${j.job["timeout-minutes"] ?? "none"})`).join(", ");
+    return {
+      ok: uiJobs.length === 2 && JSON.stringify(minutes) === JSON.stringify(JOB_MINUTES) && duoRuns.length === 0,
+      detail: `UI-test jobs: ${shape || "none"}; ${duoRuns.join("; ") || "no Duo class run"}`,
+    };
+  });
+
+  add("k4", () => {
+    const gated = gate();
+    if (gated) return gated;
+    const bad = uiJobs.filter((j) => !shellLines(runText(j.job)).some((l) => SIM_IOS_27_1.test(l))).map((j) => j.id);
+    return {
+      ok: uiJobs.length > 0 && bad.length === 0,
+      detail: `UI-test jobs with no simctl create on iOS-27-1: ${bad.join(", ") || (uiJobs.length ? "none" : "no UI-test job")}`,
+    };
+  });
+
+  add("k5", () => {
+    const gated = gate();
+    if (gated) return gated;
+    const named = makeVars(makefile, ["UI_TESTS_A"]).UI_TESTS_A;
+    if (named.origin === "undefined") return { ok: false, detail: "UI_TESTS_A is not set in the Makefile" };
+    const a = listOf(named.value);
+    const b = classes.filter((c) => !a.includes(c) && !duo.includes(c));
+    const unknown = a.filter((c) => !classes.includes(c));
+    const both = a.filter((c) => duo.includes(c));
+    const first = uiJobs.find((j) => Number(j.job["timeout-minutes"]) === 45);
+    const second = uiJobs.find((j) => Number(j.job["timeout-minutes"]) === 50);
+    if (!first || !second) return { ok: false, detail: "no UI-test job with timeout-minutes 45 and one with 50" };
+    const covered = [...first.selected, ...second.selected];
+    const dropped = classes.filter((c) => !duo.includes(c) && !covered.includes(c));
+    const twice = [...new Set(covered.filter((c, idx) => covered.indexOf(c) !== idx))];
+    return {
+      ok:
+        a.length > 0 &&
+        unknown.length === 0 &&
+        both.length === 0 &&
+        sameList(first.selected, a) &&
+        sameList(second.selected, b) &&
+        dropped.length === 0 &&
+        twice.length === 0,
+      detail:
+        `A: ${a.join(" ") || "empty"}; timeout 45 runs ${first.selected.join(" ") || "none"}; ` +
+        `timeout 50 runs ${second.selected.join(" ") || "none"}; unknown ${unknown.join(" ") || "none"}; ` +
+        `in A and Duo ${both.join(" ") || "none"}; dropped ${dropped.join(" ") || "none"}; ` +
+        `twice ${twice.join(" ") || "none"}`,
+    };
+  });
+
+  return out;
 }
 
 let failures = 0;
@@ -588,6 +932,8 @@ const readOrNull = (path) => {
     msText: readOrNull(MILESTONE),
     wfText: readOrNull(WORKFLOW),
     read: readRepo,
+    makefile: readOrNull(MAKEFILE),
+    classes: repoTestClasses(),
   });
   for (const r of results) expect(r.label, r.ok, r.detail);
 }
@@ -740,6 +1086,7 @@ const RED = [
   ["rollup if: is !cancelled() alone", wf({ ifLine: "${{ !cancelled() }}" }), GOOD_STAMP, "2"],
   ["rollup if: is success() alone", wf({ ifLine: "${{ success() }}" }), GOOD_STAMP, "2"],
   ["rollup needs list missing zizmor", wf({ needs: NEEDS.filter((n) => n !== "zizmor") }), GOOD_STAMP, "4"],
+  ["rollup needs milestone-proof before its first green run", wf({ needs: [...NEEDS, PROOF] }), GOOD_STAMP, "4"],
   ["rollup with: needs is not toJSON(needs)", wf({ withNeeds: "${{ toJSON(github) }}" }), GOOD_STAMP, "3b"],
   ["rollup pinned to @main", wf({ pin: ACTIONS + ROLLUP + "@main" }), GOOD_STAMP, "3a"],
   [
@@ -805,9 +1152,54 @@ for (const [name, text, stamp] of GREEN) {
   expect(`fixture green: ${name} passes`, bad.length === 0, bad.map((r) => r.label).join("; "));
 }
 
-// Milestone fixtures. Each red case varies one field of a good file, so it fails only the
-// assertion it names.
-const MS_GOOD = [
+// Milestone fixtures. The good file has two UI-test jobs, one per timeout. Each red case varies
+// one field of it, so it fails only the assertion it names. The Makefile fixture holds the recipes
+// the UI checks read, and the Swift classes are a fixed list.
+const FIX_CLASSES = ["AuditSkippingTabBarUITests", "DuoHandUITests", "TallyUITests"];
+// One Makefile for the UI checks. Each option breaks one recipe or variable.
+function fixtureMakefile(o = {}) {
+  const duo = o.duo ?? "DuoHandUITests";
+  const a = o.a ?? "AuditSkippingTabBarUITests";
+  const uiTest = o.uiTest ?? `xcodebuild test -skip-testing:ManifestUITests/${duo}`;
+  const uiA = o.uiA ?? "xcodebuild test -only-testing:ManifestUITests/AuditSkippingTabBarUITests";
+  const uiB =
+    o.uiB ??
+    `xcodebuild test -skip-testing:ManifestUITests/${duo} -skip-testing:ManifestUITests/AuditSkippingTabBarUITests`;
+  return [
+    `DUO_UI_TESTS := ${duo}`,
+    ...(o.noA ? [] : [`UI_TESTS_A := ${a}`]),
+    "ui-test:",
+    `\t@echo ${uiTest}`,
+    "ui-a:",
+    `\t@echo ${uiA}`,
+    "ui-b:",
+    `\t@echo ${uiB}`,
+    "",
+  ].join("\n");
+}
+const FIX_MAKEFILE = fixtureMakefile();
+const FIX_INPUTS = { makefile: FIX_MAKEFILE, classes: FIX_CLASSES };
+const SIM_RUNTIME = "com.apple.CoreSimulator.SimRuntime.iOS-27-1";
+// One UI-test job. Its run creates the simulator with the line `sim` and runs one make line.
+function msJob(id, minutes, target, sim = `xcrun simctl create ci-sim "iPhone 18 Pro" ${SIM_RUNTIME}`) {
+  return [
+    `  ${id}:`,
+    "    if: ${{ !github.event.pull_request.draft }}",
+    "    runs-on: xcode-27",
+    `    timeout-minutes: ${minutes}`,
+    "    steps:",
+    "      - name: select Xcode 27.1",
+    "        run: |",
+    "          sudo xcode-select -s /Applications/Xcode_27.1.app",
+    "          xcodebuild -version",
+    "      - name: create the iOS 27.1 simulator",
+    "        run: |",
+    `          ${sim}`,
+    "      - name: the UI tests",
+    `        run: ${target}`,
+  ];
+}
+const MS_HEAD = [
   "name: milestone",
   "on:",
   "  workflow_dispatch:",
@@ -817,39 +1209,94 @@ const MS_GOOD = [
   "permissions:",
   "  contents: read",
   "jobs:",
-  "  full-suite:",
-  "    if: ${{ !github.event.pull_request.draft }}",
-  "    runs-on: xcode-27",
-  "    timeout-minutes: 60",
-  "    steps:",
-  "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
-  "        with:",
-  "          persist-credentials: false",
-  "      - name: select Xcode 27.1",
-  "        run: |",
-  "          sudo xcode-select -s /Applications/Xcode_27.1.app",
-  "          xcodebuild -version",
-  "      - name: boot the simulator",
-  '        run: xcrun simctl boot "iPhone 18 Pro" || true',
-  "      - name: the full native check",
-  "        run: make native-check",
-].join("\n") + "\n";
-
+];
+const msFile = (...jobs) => [...MS_HEAD, ...jobs.flat()].join("\n") + "\n";
+const MS_GOOD = msFile(msJob("part-a", 45, "make ui-a"), msJob("part-b", 50, "make ui-b"));
 const MS_RED = [
   ["a: a push trigger is added", mutate(MS_GOOD, "on:\n", "on:\n  push:\n    branches: [main]\n"), "a"],
   ["a: a schedule trigger is added", mutate(MS_GOOD, "on:\n", 'on:\n  schedule:\n    - cron: "0 5 * * *"\n'), "a"],
   ["a: the pull_request path is widened", mutate(MS_GOOD, `      - ${MILESTONE_OWN}`, '      - "src/**"'), "a"],
   ["a: pull_request has no paths", mutate(MS_GOOD, "    paths:\n      - .github/workflows/milestone.yml\n", ""), "a"],
-  ["a2: the job-level if: has no draft guard", mutate(MS_GOOD, "    if: ${{ !github.event.pull_request.draft }}\n", ""), "a2"],
-  ["a2: a second job is added", MS_GOOD + "  extra:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n", "a2"],
-  ["b: the job runs on macos-26", mutate(MS_GOOD, "runs-on: xcode-27", "runs-on: macos-26"), "b"],
-  ["b: Xcode 26 is selected", mutate(MS_GOOD, "Xcode_27.1", "Xcode_26.4"), "b"],
-  ["c: the job runs make kit-test, not make native-check", mutate(MS_GOOD, "run: make native-check", "run: make kit-test"), "c"],
-  ["c: make native-check is only in a comment", mutate(MS_GOOD, "run: make native-check", "run: echo ok # make native-check"), "c"],
+  ["a2: the part-a job-level if: has no draft guard", mutate(MS_GOOD, "    if: ${{ !github.event.pull_request.draft }}\n", ""), "a2"],
+  ["a2: a third job is added", MS_GOOD + "  extra:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n", "a2"],
+  ["b: part-a runs on macos-26", mutate(MS_GOOD, "runs-on: xcode-27", "runs-on: macos-26"), "b"],
+  ["b: part-a selects Xcode 26", mutate(MS_GOOD, "Xcode_27.1", "Xcode_26.4"), "b"],
+  ["c: part-b runs an echo, not a make target", mutate(MS_GOOD, "run: make ui-b", "run: echo ok"), "c"],
+  ["c: make ui-b is only in a comment", mutate(MS_GOOD, "run: make ui-b", "run: echo ok # make ui-b"), "c"],
+  ["k1: a Duo class is scanned but not listed", MS_GOOD, "k1", { classes: [...FIX_CLASSES, "DuoNewUITests"] }],
+  ["k1: DUO_UI_TESTS is not set", MS_GOOD, "k1", { makefile: FIX_MAKEFILE.replace("DUO_UI_TESTS := DuoHandUITests\n", "") }],
+  ["k2: ui-test skips no Duo class", MS_GOOD, "k2", { makefile: fixtureMakefile({ uiTest: "xcodebuild test" }) }],
+  ["k3: part-a's timeout is 60", mutate(MS_GOOD, "timeout-minutes: 45", "timeout-minutes: 60"), "k3"],
+  [
+    "k3: part-b runs a Duo class",
+    MS_GOOD,
+    "k3",
+    { makefile: fixtureMakefile({ uiB: "xcodebuild test -skip-testing:ManifestUITests/AuditSkippingTabBarUITests" }) },
+  ],
+  [
+    "k3: a third UI-test job is added",
+    msFile(msJob("part-a", 45, "make ui-a"), msJob("part-b", 50, "make ui-b"), msJob("part-c", 50, "make ui-a")),
+    "k3",
+  ],
+  [
+    "k4: part-b creates its simulator on iOS 27.0",
+    msFile(
+      msJob("part-a", 45, "make ui-a"),
+      msJob("part-b", 50, "make ui-b", 'xcrun simctl create ci-sim "iPhone 18 Pro" com.apple.CoreSimulator.SimRuntime.iOS-27-0')
+    ),
+    "k4",
+  ],
+  [
+    "k4: the runtime is only in a comment",
+    msFile(
+      msJob("part-a", 45, "make ui-a", `# xcrun simctl create ci-sim "iPhone 18 Pro" ${SIM_RUNTIME}`),
+      msJob("part-b", 50, "make ui-b")
+    ),
+    "k4",
+  ],
+  [
+    "k4: the runtime is only in a comment that has a lone apostrophe",
+    msFile(
+      msJob("part-a", 45, "make ui-a", `# don't: xcrun simctl create ci-sim "iPhone 18 Pro" ${SIM_RUNTIME}`),
+      msJob("part-b", 50, "make ui-b")
+    ),
+    "k4",
+  ],
+  [
+    "k4: the runtime is on a simctl boot, not a create",
+    msFile(
+      msJob("part-a", 45, "make ui-a", `xcrun simctl boot "iPhone 18 Pro" ${SIM_RUNTIME}`),
+      msJob("part-b", 50, "make ui-b")
+    ),
+    "k4",
+  ],
+  [
+    "k5: UI_TESTS_A names a class that does not exist",
+    MS_GOOD,
+    "k5",
+    { makefile: fixtureMakefile({ a: "AuditSkippingTabBarUITests GhostUITests" }) },
+  ],
+  ["k5: UI_TESTS_A is not set", MS_GOOD, "k5", { makefile: fixtureMakefile({ noA: true }) }],
+  [
+    "k5: part-b skips only the Duo class, so a class of A runs twice",
+    MS_GOOD,
+    "k5",
+    { makefile: fixtureMakefile({ uiB: "xcodebuild test -skip-testing:ManifestUITests/DuoHandUITests" }) },
+  ],
+  [
+    "k5: a class is in neither job",
+    MS_GOOD,
+    "k5",
+    {
+      makefile: fixtureMakefile({
+        uiB: "xcodebuild test -skip-testing:ManifestUITests/DuoHandUITests -skip-testing:ManifestUITests/AuditSkippingTabBarUITests -skip-testing:ManifestUITests/TallyUITests",
+      }),
+    },
+  ],
 ];
-
-for (const [name, text, id] of MS_RED) {
-  const results = milestoneChecks({ msText: text, wfText: null, read: () => null });
+const MS_CHECKS = ["a", "a2", "b", "c", "k1", "k2", "k3", "k4", "k5"];
+for (const [name, text, id, extra = {}] of MS_RED) {
+  const results = milestoneChecks({ msText: text, wfText: null, read: () => null, ...FIX_INPUTS, ...extra });
   const bad = results.filter((r) => !r.ok);
   expect(
     `fixture red: ${name} fails assertion ${id}`,
@@ -857,15 +1304,73 @@ for (const [name, text, id] of MS_RED) {
     `failing: ${bad.map((r) => r.label.split(" ")[0]).join(", ") || "none"}`
   );
 }
-
 {
-  const results = milestoneChecks({ msText: MS_GOOD, wfText: null, read: () => null });
-  const ids = ["a", "a2", "b", "c"];
-  const bad = results.filter((r) => ids.includes(r.label.split(" ")[0]) && !r.ok);
+  const results = milestoneChecks({ msText: MS_GOOD, wfText: null, read: () => null, ...FIX_INPUTS });
+  const bad = results.filter((r) => MS_CHECKS.includes(r.label.split(" ")[0]) && !r.ok);
   expect(
-    "fixture good: the milestone file passes a, a2, b and c",
+    "fixture good: the two-job milestone file passes a, a2, b, c and k1 to k5",
     bad.length === 0,
     bad.map((r) => `${r.label} (${r.detail})`).join("; ")
+  );
+}
+const MS_GREEN = [
+  [
+    "a run line with a quoted hash before the create, which is not a comment",
+    msFile(
+      msJob("part-a", 45, "make ui-a", `echo "#" && xcrun simctl create ci-sim "iPhone 18 Pro" ${SIM_RUNTIME}`),
+      msJob("part-b", 50, "make ui-b")
+    ),
+  ],
+];
+for (const [name, text] of MS_GREEN) {
+  const results = milestoneChecks({ msText: text, wfText: null, read: () => null, ...FIX_INPUTS });
+  const bad = results.filter((r) => MS_CHECKS.includes(r.label.split(" ")[0]) && !r.ok);
+  expect(`fixture good: ${name} passes a to k5`, bad.length === 0, bad.map((r) => `${r.label} (${r.detail})`).join("; "));
+}
+
+// Scanner cases. Each reader gets a comment opener inside a string, a multi-line string, and a lone
+// quote in text. The Swift reader also gets an interpolation with nested quotes and a raw string.
+const SWIFT_CASES = [
+  ["a Duo class in a line comment is not a class", "// final class DuoOld: XCTestCase {}\nfinal class DuoReal: XCTestCase {}\n", ["DuoReal"]],
+  ["a Duo class in a block comment is not a class", "/* final class DuoOld: XCTestCase {} */\nfinal class DuoReal: XCTestCase {}\n", ["DuoReal"]],
+  ["a nested block comment ends at its own close", "/* a /* b */ final class DuoOld: XCTestCase {} */\nfinal class DuoReal: XCTestCase {}\n", ["DuoReal"]],
+  ["a comment opener inside a string does not hide the class after it", 'let u = "http://x"; final class DuoReal: XCTestCase {}\n', ["DuoReal"]],
+  ["a block opener inside a string does not hide the class after it", 'let s = "/* open"\nfinal class DuoReal: XCTestCase {}\n', ["DuoReal"]],
+  ["a class inside a multi-line string is not a class", 'let t = """\nfinal class DuoFake: XCTestCase {}\n"""\nfinal class DuoReal: XCTestCase {}\n', ["DuoReal"]],
+  ["a quote inside an interpolation does not end the string", 'let t = "\\(a ?? "-") x"\nfinal class DuoReal: XCTestCase {}\n', ["DuoReal"]],
+  ["a lone quote in a comment does not open a string", '// say "hi and don\'t stop\nfinal class DuoReal: XCTestCase {}\n', ["DuoReal"]],
+  ["a class inside a raw string is not a class", 'let r = #"final class DuoFake: XCTestCase {}"#\nfinal class DuoReal: XCTestCase {}\n', ["DuoReal"]],
+  ["a subclass of a test class is a test class", "class DuoBase: XCTestCase {}\nfinal class DuoSub: DuoBase {}\n", ["DuoBase", "DuoSub"]],
+  ["an extension of XCTestCase is not a class", "extension XCTestCase {\n  func helper() {}\n}\nfinal class DuoReal: XCTestCase {}\n", ["DuoReal"]],
+  ["a class that is not a test class is left out", "final class DuoHelper: NSObject {}\nfinal class DuoReal: XCTestCase {}\n", ["DuoReal"]],
+];
+for (const [name, src, want] of SWIFT_CASES) {
+  const got = testClassesOf(swiftDecls(src));
+  expect(`swift reader: ${name}`, JSON.stringify(got) === JSON.stringify(want), `got ${JSON.stringify(got)}`);
+}
+const SHELL_CASES = [
+  ["a # inside quotes is not a comment", 'echo "#" && make ui-a', ['echo "#" && make ui-a']],
+  ["a comment after a command is cut", "echo ok # make ui-a", ["echo ok"]],
+  ["a comment with a lone apostrophe is cut", "# don't make ui-a", [""]],
+  ["a lone apostrophe in a comment after a command is cut", "echo ok # it's", ["echo ok"]],
+  ["a backslash line end joins the next line", "echo one \\\n  two", ["echo one two"]],
+];
+for (const [name, text, want] of SHELL_CASES) {
+  const got = shellLines(text).map((l) => l.replace(/\s+/g, " "));
+  expect(`shell reader: ${name}`, JSON.stringify(got) === JSON.stringify(want), `got ${JSON.stringify(got)}`);
+}
+{
+  const v = makeVars(FIX_MAKEFILE, ["DUO_UI_TESTS", "NOT_SET_HERE"]);
+  expect(
+    "make reader: a set name reads its value, and an unset name reads as undefined",
+    v.DUO_UI_TESTS?.value === "DuoHandUITests" && v.NOT_SET_HERE?.origin === "undefined",
+    JSON.stringify(v)
+  );
+  const w = makeVars("X := a\\#b\nY := don't\n", ["X", "Y"]);
+  expect(
+    "make reader: an escaped # is a value, and a lone apostrophe is a value",
+    w.X?.value === "a#b" && w.Y?.value === "don't",
+    JSON.stringify(w)
   );
 }
 
@@ -1051,7 +1556,7 @@ const PROOF_JOB_TEXT = [
   `        run: ${PROOF_RUN}`,
 ].join("\n") + "\n";
 const PROOF_BASE = mutate(
-  PRE_TEXT + MS_JOB_TEXT + PROOF_JOB_TEXT + rollupJob({ needs: [...NEEDS, MILESTONE_DUE, PROOF] }),
+  PRE_TEXT + MS_JOB_TEXT + PROOF_JOB_TEXT + rollupJob({ needs: [...NEEDS, MILESTONE_DUE] }),
   "  ci-done:\n    needs: [suite, screens, scope, native, zizmor, ste-lint]\n",
   "  ci-done:\n    needs: [suite, screens, scope, native, zizmor, ste-lint, milestone-due, milestone-proof]\n"
 );
@@ -1059,7 +1564,7 @@ const proofResults = (text) => milestoneProofChecks(fJobs(text));
 {
   const r = proofResults(PROOF_BASE);
   expect(
-    "fixture good: the proof job, the rollup need and the ci-done need pass i1 to j",
+    "fixture good: the proof job, its staged rollup and the ci-done need pass i1 to j",
     r.every((x) => x.ok),
     r
       .filter((x) => !x.ok)
@@ -1069,7 +1574,11 @@ const proofResults = (text) => milestoneProofChecks(fJobs(text));
 }
 const PROOF_RED = [
   ["the proof job is missing", mutate(PROOF_BASE, PROOF_JOB_TEXT, ""), "i1"],
-  ["the rollup does not need the proof", mutate(PROOF_BASE, "      - milestone-proof\n", ""), "i2"],
+  [
+    "the rollup needs the proof before its first green run",
+    mutate(PROOF_BASE, "      - milestone-due\n", "      - milestone-due\n      - milestone-proof\n"),
+    "i2",
+  ],
   [
     "the proof's permissions are write-all",
     mutate(PROOF_BASE, "    permissions:\n      contents: read\n      actions: read\n", "    permissions: write-all\n"),
