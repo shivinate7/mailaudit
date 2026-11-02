@@ -4,6 +4,6 @@
 
 The gap closes when a hosted macOS image ships Xcode 27. The runner-images readme names Xcode 27 as a public preview (issue 14404). Then build an `app-build` job: `xcodegen generate` in `native/`, then `xcodebuild build` for the iOS Simulator with `CODE_SIGNING_ALLOWED=NO`. Give it the same needs, draft guard and concurrency block as `native`. Never run `xcodebuild test` in it: UI tests run once per batch on the Mac.
 
-**Status:** open. The `xcode-27` hosted image now exists (Xcode 27.1, iOS 27.1 SDK), per the runner-images readme. The per-pull-request `app-build` job is still not built. The milestone run (`milestone-runs-full-suite`) builds the app through `make native-check`; this debt closes when that run has a green result.
+**Status:** open. The `xcode-27` hosted image now exists (Xcode 27.1, iOS 27.1 SDK), per the runner-images readme. The per-pull-request `app-build` job is still not built. The milestone run (`milestone-runs-full-suite`) builds the app through its UI test targets (`make ui-a` and `make ui-b`); this debt closes when that run has a green result.
 
 **Decision:** `native-ci-on-hosted-macos`.
