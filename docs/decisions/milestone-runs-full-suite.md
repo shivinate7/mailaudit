@@ -23,15 +23,15 @@ The full suite is `make native-check`: the page check, the Kit tests, the app bu
 
 `scripts/milestone-due.mjs` holds `milestoneDue`, a pure function, and a CLI mode. The `milestone-due` job in `test.yml` runs the CLI on a push to main. It reads the dispatched milestone runs on main, counts the first-parent commits that touch native paths since a base sha, and dispatches `milestone.yml` if the run is due:
 
-- The base sha is the head of the newest completed run if that run failed or timed out. Otherwise it is the head of the newest successful run. With neither, every commit counts. A push to a failed main does not dispatch again until a native merge follows the failure.
+- The base sha is the head of the newest completed run if that run failed or timed out. Otherwise it is the head of the newest successful run. With neither, every commit counts.
 - No run yet: due.
 - The newest run is queued or in progress: not due.
-- The newest run failed or timed out: due once one native merge follows it.
+- The newest run failed or timed out: recovery is a hand dispatch, because the gate blocks merges after it; see The merge gate. Only a native merge past the gate, by the owner's bypass, makes the run due again.
 - Otherwise: due once the count reaches N. A cancelled run is not a failure.
 
 N is 3. That is a lane default, and no measure backs it. Change `N` in the script and its test together.
 
-Cost per push to main: one ubuntu job, one API read, one `git log`. A read that gets a 5xx or a rate limit waits once, up to 10 s, and tries again. A second failure fails the job. Pull requests start the job, and no step runs. The job-level `actions: write` cannot depend on the event, so every CI step carries the push-to-main guard. On a pull request the token is granted and never used.
+Cost per push to main: one ubuntu job, one API read, one `git log`. A read that gets a 5xx, a rate limit or a network error waits once, up to 10 s, and tries again. A second failure fails the job. Pull requests start the job, and no step runs. The job-level `actions: write` cannot depend on the event, so every CI step carries the push-to-main guard. On a pull request the token is granted and never used.
 
 The native path regex is one file, `.github/native-paths.regex`. The `scope` job and the CLI both read it, and neither inlines it. A grep reads the file as ERE and the CLI reads it as a JavaScript regex, so it stays in the subset both read the same.
 
@@ -51,7 +51,9 @@ The merge tool reads a timed-out run as green and judges completed runs only, so
 - The first completed run decides. Only `success` passes. `failure`, `timed_out`, `cancelled`, `neutral` and `skipped` fail.
 - With no completed run and no stale run, the gate passes. This is the bootstrap: the first milestone run has no older proof to lack. A lone fresh run in flight passes the same way.
 
-Recovery from a failed gate is a dispatch by hand of `milestone.yml`. Merges are blocked, so no push to main follows, and `milestone-due` dispatches nothing. Staleness is 90 minutes, and no measure backs it.
+A re-run keeps its `createdAt` and raises its attempt number. A re-run in flight (attempt above 1) is never skipped: the gate fails it as "re-run of a failed run; no proof yet". Staleness reads the time the run started, and `createdAt` when a run has none. Staleness is 90 minutes, and no measure backs it.
+
+Recovery from a failed gate is a dispatch by hand of `milestone.yml`. Merges are blocked, so no push to main follows, and `milestone-due` dispatches nothing. If the `xcode-27` runner never takes a run, the stale run fails the gate of every pull request, and the fix pull request is blocked too. Then recovery is a hand dispatch, or the owner's bypass of branch protection. A pull request that went red during recovery needs a re-run of its checks once `milestone.yml` has a green run.
 
 A pull request can edit its own copy of the gate, so it can pass itself. The gate guards a mistake, not an attacker (rule `guard-guards-mistakes-only`). Branch protection and review hold the rest.
 

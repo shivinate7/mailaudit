@@ -45,7 +45,8 @@ export function milestoneDue({ runs, nativeMerges, n }) {
 // cancelled or was never taken reads as no proof (decision milestone-runs-full-suite). runs are the
 // dispatched milestone runs on main, newest first; now is epoch ms. Walking from the newest:
 //   - a run that is not completed is in flight. Fresh, it is skipped, since its result is not in yet.
-//     Older than staleMinutes, or with an unreadable createdAt, it was not taken: fail.
+//     Older than staleMinutes (from runStartedAt, else createdAt), or unreadable, it was not taken: fail.
+//     An in-flight re-run (runAttempt above 1) is never skipped: fail.
 //   - the first completed run decides: success passes, anything else fails.
 //   - no completed run, and no stale one, is the bootstrap: pass. The first run has nothing older to prove.
 export function gateVerdict({ runs, now, staleMinutes = 90 }) {
@@ -55,7 +56,10 @@ export function gateVerdict({ runs, now, staleMinutes = 90 }) {
         ? { pass: true, reason: "the newest completed milestone run succeeded" }
         : { pass: false, reason: `the newest completed milestone run ended ${run.conclusion}, so there is no proof` };
     }
-    const age = (now - Date.parse(run.createdAt)) / 60_000;
+    // A re-run keeps createdAt, so an in-flight re-run of a failed run would read as fresh. It is
+    // never skipped: the run it replaced has no proof, and this one has none yet.
+    if (run.runAttempt > 1) return { pass: false, reason: "re-run of a failed run; no proof yet" };
+    const age = (now - Date.parse(run.runStartedAt ?? run.createdAt)) / 60_000;
     if (!(age <= staleMinutes)) {
       return { pass: false, reason: `a ${run.status} milestone run was not taken, or its age is unreadable, within ${staleMinutes} minutes` };
     }
@@ -98,7 +102,7 @@ function need(name) {
 
 const RETRY_CAP_MS = 10_000;
 
-// A read that hits a 5xx or a rate limit waits once, then tries once more. The wait is the
+// A read that hits a 5xx, a rate limit or a network error waits once, then tries once more. The wait is the
 // Retry-After header, capped at RETRY_CAP_MS, or 2 s with none. A second failure throws, so the
 // job still fails closed. A POST is never retried: a dispatch that did land must not run twice.
 async function api(path, init = {}) {
@@ -111,13 +115,20 @@ async function api(path, init = {}) {
       "x-github-api-version": "2022-11-28",
     },
   };
-  let res = await fetch(url, options);
   const isRead = (init.method ?? "GET") === "GET";
-  const limited = res.status === 429 || (res.status === 403 && res.headers.get("x-ratelimit-remaining") === "0");
-  if (isRead && !res.ok && (res.status >= 500 || limited)) {
-    const asked = Number(res.headers.get("retry-after"));
+  let res = null;
+  let netError = null;
+  try {
+    res = await fetch(url, options);
+  } catch (e) {
+    if (!isRead) throw e;
+    netError = e;
+  }
+  const limited = res !== null && (res.status === 429 || (res.status === 403 && res.headers.get("x-ratelimit-remaining") === "0"));
+  if (isRead && (netError !== null || (!res.ok && (res.status >= 500 || limited)))) {
+    const asked = res === null ? NaN : Number(res.headers.get("retry-after"));
     const wait = Number.isFinite(asked) && asked > 0 ? Math.min(asked * 1000, RETRY_CAP_MS) : 2000;
-    console.log(`milestone-due: GitHub API ${path}: HTTP ${res.status}, retrying once in ${wait} ms`);
+    console.log(`milestone-due: GitHub API ${path}: ${netError ? netError.message : `HTTP ${res.status}`}, retrying once in ${wait} ms`);
     await new Promise((done) => setTimeout(done, wait));
     res = await fetch(url, options);
   }
@@ -135,6 +146,8 @@ async function milestoneRuns(branch) {
     conclusion: r.conclusion,
     headSha: r.head_sha,
     createdAt: r.created_at,
+    runAttempt: r.run_attempt,
+    runStartedAt: r.run_started_at,
   }));
 }
 
