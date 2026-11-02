@@ -20,6 +20,8 @@ Settings → Pages on `mailaudit` should read "Deploy from a branch: `main` / `(
 
 `test.yml` is `branches: [main]` plus a paths filter. Nothing under `src/` or `test/` ever changes on `data`, which carries one file. It deliberately does not trigger on `index.html`. `npm run deploy` commits that page separately. Re-running the suite on the build output would double every deploy for no new information.
 
+`ci-alarm.yml` runs on a nightly schedule and `workflow_dispatch` only, never on a push, so it cannot rebuild the site. It opens or comments on one issue when the newest run of another workflow on main is red.
+
 `test.yml` also checks that the committed `index.html` still matches what the sources build. A local deploy can skip that check by accident. The check runs `check:build`, which compares the whole page with the build of `src/`.
 
 A second step runs `check:seed`. It refuses a seed tag, a packed data script or a ledger payload in the committed page. The two steps together ask whether the page is this repo's code, and that it publishes no ledger data.
