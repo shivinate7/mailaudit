@@ -10,7 +10,7 @@ Plan: docs/decisions/native-parity-table.md#both-clients (native)
 
 Every feature has one scope: both clients, web-only or native-only. A feature that both clients need has one home for its logic, and each client draws its own screen. The lanes in `native-build-lanes` name the native test for each feature.
 
-**Holds while:** the CLAUDE.md index lists no view or control that this table does not cover.
+**Holds while:** the index (CLAUDE.md and `.claude/rules/`) lists no view or control that this table does not cover.
 
 ## Both clients
 

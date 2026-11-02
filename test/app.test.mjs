@@ -2998,7 +2998,7 @@ eq(workerPosts().length, 0, "34.25 with no key on this device, nothing is sent t
 /* ── 36. the action row ───────────────────────────────────────────────────
 
    The file actions became a row of ruled cells in the head's own vocabulary
-   (CLAUDE.md, "The ruled head"). What can be pinned here is behaviour; the
+   (.claude/rules/screens.md, "The ruled head"). What can be pinned here is behaviour; the
    layout it exists for — equal cells, the 375px fit, nothing right-aligned
    over a void — is re-measured in a real viewport like the rest of the
    region, because jsdom has none. */

@@ -23,12 +23,12 @@ const CHECK =
   resolve(dirname(fileURLToPath(import.meta.url)), "..", "check-docs.mjs");
 
 let failures = 0;
-function expect(label, cond) {
+function expect(label, cond, detail = "") {
   if (cond) {
     console.log(`ok   ${label}`);
   } else {
     failures++;
-    console.log(`FAIL ${label}`);
+    console.log(`FAIL ${label}${detail ? `\n     ${detail}` : ""}`);
   }
 }
 
@@ -138,6 +138,33 @@ expect(
   !spanSkipped.out.includes("missing-b.md")
 );
 
+// Rule-file links. A link in a rule file resolves from that rule's own folder,
+// as a markdown reader does, so ../../README.md from .claude/rules/ is the repo
+// README. The front matter is blank, so its lines do not shift the count.
+{
+  const ruleLinks = runCorpus({
+    ".claude/rules/x.md": [
+      "---",
+      "paths:",
+      '  - "src/x.mjs"',
+      "---",
+      "",
+      "# Fixture rule links",
+      "",
+      "Good: [readme](../../README.md). Bad: [gone](missing-r.md).",
+      "",
+    ].join("\n"),
+  });
+  expect(
+    "rule links: a bad link fails at the rule's own line, and the good link is not flagged",
+    ruleLinks.status !== 0 &&
+      ruleLinks.out.includes(".claude/rules/x.md:8") &&
+      ruleLinks.out.includes("missing-r.md") &&
+      !ruleLinks.out.includes("../../README.md"),
+    `exit ${ruleLinks.status}: ${ruleLinks.out.trim().split("\n").slice(-2).join(" | ")}`
+  );
+}
+
 // Debts. check-docs.mjs reads debts/ as well as the records. A corpus with no
 // debts/ folder reads as empty, and a debt names its paths like a record, so a
 // missing one fails at the debt's own line.
@@ -184,6 +211,36 @@ expect(
       missing.out.includes(
         "docs/debts/fixture-debt-missing-path.md:3 names `src/missing-file.mjs`, which does not exist in this repo"
       )
+  );
+}
+
+// Path-scoped rule files. check-docs.mjs judges the paths a rule file names, as
+// it does for a record. The rule's valid path on line 8 must not be flagged. The
+// missing path on line 9 must fail at its own line.
+{
+  const rule = runCorpus({
+    "src/present.mjs": "export const ok = 1;\n",
+    ".claude/rules/x.md": [
+      "---",
+      "paths:",
+      '  - "src/**"',
+      "---",
+      "",
+      "# Fixture rule names paths",
+      "",
+      "The rule cites `src/present.mjs`, which is in the repo.",
+      "The rule cites `src/missing-rule-file.mjs`, which is not in the repo.",
+      "",
+    ].join("\n"),
+  });
+  expect(
+    "rules: a rule file naming a missing path fails at the rule's own line, and its valid path is not flagged",
+    rule.status !== 0 &&
+      rule.out.includes(
+        ".claude/rules/x.md:9 names `src/missing-rule-file.mjs`, which does not exist in this repo"
+      ) &&
+      !rule.out.includes("src/present.mjs"),
+    `exit ${rule.status}: ${rule.out.trim().split("\n").slice(-2).join(" | ")}`
   );
 }
 

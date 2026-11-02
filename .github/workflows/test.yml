@@ -31,6 +31,7 @@ on:
       - "docs/debts/**"
       - "package-lock.json"
       - "CLAUDE.md"
+      - ".claude/rules/**"
       - "README.md"
       - ".github/workflows/test.yml"
       - ".github/dependabot.yml"
