@@ -17,7 +17,7 @@
 //
 // The milestone workflow (.github/workflows/milestone.yml) and its job in test.yml
 // are checked the same way, with letter ids:
-//   a   its triggers are exactly workflow_dispatch and pull_request limited to its own path;
+//   a   its only trigger is workflow_dispatch (staged until its first green run, see the case);
 //   a2  it has one job, and that job's if: has the draft guard;
 //   b   its job runs on xcode-27 and selects Xcode 27.1;
 //   c   its job runs make native-check;
@@ -373,17 +373,13 @@ function filesNamedIn(text, read) {
   return found;
 }
 
-// Assertion a: the only triggers are workflow_dispatch and pull_request on its own path.
+// Assertion a: the only trigger is workflow_dispatch. A pull_request or push trigger fails it.
 function triggerCheck(doc) {
   const on = isMap(doc.on) ? doc.on : {};
   const events = Object.keys(on).sort();
-  const pr = isMap(on.pull_request) ? on.pull_request : {};
-  const ok =
-    JSON.stringify(events) === JSON.stringify(["pull_request", "workflow_dispatch"]) &&
-    JSON.stringify(pr.paths) === JSON.stringify([MILESTONE_OWN]);
   return {
-    ok,
-    detail: `events: ${events.join(", ") || "none"}; pull_request paths: ${JSON.stringify(pr.paths ?? null)}`,
+    ok: JSON.stringify(events) === JSON.stringify(["workflow_dispatch"]),
+    detail: `events: ${events.join(", ") || "none"}`,
   };
 }
 
@@ -477,7 +473,7 @@ function milestoneChecks({ msText, wfText, read, makefile, classes }) {
   const onMs = (label, fn) => (ms.doc ? { label, ...fn() } : { label, ok: false, detail: ms.err });
   const onWf = (label, fn) => (wf.doc ? { label, ...fn() } : { label, ok: false, detail: wf.err });
   return [
-    onMs("a milestone.yml triggers are exactly workflow_dispatch plus pull_request on its own path", () =>
+    onMs("a milestone.yml runs by dispatch only until its first green run (coordinator 2026-11-01 22:44)", () =>
       triggerCheck(ms.doc)
     ),
     onMs("a2 milestone.yml has two jobs, and each job-level if: has the draft guard", () => ({
@@ -1203,9 +1199,6 @@ const MS_HEAD = [
   "name: milestone",
   "on:",
   "  workflow_dispatch:",
-  "  pull_request:",
-  "    paths:",
-  `      - ${MILESTONE_OWN}`,
   "permissions:",
   "  contents: read",
   "jobs:",
@@ -1215,8 +1208,17 @@ const MS_GOOD = msFile(msJob("part-a", 45, "make ui-a"), msJob("part-b", 50, "ma
 const MS_RED = [
   ["a: a push trigger is added", mutate(MS_GOOD, "on:\n", "on:\n  push:\n    branches: [main]\n"), "a"],
   ["a: a schedule trigger is added", mutate(MS_GOOD, "on:\n", 'on:\n  schedule:\n    - cron: "0 5 * * *"\n'), "a"],
-  ["a: the pull_request path is widened", mutate(MS_GOOD, `      - ${MILESTONE_OWN}`, '      - "src/**"'), "a"],
-  ["a: pull_request has no paths", mutate(MS_GOOD, "    paths:\n      - .github/workflows/milestone.yml\n", ""), "a"],
+  [
+    "a: a pull_request trigger on its own path is added",
+    mutate(MS_GOOD, "on:\n", `on:\n  pull_request:\n    paths:\n      - ${MILESTONE_OWN}\n`),
+    "a",
+  ],
+  [
+    "a: a pull_request trigger with a widened path is added",
+    mutate(MS_GOOD, "on:\n", 'on:\n  pull_request:\n    paths:\n      - "src/**"\n'),
+    "a",
+  ],
+  ["a: a pull_request trigger with no paths is added", mutate(MS_GOOD, "on:\n", "on:\n  pull_request:\n"), "a"],
   ["a2: the part-a job-level if: has no draft guard", mutate(MS_GOOD, "    if: ${{ !github.event.pull_request.draft }}\n", ""), "a2"],
   ["a2: a third job is added", MS_GOOD + "  extra:\n    runs-on: ubuntu-latest\n    steps:\n      - run: echo hi\n", "a2"],
   ["b: part-a runs on macos-26", mutate(MS_GOOD, "runs-on: xcode-27", "runs-on: macos-26"), "b"],
