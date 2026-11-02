@@ -6,26 +6,19 @@
 # This workflow runs on main by dispatch only, never on push or schedule. The merge tool refuses a
 # merge when the newest completed main run of any workflow file is red, and a later green run of
 # another trigger must never hide a red one. The milestone-due job in test.yml dispatches it.
-# The pull_request trigger is limited to this file, so an edit to the job is proved before it merges.
+# It stays dispatch-only until its first green run (coordinator ruling 2026-11-01 22:44).
 name: milestone
 
 on:
   workflow_dispatch:
-  pull_request:
-    branches: [main]
-    # A draft starts no job. ready_for_review starts the job once a draft is marked ready.
-    types: [opened, synchronize, reopened, ready_for_review]
-    paths:
-      - ".github/workflows/milestone.yml"
 
 permissions:
   contents: read
 
-# A PR run cancels the one it replaces. The draft state is in the group, so a draft run never cancels
-# a ready run. Each main run has its own group, so no run on main is cancelled: each needs its verdict.
+# Each run has its own group, so no run is cancelled: each needs its verdict.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_id || format('{0}-{1}', github.ref, github.event.pull_request.draft) }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  group: ${{ github.workflow }}-${{ github.run_id }}
+  cancel-in-progress: false
 
 jobs:
   part-a:
@@ -85,7 +78,7 @@ jobs:
       - name: record the result
         if: ${{ always() }}
         env:
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          HEAD_SHA: ${{ github.sha }}
           RESULT: ${{ job.status }}
         run: |
           {
@@ -146,7 +139,7 @@ jobs:
       - name: record the result
         if: ${{ always() }}
         env:
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          HEAD_SHA: ${{ github.sha }}
           RESULT: ${{ job.status }}
         run: |
           {
