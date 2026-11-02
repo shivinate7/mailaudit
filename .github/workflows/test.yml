@@ -34,6 +34,7 @@ on:
       - ".claude/rules/**"
       - "README.md"
       - ".github/workflows/test.yml"
+      - ".github/native-paths.regex"
       - ".github/dependabot.yml"
   pull_request:
     branches: [main]
@@ -83,6 +84,7 @@ jobs:
       - run: npm run test:send-key
       - run: npm run test:view-rules
       - run: npm run test:ci-wiring
+      - run: npm run test:milestone-due
       - run: npm run test:golden
       - name: golden files are in step with src/view-rules.mjs
         run: npm run check:golden --silent
@@ -185,9 +187,10 @@ jobs:
             # A failed or empty diff leaves files empty, and both stay true.
             files=$(git diff --no-renames --name-only -z "$BASE" HEAD | tr '\0' '\n')
             if [ -n "$files" ]; then
-              grep -Eq '^(native/|shared/|src/view-rules\.mjs$|\.github/workflows/test\.yml$)' <<< "$files" || native=false
+              # The native path regex lives in one file, which the milestone-due job reads too.
+              grep -Eq -f .github/native-paths.regex <<< "$files" || native=false
               # Paths that can change a screen: the page source, its build and its screen check.
-              grep -Eq '^(src/|shared/|build\.mjs$|package(-lock)?\.json$|test/screens\.mjs$|test/a11y-base-boxes\.json$|\.github/workflows/test\.yml$)' <<< "$files" || screens=false
+              grep -Eq '^(shared/|src/|build\.mjs$|package(-lock)?\.json$|test/screens\.mjs$|test/a11y-base-boxes\.json$|\.github/workflows/test\.yml$)' <<< "$files" || screens=false
             fi
           fi
           echo "scope verdict: event=$EVENT native=$native screens=$screens"
@@ -256,11 +259,34 @@ jobs:
           persist-credentials: false
       - uses: shivinate7/claude-settings/actions/ste-lint@1cc47f015bdaf073d8cb0f043a988c28d09aa3e1 # main 2026-10-29
 
+  # Decision milestone-runs-full-suite: on a push to main, dispatches the full Swift suite
+  # (milestone.yml) when it is due. Cost per push: one ubuntu job, one API read, one git log.
+  # The job-level permissions cannot depend on the event, so every CI step carries the push-to-main
+  # guard: on a pull request no step runs, and the job never uses its actions: write token.
+  milestone-due:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5 # provisional
+    permissions:
+      contents: read  # the workflow default, kept because a job-level block replaces it
+      actions: write  # dispatches milestone.yml, on a push to main only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: dispatch the full Swift suite when it is due
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/milestone-due.mjs --native-paths .github/native-paths.regex
+
   # The one check branch protection requires. It fails when a needed job failed, was cancelled
   # or was skipped. always() makes it run when a needed job fails, and a draft skips it with
   # every other job. It has no name key, so its check name is its id.
   all-jobs-passed:
-    needs: [suite, screens, scope, native, zizmor, ste-lint]
+    needs: [suite, screens, scope, native, zizmor, ste-lint, milestone-due]
     if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
@@ -273,7 +299,7 @@ jobs:
   # wakes the session that watches the PR. A green run posts nothing. Keep needs: on every other job.
   # A draft run posts nothing, because its jobs skip on purpose.
   ci-done:
-    needs: [suite, screens, scope, native, zizmor, ste-lint, all-jobs-passed]
+    needs: [suite, screens, scope, native, zizmor, ste-lint, milestone-due, all-jobs-passed]
     if: ${{ !cancelled() && !github.event.pull_request.draft && github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5

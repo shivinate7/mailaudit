@@ -6,6 +6,9 @@ APP := Manifest
 NATIVE := native
 SHIP := ios-ship
 CONFIG := tools/ios-ship.json
+# The command that runs the UI tests. On the owner's Mac it is sim-test, which picks the one shared simulator.
+# A hosted runner has no sim-test, so the milestone workflow sets this to xcodebuild test with its own destination.
+UI_TEST ?= sim-test
 
 .PHONY: tokens-check kit-test project app-build ui-test native-check phone testflight
 
@@ -25,8 +28,9 @@ app-build: project
 		-destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO
 
 # Slow: the UI tests, on the one shared simulator. Once per batch, never on each pull request.
+# CI runs them at milestones (.github/workflows/milestone.yml), through native-check.
 ui-test: project
-	cd $(NATIVE) && sim-test -project $(APP).xcodeproj -scheme $(APP) -derivedDataPath build CODE_SIGNING_ALLOWED=NO
+	cd $(NATIVE) && $(UI_TEST) -project $(APP).xcodeproj -scheme $(APP) -derivedDataPath build CODE_SIGNING_ALLOWED=NO
 
 native-check: tokens-check kit-test app-build ui-test
 

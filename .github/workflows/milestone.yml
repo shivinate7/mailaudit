@@ -1,0 +1,89 @@
+# The full Swift suite: build the app and run every UI test, on a GitHub-hosted Mac with Xcode 27.
+# Decision milestone-runs-full-suite holds the rule.
+#
+# This workflow runs on main by dispatch only, never on push or schedule. The merge tool refuses a
+# merge when the newest completed main run of any workflow file is red, and a later green run of
+# another trigger must never hide a red one. The milestone-due job in test.yml dispatches it.
+# The pull_request trigger is limited to this file, so an edit to the job is proved before it merges.
+name: milestone
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    # A draft starts no job. ready_for_review starts the job once a draft is marked ready.
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - ".github/workflows/milestone.yml"
+
+permissions:
+  contents: read
+
+# A PR run cancels the one it replaces. The draft state is in the group, so a draft run never cancels
+# a ready run. Each main run has its own group, so no run on main is cancelled: each needs its verdict.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref == 'refs/heads/main' && github.run_id || format('{0}-{1}', github.ref, github.event.pull_request.draft) }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+jobs:
+  full-suite:
+    if: ${{ !github.event.pull_request.draft }}
+    # xcode-27 is the runner-images xcode-27-arm64 image: Xcode 27.1, the iOS 27.1 SDK, and the
+    # iPhone 18 Pro (iOS 27.0) and iPhone Duo (iOS 27.1) simulators.
+    runs-on: xcode-27
+    timeout-minutes: 50 # provisional
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+      # tokens-check, the first part of native-check, builds the page.
+      - run: npm ci
+      - name: select Xcode 27.1
+        run: |
+          sudo xcode-select -s /Applications/Xcode_27.1.app
+          xcodebuild -version
+      # Neither runner image holds xcodegen, so the job installs one pinned release. The zip is
+      # checked against XCODEGEN_SHA256 before it is unpacked. A mismatch fails the step and prints
+      # the digest it got.
+      - name: install xcodegen
+        env:
+          XCODEGEN_VERSION: "2.44.1"
+          XCODEGEN_SHA256: "UNPINNED-copy-the-digest-the-first-run-prints"
+        run: |
+          set -euo pipefail
+          dl="$RUNNER_TEMP/xcodegen-download"
+          mkdir -p "$dl"
+          curl -fsSL -o "$dl/xcodegen.zip" "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          got=$(shasum -a 256 "$dl/xcodegen.zip" | cut -d ' ' -f 1)
+          if [ "$got" != "$XCODEGEN_SHA256" ]; then
+            echo "xcodegen ${XCODEGEN_VERSION} zip digest is $got, expected $XCODEGEN_SHA256" >&2
+            exit 1
+          fi
+          unzip -q "$dl/xcodegen.zip" -d "$dl/unpacked"
+          bin=$(find "$dl/unpacked" -type f -name xcodegen -print -quit)
+          echo "$(dirname "$bin")" >> "$GITHUB_PATH"
+      - run: xcodegen --version
+      - name: boot the iPhone 18 Pro simulator
+        run: xcrun simctl bootstatus "iPhone 18 Pro" -b
+      # The Makefile is the one home of the full run. UI_TEST replaces sim-test, which only the owner's Mac has.
+      - name: the full native check
+        env:
+          UI_TEST: xcodebuild test -destination 'platform=iOS Simulator,name=iPhone 18 Pro' -collect-test-diagnostics never
+        run: make native-check
+      # The recorded result of the run. It also runs after a red check.
+      - name: record the result
+        if: ${{ always() }}
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          RESULT: ${{ job.status }}
+        run: |
+          {
+            echo "### Full Swift suite"
+            echo "- head sha: $HEAD_SHA"
+            echo "- Xcode: $(xcodebuild -version | tr '\n' ' ')"
+            echo "- result: $RESULT"
+          } >> "$GITHUB_STEP_SUMMARY"
