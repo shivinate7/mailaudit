@@ -1,8 +1,8 @@
 // Accessibility audit that skips what the tab bar covers (lane N8, native-build-lanes, N8 notes,
 // owner ruling 2026-10-21, extended 2026-10-27 to every tab). The 225pt masthead pushes the 12-item fixture down,
 // so the last rows sit under the glass tab bar and fail contrast there. The Packages audits and the Ledger,
-// Orphaned and Tally tab audits call auditSkippingTabBar(), which skips an issue when its element touches the bar by
-// any amount or lies wholly below the window (owner ruling 2026-10-28 16:40 CDT, audit-skips-measured-flags).
+// Orphaned and Tally tab audits call auditSkippingTabBar(), which skips an issue when its element shares any area with
+// the bar or lies wholly below the window (owner item 148, interim pick, 2026-11-01 22:16 CST, audit-skips-measured-flags).
 // Every other issue, and any issue with no element, still fails.
 //
 // It also holds the owner's two other narrow skips (audit-skips-measured-flags): skipMeasuredContrastFlags,
@@ -18,7 +18,7 @@
 
 import XCTest
 
-/// The tab-bar skip, as the owner ruled it on 2026-10-28 16:40 CDT (audit-skips-measured-flags): true when the
+/// The tab-bar skip, the owner's interim pick of 2026-11-01 22:16 CST (item 148, audit-skips-measured-flags): true when any
 /// element's frame shares any area with the bar, or lies wholly below the window's bottom edge. A finding with no
 /// element, an empty frame, or a window or bar that did not resolve is never skipped on that side. An element that only
 /// touches the bar's top edge shares no area, so it is kept.

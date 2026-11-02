@@ -43,3 +43,4 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 - 2026-11-01, claude-md-rules review round 2: no rule-file glob covers `worker/core.test.mjs`, `docs/design/`, or (for the screen rules) `test/view-rules.test.mjs` and `test/app.test.mjs`. Widen when a session misses a rule there.
 - 2026-11-01, claude-md-rules review round 2: no check proves each rule-file glob matches a file, so a rename stops a rule loading with no failure. All globs matched on 2026-11-01.
 - 2026-11-01, tci7-cannot-fail: a mutant in `carryUnknownKeys` that reads an inherited key as own also sets an own `__proto__` in the `__proto__` run. Tests 33.46 to 33.50 miss it.
+- 2026-11-01, tabbar-any-element review round 1: `TallyUITests` checks the meta skip by `id=tally-meta:` only. A clipped issue that comes back with no id and sits under the bar is now skipped, so the test still passes.
