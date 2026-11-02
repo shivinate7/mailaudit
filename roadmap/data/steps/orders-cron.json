@@ -1,0 +1,10 @@
+{
+  "title": "Worker: nightly TCGplayer orders pull",
+  "status": "todo",
+  "phase": "sync",
+  "order": 8,
+  "why": "Orders should arrive with no export (decision sync-revamp-cloudflare).",
+  "note": "Draft PR #154 is parked until the owner reviews its extension plan (debt orders-job-unbuilt).",
+  "ask": "",
+  "updatedAt": "2026-11-02T19:30:00Z"
+}

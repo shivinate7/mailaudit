@@ -1,0 +1,10 @@
+{
+  "title": "Restyle steps 1 to 6: native looks like the web",
+  "status": "done",
+  "phase": "restyle",
+  "order": 1,
+  "why": "The owner's goal: the native app matches the web, in ten small steps.",
+  "note": "On main: step 6 order stamps (PR #160), stamp ask (PR #162), Card in Hand stamp state (PR #163).",
+  "ask": "",
+  "updatedAt": "2026-11-02T19:30:00Z"
+}

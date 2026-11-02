@@ -1,0 +1,10 @@
+{
+  "title": "Restyle step 8: head cells, search and filters",
+  "status": "todo",
+  "phase": "restyle",
+  "order": 3,
+  "why": "The native head lacks the web's search and filters (debt native-filters-tally-only).",
+  "note": "Starts after step 7 merges, with a designer (opus) first.",
+  "ask": "",
+  "updatedAt": "2026-11-02T19:30:00Z"
+}

@@ -1,0 +1,10 @@
+{
+  "title": "Restyle step 10: the sync-labels lane",
+  "status": "todo",
+  "phase": "restyle",
+  "order": 5,
+  "why": "The Sync panel labels must pair each label with its value.",
+  "note": "Waits on waiting-page item 36.",
+  "ask": "",
+  "updatedAt": "2026-11-02T19:30:00Z"
+}

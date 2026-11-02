@@ -1,0 +1,10 @@
+{
+  "title": "sim-test: no simctl diagnose, pin the device",
+  "status": "todo",
+  "phase": "tooling",
+  "order": 9,
+  "why": "sim-test ran simctl diagnose, the top load, and could pick the Duo (debt sim-test-diagnose-and-pin).",
+  "note": "The fix lives in claude-settings. Waits on waiting-page item 38.",
+  "ask": "",
+  "updatedAt": "2026-11-02T19:30:00Z"
+}

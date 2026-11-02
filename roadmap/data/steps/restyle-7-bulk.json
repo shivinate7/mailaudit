@@ -1,0 +1,10 @@
+{
+  "title": "Restyle step 7: Mark all received and Clear check-ins",
+  "status": "active",
+  "phase": "restyle",
+  "order": 2,
+  "why": "Bulk check-in on the Packages card and the open Tally row, as the web has it.",
+  "note": "Branch step7-build ba162bc. Local checks pass. Needs main merged, one boot of 8787FE1C (PackageBulk, PackageStamp, PackageCard UI tests, 25-minute cap), then review. Waiting-page item 41 (bulk guard) is open.",
+  "ask": "Resume the Restyle lane from its handoff ef0d2b41.",
+  "updatedAt": "2026-11-02T19:30:00Z"
+}

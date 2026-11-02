@@ -1,0 +1,10 @@
+{
+  "title": "Duo: where Card in Hand opens on the open Duo",
+  "status": "todo",
+  "phase": "duo",
+  "order": 7,
+  "why": "Is Card in Hand the Packages tab, or one tap inside it?",
+  "note": "Waits on waiting-page item 35.",
+  "ask": "",
+  "updatedAt": "2026-11-02T19:30:00Z"
+}
