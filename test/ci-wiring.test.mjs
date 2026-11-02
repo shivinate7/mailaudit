@@ -350,7 +350,7 @@ const readOrNull = (path) => {
 
 // Self-test. Fixture text is built from arrays, not template literals, so the YAML
 // ${{ }} expressions are never read as JS interpolation.
-const ACTION_PIN = "1cc47f015bdaf073d8cb0f043a988c28d09aa3e1";
+const ACTION_PIN = "17492e58853703168d025128a2da315e9936ee90";
 const NEEDS = ["suite", "screens", "scope", "native", "zizmor", "ste-lint"];
 const DRAFT_IF = "    if: ${{ !github.event.pull_request.draft }}";
 const NATIVE_IF =
@@ -422,13 +422,13 @@ const PRE_TEXT =
     STE_IF,
     "    runs-on: ubuntu-latest",
     "    steps:",
-    `      - uses: ${ACTIONS}ste-lint@${ACTION_PIN} # main 2026-10-29`,
+    `      - uses: ${ACTIONS}ste-lint@${ACTION_PIN} # main 2026-11-01`,
     "  ci-done:",
     "    needs: [suite, screens, scope, native, zizmor, ste-lint]",
     "    if: ${{ !cancelled() && !github.event.pull_request.draft && github.event_name == 'pull_request' }}",
     "    runs-on: ubuntu-latest",
     "    steps:",
-    `      - uses: ${ACTIONS}ci-done-comment@${ACTION_PIN} # main 2026-10-29`,
+    `      - uses: ${ACTIONS}ci-done-comment@${ACTION_PIN} # main 2026-11-01`,
     "        with:",
     "          needs: ${{ toJSON(needs) }}",
   ].join("\n") + "\n";
