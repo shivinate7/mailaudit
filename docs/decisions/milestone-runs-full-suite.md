@@ -8,12 +8,12 @@ Kind: build
 
 Plan: docs/decisions/milestone-runs-full-suite.md#the-workflow (native)
 
-The full suite is `make native-check`: the page check, the Kit tests, the app build and every UI test. It is too slow for each pull request, and the `native` job in `test.yml` runs only the Kit tests, see `native-ci-on-hosted-macos`. `.github/workflows/milestone.yml` runs the full suite once the native code has moved enough.
+The full suite is `make native-check`: the page check, the Kit tests, the app build and every UI test but the Duo classes (`DUO_UI_TESTS` in the Makefile). It is too slow for each pull request, and the `native` job in `test.yml` runs only the Kit tests, see `native-ci-on-hosted-macos`. `.github/workflows/milestone.yml` runs the full suite once the native code has moved enough.
 
 ## The workflow
 
 - Triggers: `workflow_dispatch`, and `pull_request` limited to the workflow file itself. It never runs on `push` or `schedule`. The merge tool judges the newest completed main run of each workflow file, whatever its trigger. A later green push or schedule run would hide a failed dispatch run, so the file has one trigger on main.
-- Two parallel jobs on the `xcode-27` runner (runner-images `xcode-27-arm64`: Xcode 27.1 by default, iOS 27.1 SDK, iPhone 18 Pro on iOS 27.0, iPhone Duo on iOS 27.1). Each job selects `/Applications/Xcode_27.1.app`, installs one pinned xcodegen, creates an iPhone 18 Pro simulator on iOS 27.1, the owner's runtime, and boots it by name.
+- Two parallel jobs on the `xcode-27` runner (runner-images `xcode-27-arm64`: Xcode 27.1 by default, iOS 27.1 SDK, iPhone 18 Pro on iOS 27.0, iPhone Duo on iOS 27.1). Each job selects `/Applications/Xcode_27.1.app`, installs one pinned xcodegen, creates an iPhone 18 Pro simulator on iOS 27.1, the owner's runtime, and boots it by its UDID. Job `part-a` runs `make tokens-check kit-test ui-a`, the `UI_TESTS_A` classes. Job `part-b` runs `make ui-b`, every other class but Duo.
 - The Makefile stays the one home of the full run. `UI_TEST` names the UI test command: `sim-test` on the owner's Mac, `xcodebuild test` with a destination on the runner. Only the runner sets it.
 - The Duo test classes are skipped through the Makefile list `DUO_UI_TESTS`. They need the hinge tool and separate pose runs. The gap is named in debt `native-ui-tests-not-in-ci`.
 - The step summary records the head sha, the Xcode version and the result. That summary is the recorded result.
