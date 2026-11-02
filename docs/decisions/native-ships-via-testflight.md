@@ -33,7 +33,7 @@ The archive holds `Assets.car` and `CFBundleIconName` AppIcon, from the catalog 
 
 - `ios-ship install` clones main, builds Release, signs it for development, and installs it with `xcrun devicectl device install app`.
 - `tools/ios-ship.json` lists the one app, Manifest. It holds no ID. The team, key and phone IDs live in the ios-ship account file on this Mac, off the repo.
-- The phone is Shivinate XIII (owner ruling, 2026-10-26). The `make phone` target and its one-app list file are removed.
+- The phone is Shivinate XIII (owner ruling, 2026-10-26). `make phone` and `make testflight` call `ios-ship` with `tools/ios-ship.json --app Manifest`. The repo has no script or app list of its own.
 - The phone must be on home Wi-Fi or cabled. The tool logs under ~/Library/Logs/ios-adblock-reinstall. Exit 75 means the phone is unreachable.
 - Any non-zero exit sends the same commit through `ios-ship testflight tools/ios-ship.json --app Manifest`. The report names the route that landed.
 - First run: 2026-10-22 19:42 CDT, installed and launched over Wi-Fi.

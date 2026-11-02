@@ -125,8 +125,9 @@ function baseFiles(claude) {
 }
 
 // The index lists each cited debt once. It names the debts/ folder unless told
-// not to, so one case can prove the folder must be listed.
-function claudeMd(cited, { folderListed = true } = {}) {
+// not to, so one case can prove the folder must be listed. `prose` lines sit
+// under the Debts heading as plain paragraphs, never as index bullets.
+function claudeMd(cited, { folderListed = true, prose = [] } = {}) {
   return [
     "# Corpus",
     "",
@@ -148,6 +149,7 @@ function claudeMd(cited, { folderListed = true } = {}) {
     "",
     ...cited.map((slug) => `- \`${slug}\` — A fixture debt.`),
     "",
+    ...prose.flatMap((line) => [line, ""]),
     "## Open threads",
     "",
     "No open threads in this fixture.",
@@ -156,10 +158,10 @@ function claudeMd(cited, { folderListed = true } = {}) {
 }
 
 // Writes a temp corpus, runs check-records.mjs in it, returns status and output.
-function runCorpus(debts, { cited = Object.keys(debts), folderListed = true } = {}) {
+function runCorpus(debts, { cited = Object.keys(debts), folderListed = true, prose = [] } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "check-records-debts-"));
   try {
-    const files = baseFiles(claudeMd(cited, { folderListed }));
+    const files = baseFiles(claudeMd(cited, { folderListed, prose }));
     for (const [slug, text] of Object.entries(debts)) {
       files[`docs/debts/${slug}.md`] = text;
     }
@@ -330,6 +332,32 @@ const noRecord = (path) => `${path}: "Decision" names no record and does not say
     "green: a non-slug code span beside a valid slug on a Decision line exits 0",
     span.status === 0,
     `exit ${span.status}: ${span.out.match(/.*Decision cites.*/)?.[0] ?? tail(span.out)}`
+  );
+
+  // A one-word slug is a record too. The index cites it in backticks, so the
+  // index claim must count it: no "not cited by CLAUDE.md" line may appear.
+  const notes = runCorpus({ notes: CLEAN });
+  expect(
+    "green: a one-word debt slug cited in the index exits 0 with no not-cited line",
+    notes.status === 0 && !/not cited by CLAUDE\.md/.test(notes.out),
+    `exit ${notes.status}: ${notes.out.match(/.*not cited by CLAUDE.*/)?.[0] ?? tail(notes.out)}`
+  );
+}
+
+// A one-word slug in prose is no index cite. The index cites a record only by
+// an index bullet, so `notes` named in a sentence must go red as not cited.
+{
+  const proseOnly = runCorpus(
+    { notes: CLEAN },
+    {
+      cited: [],
+      prose: ["A prose aside names `notes` in backticks, and no index bullet does."],
+    }
+  );
+  expect(
+    'red: a one-word debt slug named only in CLAUDE.md prose exits non-zero with "not cited by CLAUDE.md"',
+    proseOnly.status !== 0 && /not cited by CLAUDE\.md: notes\b/.test(proseOnly.out),
+    `exit ${proseOnly.status}: ${proseOnly.out.match(/.*not cited by CLAUDE.*/)?.[0] ?? tail(proseOnly.out)}`
   );
 }
 

@@ -25,10 +25,10 @@ final class PackagesToggleTests: XCTestCase {
     static let checkedKey = "A1|0|pLightningBolt"
     static let sentinel = 777
 
+    /// A ledger copy in this run's folder (test-temp-standard), removed at teardown.
     func freshLedgerURL() throws -> URL {
-        let dir = FileManager.default.temporaryDirectory
-            .appending(path: "n5-toggle-\(UUID().uuidString)", directoryHint: .isDirectory)
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let dir = try PhotoTestKit.tempDir("n5-toggle")
+        addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
         let url = dir.appending(path: "ledger.json")
         try FileManager.default.copyItem(
             at: RulesGoldenTests.root.appending(path: "shared/fixtures/ledger.json"), to: url)
@@ -107,6 +107,35 @@ final class PackagesToggleTests: XCTestCase {
         try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: dir.path)
         try await model.checkIn(key: Self.checkedKey, count: 1)
         XCTAssertNil(model.checkInError, "a successful save must clear the error")
+    }
+
+    /// Card in Hand's line tap is `tap(key:)`, which drops the throw, and HandScreen reads PackagesModel.checkInError. So this is
+    /// the model half of DuoHandUITests.testFailedLineCheckInShowsInHand: a tap whose save fails leaves the failure line that
+    /// test expects, and saves nothing. GREEN on main by design: it pins the line's text and the `tap` path, and the UI test
+    /// pins that the hand page draws it. The save fails by an empty folder in the ledger file's place, the way
+    /// -ManifestUITestLedgerUnwritable fails the app's save, so this also proves that way fails a save.
+    func testFailedTapLeavesTheSaveFailureLineAndSavesNothing() async throws {
+        let url = try freshLedgerURL()
+        let store = LedgerStore(fileURL: url, now: { 1_786_543_380_000 })
+        let engine = try RulesEngine(bundleURL: RulesGoldenTests.bundleURL)
+        try store.load()
+        let model = PackagesModel(engine: engine, store: store)
+        try await model.load()
+
+        try FileManager.default.removeItem(at: url)
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: false)
+        await model.tap(key: Self.checkedKey)
+
+        let line = try XCTUnwrap(model.checkInError, "a tap whose save fails must leave a failure line for the hand page")
+        XCTAssertTrue(line.hasPrefix("Could not save the check-in."), "the failure line reads \"\(line)\"")
+        XCTAssertNil(store.received()[Self.checkedKey], "a failed save must leave the check-in out of the store")
+        XCTAssertNil(model.received[Self.checkedKey], "a failed save must leave the check-in out of the model")
+
+        // A tap whose save works clears the line, so the hand page's line goes with it.
+        try FileManager.default.removeItem(at: url)
+        await model.tap(key: Self.checkedKey)
+        XCTAssertNil(model.checkInError, "a good save must clear the failure line")
+        XCTAssertEqual(store.received()[Self.checkedKey], 1, "the second tap did not check the line in")
     }
 
     /// The real bundle with `override` appended. The override reassigns the global

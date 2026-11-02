@@ -24,3 +24,9 @@ private func walk(_ needle: String, _ value: Any, _ seen: inout Set<ObjectIdenti
     }
     return false
 }
+
+/// What the Mirror finds under `name`, or under the `_name` an @Observable stores it as. A case names a property that does
+/// not exist yet this way, so it fails on an assertion and not at compile time. Nil when there is none or its type is not `T`.
+func peek<T>(_ model: Any, _ name: String, as type: T.Type = T.self) -> T? {
+    Mirror(reflecting: model).children.first { $0.label == name || $0.label == "_" + name }?.value as? T
+}

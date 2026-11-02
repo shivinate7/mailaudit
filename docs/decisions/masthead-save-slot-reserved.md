@@ -14,7 +14,7 @@ One measured detail needs a note. `couldn’t save` renders at 82.19px. The rese
 
 This does not fix every width change. The two figures can still change width on their own. For example, `100 packages` can change to `99 packages`, and `$1,009.00` can change to `$999.00`. On the wrap boundary, that can reflow the row by itself. This is far rarer than a save indicator that changes twice per tap. The fix would be to reserve width for figures whose job is to change. That is left alone on purpose.
 
-Native holds the same rule with two fixed rows: the count line is one line on row 1, and the missing line and the slot share row 2, so no tab changes the letterhead's height.
+Native holds the same rule with two fixed rows: the count line is one line on row 1, and the missing line and the slot share row 2. So no tab changes the letterhead's height.
 
 ## See also
 

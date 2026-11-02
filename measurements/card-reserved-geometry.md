@@ -12,7 +12,7 @@ The figures in this record were taken with headless Chromium through Playwright 
 
 ## Reader
 
-`npm run check:screens` (`test/screens.mjs`, claim 2) is the reader for the row shift. CI runs it in the `screens` job of `.github/workflows/test.yml`, on `macos-latest`. At 375px and 760px it checks each check-in through completion. It covers four card views: Packages and Tally, each under Everything and Unreceived. Packages under Unreceived stops one check-in short, because its completed package leaves the view. It fails if any other row moves more than 0.5px. It runs on its own fixture, not the user's ledger, and checks no other width. The card heights and the content-height table have no reader. jsdom has no layout, so the suite cannot hold them.
+`npm run check:screens` (`test/screens.mjs`, claim 2) is the reader for the row shift. CI runs it in the `screens` job of `.github/workflows/test.yml`, on `macos-26`. At 375px and 760px it checks each check-in through completion. It covers four card views: Packages and Tally, each under Everything and Unreceived. Packages under Unreceived stops one check-in short, because its completed package leaves the view. It fails if any other row moves more than 0.5px. It runs on its own fixture, not the user's ledger, and checks no other width. The card heights and the content-height table have no reader. jsdom has no layout, so the suite cannot hold them.
 
 ## The defect
 

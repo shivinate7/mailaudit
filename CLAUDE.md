@@ -23,7 +23,8 @@ records your task needs. Do not read them all.
 - `invariants/` holds a rule that must not break. 8 records.
 - `docs/decisions/` holds a ruling and the reason it still holds.
 - `measurements/` holds a measured figure and how to re-measure it. 11 records.
-- `docs/debts/` holds one known gap or to-do per file, each pointing at its decision.
+- `docs/debts/` holds one known gap per file, each pointing at its decision.
+- `docs/plans/` holds work not yet shipped. `docs/specs/` holds how a shipped feature works now. `docs/todo.md` holds tasks a session caught and did not do. `.claude/rules/` holds rules for one folder.
 
 A record cites another record by slug, never by a path, so a record survives a
 move. `npm run check:records` proves eight things. This index cites every record.
@@ -300,10 +301,11 @@ What each check asks, and the two traps in the icon pipeline.
 - `main-moves-only-by-pr` — Main moves only by pull request, admins included.
 - `screens-checked-headless-in-ci` — Each view is checked headless at 375 and 760px.
 - `records-hold-current-text-only` — Records hold current text only; git keeps history.
-- `debts-hold-known-gaps` — Known gaps and to-dos live in debts, one file each.
+- `debts-hold-known-gaps` — Known gaps live in debts, one file each. Caught tasks live in `docs/todo.md`.
 - `records-name-what-dates-them` — Each decision names the fact that would date it.
 - `readme-is-minimal` — The README is minimal, and carries no license.
-- `orchestrator-may-merge` — One orchestrating session batches and merges green, reviewed PRs.
+- `orchestrator-may-merge` — The batch runner batches and merges green, reviewed PRs.
+- `session-tiers-adopted` — This repo runs the session tiers, with the record branch `roadmap`.
 - `invariants-cited-by-slug` — Invariants are cited by slug, never by number.
 
 ## Testing method
@@ -364,7 +366,7 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 
 ## Debts
 
-One known gap or to-do per file under `docs/debts/`. Each carries a Status line and a Decision line that names its record or says none.
+One known gap per file under `docs/debts/`. Each carries a Status line and a Decision line that names its record or says none.
 
 - `seed-in-public-history` — The seed stays in git history, deferred by the owner.
 - `claim-11-fixed-edge-taps` — Claim 11 skips taps at a fixed control's edge.
@@ -417,12 +419,9 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `native-masthead-foot-row-gap` — The native masthead foot's second row sits 4.6pt low.
 - `native-masthead-axl-clips` — The native masthead wraps and clips at accessibility text sizes.
 - `native-stamp-load-unmeasured` — The native Packages load with stamps is unmeasured.
-- `native-stamp-note-field-short` — The native stamp note field is 36.7pt tall, under 44pt.
-- `native-stamp-ask-covers-row` — The native armed Remove ask covers the editor row.
 - `native-armed-audit-misses-ask` — The native armed stamp audit cannot see the ask.
-- `hand-stamp-leaves-tally-stale` — A stamp from Card in Hand leaves Tally stale.
-- `hand-reads-stamped-filter-rows` — Card in Hand reads the stamped filter's rows.
-- `debt-notes` — One-line findings not likely in normal work.
+- `notes` — One-line findings not likely in normal work.
+- `app-build-waits-xcode-27` — CI compiles no app, because the app needs the iOS 27.1 SDK.
 - `native-card-gestures-unpinned` — No UI test pins the native card header gestures.
 - `native-card-state-in-swift` — The native card copies the line and package done rules in Swift.
 - `native-sync-tally-rules-in-swift` — The native Sync panel and Tally row copy six view rules in Swift.
@@ -477,8 +476,9 @@ One known gap or to-do per file under `docs/debts/`. Each carries a Status line 
 - `duo-bar-dynamic-type-clips` — The Duo tab bar may clip at large text sizes.
 - `duo-stacked-poses-unbuilt` — The Duo has no stacked poses.
 - `duo-hand-mockup-gaps` — Eight parts of the Card in Hand mockup are not built.
-- `hand-checkin-error-hidden` — A failed check-in in Card in Hand shows nowhere.
 - `hand-stray-keeps-tie` — A released card leaves its tie on the answer page.
+- `hand-stale-checkin-error` — A good post leaves an old check-in error showing.
+- `checkin-error-bar-is-sans` — The native check-in error bar is set in sans on material.
 - `hand-post-scroll-hides-sender` — The Post offer scrolls the sender off the page.
 - `hand-notice-cuts-match-row` — A Suspense or Released box pushes the match under the keys.
 - `hand-suspense-tap-shift` — A Suspense tap shifts the match list under the finger.
