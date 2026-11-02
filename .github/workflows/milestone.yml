@@ -47,12 +47,11 @@ jobs:
           sudo xcode-select -s /Applications/Xcode_27.1.app
           xcodebuild -version
       # Neither runner image holds xcodegen, so the job installs one pinned release. The zip is
-      # checked against XCODEGEN_SHA256 before it is unpacked. A mismatch fails the step and prints
-      # the digest it got.
+      # checked against XCODEGEN_SHA256 before it is unpacked. A mismatch fails the step.
       - name: install xcodegen
         env:
-          XCODEGEN_VERSION: "2.44.1"
-          XCODEGEN_SHA256: "UNPINNED-copy-the-digest-the-first-run-prints"
+          XCODEGEN_VERSION: "2.46.0"
+          XCODEGEN_SHA256: "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
         run: |
           set -euo pipefail
           dl="$RUNNER_TEMP/xcodegen-download"
@@ -64,8 +63,8 @@ jobs:
             exit 1
           fi
           unzip -q "$dl/xcodegen.zip" -d "$dl/unpacked"
-          bin=$(find "$dl/unpacked" -type f -name xcodegen -print -quit)
-          echo "$(dirname "$bin")" >> "$GITHUB_PATH"
+          # The binary reads ../share/xcodegen, so the unpacked tree stays whole.
+          echo "$dl/unpacked/xcodegen/bin" >> "$GITHUB_PATH"
       - run: xcodegen --version
       - name: boot the iPhone 18 Pro simulator
         run: xcrun simctl bootstatus "iPhone 18 Pro" -b

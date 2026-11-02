@@ -40,7 +40,7 @@ Minutes are $0 on a public repo. The costs that hold are wall time and queue tim
 
 ## Unproven
 
-- The xcodegen release is pinned by version and checked by sha256. The digest is not yet filled in: the first run prints it, and the step fails until it is copied into the workflow.
+- The xcodegen release 2.46.0 is pinned by version and checked by sha256. The digest was read from a download, not from a hosted run.
 - No hosted run has passed. Debts `app-build-waits-xcode-27`, `native-ui-tests-not-in-ci` and `native-runner-image-unverified` stay open until a green run proves them.
 
 ## See also
