@@ -552,16 +552,19 @@ function milestoneProofChecks(jobs) {
   ];
 }
 
-// ---- The merge ignore list, m1 to m3 ----
-// The merge tool skips a red newest main run of any workflow that .github/stamp.json lists in
-// merge.ignoreChecks. Only the milestone workflow may be listed, and only while its proof job is
-// outside the rollup's needs.
-const IGNORE_TERMS = ["coordinator 2026-11-01 22:06", "22:44", "first green hosted milestone run"];
-const IGNORE_LABEL = {
-  m1: "m1 merge.ignoreChecks lists only the milestone workflow while its proof is staged, and no milestone entry once the proof is in the rollup",
-  m2: "m2 no merge.ignoreChecks name is another workflow's name, a job in all-jobs-passed's needs, or a required check",
-  m3: "m3 while staged, the milestone entry's reason names the coordinator rulings and the first green hosted milestone run",
-};
+// ---- The dispatch switch (m1) and the merge ignore list (m2) ----
+// milestone-due dispatches milestone.yml on a push to main. Until the join PR (the PR that adds
+// milestone-proof to all-jobs-passed's needs) it dispatches nothing: a red dispatch run on main
+// reads as red-main to the merge tool and stops every merge. The job env MILESTONE_AUTO_DISPATCH
+// holds the switch, "off" until the join and "on" after it. The dispatch step must read it.
+const SWITCH = "MILESTONE_AUTO_DISPATCH";
+const SWITCH_TERM = `env.${SWITCH}=='on'`;
+const DISPATCH_RUN = "milestone-due.mjs --native-paths";
+const DISPATCH_LABEL = "m1 milestone-due dispatches nothing until the join PR (coordinator 2026-11-01 23:00)";
+// The merge tool skips a red newest main run of a workflow that .github/stamp.json lists in
+// merge.ignoreChecks. No entry may name a workflow, so no red run is ever skipped.
+const IGNORE_LABEL =
+  "m2 no merge.ignoreChecks entry names a workflow, a job in all-jobs-passed's needs, or a required check";
 
 // The parsed inputs. A missing or unreadable input throws with its reason, and each check that needs it fails.
 function ignoreInputs({ stampText, msText, wfText, otherNames }) {
@@ -588,50 +591,45 @@ function ignoreInputs({ stampText, msText, wfText, otherNames }) {
   };
 }
 
-// Each result is { label, ok, detail }. The milestone's name comes from its file, never from this code.
+// m2. Each result is { label, ok, detail }. The milestone's name comes from its file, never from this code.
 function ignoreChecks(inputs) {
-  const out = [];
-  let v;
-  let err;
+  let r;
   try {
-    v = ignoreInputs(inputs);
+    const v = ignoreInputs(inputs);
+    const taken = new Set([v.msName, ...v.otherNames, ...v.rollNeeds, ...v.required]);
+    const names = v.list.map((e) => (isMap(e) ? e.name : undefined));
+    const bad = names.filter((n) => typeof n !== "string" || taken.has(n));
+    r = { ok: bad.length === 0, detail: `names not allowed: ${bad.map(String).join(", ") || "none"}` };
   } catch (e) {
-    err = e.message;
+    r = { ok: false, detail: e.message };
   }
-  const add = (id, fn) => {
-    let r;
-    if (err !== undefined) r = { ok: false, detail: err };
-    else
-      try {
-        r = fn(v);
-      } catch (e) {
-        r = { ok: false, detail: e.message };
-      }
-    out.push({ label: IGNORE_LABEL[id], ok: Boolean(r.ok), detail: r.detail ?? "" });
-  };
-  // Staged means the rollup's needs leave the proof job out.
-  const staged = (x) => !x.rollNeeds.includes(PROOF);
-  const names = (x) => x.list.map((e) => (isMap(e) ? e.name : undefined));
+  return [{ label: IGNORE_LABEL, ok: r.ok, detail: r.detail }];
+}
 
-  add("m1", (x) => {
-    const milestone = x.list.filter((e) => isMap(e) && e.name === x.msName).length;
-    const ok = staged(x) ? x.list.length === 1 && milestone === 1 : milestone === 0;
-    return { ok, detail: `proof staged: ${staged(x)}; ignoreChecks names: ${JSON.stringify(names(x))}` };
-  });
-  add("m2", (x) => {
-    const taken = new Set([...x.otherNames, ...x.rollNeeds, ...x.required]);
-    const bad = names(x).filter((n) => typeof n !== "string" || taken.has(n));
-    return { ok: bad.length === 0, detail: `names not allowed: ${bad.map(String).join(", ") || "none"}` };
-  });
-  add("m3", (x) => {
-    if (!staged(x)) return { ok: true, detail: "proof is in the rollup, so no milestone entry is needed" };
-    const entry = x.list.find((e) => isMap(e) && e.name === x.msName);
-    if (!entry) return { ok: false, detail: `no ignoreChecks entry named ${x.msName}` };
-    const reason = typeof entry.reason === "string" ? entry.reason : "";
-    const lacks = IGNORE_TERMS.filter((t) => !reason.includes(t));
-    return { ok: lacks.length === 0, detail: `reason lacks: ${lacks.join("; ") || "none"}` };
-  });
-  return out;
+// m1, on the test workflow text. The dispatch step must read the switch, and the job env must hold
+// "on" exactly when the proof is in the rollup's needs, and "off" otherwise.
+function dispatchCheck(wfText) {
+  const fail = (detail) => ({ label: DISPATCH_LABEL, ok: false, detail });
+  if (wfText === null) return fail("no readable test workflow");
+  let jobs;
+  try {
+    jobs = parseWorkflow(wfText).jobs;
+  } catch (e) {
+    return fail(`test workflow does not parse: ${e.message}`);
+  }
+  const job = isMap(jobs) ? jobs[MILESTONE_DUE] : undefined;
+  if (!isMap(job)) return fail(`no ${MILESTONE_DUE} job`);
+  const dispatch = steps(job).filter((s) => typeof s.run === "string" && s.run.includes(DISPATCH_RUN));
+  if (dispatch.length !== 1) return fail(`dispatch steps: ${dispatch.length}`);
+  const cond = normIf(ifText(dispatch[0])).replace(/"/g, "'");
+  const wired = !cond.includes("||") && cond.replace(/[()]/g, "").split("&&").includes(SWITCH_TERM);
+  const value = isMap(job.env) ? job.env[SWITCH] : undefined;
+  const want = needsOf(jobs[ROLLUP]).includes(PROOF) ? "on" : "off";
+  return {
+    label: DISPATCH_LABEL,
+    ok: wired && value === want,
+    detail: `dispatch step reads ${SWITCH}: ${wired}; job env ${SWITCH}: ${JSON.stringify(value ?? null)}; want ${JSON.stringify(want)}`,
+  };
 }
 
 // ---- The UI-test checks k1 to k5, and the readers they use ----
@@ -1085,7 +1083,7 @@ const readOrNull = (path) => {
   else for (const r of milestoneProofChecks(jobs)) expect(r.label, r.ok, r.detail);
 }
 
-// The merge ignore list (m1 to m3), read from the repo. The other workflows' names come from their files.
+// The dispatch switch (m1) and the merge ignore list (m2), read from the repo. The other workflows' names come from their files.
 {
   let names = [];
   let namesOk = true;
@@ -1098,12 +1096,16 @@ const readOrNull = (path) => {
   } catch {
     namesOk = false;
   }
-  const results = ignoreChecks({
-    stampText: readOrNull(STAMP),
-    msText: readOrNull(MILESTONE),
-    wfText: readOrNull(WORKFLOW),
-    otherNames: namesOk ? names : null,
-  });
+  const wfText = readOrNull(WORKFLOW);
+  const results = [
+    dispatchCheck(wfText),
+    ...ignoreChecks({
+      stampText: readOrNull(STAMP),
+      msText: readOrNull(MILESTONE),
+      wfText,
+      otherNames: namesOk ? names : null,
+    }),
+  ];
   for (const r of results) expect(r.label, r.ok, r.detail);
 }
 
@@ -1920,45 +1922,68 @@ for (const [name, text] of PROOF_GREEN) {
   );
 }
 
-// ---- Fixtures for m1 to m3. Each case gives its stamp and its test workflow. The milestone file is MS_GOOD.
-const IGNORE_OK =
-  "coordinator 2026-11-01 22:06 set the hold and coordinator 2026-11-01 22:44 kept it. Skipped until the first green hosted milestone run.";
-const IGNORE_ENTRY = (name = "milestone", reason = IGNORE_OK) => ({ name, reason });
+// ---- Fixtures for m1 and m2. The milestone file is MS_GOOD. ----
+// m1 builds on MS_JOB_TEXT, the one home of the milestone-due job text. switchJob adds the job env
+// key when value is given, and the dispatch step's if: reads the switch unless wired is false.
+function switchJob(value, wired = true) {
+  let t = MS_JOB_TEXT;
+  if (value !== undefined) t = mutate(t, "    steps:\n", `    env:\n      ${SWITCH}: "${value}"\n    steps:\n`);
+  if (wired) {
+    t = mutate(
+      t,
+      `${PUSH_MAIN_IF}\n        env:`,
+      "        if: ${{ env." + SWITCH + " == 'on' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}\n        env:"
+    );
+  }
+  return t;
+}
+// The test workflow with the switched milestone-due job. The rollup needs the proof only when joined.
+const dueWf = (value, { proofIn = false, wired = true } = {}) =>
+  PRE_TEXT + switchJob(value, wired) + rollupJob({ needs: [...NEEDS, MILESTONE_DUE, ...(proofIn ? [PROOF] : [])] });
+const M1_RED = [
+  ["the dispatch is on while the proof is outside the rollup", dueWf("on")],
+  ["the dispatch is off while the proof is inside the rollup", dueWf("off", { proofIn: true })],
+  ["the dispatch step does not read the switch", dueWf("off", { wired: false })],
+  ["the job env has no switch", dueWf(undefined)],
+];
+const M1_GREEN = [
+  ["the switch is off and read, while the proof is outside", dueWf("off")],
+  ["the switch is on and read, once the proof is inside", dueWf("on", { proofIn: true })],
+];
+for (const [name, text] of M1_RED) {
+  const r = dispatchCheck(text);
+  expect(`fixture red: ${name} fails assertion m1`, !r.ok, r.detail);
+}
+for (const [name, text] of M1_GREEN) {
+  const r = dispatchCheck(text);
+  expect(`fixture good: ${name} passes m1`, r.ok, r.detail);
+}
+
+// m2. Each case gives its stamp; the milestone file and the test workflow are the same in every case.
+const IGNORE_ENTRY = (name) => ({ name });
 const STAMP_MERGE = { method: "merge", requiredChecks: [ROLLUP], deadlineMinutes: 65 };
 const stampWith = (list) =>
   JSON.stringify({ merge: list === undefined ? STAMP_MERGE : { ...STAMP_MERGE, ignoreChecks: list } }) + "\n";
 const WF_STAGED = wf({});
-const WF_PROOF_IN = wf({ needs: [...NEEDS, PROOF] });
 const IGNORE_RED = [
-  ["m1: an entry is listed while the proof is in the rollup", { stampText: stampWith([IGNORE_ENTRY()]), wfText: WF_PROOF_IN }, "m1"],
-  ["m1: no entry while the proof is outside the rollup", { stampText: stampWith(undefined), wfText: WF_STAGED }, "m1"],
-  ["m1: the entry names the test workflow, not the milestone", { stampText: stampWith([IGNORE_ENTRY("test")]), wfText: WF_STAGED }, "m1"],
-  ["m2: the entry names the test workflow, another workflow", { stampText: stampWith([IGNORE_ENTRY("test")]), wfText: WF_STAGED }, "m2"],
-  ["m2: the entry names a job in all-jobs-passed's needs", { stampText: stampWith([IGNORE_ENTRY("suite")]), wfText: WF_STAGED }, "m2"],
-  ["m2: the entry names the required check", { stampText: stampWith([IGNORE_ENTRY(ROLLUP)]), wfText: WF_STAGED }, "m2"],
-  ["m3: the reason lacks the 22:44 ruling", { stampText: stampWith([IGNORE_ENTRY("milestone", IGNORE_OK.replace("22:44", "22:45"))]), wfText: WF_STAGED }, "m3"],
-  ["m3: the reason lacks the ending condition", { stampText: stampWith([IGNORE_ENTRY("milestone", IGNORE_OK.replace("first green hosted milestone run", "first run"))]), wfText: WF_STAGED }, "m3"],
-  ["m3: an empty list while the proof is staged", { stampText: stampWith([]), wfText: WF_STAGED }, "m3"],
+  ["the entry names the test workflow", { stampText: stampWith([IGNORE_ENTRY("test")]) }],
+  ["the entry names the milestone workflow", { stampText: stampWith([IGNORE_ENTRY("milestone")]) }],
+  ["the entry names the milestone workflow under its file's own name", { stampText: stampWith([IGNORE_ENTRY("nightly")]), msText: MS_GOOD.replace("name: milestone", "name: nightly") }],
+  ["the entry names a job in all-jobs-passed's needs", { stampText: stampWith([IGNORE_ENTRY("suite")]) }],
+  ["the entry names the required check", { stampText: stampWith([IGNORE_ENTRY(ROLLUP)]) }],
+  ["the entry has no name", { stampText: stampWith([{ reason: "x" }]) }],
 ];
 const IGNORE_GREEN = [
-  ["the milestone entry with its reasons, while the proof is staged", { stampText: stampWith([IGNORE_ENTRY()]), wfText: WF_STAGED, msText: MS_GOOD }],
-  ["no entry once the proof is in the rollup", { stampText: stampWith(undefined), wfText: WF_PROOF_IN, msText: MS_GOOD }],
-  [
-    "the milestone name is read from its file, so a renamed milestone file is matched",
-    { stampText: stampWith([IGNORE_ENTRY("nightly")]), wfText: WF_STAGED, msText: MS_GOOD.replace("name: milestone", "name: nightly") },
-  ],
+  ["no merge.ignoreChecks key", { stampText: stampWith(undefined) }],
+  ["an empty merge.ignoreChecks list", { stampText: stampWith([]) }],
 ];
-for (const [name, args, id] of IGNORE_RED) {
-  const bad = ignoreChecks({ msText: MS_GOOD, otherNames: ["test"], ...args }).filter((r) => !r.ok);
-  expect(
-    `fixture red: ${name} fails assertion ${id}`,
-    bad.some((r) => r.label.split(" ")[0] === id),
-    `failing: ${bad.map((r) => r.label.split(" ")[0]).join(", ") || "none"}`
-  );
+for (const [name, args] of IGNORE_RED) {
+  const bad = ignoreChecks({ msText: MS_GOOD, otherNames: ["test"], wfText: WF_STAGED, ...args }).filter((r) => !r.ok);
+  expect(`fixture red: ${name} fails assertion m2`, bad.length > 0, `failing: ${bad.map((r) => r.detail).join("; ") || "none"}`);
 }
 for (const [name, args] of IGNORE_GREEN) {
-  const bad = ignoreChecks({ msText: MS_GOOD, otherNames: ["test"], ...args }).filter((r) => !r.ok);
-  expect(`fixture good: ${name} passes m1 to m3`, bad.length === 0, bad.map((r) => `${r.label} (${r.detail})`).join("; "));
+  const bad = ignoreChecks({ msText: MS_GOOD, otherNames: ["test"], wfText: WF_STAGED, ...args }).filter((r) => !r.ok);
+  expect(`fixture good: ${name} passes m2`, bad.length === 0, bad.map((r) => `${r.label} (${r.detail})`).join("; "));
 }
 
 if (failures) {
