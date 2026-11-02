@@ -1,6 +1,6 @@
 # The full Swift suite runs at milestones
 
-**Status:** ruled. The owner ruled on 2026-10-27 (claude-settings step c95, applied 2026-11-01): the full Swift suite runs at milestones on a GitHub-hosted Mac, with a recorded result, and a failed milestone run blocks the next merge. The count N = 3 is the coordinator's pick, pending the owner.
+**Status:** ruled. The owner ruled on 2026-10-27 (claude-settings step c95, applied 2026-11-01): the full Swift suite runs at milestones on a GitHub-hosted Mac, with a recorded result, and a failed milestone run blocks the next merge. The count N = 3 is a lane default and is unmeasured.
 
 **Holds while:** this repo is public, so hosted macOS minutes cost nothing. Also, the merge tool refuses a merge when the newest completed main run of any workflow file failed.
 
@@ -16,7 +16,7 @@ The full suite is `make native-check`: the page check, the Kit tests, the app bu
 - One job, `full-suite`, on the `xcode-27` runner (runner-images `xcode-27-arm64`: Xcode 27.1 by default, iOS 27.1 SDK, iPhone 18 Pro on iOS 27.0, iPhone Duo on iOS 27.1). It selects `/Applications/Xcode_27.1.app`, installs one pinned xcodegen, boots the iPhone 18 Pro by name and runs `make native-check`.
 - The Makefile stays the one home of the full run. `UI_TEST` names the UI test command: `sim-test` on the owner's Mac, `xcodebuild test` with a destination on the runner. Only the runner sets it.
 - The job writes the head sha, the Xcode version and the result to the step summary. That summary is the recorded result.
-- The job skips drafts and has `timeout-minutes: 50`, marked provisional until it has 5 green runs. A run that stops at its cap is a timed-out job. See Open questions for how the red-main check reads it.
+- The job skips drafts and has `timeout-minutes: 50`, marked provisional until it has 5 green runs. A run that stops at its cap is a timed-out job. The merge tool reads it as green, so the merge gate below blocks on it.
 - Permissions are `contents: read`. No step writes.
 
 ## When a run is due
@@ -29,7 +29,7 @@ The full suite is `make native-check`: the page check, the Kit tests, the app bu
 - The newest run failed or timed out: due once one native merge follows it.
 - Otherwise: due once the count reaches N. A cancelled run is not a failure.
 
-N is 3. That is the coordinator's pick, and the owner has not set it. Change `N` in the script and its test together.
+N is 3. That is a lane default, and no measure backs it. Change `N` in the script and its test together.
 
 Cost per push to main: one ubuntu job, one API read, one `git log`. A read that gets a 5xx or a rate limit waits once, up to 10 s, and tries again. A second failure fails the job. Pull requests start the job, and no step runs. The job-level `actions: write` cannot depend on the event, so every CI step carries the push-to-main guard. On a pull request the token is granted and never used.
 
@@ -37,15 +37,23 @@ The native path regex is one file, `.github/native-paths.regex`. The `scope` job
 
 ## Cost
 
-Minutes are $0 on a public repo. The costs that hold are wall time and queue time, because hosted macOS runners queue. The run is not on the merge path of a pull request, so only a failed milestone run blocks a merge. If the repo goes private, GitHub bills macOS minutes at a multiple of Linux minutes, see `ledger-private-source-public`. The time of a hosted run is unmeasured until a green run lands, see `native-job-hosted-time-unmeasured`.
+Minutes are $0 on a public repo. The costs that hold are wall time and queue time, because hosted macOS runners queue. The run is not on the merge path of a pull request. Only the merge gate reads its result, see The merge gate. If the repo goes private, GitHub bills macOS minutes at a multiple of Linux minutes, see `ledger-private-source-public`. The time of a hosted run is unmeasured until a green run lands, see `native-job-hosted-time-unmeasured`.
 
-## Open questions
+## The merge gate
 
-All three wait for the owner to rule.
+Ruling, coordinator, 2026-11-01 19:35, from the global rule `verification-report-unknown-reads` (a read that could not run is unknown, never clear): a milestone run that timed out, was cancelled, or was dispatched and never taken is no proof. It blocks merges until a run passes.
 
-- Open: a run that stops at its cap reads as green to the red-main check, because a timed-out job is not red there. A hung suite would not block a merge.
-- Open: a dispatched run that no runner takes reads as no run to the red-main check, because the check judges completed runs only. A merge goes ahead while the run waits. `milestoneDue` reads a queued run as not due, so no second dispatch follows.
-- Open: a cancelled newest run is not a failure to `milestoneDue`, but the red-main check reads it as unknown and refuses merges. With merges refused, no push follows, so nothing dispatches again. The owner dispatches a run by hand, or merges past it.
+The merge tool reads a timed-out run as green and judges completed runs only, so it cannot hold this itself. The repo gates itself. The `milestone-gate` job in `test.yml` runs on every pull request and push, and the `all-jobs-passed` rollup needs it. `node scripts/milestone-due.mjs gate` reads the dispatched milestone runs on `main` and calls `gateVerdict`. It names the branch `main`, because on a pull request the ref name that Actions sets is the pull request number plus `/merge`. The job holds `contents: read` and `actions: read`, and no `if:` narrows it to an event. A gate that cannot read its proof must fail.
+
+`gateVerdict` walks the runs from the newest:
+
+- A run that is not completed is in flight: queued, in progress, waiting, requested or pending. A fresh one is skipped, because its result is not in. One older than 90 minutes was not taken, and the gate fails. An unreadable `createdAt` counts as stale.
+- The first completed run decides. Only `success` passes. `failure`, `timed_out`, `cancelled`, `neutral` and `skipped` fail.
+- With no completed run and no stale run, the gate passes. This is the bootstrap: the first milestone run has no older proof to lack. A lone fresh run in flight passes the same way.
+
+Recovery from a failed gate is a dispatch by hand of `milestone.yml`. Merges are blocked, so no push to main follows, and `milestone-due` dispatches nothing. Staleness is 90 minutes, and no measure backs it.
+
+A pull request can edit its own copy of the gate, so it can pass itself. The gate guards a mistake, not an attacker (rule `guard-guards-mistakes-only`). Branch protection and review hold the rest.
 
 ## Unproven
 

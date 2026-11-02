@@ -282,11 +282,30 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/milestone-due.mjs --native-paths .github/native-paths.regex
 
+  # Decision milestone-runs-full-suite: fails until the newest dispatched milestone run on main passed.
+  # A run that timed out, was cancelled or was never taken is no proof. It runs on every event and
+  # no if: narrows it, because a gate that cannot read its proof must fail. Its token reads only.
+  milestone-gate:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5 # provisional
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: fail unless the newest milestone run on main passed
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/milestone-due.mjs gate
+
   # The one check branch protection requires. It fails when a needed job failed, was cancelled
   # or was skipped. always() makes it run when a needed job fails, and a draft skips it with
   # every other job. It has no name key, so its check name is its id.
   all-jobs-passed:
-    needs: [suite, screens, scope, native, zizmor, ste-lint, milestone-due]
+    needs: [suite, screens, scope, native, zizmor, ste-lint, milestone-due, milestone-gate]
     if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
@@ -299,7 +318,7 @@ jobs:
   # wakes the session that watches the PR. A green run posts nothing. Keep needs: on every other job.
   # A draft run posts nothing, because its jobs skip on purpose.
   ci-done:
-    needs: [suite, screens, scope, native, zizmor, ste-lint, milestone-due, all-jobs-passed]
+    needs: [suite, screens, scope, native, zizmor, ste-lint, milestone-due, milestone-gate, all-jobs-passed]
     if: ${{ !cancelled() && !github.event.pull_request.draft && github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5

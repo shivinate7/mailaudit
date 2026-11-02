@@ -9,12 +9,16 @@
 // It reads the dispatched milestone runs on main (one API read with GITHUB_TOKEN), counts the
 // native commits since countBase (one git log), and dispatches milestone.yml
 // when due. A read that fails exits 1: an unknown read is red in CI.
+//
+// CLI, for the milestone-gate job in test.yml, on every event:
+//   node scripts/milestone-due.mjs gate
+// It reads the same runs and exits 1 unless gateVerdict passes.
 
 import { execFileSync } from "node:child_process";
 import { appendFileSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-// The coordinator's pick, pending the owner. Three native merges between full runs.
+// A lane default, unmeasured. Three native merges between full runs.
 export const N = 3;
 
 const FAILED = new Set(["failure", "timed_out"]);
@@ -35,6 +39,31 @@ export function milestoneDue({ runs, nativeMerges, n }) {
   return nativeMerges >= n
     ? { due: true, reason: `${nativeMerges} native merges since the last success, at or past ${n}` }
     : { due: false, reason: `${nativeMerges} native merges since the last success, below ${n}` };
+}
+
+// The merge gate. Only a successful milestone run is proof, so a run that timed out, was
+// cancelled or was never taken reads as no proof (decision milestone-runs-full-suite). runs are the
+// dispatched milestone runs on main, newest first; now is epoch ms. Walking from the newest:
+//   - a run that is not completed is in flight. Fresh, it is skipped, since its result is not in yet.
+//     Older than staleMinutes, or with an unreadable createdAt, it was not taken: fail.
+//   - the first completed run decides: success passes, anything else fails.
+//   - no completed run, and no stale one, is the bootstrap: pass. The first run has nothing older to prove.
+export function gateVerdict({ runs, now, staleMinutes = 90 }) {
+  for (const run of runs) {
+    if (run.status === "completed") {
+      return run.conclusion === "success"
+        ? { pass: true, reason: "the newest completed milestone run succeeded" }
+        : { pass: false, reason: `the newest completed milestone run ended ${run.conclusion}, so there is no proof` };
+    }
+    const age = (now - Date.parse(run.createdAt)) / 60_000;
+    if (!(age <= staleMinutes)) {
+      return { pass: false, reason: `a ${run.status} milestone run was not taken, or its age is unreadable, within ${staleMinutes} minutes` };
+    }
+  }
+  return {
+    pass: true,
+    reason: runs.length === 0 ? "no milestone run yet" : "only fresh milestone runs in flight, nothing older to prove",
+  };
 }
 
 // The sha the native-merge count starts from, or null to count every commit. After a failed or
@@ -96,18 +125,37 @@ async function api(path, init = {}) {
   return res.status === 204 ? null : res.json();
 }
 
+// Only dispatched runs on the branch count. A pull_request run of the file proves nothing about main.
+async function milestoneRuns(branch) {
+  const body = await api(
+    `actions/workflows/milestone.yml/runs?branch=${encodeURIComponent(branch)}&event=workflow_dispatch&per_page=30`
+  );
+  return body.workflow_runs.map((r) => ({
+    status: r.status,
+    conclusion: r.conclusion,
+    headSha: r.head_sha,
+    createdAt: r.created_at,
+  }));
+}
+
+// The milestone-gate job: fails a pull request or a push until the milestone run on main passed.
+// The branch is main, named here: on a pull_request GITHUB_REF_NAME is "<n>/merge".
+async function gate() {
+  const verdict = gateVerdict({ runs: await milestoneRuns("main"), now: Date.now() });
+  const line = `milestone-gate: ${verdict.pass ? "pass" : "fail"}: ${verdict.reason}`;
+  console.log(line);
+  if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${line}\n`);
+  if (!verdict.pass) process.exitCode = 1;
+}
+
 async function cli(argv) {
+  if (argv[0] === "gate") return gate();
   const at = argv.indexOf("--native-paths");
   if (at < 0 || !argv[at + 1]) throw new Error("usage: milestone-due.mjs --native-paths <file>");
   // The file is a grep -E regex that JS reads the same: no lookaround, no backreference.
   const nativeRe = new RegExp(readFileSync(argv[at + 1], "utf8").trim());
   const ref = need("GITHUB_REF_NAME");
-
-  // Only dispatched runs on main count. A pull_request run of the file proves nothing about main.
-  const body = await api(
-    `actions/workflows/milestone.yml/runs?branch=${encodeURIComponent(ref)}&event=workflow_dispatch&per_page=30`
-  );
-  const runs = body.workflow_runs.map((r) => ({ status: r.status, conclusion: r.conclusion, headSha: r.head_sha }));
+  const runs = await milestoneRuns(ref);
 
   const base = countBase(runs);
   const range = base ? [`${base}..HEAD`] : [];
