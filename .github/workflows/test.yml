@@ -254,7 +254,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: shivinate7/claude-settings/actions/ste-lint@1cc47f015bdaf073d8cb0f043a988c28d09aa3e1 # main 2026-10-29
+      - uses: shivinate7/claude-settings/actions/ste-lint@17492e58853703168d025128a2da315e9936ee90 # main 2026-11-01
 
   # The one check branch protection requires. It fails when a needed job failed, was cancelled
   # or was skipped. always() makes it run when a needed job fails, and a draft skips it with
@@ -265,7 +265,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - uses: shivinate7/claude-settings/actions/all-jobs-passed@1cc47f015bdaf073d8cb0f043a988c28d09aa3e1 # main 2026-10-29
+      - uses: shivinate7/claude-settings/actions/all-jobs-passed@17492e58853703168d025128a2da315e9936ee90 # main 2026-11-01
         with:
           needs: ${{ toJSON(needs) }}
 
@@ -281,6 +281,6 @@ jobs:
       contents: read  # the workflow default, kept because a job-level block replaces it
       pull-requests: write  # gh pr comment posts the one comment
     steps:
-      - uses: shivinate7/claude-settings/actions/ci-done-comment@1cc47f015bdaf073d8cb0f043a988c28d09aa3e1 # main 2026-10-29
+      - uses: shivinate7/claude-settings/actions/ci-done-comment@17492e58853703168d025128a2da315e9936ee90 # main 2026-11-01
         with:
           needs: ${{ toJSON(needs) }}
