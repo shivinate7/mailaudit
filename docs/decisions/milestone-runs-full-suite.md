@@ -41,10 +41,11 @@ Minutes are $0 on a public repo. The costs that hold are wall time and queue tim
 
 ## Open questions
 
-Both wait for the owner to rule.
+All three wait for the owner to rule.
 
 - Open: a run that stops at its cap reads as green to the red-main check, because a timed-out job is not red there. A hung suite would not block a merge.
 - Open: a dispatched run that no runner takes reads as no run to the red-main check, because the check judges completed runs only. A merge goes ahead while the run waits. `milestoneDue` reads a queued run as not due, so no second dispatch follows.
+- Open: a cancelled newest run is not a failure to `milestoneDue`, but the red-main check reads it as unknown and refuses merges. With merges refused, no push follows, so nothing dispatches again. The owner dispatches a run by hand, or merges past it.
 
 ## Unproven
 
