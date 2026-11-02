@@ -17,7 +17,6 @@ One known gap per file under `docs/debts/`. Each carries a Status line and a Dec
 - `claim-9-fractional-box-edges` — Claim 9 can pass a box just under 44px.
 - `tally-card-moves-at-320px` — The Tally card moves 14px at 320px.
 - `key-re-accepts-token-shape` — The key check accepts a GitHub token's shape.
-- `tests-33-35-40-45-cannot-fail` — Tests 33.35, 33.40 and 33.45 cannot fail.
 - `received-at-size-unmeasured` — The size of receivedAt is unmeasured.
 - `suite-hang-cause-unmeasured` — The 13-minute hang after the suite summary is unexplained.
 - `card-action-row-unmeasured` — The action row at its tallest state is unmeasured.
