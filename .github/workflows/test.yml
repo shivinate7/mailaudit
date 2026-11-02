@@ -285,6 +285,8 @@ jobs:
   # Decision milestone-runs-full-suite: fails until the newest dispatched milestone run on main passed.
   # A run that timed out, was cancelled or was never taken is no proof. It runs on every event and
   # no if: narrows it, because a job that cannot read its proof must fail. Its token reads only.
+  # It stays out of all-jobs-passed and ci-done until the first green hosted milestone run, so a red
+  # run blocks no merge before then. Add it to both needs lists in the pull request after that run.
   milestone-proof:
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
@@ -305,7 +307,7 @@ jobs:
   # or was skipped. always() makes it run when a needed job fails, and a draft skips it with
   # every other job. It has no name key, so its check name is its id.
   all-jobs-passed:
-    needs: [suite, screens, scope, native, zizmor, ste-lint, milestone-due, milestone-proof]
+    needs: [suite, screens, scope, native, zizmor, ste-lint, milestone-due]
     if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
@@ -318,7 +320,7 @@ jobs:
   # wakes the session that watches the PR. A green run posts nothing. Keep needs: on every other job.
   # A draft run posts nothing, because its jobs skip on purpose.
   ci-done:
-    needs: [suite, screens, scope, native, zizmor, ste-lint, milestone-due, milestone-proof, all-jobs-passed]
+    needs: [suite, screens, scope, native, zizmor, ste-lint, milestone-due, all-jobs-passed]
     if: ${{ !cancelled() && !github.event.pull_request.draft && github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
