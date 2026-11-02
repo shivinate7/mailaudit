@@ -9,6 +9,6 @@
 
 The gap closes when the job runs those steps and stays green on a hosted macOS runner. The Duo pose UI tests are a local proof only. CI does not run them.
 
-**Status:** open. Lane C2 is not briefed.
+**Status:** open. The milestone workflow (`milestone-runs-full-suite`) runs by dispatch on the hosted `xcode-27` image, in two jobs (`make ui-a` and `make ui-b`). They build the app and run every UI test class but the Duo classes (`DUO_UI_TESTS` in the Makefile), which need the hinge tool and stay a local proof. No run has passed yet. This debt closes for the non-Duo classes when a milestone run is green; the Duo classes stay out of CI. The per-pull-request native job still runs the Kit tests only. Lane C2 is not briefed.
 
 **Decision:** `native-ci-on-hosted-macos`.

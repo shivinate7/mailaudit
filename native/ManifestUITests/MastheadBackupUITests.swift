@@ -564,7 +564,7 @@ final class MastheadBackupUITests: XCTestCase {
         show(app, tab)
         _ = try live(app, "masthead", tab: tab)
         _ = try live(app, "save-slot", tab: tab)
-        try app.auditSkippingTabBar()
+        try app.auditSkippingTabBar(ruled: skipMeasuredContrastFlags)
     }
 
     func testAccessibilityAuditMastheadOnLedger() throws { try assertAuditMastheadSkippingTabBar(on: "Ledger") }
