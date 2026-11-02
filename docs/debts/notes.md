@@ -40,3 +40,5 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 **Status:** open. Each line stays a note until a real incident.
 
 **Decision:** `debts-hold-known-gaps`.
+- 2026-11-01, claude-md-rules review round 2: no rule-file glob covers `worker/core.test.mjs`, `docs/design/`, or (for the screen rules) `test/view-rules.test.mjs` and `test/app.test.mjs`. Widen when a session misses a rule there.
+- 2026-11-01, claude-md-rules review round 2: no check proves each rule-file glob matches a file, so a rename stops a rule loading with no failure. All globs matched on 2026-11-01.

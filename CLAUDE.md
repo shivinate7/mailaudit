@@ -201,10 +201,12 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 
 ## More index, by folder
 
-- `.claude/rules/native.md`: the native client and its debts. Loads for `native/**`.
-- `.claude/rules/debts.md`: the known gaps outside the native app. Loads for `docs/debts/**`.
-- `.claude/rules/testing.md`: the testing method and the test harness. Loads for `test/**`.
-- `.claude/rules/screens.md`: the screen rules. Loads for `src/app.jsx` and `src/view-rules.mjs`.
+- `.claude/rules/native.md`: the native client and its debts.
+- `.claude/rules/debts.md`: the known gaps outside the native app.
+- `.claude/rules/testing.md`: the testing method and the test harness.
+- `.claude/rules/screens.md`: the screen rules.
+
+Each file loads when a session reads a file its `paths:` list names. That list is the only home of its globs.
 
 ## Measurements
 
