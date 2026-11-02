@@ -44,4 +44,7 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 - 2026-11-01, claude-md-rules review round 2: no check proves each rule-file glob matches a file, so a rename stops a rule loading with no failure. All globs matched on 2026-11-01.
 - 2026-11-01, milestone-full-suite review round 2: no check pins `fetch-depth: 0` on the `milestone-due` checkout. A shallow checkout makes its `git log` fail, and main goes red on every push.
 - 2026-11-01, milestone-proof review round 3: if `.github/native-paths.regex` is deleted or renamed, `scope` reads native as false and the native job skips.
-- 2026-11-01, milestone-full-suite try 2: the auto-mode classifier refused `Agent` (a builder brief adding a `milestone` entry to `.github/stamp.json` merge.ignoreChecks) as CI bypass. The entry waits on the owner; red cases m1 and m3 stay red.
+- 2026-11-01, milestone-full-suite try 2: the auto-mode classifier refused `Agent` (a builder brief adding a `milestone` entry to `.github/stamp.json` merge.ignoreChecks) as CI bypass. The coordinator then dropped the entry (2026-11-01 23:00 CST); m1 now pins the dispatch switch instead.
+- 2026-11-01, milestone-full-suite review round 2: anyone with gh or the Actions API can dispatch `milestone.yml` by hand. Only decision `milestone-runs-full-suite` stops a dispatch before the known reds clear, and a red dispatch stops every merge through the merge tool.
+- 2026-11-01, milestone-full-suite review round 2: k6 does not pin the `GITHUB_ENV` write of `SIM_UDID`. A renamed variable passes the suite; xcodebuild then fails loud on an empty `id=`.
+- 2026-11-01, milestone-full-suite review round 2: `make ui-test` now skips the Duo classes on the owner's Mac too, and no command for the by-hand Duo run is recorded.

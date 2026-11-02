@@ -288,8 +288,9 @@ jobs:
   # Decision milestone-runs-full-suite: fails until the newest dispatched milestone run on main passed.
   # A run that timed out, was cancelled or was never taken is no proof. It runs on every event and
   # no if: narrows it, because a job that cannot read its proof must fail. Its token reads only.
-  # It stays out of all-jobs-passed and ci-done until the first green hosted milestone run, so a red
-  # run blocks no merge before then. Add it to both needs lists in the pull request after that run.
+  # It stays out of all-jobs-passed and ci-done until the first green hosted milestone run. The merge
+  # tool still reads it, so a red dispatch stops merges: nobody dispatches until the known reds clear.
+  # Add it to both needs lists in the pull request after that run.
   milestone-proof:
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
