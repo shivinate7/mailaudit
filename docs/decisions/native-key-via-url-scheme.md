@@ -20,11 +20,11 @@ Plan: docs/decisions/native-key-via-url-scheme.md#the-universal-link-fallback (n
 
 ## The universal-link fallback
 
-A universal link takes over if the Camera does not open the custom scheme. The owner ruled this on 2026-10-11. It is not built. It is built only if the N11 Camera check shows that the scheme fails. The universal link is https with `#k=`, so it carries the key. A Worker route serves the apple-app-site-association file for it. That route is not built. The paid signing team allows Associated Domains, see `native-swift-rebuild`. The Camera check on a device is lane N11's hand check, see `native-build-lanes`.
+A universal link takes over if the Camera does not open the custom scheme. The owner ruled this on 2026-10-11. The N11 Camera check passed on 2026-10-22 19:50 CDT, so it is not built. It is built only if the Camera stops opening the custom scheme. The universal link is https with `#k=`, so it carries the key. A Worker route serves the apple-app-site-association file for it. That route is not built. The paid signing team allows Associated Domains, see `native-swift-rebuild`. The Camera check on a device is lane N11's hand check, see `native-build-lanes`.
 
 ## The Keychain
 
-- The Keychain service is the bundle id, `dev.shivinate.manifest` (orchestrator default 2026-10-12). The owner's phone holds a stored key, since the first pull filled Packages on 2026-10-22 (`native-build-lanes`). A rename of the Keychain service would strand it.
+- The Keychain service is the bundle id, `dev.shivinate.manifest` (orchestrator default 2026-10-12). The owner's phone holds a stored key, since the first pull filled Packages on 2026-10-22 (`native-build-lanes`). Every GET sends the key from the KeyStore, see `native-reply-waits-generation`. A rename of the Keychain service would strand it.
 - The key lives in the app's own Keychain. The accessibility class is AfterFirstUnlockThisDeviceOnly.
 - `hasKey()` returns only a Bool. The sync client reads the key at request time.
 - The key never enters view state, the ledger or a backup, see `the-token-is-a-credential`.

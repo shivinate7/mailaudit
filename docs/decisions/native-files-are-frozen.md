@@ -8,7 +8,7 @@ Home: docs/decisions/native-files-are-frozen.md
 
 The native client keeps its data in the folder Application Support. The file ledger.json holds the ledger, and it is written atomically. The folders versions and photos sit beside it. The kept copies of a mended ledger sit there too. These names froze at the first native ship, and they stay frozen.
 
-**Holds while:** the owner's phone holds native files under these names, since the first pull filled Packages on 2026-10-22, see `native-build-lanes` and `native-ships-via-testflight`.
+**Holds while:** the owner's phone holds a native ledger.json, since the first pull filled Packages on 2026-10-22, see `native-build-lanes` and `native-ships-via-testflight`.
 
 ## Why they freeze
 
