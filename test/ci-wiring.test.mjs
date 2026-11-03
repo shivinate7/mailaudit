@@ -20,7 +20,9 @@
 //  10  its permissions are exactly actions: read and issues: write, at job or
 //      workflow level;
 //  11  its one job has one step, which uses the shared ci-alarm action at the shared
-//      pin, with no checkout and a timeout-minutes.
+//      pin, with no checkout and a timeout-minutes;
+//  12  every claude-settings pin in every .github/workflows/*.yml names ACTION_PIN,
+//      read from the repo, so a workflow added later is covered too.
 //
 // The milestone workflow (.github/workflows/milestone.yml) and its job in test.yml
 // are checked the same way, with letter ids:
@@ -2352,6 +2354,97 @@ for (const [name, text] of ALARM_GREEN) {
     bad.length === 0,
     bad.map((r) => `${r.label} (${r.detail})`).join("; ")
   );
+}
+
+// Assertion 12: every claude-settings pin in every workflow file names ACTION_PIN. The
+// files are read from the repo, so a workflow added later is covered too. The scan must
+// find a pin before the pins are compared, or an empty scan would pass.
+// A pin is a uses: value, read by the workflow parser above, so a comment or a run: block
+// that names a pin is text and does not count.
+function usesValues(node, out) {
+  if (Array.isArray(node)) for (const n of node) usesValues(n, out);
+  else if (isMap(node))
+    for (const [k, v] of Object.entries(node)) {
+      if (k === "uses" && typeof v === "string") out.push(v);
+      else usesValues(v, out);
+    }
+  return out;
+}
+function pinRefs(files) {
+  const found = [];
+  for (const { name, text } of files) {
+    for (const u of usesValues(parseWorkflow(text), [])) {
+      if (!u.startsWith(ACTIONS)) continue;
+      const rest = u.slice(ACTIONS.length);
+      const at = rest.indexOf("@");
+      found.push({ where: name, action: at < 0 ? rest : rest.slice(0, at), ref: at < 0 ? undefined : rest.slice(at + 1) });
+    }
+  }
+  return found;
+}
+const offPins = (found) =>
+  found.filter((f) => f.ref !== ACTION_PIN).map((f) => `${f.where} ${f.action}@${f.ref ?? "no ref"}`);
+
+{
+  let files = null;
+  try {
+    const dir = resolve(ROOT, ".github/workflows");
+    files = readdirSync(dir)
+      .filter((f) => /\.ya?ml$/.test(f))
+      .sort()
+      .map((f) => ({ name: `.github/workflows/${f}`, text: readFileSync(resolve(dir, f), "utf8") }));
+  } catch {
+    files = null;
+  }
+  if (files === null) expect("12 the workflow files can be read", false, "cannot read .github/workflows");
+  else {
+    let found = null;
+    try {
+      found = pinRefs(files);
+    } catch (e) {
+      expect("12 the workflow files parse", false, e.message);
+    }
+    if (found !== null) {
+      expect("12 the scan finds a claude-settings pin in the workflow files", found.length > 0, "no pin found");
+      const off = offPins(found);
+      expect("12 every claude-settings pin in every workflow file names ACTION_PIN", off.length === 0, off.join("; "));
+    }
+  }
+}
+
+const PIN_RED = [
+  ["a test workflow pin names another sha", ".github/workflows/test.yml", mutate(GOOD, "ste-lint@" + ACTION_PIN, "ste-lint@" + "f".repeat(40))],
+  ["a new workflow pin names another sha", ".github/workflows/new-check.yml", mutate(GOOD_ALARM, "@" + ACTION_PIN, "@" + "f".repeat(40))],
+  ["a pin has no ref", ".github/workflows/ci-alarm.yml", mutate(GOOD_ALARM, "@" + ACTION_PIN, "")],
+];
+for (const [name, file, text] of PIN_RED) {
+  const off = offPins(pinRefs([{ name: file, text }]));
+  expect(`fixture red: ${name} fails assertion 12`, off.some((d) => d.startsWith(file)), `detail: ${off.join("; ") || "none"}`);
+}
+
+const PIN_GREEN = [
+  ["every pin names ACTION_PIN", [{ name: "test.yml", text: GOOD }, { name: "ci-alarm.yml", text: GOOD_ALARM }]],
+  [
+    "a quoted pin names ACTION_PIN",
+    [{ name: "x.yml", text: `jobs:\n  j:\n    steps:\n      - uses: "shivinate7/claude-settings/actions/ste-lint@${ACTION_PIN}"\n` }],
+  ],
+  [
+    "a comment and a run block name another pin",
+    [
+      {
+        name: "x.yml",
+        text: "# uses: shivinate7/claude-settings/actions/all-jobs-passed@main\njobs:\n  j:\n    runs-on: ubuntu-latest\n    steps:\n      - run: |\n          uses: shivinate7/claude-settings/actions/all-jobs-passed@main\n",
+      },
+    ],
+  ],
+  [
+    "a file with no claude-settings pin",
+    [{ name: "x.yml", text: "jobs:\n  build:\n    steps:\n      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n" }],
+  ],
+];
+for (const [name, files] of PIN_GREEN) {
+  const off = offPins(pinRefs(files));
+  expect(`fixture good: ${name} passes assertion 12`, off.length === 0, off.join("; "));
 }
 
 if (failures) {
