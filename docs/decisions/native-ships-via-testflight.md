@@ -12,7 +12,7 @@ Plan: docs/decisions/build-and-deploy.md#make-testflight (native)
 
 ## The command
 
-- `ios-ship testflight tools/ios-ship.json --app Manifest` runs `xcodegen`, archives Release for `generic/platform=iOS`, then uploads the archive to App Store Connect. The steps and flags are in `build-and-deploy`. It does not run `npm run build`, so check `npm run check:build` first.
+- `ios-ship testflight tools/ios-ship.json --app Manifest` runs `xcodegen`, archives Release for `generic/platform=iOS`, then uploads the archive to App Store Connect. The steps and flags are in `build-and-deploy`. It does not run `npm run build`, so check `npm run check:rules` first.
 - `--export-only` stops before the upload and keeps the export in a printed folder. It is the only proof run without an upload.
 - Run it on this Mac after each merge, from a clean tree at origin/main. The tool is shared with the owner's Degen project.
 - The upload runs once. Never retry it in a loop.
