@@ -85,7 +85,7 @@ const CI_DONE = "ci-done";
 const ACTIONS = "shivinate7/claude-settings/actions/";
 const ALARM_ACTION = ACTIONS + "ci-alarm";
 // The shared action pin. Every claude-settings pin in test.yml carries this sha.
-const ACTION_PIN = "49a41651a3f8182b211db3b1a4596933ca4eca58";
+const ACTION_PIN = "da8d8073ca5b7b0d670c7b71cf5acc9604aa3277";
 const ROLLUP_IF = "always() && !github.event.pull_request.draft";
 const DRAFT_GUARD = "!github.event.pull_request.draft";
 // A needed job may read the draft guard, since a draft run skips it on purpose. An
@@ -1317,13 +1317,13 @@ const PRE_TEXT =
     STE_IF,
     "    runs-on: ubuntu-latest",
     "    steps:",
-    `      - uses: ${ACTIONS}ste-lint@${ACTION_PIN} # main 2026-11-01`,
+    `      - uses: ${ACTIONS}ste-lint@${ACTION_PIN} # main 2026-11-03`,
     "  ci-done:",
     "    needs: [suite, screens, scope, native, zizmor, ste-lint]",
     "    if: ${{ !cancelled() && !github.event.pull_request.draft && github.event_name == 'pull_request' }}",
     "    runs-on: ubuntu-latest",
     "    steps:",
-    `      - uses: ${ACTIONS}ci-done-comment@${ACTION_PIN} # main 2026-11-01`,
+    `      - uses: ${ACTIONS}ci-done-comment@${ACTION_PIN} # main 2026-11-03`,
     "        with:",
     "          needs: ${{ toJSON(needs) }}",
   ].join("\n") + "\n";
@@ -1662,7 +1662,7 @@ const GOOD_ALARM = [
   "    timeout-minutes: 5",
   "    steps:",
   '      - name: "Alarm # on a red main"',
-  `        uses: ${ALARM_ACTION}@${ACTION_PIN} # main 2026-11-01`,
+  `        uses: ${ALARM_ACTION}@${ACTION_PIN} # main 2026-11-03`,
 ].join("\n") + "\n";
 
 {
