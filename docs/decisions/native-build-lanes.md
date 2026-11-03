@@ -196,7 +196,7 @@ Other risks live in the record for their lane:
   - `native-merge-skips-photo-fetch`;
   - `native-photo-sweep-unbuilt`;
   - `native-photo-viewer-unpinned`.
-- Lane N11, the owner's device check, has not run. Debt: `n11-device-check-not-run`.
+- Lane N11, the owner's device check, has run in part. Debt: `n11-device-check-not-run`.
 - Native envelopes have no photos. Debt: `native-envelope-has-no-photos`.
 - The native Orphaned audits are red. Debt: `native-orphaned-colours-unbuilt`.
 - No test pins the native Discard arm. Debt: `native-discard-arm-unpinned`.

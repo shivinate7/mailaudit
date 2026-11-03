@@ -1,6 +1,6 @@
 # The native client takes its key through a custom URL scheme
 
-**Status:** ruled. The owner accepted this on 2026-10-11 with "all seem fine". N2 landed in PR #81 and N5 in PR #82. The universal-link fallback is ruled and not built, see `universal-link-unbuilt`. One fact is unmeasured: whether the iPhone Camera opens a custom scheme from a QR code.
+**Status:** ruled. The owner accepted this on 2026-10-11 with "all seem fine". N2 landed in PR #81 and N5 in PR #82. The universal-link fallback is ruled and not built, see `universal-link-unbuilt`. The Camera check passed on 2026-10-22 19:50 CDT: the Camera opened `manifestledger://`, see `native-build-lanes`.
 
 The key reaches the native app by URL, with no typing. The app stores the key in its own Keychain and drops the URL.
 
@@ -8,7 +8,7 @@ Kind: build
 
 Plan: docs/decisions/native-key-via-url-scheme.md#the-universal-link-fallback (native)
 
-**Holds while:** no device has scanned a custom-scheme QR. The device check is lane N11 in `native-build-lanes`.
+**Holds while:** the iPhone Camera opens `manifestledger://` from a QR code, as the device check of 2026-10-22 19:50 CDT showed (`native-build-lanes`). No unbuilt piece waits on that check now.
 
 ## The flow
 
@@ -24,7 +24,7 @@ A universal link takes over if the Camera does not open the custom scheme. The o
 
 ## The Keychain
 
-- The Keychain service is the bundle id, `dev.shivinate.manifest` (orchestrator default 2026-10-12). Nothing has shipped, so no stored key moves.
+- The Keychain service is the bundle id, `dev.shivinate.manifest` (orchestrator default 2026-10-12). The owner's phone holds a stored key, since the first pull filled Packages on 2026-10-22 (`native-build-lanes`). A rename of the Keychain service would strand it.
 - The key lives in the app's own Keychain. The accessibility class is AfterFirstUnlockThisDeviceOnly.
 - `hasKey()` returns only a Bool. The sync client reads the key at request time.
 - The key never enters view state, the ledger or a backup, see `the-token-is-a-credential`.

@@ -4,11 +4,11 @@ Kind: process
 
 Home: docs/decisions/native-files-are-frozen.md
 
-**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Lane N3 landed in PR #80 with a store that takes its file URL from the caller. Lane N5 creates the Application Support folder and `ledger.json`. `PhotoStore` (lane N10) creates the photos folder on its first put, and no app code calls it yet. `VersionStore` (lane N9) creates the versions folder on its first put. No native build has shipped. The kept-copy name was added before any build shipped. Its milliseconds and numeric suffix are orchestrator defaults of 2026-10-12, not owner rulings.
+**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Lane N3 landed in PR #80 with a store that takes its file URL from the caller. Lane N5 creates the Application Support folder and `ledger.json`. `PhotoStore` (lane N10) creates the photos folder on its first put, and no app code calls it yet. `VersionStore` (lane N9) creates the versions folder on its first put. The first native ship, the install of 2026-10-22 19:42 CDT, froze these names, see `native-ships-via-testflight`. The kept-copy name predates that ship. Its milliseconds and numeric suffix are orchestrator defaults of 2026-10-12, not owner rulings.
 
-The native client keeps its data in the folder Application Support. The file ledger.json holds the ledger, and it is written atomically. The folders versions and photos sit beside it. The kept copies of a mended ledger sit there too. These names freeze when the first native build ships.
+The native client keeps its data in the folder Application Support. The file ledger.json holds the ledger, and it is written atomically. The folders versions and photos sit beside it. The kept copies of a mended ledger sit there too. These names froze at the first native ship, and they stay frozen.
 
-**Holds while:** no native build has shipped, so no device holds a native ledger file.
+**Holds while:** the owner's phone holds native files under these names, since the first pull filled Packages on 2026-10-22, see `native-build-lanes` and `native-ships-via-testflight`.
 
 ## Why they freeze
 
