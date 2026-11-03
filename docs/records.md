@@ -172,7 +172,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `offline-is-decided-by-fetch` | The app decides `offline` only by a failed `fetch`, and by nothing else. | [`docs/decisions/offline-is-decided-by-fetch.md`](../docs/decisions/offline-is-decided-by-fetch.md) |
 | `one-repo-for-both-halves` | The source repository, `mailaudit`, is public and holds no data. | [`docs/decisions/one-repo-for-both-halves.md`](../docs/decisions/one-repo-for-both-halves.md) |
 | `one-stamp-per-package` | Each package holds at most one order stamp. | [`docs/decisions/one-stamp-per-package.md`](../docs/decisions/one-stamp-per-package.md) |
-| `orchestrator-may-merge` | The owner granted standing merge authority on 2026-10-10. | [`docs/decisions/orchestrator-may-merge.md`](../docs/decisions/orchestrator-may-merge.md) |
+| `orchestrator-may-merge` | Under the session tiers (claude-settings decision session-tiers), the coordinator holds the owner's standing merge grant (claude-settings decision standing-merge-grant). | [`docs/decisions/orchestrator-may-merge.md`](../docs/decisions/orchestrator-may-merge.md) |
 | `orderwand-csv` | This record holds the CSV column list and every quirk found in the user's real OrderWand exports. | [`docs/decisions/orderwand-csv.md`](../docs/decisions/orderwand-csv.md) |
 | `orphan-sweep-drops-unused-photos` | One sweep effect covers every path that orphans a photo. | [`docs/decisions/orphan-sweep-drops-unused-photos.md`](../docs/decisions/orphan-sweep-drops-unused-photos.md) |
 | `orphaned-colours-by-meaning` | Orphaned uses the app's colour meanings. | [`docs/decisions/orphaned-colours-by-meaning.md`](../docs/decisions/orphaned-colours-by-meaning.md) |
