@@ -1,6 +1,6 @@
 # The batch runner batches and merges
 
-The owner granted standing merge authority on 2026-10-10. On 2026-10-27 at 20:24 CDT the owner named one session to hold it, and called that session "the point guard". Under the session tiers (claude-settings decision session-tiers, owner, 2026-10-28), that session is the batch runner. It owns the integration batch, the CI waits and the merge tool runs. It may merge a pull request to `main` without asking first. Every other rule still applies.
+Under the session tiers (claude-settings decision session-tiers), the coordinator holds the owner's standing merge grant (claude-settings decision standing-merge-grant). The batch runner runs every merge under that grant (owner, 2026-11-01 21:34 CST). It owns the integration batch, the CI waits and the merge tool runs. It may merge a pull request to `main` without asking first. Every other rule still applies.
 
 - The coordinator starts the lane sessions and never merges. The batch runner runs every merge under the coordinator's standing merge grant (claude-settings decision standing-merge-grant, owner 2026-11-01 21:34 CST). It merges on green checks and a done review, and never asks the owner to merge. The owner withdraws that grant in chat.
 - A lane session never opens an integration PR, marks a PR ready, or merges. It sends each lane branch that passed its local checks and its review to the batch runner, with the head commit, the checks run and the reviewer's verdict. Each lane PR stays a draft.
