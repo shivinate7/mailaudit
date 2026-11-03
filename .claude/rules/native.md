@@ -37,7 +37,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 ## Native debts
 
 - `native-ui-tests-not-in-ci` — Native UI tests and builds are not in CI.
-- `native-sync-live-unrun` — The native sync client has never run against the Worker.
+- `native-sync-live-unrun` — The native sync POST, socket and photo paths are unrun against the Worker.
 - `native-sync-glue-unpinned` — No test drives the native sync glue in the app.
 - `native-merge-notice-unbuilt` — No native screen shows the merge notice.
 - `native-pull-generation-unpinned` — No test pins the generation check in a pull.
@@ -86,7 +86,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-merge-skips-photo-fetch` — Nothing fetches native photos before an apply.
 - `native-photo-sweep-unbuilt` — The native client has no photo sweep.
 - `native-photo-viewer-unpinned` — No test pins the photo viewer's traits or the Stop control.
-- `n11-device-check-not-run` — The owner's native device check has not run.
+- `n11-device-check-not-run` — The owner's native device check has run in part.
 - `duo-keyboard-gap-unmeasured` — The Duo keyboard gap above the keys is unmeasured.
 - `duo-fold-change-unpinned` — No test folds the Duo while the app runs.
 - `duo-tab-items-twice` — The Duo tab bar repeats the tab titles in RootView.
