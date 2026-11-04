@@ -6,7 +6,7 @@ Plan: docs/decisions/build-and-deploy.md#the-npm-scripts (web)
 
 This file holds the npm scripts and what each asks. It also holds what the build writes, the deploy sequence, and the Pages queued-workflow quirk.
 
-**Holds while:** `build.mjs --check` compares the whole committed `index.html` with the build of `src/`, and `test.yml` never fetches the `data` branch.
+**Holds while:** `build.mjs --check` compares the whole committed `index.html` with the build of `src/`, and `checks.yml` never fetches the `data` branch.
 
 ## The npm scripts
 

@@ -6,7 +6,7 @@ Plan: docs/decisions/check-seed-backstop-not-proof.md#the-check (web)
 
 The stamp-note leak was found by decoding the built page and grepping it. It was not found by reading the code. Run that check after any change here. It is the only way to know what you actually published.
 
-**Holds while:** `npm run check:seed` runs `build.mjs --check-seed`, and `test.yml` runs `check:seed` in its `suite` job.
+**Holds while:** `npm run check:seed` runs `build.mjs --check-seed`, and `checks.yml` runs `check:seed` in its `suite` job.
 
 ## The check
 
