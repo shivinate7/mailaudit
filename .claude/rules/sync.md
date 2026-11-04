@@ -9,6 +9,7 @@ paths:
   - "src/photo-rules.mjs"
   - "worker/**"
   - "scripts/send-key.mjs"
+  - "scripts/copy-photos-to-worker.mjs"
 ---
 
 # Storage and sync

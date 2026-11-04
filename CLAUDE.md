@@ -95,7 +95,7 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 
 ## Measurements
 
-Each figure was measured in a real viewport or on a real device. A test cannot hold most of them, and each record says how to take the number again.
+Each figure was measured in a real viewport or on a real device. A test cannot hold most of them, and each record says how to take the number again. Their index lines live with their subjects in `.claude/rules/`: `native.md`, `screens.md`, `testing.md`, `sync.md` and `versions.md`.
 
 ## Build and deploy
 
