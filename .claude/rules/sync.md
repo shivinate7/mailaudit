@@ -43,7 +43,7 @@ Sync runs itself. These records say what it refuses to do, and why each refusal 
 - `merge-readopts-sync-generation` — A merge re-adopts the sync generation.
 - `push-flash-waits-for-photos` — Retired 2026-10-12: the Pushed flash has no control.
 - `remote-sync-is-off-the-save-path` — Remote sync never touches the save indicator.
-- `token-lives-outside-namespace` — The access token and the device key sit outside the storage namespace.
+- `token-lives-outside-namespace` — The device key and any stored GitHub token sit outside the storage namespace.
 - `one-repo-for-both-halves` — The source repo is public and holds no data.
 - `data-branch-setup` — The data branch is frozen ledger history, not a scratch file.
 - `photo-branch-must-preexist` — The GitHub photo branch stays until the copy runs.

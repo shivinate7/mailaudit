@@ -87,7 +87,6 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 - `nothing-recovers-without-the-key` — A fresh device needs its device key to recover.
 - `photos-in-git-are-permanent` — Photos are permanent in git and in the Worker.
 - `ledger-private-source-public` — The ledger repo is private, the source repo is public.
-- `token-expires-without-warning` — The token expires with no warning.
 - `token-sits-on-shared-origin` — The device key sits on a shared origin.
 - `the-write-budget-is-shared` — The write budget is shared with the ledger push.
 - `vendor-toggle-undecided` — The vendor toggle stays undecided.

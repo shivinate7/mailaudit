@@ -39,7 +39,9 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `sync-runs-itself` | Sync runs itself, and there is no toggle. | [`docs/decisions/sync-runs-itself.md`](../docs/decisions/sync-runs-itself.md) |
 | `testing-unfailable-assert-decor` | Kind: process | [`docs/decisions/testing-unfailable-assert-decor.md`](../docs/decisions/testing-unfailable-assert-decor.md) |
 | `the-token-used-to-span-two-repos` | **Status:** retired. | [`docs/decisions/the-token-used-to-span-two-repos.md`](../docs/decisions/the-token-used-to-span-two-repos.md) |
+| `token-expires-without-warning` | **Status:** retired. | [`docs/decisions/token-expires-without-warning.md`](../docs/decisions/token-expires-without-warning.md) |
 | `token-field-is-sixteen-pixels` | The sync key field is set at 16px. | [`docs/decisions/token-field-is-sixteen-pixels.md`](../docs/decisions/token-field-is-sixteen-pixels.md) |
+| `token-lives-outside-namespace` | The device key and any stored GitHub token sit outside the storage namespace. | [`docs/decisions/token-lives-outside-namespace.md`](../docs/decisions/token-lives-outside-namespace.md) |
 | `token-sits-on-shared-origin` | **Status:** open. | [`docs/decisions/token-sits-on-shared-origin.md`](../docs/decisions/token-sits-on-shared-origin.md) |
 | `two-device-merge-proven-first` | **Status:** retired 2026-10-14. | [`docs/decisions/two-device-merge-proven-first.md`](../docs/decisions/two-device-merge-proven-first.md) |
 | `watchdog-catches-silent-failure` | **Status:** retired. | [`docs/decisions/watchdog-catches-silent-failure.md`](../docs/decisions/watchdog-catches-silent-failure.md) |
@@ -238,8 +240,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `testing-surviving-mutant` | A surviving mutant shows that the fixtures never reach the state where the bug matters. | [`docs/decisions/testing-surviving-mutant.md`](../docs/decisions/testing-surviving-mutant.md) |
 | `testing-throwing-assert-bad-kill` | A test that throws on a mutant is worse than one that fails cleanly. | [`docs/decisions/testing-throwing-assert-bad-kill.md`](../docs/decisions/testing-throwing-assert-bad-kill.md) |
 | `the-write-budget-is-shared` | **Status:** open. | [`docs/decisions/the-write-budget-is-shared.md`](../docs/decisions/the-write-budget-is-shared.md) |
-| `token-expires-without-warning` | **Status:** open. | [`docs/decisions/token-expires-without-warning.md`](../docs/decisions/token-expires-without-warning.md) |
-| `token-lives-outside-namespace` | The GitHub access token lives at the raw localStorage key `mailday-remote:v1`. | [`docs/decisions/token-lives-outside-namespace.md`](../docs/decisions/token-lives-outside-namespace.md) |
 | `unit-rate-is-not-the-position` | The collapsed Tally row shows the **unit rate**, not the basis. | [`docs/decisions/unit-rate-is-not-the-position.md`](../docs/decisions/unit-rate-is-not-the-position.md) |
 | `unwritable-store-says-so` | When IndexedDB cannot be written, every version save must fail visibly. | [`docs/decisions/unwritable-store-says-so.md`](../docs/decisions/unwritable-store-says-so.md) |
 | `upload-zone-opens-when-empty` | The upload zone opens when the user asks for it. | [`docs/decisions/upload-zone-opens-when-empty.md`](../docs/decisions/upload-zone-opens-when-empty.md) |
