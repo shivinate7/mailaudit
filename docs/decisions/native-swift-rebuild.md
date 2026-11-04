@@ -64,7 +64,7 @@ Every claim below rests on an Apple or WebKit source. None was measured on the o
 
 ## The Mac side: iPhone-only ships
 
-The app ships on the iPhone only (owner, 2026-11-03 18:16 CST, Cockpit item 192 `iphone-only-vs-mac`, pick a). `native/project.yml` builds one iOS app target, `Manifest`, with `TARGETED_DEVICE_FAMILY` 1, plus its UI test bundle. The Mac keeps the web app. A Mac target is debt `mac-target-unbuilt`. The rest of the Degen repo's D32 pattern, "Native SwiftUI app beside the web app", still holds:
+The app ships on the iPhone only (owner, 2026-11-03 18:16 CST, waiting-page item 192 `iphone-only-vs-mac`, pick a). `native/project.yml` builds one iOS app target, `Manifest`, with `TARGETED_DEVICE_FAMILY` 1, plus its UI test bundle. The Mac keeps the web app. A Mac target is debt `mac-target-unbuilt`. The rest of the Degen repo's D32 pattern, "Native SwiftUI app beside the web app", still holds:
 
 - A Swift package holds the client logic.
 - Never build a feature twice. Degen's owner rule: "never copy or redo stuff on one side and the other individually unless if its web-only and native-only stuff".
