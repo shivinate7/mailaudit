@@ -16,9 +16,10 @@ storage namespace do not follow the masthead. See `masthead-is-not-project-name`
 
 ## How to read this file
 
-This file is an index, and it holds no argument of its own. Every ruling lives in
-one record, and each record holds current text only; git keeps the history. Read the
-records your task needs. Do not read them all.
+This file is an index, and it holds no argument of its own. Rulings sit in records:
+`git-one-record-per-question` (one record per question) and `speak-rewrite-superseded-in-place`
+(current text only; git keeps the history). Read only the records a task needs
+(`tokens-never-load-whole-doc`: one record or section at a time).
 
 - `invariants/` holds a rule that must not break. 8 records.
 - `docs/decisions/` holds a ruling and the reason it still holds.
@@ -26,7 +27,7 @@ records your task needs. Do not read them all.
 - `docs/debts/` holds one known gap per file, each pointing at its decision.
 - `docs/plans/` holds work not yet shipped. `docs/specs/` holds how a shipped feature works now. `docs/todo.md` holds tasks a session caught and did not do. `.claude/rules/` holds rules for one folder.
 
-A record cites another record by slug, never by a path, so a record survives a
+Cite by slug, never by path (`git-cite-by-id`: ids, not paths), so a record survives a
 move. `npm run check:records` proves eight things. CLAUDE.md and the files in
 `.claude/rules/` cite every record. Every citation resolves. No slug repeats. No fence is broken. Every record
 carries its shape. Every invariant names the test that pins it. Every decision
@@ -38,13 +39,12 @@ separates a question still open from a ruling already settled, so keep it.
 
 ## Working here
 
-The owner's global rules govern this repo, and this file does not restate them, so the two cannot disagree.
-
-One local lesson is worth the space, because this repo paid for it. A rule here
-can outlive the constraint that produced it. The argument that "the ledger repo
+One local lesson, because this repo paid for it: the argument that "the ledger repo
 is public" stayed the load-bearing reason for a design long after the repo went
-private. So check whether a reason still holds before you design around it, and
-verify against the repo rather than against this file.
+private. The rules that cover it: `outcomes-decision-is-argument` (a recorded decision
+is an argument, not a law), `outcomes-stale-decision-protocol` (name the stale record,
+propose a fix), `verification-verify-against-repo` (verify long work against the repo,
+not your status line).
 
 ## Invariants
 
@@ -240,5 +240,5 @@ npm run serve          # a local server on :4173
 ios-ship testflight tools/ios-ship.json --app Manifest  # iOS: Release archive, then upload to TestFlight
 ```
 
-The steps and the traps live in `build-and-deploy`. Main moves by pull request
-only, so `deploy` opens one rather than pushing.
+The steps and the traps live in `build-and-deploy`. The rule is `git-main-only-by-pr`
+(main moves by pull request), so `deploy` opens one rather than pushing.
