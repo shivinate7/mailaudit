@@ -21,9 +21,9 @@ This file is an index, and it holds no argument of its own. Rulings sit in recor
 (current text only; git keeps the history). Read only the records a task needs
 (`tokens-never-load-whole-doc`: one record or section at a time).
 
-- `invariants/` holds a rule that must not break.
+- `invariants/` holds a rule that must not break. 8 records.
 - `docs/decisions/` holds a ruling and the reason it still holds.
-- `measurements/` holds a measured figure and how to re-measure it.
+- `measurements/` holds a measured figure and how to re-measure it. 11 records.
 - `docs/debts/` holds one known gap per file, each pointing at its decision.
 - `docs/plans/` holds work not yet shipped. `docs/specs/` holds how a shipped feature works now. `docs/todo.md` holds tasks a session caught and did not do. `.claude/rules/` holds rules for one folder.
 
@@ -34,11 +34,11 @@ separates a question still open from a ruling already settled, so keep it.
 
 ## Working here
 
-Verify this file against the repo (rule:verification-report-unknown-reads, rule:outcomes-decision-is-argument).
+Verify this file against the repo (rule:verification-report-unknown-reads, rule:outcomes-decision-is-argument). A decision that looks stale follows rule:outcomes-stale-decision-protocol.
 
 ## Invariants
 
-Breaking one costs the owner months of check-in data.
+Eight rules. Breaking one costs the owner months of check-in data.
 
 - `imports-merge-never-replace` — Imports merge, never replace.
 - `no-layout-shift-under-pointer` — No layout shift under the pointer.
@@ -99,4 +99,4 @@ Each figure was measured in a real viewport or on a real device. A test cannot h
 
 ## Build and deploy
 
-Commands, checks and traps: `build-and-deploy`. iOS installs first, TestFlight as fallback: `native-ships-via-testflight`. `npm run deploy` opens a pull request (`main-moves-only-by-pr`).
+Commands, checks and traps: `build-and-deploy`. iOS installs first, TestFlight as fallback: `native-ships-via-testflight`. `npm run deploy` opens a pull request rather than pushing: `git-main-only-by-pr` (main moves by pull request) and `main-moves-only-by-pr` (the required check).
