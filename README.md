@@ -22,6 +22,6 @@ npx playwright install chromium
 npm run check:screens
 ```
 
-CI runs these commands in [`.github/workflows/test.yml`](.github/workflows/test.yml). Read that file for the full list of checks.
+CI runs these commands in [`.github/workflows/checks.yml`](.github/workflows/checks.yml). Read that file for the full list of checks.
 
 `npm run build` rewrites the committed `index.html`. For the design and the data rules, see [CLAUDE.md](CLAUDE.md).

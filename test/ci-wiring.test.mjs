@@ -1,7 +1,7 @@
 // Cases for the CI wiring of the all-jobs-passed rollup and its required check.
 //
 // The rollup is the one check branch protection requires, so it must report on
-// every run that should pass. These checks read .github/workflows/test.yml and
+// every run that should pass. These checks read .github/workflows/checks.yml and
 // .github/stamp.json. They prove:
 //   0  the workflow file is readable and parses in the indentation subset;
 //   1  the rollup job exists with no name key, so its check name is its id;
@@ -15,7 +15,7 @@
 //   7  every job, ci-done included, has !github.event.pull_request.draft in its
 //      job-level if:, so a draft starts no runner;
 //   8  the screens job needs scope, and its job-level if: reads no .outputs.
-//   9  ci-alarm.yml triggers are schedule (one cron, after test.yml's nightly cron)
+//   9  ci-alarm.yml triggers are schedule (one cron, after checks.yml's nightly cron)
 //      and workflow_dispatch, nothing else;
 //  10  its permissions are exactly actions: read and issues: write, at job or
 //      workflow level;
@@ -24,14 +24,14 @@
 //  12  every claude-settings pin in every .github/workflows/*.yml names ACTION_PIN,
 //      read from the repo, so a workflow added later is covered too.
 //
-// The milestone workflow (.github/workflows/milestone.yml) and its job in test.yml
+// The milestone workflow (.github/workflows/milestone.yml) and its job in checks.yml
 // are checked the same way, with letter ids:
 //   a   its only trigger is workflow_dispatch; any other trigger fails it;
 //   a2  it has two jobs, and each job-level if: has the draft guard;
 //   b   every job runs on xcode-27 and selects Xcode 27.1;
 //   c   every job has a run line that starts with make;
 //   d   scope and milestone-due read one native path regex file, and neither job inlines it;
-//   f   the rollup needs milestone-due, and that job exists in test.yml;
+//   f   the rollup needs milestone-due, and that job exists in checks.yml;
 //   g   every step of milestone-due has an if: that requires a push to main;
 //   h   scope's native regex file matches its own path, and README.md does not match it;
 //   n   every checkout step of milestone-due has fetch-depth: 0, so its git log reaches back.
@@ -77,7 +77,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const WORKFLOW = resolve(ROOT, process.env.CI_WORKFLOW || ".github/workflows/test.yml");
+const WORKFLOW = resolve(ROOT, process.env.CI_WORKFLOW || ".github/workflows/checks.yml");
 const STAMP = resolve(ROOT, process.env.CI_STAMP || ".github/stamp.json");
 const MILESTONE = resolve(ROOT, process.env.MILESTONE_WORKFLOW || ".github/workflows/milestone.yml");
 const ALARM = resolve(ROOT, ".github/workflows/ci-alarm.yml");
@@ -86,8 +86,8 @@ const ROLLUP = "all-jobs-passed";
 const CI_DONE = "ci-done";
 const ACTIONS = "shivinate7/claude-settings/actions/";
 const ALARM_ACTION = ACTIONS + "ci-alarm";
-// The shared action pin. Every claude-settings pin in test.yml carries this sha.
-const ACTION_PIN = "da8d8073ca5b7b0d670c7b71cf5acc9604aa3277";
+// The shared action pin. Every claude-settings pin in checks.yml carries this sha.
+const ACTION_PIN = "635b37b11d4ac12c49b0e3f5d024b3dd3e68c9d2";
 const ROLLUP_IF = "always() && !github.event.pull_request.draft";
 const DRAFT_GUARD = "!github.event.pull_request.draft";
 // A needed job may read the draft guard, since a draft run skips it on purpose. An
@@ -380,10 +380,10 @@ function stampCheck(text) {
   ];
 }
 
-// Assertions 9 to 11 read the alarm workflow. The nightly cron comes from test.yml, its
+// Assertions 9 to 11 read the alarm workflow. The nightly cron comes from checks.yml, its
 // one home, so the alarm keeps running after it when that cron moves.
 const ALARM_WHAT = {
-  9: "ci-alarm.yml triggers are schedule (one cron, after test.yml's nightly cron) and workflow_dispatch, nothing else",
+  9: "ci-alarm.yml triggers are schedule (one cron, after checks.yml's nightly cron) and workflow_dispatch, nothing else",
   10: "ci-alarm.yml permissions are exactly actions: read and issues: write, at job or workflow level",
   11: "ci-alarm.yml has one job with one step, which uses the shared ci-alarm action at the shared pin, with no checkout and a timeout-minutes",
 };
@@ -427,7 +427,7 @@ function alarmChecks(alarmText, nightlyText) {
     "9",
     triggers.join() === "schedule,workflow_dispatch" && oneCron && after,
     `triggers: ${triggers.join(", ") || "none"}; schedule entries: ${sched.length}; ` +
-      `cron: ${JSON.stringify(cron)}; nightly test.yml cron: ${JSON.stringify(nightlyCron)}`
+      `cron: ${JSON.stringify(cron)}; nightly checks.yml cron: ${JSON.stringify(nightlyCron)}`
   );
 
   const jobs = isMap(alarm.jobs) ? alarm.jobs : {};
@@ -470,7 +470,7 @@ const MILESTONE_DUE = "milestone-due";
 const XCODE = "xcode-27";
 const XCODE_SELECT = "xcode-select -s /Applications/Xcode_27.1.app";
 // The regex file must hold every alternative of the native path regex scope uses today.
-const NATIVE_HOLDS = ["native/", "shared/", "view-rules", "test\\.yml"];
+const NATIVE_HOLDS = ["native/", "shared/", "view-rules", "checks\\.yml"];
 // A job that inlines that regex carries one of these fragments of it.
 const NATIVE_INLINE = ["native/|", "|shared/", "view-rules"];
 
@@ -520,7 +520,7 @@ function sharedRegexCheck({ scopeJob, milestoneJob, read }) {
   };
 }
 
-// Assertion f: the rollup needs milestone-due, and that job exists in test.yml.
+// Assertion f: the rollup needs milestone-due, and that job exists in checks.yml.
 function rollupCheck(jobs) {
   const needs = needsOf(jobs[ROLLUP]);
   const present = Object.hasOwn(jobs, MILESTONE_DUE);
@@ -599,7 +599,7 @@ function milestoneChecks({ msText, wfText, read, makefile, classes }) {
     }
   };
   const ms = parsed(msText, MILESTONE_OWN);
-  const wf = parsed(wfText, ".github/workflows/test.yml");
+  const wf = parsed(wfText, ".github/workflows/checks.yml");
   const msJobList = ms.doc && isMap(ms.doc.jobs) ? Object.values(ms.doc.jobs).filter(isMap) : [];
   const jobs = wf.doc && isMap(wf.doc.jobs) ? wf.doc.jobs : {};
   const onMs = (label, fn) => (ms.doc ? { label, ...fn() } : { label, ok: false, detail: ms.err });
@@ -623,7 +623,7 @@ function milestoneChecks({ msText, wfText, read, makefile, classes }) {
     onWf("d scope and milestone-due read one regex file, and neither job inlines it", () =>
       sharedRegexCheck({ scopeJob: jobs.scope, milestoneJob: jobs[MILESTONE_DUE], read })
     ),
-    onWf("f the rollup needs milestone-due, and that job exists in test.yml", () => rollupCheck(jobs)),
+    onWf("f the rollup needs milestone-due, and that job exists in checks.yml", () => rollupCheck(jobs)),
     onWf("g every step of milestone-due has an if: that requires a push to main", () => pushOnlyStepsCheck(jobs)),
     onWf("n every checkout step of milestone-due has fetch-depth: 0, so its git log reaches back", () =>
       checkoutHistoryCheck(jobs)
@@ -655,7 +655,7 @@ function milestoneProofChecks(jobs) {
   const doneNeeds = needsOf(map[CI_DONE]);
   return [
     {
-      label: `i1 job ${PROOF} exists in test.yml`,
+      label: `i1 job ${PROOF} exists in checks.yml`,
       ok: job !== undefined,
       detail: `job present: ${job !== undefined}`,
     },
@@ -1248,7 +1248,7 @@ const readOrNull = (path) => {
 
 // Self-test. Fixture text is built from arrays, not template literals, so the YAML
 // ${{ }} expressions are never read as JS interpolation.
-const NEEDS =["suite", "screens", "scope", "native", "zizmor", "ste-lint"];
+const NEEDS =["suite", "screens", "scope", "native", "zizmor", "checks"];
 const DRAFT_IF = "    if: ${{ !github.event.pull_request.draft }}";
 const NATIVE_IF =
   "    if: ${{ !cancelled() && needs.suite.result == 'success' && !github.event.pull_request.draft }} don't # github.event_name is only a comment here";
@@ -1314,14 +1314,14 @@ const PRE_TEXT =
     DRAFT_IF,
     "    steps:",
     "      - uses: zizmorcore/zizmor-action@85b2b9fb8e3325e7a23d7d0a9d7ba5ae0f999e3e # v0.7.1",
-    "  ste-lint:",
+    "  checks:",
     "    needs: suite",
     STE_IF,
     "    runs-on: ubuntu-latest",
     "    steps:",
     `      - uses: ${ACTIONS}ste-lint@${ACTION_PIN} # main 2026-11-03`,
     "  ci-done:",
-    "    needs: [suite, screens, scope, native, zizmor, ste-lint]",
+    "    needs: [suite, screens, scope, native, zizmor, checks]",
     "    if: ${{ !cancelled() && !github.event.pull_request.draft && github.event_name == 'pull_request' }}",
     "    runs-on: ubuntu-latest",
     "    steps:",
@@ -1402,12 +1402,12 @@ const RED = [
     "5",
   ],
   [
-    "needed ste-lint has an event name after a quoted comment opener, in code",
+    "needed checks has an event name after a quoted comment opener, in code",
     mutate(GOOD, STE_IF, STE_IF_RED),
     GOOD_STAMP,
     "5",
   ],
-  ["ste-lint job-level if has no draft guard", mutate(GOOD, STE_IF, STE_IF_NO_DRAFT), GOOD_STAMP, "7"],
+  ["checks job-level if has no draft guard", mutate(GOOD, STE_IF, STE_IF_NO_DRAFT), GOOD_STAMP, "7"],
   ["screens does not need scope", mutate(GOOD, "    needs: scope\n", ""), GOOD_STAMP, "8"],
   [
     "screens job-level if reads an output",
@@ -1745,7 +1745,7 @@ for (const [name, text, want] of SHELL_CASES) {
 }
 
 // Assertion d fixtures. The reader is a fake, so each case names exactly the files it has.
-const NATIVE_FILE = "^(native/|shared/|src/view-rules\\.mjs$|\\.github/workflows/test\\.yml$)\n";
+const NATIVE_FILE = "^(native/|shared/|src/view-rules\\.mjs$|\\.github/workflows/checks\\.yml$)\n";
 const fakeRead = (files) => (rel) => (Object.hasOwn(files, rel) ? files[rel] : null);
 const READ = fakeRead({
   ".github/native-paths.regex": NATIVE_FILE,
@@ -1789,7 +1789,7 @@ expect("fixture good: scope and milestone-due read one regex file and inline non
   }
 }
 
-// The milestone-due job as test.yml has it: each step carries the push-to-main guard. The f and g
+// The milestone-due job as checks.yml has it: each step carries the push-to-main guard. The f and g
 // fixtures build on this one text. Each g red case changes one guard with mutate().
 const PUSH_MAIN_IF = "        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}";
 const MS_JOB_TEXT = [
@@ -1812,7 +1812,7 @@ const MS_JOB_TEXT = [
   "          GITHUB_TOKEN: ${{ github.token }}",
   "        run: node scripts/milestone-due.mjs --native-paths .github/native-paths.regex",
 ].join("\n") + "\n";
-// Assertion f fixtures, on the real test.yml shape.
+// Assertion f fixtures, on the real checks.yml shape.
 const fJobs = (text) => parseWorkflow(text).jobs;
 expect(
   "fixture good: the rollup needs milestone-due and the job exists",
@@ -1958,8 +1958,8 @@ const nOf = (jobText) => checkoutHistoryCheck(fJobs(PRE_TEXT + jobText));
 // first regex names its own path, so it passes. The second does not name it. The third matches
 // every path, so it fails on README.md.
 const NATIVE_SELF =
-  "^(native/|shared/|src/view-rules\\.mjs$|\\.github/workflows/test\\.yml$|\\.github/native-paths\\.regex$)\n";
-const NATIVE_ANY = "^(native/|shared/|view-rules|test\\.yml|.*)$\n";
+  "^(native/|shared/|src/view-rules\\.mjs$|\\.github/workflows/checks\\.yml$|\\.github/native-paths\\.regex$)\n";
+const NATIVE_ANY = "^(native/|shared/|view-rules|checks\\.yml|.*)$\n";
 const hOf = (regexText) =>
   nativeSelfCheck({ scopeJob: scopeGood, read: fakeRead({ ".github/native-paths.regex": regexText }) });
 {
@@ -1994,8 +1994,8 @@ const PROOF_JOB_TEXT = [
 ].join("\n") + "\n";
 const PROOF_BASE = mutate(
   PRE_TEXT + MS_JOB_TEXT + PROOF_JOB_TEXT + rollupJob({ needs: [...NEEDS, MILESTONE_DUE] }),
-  "  ci-done:\n    needs: [suite, screens, scope, native, zizmor, ste-lint]\n",
-  "  ci-done:\n    needs: [suite, screens, scope, native, zizmor, ste-lint, milestone-due]\n"
+  "  ci-done:\n    needs: [suite, screens, scope, native, zizmor, checks]\n",
+  "  ci-done:\n    needs: [suite, screens, scope, native, zizmor, checks, milestone-due]\n"
 );
 const proofResults = (text) => milestoneProofChecks(fJobs(text));
 {
@@ -2090,7 +2090,7 @@ const PROOF_RED = [
   ],
   [
     "ci-done needs the proof before its first green run",
-    mutate(PROOF_BASE, "ste-lint, milestone-due]", "ste-lint, milestone-due, milestone-proof]"),
+    mutate(PROOF_BASE, "checks, milestone-due]", "checks, milestone-due, milestone-proof]"),
     "j",
   ],
 ];
@@ -2413,7 +2413,7 @@ const offPins = (found) =>
 }
 
 const PIN_RED = [
-  ["a test workflow pin names another sha", ".github/workflows/test.yml", mutate(GOOD, "ste-lint@" + ACTION_PIN, "ste-lint@" + "f".repeat(40))],
+  ["a test workflow pin names another sha", ".github/workflows/checks.yml", mutate(GOOD, "ste-lint@" + ACTION_PIN, "ste-lint@" + "f".repeat(40))],
   ["a new workflow pin names another sha", ".github/workflows/new-check.yml", mutate(GOOD_ALARM, "@" + ACTION_PIN, "@" + "f".repeat(40))],
   ["a pin has no ref", ".github/workflows/ci-alarm.yml", mutate(GOOD_ALARM, "@" + ACTION_PIN, "")],
 ];
@@ -2423,7 +2423,7 @@ for (const [name, file, text] of PIN_RED) {
 }
 
 const PIN_GREEN = [
-  ["every pin names ACTION_PIN", [{ name: "test.yml", text: GOOD }, { name: "ci-alarm.yml", text: GOOD_ALARM }]],
+  ["every pin names ACTION_PIN", [{ name: "checks.yml", text: GOOD }, { name: "ci-alarm.yml", text: GOOD_ALARM }]],
   [
     "a quoted pin names ACTION_PIN",
     [{ name: "x.yml", text: `jobs:\n  j:\n    steps:\n      - uses: "shivinate7/claude-settings/actions/ste-lint@${ACTION_PIN}"\n` }],

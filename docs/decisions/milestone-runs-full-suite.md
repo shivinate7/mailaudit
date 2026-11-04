@@ -8,7 +8,7 @@ Kind: build
 
 Plan: docs/decisions/milestone-runs-full-suite.md#the-workflow (native)
 
-The full suite is `make native-check`: the page check, the Kit tests, the app build and every UI test but the Duo classes (`DUO_UI_TESTS` in the Makefile). It is too slow for each pull request, and the `native` job in `test.yml` runs only the Kit tests, see `native-ci-on-hosted-macos`. `.github/workflows/milestone.yml` runs the full suite once the native code has moved enough.
+The full suite is `make native-check`: the page check, the Kit tests, the app build and every UI test but the Duo classes (`DUO_UI_TESTS` in the Makefile). It is too slow for each pull request, and the `native` job in `checks.yml` runs only the Kit tests, see `native-ci-on-hosted-macos`. `.github/workflows/milestone.yml` runs the full suite once the native code has moved enough.
 
 ## The workflow
 
@@ -26,7 +26,7 @@ Run 41379087325, the first hosted run on 2026-11-02, hit its 50-minute cap. 102 
 
 ## When a run is due
 
-`scripts/milestone-due.mjs` holds `milestoneDue`, a pure function, and a CLI mode. The `milestone-due` job in `test.yml` runs the CLI on a push to main. Its dispatch step needs the job's `MILESTONE_AUTO_DISPATCH` to be `on`. It is `off` until the pull request that adds `milestone-proof` to all-jobs-passed, and a wiring test pins the two together (coordinator 2026-11-01 23:00, process-only). It reads the dispatched milestone runs on main, counts the first-parent commits that touch native paths since a base sha, and, if the run is due, dispatches `milestone.yml`:
+`scripts/milestone-due.mjs` holds `milestoneDue`, a pure function, and a CLI mode. The `milestone-due` job in `checks.yml` runs the CLI on a push to main. Its dispatch step needs the job's `MILESTONE_AUTO_DISPATCH` to be `on`. It is `off` until the pull request that adds `milestone-proof` to all-jobs-passed, and a wiring test pins the two together (coordinator 2026-11-01 23:00, process-only). It reads the dispatched milestone runs on main, counts the first-parent commits that touch native paths since a base sha, and, if the run is due, dispatches `milestone.yml`:
 
 - If the newest completed run failed or timed out, the base sha is its head. Otherwise it is the head of the newest successful run. With neither, every commit counts.
 - No run yet: due.
@@ -50,7 +50,7 @@ The proof joins all-jobs-passed only after the first green hosted run. Until the
 
 Coordinator 2026-11-01 19:35, process-only. It comes from the global rule `verification-report-unknown-reads`: a read that could not run is unknown, never clear. Once the proof is in all-jobs-passed, a milestone run that timed out, was cancelled, or was dispatched and never taken is no proof. It blocks merges until a run passes.
 
-The merge tool reads a timed-out run as green and judges completed runs only, so it cannot hold this itself. The repo checks it. The `milestone-proof` job in `test.yml` runs on every pull request and push. `node scripts/milestone-due.mjs proof` reads the dispatched milestone runs on `main` and calls `proofVerdict`. It names the branch `main`, because on a pull request the ref name that Actions sets is the pull request number plus `/merge`. The job holds `contents: read` and `actions: read`, and no `if:` narrows it to an event. A job that cannot read its proof must fail.
+The merge tool reads a timed-out run as green and judges completed runs only, so it cannot hold this itself. The repo checks it. The `milestone-proof` job in `checks.yml` runs on every pull request and push. `node scripts/milestone-due.mjs proof` reads the dispatched milestone runs on `main` and calls `proofVerdict`. It names the branch `main`, because on a pull request the ref name that Actions sets is the pull request number plus `/merge`. The job holds `contents: read` and `actions: read`, and no `if:` narrows it to an event. A job that cannot read its proof must fail.
 
 `milestoneRuns` is the one reader of those runs, for the proof job and for `milestone-due`. It reads the repo's run list (`actions/runs`, branch `main`, event `workflow_dispatch`), not the per-workflow list, which answers 404 while the workflow file is not yet on `main`. It keeps the runs whose path is the milestone workflow file. It reads only the first page, 100 runs, newest first. Past 100 dispatched runs, an older run is not seen. One thrown network error on the read is retried once.
 

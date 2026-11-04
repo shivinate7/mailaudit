@@ -1,14 +1,14 @@
-# Why this exists: a red nightly run of test.yml reaches no pull request, and the
+# Why this exists: a red nightly run of checks.yml reaches no pull request, and the
 # ci-done comment skips scheduled runs. So main could sit red with nobody told.
 # This run reads the latest completed run of every other workflow on main, 2.5
-# hours after the nightly cron in test.yml. When one is red, it opens one issue in
+# hours after the nightly cron in checks.yml. When one is red, it opens one issue in
 # this repo, or comments on the issue that is already open. It writes nothing else.
 # It has no push or pull_request trigger, so it cannot rebuild the site.
 name: CI alarm
 
 on:
   schedule:
-    - cron: "47 7 * * *" # after the nightly run at 05:17 UTC in test.yml
+    - cron: "47 7 * * *" # after the nightly run at 05:17 UTC in checks.yml
   workflow_dispatch:
 
 permissions:
@@ -21,4 +21,4 @@ jobs:
     timeout-minutes: 5 # provisional
     steps:
       - name: Alarm on a red main
-        uses: shivinate7/claude-settings/actions/ci-alarm@da8d8073ca5b7b0d670c7b71cf5acc9604aa3277 # main 2026-11-03
+        uses: shivinate7/claude-settings/actions/ci-alarm@635b37b11d4ac12c49b0e3f5d024b3dd3e68c9d2 # main 2026-11-04
