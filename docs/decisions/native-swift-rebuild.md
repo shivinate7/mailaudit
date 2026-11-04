@@ -64,7 +64,7 @@ Every claim below rests on an Apple or WebKit source. None was measured on the o
 
 ## The Mac side: iPhone-only ships
 
-The app ships on the iPhone only (owner, 2026-11-03 18:16 CST, Cockpit item 192 `iphone-only-vs-mac`, pick a). `native/project.yml` builds one iOS target, `TARGETED_DEVICE_FAMILY` 1. The Mac keeps the web app. A Mac target is debt `mac-target-unbuilt`. The rest of the Degen repo's D32 pattern, "Native SwiftUI app beside the web app", still holds:
+The app ships on the iPhone only (owner, 2026-11-03 18:16 CST, Cockpit item 192 `iphone-only-vs-mac`, pick a). `native/project.yml` builds one iOS app target, `Manifest`, with `TARGETED_DEVICE_FAMILY` 1, plus its UI test bundle. The Mac keeps the web app. A Mac target is debt `mac-target-unbuilt`. The rest of the Degen repo's D32 pattern, "Native SwiftUI app beside the web app", still holds:
 
 - A Swift package holds the client logic.
 - Never build a feature twice. Degen's owner rule: "never copy or redo stuff on one side and the other individually unless if its web-only and native-only stuff".
@@ -83,6 +83,6 @@ Rejected: one SwiftUI app with the web app retired, because it drops the browser
 - `sync-revamp-cloudflare` — the Worker the Swift client talks to
 - `itp-may-clear-storage` — the eviction risk that native storage removes on the phone
 - `a-host-migration-resets-storage` — the same reset a new app causes
-- `token-sits-on-shared-origin` — the key risk that the SwiftUI app closes on both devices
+- `token-sits-on-shared-origin` — the key risk that the SwiftUI app closes on the iPhone, see `mac-target-unbuilt`
 - `live-verification` — the resume trigger that is still eye-only
 - `nothing-recovers-without-the-key` — why the Keychain key matters

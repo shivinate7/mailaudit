@@ -60,7 +60,7 @@ Order set on 2026-10-27 for the iPhone Duo view. The governing record is `duo-ca
 
 ## N5 notes
 
-- Orchestrator default, 2026-10-12: the app is iPhone-only (`TARGETED_DEVICE_FAMILY` 1), iOS 26.0, bundle id `dev.shivinate.manifest`, as `native-swift-rebuild` says (owner, 2026-11-03 18:16 CST, Cockpit item 192 `iphone-only-vs-mac`, pick a).
+- The app is iPhone-only (`TARGETED_DEVICE_FAMILY` 1) (owner, 2026-11-03 18:16 CST, Cockpit item 192 `iphone-only-vs-mac`, pick a). The iOS 26.0 minimum and bundle id `dev.shivinate.manifest` are orchestrator defaults of 2026-10-12, as `native-swift-rebuild` says.
 - Orchestrator default, 2026-10-12: the Ledger tab icon is the gear (`gearshape`), see `phone-nav-is-bottom-bar`.
 - Orchestrator default, 2026-10-12: the native 760pt UI case is removed. `PackagesShellUITests` runs at 375pt only. The web screens check keeps 760pt, see `screens-checked-headless-in-ci`.
 - Orchestrator default, 2026-10-12: the check-in toggle (`toggleCount`) and the "N of M" clamp (`countLabel`) live in `src/view-rules.mjs`. `PackagesModel` calls them through `RulesEngine`.
