@@ -250,7 +250,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 
 | Slug | Gist | Link |
 |---|---|---|
-| `app-build-waits-xcode-27` | No CI job compiles the native app. | [`docs/debts/app-build-waits-xcode-27.md`](../docs/debts/app-build-waits-xcode-27.md) |
+| `app-build-waits-xcode-27` | No pull-request CI job compiles the native app. | [`docs/debts/app-build-waits-xcode-27.md`](../docs/debts/app-build-waits-xcode-27.md) |
 | `armed-reset-mistap-unmeasured` | A mis-tap on a control next to the armed Reset box is unmeasured, and so is the width of the armed row. | [`docs/debts/armed-reset-mistap-unmeasured.md`](../docs/debts/armed-reset-mistap-unmeasured.md) |
 | `backup-unwatched` | Once the watchdog is off, no check reads the Worker's snapshots or the `data` branch, so a stopped backup raises no alarm. | [`docs/debts/backup-unwatched.md`](../docs/debts/backup-unwatched.md) |
 | `card-action-row-unmeasured` | The action row's content need at its tallest state is not measured at `f97e423`. | [`docs/debts/card-action-row-unmeasured.md`](../docs/debts/card-action-row-unmeasured.md) |
@@ -397,5 +397,5 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `palette-contrast` | Palette token contrast ratios | [`measurements/palette-contrast.md`](../measurements/palette-contrast.md) |
 | `ruled-head-heights` | Ruled head control region heights | [`measurements/ruled-head-heights.md`](../measurements/ruled-head-heights.md) |
 | `suite-size` | Test suite assertion count and run time | [`measurements/suite-size.md`](../measurements/suite-size.md) |
-| `switch-thirds-and-seal` | View switch, seal, and tally headroom | [`measurements/switch-thirds-and-seal.md`](../measurements/switch-thirds-and-seal.md) |
+| `switch-thirds-and-seal` | Seal and tally headroom; the view-switch readings are retired. | [`measurements/switch-thirds-and-seal.md`](../measurements/switch-thirds-and-seal.md) |
 | `sync-latency` | Sync delay from a tap on one device to the row on the other | [`measurements/sync-latency.md`](../measurements/sync-latency.md) |

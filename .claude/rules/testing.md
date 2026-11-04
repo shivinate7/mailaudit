@@ -37,3 +37,7 @@ Lessons this repo paid for. Each one came from a green suite that hid a real def
 - `harness-jsdom-setup-gotchas` — The harness supplies what jsdom lacks.
 - `harness-push-race-one-shot` — A push conflict needs a one-shot failure.
 - `harness-waits-past-debounces` — Tests wait past the debounces.
+
+## Measurements
+
+- `suite-size` — Test suite assertion count and run time.
