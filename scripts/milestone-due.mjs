@@ -4,13 +4,13 @@
 // milestoneDue is pure. runs are the milestone runs on main, newest first; nativeMerges is the
 // count of first-parent commits on main that touch native paths since countBase(runs).
 //
-// CLI, for the milestone-due job in test.yml, on a push to main only:
+// CLI, for the milestone-due job in checks.yml, on a push to main only:
 //   node scripts/milestone-due.mjs --native-paths <file>
 // It reads the dispatched milestone runs on main (one API read with GITHUB_TOKEN, through milestoneRuns), counts the
 // native commits since countBase (one git log), and dispatches milestone.yml
 // when due. A read that fails exits 1: an unknown read is red in CI.
 //
-// CLI, for the milestone-proof job in test.yml, on every event:
+// CLI, for the milestone-proof job in checks.yml, on every event:
 //   node scripts/milestone-due.mjs proof
 // It reads the same runs and exits 1 unless proofVerdict passes.
 

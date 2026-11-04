@@ -33,7 +33,7 @@ on:
       - "CLAUDE.md"
       - ".claude/rules/**"
       - "README.md"
-      - ".github/workflows/test.yml"
+      - ".github/workflows/checks.yml"
       - ".github/native-paths.regex"
       - ".github/dependabot.yml"
   pull_request:
@@ -190,7 +190,7 @@ jobs:
               # The native path regex lives in one file, which the milestone-due job reads too.
               grep -Eq -f .github/native-paths.regex <<< "$files" || native=false
               # Paths that can change a screen: the page source, its build and its screen check.
-              grep -Eq '^(shared/|src/|build\.mjs$|package(-lock)?\.json$|test/screens\.mjs$|test/a11y-base-boxes\.json$|\.github/workflows/test\.yml$)' <<< "$files" || screens=false
+              grep -Eq '^(shared/|src/|build\.mjs$|package(-lock)?\.json$|test/screens\.mjs$|test/a11y-base-boxes\.json$|\.github/workflows/checks\.yml$)' <<< "$files" || screens=false
             fi
           fi
           echo "scope verdict: event=$EVENT native=$native screens=$screens"
@@ -245,12 +245,12 @@ jobs:
 
   # Lints the markdown a change adds or edits, in Simplified Technical English. It fails only
   # on an error on a changed line. fetch-depth 0 lets the action diff against the base branch.
-  ste-lint:
+  checks:
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 60  # provisional
     concurrency:
-      group: ste-lint-${{ github.ref == 'refs/heads/main' && github.sha || format('{0}-{1}', github.ref, github.event.pull_request.draft) }}
+      group: checks-${{ github.ref == 'refs/heads/main' && github.sha || format('{0}-{1}', github.ref, github.event.pull_request.draft) }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -311,7 +311,7 @@ jobs:
   # or was skipped. always() makes it run when a needed job fails, and a draft skips it with
   # every other job. It has no name key, so its check name is its id.
   all-jobs-passed:
-    needs: [suite, screens, scope, native, zizmor, ste-lint, milestone-due]
+    needs: [suite, screens, scope, native, zizmor, checks, milestone-due]
     if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
@@ -324,7 +324,7 @@ jobs:
   # wakes the session that watches the PR. A green run posts nothing. Keep needs: on every other job.
   # A draft run posts nothing, because its jobs skip on purpose.
   ci-done:
-    needs: [suite, screens, scope, native, zizmor, ste-lint, milestone-due, all-jobs-passed]
+    needs: [suite, screens, scope, native, zizmor, checks, milestone-due, all-jobs-passed]
     if: ${{ !cancelled() && !github.event.pull_request.draft && github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5

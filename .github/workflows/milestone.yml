@@ -5,7 +5,7 @@
 #
 # This workflow runs on main by dispatch only, never on push or schedule. The merge tool refuses a
 # merge when the newest completed main run of any workflow file is red, and a later green run of
-# another trigger must never hide a red one. The milestone-due job in test.yml dispatches it once its
+# another trigger must never hide a red one. The milestone-due job in checks.yml dispatches it once its
 # MILESTONE_AUTO_DISPATCH is on. Until then, do not dispatch by hand before the known reds clear:
 # a red run stops every merge through the merge tool (coordinator ruling 2026-11-01 23:00).
 # It stays dispatch-only until its first green run (coordinator ruling 2026-11-01 22:44).
