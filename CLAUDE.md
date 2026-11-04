@@ -12,7 +12,7 @@ across every seller, which answers "did all four arrive" and carries the cost
 basis. **Orphaned** holds a package that arrives with no way to tell who sent it.
 
 The app presents itself as MANIFEST. The project name, the repo name and the
-storage namespace do not follow the masthead. See `masthead-is-not-project-name`.
+storage namespace do not follow the masthead. See `masthead-is-not-project-name` (the masthead is not the project name).
 
 ## How to read this file
 
@@ -34,8 +34,8 @@ carries its shape. Every invariant names the test that pins it. Every decision
 holds a Holds-while line, every open thread a Status line, and the index lists
 no slug twice. Every debt holds a Status line and a Decision line.
 
-An open question carries a `**Status:**` line. That line is the only thing that
-separates a question still open from a ruling already settled, so keep it.
+A `**Status:**` line's value says whether a question is `open`, `ruled` or `retired`.
+`npm run check:records` requires the line on every open thread and every debt, so keep it.
 
 ## Working here
 
@@ -240,6 +240,6 @@ npm run serve          # a local server on :4173
 ios-ship testflight tools/ios-ship.json --app Manifest  # iOS: Release archive, then upload to TestFlight
 ```
 
-The steps and the traps live in `build-and-deploy`. The rules are claude-settings
+The steps and the traps live in `build-and-deploy` (build, test and deploy commands). The rules are claude-settings
 `git-main-only-by-pr` (main moves by pull request) and local record `main-moves-only-by-pr`
 (the required check), so `deploy` opens a PR rather than pushing.
