@@ -3,7 +3,7 @@ paths:
   - "native/**"
   - "shared/**"
   - "tools/ios-ship.json"
-  - ".github/workflows/test.yml"
+  - ".github/workflows/checks.yml"
   - "scripts/send-key.mjs"
   - "scripts/gen-golden.mjs"
   - "src/*-rules.mjs"
