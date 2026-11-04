@@ -359,7 +359,7 @@ async function readRuns(answers) {
   const body = {
     workflow_runs: [
       apiRun({ created_at: ago(42), head_sha: sha("c") }),
-      apiRun({ path: ".github/workflows/test.yml", head_sha: sha("d") }),
+      apiRun({ path: ".github/workflows/checks.yml", head_sha: sha("d") }),
       apiRun({ path: ".github/workflows/milestone-old.yml", head_sha: sha("e") }),
     ],
   };
