@@ -397,5 +397,5 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `palette-contrast` | Palette token contrast ratios | [`measurements/palette-contrast.md`](../measurements/palette-contrast.md) |
 | `ruled-head-heights` | Ruled head control region heights | [`measurements/ruled-head-heights.md`](../measurements/ruled-head-heights.md) |
 | `suite-size` | Test suite assertion count and run time | [`measurements/suite-size.md`](../measurements/suite-size.md) |
-| `switch-thirds-and-seal` | View switch, seal, and tally headroom | [`measurements/switch-thirds-and-seal.md`](../measurements/switch-thirds-and-seal.md) |
+| `switch-thirds-and-seal` | Seal and tally headroom; the view-switch readings are retired. | [`measurements/switch-thirds-and-seal.md`](../measurements/switch-thirds-and-seal.md) |
 | `sync-latency` | Sync delay from a tap on one device to the row on the other | [`measurements/sync-latency.md`](../measurements/sync-latency.md) |
