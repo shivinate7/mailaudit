@@ -35,7 +35,7 @@ holds a Holds-while line, every open thread a Status line, and the index lists
 no slug twice. Every debt holds a Status line and a Decision line.
 
 A `**Status:**` line's value says whether a question is `open`, `ruled` or `retired`.
-`npm run check:records` requires the line on every open thread and every debt, so keep it.
+`npm run check:records` requires the line on every record under Open threads, so keep it.
 
 ## Working here
 
