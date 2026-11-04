@@ -4,7 +4,7 @@ Every push before the switch created a commit, so the frozen `data` branch holds
 
 **Holds while:** `listVersions` and `getVersion` in `src/entry.jsx` read the `ledger.json` history on the `data` branch, and `mailaudit-data` is PRIVATE on GitHub.
 
-`listVersions` and `getVersion` are both reads. They spend nothing from the 500-content-writes/hour budget. Both need the device key, because the data repository is private. Groups 39 and 41.
+`listVersions` and `getVersion` are both reads. They spend nothing from the 500-content-writes/hour budget. Both need a GitHub token, because the data repository is private. No device holds one now, so these reads are unproven (docs/todo.md). Groups 39 and 41.
 
 Restoring one is covered in `every-restore-passes-applybackup`. The restore lands on this device. The sync POST then sends it to the Worker about 3 seconds later, and the frozen `data` branch takes no new commit. See `a-restore-is-not-local`.
 
