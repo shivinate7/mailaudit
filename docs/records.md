@@ -239,7 +239,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `testing-pull-payload-eq-void` | A pull makes the local ledger identical to the remote one. | [`docs/decisions/testing-pull-payload-eq-void.md`](../docs/decisions/testing-pull-payload-eq-void.md) |
 | `testing-surviving-mutant` | A surviving mutant shows that the fixtures never reach the state where the bug matters. | [`docs/decisions/testing-surviving-mutant.md`](../docs/decisions/testing-surviving-mutant.md) |
 | `testing-throwing-assert-bad-kill` | A test that throws on a mutant is worse than one that fails cleanly. | [`docs/decisions/testing-throwing-assert-bad-kill.md`](../docs/decisions/testing-throwing-assert-bad-kill.md) |
-| `the-write-budget-is-shared` | **Status:** open. | [`docs/decisions/the-write-budget-is-shared.md`](../docs/decisions/the-write-budget-is-shared.md) |
 | `unit-rate-is-not-the-position` | The collapsed Tally row shows the **unit rate**, not the basis. | [`docs/decisions/unit-rate-is-not-the-position.md`](../docs/decisions/unit-rate-is-not-the-position.md) |
 | `unwritable-store-says-so` | When IndexedDB cannot be written, every version save must fail visibly. | [`docs/decisions/unwritable-store-says-so.md`](../docs/decisions/unwritable-store-says-so.md) |
 | `upload-zone-opens-when-empty` | The upload zone opens when the user asks for it. | [`docs/decisions/upload-zone-opens-when-empty.md`](../docs/decisions/upload-zone-opens-when-empty.md) |

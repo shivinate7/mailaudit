@@ -17,4 +17,3 @@ Plan: docs/decisions/sync-revamp-cloudflare.md#web-plan (web)
 ## See also
 
 - `photo-sync-cannot-conflict` — the same one-file-per-photo design this permanence follows from
-- `the-write-budget-is-shared` — the request budget a delete path would also spend

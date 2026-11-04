@@ -88,7 +88,6 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 - `photos-in-git-are-permanent` — Photos are permanent in git and in the Worker.
 - `ledger-private-source-public` — The ledger repo is private, the source repo is public.
 - `token-sits-on-shared-origin` — The device key sits on a shared origin.
-- `the-write-budget-is-shared` — The write budget is shared with the ledger push.
 - `vendor-toggle-undecided` — The vendor toggle stays undecided.
 - `merge-later-change-wins` — Clock skew can pin a merge key. Accepted risk.
 
