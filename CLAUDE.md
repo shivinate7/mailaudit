@@ -41,10 +41,10 @@ separates a question still open from a ruling already settled, so keep it.
 
 One local lesson, because this repo paid for it: the argument that "the ledger repo
 is public" stayed the load-bearing reason for a design long after the repo went
-private. The rules that cover it: `outcomes-decision-is-argument` (a recorded decision
-is an argument, not a law), `outcomes-stale-decision-protocol` (name the stale record,
-propose a fix), `verification-verify-against-repo` (verify long work against the repo,
-not your status line).
+private. Verify a claim in this file against the repo before you rely on it. The
+claude-settings rules that cover it: `outcomes-decision-is-argument` (decisions as
+arguments), `outcomes-stale-decision-protocol` (the stale-decision steps) and
+`verification-report-unknown-reads` (check a document's own claims).
 
 ## Invariants
 
@@ -240,5 +240,6 @@ npm run serve          # a local server on :4173
 ios-ship testflight tools/ios-ship.json --app Manifest  # iOS: Release archive, then upload to TestFlight
 ```
 
-The steps and the traps live in `build-and-deploy`. The rule is `git-main-only-by-pr`
-(main moves by pull request), so `deploy` opens one rather than pushing.
+The steps and the traps live in `build-and-deploy`. The rules are claude-settings
+`git-main-only-by-pr` (main moves by pull request) and local record `main-moves-only-by-pr`
+(the required check), so `deploy` opens a PR rather than pushing.

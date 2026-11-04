@@ -5,8 +5,8 @@ paths:
 
 # Rules
 
-Folder-only rules live here, one file per topic (`tokens-folder-rules-load-by-path`:
-path-scoped rules). Its front matter holds a `paths:` list of globs.
+Folder-only rules live here, one file per topic, named for it (claude-settings rule
+`tokens-folder-rules-load-by-path`). Each file's front matter holds a `paths:` list of globs.
 
 Four files exist now. Each file's `paths:` list is the only home of its globs.
 
