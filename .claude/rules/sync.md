@@ -35,7 +35,6 @@ Sync runs itself. These records say what it refuses to do, and why each refusal 
 - `peek-is-three-valued` — Retired: the app no longer calls peek.
 - `listphotos-is-three-valued` — listPhotos is three-valued too.
 - `offline-is-decided-by-fetch` — Offline is decided by a failed fetch.
-- `pull-needs-a-key-too` — A pull needs the same key.
 - `stale-push-conflict-pull-two-tap` — Retired: the stale-push merge ran on the GitHub mirror.
 - `merge-carries-no-two-tap-arm` — Merge runs unattended, with no two-tap arm.
 - `max-cannot-express-an-uncheck` — A per-key time lets an un-check beat an older check.
@@ -44,7 +43,6 @@ Sync runs itself. These records say what it refuses to do, and why each refusal 
 - `merge-readopts-sync-generation` — A merge re-adopts the sync generation.
 - `push-flash-waits-for-photos` — Retired 2026-10-12: the Pushed flash has no control.
 - `remote-sync-is-off-the-save-path` — Remote sync never touches the save indicator.
-- `fine-grained-token-single-repo` — One fine-grained token, scoped to one repo.
 - `token-lives-outside-namespace` — The access token and the device key sit outside the storage namespace.
 - `one-repo-for-both-halves` — The source repo is public and holds no data.
 - `data-branch-setup` — The data branch is frozen ledger history, not a scratch file.

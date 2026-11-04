@@ -1,6 +1,6 @@
 # Records hold current text only
 
-A record states what is true now, in the fewest words. When a ruling changes, the record is rewritten in place, and git keeps the old text. Records used to carry their original CLAUDE.md wording in a fence. The lint skipped that text, so it was never checked, and a reader had to tell old wording from current. The owner ruled the fences out on 2026-10-10.
+A record states what is true now, in the fewest words. When a ruling changes, the record is rewritten in place, and git keeps the old text. Records used to carry their original CLAUDE.md wording in a fence. The lint skipped that text, so it was never checked, and a reader had to tell old wording from current. The owner ruled the fences out on 2026-10-10. A retired record carries an undated `**Status:** retired.` line after its H1, and its first sentence says what is true now (owner, 2026-11-04, Cockpit item 191 b).
 
 Kind: process
 

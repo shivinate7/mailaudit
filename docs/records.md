@@ -13,18 +13,23 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `auto-push-safe-as-merge-exists` | **Status:** retired 2026-10-14. | [`docs/decisions/auto-push-safe-as-merge-exists.md`](../docs/decisions/auto-push-safe-as-merge-exists.md) |
 | `data-branch-setup` | The `data` branch in `mailaudit-data` already exists. | [`docs/decisions/data-branch-setup.md`](../docs/decisions/data-branch-setup.md) |
 | `debts-hold-known-gaps` | Each known gap is one file under `docs/debts/`, with a Status line and a Decision line. | [`docs/decisions/debts-hold-known-gaps.md`](../docs/decisions/debts-hold-known-gaps.md) |
+| `fine-grained-token-single-repo` | **Status:** retired. | [`docs/decisions/fine-grained-token-single-repo.md`](../docs/decisions/fine-grained-token-single-repo.md) |
 | `history-sync-close-each-other` | Kind: process | [`docs/decisions/history-sync-close-each-other.md`](../docs/decisions/history-sync-close-each-other.md) |
 | `ledger-and-photos-share-a-repo` | The private repo `mailaudit-data` holds the frozen ledger history on branch `data`. | [`docs/decisions/ledger-and-photos-share-a-repo.md`](../docs/decisions/ledger-and-photos-share-a-repo.md) |
+| `ledger-private-source-public` | **Status:** open. | [`docs/decisions/ledger-private-source-public.md`](../docs/decisions/ledger-private-source-public.md) |
 | `ledger-tab-holds-options` | Kind: process | [`docs/decisions/ledger-tab-holds-options.md`](../docs/decisions/ledger-tab-holds-options.md) |
 | `merge-carries-no-two-tap-arm` | Kind: process | [`docs/decisions/merge-carries-no-two-tap-arm.md`](../docs/decisions/merge-carries-no-two-tap-arm.md) |
 | `native-files-are-frozen` | Kind: process | [`docs/decisions/native-files-are-frozen.md`](../docs/decisions/native-files-are-frozen.md) |
 | `newer-features-test-proof-only` | Kind: process | [`docs/decisions/newer-features-test-proof-only.md`](../docs/decisions/newer-features-test-proof-only.md) |
+| `nothing-recovers-without-the-key` | **Status:** open. | [`docs/decisions/nothing-recovers-without-the-key.md`](../docs/decisions/nothing-recovers-without-the-key.md) |
 | `older-versions-come-off-branch` | Every push before the switch created a commit, so the frozen `data` branch holds a full archive of past ledgers. | [`docs/decisions/older-versions-come-off-branch.md`](../docs/decisions/older-versions-come-off-branch.md) |
+| `one-repo-for-both-halves` | The source repository, `mailaudit`, is public and holds no data. | [`docs/decisions/one-repo-for-both-halves.md`](../docs/decisions/one-repo-for-both-halves.md) |
 | `one-simulator-per-mac` | Kind: process | [`docs/decisions/one-simulator-per-mac.md`](../docs/decisions/one-simulator-per-mac.md) |
 | `peek-is-three-valued` | **Status:** retired 2026-10-14. | [`docs/decisions/peek-is-three-valued.md`](../docs/decisions/peek-is-three-valued.md) |
 | `photo-branch-must-preexist` | Photos lived on the `main` branch of `mailaudit-data`, in `photos/`. | [`docs/decisions/photo-branch-must-preexist.md`](../docs/decisions/photo-branch-must-preexist.md) |
 | `photo-errors-never-hit-pushstate` | Kind: process | [`docs/decisions/photo-errors-never-hit-pushstate.md`](../docs/decisions/photo-errors-never-hit-pushstate.md) |
 | `photo-writes-wait-one-second` | **Status:** retired 2026-10-14. | [`docs/decisions/photo-writes-wait-one-second.md`](../docs/decisions/photo-writes-wait-one-second.md) |
+| `pull-needs-a-key-too` | **Status:** retired. | [`docs/decisions/pull-needs-a-key-too.md`](../docs/decisions/pull-needs-a-key-too.md) |
 | `push-and-merge-guard-differently` | **Status:** retired 2026-10-14. | [`docs/decisions/push-and-merge-guard-differently.md`](../docs/decisions/push-and-merge-guard-differently.md) |
 | `push-flash-waits-for-photos` | Kind: process | [`docs/decisions/push-flash-waits-for-photos.md`](../docs/decisions/push-flash-waits-for-photos.md) |
 | `pushforce-sha-only-after-write` | **Status:** retired 2026-10-14. | [`docs/decisions/pushforce-sha-only-after-write.md`](../docs/decisions/pushforce-sha-only-after-write.md) |
@@ -33,6 +38,9 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `stale-push-conflict-pull-two-tap` | **Status:** retired 2026-10-14. | [`docs/decisions/stale-push-conflict-pull-two-tap.md`](../docs/decisions/stale-push-conflict-pull-two-tap.md) |
 | `sync-runs-itself` | Sync runs itself, and there is no toggle. | [`docs/decisions/sync-runs-itself.md`](../docs/decisions/sync-runs-itself.md) |
 | `testing-unfailable-assert-decor` | Kind: process | [`docs/decisions/testing-unfailable-assert-decor.md`](../docs/decisions/testing-unfailable-assert-decor.md) |
+| `the-token-used-to-span-two-repos` | **Status:** retired. | [`docs/decisions/the-token-used-to-span-two-repos.md`](../docs/decisions/the-token-used-to-span-two-repos.md) |
+| `token-field-is-sixteen-pixels` | The sync key field is set at 16px. | [`docs/decisions/token-field-is-sixteen-pixels.md`](../docs/decisions/token-field-is-sixteen-pixels.md) |
+| `token-sits-on-shared-origin` | **Status:** open. | [`docs/decisions/token-sits-on-shared-origin.md`](../docs/decisions/token-sits-on-shared-origin.md) |
 | `two-device-merge-proven-first` | **Status:** retired 2026-10-14. | [`docs/decisions/two-device-merge-proven-first.md`](../docs/decisions/two-device-merge-proven-first.md) |
 | `watchdog-catches-silent-failure` | **Status:** retired. | [`docs/decisions/watchdog-catches-silent-failure.md`](../docs/decisions/watchdog-catches-silent-failure.md) |
 | `watchdog-lives-in-private-repo` | **Status:** retired. | [`docs/decisions/watchdog-lives-in-private-repo.md`](../docs/decisions/watchdog-lives-in-private-repo.md) |
@@ -126,7 +134,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `every-restore-passes-applybackup` | The file restore and the GitHub pull both pass through one function, `applyBackup()`. | [`docs/decisions/every-restore-passes-applybackup.md`](../docs/decisions/every-restore-passes-applybackup.md) |
 | `favicon-is-a-different-drawing` | A browser tab renders the favicon at 16 CSS px. | [`docs/decisions/favicon-is-a-different-drawing.md`](../docs/decisions/favicon-is-a-different-drawing.md) |
 | `file-protocol-works-locally` | Opening `index.html` straight off disk works. | [`docs/decisions/file-protocol-works-locally.md`](../docs/decisions/file-protocol-works-locally.md) |
-| `fine-grained-token-single-repo` | Each device gets its own named fine-grained personal access token. | [`docs/decisions/fine-grained-token-single-repo.md`](../docs/decisions/fine-grained-token-single-repo.md) |
 | `harness-boot-seeds-remote-late` | `boot()` seeds `opts.remote` after the app mounts. | [`docs/decisions/harness-boot-seeds-remote-late.md`](../docs/decisions/harness-boot-seeds-remote-late.md) |
 | `harness-drives-resume-by-event` | Tests drive auto-push and the resume by dispatching events. | [`docs/decisions/harness-drives-resume-by-event.md`](../docs/decisions/harness-drives-resume-by-event.md) |
 | `harness-drives-the-controls` | The ruled head replaced the native select and the chip disclosures. | [`docs/decisions/harness-drives-the-controls.md`](../docs/decisions/harness-drives-the-controls.md) |
@@ -140,7 +147,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `invariants-cited-by-slug` | A record or a code comment cites an invariant by its slug, such as `parser-filters`, and never by a number. | [`docs/decisions/invariants-cited-by-slug.md`](../docs/decisions/invariants-cited-by-slug.md) |
 | `itp-may-clear-storage` | **Status:** open. | [`docs/decisions/itp-may-clear-storage.md`](../docs/decisions/itp-may-clear-storage.md) |
 | `label-photos-downscale-to-2000px` | An envelope photo is a snap of the mailing label. | [`docs/decisions/label-photos-downscale-to-2000px.md`](../docs/decisions/label-photos-downscale-to-2000px.md) |
-| `ledger-private-source-public` | **Status:** open. | [`docs/decisions/ledger-private-source-public.md`](../docs/decisions/ledger-private-source-public.md) |
 | `listphotos-is-three-valued` | `listPhotos()` answers in one of two shapes: `{known:true, ids}` or `{known:false, reason}`. | [`docs/decisions/listphotos-is-three-valued.md`](../docs/decisions/listphotos-is-three-valued.md) |
 | `lost-mail-flags-use-order-date` | An untracked, unreceived package gets an amber "may be lost" flag at 14d from the order date. | [`docs/decisions/lost-mail-flags-use-order-date.md`](../docs/decisions/lost-mail-flags-use-order-date.md) |
 | `main-moves-only-by-pr` | Every change reaches `main` through a pull request that passes the required `all-jobs-passed` check. | [`docs/decisions/main-moves-only-by-pr.md`](../docs/decisions/main-moves-only-by-pr.md) |
@@ -167,10 +173,8 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `motion-the-stamp-lands` | The stamp rocks down and settles at its resting angle, instead of blinking into place. | [`docs/decisions/motion-the-stamp-lands.md`](../docs/decisions/motion-the-stamp-lands.md) |
 | `motion-the-switch-is-one-object` | The ruling: the active-view fill is a single element that slides between thirds. | [`docs/decisions/motion-the-switch-is-one-object.md`](../docs/decisions/motion-the-switch-is-one-object.md) |
 | `motion-use-just-became` | Every celebration marks a state that a package can already be in. | [`docs/decisions/motion-use-just-became.md`](../docs/decisions/motion-use-just-became.md) |
-| `nothing-recovers-without-the-key` | **Status:** open. | [`docs/decisions/nothing-recovers-without-the-key.md`](../docs/decisions/nothing-recovers-without-the-key.md) |
 | `null-remote-info-is-not-no-key` | A null `remoteInfo` means that the status has not loaded yet. | [`docs/decisions/null-remote-info-is-not-no-key.md`](../docs/decisions/null-remote-info-is-not-no-key.md) |
 | `offline-is-decided-by-fetch` | The app decides `offline` only by a failed `fetch`, and by nothing else. | [`docs/decisions/offline-is-decided-by-fetch.md`](../docs/decisions/offline-is-decided-by-fetch.md) |
-| `one-repo-for-both-halves` | The source repository, `mailaudit`, is public and holds no data. | [`docs/decisions/one-repo-for-both-halves.md`](../docs/decisions/one-repo-for-both-halves.md) |
 | `one-stamp-per-package` | Each package holds at most one order stamp. | [`docs/decisions/one-stamp-per-package.md`](../docs/decisions/one-stamp-per-package.md) |
 | `orchestrator-may-merge` | Under the session tiers (claude-settings decision session-tiers), the coordinator holds the owner's standing merge grant (claude-settings decision standing-merge-grant). | [`docs/decisions/orchestrator-may-merge.md`](../docs/decisions/orchestrator-may-merge.md) |
 | `orderwand-csv` | This record holds the CSV column list and every quirk found in the user's real OrderWand exports. | [`docs/decisions/orderwand-csv.md`](../docs/decisions/orderwand-csv.md) |
@@ -191,7 +195,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `photo-thumbnails-and-viewer` | Photo thumbnails are 56px squares. | [`docs/decisions/photo-thumbnails-and-viewer.md`](../docs/decisions/photo-thumbnails-and-viewer.md) |
 | `photos-stay-out-of-the-ledger` | Envelope photos live in IndexedDB. | [`docs/decisions/photos-stay-out-of-the-ledger.md`](../docs/decisions/photos-stay-out-of-the-ledger.md) |
 | `progress-bar-accent-then-green` | The progress bar fills with accent violet while it is in progress. | [`docs/decisions/progress-bar-accent-then-green.md`](../docs/decisions/progress-bar-accent-then-green.md) |
-| `pull-needs-a-key-too` | Push needs a fine-grained personal access token. | [`docs/decisions/pull-needs-a-key-too.md`](../docs/decisions/pull-needs-a-key-too.md) |
 | `readme-is-minimal` | The public repo has a short README. | [`docs/decisions/readme-is-minimal.md`](../docs/decisions/readme-is-minimal.md) |
 | `records-name-what-dates-them` | Every decision record carries one line that starts with "**Holds while:**". | [`docs/decisions/records-name-what-dates-them.md`](../docs/decisions/records-name-what-dates-them.md) |
 | `remote-rules-fail-quietly` | Two adapter decisions get their own pure functions, in `src/remote-rules.mjs`. | [`docs/decisions/remote-rules-fail-quietly.md`](../docs/decisions/remote-rules-fail-quietly.md) |
@@ -234,12 +237,9 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `testing-pull-payload-eq-void` | A pull makes the local ledger identical to the remote one. | [`docs/decisions/testing-pull-payload-eq-void.md`](../docs/decisions/testing-pull-payload-eq-void.md) |
 | `testing-surviving-mutant` | A surviving mutant shows that the fixtures never reach the state where the bug matters. | [`docs/decisions/testing-surviving-mutant.md`](../docs/decisions/testing-surviving-mutant.md) |
 | `testing-throwing-assert-bad-kill` | A test that throws on a mutant is worse than one that fails cleanly. | [`docs/decisions/testing-throwing-assert-bad-kill.md`](../docs/decisions/testing-throwing-assert-bad-kill.md) |
-| `the-token-used-to-span-two-repos` | **Status:** closed, by the `mailaudit-data` move. | [`docs/decisions/the-token-used-to-span-two-repos.md`](../docs/decisions/the-token-used-to-span-two-repos.md) |
 | `the-write-budget-is-shared` | **Status:** open. | [`docs/decisions/the-write-budget-is-shared.md`](../docs/decisions/the-write-budget-is-shared.md) |
 | `token-expires-without-warning` | **Status:** open. | [`docs/decisions/token-expires-without-warning.md`](../docs/decisions/token-expires-without-warning.md) |
-| `token-field-is-sixteen-pixels` | The sync key field is set at 16px. | [`docs/decisions/token-field-is-sixteen-pixels.md`](../docs/decisions/token-field-is-sixteen-pixels.md) |
 | `token-lives-outside-namespace` | The GitHub access token lives at the raw localStorage key `mailday-remote:v1`. | [`docs/decisions/token-lives-outside-namespace.md`](../docs/decisions/token-lives-outside-namespace.md) |
-| `token-sits-on-shared-origin` | **Status:** open. | [`docs/decisions/token-sits-on-shared-origin.md`](../docs/decisions/token-sits-on-shared-origin.md) |
 | `unit-rate-is-not-the-position` | The collapsed Tally row shows the **unit rate**, not the basis. | [`docs/decisions/unit-rate-is-not-the-position.md`](../docs/decisions/unit-rate-is-not-the-position.md) |
 | `unwritable-store-says-so` | When IndexedDB cannot be written, every version save must fail visibly. | [`docs/decisions/unwritable-store-says-so.md`](../docs/decisions/unwritable-store-says-so.md) |
 | `upload-zone-opens-when-empty` | The upload zone opens when the user asks for it. | [`docs/decisions/upload-zone-opens-when-empty.md`](../docs/decisions/upload-zone-opens-when-empty.md) |
@@ -382,7 +382,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `parser-filters` | Parser keeps only TCG purchases | [`invariants/parser-filters.md`](../invariants/parser-filters.md) |
 | `saved-state-shape` | Saved-state shape is fixed | [`invariants/saved-state-shape.md`](../invariants/saved-state-shape.md) |
 | `storage-keys-are-frozen` | Storage keys are frozen | [`invariants/storage-keys-are-frozen.md`](../invariants/storage-keys-are-frozen.md) |
-| `the-token-is-a-credential` | The GitHub token and the device key are credentials | [`invariants/the-token-is-a-credential.md`](../invariants/the-token-is-a-credential.md) |
+| `the-token-is-a-credential` | The device key and any stored GitHub token are credentials | [`invariants/the-token-is-a-credential.md`](../invariants/the-token-is-a-credential.md) |
 
 ## Measurements
 

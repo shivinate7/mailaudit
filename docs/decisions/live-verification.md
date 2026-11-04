@@ -77,7 +77,7 @@ No test runs the Durable Object adapter. So the SQLite calls in worker/index.mjs
 ## See also
 
 - `peek-is-three-valued`, the design confirmed live in this file.
-- `pull-needs-a-key-too`, why every device needs a token for reads too.
+- `pull-needs-a-key-too`, retired, the GitHub token that reads once needed.
 - `pushforce-sha-only-after-write`, the bug this file's coverage gap describes.
 - `watchdog-catches-silent-failure`, the alarm mentioned in the setup steps.
 
