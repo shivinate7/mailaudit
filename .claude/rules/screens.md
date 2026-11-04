@@ -71,9 +71,9 @@ The control region is the masthead's own vocabulary continued. Read these before
 - `ruled-head-resume-is-reopening` — A resume counts as reopening.
 - `ruled-head-masthead-vocabulary` — The ruled head continues the masthead.
 - `ruled-head-one-advisory-entrance` — One advisory line leads to the Sync group.
-- `ruled-head-panels-carry-no-fill` — Overlay panels take the paper fill.
+- `ruled-head-panels-carry-no-fill` — Default, not built: overlay panels take the paper fill (debt `panel-paper-fill-unbuilt`).
 - `ruled-head-showing-unreceived` — Showing starts on unreceived every load.
-- `ruled-head-hand-elapsed-forward` — Hand the elapsed time forward, never re-derive it.
+- `ruled-head-hand-elapsed-forward` — Retired 2026-10-14: the peek check it fed left the app. The lesson stands.
 - `ruled-head-range-picked` — The custom date range is picked, not typed.
 - `ruled-head-stale-clock-agreement` — The staleness clock measures agreement, not writes.
 - `date-filter-spans-ledger-views` — The date filter applies to both ledger views.
@@ -95,7 +95,7 @@ The register is stationery, not software. One rule governs all of it: nothing ma
 - `motion-a-card-opens-in-order` — A card lays its rows down in order.
 - `motion-completed-package-gilded` — A completed package is gilded, not badged.
 - `motion-collapse-not-animated` — Collapsing a card runs with no animation.
-- `motion-disclosure-panels-arrive` — Disclosure panels overlay the list and do not push it.
+- `motion-disclosure-panels-arrive` — Ruled, not built: disclosure panels overlay the list (debt `panels-overlay-unbuilt`).
 - `motion-stationery-not-software` — Motion reads as stationery, not software.
 - `motion-method-side-by-side-proof` — Each motion was chosen by looking, not by reading.
 - `motion-nothing-may-reflow` — No animation can cause a reflow.
@@ -130,3 +130,12 @@ Where the page holds its shape, and where every colour comes from.
 - `palette-tokens-contrast-floor` — Every colour token meets a contrast floor.
 - `progress-bar-accent-then-green` — The progress bar is accent, then green at 100%.
 - `typography-cochin-and-mono` — Cochin sets words, monospace sets numbers.
+
+## Measurements
+
+- `card-reserved-geometry` — Card reserved geometry heights.
+- `masthead-foot-slot` — Masthead foot save-slot width.
+- `motion-timings` — Motion sheet durations and beats.
+- `palette-contrast` — Palette token contrast ratios.
+- `ruled-head-heights` — Ruled head control region heights.
+- `switch-thirds-and-seal` — Seal and tally headroom; the view-switch readings are retired.

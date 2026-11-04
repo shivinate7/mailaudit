@@ -1,4 +1,4 @@
-# CI compiles no app, because the app needs the iOS 27.1 SDK
+# No pull-request CI job compiles the app; the milestone build has no green run yet.
 
 **What.** No CI job compiles the native app. `native/Manifest/DuoSpine.swift` calls iOS 27.1 APIs. The hosted `macos-26` image holds Xcode 26.6 and SDK 26.5, with no Xcode 27 app and no iOS 27 SDK (see `native-runner-image-unverified`). An `app-build` job on that image would go red on every run. The native job runs the `swift test` package tests only, so a break in the app target shows only in a local build on the Mac.
 

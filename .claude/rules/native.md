@@ -30,7 +30,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-ci-on-hosted-macos` — The native job runs on a hosted macOS runner.
 - `csv-import-stays-web` — CSV import stays on the web app.
 - `one-simulator-per-mac` — Simulator boots and load follow the global machine rules.
-- `native-ships-via-testflight` — The iOS app ships through TestFlight.
+- `native-ships-via-testflight` — The iOS app ships Mac first, TestFlight as the fallback.
 - `duo-card-in-hand` — On the iPhone Duo, Card in Hand checks cards in by name.
 - `audit-skips-measured-flags` — The native audits skip only named, owner-ruled findings.
 
@@ -68,7 +68,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-masthead-axl-clips` — The native masthead wraps and clips at accessibility text sizes.
 - `native-stamp-load-unmeasured` — The native Packages load with stamps is unmeasured.
 - `native-armed-audit-misses-ask` — The native armed stamp audit cannot see the ask.
-- `app-build-waits-xcode-27` — CI compiles no app, because the app needs the iOS 27.1 SDK.
+- `app-build-waits-xcode-27` — No pull-request CI job compiles the app; the milestone build has no green run yet.
 - `native-card-gestures-unpinned` — No UI test pins the native card header gestures.
 - `native-card-state-in-swift` — The native card copies the line and package done rules in Swift.
 - `native-sync-tally-rules-in-swift` — The native Sync panel and Tally row copy six view rules in Swift.
@@ -106,3 +106,8 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-discard-panel-covers-head` — The native armed Discard panel covers the envelope header.
 - `native-axl-rows-break` — Three native rows break at accessibility text sizes.
 - `sim-test-diagnose-and-pin` — sim-test runs simctl diagnose and can pick the Duo.
+
+## Measurements
+
+- `duo-fold-and-keyboard` — Fold strip, keyboard frame and outer screen on the iPhone Duo simulator.
+- `native-card-load-time` — Native Packages load time on 600 packages.
