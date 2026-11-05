@@ -17,8 +17,8 @@
 //   8  the screens job needs scope, and its job-level if: reads no .outputs.
 //   9  ci-alarm.yml triggers are schedule (one cron, after checks.yml's nightly cron)
 //      and workflow_dispatch, nothing else;
-//  10  its permissions are exactly actions: read and issues: write, at job or
-//      workflow level;
+//  10  its permissions are exactly actions: read, contents: read and issues: write,
+//      at job or workflow level;
 //  11  its one job has one step, which uses the shared ci-alarm action at the shared
 //      pin, with no checkout and a timeout-minutes;
 //  12  every claude-settings pin in every .github/workflows/*.yml names ACTION_PIN,
@@ -384,7 +384,7 @@ function stampCheck(text) {
 // one home, so the alarm keeps running after it when that cron moves.
 const ALARM_WHAT = {
   9: "ci-alarm.yml triggers are schedule (one cron, after checks.yml's nightly cron) and workflow_dispatch, nothing else",
-  10: "ci-alarm.yml permissions are exactly actions: read and issues: write, at job or workflow level",
+  10: "ci-alarm.yml permissions are exactly actions: read, contents: read and issues: write, at job or workflow level",
   11: "ci-alarm.yml has one job with one step, which uses the shared ci-alarm action at the shared pin, with no checkout and a timeout-minutes",
 };
 const CRON_TIME = /^(\d{1,2}) (\d{1,2}) \* \* \*$/;
@@ -436,7 +436,11 @@ function alarmChecks(alarmText, nightlyText) {
   // A job-level permissions map replaces the workflow-level one for that job.
   const perms = job && Object.hasOwn(job, "permissions") ? job.permissions : alarm.permissions;
   const permsOk =
-    isMap(perms) && Object.keys(perms).length === 2 && perms.actions === "read" && perms.issues === "write";
+    isMap(perms) &&
+    Object.keys(perms).length === 3 &&
+    perms.actions === "read" &&
+    perms.contents === "read" &&
+    perms.issues === "write";
   add("10", permsOk, `effective permissions: ${JSON.stringify(perms ?? null)}`);
 
   const steps = Array.isArray(job?.steps) ? job.steps : [];
@@ -1657,6 +1661,7 @@ const GOOD_ALARM = [
   "  workflow_dispatch:",
   "permissions:",
   "  actions: read",
+  "  contents: read",
   "  issues: write",
   "jobs:",
   "  alarm:",
@@ -2260,14 +2265,26 @@ const ALARM_RED = [
   ["push trigger added", mutate(GOOD_ALARM, "  workflow_dispatch:\n", "  push:\n  workflow_dispatch:\n"), NIGHTLY_FIXTURE, "9"],
   ["workflow_dispatch missing", mutate(GOOD_ALARM, "  workflow_dispatch:\n", ""), NIGHTLY_FIXTURE, "9"],
   [
-    "permissions gain contents: read",
-    mutate(GOOD_ALARM, "  issues: write\n", "  issues: write\n  contents: read\n"),
+    "permissions gain pull-requests: read",
+    mutate(GOOD_ALARM, "  issues: write\n", "  issues: write\n  pull-requests: read\n"),
+    NIGHTLY_FIXTURE,
+    "10",
+  ],
+  [
+    "contents is write, not read",
+    mutate(GOOD_ALARM, "  contents: read\n", "  contents: write\n"),
+    NIGHTLY_FIXTURE,
+    "10",
+  ],
+  [
+    "contents permission missing",
+    mutate(GOOD_ALARM, "  contents: read\n", ""),
     NIGHTLY_FIXTURE,
     "10",
   ],
   [
     "permissions are write-all",
-    mutate(GOOD_ALARM, "permissions:\n  actions: read\n  issues: write\n", "permissions: write-all\n"),
+    mutate(GOOD_ALARM, "permissions:\n  actions: read\n  contents: read\n  issues: write\n", "permissions: write-all\n"),
     NIGHTLY_FIXTURE,
     "10",
   ],
@@ -2275,19 +2292,19 @@ const ALARM_RED = [
   ["issues permission missing", mutate(GOOD_ALARM, "  issues: write\n", ""), NIGHTLY_FIXTURE, "10"],
   [
     "permissions are an empty map",
-    mutate(GOOD_ALARM, "permissions:\n  actions: read\n  issues: write\n", "permissions: {}\n"),
+    mutate(GOOD_ALARM, "permissions:\n  actions: read\n  contents: read\n  issues: write\n", "permissions: {}\n"),
     NIGHTLY_FIXTURE,
     "10",
   ],
   [
     "job-level permissions drop issues",
-    mutate(GOOD_ALARM, "    timeout-minutes: 5\n", "    permissions: {actions: read}\n    timeout-minutes: 5\n"),
+    mutate(GOOD_ALARM, "    timeout-minutes: 5\n", "    permissions: {actions: read, contents: read}\n    timeout-minutes: 5\n"),
     NIGHTLY_FIXTURE,
     "10",
   ],
   [
     "flow map repeats a key",
-    mutate(GOOD_ALARM, "permissions:\n  actions: read\n  issues: write\n", "permissions: {actions: read, actions: write, issues: write}\n"),
+    mutate(GOOD_ALARM, "permissions:\n  actions: read\n  contents: read\n  issues: write\n", "permissions: {actions: read, actions: write, issues: write}\n"),
     NIGHTLY_FIXTURE,
     "10",
   ],
@@ -2327,14 +2344,14 @@ for (const [name, text, nightly, id] of ALARM_RED) {
 const ALARM_GREEN = [
   [
     "permissions in flow form",
-    mutate(GOOD_ALARM, "permissions:\n  actions: read\n  issues: write\n", "permissions: {actions: read, issues: write}\n"),
+    mutate(GOOD_ALARM, "permissions:\n  actions: read\n  contents: read\n  issues: write\n", "permissions: {actions: read, contents: read, issues: write}\n"),
   ],
   [
     "permissions at job level only",
     mutate(
-      mutate(GOOD_ALARM, "permissions:\n  actions: read\n  issues: write\n", ""),
+      mutate(GOOD_ALARM, "permissions:\n  actions: read\n  contents: read\n  issues: write\n", ""),
       "    timeout-minutes: 5\n",
-      "    permissions: {actions: read, issues: write}\n    timeout-minutes: 5\n"
+      "    permissions: {actions: read, contents: read, issues: write}\n    timeout-minutes: 5\n"
     ),
   ],
   [
