@@ -2479,7 +2479,7 @@ for (const [name, files] of PIN_GREEN) {
   expect(`fixture good: ${name} passes assertion 12`, off.length === 0, off.join("; "));
 }
 
-// Assertions 13 to 25: the mutation-report job, the needs that gate it, and the known defects it
+// Assertions 13 to 24: the mutation-report job, the needs that gate it, and the known defects it
 // replays. Each check returns { id, label, ok, detail, unknown }. unknown marks a read that could not
 // run (a shallow clone has no whole history to read). It is printed as unknown, never as green.
 const MUTATION_JOB = "mutation-report";
