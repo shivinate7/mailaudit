@@ -9,20 +9,24 @@
 //   A2  two failed of three print `FAIL: 2 of 3 failed`;
 //   A3  control: a green run prints no FAIL line and ends `all green`;
 //   A4  control: a throw prints no FAIL line, and exits nonzero (a crash is not a kill);
-//   B0  test/harness.mjs calls failLine on its red paths;
+//   B0  test/harness.mjs calls failLine;
 //   B1  each suite the profile names imports test/fail-line.mjs and calls failLine, or imports
-//       harness.mjs, whose report() calls it;
+//       harness.mjs, whose code calls it. This proves the import and a call appear together in
+//       each file. It does not prove the call sits on each red exit path;
 //   S   the source scan that B uses reads comment openers in strings, a multi-line template,
-//       a lone quote in text (JSX and comment) and import-looking text in a string correctly;
-//   C1  a suite whose module fails to load prints no line the classifier reads as a kill.
-//
-// The shared helper, test/fail-line.mjs, exports failLine(failed, total), which returns
-// `FAIL: ${failed} of ${total} failed`. Only the call and the import are checked here.
+//       a lone quote in text (JSX, comment, regex) and import-looking or call-looking text in a
+//       string correctly;
+//   C0, C1  a suite whose module fails to load prints no FAIL-prefixed line, so the classifier
+//       reads no kill. milestone-due and worker/core.test.mjs are both refused by a load hook.
+//       The rule is stricter than the summary line alone: any FAIL-prefixed line counts;
+//   D0 to D3  the shared helper, test/fail-line.mjs, exports failLine(failed, total) that returns
+//       `FAIL: ${failed} of ${total} failed`, matches the classifier's regex and the summary
+//       pattern, and prints full-size runs (n equal to m). A missing file is one named red.
 //
 // Run: node test/fail-line.test.mjs. Exits 1 on any failure.
 
 import { spawnSync } from "node:child_process";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { buildSync, transformSync } from "esbuild";
@@ -85,8 +89,10 @@ function scanSource(text, sourcefile = "suite.test.mjs") {
     logLevel: "silent",
   }).metafile;
   const specs = Object.values(meta.inputs).flatMap((i) => i.imports.map((x) => x.path));
+  // esbuild prints string and template literals whole, so a call inside one is blanked before the call check.
+  const blankStrings = code.replace(/"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|`(?:\\.|[^`\\])*`/g, '""');
   return {
-    calls: /\bfailLine\s*\(/.test(code),
+    calls: /\bfailLine\s*\(/.test(blankStrings),
     helper: specs.some((s) => /(^|\/)fail-line\.mjs$/.test(s)),
     harness: specs.some((s) => /(^|\/)harness\.mjs$/.test(s)),
   };
@@ -129,6 +135,26 @@ const SCAN_CASES = [
     `const el = <p>Don't</p>;\nimport { failLine } from "./fail-line.mjs";\nfailLine(1, 2);\n`,
     { helper: true, calls: true, file: "fixture.jsx" },
   ],
+  [
+    "a lone apostrophe in a regex literal does not hide a later call",
+    `const re = /don't/;\nimport { failLine } from "./fail-line.mjs";\nfailLine(1, 2);\n`,
+    { helper: true, calls: true },
+  ],
+  [
+    "a failLine( in a double-quoted string is not a call",
+    `const s = "failLine(1, 2)";\n`,
+    { helper: false, calls: false },
+  ],
+  [
+    "a failLine( in a single-quoted string is not a call",
+    `const s = 'failLine(1, 2)';\n`,
+    { helper: false, calls: false },
+  ],
+  [
+    "a failLine( in a template literal is not a call",
+    "const s = `\nfailLine(1, 2)\n`;\n",
+    { helper: false, calls: false },
+  ],
 ];
 for (const [name, text, want] of SCAN_CASES) {
   const got = scanSource(text, want.file);
@@ -146,7 +172,7 @@ ok(
 );
 
 const harnessScan = scanSource(readFileSync(HARNESS, "utf8"), "harness.mjs");
-ok(harnessScan.calls, "B0 test/harness.mjs calls failLine on its red paths (report and stalled)");
+ok(harnessScan.calls, "B0 test/harness.mjs calls failLine when it reports red");
 
 for (const rel of suites) {
   const s = scanSource(readFileSync(join(ROOT, rel), "utf8"), rel);
@@ -158,25 +184,46 @@ for (const rel of suites) {
   );
 }
 
-// C. A suite whose module cannot load must not print a line the classifier reads as a kill.
-// A load hook refuses scripts/milestone-due.mjs. The hook is passed as data: URLs, so no file is written.
+// C. A suite whose module cannot load must print no FAIL-prefixed line. A load hook refuses the
+// module, passed as a data: URL, so no file is written.
 const dataUrl = (source) => `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`;
-{
+function loadRefusedRun(suite, refused) {
   const loader =
     `export async function load(url, context, nextLoad) {\n` +
-    `  if (url.endsWith("/scripts/milestone-due.mjs")) throw new Error("fixture: refused load");\n` +
+    `  if (url.endsWith(${JSON.stringify(refused)})) throw new Error("fixture: refused load");\n` +
     `  return nextLoad(url, context);\n}\n`;
   const hook = `import { register } from "node:module";\nregister(${JSON.stringify(dataUrl(loader))});\n`;
-  const r = spawnSync(process.execPath, ["--import", dataUrl(hook), "test/milestone-due.test.mjs"], {
+  return spawnSync(process.execPath, ["--import", dataUrl(hook), suite], {
     cwd: ROOT,
     encoding: "utf8",
     timeout: 120000,
   });
+}
+for (const [suite, refused] of [
+  ["test/milestone-due.test.mjs", "/scripts/milestone-due.mjs"],
+  ["worker/core.test.mjs", "/worker/core.mjs"],
+]) {
+  const r = loadRefusedRun(suite, refused);
   ok(
     r.status !== 0 && !r.stdout.includes("all green"),
-    "C0 control: the refused load reaches the suite's load-error path and exits nonzero"
+    `C0 control: ${suite} reaches its load-error path when its module is refused, and exits nonzero`
   );
-  eq(failLines(r.stdout), [], "C1 a suite whose module fails to load prints no line the classifier reads as a kill");
+  eq(failLines(r.stdout), [], `C1 ${suite} prints no FAIL-prefixed line when its module fails to load`);
+}
+
+// D. The shared helper itself. A missing file is one named red, never a crash on import.
+const HELPER = join(ROOT, "test", "fail-line.mjs");
+if (!existsSync(HELPER)) {
+  ok(false, "D0 test/fail-line.mjs is missing");
+} else {
+  const helper = await import(pathToFileURL(HELPER).href);
+  ok(typeof helper.failLine === "function", "D0 test/fail-line.mjs exports failLine");
+  if (typeof helper.failLine === "function") {
+    const line = helper.failLine(1, 2);
+    eq(line, "FAIL: 1 of 2 failed", "D1 failLine(1, 2) returns `FAIL: 1 of 2 failed`");
+    ok(FAIL_LINE.test(line) && SUMMARY.test(line), "D2 the helper's line matches the classifier's FAIL_LINE and the summary pattern");
+    eq(helper.failLine(3, 3), "FAIL: 3 of 3 failed", "D3 full size: failLine(3, 3) returns `FAIL: 3 of 3 failed`");
+  }
 }
 
 report();
