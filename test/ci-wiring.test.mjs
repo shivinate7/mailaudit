@@ -29,14 +29,15 @@
 //  16  an actions/setup-node step with node-version 22 runs before the action;
 //  17  its job-level if: is only the draft guard;
 //  18  it has timeout-minutes, a positive whole number;
-//  19  the rollup needs mutation-report;
-//  20  ci-done needs mutation-report;
-//  21  .github/known-defects.json is a readable, non-empty list;
-//  22  every defect has id, name, file, old, new, argv and classify;
-//  23  every defect's classify is fail_line;
-//  24  every defect's id starts with a 7+ hex short hash of a commit in history. In a shallow
-//      clone the history is not whole, so this one reads unknown, never green;
-//  25  every defect's file is in the repo.
+//  19  ci-done needs mutation-report. The rollup's needs are assertion 4, which already requires
+//      every job it does not exclude, so the job's place in the rollup is not checked twice;
+//  20  .github/known-defects.json is a readable, non-empty list;
+//  21  every defect has id, name, file, old, new, argv and classify;
+//  22  every defect's classify is fail_line;
+//  23  every defect's id starts with a 7+ hex short hash of a commit in history. A shallow clone
+//      cannot read that history, so the check is unknown there, and an unknown read is red in CI
+//      (decision ci-unknown-is-red);
+//  24  every defect's file is in the repo. This one is outside the brief.
 //
 // The milestone workflow (.github/workflows/milestone.yml) and its job in checks.yml
 // are checked the same way, with letter ids:
@@ -2573,10 +2574,8 @@ function needsChecks(text) {
   const out = [];
   const add = (id, what, ok, detail = "") => out.push({ id, label: `${id} ${what}`, ok: Boolean(ok), detail });
   const jobs = parsedJobs(text);
-  const roll = needsIn(jobs, ROLLUP);
   const done = needsIn(jobs, CI_DONE);
-  add("19", `the rollup ${ROLLUP} needs ${MUTATION_JOB}`, roll.includes(MUTATION_JOB), `rollup needs ${JSON.stringify(roll)}`);
-  add("20", `${CI_DONE} needs ${MUTATION_JOB}`, done.includes(MUTATION_JOB), `ci-done needs ${JSON.stringify(done)}`);
+  add("19", `${CI_DONE} needs ${MUTATION_JOB}`, done.includes(MUTATION_JOB), `ci-done needs ${JSON.stringify(done)}`);
   return out;
 }
 
@@ -2590,7 +2589,9 @@ function commitInHistory(prefix, root) {
   return r.status === 0;
 }
 
-function knownDefectChecks(text, root) {
+// readHistory reads the commits even in a shallow clone. Only the fixtures pass it, and they name
+// commits every clone holds (HEAD, and a hash that exists nowhere).
+function knownDefectChecks(text, root, readHistory = false) {
   const out = [];
   const add = (id, what, ok, detail = "", unknown = false) =>
     out.push({ id, label: `${id} ${what}`, ok: Boolean(ok), detail, unknown });
@@ -2607,7 +2608,7 @@ function knownDefectChecks(text, root) {
   const rows = Array.isArray(parsed) ? parsed : [];
   const whose = (pred) => rows.flatMap((e, i) => (pred(e) ? [] : [i]));
 
-  add("21", "known-defects.json is a readable, non-empty list", rows.length > 0, rows.length === 0 ? why : "");
+  add("20", "known-defects.json is a readable, non-empty list", rows.length > 0, rows.length === 0 ? why : "");
 
   const hasFields = (e) =>
     isMap(e) &&
@@ -2617,7 +2618,7 @@ function knownDefectChecks(text, root) {
     e.argv.length > 0 &&
     e.argv.every((a) => typeof a === "string");
   add(
-    "22",
+    "21",
     "each defect has id, name, file, old, new, argv and classify",
     rows.length > 0 && whose(hasFields).length === 0,
     `defects without every field, by index: ${JSON.stringify(whose(hasFields))}`
@@ -2625,28 +2626,28 @@ function knownDefectChecks(text, root) {
 
   const classifyOk = (e) => isMap(e) && e.classify === KD_CLASSIFY;
   add(
-    "23",
+    "22",
     `each defect's classify is ${KD_CLASSIFY}`,
     rows.length > 0 && whose(classifyOk).length === 0,
     `defects with another classify, by index: ${JSON.stringify(whose(classifyOk))}`
   );
 
   const shortHash = (e) => isMap(e) && typeof e.id === "string" && SHORT_HASH.test(e.id);
-  const what24 = "each defect's id starts with a 7+ hex short hash of a commit in history";
+  const what23 = "each defect's id starts with a 7+ hex short hash of a commit in history";
   const badShape = whose(shortHash);
-  const whole = historyWhole(root);
+  const whole = readHistory || historyWhole(root) === true;
   if (rows.length === 0 || badShape.length > 0) {
-    add("24", what24, false, rows.length === 0 ? "no list" : `ids without a short hash, by index: ${JSON.stringify(badShape)}`);
-  } else if (whole !== true) {
-    add("24", what24, true, "the clone is shallow or git cannot say, so the commits are not read", true);
+    add("23", what23, false, rows.length === 0 ? "no list" : `ids without a short hash, by index: ${JSON.stringify(badShape)}`);
+  } else if (!whole) {
+    add("23", what23, true, "the clone is shallow or git cannot say, so the commits are not read", true);
   } else {
     const missing = whose((e) => commitInHistory(e.id.match(SHORT_HASH)[0], root));
-    add("24", what24, missing.length === 0, `ids naming no commit, by index: ${JSON.stringify(missing)}`);
+    add("23", what23, missing.length === 0, `ids naming no commit, by index: ${JSON.stringify(missing)}`);
   }
 
   const fileInRepo = (e) => isMap(e) && typeof e.file === "string" && existsSync(join(root, e.file));
   add(
-    "25",
+    "24",
     "each defect's file is in the repo",
     rows.length > 0 && whose(fileInRepo).length === 0,
     `defects whose file is not in the repo, by index: ${JSON.stringify(whose(fileInRepo))}`
@@ -2654,8 +2655,12 @@ function knownDefectChecks(text, root) {
   return out;
 }
 
-const show = (r) =>
-  r.unknown ? console.log(`unknown ${r.label}${r.detail ? `: ${r.detail}` : ""}`) : expect(r.label, r.ok, r.detail);
+// An unknown read is printed as unknown locally. In CI it is red (decision ci-unknown-is-red).
+const show = (r) => {
+  if (!r.unknown) return expect(r.label, r.ok, r.detail);
+  if (process.env.CI === "true") return expect(r.label, false, `${r.detail} (an unknown read is red in CI)`);
+  console.log(`unknown ${r.label}${r.detail ? `: ${r.detail}` : ""}`);
+};
 
 {
   const wf = readOrNull(WORKFLOW);
@@ -2710,11 +2715,10 @@ const NEEDS_GOOD = [
   "    runs-on: ubuntu-latest",
 ].join("\n") + "\n";
 const NEEDS_RED = [
-  ["the rollup does not need the job", mutate(NEEDS_GOOD, `needs: [suite, ${MUTATION_JOB}]\n`, "needs: [suite]\n"), "19"],
   [
     "ci-done does not need the job",
     mutate(NEEDS_GOOD, `needs: [suite, ${MUTATION_JOB}, ${ROLLUP}]`, `needs: [suite, ${ROLLUP}]`),
-    "20",
+    "19",
   ],
 ];
 for (const [name, text, id] of NEEDS_RED) {
@@ -2723,8 +2727,10 @@ for (const [name, text, id] of NEEDS_RED) {
 }
 for (const r of needsChecks(NEEDS_GOOD)) expect(`fixture good: ${r.label}`, r.ok, r.detail);
 
+// HEAD names a commit every clone holds, so the fixture's history read works in a shallow clone too.
+const HEAD_SHORT = spawnSync("git", ["rev-parse", "--short=7", "HEAD"], { cwd: ROOT, encoding: "utf8" }).stdout.trim();
 const KD_ENTRY = {
-  id: "123d117-fixture",
+  id: `${HEAD_SHORT}-fixture`,
   name: "fixture defect",
   file: "src/sync-rules.mjs",
   old: "x",
@@ -2733,25 +2739,21 @@ const KD_ENTRY = {
   classify: KD_CLASSIFY,
 };
 const kdJson = (entries) => JSON.stringify(entries, null, 2);
-// The history case names a commit that does not exist. It can only be read in a whole clone.
+// The history case names a hash that exists nowhere. The fixtures read history in any clone.
 const KD_RED = [
-  ["the list is empty", kdJson([]), "21", null],
-  ["the file is not JSON", "[", "21", null],
-  ["an entry has no classify", kdJson([{ ...KD_ENTRY, classify: undefined }]), "22", null],
-  ["an entry names another classifier", kdJson([{ ...KD_ENTRY, classify: "node_tap" }]), "23", null],
-  ["an id has no short hash", kdJson([{ ...KD_ENTRY, id: "nothex" }]), "24", null],
-  ["an id names no commit in history", kdJson([{ ...KD_ENTRY, id: "fffffffffff-fixture" }]), "24", "history"],
-  ["a file is not in the repo", kdJson([{ ...KD_ENTRY, file: "src/no-such-file.mjs" }]), "25", null],
+  ["the list is empty", kdJson([]), "20"],
+  ["the file is not JSON", "[", "20"],
+  ["an entry has no classify", kdJson([{ ...KD_ENTRY, classify: undefined }]), "21"],
+  ["an entry names another classifier", kdJson([{ ...KD_ENTRY, classify: "node_tap" }]), "22"],
+  ["an id has no short hash", kdJson([{ ...KD_ENTRY, id: "nothex" }]), "23"],
+  ["an id names no commit in history", kdJson([{ ...KD_ENTRY, id: "fffffffffff-fixture" }]), "23"],
+  ["a file is not in the repo", kdJson([{ ...KD_ENTRY, file: "src/no-such-file.mjs" }]), "24"],
 ];
-for (const [name, text, id, need] of KD_RED) {
-  if (need === "history" && historyWhole(ROOT) !== true) {
-    console.log(`unknown fixture red: ${name}: the clone is shallow or git cannot say`);
-    continue;
-  }
-  const hit = knownDefectChecks(text, ROOT).find((r) => r.id === id);
+for (const [name, text, id] of KD_RED) {
+  const hit = knownDefectChecks(text, ROOT, true).find((r) => r.id === id);
   expect(`fixture red: ${name} fails assertion ${id}`, hit !== undefined && !hit.ok, `assertion ${id}: ${JSON.stringify(hit ?? null)}`);
 }
-for (const r of knownDefectChecks(kdJson([KD_ENTRY]), ROOT)) show({ ...r, label: `fixture good: ${r.label}` });
+for (const r of knownDefectChecks(kdJson([KD_ENTRY]), ROOT, true)) show({ ...r, label: `fixture good: ${r.label}` });
 
 if (failures) {
   console.log(`ci-wiring: ${failures} failure(s)`);
