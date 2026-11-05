@@ -8,7 +8,8 @@
 //   import of a string literal, resolved from the suite's folder).
 // Tier 2: only when tier 1 is empty, suites that call spawn, exec or read and name the path in a
 //   string literal, by its final segment (a path built with join() still counts).
-// test/app.test.mjs is never listed beside a narrower suite. Its only tier-1 reach is a dynamic import.
+// test/app.test.mjs is never listed beside a narrower suite. It reaches a path by a static or a
+// dynamic import; the rule drops it whenever another tier-1 suite is listed.
 //
 // The pure function suitesFor(target, files) takes [{path, text}] and returns the suite paths.
 // The fixture cases below use it with source text in memory, so they need no temp folder. The
@@ -19,7 +20,7 @@
 //
 // Run: node test/tests-for.test.mjs. Exits 1 on any failure.
 
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -49,6 +50,9 @@ const PURE = [
   ["TR7 import-looking text in comments is not an import", T, [["test/t.test.mjs", `// import { a } from "../src/fixture-target.mjs";\n/* import { a } from "../src/fixture-target.mjs"; */\n`]], []],
   ["TR8 a dynamic import of the path is an import", T, [["test/t.test.mjs", IMPORT_DYN]], ["test/t.test.mjs"]],
   ["TR9 a file with the same name in another folder is not the path", T, [["test/t.test.mjs", `import { a } from "../other/fixture-target.mjs";\n`]], []],
+
+  ["TR10 a lone apostrophe in a template literal does not hide a later import", T, [["test/t.test.mjs", "const markup = `<p>Don't</p>`;\n" + IMPORT_STATIC]], ["test/t.test.mjs"]],
+  ["TR11 a lone apostrophe in a regex literal does not hide a later import", T, [["test/t.test.mjs", "const re = /don't/;\n" + IMPORT_STATIC]], ["test/t.test.mjs"]],
 
   // Tier 2 traps: a path named only in a comment, or without a spawn, read or exec call, is not a cover.
   ["T2a a path named only in a comment is not a cover", T, [["test/t.test.mjs", `import { spawnSync } from "node:child_process";\n// spawnSync(process.execPath, ["scripts/fixture-target.mjs"]);\n`]], []],
@@ -99,20 +103,13 @@ for (const [name, target, rows, want] of PURE) {
   eq(mod.suitesFor(target, files), want, name);
 }
 
-// Real-tree cases: the CLI reads the repository. Each expected list is the suites that import or
-// spawn that path today (grep of test/ and worker/), with app dropped where a narrower suite exists.
-const REAL = [
-  ["src/sync-rules.mjs", ["test/send-key.test.mjs"], "app dropped beside send-key, which imports it statically"],
-  ["worker/core.mjs", ["worker/core.test.mjs"], "a dynamic import of ./core.mjs"],
-  ["check-records.mjs", ["test/check-records.test.mjs"], "the CLI spawned with a path built by resolve()"],
-  ["check-docs.mjs", ["test/check-docs.test.mjs"], "the CLI spawned with a path built by resolve()"],
-  ["scripts/send-key.mjs", ["test/send-key.test.mjs"], "tier 2: a path built by join(), spawned"],
-  ["src/remote-rules.mjs", ["test/app.test.mjs"], "app alone imports it, so app is listed"],
-  ["scripts/tests-for.mjs", ["test/tests-for.test.mjs"], "the script prints its own suite"],
-  ["src/no-such-module.mjs", [], "no suite names it, and the exit is still 0"],
-];
+// Real-tree cases: the CLI reads the repository. The targets and expected lists live in
+// test/tests-for-real.json, not in this file. A target named here would make this suite a tier-2
+// cover for that target (it calls spawnSync). Each expected list is the suites that import or spawn
+// that path today, with app dropped where a narrower suite exists.
+const REAL = JSON.parse(readFileSync(join(ROOT, "test", "tests-for-real.json"), "utf8"));
 
-for (const [target, want, why] of REAL) {
+for (const { target, suites: want, why } of REAL) {
   if (!SCRIPT_PRESENT) {
     ok(false, `REAL ${target} (${why}): scripts/tests-for.mjs is missing`);
     continue;
