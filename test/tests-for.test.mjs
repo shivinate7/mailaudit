@@ -6,10 +6,10 @@
 //
 // Tier 1: suites that import the path directly (a static import, an export from, or a dynamic
 //   import of a string literal, resolved from the suite's folder).
-// Tier 2: only when tier 1 is empty, suites that call spawn, exec or read and name the path in a
-//   string literal, by its final segment (a path built with join() still counts).
-// test/app.test.mjs is never listed beside a narrower suite. It reaches a path by a static or a
-// dynamic import; the rule drops it whenever another tier-1 suite is listed.
+// Tier 2: suites that call spawn, exec or read and name the path in a string literal, by its final
+//   segment (a path built with join() still counts). Used only when tier 1 has no suite but app.
+// test/app.test.mjs is listed only when no other suite covers the path at any tier. It reaches a
+// path by a static or a dynamic import, so it is the last resort in both tiers.
 //
 // The pure function suitesFor(target, files) takes [{path, text}] and returns the suite paths.
 // The fixture cases below use it with source text in memory, so they need no temp folder. The
@@ -66,7 +66,7 @@ const PURE = [
   // Tier logic: which tier answers, the app rule, and the order of the answer.
   ["L1 a static import is listed", T, [["test/a.test.mjs", IMPORT_STATIC]], ["test/a.test.mjs"]],
   ["L3 app is dropped beside a narrower suite", T, [["test/app.test.mjs", IMPORT_STATIC], ["test/narrow.test.mjs", IMPORT_STATIC]], ["test/narrow.test.mjs"]],
-  ["L4 app alone is listed when no narrower suite imports the path", T, [["test/app.test.mjs", IMPORT_STATIC]], ["test/app.test.mjs"]],
+  ["L4 app alone is listed when no other suite covers the path at any tier", T, [["test/app.test.mjs", IMPORT_STATIC]], ["test/app.test.mjs"]],
   ["L5 tier 2 is not used when tier 1 names a suite", T, [["test/a.test.mjs", IMPORT_STATIC], ["test/c.test.mjs", SPAWN_NAME]], ["test/a.test.mjs"]],
   ["L6 tier 2 suites are listed in path order", T, [["test/d.test.mjs", SPAWN_NAME], ["test/c.test.mjs", SPAWN_NAME]], ["test/c.test.mjs", "test/d.test.mjs"]],
   ["L7 tier 1 suites are listed in path order, not input order", T, [["test/z.test.mjs", IMPORT_STATIC], ["test/a.test.mjs", IMPORT_STATIC]], ["test/a.test.mjs", "test/z.test.mjs"]],
@@ -75,7 +75,7 @@ const PURE = [
   ["L8c a suite in a nested folder is not listed", T, [["test/nested/x.test.mjs", IMPORT_STATIC]], []],
   ["L8d worker/core.test.mjs is a suite", T, [["worker/core.test.mjs", IMPORT_STATIC]], ["worker/core.test.mjs"]],
   ["L8e a non-suite file with a spawn and a name is not listed", T, [["test/helper.mjs", SPAWN_NAME]], []],
-  ["L9 app alone in tier 1 is listed even with a tier 2 suite, since tier 2 is used only when tier 1 is empty", T, [["test/app.test.mjs", IMPORT_STATIC], ["test/c.test.mjs", SPAWN_NAME]], ["test/app.test.mjs"]],
+  ["L9 app alone in tier 1 is dropped when a tier 2 suite covers the path", T, [["test/app.test.mjs", IMPORT_STATIC], ["test/c.test.mjs", SPAWN_NAME]], ["test/c.test.mjs"]],
   ["L10 an empty file set gives no suite", T, [], []],
   [
     "L11 full size: four importers, app dropped, the rest in path order",
