@@ -37,16 +37,19 @@ let milestoneDue;
 let N;
 let countBase;
 let proofVerdict;
+import { failLine } from "./fail-line.mjs";
 let milestoneRuns;
 try {
   ({ milestoneDue, N, countBase, proofVerdict, milestoneRuns } = await import("../scripts/milestone-due.mjs"));
 } catch (e) {
-  console.log(`FAIL scripts/milestone-due.mjs cannot be loaded (${e.code ?? e.message})`);
+  console.log(`milestone-due.test.mjs: scripts/milestone-due.mjs cannot be loaded (${e.code ?? e.message})`);
   process.exit(1);
 }
 
 let failures = 0;
+let checks = 0;
 function expect(label, cond, detail = "") {
+  checks++;
   if (cond) {
     console.log(`ok   ${label}`);
   } else {
@@ -440,7 +443,7 @@ async function readRuns(answers) {
 }
 
 if (failures) {
-  console.log(`milestone-due: ${failures} failure(s)`);
+  console.log(failLine(failures, checks));
   process.exit(1);
 }
 console.log("milestone-due: all green");

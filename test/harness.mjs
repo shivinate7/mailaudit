@@ -17,6 +17,7 @@ import { syncStatus } from "../src/sync-rules.mjs";
 import { mergeLedger } from "../src/merge-rules.mjs";
 /* the Worker's real size cap, so the mock refuses what the server refuses */
 import { MAX_LEDGER_BYTES, MAX_PHOTO_BYTES } from "../worker/core.mjs";
+import { failLine } from "./fail-line.mjs";
 
 export const ROOT = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -866,7 +867,10 @@ export function report() {
   console.log(`\n${pass} passed, ${fails.length} failed`);
   for (const f of fails) console.log(`  ✗ ${f}`);
   console.log(`live handles: ${live.length ? live.join(", ") : "none"}`);
-  if (fails.length) process.exit(1);
+  if (fails.length) {
+    console.log(failLine(fails.length, pass + fails.length));
+    process.exit(1);
+  }
   console.log("all green");
 }
 
@@ -880,6 +884,7 @@ function stalled(why) {
   fails.push(`${why}; live handles: ${live.length ? live.join(", ") : "none"}`);
   console.log(`\n${pass} passed, ${fails.length} failed`);
   for (const f of fails) console.log(`  ✗ ${f}`);
+  console.log(failLine(fails.length, pass + fails.length));
   process.exit(1);
 }
 /* a run whose last await never settled can end with nothing alive: beforeExit still fires */

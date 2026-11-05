@@ -14,6 +14,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { mergeLedger } from "../src/merge-rules.mjs";
 import { salvageLedger } from "../src/view-rules.mjs";
+import { failLine } from "../test/fail-line.mjs";
 
 /* A missing or broken core fails in one clear line, not a raw stack trace. */
 let route, keyAllowed, wsAuthorized, MAX_LEDGER_BYTES, MAX_PHOTO_BYTES;
@@ -21,20 +22,20 @@ try {
   ({ route, keyAllowed, wsAuthorized, MAX_LEDGER_BYTES, MAX_PHOTO_BYTES } = await import("./core.mjs"));
 } catch (e) {
   console.log(
-    `FAIL worker/core.mjs does not load (expected until the core is built): ${e.message.split("\n")[0]}`
+    `worker/core.test.mjs: worker/core.mjs does not load (expected until the core is built): ${e.message.split("\n")[0]}`
   );
   process.exit(1);
 }
 if (typeof route !== "function") {
-  console.log("FAIL worker/core.mjs does not export route(request, env, store)");
+  console.log("worker/core.test.mjs: worker/core.mjs does not export route(request, env, store)");
   process.exit(1);
 }
 if (typeof MAX_LEDGER_BYTES !== "number") {
-  console.log("FAIL worker/core.mjs does not export MAX_LEDGER_BYTES");
+  console.log("worker/core.test.mjs: worker/core.mjs does not export MAX_LEDGER_BYTES");
   process.exit(1);
 }
 if (typeof keyAllowed !== "function" || typeof wsAuthorized !== "function") {
-  console.log("FAIL worker/core.mjs does not export keyAllowed(key, env) and wsAuthorized(request, env)");
+  console.log("worker/core.test.mjs: worker/core.mjs does not export keyAllowed(key, env) and wsAuthorized(request, env)");
   process.exit(1);
 }
 
@@ -76,7 +77,10 @@ async function test(id, fn) {
 function report() {
   console.log(`\n${pass} passed, ${fails.length} failed`);
   for (const f of fails) console.log(`  ✗ ${f}`);
-  if (fails.length) process.exit(1);
+  if (fails.length) {
+    console.log(failLine(fails.length, pass + fails.length));
+    process.exit(1);
+  }
   console.log("all green");
 }
 

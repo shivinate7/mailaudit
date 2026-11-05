@@ -25,13 +25,16 @@ import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { failLine } from "./fail-line.mjs";
 
 const CHECK =
   process.env.CHECK_RECORDS_SCRIPT ??
   resolve(dirname(fileURLToPath(import.meta.url)), "..", "check-records.mjs");
 
 let failures = 0;
+let checks = 0;
 function expect(label, cond, detail = "") {
+  checks++;
   if (cond) {
     console.log(`ok   ${label}`);
   } else {
@@ -466,7 +469,7 @@ const noRecord = (path) => `${path}: "Decision" names no record and does not say
 }
 
 if (failures) {
-  console.log(`check-records debts: ${failures} failure(s)`);
+  console.log(failLine(failures, checks));
   process.exit(1);
 }
 console.log("check-records debts: all green");

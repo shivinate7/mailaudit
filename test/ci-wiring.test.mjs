@@ -90,6 +90,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { failLine } from "./fail-line.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const WORKFLOW = resolve(ROOT, process.env.CI_WORKFLOW || ".github/workflows/checks.yml");
@@ -1186,7 +1187,9 @@ function uiTestChecks({ makefile, classes, msDoc, msErr }) {
 }
 
 let failures = 0;
+let checks = 0;
 function expect(label, cond, detail = "") {
+  checks++;
   if (cond) {
     console.log(`ok   ${label}`);
   } else {
@@ -2756,7 +2759,7 @@ for (const [name, text, id] of KD_RED) {
 for (const r of knownDefectChecks(kdJson([KD_ENTRY]), ROOT, true)) show({ ...r, label: `fixture good: ${r.label}` });
 
 if (failures) {
-  console.log(`ci-wiring: ${failures} failure(s)`);
+  console.log(failLine(failures, checks));
   process.exit(1);
 }
 console.log("ci-wiring: all green");
