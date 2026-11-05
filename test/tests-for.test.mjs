@@ -18,10 +18,14 @@
 //
 // Every case here is red on a base without the script. A missing script is named, not crashed on.
 //
+// P3 rows: each named line of the selector has a planted mutant. TESTS_FOR_MUTANT=<line> runs this
+// file against that mutant: the named rows and that line's pin go red, and nothing else does.
+//
 // Run: node test/tests-for.test.mjs. Exits 1 on any failure.
 
 import { existsSync, readFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
+import { register } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { ok, eq, report } from "./harness.mjs";
@@ -29,6 +33,39 @@ import { ok, eq, report } from "./harness.mjs";
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SCRIPT = join(ROOT, "scripts", "tests-for.mjs");
 const SCRIPT_PRESENT = existsSync(SCRIPT);
+
+// One planted mutant per named line: the line's anchor text, and the text that replaces it.
+const MUTANTS = {
+  43: ['if (last.t === "id") return REGEX_AFTER_WORD.has(last.v);', 'if (last.t === "id") return true;'],
+  75: [String.raw`while (j < s.length && s[j] !== "\n") {`, "while (j < s.length) {"],
+  81: ['else if (s[j] === "/" && !inClass) break;', 'else if (s[j] === "/" && inClass) break;'],
+  132: ['else if (a.v === "from" && b?.t === "str") specs.push(b.v);', 'else if (a.v === "from" && b.t === "str") specs.push(b.v);'],
+};
+const REAL_TEXT = SCRIPT_PRESENT ? readFileSync(SCRIPT, "utf8") : "";
+const MUT = process.env.TESTS_FOR_MUTANT;
+const MUTANT = MUT !== undefined && Object.hasOwn(MUTANTS, MUT) ? MUT : null;
+const LOADED_TEXT = MUTANT ? REAL_TEXT.replace(...MUTANTS[MUTANT]) : REAL_TEXT;
+ok(MUT === undefined || MUTANT !== null, `P3 env: TESTS_FOR_MUTANT names line 43, 75, 81 or 132 (got ${JSON.stringify(MUT)})`);
+// Each pin checks the text that loads, so a planted mutant reds the pin of its own line.
+for (const [line, [from]] of Object.entries(MUTANTS)) {
+  const onLine = LOADED_TEXT.split("\n")[Number(line) - 1] ?? "";
+  ok(onLine.includes(from) && LOADED_TEXT.split(from).length === 2, `P3 pin line ${line}: the anchor sits on that line, once`);
+}
+
+// The load hook swaps the mutant's anchor for its replacement as the script loads. The hook is data: no file is written.
+function mutantHook(name) {
+  const [from, to] = MUTANTS[name];
+  const src = [
+    "export async function load(url, context, nextLoad) {",
+    "  const out = await nextLoad(url, context);",
+    `  if (!url.endsWith(${JSON.stringify("/scripts/tests-for.mjs")})) return out;`,
+    `  return { ...out, source: String(out.source).replace(${JSON.stringify(from)}, ${JSON.stringify(to)}), shortCircuit: true };`,
+    "}",
+  ].join("\n");
+  return `data:text/javascript;base64,${Buffer.from(src).toString("base64")}`;
+}
+if (MUTANT) register(mutantHook(MUTANT));
+
 // Loaded only when the script exists. A missing file is one named red per case, never an import crash.
 const mod = SCRIPT_PRESENT ? await import(pathToFileURL(SCRIPT).href) : null;
 const SUITES_READY = typeof mod?.suitesFor === "function";
@@ -88,6 +125,12 @@ const PURE = [
     ],
     ["test/a.test.mjs", "test/b.test.mjs", "worker/core.test.mjs"],
   ],
+  // P3: the row named for a line goes red under that line's planted mutant, and no other row does.
+  ["P3 line 43: a division after a name is not a regex", T, [["test/t.test.mjs", "const r = n / d; " + IMPORT_STATIC]], ["test/t.test.mjs"]],
+  ["P3 line 75: a regex that runs to its line end leaves the next import", T, [["test/t.test.mjs", "const n = i++ / 2;\n" + IMPORT_STATIC]], ["test/t.test.mjs"]],
+  ["P3 line 81: a slash inside a class does not end a regex", T, [["test/t.test.mjs", "const re = /[/']/; " + IMPORT_STATIC]], ["test/t.test.mjs"]],
+  ["P3 line 81: the slash after a regex body ends it", T, [["test/t.test.mjs", "const re = /a/; " + IMPORT_STATIC]], ["test/t.test.mjs"]],
+  ["P3 line 132: a file that ends on a bare from name does not throw", T, [["test/t.test.mjs", "const from = 1;\nconst x = from"]], []],
 ];
 
 for (const [name, target, rows, want] of PURE) {
@@ -100,7 +143,14 @@ for (const [name, target, rows, want] of PURE) {
     continue;
   }
   const files = rows.map(([path, text]) => ({ path, text }));
-  eq(mod.suitesFor(target, files), want, name);
+  let got;
+  try {
+    got = mod.suitesFor(target, files);
+  } catch (e) {
+    ok(false, `${name}: suitesFor threw ${e.message}`);
+    continue;
+  }
+  eq(got, want, name);
 }
 
 // Real-tree cases: the CLI reads the repository. The targets and expected lists live in
