@@ -131,6 +131,9 @@ const PURE = [
   ["P3 line 81: a slash inside a class does not end a regex", T, [["test/t.test.mjs", "const re = /[/']/; " + IMPORT_STATIC]], ["test/t.test.mjs"]],
   ["P3 line 81: the slash after a regex body ends it", T, [["test/t.test.mjs", "const re = /a/; " + IMPORT_STATIC]], ["test/t.test.mjs"]],
   ["P3 line 132: a file that ends on a bare from name does not throw", T, [["test/t.test.mjs", "const from = 1;\nconst x = from"]], []],
+
+  // Measured bug (scripts/tests-for.mjs lines 84-85): after an unclosed regex stops at its line end, the next line's first word is skipped as regex flags.
+  ["L12 a misread regex does not eat the next line's import keyword", "test/x.mjs", [["test/t.test.mjs", 'const n = a++ / 2;\nimport "./x.mjs";\n']], ["test/t.test.mjs"]],
 ];
 
 for (const [name, target, rows, want] of PURE) {
