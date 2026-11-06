@@ -7967,10 +7967,16 @@ ok(!hasAction(/Pull from GitHub/), "64.8 and offers no Pull from GitHub to recov
   /* the Recent cell is the button whose label reads exactly "Recent"; its rows sit in the panel after it */
   const recentCellOf = () =>
     [...document.querySelectorAll("span")].find((s) => s.textContent === "Recent")?.closest("button") ?? null;
+  /* the row is found from its ASSIGNED micro-label, the nearest ancestor that holds a row marker, as rowOf
+     does in group 79. rowOf is declared after this block, so the same walk is written here, not called */
   const assignRowText = () => {
     const panel = recentCellOf()?.nextElementSibling;
-    const row = [...(panel?.querySelectorAll("button") ?? [])].find((b) => /ASSIGNED/.test(b.textContent));
-    return row?.textContent ?? "";
+    const label = [...(panel?.querySelectorAll("*") ?? [])].find(
+      (el) => el.childElementCount === 0 && /^ASSIGNED$/.test(el.textContent)
+    );
+    for (let n = label; n && n !== panel; n = n.parentElement)
+      if (/UNDO|CHANGED|NOTHING/.test(n.textContent)) return n.textContent;
+    return "";
   };
   const K = "A1|1|pCounterspell";
   const undoEntries = () => (saved().recent ?? []).filter((e) => e.kind === "undo");
