@@ -7942,6 +7942,106 @@ await settle();
 ok(syncOpenNow(), "64.7 an empty ledger still reaches the device key paste box");
 ok(!hasAction(/Pull from GitHub/), "64.8 and offers no Pull from GitHub to recover with");
 
+/* ── 80. the Recent log across a Reset, and the Undo notice's Undo (decision recent-checks-can-be-undone) ──
+   A Reset ends the merge chain (the entry this session wrote last), so a check made after one is its own
+   entry. The notice's Undo does nothing when its assign row is no longer live: the notice stays up and
+   nothing is written. The group sits before group 79, so it finds the Recent cell and its rows itself
+   rather than using group 79's helpers, which are not defined yet at this point in the file. */
+{
+  await foreground();
+  /* the Packages check control of one card: the check button is a child of the card's row, and the row is
+     the first ancestor of the card's name that holds one */
+  const checkFor = (sellerRe, nameRe) => {
+    const card = packageCard(sellerRe);
+    const nameEl = [...(card?.querySelectorAll("*") ?? [])].find((e) =>
+      [...e.childNodes].some((n) => n.nodeType === 3 && nameRe.test(n.textContent))
+    );
+    for (let n = nameEl; n && n !== card; n = n.parentElement) {
+      const b = [...n.children].find(
+        (c) => c.tagName === "BUTTON" && /^Mark as/.test(c.getAttribute("aria-label") ?? "")
+      );
+      if (b) return b;
+    }
+    return null;
+  };
+  /* the Recent cell is the button whose label reads exactly "Recent"; its rows sit in the panel after it */
+  const recentCellOf = () =>
+    [...document.querySelectorAll("span")].find((s) => s.textContent === "Recent")?.closest("button") ?? null;
+  const assignRowText = () => {
+    const panel = recentCellOf()?.nextElementSibling;
+    const row = [...(panel?.querySelectorAll("button") ?? [])].find((b) => /ASSIGNED/.test(b.textContent));
+    return row?.textContent ?? "";
+  };
+  const K = "A1|1|pCounterspell";
+  const undoEntries = () => (saved().recent ?? []).filter((e) => e.kind === "undo");
+
+  /* 80.1. an uncheck, a Reset, then a check of the same card: the check is logged as its own entry */
+  await boot({ items: ITEMS, received: { [K]: 1 } });
+  /* Showing starts on Unreceived, which hides a checked card, so turn it to Everything to reach the uncheck */
+  await toggleShowing();
+  await goTo("packages");
+  await click(checkFor(/Alpha Cards/, /Counterspell/), "uncheck Counterspell");
+  await sleep(SAVE_WAIT);
+  ok(
+    (saved().recent ?? []).some((e) => e.kind === "count" && e.key === K && e.before === 1 && e.after === 0),
+    "80.1pre the uncheck is logged before the Reset"
+  );
+  await reachFor(/^Reset$/);
+  await click(btn(/^Reset$/), "arm reset");
+  await click(btn(/Tap again to clear \d+ cards?/), "confirm reset");
+  await sleep(SAVE_WAIT);
+  await dropFile(
+    "orders.csv",
+    csv([
+      { "Order Id": "A1", Party: "Alpha Cards", "Product Name": "Counterspell", "Item Number": "1", "Vendor Product Id": "pCounterspell" },
+    ])
+  );
+  ok(/Imported 1 line/.test(text()), "80.1a the same card is imported again after the Reset");
+  await goTo("packages");
+  await click(checkFor(/Alpha Cards/, /Counterspell/), "check Counterspell after the Reset");
+  await sleep(SAVE_WAIT);
+  eq(saved().received?.[K], 1, "80.1b control: the check after the Reset writes the card to 1");
+  ok(
+    (saved().recent ?? []).some((e) => e.kind === "count" && e.key === K && e.before === 0 && e.after === 1),
+    "80.1 after a Reset, the check is logged as its own entry, not merged into the uncheck before it"
+  );
+
+  /* 80.2. the notice's Undo after its assign row has changed since: the tap leaves the notice up, writes nothing */
+  await fresh();
+  await goTo("orphaned");
+  /* a card no package holds stays in the envelope after the assign, so the envelope survives to be edited */
+  await record(["Ponder", "Mystery Card"]);
+  await assign(0);
+  await sleep(SAVE_WAIT);
+  ok(!!btn(/^Undo$/), "80.2pre the assign shows its Undo notice");
+  /* an edit to the envelope the assign left behind moves its time, so the assign row reads CHANGED SINCE */
+  await click(btn(/^Edit$/), "edit the envelope");
+  await type(document.querySelector('input[aria-label="Envelope note"]'), "edited");
+  await click(btn(/^Save changes$/), "save the edit");
+  await sleep(SAVE_WAIT);
+  await onLedger();
+  if (recentCellOf()) await click(recentCellOf(), "open Recent");
+  ok(/CHANGED/.test(assignRowText()), "80.2pre the ASSIGNED row now reads CHANGED SINCE");
+  await goTo("orphaned");
+  const loggedBefore = undoEntries().length;
+  await click(btn(/^Undo$/), "tap the notice's Undo");
+  await sleep(SAVE_WAIT);
+  ok(!!btn(/^Undo$/), "80.2 a refused assign row leaves the Undo notice up after its tap");
+  eq(undoEntries().length, loggedBefore, "80.2a and the tap writes no undo entry");
+
+  /* 80.3. control: a live assign row, undone from the notice, dismisses the notice and logs its undo */
+  await fresh();
+  await goTo("orphaned");
+  await record(["Ponder"]);
+  await assign(0);
+  await sleep(SAVE_WAIT);
+  const assignId = saved().recent?.find((e) => e.kind === "assign")?.id;
+  await click(btn(/^Undo$/), "undo from the notice");
+  await sleep(SAVE_WAIT);
+  ok(!btn(/^Undo$/), "80.3 a live assign row, undone from the notice, dismisses the notice");
+  ok(undoEntries().some((e) => e.of === assignId), "80.3a and it logs the undo of that row");
+}
+
 /* ── 79. the Recent log on the Ledger tab (decision recent-checks-can-be-undone) ──
    Recent is a ledger row, directly above History. It shows while a row can still be undone.
    Its panel follows it on the page. Each row is found by its micro-label, and its Undo control
