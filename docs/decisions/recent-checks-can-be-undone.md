@@ -192,7 +192,7 @@ Each test is red on the old code first (`claims-and-tests-change-together`).
 - A ledger saved before the field loads clean. The merged ledger keeps the field, and it deep-equals the expected list, not merely a truthy value.
 - The Undo notice and the row call one function.
 - An undone row keeps its height, and no row opens while the panel is open. jsdom has no layout, so `npm run check:screens` at 375px proves it (`testing-jsdom-has-no-layout`).
-- The cell's show and hide, when the first live row lands and when the last goes inert, moves no row under the pointer, the last undo with the panel open included (`no-layout-shift-under-pointer`). jsdom has no layout, so `npm run check:screens` at 375px proves it (`testing-jsdom-has-no-layout`).
+- The cell shows when the first live row lands and hides when the last goes inert. Neither moves a row under the pointer, the last undo with the panel open included (`no-layout-shift-under-pointer`). jsdom has no layout, so `npm run check:screens` at 375px proves it (`testing-jsdom-has-no-layout`).
 
 ## Sources
 
