@@ -176,7 +176,7 @@ Neither list holds the other's items. A restore is not a Recent row.
 Debt: `recent-log-unmeasured`.
 
 - The height of a row: 72px at 375px, and a day heading 28px. The list holds at most 360px and scrolls inside. Taken 2026-11-06 in Chromium on the built page.
-- The size of the worst-case log: 200 bulk rows of the seed's largest package (23 lines) are 317,965 bytes, against a seed ledger of 289,309 bytes. No byte cap is built.
+- The size of the worst-case log: 200 bulk rows of the seed's largest package (23 lines) are 317,965 bytes, against a seed ledger of 289,309 bytes. The ledger with that log is near 608 KB, a third of `MAX_LEDGER_BYTES` (1,800,000), so the case is not large and no byte cap is built. Coordinator ruling, 2026-11-06 at 14:47 CST. A byte cap returns if a real synced ledger passes half of `MAX_LEDGER_BYTES`.
 - The four-cell fit at 375px lapsed with the action row.
 
 ## Proof the build must give
