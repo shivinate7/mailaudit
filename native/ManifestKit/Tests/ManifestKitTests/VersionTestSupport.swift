@@ -146,7 +146,7 @@ final class VersionSandbox: @unchecked Sendable {
     var versionsURL: URL { root.appending(path: "versions", directoryHint: .isDirectory) }
 
     init() throws {
-        root = FileManager.default.temporaryDirectory.appending(path: "n9-\(UUID().uuidString)", directoryHint: .isDirectory)
+        root = PhotoTestKit.runFolder.appending(path: "n9-\(UUID().uuidString)", directoryHint: .isDirectory)
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
     }
 
