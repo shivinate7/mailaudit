@@ -3,11 +3,11 @@
 // the bundle's answer on every case in test/removes-cases.json, the file the JS test reads too. It must
 // also ask the bundle it is given, not a Swift copy of the rule (testRemovesAsksTheBundleItIsGiven).
 //
-// Red-first. The bundle has no removesSomething until the builder adds it and runs `npm run build`.
-// Until then each bundle call throws unknownFunction, and each case fails on an XCTFail that says
-// "rule missing". LedgerStore's own answer is green on the old code: it is the control that the cases
-// match what LedgerStore does today. The probe case is red on the old code because removes never reads
-// rulesURL, so it fails on the answer and not on a missing rule.
+// The bundle has removesSomething (rules.js, built by `npm run build`). A missing rule would fail each
+// bundle call with unknownFunction, and each case would fail on an XCTFail that says "rule missing".
+// LedgerStore's own answer is the control that the cases match what LedgerStore does today. The probe
+// case goes red when removes ignores the bundle on its VersionStore: the Swift answer on an empty
+// ledger is false, so it fails on the answer and not on a missing rule.
 //
 // Fake fixtures only. No Keychain item is read.
 
@@ -98,18 +98,22 @@ final class RemovesRuleBundleTests: XCTestCase {
         }
     }
 
-    /// LedgerStore.removes asks the bundle it is given. The probe is the real rules.js plus one override
-    /// that answers true. On an empty ledger the Swift answer is false, so a true here can only come from
-    /// the bundle. The same override pattern is in TallyModelTests.probeBundle.
+    /// LedgerStore.removes asks the bundle on the VersionStore it is given. The probe is the real rules.js
+    /// plus one override that answers true. On an empty ledger the Swift answer is false, so a true here
+    /// can only come from the bundle. The same override pattern is in TallyModelTests.probeBundle.
     func testRemovesAsksTheBundleItIsGiven() throws {
         let real = try String(contentsOf: RulesGoldenTests.bundleURL, encoding: .utf8)
         let probe = PhotoTestKit.runFolder.appending(path: "removes-probe-\(UUID().uuidString).js")
         try (real + "\n;Rules.removesSomething=function(){return true};\n")
             .write(to: probe, atomically: true, encoding: .utf8)
+        let direct = try RulesCore(bundleURL: probe).call("removesSomething", "[{},{}]")
+        XCTAssertEqual(direct, "true", "the probe bundle is not live: removesSomething on an empty pair did not answer true")
+        let versions = VersionStore(
+            directory: PhotoTestKit.runFolder.appending(path: "removes-probe-versions"), now: { 0 }, rulesURL: probe)
         let store = LedgerStore(
-            fileURL: PhotoTestKit.runFolder.appending(path: "ledger.json"), now: { 0 }, rulesURL: probe)
+            fileURL: PhotoTestKit.runFolder.appending(path: "ledger.json"), now: { 0 }, versions: versions)
         store.doc = [:]
         XCTAssertTrue(store.removes([:]),
-                      "LedgerStore.removes answered in Swift, not from the rulesURL bundle it was given")
+                      "LedgerStore.removes answered in Swift, not from the rulesURL of the VersionStore it was given")
     }
 }
