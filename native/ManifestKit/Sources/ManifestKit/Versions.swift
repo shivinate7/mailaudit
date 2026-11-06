@@ -139,10 +139,11 @@ extension LedgerStore {
             let kept = PhotoIds.kept(ids, held: held, on: .restore)
             if kept != ids { envelopes[i]["photos"] = kept; changed = true }
         }
-        guard changed else { return bytes }
+        guard changed else { return bytes }  // no id dropped: the original bytes go through untouched
         var out = parsed
         out["envelopes"] = envelopes
-        return (try? JSONSerialization.data(withJSONObject: out)) ?? bytes
+        // Same options as the ledger save (snapshotData). If this fails, keep every id (fail-keep).
+        return (try? JSONSerialization.data(withJSONObject: out, options: [.sortedKeys])) ?? bytes
     }
 }
 
