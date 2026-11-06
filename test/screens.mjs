@@ -119,6 +119,14 @@
         buttons) opens TCGplayer. The taps are Chromium touches with a 1px and a
         12px radius, on a 1px grid within 32px of the id link's area (8px beyond), so
         Chromium's touch adjustment is in play. Header whitespace is not swept.
+    18. Recent log (decision recent-checks-can-be-undone; mockup note 5) at 375px and 760px,
+        on a seeded ledger with one checked card in the Recent log. In RECENT_STATES
+        ("Recent row", "Recent panel open", "Recent row after UNDO"): the cell shows on the
+        Ledger tab, the closed row holds no Undo control, the open panel holds one, and after
+        the tap the row holds none and the cell reads Nothing to undo. A tap on UNDO moves no
+        drawn box, compared before and after in one run, so these states need no base file
+        and sit outside claim 10. A tap on the subject text undoes nothing: only the Undo
+        control is a tap target.
 
    Reduced motion is on, so animation does not skew the numbers. Exit 0 when all
    checks pass; exit 1 with one `FAIL` line per failure and one summary line. */
@@ -462,6 +470,170 @@ async function freshVisitorCheck(browser) {
       fail(name, "the planted seed's items reached a fresh visitor's screen");
     checks++;
     if (/someone else’s ledger/.test(body)) fail(name, "a fresh visitor is shown a snapshot notice");
+  } finally {
+    await ctx.close();
+  }
+}
+
+/* ---------- claim 18: the Recent log (decision recent-checks-can-be-undone) ----------
+   The Recent states sit outside SCREEN_STATES. Claim 10 fails a state with no base boxes,
+   and these states are compared only with each other, inside one run. */
+const RECENT_STATES = ["Recent row", "Recent panel open", "Recent row after UNDO"];
+const RECENT_KEY = ITEMS[0].key;
+const RECENT_NAME = ITEMS[0].name;
+/* One checked card, a minute old, with nothing changed since: its row is live, so the cell
+   shows on the Ledger tab. receivedAt is not before the entry, which countUndo's guard needs. */
+const recentLedger = () => {
+  const at = Date.now() - 60000;
+  return {
+    ...LEDGER,
+    received: { [RECENT_KEY]: 1 },
+    receivedAt: { [RECENT_KEY]: at },
+    recent: [{ id: "scr-recent-1", kind: "count", key: RECENT_KEY, before: 0, after: 1, at }],
+  };
+};
+/* The cell is the button named Recent. The Undo control is the button that holds the text UNDO
+   on its own (mockup note 5). The build makes the whole row that button, so this finds it too. */
+const recentCell = (page) => page.getByRole("button", { name: /^Recent/ }).first();
+const undoControl = (page) =>
+  page.locator("button").filter({ has: page.getByText("UNDO", { exact: true }) }).first();
+async function openRecent(page) {
+  const cell = recentCell(page);
+  await cell.waitFor({ timeout: 4000 }).catch(() => {});
+  if (!(await cell.count())) return false;
+  await cell.click({ timeout: 3000 });
+  await page.waitForTimeout(250);
+  return true;
+}
+/* Every element's drawn box in the viewport, keyed by its path from the body, with the text it
+   holds itself. A box the page scrolls past moves here, as it moves for the owner; scrollProbe
+   says whether the page scrolled. Playwright serialises this, so it stays self-contained. */
+const boxesProbe = () => {
+  const out = {};
+  const walk = (el, path) => {
+    const r = el.getBoundingClientRect();
+    if (r.width > 0 && r.height > 0) {
+      const own = [...el.childNodes]
+        .filter((n) => n.nodeType === 3)
+        .map((n) => n.textContent)
+        .join("")
+        .trim();
+      const label = `${el.tagName.toLowerCase()} "${(el.textContent || "").trim().replace(/\s+/g, " ").slice(0, 28)}"`;
+      out[path] = { x: r.left, y: r.top, w: r.width, h: r.height, own, label };
+    }
+    [...el.children].forEach((c, i) => walk(c, `${path}/${i}`));
+  };
+  walk(document.body, "body");
+  return out;
+};
+/* The window's scroll position, then that of every box that scrolls. A scroll moves every box
+   under it, so a moved box needs this to tell a scroll from a change in layout. */
+const scrollProbe = () => [
+  `window at ${Math.round(window.scrollY)}`,
+  ...[...document.querySelectorAll("*")]
+    .filter((el) => el.scrollHeight > el.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(el).overflowY))
+    .map((el) => `${el.tagName.toLowerCase()} at ${Math.round(el.scrollTop)}`),
+];
+/* An element whose own text changed is a different box, not a moved one, so it is not compared. */
+const movedBoxes = (before, after) => {
+  const moved = [];
+  for (const [key, b] of Object.entries(before)) {
+    const a = after[key];
+    if (!a || a.own !== b.own) continue;
+    const d = Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y), Math.abs(a.w - b.w), Math.abs(a.h - b.h));
+    if (d > BOX_TOL_PX) moved.push(`${b.label} by ${d.toFixed(2)}px`);
+  }
+  return moved;
+};
+
+async function recentUndoCheck(browser, width) {
+  const [closed, open, undone] = RECENT_STATES.map((s) => `${s} ${width}px`);
+  const { ctx, page, pageErrors } = await openSeeded(browser, width, { ledger: recentLedger() });
+  try {
+    if (!(await loadedOk(page))) {
+      fail(closed, "seeded ledger did not render");
+      return;
+    }
+    if (!(await showView(page, "Ledger"))) {
+      fail(closed, "no Ledger tab opens");
+      return;
+    }
+    await recentCell(page).waitFor({ timeout: 4000 }).catch(() => {});
+    checks++;
+    if (!(await recentCell(page).count())) {
+      fail(closed, "no Recent cell on the Ledger tab, though the seeded log holds a live row");
+      return;
+    }
+    checks++;
+    if (await undoControl(page).count()) fail(closed, "the closed row shows an Undo control before the panel opens");
+    await recentCell(page).click({ timeout: 3000 });
+    await page.waitForTimeout(250);
+    checks++;
+    if (!(await undoControl(page).count())) fail(open, "the open panel holds no Undo control for the live row");
+    /* bring UNDO into view first, so any scroll that follows the tap is the app's, not the click's */
+    await undoControl(page).scrollIntoViewIfNeeded({ timeout: 3000 }).catch(() => {});
+    const panelHeight = () =>
+      recentCell(page).evaluate((el) => Math.round(el.nextElementSibling?.getBoundingClientRect().height ?? -1));
+    const heightBefore = await panelHeight();
+    const scrollsBefore = await page.evaluate(scrollProbe);
+    const before = await page.evaluate(boxesProbe);
+    try {
+      await undoControl(page).click({ timeout: 3000 });
+    } catch (e) {
+      fail(open, `could not tap the Undo control: ${e.message.split("\n")[0]}`);
+      return;
+    }
+    await page.waitForTimeout(250);
+    const heightAfter = await panelHeight();
+    const scrollsAfter = await page.evaluate(scrollProbe);
+    const after = await page.evaluate(boxesProbe);
+    checks++;
+    const moved = movedBoxes(before, after);
+    const appeared = Object.keys(after)
+      .filter((k) => !(k in before))
+      .map((k) => after[k].label);
+    if (moved.length)
+      fail(
+        `Recent UNDO tap ${width}px`,
+        `${moved.length} drawn box(es) moved when UNDO was tapped with the panel open (the panel went from ${heightBefore}px to ${heightAfter}px tall; scrollers before [${scrollsBefore.join(", ")}], after [${scrollsAfter.join(", ")}]; ${appeared.length} element(s) appeared, first: ${appeared.slice(0, 2).join("; ") || "none"}); first moved: ${moved.slice(0, 2).join("; ")}`
+      );
+    checks++;
+    if (await undoControl(page).count())
+      fail(undone, "the row still shows its Undo control after the tap");
+    checks++;
+    if (!(await page.getByText("Nothing to undo").count()))
+      fail(undone, "the cell does not read Nothing to undo once the only live row is undone");
+    for (const e of pageErrors) fail(closed, `page error: ${e}`);
+  } finally {
+    await ctx.close();
+  }
+}
+
+/* The subject text is not a control (design note 5): tapping it must undo nothing. */
+async function recentSubjectCheck(browser, width) {
+  const name = `Recent subject tap ${width}px`;
+  const { ctx, page, pageErrors } = await openSeeded(browser, width, { ledger: recentLedger() });
+  try {
+    if (!(await loadedOk(page))) {
+      fail(name, "seeded ledger did not render");
+      return;
+    }
+    if (!(await showView(page, "Ledger")) || !(await openRecent(page))) {
+      fail(name, "the Recent cell did not open, so the subject cannot be tapped");
+      return;
+    }
+    checks++;
+    const subject = page.getByText(RECENT_NAME, { exact: true }).first();
+    if (!(await subject.count())) {
+      fail(name, `the open panel shows no "${RECENT_NAME}" text to tap`);
+      return;
+    }
+    await subject.click({ timeout: 3000 });
+    await page.waitForTimeout(300);
+    checks++;
+    if (!(await undoControl(page).count()))
+      fail(name, "tapping the subject text undid the row; only the Undo control may be a tap target");
+    for (const e of pageErrors) fail(name, `page error: ${e}`);
   } finally {
     await ctx.close();
   }
@@ -2457,6 +2629,8 @@ async function main() {
       () => discardArmCheck(browser),
       ...RESET_VIEWS.map((view) => () => resetAskCheck(browser, view)),
       () => freshVisitorCheck(browser),
+      ...WIDTHS.map((width) => () => recentUndoCheck(browser, width)),
+      ...WIDTHS.map((width) => () => recentSubjectCheck(browser, width)),
       ...syncApplyPhases,
     ];
     for (const phase of phases) {

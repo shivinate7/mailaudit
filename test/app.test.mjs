@@ -7944,18 +7944,44 @@ ok(!hasAction(/Pull from GitHub/), "64.8 and offers no Pull from GitHub to recov
 
 /* ── 79. the Recent log on the Ledger tab (decision recent-checks-can-be-undone) ──
    Recent is a ledger row, directly above History. It shows while a row can still be undone.
-   Its panel follows it on the page, and each row in the panel is a button whose text holds
-   the row's micro-label. The cases find the cell and its rows by that text, never by a class. */
+   Its panel follows it on the page. Each row is found by its micro-label, and its Undo control
+   is a button inside the row. The subject text is not a control (mockup note 5, recent-log-notes.md).
+   The cases find the cell and its rows by text, never by a class. */
 const RECENT_ROW = /CHECKED|COUNT \d+ → \d+|PACKAGE CHECKED|STAMP|ENVELOPE|ASSIGNED/;
+const UNDO_MARK = /UNDO|CHANGED|NOTHING/;
 /* The cell is found by its label element, whose text is exactly "Recent", and the cell is
    that label's button. A row's own text also holds its value, so the whole text is not used. */
 const recentBtn = () =>
   [...document.querySelectorAll("span")].find((s) => s.textContent === "Recent")?.closest("button") ?? null;
 const historyBtn = () => btn(/^History/);
 const recentPanel = () => recentBtn()?.nextElementSibling ?? null;
-const rowsIn = () =>
-  [...(recentPanel()?.querySelectorAll("button") ?? [])].filter((b) => RECENT_ROW.test(b.textContent));
-const rowWith = (re) => rowsIn().find((b) => re.test(b.textContent));
+/* A row is found from its micro-label, a leaf element. The row is the nearest ancestor of that
+   label whose text holds an undo marker, so it is the row whether it is a button or a plain box. */
+const rowOf = (el) => {
+  const panel = recentPanel();
+  for (let n = el; n && n !== panel; n = n.parentElement) if (UNDO_MARK.test(n.textContent)) return n;
+  return null;
+};
+const rowsIn = () => {
+  const rows = [];
+  for (const el of recentPanel()?.querySelectorAll("*") ?? []) {
+    if (el.childElementCount !== 0 || !RECENT_ROW.test(el.textContent)) continue;
+    const row = rowOf(el);
+    if (row && !rows.includes(row)) rows.push(row);
+  }
+  return rows;
+};
+const rowWith = (re) => rowsIn().find((r) => re.test(r.textContent));
+/* a row's Undo control: a button inside the row, named Undo ... */
+const undoOf = (row) =>
+  [...(row?.querySelectorAll("button") ?? [])].find((b) => /^Undo\b/.test(b.getAttribute("aria-label") ?? b.textContent)) ?? null;
+/* a row holds a button when the row is one, or contains one */
+const holdsButton = (row) => [row, ...row.querySelectorAll("button")].some((el) => el.tagName === "BUTTON");
+/* the leaf element whose whole text is the given subject */
+const subjectOf = (name) =>
+  [...(recentPanel()?.querySelectorAll("*") ?? [])].find(
+    (el) => el.childElementCount === 0 && el.textContent.trim() === name
+  ) ?? null;
 const ledgerRowEls = () => [...document.querySelectorAll(".mdl-lrow")];
 const markGammaReceived = async () => {
   await goTo("packages");
@@ -7992,6 +8018,12 @@ eq(recentCell?.getAttribute("aria-expanded"), "false", "79.1c the Recent cell ca
 await click(recentCell, "open Recent");
 eq(recentBtn()?.getAttribute("aria-expanded"), "true", "79.1d and it reads aria-expanded=true once open");
 ok(!!rowWith(/ASSIGNED/), "79.1e and the open panel lists the ASSIGNED row");
+ok(!!undoOf(rowWith(/ASSIGNED/)), "79.1f and that row holds its own Undo button, named Undo ...");
+ok(!!subjectOf("Ponder"), "79.1g and the row shows its subject, Ponder, as plain text");
+ok(
+  !!subjectOf("Ponder") && !subjectOf("Ponder").closest("button"),
+  "79.1h and the subject sits inside no button; only the Undo control is a tap target"
+);
 
 /* 79.2. control: with nothing to undo, no cell shows, and the page still renders clean */
 await fresh();
@@ -8025,7 +8057,9 @@ await sleep(SAVE_WAIT);
 const assignId2 = saved().recent?.find((e) => e.kind === "assign")?.id;
 await onLedger();
 await click(recentBtn(), "open Recent");
-await click(rowWith(/ASSIGNED/), "undo the ASSIGNED row in Recent");
+const assignUndo2 = undoOf(rowWith(/ASSIGNED/));
+ok(!!assignUndo2, "79.4x the ASSIGNED row holds the Undo control that Recent taps");
+await click(assignUndo2 ?? rowWith(/ASSIGNED/), "undo the ASSIGNED row in Recent");
 await sleep(SAVE_WAIT);
 const rowUndo = saved().recent?.find((e) => e.kind === "undo");
 ok(
@@ -8048,12 +8082,21 @@ await click(recentBtn(), "open Recent");
 const pkgRow = rowWith(/PACKAGE CHECKED/);
 ok(!!pkgRow, "79.5pre the open panel lists the package's row");
 const rowsBefore = rowsIn().length;
-await click(pkgRow, "undo the package row in Recent");
+const pkgUndo = undoOf(pkgRow);
+ok(!!pkgUndo, "79.5x the package row holds the Undo control that Recent taps");
+await click(pkgUndo ?? pkgRow, "undo the package row in Recent");
 await sleep(SAVE_WAIT);
 ok(rowsIn().includes(pkgRow), "79.5 the row is the same element after its undo, so it changed in place");
 eq(rowsIn().length, rowsBefore, "79.5a and no row was added while the panel is open");
 ok(/UNDONE/.test(pkgRow?.textContent ?? ""), "79.5b and the row reads UNDONE");
 eq(recentBtn()?.getAttribute("aria-expanded"), "true", "79.5c and the panel is still open");
+ok(
+  /Nothing to undo/.test(recentBtn()?.textContent ?? ""),
+  "79.5d control: with the panel still open, the cell reads Nothing to undo after the last undo"
+);
+const undoneRow = rowWith(/UNDONE/);
+ok(!!undoneRow, "79.5e the UNDONE row is still in the open panel");
+ok(!!undoneRow && !holdsButton(undoneRow), "79.5f and an UNDONE row holds no button");
 
 /* 79.6. with the panel open, the last undo leaves the cell. The cell re-reads liveness only on
    Ledger tab entry, so closing the panel leaves it in place (no shift under the pointer). */
