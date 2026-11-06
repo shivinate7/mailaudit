@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recent log, Ledger tab</title>
+<style>
+/* Colours are the C tokens from shared/tokens.json (design-parchment-ledger).
+   The app ships one theme, so this page draws one theme. */
+:root {
+  --paper: #F2E9DA; --card: #FCF6EA; --ink: #332E3F; --inkSoft: #6E6379;
+  --line: #DCCDB6; --gold: #C9A961; --accent: #6F5CA6; --green: #2E7A5E;
+  --red: #A8443C; --manila: #EADBBA; --manilaInk: #695832;
+  --shadow: rgba(28,43,36,0.06);
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --cochin: Cochin, 'Hoefler Text', Palatino, Georgia, serif;
+  /* the two figures this mockup fixes */
+  --row-h: 72px;
+  --panel-max: 360px;
+  --head-h: 28px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #E6DCCB; color: var(--ink); font-family: var(--cochin); }
+button, input { font-family: inherit; }
+button:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+
+/* ---------- reviewer chrome (not part of the screen) ---------- */
+.banner { background: var(--manila); color: var(--manilaInk); font-family: var(--mono);
+  font-size: 12px; letter-spacing: .04em; padding: 8px 16px; text-align: center; }
+.chrome { max-width: 1240px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.chrome h1 { margin: 0; font-weight: 400; font-size: 22px; }
+.chrome p { margin: 0; font-size: 14px; color: var(--inkSoft); max-width: 70ch; }
+.bar-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.bar-row .lab { font-family: var(--mono); font-size: 11px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--inkSoft); min-width: 92px; }
+.chip { font-family: var(--mono); font-size: 11.5px; padding: 6px 10px; min-height: 32px;
+  border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; border-radius: 999px; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--card); border-color: var(--accent); }
+.opt { display: inline-flex; align-items: stretch; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--card); }
+.opt .chip { border: 0; border-radius: 0; }
+.opt .x { border: 0; border-left: 1px solid var(--line); background: transparent; color: var(--inkSoft);
+  font-family: var(--mono); font-size: 11px; padding: 0 10px; cursor: pointer; }
+.opt[hidden] { display: none; }
+.caption { font-family: var(--mono); font-size: 11px; color: var(--inkSoft); line-height: 1.5; max-width: 760px; }
+.stage { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; padding: 0 16px 48px; justify-content: center; }
+.dev { display: flex; flex-direction: column; gap: 8px; }
+.dev > .cap { font-family: var(--mono); font-size: 11px; color: var(--inkSoft); }
+.dev > .cap b { color: var(--ink); font-weight: 400; }
+
+/* ---------- the device frame: one viewport of the app ---------- */
+.frame { position: relative; height: 812px; background: var(--paper); overflow: hidden;
+  border: 1px solid var(--line); box-shadow: 0 8px 24px var(--shadow); }
+.scroller { height: 100%; overflow-y: auto; }
+.page { max-width: 760px; margin: 0 auto; padding: 24px 16px 148px; }
+
+/* masthead, abridged */
+.mh { text-align: center; padding: 12px 8px 0; }
+.mh .rule { display: flex; align-items: center; justify-content: center; gap: 12px; max-width: 270px; margin: 0 auto 12px; }
+.mh .rule i { flex: 1; height: 1px; background: var(--gold); }
+.mh .seal { width: 34px; height: 34px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #C86A5F, #A8443C 60%, #66231D); }
+.mh .t { font-size: 32px; letter-spacing: .14em; text-indent: .14em; }
+.mh .f { font-family: var(--mono); font-size: 10px; letter-spacing: .3em; color: var(--inkSoft); margin-top: 4px; }
+
+/* Ledger tab: copied from the .mdl-l* rules in src/app.jsx */
+.mdl-lh { margin: 48px 0 0; text-align: center; font-weight: 400; font-family: var(--mono); font-size: 12px;
+  letter-spacing: .3em; text-indent: .3em; text-transform: uppercase; color: var(--inkSoft); }
+.mdl-lg { margin: 16px 4px 8px; font-family: var(--mono); font-size: 11px; letter-spacing: .2em;
+  text-transform: uppercase; color: var(--inkSoft); }
+.mdl-lcard { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: 8px; }
+.mdl-lcard.clip { overflow: hidden; }
+.mdl-lrow { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px;
+  padding: 8px 16px; border: 0; border-top: 1px solid var(--line); background: transparent;
+  text-align: left; color: var(--ink); cursor: pointer; }
+.mdl-lcard > .mdl-lrow:first-child { border-top: 0; }
+.mdl-lrow > .l { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.mdl-lrow .t { font-size: 20px; line-height: 1.15; }
+.mdl-lrow .s { font-size: 13.5px; line-height: 1.3; color: var(--inkSoft); }
+.mdl-lrow .v { font-family: var(--mono); font-size: 14px; color: var(--accent); text-align: right; }
+.mdl-lrow::after { content: "\203A"; font-size: 22px; line-height: 1; color: var(--inkSoft); flex-shrink: 0; transition: transform 140ms ease; }
+.mdl-lrow:not([aria-expanded])::after { content: none; }
+.mdl-lrow[aria-expanded="true"]::after { transform: rotate(90deg); }
+.mdl-act { display: block; width: 100%; min-height: 52px; padding: 8px 16px; border: 0; background: transparent;
+  text-align: left; font-size: 20px; color: var(--red); cursor: pointer; }
+.gap20 { height: 20px; }
+
+/* ---------- NEW: the Recent panel ---------- */
+/* panelWrap: padding 4 8 12 and a top rule. In-flow it shows the card through it, as History does today. */
+.rp { position: relative; padding: 4px 8px 12px; border-top: 1px solid var(--line); background: var(--card); }
+.rp.overlay { position: absolute; left: -1px; right: -1px; z-index: 7; background: var(--paper);
+  border: 1px solid var(--line); border-top-color: var(--line); }
+.rp-list { max-height: var(--panel-max); overflow-y: auto; }
+/* Day heading: mono micro-label over a hairline. Fixed height. */
+.dh { position: sticky; top: 0; z-index: 1; height: var(--head-h); display: flex; align-items: flex-end;
+  padding: 0 0 6px; border-bottom: 1px solid var(--line); background: inherit;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--inkSoft); }
+.rp, .rp-list { background-color: inherit; }
+.rp:not(.overlay) .dh { background: var(--card); }
+.rp.overlay .dh { background: var(--paper); }
+/* One row: one fixed height, whatever it holds. */
+.rr { height: var(--row-h); display: flex; align-items: stretch; gap: 12px; border-top: 1px solid var(--line); }
+.dh + .rr { border-top: 0; }
+.rr > .l { flex: 1; min-width: 0; display: grid; grid-template-rows: 14px 22px 18px; align-content: center; }
+.rr .k { display: flex; gap: 8px; min-width: 0; font-family: var(--mono); font-size: 10px; line-height: 14px;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--inkSoft); }
+.rr .k .a { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rr .k .tm { margin-left: auto; flex-shrink: 0; color: var(--ink); letter-spacing: .04em; }
+.rr .n { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-size: 16px; line-height: 22px; }
+.rr .n .nm { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.rr .n .fg { flex-shrink: 0; margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--inkSoft); }
+.rr .s { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font-size: 13.5px; line-height: 18px; color: var(--inkSoft); }
+.rr .s.lost { font-family: var(--mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--manilaInk); }
+body.strike .rr.undone .nm { text-decoration: line-through; text-decoration-thickness: 1px; text-decoration-color: var(--inkSoft); }
+/* The right edge: one fixed width, so UNDO and every end state take the same box. */
+.rr > .r { flex: 0 0 72px; display: flex; align-items: center; justify-content: flex-end; text-align: right; }
+.undo { width: 72px; height: var(--row-h); margin-top: -1px; display: flex; align-items: center; justify-content: flex-end;
+  padding: 0; border: 0; background: transparent; cursor: pointer; }
+.undo span { font-family: var(--mono); font-size: 11px; letter-spacing: .16em; color: var(--accent);
+  border-bottom: 1px solid var(--line); line-height: 16px; }
+.undo:hover span { border-bottom-color: var(--accent); }
+.end { font-family: var(--mono); font-size: 10px; line-height: 14px; letter-spacing: .16em; color: var(--inkSoft); }
+.end .ph { color: var(--manilaInk); }
+
+/* ---------- annotation labels (reviewer chrome) ---------- */
+body.ann [data-ann] { outline: 1px dashed var(--inkSoft); outline-offset: -1px; }
+body.ann [data-ann].new { outline-color: var(--accent); }
+body.ann [data-ann]::before { content: attr(data-ann); position: absolute; right: 2px; top: 2px; z-index: 6;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .04em; padding: 1px 4px; background: var(--card);
+  color: var(--inkSoft); border: 1px dashed currentColor; pointer-events: none; }
+body.ann [data-ann].new::before { color: var(--accent); }
+body.ann .rp[data-ann]::before { top: auto; bottom: 2px; }
+
+/* the finger mark in the closing-empty frames */
+.finger { position: absolute; z-index: 9; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%;
+  border: 2px solid var(--red); background: rgba(168,68,60,.12); pointer-events: none; }
+.pair { display: flex; gap: 16px; flex-wrap: wrap; }
+
+/* bottom bar, abridged */
+.bbar { position: absolute; z-index: 8; left: 24px; right: 24px; max-width: 480px; margin: 0 auto; height: 64px; bottom: 12px;
+  display: flex; padding: 4px; border: 1px solid var(--line); border-radius: 999px;
+  background: color-mix(in srgb, var(--paper) 62%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(1.8); backdrop-filter: blur(18px) saturate(1.8);
+  box-shadow: 0 8px 24px var(--shadow), 0 1px 3px var(--shadow); }
+.bbar span { flex: 1; display: flex; align-items: center; justify-content: center; border-radius: 999px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .09em; text-transform: uppercase; }
+.bbar span.on { background: color-mix(in srgb, var(--card) 90%, transparent); color: var(--accent); box-shadow: inset 0 0 0 1px var(--line); }
+@media (prefers-reduced-motion: no-preference) {
+  .rp { animation: mdl-panel 220ms cubic-bezier(.16,1,.3,1) both; }
+  @keyframes mdl-panel { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+}
+</style>
+</head>
+<body class="ann strike">
+<div class="banner" role="note">SAMPLE. No card, seller, order, time or count on this page is real.</div>
+
+<div class="chrome">
+  <h1>Recent log, Ledger tab</h1>
+  <p>The Recent row sits directly above History in the Data card. Its panel lists one row per logged action, newest first, grouped by local day. Press UNDO on a live row to see the row change in place.</p>
+
+  <div class="bar-row" role="group" aria-label="State">
+    <span class="lab">State</span>
+    <button class="chip" data-s="closed">At rest</button>
+    <button class="chip" data-s="open">Open</button>
+    <button class="chip" data-s="long">Long names</button>
+    <button class="chip" data-s="all-inert">Open, all inert</button>
+    <button class="chip" data-s="closing-empty">Closing, none live</button>
+    <button class="chip" data-s="hidden">Nothing to undo</button>
+  </div>
+  <div class="bar-row" role="group" aria-label="Width">
+    <span class="lab">Width</span>
+    <button class="chip" data-w="both">375 and 760</button>
+    <button class="chip" data-w="375">375</button>
+    <button class="chip" data-w="760">760</button>
+    <button class="chip" id="annBtn" aria-pressed="true">Today/New labels</button>
+  </div>
+
+  <div class="bar-row" role="group" aria-label="Recent row value" id="recent-value">
+    <span class="lab">Row value</span>
+    <span class="opt" data-group="v" data-key="static"><button class="chip" data-v="static">Undo a tap</button><button class="x" aria-label="Hide Undo a tap option">&times;</button></span>
+    <span class="opt" data-group="v" data-key="count"><button class="chip" data-v="count">Live count</button><button class="x" aria-label="Hide Live count option">&times;</button></span>
+    <span class="opt" data-group="v" data-key="time"><button class="chip" data-v="time">Last time</button><button class="x" aria-label="Hide Last time option">&times;</button></span>
+  </div>
+  <div class="bar-row" role="group" aria-label="Photo not restored placement" id="photo-note">
+    <span class="lab">Photo lost</span>
+    <span class="opt" data-group="photo" data-key="line"><button class="chip" data-photo="line">On the seller line</button><button class="x" aria-label="Hide On the seller line option">&times;</button></span>
+    <span class="opt" data-group="photo" data-key="cell"><button class="chip" data-photo="cell">Under UNDONE</button><button class="x" aria-label="Hide Under UNDONE option">&times;</button></span>
+  </div>
+  <div class="bar-row" role="group" aria-label="Panel placement" id="panel-mode">
+    <span class="lab">Panel</span>
+    <span class="opt" data-group="mode" data-key="inflow"><button class="chip" data-mode="inflow">Pushes, like History</button><button class="x" aria-label="Hide Pushes option">&times;</button></span>
+    <span class="opt" data-group="mode" data-key="overlay"><button class="chip" data-mode="overlay">Overlay, paper fill</button><button class="x" aria-label="Hide Overlay option">&times;</button></span>
+  </div>
+  <div class="bar-row" role="group" aria-label="Undone subject" id="undone-strike">
+    <span class="lab">Undone name</span>
+    <span class="opt" data-group="strike" data-key="on"><button class="chip" data-strike="on">Struck through</button><button class="x" aria-label="Hide Struck through option">&times;</button></span>
+    <span class="opt" data-group="strike" data-key="off"><button class="chip" data-strike="off">Plain</button><button class="x" aria-label="Hide Plain option">&times;</button></span>
+  </div>
+  <div class="bar-row" role="group" aria-label="When the last live row goes" id="close-empty">
+    <span class="lab">Row hides</span>
+    <span class="opt" data-group="hide" data-key="close"><button class="chip" data-hide="close">On panel close</button><button class="x" aria-label="Hide On panel close option">&times;</button></span>
+    <span class="opt" data-group="hide" data-key="tab"><button class="chip" data-hide="tab">On next tab entry</button><button class="x" aria-label="Hide On next tab entry option">&times;</button></span>
+  </div>
+  <div class="caption" id="cap"></div>
+</div>
+
+<div class="stage" id="stage"></div>
+
+<script>
+(function () {
+  "use strict";
+  var NOW = "14:35";
+  /* Sample log. Today is FRI NOV 6. Every name is invented or a public card title. */
+  var DAYS = [
+    { h: "Today", rows: [
+      { a: "Checked", t: "14:32", n: "Sheoldred, the Apocalypse", f: "1 of 1", s: "Alpha Cards", st: "live" },
+      { a: "Count 2 → 3", t: "14:30", n: "Lightning Bolt", f: "3 of 4", s: "Kessler Games", st: "undone", at: "14:31" },
+      { a: "Package checked", t: "14:21", n: "Northwind Collectibles", f: "12 cards", s: "Order 261021-7F3B", st: "live" },
+      { a: "Stamp · Refunded", t: "13:58", n: "Tidewater TCG", f: "", s: "Order 261019-2A90", st: "changed" },
+      { a: "Envelope discarded", t: "13:40", n: "Blue bubble mailer, no return", f: "3 cards", s: "Kessler Games", st: "undone", at: "13:52", photo: true }
+    ]},
+    { h: "Yesterday", rows: [
+      { a: "Assigned", t: "21:14", n: "White envelope, Ohio postmark", f: "2 cards", s: "Alpha Cards", st: "live" },
+      { a: "Un-checked", t: "20:02", n: "The One Ring", f: "0 of 1", s: "Tidewater TCG", st: "nothing" },
+      { a: "Envelope recorded", t: "19:47", n: "Manila, hand-lettered", f: "1 card", s: "Northwind Collectibles", st: "live" }
+    ]},
+    { h: "Tue Nov 3", rows: [
+      { a: "Stamp removed", t: "09:15", n: "Kessler Games", f: "", s: "Order 261028-0B17", st: "live" },
+      { a: "Envelope edited", t: "08:50", n: "Brown kraft, two stamps", f: "4 cards", s: "Alpha Cards", st: "changed" },
+      { a: "Count 0 → 2", t: "08:41", n: "Ragavan, Nimble Pilferer", f: "2 of 2", s: "Northwind Collectibles", st: "live" }
+    ]}
+  ];
+  var LONG = { h: "Today", rows: [
+    { a: "Checked", t: "14:32", n: "Atraxa, Grand Unifier (Borderless) (Concept Praetor) — Foil", f: "1 of 1", s: "The Very Long Name Games & Collectibles Emporium", st: "live" },
+    { a: "Envelope discarded", t: "14:10", n: "Padded mailer with a long hand-written note about the return address", f: "11 cards", s: "Tidewater Trading Card Games and Hobby Supply", st: "undone", at: "14:12", photo: true },
+    { a: "Package checked", t: "13:02", n: "The Very Long Name Games & Collectibles Emporium", f: "40 cards", s: "Order 261030-9C44", st: "nothing" },
+    { a: "Stamp · Not delivered", t: "12:30", n: "Tidewater Trading Card Games and Hobby Supply", f: "", s: "Order 261027-5D02", st: "changed" }
+  ]};
+
+  var state = { s: "open", w: "both", v: "static", photo: "line", mode: "inflow", strike: "on", hide: "close" };
+  var hiddenOpts = {};
+
+  function readHash() {
+    var h = location.hash.replace(/^#/, "");
+    h.split("&").forEach(function (kv) {
+      var p = kv.split("="); if (p.length === 2 && p[0] in state) state[p[0]] = decodeURIComponent(p[1]);
+    });
+    if (state.w === "dark" || state.t) {}
+  }
+  function writeHash() {
+    var parts = []; for (var k in state) parts.push(k + "=" + state[k]);
+    history.replaceState(null, "", "#" + parts.join("&"));
+  }
+
+  function esc(x) { return String(x).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+  function liveCount(days) { var n = 0; days.forEach(function (d) { d.rows.forEach(function (r) { if (r.st === "live") n++; }); }); return n; }
+
+  function rowValue(days) {
+    if (state.v === "count") { var n = liveCount(days); return n + " to undo"; }
+    if (state.v === "time") return "Last 14:32";
+    return "Undo a tap";
+  }
+
+  function rightCell(r, di, ri) {
+    if (r.st === "live") return '<button class="undo" data-d="' + di + '" data-r="' + ri + '" aria-label="Undo ' + esc(r.a.toLowerCase()) + ', ' + esc(r.n) + '"><span>UNDO</span></button>';
+    var txt;
+    if (r.st === "undone") {
+      txt = "UNDONE<br>" + r.at;
+      if (r.photo && state.photo === "cell") txt = "UNDONE " + r.at + '<br><span class="ph">PHOTO NOT<br>RESTORED</span>';
+    } else if (r.st === "changed") txt = "CHANGED<br>SINCE";
+    else txt = "NOTHING<br>TO UNDO";
+    return '<span class="end" role="status">' + txt + "</span>";
+  }
+
+  function rowHtml(r, di, ri) {
+    var cls = "rr" + (r.st === "undone" ? " undone" : "");
+    var sline = (r.st === "undone" && r.photo && state.photo === "line")
+      ? '<span class="s lost">Photo not restored</span>'
+      : '<span class="s">' + esc(r.s) + "</span>";
+    var tightCell = r.st === "undone" && r.photo && state.photo === "cell";
+    return '<div class="' + cls + '" data-st="' + r.st + '"' + (tightCell ? ' style="--x:1"' : "") + ">" +
+      '<span class="l"><span class="k"><span class="a">' + esc(r.a) + '</span><span class="tm">' + r.t + "</span></span>" +
+      '<span class="n"><span class="nm">' + esc(r.n) + "</span>" + (r.f ? '<span class="fg">' + esc(r.f) + "</span>" : "") + "</span>" +
+      sline + "</span>" +
+      '<span class="r">' + rightCell(r, di, ri) + "</span></div>";
+  }
+
+  function panelHtml(days, w) {
+    var html = '<div class="rp' + (state.mode === "overlay" ? " overlay" : "") + '" data-ann="New: Recent panel" id="recent-panel">';
+    html += '<div class="rp-list" tabindex="0" aria-label="Recent actions">';
+    days.forEach(function (d, di) {
+      html += '<div class="dh" role="heading" aria-level="3">' + esc(d.h) + "</div>";
+      d.rows.forEach(function (r, ri) { html += rowHtml(r, di, ri); });
+    });
+    return html + "</div></div>";
+  }
+
+  function lrow(label, value, opts) {
+    opts = opts || {};
+    var attrs = opts.expanded === undefined ? "" : ' aria-expanded="' + opts.expanded + '"';
+    if (opts.ann) attrs += ' data-ann="' + opts.ann + '"';
+    if (opts.id) attrs += ' id="' + opts.id + '"';
+    return '<button class="mdl-lrow' + (opts.isNew ? " new" : "") + '"' + attrs + (opts.style ? ' style="' + opts.style + '"' : "") + ">" +
+      '<span class="l"><span class="t">' + label + "</span>" + (opts.sub ? '<span class="s">' + opts.sub + "</span>" : "") + "</span>" +
+      (value ? '<span class="v"' + (opts.accent ? ' style="color:' + opts.accent + '"' : "") + ">" + value + "</span>" : "") + "</button>";
+  }
+
+  /* One Ledger tab. recent: "none" | "closed" | "open" */
+  function ledger(days, recent, valueOverride) {
+    var h = '<div class="mh"><div class="rule"><i></i><span class="seal"></span><i></i></div><div class="t">MANIFEST</div><div class="f">C.H POSTAL COMPANY</div></div>';
+    h += '<h2 class="mdl-lh">Ledger</h2>';
+    h += '<div class="mdl-lg">View</div><div class="mdl-lcard clip">' +
+      lrow("Showing", "● Unreceived", { ann: "Today: Showing" }) +
+      lrow("Sorted by", "Newest", { expanded: false }) +
+      lrow("Orders from", "60 days", { expanded: false }) + "</div>";
+    h += '<div class="mdl-lg">Data</div><div class="mdl-lcard" id="data-card">';
+    h += lrow("Sync", "On", { sub: "Synced 14:33", expanded: false, ann: "Today: Sync" });
+    if (recent !== "none") {
+      h += lrow("Recent", valueOverride || rowValue(days), { expanded: recent === "open", ann: "New: Recent row", isNew: true, id: "recent-row" });
+      if (recent === "open") h += panelHtml(days);
+    }
+    h += lrow("History", "Saved versions", { expanded: false, ann: "Today: History", id: "history-row" });
+    h += lrow("Re-import CSV", "Merges", { expanded: false });
+    h += lrow("Backup", "", {});
+    h += lrow("Backup + photos", "", {});
+    h += '</div><div class="gap20"></div><div class="mdl-lcard clip"><button class="mdl-act">Reset</button></div>';
+    return h;
+  }
+
+  function frame(width, inner, extra) {
+    return '<div class="frame" style="width:' + width + 'px">' + '<div class="scroller"><div class="page">' + inner + "</div></div>" +
+      '<div class="bbar"><span class="on">Ledger</span><span>Orphaned</span><span>Tally</span><span>Packages</span></div>' + (extra || "") + "</div>";
+  }
+
+  function allInert(days) {
+    return days.map(function (d) { return { h: d.h, rows: d.rows.map(function (r) {
+      return r.st === "live" ? Object.assign({}, r, { st: "undone", at: NOW }) : r; }) }; });
+  }
+
+  var CAPS = {
+    closed: "At rest. Recent shows while at least one row is live. It sits directly above History, with History's caret and value style.",
+    open: "Open. Rows are frozen at open. TODAY holds UNDO, UNDONE 14:31, CHANGED SINCE and an undone discard that lost its photo; YESTERDAY holds NOTHING TO UNDO. Row " + "72px; panel list max 360px, inner scroll.",
+    long: "Long names. Each line cuts with an ellipsis; the row stays 72px and the right cell stays 72px wide.",
+    "all-inert": "Open, all inert. The owner undid the last live row with the panel open. Per the plan, the row and the panel stay, frozen, until the panel closes.",
+    "closing-empty": "Closing with nothing live. Left: the finger on Recent, panel open. Right: the frame after the close tap.",
+    hidden: "Nothing to undo. No live row, so no Recent row. History sits where it sits today."
+  };
+
+  function render() {
+    var widths = state.w === "both" ? [375, 760] : [Number(state.w)];
+    var out = "";
+    widths.forEach(function (w) {
+      var body, cap = w + " × 812, light (the one theme the app ships)";
+      if (state.s === "closed") body = frame(w, ledger(DAYS, "closed"));
+      else if (state.s === "open") body = frame(w, ledger(DAYS, "open"));
+      else if (state.s === "long") body = frame(w, ledger([LONG], "open"));
+      else if (state.s === "all-inert") body = frame(w, ledger(allInert(DAYS), "open"));
+      else if (state.s === "hidden") body = frame(w, ledger(DAYS, "none"));
+      else if (state.s === "closing-empty") {
+        var before = frame(w, ledger(allInert(DAYS), "open"), '<span class="finger" data-finger></span>');
+        var after = state.hide === "close"
+          ? frame(w, ledger(DAYS, "none"), '<span class="finger" data-finger></span>')
+          : frame(w, ledger(allInert(DAYS), "closed", "Nothing live"), '<span class="finger" data-finger></span>');
+        body = '<div class="pair"><div class="dev"><div class="cap"><b>Before the tap</b></div>' + before + '</div><div class="dev"><div class="cap"><b>After: ' +
+          (state.hide === "close" ? "History is under the finger" : "Recent stays until the tab is left") + "</b></div>" + after + "</div></div>";
+      }
+      out += '<div class="dev"><div class="cap"><b>' + w + 'px</b> · ' + cap + "</div>" + body + "</div>";
+    });
+    document.getElementById("stage").innerHTML = out;
+    document.getElementById("cap").textContent = CAPS[state.s] || "";
+    document.querySelectorAll("[data-s]").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.s === state.s); });
+    document.querySelectorAll("[data-w]").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.w === state.w); });
+    ["v", "photo", "mode", "strike", "hide"].forEach(function (g) {
+      document.querySelectorAll("[data-" + g + "]").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset[g] === state[g]); });
+    });
+    document.body.classList.toggle("strike", state.strike === "on");
+    placeOverlay();
+    placeFingers();
+    scrollFrames();
+    writeHash();
+  }
+
+  /* overlay mode: the panel hangs from the Recent row's bottom edge and covers the rows below it */
+  function placeOverlay() {
+    document.querySelectorAll(".rp.overlay").forEach(function (p) {
+      var row = p.previousElementSibling; p.style.top = (row.offsetTop + row.offsetHeight) + "px";
+    });
+  }
+  /* Bring the Data card into view in each frame. The real app does not scroll on open;
+     this only saves the reviewer a scroll. */
+  function scrollFrames() {
+    document.querySelectorAll(".frame").forEach(function (f) {
+      var sc = f.querySelector(".scroller"), card = f.querySelector("#data-card");
+      if (state.s !== "closed" && state.s !== "hidden" && card) sc.scrollTop = card.offsetTop - 140;
+    });
+  }
+  function placeFingers() {
+    document.querySelectorAll(".frame").forEach(function (f) {
+      var fg = f.querySelector("[data-finger]"); if (!fg) return;
+      var pair = f.closest(".pair"); var first = pair.querySelector(".frame");
+      var sc0 = first.querySelector(".scroller"); var card0 = first.querySelector("#data-card");
+      sc0.scrollTop = card0.offsetTop - 140;
+      var rr = first.querySelector("#recent-row"); var fb = first.getBoundingClientRect(), rb = rr.getBoundingClientRect();
+      /* hold the scroll where the tap left it: the after frame keeps the page height of the
+         before frame, so the browser's scroll clamp does not add a second jump to the picture */
+      var sc = f.querySelector(".scroller");
+      if (f !== first) f.querySelector(".page").style.minHeight = first.querySelector(".page").offsetHeight + "px";
+      sc.scrollTop = sc0.scrollTop;
+      fg.style.left = (rb.left - fb.left + 90) + "px"; fg.style.top = (rb.top - fb.top + rb.height / 2) + "px";
+    });
+  }
+
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    if (b.classList.contains("x")) { var o = b.closest(".opt"); hiddenOpts[o.dataset.group + o.dataset.key] = 1; o.hidden = true; return; }
+    if (b.id === "annBtn") { var on = !document.body.classList.contains("ann"); document.body.classList.toggle("ann", on); b.setAttribute("aria-pressed", on); return; }
+    if (b.classList.contains("undo")) {
+      var cell = b.parentNode; var row = cell.parentNode;
+      row.classList.add("undone"); row.dataset.st = "undone";
+      cell.innerHTML = '<span class="end" role="status">UNDONE<br>' + NOW + "</span>";
+      return;
+    }
+    var keys = ["s", "w", "v", "photo", "mode", "strike", "hide"];
+    for (var i = 0; i < keys.length; i++) if (b.dataset[keys[i]] !== undefined) { state[keys[i]] = b.dataset[keys[i]]; render(); return; }
+  });
+  window.addEventListener("hashchange", function () { readHash(); render(); });
+  readHash(); render();
+})();
+</script>
+</body>
+</html>
