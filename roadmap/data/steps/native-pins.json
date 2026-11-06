@@ -1,0 +1,10 @@
+{
+  "title": "Native pins: tests for sync, versions, backup and photos",
+  "status": "active",
+  "phase": "native-pins",
+  "order": 8,
+  "why": "Seven ManifestKit rules have no test that pins them, so a Swift change can break sync or restore unseen.",
+  "note": "No simulator: swift test --package-path native/ManifestKit proves each. Owns SyncClient, SyncSocket, Versions, Backup, Photo* and their tests, never LedgerStore, Packages, Tally or the card rules. Order: native-pull-generation-unpinned, native-milestone-needed-unpinned, native-version-names-unpinned, native-removal-rule-is-swift, native-restore-keeps-old-times, native-photo-ids-kept-uncalled, native-sync-glue-unpinned. One branch per debt off origin/main; test-author red first, builder, one reviewer.",
+  "ask": "Lane pins started 2026-11-06 by the coordinator.",
+  "updatedAt": "2026-11-06T21:45:00Z"
+}
