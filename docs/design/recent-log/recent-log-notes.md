@@ -6,7 +6,7 @@ Sizes: 375 and 760 wide, 812 tall, from `WIDTHS` in `test/screens.mjs`. `layout.
 
 Deep links: `#s=closed`, `#s=open`, `#s=long`, `#s=all-inert`, `#s=closing-empty`, `#s=hidden`. Add `&w=375`, `&w=760` or `&w=both`. Options: `&v=static|count|time`, `&photo=line|cell`, `&mode=inflow|overlay`, `&strike=on|off`, `&hide=close|tab`.
 
-Measured in headless Chromium at both widths: every row is 72px, every day heading is 28px, the panel list stops at 360px and scrolls inside (the panel box, with its 1px rule and 4px and 12px padding, is 377px), the right cell is 72px wide, and an UNDO press moves none of the 33 row and text boxes in view. No frame scrolls sideways. Each screen id carries its frame's width, such as `recent-row-375`, so no id repeats.
+Measured in headless Chromium at both widths. Every row is 72px, and every day heading is 28px. The panel list stops at 360px and scrolls inside. The panel box is 377px, with its 1px rule and its 4px and 12px padding. The right cell is 72px wide. An UNDO press moves none of the 33 row and text boxes in view. No frame scrolls sideways. Each screen id carries its frame's width, such as `recent-row-375`, so no id repeats.
 
 Each option has one URL and one focus id, checked headless: each focus finds one visible element, and the options' element pictures differ.
 
