@@ -1,13 +1,7 @@
-# The recent-actions log has three measurements to take
+# The recent-actions log has one measurement to take
 
-**What.** Four figures are unmeasured. Three must be taken before the build:
+**What.** How many actions a heavy mail day makes is unmeasured. The build took the row height and the worst-case log size, see `recent-checks-can-be-undone`, Measurements the build must take. The four-cell fit lapsed with the action row. The gap closes when a real mail day's action count is written down.
 
-- whether four cells fit in the action row at 375px;
-- the height of a log row;
-- the size of the worst-case log (200 bulk rows).
-
-How many actions a heavy mail day makes is also unmeasured. When each figure is written into its measurement record, the gap closes.
-
-**Status:** open. Take them with the build.
+**Status:** open.
 
 **Decision:** `recent-checks-can-be-undone`.
