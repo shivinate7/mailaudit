@@ -1,6 +1,6 @@
 # Recent actions can be undone by tap
 
-**Status:** ruled. The owner ruled on 2026-10-11 that the log is "Synced across devices", and accepted the reach, the gesture, the redo rule and the entrance, see Ruled. The owner ruled the shape on 2026-10-11: "Inside the ledger". Nothing is built. Debts: `recent-log-unbuilt` and `recent-log-unmeasured`.
+**Status:** ruled. The owner ruled on 2026-10-11 that the log is "Synced across devices", and accepted the reach, the gesture, the redo rule and the entrance, see Ruled. The owner ruled the shape on 2026-10-11: "Inside the ledger". The owner ruled on 2026-11-06 at 12:36 CST that the cell shows while anything can be undone, see Where the entrance sits. Open: whether a Reset is a Recent row. Nothing is built. Debts: `recent-log-unbuilt` and `recent-log-unmeasured`.
 
 **Holds while:** `src/app.jsx` keeps no action log, and `undoAssign` is its only undo.
 
@@ -142,7 +142,7 @@ Ruled: a field in the ledger, named recent. The owner chose it on 2026-10-11, wi
 
 The entrance is a `Recent ▾` cell in the ruled action row, left of History. It uses `.mdl-act`, `aria-expanded` and the caret that History carries (`action-row-is-ruled-cells`). Its panel overlays the list in the same slot as History, with the same fade and no new motion (`motion-disclosure-panels-arrive`). Recent, History and Sync close one another (`history-sync-close-each-other`). An armed Reset does not hide the cell, and, by an orchestrator default of 2026-10-11, it does not hide History either (`armed-reset-takes-the-row`).
 
-The cell shows whenever the ledger holds items or envelopes, as Reset does. It never waits on the log, so the row does not re-divide when the first entry lands (`recovery-control-not-state-gated`). An empty log shows one line in the panel.
+The cell shows while at least one log row is live, and hides when none is. A row is live while its undo can still run (see How one tap undoes one action and Rows guard themselves) and no end state in What a row shows applies to it. The cell reads the log, not the ledger. Owner ruling on waiting page item 193 (when the Recent cell shows), 2026-11-06 at 12:36 CST: "Show while anything can be undone." The action row re-divides when the first live row lands and when the last one goes inert. The build must prove that this moves no row under the pointer (`no-layout-shift-under-pointer`). Until the owner rules whether a Reset is a Recent row, a Reset leaves no row live, so the cell hides.
 
 Rejected entrances:
 
@@ -192,6 +192,7 @@ Each test is red on the old code first (`claims-and-tests-change-together`).
 - A ledger saved before the field loads clean. The merged ledger keeps the field, and it deep-equals the expected list, not merely a truthy value.
 - The Undo notice and the row call one function.
 - An undone row keeps its height, and no row opens while the panel is open. jsdom has no layout, so `npm run check:screens` at 375px proves it (`testing-jsdom-has-no-layout`).
+- The cell's show and hide, when the first live row lands and when the last goes inert, moves no row under the pointer, the last undo with the panel open included (`no-layout-shift-under-pointer`). jsdom has no layout, so `npm run check:screens` at 375px proves it (`testing-jsdom-has-no-layout`).
 
 ## Sources
 
