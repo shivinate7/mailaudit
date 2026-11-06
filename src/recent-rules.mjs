@@ -11,6 +11,7 @@
    `mergeRecent` from here. The cycle is safe: both are used only inside function bodies. */
 
 import { tombstoneOf, isLiveEnvelope } from "./merge-rules.mjs";
+import { gkOf } from "./view-rules.mjs";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const RECENT_DAYS = 14;
@@ -93,7 +94,7 @@ function indexOf(items) {
     for (const it of list) {
       if (!it) continue;
       if (!ix.byKey.has(it.key)) ix.byKey.set(it.key, it);
-      const gk = `${it.orderId}::${it.seller}`;
+      const gk = gkOf(it);
       if (!ix.byGk.has(gk)) ix.byGk.set(gk, it);
     }
     indexes.set(list, ix);
