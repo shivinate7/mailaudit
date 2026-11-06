@@ -102,12 +102,6 @@ struct HandScreen: View {
                         receipt = nil
                         shown = hand.hits.count == 1 ? hand.hits.first : nil
                     }
-                if let h = hand.held { notice(id: "hand-held", title: "Suspense", line: h.localizedCapitalized, foot: "Not checked in.") }
-                if !hand.strays.isEmpty {
-                    notice(id: "hand-strays", title: "Released, not checked in",
-                           line: hand.strays.map(\.localizedCapitalized).joined(separator: ", "),
-                           foot: hand.strays.count == 1 ? "It no longer decides an envelope." : "They no longer decide an envelope.")
-                }
                 HStack {
                     Text("This envelope").font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.inkSoft)
                     Spacer(minLength: 8)
@@ -118,6 +112,12 @@ struct HandScreen: View {
                     Text(e).font(.cochin(13, relativeTo: .footnote)).foregroundStyle(Parchment.red).accessibilityIdentifier("hand-error")
                 }
                 matches
+                if let h = hand.held { notice(id: "hand-held", title: "Suspense", line: h.localizedCapitalized, foot: "Not checked in.") }
+                if !hand.strays.isEmpty {
+                    notice(id: "hand-strays", title: "Released, not checked in",
+                           line: hand.strays.map(\.localizedCapitalized).joined(separator: ", "),
+                           foot: hand.strays.count == 1 ? "It no longer decides an envelope." : "They no longer decide an envelope.")
+                }
             }
             .padding(16)
         }
@@ -126,8 +126,10 @@ struct HandScreen: View {
 
     /// The names the typed text matches, under their own heading, so a card you only released does not read as part of the
     /// envelope. The matches sit below the envelope row because no-layout-shift-under-pointer outranks mockup pose 2: a
-    /// tapped match collapses the list, and a list above would lift New envelope from under the finger.
-    /// Departs from: mockup pose 2 (matches above the envelope).
+    /// tapped match collapses the list, and a list above would lift New envelope from under the finger. The Suspense and
+    /// Released boxes sit below the matches for the same two reasons: a box above would push the only match under the keys, and
+    /// a box that leaves on New envelope would lift the button from under the finger.
+    /// Departs from: mockup pose 2 (matches above the envelope); HandScreen order with the boxes above This envelope (default, not owner).
     @ViewBuilder private var matches: some View {
         let names = hitNames
         if !names.isEmpty {

@@ -98,8 +98,6 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `hand-stray-keeps-tie` — A released card leaves its tie on the answer page.
 - `hand-stale-checkin-error` — A good post leaves an old check-in error showing.
 - `checkin-error-bar-is-sans` — The native check-in error bar is set in sans on material.
-- `hand-notice-cuts-match-row` — A Suspense or Released box pushes the match under the keys.
-- `hand-new-envelope-shifts` — New envelope moves under the finger when a Suspense box shows.
 - `hand-post-top-scroll-unpinned` — No test pins the scroll to the page top when Post shows.
 - `hand-suspense-tap-shift` — A Suspense tap shifts the match list under the finger.
 - `duo-left-page-dead-margin` — The Duo left page scrolls 76 pt past its end.
