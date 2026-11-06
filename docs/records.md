@@ -344,8 +344,8 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `photo-put-unrun-on-github` | `pushPhoto` and `pullPhoto` on `window.remote` (`src/entry.jsx`) have never run against real GitHub. | [`docs/debts/photo-put-unrun-on-github.md`](../docs/debts/photo-put-unrun-on-github.md) |
 | `photoget-throw-counts-as-kill` | In `test/photoget.test.mjs`, `runCase` turns a throw into a red case, and a red case counts as a mutant kill. | [`docs/debts/photoget-throw-counts-as-kill.md`](../docs/debts/photoget-throw-counts-as-kill.md) |
 | `received-at-size-unmeasured` | `receivedAt` is never pruned, and its size has not been measured. | [`docs/debts/received-at-size-unmeasured.md`](../docs/debts/received-at-size-unmeasured.md) |
-| `recent-log-unbuilt` | The log, its merge rule, its panel and its undo are ruled and not built, in either client. | [`docs/debts/recent-log-unbuilt.md`](../docs/debts/recent-log-unbuilt.md) |
-| `recent-log-unmeasured` | Four figures are unmeasured. | [`docs/debts/recent-log-unmeasured.md`](../docs/debts/recent-log-unmeasured.md) |
+| `recent-log-unbuilt` | The web client ships the log. The native client does not. | [`docs/debts/recent-log-unbuilt.md`](../docs/debts/recent-log-unbuilt.md) |
+| `recent-log-unmeasured` | How many actions a heavy mail day makes is unmeasured. | [`docs/debts/recent-log-unmeasured.md`](../docs/debts/recent-log-unmeasured.md) |
 | `reimport-received-unpinned` | Nothing pins that `received` survives a re-import. | [`docs/debts/reimport-received-unpinned.md`](../docs/debts/reimport-received-unpinned.md) |
 | `reset-all-keeps-token-unpinned` | No test pins that `resetAll` keeps the GitHub token. | [`docs/debts/reset-all-keeps-token-unpinned.md`](../docs/debts/reset-all-keeps-token-unpinned.md) |
 | `reset-leaves-sync-unpinned` | No test pins that an armed Reset leaves Sync open. | [`docs/debts/reset-leaves-sync-unpinned.md`](../docs/debts/reset-leaves-sync-unpinned.md) |

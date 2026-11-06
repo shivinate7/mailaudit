@@ -1,8 +1,8 @@
 # Recent actions can be undone by tap
 
-**Status:** ruled. The owner ruled on 2026-10-11 that the log is "Synced across devices", and accepted the reach, the gesture, the redo rule and the entrance, see Ruled. The owner ruled the shape on 2026-10-11: "Inside the ledger". The owner ruled on 2026-11-06 at 12:36 CST that the cell shows while anything can be undone, see Where the entrance sits. The owner deferred whether a Reset is a Recent row on 2026-11-06 at 13:08 CST (waiting page item 280), saying "do whichever is already built and leave deferred". A Reset stays out of Recent, and History undoes it. The question is deferred, not closed. Nothing is built. Debts: `recent-log-unbuilt` and `recent-log-unmeasured`.
+**Status:** ruled. The owner ruled on 2026-10-11 that the log is "Synced across devices", and accepted the reach, the gesture, the redo rule and the entrance, see Ruled. The owner ruled the shape on 2026-10-11: "Inside the ledger". The owner ruled on 2026-11-06 at 12:36 CST that the cell shows while anything can be undone, see Where the entrance sits. The owner deferred whether a Reset is a Recent row on 2026-11-06 at 13:08 CST (waiting page item 280), saying "do whichever is already built and leave deferred". A Reset stays out of Recent, and History undoes it. The question is deferred, not closed. The web client is built (plan `recent-log-web`). The native client is not. Debts: `recent-log-unbuilt` (the native half) and `recent-log-unmeasured`.
 
-**Holds while:** `src/app.jsx` keeps no action log, and `undoAssign` is its only undo.
+**Holds while:** `src/recent-rules.mjs` holds the log rules, `mergeLedger` carries the field `recent`, and `undoRecent` in `src/app.jsx` runs every undo, the Undo notice's included.
 
 Kind: build
 
@@ -140,9 +140,9 @@ Ruled: a field in the ledger, named recent. The owner chose it on 2026-10-11, wi
 
 ## Where the entrance sits
 
-The entrance is a `Recent ▾` cell in the ruled action row, left of History. It uses `.mdl-act`, `aria-expanded` and the caret that History carries (`action-row-is-ruled-cells`). Its panel overlays the list in the same slot as History, with the same fade and no new motion (`motion-disclosure-panels-arrive`). Recent, History and Sync close one another (`history-sync-close-each-other`). An armed Reset does not hide the cell, and, by an orchestrator default of 2026-10-11, it does not hide History either (`armed-reset-takes-the-row`).
+The entrance is a `Recent` `LedgerRow` on the Ledger tab, directly above History. The action row is retired and its cells are ruled rows (`action-row-is-ruled-cells`), so the row carries `aria-expanded` as History does. Its panel opens below it in the page flow, as History's does. Panels that overlay the list are ruled and not built (`motion-disclosure-panels-arrive`). Recent, History and Sync close one another (`history-sync-close-each-other`). An armed Reset does not hide the cell, and, by an orchestrator default of 2026-10-11, it does not hide History either (`armed-reset-takes-the-row`).
 
-The cell shows while at least one log row is live, and hides when none is. A row is live while its undo can still run (see How one tap undoes one action and Rows guard themselves) and no end state in What a row shows applies to it. The cell reads the log's rows, not whether the ledger holds data. Each row's guard still reads the card, stamp or envelope it names. Owner ruling on waiting page item 193 (when the Recent cell shows), 2026-11-06 at 12:36 CST: "Show while anything can be undone." The ruling rests on `recovery-control-not-state-gated`, which item 193 names as its premise: the data the undo works on is a live row. The cell hides only when nothing can be undone, so it is never a dead control. The action row re-divides when the first live row lands and when the last one goes inert. The build must prove that this moves no row under the pointer (`no-layout-shift-under-pointer`). The owner's ruling defers waiting page item 280, so a Reset is not logged, clears every card, stamp and envelope (`resetAll`), and leaves no row live. The cell hides, and History's `before reset` version is its undo.
+The cell shows while at least one log row is live, and hides when none is. It reads that only when the Ledger tab is entered, never while the tab is on screen. A cell with no live row reads `Nothing to undo` until the next entry. A show or hide on screen would move History under the finger, which `no-layout-shift-under-pointer` forbids. Coordinator ruling, 2026-11-06 at 13:24 CST, on the open-panel note. A row is live while its undo can still run (see How one tap undoes one action and Rows guard themselves) and no end state in What a row shows applies to it. The cell reads the log's rows, not whether the ledger holds data. Each row's guard still reads the card, stamp or envelope it names. Owner ruling on waiting page item 193 (when the Recent cell shows), 2026-11-06 at 12:36 CST: "Show while anything can be undone." The ruling rests on `recovery-control-not-state-gated`, which item 193 names as its premise: the data the undo works on is a live row. The cell hides only when nothing can be undone, so it is never a dead control. The owner's ruling defers waiting page item 280, so a Reset is not logged, clears every card, stamp and envelope (`resetAll`), and leaves no row live. The cell hides, and History's `before reset` version is its undo.
 
 Rejected entrances:
 
@@ -175,9 +175,9 @@ Neither list holds the other's items. A restore is not a Recent row.
 
 Debt: `recent-log-unmeasured`.
 
-- Whether four cells fit in the action row at 375px. The code sizes a third at 114px. Four cells are about 86px, and "Re-import CSV" may ellipsize. Re-take `ruled-head-heights`, and run `npm run check:screens`. If four cells clip, the owner picks which cell gives way.
-- The height of a row, recorded in `ruled-head-heights`.
-- The size of the worst-case log, as The shape of the synced log says.
+- The height of a row: 72px at 375px, and a day heading 28px. The list holds at most 360px and scrolls inside. Taken 2026-11-06 in Chromium on the built page.
+- The size of the worst-case log: 200 bulk rows of the seed's largest package (23 lines) are 317,965 bytes, against a seed ledger of 289,309 bytes. The ledger with that log is near 608 KB, a third of `MAX_LEDGER_BYTES` (1,800,000), so the case is not large and no byte cap is built. Coordinator ruling, 2026-11-06 at 14:47 CST. A byte cap returns if a real synced ledger passes half of `MAX_LEDGER_BYTES`.
+- The four-cell fit at 375px lapsed with the action row.
 
 ## Proof the build must give
 
