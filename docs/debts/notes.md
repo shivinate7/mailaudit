@@ -33,6 +33,7 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 - 2026-11-06, Post-offer review round 2: `testPostHoldsTheLinesStillWhenItsSaveFails` (`DuoHandUITests.swift`) asserts nothing about a kept `hand-post`, so a same-height receipt in the offer's place keeps it green; `HandModelTests.testFailedSaveRollsBack` pins the kept offer in the model.
 - 2026-11-06, Post-offer review round 2: the receipt is keyed to its own envelope (`HandScreen.swift` `else if let r = receipt, r.offer.gk == pkg.gk`); no test pins that guard.
 - 2026-11-06, Post-offer review round 2: the red refusal line on manila at 50% over paper computes to 4.60:1 from the token hex values, 0.1 over the floor, and no token test covers the pair.
+- 2026-11-06, match-row mockup: Card in Hand's small labels and the notice box title are 10.5 pt (`HandScreen.swift` `micro`, `notice`), under the 11 pt iOS minimum.
 - 2026-10-29, CI wiring review round 2: no run has shown that `cancelled()` reads true in the ci-done job after a superseded PR run is cancelled. The first double push on a PR settles it. A false value posts a false red comment.
 - 2026-10-29, CI wiring review round 2: the job groups on main still key by commit, so a third run on one commit can replace a pending job, such as a nightly. The harm is one cancelled job.
 - 2026-10-29, CI wiring review round 2: `ci-skips-draft-prs` names the draft state in the keys of four jobs. The workflow key carries it too.
