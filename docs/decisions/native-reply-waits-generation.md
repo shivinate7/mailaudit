@@ -43,7 +43,7 @@ Lane N4b built these:
   - `stop()` cancels a pending timer. A stop is not a failure.
   - The web skips a fire when the Worker's last ledger already holds everything the device holds (`lacksRef` in `src/app.jsx`). Native has no such check, so a fire POSTs even when the Worker holds the change already.
 - Resume: when scenePhase becomes active, `resume()` reconnects the socket and does one GET, whatever rev is held. The hello that follows gives no second GET.
-- The server apply: `SyncClient` passes the photo ids of every envelope in a reply through `PhotoIds.kept` with `.sync`, using the ids `PhotoStore` holds. On `.sync` the rule keeps every id, so the call changes nothing today, and no test can fail if it is removed. The restore half is lane N9's, see debt `native-photo-ids-kept-uncalled`.
+- The server apply: `SyncClient` passes the photo ids of every envelope in a reply through `PhotoIds.kept` with `.sync`, using the ids `PhotoStore` holds. On `.sync` the rule keeps every id, so the call changes nothing today, and no test can fail if it is removed. The restore half: `LedgerStore.restore` passes the ids through `PhotoIds.kept` with `.restore`, pinned by `PhotoIdsRestoreTests`.
 - `HTTPPhotoTransport` lists, puts and gets photos on the Worker `/photos` route, as the web does. The type of a photo comes from `mimeFromName`. A 413 on put is `tooLarge`, and a list the Worker could not give is nil. Nothing creates it yet, see debt `native-photo-screens-unwired`.
 - The owner ruled no background refresh in v1. A resume GET covers the need, see `native-swift-rebuild`.
 

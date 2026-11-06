@@ -192,7 +192,6 @@ Other risks live in the record for their lane:
 - No native screen shows the merge notice. Debt: `native-merge-notice-unbuilt`.
 - Native photos and their HTTP transport are built and tested, and nothing calls them. Debts:
   - `native-photo-screens-unwired`;
-  - `native-photo-ids-kept-uncalled`;
   - `native-merge-skips-photo-fetch`;
   - `native-photo-sweep-unbuilt`;
   - `native-photo-viewer-unpinned`.

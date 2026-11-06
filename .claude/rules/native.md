@@ -84,7 +84,6 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-runner-keychain-unverified` — Whether the hosted runner keychain is unlocked is unverified.
 - `native-job-hosted-time-unmeasured` — The native job's time on a hosted runner is unmeasured.
 - `native-photo-screens-unwired` — No native screen shows a photo, and nothing takes one.
-- `native-photo-ids-kept-uncalled` — The native restore does not call the photo id rule.
 - `native-merge-skips-photo-fetch` — Nothing fetches native photos before an apply.
 - `native-photo-sweep-unbuilt` — The native client has no photo sweep.
 - `native-photo-viewer-unpinned` — No test pins the photo viewer's traits or the Stop control.
