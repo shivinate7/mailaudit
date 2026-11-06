@@ -875,7 +875,9 @@ export function report() {
 }
 
 /* The run ended or stalled without report(). Print what it had, name the live
-   handles, and exit red. Once only: report() and this path never both speak. */
+   handles, and exit red. A stall is a timeout or a crash, not a failed check, so it
+   prints no FAIL line: the mutation report reads a FAIL line as a kill. Once only:
+   report() and this path never both speak. */
 function stalled(why) {
   if (reported) return;
   reported = true;
@@ -884,7 +886,7 @@ function stalled(why) {
   fails.push(`${why}; live handles: ${live.length ? live.join(", ") : "none"}`);
   console.log(`\n${pass} passed, ${fails.length} failed`);
   for (const f of fails) console.log(`  ✗ ${f}`);
-  console.log(failLine(fails.length, pass + fails.length));
+  console.log(`harness stalled: ${why}`);
   process.exit(1);
 }
 /* a run whose last await never settled can end with nothing alive: beforeExit still fires */

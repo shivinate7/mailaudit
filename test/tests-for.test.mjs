@@ -18,8 +18,8 @@
 //
 // Every case here is red on a base without the script. A missing script is named, not crashed on.
 //
-// P3 rows: each named line of the selector has a planted mutant. TESTS_FOR_MUTANT=<line> runs this
-// file against that mutant: the named rows and that line's pin go red, and nothing else does.
+// P3 rows: each named anchor in the selector has a planted mutant. TESTS_FOR_MUTANT=<anchor name> runs
+// this file against that mutant: the named rows and that anchor's pin go red, and nothing else does.
 //
 // Run: node test/tests-for.test.mjs. Exits 1 on any failure.
 
@@ -34,22 +34,21 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SCRIPT = join(ROOT, "scripts", "tests-for.mjs");
 const SCRIPT_PRESENT = existsSync(SCRIPT);
 
-// One planted mutant per named line: the line's anchor text, and the text that replaces it.
+// One planted mutant per named anchor: the anchor text in the script, and the text that replaces it.
 const MUTANTS = {
-  43: ['if (last.t === "id") return REGEX_AFTER_WORD.has(last.v);', 'if (last.t === "id") return true;'],
-  75: [String.raw`while (j < s.length && s[j] !== "\n") {`, "while (j < s.length) {"],
-  81: ['else if (s[j] === "/" && !inClass) break;', 'else if (s[j] === "/" && inClass) break;'],
-  132: ['else if (a.v === "from" && b?.t === "str") specs.push(b.v);', 'else if (a.v === "from" && b.t === "str") specs.push(b.v);'],
+  regexAfterName: ['if (last.t === "id") return REGEX_AFTER_WORD.has(last.v);', 'if (last.t === "id") return true;'],
+  regexScanStopsAtLineEnd: [String.raw`while (j < s.length && s[j] !== "\n") {`, "while (j < s.length) {"],
+  regexCloseSlash: ['else if (s[j] === "/" && !inClass) break;', 'else if (s[j] === "/" && inClass) break;'],
+  fromSpecifier: ['else if (a.v === "from" && b?.t === "str") specs.push(b.v);', 'else if (a.v === "from" && b.t === "str") specs.push(b.v);'],
 };
 const REAL_TEXT = SCRIPT_PRESENT ? readFileSync(SCRIPT, "utf8") : "";
 const MUT = process.env.TESTS_FOR_MUTANT;
 const MUTANT = MUT !== undefined && Object.hasOwn(MUTANTS, MUT) ? MUT : null;
 const LOADED_TEXT = MUTANT ? REAL_TEXT.replace(...MUTANTS[MUTANT]) : REAL_TEXT;
-ok(MUT === undefined || MUTANT !== null, `P3 env: TESTS_FOR_MUTANT names line 43, 75, 81 or 132 (got ${JSON.stringify(MUT)})`);
-// Each pin checks the text that loads, so a planted mutant reds the pin of its own line.
-for (const [line, [from]] of Object.entries(MUTANTS)) {
-  const onLine = LOADED_TEXT.split("\n")[Number(line) - 1] ?? "";
-  ok(onLine.includes(from) && LOADED_TEXT.split(from).length === 2, `P3 pin line ${line}: the anchor sits on that line, once`);
+ok(MUT === undefined || MUTANT !== null, `P3 env: TESTS_FOR_MUTANT names an anchor in MUTANTS (got ${JSON.stringify(MUT)})`);
+// Each pin checks the text that loads, so a planted mutant reds the pin of its own anchor.
+for (const [name, [from]] of Object.entries(MUTANTS)) {
+  ok(LOADED_TEXT.split(from).length === 2, `P3 pin ${name}: the anchor occurs once in the loaded text`);
 }
 
 // The load hook swaps the mutant's anchor for its replacement as the script loads. The hook is data: no file is written.
@@ -125,15 +124,19 @@ const PURE = [
     ],
     ["test/a.test.mjs", "test/b.test.mjs", "worker/core.test.mjs"],
   ],
-  // P3: the row named for a line goes red under that line's planted mutant, and no other row does.
-  ["P3 line 43: a division after a name is not a regex", T, [["test/t.test.mjs", "const r = n / d; " + IMPORT_STATIC]], ["test/t.test.mjs"]],
-  ["P3 line 75: a regex that runs to its line end leaves the next import", T, [["test/t.test.mjs", "const n = i++ / 2;\n" + IMPORT_STATIC]], ["test/t.test.mjs"]],
-  ["P3 line 81: a slash inside a class does not end a regex", T, [["test/t.test.mjs", "const re = /[/']/; " + IMPORT_STATIC]], ["test/t.test.mjs"]],
-  ["P3 line 81: the slash after a regex body ends it", T, [["test/t.test.mjs", "const re = /a/; " + IMPORT_STATIC]], ["test/t.test.mjs"]],
-  ["P3 line 132: a file that ends on a bare from name does not throw", T, [["test/t.test.mjs", "const from = 1;\nconst x = from"]], []],
+  // P3: the row named for an anchor goes red under that anchor's planted mutant, and no other row does.
+  ["P3 regexAfterName: a division after a name is not a regex", T, [["test/t.test.mjs", "const r = n / d; " + IMPORT_STATIC]], ["test/t.test.mjs"]],
+  ["P3 regexScanStopsAtLineEnd: a regex that runs to its line end leaves the next import", T, [["test/t.test.mjs", "const n = i++ / 2;\n" + IMPORT_STATIC]], ["test/t.test.mjs"]],
+  ["P3 regexCloseSlash: a slash inside a class does not end a regex", T, [["test/t.test.mjs", "const re = /[/']/; " + IMPORT_STATIC]], ["test/t.test.mjs"]],
+  ["P3 regexCloseSlash: a regex body ends at its closing slash", T, [["test/t.test.mjs", "const re = /'/; " + IMPORT_STATIC]], ["test/t.test.mjs"]],
+  ["P3 fromSpecifier: a file that ends on a bare from name does not throw", T, [["test/t.test.mjs", "const from = 1;\nconst x = from"]], []],
 
-  // Measured bug (scripts/tests-for.mjs lines 84-85): after an unclosed regex stops at its line end, the next line's first word is skipped as regex flags.
+  // Measured bug in the regex scan: an unclosed regex that stops at its line end skipped the next line's first word as flags.
   ["L12 a misread regex does not eat the next line's import keyword", "test/x.mjs", [["test/t.test.mjs", 'const n = a++ / 2;\nimport "./x.mjs";\n']], ["test/t.test.mjs"]],
+
+  // F7: a tier-2 path in a template literal, and a misread regex on the import's own line. Red until the selector is fixed.
+  ["F7 a path named in a template literal is a cover", "scripts/fixture-target.mjs", [["test/t.test.mjs", "import { spawnSync } from \"node:child_process\";\nspawnSync(process.execPath, [`${ROOT}/scripts/fixture-target.mjs`]);\n"]], ["test/t.test.mjs"]],
+  ["F7 a misread regex on the import's own line does not hide the import", "scripts/fixture-target.mjs", [["test/t.test.mjs", 'const n = a++ / 2; import x from "../scripts/fixture-target.mjs";\n']], ["test/t.test.mjs"]],
 ];
 
 for (const [name, target, rows, want] of PURE) {
@@ -171,5 +174,12 @@ for (const { target, suites: want, why } of REAL) {
   ok(r.status === 0, `REAL exit ${target}: the CLI exits 0 (${why})`);
   eq(r.stdout.split("\n").filter(Boolean), want, `REAL ${target}: prints ${want.length ? want.join(", ") : "nothing"}`);
 }
+
+// F8: with no argument the CLI exits 2 and prints a usage line on stderr. Red until the CLI is fixed.
+const NOARG = SCRIPT_PRESENT
+  ? spawnSync(process.execPath, [SCRIPT], { cwd: ROOT, encoding: "utf8", timeout: 120000 })
+  : { status: null, stderr: "" };
+ok(NOARG.status === 2, "F8 no argument: scripts/tests-for.mjs exits 2");
+ok(/usage/i.test(NOARG.stderr), "F8 no argument: a usage line goes to stderr");
 
 report();

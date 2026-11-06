@@ -26,16 +26,16 @@ try {
   );
   process.exit(1);
 }
-if (typeof route !== "function") {
-  console.log("worker/core.test.mjs: worker/core.mjs does not export route(request, env, store)");
-  process.exit(1);
-}
-if (typeof MAX_LEDGER_BYTES !== "number") {
-  console.log("worker/core.test.mjs: worker/core.mjs does not export MAX_LEDGER_BYTES");
-  process.exit(1);
-}
-if (typeof keyAllowed !== "function" || typeof wsAuthorized !== "function") {
-  console.log("worker/core.test.mjs: worker/core.mjs does not export keyAllowed(key, env) and wsAuthorized(request, env)");
+// Each export is one check. A missing export is a real red, so the summary line prints with the counts.
+const EXPORT_CHECKS = [
+  ["route(request, env, store)", typeof route === "function"],
+  ["MAX_LEDGER_BYTES", typeof MAX_LEDGER_BYTES === "number"],
+  ["keyAllowed(key, env) and wsAuthorized(request, env)", typeof keyAllowed === "function" && typeof wsAuthorized === "function"],
+];
+const missingExports = EXPORT_CHECKS.filter(([, present]) => !present);
+if (missingExports.length) {
+  for (const [name] of missingExports) console.log(`worker/core.test.mjs: worker/core.mjs does not export ${name}`);
+  console.log(failLine(missingExports.length, EXPORT_CHECKS.length));
   process.exit(1);
 }
 

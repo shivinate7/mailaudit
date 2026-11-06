@@ -23,6 +23,10 @@
 //       `FAIL: ${failed} of ${total} failed`, matches the classifier's regex and the summary
 //       pattern, and prints full-size runs (n equal to m). A missing file is one named red.
 //
+//   A5  a stalled run prints no FAIL line, names the stall on its own line, and exits nonzero;
+//   E   every red exit in a suite prints failLine first, unless it is a load-error catch. The scan
+//       blanks strings and drops comments, and its traps run first;
+//
 // Run: node test/fail-line.test.mjs. Exits 1 on any failure.
 
 import { spawnSync } from "node:child_process";
@@ -72,6 +76,12 @@ function harnessRun(body) {
   const crash = harnessRun(`ok(true, "a"); throw new Error("fixture crash");`);
   eq(failLines(crash.stdout), [], "A4 control: a throw prints no FAIL line");
   ok(crash.status !== 0, "A4 control: a throw exits nonzero");
+
+  // A stall is a timeout or a crash, not a failed check: a run that never reaches report() prints no FAIL line.
+  const stall = harnessRun(`ok(true, "a"); (async () => { await new Promise(() => {}); })();`);
+  eq(failLines(stall.stdout), [], "A5 a stalled run prints no FAIL line");
+  ok(/^harness stalled: /m.test(stall.stdout), "A5 a stalled run names the stall on a line of its own");
+  ok(stall.status !== 0, "A5 a stalled run exits nonzero");
 }
 
 // Source scan. esbuild parses the file, so comments are gone and string contents are data.
@@ -224,6 +234,51 @@ if (!existsSync(HELPER)) {
     ok(FAIL_LINE.test(line) && SUMMARY.test(line), "D2 the helper's line matches the classifier's FAIL_LINE and the summary pattern");
     eq(helper.failLine(3, 3), "FAIL: 3 of 3 failed", "D3 full size: failLine(3, 3) returns `FAIL: 3 of 3 failed`");
   }
+}
+
+// E. Every red exit in a suite prints the FAIL line first. A load error exits from a catch block and
+// prints no count, so a catch is the one exception. Strings are blanked and comments dropped first,
+// so an exit inside a string or a comment is not an exit.
+// The quote characters are hex escapes, so this file's own scan does not read them as string starts.
+const STRING_RE = /\x22(?:\\.|[^\x22\\\n])*\x22|\x27(?:\\.|[^\x27\\\n])*\x27|\x60(?:\\.|[^\x60\\])*\x60/g;
+const EXIT_RE = /\bprocess\.exit\(1\)|\bprocess\.exitCode\s*=\s*1\b/g;
+function exitVerdicts(text) {
+  const code = transformSync(text, { loader: "js", format: "esm", target: "esnext" }).code;
+  const blanked = code.replace(STRING_RE, (m) => " ".repeat(m.length));
+  return [...blanked.matchAll(EXIT_RE)].map((m) => {
+    let depth = 0;
+    let open = -1;
+    for (let i = m.index - 1; i >= 0 && open < 0; i--) {
+      if (blanked[i] === "}") depth++;
+      else if (blanked[i] === "{") {
+        if (depth === 0) open = i;
+        else depth--;
+      }
+    }
+    const guarded = open >= 0 && /\bfailLine\s*\(/.test(blanked.slice(open, m.index));
+    const exempt = open >= 0 && /\bcatch\s*(\([^)]*\))?\s*$/.test(blanked.slice(0, open));
+    return { guarded, exempt };
+  });
+}
+
+// Traps for the exit scan: each is a way a naive scan reads too much or too little.
+const EXIT_CASES = [
+  ["an exit inside a string is not an exit", `const s = "process.exit(1)";\n`, []],
+  ["an exit inside a comment is not an exit", `// process.exit(1);\n`, []],
+  ["a failLine print before the exit guards it", `if (x) {\n  console.log(failLine(1, 2));\n  process.exit(1);\n}\n`, [{ guarded: true, exempt: false }]],
+  ["a failLine inside a string does not guard the exit", `if (x) {\n  const s = "failLine(1, 2)";\n  process.exit(1);\n}\n`, [{ guarded: false, exempt: false }]],
+  ["an exit with no print is unguarded", `if (x) {\n  process.exit(1);\n}\n`, [{ guarded: false, exempt: false }]],
+  ["process.exitCode = 1 with no print is unguarded", `if (x) {\n  process.exitCode = 1;\n}\n`, [{ guarded: false, exempt: false }]],
+  ["an exit in a catch is a load error, exempt", `try {\n  f();\n} catch (e) {\n  process.exit(1);\n}\n`, [{ guarded: false, exempt: true }]],
+  ["a multi-line template with a brace does not end the block early", "const t = `\n}\n`;\nif (x) {\n  process.exit(1);\n}\n", [{ guarded: false, exempt: false }]],
+];
+for (const [name, text, want] of EXIT_CASES) eq(exitVerdicts(text), want, `E scanner: ${name}`);
+
+// Every suite: each red exit is guarded by failLine, or is a load-error catch.
+for (const rel of suites) {
+  exitVerdicts(readFileSync(join(ROOT, rel), "utf8")).forEach((v, k) => {
+    ok(v.guarded || v.exempt, `E ${rel}: red exit ${k + 1} prints failLine first, or is a load-error catch`);
+  });
 }
 
 report();
