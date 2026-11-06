@@ -74,6 +74,22 @@ final class TallyBulkModelTests: XCTestCase {
         XCTAssertEqual(try shared(model).ratio, "0/4", "the row reads the ledger again after the undo")
     }
 
+    /// A Mark all that adds nothing keeps the held Undo, as on Packages. Mark all on "Shared" adds a2, e1 and s1. Then Mark all
+    /// on "Beta", whose only copy f1 is already in, adds nothing: the Undo is still Shared's, and undo takes back Shared's delta.
+    func testAMarkAllThatAddsNothingKeepsTheHeldUndo() async throws {
+        let (model, store) = try await rig(received: [Self.f1: 1])
+        try await bulking(model).bulk(name: "Shared", on: true)
+        XCTAssertEqual(model.bulkUndoName, "Shared", "anchor: the Mark all that adds copies holds its Undo")
+        XCTAssertNotNil(model.rows.first { $0.name == "Beta" }, "anchor: Beta is a row, so the press below reaches the model")
+        XCTAssertEqual(store.received()[Self.f1], 1, "anchor: f1 is in, so the Mark all on Beta adds nothing")
+
+        try await bulking(model).bulk(name: "Beta", on: true)
+        XCTAssertEqual(model.bulkUndoName, "Shared", "a Mark all that adds nothing must keep the held Undo")
+
+        try await bulking(model).undoBulk()
+        XCTAssertEqual(store.received(), [Self.f1: 1], "undo takes back Shared's delta: a2, e1 and s1 are gone, and f1 stays")
+    }
+
     /// The counts come from the bundle's bulkApply: the shim says 7 for each copy on Mark all, and on Clear keeps e1 at 5. Swift's
     /// own qty and delete would give the real counts.
     func testBulkWritesTheCountsTheBundleGives() async throws {

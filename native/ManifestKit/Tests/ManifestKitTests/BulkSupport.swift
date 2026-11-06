@@ -18,8 +18,8 @@
 // Rulings the cases carry, from the spec of the step and the web (src/app.jsx bulkSet, undoAssign):
 //   - One bulk is one LedgerStore save and one clock reading: every key of the package gets the same receivedAt, the
 //     ones the press leaves as they were included (the web's single touchReceived call stamps every key).
-//   - The model holds one Undo entry, for the last Mark all. A Clear, a check-in or a stamp on this device, and a newer bulk,
-//     end it. A write the model did not make (a Worker apply, simulated here by writing the store) does not.
+//   - The model holds one Undo entry, for the last Mark all. A Clear, a check-in or a stamp on this device, and a newer Mark all
+//     that adds a copy, end it. A Mark all that adds nothing keeps the entry. A write the model did not make (a Worker apply, simulated here by writing the store) does not.
 //   - Undo takes back the press's own delta (V39), writes the keys it changes at the time of the undo, and bumps the
 //     store's generation. An un-check needs a fresh receivedAt to beat an older check on another device.
 //

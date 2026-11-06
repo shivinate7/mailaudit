@@ -8,7 +8,7 @@
 //
 // The ledger is LiveFixture.base with a chosen received map. Package A1 / Seller A holds a1 (qty 1) and a2 (qty 2), three
 // copies. E1 / Seller E holds e1, F1 / Seller F holds f1. The Undo cases not in the UI tests (a check-in, a stamp, a Clear
-// and a newer bulk each end it) are only here, because a tab change, a restore and a Reset are not model calls.
+// and a newer Mark all that adds a copy each end it) are only here, because a tab change, a restore and a Reset are not model calls.
 //
 // Fake fixtures only. No Keychain item is read.
 
@@ -18,7 +18,7 @@ import XCTest
 
 @MainActor
 final class PackageBulkModelTests: XCTestCase {
-    static let gk = "A1::Seller A", eGk = "E1::Seller E"
+    static let gk = "A1::Seller A", eGk = "E1::Seller E", fGk = "F1::Seller F"
     static let a1 = "a1", a2 = "a2", e1 = "e1", f1 = "f1"
 
     /// A loaded model over LiveFixture.base. `now` is the store's clock; by default it reads `clock`, which a case moves.
@@ -124,7 +124,7 @@ final class PackageBulkModelTests: XCTestCase {
         try await assertUndoGone(after: { model, _ in try await bulking(model).bulk(gk: Self.gk, on: false) }, "a Clear")
     }
 
-    /// A newer Mark all replaces the held Undo: the first press can no longer be undone.
+    /// A newer Mark all that adds a copy replaces the held Undo: the first press can no longer be undone.
     func testANewerMarkAllReplacesTheUndo() async throws {
         let (model, store) = try await rig(received: [Self.f1: 1])
         try await bulking(model).bulk(gk: Self.gk, on: true)
@@ -134,6 +134,23 @@ final class PackageBulkModelTests: XCTestCase {
         try await bulking(model).undoBulk()
 
         XCTAssertEqual(store.received(), [Self.a1: 1, Self.a2: 2, Self.f1: 1], "undo takes back the newer press, E1's check-in, and no more")
+    }
+
+    /// A Mark all that adds nothing keeps the held Undo. A1's Mark all adds a1 and a2. Then Mark all on F1, whose only line
+    /// f1 is already in, adds nothing: the Undo is still A1's, and undo takes back A1's delta. Before the fix, the second
+    /// press cleared the held Undo, so undo did nothing.
+    func testAMarkAllThatAddsNothingKeepsTheHeldUndo() async throws {
+        let (model, store) = try await rig(received: [Self.f1: 1])
+        try await bulking(model).bulk(gk: Self.gk, on: true)
+        XCTAssertEqual(model.bulkUndoGk, Self.gk, "anchor: the Mark all that adds copies holds its Undo")
+        XCTAssertNotNil(model.rows.first { $0.gk == Self.fGk }, "anchor: F1 is a row, so the press below reaches the model")
+        XCTAssertEqual(model.done[Self.f1], true, "anchor: f1 is in, so the Mark all on F1 adds nothing")
+
+        try await bulking(model).bulk(gk: Self.fGk, on: true)
+        XCTAssertEqual(model.bulkUndoGk, Self.gk, "a Mark all that adds nothing must keep the held Undo")
+
+        try await bulking(model).undoBulk()
+        XCTAssertEqual(store.received(), [Self.f1: 1], "undo takes back A1's delta: a1 and a2 are gone, and f1 stays")
     }
 
     /// Undo with nothing to undo does nothing: no write, no generation bump.
