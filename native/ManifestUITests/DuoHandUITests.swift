@@ -405,6 +405,50 @@ final class DuoHandUITests: XCTestCase {
         keepShot(app, "hand-post-keeps-sender")
     }
 
+    /// Pose: flat, system keys up. A held name's Suspense box shows above the match list, and the one match row must clear the
+    /// keys. The box pushes the row down, which is debt hand-notice-cuts-match-row (the notice cuts the match row).
+    func testMatchRowClearsTheKeysUnderASuspenseBox() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        typeCard(app, "Lightning Bolt")
+        _ = need(app, "hand-held", "the Suspense line of a held name")
+        XCTAssertFalse(app.element("hand-strays").exists, "a Released box shows as well as the Suspense box, so this is not the Suspense case")
+        assertOnlyMatchClearsTheKeys(app, box: "Suspense")
+    }
+
+    /// Pose: flat, system keys up. A released name's Released box shows above the match list, and the one match row must clear the
+    /// keys. The same debt as the Suspense case, hand-notice-cuts-match-row.
+    func testMatchRowClearsTheKeysUnderAReleasedBox() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        typeCard(app, "Lightning Bolt")
+        _ = need(app, "hand-held", "the Suspense line of a held name")
+        need(app, "hand-new-envelope", "the New envelope button").tap()
+        _ = need(app, "hand-strays", "the Released box of the released name")
+        waitGone(app.element("hand-held"), "the name is still held after New envelope")
+        typeCard(app, "Path to Exile")
+        XCTAssertFalse(app.element("hand-held").exists, "a Suspense box shows as well as the Released box, so this is not the Released case")
+        assertOnlyMatchClearsTheKeys(app, box: "Released")
+    }
+
+    /// Pose: flat, system keys up. The typed name must leave exactly one match row, and that row must lie wholly above the keys'
+    /// drawn top and be hittable while `box` shows above the list. The row is read once the keys and the list have stopped moving.
+    /// No tap and no scroll. The typed name leaves one row, so that row is the list's only row and the one the keys can cover.
+    func assertOnlyMatchClearsTheKeys(_ app: XCUIApplication, box: String) {
+        let rows = waitForHits(app, count: 1, "the typed name must leave exactly one match under the \(box) box")
+        guard let row = rows.first else { return }  // waitForHits has already failed the test
+        let keys = app.keyboards.firstMatch
+        _ = requireKeysUp(app)
+        waitUntilStill([keys, row])
+        let keysTop = keys.frame.minY - Self.keyboardDrawnAbove
+        let f = row.frame
+        XCTAssertLessThanOrEqual(f.maxY, keysTop, "the match row \(row.identifier), frame \(f), is under the keys' drawn top at y \(keysTop) while the \(box) box shows: the owner must scroll to reach it")
+        XCTAssertTrue(row.isHittable, "the match row \(row.identifier), frame \(f), is not hittable with the keys up and no scroll")
+        keepShot(app, "hand-match-clears-keys-\(box.lowercased())")
+    }
+
     /// The first lines of Gamma Cards, which sit under the offer. A Post presses above them, so none may move (no-layout-shift-under-pointer).
     static let stillLines = [bolt, path, swords]
 
