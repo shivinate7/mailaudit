@@ -1,0 +1,32 @@
+{
+  "added": "2026-10-29T00:12:00-05:00",
+  "context": "Goal: the phone's order stamps look and work like the web's.\nProblem: step 6 ships two choices the mockup didn't have. The note field is two lines tall where the mockup shows one, so it fits the 44-point tap minimum at larger text sizes. And the \"0 stamped\" filter cell shows greyed out when nothing is stamped. Both depart from the mockup, so they need your word. Step 6 merges with them meanwhile.\nBased on: the step 6 design review (read).\nBased on: house rule ux-house-rules-govern: tap targets at least 44 points (ruling).\nDeparts from: the step 6 mockup's one-line note field and its always-active \"0 stamped\" cell.\nMeanwhile: step 6 ships with both. A change later is a small edit.",
+  "home": "decision stamp-band-opens-the-editor (manifest-restyle)",
+  "id": "stamp-note-two-lines",
+  "kind": "decision",
+  "n": 39,
+  "options": [
+    {
+      "gain": "The note field is easy to tap, and the filter can't show an empty list.",
+      "how": "Two-line note field; \"0 stamped\" greyed out when empty.",
+      "key": "a",
+      "label": "Keep both",
+      "lose": "It differs a little from the mockup."
+    },
+    {
+      "gain": "It looks exactly like the mockup.",
+      "how": "A one-line note field with a taller tap area; \"0 stamped\" always active.",
+      "key": "b",
+      "label": "Match the mockup",
+      "lose": "More work. Tapping \"0 stamped\" can show an empty list."
+    }
+  ],
+  "owner": "restyle local_96bb7b5c-71b1-45b5-b222-2df64d74f80f",
+  "pick": "a",
+  "rank": 5,
+  "ref": "step 6 design review; decision stamp-band-opens-the-editor",
+  "short": "Stamp note field",
+  "status": "open",
+  "title": "The phone's stamp editor: a two-line note field and a greyed-out \"0 stamped\" cell. Keep both?",
+  "why": "Both follow the house tap-size rule, and neither can show you a dead end."
+}
