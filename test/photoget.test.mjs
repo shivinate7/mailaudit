@@ -25,6 +25,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
+import { failLine } from "./fail-line.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const ENTRY = join(REPO, "src", "entry.jsx");
@@ -210,26 +211,32 @@ async function runAll(code) {
 
 const colours = (got) => CASES.map((c) => `${c.id} ${got[c.id].length ? "red" : "green"}`).join(", ");
 
-let problems = 0;
-const bad = (msg) => {
-  problems++;
-  console.log(`  ✗ ${msg}`);
-};
+let checks = 0;
+let failed = 0;
+const bad = (msg) => console.log(`  ✗ ${msg}`);
 
 const real = await runAll(await bundle(null));
-for (const c of CASES) for (const why of real[c.id]) bad(`real photoGet, case ${why}`);
+for (const c of CASES) {
+  checks++;
+  if (real[c.id].length) failed++;
+  for (const why of real[c.id]) bad(`real photoGet, case ${why}`);
+}
 console.log(`photoget: real photoGet: ${colours(real)}`);
 
 for (const m of MUTANTS) {
+  checks++;
   const got = await runAll(await bundle(m));
   console.log(`photoget: mutant ${m.name}: ${colours(got)}; killed by ${m.killedBy}`);
   const reason = got[m.killedBy][0];
-  if (!reason) bad(`mutant ${m.name} survived case ${m.killedBy}`);
+  if (!reason) {
+    failed++;
+    bad(`mutant ${m.name} survived case ${m.killedBy}`);
+  }
   else console.log(`    ${reason}`);
 }
 
-if (problems) {
-  console.log(`photoget: ${problems} problem(s)`);
+if (failed) {
+  console.log(failLine(failed, checks));
   process.exitCode = 1;
 } else {
   console.log("photoget: all green");

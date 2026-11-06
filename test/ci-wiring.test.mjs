@@ -23,6 +23,21 @@
 //      pin, with no checkout and a timeout-minutes;
 //  12  every claude-settings pin in every .github/workflows/*.yml names ACTION_PIN,
 //      read from the repo, so a workflow added later is covered too.
+//  13  checks.yml has a job mutation-report, which runs the shared mutation report;
+//  14  its step uses the shared action at ACTION_PIN with profile: mailaudit;
+//  15  its checkout has fetch-depth: 0 and persist-credentials: false;
+//  16  an actions/setup-node step with node-version 22 runs before the action;
+//  17  its job-level if: is only the draft guard;
+//  18  it has timeout-minutes, a positive whole number;
+//  19  ci-done needs mutation-report. The rollup's needs are assertion 4, which already requires
+//      every job it does not exclude, so the job's place in the rollup is not checked twice;
+//  20  .github/known-defects.json is a readable, non-empty list;
+//  21  every defect has id, name, file, old, new, argv and classify;
+//  22  every defect's classify is fail_line;
+//  23  every defect's id starts with a 7+ hex short hash of a commit in history. A shallow clone
+//      cannot read that history, so the check is unknown there, and an unknown read is red in CI
+//      (decision ci-unknown-is-red);
+//  24  every defect's file is in the repo. This one is outside the brief.
 //
 // The milestone workflow (.github/workflows/milestone.yml) and its job in checks.yml
 // are checked the same way, with letter ids:
@@ -72,9 +87,10 @@
 // MILESTONE_WORKFLOW name other files; a relative path resolves from the repo root.
 
 import { spawnSync } from "node:child_process";
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { failLine } from "./fail-line.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const WORKFLOW = resolve(ROOT, process.env.CI_WORKFLOW || ".github/workflows/checks.yml");
@@ -87,7 +103,7 @@ const CI_DONE = "ci-done";
 const ACTIONS = "shivinate7/claude-settings/actions/";
 const ALARM_ACTION = ACTIONS + "ci-alarm";
 // The shared action pin. Every claude-settings pin in checks.yml carries this sha.
-const ACTION_PIN = "59bff081c1eb44b99af16016a2a7de93174e2cce";
+const ACTION_PIN = "a781a86c3c693c9fe4d1ea7d30cdbde9d8ca92c6";
 const ROLLUP_IF = "always() && !github.event.pull_request.draft";
 const DRAFT_GUARD = "!github.event.pull_request.draft";
 // A needed job may read the draft guard, since a draft run skips it on purpose. An
@@ -1171,7 +1187,9 @@ function uiTestChecks({ makefile, classes, msDoc, msErr }) {
 }
 
 let failures = 0;
+let checks = 0;
 function expect(label, cond, detail = "") {
+  checks++;
   if (cond) {
     console.log(`ok   ${label}`);
   } else {
@@ -2464,8 +2482,284 @@ for (const [name, files] of PIN_GREEN) {
   expect(`fixture good: ${name} passes assertion 12`, off.length === 0, off.join("; "));
 }
 
+// Assertions 13 to 24: the mutation-report job, the needs that gate it, and the known defects it
+// replays. Each check returns { id, label, ok, detail, unknown }. unknown marks a read that could not
+// run (a shallow clone has no whole history to read). It is printed as unknown, never as green.
+const MUTATION_JOB = "mutation-report";
+const MUTATION_ACTION = ACTIONS + MUTATION_JOB;
+const MUTATION_PROFILE = "mailaudit";
+const CHECKOUT = "actions/checkout@";
+const SETUP_NODE = "actions/setup-node@";
+const DRAFT_ONLY = "!github.event.pull_request.draft";
+const KNOWN_DEFECTS = resolve(ROOT, ".github/known-defects.json");
+const KD_FIELDS = ["id", "name", "file", "old", "new", "argv", "classify"];
+const KD_CLASSIFY = "fail_line";
+const SHORT_HASH = /^[0-9a-f]{7,40}/;
+
+// The jobs map of a workflow text, or null when the text is absent or outside the parser's subset.
+function parsedJobs(text) {
+  if (text === null) return null;
+  try {
+    const doc = parseWorkflow(text);
+    return isMap(doc.jobs) ? doc.jobs : {};
+  } catch {
+    return null;
+  }
+}
+const jobOf = (jobs, id) => (jobs !== null && Object.hasOwn(jobs, id) && isMap(jobs[id]) ? jobs[id] : undefined);
+const needsIn = (jobs, id) => needsOf(jobOf(jobs, id));
+
+function mutationJobChecks(text) {
+  const out = [];
+  const add = (id, what, ok, detail = "") => out.push({ id, label: `${id} ${what}`, ok: Boolean(ok), detail });
+  const jobs = parsedJobs(text);
+  const job = jobOf(jobs, MUTATION_JOB);
+  add(
+    "13",
+    `checks.yml has a job ${MUTATION_JOB}`,
+    job !== undefined,
+    jobs === null ? "no readable workflow" : "no job with that id"
+  );
+
+  const js = steps(job);
+  const at = js.findIndex((s) => typeof s.uses === "string" && s.uses.startsWith(MUTATION_ACTION + "@"));
+  const action = at < 0 ? undefined : js[at];
+  const ref = action ? action.uses.slice(MUTATION_ACTION.length + 1) : undefined;
+  const profile = action && isMap(action.with) ? action.with.profile : undefined;
+  add(
+    "14",
+    `its step uses ${MUTATION_ACTION} at ACTION_PIN with profile: ${MUTATION_PROFILE}`,
+    ref === ACTION_PIN && profile === MUTATION_PROFILE,
+    `uses ${JSON.stringify(action?.uses ?? null)}; profile ${JSON.stringify(profile ?? null)}`
+  );
+
+  const checkout = js.find((s) => typeof s.uses === "string" && s.uses.startsWith(CHECKOUT));
+  const cw = checkout && isMap(checkout.with) ? checkout.with : {};
+  add(
+    "15",
+    "its checkout has fetch-depth 0 and persist-credentials false",
+    checkout !== undefined && String(cw["fetch-depth"]) === "0" && String(cw["persist-credentials"]) === "false",
+    `checkout with: ${JSON.stringify(cw)}`
+  );
+
+  const node = js.findIndex(
+    (s) =>
+      typeof s.uses === "string" &&
+      s.uses.startsWith(SETUP_NODE) &&
+      isMap(s.with) &&
+      s.with["node-version"] === "22"
+  );
+  add(
+    "16",
+    "an actions/setup-node step with node-version 22 runs before the action",
+    node >= 0 && at >= 0 && node < at,
+    `setup-node at step ${node}; the action at step ${at}`
+  );
+
+  add(
+    "17",
+    "its job-level if: is only the draft guard",
+    job !== undefined && normIf(ifText(job)) === DRAFT_ONLY,
+    `if: ${JSON.stringify(job?.if ?? null)}`
+  );
+
+  const t = job?.["timeout-minutes"];
+  add(
+    "18",
+    "it has timeout-minutes, a positive whole number",
+    typeof t === "string" && /^[1-9]\d*$/.test(t),
+    `timeout-minutes ${JSON.stringify(t ?? null)}`
+  );
+  return out;
+}
+
+function needsChecks(text) {
+  const out = [];
+  const add = (id, what, ok, detail = "") => out.push({ id, label: `${id} ${what}`, ok: Boolean(ok), detail });
+  const jobs = parsedJobs(text);
+  const done = needsIn(jobs, CI_DONE);
+  add("19", `${CI_DONE} needs ${MUTATION_JOB}`, done.includes(MUTATION_JOB), `ci-done needs ${JSON.stringify(done)}`);
+  return out;
+}
+
+// true when the clone holds the whole history, false when shallow, null when git cannot say.
+function historyWhole(root) {
+  const r = spawnSync("git", ["rev-parse", "--is-shallow-repository"], { cwd: root, encoding: "utf8" });
+  return r.status === 0 ? r.stdout.trim() === "false" : null;
+}
+function commitInHistory(prefix, root) {
+  const r = spawnSync("git", ["rev-parse", "--verify", "--quiet", `${prefix}^{commit}`], { cwd: root, encoding: "utf8" });
+  return r.status === 0;
+}
+
+// readHistory reads the commits even in a shallow clone. Only the fixtures pass it, and they name
+// commits every clone holds (HEAD, and a hash that exists nowhere).
+function knownDefectChecks(text, root, readHistory = false) {
+  const out = [];
+  const add = (id, what, ok, detail = "", unknown = false) =>
+    out.push({ id, label: `${id} ${what}`, ok: Boolean(ok), detail, unknown });
+  let parsed = null;
+  let why = "no readable file";
+  if (text !== null) {
+    try {
+      parsed = JSON.parse(text);
+      why = Array.isArray(parsed) ? "the list is empty" : "not a list";
+    } catch (e) {
+      why = `not JSON: ${e.message}`;
+    }
+  }
+  const rows = Array.isArray(parsed) ? parsed : [];
+  const whose = (pred) => rows.flatMap((e, i) => (pred(e) ? [] : [i]));
+
+  add("20", "known-defects.json is a readable, non-empty list", rows.length > 0, rows.length === 0 ? why : "");
+
+  const hasFields = (e) =>
+    isMap(e) &&
+    KD_FIELDS.every((k) => Object.hasOwn(e, k)) &&
+    ["id", "name", "file", "old", "new", "classify"].every((k) => typeof e[k] === "string") &&
+    Array.isArray(e.argv) &&
+    e.argv.length > 0 &&
+    e.argv.every((a) => typeof a === "string");
+  add(
+    "21",
+    "each defect has id, name, file, old, new, argv and classify",
+    rows.length > 0 && whose(hasFields).length === 0,
+    `defects without every field, by index: ${JSON.stringify(whose(hasFields))}`
+  );
+
+  const classifyOk = (e) => isMap(e) && e.classify === KD_CLASSIFY;
+  add(
+    "22",
+    `each defect's classify is ${KD_CLASSIFY}`,
+    rows.length > 0 && whose(classifyOk).length === 0,
+    `defects with another classify, by index: ${JSON.stringify(whose(classifyOk))}`
+  );
+
+  const shortHash = (e) => isMap(e) && typeof e.id === "string" && SHORT_HASH.test(e.id);
+  const what23 = "each defect's id starts with a 7+ hex short hash of a commit in history";
+  const badShape = whose(shortHash);
+  const whole = readHistory || historyWhole(root) === true;
+  if (rows.length === 0 || badShape.length > 0) {
+    add("23", what23, false, rows.length === 0 ? "no list" : `ids without a short hash, by index: ${JSON.stringify(badShape)}`);
+  } else if (!whole) {
+    add("23", what23, true, "the clone is shallow or git cannot say, so the commits are not read", true);
+  } else {
+    const missing = whose((e) => commitInHistory(e.id.match(SHORT_HASH)[0], root));
+    add("23", what23, missing.length === 0, `ids naming no commit, by index: ${JSON.stringify(missing)}`);
+  }
+
+  const fileInRepo = (e) => isMap(e) && typeof e.file === "string" && existsSync(join(root, e.file));
+  add(
+    "24",
+    "each defect's file is in the repo",
+    rows.length > 0 && whose(fileInRepo).length === 0,
+    `defects whose file is not in the repo, by index: ${JSON.stringify(whose(fileInRepo))}`
+  );
+  return out;
+}
+
+// An unknown read is printed as unknown locally. In CI it is red (decision ci-unknown-is-red).
+const show = (r) => {
+  if (!r.unknown) return expect(r.label, r.ok, r.detail);
+  if (process.env.CI === "true") return expect(r.label, false, `${r.detail} (an unknown read is red in CI)`);
+  console.log(`unknown ${r.label}${r.detail ? `: ${r.detail}` : ""}`);
+};
+
+{
+  const wf = readOrNull(WORKFLOW);
+  for (const r of [...mutationJobChecks(wf), ...needsChecks(wf)]) show(r);
+  for (const r of knownDefectChecks(readOrNull(KNOWN_DEFECTS), ROOT)) show(r);
+}
+
+// Fixtures for 13 to 25. Each red edit must move the named assertion, and the good text must pass all of them.
+const PIN_CHECKOUT = "3d3c42e5aac5ba805825da76410c181273ba90b1";
+const PIN_SETUP = "949feb2413d6458794dcd2491c4babbbce0c15c1";
+const MUT_HEAD = [
+  "jobs:",
+  `  ${MUTATION_JOB}:`,
+  "    if: ${{ !github.event.pull_request.draft }}",
+  "    runs-on: ubuntu-latest",
+  "    timeout-minutes: 30",
+  "    steps:",
+];
+const MUT_CHECKOUT = [`      - uses: ${CHECKOUT}${PIN_CHECKOUT} # v7.0.1`, "        with:", "          fetch-depth: 0", "          persist-credentials: false"];
+const MUT_SETUP = [`      - uses: ${SETUP_NODE}${PIN_SETUP} # v7.1.0`, "        with:", '          node-version: "22"'];
+const MUT_ACTION = [`      - uses: ${MUTATION_ACTION}@${ACTION_PIN} # main`, "        with:", `          profile: ${MUTATION_PROFILE}`];
+const MUT_GOOD = [...MUT_HEAD, ...MUT_CHECKOUT, ...MUT_SETUP, ...MUT_ACTION].join("\n") + "\n";
+const MUT_LATE = [...MUT_HEAD, ...MUT_CHECKOUT, ...MUT_ACTION, ...MUT_SETUP].join("\n") + "\n";
+const MUT_RED = [
+  ["the job is missing", mutate(MUT_GOOD, `  ${MUTATION_JOB}:`, "  not-the-report:"), "13"],
+  ["it names another pin", mutate(MUT_GOOD, `@${ACTION_PIN} # main`, `@${"f".repeat(40)} # main`), "14"],
+  ["its profile is another", mutate(MUT_GOOD, `profile: ${MUTATION_PROFILE}`, "profile: other"), "14"],
+  ["its checkout is shallow", mutate(MUT_GOOD, "fetch-depth: 0", "fetch-depth: 1"), "15"],
+  ["its checkout keeps credentials", mutate(MUT_GOOD, "persist-credentials: false", "persist-credentials: true"), "15"],
+  ["its setup-node is node 20", mutate(MUT_GOOD, 'node-version: "22"', 'node-version: "20"'), "16"],
+  ["setup-node runs after the action", MUT_LATE, "16"],
+  [
+    "its if: adds always()",
+    mutate(MUT_GOOD, "if: ${{ !github.event.pull_request.draft }}", "if: ${{ always() && !github.event.pull_request.draft }}"),
+    "17",
+  ],
+  ["it has no timeout-minutes", mutate(MUT_GOOD, "    timeout-minutes: 30\n", ""), "18"],
+];
+for (const [name, text, id] of MUT_RED) {
+  const hit = mutationJobChecks(text).find((r) => r.id === id);
+  expect(`fixture red: ${name} fails assertion ${id}`, hit !== undefined && !hit.ok, `assertion ${id}: ${JSON.stringify(hit?.ok ?? null)}`);
+}
+for (const r of mutationJobChecks(MUT_GOOD)) expect(`fixture good: ${r.label}`, r.ok, r.detail);
+
+const NEEDS_GOOD = [
+  "jobs:",
+  `  ${ROLLUP}:`,
+  `    needs: [suite, ${MUTATION_JOB}]`,
+  "    runs-on: ubuntu-latest",
+  `  ${CI_DONE}:`,
+  `    needs: [suite, ${MUTATION_JOB}, ${ROLLUP}]`,
+  "    runs-on: ubuntu-latest",
+].join("\n") + "\n";
+const NEEDS_RED = [
+  [
+    "ci-done does not need the job",
+    mutate(NEEDS_GOOD, `needs: [suite, ${MUTATION_JOB}, ${ROLLUP}]`, `needs: [suite, ${ROLLUP}]`),
+    "19",
+  ],
+];
+for (const [name, text, id] of NEEDS_RED) {
+  const hit = needsChecks(text).find((r) => r.id === id);
+  expect(`fixture red: ${name} fails assertion ${id}`, hit !== undefined && !hit.ok, `assertion ${id}: ${JSON.stringify(hit?.ok ?? null)}`);
+}
+for (const r of needsChecks(NEEDS_GOOD)) expect(`fixture good: ${r.label}`, r.ok, r.detail);
+
+// HEAD names a commit every clone holds, so the fixture's history read works in a shallow clone too.
+const HEAD_SHORT = spawnSync("git", ["rev-parse", "--short=7", "HEAD"], { cwd: ROOT, encoding: "utf8" }).stdout.trim();
+const KD_ENTRY = {
+  id: `${HEAD_SHORT}-fixture`,
+  name: "fixture defect",
+  file: "src/sync-rules.mjs",
+  old: "x",
+  new: "y",
+  argv: ["node", "test/fail-line.test.mjs"],
+  classify: KD_CLASSIFY,
+};
+const kdJson = (entries) => JSON.stringify(entries, null, 2);
+// The history case names a hash that exists nowhere. The fixtures read history in any clone.
+const KD_RED = [
+  ["the list is empty", kdJson([]), "20"],
+  ["the file is not JSON", "[", "20"],
+  ["an entry has no classify", kdJson([{ ...KD_ENTRY, classify: undefined }]), "21"],
+  ["an entry names another classifier", kdJson([{ ...KD_ENTRY, classify: "node_tap" }]), "22"],
+  ["an id has no short hash", kdJson([{ ...KD_ENTRY, id: "nothex" }]), "23"],
+  ["an id names no commit in history", kdJson([{ ...KD_ENTRY, id: "fffffffffff-fixture" }]), "23"],
+  ["a file is not in the repo", kdJson([{ ...KD_ENTRY, file: "src/no-such-file.mjs" }]), "24"],
+];
+for (const [name, text, id] of KD_RED) {
+  const hit = knownDefectChecks(text, ROOT, true).find((r) => r.id === id);
+  expect(`fixture red: ${name} fails assertion ${id}`, hit !== undefined && !hit.ok, `assertion ${id}: ${JSON.stringify(hit ?? null)}`);
+}
+for (const r of knownDefectChecks(kdJson([KD_ENTRY]), ROOT, true)) show({ ...r, label: `fixture good: ${r.label}` });
+
 if (failures) {
-  console.log(`ci-wiring: ${failures} failure(s)`);
+  console.log(failLine(failures, checks));
   process.exit(1);
 }
 console.log("ci-wiring: all green");

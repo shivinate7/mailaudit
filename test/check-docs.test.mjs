@@ -14,6 +14,7 @@ import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { spawnSync, execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { failLine } from "./fail-line.mjs";
 
 // CHECK_DOCS_SCRIPT lets a run point the cases at another copy of the script,
 // such as an older one, to prove a case red. The copy must sit inside the repo
@@ -23,7 +24,9 @@ const CHECK =
   resolve(dirname(fileURLToPath(import.meta.url)), "..", "check-docs.mjs");
 
 let failures = 0;
+let checks = 0;
 function expect(label, cond, detail = "") {
+  checks++;
   if (cond) {
     console.log(`ok   ${label}`);
   } else {
@@ -245,7 +248,7 @@ expect(
 }
 
 if (failures) {
-  console.log(`check-docs stripper: ${failures} failure(s)`);
+  console.log(failLine(failures, checks));
   process.exit(1);
 }
 console.log("check-docs stripper: all green");

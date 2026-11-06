@@ -1,0 +1,50 @@
+[
+  {
+    "id": "4317a8d-index-bullet-regex-drift",
+    "name": "index bullet regex drift",
+    "file": "check-records.mjs",
+    "old": "    [...index.matchAll(INDEX_BULLET)].map((m) => m[1]).filter((s) => slugSet.has(s))",
+    "new": "    [...index.matchAll(/`([a-z0-9]+(?:-[a-z0-9]+)+)`/g)].map((m) => m[1]).filter((s) => slugSet.has(s))",
+    "argv": [
+      "node",
+      "test/check-records.test.mjs"
+    ],
+    "classify": "fail_line"
+  },
+  {
+    "id": "04bf6a0-milestone-age-from-run-start",
+    "name": "milestone age from run start",
+    "file": "scripts/milestone-due.mjs",
+    "old": "    const age = (now - Date.parse(run.runStartedAt ?? run.createdAt)) / 60_000;",
+    "new": "    const age = (now - Date.parse(run.createdAt)) / 60_000;",
+    "argv": [
+      "node",
+      "test/milestone-due.test.mjs"
+    ],
+    "classify": "fail_line"
+  },
+  {
+    "id": "6ec284e-view-rules-keeps-canceled",
+    "name": "view rules keeps canceled",
+    "file": "src/view-rules.mjs",
+    "old": "  for (const p of groupPackages(dropCanceled(items))) {",
+    "new": "  for (const p of groupPackages(items)) {",
+    "argv": [
+      "node",
+      "test/view-rules.test.mjs"
+    ],
+    "classify": "fail_line"
+  },
+  {
+    "id": "9d46dc5-index-reads-claude-md-only",
+    "name": "index reads claude md only",
+    "file": "check-records.mjs",
+    "old": "  const index = indexSources().map((x) => x.text).join(\"\\n\");",
+    "new": "  const index = readFileSync(\"CLAUDE.md\", \"utf8\");",
+    "argv": [
+      "node",
+      "test/check-records.test.mjs"
+    ],
+    "classify": "fail_line"
+  }
+]

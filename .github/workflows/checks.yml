@@ -36,6 +36,7 @@ on:
       - ".github/workflows/checks.yml"
       - ".github/native-paths.regex"
       - ".github/dependabot.yml"
+      - ".github/known-defects.json"
   pull_request:
     branches: [main]
     # A draft starts no job. ready_for_review starts the jobs once a draft is marked ready.
@@ -68,8 +69,10 @@ jobs:
       group: suite-${{ github.ref == 'refs/heads/main' && github.sha || format('{0}-{1}', github.ref, github.event.pull_request.draft) }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     steps:
+      # fetch-depth 0: test:ci-wiring reads history to check that each known defect's id names a commit.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
@@ -84,6 +87,8 @@ jobs:
       - run: npm run test:send-key
       - run: npm run test:view-rules
       - run: npm run test:ci-wiring
+      - run: npm run test:fail-line
+      - run: npm run test:tests-for
       - run: npm run test:milestone-due
       - run: npm run test:golden
       - name: golden files are in step with src/view-rules.mjs
@@ -257,7 +262,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: shivinate7/claude-settings/actions/ste-lint@59bff081c1eb44b99af16016a2a7de93174e2cce # main 2026-11-05 (#1245)
+      - uses: shivinate7/claude-settings/actions/ste-lint@a781a86c3c693c9fe4d1ea7d30cdbde9d8ca92c6 # main 2026-11-05 (#1281)
 
   # Decision milestone-runs-full-suite: on a push to main, dispatches the full Swift suite
   # (milestone.yml) when it is due. Cost per push: one ubuntu job, one API read, one git log.
@@ -307,16 +312,38 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/milestone-due.mjs proof
 
+  # Decision mutation-ci-report-and-replay (claude-settings): reports how well the suites catch a wrong edit in
+  # the lines a change adds, and replays the known defects in .github/known-defects.json. Only the replay can
+  # fail it. The job starts on every non-draft run, because here only integration pull requests go ready and
+  # their branch names vary (int-batch-*, batch/*), so no branch filter fits. The shared action itself skips
+  # on a push or a schedule.
+  mutation-report:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20 # provisional
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: shivinate7/claude-settings/actions/mutation-report@a781a86c3c693c9fe4d1ea7d30cdbde9d8ca92c6 # main 2026-11-05 (#1281)
+        with:
+          profile: mailaudit
+
   # The one check branch protection requires. It fails when a needed job failed, was cancelled
   # or was skipped. always() makes it run when a needed job fails, and a draft skips it with
   # every other job. It has no name key, so its check name is its id.
   all-jobs-passed:
-    needs: [suite, screens, scope, native, zizmor, checks, milestone-due]
+    needs: [suite, screens, scope, native, zizmor, checks, milestone-due, mutation-report]
     if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - uses: shivinate7/claude-settings/actions/all-jobs-passed@59bff081c1eb44b99af16016a2a7de93174e2cce # main 2026-11-05 (#1245)
+      - uses: shivinate7/claude-settings/actions/all-jobs-passed@a781a86c3c693c9fe4d1ea7d30cdbde9d8ca92c6 # main 2026-11-05 (#1281)
         with:
           needs: ${{ toJSON(needs) }}
 
@@ -324,7 +351,7 @@ jobs:
   # wakes the session that watches the PR. A green run posts nothing. Keep needs: on every other job.
   # A draft run posts nothing, because its jobs skip on purpose.
   ci-done:
-    needs: [suite, screens, scope, native, zizmor, checks, milestone-due, all-jobs-passed]
+    needs: [suite, screens, scope, native, zizmor, checks, milestone-due, mutation-report, all-jobs-passed]
     if: ${{ !cancelled() && !github.event.pull_request.draft && github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -332,6 +359,6 @@ jobs:
       contents: read  # the workflow default, kept because a job-level block replaces it
       pull-requests: write  # gh pr comment posts the one comment
     steps:
-      - uses: shivinate7/claude-settings/actions/ci-done-comment@59bff081c1eb44b99af16016a2a7de93174e2cce # main 2026-11-05 (#1245)
+      - uses: shivinate7/claude-settings/actions/ci-done-comment@a781a86c3c693c9fe4d1ea7d30cdbde9d8ca92c6 # main 2026-11-05 (#1281)
         with:
           needs: ${{ toJSON(needs) }}
