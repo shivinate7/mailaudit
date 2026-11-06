@@ -1,10 +1,10 @@
 {
   "title": "sim-test: no simctl diagnose, pin the device",
-  "status": "todo",
+  "status": "done",
   "phase": "tooling",
   "order": 9,
   "why": "sim-test ran simctl diagnose, the top load, and could pick the Duo (debt sim-test-diagnose-and-pin).",
-  "note": "The fix lives in claude-settings. Waits on waiting-page item 38.",
+  "note": "Landed in claude-settings main 380a24b5: bin/sim-test adds -collect-test-diagnostics never by default and boots the UDID the role's lease grants; test_sim_test.sh cases 24, 55, 59 and 60 pin both, 71 of 71 pass (checked 2026-11-06 15:50 CST). Page item 38 can close; the debt closes by a records PR.",
   "ask": "",
-  "updatedAt": "2026-11-02T19:30:00Z"
+  "updatedAt": "2026-11-06T21:50:00Z"
 }
