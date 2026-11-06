@@ -1,4 +1,4 @@
-# View switch, seal, and tally headroom
+# Seal and tally headroom; the view-switch readings are retired.
 
 **Status:** retired with the view switch. L11a (commit `250823d`) removed the switch. The thirds, the label fit and the thumb offset below have no subject now. They stand only as readings from before L11a.
 

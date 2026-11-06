@@ -1,0 +1,9 @@
+{
+  "baseUrl": "http://localhost:4173",
+  "routes": [
+    { "name": "Packages-empty", "path": "/" }
+  ],
+  "sizes": [375, 760],
+  "themes": ["light"],
+  "height": 812
+}

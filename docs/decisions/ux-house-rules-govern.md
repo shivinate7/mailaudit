@@ -46,7 +46,7 @@ Orchestrator default, 2026-10-11, not an owner ruling: every ask names the count
 
 **Polish call, orchestrator decision 2026-10-12 under Decide, gallery:** the Ledger title gap is 16px, not 18px. The rule is `spacing-on-4px-grid`: every gap is a multiple of 4px. The figures sit in that record. The pin is claim 6 below. No before-and-after gallery entry is in this work. The owner may overrule this call.
 
-**Process-only, orchestrator default, 2026-10-12, not an owner ruling:** a polish merge keeps the fresh-reviewer pass that `orchestrator-may-merge` requires for a change to a gate, a rule or product code. The owner's polish grant covers taste, not review. The owner may overrule this.
+**Process-only, orchestrator default, 2026-10-12, not an owner ruling:** a polish merge keeps the fresh-reviewer pass of `orchestrator-may-merge`. That record requires it for a change to a rule, a guard's or check's verdict, or product code. The owner's polish grant covers taste, not review. The owner may overrule this.
 
 The gap for the Pull and Push anyway asks is closed. On 2026-10-12 the owner removed the GitHub controls from the UI, so their asks no longer exist (`stale-push-conflict-pull-two-tap`). The ask rule still applies to each ask that remains.
 

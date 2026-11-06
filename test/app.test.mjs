@@ -2711,9 +2711,12 @@ eq(
 /* Keys named like Object.prototype members. `k in out` was true for each of
    these, so the carry skipped them and the merged ledger lost the key. The inputs
    are built with defineProperty, because an object literal reads `__proto__` as
-   the prototype, not as a key. A fix that assigns `__proto__` would move the
-   prototype instead, so the last case of each name checks that Object.prototype
-   is still the merged object's prototype. Ids: constructor 33.31 to 33.35,
+   the prototype, not as a key. For constructor, toString and hasOwnProperty the
+   last case has the local side hold the later savedAt and no key of that name, so
+   the incoming key must survive. A guard that reads `k in local` takes the
+   inherited member instead. For `__proto__` the last case checks that Object.prototype
+   is still the merged object's prototype, since assigning `__proto__` would move it.
+   Ids: constructor 33.31 to 33.35,
    toString 33.36 to 33.40, hasOwnProperty 33.41 to 33.45, __proto__ 33.46 to 33.50. */
 const ownKey = (base, k, v) =>
   Object.defineProperty({ ...base }, k, { value: v, enumerable: true, writable: true, configurable: true });
@@ -2729,10 +2732,15 @@ const ownValue = (o, k) => (Object.prototype.hasOwnProperty.call(o, k) ? o[k] : 
   eq(ownValue(fromIncoming.merged, name), val("incoming"), `${at(1)} a key only the incoming side holds is carried as its own key`);
   eq(ownValue(bothAB.merged, name), val("incoming"), `${at(2)} on both sides and different, incoming wins`);
   eq(ownValue(bothBA.merged, name), val("local"), `${at(3)} and in the other argument order incoming wins again`);
-  ok(
-    [fromLocal, fromIncoming, bothAB, bothBA].every((r) => Object.getPrototypeOf(r.merged) === Object.prototype),
-    `${at(4)} the merged ledger keeps Object.prototype as its prototype`
-  );
+  if (name === "__proto__") {
+    ok(
+      [fromLocal, fromIncoming, bothAB, bothBA].every((r) => Object.getPrototypeOf(r.merged) === Object.prototype),
+      `${at(4)} the merged ledger keeps Object.prototype as its prototype`
+    );
+  } else {
+    const laterLocal = mergeLedger({ ...PHONE, savedAt: 2 }, ownKey({ ...LAPTOP, savedAt: 1 }, name, val("incoming")));
+    eq(ownValue(laterLocal.merged, name), val("incoming"), `${at(4)} a later local savedAt keeps a key only the incoming side holds`);
+  }
 });
 
 /* ── 34. the conflict stops being a trap ──────────────────────────────────
@@ -2998,7 +3006,7 @@ eq(workerPosts().length, 0, "34.25 with no key on this device, nothing is sent t
 /* ── 36. the action row ───────────────────────────────────────────────────
 
    The file actions became a row of ruled cells in the head's own vocabulary
-   (CLAUDE.md, "The ruled head"). What can be pinned here is behaviour; the
+   (.claude/rules/screens.md, "The ruled head"). What can be pinned here is behaviour; the
    layout it exists for — equal cells, the 375px fit, nothing right-aligned
    over a void — is re-measured in a real viewport like the rest of the
    region, because jsdom has none. */

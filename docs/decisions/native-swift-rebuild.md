@@ -31,8 +31,7 @@ MANIFEST is rebuilt as a native Swift client. The client talks to the same Cloud
 
 The owner accepted these on 2026-10-11 with "all seem fine". They are Degen's defaults.
 
-- The minimum is iOS 26 and macOS 26.
-- The Mac app has no sandbox.
+- The minimum is iOS 26.
 - The bundle id is dev.shivinate.manifest.
 - There is no background refresh in v1. A resume GET covers the need.
 
@@ -56,18 +55,18 @@ Every claim below rests on an Apple or WebKit source. None was measured on the o
 - The client must build each item key exactly as the parser does, see `saved-state-shape`.
 - Every invariant that touches data must hold in the Swift client too. These are `imports-merge-never-replace`, `saved-state-shape` and `the-token-is-a-credential`.
 - The signing team is paid. It is not a free Personal Team, whatever Degen's spec says. The local profiles are valid from 2026-10-11 to 2027-10-11, and a paid team allows Associated Domains.
-- Signing works on this Mac with `xcodebuild -allowProvisioningUpdates DEVELOPMENT_TEAM=SFYDZG48BE CODE_SIGN_STYLE=Automatic`. The phone gets the app through TestFlight, see `native-ships-via-testflight`.
+- Signing works on this Mac with `ios-ship`, which passes the team from the account file to the build as its signing team and sets `CODE_SIGN_STYLE=Automatic`. The phone gets the app through TestFlight, see `native-ships-via-testflight`.
 
 ## Costs the rebuild accepts
 
 - A second client codebase. The web app is about 9,300 lines under `src/`, with its own behaviour suite (`wc -l src/*` on a1ad360). The Swift client needs its own tests for the merge-facing rules.
 - A one-time move of the phone's data. The new app starts empty, as in `a-host-migration-resets-storage`. The Worker restores the check-ins. The local versions do not come back. Photos come back only if the client reads them from their store.
 
-## The Mac side: Degen's pattern
+## The Mac side: iPhone-only ships
 
-The owner ruled on 2026-10-11 to follow the Degen repo's D32, "Native SwiftUI app beside the web app". So the Mac gets the same SwiftUI app as the iPhone, and the web app stays.
+The app ships on the iPhone only (owner, 2026-11-03 18:16 CST, waiting-page item 192 `iphone-only-vs-mac`, pick a). `native/project.yml` builds one iOS app target, `Manifest`, with `TARGETED_DEVICE_FAMILY` 1, plus its UI test bundle. The Mac keeps the web app. A Mac target is debt `mac-target-unbuilt`. The rest of the Degen repo's D32 pattern, "Native SwiftUI app beside the web app", still holds:
 
-- One SwiftUI target that builds for both iOS and macOS, and a Swift package for the client logic.
+- A Swift package holds the client logic.
 - Never build a feature twice. Degen's owner rule: "never copy or redo stuff on one side and the other individually unless if its web-only and native-only stuff".
 - A parity table gives each feature one row, with a web test, a native test, and a scope of both, web-only or native-only, see `native-parity-table`.
 - The Worker is the one home of the merge. The Swift client sends its changes and renders the reply. So `src/merge-rules.mjs` is never ported to Swift.
@@ -75,15 +74,15 @@ The owner ruled on 2026-10-11 to follow the Degen repo's D32, "Native SwiftUI ap
 - The palette tokens and the test fixtures are shared files, built for both clients, see `shared-tokens-and-fixtures`.
 - The web app stays for any browser and for CSV import, see `csv-import-stays-web`. The public seed is gone: the owner ruled it out on 2026-10-11, and `82e45d4` removed it, see `worker-keeps-snapshots`.
 
-The Mac gains the Keychain key and native storage. In Safari it had the 7-day rule, which counts days of Safari use (WebKit blog, "Full Third-Party Cookie Blocking and More", 2020). Its key also sat on the shared origin. The cost is a parity table to keep, and a shared-token build step.
+The cost of iPhone-only: the Mac keeps both web risks. In Safari the key has the 7-day rule, which counts days of Safari use (WebKit blog, "Full Third-Party Cookie Blocking and More", 2020), and it sits on the shared origin. Debt `mac-target-unbuilt` holds that cost.
 
-Rejected: Swift on the iPhone only, because the Mac keeps both web risks. One SwiftUI app with the web app retired, because it drops the browser fallback and the live web suite.
+Rejected: one SwiftUI app with the web app retired, because it drops the browser fallback and the live web suite.
 
 ## See also
 
 - `sync-revamp-cloudflare` — the Worker the Swift client talks to
 - `itp-may-clear-storage` — the eviction risk that native storage removes on the phone
 - `a-host-migration-resets-storage` — the same reset a new app causes
-- `token-sits-on-shared-origin` — the key risk that the SwiftUI app closes on both devices
+- `token-sits-on-shared-origin` — the key risk that the SwiftUI app closes on the iPhone, see `mac-target-unbuilt`
 - `live-verification` — the resume trigger that is still eye-only
 - `nothing-recovers-without-the-key` — why the Keychain key matters

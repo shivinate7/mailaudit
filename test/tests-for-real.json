@@ -1,0 +1,42 @@
+[
+  {
+    "target": "src/sync-rules.mjs",
+    "suites": ["test/send-key.test.mjs"],
+    "why": "app dropped beside send-key, which imports it statically"
+  },
+  {
+    "target": "worker/core.mjs",
+    "suites": ["worker/core.test.mjs"],
+    "why": "a dynamic import of ./core.mjs"
+  },
+  {
+    "target": "check-records.mjs",
+    "suites": ["test/check-records.test.mjs"],
+    "why": "the CLI spawned with a path built by resolve()"
+  },
+  {
+    "target": "check-docs.mjs",
+    "suites": ["test/check-docs.test.mjs"],
+    "why": "the CLI spawned with a path built by resolve()"
+  },
+  {
+    "target": "scripts/send-key.mjs",
+    "suites": ["test/send-key.test.mjs"],
+    "why": "tier 2: a path built by join(), spawned"
+  },
+  {
+    "target": "src/remote-rules.mjs",
+    "suites": ["test/app.test.mjs"],
+    "why": "app alone imports it, so app is listed"
+  },
+  {
+    "target": "scripts/tests-for.mjs",
+    "suites": ["test/tests-for.test.mjs"],
+    "why": "the script prints its own suite"
+  },
+  {
+    "target": "src/no-such-module.mjs",
+    "suites": [],
+    "why": "no suite names it, and the exit is still 0"
+  }
+]

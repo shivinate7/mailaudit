@@ -6,7 +6,7 @@ Plan: docs/decisions/build-and-deploy.md#the-npm-scripts (web)
 
 This file holds the npm scripts and what each asks. It also holds what the build writes, the deploy sequence, and the Pages queued-workflow quirk.
 
-**Holds while:** `build.mjs --check` compares the whole committed `index.html` with the build of `src/`, and `test.yml` never fetches the `data` branch.
+**Holds while:** `build.mjs --check` compares the whole committed `index.html` with the build of `src/`, and `checks.yml` never fetches the `data` branch.
 
 ## The npm scripts
 
@@ -23,6 +23,8 @@ npm run check:screens # screen verdicts in a real browser
 npm run test:send-key # the send-key script's own test
 npm run test:view-rules # the view rules' own test
 npm run test:golden   # the golden files' own test
+npm run test:fail-line # does each suite print its FAIL line when red?
+npm run test:tests-for # the suite selector that the mutation report calls
 npm run check:golden  # do the golden files match what scripts/gen-golden.mjs writes now?
 npm run check:rules   # is the committed rules bundle in step with src/?
 npm run test:rules    # the contract tests for check:rules
@@ -30,6 +32,8 @@ npm run deploy        # build + test, then a branch holding only index.html and 
 ```
 
 `scripts/gen-golden.mjs` is not an npm script. After a change to `src/view-rules.mjs`, run `node scripts/gen-golden.mjs` to rewrite the golden files. `npm run check:golden` fails until you do.
+
+The `mutation-report` job in `checks.yml` starts on every non-draft run, and the shared action skips on a push or a schedule. On a pull request it mutates the lines the change adds and replays the defects in `.github/known-defects.json`. A defect no suite catches fails the job. `scripts/tests-for.mjs` tells it which suites cover a file. A mutant is caught only when its suite prints a line that starts with `FAIL`. Every suite prints `FAIL: <n> of <m> failed` when an assertion fails. A crash, a load error or a hang prints no such line. To add a defect, add an entry with the short hash of the commit that fixed it. The decision is `mutation-ci-report-and-replay` in claude-settings.
 
 `scripts/send-key.mjs` is not an npm script. Run it with node and one argument. The argument `mac` opens the sync link on this Mac. The argument `iphone` shows a QR code for the iPhone. The key rules live in `sync-revamp-cloudflare`.
 
@@ -39,7 +43,7 @@ npm run deploy        # build + test, then a branch holding only index.html and 
 
 ## ios-ship testflight
 
-`ios-ship testflight tools/ios-ship.json --app Manifest` is the iOS fallback path, run on this Mac when the Mac install fails. The ruling is `native-ships-via-testflight`. The shared tool runs `xcodegen generate`, archives Release for `generic/platform=iOS` with a UTC-minute build number, then uploads to App Store Connect. It does not run `npm run build`. `--export-only` exports without uploading and is the proof run. The upload runs once and is never retried. The key file, key id and issuer id live in the ios-ship account file under ~/.config, off the repo, and are never read or printed.
+`ios-ship testflight tools/ios-ship.json --app Manifest` is the iOS fallback path, run on this Mac when the Mac install fails. The ruling is `native-ships-via-testflight`. The shared tool runs `xcodegen generate`, archives Release for `generic/platform=iOS` with a UTC-minute build number, then uploads to App Store Connect. It does not run `npm run build`. Run `npm run check:rules` first. `--export-only` exports without uploading and is the proof run. The upload runs once and is never retried. The key file, key id and issuer id live in the ios-ship account file under ~/.config, off the repo, and are never read or printed.
 
 ## Why check:build compares the whole page, and the Pages quirk
 
