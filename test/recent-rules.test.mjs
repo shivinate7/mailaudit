@@ -13,11 +13,11 @@
    or { refused }; the others give a value directly.
 
    Ids are R<group>.<case>:
-     R1  addEntry: the merge, the drop, and when a merge stops
+     R1  addEntry: the merge, the no-net entry kept, and when a merge stops
      R2  capLog: 14 days, 200 rows, undo entries, order
      R3  mergeRecent: union, later time, tie, symmetric, idempotent, cap
-     R4  rowState for counts: two steps on one card, the receivedAt guard, a restore
-     R5  count undo: clamp at zero and at the quantity, key absent, a hand edit survives
+     R4  rowState for counts: two steps on one card, the newest-entry rule, a restore
+     R5  count undo: clamp at zero, at the quantity and at max(before, after); key absent; a hand edit survives
      R6  stamps, envelopes, assigns and bulk: the undo, and the refusal
      R7  isLive
      R8  rowLabel
@@ -136,14 +136,34 @@ const rowIds = (g, i) => g?.[i]?.rows?.map((r) => r?.id);
   eq(out?.log?.length, 2, "R1.5 a stamp never merges into an earlier stamp");
 }
 {
-  // 0 -> 1 then 1 -> 0 on one card leaves no net change, so the merged entry is dropped
+  // 0 -> 1 then 1 -> 0 on one card leaves no net change, so the merged entry is kept at 0 -> 0
   const out = add([count("r1", T(1), K, 0, 1)], count("r2", T(2), K, 1, 0), "r1");
-  eq(out?.log, [], "R1.6 a merged entry with no net change is dropped");
+  eq(ids(out?.log), ["r1"], "R1.6 a merged entry with no net change is kept, not dropped");
+  eq([out?.log?.[0]?.before, out?.log?.[0]?.after], [0, 0], "R1.6a and it stays before 0 and after 0");
 }
 {
   const out = add([], count("r1", T(1), K, 0, 1), null);
   eq(ids(out?.log), ["r1"], "R1.7 a first write on an empty log is appended");
   eq(out?.lastId, "r1", "R1.7a and becomes lastId");
+}
+{
+  // the no-net entry is kept at 0 -> 0, later than the first step, so a server copy of that step cannot outrank it
+  const kept = add([count("r1", T(1), K, 0, 1)], count("r2", T(2), K, 1, 0), "r1")?.log;
+  const server = count("r1", T(1), K, 0, 1);
+  const merged = mergeR(kept, [server]);
+  const cur = ledger({ received: { [K]: 1 }, receivedAt: { [K]: T(3) } });
+  const e = merged?.find((x) => x?.id === "r1");
+  eq(
+    e ? state(e, merged, cur) : undefined,
+    "nothing",
+    "R1.8 a no-net entry merged with a server copy of its first step reads NOTHING TO UNDO, not LIVE"
+  );
+  const alone = mergeR([], [server]);
+  eq(
+    alone?.[0] ? state(alone[0], alone, cur) : undefined,
+    "live",
+    "R1.8a control: the server copy alone reads LIVE, so the failing case above is the merge"
+  );
 }
 
 /* ---------- R2 capLog ---------- */
@@ -266,13 +286,39 @@ eq(
   );
 }
 {
-  const r = count("s1", T(10), K, 0, 1);
-  const cur = ledger({ received: { [K]: 1 }, receivedAt: { [K]: T(20) } });
-  const older = ledger({ received: {}, receivedAt: {} });
+  // a restore to a version where this card held 1, over a card at 2 with the row 1 -> 2 under it
+  const r = count("s1", T(10), K, 1, 2);
+  const cur = ledger({ received: { [K]: 2 }, receivedAt: { [K]: T(20) } });
+  const older = ledger({ received: { [K]: 1 }, receivedAt: {} });
   const res = restampRestore(cur, older, NOW);
   const restored = ledger({ received: older.received, receivedAt: res.receivedAt, stamps: res.stamps, envelopes: res.envelopes });
   eq(res?.receivedAt?.[K], NOW, "R4.5pre the restore stamps the card now, so only the count can decide");
-  eq(state(r, [r], restored), "nothing", "R4.5 after a restore to an older version, the row reads NOTHING TO UNDO");
+  eq(state(r, [r], restored), "nothing", "R4.5 after a restore to a version where the count was 1, the row 1 → 2 reads NOTHING TO UNDO");
+  eq(
+    state(r, [r], ledger({ received: { [K]: 1 }, receivedAt: { [K]: T(10) } })),
+    "live",
+    "R4.5a control: the same count, with the card stamped at the row's own time, reads LIVE"
+  );
+}
+{
+  // check X, check Y, uncheck X, check Z, check X: only the newest step on X is live
+  const K3 = "A1|2|pBrainstorm";
+  const items3 = [...ITEMS, { key: K3, qty: 4 }];
+  const E1 = count("E1", T(1), K, 0, 1);
+  const Y = count("Y", T(2), K2, 0, 1);
+  const E3 = count("E3", T(3), K, 1, 0);
+  const Z = count("Z", T(4), K3, 0, 1);
+  const E5 = count("E5", T(5), K, 0, 1);
+  const log = [E1, Y, E3, Z, E5];
+  const cur = ledger({
+    items: items3,
+    received: { [K]: 1, [K2]: 1, [K3]: 1 },
+    receivedAt: { [K]: T(5), [K2]: T(2), [K3]: T(4) },
+  });
+  eq(state(E1, log, cur), "nothing", "R4.6 the first check on X reads NOTHING TO UNDO, since a later step on X is newer");
+  eq(state(E3, log, cur), "nothing", "R4.7 the uncheck of X reads NOTHING TO UNDO for the same reason");
+  eq(state(E5, log, cur), "live", "R4.7a control: the newest step on X stays LIVE");
+  eq(state(Y, log, cur), "live", "R4.7b control: the check of Y, the newest step on Y, stays LIVE");
 }
 
 /* ---------- R5 count undo ---------- */
@@ -298,6 +344,24 @@ eq(
   const u = undo(r, ledger({ received: { [K]: 3 }, receivedAt: { [K]: T(11) } }));
   eq(u?.ledger?.received?.[K], 2, "R5.3 an undo takes only its own delta, so a later hand edit survives");
   eq(u?.ledger?.receivedAt?.[K], NOW, "R5.3a and the undo stamps the card with now");
+}
+{
+  // a row 1 -> 0 on a card at 1, newest and stamped at its own time: its undo would take the card to 2, above max(1, 0)
+  const r = count("c4", T(10), K, 1, 0);
+  const cur = ledger({ received: { [K]: 1 }, receivedAt: { [K]: T(10) } });
+  const u = undo(r, cur);
+  ok(
+    u?.refused != null || (u?.ledger != null && (u.ledger.received?.[K] ?? 0) <= 1),
+    "R5.4 no count undo takes a card above max(before, after) of its row",
+    `the undo leaves the card at ${u?.refused ? `refused (${u.refused})` : u?.ledger?.received?.[K]}, above 1`
+  );
+  eq(state(r, [r], cur), "nothing", "R5.4a and the row reads NOTHING TO UNDO, since its undo could only go above its own before");
+}
+{
+  // control: a 2 -> 1 row undone on its own card returns the card to 2, which max(2, 1) allows
+  const r = count("c5", T(10), K, 2, 1);
+  const u = undo(r, ledger({ received: { [K]: 1 }, receivedAt: { [K]: T(10) } }));
+  eq(u?.ledger?.received?.[K], 2, "R5.4b control: a 2 → 1 row undone on its own card returns the card to 2");
 }
 
 /* ---------- R6 stamps, envelopes, assigns, bulk ---------- */
