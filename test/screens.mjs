@@ -123,7 +123,8 @@
         on a seeded ledger with one checked card in the Recent log. In RECENT_STATES
         ("Recent row", "Recent panel open", "Recent row after UNDO"): the cell shows on the
         Ledger tab, the closed row holds no Undo control, the open panel holds one, and after
-        the tap the row holds none and the cell reads Nothing to undo. A tap on UNDO moves no
+        the tap the row holds none, and the cell reads Undo a tap until the panel closes, then
+        Nothing to undo. A tap on UNDO moves no
         drawn box, compared before and after in one run, so these states need no base file
         and sit outside claim 10. A tap on the subject text undoes nothing: only the Undo
         control is a tap target.
@@ -600,9 +601,15 @@ async function recentUndoCheck(browser, width) {
     checks++;
     if (await undoControl(page).count())
       fail(undone, "the row still shows its Undo control after the tap");
+    /* the value freezes while the panel is open, and re-reads when it closes (mockup note 11) */
+    checks++;
+    if (!(await page.getByText("Undo a tap").count()))
+      fail(undone, "with the panel still open, the cell does not read Undo a tap after the last undo");
+    await recentCell(page).click({ timeout: 3000 });
+    await page.waitForTimeout(250);
     checks++;
     if (!(await page.getByText("Nothing to undo").count()))
-      fail(undone, "the cell does not read Nothing to undo once the only live row is undone");
+      fail(undone, "after the panel closes, the cell does not read Nothing to undo");
     for (const e of pageErrors) fail(closed, `page error: ${e}`);
   } finally {
     await ctx.close();

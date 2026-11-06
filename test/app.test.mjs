@@ -8091,8 +8091,8 @@ eq(rowsIn().length, rowsBefore, "79.5a and no row was added while the panel is o
 ok(/UNDONE/.test(pkgRow?.textContent ?? ""), "79.5b and the row reads UNDONE");
 eq(recentBtn()?.getAttribute("aria-expanded"), "true", "79.5c and the panel is still open");
 ok(
-  /Nothing to undo/.test(recentBtn()?.textContent ?? ""),
-  "79.5d control: with the panel still open, the cell reads Nothing to undo after the last undo"
+  /Undo a tap/.test(recentBtn()?.textContent ?? ""),
+  "79.5d with the panel still open after the last undo, the cell still reads Undo a tap (it re-reads on close)"
 );
 const undoneRow = rowWith(/UNDONE/);
 ok(!!undoneRow, "79.5e the UNDONE row is still in the open panel");
