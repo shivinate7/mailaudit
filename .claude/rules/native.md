@@ -40,7 +40,6 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-sync-live-unrun` — The native sync POST, socket and photo paths are unrun against the Worker.
 - `native-sync-glue-unpinned` — No test drives the native sync glue in the app.
 - `native-merge-notice-unbuilt` — No native screen shows the merge notice.
-- `native-pull-generation-unpinned` — No test pins the generation check in a pull.
 - `native-kept-copy-has-no-route` — The native app has no route to the kept copy.
 - `native-dialog-ban-unpinned` — Nothing pins the ban on native dialogs.
 - `native-restore-pill-tap-unpinned` — No test taps the leading part of the native Restore pill.
