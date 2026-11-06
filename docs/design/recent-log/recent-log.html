@@ -213,7 +213,7 @@ body.ann .rp[data-ann]::before { top: auto; bottom: 2px; }
   var DAYS = [
     { h: "Today", rows: [
       { a: "Checked", t: "14:32", n: "Sheoldred, the Apocalypse", f: "1 of 1", s: "Alpha Cards", st: "live" },
-      { a: "Count 2 → 3", t: "14:30", n: "Lightning Bolt", f: "3 of 4", s: "Kessler Games", st: "undone", at: "14:31" },
+      { a: "Count 2 → 3", t: "14:30", n: "Lightning Bolt", f: "3 of 4", s: "Kessler Games", st: "undone", at: "14:31", id: "undone-row" },
       { a: "Package checked", t: "14:21", n: "Northwind Collectibles", f: "12 cards", s: "Order 261021-7F3B", st: "live" },
       { a: "Stamp · Refunded", t: "13:58", n: "Tidewater TCG", f: "", s: "Order 261019-2A90", st: "changed" },
       { a: "Envelope discarded", t: "13:40", n: "Blue bubble mailer, no return", f: "3 cards", s: "Kessler Games", st: "undone", at: "13:52", photo: true }
@@ -236,7 +236,7 @@ body.ann .rp[data-ann]::before { top: auto; bottom: 2px; }
     { a: "Stamp · Not delivered", t: "12:30", n: "Tidewater Trading Card Games and Hobby Supply", f: "", s: "Order 261027-5D02", st: "changed" }
   ]};
 
-  var state = { s: "open", w: "both", v: "static", photo: "line", mode: "inflow", strike: "on", hide: "close" };
+  var state = { s: "open", w: "both", v: "static", photo: "line", mode: "inflow", strike: "on", hide: "tab" };
   var hiddenOpts = {};
 
   function readHash() {
@@ -278,7 +278,8 @@ body.ann .rp[data-ann]::before { top: auto; bottom: 2px; }
       ? '<span class="s lost">Photo not restored</span>'
       : '<span class="s">' + esc(r.s) + "</span>";
     var tightCell = r.st === "undone" && r.photo && state.photo === "cell";
-    return '<div class="' + cls + '" data-st="' + r.st + '"' + (tightCell ? ' style="--x:1"' : "") + ">" +
+    var rid = r.photo ? "photo-row" : r.id;
+    return '<div class="' + cls + '" data-st="' + r.st + '"' + (rid ? ' id="' + rid + '"' : "") + (tightCell ? ' style="--x:1"' : "") + ">" +
       '<span class="l"><span class="k"><span class="a">' + esc(r.a) + '</span><span class="tm">' + r.t + "</span></span>" +
       '<span class="n"><span class="nm">' + esc(r.n) + "</span>" + (r.f ? '<span class="fg">' + esc(r.f) + "</span>" : "") + "</span>" +
       sline + "</span>" +
@@ -327,8 +328,9 @@ body.ann .rp[data-ann]::before { top: auto; bottom: 2px; }
     return h;
   }
 
-  function frame(width, inner, extra) {
-    return '<div class="frame" style="width:' + width + 'px">' + '<div class="scroller"><div class="page">' + inner + "</div></div>" +
+  /* Each frame suffixes the ids inside it (renameIds), so every screen element has one id per page. */
+  function frame(width, inner, extra, role) {
+    return '<div class="frame" data-sfx="' + width + (role ? "-" + role : "") + '" id="frame" style="width:' + width + 'px">' + '<div class="scroller"><div class="page">' + inner + "</div></div>" +
       '<div class="bbar"><span class="on">Ledger</span><span>Orphaned</span><span>Tally</span><span>Packages</span></div>' + (extra || "") + "</div>";
   }
 
@@ -357,10 +359,10 @@ body.ann .rp[data-ann]::before { top: auto; bottom: 2px; }
       else if (state.s === "all-inert") body = frame(w, ledger(allInert(DAYS), "open"));
       else if (state.s === "hidden") body = frame(w, ledger(DAYS, "none"));
       else if (state.s === "closing-empty") {
-        var before = frame(w, ledger(allInert(DAYS), "open"), '<span class="finger" data-finger></span>');
+        var before = frame(w, ledger(allInert(DAYS), "open"), '<span class="finger" data-finger></span>', "before");
         var after = state.hide === "close"
-          ? frame(w, ledger(DAYS, "none"), '<span class="finger" data-finger></span>')
-          : frame(w, ledger(allInert(DAYS), "closed", "Nothing live"), '<span class="finger" data-finger></span>');
+          ? frame(w, ledger(DAYS, "none"), '<span class="finger" data-finger></span>', "after")
+          : frame(w, ledger(allInert(DAYS), "closed", "Nothing to undo"), '<span class="finger" data-finger></span>', "after");
         body = '<div class="pair"><div class="dev"><div class="cap"><b>Before the tap</b></div>' + before + '</div><div class="dev"><div class="cap"><b>After: ' +
           (state.hide === "close" ? "History is under the finger" : "Recent stays until the tab is left") + "</b></div>" + after + "</div></div>";
       }
@@ -377,7 +379,14 @@ body.ann .rp[data-ann]::before { top: auto; bottom: 2px; }
     placeOverlay();
     placeFingers();
     scrollFrames();
+    renameIds();
     writeHash();
+  }
+  function renameIds() {
+    document.querySelectorAll(".frame").forEach(function (f) {
+      var sfx = f.dataset.sfx; f.id = "frame-" + sfx;
+      f.querySelectorAll("[id]").forEach(function (e) { e.id = e.id + "-" + sfx; });
+    });
   }
 
   /* overlay mode: the panel hangs from the Recent row's bottom edge and covers the rows below it */
