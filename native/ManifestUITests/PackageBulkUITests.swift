@@ -474,12 +474,12 @@ final class PackageBulkUITests: XCTestCase {
 
     // MARK: accessibility audits, one screen per method, at rest. None is taken with the ask armed: see the header.
 
-    /// The Packages screen with Mark all and Clear both on the card. Skips only what the tab bar covers.
+    /// The Packages screen with Mark all and Clear both on the card. Skips what the tab bar covers and the ruled contrast flags.
     func testAccessibilityAuditPackagesWithBothBulkControls() throws {
         let app = launch()
         checkIn(app, Self.bolt)
         XCTAssertTrue(el(app, "bulk-clear:\(Self.a1)").waitForExistence(timeout: 5), "no Clear before the audit")
-        try app.auditSkippingTabBar()
+        try app.auditSkippingTabBar(ruled: skipMeasuredContrastFlags)
     }
 
     /// The Packages screen with Undo mark all in Mark all's slot.
@@ -487,7 +487,7 @@ final class PackageBulkUITests: XCTestCase {
         let app = launch()
         tap(app, "bulk-mark:\(Self.a1)")
         XCTAssertTrue(el(app, "bulk-undo:\(Self.a1)").waitForExistence(timeout: 5), "no Undo before the audit")
-        try app.auditSkippingTabBar()
+        try app.auditSkippingTabBar(ruled: skipMeasuredContrastFlags)
     }
 
     /// The open Tally row with its two controls, alone on the list (see openBrainstorm). The Tally audits skip the ruled
