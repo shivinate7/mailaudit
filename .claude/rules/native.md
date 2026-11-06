@@ -40,16 +40,14 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-sync-live-unrun` — The native sync POST, socket and photo paths are unrun against the Worker.
 - `native-sync-glue-unpinned` — No test drives the native sync glue in the app.
 - `native-merge-notice-unbuilt` — No native screen shows the merge notice.
-- `native-pull-generation-unpinned` — No test pins the generation check in a pull.
 - `native-kept-copy-has-no-route` — The native app has no route to the kept copy.
 - `native-dialog-ban-unpinned` — Nothing pins the ban on native dialogs.
 - `native-restore-pill-tap-unpinned` — No test taps the leading part of the native Restore pill.
 - `native-ledger-tab-unbuilt` — The native Ledger tab lacks the View group.
 - `native-restore-keeps-old-times` — A native restore keeps the old change times.
-- `native-milestone-needed-unpinned` — No test pins that a native operation needs its milestone.
+- `native-milestone-needed-unpinned` — No ruling on a native Reset whose milestone cannot be saved.
 - `native-ask-has-no-cancel-focus` — The native ask does not move first focus to Cancel.
 - `native-removal-rule-is-swift` — The test for a removing reply is Swift code.
-- `native-version-names-unpinned` — No test pins the version file names.
 - `native-filters-tally-only` — The native client has no date filter, package sort or Packages search.
 - `native-tally-copy-no-flags` — The native Tally copy has no lost-mail flag and no order id tap.
 - `native-envelope-has-no-photos` — Native envelopes have no photos.
@@ -84,7 +82,6 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-runner-keychain-unverified` — Whether the hosted runner keychain is unlocked is unverified.
 - `native-job-hosted-time-unmeasured` — The native job's time on a hosted runner is unmeasured.
 - `native-photo-screens-unwired` — No native screen shows a photo, and nothing takes one.
-- `native-photo-ids-kept-uncalled` — The native restore does not call the photo id rule.
 - `native-merge-skips-photo-fetch` — Nothing fetches native photos before an apply.
 - `native-photo-sweep-unbuilt` — The native client has no photo sweep.
 - `native-photo-viewer-unpinned` — No test pins the photo viewer's traits or the Stop control.
