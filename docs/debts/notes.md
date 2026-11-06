@@ -30,7 +30,7 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 - 2026-10-30, Post-offer review round 1: no test pins the receipt text or when it clears (`HandScreen.swift`).
 - 2026-10-30, Post-offer review round 1: at accessibility text sizes a long refused line can overflow the receipt slot, and Post then sits below the keys and needs a manual scroll.
 - 2026-10-30, Post-offer review round 1: `DuoHandUITests`' 20 pt status-bar floor is unmeasured, and `waitUntilStill` returns silently after 8 s.
-- 2026-11-06, Post-offer review round 2: `testPostHoldsTheLinesStillWhenItsSaveFails` (`DuoHandUITests.swift`) asserts no kept `hand-post`, so no HandScreen change can turn it red; `HandModelTests.testFailedSaveRollsBack` pins the kept offer in the model.
+- 2026-11-06, Post-offer review round 2: `testPostHoldsTheLinesStillWhenItsSaveFails` (`DuoHandUITests.swift`) asserts nothing about a kept `hand-post`, so a same-height receipt in the offer's place keeps it green; `HandModelTests.testFailedSaveRollsBack` pins the kept offer in the model.
 - 2026-11-06, Post-offer review round 2: the receipt is keyed to its own envelope (`HandScreen.swift` `else if let r = receipt, r.offer.gk == pkg.gk`); no test pins that guard.
 - 2026-11-06, Post-offer review round 2: the red refusal line on manila at 50% over paper computes to 4.60:1 from the token hex values, 0.1 over the floor, and no token test covers the pair.
 - 2026-10-29, CI wiring review round 2: no run has shown that `cancelled()` reads true in the ci-done job after a superseded PR run is cancelled. The first double push on a PR settles it. A false value posts a false red comment.
