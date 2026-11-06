@@ -336,6 +336,29 @@ final class DuoHandUITests: XCTestCase {
         XCTAssertTrue(app.element("hand-strays").exists, "the stray left the list while no post named it")
     }
 
+    /// Pose: flat. New envelope ends the envelope while a Suspense box shows. The box leaves and its name joins the Released box,
+    /// so the envelope row and its New envelope button must not move under the pointer (no-layout-shift-under-pointer). The button
+    /// is read once the page has stopped moving, tapped, and read again once it is still. Debt hand-new-envelope-shifts.
+    func testNewEnvelopeHoldsStillUnderASuspenseBox() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+
+        typeCard(app, "Lightning Bolt")
+        let held = need(app, "hand-held", "the Suspense line of a held name")
+        let newEnvelope = need(app, "hand-new-envelope", "the New envelope button")
+        waitUntilStill([held, newEnvelope])
+        let before = newEnvelope.frame
+
+        newEnvelope.tap()
+        _ = need(app, "hand-strays", "the Released box of the name that New envelope released")
+        waitGone(app.element("hand-held"), "the name is still held after New envelope")
+        waitUntilStill([newEnvelope])
+        let after = newEnvelope.frame
+        XCTAssertEqual(after.minY, before.minY, accuracy: 1, "New envelope moved \(after.minY - before.minY) pt, from \(before) to \(after): the Suspense box left and its name joined the Released box")
+        keepShot(app, "hand-new-envelope-holds-still")
+    }
+
     /// Pose: flat. The past-transit page lists the late mail, oldest last, on the right page. A tracked package is not
     /// on it. Each row offers Claim filed and Refunded, and nothing offers Lost.
     func testPastTransitListsLateMailOldestLast() {
@@ -509,7 +532,7 @@ final class DuoHandUITests: XCTestCase {
     /// Pose: flat. A tap on a match fills the query and the list shrinks, but the New envelope button, which the owner's
     /// thumb reaches for next, does not move (no-layout-shift-under-pointer). "to" hits Brainstorm (two envelopes), Path to Exile
     /// and Swords to Plowshares in the seed, so the list has 3 rows. The 2nd, Path to Exile, is only in C1: it holds no name, so no
-    /// Suspense line opens above the button. Typing the whole name leaves 1 match, so the list loses 2 rows. With the list above
+    /// Suspense line opens. Typing the whole name leaves 1 match, so the list loses 2 rows. With the list above
     /// the row, the button moves up by those rows and this fails.
     func testTappingAMatchDoesNotMoveNewEnvelope() {
         let app = XCUIApplication.launchedOnSeed()
@@ -525,7 +548,7 @@ final class DuoHandUITests: XCTestCase {
         app.element(rows[1].identifier).tap()  // by id, so the tap is the 2nd row whatever order the query lists them in
         _ = waitForHits(app, count: 1, "tapping Path to Exile must leave that one match")
         XCTAssertEqual(app.element("hand-query").value as? String, "Path to Exile", "the tap did not fill the query")
-        XCTAssertFalse(app.element("hand-held").exists, "a Suspense line opened above the button: the 2nd match is a shared name, so the seed no longer makes this test fair")
+        XCTAssertFalse(app.element("hand-held").exists, "a Suspense line opened: the 2nd match is a shared name, so the seed no longer makes this test fair")
         let after = envelope.frame
         XCTAssertEqual(after.minY, before.minY, accuracy: 0.5, "New envelope moved from \(before) to \(after) when the match list shrank from 3 rows to 1")
         keepShot(app, "hand-match-tap-holds-new-envelope")
