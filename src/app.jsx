@@ -1829,13 +1829,19 @@ const LedgerRow = ({ label, sub, value, accent, expanded, pressed, onClick, disa
   </button>
 );
 
-/* The Recent panel's rows, in a scroll of at most 360px. Every row is one button of one fixed
-   height: a tap anywhere on a live row undoes it, and an end state leaves the row inert at the
-   same size. Day headings stick to the top of the scroll. */
+/* The Recent panel's rows, in a scroll of at most 360px. Every row has one fixed height. Only
+   the 72px cell at its right edge is a control, and only on a live row; an end state is plain
+   text in the same cell, so a row keeps its size. The subject is never a control. Day headings
+   stick to the top of the scroll. The cell carries a scroll margin as tall as the bottom bar: at
+   375px the first row's cell opens under the bar, and a tap there made the browser scroll the
+   window to uncover it. */
 const hhmm = (ms) => {
   const d = new Date(ms);
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 };
+/* the words a row's Undo control is named by: "Undo checked Counterspell, Alpha Cards" */
+const undoName = (e, v) =>
+  `Undo ${rowLabel(e).toLowerCase().replace(" · ", " ").replace(" → ", " to ")} ${v.subject}${v.seller ? `, ${v.seller}` : ""}`;
 const RecentPanel = ({ rows, log, ledger, onUndo }) => {
   const undone = new Map(log.filter((e) => e.kind === "undo").map((e) => [e.of, e]));
   const groups = groupByDay(rows, Date.now());
@@ -1859,12 +1865,7 @@ const RecentPanel = ({ rows, log, ledger, onUndo }) => {
               const v = rowView(e, ledger);
               const lost = st === "undone" && u?.photoLost;
               return (
-                <button
-                  key={e.id}
-                  className={`rp-rr${st === "undone" ? " undone" : ""}`}
-                  disabled={st !== "live"}
-                  onClick={() => onUndo(e)}
-                >
+                <div key={e.id} className={`rp-rr${st === "undone" ? " undone" : ""}`}>
                   <span className="l">
                     <span className="k">
                       <span className="a">{rowLabel(e)}</span>
@@ -1876,31 +1877,33 @@ const RecentPanel = ({ rows, log, ledger, onUndo }) => {
                     </span>
                     <span className={`s${lost ? " lost" : ""}`}>{lost ? "Photo not restored" : v.seller}</span>
                   </span>
-                  <span className="r">
-                    {st === "live" ? (
+                  {st === "live" ? (
+                    <button className="r" aria-label={undoName(e, v)} onClick={() => onUndo(e)}>
                       <span className="undo">UNDO</span>
-                    ) : (
-                      <span className="end">
-                        {st === "undone" ? (
-                          <>
-                            <span>UNDONE</span>
-                            <span>{u ? hhmm(u.at) : ""}</span>
-                          </>
-                        ) : st === "changed" ? (
-                          <>
-                            <span>CHANGED</span>
-                            <span>SINCE</span>
-                          </>
-                        ) : (
-                          <>
-                            <span>NOTHING</span>
-                            <span>TO UNDO</span>
-                          </>
-                        )}
-                      </span>
-                    )}
-                  </span>
-                </button>
+                    </button>
+                  ) : (
+                    <span className="r">
+                     <span className="end">
+                      {st === "undone" ? (
+                        <>
+                          <span>UNDONE</span>
+                          <span>{u ? hhmm(u.at) : ""}</span>
+                        </>
+                      ) : st === "changed" ? (
+                        <>
+                          <span>CHANGED</span>
+                          <span>SINCE</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>NOTHING</span>
+                          <span>TO UNDO</span>
+                        </>
+                      )}
+                     </span>
+                    </span>
+                  )}
+                </div>
               );
             })}
           </React.Fragment>
@@ -4108,6 +4111,9 @@ export default function MailDayLedger() {
        by the next debounced save and reappear pointing at a ledger that's gone */
     setEnvelopes([]);
     setStamps({});
+    /* the log stays (its rows guard themselves), but the merge chain ends: a check made after a
+       Reset is its own entry, not a merge into the un-check before it */
+    lastEntryId.current = null;
     setShowStamped(false);
     composerDraft.current.clear();
     setComposing(null);
@@ -5197,7 +5203,10 @@ export default function MailDayLedger() {
       }
       /* read again: the ledger can move during the await */
       if (rowState(entry, recentRef.current, ledgerRef.current) !== "live") return false;
-      const res = undoEntry(entry, ledgerRef.current, Date.now(), held ? { hasPhoto: (id) => held.has(id) } : {});
+      const res = undoEntry(entry, ledgerRef.current, Date.now(), {
+        log: recentRef.current,
+        ...(held ? { hasPhoto: (id) => held.has(id) } : {}),
+      });
       if (res.refused) return false;
       if (entry.kind !== "stamp" && entry.kind !== "envelope") {
         setReceived(res.ledger.received);
@@ -5212,11 +5221,12 @@ export default function MailDayLedger() {
     [logAction]
   );
 
-  const undoAssign = useCallback(() => {
+  /* The notice goes only when its undo ran. A refusal (the row changed since) leaves it up and
+     writes nothing. */
+  const undoAssign = useCallback(async () => {
     if (!undo) return;
     const entry = recentRef.current.find((e) => e.id === undo.entryId);
-    if (entry) undoRecent(entry);
-    setUndo(null);
+    if (entry && (await undoRecent(entry))) setUndo(null);
   }, [undo, undoRecent]);
 
   /* The Recent cell on the Ledger tab. It re-reads whether anything can be undone only when the
@@ -5227,6 +5237,9 @@ export default function MailDayLedger() {
   /* the rows the open panel lists, frozen when it opened: an action made meanwhile shows on the
      next open, and an undo changes only its own row's right edge */
   const [recentFrozen, setRecentFrozen] = useState([]);
+  /* what the cell's value read when the panel opened: it stays while the panel is open, as the
+     rows do, and re-reads on close */
+  const [recentOpenLive, setRecentOpenLive] = useState(false);
   const onLedgerTab = view === "ledger";
   useLayoutEffect(() => {
     if (!onLedgerTab || !loaded) return;
@@ -5246,6 +5259,7 @@ export default function MailDayLedger() {
       setRecentFrozen(
         recentRef.current.filter((e) => e.kind !== "undo" && rowListed(e, ledgerRef.current))
       );
+      setRecentOpenLive(isLive(recentRef.current, ledgerRef.current));
     }
     setRecentOpen((o) => !o);
   };
@@ -5727,10 +5741,9 @@ export default function MailDayLedger() {
                  border-bottom: 1px solid ${C.line}; font-family: ${mono}; font-size: 10px;
                  letter-spacing: .16em; text-transform: uppercase; color: ${C.inkSoft}; }
         .rp-rr { display: flex; align-items: stretch; gap: 12px; width: 100%; height: 72px;
-                 padding: 0; border: 0; border-top: 1px solid ${C.line}; background: transparent;
-                 text-align: left; font-family: ${cochin}; color: ${C.ink}; cursor: pointer; }
+                 box-sizing: border-box; padding: 0; border: 0; border-top: 1px solid ${C.line};
+                 background: transparent; text-align: left; font-family: ${cochin}; color: ${C.ink}; }
         .rp-dh + .rp-rr { border-top: 0; }
-        .rp-rr:disabled { cursor: default; }
         .rp-rr > .l { flex: 1; min-width: 0; display: grid; grid-template-rows: 14px 22px 18px;
                       align-content: center; }
         .rp-rr .k { display: flex; gap: 8px; min-width: 0; font-family: ${mono}; font-size: 10px;
@@ -5750,8 +5763,10 @@ export default function MailDayLedger() {
         .rp-rr.undone .nm { text-decoration: line-through; text-decoration-thickness: 1px;
                             text-decoration-color: ${C.inkSoft}; }
         /* one fixed right cell, so UNDO and every end state take the same box */
-        .rp-rr > .r { flex: 0 0 72px; display: flex; align-items: center; justify-content: flex-end;
-                      text-align: right; }
+        .rp-rr > .r { flex: 0 0 72px; box-sizing: border-box; display: flex; align-items: center;
+                      justify-content: flex-end; text-align: right; }
+        .rp-rr > button.r { padding: 0; border: 0; background: transparent; font: inherit; cursor: pointer;
+                            scroll-margin-bottom: calc(76px + env(safe-area-inset-bottom)); }
         .rp-rr .undo { font-family: ${mono}; font-size: 11px; letter-spacing: .16em; color: ${C.accent};
                        border-bottom: 1px solid ${C.line}; line-height: 16px; }
         .rp-rr .end { font-family: ${mono}; font-size: 10px; line-height: 14px; letter-spacing: .16em;
@@ -6584,7 +6599,7 @@ export default function MailDayLedger() {
               {recentShown && (
                 <LedgerRow
                   label="Recent"
-                  value={recentLive ? "Undo a tap" : "Nothing to undo"}
+                  value={(recentOpen ? recentOpenLive : recentLive) ? "Undo a tap" : "Nothing to undo"}
                   expanded={recentOpen}
                   onClick={toggleRecent}
                 />

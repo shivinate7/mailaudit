@@ -24,12 +24,12 @@ Entry shape. Every entry has `id` (string, from `newEntryId()`), `at` (ms) and `
 Exports:
 
 - `newEntryId()` — unique across devices.
-- `addEntry(log, entry, lastId)` — appends. A `count` entry merges into the entry named `lastId` when that entry is a `count` on the same key and no undo names it. `lastId` is the id this session wrote last; the app keeps it in memory, so "this device wrote it" and "no other action came between" need no device field. The merged entry keeps its id, the first `before`, the last `after` and the last `at`. A merged entry with `before === after` is dropped. Returns `{ log, lastId }`.
+- `addEntry(log, entry, lastId)` — appends. A `count` entry merges into the entry named `lastId` when that entry is a `count` on the same key and no undo names it. `lastId` is the id this session wrote last; the app keeps it in memory, so "this device wrote it" and "no other action came between" need no device field. The merged entry keeps its id, the first `before`, the last `after` and the last `at`. A merged entry with `before === after` is kept. Returns `{ log, lastId }`.
 - `capLog(log, now)` — drops entries older than 14 days, keeps the newest 200 non-undo rows, then drops undo entries whose row is gone. Sorted by `at`, then `id`.
 - `mergeRecent(a, b, now)` — union by `id`; on one id, the later `at` wins (tie: `a`). Then `capLog`. Symmetric and idempotent.
 - `rowState(entry, log, ledger)` — `"live"`, `"undone"`, `"changed"` or `"nothing"`. `ledger` is `{ items, received, receivedAt, stamps, envelopes }`. Rules in the decision's How one tap undoes one action.
 - `isLive(log, ledger)` — true when any row is live. The cell reads it.
-- `undoEntry(entry, ledger, now)` — returns `{ ledger, undo }` (the next ledger slice and the undo entry, `at: now`), or `{ refused: state }`. Counts subtract the delta and clamp to 0..quantity (quantity from `ledger.items` by key); 0 deletes the key; `receivedAt` gets `now`. Stamps, envelopes, assigns follow the decision.
+- `undoEntry(entry, ledger, now, opts)` — `opts.log` is the whole log, which the count guards read. Returns `{ ledger, undo }` (the next ledger slice and the undo entry, `at: now`), or `{ refused: state }`. Counts subtract the delta and clamp to 0..quantity (quantity from `ledger.items` by key); 0 deletes the key; `receivedAt` gets `now`. Stamps, envelopes, assigns follow the decision.
 - `rowLabel(entry)` — the micro-label, such as `CHECKED`, `COUNT 2 → 3`.
 - `groupByDay(rows, now)` — local calendar day groups, newest first: `TODAY`, `YESTERDAY`, then `MON OCT 5`.
 

@@ -39,7 +39,8 @@ export function newEntryId() {
    same key, nothing came between (lastId is the id this session wrote last), no undo names it,
    and the count it left is the count this one started from (a merge or a hand edit in between
    breaks the chain). The merged entry keeps its id and first before, and takes the last after
-   and time. One with no net change is dropped. */
+   and time. One with no net change is kept: it still outranks a server copy of its first step in a
+   merge (later time wins), and rowState reads it as "nothing". */
 export function addEntry(log, entry, lastId) {
   const list = log || [];
   if (entry.kind === "count" && lastId != null) {
@@ -52,8 +53,6 @@ export function addEntry(log, entry, lastId) {
       !list.some((e) => e.kind === "undo" && e.of === last.id)
     ) {
       const merged = { ...last, after: entry.after, at: entry.at };
-      if (merged.before === merged.after)
-        return { log: list.filter((e) => e.id !== last.id), lastId: null };
       return { log: list.map((e) => (e.id === last.id ? merged : e)), lastId: last.id };
     }
   }
@@ -108,12 +107,61 @@ const qtyOf = (ledger, key) => {
 const clamp = (n, hi) => Math.max(0, Math.min(n, hi));
 const nextCount = (cur, delta, qty) => clamp(cur - delta, qty);
 
-/* the count an undo would leave, for one card of a row, or null when the guard or the clamp
-   leaves it as it is. `guard` is the receivedAt rule of the decision. */
-function countUndo(ledger, key, before, after, at, guard) {
+/* What one entry wrote to a card, as [{ key, d }] with d the count it added (negative for a
+   removal). An undo entry writes nothing of its own here: see touchedAt. */
+function writesOf(e) {
+  if (e.kind === "count") return [{ key: e.key, d: e.after - e.before }];
+  if (e.kind === "bulk") return (e.counts || []).map((c) => ({ key: c.key, d: c.after - c.before }));
+  if (e.kind === "assign") return (e.plan || []).map((p) => ({ key: p.itemKey, d: Number(p.take) || 0 }));
+  return [];
+}
+
+/* The time of the newest entry that touched `key`: a count, bulk or assign that wrote it, or an
+   undo of one that did. 0 when none did. */
+function touchedAt(log, key) {
+  const byId = new Map(log.map((e) => [e.id, e]));
+  let at = 0;
+  for (const e of log) {
+    const row = e.kind === "undo" ? byId.get(e.of) : e;
+    if (row && writesOf(row).some((w) => w.key === key)) at = Math.max(at, e.at);
+  }
+  return at;
+}
+
+/* the count an undo would leave, for one card of a row, or null when a guard or the clamp leaves
+   it as it is. `log` is the whole log, or null when the caller has none (the row then stands
+   alone, and the card's time need only not be older than the row). With a log:
+   - the card's receivedAt is the time of the newest entry that touched it. A later receivedAt
+     means a write the log did not see (a restore, a merge): the row stays live only while the
+     card still holds the count the row left;
+   - no later write of another row moved the card the opposite way (a later write that an undo
+     entry names no longer counts);
+   and either way:
+   - a removal row's undo never takes the card above max(before, after) of the row. */
+function countUndo(ledger, key, row, log) {
+  const { before, after } = row;
+  const d = after - before;
+  if (d === 0) return null;
   const cur = Number(ledger.received?.[key]) || 0;
-  if (guard && !((Number(ledger.receivedAt?.[key]) || 0) >= at)) return null;
-  const next = nextCount(cur, after - before, qtyOf(ledger, key));
+  const rAt = Number(ledger.receivedAt?.[key]) || 0;
+  if (!log) {
+    if (rAt < row.at) return null;
+  } else {
+    const newest = Math.max(row.at, touchedAt(log, key));
+    if (rAt < newest || (rAt > newest && cur !== after)) return null;
+    const undone = new Set(log.filter((e) => e.kind === "undo").map((e) => e.of));
+    const opposite = log.some(
+      (e) =>
+        e.id !== row.id &&
+        e.kind !== "undo" &&
+        !undone.has(e.id) &&
+        byTime(e, row) > 0 &&
+        writesOf(e).some((w) => w.key === key && w.d * d < 0)
+    );
+    if (opposite) return null;
+  }
+  let next = nextCount(cur, d, qtyOf(ledger, key));
+  if (d < 0) next = Math.min(next, before);
   return next === cur ? null : next;
 }
 
@@ -127,9 +175,9 @@ export function rowState(entry, log, ledger) {
   const L = ledger || {};
   switch (entry.kind) {
     case "count":
-      return countUndo(L, entry.key, entry.before, entry.after, entry.at, true) == null ? "nothing" : "live";
+      return countUndo(L, entry.key, entry, log || null) == null ? "nothing" : "live";
     case "bulk":
-      return (entry.counts || []).some((c) => countUndo(L, c.key, c.before, c.after, entry.at, true) != null)
+      return (entry.counts || []).some((c) => countUndo(L, c.key, { ...c, id: entry.id, at: entry.at }, log || null) != null)
         ? "live"
         : "nothing";
     case "stamp": {
@@ -162,10 +210,12 @@ export function rowListed(entry, ledger) {
 /* ---------- the inverse of each kind ---------- */
 
 /* Returns { ledger, undo } or { refused: state }. `ledger` holds the four fields an undo can
-   write. `opts.hasPhoto(id)` says whether this device holds a photo blob; without it every id
+   write. `opts.log` is the whole log, which the count guards read; without it the row stands alone.
+   `opts.hasPhoto(id)` says whether this device holds a photo blob; without it every id
    is kept. An envelope that loses a photo id gives an undo entry with `photoLost`. */
 export function undoEntry(entry, ledger, now, opts = {}) {
-  const state = rowState(entry, [], ledger);
+  const log = opts.log || null;
+  const state = rowState(entry, log, ledger);
   if (state !== "live") return { refused: state };
   const received = { ...(ledger.received || {}) };
   const receivedAt = { ...(ledger.receivedAt || {}) };
@@ -191,10 +241,10 @@ export function undoEntry(entry, ledger, now, opts = {}) {
   };
 
   if (entry.kind === "count") {
-    setCount(entry.key, countUndo(ledger, entry.key, entry.before, entry.after, entry.at, true));
+    setCount(entry.key, countUndo(ledger, entry.key, entry, log));
   } else if (entry.kind === "bulk") {
-    for (const c of entry.counts) {
-      const n = countUndo(ledger, c.key, c.before, c.after, entry.at, true);
+    for (const c of entry.counts || []) {
+      const n = countUndo(ledger, c.key, { ...c, id: entry.id, at: entry.at }, log);
       if (n != null) setCount(c.key, n);
     }
   } else if (entry.kind === "stamp") {
@@ -206,7 +256,7 @@ export function undoEntry(entry, ledger, now, opts = {}) {
     if (entry.op === "record") putEnvelope(tombstoneOf(cur, now));
     else restoreEnvelope(entry.before); // an edit returns the older copy, a discard the live one
   } else if (entry.kind === "assign") {
-    for (const { itemKey, take } of entry.plan) {
+    for (const { itemKey, take } of entry.plan || []) {
       const cur = Number(received[itemKey]) || 0;
       setCount(itemKey, nextCount(cur, take, qtyOf(ledger, itemKey)));
     }
@@ -256,7 +306,7 @@ export function rowView(entry, ledger) {
   }
   if (entry.kind === "bulk") {
     const { orderId, seller } = splitGk(entry.gk);
-    return { subject: seller, figure: cardsWord(entry.counts.length), seller: orderId ? `Order ${orderId}` : "" };
+    return { subject: seller, figure: cardsWord((entry.counts || []).length), seller: orderId ? `Order ${orderId}` : "" };
   }
   if (entry.kind === "stamp") {
     const { orderId, seller } = splitGk(entry.gk);
@@ -265,10 +315,11 @@ export function rowView(entry, ledger) {
   const env = entry.after && isLiveEnvelope(entry.after) ? entry.after : entry.before || entry.after;
   const names = (entry.before?.entries || env?.entries || []).map((e) => e.name).join(", ");
   if (entry.kind === "assign") {
-    const sellers = [...new Set(entry.plan.map((p) => ix.byKey.get(p.itemKey)?.seller).filter(Boolean))];
+    const plan = entry.plan || [];
+    const sellers = [...new Set(plan.map((p) => ix.byKey.get(p.itemKey)?.seller).filter(Boolean))];
     return {
       subject: env?.note || names || "Envelope",
-      figure: cardsWord(entry.plan.reduce((s, p) => s + (Number(p.take) || 0), 0)),
+      figure: cardsWord(plan.reduce((s, p) => s + (Number(p.take) || 0), 0)),
       seller: sellers.join(", "),
     };
   }
