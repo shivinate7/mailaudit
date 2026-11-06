@@ -18,6 +18,7 @@ A pushed payload never carries photos, because photos stay local. So a restore o
 - 26.13c: the Sync panel says photos need something, not that they are lost.
 - 30.10 and 30.13: a photo the Worker lacks stays on the envelope, and an unreadable store keeps every id.
 - 47.8 and 47.8pre: a restore with no photo store at all keeps the id (`photo-ids-unreadable-local`).
+- Native: `PhotoIdsRestoreTests` in `native/ManifestKit/Tests/ManifestKitTests`. A restore from the versions list or the store drops an id this device lacks, and an unreadable photo folder keeps every id.
 
 Kind: build
 
