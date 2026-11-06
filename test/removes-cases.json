@@ -61,6 +61,21 @@
       "removes": true
     },
     {
+      "name": "a live envelope E1 is gone though another live envelope E2 arrived",
+      "kind": "envelope-other-id",
+      "held": {
+        "received": {"A1|0|pLightningBolt": 2, "B1|0|pLightningBolt": 1},
+        "envelopes": [{"id": "E1", "createdAt": 100, "updatedAt": 100, "note": "", "entries": [], "photos": []}],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "incoming": {
+        "received": {"A1|0|pLightningBolt": 2, "B1|0|pLightningBolt": 1},
+        "envelopes": [{"id": "E2", "createdAt": 200, "updatedAt": 200, "note": "", "entries": [], "photos": []}],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "removes": true
+    },
+    {
       "name": "a stamp's kind is emptied",
       "kind": "stamp-emptied",
       "held": {

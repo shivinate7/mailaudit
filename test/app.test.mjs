@@ -3743,7 +3743,7 @@ ok(
 );
 /* the scope first: the fixture holds a case of every removal kind and of every kind that removes nothing */
 for (const kind of [
-  "count-lowered", "count-cleared", "envelope-gone", "envelope-tombstoned",
+  "count-lowered", "count-cleared", "envelope-gone", "envelope-tombstoned", "envelope-other-id",
   "stamp-emptied", "stamp-gone", "full-to-empty",
   "identical", "added-only", "live-edit", "held-tombstone-gone", "held-empty-stamp-gone",
   "empty", "empty-to-full",

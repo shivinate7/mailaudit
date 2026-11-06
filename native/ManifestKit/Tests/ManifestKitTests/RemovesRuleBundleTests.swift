@@ -44,7 +44,7 @@ final class RemovesRuleBundleTests: XCTestCase {
 
     /// One kind per removal and per non-removal the fixture must reach.
     static let kinds = [
-        "count-lowered", "count-cleared", "envelope-gone", "envelope-tombstoned",
+        "count-lowered", "count-cleared", "envelope-gone", "envelope-tombstoned", "envelope-other-id",
         "stamp-emptied", "stamp-gone", "full-to-empty",
         "identical", "added-only", "live-edit", "held-tombstone-gone", "held-empty-stamp-gone",
         "empty", "empty-to-full",
@@ -115,5 +115,40 @@ final class RemovesRuleBundleTests: XCTestCase {
         store.doc = [:]
         XCTAssertTrue(store.removes([:]),
                       "LedgerStore.removes answered in Swift, not from the rulesURL of the VersionStore it was given")
+    }
+
+    /// A rules file that does not exist: the bundle cannot be called, so removes answers true, even for a
+    /// reply that removes nothing. The spare milestone is the safe side of that answer.
+    func testRemovesSaysTrueWhenTheRulesFileIsMissing() throws {
+        let reply = try XCTUnwrap(Self.cases().first { $0.kind == "identical" })
+        XCTAssertFalse(reply.removes, "scope: the identical ledger removes nothing")
+        let missing = PhotoTestKit.runFolder.appending(path: "no-rules-\(UUID().uuidString).js")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: missing.path), "scope: the rules file is absent")
+        let versions = VersionStore(
+            directory: PhotoTestKit.runFolder.appending(path: "removes-missing-versions"), now: { 0 }, rulesURL: missing)
+        let store = LedgerStore(
+            fileURL: PhotoTestKit.runFolder.appending(path: "ledger.json"), now: { 0 }, versions: versions)
+        store.doc = reply.held
+        XCTAssertTrue(store.removes(reply.incoming),
+                      "a reply that removes nothing answers true when the rules file is missing")
+    }
+
+    /// A probe bundle whose removesSomething throws: the call fails, so removes answers true, even for a
+    /// reply that removes nothing. The scope line proves the probe's rule really throws on a call.
+    func testRemovesSaysTrueWhenTheBundleCallThrows() throws {
+        let reply = try XCTUnwrap(Self.cases().first { $0.kind == "identical" })
+        let real = try String(contentsOf: RulesGoldenTests.bundleURL, encoding: .utf8)
+        let probe = PhotoTestKit.runFolder.appending(path: "removes-throws-\(UUID().uuidString).js")
+        try (real + "\n;Rules.removesSomething=function(){throw new Error(\"probe: removesSomething throws\")};\n")
+            .write(to: probe, atomically: true, encoding: .utf8)
+        XCTAssertThrowsError(try RulesCore(bundleURL: probe).call("removesSomething", "[{},{}]"),
+                             "scope: the probe's removesSomething throws on a call")
+        let versions = VersionStore(
+            directory: PhotoTestKit.runFolder.appending(path: "removes-throws-versions"), now: { 0 }, rulesURL: probe)
+        let store = LedgerStore(
+            fileURL: PhotoTestKit.runFolder.appending(path: "ledger.json"), now: { 0 }, versions: versions)
+        store.doc = reply.held
+        XCTAssertTrue(store.removes(reply.incoming),
+                      "a reply that removes nothing answers true when the bundle's call throws")
     }
 }
