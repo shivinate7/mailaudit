@@ -262,7 +262,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: shivinate7/claude-settings/actions/ste-lint@a781a86c3c693c9fe4d1ea7d30cdbde9d8ca92c6 # main 2026-11-05 (#1281)
+      - uses: shivinate7/claude-settings/actions/ste-lint@967a7ea0fa01593ee624ea61447d5ec9eba240a6 # main 2026-11-06 (#1365)
 
   # Decision milestone-runs-full-suite: on a push to main, dispatches the full Swift suite
   # (milestone.yml) when it is due. Cost per push: one ubuntu job, one API read, one git log.
