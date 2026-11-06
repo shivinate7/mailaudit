@@ -68,8 +68,7 @@ final class DuoHandUITests: XCTestCase {
     /// none), so this floor stands in when the status bar is not in the accessibility tree (XCUIApplication.listTop).
     static let statusBarFloor: CGFloat = 20
     /// How far above its reported frame the keyboard panel draws on the open Duo: the panel starts near y 405 pt and the frame at 449 pt,
-    /// so a view under the top 44 pt of the panel is covered although it clears the frame. The reading is for duo-fold-and-keyboard,
-    /// whose record on main does not hold this figure yet.
+    /// so a view under the top 44 pt of the panel is covered although it clears the frame. The figure's record is duo-fold-and-keyboard.
     static let keyboardDrawnAbove: CGFloat = 44
 
     static let bolt = "C1|0|pLightningBolt"

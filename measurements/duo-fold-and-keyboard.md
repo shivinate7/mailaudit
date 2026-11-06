@@ -26,7 +26,7 @@ Never drive Device Hub.
 
 ## Reader
 
-No test reads these figures. The build re-reads the fold at run time, so the build is the check. See `duo-card-in-hand`.
+`DuoHandUITests.keyboardDrawnAbove` copies the 44 pt drawn strip, and the sender test reads it. The fold has no test reader: the build re-reads the fold at run time, so the build is the check. See `duo-card-in-hand`.
 
 ## Figures
 
