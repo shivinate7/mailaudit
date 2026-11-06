@@ -1832,9 +1832,9 @@ const LedgerRow = ({ label, sub, value, accent, expanded, pressed, onClick, disa
 /* The Recent panel's rows, in a scroll of at most 360px. Every row has one fixed height. Only
    the 72px cell at its right edge is a control, and only on a live row; an end state is plain
    text in the same cell, so a row keeps its size. The subject is never a control. Day headings
-   stick to the top of the scroll. The cell carries a scroll margin as tall as the bottom bar: at
-   375px the first row's cell opens under the bar, and a tap there made the browser scroll the
-   window to uncover it. */
+   stick to the top of the scroll. The cell carries a scroll margin as tall as the bottom bar, so
+   a keyboard focus or a scripted scroll lands it above the bar. A finger gets no such help: at
+   375px the first row's cell can open half under the bar (debt recent-undo-under-bar). */
 const hhmm = (ms) => {
   const d = new Date(ms);
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;

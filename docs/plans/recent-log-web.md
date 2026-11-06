@@ -1,6 +1,6 @@
 # Recent log, web client
 
-**Status:** in build on branch `recent-log-web`. Mockup: `docs/design/recent-log/`.
+**Status:** built on the web, branch `recent-log-web`. Mockup: `docs/design/recent-log/`. The native half stays open in `recent-log-unbuilt`.
 
 Decision: `recent-checks-can-be-undone`. Debts: `recent-log-unbuilt`, `recent-log-unmeasured`.
 
