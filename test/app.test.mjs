@@ -429,6 +429,10 @@ await goTo("orphaned");
 ok(/Envelope ·/.test(text()), "9.1 envelopes survive a reload");
 ok(/Urza/.test(text()), "9.2 with their entries");
 ok(Array.isArray(carried.envelopes), "9.3 envelopes present in the saved blob");
+ok(
+  carried.recent?.some((e) => e.kind === "envelope" && e.op === "record"),
+  "9.3b and the saved blob carries the log, with the envelope's record in it"
+);
 
 /* a blob written before mystery mail shipped */
 await boot({
@@ -3341,6 +3345,10 @@ ok(
   /CLAIM FILED/.test(card(/Alpha Cards/).textContent) && /reload me/.test(text()),
   "37.48 stamps survive a reload"
 );
+ok(
+  saved().recent?.some((e) => e.kind === "stamp"),
+  "37.48b and the saved blob carries the stamp's row in the log"
+);
 await boot({
   items: ITEMS,
   received: {},
@@ -3360,6 +3368,10 @@ await click(btn(/^Reset$/), "reset");
 await click(btn(/Tap again to clear \d+ cards?/), "confirm reset");
 await sleep(800); // past the debounce, which is when a stale value would reappear
 eq(saved().stamps ?? {}, {}, "37.50 Reset clears stamps and the debounce does not write them back");
+ok(
+  saved().recent?.some((e) => e.kind === "stamp"),
+  "37.50b and Reset does not clear the log, so the stamp's row stays in it"
+);
 
 await boot({ items: ITEMS, received: {} }, null, { syncKey: "device-37-key" });
 await stampPkg(/Alpha Cards/, "Claim filed", "pushed");
@@ -3369,6 +3381,10 @@ await drain();
 ok(
   workerPosts().at(-1)?.stamps?.[GK_A]?.kind === "claim",
   "37.51 the POSTed payload carries the stamps"
+);
+ok(
+  workerPosts().at(-1)?.recent?.some((e) => e.kind === "stamp"),
+  "37.51b and the POSTed payload carries the log"
 );
 
 /* Re-pointed to the History path (the retired 37.53 drove Pull from GitHub):
@@ -3478,6 +3494,22 @@ eq(
     "37.63 and carries both devices' stamps — the merge builder names the key"
   );
 }
+/* the log (decision recent-checks-can-be-undone): a merged ledger carries the list only when a
+   side had one, and carries both sides' rows. The merge reads the time it is given. */
+const T37 = Date.UTC(2026, 9, 5, 15, 0);
+ok(
+  !Object.hasOwn(mergeLedger(PHONE, LAPTOP).merged, "recent"),
+  "37.62b and no recent key appears when neither side had one"
+);
+eq(
+  mergeLedger(
+    { ...PHONE, recent: [{ id: "ph", at: T37 - 60_000, kind: "count", key: "k1", before: 0, after: 1 }] },
+    { ...LAPTOP, recent: [{ id: "lp", at: T37, kind: "count", key: "k2", before: 0, after: 1 }] },
+    T37
+  ).merged.recent?.map((e) => e.id),
+  ["ph", "lp"],
+  "37.63b and carries both devices' rows in the log"
+);
 ok(
   /1 stamp\b/.test(
     mergeSummary({ itemsAdded: 0, checkInsAdded: 0, envelopesAdded: 0, stampsAdded: 1 })
@@ -3934,6 +3966,11 @@ eq(
   beforeReset && JSON.parse(beforeReset).envelopes?.length,
   1,
   "39.8b and the hand-typed envelope too — a version is the WHOLE saved shape"
+);
+eq(
+  beforeReset && JSON.parse(beforeReset).recent?.some((e) => e.kind === "envelope"),
+  true,
+  "39.8c and the log too: the version holds the envelope's row"
 );
 ok(
   versionMetas().length > 0,
@@ -5102,6 +5139,28 @@ const freshKeyed49 = () => boot({ items: ITEMS, received: {} }, null, { syncKey:
   await click(btn(/Tap again to clear \d+ cards?/), "confirm reset");
   await sleep(800); /* past the debounce, when a stale value would come back */
   eq(saved().receivedAt ?? {}, {}, "49.C4 Reset clears receivedAt, and the debounce does not write it back");
+}
+
+/* ---- 49.D. the log travels with its undo entries (decision recent-checks-can-be-undone).
+   The pure merge: an undo's un-check beats the other device's older check, and the undo
+   reaches the merged log. Pinned on the merge alone, so no screen is needed. */
+{
+  const K = "A1|0|pLightningBolt";
+  const T = Date.UTC(2026, 9, 5, 15, 0);
+  const check = { id: "c1", at: T - 20 * 60_000, kind: "count", key: K, before: 0, after: 1 };
+  const undo = { id: "u1", at: T - 10 * 60_000, kind: "undo", of: "c1" };
+  const m = mergeLedger(
+    { received: {}, receivedAt: { [K]: T - 10 * 60_000 }, recent: [check, undo] },
+    { received: { [K]: 1 }, receivedAt: { [K]: T - 20 * 60_000 }, recent: [check] },
+    T
+  ).merged;
+  eq(m.received, {}, "49.D1 an undo's un-check beats the other device's older check (holds today)");
+  eq(m.recent?.map((e) => e.id).sort(), ["c1", "u1"], "49.D2 and the undo reaches the merged log");
+  eq(
+    mergeLedger({}, { recent: [check] }, T).merged.recent?.map((e) => e.id),
+    ["c1"],
+    "49.D3 a log held by one side only is kept whole (holds today)"
+  );
 }
 
 /* ---- 50. timed absences, reported removals, and the write sites ----
@@ -7879,6 +7938,134 @@ await openSync();
 await settle();
 ok(syncOpenNow(), "64.7 an empty ledger still reaches the device key paste box");
 ok(!hasAction(/Pull from GitHub/), "64.8 and offers no Pull from GitHub to recover with");
+
+/* ── 79. the Recent log on the Ledger tab (decision recent-checks-can-be-undone) ──
+   Recent is a ledger row, directly above History. It shows while a row can still be undone.
+   Its panel follows it on the page, and each row in the panel is a button whose text holds
+   the row's micro-label. The cases find the cell and its rows by that text, never by a class. */
+const RECENT_ROW = /CHECKED|COUNT \d+ → \d+|PACKAGE CHECKED|STAMP|ENVELOPE|ASSIGNED/;
+const recentBtn = () => btn(/^Recent\b/);
+const historyBtn = () => btn(/^History/);
+const recentPanel = () => recentBtn()?.nextElementSibling ?? null;
+const rowsIn = () =>
+  [...(recentPanel()?.querySelectorAll("button") ?? [])].filter((b) => RECENT_ROW.test(b.textContent));
+const rowWith = (re) => rowsIn().find((b) => re.test(b.textContent));
+const ledgerRowEls = () => [...document.querySelectorAll(".mdl-lrow")];
+const markGammaReceived = async () => {
+  await goTo("packages");
+  const gamma = packageCard(/Gamma Cards/);
+  await click(
+    [...(gamma?.querySelectorAll("button") ?? [])].find((b) => /Mark all received/.test(b.textContent)),
+    "mark Gamma received"
+  );
+  await sleep(SAVE_WAIT);
+};
+
+/* 79.1. a live row puts the cell on the Ledger tab, directly above History, closed.
+   The group sits after group 78, where the virtual clock is off, and before group 66,
+   so the late groups' state (76 and 77 aside) never reaches it. */
+await foreground();
+await fresh();
+await goTo("orphaned");
+await record(["Ponder"]);
+await assign(0);
+await sleep(SAVE_WAIT);
+await onLedger();
+const recentCell = recentBtn();
+const historyCell = historyBtn();
+ok(!!recentCell, "79.1 a live row puts a Recent cell on the Ledger tab");
+ok(!!historyCell, "79.1a History is on the same Ledger tab, in the same boot");
+{
+  const at = ledgerRowEls().indexOf(recentCell);
+  ok(
+    at >= 0 && ledgerRowEls()[at + 1] === historyCell,
+    "79.1b and Recent sits directly above History: the next ledger row after it"
+  );
+}
+eq(recentCell?.getAttribute("aria-expanded"), "false", "79.1c the Recent cell carries aria-expanded, closed");
+await click(recentCell, "open Recent");
+eq(recentBtn()?.getAttribute("aria-expanded"), "true", "79.1d and it reads aria-expanded=true once open");
+ok(!!rowWith(/ASSIGNED/), "79.1e and the open panel lists the ASSIGNED row");
+
+/* 79.2. control: with nothing to undo, no cell shows, and the page still renders clean */
+await fresh();
+await onLedger();
+ok(!recentBtn(), "79.2 with nothing to undo, the Recent cell does not show");
+ok(!/undefined|NaN/.test(text()), "79.2a and the page holds no stray undefined or NaN");
+
+/* 79.3. the Undo notice logs an undo entry that names the assign row */
+await fresh();
+await goTo("orphaned");
+await record(["Ponder"]);
+await assign(0);
+await sleep(SAVE_WAIT);
+const assignId = saved().recent?.find((e) => e.kind === "assign")?.id;
+ok(typeof assignId === "string", "79.3pre the assign logged its row in the log");
+await click(btn(/^Undo$/), "undo from the notice");
+await sleep(SAVE_WAIT);
+const noticeUndo = saved().recent?.find((e) => e.kind === "undo");
+ok(
+  !!noticeUndo && typeof assignId === "string" && noticeUndo.of === assignId,
+  "79.3 the Undo notice logs an undo entry naming the assign row"
+);
+eq(Object.keys(saved().received ?? {}).length, 0, "79.3a and the card is outstanding again");
+
+/* 79.4. the Recent row's UNDO is the same call: the same undo entry, the same shape */
+await fresh();
+await goTo("orphaned");
+await record(["Ponder"]);
+await assign(0);
+await sleep(SAVE_WAIT);
+const assignId2 = saved().recent?.find((e) => e.kind === "assign")?.id;
+await onLedger();
+await click(recentBtn(), "open Recent");
+await click(rowWith(/ASSIGNED/), "undo the ASSIGNED row in Recent");
+await sleep(SAVE_WAIT);
+const rowUndo = saved().recent?.find((e) => e.kind === "undo");
+ok(
+  !!rowUndo && typeof assignId2 === "string" && rowUndo.of === assignId2,
+  "79.4 the Recent row's UNDO logs the undo entry for the same assign row"
+);
+eq(
+  Object.keys(rowUndo ?? {}).sort(),
+  ["at", "id", "kind", "of"],
+  "79.4a with the same entry shape the notice logs, so both are one function"
+);
+eq(Object.keys(saved().received ?? {}).length, 0, "79.4b and the card is outstanding again");
+
+/* 79.5. an undo changes its row in place, adds no row, and the cell stays while the panel is open.
+   A package's Mark all received is one row, so this panel has exactly one row to undo. */
+await fresh();
+await markGammaReceived();
+await onLedger();
+await click(recentBtn(), "open Recent");
+const pkgRow = rowWith(/PACKAGE CHECKED/);
+ok(!!pkgRow, "79.5pre the open panel lists the package's row");
+const rowsBefore = rowsIn().length;
+await click(pkgRow, "undo the package row in Recent");
+await sleep(SAVE_WAIT);
+ok(rowsIn().includes(pkgRow), "79.5 the row is the same element after its undo, so it changed in place");
+eq(rowsIn().length, rowsBefore, "79.5a and no row was added while the panel is open");
+ok(/UNDONE/.test(pkgRow?.textContent ?? ""), "79.5b and the row reads UNDONE");
+eq(recentBtn()?.getAttribute("aria-expanded"), "true", "79.5c and the panel is still open");
+
+/* 79.6. with the panel open, the last undo leaves the cell; closing the panel hides it */
+ok(!!recentBtn(), "79.6 with the panel open, the cell stays after the last undo");
+await click(recentBtn(), "close Recent");
+ok(!recentBtn(), "79.6a and it hides once the panel closes, since nothing can be undone");
+
+/* 79.7. a Reset clears every card, so nothing stays live, and the next Ledger visit hides the cell */
+await fresh();
+await markGammaReceived();
+await onLedger();
+ok(!!recentBtn(), "79.7pre the package row gives the cell before the Reset");
+await reachFor(/^Reset$/);
+await click(btn(/^Reset$/), "reset");
+await click(btn(/Tap again to clear \d+ cards?/), "confirm reset");
+await sleep(SAVE_WAIT);
+await goTo("orphaned");
+await onLedger();
+ok(!recentBtn(), "79.7 after a Reset, the next Ledger visit hides the Recent cell");
 
 /* ── 66. the Worker is the only voice (owner ruling 2026-10-12, default 5) ──
    The sync line, the Sync panel status, "Last sync" and the staleness clock
