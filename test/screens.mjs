@@ -547,6 +547,40 @@ const movedBoxes = (before, after) => {
   return moved;
 };
 
+/* A box is read at rest. The page's animations (CSS transitions, CSS animations and Web
+   Animations) are waited out, not a fixed time: a read at a fixed delay can land mid-transition,
+   as the progress bar's fill does (ProgressBar eases its width over 240ms). The bar is out of
+   flow (decision card-the-bar-is-out-of-flow), so nothing under the pointer moves. The bound
+   is a failure, not a pause: a page still animating at the bound is reported, not read. */
+const ANIMATION_BOUND_MS = 5000;
+const runningAnimations = () =>
+  document
+    .getAnimations()
+    .filter((a) => a.playState === "running" || a.playState === "pending")
+    .map((a) => {
+      const target = a.effect && a.effect.target;
+      const kind = a.transitionProperty
+        ? `transition of ${a.transitionProperty}`
+        : a.animationName
+          ? `animation ${a.animationName}`
+          : "animation";
+      return `${target ? target.tagName.toLowerCase() : "page"} ${kind}`;
+    });
+/* Returns null once the page is at rest, else the animations still running at the bound. */
+async function settleAnimations(page) {
+  /* two frames first, so the style and render work a tap starts is in the animation list */
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
+  await page
+    .waitForFunction(
+      () => document.getAnimations().every((a) => a.playState !== "running" && a.playState !== "pending"),
+      null,
+      { timeout: ANIMATION_BOUND_MS, polling: 50 }
+    )
+    .catch(() => {});
+  const still = await page.evaluate(runningAnimations);
+  return still.length ? still : null;
+}
+
 async function recentUndoCheck(browser, width) {
   const [closed, open, undone] = RECENT_STATES.map((s) => `${s} ${width}px`);
   const { ctx, page, pageErrors } = await openSeeded(browser, width, { ledger: recentLedger() });
@@ -575,6 +609,9 @@ async function recentUndoCheck(browser, width) {
     await undoControl(page).scrollIntoViewIfNeeded({ timeout: 3000 }).catch(() => {});
     const panelHeight = () =>
       recentCell(page).evaluate((el) => Math.round(el.nextElementSibling?.getBoundingClientRect().height ?? -1));
+    const openAnimating = await settleAnimations(page);
+    if (openAnimating)
+      fail(open, `still animating ${ANIMATION_BOUND_MS}ms after the panel opened, before any tap: ${openAnimating.slice(0, 3).join("; ")}`);
     const heightBefore = await panelHeight();
     const scrollsBefore = await page.evaluate(scrollProbe);
     const before = await page.evaluate(boxesProbe);
@@ -584,12 +621,17 @@ async function recentUndoCheck(browser, width) {
       fail(open, `could not tap the Undo control: ${e.message.split("\n")[0]}`);
       return;
     }
-    await page.waitForTimeout(250);
+    const stillAnimating = await settleAnimations(page);
     const heightAfter = await panelHeight();
     const scrollsAfter = await page.evaluate(scrollProbe);
     const after = await page.evaluate(boxesProbe);
     checks++;
-    const moved = movedBoxes(before, after);
+    if (stillAnimating)
+      fail(
+        `Recent UNDO tap ${width}px`,
+        `still animating ${ANIMATION_BOUND_MS}ms after the tap, so the boxes were not read at rest: ${stillAnimating.slice(0, 3).join("; ")}`
+      );
+    const moved = stillAnimating ? [] : movedBoxes(before, after);
     const appeared = Object.keys(after)
       .filter((k) => !(k in before))
       .map((k) => after[k].label);
