@@ -10,6 +10,7 @@
 // The seed is shared/fixtures/ledger.json. What the tests rely on in it:
 //   Lightning Bolt is in three envelopes: A1 Alpha Cards, B1 Beta Games and C1 Gamma Cards. So is a shared name.
 //   Path to Exile is only in C1 (Gamma Cards), with Lightning Bolt, Swords to Plowshares, Ponder and Preordain.
+//   Brainstorm is only in A1 and B1 (both without tracking): a second shared name, held in the New envelope hold test.
 //   A1, B1 and D1 (Delta Cards) have no tracking, are dated 2026-07-01, 2026-07-29 and 2026-05-01. C1 has tracking.
 //   Nothing is received. The past-transit test needs the simulator clock later than 2026-08-12.
 //   The live copies at rest are 14: A1 holds 4, B1 4, C1 5 and D1 1. Lightning Bolt owes 3 (one per A1, B1, C1).
@@ -336,26 +337,37 @@ final class DuoHandUITests: XCTestCase {
         XCTAssertTrue(app.element("hand-strays").exists, "the stray left the list while no post named it")
     }
 
-    /// Pose: flat. New envelope ends the envelope while a Suspense box shows. The box leaves and its name joins the Released box,
-    /// so the envelope row and its New envelope button must not move under the pointer (no-layout-shift-under-pointer). The button
-    /// is read once the page has stopped moving, tapped, and read again once it is still. Debt hand-new-envelope-shifts.
+    /// Pose: flat. New envelope ends the envelope while a Suspense box shows, with a Released box already above the envelope row:
+    /// an earlier New envelope released Lightning Bolt, then Brainstorm is held. The Suspense box leaves when New envelope is
+    /// pressed, so the envelope row and its New envelope button must not move under the pointer (no-layout-shift-under-pointer,
+    /// decision duo-card-in-hand). The button is read once the page has stopped moving, tapped, and read again once it is still.
     func testNewEnvelopeHoldsStillUnderASuspenseBox() {
         let app = XCUIApplication.launchedOnSeed()
         guard app.requirePose(.flat) else { return }
         openHand(app)
 
         typeCard(app, "Lightning Bolt")
-        let held = need(app, "hand-held", "the Suspense line of a held name")
+        _ = need(app, "hand-held", "the Suspense line of a held name")
+        need(app, "hand-new-envelope", "the New envelope button").tap()
+        _ = need(app, "hand-strays", "the Released box of the first name New envelope released")
+        waitGone(app.element("hand-held"), "the name is still held after the first New envelope")
+
+        typeCard(app, "Brainstorm")
+        let held = need(app, "hand-held", "the Suspense line of Brainstorm, a shared name")
+        XCTAssertTrue(held.label.lowercased().contains("brainstorm"), "the Suspense line does not name Brainstorm: \"\(held.label)\"")
+        let strays = need(app, "hand-strays", "the Released box that holds Lightning Bolt")
+        XCTAssertTrue(strays.label.lowercased().contains("lightning bolt"), "the Released box does not list Lightning Bolt: \"\(strays.label)\"")
         let newEnvelope = need(app, "hand-new-envelope", "the New envelope button")
-        waitUntilStill([held, newEnvelope])
+        waitUntilStill([held, strays, newEnvelope])
         let before = newEnvelope.frame
 
         newEnvelope.tap()
-        _ = need(app, "hand-strays", "the Released box of the name that New envelope released")
         waitGone(app.element("hand-held"), "the name is still held after New envelope")
+        let released = need(app, "hand-strays", "the Released box after New envelope")
+        XCTAssertTrue(released.label.lowercased().contains("brainstorm"), "the Released box does not list Brainstorm after New envelope: \"\(released.label)\"")
         waitUntilStill([newEnvelope])
         let after = newEnvelope.frame
-        XCTAssertEqual(after.minY, before.minY, accuracy: 1, "New envelope moved \(after.minY - before.minY) pt, from \(before) to \(after): the Suspense box left and its name joined the Released box")
+        XCTAssertEqual(after.minY, before.minY, accuracy: 1, "New envelope moved \(after.minY - before.minY) pt, from \(before) to \(after): the Suspense box above it left when New envelope was pressed")
         keepShot(app, "hand-new-envelope-holds-still")
     }
 
