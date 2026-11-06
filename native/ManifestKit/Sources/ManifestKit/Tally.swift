@@ -150,8 +150,11 @@ public final class TallyModel {
             throw error
         }
         checkInError = nil
-        bulkUndoTakes = takes
-        bulkUndoName = takes.isEmpty ? nil : name
+        // As on PackagesModel.bulk: a Mark all that adds nothing keeps the held Undo, and a Clear ends it.
+        if !on || !takes.isEmpty {
+            bulkUndoTakes = takes
+            bulkUndoName = on ? name : nil
+        }
         if on { sticky.formUnion(keys) }  // checked in under this filter, so the copies stay shown, as a check-in keeps one
         try await refresh()
     }

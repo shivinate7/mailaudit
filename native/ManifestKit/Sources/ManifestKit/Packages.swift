@@ -57,8 +57,8 @@ public final class PackagesModel {
     @ObservationIgnored private var refundGks: Set<String> = []
     /// Per package gk, the copies in now (the bundle's totalsOf got, each line clamped to its qty): the Clear ask's N.
     public private(set) var gots: [String: Int] = [:]
-    /// The package the held Mark all Undo is for. nil when there is none: the next write on this device, a newer bulk, a
-    /// Clear or endBulkUndo() ends it (undo-removes-only-its-delta). A Worker apply does not.
+    /// The package the held Mark all Undo is for. nil when there is none: the next write on this device, a newer Mark all
+    /// that adds a copy, a Clear or endBulkUndo() ends it (undo-removes-only-its-delta). A Worker apply does not.
     public private(set) var bulkUndoGk: String?
     @ObservationIgnored private var bulkUndoTakes: [BulkTake] = []
 
@@ -319,8 +319,11 @@ public final class PackagesModel {
             throw error
         }
         checkInError = nil
-        bulkUndoTakes = takes
-        bulkUndoGk = takes.isEmpty ? nil : gk
+        // A Mark all that adds nothing has nothing to undo, so the held Undo stays. A Clear ends it.
+        if !on || !takes.isEmpty {
+            bulkUndoTakes = takes
+            bulkUndoGk = on ? gk : nil
+        }
         received = store.received()
         try await reread(pkg, items: pkg.items)
     }
