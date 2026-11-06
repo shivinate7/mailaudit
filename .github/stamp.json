@@ -1,1 +1,1 @@
-{"defaultBranch": "main", "kinds": [], "merge": {"method": "merge", "requiredChecks": "protection", "deadlineMinutes": 65}}
+{"defaultBranch": "main", "kinds": [], "merge": {"method": "merge", "requiredChecks": ["all-jobs-passed"], "deadlineMinutes": 65}}

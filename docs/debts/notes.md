@@ -29,9 +29,30 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 - 2026-10-29, Card in Hand review: no test pins that a failed Tally or Orphaned reload marks a Hand or stamp write failed (`HandScreen.swift` `afterWrite`, `StampViews.swift` `write`).
 - 2026-10-29, CI wiring review round 2: no run has shown that `cancelled()` reads true in the ci-done job after a superseded PR run is cancelled. The first double push on a PR settles it. A false value posts a false red comment.
 - 2026-10-29, CI wiring review round 2: the job groups on main still key by commit, so a third run on one commit can replace a pending job, such as a nightly. The harm is one cancelled job.
-- 2026-10-29, CI wiring review round 2: `ci-skips-draft-prs` names the draft state in the keys of three jobs only. The ste-lint key and the workflow key carry it too.
+- 2026-10-29, CI wiring review round 2: `ci-skips-draft-prs` names the draft state in the keys of four jobs. The workflow key carries it too.
 - 2026-10-30, shoot config review: Tally, Orphaned and Ledger have no shot because no URL reaches them; a deep-link route waits for its own decision.
+- 2026-10-30, all-jobs-passed review round 1: `stripComment` in `test/ci-wiring.test.mjs` cuts at a `#` after an escaped quote, and opens a false quote after `, : [ -` in plain text. No line of `.github/workflows/checks.yml` hits either case.
+- 2026-10-30, all-jobs-passed review round 1: the scope job's native pattern omits `src/sync-rules.mjs`, `src/version-rules.mjs` and `src/photo-rules.mjs`, which `build.mjs` bundles into `rules.js`. `check:rules` forces `rules.js` into the same diff, and `native/` matches it.
+- 2026-10-30, all-jobs-passed review round 1: just after `ready_for_review`, a draft run's skipped `all-jobs-passed` may read as passing until the new run reports it. The merge tool waits on that run, so only a merge pressed by hand in GitHub in those seconds is exposed. Unmeasured.
+- 2026-11-01, claude-md-rules-d review round 1: the rule-file readers in `check-records.mjs` and `check-docs.mjs` list `.claude/rules/` without recursion, so a rule file in a subfolder of that folder is not indexed or walked.
+- 2026-11-01, claude-md-rules-d review round 1: "index entry" in `check-records.mjs` and `test/check-records.test.mjs` may clash with the global glossary's Not-name `entry` for "record". Rename when a lane next edits them.
 
 **Status:** open. Each line stays a note until a real incident.
 
 **Decision:** `debts-hold-known-gaps`.
+- 2026-11-01, claude-md-rules review round 2: no rule-file glob covers `worker/core.test.mjs`, `docs/design/`, or (for the screen rules) `test/view-rules.test.mjs` and `test/app.test.mjs`. Widen when a session misses a rule there.
+- 2026-11-01, claude-md-rules review round 2: no check proves each rule-file glob matches a file, so a rename stops a rule loading with no failure. All globs matched on 2026-11-01.
+- 2026-11-01, milestone-proof review round 3: if `.github/native-paths.regex` is deleted or renamed, `scope` reads native as false and the native job skips.
+- 2026-11-01, milestone-full-suite try 2: the auto-mode classifier refused `Agent` (a builder brief adding a `milestone` entry to `.github/stamp.json` merge.ignoreChecks) as CI bypass. The coordinator then dropped the entry (2026-11-01 23:00 CST); m1 now pins the dispatch switch instead.
+- 2026-11-01, milestone-full-suite review round 2: anyone with gh or the Actions API can dispatch `milestone.yml` by hand. Only decision `milestone-runs-full-suite` stops a dispatch before the known reds clear, and a red dispatch stops every merge through the merge tool.
+- 2026-11-01, milestone-full-suite review round 2: k6 does not pin the `GITHUB_ENV` write of `SIM_UDID`. A renamed variable passes the suite; xcodebuild then fails loud on an empty `id=`.
+- 2026-11-01, milestone-full-suite review round 2: `make ui-test` now skips the Duo classes on the owner's Mac too, and no command for the by-hand Duo run is recorded.
+- 2026-11-01, ci-alarm-nightly review round 1: the alarm runs at 07:47 UTC, 2.5 hours after the nightly starts. A nightly still queued then is not judged until the next day. The margin is unmeasured.
+- 2026-11-01, tci7-cannot-fail: a mutant in `carryUnknownKeys` that reads an inherited key as own also sets an own `__proto__` in the `__proto__` run. Tests 33.46 to 33.50 miss it.
+- 2026-11-01, tabbar-any-element review round 1: `TallyUITests` checks the meta skip by `id=tally-meta:` only. A clipped issue that comes back with no id and sits under the bar is now skipped, so the test still passes.
+- 2026-11-01, batch runner 8: the auto-mode check refused `Bash` for `~/.claude/bin/merge 176 --confirm` as "Merge Without Review". The settings allow line does not lift it, and the check does not see the standing merge grant in claude-settings. A batch runner cannot merge until the owner allows it.
+- 2026-11-03, ci-pin-da8d807 review round 1: assertion 12 in `test/ci-wiring.test.mjs` (every claude-settings pin names `ACTION_PIN`) has no fixture for the workflow-file listing, so a listing that drops a file stays green. It also skips flow-style `steps: [{uses: ...}]`, a quoted `"uses":` key and a job-level reusable-workflow `uses:`. None exists in the workflows today.
+- 2026-11-05, ci-alarm-pin-bump review round 1: assertion 10 in `test/ci-wiring.test.mjs` allows exactly `{actions: read, contents: read, issues: write}`. The ci-alarm input `dropped-start: true` also needs `pull-requests: read` and `checks: read` (the claude-settings ci-alarm action's inputs), so it would fail assertion 10. No caller sets it today.
+- 2026-11-05, mutation-report-adopt review round 2: `scripts/tests-for.mjs` reads a regex literal that opens a template substitution as division, so `` `${/'/.test(a)}`; import y from "./x.mjs"; `` on one line loses the import. No suite has that shape.
+- 2026-11-05, mutation-report-adopt review round 2: no `tests-for` row pins division after postfix `--` or after a template, or a plain character inside a template literal. Seven such mutants left the selector's output over all 20 code paths unchanged.
+- 2026-11-06, recent-checks-can-be-undone review round 1: the record does not say what an open Recent panel does when its last live row goes inert and the cell hides. Decision: `recent-checks-can-be-undone`.

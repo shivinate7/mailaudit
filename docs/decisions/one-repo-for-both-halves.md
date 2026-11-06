@@ -6,13 +6,16 @@ The source repository, `mailaudit`, is public and holds no data. That arrangemen
 
 Measured anonymously after the repo move, the Pages site answers 200. `api.github.com/repos/shivinate7/mailaudit-data` and `raw.githubusercontent.com/shivinate7/mailaudit-data/data/ledger.json` both answer 404.
 
-The real cost is that every device needs the key for everything. GitHub hides a repo you cannot see behind a 404, not a 403.
+The real cost is that a device with no GitHub token cannot read the private repo. GitHub hides a repo you cannot see behind a 404, not a 403.
 
 Why the ledger left `mailaudit` is in `ledger-and-photos-share-a-repo`.
+
+Kind: process
+
+Home: docs/decisions/one-repo-for-both-halves.md
 
 ## See also
 
 - `data-branch-setup` — the branch inside this repository that holds the ledger
 - `photo-branch-must-preexist` — the branch inside this repository that holds the photos
-- `fine-grained-token-single-repo` — the token scope this single repository allows
 - `ci-filters-guarantee-no-rebuild` — why a public source repository stays untouched by backups

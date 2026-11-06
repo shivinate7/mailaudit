@@ -6,6 +6,11 @@
 // must exit 0. The empty-folder case and the clean case are the controls: if
 // either goes red, the defect cases prove nothing.
 //
+// Rule-file cases: CLAUDE.md and every .claude/rules/*.md file are index
+// sources. A slug bulleted in a rule file counts as cited, a slug bulleted in
+// CLAUDE.md and a rule file counts twice, and a rule file's "## Open threads"
+// bullets need a Status line.
+//
 // Scanner cases: the fence-quoted case covers a comment opener inside a
 // backtick span, a /* that opens no comment in a fence, a multi-line template
 // literal inside a fence, a lone quote in prose, and a # opener in a quoted
@@ -20,13 +25,16 @@ import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { failLine } from "./fail-line.mjs";
 
 const CHECK =
   process.env.CHECK_RECORDS_SCRIPT ??
   resolve(dirname(fileURLToPath(import.meta.url)), "..", "check-records.mjs");
 
 let failures = 0;
+let checks = 0;
 function expect(label, cond, detail = "") {
+  checks++;
   if (cond) {
     console.log(`ok   ${label}`);
   } else {
@@ -50,6 +58,44 @@ const MEASURE = [
   "A measurement a debt may cite as its decision.",
   "",
 ].join("\n");
+
+// A decision that only a path-scoped rule file cites. CLAUDE.md never names it.
+const RULE_RECORD = "docs/decisions/fixture-rule-decision.md";
+const RULE_DECISION = [
+  "# Fixture rule-only decision holds a rule",
+  "",
+  "A decision that only a path-scoped rule file in .claude/rules/ cites.",
+  "",
+  "**Holds while:** the fixture corpus keeps this record.",
+  "",
+].join("\n");
+
+// A path-scoped rule file: YAML front matter with `paths:`, then the body.
+const RULE_PATH = ".claude/rules/x.md";
+function ruleFile(body) {
+  return ["---", "paths:", '  - "src/**"', "---", "", "# Fixture rules for src", "", body, ""].join("\n");
+}
+const RULE_PROSE_ONLY = ruleFile("Prose only, with no index bullet in it.");
+const RULE_CITES_ONE = ruleFile(
+  "## Decisions\n\n- `fixture-rule-decision` — A decision only this rule file cites.\n"
+);
+const RULE_CITES_CLAUDE_TOO = ruleFile(
+  "## Decisions\n\n- `fixture-decision-holds` — A decision CLAUDE.md also cites.\n"
+);
+const RULE_OPEN_THREAD = ruleFile(
+  "## Open threads\n\n- `fixture-rule-decision` — An open thread this rule file tracks.\n"
+);
+// The bullet sits in a fence, so it is a sample, not an index entry. The prose
+// holds a lone quote and a comment opener inside a code span.
+const RULE_FENCE_ONLY = ruleFile(
+  [
+    "Don't count the sample below, nor `/* this */`.",
+    "",
+    "````markdown",
+    "- `fixture-rule-decision` — A sample bullet, not an index entry.",
+    "````",
+  ].join("\n")
+);
 
 // A debt in the house form: an H1 title, a Status line, a Decision line. Pass
 // null or "" for a part to leave that part out.
@@ -158,10 +204,15 @@ function claudeMd(cited, { folderListed = true, prose = [] } = {}) {
 }
 
 // Writes a temp corpus, runs check-records.mjs in it, returns status and output.
-function runCorpus(debts, { cited = Object.keys(debts), folderListed = true, prose = [] } = {}) {
+// `records` adds record files by path, and `rules` adds .claude/rules/ files by
+// path. Both default to none.
+function runCorpus(
+  debts,
+  { cited = Object.keys(debts), folderListed = true, prose = [], rules = {}, records = {} } = {}
+) {
   const dir = mkdtempSync(join(tmpdir(), "check-records-debts-"));
   try {
-    const files = baseFiles(claudeMd(cited, { folderListed, prose }));
+    const files = { ...baseFiles(claudeMd(cited, { folderListed, prose })), ...records, ...rules };
     for (const [slug, text] of Object.entries(debts)) {
       files[`docs/debts/${slug}.md`] = text;
     }
@@ -197,6 +248,14 @@ const tail = (out) => out.trim().split("\n").slice(-2).join(" | ");
     "control: an empty debts/ folder exits 0",
     empty.status === 0,
     `exit ${empty.status}: ${tail(empty.out)}`
+  );
+  // A rule file with front matter and no index bullet must not break the corpus,
+  // so the rule-file defect cases below fail for their own reason only.
+  const ruleProse = runCorpus({}, { rules: { [RULE_PATH]: RULE_PROSE_ONLY } });
+  expect(
+    "control: a rule file with front matter and no index bullet exits 0",
+    ruleProse.status === 0,
+    `exit ${ruleProse.status}: ${tail(ruleProse.out)}`
   );
 }
 
@@ -247,6 +306,18 @@ const RED = [
     { "fixture-debt-fence-only": FENCE_ONLY },
     {},
     "fixture-debt-fence-only",
+  ],
+  [
+    "record cited in neither CLAUDE.md nor any rule file",
+    {},
+    { records: { [RULE_RECORD]: RULE_DECISION }, rules: { [RULE_PATH]: RULE_PROSE_ONLY } },
+    "fixture-rule-decision",
+  ],
+  [
+    "index bullet only inside a fence in a rule file does not cite the record",
+    {},
+    { records: { [RULE_RECORD]: RULE_DECISION }, rules: { [RULE_PATH]: RULE_FENCE_ONLY } },
+    "fixture-rule-decision",
   ],
 ];
 
@@ -361,8 +432,44 @@ const noRecord = (path) => `${path}: "Decision" names no record and does not say
   );
 }
 
+// Path-scoped rule files. The index is CLAUDE.md plus every .claude/rules/*.md.
+// Each case names the record it judges, so a red line can only be that record.
+{
+  // An index bullet in a rule file cites the record, so no orphan line may appear.
+  const ruleCites = runCorpus(
+    {},
+    { records: { [RULE_RECORD]: RULE_DECISION }, rules: { [RULE_PATH]: RULE_CITES_ONE } }
+  );
+  expect(
+    "rules: a record cited by an index bullet only in .claude/rules/x.md exits 0",
+    ruleCites.status === 0,
+    `exit ${ruleCites.status}: ${ruleCites.out.match(/.*not cited by CLAUDE.*/)?.[0] ?? tail(ruleCites.out)}`
+  );
+
+  // A slug bulleted in CLAUDE.md and in a rule file is listed twice in the index.
+  const twice = runCorpus({}, { rules: { [RULE_PATH]: RULE_CITES_CLAUDE_TOO } });
+  expect(
+    "rules: a slug bulleted in CLAUDE.md and a rule file exits non-zero and is named as listed more than once",
+    twice.status !== 0 &&
+      twice.out.split("\n").some((l) => l.includes("fixture-decision-holds") && /more than once/.test(l)),
+    `exit ${twice.status}: ${tail(twice.out)}`
+  );
+
+  // A rule file's Open threads bullet needs a Status line on the record it cites.
+  const openThread = runCorpus(
+    {},
+    { records: { [RULE_RECORD]: RULE_DECISION }, rules: { [RULE_PATH]: RULE_OPEN_THREAD } }
+  );
+  expect(
+    'rules: a record under a rule file\'s "## Open threads" with no Status line exits non-zero and names the Status defect',
+    openThread.status !== 0 &&
+      openThread.out.split("\n").some((l) => l.includes(RULE_RECORD) && /\*\*Status:\*\*/.test(l)),
+    `exit ${openThread.status}: ${tail(openThread.out)}`
+  );
+}
+
 if (failures) {
-  console.log(`check-records debts: ${failures} failure(s)`);
+  console.log(failLine(failures, checks));
   process.exit(1);
 }
 console.log("check-records debts: all green");

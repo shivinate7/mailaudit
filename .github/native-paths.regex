@@ -1,0 +1,1 @@
+^(native/|shared/|src/view-rules\.mjs$|\.github/workflows/checks\.yml$|\.github/native-paths\.regex$)

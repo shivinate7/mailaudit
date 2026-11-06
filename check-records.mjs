@@ -15,9 +15,9 @@
 //   7. every decision holds a "Holds while" line, every open thread a
 //      "Status" line, and the index lists no slug twice
 //   8. every debt holds a "Status" line and a "Decision" line that names an
-//      existing non-debt record or says "none", and CLAUDE.md lists docs/debts/
+//      existing non-debt record or says "none", and the index lists docs/debts/
 
-import { readFileSync, readdirSync } from "fs";
+import { readFileSync, readdirSync, existsSync } from "fs";
 import { execFileSync } from "child_process";
 
 const FOLDERS = ["invariants", "measurements", "decisions", "debts"];
@@ -292,6 +292,29 @@ function closestSlug(token, slugs) {
 // An index entry is a bullet that opens with a backticked slug: "- `slug` — ...".
 const INDEX_BULLET = /^- `([a-z0-9-]+)`/gm;
 
+/* The index is CLAUDE.md plus every .claude/rules/*.md (sorted), so a section of
+   CLAUDE.md can move to a path-scoped rule file without orphaning its records.
+   Each source keeps its own text: a "## Open threads" section ends at the next
+   "## " heading of its own file, never runs on into the next file. A fenced line
+   is blanked, because a bullet in a fence is a sample, not an index entry.
+   check-docs.mjs lists the same folder on its own; the two share no module. */
+const RULES_DIR = ".claude/rules";
+function indexSources() {
+  const paths = ["CLAUDE.md"];
+  if (existsSync(RULES_DIR)) {
+    for (const name of readdirSync(RULES_DIR).sort()) if (name.endsWith(".md")) paths.push(`${RULES_DIR}/${name}`);
+  }
+  return paths.map((path) => {
+    const text = readFileSync(path, "utf8");
+    const lines = text.split("\n");
+    for (const f of parseFences(text).fences) {
+      for (let i = f.startLine; i <= f.endLine; i++) lines[i - 1] = "";
+    }
+    return { path, text: lines.join("\n") };
+  });
+}
+const INDEX_NAME = "the index (CLAUDE.md and .claude/rules/)";
+
 /* ---------- claim 5: no orphan, and no dead index entry ----------
    CLAUDE.md on this branch is still the long file it always was, not the
    index it is about to become — so this claim is behind an env switch,
@@ -305,23 +328,23 @@ const INDEX_BULLET = /^- `([a-z0-9-]+)`/gm;
    record is one nobody can find, and a dead index entry is a promise the repo
    cannot keep. */
 {
-  const claude = readFileSync("CLAUDE.md", "utf8");
+  const index = indexSources().map((x) => x.text).join("\n");
   const slugSet = new Set(records.map((r) => r.slug));
   // Only an index bullet counts, so a slug named in prose is still an orphan.
   // The pattern is the one claim 7 reads, so both claims agree on what the
   // index lists.
   const citedInIndex = new Set(
-    [...claude.matchAll(INDEX_BULLET)].map((m) => m[1]).filter((s) => slugSet.has(s))
+    [...index.matchAll(INDEX_BULLET)].map((m) => m[1]).filter((s) => slugSet.has(s))
   );
   const orphans = records.filter((r) => !citedInIndex.has(r.slug));
-  const deadEntries = [...claude.matchAll(/`([a-z0-9]+(?:-[a-z0-9]+)+)`/g)]
+  const deadEntries = [...index.matchAll(/`([a-z0-9]+(?:-[a-z0-9]+)+)`/g)]
     .map((m) => m[1])
     .filter((s, i, arr) => arr.indexOf(s) === i)
     .filter((s) => !slugSet.has(s) && /-/.test(s));
 
   if (orphans.length) {
     console.error(
-      `check:records: ${orphans.length} record(s) not cited by CLAUDE.md: ${orphans.map((r) => r.slug).join(", ")}`
+      `check:records: ${orphans.length} record(s) not cited by CLAUDE.md: ${orphans.map((r) => r.slug).join(", ")} (nor by any .claude/rules/*.md file)`
     );
     failures += orphans.length;
   }
@@ -411,22 +434,24 @@ const INDEX_BULLET = /^- `([a-z0-9-]+)`/gm;
 
 /* ---------- claim 7: decisions hold while something; open threads carry a status; the index lists a slug once ----------
    Every docs/decisions/*.md holds a "**Holds while:**" line (the fact that dates it,
-   see records-name-what-dates-them). Every record CLAUDE.md lists under
-   "## Open threads" holds a "**Status:**" line. CLAUDE.md lists no slug twice. */
+   see records-name-what-dates-them). Every record the index lists under
+   "## Open threads" holds a "**Status:**" line. The index lists no slug twice,
+   across CLAUDE.md and the rule files together. The Open threads heading may sit
+   in either. */
 {
   let bad = 0;
-  const claude = readFileSync("CLAUDE.md", "utf8");
+  const sources = indexSources();
   for (const r of records) {
     if (r.folder === "decisions" && !/^\*\*Holds while:\*\*/m.test(r.text)) {
       console.error(`check:records: ${r.path}: no "**Holds while:**" line`);
       bad++;
     }
   }
-  if (!/^## Open threads$/m.test(claude)) {
-    console.error('check:records: CLAUDE.md has no "## Open threads" heading, so no status line can be judged');
+  if (!sources.some((x) => /^## Open threads$/m.test(x.text))) {
+    console.error(`check:records: ${INDEX_NAME} has no "## Open threads" heading, so no status line can be judged`);
     bad++;
   }
-  const open = (claude.split(/^## Open threads$/m)[1] ?? "").split(/^## /m)[0];
+  const open = sources.map((x) => (x.text.split(/^## Open threads$/m)[1] ?? "").split(/^## /m)[0]).join("\n");
   for (const m of open.matchAll(INDEX_BULLET)) {
     const r = records.find((x) => x.slug === m[1]);
     if (r && !/^\*\*Status:\*\*/m.test(r.text)) {
@@ -435,12 +460,14 @@ const INDEX_BULLET = /^- `([a-z0-9-]+)`/gm;
     }
   }
   const seen = new Set();
-  for (const m of claude.matchAll(INDEX_BULLET)) {
-    if (seen.has(m[1])) {
-      console.error(`check:records: CLAUDE.md lists \`${m[1]}\` more than once`);
-      bad++;
+  for (const src of sources) {
+    for (const m of src.text.matchAll(INDEX_BULLET)) {
+      if (seen.has(m[1])) {
+        console.error(`check:records: ${INDEX_NAME} lists \`${m[1]}\` more than once (again in ${src.path})`);
+        bad++;
+      }
+      seen.add(m[1]);
     }
-    seen.add(m[1]);
   }
   failures += bad;
   console.log(`check:records: holds-while, status and index-once check - ${bad} problem(s)`);
@@ -488,8 +515,8 @@ const INDEX_BULLET = /^- `([a-z0-9-]+)`/gm;
       }
     }
   }
-  if (!/\bdebts\//.test(readFileSync("CLAUDE.md", "utf8"))) {
-    console.error("check:records: CLAUDE.md does not list the docs/debts/ folder");
+  if (!/\bdebts\//.test(indexSources().map((x) => x.text).join("\n"))) {
+    console.error(`check:records: ${INDEX_NAME} does not list the docs/debts/ folder`);
     bad++;
   }
   failures += bad;

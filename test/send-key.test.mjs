@@ -46,6 +46,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { buildSync } from "esbuild";
 import { KEY_RE } from "../src/sync-rules.mjs";
+import { failLine } from "./fail-line.mjs";
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const SCRIPT = join(REPO, "scripts", "send-key.mjs");
@@ -59,7 +60,9 @@ const BAD_KEY = "bad key/x"; // fails KEY_RE: a space and a slash
 const ACCOUNTS = { mac: "macbook", iphone: "iphone" };
 
 let failures = 0;
+let checks = 0;
 function expect(label, cond) {
+  checks++;
   if (SCRIPT_PRESENT && cond) {
     console.log(`ok   ${label}`);
   } else {
@@ -510,6 +513,7 @@ function probe(source) {
 }
 
 function selfCheck(label, cond) {
+  checks++;
   if (cond) {
     console.log(`ok   ${label}`);
   } else {
@@ -572,7 +576,7 @@ selfCheck(
 }
 
 if (failures > 0) {
-  console.log(`\n${failures} check(s) failed`);
+  console.log(failLine(failures, checks));
   process.exit(1);
 }
 console.log("\nall send-key checks pass");

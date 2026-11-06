@@ -120,6 +120,7 @@
    clamped to its qty, a stray key ignored. It is neither the lines in nor totalQty. V39.8 pins it. */
 
 const DAY = 86400000;
+import { failLine } from "./fail-line.mjs";
 const loaded = await import("../src/view-rules.mjs").then(
   (m) => m,
   (e) => {
@@ -1749,5 +1750,8 @@ for (const start of [{}, { a: 1 }, { c: 1 }, { a: 1, b: 1, c: 1 }, { b: 1, zzz: 
 
 console.log(`\n${pass} passed, ${fails.length} failed`);
 for (const f of fails) console.log(`  ✗ ${f}`);
-if (fails.length) process.exit(1);
+if (fails.length) {
+  console.log(failLine(fails.length, pass + fails.length));
+  process.exit(1);
+}
 console.log("all green");

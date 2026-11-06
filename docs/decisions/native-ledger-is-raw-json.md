@@ -8,7 +8,7 @@ Plan: docs/decisions/native-ledger-is-raw-json.md#known-gap-the-worker-merge-dro
 
 Orchestrator defaults of 2026-10-12, not owner rulings: the native copy is a kept file beside ledger.json. It is not a milestone in the versions store, and History does not list it. The mended ledger is saved at once after the copy. The kept name carries milliseconds, and a numeric suffix settles a name that exists.
 
-**Built state, 2026-10-12:** web is built in PR #87, merged to main at `eb48278`. The Worker half is live since 2026-10-12, version fdea6a6b, see `live-verification`. The Worker refuses a bad incoming shape with 400 (tests 67.1 and 67.2). It keeps every mended original in `kept` (group 69). It mends a damaged stored ledger before its merge (tests 68.1 to 68.3). Both run by `npm run test:worker`. Native is built in draft PR #89, not merged. Native load mends as the web does (see Load and save). The unknown-field gap (Known gap) is fixed on `web/merge-unknown-keys`, pending the owner's word.
+**Built state, 2026-10-12:** web is built in PR #87, merged to main at `eb48278`. The Worker half is live since 2026-10-12, version fdea6a6b, see `live-verification`. The Worker refuses a bad incoming shape with 400 (tests 67.1 and 67.2). It keeps every mended original in `kept` (group 69). It mends a damaged stored ledger before its merge (tests 68.1 to 68.3). Both run by `npm run test:worker`. Native is built in draft PR #89, not merged. Native load mends as the web does (see Load and save). The unknown-field gap (Known gap) is fixed on main, in `carryUnknownKeys` in `src/merge-rules.mjs`.
 
 **Notice line:** after a load that drops entries, the Packages tab shows one footnote line at its top. LedgerNotice.damagedLine builds it from the dropped count, and boot sets it once. For one entry the text is "1 entry could not be read; the original is kept on this device." Two or more gives "entries", so 3 gives "3 entries could not be read; the original is kept on this device." At 0 there is no line. The line names no sync words.
 
@@ -86,7 +86,7 @@ No native view opens the kept copy that the notice line names. Debt: `native-kep
 
 The Worker's shape refusal and its mend of stored damage are built on PR #87, merged (see Built state). This gap is separate from them.
 
-**Status:** ruled. The carry is on main (`75a96b8`); the `savedAt` rule is built on `web/carry-savedat`. The Worker deploy of 2026-10-14, from main `7729d31`, carries the merge fix (PR #96). Whether a live unknown field survives is unmeasured, see `live-verification`.
+**Status:** ruled. The carry is on main (`75a96b8`); the `savedAt` rule is built on main, in `carryUnknownKeys` in `src/merge-rules.mjs`. The Worker deploy of 2026-10-14, from main `7729d31`, carries the merge fix (PR #96). Whether a live unknown field survives is unmeasured, see `live-verification`.
 
 Owner ruling 2026-10-14: `mergeLedger` carries unknown top-level keys, and `savedAt` joins the synced ledger. A key that both sides hold with different values keeps the side with the later `savedAt`; a tie, or a side with no `savedAt`, keeps incoming. Its rule and pins are in `saved-state-shape`.
 

@@ -1,10 +1,14 @@
-# Nothing recovers without the key
+# A fresh device needs its device key to recover
 
 **Status:** open.
 
-A fresh device must have its token before it can recover, not after. This is the standing cost of the ledger being private. The move to a different repo did not change that cost. The repo is still one private repo, just a different one. Every unreachable state must read as "needs your key". It must never read as lost or absent. That is why `listPhotos` and `peek` are three-valued. It is also why `classifyLedger` disambiguates the 404.
+A fresh device must have its device key before it can recover, not after. The Worker's snapshot routes need that key. A Cloudflare Access email code is a backup way in, and it is untested (`cloudflare-access-login-untested`). Every unreachable state must read as "needs your key". It must never read as lost or absent. That is why `listPhotos` and `peek` are three-valued. It is also why `classifyLedger` disambiguates the 404.
 
-**Holds while:** no keyless recovery path exists. An unauthenticated request to `repos/shivinate7/mailaudit-data` returns 404. `src/entry.jsx` sends the stored token as a Bearer header.
+Kind: process
+
+Home: docs/decisions/sync-revamp-cloudflare.md
+
+**Holds while:** the Worker's snapshot routes need a device key (`worker-keeps-snapshots`). An unauthenticated request to `repos/shivinate7/mailaudit-data` returns 404. `src/entry.jsx` sends a stored GitHub token as a Bearer header if one is present.
 
 ## See also
 

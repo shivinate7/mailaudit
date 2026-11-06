@@ -13,18 +13,23 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `auto-push-safe-as-merge-exists` | **Status:** retired 2026-10-14. | [`docs/decisions/auto-push-safe-as-merge-exists.md`](../docs/decisions/auto-push-safe-as-merge-exists.md) |
 | `data-branch-setup` | The `data` branch in `mailaudit-data` already exists. | [`docs/decisions/data-branch-setup.md`](../docs/decisions/data-branch-setup.md) |
 | `debts-hold-known-gaps` | Each known gap is one file under `docs/debts/`, with a Status line and a Decision line. | [`docs/decisions/debts-hold-known-gaps.md`](../docs/decisions/debts-hold-known-gaps.md) |
+| `fine-grained-token-single-repo` | **Status:** retired. | [`docs/decisions/fine-grained-token-single-repo.md`](../docs/decisions/fine-grained-token-single-repo.md) |
 | `history-sync-close-each-other` | Kind: process | [`docs/decisions/history-sync-close-each-other.md`](../docs/decisions/history-sync-close-each-other.md) |
 | `ledger-and-photos-share-a-repo` | The private repo `mailaudit-data` holds the frozen ledger history on branch `data`. | [`docs/decisions/ledger-and-photos-share-a-repo.md`](../docs/decisions/ledger-and-photos-share-a-repo.md) |
+| `ledger-private-source-public` | **Status:** open. | [`docs/decisions/ledger-private-source-public.md`](../docs/decisions/ledger-private-source-public.md) |
 | `ledger-tab-holds-options` | Kind: process | [`docs/decisions/ledger-tab-holds-options.md`](../docs/decisions/ledger-tab-holds-options.md) |
 | `merge-carries-no-two-tap-arm` | Kind: process | [`docs/decisions/merge-carries-no-two-tap-arm.md`](../docs/decisions/merge-carries-no-two-tap-arm.md) |
 | `native-files-are-frozen` | Kind: process | [`docs/decisions/native-files-are-frozen.md`](../docs/decisions/native-files-are-frozen.md) |
 | `newer-features-test-proof-only` | Kind: process | [`docs/decisions/newer-features-test-proof-only.md`](../docs/decisions/newer-features-test-proof-only.md) |
+| `nothing-recovers-without-the-key` | **Status:** open. | [`docs/decisions/nothing-recovers-without-the-key.md`](../docs/decisions/nothing-recovers-without-the-key.md) |
 | `older-versions-come-off-branch` | Every push before the switch created a commit, so the frozen `data` branch holds a full archive of past ledgers. | [`docs/decisions/older-versions-come-off-branch.md`](../docs/decisions/older-versions-come-off-branch.md) |
+| `one-repo-for-both-halves` | The source repository, `mailaudit`, is public and holds no data. | [`docs/decisions/one-repo-for-both-halves.md`](../docs/decisions/one-repo-for-both-halves.md) |
 | `one-simulator-per-mac` | Kind: process | [`docs/decisions/one-simulator-per-mac.md`](../docs/decisions/one-simulator-per-mac.md) |
 | `peek-is-three-valued` | **Status:** retired 2026-10-14. | [`docs/decisions/peek-is-three-valued.md`](../docs/decisions/peek-is-three-valued.md) |
 | `photo-branch-must-preexist` | Photos lived on the `main` branch of `mailaudit-data`, in `photos/`. | [`docs/decisions/photo-branch-must-preexist.md`](../docs/decisions/photo-branch-must-preexist.md) |
 | `photo-errors-never-hit-pushstate` | Kind: process | [`docs/decisions/photo-errors-never-hit-pushstate.md`](../docs/decisions/photo-errors-never-hit-pushstate.md) |
 | `photo-writes-wait-one-second` | **Status:** retired 2026-10-14. | [`docs/decisions/photo-writes-wait-one-second.md`](../docs/decisions/photo-writes-wait-one-second.md) |
+| `pull-needs-a-key-too` | **Status:** retired. | [`docs/decisions/pull-needs-a-key-too.md`](../docs/decisions/pull-needs-a-key-too.md) |
 | `push-and-merge-guard-differently` | **Status:** retired 2026-10-14. | [`docs/decisions/push-and-merge-guard-differently.md`](../docs/decisions/push-and-merge-guard-differently.md) |
 | `push-flash-waits-for-photos` | Kind: process | [`docs/decisions/push-flash-waits-for-photos.md`](../docs/decisions/push-flash-waits-for-photos.md) |
 | `pushforce-sha-only-after-write` | **Status:** retired 2026-10-14. | [`docs/decisions/pushforce-sha-only-after-write.md`](../docs/decisions/pushforce-sha-only-after-write.md) |
@@ -33,6 +38,11 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `stale-push-conflict-pull-two-tap` | **Status:** retired 2026-10-14. | [`docs/decisions/stale-push-conflict-pull-two-tap.md`](../docs/decisions/stale-push-conflict-pull-two-tap.md) |
 | `sync-runs-itself` | Sync runs itself, and there is no toggle. | [`docs/decisions/sync-runs-itself.md`](../docs/decisions/sync-runs-itself.md) |
 | `testing-unfailable-assert-decor` | Kind: process | [`docs/decisions/testing-unfailable-assert-decor.md`](../docs/decisions/testing-unfailable-assert-decor.md) |
+| `the-token-used-to-span-two-repos` | **Status:** retired. | [`docs/decisions/the-token-used-to-span-two-repos.md`](../docs/decisions/the-token-used-to-span-two-repos.md) |
+| `token-expires-without-warning` | **Status:** retired. | [`docs/decisions/token-expires-without-warning.md`](../docs/decisions/token-expires-without-warning.md) |
+| `token-field-is-sixteen-pixels` | The sync key field is set at 16px. | [`docs/decisions/token-field-is-sixteen-pixels.md`](../docs/decisions/token-field-is-sixteen-pixels.md) |
+| `token-lives-outside-namespace` | The device key and any stored GitHub token sit outside the storage namespace. | [`docs/decisions/token-lives-outside-namespace.md`](../docs/decisions/token-lives-outside-namespace.md) |
+| `token-sits-on-shared-origin` | **Status:** open. | [`docs/decisions/token-sits-on-shared-origin.md`](../docs/decisions/token-sits-on-shared-origin.md) |
 | `two-device-merge-proven-first` | **Status:** retired 2026-10-14. | [`docs/decisions/two-device-merge-proven-first.md`](../docs/decisions/two-device-merge-proven-first.md) |
 | `watchdog-catches-silent-failure` | **Status:** retired. | [`docs/decisions/watchdog-catches-silent-failure.md`](../docs/decisions/watchdog-catches-silent-failure.md) |
 | `watchdog-lives-in-private-repo` | **Status:** retired. | [`docs/decisions/watchdog-lives-in-private-repo.md`](../docs/decisions/watchdog-lives-in-private-repo.md) |
@@ -57,6 +67,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `live-verification` | This file draws the line between proven and unproven. | [`docs/decisions/live-verification.md`](../docs/decisions/live-verification.md) |
 | `masthead-tallies-unequal-thirds` | The tallies are three ruled cells: cards, packages, and value. | [`docs/decisions/masthead-tallies-unequal-thirds.md`](../docs/decisions/masthead-tallies-unequal-thirds.md) |
 | `merge-later-change-wins` | Kind: build | [`docs/decisions/merge-later-change-wins.md`](../docs/decisions/merge-later-change-wins.md) |
+| `milestone-runs-full-suite` | **Status:** ruled. | [`docs/decisions/milestone-runs-full-suite.md`](../docs/decisions/milestone-runs-full-suite.md) |
 | `motion-disclosure-panels-arrive` | A disclosure panel overlays the list. | [`docs/decisions/motion-disclosure-panels-arrive.md`](../docs/decisions/motion-disclosure-panels-arrive.md) |
 | `native-build-lanes` | **Status:** ruled. | [`docs/decisions/native-build-lanes.md`](../docs/decisions/native-build-lanes.md) |
 | `native-ci-on-hosted-macos` | **Status:** ruled. | [`docs/decisions/native-ci-on-hosted-macos.md`](../docs/decisions/native-ci-on-hosted-macos.md) |
@@ -125,7 +136,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `every-restore-passes-applybackup` | The file restore and the GitHub pull both pass through one function, `applyBackup()`. | [`docs/decisions/every-restore-passes-applybackup.md`](../docs/decisions/every-restore-passes-applybackup.md) |
 | `favicon-is-a-different-drawing` | A browser tab renders the favicon at 16 CSS px. | [`docs/decisions/favicon-is-a-different-drawing.md`](../docs/decisions/favicon-is-a-different-drawing.md) |
 | `file-protocol-works-locally` | Opening `index.html` straight off disk works. | [`docs/decisions/file-protocol-works-locally.md`](../docs/decisions/file-protocol-works-locally.md) |
-| `fine-grained-token-single-repo` | Each device gets its own named fine-grained personal access token. | [`docs/decisions/fine-grained-token-single-repo.md`](../docs/decisions/fine-grained-token-single-repo.md) |
 | `harness-boot-seeds-remote-late` | `boot()` seeds `opts.remote` after the app mounts. | [`docs/decisions/harness-boot-seeds-remote-late.md`](../docs/decisions/harness-boot-seeds-remote-late.md) |
 | `harness-drives-resume-by-event` | Tests drive auto-push and the resume by dispatching events. | [`docs/decisions/harness-drives-resume-by-event.md`](../docs/decisions/harness-drives-resume-by-event.md) |
 | `harness-drives-the-controls` | The ruled head replaced the native select and the chip disclosures. | [`docs/decisions/harness-drives-the-controls.md`](../docs/decisions/harness-drives-the-controls.md) |
@@ -139,10 +149,9 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `invariants-cited-by-slug` | A record or a code comment cites an invariant by its slug, such as `parser-filters`, and never by a number. | [`docs/decisions/invariants-cited-by-slug.md`](../docs/decisions/invariants-cited-by-slug.md) |
 | `itp-may-clear-storage` | **Status:** open. | [`docs/decisions/itp-may-clear-storage.md`](../docs/decisions/itp-may-clear-storage.md) |
 | `label-photos-downscale-to-2000px` | An envelope photo is a snap of the mailing label. | [`docs/decisions/label-photos-downscale-to-2000px.md`](../docs/decisions/label-photos-downscale-to-2000px.md) |
-| `ledger-private-source-public` | **Status:** open. | [`docs/decisions/ledger-private-source-public.md`](../docs/decisions/ledger-private-source-public.md) |
 | `listphotos-is-three-valued` | `listPhotos()` answers in one of two shapes: `{known:true, ids}` or `{known:false, reason}`. | [`docs/decisions/listphotos-is-three-valued.md`](../docs/decisions/listphotos-is-three-valued.md) |
 | `lost-mail-flags-use-order-date` | An untracked, unreceived package gets an amber "may be lost" flag at 14d from the order date. | [`docs/decisions/lost-mail-flags-use-order-date.md`](../docs/decisions/lost-mail-flags-use-order-date.md) |
-| `main-moves-only-by-pr` | Every change reaches `main` through a pull request that passes the required `suite` check. | [`docs/decisions/main-moves-only-by-pr.md`](../docs/decisions/main-moves-only-by-pr.md) |
+| `main-moves-only-by-pr` | Every change reaches `main` through a pull request that passes the required `all-jobs-passed` check. | [`docs/decisions/main-moves-only-by-pr.md`](../docs/decisions/main-moves-only-by-pr.md) |
 | `masthead-is-not-project-name` | The app presents itself as **MANIFEST**, under a C.H Postal Company letterhead. | [`docs/decisions/masthead-is-not-project-name.md`](../docs/decisions/masthead-is-not-project-name.md) |
 | `masthead-is-one-letterhead` | The top of the page is one composed letterhead, not stacked boxes. | [`docs/decisions/masthead-is-one-letterhead.md`](../docs/decisions/masthead-is-one-letterhead.md) |
 | `masthead-running-head-sticky` | The slim running head is `position: sticky` with a fixed 46px height and a 1px rule, 47px drawn. | [`docs/decisions/masthead-running-head-sticky.md`](../docs/decisions/masthead-running-head-sticky.md) |
@@ -166,12 +175,10 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `motion-the-stamp-lands` | The stamp rocks down and settles at its resting angle, instead of blinking into place. | [`docs/decisions/motion-the-stamp-lands.md`](../docs/decisions/motion-the-stamp-lands.md) |
 | `motion-the-switch-is-one-object` | The ruling: the active-view fill is a single element that slides between thirds. | [`docs/decisions/motion-the-switch-is-one-object.md`](../docs/decisions/motion-the-switch-is-one-object.md) |
 | `motion-use-just-became` | Every celebration marks a state that a package can already be in. | [`docs/decisions/motion-use-just-became.md`](../docs/decisions/motion-use-just-became.md) |
-| `nothing-recovers-without-the-key` | **Status:** open. | [`docs/decisions/nothing-recovers-without-the-key.md`](../docs/decisions/nothing-recovers-without-the-key.md) |
 | `null-remote-info-is-not-no-key` | A null `remoteInfo` means that the status has not loaded yet. | [`docs/decisions/null-remote-info-is-not-no-key.md`](../docs/decisions/null-remote-info-is-not-no-key.md) |
 | `offline-is-decided-by-fetch` | The app decides `offline` only by a failed `fetch`, and by nothing else. | [`docs/decisions/offline-is-decided-by-fetch.md`](../docs/decisions/offline-is-decided-by-fetch.md) |
-| `one-repo-for-both-halves` | The source repository, `mailaudit`, is public and holds no data. | [`docs/decisions/one-repo-for-both-halves.md`](../docs/decisions/one-repo-for-both-halves.md) |
 | `one-stamp-per-package` | Each package holds at most one order stamp. | [`docs/decisions/one-stamp-per-package.md`](../docs/decisions/one-stamp-per-package.md) |
-| `orchestrator-may-merge` | The owner granted standing merge authority on 2026-10-10. | [`docs/decisions/orchestrator-may-merge.md`](../docs/decisions/orchestrator-may-merge.md) |
+| `orchestrator-may-merge` | Under the session tiers (claude-settings decision session-tiers), the coordinator holds the owner's standing merge grant (claude-settings decision standing-merge-grant). | [`docs/decisions/orchestrator-may-merge.md`](../docs/decisions/orchestrator-may-merge.md) |
 | `orderwand-csv` | This record holds the CSV column list and every quirk found in the user's real OrderWand exports. | [`docs/decisions/orderwand-csv.md`](../docs/decisions/orderwand-csv.md) |
 | `orphan-sweep-drops-unused-photos` | One sweep effect covers every path that orphans a photo. | [`docs/decisions/orphan-sweep-drops-unused-photos.md`](../docs/decisions/orphan-sweep-drops-unused-photos.md) |
 | `orphaned-colours-by-meaning` | Orphaned uses the app's colour meanings. | [`docs/decisions/orphaned-colours-by-meaning.md`](../docs/decisions/orphaned-colours-by-meaning.md) |
@@ -190,7 +197,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `photo-thumbnails-and-viewer` | Photo thumbnails are 56px squares. | [`docs/decisions/photo-thumbnails-and-viewer.md`](../docs/decisions/photo-thumbnails-and-viewer.md) |
 | `photos-stay-out-of-the-ledger` | Envelope photos live in IndexedDB. | [`docs/decisions/photos-stay-out-of-the-ledger.md`](../docs/decisions/photos-stay-out-of-the-ledger.md) |
 | `progress-bar-accent-then-green` | The progress bar fills with accent violet while it is in progress. | [`docs/decisions/progress-bar-accent-then-green.md`](../docs/decisions/progress-bar-accent-then-green.md) |
-| `pull-needs-a-key-too` | Push needs a fine-grained personal access token. | [`docs/decisions/pull-needs-a-key-too.md`](../docs/decisions/pull-needs-a-key-too.md) |
 | `readme-is-minimal` | The public repo has a short README. | [`docs/decisions/readme-is-minimal.md`](../docs/decisions/readme-is-minimal.md) |
 | `records-name-what-dates-them` | Every decision record carries one line that starts with "**Holds while:**". | [`docs/decisions/records-name-what-dates-them.md`](../docs/decisions/records-name-what-dates-them.md) |
 | `remote-rules-fail-quietly` | Two adapter decisions get their own pure functions, in `src/remote-rules.mjs`. | [`docs/decisions/remote-rules-fail-quietly.md`](../docs/decisions/remote-rules-fail-quietly.md) |
@@ -233,12 +239,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `testing-pull-payload-eq-void` | A pull makes the local ledger identical to the remote one. | [`docs/decisions/testing-pull-payload-eq-void.md`](../docs/decisions/testing-pull-payload-eq-void.md) |
 | `testing-surviving-mutant` | A surviving mutant shows that the fixtures never reach the state where the bug matters. | [`docs/decisions/testing-surviving-mutant.md`](../docs/decisions/testing-surviving-mutant.md) |
 | `testing-throwing-assert-bad-kill` | A test that throws on a mutant is worse than one that fails cleanly. | [`docs/decisions/testing-throwing-assert-bad-kill.md`](../docs/decisions/testing-throwing-assert-bad-kill.md) |
-| `the-token-used-to-span-two-repos` | **Status:** closed, by the `mailaudit-data` move. | [`docs/decisions/the-token-used-to-span-two-repos.md`](../docs/decisions/the-token-used-to-span-two-repos.md) |
-| `the-write-budget-is-shared` | **Status:** open. | [`docs/decisions/the-write-budget-is-shared.md`](../docs/decisions/the-write-budget-is-shared.md) |
-| `token-expires-without-warning` | **Status:** open. | [`docs/decisions/token-expires-without-warning.md`](../docs/decisions/token-expires-without-warning.md) |
-| `token-field-is-sixteen-pixels` | The sync key field is set at 16px. | [`docs/decisions/token-field-is-sixteen-pixels.md`](../docs/decisions/token-field-is-sixteen-pixels.md) |
-| `token-lives-outside-namespace` | The GitHub access token lives at the raw localStorage key `mailday-remote:v1`. | [`docs/decisions/token-lives-outside-namespace.md`](../docs/decisions/token-lives-outside-namespace.md) |
-| `token-sits-on-shared-origin` | **Status:** open. | [`docs/decisions/token-sits-on-shared-origin.md`](../docs/decisions/token-sits-on-shared-origin.md) |
 | `unit-rate-is-not-the-position` | The collapsed Tally row shows the **unit rate**, not the basis. | [`docs/decisions/unit-rate-is-not-the-position.md`](../docs/decisions/unit-rate-is-not-the-position.md) |
 | `unwritable-store-says-so` | When IndexedDB cannot be written, every version save must fail visibly. | [`docs/decisions/unwritable-store-says-so.md`](../docs/decisions/unwritable-store-says-so.md) |
 | `upload-zone-opens-when-empty` | The upload zone opens when the user asks for it. | [`docs/decisions/upload-zone-opens-when-empty.md`](../docs/decisions/upload-zone-opens-when-empty.md) |
@@ -249,7 +249,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 
 | Slug | Gist | Link |
 |---|---|---|
-| `app-build-waits-xcode-27` | No CI job compiles the native app. | [`docs/debts/app-build-waits-xcode-27.md`](../docs/debts/app-build-waits-xcode-27.md) |
+| `app-build-waits-xcode-27` | No pull-request CI job compiles the native app. | [`docs/debts/app-build-waits-xcode-27.md`](../docs/debts/app-build-waits-xcode-27.md) |
 | `armed-reset-mistap-unmeasured` | A mis-tap on a control next to the armed Reset box is unmeasured, and so is the width of the armed row. | [`docs/debts/armed-reset-mistap-unmeasured.md`](../docs/debts/armed-reset-mistap-unmeasured.md) |
 | `backup-unwatched` | Once the watchdog is off, no check reads the Worker's snapshots or the `data` branch, so a stopped backup raises no alarm. | [`docs/debts/backup-unwatched.md`](../docs/debts/backup-unwatched.md) |
 | `card-action-row-unmeasured` | The action row's content need at its tallest state is not measured at `f97e423`. | [`docs/debts/card-action-row-unmeasured.md`](../docs/debts/card-action-row-unmeasured.md) |
@@ -257,10 +257,10 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `checkin-error-bar-is-sans` | The native Packages and Tally check-in error bars (`checkin-error`) use the system footnote font on `.regularMaterial`, centred. | [`docs/debts/checkin-error-bar-is-sans.md`](../docs/debts/checkin-error-bar-is-sans.md) |
 | `chip-gap-tolerance-at-12px` | The 12px chip gap is not re-measured. | [`docs/debts/chip-gap-tolerance-at-12px.md`](../docs/debts/chip-gap-tolerance-at-12px.md) |
 | `claim-11-fixed-edge-taps` | Claim 11 of `check:screens` does not test a tap just past a fixed control's edge, where the tap lands on scrolling content, or the reverse. | [`docs/debts/claim-11-fixed-edge-taps.md`](../docs/debts/claim-11-fixed-edge-taps.md) |
+| `claim-17a-ci-red-unexplained` | `check:screens` claim 17a failed twice on CI, on runs 39892195068 and 39900120189 (2026-10-23). | [`docs/debts/claim-17a-ci-red-unexplained.md`](../docs/debts/claim-17a-ci-red-unexplained.md) |
 | `claim-9-fractional-box-edges` | A 43.5px box reads as 44px, so claim 9 can pass a box just under 44px. | [`docs/debts/claim-9-fractional-box-edges.md`](../docs/debts/claim-9-fractional-box-edges.md) |
 | `cloudflare-access-login-untested` | Whether the backup sign-in survives in an iOS home-screen app has not been run on a device. | [`docs/debts/cloudflare-access-login-untested.md`](../docs/debts/cloudflare-access-login-untested.md) |
 | `discard-keeps-draft` | `discardEnvelope` in `src/app.jsx` never clears the draft. | [`docs/debts/discard-keeps-draft.md`](../docs/debts/discard-keeps-draft.md) |
-| `draft-skip-required-unmeasured` | It is unmeasured how a required check reads a job that the draft guard skipped. | [`docs/debts/draft-skip-required-unmeasured.md`](../docs/debts/draft-skip-required-unmeasured.md) |
 | `duo-bar-dynamic-type-clips` | The open Duo's tab bar is a fixed 64 pt pill, while its labels scale with Dynamic Type. | [`docs/debts/duo-bar-dynamic-type-clips.md`](../docs/debts/duo-bar-dynamic-type-clips.md) |
 | `duo-checkin-error-under-bar` | On the open Duo, the Packages `checkin-error` overlay sits at the tab's bottom edge. | [`docs/debts/duo-checkin-error-under-bar.md`](../docs/debts/duo-checkin-error-under-bar.md) |
 | `duo-fold-change-unpinned` | The shell UI tests launch MANIFEST in one pose and check the tab bar. | [`docs/debts/duo-fold-change-unpinned.md`](../docs/debts/duo-fold-change-unpinned.md) |
@@ -282,7 +282,8 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `key-re-accepts-token-shape` | A GitHub token uses only letters, digits and underscores, so the key check accepts a token as a key. | [`docs/debts/key-re-accepts-token-shape.md`](../docs/debts/key-re-accepts-token-shape.md) |
 | `lost-photo-clock-is-envelope-age` | The 7-day lost-photo clock runs from the envelope's `createdAt`. | [`docs/debts/lost-photo-clock-is-envelope-age.md`](../docs/debts/lost-photo-clock-is-envelope-age.md) |
 | `lost-tile-waits-for-first-post` | The lost tile shows only after the push survey that follows a successful POST. | [`docs/debts/lost-tile-waits-for-first-post.md`](../docs/debts/lost-tile-waits-for-first-post.md) |
-| `n11-device-check-not-run` | Lane N11 is the owner's check on a device, as ruled in `native-build-lanes`, and it has not run. | [`docs/debts/n11-device-check-not-run.md`](../docs/debts/n11-device-check-not-run.md) |
+| `mac-target-unbuilt` | The native app builds for the iPhone only. | [`docs/debts/mac-target-unbuilt.md`](../docs/debts/mac-target-unbuilt.md) |
+| `n11-device-check-not-run` | Lane N11 is the owner's check on a device, as ruled in `native-build-lanes`, and it has run in part. | [`docs/debts/n11-device-check-not-run.md`](../docs/debts/n11-device-check-not-run.md) |
 | `native-armed-audit-misses-ask` | `PackageStampUITests.testAccessibilityAuditStampRemoveArmed` audits the editor with Remove armed. | [`docs/debts/native-armed-audit-misses-ask.md`](../docs/debts/native-armed-audit-misses-ask.md) |
 | `native-ask-has-no-cancel-focus` | `armed-reset-takes-the-row` has Cancel take first focus when an ask arms. | [`docs/debts/native-ask-has-no-cancel-focus.md`](../docs/debts/native-ask-has-no-cancel-focus.md) |
 | `native-axl-rows-break` | At the largest accessibility text size, three native rows keep one line and break or clip: | [`docs/debts/native-axl-rows-break.md`](../docs/debts/native-axl-rows-break.md) |
@@ -351,15 +352,17 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `reset-vs-worker-copy-unmeasured` | A Reset writes an empty ledger with no change times, on the web and on native. | [`docs/debts/reset-vs-worker-copy-unmeasured.md`](../docs/debts/reset-vs-worker-copy-unmeasured.md) |
 | `ruled-head-heights-unremeasured` | The figures under "Grid head figures" come from the round-1 builder, and the records writer did not re-measure them. | [`docs/debts/ruled-head-heights-unremeasured.md`](../docs/debts/ruled-head-heights-unremeasured.md) |
 | `screens-45px-width-flake` | On a pull request run of the `screens` job (CI run 40463555687), every touch target measured 45px wide at all 7 states at 375px, and "This device has no sync key" measured 45x36. | [`docs/debts/screens-45px-width-flake.md`](../docs/debts/screens-45px-width-flake.md) |
+| `screens-touch-context-flake` | The nightly run 41194669903 (2026-10-31, head `69f216f`) failed the `screens` job: 8 of 117 checks said "touch context does not match (pointer: coarse)". | [`docs/debts/screens-touch-context-flake.md`](../docs/debts/screens-touch-context-flake.md) |
 | `seed-in-public-history` | The seed is readable in `index.html` history from `10f9499` to the commit before `82e45d4`, and erasing it needs a history rewrite and the owner's word. | [`docs/debts/seed-in-public-history.md`](../docs/debts/seed-in-public-history.md) |
 | `sim-test-diagnose-and-pin` | After a failed UI test, `xcodebuild test` runs `simctl diagnose` on its own, for up to 600 s. | [`docs/debts/sim-test-diagnose-and-pin.md`](../docs/debts/sim-test-diagnose-and-pin.md) |
 | `suite-hang-cause-unmeasured` | The cause of the 13-minute hang is unmeasured, and so are the exit codes of the UTC and machine-zone runs. | [`docs/debts/suite-hang-cause-unmeasured.md`](../docs/debts/suite-hang-cause-unmeasured.md) |
 | `sweep-settle-masks-30-13-stall` | The `SWEEP_WAIT` settle after 19.6 hides a stall at 30.13, and it does not explain it. | [`docs/debts/sweep-settle-masks-30-13-stall.md`](../docs/debts/sweep-settle-masks-30-13-stall.md) |
+| `swift-stack-spacing-unset` | Rule `ux-swift-same-intent` (claude-settings, Swift screens space like the web) asks two things. | [`docs/debts/swift-stack-spacing-unset.md`](../docs/debts/swift-stack-spacing-unset.md) |
 | `sync-latency-after-fix-unmeasured` | No run of the probe covers lane web/sync-latency. | [`docs/debts/sync-latency-after-fix-unmeasured.md`](../docs/debts/sync-latency-after-fix-unmeasured.md) |
+| `tabbar-hides-partial-controls` | The native accessibility audit skips every finding whose element shares any area with the iOS tab bar, or lies wholly below the window (`isUnderTabBar` in `native/ManifestUITests`). | [`docs/debts/tabbar-hides-partial-controls.md`](../docs/debts/tabbar-hides-partial-controls.md) |
 | `tally-audit-contrast-flags` | Three Tally audits report "Contrast failed" on small text and "Potentially inaccessible text" with no element: `TallyUITests.testAccessibilityAuditTallyScreenWithRows`, `TallyUITests.testAccessibilityAuditTallyScreenWithARowOpen` and `PackagesShellUITests.testAccessibilityAuditTallyScreen`. | [`docs/debts/tally-audit-contrast-flags.md`](../docs/debts/tally-audit-contrast-flags.md) |
 | `tally-card-moves-at-320px` | At 320px the Tally card moves 14px on check-ins 1 and 6. | [`docs/debts/tally-card-moves-at-320px.md`](../docs/debts/tally-card-moves-at-320px.md) |
 | `tcgplayer-link-opens-history-list` | The order id link opens `orderhistory?SearchString=<id>`, the URL the owner gave on 2026-10-21 (`tcgplayerOrderUrl` encodes the id). | [`docs/debts/tcgplayer-link-opens-history-list.md`](../docs/debts/tcgplayer-link-opens-history-list.md) |
-| `tests-33-35-40-45-cannot-fail` | Tests 33.35, 33.40 and 33.45 cannot fail on a plausible mutant. | [`docs/debts/tests-33-35-40-45-cannot-fail.md`](../docs/debts/tests-33-35-40-45-cannot-fail.md) |
 | `token-state-and-bundle-unpinned` | Nothing pins the React-state or bundle guarantees. | [`docs/debts/token-state-and-bundle-unpinned.md`](../docs/debts/token-state-and-bundle-unpinned.md) |
 | `tracking-checker-unbuilt` | Today the app does not check tracking numbers. | [`docs/debts/tracking-checker-unbuilt.md`](../docs/debts/tracking-checker-unbuilt.md) |
 | `type-floor-unbuilt` | Some labels are smaller than the 10px floor today. | [`docs/debts/type-floor-unbuilt.md`](../docs/debts/type-floor-unbuilt.md) |
@@ -380,7 +383,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `parser-filters` | Parser keeps only TCG purchases | [`invariants/parser-filters.md`](../invariants/parser-filters.md) |
 | `saved-state-shape` | Saved-state shape is fixed | [`invariants/saved-state-shape.md`](../invariants/saved-state-shape.md) |
 | `storage-keys-are-frozen` | Storage keys are frozen | [`invariants/storage-keys-are-frozen.md`](../invariants/storage-keys-are-frozen.md) |
-| `the-token-is-a-credential` | The GitHub token and the device key are credentials | [`invariants/the-token-is-a-credential.md`](../invariants/the-token-is-a-credential.md) |
+| `the-token-is-a-credential` | The device key and any stored GitHub token are credentials | [`invariants/the-token-is-a-credential.md`](../invariants/the-token-is-a-credential.md) |
 
 ## Measurements
 
@@ -395,5 +398,5 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `palette-contrast` | Palette token contrast ratios | [`measurements/palette-contrast.md`](../measurements/palette-contrast.md) |
 | `ruled-head-heights` | Ruled head control region heights | [`measurements/ruled-head-heights.md`](../measurements/ruled-head-heights.md) |
 | `suite-size` | Test suite assertion count and run time | [`measurements/suite-size.md`](../measurements/suite-size.md) |
-| `switch-thirds-and-seal` | View switch, seal, and tally headroom | [`measurements/switch-thirds-and-seal.md`](../measurements/switch-thirds-and-seal.md) |
+| `switch-thirds-and-seal` | Seal and tally headroom; the view-switch readings are retired. | [`measurements/switch-thirds-and-seal.md`](../measurements/switch-thirds-and-seal.md) |
 | `sync-latency` | Sync delay from a tap on one device to the row on the other | [`measurements/sync-latency.md`](../measurements/sync-latency.md) |
