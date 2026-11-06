@@ -1,7 +1,6 @@
-// Restore tests for the photo id rule (photo-ids-restore-keep-if-known, photo-ids-unreadable-local, and
-// the native-photo-ids-kept-uncalled debt). The rule itself is PhotoIdsTests.swift. These tests pin the
-// call: a restore passes the version's ids through PhotoIds.kept with .restore, so a device that does not
-// hold a photo drops its id.
+// Restore tests for the photo id rule (photo-ids-restore-keep-if-known, photo-ids-unreadable-local).
+// The rule itself is PhotoIdsTests.swift. These tests pin the call: a restore passes the version's
+// ids through PhotoIds.kept with .restore, so a device that does not hold a photo drops its id.
 //
 // Two paths are driven: the user path (VersionsModel, whose second press calls store.restore) and
 // LedgerStore.restore directly. The store finds the photo folder beside its own ledger file, so the call
