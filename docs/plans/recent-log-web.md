@@ -1,6 +1,6 @@
 # Recent log, web client
 
-**Status:** in build on branch `recent-log-web`, stacked on `recent-reset-deferred`.
+**Status:** in build on branch `recent-log-web`. Mockup: `docs/design/recent-log/`.
 
 Decision: `recent-checks-can-be-undone`. Debts: `recent-log-unbuilt`, `recent-log-unmeasured`.
 
@@ -52,6 +52,8 @@ Departs from: `recent-checks-can-be-undone`, "Where the entrance sits" — a `.m
 
 ## An open panel when the cell would hide
 
-Pick: while the Recent panel is open, the cell and the panel stay, with rows frozen. The cell re-reads `isLive` when the panel closes and when the Ledger tab is entered, never while the tab is on screen. So the last undo with the panel open moves nothing, and a live apply from the other device never pushes History under the pointer.
+Pick, confirmed by the coordinator: while the Ledger tab is on screen, the cell neither shows nor hides. It re-reads `isLive` only when the Ledger tab is entered. A cell with no live row reads `Nothing to undo`. A hide on panel close would move History under the finger that just pressed Recent (`no-layout-shift-under-pointer`).
 
-Departs from: `recent-checks-can-be-undone`, "The cell shows while at least one log row is live, and hides when none is" — the cell's show and hide wait for a panel close or a Ledger tab entry.
+The panel sits in the page flow, as History's does today. Panels that overlay the list are ruled and not built (`panels-overlay-unbuilt`).
+
+Departs from: `recent-checks-can-be-undone`, "The cell shows while at least one log row is live, and hides when none is" — the cell's show and hide wait for a Ledger tab entry.
