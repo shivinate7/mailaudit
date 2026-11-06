@@ -72,17 +72,31 @@ final class PackageCardUITests: XCTestCase {
     // MARK: the order link
 
     /// Every package has a link to TCGplayer: a real link element, named for its order, 44pt each way, in its card.
+    /// The Packages list is lazy, so a card far down is not in the tree until the list has scrolled near it. The row ids
+    /// are collected across the scroll, then each card and its link are mounted before they are read.
     func testEveryPackageHasAnOrderLinkInsideItsCard() throws {
         let app = launch()
         XCTAssertTrue(element(app, "package-row:\(Self.package)").waitForExistence(timeout: 5), "the Packages rows did not load")
-        let rows = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "package-row:")).allElementsBoundByIndex
-        XCTAssertGreaterThanOrEqual(rows.count, 4, "the fixture holds four packages")
-        for row in rows {
-            let gk = String(row.identifier.dropFirst("package-row:".count))
-            let orderId = String(gk.split(separator: ":", maxSplits: 1).first ?? "")
+        var gks = Set<String>()
+        func collectRows() {
+            let rows = app.descendants(matching: .any)
+                .matching(NSPredicate(format: "identifier BEGINSWITH %@", "package-row:")).allElementsBoundByIndex
+            for row in rows { gks.insert(String(row.identifier.dropFirst("package-row:".count))) }
+        }
+        collectRows()
+        for _ in 0..<5 {
+            let seen = gks.count
+            app.swipeUp()
+            collectRows()
+            if gks.count == seen { break }
+        }
+        XCTAssertGreaterThanOrEqual(gks.count, 4, "the fixture holds four packages")
+        for gk in gks.sorted() {
+            XCTAssertTrue(ScreenKit.mount(app, "package-row:\(gk)"), "no card for \(gk) on the list")
+            XCTAssertTrue(ScreenKit.mount(app, "order-link:\(gk)"), "no order link for \(gk)")
+            let row = element(app, "package-row:\(gk)")
             let link = element(app, "order-link:\(gk)")
-            XCTAssertTrue(link.exists, "no order link for \(gk)")
+            let orderId = String(gk.split(separator: ":", maxSplits: 1).first ?? "")
             XCTAssertEqual(link.elementType, .link, "the order id for \(gk) must be a link element")
             XCTAssertTrue(link.label.contains(orderId) && link.label.contains("TCGplayer"),
                           "the link label \(link.label.debugDescription) should name order \(orderId) and TCGplayer")
@@ -248,7 +262,8 @@ final class PackageCardUITests: XCTestCase {
     func testOneLineCardKeepsTenPointsBelowItsLastText() throws {
         let app = launch()
         let row = element(app, "package-row:D1::Delta Cards")
-        XCTAssertTrue(row.waitForExistence(timeout: 5), "the one-line D1 card is missing")
+        // D1 sits below the fold on the lazy list, so mount scrolls it near before its text is read.
+        XCTAssertTrue(ScreenKit.mount(app, "package-row:D1::Delta Cards"), "the one-line D1 card is missing")
         guard let last = row.descendants(matching: .staticText).allElementsBoundByIndex
             .max(by: { $0.frame.maxY < $1.frame.maxY }) else {
             XCTFail("the D1 card holds no text")
