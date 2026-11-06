@@ -318,7 +318,7 @@ struct HandScreen: View {
     private func receiptBox(_ r: Receipt) -> some View {
         slot(offerContent(r.offer).hidden().overlay(alignment: .topLeading) {
             VStack(alignment: .leading, spacing: 8) {
-                Text(r.refused ? "Not posted. The next card you type clears this line." : "Posted with this envelope. The next card you type clears this line.")
+                Text(r.refused ? "Not posted." : "Posted with this envelope. The next card you type clears this line.")
                     .font(.cochin(13, relativeTo: .footnote)).foregroundStyle(Parchment.ink)
                 Text(r.line).font(r.refused ? .cochin(13, relativeTo: .footnote) : .mono(12, relativeTo: .caption))
                     .foregroundStyle(r.refused ? Parchment.red : Parchment.manilaInk)
@@ -344,7 +344,7 @@ struct HandScreen: View {
         if hand.offer == nil {
             receipt = hand.error == nil
             ? Receipt(offer: o, line: "\(total) \(total == 1 ? "card" : "cards") checked in \u{00B7} \(held) \(held == 1 ? "was" : "were") held", refused: false)
-            : Receipt(offer: o, line: hand.error ?? "", refused: true)
+            : Receipt(offer: o, line: "Type the card again to post.", refused: true)  // hand-error already says why; the Post button is gone
         }
         await afterWrite(failed: hand.error != nil)
     }
