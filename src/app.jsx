@@ -6583,8 +6583,7 @@ export default function MailDayLedger() {
               )}
               {recentShown && (
                 <LedgerRow
-                  /* the trailing space keeps "Recent" and its value two words in the row's text */
-                  label="Recent "
+                  label="Recent"
                   value={recentLive ? "Undo a tap" : "Nothing to undo"}
                   expanded={recentOpen}
                   onClick={toggleRecent}
