@@ -48,7 +48,6 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-restore-keeps-old-times` — A native restore keeps the old change times.
 - `native-milestone-needed-unpinned` — No test pins that a native operation needs its milestone.
 - `native-ask-has-no-cancel-focus` — The native ask does not move first focus to Cancel.
-- `native-removal-rule-is-swift` — The test for a removing reply is Swift code.
 - `native-version-names-unpinned` — No test pins the version file names.
 - `native-filters-tally-only` — The native client has no date filter, package sort or Packages search.
 - `native-tally-copy-no-flags` — The native Tally copy has no lost-mail flag and no order id tap.
