@@ -81,9 +81,10 @@ function scan(s, i, out, inTemplate) {
         else if (s[j] === "/" && !inClass) break;
         else j++;
       }
-      i = j + 1;
-      while (i < s.length && ID_PART.test(s[i])) i++;
-      out.push({ t: "re", v: "" });
+      const closed = s[j] === "/"; // no closing slash on the line: a division misread as a regex, so take it alone
+      i = closed ? j + 1 : i + 1;
+      while (closed && i < s.length && ID_PART.test(s[i])) i++;
+      out.push(closed ? { t: "re", v: "" } : { t: "p", v: c });
     } else if (ID_START.test(c)) {
       let j = i + 1;
       while (j < s.length && ID_PART.test(s[j])) j++;
@@ -98,10 +99,9 @@ function scan(s, i, out, inTemplate) {
       i++;
     } else {
       if (c === "{") depth++;
-      if (c === "}") {
-        if (inTemplate && depth === 0) return i;
-        depth--;
-      }
+      // A } at depth 0 inside a ${ } closes the substitution.
+      if (c === "}" && inTemplate && depth === 0) return i;
+      if (c === "}") depth--;
       out.push({ t: "p", v: c });
       i++;
     }
