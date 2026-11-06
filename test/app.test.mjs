@@ -422,6 +422,9 @@ ok(!/no outstanding copy/.test(text()), "8.5 not treated as unmatched");
 
 /* ── 9. persistence and migration ──────────────────────────────────────── */
 
+/* 9.3b needs a logged action in the blob. A load is never logged, so this records an envelope
+   and waits for the save before the blob is read. */
+await record(["Lightning Bolt"], "logged for 9.3b");
 await sleep(SAVE_WAIT);
 const carried = saved(); // exactly what the app wrote
 await boot(carried);
@@ -7944,7 +7947,10 @@ ok(!hasAction(/Pull from GitHub/), "64.8 and offers no Pull from GitHub to recov
    Its panel follows it on the page, and each row in the panel is a button whose text holds
    the row's micro-label. The cases find the cell and its rows by that text, never by a class. */
 const RECENT_ROW = /CHECKED|COUNT \d+ → \d+|PACKAGE CHECKED|STAMP|ENVELOPE|ASSIGNED/;
-const recentBtn = () => btn(/^Recent\b/);
+/* The cell is found by its label element, whose text is exactly "Recent", and the cell is
+   that label's button. A row's own text also holds its value, so the whole text is not used. */
+const recentBtn = () =>
+  [...document.querySelectorAll("span")].find((s) => s.textContent === "Recent")?.closest("button") ?? null;
 const historyBtn = () => btn(/^History/);
 const recentPanel = () => recentBtn()?.nextElementSibling ?? null;
 const rowsIn = () =>
