@@ -262,7 +262,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: shivinate7/claude-settings/actions/ste-lint@380a24b5fa9ab78b973892ddfe3a95eaff68601b # main 2026-11-06 (#1341)
+      - uses: shivinate7/claude-settings/actions/ste-lint@a781a86c3c693c9fe4d1ea7d30cdbde9d8ca92c6 # main 2026-11-05 (#1281)
 
   # Decision milestone-runs-full-suite: on a push to main, dispatches the full Swift suite
   # (milestone.yml) when it is due. Cost per push: one ubuntu job, one API read, one git log.
@@ -330,7 +330,7 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-      - uses: shivinate7/claude-settings/actions/mutation-report@380a24b5fa9ab78b973892ddfe3a95eaff68601b # main 2026-11-06 (#1341)
+      - uses: shivinate7/claude-settings/actions/mutation-report@a781a86c3c693c9fe4d1ea7d30cdbde9d8ca92c6 # main 2026-11-05 (#1281)
         with:
           profile: mailaudit
 
@@ -343,7 +343,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - uses: shivinate7/claude-settings/actions/all-jobs-passed@380a24b5fa9ab78b973892ddfe3a95eaff68601b # main 2026-11-06 (#1341)
+      - uses: shivinate7/claude-settings/actions/all-jobs-passed@a781a86c3c693c9fe4d1ea7d30cdbde9d8ca92c6 # main 2026-11-05 (#1281)
         with:
           needs: ${{ toJSON(needs) }}
 
@@ -359,6 +359,6 @@ jobs:
       contents: read  # the workflow default, kept because a job-level block replaces it
       pull-requests: write  # gh pr comment posts the one comment
     steps:
-      - uses: shivinate7/claude-settings/actions/ci-done-comment@380a24b5fa9ab78b973892ddfe3a95eaff68601b # main 2026-11-06 (#1341)
+      - uses: shivinate7/claude-settings/actions/ci-done-comment@a781a86c3c693c9fe4d1ea7d30cdbde9d8ca92c6 # main 2026-11-05 (#1281)
         with:
           needs: ${{ toJSON(needs) }}
