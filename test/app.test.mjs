@@ -109,6 +109,8 @@ import {
   prunePlan,
   shouldSnapshot,
 } from "../src/version-rules.mjs";
+/* namespace, so a missing removesSomething is an assertion (38.16), not a link error */
+import * as versionRules from "../src/version-rules.mjs";
 import {
   mergeItems,
   mergeReceived,
@@ -3725,6 +3727,36 @@ ok(
   "38.14 a milestone always writes — it is standing in front of a bulk operation"
 );
 ok(shouldSnapshot("recent", null, NOW), "38.15 and the very first version always writes");
+
+/* 38c. the removal rule. An apply that removes something takes a "before sync"
+   milestone first, and the rule that says what removes has one home:
+   removesSomething in src/version-rules.mjs, bundled into rules.js
+   (rules-run-in-javascriptcore). The cases are the file the Swift test reads
+   too, test/removes-cases.json, so the two sides cannot hold different fixtures. */
+const removalCases = JSON.parse(
+  readFileSync(path.join(path.dirname(fileURLToPath(import.meta.url)), "removes-cases.json"), "utf8")
+).cases;
+const removesSomething = versionRules.removesSomething;
+ok(
+  typeof removesSomething === "function",
+  "38.16 rule missing: src/version-rules.mjs does not export removesSomething"
+);
+/* the scope first: the fixture holds a case of every removal kind and of every kind that removes nothing */
+for (const kind of [
+  "count-lowered", "count-cleared", "envelope-gone", "envelope-tombstoned", "envelope-other-id",
+  "stamp-emptied", "stamp-gone", "full-to-empty",
+  "identical", "added-only", "live-edit", "held-tombstone-gone", "held-empty-stamp-gone",
+  "empty", "empty-to-full",
+]) {
+  ok(removalCases.some((c) => c.kind === kind), `38.17 the fixture holds a "${kind}" case`);
+}
+for (const c of removalCases) {
+  eq(
+    typeof removesSomething === "function" ? removesSomething(c.held, c.incoming) : null,
+    c.removes,
+    `38.18 ${c.kind}: removesSomething answers the fixture (null means the rule is missing)`
+  );
+}
 
 
 /* ── 38b. the two silences the audit found ───────────────────────────────

@@ -84,21 +84,22 @@ extension LedgerStore {
         return (try snapshotData(), items().count, checked)
     }
 
-    /// True when the incoming ledger takes away something this one holds: a lowered or cleared
-    /// count, a live envelope that is gone or tombstoned, a stamp whose kind is gone or "".
+    /// True when the incoming ledger takes away something this one holds. The rule is
+    /// removesSomething in rules.js, the one home of it (rules-run-in-javascriptcore). When the
+    /// bundle cannot be read or run the answer is true: a reply that removes nothing gets a spare
+    /// milestone, and one that removes something is never left without its milestone.
     func removes(_ incoming: [String: Any]) -> Bool {
-        let inRec = (incoming["received"] as? [String: Any] ?? [:]).compactMapValues { ($0 as? NSNumber)?.intValue }
-        for (k, n) in received() where (inRec[k] ?? 0) < n { return true }
-        let inEnv = incoming["envelopes"] as? [[String: Any]] ?? []
-        for e in envelopeRecords() where e["deletedAt"] == nil {
-            let id = e["id"] as? String
-            if !inEnv.contains(where: { ($0["id"] as? String) == id && $0["deletedAt"] == nil }) { return true }
-        }
-        let inSt = incoming["stamps"] as? [String: Any] ?? [:]
-        for (gk, s) in stamps() where ((s["kind"] as? String) ?? "") != "" {
-            if (((inSt[gk] as? [String: Any])?["kind"] as? String) ?? "") == "" { return true }
-        }
-        return false
+        guard let bundle = versions?.rulesURL ?? Bundle.module.url(forResource: "rules", withExtension: "js") else { return true }
+        let held: [String: Any] = ["received": doc["received"] ?? [String: Any](),
+                                   "envelopes": doc["envelopes"] ?? [Any](),
+                                   "stamps": doc["stamps"] ?? [String: Any]()]
+        let theirs: [String: Any] = ["received": incoming["received"] ?? [String: Any](),
+                                     "envelopes": incoming["envelopes"] ?? [Any](),
+                                     "stamps": incoming["stamps"] ?? [String: Any]()]
+        guard let args = try? JSONSerialization.data(withJSONObject: [held, theirs] as [Any]),
+              let out = try? RulesCore(bundleURL: bundle).call("removesSomething", String(decoding: args, as: UTF8.self))
+        else { return true }
+        return out != "false"
     }
 
     /// The milestone comes first: if it cannot be saved, nothing is cleared.
