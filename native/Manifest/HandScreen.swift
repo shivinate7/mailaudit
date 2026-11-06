@@ -127,9 +127,10 @@ struct HandScreen: View {
     /// The names the typed text matches, under their own heading, so a card you only released does not read as part of the
     /// envelope. The matches sit below the envelope row because no-layout-shift-under-pointer outranks mockup pose 2: a
     /// tapped match collapses the list, and a list above would lift New envelope from under the finger. The Suspense and
-    /// Released boxes sit below the matches for the same two reasons: a box above would push the only match under the keys, and
-    /// a box that leaves on New envelope would lift the button from under the finger.
-    /// Departs from: mockup pose 2 (matches above the envelope); HandScreen order with the boxes above This envelope (default, not owner).
+    /// Released boxes sit below the matches too: a box above would push the only match under the keys, and a box that changes
+    /// height on New envelope would move the button under the finger.
+    /// Departs from: mockup pose 2 (matches above the envelope); `leftPage` before this change, with the boxes above This
+    /// envelope (default, not owner).
     @ViewBuilder private var matches: some View {
         let names = hitNames
         if !names.isEmpty {

@@ -1,6 +1,6 @@
 # Card in Hand: the first match stays above the keys
 
-Mockup: `duo-hand-notice-match.html`. Debt: `hand-notice-cuts-match-row`. Decision: `duo-card-in-hand`.
+Mockup: `duo-hand-notice-match.html`. Debt: `hand-notice-cuts-match-row`, closed by this change. Decision: `duo-card-in-hand`.
 Lane kind: informed (the brief names no kind).
 
 Deep links: `#s=today`, `#s=under`, `#s=under-tap`, `#s=one-line`, `#s=answer-page`, `#s=folded`. Add `z=default` or `z=ax3` for one text size, for example `#s=under&z=ax3`. No hash shows all.
@@ -43,7 +43,7 @@ Deep links: `#s=today`, `#s=under`, `#s=under-tap`, `#s=one-line`, `#s=answer-pa
 
 ## SwiftUI change implied by the pick
 
-In `HandScreen.leftPage`, move the two `notice` calls (`hand-held`, `hand-strays`) below `matches`. Keep the error line where it is, under This envelope. A UI test pins it: with a held card and a stray, the first `hand-hit:` row's maxY sits at or above the keys' drawn top (`keys.frame.minY - keyboardDrawnAbove`), and `hand-held` sits below the last `hand-hit:` row.
+In `HandScreen.leftPage`, move the two `notice` calls (`hand-held`, `hand-strays`) below `matches`. Keep the error line where it is, under This envelope. Two UI tests pin it, one with a Suspense box and one with a Released box: the first `hand-hit:` row's maxY sits at or above the keys' drawn top (`keys.frame.minY - keyboardDrawnAbove`). No test reads where `hand-held` sits against the last `hand-hit:` row.
 
 Focus ids for the waiting page: `focus-under`, `focus-one-line`, `focus-answer-page` (default text), each with an `-ax3` twin; `focus-today` for Today; `focus-under-tap` for the tap pair.
 
