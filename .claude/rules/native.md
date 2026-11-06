@@ -45,7 +45,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-restore-pill-tap-unpinned` — No test taps the leading part of the native Restore pill.
 - `native-ledger-tab-unbuilt` — The native Ledger tab lacks the View group.
 - `native-restore-keeps-old-times` — A native restore keeps the old change times.
-- `native-milestone-needed-unpinned` — No ruling on a native Reset whose milestone cannot be saved.
+- `native-milestone-needed-unpinned` — No test pins that a native operation needs its milestone.
 - `native-ask-has-no-cancel-focus` — The native ask does not move first focus to Cancel.
 - `native-removal-rule-is-swift` — The test for a removing reply is Swift code.
 - `native-filters-tally-only` — The native client has no date filter, package sort or Packages search.
