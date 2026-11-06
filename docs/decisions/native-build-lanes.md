@@ -205,7 +205,6 @@ Other risks live in the record for their lane:
 - No test pins that a Reset, a restore or a removing reply needs its milestone. Debt: `native-milestone-needed-unpinned`.
 - The native ask does not move first focus to Cancel. Debt: `native-ask-has-no-cancel-focus`.
 - The test for a removing reply is Swift code. Debt: `native-removal-rule-is-swift`.
-- No test pins the version file names. Debt: `native-version-names-unpinned`.
 
 ## See also
 
