@@ -1,5 +1,6 @@
 {
   "rolled-out": true,
+  "visibility": "public",
   "kinds": {
     "invariants": { "path": "invariants", "record": true, "listed": true, "about": "One record per rule that must not break, each naming the test that pins it." },
     "measurements": { "path": "measurements", "record": true, "listed": true, "about": "One record per measured figure, with the way to measure it again." },
