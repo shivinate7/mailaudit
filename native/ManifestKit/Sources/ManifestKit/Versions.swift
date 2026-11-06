@@ -123,8 +123,26 @@ extension LedgerStore {
               o["mailday"] == nil || (o["mailday"] as? Int) == 1 else { throw VersionError.corrupt(id) }
         let (held, lines, checked) = try heldBytes()
         try v.put(held, label: "before restore", kind: "milestone", lines: lines, checked: checked)
-        try adoptRaw(bytes)
+        try adoptRaw(keepingHeldPhotos(bytes, from: o, rules: v.rulesURL))
         onLocalSave?()
+    }
+
+    /// A restore drops each photo id this device does not hold (photo-ids-restore-keep-if-known). Held is
+    /// nil when the photo folder or the rules cannot be read, and nil keeps every id (photo-ids-unreadable-local).
+    private func keepingHeldPhotos(_ bytes: Data, from parsed: [String: Any], rules: URL?) -> Data {
+        guard var envelopes = parsed["envelopes"] as? [[String: Any]] else { return bytes }
+        let core = (rules ?? Bundle.module.url(forResource: "rules", withExtension: "js")).flatMap { try? RulesCore(bundleURL: $0) }
+        let held = core.flatMap { PhotoStore.heldIds(in: PhotoStore.folder(besideLedger: fileURL), core: $0) }
+        var changed = false
+        for i in envelopes.indices {
+            guard let ids = envelopes[i]["photos"] as? [String] else { continue }
+            let kept = PhotoIds.kept(ids, held: held, on: .restore)
+            if kept != ids { envelopes[i]["photos"] = kept; changed = true }
+        }
+        guard changed else { return bytes }
+        var out = parsed
+        out["envelopes"] = envelopes
+        return (try? JSONSerialization.data(withJSONObject: out)) ?? bytes
     }
 }
 
