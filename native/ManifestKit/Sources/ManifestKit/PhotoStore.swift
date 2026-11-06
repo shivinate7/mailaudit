@@ -45,14 +45,34 @@ public final class PhotoStore: Sendable {
         return PhotoBlob(data: data, mime: mime)
     }
 
-    /// Three-valued, as the web's photos.keys() is. A folder not made yet holds nothing. A folder that
-    /// cannot be read is nil, and nil is not empty (photo-ids-unreadable-local).
-    public func heldIds() async -> Set<String>? {
+    /// The file names in a photo folder. Three-valued, as the web's photos.keys() is: a folder not made yet
+    /// holds nothing, and a folder that cannot be read is nil, which is not empty (photo-ids-unreadable-local).
+    /// The one listing both heldIds and a restore read.
+    static func names(in folder: URL) -> [String]? {
         var isDir: ObjCBool = false
         guard FileManager.default.fileExists(atPath: folder.path, isDirectory: &isDir) else { return [] }
         guard isDir.boolValue, let names = try? FileManager.default.contentsOfDirectory(atPath: folder.path) else {
             return nil
         }
+        return names
+    }
+
+    /// Synchronous, for a restore, which cannot await. Names go through the bundle's photoIdFromName.
+    static func heldIds(in folder: URL, core: RulesCore) -> Set<String>? {
+        guard let names = names(in: folder) else { return nil }
+        var ids = Set<String>()
+        for name in names {
+            guard let arg = try? JSONSerialization.data(withJSONObject: [name]),
+                  let out = try? core.call("photoIdFromName", String(decoding: arg, as: UTF8.self)),
+                  let id = (try? JSONSerialization.jsonObject(with: Data(out.utf8), options: .fragmentsAllowed)) as? String
+            else { continue }
+            ids.insert(id)
+        }
+        return ids
+    }
+
+    public func heldIds() async -> Set<String>? {
+        guard let names = Self.names(in: folder) else { return nil }
         var ids = Set<String>()
         for name in names {
             if let id: String = try? await rule("photoIdFromName", [name]) { ids.insert(id) }
