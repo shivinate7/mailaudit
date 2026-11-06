@@ -8049,10 +8049,19 @@ eq(rowsIn().length, rowsBefore, "79.5a and no row was added while the panel is o
 ok(/UNDONE/.test(pkgRow?.textContent ?? ""), "79.5b and the row reads UNDONE");
 eq(recentBtn()?.getAttribute("aria-expanded"), "true", "79.5c and the panel is still open");
 
-/* 79.6. with the panel open, the last undo leaves the cell; closing the panel hides it */
+/* 79.6. with the panel open, the last undo leaves the cell. The cell re-reads liveness only on
+   Ledger tab entry, so closing the panel leaves it in place (no shift under the pointer). */
 ok(!!recentBtn(), "79.6 with the panel open, the cell stays after the last undo");
 await click(recentBtn(), "close Recent");
-ok(!recentBtn(), "79.6a and it hides once the panel closes, since nothing can be undone");
+ok(!!recentBtn(), "79.6a after the panel closes, the cell is still there");
+ok(
+  /Nothing to undo/.test(recentBtn()?.textContent ?? ""),
+  "79.6c and with no live row the cell reads Nothing to undo"
+);
+ok(!!recentBtn(), "79.6bpre the cell is still there before the visit away, so the hide below means something");
+await goTo("orphaned");
+await onLedger();
+ok(!recentBtn(), "79.6b a visit to another view and back to Ledger hides the cell, since nothing can be undone");
 
 /* 79.7. a Reset clears every card, so nothing stays live, and the next Ledger visit hides the cell */
 await fresh();

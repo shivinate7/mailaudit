@@ -490,6 +490,18 @@ eq(
   eq(labels(days([now, old], NOW)), ["TODAY", "SAT OCT 3"], "R9.3 an older day takes its local date, and groups run newest first");
 }
 eq(days([], NOW), [], "R9.4 no entries, no groups");
+{
+  const g = days([count("now", NOW, K, 0, 1)], NOW);
+  ok(
+    Array.isArray(g) && g.length === 1 && Object.keys(g[0] ?? {}).sort().join(",") === "label,rows",
+    "R9.5 groupByDay gives an array of { label, rows }, one object per group and no other keys",
+    `groups ${canon(g)}`
+  );
+  ok(
+    typeof g?.[0]?.label === "string" && Array.isArray(g?.[0]?.rows),
+    "R9.5a with label a string and rows an array"
+  );
+}
 
 /* ---------- R10 newEntryId ---------- */
 
