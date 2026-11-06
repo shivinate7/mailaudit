@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hand Notice Match</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light, so this page has one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --red:#A8443C; --manila:#EADBBA; --manilaInk:#695832;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  /* Status bar foot: unmeasured on the Duo inner screen. Drawn at the UI test's 20 pt floor (DuoHandUITests.statusBarFloor). */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --keys-top: 405px;  /* the keys panel draws from about y 405 pt (duo-fold-and-keyboard); its frame starts at 449 */
+  --new:#2E7A5E; --today:#A8443C;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
+main { max-width:1040px; margin:0 auto; padding:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:24px; margin:16px 0 4px; }
+.sub { color:var(--inkSoft); margin:0 0 12px; max-width:72ch; }
+nav { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+nav a, nav button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+nav a:focus-visible, nav button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+nav .sep { width:100%; height:0; }
+figure { margin:24px 0 40px; }
+figure[hidden] { display:none; }
+figcaption { margin-top:8px; max-width:80ch; }
+figcaption b { font-family:var(--cochin); font-size:18px; }
+.read { font:12px var(--mono); color:var(--inkSoft); margin-top:4px; }
+.read.cut { color:var(--red); } .read.ok { color:var(--green); }
+.fit { width:100%; overflow:hidden; }
+.pair { display:flex; flex-direction:column; gap:16px; }
+
+/* ---- device: iPhone Duo inner screen, open, 951 x 669 pt, 1 CSS px = 1 pt ---- */
+.duo { position:relative; width:951px; height:669px; background:var(--paper); border:1px solid var(--ink); border-radius:12px; overflow:hidden;
+  --rb:1; --rc:1; --rf:1; --rt:1; }
+/* AX3 (Accessibility Large 3): each element scales by its own text style's ratio, from the iOS Dynamic Type tables
+   (HIG Typography, read 2026-11-06): Body and Headline 17 -> 40, Caption 1 12 -> 32, Footnote 13 -> 33, Title 2 22 -> 44. */
+.duo.ax3 { --rb:calc(40 / 17); --rc:calc(32 / 12); --rf:calc(33 / 13); --rt:calc(44 / 22); }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 16px; font-size:12px; font-weight:600; z-index:5; background:var(--paper); }
+.page { position:absolute; top:0; bottom:0; width:455.5px; overflow:hidden; }
+.page.l { left:0; } .page.r { left:495.5px; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); }
+.fold span { position:absolute; top:200px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; }
+/* The system keyboard: iOS chrome, not an app colour, so these greys sit outside the tokens. */
+.keys { position:absolute; left:0; right:0; top:var(--keys-top); bottom:0; background:#D2D0D6; z-index:6; padding:8px 6px; }
+.keys .row { display:flex; gap:6px; margin-bottom:8px; justify-content:center; }
+.keys .k { height:42px; flex:0 0 42px; background:#FFFFFF; border-radius:6px; display:grid; place-items:center; font-size:18px; color:#111; }
+.keys .k.w { flex-basis:300px; font-size:14px; }
+.guide { position:absolute; left:0; right:0; top:var(--keys-top); height:0; border-top:2px dashed var(--accent); z-index:7; }
+.guide span { position:absolute; right:12px; top:-18px; font:11px var(--mono); color:var(--accent); background:var(--paper); padding:0 4px; }
+
+/* ---- app content: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono). Gaps follow HandScreen.swift. ---- */
+.content { position:absolute; left:16px; right:16px; top:calc(var(--sat) + 16px); display:flex; flex-direction:column; gap:12px; font-family:var(--cochin); line-height:normal; }
+/* 10.5 pt is the app's own micro size (HandScreen.micro); the mockup draws the screen as built. */
+.micro { font-family:var(--mono); font-size:calc(10.5px * var(--rc)); letter-spacing:1.2px; text-transform:uppercase; color:var(--inkSoft); }
+.hit { min-height:44px; min-width:44px; display:inline-flex; align-items:center; justify-content:center; flex:none; }
+.pill { font-family:var(--mono); font-size:calc(11.5px * var(--rc)); border:1px solid var(--line); background:var(--card); border-radius:5px; padding:8px 12px; color:var(--ink); text-align:center; }
+.head { display:flex; align-items:baseline; gap:8px; }
+.head .title { font-size:calc(17px * var(--rb)); font-weight:700; }
+.head .count { margin-left:auto; font-family:var(--mono); font-size:calc(12px * var(--rc)); color:var(--inkSoft); min-width:0; }
+.field { min-height:48px; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:0 12px; display:flex; align-items:center; font-size:calc(16px * var(--rb)); }
+.field::after { content:""; width:2px; height:1.1em; background:var(--accent); margin-left:1px; }
+.notice { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:2px; }
+.notice .micro { color:var(--manilaInk); }
+.notice b { font-size:calc(15px * var(--rb)); } .notice small { font-size:calc(12.5px * var(--rf)); }
+/* one-line form: title and name share a line; the foot moves into the VoiceOver label */
+.notice.one { flex-direction:row; flex-wrap:wrap; align-items:baseline; column-gap:8px; row-gap:0; padding:8px 12px; }
+.envrow { display:flex; align-items:center; gap:8px; }
+.envrow .soft { color:var(--inkSoft); font-size:calc(14px * var(--rb)); margin-right:auto; }
+.match { min-height:44px; display:flex; align-items:center; font-size:calc(14px * var(--rb)); }
+/* right page */
+.r .content .env { display:flex; flex-direction:column; gap:8px; }
+.who { font-size:calc(22px * var(--rt)); font-weight:700; }
+.meta { font-family:var(--mono); font-size:calc(11px * var(--rc)); color:var(--inkSoft); }
+.offer { background:color-mix(in srgb, var(--manila) 50%, transparent); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; }
+.offer p { margin:0; font-size:calc(13px * var(--rf)); }
+.offer .pill { font-weight:700; background:var(--accent); border-color:var(--accent); color:var(--card); }
+.lines { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.line { display:flex; gap:8px; min-height:45px; padding-left:4px; border-top:1px solid var(--line); }
+.line:first-child { border-top:0; }
+.line .box { flex:0 0 45px; height:45px; display:grid; place-items:center; }
+.line .box i { width:30px; height:30px; border:1.5px solid var(--inkSoft); border-radius:6px; display:block; }
+.line .t { flex:1; padding:12px 12px 12px 0; display:flex; flex-direction:column; gap:4px; min-width:0; }
+.line .t b { font-size:calc(14px * var(--rb)); font-weight:600; display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.line .t b span { font-family:var(--mono); font-size:calc(12px * var(--rb)); color:var(--inkSoft); font-weight:400; }
+.line .t small { font-size:calc(11.5px * var(--rb)); color:var(--inkSoft); }
+.quiet { color:var(--inkSoft); font-size:calc(14px * var(--rb)); }
+
+/* finger: where the tap landed, drawn in both frames of the tap pair */
+.finger { position:absolute; width:44px; height:44px; border-radius:50%; border:2px solid var(--accent); background:color-mix(in srgb, var(--accent) 18%, transparent); z-index:8; pointer-events:none; }
+
+/* tags: dashed outline on what exists today, and on what an option adds */
+[data-tag] { position:relative; }
+[data-tag]::before { content:attr(data-tag); position:absolute; right:4px; top:-9px; font:600 11px/14px -apple-system, system-ui, sans-serif; padding:0 4px;
+  background:var(--paper); z-index:4; white-space:nowrap; letter-spacing:0; text-transform:none; }
+.tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tag-new::before { color:var(--new); }
+.tag-today { outline:2px dashed var(--today); outline-offset:2px; } .tag-today::before { color:var(--today); }
+
+/* folded frame: the outer screen, 382 x 644 pt of safe content (duo-fold-and-keyboard), drawn at half size */
+.folded { position:relative; width:191px; height:322px; border:1px solid var(--ink); border-radius:12px; background:var(--paper);
+  padding:calc(env(safe-area-inset-top) + 12px) 12px calc(env(safe-area-inset-bottom) + 12px); font-size:12px; color:var(--inkSoft); }
+.folded b { font-family:var(--cochin); color:var(--ink); font-size:14px; display:block; margin-bottom:4px; }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No card, seller, count or price on this page is real. Row heights come from the code and this drawing, not from a simulator.</div>
+<h1>Card in Hand: the first match stays above the keys</h1>
+<p class="sub">iPhone Duo, open, 951 x 669 pt, fold 40 pt at 455.5 pt. Keys up; the panel draws from y 405 pt. Status bar foot drawn at 20 pt (unmeasured). Light theme only. Each frame comes at the default text size and at AX3. One sample in every frame: Lightning Bolt held in Suspense, Counterspell released, "Path to" typed, one match. Debt <code>hand-notice-cuts-match-row</code>.</p>
+
+<nav aria-label="States">
+  <a href="#s=today">Today</a>
+  <a href="#s=under">Box under the matches (pick)</a>
+  <a href="#s=under-tap">Box under the matches: a tap</a>
+  <a href="#s=one-line">Box on one line</a>
+  <a href="#s=answer-page">Box on the answer page</a>
+  <a href="#s=folded">Folded</a>
+  <a href="#">All</a>
+  <span class="sep"></span>
+  <a href="#z=default" data-size="default">Default text only</a>
+  <a href="#z=ax3" data-size="ax3">AX3 text only</a>
+  <button type="button" data-hide="under">Hide Box under the matches</button>
+  <button type="button" data-hide="one-line">Hide Box on one line</button>
+  <button type="button" data-hide="answer-page">Hide Box on the answer page</button>
+</nav>
+
+<!-- Folded first (ios-apps, Mockups). Card in Hand does not open folded. -->
+<figure data-state="folded">
+  <div class="folded" data-device="iphone-duo-folded">
+    <b>Folded: unchanged</b>
+    Card in Hand opens only on two pages side by side (<code>PackagesTab.twoPages</code>). The folded screen keeps today's one-page Packages. Nothing to draw.
+  </div>
+  <figcaption><b>Folded.</b> No change in this lane.</figcaption>
+</figure>
+
+<figure data-state="today" data-size="default">
+    <div class="fit"><div class="duo " data-device="iphone-duo-unfolded">
+  <div class="page l"><div class="content"><div class="head"><span class="title">Mail day</span><span class="count">41 in · 23 out</span><span class="hit"><span class="pill">Close</span></span></div><div class="field">Path to</div><div class="notice  tag-today" data-tag="Today: box above the matches" id="focus-today" aria-label="Suspense: Lightning Bolt. Not checked in.">
+  <span class="micro">Suspense</span><b>Lightning Bolt</b><small>Not checked in.</small></div><div class="notice  " aria-label="Released, not checked in: Counterspell. It no longer decides an envelope.">
+  <span class="micro">Released, not checked in</span><b>Counterspell</b><small>It no longer decides an envelope.</small></div><div class="envrow" data-role="envrow"><span class="soft">This envelope</span><span class="hit" data-role="newenv"><span class="pill">New envelope</span></span></div><span class="micro">Matches</span><div class="match" data-role="first-match">Path to Exile</div></div></div><div class="page r"><div class="content"><div class="env"><span class="micro">It came from</span><span class="who">Gamma Cards</span><span class="meta">ordered 2026-07-01</span>
+  <div class="offer"><p>Your held card came with this envelope. Nothing is checked in until you post.</p>
+  <span class="hit" style="align-self:flex-start" data-role="post"><span class="pill">Post 2 cards here, 1 held</span></span></div>
+  <div class="lines"><div class="line"><span class="box"><i></i></span><span class="t"><b>Lightning Bolt<span>$0.42</span></b><small>Sample Set · NM</small></span></div><div class="line"><span class="box"><i></i></span><span class="t"><b>Path to Exile<span>$0.31</span></b><small>Sample Set · NM</small></span></div><div class="line"><span class="box"><i></i></span><span class="t"><b>Swords to Plowshares<span>$0.55</span></b><small>Sample Set · LP</small></span></div></div></div></div></div><div class="fold"><span>FOLD</span></div><div class="status"><span>9:41</span><span>●●● 100%</span></div>
+  <div class="guide"><span>keys panel from y 405</span></div>
+  <div class="keys">
+    <div class="row"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">y</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+    <div class="row"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+    <div class="row"><span class="k">z</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span></div>
+    <div class="row"><span class="k w">space</span><span class="k" style="flex-basis:90px;font-size:14px">done</span></div>
+  </div></div></div>
+    <figcaption><b>Today, default text.</b> Field, Suspense box, Released box, This envelope, Matches. The boxes push the one match down.<div class="read" data-read=""></div></figcaption></figure>
+
+<figure data-state="today" data-size="ax3">
+    <div class="fit"><div class="duo ax3" data-device="iphone-duo-unfolded">
+  <div class="page l"><div class="content"><div class="head"><span class="title">Mail day</span><span class="count">41 in · 23 out</span><span class="hit"><span class="pill">Close</span></span></div><div class="field">Path to</div><div class="notice  tag-today" data-tag="Today: box above the matches" id="focus-today-ax3" aria-label="Suspense: Lightning Bolt. Not checked in.">
+  <span class="micro">Suspense</span><b>Lightning Bolt</b><small>Not checked in.</small></div><div class="notice  " aria-label="Released, not checked in: Counterspell. It no longer decides an envelope.">
+  <span class="micro">Released, not checked in</span><b>Counterspell</b><small>It no longer decides an envelope.</small></div><div class="envrow" data-role="envrow"><span class="soft">This envelope</span><span class="hit" data-role="newenv"><span class="pill">New envelope</span></span></div><span class="micro">Matches</span><div class="match" data-role="first-match">Path to Exile</div></div></div><div class="page r"><div class="content"><div class="env"><span class="micro">It came from</span><span class="who">Gamma Cards</span><span class="meta">ordered 2026-07-01</span>
+  <div class="offer"><p>Your held card came with this envelope. Nothing is checked in until you post.</p>
+  <span class="hit" style="align-self:flex-start" data-role="post"><span class="pill">Post 2 cards here, 1 held</span></span></div>
+  <div class="lines"><div class="line"><span class="box"><i></i></span><span class="t"><b>Lightning Bolt<span>$0.42</span></b><small>Sample Set · NM</small></span></div><div class="line"><span class="box"><i></i></span><span class="t"><b>Path to Exile<span>$0.31</span></b><small>Sample Set · NM</small></span></div><div class="line"><span class="box"><i></i></span><span class="t"><b>Swords to Plowshares<span>$0.55</span></b><small>Sample Set · LP</small></span></div></div></div></div></div><div class="fold"><span>FOLD</span></div><div class="status"><span>9:41</span><span>●●● 100%</span></div>
+  <div class="guide"><span>keys panel from y 405</span></div>
+  <div class="keys">
+    <div class="row"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">y</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+    <div class="row"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+    <div class="row"><span class="k">z</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span></div>
+    <div class="row"><span class="k w">space</span><span class="k" style="flex-basis:90px;font-size:14px">done</span></div>
+  </div></div></div>
+    <figcaption><b>Today, AX3 text.</b> Field, Suspense box, Released box, This envelope, Matches. The boxes push the one match down.<div class="read" data-read=""></div></figcaption></figure>
+
+<figure data-state="under" data-size="default" data-opt="under">
+    <div class="fit"><div class="duo " data-device="iphone-duo-unfolded">
+  <div class="page l"><div class="content"><div class="head"><span class="title">Mail day</span><span class="count">41 in · 23 out</span><span class="hit"><span class="pill">Close</span></span></div><div class="field">Path to</div><div class="envrow" data-role="envrow"><span class="soft">This envelope</span><span class="hit" data-role="newenv"><span class="pill">New envelope</span></span></div><span class="micro">Matches</span><div class="match" data-role="first-match">Path to Exile</div><div class="notice  tag-new" data-tag="New: box under the matches" id="focus-under" aria-label="Suspense: Lightning Bolt. Not checked in.">
+  <span class="micro">Suspense</span><b>Lightning Bolt</b><small>Not checked in.</small></div><div class="notice  " aria-label="Released, not checked in: Counterspell. It no longer decides an envelope.">
+  <span class="micro">Released, not checked in</span><b>Counterspell</b><small>It no longer decides an envelope.</small></div></div></div><div class="page r"><div class="content"><div class="env"><span class="micro">It came from</span><span class="who">Gamma Cards</span><span class="meta">ordered 2026-07-01</span>
+  <div class="offer"><p>Your held card came with this envelope. Nothing is checked in until you post.</p>
+  <span class="hit" style="align-self:flex-start" data-role="post"><span class="pill">Post 2 cards here, 1 held</span></span></div>
+  <div class="lines"><div class="line"><span class="box"><i></i></span><span class="t"><b>Lightning Bolt<span>$0.42</span></b><small>Sample Set · NM</small></span></div><div class="line"><span class="box"><i></i></span><span class="t"><b>Path to Exile<span>$0.31</span></b><small>Sample Set · NM</small></span></div><div class="line"><span class="box"><i></i></span><span class="t"><b>Swords to Plowshares<span>$0.55</span></b><small>Sample Set · LP</small></span></div></div></div></div></div><div class="fold"><span>FOLD</span></div><div class="status"><span>9:41</span><span>●●● 100%</span></div>
+  <div class="guide"><span>keys panel from y 405</span></div>
+  <div class="keys">
+    <div class="row"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">y</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+    <div class="row"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+    <div class="row"><span class="k">z</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span></div>
+    <div class="row"><span class="k w">space</span><span class="k" style="flex-basis:90px;font-size:14px">done</span></div>
+  </div></div></div>
+    <figcaption><b>Box under the matches (pick), default text.</b> Field, This envelope, Matches, then the boxes. The first match sits where it would with no box. The boxes come last and scroll.<div class="read" data-read=""></div></figcaption></figure>
+
+<figure data-state="under" data-size="ax3" data-opt="under">
+    <div class="fit"><div class="duo ax3" data-device="iphone-duo-unfolded">
+  <div class="page l"><div class="content"><div class="head"><span class="title">Mail day</span><span class="count">41 in · 23 out</span><span class="hit"><span class="pill">Close</span></span></div><div class="field">Path to</div><div class="envrow" data-role="envrow"><span class="soft">This envelope</span><span class="hit" data-role="newenv"><span class="pill">New envelope</span></span></div><span class="micro">Matches</span><div class="match" data-role="first-match">Path to Exile</div><div class="notice  tag-new" data-tag="New: box under the matches" id="focus-under-ax3" aria-label="Suspense: Lightning Bolt. Not checked in.">
+  <span class="micro">Suspense</span><b>Lightning Bolt</b><small>Not checked in.</small></div><div class="notice  " aria-label="Released, not checked in: Counterspell. It no longer decides an envelope.">
+  <span class="micro">Released, not checked in</span><b>Counterspell</b><small>It no longer decides an envelope.</small></div></div></div><div class="page r"><div class="content"><div class="env"><span class="micro">It came from</span><span class="who">Gamma Cards</span><span class="meta">ordered 2026-07-01</span>
+  <div class="offer"><p>Your held card came with this envelope. Nothing is checked in until you post.</p>
+  <span class="hit" style="align-self:flex-start" data-role="post"><span class="pill">Post 2 cards here, 1 held</span></span></div>
+  <div class="lines"><div class="line"><span class="box"><i></i></span><span class="t"><b>Lightning Bolt<span>$0.42</span></b><small>Sample Set · NM</small></span></div><div class="line"><span class="box"><i></i></span><span class="t"><b>Path to Exile<span>$0.31</span></b><small>Sample Set · NM</small></span></div><div class="line"><span class="box"><i></i></span><span class="t"><b>Swords to Plowshares<span>$0.55</span></b><small>Sample Set · LP</small></span></div></div></div></div></div><div class="fold"><span>FOLD</span></div><div class="status"><span>9:41</span><span>●●● 100%</span></div>
+  <div class="guide"><span>keys panel from y 405</span></div>
+  <div class="keys">
+    <div class="row"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">y</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+    <div class="row"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+    <div class="row"><span class="k">z</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span></div>
+    <div class="row"><span class="k w">space</span><span class="k" style="flex-basis:90px;font-size:14px">done</span></div>
+  </div></div></div>
+    <figcaption><b>Box under the matches (pick), AX3 text.</b> Field, This envelope, Matches, then the boxes. The first match sits where it would with no box. The boxes come last and scroll.<div class="read" data-read=""></div></figcaption></figure>
+
+<figure data-state="one-line" data-size="default" data-opt="one-line">
+    <div class="fit"><div class="duo " data-device="iphone-duo-unfolded">
+  <div class="page l"><div class="content"><div class="head"><span class="title">Mail day</span><span class="count">41 in · 23 out</span><span class="hit"><span class="pill">Close</span></span></div><div class="field">Path to</div><div class="notice one tag-new" data-tag="New: one-line box" id="focus-one-line" aria-label="Suspense: Lightning Bolt. Not checked in.">
+  <span class="micro">Suspense</span><b>Lightning Bolt</b></div><div class="notice one " aria-label="Released, not checked in: Counterspell. It no longer decides an envelope.">
+  <span class="micro">Released, not checked in</span><b>Counterspell</b></div><div class="envrow" data-role="envrow"><span class="soft">This envelope</span><span class="hit" data-role="newenv"><span class="pill">New envelope</span></span></div><span class="micro">Matches</span><div class="match" data-role="first-match">Path to Exile</div></div></div><div class="page r"><div class="content"><div class="env"><span class="micro">It came from</span><span class="who">Gamma Cards</span><span class="meta">ordered 2026-07-01</span>
+  <div class="offer"><p>Your held card came with this envelope. Nothing is checked in until you post.</p>
+  <span class="hit" style="align-self:flex-start" data-role="post"><span class="pill">Post 2 cards here, 1 held</span></span></div>
+  <div class="lines"><div class="line"><span class="box"><i></i></span><span class="t"><b>Lightning Bolt<span>$0.42</span></b><small>Sample Set · NM</small></span></div><div class="line"><span class="box"><i></i></span><span class="t"><b>Path to Exile<span>$0.31</span></b><small>Sample Set · NM</small></span></div><div class="line"><span class="box"><i></i></span><span class="t"><b>Swords to Plowshares<span>$0.55</span></b><small>Sample Set · LP</small></span></div></div></div></div></div><div class="fold"><span>FOLD</span></div><div class="status"><span>9:41</span><span>●●● 100%</span></div>
+  <div class="guide"><span>keys panel from y 405</span></div>
+  <div class="keys">
+    <div class="row"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">y</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+    <div class="row"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+    <div class="row"><span class="k">z</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span></div>
+    <div class="row"><span class="k w">space</span><span class="k" style="flex-basis:90px;font-size:14px">done</span></div>
+  </div></div></div>
+    <figcaption><b>Box on one line, default text.</b> Today's order. Each box keeps its title and name on one line; the foot line moves into the VoiceOver label.<div class="read" data-read=""></div></figcaption></figure>
+
+<figure data-state="one-line" data-size="ax3" data-opt="one-line">
+    <div class="fit"><div class="duo ax3" data-device="iphone-duo-unfolded">
+  <div class="page l"><div class="content"><div class="head"><span class="title">Mail day</span><span class="count">41 in · 23 out</span><span class="hit"><span class="pill">Close</span></span></div><div class="field">Path to</div><div class="notice one tag-new" data-tag="New: one-line box" id="focus-one-line-ax3" aria-label="Suspense: Lightning Bolt. Not checked in.">
+  <span class="micro">Suspense</span><b>Lightning Bolt</b></div><div class="notice one " aria-label="Released, not checked in: Counterspell. It no longer decides an envelope.">
+  <span class="micro">Released, not checked in</span><b>Counterspell</b></div><div class="envrow" data-role="envrow"><span class="soft">This envelope</span><span class="hit" data-role="newenv"><span class="pill">New envelope</span></span></div><span class="micro">Matches</span><div class="match" data-role="first-match">Path to Exile</div></div></div><div class="page r"><div class="content"><div class="env"><span class="micro">It came from</span><span class="who">Gamma Cards</span><span class="meta">ordered 2026-07-01</span>
+  <div class="offer"><p>Your held card came with this envelope. Nothing is checked in until you post.</p>
+  <span class="hit" style="align-self:flex-start" data-role="post"><span class="pill">Post 2 cards here, 1 held</span></span></div>
+  <div class="lines"><div class="line"><span class="box"><i></i></span><span class="t"><b>Lightning Bolt<span>$0.42</span></b><small>Sample Set · NM</small></span></div><div class="line"><span class="box"><i></i></span><span class="t"><b>Path to Exile<span>$0.31</span></b><small>Sample Set · NM</small></span></div><div class="line"><span class="box"><i></i></span><span class="t"><b>Swords to Plowshares<span>$0.55</span></b><small>Sample Set · LP</small></span></div></div></div></div></div><div class="fold"><span>FOLD</span></div><div class="status"><span>9:41</span><span>●●● 100%</span></div>
+  <div class="guide"><span>keys panel from y 405</span></div>
+  <div class="keys">
+    <div class="row"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">y</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+    <div class="row"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+    <div class="row"><span class="k">z</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span></div>
+    <div class="row"><span class="k w">space</span><span class="k" style="flex-basis:90px;font-size:14px">done</span></div>
+  </div></div></div>
+    <figcaption><b>Box on one line, AX3 text.</b> Today's order. Each box keeps its title and name on one line; the foot line moves into the VoiceOver label.<div class="read" data-read=""></div></figcaption></figure>
+
+<figure data-state="answer-page" data-size="default" data-opt="answer-page">
+    <div class="fit"><div class="duo " data-device="iphone-duo-unfolded">
+  <div class="page l"><div class="content"><div class="head"><span class="title">Mail day</span><span class="count">41 in · 23 out</span><span class="hit"><span class="pill">Close</span></span></div><div class="field">Path to</div><div class="envrow" data-role="envrow"><span class="soft">This envelope</span><span class="hit" data-role="newenv"><span class="pill">New envelope</span></span></div><span class="micro">Matches</span><div class="match" data-role="first-match">Path to Exile</div></div></div><div class="page r"><div class="content"><div class="notice  tag-new" data-tag="New: box on the answer page" id="focus-answer-page" aria-label="Suspense: Lightning Bolt. Not checked in.">
+  <span class="micro">Suspense</span><b>Lightning Bolt</b><small>Not checked in.</small></div><div class="notice  " aria-label="Released, not checked in: Counterspell. It no longer decides an envelope.">
+  <span class="micro">Released, not checked in</span><b>Counterspell</b><small>It no longer decides an envelope.</small></div><div class="env"><span class="micro">It came from</span><span class="who">Gamma Cards</span><span class="meta">ordered 2026-07-01</span>
+  <div class="offer"><p>Your held card came with this envelope. Nothing is checked in until you post.</p>
+  <span class="hit" style="align-self:flex-start" data-role="post"><span class="pill">Post 2 cards here, 1 held</span></span></div>
+  <div class="lines"><div class="line"><span class="box"><i></i></span><span class="t"><b>Lightning Bolt<span>$0.42</span></b><small>Sample Set · NM</small></span></div><div class="line"><span class="box"><i></i></span><span class="t"><b>Path to Exile<span>$0.31</span></b><small>Sample Set · NM</small></span></div><div class="line"><span class="box"><i></i></span><span class="t"><b>Swords to Plowshares<span>$0.55</span></b><small>Sample Set · LP</small></span></div></div></div></div></div><div class="fold"><span>FOLD</span></div><div class="status"><span>9:41</span><span>●●● 100%</span></div>
+  <div class="guide"><span>keys panel from y 405</span></div>
+  <div class="keys">
+    <div class="row"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">y</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+    <div class="row"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+    <div class="row"><span class="k">z</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span></div>
+    <div class="row"><span class="k w">space</span><span class="k" style="flex-basis:90px;font-size:14px">done</span></div>
+  </div></div></div>
+    <figcaption><b>Box on the answer page, default text.</b> The left page loses the boxes. They sit at the top of the right page, over the sender and the Post offer.<div class="read" data-read=""></div></figcaption></figure>
+
+<figure data-state="answer-page" data-size="ax3" data-opt="answer-page">
+    <div class="fit"><div class="duo ax3" data-device="iphone-duo-unfolded">
+  <div class="page l"><div class="content"><div class="head"><span class="title">Mail day</span><span class="count">41 in · 23 out</span><span class="hit"><span class="pill">Close</span></span></div><div class="field">Path to</div><div class="envrow" data-role="envrow"><span class="soft">This envelope</span><span class="hit" data-role="newenv"><span class="pill">New envelope</span></span></div><span class="micro">Matches</span><div class="match" data-role="first-match">Path to Exile</div></div></div><div class="page r"><div class="content"><div class="notice  tag-new" data-tag="New: box on the answer page" id="focus-answer-page-ax3" aria-label="Suspense: Lightning Bolt. Not checked in.">
+  <span class="micro">Suspense</span><b>Lightning Bolt</b><small>Not checked in.</small></div><div class="notice  " aria-label="Released, not checked in: Counterspell. It no longer decides an envelope.">
+  <span class="micro">Released, not checked in</span><b>Counterspell</b><small>It no longer decides an envelope.</small></div><div class="env"><span class="micro">It came from</span><span class="who">Gamma Cards</span><span class="meta">ordered 2026-07-01</span>
+  <div class="offer"><p>Your held card came with this envelope. Nothing is checked in until you post.</p>
+  <span class="hit" style="align-self:flex-start" data-role="post"><span class="pill">Post 2 cards here, 1 held</span></span></div>
+  <div class="lines"><div class="line"><span class="box"><i></i></span><span class="t"><b>Lightning Bolt<span>$0.42</span></b><small>Sample Set · NM</small></span></div><div class="line"><span class="box"><i></i></span><span class="t"><b>Path to Exile<span>$0.31</span></b><small>Sample Set · NM</small></span></div><div class="line"><span class="box"><i></i></span><span class="t"><b>Swords to Plowshares<span>$0.55</span></b><small>Sample Set · LP</small></span></div></div></div></div></div><div class="fold"><span>FOLD</span></div><div class="status"><span>9:41</span><span>●●● 100%</span></div>
+  <div class="guide"><span>keys panel from y 405</span></div>
+  <div class="keys">
+    <div class="row"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">y</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+    <div class="row"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+    <div class="row"><span class="k">z</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span></div>
+    <div class="row"><span class="k w">space</span><span class="k" style="flex-basis:90px;font-size:14px">done</span></div>
+  </div></div></div>
+    <figcaption><b>Box on the answer page, AX3 text.</b> The left page loses the boxes. They sit at the top of the right page, over the sender and the Post offer.<div class="read" data-read=""></div></figcaption></figure>
+
+<figure data-state="under-tap" data-size="default" data-opt="under"><div class="pair">
+  <div class="fit"><div class="duo " data-device="iphone-duo-unfolded">
+  <div class="page l"><div class="content"><div class="head"><span class="title">Mail day</span><span class="count">41 in · 23 out</span><span class="hit"><span class="pill">Close</span></span></div><div class="field">to</div><div class="envrow" data-role="envrow"><span class="soft">This envelope</span><span class="hit" data-role="newenv"><span class="pill">New envelope</span></span></div><span class="micro">Matches</span><div class="match" data-role="first-match">Brainstorm</div><div class="match">Path to Exile</div><div class="match">Swords to Plowshares</div><div class="notice  tag-new" data-tag="New: box under the matches" aria-label="Suspense: Lightning Bolt. Not checked in.">
+  <span class="micro">Suspense</span><b>Lightning Bolt</b><small>Not checked in.</small></div><div class="notice  " aria-label="Released, not checked in: Counterspell. It no longer decides an envelope.">
+  <span class="micro">Released, not checked in</span><b>Counterspell</b><small>It no longer decides an envelope.</small></div></div></div><div class="page r"><div class="content"><p class="quiet">The answer page is unchanged in this lane. It shows the tie, then Path to Exile's envelope.</p></div></div><div class="fold"><span>FOLD</span></div><div class="status"><span>9:41</span><span>●●● 100%</span></div>
+  <div class="guide"><span>keys panel from y 405</span></div>
+  <div class="keys">
+    <div class="row"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">y</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+    <div class="row"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+    <div class="row"><span class="k">z</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span></div>
+    <div class="row"><span class="k w">space</span><span class="k" style="flex-basis:90px;font-size:14px">done</span></div>
+  </div><div class="finger" data-role="finger"></div></div></div>
+  <div class="fit"><div class="duo " data-device="iphone-duo-unfolded">
+  <div class="page l"><div class="content"><div class="head"><span class="title">Mail day</span><span class="count">41 in · 23 out</span><span class="hit"><span class="pill">Close</span></span></div><div class="field">Path to Exile</div><div class="envrow" data-role="envrow"><span class="soft">This envelope</span><span class="hit" data-role="newenv"><span class="pill">New envelope</span></span></div><span class="micro">Matches</span><div class="match" data-role="first-match">Path to Exile</div><div class="notice  tag-new" data-tag="New: box rose into the tapped slot" id="focus-under-tap" aria-label="Suspense: Lightning Bolt. Not checked in.">
+  <span class="micro">Suspense</span><b>Lightning Bolt</b><small>Not checked in.</small></div><div class="notice  " aria-label="Released, not checked in: Counterspell. It no longer decides an envelope.">
+  <span class="micro">Released, not checked in</span><b>Counterspell</b><small>It no longer decides an envelope.</small></div></div></div><div class="page r"><div class="content"><p class="quiet">The answer page is unchanged in this lane. It shows the tie, then Path to Exile's envelope.</p></div></div><div class="fold"><span>FOLD</span></div><div class="status"><span>9:41</span><span>●●● 100%</span></div>
+  <div class="guide"><span>keys panel from y 405</span></div>
+  <div class="keys">
+    <div class="row"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">y</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+    <div class="row"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+    <div class="row"><span class="k">z</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span></div>
+    <div class="row"><span class="k w">space</span><span class="k" style="flex-basis:90px;font-size:14px">done</span></div>
+  </div><div class="finger" data-role="finger"></div></div></div>
+  </div><figcaption><b>Box under the matches: a tap, default text.</b> Top: "to" lists 3 matches; the finger taps Path to Exile, the 2nd. Bottom: the list keeps 1 row. New envelope does not move. The tapped row slides up to the first slot, as it does today, and the Suspense box rises under the finger. The box has no control, so a second tap there does nothing.<div class="read" data-read=""></div></figcaption></figure>
+</main>
+
+<script>
+
+// Read each frame's own geometry, in pt from the frame's top, so every caption number comes from this drawing.
+function readFrames() {
+  document.querySelectorAll('figure').forEach(f => {
+    const out = f.querySelector('[data-read]'); if (!out) return;
+    const duos = [...f.querySelectorAll('.duo')]; if (!duos.length) return;
+    const parts = duos.map(d => {
+      const box = d.getBoundingClientRect(); if (!box.height) return '';
+      const s = box.height / 669, y = el => el ? [(el.getBoundingClientRect().top - box.top) / s, (el.getBoundingClientRect().bottom - box.top) / s].map(Math.round) : null;
+      const m = y(d.querySelector('[data-role="first-match"]')), ne = y(d.querySelector('[data-role="newenv"]')), p = y(d.querySelector('[data-role="post"]'));
+      let t = `first match y ${m[0]} to ${m[1]}: ${m[1] <= 405 ? 'whole, ' + (405 - m[1]) + ' pt above the keys' : 'under the keys by ' + (m[1] - 405) + ' pt'}`;
+      t += ` · New envelope y ${ne[0]} to ${ne[1]}`;
+      if (p && !f.dataset.state.endsWith('tap')) t += ` · Post y ${p[0]} to ${p[1]}${p[1] > 405 ? ' (under the keys)' : ''}`;
+      d.dataset.cut = m[1] > 405 || (p && p[1] > 405) ? '1' : '';
+      return t;
+    }).filter(Boolean);
+    out.textContent = 'In this drawing: ' + parts.join(' | then ');
+    out.className = 'read ' + (duos.some(d => d.dataset.cut) ? 'cut' : 'ok');
+  });
+  // Place the finger on the 2nd match of the top frame, and on the same spot in the bottom frame.
+  const pair = document.querySelector('[data-state="under-tap"] .pair');
+  if (pair) { const [a, b] = pair.querySelectorAll('.duo'), row = a.querySelectorAll('.match')[1];
+    if (row) { const s = a.getBoundingClientRect().height / 669 || 1, top = (row.getBoundingClientRect().top - a.getBoundingClientRect().top) / s, left = (row.getBoundingClientRect().left - a.getBoundingClientRect().left) / s;
+      [a, b].forEach(d => { const fg = d.querySelector('.finger'); fg.style.top = top + 'px'; fg.style.left = (left + 60) + 'px'; }); } }
+}
+// Scale each 951 pt frame to the page width; the page never scrolls sideways.
+function fit() { document.querySelectorAll('.fit').forEach(w => { const d = w.firstElementChild; d.style.zoom = Math.min(1, w.clientWidth / 951); }); }
+// Deep link: #s=<state> and #z=<default|ax3>, alone or joined with &. No hash shows all. A hide button removes one option.
+const hidden = new Set();
+const param = k => { const m = location.hash.match(new RegExp(k + '=([\\w-]+)')); return m && m[1]; };
+function route() {
+  const s = param('s'), z = param('z');
+  document.querySelectorAll('figure').forEach(f => {
+    f.hidden = (s && f.dataset.state !== s) || (z && f.dataset.size && f.dataset.size !== z) || (f.dataset.opt && hidden.has(f.dataset.opt));
+  });
+  document.querySelectorAll('nav a').forEach(a => {
+    const h = a.getAttribute('href'), on = h === '#' ? !s && !z : (h.startsWith('#s=') ? h.slice(3) === s : h.slice(3) === z);
+    a.setAttribute('aria-current', String(on));
+  });
+  fit(); readFrames();
+}
+// A state link keeps the chosen text size, and a size link keeps the chosen state.
+document.querySelectorAll('nav a').forEach(a => a.addEventListener('click', e => {
+  const h = a.getAttribute('href'); if (h === '#') return;
+  e.preventDefault(); const s = h.startsWith('#s=') ? h.slice(3) : param('s'), z = h.startsWith('#z=') ? h.slice(3) : param('z');
+  location.hash = [s && 's=' + s, z && 'z=' + z].filter(Boolean).join('&');
+}));
+document.querySelectorAll('[data-hide]').forEach(b => b.addEventListener('click', () => {
+  const o = b.dataset.hide, name = b.textContent.replace(/^(Hide|Show) /, '');
+  hidden.has(o) ? hidden.delete(o) : hidden.add(o);
+  b.textContent = (hidden.has(o) ? 'Show ' : 'Hide ') + name; route();
+}));
+addEventListener('hashchange', route); addEventListener('resize', () => { fit(); readFrames(); });
+(document.fonts ? document.fonts.ready : Promise.resolve()).then(route); route();
+</script>
+</body>
+</html>
