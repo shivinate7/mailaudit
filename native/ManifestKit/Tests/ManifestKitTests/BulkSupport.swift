@@ -104,3 +104,28 @@ func assertBulkUndoKeepsLaterEdits(
     let stamped = (store.snapshot()["receivedAt"] as? [String: Any])?[restamped] as? Double
     XCTAssertEqual(stamped, 3_000, "a key the undo changed carries the time of the undo, so the un-check beats an older check", file: file, line: line)
 }
+
+/// A Mark all and a Clear leave the stamps and the envelopes as they were. The ledger holds one stamp and one live envelope,
+/// which the anchors check first, so "unchanged" cannot pass on an empty record. `bulk` is the model's press: true is Mark
+/// all, false is Clear. Each model's test file calls it with its own press, as the Undo sequence above does.
+@MainActor
+func assertBulkLeavesStampsAndEnvelopes(store: LedgerStore, bulk: (Bool) async throws -> Void,
+                                        file: StaticString = #filePath, line: UInt = #line) async throws {
+    XCTAssertEqual((store.snapshot()["stamps"] as? [String: Any])?.count, 1, "anchor: the ledger holds one stamp", file: file, line: line)
+    XCTAssertEqual((store.snapshot()["envelopes"] as? [[String: Any]])?.count, 1, "anchor: the ledger holds one envelope", file: file, line: line)
+    let stamps = jsonText(store.snapshot()["stamps"]), envelopes = jsonText(store.snapshot()["envelopes"])
+    for on in [true, false] {
+        try await bulk(on)
+        let press = on ? "Mark all" : "Clear"
+        XCTAssertEqual(jsonText(store.snapshot()["stamps"]), stamps, "\(press) moved a stamp", file: file, line: line)
+        XCTAssertEqual(jsonText(store.snapshot()["envelopes"]), envelopes, "\(press) moved an envelope", file: file, line: line)
+    }
+}
+
+/// A ledger value as JSON text with sorted keys, so two reads compare by content. A missing value reads as "none".
+func jsonText(_ value: Any?) -> String {
+    guard let value, let data = try? JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed, .sortedKeys]) else {
+        return "none"
+    }
+    return String(decoding: data, as: UTF8.self)
+}

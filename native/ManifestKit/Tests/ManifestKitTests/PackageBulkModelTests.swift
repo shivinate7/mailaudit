@@ -23,9 +23,10 @@ final class PackageBulkModelTests: XCTestCase {
 
     /// A loaded model over LiveFixture.base. `now` is the store's clock; by default it reads `clock`, which a case moves.
     func rig(received: [String: Int], clock: PressClock = PressClock(1_000), now: (() -> Double)? = nil,
-             engine: RulesEngine? = nil) async throws -> (model: PackagesModel, store: LedgerStore) {
-        let store = try await LiveFixture.store(items: LiveFixture.base, stamps: [], engine: try LiveFixture.engine(), received: received,
-                                                now: now ?? { clock.t })
+             engine: RulesEngine? = nil, stamps: [LiveStamp] = [], envelopes: [[String: Any]] = []) async throws
+        -> (model: PackagesModel, store: LedgerStore) {
+        let store = try await LiveFixture.store(items: LiveFixture.base, stamps: stamps, engine: try LiveFixture.engine(), received: received,
+                                                now: now ?? { clock.t }, envelopes: envelopes)
         let model = PackagesModel(engine: try engine ?? LiveFixture.engine(), store: store)
         try await model.load()
         return (model, store)
@@ -162,6 +163,13 @@ final class PackageBulkModelTests: XCTestCase {
 
         XCTAssertEqual(store.received(), [Self.f1: 1], "nothing to undo changes nothing")
         XCTAssertEqual(store.generation, generation, "nothing to undo writes nothing")
+    }
+
+    /// Mark all and Clear leave the stamps and the envelopes alone. A1 carries a stamp, and one envelope is held.
+    func testMarkAllAndClearLeaveTheStampsAndEnvelopesAlone() async throws {
+        let (model, store) = try await rig(received: [Self.f1: 1], stamps: [("A1", "Seller A", "other")],
+                                           envelopes: [OrphanedSandbox.env("env-1", [("Ponder", 1)])])
+        try await assertBulkLeavesStampsAndEnvelopes(store: store) { on in try await bulking(model).bulk(gk: Self.gk, on: on) }
     }
 
     /// A Mark all, then `act` (a write on this device), then an undo call. The undo must write nothing and leave the ledger

@@ -19,10 +19,11 @@ import XCTest
 final class TallyBulkModelTests: XCTestCase {
     static let a1 = "a1", a2 = "a2", e1 = "e1", s1 = "s1", f1 = "f1"
 
-    func rig(received: [String: Int], clock: PressClock = PressClock(1_000), engine: RulesEngine? = nil) async throws
+    func rig(received: [String: Int], clock: PressClock = PressClock(1_000), engine: RulesEngine? = nil, stamps: [LiveStamp] = [],
+             envelopes: [[String: Any]] = []) async throws
         -> (model: TallyModel, store: LedgerStore) {
-        let store = try await LiveFixture.store(items: LiveFixture.base, stamps: [], engine: try LiveFixture.engine(), received: received,
-                                                now: { clock.t })
+        let store = try await LiveFixture.store(items: LiveFixture.base, stamps: stamps, engine: try LiveFixture.engine(), received: received,
+                                                now: { clock.t }, envelopes: envelopes)
         let model = TallyModel(engine: try engine ?? LiveFixture.engine(), store: store)
         try await model.load()
         return (model, store)
@@ -88,6 +89,14 @@ final class TallyBulkModelTests: XCTestCase {
 
         try await bulking(model).undoBulk()
         XCTAssertEqual(store.received(), [Self.f1: 1], "undo takes back Shared's delta: a2, e1 and s1 are gone, and f1 stays")
+    }
+
+    /// Mark all and Clear on "Shared" leave the stamps and the envelopes alone, as on Packages. A1 carries a stamp, and one
+    /// envelope is held.
+    func testMarkAllAndClearLeaveTheStampsAndEnvelopesAlone() async throws {
+        let (model, store) = try await rig(received: [Self.f1: 1], stamps: [("A1", "Seller A", "other")],
+                                           envelopes: [OrphanedSandbox.env("env-1", [("Ponder", 1)])])
+        try await assertBulkLeavesStampsAndEnvelopes(store: store) { on in try await bulking(model).bulk(name: "Shared", on: on) }
     }
 
     /// The counts come from the bundle's bulkApply: the shim says 7 for each copy on Mark all, and on Clear keeps e1 at 5. Swift's
