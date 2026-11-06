@@ -2,14 +2,15 @@
 //
 //   node scripts/tests-for.mjs <repo-relative path>
 //
-// Prints the suites, one per line and narrowest first, and exits 0 even with no match. A suite
-// is a file the profile's tests regex names (claude-settings hooks/mutate_guard.py, profile
+// Prints the suites of the narrowest tier that has one, sorted by path, one per line. It exits 0
+// even with no match, and 2 with no argument. A suite is a file the profile's tests regex names (claude-settings hooks/mutate_guard.py, profile
 // "mailaudit"): test/<name>.test.mjs or worker/core.test.mjs.
 //
 //   Tier 1: a suite that imports the path: a static import, an export from, or a dynamic
 //           import of a string literal, resolved from the suite's folder.
 //   Tier 2: only when tier 1 names no suite but app. A suite that calls spawn, exec, fork or
-//           a read function and holds a string literal naming the path by its final segment.
+//           a read function and holds a string or template literal whose text names the path by
+//           its final segment. A template counts by the static text around its ${ }.
 //   test/app.test.mjs is listed only when no other suite covers the path at any tier.
 //
 // The scan is a tokenizer, so a comment opener inside a string, a template literal, a lone
@@ -42,7 +43,8 @@ function regexAllowed(out) {
   if (!last) return true;
   if (last.t === "id") return REGEX_AFTER_WORD.has(last.v);
   if (last.t === "str" || last.t === "tpl" || last.t === "re" || last.t === "num") return false;
-  return last.v !== ")" && last.v !== "]" && last.v !== "}";
+  // After a postfix ++ or -- a slash divides: a regex cannot follow a prefix one.
+  return last.v !== ")" && last.v !== "]" && last.v !== "}" && last.v !== "++" && last.v !== "--";
 }
 
 // Scans from i. With inTemplate, stops at the "}" that closes a ${ and returns its index.
@@ -68,7 +70,6 @@ function scan(s, i, out, inTemplate) {
       i = j + 1;
     } else if (c === "`") {
       i = template(s, i + 1, out);
-      out.push({ t: "tpl", v: "" });
     } else if (c === "/" && regexAllowed(out)) {
       let j = i + 1;
       let inClass = false;
@@ -97,6 +98,9 @@ function scan(s, i, out, inTemplate) {
       i = j;
     } else if (/\s/.test(c)) {
       i++;
+    } else if ((c === "+" || c === "-") && s[i + 1] === c) {
+      out.push({ t: "p", v: c + c });
+      i += 2;
     } else {
       if (c === "{") depth++;
       // A } at depth 0 inside a ${ } closes the substitution.
@@ -109,15 +113,23 @@ function scan(s, i, out, inTemplate) {
   return i;
 }
 
-// Skips a template literal body from just after its opening backtick; returns the index after the closing one.
+// Reads a template literal body from just after its opening backtick; returns the index after the closing
+// one. Each run of static text is a tpl token, and the code inside a ${ } is scanned between them.
 function template(s, i, out) {
+  let chunk = "";
   while (i < s.length) {
-    if (s[i] === "\\") i += 2;
-    else if (s[i] === "`") return i + 1;
-    else if (s[i] === "$" && s[i + 1] === "{") i = scan(s, i + 2, out, true) + 1;
-    else i++;
+    if (s[i] === "\\") {
+      chunk += s[i + 1] ?? "";
+      i += 2;
+    } else if (s[i] === "`") break;
+    else if (s[i] === "$" && s[i + 1] === "{") {
+      out.push({ t: "tpl", v: chunk });
+      chunk = "";
+      i = scan(s, i + 2, out, true) + 1;
+    } else chunk += s[i++];
   }
-  return i;
+  out.push({ t: "tpl", v: chunk });
+  return i + 1;
 }
 
 // The string literals that an import, an export from, or a dynamic import names.
@@ -147,7 +159,7 @@ function namesPath(value, target) {
 
 function spawnsPath(toks, target) {
   const calls = toks.some((t, k) => t.t === "id" && CALLS.has(t.v) && toks[k + 1]?.v === "(");
-  return calls && toks.some((t) => t.t === "str" && namesPath(t.v, target));
+  return calls && toks.some((t) => (t.t === "str" || t.t === "tpl") && namesPath(t.v, target));
 }
 
 // suitesFor(target, files) where files is [{ path, text }]. Returns suite paths in path order.
@@ -170,7 +182,11 @@ export function suitesFor(target, files) {
 
 function main() {
   const target = process.argv[2];
-  if (!target) return;
+  if (!target) {
+    console.error("usage: node scripts/tests-for.mjs <repo-relative path>");
+    process.exitCode = 2;
+    return;
+  }
   const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
   const rels = [
     ...(existsSync(join(root, "test")) ? readdirSync(join(root, "test")).map((f) => `test/${f}`) : []),

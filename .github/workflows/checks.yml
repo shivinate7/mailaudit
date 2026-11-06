@@ -314,8 +314,9 @@ jobs:
 
   # Decision mutation-ci-report-and-replay (claude-settings): reports how well the suites catch a wrong edit in
   # the lines a change adds, and replays the known defects in .github/known-defects.json. Only the replay can
-  # fail it. It runs on every ready pull request, because here only integration pull requests go ready and
-  # their branch names vary (int-batch-*, batch/*), so no branch filter fits. A push or a schedule skips it.
+  # fail it. The job starts on every non-draft run, because here only integration pull requests go ready and
+  # their branch names vary (int-batch-*, batch/*), so no branch filter fits. The shared action itself skips
+  # on a push or a schedule.
   mutation-report:
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
