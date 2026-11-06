@@ -12,6 +12,8 @@
     "test:check-docs": "node test/check-docs.test.mjs",
     "test:check-records": "node test/check-records.test.mjs",
     "test:ci-wiring": "node test/ci-wiring.test.mjs",
+    "test:fail-line": "node test/fail-line.test.mjs",
+    "test:tests-for": "node test/tests-for.test.mjs",
     "test:milestone-due": "node test/milestone-due.test.mjs",
     "test:worker": "node worker/core.test.mjs",
     "test:send-key": "node test/send-key.test.mjs",

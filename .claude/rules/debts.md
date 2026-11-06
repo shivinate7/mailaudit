@@ -50,6 +50,7 @@ One known gap per file under `docs/debts/`. Each carries a Status line and a Dec
 - `backup-unwatched` — No alarm watches the backup after the watchdog is off.
 - `worker-two-device-proof-unrun` — The two-device merge is not proven against the Worker.
 - `sweep-settle-masks-30-13-stall` — The SWEEP_WAIT settle after 19.6 hides a stall at 30.13.
+- `swift-stack-spacing-unset` — Swift stacks space by the platform default, not by shared values.
 - `photoget-throw-counts-as-kill` — A throw counts as a kill in the photoGet test.
 - `lost-photo-clock-is-envelope-age` — The lost-photo clock runs from envelope age.
 - `lost-tile-waits-for-first-post` — The lost tile waits for the first POST.

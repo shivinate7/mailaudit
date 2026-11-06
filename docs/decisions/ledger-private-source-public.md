@@ -2,7 +2,7 @@
 
 **Status:** open.
 
-The ledger and photos live in a private repo. So a backup store never shares a repo with a public site. That choice has a cost. Keyless pull is gone. A fresh device cannot recover until it has a token. Every device needs its token pasted in before it can recover anything at all. `classifyLedger` carries the extra request that tells a hidden repo apart from an empty one. That disambiguation is the ongoing cost of this design.
+The ledger and photos live in a private repo. So a backup store never shares a repo with a public site. That choice has a cost. Keyless pull is gone. A fresh device cannot recover until it has its device key, and the Worker holds the ledger now (`worker-keeps-snapshots`). `classifyLedger` carries the extra request that tells a hidden repo apart from an empty one. That disambiguation is the ongoing cost of this design.
 
 **Holds while:** `mailaudit-data` is PRIVATE and `mailaudit` is PUBLIC on GitHub.
 
@@ -11,6 +11,10 @@ The ledger lives in `mailaudit-data`. `mailaudit` is PUBLIC. Closing `mailaudit`
 The data is not secret, and that was never the point. The ledger repo stays private for hygiene. A backup store does not belong in the repo that serves a public site. Measured anonymously after the move, Pages returns 200. The repo API and the raw ledger URL both return 404.
 
 The price was always the price. GitHub hides a repo you cannot see behind a 404. So every ledger read must tell that 404 apart from a real "nothing pushed yet". Otherwise a keyless device would be told that no ledger exists. In fact, the ledger sits safely on a branch that device cannot read. That would invite the device to push over it. `classifyLedger` does one extra `GET /repos/{owner}/{repo}` on the 404 path only. `pull`, `peek`, `listVersions` and `getVersion` all route through it. `no-access` is a `syncBroken` case with its own line. Group 38c covers this. This is the same shape `listPhotos` has always had. The ledger inherited it on the day the repo went private.
+
+Kind: process
+
+Home: docs/decisions/ledger-private-source-public.md
 
 ## See also
 

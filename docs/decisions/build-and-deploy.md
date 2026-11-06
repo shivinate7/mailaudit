@@ -23,6 +23,8 @@ npm run check:screens # screen verdicts in a real browser
 npm run test:send-key # the send-key script's own test
 npm run test:view-rules # the view rules' own test
 npm run test:golden   # the golden files' own test
+npm run test:fail-line # does each suite print its FAIL line when red?
+npm run test:tests-for # the suite selector that the mutation report calls
 npm run check:golden  # do the golden files match what scripts/gen-golden.mjs writes now?
 npm run check:rules   # is the committed rules bundle in step with src/?
 npm run test:rules    # the contract tests for check:rules
@@ -30,6 +32,8 @@ npm run deploy        # build + test, then a branch holding only index.html and 
 ```
 
 `scripts/gen-golden.mjs` is not an npm script. After a change to `src/view-rules.mjs`, run `node scripts/gen-golden.mjs` to rewrite the golden files. `npm run check:golden` fails until you do.
+
+The `mutation-report` job in `checks.yml` starts on every non-draft run, and the shared action skips on a push or a schedule. On a pull request it mutates the lines the change adds and replays the defects in `.github/known-defects.json`. A defect no suite catches fails the job. `scripts/tests-for.mjs` tells it which suites cover a file. A mutant is caught only when its suite prints a line that starts with `FAIL`. Every suite prints `FAIL: <n> of <m> failed` when an assertion fails. A crash, a load error or a hang prints no such line. To add a defect, add an entry with the short hash of the commit that fixed it. The decision is `mutation-ci-report-and-replay` in claude-settings.
 
 `scripts/send-key.mjs` is not an npm script. Run it with node and one argument. The argument `mac` opens the sync link on this Mac. The argument `iphone` shows a QR code for the iPhone. The key rules live in `sync-revamp-cloudflare`.
 
