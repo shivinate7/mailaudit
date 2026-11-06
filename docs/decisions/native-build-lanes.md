@@ -202,7 +202,7 @@ Other risks live in the record for their lane:
 - No test pins the native Discard arm. Debt: `native-discard-arm-unpinned`.
 - A native restore keeps the old change times. Debt: `native-restore-keeps-old-times`.
 - A Reset's effect on the Worker's copy is unmeasured. Debt: `reset-vs-worker-copy-unmeasured`.
-- No test pins that a Reset, a restore or a removing reply needs its milestone. Debt: `native-milestone-needed-unpinned`.
+- No ruling on whether a native Reset goes ahead when its milestone cannot be saved. Debt: `native-milestone-needed-unpinned`.
 - The native ask does not move first focus to Cancel. Debt: `native-ask-has-no-cancel-focus`.
 - The test for a removing reply is Swift code. Debt: `native-removal-rule-is-swift`.
 
