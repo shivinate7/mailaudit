@@ -19,7 +19,8 @@
 // Every case here is red on a base without the script. A missing script is named, not crashed on.
 //
 // P3 rows: each named anchor in the selector has a planted mutant. TESTS_FOR_MUTANT=<anchor name> runs
-// this file against that mutant: the named rows and that anchor's pin go red, and nothing else does.
+// this file against that mutant. The anchor's pin and the rows named for it go red. L12 also goes red
+// under regexScanStopsAtLineEnd, since both read the same line end. No other row goes red.
 //
 // Run: node test/tests-for.test.mjs. Exits 1 on any failure.
 
@@ -126,15 +127,15 @@ const PURE = [
   ],
   // P3: the row named for an anchor goes red under that anchor's planted mutant, and no other row does.
   ["P3 regexAfterName: a division after a name is not a regex", T, [["test/t.test.mjs", "const r = n / d; " + IMPORT_STATIC]], ["test/t.test.mjs"]],
-  ["P3 regexScanStopsAtLineEnd: a regex that runs to its line end leaves the next import", T, [["test/t.test.mjs", "const n = i++ / 2;\n" + IMPORT_STATIC]], ["test/t.test.mjs"]],
+  ["P3 regexScanStopsAtLineEnd: a regex that runs to its line end leaves the next import", "scripts/x.mjs", [["test/t.test.mjs", 'const n = x.of / 2;\nimport y from "../scripts/x.mjs";\n']], ["test/t.test.mjs"]],
   ["P3 regexCloseSlash: a slash inside a class does not end a regex", T, [["test/t.test.mjs", "const re = /[/']/; " + IMPORT_STATIC]], ["test/t.test.mjs"]],
   ["P3 regexCloseSlash: a regex body ends at its closing slash", T, [["test/t.test.mjs", "const re = /'/; " + IMPORT_STATIC]], ["test/t.test.mjs"]],
   ["P3 fromSpecifier: a file that ends on a bare from name does not throw", T, [["test/t.test.mjs", "const from = 1;\nconst x = from"]], []],
 
-  // Measured bug in the regex scan: an unclosed regex that stops at its line end skipped the next line's first word as flags.
-  ["L12 a misread regex does not eat the next line's import keyword", "test/x.mjs", [["test/t.test.mjs", 'const n = a++ / 2;\nimport "./x.mjs";\n']], ["test/t.test.mjs"]],
+  // An unclosed regex that stops at its line end must not eat the bare import on the next line.
+  ["L12 a bare import after an unclosed regex is listed", "test/x.mjs", [["test/t.test.mjs", 'const n = x.of / 2;\nimport "./x.mjs";\n']], ["test/t.test.mjs"]],
 
-  // F7: a tier-2 path in a template literal, and a misread regex on the import's own line. Red until the selector is fixed.
+  // F7: a tier-2 path in a template literal, and a misread regex on the import's own line. Regression rows.
   ["F7 a path named in a template literal is a cover", "scripts/fixture-target.mjs", [["test/t.test.mjs", "import { spawnSync } from \"node:child_process\";\nspawnSync(process.execPath, [`${ROOT}/scripts/fixture-target.mjs`]);\n"]], ["test/t.test.mjs"]],
   ["F7 a misread regex on the import's own line does not hide the import", "scripts/fixture-target.mjs", [["test/t.test.mjs", 'const n = a++ / 2; import x from "../scripts/fixture-target.mjs";\n']], ["test/t.test.mjs"]],
 ];
@@ -175,7 +176,7 @@ for (const { target, suites: want, why } of REAL) {
   eq(r.stdout.split("\n").filter(Boolean), want, `REAL ${target}: prints ${want.length ? want.join(", ") : "nothing"}`);
 }
 
-// F8: with no argument the CLI exits 2 and prints a usage line on stderr. Red until the CLI is fixed.
+// F8: with no argument the CLI exits 2 and prints a usage line on stderr. Regression rows.
 const NOARG = SCRIPT_PRESENT
   ? spawnSync(process.execPath, [SCRIPT], { cwd: ROOT, encoding: "utf8", timeout: 120000 })
   : { status: null, stderr: "" };

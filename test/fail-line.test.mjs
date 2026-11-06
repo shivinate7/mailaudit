@@ -241,7 +241,8 @@ if (!existsSync(HELPER)) {
 // so an exit inside a string or a comment is not an exit.
 // The quote characters are hex escapes, so this file's own scan does not read them as string starts.
 const STRING_RE = /\x22(?:\\.|[^\x22\\\n])*\x22|\x27(?:\\.|[^\x27\\\n])*\x27|\x60(?:\\.|[^\x60\\])*\x60/g;
-const EXIT_RE = /\bprocess\.exit\(1\)|\bprocess\.exitCode\s*=\s*1\b/g;
+// Any exit call and any exitCode assignment counts, so a red exit that takes an expression is still seen.
+const EXIT_RE = /\bprocess\.exit\s*\(|\bprocess\.exitCode\s*=/g;
 function exitVerdicts(text) {
   const code = transformSync(text, { loader: "js", format: "esm", target: "esnext" }).code;
   const blanked = code.replace(STRING_RE, (m) => " ".repeat(m.length));
@@ -269,6 +270,8 @@ const EXIT_CASES = [
   ["a failLine inside a string does not guard the exit", `if (x) {\n  const s = "failLine(1, 2)";\n  process.exit(1);\n}\n`, [{ guarded: false, exempt: false }]],
   ["an exit with no print is unguarded", `if (x) {\n  process.exit(1);\n}\n`, [{ guarded: false, exempt: false }]],
   ["process.exitCode = 1 with no print is unguarded", `if (x) {\n  process.exitCode = 1;\n}\n`, [{ guarded: false, exempt: false }]],
+  ["an exit whose argument is an expression is an exit", `if (x) {\n  process.exit(y ? 1 : 0);\n}\n`, [{ guarded: false, exempt: false }]],
+  ["an exitCode set to an expression is an exit", `if (x) {\n  process.exitCode = code;\n}\n`, [{ guarded: false, exempt: false }]],
   ["an exit in a catch is a load error, exempt", `try {\n  f();\n} catch (e) {\n  process.exit(1);\n}\n`, [{ guarded: false, exempt: true }]],
   ["a multi-line template with a brace does not end the block early", "const t = `\n}\n`;\nif (x) {\n  process.exit(1);\n}\n", [{ guarded: false, exempt: false }]],
 ];
