@@ -37,7 +37,7 @@ Deep links: `#s=today`, `#s=a`, `#s=a-posted`, `#s=b`, `#s=folded`. No hash show
    - Departs from: today's box that leaves on Post (`HandModel.post`). Not blocking.
    - Owner grant: no.
 
-4. **The offer arrives on an envelope already shown.** `HandModel.read` sets the offer in the same call that sets the hits. So the offer usually comes with its envelope. When the same envelope stays shown and an offer comes later, A moves the lines down by 118 pt. That happens on a keystroke on the left page, not under a press on the right page. B moves no line. Pick: accept it in A, and say so. Owner grant: no.
+4. **The offer arrives on an envelope already shown.** `HandModel.read` sets the offer in the same call that sets the hits. So the offer usually comes with its envelope. When the same envelope stays shown and an offer comes later, A moves the lines down by 118 pt. That happens on a keystroke on the left page, away from any press on the right page. B moves no line. Pick: accept it in A, and say so. Owner grant: no.
 
 5. **The check-in error band.** The `hand-checkin-error` overlay sits at the top of the right page, and covers the sender while it shows. No change here; it shows only after a failed save. Owner grant: no.
 
