@@ -43,6 +43,9 @@
 //             There is no button labelled "Lost" (item 25, deferred). past-transit-summary (the page's count line; its label
 //             starts "<N> envelope"). A red row (30 days from the order date) shows no "claim by" in any of its texts.
 //   Keys      With the system keys up, hand-post lies wholly above the keyboard's top edge, with no scroll by the user.
+//   Sender    With the offer shown and the keys up, the "It came from" line and hand-who lie below the status bar and above the
+//             keyboard's top edge, hittable, together with hand-post. The "It came from" line has no identifier: the test finds it
+//             by its label, any case (the screen sets it in capitals).
 //   Failure   hand-checkin-error (a text overlaid at the top of the right (envelope) page of Card in Hand, where the line
 //             check-ins are; present only after a line check-in whose save failed;
 //             its label is the failure line PackagesModel.checkInError holds, which starts "Could not save the check-in.").
@@ -51,8 +54,9 @@
 // A lone card that names one envelope may check in by Post or by tapping its line (the mockup shows a stepper and no
 // Post). The stray case checks in by whichever the screen offers. The held case needs Post.
 //
-// Every key here is fake. Launch with -ManifestUITestSeed only (XCUIApplication.launchedOnSeed). The one exception is
-// testFailedLineCheckInShowsInHand, which adds -ManifestUITestLedgerUnwritable (Debug builds only; it makes the next save fail; see the test).
+// Every key here is fake. Launch with -ManifestUITestSeed only (XCUIApplication.launchedOnSeed). The exceptions are
+// testFailedLineCheckInShowsInHand and testPostHoldsTheLinesStillWhenItsSaveFails, which add -ManifestUITestLedgerUnwritable
+// (Debug builds only; it makes the next save fail; see the first test).
 
 import XCTest
 
@@ -60,6 +64,12 @@ import XCTest
 final class DuoHandUITests: XCTestCase {
     static let tolerance = DuoShellUITests.tolerance
     static let foldMargin = DuoShellUITests.foldMargin
+    /// The least a status bar takes at the window's top. The Duo's inner-screen top inset is unmeasured (duo-fold-and-keyboard lists
+    /// none), so this floor stands in when the status bar is not in the accessibility tree (XCUIApplication.listTop).
+    static let statusBarFloor: CGFloat = 20
+    /// How far above its reported frame the keyboard panel draws on the open Duo: the panel starts near y 405 pt and the frame at 449 pt,
+    /// so a view under the top 44 pt of the panel is covered although it clears the frame. The figure's record is duo-fold-and-keyboard.
+    static let keyboardDrawnAbove: CGFloat = 44
 
     static let bolt = "C1|0|pLightningBolt"
     static let path = "C1|1|pPathtoExile"
@@ -144,6 +154,31 @@ final class DuoHandUITests: XCTestCase {
         _ = need(app, "hand-held", "the Suspense line of a held name")
         typeCard(app, "Path to Exile")
         return need(app, "hand-post", "the post the next card offers")
+    }
+
+    /// The system keys are up, whole inside the window: waits for them and returns their frame. A keyboard that is missing or off
+    /// the window proves nothing about the space above it, so each of those fails.
+    func requireKeysUp(_ app: XCUIApplication) -> CGRect {
+        let keys = app.keyboards.firstMatch
+        XCTAssertTrue(keys.waitForExistence(timeout: 5), "the system keys are not up, so nothing here shows the offer clears them; with a hardware keyboard attached the keys never draw (Simulator, I/O, Keyboard, Connect Hardware Keyboard off)")
+        let k = keys.frame, win = app.window.frame
+        XCTAssertGreaterThan(k.height, 200, "the keyboard frame \(k) is too short to be the keys (measured 263 pt on the open Duo)")
+        XCTAssertGreaterThanOrEqual(k.minY, win.minY, "the keyboard frame \(k) starts above the window \(win)")
+        XCTAssertLessThanOrEqual(k.maxY, win.maxY + Self.tolerance, "the keyboard frame \(k) ends below the window \(win): the keys are not up")
+        return k
+    }
+
+    /// Waits until every element's frame has held for 3 reads, 0.2 s apart, so a read never lands in the keys' slide or the offer's
+    /// scroll. Copied from MastheadBackupUITests.settle, which is an instance method of another XCTestCase and cannot be called here.
+    func waitUntilStill(_ els: [XCUIElement]) {
+        var last = els.map(\.frame), held = 0
+        for _ in 0..<40 {
+            Thread.sleep(forTimeInterval: 0.2)
+            let now = els.map(\.frame)
+            held = now == last ? held + 1 : 0
+            if held >= 3 { return }
+            last = now
+        }
     }
 
     /// Card in Hand, then the past-transit page on the right page.
@@ -332,16 +367,101 @@ final class DuoHandUITests: XCTestCase {
         openHand(app)
         let post = offerPost(app)
 
-        let keys = app.keyboards.firstMatch
-        XCTAssertTrue(keys.waitForExistence(timeout: 5), "the system keys are not up, so nothing here shows the offer clears them; with a hardware keyboard attached the keys never draw (Simulator, I/O, Keyboard, Connect Hardware Keyboard off)")
-        let k = keys.frame, win = app.window.frame
-        XCTAssertGreaterThan(k.height, 200, "the keyboard frame \(k) is too short to be the keys (measured 263 pt on the open Duo)")
-        XCTAssertGreaterThanOrEqual(k.minY, win.minY, "the keyboard frame \(k) starts above the window \(win)")
-        XCTAssertLessThanOrEqual(k.maxY, win.maxY + Self.tolerance, "the keyboard frame \(k) ends below the window \(win): the keys are not up")
+        let k = requireKeysUp(app)
         let f = post.frame
         XCTAssertLessThanOrEqual(f.maxY, k.minY, "the Post button, frame \(f), is under the keys, which start at y \(k.minY): the owner must scroll to reach it")
         XCTAssertTrue(post.isHittable, "the Post button, frame \(f), is not hittable with the keys up and no scroll")
         keepShot(app, "hand-post-clears-keys")
+    }
+
+    /// Pose: flat, system keys up. A held card's Post offer shows with "It came from" and the seller still on the page: below the
+    /// status bar, above the keys, hittable, and the Post button hittable at the same time. Without the sender, "Post ... here" names
+    /// no envelope. The test never taps or scrolls: it reads frames once the offer and the keys have stopped moving. After the keys
+    /// are checked, a failed assertion does not end the test, so one red run reports the sender, the seller and the offer together.
+    func testPostOfferKeepsTheSenderOnThePage() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let post = offerPost(app)
+        let came = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "It came from")).firstMatch
+        let who = app.element("hand-who")
+        let keys = app.keyboards.firstMatch
+        _ = requireKeysUp(app)
+        waitUntilStill([keys, post, came, who].filter(\.exists))
+
+        let keysTop = keys.frame.minY - Self.keyboardDrawnAbove
+        let barFoot = max(app.listTop, app.window.frame.minY + Self.statusBarFloor)
+        continueAfterFailure = true
+        func clear(_ el: XCUIElement, _ what: String) {
+            guard el.exists else { return XCTFail("\(what) is not on the answer page at all, so the owner cannot read it") }
+            let f = el.frame
+            XCTAssertGreaterThanOrEqual(f.minY, barFoot, "\(what), frame \(f), starts above y \(barFoot), the foot of the status bar: it is scrolled off the top or under the clock and status icons")
+            XCTAssertLessThanOrEqual(f.maxY, keysTop, "\(what), frame \(f), is under the keys, which start at y \(keysTop)")
+            XCTAssertTrue(el.isHittable, "\(what), frame \(f), is not hittable with the keys up and no scroll: it is off the page or covered")
+        }
+        clear(came, "the \"It came from\" line")
+        clear(who, "the seller name (hand-who)")
+        clear(post, "the Post button (hand-post)")
+        keepShot(app, "hand-post-keeps-sender")
+    }
+
+    /// The first lines of Gamma Cards, which sit under the offer. A Post presses above them, so none may move (no-layout-shift-under-pointer).
+    static let stillLines = [bolt, path, swords]
+
+    /// The frames of `stillLines` once the page has stopped moving. A row is its hand-line element: its top is the row's top plus a
+    /// fixed pad, so a row that moves reads as a moved frame.
+    func lineFrames(_ app: XCUIApplication) -> [String: CGRect] {
+        let rows = Self.stillLines.map { need(app, "hand-line:\($0)", "a line under the Post offer") }
+        waitUntilStill(rows)
+        return Dictionary(uniqueKeysWithValues: zip(Self.stillLines, rows.map(\.frame)))
+    }
+
+    /// Each row in `before` has its top within 1 pt of where it was. Call it only after the test saw the Post land by a sign that
+    /// does not need hand-receipt: waitUntilStill settles in 0.6 s, so a read that comes first sees rows that have not yet moved.
+    /// A failed assertion does not end the test, so one red run names every row that moved.
+    func assertLinesStayPut(_ app: XCUIApplication, _ before: [String: CGRect], after what: String) {
+        let after = lineFrames(app)
+        continueAfterFailure = true
+        for key in Self.stillLines {
+            guard let was = before[key], let now = after[key] else { return XCTFail("the line \(key) has no frame") }
+            XCTAssertEqual(now.minY, was.minY, accuracy: 1, "the line \(key) moved \(now.minY - was.minY) pt \(what): its frame was \(was) and is \(now)")
+        }
+    }
+
+    /// Pose: flat, system keys up. A Post that saves leaves the first lines under the offer where they were. The offer's slot keeps
+    /// its height as a receipt (mockup duo-hand-post-sender, #s=a-posted); without it the lines rise into the slot the finger pressed.
+    func testPostHoldsTheLinesStillWhenItSaves() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let post = offerPost(app)
+        _ = requireKeysUp(app)
+        let before = lineFrames(app)
+
+        post.tap()
+        waitForLabel(app.element("hand-checkin:\(Self.path)"), startingWith: "Undo check in", "Post did not check in Path to Exile")
+        waitGone(app.element("hand-post"), "the post is still offered after it posted")
+        assertLinesStayPut(app, before, after: "when Post saved")
+    }
+
+    /// Pose: flat, system keys up. A Post that is refused leaves the first lines where they were. A line check-in made after the
+    /// offer outdates its plan, so HandModel.post refuses, drops the offer and leaves a refused receipt in its slot.
+    func testPostHoldsTheLinesStillWhenItIsRefused() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let post = offerPost(app)
+        _ = requireKeysUp(app)
+        let held = need(app, "hand-checkin:\(Self.bolt)", "the held card's check-in control")
+        held.tap()
+        waitForLabel(held, startingWith: "Undo check in", "the line check-in did not save, so the offer is not outdated")
+        XCTAssertTrue(post.exists, "the line check-in took the offer away, so the Post below is not a refusal")
+        let before = lineFrames(app)
+
+        post.tap()
+        waitGone(app.element("hand-post"), "the refused post is still offered")
+        XCTAssertTrue(app.element("hand-checkin:\(Self.path)").label.hasPrefix("Check in "), "Path to Exile is checked in, so the post was not refused")
+        assertLinesStayPut(app, before, after: "when Post was refused")
     }
 
     /// Pose: flat. A red row (30 days from the order date) has no claim date: the claim window is closed. Checked on every late
@@ -513,6 +633,22 @@ final class DuoHandUITests: XCTestCase {
         }
         XCTAssertTrue(failure.isHittable, "the failure, frame \(f), is not hittable: something covers it")
         keepShot(app, "hand-checkin-error")
+    }
+
+    /// Pose: flat, system keys up. A Post whose save fails leaves the first lines where they were. HandModel.post keeps the offer
+    /// when the save throws, so the offer's own box holds the slot and this case does not reach the receipt.
+    func testPostHoldsTheLinesStillWhenItsSaveFails() {
+        let app = XCUIApplication.launchedOnSeed(extra: [Self.ledgerUnwritable])
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let post = offerPost(app)
+        _ = requireKeysUp(app)
+        let before = lineFrames(app)
+
+        post.tap()
+        _ = need(app, "hand-error", "the failure line of a Post whose save failed")
+        XCTAssertTrue(app.element("hand-checkin:\(Self.path)").label.hasPrefix("Check in "), "Path to Exile is checked in, so the save did not fail (the app ignored \(Self.ledgerUnwritable))")
+        assertLinesStayPut(app, before, after: "when Post's save failed")
     }
 
     /// The hand-hit rows, top to bottom, once exactly `count` show (a short poll: the list settles 150 ms after the last key

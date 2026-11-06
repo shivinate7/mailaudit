@@ -27,6 +27,13 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 - 2026-10-29, stamp ask review: the ask-below assert accepts an ask that covers the lower half of the row (`askBox.minY > saveBox.midY`; `>= saveBox.maxY` is stricter, unmeasured).
 - 2026-10-29, stamp ask review: arming Remove with the note field focused keeps the keyboard up, so the ask may sit behind it for its 4 s (unmeasured).
 - 2026-10-29, Card in Hand review: no test pins that a failed Tally or Orphaned reload marks a Hand or stamp write failed (`HandScreen.swift` `afterWrite`, `StampViews.swift` `write`).
+- 2026-10-30, Post-offer review round 1: no test pins the receipt text or when it clears (`HandScreen.swift`).
+- 2026-10-30, Post-offer review round 1: at accessibility text sizes a long refused line can overflow the receipt slot, and Post then sits below the keys and needs a manual scroll.
+- 2026-10-30, Post-offer review round 1: `DuoHandUITests`' 20 pt status-bar floor is unmeasured, and `waitUntilStill` returns silently after 8 s.
+- 2026-11-06, Post-offer review round 2: `testPostHoldsTheLinesStillWhenItsSaveFails` (`DuoHandUITests.swift`) asserts nothing about a kept `hand-post`, so a same-height receipt in the offer's place keeps it green; `HandModelTests.testFailedSaveRollsBack` pins the kept offer in the model.
+- 2026-11-06, Post-offer review round 2: the receipt is keyed to its own envelope (`HandScreen.swift` `else if let r = receipt, r.offer.gk == pkg.gk`); no test pins that guard.
+- 2026-11-06, Post-offer review round 2: the red refusal line on manila at 50% over paper computes to 4.60:1 from the token hex values, 0.1 over the floor, and no token test covers the pair.
+- 2026-11-06, Post-offer design review: the refused receipt sets "Type the card again to post.", an instruction, in the refusal red, and its 44 pt minimum height leaves about 25 pt between the two lines.
 - 2026-10-29, CI wiring review round 2: no run has shown that `cancelled()` reads true in the ci-done job after a superseded PR run is cancelled. The first double push on a PR settles it. A false value posts a false red comment.
 - 2026-10-29, CI wiring review round 2: the job groups on main still key by commit, so a third run on one commit can replace a pending job, such as a nightly. The harm is one cancelled job.
 - 2026-10-29, CI wiring review round 2: `ci-skips-draft-prs` names the draft state in the keys of four jobs. The workflow key carries it too.
