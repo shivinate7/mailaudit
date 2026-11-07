@@ -79,9 +79,9 @@ body.keys-down .keys { display:none; } body.keys-down .guide.g428 span { backgro
 .envrow .soft { color:var(--inkSoft); font-size:14px; margin-right:auto; }
 /* The match list: one box per frame so a tag can outline it. Its rows keep the VStack's 12 pt gap. */
 .list { display:flex; flex-direction:column; gap:12px; }
-.match { min-height:44px; display:flex; align-items:center; font-size:14px; color:var(--ink); }
-/* Hold the list: the tapped row reads as chosen; the others keep their place in inkSoft (4.68:1 on paper) and stay live. */
-.match.chosen { font-weight:700; box-shadow:inset 3px 0 0 var(--accent); padding-left:10px; }
+.match { min-height:44px; display:flex; align-items:center; font-size:14px; color:var(--ink); padding-left:10px; }
+/* Hold the list: the tapped row reads as chosen; the others keep their place in inkSoft (4.68:1 on paper) and stay live. Every row has the same inset, so the bar sits in a gutter and no label moves. */
+.match.chosen { font-weight:700; box-shadow:inset 3px 0 0 var(--accent); }
 .match.dim { color:var(--inkSoft); }
 /* Keep the slot: the others leave the eye and VoiceOver, and keep their box. */
 .match.gone { visibility:hidden; }
