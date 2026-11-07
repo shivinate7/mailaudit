@@ -59,6 +59,7 @@
 // testFailedLineCheckInShowsInHand and testPostHoldsTheLinesStillWhenItsSaveFails, which add -ManifestUITestLedgerUnwritable
 // (Debug builds only; it makes the next save fail; see the first test).
 
+import UIKit
 import XCTest
 
 @MainActor
@@ -180,6 +181,41 @@ final class DuoHandUITests: XCTestCase {
             if held >= 3 { return }
             last = now
         }
+    }
+
+    /// The leftmost column of a row's screenshot that holds name ink, in points from the row's left edge; nil when none shows.
+    /// Every column from the left edge is scanned, so no margin can hide a name that starts there.
+    func nameInkLeft(_ shot: UIImage) -> CGFloat? {
+        guard let image = shot.cgImage, let space = CGColorSpace(name: CGColorSpace.sRGB) else { return nil }
+        let w = image.width, h = image.height
+        var px = [UInt8](repeating: 0, count: w * h * 4)
+        let drawn = px.withUnsafeMutableBytes { raw -> Bool in
+            guard let context = CGContext(data: raw.baseAddress, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                                          space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+            context.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
+            return true
+        }
+        guard drawn else { return nil }
+        for x in 0..<w {
+            for y in 0..<h {
+                let i = (y * w + x) * 4
+                if Self.isNameInk(r: Int(px[i]), g: Int(px[i + 1]), b: Int(px[i + 2])) { return CGFloat(x) / shot.scale }
+            }
+        }
+        return nil
+    }
+
+    /// The paper and the accent as sRGB bytes, the shared/tokens.json values (SyncAdvisoryUITests holds manila the same way).
+    static let paperRGB = (r: 242, g: 233, b: 218)
+    static let accentRGB = (r: 111, g: 92, b: 166)
+
+    /// Name ink: a pixel under half the paper's luminance and more than 40 sRGB units from the accent. A pixel at the accent bar's
+    /// edge that is dark enough to pass the first test is at least 88% accent, so it lies inside the 40-unit radius and fails the second.
+    static func isNameInk(r: Int, g: Int, b: Int) -> Bool {
+        func luminance(_ r: Int, _ g: Int, _ b: Int) -> Double { 0.2126 * Double(r) + 0.7152 * Double(g) + 0.0722 * Double(b) }
+        let darkerThanPaper = luminance(r, g, b) < luminance(paperRGB.r, paperRGB.g, paperRGB.b) / 2
+        let (dr, dg, db) = (r - accentRGB.r, g - accentRGB.g, b - accentRGB.b)
+        return darkerThanPaper && dr * dr + dg * dg + db * db > 40 * 40
     }
 
     /// Card in Hand, then the past-transit page on the right page.
@@ -619,7 +655,8 @@ final class DuoHandUITests: XCTestCase {
         keepShot(app, "hand-match-tap-holds-new-envelope")
     }
 
-    /// Pose: flat. A tap on a match fills the query, and the list holds its rows. The tapped row must stay under the finger.
+    /// Pose: flat. A tap on a match fills the query, and the list holds its rows. The tapped row must stay under the finger, and its
+    /// name must not shift: a row that padded only when chosen would move it, so the name's left edge is read from the row's pixels.
     /// The Suspense box that a shared name opens below the list must not rise above the old list foot (no-layout-shift-under-pointer;
     /// debt hand-suspense-tap-shift). "o" lists seven names, Brainstorm then Counterspell.
     /// A1 and B1 both hold Counterspell, so tapping it opens a Suspense box. Rows are read once the list has stopped moving.
@@ -635,6 +672,7 @@ final class DuoHandUITests: XCTestCase {
         waitUntilStill(rows)
         let tapped = rows[1].identifier
         let before = rows[1].frame
+        let nameBeforeShot = app.element(tapped).screenshot().image  // the row's pixels before the tap; the name's left edge is read from them
         let foot = rows.map { $0.frame.maxY }.max() ?? 0  // the old list foot: the box must not rise above it
         let listed = rows.count
 
@@ -648,8 +686,16 @@ final class DuoHandUITests: XCTestCase {
 
         continueAfterFailure = true
         let after = row.frame
-        // The label's horizontal position is not visible to XCUITest through the Button, so the design review checks it from shots.
         XCTAssertEqual(after.minY, before.minY, accuracy: 1, "the tapped row \(tapped) moved \(after.minY - before.minY) pt under the finger, from \(before) to \(after): the list shrank above it")
+        // XCUITest cannot read the label through the Button, so the name's left edge is read from the row's pixels, before and after.
+        // The chosen row's accent bar sits in the leading gutter and is not name ink, so it cannot stand in for the name.
+        let nameBefore = nameInkLeft(nameBeforeShot)
+        let nameAfter = nameInkLeft(row.screenshot().image)
+        if nameBefore == nil { XCTFail("the row \(tapped) shows no name ink before the tap, so its name cannot be read") }
+        if nameAfter == nil { XCTFail("the row \(tapped) shows no name ink after the tap, so its name cannot be read") }
+        if let nameBefore, let nameAfter {
+            XCTAssertEqual(nameAfter, nameBefore, accuracy: 2, "the name of the tapped row \(tapped) moved from \(nameBefore) pt to \(nameAfter) pt into the row under the finger")
+        }
         XCTAssertGreaterThanOrEqual(held.frame.minY, foot - 1, "the Suspense box, frame \(held.frame), sits above the old list foot at y \(foot): it rose into the space the list left, under the finger")
         keepShot(app, "hand-match-tap-moves-no-row")
     }
