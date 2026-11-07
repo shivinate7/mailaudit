@@ -111,10 +111,17 @@ final class DuoHandUITests: XCTestCase {
     func typeCard(_ app: XCUIApplication, _ text: String) {
         let query = app.element("hand-query")
         query.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
-        if let old = query.value as? String, !old.isEmpty, old != query.placeholderValue {
+        let old = typedText(query)
+        if !old.isEmpty {
             query.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: old.count))
         }
         query.typeText(text)
+    }
+
+    /// The text in the query field, "" when the field is empty. An empty field's value reads as its placeholder.
+    func typedText(_ query: XCUIElement) -> String {
+        guard let value = query.value as? String, value != query.placeholderValue else { return "" }
+        return value
     }
 
     func onLeftPage(_ el: XCUIElement, _ app: XCUIApplication, _ what: String) {
@@ -340,7 +347,8 @@ final class DuoHandUITests: XCTestCase {
 
     /// Pose: flat. A shared name is held, so the tie shows on the answer page. New envelope releases it as a stray, and the
     /// tie must leave the answer page with it: the answer page must not keep asking for the next card from the ended envelope.
-    /// The tie is seen first, so the case cannot pass by never having had one.
+    /// The tie is seen first, so the case cannot pass by never having had one. The typed card goes too: the field is empty
+    /// and the answer page shows its empty state, not "No open envelope holds" for a card the ended envelope never held.
     func testNewEnvelopeLeavesNoTieOnTheAnswerPage() {
         let app = XCUIApplication.launchedOnSeed()
         guard app.requirePose(.flat) else { return }
@@ -357,6 +365,13 @@ final class DuoHandUITests: XCTestCase {
         let prompt = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Name the next card from this envelope")).firstMatch
         XCTAssertFalse(app.element("hand-tie").exists || prompt.exists,
                        "New envelope left the tie of the released name on the answer page, which still asks for the next card from the ended envelope")
+
+        let answer = need(app, "hand-answer", "the answer page of Card in Hand")
+        XCTAssertEqual(typedText(app.element("hand-query")), "", "New envelope left the typed card in the field")
+        XCTAssertTrue(answer.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Type the card in hand. The envelope")).firstMatch.exists,
+                      "the answer page is not on its empty state after New envelope, so its no-match line cannot be judged")
+        XCTAssertFalse(answer.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "No open envelope holds")).firstMatch.exists,
+                       "New envelope left the no-match line \"No open envelope holds\" on the answer page for the typed card")
     }
 
     /// Pose: flat. New envelope ends the envelope while a Suspense box shows, with a Released box already shown:
