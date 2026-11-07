@@ -32,12 +32,12 @@ Deep links: `#s=today`, `#s=a`, `#s=a-posted`, `#s=b`, `#s=folded`. No hash show
 3. **After Post.**
    - Today (`HandModel.post` sets `offer = nil`): the box leaves. In A, the lines would then rise into the slot the finger just pressed. In B, they would grow down into it.
    - `HandModel.post` also refuses when the ledger changed since the offer (a line check-in or a sync reply). It then sets `offer = nil` too, and the box leaves the same way.
-   - New: a receipt of the same height takes the slot on either outcome. On success it reads "2 cards checked in · 1 was held". On a refusal it holds the refusal line. It holds until the next card is typed, or New envelope ends the envelope. The view keeps it in its own state; the model does not change. Precedent: the round-2 mockup's posted pose puts the receipt where the press was. Gain: nothing moves under the finger (`no-layout-shift-under-pointer`). Loss: one more state to build and test.
+   - New: a receipt of the same height takes the slot on either outcome. On success it reads "2 cards checked in · 1 was held". On a refusal it reads "Not posted. Type the card again to post.", since the Post button is gone and the left page already gives the reason; the saved count is `manilaInk`, not the mockup's green: green measures 4.03:1 on the slot, under 4.5:1. It holds until the next card is typed, or New envelope ends the envelope. The view keeps it in its own state; the model does not change. Precedent: the round-2 mockup's posted pose puts the receipt where the press was. Gain: nothing moves under the finger (`no-layout-shift-under-pointer`). Loss: one more state to build and test.
    - Pick: the receipt.
    - Departs from: today's box that leaves on Post (`HandModel.post`). Not blocking.
    - Owner grant: no.
 
-4. **The offer arrives on an envelope already shown.** `HandModel.read` sets the offer in the same call that sets the hits. So the offer usually comes with its envelope. When the same envelope stays shown and an offer comes later, A moves the lines down by 118 pt. That happens on a keystroke on the left page, not under a press on the right page. B moves no line. Pick: accept it in A, and say so. Owner grant: no.
+4. **The offer arrives on an envelope already shown.** `HandModel.read` sets the offer in the same call that sets the hits. So the offer usually comes with its envelope. When the same envelope stays shown and an offer comes later, A moves the lines down by 118 pt. That happens on a keystroke on the left page, away from any press on the right page. B moves no line. Pick: accept it in A, and say so. Owner grant: no.
 
 5. **The check-in error band.** The `hand-checkin-error` overlay sits at the top of the right page, and covers the sender while it shows. No change here; it shows only after a failed save. Owner grant: no.
 

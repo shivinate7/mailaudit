@@ -149,6 +149,34 @@ final class SyncReplyTests: SyncTestCase {
         XCTAssertEqual(store.received()[Self.keyC], 1)
     }
 
+    // native-reply-waits-generation, on its own. The import moves the generation and leaves the
+    // user data the reply is checked against as it was, so only the generation check can drop the
+    // reply. Remove that check and this case goes red.
+    func testAnItemsOnlyEditWhileAPullIsOutDropsTheReplyAndPostsInstead() async throws {
+        let store = try makeStore()
+        let client = try makeClient(store)
+        let before = store.userData()
+        let stale = try ledger(received: [Self.marker: 5])
+        net.enqueue(.hold, ok(try ledger(), rev: 9))
+        let call = start { await client.pull() }
+        let arrived = await net.waitForRequests(1)
+        XCTAssertTrue(arrived, "the GET left")
+        let generation = store.generation
+        var imported = try ledger()
+        imported["items"] = [Any]()
+        try store.adopt(body(imported))
+        XCTAssertGreaterThan(store.generation, generation, "the setup is real: the import moved the generation")
+        assertSameJSON(store.userData(), before, "the setup is real: the import left the user data as it was")
+        XCTAssertTrue(net.release(0, ok(stale, rev: 8)), "the GET was still out when its reply came")
+        let outcome = await finish(call)
+
+        XCTAssertEqual(net.requests.map(\.method), ["GET", "POST"], "a reply over an edit is dropped, and a POST follows")
+        XCTAssertNil(store.received()[Self.marker], "the stale reply was not adopted")
+        XCTAssertEqual(outcome, .applied)
+        let posted = (seen(1)?.json?["ledger"] as? [String: Any])?["items"] as? [Any]
+        XCTAssertEqual(posted?.count, 0, "the POST carries the import")
+    }
+
     // Control for the next two: a fresh phone, with nothing of its own, takes the
     // server copy in one GET and sends nothing ("a fresh phone recovers in one step").
     func testAFreshLedgerAdoptsTheServerCopy() async throws {

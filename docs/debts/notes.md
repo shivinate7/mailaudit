@@ -34,6 +34,7 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 - 2026-11-06, Post-offer review round 2: the receipt is keyed to its own envelope (`HandScreen.swift` `else if let r = receipt, r.offer.gk == pkg.gk`); no test pins that guard.
 - 2026-11-06, Post-offer review round 2: the red refusal line on manila at 50% over paper computes to 4.60:1 from the token hex values, 0.1 over the floor, and no token test covers the pair.
 - 2026-11-06, match-row mockup: Card in Hand's small labels and the notice box title are 10.5 pt (`HandScreen.swift` `micro`, `notice`), under the 11 pt iOS minimum.
+- 2026-11-06, Post-offer design review: the refused receipt sets "Type the card again to post.", an instruction, in the refusal red, and its 44 pt minimum height leaves about 25 pt between the two lines.
 - 2026-10-29, CI wiring review round 2: no run has shown that `cancelled()` reads true in the ci-done job after a superseded PR run is cancelled. The first double push on a PR settles it. A false value posts a false red comment.
 - 2026-10-29, CI wiring review round 2: the job groups on main still key by commit, so a third run on one commit can replace a pending job, such as a nightly. The harm is one cancelled job.
 - 2026-10-29, CI wiring review round 2: `ci-skips-draft-prs` names the draft state in the keys of four jobs. The workflow key carries it too.
@@ -63,3 +64,4 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 - 2026-11-05, mutation-report-adopt review round 2: `scripts/tests-for.mjs` reads a regex literal that opens a template substitution as division, so `` `${/'/.test(a)}`; import y from "./x.mjs"; `` on one line loses the import. No suite has that shape.
 - 2026-11-05, mutation-report-adopt review round 2: no `tests-for` row pins division after postfix `--` or after a template, or a plain character inside a template literal. Seven such mutants left the selector's output over all 20 code paths unchanged.
 - 2026-11-06, recent-checks-can-be-undone review round 1: the record does not say what an open Recent panel does when its last live row goes inert and the cell hides. Decision: `recent-checks-can-be-undone`.
+- 2026-11-06, pin-version-names review round 1: no test pins the versions folder name. `ManifestApp.swift` and `VersionTestSupport.swift` each spell `versions`, so a rename passes. Decision: `native-files-are-frozen`.
