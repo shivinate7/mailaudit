@@ -129,3 +129,45 @@ export function shouldSnapshot(kind, lastAt, now = Date.now(), minGapMs = 30_000
   if (kind === "milestone") return true;
   return lastAt == null || now - lastAt >= minGapMs;
 }
+
+/* Does the incoming ledger take away something the held one has?
+
+   The "before sync" milestone hangs on this answer: a reply that removes
+   something must get its version first, and a wrong "no" is a silent loss.
+   Native asks this one rule through the bundle (rules-run-in-javascriptcore),
+   so the Swift side holds no copy of it.
+
+   It compares the two ledgers RAW, not through the merge stats the web reads
+   (checkInsRemoved, envelopesRemoved, stampsRemoved) — the rule native has
+   always kept. Each argument is { received, envelopes, stamps }. Three ways to
+   remove: a count lowered or cleared; a live envelope gone or tombstoned; a
+   stamp that held a kind and now has none or "". A tombstone is any deletedAt
+   key, null included, as it was in Swift. */
+const isObj = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+const envelopeList = (v) => (Array.isArray(v) && v.every(isObj) ? v : []);
+const idOf = (e) => (typeof e.id === "string" ? e.id : null);
+const kindOf = (s) => (isObj(s) && typeof s.kind === "string" ? s.kind : "");
+
+export function removesSomething(held, incoming) {
+  const heldReceived = isObj(held?.received) ? held.received : {};
+  const inReceived = isObj(incoming?.received) ? incoming.received : {};
+  for (const [k, n] of Object.entries(heldReceived)) {
+    if (typeof n !== "number") continue;
+    const now = typeof inReceived[k] === "number" ? Math.trunc(inReceived[k]) : 0;
+    if (now < n) return true;
+  }
+
+  const inEnvelopes = envelopeList(incoming?.envelopes);
+  for (const e of envelopeList(held?.envelopes)) {
+    if ("deletedAt" in e) continue;
+    const id = idOf(e);
+    if (!inEnvelopes.some((x) => idOf(x) === id && !("deletedAt" in x))) return true;
+  }
+
+  const heldStamps = isObj(held?.stamps) ? held.stamps : {};
+  const inStamps = isObj(incoming?.stamps) ? incoming.stamps : {};
+  for (const [gk, s] of Object.entries(heldStamps)) {
+    if (kindOf(s) !== "" && kindOf(inStamps[gk]) === "") return true;
+  }
+  return false;
+}
