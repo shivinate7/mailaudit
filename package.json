@@ -20,6 +20,7 @@
     "test:view-rules": "node test/view-rules.test.mjs",
     "test:golden": "node test/golden.test.mjs",
     "test:rules": "node test/rules.test.mjs",
+    "test:recent-rules": "node test/recent-rules.test.mjs",
     "check:golden": "node scripts/check-golden.mjs",
     "worker:deploy": "cd worker && npx --yes wrangler@4.149.0 deploy",
     "worker:dev": "cd worker && npx --yes wrangler@4.149.0 dev",

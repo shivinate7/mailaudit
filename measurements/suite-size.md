@@ -1,8 +1,8 @@
 # Test suite assertion count and run time
 
-**Status:** measured 2026-11-06 at `74f4f3d` on `pin-removal-rule`. New York (`TZ=America/New_York`): 1624 passed, 0 failed, exit 0, 183.5 s. UTC: 1623 passed, 0 failed, exit 0, 181.6 s. The rise from 1593 includes 38.16 to 38.18, the removal rule. Earlier figures are in git.
+**Status:** measured 2026-11-07 on `pin-removal-rule` with main `bb6cc01` merged in. New York (`TZ=America/New_York`): 1678 passed, 0 failed, exit 0, 206.5 s. UTC: 1677 passed, 0 failed, exit 0, 216.4 s. The rise from 1647 is the removal-rule cases, 38.16 to 38.18. Earlier figures are in git.
 
-This record holds the assertion count and the run time for `npm test`. The suite runs 1624 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+This record holds the assertion count and the run time for `npm test`. The suite runs 1678 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
 The count depends on the clock's zone, so the zone is pinned to `America/New_York`. In CI, the test step sets `TZ`, and it names one New York run's output in `CHECK_DOCS_SUITE_LOG`. `check:docs` grades the figure in this sentence. Locally, `npm run check:docs` runs the suite itself and waits for it to end.
 
