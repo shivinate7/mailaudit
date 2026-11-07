@@ -64,4 +64,4 @@ One known gap per file under `docs/debts/`. Each carries a Status line and a Dec
 - `tracking-checker-unbuilt` — A future checker that passively checks tracking numbers. It blocks nothing.
 - `orders-job-unbuilt` — The Worker orders cron, its key test and its status screen are unbuilt.
 - `claim-17a-ci-red-unexplained` — Claim 17a failed twice on CI, and why only those runs is unknown.
-- `suite-flakes-under-load` — Two suite cases fail under load and pass on a re-run.
+- `suite-flakes-under-load` — A suite case fails under load and passes on a re-run.
