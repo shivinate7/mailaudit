@@ -337,7 +337,7 @@ final class DuoHandUITests: XCTestCase {
         XCTAssertTrue(app.element("hand-strays").exists, "the stray left the list while no post named it")
     }
 
-    /// Pose: flat. New envelope ends the envelope while a Suspense box shows, with a Released box already above the envelope row:
+    /// Pose: flat. New envelope ends the envelope while a Suspense box shows, with a Released box already shown:
     /// an earlier New envelope released Lightning Bolt, then Brainstorm is held. The Suspense box leaves when New envelope is
     /// pressed, so the envelope row and its New envelope button must not move under the pointer (no-layout-shift-under-pointer,
     /// decision duo-card-in-hand). The button is read once the page has stopped moving, tapped, and read again once it is still.
@@ -440,8 +440,8 @@ final class DuoHandUITests: XCTestCase {
         keepShot(app, "hand-post-keeps-sender")
     }
 
-    /// Pose: flat, system keys up. A held name's Suspense box shows above the match list, and the one match row must clear the
-    /// keys. The box pushes the row down, which is debt hand-notice-cuts-match-row (the notice cuts the match row).
+    /// Pose: flat, system keys up. A held name's Suspense box shows, and the one match row must clear the keys. A box above
+    /// the list would push the row under them, so the boxes sit below the matches (decision duo-card-in-hand).
     func testMatchRowClearsTheKeysUnderASuspenseBox() {
         let app = XCUIApplication.launchedOnSeed()
         guard app.requirePose(.flat) else { return }
@@ -452,8 +452,8 @@ final class DuoHandUITests: XCTestCase {
         assertOnlyMatchClearsTheKeys(app, box: "Suspense")
     }
 
-    /// Pose: flat, system keys up. A released name's Released box shows above the match list, and the one match row must clear the
-    /// keys. The same debt as the Suspense case, hand-notice-cuts-match-row.
+    /// Pose: flat, system keys up. A released name's Released box shows, and the one match row must clear the keys, as in the
+    /// Suspense case.
     func testMatchRowClearsTheKeysUnderAReleasedBox() {
         let app = XCUIApplication.launchedOnSeed()
         guard app.requirePose(.flat) else { return }
@@ -469,7 +469,7 @@ final class DuoHandUITests: XCTestCase {
     }
 
     /// Pose: flat, system keys up. The typed name must leave exactly one match row, and that row must lie wholly above the keys'
-    /// drawn top and be hittable while `box` shows above the list. The row is read once the keys and the list have stopped moving.
+    /// drawn top and be hittable while `box` shows. The row is read once the keys and the list have stopped moving.
     /// No tap and no scroll. The typed name leaves one row, so that row is the list's only row and the one the keys can cover.
     func assertOnlyMatchClearsTheKeys(_ app: XCUIApplication, box: String) {
         let rows = waitForHits(app, count: 1, "the typed name must leave exactly one match under the \(box) box")
