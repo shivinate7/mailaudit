@@ -1,0 +1,229 @@
+{
+  "cases": [
+    {
+      "name": "a count lowered from 2 to 1",
+      "kind": "count-lowered",
+      "held": {
+        "received": {"A1|0|pLightningBolt": 2, "B1|0|pLightningBolt": 1},
+        "envelopes": [{"id": "E1", "createdAt": 100, "updatedAt": 100, "note": "", "entries": [], "photos": []}],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "incoming": {
+        "received": {"A1|0|pLightningBolt": 1, "B1|0|pLightningBolt": 1},
+        "envelopes": [{"id": "E1", "createdAt": 100, "updatedAt": 100, "note": "", "entries": [], "photos": []}],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "removes": true
+    },
+    {
+      "name": "a count cleared: its key is gone",
+      "kind": "count-cleared",
+      "held": {
+        "received": {"A1|0|pLightningBolt": 2, "B1|0|pLightningBolt": 1},
+        "envelopes": [{"id": "E1", "createdAt": 100, "updatedAt": 100, "note": "", "entries": [], "photos": []}],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "incoming": {
+        "received": {"A1|0|pLightningBolt": 2},
+        "envelopes": [{"id": "E1", "createdAt": 100, "updatedAt": 100, "note": "", "entries": [], "photos": []}],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "removes": true
+    },
+    {
+      "name": "a live envelope is gone",
+      "kind": "envelope-gone",
+      "held": {
+        "received": {"A1|0|pLightningBolt": 2, "B1|0|pLightningBolt": 1},
+        "envelopes": [{"id": "E1", "createdAt": 100, "updatedAt": 100, "note": "", "entries": [], "photos": []}],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "incoming": {
+        "received": {"A1|0|pLightningBolt": 2, "B1|0|pLightningBolt": 1},
+        "envelopes": [],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "removes": true
+    },
+    {
+      "name": "a live envelope is tombstoned",
+      "kind": "envelope-tombstoned",
+      "held": {
+        "received": {"A1|0|pLightningBolt": 2, "B1|0|pLightningBolt": 1},
+        "envelopes": [{"id": "E1", "createdAt": 100, "updatedAt": 100, "note": "", "entries": [], "photos": []}],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "incoming": {
+        "received": {"A1|0|pLightningBolt": 2, "B1|0|pLightningBolt": 1},
+        "envelopes": [{"id": "E1", "createdAt": 100, "updatedAt": 200, "deletedAt": 200, "note": "", "entries": [], "photos": []}],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "removes": true
+    },
+    {
+      "name": "a live envelope E1 is gone though another live envelope E2 arrived",
+      "kind": "envelope-other-id",
+      "held": {
+        "received": {"A1|0|pLightningBolt": 2, "B1|0|pLightningBolt": 1},
+        "envelopes": [{"id": "E1", "createdAt": 100, "updatedAt": 100, "note": "", "entries": [], "photos": []}],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "incoming": {
+        "received": {"A1|0|pLightningBolt": 2, "B1|0|pLightningBolt": 1},
+        "envelopes": [{"id": "E2", "createdAt": 200, "updatedAt": 200, "note": "", "entries": [], "photos": []}],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "removes": true
+    },
+    {
+      "name": "a stamp's kind is emptied",
+      "kind": "stamp-emptied",
+      "held": {
+        "received": {"A1|0|pLightningBolt": 2, "B1|0|pLightningBolt": 1},
+        "envelopes": [{"id": "E1", "createdAt": 100, "updatedAt": 100, "note": "", "entries": [], "photos": []}],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "incoming": {
+        "received": {"A1|0|pLightningBolt": 2, "B1|0|pLightningBolt": 1},
+        "envelopes": [{"id": "E1", "createdAt": 100, "updatedAt": 100, "note": "", "entries": [], "photos": []}],
+        "stamps": {"A1::Alpha Cards": {"kind": "", "at": "", "note": "", "updatedAt": 200}}
+      },
+      "removes": true
+    },
+    {
+      "name": "a stamp is missing from the incoming ledger",
+      "kind": "stamp-gone",
+      "held": {
+        "received": {"A1|0|pLightningBolt": 2, "B1|0|pLightningBolt": 1},
+        "envelopes": [{"id": "E1", "createdAt": 100, "updatedAt": 100, "note": "", "entries": [], "photos": []}],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "incoming": {
+        "received": {"A1|0|pLightningBolt": 2, "B1|0|pLightningBolt": 1},
+        "envelopes": [{"id": "E1", "createdAt": 100, "updatedAt": 100, "note": "", "entries": [], "photos": []}],
+        "stamps": {}
+      },
+      "removes": true
+    },
+    {
+      "name": "the full ledger goes to empty",
+      "kind": "full-to-empty",
+      "held": {
+        "received": {"A1|0|pLightningBolt": 1, "A1|1|pCounterspell": 1, "A1|2|pBrainstorm": 2, "B1|0|pLightningBolt": 1, "B1|1|pCounterspell": 1, "B1|2|pBrainstorm": 2, "C1|0|pLightningBolt": 1, "C1|1|pPathtoExile": 1, "C1|2|pSwordstoPlowshares": 1, "C1|3|pPonder": 1, "C1|4|pPreordain": 1, "D1|0|pUrzasSaga": 1},
+        "envelopes": [{"id": "E1", "createdAt": 100, "updatedAt": 100, "note": "", "entries": [], "photos": []}],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "incoming": {
+        "received": {},
+        "envelopes": [],
+        "stamps": {}
+      },
+      "removes": true
+    },
+    {
+      "name": "the same ledger on both sides",
+      "kind": "identical",
+      "held": {
+        "received": {"A1|0|pLightningBolt": 2, "B1|0|pLightningBolt": 1},
+        "envelopes": [{"id": "E1", "createdAt": 100, "updatedAt": 100, "note": "", "entries": [], "photos": []}],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "incoming": {
+        "received": {"A1|0|pLightningBolt": 2, "B1|0|pLightningBolt": 1},
+        "envelopes": [{"id": "E1", "createdAt": 100, "updatedAt": 100, "note": "", "entries": [], "photos": []}],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "removes": false
+    },
+    {
+      "name": "a merge that only adds: a raised count, a new card, a new envelope, a new stamp, a changed kind",
+      "kind": "added-only",
+      "held": {
+        "received": {"A1|0|pLightningBolt": 2, "B1|0|pLightningBolt": 1},
+        "envelopes": [{"id": "E1", "createdAt": 100, "updatedAt": 100, "note": "", "entries": [], "photos": []}],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "incoming": {
+        "received": {"A1|0|pLightningBolt": 3, "B1|0|pLightningBolt": 1, "C1|0|pLightningBolt": 1},
+        "envelopes": [
+          {"id": "E1", "createdAt": 100, "updatedAt": 100, "note": "", "entries": [], "photos": []},
+          {"id": "E2", "createdAt": 200, "updatedAt": 200, "note": "", "entries": [], "photos": []}
+        ],
+        "stamps": {
+          "A1::Alpha Cards": {"kind": "refunded", "at": "2026-07-02", "note": "", "updatedAt": 200},
+          "C1::Gamma Cards": {"kind": "claim", "at": "2026-07-03", "note": "", "updatedAt": 300}
+        }
+      },
+      "removes": false
+    },
+    {
+      "name": "a live envelope is edited and stays live",
+      "kind": "live-edit",
+      "held": {
+        "received": {"A1|0|pLightningBolt": 2, "B1|0|pLightningBolt": 1},
+        "envelopes": [{"id": "E1", "createdAt": 100, "updatedAt": 100, "note": "", "entries": [], "photos": []}],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "incoming": {
+        "received": {"A1|0|pLightningBolt": 2, "B1|0|pLightningBolt": 1},
+        "envelopes": [{"id": "E1", "createdAt": 100, "updatedAt": 300, "note": "edited", "entries": [], "photos": []}],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "removes": false
+    },
+    {
+      "name": "a tombstone held here is absent from the incoming ledger",
+      "kind": "held-tombstone-gone",
+      "held": {
+        "received": {"A1|0|pLightningBolt": 2, "B1|0|pLightningBolt": 1},
+        "envelopes": [
+          {"id": "E1", "createdAt": 100, "updatedAt": 100, "note": "", "entries": [], "photos": []},
+          {"id": "E9", "createdAt": 50, "updatedAt": 60, "deletedAt": 60, "note": "", "entries": [], "photos": []}
+        ],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "incoming": {
+        "received": {"A1|0|pLightningBolt": 2, "B1|0|pLightningBolt": 1},
+        "envelopes": [{"id": "E1", "createdAt": 100, "updatedAt": 100, "note": "", "entries": [], "photos": []}],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "removes": false
+    },
+    {
+      "name": "a stamp with an empty kind held here is absent from the incoming ledger",
+      "kind": "held-empty-stamp-gone",
+      "held": {
+        "received": {"A1|0|pLightningBolt": 2, "B1|0|pLightningBolt": 1},
+        "envelopes": [{"id": "E1", "createdAt": 100, "updatedAt": 100, "note": "", "entries": [], "photos": []}],
+        "stamps": {
+          "A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100},
+          "B1::Beta Games": {"kind": "", "at": "", "note": "", "updatedAt": 50}
+        }
+      },
+      "incoming": {
+        "received": {"A1|0|pLightningBolt": 2, "B1|0|pLightningBolt": 1},
+        "envelopes": [{"id": "E1", "createdAt": 100, "updatedAt": 100, "note": "", "entries": [], "photos": []}],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "removes": false
+    },
+    {
+      "name": "an empty ledger merged with an empty ledger",
+      "kind": "empty",
+      "held": {"received": {}, "envelopes": [], "stamps": {}},
+      "incoming": {"received": {}, "envelopes": [], "stamps": {}},
+      "removes": false
+    },
+    {
+      "name": "an empty ledger receives the full ledger",
+      "kind": "empty-to-full",
+      "held": {"received": {}, "envelopes": [], "stamps": {}},
+      "incoming": {
+        "received": {"A1|0|pLightningBolt": 1, "A1|1|pCounterspell": 1, "A1|2|pBrainstorm": 2, "B1|0|pLightningBolt": 1, "B1|1|pCounterspell": 1, "B1|2|pBrainstorm": 2, "C1|0|pLightningBolt": 1, "C1|1|pPathtoExile": 1, "C1|2|pSwordstoPlowshares": 1, "C1|3|pPonder": 1, "C1|4|pPreordain": 1, "D1|0|pUrzasSaga": 1},
+        "envelopes": [{"id": "E1", "createdAt": 100, "updatedAt": 100, "note": "", "entries": [], "photos": []}],
+        "stamps": {"A1::Alpha Cards": {"kind": "claim", "at": "2026-07-01", "note": "", "updatedAt": 100}}
+      },
+      "removes": false
+    }
+  ]
+}
