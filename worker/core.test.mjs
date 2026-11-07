@@ -1604,4 +1604,104 @@ await test("70.5 a socket that refuses the hello still upgrades", async () => {
   eq(r.ctx.accepted, [r.server], "the server end of the pair is the one accepted");
 });
 
+/* ── 71. the Recent log merges through mergeLedger (decision recent-checks-can-be-undone) ──
+   Each device keeps its own rows. The merge is a union by entry id, capped at 14 days and
+   200 rows, and an undo entry travels with the row it undoes. Every case passes `now`, so the
+   cap reads no clock. A device with no `recent` field merges as an empty list. */
+const NOW71 = Date.UTC(2026, 9, 5, 15, 0);
+const MIN71 = 60_000;
+const at71 = (n) => NOW71 - (120 - n) * MIN71; // a larger n is later
+const K71 = "100|1|555";
+const check71 = (id, n, key = K71) => ({ id, at: at71(n), kind: "count", key, before: 0, after: 1 });
+const undo71 = (id, n, of) => ({ id, at: at71(n), kind: "undo", of });
+const row71 = (i) => ({ id: `r${i}`, at: NOW71 - (300 - i) * MIN71, kind: "count", key: `k${i}`, before: 0, after: 1 });
+
+await test("71.1 two devices' rows both reach the merged list", async () => {
+  const phone = ledger({ received: { [K71]: 1 }, receivedAt: { [K71]: at71(10) }, recent: [check71("ph1", 10)] });
+  const laptop = ledger({ recent: [check71("lp1", 20, "200|1|777")] });
+  const m = mergeLedger(phone, laptop, NOW71).merged.recent;
+  eq(m?.map((e) => e.id).sort(), ["lp1", "ph1"], "the merged list holds both devices' rows");
+});
+
+await test("71.2 the merged list is capped at 200 rows, and keeps the newest", async () => {
+  const a = ledger({ recent: Array.from({ length: 150 }, (_, j) => row71(2 * j)) });
+  const b = ledger({ recent: Array.from({ length: 150 }, (_, j) => row71(2 * j + 1)) });
+  const m = mergeLedger(a, b, NOW71).merged.recent;
+  eq(m?.length, 200, "the union of 300 rows is capped at 200");
+  eq(m?.[0]?.id, "r100", "and the oldest kept row is the 101st of the union");
+});
+
+await test("71.3 a merged row older than 14 days is dropped, whichever side holds it", async () => {
+  const old = { id: "old", at: NOW71 - 15 * 24 * 60 * MIN71, kind: "count", key: "k-old", before: 0, after: 1 };
+  const m = mergeLedger(ledger({ recent: [check71("new", 5)] }), ledger({ recent: [old] }), NOW71).merged.recent;
+  eq(m?.map((e) => e.id), ["new"], "only the row inside 14 days remains, and the row from the other side is not kept");
+});
+
+await test("71.4 an undone check, merged with the other device's older check, stays unchecked and carries the undo", async () => {
+  const phone = ledger({
+    received: {},
+    receivedAt: { [K71]: at71(20) },
+    recent: [check71("c1", 10), undo71("u1", 20, "c1")],
+  });
+  const laptop = ledger({ received: { [K71]: 1 }, receivedAt: { [K71]: at71(10) }, recent: [check71("c1", 10)] });
+  eq(mergeLedger(phone, laptop, NOW71).merged.received, {}, "the undo's un-check wins over the older check");
+  eq(mergeLedger(laptop, phone, NOW71).merged.received, {}, "and it wins in the other order too");
+  eq(
+    mergeLedger(phone, laptop, NOW71).merged.recent?.some((e) => e.kind === "undo" && e.of === "c1"),
+    true,
+    "the undo entry reaches the merged list"
+  );
+});
+
+await test("71.5 a later check, merged with the undo, beats it and keeps the undo in the list", async () => {
+  const phone = ledger({
+    received: {},
+    receivedAt: { [K71]: at71(20) },
+    recent: [check71("c1", 10), undo71("u1", 20, "c1"), check71("p3", 15, "300|1|999")],
+  });
+  const laptop = ledger({
+    received: { [K71]: 1 },
+    receivedAt: { [K71]: at71(30) },
+    recent: [check71("c1", 10), undo71("u1", 20, "c1"), check71("c2", 30)],
+  });
+  eq(mergeLedger(phone, laptop, NOW71).merged.received, { [K71]: 1 }, "the later check is checked again");
+  eq(
+    mergeLedger(phone, laptop, NOW71).merged.recent?.map((e) => e.id).sort(),
+    ["c1", "c2", "p3", "u1"],
+    "and the merged list holds both devices' rows: the check, the undo, the later check and the phone's own row"
+  );
+});
+
+await test("71.6 a ledger saved before the field merges clean, and the list keeps the cap", async () => {
+  const tooOld = { id: "old", at: NOW71 - 15 * 24 * 60 * MIN71, kind: "count", key: "k-old", before: 0, after: 1 };
+  const saved = ledger({ recent: [check71("c1", 10), tooOld] });
+  const beforeField = ledger();
+  eq(
+    mergeLedger(beforeField, saved, NOW71).merged.recent?.map((e) => e.id),
+    ["c1"],
+    "merged in one order, the field is the saved list with the old row dropped"
+  );
+  eq(
+    mergeLedger(saved, beforeField, NOW71).merged.recent?.map((e) => e.id),
+    ["c1"],
+    "and in the other order"
+  );
+});
+
+await test("71.7 with neither side holding the field, the merged ledger has no recent key", async () => {
+  ok(
+    !Object.hasOwn(mergeLedger(ledger(), ledger(), NOW71).merged, "recent"),
+    "no recent key appears when neither side had one, so the older pins hold"
+  );
+});
+
+await test("71.8 the merged list is the same from either device, and merging it again adds nothing", async () => {
+  const a = ledger({ recent: [check71("ph1", 10)] });
+  const b = ledger({ recent: [check71("lp1", 20, "200|1|777"), undo71("u1", 25, "ph1")] });
+  ok(Array.isArray(mergeLedger(a, b, NOW71).merged.recent), "71.8pre the merged ledger carries a recent list");
+  const m = mergeLedger(a, b, NOW71).merged;
+  eq(mergeLedger(b, a, NOW71).merged.recent, m.recent, "the list is the same from either device");
+  eq(mergeLedger(m, b, NOW71).merged.recent, m.recent, "and merging the merged ledger with a side again adds nothing");
+});
+
 report();

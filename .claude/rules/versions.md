@@ -23,7 +23,7 @@ A milestone is taken before the risky step, never after. Read these before chang
 - `history-restores-a-saved-version` — History lists saved versions and restores one.
 - `backup-files-restore-two-ways` — Backup files restore with or without photos.
 - `every-restore-passes-applybackup` — Every restore passes through applyBackup.
-- `recent-checks-can-be-undone` — Ruled, not built: recent actions undone by tap (debt `recent-log-unbuilt`).
+- `recent-checks-can-be-undone` — Recent actions undone by tap; built on the web, not in the native client (debt `recent-log-unbuilt`).
 
 ## Measurements
 

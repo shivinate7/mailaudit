@@ -19,6 +19,10 @@ import {
   mergeSummary,
   canon,
 } from "./merge-rules.mjs";
+import {
+  sanitizeRecent, newEntryId, addEntry, capLog, mergeRecent, rowState, isLive, undoEntry,
+  rowLabel, rowView, rowListed, groupByDay,
+} from "./recent-rules.mjs";
 
 /* ============================================================
    MAIL DAY LEDGER — OrderWand CSV check-in tracker
@@ -1825,6 +1829,90 @@ const LedgerRow = ({ label, sub, value, accent, expanded, pressed, onClick, disa
   </button>
 );
 
+/* The Recent panel's rows, in a scroll of at most 360px. Every row has one fixed height. Only
+   the 72px cell at its right edge is a control, and only on a live row; an end state is plain
+   text in the same cell, so a row keeps its size. The subject is never a control. Day headings
+   stick to the top of the scroll. The cell carries a scroll margin as tall as the bottom bar, so
+   a keyboard focus or a scripted scroll lands it above the bar. A finger gets no such help: at
+   375px the first row's cell can open half under the bar (debt recent-undo-under-bar). */
+const hhmm = (ms) => {
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+/* the words a row's Undo control is named by: "Undo checked Counterspell, Alpha Cards" */
+const undoName = (e, v) =>
+  `Undo ${rowLabel(e).toLowerCase().replace(" · ", " ").replace(" → ", " to ")} ${v.subject}${v.seller ? `, ${v.seller}` : ""}`;
+const RecentPanel = ({ rows, log, ledger, onUndo }) => {
+  const undone = new Map(log.filter((e) => e.kind === "undo").map((e) => [e.of, e]));
+  const groups = groupByDay(rows, Date.now());
+  if (!groups.length)
+    return (
+      <div className="mdl-panel" style={panelWrap}>
+        <div style={partVal}>Nothing logged yet.</div>
+      </div>
+    );
+  return (
+    <div className="mdl-panel" style={panelWrap}>
+      <div className="rp-list" tabIndex={0} aria-label="Recent actions">
+        {groups.map((g) => (
+          <React.Fragment key={g.label}>
+            <div className="rp-dh" role="heading" aria-level={3}>
+              {g.label}
+            </div>
+            {g.rows.map((e) => {
+              const st = rowState(e, log, ledger);
+              const u = undone.get(e.id);
+              const v = rowView(e, ledger);
+              const lost = st === "undone" && u?.photoLost;
+              return (
+                <div key={e.id} className={`rp-rr${st === "undone" ? " undone" : ""}`}>
+                  <span className="l">
+                    <span className="k">
+                      <span className="a">{rowLabel(e)}</span>
+                      <span className="tm">{hhmm(e.at)}</span>
+                    </span>
+                    <span className="n">
+                      <span className="nm">{v.subject}</span>
+                      {v.figure && <span className="fg">{v.figure}</span>}
+                    </span>
+                    <span className={`s${lost ? " lost" : ""}`}>{lost ? "Photo not restored" : v.seller}</span>
+                  </span>
+                  {st === "live" ? (
+                    <button className="r" aria-label={undoName(e, v)} onClick={() => onUndo(e)}>
+                      <span className="undo">UNDO</span>
+                    </button>
+                  ) : (
+                    <span className="r">
+                     <span className="end">
+                      {st === "undone" ? (
+                        <>
+                          <span>UNDONE</span>
+                          <span>{u ? hhmm(u.at) : ""}</span>
+                        </>
+                      ) : st === "changed" ? (
+                        <>
+                          <span>CHANGED</span>
+                          <span>SINCE</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>NOTHING</span>
+                          <span>TO UNDO</span>
+                        </>
+                      )}
+                     </span>
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </React.Fragment>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 const partGrid = {
   display: "grid",
   gridTemplateColumns: "auto minmax(0, 1fr)",
@@ -3228,6 +3316,31 @@ export default function MailDayLedger() {
   );
   /* order stamps, keyed by package gk — persisted, see invariant saved-state-shape */
   const [stamps, setStamps] = useState({});
+  /* The Recent log (decision recent-checks-can-be-undone): persisted in the ledger as `recent`,
+     see invariant saved-state-shape. recentRef is the list a writer reads, so two taps in one
+     tick see each other; lastEntryId is the entry this session wrote last, which lets a count
+     merge into it (addEntry). Both change only through commitRecent and logAction. */
+  const [recent, setRecent] = useState([]);
+  const recentRef = useRef([]);
+  const lastEntryId = useRef(null);
+  const commitRecent = useCallback((list) => {
+    recentRef.current = list;
+    setRecent(list);
+  }, []);
+  /* Each logged action calls this once. A missing id is made here. */
+  const logAction = useCallback(
+    (entry) => {
+      const now = entry.at ?? Date.now();
+      const { log, lastId } = addEntry(
+        recentRef.current,
+        { id: newEntryId(), ...entry, at: now },
+        lastEntryId.current
+      );
+      lastEntryId.current = lastId;
+      commitRecent(capLog(log, now));
+    },
+    [commitRecent]
+  );
   const [composing, setComposing] = useState(null); // null | "new" | envelopeId
   /* The composer's unsaved draft. A ref, not state: the composer writes it on
      every keystroke, and re-rendering the whole ledger per key drops characters
@@ -3243,9 +3356,11 @@ export default function MailDayLedger() {
   useEffect(() => {
     receivedRef.current = received;
   });
+  /* the newest ledger fields an undo or a logged action reads, set on render like payloadRef */
+  const ledgerRef = useRef(null);
+  ledgerRef.current = { items, received, receivedAt, stamps, envelopes };
   /* the one writer for receivedAt: every check or un-check calls it */
-  const touchReceived = useCallback((keys) => {
-    const now = Date.now();
+  const touchReceived = useCallback((keys, now = Date.now()) => {
     setReceivedAt((prev) => {
       const next = { ...prev };
       for (const k of keys) next[k] = now;
@@ -3312,6 +3427,8 @@ export default function MailDayLedger() {
           );
           // absent on anything saved before stamps shipped
           setStamps(sanitizeStamps(data.stamps));
+          // absent on anything saved before the Recent log shipped
+          commitRecent(capLog(sanitizeRecent(data.recent), Date.now()));
           if (typeof data.savedAt === "number") savedAtRef.current = data.savedAt;
           // device-local, never in snapshot(): when the Worker last agreed
           if (data.workerSyncedAt)
@@ -3352,6 +3469,7 @@ export default function MailDayLedger() {
             receivedAt,
             envelopes,
             stamps,
+            ...(recent.length && { recent }),
             dateFilter,
             sortBy,
             itemSort,
@@ -3365,14 +3483,14 @@ export default function MailDayLedger() {
       }
     }, 500);
     return () => clearTimeout(saveTimer.current);
-  }, [items, received, receivedAt, envelopes, stamps, dateFilter, sortBy, itemSort, loaded]);
+  }, [items, received, receivedAt, envelopes, stamps, recent, dateFilter, sortBy, itemSort, loaded]);
 
   /* The last Worker agreement is device-local and survives a reload, but a
      successful sync must not flash the save indicator (decision
      remote-sync-is-off-the-save-path). So it has its own silent write, which
      reads the newest ledger fields from a ref. */
   const payloadRef = useRef(null);
-  payloadRef.current = { items, received, receivedAt, envelopes, stamps, dateFilter, sortBy, itemSort };
+  payloadRef.current = { items, received, receivedAt, envelopes, stamps, ...(recent.length && { recent }), dateFilter, sortBy, itemSort };
   useEffect(() => {
     if (!loaded || !workerSyncedAt) return;
     const t = bgTimeout(() => {
@@ -3499,12 +3617,13 @@ export default function MailDayLedger() {
       receivedAt,
       envelopes,
       stamps,
+      ...(recent.length && { recent }),
       dateFilter,
       sortBy,
       itemSort,
       ...(savedAtRef.current != null && { savedAt: savedAtRef.current }),
     }),
-    [items, received, receivedAt, envelopes, stamps, dateFilter, sortBy, itemSort]
+    [items, received, receivedAt, envelopes, stamps, recent, dateFilter, sortBy, itemSort]
   );
 
   /* Two backups on purpose. The plain one is small and quick and holds the
@@ -3695,6 +3814,10 @@ export default function MailDayLedger() {
         }))
       );
       setStamps(sanitizeStamps(stamped.stamps));
+      /* No apply clears the log: its rows guard themselves, and a merge by union could not clear
+         it anyway. The applied ledger's rows join this device's, and the next count starts a row. */
+      commitRecent(mergeRecent(recentRef.current, data.recent, Date.now()));
+      lastEntryId.current = null;
       if (inlinedIds.length && window.photos)
         (async () => {
           for (const [id, url] of Object.entries(inlined)) {
@@ -3800,7 +3923,11 @@ export default function MailDayLedger() {
   );
 
   const setCount = useCallback((key, n) => {
-    touchReceived([key]);
+    const now = Date.now();
+    const before = Number(ledgerRef.current.received[key]) || 0;
+    const after = n > 0 ? n : 0;
+    touchReceived([key], now);
+    if (before !== after) logAction({ kind: "count", key, before, after, at: now });
     setReceived((prev) => {
       const next = { ...prev };
       if (n <= 0) delete next[key];
@@ -3885,7 +4012,16 @@ export default function MailDayLedger() {
   }, [jumpGk, view]);
 
   const bulkSet = useCallback((pkgItems, on) => {
-    touchReceived(pkgItems.map((it) => it.key));
+    const now = Date.now();
+    touchReceived(pkgItems.map((it) => it.key), now);
+    const counts = pkgItems
+      .map((it) => ({
+        key: it.key,
+        before: Number(ledgerRef.current.received[it.key]) || 0,
+        after: on ? it.qty : 0,
+      }))
+      .filter((c) => c.before !== c.after);
+    if (counts.length) logAction({ kind: "bulk", gk: gkOf(pkgItems[0]), counts, at: now });
     setReceived((prev) => bulkApply(pkgItems, on, prev));
   }, []);
 
@@ -3895,9 +4031,18 @@ export default function MailDayLedger() {
      survives a note-only edit; picking a different kind re-dates it, since
      "refunded on the 4th" is a different fact from "claim filed on the 1st". */
   const setStamp = useCallback((gk, patch) => {
-    setStamps((prev) => {
-      const next = nextStamp(prev[gk], patch, todayLocal(), Date.now());
-      return next ? { ...prev, [gk]: next } : prev; // null: nothing to remove
+    const now = Date.now();
+    const cur = ledgerRef.current.stamps[gk];
+    const next = nextStamp(cur, patch, todayLocal(), now);
+    if (!next) return; // nothing to remove
+    setStamps((prev) => ({ ...prev, [gk]: next }));
+    logAction({
+      kind: "stamp",
+      gk,
+      before: hasStamp(cur) ? cur : null,
+      after: hasStamp(next) ? next : null,
+      updatedAt: now,
+      at: now,
     });
   }, []);
 
@@ -3959,6 +4104,9 @@ export default function MailDayLedger() {
        by the next debounced save and reappear pointing at a ledger that's gone */
     setEnvelopes([]);
     setStamps({});
+    /* the log stays (its rows guard themselves), but the merge chain ends: a check made after a
+       Reset is its own entry, not a merge into the un-check before it */
+    lastEntryId.current = null;
     setShowStamped(false);
     composerDraft.current.clear();
     setComposing(null);
@@ -4895,35 +5043,35 @@ export default function MailDayLedger() {
   /* ---- orphaned mail ---- */
 
   const saveEnvelope = useCallback((draft) => {
-    setEnvelopes((prev) =>
-      draft.id
-        ? prev.map((e) =>
-            e.id === draft.id
-              ? {
-                  ...e,
-                  entries: draft.entries,
-                  note: draft.note,
-                  photos: draft.photos || [],
-                  /* what lets the two-device merge tell an edit from a stale
-                     copy of the same envelope. Optional and defaulted (absent
-                     reads as 0), so envelopes written before this shipped keep
-                     loading untouched — invariant saved-state-shape. */
-                  updatedAt: Date.now(),
-                }
-              : e
-          )
-        : [
-            {
-              id: newEnvelopeId(),
-              createdAt: Date.now(),
-              updatedAt: Date.now(),
-              note: draft.note,
-              entries: draft.entries,
-              photos: draft.photos || [],
-            },
-            ...prev,
-          ]
-    );
+    const now = Date.now();
+    const old = draft.id ? ledgerRef.current.envelopes.find((e) => e.id === draft.id) : null;
+    /* an edit of a missing envelope changes nothing and logs nothing, as the map below did */
+    const made = draft.id
+      ? old && {
+          ...old,
+          entries: draft.entries,
+          note: draft.note,
+          photos: draft.photos || [],
+          /* what lets the two-device merge tell an edit from a stale
+             copy of the same envelope. Optional and defaulted (absent
+             reads as 0), so envelopes written before this shipped keep
+             loading untouched — invariant saved-state-shape. */
+          updatedAt: now,
+        }
+      : {
+          id: newEnvelopeId(),
+          createdAt: now,
+          updatedAt: now,
+          note: draft.note,
+          entries: draft.entries,
+          photos: draft.photos || [],
+        };
+    if (made) {
+      setEnvelopes((prev) =>
+        draft.id ? prev.map((e) => (e.id === draft.id ? made : e)) : [made, ...prev]
+      );
+      logAction({ kind: "envelope", op: old ? "edit" : "record", before: old || null, after: made, updatedAt: now, at: now });
+    }
     composerDraft.current.delete(draft.id ?? "new");
     setComposing(null);
   }, []);
@@ -4954,9 +5102,11 @@ export default function MailDayLedger() {
   }, [referencedPhotoIds, undo, composing, syncBusy, loaded]);
 
   const discardEnvelope = useCallback((id) => {
-    setEnvelopes((prev) =>
-      prev.map((e) => (e.id === id ? tombstoneOf(e, Date.now()) : e))
-    );
+    const now = Date.now();
+    const old = ledgerRef.current.envelopes.find((e) => e.id === id && isLiveEnvelope(e));
+    setEnvelopes((prev) => prev.map((e) => (e.id === id ? tombstoneOf(e, now) : e)));
+    if (old)
+      logAction({ kind: "envelope", op: "discard", before: old, after: tombstoneOf(old, now), updatedAt: now, at: now });
     setUndo((u) => (u && u.envelope.id === id ? null : u));
   }, []);
 
@@ -4968,7 +5118,8 @@ export default function MailDayLedger() {
       const qtyOf = {};
       for (const it of cand.pkg.items) qtyOf[it.key] = it.qty;
 
-      touchReceived(cand.plan.map((p) => p.itemKey));
+      const now = Date.now();
+      touchReceived(cand.plan.map((p) => p.itemKey), now);
       setReceived((prev) => {
         const next = { ...prev };
         for (const { itemKey, take } of cand.plan) {
@@ -4984,19 +5135,26 @@ export default function MailDayLedger() {
           qty: e.qty - (cand.perEntry[normName(e.name)] || 0),
         }))
         .filter((e) => e.qty > 0);
+      /* keep id/createdAt/note so it holds its place in the pile.
+         updatedAt moves, though: assignment SHRINKS an envelope, and
+         without a fresh stamp the other device's larger stale copy would
+         win the merge and resurrect the entries just checked in. */
+      const shrunk = leftovers.length ? { ...env, entries: leftovers, updatedAt: now } : tombstoneOf(env, now);
       setEnvelopes((prev) =>
-        leftovers.length
-          ? /* keep id/createdAt/note so it holds its place in the pile.
-               updatedAt moves, though: assignment SHRINKS an envelope, and
-               without a fresh stamp the other device's larger stale copy would
-               win the merge and resurrect the entries just checked in. */
-            prev.map((e) =>
-              e.id === env.id
-                ? { ...e, entries: leftovers, updatedAt: Date.now() }
-                : e
-            )
-          : prev.map((e) => (e.id === env.id ? tombstoneOf(e, Date.now()) : e))
+        prev.map((e) =>
+          e.id === env.id ? (leftovers.length ? { ...e, entries: leftovers, updatedAt: now } : tombstoneOf(e, now)) : e
+        )
       );
+      const entryId = newEntryId();
+      logAction({
+        id: entryId,
+        kind: "assign",
+        plan: cand.plan.map(({ itemKey, take }) => ({ itemKey, take })),
+        before: env,
+        after: shrunk,
+        updatedAt: now,
+        at: now,
+      });
 
       const t = Date.parse(cand.pkg.date);
       const outOfRange =
@@ -5005,6 +5163,7 @@ export default function MailDayLedger() {
         ((range.from != null && t < range.from) ||
           (range.to != null && t > range.to));
       setUndo({
+        entryId,
         envelope: env,
         index: index < 0 ? 0 : index,
         plan: cand.plan,
@@ -5017,30 +5176,86 @@ export default function MailDayLedger() {
     [liveEnvelopes, range, touchReceived]
   );
 
-  /* stores the deltas, not a snapshot: if the package was hand-edited before
-     the undo, subtracting composes where restoring would clobber */
-  const undoAssign = useCallback(() => {
-    if (!undo) return;
-    touchReceived(undo.plan.map((p) => p.itemKey));
-    setReceived((prev) => {
-      const next = { ...prev };
-      for (const { itemKey, take } of undo.plan) {
-        const v = (next[itemKey] || 0) - take;
-        if (v > 0) next[itemKey] = v;
-        else delete next[itemKey]; // back to key-absent, not a stored 0
+  /* The one undo, for a row of the Recent panel and for the Undo notice. It writes a new, later
+     change and logs an undo entry; it never restores a snapshot (undo-removes-only-its-delta).
+     Counts subtract the row's own delta, so a hand edit made after it survives. Returns whether
+     it ran: a row that is not live (undone, changed since, nothing to undo) does nothing. */
+  const undoRecent = useCallback(
+    async (entry) => {
+      if (!entry || rowState(entry, recentRef.current, ledgerRef.current) !== "live") return false;
+      /* a restored envelope keeps a photo id only while this device still holds the blob
+         (photo-ids-restore-keep-if-known); an unreadable store keeps every id */
+      let held = null;
+      const restores = entry.kind === "assign" || (entry.kind === "envelope" && entry.op !== "record");
+      if (restores && entry.before?.photos?.length && window.photos) {
+        try {
+          held = new Set(await window.photos.keys());
+        } catch {
+          held = null;
+        }
       }
-      return next;
-    });
-    /* back in place, with a fresh updatedAt so it beats the tombstone (or the
-       shrunk copy) it replaces on the other device too */
-    const back = { ...undo.envelope, updatedAt: Date.now() };
-    setEnvelopes((prev) => {
-      if (prev.some((e) => e.id === back.id))
-        return prev.map((e) => (e.id === back.id ? back : e));
-      return [back, ...prev];
-    });
-    setUndo(null);
-  }, [undo, touchReceived]);
+      /* read again: the ledger can move during the await */
+      if (rowState(entry, recentRef.current, ledgerRef.current) !== "live") return false;
+      const res = undoEntry(entry, ledgerRef.current, Date.now(), {
+        log: recentRef.current,
+        ...(held ? { hasPhoto: (id) => held.has(id) } : {}),
+      });
+      if (res.refused) return false;
+      if (entry.kind !== "stamp" && entry.kind !== "envelope") {
+        setReceived(res.ledger.received);
+        setReceivedAt(res.ledger.receivedAt);
+      }
+      if (entry.kind === "stamp") setStamps(res.ledger.stamps);
+      if (entry.kind === "envelope" || entry.kind === "assign")
+        setEnvelopes(res.ledger.envelopes.map((e) => ({ ...e, photos: e.photos || [] })));
+      logAction(res.undo);
+      return true;
+    },
+    [logAction]
+  );
+
+  /* The notice goes only when its undo ran. A refusal (the row changed since) leaves it up and
+     writes nothing. */
+  const undoAssign = useCallback(async () => {
+    if (!undo) return;
+    const entry = recentRef.current.find((e) => e.id === undo.entryId);
+    if (entry && (await undoRecent(entry))) setUndo(null);
+  }, [undo, undoRecent]);
+
+  /* The Recent cell on the Ledger tab. It re-reads whether anything can be undone only when the
+     tab is entered: while the tab is on screen it neither shows nor hides, so no row moves under
+     the pointer that just pressed it (no-layout-shift-under-pointer). The panel closes on entry. */
+  const [recentShown, setRecentShown] = useState(false);
+  const [recentOpen, setRecentOpen] = useState(false);
+  /* the rows the open panel lists, frozen when it opened: an action made meanwhile shows on the
+     next open, and an undo changes only its own row's right edge */
+  const [recentFrozen, setRecentFrozen] = useState([]);
+  /* what the cell's value read when the panel opened: it stays while the panel is open, as the
+     rows do, and re-reads on close */
+  const [recentOpenLive, setRecentOpenLive] = useState(false);
+  const onLedgerTab = view === "ledger";
+  useLayoutEffect(() => {
+    if (!onLedgerTab || !loaded) return;
+    setRecentShown(isLive(recentRef.current, ledgerRef.current));
+    setRecentOpen(false);
+  }, [onLedgerTab, loaded]);
+  const recentLive = useMemo(
+    () =>
+      recentShown &&
+      isLive(recent, { items, received, receivedAt, stamps, envelopes }),
+    [recentShown, recent, items, received, receivedAt, stamps, envelopes]
+  );
+  const toggleRecent = () => {
+    if (!recentOpen) {
+      setSyncOpen(false);
+      setHistoryOpen(false);
+      setRecentFrozen(
+        recentRef.current.filter((e) => e.kind !== "undo" && rowListed(e, ledgerRef.current))
+      );
+      setRecentOpenLive(isLive(recentRef.current, ledgerRef.current));
+    }
+    setRecentOpen((o) => !o);
+  };
 
   /* items ─► activeItems (not canceled) ─► rangedActive (in range) ─► rangedItems (not refunded) ─► packages
                           └─► liveItems (not refunded)                    └─► stampedPackages
@@ -5511,6 +5726,45 @@ export default function MailDayLedger() {
         .mdl-lrow:not([aria-expanded])::after { content: none; }
         .mdl-lrow[aria-expanded="true"]::after { transform: rotate(90deg); }
         .mdl-lrow:disabled { opacity: .6; cursor: default; }
+        /* The Recent panel: fixed 72px rows, 28px day headings, the list at most 360px
+           and scrolling inside (mockup docs/design/recent-log). */
+        .rp-list { max-height: 360px; overflow-y: auto; }
+        .rp-dh { position: sticky; top: 0; z-index: 2; box-sizing: border-box; height: 28px; display: flex;
+                 align-items: flex-end; padding: 0 0 6px; background: ${C.card};
+                 border-bottom: 1px solid ${C.line}; font-family: ${mono}; font-size: 10px;
+                 letter-spacing: .16em; text-transform: uppercase; color: ${C.inkSoft}; }
+        .rp-rr { display: flex; align-items: stretch; gap: 12px; width: 100%; height: 72px;
+                 box-sizing: border-box; padding: 0; border: 0; border-top: 1px solid ${C.line};
+                 background: transparent; text-align: left; font-family: ${cochin}; color: ${C.ink}; }
+        .rp-dh + .rp-rr { border-top: 0; }
+        .rp-rr > .l { flex: 1; min-width: 0; display: grid; grid-template-rows: 14px 22px 18px;
+                      align-content: center; }
+        .rp-rr .k { display: flex; gap: 8px; min-width: 0; font-family: ${mono}; font-size: 10px;
+                    line-height: 14px; letter-spacing: .16em; text-transform: uppercase;
+                    color: ${C.inkSoft}; }
+        .rp-rr .k .a { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .rp-rr .k .tm { margin-left: auto; flex-shrink: 0; color: ${C.ink}; letter-spacing: .04em; }
+        .rp-rr .n { display: flex; align-items: baseline; gap: 8px; min-width: 0; font-size: 16px;
+                    line-height: 22px; }
+        .rp-rr .n .nm { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+        .rp-rr .n .fg { flex-shrink: 0; margin-left: auto; font-family: ${mono}; font-size: 11px;
+                        color: ${C.inkSoft}; }
+        .rp-rr .s { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+                    font-size: 13.5px; line-height: 18px; color: ${C.inkSoft}; }
+        .rp-rr .s.lost { font-family: ${mono}; font-size: 10px; letter-spacing: .16em;
+                         text-transform: uppercase; color: ${C.manilaInk}; }
+        .rp-rr.undone .nm { text-decoration: line-through; text-decoration-thickness: 1px;
+                            text-decoration-color: ${C.inkSoft}; }
+        /* one fixed right cell, so UNDO and every end state take the same box */
+        .rp-rr > .r { flex: 0 0 72px; box-sizing: border-box; display: flex; align-items: center;
+                      justify-content: flex-end; text-align: right; }
+        .rp-rr > button.r { padding: 0; border: 0; background: transparent; font: inherit; cursor: pointer;
+                            scroll-margin-bottom: calc(76px + env(safe-area-inset-bottom)); }
+        .rp-rr .undo { font-family: ${mono}; font-size: 11px; letter-spacing: .16em; color: ${C.accent};
+                       border-bottom: 1px solid ${C.line}; line-height: 16px; }
+        .rp-rr .end { font-family: ${mono}; font-size: 10px; line-height: 14px; letter-spacing: .16em;
+                      color: ${C.inkSoft}; }
+        .rp-rr .end > span { display: block; }
         .mdl-reset { display: flex; }
         .mdl-act { flex: 1; min-width: 0; min-height: 52px; padding: 8px 16px;
                    border: 0; background: transparent; text-align: left;
@@ -6250,6 +6504,7 @@ export default function MailDayLedger() {
                   expanded={syncOpen}
                   onClick={() => {
                     setHistoryOpen(false);
+                    setRecentOpen(false);
                     setSyncOpen((o) => !o);
                   }}
                 />
@@ -6334,6 +6589,22 @@ export default function MailDayLedger() {
                   </div>
                 </div>
               )}
+              {recentShown && (
+                <LedgerRow
+                  label="Recent"
+                  value={(recentOpen ? recentOpenLive : recentLive) ? "Undo a tap" : "Nothing to undo"}
+                  expanded={recentOpen}
+                  onClick={toggleRecent}
+                />
+              )}
+              {recentShown && recentOpen && (
+                <RecentPanel
+                  rows={recentFrozen}
+                  log={recent}
+                  ledger={{ items, received, receivedAt, stamps, envelopes }}
+                  onUndo={undoRecent}
+                />
+              )}
               {(!!window.versions || !!window.remote) && (
                 <LedgerRow
                   label="History"
@@ -6343,6 +6614,7 @@ export default function MailDayLedger() {
                     /* closes Sync: both panels are tall, and stacked they push
                        the options off the screen */
                     setSyncOpen(false);
+                    setRecentOpen(false);
                     setVersionMsg(null);
                     setVersionMsgAt(null);
                     setHistoryOpen((o) => !o);

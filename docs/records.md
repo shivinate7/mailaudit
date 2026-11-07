@@ -315,12 +315,10 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-merge-skips-photo-fetch` | `PhotoSync.pull` downloads the blobs that a ledger names, and it has no caller. | [`docs/debts/native-merge-skips-photo-fetch.md`](../docs/debts/native-merge-skips-photo-fetch.md) |
 | `native-milestone-needed-unpinned` | A native Reset, a restore and a removing sync reply each save a milestone first. | [`docs/debts/native-milestone-needed-unpinned.md`](../docs/debts/native-milestone-needed-unpinned.md) |
 | `native-orphaned-colours-unbuilt` | The native Orphaned view paints from `shared/tokens.json` through `OrphanedPaint`, and a unit test pins the meanings (`orphaned-colours-by-meaning`). | [`docs/debts/native-orphaned-colours-unbuilt.md`](../docs/debts/native-orphaned-colours-unbuilt.md) |
-| `native-photo-ids-kept-uncalled` | `PhotoIds.kept` holds the rule of `photo-ids-restore-keep-if-known`. | [`docs/debts/native-photo-ids-kept-uncalled.md`](../docs/debts/native-photo-ids-kept-uncalled.md) |
 | `native-photo-screens-unwired` | Lane N10 built `PhotoStrip`, `PhotoViewer` and `PhotoSyncBar` in `native/Manifest/PhotoViews.swift`. | [`docs/debts/native-photo-screens-unwired.md`](../docs/debts/native-photo-screens-unwired.md) |
 | `native-photo-sweep-unbuilt` | Nothing on native removes a blob that no envelope or draft uses. | [`docs/debts/native-photo-sweep-unbuilt.md`](../docs/debts/native-photo-sweep-unbuilt.md) |
 | `native-photo-viewer-unpinned` | `PhotoViewerModelTests` pins the modal state and the focus that Escape and a tap return. | [`docs/debts/native-photo-viewer-unpinned.md`](../docs/debts/native-photo-viewer-unpinned.md) |
 | `native-pinned-card-dynamic-type` | `MastheadBackupUITests.testAccessibilityAuditWithTheRunningHeadPinned` scrolls Packages until the running head pins, then audits. | [`docs/debts/native-pinned-card-dynamic-type.md`](../docs/debts/native-pinned-card-dynamic-type.md) |
-| `native-pull-generation-unpinned` | `SyncClient` drops a GET reply when the store's generation changed, or when the user data differs from what the last reply carried. | [`docs/debts/native-pull-generation-unpinned.md`](../docs/debts/native-pull-generation-unpinned.md) |
 | `native-removal-rule-is-swift` | `LedgerStore.removes` in `native/ManifestKit/Sources/ManifestKit/Versions.swift` decides whether an incoming ledger removes something, and so whether `adopt` saves `before sync`. | [`docs/debts/native-removal-rule-is-swift.md`](../docs/debts/native-removal-rule-is-swift.md) |
 | `native-restore-keeps-old-times` | The web restore gives the restore time to every check-in key, stamp and envelope (`restampRestore` in `src/merge-rules.mjs`). | [`docs/debts/native-restore-keeps-old-times.md`](../docs/debts/native-restore-keeps-old-times.md) |
 | `native-restore-pill-tap-unpinned` | `VersionsUITests` checks the armed Restore by tapping the version row's middle twice. | [`docs/debts/native-restore-pill-tap-unpinned.md`](../docs/debts/native-restore-pill-tap-unpinned.md) |
@@ -335,7 +333,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-tally-ellipsis-unpinned` | The native Tally meta line draws its own "…" in `native/Manifest/TallyView.swift` (`metaLine`). | [`docs/debts/native-tally-ellipsis-unpinned.md`](../docs/debts/native-tally-ellipsis-unpinned.md) |
 | `native-ui-tests-not-in-ci` | The native job runs the ST tests only, so native UI tests and builds are not in CI. | [`docs/debts/native-ui-tests-not-in-ci.md`](../docs/debts/native-ui-tests-not-in-ci.md) |
 | `native-undo-notice-padding` | The Undo notice in `native/Manifest/OrphanedView.swift` pads its rows 4pt above and below. | [`docs/debts/native-undo-notice-padding.md`](../docs/debts/native-undo-notice-padding.md) |
-| `native-version-names-unpinned` | A version is <id>.bin and <id>.json. | [`docs/debts/native-version-names-unpinned.md`](../docs/debts/native-version-names-unpinned.md) |
 | `order-id-visible-unbuilt` | The package header gives the order id its own line (built 2026-10-20). | [`docs/debts/order-id-visible-unbuilt.md`](../docs/debts/order-id-visible-unbuilt.md) |
 | `orders-job-unbuilt` | The owner ruled on 2026-10-27 at 20:19 CDT that the job runs as a cron on the existing Worker. | [`docs/debts/orders-job-unbuilt.md`](../docs/debts/orders-job-unbuilt.md) |
 | `orphaned-reach-unpinned` | No test pins that Re-import, Backup and Reset must stay reachable from Orphaned, and it is unverified. | [`docs/debts/orphaned-reach-unpinned.md`](../docs/debts/orphaned-reach-unpinned.md) |
@@ -344,8 +341,9 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `photo-put-unrun-on-github` | `pushPhoto` and `pullPhoto` on `window.remote` (`src/entry.jsx`) have never run against real GitHub. | [`docs/debts/photo-put-unrun-on-github.md`](../docs/debts/photo-put-unrun-on-github.md) |
 | `photoget-throw-counts-as-kill` | In `test/photoget.test.mjs`, `runCase` turns a throw into a red case, and a red case counts as a mutant kill. | [`docs/debts/photoget-throw-counts-as-kill.md`](../docs/debts/photoget-throw-counts-as-kill.md) |
 | `received-at-size-unmeasured` | `receivedAt` is never pruned, and its size has not been measured. | [`docs/debts/received-at-size-unmeasured.md`](../docs/debts/received-at-size-unmeasured.md) |
-| `recent-log-unbuilt` | The log, its merge rule, its panel and its undo are ruled and not built, in either client. | [`docs/debts/recent-log-unbuilt.md`](../docs/debts/recent-log-unbuilt.md) |
-| `recent-log-unmeasured` | Four figures are unmeasured. | [`docs/debts/recent-log-unmeasured.md`](../docs/debts/recent-log-unmeasured.md) |
+| `recent-log-unbuilt` | The web client ships the log, its merge rule, its panel and its undo (plan `recent-log-web`). | [`docs/debts/recent-log-unbuilt.md`](../docs/debts/recent-log-unbuilt.md) |
+| `recent-log-unmeasured` | How many actions a heavy mail day makes is unmeasured. | [`docs/debts/recent-log-unmeasured.md`](../docs/debts/recent-log-unmeasured.md) |
+| `recent-undo-under-bar` | At 375px with the page at the top, the first open Recent row's UNDO cell spans y 705 to 777. | [`docs/debts/recent-undo-under-bar.md`](../docs/debts/recent-undo-under-bar.md) |
 | `reimport-received-unpinned` | Nothing pins that `received` survives a re-import. | [`docs/debts/reimport-received-unpinned.md`](../docs/debts/reimport-received-unpinned.md) |
 | `reset-all-keeps-token-unpinned` | No test pins that `resetAll` keeps the GitHub token. | [`docs/debts/reset-all-keeps-token-unpinned.md`](../docs/debts/reset-all-keeps-token-unpinned.md) |
 | `reset-leaves-sync-unpinned` | No test pins that an armed Reset leaves Sync open. | [`docs/debts/reset-leaves-sync-unpinned.md`](../docs/debts/reset-leaves-sync-unpinned.md) |
@@ -371,6 +369,12 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `web-photos-have-no-backup` | Web photos go to the Worker's `/photos` route. | [`docs/debts/web-photos-have-no-backup.md`](../docs/debts/web-photos-have-no-backup.md) |
 | `web-reads-no-worker-snapshots` | Web does not read the Worker `/snapshots` or `/kept` routes. | [`docs/debts/web-reads-no-worker-snapshots.md`](../docs/debts/web-reads-no-worker-snapshots.md) |
 | `worker-two-device-proof-unrun` | No written proof runs two devices against the Worker merge, so the first real two-device case is unchecked. | [`docs/debts/worker-two-device-proof-unrun.md`](../docs/debts/worker-two-device-proof-unrun.md) |
+
+## Plans
+
+| Slug | Gist | Link |
+|---|---|---|
+| `recent-log-web` | Recent log, web client | [`docs/plans/recent-log-web.md`](../docs/plans/recent-log-web.md) |
 
 ## Invariants
 
