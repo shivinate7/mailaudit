@@ -549,8 +549,8 @@ const movedBoxes = (before, after) => {
 
 /* A box is read at rest. The page's animations (CSS transitions, CSS animations and Web
    Animations) are waited out, not a fixed time: a read at a fixed delay can land mid-transition,
-   as the progress bar's fill does (ProgressBar eases its width over 240ms). The bar is out of
-   flow (decision card-the-bar-is-out-of-flow), so nothing under the pointer moves. The bound
+   as the progress bar's fill does (ProgressBar eases its width over 240ms). The fill's width is
+   data, not a move under the pointer, and it is read only once it is at rest. The bound
    is a failure, not a pause: a page still animating at the bound is reported, not read. */
 const ANIMATION_BOUND_MS = 5000;
 const runningAnimations = () =>
