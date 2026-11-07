@@ -10,6 +10,7 @@
 // The seed is shared/fixtures/ledger.json. What the tests rely on in it:
 //   Lightning Bolt is in three envelopes: A1 Alpha Cards, B1 Beta Games and C1 Gamma Cards. So is a shared name.
 //   Path to Exile is only in C1 (Gamma Cards), with Lightning Bolt, Swords to Plowshares, Ponder and Preordain.
+//   Brainstorm is only in A1 and B1 (both without tracking): a second shared name, held in the New envelope hold test.
 //   A1, B1 and D1 (Delta Cards) have no tracking, are dated 2026-07-01, 2026-07-29 and 2026-05-01. C1 has tracking.
 //   Nothing is received. The past-transit test needs the simulator clock later than 2026-08-12.
 //   The live copies at rest are 14: A1 holds 4, B1 4, C1 5 and D1 1. Lightning Bolt owes 3 (one per A1, B1, C1).
@@ -336,6 +337,40 @@ final class DuoHandUITests: XCTestCase {
         XCTAssertTrue(app.element("hand-strays").exists, "the stray left the list while no post named it")
     }
 
+    /// Pose: flat. New envelope ends the envelope while a Suspense box shows, with a Released box already shown:
+    /// an earlier New envelope released Lightning Bolt, then Brainstorm is held. The Suspense box leaves when New envelope is
+    /// pressed, so the envelope row and its New envelope button must not move under the pointer (no-layout-shift-under-pointer,
+    /// decision duo-card-in-hand). The button is read once the page has stopped moving, tapped, and read again once it is still.
+    func testNewEnvelopeHoldsStillUnderASuspenseBox() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+
+        typeCard(app, "Lightning Bolt")
+        _ = need(app, "hand-held", "the Suspense line of a held name")
+        need(app, "hand-new-envelope", "the New envelope button").tap()
+        _ = need(app, "hand-strays", "the Released box of the first name New envelope released")
+        waitGone(app.element("hand-held"), "the name is still held after the first New envelope")
+
+        typeCard(app, "Brainstorm")
+        let held = need(app, "hand-held", "the Suspense line of Brainstorm, a shared name")
+        XCTAssertTrue(held.label.lowercased().contains("brainstorm"), "the Suspense line does not name Brainstorm: \"\(held.label)\"")
+        let strays = need(app, "hand-strays", "the Released box that holds Lightning Bolt")
+        XCTAssertTrue(strays.label.lowercased().contains("lightning bolt"), "the Released box does not list Lightning Bolt: \"\(strays.label)\"")
+        let newEnvelope = need(app, "hand-new-envelope", "the New envelope button")
+        waitUntilStill([held, strays, newEnvelope])
+        let before = newEnvelope.frame
+
+        newEnvelope.tap()
+        waitGone(app.element("hand-held"), "the name is still held after New envelope")
+        let released = need(app, "hand-strays", "the Released box after New envelope")
+        XCTAssertTrue(released.label.lowercased().contains("brainstorm"), "the Released box does not list Brainstorm after New envelope: \"\(released.label)\"")
+        waitUntilStill([newEnvelope])
+        let after = newEnvelope.frame
+        XCTAssertEqual(after.minY, before.minY, accuracy: 1, "New envelope moved \(after.minY - before.minY) pt, from \(before) to \(after): the Suspense box above it left when New envelope was pressed")
+        keepShot(app, "hand-new-envelope-holds-still")
+    }
+
     /// Pose: flat. The past-transit page lists the late mail, oldest last, on the right page. A tracked package is not
     /// on it. Each row offers Claim filed and Refunded, and nothing offers Lost.
     func testPastTransitListsLateMailOldestLast() {
@@ -403,6 +438,50 @@ final class DuoHandUITests: XCTestCase {
         clear(who, "the seller name (hand-who)")
         clear(post, "the Post button (hand-post)")
         keepShot(app, "hand-post-keeps-sender")
+    }
+
+    /// Pose: flat, system keys up. A held name's Suspense box shows, and the one match row must clear the keys. A box above
+    /// the list would push the row under them, so the boxes sit below the matches (decision duo-card-in-hand).
+    func testMatchRowClearsTheKeysUnderASuspenseBox() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        typeCard(app, "Lightning Bolt")
+        _ = need(app, "hand-held", "the Suspense line of a held name")
+        XCTAssertFalse(app.element("hand-strays").exists, "a Released box shows as well as the Suspense box, so this is not the Suspense case")
+        assertOnlyMatchClearsTheKeys(app, box: "Suspense")
+    }
+
+    /// Pose: flat, system keys up. A released name's Released box shows, and the one match row must clear the keys, as in the
+    /// Suspense case.
+    func testMatchRowClearsTheKeysUnderAReleasedBox() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        typeCard(app, "Lightning Bolt")
+        _ = need(app, "hand-held", "the Suspense line of a held name")
+        need(app, "hand-new-envelope", "the New envelope button").tap()
+        _ = need(app, "hand-strays", "the Released box of the released name")
+        waitGone(app.element("hand-held"), "the name is still held after New envelope")
+        typeCard(app, "Path to Exile")
+        XCTAssertFalse(app.element("hand-held").exists, "a Suspense box shows as well as the Released box, so this is not the Released case")
+        assertOnlyMatchClearsTheKeys(app, box: "Released")
+    }
+
+    /// Pose: flat, system keys up. The typed name must leave exactly one match row, and that row must lie wholly above the keys'
+    /// drawn top and be hittable while `box` shows. The row is read once the keys and the list have stopped moving.
+    /// No tap and no scroll. The typed name leaves one row, so that row is the list's only row and the one the keys can cover.
+    func assertOnlyMatchClearsTheKeys(_ app: XCUIApplication, box: String) {
+        let rows = waitForHits(app, count: 1, "the typed name must leave exactly one match under the \(box) box")
+        guard let row = rows.first else { return }  // waitForHits has already failed the test
+        let keys = app.keyboards.firstMatch
+        _ = requireKeysUp(app)
+        waitUntilStill([keys, row])
+        let keysTop = keys.frame.minY - Self.keyboardDrawnAbove
+        let f = row.frame
+        XCTAssertLessThanOrEqual(f.maxY, keysTop, "the match row \(row.identifier), frame \(f), is under the keys' drawn top at y \(keysTop) while the \(box) box shows: the owner must scroll to reach it")
+        XCTAssertTrue(row.isHittable, "the match row \(row.identifier), frame \(f), is not hittable with the keys up and no scroll")
+        keepShot(app, "hand-match-clears-keys-\(box.lowercased())")
     }
 
     /// The first lines of Gamma Cards, which sit under the offer. A Post presses above them, so none may move (no-layout-shift-under-pointer).
@@ -509,7 +588,7 @@ final class DuoHandUITests: XCTestCase {
     /// Pose: flat. A tap on a match fills the query and the list shrinks, but the New envelope button, which the owner's
     /// thumb reaches for next, does not move (no-layout-shift-under-pointer). "to" hits Brainstorm (two envelopes), Path to Exile
     /// and Swords to Plowshares in the seed, so the list has 3 rows. The 2nd, Path to Exile, is only in C1: it holds no name, so no
-    /// Suspense line opens above the button. Typing the whole name leaves 1 match, so the list loses 2 rows. With the list above
+    /// Suspense line opens. Typing the whole name leaves 1 match, so the list loses 2 rows. With the list above
     /// the row, the button moves up by those rows and this fails.
     func testTappingAMatchDoesNotMoveNewEnvelope() {
         let app = XCUIApplication.launchedOnSeed()
@@ -525,7 +604,7 @@ final class DuoHandUITests: XCTestCase {
         app.element(rows[1].identifier).tap()  // by id, so the tap is the 2nd row whatever order the query lists them in
         _ = waitForHits(app, count: 1, "tapping Path to Exile must leave that one match")
         XCTAssertEqual(app.element("hand-query").value as? String, "Path to Exile", "the tap did not fill the query")
-        XCTAssertFalse(app.element("hand-held").exists, "a Suspense line opened above the button: the 2nd match is a shared name, so the seed no longer makes this test fair")
+        XCTAssertFalse(app.element("hand-held").exists, "a Suspense line opened: the 2nd match is a shared name, so the seed no longer makes this test fair")
         let after = envelope.frame
         XCTAssertEqual(after.minY, before.minY, accuracy: 0.5, "New envelope moved from \(before) to \(after) when the match list shrank from 3 rows to 1")
         keepShot(app, "hand-match-tap-holds-new-envelope")

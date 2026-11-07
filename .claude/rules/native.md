@@ -97,7 +97,9 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `hand-post-scroll-hides-sender` — The Post offer scrolls the sender off the page.
 - `hand-notice-cuts-match-row` — A Suspense or Released box pushes the match under the keys.
 - `hand-post-top-scroll-unpinned` — No test pins the scroll to the page top when Post shows.
-- `hand-suspense-tap-shift` — A Suspense tap shifts the match list under the finger.
+- `hand-held-box-under-keys` — A held card's box can sit under the keys.
+- `hand-match-row-ax3-unmeasured` — The match row at large text is unmeasured.
+- `hand-suspense-tap-shift` — A tap on a match shifts rows under the finger.
 - `duo-left-page-dead-margin` — The Duo left page scrolls 76 pt past its end.
 - `duo-checkin-error-under-bar` — A Packages check-in error can sit under the Duo bar.
 - `native-tally-ellipsis-unpinned` — Nothing pins the native Tally ellipsis.
