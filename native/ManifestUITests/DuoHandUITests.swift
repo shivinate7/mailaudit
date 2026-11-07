@@ -610,6 +610,38 @@ final class DuoHandUITests: XCTestCase {
         keepShot(app, "hand-match-tap-holds-new-envelope")
     }
 
+    /// Pose: flat. A tap on a match fills the query, and the list shrinks to the tapped row. The tapped row must stay under the
+    /// finger, and the Suspense box that a shared name opens below the list must not rise into the space the list left
+    /// (no-layout-shift-under-pointer; debt hand-suspense-tap-shift). "o" lists seven names, Brainstorm then Counterspell.
+    /// A1 and B1 both hold Counterspell, so tapping it opens a Suspense box. Rows are read once the list has stopped moving.
+    func testTappingAMatchMovesNoRowUnderTheFinger() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        typeCard(app, "o")
+
+        let rows = waitForHits(app, count: 7, "typing \"o\" must list seven names")
+        XCTAssertEqual(rows[1].identifier, "hand-hit:Counterspell", "the 2nd match of \"o\" is not Counterspell, the name A1 and B1 share: \(rows.map(\.identifier))")
+        XCTAssertFalse(app.element("hand-held").exists, "a Suspense line shows before the tap, so the box after the tap is not the one the tap opened")
+        waitUntilStill(rows)
+        let tapped = rows[1].identifier
+        let before = rows[1].frame
+        let foot = rows.map { $0.frame.maxY }.max() ?? 0  // the old list foot: the box must not rise above it
+
+        app.element(tapped).tap()  // by id, so the tap is the 2nd row whatever order the query lists them in
+        _ = waitForHits(app, count: 1, "tapping Counterspell must leave that one match")
+        XCTAssertEqual(app.element("hand-query").value as? String, "Counterspell", "the tap did not fill the query")
+        let held = need(app, "hand-held", "the Suspense line of Counterspell, a name A1 and B1 share")
+        let row = app.element(tapped)
+        waitUntilStill([row, held])
+
+        continueAfterFailure = true
+        let after = row.frame
+        XCTAssertEqual(after.minY, before.minY, accuracy: 1, "the tapped row \(tapped) moved \(after.minY - before.minY) pt under the finger, from \(before) to \(after): the list shrank above it")
+        XCTAssertGreaterThanOrEqual(held.frame.minY, foot - 1, "the Suspense box, frame \(held.frame), sits above the old list foot at y \(foot): it rose into the space the list left, under the finger")
+        keepShot(app, "hand-match-tap-moves-no-row")
+    }
+
     /// Pose: flat. With the stamped filter on, the count line still counts every live copy, not the stamped packages alone.
     /// A1 is stamped, so the Packages list is A1 (4 copies) and the count line reads "0 in . 4 out" today. It must read the
     /// seed's 14 copies, as it does with the filter off (debt hand-reads-stamped-filter-rows).
