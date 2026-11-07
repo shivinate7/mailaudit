@@ -1,6 +1,6 @@
 # Saved-state shape is fixed
 
-The saved ledger has one named shape. Its fields are the ledger data and the view preferences: `{ items, received, receivedAt, envelopes, stamps, dateFilter, sortBy, itemSort, savedAt }`.
+The saved ledger has one named shape. Its fields are the ledger data and the view preferences: `{ items, received, receivedAt, envelopes, stamps, recent, dateFilter, sortBy, itemSort, savedAt }`.
 
 The fields mean the following:
 
@@ -8,6 +8,7 @@ The fields mean the following:
 - `received` is a map of item key to count received.
 - `receivedAt` is a map of item key to the time, in ms, of its last check or un-check. A key that is absent from `received` but has a time is an un-check. A merge keeps the later time per key. A side with no time for a key falls back to the per-key max, so older saves merge as before. It is optional and defaulted on load.
 - `envelopes` holds orphaned-mail records. Each record has the shape `{ id, createdAt, note, entries: [{ name, qty }], photos: [photoId], updatedAt, deletedAt }`. `deletedAt` is optional. An absent value means that the record is live.
+- `recent` is the Recent log, an array of action entries (`recent-checks-can-be-undone`). It is optional and defaulted to `[]` on load. `mergeLedger` unions it by entry id and caps it. `resetAll` keeps it, by that decision. `payloadRef` carries it too, so the silent `workerSyncedAt` write keeps it. A malformed entry is dropped on load with no notice, see the note in `docs/debts/notes.md`.
 - `stamps` is a map of **package** key to `{ kind, at, note, updatedAt }`. There is one stamp per package. The package key is built by `gkOf`, as `orderId::seller`. Never use `it.key` for it. `kind` is one of `claim | refunded | contacted | reshipped | partial | other`. `at` is the local calendar day the stamp was set.
 
 **`kind: ""` is a tombstone.** It marks a removal. It is kept so that it can win a merge. Every reader goes through `hasStamp`, never key presence. Older saves have no `stamps`. `sanitizeStamps` defaults that field to `{}`, because `parseLedger` validates only `mailday` and `items`.

@@ -31,8 +31,9 @@ One known gap per file under `docs/debts/`. Each carries a Status line and a Dec
 - `web-armed-restore-moves` — The web armed Restore moves under the pointer.
 - `reset-vs-worker-copy-unmeasured` — A Reset's effect on the Worker's copy is unmeasured.
 - `notes` — One-line findings not likely in normal work.
-- `recent-log-unbuilt` — The recent-actions log is not built.
-- `recent-log-unmeasured` — The recent-actions log has three measurements to take.
+- `recent-log-unbuilt` — The recent-actions log is not built in the native client.
+- `recent-log-unmeasured` — The recent-actions log has one measurement to take.
+- `recent-undo-under-bar` — A Recent UNDO cell can sit half under the bottom bar.
 - `armed-reset-mistap-unmeasured` — A mis-tap beside the armed Reset box is unmeasured.
 - `orphaned-reach-unpinned` — Re-import, Backup and Reset on Orphaned have no test.
 - `panels-overlay-unbuilt` — Disclosure panels still push the list.
