@@ -111,7 +111,9 @@ struct HandScreen: View {
                 HStack {
                     Text("This envelope").font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.inkSoft)
                     Spacer(minLength: 8)
-                    Button { hand.newEnvelope(); receipt = nil } label: { MiniLabel(title: "New envelope") }
+                    // The typed card belonged to the ended envelope: clearing it with its hold and shown envelope leaves the
+                    // answer page on its empty state, and the query's .task then reads "" once, to hits = [].
+                    Button { heldNames = nil; chosen = nil; query = ""; shown = nil; hand.newEnvelope(); receipt = nil } label: { MiniLabel(title: "New envelope") }
                         .buttonStyle(.plain).accessibilityIdentifier("hand-new-envelope")
                 }
                 if let e = hand.error {
