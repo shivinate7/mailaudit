@@ -585,11 +585,11 @@ final class DuoHandUITests: XCTestCase {
         keepShot(app, "hand-matches-heading")
     }
 
-    /// Pose: flat. A tap on a match fills the query and the list shrinks, but the New envelope button, which the owner's
+    /// Pose: flat. A tap on a match fills the query and the list holds its rows, so the New envelope button, which the owner's
     /// thumb reaches for next, does not move (no-layout-shift-under-pointer). "to" hits Brainstorm (two envelopes), Path to Exile
     /// and Swords to Plowshares in the seed, so the list has 3 rows. The 2nd, Path to Exile, is only in C1: it holds no name, so no
-    /// Suspense line opens. Typing the whole name leaves 1 match, so the list loses 2 rows. With the list above
-    /// the row, the button moves up by those rows and this fails.
+    /// Suspense line opens. The tapped row is marked selected. One more letter ends the hold, and the list reads the field again.
+    /// With the list above the row, a list that shrinks would move the button up and this fails.
     func testTappingAMatchDoesNotMoveNewEnvelope() {
         let app = XCUIApplication.launchedOnSeed()
         guard app.requirePose(.flat) else { return }
@@ -601,18 +601,27 @@ final class DuoHandUITests: XCTestCase {
         let envelope = need(app, "hand-new-envelope", "the New envelope button")
         let before = envelope.frame
 
+        let listed = rows.count
         app.element(rows[1].identifier).tap()  // by id, so the tap is the 2nd row whatever order the query lists them in
-        _ = waitForHits(app, count: 1, "tapping Path to Exile must leave that one match")
+        _ = need(app, "hand-who", "the envelope of Path to Exile, which shows once the tap has settled")  // the list reads the field 150 ms after a tap
+        _ = waitForHits(app, count: listed, "tapping Path to Exile must hold all \(listed) rows, not collapse to the tapped one")
+        XCTAssertTrue(app.element("hand-hit:Path to Exile").isSelected, "the tapped row hand-hit:Path to Exile is not marked selected")
         XCTAssertEqual(app.element("hand-query").value as? String, "Path to Exile", "the tap did not fill the query")
         XCTAssertFalse(app.element("hand-held").exists, "a Suspense line opened: the 2nd match is a shared name, so the seed no longer makes this test fair")
         let after = envelope.frame
-        XCTAssertEqual(after.minY, before.minY, accuracy: 0.5, "New envelope moved from \(before) to \(after) when the match list shrank from 3 rows to 1")
+        XCTAssertEqual(after.minY, before.minY, accuracy: 0.5, "New envelope moved from \(before) to \(after) after the tap on a match, which held the list at \(listed) rows")
+
+        // A further letter ends the hold: the field no longer names a held row, so the list reads it again and finds none.
+        let query = app.element("hand-query")
+        query.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        query.typeText("s")
+        _ = waitForHits(app, count: 0, "typing a letter after the tap must end the hold: \"Path to Exiles\" matches no row")
         keepShot(app, "hand-match-tap-holds-new-envelope")
     }
 
-    /// Pose: flat. A tap on a match fills the query, and the list shrinks to the tapped row. The tapped row must stay under the
-    /// finger, and the Suspense box that a shared name opens below the list must not rise into the space the list left
-    /// (no-layout-shift-under-pointer; debt hand-suspense-tap-shift). "o" lists seven names, Brainstorm then Counterspell.
+    /// Pose: flat. A tap on a match fills the query, and the list holds its rows. The tapped row must stay under the finger, and
+    /// the Suspense box that a shared name opens below the list must not rise above the old list foot (no-layout-shift-under-pointer;
+    /// debt hand-suspense-tap-shift). "o" lists seven names, Brainstorm then Counterspell.
     /// A1 and B1 both hold Counterspell, so tapping it opens a Suspense box. Rows are read once the list has stopped moving.
     func testTappingAMatchMovesNoRowUnderTheFinger() {
         let app = XCUIApplication.launchedOnSeed()
@@ -627,11 +636,13 @@ final class DuoHandUITests: XCTestCase {
         let tapped = rows[1].identifier
         let before = rows[1].frame
         let foot = rows.map { $0.frame.maxY }.max() ?? 0  // the old list foot: the box must not rise above it
+        let listed = rows.count
 
         app.element(tapped).tap()  // by id, so the tap is the 2nd row whatever order the query lists them in
-        _ = waitForHits(app, count: 1, "tapping Counterspell must leave that one match")
+        let held = need(app, "hand-held", "the Suspense line of Counterspell, a name A1 and B1 share")  // opens once the tap has settled
+        _ = waitForHits(app, count: listed, "tapping Counterspell must hold all \(listed) rows, not collapse to the tapped one")
+        XCTAssertTrue(app.element(tapped).isSelected, "the tapped row \(tapped) is not marked selected")
         XCTAssertEqual(app.element("hand-query").value as? String, "Counterspell", "the tap did not fill the query")
-        let held = need(app, "hand-held", "the Suspense line of Counterspell, a name A1 and B1 share")
         let row = app.element(tapped)
         waitUntilStill([row, held])
 
