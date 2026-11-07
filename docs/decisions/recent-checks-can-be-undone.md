@@ -1,8 +1,8 @@
 # Recent actions can be undone by tap
 
-**Status:** ruled. The owner ruled on 2026-10-11 that the log is "Synced across devices", and accepted the reach, the gesture, the redo rule and the entrance, see Ruled. The owner ruled the shape on 2026-10-11: "Inside the ledger". The owner ruled on 2026-11-06 at 12:36 CST that the cell shows while anything can be undone, see Where the entrance sits. The owner deferred whether a Reset is a Recent row on 2026-11-06 at 13:08 CST (waiting page item 280), saying "do whichever is already built and leave deferred". A Reset stays out of Recent, and History undoes it. The question is deferred, not closed. Nothing is built. Debts: `recent-log-unbuilt` and `recent-log-unmeasured`.
+**Status:** ruled. The owner ruled on 2026-10-11 that the log is "Synced across devices", and accepted the reach, the gesture, the redo rule and the entrance, see Ruled. The owner ruled the shape on 2026-10-11: "Inside the ledger". The owner ruled on 2026-11-06 at 12:36 CST that the cell shows while anything can be undone, see Where the entrance sits. The owner deferred whether a Reset is a Recent row on 2026-11-06 at 13:08 CST (waiting page item 280), saying "do whichever is already built and leave deferred". A Reset stays out of Recent, and History undoes it. The question is deferred, not closed. The web client is built (plan `recent-log-web`). The native client is not. Debts: `recent-log-unbuilt` (the native half) and `recent-log-unmeasured`.
 
-**Holds while:** `src/app.jsx` keeps no action log, and `undoAssign` is its only undo.
+**Holds while:** `src/recent-rules.mjs` holds the log rules, `mergeLedger` carries the field `recent`, and `undoRecent` in `src/app.jsx` runs every undo, the Undo notice's included.
 
 Kind: build
 
@@ -40,7 +40,7 @@ The ledger borrows five traits. These are newest first, day headings, one row fo
 
 One entry per action, from any device. Each entry holds an id that no two devices share, its time, and its subject. Names of fields that do not exist yet are in plain type, because `check:docs` reads backticks.
 
-- Check, un-check and stepper: the card key, and the count before and after. Writes to one card merge into one entry. The merge needs three facts. No other action came between the writes. This device wrote the entry. No undo names the entry. The merged entry keeps the first before, the last after and the last time. A merged entry with no net change is dropped.
+- Check, un-check and stepper: the card key, and the count before and after. Writes to one card merge into one entry. The merge needs three facts. No other action came between the writes. This device wrote the entry. No undo names the entry. The merged entry keeps the first before, the last after and the last time. A merged entry with no net change is kept, at the same before and after: it keeps its later time, so a server copy of its first step cannot outrank it in a merge, and it reads `NOTHING TO UNDO`.
 - Bulk check or clear on a package (`bulkSet`): each card's count before and after, as one entry. A mis-tapped bulk is the worst mis-tap.
 - Stamp set, replaced, edited or removed: the package key, and the stamp before and after.
 - Envelope recorded, edited or discarded: the envelope before and after.
@@ -58,7 +58,7 @@ A row uses the ledger's own vocabulary. It has no artwork and no fill of its own
 - A mono uppercase micro-label names the action: `CHECKED`, `UN-CHECKED`, `COUNT 2 → 3`, `PACKAGE CHECKED`, `STAMP · REFUNDED`, `STAMP REMOVED`, `ENVELOPE RECORDED`, `ENVELOPE EDITED`, `ENVELOPE DISCARDED`, `ASSIGNED`.
 - Cochin sets the subject: the card name, or the seller and order for a package or stamp, or the envelope's note. Mono sets the numbers, such as `1 of 4`, and the time `14:32` (`typography-cochin-and-mono`).
 - A second line names the seller. This is the fact the owner forgets.
-- The right edge holds the underlined word `UNDO`, as a cell that acts underlines its value (`disclosure-cells-underline-value`).
+- The right edge holds the underlined word `UNDO`, as a cell that acts underlines its value (`disclosure-cells-underline-value`). That 72px cell is the row's only control, and it is named like "Undo checked Counterspell, Alpha Cards". The subject is plain text. A row in an end state has no control.
 - After an undo, the right edge reads `UNDONE 14:35` in inkSoft (`palette-inksoft-and-manilaink`). Gold is never text (`palette-gold-is-ornament-only`). The other device shows the same state, because the undo entry syncs.
 - Two more end states exist. `CHANGED SINCE` shows that a stamp or envelope changed after this row. `NOTHING TO UNDO` shows that a count would not change, or that the ledger no longer holds this row's change. Both leave the row inert.
 
@@ -82,7 +82,7 @@ The panel freezes its rows when it opens, as the sort order is frozen while the 
 
 An undo is a new, later write. It is never a local rollback.
 
-- **Counts.** The undo subtracts the row's own delta from the card's current count. It clamps the result between 0 and the line's quantity. A count that reaches zero is deleted, not stored as 0. So a hand edit made after the row survives, and any row of a card can be undone in any order (`undo-removes-only-its-delta`). The row is live only while the card's `receivedAt` is at or after the row's time.
+- **Counts.** The undo subtracts the row's own delta from the card's current count. It clamps the result between 0 and the line's quantity. A count that reaches zero is deleted, not stored as 0. So a hand edit made after the row survives (`undo-removes-only-its-delta`). The row is live only while the card's `receivedAt` is not older than the newest log entry that touched the card (a count, a bulk, an assign, or an undo of one). A later `receivedAt`, from a write the log did not see such as a restore, keeps the row live only while the card still holds the count the row left. A later write on the same card that moved it the opposite way, and that no undo names, makes the row read `NOTHING TO UNDO`. A removal row never takes the card above its own before.
 - **Stamps and envelopes.** The undo writes the `before` value only when the subject's last write is still this row's write. The subject's `updatedAt` must equal the `updatedAt` that the row wrote. If not, the row reads `CHANGED SINCE` and does nothing. Writing `before` over a newer change would be a rollback.
 - **A stamp** returns with its old `at` date. A stamp that did not exist before returns as a tombstone (`stamp-removal-writes-a-tombstone`).
 - **An envelope.** Undoing a record writes a discard tombstone. Undoing an edit writes the older copy. Undoing a discard or an assign writes the live copy with a fresh `updatedAt`, so it beats the tombstone (`envelope-deletion-unrepresented`).
@@ -140,9 +140,9 @@ Ruled: a field in the ledger, named recent. The owner chose it on 2026-10-11, wi
 
 ## Where the entrance sits
 
-The entrance is a `Recent ▾` cell in the ruled action row, left of History. It uses `.mdl-act`, `aria-expanded` and the caret that History carries (`action-row-is-ruled-cells`). Its panel overlays the list in the same slot as History, with the same fade and no new motion (`motion-disclosure-panels-arrive`). Recent, History and Sync close one another (`history-sync-close-each-other`). An armed Reset does not hide the cell, and, by an orchestrator default of 2026-10-11, it does not hide History either (`armed-reset-takes-the-row`).
+The entrance is a `Recent` `LedgerRow` on the Ledger tab, directly above History. The action row is retired and its cells are ruled rows (`action-row-is-ruled-cells`), so the row carries `aria-expanded` as History does. Its panel opens below it in the page flow, as History's does. Panels that overlay the list are ruled and not built (`motion-disclosure-panels-arrive`). Recent, History and Sync close one another (`history-sync-close-each-other`). An armed Reset does not hide the cell, and, by an orchestrator default of 2026-10-11, it does not hide History either (`armed-reset-takes-the-row`).
 
-The cell shows while at least one log row is live, and hides when none is. A row is live while its undo can still run (see How one tap undoes one action and Rows guard themselves) and no end state in What a row shows applies to it. The cell reads the log's rows, not whether the ledger holds data. Each row's guard still reads the card, stamp or envelope it names. Owner ruling on waiting page item 193 (when the Recent cell shows), 2026-11-06 at 12:36 CST: "Show while anything can be undone." The ruling rests on `recovery-control-not-state-gated`, which item 193 names as its premise: the data the undo works on is a live row. The cell hides only when nothing can be undone, so it is never a dead control. The action row re-divides when the first live row lands and when the last one goes inert. The build must prove that this moves no row under the pointer (`no-layout-shift-under-pointer`). The owner's ruling defers waiting page item 280, so a Reset is not logged, clears every card, stamp and envelope (`resetAll`), and leaves no row live. The cell hides, and History's `before reset` version is its undo.
+The cell shows while at least one log row is live, and hides when none is. It reads that only when the Ledger tab is entered, never while the tab is on screen. A cell with no live row reads `Nothing to undo` until the next entry. While the panel is open the value stays as it read at open, as the rows do, and it re-reads when the panel closes. A show or hide on screen would move History under the finger, which `no-layout-shift-under-pointer` forbids. Coordinator ruling, 2026-11-06 at 13:24 CST, on the open-panel note. A row is live while its undo can still run (see How one tap undoes one action and Rows guard themselves) and no end state in What a row shows applies to it. The cell reads the log's rows, not whether the ledger holds data. Each row's guard still reads the card, stamp or envelope it names. Owner ruling on waiting page item 193 (when the Recent cell shows), 2026-11-06 at 12:36 CST: "Show while anything can be undone." The ruling rests on `recovery-control-not-state-gated`, which item 193 names as its premise: the data the undo works on is a live row. The cell hides only when nothing can be undone, so it is never a dead control. The owner's ruling defers waiting page item 280, so a Reset is not logged, clears every card, stamp and envelope (`resetAll`), and leaves no row live. The cell hides, and History's `before reset` version is its undo.
 
 Rejected entrances:
 
@@ -175,9 +175,9 @@ Neither list holds the other's items. A restore is not a Recent row.
 
 Debt: `recent-log-unmeasured`.
 
-- Whether four cells fit in the action row at 375px. The code sizes a third at 114px. Four cells are about 86px, and "Re-import CSV" may ellipsize. Re-take `ruled-head-heights`, and run `npm run check:screens`. If four cells clip, the owner picks which cell gives way.
-- The height of a row, recorded in `ruled-head-heights`.
-- The size of the worst-case log, as The shape of the synced log says.
+- The height of a row: 72px at 375px, and a day heading 28px. The list holds at most 360px and scrolls inside. Taken 2026-11-06 in Chromium on the built page.
+- The size of the worst-case log: 200 bulk rows of the seed's largest package (23 lines) are 317,965 bytes, against a seed ledger of 289,309 bytes. The ledger with that log is near 608 KB, a third of `MAX_LEDGER_BYTES` (1,800,000), so the case is not large and no byte cap is built. Coordinator ruling, 2026-11-06 at 14:47 CST. When a real synced ledger passes half of `MAX_LEDGER_BYTES`, a byte cap returns.
+- The four-cell fit at 375px lapsed with the action row.
 
 ## Proof the build must give
 

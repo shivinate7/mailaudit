@@ -29,6 +29,8 @@
    resurrected `refunded` stamp would silently pull money back out of the
    tally. The merge counts it as a removal. See mergeStamps. */
 
+import { mergeRecent } from "./recent-rules.mjs";
+
 /* Union of two line-item lists, keyed on `it.key`
    (`orderId|itemNumber|vendorProductId` — invariant saved-state-shape, stable across
    re-imports). This is also what a CSV import does to the existing list, so
@@ -183,7 +185,7 @@ export function mergeStamps(base, incoming) {
    five sites in app.jsx; this file only keeps an unnamed one alive. */
 const KNOWN_KEYS = new Set([
   "mailday", "items", "received", "receivedAt", "envelopes", "stamps",
-  "dateFilter", "sortBy", "itemSort",
+  "dateFilter", "sortBy", "itemSort", "recent",
 ]);
 
 function carryUnknownKeys(local, incoming) {
@@ -211,8 +213,12 @@ function carryUnknownKeys(local, incoming) {
    The three view preferences are deliberately NOT merged — local keeps its own.
    They describe how this screen is sorted and filtered, not what is true about
    the mail, and syncing them makes the phone's sort order jump because the
-   laptop happened to be sorted differently. */
-export function mergeLedger(local, incoming) {
+   laptop happened to be sorted differently.
+
+   `recent` is the Recent log (decision recent-checks-can-be-undone): a union by entry id,
+   capped by mergeRecent, which reads `now`. A ledger with no `recent` merges as an empty list,
+   and the merged ledger carries the key only when either side had one, so older pins hold. */
+export function mergeLedger(local, incoming, now = Date.now()) {
   const items = mergeItems(local?.items, incoming?.items);
   const received = mergeReceived(
     local?.received,
@@ -222,9 +228,11 @@ export function mergeLedger(local, incoming) {
   );
   const envelopes = mergeEnvelopes(local?.envelopes, incoming?.envelopes);
   const stamps = mergeStamps(local?.stamps, incoming?.stamps);
+  const holdsRecent = Object.hasOwn(local || {}, "recent") || Object.hasOwn(incoming || {}, "recent");
   return {
     merged: {
       ...carryUnknownKeys(local, incoming),
+      ...(holdsRecent && { recent: mergeRecent(local?.recent, incoming?.recent, now) }),
       mailday: 1,
       items: items.items,
       received: received.received,
