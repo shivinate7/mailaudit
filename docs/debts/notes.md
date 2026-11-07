@@ -34,6 +34,7 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 - 2026-11-06, Post-offer review round 2: the receipt is keyed to its own envelope (`HandScreen.swift` `else if let r = receipt, r.offer.gk == pkg.gk`); no test pins that guard.
 - 2026-11-06, Post-offer review round 2: the red refusal line on manila at 50% over paper computes to 4.60:1 from the token hex values, 0.1 over the floor, and no token test covers the pair.
 - 2026-11-06, match-row mockup: Card in Hand's small labels and the notice box title are 10.5 pt (`HandScreen.swift` `micro`, `notice`), under the 11 pt iOS minimum.
+- 2026-11-07, tap-shift review round 1: Post clears `hits` (`HandModel.swift`), but a check-in tap or a sync reply leaves the held match rows until the next keystroke. A tap on a stale row writes nothing.
 - 2026-11-06, Post-offer design review: the refused receipt sets "Type the card again to post.", an instruction, in the refusal red, and its 44 pt minimum height leaves about 25 pt between the two lines.
 - 2026-10-29, CI wiring review round 2: no run has shown that `cancelled()` reads true in the ci-done job after a superseded PR run is cancelled. The first double push on a PR settles it. A false value posts a false red comment.
 - 2026-10-29, CI wiring review round 2: the job groups on main still key by commit, so a third run on one commit can replace a pending job, such as a nightly. The harm is one cancelled job.

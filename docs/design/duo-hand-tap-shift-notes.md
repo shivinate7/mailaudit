@@ -62,7 +62,7 @@ Departs from: today's collapse to the tapped row in `HandScreen.matches` (`Butto
 
 In `HandScreen`, keep the names on screen and the chosen name in state. On a match tap: if no list is held, hold the names on screen; set the query and the chosen name. When the query changes to anything but the chosen name, drop the held list. `matches` draws the held list if there is one, else `hitNames`; a row that is not chosen is `Parchment.inkSoft`; the chosen row gets `.isSelected`. Close drops the held list.
 
-Tests. `testTappingAMatchDoesNotMoveNewEnvelope` expects the collapse (`waitForHits(app, count: 1, ...)`): re-point it, red first. It should assert three rows after the tap and the tapped row's `minY` unchanged. Add a shared-name twin (type "n", tap Counterspell): the tapped row's `minY` is unchanged, and `hand-held` `minY` is at or below the last `hand-hit:` row's `maxY`. Together they close `hand-suspense-tap-shift`.
+Tests. `testTappingAMatchDoesNotMoveNewEnvelope` expects the collapse (`waitForHits(app, count: 1, ...)`): re-point it, red first. It should assert three rows after the tap and the tapped row's `minY` unchanged. Add a shared-name twin (type "o", tap Counterspell): the tapped row's `minY` is unchanged, and `hand-held` `minY` is at or below the last `hand-hit:` row's `maxY`. Together they close `hand-suspense-tap-shift`.
 
 Focus ids for the waiting page: `focus-hold`, `focus-keep-slot`, `focus-trim`, each with a `-shared` twin; `focus-today` and `focus-today-shared` for Today; `focus-before` for the frame before the tap.
 
