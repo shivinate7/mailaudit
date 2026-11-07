@@ -62,7 +62,9 @@ A unique name shows its envelope with a check-in tap on each line. Post shows on
 
 On Card in Hand, the match list and its "Matches" heading sit below the envelope row and New envelope. Mockup pose 2 draws them above. With the list above, a tap on a match shrinks the list and moves New envelope under the finger. The invariant `no-layout-shift-under-pointer` outranks the mockup. Departs from: mockup pose 2. Settled by the invariant, not the owner. An open gap on the Suspense box is `hand-suspense-tap-shift`.
 
-**Holds while:** the owner's pick of Card in Hand stands. Item 22 holds until the owner reviews the test build. The `hand-open` entry holds until the owner answers item 35.
+On Card in Hand, the Post offer sits under the sender and the date, above the lines. When the offer shows, the answer page scrolls to its top. So the sender stays on the page, and Post clears the keys. After a Post that saves or is refused, a receipt of the same height holds the slot until the next card or New envelope. A failed save keeps the offer. Departs from: today's order (offer under the lines, scrolled to the foot) and today's box that leaves on Post, both in `HandScreen.swift` before this change. Default, not owner. Item 42 on the owner's waiting page, `duo-hand-post-order`, asks for this order (A) or today's order with the offer pinned above the keys (B). It is open. The mockup and its sources are `docs/design/duo-hand-post-sender.html` and its notes.
+
+**Holds while:** the owner's pick of Card in Hand stands. Item 22 holds until the owner reviews the test build. The `hand-open` entry holds until the owner answers item 35. The Post offer's place holds until the owner answers item 42.
 
 ## See also
 
