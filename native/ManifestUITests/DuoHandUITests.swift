@@ -642,7 +642,7 @@ final class DuoHandUITests: XCTestCase {
     }
 
     /// Pose: flat. A tap on a match fills the query, and the list holds its rows. The tapped row must stay under the finger, and its
-    /// name must not shift: the chosen row pads its name 10 pt, and the row's own frame spans the list width, so the name is read.
+    /// name must not shift: a row that padded only when chosen would move it, and the row's own frame spans the list width, so the name is read.
     /// The Suspense box that a shared name opens below the list must not rise above the old list foot (no-layout-shift-under-pointer;
     /// debt hand-suspense-tap-shift). "o" lists seven names, Brainstorm then Counterspell.
     /// A1 and B1 both hold Counterspell, so tapping it opens a Suspense box. Rows are read once the list has stopped moving.
@@ -658,7 +658,7 @@ final class DuoHandUITests: XCTestCase {
         waitUntilStill(rows)
         let tapped = rows[1].identifier
         let before = rows[1].frame
-        let nameText = rows[1].descendants(matching: .staticText).firstMatch  // the name, not the row: the chosen row pads its name
+        let nameText = rows[1].descendants(matching: .staticText).firstMatch  // the name, not the row: the row's frame spans the list width
         guard nameText.waitForExistence(timeout: 5) else { return XCTFail("the row \(tapped) holds no static text, so its name cannot be read") }
         let nameBefore = nameText.frame
         let foot = rows.map { $0.frame.maxY }.max() ?? 0  // the old list foot: the box must not rise above it
@@ -677,7 +677,7 @@ final class DuoHandUITests: XCTestCase {
         continueAfterFailure = true
         let after = row.frame
         XCTAssertEqual(after.minY, before.minY, accuracy: 1, "the tapped row \(tapped) moved \(after.minY - before.minY) pt under the finger, from \(before) to \(after): the list shrank above it")
-        XCTAssertEqual(nameAfter.frame.minX, nameBefore.minX, accuracy: 1, "the name of the tapped row \(tapped) moved \(nameAfter.frame.minX - nameBefore.minX) pt under the finger, from \(nameBefore) to \(nameAfter.frame): the chosen row pads its name")
+        XCTAssertEqual(nameAfter.frame.minX, nameBefore.minX, accuracy: 1, "the name of the tapped row \(tapped) moved \(nameAfter.frame.minX - nameBefore.minX) pt under the finger, from \(nameBefore) to \(nameAfter.frame)")
         XCTAssertGreaterThanOrEqual(held.frame.minY, foot - 1, "the Suspense box, frame \(held.frame), sits above the old list foot at y \(foot): it rose into the space the list left, under the finger")
         keepShot(app, "hand-match-tap-moves-no-row")
     }
