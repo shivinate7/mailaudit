@@ -619,8 +619,9 @@ final class DuoHandUITests: XCTestCase {
         keepShot(app, "hand-match-tap-holds-new-envelope")
     }
 
-    /// Pose: flat. A tap on a match fills the query, and the list holds its rows. The tapped row must stay under the finger, and
-    /// the Suspense box that a shared name opens below the list must not rise above the old list foot (no-layout-shift-under-pointer;
+    /// Pose: flat. A tap on a match fills the query, and the list holds its rows. The tapped row must stay under the finger, and its
+    /// name must not shift: the chosen row pads its name 10 pt, and the row's own frame spans the list width, so the name is read.
+    /// The Suspense box that a shared name opens below the list must not rise above the old list foot (no-layout-shift-under-pointer;
     /// debt hand-suspense-tap-shift). "o" lists seven names, Brainstorm then Counterspell.
     /// A1 and B1 both hold Counterspell, so tapping it opens a Suspense box. Rows are read once the list has stopped moving.
     func testTappingAMatchMovesNoRowUnderTheFinger() {
@@ -635,6 +636,9 @@ final class DuoHandUITests: XCTestCase {
         waitUntilStill(rows)
         let tapped = rows[1].identifier
         let before = rows[1].frame
+        let nameText = rows[1].descendants(matching: .staticText).firstMatch  // the name, not the row: the chosen row pads its name
+        guard nameText.waitForExistence(timeout: 5) else { return XCTFail("the row \(tapped) holds no static text, so its name cannot be read") }
+        let nameBefore = nameText.frame
         let foot = rows.map { $0.frame.maxY }.max() ?? 0  // the old list foot: the box must not rise above it
         let listed = rows.count
 
@@ -644,11 +648,14 @@ final class DuoHandUITests: XCTestCase {
         XCTAssertTrue(app.element(tapped).isSelected, "the tapped row \(tapped) is not marked selected")
         XCTAssertEqual(app.element("hand-query").value as? String, "Counterspell", "the tap did not fill the query")
         let row = app.element(tapped)
-        waitUntilStill([row, held])
+        let nameAfter = row.descendants(matching: .staticText).firstMatch
+        guard nameAfter.waitForExistence(timeout: 5) else { return XCTFail("the tapped row \(tapped) holds no static text after the tap, so its name cannot be read") }
+        waitUntilStill([row, held, nameAfter])
 
         continueAfterFailure = true
         let after = row.frame
         XCTAssertEqual(after.minY, before.minY, accuracy: 1, "the tapped row \(tapped) moved \(after.minY - before.minY) pt under the finger, from \(before) to \(after): the list shrank above it")
+        XCTAssertEqual(nameAfter.frame.minX, nameBefore.minX, accuracy: 1, "the name of the tapped row \(tapped) moved \(nameAfter.frame.minX - nameBefore.minX) pt under the finger, from \(nameBefore) to \(nameAfter.frame): the chosen row pads its name")
         XCTAssertGreaterThanOrEqual(held.frame.minY, foot - 1, "the Suspense box, frame \(held.frame), sits above the old list foot at y \(foot): it rose into the space the list left, under the finger")
         keepShot(app, "hand-match-tap-moves-no-row")
     }
