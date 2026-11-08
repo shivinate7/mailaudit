@@ -90,10 +90,7 @@ final class PackageBulkUITests: XCTestCase {
     func frames(_ s: [String: ScreenKit.Seen]) -> [String: CGRect] { s.mapValues(\.frame) }
 
     /// A hand check-in on a line (Packages: checkin:, Tally: tally-checkin:), waited out.
-    func checkIn(_ app: XCUIApplication, _ key: String, prefix: String = "checkin:") {
-        tap(app, prefix + key)
-        wait("label BEGINSWITH 'Undo check in'", for: el(app, prefix + key), "the check-in of \(key) did not land")
-    }
+    func checkIn(_ app: XCUIApplication, _ key: String, prefix: String = "checkin:") { ScreenKit.checkIn(app, key, prefix: prefix) }
 
     func isIn(_ app: XCUIApplication, _ key: String, prefix: String = "checkin:") -> Bool {
         el(app, prefix + key).label.hasPrefix("Undo check in")
@@ -125,9 +122,7 @@ final class PackageBulkUITests: XCTestCase {
             search.typeText("Brainstorm\n")  // the return key closes the keyboard, so the tab bar shows
             wait("exists == false", for: el(app, "tally-row:Lightning Bolt"), "the search left the Lightning Bolt row on screen")
         }
-        tap(app, "tally-toggle:Brainstorm")
-        XCTAssertTrue(el(app, "tally-copy:\(Self.brainA)").waitForExistence(timeout: 5), "the Brainstorm row did not list its copies")
-        app.reveal(el(app, "tally-row:Brainstorm"), whole: true)
+        ScreenKit.openTallyRow(app, "Brainstorm", copy: Self.brainA)
         return app
     }
 
