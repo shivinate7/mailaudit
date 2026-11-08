@@ -103,14 +103,36 @@ const ROLLUP = "all-jobs-passed";
 const CI_DONE = "ci-done";
 const ACTIONS = "shivinate7/claude-settings/actions/";
 const ALARM_ACTION = ACTIONS + "ci-alarm";
+const STE_LINT = ACTIONS + "ste-lint";
 // The shared action pin. Every claude-settings pin in checks.yml carries this sha, except ste-lint.
 const ACTION_PIN = "380a24b5fa9ab78b973892ddfe3a95eaff68601b";
 // ste-lint follows claude-settings main on its own, not ACTION_PIN (decision action-pins-follow-sessions).
-const STE_LINT_PIN = "d70ebd14d8e6dbff5e248cf3e4b1e21250228d64";
+// STE_LINT_PIN is not written here. steLintPinIn reads it from checks.yml, so a pin move is one edit there.
 // The sha a claude-settings pin must name: STE_LINT_PIN for ste-lint, the shared sha for the rest.
 // One home for the ste-lint exception, read by assertions 3c and 12.
 function expectedPin(action, shared) {
   return action === "ste-lint" ? STE_LINT_PIN : shared;
+}
+// The one sha that checks.yml's ste-lint uses line names. A pin is a uses: value, so a comment
+// or a run: block that names one does not count. No such line, two shas, or a non-sha throws
+// here, before any assertion runs, so assertions 3c and 12 never compare against a missing pin.
+function steLintPinIn(text) {
+  if (text === null) throw new Error(`ci-wiring: cannot read ${WORKFLOW}, so no ste-lint pin can be read`);
+  let uses;
+  try {
+    uses = usesValues(parseWorkflow(text), []);
+  } catch (e) {
+    throw new Error(`ci-wiring: ${WORKFLOW} does not parse, so no ste-lint pin can be read: ${e.message}`);
+  }
+  const refs = [
+    ...new Set(
+      uses.filter((u) => u === STE_LINT || u.startsWith(STE_LINT + "@")).map((u) => u.slice(STE_LINT.length + 1))
+    ),
+  ];
+  if (refs.length === 0) throw new Error(`ci-wiring: ${WORKFLOW} has no ${STE_LINT} uses: line, so no ste-lint pin can be read`);
+  if (refs.length > 1) throw new Error(`ci-wiring: ${WORKFLOW} names ${refs.length} ste-lint shas (${refs.join(", ")}); keep one`);
+  if (!SHA.test(refs[0])) throw new Error(`ci-wiring: the ste-lint pin in ${WORKFLOW} is not a 40-hex sha: "${refs[0]}"`);
+  return refs[0];
 }
 const ROLLUP_IF = "always() && !github.event.pull_request.draft";
 const DRAFT_GUARD = "!github.event.pull_request.draft";
@@ -1217,9 +1239,13 @@ const readOrNull = (path) => {
   }
 };
 
+// checks.yml, read once. The ste-lint pin and every repo check on this file use this text.
+const WORKFLOW_TEXT = readOrNull(WORKFLOW);
+const STE_LINT_PIN = steLintPinIn(WORKFLOW_TEXT);
+
 // The repo's own files.
 {
-  const wf = readOrNull(WORKFLOW);
+  const wf = WORKFLOW_TEXT;
   const st = readOrNull(STAMP);
   const al = readOrNull(ALARM);
   if (wf === null) expect(`cannot read ${WORKFLOW}`, false);
@@ -1232,7 +1258,7 @@ const readOrNull = (path) => {
 {
   const results = milestoneChecks({
     msText: readOrNull(MILESTONE),
-    wfText: readOrNull(WORKFLOW),
+    wfText: WORKFLOW_TEXT,
     read: readRepo,
     makefile: readOrNull(MAKEFILE),
     classes: repoTestClasses(),
@@ -1244,7 +1270,7 @@ const readOrNull = (path) => {
 {
   let jobs;
   try {
-    const text = readOrNull(WORKFLOW);
+    const text = WORKFLOW_TEXT;
     jobs = text === null ? undefined : parseWorkflow(text).jobs;
   } catch {
     jobs = undefined;
@@ -1266,7 +1292,7 @@ const readOrNull = (path) => {
   } catch {
     namesOk = false;
   }
-  const wfText = readOrNull(WORKFLOW);
+  const wfText = WORKFLOW_TEXT;
   const results = [
     dispatchCheck(wfText),
     ...ignoreChecks({
@@ -2686,7 +2712,7 @@ const show = (r) => {
 };
 
 {
-  const wf = readOrNull(WORKFLOW);
+  const wf = WORKFLOW_TEXT;
   for (const r of [...mutationJobChecks(wf), ...needsChecks(wf)]) show(r);
   for (const r of knownDefectChecks(readOrNull(KNOWN_DEFECTS), ROOT)) show(r);
 }
