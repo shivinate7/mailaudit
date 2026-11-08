@@ -71,6 +71,7 @@ struct ItemLine: View {
                     .accessibilityLabel("Price \(PackageCard.priceText(price))")
             }
             Text(detail).font(.cochin(11.5)).foregroundStyle(paint(.detail, state))
+                .accessibilityIdentifier(PackageCard.detailID(key: key, state: state))
             // The order id: the web underlines it and opens the order in Packages. Native has no such route yet, so it is plain.
             if let orderID {
                 Text(orderID).font(.mono(10.5)).foregroundStyle(paint(.orderId, state)).fixedSize()

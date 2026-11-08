@@ -55,6 +55,16 @@ public final class PackagesModel {
     public private(set) var stampKinds: [StampKind] = []
     /// The packages the bundle's isRefundStamp names, so a check-in can refresh a refunded package's pill.
     @ObservationIgnored private var refundGks: Set<String> = []
+    /// Per package gk, the copies in now (the bundle's totalsOf got, each line clamped to its qty): the Clear ask's N.
+    public private(set) var gots: [String: Int] = [:]
+    /// The package the held Mark all Undo is for. nil when there is none: the next write on this device, a newer Mark all
+    /// that adds a copy, a Clear or endBulkUndo() ends it (undo-removes-only-its-delta). A Worker apply does not.
+    public private(set) var bulkUndoGk: String?
+    private var bulkUndoTakes: [BulkTake] = []
+    /// BulkRules.takenBack for the held takes against `received`, set wherever `received` changes while an Undo is held.
+    private var bulkUndoHeld = 0
+    /// The check-ins the held Undo would take back now: the one source of the Undo hint's count. 0 when none is held.
+    public var bulkUndoCount: Int { bulkUndoGk == nil ? 0 : bulkUndoHeld }
     /// The store's postsSaved when checkInError was last set: only a Post after that is a good write that outdates the failure line.
     @ObservationIgnored private var errorPosts = 0
 
@@ -75,6 +85,11 @@ public final class PackagesModel {
     public func load() async throws {
         let got = store.received()
         let held = store.stamps()
+        // The recount runs only while an Undo is held. A failed call must not stop the list, so it counts 0.
+        let heldGk = bulkUndoGk
+        let takes = bulkUndoTakes
+        var undoHeld = 0
+        if heldGk != nil { undoHeld = (try? await BulkRules.takenBack(takes, received: got, engine: engine)) ?? 0 }
         let live = try await LiveItems.of(store.items(), stamps: held, engine: engine)
         let active = try await engine.call("dropCanceled", "[\(try json(store.items()))]")
         let stampedGks = try await StampRules.keys(where: "hasStamp", in: held, engine: engine)
@@ -98,6 +113,8 @@ public final class PackagesModel {
         rows = newRows
         liveRows = newLive
         received = got
+        // A press or a clear that ran during the awaits above set its own count, so this one only fills the same Undo.
+        if bulkUndoGk == heldGk && bulkUndoTakes == takes { bulkUndoHeld = undoHeld }
         stamps = held
         stampedCount = stamped.count
         showStamped = on
@@ -112,6 +129,7 @@ public final class PackagesModel {
         orderLinks = [:]
         bands = [:]
         refundPills = [:]
+        gots = [:]
         apply(updates)
         // Only a Post after the failure clears the line here. A reload from sync or a reply, or a Post that came before
         // the failure, must not hide a failure the owner has not retried.
@@ -162,7 +180,7 @@ public final class PackagesModel {
     /// One map entry from the engine. A nil value removes the entry.
     private enum Update {
         case done(String, Bool), label(String, String?), readout(String, String?), detail(String, String?),
-             link(String, URL?), pill(String, String?), bar(String, Double?), band(String, String?), refundPill(String, String?)
+             link(String, URL?), pill(String, String?), bar(String, Double?), got(String, Int), band(String, String?), refundPill(String, String?)
     }
 
     /// Synchronous, so the view sees all of the updates or none of them.
@@ -176,6 +194,7 @@ public final class PackagesModel {
             case .link(let k, let v): orderLinks[k] = v
             case .pill(let k, let v): pills[k] = v
             case .bar(let k, let v): bars[k] = v
+            case .got(let k, let v): gots[k] = v
             case .band(let k, let v): bands[k] = v
             case .refundPill(let k, let v): refundPills[k] = v
             }
@@ -228,6 +247,7 @@ public final class PackagesModel {
                 case .pill(let gk): updates.append(.pill(gk, try string(out)))
                 case .totals(let gk):
                     let t = try JSONSerialization.jsonObject(with: Data(out.utf8)) as? [String: Any]
+                    updates.append(.got(gk, t?["got"] as? Int ?? 0))
                     if let got = t?["got"] as? Int, let total = t?["total"] as? Int, got > 0, got < total {
                         updates.append(.bar(gk, Double(got) / Double(total)))
                     } else {
@@ -275,22 +295,88 @@ public final class PackagesModel {
             throw error
         }
         checkInError = nil
+        endBulkUndo()
         received = store.received()
         if let pkg = package(holding: key), let item = pkg.items.first(where: { $0.key == key }) {
-            do {
-                var (updates, failure) = try await refresh([(pkg, [item])], received: received, withStatic: false)
-                if refundGks.contains(pkg.gk) {
-                    let (texts, textFailure) = await stampTexts([pkg], held: stamps, refunds: [pkg.gk], received: received)
-                    updates += texts.filter { if case .refundPill = $0 { return true } else { return false } }
-                    failure = failure ?? textFailure
-                }
-                apply(updates)
-                if let failure { throw failure }
-            } catch {
-                fail("Saved, but the label could not refresh. \(error.localizedDescription)")
+            try await reread(pkg, items: [item])
+        }
+    }
+
+    /// The package's labels, pill and bar (and a refunded package's pill) from the counts now in `received`.
+    private func reread(_ pkg: Package, items: [LedgerItem]) async throws {
+        do {
+            var (updates, failure) = try await refresh([(pkg, items)], received: received, withStatic: false)
+            if refundGks.contains(pkg.gk) {
+                let (texts, textFailure) = await stampTexts([pkg], held: stamps, refunds: [pkg.gk], received: received)
+                updates += texts.filter { if case .refundPill = $0 { return true } else { return false } }
+                failure = failure ?? textFailure
+            }
+            apply(updates)
+            if let failure { throw failure }
+        } catch {
+            fail("Saved, but the label could not refresh. \(error.localizedDescription)")
+            throw error
+        }
+    }
+
+    /// Mark all received (on) or Clear check-ins (off) on one package: every line goes to its qty or to 0, in one save at one
+    /// time. A Mark all keeps what it added for the Undo; a Clear ends the Undo and leaves none. A failure, rule or save, lands
+    /// in checkInError and is thrown.
+    public func bulk(gk: String, on: Bool) async throws {
+        guard let pkg = rows.first(where: { $0.gk == gk }) else { return }
+        let takes: [BulkTake]
+        do {
+            let before = store.received()
+            let counts = try await BulkRules.counts(pkg.items, on: on, received: before, engine: engine)
+            takes = on ? try await BulkRules.takes(pkg.items, received: before, engine: engine) : []
+            try store.commitReceived(counts)
+        } catch {
+            fail("Could not save the check-in. \(error.localizedDescription)")
+            throw error
+        }
+        checkInError = nil
+        received = store.received()
+        // A Mark all that adds nothing has nothing to undo, so the held Undo stays. A Clear, or a Mark all that adds, ends it.
+        // A new Undo sets its gk only after its count is known, so the hint never shows a count from before the press.
+        if !on || !takes.isEmpty { endBulkUndo() }
+        let counted = takes.isEmpty ? bulkUndoTakes : takes
+        if on && !counted.isEmpty {
+            let n: Int
+            do { n = try await BulkRules.takenBack(counted, received: received, engine: engine) } catch {
+                fail("Saved, but the Undo count could not refresh. \(error.localizedDescription)")
                 throw error
             }
+            if !takes.isEmpty || bulkUndoGk != nil {
+                bulkUndoTakes = counted
+                bulkUndoHeld = n
+                if !takes.isEmpty { bulkUndoGk = gk }
+            }
         }
+        try await reread(pkg, items: pkg.items)
+    }
+
+    /// Takes back the last Mark all's own delta and keeps every later edit. With nothing held it writes nothing.
+    public func undoBulk() async throws {
+        guard let gk = bulkUndoGk else { return }
+        let takes = bulkUndoTakes
+        endBulkUndo()
+        do {
+            let counts = try await BulkRules.undone(takes, received: store.received(), engine: engine)
+            try store.commitReceived(counts)
+        } catch {
+            fail("Could not take back the check-ins. \(error.localizedDescription)")
+            throw error
+        }
+        checkInError = nil
+        received = store.received()
+        if let pkg = rows.first(where: { $0.gk == gk }) { try await reread(pkg, items: pkg.items) }
+    }
+
+    /// A tab change, a restore or a Reset: the held Undo is gone.
+    public func endBulkUndo() {
+        bulkUndoGk = nil
+        bulkUndoTakes = []
+        bulkUndoHeld = 0
     }
 
     /// Stamps the package (the one stamp writer, StampWriter), then reads the ledger again: a refund leaves the list,
@@ -326,6 +412,7 @@ public final class PackagesModel {
             fail("\(failure) \(error.localizedDescription)")
             throw error
         }
+        endBulkUndo()
         do { try await load() } catch {
             fail("Saved, but the list could not refresh. \(error.localizedDescription)")
             throw error
