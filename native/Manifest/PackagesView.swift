@@ -80,7 +80,7 @@ struct PackagesView: View {
     private func vacatedNotice(_ v: PackagesModel.VacatedUndo, inert: Bool) -> some View {
         UndoNoticeBar(line: v.line, undoID: "bulk-vacated-undo:\(v.gk)",
                       undo: { await bulkWrite(masthead: masthead, onChange: onChange) { try await model.undoBulk() } },
-                      dismiss: { model.endBulkUndo() }, inert: inert)
+                      dismiss: { model.dismissVacated(gk: v.gk) }, inert: inert)
     }
 
     /// The web's empty list: one sentence, and one Clear search only while a search is what empties it.

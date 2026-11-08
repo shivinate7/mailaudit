@@ -67,7 +67,7 @@ struct LedgerTab: View {
     /// ViewOptions where the web saves it, and then every tab reads the ledger again, so the figures follow the range.
     private func viewGroup(_ store: LedgerStore) -> some View {
         let tally = options.lastList == .tally
-        let sortLabel = tally ? options.itemSort.label : options.sortBy.label
+        let sortLabel = tally ? options.itemSort.label : options.label(of: options.sortBy)
         let lines = options.lineCount
         let sub = "\(lines) line\(lines == 1 ? "" : "s")" + (options.outsideCount > 0 ? " \u{00B7} \(options.outsideCount) outside" : "")
         return VStack(alignment: .leading, spacing: 0) {
@@ -88,7 +88,7 @@ struct LedgerTab: View {
                 if sortOpen {
                     OptionPanel(id: "ledger-sort-grid", columns: 2, cells: tally
                         ? TallySort.allCases.map { key in OptionCell(label: key.label, on: key == options.itemSort) { choose { try options.setItemSort(key, in: store) } } }
-                        : PackageSort.allCases.map { key in OptionCell(label: key.label, on: key == options.sortBy) { choose { try options.setSortBy(key, in: store) } } })
+                        : options.packageSorts.map { item in OptionCell(label: item.label, on: item.sort == options.sortBy) { choose { try options.setSortBy(item.sort, in: store) } } })
                 }
                 LedgerRow(title: "Orders from", sub: sub, value: options.rangeLabel, open: rangeOpen, id: "ledger-range",
                           valueID: "ledger-range-value", expandedValue: "\(options.rangeLabel), \(rangeOpen ? "expanded" : "collapsed")") {
@@ -96,10 +96,10 @@ struct LedgerTab: View {
                     rangeOpen.toggle()
                 }
                 if rangeOpen {
-                    OptionPanel(id: "ledger-range-grid", columns: 4, cells: RangePreset.allCases.map { preset in
-                        OptionCell(label: preset.label, on: preset == options.dateFilter.preset) {
+                    OptionPanel(id: "ledger-range-grid", columns: 4, cells: options.rangePresets.map { item in
+                        OptionCell(label: item.label, on: item.preset == options.dateFilter.preset) {
                             var next = options.dateFilter
-                            next.preset = preset
+                            next.preset = item.preset
                             setRange(next, store)
                         }
                     }) {
@@ -127,12 +127,13 @@ struct LedgerTab: View {
         Task { await onLedgerChange() }
     }
 
-    /// The Last stepper (src/app.jsx bumpDays): one day more or fewer, never under 1, starting from 21 when the field is empty.
+    /// The Last stepper: one day more or fewer, from the bundle's bumpDays (never under 1, starting from 21 when the field is blank or 0).
     private func daysRow(_ store: LedgerStore) -> some View {
         func bump(_ by: Int) {
-            var next = options.dateFilter
-            next.days = String(max(1, (Int(next.days ?? "") ?? 21) + by))
-            setRange(next, store)
+            Task {
+                do { try await options.bumpDays(by: by, in: store); viewFailure = nil } catch { viewFailure = "Could not save the view. \(error.localizedDescription)" }
+                await onLedgerChange()
+            }
         }
         return HStack(spacing: 8) {
             Text("Last").textCase(.uppercase).font(.cochin(10, relativeTo: .caption2)).tracking(1.6).foregroundStyle(paint(.partLabel))

@@ -4,38 +4,15 @@ import Observation
 /// The two list tabs the Sorted by row can order. The Ledger tab shows the list of the last one left (src/app.jsx `lastList`).
 public enum ListTab: Sendable { case packages, tally }
 
-/// The Packages sort keys, in the web's order. The raw value is the key sortPackages takes.
-/// The labels are PKG_SORTS in src/app.jsx. Swift keeps its own copy, as TallySort does for ITEM_SORTS: the labels
-/// live in app.jsx, not in the rules bundle (a copy with a stated reason, building-one-home-per-capability).
+/// The Packages sort keys. The raw value is the key sortPackages takes. The labels and their order are PKG_SORTS in the rules
+/// bundle (ViewOptions.packageSorts), not a copy here.
 public enum PackageSort: String, CaseIterable, Sendable {
     case newest, oldest, value, rate, seller
-
-    public var label: String {
-        switch self {
-        case .newest: "Newest"
-        case .oldest: "Oldest"
-        case .value: "$ remaining"
-        case .rate: "Unit rate"
-        case .seller: "Seller A\u{2013}Z"
-        }
-    }
 }
 
-/// The seven Orders from presets, in the web's order (RANGES in src/app.jsx; a copy for the reason PackageSort gives).
+/// The seven Orders from presets. The labels and their order are RANGES in the rules bundle (ViewOptions.rangePresets).
 public enum RangePreset: CaseIterable, Sendable {
     case all, d30, d45, d60, d90, days, custom
-
-    public var label: String {
-        switch self {
-        case .all: "All time"
-        case .d30: "30 days"
-        case .d45: "45 days"
-        case .d60: "60 days"
-        case .d90: "90 days"
-        case .days: "Last\u{2026}"
-        case .custom: "By month"
-        }
-    }
 
     /// The value the saved `dateFilter.preset` holds: a string, or the number of days.
     var saved: Any {
@@ -95,15 +72,6 @@ public struct DateFilter: Equatable, Sendable {
         if let days { out["days"] = days }
         return out
     }
-
-    /// The Orders from row's value (rangeLabel in src/app.jsx, less the month name of a whole-month range).
-    public var label: String {
-        switch preset {
-        case .days: days.map { $0.isEmpty ? "Last\u{2026}" : "Last \($0)d" } ?? "Last\u{2026}"
-        case .custom: from.isEmpty && to.isEmpty ? preset.label : "Custom"
-        default: preset.label
-        }
-    }
 }
 
 /// One cell of the By month picker, from the bundle's monthChoices: the order months that exist, newest first. `from` and `to`
@@ -159,18 +127,62 @@ public final class ViewOptions {
 
     /// The months the By month picker offers, from the bundle's monthChoices over every order. Set by PackagesModel.load.
     public internal(set) var months: [MonthChoice] = []
-    /// What the bundle's rangeMonthLabel read for a whole-month range, and the range it read: the label stands only while
-    /// the saved range is still that one, so a changed range never shows a stale month.
-    private var monthReading: (from: String, to: String, label: String)?
+    /// The rules bundle, for what a view reads that has no model of its own (the Last stepper). Set by the models.
+    @ObservationIgnored var engine: RulesEngine?
 
-    /// Orders from's value (rangeLabel in src/app.jsx): a custom range that is one whole month reads as that month.
-    public var rangeLabel: String {
-        if dateFilter.preset == .custom, let r = monthReading, r.from == dateFilter.from, r.to == dateFilter.to { return r.label }
-        return dateFilter.label
+    /// Orders from's value: the bundle's rangeLabel over the saved range and every order. It is read again at each load, so a
+    /// range just changed shows the earlier label until the lists are read again, which the Ledger tab does at once.
+    public private(set) var rangeLabel = ""
+
+    /// The Orders from presets and the Sorted by keys with their labels, in the bundle's order (RANGES and PKG_SORTS).
+    public private(set) var rangePresets: [(preset: RangePreset, label: String)] = []
+    public private(set) var packageSorts: [(sort: PackageSort, label: String)] = []
+
+    public func label(of sort: PackageSort) -> String { packageSorts.first { $0.sort == sort }?.label ?? "" }
+
+    /// Reads the bundle's constants RANGES and PKG_SORTS and its rangeLabel for the saved range.
+    func readLabels(engine: RulesEngine, itemsJSON: String) async throws {
+        let ranges = try await Self.table(engine, "RANGES")
+        let sorts = try await Self.table(engine, "PKG_SORTS")
+        let label = try await engine.call("rangeLabel", "[\(try LiveItems.json(dateFilter.saved)),\(itemsJSON)]")
+        rangePresets = ranges.compactMap { row in RangePreset(saved: row.0).map { ($0, row.1) } }
+        packageSorts = sorts.compactMap { row in (row.0 as? String).flatMap(PackageSort.init(rawValue:)).map { ($0, row.1) } }
+        rangeLabel = (try JSONSerialization.jsonObject(with: Data(label.utf8), options: [.fragmentsAllowed]) as? String) ?? rangeLabel
     }
 
-    func setMonthReading(_ label: String?) {
-        monthReading = label.map { (dateFilter.from, dateFilter.to, $0) }
+    /// A bundle constant of `[key, label]` pairs.
+    private static func table(_ engine: RulesEngine, _ name: String) async throws -> [(Any, String)] {
+        let raw = try await engine.constant(name)
+        let rows = (try JSONSerialization.jsonObject(with: Data(raw.utf8)) as? [[Any]]) ?? []
+        return rows.compactMap { $0.count == 2 ? ($0[0], $0[1] as? String ?? "") : nil }
+    }
+
+    /// The Last stepper: the bundle's bumpDays over the saved range (a blank or "0" field starts from 21, never under 1), saved as
+    /// the new range. The caller reads the lists again.
+    public func bumpDays(by step: Int, in store: LedgerStore) async throws {
+        guard let engine else { return }
+        let out = try await engine.call("bumpDays", "[\(try LiveItems.json(dateFilter.saved)),\(step)]")
+        let next = DateFilter(saved: try JSONSerialization.jsonObject(with: Data(out.utf8)))
+        try setDateFilter(next, in: store)
+    }
+
+    // MARK: Coming back after an absence
+
+    /// The store's clock when the app last left the foreground. nil while it is in front.
+    @ObservationIgnored private var leftAt: Double?
+
+    /// The app went to the background (src/app.jsx, the visibilitychange effect: hiddenAt).
+    public func leftForeground(in store: LedgerStore) { leftAt = store.clock() }
+
+    /// The app came back. After RESUME_RESET_MS away, read from the bundle against the store's clock, Showing starts over on
+    /// Unreceived (a session's start); the query, the range and the reveals stay. Returns whether it did, so the caller reads the
+    /// lists again. A return with no earlier leave does nothing.
+    public func returnedToForeground(in store: LedgerStore, engine: RulesEngine) async throws -> Bool {
+        guard let left = leftAt else { return false }
+        leftAt = nil
+        guard let ms = Double(try await engine.constant("RESUME_RESET_MS")), store.clock() - left >= ms else { return false }
+        hideDone = true
+        return true
     }
 
     /// Picks a whole month: the bundle's cell range, saved as a custom range, and read back as the month's name, not "Custom".
@@ -179,7 +191,7 @@ public final class ViewOptions {
         next.preset = .custom
         next.from = choice.from
         next.to = choice.to
-        monthReading = (choice.from, choice.to, choice.label)
+        rangeLabel = choice.label
         try setDateFilter(next, in: store)
     }
 

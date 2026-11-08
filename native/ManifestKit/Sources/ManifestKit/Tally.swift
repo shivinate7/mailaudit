@@ -77,6 +77,7 @@ public final class TallyModel {
         self.engine = engine
         self.store = store
         self.options = options
+        options.engine = engine
     }
 
     private func json(_ value: Any) throws -> String {

@@ -42,6 +42,8 @@ public final class PackagesModel {
     @ObservationIgnored private var sourceRows: [Package] = []
     /// Group key to place, set by the last sort and kept while the user checks in (no-layout-shift-under-pointer).
     @ObservationIgnored private var order: [String: Int] = [:]
+    /// What `order` was placed from: the source JSON and the sort. A load that finds both unchanged keeps `order`.
+    @ObservationIgnored private var orderKey: (source: String, sort: PackageSort)?
     /// Lines checked in under this filter context; filterPackages keeps them shown.
     @ObservationIgnored private var sticky: Set<String> = []
     /// The packages the list shows: the source, narrowed by Find and Showing, in the frozen order.
@@ -105,7 +107,8 @@ public final class PackagesModel {
         return vacated(gk: gk, seller: pkg.seller, count: bulkUndoCount)
     }
     /// The notices whose Undo another write ended while the card was off the list. Each keeps its slot, drawn inert, so nothing
-    /// below it moves under the pointer (no-layout-shift-under-pointer). A tab change, a restore, a Reset or a dismiss drops them.
+    /// below it moves under the pointer (no-layout-shift-under-pointer). A tab change, a restore or a Reset drops them all; a
+    /// dismiss (dismissVacated) drops its own.
     public var lapsedUndos: [VacatedUndo] { lapsed.compactMap { vacated(gk: $0.gk, seller: $0.seller, count: $0.count) } }
     private var lapsed: [(gk: String, seller: String, count: Int)] = []
 
@@ -130,6 +133,7 @@ public final class PackagesModel {
         self.engine = engine
         self.store = store
         self.options = options
+        options.engine = engine
     }
 
     public var query: String { options.query }
@@ -152,6 +156,11 @@ public final class PackagesModel {
     /// empty and is thrown after.
     public func load() async throws {
         options.read(store)
+        try await build()
+    }
+
+    /// load() without the read of the saved choices, for a choice just made in memory (setSort).
+    private func build() async throws {
         let got = store.received()
         let held = store.stamps()
         let live = try await LiveItems.of(store.items(), stamps: held, engine: engine)
@@ -167,7 +176,15 @@ public final class PackagesModel {
         let newLive = try JSONDecoder().decode([Package].self, from: Data(liveGrouped.utf8))
         let rangedGrouped = try await engine.call("groupPackages", "[\(rangedLive)]")
         let newSource = on ? stampedRaw : rangedGrouped
-        let newOrder = try await Self.placed(newSource, by: options.sortBy, received: got, engine: engine)
+        // The order is placed again only when the sort or the packages it ranks changed. A reload for a check-in, a stamp write or a
+        // Worker apply of counts keeps it, as the web's packageOrder does (it reads the counts through receivedRef), so no card
+        // moves under the pointer under a value sort (no-layout-shift-under-pointer).
+        let newOrder: [String: Int]
+        if let from = orderKey, from.source == newSource, from.sort == options.sortBy {
+            newOrder = order
+        } else {
+            newOrder = try await Self.placed(newSource, by: options.sortBy, received: got, engine: engine)
+        }
         let newRows = try await filtered(newSource, order: newOrder, received: got, stamps: held)
         let refunds = try await StampRules.keys(where: "isRefundStamp", in: held, engine: engine)
         let kinds = try await StampRules.kinds(engine: engine)
@@ -182,10 +199,11 @@ public final class PackagesModel {
         let (kept, total) = (ViewRange.count(rangedLive), ViewRange.count(live))
         let allItems = try json(store.items())
         let choices = try JSONDecoder().decode([MonthChoice].self, from: Data(try await engine.call("monthChoices", "[\(allItems)]").utf8))
-        let monthLabel = try await engine.call("rangeMonthLabel", "[\(try LiveItems.json(options.dateFilter.saved)),\(allItems)]")
+        try await options.readLabels(engine: engine, itemsJSON: allItems)
         source = newSource
         sourceRows = sourcePackages
         order = newOrder
+        orderKey = (newSource, options.sortBy)
         rows = newRows
         liveRows = newLive
         hasItems = !store.items().isEmpty
@@ -193,7 +211,6 @@ public final class PackagesModel {
         options.outsideCount = total - kept
         try await options.readCanceled(itemsJSON: allItems, engine: engine)
         options.months = choices
-        options.setMonthReading(try? JSONSerialization.jsonObject(with: Data(monthLabel.utf8), options: [.fragmentsAllowed]) as? String)
         received = got
         stamps = held
         stampedCount = stamped.count
@@ -260,11 +277,13 @@ public final class PackagesModel {
         try await refilter()
     }
 
-    /// Sorted by: saved under `sortBy`, and the order is worked out again.
+    /// Sorted by: saved under `sortBy`, and the order is worked out again. A failed save does not undo the choice: the list is
+    /// built from the choice in memory, without reading the saved one back, as the Tally's setSort does. The next load()
+    /// reads the saved choice again.
     public func setSort(_ key: PackageSort) async throws {
         var saveFailure: Error?
-        do { try options.setSortBy(key, in: store) } catch { saveFailure = error }  // the order still changes for this run
-        try await load()
+        do { try options.setSortBy(key, in: store) } catch { saveFailure = error }
+        try await build()
         if let saveFailure { throw saveFailure }
     }
 
@@ -545,10 +564,17 @@ public final class PackagesModel {
         if let pkg = package(gk: gk) { try await reread(pkg, items: pkg.items) }
     }
 
-    /// A tab change, a restore, a Reset or a dismiss: the held Undo is gone, and so are the notices left by earlier ones.
+    /// A tab change, a restore or a Reset: the held Undo is gone, and so are the notices left by earlier ones.
     public func endBulkUndo() {
         bulkUndoGk = nil
         lapsed = []
+    }
+
+    /// Dismisses one vacated notice. It ends the held Undo only when the notice is the held one's, and it leaves every other
+    /// lapsed notice in its slot, so nothing below it moves under the pointer (no-layout-shift-under-pointer).
+    public func dismissVacated(gk: String) {
+        if bulkUndoGk == gk { bulkUndoGk = nil }
+        lapsed.removeAll { $0.gk == gk }
     }
 
     /// Stamps the package (the one stamp writer, StampWriter), then reads the ledger again: a refund leaves the list,
