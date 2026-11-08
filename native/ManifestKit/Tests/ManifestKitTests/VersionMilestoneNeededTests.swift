@@ -1,7 +1,7 @@
 // Pins that a restore on an open ledger, an adopt that removes something, and a native Reset each
 // save their milestone first (milestones-taken-before-risk). Each refusal case breaks only the
-// versions folder, so a refusal can come only from the milestone. Each refusal has a control beside
-// it. The contract is in VersionTestSupport.swift.
+// versions folder, so a refusal can come only from the milestone. The adopt and Reset refusals have
+// a control here; the press refusal's control is in VersionsModelTests. The contract is in VersionTestSupport.swift.
 //
 // Fake fixtures only. These tests read no Keychain item.
 
