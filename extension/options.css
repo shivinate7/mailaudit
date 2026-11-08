@@ -1,0 +1,92 @@
+/* The options page. The light colours come from tokens.css (built from shared/tokens.json). The
+   dark set is the extension's own: the app ships no dark palette (owner ruling, 2026-11-08).
+   Every dark text pair measured over 4.5:1 (palette-tokens-contrast-floor) in the design notes. */
+:root {
+  --onAccent: var(--card);
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --cochin: Cochin, 'Hoefler Text', Palatino, Georgia, serif;
+  --ctl-h: 34px;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #1E1B24; --card: #27232E; --ink: #EFE6D6; --inkSoft: #B1A6BB;
+    --line: #443D4D; --accent: #A796DA; --onAccent: #1E1B24;
+    --green: #6DBB98; --red: #E3857B; --redSoft: #3A2426;
+    --manila: #3A3122; --manilaInk: #E2CB96; --amber: #D9AE4A;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--cochin); }
+button, input { font-family: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* one column, 520px at most */
+.op { max-width: 520px; margin-inline: auto; padding: 32px 24px 48px; display: flex; flex-direction: column; gap: 24px; }
+
+/* letterhead: seal between gold rules, MANIFEST in caps, a mono house line */
+.lh { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.lh .rule { display: flex; align-items: center; gap: 12px; width: 240px; }
+.lh .rule i { flex: 1; height: 1px; background: var(--gold); }
+.lh .t { font-size: 24px; letter-spacing: .14em; text-indent: .14em; line-height: 1; }
+.lh .f { font-family: var(--mono); font-size: 10px; letter-spacing: .3em; text-indent: .3em;
+  text-transform: uppercase; color: var(--inkSoft); }
+.lede { margin: 0; font-size: 16px; line-height: 1.45; color: var(--ink); text-align: center; text-wrap: pretty; }
+
+/* a section: mono micro-label over a hairline */
+.sec { display: flex; flex-direction: column; gap: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.sec > h2 { margin: 0; font-family: var(--mono); font-weight: 400; font-size: 10px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--inkSoft); }
+.parts { display: grid; grid-template-columns: 88px minmax(0, 1fr); column-gap: 12px; row-gap: 8px; align-items: baseline; }
+.parts .k { font-family: var(--mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--inkSoft); white-space: nowrap; }
+.parts .v { font-size: 16px; line-height: 1.35; color: var(--ink); min-width: 0; }
+.parts .v.soft { color: var(--inkSoft); }
+.parts .v .fig { font-family: var(--mono); font-size: 12px; color: var(--ink); }
+
+/* the key row: write-on field at 16px (no iOS-style zoom, and legible), then the buttons */
+.keyrow { display: flex; gap: 8px; align-items: stretch; margin: 0; }
+.fld { flex: 1 1 0; min-width: 0; display: flex; }
+.keyfield { flex: 1; min-width: 0; height: var(--ctl-h); border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
+  background: transparent; font-family: var(--mono); font-size: 16px; color: var(--ink); padding: 0; outline: none; }
+.keyfield:focus { border-bottom-color: var(--accent); }
+.keyfield::placeholder { color: var(--inkSoft); opacity: 1; }
+.cell { height: var(--ctl-h); padding: 0 12px; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  font-family: var(--mono); font-size: 11.5px; white-space: nowrap; cursor: pointer; flex-shrink: 0; }
+.cell:hover { border-color: var(--inkSoft); }
+.cell:disabled { color: var(--inkSoft); cursor: not-allowed; border-style: dashed; }
+/* Clear key keeps one box whatever its label or state, so Save never moves. */
+.cell.clear { width: 120px; color: var(--red); background: var(--redSoft); }
+.cell.clear.armed { background: var(--red); color: var(--onAccent); border-color: var(--red); font-weight: 700; }
+.cell.clear[hidden] { display: inline-block; visibility: hidden; }
+.cell.primary { background: var(--accent); color: var(--onAccent); border-color: var(--accent); padding: 0 16px; }
+.cell.primary:disabled { background: var(--card); color: var(--inkSoft); border-color: var(--line); border-style: dashed; }
+.cell.go { color: var(--accent); }
+
+/* an answer slot is one line tall and always rendered, so text arriving moves nothing */
+.answer { min-height: 20px; font-family: var(--mono); font-size: 11px; line-height: 20px; color: var(--inkSoft);
+  display: flex; gap: 8px; align-items: center; }
+.answer.ok { color: var(--green); }
+.answer.bad { color: var(--red); }
+.help { margin: 0; font-size: 14px; line-height: 1.4; color: var(--inkSoft); }
+.help code { font-family: var(--mono); font-size: 12px; color: var(--ink); }
+.pullrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.linkbtn { border: 0; background: transparent; padding: 0; color: var(--accent); font-family: var(--mono); font-size: 11px;
+  letter-spacing: .12em; text-transform: uppercase; border-bottom: 1px solid var(--line); line-height: 16px; cursor: pointer; }
+.linkbtn:hover { border-bottom-color: var(--accent); }
+.linkbtn[hidden] { display: none; }
+
+/* the failure: manila advisory block */
+.fail { background: var(--manila); color: var(--manilaInk); border-radius: 8px; padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 8px; }
+.fail .what { font-size: 17px; line-height: 1.25; color: var(--manilaInk); }
+.fail .when { font-family: var(--mono); font-size: 11px; }
+.fail .fix { font-size: 15px; line-height: 1.4; }
+.fail .acts { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.fail .acts .cell { background: var(--card); color: var(--accent); }
+.fail details { font-family: var(--mono); font-size: 11px; }
+.fail summary { cursor: pointer; width: max-content; }
+.fail details code { display: inline-block; margin-top: 4px; }
+.none { font-size: 16px; color: var(--inkSoft); }
+
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

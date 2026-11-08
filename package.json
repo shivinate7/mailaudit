@@ -29,7 +29,9 @@
     "check:screens": "node test/screens.mjs",
     "test": "node test/app.test.mjs && node test/photoget.test.mjs",
     "serve": "node dev-server.mjs",
-    "deploy": "npm run build && npm run check:seed && npm test && git switch -c deploy/$(date +%Y%m%d%H%M%S)-$$ && git add index.html native/ManifestKit/Sources/ManifestKit/rules.js && git commit -m \"deploy: rebuild index.html\" && git push -u origin HEAD && gh pr create --fill --base main && git switch -"
+    "deploy": "npm run build && npm run check:seed && npm test && git switch -c deploy/$(date +%Y%m%d%H%M%S)-$$ && git add index.html native/ManifestKit/Sources/ManifestKit/rules.js && git commit -m \"deploy: rebuild index.html\" && git push -u origin HEAD && gh pr create --fill --base main && git switch -",
+    "build:extension": "node extension/build.mjs",
+    "build:extension-icons": "node extension/build-icons.mjs"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
