@@ -51,8 +51,9 @@
 //     native-armed-audit-misses-ask). The ask's label, enabled state and 44pt frames are read from one snapshot instead.
 //   - First focus on Cancel, the hints ("Asks first. Clears N check-ins from <seller>") and the VoiceOver names: XCUITest
 //     reads neither focus nor a hint (debt native-ask-has-no-cancel-focus).
-//   - The vacated Undo notice (a filter drops the card on the tap): the cases here read the list as Everything (ScreenKit.showEverything),
-//     so a card that Mark all completes stays on screen for its Undo. The Unreceived default is not pinned on a tap here.
+//   - The vacated Undo notice has one case of its own, testTheNoticeStaysLaidOutWhenAnotherWriteEndsItsUndo, on the Unreceived
+//     default. The cases above read the list as Everything (ScreenKit.showEverything), so a card that Mark all completes stays
+//     on screen for its Undo.
 //   - The stacked row at an accessibility text size, and the open Duo's Packages page.
 //   - Clear's N across a filter's hidden copies on the Tally: TallyBulkModelTests pins that bulk reaches them, and V39.8 the N.
 //
@@ -506,5 +507,36 @@ final class PackageBulkUITests: XCTestCase {
             XCTAssertLessThanOrEqual(seen.frame.maxY, barTop, "\(id) reaches under the tab bar, so the audit would read a cut row")
         }
         try app.auditNamingElements(skipping: skipMeasuredContrastFlags)
+    }
+
+    // MARK: the vacated Undo notice
+
+    /// A Mark all that completes a card Unreceived drops leaves its Undo as a notice in the card's place. A hand check-in on
+    /// another card ends that Undo (undo-removes-only-its-delta). The notice then stays laid out with no Undo and no dismiss, so
+    /// the cards below it do not move under the pointer (no-layout-shift-under-pointer). The list is read as the load leaves it,
+    /// Unreceived. Seed, Newest first: B1 is the first card, A1 the second, C1 the third and D1 the fourth. A1 holds three lines,
+    /// so Mark all completes it and one hand check-in on it does not. The anchor is B1, above the notice, and the check-in is on
+    /// B1's own line, so the lower cards C1 and D1 are the rows that would move.
+    func testTheNoticeStaysLaidOutWhenAnotherWriteEndsItsUndo() throws {
+        let app = launch()
+        let gk = Self.a1, anchor = "package-row:B1::Beta Games"
+        XCTAssertTrue(el(app, "package-row:\(gk)").waitForExistence(timeout: 5), "anchor: A1 is listed under Unreceived before the Mark all")
+        tap(app, "bulk-mark:\(gk)")
+        let undo = el(app, "bulk-vacated-undo:\(gk)")
+        XCTAssertTrue(undo.waitForExistence(timeout: 5), "Mark all on A1 drops it from Unreceived, and its Undo shows in its place")
+        XCTAssertFalse(el(app, "package-row:\(gk)").exists, "anchor: A1 is off the list, so the notice holds its place")
+
+        let taken = snap(app)
+        for lower in ["package-row:C1::Gamma Cards", "package-row:D1::Delta Cards"] {
+            XCTAssertNotNil(taken[lower], "anchor: \(lower) is on screen below the notice, so its frame can be compared")
+        }
+        let before = ScreenKit.relative(frames(taken), to: anchor)
+        XCTAssertTrue(el(app, "checkin:B1|1|pCounterspell").isHittable, "anchor: the line that ends the Undo is hittable before the tap")
+
+        checkIn(app, "B1|1|pCounterspell")
+
+        XCTAssertFalse(el(app, "bulk-vacated-undo:\(gk)").exists, "the held Undo has ended, so its Undo is no tap target")
+        XCTAssertFalse(el(app, "bulk-vacated-undo:\(gk)-dismiss").exists, "the held Undo has ended, so its dismiss is no tap target")
+        ScreenKit.assertStill(before, app, anchor: anchor, "the check-in that ended the held Undo", prefixes: Self.framed)
     }
 }
