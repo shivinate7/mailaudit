@@ -61,7 +61,7 @@ final class ViewOptionsModelTests: XCTestCase {
         XCTAssertEqual(store.received()[Self.urzaKey], 1, "precondition: the one line of D1 is checked in")
 
         XCTAssertFalse(gks(model).contains(Self.deltaGk),
-                       "Packages starts on Everything: \(Self.deltaGk) is fully in and still listed (ruled-head-showing-unreceived)")
+                       "Packages did not start on Unreceived: \(Self.deltaGk) is fully in and still listed (ruled-head-showing-unreceived, recorded 2026-10-10)")
         XCTAssertEqual(model.liveRows.count, 4, "control: liveRows is no longer the whole live set (stamped-filter-on-the-pipeline)")
         XCTAssertTrue(gks(model).contains("A1::Alpha Cards"), "control: a package with copies owed is not listed")
 
@@ -75,7 +75,7 @@ final class ViewOptionsModelTests: XCTestCase {
     func testTallyStartsOnUnreceivedAndHidesAProductFullyIn() async throws {
         let (model, _) = try await tallyModel(received: [Self.urzaKey: 1], label: "step8-tally-showing")
         XCTAssertFalse(model.rows.contains { $0.name == "Urza's Saga" },
-                       "Tally starts on Everything: Urza's Saga is fully in and still listed (ruled-head-showing-unreceived)")
+                       "Tally did not start on Unreceived: Urza's Saga is fully in and still listed (ruled-head-showing-unreceived, recorded 2026-10-10)")
         XCTAssertNotNil(model.rows.first { $0.name == "Lightning Bolt" }, "control: Lightning Bolt has copies owed and is not listed")
     }
 

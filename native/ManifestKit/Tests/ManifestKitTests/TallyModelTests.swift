@@ -156,7 +156,7 @@ final class TallyModelTests: XCTestCase {
         let (model, _, _) = try await makeModel()
         XCTAssertEqual(model.sort, .missing)
         XCTAssertEqual(model.query, "")
-        XCTAssertTrue(model.hideReceived, "Tally starts on Unreceived, as the web does (ruled-head-showing-unreceived)")
+        XCTAssertTrue(model.hideReceived, "Tally starts on Unreceived, as the web does (ruled-head-showing-unreceived, recorded 2026-10-10)")
         XCTAssertEqual(model.rows.map(\.name), try goldenOrder("missing"))
     }
 
