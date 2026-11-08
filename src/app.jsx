@@ -6,6 +6,7 @@ import {
   dateRange, inRange, dropCanceled, dropGks, canceledPackagesOf, stampedPackagesOf,
   tallyGroups, sortTally, sortPackages, filterPackages, stampTextOf, filterTally, RESUME_RESET_MS,
   monthKeysOf, spansOneYear, monthLabel as monthLabelOf, monthKeyOf, monthRange,
+  RANGES, PKG_SORTS, bumpDays as bumpDaysOf, rangeLabel as rangeLabelOf,
   totalsOf, bulkApply, outstandingOf, packagePill, refundedPill, STAMP_KINDS, hasStamp, isRefundStamp, nextStamp, stampBandText, itemDetail, tcgplayerOrderUrl, gotQty as gotQtyText, countLine, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger, money, compact,
 } from "./view-rules.mjs";
 import { photoPlan } from "./photo-rules.mjs";
@@ -1567,19 +1568,8 @@ const BULK_ROW_H = 46;
    option grid, see `.mdl-lrow` and the Ledger tab.) */
 const CTL_H = 34;
 
-/* preset → label, module-level so the collapsed control and the expanded chips
-   cannot drift apart. The values are deliberately heterogeneous — "all", raw
-   numbers, "days", "custom" — because the numeric ones are used arithmetically
-   when the range is applied. Do not stringify them. */
-const RANGES = [
-  ["all", "All time"],
-  [30, "30 days"],
-  [45, "45 days"],
-  [60, "60 days"],
-  [90, "90 days"],
-  ["days", "Last…"],
-  ["custom", "By month"],
-];
+/* The preset → label table (RANGES) and the sort vocabulary (PKG_SORTS) live in
+   view-rules.mjs, so the native client reads them too. */
 
 /* ---------- the ruled head ----------
    The masthead already establishes a vocabulary the control region used to
@@ -1673,15 +1663,7 @@ const optCell = (on) => ({
 });
 
 /* sort vocabularies, one per view. Module-level so the panel and the collapsed
-   value in the head cannot drift apart — the same mistake the date range's
-   label made before RANGES was hoisted. */
-const PKG_SORTS = [
-  ["newest", "Newest"],
-  ["oldest", "Oldest"],
-  ["value", "$ remaining"],
-  ["rate", "Unit rate"],
-  ["seller", "Seller A–Z"],
-];
+   value in the head cannot drift apart. PKG_SORTS lives in view-rules.mjs. */
 const ITEM_SORTS = [
   ["missing", "Most missing"],
   ["basis", "Cost basis"],
@@ -5292,22 +5274,13 @@ export default function MailDayLedger() {
   }, []);
 
   const bumpDays = useCallback((by) => {
-    setDateFilter((d) => {
-      const n = Math.max(1, (parseInt(d.days, 10) || 21) + by);
-      return { ...d, preset: "days", days: String(n) };
-    });
+    setDateFilter((d) => bumpDaysOf(d, by));
   }, []);
 
-  const rangeLabel = useMemo(() => {
-    const p = dateFilter.preset;
-    if (p === "days")
-      return dateFilter.days ? `Last ${dateFilter.days}d` : "Last…";
-    if (p === "custom") {
-      if (monthKey) return monthLabel(monthKey);
-      return dateFilter.from || dateFilter.to ? "Custom" : "By month";
-    }
-    return (RANGES.find(([v]) => v === p) || RANGES[0])[1];
-  }, [dateFilter, monthKey, monthLabel]);
+  const rangeLabel = useMemo(
+    () => rangeLabelOf(dateFilter, items),
+    [dateFilter, items]
+  );
 
   const sortLabel = useMemo(() => {
     const [list, cur] =

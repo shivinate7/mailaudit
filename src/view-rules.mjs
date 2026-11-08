@@ -307,6 +307,47 @@ export function monthRange(k) {
   return { from: `${k}-01`, to: `${k}-${String(last).padStart(2, "0")}` };
 }
 
+/* The Orders from presets and the Sorted by keys, with their labels. The web's controls and the native
+   rows both read these, so the collapsed value and the chips cannot drift. The preset values are
+   deliberately heterogeneous ("all", raw numbers, "days", "custom"): the numeric ones are used
+   arithmetically when the range is applied. Do not stringify them. */
+export const RANGES = [
+  ["all", "All time"],
+  [30, "30 days"],
+  [45, "45 days"],
+  [60, "60 days"],
+  [90, "90 days"],
+  ["days", "Last…"],
+  ["custom", "By month"],
+];
+
+export const PKG_SORTS = [
+  ["newest", "Newest"],
+  ["oldest", "Oldest"],
+  ["value", "$ remaining"],
+  ["rate", "Unit rate"],
+  ["seller", "Seller A–Z"],
+];
+
+/* the Last field's stepper: a blank, missing, non-numeric or "0" field starts from 21 (|| reads 0 as
+   unset), the step is added, and the result is clamped to at least 1 */
+export function bumpDays(filter, by) {
+  const n = Math.max(1, (parseInt(filter.days, 10) || 21) + by);
+  return { ...filter, preset: "days", days: String(n) };
+}
+
+/* the Orders from row's value */
+export function rangeLabel(filter, items) {
+  const p = filter.preset;
+  if (p === "days") return filter.days ? `Last ${filter.days}d` : "Last…";
+  if (p === "custom") {
+    const m = rangeMonthLabel(filter, items);
+    if (m) return m;
+    return filter.from || filter.to ? "Custom" : "By month";
+  }
+  return (RANGES.find(([v]) => v === p) || RANGES[0])[1];
+}
+
 export function inRange(items, range) {
   if (!range) return items;
   return items.filter((it) => {
