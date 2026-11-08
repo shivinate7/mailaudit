@@ -6,7 +6,7 @@
 // and fail on a missing element. The builder runs them red, then green. How to run: DuoShellUITests.swift, same
 // destination and the same hinge command. These tests need the pose flat (open Duo, window 951 x 669 pt), set with
 // `~/.local/bin/hinge open`. A run in another pose fails on the window size (DuoWindowSupport.swift). It never skips.
-// The AccessibilityXL match-row case is green on main: it is red only on a mutant that moves the row under the keys.
+// The AccessibilityXL match-row case fails only when the row moves under the keys' drawn top.
 //
 // The seed is shared/fixtures/ledger.json. What the tests rely on in it:
 //   Lightning Bolt is in three envelopes: A1 Alpha Cards, B1 Beta Games and C1 Gamma Cards. So is a shared name.
@@ -509,8 +509,7 @@ final class DuoHandUITests: XCTestCase {
     }
 
     /// Pose: flat, system keys up, text at AccessibilityXL, no box. The typed name leaves one match row, and that row must lie wholly
-    /// above the keys' drawn top. Measured on Duo 1 on 2026-11-08: the row ends at 391.7 pt, the keyboard frame starts at 449 pt, and
-    /// the drawn keys start at 405 pt (duo-fold-and-keyboard). The Suspense and Released cases show a box and set no text size, so no
+    /// above the keys' drawn top (duo-fold-and-keyboard); the measured figures sit in debt hand-match-row-ax3-unmeasured. The Suspense and Released cases show a box and set no text size, so no
     /// case pins this row with no box at large text.
     func testMatchRowClearsTheKeysAtAccessibilityXL() {
         let app = XCUIApplication.launchedOnSeed(extra: ["-UIPreferredContentSizeCategoryName", Self.accessibilityXL])
