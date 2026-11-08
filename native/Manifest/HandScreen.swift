@@ -52,11 +52,17 @@ struct HandScreen: View {
 
     @Environment(\.duoSpread) private var spread
     @State private var query = ""
+    /// The names the list showed at the first tap on a match, and the one tapped. While they are set, the list keeps every
+    /// row in its place and marks the chosen one; the next keystroke clears both (no-layout-shift-under-pointer).
+    @State private var heldNames: [String]?
+    @State private var chosen: String?
     /// The envelope the answer page shows. A post leaves it, so the lines you checked in stay under your finger until the next card.
     @State private var shown: String?
     @State private var pastTransit = false
-    /// The offer has shown and has not yet been scrolled to after its layout.
-    @State private var revealPending = false
+    /// What a Post left in the offer's slot, so the lines keep their place under the finger that pressed it. It goes with the
+    /// next typed card or New envelope.
+    @State private var receipt: Receipt?
+    @State private var scroll = ScrollPosition(edge: .top)
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var hand: HandModel { kit.hand }
@@ -81,7 +87,7 @@ struct HandScreen: View {
                     Spacer(minLength: 8)
                     Text("\(counts.inCount) in \u{00B7} \(counts.out) out").font(.mono(12, relativeTo: .caption))
                         .foregroundStyle(Parchment.inkSoft).accessibilityIdentifier("hand-count")
-                    Button { hand.close(); close() } label: { MiniLabel(title: "Close") }.buttonStyle(.plain).accessibilityIdentifier("hand-close")
+                    Button { heldNames = nil; chosen = nil; hand.close(); close() } label: { MiniLabel(title: "Close") }.buttonStyle(.plain).accessibilityIdentifier("hand-close")
                 }
                 TextField("Type the card in hand", text: $query)
                     .textFieldStyle(.plain).font(.cochin(16, relativeTo: .body)).foregroundStyle(Parchment.ink)
@@ -90,6 +96,8 @@ struct HandScreen: View {
                     .background(Parchment.card, in: RoundedRectangle(cornerRadius: 8))
                     .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Parchment.line, lineWidth: 1))
                     .accessibilityIdentifier("hand-query")
+                    // A tap sets the query to the chosen name, which keeps the hold. Any other text is a keystroke: it ends the hold.
+                    .onChange(of: query) { _, text in if text != chosen { heldNames = nil; chosen = nil } }
                     // The typed text settles for 150 ms before it is read, so a name typed letter by letter is read once, not once
                     // per letter. Each read still applies in order (HandModel.type).
                     .task(id: query) {
@@ -97,24 +105,27 @@ struct HandScreen: View {
                         guard !Task.isCancelled else { return }
                         try? await hand.type(query)
                         guard !Task.isCancelled else { return }
+                        receipt = nil
                         shown = hand.hits.count == 1 ? hand.hits.first : nil
                     }
-                if let h = hand.held { notice(id: "hand-held", title: "Suspense", line: h.localizedCapitalized, foot: "Not checked in.") }
-                if !hand.strays.isEmpty {
-                    notice(id: "hand-strays", title: "Released, not checked in",
-                           line: hand.strays.map(\.localizedCapitalized).joined(separator: ", "),
-                           foot: hand.strays.count == 1 ? "It no longer decides an envelope." : "They no longer decide an envelope.")
-                }
                 HStack {
                     Text("This envelope").font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.inkSoft)
                     Spacer(minLength: 8)
-                    Button { hand.newEnvelope() } label: { MiniLabel(title: "New envelope") }
+                    // The typed card belonged to the ended envelope: clearing it with its hold and shown envelope leaves the
+                    // answer page on its empty state, and the query's .task then reads "" once, to hits = [].
+                    Button { heldNames = nil; chosen = nil; query = ""; shown = nil; hand.newEnvelope(); receipt = nil } label: { MiniLabel(title: "New envelope") }
                         .buttonStyle(.plain).accessibilityIdentifier("hand-new-envelope")
                 }
                 if let e = hand.error {
                     Text(e).font(.cochin(13, relativeTo: .footnote)).foregroundStyle(Parchment.red).accessibilityIdentifier("hand-error")
                 }
                 matches
+                if let h = hand.held { notice(id: "hand-held", title: "Suspense", line: h.localizedCapitalized, foot: "Not checked in.") }
+                if !hand.strays.isEmpty {
+                    notice(id: "hand-strays", title: "Released, not checked in",
+                           line: hand.strays.map(\.localizedCapitalized).joined(separator: ", "),
+                           foot: hand.strays.count == 1 ? "It no longer decides an envelope." : "They no longer decide an envelope.")
+                }
             }
             .padding(16)
         }
@@ -123,18 +134,34 @@ struct HandScreen: View {
 
     /// The names the typed text matches, under their own heading, so a card you only released does not read as part of the
     /// envelope. The matches sit below the envelope row because no-layout-shift-under-pointer outranks mockup pose 2: a
-    /// tapped match collapses the list, and a list above would lift New envelope from under the finger.
-    /// Departs from: mockup pose 2 (matches above the envelope).
+    /// list above would lift New envelope from under the finger. The Suspense and Released boxes sit below the matches too:
+    /// a box above would push the only match under the keys, and a box that changes height on New envelope would move the
+    /// button under the finger.
+    /// A tap on a match holds the list: every row keeps its place until the next keystroke, so no row slides under the
+    /// finger and the Suspense box of a shared name does not rise into the freed space. The tapped row is bold with an
+    /// accent bar; the others stay tappable in inkSoft, and a tap on one moves the mark. Every row has the same 10 pt leading
+    /// inset, so the bar sits in a gutter and no label moves on a tap.
+    /// Departs from: mockup pose 2 (matches above the envelope), and a list that collapses to the tapped row (default, not owner).
     @ViewBuilder private var matches: some View {
-        let names = hitNames
+        let names = heldNames ?? hitNames
         if !names.isEmpty {
             micro("Matches").accessibilityAddTraits(.isHeader).accessibilityIdentifier("hand-matches-heading")
             ForEach(names, id: \.self) { name in
-                Button { query = name } label: {
-                    Text(name).font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.ink)
-                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
+                let isChosen = name == chosen
+                Button {
+                    if heldNames == nil { heldNames = names }
+                    chosen = name
+                    query = name
+                } label: {
+                    Text(name).font(.cochin(14, relativeTo: .body).weight(isChosen ? .bold : .regular))
+                        .foregroundStyle(chosen == nil || isChosen ? Parchment.ink : Parchment.inkSoft)
+                        .padding(.leading, 10)
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .overlay(alignment: .leading) { if isChosen { Rectangle().fill(Parchment.accent).frame(width: 3) } }
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain).accessibilityIdentifier("hand-hit:\(name)")
+                .accessibilityAddTraits(isChosen ? .isSelected : [])
             }
         }
     }
@@ -173,35 +200,24 @@ struct HandScreen: View {
     // MARK: right page
 
     /// The system keys span both pages. The right page keeps SwiftUI's own keyboard avoidance, the house pattern of
-    /// OrphanedView and MastheadScreen's scrollTo, so the space above the keys is the scroll view's own, and the offer scrolls
-    /// to its foot. The left page's content keeps its place: its scroll view only gets shorter, at offset 0
-    /// (no-layout-shift-under-pointer).
+    /// OrphanedView. The offer sits under the sender, high on the page, so it clears the keys with no read of them. It shows by
+    /// scrolling the page to its top, where the sender is. The left page's content keeps its place: its scroll view only gets
+    /// shorter, at offset 0 (no-layout-shift-under-pointer).
     private var rightPage: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    if pastTransit {
-                        PastTransitPage(model: kit.transit, back: { pastTransit = false }, onChange: afterWrite)
-                    } else {
-                        answer
-                        if !kit.transit.rows.isEmpty { transitBox }
-                    }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                if pastTransit {
+                    PastTransitPage(model: kit.transit, back: { pastTransit = false }, onChange: afterWrite)
+                } else {
+                    answer
+                    if !kit.transit.rows.isEmpty { transitBox }
                 }
-                .padding(16)
             }
-            .onChange(of: offerVisible) { _, shown in
-                revealPending = shown
-                if shown { revealOffer(proxy) }
-            }
-            // Once more after the offer is laid out: the content grows by the post box. One shot, so a later change in
-            // the content never scrolls the page under a finger.
-            .onScrollGeometryChange(for: CGFloat.self, of: { $0.contentSize.height }) { _, _ in
-                if revealPending { revealPending = false; revealOffer(proxy) }
-            }
-            // The keys opened or grew while the offer shows: the space above them shrank. Never when it grows, as the keys close.
-            .onScrollGeometryChange(for: CGFloat.self, of: { $0.containerSize.height - $0.contentInsets.bottom }) { old, new in
-                if new < old, offerVisible { revealOffer(proxy) }
-            }
+            .padding(16)
+        }
+        .scrollPosition($scroll)
+        .onChange(of: offerVisible) { _, shown in
+            if shown { withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { scroll.scrollTo(edge: .top) } }
         }
         // The line check-ins are on this page. Packages' own checkin-error sits under this screen. An overlay at the top, where the
         // keys never reach and the bar does not float, adds no row, so nothing moves under a finger (no-layout-shift-under-pointer).
@@ -223,17 +239,6 @@ struct HandScreen: View {
         guard !pastTransit, hand.hits.count < 2, let gk = shown, let o = hand.offer else { return false }
         return o.gk == gk && o.heldCopies > 0
     }
-
-    /// Brings the offer to the foot of the space above the keys, as MastheadScreen's scrollTo does. Waits one turn, so the
-    /// offer is in the scroll view first.
-    private func revealOffer(_ proxy: ScrollViewProxy) {
-        Task { @MainActor in
-            await Task.yield()
-            withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { proxy.scrollTo(Self.offerID, anchor: .bottom) }
-        }
-    }
-
-    private static let offerID = "hand-offer"
 
     @ViewBuilder private var answer: some View {
         let trimmed = query.trimmingCharacters(in: .whitespaces)
@@ -279,13 +284,19 @@ struct HandScreen: View {
             Text(pkg.seller).font(.cochin(22, relativeTo: .title2).weight(.bold)).foregroundStyle(Parchment.ink)
                 .accessibilityIdentifier("hand-who")
             Text("ordered \(pkg.date)").font(.mono(11, relativeTo: .caption)).foregroundStyle(Parchment.inkSoft)
+            // Under the sender, so "Post ... here" names its envelope and the button sits high, clear of the keys. The slot
+            // keeps its height as a receipt after a Post, so no line moves under the finger that pressed it.
+            if let o = hand.offer, o.gk == pkg.gk, o.heldCopies > 0 {
+                postBox(o)
+            } else if let r = receipt, r.offer.gk == pkg.gk {
+                receiptBox(r)
+            }
             VStack(spacing: 0) {
                 ForEach(pkg.items, id: \.key) { item in line(item) }
             }
             .background(Parchment.card)
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Parchment.line, lineWidth: 1))
-            if let o = hand.offer, o.gk == pkg.gk, o.heldCopies > 0 { postBox(o) }
         }
     }
 
@@ -308,7 +319,9 @@ struct HandScreen: View {
     }
 
     /// Only for a held card. It checks in the offered copies, the typed card with them, and never runs by itself.
-    private func postBox(_ o: HandOffer) -> some View {
+    private func postBox(_ o: HandOffer) -> some View { slot(offerContent(o)) }
+
+    private func offerContent(_ o: HandOffer) -> some View {
         let total = o.plan.reduce(0) { $0 + $1.take }
         return VStack(alignment: .leading, spacing: 8) {
             Text("Your held card came with this envelope. Nothing is checked in until you post.")
@@ -318,14 +331,45 @@ struct HandScreen: View {
             }
             .buttonStyle(.plain).accessibilityIdentifier("hand-post")
         }
-        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
-        .background(Parchment.manila.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
-        .id(Self.offerID)
+    }
+
+    private func slot(_ content: some View) -> some View {
+        content.padding(12).frame(maxWidth: .infinity, alignment: .leading)
+            .background(Parchment.manila.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    /// The offer's own layout, hidden, sizes the slot, so the receipt is as tall as the offer at any text size.
+    private func receiptBox(_ r: Receipt) -> some View {
+        slot(offerContent(r.offer).hidden().overlay(alignment: .topLeading) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(r.refused ? "Not posted." : "Posted with this envelope. The next card you type clears this line.")
+                    .font(.cochin(13, relativeTo: .footnote)).foregroundStyle(Parchment.ink)
+                Text(r.line).font(r.refused ? .cochin(13, relativeTo: .footnote) : .mono(12, relativeTo: .caption))
+                    .foregroundStyle(r.refused ? Parchment.red : Parchment.manilaInk)
+                    .frame(minHeight: 44, alignment: .leading)
+            }
+        })
+        .accessibilityElement(children: .combine).accessibilityIdentifier("hand-receipt")
+    }
+
+    private struct Receipt {
+        let offer: HandOffer
+        let line: String
+        let refused: Bool
     }
 
     private func post() async {
+        guard let o = hand.offer else { return }
         masthead.saving()
         do { try await hand.post() } catch {}  // the model shows the failure in hand.error
+        let total = o.plan.reduce(0) { $0 + $1.take }
+        let held = o.heldCopies
+        // A failed save keeps the offer, so its slot still holds the button and no receipt is stored.
+        if hand.offer == nil {
+            receipt = hand.error == nil
+            ? Receipt(offer: o, line: "\(total) \(total == 1 ? "card" : "cards") checked in \u{00B7} \(held) \(held == 1 ? "was" : "were") held", refused: false)
+            : Receipt(offer: o, line: "Type the card again to post.", refused: true)  // hand-error already says why; the Post button is gone
+        }
         await afterWrite(failed: hand.error != nil)
     }
 

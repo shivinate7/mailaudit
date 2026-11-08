@@ -111,11 +111,13 @@ public final class HandModel {
         strays.removeAll { offerNames.contains($0) }
     }
 
-    /// The envelope the held card waited on has ended. Nothing is saved.
+    /// The envelope the held card waited on has ended. Nothing is saved. The matches go too: they were read for the
+    /// ended envelope's card, so a tie left behind would contradict "It no longer decides an envelope".
     public func newEnvelope() {
         if let h = held, !strays.contains(h) { strays.append(h) }
         held = nil
         offer = nil
+        hits = []
         ended += 1
     }
 

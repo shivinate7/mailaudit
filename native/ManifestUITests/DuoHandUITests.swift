@@ -10,6 +10,8 @@
 // The seed is shared/fixtures/ledger.json. What the tests rely on in it:
 //   Lightning Bolt is in three envelopes: A1 Alpha Cards, B1 Beta Games and C1 Gamma Cards. So is a shared name.
 //   Path to Exile is only in C1 (Gamma Cards), with Lightning Bolt, Swords to Plowshares, Ponder and Preordain.
+//   Brainstorm is only in A1 and B1 (both without tracking): a second shared name, held in the New envelope hold test.
+//   Counterspell is in A1 and B1 too (both without tracking): the shared name of the New envelope tie test.
 //   A1, B1 and D1 (Delta Cards) have no tracking, are dated 2026-07-01, 2026-07-29 and 2026-05-01. C1 has tracking.
 //   Nothing is received. The past-transit test needs the simulator clock later than 2026-08-12.
 //   The live copies at rest are 14: A1 holds 4, B1 4, C1 5 and D1 1. Lightning Bolt owes 3 (one per A1, B1, C1).
@@ -43,6 +45,9 @@
 //             There is no button labelled "Lost" (item 25, deferred). past-transit-summary (the page's count line; its label
 //             starts "<N> envelope"). A red row (30 days from the order date) shows no "claim by" in any of its texts.
 //   Keys      With the system keys up, hand-post lies wholly above the keyboard's top edge, with no scroll by the user.
+//   Sender    With the offer shown and the keys up, the "It came from" line and hand-who lie below the status bar and above the
+//             keyboard's top edge, hittable, together with hand-post. The "It came from" line has no identifier: the test finds it
+//             by its label, any case (the screen sets it in capitals).
 //   Failure   hand-checkin-error (a text overlaid at the top of the right (envelope) page of Card in Hand, where the line
 //             check-ins are; present only after a line check-in whose save failed;
 //             its label is the failure line PackagesModel.checkInError holds, which starts "Could not save the check-in.").
@@ -51,8 +56,9 @@
 // A lone card that names one envelope may check in by Post or by tapping its line (the mockup shows a stepper and no
 // Post). The stray case checks in by whichever the screen offers. The held case needs Post.
 //
-// Every key here is fake. Launch with -ManifestUITestSeed only (XCUIApplication.launchedOnSeed). The one exception is
-// testFailedLineCheckInShowsInHand, which adds -ManifestUITestLedgerUnwritable (Debug builds only; it makes the next save fail; see the test).
+// Every key here is fake. Launch with -ManifestUITestSeed only (XCUIApplication.launchedOnSeed). The exceptions are
+// testFailedLineCheckInShowsInHand and testPostHoldsTheLinesStillWhenItsSaveFails, which add -ManifestUITestLedgerUnwritable
+// (Debug builds only; it makes the next save fail; see the first test).
 
 import XCTest
 
@@ -60,6 +66,12 @@ import XCTest
 final class DuoHandUITests: XCTestCase {
     static let tolerance = DuoShellUITests.tolerance
     static let foldMargin = DuoShellUITests.foldMargin
+    /// The least a status bar takes at the window's top. The Duo's inner-screen top inset is unmeasured (duo-fold-and-keyboard lists
+    /// none), so this floor stands in when the status bar is not in the accessibility tree (XCUIApplication.listTop).
+    static let statusBarFloor: CGFloat = 20
+    /// How far above its reported frame the keyboard panel draws on the open Duo: the panel starts near y 405 pt and the frame at 449 pt,
+    /// so a view under the top 44 pt of the panel is covered although it clears the frame. The figure's record is duo-fold-and-keyboard.
+    static let keyboardDrawnAbove: CGFloat = 44
 
     static let bolt = "C1|0|pLightningBolt"
     static let path = "C1|1|pPathtoExile"
@@ -99,10 +111,17 @@ final class DuoHandUITests: XCTestCase {
     func typeCard(_ app: XCUIApplication, _ text: String) {
         let query = app.element("hand-query")
         query.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
-        if let old = query.value as? String, !old.isEmpty, old != query.placeholderValue {
+        let old = typedText(query)
+        if !old.isEmpty {
             query.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: old.count))
         }
         query.typeText(text)
+    }
+
+    /// The text in the query field, "" when the field is empty. An empty field's value reads as its placeholder.
+    func typedText(_ query: XCUIElement) -> String {
+        guard let value = query.value as? String, value != query.placeholderValue else { return "" }
+        return value
     }
 
     func onLeftPage(_ el: XCUIElement, _ app: XCUIApplication, _ what: String) {
@@ -144,6 +163,31 @@ final class DuoHandUITests: XCTestCase {
         _ = need(app, "hand-held", "the Suspense line of a held name")
         typeCard(app, "Path to Exile")
         return need(app, "hand-post", "the post the next card offers")
+    }
+
+    /// The system keys are up, whole inside the window: waits for them and returns their frame. A keyboard that is missing or off
+    /// the window proves nothing about the space above it, so each of those fails.
+    func requireKeysUp(_ app: XCUIApplication) -> CGRect {
+        let keys = app.keyboards.firstMatch
+        XCTAssertTrue(keys.waitForExistence(timeout: 5), "the system keys are not up, so nothing here shows the offer clears them; with a hardware keyboard attached the keys never draw (Simulator, I/O, Keyboard, Connect Hardware Keyboard off)")
+        let k = keys.frame, win = app.window.frame
+        XCTAssertGreaterThan(k.height, 200, "the keyboard frame \(k) is too short to be the keys (measured 263 pt on the open Duo)")
+        XCTAssertGreaterThanOrEqual(k.minY, win.minY, "the keyboard frame \(k) starts above the window \(win)")
+        XCTAssertLessThanOrEqual(k.maxY, win.maxY + Self.tolerance, "the keyboard frame \(k) ends below the window \(win): the keys are not up")
+        return k
+    }
+
+    /// Waits until every element's frame has held for 3 reads, 0.2 s apart, so a read never lands in the keys' slide or the offer's
+    /// scroll. Copied from MastheadBackupUITests.settle, which is an instance method of another XCTestCase and cannot be called here.
+    func waitUntilStill(_ els: [XCUIElement]) {
+        var last = els.map(\.frame), held = 0
+        for _ in 0..<40 {
+            Thread.sleep(forTimeInterval: 0.2)
+            let now = els.map(\.frame)
+            held = now == last ? held + 1 : 0
+            if held >= 3 { return }
+            last = now
+        }
     }
 
     /// Card in Hand, then the past-transit page on the right page.
@@ -301,6 +345,69 @@ final class DuoHandUITests: XCTestCase {
         XCTAssertTrue(app.element("hand-strays").exists, "the stray left the list while no post named it")
     }
 
+    /// Pose: flat. A shared name is held, so the tie shows on the answer page. New envelope releases it as a stray, and the
+    /// tie must leave the answer page with it: the answer page must not keep asking for the next card from the ended envelope.
+    /// The tie is seen first, so the case cannot pass by never having had one. The typed card goes too: the field is empty
+    /// and the answer page shows its empty state, not "No open envelope holds" for a card the ended envelope never held.
+    func testNewEnvelopeLeavesNoTieOnTheAnswerPage() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+
+        typeCard(app, "Counterspell")
+        _ = need(app, "hand-held", "the Suspense line of a held name")
+        _ = need(app, "hand-tie", "the tie of the envelopes that hold Counterspell, shown before New envelope")
+        let newEnvelope = need(app, "hand-new-envelope", "the New envelope button")
+        newEnvelope.tap()
+        let strays = need(app, "hand-strays", "the Released box of the name New envelope released")
+        XCTAssertTrue(strays.label.lowercased().contains("counterspell"), "the Released box does not list Counterspell: \"\(strays.label)\"")
+        waitUntilStill([strays, newEnvelope, app.element("hand-answer")])
+        let prompt = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Name the next card from this envelope")).firstMatch
+        XCTAssertFalse(app.element("hand-tie").exists || prompt.exists,
+                       "New envelope left the tie of the released name on the answer page, which still asks for the next card from the ended envelope")
+
+        let answer = need(app, "hand-answer", "the answer page of Card in Hand")
+        XCTAssertEqual(typedText(app.element("hand-query")), "", "New envelope left the typed card in the field")
+        XCTAssertTrue(answer.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Type the card in hand. The envelope")).firstMatch.exists,
+                      "the answer page is not on its empty state after New envelope, so its no-match line cannot be judged")
+        XCTAssertFalse(answer.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "No open envelope holds")).firstMatch.exists,
+                       "New envelope left the no-match line \"No open envelope holds\" on the answer page for the typed card")
+    }
+
+    /// Pose: flat. New envelope ends the envelope while a Suspense box shows, with a Released box already shown:
+    /// an earlier New envelope released Lightning Bolt, then Brainstorm is held. The Suspense box leaves when New envelope is
+    /// pressed, so the envelope row and its New envelope button must not move under the pointer (no-layout-shift-under-pointer,
+    /// decision duo-card-in-hand). The button is read once the page has stopped moving, tapped, and read again once it is still.
+    func testNewEnvelopeHoldsStillUnderASuspenseBox() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+
+        typeCard(app, "Lightning Bolt")
+        _ = need(app, "hand-held", "the Suspense line of a held name")
+        need(app, "hand-new-envelope", "the New envelope button").tap()
+        _ = need(app, "hand-strays", "the Released box of the first name New envelope released")
+        waitGone(app.element("hand-held"), "the name is still held after the first New envelope")
+
+        typeCard(app, "Brainstorm")
+        let held = need(app, "hand-held", "the Suspense line of Brainstorm, a shared name")
+        XCTAssertTrue(held.label.lowercased().contains("brainstorm"), "the Suspense line does not name Brainstorm: \"\(held.label)\"")
+        let strays = need(app, "hand-strays", "the Released box that holds Lightning Bolt")
+        XCTAssertTrue(strays.label.lowercased().contains("lightning bolt"), "the Released box does not list Lightning Bolt: \"\(strays.label)\"")
+        let newEnvelope = need(app, "hand-new-envelope", "the New envelope button")
+        waitUntilStill([held, strays, newEnvelope])
+        let before = newEnvelope.frame
+
+        newEnvelope.tap()
+        waitGone(app.element("hand-held"), "the name is still held after New envelope")
+        let released = need(app, "hand-strays", "the Released box after New envelope")
+        XCTAssertTrue(released.label.lowercased().contains("brainstorm"), "the Released box does not list Brainstorm after New envelope: \"\(released.label)\"")
+        waitUntilStill([newEnvelope])
+        let after = newEnvelope.frame
+        XCTAssertEqual(after.minY, before.minY, accuracy: 1, "New envelope moved \(after.minY - before.minY) pt, from \(before) to \(after): the Suspense box above it left when New envelope was pressed")
+        keepShot(app, "hand-new-envelope-holds-still")
+    }
+
     /// Pose: flat. The past-transit page lists the late mail, oldest last, on the right page. A tracked package is not
     /// on it. Each row offers Claim filed and Refunded, and nothing offers Lost.
     func testPastTransitListsLateMailOldestLast() {
@@ -332,16 +439,145 @@ final class DuoHandUITests: XCTestCase {
         openHand(app)
         let post = offerPost(app)
 
-        let keys = app.keyboards.firstMatch
-        XCTAssertTrue(keys.waitForExistence(timeout: 5), "the system keys are not up, so nothing here shows the offer clears them; with a hardware keyboard attached the keys never draw (Simulator, I/O, Keyboard, Connect Hardware Keyboard off)")
-        let k = keys.frame, win = app.window.frame
-        XCTAssertGreaterThan(k.height, 200, "the keyboard frame \(k) is too short to be the keys (measured 263 pt on the open Duo)")
-        XCTAssertGreaterThanOrEqual(k.minY, win.minY, "the keyboard frame \(k) starts above the window \(win)")
-        XCTAssertLessThanOrEqual(k.maxY, win.maxY + Self.tolerance, "the keyboard frame \(k) ends below the window \(win): the keys are not up")
+        let k = requireKeysUp(app)
         let f = post.frame
         XCTAssertLessThanOrEqual(f.maxY, k.minY, "the Post button, frame \(f), is under the keys, which start at y \(k.minY): the owner must scroll to reach it")
         XCTAssertTrue(post.isHittable, "the Post button, frame \(f), is not hittable with the keys up and no scroll")
         keepShot(app, "hand-post-clears-keys")
+    }
+
+    /// Pose: flat, system keys up. A held card's Post offer shows with "It came from" and the seller still on the page: below the
+    /// status bar, above the keys, hittable, and the Post button hittable at the same time. Without the sender, "Post ... here" names
+    /// no envelope. The test never taps or scrolls: it reads frames once the offer and the keys have stopped moving. After the keys
+    /// are checked, a failed assertion does not end the test, so one red run reports the sender, the seller and the offer together.
+    func testPostOfferKeepsTheSenderOnThePage() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let post = offerPost(app)
+        let came = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "It came from")).firstMatch
+        let who = app.element("hand-who")
+        let keys = app.keyboards.firstMatch
+        _ = requireKeysUp(app)
+        waitUntilStill([keys, post, came, who].filter(\.exists))
+
+        let keysTop = keys.frame.minY - Self.keyboardDrawnAbove
+        let barFoot = max(app.listTop, app.window.frame.minY + Self.statusBarFloor)
+        continueAfterFailure = true
+        func clear(_ el: XCUIElement, _ what: String) {
+            guard el.exists else { return XCTFail("\(what) is not on the answer page at all, so the owner cannot read it") }
+            let f = el.frame
+            XCTAssertGreaterThanOrEqual(f.minY, barFoot, "\(what), frame \(f), starts above y \(barFoot), the foot of the status bar: it is scrolled off the top or under the clock and status icons")
+            XCTAssertLessThanOrEqual(f.maxY, keysTop, "\(what), frame \(f), is under the keys, which start at y \(keysTop)")
+            XCTAssertTrue(el.isHittable, "\(what), frame \(f), is not hittable with the keys up and no scroll: it is off the page or covered")
+        }
+        clear(came, "the \"It came from\" line")
+        clear(who, "the seller name (hand-who)")
+        clear(post, "the Post button (hand-post)")
+        keepShot(app, "hand-post-keeps-sender")
+    }
+
+    /// Pose: flat, system keys up. A held name's Suspense box shows, and the one match row must clear the keys. A box above
+    /// the list would push the row under them, so the boxes sit below the matches (decision duo-card-in-hand).
+    func testMatchRowClearsTheKeysUnderASuspenseBox() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        typeCard(app, "Lightning Bolt")
+        _ = need(app, "hand-held", "the Suspense line of a held name")
+        XCTAssertFalse(app.element("hand-strays").exists, "a Released box shows as well as the Suspense box, so this is not the Suspense case")
+        assertOnlyMatchClearsTheKeys(app, box: "Suspense")
+    }
+
+    /// Pose: flat, system keys up. A released name's Released box shows, and the one match row must clear the keys, as in the
+    /// Suspense case.
+    func testMatchRowClearsTheKeysUnderAReleasedBox() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        typeCard(app, "Lightning Bolt")
+        _ = need(app, "hand-held", "the Suspense line of a held name")
+        need(app, "hand-new-envelope", "the New envelope button").tap()
+        _ = need(app, "hand-strays", "the Released box of the released name")
+        waitGone(app.element("hand-held"), "the name is still held after New envelope")
+        typeCard(app, "Path to Exile")
+        XCTAssertFalse(app.element("hand-held").exists, "a Suspense box shows as well as the Released box, so this is not the Released case")
+        assertOnlyMatchClearsTheKeys(app, box: "Released")
+    }
+
+    /// Pose: flat, system keys up. The typed name must leave exactly one match row, and that row must lie wholly above the keys'
+    /// drawn top and be hittable while `box` shows. The row is read once the keys and the list have stopped moving.
+    /// No tap and no scroll. The typed name leaves one row, so that row is the list's only row and the one the keys can cover.
+    func assertOnlyMatchClearsTheKeys(_ app: XCUIApplication, box: String) {
+        let rows = waitForHits(app, count: 1, "the typed name must leave exactly one match under the \(box) box")
+        guard let row = rows.first else { return }  // waitForHits has already failed the test
+        let keys = app.keyboards.firstMatch
+        _ = requireKeysUp(app)
+        waitUntilStill([keys, row])
+        let keysTop = keys.frame.minY - Self.keyboardDrawnAbove
+        let f = row.frame
+        XCTAssertLessThanOrEqual(f.maxY, keysTop, "the match row \(row.identifier), frame \(f), is under the keys' drawn top at y \(keysTop) while the \(box) box shows: the owner must scroll to reach it")
+        XCTAssertTrue(row.isHittable, "the match row \(row.identifier), frame \(f), is not hittable with the keys up and no scroll")
+        keepShot(app, "hand-match-clears-keys-\(box.lowercased())")
+    }
+
+    /// The first lines of Gamma Cards, which sit under the offer. A Post presses above them, so none may move (no-layout-shift-under-pointer).
+    static let stillLines = [bolt, path, swords]
+
+    /// The frames of `stillLines` once the page has stopped moving. A row is its hand-line element: its top is the row's top plus a
+    /// fixed pad, so a row that moves reads as a moved frame.
+    func lineFrames(_ app: XCUIApplication) -> [String: CGRect] {
+        let rows = Self.stillLines.map { need(app, "hand-line:\($0)", "a line under the Post offer") }
+        waitUntilStill(rows)
+        return Dictionary(uniqueKeysWithValues: zip(Self.stillLines, rows.map(\.frame)))
+    }
+
+    /// Each row in `before` has its top within 1 pt of where it was. Call it only after the test saw the Post land by a sign that
+    /// does not need hand-receipt: waitUntilStill settles in 0.6 s, so a read that comes first sees rows that have not yet moved.
+    /// A failed assertion does not end the test, so one red run names every row that moved.
+    func assertLinesStayPut(_ app: XCUIApplication, _ before: [String: CGRect], after what: String) {
+        let after = lineFrames(app)
+        continueAfterFailure = true
+        for key in Self.stillLines {
+            guard let was = before[key], let now = after[key] else { return XCTFail("the line \(key) has no frame") }
+            XCTAssertEqual(now.minY, was.minY, accuracy: 1, "the line \(key) moved \(now.minY - was.minY) pt \(what): its frame was \(was) and is \(now)")
+        }
+    }
+
+    /// Pose: flat, system keys up. A Post that saves leaves the first lines under the offer where they were. The offer's slot keeps
+    /// its height as a receipt (mockup duo-hand-post-sender, #s=a-posted); without it the lines rise into the slot the finger pressed.
+    func testPostHoldsTheLinesStillWhenItSaves() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let post = offerPost(app)
+        _ = requireKeysUp(app)
+        let before = lineFrames(app)
+
+        post.tap()
+        waitForLabel(app.element("hand-checkin:\(Self.path)"), startingWith: "Undo check in", "Post did not check in Path to Exile")
+        waitGone(app.element("hand-post"), "the post is still offered after it posted")
+        assertLinesStayPut(app, before, after: "when Post saved")
+    }
+
+    /// Pose: flat, system keys up. A Post that is refused leaves the first lines where they were. A line check-in made after the
+    /// offer outdates its plan, so HandModel.post refuses, drops the offer and leaves a refused receipt in its slot.
+    func testPostHoldsTheLinesStillWhenItIsRefused() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let post = offerPost(app)
+        _ = requireKeysUp(app)
+        let held = need(app, "hand-checkin:\(Self.bolt)", "the held card's check-in control")
+        held.tap()
+        waitForLabel(held, startingWith: "Undo check in", "the line check-in did not save, so the offer is not outdated")
+        XCTAssertTrue(post.exists, "the line check-in took the offer away, so the Post below is not a refusal")
+        let before = lineFrames(app)
+
+        post.tap()
+        waitGone(app.element("hand-post"), "the refused post is still offered")
+        XCTAssertTrue(app.element("hand-checkin:\(Self.path)").label.hasPrefix("Check in "), "Path to Exile is checked in, so the post was not refused")
+        assertLinesStayPut(app, before, after: "when Post was refused")
     }
 
     /// Pose: flat. A red row (30 days from the order date) has no claim date: the claim window is closed. Checked on every late
@@ -386,11 +622,11 @@ final class DuoHandUITests: XCTestCase {
         keepShot(app, "hand-matches-heading")
     }
 
-    /// Pose: flat. A tap on a match fills the query and the list shrinks, but the New envelope button, which the owner's
+    /// Pose: flat. A tap on a match fills the query and the list holds its rows, so the New envelope button, which the owner's
     /// thumb reaches for next, does not move (no-layout-shift-under-pointer). "to" hits Brainstorm (two envelopes), Path to Exile
     /// and Swords to Plowshares in the seed, so the list has 3 rows. The 2nd, Path to Exile, is only in C1: it holds no name, so no
-    /// Suspense line opens above the button. Typing the whole name leaves 1 match, so the list loses 2 rows. With the list above
-    /// the row, the button moves up by those rows and this fails.
+    /// Suspense line opens. The tapped row is marked selected. One more letter ends the hold, and the list reads the field again.
+    /// With the list above the row, a list that shrinks would move the button up and this fails.
     func testTappingAMatchDoesNotMoveNewEnvelope() {
         let app = XCUIApplication.launchedOnSeed()
         guard app.requirePose(.flat) else { return }
@@ -402,13 +638,57 @@ final class DuoHandUITests: XCTestCase {
         let envelope = need(app, "hand-new-envelope", "the New envelope button")
         let before = envelope.frame
 
+        let listed = rows.count
         app.element(rows[1].identifier).tap()  // by id, so the tap is the 2nd row whatever order the query lists them in
-        _ = waitForHits(app, count: 1, "tapping Path to Exile must leave that one match")
+        _ = need(app, "hand-who", "the envelope of Path to Exile, which shows once the tap has settled")  // the list reads the field 150 ms after a tap
+        _ = waitForHits(app, count: listed, "tapping Path to Exile must hold all \(listed) rows, not collapse to the tapped one")
+        XCTAssertTrue(app.element("hand-hit:Path to Exile").isSelected, "the tapped row hand-hit:Path to Exile is not marked selected")
         XCTAssertEqual(app.element("hand-query").value as? String, "Path to Exile", "the tap did not fill the query")
-        XCTAssertFalse(app.element("hand-held").exists, "a Suspense line opened above the button: the 2nd match is a shared name, so the seed no longer makes this test fair")
+        XCTAssertFalse(app.element("hand-held").exists, "a Suspense line opened: the 2nd match is a shared name, so the seed no longer makes this test fair")
         let after = envelope.frame
-        XCTAssertEqual(after.minY, before.minY, accuracy: 0.5, "New envelope moved from \(before) to \(after) when the match list shrank from 3 rows to 1")
+        XCTAssertEqual(after.minY, before.minY, accuracy: 0.5, "New envelope moved from \(before) to \(after) after the tap on a match, which held the list at \(listed) rows")
+
+        // A further letter ends the hold: the field no longer names a held row, so the list reads it again and finds none.
+        let query = app.element("hand-query")
+        query.coordinate(withNormalizedOffset: CGVector(dx: 0.95, dy: 0.5)).tap()
+        query.typeText("s")
+        _ = waitForHits(app, count: 0, "typing a letter after the tap must end the hold: \"Path to Exiles\" matches no row")
         keepShot(app, "hand-match-tap-holds-new-envelope")
+    }
+
+    /// Pose: flat. A tap on a match fills the query, and the list holds its rows. The tapped row must stay under the finger.
+    /// The Suspense box that a shared name opens below the list must not rise above the old list foot (no-layout-shift-under-pointer;
+    /// debt hand-suspense-tap-shift). "o" lists seven names, Brainstorm then Counterspell.
+    /// A1 and B1 both hold Counterspell, so tapping it opens a Suspense box. Rows are read once the list has stopped moving.
+    func testTappingAMatchMovesNoRowUnderTheFinger() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        typeCard(app, "o")
+
+        let rows = waitForHits(app, count: 7, "typing \"o\" must list seven names")
+        XCTAssertEqual(rows[1].identifier, "hand-hit:Counterspell", "the 2nd match of \"o\" is not Counterspell, the name A1 and B1 share: \(rows.map(\.identifier))")
+        XCTAssertFalse(app.element("hand-held").exists, "a Suspense line shows before the tap, so the box after the tap is not the one the tap opened")
+        waitUntilStill(rows)
+        let tapped = rows[1].identifier
+        let before = rows[1].frame
+        let foot = rows.map { $0.frame.maxY }.max() ?? 0  // the old list foot: the box must not rise above it
+        let listed = rows.count
+
+        app.element(tapped).tap()  // by id, so the tap is the 2nd row whatever order the query lists them in
+        let held = need(app, "hand-held", "the Suspense line of Counterspell, a name A1 and B1 share")  // opens once the tap has settled
+        _ = waitForHits(app, count: listed, "tapping Counterspell must hold all \(listed) rows, not collapse to the tapped one")
+        XCTAssertTrue(app.element(tapped).isSelected, "the tapped row \(tapped) is not marked selected")
+        XCTAssertEqual(app.element("hand-query").value as? String, "Counterspell", "the tap did not fill the query")
+        let row = app.element(tapped)
+        waitUntilStill([row, held])
+
+        continueAfterFailure = true
+        let after = row.frame
+        // The label's horizontal position is not visible to XCUITest through the Button, so the design review checks it from shots.
+        XCTAssertEqual(after.minY, before.minY, accuracy: 1, "the tapped row \(tapped) moved \(after.minY - before.minY) pt under the finger, from \(before) to \(after): the list shrank above it")
+        XCTAssertGreaterThanOrEqual(held.frame.minY, foot - 1, "the Suspense box, frame \(held.frame), sits above the old list foot at y \(foot): it rose into the space the list left, under the finger")
+        keepShot(app, "hand-match-tap-moves-no-row")
     }
 
     /// Pose: flat. With the stamped filter on, the count line still counts every live copy, not the stamped packages alone.
@@ -513,6 +793,22 @@ final class DuoHandUITests: XCTestCase {
         }
         XCTAssertTrue(failure.isHittable, "the failure, frame \(f), is not hittable: something covers it")
         keepShot(app, "hand-checkin-error")
+    }
+
+    /// Pose: flat, system keys up. A Post whose save fails leaves the first lines where they were. HandModel.post keeps the offer
+    /// when the save throws, so the offer's own box holds the slot and this case does not reach the receipt.
+    func testPostHoldsTheLinesStillWhenItsSaveFails() {
+        let app = XCUIApplication.launchedOnSeed(extra: [Self.ledgerUnwritable])
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let post = offerPost(app)
+        _ = requireKeysUp(app)
+        let before = lineFrames(app)
+
+        post.tap()
+        _ = need(app, "hand-error", "the failure line of a Post whose save failed")
+        XCTAssertTrue(app.element("hand-checkin:\(Self.path)").label.hasPrefix("Check in "), "Path to Exile is checked in, so the save did not fail (the app ignored \(Self.ledgerUnwritable))")
+        assertLinesStayPut(app, before, after: "when Post's save failed")
     }
 
     /// The hand-hit rows, top to bottom, once exactly `count` show (a short poll: the list settles 150 ms after the last key

@@ -104,7 +104,7 @@ const CI_DONE = "ci-done";
 const ACTIONS = "shivinate7/claude-settings/actions/";
 const ALARM_ACTION = ACTIONS + "ci-alarm";
 // The shared action pin. Every claude-settings pin in checks.yml carries this sha, except ste-lint.
-const ACTION_PIN = "a781a86c3c693c9fe4d1ea7d30cdbde9d8ca92c6";
+const ACTION_PIN = "380a24b5fa9ab78b973892ddfe3a95eaff68601b";
 // ste-lint follows claude-settings main on its own, not ACTION_PIN (decision action-pins-follow-sessions).
 const STE_LINT_PIN = "967a7ea0fa01593ee624ea61447d5ec9eba240a6";
 // The sha a claude-settings pin must name: STE_LINT_PIN for ste-lint, the shared sha for the rest.

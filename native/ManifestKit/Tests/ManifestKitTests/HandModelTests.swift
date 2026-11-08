@@ -17,7 +17,7 @@
 //       public func type(_ name: String) async throws  // runs handHits and handStep; writes nothing; calls in flight
 //                                                      // together apply in call order (testOverlappingTypesReadEachOthersHeld)
 //       public func post() async throws                 // writes offer.plan in one save, then clears offer and held
-//       public func newEnvelope()                       // ends the current envelope: held moves to strays, offer clears; writes nothing
+//       public func newEnvelope()                       // ends the current envelope: held moves to strays, offer and hits clear; writes nothing
 //       public func close()                             // the sheet closes: clears offer, keeps held and strays; writes nothing
 //   }
 //   public struct HandOffer: Equatable, Sendable { gk: String; plan: [PlanStep]; heldCopies: Int }
@@ -340,6 +340,18 @@ final class HandModelTests: XCTestCase {
         let after = try Data(contentsOf: h.file)
         XCTAssertEqual(after, before, "the ledger file is not written")
         XCTAssertEqual(h.store.received(), [:], "the ended envelope's held card is not checked in")
+    }
+
+    /// A shared name held on the answer page shows its tie. New envelope releases the name, so the tie leaves the answer
+    /// page with it: the answer page must not keep asking for the next card from the ended envelope. The strays are
+    /// asserted first, so the case cannot pass by the envelope never having ended.
+    func testNewEnvelopeClearsTheTieOnTheAnswerPage() async throws {
+        let h = try await makeHand()
+        try await h.model.type("Lightning Bolt")
+        XCTAssertEqual(h.model.hits, ["S2::Beta Games", "S1::Alpha Cards"], "the setup is real: the shared name shows its tie before New envelope")
+        h.model.newEnvelope()
+        XCTAssertEqual(h.model.strays, ["lightning bolt"], "the setup is real: New envelope released the held name")
+        XCTAssertEqual(h.model.hits, [], "New envelope left the tie in hits, so the answer page still asks for the next card from the ended envelope")
     }
 
     /// A post that cannot save throws and rolls back. The held name and the offer stay, so the post can be tried
