@@ -10,7 +10,9 @@
 //   Row: identifier "tally-row:<product name>", for example "tally-row:Lightning Bolt". Its header button
 //     has the identifier "tally-toggle:<product name>" and opens or closes the row.
 //   Copy: an open row holds one element per shown copy, "tally-copy:<item key>". Its label holds the seller,
-//     the order id, the set and the day of the month.
+//     the set and the day of the month.
+//   Order: the copy's order id is its own control, "tally-order:<item key>", labelled "Show the whole order <id>".
+//     Its label, not the copy's, holds the order id.
 //   Copy control: "tally-checkin:<item key>", a 44pt hit region, labelled "Check in <name>" or
 //     "Undo check in <name>" (the Packages control, same wording).
 //   Sort: the Sorted by row "ledger-sort" on the Ledger tab (its View group). Its option grid "ledger-sort-grid"
@@ -165,7 +167,8 @@ final class TallyUITests: XCTestCase {
 
     // MARK: the copies list
 
-    /// An open row lists every copy it counts, with the seller, the order id, the set and the date, and a 44pt control.
+    /// An open row lists every copy it counts, with the seller, the set and the date in the copy's label, the order id on its own
+    /// order control, and a 44pt check-in control.
     func testOpenRowListsEveryCopyWithItsDetails() throws {
         let app = launch()
         openTally(app)
@@ -179,9 +182,12 @@ final class TallyUITests: XCTestCase {
         for (key, seller, order, day) in copies {
             let copy = element(app, "tally-copy:\(key)")
             XCTAssertTrue(copy.exists, "copy \(key) is missing")
-            for part in [seller, order, "Test Set", day] where !part.isEmpty {
+            for part in [seller, "Test Set", day] where !part.isEmpty {
                 XCTAssertTrue(copy.label.contains(part), "copy \(key) reads \u{201C}\(copy.label)\u{201D}, which lacks \(part)")
             }
+            let orderControl = element(app, "tally-order:\(key)")
+            XCTAssertTrue(orderControl.exists, "copy \(key) has no order control")
+            XCTAssertTrue(orderControl.label.contains(order), "copy \(key)'s order control reads \u{201C}\(orderControl.label)\u{201D}, which lacks \(order)")
             let control = element(app, "tally-checkin:\(key)")
             XCTAssertTrue(control.exists, "copy \(key) has no check-in control")
             XCTAssertGreaterThanOrEqual(control.frame.width, Self.minHit, "\(key) control is narrower than 44pt")
