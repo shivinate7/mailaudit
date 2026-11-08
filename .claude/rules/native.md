@@ -88,7 +88,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `duo-keyboard-gap-unmeasured` — The Duo keyboard gap above the keys is unmeasured.
 - `duo-fold-change-unpinned` — No test folds the Duo while the app runs.
 - `duo-tab-items-twice` — The Duo tab bar repeats the tab titles in RootView.
-- `duo-bar-dynamic-type-clips` — The Duo tab bar may clip at large text sizes.
+- `duo-bar-dynamic-type-clips` — The Duo tab bar labels clip at every accessibility text size.
 - `duo-stacked-poses-unbuilt` — The Duo has no stacked poses.
 - `duo-hand-mockup-gaps` — Eight parts of the Card in Hand mockup are not built.
 - `hand-stray-keeps-tie` — A released card leaves its tie on the answer page.
@@ -99,7 +99,8 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `hand-notice-cuts-match-row` — A Suspense or Released box pushes the match under the keys.
 - `hand-post-top-scroll-unpinned` — No test pins the scroll to the page top when Post shows.
 - `hand-held-box-under-keys` — A held card's box can sit under the keys.
-- `hand-match-row-ax3-unmeasured` — The match row at large text is unmeasured.
+- `hand-match-row-ax3-unmeasured` — The large-text match-row test runs only on a local Duo.
+- `hand-open-under-bar-at-l` — At AccessibilityL the Card in Hand control sits under the tab bar.
 - `hand-suspense-tap-shift` — A tap on a match shifts rows under the finger.
 - `hand-tap-label-unpinned` — No test pins the tapped name's sideways place.
 - `duo-left-page-dead-margin` — The Duo left page scrolls 76 pt past its end; low priority, after restyle's step 8.

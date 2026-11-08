@@ -1,7 +1,7 @@
-# The match row at large text is unmeasured
+# The large-text match-row test runs only on a local Duo
 
-**What.** On Card in Hand on the open Duo, the mockup `duo-hand-notice-match` shows the first match row whole above the keys at AX3 with 25 pt to spare. That figure assumed a 20 pt status bar. Built, the page sits about 63 pt lower (the field top at about 155 pt, not 92 pt; design review, 2026-11-07). So at AX3 the match row may sit under the keys even with no box. No test or shot covers AX3. A run at AX3 with the keys up must find the first match row whole above them, by measure or by a fix. A test then pins it, and the gap closes.
+**What.** On Card in Hand on the open Duo, the mockup `duo-hand-notice-match` shows the first match row whole above the keys at AX3. Built, the page sits about 63 pt lower than drawn (design review, 2026-11-07), so the row's clearance needed a measure. Duo 1, flat pose, 2026-11-08, one match (Path to Exile), keys up: at AX3 (AccessibilityXL) the row ends at 391.7 pt. That is 57 pt above the keyboard frame's top (449 pt) and 13 pt above the drawn keys (405 pt, `duo-fold-and-keyboard`). At AccessibilityM the gaps are 102 and 58 pt, and at the default size 110 and 66 pt. So the row clears the keys at AX3 with no box. The measuring class is DuoMeasureUITests (branch archive/duo-ax-measure, 096da19). The test testMatchRowClearsTheKeysAtAccessibilityXL now pins it, but no CI runs Duo UI tests, so the pin holds only on a local Duo run. It went red on a mutant with 20 pt added above the field (row end 411.7 pt) and green on the code (Duo 1, 2026-11-08 08:09 CST).
 
-**Status:** open.
+**Status:** Pinned by testMatchRowClearsTheKeysAtAccessibilityXL at 4ab76b8; the test passes locally on Duo (2026-11-08). Retire waits for a CI path that runs Duo UI tests.
 
 **Decision:** `duo-card-in-hand`.

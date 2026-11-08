@@ -159,7 +159,8 @@ private struct HingeProbe: UIViewRepresentable {
 }
 
 /// The custom bar's pill and the gap under it, from the mockup.
-private enum DuoBarMetrics {
+/// The open Duo bar's size, read also by the search pill on the list pages (step 8), which sits 8 pt above it.
+enum DuoBarMetrics {
     static let pill: CGFloat = 64
     static let lift: CGFloat = 12
     static var height: CGFloat { pill + lift }
