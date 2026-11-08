@@ -20,8 +20,10 @@
 // Guards, green on the old code: testFlatPackagesFullWidth, testClosedTallyIsOnePage. Ledger full width has one home,
 // DuoShellUITests.testFlatLedgerFullWidth, which shares expectSpansFold with the Packages test here.
 // testFlatTallyLastRowClearsTheBar and testFlatPackagesLastRowClearsTheBar guard the bar's column: the bar sits under the right
-// page only (decision duo-card-in-hand, item 23), so a part hides under it only if it shares the bar's column. A left page row may
-// run to the window's bottom edge. The Packages case is unrun, and Ledger has no case here (its home is DuoShellUITests).
+// page only (decision duo-card-in-hand, item 23), so a part hides under it only if it shares the bar's column. The left page's
+// end is a separate claim, pinned by testFlatTallyLeftListEndsAtItsLastRow and testFlatOrphanedLeftListEndsAtItsLastCell
+// (debt duo-left-page-dead-margin). Both are red on the code before that fix, predicted and not run: no simulator here.
+// The Packages case is unrun, and Ledger has no case here (its home is DuoShellUITests).
 //
 // What the tests expect of the app. Identifiers already in the app are kept. The builder adds the ones marked NEW.
 //   duo-tab-bar              the custom bar (DuoShellUITests). Its buttons carry the tab titles.
@@ -62,6 +64,20 @@ final class DuoSpreadUITests: XCTestCase {
     static let lightningCopies = ["A1|0|pLightningBolt", "B1|0|pLightningBolt", "C1|0|pLightningBolt"]
     static let counterspellCopies = ["A1|1|pCounterspell", "B1|1|pCounterspell"]
     static let orphanedPrefixes = ["orphaned-", "envelope:", "assign:", "exact:", "fit:", "discard:"]
+    /// Two envelopes: Urza's Saga alone, then Urza's Saga with Counterspell.
+    static let twoEnvelopes: [[(typed: String, name: String)]] = [
+        [("urza", "Urza's Saga")],
+        [("urza", "Urza's Saga"), ("counter", "Counterspell")],
+    ]
+    /// Six envelopes, one or two seed cards each: enough cells that Orphaned's list is taller than the window before any scroll.
+    static let sixEnvelopes: [[(typed: String, name: String)]] = [
+        [("urza", "Urza's Saga")],
+        [("counter", "Counterspell")],
+        [("path", "Path to Exile")],
+        [("swords", "Swords to Plowshares")],
+        [("ponder", "Ponder")],
+        [("preord", "Preordain")],
+    ]
 
     override func setUp() {
         super.setUp()
@@ -97,14 +113,18 @@ final class DuoSpreadUITests: XCTestCase {
     /// candidate D1). B holds Urza's Saga and Counterspell (2 cards, candidates A1, B1 and D1): the two headings differ by
     /// card count, and D1 is offered on both right pages. `ids` are the two cells' identifiers, the upper cell first.
     func openFlatOrphanedWithTwo() -> (app: XCUIApplication, ids: [String])? {
+        openFlatOrphaned(recording: Self.twoEnvelopes)
+    }
+
+    /// The open Duo on Orphaned with one envelope recorded per entry of `envelopes`. `ids` are the cells' identifiers, the upper cell first.
+    func openFlatOrphaned(recording envelopes: [[(typed: String, name: String)]]) -> (app: XCUIApplication, ids: [String])? {
         guard let app = openFlat("Orphaned", anchor: "orphaned-record") else { return nil }
-        app.recordEnvelope([("urza", "Urza's Saga")])
-        app.recordEnvelope([("urza", "Urza's Saga"), ("counter", "Counterspell")])
-        // recordEnvelope's own wait is already met by the first cell, so the second cell is waited for here.
+        for cards in envelopes { app.recordEnvelope(cards) }
+        // recordEnvelope's own wait is already met by the first cell, so the last cell is waited for here.
         func cells() -> [String: CGFloat] {
             Dictionary(app.elements(prefix: "orphaned-cell:").map { ($0.identifier, $0.frame.minY) }, uniquingKeysWith: min)
         }
-        XCTAssertTrue(waitUntil { cells().count == 2 }, "two recorded envelopes should give two cells, the app has \(cells().count)")
+        XCTAssertTrue(waitUntil { cells().count == envelopes.count }, "\(envelopes.count) recorded envelopes should give \(envelopes.count) cells, the app has \(cells().count)")
         return (app, cells().sorted { $0.value < $1.value }.map(\.key))
     }
 
@@ -146,6 +166,24 @@ final class DuoSpreadUITests: XCTestCase {
             last = now
         }
         return moved
+    }
+
+    /// Scrolled to its end (after scrollToEnd), the left page's list ends at its last part: that part's bottom sits within
+    /// `DuoMetrics.leftEndTolerance` of the window's bottom edge, which is the left page's bottom (the left page ignores the bottom
+    /// safe area). The bar's margin reaches the left page today, so the list stops `DuoMetrics.barHeight` higher
+    /// (duo-left-page-dead-margin). Reads frames only after the list has stopped.
+    func expectLeftListEndsAtBottom(_ app: XCUIApplication, prefixes: [String], _ what: String, file: StaticString = #filePath, line: UInt = #line) {
+        let parts = prefixes.flatMap { app.elements(prefix: $0) }
+        guard let last = parts.max(by: { $0.frame.maxY < $1.frame.maxY }) else {
+            XCTFail("no \(what) part is on screen, so the list's end proves nothing", file: file, line: line)
+            return
+        }
+        expect(last, on: .left, in: app, "the last \(what) part \(last.identifier)", file: file, line: line)
+        let bottom = app.window.frame.maxY, end = last.frame.maxY
+        XCTAssertGreaterThanOrEqual(end, bottom - DuoMetrics.tolerance,
+                                    "the last \(what) part \(last.identifier) ends at \(end) pt, below the window's bottom edge at \(bottom) pt: the list is not scrolled to its end", file: file, line: line)
+        XCTAssertLessThanOrEqual(bottom - end, DuoMetrics.leftEndTolerance,
+                                 "the \(what) list stops \(Int(bottom - end)) pt above the left page's bottom edge at \(bottom) pt, past its last part \(last.identifier) at \(end) pt: the left page keeps empty room under its list, where the bar's margin is", file: file, line: line)
     }
 
     // MARK: open Duo, pose flat
@@ -219,9 +257,9 @@ final class DuoSpreadUITests: XCTestCase {
         }
     }
 
-    /// Pose: flat (open Duo, window 951 x 669 pt). The bar sits under the right page only, so scrolled to the end the left page's
-    /// rows may run to the window's bottom edge, and the right page's parts (heading, copies) end above the bar's top edge.
-    /// Both are one rule (expectClearsBar): a part that shares the bar's column ends above the bar's top. It fails if a right page
+    /// Pose: flat (open Duo, window 951 x 669 pt). The bar sits under the right page only, so this rule covers the right page's parts:
+    /// its heading and copies end above the bar's top edge. The left page's end is pinned by testFlatTallyLeftListEndsAtItsLastRow.
+    /// The rule is expectClearsBar: a part that shares the bar's column ends above the bar's top. It fails if a right page
     /// part ends under the bar, or if the bar is widened over the left page while a row sits there.
     func testFlatTallyLastRowClearsTheBar() {
         guard let app = openFlat("Tally", anchor: "tally-row:Lightning Bolt") else { return }
@@ -242,6 +280,39 @@ final class DuoSpreadUITests: XCTestCase {
         keepShot(app, "flat-tally-end")
 
         expectClearsBar(rows() + rightIDs.map { app.byID($0) }, bar: bar, "Tally")
+    }
+
+    /// Pose: flat (open Duo, window 951 x 669 pt). Tally's left page, scrolled to its end, ends at its last row: the row's bottom sits
+    /// within `DuoMetrics.leftEndTolerance` of the window's bottom edge (duo-left-page-dead-margin). The rows must first overflow the
+    /// window, or a short list passes whatever its margin is.
+    func testFlatTallyLeftListEndsAtItsLastRow() {
+        guard let app = openFlat("Tally", anchor: "tally-row:Lightning Bolt") else { return }
+        let rows = { app.elements(prefix: "tally-row:") }
+
+        XCTAssertEqual(rows().count, Self.tallyRows, "the seed's Tally has \(Self.tallyRows) rows")
+        let lowest = rows().map { $0.frame.maxY }.max() ?? 0
+        XCTAssertGreaterThan(lowest, app.window.frame.maxY, "the \(Self.tallyRows) rows end at \(lowest) pt, inside the window before any scroll, so this test proves nothing: add rows to the seed")
+        // A first drag that moves nothing is not "the end": the drag missed the scroll view.
+        XCTAssertTrue(scrollToEnd(app, prefixes: ["tally-row:"]), "a drag on the left page did not move the list: the drag missed the scroll view")
+        keepShot(app, "flat-tally-left-end")
+
+        expectLeftListEndsAtBottom(app, prefixes: ["tally-row:"], "Tally")
+    }
+
+    /// Pose: flat (open Duo, window 951 x 669 pt). Orphaned's left page, scrolled to its end, ends at its last envelope cell: the cell's
+    /// bottom sits within `DuoMetrics.leftEndTolerance` of the window's bottom edge (duo-left-page-dead-margin). Six envelopes, so the
+    /// list overflows the window before the scroll.
+    func testFlatOrphanedLeftListEndsAtItsLastCell() {
+        guard let six = openFlatOrphaned(recording: Self.sixEnvelopes) else { return }
+        let app = six.app
+        let cells = { app.elements(prefix: "orphaned-cell:") }
+
+        let lowest = cells().map { $0.frame.maxY }.max() ?? 0
+        XCTAssertGreaterThan(lowest, app.window.frame.maxY, "the \(Self.sixEnvelopes.count) envelope cells end at \(lowest) pt, inside the window before any scroll, so this test proves nothing: record more envelopes")
+        XCTAssertTrue(scrollToEnd(app, prefixes: ["orphaned-cell:"]), "a drag on the left page did not move the Orphaned list: the drag missed the scroll view")
+        keepShot(app, "flat-orphaned-left-end")
+
+        expectLeftListEndsAtBottom(app, prefixes: ["orphaned-cell:"], "Orphaned")
     }
 
     /// Pose: flat (open Duo, window 951 x 669 pt). Packages keeps the full width, so its rows share the bar's column: scrolled to

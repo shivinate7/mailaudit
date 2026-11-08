@@ -20,6 +20,10 @@ enum DuoMetrics {
     static let barHeight: CGFloat = 76
     /// The room a bottom bar may keep above the window's bottom edge. The outer screen's bottom inset is 34 pt; the inner one is unmeasured.
     static let bottomAllowance: CGFloat = 40
+    /// How far above the window's bottom edge a left page's last part may end once its list is scrolled to the end. The list's own
+    /// bottom padding is 8 pt (Tally) or 16 pt (Orphaned, Card in Hand). A left page that keeps the bar's margin adds `barHeight`
+    /// on top, so it ends 84 to 92 pt up. 24 pt clears the paddings and sits well under that.
+    static let leftEndTolerance: CGFloat = 24
 }
 
 /// A page of the open Duo's spread: left of the fold strip, or right of it.
