@@ -23,7 +23,7 @@ A renamed file orphans the data that a device already holds. The web app has the
 - The last sync time is not in this folder. It is one number in UserDefaults under the key dev.shivinate.manifest.lastSyncAt, the Last sync row's source. Renaming the key drops every saved time and the row reads "Not yet" after the next launch. `testLastSyncSurvivesARelaunch` (SyncPanelTests) writes the key out in full.
 - The device key is not in this folder. It lives in the Keychain, see `native-key-via-url-scheme`.
 
-**Pinned by:** testTwoDamagedLoadsInOneSecondBothSucceed (LedgerStoreTests) pins the suffix path, because two loads at one instant get two names. The millisecond format has no test. Debt: `native-ledger-pins-missing`. testTheFolderIsPhotosBesideTheLedger (PhotoStoreTests) pins the photos folder name. testTheFileNameIsPhotoNameFromTheRulesAndRoundTripsToTheId (PhotoStoreTests) pins the file name.
+**Pinned by:** testTwoDamagedLoadsInOneSecondBothSucceed (LedgerStoreTests) pins the suffix path, because two loads at one instant get two names. `testKeptCopyNameCarriesWholeMilliseconds` (LedgerStoreTests) pins the millisecond format. testTheFolderIsPhotosBesideTheLedger (PhotoStoreTests) pins the photos folder name. testTheFileNameIsPhotoNameFromTheRulesAndRoundTripsToTheId (PhotoStoreTests) pins the file name.
 
 ## See also
 

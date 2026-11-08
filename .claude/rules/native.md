@@ -74,7 +74,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-backup-web-restore-unrun` — No test restores a native backup file on the web.
 - `native-count-line-clips` — The native count line clips with no ellipsis at 4-digit counts.
 - `native-masthead-stale-after-tabs` — The native masthead and Packages go stale after another tab writes.
-- `native-ledger-pins-missing` — Four native ledger behaviours have no test.
+- `native-ledger-pins-missing` — No test pins that the app passes its own rules.js to the ledger store.
 - `mac-target-unbuilt` — The Mac has no native app.
 - `native-runner-image-unverified` — Whether the hosted runner image has Xcode 27 and xcodegen is unverified.
 - `native-runner-keychain-unverified` — Whether the hosted runner keychain is unlocked is unverified.
