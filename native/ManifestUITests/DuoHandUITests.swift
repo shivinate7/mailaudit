@@ -477,6 +477,49 @@ final class DuoHandUITests: XCTestCase {
         keepShot(app, "hand-post-keeps-sender")
     }
 
+    /// Pose: flat. The answer page is scrolled down first, so the sender is off its top. Then the next card offers Post, and
+    /// the page scrolls to its top: the sender and Post are both on the page. Deleting that scroll leaves the page scrolled,
+    /// with the sender off it (decision duo-card-in-hand, the Post offer). The offer comes after the tie of the held name, which
+    /// is shorter than the envelope, so a scroll survives the tie only as far as the tie is tall; the failure frames show it.
+    func testPostOfferScrollsTheSenderBackOntoThePage() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+
+        typeCard(app, "Path to Exile")
+        let who = need(app, "hand-who", "the envelope of Path to Exile, which only Gamma Cards holds")
+        XCTAssertEqual(who.label, "Gamma Cards", "Path to Exile names the wrong envelope: \"\(who.label)\"")
+        let answer = need(app, "hand-answer", "the answer page of Card in Hand")
+        onRightPage(answer, app, "the answer page")
+
+        let came = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "It came from")).firstMatch
+        XCTAssertTrue(came.waitForExistence(timeout: 5), "the \"It came from\" line is missing from the answer page, so the envelope did not show")
+        var swipes = 0
+        while came.frame.maxY > answer.frame.minY && swipes < 3 {
+            answer.swipeUp()
+            swipes += 1
+            waitUntilStill([came, answer])
+        }
+        XCTAssertLessThanOrEqual(came.frame.maxY, answer.frame.minY,
+                                 "the answer page did not scroll the \"It came from\" line, frame \(came.frame), off its top after \(swipes) swipes: the test cannot set up the scroll")
+
+        let post = offerPost(app)
+        continueAfterFailure = true
+        waitUntilStill([came, who, post, answer].filter(\.exists))
+        let page = answer.frame
+        func onPage(_ el: XCUIElement, _ what: String) {
+            guard el.exists else { return XCTFail("\(what) is not on the answer page at all, so the owner cannot read it") }
+            let f = el.frame
+            XCTAssertGreaterThanOrEqual(f.minY, page.minY, "\(what), frame \(f), starts above the answer page's top \(page.minY): it is scrolled off the top")
+            XCTAssertLessThanOrEqual(f.maxY, page.maxY, "\(what), frame \(f), ends below the answer page's foot \(page.maxY): it is off the bottom of the page")
+            XCTAssertTrue(el.isHittable, "\(what), frame \(f), is not hittable on the answer page")
+        }
+        onPage(came, "the \"It came from\" line")
+        onPage(who, "the seller name (hand-who)")
+        onPage(post, "the Post button (hand-post)")
+        keepShot(app, "hand-post-top")
+    }
+
     /// Pose: flat, system keys up. A held name's Suspense box shows, and the one match row must clear the keys. A box above
     /// the list would push the row under them, so the boxes sit below the matches (decision duo-card-in-hand).
     func testMatchRowClearsTheKeysUnderASuspenseBox() {
