@@ -22,6 +22,10 @@ final class MergeNoticeKitTests: SyncTestCase {
     static let replyStats = ["itemsAdded": 0, "checkInsAdded": 1, "envelopesAdded": 0, "stampsAdded": 0,
                              "checkInsRemoved": 1, "envelopesRemoved": 0, "stampsRemoved": 0]
 
+    /// The stats of a reply that changed nothing: all seven kinds are zero, and the ledger it carries is the one sent.
+    static let noChangeStats = ["itemsAdded": 0, "checkInsAdded": 0, "envelopesAdded": 0, "checkInsRemoved": 0,
+                                "envelopesRemoved": 0, "stampsRemoved": 0, "stampsAdded": 0]
+
     // Nothing has been adopted yet, so there is no merge to tell about.
     func testNoNoticeBeforeAnyReplyIsAdopted() async throws {
         let store = try makeStore()
@@ -51,6 +55,20 @@ final class MergeNoticeKitTests: SyncTestCase {
         XCTAssertEqual(pulled, .applied, "anchor: the GET reply was adopted")
         XCTAssertNil(client.stats, "anchor: a GET reply has no stats")
         XCTAssertNil(client.mergeNotice, "a GET reply has no notice, and the notice of the reply before does not stay")
+    }
+
+    // A POST answer whose stats are all zero adopted a merge that added and removed nothing. The web shows no
+    // sentence for that (`changed` in src/app.jsx), so the notice is nil, though the bundle would give one.
+    func testNoNoticeWhenTheAdoptedReplyAddedAndRemovedNothing() async throws {
+        try writeLedger(received: [Self.keyA: 1])
+        let store = try makeStore()
+        let client = try makeClient(store)
+        net.enqueue(okStats(try ledger(received: [Self.keyA: 1]), rev: 8, stats: Self.noChangeStats))
+
+        let pushed = await client.push()
+        XCTAssertEqual(pushed, .applied, "anchor: the reply with stats was adopted")
+        XCTAssertEqual(client.stats, Self.noChangeStats, "anchor: the all-zero stats of that reply are kept")
+        XCTAssertNil(client.mergeNotice, "a merge that added and removed nothing has no notice")
     }
 
     // The sentence is the bundle's, not a Swift copy. A probe bundle whose mergeSummary states the stats it
