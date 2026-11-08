@@ -102,7 +102,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `hand-match-row-ax3-unmeasured` — The match row at large text is unmeasured.
 - `hand-suspense-tap-shift` — A tap on a match shifts rows under the finger.
 - `hand-tap-label-unpinned` — No test pins the tapped name's sideways place.
-- `duo-left-page-dead-margin` — The Duo left page scrolls 76 pt past its end.
+- `duo-left-page-dead-margin` — The Duo left page scrolls 76 pt past its end; low priority, after restyle's step 8.
 - `duo-checkin-error-under-bar` — A Packages check-in error can sit under the Duo bar.
 - `native-tally-ellipsis-unpinned` — Nothing pins the native Tally ellipsis.
 - `native-discard-panel-covers-head` — The native armed Discard panel covers the envelope header.
