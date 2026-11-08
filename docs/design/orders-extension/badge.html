@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orders extension: toolbar badge</title>
+<style>
+/* Badge fills are C tokens from shared/tokens.json (design-parchment-ledger).
+   Chrome draws one badge whatever its own theme, so the same fills sit on both toolbars.
+   The toolbar greys are Chrome's own surface, drawn plain (Today: Chrome). */
+:root, [data-theme="light"] {
+  --paper: #F2E9DA; --card: #FCF6EA; --ink: #332E3F; --inkSoft: #6E6379; --line: #DCCDB6;
+  --accent: #6F5CA6; --onAccent: #FCF6EA; --manila: #EADBBA; --manilaInk: #695832;
+  --desk: #E6DCCB;
+  --tb: #F1F3F4; --tbInk: #3C4043; --tbField: #E3E5E8; --tbEdge: #DADCE0;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --cochin: Cochin, 'Hoefler Text', Palatino, Georgia, serif;
+  color-scheme: light;
+}
+[data-theme="dark"] {
+  --paper: #1E1B24; --card: #27232E; --ink: #EFE6D6; --inkSoft: #B1A6BB; --line: #443D4D;
+  --accent: #A796DA; --onAccent: #1E1B24; --manila: #3A3122; --manilaInk: #E2CB96;
+  --desk: #141218;
+  --tb: #3C3C3C; --tbInk: #E8EAED; --tbField: #282828; --tbEdge: #5F6368;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #1E1B24; --card: #27232E; --ink: #EFE6D6; --inkSoft: #B1A6BB; --line: #443D4D;
+    --accent: #A796DA; --onAccent: #1E1B24; --manila: #3A3122; --manilaInk: #E2CB96; --desk: #141218;
+    --tb: #3C3C3C; --tbInk: #E8EAED; --tbField: #282828; --tbEdge: #5F6368; color-scheme: dark;
+  }
+}
+/* the badge fills: one set, both toolbars (light-theme tokens on purpose) */
+:root {
+  --b-count: #6F5CA6;  /* accent: progress, "new lines arrived" */
+  --b-in: #846008;     /* amber: a warning that waits on the owner */
+  --b-err: #A8443C;    /* red: the pull failed */
+  --b-text: #FCF6EA;   /* card: the theme's white */
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--desk); color: var(--ink); font-family: var(--cochin); }
+button { font-family: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.banner { background: var(--manila); color: var(--manilaInk); font-family: var(--mono);
+  font-size: 12px; letter-spacing: .04em; padding: 8px 16px; text-align: center; }
+.chrome { max-width: 1240px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.chrome h1 { margin: 0; font-weight: 400; font-size: 22px; }
+.chrome p { margin: 0; font-size: 14px; color: var(--inkSoft); max-width: 72ch; line-height: 1.4; }
+.bar-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.bar-row .lab { font-family: var(--mono); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--inkSoft); min-width: 92px; }
+.chip { font-family: var(--mono); font-size: 11.5px; padding: 4px 12px; min-height: 32px; border: 1px solid var(--line);
+  background: var(--card); color: var(--ink); cursor: pointer; border-radius: 999px; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--onAccent); border-color: var(--accent); }
+.caption { font-family: var(--mono); font-size: 11px; color: var(--inkSoft); }
+
+.stage { max-width: 1240px; margin: 0 auto; padding: 0 16px 48px; display: flex; flex-direction: column; gap: 24px; }
+.theme { display: flex; flex-direction: column; gap: 8px; color: var(--ink); background: var(--desk); padding: 12px; border-radius: 8px; }
+.theme > .cap { font-family: var(--mono); font-size: 11px; color: var(--inkSoft); }
+/* the strip: one cell per state */
+.strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(196px, 1fr)); gap: 1px;
+  background: var(--line); border: 1px solid var(--line); }
+.cell { background: var(--paper); padding: 12px; display: flex; flex-direction: column; gap: 12px; position: relative; }
+.cell[hidden] { display: none; }
+.cell .x { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border: 0; background: transparent;
+  color: var(--inkSoft); font-family: var(--mono); font-size: 12px; cursor: pointer; }
+.cell h2 { margin: 0; font-family: var(--mono); font-weight: 400; font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--inkSoft); }
+.cell .extra { color: var(--manilaInk); }
+
+/* Chrome's toolbar end, drawn plain: the omnibox tail, then the action buttons */
+.tb { height: 40px; display: flex; align-items: center; gap: 4px; padding: 0 8px; background: var(--tb);
+  border: 1px solid var(--tbEdge); border-radius: 8px; }
+.tb .omni { flex: 1; height: 28px; border-radius: 14px; background: var(--tbField); }
+.tb .btn { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; position: relative; color: var(--tbInk); }
+.tb .btn svg { width: 16px; height: 16px; display: block; }
+/* the badge, as Chrome draws it: bottom right of the 16px icon, over it. Size approximate. */
+.badge { position: absolute; left: 14px; top: 15px; min-width: 14px; height: 12px; padding: 0 2px; border-radius: 2px;
+  font: 700 9px/12px system-ui, -apple-system, sans-serif; text-align: center; color: var(--b-text); white-space: nowrap; }
+.badge.count { background: var(--b-count); }
+.badge.in { background: var(--b-in); }
+.badge.err { background: var(--b-err); }
+/* the same toolbar end, three times larger, to read the overlap */
+/* only the extension's own button, 44px of toolbar, three times larger */
+.zoom { height: 120px; display: flex; justify-content: center; }
+.zoom .tb { width: 44px; flex: none; padding: 0 8px; transform: scale(3); transform-origin: 50% 0; border-radius: 3px; }
+.facts { display: grid; grid-template-columns: 48px minmax(0, 1fr); column-gap: 8px; row-gap: 4px; align-items: baseline; }
+.facts .k { font-family: var(--mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--inkSoft); }
+.facts .v { font-family: var(--mono); font-size: 11px; line-height: 1.5; color: var(--ink); overflow-wrap: anywhere; }
+.facts .v.t { font-family: var(--cochin); font-size: 14px; line-height: 1.35; }
+</style>
+</head>
+<body>
+<div class="banner">Sample. No count or time on this page is real.</div>
+<div class="chrome">
+  <h1>Orders extension: toolbar badge</h1>
+  <p>The badge on the extension's toolbar icon after a run, at real size and at three times. The badge is Chrome's own drawing; the extension sets only its text, its fill, its text colour and the icon's title. Notes: <code>badge-notes.md</code>.</p>
+  <div class="bar-row" role="group" aria-label="Theme">
+    <span class="lab">Toolbar</span>
+    <button class="chip" data-t="both">Both</button>
+    <button class="chip" data-t="light">Light</button>
+    <button class="chip" data-t="dark">Dark</button>
+  </div>
+  <div class="caption" id="cap"></div>
+</div>
+<div class="stage" id="stage"></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="fg" x1=".12" y1="0" x2=".88" y2="1"><stop offset="0" stop-color="#F0DFAF"/><stop offset=".38" stop-color="#C9A961"/><stop offset=".58" stop-color="#F0DFAF"/><stop offset="1" stop-color="#987936"/></linearGradient>
+    <radialGradient id="fj" cx="34%" cy="28%" r="82%"><stop offset="0" stop-color="#87DEBB"/><stop offset=".42" stop-color="#37A37E"/><stop offset="1" stop-color="#175540"/></radialGradient>
+    <g id="mark">
+      <g fill="url(#fg)" stroke="#987936" stroke-width="1.1">
+        <circle cx="50" cy="8" r="8.4"/><circle cx="79.7" cy="20.3" r="8.4"/><circle cx="92" cy="50" r="8.4"/><circle cx="79.7" cy="79.7" r="8.4"/>
+        <circle cx="50" cy="92" r="8.4"/><circle cx="20.3" cy="79.7" r="8.4"/><circle cx="8" cy="50" r="8.4"/><circle cx="20.3" cy="20.3" r="8.4"/>
+      </g>
+      <circle cx="50" cy="50" r="40" fill="url(#fg)" stroke="#987936" stroke-width="2"/>
+      <circle cx="50" cy="50" r="29" fill="#987936"/><circle cx="50" cy="50" r="27" fill="url(#fj)"/>
+    </g>
+    <!-- a generic puzzle-piece stand-in for Chrome's Extensions button -->
+    <path id="puzzle" d="M6 2h3v2a1.5 1.5 0 0 0 3 0V2h2v4h-2a1.5 1.5 0 0 0 0 3h2v5H9v-2a1.5 1.5 0 0 0-3 0v2H2V9h2a1.5 1.5 0 0 0 0-3H2V2z" fill="none" stroke="currentColor" stroke-width="1.2"/>
+  </defs>
+</svg>
+
+<script>
+/* The plan's Badge table, then two states it does not name (extras, hideable). */
+const STATES = [
+  { id: "count", name: "Pulled, new lines", text: "12", cls: "count", fill: "accent #6F5CA6",
+    title: "MANIFEST orders: 12 new lines. Pulled Sun, Nov 8, 9:14 AM." },
+  { id: "zero", name: "Pulled, nothing new", text: "", cls: "", fill: "none (empty badge)",
+    title: "MANIFEST orders: no new lines. Pulled Sun, Nov 8, 9:14 AM." },
+  { id: "in", name: "Signed out", text: "in", cls: "in", fill: "amber #846008",
+    title: "MANIFEST orders: signed out of TCGplayer. Sign in, then load any store page." },
+  { id: "err", name: "Failed", text: "!", cls: "err", fill: "red #A8443C",
+    title: "MANIFEST orders: the last pull failed. Open Options for the fix." },
+  { id: "nokey", name: "No key saved", extra: true, text: "", cls: "", fill: "none (empty badge)",
+    title: "MANIFEST orders: no device key. Open Options to paste one." },
+  { id: "pulling", name: "Pulling", extra: true, text: "…", cls: "count", fill: "accent #6F5CA6",
+    title: "MANIFEST orders: pulling order pages." },
+];
+function toolbar(s) {
+  return `<div class="tb"><div class="omni"></div>
+    <div class="btn"><svg viewBox="0 0 16 16"><use href="#puzzle"/></svg></div>
+    <div class="btn"><svg viewBox="0 0 100 100"><use href="#mark"/></svg>${s.text ? `<span class="badge ${s.cls}">${s.text}</span>` : ""}</div></div>`;
+}
+function render() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  const t = p.get("t") || "both";
+  const hide = new Set((p.get("hide") || "").split(",").filter(Boolean));
+  document.documentElement.dataset.theme = t === "both" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : t;
+  const stage = document.getElementById("stage"); stage.innerHTML = "";
+  for (const th of t === "both" ? ["light", "dark"] : [t]) {
+    const wrap = document.createElement("section"); wrap.className = "theme"; wrap.dataset.theme = th; wrap.id = "strip-" + th;
+    wrap.innerHTML = `<div class="cap"><b>${th === "light" ? "Light" : "Dark"} Chrome toolbar</b>. The badge fills are the same in both.</div>
+      <div class="strip">${STATES.map(s => `
+        <div class="cell" id="${th}-${s.id}" ${hide.has(s.id) ? "hidden" : ""}>
+          ${s.extra ? `<button class="x" data-hide="${s.id}" title="Hide this state" aria-label="Hide state: ${s.name}">&times;</button>` : ""}
+          <h2>${s.name}${s.extra ? ` <span class="extra">(extra)</span>` : ""}</h2>
+          ${toolbar(s)}
+          <div class="zoom" aria-hidden="true"><div class="tb"><div class="btn"><svg viewBox="0 0 100 100"><use href="#mark"/></svg>${s.text ? `<span class="badge ${s.cls}">${s.text}</span>` : ""}</div></div></div>
+          <div class="facts">
+            <span class="k">Text</span><span class="v">${s.text ? `"${s.text}"` : "none"}</span>
+            <span class="k">Fill</span><span class="v">${s.fill}</span>
+            <span class="k">Title</span><span class="v t">${s.title}</span>
+          </div>
+        </div>`).join("")}</div>`;
+    stage.appendChild(wrap);
+  }
+  stage.querySelectorAll("[data-hide]").forEach(b => b.onclick = () => {
+    hide.add(b.dataset.hide); p.set("hide", [...hide].join(",")); history.replaceState(null, "", "#" + p); render(); });
+  document.querySelectorAll("[data-t]").forEach(b => b.setAttribute("aria-pressed", b.dataset.t === t));
+  document.getElementById("cap").textContent = "Deep link: " + (location.hash || "#t=both");
+}
+document.querySelectorAll("[data-t]").forEach(b => b.onclick = () => {
+  const p = new URLSearchParams(location.hash.slice(1)); p.set("t", b.dataset.t); history.replaceState(null, "", "#" + p); render(); });
+addEventListener("hashchange", render);
+render();
+</script>
+</body>
+</html>
