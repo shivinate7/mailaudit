@@ -30,7 +30,7 @@ A stored TCGplayer cookie cannot run unattended. The buyer pages need a recent s
 | `fetch` | a non-2xx reply, a network error, or a missing form token |
 | `timeout` | one fetch takes longer than 30 s |
 
-An empty page after page 1 ends the read only when its final URL is still the order-history page. On any failure the extension sends no pages; it sends the failure kind instead.
+An empty page after page 1 ends the read only when its final URL is still the order-history page, it holds the filter form with a `DateRange` field, and it has no password field. Otherwise it is `signed-out`: a logon form served with 200 must not read as the end. A page identical to the one before also ends the read. The real end page is unmeasured; this rule is the guess the owner's first live run tests. On any failure the extension sends no pages; it sends the failure kind instead.
 
 ## Worker contract
 
