@@ -10,7 +10,9 @@ const TOKEN_FIELD = "__RequestVerificationToken";
 /* The gate is "more than 12 h old", so the boundary does not pull. */
 export function shouldPull(lastSuccessAt, now) {
   if (lastSuccessAt === null || lastSuccessAt === undefined) return true;
-  return now - lastSuccessAt > GATE_MS;
+  const at = typeof lastSuccessAt === "number" ? lastSuccessAt : Date.parse(lastSuccessAt);
+  if (!Number.isFinite(at)) return true;
+  return now - at > GATE_MS;
 }
 
 /* The concatenated outer HTML of each div that has the orderWrap class, in page order. */
@@ -98,6 +100,13 @@ function filterForm(doc, orderUrl, base) {
   return { body: params.toString(), action: action.href };
 }
 
+/* The real end page: the filter form holding DateRange, and no password input. A logon form
+   served with 200 has no such form, or has a password input, and must not read as the end. */
+function isEndPage(doc) {
+  const form = doc.querySelector('[name="DateRange"]')?.closest("form");
+  return Boolean(form) && !doc.querySelector('input[type="password" i]');
+}
+
 /* Reads every page of the last 120 days. Returns {pages} (trimmed, page 1 first) or {failure}. */
 export async function readAllPages({ fetch, base, parseDom, timeoutMs }) {
   const orderUrl = `${base}${ORDER_PATH}`;
@@ -112,9 +121,10 @@ export async function readAllPages({ fetch, base, parseDom, timeoutMs }) {
       const html = checked(await fetchText(fetch, `${orderUrl}?PageNumber=${n}`, { method: "GET" }, timeoutMs), base);
       const trimmed = trimPage(html, parseDom);
       if (trimmed === "") {
-        if (n === 1) throw new ReadFailure("signed-out");
+        if (n === 1 || !isEndPage(parseDom(html))) throw new ReadFailure("signed-out");
         return { pages };
       }
+      if (trimmed === pages[pages.length - 1]) return { pages };
       pages.push(trimmed);
     }
   } catch (e) {

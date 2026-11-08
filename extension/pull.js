@@ -97,6 +97,10 @@ var __ordersPull = (() => {
     if (action.origin !== new URL(base).origin) throw new ReadFailure("fetch");
     return { body: params.toString(), action: action.href };
   }
+  function isEndPage(doc) {
+    const form = doc.querySelector('[name="DateRange"]')?.closest("form");
+    return Boolean(form) && !doc.querySelector('input[type="password" i]');
+  }
   async function readAllPages({ fetch: fetch2, base, parseDom, timeoutMs }) {
     const orderUrl = `${base}${ORDER_PATH}`;
     try {
@@ -109,9 +113,10 @@ var __ordersPull = (() => {
         const html = checked(await fetchText(fetch2, `${orderUrl}?PageNumber=${n}`, { method: "GET" }, timeoutMs), base);
         const trimmed = trimPage(html, parseDom);
         if (trimmed === "") {
-          if (n === 1) throw new ReadFailure("signed-out");
+          if (n === 1 || !isEndPage(parseDom(html))) throw new ReadFailure("signed-out");
           return { pages };
         }
+        if (trimmed === pages[pages.length - 1]) return { pages };
         pages.push(trimmed);
       }
     } catch (e) {

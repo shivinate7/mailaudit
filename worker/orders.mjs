@@ -146,7 +146,7 @@ const GRADE = /^(near mint|lightly played|moderately played|heavily played|damag
    orderIds: the id of each order on the page. rows: OrderWand-column rows, one per readable order
    line, in page order. Item number is the line's 1-based position in its order, dropped lines
    included, as the CSV has it. unreadable: how many lines were dropped because their price or
-   quantity is not a number or they have no product id. A dropped line is never given a default. */
+   quantity is not a number or they have no product id or card name, or whose order has no readable id. A dropped line is never given a default. */
 export function parse(html) {
   const out = [];
   const orderIds = [];
@@ -171,7 +171,13 @@ export function parse(html) {
     const idSpan = spans.find((sp) => squash(ownText(sp)));
     const id = idSpan ? squash(ownText(idSpan)) : "";
     const direct = !!idSpan && /direct/i.test(textOf(first(idSpan, (x) => cls(x, "orderTitle")) || ""));
-    if (!id) continue;
+    const table = first(w, (n) => n.name === "table" && cls(n, "orderTable"));
+    const lines = table ? all(table, (n) => n.name === "tr" && n.kids.some((k) => isEl(k) && k.name === "td" && cls(k, "orderHistoryItems"))) : [];
+    /* an order with no readable id has no key to store its lines under: each counts as unreadable */
+    if (!id) {
+      unreadable += lines.length;
+      continue;
+    }
     orderIds.push(id);
 
     /* the last summary span holds the seller and the shipping status; the status is its last title */
@@ -194,8 +200,6 @@ export function parse(html) {
     const shipping = amount(/^shipping:?$/i);
     const tax = amount(/^sales tax/i);
 
-    const table = first(w, (n) => n.name === "table" && cls(n, "orderTable"));
-    const lines = table ? all(table, (n) => n.name === "tr" && n.kids.some((k) => isEl(k) && k.name === "td" && cls(k, "orderHistoryItems"))) : [];
     lines.forEach((tr, idx) => {
       const cell = (c) => tr.kids.find((k) => isEl(k) && k.name === "td" && cls(k, c));
       const items = cell("orderHistoryItems");
@@ -208,7 +212,8 @@ export function parse(html) {
       const pid = /\/(\d+)_[^/]*$/.exec(first(items, (n) => n.name === "img")?.attrs.src || "")?.[1] ?? "";
       const price = num(textOf(cell("orderHistoryPrice") || ""));
       const qty = squash(textOf(cell("orderHistoryQuantity") || ""));
-      if (price === null || !/^\d+$/.test(qty) || !pid) {
+      const name = nameA ? textOf(nameA).trim() : "";
+      if (price === null || !/^\d+$/.test(qty) || !pid || !name) {
         unreadable++;
         return;
       }
@@ -220,7 +225,7 @@ export function parse(html) {
         "Order Id": id,
         "Ordered At": date,
         "Item Number": String(idx + 1),
-        "Product Name": nameA ? textOf(nameA).trim() : "",
+        "Product Name": name,
         "Set Name": set,
         Condition: grade ? grade[1] : (cond || "").replace(/^condition:\s*/i, ""),
         Finish: grade ? grade[2] : "",
