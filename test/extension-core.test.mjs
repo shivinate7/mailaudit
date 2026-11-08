@@ -90,6 +90,11 @@ const filterPage = (token) =>
 /* The real end page after the last order page: the filter form with no order rows. Built from
    filterPage, so the form has one home. */
 const EMPTY_PAGE = filterPage(TOKEN);
+/* An empty page with no filter form: what a logon page reads as once its body is empty. */
+const BARE_EMPTY_PAGE = `<!doctype html><html><body>${CHROME}</body></html>`;
+/* An order page under another shell: the same rows as rows(page, count), another nav. */
+const shellPage = (nav, page, count) =>
+  `<!doctype html><html><body><nav class="site-nav">${nav}</nav><div class="orders">${rows(page, count)}</div></body></html>`;
 
 const reply = (url, html, status = 200) => ({
   ok: status >= 200 && status < 300,
@@ -154,7 +159,8 @@ await test("0.2 control:", async () => {
 });
 
 /* ---------- 1. the 12 h gate ---------- */
-// The gate is "more than 12 h old": the boundary itself does not pull. Times are epoch ms.
+// The gate is "more than 12 h old": the boundary itself does not pull. A last success is epoch ms
+// or an ISO 8601 string, as the Worker's status gives it.
 await test("1.1", async () =>
   eq(await call("shouldPull", null, NOW), true, "no earlier success (null) must pull"));
 
@@ -172,6 +178,18 @@ await test("1.4", async () =>
 
 await test("1.5", async () =>
   eq(await call("shouldPull", NOW, NOW), false, "a success at this moment must not pull"));
+
+await test("1.6", async () =>
+  eq(await call("shouldPull", new Date(NOW - 19 * HOUR).toISOString(), NOW), true,
+    "an ISO 8601 last success 19 h old must pull"));
+
+await test("1.7 control:", async () =>
+  eq(await call("shouldPull", new Date(NOW - HOUR).toISOString(), NOW), false,
+    "an ISO 8601 last success 1 h old must not pull"));
+
+await test("1.8", async () =>
+  eq(await call("shouldPull", "not a date", NOW), true,
+    "a last success that does not parse must pull"));
 
 /* ---------- 2. the page loop: readAllPages ---------- */
 await test("2.1", async () => {
@@ -286,6 +304,77 @@ await test("2.12", async () => {
     "scope, page requests run 1 to 71, and the empty page 71 ends the read");
   eq(res, { pages: Array.from({ length: N }, (_, i) => rows(i + 1, 2)) },
     "all 70 pages come back, with no page cap");
+});
+
+// An empty page after page 1 ends the read only when it is the order-history page with the filter
+// form and no password input. Anything else that is empty is a signed-out read.
+await test("2.13 control:", async () => {
+  const { fetch, calls } = recordingFetch(site({ pages: [orderPage(1, 2)] }));
+  const res = await readAll(fetch);
+  eq(calls.some((c) => c.page === 2), true, "scope, the loop reached PageNumber=2");
+  eq(res, { pages: [rows(1, 2)] }, "an empty page 2 that holds the filter form ends the read, and page 1 comes back");
+});
+
+await test("2.14", async () => {
+  const override = (req) => (req.page === 2 ? reply(req.url, LOGON_PAGE) : undefined);
+  const { fetch, calls } = recordingFetch(site({ pages: [orderPage(1, 2)], override }));
+  const res = await readAll(fetch);
+  eq(calls.some((c) => c.page === 2), true, "scope, the loop reached PageNumber=2");
+  eq(res, { failure: "signed-out" }, "an empty page 2 with a logon form and no filter form reads as signed-out, not as the end");
+});
+
+await test("2.15", async () => {
+  const withPassword = `<!doctype html><html><body>${CHROME}<form method="post" action="/myaccount/orderhistory"><input name="__RequestVerificationToken" type="hidden" value="${TOKEN}"><input name="Password" type="password"><select name="DateRange"><option>Last 120 Days</option></select></form></body></html>`;
+  const override = (req) => (req.page === 2 ? reply(req.url, withPassword) : undefined);
+  const { fetch, calls } = recordingFetch(site({ pages: [orderPage(1, 2)], override }));
+  const res = await readAll(fetch);
+  eq(calls.some((c) => c.page === 2), true, "scope, the loop reached PageNumber=2");
+  eq(res, { failure: "signed-out" }, "an empty page 2 that holds the filter form and a password input reads as signed-out");
+});
+
+await test("2.16", async () => {
+  const override = (req) => (req.page === 2 ? reply(req.url, BARE_EMPTY_PAGE) : undefined);
+  const { fetch, calls } = recordingFetch(site({ pages: [orderPage(1, 2)], override }));
+  const res = await readAll(fetch);
+  eq(calls.some((c) => c.page === 2), true, "scope, the loop reached PageNumber=2");
+  eq(res, { failure: "signed-out" }, "an empty page 2 with no filter form reads as signed-out");
+});
+
+/* A password input that sits only inside a script's template literal or an HTML comment is not an
+   input, so the real end page still ends the read. */
+await test("2.17 control:", async () => {
+  const scripted = `<!doctype html><html><body>${CHROME}<script>
+var tpl = \`
+<input type="password" name="Password">
+\`;
+// it's a lone quote, and a /* block opener
+</script><!-- <input type="password" name="Password"> --><form method="post" action="/myaccount/orderhistory"><input name="__RequestVerificationToken" type="hidden" value="${TOKEN}"><select name="DateRange"><option>Last 120 Days</option></select></form></body></html>`;
+  const override = (req) => (req.page === 2 ? reply(req.url, scripted) : undefined);
+  const { fetch, calls } = recordingFetch(site({ pages: [orderPage(1, 2)], override }));
+  const res = await readAll(fetch);
+  eq(calls.some((c) => c.page === 2), true, "scope, the loop reached PageNumber=2");
+  eq(res, { pages: [rows(1, 2)] }, "a password input that sits only in a script or a comment is no input, so the end page still ends the read");
+});
+
+/* A DateRange field that sits only inside a comment is no filter form. */
+await test("2.18", async () => {
+  const commented = `<!doctype html><html><body>${CHROME}<form action="/Logon" method="post"><input name="Email" type="text"></form><!-- <select name="DateRange"><option>Last 120 Days</option></select> --></body></html>`;
+  const override = (req) => (req.page === 2 ? reply(req.url, commented) : undefined);
+  const { fetch, calls } = recordingFetch(site({ pages: [orderPage(1, 2)], override }));
+  const res = await readAll(fetch);
+  eq(calls.some((c) => c.page === 2), true, "scope, the loop reached PageNumber=2");
+  eq(res, { failure: "signed-out" }, "a DateRange field that sits only in a comment is no filter form, so the page reads as signed-out");
+});
+
+/* A page whose trimmed HTML equals the previous page's is a repeat: it ends the read and is not
+   added. The repeat has another shell, so only the trimmed rows match. */
+await test("2.19", async () => {
+  const pages = [orderPage(1, 2), orderPage(2, 1), shellPage("Synthetic nav, second request", 2, 1)];
+  const { fetch, calls } = recordingFetch(site({ pages }));
+  const res = await readAll(fetch);
+  eq(calls.some((c) => c.page === 3), true, "scope, the loop reached PageNumber=3");
+  eq(res, { pages: [rows(1, 2), rows(2, 1)] }, "a page whose trimmed HTML equals the previous page's ends the read, and the repeat is not added");
+  eq(calls.some((c) => c.page === 4), false, "no request follows the repeat");
 });
 
 /* ---------- 3. the trim: trimPage ---------- */
