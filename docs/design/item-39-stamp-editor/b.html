@@ -102,7 +102,16 @@ body { width:466px; color:var(--ink); font-family:-apple-system, system-ui, sans
 .tag.right span { left:auto; right:6px; }
 .tag.below span { top:auto; bottom:-9px; background:var(--card); }
 .empty { position:relative; height:120px; margin-top:12px; }
-#stamp-choice, #stamp-choice-tap { position:relative; padding-top:8px; }
+#stamp-choice, #stamp-choice-tap, #stamp-choice-open { position:relative; padding-top:8px; }
+
+/* Device: iPhone Duo, open (inner screen), 951 x 669 pt; fold strip 455.5 to 495.5 pt (duo-fold-and-keyboard). */
+.open { position:relative; width:951px; height:669px; overflow:hidden; background:var(--paper); border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+.open[hidden] { display:none; }
+.open .pg { position:absolute; top:0; bottom:0; width:455.5px; overflow:hidden; }
+.open .pg.l { left:0; } .open .pg.r { left:495.5px; }
+.open .strip { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); }
+.open .tabs { top:586px; }
+.open .rnote { margin:120px 24px 0; padding:12px; border:1.5px dashed var(--line); border-radius:6px; font:11px/1.4 var(--mono); color:var(--inkSoft); }
 
 .cap { padding:12px; }
 .cap b { font-family:var(--cochin); font-size:17px; display:block; margin-bottom:4px; }
@@ -195,6 +204,58 @@ body { width:466px; color:var(--ink); font-family:-apple-system, system-ui, sans
   </nav>
 </section>
 
+<!-- State: the same editor on the open Duo, left page. The right page is not under decision (item 35). -->
+<section class="open" data-device="iphone-duo-unfolded" data-state="unfolded" aria-label="Packages, open Duo, stamp editor open" hidden>
+  <div class="pg l">
+  <div class="status"><span>9:41</span><span></span></div>
+  <header class="mast"><span class="seal" aria-hidden="true"></span><span class="name">Manifest</span><span class="fig">4 left · $4.00</span></header>
+  <div class="slot"></div>
+
+  <div id="stamp-choice-open">
+    <div class="ruled">
+      <div class="rule"></div>
+      <div class="row">
+        <div class="cell">0 stamped <span class="g">○</span>
+          <span class="tag new right"><span>New: 0 stamped, always active</span></span>
+        </div>
+      </div>
+      <div class="rule thin"></div>
+    </div>
+
+    <div class="list">
+      <article class="card">
+        <div class="head">
+          <div class="who"><div class="seller">Beta Games</div><div class="date">2026-07-29</div></div>
+          <div class="pill">4 left · $4.00</div>
+        </div>
+        <div class="editor">
+          <div class="ehead">STAMP<i></i></div>
+          <div class="chips">
+            <span class="chip">Claim filed</span><span class="chip">Refunded</span><span class="chip on">Seller contacted</span><span class="chip">Reshipped</span>
+            <span class="chip">Partial refund</span><span class="chip">Other</span>
+          </div>
+          <div class="notebox">
+            <div class="note one">Messaged them on Nov 3. They said it shipped late, so wait one more week.</div>
+            <span class="tag new"><span>New: one-line note field, 44 pt tap box</span></span>
+          </div>
+          <div class="btns">
+            <span class="btn"><span class="mini">Cancel</span></span>
+            <span class="btn"><span class="mini save">Save</span></span>
+          </div>
+        </div>
+        <div class="line"><span class="box"><i></i></span><div class="txt"><div class="top"><span class="nm">Brainstorm</span><span class="pr">$0.50</span></div><div class="dt">×2 · Test Set · Near Mint</div></div></div>
+        <div class="line"><span class="box"><i></i></span><div class="txt"><div class="top"><span class="nm">Counterspell</span><span class="pr">$2.00</span></div><div class="dt">Test Set · Near Mint</div></div></div>
+      </article>
+    </div>
+  </div>
+  </div>
+  <div class="strip" aria-hidden="true"></div>
+  <div class="pg r"><div class="status"><span></span><span>100%</span></div><p class="rnote">Right page: not drawn. The open Duo's Packages page belongs to item 35.</p></div>
+  <nav class="tabs" aria-label="Tabs">
+    <span class="tab cur"><b></b>Packages</span><span class="tab"><b></b>Tally</span><span class="tab"><b></b>Orphaned</span><span class="tab"><b></b>Ledger</span>
+  </nav>
+</section>
+
 <div class="cap">
   <b>Match the mockup</b>
   <p>The note field is one line, as the web's note input is. Its box stays 44 pt tall, and a tap anywhere in it starts typing. A note longer than the field is cut at the edge until you tap in.</p>
@@ -202,6 +263,7 @@ body { width:466px; color:var(--ink); font-family:-apple-system, system-ui, sans
   <nav aria-label="States">
     <a href="#s=editor" data-s="editor">Editor open</a>
     <a href="#s=tap-cell" data-s="tap-cell">After a tap on 0 stamped</a>
+    <a href="#s=unfolded" data-s="unfolded">Unfolded</a>
   </nav>
 </div>
 
