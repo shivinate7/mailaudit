@@ -4,7 +4,7 @@ import tokens from "../shared/tokens.json";
 import {
   parseItems, lostMail, normName, isUntracked, gkOf, groupPackages, rankCandidates,
   dateRange, inRange, dropCanceled, dropGks, canceledPackagesOf, stampedPackagesOf,
-  tallyGroups, sortTally, sortPackages, filterPackages, filterTally,
+  tallyGroups, sortTally, sortPackages, filterPackages, stampTextOf, filterTally,
   totalsOf, bulkApply, outstandingOf, packagePill, refundedPill, STAMP_KINDS, hasStamp, isRefundStamp, nextStamp, stampBandText, itemDetail, tcgplayerOrderUrl, gotQty as gotQtyText, countLine, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger, money, compact,
 } from "./view-rules.mjs";
 import { photoPlan } from "./photo-rules.mjs";
@@ -184,7 +184,6 @@ async function dataUrlToBlob(url) {
    rather than a deleted key, so the removal itself survives the two-device
    merge (see mergeStamps in merge-rules.mjs). Every reader goes through
    hasStamp, never key presence. */
-const STAMP_LABEL = Object.fromEntries(STAMP_KINDS);
 /* the LOCAL calendar day, deliberately not toISOString(): at 8pm Central a
    claim filed today would be dated tomorrow. Same trap the month picker
    documents (test 23.16), same side of it. */
@@ -5445,11 +5444,8 @@ export default function MailDayLedger() {
 
   const visible = useMemo(() => {
     /* a stamp is the package's, not a line's: filterPackages reads its label
-       and note through this, so the label table stays here */
-    const stampText = (gk) => {
-      const s = stamps[gk];
-      return hasStamp(s) ? `${STAMP_LABEL[s.kind] || ""} ${s.note || ""}` : "";
-    };
+       and note through this, built from the one table in view-rules */
+    const stampText = stampTextOf(stamps);
     return filterPackages(orderSource, {
       query,
       hideDone,

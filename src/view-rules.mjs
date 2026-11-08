@@ -300,6 +300,14 @@ export function nextStamp(cur, patch, today, now) {
 export const stampBandText = (s) =>
   `${(STAMP_LABEL[s.kind] ?? s.kind).toUpperCase()} · ${(s.at || "").slice(5)}`;
 
+/* The text a package's stamp adds to Find: the kind's label, then the note, "" with no live stamp.
+   `stamps` crosses as data, so the native client (JSON in, JSON out) can search a stamp too; the web
+   builds the function filterPackages takes from the same table. */
+export const stampTextOf = (stamps) => (gk) => {
+  const s = stamps?.[gk];
+  return hasStamp(s) ? `${STAMP_LABEL[s.kind] || ""} ${s.note || ""}` : "";
+};
+
 /* callers pass the range-applied, refund-inclusive items, so a refunded
    package is in the stamped list (stamped-filter-on-the-pipeline) */
 export const stampedPackagesOf = (items, gks) =>
@@ -391,9 +399,11 @@ export function sortPackages(pkgs, key, received) {
 const lineHit = (it, q) =>
   [it.name, it.set, it.seller, it.orderId].join(" ").toLowerCase().includes(q);
 
-/* opts {query, hideDone, received, sticky, revealed, stampText(gk)}; input order kept */
+/* opts {query, hideDone, received, sticky, revealed, stampText(gk) | stamps}; input order kept.
+   A caller that cannot pass a function (the native client) passes `stamps`, the stamps map. */
 export function filterPackages(pkgs, opts) {
-  const { hideDone, received, sticky, revealed, stampText } = opts;
+  const { hideDone, received, sticky, revealed } = opts;
+  const stampText = opts.stampText ?? stampTextOf(opts.stamps);
   const q = opts.query.trim().toLowerCase();
   return pkgs
     .map((p) => {
