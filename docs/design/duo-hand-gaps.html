@@ -65,6 +65,8 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
 .content { position:absolute; left:16px; right:16px; top:calc(var(--sat) + 16px); display:flex; flex-direction:column; gap:12px; font-family:var(--cochin); }
 .r .content { gap:8px; }
 .micro { font:10.5px/13px var(--mono); letter-spacing:1.2px; text-transform:uppercase; color:var(--inkSoft); min-height:13px; }
+/* A new label is drawn at 11 pt, the iOS minimum (HIG typography). Today's labels stay at the built 10.5 pt. */
+.micro.m11 { font-size:11px; line-height:14px; }
 .who { font-size:22px; line-height:27px; font-weight:700; }
 .meta { font:11px/14px var(--mono); color:var(--inkSoft); min-height:14px; display:flex; justify-content:space-between; gap:8px; }
 .meta .owe { color:var(--red); font-weight:700; }
@@ -148,7 +150,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
 .odd .or:first-child { border-top:0; }
 .odd .or b { font-size:14px; display:block; } .odd .or small { font:11px var(--mono); color:var(--inkSoft); }
 .odd .or small.r { color:var(--red); }
-.well { font-size:17px; font-weight:700; color:var(--green); }
+.well { font-size:20px; font-weight:700; color:var(--green); }
 .still { font:12px var(--mono); color:var(--red); font-weight:700; }
 .tbox { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px; background:var(--card); border:1px solid var(--line); border-radius:8px; }
 .tbox span { font-size:14px; } .tbox small { display:block; color:var(--red); font-size:12.5px; }
@@ -600,7 +602,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
 
 <!-- ================= 7 ================= -->
 <template id="pile">
-  <span class="micro">Today's pile · 7 envelopes · 39 cards</span>
+  <span class="micro m11">Today's pile · 7 envelopes · 39 cards</span>
   <div class="pile">
     <div class="pr"><span>Fernhill Cards<span class="d">2026-10-20</span></span><span class="g ok">8/8</span></div>
     <div class="pr"><span>Fernhill Cards<span class="d">2026-10-22</span></span><span class="g ok">6/6</span></div>
@@ -612,9 +614,9 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
   </div>
 </template>
 <template id="odd">
-  <span class="micro">Not normal today</span>
+  <span class="micro m11">Not normal today</span>
   <div class="odd">
-    <div class="or"><span><b>Kestrel Card Co. came 1 short</b><small>2026-10-14 · 1 Lightning Bolt · 1 left · $1.12</small></span><span class="hit"><span class="pill">Open</span></span></div>
+    <div class="or"><span><b>Kestrel Card Co. came 1 short</b><small>2026-10-14 · 1 Lightning Bolt · 1 left · $1.12</small></span></div>
   </div>
   <div class="tbox"><span>Past 14 days: 4 envelopes<small>1 refund window closing</small></span><span class="hit"><span class="pill">Open</span></span></div>
   <span class="still">19 still missing · $11.07</span>
@@ -648,7 +650,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
     </div></div>
     <div class="page r"><div class="content"><div class="tag-new" data-tag="New: only what is not normal" style="display:flex;flex-direction:column;gap:8px" data-fill="odd"></div></div></div>
   </div></div>
-  <figcaption><b>On an empty query (pick).</b> Once one card is in today, an empty query shows the day. Before that, today's hint stays. No new control. A short envelope reads red; Open shows it on the right page as a typed card would. The red line is the masthead's own "still missing" figure. <button type="button" class="hide" data-hide="eod-empty">Hide empty query</button></figcaption>
+  <figcaption><b>On an empty query (pick).</b> Once one card is in today, an empty query shows the day. Before that, today's hint stays. No new control. A short envelope reads red, and its row names the missing card, so it needs no Open. The red line is the masthead's own "still missing" figure. <button type="button" class="hide" data-hide="eod-empty">Hide empty query</button></figcaption>
   <ul class="tags"><li>Rows are read-outs, 44 pt each. Seven rows end near y 540 on the left page, which has no bar.</li><li>With the keys up the pile runs under them. It is a read-out, so nothing tappable hides.</li></ul>
 </figure>
 
@@ -671,11 +673,11 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       <div class="rowx"><span style="font-weight:700;font-size:17px">Mail day</span><span class="count">39 in · 18 out</span><span class="hit"><span class="pill">Close</span></span></div>
       <div class="field empty">Type the card in hand</div>
       <div data-fill="env-none"></div>
-      <span class="micro">Today's pile · 1 envelope · 6 cards</span>
+      <span class="micro m11">Today's pile · 1 envelope · 6 cards</span>
       <div class="pile"><div class="pr"><span>Fernhill Cards<span class="d">2026-10-20</span></span><span class="g ok">6/6</span></div></div>
     </div></div>
     <div class="page r"><div class="content">
-      <span class="micro">Not normal today</span>
+      <span class="micro m11">Not normal today</span>
       <span class="well tag-new" id="focus-eod-well" data-tag="New: nothing to report">All is well.</span>
       <span class="still">18 still missing · $10.40</span>
     </div></div>
@@ -689,7 +691,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       <div class="rowx"><span style="font-weight:700;font-size:17px">Mail day</span><span class="count">39 in · 19 out</span><span class="hit"><span class="pill">Close</span></span></div>
       <div class="field">Smothering T</div>
       <div data-fill="env-none"></div>
-      <div class="notice tag-new" id="focus-nomatch" data-tag="New: the answer at the query"><span class="micro">No match</span><b>No open envelope holds Smothering T.</b><span class="hit" style="align-self:flex-start"><span class="pill">Hold in Suspense</span></span></div>
+      <div class="notice tag-new" id="focus-nomatch" data-tag="New: the answer at the query"><span class="micro m11">No match</span><b>No open envelope holds Smothering T.</b><span class="hit" style="align-self:flex-start"><span class="pill">Hold in Suspense</span></span></div>
     </div></div>
     <div class="page r"><div class="content" data-fill="odd"></div></div>
   </div></div>
@@ -705,7 +707,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
     <div data-fill="env-none"></div>
     <span class="micro">Matches</span>
     <div class="match">Command Tower</div>
-    <div class="notice"><span class="micro">Suspense · 3 cards</span><b>Arcane Signet ×2 · Command Tower</b><small>Not checked in.</small></div>
+    <div class="notice"><span class="micro m11">Suspense · 3 cards</span><b>Arcane Signet ×2 · Command Tower</b><small>Not checked in.</small></div>
   </div></div>
 </template>
 <section class="part" id="s-suspense-rank" data-state="suspense-rank">
@@ -735,7 +737,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
 <figure data-opt="rank-new">
   <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="left-susp chrome-keys">
     <div class="page r"><div class="content">
-      <span class="micro">Accounts the held cards fit</span>
+      <span class="micro m11">Accounts the held cards fit</span>
       <span class="who">3 cards, no sender</span>
       <span class="meta"><span>Arcane Signet ×2 · Command Tower</span></span>
       <div class="rank tag-new" id="focus-rank" data-tag="New: ranked by named copies">

@@ -81,7 +81,7 @@ None of the eight parts lives in PackagesView, TallyView, OrphanedView or RootVi
 7. **End of mail day.** Carried over, with an option picked for what opens it: the empty query.
    - Source: round 2 mockup index.html:171 to :195 and :382 to :406. Today the empty query shows the start hint (`HandScreen.swift:249` to `:251`).
    - Left page: "Today's pile", which lists envelopes with a check-in since local midnight (from the saved `receivedAt`). Each row shows got/qty, red when short.
-   - Right page: "Not normal today", which lists only short envelopes, with an Open that shows the envelope. Today's `transitBox` follows, unchanged, then the masthead's own "still missing" line (`MastheadModel.missingLine`). With nothing to list, it says "All is well." (`ux-all-is-well`).
+   - Right page: "Not normal today", which lists only short envelopes. Each row names the missing cards and their "N left · $Y", so it has no Open (`ux-control-earns-place`). Departs from: round 2 mockup, which gave each row an Open. Today's `transitBox` follows, unchanged, then the masthead's own "still missing" line (`MastheadModel.missingLine`). With nothing to list, it says "All is well." (`ux-all-is-well`).
    - What opens it:
      - Empty query, the pick. It shows once one card is in today. Gain: no new control. Loss: the view appears without being asked for.
      - A "Day's end" control. Gain: the view shows only on purpose. Loss: one more control, plus a state to leave.
