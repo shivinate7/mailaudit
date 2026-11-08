@@ -55,8 +55,8 @@ public final class PackagesModel {
     public private(set) var stampKinds: [StampKind] = []
     /// The packages the bundle's isRefundStamp names, so a check-in can refresh a refunded package's pill.
     @ObservationIgnored private var refundGks: Set<String> = []
-    /// The store's postsSaved at the last load: a Post since then is a good write, so the next load drops the old failure line.
-    @ObservationIgnored private var postsSeen = 0
+    /// The store's postsSaved when checkInError was last set: only a Post after that is a good write that outdates the failure line.
+    @ObservationIgnored private var errorPosts = 0
 
     public init(engine: RulesEngine, store: LedgerStore) {
         self.engine = engine
@@ -113,8 +113,9 @@ public final class PackagesModel {
         bands = [:]
         refundPills = [:]
         apply(updates)
-        // Only a Post clears the line here. A reload from sync or a reply must not hide a failure the owner has not retried.
-        if store.postsSaved != postsSeen { postsSeen = store.postsSaved; checkInError = nil }
+        // Only a Post after the failure clears the line here. A reload from sync or a reply, or a Post that came before
+        // the failure, must not hide a failure the owner has not retried.
+        if checkInError != nil, store.postsSaved > errorPosts { checkInError = nil }
         if let failure { throw failure }
     }
 
@@ -252,7 +253,7 @@ public final class PackagesModel {
             guard let count = Int(out) else { throw RulesEngine.Failure.threw("toggleCount gave \(out)") }
             try await checkIn(key: key, count: count)
         } catch {
-            if checkInError == nil { checkInError = "Could not check in. \(error.localizedDescription)" }
+            if checkInError == nil { fail("Could not check in. \(error.localizedDescription)") }
             throw error
         }
     }
@@ -270,7 +271,7 @@ public final class PackagesModel {
 
     public func checkIn(key: String, count: Int) async throws {
         do { try store.commitReceived(key, count: count) } catch {
-            checkInError = "Could not save the check-in. \(error.localizedDescription)"
+            fail("Could not save the check-in. \(error.localizedDescription)")
             throw error
         }
         checkInError = nil
@@ -286,7 +287,7 @@ public final class PackagesModel {
                 apply(updates)
                 if let failure { throw failure }
             } catch {
-                checkInError = "Saved, but the label could not refresh. \(error.localizedDescription)"
+                fail("Saved, but the label could not refresh. \(error.localizedDescription)")
                 throw error
             }
         }
@@ -309,19 +310,24 @@ public final class PackagesModel {
         showStamped.toggle()
         do { try await load() } catch {
             showStamped.toggle()  // the rows on screen are still the old filter's, so the cell says that filter
-            checkInError = "Could not read the list. \(error.localizedDescription)"
+            fail("Could not read the list. \(error.localizedDescription)")
             throw error
         }
         checkInError = nil
     }
 
+    private func fail(_ message: String) {
+        errorPosts = store.postsSaved
+        checkInError = message
+    }
+
     private func write(_ failure: String, _ act: () async throws -> Void) async throws {
         do { try await act() } catch {
-            checkInError = "\(failure) \(error.localizedDescription)"
+            fail("\(failure) \(error.localizedDescription)")
             throw error
         }
         do { try await load() } catch {
-            checkInError = "Saved, but the list could not refresh. \(error.localizedDescription)"
+            fail("Saved, but the list could not refresh. \(error.localizedDescription)")
             throw error
         }
         checkInError = nil
