@@ -1,6 +1,6 @@
-# The GitHub token and the device key are credentials
+# The device key and any stored GitHub token are credentials
 
-This is the rule `the-token-is-a-credential`. The GitHub token and the Worker device key are device credentials, not ledger data. Neither may enter the ledger blob, a backup file, the pushed payload, the repo, the bundle, or React state.
+This is the rule `the-token-is-a-credential`. The Worker device key is a device credential, and so is a GitHub token if one is stored. Neither is ledger data. Neither may enter the ledger blob, a backup file, the pushed payload, the repo, the bundle, or React state.
 
 Three structural guarantees keep them out. They are listed from strongest to weakest.
 
@@ -8,7 +8,7 @@ Three structural guarantees keep them out. They are listed from strongest to wea
 2. No screen takes a GitHub token now. The old key input is not rendered, and its flag `keyOpen` is never read. So the token is never typed into the app. The device key never reaches React state either. `window.sync` reads it from storage, and `hasKey()` returns only a boolean.
 3. The payload is built from named fields. It never spreads state.
 
-`resetAll` deliberately does **not** clear either credential. The GitHub token is still what `window.remote` reads the frozen `data` branch with. Clearing it would cut History off from its older versions. Debt: `reset-all-keeps-token-unpinned`.
+`resetAll` deliberately does **not** clear either credential. `window.remote` sends a stored GitHub token if one is present. Debt: `reset-all-keeps-token-unpinned`.
 
 The key check accepts a GitHub token's shape. Debt: `key-re-accepts-token-shape`.
 

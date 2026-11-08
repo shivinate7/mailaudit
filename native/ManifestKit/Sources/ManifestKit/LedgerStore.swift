@@ -10,6 +10,9 @@ public final class LedgerStore {
     var doc: [String: Any] = [:]
     var loaded = false
     public internal(set) var generation = 0
+    /// How many Posts on Card in Hand saved. A model with a failed-write line reads it to learn that a write has landed
+    /// since: a load, a sync or a reply does not move it.
+    public internal(set) var postsSaved = 0
     /// Entries the last load dropped from a damaged field; 0 when nothing was damaged.
     public private(set) var droppedCount = 0
     /// Runs after a write the person made was saved: commitReceived, commit(_:) and commitPhoto.
@@ -195,6 +198,15 @@ public final class LedgerStore {
         edits()
         do { try save() } catch { doc = oldDoc; generation = oldGen; throw error }
         onLocalSave?()
+    }
+
+    /// The save path of a model that shows its failure (OrphanedModel, HandModel): one home for the "Could not save." line.
+    /// A good save clears `failure`; a bad one sets it and rethrows.
+    func commit(noting failure: inout String?, _ edits: () -> Void) throws {
+        do { try commit(edits); failure = nil } catch {
+            failure = "Could not save. \(error.localizedDescription)"
+            throw error
+        }
     }
 }
 

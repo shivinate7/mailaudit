@@ -4,4 +4,8 @@
 
 **Status:** open.
 
+**Assigned:** the mailaudit coordinator session.
+
+**Fix by:** 2026-12-01.
+
 **Decision:** `suite-size`.

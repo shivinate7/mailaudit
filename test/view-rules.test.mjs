@@ -102,6 +102,7 @@
                    as packagePill does. It takes the same two arguments as packagePill. */
 
 const DAY = 86400000;
+import { failLine } from "./fail-line.mjs";
 const loaded = await import("../src/view-rules.mjs").then(
   (m) => m,
   (e) => {
@@ -1648,5 +1649,8 @@ eq(refundedPill([], {}), null, "V38.7b a package with no lines: no pill");
 
 console.log(`\n${pass} passed, ${fails.length} failed`);
 for (const f of fails) console.log(`  ✗ ${f}`);
-if (fails.length) process.exit(1);
+if (fails.length) {
+  console.log(failLine(fails.length, pass + fails.length));
+  process.exit(1);
+}
 console.log("all green");

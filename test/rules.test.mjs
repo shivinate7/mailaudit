@@ -36,6 +36,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { failLine } from "./fail-line.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BUNDLE_REL = path.join("native", "ManifestKit", "Sources", "ManifestKit", "rules.js");
@@ -182,5 +183,8 @@ const tail = (s) => s.trim().split("\n").slice(-4).join("\n     ");
 
 console.log(`\n${pass} passed, ${fails.length} failed`);
 for (const f of fails) console.log(`  ✗ ${f}`);
-if (fails.length) process.exit(1);
+if (fails.length) {
+  console.log(failLine(fails.length, pass + fails.length));
+  process.exit(1);
+}
 console.log("all green");

@@ -1,7 +1,7 @@
-# The recent-actions log is not built
+# The recent-actions log is not built in the native client
 
-**What.** The log, its merge rule, its panel and its undo are ruled and not built, in either client. `recent-checks-can-be-undone` lists the proof the build must give. The gap closes when both clients ship the log with that proof.
+**What.** The web client ships the log, its merge rule, its panel and its undo (plan `recent-log-web`). The native client does not. The rules bundle does not carry `src/recent-rules.mjs` yet, and the Swift client draws no Recent screen. The gap closes when the native client ships the log with the proof that `recent-checks-can-be-undone` lists.
 
-**Status:** open. Nothing is built. No lane is briefed.
+**Status:** open. The web half is built. No native lane is briefed.
 
 **Decision:** `recent-checks-can-be-undone`.

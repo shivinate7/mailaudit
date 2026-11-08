@@ -26,7 +26,7 @@ struct StampedRow: View {
                     .overlay(alignment: .leading) { Rectangle().fill(paint(.rule)).frame(width: 1) }
                     .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PaintedButtonStyle())
                 .disabled(count == 0 && !on)  // with nothing stamped there is nothing to show; the web hides the cell then
                 .accessibilityLabel("\(count) stamped")
                 .accessibilityHint(count == 0 && !on ? "No package carries a stamp yet." : "Shows only the packages that carry a stamp")
@@ -82,8 +82,8 @@ struct StampSection: View {
     let surface: Color
     /// True while the armed ask hangs below the card's edge, so the card lets it show (see PackageRow).
     @Binding var overhang: Bool
-    /// Runs after a write, so the Tally and Orphaned figures read the new stamps.
-    let onChange: () async -> Void
+    /// Runs after a write, so the Tally and Orphaned figures read the new stamps. It throws when a read failed.
+    let onChange: () async throws -> Void
 
     private static let rowHeight: CGFloat = 48
 
@@ -91,6 +91,8 @@ struct StampSection: View {
     @State private var kind = ""
     @State private var note = ""
     @State private var armed = false
+    /// The action row's height at the current type size, which the armed ask hangs below.
+    @State private var rowHeight: CGFloat = 0
     @FocusState private var focused: Bool
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.scrollTo) private var scrollTo
@@ -208,11 +210,12 @@ struct StampSection: View {
 
     private var noteField: some View {
         // A vertical-axis field wraps its text and its placeholder and grows with Dynamic Type, where a one-line field cut
-        // them. A note is still one line: Return ends the edit and a pasted line break is dropped, so the band's line holds.
+        // them. Its hit region is only its line height unless it holds two lines (measured), so it reserves two, as Tally's
+        // search does. A note is still one line: Return ends the edit and a pasted line break becomes a space.
         TextField("", text: $note,
                   prompt: Text("Anything else \u{2014} what they said, when\u{2026}").foregroundStyle(paint(.notePlaceholder)),
                   axis: .vertical)
-            .lineLimit(1...6)
+            .lineLimit(2...6)
             .font(.cochin(16, relativeTo: .body)).foregroundStyle(paint(.noteText))  // 16pt or more stops iOS zoom on focus
             .textFieldStyle(.plain).focused($focused).submitLabel(.done).onSubmit { focused = false }
             .onChange(of: note) { _, n in
@@ -221,11 +224,18 @@ struct StampSection: View {
                     focused = false
                 }
             }
-            .padding(.vertical, 8).padding(.horizontal, 12).frame(minHeight: 44)
-            .background(paint(.noteFill), in: RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.noteBorder), lineWidth: 1))
             .accessibilityLabel("Stamp note")
             .accessibilityIdentifier("stamp-note:\(pkg.gk)")
+            // The field's own frame is only its two lines (36.7pt), so the whole box is the hit region: a tap anywhere in
+            // it focuses the field. The box only contains the field, so VoiceOver still reads one "Stamp note" element.
+            .padding(.horizontal, 12)
+            .frame(minHeight: 44)
+            .background(paint(.noteFill), in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.noteBorder), lineWidth: 1))
+            .contentShape(Rectangle())
+            .onTapGesture { focused = true }
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("stamp-note-box:\(pkg.gk)")
     }
 
     /// Remove stamp (only when stamped) leads, then Cancel and Save. The armed ask hangs below this row, so arming moves
@@ -250,11 +260,13 @@ struct StampSection: View {
                     ? MiniLabel(title: "Save", bold: true, text: paint(.saveReadyText), fill: paint(.saveReadyFill), border: paint(.saveReadyFill))
                     : MiniLabel(title: "Save", text: paint(.saveOffText), border: paint(.saveOffBorder))
             }
-            .buttonStyle(.plain).disabled(!ready)
+            .buttonStyle(PaintedButtonStyle()).disabled(!ready)
             .accessibilityHint(ready ? "" : "Pick a stamp first.")
             .accessibilityIdentifier("stamp-save:\(pkg.gk)")
         }
-        .overlay(alignment: .bottomTrailing) { if armed { ask } }
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { rowHeight = $0 }
+        // The overlay takes no layout space. The ask's top sits 4pt under the row, whatever height the row has now.
+        .overlay(alignment: .topTrailing) { if armed { ask.offset(y: rowHeight + 4) } }
     }
 
     private var ask: some View {
@@ -275,8 +287,6 @@ struct StampSection: View {
         .padding(4)
         .background(RoundedRectangle(cornerRadius: 8).fill(paint(.askPanelFill)).shadow(color: Parchment.shadow, radius: 2, y: 1))
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.askPanelBorder), lineWidth: 1))
-        // Its top sits 4pt under the row, whatever height the row has at the current type size.
-        .alignmentGuide(.bottom) { $0[.top] - 4 }
         .zIndex(1)
     }
 
@@ -288,8 +298,10 @@ struct StampSection: View {
         masthead.saving()
         var landed = true
         do { try await act() } catch { landed = false }  // the model has put the reason in checkInError, which the screen shows
-        await onChange()
-        await masthead.finished(failed: !landed)
+        // A failed Tally or Orphaned read would leave them counting the old stamps, so the slot says the write failed.
+        var refreshed = true
+        do { try await onChange() } catch { refreshed = false }
+        await masthead.finished(failed: !landed || !refreshed)
         if landed { close() }
     }
 

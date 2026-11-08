@@ -38,6 +38,15 @@ struct MiniLabel: View {
     var body: some View { framed }
 }
 
+/// A plain button that draws its label as painted when it is disabled. `.plain` dims a disabled label, which takes a
+/// face already painted in an off token under the contrast floor. Keep `.disabled` on the button, so VoiceOver still
+/// reads Disabled. A press dims the label, as `.plain` does.
+struct PaintedButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.opacity(configuration.isPressed ? 0.7 : 1)
+    }
+}
+
 extension View {
     /// Lays this control out at the size of `sizer` (a MiniLabel's bare pill) and centres it there, so its 44pt hit
     /// frame overflows and costs no layout space (a header row stays as tall as the web's). The control itself is the

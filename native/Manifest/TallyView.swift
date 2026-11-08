@@ -19,27 +19,56 @@ struct TallyView: View {
     /// The last view-level refresh that failed, so the rows on screen are never silently stale.
     @State private var failure: String?
     @Environment(\.dynamicTypeSize) private var typeSize
+    @Environment(\.duoSpread) private var spread
+    /// The name the open Duo's right page shows. nil until a row is tapped, which shows the first row (the mockup selects one at open).
+    @State private var picked: String?
+
+    private var pages: (left: CGRect, right: CGRect)? { spread.pages(for: .tally) }
+    private var current: TallyRow? { pickedOrFirst(model.rows, picked: picked, id: \.name) }
 
     var body: some View {
+        Group {
+            if let pages {
+                // The mockup (pose 9) draws names with ratios on the left page, and the selected name, its totals and copies on the right.
+                // Search, sort, Hide received and the masthead are not drawn there. Default, not owner: they keep the one-page order, at the top of the left page.
+                DuoPages(pages: pages) { list.overlay(alignment: .bottom) { errorBar } } right: { detail }
+            } else {
+                list.overlay(alignment: .bottom) { errorBar }
+            }
+        }
+        .task { await run { try await model.viewOpened() } }  // another view may have checked something in
+    }
+
+    private var list: some View {
         // Search, sort and Hide received scroll under the masthead until the Ledger tab's View group lands.
         MastheadScreen(masthead: masthead, tab: .tally, sync: sync, openSync: openSync) {
             controls
             VStack(spacing: 12) {
-                ForEach(model.rows, id: \.name) { TallyRowView(row: $0, model: model, masthead: masthead) }
+                ForEach(model.rows, id: \.name) { row in
+                    TallyRowView(row: row, model: model, masthead: masthead,
+                                 page: pages == nil ? .inline : .cell(selected: row.name == current?.name) { picked = row.name })
+                }
                 if model.rows.isEmpty { empty }
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
         }
-        .overlay(alignment: .bottom) {
-            if let e = model.checkInError ?? failure {
-                Text(e).font(.cochin(13, relativeTo: .footnote)).foregroundStyle(paint(.name)).padding(12).frame(maxWidth: .infinity)
-                    .background(paint(.surface))
-                    .overlay(alignment: .top) { Rectangle().fill(paint(.border)).frame(height: 1) }
-                    .accessibilityIdentifier("checkin-error")
-            }
+    }
+
+    private var detail: some View {
+        ScrollView {
+            if let row = current { TallyRowView(row: row, model: model, masthead: masthead, page: .detail).padding(16) }
         }
-        .task { await run { try await model.viewOpened() } }  // another view may have checked something in
+        .id(current?.name)  // a new pick starts a fresh page: scroll and row state do not carry over
+    }
+
+    @ViewBuilder private var errorBar: some View {
+        if let e = model.checkInError ?? failure {
+            Text(e).font(.cochin(13, relativeTo: .footnote)).foregroundStyle(paint(.name)).padding(12).frame(maxWidth: .infinity)
+                .background(paint(.surface))
+                .overlay(alignment: .top) { Rectangle().fill(paint(.border)).frame(height: 1) }
+                .accessibilityIdentifier("checkin-error")
+        }
     }
 
     private func run(_ op: () async throws -> Void) async {
@@ -123,23 +152,37 @@ struct TallyView: View {
 }
 
 struct TallyRowView: View {
+    /// Where the row is drawn. `.inline` is the one-page row that opens in place. On the open Duo the left page draws `.cell`,
+    /// whose tap picks the name, and the right page draws `.detail`: the name, its totals and its copies, with no card around them.
+    enum Page {
+        case inline
+        case cell(selected: Bool, pick: () -> Void)
+        case detail
+    }
+
     let row: TallyRow
     let model: TallyModel
     let masthead: MastheadModel
+    var page = Page.inline
     @State private var open = false
 
     private var done: Bool { row.got >= row.qty }
+    private var isOpen: Bool { if case .inline = page { open } else { false } }
+    private var selected: Bool { if case .cell(true, _) = page { true } else { false } }
 
     var body: some View {
+        if case .detail = page { detail } else { card }
+    }
+
+    private var card: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Button { open.toggle() } label: { header }
+            Button { if case let .cell(_, pick) = page { pick() } else { open.toggle() } } label: { header }
                 .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? .isSelected : [])
                 .accessibilityIdentifier("tally-toggle:\(row.name)")
-            if open {
-                Text(row.acrossLine + (row.hiddenNote.map { " \u{00B7} \($0)" } ?? ""))
-                    .font(.mono(10.5, relativeTo: .caption)).foregroundStyle(paint(.across))
-                    .padding(.horizontal, 12).padding(.bottom, 4)
-                ForEach(row.copies, id: \.key) { copy in copyLine(copy) }
+            if isOpen {
+                across
+                copyLines
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -148,14 +191,38 @@ struct TallyRowView: View {
         // The shadow sits on the fill, not the card: a shadow on the card is drawn under every leaf view in it.
         .background(RoundedRectangle(cornerRadius: 8).fill(paint(.surface)).shadow(color: Parchment.shadow, radius: 2, y: 1))
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.border, done: done), lineWidth: 1))
+        .pickedMark(selected)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("tally-row:\(row.name)")
+    }
+
+    private var detail: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(row.name).font(.cochin(20, relativeTo: .title2).weight(.bold)).foregroundStyle(paint(.name))
+                .multilineTextAlignment(.leading)
+                .padding(.horizontal, 12).padding(.bottom, 4)
+                .accessibilityAddTraits(.isHeader)
+                .accessibilityIdentifier("tally-detail-title")
+            across
+            copyLines
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var across: some View {
+        Text(row.acrossLine + (row.hiddenNote.map { " \u{00B7} \($0)" } ?? ""))
+            .font(.mono(10.5, relativeTo: .caption)).foregroundStyle(paint(.across))
+            .padding(.horizontal, 12).padding(.bottom, 4)
+    }
+
+    private var copyLines: some View {
+        ForEach(row.copies, id: \.key) { copy in copyLine(copy) }
     }
 
     private var header: some View {
         HStack(spacing: 8) {
             Text("\u{25B6}").font(.mono(10, relativeTo: .caption)).foregroundStyle(paint(.disclosure))
-                .rotationEffect(.degrees(open ? 90 : 0))
+                .rotationEffect(.degrees(isOpen ? 90 : 0))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 0) {
                 Text(row.name).font(.cochin(15, relativeTo: .headline).weight(.bold)).foregroundStyle(paint(.name))

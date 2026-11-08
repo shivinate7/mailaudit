@@ -238,10 +238,7 @@ public final class OrphanedModel {
     }
 
     private func write(_ edits: () -> Void) throws {
-        do { try store.commit(edits); error = nil } catch {
-            self.error = "Could not save. \(error.localizedDescription)"
-            throw error
-        }
+        try store.commit(noting: &error, edits)
     }
 
     /// Checks in exactly the cards the envelope recorded, the plan the bundle gave for that package.

@@ -1,8 +1,8 @@
 # Test suite assertion count and run time
 
-**Status:** measured 2026-10-27 on `step5-build`: 1593 passed, 0 failed, exit 0, 474.2 s (other sessions were running), in America/Chicago (the machine zone). That is 1569 plus 24 for group 78 (the masthead count line on every tab: a literal and a rule check for each of 12 lines). Not re-measured under UTC, where it is 1592. Earlier figures are in git.
+**Status:** measured 2026-11-07 on `pin-removal-rule` with main `bb6cc01` merged in. New York (`TZ=America/New_York`): 1678 passed, 0 failed, exit 0, 206.5 s. UTC: 1677 passed, 0 failed, exit 0, 216.4 s. The rise from 1647 is the removal-rule cases, 38.16 to 38.18. Earlier figures are in git.
 
-This record holds the assertion count and the run time for `npm test`. The suite runs 1593 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+This record holds the assertion count and the run time for `npm test`. The suite runs 1678 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
 The count depends on the clock's zone, so the zone is pinned to `America/New_York`. In CI, the test step sets `TZ`, and it names one New York run's output in `CHECK_DOCS_SUITE_LOG`. `check:docs` grades the figure in this sentence. Locally, `npm run check:docs` runs the suite itself and waits for it to end.
 
@@ -65,7 +65,7 @@ At `75a96b8`, measured 2026-10-14 with a 1-minute load of about 3.3: New York 12
 
 Before `75a96b8`, the 2026-10-12 run at `2857876` gave these figures. New York: 1284 passed, 169 s. UTC: 1283 passed, 178 s. The 1-minute load was about 92.
 
-Each zone ran once, so each time is one reading. Groups 67 and 68 moved to the virtual clock at `c9e4c4f`, and the New York run went from 267.2 s to 123.9 s, back to back, under a 1-minute load of about 5 to 11. Their idle and retry waits had run in real time. Take several runs before you compare a time. Groups 30 to 31 hold real-timer waits on purpose.
+Each zone ran once, so each time is one reading. Groups 67 and 68 moved to the virtual clock at `c9e4c4f`. The New York run went from 267.2 s to 123.9 s, back to back, under a 1-minute load of about 5 to 11. Their idle and retry waits had run in real time. Take several runs before you compare a time. Groups 30 to 31 hold real-timer waits on purpose.
 
 ## Reader
 

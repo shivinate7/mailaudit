@@ -4,7 +4,7 @@ Kind: build
 
 Plan: docs/design/duo-blind/README.md#pick (native)
 
-**Status:** ruled on 2026-10-27 at 12:25 CDT. Round 2 answers came on 2026-10-27 at 14:26 CDT, on the waiting page. Defaults and deferrals came at 15:34 CDT. Item 22 is provisional. Item 25 (the Lost stamp) is deferred. Item 27 (held Suspense cards) is default, not owner. The Duo shell (the tab bar under the right page) is built; Card in Hand and the spread tabs are not. The round 2 design is PR 144, the Duo round 2 design pull request.
+**Status:** ruled on 2026-10-27 at 12:25 CDT. Round 2 answers came on 2026-10-27 at 14:26 CDT, on the waiting page. Defaults and deferrals came at 15:34 CDT. Item 22 is provisional. Item 25 (the Lost stamp) is deferred. Item 27 (held Suspense cards) is default, not owner. Built: the Duo shell (the tab bar under the right page), Card in Hand on side-by-side pages, and the past-transit page, which the `hand-open` control on Packages opens. Not built: the spread tabs; the stacked poses (`duo-stacked-poses-unbuilt`); and five mockup parts (`duo-hand-mockup-gaps`). The round 2 design is PR 144, the Duo round 2 design pull request.
 
 On the iPhone Duo, Card in Hand checks cards in by name. The concept comes from PR 139, the Duo blind-design pull request. The card you hold is the search, and the envelope is the answer. Two parts come from other concepts in the same PR: the past-transit page from the Sorting Frame, and the Suspense line from the Account Book.
 
@@ -56,7 +56,17 @@ A typed query matches as the web search does: a case-insensitive part of the car
 
 Packages does not spread on the open Duo. It keeps the web's one-page layout. Default, not owner.
 
-**Holds while:** the owner's pick of Card in Hand stands. Item 22 holds until the owner reviews the test build.
+Card in Hand opens from a `hand-open` control at the top of Packages, on two pages side by side only, and covers both pages. The mockup makes it the Packages tab itself. Default, not owner. Item 35 on the owner's waiting page, `duo-card-in-hand-entry`, asks whether Card in Hand should be the Packages tab itself. It is open.
+
+A unique name shows its envelope with a check-in tap on each line. Post shows only when a held card came with the typed one, and it never runs by itself. Default, not owner.
+
+On Card in Hand, the match list and its "Matches" heading sit below the envelope row and New envelope. Mockup pose 2 draws them above. With the list above, a tap on a match shrinks the list and moves New envelope under the finger. The invariant `no-layout-shift-under-pointer` outranks the mockup. Departs from: mockup pose 2. Settled by the invariant, not the owner. After a tap on a match, the list holds: every row keeps its place until the next keystroke. So no row slides under the finger, and a Suspense box does not rise. The tapped row is bold with an accent bar; the others stay tappable in soft ink. Every row pads 10 pt, so the bar sits in a gutter and no name moves on a tap. No UI test pins the name's sideways place, because no UI test read can see it; the design review judges it from shots, and every other tap check stays. Ruled by the owner, item 48 `duo-tap-shift-check`, 2026-11-07 18:35 CST. The gap is `hand-tap-label-unpinned`. Departs from: today's collapse in `HandScreen.matches` (default, not owner). The gap `hand-suspense-tap-shift` stays open until a CI path runs the Duo UI tests. The mockup is `docs/design/duo-hand-tap-shift.html`.
+
+On Card in Hand, the Suspense and Released boxes sit below the matches, not above This envelope. So while a box shows, the one match row clears the keys. A press on New envelope that clears the Suspense box does not move the button. Departs from: HandScreen order with the boxes above This envelope (default, not owner). Loss: at large text, with two or more matches, or once word suggestions show, the boxes sit under the keys. Then nothing above the keys says a card is held (`hand-held-box-under-keys`). The mockup is `docs/design/duo-hand-notice-match.html`.
+
+On Card in Hand, the Post offer sits under the sender and the date, above the lines. When the offer shows, the answer page scrolls to its top. So the sender stays on the page, and Post clears the keys. After a Post that saves or is refused, a receipt of the same height holds the slot until the next card or New envelope. A failed save keeps the offer. Departs from: today's order (offer under the lines, scrolled to the foot) and today's box that leaves on Post, both in `HandScreen.swift` before this change. Default, not owner. Item 42 on the owner's waiting page, `duo-hand-post-order`, asks for this order (A) or today's order with the offer pinned above the keys (B). It is open. The mockup and its sources are `docs/design/duo-hand-post-sender.html` and its notes.
+
+**Holds while:** the owner's pick of Card in Hand stands. Item 22 holds until the owner reviews the test build. The `hand-open` entry holds until the owner answers item 35. The Post offer's place holds until the owner answers item 42.
 
 ## See also
 
@@ -65,3 +75,5 @@ Packages does not spread on the open Duo. It keeps the web's one-page layout. De
 - `native-parity-table` — the scope of each feature in the native client.
 - `duo-fold-and-keyboard` — the fold strip, keyboard frame and outer screen figures.
 - `new-envelope-ends-an-envelope` — the New envelope control, and how a shared name is decided.
+- `duo-stacked-poses-unbuilt` — the stacked poses of item 28, not built.
+- `duo-hand-mockup-gaps` — the five mockup parts not built.

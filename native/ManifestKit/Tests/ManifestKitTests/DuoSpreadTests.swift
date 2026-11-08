@@ -18,7 +18,8 @@ import XCTest
 //       public var pageRects: (left: CGRect, right: CGRect)? { get }   // nil on one page
 //       public static func spreads(tab: DuoTab) -> Bool
 //   }
-//   public enum DuoTab: Equatable, Sendable { case ledger, tally, orphaned, cardInHand }  // the enum may hold more cases
+//   public enum DuoTab: Equatable, Sendable { case ledger, tally, orphaned, cardInHand, packages }  // the enum may hold more cases
+//     .packages is the Packages tab as it is today (lane duo-tabs-spread): one page, the web's layout. It is not .cardInHand.
 //   public enum DuoTabBar {
 //       public static func frame(in spread: DuoSpread, height: CGFloat) -> CGRect?
 //   }
@@ -115,5 +116,13 @@ final class DuoSpreadTests: XCTestCase {
         for tab in [DuoTab.tally, .orphaned, .cardInHand] {
             XCTAssertTrue(DuoSpread.spreads(tab: tab), "\(tab) spreads over both pages")
         }
+    }
+
+    // Decision duo-card-in-hand, Defaults: "Packages does not spread on the open Duo. It keeps the web's one-page layout."
+    // .cardInHand spreads (the test above) and is not built yet, so the Packages tab needs its own case. Mapping it to
+    // .cardInHand would spread Packages. Red until the builder adds .packages, as a missing member fails the build.
+    // When Card in Hand lands as the open Duo's Packages tab, that lane re-points this test (outcomes-tests-are-statements).
+    func testPackagesFullWidth() {
+        XCTAssertFalse(DuoSpread.spreads(tab: .packages), "the Packages tab keeps one page on the open Duo until Card in Hand is built")
     }
 }

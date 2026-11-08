@@ -2,7 +2,7 @@
 
 **Status:** open.
 
-**Holds while:** the `npm test` step of the `suite` job in `.github/workflows/test.yml` pins `TZ` to `America/New_York`.
+**Holds while:** the `npm test` step of the `suite` job in `.github/workflows/checks.yml` pins `TZ` to `America/New_York`.
 
 GitHub Actions sets `TZ` to UTC. Test 38.9 skips itself in that zone, on purpose, because it has nothing to claim there. So the `suite` job pins `TZ=America/New_York` on its one `npm test` run, and 38.9 runs on every CI run.
 
