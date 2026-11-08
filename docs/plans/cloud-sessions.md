@@ -1,10 +1,17 @@
 # Cloud sessions for mailaudit
 
-**Status:** open, research only. Lane `cloud-feasibility`, 2026-11-08, from main 4d56eef. Nothing here is built or configured. The setup script draft is `docs/plans/cloud-setup.sh`.
+**Status:** open, research only. Lane `cloud-feasibility`, 2026-11-08, from main 4d56eef. The owner asked on 2026-11-08 at 16:45 CST to move this repo to the cloud. Nothing is measured on a cloud VM yet. Nothing here is built or configured. The setup script draft is `docs/plans/cloud-setup.sh`.
 
 Can mailaudit's work run in Claude Code cloud sessions (claude.ai/code, an Anthropic-hosted Ubuntu 24.04 VM) instead of on the owner's Mac?
 
-**Verdict: mostly cloud, with a named Mac remainder.** All web, records, Worker-code and CI work runs in the cloud. Anything that needs a Mac stays on the Mac or moves to a hosted macOS runner: an Xcode build, a simulator, the Duo, a phone install, TestFlight, a native screenshot, the Cochin font. The Mac remainder is the phone install, the Duo UI tests and the sim-gate grants. TestFlight and native screenshots have a hosted-runner route, but neither is built.
+**Verdict: mostly cloud, with a named Mac remainder.** All web, records, Worker-code and CI work runs in the cloud. Anything that needs a Mac stays on the Mac or moves to a hosted macOS runner. Examples: an Xcode build, a simulator, the Duo, a phone install, TestFlight, a native screenshot and the Cochin font. The Mac remainder is the phone install, the Duo UI tests and the sim-gate grants. TestFlight and native screenshots have a hosted-runner route, but neither is built.
+
+## How close (2026-11-08)
+
+- Web, records, Worker code and the orders extension are close: one owner setup (see Owner acts below) plus one measuring session.
+- Native work is not close. `swift test` cannot run on Linux, because `RulesEngine` imports JavaScriptCore. The app build, simulators, the Duo, phone installs and TestFlight need macOS.
+- `milestone.yml` has no green run yet. It waits on the hosted Xcode 27 image (record `app-build-waits-xcode-27`). No CI job shoots native screenshots.
+- The current goal is the native restyle, with a screenshot after each step. Each step needs simulator runs.
 
 ## Sources
 
@@ -47,7 +54,7 @@ Gold standard for each row: the work runs in a cloud session with the same verdi
 | Global hooks, lint and agents (`~/.claude`) | yes | claude-settings' `cloud-setup.sh` installs them; its records show the hooks running in cloud containers on 2026-11-03 (`cloud-start-hooks-run-fresh`) | step 1 of the draft script | measured by claude-settings, not here |
 | Load brake, simulator boot cap, `sim-test`, `ios-ship` | not applicable | The brake skips cloud sessions (`machine-load-brake`); the rest are Mac tools | n/a | n/a |
 
-**Docs vs evidence.** The settings page says the user settings file `~/.claude/settings.json` is "not read" in cloud sessions. The surrounding text says the Mac's file stays on the Mac. claude-settings measured its hooks running from the file that `install.sh --cloud` writes on the VM. This plan trusts the measurement. Whether a fresh mailaudit cloud session prints the `claude-settings setup: installed` line is unmeasured.
+**Docs versus evidence.** The settings page says the user settings file `~/.claude/settings.json` is "not read" in cloud sessions. The surrounding text says the Mac's file stays on the Mac. claude-settings measured its hooks running from the file that `install.sh --cloud` writes on the VM. This plan trusts the measurement. Whether a fresh mailaudit cloud session prints the `claude-settings setup: installed` line is unmeasured.
 
 ## The setup script
 
@@ -90,6 +97,34 @@ Custom: tick the default list, then add the hosts each work kind needs.
 - The Worker host, only for live probes. Its network secret makes it reachable anyway.
 - `api.cloudflare.com`, only if Worker deploys move to the cloud.
 
+## Wind down
+
+State lives in `~/.claude/handoffs`, which does not carry to the cloud. So each lane puts its handoff into its branch's draft PR body before it stops.
+
+- **Restyle.** Let the step 7 batch (PR 231) merge. Push branch `step8-build` (round 2). Still owed: step 8's simulator red runs.
+- **Duo.** Push branches `duo-hand-open-env` and `hand-post-pins`, and the mockup branches for roadmap items 11 and 13. Still owed: post pins and chip runs on the Duo, and the keyboard-gap measure.
+- **Pins.** Push the branch for roadmap item 60. Queued: the photo fetch and sweep, the PhotoSync wiring, and item 58.
+- **Orders extension.** Push its branches. Nothing deploys.
+- **Batch runner.** Finish the open batch. The phone runs the last merged main.
+- **Triage.** Nothing to move. The waiting page and the `roadmap` record branch already live off the Mac.
+- **Gatekeeper and sim-gate grants.** Mac only. Stop it last.
+- **Coordinator.** Its handoff goes into this plan's PR body, once the plan has one.
+
+## Restart in the cloud
+
+In this order:
+
+1. The owner makes the environment (see Owner acts below).
+2. One measuring session checks each of these:
+   - the setup verdict lines and the `claude-settings setup: installed` line;
+   - `npm ci` and `npm test`;
+   - a PR made through `gh api` REST;
+   - a write to the waiting page through the claude-artifacts connector;
+   - a merge through the GitHub MCP tools.
+3. One cloud coordinator session runs lanes as its own agents or workflows. A cloud session cannot message back. This follows the claude-settings decision `lanes-start-as-agents`, which has lanes run as agents.
+4. Web, records, Worker and extension lanes restart from their PR bodies.
+5. Native lanes follow the owner's choice in Decisions for the owner, below.
+
 ## Owner acts
 
 Not taken in this lane. The coordinator brings these to the owner.
@@ -104,6 +139,10 @@ Not taken in this lane. The coordinator brings these to the owner.
 
 - **TestFlight from CI.** Departs from: `native-ships-via-testflight` (the key lives only on this Mac) — the App Store Connect key becomes a GitHub Actions secret, and a macOS job uploads. Gain: no Mac is needed for the fallback. Lose: the key leaves the Mac, onto a public repo's Actions.
 - **Team placement.** Owner ruling, 2026-11-04 07:56 CST (claude-settings `lanes-start-as-agents`): the team of coordinator, triage, batch runner and lanes runs all on the Mac or all in the cloud. All-cloud fits that ruling, but the Mac remainder above still needs one Mac session. A split, with the coordinator local and the lanes in the cloud, departs from: `lanes-start-as-agents` (one placement for the whole team). Under the split, cloud lanes report only by PR and by notes, because a cloud session cannot message back. Recommended: keep the team all on the Mac, and use cloud sessions only for one-off web or records work outside the team. That changes nothing on main.
+- **Native work during the move.** Which route?
+  - (a) Two waves (recommended). Move the web, Worker, extension and records work now. Finish the native restyle on the Mac first, then move. Gain: the restyle keeps its simulator and phone. Lose: a split team until the restyle ends. That departs from `lanes-start-as-agents` for that time.
+  - (b) Build the CI routes first: a macOS screenshot job, a green `milestone.yml`, and TestFlight from Actions. Pause native work until they work. Gain: no Mac at all. Lose: native stalls while those are built, and macOS CI minutes cost money. The Duo still has no route (roadmap item 54 lane). The TestFlight part departs from `native-ships-via-testflight`, as the TestFlight decision above says.
+  - (c) Move everything now, and keep one Mac session for simulator runs, phone installs and TestFlight. Gain: one cloud team, with a small Mac helper. Lose: the Mac helper cannot hear the cloud team, so its work goes by PR only.
 
 ## Follow-ups
 
