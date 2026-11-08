@@ -99,7 +99,8 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `hand-notice-cuts-match-row` — A Suspense or Released box pushes the match under the keys.
 - `hand-post-top-scroll-unpinned` — No test pins the scroll to the page top when Post shows.
 - `hand-held-box-under-keys` — A held card's box can sit under the keys.
-- `hand-match-row-ax3-unmeasured` — No test pins the match row above the keys at large text.
+- `hand-match-row-ax3-unmeasured` — The large-text match-row test runs only on a local Duo.
+- `hand-open-under-bar-at-l` — At AccessibilityL the Card in Hand control sits under the tab bar.
 - `hand-suspense-tap-shift` — A tap on a match shifts rows under the finger.
 - `hand-tap-label-unpinned` — No test pins the tapped name's sideways place.
 - `duo-left-page-dead-margin` — The Duo left page scrolls 76 pt past its end; low priority, after restyle's step 8.
