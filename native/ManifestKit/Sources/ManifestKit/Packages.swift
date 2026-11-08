@@ -91,6 +91,20 @@ public final class PackagesModel {
     private var bulkUndoTakes: [BulkTake] = []
     /// The check-ins the held Undo takes back: the one source of the Undo hint's count. 0 when none is held.
     public var bulkUndoCount: Int { bulkUndoGk == nil ? 0 : bulkUndoTakes.reduce(0) { $0 + $1.take } }
+
+    /// The held Mark all Undo of a card that is no longer in the list (Showing: Unreceived drops a package its Mark all completes), so the
+    /// Undo's own slot went with it. `index` is the place in `rows` the card held, where the shared Undo notice takes over
+    /// (undo-removes-only-its-delta: "the undo notice shows at that vacated slot"). nil while the card is still listed.
+    public struct VacatedUndo: Equatable, Sendable {
+        public let gk, seller: String
+        public let count, index: Int
+        public var line: String { BulkNotice.line(count: count, seller: seller) }
+    }
+    public var vacatedUndo: VacatedUndo? {
+        guard let gk = bulkUndoGk, !rows.contains(where: { $0.gk == gk }), let pkg = package(gk: gk) else { return nil }
+        let place = order[gk] ?? .max
+        return VacatedUndo(gk: gk, seller: pkg.seller, count: bulkUndoCount, index: rows.filter { (order[$0.gk] ?? .max) < place }.count)
+    }
     /// The store's postsSaved when checkInError was last set: only a Post after that is a good write that outdates the failure line.
     @ObservationIgnored private var errorPosts = 0
 

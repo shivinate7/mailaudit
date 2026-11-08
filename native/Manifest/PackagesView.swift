@@ -41,9 +41,14 @@ struct PackagesView: View {
                 }
                 if let notice { Text(notice).font(.footnote).padding(8) }
                 LazyVStack(spacing: 8) {
-                    ForEach(model.rows, id: \.gk) { pkg in
+                    // A Mark all that completes its package drops the card under Unreceived, and the Undo went with it: the shared
+                    // notice takes the card's place, so the held Undo keeps a control (undo-removes-only-its-delta).
+                    let vacated = model.vacatedUndo
+                    ForEach(Array(model.rows.enumerated()), id: \.element.gk) { i, pkg in
+                        if let vacated, vacated.index == i { vacatedNotice(vacated) }
                         PackageRow(pkg: pkg, model: model, masthead: masthead, onChange: onChange)
                     }
+                    if let vacated, vacated.index >= model.rows.count { vacatedNotice(vacated) }
                     if model.rows.isEmpty && model.hasItems { empty }
                 }
                 .padding(.horizontal, 16)
@@ -58,6 +63,12 @@ struct PackagesView: View {
         }
         .findPill(show: pillShown, query: model.query) { q in Task { await run { try await model.setQuery(q) } } }
         .task { await run { try await model.viewOpened() } }  // another tab may have changed Find
+    }
+
+    private func vacatedNotice(_ v: PackagesModel.VacatedUndo) -> some View {
+        UndoNoticeBar(line: v.line, undoID: "bulk-vacated-undo:\(v.gk)",
+                      undo: { await bulkWrite(masthead: masthead, onChange: onChange) { try await model.undoBulk() } },
+                      dismiss: { model.endBulkUndo() })
     }
 
     /// The web's empty list: one sentence, and one Clear search only while a search is what empties it.
@@ -120,12 +131,7 @@ struct PackageRow: View {
     }
 
     private func write(_ act: () async throws -> Void) async {
-        masthead.saving()
-        var landed = true
-        do { try await act() } catch { landed = false }  // the model has put the reason in checkInError, which the screen shows
-        var refreshed = true
-        do { try await onChange() } catch { refreshed = false }  // a failed Tally or Orphaned read would leave them counting the old check-ins
-        await masthead.finished(failed: !landed || !refreshed)
+        await bulkWrite(masthead: masthead, onChange: onChange, act)
     }
 
     /// The item lines, clipped to the card's bottom corners because their fills are square. The card clips nothing
@@ -269,4 +275,15 @@ struct PackageRow: View {
                 .accessibilityHidden(true)
         }
     }
+}
+
+/// A bulk write as the masthead shows it: saving, the write, the other tabs' read of the new counts, then finished
+/// (as a stamp write does). The card's Mark all, Clear and Undo and the vacated notice's Undo all run through it.
+@MainActor func bulkWrite(masthead: MastheadModel, onChange: () async throws -> Void, _ act: () async throws -> Void) async {
+    masthead.saving()
+    var landed = true
+    do { try await act() } catch { landed = false }  // the model has put the reason in checkInError, which the screen shows
+    var refreshed = true
+    do { try await onChange() } catch { refreshed = false }  // a failed Tally or Orphaned read would leave them counting the old check-ins
+    await masthead.finished(failed: !landed || !refreshed)
 }

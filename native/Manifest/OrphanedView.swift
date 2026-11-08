@@ -123,20 +123,8 @@ private struct UndoNoticeView: View {
     let onChange: () async -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
-            Text(OrphanedNotice.undoLine(matchedQty: notice.matchedQty, pkgLabel: notice.pkgLabel, leftoverQty: notice.leftoverQty))
-                .font(.cochin(13, relativeTo: .footnote)).foregroundStyle(paint(.noticeText))
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Button { Task { try? await model.undoAssign(); await onChange() } } label: { MiniLabel(title: "Undo", vertical: 4, horizontal: 8) }
-                .buttonStyle(.plain).accessibilityIdentifier("orphaned-undo")
-            Button { model.dismissUndo() } label: {
-                Image(systemName: "xmark").font(.footnote).foregroundStyle(paint(.dismiss)).frame(width: 44, height: 44).contentShape(Rectangle())
-            }
-            .buttonStyle(.plain).accessibilityLabel("Dismiss").accessibilityIdentifier("orphaned-undo-dismiss")
-        }
-        .padding(.leading, 12).padding(.vertical, 4)
-        .background(paint(.noticeFill), in: RoundedRectangle(cornerRadius: 8))
-        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.noticeBorder), lineWidth: 1))
+        UndoNoticeBar(line: OrphanedNotice.undoLine(matchedQty: notice.matchedQty, pkgLabel: notice.pkgLabel, leftoverQty: notice.leftoverQty),
+                      undoID: "orphaned-undo", undo: { try? await model.undoAssign(); await onChange() }, dismiss: { model.dismissUndo() })
     }
 }
 
