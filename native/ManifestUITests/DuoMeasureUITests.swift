@@ -13,6 +13,12 @@ import XCTest
 // Each size is one test method: testMeasureDefault, testMeasureAccessibilityM, ... testMeasureAccessibilityXXXL. Size names
 // in the output are the short forms, without the UICTContentSizeCategory prefix. Read the lines that start with MEASURE.
 //
+// Card in Hand reach has four methods: testReachDefault (the control), testReachAccessibilityL, testReachAccessibilityXXL and
+// testReachAccessibilityXXXL. Their lines start with REACH. A bare class run also runs the six MEASURE methods, so run the
+// reach methods with:
+//   -only-testing:ManifestUITests/DuoMeasureUITests/testReachDefault -only-testing:ManifestUITests/DuoMeasureUITests/testReachAccessibilityL \
+//   -only-testing:ManifestUITests/DuoMeasureUITests/testReachAccessibilityXXL -only-testing:ManifestUITests/DuoMeasureUITests/testReachAccessibilityXXXL
+//
 // Lines, per size, in this order:
 //   MEASURE pose <size> window=<w>x<h> flat=<yes|no>   flat=no: every figure after it is for another pose.
 //   MEASURE bar <size> pill=... bar=... labels=[...]
@@ -31,6 +37,9 @@ import XCTest
 
 /// Figures printed with one decimal place.
 private func figure(_ v: CGFloat) -> String { String(format: "%.1f", v) }
+
+/// "yes" or "no", for the printed lines.
+private func yn(_ v: Bool) -> String { v ? "yes" : "no" }
 
 /// A frame as "x,y wxh".
 private func frameText(_ r: CGRect) -> String {
@@ -65,11 +74,7 @@ final class DuoMeasureUITests: XCTestCase {
 
     /// One launch per size: the pose, then the bar, then Card in Hand. The bar is read first, so a fault on the hand path cannot cost its figures.
     func measure(_ size: String, _ category: String) {
-        let app = XCUIApplication.launchedOnSeed(extra: ["-UIPreferredContentSizeCategoryName", category])
-        guard app.window.waitForExistence(timeout: 15) else {
-            XCTFail("the app did not launch at \(size): it shows no window")
-            return
-        }
+        guard let app = launch(size, category) else { return }
         printPose(app, size)
         measureBar(app, size)
         keepShot(app, "measure-bar-\(size)")
@@ -206,5 +211,114 @@ final class DuoMeasureUITests: XCTestCase {
         }
         walk(root)
         return out.joined(separator: " ")
+    }
+
+    /// Launches the app on the seed at one content size and waits for its window. Nil after the one failure this class records.
+    func launch(_ size: String, _ category: String) -> XCUIApplication? {
+        let app = XCUIApplication.launchedOnSeed(extra: ["-UIPreferredContentSizeCategoryName", category])
+        guard app.window.waitForExistence(timeout: 15) else {
+            XCTFail("the app did not launch at \(size): it shows no window")
+            return nil
+        }
+        return app
+    }
+
+    // MARK: Card in Hand reach, on the open Duo
+
+    func testReachDefault() { reach("default", "UICTContentSizeCategoryL") }
+    func testReachAccessibilityL() { reach("AccessibilityL", "UICTContentSizeCategoryAccessibilityL") }
+    func testReachAccessibilityXXL() { reach("AccessibilityXXL", "UICTContentSizeCategoryAccessibilityXXL") }
+    func testReachAccessibilityXXXL() { reach("AccessibilityXXXL", "UICTContentSizeCategoryAccessibilityXXXL") }
+
+    /// Whether hand-open can be reached at one size: select Packages, read the control, swipe the left page until the control
+    /// is hittable (at most 5 swipes), then tap it. Every step prints. Nothing here asserts on a figure.
+    func reach(_ size: String, _ category: String) {
+        guard let app = launch(size, category) else { return }
+        printPose(app, size)
+        print("REACH \(size) launch \(tabState(app))")
+        selectPackages(app, size)
+
+        // The control can appear a moment after the tab takes, so wait for it, then let the frame settle before reading it.
+        let hand = app.element("hand-open")
+        _ = hand.waitForExistence(timeout: 3)
+        _ = settled { [handFrame(app)] }
+        print("REACH \(size) before=\(handReach(app))")
+
+        let scrolls = app.scrollViews.containing(.any, identifier: "hand-open")
+        let scroll = scrolls.firstMatch
+        print("REACH \(size) scroll matches=\(scrolls.count) picked=\(scroll.exists ? frameText(scroll.frame) : "MISSING")")
+
+        // A slow swipe: a fast one carries the control past a reachable spot and under the pinned running head.
+        var swipes = 0
+        while swipes < 5, scroll.exists, !(hand.exists && hand.isHittable) {
+            scroll.swipeUp(velocity: .slow)
+            swipes += 1
+            _ = settled { [handFrame(app)] }
+            print("REACH \(size) swipe=\(swipes) \(handReach(app))")
+        }
+        print("REACH \(size) after=\(handReach(app)) swipes=\(swipes)")
+
+        guard hand.exists, hand.isHittable else {
+            print("REACH \(size) tap=skipped hand-open not hittable")
+            return
+        }
+        hand.tap()
+        let opened = app.element("hand-query").waitForExistence(timeout: 5)
+        print("REACH \(size) tap=element hand-query=\(opened ? "appears" : "absent")")
+    }
+
+    /// Selects Packages as a person does. A hittable button is tapped by element. Otherwise its centre is tapped, since .tap()
+    /// on a non-hittable element records a failure. Both waits return without failing the test, so a tap that did not take is a figure.
+    func selectPackages(_ app: XCUIApplication, _ size: String) {
+        let duo = app.duoBar.buttons["Packages"]
+        let source = duo.exists ? "duo" : (app.tabBars.buttons["Packages"].exists ? "system" : "none")
+        let tab = duo.exists ? duo : app.tabBars.buttons["Packages"]
+        guard tab.exists else {
+            print("REACH \(size) select=none packages-tab=MISSING")
+            return
+        }
+        _ = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "isHittable == true"), object: tab)], timeout: 3)
+        let hittable = tab.isHittable
+        let frame = frameText(tab.frame)
+        if hittable {
+            tab.tap()
+        } else {
+            tab.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        }
+        let took = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "isSelected == true"), object: tab)], timeout: 3)
+        print("REACH \(size) select=\(source) tab-frame=\(frame) hittable=\(yn(hittable)) tap=\(hittable ? "element" : "coordinate") took=\(yn(took == .completed)) selected=\(yn(tab.isSelected))")
+    }
+
+    /// The tab buttons at launch: the custom bar's frame and each title's button, then the system tab bar's count and buttons.
+    func tabState(_ app: XCUIApplication) -> String {
+        let bar = app.duoBar
+        let duoFrame = bar.exists ? frameText(bar.frame) : "MISSING"
+        let duoButtons = DuoShellUITests.tabTitles.map { title -> String in
+            let b = bar.buttons[title]
+            guard b.exists else { return "\(title)[MISSING]" }
+            return "\(title)[selected=\(yn(b.isSelected)) hittable=\(yn(b.isHittable)) frame=\(frameText(b.frame))]"
+        }
+        let system = app.tabBars
+        var systemButtons: [String] = []
+        if system.count > 0 {
+            systemButtons = system.firstMatch.buttons.allElementsBoundByIndex.map { b in
+                "\(b.label)[selected=\(yn(b.isSelected)) hittable=\(yn(b.isHittable))]"
+            }
+        }
+        return "duo-tab-bar=\(duoFrame) duo-buttons=[\(duoButtons.joined(separator: " "))] system-tab-bars=\(system.count) system-buttons=[\(systemButtons.joined(separator: " "))]"
+    }
+
+    /// hand-open's frame, or nil when the control is not on screen.
+    func handFrame(_ app: XCUIApplication) -> CGRect? {
+        let hand = app.element("hand-open")
+        return hand.exists ? hand.frame : nil
+    }
+
+    /// hand-open's frame and hittability, and whether the pinned running head is mounted (it takes taps where it sits).
+    func handReach(_ app: XCUIApplication) -> String {
+        let head = yn(app.element("running-head").exists)
+        let hand = app.element("hand-open")
+        guard hand.exists else { return "hand-open=MISSING running-head=\(head)" }
+        return "hand-open=\(frameText(hand.frame)) hittable=\(yn(hand.isHittable)) running-head=\(head)"
     }
 }
