@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orders extension: options page</title>
+<style>
+/* Light colours are the C tokens from shared/tokens.json (design-parchment-ledger).
+   The dark set is PROPOSED here: the app ships no dark palette. See options-notes.md item 2. */
+:root, [data-theme="light"] {
+  --paper: #F2E9DA; --card: #FCF6EA; --ink: #332E3F; --inkSoft: #6E6379;
+  --line: #DCCDB6; --gold: #C9A961; --accent: #6F5CA6; --onAccent: #FCF6EA;
+  --green: #2E7A5E; --red: #A8443C; --redSoft: #F4E4D9;
+  --manila: #EADBBA; --manilaInk: #695832; --amber: #846008;
+  --wax: #A8443C; --waxLit: #C86A5F; --waxDeep: #66231D;
+  --shadow: rgba(28,43,36,0.06);
+  --desk: #E6DCCB; /* reviewer chrome only */
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --cochin: Cochin, 'Hoefler Text', Palatino, Georgia, serif;
+  --ctl-h: 34px; /* CTL_H in src/app.jsx */
+  color-scheme: light;
+}
+[data-theme="dark"] {
+  --paper: #1E1B24; --card: #27232E; --ink: #EFE6D6; --inkSoft: #B1A6BB;
+  --line: #443D4D; --gold: #C9A961; --accent: #A796DA; --onAccent: #1E1B24;
+  --green: #6DBB98; --red: #E3857B; --redSoft: #3A2426;
+  --manila: #3A3122; --manilaInk: #E2CB96; --amber: #D9AE4A;
+  --shadow: rgba(0,0,0,0.3);
+  --desk: #141218;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #1E1B24; --card: #27232E; --ink: #EFE6D6; --inkSoft: #B1A6BB;
+    --line: #443D4D; --accent: #A796DA; --onAccent: #1E1B24;
+    --green: #6DBB98; --red: #E3857B; --redSoft: #3A2426;
+    --manila: #3A3122; --manilaInk: #E2CB96; --amber: #D9AE4A; --desk: #141218;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--desk); color: var(--ink); font-family: var(--cochin); }
+/* each frame carries its own theme, so its text colour must be read there, not inherited from body */
+.dev[data-theme] { color: var(--ink); }
+/* design-form-controls-no-inherit */
+button, input, select, textarea { font-family: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- reviewer chrome (not part of the screen) ---------- */
+.banner { background: var(--manila); color: var(--manilaInk); font-family: var(--mono);
+  font-size: 12px; letter-spacing: .04em; padding: 8px 16px; text-align: center; }
+.chrome { max-width: 1240px; margin: 0 auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.chrome h1 { margin: 0; font-weight: 400; font-size: 22px; }
+.chrome p { margin: 0; font-size: 14px; color: var(--inkSoft); max-width: 72ch; line-height: 1.4; }
+.bar-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.bar-row .lab { font-family: var(--mono); font-size: 11px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--inkSoft); min-width: 92px; }
+.chip { font-family: var(--mono); font-size: 11.5px; padding: 4px 12px; min-height: 32px;
+  border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; border-radius: 999px; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--onAccent); border-color: var(--accent); }
+.opt { display: inline-flex; align-items: stretch; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--card); }
+.opt .chip { border: 0; border-radius: 0; }
+.opt .x { border: 0; border-left: 1px solid var(--line); background: transparent; color: var(--inkSoft);
+  font-family: var(--mono); font-size: 11px; padding: 0 12px; cursor: pointer; }
+.opt[hidden] { display: none; }
+.caption { font-family: var(--mono); font-size: 11px; color: var(--inkSoft); line-height: 1.5; max-width: 900px; }
+.stage { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; padding: 0 16px 48px; }
+.dev { display: flex; flex-direction: column; gap: 8px; }
+.dev > .cap { font-family: var(--mono); font-size: 11px; color: var(--inkSoft); }
+.dev[hidden] { display: none; }
+
+/* ---------- browser frame: a Chrome tab, drawn plain (Today: Chrome) ---------- */
+.win { width: 960px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
+  box-shadow: 0 8px 24px var(--shadow); background: var(--paper); }
+.tabbar { height: 36px; display: flex; align-items: flex-end; gap: 8px; padding: 0 12px;
+  background: color-mix(in srgb, var(--ink) 10%, var(--paper)); }
+.tab { height: 28px; padding: 0 12px; display: flex; align-items: center; gap: 8px; border-radius: 8px 8px 0 0;
+  background: color-mix(in srgb, var(--ink) 4%, var(--paper)); font: 12px system-ui, sans-serif; color: var(--ink); }
+.tab svg { width: 16px; height: 16px; }
+.urlbar { height: 36px; display: flex; align-items: center; padding: 0 12px;
+  background: color-mix(in srgb, var(--ink) 4%, var(--paper)); border-bottom: 1px solid var(--line); }
+.urlbar span { flex: 1; height: 24px; border-radius: 12px; padding: 0 12px; display: flex; align-items: center;
+  background: color-mix(in srgb, var(--ink) 9%, var(--paper)); font: 12px system-ui, sans-serif; color: var(--inkSoft); }
+.view { height: 720px; overflow-y: auto; background: var(--paper); }
+
+/* ============ NEW: the options page ============ */
+/* Center primitive: one column, 520px at most. */
+.op { max-width: 520px; margin-inline: auto; padding: 32px 24px 48px; display: flex; flex-direction: column; gap: 24px; }
+
+/* letterhead, abridged from .mdl-head: seal between gold rules, MANIFEST in Cochin caps, house line */
+.lh { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.lh .rule { display: flex; align-items: center; gap: 12px; width: 240px; }
+.lh .rule i { flex: 1; height: 1px; background: var(--gold); } /* gold: ornament only */
+.lh .t { font-size: 24px; letter-spacing: .14em; text-indent: .14em; line-height: 1; }
+.lh .f { font-family: var(--mono); font-size: 10px; letter-spacing: .3em; text-indent: .3em;
+  text-transform: uppercase; color: var(--inkSoft); }
+.lede { margin: 0; font-size: 16px; line-height: 1.45; color: var(--ink); text-align: center; text-wrap: pretty; }
+
+/* a section: mono micro-label over a hairline, then its parts (ruled-head-masthead-vocabulary) */
+.sec { display: flex; flex-direction: column; gap: 12px; padding-top: 12px; border-top: 1px solid var(--line); position: relative; }
+.sec > h2 { margin: 0; font-family: var(--mono); font-weight: 400; font-size: 10px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--inkSoft); }
+/* partGrid / partLab / partVal from src/app.jsx */
+.parts { display: grid; grid-template-columns: 88px minmax(0, 1fr); column-gap: 12px; row-gap: 8px; align-items: baseline; }
+.parts .k { font-family: var(--mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--inkSoft); white-space: nowrap; }
+.parts .v { font-family: var(--cochin); font-size: 16px; line-height: 1.35; color: var(--ink); min-width: 0; }
+.parts .v.soft { color: var(--inkSoft); }
+.parts .v .fig { font-family: var(--mono); font-size: 12px; color: var(--ink); }
+
+/* the key row: write-on rule (keyField), 16px, then the option-cell buttons */
+.keyrow { display: flex; gap: 8px; align-items: stretch; }
+.fld { flex: 1 1 0; min-width: 0; display: flex; }
+.keyfield { flex: 1; min-width: 0; height: var(--ctl-h); border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
+  background: transparent; font-family: var(--mono); font-size: 16px; color: var(--ink); padding: 0; outline: none; }
+.keyfield:focus { border-bottom-color: var(--accent); }
+.keyfield::placeholder { color: var(--inkSoft); opacity: 1; }
+/* optCell(false) with its own rule, as keySave */
+.cell { height: var(--ctl-h); padding: 0 12px; border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  font-family: var(--mono); font-size: 11.5px; white-space: nowrap; cursor: pointer; flex-shrink: 0; }
+.cell:hover { border-color: var(--inkSoft); }
+.cell:disabled { color: var(--inkSoft); cursor: not-allowed; border-style: dashed; }
+/* Clear: restoreCell, armed or not. One fixed width, so the armed label takes the same box. */
+.cell.clear { width: 120px; color: var(--red); background: var(--redSoft); }
+.cell.clear.armed { background: var(--red); color: var(--onAccent); border-color: var(--red); font-weight: 700; }
+.cell.clear[hidden] { display: inline-block; visibility: hidden; } /* reserved: never shifts Save */
+/* Pull now: the accent fill that means "active" across the app */
+.cell.primary { background: var(--accent); color: var(--onAccent); border-color: var(--accent); padding: 0 16px; }
+.cell.primary:disabled { background: var(--card); color: var(--inkSoft); border-color: var(--line); border-style: dashed; }
+.cell.go { color: var(--accent); }
+
+/* the answer slot: one line tall, always rendered, so nothing moves when text arrives */
+.answer { min-height: 20px; font-family: var(--mono); font-size: 11px; line-height: 20px; color: var(--inkSoft);
+  display: flex; gap: 8px; align-items: center; }
+.answer.ok { color: var(--green); }
+.answer.bad { color: var(--red); }
+.help { margin: 0; font-size: 14px; line-height: 1.4; color: var(--inkSoft); }
+.help code { font-family: var(--mono); font-size: 12px; color: var(--ink); }
+.pullrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.linkbtn { border: 0; background: transparent; padding: 0; color: var(--accent); font-family: var(--mono); font-size: 11px;
+  letter-spacing: .12em; text-transform: uppercase; border-bottom: 1px solid var(--line); line-height: 16px; cursor: pointer; }
+.linkbtn:hover { border-bottom-color: var(--accent); }
+
+/* the failure: the app's advisory block (photoMsg): manila fill, manilaInk text */
+.fail { background: var(--manila); color: var(--manilaInk); border-radius: 8px; padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 8px; }
+.fail .what { font-size: 17px; line-height: 1.25; color: var(--manilaInk); }
+.fail .when { font-family: var(--mono); font-size: 11px; }
+.fail .fix { font-size: 15px; line-height: 1.4; }
+.fail .acts { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+.fail .acts .cell { background: var(--card); color: var(--ink); }
+.fail details { font-family: var(--mono); font-size: 11px; }
+.fail summary { cursor: pointer; width: max-content; }
+.fail details code { display: inline-block; margin-top: 4px; }
+.none { font-size: 16px; color: var(--inkSoft); }
+
+/* ---------- annotation labels (reviewer chrome) ---------- */
+body.ann [data-ann] { outline: 1px dashed var(--inkSoft); outline-offset: 4px; }
+body.ann [data-ann].new { outline-color: var(--accent); }
+body.ann [data-ann]::after { content: attr(data-ann); position: absolute; right: 0; top: -10px; z-index: 6;
+  font-family: var(--mono); font-size: 10px; padding: 0 4px; background: var(--paper);
+  color: var(--inkSoft); border: 1px dashed currentColor; pointer-events: none; }
+body.ann [data-ann].new::after { color: var(--accent); }
+body.ann .op[data-ann]::after { top: 4px; right: 4px; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body class="ann">
+<div class="banner">Sample. No figure, time, count or key on this page is real.</div>
+
+<div class="chrome">
+  <h1>Orders extension: options page</h1>
+  <p>The page Chrome opens from the extension's Options, in its own tab. One column. It saves the device key, shows the last run and the last failure, and starts a pull. Notes: <code>options-notes.md</code>. Dashed labels mark what is new and what Chrome already draws.</p>
+
+  <div class="bar-row" role="group" aria-label="State">
+    <span class="lab">State</span>
+    <span id="stateChips" class="bar-row"></span>
+  </div>
+  <div class="bar-row" role="group" aria-label="Theme">
+    <span class="lab">Theme</span>
+    <button class="chip" data-t="both">Both</button>
+    <button class="chip" data-t="light">Light</button>
+    <button class="chip" data-t="dark">Dark</button>
+    <button class="chip" id="annBtn" aria-pressed="true">Labels</button>
+  </div>
+  <div class="bar-row" role="group" aria-label="Options">
+    <span class="lab">Options</span>
+    <span class="opt" data-group="tab"><button class="chip" data-k="tab" data-v="answer">No tab: answer at press</button><button class="x" title="Hide this option" aria-label="Hide option: answer at press">&times;</button></span>
+    <span class="opt" data-group="tab"><button class="chip" data-k="tab" data-v="disabled">No tab: disabled with reason</button><button class="x" title="Hide this option" aria-label="Hide option: disabled with reason">&times;</button></span>
+    <span class="opt" data-group="check"><button class="chip" data-k="check" data-v="on">Save checks the key</button><button class="x" title="Hide this option" aria-label="Hide option: save checks the key">&times;</button></span>
+    <span class="opt" data-group="check"><button class="chip" data-k="check" data-v="off">Save stores only</button><button class="x" title="Hide this option" aria-label="Hide option: save stores only">&times;</button></span>
+    <span class="opt" data-group="clear"><button class="chip" data-k="clear" data-v="arm">Clear: press twice</button><button class="x" title="Hide this option" aria-label="Hide option: press twice">&times;</button></span>
+    <span class="opt" data-group="clear"><button class="chip" data-k="clear" data-v="once">Clear: one press</button><button class="x" title="Hide this option" aria-label="Hide option: one press">&times;</button></span>
+    <span class="opt" data-group="stop"><button class="chip" data-k="stop" data-v="on">Stop while pulling</button><button class="x" title="Hide this option" aria-label="Hide option: stop while pulling">&times;</button></span>
+    <span class="opt" data-group="stop"><button class="chip" data-k="stop" data-v="off">No Stop</button><button class="x" title="Hide this option" aria-label="Hide option: no stop">&times;</button></span>
+  </div>
+  <div class="caption" id="cap"></div>
+</div>
+
+<div class="stage" id="stage"></div>
+
+<template id="frameTpl">
+  <div class="dev">
+    <div class="cap"></div>
+    <div class="win">
+      <div class="tabbar"><div class="tab"><svg viewBox="0 0 100 100" aria-hidden="true"><use href="#mark"/></svg>MANIFEST orders</div></div>
+      <div class="urlbar" style="position:relative" data-ann="Today: Chrome"><span>chrome-extension://&hellip;/options.html</span></div>
+      <div class="view"><main class="op" style="position:relative" data-ann="New: options page" data-new></main></div>
+    </div>
+  </div>
+</template>
+
+<!-- the favicon drawing (favicon_svg() in icon/gen-icon.py), simplified to its ring, lobes and centre -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="fg" x1=".12" y1="0" x2=".88" y2="1"><stop offset="0" stop-color="#F0DFAF"/><stop offset=".38" stop-color="#C9A961"/><stop offset=".58" stop-color="#F0DFAF"/><stop offset="1" stop-color="#987936"/></linearGradient>
+    <radialGradient id="fj" cx="34%" cy="28%" r="82%"><stop offset="0" stop-color="#87DEBB"/><stop offset=".42" stop-color="#37A37E"/><stop offset="1" stop-color="#175540"/></radialGradient>
+    <g id="mark">
+      <g fill="url(#fg)" stroke="#987936" stroke-width="1.1">
+        <circle cx="50" cy="8" r="8.4"/><circle cx="79.7" cy="20.3" r="8.4"/><circle cx="92" cy="50" r="8.4"/><circle cx="79.7" cy="79.7" r="8.4"/>
+        <circle cx="50" cy="92" r="8.4"/><circle cx="20.3" cy="79.7" r="8.4"/><circle cx="8" cy="50" r="8.4"/><circle cx="20.3" cy="20.3" r="8.4"/>
+      </g>
+      <circle cx="50" cy="50" r="40" fill="url(#fg)" stroke="#987936" stroke-width="2"/>
+      <circle cx="50" cy="50" r="29" fill="#987936"/><circle cx="50" cy="50" r="27" fill="url(#fj)"/>
+    </g>
+  </defs>
+</svg>
+
+<script>
+/* ---------- sample data: every figure is made up ---------- */
+const S = {
+  first:      { name: "First open", key: false, never: true },
+  saved:      { name: "Key saved, never run", key: true, never: true, keyAns: "saved" },
+  ok:         { name: "Pulled", key: true, run: { when: "Sun, Nov 8, 9:14 AM", out: "Pulled", fig: "41 orders read, 12 new lines" }, next: "after 9:14 PM, on the next store page load" },
+  zero:       { name: "Pulled, nothing new", key: true, run: { when: "Sun, Nov 8, 9:14 AM", out: "Pulled", fig: "38 orders read, no new lines" }, next: "after 9:14 PM, on the next store page load" },
+  unreadable: { name: "Pulled, lines left out", key: true, run: { when: "Sun, Nov 8, 9:14 AM", out: "Pulled", fig: "41 orders read, 9 new lines" }, next: "after 9:14 PM, on the next store page load",
+                fail: { kind: "unreadable", what: "3 lines could not be read and were left out", when: "Sun, Nov 8, 9:14 AM", fix: "The other lines were added. Nothing was guessed. If the same orders stay out, report it: the order page may have changed.", acts: [] } },
+  signedout:  { name: "Signed out", key: true, run: { when: "Sun, Nov 8, 8:02 AM", out: "Failed", fig: "Signed out of TCGplayer" }, lastok: "Sat, Nov 7, 7:40 PM", next: "on the next store page load",
+                fail: { kind: "signed-out", what: "Signed out of TCGplayer", when: "Sun, Nov 8, 8:02 AM", fix: "Open TCGplayer and sign in, then load any store page.", acts: ["open"] } },
+  fetch:      { name: "TCGplayer error", key: true, run: { when: "Sun, Nov 8, 8:02 AM", out: "Failed", fig: "TCGplayer did not answer" }, lastok: "Sat, Nov 7, 7:40 PM", next: "on the next store page load",
+                fail: { kind: "fetch", what: "TCGplayer did not answer the order page", when: "Sun, Nov 8, 8:02 AM", fix: "TCGplayer may be down or busy. Pull again in a few minutes.", acts: ["pull"] } },
+  timeout:    { name: "Timed out", key: true, run: { when: "Sun, Nov 8, 8:02 AM", out: "Failed", fig: "A page took over 30 seconds" }, lastok: "Sat, Nov 7, 7:40 PM", next: "on the next store page load",
+                fail: { kind: "timeout", what: "An order page took over 30 seconds", when: "Sun, Nov 8, 8:02 AM", fix: "TCGplayer is slow right now. Pull again later.", acts: ["pull"] } },
+  empty:      { name: "Page had no orders", key: true, run: { when: "Sun, Nov 8, 8:02 AM", out: "Failed", fig: "The order page held no orders" }, lastok: "Sat, Nov 7, 7:40 PM", next: "on the next store page load",
+                fail: { kind: "empty", what: "The order page held no orders", when: "Sun, Nov 8, 8:02 AM", fix: "TCGplayer may have sent its sign-in page. Open TCGplayer and sign in, then pull.", acts: ["open"] } },
+  noitems:    { name: "No card orders", key: true, run: { when: "Sun, Nov 8, 8:02 AM", out: "Failed", fig: "No card orders found" }, lastok: "Sat, Nov 7, 7:40 PM", next: "on the next store page load",
+                fail: { kind: "no-items", what: "No TCGplayer card orders in the last 120 days", when: "Sun, Nov 8, 8:02 AM", fix: "Nothing was added. If you ordered cards in that time, report it: the order page may have changed.", acts: [] } },
+  refused:    { name: "Key refused", key: true, keyBad: true, run: { when: "Sun, Nov 8, 8:02 AM", out: "Failed", fig: "The server refused the device key" }, lastok: "Sat, Nov 7, 7:40 PM", next: "on the next store page load",
+                fail: { kind: "unauthorized", what: "The server refused the device key", when: "Sun, Nov 8, 8:02 AM", fix: "Paste the device key again and press Save key.", acts: ["key"] } },
+  offline:    { name: "Server unreachable", key: true, run: { when: "Sun, Nov 8, 8:02 AM", out: "Failed", fig: "The ledger server did not answer" }, lastok: "Sat, Nov 7, 7:40 PM", next: "on the next store page load",
+                fail: { kind: "network", what: "The ledger server did not answer", when: "Sun, Nov 8, 8:02 AM", fix: "Check the connection, then pull again. Nothing was sent.", acts: ["pull"] } },
+  toolarge:   { name: "Too large", key: true, run: { when: "Sun, Nov 8, 8:02 AM", out: "Failed", fig: "The order pages were too large to send" }, lastok: "Sat, Nov 7, 7:40 PM", next: "on the next store page load",
+                fail: { kind: "too-large", what: "The order pages were too large to send", when: "Sun, Nov 8, 8:02 AM", fix: "Nothing was added. This needs a change to the extension or the server. Report it.", acts: [] } },
+  pulling:    { name: "Pulling", key: true, pulling: true, run: { when: "Sun, Nov 8, 9:14 AM", out: "Pulled", fig: "41 orders read, 12 new lines" }, next: "now" },
+  notab:      { name: "No store tab", key: true, notab: true, run: { when: "Sun, Nov 8, 9:14 AM", out: "Pulled", fig: "41 orders read, 12 new lines" }, next: "after 9:14 PM, on the next store page load" },
+  clearing:   { name: "Clear armed", key: true, clearArmed: true, run: { when: "Sun, Nov 8, 9:14 AM", out: "Pulled", fig: "41 orders read, 12 new lines" }, next: "after 9:14 PM, on the next store page load" },
+};
+const OPT = { tab: "answer", check: "on", clear: "arm", stop: "on" };
+
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+function page(k, id) {
+  const s = S[k];
+  const noKey = !s.key;
+  const tabOff = s.notab && OPT.tab === "disabled";
+  /* key answer slot */
+  let keyAns = "", keyCls = "";
+  if (s.keyAns === "saved") { keyAns = OPT.check === "on" ? "Saved. The server accepted this key." : "Saved."; keyCls = "ok"; }
+  if (s.keyBad) { keyAns = "The server refused this key at 8:02 AM."; keyCls = "bad"; }
+  if (s.clearArmed && OPT.clear === "arm") { keyAns = "Press again to clear. Pulls stop until a key is saved."; keyCls = "bad"; }
+  /* pull answer slot */
+  let pullAns = "";
+  if (noKey) pullAns = `<span id="${id}-why">Save a device key first.</span>`;
+  else if (s.pulling) pullAns = `<span>Pulling order page 3&hellip;</span>` + (OPT.stop === "on" ? `<button class="linkbtn" id="${id}-stop">Stop</button>` : "");
+  else if (s.notab) pullAns = `<span id="${id}-why">No store.tcgplayer.com tab is open.</span><button class="linkbtn">Open TCGplayer</button>`;
+  const pullDisabled = noKey || s.pulling || tabOff;
+  const run = s.never
+    ? `<span class="k">When</span><span class="v soft">Never. The first pull runs when a store page loads.</span>`
+    : `<span class="k">When</span><span class="v">${esc(s.run.when)}</span>
+       <span class="k">Outcome</span><span class="v">${esc(s.run.out)}. <span class="fig">${esc(s.run.fig)}</span></span>
+       ${s.lastok ? `<span class="k">Last pulled</span><span class="v">${esc(s.lastok)}</span>` : ""}
+       <span class="k">Next</span><span class="v soft">${esc(s.next)}</span>`;
+  const f = s.fail;
+  const acts = f ? f.acts.map(a => a === "open" ? `<button class="cell go">Open TCGplayer</button>`
+                                : a === "pull" ? `<button class="cell go">Pull now</button>`
+                                : `<button class="cell go">Go to the key field</button>`).join("") : "";
+  const failBlock = f
+    ? `<div class="fail" role="status" id="${id}-fail">
+         <div class="what">${esc(f.what)}.</div>
+         <div class="when">${esc(f.when)}</div>
+         <div class="fix">${esc(f.fix)}</div>
+         ${acts ? `<div class="acts">${acts}</div>` : ""}
+         <details><summary>What the extension recorded</summary><code>${esc(f.kind)}</code></details>
+       </div>`
+    : `<div class="none">None.</div>`;
+  return `
+  <header class="lh">
+    <div class="rule"><i></i>${seal()}<i></i></div>
+    <div class="t">MANIFEST</div>
+    <div class="f">TCGplayer orders</div>
+  </header>
+  <p class="lede">Reads your order history from a signed-in TCGplayer tab and adds new orders to the ledger.</p>
+
+  <section class="sec" aria-labelledby="${id}-h-key">
+    <h2 id="${id}-h-key">Device key</h2>
+    <div class="parts"><span class="k">Status</span><span class="v ${noKey ? "soft" : ""}" id="${id}-keystate">${noKey ? "No key saved." : "A key is saved."}</span></div>
+    <div class="keyrow">
+      <label class="fld"><span class="vh">Device key</span>
+        <input class="keyfield" type="password" autocomplete="off" spellcheck="false" autocapitalize="off"
+          placeholder="${noKey ? "Paste the device key" : "Paste a new key"}"></label>
+      <button class="cell">Save key</button>
+      <button class="cell clear ${s.clearArmed && OPT.clear === "arm" ? "armed" : ""}" id="${id}-clear" ${noKey ? "hidden" : ""}>${s.clearArmed && OPT.clear === "arm" ? "Press to clear" : "Clear key"}</button>
+    </div>
+    <div class="answer ${keyCls}" id="${id}-keyans" role="status">${esc(keyAns)}</div>
+  </section>
+
+  <section class="sec" aria-labelledby="${id}-h-pull" id="${id}-pull">
+    <h2 id="${id}-h-pull">Pull</h2>
+    <div class="pullrow">
+      <button class="cell primary" ${pullDisabled ? "disabled" : ""} ${pullDisabled ? `aria-describedby="${id}-why"` : ""}>${s.pulling ? "Pulling" : "Pull now"}</button>
+    </div>
+    <div class="answer" id="${id}-pullans" role="status">${pullAns}</div>
+    <p class="help">Runs in an open <code>store.tcgplayer.com</code> tab, where you are signed in. It also runs by itself when a store page loads and the last pull is over 12 hours old.</p>
+  </section>
+
+  <section class="sec" aria-labelledby="${id}-h-fail">
+    <h2 id="${id}-h-fail">Last failure</h2>
+    ${failBlock}
+  </section>
+
+  <section class="sec" aria-labelledby="${id}-h-run">
+    <h2 id="${id}-h-run">Last run</h2>
+    <div class="parts">${run}</div>
+  </section>`;
+}
+
+function seal() {
+  return `<svg width="36" height="36" viewBox="0 0 100 100" aria-hidden="true">
+    <path d="M50 2 C69 2 80 9 88 20 C96 31 99 45 96 59 C92 75 81 90 65 95 C50 100 34 98 22 89 C9 78 2 62 3 47 C5 30 15 15 31 7 C37 4 43 2 50 2 Z" fill="var(--wax)"/>
+    <circle cx="50" cy="50" r="39" fill="none" stroke="var(--waxDeep)" stroke-width="3.5" opacity=".6"/>
+    <g fill="none" stroke="var(--waxDeep)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity=".78"><path d="M29 58 L50 38 L71 58"/><path d="M31 72 L69 72"/></g></svg>`;
+}
+
+/* ---------- hash: #s=<state>&t=light|dark|both&tab=&check=&clear=&stop= ---------- */
+function readHash() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
+  return { s: S[p.get("s")] ? p.get("s") : "ok", t: p.get("t") || "both",
+           tab: p.get("tab"), check: p.get("check"), clear: p.get("clear"), stop: p.get("stop"), prefersDark };
+}
+function writeHash(o) {
+  const q = new URLSearchParams({ s: o.s, t: o.t, tab: OPT.tab, check: OPT.check, clear: OPT.clear, stop: OPT.stop });
+  history.replaceState(null, "", "#" + q.toString());
+  render();
+}
+function render() {
+  const h = readHash();
+  for (const k of ["tab", "check", "clear", "stop"]) if (h[k]) OPT[k] = h[k];
+  document.documentElement.dataset.theme = h.t === "both" ? (h.prefersDark ? "dark" : "light") : h.t;
+  const stage = document.getElementById("stage"); stage.innerHTML = "";
+  const themes = h.t === "both" ? ["light", "dark"] : [h.t];
+  for (const th of themes) {
+    const n = document.getElementById("frameTpl").content.cloneNode(true);
+    const dev = n.querySelector(".dev"); dev.dataset.theme = th; dev.id = "frame-" + th;
+    dev.querySelector(".cap").innerHTML = `<b>${th === "light" ? "Light" : "Dark (proposed)"}</b>, Chrome tab, 960 &times; 720 view. State: ${esc(S[h.s].name)}.`;
+    dev.querySelector("main").innerHTML = page(h.s, th);
+    stage.appendChild(n);
+  }
+  document.querySelectorAll("[data-new]").forEach(e => e.classList.add("new"));
+  document.querySelectorAll("#stateChips .chip").forEach(b => b.setAttribute("aria-pressed", b.dataset.s === h.s));
+  document.querySelectorAll("[data-t]").forEach(b => b.setAttribute("aria-pressed", b.dataset.t === h.t));
+  document.querySelectorAll("[data-k]").forEach(b => b.setAttribute("aria-pressed", OPT[b.dataset.k] === b.dataset.v));
+  document.getElementById("cap").textContent = `Deep link: ${location.hash}`;
+}
+const chips = document.getElementById("stateChips");
+for (const [k, v] of Object.entries(S)) {
+  const b = document.createElement("button"); b.className = "chip"; b.dataset.s = k; b.textContent = v.name;
+  b.onclick = () => { const h = readHash(); h.s = k; writeHash(h); }; chips.appendChild(b);
+}
+document.querySelectorAll("[data-t]").forEach(b => b.onclick = () => { const h = readHash(); h.t = b.dataset.t; writeHash(h); });
+document.querySelectorAll("[data-k]").forEach(b => b.onclick = () => { OPT[b.dataset.k] = b.dataset.v; writeHash(readHash()); });
+document.querySelectorAll(".opt .x").forEach(x => x.onclick = () => { x.parentElement.hidden = true; });
+document.getElementById("annBtn").onclick = (e) => { const on = document.body.classList.toggle("ann"); e.currentTarget.setAttribute("aria-pressed", on); };
+addEventListener("hashchange", render);
+render();
+</script>
+</body>
+</html>
