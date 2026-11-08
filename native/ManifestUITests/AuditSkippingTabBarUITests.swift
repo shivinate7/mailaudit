@@ -29,7 +29,7 @@ func isUnderTabBar(_ element: CGRect?, bar: CGRect, window: CGRect) -> Bool {
 }
 
 /// The contrast skip the owner ruled on (decision audit-skips-measured-flags): the Orphaned mini buttons Cancel, Edit
-/// and Discard, the Tally "left" line, and the done line's detail text (provisional, waiting-page item 45), whose colours
+/// and Discard, the Tally "left" line, and the done line's detail text (owner item 45 a, 2026-11-08), whose colours
 /// measure above the floor but flag in the audit. It skips an issue only when the audit type is contrast AND the element's
 /// accessibility identifier is a ruled one: `orphaned-cancel` exactly, or the prefix `discard:`, `orphaned-edit:`,
 /// `tally-left:` or `PackageCard.doneDetailIDPrefix` (the id of the envelope, the product name or the item key follows).
