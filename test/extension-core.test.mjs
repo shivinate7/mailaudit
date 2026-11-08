@@ -82,12 +82,14 @@ const rows = (page, count) => Array.from({ length: count }, (_, i) => row(page, 
 const CHROME = `<nav class="site-nav">Synthetic nav</nav>`;
 const orderPage = (page, count) =>
   `<!doctype html><html><body>${CHROME}<div class="orders">${rows(page, count)}</div></body></html>`;
-const EMPTY_PAGE = `<!doctype html><html><body>${CHROME}</body></html>`;
-const LOGON_PAGE = `<!doctype html><html><body><form action="/Logon"><input name="Email" type="text"></form></body></html>`;
+const LOGON_PAGE = `<!doctype html><html><body><form action="/Logon"><input name="Email" type="text"><input name="Password" type="password"></form></body></html>`;
 const filterPage = (token) =>
   `<!doctype html><html><body>${CHROME}<form method="post" action="/myaccount/orderhistory">${
     token === null ? "" : `<input name="__RequestVerificationToken" type="hidden" value="${token}">`
   }<select name="DateRange"><option>Last 120 Days</option></select></form></body></html>`;
+/* The real end page after the last order page: the filter form with no order rows. Built from
+   filterPage, so the form has one home. */
+const EMPTY_PAGE = filterPage(TOKEN);
 
 const reply = (url, html, status = 200) => ({
   ok: status >= 200 && status < 300,
