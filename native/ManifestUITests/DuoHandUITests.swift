@@ -598,6 +598,82 @@ final class DuoHandUITests: XCTestCase {
         assertLinesStayPut(app, before, after: "when Post was refused")
     }
 
+    /// Pose: flat. A Post that saves leaves its receipt in the offer's slot, under the sender: its text, and the line that says the
+    /// next card clears it (HandScreen `receiptBox`). The next card is in the same envelope, so a receipt that stayed would show.
+    /// The envelope is read first, so the receipt is judged on the page that should carry it.
+    func testPostReceiptShowsItsTextThenClearsOnTheNextCard() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let post = offerPost(app)
+        post.tap()
+        waitGone(app.element("hand-post"), "the post is still offered after it posted")
+
+        let receipt = need(app, "hand-receipt", "the receipt a saved Post leaves in the offer's slot")
+        onRightPage(receipt, app, "the receipt")
+        XCTAssertTrue(receipt.label.contains("Posted with this envelope. The next card you type clears this line."),
+                      "the receipt does not read the saved line: \"\(receipt.label)\"")
+        XCTAssertTrue(receipt.label.contains("2 cards checked in \u{00B7} 1 was held"), "the receipt does not count the post: \"\(receipt.label)\"")
+        keepShot(app, "hand-post-receipt")
+
+        typeCard(app, "Swords to Plowshares")
+        XCTAssertEqual(need(app, "hand-who", "the envelope of the next card").label, "Gamma Cards", "the next card does not show its envelope")
+        waitGone(app.element("hand-receipt"), "the receipt is still shown after the next card was typed")
+    }
+
+    /// Pose: flat. New envelope ends the envelope with its receipt. The answer page is then on its empty state, and when the same
+    /// envelope is named again no receipt of the ended one comes back. The receipt is cleared on New envelope and on the next card.
+    func testPostReceiptDoesNotComeBackAfterNewEnvelope() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        offerPost(app).tap()
+        _ = need(app, "hand-receipt", "the receipt a saved Post leaves in the offer's slot")
+
+        need(app, "hand-new-envelope", "the New envelope button").tap()
+        let answer = need(app, "hand-answer", "the answer page of Card in Hand")
+        XCTAssertTrue(answer.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Type the card in hand. The envelope")).firstMatch.waitForExistence(timeout: 5),
+                      "New envelope did not leave the answer page on its empty state, so the receipt cannot be judged")
+        waitGone(app.element("hand-receipt"), "the receipt is still shown after New envelope")
+
+        typeCard(app, "Swords to Plowshares")
+        XCTAssertEqual(need(app, "hand-who", "the envelope of the card typed again").label, "Gamma Cards", "the card typed again does not show its envelope")
+        waitGone(app.element("hand-receipt"), "the receipt of the ended envelope came back on its envelope after New envelope")
+    }
+
+    /// Pose: flat. A receipt belongs to the envelope its Post checked in (HandScreen `r.offer.gk == pkg.gk`). After a Post on Gamma
+    /// Cards, a card that only Delta Cards holds shows Delta Cards, and the Gamma receipt does not come with it. The card is typed as
+    /// "Urza", with no apostrophe to type. The Delta envelope is asserted first, so the absent receipt is judged where it should not show.
+    func testPostReceiptStaysWithItsOwnEnvelope() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        offerPost(app).tap()
+        _ = need(app, "hand-receipt", "the receipt a saved Post leaves in the offer's slot")
+
+        typeCard(app, "Urza")
+        XCTAssertEqual(need(app, "hand-who", "the envelope of Urza's Saga, which only Delta Cards holds").label, "Delta Cards",
+                       "the card typed does not show Delta Cards")
+        waitGone(app.element("hand-receipt"), "the receipt of the Gamma Cards Post shows on the Delta Cards envelope")
+    }
+
+    /// Pose: flat. A tap on a match holds its row (HandScreen `heldNames`) until the next keystroke or Close. A Post that saves must let
+    /// the held rows go: the match list then has no hits, so no row shows. post() does not reset heldNames today, so the tapped row
+    /// stays on the left page after Post (known gap: docs/debts/notes.md, the 2026-11-07 tap-shift line).
+    func testPostClearsTheHeldMatchRows() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let post = offerPost(app)
+        need(app, "hand-hit:Path to Exile", "the match row of the typed card, which a tap holds").tap()
+        XCTAssertTrue(app.element("hand-hit:Path to Exile").isSelected, "control: the tap did not hold the match row, which is not marked selected")
+
+        post.tap()
+        waitForLabel(app.element("hand-checkin:\(Self.path)"), startingWith: "Undo check in", "Post did not check in Path to Exile")
+        waitGone(app.element("hand-post"), "the post is still offered after it posted")
+        waitGone(app.firstElement(prefix: "hand-hit:"), "a held match row is still listed after Post: post() leaves heldNames set")
+    }
+
     /// Pose: flat. A red row (30 days from the order date) has no claim date: the claim window is closed. Checked on every late
     /// row but the first (A1 and D1). A row is a container whose own label is empty, so the texts come from its children, and
     /// the row's seller proves the children were read. The page also carries a summary line, "<N> envelope...", with N the rows listed.
@@ -814,7 +890,8 @@ final class DuoHandUITests: XCTestCase {
     }
 
     /// Pose: flat, system keys up. A Post whose save fails leaves the first lines where they were. HandModel.post keeps the offer
-    /// when the save throws, so the offer's own box holds the slot and this case does not reach the receipt.
+    /// when the save throws, so the offer's own box holds the slot and this case does not reach the receipt. The offer stays up
+    /// after the failure (decision duo-card-in-hand), so the Post button is still there to press again.
     func testPostHoldsTheLinesStillWhenItsSaveFails() {
         let app = XCUIApplication.launchedOnSeed(extra: [Self.ledgerUnwritable])
         guard app.requirePose(.flat) else { return }
@@ -826,6 +903,8 @@ final class DuoHandUITests: XCTestCase {
         post.tap()
         _ = need(app, "hand-error", "the failure line of a Post whose save failed")
         XCTAssertTrue(app.element("hand-checkin:\(Self.path)").label.hasPrefix("Check in "), "Path to Exile is checked in, so the save did not fail (the app ignored \(Self.ledgerUnwritable))")
+        let kept = need(app, "hand-post", "the Post offer, which a failed save keeps")
+        XCTAssertTrue(kept.label.hasPrefix("Post"), "the failed save dropped the Post offer: hand-post reads \"\(kept.label)\", not Post")
         assertLinesStayPut(app, before, after: "when Post's save failed")
     }
 
