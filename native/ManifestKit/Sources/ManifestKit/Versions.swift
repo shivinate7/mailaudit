@@ -26,6 +26,11 @@ public final class VersionStore {
     let now: () -> Double
     let rulesURL: URL?
 
+    /// The `versions` folder beside ledger.json (native-files-are-frozen). The one home of the name.
+    public static func folder(besideLedger fileURL: URL) -> URL {
+        fileURL.deletingLastPathComponent().appending(path: "versions", directoryHint: .isDirectory)
+    }
+
     public init(directory: URL, now: @escaping () -> Double, rulesURL: URL? = nil) {
         self.directory = directory; self.now = now; self.rulesURL = rulesURL
     }
