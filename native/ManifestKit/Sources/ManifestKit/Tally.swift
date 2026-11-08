@@ -102,6 +102,7 @@ public final class TallyModel {
         let range = try await ViewRange.range(options.dateFilter, store: store, engine: engine)
         groups = try await engine.call("tallyGroups", "[\(try await ViewRange.apply(live, range: range, engine: engine))]")
         hasItems = !store.items().isEmpty
+        try await options.readCanceled(itemsJSON: try json(store.items()), engine: engine)
         try await resort()
     }
 

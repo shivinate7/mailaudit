@@ -3,35 +3,62 @@ import SwiftUI
 
 private func paint(_ part: StampPaint.Part) -> Color { Parchment.color(StampPaint.token(part)) }
 
-/// The ruled row under the running-head slot: a rule, a 44pt row holding the stamped cell, and a thin rule
-/// (src/app.jsx cancCell, RULE, RULE_THIN). The row is always drawn, so the first stamp does not push the list down
-/// (no-layout-shift-under-pointer). The cell is a filter: its glyph is the Showing cell's ○ and ●.
-struct StampedRow: View {
-    let count: Int
-    let on: Bool
-    let toggle: () -> Void
+/// The ruled row under the running-head slot: a rule, a 44pt row of cells and a thin rule (src/app.jsx cancCell, RULE,
+/// RULE_THIN). Two cells, trailing: `N canceled ▸` (a disclosure) and `N stamped ○/●` (a filter, Packages only). A cell the screen has
+/// no use for is left out (`nil`), and a screen draws the row itself only when it has one. Packages always does, so the first stamp
+/// does not push the list down (no-layout-shift-under-pointer). The stamped cell is a filter: its glyph is the Showing cell's ○ and ●.
+struct RuledRow: View {
+    struct Canceled {
+        let count: Int
+        let on: Bool
+        let toggle: () -> Void
+    }
+    struct Stamped {
+        let count: Int
+        let on: Bool
+        let toggle: () -> Void
+    }
+
+    var canceled: Canceled?
+    var stamped: Stamped?
+
+    private func cell(_ text: String, glyph: String, on: Bool, glyphOn: Bool, disabled: Bool = false, hint: String, id: String,
+                      isFilter: Bool, toggle: @escaping () -> Void) -> some View {
+        Button(action: toggle) {
+            HStack(spacing: 4) {
+                Text(text).foregroundStyle(paint(on ? .cellOnText : .cellText))
+                Text(glyph).foregroundStyle(paint(glyphOn ? .cellGlyphOn : .cellText))
+            }
+            .font(.mono(10, relativeTo: .caption)).lineLimit(1).fixedSize()
+            .padding(.horizontal, 12).frame(minWidth: 44, minHeight: 44)
+            .overlay(alignment: .leading) { Rectangle().fill(paint(.rule)).frame(width: 1) }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PaintedButtonStyle())
+        .disabled(disabled)
+        .accessibilityLabel(text)
+        .accessibilityHint(hint)
+        // A filter says pressed (aria-pressed); a disclosure says expanded (aria-expanded).
+        .accessibilityValue(isFilter ? "" : (on ? "expanded" : "collapsed"))
+        .accessibilityAddTraits(isFilter && on ? .isSelected : [])
+        .accessibilityIdentifier(id)
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             Rectangle().fill(paint(.rule)).frame(height: 1)
             HStack(spacing: 0) {
                 Spacer(minLength: 0)
-                Button(action: toggle) {
-                    HStack(spacing: 4) {
-                        Text("\(count) stamped").foregroundStyle(paint(on ? .cellOnText : .cellText))
-                        Text(on ? "\u{25CF}" : "\u{25CB}").foregroundStyle(paint(on ? .cellGlyphOn : .cellText))
-                    }
-                    .font(.mono(10, relativeTo: .caption)).lineLimit(1).fixedSize()
-                    .padding(.horizontal, 12).frame(minWidth: 44, minHeight: 44)
-                    .overlay(alignment: .leading) { Rectangle().fill(paint(.rule)).frame(width: 1) }
-                    .contentShape(Rectangle())
+                if let c = canceled {
+                    cell("\(c.count) canceled", glyph: c.on ? "\u{25BE}" : "\u{25B8}", on: c.on, glyphOn: false,
+                         hint: "Lists the canceled orders under the cards, for cross-checking refunds", id: "canceled-cell", isFilter: false, toggle: c.toggle)
                 }
-                .buttonStyle(PaintedButtonStyle())
-                .disabled(count == 0 && !on)  // with nothing stamped there is nothing to show; the web hides the cell then
-                .accessibilityLabel("\(count) stamped")
-                .accessibilityHint(count == 0 && !on ? "No package carries a stamp yet." : "Shows only the packages that carry a stamp")
-                .accessibilityAddTraits(on ? .isSelected : [])
-                .accessibilityIdentifier("stamped-cell")
+                if let s = stamped {
+                    cell("\(s.count) stamped", glyph: s.on ? "\u{25CF}" : "\u{25CB}", on: s.on, glyphOn: s.on,
+                         disabled: s.count == 0 && !s.on,  // with nothing stamped there is nothing to show; the web hides the cell then
+                         hint: s.count == 0 && !s.on ? "No package carries a stamp yet." : "Shows only the packages that carry a stamp",
+                         id: "stamped-cell", isFilter: true, toggle: s.toggle)
+                }
             }
             Rectangle().fill(paint(.rule)).frame(height: 1).opacity(0.55)
         }

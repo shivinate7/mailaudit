@@ -41,7 +41,7 @@ struct TallyView: View {
 
     private var list: some View {
         // Showing, Sorted by and Orders from are in the Ledger tab's View group (ledger-tab-holds-options); Find is the pill.
-        MastheadScreen(masthead: masthead, tab: .tally, sync: sync, openSync: openSync) {
+        MastheadScreen(masthead: masthead, tab: .tally, sync: sync, openSync: openSync, ruledRow: canceledRow) {
             VStack(spacing: 12) {
                 ForEach(model.rows, id: \.name) { row in
                     TallyRowView(row: row, model: model, masthead: masthead,
@@ -51,8 +51,17 @@ struct TallyView: View {
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
+            CanceledListSection(options: model.options)
         }
         .findPill(show: findPillShown, query: model.query) { q in Task { await run { try await model.setQuery(q) } } }
+    }
+
+    /// The ruled row on the Tally: the canceled cell alone, and only while the ledger holds a canceled order (src/app.jsx, the row exists
+    /// only while one of its cells has something to show).
+    private var canceledRow: AnyView? {
+        let options = model.options
+        guard options.canceledCount > 0 else { return nil }
+        return AnyView(RuledRow(canceled: .init(count: options.canceledCount, on: options.showCanceled) { options.showCanceled.toggle() }))
     }
 
     private var detail: some View {

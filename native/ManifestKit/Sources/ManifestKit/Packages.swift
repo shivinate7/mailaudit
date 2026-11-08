@@ -173,6 +173,7 @@ public final class PackagesModel {
         hasItems = !store.items().isEmpty
         options.lineCount = kept
         options.outsideCount = total - kept
+        try await options.readCanceled(itemsJSON: allItems, engine: engine)
         options.months = choices
         options.setMonthReading(try? JSONSerialization.jsonObject(with: Data(monthLabel.utf8), options: [.fragmentsAllowed]) as? String)
         received = got

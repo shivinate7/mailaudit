@@ -112,6 +112,13 @@ public struct MonthChoice: Decodable, Equatable, Sendable {
     public let key, label, from, to: String
 }
 
+/// A canceled order, from the bundle's canceledPackagesOf: kept on record for cross-checking refunds, in no count
+/// (canceled-orders-leave-the-list). Newest first.
+public struct CanceledPackage: Decodable, Equatable, Sendable {
+    public let gk, orderId, seller, date: String
+    public let items: [LedgerItem]
+}
+
 /// The choices Packages and Tally share: one Find query, one Showing, one reveal set, one Orders from and the two sorts
 /// (src/app.jsx `query`, `hideDone`, `revealed`, `dateFilter`, `sortBy`, `itemSort`). The models and the Ledger tab's View group
 /// hold the same instance. Find, Showing and the reveals are not saved (saved-state-shape); the last three are, under the
@@ -131,6 +138,22 @@ public final class ViewOptions {
     /// The lines the range keeps and the lines it leaves out, for the Orders from row's sub line. Set by PackagesModel.load.
     public internal(set) var lineCount = 0
     public internal(set) var outsideCount = 0
+    /// The canceled lines the ledger holds and their orders, whatever the range (the web's canceledCount and canceledPackages read every
+    /// item). Set by the Packages and Tally loads.
+    public internal(set) var canceledCount = 0
+    public internal(set) var canceled: [CanceledPackage] = []
+    /// Whether the canceled list is open under the cards. One flag serves both tabs, not saved (src/app.jsx `showCanceled`).
+    public var showCanceled = false
+
+    /// Reads the canceled count and orders off the whole ledger through the bundle's dropCanceled and canceledPackagesOf.
+    func readCanceled(itemsJSON: String, engine: RulesEngine) async throws {
+        let active = try await engine.call("dropCanceled", "[\(itemsJSON)]")
+        let raw = try await engine.call("canceledPackagesOf", "[\(itemsJSON)]")
+        let orders = try JSONDecoder().decode([CanceledPackage].self, from: Data(raw.utf8))
+        canceledCount = ViewRange.count(itemsJSON) - ViewRange.count(active)
+        canceled = orders
+    }
+
     /// The months the By month picker offers, from the bundle's monthChoices over every order. Set by PackagesModel.load.
     public internal(set) var months: [MonthChoice] = []
     /// What the bundle's rangeMonthLabel read for a whole-month range, and the range it read: the label stands only while

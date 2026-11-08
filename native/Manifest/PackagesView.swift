@@ -28,9 +28,10 @@ struct PackagesView: View {
 
     var body: some View {
         MastheadScreen(masthead: masthead, tab: .packages, sync: sync, openSync: openSync,
-                       ruledRow: AnyView(StampedRow(count: model.stampedCount, on: model.showStamped) {
+                       ruledRow: AnyView(RuledRow(canceled: canceledCell,
+                                                  stamped: .init(count: model.stampedCount, on: model.showStamped) {
                            Task { try? await model.toggleStamped() }  // a failed read is in model.checkInError, shown below
-                       })) {
+                       }))) {
             VStack(spacing: 0) {
                 if let openHand {
                     HStack {
@@ -53,6 +54,7 @@ struct PackagesView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
+                CanceledListSection(options: model.options)
             }
         }
         .overlay(alignment: .bottom) {
@@ -63,6 +65,11 @@ struct PackagesView: View {
         }
         .findPill(show: pillShown, query: model.query) { q in Task { await run { try await model.setQuery(q) } } }
         .task { await run { try await model.viewOpened() } }  // another tab may have changed Find
+    }
+
+    /// The canceled cell, only while the ledger holds a canceled order.
+    private var canceledCell: RuledRow.Canceled? {
+        model.options.canceledCount > 0 ? .init(count: model.options.canceledCount, on: model.options.showCanceled) { model.options.showCanceled.toggle() } : nil
     }
 
     private func vacatedNotice(_ v: PackagesModel.VacatedUndo) -> some View {
