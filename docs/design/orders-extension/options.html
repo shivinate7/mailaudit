@@ -278,12 +278,12 @@ function page(k, id) {
   const run = s.never
     ? `<span class="k">When</span><span class="v soft">Never. The first pull runs when a store page loads.</span>`
     : `<span class="k">When</span><span class="v">${esc(s.run.when)}</span>
-       <span class="k">Outcome</span><span class="v">${esc(s.run.out)}. <span class="fig">${esc(s.run.fig)}</span></span>
+       <span class="k">Outcome</span><span class="v">${esc(s.run.out)}.${s.run.out === "Failed" ? "" : ` <span class="fig">${esc(s.run.fig)}</span>`}</span>
        ${s.lastok ? `<span class="k">Last pulled</span><span class="v">${esc(s.lastok)}</span>` : ""}
        <span class="k">Next</span><span class="v soft">${esc(s.next)}</span>`;
   const f = s.fail;
-  const acts = f ? f.acts.map(a => a === "open" ? `<button class="cell go">Open TCGplayer</button>`
-                                : a === "pull" ? `<button class="cell go">Pull now</button>`
+  /* "pull": the fix is the Pull now button already on the page, so the block repeats no control */
+  const acts = f ? f.acts.filter(a => a !== "pull").map(a => a === "open" ? `<button class="cell go">Open TCGplayer</button>`
                                 : `<button class="cell go">Go to the key field</button>`).join("") : "";
   const failBlock = f
     ? `<div class="fail" role="status" id="${id}-fail">

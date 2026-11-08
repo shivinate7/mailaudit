@@ -56,20 +56,20 @@ Measured in headless Chromium, every state, both themes: the Save key button and
 
 10. **Answer slots.** One 20 px line under the key row and one under Pull now, always rendered, mono 11 px, as the app's `syncKeyMsg` slot. Green for a success, red for a refusal, inkSoft otherwise.
 
-11. **Last run.** Rows: When, Outcome, Last pulled (only after a failure: the last success), Next. Outcome is `Pulled.` or `Failed.` and a mono figure, such as `41 orders read, 12 new lines`. "Lines" is the app's word for an item row (`N lines` in the ruled head), and `added` counts item rows, not cards. Next names the 12 h gate: `after 9:14 PM, on the next store page load`. Times are the owner's local time, as `Sun, Nov 8, 9:14 AM`: `toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })`. Never run: `Never. The first pull runs when a store page loads.`
+11. **Last run.** Rows: When, Outcome, Last pulled (only after a failure: the last success), Next. Outcome is `Pulled.` with a mono figure, such as `41 orders read, 12 new lines`, or `Failed.` alone: Last failure says what failed, and the line shows once (`ux-label-once`). "Lines" is the app's word for an item row (`N lines` in the ruled head), and `added` counts item rows, not cards. Next names the 12 h gate: `after 9:14 PM, on the next store page load`. Times are the owner's local time, as `Sun, Nov 8, 9:14 AM`: `toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })`. Never run: `Never. The first pull runs when a store page loads.`
 
 12. **Last failure.** The app's advisory block (`photoMsg`: `manila` fill, `manilaInk` text, 8 px radius): what happened, when, the fix line, one control that leads on, and a closed `What the extension recorded` disclosure with the raw kind (`ux-machine-text-hidden`). With no failure: `None.` Copy per kind:
 
     | kind | line | fix | control |
     |---|---|---|---|
     | `signed-out` | Signed out of TCGplayer | Open TCGplayer and sign in, then load any store page. | Open TCGplayer |
-    | `fetch` | TCGplayer did not answer the order page | TCGplayer may be down or busy. Pull again in a few minutes. | Pull now |
-    | `timeout` | An order page took over 30 seconds | TCGplayer is slow right now. Pull again later. | Pull now |
+    | `fetch` | TCGplayer did not answer the order page | TCGplayer may be down or busy. Pull again in a few minutes. | Pull now, above |
+    | `timeout` | An order page took over 30 seconds | TCGplayer is slow right now. Pull again later. | Pull now, above |
     | `empty` | The order page held no orders | TCGplayer may have sent its sign-in page. Open TCGplayer and sign in, then pull. | Open TCGplayer |
     | `no-items` | No TCGplayer card orders in the last 120 days | Nothing was added. If you ordered cards in that time, report it. | none |
     | `unreadable` | N lines could not be read and were left out | The other lines were added. Nothing was guessed. | none |
     | `unauthorized` | The server refused the device key | Paste the device key again and press Save key. | Go to the key field |
-    | `network` | The ledger server did not answer | Check the connection, then pull again. Nothing was sent. | Pull now |
+    | `network` | The ledger server did not answer | Check the connection, then pull again. Nothing was sent. | Pull now, above |
     | `too-large`, `bad body` | The order pages were too large to send | Nothing was added. This needs a change to the extension or the server. Report it. | none |
 
     `unreadable` shows here while Last run reads `Pulled`, because the plan keeps it in `lastFailure` after a success that dropped lines.
