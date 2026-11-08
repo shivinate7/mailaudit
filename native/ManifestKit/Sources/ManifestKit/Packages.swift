@@ -61,8 +61,10 @@ public final class PackagesModel {
     /// that adds a copy, a Clear or endBulkUndo() ends it (undo-removes-only-its-delta). A Worker apply does not.
     public private(set) var bulkUndoGk: String?
     private var bulkUndoTakes: [BulkTake] = []
-    /// The check-ins the held Undo takes back: the one source of the Undo hint's count. 0 when none is held.
-    public var bulkUndoCount: Int { bulkUndoGk == nil ? 0 : bulkUndoTakes.reduce(0) { $0 + $1.take } }
+    /// BulkRules.takenBack for the held takes against `received`, set wherever `received` changes while an Undo is held.
+    private var bulkUndoHeld = 0
+    /// The check-ins the held Undo would take back now: the one source of the Undo hint's count. 0 when none is held.
+    public var bulkUndoCount: Int { bulkUndoGk == nil ? 0 : bulkUndoHeld }
     /// The store's postsSaved when checkInError was last set: only a Post after that is a good write that outdates the failure line.
     @ObservationIgnored private var errorPosts = 0
 
@@ -83,6 +85,8 @@ public final class PackagesModel {
     public func load() async throws {
         let got = store.received()
         let held = store.stamps()
+        let takes = bulkUndoTakes
+        let undoHeld = takes.isEmpty ? 0 : try await BulkRules.takenBack(takes, received: got, engine: engine)
         let live = try await LiveItems.of(store.items(), stamps: held, engine: engine)
         let active = try await engine.call("dropCanceled", "[\(try json(store.items()))]")
         let stampedGks = try await StampRules.keys(where: "hasStamp", in: held, engine: engine)
@@ -106,6 +110,8 @@ public final class PackagesModel {
         rows = newRows
         liveRows = newLive
         received = got
+        // A press that ran during the awaits above set its own count against newer takes.
+        if bulkUndoTakes == takes { bulkUndoHeld = undoHeld }
         stamps = held
         stampedCount = stamped.count
         showStamped = on
@@ -332,6 +338,12 @@ public final class PackagesModel {
             bulkUndoGk = on ? gk : nil
         }
         received = store.received()
+        if bulkUndoGk != nil {
+            do { bulkUndoHeld = try await BulkRules.takenBack(bulkUndoTakes, received: received, engine: engine) } catch {
+                fail("Saved, but the Undo count could not refresh. \(error.localizedDescription)")
+                throw error
+            }
+        }
         try await reread(pkg, items: pkg.items)
     }
 
@@ -341,6 +353,7 @@ public final class PackagesModel {
         let takes = bulkUndoTakes
         bulkUndoGk = nil
         bulkUndoTakes = []
+        bulkUndoHeld = 0
         do {
             let counts = try await BulkRules.undone(takes, received: store.received(), engine: engine)
             try store.commitReceived(counts)
