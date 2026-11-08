@@ -122,10 +122,35 @@ extension LedgerStore {
         do { bytes = try v.data(for: id) } catch { throw VersionError.unreadable(id) }
         guard let o = (try? JSONSerialization.jsonObject(with: bytes)) as? [String: Any],
               o["mailday"] == nil || (o["mailday"] as? Int) == 1 else { throw VersionError.corrupt(id) }
+        // Restamped before the milestone, so a bundle that cannot run refuses the restore with nothing
+        // spent and nothing changed.
+        let restored = try restamped(keepingHeldPhotos(bytes, from: o, rules: v.rulesURL), rules: v.rulesURL)
         let (held, lines, checked) = try heldBytes()
         try v.put(held, label: "before restore", kind: "milestone", lines: lines, checked: checked)
-        try adoptRaw(keepingHeldPhotos(bytes, from: o, rules: v.rulesURL))
+        try adoptRaw(restored)
         onLocalSave?()
+    }
+
+    /// A restore is a change made now: restampRestore in rules.js gives the store's clock to every
+    /// check-in key, stamp and envelope of either ledger (decision a-restore-is-not-local, the one
+    /// home of the rule). Throws when the bundle cannot be read or run, so no restore goes through
+    /// with the old change times.
+    private func restamped(_ bytes: Data, rules: URL?) throws -> Data {
+        guard let bundle = rules ?? Bundle.module.url(forResource: "rules", withExtension: "js") else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+        guard var data = try JSONSerialization.jsonObject(with: bytes) as? [String: Any] else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        let cur = doc.filter { ["received", "receivedAt", "stamps", "envelopes"].contains($0.key) }
+        let args = try JSONSerialization.data(withJSONObject: [cur, data, now()] as [Any])
+        let out = try RulesCore(bundleURL: bundle).call("restampRestore", String(decoding: args, as: UTF8.self))
+        guard let stamped = try JSONSerialization.jsonObject(with: Data(out.utf8)) as? [String: Any] else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        for field in ["receivedAt", "stamps", "envelopes"] { data[field] = stamped[field] }
+        // Same options as the ledger save (snapshotData).
+        return try JSONSerialization.data(withJSONObject: data, options: [.sortedKeys])
     }
 
     /// A restore drops each photo id this device does not hold (photo-ids-restore-keep-if-known). Held is
