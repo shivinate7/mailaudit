@@ -1,0 +1,32 @@
+{
+  "added": "2026-11-07T14:03:00-06:00",
+  "context": "Goal: the records describe the app as it is.\nProblem (rule): decision ruled-head-masthead-vocabulary still describes head cells on the Packages and Tally lists. The web removed them; they now live in the Ledger tab's View group. Measure: unmeasured. The record protected one shared vocabulary for the head, which the sync-particulars record still protects.\nBased on (record): decision ledger-tab-holds-options.\nDeparts from: main ruled-head-masthead-vocabulary says head cells sit on the lists \u2014 the rewrite says they live in the Ledger View group.\nMeanwhile: restyle works on. Nothing waits on this.",
+  "home": "decision ruled-head-masthead-vocabulary",
+  "id": "masthead-vocab-record-stale",
+  "kind": "decision",
+  "n": 47,
+  "options": [
+    {
+      "gain": "The record matches the app.",
+      "how": "The record says the head cells live in the Ledger tab's View group.",
+      "key": "a",
+      "label": "Rewrite the record in place",
+      "lose": "Nothing; git keeps the old text."
+    },
+    {
+      "gain": "No change.",
+      "how": "The record keeps its current text.",
+      "key": "b",
+      "label": "Leave it",
+      "lose": "Builders read a rule the app no longer follows."
+    }
+  ],
+  "owner": "restyle local_96bb7b5c-71b1-45b5-b222-2df64d74f80f",
+  "pick": "a",
+  "rank": 12,
+  "ref": "decision ruled-head-masthead-vocabulary (one vocabulary for the ruled head); decision ledger-tab-holds-options (the Ledger tab holds the view options)",
+  "short": "Stale masthead record",
+  "status": "open",
+  "title": "A record still puts head cells on the Packages and Tally lists, which the web removed. Rewrite it?",
+  "why": "The cells moved, and the vocabulary the record protected is still protected by the sync-particulars record."
+}
