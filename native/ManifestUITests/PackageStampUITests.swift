@@ -72,44 +72,24 @@ final class PackageStampUITests: XCTestCase {
     static let framed = ["package-row:", "checkin:", "order-link:", "stamp-button:", "stamp-band:", "stamp-editor:", "stamp-kind:",
                          "stamp-note:", "stamp-save:", "stamp-cancel:", "stamp-remove:", "stamp-ask-"]
 
-    // MARK: helpers (each test class carries its own launch and element helpers, as the others do)
+    // MARK: helpers (the steps are ScreenKit's, shared with PackageBulkUITests; each is one line here)
 
-    func launch(width: Int = 375) -> XCUIApplication {
-        let app = XCUIApplication()
-        app.launchArguments = ["-ManifestUITestSeed", "-ManifestUITestWidth", String(width)]
-        app.launch()
-        app.tabBars.buttons["Packages"].tap()
-        return app
+    func launch(width: Int = 375) -> XCUIApplication { ScreenKit.launch(width: width) }
+
+    func el(_ app: XCUIApplication, _ id: String) -> XCUIElement { ScreenKit.el(app, id) }
+
+    func wait(_ predicate: String, for e: XCUIElement, _ message: String, timeout: TimeInterval = 5,
+              file: StaticString = #filePath, line: UInt = #line) {
+        ScreenKit.wait(predicate, for: e, message, timeout: timeout, file: file, line: line)
     }
 
-    func el(_ app: XCUIApplication, _ id: String) -> XCUIElement {
-        app.descendants(matching: .any).matching(identifier: id).firstMatch
-    }
-
-    func wait(_ predicate: String, for e: XCUIElement, _ message: String, timeout: TimeInterval = 5) {
-        let done = XCTNSPredicateExpectation(predicate: NSPredicate(format: predicate), object: e)
-        XCTAssertEqual(XCTWaiter.wait(for: [done], timeout: timeout), .completed, message)
-    }
-
-    /// Waits for the element, scrolls it into reach when it is not hittable, taps it.
     func tap(_ app: XCUIApplication, _ id: String, file: StaticString = #filePath, line: UInt = #line) {
-        let e = el(app, id)
-        XCTAssertTrue(e.waitForExistence(timeout: 5), "\(id) is missing", file: file, line: line)
-        if !e.isHittable { app.reveal(e) }
-        e.tap()
+        ScreenKit.tap(app, id, file: file, line: line)
     }
 
     /// The first stamp: Stamp, a kind, an optional note, Save. It ends with the editor gone.
-    func stamp(_ app: XCUIApplication, _ gk: String, kind: String, note: String? = nil) {
-        XCTAssertTrue(el(app, "package-row:\(gk)").waitForExistence(timeout: 5), "\(gk) is not on the list")
-        tap(app, "stamp-button:\(gk)")
-        tap(app, "stamp-kind:\(gk)|\(kind)")
-        if let note {
-            tap(app, "stamp-note:\(gk)")
-            el(app, "stamp-note:\(gk)").typeText(note)
-        }
-        tap(app, "stamp-save:\(gk)")
-        wait("exists == false", for: el(app, "stamp-editor:\(gk)"), "Save did not close the editor on \(gk)")
+    func stamp(_ app: XCUIApplication, _ gk: String, kind: String, note: String? = nil, file: StaticString = #filePath, line: UInt = #line) {
+        ScreenKit.stamp(app, gk, kind: kind, note: note, file: file, line: line)
     }
 
     /// Opens the editor of a stamped card from its band.
@@ -124,24 +104,12 @@ final class PackageStampUITests: XCTestCase {
         XCTAssertTrue(el(app, "stamp-ask-confirm:\(gk)").waitForExistence(timeout: 5), "the first tap on Remove stamp did not arm it")
     }
 
-    /// The frame of every card part and stamp control on screen, by identifier, read from one snapshot of the app's
-    /// accessibility tree. One read, not a query per element: the armed ask disarms 4 seconds after its tap, and a query per
-    /// element took about 2 seconds, so the last frames of a compare were read after the ask had gone.
+    /// The frame of every card part and stamp control on screen, by identifier, from one snapshot of the app's tree.
     func snapshot(_ app: XCUIApplication) -> [String: CGRect] {
-        var out: [String: CGRect] = [:]
-        func walk(_ s: XCUIElementSnapshot) {
-            if Self.framed.contains(where: { s.identifier.hasPrefix($0) }) { out[s.identifier] = s.frame }
-            s.children.forEach(walk)
-        }
-        do { walk(try app.snapshot()) } catch { XCTFail("no accessibility snapshot of the app: \(error)") }
-        return out
+        ScreenKit.snapshot(app, prefixes: Self.framed).mapValues(\.frame)
     }
 
-    /// Each frame with `anchor`'s top left taken off, so a scroll between two snapshots changes nothing.
-    func relative(_ s: [String: CGRect], to anchor: String) -> [String: CGRect] {
-        guard let a = s[anchor] else { return [:] }
-        return s.mapValues { $0.offsetBy(dx: -a.minX, dy: -a.minY) }
-    }
+    func relative(_ s: [String: CGRect], to anchor: String) -> [String: CGRect] { ScreenKit.relative(s, to: anchor) }
 
     /// Every frame in `before` (already relative to the card's top) that is still on screen sits where it did. `taken` is
     /// a snapshot the caller read at the moment that matters (the armed ask is live for 4 seconds only); without it the

@@ -62,6 +62,13 @@ public final class TallyModel {
     public private(set) var hideReceived = false
     /// Set when the last check-in could not be saved; nil after one that was.
     public private(set) var checkInError: String?
+    /// The product the held Mark all Undo is for, as PackagesModel.bulkUndoGk is for a package. nil when there is none.
+    public private(set) var bulkUndoName: String?
+    private var bulkUndoTakes: [BulkTake] = []
+    /// BulkRules.takenBack for the held takes against `received`, as PackagesModel.bulkUndoHeld.
+    private var bulkUndoHeld = 0
+    /// The check-ins the held Undo would take back now, as PackagesModel.bulkUndoCount. 0 when none is held.
+    public var bulkUndoCount: Int { bulkUndoName == nil ? 0 : bulkUndoHeld }
 
     public init(engine: RulesEngine, store: LedgerStore) {
         self.engine = engine
@@ -122,8 +129,71 @@ public final class TallyModel {
             throw error
         }
         checkInError = nil
+        endBulkUndo()
         if count > 0 { sticky.insert(key) }
         try await refresh()
+    }
+
+    /// Mark all received (on) or Clear check-ins (off) on one product. It reaches every copy, the ones a filter hides
+    /// too (the web's onBulk(item.items, ...)), in one save at one time. As on PackagesModel, a Mark all keeps its delta for
+    /// the Undo and a Clear ends it. A failure lands in checkInError and is thrown.
+    public func bulk(name: String, on: Bool) async throws {
+        let takes: [BulkTake]
+        let keys: [String]
+        do {
+            struct Pooled: Decodable { let name: String; let items: [LedgerItem] }  // tallyGroups, before the filters add `shown`
+            let all = try JSONDecoder().decode([Pooled].self, from: Data(groups.utf8))
+            guard let items = all.first(where: { $0.name == name })?.items else { return }
+            let before = store.received()
+            let counts = try await BulkRules.counts(items, on: on, received: before, engine: engine)
+            takes = on ? try await BulkRules.takes(items, received: before, engine: engine) : []
+            keys = Array(counts.keys)
+            try store.commitReceived(counts)
+        } catch {
+            checkInError = "Could not save the check-in. \(error.localizedDescription)"
+            throw error
+        }
+        checkInError = nil
+        // As on PackagesModel.bulk: a Mark all that adds nothing keeps the held Undo, a Clear or a Mark all that adds ends it,
+        // and a new Undo sets its name only after its count is known.
+        if !on || !takes.isEmpty { endBulkUndo() }
+        let counted = takes.isEmpty ? bulkUndoTakes : takes
+        if on && !counted.isEmpty {
+            let n: Int
+            do { n = try await BulkRules.takenBack(counted, received: store.received(), engine: engine) } catch {
+                checkInError = "Saved, but the Undo count could not refresh. \(error.localizedDescription)"
+                throw error
+            }
+            if !takes.isEmpty || bulkUndoName != nil {
+                bulkUndoTakes = counted
+                bulkUndoHeld = n
+                if !takes.isEmpty { bulkUndoName = name }
+            }
+        }
+        if on { sticky.formUnion(keys) }  // checked in under this filter, so the copies stay shown, as a check-in keeps one
+        try await refresh()
+    }
+
+    /// Takes back the last Mark all's own delta and keeps every later edit. With nothing held it writes nothing.
+    public func undoBulk() async throws {
+        guard bulkUndoName != nil else { return }
+        let takes = bulkUndoTakes
+        endBulkUndo()
+        do {
+            try store.commitReceived(try await BulkRules.undone(takes, received: store.received(), engine: engine))
+        } catch {
+            checkInError = "Could not take back the check-ins. \(error.localizedDescription)"
+            throw error
+        }
+        checkInError = nil
+        try await refresh()
+    }
+
+    /// A tab change, a restore or a Reset: the held Undo is gone.
+    public func endBulkUndo() {
+        bulkUndoName = nil
+        bulkUndoTakes = []
+        bulkUndoHeld = 0
     }
 
     /// A tap: the bundle's toggleCount picks the count. Every failure lands in checkInError and is thrown.
@@ -162,6 +232,11 @@ public final class TallyModel {
         epoch += 1
         let mine = epoch
         let got = store.received()
+        // The recount runs only while an Undo is held, and a failed call counts 0 rather than stop the list.
+        let heldName = bulkUndoName
+        let takes = bulkUndoTakes
+        var undoHeld = 0
+        if heldName != nil { undoHeld = (try? await BulkRules.takenBack(takes, received: got, engine: engine)) ?? 0 }
         // A Set cannot cross as JSON, so the bridge turns {"$set": [...]} into one (RulesCore).
         let opts: [String: Any] = ["query": query, "hideDone": hideReceived, "received": got, "sticky": ["$set": Array(sticky)]]
         let out = try await engine.call("filterTally", "[\(groups),\(try json(opts))]")
@@ -182,6 +257,8 @@ public final class TallyModel {
         guard mine == epoch else { return }
         rows = built.sorted { (order[$0.name] ?? .max) < (order[$1.name] ?? .max) }
         received = got
+        // A press or a clear that ran during the awaits above set its own count, so this one only fills the same Undo.
+        if bulkUndoName == heldName && bulkUndoTakes == takes { bulkUndoHeld = undoHeld }
         readouts = shownReadouts
     }
 

@@ -89,6 +89,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `recent-checks-can-be-undone` | **Status:** ruled. | [`docs/decisions/recent-checks-can-be-undone.md`](../docs/decisions/recent-checks-can-be-undone.md) |
 | `recovery-control-not-state-gated` | If the data an action works on is absent, its recovery control must not hide. | [`docs/decisions/recovery-control-not-state-gated.md`](../docs/decisions/recovery-control-not-state-gated.md) |
 | `remote-is-transport-not-storage` | `window.remote` is transport, not storage. | [`docs/decisions/remote-is-transport-not-storage.md`](../docs/decisions/remote-is-transport-not-storage.md) |
+| `ruled-head-masthead-vocabulary` | Kind: build | [`docs/decisions/ruled-head-masthead-vocabulary.md`](../docs/decisions/ruled-head-masthead-vocabulary.md) |
 | `ruled-head-one-advisory-entrance` | Kind: build | [`docs/decisions/ruled-head-one-advisory-entrance.md`](../docs/decisions/ruled-head-one-advisory-entrance.md) |
 | `ruled-head-panels-carry-no-fill` | **Status:** orchestrator default, 2026-10-11, not built. | [`docs/decisions/ruled-head-panels-carry-no-fill.md`](../docs/decisions/ruled-head-panels-carry-no-fill.md) |
 | `rules-run-in-javascriptcore` | **Status:** ruled. | [`docs/decisions/rules-run-in-javascriptcore.md`](../docs/decisions/rules-run-in-javascriptcore.md) |
@@ -175,6 +176,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `motion-the-stamp-lands` | The stamp rocks down and settles at its resting angle, instead of blinking into place. | [`docs/decisions/motion-the-stamp-lands.md`](../docs/decisions/motion-the-stamp-lands.md) |
 | `motion-the-switch-is-one-object` | The ruling: the active-view fill is a single element that slides between thirds. | [`docs/decisions/motion-the-switch-is-one-object.md`](../docs/decisions/motion-the-switch-is-one-object.md) |
 | `motion-use-just-became` | Every celebration marks a state that a package can already be in. | [`docs/decisions/motion-use-just-became.md`](../docs/decisions/motion-use-just-became.md) |
+| `native-bulk-check-in` | The iOS Packages card and the open Tally row carry Mark all received and Clear check-ins, as the web's do (`src/app.jsx` `bulkSet`). | [`docs/decisions/native-bulk-check-in.md`](../docs/decisions/native-bulk-check-in.md) |
 | `null-remote-info-is-not-no-key` | A null `remoteInfo` means that the status has not loaded yet. | [`docs/decisions/null-remote-info-is-not-no-key.md`](../docs/decisions/null-remote-info-is-not-no-key.md) |
 | `offline-is-decided-by-fetch` | The app decides `offline` only by a failed `fetch`, and by nothing else. | [`docs/decisions/offline-is-decided-by-fetch.md`](../docs/decisions/offline-is-decided-by-fetch.md) |
 | `one-stamp-per-package` | Each package holds at most one order stamp. | [`docs/decisions/one-stamp-per-package.md`](../docs/decisions/one-stamp-per-package.md) |
@@ -202,7 +204,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `remote-rules-fail-quietly` | Two adapter decisions get their own pure functions, in `src/remote-rules.mjs`. | [`docs/decisions/remote-rules-fail-quietly.md`](../docs/decisions/remote-rules-fail-quietly.md) |
 | `remote-sync-is-off-the-save-path` | The local save runs on its own debounced path, with a 500ms debounce and a saved or saving indicator. | [`docs/decisions/remote-sync-is-off-the-save-path.md`](../docs/decisions/remote-sync-is-off-the-save-path.md) |
 | `retention-tiers-are-unioned` | A saved version survives a prune when any one of four rules keeps it. | [`docs/decisions/retention-tiers-are-unioned.md`](../docs/decisions/retention-tiers-are-unioned.md) |
-| `ruled-head-masthead-vocabulary` | The control region uses the masthead's own vocabulary. | [`docs/decisions/ruled-head-masthead-vocabulary.md`](../docs/decisions/ruled-head-masthead-vocabulary.md) |
 | `ruled-head-range-picked` | The custom range uses a month picker. | [`docs/decisions/ruled-head-range-picked.md`](../docs/decisions/ruled-head-range-picked.md) |
 | `ruled-head-resume-is-reopening` | An iOS home-screen app is usually backgrounded, not closed. | [`docs/decisions/ruled-head-resume-is-reopening.md`](../docs/decisions/ruled-head-resume-is-reopening.md) |
 | `ruled-head-showing-unreceived` | The Showing row replaces the old "Hide received" button. | [`docs/decisions/ruled-head-showing-unreceived.md`](../docs/decisions/ruled-head-showing-unreceived.md) |
