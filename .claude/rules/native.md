@@ -95,6 +95,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `hand-stale-checkin-error` — A good post leaves an old check-in error showing.
 - `stamped-toggle-clears-error` — The stamped toggle clears a failed check-in's error.
 - `tally-reorders-on-reload` — The native Tally re-sorts on every reload.
+- `packages-reload-counts-split` — A check-in during a Packages reload can revert its checkbox.
 - `checkin-error-bar-is-sans` — The native check-in error bar is set in sans on material.
 - `hand-post-scroll-hides-sender` — The Post offer scrolls the sender off the page.
 - `hand-notice-cuts-match-row` — A Suspense or Released box pushes the match under the keys.
