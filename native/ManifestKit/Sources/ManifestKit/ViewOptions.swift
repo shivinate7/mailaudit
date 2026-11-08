@@ -154,6 +154,9 @@ public final class ViewOptions {
         canceled = orders
     }
 
+    /// The package a Tally order-id tap asked Packages to scroll to. Packages clears it once it has scrolled (src/app.jsx `jumpGk`).
+    public var jumpGk: String?
+
     /// The months the By month picker offers, from the bundle's monthChoices over every order. Set by PackagesModel.load.
     public internal(set) var months: [MonthChoice] = []
     /// What the bundle's rangeMonthLabel read for a whole-month range, and the range it read: the label stands only while
@@ -200,6 +203,9 @@ public final class ViewOptions {
         revealed = []
         return true
     }
+
+    /// Shows the package's whole order whatever Find and Showing say, and keeps it so if it already does (src/app.jsx openOrder).
+    func reveal(_ gk: String) { revealed.insert(gk) }
 
     func toggleReveal(_ gk: String) {
         if revealed.contains(gk) { revealed.remove(gk) } else { revealed.insert(gk) }

@@ -14,6 +14,8 @@ struct TallyView: View {
     let masthead: MastheadModel
     let sync: SyncClient?
     let openSync: () -> Void
+    /// Opens the whole order a copy came from in Packages (src/app.jsx openOrder).
+    let openOrder: (LedgerItem) async throws -> Void
     /// The last view-level refresh that failed, so the rows on screen are never silently stale.
     @State private var failure: String?
     @Environment(\.duoSpread) private var spread
@@ -44,7 +46,7 @@ struct TallyView: View {
         MastheadScreen(masthead: masthead, tab: .tally, sync: sync, openSync: openSync, ruledRow: canceledRow) {
             VStack(spacing: 12) {
                 ForEach(model.rows, id: \.name) { row in
-                    TallyRowView(row: row, model: model, masthead: masthead,
+                    TallyRowView(row: row, model: model, masthead: masthead, openOrder: open,
                                  page: pages == nil ? .inline : .cell(selected: row.name == current?.name) { picked = row.name })
                 }
                 if model.rows.isEmpty { empty }
@@ -66,7 +68,7 @@ struct TallyView: View {
 
     private var detail: some View {
         ScrollView {
-            if let row = current { TallyRowView(row: row, model: model, masthead: masthead, page: .detail).padding(16) }
+            if let row = current { TallyRowView(row: row, model: model, masthead: masthead, openOrder: open, page: .detail).padding(16) }
         }
         .id(current?.name)  // a new pick starts a fresh page: scroll and row state do not carry over
     }
@@ -79,6 +81,8 @@ struct TallyView: View {
                 .accessibilityIdentifier("checkin-error")
         }
     }
+
+    private func open(_ item: LedgerItem) async { await run { try await openOrder(item) } }
 
     private func run(_ op: () async throws -> Void) async {
         do { try await op(); failure = nil } catch { failure = "Could not update the Tally. \(error.localizedDescription)" }
@@ -112,6 +116,7 @@ struct TallyRowView: View {
     let row: TallyRow
     let model: TallyModel
     let masthead: MastheadModel
+    let openOrder: (LedgerItem) async -> Void
     var page = Page.inline
     @State private var open = false
     /// True while the armed Clear ask hangs below the bulk row, so the card draws above its neighbours.
@@ -242,7 +247,7 @@ struct TallyRowView: View {
             .filter { !$0.isEmpty }.joined(separator: " \u{00B7} ")
         return ItemLine(
             state: LineState(got: got, qty: item.qty), name: item.name, title: item.seller, detail: meta, price: item.price,
-            orderID: item.orderId, readout: model.readouts[item.key], checkInID: "tally-checkin:\(item.key)",
+            orderID: item.orderId, onOpenOrder: { await openOrder(item) }, readout: model.readouts[item.key], checkInID: "tally-checkin:\(item.key)",
             copyID: "tally-copy:\(item.key)", key: item.key,
             onTap: {
                 masthead.saving()

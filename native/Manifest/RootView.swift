@@ -48,7 +48,12 @@ struct RootView: View {
             .tag(Tab.orphaned)
             .badge(orphaned?.badgeCount ?? 0)
             Group {
-                if let tally, let masthead { TallyView(model: tally, masthead: masthead, sync: sync, openSync: showSync) } else { Placeholder(title: failure ?? "Opening the ledger") }
+                if let tally, let masthead { TallyView(model: tally, masthead: masthead, sync: sync, openSync: showSync, openOrder: { item in
+                    // Packages shows the order whole (the model reveals it) and scrolls to it. A failure is in the model's
+                    // checkInError and is thrown back, so the Tally shows it and stays.
+                    try await model?.openOrder(of: item)
+                    tab = .packages
+                }) } else { Placeholder(title: failure ?? "Opening the ledger") }
             }
             .parchmentPaper()
             .tabItem { Label("Tally", systemImage: "number") }

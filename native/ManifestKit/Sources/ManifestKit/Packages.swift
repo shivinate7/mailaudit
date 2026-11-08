@@ -250,6 +250,23 @@ public final class PackagesModel {
         if let saveFailure { throw saveFailure }
     }
 
+    /// Tally to Packages, on the order a copy came from (src/app.jsx openOrder). The package is revealed whole, because Find would cut it
+    /// to the matching line and Showing: Unreceived would drop it when every copy is in, and the stamped filter would swallow an
+    /// unstamped one; each leaves the jump nothing to land on. Packages scrolls to `options.jumpGk`. The group key comes from the
+    /// bundle's gkOf (no Swift copy). A failure lands in checkInError and is thrown.
+    public func openOrder(of item: LedgerItem) async throws {
+        do {
+            let gk = try JSONDecoder().decode(String.self, from: Data(try await engine.call("gkOf", "[\(try encode(item))]").utf8))
+            options.reveal(gk)
+            showStamped = false
+            try await load()
+            options.jumpGk = gk
+        } catch {
+            fail("Could not open the order. \(error.localizedDescription)")
+            throw error
+        }
+    }
+
     /// Show the whole order of a package the filters cut down, or go back to the matches.
     public func toggleReveal(_ gk: String) async throws {
         options.toggleReveal(gk)

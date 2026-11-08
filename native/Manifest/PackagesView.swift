@@ -47,13 +47,14 @@ struct PackagesView: View {
                     let vacated = model.vacatedUndo
                     ForEach(Array(model.rows.enumerated()), id: \.element.gk) { i, pkg in
                         if let vacated, vacated.index == i { vacatedNotice(vacated) }
-                        PackageRow(pkg: pkg, model: model, masthead: masthead, onChange: onChange)
+                        PackageRow(pkg: pkg, model: model, masthead: masthead, onChange: onChange).id(Self.jumpID(pkg.gk))
                     }
                     if let vacated, vacated.index >= model.rows.count { vacatedNotice(vacated) }
                     if model.rows.isEmpty && model.hasItems { empty }
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
+                JumpToOrder(options: model.options, listed: Set(model.rows.map(\.gk)), id: Self.jumpID)
                 CanceledListSection(options: model.options)
             }
         }
@@ -71,6 +72,9 @@ struct PackagesView: View {
     private var canceledCell: RuledRow.Canceled? {
         model.options.canceledCount > 0 ? .init(count: model.options.canceledCount, on: model.options.showCanceled) { model.options.showCanceled.toggle() } : nil
     }
+
+    /// The scroll id of a card, for the jump from a Tally order id.
+    private static func jumpID(_ gk: String) -> String { "package-jump:\(gk)" }
 
     private func vacatedNotice(_ v: PackagesModel.VacatedUndo) -> some View {
         UndoNoticeBar(line: v.line, undoID: "bulk-vacated-undo:\(v.gk)",
@@ -293,4 +297,24 @@ struct PackageRow: View {
     var refreshed = true
     do { try await onChange() } catch { refreshed = false }  // a failed Tally or Orphaned read would leave them counting the old check-ins
     await masthead.finished(failed: !landed || !refreshed)
+}
+
+/// Scrolls to the package a Tally order-id tap asked for, once it is in the list (src/app.jsx `jumpGk`, the effect that scrolls
+/// `jumpRef` into view at the top). It waits a moment first, as the web waits a frame, so the list exists before it scrolls.
+/// Nothing is drawn; it takes no space in the stack.
+private struct JumpToOrder: View {
+    let options: ViewOptions
+    let listed: Set<String>
+    let id: (String) -> String
+    @Environment(\.scrollToStart) private var scrollToStart
+
+    var body: some View {
+        Color.clear.frame(width: 0, height: 0).accessibilityHidden(true)
+            .task(id: options.jumpGk.map { listed.contains($0) ? $0 : "" }) {
+                guard let gk = options.jumpGk, listed.contains(gk) else { return }
+                try? await Task.sleep(for: .milliseconds(50))
+                scrollToStart(id(gk))
+                options.jumpGk = nil
+            }
+    }
 }
