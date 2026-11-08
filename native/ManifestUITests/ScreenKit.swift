@@ -20,10 +20,13 @@ enum ScreenKit {
         let isEnabled: Bool
     }
 
-    /// The seeded app on a tab (Packages unless told), at the width the shell tests pass (-ManifestUITestWidth).
-    @MainActor static func launch(width: Int = 375, tab: String = "Packages") -> XCUIApplication {
+    /// The seeded app on a tab (Packages unless told), at the width the shell tests pass (-ManifestUITestWidth). A nil width
+    /// passes no width, so the app runs at the device's own width.
+    @MainActor static func launch(width: Int? = 375, tab: String = "Packages") -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-ManifestUITestSeed", "-ManifestUITestWidth", String(width)]
+        var args = ["-ManifestUITestSeed"]
+        if let width { args += ["-ManifestUITestWidth", String(width)] }
+        app.launchArguments = args
         app.launch()
         app.tabBars.buttons[tab].tap()
         return app
