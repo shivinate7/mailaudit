@@ -18,6 +18,7 @@ struct PackagesView: View {
     /// The last view-level read that failed, so the rows on screen are never silently stale.
     @State private var failure: String?
     @Environment(\.duoSpread) private var spread
+    @Environment(\.duoHandOpen) private var handOpen
 
     /// The one-page Find pill. The open Duo's pill is `findPillOnDuo`, which Card in Hand covers while it is open (duo ruling Q5).
     private var pillShown: Bool { model.hasItems && spread.pages(for: .cardInHand) == nil }
@@ -70,7 +71,7 @@ struct PackagesView: View {
         // (the bar's own room is DuoSystemBar's margin; this one holds the bar and the pill).
         .contentMargins(.bottom, duoPillShown ? FindPillMetrics.duoRoom : 0, for: .scrollContent)
         .findPill(show: pillShown, query: model.query) { q in Task { await run { try await model.setQuery(q) } } }
-        .findPillOnDuo(show: model.hasItems, right: spread.pages(for: .cardInHand)?.right, query: model.query) { q in Task { await run { try await model.setQuery(q) } } }
+        .findPillOnDuo(show: model.hasItems && !handOpen, right: spread.pages(for: .cardInHand)?.right, query: model.query) { q in Task { await run { try await model.setQuery(q) } } }
         .task { await run { try await model.viewOpened() } }  // another tab may have changed Find
     }
 
