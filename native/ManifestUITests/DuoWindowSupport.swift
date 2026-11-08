@@ -16,8 +16,11 @@ enum DuoMetrics {
     /// Half the fold strip (40 pt, centred): how far a full-width row must reach past the middle on each side
     /// (455.5 and 495.5 at a 951 pt window), and how far right of the middle the right page starts.
     static let foldMargin: CGFloat = 20
-    /// The tallest the custom bar's view may be: the pill (64 pt) and the 12 pt under it.
-    static let barHeight: CGFloat = 76
+    /// The custom bar as drawn (DuoBarMetrics in the app): the pill, and the lift under it down to the window's bottom edge.
+    static let barPill: CGFloat = 64
+    static let barLift: CGFloat = 12
+    /// The tallest the custom bar's view may be: the pill and the lift under it.
+    static let barHeight: CGFloat = barPill + barLift
     /// The room a bottom bar may keep above the window's bottom edge. The outer screen's bottom inset is 34 pt; the inner one is unmeasured.
     static let bottomAllowance: CGFloat = 40
 }

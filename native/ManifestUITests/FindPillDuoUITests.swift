@@ -8,7 +8,7 @@
 // Contract the cases name (the builder implements it):
 //   find-pill           the pill, on the right page of the flat Duo, 8 pt above the custom bar.
 //   find-field          the pill's text field.
-//   duo-tab-bar         the custom bar; its frame is DuoMetrics.barHeight tall (the pill's 64 pt and the 12 pt under it).
+//   duo-tab-bar         the custom bar: the pill, DuoMetrics.barPill tall, with DuoMetrics.barLift under it.
 //   tally-row:<name>    Tally, flat: the list row, on the left page (DuoSpreadUITests).
 //   hand-open, hand-query   Card in Hand, opened from the Packages page (DuoHandUITests).
 //
@@ -28,15 +28,17 @@ final class FindPillDuoUITests: XCTestCase {
     }
 
     /// On the flat Duo's Tally, the pill is on the right page, 8 pt above the bar, and its query filters the left page's list.
-    /// Tally keeps its list on the left page, so the filter is read there. The bar's height is DuoMetrics.barHeight, the same
-    /// 76 pt the app's bar draws (DuoBarMetrics: pill 64 plus lift 12), read from the shared test home.
+    /// Tally keeps its list on the left page, so the filter is read there. The bar element is the pill, DuoMetrics.barPill tall
+    /// (DuoBarMetrics: pill 64 plus lift 12), and its bottom sits DuoMetrics.barLift above the window's bottom edge.
     func testFlatDuoPillSitsOnTheRightPageAboveTheBar() throws {
         let app = XCUIApplication.launchedOnSeed()
         guard app.requirePose(.flat) else { return }
         let bar = app.duoBar
         XCTAssertTrue(bar.waitForExistence(timeout: 5), "scope: the custom tab bar duo-tab-bar is missing")
-        XCTAssertEqual(bar.frame.height, DuoMetrics.barHeight, accuracy: DuoMetrics.tolerance,
-                       "scope: the custom tab bar is not the height the pill is measured from")
+        XCTAssertEqual(bar.frame.height, DuoMetrics.barPill, accuracy: DuoMetrics.tolerance,
+                       "scope: the custom tab bar is not the height of its pill")
+        XCTAssertEqual(app.window.frame.maxY - bar.frame.maxY, DuoMetrics.barLift, accuracy: DuoMetrics.tolerance,
+                       "scope: the custom tab bar does not sit the lift above the window's bottom edge")
         bar.buttons["Tally"].tap()
         XCTAssertTrue(app.element("tally-row:Lightning Bolt").waitForExistence(timeout: 5),
                       "scope: the Tally list has no Lightning Bolt row before any search")
@@ -44,7 +46,7 @@ final class FindPillDuoUITests: XCTestCase {
         let pill = app.element("find-pill")
         XCTAssertTrue(pill.waitForExistence(timeout: 5), "the find pill find-pill is missing on the open Duo's Tally")
         XCTAssertEqual(app.window.frame.maxY - pill.frame.maxY, DuoMetrics.barHeight + 8, accuracy: DuoMetrics.tolerance,
-                       "the find pill's bottom is not the bar's height plus 8 pt above the window's bottom")
+                       "the find pill's bottom is not the bar's pill and lift (\(Int(DuoMetrics.barHeight)) pt) plus 8 pt above the window's bottom")
         XCTAssertEqual(bar.frame.minY - pill.frame.maxY, 8, accuracy: DuoMetrics.tolerance,
                        "the find pill is not 8 pt above the custom tab bar")
         expect(pill, on: .right, in: app, "the find pill")
