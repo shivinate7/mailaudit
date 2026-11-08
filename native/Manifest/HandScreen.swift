@@ -364,6 +364,8 @@ struct HandScreen: View {
         do { try await hand.post() } catch {}  // the model shows the failure in hand.error
         let total = o.plan.reduce(0) { $0 + $1.take }
         let held = o.heldCopies
+        // A saved Post ends the match hold, as a keystroke does; a failed save keeps the offer, so the rows stay with it.
+        if hand.error == nil { heldNames = nil; chosen = nil }
         // A failed save keeps the offer, so its slot still holds the button and no receipt is stored.
         if hand.offer == nil {
             receipt = hand.error == nil
