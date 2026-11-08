@@ -85,8 +85,11 @@ public final class PackagesModel {
     public func load() async throws {
         let got = store.received()
         let held = store.stamps()
+        // The recount runs only while an Undo is held. A failed call must not stop the list, so it counts 0.
+        let heldGk = bulkUndoGk
         let takes = bulkUndoTakes
-        let undoHeld = takes.isEmpty ? 0 : try await BulkRules.takenBack(takes, received: got, engine: engine)
+        var undoHeld = 0
+        if heldGk != nil { undoHeld = (try? await BulkRules.takenBack(takes, received: got, engine: engine)) ?? 0 }
         let live = try await LiveItems.of(store.items(), stamps: held, engine: engine)
         let active = try await engine.call("dropCanceled", "[\(try json(store.items()))]")
         let stampedGks = try await StampRules.keys(where: "hasStamp", in: held, engine: engine)
@@ -110,8 +113,8 @@ public final class PackagesModel {
         rows = newRows
         liveRows = newLive
         received = got
-        // A press that ran during the awaits above set its own count against newer takes.
-        if bulkUndoTakes == takes { bulkUndoHeld = undoHeld }
+        // A press or a clear that ran during the awaits above set its own count, so this one only fills the same Undo.
+        if bulkUndoGk == heldGk && bulkUndoTakes == takes { bulkUndoHeld = undoHeld }
         stamps = held
         stampedCount = stamped.count
         showStamped = on
@@ -292,7 +295,7 @@ public final class PackagesModel {
             throw error
         }
         checkInError = nil
-        bulkUndoGk = nil
+        endBulkUndo()
         received = store.received()
         if let pkg = package(holding: key), let item = pkg.items.first(where: { $0.key == key }) {
             try await reread(pkg, items: [item])
@@ -332,16 +335,21 @@ public final class PackagesModel {
             throw error
         }
         checkInError = nil
-        // A Mark all that adds nothing has nothing to undo, so the held Undo stays. A Clear ends it.
-        if !on || !takes.isEmpty {
-            bulkUndoTakes = takes
-            bulkUndoGk = on ? gk : nil
-        }
         received = store.received()
-        if bulkUndoGk != nil {
-            do { bulkUndoHeld = try await BulkRules.takenBack(bulkUndoTakes, received: received, engine: engine) } catch {
+        // A Mark all that adds nothing has nothing to undo, so the held Undo stays. A Clear, or a Mark all that adds, ends it.
+        // A new Undo sets its gk only after its count is known, so the hint never shows a count from before the press.
+        if !on || !takes.isEmpty { endBulkUndo() }
+        let counted = takes.isEmpty ? bulkUndoTakes : takes
+        if on && !counted.isEmpty {
+            let n: Int
+            do { n = try await BulkRules.takenBack(counted, received: received, engine: engine) } catch {
                 fail("Saved, but the Undo count could not refresh. \(error.localizedDescription)")
                 throw error
+            }
+            if !takes.isEmpty || bulkUndoGk != nil {
+                bulkUndoTakes = counted
+                bulkUndoHeld = n
+                if !takes.isEmpty { bulkUndoGk = gk }
             }
         }
         try await reread(pkg, items: pkg.items)
@@ -351,9 +359,7 @@ public final class PackagesModel {
     public func undoBulk() async throws {
         guard let gk = bulkUndoGk else { return }
         let takes = bulkUndoTakes
-        bulkUndoGk = nil
-        bulkUndoTakes = []
-        bulkUndoHeld = 0
+        endBulkUndo()
         do {
             let counts = try await BulkRules.undone(takes, received: store.received(), engine: engine)
             try store.commitReceived(counts)
@@ -367,7 +373,11 @@ public final class PackagesModel {
     }
 
     /// A tab change, a restore or a Reset: the held Undo is gone.
-    public func endBulkUndo() { bulkUndoGk = nil }
+    public func endBulkUndo() {
+        bulkUndoGk = nil
+        bulkUndoTakes = []
+        bulkUndoHeld = 0
+    }
 
     /// Stamps the package (the one stamp writer, StampWriter), then reads the ledger again: a refund leaves the list,
     /// and the stamped count and the bands follow. A failure lands in checkInError and is thrown.
@@ -402,7 +412,7 @@ public final class PackagesModel {
             fail("\(failure) \(error.localizedDescription)")
             throw error
         }
-        bulkUndoGk = nil
+        endBulkUndo()
         do { try await load() } catch {
             fail("Saved, but the list could not refresh. \(error.localizedDescription)")
             throw error
