@@ -18,6 +18,7 @@ on:
       - "src/**"
       - "test/**"
       - "worker/**"
+      - "extension/**"
       - "shared/**"
       - "native/**"
       - "scripts/**"
@@ -85,6 +86,7 @@ jobs:
       - run: npm run test:check-docs
       - run: npm run test:check-records
       - run: npm run test:worker
+      - run: npm run test:extension
       - run: npm run test:send-key
       - run: npm run test:view-rules
       - run: npm run test:ci-wiring
