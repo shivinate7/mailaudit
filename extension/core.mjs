@@ -58,22 +58,53 @@ function checked(res, base) {
   return res.text;
 }
 
+const FORM_FIELDS = [TOKEN_FIELD, "ClearSessionFilters", "SearchString", "DateRange"];
+const NOT_SUBMITTED = new Set(["submit", "button", "image", "reset", "file"]);
+
+/* The filter form is the one holding DateRange. Every named field goes back with the value the
+   page gave it, a browser's way: unchecked boxes and radios are left out, a select sends its
+   selected option or else its first. Only DateRange is set. A field of the four that the page
+   did not give is sent empty, not guessed. A missing form or token, or an action off the
+   page's origin, is a fetch failure. */
+function filterForm(doc, orderUrl, base) {
+  const form = doc.querySelector('[name="DateRange"]')?.closest("form");
+  if (!form) throw new ReadFailure("fetch");
+  const params = new URLSearchParams();
+  for (const el of form.querySelectorAll("input[name], select[name], textarea[name]")) {
+    if (el.disabled) continue;
+    const tag = el.tagName.toLowerCase();
+    const type = (el.getAttribute("type") || "text").toLowerCase();
+    if (tag === "input" && (NOT_SUBMITTED.has(type) || ((type === "checkbox" || type === "radio") && !el.checked))) continue;
+    if (tag === "select") {
+      const options = [...el.options];
+      const chosen = options.filter((o) => o.selected);
+      const sent = el.multiple ? chosen : chosen.slice(0, 1);
+      for (const o of sent.length || el.multiple ? sent : options.slice(0, 1)) params.append(el.name, o.value);
+    } else {
+      params.append(el.name, el.value);
+    }
+  }
+  params.set("DateRange", "Last 120 Days");
+  if (!params.get(TOKEN_FIELD)) throw new ReadFailure("fetch");
+  for (const name of FORM_FIELDS) if (!params.has(name)) params.set(name, "");
+  let action;
+  try {
+    action = new URL(form.getAttribute("action") || ORDER_PATH, orderUrl);
+  } catch {
+    throw new ReadFailure("fetch");
+  }
+  if (action.origin !== new URL(base).origin) throw new ReadFailure("fetch");
+  return { body: params.toString(), action: action.href };
+}
+
 /* Reads every page of the last 120 days. Returns {pages} (trimmed, page 1 first) or {failure}. */
 export async function readAllPages({ fetch, base, parseDom, timeoutMs }) {
   const orderUrl = `${base}${ORDER_PATH}`;
   try {
     const first = checked(await fetchText(fetch, orderUrl, { method: "GET" }, timeoutMs), base);
-    const token = parseDom(first).querySelector(`input[name="${TOKEN_FIELD}"]`)?.value;
-    if (!token) throw new ReadFailure("fetch");
-
-    const form = new URLSearchParams({
-      [TOKEN_FIELD]: token,
-      ClearSessionFilters: "false",
-      SearchString: "",
-      DateRange: "Last 120 Days",
-    });
-    const post = { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body: form.toString() };
-    checked(await fetchText(fetch, orderUrl, post, timeoutMs), base);
+    const { body, action } = filterForm(parseDom(first), orderUrl, base);
+    const post = { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body };
+    checked(await fetchText(fetch, action, post, timeoutMs), base);
 
     const pages = [];
     for (let n = 1; ; n++) {
