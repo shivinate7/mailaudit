@@ -162,6 +162,9 @@ public final class PackagesModel {
         updates += texts
         failure = failure ?? textFailure
         let (kept, total) = (ViewRange.count(rangedLive), ViewRange.count(live))
+        let allItems = try json(store.items())
+        let choices = try JSONDecoder().decode([MonthChoice].self, from: Data(try await engine.call("monthChoices", "[\(allItems)]").utf8))
+        let monthLabel = try await engine.call("rangeMonthLabel", "[\(try LiveItems.json(options.dateFilter.saved)),\(allItems)]")
         source = newSource
         sourceRows = sourcePackages
         order = newOrder
@@ -170,6 +173,8 @@ public final class PackagesModel {
         hasItems = !store.items().isEmpty
         options.lineCount = kept
         options.outsideCount = total - kept
+        options.months = choices
+        options.setMonthReading(try? JSONSerialization.jsonObject(with: Data(monthLabel.utf8), options: [.fragmentsAllowed]) as? String)
         received = got
         stamps = held
         stampedCount = stamped.count

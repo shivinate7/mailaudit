@@ -5,6 +5,7 @@ import {
   parseItems, lostMail, normName, isUntracked, gkOf, groupPackages, rankCandidates,
   dateRange, inRange, dropCanceled, dropGks, canceledPackagesOf, stampedPackagesOf,
   tallyGroups, sortTally, sortPackages, filterPackages, stampTextOf, filterTally, RESUME_RESET_MS,
+  monthKeysOf, spansOneYear, monthLabel as monthLabelOf, monthKeyOf, monthRange,
   totalsOf, bulkApply, outstandingOf, packagePill, refundedPill, STAMP_KINDS, hasStamp, isRefundStamp, nextStamp, stampBandText, itemDetail, tcgplayerOrderUrl, gotQty as gotQtyText, countLine, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger, money, compact,
 } from "./view-rules.mjs";
 import { photoPlan } from "./photo-rules.mjs";
@@ -1670,8 +1671,6 @@ const optCell = (on) => ({
   whiteSpace: "nowrap",
   cursor: "pointer",
 });
-
-const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 /* sort vocabularies, one per view. Module-level so the panel and the collapsed
    value in the head cannot drift apart — the same mistake the date range's
@@ -5282,57 +5281,14 @@ export default function MailDayLedger() {
      what lets the custom range be picked rather than typed: iOS's numeric
      keypad has no hyphen key, so a masked date field is uncompletable on the
      only device this ships to, and a month can never be 2026-02-31. */
-  const months = useMemo(() => {
-    const seen = new Set();
-    for (const it of items) {
-      /* Read the month off an ISO string directly. Going through Date and
-         local getters shifts it: Date.parse("2026-05-01") is UTC midnight, and
-         getMonth() in any behind-UTC zone rolls it back to April. Older
-         exports use M/D/YY, which parses as LOCAL midnight — so those want the
-         local getters, and only those. */
-      const iso = /^(\d{4})-(\d{2})/.exec(it.date || "");
-      if (iso) {
-        seen.add(`${iso[1]}-${iso[2]}`);
-        continue;
-      }
-      const t = Date.parse(it.date);
-      if (!t) continue;
-      const d = new Date(t);
-      seen.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
-    }
-    return [...seen].sort().reverse();
-  }, [items]);
+  const months = useMemo(() => monthKeysOf(items), [items]);
+  const oneYear = useMemo(() => spansOneYear(months), [months]);
+  const monthLabel = useCallback((k) => monthLabelOf(k, oneYear), [oneYear]);
 
-  /* the year is only worth printing when the ledger spans more than one */
-  const oneYear = useMemo(
-    () => new Set(months.map((k) => k.slice(0, 4))).size <= 1,
-    [months]
-  );
-  const monthLabel = useCallback(
-    (k) => MON[+k.slice(5, 7) - 1] + (oneYear ? "" : ` ’${k.slice(2, 4)}`),
-    [oneYear]
-  );
-
-  /* a custom range that happens to be exactly one whole month is shown as that
-     month, so picking "Aug" reads back as "Aug" rather than as "Custom" */
-  const monthKey =
-    dateFilter.preset === "custom" &&
-    dateFilter.from &&
-    dateFilter.to &&
-    dateFilter.from.slice(0, 7) === dateFilter.to.slice(0, 7) &&
-    dateFilter.from.endsWith("-01")
-      ? dateFilter.from.slice(0, 7)
-      : null;
+  const monthKey = monthKeyOf(dateFilter);
 
   const pickMonth = useCallback((k) => {
-    const [y, m] = k.split("-").map(Number);
-    const last = new Date(y, m, 0).getDate(); // day 0 of next month
-    setDateFilter((d) => ({
-      ...d,
-      preset: "custom",
-      from: `${k}-01`,
-      to: `${k}-${String(last).padStart(2, "0")}`,
-    }));
+    setDateFilter((d) => ({ ...d, preset: "custom", ...monthRange(k) }));
   }, []);
 
   const bumpDays = useCallback((by) => {

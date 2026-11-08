@@ -106,6 +106,12 @@ public struct DateFilter: Equatable, Sendable {
     }
 }
 
+/// One cell of the By month picker, from the bundle's monthChoices: the order months that exist, newest first. `from` and `to`
+/// are the ISO days the cell picks.
+public struct MonthChoice: Decodable, Equatable, Sendable {
+    public let key, label, from, to: String
+}
+
 /// The choices Packages and Tally share: one Find query, one Showing, one reveal set, one Orders from and the two sorts
 /// (src/app.jsx `query`, `hideDone`, `revealed`, `dateFilter`, `sortBy`, `itemSort`). The models and the Ledger tab's View group
 /// hold the same instance. Find, Showing and the reveals are not saved (saved-state-shape); the last three are, under the
@@ -125,6 +131,31 @@ public final class ViewOptions {
     /// The lines the range keeps and the lines it leaves out, for the Orders from row's sub line. Set by PackagesModel.load.
     public internal(set) var lineCount = 0
     public internal(set) var outsideCount = 0
+    /// The months the By month picker offers, from the bundle's monthChoices over every order. Set by PackagesModel.load.
+    public internal(set) var months: [MonthChoice] = []
+    /// What the bundle's rangeMonthLabel read for a whole-month range, and the range it read: the label stands only while
+    /// the saved range is still that one, so a changed range never shows a stale month.
+    private var monthReading: (from: String, to: String, label: String)?
+
+    /// Orders from's value (rangeLabel in src/app.jsx): a custom range that is one whole month reads as that month.
+    public var rangeLabel: String {
+        if dateFilter.preset == .custom, let r = monthReading, r.from == dateFilter.from, r.to == dateFilter.to { return r.label }
+        return dateFilter.label
+    }
+
+    func setMonthReading(_ label: String?) {
+        monthReading = label.map { (dateFilter.from, dateFilter.to, $0) }
+    }
+
+    /// Picks a whole month: the bundle's cell range, saved as a custom range, and read back as the month's name, not "Custom".
+    public func setMonth(_ choice: MonthChoice, in store: LedgerStore) throws {
+        var next = dateFilter
+        next.preset = .custom
+        next.from = choice.from
+        next.to = choice.to
+        monthReading = (choice.from, choice.to, choice.label)
+        try setDateFilter(next, in: store)
+    }
 
     public init() {}
 

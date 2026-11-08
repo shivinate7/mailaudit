@@ -240,6 +240,72 @@ export function dateRange(filter, now) {
   return { from: now - filter.preset * DAY_MS, to: null };
 }
 
+/* ---------- the By month picker ----------
+   Months are read off the orders that exist, newest first, so a custom range is
+   picked rather than typed: iOS's numeric keypad has no hyphen key, so a masked
+   date field is uncompletable on the only device this ships to, and a month can
+   never be 2026-02-31. The web's ruled head and the native Ledger tab both read them. */
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/* "YYYY-MM" keys of the items' order dates, newest first */
+export function monthKeysOf(items) {
+  const seen = new Set();
+  for (const it of items) {
+    /* Read the month off an ISO string directly. Going through Date and
+       local getters shifts it: Date.parse("2026-05-01") is UTC midnight, and
+       getMonth() in any behind-UTC zone rolls it back to April. Older
+       exports use M/D/YY, which parses as LOCAL midnight — so those want the
+       local getters, and only those. */
+    const iso = /^(\d{4})-(\d{2})/.exec(it.date || "");
+    if (iso) {
+      seen.add(`${iso[1]}-${iso[2]}`);
+      continue;
+    }
+    const t = Date.parse(it.date);
+    if (!t) continue;
+    const d = new Date(t);
+    seen.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
+  return [...seen].sort().reverse();
+}
+
+/* the year is only worth printing when the ledger spans more than one */
+export const spansOneYear = (keys) => new Set(keys.map((k) => k.slice(0, 4))).size <= 1;
+
+export const monthLabel = (k, oneYear) =>
+  MON[+k.slice(5, 7) - 1] + (oneYear ? "" : ` ’${k.slice(2, 4)}`);
+
+/* the picker's cells: [{ key, label, from, to }], newest first; from and to are the range the cell picks */
+export function monthChoices(items) {
+  const keys = monthKeysOf(items);
+  const one = spansOneYear(keys);
+  return keys.map((key) => ({ key, label: monthLabel(key, one), ...monthRange(key) }));
+}
+
+/* a custom range that happens to be exactly one whole month is shown as that
+   month, so picking "Aug" reads back as "Aug" rather than as "Custom" */
+export const monthKeyOf = (filter) =>
+  filter.preset === "custom" &&
+  filter.from &&
+  filter.to &&
+  filter.from.slice(0, 7) === filter.to.slice(0, 7) &&
+  filter.from.endsWith("-01")
+    ? filter.from.slice(0, 7)
+    : null;
+
+/* the month's label for a filter that is exactly one whole month, else null */
+export function rangeMonthLabel(filter, items) {
+  const k = monthKeyOf(filter);
+  return k ? monthLabel(k, spansOneYear(monthKeysOf(items))) : null;
+}
+
+/* the custom range a month stands for: its first and last day as ISO days */
+export function monthRange(k) {
+  const [y, m] = k.split("-").map(Number);
+  const last = new Date(y, m, 0).getDate(); // day 0 of next month
+  return { from: `${k}-01`, to: `${k}-${String(last).padStart(2, "0")}` };
+}
+
 export function inRange(items, range) {
   if (!range) return items;
   return items.filter((it) => {

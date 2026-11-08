@@ -62,3 +62,27 @@ extension OptionPanel where Extra == EmptyView {
         self.init(id: id, columns: columns, cells: cells) { EmptyView() }
     }
 }
+
+/// A month cell of the By month picker (the web's `optCell` with `padding: "0 8px"` and its own 1pt border, in a wrapping row):
+/// 44 tall as the grid cells are, as wide as its label, the picked one filled with the accent.
+struct OptionChip: View {
+    let label: String
+    let on: Bool
+    let id: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(label).font(.mono(11.5, relativeTo: .caption)).lineLimit(1)
+                .foregroundStyle(on ? Parchment.card : Parchment.ink)
+                .padding(.horizontal, 8)
+                .frame(minWidth: 44, minHeight: 44)
+                .background(on ? Parchment.accent : Parchment.card)
+                .overlay(Rectangle().strokeBorder(on ? Parchment.accent : Parchment.line, lineWidth: 1))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
+        .accessibilityIdentifier(id)
+    }
+}

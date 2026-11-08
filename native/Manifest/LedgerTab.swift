@@ -31,6 +31,7 @@ struct LedgerTab: View {
     @State private var openRow: String?
     @State private var sortOpen = false
     @State private var rangeOpen = false
+    @State private var exactOpen = false
     @State private var viewFailure: String?
 
     var body: some View {
@@ -89,8 +90,8 @@ struct LedgerTab: View {
                         ? TallySort.allCases.map { key in OptionCell(label: key.label, on: key == options.itemSort) { choose { try options.setItemSort(key, in: store) } } }
                         : PackageSort.allCases.map { key in OptionCell(label: key.label, on: key == options.sortBy) { choose { try options.setSortBy(key, in: store) } } })
                 }
-                LedgerRow(title: "Orders from", sub: sub, value: options.dateFilter.label, open: rangeOpen, id: "ledger-range",
-                          valueID: "ledger-range-value", expandedValue: "\(options.dateFilter.label), \(rangeOpen ? "expanded" : "collapsed")") {
+                LedgerRow(title: "Orders from", sub: sub, value: options.rangeLabel, open: rangeOpen, id: "ledger-range",
+                          valueID: "ledger-range-value", expandedValue: "\(options.rangeLabel), \(rangeOpen ? "expanded" : "collapsed")") {
                     sortOpen = false
                     rangeOpen.toggle()
                 }
@@ -103,6 +104,7 @@ struct LedgerTab: View {
                         }
                     }) {
                         if options.dateFilter.preset == .days { daysRow(store) }
+                        if options.dateFilter.preset == .custom { monthRow(store) }
                     }
                 }
             }
@@ -153,6 +155,70 @@ struct LedgerTab: View {
             Text("days").textCase(.uppercase).font(.cochin(10, relativeTo: .caption2)).tracking(1.6).foregroundStyle(paint(.partLabel))
         }
         .padding(.top, 8)
+    }
+
+    /// By month (src/app.jsx, the custom preset): the months the orders fall in, then Exact dates. Picked, not typed: iOS's numeric
+    /// keypad has no hyphen key. A whole-month range reads back as its month (ViewOptions.rangeLabel).
+    private func monthRow(_ store: LedgerStore) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            subHead("Month")
+            Wrap(column: 4, row: 4) {
+                ForEach(options.months, id: \.key) { m in
+                    OptionChip(label: m.label, on: m.from == options.dateFilter.from && m.to == options.dateFilter.to, id: "ledger-month:\(m.key)") {
+                        do { try options.setMonth(m, in: store); viewFailure = nil } catch { viewFailure = "Could not save the view. \(error.localizedDescription)" }
+                        Task { await onLedgerChange() }
+                    }
+                }
+            }
+            Button { exactOpen.toggle() } label: {
+                HStack(spacing: 8) {
+                    Text(exactOpen ? "\u{2013}" : "+").foregroundStyle(Parchment.accent).frame(width: 10)
+                    Text("Exact dates")
+                }
+                .font(.mono(11, relativeTo: .caption)).foregroundStyle(Parchment.inkSoft)
+                .frame(minHeight: 44, alignment: .leading).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain).padding(.top, 12)
+            .accessibilityValue(exactOpen ? "expanded" : "collapsed").accessibilityIdentifier("ledger-exact")
+            if exactOpen {
+                Wrap(column: 8, row: 8) {
+                    dateEnd("From date", value: options.dateFilter.from, id: "ledger-from") { v in
+                        var next = options.dateFilter; next.from = v; next.preset = .custom; setRange(next, store)
+                    }
+                    Text("\u{2013}").foregroundStyle(Parchment.inkSoft).frame(minHeight: 44)
+                    dateEnd("To date", value: options.dateFilter.to, id: "ledger-to") { v in
+                        var next = options.dateFilter; next.to = v; next.preset = .custom; setRange(next, store)
+                    }
+                }
+            }
+        }
+        .padding(.top, 4)
+    }
+
+    private func subHead(_ title: String) -> some View {
+        HStack(spacing: 8) {
+            Text(title).textCase(.uppercase).font(.cochin(10, relativeTo: .caption2)).tracking(1.6).foregroundStyle(paint(.partLabel))
+            Rectangle().fill(Parchment.line).frame(height: 1)
+        }
+        .padding(.top, 12).padding(.bottom, 8)
+    }
+
+    /// One end of Exact dates. The web's date input can be empty (an open end); a picker cannot, so an empty end is a button
+    /// that sets today, and a set end has a clear beside it.
+    private func dateEnd(_ label: String, value: String, id: String, set: @escaping (String) -> Void) -> some View {
+        HStack(spacing: 0) {
+            if let date = ISODay.date(value) {
+                DatePicker(label, selection: Binding(get: { date }, set: { set(ISODay.string($0)) }), displayedComponents: .date)
+                    .labelsHidden().frame(minHeight: 44).accessibilityLabel(label).accessibilityIdentifier(id)
+                Button { set("") } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(Parchment.inkSoft).frame(width: 44, height: 44).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain).accessibilityLabel("Clear \(label.lowercased())").accessibilityIdentifier("\(id)-clear")
+            } else {
+                Button { set(ISODay.string(Date())) } label: { MiniLabel(title: label) }
+                    .buttonStyle(.plain).accessibilityIdentifier(id)
+            }
+        }
     }
 
     private func closeHistory() {
@@ -489,4 +555,19 @@ struct ShareSheet: UIViewControllerRepresentable {
     let url: URL
     func makeUIViewController(context: Context) -> UIActivityViewController { UIActivityViewController(activityItems: [url], applicationActivities: nil) }
     func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
+}
+
+/// The ISO day ("2026-05-01") the saved dateFilter keeps for `from` and `to`, as the picker's Date and back. The calendar is
+/// the Gregorian one in the device's time zone, so the day the picker shows is the day saved (a date input's value in the web).
+enum ISODay {
+    private static let format: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.calendar = Calendar(identifier: .gregorian)
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+
+    static func date(_ s: String) -> Date? { s.isEmpty ? nil : format.date(from: s) }
+    static func string(_ d: Date) -> String { format.string(from: d) }
 }

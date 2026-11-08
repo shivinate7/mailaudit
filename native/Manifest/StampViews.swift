@@ -91,7 +91,7 @@ private struct HangingAsk<Ask: View>: ViewModifier {
 }
 
 /// Wraps its children in rows, as the web's flex-wrap does: `column` between neighbours, `row` between lines.
-private struct Wrap: Layout {
+struct Wrap: Layout {
     var column: CGFloat
     var row: CGFloat
 
