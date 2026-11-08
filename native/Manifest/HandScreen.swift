@@ -52,6 +52,10 @@ struct HandScreen: View {
 
     @Environment(\.duoSpread) private var spread
     @State private var query = ""
+    /// The names the list showed at the first tap on a match, and the one tapped. While they are set, the list keeps every
+    /// row in its place and marks the chosen one; the next keystroke clears both (no-layout-shift-under-pointer).
+    @State private var heldNames: [String]?
+    @State private var chosen: String?
     /// The envelope the answer page shows. A post leaves it, so the lines you checked in stay under your finger until the next card.
     @State private var shown: String?
     @State private var pastTransit = false
@@ -83,7 +87,7 @@ struct HandScreen: View {
                     Spacer(minLength: 8)
                     Text("\(counts.inCount) in \u{00B7} \(counts.out) out").font(.mono(12, relativeTo: .caption))
                         .foregroundStyle(Parchment.inkSoft).accessibilityIdentifier("hand-count")
-                    Button { hand.close(); close() } label: { MiniLabel(title: "Close") }.buttonStyle(.plain).accessibilityIdentifier("hand-close")
+                    Button { heldNames = nil; chosen = nil; hand.close(); close() } label: { MiniLabel(title: "Close") }.buttonStyle(.plain).accessibilityIdentifier("hand-close")
                 }
                 TextField("Type the card in hand", text: $query)
                     .textFieldStyle(.plain).font(.cochin(16, relativeTo: .body)).foregroundStyle(Parchment.ink)
@@ -92,6 +96,8 @@ struct HandScreen: View {
                     .background(Parchment.card, in: RoundedRectangle(cornerRadius: 8))
                     .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Parchment.line, lineWidth: 1))
                     .accessibilityIdentifier("hand-query")
+                    // A tap sets the query to the chosen name, which keeps the hold. Any other text is a keystroke: it ends the hold.
+                    .onChange(of: query) { _, text in if text != chosen { heldNames = nil; chosen = nil } }
                     // The typed text settles for 150 ms before it is read, so a name typed letter by letter is read once, not once
                     // per letter. Each read still applies in order (HandModel.type).
                     .task(id: query) {
@@ -126,21 +132,34 @@ struct HandScreen: View {
 
     /// The names the typed text matches, under their own heading, so a card you only released does not read as part of the
     /// envelope. The matches sit below the envelope row because no-layout-shift-under-pointer outranks mockup pose 2: a
-    /// tapped match collapses the list, and a list above would lift New envelope from under the finger. The Suspense and
-    /// Released boxes sit below the matches too: a box above would push the only match under the keys, and a box that changes
-    /// height on New envelope would move the button under the finger.
-    /// Departs from: mockup pose 2 (matches above the envelope); `leftPage` before this change, with the boxes above This
-    /// envelope (default, not owner).
+    /// list above would lift New envelope from under the finger. The Suspense and Released boxes sit below the matches too:
+    /// a box above would push the only match under the keys, and a box that changes height on New envelope would move the
+    /// button under the finger.
+    /// A tap on a match holds the list: every row keeps its place until the next keystroke, so no row slides under the
+    /// finger and the Suspense box of a shared name does not rise into the freed space. The tapped row is bold with an
+    /// accent bar; the others stay tappable in inkSoft, and a tap on one moves the mark. Every row has the same 10 pt leading
+    /// inset, so the bar sits in a gutter and no label moves on a tap.
+    /// Departs from: mockup pose 2 (matches above the envelope), and a list that collapses to the tapped row (default, not owner).
     @ViewBuilder private var matches: some View {
-        let names = hitNames
+        let names = heldNames ?? hitNames
         if !names.isEmpty {
             micro("Matches").accessibilityAddTraits(.isHeader).accessibilityIdentifier("hand-matches-heading")
             ForEach(names, id: \.self) { name in
-                Button { query = name } label: {
-                    Text(name).font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.ink)
-                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
+                let isChosen = name == chosen
+                Button {
+                    if heldNames == nil { heldNames = names }
+                    chosen = name
+                    query = name
+                } label: {
+                    Text(name).font(.cochin(14, relativeTo: .body).weight(isChosen ? .bold : .regular))
+                        .foregroundStyle(chosen == nil || isChosen ? Parchment.ink : Parchment.inkSoft)
+                        .padding(.leading, 10)
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                        .overlay(alignment: .leading) { if isChosen { Rectangle().fill(Parchment.accent).frame(width: 3) } }
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain).accessibilityIdentifier("hand-hit:\(name)")
+                .accessibilityAddTraits(isChosen ? .isSelected : [])
             }
         }
     }

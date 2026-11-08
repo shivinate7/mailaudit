@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hand Tap Shift</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light, so this page has one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --red:#A8443C; --manila:#EADBBA; --manilaInk:#695832;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  /* Status bar foot: unmeasured on the Duo inner screen. Drawn at the UI test's 20 pt floor (DuoHandUITests.statusBarFloor). */
+  --sat: max(env(safe-area-inset-top), 20px);
+  /* The built page sits about 63 pt lower than duo-hand-notice-match drew it, so the field top reads about 155 pt (brief). */
+  --built-drop: 63px;
+  --keys-top: 405px;   /* keys panel drawn top with word suggestions (duo-fold-and-keyboard: 405; frame at 449) */
+  --keys-plain: 428px; /* keys top without word suggestions (brief, not in a record) */
+  --new:#2E7A5E; --today:#A8443C;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
+main { max-width:1040px; margin:0 auto; padding:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:24px; margin:16px 0 4px; }
+.sub { color:var(--inkSoft); margin:0 0 12px; max-width:72ch; }
+nav { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+nav a, nav button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+nav a:focus-visible, nav button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+nav .sep { width:100%; height:0; }
+figure { margin:24px 0 40px; }
+figure[hidden] { display:none; }
+figcaption { margin-top:8px; max-width:80ch; }
+figcaption b { font-family:var(--cochin); font-size:18px; }
+.cap { font-family:var(--cochin); font-size:16px; font-weight:700; margin:0 0 6px; }
+.read { font:12px var(--mono); color:var(--inkSoft); margin-top:4px; }
+.read.cut { color:var(--red); } .read.ok { color:var(--green); }
+.fit { width:100%; overflow:hidden; }
+.pair { display:flex; flex-direction:column; gap:20px; }
+.frame[hidden] { display:none; }
+
+/* ---- device: iPhone Duo inner screen, open, 951 x 669 pt, 1 CSS px = 1 pt ---- */
+.duo { position:relative; width:951px; height:669px; background:var(--paper); border:1px solid var(--ink); border-radius:12px; overflow:hidden; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 16px; font-size:12px; font-weight:600; z-index:5; background:var(--paper); }
+.page { position:absolute; top:0; bottom:0; width:455.5px; overflow:hidden; }
+.page.l { left:0; } .page.r { left:495.5px; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); }
+.fold span { position:absolute; top:200px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; }
+.drop { position:absolute; left:16px; right:16px; top:calc(var(--sat) + 16px); height:var(--built-drop); display:flex; align-items:center;
+  font:11px var(--mono); color:var(--inkSoft); border:1px dashed var(--line); border-radius:6px; padding:0 8px; }
+/* The system keyboard: iOS chrome, not an app colour, so these greys sit outside the tokens. */
+.keys { position:absolute; left:0; right:0; top:var(--keys-top); bottom:0; background:#D2D0D6; z-index:6; padding:8px 6px; }
+.keys .row { display:flex; gap:6px; margin-bottom:8px; justify-content:center; }
+.keys .k { height:42px; flex:0 0 42px; background:#FFFFFF; border-radius:6px; display:grid; place-items:center; font-size:18px; color:#111; }
+.keys .k.w { flex-basis:300px; font-size:14px; }
+.guide { position:absolute; left:0; right:0; height:0; border-top:2px dashed var(--accent); z-index:7; }
+.guide.g405 { top:var(--keys-top); } .guide.g428 { top:var(--keys-plain); border-top-style:dotted; }
+.guide span { position:absolute; right:12px; top:-18px; font:11px var(--mono); color:var(--accent); background:var(--paper); padding:0 4px; }
+.guide.g428 span { top:2px; background:#D2D0D6; }
+/* Keys down (#k=down): the panel is not drawn, so what sits under it shows; the two lines stay. */
+body.keys-down .keys { display:none; } body.keys-down .guide.g428 span { background:var(--paper); }
+
+/* ---- app content: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono). Gaps follow HandScreen.leftPage. ---- */
+.content { position:absolute; left:16px; right:16px; top:calc(var(--sat) + 16px + var(--built-drop)); display:flex; flex-direction:column; gap:12px; font-family:var(--cochin); line-height:normal; }
+/* 10.5 pt is the app's own micro size (HandScreen.micro); the mockup draws the screen as built. */
+.micro { font-family:var(--mono); font-size:10.5px; letter-spacing:1.2px; text-transform:uppercase; color:var(--inkSoft); }
+.hit { min-height:44px; min-width:44px; display:inline-flex; align-items:center; justify-content:center; flex:none; }
+.pill { font-family:var(--mono); font-size:11.5px; border:1px solid var(--line); background:var(--card); border-radius:5px; padding:8px 12px; color:var(--ink); text-align:center; }
+.head { display:flex; align-items:center; gap:8px; }
+.head .title { font-size:17px; font-weight:700; }
+.head .count { margin-left:auto; font-family:var(--mono); font-size:12px; color:var(--inkSoft); }
+.field { min-height:48px; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:0 12px; display:flex; align-items:center; font-size:16px; }
+.field::after { content:""; width:2px; height:1.1em; background:var(--accent); margin-left:1px; }
+.envrow { display:flex; align-items:center; gap:8px; }
+.envrow .soft { color:var(--inkSoft); font-size:14px; margin-right:auto; }
+/* The match list: one box per frame so a tag can outline it. Its rows keep the VStack's 12 pt gap. */
+.list { display:flex; flex-direction:column; gap:12px; }
+.match { min-height:44px; display:flex; align-items:center; font-size:14px; color:var(--ink); padding-left:10px; }
+/* Hold the list: the tapped row reads as chosen; the others keep their place in inkSoft (4.68:1 on paper) and stay live. Every row has the same inset, so the bar sits in a gutter and no label moves. */
+.match.chosen { font-weight:700; box-shadow:inset 3px 0 0 var(--accent); }
+.match.dim { color:var(--inkSoft); }
+/* Keep the slot: the others leave the eye and VoiceOver, and keep their box. */
+.match.gone { visibility:hidden; }
+.notice { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:2px; }
+.notice .micro { color:var(--manilaInk); }
+.notice b { font-size:15px; } .notice small { font-size:12.5px; }
+/* right page */
+.env { display:flex; flex-direction:column; gap:8px; }
+.who { font-size:22px; font-weight:700; }
+.meta { font-family:var(--mono); font-size:11px; color:var(--inkSoft); }
+.lines { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.line { display:flex; gap:8px; min-height:45px; padding-left:4px; border-top:1px solid var(--line); align-items:center; }
+.line:first-child { border-top:0; }
+.line .box { flex:0 0 45px; height:45px; display:grid; place-items:center; }
+.line .box i { width:30px; height:30px; border:1.5px solid var(--inkSoft); border-radius:6px; display:block; }
+.line b { font-size:14px; font-weight:600; }
+.tie p { margin:0; font-size:13px; color:var(--inkSoft); }
+.tiecard { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:2px; }
+.tiecard b { font-size:15px; }
+
+/* finger: where the tap landed, drawn at the same spot in each frame */
+.finger { position:absolute; width:44px; height:44px; border-radius:50%; border:2px solid var(--accent); background:color-mix(in srgb, var(--accent) 18%, transparent); z-index:8; pointer-events:none; }
+
+/* tags: dashed outline on what exists today, and on what an option adds */
+[data-tag] { position:relative; }
+[data-tag]::before { content:attr(data-tag); position:absolute; right:4px; top:-9px; font:600 11px/14px -apple-system, system-ui, sans-serif; padding:0 4px;
+  background:var(--paper); z-index:4; white-space:nowrap; letter-spacing:0; text-transform:none; font-weight:600; }
+.tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tag-new::before { color:var(--new); }
+.tag-today { outline:2px dashed var(--today); outline-offset:2px; } .tag-today::before { color:var(--today); }
+
+/* folded frame: the outer screen, 382 x 644 pt of safe content (duo-fold-and-keyboard), drawn at half size */
+.folded { position:relative; width:191px; height:322px; border:1px solid var(--ink); border-radius:12px; background:var(--paper);
+  padding:calc(env(safe-area-inset-top) + 12px) 12px calc(env(safe-area-inset-bottom) + 12px); font-size:12px; color:var(--inkSoft); }
+.folded b { font-family:var(--cochin); color:var(--ink); font-size:14px; display:block; margin-bottom:4px; }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No card, seller, count or date on this page is real. Row places come from the code and this drawing, not from a simulator.</div>
+<h1>Card in Hand: a tap on a match moves nothing under the finger</h1>
+<p class="sub">iPhone Duo, open, 951 x 669 pt, fold 40 pt at 455.5 pt. Keys up, drawn from y 405 pt; a dotted line marks 428 pt, the keys top without word suggestions. Field top at about 155 pt. Default text size. Light theme only. One sample in every frame: "to" typed, three matches (Brainstorm, Path to Exile, Swords to Plowshares), the finger on the 2nd. Only the list's rule after the tap changes between options. Debt <code>hand-suspense-tap-shift</code>.</p>
+
+<nav aria-label="States">
+  <a href="#s=before">Before the tap</a>
+  <a href="#s=today">Today</a>
+  <a href="#s=hold">Hold the list (pick)</a>
+  <a href="#s=keep-slot">Keep the slot</a>
+  <a href="#s=trim">Trim below</a>
+  <a href="#s=folded">Folded</a>
+  <a href="#">All</a>
+  <span class="sep"></span>
+  <a href="#c=unique" data-case="unique">Unique name only</a>
+  <a href="#c=shared" data-case="shared">Shared name only</a>
+  <a href="#k=down" data-keys="down">Keys down: see under them</a>
+  <button type="button" data-hide="hold">Hide Hold the list</button>
+  <button type="button" data-hide="keep-slot">Hide Keep the slot</button>
+  <button type="button" data-hide="trim">Hide Trim below</button>
+</nav>
+
+<!-- Folded first (ios-apps, Mockups). Card in Hand does not open folded. -->
+<figure data-state="folded">
+  <div class="folded" data-device="iphone-duo-folded">
+    <b>Folded: unchanged</b>
+    Card in Hand opens only on two pages side by side (<code>PackagesTab.twoPages</code>). The folded screen keeps today's one-page Packages. Nothing to draw.
+  </div>
+  <figcaption><b>Folded.</b> No change in this lane.</figcaption>
+</figure>
+
+<figure data-state="before">
+  <div class="pair" data-device="iphone-duo-unfolded" data-slot="before"></div>
+  <figcaption><b>Before the tap.</b> The same in every option. "to" typed, three matches. Row 3 sits under the keys. The finger rests on Path to Exile, the 2nd row. The right page shows the tie of the three envelopes the text hits.</figcaption>
+</figure>
+
+<figure data-state="today">
+  <div class="pair" data-device="iphone-duo-unfolded" data-slot="today"></div>
+  <figcaption><b>Today.</b> <code>HandScreen.matches</code>: the tap sets the query to the name, and <code>hitNames</code> filters by it at once. The list collapses to the tapped row, which slides up one slot under the finger. For a shared name, the Suspense box opens about 150 ms later, after the settle and <code>HandModel.type</code>, into the freed slot: under the same finger. It breaks <code>no-layout-shift-under-pointer</code> twice.</figcaption>
+</figure>
+
+<figure data-state="hold" data-opt="hold">
+  <div class="pair" data-device="iphone-duo-unfolded" data-slot="hold"></div>
+  <figcaption><b>Hold the list (pick).</b> After a tap, the rows stay where they were until the next keystroke. The tapped row reads as chosen (bold, an accent bar, the selected trait). The others stay live in inkSoft: a tap on one picks that name instead. For a shared name, the Suspense box opens below the held rows, so it opens under the keys.</figcaption>
+</figure>
+
+<figure data-state="keep-slot" data-opt="keep-slot">
+  <div class="pair" data-device="iphone-duo-unfolded" data-slot="keep-slot"></div>
+  <figcaption><b>Keep the slot.</b> After a tap, the tapped row stays in its slot. The others leave the eye and VoiceOver but keep their space until the next keystroke. A gap stands above the match. For a shared name, the Suspense box opens below the kept space, under the keys.</figcaption>
+</figure>
+
+<figure data-state="trim" data-opt="trim">
+  <div class="pair" data-device="iphone-duo-unfolded" data-slot="trim"></div>
+  <figcaption><b>Trim below.</b> After a tap, rows above the tapped one and the tapped row stay; rows below it go. For a shared name, the Suspense box takes the slot of the first row that went: beside the finger, not under it.</figcaption>
+</figure>
+
+</main>
+<script>
+// One sample for every frame. Names from the UI test seed's "to" case (testTappingAMatchDoesNotMoveNewEnvelope).
+const ROWS = ['Brainstorm', 'Path to Exile', 'Swords to Plowshares'];
+const TAP = 1; // the 2nd row
+
+const keysHTML = () => `<div class="keys" aria-hidden="true">
+  <div class="row">${'qwertyuiop'.split('').map(k => `<span class="k">${k}</span>`).join('')}</div>
+  <div class="row">${'asdfghjkl'.split('').map(k => `<span class="k">${k}</span>`).join('')}</div>
+  <div class="row">${'zxcvbnm'.split('').map(k => `<span class="k">${k}</span>`).join('')}</div>
+  <div class="row"><span class="k w">space</span></div></div>
+  <div class="guide g405"><span>keys from y 405 pt</span></div>
+  <div class="guide g428"><span>428 pt: no suggestions bar</span></div>`;
+
+// rule: 'live' (before), 'collapse' (today), 'hold', 'keep-slot', 'trim'
+function rowsHTML(rule) {
+  return ROWS.map((n, i) => {
+    let cls = '';
+    if (rule === 'collapse' && i !== TAP) return '';
+    if (rule === 'trim' && i > TAP) return '';
+    if (rule === 'hold') cls = i === TAP ? 'chosen' : 'dim';
+    if (rule === 'keep-slot' && i !== TAP) cls = 'gone';
+    const sel = rule !== 'live' && i === TAP ? ' aria-selected="true"' : '';
+    const ax = cls === 'gone' ? ' aria-hidden="true"' : '';
+    return `<div class="match ${cls}" data-name="${n}"${sel}${ax}>${n}</div>`;
+  }).join('');
+}
+
+const TAGS = {
+  live: ['', ''],
+  collapse: ['tag-today', 'Today: collapses to the tapped row'],
+  hold: ['tag-new', 'New: rows held, others dimmed'],
+  'keep-slot': ['tag-new', 'New: others hidden, space kept'],
+  trim: ['tag-new', 'New: rows below the tap go'],
+};
+
+function rightPage(kase) {
+  if (kase === 'before') return `<div class="env tie"><span class="micro">3 envelopes hold this card</span>
+    <p>Name the next card from this envelope to tell them apart. Nothing checks in until you post.</p>
+    <div class="tiecard"><b>Alpha Cards</b><span class="meta">ordered 2026-07-01 · 4 cards out</span></div>
+    <div class="tiecard"><b>Beta Games</b><span class="meta">ordered 2026-07-29 · 4 cards out</span></div>
+    <div class="tiecard"><b>Gamma Cards</b><span class="meta">ordered 2026-06-12 · 5 cards out</span></div></div>`;
+  if (kase === 'shared') return `<div class="env tie"><span class="micro">2 envelopes hold this card</span>
+    <p>Name the next card from this envelope to tell them apart. Nothing checks in until you post.</p>
+    <div class="tiecard"><b>Beta Games</b><span class="meta">ordered 2026-07-29 · 4 cards out</span></div>
+    <div class="tiecard"><b>Gamma Cards</b><span class="meta">ordered 2026-06-12 · 5 cards out</span></div></div>`;
+  return `<div class="env"><span class="micro">It came from</span><span class="who">Gamma Cards</span><span class="meta">ordered 2026-06-12</span>
+    <div class="lines">${['Lightning Bolt', 'Path to Exile', 'Swords to Plowshares', 'Ponder', 'Preordain']
+      .map(n => `<div class="line"><span class="box"><i></i></span><b>${n}</b></div>`).join('')}</div></div>`;
+}
+
+// kase: 'before' | 'unique' | 'shared'
+function frame(rule, kase, id) {
+  const field = kase === 'before' ? 'to' : 'Path to Exile';
+  const [tc, tt] = TAGS[rule];
+  const box = kase === 'shared' ? `<div class="notice" data-role="box" aria-label="Suspense: Path to Exile. Not checked in.">
+      <span class="micro">Suspense</span><b>Path to Exile</b><small>Not checked in.</small></div>` : '';
+  return `<div class="duo" data-device="iphone-duo-unfolded" data-rule="${rule}" data-case="${kase}">
+  <div class="status"><span>9:41</span><span>100%</span></div>
+  <div class="page l"><div class="drop">63 pt: the built page sits lower (brief); not drawn</div><div class="content">
+    <div class="head"><span class="title">Mail day</span><span class="count">41 in · 23 out</span><span class="hit"><span class="pill">Close</span></span></div>
+    <div class="field" data-role="field">${field}</div>
+    <div class="envrow"><span class="soft">This envelope</span><span class="hit" data-role="newenv"><span class="pill">New envelope</span></span></div>
+    <span class="micro">Matches</span>
+    <div class="list ${tc}"${tt ? ` data-tag="${tt}"` : ''} id="${id}">${rowsHTML(rule)}</div>
+    ${box}
+  </div></div>
+  <div class="fold"><span>FOLD 40 PT</span></div>
+  <div class="page r"><div class="content">${rightPage(kase)}</div></div>
+  ${keysHTML()}
+  <div class="finger" aria-hidden="true"></div>
+</div>`;
+}
+
+const CASE_TITLE = { before: 'Before: "to" typed, the finger on row 2', unique: 'After the tap: Path to Exile is in one envelope', shared: 'After the tap and the read: Path to Exile is in two envelopes (sample)' };
+function block(rule, kase, id) {
+  return `<div class="frame" data-case="${kase}"><p class="cap">${CASE_TITLE[kase]}</p><div class="fit">${frame(rule, kase, id)}</div><div class="read" data-read></div></div>`;
+}
+const fill = (slot, html) => { document.querySelector(`[data-slot="${slot}"]`).innerHTML = html; };
+fill('before', block('live', 'before', 'focus-before'));
+fill('today', block('live', 'before', 'focus-today-before') + block('collapse', 'unique', 'focus-today') + block('collapse', 'shared', 'focus-today-shared'));
+for (const r of ['hold', 'keep-slot', 'trim']) fill(r, block(r, 'unique', 'focus-' + r) + block(r, 'shared', 'focus-' + r + '-shared'));
+
+// Read each frame's own geometry, in pt from the frame's top, so every caption number comes from this drawing.
+let BEFORE = null; // the tapped row's place before the tap, read from the Before frame
+function readFrames() {
+  const all = [...document.querySelectorAll('.duo')];
+  const geo = d => { const b = d.getBoundingClientRect(); const s = b.height / 669 || 1;
+    return el => { if (!el) return null; const r = el.getBoundingClientRect(); return { top: Math.round((r.top - b.top) / s), bot: Math.round((r.bottom - b.top) / s), left: Math.round((r.left - b.left) / s) }; }; };
+  const ref = document.querySelector('.duo[data-case="before"]');
+  if (ref && ref.getBoundingClientRect().height) { const y = geo(ref); BEFORE = y(ref.querySelectorAll('.match')[TAP]); BEFORE.field = y(ref.querySelector('[data-role="field"]')).top; }
+  if (!BEFORE) return;
+  all.forEach(d => {
+    const y = geo(d), fg = d.querySelector('.finger');
+    fg.style.top = BEFORE.top + 'px'; fg.style.left = (BEFORE.left + 150) + 'px';
+    const out = d.closest('.frame').querySelector('[data-read]'); if (!d.getBoundingClientRect().height) return;
+    const tapped = y(d.querySelector('.match[data-name="Path to Exile"]')), box = y(d.querySelector('[data-role="box"]'));
+    const mid = BEFORE.top + 22, field = y(d.querySelector('[data-role="field"]')).top;
+    // What is under the finger now: the element whose box holds the finger's centre line.
+    const parts = [...d.querySelectorAll('.page.l .match, .page.l [data-role="box"]')].filter(e => getComputedStyle(e).visibility !== 'hidden');
+    const under = parts.find(e => { const g = y(e); return g.top <= mid && g.bot >= mid; });
+    const underName = !under ? 'empty paper' : under.dataset.role === 'box' ? 'the Suspense box' : under.dataset.name;
+    let t = `field top y ${field} · tapped row y ${tapped.top} to ${tapped.bot}`;
+    let moved = false;
+    if (d.dataset.case !== 'before') { const dy = tapped.top - BEFORE.top; moved = dy !== 0; t += dy ? ` (moved ${Math.abs(dy)} pt ${dy < 0 ? 'up' : 'down'})` : ' (did not move)'; }
+    t += ` · under the finger: ${underName}`;
+    if (box) t += ` · Suspense box y ${box.top} to ${box.bot}${box.top >= 405 ? ', wholly under the keys' : box.bot > 405 ? `, ${405 - box.top} pt shows above the keys` : ''}`;
+    const bad = moved || (d.dataset.case !== 'before' && underName !== 'Path to Exile');
+    out.textContent = 'In this drawing: ' + t;
+    out.className = 'read ' + (d.dataset.case === 'before' ? '' : bad ? 'cut' : 'ok');
+  });
+}
+// Scale each 951 pt frame to the page width; the page never scrolls sideways.
+function fit() { document.querySelectorAll('.fit').forEach(w => { const d = w.firstElementChild; d.style.zoom = Math.min(1, w.clientWidth / 951); }); }
+// Deep link: #s=<state>, #c=<unique|shared> and #k=down, alone or joined with &. No hash shows all. A hide button removes one option.
+const hidden = new Set();
+const param = k => { const m = location.hash.match(new RegExp(k + '=([\\w-]+)')); return m && m[1]; };
+function route() {
+  const s = param('s'), c = param('c'), k = param('k');
+  document.body.classList.toggle('keys-down', k === 'down');
+  document.querySelectorAll('figure').forEach(f => { f.hidden = (s && f.dataset.state !== s) || (f.dataset.opt && hidden.has(f.dataset.opt)); });
+  // A case link hides the other case; the Before frame always shows, since every After reads its place from it.
+  document.querySelectorAll('.frame').forEach(fr => { fr.hidden = c && fr.dataset.case !== 'before' && fr.dataset.case !== c; });
+  document.querySelectorAll('nav a').forEach(a => {
+    const h = a.getAttribute('href'), on = h === '#' ? !s && !c && !k : h.startsWith('#s=') ? h.slice(3) === s : h.startsWith('#c=') ? h.slice(3) === c : h.slice(3) === k;
+    a.setAttribute('aria-current', String(on));
+  });
+  // The Before frame is read even when its figure is hidden: show it off-screen for one read.
+  const bf = document.querySelector('figure[data-state="before"]'), wasHidden = bf.hidden;
+  if (wasHidden) { bf.hidden = false; bf.style.cssText = 'position:absolute;left:-9999px;width:951px'; }
+  fit(); readFrames();
+  if (wasHidden) { bf.hidden = true; bf.style.cssText = ''; }
+}
+document.querySelectorAll('nav a').forEach(a => a.addEventListener('click', e => {
+  const h = a.getAttribute('href'); if (h === '#') return;
+  e.preventDefault(); const s = h.startsWith('#s=') ? h.slice(3) : param('s'), c = h.startsWith('#c=') ? h.slice(3) : param('c');
+  // The keys link toggles: a second press brings the keys back.
+  const k = h.startsWith('#k=') ? (param('k') ? null : h.slice(3)) : param('k');
+  location.hash = [s && 's=' + s, c && 'c=' + c, k && 'k=' + k].filter(Boolean).join('&');
+}));
+document.querySelectorAll('[data-hide]').forEach(b => b.addEventListener('click', () => {
+  const o = b.dataset.hide, name = b.textContent.replace(/^(Hide|Show) /, '');
+  hidden.has(o) ? hidden.delete(o) : hidden.add(o);
+  b.textContent = (hidden.has(o) ? 'Show ' : 'Hide ') + name; route();
+}));
+addEventListener('hashchange', route); addEventListener('resize', route);
+(document.fonts ? document.fonts.ready : Promise.resolve()).then(route); route();
+</script>
+</body>
+</html>
