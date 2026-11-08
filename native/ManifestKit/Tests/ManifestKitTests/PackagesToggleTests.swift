@@ -42,12 +42,8 @@ final class PackagesToggleTests: XCTestCase {
 
     /// The real bundle, with toggleCount overridden to return a sentinel.
     func sentinelBundle() throws -> URL {
-        let real = try String(contentsOf: RulesGoldenTests.bundleURL, encoding: .utf8)
-        let probe = FileManager.default.temporaryDirectory
-            .appending(path: "n5-toggle-probe-\(UUID().uuidString).js")
-        let override = "\n;Rules.toggleCount=function(){return \(Self.sentinel)};\n"
-        try (real + override).write(to: probe, atomically: true, encoding: .utf8)
-        return probe
+        try ViewOptionFixtures.bundle(
+            overriding: "Rules.toggleCount=function(){return \(Self.sentinel)};", in: self, label: "n5-toggle-probe")
     }
 
     /// The model's toggle writes the bundle's count, not a count the model worked out.

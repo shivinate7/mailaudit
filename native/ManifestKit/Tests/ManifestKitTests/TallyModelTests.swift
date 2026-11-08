@@ -36,7 +36,7 @@
 //       public private(set) var rows: [TallyRow]    // tallyGroups, sortTally, filterTally, all from the bundle
 //       public private(set) var sort: TallySort     // starts .missing (the web default)
 //       public private(set) var query: String       // starts ""
-//       public private(set) var hideReceived: Bool  // starts false
+//       public private(set) var hideReceived: Bool  // starts true (Unreceived, ruled-head-showing-unreceived)
 //       public func load() async throws
 //       public func setSort(_ key: TallySort) async throws    // sorts with the received map as it is now
 //       public func setQuery(_ text: String) async throws
@@ -156,7 +156,7 @@ final class TallyModelTests: XCTestCase {
         let (model, _, _) = try await makeModel()
         XCTAssertEqual(model.sort, .missing)
         XCTAssertEqual(model.query, "")
-        XCTAssertFalse(model.hideReceived)
+        XCTAssertTrue(model.hideReceived, "Tally starts on Unreceived, as the web does (ruled-head-showing-unreceived)")
         XCTAssertEqual(model.rows.map(\.name), try goldenOrder("missing"))
     }
 
