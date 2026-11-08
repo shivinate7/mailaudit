@@ -1,4 +1,4 @@
-# Mail day on the iPhone Duo: five blind concepts
+# The day's mail on the iPhone Duo: five blind concepts
 
 Open `index.html` from disk. It shows all five, open flat, side by side.
 Each concept page also draws the closed outer screen and the laptop pose.
@@ -35,7 +35,7 @@ Each concept page takes `#pose=flat`, `#pose=closed` or `#pose=laptop`.
 
 ## Choices
 
-1. **One shared mail day.** All five draw the same six sellers and one blank envelope. Gain: you compare ideas, not data. Loss: no concept shows a 300-card day. Pick: shared.
+1. **One shared day's mail.** All five draw the same six sellers and one blank envelope. Gain: you compare ideas, not data. Loss: no concept shows a 300-card day. Pick: shared.
 2. **Light only.** `tokens.json` holds one palette. Gain: no invented colours. Loss: no dark check. Pick: light. Owner word: yes, if a dark theme ships.
 3. **Claim window.** "Claim closes Friday" assumes a window of about 28 days. Gain: lost mail has a deadline. Loss: the length is invented. Pick: owner sets it. Owner word: yes.
 4. **Usual transit, 10 days.** The Sorting Frame's fold sits at 10 days. Gain: late reads at a glance. Loss: invented. Pick: owner sets it. Owner word: yes.

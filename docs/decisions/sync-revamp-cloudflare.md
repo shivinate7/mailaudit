@@ -67,7 +67,7 @@ GitHub was added as a manual backup, not as a sync. Commit 2100b00 says so: "Del
 The orchestrator made these under the owner's grant to run the stages, on 2026-10-11.
 
 - **Switch:** the Worker moves to a new, empty Durable Object. Each device's first POST seeds it. The old object stays as the rollback copy. A re-seed from the old object could bring back an un-check through the per-key max.
-- **Milestones on a live apply:** a live apply takes a milestone only when it removes something. Otherwise the recent version is enough. A milestone on every apply would fill the 60-slot list in one mail day.
+- **Milestones on a live apply:** a live apply takes a milestone only when it removes something. Otherwise the recent version is enough. A milestone on every apply would fill the 60-slot list in one day's mail.
 - **A Worker failure never falls back to GitHub:** any failure sets the advisory state, and Worker retries wait on `backoffMs`.
 - **The server copy only grows:** the device keeps the last server ledger as a merge of every reply. An older reply can never replace a newer one.
 - **An empty store gets seeded:** a cold open that finds the store empty POSTs local check-ins, envelopes and stamps. That is the switch-day path.
