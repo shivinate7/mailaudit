@@ -89,5 +89,5 @@ The designer draws the options page and the badge states before the builder star
 ## Not in scope
 
 - The app's screen that shows `/orders/status` (a later screen lane, debt `orders-job-unbuilt`).
-- Which device key the extension uses: asked of the owner. The build accepts any key the Worker lists.
+- Minting the extension's own device key. `sync-revamp-cloudflare` rules one key per device, so the extension gets its own: Keychain service `mailaudit-sync`, account `extension`, its hash added to the Worker secret `DEVICE_KEY_HASHES` at deploy, on the coordinator's go. The build accepts any key the Worker lists.
 - Removing the Worker secret `TCG_COOKIE` and the Keychain item `mailaudit-tcg-cookie`: after the endpoint is deployed and the owner's first live run passes.
