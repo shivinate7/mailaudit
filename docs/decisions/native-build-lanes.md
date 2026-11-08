@@ -130,7 +130,7 @@ Builder defaults of 2026-10-22, not owner rulings:
 - After each put, `VersionStore` calls `prunePlan` in the rules bundle on the store's clock and removes the ids it lists. Swift holds no copy of the tiers (`retention-tiers-are-unioned`, `rules-run-in-javascriptcore`). A prune that throws does not fail the put.
 - Native saves milestones only: `before reset`, `before restore` and `before sync`. It saves no recent version. It has no CSV import, so it saves no `before import` (`csv-import-stays-web`).
 - The milestone comes first (`milestones-taken-before-risk`). If it cannot be saved, the operation changes nothing.
-- `LedgerStore.adopt` saves `before sync` when the incoming ledger lowers or clears a card count, drops or tombstones a live envelope, or clears a stamp. A reply that only adds saves none. `adopt` does this on a loaded store only. The test is `LedgerStore.removes`, see debt `native-removal-rule-is-swift`.
+- `LedgerStore.adopt` saves `before sync` when the incoming ledger lowers or clears a card count, drops or tombstones a live envelope, or clears a stamp. A reply that only adds saves none. `adopt` does this on a loaded store only. The test is `removesSomething` in `src/version-rules.mjs`. `LedgerStore.removes` calls it in the rules bundle, and `RemovesRuleBundleTests` pins that both sides agree.
 - `LedgerStore.restore` refuses a version when the bytes are not a JSON object or `mailday` is present and not 1. A missing `mailday` passes, as a load does (`native-ledger-is-raw-json`). A refused version saves no milestone. The guard does not require an `items` array. The web `parseLedger` requires `mailday` and `items`, so `every-restore-passes-applybackup` does not describe native. After the guard, `restore` saves `before restore` and applies the bytes through `adoptRaw`, the path `adopt` takes after its milestone: the mend, the kept copy, the save and generation + 1.
 - `LedgerStore.reset` saves `before reset`, then writes an empty ledger and bumps the generation. The versions stay. If the save fails, memory goes back to what it was.
 - Reset, restore and the History list work on a ledger that will not open (`recovery-control-not-state-gated`). An unloaded store puts the file bytes, exactly as they are, in the milestone. The app creates the store and the version model before it loads the ledger.
@@ -203,7 +203,6 @@ Other risks live in the record for their lane:
 - A Reset's effect on the Worker's copy is unmeasured. Debt: `reset-vs-worker-copy-unmeasured`.
 - No ruling on whether a native Reset goes ahead when its milestone cannot be saved. Debt: `native-milestone-needed-unpinned`.
 - The native ask does not move first focus to Cancel. Debt: `native-ask-has-no-cancel-focus`.
-- The test for a removing reply is Swift code. Debt: `native-removal-rule-is-swift`.
 
 ## See also
 
