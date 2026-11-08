@@ -178,7 +178,9 @@ final class RestoreRestampTests: XCTestCase {
     }
 
     /// Green on the old code. The restore still applies the version's check-ins, envelopes and stamps,
-    /// in memory and on disk, so the case above fails on the change times alone.
+    /// in memory and on disk, so the case above fails on the change times alone. An envelope the version
+    /// lacks stays in the list as a tombstone (decision `a-restore-is-not-local`), so only the live
+    /// envelopes are compared with the version's.
     func testRestoreStillAppliesTheVersionsContent() throws {
         let (box, store, _) = try restore(current: try Self.currentDoc(), version: try Self.versionDoc())
         let saved = try box.saved()
@@ -187,9 +189,9 @@ final class RestoreRestampTests: XCTestCase {
         for (doc, at) in [(store.snapshot(), "memory"), (saved, "file")] {
             XCTAssertEqual(VersionSandbox.canon(doc["received"] ?? NSNull()),
                            VersionSandbox.canon(Self.versionReceived), "\(at): check-ins are not the version's")
-            let list = doc["envelopes"] as? [[String: Any]] ?? []
-            XCTAssertEqual(list.map { $0["id"] as? String }, ["e1"], "\(at): envelopes are not the version's")
-            XCTAssertEqual(VersionSandbox.canon(list.first?["entries"] ?? NSNull()),
+            let live = (doc["envelopes"] as? [[String: Any]] ?? []).filter { $0["deletedAt"] == nil }
+            XCTAssertEqual(live.map { $0["id"] as? String }, ["e1"], "\(at): live envelopes are not the version's")
+            XCTAssertEqual(VersionSandbox.canon(live.first?["entries"] ?? NSNull()),
                            VersionSandbox.canon(counterspell), "\(at): envelope e1 entries are not the version's")
             let stamps = doc["stamps"] as? [String: Any] ?? [:]
             XCTAssertEqual((stamps[Box.pkgA] as? [String: Any])?["kind"] as? String, "partial",

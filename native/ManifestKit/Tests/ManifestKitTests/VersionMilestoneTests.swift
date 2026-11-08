@@ -148,7 +148,11 @@ final class VersionMilestoneTests: XCTestCase {
         let again = box.store(versions: nil)
         try again.load()
         XCTAssertEqual(again.received(), [Box.keyC: 2], "the file holds the restored ledger")
-        XCTAssertEqual((again.snapshot()["envelopes"] as? [Any])?.count, 0, "a restore replaces the envelopes too")
+        // An envelope the version lacks is a tombstone, not gone (decision `a-restore-is-not-local`).
+        let envelopes = again.snapshot()["envelopes"] as? [[String: Any]] ?? []
+        XCTAssertEqual(envelopes.filter { $0["deletedAt"] == nil }.count, 0, "a restore leaves a live envelope the version lacks")
+        XCTAssertNotNil(envelopes.first { ($0["id"] as? String) == "e1" }?["deletedAt"],
+                        "the envelope the version lacks is not a tombstone")
     }
 
     /// The apply path refuses what it refuses for a server reply: text that is not a ledger and a
