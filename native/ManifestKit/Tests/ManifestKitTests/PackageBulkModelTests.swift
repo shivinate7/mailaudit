@@ -252,4 +252,37 @@ final class PackageBulkModelTests: XCTestCase {
 
         XCTAssertEqual(store.received(), [Self.a1: 4, Self.a2: 2, Self.f1: 1], "undo must write the bundle's map for the pressed lines")
     }
+
+    // MARK: bulkUndoCount, the count the Undo hint shows
+
+    /// The count is the copies the held Mark all added. A1 has a1 in, so Mark all adds a2's two copies and the count is 2.
+    func testBulkUndoCountIsTheCopiesMarkAllAdded() async throws {
+        let (model, _) = try await rig(received: [Self.a1: 1, Self.f1: 1])
+
+        try await bulking(model).bulk(gk: Self.gk, on: true)
+
+        XCTAssertEqual(model.bulkUndoCount, 2, "the held Undo counts the two copies of a2 that Mark all added")
+    }
+
+    /// The undo takes the press back, so no Undo is held. The anchor shows the 0 is the undo's: the count was 2 before it.
+    func testBulkUndoCountIsZeroAfterUndo() async throws {
+        let (model, _) = try await rig(received: [Self.a1: 1, Self.f1: 1])
+        try await bulking(model).bulk(gk: Self.gk, on: true)
+        XCTAssertEqual(model.bulkUndoCount, 2, "anchor: the held Undo counts two copies before the undo")
+
+        try await bulking(model).undoBulk()
+
+        XCTAssertEqual(model.bulkUndoCount, 0, "undoBulk() takes the press back, so no Undo is held and the count is 0")
+    }
+
+    /// A tab change, a restore or a Reset ends the held Undo through endBulkUndo(), so the count is 0 after it.
+    func testBulkUndoCountIsZeroAfterEndBulkUndo() async throws {
+        let (model, _) = try await rig(received: [Self.a1: 1, Self.f1: 1])
+        try await bulking(model).bulk(gk: Self.gk, on: true)
+        XCTAssertEqual(model.bulkUndoCount, 2, "anchor: the held Undo counts two copies before endBulkUndo()")
+
+        model.endBulkUndo()
+
+        XCTAssertEqual(model.bulkUndoCount, 0, "endBulkUndo() ends the held Undo, so the count is 0")
+    }
 }
