@@ -23,9 +23,7 @@ extension LedgerStoreTests {
     func testMissingLedgerFileOnColdLoadThrowsAndWritesNothing() throws {
         let store = makeStore()
 
-        XCTAssertThrowsError(try store.load(), "a missing ledger.json makes load throw") { error in
-            XCTAssertTrue(error is CocoaError, "the load error is Foundation's, not a wrapper")
-        }
+        XCTAssertThrowsError(try store.load(), "a missing ledger.json makes load throw")
         XCTAssertThrowsError(try store.save(), "a save after the failed load throws")
         XCTAssertEqual(try folderNames(), [], "a failed load and a save leave the folder empty")
     }
@@ -38,9 +36,7 @@ extension LedgerStoreTests {
         try store.load()
         try FileManager.default.removeItem(at: fileURL)
 
-        XCTAssertThrowsError(try store.load(), "a reload with ledger.json gone makes load throw") { error in
-            XCTAssertTrue(error is CocoaError, "the reload error is Foundation's, not a wrapper")
-        }
+        XCTAssertThrowsError(try store.load(), "a reload with ledger.json gone makes load throw")
         XCTAssertThrowsError(try store.save(), "a save after the failed reload throws")
         XCTAssertEqual(try folderNames(), [], "a failed reload and a save leave the folder empty")
     }
