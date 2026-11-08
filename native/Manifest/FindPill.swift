@@ -4,8 +4,10 @@ import SwiftUI
 /// query serves both tabs, so the text follows `query` and reports each change. It has no clear button: the web's input has
 /// none (the coordinator ruling, port default), and the empty list keeps its own Clear search.
 ///
-/// The whole pill is the tap target that focuses the field, so the field may stay one line (a one-line vertical-axis field's hit
-/// region is its line height, measured). The field grows to three lines at large text, so the pill grows and never clips the
+/// The field holds two lines at rest (`lineLimit(2...3)`): a vertical-axis field's hit region is its text view, not its frame,
+/// and the accessibility audit calls a one-line one smaller than 44pt even inside a 52pt frame (measured, 2026-11-08, find-field
+/// at 7168062; the same measure as the Tally search field of N17 and the Orphaned composer). Two Cochin lines clear it. The whole pill
+/// still takes a tap and focuses the field. The field grows to three lines at large text, so the pill grows and never clips the
 /// query. The Return key submits: a vertical-axis field types a newline, which is read as the submit.
 struct FindPill: View {
     let query: String
@@ -20,7 +22,7 @@ struct FindPill: View {
             TextField("Search", text: Binding(get: { text }, set: { v in
                 if v.contains("\n") { text = v.replacingOccurrences(of: "\n", with: ""); focused = false } else { text = v }
             }), prompt: Text("Find card, set, seller, order").foregroundStyle(Parchment.inkSoft), axis: .vertical)
-                .lineLimit(1...3).textFieldStyle(.plain).focused($focused).submitLabel(.search)
+                .lineLimit(2...3).textFieldStyle(.plain).focused($focused).submitLabel(.search)
                 .font(.cochin(16, relativeTo: .body)).foregroundStyle(Parchment.ink)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
