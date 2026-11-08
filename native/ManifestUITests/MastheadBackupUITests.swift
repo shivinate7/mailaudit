@@ -427,8 +427,9 @@ final class MastheadBackupUITests: XCTestCase {
     /// point can be crossed by a known amount. It repeats the press-and-drag of XCUIApplication.reveal, which drags by an
     /// element's gap and cannot drag a set distance. A drag down starts 40pt below the pinned head's foot, read from the
     /// head: the head takes a touch that began on it, and the list would not move. So a drag down needs the head pinned.
+    /// A drag up starts 40pt above listBottom, the Find pill's top on Packages: a touch on the pill moves no list.
     func drag(_ app: XCUIApplication, up dy: CGFloat) {
-        let bottom = app.tabBars.firstMatch.frame.minY
+        let bottom = app.listBottom
         let x = app.windows.firstMatch.frame.midX
         let from = dy > 0 ? bottom - 40 : find(app, "running-head").frame.maxY + 40
         let origin = app.coordinate(withNormalizedOffset: .zero)

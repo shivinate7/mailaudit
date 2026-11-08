@@ -79,10 +79,20 @@ extension XCUIApplication {
         max(windows.firstMatch.frame.minY, statusBars.firstMatch.exists ? statusBars.firstMatch.frame.maxY : 0)
     }
 
+    /// The bottom of the band a list scrolls in: the top of the Find pill when one is drawn, else the tab bar's top. The pill
+    /// floats above the bar (FindPill.swift), so a drag that starts on it moves nothing, and a row under it is not free to
+    /// read. The pill's own frame is `find-pill`, the container of the field.
+    var listBottom: CGFloat {
+        let bar = tabBars.firstMatch.frame.minY
+        let pill = descendants(matching: .any).matching(identifier: "find-pill").firstMatch
+        return pill.exists && !pill.frame.isEmpty ? min(bar, pill.frame.minY) : bar
+    }
+
     /// The one scroll helper of these tests. Plain: swipe up until the element exists and can be tapped, at most 5 swipes.
     /// A lazy list mounts a row only near the screen, so an element not there yet is swiped toward, a second at a time.
     /// `whole`: for a test that records frames before a tap. A tap on an element that is off screen scrolls the
-    /// list and moves every frame, so the element must lie fully between the status bar and the tab bar first.
+    /// list and moves every frame, so the element must lie fully between the status bar and the Find pill or the tab
+    /// bar (listBottom) first.
     /// It drags the list by the measured gap (a drag that holds before it lifts has no fling, so it cannot
     /// overshoot), then waits until the element's frame stops changing. A drag can start on a control, so a
     /// caller reads its at-rest state after this call, never before.
@@ -102,7 +112,7 @@ extension XCUIApplication {
         }
         let screen = windows.firstMatch.frame
         let top = listTop
-        let bottom = tabBars.firstMatch.frame.minY
+        let bottom = listBottom
         func inView() -> Bool { element.frame.minY >= top && element.frame.maxY <= bottom }
         func settle() {
             var last = element.frame
