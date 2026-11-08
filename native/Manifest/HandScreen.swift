@@ -15,6 +15,11 @@ struct HandKit {
     let transit: PastTransitModel
 }
 
+extension EnvironmentValues {
+    /// True while Card in Hand is drawn over the Packages tab, so the tab can drop controls the hand covers (the find pill).
+    @Entry var duoHandOpen = false
+}
+
 /// The Packages tab. On two pages side by side it offers Card in Hand and, while that is open, draws it over the tab.
 struct PackagesTab: View {
     let model: PackagesModel
@@ -36,6 +41,7 @@ struct PackagesTab: View {
         let opener: (() -> Void)? = kit != nil && twoPages ? { handOpen = true } : nil
         PackagesView(model: model, masthead: masthead, sync: sync, openSync: openSync, notice: notice, onChange: onChange, openHand: opener)
             .accessibilityHidden(open)
+            .environment(\.duoHandOpen, open)
             .overlay {
                 if open, let kit { HandScreen(kit: kit, packages: model, masthead: masthead, onChange: onChange, close: { handOpen = false }) }
             }

@@ -12,6 +12,8 @@
 // wrote them (lane duo-tabs-spread-t): they build with `xcodebuild build-for-testing`.
 // Each test names its pose and fails when the window is another size (DuoWindowSupport.swift). It never skips.
 //
+// testFlatBarLabelsFitThePillAtAccessibilityXXXL fails when a bar label passes its button or the pill at large text (debt duo-bar-dynamic-type-clips).
+//
 // Red on the code before the spread (the builder made them pass): testFlatTallySpreadsOverBothPages,
 // testFlatTallyRightPageFollowsTheTappedRow, testFlatOrphanedSpreadsOverBothPages, testFlatBarTitlesShareOneBaseline.
 // Red on the spread's first build (the builder's next round makes them pass): testFlatOrphanedArmedDiscardDoesNotCarryOver
@@ -360,6 +362,43 @@ final class DuoSpreadUITests: XCTestCase {
         }
         guard let low = bottoms.values.min(), let high = bottoms.values.max() else { return }
         XCTAssertLessThanOrEqual(high - low, 0.5, "the bar titles do not share one baseline, their bottoms are \(bottoms)")
+    }
+
+    /// Pose: flat (open Duo, window 951 x 669 pt), launched at AccessibilityXXXL. Each tab's title lies inside the pill and fits its
+    /// own button, so none is truncated. The title is fixed-size text, so one past the pill is clipped, not ellipsized (the
+    /// duo-bar-dynamic-type-clips debt). The large content viewer is not checked: XCUITest has no read of it (the Xcode SDK
+    /// headers name none), so a long-press probe would test the viewer's look, not whether it is offered.
+    func testFlatBarLabelsFitThePillAtAccessibilityXXXL() {
+        let app = XCUIApplication.launchedOnSeed(extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+        guard app.requirePose(.flat) else { return }
+        let bar = app.duoBar
+        guard bar.waitForExistence(timeout: 5) else {
+            XCTFail("the custom tab bar duo-tab-bar is missing on the open Duo")
+            return
+        }
+        continueAfterFailure = true  // every tab is checked, so one run shows each clipped title
+
+        let pill = DuoMetrics.pill(under: bar.frame)
+        let tol = DuoMetrics.tolerance
+        for title in DuoShellUITests.tabTitles {
+            let label = app.byID("duo-tab-title:\(title)")
+            let button = bar.buttons[title]
+            guard label.waitForExistence(timeout: 5), button.exists else {
+                XCTFail("the \(title) tab has no title element duo-tab-title:\(title) or no button in the custom bar")
+                continue
+            }
+            let f = label.frame, b = button.frame
+
+            var past: [String] = []
+            if f.minX < pill.minX - tol { past.append("left") }
+            if f.maxX > pill.maxX + tol { past.append("right") }
+            if f.minY < pill.minY - tol { past.append("top") }
+            if f.maxY > pill.maxY + tol { past.append("bottom") }
+            XCTAssertEqual(past, [], "the \(title) title \(f) runs past the pill \(pill) on its \(past.joined(separator: ", ")) side")
+
+            let fits = f.minX >= b.minX - tol && f.maxX <= b.maxX + tol && f.minY >= b.minY - tol && f.maxY <= b.maxY + tol
+            XCTAssertTrue(fits, "the \(title) title \(f) does not fit its button \(b): it is truncated")
+        }
     }
 
     /// Pose: flat (open Duo, window 951 x 669 pt). Packages keeps the full width, so the fold does not split it. A guard, not a

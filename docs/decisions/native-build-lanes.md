@@ -199,9 +199,8 @@ Other risks live in the record for their lane:
 - Native envelopes have no photos. Debt: `native-envelope-has-no-photos`.
 - The native Orphaned audits are red. Debt: `native-orphaned-colours-unbuilt`.
 - No test pins the native Discard arm. Debt: `native-discard-arm-unpinned`.
-- A native restore keeps the old change times. Debt: `native-restore-keeps-old-times`.
+- No test pins that a later Worker reply leaves a native restore in place. Debt: `native-restore-later-reply-unpinned`.
 - A Reset's effect on the Worker's copy is unmeasured. Debt: `reset-vs-worker-copy-unmeasured`.
-- No ruling on whether a native Reset goes ahead when its milestone cannot be saved. Debt: `native-milestone-needed-unpinned`.
 - The native ask does not move first focus to Cancel. Debt: `native-ask-has-no-cancel-focus`.
 
 ## See also
