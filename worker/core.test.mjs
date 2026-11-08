@@ -1740,7 +1740,7 @@ const inZone = async (zone, fn) => {
 };
 
 /* ---- page builders: div.orderWrap > div.orderHeader (three spans) + div.orderContent ---- */
-const rowHtml = ({ name, set = "Test Set", cond = "Near Mint", price = "$1.00", qty = 1, pid, note = "", soldBy = "", odd = false, decoyFirst = false, noImage = false }) => {
+const rowHtml = ({ name, set = "Test Set", cond = "Near Mint", price = "$1.00", qty = 1, pid, note = "", soldBy = "", odd = false, decoyFirst = false, noImage = false, noName = false }) => {
   const src = `https://img.example.invalid/product/${pid}_25w.jpg`;
   const img = noImage
     ? ""
@@ -1754,7 +1754,7 @@ const rowHtml = ({ name, set = "Test Set", cond = "Near Mint", price = "$1.00", 
                                         ${img}
                                     </div>
                                 <span style="display: block; padding-left: 30px;">
-                                        <a class="nocontext" href="/magic/test-set/${pid}" title="${name}" target="_blank">${name}</a><br />
+                                        ${noName ? "" : `<a class="nocontext" href="/magic/test-set/${pid}" title="${name}" target="_blank">${name}</a><br />`}
 
 ${set}
                                         ${note}
@@ -2389,6 +2389,45 @@ await test("72.25 the lines the Worker stores equal the lines parseItems makes f
   const f = ["key", "orderId", "seller", "name", "qty", "price", "date", "tracking"];
   const byKey = (a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
   eq(itemsOf(s).map((i) => pick(i, f)).sort(byKey), parseItems(wand).map((i) => pick(i, f)).sort(byKey), "key, order, seller, name, qty, price, date and tracking of every line");
+});
+
+await test("72.26 a line with no card name (its name link is missing) is counted unreadable and not stored, the good line merges, and the status records kind unreadable with that count", async () => {
+  const page = orderBlock({
+    id: "S72-26",
+    lines: [
+      { name: "Nameless Card", set: "Test Set Twenty-six", price: "$1.00", qty: 1, pid: 100261, noName: true },
+      { name: "Good Card", set: "Test Set Twenty-six", price: "$1.00", qty: 1, pid: 100262 },
+    ],
+  });
+  const s = seeded();
+  const res = await postOrders(s, pagesBody(page));
+  eq(res.status, 200, "status");
+  eq(keysOf(s).filter((k) => k.startsWith("S72-26|")), ["S72-26|2|100262"], "scope: the good line merges at item number 2, and the nameless line is not stored");
+  eq((await res.json()).unreadable, 1, "body: the nameless line is counted unreadable");
+  const st = await (await getStatus(s)).json();
+  eq({ kind: st.lastFailure?.kind, count: st.lastFailure?.count }, { kind: "unreadable", count: 1 }, "status: kind unreadable with count 1");
+});
+
+await test("72.27 an order with no readable order id counts each of its lines unreadable, the other order's line merges, and no line is stored under the id unknown", async () => {
+  const idless = orderBlock({
+    id: "",
+    lines: [
+      { name: "Idless One", set: "Test Set Twenty-seven", price: "$1.00", qty: 1, pid: 100271 },
+      { name: "Idless Two", set: "Test Set Twenty-seven", price: "$1.00", qty: 1, pid: 100272 },
+    ],
+  });
+  const good = orderBlock({
+    id: "S72-27",
+    lines: [{ name: "Good Card", set: "Test Set Twenty-seven", price: "$1.00", qty: 1, pid: 100273 }],
+  });
+  const s = seeded();
+  const res = await postOrders(s, pagesBody([idless, good].join("\n")));
+  eq(res.status, 200, "status");
+  eq(keysOf(s).filter((k) => k.startsWith("S72-27|")), ["S72-27|1|100273"], "scope: the other order's line merges");
+  eq((await res.json()).unreadable, 2, "body: each of the id-less order's two lines is counted unreadable");
+  ok(!keysOf(s).some((k) => k.startsWith("unknown|")), "no line of the id-less order is stored under the id unknown");
+  const st = await (await getStatus(s)).json();
+  eq({ kind: st.lastFailure?.kind, count: st.lastFailure?.count }, { kind: "unreadable", count: 2 }, "status: kind unreadable with count 2");
 });
 
 report();
