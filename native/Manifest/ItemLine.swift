@@ -89,7 +89,8 @@ struct ItemLine: View {
     private func orderControl(_ id: String, open: @escaping () async -> Void) -> some View {
         Button { Task { await open() } } label: {
             HStack(spacing: 4) {
-                Text(id).font(.mono(10.5)).underline().lineLimit(1).truncationMode(.tail)
+                // A bare id failed the Dynamic Type audit as a plain one did (the label below on `lines`), so the id carries its own.
+                Text(id).font(.mono(10.5)).underline().lineLimit(1).truncationMode(.tail).accessibilityLabel("Order \(id)")
                 Text("\u{203A}")
             }
             .foregroundStyle(paint(.orderId, state))
