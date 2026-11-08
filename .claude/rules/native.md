@@ -74,7 +74,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-backup-web-restore-unrun` — No test restores a native backup file on the web.
 - `native-count-line-clips` — The native count line clips with no ellipsis at 4-digit counts.
 - `native-masthead-stale-after-tabs` — The native masthead and Packages go stale after another tab writes.
-- `native-ledger-pins-missing` — Four native ledger behaviours have no test.
+- `native-ledger-pins-missing` — No test pins that the app passes its own rules.js to the ledger store.
 - `mac-target-unbuilt` — The Mac has no native app.
 - `native-runner-image-unverified` — Whether the hosted runner image has Xcode 27 and xcodegen is unverified.
 - `native-runner-keychain-unverified` — Whether the hosted runner keychain is unlocked is unverified.
@@ -103,6 +103,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `hand-suspense-tap-shift` — A tap on a match shifts rows under the finger.
 - `hand-tap-label-unpinned` — No test pins the tapped name's sideways place.
 - `duo-left-page-dead-margin` — The Duo left page scrolls 76 pt past its end; low priority, after restyle's step 8.
+- `duo-keys-minimize-pref` — A simulator keyboard preference fails the Duo keys-up tests.
 - `duo-checkin-error-under-bar` — A Packages check-in error can sit under the Duo bar.
 - `native-tally-ellipsis-unpinned` — Nothing pins the native Tally ellipsis.
 - `native-discard-panel-covers-head` — The native armed Discard panel covers the envelope header.

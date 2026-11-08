@@ -159,7 +159,8 @@ private struct HingeProbe: UIViewRepresentable {
 }
 
 /// The custom bar's pill and the gap under it, from the mockup.
-private enum DuoBarMetrics {
+/// The open Duo bar's size, read also by the search pill on the list pages (step 8), which sits 8 pt above it.
+enum DuoBarMetrics {
     static let pill: CGFloat = 64
     static let lift: CGFloat = 12
     static var height: CGFloat { pill + lift }
@@ -193,6 +194,8 @@ private struct DuoBar<ID: Hashable>: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(item.title)
+                    // The bar's text is capped at the default size (below), so at larger sizes a long press shows the tab big instead.
+                    .accessibilityShowsLargeContentViewer { Label(item.title, systemImage: item.symbol) }
                     .accessibilityValue(item.badge > 0 ? "\(item.badge)" : "")
                     .accessibilityAddTraits(on ? .isSelected : [])
                     VStack(spacing: 4) {
@@ -205,6 +208,9 @@ private struct DuoBar<ID: Hashable>: View {
                 }
             }
         }
+        // The pill is a fixed 64 pt and the web bar's labels are fixed-size, so the text stops growing at the default size
+        // (duo-card-in-hand). Larger text would clip every label.
+        .dynamicTypeSize(...DynamicTypeSize.large)
         .padding(4)
         .frame(height: DuoBarMetrics.pill)
         .background(.ultraThinMaterial, in: Capsule())
