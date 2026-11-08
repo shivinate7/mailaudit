@@ -12,6 +12,8 @@ The day anchor is derived, not stored. See `version-rules.mjs`. Each listed vers
 
 **Pinned by:** group 39. It asserts on what a milestone holds. That is the ledger as it was before the operation, envelopes included. Mutants confirmed red: milestones never surviving, and Reset taking no milestone or tidying the versions away. Three group 39 mutants died by `JSON.parse(null)`. That is a worse kill. See `testing-throwing-assert-bad-kill`.
 
+Native goes further. If a milestone cannot be saved, a native Reset, restore or removing sync reply refuses and changes nothing. The web runs Reset anyway and shows a banner (`unwritable-store-says-so`). Owner ruling 2026-11-08 10:55 CST, waiting page item 44: the phone keeps refusing. `VersionMilestoneNeededTests` pins all three operations with only the versions folder unwritable.
+
 ## See also
 
 - `unwritable-store-says-so` — the failure that could silently skip a milestone.
