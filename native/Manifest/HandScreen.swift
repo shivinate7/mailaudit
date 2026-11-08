@@ -113,6 +113,8 @@ struct HandScreen: View {
                 .padding(.horizontal, 12).frame(minHeight: 48)
                 .background(Parchment.card, in: RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Parchment.line, lineWidth: 1))
+                // .contain keeps hand-query and hand-held-chip reachable as children of the box.
+                .accessibilityElement(children: .contain).accessibilityIdentifier("hand-field")
                 HStack {
                     Text("This envelope").font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.inkSoft)
                     Spacer(minLength: 8)
