@@ -22,6 +22,9 @@ public final class SyncClient {
     public private(set) var rev: Int?
     /// The `stats` of the last adopted reply; nil when that reply carried none.
     public private(set) var stats: [String: Int]?
+    /// The merge sentence for the stats of the last adopted reply (mergeSummary in the rules bundle).
+    /// nil when that reply carried no stats, or a merge that added and removed nothing, or the bundle failed.
+    public private(set) var mergeNotice: String?
 
     /// Milliseconds since 1970 when a call last agreed with the Worker: an adopted reply, or a 404 from a healthy server
     /// with nothing stored. nil until then. A failure leaves it alone, and it never moves back (web workerSyncedAt, Math.max).
@@ -307,9 +310,24 @@ public final class SyncClient {
         carried = store.userData()
         if let r = reply.rev { rev = max(rev ?? 0, r) }
         stats = reply.stats
+        mergeNotice = await notice(for: reply.stats)
         succeeded(fromPost: fromPost)
         if let onApplied { Task { await onApplied() } }
         return .applied
+    }
+
+    /// The web's gate (`changed` in src/app.jsx): a merge that added and removed nothing has no sentence.
+    /// A bundle failure leaves no notice and never fails the apply.
+    private func notice(for stats: [String: Int]?) async -> String? {
+        guard let stats else { return nil }
+        let kinds = ["itemsAdded", "checkInsAdded", "envelopesAdded", "checkInsRemoved", "envelopesRemoved",
+                     "stampsRemoved", "stampsAdded"]
+        guard kinds.reduce(0, { $0 + (stats[$1] ?? 0) }) > 0,
+              let args = try? JSONSerialization.data(withJSONObject: [stats] as [Any]),
+              let out = try? await engine.call("mergeSummary", String(decoding: args, as: UTF8.self)),
+              let text = (try? JSONSerialization.jsonObject(with: Data(out.utf8), options: .fragmentsAllowed)) as? String
+        else { return nil }
+        return text
     }
 
     private func holdsUserData() -> Bool {
