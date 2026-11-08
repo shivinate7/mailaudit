@@ -50,10 +50,13 @@ public final class LedgerStore {
         try adoptRaw(ledger)
     }
 
-    func adoptRaw(_ ledger: Data) throws {
+    /// `transform` runs on the mended ledger, after ingest and before the save, inside the rollback.
+    /// A restore uses it to restamp the mended ledger, so the kept copy holds the original bytes.
+    func adoptRaw(_ ledger: Data, transform: (([String: Any]) throws -> [String: Any])? = nil) throws {
         let (oldDoc, oldGen, oldDropped, oldLoaded) = (doc, generation, droppedCount, loaded)
         do {
             try ingest(ledger)
+            if let transform { doc = try transform(doc) }
             try save()
             generation += 1
         } catch {
