@@ -19,8 +19,6 @@ struct ManifestApp: App {
     @State private var gate: PressGate?
     /// Find, Showing, Sorted by and Orders from, shared by the Packages and Tally models and the Ledger tab.
     @State private var options = ViewOptions()
-    /// When the app last went to the background, for the Showing reset on a return after a real absence.
-    @State private var backgroundedAt: Date?
     @Environment(\.scenePhase) private var scenePhase
     private let links = PendingKeyLinks()
     private static let log = Logger(subsystem: "dev.shivinate.manifest", category: "key-link")
@@ -33,7 +31,7 @@ struct ManifestApp: App {
                 .background { PressWatcher(gate: gate) }
                 .task { await boot() }
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .background { backgroundedAt = Date() }
+                    if phase == .background, let store { options.leftForeground(in: store) }
                     if phase == .active {
                         Task { _ = await sync?.resume() }
                         Task { await resumeShowing() }
@@ -159,13 +157,9 @@ struct ManifestApp: App {
     }
 
     /// Coming back after a real absence is a fresh start for Showing, and only for Showing: the query, the range and the reveals
-    /// survive (src/app.jsx, the visibilitychange effect). The absence is RESUME_RESET_MS from the rules bundle.
+    /// survive (src/app.jsx, the visibilitychange effect). ViewOptions decides it, against the store's clock.
     private func resumeShowing() async {
-        guard let left = backgroundedAt else { return }
-        backgroundedAt = nil
-        guard let engine, let ms = (try? await engine.constant("RESUME_RESET_MS")).flatMap({ Double($0) }),
-              Date().timeIntervalSince(left) * 1000 >= ms else { return }
-        options.hideDone = true
+        guard let store, let engine, (try? await options.returnedToForeground(in: store, engine: engine)) == true else { return }
         try? await model?.viewOpened()  // a failed read leaves the rows on screen, as the next tab change reads them again
         try? await tally?.viewOpened()
     }
