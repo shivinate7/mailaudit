@@ -29,16 +29,17 @@ struct TallyView: View {
         Group {
             if let pages {
                 // The mockup (pose 9) draws names with ratios on the left page, and the selected name, its totals and copies on the right.
-                // The Find pill is not drawn there: where it goes on the open Duo is the Duo lane's question.
+                // The Find pill sits on the right page above the bar and filters this left list (duo ruling Q5, 2026-11-08 11:14 CST).
                 DuoPages(pages: pages) { list.overlay(alignment: .bottom) { errorBar } } right: { detail }
             } else {
                 list.overlay(alignment: .bottom) { errorBar }
             }
         }
+        .findPillOnDuo(show: model.hasItems, right: pages?.right, query: model.query) { q in Task { await run { try await model.setQuery(q) } } }
         .task { await run { try await model.viewOpened() } }  // another view may have checked something in
     }
 
-    /// Drawn only with items, and only on one page.
+    /// The one-page pill: drawn only with items. The open Duo's pill is `findPillOnDuo`.
     private var findPillShown: Bool { model.hasItems && pages == nil }
 
     private var list: some View {
@@ -70,6 +71,7 @@ struct TallyView: View {
         ScrollView {
             if let row = current { TallyRowView(row: row, model: model, masthead: masthead, openOrder: open, page: .detail).padding(16) }
         }
+        .contentMargins(.bottom, model.hasItems ? FindPillMetrics.duoRoom : 0, for: .scrollContent)  // the last line scrolls clear of the pill and the bar
         .id(current?.name)  // a new pick starts a fresh page: scroll and row state do not carry over
     }
 
