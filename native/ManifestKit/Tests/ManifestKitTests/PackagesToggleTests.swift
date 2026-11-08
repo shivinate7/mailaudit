@@ -171,12 +171,57 @@ final class PackagesToggleTests: XCTestCase {
         try await hand.type("Path to Exile")
         XCTAssertNotNil(hand.offer, "the setup is real: the next card names one envelope, so it offers a post")
         try await hand.post()
-        try? await model.load()
+        try await model.load()
 
         XCTAssertNil(hand.error, "the setup is real: the Post saved")
         XCTAssertEqual(store.received(), [Self.heldBoltC1: 1, Self.pathC1: 1],
                        "the setup is real: the Post checked in the held copy and the typed one")
         XCTAssertNil(model.checkInError, "a good Post must clear the failed line check-in's error, or hand-checkin-error stays up")
+    }
+
+    /// A line tap that fails after a Post keeps its error through the next load. The Post moved the store's count before the
+    /// tap, so the count alone cannot tell the tap's error from the Post's. The Post's reload is missing from this order: a
+    /// reload that failed before it reached the seen count, or one still in flight when the tap failed, leaves the Post unseen.
+    func testLoadAfterAPostKeepsAFailedLineTapError() async throws {
+        let url = try freshLedgerURL()
+        let store = LedgerStore(fileURL: url, now: { 1_786_543_380_000 })
+        let engine = try RulesEngine(bundleURL: RulesGoldenTests.bundleURL)
+        try store.load()
+        let model = PackagesModel(engine: engine, store: store)
+        try await model.load()
+        let hand = HandModel(engine: engine, store: store)
+        try await hand.type("Path to Exile")
+        XCTAssertNotNil(hand.offer, "the setup is real: the card names one envelope, so it offers a post")
+        try await hand.post()
+        XCTAssertNil(hand.error, "the setup is real: the Post did not fail")
+        XCTAssertEqual(store.postsSaved, 1, "the setup is real: the Post counted as saved")
+
+        try breakSaves(url)
+        await model.tap(key: Self.urzaLine)
+        let line = try XCTUnwrap(model.checkInError, "the setup is real: the failed line check-in left its error")
+
+        try await model.load()
+
+        XCTAssertEqual(model.checkInError, line, "a load after a Post must not clear a line tap's error that came later")
+    }
+
+    /// A load with no Post in between keeps a failed line tap's error. Only a Post clears it.
+    func testPlainLoadKeepsAFailedLineTapError() async throws {
+        let url = try freshLedgerURL()
+        let store = LedgerStore(fileURL: url, now: { 1_786_543_380_000 })
+        let engine = try RulesEngine(bundleURL: RulesGoldenTests.bundleURL)
+        try store.load()
+        let model = PackagesModel(engine: engine, store: store)
+        try await model.load()
+
+        try breakSaves(url)
+        await model.tap(key: Self.urzaLine)
+        let line = try XCTUnwrap(model.checkInError, "the setup is real: the failed line check-in left its error")
+        XCTAssertEqual(store.postsSaved, 0, "the setup is real: no Post happened")
+
+        try await model.load()
+
+        XCTAssertEqual(model.checkInError, line, "a load with no Post must keep the failed line tap's error")
     }
 
     /// The real bundle with `override` appended. The override reassigns the global
