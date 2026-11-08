@@ -4,7 +4,7 @@
   "phase": "restyle",
   "order": 2,
   "why": "Bulk check-in on the Packages card and the open Tally row, as the web has it.",
-  "note": "Branch step7-build ba162bc. Local checks pass. Needs main merged, one boot of 8787FE1C (PackageBulk, PackageStamp, PackageCard UI tests, 25-minute cap), then review. Waiting-page item 41 (bulk guard) is open.",
+  "note": "Lane restyle is merging main into step7-build and its feeders (step7-merge2, step7-count, step7-shots, step7-undo pushed 2026-11-07 20:51 to 22:22 CST). Page item 41 (bulk guard) and item 45 (done-row contrast skip) are its open questions.",
   "ask": "Resume the Restyle lane from its handoff ef0d2b41.",
-  "updatedAt": "2026-11-02T19:30:00Z"
+  "updatedAt": "2026-11-08T03:50:00Z"
 }

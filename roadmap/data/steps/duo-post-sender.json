@@ -1,10 +1,10 @@
 {
   "title": "Duo: Post offer keeps the sender on the page",
-  "status": "active",
+  "status": "done",
   "phase": "duo",
   "order": 6,
   "why": "On every held card the Post offer scrolls the seller off the top (debt hand-post-scroll-hides-sender).",
-  "note": "Branch hand-post-sender 7bd3cf5, review round 1 fixes in. Needs one boot of AC2E94F9 (DuoHandUITests whole plus three mutant red proofs, 25-minute cap). Option A is built; waiting-page item 42 can reverse it.",
-  "ask": "Resume the Duo lane from its handoff 52cbf957.",
-  "updatedAt": "2026-11-02T19:30:00Z"
+  "note": "Landed in PR #217 (batch duo-6), 2026-11-07 20:01 CST. The follow-on Duo fixes landed in PRs #217 to #220: hand-notice-cuts-match-row, hand-suspense-tap-shift (page item 48), hand-stray-keeps-tie, hand-stale-checkin-error. duo-left-page-dead-margin waits for restyle step 8 (page item 49).",
+  "ask": "",
+  "updatedAt": "2026-11-08T03:50:00Z"
 }
