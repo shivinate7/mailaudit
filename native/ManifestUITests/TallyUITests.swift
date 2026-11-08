@@ -237,7 +237,11 @@ final class TallyUITests: XCTestCase {
         XCTAssertTrue(element(app, "ledger-sort-grid").waitForExistence(timeout: 5), "Sorted by opened no option grid")
         let inset = (app.windows.firstMatch.frame.width - 375) / 2
 
-        for label in Self.sortLabels {
+        for (i, label) in Self.sortLabels.enumerated() {
+            if i > 0 {  // a pick closes the grid (src/app.jsx setSortOpen(false)), so open it again before the next cell
+                sort.tap()
+                XCTAssertTrue(element(app, "ledger-sort-grid").waitForExistence(timeout: 5), "Sorted by did not reopen before \(label)")
+            }
             let option = app.buttons[label]
             XCTAssertTrue(option.waitForExistence(timeout: 5), "the Sorted by grid has no \(label) cell")
             XCTAssertGreaterThanOrEqual(option.frame.minX, inset - 1, "\(label): the cell starts outside the 375pt frame")

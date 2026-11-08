@@ -26,6 +26,9 @@ final class TallyBulkModelTests: XCTestCase {
                                                 now: { clock.t }, envelopes: envelopes)
         let model = TallyModel(engine: try engine ?? LiveFixture.engine(), store: store)
         try await model.load()
+        // Every load starts on Unreceived (ruled-head-showing-unreceived). These cases test the bulk writes, not the filter,
+        // so the rows are read as Everything and a row whose copies are all in, such as Beta, stays a row.
+        try await model.setHideReceived(false)
         return (model, store)
     }
 

@@ -72,6 +72,19 @@ enum ScreenKit {
         app.reveal(el(app, "tally-row:\(name)"), whole: true)
     }
 
+    /// Sets the Ledger tab's Showing row to Everything, then goes back to `tab`. Every launch starts on Unreceived
+    /// (ruled-head-showing-unreceived), and a card or a Tally row that a case completes leaves the list under Unreceived, so
+    /// such a case calls this after its launch. Showing is shared by Packages and Tally, so one pick serves both tabs.
+    @MainActor static func showEverything(_ app: XCUIApplication, then tab: String = "Packages",
+                                          file: StaticString = #filePath, line: UInt = #line) {
+        app.tabBars.buttons["Ledger"].tap()
+        let value = el(app, "ledger-showing-value")
+        XCTAssertTrue(value.waitForExistence(timeout: 5), "the Showing row's value is missing on Ledger", file: file, line: line)
+        if value.label.contains("Unreceived") { tap(app, "ledger-showing", file: file, line: line) }
+        wait("label CONTAINS 'Everything'", for: value, "Showing did not change to Everything", file: file, line: line)
+        app.tabBars.buttons[tab].tap()
+    }
+
     /// Keeps one screenshot of the app in the test's results under `name`, kept past the run.
     @MainActor static func attach(_ app: XCUIApplication, _ name: String, to test: XCTestCase) {
         let shot = XCTAttachment(screenshot: app.screenshot())

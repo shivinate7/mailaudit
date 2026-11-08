@@ -29,6 +29,9 @@ final class PackageBulkModelTests: XCTestCase {
                                                 now: now ?? { clock.t }, envelopes: envelopes)
         let model = PackagesModel(engine: try engine ?? LiveFixture.engine(), store: store)
         try await model.load()
+        // Every load starts on Unreceived (ruled-head-showing-unreceived). These cases test the bulk writes, not the filter,
+        // so the list is read as Everything and a bulk on a package with a received line still finds that line.
+        try await model.setHideReceived(false)
         return (model, store)
     }
 

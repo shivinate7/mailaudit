@@ -120,6 +120,8 @@ final class TallyLiveItemsTests: XCTestCase {
         let e = try LiveFixture.engine()
         let model = TallyModel(engine: e, store: try await LiveFixture.store(items: items, stamps: stamps, engine: e))
         try await model.load()
+        // Showing is not the subject: the pooled rows are read as Everything (ruled-head-showing-unreceived).
+        try await model.setHideReceived(false)
         return model.rows
     }
 
@@ -183,6 +185,8 @@ final class PackagesLiveItemsTests: XCTestCase {
         let e = try LiveFixture.engine()
         let m = PackagesModel(engine: e, store: try await LiveFixture.store(items: items, stamps: stamps, engine: e))
         try await m.load()
+        // Showing is not the subject: the list is read as Everything (ruled-head-showing-unreceived).
+        try await m.setHideReceived(false)
         return m
     }
 

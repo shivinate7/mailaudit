@@ -192,6 +192,7 @@ final class PackageCardUITests: XCTestCase {
     /// keeps its frame when the package's only copy is checked in.
     func testLongSellerStaysOneLineInsideTheCardAndTheSlotKeepsItsFrame() throws {
         let app = launch(seed: Self.longSellerSeed)
+        ScreenKit.showEverything(app)  // the check-in below completes the package, and its slot is read after it
         let row = element(app, "package-row:\(Self.longSellerPackage)")
         XCTAssertTrue(row.waitForExistence(timeout: 5), "the long-seller row is missing: the seed did not load \(Self.longSellerSeed)")
         guard row.exists else { return }
@@ -280,6 +281,7 @@ final class PackageCardUITests: XCTestCase {
     /// A VoiceOver reader hears the status the card shows.
     func testOrderStatusSlotValueIsThePillTextThenReceived() throws {
         let app = launch()
+        ScreenKit.showEverything(app)  // the loop below checks in every line, and the card must stay on screen for its status
         let gk = Self.package
         let slot = element(app, "card-slot:\(gk)")
         let pill = element(app, "card-pill:\(gk)")

@@ -31,9 +31,11 @@ final class Step7DesignShotsUITests: XCTestCase {
     // MARK: launch and reveal
 
     /// The Packages tab, with the A1 card whole on screen. A nil width runs at the device's own width. It stops the test when
-    /// the card is not there, so no shot of another tab is kept.
-    func packagesWithA1(_ width: Int?) -> XCUIApplication {
+    /// the card is not there, so no shot of another tab is kept. `everything` sets Showing to Everything first, for a state
+    /// whose Mark all or check-ins complete the card; the rest shots keep the Unreceived default a launch starts on.
+    func packagesWithA1(_ width: Int?, everything: Bool = false) -> XCUIApplication {
         let app = ScreenKit.launch(width: width)  // taps the Packages tab
+        if everything { ScreenKit.showEverything(app) }
         let card = "package-row:\(Self.gk)"
         XCTAssertTrue(ScreenKit.mount(app, card), "\(card) is missing: the Packages tab is not up at \(Self.widthName(width))")
         revealCard(app)
@@ -44,17 +46,18 @@ final class Step7DesignShotsUITests: XCTestCase {
         app.reveal(ScreenKit.el(app, "package-row:\(Self.gk)"), whole: true)
     }
 
-    /// The Tally tab with the Brainstorm row open and its copies listed.
-    func tallyWithRowOpen(_ width: Int?) -> XCUIApplication {
+    /// The Tally tab with the Brainstorm row open and its copies listed. `everything` as packagesWithA1.
+    func tallyWithRowOpen(_ width: Int?, everything: Bool = false) -> XCUIApplication {
         let app = ScreenKit.launch(width: width, tab: "Tally")
+        if everything { ScreenKit.showEverything(app, then: "Tally") }
         assertShown(app, ["tally-toggle:\(Self.row)"])
         ScreenKit.openTallyRow(app, Self.row, copy: PackageBulkUITests.brainA)
         return app
     }
 
     /// The open Tally row with one copy checked in by hand, and the whole row on screen.
-    func tallyWithCopyIn(_ width: Int?) -> XCUIApplication {
-        let app = tallyWithRowOpen(width)
+    func tallyWithCopyIn(_ width: Int?, everything: Bool = false) -> XCUIApplication {
+        let app = tallyWithRowOpen(width, everything: everything)
         ScreenKit.checkIn(app, PackageBulkUITests.brainA, prefix: "tally-checkin:")
         app.reveal(ScreenKit.el(app, "tally-row:\(Self.row)"), whole: true)
         return app
@@ -101,7 +104,7 @@ final class Step7DesignShotsUITests: XCTestCase {
 
     /// Undo shown: Mark all checked in the card's lines, and its slot now reads Undo mark all.
     func packagesUndo(_ width: Int?) {
-        let app = packagesWithA1(width)
+        let app = packagesWithA1(width, everything: true)
         ScreenKit.tap(app, "bulk-mark:\(Self.gk)")
         assertShown(app, ["bulk-undo:\(Self.gk)"])
         ScreenKit.wait("label BEGINSWITH 'Undo check in'", for: ScreenKit.el(app, "checkin:\(PackageBulkUITests.brain)"),
@@ -112,7 +115,7 @@ final class Step7DesignShotsUITests: XCTestCase {
 
     /// A done card: every line checked in by hand, so the Mark all slot is hidden and Clear stays in place.
     func packagesDone(_ width: Int?) {
-        let app = packagesWithA1(width)
+        let app = packagesWithA1(width, everything: true)
         for key in [PackageBulkUITests.bolt, PackageBulkUITests.counter, PackageBulkUITests.brain] {
             ScreenKit.checkIn(app, key)
         }
@@ -162,7 +165,7 @@ final class Step7DesignShotsUITests: XCTestCase {
 
     /// The same row after Mark all: Mark all checks in the second copy, and its slot now reads Undo.
     func tallyUndo(_ width: Int?) {
-        let app = tallyWithCopyIn(width)
+        let app = tallyWithCopyIn(width, everything: true)
         ScreenKit.tap(app, "tally-bulk-mark:\(Self.row)")
         assertShown(app, ["tally-bulk-undo:\(Self.row)"])
         ScreenKit.wait("label BEGINSWITH 'Undo check in'", for: ScreenKit.el(app, "tally-checkin:\(PackageBulkUITests.brainB)"),

@@ -351,6 +351,14 @@ final class MastheadBackupUITests: XCTestCase {
         app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "package-row:"))
     }
 
+    /// The topmost Tally row. The Tally has no search box under the masthead any more: its find pill floats above the tab bar
+    /// (FindPillUITests), so the first content under the masthead is the first row.
+    func topmostTallyRow(_ app: XCUIApplication) throws -> XCUIElement {
+        let rows = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "tally-row:"))
+        _ = try XCTUnwrap(rows.firstMatch.waitForExistence(timeout: 5) ? rows.firstMatch : nil, "Tally has no row")
+        return try XCTUnwrap(rows.allElementsBoundByIndex.min { $0.frame.minY < $1.frame.minY }, "Tally has no row")
+    }
+
     /// The topmost package row. The first is one of the rows near the screen.
     func topmostPackageRow(_ app: XCUIApplication) throws -> XCUIElement {
         let rows = packageRows(app)
@@ -364,12 +372,7 @@ final class MastheadBackupUITests: XCTestCase {
     func firstContentTop(_ app: XCUIApplication, tab: String, below head: CGRect) throws -> CGFloat {
         switch tab {
         case "Orphaned": return try live(app, "orphaned-record", tab: tab).frame.minY
-        case "Tally":
-            // `tally-search` reads the field's own frame. The field sits centred in a box of at least 44pt (TallyView's
-            // `frame(minHeight: 44)`) and is shorter than it, so it starts a few points below the box. The box is what
-            // the running head must clear, so read its top: the lesser of the field's top and 22pt above its middle.
-            let field = try live(app, "tally-search", tab: tab).frame
-            return min(field.minY, field.midY - Self.minHit / 2)
+        case "Tally": return try topmostTallyRow(app).frame.minY
         case "Packages": return try topmostPackageRow(app).frame.minY
         default:
             let bar = app.tabBars.firstMatch.frame.minY

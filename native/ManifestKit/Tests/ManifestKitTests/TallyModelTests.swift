@@ -204,6 +204,9 @@ final class TallyModelTests: XCTestCase {
     func testSearchHidesCopiesButKeepsEveryShownFigure() async throws {
         let (all, _, _) = try await makeModel()
         let (model, _, _) = try await makeModel()
+        // Showing is not the subject: both read as Everything (ruled-head-showing-unreceived).
+        try await all.setHideReceived(false)
+        try await model.setHideReceived(false)
         try await model.setQuery("  beta ")  // trimmed, and case-insensitive
         XCTAssertEqual(model.query, "  beta ")
 
@@ -231,6 +234,9 @@ final class TallyModelTests: XCTestCase {
         let rec = ["A1|0|pLightningBolt": 1, "D1|0|pUrzasSaga": 1]
         let (all, _, _) = try await makeModel(received: rec)
         let (model, _, _) = try await makeModel(received: rec)
+        // Showing is the subject, so both start on Everything and the hide below is the change under test.
+        try await all.setHideReceived(false)
+        try await model.setHideReceived(false)
         if let urza = row(all, "Urza's Saga") { XCTAssertEqual(urza.ratio, "1/1 \u{2713}", "control: the row exists unfiltered") }
 
         try await model.setHideReceived(true)
@@ -325,6 +331,7 @@ final class TallyModelTests: XCTestCase {
     /// Opening the view refreshes the counts and never re-sorts: the rows keep the order they had.
     func testViewOpenedKeepsTheFrozenOrder() async throws {
         let (model, store, engine) = try await makeModel()
+        try await model.setHideReceived(false)  // Showing is not the subject (ruled-head-showing-unreceived)
         let before = try goldenOrder("missing")
         try store.commitReceived("A1|2|pBrainstorm", count: 2)
         try store.commitReceived("B1|2|pBrainstorm", count: 2)
@@ -365,6 +372,7 @@ final class TallyModelTests: XCTestCase {
     /// The collapsed row's figures, as ItemTotalRow in src/app.jsx writes them.
     func testRowTextMatchesTheWebRow() async throws {
         let (model, _, _) = try await makeModel()
+        try await model.setHideReceived(false)  // Showing is not the subject (ruled-head-showing-unreceived)
         if let lb = row(model, "Lightning Bolt") {
             XCTAssertEqual(lb.ratio, "1/3")
             XCTAssertEqual(lb.rateLine, "$1.00 / copy")
@@ -450,6 +458,7 @@ final class TallyModelTests: XCTestCase {
     /// The expanded row lists every copy it counts: seller, date, set and order id, newest first.
     func testRowListsEveryCopyItCounts() async throws {
         let (model, _, _) = try await makeModel()
+        try await model.setHideReceived(false)  // Showing is not the subject (ruled-head-showing-unreceived)
         guard let lb = row(model, "Lightning Bolt") else { return }
         XCTAssertEqual(lb.copies.map(\.key), ["B1|0|pLightningBolt", "A1|0|pLightningBolt", "C1|0|pLightningBolt"])
         XCTAssertEqual(lb.copies.map(\.seller), ["Beta Games", "Alpha Cards", "Gamma Cards"])
