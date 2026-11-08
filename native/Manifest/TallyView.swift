@@ -14,11 +14,8 @@ struct TallyView: View {
     let masthead: MastheadModel
     let sync: SyncClient?
     let openSync: () -> Void
-    @State private var text = ""
-    @FocusState private var searching: Bool
     /// The last view-level refresh that failed, so the rows on screen are never silently stale.
     @State private var failure: String?
-    @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.duoSpread) private var spread
     /// The name the open Duo's right page shows. nil until a row is tapped, which shows the first row (the mockup selects one at open).
     @State private var picked: String?
@@ -30,7 +27,7 @@ struct TallyView: View {
         Group {
             if let pages {
                 // The mockup (pose 9) draws names with ratios on the left page, and the selected name, its totals and copies on the right.
-                // Search, sort, Hide received and the masthead are not drawn there. Default, not owner: they keep the one-page order, at the top of the left page.
+                // The Find pill is not drawn there: where it goes on the open Duo is the Duo lane's question.
                 DuoPages(pages: pages) { list.overlay(alignment: .bottom) { errorBar } } right: { detail }
             } else {
                 list.overlay(alignment: .bottom) { errorBar }
@@ -39,10 +36,12 @@ struct TallyView: View {
         .task { await run { try await model.viewOpened() } }  // another view may have checked something in
     }
 
+    /// Drawn only with items, and only on one page.
+    private var findPillShown: Bool { model.hasItems && pages == nil }
+
     private var list: some View {
-        // Search, sort and Hide received scroll under the masthead until the Ledger tab's View group lands.
+        // Showing, Sorted by and Orders from are in the Ledger tab's View group (ledger-tab-holds-options); Find is the pill.
         MastheadScreen(masthead: masthead, tab: .tally, sync: sync, openSync: openSync) {
-            controls
             VStack(spacing: 12) {
                 ForEach(model.rows, id: \.name) { row in
                     TallyRowView(row: row, model: model, masthead: masthead,
@@ -53,6 +52,7 @@ struct TallyView: View {
             .padding(.horizontal, 16)
             .padding(.bottom, 8)
         }
+        .findPill(show: findPillShown, query: model.query) { q in Task { await run { try await model.setQuery(q) } } }
     }
 
     private var detail: some View {
@@ -75,66 +75,6 @@ struct TallyView: View {
         do { try await op(); failure = nil } catch { failure = "Could not update the Tally. \(error.localizedDescription)" }
     }
 
-    private var controls: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // A plain field, not .searchable: its own clear button would be a second Clear control.
-            // A vertical-axis field: the audit calls the text of a one-line UITextField clipped, and a vertical field's hit
-            // region is only its line height unless it holds two lines (measured). Its Return key types a newline, so a
-            // newline is read as the submit.
-            TextField("Search", text: Binding(get: { text }, set: { v in
-                if v.contains("\n") { text = v.replacingOccurrences(of: "\n", with: ""); searching = false } else { text = v }
-            }), prompt: Text("Find card, set, seller, order").foregroundStyle(Parchment.inkSoft), axis: .vertical)
-                .lineLimit(2...3).textFieldStyle(.plain).focused($searching).submitLabel(.search)
-                .font(.cochin(16, relativeTo: .body)).foregroundStyle(paint(.name))
-                .padding(.horizontal, 12)
-                .frame(minHeight: 44)  // inside the box, so the field's own frame is the 44pt hit region
-                .background(paint(.surface), in: RoundedRectangle(cornerRadius: 8))
-                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Parchment.line, lineWidth: 1))
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.never)
-                .accessibilityIdentifier("tally-search")
-                .onChange(of: text) { _, new in Task { await run { try await model.setQuery(new) } } }
-            // One row, stacked at large text sizes so neither control is clipped.
-            if typeSize >= .xxxLarge {
-                VStack(alignment: .leading, spacing: 0) { sortMenu; hideToggle }
-            } else {
-                HStack { sortMenu; Spacer(); hideToggle }
-            }
-        }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 8)
-    }
-
-    private var sortMenu: some View {
-        Menu {
-            ForEach(TallySort.allCases, id: \.self) { key in
-                Button { Task { await run { try await model.setSort(key) } } } label: {
-                    if key == model.sort { Label(key.label, systemImage: "checkmark") } else { Text(key.label) }
-                }
-            }
-        } label: {
-            HStack(spacing: 4) {
-                Text(model.sort.label).font(.mono(11.5, relativeTo: .caption)).foregroundStyle(Parchment.accent)
-                Image(systemName: "chevron.up.chevron.down").imageScale(.small).foregroundStyle(paint(.meta))
-            }
-            .frame(minHeight: 44)
-        }
-        .accessibilityLabel("Sort")
-        .accessibilityValue(model.sort.label)
-        .accessibilityIdentifier("tally-sort")
-    }
-
-    private var hideToggle: some View {
-        Toggle(isOn: Binding(
-            get: { model.hideReceived },
-            set: { on in Task { await run { try await model.setHideReceived(on) } } })) {
-            Text("Hide received").font(.cochin(15, relativeTo: .body)).foregroundStyle(paint(.name))
-        }
-        .tint(Parchment.accent)
-        .frame(minHeight: 44)
-        .accessibilityIdentifier("tally-hide")
-    }
-
     /// One sentence and one Clear control, only while a search is what empties the list.
     private var empty: some View {
         VStack(spacing: 8) {
@@ -142,7 +82,7 @@ struct TallyView: View {
                 : model.hideReceived ? "Everything here has been checked in." : "Nothing to show.")
                 .font(.cochin(14, relativeTo: .body)).foregroundStyle(paint(.meta)).multilineTextAlignment(.center)
             if !model.query.isEmpty {
-                Button { text = "" } label: { MiniLabel(title: "Clear search", vertical: 4, horizontal: 8) }
+                Button { Task { await run { try await model.clearSearch() } } } label: { MiniLabel(title: "Clear search", vertical: 4, horizontal: 8) }
                     .accessibilityLabel("Clear search")
                     .accessibilityIdentifier("tally-clear")
             }

@@ -15,6 +15,16 @@ struct PackagesView: View {
     let onChange: () async throws -> Void
     /// Set only on two pages side by side: the control that opens Card in Hand (duo-card-in-hand).
     var openHand: (() -> Void)?
+    /// The last view-level read that failed, so the rows on screen are never silently stale.
+    @State private var failure: String?
+    @Environment(\.duoSpread) private var spread
+
+    /// The Find pill is drawn on one page only: the open Duo and Card in Hand have their own search.
+    private var pillShown: Bool { model.hasItems && spread.pages(for: .cardInHand) == nil }
+
+    private func run(_ op: () async throws -> Void) async {
+        do { try await op(); failure = nil } catch { failure = "Could not update the list. \(error.localizedDescription)" }
+    }
 
     var body: some View {
         MastheadScreen(masthead: masthead, tab: .packages, sync: sync, openSync: openSync,
@@ -34,17 +44,34 @@ struct PackagesView: View {
                     ForEach(model.rows, id: \.gk) { pkg in
                         PackageRow(pkg: pkg, model: model, masthead: masthead, onChange: onChange)
                     }
+                    if model.rows.isEmpty && model.hasItems { empty }
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
             }
         }
         .overlay(alignment: .bottom) {
-            if let e = model.checkInError {
+            if let e = model.checkInError ?? failure {
                 Text(e).font(.footnote).padding(12).frame(maxWidth: .infinity)
                     .background(.regularMaterial).accessibilityIdentifier("checkin-error")
             }
         }
+        .findPill(show: pillShown, query: model.query) { q in Task { await run { try await model.setQuery(q) } } }
+        .task { await run { try await model.viewOpened() } }  // another tab may have changed Find
+    }
+
+    /// The web's empty list: one sentence, and one Clear search only while a search is what empties it.
+    private var empty: some View {
+        VStack(spacing: 8) {
+            Text(model.query.isEmpty ? "Everything here has been checked in." : "No cards match that search.")
+                .font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.inkSoft).multilineTextAlignment(.center)
+            if !model.query.isEmpty {
+                Button { Task { await run { try await model.clearSearch() } } } label: { MiniLabel(title: "Clear search", vertical: 4, horizontal: 8) }
+                    .accessibilityLabel("Clear search")
+                    .accessibilityIdentifier("package-clear")
+            }
+        }
+        .frame(maxWidth: .infinity).padding(.vertical, 32).padding(.horizontal, 8)
     }
 }
 
@@ -121,8 +148,31 @@ struct PackageRow: View {
                         await masthead.finished(failed: model.checkInError != nil)
                     })
             }
+            revealFooter
         }
         .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 8, bottomTrailingRadius: 8))
+    }
+
+    /// The way out of a search (src/app.jsx PackageCard): how many lines the filters took, and the whole order. Below the rows and
+    /// outside the tap area of any of them. It is 44pt tall; the web's is 34.
+    @ViewBuilder private var revealFooter: some View {
+        let revealed = model.revealed.contains(pkg.gk)
+        if pkg.hiddenByFilters > 0 || revealed {
+            let n = pkg.hiddenByFilters
+            let verb = Text(revealed ? "back to matches" : "show all").underline()
+            Button { Task { await model.reveal(pkg.gk) } } label: {
+                Text(revealed ? "Showing the whole order \(verb)" : "+\(n) more line\(n == 1 ? "" : "s") in this order \(verb)")
+                    .font(.mono(11, relativeTo: .caption)).foregroundStyle(Parchment.inkSoft)
+                    .multilineTextAlignment(.leading)
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .overlay(alignment: .top) { Rectangle().fill(Parchment.line).frame(height: 1) }
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityValue(revealed ? "expanded" : "collapsed")
+            .accessibilityIdentifier("reveal:\(pkg.gk)")
+        }
     }
 
     private var header: some View {

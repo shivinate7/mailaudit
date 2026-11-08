@@ -104,6 +104,8 @@ public final class PackagesModel {
     /// Showing: true is Unreceived (src/app.jsx `hideDone`). The Tally calls the same choice hideReceived.
     public var hideReceived: Bool { options.hideDone }
     public var sort: PackageSort { options.sortBy }
+    /// The packages that draw their whole order, whatever Find and Showing say.
+    public var revealed: Set<String> { options.revealed }
 
     private func json(_ value: Any) throws -> String {
         String(decoding: try JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed]), as: UTF8.self)
@@ -232,6 +234,11 @@ public final class PackagesModel {
     public func toggleReveal(_ gk: String) async throws {
         options.toggleReveal(gk)
         try await refilter()
+    }
+
+    /// For the view: a reveal toggle whose failure is already in checkInError.
+    public func reveal(_ gk: String) async {
+        do { try await toggleReveal(gk) } catch { fail("Could not read the list. \(error.localizedDescription)") }
     }
 
     /// The Packages tab came on screen: another tab may have changed Find or the counts. Like the web, a view change ends the sticky lines

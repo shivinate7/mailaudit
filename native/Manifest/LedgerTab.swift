@@ -7,7 +7,8 @@ private func paint(_ part: LedgerPaint.Part, armed: Bool = false) -> Color {
     LedgerPaint.token(part, armed: armed).map(Parchment.color) ?? .clear
 }
 
-/// The Ledger tab: the Data group (Sync, History, Backup) and the Reset box (ledger-tab-holds-options).
+/// The Ledger tab: the View group (Showing, Sorted by, Orders from), the Data group (Sync, History, Backup) and the Reset box
+/// (ledger-tab-holds-options). The View group shows only with items, as the web's does.
 /// History and Reset read their stores whether or not the ledger opened (recovery-control-not-state-gated);
 /// Sync has no row when the ledger will not open, because the app then starts no sync client.
 /// An ask arms in place and has its own Cancel; no native dialog appears (no-native-dialogs). Sync and History close each other (history-sync-close-each-other).
@@ -15,6 +16,8 @@ struct LedgerTab: View {
     let masthead: MastheadModel?
     let store: LedgerStore?
     let versions: VersionsModel?
+    /// Showing, Sorted by and Orders from, shared with the Packages and Tally models.
+    let options: ViewOptions
     /// nil when the app runs without a sync client: the Sync row is then not drawn.
     let sync: SyncClient?
     /// Whether the Sync panel is open. The advisory line on a working screen opens it from outside.
@@ -26,6 +29,9 @@ struct LedgerTab: View {
     @State private var historyOpen = false
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var openRow: String?
+    @State private var sortOpen = false
+    @State private var rangeOpen = false
+    @State private var viewFailure: String?
 
     var body: some View {
         MastheadScreen(masthead: masthead, tab: .ledger) {
@@ -34,6 +40,7 @@ struct LedgerTab: View {
                     .foregroundStyle(paint(.title)).frame(maxWidth: .infinity)
                     .padding(.top, masthead == nil ? 16 : 0)
                     .accessibilityAddTraits(.isHeader)
+                if let store, !(masthead?.countLine(for: .ledger) ?? "").isEmpty { viewGroup(store) }
                 Text("Data").textCase(.uppercase).font(.mono(11, relativeTo: .caption)).tracking(2.2)
                     .foregroundStyle(paint(.groupLabel)).padding(.leading, 4).padding(.top, 16).padding(.bottom, 8)
                     .accessibilityAddTraits(.isHeader)
@@ -51,6 +58,101 @@ struct LedgerTab: View {
         }
         .sheet(item: $shared) { ShareSheet(url: $0.url) }
         .onChange(of: syncOpen) { _, open in if open { closeHistory() } }
+    }
+
+    // MARK: View
+
+    /// The choices that shape the Packages and Tally lists (src/app.jsx, the Ledger tab's View group). Each change is saved by
+    /// ViewOptions where the web saves it, and then every tab reads the ledger again, so the figures follow the range.
+    private func viewGroup(_ store: LedgerStore) -> some View {
+        let tally = options.lastList == .tally
+        let sortLabel = tally ? options.itemSort.label : options.sortBy.label
+        let lines = options.lineCount
+        let sub = "\(lines) line\(lines == 1 ? "" : "s")" + (options.outsideCount > 0 ? " \u{00B7} \(options.outsideCount) outside" : "")
+        return VStack(alignment: .leading, spacing: 0) {
+            Text("View").textCase(.uppercase).font(.mono(11, relativeTo: .caption)).tracking(2.2)
+                .foregroundStyle(paint(.groupLabel)).padding(.leading, 4).padding(.top, 16).padding(.bottom, 8)
+                .accessibilityAddTraits(.isHeader)
+            VStack(alignment: .leading, spacing: 0) {
+                LedgerRow(title: "Showing", value: "\(options.hideDone ? "\u{25CF}" : "\u{25CB}") \(options.hideDone ? "Unreceived" : "Everything")",
+                          id: "ledger-showing", valueID: "ledger-showing-value", first: true, pressed: options.hideDone) {
+                    options.hideDone.toggle()
+                    Task { await onLedgerChange() }
+                }
+                LedgerRow(title: "Sorted by", value: sortLabel, open: sortOpen, id: "ledger-sort", valueID: "ledger-sort-value",
+                          expandedValue: "\(sortLabel), \(sortOpen ? "expanded" : "collapsed")") {
+                    rangeOpen = false
+                    sortOpen.toggle()
+                }
+                if sortOpen {
+                    OptionPanel(id: "ledger-sort-grid", columns: 2, cells: tally
+                        ? TallySort.allCases.map { key in OptionCell(label: key.label, on: key == options.itemSort) { choose { try options.setItemSort(key, in: store) } } }
+                        : PackageSort.allCases.map { key in OptionCell(label: key.label, on: key == options.sortBy) { choose { try options.setSortBy(key, in: store) } } })
+                }
+                LedgerRow(title: "Orders from", sub: sub, value: options.dateFilter.label, open: rangeOpen, id: "ledger-range",
+                          valueID: "ledger-range-value", expandedValue: "\(options.dateFilter.label), \(rangeOpen ? "expanded" : "collapsed")") {
+                    sortOpen = false
+                    rangeOpen.toggle()
+                }
+                if rangeOpen {
+                    OptionPanel(id: "ledger-range-grid", columns: 4, cells: RangePreset.allCases.map { preset in
+                        OptionCell(label: preset.label, on: preset == options.dateFilter.preset) {
+                            var next = options.dateFilter
+                            next.preset = preset
+                            setRange(next, store)
+                        }
+                    }) {
+                        if options.dateFilter.preset == .days { daysRow(store) }
+                    }
+                }
+            }
+            .modifier(Card())
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("ledger-view")
+            if let viewFailure { ErrorBox(text: viewFailure).padding(.top, 8).accessibilityIdentifier("view-error") }
+        }
+    }
+
+    /// Picks a sort: the grid closes, as the web's does, and the lists are read again.
+    private func choose(_ save: () throws -> Void) {
+        do { try save(); viewFailure = nil } catch { viewFailure = "Could not save the view. \(error.localizedDescription)" }
+        sortOpen = false
+        Task { await onLedgerChange() }
+    }
+
+    private func setRange(_ filter: DateFilter, _ store: LedgerStore) {
+        do { try options.setDateFilter(filter, in: store); viewFailure = nil } catch { viewFailure = "Could not save the view. \(error.localizedDescription)" }
+        Task { await onLedgerChange() }
+    }
+
+    /// The Last stepper (src/app.jsx bumpDays): one day more or fewer, never under 1, starting from 21 when the field is empty.
+    private func daysRow(_ store: LedgerStore) -> some View {
+        func bump(_ by: Int) {
+            var next = options.dateFilter
+            next.days = String(max(1, (Int(next.days ?? "") ?? 21) + by))
+            setRange(next, store)
+        }
+        return HStack(spacing: 8) {
+            Text("Last").textCase(.uppercase).font(.cochin(10, relativeTo: .caption2)).tracking(1.6).foregroundStyle(paint(.partLabel))
+            HStack(spacing: 0) {
+                Button { bump(-1) } label: { Text("\u{2212}").font(.mono(15)).foregroundStyle(Parchment.ink).frame(width: 44, height: 44) }
+                    .accessibilityLabel("Fewer days").accessibilityIdentifier("ledger-days-fewer")
+                TextField("21", text: Binding(get: { options.dateFilter.days ?? "" }, set: { v in
+                    var next = options.dateFilter
+                    next.days = v.filter(\.isNumber)
+                    setRange(next, store)
+                }))
+                .keyboardType(.numberPad).multilineTextAlignment(.center).font(.mono(13)).foregroundStyle(Parchment.ink)
+                .frame(width: 46, height: 44)
+                .accessibilityLabel("Number of days").accessibilityIdentifier("ledger-days")
+                Button { bump(1) } label: { Text("+").font(.mono(15)).foregroundStyle(Parchment.ink).frame(width: 44, height: 44) }
+                    .accessibilityLabel("More days").accessibilityIdentifier("ledger-days-more")
+            }
+            .background(Parchment.card, in: Capsule())
+            .overlay(Capsule().strokeBorder(Parchment.line, lineWidth: 1))
+            Text("days").textCase(.uppercase).font(.cochin(10, relativeTo: .caption2)).tracking(1.6).foregroundStyle(paint(.partLabel))
+        }
+        .padding(.top, 8)
     }
 
     private func closeHistory() {
@@ -261,6 +363,8 @@ private struct LedgerRow: View {
     var valueID: String?
     var first = false
     var expandedValue: String?
+    /// For a one-tap choice such as Showing: whether it is on, spoken as selected (the web's aria-pressed).
+    var pressed: Bool?
     let action: () -> Void
 
     var body: some View {
@@ -288,7 +392,8 @@ private struct LedgerRow: View {
             Button(action: action) { Color.clear.contentShape(Rectangle()) }
                 .buttonStyle(.plain)
                 .accessibilityLabel(title)
-                .accessibilityValue(expandedValue ?? "")
+                .accessibilityValue(expandedValue ?? value ?? "")
+                .accessibilityAddTraits(pressed == true ? .isSelected : [])
                 .accessibilityIdentifier(id)
         }
         .overlay(alignment: .top) { if !first { Rule() } }

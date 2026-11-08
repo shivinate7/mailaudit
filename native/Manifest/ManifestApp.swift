@@ -17,6 +17,10 @@ struct ManifestApp: App {
     @State private var engine: RulesEngine?
     @State private var sync: SyncClient?
     @State private var gate: PressGate?
+    /// Find, Showing, Sorted by and Orders from, shared by the Packages and Tally models and the Ledger tab.
+    @State private var options = ViewOptions()
+    /// When the app last went to the background, for the Showing reset on a return after a real absence.
+    @State private var backgroundedAt: Date?
     @Environment(\.scenePhase) private var scenePhase
     private let links = PendingKeyLinks()
     private static let log = Logger(subsystem: "dev.shivinate.manifest", category: "key-link")
@@ -25,11 +29,15 @@ struct ManifestApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(model: model, orphaned: orphaned, tally: tally, masthead: masthead, store: store, sync: sync, versions: versions, onLedgerChange: { await reloadAll() }, failure: failure, notice: notice, handKit: handKit, width: Self.forcedWidth)
+            RootView(model: model, orphaned: orphaned, tally: tally, masthead: masthead, store: store, options: options, sync: sync, versions: versions, onLedgerChange: { await reloadAll() }, failure: failure, notice: notice, handKit: handKit, width: Self.forcedWidth)
                 .background { PressWatcher(gate: gate) }
                 .task { await boot() }
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .active { Task { _ = await sync?.resume() } }
+                    if phase == .background { backgroundedAt = Date() }
+                    if phase == .active {
+                        Task { _ = await sync?.resume() }
+                        Task { await resumeShowing() }
+                    }
                 }
                 .onOpenURL { url in
                     // The key goes to the Keychain and the URL is dropped (native-key-via-url-scheme).
@@ -96,9 +104,9 @@ struct ManifestApp: App {
             }
             #endif
             notice = LedgerNotice.damagedLine(dropped: store.droppedCount)
-            let m = PackagesModel(engine: e, store: store)
+            let m = PackagesModel(engine: e, store: store, options: options)
             try await m.load()
-            let t = TallyModel(engine: e, store: store)
+            let t = TallyModel(engine: e, store: store, options: options)
             try await t.load()
             let o = OrphanedModel(engine: e, store: store)
             try await o.load()
@@ -148,6 +156,18 @@ struct ManifestApp: App {
         sync = client
         client.connect()
         Task { _ = await client.pull() }
+    }
+
+    /// Coming back after a real absence is a fresh start for Showing, and only for Showing: the query, the range and the reveals
+    /// survive (src/app.jsx, the visibilitychange effect). The absence is RESUME_RESET_MS from the rules bundle.
+    private func resumeShowing() async {
+        guard let left = backgroundedAt else { return }
+        backgroundedAt = nil
+        guard let engine, let ms = (try? await engine.constant("RESUME_RESET_MS")).flatMap({ Double($0) }),
+              Date().timeIntervalSince(left) * 1000 >= ms else { return }
+        options.hideDone = true
+        try? await model?.viewOpened()  // a failed read leaves the rows on screen, as the next tab change reads them again
+        try? await tally?.viewOpened()
     }
 
     /// A reset or restore changed the ledger: every view reads it again.
