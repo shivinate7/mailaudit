@@ -525,6 +525,9 @@ final class PackageBulkUITests: XCTestCase {
         let undo = el(app, "bulk-vacated-undo:\(gk)")
         XCTAssertTrue(undo.waitForExistence(timeout: 5), "Mark all on A1 drops it from Unreceived, and its Undo shows in its place")
         XCTAssertFalse(el(app, "package-row:\(gk)").exists, "anchor: A1 is off the list, so the notice holds its place")
+        // B1's line can sit under the Find pill at rest, so the list scrolls it into the band first. The frames are taken after
+        // that, and each is read relative to the anchor, so the scroll moves none of them.
+        app.reveal(el(app, "checkin:B1|1|pCounterspell"), whole: true)
 
         let taken = snap(app)
         for lower in ["package-row:C1::Gamma Cards", "package-row:D1::Delta Cards"] {
