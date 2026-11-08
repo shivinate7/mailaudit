@@ -102,10 +102,7 @@ final class RemovesRuleBundleTests: XCTestCase {
     /// plus one override that answers true. On an empty ledger the Swift answer is false, so a true here
     /// can only come from the bundle. The same override pattern is in TallyModelTests.probeBundle.
     func testRemovesAsksTheBundleItIsGiven() throws {
-        let real = try String(contentsOf: RulesGoldenTests.bundleURL, encoding: .utf8)
-        let probe = PhotoTestKit.runFolder.appending(path: "removes-probe-\(UUID().uuidString).js")
-        try (real + "\n;Rules.removesSomething=function(){return true};\n")
-            .write(to: probe, atomically: true, encoding: .utf8)
+        let probe = try RulesProbeBundle.make("Rules.removesSomething=function(){return true}")
         let direct = try RulesCore(bundleURL: probe).call("removesSomething", "[{},{}]")
         XCTAssertEqual(direct, "true", "the probe bundle is not live: removesSomething on an empty pair did not answer true")
         let versions = VersionStore(
@@ -137,10 +134,7 @@ final class RemovesRuleBundleTests: XCTestCase {
     /// reply that removes nothing. The scope line proves the probe's rule really throws on a call.
     func testRemovesSaysTrueWhenTheBundleCallThrows() throws {
         let reply = try XCTUnwrap(Self.cases().first { $0.kind == "identical" })
-        let real = try String(contentsOf: RulesGoldenTests.bundleURL, encoding: .utf8)
-        let probe = PhotoTestKit.runFolder.appending(path: "removes-throws-\(UUID().uuidString).js")
-        try (real + "\n;Rules.removesSomething=function(){throw new Error(\"probe: removesSomething throws\")};\n")
-            .write(to: probe, atomically: true, encoding: .utf8)
+        let probe = try RulesProbeBundle.make("Rules.removesSomething=function(){throw new Error(\"probe: removesSomething throws\")}")
         XCTAssertThrowsError(try RulesCore(bundleURL: probe).call("removesSomething", "[{},{}]"),
                              "scope: the probe's removesSomething throws on a call")
         let versions = VersionStore(

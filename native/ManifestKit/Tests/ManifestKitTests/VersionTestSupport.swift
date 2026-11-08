@@ -102,7 +102,6 @@
 //   throws. A failure leaves the ledger as it was and sets `error` at the pressed row.
 //
 // Not pinned, listed for the owner (Input Needed in the lane report):
-//   - Whether Reset goes ahead when its "before reset" milestone cannot be saved.
 //   - The times a restore stamps on check-ins, stamps and envelopes (lane W3b is blocked).
 //   - What a Reset does to the Worker's copy (unmeasured, a-restore-is-not-local).
 //   - Whether the restore count includes envelope cards (open in history-restores-a-saved-version).

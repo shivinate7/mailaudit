@@ -161,8 +161,7 @@ struct ManifestApp: App {
     /// With -ManifestUITestSeed the version store starts empty, so a run never counts an earlier one.
     private static func versionsURL() throws -> URL {
         let fm = FileManager.default
-        let url = try fm.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-            .appending(path: "versions", directoryHint: .isDirectory)
+        let url = VersionStore.folder(besideLedger: try ledgerURL())
         if ProcessInfo.processInfo.arguments.contains("-ManifestUITestSeed") { try? fm.removeItem(at: url) }
         return url
     }
