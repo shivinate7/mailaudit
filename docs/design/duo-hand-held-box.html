@@ -357,8 +357,11 @@ function readPair(before, after, out) {
   const pill = ya(role(after, 'newenv').querySelector('.pill'));
   if (pill.right > 441) moved.push(`New envelope cut off at the page edge by ${pill.right - 440} pt`);
   const ok = !moved.length && name(hit) === want;
-  out.textContent = `In this drawing: ${moved.length ? moved.join(', ') : 'field, New envelope and every match row kept their place'} · under the finger after: ${name(hit)} · ${sig}`;
-  out.className = 'read ' + (ok ? 'ok' : 'cut');
+  // A row under the keys cannot take a tap: the pair then checks the layout rule only, so it reads as unknown, not as a pass.
+  const unreachable = press === 'tap' && t.bot > KEYS;
+  out.textContent = `In this drawing: ${moved.length ? moved.join(', ') : 'field, New envelope and every match row kept their place'} · under the finger after: ${name(hit)} · ${sig}`
+    + (unreachable ? ` · the tapped row sits under the keys (y ${t.top} to ${t.bot}), so no finger reaches it; this checks the layout rule only` : '');
+  out.className = 'read ' + (!ok ? 'cut' : unreachable ? '' : 'ok');
 }
 
 function readFrames() {

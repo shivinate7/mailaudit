@@ -56,6 +56,7 @@ In `HandScreen.leftPage`, put the TextField and a chip in one `HStack(spacing: 8
 ## Critique (impeccable, design review only: native platform, no sub-agent tool in a designer)
 
 - Fixed: the envelope-row reader read only y, so it missed the button's sideways move; it now reads x too, and the row option's caption says what it found.
+- Fixed: a tap pair whose tapped row sits under the keys (every AX3 pair, and the strip at default) read as a pass. It now reads as unknown: it checks the layout rule only, since no finger reaches the row.
 - Fixed: the page edge check fired at 1 pt from rounding; the limit is now 441 pt.
 - Fixed: the frames are drawn by script, so the iOS mockup check found no unfolded frame; each slot now carries `data-device`.
 - Open, product: the chip may read as a search token. A builder can test that with the owner; no change here.
