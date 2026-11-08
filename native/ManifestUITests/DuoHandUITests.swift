@@ -79,6 +79,9 @@ final class DuoHandUITests: XCTestCase {
     static let boltOfAlpha = "A1|0|pLightningBolt"
     /// The late packages in the seed, oldest last: dated 2026-07-29, 2026-07-01 and 2026-05-01. The last two are 30 days or more on any clock the page needs.
     static let lateMail = ["B1::Beta Games", "A1::Alpha Cards", "D1::Delta Cards"]
+    /// The type size of the Post-offer scroll case. The tallest seed envelope (C1, Gamma Cards, 5 lines) fits the answer page at the
+    /// default size, so the page does not scroll there. The larger size lets the envelope overflow the page.
+    static let largeType = ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityL"]
 
     override func setUp() {
         super.setUp()
@@ -479,10 +482,11 @@ final class DuoHandUITests: XCTestCase {
 
     /// Pose: flat. The answer page is scrolled down first, so the sender is off its top. Then the next card offers Post, and
     /// the page scrolls to its top: the sender and Post are both on the page. Deleting that scroll leaves the page scrolled,
-    /// with the sender off it (decision duo-card-in-hand, the Post offer). The offer comes after the tie of the held name, which
-    /// is shorter than the envelope, so a scroll survives the tie only as far as the tie is tall; the failure frames show it.
+    /// with the sender off it (decision duo-card-in-hand, the Post offer). The launch uses `largeType`, because the page
+    /// overflows only at that size. The offer comes after the tie of the held name, and a scroll survives the tie only as far
+    /// as the tie is tall; the failure frames show it.
     func testPostOfferScrollsTheSenderBackOntoThePage() {
-        let app = XCUIApplication.launchedOnSeed()
+        let app = XCUIApplication.launchedOnSeed(extra: Self.largeType)
         guard app.requirePose(.flat) else { return }
         openHand(app)
 
