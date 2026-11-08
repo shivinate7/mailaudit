@@ -22,8 +22,9 @@ final class PackageBulkModelTests: XCTestCase {
     static let a1 = "a1", a2 = "a2", e1 = "e1", f1 = "f1"
 
     /// A loaded model over LiveFixture.base. `now` is the store's clock; by default it reads `clock`, which a case moves.
+    /// `unreceived` keeps the load's own Showing (Unreceived), for the cases that need a completed card to leave the list.
     func rig(received: [String: Int], clock: PressClock = PressClock(1_000), now: (() -> Double)? = nil,
-             engine: RulesEngine? = nil, stamps: [LiveStamp] = [], envelopes: [[String: Any]] = []) async throws
+             engine: RulesEngine? = nil, stamps: [LiveStamp] = [], envelopes: [[String: Any]] = [], unreceived: Bool = false) async throws
         -> (model: PackagesModel, store: LedgerStore) {
         let store = try await LiveFixture.store(items: LiveFixture.base, stamps: stamps, engine: try LiveFixture.engine(), received: received,
                                                 now: now ?? { clock.t }, envelopes: envelopes)
@@ -31,7 +32,7 @@ final class PackageBulkModelTests: XCTestCase {
         try await model.load()
         // Every load starts on Unreceived (ruled-head-showing-unreceived). These cases test the bulk writes, not the filter,
         // so the list is read as Everything and a bulk on a package with a received line still finds that line.
-        try await model.setHideReceived(false)
+        if !unreceived { try await model.setHideReceived(false) }
         return (model, store)
     }
 
@@ -287,5 +288,67 @@ final class PackageBulkModelTests: XCTestCase {
         model.endBulkUndo()
 
         XCTAssertEqual(model.bulkUndoCount, 0, "endBulkUndo() ends the held Undo, so the count is 0")
+    }
+
+    // MARK: The vacated Undo notice
+
+    /// A Mark all that completes a card under Unreceived drops the card, so the held Undo has no card to sit on. The model keeps
+    /// it as `vacatedUndo`: the card, the copies the Undo takes and the place the card held in `rows`, where the notice goes
+    /// (undo-removes-only-its-delta). E1 is the second of four cards, sorted by seller, so its place is 1.
+    func testAMarkAllThatDropsACardLeavesItsUndoAtThatCardsPlace() async throws {
+        let (model, _) = try await rig(received: [:], unreceived: true)
+        let place = try XCTUnwrap(model.rows.firstIndex { $0.gk == Self.eGk }, "anchor: E1 is listed under Unreceived")
+        XCTAssertEqual(place, 1, "anchor: E1 is the second card")
+        XCTAssertNil(model.vacatedUndo, "anchor: nothing is held before a Mark all")
+
+        try await bulking(model).bulk(gk: Self.eGk, on: true)
+
+        XCTAssertFalse(model.rows.contains { $0.gk == Self.eGk }, "anchor: Mark all completes E1, so Unreceived drops it")
+        XCTAssertEqual(model.vacatedUndo, PackagesModel.VacatedUndo(gk: Self.eGk, seller: "Seller E", count: 1, index: 1),
+                       "the held Undo sits at E1's place, 1, and counts the one copy it took")
+    }
+
+    /// The card at the end of the list: its notice takes the place after the last card. R1 / Seller S sorts last of four.
+    func testTheNoticeOfTheLastCardTakesThePlaceAfterTheList() async throws {
+        let (model, _) = try await rig(received: [:], unreceived: true)
+        XCTAssertEqual(model.rows.last?.gk, "R1::Seller S", "anchor: R1 / Seller S is the last card")
+
+        try await bulking(model).bulk(gk: "R1::Seller S", on: true)
+
+        XCTAssertEqual(model.vacatedUndo, PackagesModel.VacatedUndo(gk: "R1::Seller S", seller: "Seller S", count: 1, index: 3),
+                       "the notice of the last card holds the place after the three cards that remain")
+    }
+
+    /// Showing on Everything keeps a completed card on the list, so no notice takes its place.
+    func testNoNoticeWhileTheCompletedCardStaysListed() async throws {
+        let (model, _) = try await rig(received: [:])
+        try await bulking(model).bulk(gk: Self.eGk, on: true)
+
+        XCTAssertTrue(model.rows.contains { $0.gk == Self.eGk }, "anchor: Everything keeps E1 on the list after Mark all")
+        XCTAssertNil(model.vacatedUndo, "a card still listed has no vacated notice")
+    }
+
+    /// Undo takes back the copy, puts the card back in its place and ends the notice.
+    func testUndoOnTheNoticeBringsTheCardBackAndClearsIt() async throws {
+        let (model, _) = try await rig(received: [:], unreceived: true)
+        try await bulking(model).bulk(gk: Self.eGk, on: true)
+        XCTAssertNotNil(model.vacatedUndo, "anchor: the notice is up after the Mark all")
+
+        try await bulking(model).undoBulk()
+
+        XCTAssertNil(model.vacatedUndo, "Undo ends the notice")
+        XCTAssertEqual(model.rows.firstIndex { $0.gk == Self.eGk }, 1, "Undo puts E1 back in its place")
+    }
+
+    /// Dismiss ends the held Undo: the notice goes, and the copy stays in, since nothing is taken back.
+    func testDismissClearsTheNoticeAndKeepsTheCopyIn() async throws {
+        let (model, store) = try await rig(received: [:], unreceived: true)
+        try await bulking(model).bulk(gk: Self.eGk, on: true)
+        XCTAssertNotNil(model.vacatedUndo, "anchor: the notice is up after the Mark all")
+
+        model.endBulkUndo()
+
+        XCTAssertNil(model.vacatedUndo, "Dismiss ends the notice")
+        XCTAssertEqual(store.received()[Self.e1], 1, "Dismiss takes nothing back: the copy stays in")
     }
 }
