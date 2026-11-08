@@ -321,4 +321,57 @@ final class DuoMeasureUITests: XCTestCase {
         guard hand.exists else { return "hand-open=MISSING running-head=\(head)" }
         return "hand-open=\(frameText(hand.frame)) hittable=\(yn(hand.isHittable)) running-head=\(head)"
     }
+
+    // MARK: the closed Duo's outer screen
+
+    /// The outer screen of a closed Duo. The lane folds the device closed with hinge before the run, so this test folds nothing.
+    /// It prints the window and its pose, the Packages tab, the masthead, the tab bar, the first package row, the widest hittable
+    /// element, and the keyboard once a text field takes focus. Print only: it fails only when the app shows no window, never on a figure.
+    func testMeasureFolded() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.windows.firstMatch.waitForExistence(timeout: 15) else {
+            XCTFail("the app did not launch on the folded pose: it shows no window")
+            return
+        }
+        let w = app.windows.firstMatch.frame, want = DuoPose.flat.windowSize
+        let flat = abs(w.width - want.width) < DuoMetrics.tolerance && abs(w.height - want.height) < DuoMetrics.tolerance
+        print("FOLD pose window=\(frameText(w)) flat=\(yn(flat))")
+
+        let packages = app.duoBar.buttons["Packages"].exists ? app.duoBar.buttons["Packages"] : app.tabBars.buttons["Packages"]
+        if packages.exists {
+            if packages.isHittable { packages.tap() } else { packages.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap() }
+            _ = XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "isSelected == true"), object: packages)], timeout: 3)
+        } else {
+            print("FOLD packages-tab MISSING")
+        }
+
+        let masthead = app.element("masthead")
+        print("FOLD masthead \(masthead.exists ? frameText(masthead.frame) : "MISSING")")
+        let duoBar = app.duoBar.exists
+        let bar = duoBar ? app.duoBar : app.tabBars.firstMatch
+        print("FOLD \(duoBar ? "duo-tab-bar" : "system-tab-bar") \(bar.exists ? frameText(bar.frame) : "MISSING")")
+        let row = app.elements(prefix: "package-row:").filter { $0.exists }.sorted { $0.frame.minY < $1.frame.minY }.first
+        if let row { print("FOLD \(row.identifier) \(frameText(row.frame))") } else { print("FOLD package-row MISSING") }
+
+        var minX = CGFloat.greatestFiniteMagnitude, maxX = -CGFloat.greatestFiniteMagnitude
+        var minY = CGFloat.greatestFiniteMagnitude, maxY = -CGFloat.greatestFiniteMagnitude
+        for e in app.descendants(matching: .any).allElementsBoundByIndex where e.isHittable {
+            let f = e.frame
+            minX = min(minX, f.minX); maxX = max(maxX, f.maxX)
+            minY = min(minY, f.minY); maxY = max(maxY, f.maxY)
+        }
+        if minX > maxX {
+            print("FOLD content MISSING")
+        } else {
+            print("FOLD content minX=\(figure(minX)) maxX=\(figure(maxX)) minY=\(figure(minY)) maxY=\(figure(maxY))")
+        }
+
+        // The search field if one is reachable, else the Card in Hand query field, which the file's helper opens.
+        var field = app.searchFields.firstMatch
+        if !(field.exists && field.isHittable) { field = app.textFields.firstMatch }
+        if !(field.exists && field.isHittable) { openHandForMeasure(app); field = app.element("hand-query") }
+        if field.exists && field.isHittable { field.tap() }
+        let keys = settled { [keyFrame(app)] }[0]
+        print("FOLD keys \(keys.map(frameText) ?? "MISSING")")
+    }
 }
