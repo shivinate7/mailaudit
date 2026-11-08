@@ -61,7 +61,12 @@ func isKeyboardPredictionCell(detail: String) -> Bool {
 /// of a point of slack. A real miss is a third of a point or more short. OrphanedUITests and PackageStampUITests call it.
 @MainActor func assertHitRegion(_ e: XCUIElement, _ what: String, file: StaticString = #filePath, line: UInt = #line) {
     XCTAssertTrue(e.waitForExistence(timeout: 5), "\(what) is not on screen", file: file, line: line)
-    let f = e.frame
+    assertHitRegion(frame: e.frame, what, file: file, line: line)
+}
+
+/// The 44pt floor on a frame already read. It queries nothing, so a caller holding a frame from one snapshot checks it
+/// inside a window that lapses (the armed ask of PackageStampUITests).
+@MainActor func assertHitRegion(frame f: CGRect, _ what: String, file: StaticString = #filePath, line: UInt = #line) {
     XCTAssertGreaterThanOrEqual(f.width, 44 - 0.001, "\(what) is \(f.width)pt wide, under 44pt", file: file, line: line)
     XCTAssertGreaterThanOrEqual(f.height, 44 - 0.001, "\(what) is \(f.height)pt high, under 44pt", file: file, line: line)
 }
@@ -127,6 +132,9 @@ extension XCUIApplication {
     /// (isUnderTabBar). The issues it skips and the issues it fails come back as text. `bar` and `window` replace the
     /// tab bar's and the window's frames, for the narrowness test. With `record: false` no issue is recorded, so a test
     /// can read them.
+    /// A `bar` override serves a state that lapses (PackageStampUITests' armed ask): the caller reads the bar in the same
+    /// snapshot as the ask, and with an override this makes no tab-bar query. An empty override (.zero, .null, or a zero
+    /// width or height, which a snapshot with no tab bar gives) fails the audit here, so a bar that did not resolve cannot pass.
     /// `ruled` is another skip the owner ruled on, such as skipMeasuredContrastFlags. An issue it accepts is left
     /// out and is not counted in `skipped`, which means "under the bar" only. It comes back in `ruled` instead.
     @discardableResult
@@ -134,8 +142,13 @@ extension XCUIApplication {
                              ruled: ((XCUIAccessibilityAuditIssue) -> Bool)? = nil) throws
         -> (skipped: [String], failing: [String], ruled: [String])
     {
-        let tabBar = tabBars.firstMatch
-        let bar = try XCTUnwrap(tabBar.waitForExistence(timeout: 5) ? override ?? tabBar.frame : nil, "the tab bar is missing")
+        let bar: CGRect
+        if let override {
+            bar = try XCTUnwrap(override.isEmpty ? nil : override, "the bar override \(override) is empty: the caller's tab bar frame did not resolve")
+        } else {
+            let tabBar = tabBars.firstMatch
+            bar = try XCTUnwrap(tabBar.waitForExistence(timeout: 5) ? tabBar.frame : nil, "the tab bar is missing")
+        }
         let window = windowOverride ?? windows.firstMatch.frame
         var skipped: [String] = [], failing: [String] = [], ruledText: [String] = []
         try performAccessibilityAudit { issue in
@@ -347,6 +360,23 @@ final class AuditSkippingTabBarUITests: XCTestCase {
         let app = launchedOrphanedComposer()
         try XCTExpectFailure("an issue outside the tab bar fails the audit", strict: true) {
             try app.auditSkippingTabBar(bar: Self.farAway, window: Self.tallWindow, record: true)
+        }
+    }
+
+    /// An empty bar override fails the audit. The guard records its failure through XCTUnwrap and then throws. The
+    /// expected failure is that record, so the thrown error is caught here and does not fail the test again. If an override
+    /// passes, nothing is recorded and the strict expectation goes red.
+    func testAnEmptyBarOverrideFailsTheAudit() {
+        let app = launchedPackages()
+        let empties: [(what: String, bar: CGRect)] = [
+            ("a zero frame", CGRect.zero),
+            ("a null frame", CGRect.null),
+            ("a frame with no width", CGRect(x: 0, y: 770, width: 0, height: 82)),
+        ]
+        for empty in empties {
+            XCTExpectFailure("a bar override that is \(empty.what) fails the audit", strict: true) {
+                do { try app.auditSkippingTabBar(bar: empty.bar, record: false) } catch {}
+            }
         }
     }
 }

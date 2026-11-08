@@ -124,17 +124,31 @@ final class PackageStampUITests: XCTestCase {
         XCTAssertTrue(el(app, "stamp-ask-confirm:\(gk)").waitForExistence(timeout: 5), "the first tap on Remove stamp did not arm it")
     }
 
-    /// The frame of every card part and stamp control on screen, by identifier, read from one snapshot of the app's
-    /// accessibility tree. One read, not a query per element: the armed ask disarms 4 seconds after its tap, and a query per
-    /// element took about 2 seconds, so the last frames of a compare were read after the ask had gone.
-    func snapshot(_ app: XCUIApplication) -> [String: CGRect] {
-        var out: [String: CGRect] = [:]
+    /// One card part or stamp control as a snapshot holds it: its frame, its label and whether it is enabled.
+    struct SnapNode { let frame: CGRect, label: String, enabled: Bool }
+
+    /// The card parts and stamp controls on screen, by identifier, and the tab bar's frame (.zero when the tree has no tab
+    /// bar), from one snapshot of the app's accessibility tree. One read, not a query per element: the armed ask disarms 4
+    /// seconds after its tap, and a query per element took about 2 seconds, so the last frames of a compare were read after
+    /// the ask had gone.
+    func readSnapshot(_ app: XCUIApplication) -> (nodes: [String: SnapNode], bar: CGRect) {
+        var nodes: [String: SnapNode] = [:]
+        var bar = CGRect.zero
         func walk(_ s: XCUIElementSnapshot) {
-            if Self.framed.contains(where: { s.identifier.hasPrefix($0) }) { out[s.identifier] = s.frame }
+            if Self.framed.contains(where: { s.identifier.hasPrefix($0) }) {
+                nodes[s.identifier] = SnapNode(frame: s.frame, label: s.label, enabled: s.isEnabled)
+            }
+            if s.elementType == .tabBar { bar = s.frame }
             s.children.forEach(walk)
         }
         do { walk(try app.snapshot()) } catch { XCTFail("no accessibility snapshot of the app: \(error)") }
-        return out
+        return (nodes, bar)
+    }
+
+    /// The frame of each node in readSnapshot. The tab bar is not among them: a scroll moves it against the cards, so a
+    /// compare of frames relative to a card must not see it.
+    func snapshot(_ app: XCUIApplication) -> [String: CGRect] {
+        readSnapshot(app).nodes.mapValues { $0.frame }
     }
 
     /// Each frame with `anchor`'s top left taken off, so a scroll between two snapshots changes nothing.
@@ -505,12 +519,27 @@ final class PackageStampUITests: XCTestCase {
         try app.auditSkippingTabBar()
     }
 
-    /// Remove stamp armed, with its ask on screen.
+    /// Remove stamp armed, audited. The ask lapses 4 seconds after its tap and the lapse is not lengthened for a test
+    /// (stamp-band-opens-the-editor), and the audit runs about 5 seconds, so the ask is read once, in one snapshot taken
+    /// right after arming. That snapshot holds the ask's label, its enabled state, its 44pt frames and the tab bar's frame,
+    /// which the audit takes as its bar. Every check of the ask runs before the audit. After it, only the editor is checked,
+    /// since disarming leaves the editor open.
     func testAccessibilityAuditStampRemoveArmed() throws {
         let app = launch()
-        stamp(app, Self.a1, kind: "claim")
-        openEditor(app, Self.a1)
-        arm(app, Self.a1)
-        try app.auditSkippingTabBar()
+        let gk = Self.a1, editor = "stamp-editor:\(gk)", confirmID = "stamp-ask-confirm:\(gk)", cancelID = "stamp-ask-cancel:\(gk)"
+        stamp(app, gk, kind: "claim")
+        openEditor(app, gk)
+        arm(app, gk)
+        let live = readSnapshot(app)
+        guard live.nodes[editor] != nil else { return XCTFail("the editor is not in the snapshot taken right after arming") }
+        guard let confirm = live.nodes[confirmID] else { return XCTFail("the armed ask's confirm button is not in that snapshot: the ask had lapsed") }
+        guard let cancel = live.nodes[cancelID] else { return XCTFail("the armed ask's Cancel is not in that snapshot: the ask had lapsed") }
+        XCTAssertEqual(confirm.label, "Tap again to remove stamp from 4 cards", "the armed ask's label")
+        XCTAssertTrue(confirm.enabled, "the armed ask's confirm button is disabled")
+        XCTAssertTrue(cancel.enabled, "the armed ask's Cancel is disabled")
+        assertHitRegion(frame: confirm.frame, "the armed ask's confirm button")
+        assertHitRegion(frame: cancel.frame, "the armed ask's Cancel")
+        try app.auditSkippingTabBar(bar: live.bar)
+        XCTAssertTrue(el(app, editor).exists, "the audit closed the editor")
     }
 }
