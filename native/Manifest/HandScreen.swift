@@ -89,25 +89,30 @@ struct HandScreen: View {
                         .foregroundStyle(Parchment.inkSoft).accessibilityIdentifier("hand-count")
                     Button { heldNames = nil; chosen = nil; hand.close(); close() } label: { MiniLabel(title: "Close") }.buttonStyle(.plain).accessibilityIdentifier("hand-close")
                 }
-                TextField("Type the card in hand", text: $query)
-                    .textFieldStyle(.plain).font(.cochin(16, relativeTo: .body)).foregroundStyle(Parchment.ink)
-                    .textInputAutocapitalization(.never).autocorrectionDisabled().submitLabel(.done)
-                    .padding(.horizontal, 12).frame(minHeight: 48)
-                    .background(Parchment.card, in: RoundedRectangle(cornerRadius: 8))
-                    .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Parchment.line, lineWidth: 1))
-                    .accessibilityIdentifier("hand-query")
-                    // A tap sets the query to the chosen name, which keeps the hold. Any other text is a keystroke: it ends the hold.
-                    .onChange(of: query) { _, text in if text != chosen { heldNames = nil; chosen = nil } }
-                    // The typed text settles for 150 ms before it is read, so a name typed letter by letter is read once, not once
-                    // per letter. Each read still applies in order (HandModel.type).
-                    .task(id: query) {
-                        try? await Task.sleep(for: .milliseconds(150))
-                        guard !Task.isCancelled else { return }
-                        try? await hand.type(query)
-                        guard !Task.isCancelled else { return }
-                        receipt = nil
-                        shown = hand.hits.count == 1 ? hand.hits.first : nil
-                    }
+                // The chip sits in the field's fixed 48 pt box, above the keys at every text size and match count, so it appears,
+                // changes and goes without moving a row or New envelope (no-layout-shift-under-pointer).
+                HStack(spacing: 8) {
+                    TextField("Type the card in hand", text: $query)
+                        .textFieldStyle(.plain).font(.cochin(16, relativeTo: .body)).foregroundStyle(Parchment.ink)
+                        .textInputAutocapitalization(.never).autocorrectionDisabled().submitLabel(.done)
+                        .accessibilityIdentifier("hand-query")
+                        // A tap sets the query to the chosen name, which keeps the hold. Any other text is a keystroke: it ends the hold.
+                        .onChange(of: query) { _, text in if text != chosen { heldNames = nil; chosen = nil } }
+                        // The typed text settles for 150 ms before it is read, so a name typed letter by letter is read once, not once
+                        // per letter. Each read still applies in order (HandModel.type).
+                        .task(id: query) {
+                            try? await Task.sleep(for: .milliseconds(150))
+                            guard !Task.isCancelled else { return }
+                            try? await hand.type(query)
+                            guard !Task.isCancelled else { return }
+                            receipt = nil
+                            shown = hand.hits.count == 1 ? hand.hits.first : nil
+                        }
+                    heldChip
+                }
+                .padding(.horizontal, 12).frame(minHeight: 48)
+                .background(Parchment.card, in: RoundedRectangle(cornerRadius: 8))
+                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Parchment.line, lineWidth: 1))
                 HStack {
                     Text("This envelope").font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.inkSoft)
                     Spacer(minLength: 8)
@@ -163,6 +168,28 @@ struct HandScreen: View {
                 .buttonStyle(.plain).accessibilityIdentifier("hand-hit:\(name)")
                 .accessibilityAddTraits(isChosen ? .isSelected : [])
             }
+        }
+    }
+
+    /// A short pointer to the Suspense and Released boxes, which can sit under the keys (hand-held-box-under-keys). It shows
+    /// while a card is held or released and is not a control. Manila, not the card colour, so it does not read as a button.
+    /// Capped at xxxLarge: uncapped at the largest sizes it would fill the field and leave no room to type; the large-content
+    /// viewer shows it large on a long press. The boxes below still scale in full.
+    @ViewBuilder private var heldChip: some View {
+        let released = hand.strays.count
+        let text = [hand.held == nil ? nil : "1 held", released == 0 ? nil : "\(released) released"]
+            .compactMap { $0 }.joined(separator: " \u{00B7} ")
+        if !text.isEmpty {
+            let spoken = [hand.held.map { "Held: \($0.localizedCapitalized)." },
+                          released == 0 ? nil : "Released: \(hand.strays.map(\.localizedCapitalized).joined(separator: ", ")).",
+                          "Not checked in."].compactMap { $0 }.joined(separator: " ")
+            Text(text).font(.mono(12, relativeTo: .caption)).lineLimit(1).fixedSize()
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                .foregroundStyle(Parchment.manilaInk)
+                .padding(.horizontal, 8).padding(.vertical, 4)
+                .background(Parchment.manila, in: RoundedRectangle(cornerRadius: 5))
+                .accessibilityLabel(spoken).accessibilityShowsLargeContentViewer()
+                .accessibilityIdentifier("hand-held-chip")
         }
     }
 
