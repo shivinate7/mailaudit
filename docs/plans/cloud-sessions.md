@@ -103,7 +103,7 @@ Not taken in this lane. The coordinator brings these to the owner.
 ## Decisions for the owner
 
 - **TestFlight from CI.** Departs from: `native-ships-via-testflight` (the key lives only on this Mac) — the App Store Connect key becomes a GitHub Actions secret, and a macOS job uploads. Gain: no Mac is needed for the fallback. Lose: the key leaves the Mac, onto a public repo's Actions.
-- **Coordinator placement.** Departs from: main, where every session is local — cloud lanes report only by PR and by notes. Recommended: keep the coordinator, batch runner and Duo work local, and send web and records lanes to the cloud.
+- **Team placement.** Owner ruling, 2026-11-04 07:56 CST (claude-settings `lanes-start-as-agents`): the team of coordinator, triage, batch runner and lanes runs all on the Mac or all in the cloud. All-cloud fits that ruling, but the Mac remainder above still needs one Mac session. A split, with the coordinator local and the lanes in the cloud, departs from: `lanes-start-as-agents` (one placement for the whole team). Under the split, cloud lanes report only by PR and by notes, because a cloud session cannot message back. Recommended: keep the team all on the Mac, and use cloud sessions only for one-off web or records work outside the team. That changes nothing on main.
 
 ## Follow-ups
 
