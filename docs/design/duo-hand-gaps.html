@@ -82,7 +82,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
 .line .t b { font-size:14px; font-weight:600; display:flex; justify-content:space-between; gap:8px; }
 .line .t b span { font:12px var(--mono); color:var(--inkSoft); font-weight:400; }
 .line .t small { font-size:11.5px; color:var(--inkSoft); display:block; margin-top:4px; }
-.line .t small.hold { color:var(--manilaInk); font-weight:700; }
+.line .t small .hold { color:var(--manilaInk); font-weight:700; }
 .step { display:flex; align-items:center; gap:4px; margin-top:8px; }
 .step .sb { width:44px; height:44px; display:grid; place-items:center; }
 .step .sb i { width:34px; height:34px; border:1px solid var(--line); border-radius:8px; background:var(--card); display:grid; place-items:center; font-style:normal; }
@@ -135,7 +135,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
 .rank { background:var(--card); border:1px solid var(--line); border-radius:8px; }
 .rank .rr { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 12px; min-height:64px; border-top:1px solid var(--line); }
 .rank .rr:first-child { border-top:0; }
-.rank .rr b { font-size:15px; display:block; } .rank .rr small { font:11px var(--mono); color:var(--inkSoft); }
+.rank .rr b { font-size:15px; display:block; } .rank .rr small { font:11px var(--mono); color:var(--inkSoft); display:block; }
 /* Part 7: the end of mail day */
 .pile { background:var(--card); border:1px solid var(--line); border-radius:8px; }
 .pile .pr { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:0 12px; min-height:44px; border-top:1px solid var(--line); font-size:14px; }
@@ -162,6 +162,8 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
 .tag-today { outline:2px dashed var(--today); outline-offset:2px; } .tag-today::before { color:var(--today); }
 .line[data-tag]::before { top:auto; bottom:2px; }
 .line.tag-new, .line.tag-today { outline-offset:-2px; }
+.tag-below[data-tag]::before { top:auto; bottom:-17px; }
+.meta[data-tag]::before { top:auto; bottom:-17px; right:auto; left:0; }
 
 /* folded frame: the outer screen, 466 x 678 pt (duo-fold-and-keyboard, re-measured 2026-11-08), drawn at half size */
 .folded { position:relative; width:233px; height:339px; border:1px solid var(--ink); border-radius:12px; background:var(--paper);
@@ -344,7 +346,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
     <div class="page l"><div class="content">
       <div data-fill="head"></div>
       <div class="field">Ponde</div>
-      <div class="env tag-new" data-tag="New: a long list ends in +N more"><span class="what"><span>This envelope</span><span>Lightning Bolt ×4 · Counterspell ×2 · Brainstorm <span class="more">+3 more</span></span></span><span class="hit"><span class="pill">New envelope</span></span></div>
+      <div class="env tag-new" data-tag="New: a long list ends in +N more"><span class="what"><span>This envelope</span><span>Lightning Bolt ×4 · Counterspell ×2 · <span class="more">+3 more</span></span></span><span class="hit"><span class="pill">New envelope</span></span></div>
       <span class="micro">Matches</span>
       <div class="match">Ponder</div>
     </div></div>
@@ -642,12 +644,12 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       <div class="rowx"><span style="font-weight:700;font-size:17px">Mail day</span><span class="count">39 in · 19 out</span><span class="hit"><span class="pill">Close</span></span></div>
       <div class="field empty">Type the card in hand</div>
       <div data-fill="env-none"></div>
-      <div class="tag-new" id="focus-eod-empty" data-tag="New: today's pile, on an empty query" style="display:flex;flex-direction:column;gap:8px" data-fill="pile"></div>
+      <div class="tag-new tag-below" id="focus-eod-empty" data-tag="New: today's pile, on an empty query" style="display:flex;flex-direction:column;gap:8px" data-fill="pile"></div>
     </div></div>
-    <div class="page r"><div class="content tag-new" data-tag="New: only what is not normal" data-fill="odd"></div></div>
+    <div class="page r"><div class="content"><div class="tag-new" data-tag="New: only what is not normal" style="display:flex;flex-direction:column;gap:8px" data-fill="odd"></div></div></div>
   </div></div>
   <figcaption><b>On an empty query (pick).</b> Once one card is in today, an empty query shows the day. Before that, today's hint stays. No new control. A short envelope reads red; Open shows it on the right page as a typed card would. The red line is the masthead's own "still missing" figure. <button type="button" class="hide" data-hide="eod-empty">Hide empty query</button></figcaption>
-  <ul class="tags"><li>Rows are read-outs, 44 pt each. Seven rows end at y 560 on the left page; past the bar's top at 593 nothing is drawn on the left page, which has no bar.</li><li>With the keys up the pile runs under them. It is a read-out, so nothing tappable hides.</li></ul>
+  <ul class="tags"><li>Rows are read-outs, 44 pt each. Seven rows end near y 540 on the left page, which has no bar.</li><li>With the keys up the pile runs under them. It is a read-out, so nothing tappable hides.</li></ul>
 </figure>
 
 <figure data-opt="eod-control">
@@ -718,7 +720,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       <div data-fill="env-today"></div>
       <span class="micro">Matches</span>
       <div class="match">Command Tower</div>
-      <div class="notice tag-today" data-tag="Today: one held name"><span class="micro">Suspense</span><b>Command Tower</b><small>Not checked in.</small></div>
+      <div class="notice tag-today" data-tag="Today: one held name"><span class="micro">Suspense</span><b>Arcane Signet</b><small>Not checked in.</small></div>
     </div></div>
     <div class="page r"><div class="content">
       <span class="micro">2 envelopes hold this card</span>
@@ -727,7 +729,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       <div class="tcard"><b>Tinpot Cards</b><span class="meta"><span>ordered 2026-10-06 · 4 cards out</span></span></div>
     </div></div>
   </div></div>
-  <figcaption><b>Today.</b> The held-name line holds one name (<code>HandModel.held</code>, HandModel.swift:21). The second Arcane Signet and the first were let go when Command Tower was typed, and the right page shows a plain tie.</figcaption>
+  <figcaption><b>Today.</b> The held-name line holds one name with no count (<code>HandModel.held</code>, HandModel.swift:21). Command Tower fits the same two envelopes, so <code>handStep</code> keeps Arcane Signet held and Command Tower goes nowhere. The right page shows a plain tie.</figcaption>
 </figure>
 
 <figure data-opt="rank-new">
@@ -738,7 +740,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       <span class="meta"><span>Arcane Signet ×2 · Command Tower</span></span>
       <div class="rank tag-new" id="focus-rank" data-tag="New: ranked by named copies">
         <div class="rr"><span><b>Low Tide Singles</b><small>ordered 2026-10-19 · fits 3 of 3</small></span><span class="hit"><span class="pill post">Post 3 cards here</span></span></div>
-        <div class="rr"><span><b>Tinpot Cards</b><small>ordered 2026-10-06 · fits 2 of 3 · ordered 1 Arcane Signet</small></span><span class="hit"><span class="pill">Post 2 cards here</span></span></div>
+        <div class="rr"><span><b>Tinpot Cards</b><small>ordered 2026-10-06 · fits 2 of 3</small><small>Command Tower stays held</small></span><span class="hit"><span class="pill">Post 2 cards here</span></span></div>
       </div>
       <p class="note">Post checks in only the cards an account ordered. A card that does not fit stays on the Suspense line.</p>
     </div></div>
