@@ -179,9 +179,9 @@ final class PackagesToggleTests: XCTestCase {
         XCTAssertNil(model.checkInError, "a good Post must clear the failed line check-in's error, or hand-checkin-error stays up")
     }
 
-    /// A line tap that fails after a Post keeps its error through the next load. The Post moved the store's count before the
-    /// tap, so the count alone cannot tell the tap's error from the Post's. The Post's reload is missing from this order: a
-    /// reload that failed before it reached the seen count, or one still in flight when the tap failed, leaves the Post unseen.
+    /// A line tap that fails after a Post keeps its error through the next load. The Post saved before the tap failed, so
+    /// the load must not read that Post as a later write. This order leaves out the Post's own reload, as when that reload
+    /// is still in flight when the tap fails.
     func testLoadAfterAPostKeepsAFailedLineTapError() async throws {
         let url = try freshLedgerURL()
         let store = LedgerStore(fileURL: url, now: { 1_786_543_380_000 })
