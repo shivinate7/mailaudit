@@ -16,6 +16,7 @@
     "test:tests-for": "node test/tests-for.test.mjs",
     "test:milestone-due": "node test/milestone-due.test.mjs",
     "test:worker": "node worker/core.test.mjs",
+    "test:extension": "node test/extension-core.test.mjs",
     "test:send-key": "node test/send-key.test.mjs",
     "test:view-rules": "node test/view-rules.test.mjs",
     "test:golden": "node test/golden.test.mjs",
