@@ -11,6 +11,21 @@ public struct LedgerItem: Codable, Equatable, Sendable {
 public struct Package: Decodable, Equatable, Sendable {
     public let gk, orderId, seller, date, tracking: String
     public let items: [LedgerItem]
+    /// The lines Find and Showing took out of this card, from the bundle's filterPackages. 0 on a package that was not filtered.
+    public let hiddenByFilters: Int
+
+    private enum CodingKeys: String, CodingKey { case gk, orderId, seller, date, tracking, items, hiddenByFilters }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        gk = try c.decode(String.self, forKey: .gk)
+        orderId = try c.decode(String.self, forKey: .orderId)
+        seller = try c.decode(String.self, forKey: .seller)
+        date = try c.decode(String.self, forKey: .date)
+        tracking = try c.decode(String.self, forKey: .tracking)
+        items = try c.decode([LedgerItem].self, forKey: .items)
+        hiddenByFilters = try c.decodeIfPresent(Int.self, forKey: .hiddenByFilters) ?? 0
+    }
 }
 
 /// Rows for the Packages view: the rules engine over the ledger store
@@ -19,7 +34,20 @@ public struct Package: Decodable, Equatable, Sendable {
 public final class PackagesModel {
     @ObservationIgnored private let engine: RulesEngine
     @ObservationIgnored private let store: LedgerStore
+    /// Find, Showing, Orders from and the sorts, shared with the Tally and the Ledger tab's View group.
+    public let options: ViewOptions
+    /// The packages the list is built from, as JSON: the range-kept live packages, or the stamped ones under the stamped filter.
+    @ObservationIgnored private var source = "[]"
+    /// The same packages, whole, for finding the package a line belongs to after the filters have dropped it.
+    @ObservationIgnored private var sourceRows: [Package] = []
+    /// Group key to place, set by the last sort and kept while the user checks in (no-layout-shift-under-pointer).
+    @ObservationIgnored private var order: [String: Int] = [:]
+    /// Lines checked in under this filter context; filterPackages keeps them shown.
+    @ObservationIgnored private var sticky: Set<String> = []
+    /// The packages the list shows: the source, narrowed by Find and Showing, in the frozen order.
     public private(set) var rows: [Package] = []
+    /// Whether the ledger holds any item at all, for the Find pill (drawn only with items).
+    public private(set) var hasItems = false
     /// Every live package, whatever the stamped filter: the groupPackages of LiveItems.of, so canceled and refunded
     /// packages are out. Card in Hand reads it, not `rows` (stamped-filter-on-the-pipeline).
     public private(set) var liveRows: [Package] = []
@@ -66,45 +94,66 @@ public final class PackagesModel {
     /// The store's postsSaved when checkInError was last set: only a Post after that is a good write that outdates the failure line.
     @ObservationIgnored private var errorPosts = 0
 
-    public init(engine: RulesEngine, store: LedgerStore) {
+    public init(engine: RulesEngine, store: LedgerStore, options: ViewOptions = ViewOptions()) {
         self.engine = engine
         self.store = store
+        self.options = options
     }
+
+    public var query: String { options.query }
+    /// Showing: true is Unreceived (src/app.jsx `hideDone`). The Tally calls the same choice hideReceived.
+    public var hideReceived: Bool { options.hideDone }
+    public var sort: PackageSort { options.sortBy }
 
     private func json(_ value: Any) throws -> String {
         String(decoding: try JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed]), as: UTF8.self)
     }
 
-    /// groupPackages, then sortPackages "newest" (the web default, src/app.jsx). With the stamped filter on, the list is the
-    /// bundle's stampedPackagesOf on the canceled-free items, refunded packages included (stamped-filter-on-the-pipeline).
+    /// The list the web draws (src/app.jsx): the live items kept by the range (the store's saved Orders from, against the store's
+    /// clock), grouped, ordered by the saved Sorted by, then narrowed by Find and Showing. With the stamped filter on, the source is
+    /// the bundle's stampedPackagesOf on the range-kept, canceled-free items, refunded packages included
+    /// (stamped-filter-on-the-pipeline). `liveRows` stays the whole live set, range and all, for Card in Hand.
     /// Every value is built first, then rows and every map are set in one step after the last await, as
     /// MastheadModel.refresh does, so the view never draws a row without its maps. A failed call leaves its entry
     /// empty and is thrown after.
     public func load() async throws {
+        options.read(store)
         let got = store.received()
         let held = store.stamps()
         let live = try await LiveItems.of(store.items(), stamps: held, engine: engine)
         let active = try await engine.call("dropCanceled", "[\(try json(store.items()))]")
+        let range = try await ViewRange.range(options.dateFilter, store: store, engine: engine)
+        let rangedActive = try await ViewRange.apply(active, range: range, engine: engine)
+        let rangedLive = try await ViewRange.apply(live, range: range, engine: engine)
         let stampedGks = try await StampRules.keys(where: "hasStamp", in: held, engine: engine)
-        let stampedRaw = try await engine.call("stampedPackagesOf", "[\(active),\(try json(["$set": Array(stampedGks)]))]")
+        let stampedRaw = try await engine.call("stampedPackagesOf", "[\(rangedActive),\(try json(["$set": Array(stampedGks)]))]")
         let stamped = try JSONDecoder().decode([Package].self, from: Data(stampedRaw.utf8))
         let on = showStamped && !stamped.isEmpty
         let liveGrouped = try await engine.call("groupPackages", "[\(live)]")
         let newLive = try JSONDecoder().decode([Package].self, from: Data(liveGrouped.utf8))
-        let grouped = on ? stampedRaw : liveGrouped
-        let sorted = try await engine.call("sortPackages", "[\(grouped),\"newest\",\(try json(got))]")
-        let newRows = try JSONDecoder().decode([Package].self, from: Data(sorted.utf8))
+        let rangedGrouped = try await engine.call("groupPackages", "[\(rangedLive)]")
+        let newSource = on ? stampedRaw : rangedGrouped
+        let newOrder = try await Self.placed(newSource, by: options.sortBy, received: got, engine: engine)
+        let newRows = try await filtered(newSource, order: newOrder, received: got, stamps: held)
         let refunds = try await StampRules.keys(where: "isRefundStamp", in: held, engine: engine)
         let kinds = try await StampRules.kinds(engine: engine)
-        // The maps cover the live lines the filter hides too, and the refunded packages the stamped list adds.
+        // The maps cover the live lines the range and the filters hide too, and the refunded packages the stamped list adds.
         let liveGks = Set(newLive.map(\.gk))
-        let covered = newLive + newRows.filter { !liveGks.contains($0.gk) }
+        let sourcePackages = try JSONDecoder().decode([Package].self, from: Data(newSource.utf8))
+        let covered = newLive + sourcePackages.filter { !liveGks.contains($0.gk) }
         var (updates, failure) = try await refresh(covered.map { ($0, $0.items) }, received: got, withStatic: true)
         let (texts, textFailure) = await stampTexts(stamped, held: held, refunds: refunds, received: got)
         updates += texts
         failure = failure ?? textFailure
+        let (kept, total) = (ViewRange.count(rangedLive), ViewRange.count(live))
+        source = newSource
+        sourceRows = sourcePackages
+        order = newOrder
         rows = newRows
         liveRows = newLive
+        hasItems = !store.items().isEmpty
+        options.lineCount = kept
+        options.outsideCount = total - kept
         received = got
         stamps = held
         stampedCount = stamped.count
@@ -126,6 +175,70 @@ public final class PackagesModel {
         // the failure, must not hide a failure the owner has not retried.
         if checkInError != nil, store.postsSaved > errorPosts { checkInError = nil }
         if let failure { throw failure }
+    }
+
+    /// Group key to place, from the bundle's sortPackages with the counts as they are now. Callers keep it while the user checks
+    /// in, so a value-based sort does not reshuffle under the thumb (no-layout-shift-under-pointer).
+    private static func placed(_ source: String, by key: PackageSort, received: [String: Int], engine: RulesEngine) async throws -> [String: Int] {
+        struct Keyed: Decodable { let gk: String }
+        let counts = String(decoding: try JSONSerialization.data(withJSONObject: received), as: UTF8.self)
+        let sorted = try await engine.call("sortPackages", "[\(source),\"\(key.rawValue)\",\(counts)]")
+        let gks = try JSONDecoder().decode([Keyed].self, from: Data(sorted.utf8)).map(\.gk)
+        return Dictionary(gks.enumerated().map { ($1, $0) }, uniquingKeysWith: { first, _ in first })
+    }
+
+    /// The bundle's filterPackages over `source`, in `order`. The stamps cross as data, so Find reads a stamp's label and note.
+    private func filtered(_ source: String, order: [String: Int], received: [String: Int], stamps: [String: [String: Any]]) async throws -> [Package] {
+        let opts: [String: Any] = [
+            "query": options.query, "hideDone": options.hideDone, "received": received, "stamps": stamps,
+            "sticky": ["$set": Array(sticky)], "revealed": ["$set": Array(options.revealed)],
+        ]
+        let out = try await engine.call("filterPackages", "[\(source),\(try json(opts))]")
+        let shown = try JSONDecoder().decode([Package].self, from: Data(out.utf8))
+        return shown.sorted { (order[$0.gk] ?? .max) < (order[$1.gk] ?? .max) }
+    }
+
+    /// Reads the list again from the counts now, with the order kept: a completed package drops at once under Unreceived.
+    private func refilter() async throws {
+        rows = try await filtered(source, order: order, received: store.received(), stamps: stamps)
+    }
+
+    // MARK: Find, Showing, Sorted by (the Ledger tab's View group and the Find pill)
+
+    /// A new query is a new question: the sticky lines and the reveals end, and the list is read again.
+    public func setQuery(_ text: String) async throws {
+        if options.setQuery(text) { sticky = [] }
+        try await refilter()
+    }
+
+    public func clearSearch() async throws { try await setQuery("") }
+
+    /// Showing. Changing it ends the sticky lines.
+    public func setHideReceived(_ on: Bool) async throws {
+        if on != options.hideDone { sticky = [] }
+        options.hideDone = on
+        try await refilter()
+    }
+
+    /// Sorted by: saved under `sortBy`, and the order is worked out again.
+    public func setSort(_ key: PackageSort) async throws {
+        var saveFailure: Error?
+        do { try options.setSortBy(key, in: store) } catch { saveFailure = error }  // the order still changes for this run
+        try await load()
+        if let saveFailure { throw saveFailure }
+    }
+
+    /// Show the whole order of a package the filters cut down, or go back to the matches.
+    public func toggleReveal(_ gk: String) async throws {
+        options.toggleReveal(gk)
+        try await refilter()
+    }
+
+    /// The Packages tab came on screen: another tab may have changed Find or the counts. Like the web, a view change ends the sticky lines
+    /// and keeps the order.
+    public func viewOpened() async throws {
+        sticky = []
+        try await refilter()
     }
 
     /// The band text of each stamped package and the refunded pill of each refunded one, both from the bundle.
@@ -252,7 +365,7 @@ public final class PackagesModel {
 
     /// The package that holds the line: a live one, or a refunded one the stamped list shows.
     private func package(holding key: String) -> Package? {
-        (liveRows + rows).first { $0.items.contains { $0.key == key } }
+        (liveRows + sourceRows).first { $0.items.contains { $0.key == key } }
     }
 
     /// A tap: the bundle's toggleCount picks the count to write. Every failure, rule or save,
@@ -288,10 +401,23 @@ public final class PackagesModel {
         checkInError = nil
         bulkUndoGk = nil
         received = store.received()
+        if count > 0 { sticky.insert(key) }  // checked in under this filter, so the line stays until the filters change
+        try await relist()
         if let pkg = package(holding: key), let item = pkg.items.first(where: { $0.key == key }) {
             try await reread(pkg, items: [item])
         }
     }
+
+    /// The list from the counts now. A failure lands in checkInError and is thrown, as a failed label refresh does.
+    private func relist() async throws {
+        do { try await refilter() } catch {
+            fail("Saved, but the list could not refresh. \(error.localizedDescription)")
+            throw error
+        }
+    }
+
+    /// The package with this group key, whole (a live one, or a refunded one the stamped list shows).
+    private func package(gk: String) -> Package? { (liveRows + sourceRows).first { $0.gk == gk } }
 
     /// The package's labels, pill and bar (and a refunded package's pill) from the counts now in `received`.
     private func reread(_ pkg: Package, items: [LedgerItem]) async throws {
@@ -332,6 +458,7 @@ public final class PackagesModel {
             bulkUndoGk = on ? gk : nil
         }
         received = store.received()
+        try await relist()
         try await reread(pkg, items: pkg.items)
     }
 
@@ -350,7 +477,8 @@ public final class PackagesModel {
         }
         checkInError = nil
         received = store.received()
-        if let pkg = rows.first(where: { $0.gk == gk }) { try await reread(pkg, items: pkg.items) }
+        try await relist()
+        if let pkg = package(gk: gk) { try await reread(pkg, items: pkg.items) }
     }
 
     /// A tab change, a restore or a Reset: the held Undo is gone.
@@ -371,6 +499,7 @@ public final class PackagesModel {
     /// A failed read lands in checkInError and is thrown.
     public func toggleStamped() async throws {
         showStamped.toggle()
+        sticky = []
         do { try await load() } catch {
             showStamped.toggle()  // the rows on screen are still the old filter's, so the cell says that filter
             fail("Could not read the list. \(error.localizedDescription)")

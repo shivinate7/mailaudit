@@ -112,9 +112,9 @@ public final class MastheadModel {
         return s
     }
 
-    /// The bundle's line for a view id (view-rules.mjs `countLine`). Native has no date filter, so the range is null.
-    private func line(_ view: String, _ counts: String) async throws -> String {
-        let out = try await engine.call("countLine", "[\"\(view)\",\(counts),null]")
+    /// The bundle's line for a view id (view-rules.mjs `countLine`). `range` is the bundle's dateRange, or `null`: a range adds "in range".
+    private func line(_ view: String, _ counts: String, range: String) async throws -> String {
+        let out = try await engine.call("countLine", "[\"\(view)\",\(counts),\(range)]")
         guard let s = try JSONSerialization.jsonObject(with: Data(out.utf8), options: [.fragmentsAllowed]) as? String else {
             throw RulesFailure.threw("countLine gave \(out)")
         }
@@ -128,7 +128,9 @@ public final class MastheadModel {
             (cells, countLine, missingLine, runningFigure, lines, percent, remaining) = ([], "", "", "", [:], 0, 0)
             return
         }
-        let items = try await LiveItems.of(store.items(), stamps: store.stamps(), engine: engine)
+        // The figures read the lines the saved Orders from keeps, as the web's totals read rangedItems.
+        let range = try await ViewRange.range(DateFilter(saved: store.viewPreferences().dateFilter), store: store, engine: engine)
+        let items = try await ViewRange.apply(try await LiveItems.of(store.items(), stamps: store.stamps(), engine: engine), range: range, engine: engine)
         let t = try JSONSerialization.jsonObject(with: Data(try await engine.call("totalsOf", "[\(items),\(got)]").utf8)) as? [String: Double] ?? [:]
         let pkgs = try await engine.call("groupPackages", "[\(items)]")
         let n = (try JSONSerialization.jsonObject(with: Data(pkgs.utf8)) as? [Any])?.count ?? 0
@@ -137,7 +139,7 @@ public final class MastheadModel {
         // The same live records the Orphaned badge counts, so the line and the badge cannot disagree.
         let waiting = store.envelopeRecords().filter(OrphanedModel.isLive).count
         let counts = #"{"packages":\#(n),"uniqueItems":\#(unique),"envelopes":\#(waiting)}"#
-        let (packagesLine, tallyLine, orphanedLine, ledgerLine) = (try await line("packages", counts), try await line("items", counts), try await line("mystery", counts), try await line("ledger", counts))
+        let (packagesLine, tallyLine, orphanedLine, ledgerLine) = (try await line("packages", counts, range: range), try await line("items", counts, range: range), try await line("mystery", counts, range: range), try await line("ledger", counts, range: range))
         let (total, have, val, missingVal) = (t["total"] ?? 0, t["got"] ?? 0, t["val"] ?? 0, t["missingVal"] ?? 0)
         let (inVal, allVal) = (try await text("compact", val - missingVal), try await text("compact", val))
         // The bundle's money, so the line rounds half up as the web does.
