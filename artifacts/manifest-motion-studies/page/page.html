@@ -1,0 +1,550 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found]){display:none!important}</style></head><body>
+<title>Manifest Motion Studies</title>
+<style>
+  /* Palette lifted verbatim from the C object in src/app.jsx. No literal here
+     that isn't already a token there. */
+  :root {
+    --paper: #F2E9DA;
+    --card: #FCF6EA;
+    --ink: #332E3F;
+    --inkSoft: #6E6379;
+    --line: #DCCDB6;
+    --gold: #C9A961;
+    --silver: #C4C3C0;
+    --accent: #6F5CA6;
+    --green: #2E7A5E;
+    --greenSoft: #E6E7D7;
+    --red: #A8443C;
+    --redSoft: #F4E4D9;
+    --manila: #EADBBA;
+    --manilaInk: #695832;
+    --wax: #A8443C;
+    --waxLit: #C86A5F;
+    --waxDeep: #66231D;
+    --waxCut: #5E1F1A;
+    --waxRaised: #E09A90;
+    --cochin: Cochin, 'Hoefler Text', Palatino, Georgia, serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+
+  /* Committed to one visual world on purpose: this page is a proof sheet for a
+     parchment app and has to be judged on that ground, so it does not follow
+     the viewer's theme. Every colour is painted explicitly. */
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--cochin);
+    margin: 0;
+    padding: 0 0 72px;
+  }
+  * { box-sizing: border-box; }
+
+  .wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 0; }
+
+  /* ── masthead, in the app's own construction ─────────────────── */
+  .head { text-align: center; padding: 14px 8px 0; }
+  .rule { display: flex; align-items: center; justify-content: center;
+          gap: 13px; max-width: 270px; margin: 0 auto 11px; }
+  .rule i { flex: 1; height: 1px; background: var(--gold); opacity: .75; }
+  .title { margin: 0; font-weight: 400; text-transform: uppercase;
+           font-size: clamp(26px, calc(20px + 1.7vw), 33px);
+           letter-spacing: .22em; text-indent: .22em; line-height: 1.06; }
+  .house { font-family: var(--mono); letter-spacing: .26em;
+           font-size: clamp(8.5px, 2.7vw, 10px); text-transform: uppercase;
+           color: var(--inkSoft); margin-top: 9px; }
+  .sub { font-size: 14px; color: var(--inkSoft); margin: 18px auto 0;
+         max-width: 44ch; line-height: 1.55; }
+  .sub b { color: var(--ink); font-weight: 600; }
+
+  /* ── a plate ─────────────────────────────────────────────────── */
+  .plate { margin-top: 40px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .plate-k { display: flex; align-items: baseline; gap: 10px;
+             font-family: var(--mono); font-size: 9px; letter-spacing: .18em;
+             text-transform: uppercase; color: var(--inkSoft); }
+  .plate-k b { color: var(--accent); font-weight: 700; }
+  .plate-k .replay { margin-left: auto; }
+  .plate h2 { font-size: 21px; font-weight: 400; margin: 5px 0 0;
+              letter-spacing: .01em; }
+  .plate p { font-size: 13.5px; color: var(--inkSoft); margin: 6px 0 0;
+             line-height: 1.55; max-width: 62ch; }
+
+  .specimens { display: grid; gap: 12px; margin-top: 16px;
+               grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+
+  /* a specimen: the stage, then its caption. The stage is a fixed height so a
+     replay never moves the page — the same rule the app itself lives under. */
+  .spec { border: 1px solid var(--line); border-radius: 10px;
+          background: var(--card); overflow: hidden; cursor: pointer;
+          text-align: left; padding: 0; font: inherit; color: inherit;
+          display: flex; flex-direction: column; }
+  .spec:focus-visible { outline: 2px solid var(--green); outline-offset: 2px; }
+  .stage { height: 108px; display: flex; align-items: center;
+           justify-content: center; position: relative; }
+  .cap { border-top: 1px solid var(--line); padding: 7px 9px 8px; }
+  .cap .n { font-family: var(--mono); font-size: 9.5px; letter-spacing: .12em;
+            text-transform: uppercase; color: var(--accent); font-weight: 700; }
+  .cap .d { font-size: 12px; color: var(--inkSoft); margin-top: 2px;
+            line-height: 1.4; }
+  .cap .t { font-family: var(--mono); font-size: 9px; color: var(--inkSoft);
+            margin-top: 4px; opacity: .8; }
+  .spec[data-pick="yes"] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .spec[data-pick="yes"] .n::after { content: " · shipped"; color: var(--accent); }
+  .spec[data-ship] .stage::after { content: "SHIPPED"; position: absolute;
+    top: 7px; right: 8px; font-family: var(--mono); font-size: 7.5px;
+    letter-spacing: .16em; color: var(--accent); }
+
+  .replay { font-family: var(--mono); font-size: 9px; letter-spacing: .14em;
+            text-transform: uppercase; color: var(--accent); background: none;
+            border: 0; border-bottom: 1px solid var(--line); cursor: pointer;
+            padding: 2px 0; }
+
+  .note { margin-top: 14px; font-size: 12.5px; color: var(--manilaInk);
+          background: var(--manila); border-radius: 8px; padding: 9px 11px;
+          line-height: 1.5; }
+
+  code { font-family: var(--mono); font-size: 11.5px; }
+  .hint { text-align: center; font-family: var(--mono); font-size: 9px;
+          letter-spacing: .16em; text-transform: uppercase; color: var(--inkSoft);
+          margin-top: 26px; }
+
+  /* ══ PLATE I — the RECEIVED stamp ══════════════════════════════ */
+  .stamp { font-family: var(--mono); font-size: 10.5px; font-weight: 700;
+           letter-spacing: .1em; color: var(--green);
+           border: 2px solid var(--green); border-radius: 4px;
+           padding: 3px 8px; background: var(--card);
+           transform: rotate(-4deg); display: inline-block; }
+
+  /* A1 press — comes straight down and stops dead. No overshoot at all. */
+  .go .a1 { animation: a1 260ms cubic-bezier(.2,.9,.25,1) both; }
+  @keyframes a1 {
+    from { opacity: 0; transform: rotate(-9deg) scale(1.6); }
+    to   { opacity: 1; transform: rotate(-4deg) scale(1); }
+  }
+  /* A2 rock — the wrist roll a real rubber stamp needs to ink its edges */
+  .go .a2 { animation: a2 380ms cubic-bezier(.32,.7,.3,1) both; }
+  @keyframes a2 {
+    0%   { opacity: 0; transform: rotate(-13deg) scale(1.3); }
+    45%  { opacity: 1; transform: rotate(1deg) scale(.97); }
+    72%  { transform: rotate(-6deg) scale(1.01); }
+    100% { transform: rotate(-4deg) scale(1); }
+  }
+  /* A3 bloom — lands almost instantly, then the ink soaks into the fibres */
+  .go .a3 { animation: a3 170ms cubic-bezier(.2,.9,.25,1) both,
+                       a3ink 520ms 90ms ease-out both; }
+  @keyframes a3 {
+    from { opacity: 0; transform: rotate(-6deg) scale(1.14); }
+    to   { opacity: 1; transform: rotate(-4deg) scale(1); }
+  }
+  @keyframes a3ink {
+    from { color: var(--greenSoft); border-color: var(--greenSoft); }
+    to   { color: var(--green); border-color: var(--green); }
+  }
+
+  /* ══ PLATE II — the wax seal ═══════════════════════════════════ */
+  .seal { width: 52px; height: 52px; display: block; }
+  /* B1 press — down onto the page, one small settle, then the shine arrives */
+  .go .b1 { animation: b1 520ms cubic-bezier(.22,.85,.3,1) both; }
+  @keyframes b1 {
+    0%   { opacity: 0; transform: scale(.72) rotate(-8deg); }
+    58%  { opacity: 1; transform: scale(1.05) rotate(2deg); }
+    100% { transform: scale(1) rotate(0); }
+  }
+  .go .b1 .shine { animation: shine 460ms 320ms ease-out both; }
+  /* B2 impress — heavier, slower, no rotation: the stamp held straight */
+  .go .b2 { animation: b2 620ms cubic-bezier(.16,1,.3,1) both; }
+  @keyframes b2 {
+    from { opacity: 0; transform: scale(1.5); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  .go .b2 .shine { animation: shine 500ms 260ms ease-out both; }
+  /* B3 set — the wax cools: it simply appears and the relief resolves */
+  .go .b3 { animation: b3 700ms ease-out both; }
+  @keyframes b3 { from { opacity: 0; } to { opacity: 1; } }
+  .go .b3 .relief { animation: relief 700ms 140ms cubic-bezier(.16,1,.3,1) both; }
+  .go .b3 .shine { animation: shine 620ms 300ms ease-out both; }
+  @keyframes relief { from { opacity: 0; } to { opacity: .5; } }
+  @keyframes shine { from { opacity: 0; } to { opacity: .22; } }
+
+  /* ══ PLATE III — the gold rules ════════════════════════════════ */
+  .ruleset { display: flex; align-items: center; justify-content: center;
+             gap: 10px; width: 100%; max-width: 190px; padding: 0 14px; }
+  .ruleset i { flex: 1; height: 1px; background: var(--gold); opacity: .75; }
+  .ruleset .dot { width: 26px; height: 26px; border-radius: 50%;
+                  background: var(--wax); flex: none; }
+  .ruleset i:first-child { transform-origin: right center; }
+  .ruleset i:last-child  { transform-origin: left center; }
+  .go .c1 i { animation: draw 520ms cubic-bezier(.4,0,.2,1) both; }
+  .go .c2 i { animation: draw 760ms 180ms cubic-bezier(.16,1,.3,1) both; }
+  @keyframes draw { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+  /* ══ PLATE IV — the progress bar completing ════════════════════ */
+  .bar { width: 120px; height: 8px; border-radius: 8px; background: var(--silver);
+         overflow: hidden; position: relative; }
+  .bar span { display: block; height: 100%; border-radius: 8px;
+              background: var(--accent); width: 62%; }
+  .go .d1 span { animation: fill 420ms cubic-bezier(.4,0,.2,1) both,
+                            hue 420ms 200ms ease both; }
+  .go .d2 span { animation: fill 420ms cubic-bezier(.4,0,.2,1) both,
+                            hue 380ms 260ms ease both; }
+  .go .d2 .sheen { animation: sheen 620ms 380ms cubic-bezier(.3,0,.2,1) both; }
+  .go .d3 span { animation: fill 420ms cubic-bezier(.4,0,.2,1) both,
+                            hue 300ms 220ms ease both; }
+  .go .d3 { animation: lift 460ms 300ms ease-out both; }
+  @keyframes fill { from { width: 62%; } to { width: 100%; } }
+  @keyframes hue { from { background: var(--accent); } to { background: var(--green); } }
+  @keyframes lift {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(46,122,94,0); }
+    40% { box-shadow: 0 0 0 3px rgba(46,122,94,.22); }
+  }
+  .sheen { position: absolute; inset: 0; opacity: 0;
+           background: linear-gradient(100deg, transparent 30%,
+             rgba(252,246,234,.85) 50%, transparent 70%); }
+  @keyframes sheen {
+    from { opacity: 1; transform: translateX(-100%); }
+    to   { opacity: 1; transform: translateX(100%); }
+  }
+
+  /* the miniature package card for Plate IV */
+  .mini { position: relative; overflow: hidden; width: 100%; max-width: 210px;
+          border: 1px solid var(--green); border-radius: 10px;
+          background: var(--card); padding: 9px 11px 10px; }
+  .mini-r { display: flex; align-items: center; gap: 8px; }
+  .mini-r b { font-size: 13px; font-weight: 600; flex: 1; min-width: 0; }
+  .mini-s { transform: rotate(-4deg); font-family: var(--mono); font-size: 7.5px; font-weight: 700;
+            letter-spacing: .1em; color: var(--green);
+            border: 1.5px solid var(--green); border-radius: 3px;
+            padding: 2px 5px; background: var(--card); flex: none; }
+  .mini-m { font-family: var(--mono); font-size: 8.5px; color: var(--inkSoft);
+            margin-top: 3px; }
+  .gild { position: absolute; inset: 0; pointer-events: none; opacity: 0;
+          background: linear-gradient(100deg, transparent 34%,
+            var(--gold) 50%, transparent 66%); }
+  .go .g1 .gild { animation: gild 620ms 60ms cubic-bezier(.32,0,.24,1) both; }
+  .go .g1 .mini-s { animation: a2 380ms cubic-bezier(.32,.7,.3,1) both; }
+  @keyframes gild {
+    0%   { opacity: 0;   transform: translateX(-60%); }
+    35%  { opacity: .30; }
+    100% { opacity: 0;   transform: translateX(60%); }
+  }
+
+  /* ══ PLATE V — the check indicator ═════════════════════════════ */
+  .box { width: 30px; height: 30px; border-radius: 8px;
+         border: 2px solid var(--inkSoft); background: var(--card);
+         display: flex; align-items: center; justify-content: center;
+         color: var(--card); position: relative; overflow: hidden; }
+  .box .glyph { font-size: 16px; line-height: 1; position: relative; z-index: 1; }
+  .box .wash { position: absolute; inset: -2px; background: var(--green);
+               border-radius: 8px; transform: scale(0); }
+  .go .e1 { animation: boxOn 200ms ease-out both; }
+  .go .e1 .wash { animation: washIn 200ms ease-out both; }
+  .go .e1 .glyph { animation: pop 200ms 60ms cubic-bezier(.2,.9,.25,1) both; }
+  .go .e2 { animation: boxOn 240ms ease-out both; }
+  .go .e2 .wash { animation: washIn 240ms cubic-bezier(.2,.9,.25,1) both; }
+  .go .e2 .glyph { animation: tick 300ms 120ms cubic-bezier(.3,.8,.3,1) both; }
+  .go .e3 { animation: boxOn 260ms ease-out both; }
+  .go .e3 .wash { animation: washIn 260ms cubic-bezier(.16,1,.3,1) both; }
+  .go .e3 .nib { animation: nib 380ms 100ms cubic-bezier(.4,.1,.3,1) both; }
+  @keyframes boxOn { from { border-color: var(--inkSoft); } to { border-color: var(--green); } }
+  @keyframes washIn { from { transform: scale(0); } to { transform: scale(1); } }
+  @keyframes pop {
+    from { opacity: 0; transform: scale(.3); }
+    to   { opacity: 1; transform: scale(1); }
+  }
+  @keyframes tick {
+    0%   { opacity: 0; transform: translate(-4px, -3px) scale(.5); }
+    60%  { opacity: 1; }
+    100% { opacity: 1; transform: none; }
+  }
+  @keyframes nib { from { stroke-dashoffset: 24; } to { stroke-dashoffset: 0; } }
+  .nib { stroke-dasharray: 24; stroke-dashoffset: 24; }
+
+  /* ══ PLATE VI — the view switch ════════════════════════════════ */
+  .switch { position: relative; width: 100%; max-width: 300px;
+            border: 1px solid var(--line); border-radius: 999px;
+            background: var(--card); overflow: hidden;
+            display: grid; grid-template-columns: repeat(3, 1fr); }
+  .switch .thumb { position: absolute; top: 0; bottom: 0; left: 0;
+                   width: 33.3334%; background: var(--accent);
+                   border-radius: 999px; }
+  .switch button { position: relative; z-index: 1; font-family: var(--mono);
+                   letter-spacing: .09em; font-size: 9.5px; padding: 8px 2px;
+                   text-transform: uppercase; border: 0; background: none;
+                   color: var(--inkSoft); cursor: pointer; }
+  .switch button[aria-pressed="true"] { color: var(--card); }
+  .switch[data-i="0"] .thumb { transform: translateX(0); }
+  .switch[data-i="1"] .thumb { transform: translateX(100%); }
+  .switch[data-i="2"] .thumb { transform: translateX(200%); }
+  .f1 .thumb { transition: transform 240ms cubic-bezier(.4,0,.2,1); }
+  .f1 button { transition: color 240ms ease; }
+  .f2 .thumb { transition: transform 420ms cubic-bezier(.16,1,.3,1); }
+  .f2 button { transition: color 300ms ease; }
+  .f3 .thumb { transition: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: .001ms !important; animation-delay: 0ms !important;
+      transition-duration: .001ms !important;
+    }
+  }
+</style>
+
+<div class="wrap">
+  <div class="head">
+    <div class="rule"><i></i>
+      <svg class="seal" viewBox="0 0 100 100" aria-hidden="true">
+        <defs><radialGradient id="wx-h" cx="37%" cy="30%" r="78%">
+          <stop offset="0" stop-color="#C86A5F"/><stop offset=".5" stop-color="#A8443C"/>
+          <stop offset="1" stop-color="#66231D"/></radialGradient></defs>
+        <path d="M50 2 C69 2 80 9 88 20 C96 31 99 45 96 59 C92 75 81 90 65 95 C50 100 34 98 22 89 C9 78 2 62 3 47 C5 30 15 15 31 7 C37 4 43 2 50 2 Z" fill="url(#wx-h)"/>
+        <circle cx="50" cy="50" r="39" fill="none" stroke="#66231D" stroke-width="3.5" opacity=".6"/>
+        <g fill="none" stroke="#5E1F1A" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity=".78">
+          <path d="M29 58 L50 38 L71 58"/><path d="M31 72 L69 72"/></g>
+        <g fill="none" stroke="#E09A90" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" opacity=".5">
+          <path d="M29 54.5 L50 34.5 L71 54.5"/><path d="M31 68.5 L69 68.5"/></g>
+        <ellipse cx="34" cy="28" rx="15" ry="9" fill="#FCF6EA" opacity=".22" transform="rotate(-35 34 28)"/>
+      </svg>
+    <i></i></div>
+    <h1 class="title">Motion Studies</h1>
+    <div class="house">C.H Postal Company &middot; Plates I&ndash;VI</div>
+    <p class="sub">Six moments in <b>Manifest</b> that had no motion at all, each
+      drawn two or three ways with every variable but one held constant. The
+      variant marked <b>shipped</b> is what is in the app now &mdash; the others
+      are still here so you can overrule me. <b>Tap a specimen to replay it.</b></p>
+  </div>
+
+  <!-- ── PLATE I ────────────────────────────────────────────────── -->
+  <section class="plate" data-plate>
+    <div class="plate-k"><b>Plate I</b> &middot; the variable is easing
+      <button class="replay" data-replay>Replay</button></div>
+    <h2>The RECEIVED stamp lands</h2>
+    <p>A package completes and the green stamp replaces the outstanding pill.
+      It is already rotated &minus;4&deg;; today it simply blinks into being. A
+      stamp should arrive from above and stop.</p>
+    <div class="specimens">
+      <button class="spec" data-spec><div class="stage"><span class="stamp a1">RECEIVED</span></div>
+        <div class="cap"><div class="n">I&#8202;a &middot; Press</div>
+          <div class="d">Straight down, stops dead. No overshoot.</div>
+          <div class="t">260ms &middot; scale 1.6&rarr;1</div></div></button>
+      <button class="spec" data-spec data-ship data-pick="yes"><div class="stage"><span class="stamp a2">RECEIVED</span></div>
+        <div class="cap"><div class="n">I&#8202;b &middot; Rock</div>
+          <div class="d">The wrist roll that inks a rubber stamp's edges.</div>
+          <div class="t">380ms &middot; &minus;13&deg;&rarr;+1&deg;&rarr;&minus;4&deg;</div></div></button>
+      <button class="spec" data-spec><div class="stage"><span class="stamp a3">RECEIVED</span></div>
+        <div class="cap"><div class="n">I&#8202;c &middot; Bloom</div>
+          <div class="d">Lands at once, then the ink soaks in.</div>
+          <div class="t">170ms land + 520ms ink</div></div></button>
+    </div>
+  </section>
+
+  <!-- ── PLATE II ───────────────────────────────────────────────── -->
+  <section class="plate" data-plate>
+    <div class="plate-k"><b>Plate II</b> &middot; the variable is weight
+      <button class="replay" data-replay>Replay</button></div>
+    <h2>The wax seal, on first load</h2>
+    <p>The masthead's centre ornament, drawn as a five-value relief ramp so it
+      reads as pressed rather than printed. Once per load, never on re-render.</p>
+    <div class="specimens">
+      <button class="spec" data-spec data-ship data-pick="yes"><div class="stage">
+        <svg class="seal b1" viewBox="0 0 100 100" aria-hidden="true" data-seal></svg></div>
+        <div class="cap"><div class="n">II&#8202;a &middot; Press</div>
+          <div class="d">Down, a small settle, then the shine catches.</div>
+          <div class="t">460ms &middot; .72&rarr;1.05&rarr;1</div></div></button>
+      <button class="spec" data-spec><div class="stage">
+        <svg class="seal b2" viewBox="0 0 100 100" aria-hidden="true" data-seal></svg></div>
+        <div class="cap"><div class="n">II&#8202;b &middot; Impress</div>
+          <div class="d">Held straight, heavier, no roll.</div>
+          <div class="t">620ms &middot; 1.5&rarr;1</div></div></button>
+      <button class="spec" data-spec><div class="stage">
+        <svg class="seal b3" viewBox="0 0 100 100" aria-hidden="true" data-seal></svg></div>
+        <div class="cap"><div class="n">II&#8202;c &middot; Set</div>
+          <div class="d">No movement. The wax cools and the relief resolves.</div>
+          <div class="t">700ms &middot; opacity only</div></div></button>
+    </div>
+    <div class="note">II&#8202;c moves nothing at all &mdash; worth comparing
+      honestly, since the masthead is what the page opens on and a bouncing seal
+      would be the first thing anyone sees.</div>
+  </section>
+
+  <!-- ── PLATE III ──────────────────────────────────────────────── -->
+  <section class="plate" data-plate>
+    <div class="plate-k"><b>Plate III</b> &middot; the variable is the tail
+      <button class="replay" data-replay>Replay</button></div>
+    <h2>The gold rules draw</h2>
+    <p>Both hairlines grow outward from the seal, so the masthead assembles
+      around its centre rather than fading in as a block.</p>
+    <div class="specimens">
+      <button class="spec" data-spec><div class="stage">
+        <div class="ruleset c1"><i></i><span class="dot"></span><i></i></div></div>
+        <div class="cap"><div class="n">III&#8202;a &middot; Ruled</div>
+          <div class="d">Even speed, arrives with the seal.</div>
+          <div class="t">520ms &middot; ease-in-out, no delay</div></div></button>
+      <button class="spec" data-spec data-ship data-pick="yes"><div class="stage">
+        <div class="ruleset c2"><i></i><span class="dot"></span><i></i></div></div>
+        <div class="cap"><div class="n">III&#8202;b &middot; Drawn</div>
+          <div class="d">Waits for the seal, then a long slowing tail.</div>
+          <div class="t">560ms &middot; 120ms after</div></div></button>
+    </div>
+  </section>
+
+  <!-- ── PLATE IV ───────────────────────────────────────────────── -->
+  <section class="plate" data-plate>
+    <div class="plate-k"><b>Plate IV</b> &middot; the variable is where the moment is
+      <button class="replay" data-replay>Replay</button></div>
+    <h2>A package completes</h2>
+    <p>This was going to be the progress bar &mdash; accent violet turning green
+      at 100%, unmarked today. Then the measurement: the bar is mounted only
+      while <code>gotQty&nbsp;&gt;&nbsp;0 &amp;&amp; !done</code>, so it is gone
+      before it can ever render full. <b>The bar cannot mark its own completion
+      because it does not survive it.</b> The card does.</p>
+    <div class="specimens">
+      <button class="spec" data-spec><div class="stage">
+        <div class="bar d1"><span></span></div></div>
+        <div class="cap"><div class="n">IV&#8202;a &middot; On the bar</div>
+          <div class="d">What was planned. Fires only on the masthead bar,
+            where 100% means the whole ledger has arrived.</div>
+          <div class="t">420ms fill, hue at 160ms</div></div></button>
+      <button class="spec" data-spec data-ship data-pick="yes"><div class="stage">
+        <div class="mini g1">
+          <div class="mini-r"><b>Alpha Cards</b><span class="mini-s">RECEIVED</span></div>
+          <div class="mini-m">2026-07-01 &middot; untracked</div>
+          <i class="gild"></i></div></div>
+        <div class="cap"><div class="n">IV&#8202;b &middot; On the card</div>
+          <div class="d">One pass of gold across the card, on the same beat as
+            the stamp. Ornamental gold, carrying nothing.</div>
+          <div class="t">620ms &middot; 60ms after the tap</div></div></button>
+    </div>
+    <div class="note">The gold is the one token in the palette that is never
+      allowed to carry information (2.2:1 on card). Here it carries none &mdash;
+      it says only that something finished.</div>
+  </section>
+
+  <!-- ── PLATE V ────────────────────────────────────────────────── -->
+  <section class="plate" data-plate>
+    <div class="plate-k"><b>Plate V</b> &middot; the variable is the glyph
+      <button class="replay" data-replay>Replay</button></div>
+    <h2>A card is checked in</h2>
+    <p>The one moment that happens hundreds of times on a mail day, so it has
+      the least room for indulgence. The box is a fixed 30&thinsp;px and nothing
+      here changes its size &mdash; only what happens inside it.</p>
+    <div class="specimens">
+      <button class="spec" data-spec><div class="stage">
+        <div class="box e1"><i class="wash"></i><span class="glyph">&#10003;</span></div></div>
+        <div class="cap"><div class="n">V&#8202;a &middot; Pop</div>
+          <div class="d">The wash fills, the tick scales up after it.</div>
+          <div class="t">200ms &middot; scale .3&rarr;1</div></div></button>
+      <button class="spec" data-spec><div class="stage">
+        <div class="box e2"><i class="wash"></i><span class="glyph">&#10003;</span></div></div>
+        <div class="cap"><div class="n">V&#8202;b &middot; Set down</div>
+          <div class="d">The tick arrives from up-left, as a hand would.</div>
+          <div class="t">300ms &middot; translate + scale</div></div></button>
+      <button class="spec" data-spec data-ship data-pick="yes"><div class="stage">
+        <div class="box e3"><i class="wash"></i>
+          <svg width="17" height="17" viewBox="0 0 24 24" style="position:relative;z-index:1">
+            <path class="nib" d="M4 12.5 L9.5 18 L20 6" fill="none" stroke="#FCF6EA"
+                  stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg></div></div>
+        <div class="cap"><div class="n">V&#8202;c &middot; Nib</div>
+          <div class="d">The tick is written, one stroke, left to right.</div>
+          <div class="t">300ms &middot; dashoffset</div></div></button>
+    </div>
+    <div class="note">Invariant 5 watch: none of these move the row, change the
+      box's 30&thinsp;px, or touch anything a finger is about to land on.</div>
+  </section>
+
+  <!-- ── PLATE VI ───────────────────────────────────────────────── -->
+  <section class="plate" data-plate>
+    <div class="plate-k"><b>Plate VI</b> &middot; the variable is duration
+      <button class="replay" data-replay>Replay</button></div>
+    <h2>The view switch</h2>
+    <p>Three equal thirds, and the violet fill currently teleports between them.
+      Sliding it makes the switch one object being moved rather than three
+      lamps being lit. Tap a segment.</p>
+    <div class="specimens">
+      <div class="spec" style="cursor:default"><div class="stage">
+        <div class="switch f1" data-i="2" data-switch>
+          <i class="thumb"></i>
+          <button aria-pressed="false">Orphaned</button>
+          <button aria-pressed="false">Tally</button>
+          <button aria-pressed="true">Packages</button></div></div>
+        <div class="cap"><div class="n">VI&#8202;a &middot; Brisk</div>
+          <div class="d">Standard UI easing. Reads as a control.</div>
+          <div class="t">240ms &middot; (.4,0,.2,1)</div></div></div>
+      <div class="spec" data-ship data-pick="yes" style="cursor:default"><div class="stage">
+        <div class="switch f2" data-i="2" data-switch>
+          <i class="thumb"></i>
+          <button aria-pressed="false">Orphaned</button>
+          <button aria-pressed="false">Tally</button>
+          <button aria-pressed="true">Packages</button></div></div>
+        <div class="cap"><div class="n">VI&#8202;b &middot; Glide</div>
+          <div class="d">Longer, decelerating. Reads as a weighted object.</div>
+          <div class="t">420ms &middot; (.16,1,.3,1)</div></div></div>
+      <div class="spec" style="cursor:default"><div class="stage">
+        <div class="switch f3" data-i="2" data-switch>
+          <i class="thumb"></i>
+          <button aria-pressed="false">Orphaned</button>
+          <button aria-pressed="false">Tally</button>
+          <button aria-pressed="true">Packages</button></div></div>
+        <div class="cap"><div class="n">VI&#8202;c &middot; None</div>
+          <div class="d">What ships today, for the comparison.</div>
+          <div class="t">0ms</div></div></div>
+    </div>
+  </section>
+
+  <div class="hint">Tap any specimen to replay &middot; tap its caption to mark it</div>
+</div>
+
+
+<script>
+  // The seal is drawn once, as a string, and a real copy is put into each
+  // specimen. <use> would be tidier but it builds a shadow tree, and the
+  // .relief / .shine rules in Plate II cannot reach inside one.
+  const SEAL = (id) => `
+    <defs><radialGradient id="${id}" cx="37%" cy="30%" r="78%">
+      <stop offset="0" stop-color="#C86A5F"/><stop offset=".5" stop-color="#A8443C"/>
+      <stop offset="1" stop-color="#66231D"/></radialGradient></defs>
+    <path d="M50 2 C69 2 80 9 88 20 C96 31 99 45 96 59 C92 75 81 90 65 95 C50 100 34 98 22 89 C9 78 2 62 3 47 C5 30 15 15 31 7 C37 4 43 2 50 2 Z" fill="url(#${id})"/>
+    <circle cx="50" cy="50" r="39" fill="none" stroke="#66231D" stroke-width="3.5" opacity=".6"/>
+    <g fill="none" stroke="#5E1F1A" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity=".78">
+      <path d="M29 58 L50 38 L71 58"/><path d="M31 72 L69 72"/></g>
+    <g class="relief" fill="none" stroke="#E09A90" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" opacity=".5">
+      <path d="M29 54.5 L50 34.5 L71 54.5"/><path d="M31 68.5 L69 68.5"/></g>
+    <ellipse class="shine" cx="34" cy="28" rx="15" ry="9" fill="#FCF6EA" opacity=".22" transform="rotate(-35 34 28)"/>`;
+  document.querySelectorAll("[data-seal]").forEach((s, i) => (s.innerHTML = SEAL("wx" + i)));
+
+  // Replaying a CSS animation means taking the class off, forcing a reflow, and
+  // putting it back. Everything animated lives under a `.go` on the plate.
+  function play(plate) {
+    plate.classList.remove("go");
+    void plate.offsetWidth;
+    plate.classList.add("go");
+  }
+  document.querySelectorAll("[data-plate]").forEach((plate) => {
+    play(plate);
+    plate.querySelectorAll("[data-spec]").forEach((s) =>
+      s.addEventListener("click", (e) => {
+        if (e.target.closest(".cap")) {
+          const on = s.dataset.pick === "yes";
+          plate.querySelectorAll("[data-spec]").forEach((o) => (o.dataset.pick = "no"));
+          s.dataset.pick = on ? "no" : "yes";
+          return;
+        }
+        play(plate);
+      })
+    );
+    const r = plate.querySelector("[data-replay]");
+    if (r) r.addEventListener("click", () => play(plate));
+  });
+  // Plate VI drives itself: the switches are live.
+  document.querySelectorAll("[data-switch]").forEach((sw) => {
+    sw.querySelectorAll("button").forEach((b, i) =>
+      b.addEventListener("click", () => {
+        sw.dataset.i = i;
+        sw.querySelectorAll("button").forEach((o, j) =>
+          o.setAttribute("aria-pressed", String(i === j))
+        );
+      })
+    );
+  });
+</script>
+
+</body></html>

@@ -1,0 +1,947 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>MANIFEST Specimen Book</title>
+<style>
+/* ============================================================
+   Tokens — lifted verbatim from src/app.jsx's `C` object. This
+   page follows the source's own rule: no colour literal outside
+   this block. Committed to one world deliberately: wax, paper and
+   ink are a physical, LIGHT medium — inverting them for a dark
+   surface would contradict the thing being specimen'd. Background
+   and every colour below are painted explicitly regardless, so the
+   page holds its own ground on either host theme.
+   ============================================================ */
+:root{
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --ink-soft:#6E6379;
+  --line:#DCCDB6; --gold:#C9A961; --silver:#C4C3C0; --accent:#6F5CA6;
+  --green:#2E7A5E; --green-soft:#E6E7D7; --red:#A8443C; --red-soft:#F4E4D9;
+  --manila:#EADBBA; --manila-ink:#695832; --amber:#846008;
+  --wax:#A8443C; --wax-lit:#C86A5F; --wax-deep:#66231D; --wax-cut:#5E1F1A; --wax-raised:#E09A90;
+  --cochin: Cochin, 'Hoefler Text', Palatino, Georgia, serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+*{box-sizing:border-box;}
+html{overflow-x:hidden;}
+body{background:var(--paper); color:var(--ink); font-family:var(--cochin);
+     -webkit-font-smoothing:antialiased; overflow-x:hidden;}
+::selection{background:var(--accent); color:var(--card);}
+button,input{font-family:inherit; -webkit-tap-highlight-color:transparent;}
+button:focus-visible,a:focus-visible{outline:2px solid var(--green); outline-offset:2px;}
+a{color:inherit;}
+.wrap{max-width:900px; margin:0 auto; padding:0 16px 90px;}
+img{display:block; max-width:100%;}
+.mono{font-family:var(--mono);}
+.k{font-family:var(--mono); font-size:9.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-soft);}
+.rule{height:1px; background:var(--line); border:0; margin:0;}
+.card{background:var(--card); border-radius:10px; overflow:hidden;}
+.pad{padding:14px;}
+code, .codeline{font-family:var(--mono); font-size:11.5px; color:var(--ink-soft); background:var(--card);
+  border:1px solid var(--line); border-radius:6px; padding:2px 7px; display:inline-block;}
+pre.codeblock{font-family:var(--mono); font-size:11.5px; line-height:1.6; color:var(--ink);
+  background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px 14px;
+  overflow-x:auto; margin:0; white-space:pre-wrap; word-break:break-word;}
+
+/* ── running masthead (letterhead) — CSS lifted from the app's own
+   .mdl-* classes so this recreation is pixel-true, not an approximation ── */
+.mdl-head{text-align:center; padding:30px 8px 0;}
+.mdl-rule{display:flex; align-items:center; justify-content:center; gap:13px; max-width:300px; margin:0 auto 12px;}
+.mdl-rule i{flex:1; height:1px; background:var(--gold); opacity:.75;}
+.mdl-seal{width:clamp(44px, calc(28px + 4.2vw), 60px); height:auto;}
+.mdl-title{margin:0; font-weight:400; text-transform:uppercase;
+  font-size:clamp(22px, calc(14px + 6vw), 42px); letter-spacing:clamp(.09em,2.4vw,.22em);
+  text-indent:clamp(.09em,2.4vw,.22em); line-height:1.06;}
+.mdl-house{font-family:var(--mono); letter-spacing:.26em; font-size:clamp(8.5px,2.7vw,10px);
+  text-transform:uppercase; color:var(--ink-soft); margin-top:10px;}
+.mdl-sub{font-family:var(--mono); letter-spacing:.14em; font-size:10px; text-transform:uppercase;
+  color:var(--accent); margin-top:5px;}
+.mdl-thirds{display:flex; text-align:center; max-width:520px; margin:22px auto 0; border-top:1px solid var(--line); padding-top:12px;}
+.mdl-thirds>div{flex:1; min-width:0; padding:0 8px;}
+.mdl-thirds .mid{border-left:1px solid var(--line); border-right:1px solid var(--line);}
+.mdl-fig{font-family:var(--mono); font-size:14px; margin-top:3px; white-space:nowrap;}
+.mdl-fig b{color:var(--accent); font-weight:700;}
+
+.mdl-head .mdl-seal{animation:mdl-press 600ms cubic-bezier(.22,.85,.3,1) both;}
+@keyframes mdl-press{0%{opacity:0; transform:scale(.68) rotate(-10deg);} 58%{opacity:1; transform:scale(1.06) rotate(2.5deg);} 100%{opacity:1; transform:scale(1) rotate(0);}}
+.mdl-head .mdl-seal .mdl-shine{animation:mdl-shine 520ms 420ms ease-out both;}
+@keyframes mdl-shine{from{opacity:0;} to{opacity:.22;}}
+.mdl-rule i{animation:mdl-draw 680ms 240ms cubic-bezier(.16,1,.3,1) both;}
+.mdl-rule i:first-child{transform-origin:right center;}
+.mdl-rule i:last-child{transform-origin:left center;}
+@keyframes mdl-draw{from{transform:scaleX(0);} to{transform:scaleX(1);}}
+.mdl-title{animation:mdl-settle 540ms 360ms cubic-bezier(.16,1,.3,1) both;}
+.mdl-house,.mdl-sub{animation:mdl-settle 500ms 470ms cubic-bezier(.16,1,.3,1) both;}
+.mdl-thirds{animation:mdl-settle 500ms 560ms cubic-bezier(.16,1,.3,1) both;}
+@keyframes mdl-settle{from{opacity:0; transform:translateY(7px);} to{opacity:1; transform:none;}}
+@media (prefers-reduced-motion:reduce){
+  .mdl-head .mdl-seal,.mdl-head .mdl-seal .mdl-shine,.mdl-rule i,.mdl-title,.mdl-house,.mdl-sub,.mdl-thirds{animation:none;}
+}
+
+/* ── tab bar: the ruled head's vocabulary, extended past 3 items.
+   The equal-thirds pill was tuned specifically for three; here it
+   becomes a wrapping ruled strip — same hairlines, same uppercase
+   mono, same "underline what opens" rule, sized for eight. ── */
+.tabbar-shell{position:sticky; top:0; z-index:20; background:var(--paper); padding-top:10px;
+  border-bottom:1px solid var(--line);}
+.tabbar{display:flex; gap:0; max-width:900px; margin:0 auto; overflow-x:auto; -webkit-overflow-scrolling:touch;}
+.tabbar::-webkit-scrollbar{height:5px;}
+.tab{flex:0 0 auto; font-family:var(--mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--ink-soft); background:transparent; border:0; padding:11px 13px; cursor:pointer;
+  border-bottom:2px solid transparent; white-space:nowrap;}
+.tab[aria-selected="true"]{color:var(--accent); border-bottom-color:var(--accent);}
+.tab b{color:var(--red); font-weight:700;}
+.tab[aria-selected="true"] b{color:var(--accent);}
+
+.panel{padding-top:26px;}
+.panel[hidden]{display:none;}
+.lede{font-size:15.5px; line-height:1.55; max-width:60ch; color:var(--ink);}
+.lede em{font-style:italic; color:var(--ink-soft);}
+h2.h{font-weight:400; text-transform:uppercase; letter-spacing:.12em; font-size:13px;
+  color:var(--ink-soft); margin:38px 0 12px; display:flex; align-items:center; gap:10px;}
+h2.h::after{content:""; flex:1; height:1px; background:var(--line);}
+h2.h:first-of-type{margin-top:6px;}
+h3.h3{font-weight:400; font-size:19px; margin:0 0 6px; letter-spacing:.01em;}
+.note{font-size:12.5px; line-height:1.55; color:var(--ink-soft); max-width:62ch;}
+
+/* ruled cell grammar (from headCell/panelWrap/optGrid) */
+.ruled-row{display:grid; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--card);}
+.ruled-cell{padding:9px 11px; border-right:1px solid var(--line); min-width:0;}
+.ruled-cell:last-child{border-right:0;}
+.ruled-cell .k{display:block; margin-bottom:3px;}
+.ruled-cell .v{display:inline-block; max-width:100%; vertical-align:middle;
+  font-family:var(--mono); font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+/* rows that opt into wrapping (white-space:normal inline) must not still be
+   clipped by the nowrap rule's overflow/ellipsis — an unbreakable word wider
+   than its column would otherwise render as a single clipped "Ma…" instead of
+   wrapping. overflow-wrap lets it break instead. */
+.ruled-cell .v[style*="white-space:normal"]{overflow:visible; text-overflow:clip; overflow-wrap:break-word; word-break:break-word;}
+
+/* grids */
+.grid{display:grid; gap:10px;}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr));}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr));}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr));}
+@media (max-width:640px){.g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr));}}
+
+.swatch{border-radius:10px; overflow:hidden; border:1px solid var(--line); background:var(--card);}
+.swatch .fill{height:64px;}
+.swatch .lab{padding:8px 10px;}
+.swatch .name{font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.04em;}
+.swatch .hex{font-family:var(--mono); font-size:10.5px; color:var(--ink-soft);}
+.swatch .role{font-size:11px; color:var(--ink-soft); margin-top:3px; line-height:1.4;}
+
+.stat{border:1px solid var(--line); border-radius:8px; padding:10px 12px; background:var(--card);}
+.stat .n{font-family:var(--mono); font-size:20px; color:var(--accent);}
+.stat .l{font-family:var(--mono); font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-soft); margin-top:2px;}
+
+/* mono buttons in the app's action-row idiom */
+.actbtn{height:36px; padding:0 12px; border:1px solid var(--line); border-radius:6px; background:var(--card);
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink);
+  cursor:pointer; display:inline-flex; align-items:center; gap:6px;}
+.actbtn.danger{color:var(--red); border-color:var(--red);}
+.actbtn.danger.armed{background:var(--red); color:var(--card);}
+.actbtn.accent{color:var(--accent); border-color:var(--accent);}
+
+/* timeline ribbon */
+.ribbon{display:flex; gap:0; overflow-x:auto; border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+  padding:14px 0; margin-top:18px;}
+.ribbon::-webkit-scrollbar{height:6px;}
+.tick{flex:0 0 auto; padding:0 16px; border-right:1px solid var(--line); min-width:126px;}
+.tick:last-child{border-right:0;}
+.tick .d{font-family:var(--mono); font-size:9.5px; color:var(--ink-soft); letter-spacing:.06em;}
+.tick .t{font-size:12.5px; line-height:1.3; margin-top:3px;}
+
+/* index cards on cover */
+.idxcard{border:1px solid var(--line); border-radius:10px; background:var(--card); padding:14px; cursor:pointer; text-align:left;}
+.idxcard .num{font-family:var(--mono); font-size:9.5px; color:var(--ink-soft); letter-spacing:.1em;}
+.idxcard h4{margin:5px 0 4px; font-weight:400; font-size:16px;}
+.idxcard p{margin:0; font-size:11.5px; color:var(--ink-soft); line-height:1.4;}
+.idxswatches{display:flex; gap:4px; margin-top:10px;}
+.idxswatches i{width:14px; height:14px; border-radius:3px; display:block;}
+
+/* icon marks */
+.markbox{border:1px solid var(--line); border-radius:12px; background:var(--card); padding:18px; text-align:center;}
+.markbox img,.markbox svg{margin:0 auto;}
+.browsertab{display:inline-flex; align-items:center; gap:6px; background:var(--card); border:1px solid var(--line);
+  border-bottom:0; border-radius:8px 8px 0 0; padding:7px 14px 7px 10px; font-family:var(--mono); font-size:11px;}
+.browserbar{border:1px solid var(--line); border-radius:0 8px 8px 8px; background:var(--paper); height:6px; margin-top:0;}
+.hsicon{width:64px; height:64px; border-radius:14px; overflow:hidden; box-shadow:0 3px 10px rgba(102,35,29,.18);}
+.hscap{font-size:10px; margin-top:6px; color:var(--ink-soft); font-family:var(--cochin);}
+
+/* view switch pill */
+.pill{position:relative; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); border:1px solid var(--line);
+  border-radius:999px; overflow:hidden; background:var(--card); width:100%; max-width:340px;}
+.pill button{position:relative; z-index:1; font-family:var(--mono); letter-spacing:.09em; font-size:10.5px;
+  padding:9px 4px; text-transform:uppercase; border:0; background:transparent; color:var(--ink-soft); cursor:pointer;}
+.pill button.on{color:var(--card);}
+.pillthumb{position:absolute; top:0; bottom:0; left:0; width:calc(100%/3); background:var(--accent);
+  border-radius:999px; pointer-events:none; transition:transform 420ms cubic-bezier(.16,1,.3,1);}
+
+/* package-card demo */
+.pkgcard{border:1px solid var(--line); border-radius:10px; background:var(--card); overflow:hidden; position:relative;}
+.edgebar{position:absolute; top:0; left:0; height:3px; background:var(--accent); transition:width 300ms ease, background 300ms ease; z-index:2;}
+.edgebar.done{background:var(--green);}
+.pkghead{display:flex; align-items:flex-start; justify-content:space-between; gap:10px; padding:14px 14px 10px; width:100%;
+  border:0; background:transparent; text-align:left; cursor:pointer;}
+.pkgname{font-size:15px;}
+.pkgmeta{font-family:var(--mono); font-size:10.5px; color:var(--ink-soft); margin-top:3px;}
+.pill-missing{font-family:var(--cochin); font-weight:700; font-size:12.5px; color:var(--red); background:var(--red-soft);
+  border-radius:999px; padding:3px 10px; flex-shrink:0;}
+.stamp-received{font-family:var(--mono); font-size:10.5px; font-weight:700; letter-spacing:.1em; color:var(--green);
+  border:2px solid var(--green); border-radius:4px; padding:3px 8px; transform:rotate(-4deg); background:var(--card); flex-shrink:0;}
+.itemrow{display:flex; align-items:center; gap:10px; padding:9px 14px; border-top:1px solid var(--line); cursor:pointer;}
+.itemrow.got{background:var(--green-soft);}
+.tickbox{width:26px; height:26px; border-radius:6px; border:2px solid var(--line); flex-shrink:0; display:flex; align-items:center; justify-content:center;}
+.itemrow.got .tickbox{border-color:var(--green); background:var(--green);}
+.itemname{flex:1; font-size:13.5px;}
+.itemqty{font-family:var(--mono); font-size:11px; color:var(--ink-soft);}
+.mdl-land{animation:mdl-stamp 380ms cubic-bezier(.32,.7,.3,1) both;}
+@keyframes mdl-stamp{0%{opacity:0; transform:rotate(-13deg) scale(1.3);} 45%{opacity:1; transform:rotate(1deg) scale(.97);} 72%{transform:rotate(-6deg) scale(1.01);} 100%{opacity:1; transform:rotate(var(--rest,-4deg)) scale(1);}}
+.mdl-gild{position:absolute; inset:0; pointer-events:none; background:linear-gradient(100deg, transparent 34%, var(--gold) 50%, transparent 66%);
+  animation:mdl-gild 700ms 60ms cubic-bezier(.32,0,.24,1) both;}
+@keyframes mdl-gild{0%{opacity:0; transform:translateX(-60%);} 35%{opacity:.30;} 100%{opacity:0; transform:translateX(60%);}}
+.mdl-sheen{position:absolute; inset:0; pointer-events:none; background:linear-gradient(100deg, transparent 32%, var(--card) 50%, transparent 68%);
+  animation:mdl-sheen 620ms 140ms cubic-bezier(.3,0,.2,1) both;}
+@keyframes mdl-sheen{from{opacity:.9; transform:translateX(-105%);} to{opacity:0; transform:translateX(105%);}}
+.mdl-reveal{animation:mdl-reveal 240ms cubic-bezier(.16,1,.3,1) both;}
+@keyframes mdl-reveal{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:none;}}
+.mdl-nib{stroke-dasharray:26; animation:mdl-nib 340ms cubic-bezier(.4,.1,.3,1) both;}
+@keyframes mdl-nib{from{stroke-dashoffset:26;} to{stroke-dashoffset:0;}}
+.mdl-panel{animation:mdl-panel 220ms cubic-bezier(.16,1,.3,1) both;}
+@keyframes mdl-panel{from{opacity:0; transform:translateY(-4px);} to{opacity:1; transform:none;}}
+
+.optgrid{display:grid; gap:1px; background:var(--line); border:1px solid var(--line); margin-top:10px;}
+.optcell{height:34px; border:0; background:var(--card); color:var(--ink); font-family:var(--mono); font-size:11.5px;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;}
+.optcell.on{background:var(--accent); color:var(--card);}
+
+.stampband{display:flex; align-items:center; gap:10px; padding:0 14px 10px; cursor:pointer;}
+.stampchip{font-family:var(--mono); font-size:10px; font-weight:700; letter-spacing:.08em; color:var(--manila-ink);
+  background:var(--manila); border-radius:4px; padding:3px 8px; transform:rotate(-3deg); flex-shrink:0;}
+.stampnote{flex:1; font-style:italic; font-size:13px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+
+.replaybtn{font-family:var(--mono); font-size:9.5px; text-transform:uppercase; letter-spacing:.08em; color:var(--accent);
+  background:transparent; border:1px solid var(--accent); border-radius:999px; padding:4px 10px; cursor:pointer;}
+.motiontile{border:1px solid var(--line); border-radius:10px; background:var(--card); padding:16px; display:flex; flex-direction:column; gap:10px;}
+.motiontile .demo{height:70px; display:flex; align-items:center; justify-content:center; position:relative;}
+.motiontile h4{margin:0; font-size:13.5px; font-weight:400;}
+.motiontile p{margin:0; font-size:11.5px; color:var(--ink-soft); line-height:1.4;}
+
+/* decision log */
+.logrow{display:grid; grid-template-columns:74px minmax(0,1fr) auto; gap:12px; align-items:baseline; padding:10px 0; border-top:1px solid var(--line);}
+.logrow:first-child{border-top:0;}
+.logrow .d{font-family:var(--mono); font-size:10px; color:var(--ink-soft);}
+.logrow .t{font-size:13.5px; line-height:1.4;}
+.logrow .m{font-family:var(--mono); font-size:10.5px; white-space:nowrap; text-align:right;}
+.delta{color:var(--red);} .delta.good{color:var(--green);}
+@media (max-width:620px){.logrow{grid-template-columns:minmax(0,1fr); gap:2px;} .logrow .m{text-align:left;}}
+
+.beforeafter{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:14px;}
+@media (max-width:640px){.beforeafter{grid-template-columns:minmax(0,1fr);}}
+.baframe{border:1px solid var(--line); border-radius:10px; overflow:hidden;}
+.balabel{font-family:var(--mono); font-size:9.5px; text-transform:uppercase; letter-spacing:.1em; padding:6px 10px;
+  background:var(--paper); border-bottom:1px solid var(--line); color:var(--ink-soft);}
+.balabel.after{color:var(--accent);}
+.bacontent{padding:14px; background:var(--card);}
+
+.oldbox{display:inline-flex; align-items:center; gap:7px; padding:9px 12px; margin:3px; border-radius:4px;
+  border:2px solid #33333322; background:#eee7d7; color:#4a4a4a; font-family:Arial,sans-serif; font-size:12px;}
+.oldselect{padding:8px 10px; border-radius:3px; border:1px solid #999; background:#fff; font-family:Arial,sans-serif; font-size:12px; color:#333;}
+.olddate{padding:6px 8px; border:1px solid #999; border-radius:3px; background:#fff; font-family:Arial,sans-serif; font-size:12px; color:#666;}
+
+footer.colophon{max-width:900px; margin:50px auto 0; padding:22px 16px 0; border-top:1px solid var(--line);
+  text-align:center; font-family:var(--mono); font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft);}
+</style>
+
+<div class="tabbar-shell">
+  <nav class="tabbar" id="tabbar" role="tablist" aria-label="Sections"></nav>
+</div>
+
+<div class="wrap">
+
+  <header class="mdl-head">
+    <div class="mdl-rule">
+      <i></i>
+      <svg class="mdl-seal" viewBox="0 0 100 100" aria-hidden="true">
+        <defs>
+          <radialGradient id="wax-book" cx="37%" cy="30%" r="78%">
+            <stop offset="0" stop-color="#C86A5F" />
+            <stop offset="0.5" stop-color="#A8443C" />
+            <stop offset="1" stop-color="#66231D" />
+          </radialGradient>
+        </defs>
+        <path d="M50 2 C69 2 80 9 88 20 C96 31 99 45 96 59 C92 75 81 90 65 95 C50 100 34 98 22 89 C9 78 2 62 3 47 C5 30 15 15 31 7 C37 4 43 2 50 2 Z" fill="url(#wax-book)" />
+        <circle cx="50" cy="50" r="39" fill="none" stroke="#66231D" stroke-width="3.5" opacity="0.6" />
+        <g fill="none" stroke="#5E1F1A" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity="0.78">
+          <path d="M29 58 L50 38 L71 58" />
+          <path d="M31 72 L69 72" />
+        </g>
+        <g fill="none" stroke="#E09A90" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+          <path d="M29 54.5 L50 34.5 L71 54.5" />
+          <path d="M31 68.5 L69 68.5" />
+        </g>
+        <ellipse class="mdl-shine" cx="34" cy="28" rx="15" ry="9" fill="#FCF6EA" opacity="0.22" transform="rotate(-35 34 28)" />
+      </svg>
+      <i></i>
+    </div>
+    <h1 class="mdl-title">Manifest</h1>
+    <div class="mdl-house">C.H Postal Company</div>
+    <div class="mdl-sub">Design Specimen Book</div>
+    <div class="mdl-thirds">
+      <div><div class="k">Commits</div><div class="mdl-fig"><b>205</b></div></div>
+      <div class="mid"><div class="k">Test groups</div><div class="mdl-fig"><b>44</b> <span style="color:var(--ink-soft)">· 538 checks</span></div></div>
+      <div><div class="k">Source</div><div class="mdl-fig"><b>1</b> file · 7.1k ln</div></div>
+    </div>
+  </header>
+
+  <!-- ============================================================ COVER -->
+  <section class="panel" id="p-cover" role="tabpanel">
+    <p class="lede">Everything under the hood of the <em>Mail Day Ledger</em>'s MANIFEST identity — every mark, hue, letterform and motion decision, and the passes it took to get each one there. The app itself lives at the demo link; this is the specimen book behind it.</p>
+
+    <div class="ribbon" aria-label="Condensed timeline">
+      <div class="tick"><div class="d">2026-08-10</div><div class="t">By-item view, cost basis</div></div>
+      <div class="tick"><div class="d">2026-08-11</div><div class="t">Repaint in Palette D▸</div></div>
+      <div class="tick"><div class="d">2026-08-11</div><div class="t">Top rebuilt as a letterhead</div></div>
+      <div class="tick"><div class="d">2026-08-12</div><div class="t">Push / Pull to GitHub</div></div>
+      <div class="tick"><div class="d">2026-08-13</div><div class="t">Controls rebuilt as the ruled head</div></div>
+      <div class="tick"><div class="d">2026-08-17</div><div class="t">Tab icon &amp; MANIFEST title</div></div>
+      <div class="tick"><div class="d">2026-08-25</div><div class="t">Showing defaults to Unreceived</div></div>
+      <div class="tick"><div class="d">2026-08-26</div><div class="t">Two-device merge, auto-push</div></div>
+      <div class="tick"><div class="d">2026-09-02</div><div class="t">File actions fold into the ruled head</div></div>
+      <div class="tick"><div class="d">2026-09-05</div><div class="t">Order stamps; sync stops needing a switch</div></div>
+      <div class="tick"><div class="d">2026-09-06</div><div class="t">Versions, public seed, letterhead motion</div></div>
+      <div class="tick"><div class="d">2026-09-06</div><div class="t">Card stops shifting under the tap</div></div>
+      <div class="tick"><div class="d">2026-09-12</div><div class="t">Sync stops trusting onLine</div></div>
+    </div>
+
+    <h2 class="h">Contents</h2>
+    <div class="grid g3" id="idxgrid"></div>
+  </section>
+
+  <!-- ============================================================ IDENTITY -->
+  <section class="panel" id="p-identity" role="tabpanel" hidden>
+    <p class="lede">The presented name sits three layers deep, and none of the three may be swapped for either of the others.</p>
+    <div class="ruled-row" style="grid-template-columns:minmax(58px,1fr) minmax(0,2fr) minmax(0,2fr); margin-top:10px;">
+      <div class="ruled-cell"><span class="k">Layer</span></div>
+      <div class="ruled-cell"><span class="k">Value</span></div>
+      <div class="ruled-cell"><span class="k">Lives in</span></div>
+    </div>
+    <div class="ruled-row" style="grid-template-columns:minmax(58px,1fr) minmax(0,2fr) minmax(0,2fr); border-top:0; border-radius:0 0 8px 8px;">
+      <div class="ruled-cell"><span class="v" style="white-space:normal;">Masthead</span></div>
+      <div class="ruled-cell"><span class="v" style="white-space:normal;">MANIFEST</span></div>
+      <div class="ruled-cell"><span class="v" style="white-space:normal;">Title, &lt;title&gt;, home-screen icon label</span></div>
+    </div>
+    <div class="ruled-row" style="grid-template-columns:minmax(58px,1fr) minmax(0,2fr) minmax(0,2fr); border-top:0; border-radius:0;">
+      <div class="ruled-cell"><span class="v" style="white-space:normal;">House</span></div>
+      <div class="ruled-cell"><span class="v" style="white-space:normal;">C.H Postal Co.</span></div>
+      <div class="ruled-cell"><span class="v" style="white-space:normal;">Letterhead line under the title</span></div>
+    </div>
+    <div class="ruled-row" style="grid-template-columns:minmax(58px,1fr) minmax(0,2fr) minmax(0,2fr); border-top:0; border-radius:0 0 8px 8px;">
+      <div class="ruled-cell"><span class="v" style="white-space:normal;">Real name</span></div>
+      <div class="ruled-cell"><span class="v" style="white-space:normal;">Mail Day Ledger</span></div>
+      <div class="ruled-cell"><span class="v" style="white-space:normal;">repo `mailaudit`, storage `mailday:`</span></div>
+    </div>
+    <p class="note" style="margin-top:12px;">iOS bakes <code>apple-mobile-web-app-title</code> in at install time. It still reads <b>"Mail Day"</b> on purpose — changing it forces a delete-and-re-add of the home-screen icon, so the frozen label and the presented MANIFEST title are allowed to disagree.</p>
+
+    <h2 class="h">The seal</h2>
+    <div class="grid g2">
+      <div class="markbox">
+        <svg width="140" height="140" viewBox="0 0 100 100" aria-hidden="true">
+          <defs><radialGradient id="wax-big" cx="37%" cy="30%" r="78%">
+            <stop offset="0" stop-color="#C86A5F" /><stop offset="0.5" stop-color="#A8443C" /><stop offset="1" stop-color="#66231D" />
+          </radialGradient></defs>
+          <path d="M50 2 C69 2 80 9 88 20 C96 31 99 45 96 59 C92 75 81 90 65 95 C50 100 34 98 22 89 C9 78 2 62 3 47 C5 30 15 15 31 7 C37 4 43 2 50 2 Z" fill="url(#wax-big)" />
+          <circle cx="50" cy="50" r="39" fill="none" stroke="#66231D" stroke-width="3.5" opacity="0.6" />
+          <g fill="none" stroke="#5E1F1A" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity="0.78">
+            <path d="M29 58 L50 38 L71 58" /><path d="M31 72 L69 72" />
+          </g>
+          <g fill="none" stroke="#E09A90" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+            <path d="M29 54.5 L50 34.5 L71 54.5" /><path d="M31 68.5 L69 68.5" />
+          </g>
+          <ellipse cx="34" cy="28" rx="15" ry="9" fill="#FCF6EA" opacity="0.22" transform="rotate(-35 34 28)" />
+        </svg>
+        <p class="note" style="text-align:left; margin-top:12px;">An envelope's flap, stroked twice — a deep cut line and a raised highlight offset 3.5px, so the fold reads as pressed rather than printed. The outline is a hand-built path, not a circle: <span class="mono">real wax is never a circle</span>. One radial gradient carries the relief from <span class="mono">waxLit</span> through <span class="mono">wax</span> to <span class="mono">waxDeep</span>; a single tilted ellipse is the specular catch.</p>
+      </div>
+      <div class="markbox" style="text-align:left;">
+        <div class="k" style="margin-bottom:8px;">Two copies, one rule set</div>
+        <p class="note">The masthead's seal presses in on load (<span class="mono">mdl-press</span>, 600ms) and its highlight comes up after (<span class="mono">mdl-shine</span>). The running head above carries a second, un-animated copy — its shine stays fixed at the same <span class="mono">opacity:.22</span> the first settles to, which is also exactly what reduced motion falls back to. One keyframe set, two resting states, by construction rather than a second stylesheet.</p>
+        <div class="rule" style="margin:14px 0;"></div>
+        <div class="k" style="margin-bottom:6px;">Masthead tallies — why 1 / 1 / 1.7, not equal</div>
+        <div class="grid g2">
+          <div>
+            <div class="mono" style="font-size:9.5px; color:var(--ink-soft); margin-bottom:4px;">Equal thirds</div>
+            <div style="display:flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; background:var(--card);">
+              <div style="flex:1; padding:6px 4px; text-align:center; border-right:1px solid var(--line);"><div class="k" style="font-size:8px;">Cards</div><div class="mono" style="font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">480/800</div></div>
+              <div style="flex:1; padding:6px 4px; text-align:center; border-right:1px solid var(--line);"><div class="k" style="font-size:8px;">Value</div><div class="mono" style="font-size:11px; color:var(--red); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">$100.24k/$1</div></div>
+              <div style="flex:1; padding:6px 4px; text-align:center;"><div class="k" style="font-size:8px;">Pkgs</div><div class="mono" style="font-size:11px;">173/240</div></div>
+            </div>
+            <p class="note" style="margin-top:4px;">value clips against the divider</p>
+          </div>
+          <div>
+            <div class="mono" style="font-size:9.5px; color:var(--accent); margin-bottom:4px;">1 / 1.7 / 1</div>
+            <div style="display:flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; background:var(--card);">
+              <div style="flex:1; padding:6px 4px; text-align:center; border-right:1px solid var(--line);"><div class="k" style="font-size:8px;">Cards</div><div class="mono" style="font-size:11px;">480/800</div></div>
+              <div style="flex:1.7; padding:6px 4px; text-align:center; border-right:1px solid var(--line);"><div class="k" style="font-size:8px;">Value</div><div class="mono" style="font-size:11px; color:var(--red);">$100.24k/$118.60k</div></div>
+              <div style="flex:1; padding:6px 4px; text-align:center;"><div class="k" style="font-size:8px;">Pkgs</div><div class="mono" style="font-size:11px;">173/240</div></div>
+            </div>
+            <p class="note" style="margin-top:4px;">all three land on 23px headroom</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ MARKS -->
+  <section class="panel" id="p-marks" role="tabpanel" hidden>
+    <p class="lede">One master drawing, and three deliberately different crops of it — a favicon shrinks nothing, it redraws.</p>
+
+    <h2 class="h">The master</h2>
+    <div class="markbox">
+      <img src="icon-master.svg" alt="1024×1024 master icon: a brass, gem-set brooch on a violet engine-turned ground" style="width:260px; height:260px; border-radius:20px;" />
+      <p class="note" style="margin-top:12px;">1024×1024. A brass rosette — eight gem lobes at 45° round a guilloche-turned violet ground — built stdlib-only by <code>icon/gen-icon.py</code>, never touched at build or test time. The UI's palette was designed to match this drawing, not the other way round.</p>
+    </div>
+
+    <div class="grid g3" style="margin-top:14px;">
+      <div class="markbox">
+        <img src="apple-touch-icon.png" alt="180×180 apple-touch-icon.png, rounded to the iOS mask" style="width:100px; height:100px; margin:0 auto; border-radius:22px;" />
+        <div class="k" style="margin-top:10px;">apple-touch-icon.png</div>
+        <div class="note">180×180 · same drawing, full ground</div>
+      </div>
+      <div class="markbox">
+        <div class="browsertab">
+          <img src="favicon.svg" alt="favicon" style="width:14px; height:14px;" />
+          <span>Manifest</span>
+        </div>
+        <div class="browserbar"></div>
+        <div class="k" style="margin-top:14px;">favicon.svg</div>
+        <div class="note">ground dropped, mark filled to the edge — a different drawing, not the master shrunk</div>
+      </div>
+      <div class="markbox">
+        <div class="hsicon" style="margin:0 auto;"><img src="apple-touch-icon.png" alt="home screen icon" style="width:64px;height:64px;"/></div>
+        <div class="hscap">Mail Day</div>
+        <div class="k" style="margin-top:14px;">Home screen</div>
+        <div class="note">caption frozen since install — see Identity</div>
+      </div>
+    </div>
+
+    <h2 class="h">Why the favicon is a redraw</h2>
+    <div class="beforeafter">
+      <div class="baframe">
+        <div class="balabel">Master, at 16px</div>
+        <div class="bacontent" style="display:flex; align-items:center; justify-content:center; height:90px; background:var(--paper);">
+          <img src="icon-master.svg" alt="master scaled down" style="width:16px; height:16px;" />
+          <span class="note" style="margin-left:14px;">ground eats the frame; the mark lands around 10px — small, washed out beside other tabs</span>
+        </div>
+      </div>
+      <div class="baframe">
+        <div class="balabel after">Favicon.svg, at 16px</div>
+        <div class="bacontent" style="display:flex; align-items:center; justify-content:center; height:90px; background:var(--paper);">
+          <img src="favicon.svg" alt="favicon at true size" style="width:16px; height:16px;" />
+          <span class="note" style="margin-left:14px;">transparent ground, lobes touch the edge, guilloche cut entirely — what's left is what still reads at 16px</span>
+        </div>
+      </div>
+    </div>
+    <p class="note" style="margin-top:10px;">Both hrefs stay relative — Pages serves from <code>/mailaudit/</code>, and a root-absolute path 404s there. The favicon PNG fallback needed an <em>absolute</em> <code>file://</code> src to export with alpha intact; a relative one renders a blank transparent square that looks like a successful export.</p>
+  </section>
+
+  <!-- ============================================================ PALETTE -->
+  <section class="panel" id="p-palette" role="tabpanel" hidden>
+    <p class="lede">Palette D▸ — warm parchment, violet ink and accent, gold secondary. Nineteen values, and every one that carries information is contrast-checked against <code>card</code>, the surface most text actually sits on. No pure white anywhere in the theme.</p>
+    <div class="grid g4" id="palgrid" style="margin-top:14px;"></div>
+
+    <h2 class="h">Two that moved, and one that stayed on purpose</h2>
+    <div class="grid g3">
+      <div class="card pad">
+        <div class="k">inkSoft — darkened</div>
+        <div style="display:flex; gap:8px; margin:10px 0;">
+          <div style="flex:1;"><div style="height:34px; border-radius:5px; background:#7A6E86;"></div><div class="note" style="text-align:center;">#7A6E86 · 4.43:1 <span class="delta">fail</span></div></div>
+          <div style="flex:1;"><div style="height:34px; border-radius:5px; background:var(--ink-soft);"></div><div class="note" style="text-align:center;">#6E6379 · 5.24:1 <span class="delta good">pass</span></div></div>
+        </div>
+        <p class="note">Used 42 times — more than any token but ink. The one place a failed contrast check would have hidden in plain sight.</p>
+      </div>
+      <div class="card pad">
+        <div class="k">greenSoft — warmed</div>
+        <div style="display:flex; gap:8px; margin:10px 0;">
+          <div style="flex:1;"><div style="height:34px; border-radius:5px; background:#E7EADC;"></div><div class="note" style="text-align:center;">straight mix · reads grey</div></div>
+          <div style="flex:1;"><div style="height:34px; border-radius:5px; background:var(--green-soft);"></div><div class="note" style="text-align:center;">gold-warmed · reads received</div></div>
+        </div>
+        <p class="note">Green still leads (G&gt;R) so the checked-row wash keeps its cast next to parchment instead of going beige.</p>
+      </div>
+      <div class="card pad">
+        <div class="k">silver — chosen for character</div>
+        <div style="display:flex; gap:8px; margin:10px 0;">
+          <div style="flex:1;"><div style="height:34px; border-radius:5px; background:var(--line);"></div><div class="note" style="text-align:center;">line · 3.58:1 <span class="delta good">measured better</span></div></div>
+          <div style="flex:1;"><div style="height:34px; border-radius:5px; background:var(--silver);"></div><div class="note" style="text-align:center;">silver · 3.17:1 <span class="delta good">shipped</span></div></div>
+        </div>
+        <p class="note">Both clear the 3:1 floor for graphical objects — a deliberate trade of contrast for the struck-coin read. Any replacement has to stay cool; every warm metal tested fell short.</p>
+      </div>
+    </div>
+
+    <h2 class="h">What each hue is allowed to say</h2>
+    <div class="ruled-row" style="grid-template-columns:repeat(auto-fit,minmax(96px,1fr));">
+      <div class="ruled-cell" style="display:flex; align-items:flex-start; gap:6px;"><i style="display:block; flex:none; margin-top:3px; width:9px; height:9px; border-radius:3px; background:var(--green);"></i><span class="v" style="white-space:normal; line-height:1.3;">received</span></div>
+      <div class="ruled-cell" style="display:flex; align-items:flex-start; gap:6px;"><i style="display:block; flex:none; margin-top:3px; width:9px; height:9px; border-radius:3px; background:var(--red);"></i><span class="v" style="white-space:normal; line-height:1.3;">missing / destructive</span></div>
+      <div class="ruled-cell" style="display:flex; align-items:flex-start; gap:6px;"><i style="display:block; flex:none; margin-top:3px; width:9px; height:9px; border-radius:3px; background:var(--manila-ink);"></i><span class="v" style="white-space:normal; line-height:1.3;">advisory</span></div>
+      <div class="ruled-cell" style="display:flex; align-items:flex-start; gap:6px;"><i style="display:block; flex:none; margin-top:3px; width:9px; height:9px; border-radius:3px; background:var(--amber);"></i><span class="v" style="white-space:normal; line-height:1.3;">14-day lost mail</span></div>
+      <div class="ruled-cell" style="display:flex; align-items:flex-start; gap:6px;"><i style="display:block; flex:none; margin-top:3px; width:9px; height:9px; border-radius:3px; background:var(--accent);"></i><span class="v" style="white-space:normal; line-height:1.3;">active control</span></div>
+    </div>
+  </section>
+
+  <!-- ============================================================ TYPE -->
+  <section class="panel" id="p-type" role="tabpanel" hidden>
+    <p class="lede">Two families, no sans anywhere. Cochin carries anything that isn't a number; monospace carries anything that is.</p>
+    <div class="grid g2" style="margin-top:10px;">
+      <div class="card pad">
+        <div class="k">Voice — Cochin</div>
+        <div style="font-size:56px; line-height:1; margin:10px 0;">Aa</div>
+        <div style="font-size:20px; margin-bottom:6px;">LT's Hobbies&amp;Games2</div>
+        <code>Cochin, 'Hoefler Text', Palatino, Georgia, serif</code>
+        <p class="note" style="margin-top:8px;">An 18th-century French copperplate face, present on iOS and macOS — picked to match the C.H Postal Company register. Small x-height, so sizes here are already paid up for that and shouldn't be trimmed.</p>
+      </div>
+      <div class="card pad">
+        <div class="k">Data — Monospace</div>
+        <div style="font-family:var(--mono); font-size:56px; line-height:1; margin:10px 0;">Aa</div>
+        <div style="font-family:var(--mono); font-size:20px; margin-bottom:6px;">$45.80 · 12 left</div>
+        <code>ui-monospace, SFMono-Regular, Menlo, Consolas, monospace</code>
+        <p class="note" style="margin-top:8px;">Every id, price, date and micro-label. The one deliberate exception: the "N left · $Y" pill is set in Cochin, so it reads in the letterhead voice rather than as tabular data.</p>
+      </div>
+    </div>
+
+    <h2 class="h">The Arial leak</h2>
+    <div class="beforeafter">
+      <div class="baframe">
+        <div class="balabel">Before — UA default</div>
+        <div class="bacontent" style="display:flex; align-items:center; justify-content:center; height:70px;">
+          <button class="oldbox" style="border-radius:999px; border:2px solid var(--green); color:var(--green); background:var(--card);">Mark all received</button>
+        </div>
+      </div>
+      <div class="baframe">
+        <div class="balabel after">After — inherited</div>
+        <div class="bacontent" style="display:flex; align-items:center; justify-content:center; height:70px;">
+          <button class="actbtn accent" style="border-radius:999px;">Mark all received</button>
+        </div>
+      </div>
+    </div>
+    <p class="note" style="margin-top:10px;">Browsers force their own UI font onto <code>button/input/select/textarea</code> — setting the family on the root isn't enough. One rule fixed every control at once:</p>
+    <pre class="codeblock">button, input, select, textarea { font-family: inherit; }</pre>
+    <p class="note">jsdom has no UA stylesheet doing this, so no test could ever catch the regression — it was found by reading <span class="mono">getComputedStyle</span> in a real browser, and that's the only way it will be found again.</p>
+  </section>
+
+  <!-- ============================================================ COMPONENTS -->
+  <section class="panel" id="p-components" role="tabpanel" hidden>
+    <p class="lede">The ruled head's grammar — hairlines, uppercase mono micro-labels over Cochin values, no boxes, no fill but the accent. It replaced a tray of buttons sharing a control height and nothing else.</p>
+
+    <h2 class="h">Ruled cells</h2>
+    <div class="ruled-row" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);">
+      <div class="ruled-cell"><span class="k">Orders from</span><span class="v" style="text-decoration:underline; text-decoration-color:var(--line);">Last 45 days · 214 lines</span></div>
+      <div class="ruled-cell"><span class="k">Showing</span><span class="v">● Unreceived</span></div>
+      <div class="ruled-cell"><span class="k">Sorted by</span><span class="v" style="text-decoration:underline; text-decoration-color:var(--line);">Most missing ▾</span></div>
+    </div>
+    <p class="note" style="margin-top:8px;">Only the two cells that <em>open</em> something underline their value — a form's write-on rule, not a button box. A bare cell reads as a statistic, the way the masthead's read-only tallies do.</p>
+
+    <h2 class="h">View switch</h2>
+    <div class="pill" id="pillswitch">
+      <i class="pillthumb" id="pillthumb"></i>
+      <button data-v="0" class="on">Orphaned</button>
+      <button data-v="1">Tally</button>
+      <button data-v="2">Packages</button>
+    </div>
+    <p class="note" style="margin-top:8px;">One object moving, not three lamps lighting. The thumb is an absolutely positioned fill translated by whole multiples of its own width — it can't drift from the thirds the grid already defines. Click to move it.</p>
+
+    <h2 class="h">Action row &amp; the two-tap confirm</h2>
+    <div style="display:flex; gap:0; border:1px solid var(--line); border-radius:8px; overflow:hidden;">
+      <button class="actbtn" style="border:0; border-right:1px solid var(--line); border-radius:0; flex:1;">Re-import CSV</button>
+      <button class="actbtn" style="border:0; border-right:1px solid var(--line); border-radius:0; flex:1;">History</button>
+      <button class="actbtn danger" id="resetbtn" style="border:0; border-radius:0; flex:1;">Reset</button>
+    </div>
+    <p class="note" style="margin-top:8px;" id="resethint">No native <code>confirm()</code> dialogs anywhere — every destructive action arms in place instead. Tap Reset.</p>
+
+    <h2 class="h">Disclosure panel</h2>
+    <button class="actbtn accent" id="paneltoggle" style="border-radius:6px;">Sorted by · Most missing ▾</button>
+    <div id="panelbody" style="display:none;">
+      <div class="optgrid" style="grid-template-columns:minmax(0,1fr) minmax(0,1fr);">
+        <button class="optcell on">Most missing</button>
+        <button class="optcell">Biggest position</button>
+        <button class="optcell">Most ordered</button>
+        <button class="optcell">$ remaining</button>
+        <button class="optcell">Unit rate</button>
+        <button class="optcell">Name A–Z</button>
+      </div>
+    </div>
+    <p class="note" style="margin-top:8px;"><code>panelWrap</code> carries no fill — only padding and a top hairline. A painted background here drew a beige rectangle whose edges simply stopped, in an app where every other filled surface is a rounded inset card.</p>
+
+    <h2 class="h">Package card — invariant 5, live</h2>
+    <div class="pkgcard" id="pkgcard" style="max-width:420px;">
+      <div class="edgebar" id="pkgbar" style="width:0%;"></div>
+      <div class="pkghead">
+        <div>
+          <div class="pkgname">Aurora Sellers Co.</div>
+          <div class="pkgmeta">● with tracking · order #88214</div>
+        </div>
+        <span class="pill-missing" id="pkgpill">3 left · $9.75</span>
+      </div>
+      <div class="itemrow" data-i="0" data-qty="1"><div class="tickbox"></div><div class="itemname">Sun-Chained — Foil</div><div class="itemqty">1×</div></div>
+      <div class="itemrow" data-i="1" data-qty="1"><div class="tickbox"></div><div class="itemname">Ledger of Lost Mail</div><div class="itemqty">1×</div></div>
+      <div class="itemrow" data-i="2" data-qty="1"><div class="tickbox"></div><div class="itemname">Wax-Sealed Bargain</div><div class="itemqty">1×</div></div>
+    </div>
+    <p class="note" style="margin-top:10px; max-width:60ch;">Tap a row. The bar lives on the card's own top edge, out of flow inside the card's rounded box — it cannot push a row down, and it catches no taps of its own. It also <em>unmounts</em> the instant the last row checks in, which is what leaves the gold sweep and the RECEIVED stamp as the only marker of completion — a bar that survived to 100% would sheen its own finish beside the gild.</p>
+
+    <div class="beforeafter" style="margin-top:16px;">
+      <div class="baframe">
+        <div class="balabel">Before — bar reserved in flow</div>
+        <div class="bacontent">
+          <div class="k" style="margin-bottom:6px;">Header</div>
+          <div id="oldbardemo" style="height:0; overflow:hidden; background:var(--accent); border-radius:3px; transition:height 200ms;"></div>
+          <div class="rule" style="margin:8px 0;"></div>
+          <div style="font-size:12.5px;">Row one</div>
+          <div style="font-size:12.5px; margin-top:6px;" id="oldrowdemo">Row two — shifts 28px down</div>
+        </div>
+      </div>
+      <div class="baframe">
+        <div class="balabel after">After — bar out of flow</div>
+        <div class="bacontent" style="position:relative; padding-top:17px;">
+          <div id="newbardemo" style="position:absolute; top:14px; left:14px; right:14px; height:3px; background:var(--accent); border-radius:2px; width:0%; transition:width 300ms;"></div>
+          <div style="font-size:12.5px;">Row one</div>
+          <div style="font-size:12.5px; margin-top:6px;">Row two — 0.00px, always</div>
+        </div>
+      </div>
+    </div>
+    <button class="replaybtn" id="geomreplay" style="margin-top:10px;">▸ Replay the first check-in</button>
+
+    <h2 class="h">Order stamp band</h2>
+    <div class="pkgcard" style="max-width:420px;">
+      <div class="pkghead" style="padding-bottom:2px;">
+        <div><div class="pkgname">Pressed Flora Cards</div><div class="pkgmeta">○ untracked · order #71029</div></div>
+        <span class="pill-missing" style="background:var(--manila); color:var(--manila-ink);">2 left · refunded</span>
+      </div>
+      <div class="stampband">
+        <span class="stampchip">REFUNDED · 09-05</span>
+        <span class="stampnote">seller confirmed via PayPal, case #4471</span>
+        <span class="mono" style="color:var(--ink-soft);">›</span>
+      </div>
+    </div>
+    <p class="note" style="margin-top:8px;">Six kinds, chosen by hand: Claim filed, Refunded, Seller contacted, Reshipped, Partial refund, Other. Picking another kind <em>replaces</em> the stamp and re-dates it; editing only the note keeps the date. A refunded or partial package leaves every count the way a canceled order does — the money is back, so nothing is outstanding.</p>
+  </section>
+
+  <!-- ============================================================ MOTION -->
+  <section class="panel" id="p-motion" role="tabpanel" hidden>
+    <p class="lede">The register is stationery, not software: ink settling, a seal pressed, a stamp rocked onto the page, rules drawn like a pen stroke, gold catching light once. Nothing springs, nothing bounces past its rest and hangs there.</p>
+
+    <div class="grid g3" style="margin-top:16px;" id="motiongrid"></div>
+
+    <h2 class="h">Reduced motion</h2>
+    <label style="display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.06em;">
+      <input type="checkbox" id="reducetoggle" /> Force reduced motion on this page
+    </label>
+    <p class="note" style="margin-top:8px; max-width:62ch;">Every rule above is switched off under <code>prefers-reduced-motion</code>, and the resting state is each animation's own final frame — <code>animation:none</code> leaves the thing <em>drawn</em>, not hidden. Toggle the box: the tiles above should stop mid-gesture at their settled pose, never blank.</p>
+  </section>
+
+  <!-- ============================================================ DECISION LOG -->
+  <section class="panel" id="p-log" role="tabpanel" hidden>
+    <p class="lede">A ledger of the passes themselves — dated, in the History panel's own idiom. Method note first: each moment here was built two or three ways as a side-by-side proof sheet with every variable but one held constant, and picked by looking rather than by reading a description.</p>
+    <div style="margin-top:14px;" id="loglist"></div>
+  </section>
+
+</div>
+
+<footer class="colophon">Mail Day Ledger — Manifest, under C.H Postal Company · specimen book, not the app</footer>
+
+<script>
+(function(){
+  var TABS = [
+    ["p-cover","Cover"],
+    ["p-identity","Identity"],
+    ["p-marks","Marks"],
+    ["p-palette","Palette"],
+    ["p-type","Type"],
+    ["p-components","Components"],
+    ["p-motion","Motion"],
+    ["p-log","Decision Log"],
+  ];
+  var bar = document.getElementById("tabbar");
+  TABS.forEach(function(t, i){
+    var b = document.createElement("button");
+    b.className = "tab"; b.setAttribute("role","tab"); b.dataset.target = t[0];
+    b.setAttribute("aria-selected", i===0 ? "true":"false");
+    b.innerHTML = '<b>'+String(i+1).padStart(2,"0")+'</b>&nbsp;&nbsp;'+t[1];
+    b.addEventListener("click", function(){ show(t[0]); });
+    bar.appendChild(b);
+  });
+  function show(id){
+    TABS.forEach(function(t){
+      document.getElementById(t[0]).hidden = (t[0] !== id);
+    });
+    Array.prototype.forEach.call(bar.querySelectorAll(".tab"), function(b){
+      b.setAttribute("aria-selected", b.dataset.target === id ? "true" : "false");
+    });
+    window.scrollTo({top: bar.getBoundingClientRect().top + window.scrollY - 4, behavior:"smooth"});
+    try{ localStorage.setItem("manifest-specimen-tab", id); }catch(e){}
+  }
+  window.__specimenShow = show;
+
+  // ---- index cards (cover) ----
+  var IDX = [
+    ["01","Identity","The seal, the letterhead, three layers of name.", ["#A8443C","#C9A961","#6F5CA6"]],
+    ["02","Marks","Master icon, favicon redraw, home-screen tile.", ["#987936","#6F5CA6","#37A37E"]],
+    ["03","Palette","19 hues, every one contrast-checked.", ["#F2E9DA","#6F5CA6","#2E7A5E"]],
+    ["04","Type","Cochin for voice, mono for data.", ["#332E3F","#6E6379","#DCCDB6"]],
+    ["05","Components","The ruled head, the card that won't shift.", ["#6F5CA6","#2E7A5E","#A8443C"]],
+    ["06","Motion","Eight moments, stationery not software.", ["#C9A961","#6F5CA6","#2E7A5E"]],
+    ["07","Decision Log","Dated passes, before → after.", ["#A8443C","#846008","#EADBBA"]],
+  ];
+  var idxgrid = document.getElementById("idxgrid");
+  IDX.forEach(function(c){
+    var el = document.createElement("button");
+    el.className = "idxcard";
+    el.innerHTML = '<div class="num">'+c[0]+'</div><h4>'+c[1]+'</h4><p>'+c[2]+'</p>'+
+      '<div class="idxswatches">'+c[3].map(function(h){return '<i style="background:'+h+'"></i>';}).join("")+'</div>';
+    el.addEventListener("click", function(){ show("p-"+c[1].toLowerCase().replace(/ .*/,"")); });
+    idxgrid.appendChild(el);
+  });
+  // fix targets that don't match a simple slug
+  idxgrid.children[6].addEventListener("click", function(){ show("p-log"); });
+
+  // ---- palette grid ----
+  var TOKENS = [
+    ["paper","#F2E9DA","the page","—"],
+    ["card","#FCF6EA","any raised surface — the theme's white","—"],
+    ["ink","#332E3F","primary text","10.88:1"],
+    ["inkSoft","#6E6379","secondary text","5.24:1"],
+    ["line","#DCCDB6","rules, borders","—"],
+    ["accent","#6F5CA6","active controls, progress","5.19:1"],
+    ["green","#2E7A5E","received","—"],
+    ["greenSoft","#E6E7D7","checked-row wash","—"],
+    ["red","#A8443C","missing money, destructive","—"],
+    ["redSoft","#F4E4D9","danger wash","—"],
+    ["manila","#EADBBA","advisory background","—"],
+    ["manilaInk","#695832","text on manila","5.04:1"],
+    ["amber","#846008","14-day lost-mail warning","5.33:1"],
+    ["gold","#C9A961","ornament only — never text","2.2:1"],
+    ["silver","#C4C3C0","empty half of a progress bar","3.17:1"],
+    ["wax","#A8443C","seal relief","—"],
+    ["waxLit","#C86A5F","seal highlight","—"],
+    ["waxDeep","#66231D","seal shadow","—"],
+    ["waxRaised","#E09A90","seal raised edge","—"],
+  ];
+  var palgrid = document.getElementById("palgrid");
+  TOKENS.forEach(function(t){
+    var el = document.createElement("div");
+    el.className = "swatch";
+    var textColor = (t[1]==="#FCF6EA"||t[1]==="#F2E9DA"||t[1]==="#EADBBA"||t[1]==="#F4E4D9"||t[1]==="#E6E7D7"||t[1]==="#C4C3C0"||t[1]==="#E09A90") ? "#332E3F" : "#FCF6EA";
+    el.innerHTML = '<div class="fill" style="background:'+t[1]+';"></div>'+
+      '<div class="lab"><div class="name">'+t[0]+'</div><div class="hex">'+t[1]+(t[3]!=="—" ? " · "+t[3] : "")+'</div><div class="role">'+t[2]+'</div></div>';
+    palgrid.appendChild(el);
+  });
+
+  // ---- pill view switch demo ----
+  var thumb = document.getElementById("pillthumb");
+  Array.prototype.forEach.call(document.querySelectorAll("#pillswitch button"), function(btn){
+    btn.addEventListener("click", function(){
+      Array.prototype.forEach.call(document.querySelectorAll("#pillswitch button"), function(b){ b.classList.remove("on"); });
+      btn.classList.add("on");
+      thumb.style.transform = "translateX(" + (btn.dataset.v * 100) + "%)";
+    });
+  });
+
+  // ---- armed reset ----
+  var resetBtn = document.getElementById("resetbtn");
+  var resetHint = document.getElementById("resethint");
+  var resetTimer = null;
+  resetBtn.addEventListener("click", function(){
+    if (resetBtn.classList.contains("armed")) {
+      resetBtn.classList.remove("armed");
+      resetBtn.textContent = "Reset";
+      resetHint.textContent = "Cleared (nothing was actually reset — this is a specimen).";
+      clearTimeout(resetTimer);
+      return;
+    }
+    resetBtn.classList.add("armed");
+    resetBtn.textContent = "Tap again to clear";
+    resetHint.textContent = "Armed for 4s. A second, unrelated tap elsewhere disarms it too — one primed destructive control at a time.";
+    resetTimer = setTimeout(function(){
+      resetBtn.classList.remove("armed");
+      resetBtn.textContent = "Reset";
+      resetHint.textContent = "Disarmed automatically. No native confirm() dialogs anywhere — every destructive action arms in place instead.";
+    }, 4000);
+  });
+
+  // ---- disclosure panel ----
+  var panelToggle = document.getElementById("paneltoggle");
+  var panelBody = document.getElementById("panelbody");
+  panelToggle.addEventListener("click", function(){
+    var open = panelBody.style.display === "block";
+    panelBody.style.display = open ? "none" : "block";
+    if (!open) { panelBody.querySelector(".optgrid").classList.remove("mdl-panel"); void panelBody.offsetWidth; panelBody.querySelector(".optgrid").classList.add("mdl-panel"); }
+  });
+  Array.prototype.forEach.call(panelBody.querySelectorAll(".optcell"), function(c){
+    c.addEventListener("click", function(){
+      Array.prototype.forEach.call(panelBody.querySelectorAll(".optcell"), function(x){ x.classList.remove("on"); });
+      c.classList.add("on");
+      panelToggle.textContent = "Sorted by · " + c.textContent + " ▾";
+    });
+  });
+
+  // ---- package card demo ----
+  var card = document.getElementById("pkgcard");
+  var pkgBar = document.getElementById("pkgbar");
+  var pill = document.getElementById("pkgpill");
+  var rows = Array.prototype.slice.call(card.querySelectorAll(".itemrow"));
+  var PRICE = 3.25;
+  var state = rows.map(function(){ return false; });
+  var wasDone = false;
+  function renderCard(){
+    var gotN = state.filter(Boolean).length;
+    var pct = Math.round((gotN/rows.length)*100);
+    var done = gotN === rows.length;
+    pkgBar.style.width = done ? "0%" : pct + "%";
+    pkgBar.classList.toggle("done", false);
+    rows.forEach(function(r,i){
+      r.classList.toggle("got", state[i]);
+      var tb = r.querySelector(".tickbox");
+      tb.innerHTML = state[i] ? '<svg width="14" height="14" viewBox="0 0 14 14"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" fill="none" stroke="#FCF6EA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mdl-nib"/></svg>' : '';
+    });
+    if (done && !wasDone) {
+      pill.outerHTML = '<span class="stamp-received mdl-land" id="pkgpill">RECEIVED</span>';
+      pill = document.getElementById("pkgpill");
+      var gild = document.createElement("i"); gild.className = "mdl-gild"; card.appendChild(gild);
+      setTimeout(function(){ gild.remove(); }, 800);
+    } else if (!done && wasDone) {
+      pill.outerHTML = '<span class="pill-missing" id="pkgpill">'+(rows.length-gotN)+' left · $'+((rows.length-gotN)*PRICE).toFixed(2)+'</span>';
+      pill = document.getElementById("pkgpill");
+    } else if (!done) {
+      pill.textContent = (rows.length-gotN) + " left · $" + ((rows.length-gotN)*PRICE).toFixed(2);
+    }
+    wasDone = done;
+  }
+  rows.forEach(function(r, i){
+    r.addEventListener("click", function(){
+      state[i] = !state[i];
+      renderCard();
+    });
+  });
+
+  // ---- geometry before/after replay ----
+  var oldBar = document.getElementById("oldbardemo");
+  var oldRow = document.getElementById("oldrowdemo");
+  var newBar = document.getElementById("newbardemo");
+  function playGeom(){
+    oldBar.style.height = "0px"; oldRow.style.transform = "translateY(0)"; oldRow.textContent = "Row two — shifts 28px down";
+    newBar.style.width = "0%";
+    void oldBar.offsetWidth;
+    setTimeout(function(){
+      oldBar.style.height = "15px";
+      oldRow.style.transform = "translateY(28px)";
+      newBar.style.width = "60%";
+    }, 260);
+  }
+  document.getElementById("geomreplay").addEventListener("click", playGeom);
+
+  // ---- motion tiles ----
+  var MOTION = [
+    ["Seal pressed","600ms, scale .68→1.06→1, rotate -10°→2.5°→0. The one overshoot in the whole sheet — the wrist roll that inks a stamp's edges — returns through rest.","seal"],
+    ["Switch thumb slides","420ms, translateX by whole thirds. One object moving, never three lamps lighting.","thumb"],
+    ["Stamp lands","380ms, rotate -13°→1°→-6°→rest. Fires only on the tap that actually completes a package.","stamp"],
+    ["Package gilded","One pass of gold, 700ms. Ornamental only — it is never allowed to carry information.","gild"],
+    ["Tick is written","300ms ceiling — this fires hundreds of times on a mail day. stroke-dashoffset, not a switched-on glyph.","tick"],
+    ["Card lays down its rows","240ms each, staggered, capped at 132ms so a 20-line order finishes as promptly as a 3-line one.","reveal"],
+  ];
+  var mg = document.getElementById("motiongrid");
+  MOTION.forEach(function(m, idx){
+    var tile = document.createElement("div");
+    tile.className = "motiontile";
+    tile.innerHTML = '<div class="demo" id="mdemo'+idx+'"></div><h4>'+m[0]+'</h4><p>'+m[1]+'</p><button class="replaybtn" data-k="'+m[2]+'" data-idx="'+idx+'">▸ Replay</button>';
+    mg.appendChild(tile);
+  });
+  function buildDemo(idx, kind){
+    var d = document.getElementById("mdemo"+idx);
+    d.innerHTML = "";
+    if (kind === "seal") {
+      d.innerHTML = '<svg width="46" height="46" viewBox="0 0 100 100" class="mo"><defs><radialGradient id="wm'+idx+'" cx="37%" cy="30%" r="78%"><stop offset="0" stop-color="#C86A5F"/><stop offset="0.5" stop-color="#A8443C"/><stop offset="1" stop-color="#66231D"/></radialGradient></defs><path d="M50 2 C69 2 80 9 88 20 C96 31 99 45 96 59 C92 75 81 90 65 95 C50 100 34 98 22 89 C9 78 2 62 3 47 C5 30 15 15 31 7 C37 4 43 2 50 2 Z" fill="url(#wm'+idx+')"/></svg>';
+    } else if (kind === "thumb") {
+      d.innerHTML = '<div style="position:relative; width:120px; height:30px; border:1px solid var(--line); border-radius:999px; background:var(--card);"><i class="mo" style="position:absolute; top:0; bottom:0; left:0; width:40px; background:var(--accent); border-radius:999px;"></i></div>';
+    } else if (kind === "stamp") {
+      d.innerHTML = '<span class="mo stamp-received" style="transform:rotate(-4deg);">RECEIVED</span>';
+    } else if (kind === "gild") {
+      d.innerHTML = '<div style="position:relative; width:140px; height:40px; border:1px solid var(--line); border-radius:8px; background:var(--card); overflow:hidden;"><i class="mo" style="position:absolute; inset:0; background:linear-gradient(100deg, transparent 34%, var(--gold) 50%, transparent 66%);"></i></div>';
+    } else if (kind === "tick") {
+      d.innerHTML = '<div style="width:30px; height:30px; border-radius:6px; background:var(--green); display:flex; align-items:center; justify-content:center;"><svg width="16" height="16" viewBox="0 0 14 14"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" fill="none" stroke="#FCF6EA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mo"/></svg></div>';
+    } else if (kind === "reveal") {
+      d.innerHTML = '<div style="display:flex; flex-direction:column; gap:5px; width:100px;">'+
+        [0,1,2].map(function(i){ return '<div class="mo" style="height:9px; border-radius:3px; background:var(--line);" data-i="'+i+'"></div>'; }).join("")+'</div>';
+    }
+    return d;
+  }
+  function playDemo(idx, kind){
+    var d = buildDemo(idx, kind);
+    var reduced = document.getElementById("reducetoggle").checked;
+    var els = d.querySelectorAll(".mo");
+    if (kind === "seal") {
+      els[0].style.animation = reduced ? "none" : "mdl-press 600ms cubic-bezier(.22,.85,.3,1) both";
+      if (reduced) els[0].style.opacity = 1;
+    } else if (kind === "thumb") {
+      var i = els[0];
+      i.style.transition = reduced ? "none" : "transform 420ms cubic-bezier(.16,1,.3,1)";
+      i.style.transform = "translateX(0)";
+      void i.offsetWidth;
+      i.style.transform = "translateX(160px)";
+    } else if (kind === "stamp") {
+      els[0].classList.remove("mdl-land"); void els[0].offsetWidth;
+      if (!reduced) els[0].classList.add("mdl-land"); else els[0].style.transform = "rotate(-4deg)";
+    } else if (kind === "gild") {
+      els[0].style.animation = reduced ? "none" : "mdl-gild 700ms 0ms cubic-bezier(.32,0,.24,1) both";
+      els[0].style.opacity = reduced ? 0 : "";
+    } else if (kind === "tick") {
+      els[0].classList.remove("mdl-nib"); void els[0].offsetWidth;
+      if (!reduced) els[0].classList.add("mdl-nib"); else els[0].style.strokeDashoffset = 0;
+    } else if (kind === "reveal") {
+      els.forEach(function(el, i){
+        el.style.animation = "none"; void el.offsetWidth;
+        if (reduced) { el.style.opacity = 1; el.style.background = "var(--accent)"; }
+        else { el.style.opacity = 0; el.style.animation = "mdl-reveal 240ms "+(i*70)+"ms cubic-bezier(.16,1,.3,1) both"; el.style.background = "var(--accent)"; }
+      });
+    }
+  }
+  document.querySelectorAll("[data-k]").forEach(function(btn){
+    playDemo(parseInt(btn.dataset.idx,10), btn.dataset.k);
+    btn.addEventListener("click", function(){ playDemo(parseInt(btn.dataset.idx,10), btn.dataset.k); });
+  });
+  document.getElementById("reducetoggle").addEventListener("change", function(){
+    document.querySelectorAll("[data-k]").forEach(function(btn){ playDemo(parseInt(btn.dataset.idx,10), btn.dataset.k); });
+  });
+
+  // ---- decision log ----
+  var LOG = [
+    ["08-10","By-item view lands, with cost basis — the Tally view is born.",""],
+    ["08-11","UI repainted in Palette D▸ — warm parchment, violet ink, gold secondary.",""],
+    ["08-11","Checked-row wash warmed: #E7EADC → #E6E7D7, gold-tinted so green still leads.","warm"],
+    ["08-11","Top rebuilt as one composed letterhead — the stats' own bordered card retired.","3 cards→1"],
+    ["08-11","Every control made actually Cochin — the inherited font-family rule.",""],
+    ["08-12","Push / Pull ships — the ledger backs up to GitHub, not a downloaded file.",""],
+    ["08-13","Controls rebuilt as the ruled head: 2 radii, 2 families, native select+dates → hairline cells.","171px→185px"],
+    ["08-17","Tab renamed Manifest; the tab gets its own backgroundless icon.",""],
+    ["08-19","A search hit can be carried back to its whole order — revealed/gk.",""],
+    ["08-25","Showing defaults to Unreceived, and resets itself after a real absence.","RESUME_RESET_MS"],
+    ["08-26","Two-device merge and auto-push ship. Day one: a stale sha silently destroyed a check-in.","87793de≡38017ae"],
+    ["09-02","File actions fold into the ruled head — the last boxed tray retired.",""],
+    ["09-02","Order stamps: six kinds, replace-not-stack, a removal writes a tombstone.",""],
+    ["09-05","Sync stops needing an operator — the ● Auto-push toggle is removed.",""],
+    ["09-06","Saved versions, an hourly tier, a private ledger repo, a public seed baked into the page.",""],
+    ["09-06","The letterhead is given motion — 8 moments, one 'nothing may reflow' rule.",""],
+    ["09-06","Save-indicator slot reserved: 4 of 10 figure pairs shifted 12–14px before.","→0.00px"],
+    ["09-06","A package card stops changing height on the tap that completes it.","28px→0.00px"],
+    ["09-12","navigator.onLine dropped as a pre-flight — it can sit stuck false for days.",""],
+  ];
+  var loglist = document.getElementById("loglist");
+  LOG.forEach(function(r){
+    var el = document.createElement("div");
+    el.className = "logrow";
+    el.innerHTML = '<div class="d">2026-'+r[0]+'</div><div class="t">'+r[1]+'</div><div class="m">'+(r[2]?('<span class="delta good">'+r[2]+'</span>'):'')+'</div>';
+    loglist.appendChild(el);
+  });
+
+  // restore last tab
+  var saved = null;
+  try { saved = localStorage.getItem("manifest-specimen-tab"); } catch(e){}
+  show(saved && document.getElementById(saved) ? saved : "p-cover");
+})();
+</script>
+
+</body></html>

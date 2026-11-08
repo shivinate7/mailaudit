@@ -1,0 +1,2003 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}</style></head><body>
+<title>Filter bar — design review</title>
+<style>
+:root{
+  --ground:#F4F5F7; --panel:#FCFCFD; --ink:#1A1D23; --inkSoft:#5B6270;
+  --rule:#DEE2E8; --accent:#256C68; --accentSoft:#E4EFEE;
+  --bad:#A32E2E; --good:#2A6B4A; --warn:#8A6516;
+  --display:"Avenir Next","Avenir","Segoe UI",system-ui,sans-serif;
+  --body:"Avenir Next","Avenir","Segoe UI",system-ui,sans-serif;
+  --code:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --ground:#15171B; --panel:#1D2026; --ink:#E9EBEF; --inkSoft:#9BA3B0;
+  --rule:#2B2F37; --accent:#5FB3AC; --accentSoft:#1E2E2D;
+  --bad:#E08078; --good:#6FBF95; --warn:#D7A94F;
+}}
+:root[data-theme="dark"]{
+  --ground:#15171B; --panel:#1D2026; --ink:#E9EBEF; --inkSoft:#9BA3B0;
+  --rule:#2B2F37; --accent:#5FB3AC; --accentSoft:#1E2E2D;
+  --bad:#E08078; --good:#6FBF95; --warn:#D7A94F;
+}
+*{box-sizing:border-box}
+body{background:var(--ground); color:var(--ink); font-family:var(--body);
+  margin:0; padding:clamp(20px,4vw,52px) clamp(16px,4vw,40px) 96px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;}
+.wrap{max-width:1180px;margin:0 auto;}
+h1{font-family:var(--display); font-size:clamp(28px,4.4vw,44px); line-height:1.08; letter-spacing:-.02em;
+  margin:0 0 12px; text-wrap:balance; font-weight:600;}
+.lede{font-size:clamp(16px,1.6vw,18.5px); color:var(--inkSoft); max-width:64ch; margin:0 0 8px;}
+.eyebrow{font-family:var(--code); font-size:11px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--accent); margin:0 0 14px;}
+h2{font-family:var(--display); font-size:clamp(20px,2.4vw,26px); letter-spacing:-.01em; margin:56px 0 6px; font-weight:600;}
+h2 + .sec-note{color:var(--inkSoft); margin:0 0 22px; max-width:66ch;}
+.pagerule{height:1px;background:var(--rule);border:0;margin:34px 0;}
+
+/* diagnosis */
+.diag{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(248px,100%),1fr));gap:1px;
+  background:var(--rule);border:1px solid var(--rule);border-radius:10px;overflow:hidden;margin-top:18px;}
+.diag div{background:var(--panel);padding:16px 18px;}
+.diag b{display:block;font-family:var(--code);font-size:10.5px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--accent);margin-bottom:7px;}
+.diag p{margin:0;font-size:14.5px;color:var(--inkSoft);}
+.diag em{font-style:normal;color:var(--ink);font-variant-numeric:tabular-nums;}
+
+/* specimen rail */
+.rail{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(392px,100%),1fr));gap:26px;margin-top:26px;align-items:start;}
+.spec{background:var(--panel);border:1px solid var(--rule);border-radius:12px;padding:18px 18px 16px;}
+.spec-title{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;}
+.spec h3{font-family:var(--display);font-size:19px;margin:0;font-weight:600;letter-spacing:-.01em;}
+.tag{font-family:var(--code);font-size:11px;padding:2px 8px;border-radius:999px;
+  background:var(--accentSoft);color:var(--accent);white-space:nowrap;}
+.tag-base{background:transparent;border:1px dashed var(--rule);color:var(--inkSoft);}
+.tag-good{background:var(--accentSoft);color:var(--good);}
+.tag-warn{background:var(--accentSoft);color:var(--warn);}
+.thesis{font-size:14px;color:var(--inkSoft);margin:8px 0 0;}
+
+.stage{margin:16px 0 4px;overflow-x:auto;}
+.phone{width:375px;margin:0 auto;}
+.screen{width:375px;padding:14px 16px 16px;border-radius:14px;border:1px solid var(--rule);
+  /* the app's own palette, fixed — this is the artefact under review, so it
+     must not follow the reviewer's theme */
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6;
+  --accent:#6F5CA6; --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9;
+  --manila:#EADBBA; --manilaInk:#695832; --amber:#846008; --gold:#C9A961; --silver:#C4C3C0;
+  --cochin:Cochin,"Hoefler Text",Palatino,Georgia,serif;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  background:var(--paper); color:var(--ink); overflow:hidden; min-height:560px;
+  /* paint containment makes this the containing block for position:fixed
+     descendants, so a direction that pins a bar to "the viewport" pins it to
+     the phone instead of escaping into the review page. Preferred over a
+     translateZ(0) compositing hack, which promotes a layer for no reason. */
+  contain:layout paint; position:relative;}
+.flip{display:block;margin:10px auto 0;font-family:var(--code);font-size:11.5px;
+  background:transparent;border:1px solid var(--rule);color:var(--inkSoft);
+  border-radius:999px;padding:5px 13px;cursor:pointer;}
+.flip:hover{color:var(--ink);border-color:var(--inkSoft);}
+.flip-none{border-style:dashed;cursor:default;opacity:.55;}
+.flip:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+/* the constant chrome */
+.screen .mast{text-align:center;}
+.screen .rulebar{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:6px;}
+.screen .rulebar i{height:1px;background:var(--gold);width:78px;display:block;}
+.screen .seal{width:26px;height:26px;border-radius:50%;display:block;
+  background:radial-gradient(circle at 34% 30%, #C86A5F, #A8443C 58%, #66231D);}
+.screen .wordmark{font-family:var(--cochin);font-size:25px;letter-spacing:.16em;line-height:1;}
+.screen .mm-sub{font-family:var(--mono);font-size:8.5px;letter-spacing:.2em;color:var(--inkSoft);margin-top:5px;}
+.screen .hr{height:1px;background:var(--line);margin:10px 0 8px;}
+.screen .tallies{display:grid;grid-template-columns:repeat(3,1fr);}
+.screen .tallies div{border-right:1px solid var(--line);}
+.screen .tallies div:last-child{border-right:0;}
+.screen .tallies b{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.14em;color:var(--inkSoft);}
+.screen .tallies span{font-family:var(--mono);font-size:13px;color:var(--inkSoft);}
+.screen .tallies em{font-style:normal;color:var(--accent);font-weight:700;}
+.screen .mm-bar{height:5px;border-radius:3px;background:var(--silver);margin:9px 0 7px;overflow:hidden;}
+.screen .mm-bar i{display:block;height:100%;background:var(--accent);}
+.screen .mm-foot{display:flex;justify-content:space-between;gap:8px;font-family:var(--mono);font-size:9.5px;color:var(--inkSoft);}
+.screen .mm-foot .miss{color:var(--red);font-weight:700;}
+.screen .switch{display:grid;grid-template-columns:repeat(3,1fr);border:1px solid var(--line);
+  border-radius:999px;overflow:hidden;margin:16px 0 14px;background:var(--card);}
+.screen .switch span{font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-align:center;padding:9px 0;color:var(--ink);}
+.screen .switch .on{background:var(--accent);color:var(--card);}
+.screen .cards{margin-top:12px;display:flex;flex-direction:column;gap:8px;}
+.screen .pkg{border:1px solid var(--line);border-radius:9px;background:var(--card);padding:9px 11px;}
+.screen .pk-n{display:block;font-family:var(--cochin);font-size:15px;font-weight:700;}
+.screen .pk-m{display:block;font-family:var(--mono);font-size:9.5px;color:var(--inkSoft);margin-top:2px;}
+.region{margin-bottom:2px;}
+
+/* meta */
+.meta{border-top:1px solid var(--rule);padding-top:13px;margin-top:12px;}
+.nums{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(112px,100%),1fr));gap:9px 14px;margin:0 0 12px;}
+.nums div{margin:0;}
+.nums dt{font-family:var(--code);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--inkSoft);}
+.nums dd{margin:1px 0 0;font-family:var(--code);font-size:15px;font-variant-numeric:tabular-nums;}
+.nums dd.bad{color:var(--bad);} .nums dd.good{color:var(--good);}
+.disc{border-top:1px solid var(--rule);padding:8px 0 2px;}
+.disc summary{font-family:var(--code);font-size:11px;letter-spacing:.05em;color:var(--inkSoft);
+  cursor:pointer;list-style:none;display:flex;align-items:center;gap:7px;}
+.disc summary::-webkit-details-marker{display:none;}
+.disc summary::before{content:"+";font-size:13px;color:var(--accent);width:11px;}
+.disc[open] summary::before{content:"–";}
+.disc summary:hover{color:var(--ink);}
+.disc summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.disc-new summary{color:var(--good);}
+.disc-new summary::before{color:var(--good);}
+.disc-new li b{color:var(--ink);}
+.disc code{font-family:var(--code);font-size:11.5px;background:var(--accentSoft);padding:1px 4px;border-radius:3px;}
+.disc-bad summary{color:var(--bad);}
+.disc-bad summary::before{color:var(--bad);}
+.disc p{font-size:13.5px;color:var(--inkSoft);margin:9px 0 4px;}
+.disc ul{margin:9px 0 4px;padding-left:17px;font-size:12.5px;color:var(--inkSoft);}
+.disc li{margin-bottom:7px;}
+
+/* verdict blocks */
+.rank{counter-reset:r;list-style:none;padding:0;margin:18px 0 0;}
+.rank li{counter-increment:r;position:relative;padding:13px 0 13px 42px;border-top:1px solid var(--rule);font-size:14.5px;}
+.rank li::before{content:counter(r);position:absolute;left:0;top:12px;font-family:var(--code);font-size:11px;
+  color:var(--accent);border:1px solid var(--rule);border-radius:50%;width:23px;height:23px;
+  display:grid;place-items:center;}
+.pick{background:var(--accentSoft);border:1px solid var(--accent);border-radius:12px;padding:20px 22px;margin-top:22px;}
+.pick h3{font-family:var(--display);margin:0 0 8px;font-size:20px;font-weight:600;}
+.pick p{margin:0;font-size:15px;}
+.missed{list-style:none;padding:0;margin:18px 0 0;display:grid;gap:12px;}
+.missed li{background:var(--panel);border:1px solid var(--rule);border-left:3px solid var(--warn);
+  border-radius:8px;padding:14px 16px;font-size:14px;color:var(--inkSoft);}
+.missed li b{color:var(--ink);}
+.grafts{margin:18px 0 0;padding-left:19px;display:grid;gap:10px;font-size:14.5px;color:var(--inkSoft);}
+.step{border:1px solid var(--rule);border-radius:12px;padding:20px 22px;margin-top:20px;background:var(--panel);font-size:15px;}
+@media (max-width:820px){ .rail{grid-template-columns:1fr;} .phone{width:100%;} .screen{width:375px;} }
+</style>
+
+<div class="wrap">
+<p class="eyebrow">Design review · filter &amp; sort region</p>
+<h1>The toolbar is the only part of the app with no design system</h1>
+<p class="lede">Five directions, each designed to a distinct thesis and then independently critiqued against the app's hard constraints. Every specimen below renders under the same masthead and switch at a true 375px, so the only variable is the region itself.</p>
+
+<h2>What's actually wrong</h2>
+<p class="sec-note">Measured in a real 375px viewport against 333 line items, 150 orders and 379 sellers drawn from your own OrderWand export.</p>
+<div class="diag">
+  <div><b>Vertical cost</b><p><em>171px</em> at rest, <em>253px</em> with chips open, <em>285px</em> with custom dates — <em>21–35%</em> of the screen before one package.</p></div>
+  <div><b>Shape language</b><p>Two radii (999px and 8px), two font families, three type sizes — all at identical height, background and border.</p></div>
+  <div><b>Native controls</b><p>The <em>&lt;select&gt;</em> draws its own caret; the range renders two grey <em>mm/dd/yyyy</em> boxes in the system font.</p></div>
+  <div><b>Double selection</b><p>"30d" is filled accent violet twice — once on the collapsed pill, again in the chip row below it.</p></div>
+  <div><b>No grid</b><p>Seven rows, four alignments: left, right, left, left, full, left, right.</p></div>
+  <div><b>Unstable across views</b><p>Tally's longer sort labels break search and sort onto separate rows, so the region changes height when you switch view.</p></div>
+  <div><b>Notices collide</b><p><em>272 lines outside range</em> butts against <em>31 canceled — view</em> with no separator; one underlined, one not.</p></div>
+  <div><b>No state summary</b><p>272 of 333 lines hidden in that screenshot, and nothing says so without reading every control.</p></div>
+</div>
+
+<h2>The specimens</h2>
+<p class="sec-note">Scores are from an independent critic that saw each direction's markup and CSS but not the others. Nothing scored above 6/10 — read that as "no direction is ready to build as drawn", not as a tie.</p>
+<div class="rail">
+
+<article class="spec" id="spec-current">
+  <header class="spec-h">
+    <div class="spec-title">
+      <h3>What ships today</h3>
+      <span class="tag tag-base">baseline</span>
+    </div>
+    <p class="thesis">Seven rows, two shape languages, three type sizes, two native controls. Reconstructed from measured values, not from memory.</p>
+  </header>
+
+  <div class="stage">
+    <div class="phone" data-state="rest">
+      <div class="screen">
+        
+  <div class="mast">
+    <div class="rulebar"><i></i><span class="seal"></span><i></i></div>
+    <div class="wordmark">MANIFEST</div>
+    <div class="mm-sub">C.H POSTAL COMPANY</div>
+    <div class="hr"></div>
+    <div class="tallies">
+      <div><b>CARDS</b><span><em>164</em>/351</span></div>
+      <div><b>PACKAGES</b><span><em>31</em>/136</span></div>
+      <div><b>VALUE</b><span><em>$6.13k</em>/$14.59k</span></div>
+    </div>
+    <div class="mm-bar"><i style="width:47%"></i></div>
+    <div class="mm-foot"><span>136 packages · autosaves</span><span class="miss">187 still missing · $8,460.52</span></div>
+  </div>
+  <div class="switch"><span>ORPHANED</span><span>TALLY</span><span class="on">PACKAGES</span></div>
+
+        <div class="region dir-current state-rest">
+<div class="dir-current">
+  <div class="r ra"><span class="lbl">Orders from</span><button class="chip on">30d <i>▼</i></button><button class="ctl">Hide received</button></div>
+  <div class="r rb"><span class="note">272 lines outside range</span><a class="lnk">31 canceled — view</a></div>
+  <div class="r rd"><span class="search">Search card, set, seller, or order…</span><span class="sel">Sort: newest <i class="uac">⌄</i></span></div>
+  <div class="r rf"><button class="ctl">Re-import CSV</button><button class="chip">Sync · 08-12 ▾</button><button class="ctl dang">Reset</button></div>
+</div></div>
+        <div class="region dir-current state-open" hidden>
+<div class="dir-current">
+  <div class="r ra"><span class="lbl">Orders from</span><button class="chip on">Custom… <i>▲</i></button><button class="ctl">Hide received</button></div>
+  <div class="r rb"><span class="note">272 lines outside range</span><a class="lnk">31 canceled — view</a></div>
+  <div class="r rc"><button class="chip">All time</button><button class="chip">30d</button><button class="chip">45d</button><button class="chip">60d</button><button class="chip">90d</button></div>
+  <div class="r rc"><button class="chip">＃ days</button><button class="chip on">Custom…</button></div>
+  <div class="r rc"><span class="dt">mm/dd/yyyy <i class="cal">🗓</i></span><span class="dash">–</span><span class="dt">mm/dd/yyyy <i class="cal">🗓</i></span></div>
+  <div class="r rd"><span class="search">Search card, set, seller, or order…</span></div>
+  <div class="r re"><span class="sel">Sort: most missing <i class="uac">⌄</i></span></div>
+  <div class="r rf"><button class="ctl">Re-import CSV</button><button class="chip">Sync · 08-12 ▾</button><button class="ctl dang">Reset</button></div>
+</div></div>
+        <div class="cards">
+          <div class="pkg"><span class="pk-n">Wood's Reserve Vault</span><span class="pk-m">2026-08-06 · ● tracked</span></div>
+          <div class="pkg"><span class="pk-n">Rochester CCG Extras</span><span class="pk-m">2026-08-04 · ○ untracked</span></div>
+        </div>
+      </div>
+      <button class="flip" type="button" data-target="spec-current">Show open state</button>
+    </div>
+  </div>
+
+  <div class="meta">
+    <dl class="nums">
+      <div><dt>Claimed height</dt><dd>171px</dd></div>
+             <div><dt>Reviewer's measure</dt><dd class="">171px</dd></div>
+      
+    </dl>
+    
+    
+    
+    
+    
+  </div>
+</article>
+
+<article class="spec" id="spec-sentence">
+  <header class="spec-h">
+    <div class="spec-title">
+      <h3>The Filter Is A Sentence</h3>
+      <span class="tag tag-good">5/10</span>
+    </div>
+    <p class="thesis">The control region stops being a toolbar and becomes one line of the register's own prose — "Showing all orders, newest first, including received. Find …" — where the changeable words are the controls, so the resting state and the state summary are the same object.</p>
+  </header>
+
+  <div class="stage">
+    <div class="phone" data-state="rest">
+      <div class="screen">
+        
+  <div class="mast">
+    <div class="rulebar"><i></i><span class="seal"></span><i></i></div>
+    <div class="wordmark">MANIFEST</div>
+    <div class="mm-sub">C.H POSTAL COMPANY</div>
+    <div class="hr"></div>
+    <div class="tallies">
+      <div><b>CARDS</b><span><em>164</em>/351</span></div>
+      <div><b>PACKAGES</b><span><em>31</em>/136</span></div>
+      <div><b>VALUE</b><span><em>$6.13k</em>/$14.59k</span></div>
+    </div>
+    <div class="mm-bar"><i style="width:47%"></i></div>
+    <div class="mm-foot"><span>136 packages · autosaves</span><span class="miss">187 still missing · $8,460.52</span></div>
+  </div>
+  <div class="switch"><span>ORPHANED</span><span>TALLY</span><span class="on">PACKAGES</span></div>
+
+        <div class="region dir-sentence state-rest"><div class="say">
+  <span class="w">Showing</span>
+  <span class="seg"><button class="tok" type="button" aria-haspopup="listbox" aria-expanded="false">all orders<span class="car">▾</span></button><span class="p">,</span></span>
+  <span class="seg"><button class="tok" type="button" aria-haspopup="listbox" aria-expanded="false">newest first<span class="car">▾</span></button><span class="p">,</span></span>
+  <span class="seg"><button class="tok" type="button" aria-pressed="false">including received</button><span class="p">.</span></span>
+  <span class="find">
+    <span class="w">Find</span>
+    <span class="write">
+      <input class="find-in" type="text" enterkeyhint="search" placeholder="a card, set, seller or order" aria-label="Search cards, sets, sellers and order ids">
+    </span>
+  </span>
+</div>
+
+<div class="notes">
+  <button class="note-link" type="button">31 canceled — view</button>
+</div>
+
+<div class="acts">
+  <button class="act" type="button">Re-import CSV</button>
+  <button class="act" type="button">Sync<span class="car">▾</span></button>
+  <button class="act act--reset" type="button">Reset</button>
+</div></div>
+        <div class="region dir-sentence state-open" hidden><div class="say">
+  <span class="w">Showing</span>
+  <span class="seg"><button class="tok tok--on tok--open" type="button" aria-haspopup="listbox" aria-expanded="true"><span class="dates">12 Apr – 3 Aug</span><span class="car">▾</span></button><span class="p">,</span></span>
+  <span class="seg"><button class="tok" type="button" aria-haspopup="listbox" aria-expanded="false">most still owed<span class="car">▾</span></button><span class="p">,</span></span>
+  <span class="seg"><button class="tok tok--on" type="button" aria-pressed="true">hiding received</button><span class="p">.</span></span>
+  <span class="find">
+    <span class="w">Find</span>
+    <span class="write">
+      <input class="find-in" type="text" value="sylvan" aria-label="Search cards, sets, sellers and order ids">
+      <button class="clear" type="button" aria-label="Clear search">×</button>
+    </span>
+  </span>
+</div>
+
+<div class="chooser" role="listbox" aria-label="Date range">
+  <button class="opt" type="button" role="option">all orders</button>
+  <button class="opt" type="button" role="option">30 days</button>
+  <button class="opt" type="button" role="option">45 days</button>
+  <button class="opt" type="button" role="option">60 days</button>
+  <button class="opt" type="button" role="option">90 days</button>
+  <button class="opt" type="button" role="option">the last <span class="num">21</span> days</button>
+  <span class="opt opt--on" role="option" aria-selected="true"><span class="dot">●</span>a custom range</span>
+  <span class="sub">
+    <span class="w">from</span>
+    <input class="dt" inputmode="numeric" value="2026-04-12" placeholder="YYYY-MM-DD" aria-label="From date">
+    <span class="w">to</span>
+    <input class="dt" inputmode="numeric" value="2026-08-03" placeholder="YYYY-MM-DD" aria-label="To date">
+  </span>
+</div>
+
+<div class="notes">
+  <span>118 lines outside</span>
+  <button class="note-link" type="button">31 canceled — view</button>
+</div>
+
+<div class="acts">
+  <button class="act" type="button">Re-import CSV</button>
+  <button class="act" type="button">Sync<span class="car">▾</span></button>
+  <button class="act act--reset" type="button">Reset</button>
+</div></div>
+        <div class="cards">
+          <div class="pkg"><span class="pk-n">Wood's Reserve Vault</span><span class="pk-m">2026-08-06 · ● tracked</span></div>
+          <div class="pkg"><span class="pk-n">Rochester CCG Extras</span><span class="pk-m">2026-08-04 · ○ untracked</span></div>
+        </div>
+      </div>
+      <button class="flip" type="button" data-target="spec-sentence">Show open state</button>
+    </div>
+  </div>
+
+  <div class="meta">
+    <dl class="nums">
+      <div><dt>Claimed height</dt><dd>150px</dd></div>
+             <div><dt>Reviewer's measure</dt><dd class="good">151px</dd></div>
+      <div><dt>Language fit</dt><dd>4/5</dd></div>
+             <div><dt>Reachability</dt><dd>2/5</dd></div>
+             <div><dt>Invariant safety</dt><dd>3/5</dd></div>
+             <div><dt>Discoverability</dt><dd>3/5</dd></div>
+    </dl>
+    
+    <details class="disc"><summary>Reviewer's verdict </summary><p>This is the best-reasoned direction of its kind — the shape-carries-meaning argument is real, it genuinely dissolves problems 5, 6, 7 and 8 (measured: the placeholder needs 135.2px in a 164.1px field, so it fits whole), it uses no colour literals, no media queries beyond `prefers-reduced-motion`, no `&lt;select&gt;` and no `type="date"`, and its contrast pairs check out (inkSoft/paper 4.68, card/accent 5.19, red/redSoft 4.76). But its headline is wrong: measured side by side at 375px it saves 6px at rest, not 21 — the 171px baseline it quotes includes the view switch's own 14px margin, which the direction does not remove — and it is 4–13px TALLER in every open state plus a 127px push on sort where today's native select pushes nothing. Against that thin gain it trades away a working date picker for two fields whose separator cannot be typed on an iPhone keypad, drops the free "N days" input entirely, and ships a `:active` rule that blanks every accent-filled token while your thumb is on it. The idea deserves another pass; this draft is not the one to build.</p></details>
+    <details class="disc"><summary>What it gives up</summary><p>Measured in a real 375px viewport, not estimated. Resting: 150px vs today's 171 — a 21px win, smaller than it sounds, because two of the four rows (the 34px search field and the 34px file-actions row) are irreducible and I kept both. The real win is that those 150px now *say something*. Open, it is a wash and in one case a slight loss: range chooser with a preset ≈ 241px (today 253), the sort chooser ≈ 278px (today 253), and the custom range ≈ 283px (today 285). I did not buy a smaller open state; I bought a smaller resting state and a legible one.
+
+Second: the custom range is typed, not picked — two mono `YYYY-MM-DD` fields on rules, numeric keypad, no calendar. That is the honest cost of killing the grey UA date inputs and their ~140px minimum. Anyone who wants to browse to a date has lost that; the seven presets have to carry it.
+
+Third: interaction cost. Sort goes from one native-select interaction to two taps (open the token, pick the word). The date presets were already two (disclosure + chip), so no change there, and Hide received stays one tap. A returning power user who knows exactly where the "45d" chip lives will find prose slower to aim at than a fixed grid — this direction optimises for "what is filtering my list?" over "hit 45d fast".
+
+Fourth: the layout is content-dependent in a way a chip row is not. Wrapping depends on label length, so a long pair ("dearest per copy" + a custom date token) can push the Find clause to a third line, +41px. It never overflows, it just gets one line taller — but the region no longer has a fixed height, and anything downstream that assumed one is wrong.
+
+Fifth: it is prose, so it is English-only and has to be *maintained* as prose. Two vocabularies (Packages/Tally) already, and every new filter has to find a grammatical home rather than just another chip slot. There is no room for a fourth clause without a third line.
+
+Sixth: two accent-filled tokens can be lit at once (narrowed range + hiding received), which is more accent on screen than today's single active chip. That is truthful — two filters are on — but it is louder.</p></details>
+    <details class="disc disc-bad"><summary>7 constraint findings</summary><ul><li>THE HEADLINE COMPARISON IS FRAME-MISMATCHED. I built the proposal's exact markup/CSS and a faithful replica of today's region (from src/app.jsx: `ctl`, `chip`, `ctlSelect`, `dateInput`, `marginBottom: 10` on the date block and `16` on the toolbar) and measured both in a real 375px Chrome viewport with Cochin present. Proposed resting region = 150.5px — their number is correct. Today's SAME REGION = 156.5px (date row 54.5 + 10 + toolbar 76 + 16). The quoted 171px baseline additionally contains `.mdl-switch { ... margin-bottom: 14px }` (src/app.jsx:3045), which this direction does not touch: 156.5 + 14 = 170.5 ≈ the 171 they cite. Like-for-like the saving is 6px, not 21px — and problem 1 (vertical cost) is half the stated rationale for the whole direction.</li><li>EVERY OPEN STATE IS TALLER THAN TODAY, not "a wash". Measured at 375px, same frame: range chooser open on a preset 243px vs today's 239px (+4); range open with the custom fields 283.5px vs today's 270.5px (+13); sort chooser open 277.8px, i.e. a 127px push, where today's `&lt;select&gt;` pushes 0px because its popover overlays. The direction's own open-state numbers (241/278/283.5) are right; they are compared against the inflated 253/285 baseline, which is what turns a loss into a claimed wash.</li><li>THE FREE "LAST N DAYS" OPTION HAS NO INPUT. `&lt;button class="opt" type="button" role="option"&gt;the last &lt;span class="num"&gt;21&lt;/span&gt; days&lt;/button&gt;` — the number is a static span inside a button. Nothing in the markup or CSS lets a user set N; `.sub` is the only revealed slot and it is styled exclusively for two `.dt` fields (`flex: 1 0 100%` + two `width: 108px` inputs). One of the seven required date options is not reachable as drawn.</li><li>THE CUSTOM RANGE CANNOT BE TYPED ON THE TARGET DEVICE. `&lt;input class="dt" inputmode="numeric" placeholder="YYYY-MM-DD"&gt;` — iOS's `inputmode="numeric"` keypad is digits only; there is no `-` key (nor on `tel`). The placeholder demands a character the keyboard does not offer, and no auto-formatting is specified. This replaces a control that was ugly but worked (`&lt;input type="date"&gt;`, wheel picker, no typing) with one that is unusable on the only platform this app ships to. It also introduces an iOS focus-zoom where none existed: a `type="date"` field opens a picker without zooming; `.dt { font-size: 12.5px }` will zoom.</li><li>A LIT TOKEN GOES BLANK WHILE PRESSED. `.dir-sentence .tok:active { background: var(--paper); }` has specificity (0,3,0); `.dir-sentence .tok--on { background: var(--accent); color: var(--card); }` has (0,2,0), so `:active` wins regardless of source order. Pressing an accent-filled token (a narrowed range, or "hiding received") paints `--card` text on `--paper`: 1.05:1, invisible for the duration of the touch. Every accent-filled control in this region has this bug, and `-webkit-tap-highlight-color: transparent` removes the only other press feedback.</li><li>THE CUSTOM-RANGE ROW HAS EXACTLY ZERO HORIZONTAL SLACK AT 375px. Measured: `.sub` right edge = 348.0px, `.chooser` content edge = 348.0px (359 − 1px border − 10px padding). Nothing spare. At 320px it overflows its own panel by 24px, because `.dt { width: 108px }` inputs do not shrink (form controls resolve `min-width: auto` to an intrinsic minimum), which contradicts the claim of "0 at 320" — the region there measures 184.3px, not the claimed 170px.</li><li>TOUCH TARGETS BELOW THE STATED 34px FLOOR. Measured: `.dt` = 30.5px tall (`padding: 7px 2px 8px` + 12.5px mono + a 1px rule), and `.note-link` = 32px including its `::before { inset: -8px -5px }` pad. `.find-in` lands at 33.8px. Only `.tok`/`.opt` (35.8px with their pads) and `.act` (34px) clear CTL_H.</li></ul></details>
+    <details class="disc"><summary>10 fixes that would raise it</summary><ul><li>Restate the vertical claim honestly — 150.5px vs 156.5px like-for-like, a 6px win — and re-argue the direction on the state-summary benefit alone, which is the half that actually holds. If the pitch needs a real height win, it has to come from the two rows kept untouched (the notes line and the 34px file-actions row), not from merging the filters.</li><li>Give the free-N option a real input. Reuse the `.sub` slot with a single mono field on a rule (`the last [ 21 ] days`), and specify that picking the option focuses it — otherwise cut that option and let the presets carry it, but say so.</li><li>Fix the date entry for iOS. Either three separate numeric fields (Y / M / D) with no separator to type, or auto-insert the hyphens on input and switch the hint to `inputmode="numeric"` + a documented mask. Pin `.dt` to 16px to stop the focus zoom and to 34px to meet CTL_H, and give the pair `flex-wrap: wrap` so it cannot overrun the chooser below 375px.</li><li>Add `.dir-sentence .tok--on:active { background: var(--accent); }` (or move the press feedback to `opacity`/`box-shadow`, which is state-independent). Same audit for `.opt:active` if a lit option ever becomes a button.</li><li>Buy back slack in the chooser: shorten `from`/`to` to a single `–` between the fields, or let `.sub` wrap. Zero slack at the design width means the first label change, locale, or font-metric difference on a real iPhone spills.</li><li>Specify the date token's format for a multi-year ledger — this app is deliberately the system of record for orders older than 120 days, so a cross-year custom range is normal. Measured, "12 Apr 2025 – 3 Aug 2026" re-wraps `.say` from 68.5px to 98.9px (+30.4px). Either fix the token to a mono fixed-width form that cannot re-wrap the sentence, or accept that picking a range moves the chooser under the thumb mid-interaction.</li><li>Make the chooser visibly belong to the token that opened it — a caret notch, or render it inline under the clause rather than as a full-width panel that looks identical for dates and for sort. Two different vocabularies appearing in the same box in the same place is the orientation cost of the one-slot design.</li><li>Give the search rule more signal than `--line`, which measures 1.45:1 on `--card` and 1.3:1 on `--paper`. A 1px rule at that contrast plus the word "Find" is thin evidence that a text field exists; consider a `--inkSoft` rule or a faint `--card` fill behind it.</li><li>Reconcile the radius. The region standardises on 3px while sitting between a 999px pill (`.mdl-switch`) and 10px package cards, and the file it lives in uses 8px fourteen times. "One radius" is true only inside this region; either extend the 3px vocabulary outward in the same commit or match what is already there.</li><li>Spell out both sort vocabularies. Only one label ("most still owed") is given; five Packages labels and six Tally labels have to be written, and the direction's own stated risk — that prose must be maintained as prose — is unmanaged until they are.</li></ul></details>
+  </div>
+</article>
+
+<article class="spec" id="spec-ruled2">
+  <header class="spec-h">
+    <div class="spec-title">
+      <h3>The Ruled Head</h3>
+      <span class="tag tag-good">rebuilt</span>
+    </div>
+    <p class="thesis">Rebuilt. The ledger-form vocabulary kept, but the cells are now visibly touchable, all seven date options ship, and nothing has to be typed.</p>
+  </header>
+
+  <div class="stage">
+    <div class="phone" data-state="rest">
+      <div class="screen">
+        
+  <div class="mast">
+    <div class="rulebar"><i></i><span class="seal"></span><i></i></div>
+    <div class="wordmark">MANIFEST</div>
+    <div class="mm-sub">C.H POSTAL COMPANY</div>
+    <div class="hr"></div>
+    <div class="tallies">
+      <div><b>CARDS</b><span><em>164</em>/351</span></div>
+      <div><b>PACKAGES</b><span><em>31</em>/136</span></div>
+      <div><b>VALUE</b><span><em>$6.13k</em>/$14.59k</span></div>
+    </div>
+    <div class="mm-bar"><i style="width:47%"></i></div>
+    <div class="mm-foot"><span>136 packages · autosaves</span><span class="miss">187 still missing · $8,460.52</span></div>
+  </div>
+  <div class="switch"><span>ORPHANED</span><span>TALLY</span><span class="on">PACKAGES</span></div>
+
+        <div class="region dir-ruled2 state-rest"><!-- RESTING. Three ruled cells carrying label / value / figure, then the find
+     row, then the file actions set apart by a gap and a heavier rule so they
+     stop reading as a fourth filter. -->
+<section class="head" aria-label="Filters and list controls">
+  <div class="rule"></div>
+
+  <div class="row r3">
+    <button class="cell disc" aria-expanded="false">
+      <span class="lab">Orders from</span>
+      <span class="val"><span class="u">All time</span><i class="car">▾</i></span>
+      <span class="fig">333 lines</span>
+    </button>
+    <button class="cell" aria-pressed="false">
+      <span class="lab">Showing</span>
+      <span class="val"><i class="dot">○</i>Everything</span>
+    </button>
+    <button class="cell disc" aria-expanded="false">
+      <span class="lab">Sorted by</span>
+      <span class="val"><span class="u">Newest</span><i class="car">▾</i></span>
+    </button>
+  </div>
+
+  <div class="rule thin"></div>
+
+  <label class="find">
+    <span class="lab">Find</span>
+    <input type="text" placeholder="Card, set, seller, order" aria-label="Search cards, sets, sellers and order ids">
+  </label>
+
+  <div class="rule thin"></div>
+
+  <!-- set apart on purpose: file management is not a filter, and flattening
+       the two into one grid was what made the first pass read as a wall -->
+  <div class="acts">
+    <button class="act">Re-import</button>
+    <button class="act">Sync · 08-12<i class="car">▾</i></button>
+    <button class="act danger">Reset</button>
+  </div>
+
+  <div class="rule"></div>
+</section>
+</div>
+        <div class="region dir-ruled2 state-open" hidden><!-- OPEN, date panel. All SEVEN options ship — the first pass shipped six and
+     asserted the seventh in prose. Shown in Tally, and with a live figure on
+     the range cell so the head still reports while you are choosing. -->
+<section class="head" aria-label="Filters and list controls">
+  <div class="rule"></div>
+
+  <div class="row r3">
+    <button class="cell disc on" aria-expanded="true">
+      <span class="lab">Orders from</span>
+      <span class="val"><span class="u">45 days</span><i class="car up">▾</i></span>
+      <span class="fig">61 lines · 272 outside</span>
+    </button>
+    <button class="cell" aria-pressed="true">
+      <span class="lab">Showing</span>
+      <span class="val"><i class="dot on">●</i>Unreceived</span>
+    </button>
+    <button class="cell disc" aria-expanded="false">
+      <span class="lab">Sorted by</span>
+      <span class="val"><span class="u">Missing</span><i class="car">▾</i></span>
+    </button>
+  </div>
+
+  <div class="panel">
+    <div class="opts">
+      <button class="opt">All time</button><button class="opt">30 days</button><button class="opt on">45 days</button>
+      <button class="opt">60 days</button><button class="opt">90 days</button><button class="opt">Last…</button>
+      <button class="opt">By month</button>
+    </div>
+
+    <div class="sub">
+      <span class="lab">Last</span>
+      <span class="well"><button class="stp" aria-label="Fewer days">−</button><span class="num">21</span><button class="stp" aria-label="More days">+</button></span>
+      <span class="lab">days</span>
+    </div>
+
+    <!-- picked from the orders that exist, so there is no keyboard, no masking
+         and no way to enter 2026-02-31 -->
+    <div class="sub wrapmo">
+      <span class="lab">Month</span>
+      <span class="mos">
+        <button class="opt sm">Aug</button><button class="opt sm">Jul</button><button class="opt sm">Jun</button><button class="opt sm">May</button><button class="opt sm">Apr</button><button class="opt sm">Mar</button><button class="opt sm">Feb</button><button class="opt sm">Jan</button>
+      </span>
+    </div>
+
+    <details class="exact">
+      <summary>Exact dates</summary>
+      <div class="pair"><input type="date" value="2026-04-12" aria-label="From date"><s>–</s><input type="date" value="2026-08-03" aria-label="To date"></div>
+    </details>
+  </div>
+
+  <div class="rule thin"></div>
+
+  <label class="find">
+    <span class="lab">Find</span>
+    <input type="text" value="lotus" aria-label="Search cards, sets, sellers and order ids">
+  </label>
+
+  <div class="rule thin"></div>
+
+  <div class="acts">
+    <button class="act">Re-import</button>
+    <button class="act">Sync · 08-12<i class="car">▾</i></button>
+    <button class="act danger armed">Tap again to clear everything</button>
+  </div>
+
+  <div class="rule"></div>
+</section>
+</div>
+        <div class="cards">
+          <div class="pkg"><span class="pk-n">Wood's Reserve Vault</span><span class="pk-m">2026-08-06 · ● tracked</span></div>
+          <div class="pkg"><span class="pk-n">Rochester CCG Extras</span><span class="pk-m">2026-08-04 · ○ untracked</span></div>
+        </div>
+      </div>
+      <button class="flip" type="button" data-target="spec-ruled2">Show open state</button>
+    </div>
+  </div>
+
+  <div class="meta">
+    <dl class="nums">
+      <div><dt>Resting, measured</dt><dd class="good">162px</dd></div>
+             <div><dt>Open, measured</dt><dd>508px</dd></div>
+      
+    </dl>
+    <details class="disc disc-new" open><summary>9 changes from the first pass</summary><ul><li><b>Rules are <code>--line</code>, not <code>--gold</code>.</b> CLAUDE.md scopes gold to the masthead and nothing else; the first pass added four more gold rules, then broke its own “masthead continued” story by leaving the violet view-switch pill sitting between them.</li><li><b>The two disclosure cells got an affordance.</b> The first pass built controls out of the same parts as the masthead’s <i>read-only</i> tallies, so nothing looked touchable — it scored 2/5 on discoverability for a real reason. The changeable value now sits on a write-on underline: a form’s rule, not a button box, so the thesis survives intact.</li><li><b>No typed dates.</b> The first pass shipped an 18.5px <code>inputmode="numeric"</code> field — half the app’s touch floor, and on iOS the numeric keypad has <i>no hyphen key</i>, so the custom range was literally uncompletable. Months are picked from the orders that exist; the native pair survives behind “Exact dates”.</li><li><b>All seven date options ship.</b> The first pass shipped six and asserted the free “last N days” in prose.</li><li><b>The figure line survives on the range cell only.</b> “187 LEFT” and “136 PKGS” were restating the masthead 100px above. Only the range count is new information — which is what turns this from a wash into a compression.</li><li><b>File actions are set apart.</b> Flattening them into the same three-column grid destroyed the filters-versus-file-management separation the source comment explicitly calls for.</li><li><b>Vocabulary shortened at the source</b> (“Unreceived”, “Missing”, “272 outside”) rather than relying on ellipsis. Three ellipses in one row — all inside the state readout — is the exact failure this direction exists to prevent.</li><li><b>Search is 16px</b>, so focusing it cannot zoom the page on iOS, and <b>the armed Reset spans the row</b> so it can still name its consequence instead of shrinking to “TAP AGAIN”.</li><li><b>Measured honestly, this is still a wash on height</b> — 162px against the reconstruction’s 143px, and 508px open. Its case is legibility and state-reporting, not compression. If you pick it, pick it because the head <i>reads</i>, not because it saves room.</li></ul></details>
+    <details class="disc"><summary>Reviewer's verdict (on the first pass)</summary><p>The measurements are scrupulously honest — I rendered it and got 159px resting / 264px open / 0 overflow against claimed 159.5 / 264.5 / 0, zero colour literals, one media query, no select, no date input. It also scores a real invariant win: the fixed-fraction grid genuinely fixes a live reflow bug, since app.jsx:3262 really does swap "Hide received" for "Showing remaining only" inside a flex-wrap row today. But it fails the brief's headline problem and then breaks two things. Vertical cost is a wash (13px resting, 11px WORSE open, and 14px of the resting height is a .fig line whose "187 LEFT" and "136 PKGS" are verbatim restatements of the masthead 100px above); the custom range is untypeable on iOS; one of the seven date options does not ship; and the head cells are built identically to the masthead's read-only ruled thirds, so the direction's prettiest move is also why nothing looks tappable.</p></details>
+    <details class="disc"><summary>What it gives up</summary><p>Measured, not estimated — rendered at a real 375×812 viewport with the palette and font stack above: resting 159.5px (rows 59.5 / 39 / 37 plus two gold hairlines and 10+12px margins), open 264.5px, horizontal overflow 0.
+
+1. The resting win is only ~11px. This direction buys coherence and a built-in state summary, not compression; if you want 120px, this is the wrong direction.
+2. The open state is WORSE than today in the common case: 264.5px vs 253px for a preset, though better than the 285px custom case. Ruled cells cannot go under the 34px touch floor, whereas today's chips could pack two per line. I chose to eat 11px rather than ship 28px tick targets.
+3. I restyled the file-actions row, which you said not to redesign. Conceptually it is untouched — Re-import, a Sync disclosure carrying its last-push date, Reset with the inline two-tap (shown armed in the open fragment as a redSoft wash reading "Tap again") — but leaving three beige lozenges under a ruled form would have destroyed the thesis. Reject that part and the region loses most of its coherence.
+4. The head values must be short. "Most ordered" (80px) is the longest sort label that fits the 84px value slot in the Palatino fallback; "Biggest position" would have to render as "Position". So the Tally sort vocabulary has to be shortened in the head even though the panel can spell it out.
+5. The date panel's write-on row is a mode swap: it reads FROM ____ TO ____ under Custom, and LAST [21] DAYS under any preset. So in the Custom state the free "last N days" entry is not on screen — it is one tap away (tap any preset), but it is not simultaneously visible. That is the price of keeping the panel to three rows.
+6. Losing the boxes loses the affordance. Nothing here looks tappable in a screenshot; it looks like printed matter. The :active card-wash and the carets are the only cues. On a daily-driver app this is fine after a day; for a first-time reader it is genuinely worse than a button.
+7. Two rules are gold and everything else is --line, so the region has less internal contrast than a bordered toolbar; on a dim screen the hairlines can read as a single grey mass.</p></details>
+    <details class="disc disc-bad"><summary>8 constraint findings — addressed above</summary><ul><li>TOUCH TARGET, measured: the custom date fields are 18.5px tall, not 34px. `.writeon { padding: 1px 2px 2px; font-size: 12.5px }` inside `&lt;div class="cell cell--write"&gt;` — and it is a DIV, not a &lt;label&gt;, so the surrounding 34px is dead space. Measured hitHeights.writeonInput = 18.5. The self-check claim "write-on row 34px" measures the row, not the tappable input. This is the smallest touch target in the app by a factor of two.</li><li>FUNCTIONAL BREAK ON THE TARGET DEVICE: `&lt;input class="writeon" inputmode="numeric" value="2026-05-01"&gt;`. iOS renders inputmode=numeric as the 10-key pad — digits only, no hyphen. The user physically cannot type a date into the custom range on the one device this app runs on. inputmode="tel" doesn't help (+ * # only). This is not the disclosed "users will type more" tradeoff; it is "users cannot type at all".</li><li>REACHABILITY: only SIX date options ship. `RANGES` in src/app.jsx:1090 has SEVEN — `["all",...],[30],[45],[60],[90],["days","# days"],["custom","Custom…"]`. The panel renders All time / 30 / 45 / 60 / 90 / Custom. The `days` preset has no selector anywhere in either fragment, and the prose escape ("LAST [21] DAYS under any preset") is incoherent — an editable 21 sitting under a selected "30 days" chip does not say which range is active. The free N-days entry is asserted, not designed.</li><li>AS DELIVERED, NONE OF THE CSS APPLIES. Every rule is scoped `.dir-ruled .row`, `.dir-ruled .cell`, and the root element in both HTML fragments is `&lt;section class="ledger-head"&gt;`. There is no `.dir-ruled` anywhere in the markup. I had to add the class by hand to measure anything.</li><li>"Sizing is clamp() throughout" is false. Four fixed sizes: `.caret { font-size: 8px }`, `.dot { font-size: 11px }`, `.writeon { font-size: 12.5px }`, `.act .when { font-size: 9px }`. Measured computed values confirm 8 / 11 / 12.5 / 9px, and the 8px caret is the sole tap affordance on the date control.</li><li>GOLD SCOPE: CLAUDE.md states --gold "exists for the masthead rules and nothing else". `.dir-ruled .rule { background: var(--gold) }` adds two more, and the "masthead's rules continued" framing is broken by the violet view-switch pill sitting between them. Four gold rules now share the screen; the bottom one lands 12px above the first package card.</li><li>iOS FOCUS ZOOM: `.find` computes to 14.25px and `.writeon` to 12.5px, both under Safari's 16px threshold, and build.mjs:19 is `width=device-width, initial-scale=1, viewport-fit=cover` — no maximum-scale. The app already sets `fontSize: 16` on its other free-text inputs (app.jsx:1491, 1663) for exactly this reason. Focusing the date blanks scales the whole page.</li><li>`.act { white-space: nowrap }` carries no overflow:hidden/text-overflow, unlike every other text run in the region. If the Sync date string ever renders longer than "9 Aug" it escapes its cell rather than ellipsising.</li></ul></details>
+    <details class="disc"><summary>11 fixes that would raise it</summary><ul><li>Kill the write-on date blanks. inputmode=numeric cannot produce a hyphen on iOS. Either keep &lt;input type="date"&gt; (accept the UA chrome — it is one row, twice a year) or make each date three separate numeric blanks YYYY / MM / DD, each its own 34px &lt;label&gt; so the tap target is the cell, not an 18.5px text run.</li><li>Ship the seventh date option. Make the panel 3x3 wrapping to a fourth slot: All time / 30 / 45 / 60 / 90 / Last N / Custom, with the write-on row swapping between a single N box and the from–to pair depending on which of the last two is selected. That is the existing behaviour (app.jsx renders the N box only under preset==="days" and the pair only under "custom") — no new mode logic is needed, and it removes disclosed tradeoff 5 entirely, since it was never a real tradeoff.</li><li>Delete the .fig line from cells 2 and 3. "187 LEFT" and "136 PKGS" are already on screen in the masthead's "136 packages · autosaves   187 still missing". Keep it only on cell 1, where "333 LINES" / "46 OUTSIDE" is genuinely new. That drops the head row from 59px to ~45px and the region to ~145px, which finally makes this a compression story instead of a wash.</li><li>Fix the truncation before claiming problem 6 is solved. Measured at 375px: "Remaining only" 92px into 86px, "Biggest position" 93px into 88px, "46 outside range" 103px into 99px — three ellipses in one row, all in the state summary. Shorten the vocabulary at the source ("Unreceived", "Position", "46 outside") rather than relying on text-overflow, because an ellipsised state readout is the failure mode you flagged yourself.</li><li>Give the date and sort cells a real affordance. An 8px --inkSoft caret on a borderless cell that is constructed exactly like the masthead's non-interactive tallies reads as a statistic. Cheapest fix that keeps the thesis: a 1px --line underline beneath the .val text of the two disclosure cells only — a form's write-on rule, not a button box. It says "this line is yours to change" in the same printed-matter grammar.</li><li>Restore the filters/file-actions separation you flattened. The source comment at app.jsx:3383 says the data actions are "grouped so file management reads as a separate thing from filtering", and putting Re-import / Sync / Reset into the identical ruled grid destroys that. Keep the ruled cells but set that row apart — a --line rule with a gap above it, or drop the row's cell dividers so it reads as one band rather than three columns.</li><li>The armed Reset now reads only "TAP AGAIN" in a 117px cell — today it says "Tap again to clear everything". A borderless third-of-the-row destructive target that no longer names its consequence is a safety regression. Let the armed state span the full row (grid-column: 1 / -1) so the full sentence fits; it is a transient state, so the layout cost is zero at rest.</li><li>Decide where the sort panel renders and what happens when both disclosures are open. Also note Packages sort has five options, which in a 3-col .opt grid leaves a dangling empty third with a hairline going nowhere — that breaks the stacked-hairline argument that is your fix for problem 5.</li><li>Specify the zero-canceled state of `.row--42`. With canceledCount === 0 the 4fr/2fr split either leaves an empty cell or collapses to 1fr, and the collapse removes the 4/6 hairline — killing the stacked grid in the case a fresh user always sees.</li><li>Remove `aria-label="Change date range"` and `aria-label="Change sort"` from the head cells. aria-label overrides the element's contents, so a screen reader user gets "Change date range, button" and loses "All time" and "333 lines" — the exact state summary this direction exists to add.</li><li>Rename the markup root to `.dir-ruled` (or rescope the CSS to `.ledger-head`) before anyone else tries to render this.</li></ul></details>
+  </div>
+</article>
+
+<article class="spec" id="spec-drawer2">
+  <header class="spec-h">
+    <div class="spec-title">
+      <h3>The Docket Drawer</h3>
+      <span class="tag tag-good">rebuilt</span>
+    </div>
+    <p class="thesis">Rebuilt after the first render came out broken. One drawer holds the rare, deliberate choices; search and the state summary stay outside it.</p>
+  </header>
+
+  <div class="stage">
+    <div class="phone" data-state="rest">
+      <div class="screen">
+        
+  <div class="mast">
+    <div class="rulebar"><i></i><span class="seal"></span><i></i></div>
+    <div class="wordmark">MANIFEST</div>
+    <div class="mm-sub">C.H POSTAL COMPANY</div>
+    <div class="hr"></div>
+    <div class="tallies">
+      <div><b>CARDS</b><span><em>164</em>/351</span></div>
+      <div><b>PACKAGES</b><span><em>31</em>/136</span></div>
+      <div><b>VALUE</b><span><em>$6.13k</em>/$14.59k</span></div>
+    </div>
+    <div class="mm-bar"><i style="width:47%"></i></div>
+    <div class="mm-foot"><span>136 packages · autosaves</span><span class="miss">187 still missing · $8,460.52</span></div>
+  </div>
+  <div class="switch"><span>ORPHANED</span><span>TALLY</span><span class="on">PACKAGES</span></div>
+
+        <div class="region dir-drawer2 state-rest"><!-- RESTING. Search stays out of the drawer (the highest-value graft: it is a
+     live control used against a visible list, filters are a rare deliberate
+     act — they should not sit at the same depth). The docket line names BOTH
+     axes even when null, so a first-time reach for "last 45 days" has
+     something to aim at. -->
+<div class="rowA">
+  <input class="q" placeholder="Search cards, sellers, orders…" aria-label="Search cards, sets, sellers and order ids">
+  <button class="filt" aria-expanded="false" aria-controls="dock">Filters<span class="car" aria-hidden="true">▾</span></button>
+</div>
+
+<p class="dock">
+  <button class="cl" data-open="dates">All dates</button><s>·</s><button class="cl" data-open="sort">newest first</button><s>·</s><button class="cl" data-open="show">all 136 packages</button>
+</p>
+<p class="notes"><button class="lnk">31 canceled — view</button></p>
+
+<div class="files">
+  <button class="ctl">Re-import CSV</button>
+  <button class="ctl">Sync · 08-12<span class="car" aria-hidden="true">▾</span></button>
+  <button class="ctl danger">Reset</button>
+</div>
+</div>
+        <div class="region dir-drawer2 state-open" hidden><!-- OPEN, shown in TALLY — deliberately the harder case: six sort options with
+     the longest labels. The drawer scrolls and its foot is sticky, so DONE and
+     the live count can never fall below the fold the way the first pass did. -->
+<div class="rowA">
+  <input class="q" value="lotus" aria-label="Search cards, sets, sellers and order ids">
+  <button class="filt on" aria-expanded="true" aria-controls="dock">Filters<span class="car up" aria-hidden="true">▾</span></button>
+</div>
+
+<div class="drawer" id="dock">
+  <div class="scroll">
+
+    <div class="sec">
+      <div class="sh"><b>Ordered</b><i></i></div>
+      <div class="chips">
+        <button class="chip">All time</button><button class="chip">30d</button><button class="chip on">45d</button><button class="chip">60d</button><button class="chip">90d</button>
+      </div>
+      <div class="mode">
+        <span class="lead">Last</span>
+        <span class="well"><button class="stp" aria-label="Fewer days">−</button><span class="num">21</span><button class="stp" aria-label="More days">+</button></span>
+        <span class="lead">days</span>
+      </div>
+      <!-- the custom range, picked from the data rather than typed: no keyboard,
+           no validation, nothing that can produce 2026-02-31 -->
+      <div class="sh sub"><b>Or by month</b><i></i></div>
+      <div class="chips months">
+        <button class="chip">Aug</button><button class="chip">Jul</button><button class="chip">Jun</button><button class="chip">May</button><button class="chip">Apr</button><button class="chip">Mar</button><button class="chip">Feb</button><button class="chip">Jan</button><button class="chip">Dec</button><button class="chip">Nov</button><button class="chip">Oct</button>
+      </div>
+      <details class="exact">
+        <summary>Exact dates</summary>
+        <div class="pair"><input type="date" value="2026-04-12" aria-label="From date"><s>–</s><input type="date" value="2026-08-03" aria-label="To date"></div>
+      </details>
+    </div>
+
+    <div class="sec">
+      <div class="sh"><b>Showing</b><i></i></div>
+      <div class="chips">
+        <button class="chip">Everything</button><button class="chip on">Still outstanding</button>
+      </div>
+    </div>
+
+    <div class="sec">
+      <div class="sh"><b>Order</b><i></i></div>
+      <div class="chips">
+        <button class="chip on">Most missing</button><button class="chip">Biggest position</button><button class="chip">Most ordered</button><button class="chip">$ remaining</button><button class="chip">Unit rate</button><button class="chip">Name A–Z</button>
+      </div>
+    </div>
+
+  </div>
+  <div class="foot">
+    <span class="live">14 of 37 items<s>·</s>148 lines outside range</span>
+    <button class="done">Done</button>
+  </div>
+</div>
+
+<p class="dock">
+  <button class="cl" data-open="dates">45 days</button><s>·</s><button class="cl" data-open="sort">most missing</button><s>·</s><button class="cl" data-open="show">outstanding only</button><s>·</s><button class="cl">“lotus”</button>
+</p>
+<p class="notes"><span class="n">148 lines outside range</span><s>·</s><button class="lnk">31 canceled — view</button></p>
+
+<div class="files">
+  <button class="ctl">Re-import CSV</button>
+  <button class="ctl">Sync · 08-12<span class="car" aria-hidden="true">▾</span></button>
+  <button class="ctl danger">Reset</button>
+</div>
+</div>
+        <div class="cards">
+          <div class="pkg"><span class="pk-n">Wood's Reserve Vault</span><span class="pk-m">2026-08-06 · ● tracked</span></div>
+          <div class="pkg"><span class="pk-n">Rochester CCG Extras</span><span class="pk-m">2026-08-04 · ○ untracked</span></div>
+        </div>
+      </div>
+      <button class="flip" type="button" data-target="spec-drawer2">Show open state</button>
+    </div>
+  </div>
+
+  <div class="meta">
+    <dl class="nums">
+      <div><dt>Resting, measured</dt><dd class="good">129px</dd></div>
+             <div><dt>Open, measured</dt><dd>567px</dd></div>
+      
+    </dl>
+    <details class="disc disc-new" open><summary>8 changes from the first pass</summary><ul><li><b>.files got flex-wrap back.</b> The first pass dropped it, and with <code>.ctl { flex:0 0 auto; white-space:nowrap }</code> the three buttons totalled 366px in a 343px column — “Re-import CSV” clipped off the <i>left</i> edge, which is why the render looked broken. It fits on one row now regardless, because the shipped Sync label was shortened to <code>Sync · 08-12</code> (119px, was 167px).</li><li><b>Search left the drawer.</b> It is a live control used against a visible list; filters are a rare deliberate act. Burying both at the same depth was the first pass's worst regression — you typed blind while a manila preview reported date counts that did not measure your search.</li><li><b>Chips are 999px, matching the view switch directly above.</b> The first pass used 8px, which moved the two-radii seam rather than closing it. One rule now: 999px selects, 8px acts.</li><li><b>The custom range is picked from the data, not typed.</b> Month chips derived from the orders that actually exist — no keyboard, no masking, nothing that can produce 2026-02-31, and the ~140px UA minimum width stops mattering. The native pair survives behind “Exact dates” for the rare precise case.</li><li><b>The drawer scrolls with a sticky foot.</b> The first pass bottomed out ~93px below the fold in Tally, where six long sort labels wrap to three rows. Done and the live count are now always reachable.</li><li><b>The foot counts the whole filter result</b>, not just the date range — so typing in search moves a number you can see.</li><li><b>The docket line names both axes even when null</b> (“All dates · newest first · all 136 packages”), so a first-time reach for “last 45 days” has something to aim at. Each clause opens the drawer at its own section.</li><li><b>Every tap target is 34px.</b> The first pass measured wells, not thumbs — its steppers, number field and six date segments were 32px and its “clear all” 28.5px.</li></ul></details>
+    <details class="disc"><summary>Reviewer's verdict (on the first pass)</summary><p>The measurements are unusually honest — I rebuilt the markup and CSS verbatim and got 133px resting, 531px drawer (claimed 530), 664px open, notes strip stable at 29px even with worst-case text. But the 133px is only reachable because the file-actions row silently hangs 7.5px off the left edge of the screen with the app's real `Sync · pushed MM-DD` label; fix that properly and the resting cost is 175px, which is worse than the 171px it set out to beat. So the headline claim does not survive contact. The genuine achievement is elsewhere and the direction undersells it: this is the only shape I can see that kills the 253px and 285px states outright, and it is airtight on invariant 5 — in-flow drawer, no reveals inside it, presets change fills only, nothing reflows the list while a thumb is over it. The two real costs are understated. Search moves into the drawer, and the direction admits 'one tap deeper' while omitting the worse half: you now type blind, because the only live feedback is the manila preview and it reports date-range counts, not search results — for a user checking 'did my Black Lotus arrive?' that is the primary workflow going dark. And discoverability is the weak leg: the word 'date' appears nowhere at rest, and I confirmed the summary ellipsises on exactly the strings you most need to read back (both `2026-03-01 – 2026-08-12 · …` variants overflow the measured 202px box), so the one state you cannot verify is the custom range.</p></details>
+    <details class="disc"><summary>What it gives up</summary><p>Measured, not estimated: 133px from the bottom of the view switch to the top of the first package card, at 375px, against the current 171. That is a 22% cut, not the 60% the thesis wants, and I would rather say so than round it. The honest decomposition: 87px of it is the docket bar and its margins (down from ~121px of filters + date-range disclosure), and 46px is the file-actions band I was told not to redesign. With no canceled orders and no active range the exceptions strip isn't rendered and the region falls to 104px. The bigger win is not in the resting number at all — the 253px and 285px "chips open" and "custom dates showing" states no longer exist as configurations of the page.
+
+The real cost is paid in the open state, and it is large: the drawer measures 530px, so the region is 664px and the list is entirely off screen while you are filtering. I am not going to pretend that is free. The mitigation is the manila line inside the drawer that reports "54 of 136 packages · 148 lines outside range" live, so you can read the effect of a range without seeing the list; but you cannot watch the list respond, and on a very short viewport you will scroll inside the drawer.
+
+Search is now one tap deeper. Today it is a visible field you tap once and type; here it is Filter → tap field → type. For a user who searches constantly that is a genuine regression, and it is the single most arguable decision in this direction — I committed to it because "one control" stops meaning anything if search stays outside.
+
+Sort is no longer reported in the resting bar. The bar has room for exactly one line of state and I spent it on filters, on the grounds that sort does not change what is in the list and the list itself makes its own order obvious.
+
+The date-range control loses its native picker. Typing 2026 / 03 / 01 into three mono segments is more taps than spinning an iOS date wheel, and it has no calendar to browse. What it buys is a control that looks like it belongs to this app and does not carry a 140px UA minimum.
+
+Finally: two visual bands with different alignments still exist (docket left, file actions right). Four became two, not one.</p></details>
+    <details class="disc disc-bad"><summary>4 constraint findings — addressed above</summary><ul><li>375px OVERFLOW, CONFIRMED AND VISIBLE. `.dir-drawer .files { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }` never sets `flex-wrap`, so it computes to `nowrap`, and `.ctl { flex: 0 0 auto; white-space: nowrap; }` forbids shrinking. The app's real Sync label is not `Sync` — src/app.jsx ~3480 renders `Sync · pushed ${MM-DD}` once anything has been pushed. Measured in a real 375px viewport: the three buttons are 117.9 + 172.5 + 60.1 + 16 gap = 366.5px inside a 343px column, and the first button's left edge lands at x = -7.5px. 'Re-import CSV' is clipped off the left of the screen in the resting state — I have the screenshot. The self-check missed this because it measured `documentElement.scrollWidth - clientWidth`, which is 0 here: overflow to the LEFT does not extend scrollWidth. The claimed '258px, matching the figure already documented' reproduces exactly (258.16px measured) but only with the bare `Sync` label, i.e. only on a device that has never pushed.</li><li>REGRESSION IN A REGION THE BRIEF PUT OUT OF SCOPE. The above is not a pre-existing bug: the shipped app sets `flexWrap: "wrap"` on that group. The direction says '.files: unchanged in kind, only normalised' and 'The only edit is that Sync loses its 999px pill', but it also silently dropped the wrap that was holding the row together. Restoring `flex-wrap: wrap` fixes the clipping and immediately costs 42px: measured 76px instead of 34px for that row, which takes the resting region from 133px to 175px — worse than the 171px status quo it is trying to beat.</li><li>TOUCH TARGETS UNDER THE 34px FLOOR, PARTLY UNDISCLOSED. The self-check claims 'every control is exactly 34px tall ... 22 of 22'. That measures the wells, not the tap targets inside them. Measured: `.stp` (the − and + day steppers) = 32px, `.num` = 32px, and all six `.dseg` inputs (`.y`/`.m`/`.d`) = 32px. `.clr` 'Clear all filters' = 28.5px and appears in no exception list — the direction discloses only the 24px FILTER pill and the 28px canceled link, so this is a third exception, undeclared, and it sits 10px from DONE at the bottom of the drawer where the thumb naturally lands.</li><li>NOT A VIOLATION, FOR THE RECORD: I checked the rest and it is clean. Every value in the CSS is a var(--token) — no colour literals, no pure white. Zero media queries. No native &lt;select&gt; and no &lt;input type="date"&gt;. No position:fixed, so no conflict with the sticky running head. The two unguarded transitions the direction flags as a risk are no worse than the status quo — src/app.jsx already ships an unguarded `transition: transform 140ms ease` on both chevrons, and the existing @media (prefers-reduced-motion) block at line 3057 is scoped to `.mdl-sticky` alone.</li></ul></details>
+    <details class="disc"><summary>7 fixes that would raise it</summary><ul><li>Restore `flex-wrap: wrap` on `.dir-drawer .files` and then buy the 42px back, because wrapping alone regresses the resting height to 175px. Cheapest honest route: drop the pushed-date from the Sync label into the drawer or the Sync panel (the label is the entire overflow — plain `Sync` measures 258.16px and fits with 85px to spare), or let `.ctl` shrink with `flex: 0 1 auto` plus `min-width: 0` and `text-overflow: ellipsis` on the Sync button only. Re-measure with the real label, not the bare one.</li><li>Raise `.stp`, `.num` and the six `.dseg` inputs from 32px to the full 34px (`height: 100%` inside the well, since the well is already 34px and the 2px is border). Raise `.clr` to 34px or make it a chip; at 28.5px it is under the app's own floor and sits beside DONE.</li><li>Put the word 'date' — or better, the actual range — in the resting bar unconditionally. `No filters · 136 packages` gives a first-time user nothing to aim at when they want the last 45 days. Consider `All dates · no search` as the null state so both axes are named, and let the range end of the summary win the truncation fight rather than lose it (it currently ellipsises exactly on the custom-range strings).</li><li>Make the manila preview report the whole filter result, not just the range, and move it out of the `Ordered` section to the drawer foot next to DONE. As specified it reads `54 of 136 packages · 148 lines outside range` while the user is typing in a search field whose effect it does not measure. This is the single highest-value change: it converts 'type blind' into 'type and watch a number', which is most of what the live list was giving you.</li><li>Reconcile the chip radius with the view switch directly above it. `.mdl-switch` at src/app.jsx:3044 is `border-radius: 999px`, mono, uppercase, accent-filled active; the direction's `.chip` is 8px, mono, sentence case, accent-filled — so the CSS comment 'selection is always accent fill, exactly as the view switch above already does it' is true about the fill and false about the shape. Solving 'two radii inside the region' by introducing 'region radius ≠ switch radius' moves the seam rather than closing it. Either keep 999px for the selectable chips (they are the same species as the switch) or accept 8px and say so as a deliberate break.</li><li>Budget the drawer height against the real page, not the region. Masthead + switch is ~287px (first package at y≈458 minus the 171px region), so an open drawer bottoms out at ~951px against an 812px viewport — DONE is ~93px below the fold on a standard iPhone, not just the SE the risks section names. In Tally it is worse: the six sort chips wrap to three rows and the drawer measures 572px, a fact the direction does not mention at all. Either split sort out of the drawer or make the foot sticky within the drawer.</li><li>Keep `type="date"` for the first cut and ship the segmented field later. The risks section is right that clamping 2026-02-31, auto-advance and iOS keypad-with-no-next is real work, and it is the only part of this direction that can produce an invalid state the native control cannot. The grey `mm/dd/yyyy` is ugly but it is now inside a drawer nobody looks at while working — which is precisely the leverage this direction bought.</li></ul></details>
+  </div>
+</article>
+
+<article class="spec" id="spec-foot2">
+  <header class="spec-h">
+    <div class="spec-title">
+      <h3>The Ruled Foot</h3>
+      <span class="tag tag-good">rebuilt</span>
+    </div>
+    <p class="thesis">Rebuilt around a sharper principle: what you tap repeatedly lives under the thumb, what you read — and what you do twice a month — stays at the top.</p>
+  </header>
+
+  <div class="stage">
+    <div class="phone" data-state="rest">
+      <div class="screen">
+        
+  <div class="mast">
+    <div class="rulebar"><i></i><span class="seal"></span><i></i></div>
+    <div class="wordmark">MANIFEST</div>
+    <div class="mm-sub">C.H POSTAL COMPANY</div>
+    <div class="hr"></div>
+    <div class="tallies">
+      <div><b>CARDS</b><span><em>164</em>/351</span></div>
+      <div><b>PACKAGES</b><span><em>31</em>/136</span></div>
+      <div><b>VALUE</b><span><em>$6.13k</em>/$14.59k</span></div>
+    </div>
+    <div class="mm-bar"><i style="width:47%"></i></div>
+    <div class="mm-foot"><span>136 packages · autosaves</span><span class="miss">187 still missing · $8,460.52</span></div>
+  </div>
+  <div class="switch"><span>ORPHANED</span><span>TALLY</span><span class="on">PACKAGES</span></div>
+
+        <div class="region dir-foot2 state-rest"><!-- RESTING. The principle sharpened: what you TAP repeatedly while opening post
+     lives under the thumb; what you READ, and what you do twice a month, stays
+     at the top. So search and the file actions stay in flow up here — which
+     also deletes the iOS keyboard shim that was this direction's single point
+     of failure. -->
+<div class="readout">
+  <span class="st">All time<s>·</s>136 packages<s>·</s>272 outside range</span>
+  <button class="canc">31 canceled — view</button>
+</div>
+
+<label class="findrow">
+  <input class="q" type="text" placeholder="Find a card, seller or order" aria-label="Search cards, sets, sellers and order ids">
+</label>
+
+<div class="acts">
+  <button class="act">Re-import CSV</button>
+  <button class="act">Sync · 08-12<i class="car">▾</i></button>
+  <button class="act danger">Reset</button>
+</div>
+
+<!-- the rail: fixed at the foot, safe-area padded, above the sticky running
+     head (z 30) but below nothing else -->
+<div class="rail" role="region" aria-label="Filters and sort">
+  <span class="live">All time<s>·</s>newest first</span>
+  <button class="pill" aria-expanded="false" aria-controls="foot-panel">Filters<i class="car">▲</i></button>
+</div>
+</div>
+        <div class="region dir-foot2 state-open" hidden><!-- OPEN, in Tally — the set the first pass never measured. Six long sort
+     labels wrap to three rows, so the panel is capped and scrolls, and its
+     foot is pinned. -->
+<div class="readout">
+  <span class="st">45 days<s>·</s>14 items<s>·</s>272 outside range</span>
+  <button class="canc">31 canceled — view</button>
+</div>
+
+<label class="findrow">
+  <input class="q" type="text" value="lotus" aria-label="Search cards, sets, sellers and order ids">
+</label>
+
+<div class="acts">
+  <button class="act">Re-import CSV</button>
+  <button class="act">Sync · 08-12<i class="car">▾</i></button>
+  <button class="act danger">Reset</button>
+</div>
+
+<div class="scrim"></div>
+
+<div class="rail open" role="region" aria-label="Filters and sort">
+  <div class="panel" id="foot-panel">
+    <div class="pscroll">
+      <div class="sec">
+        <div class="sh"><b>Ordered</b><i></i></div>
+        <div class="chips">
+          <button class="chip">All time</button><button class="chip">30d</button><button class="chip on">45d</button><button class="chip">60d</button><button class="chip">90d</button><button class="chip">Last…</button>
+        </div>
+        <div class="sh sub"><b>Or by month</b><i></i></div>
+        <div class="chips">
+          <button class="chip">Aug</button><button class="chip">Jul</button><button class="chip">Jun</button><button class="chip">May</button><button class="chip">Apr</button><button class="chip">Mar</button><button class="chip">Feb</button><button class="chip">Jan</button>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sh"><b>Showing</b><i></i></div>
+        <div class="seg"><button class="segb">Everything</button><button class="segb on">Unreceived only</button></div>
+      </div>
+      <div class="sec">
+        <div class="sh"><b>Order</b><i></i></div>
+        <div class="chips">
+          <button class="chip on">Most missing</button><button class="chip">Biggest position</button><button class="chip">Most ordered</button><button class="chip">$ remaining</button><button class="chip">Unit rate</button><button class="chip">Name A–Z</button>
+        </div>
+      </div>
+    </div>
+    <div class="pfoot"><span class="live">14 of 37 items</span><button class="done">Done</button></div>
+  </div>
+
+  <div class="bar">
+    <span class="live">45 days<s>·</s>most missing</span>
+    <button class="pill on" aria-expanded="true" aria-controls="foot-panel">Filters<i class="car down">▲</i></button>
+  </div>
+</div>
+</div>
+        <div class="cards">
+          <div class="pkg"><span class="pk-n">Wood's Reserve Vault</span><span class="pk-m">2026-08-06 · ● tracked</span></div>
+          <div class="pkg"><span class="pk-n">Rochester CCG Extras</span><span class="pk-m">2026-08-04 · ○ untracked</span></div>
+        </div>
+      </div>
+      <button class="flip" type="button" data-target="spec-foot2">Show open state</button>
+    </div>
+  </div>
+
+  <div class="meta">
+    <dl class="nums">
+      <div><dt>Resting, measured</dt><dd class="good">104px</dd></div>
+             <div><dt>Open, measured</dt><dd>104px</dd></div>
+      
+    </dl>
+    <details class="disc disc-new" open><summary>9 changes from the first pass</summary><ul><li><b>Search left the rail.</b> The whole direction hung on a <code>visualViewport</code> keyboard shim that only a real iPhone can validate, and if it is wrong the search field is unusable — worse than today. Moving search to the top in flow deletes that risk class entirely <i>and</i> keeps it permanently visible instead of costing a tap.</li><li><b>File actions stayed at the top.</b> The first pass moved Re-import / Sync / Reset below the last package card — with 136 packages that is a multi-screen scroll to reach Backup, the same “recovery control gated behind the state it recovers” regression CLAUDE.md records as learned twice.</li><li><b>“N outside range” promoted into the readout.</b> The first pass buried the one notice whose entire job is to tell you data is being hidden inside a panel that is shut during normal use.</li><li><b>The pill says “Filters”, not “Filters &amp; sort”.</b> The long label plus badge plus caret measured 171px of a 343px rail, which is what truncated the search placeholder in every filtered state — i.e. the state you are usually in.</li><li><b>The panel is capped and scrolls with a pinned foot</b>, measured against the <i>Tally</i> sort set — six long labels wrapping to three rows, which the first pass never measured. It took the shell to 76% of an iPhone SE screen with no max-height at all.</li><li><b>Segments raised 30px → 34px</b>, the only control in the first pass under the app’s own floor.</li><li><b>Stacking ladder corrected.</b> The first pass documented the sticky running head at z-index 20; it is 30. Scrim 40, rail 50.</li><li><b>Opening the panel costs the region nothing</b> — 104px whether shut or open, because the panel is an overlay rather than in flow. That is this direction’s real advantage: it is the only one of the three that deletes the open-state cost outright instead of relocating it.</li><li><b>Stated honestly: permanent chrome is ~154px</b>, not 104 — 104px above the list plus a 50px rail at the foot. What changes is that only 104px of it competes with the list, and the half you touch is under your thumb.</li></ul></details>
+    <details class="disc"><summary>Reviewer's verdict (on the first pass)</summary><p>The measurable core is honest and the discipline is real: I rebuilt the exact markup and CSS at 375x812 and got 48px in flow, a 415px panel, 465px shell, 347px of list left, 196.8px search closed, zero horizontal overflow, all 23 controls at 34px, no colour literal, no media query but prefers-reduced-motion, and both natives gone. Those match the claims almost to the pixel, which is more than most directions manage. But the headline accounting is soft in one direction and the brief is broken in another: total permanent viewport chrome is 48 + 50 + 34 = 132px, not the claimed 98px (the safe-area inset is disclosed, then excluded from the total on the grounds that it is unusable, which is a choice, not a measurement), and the 171 to 48 comparison only works because the file actions were relocated to the foot of a 136-package list — something the brief explicitly said not to redesign, and which regresses the "recovery controls must not be hard to reach" lesson CLAUDE.md says was learned twice. Two smaller things bite as well: "N lines outside range" becomes invisible outside the panel, and the search placeholder still truncates whenever the filter count badge is showing, which is most of the time. Underneath all of it sits an untested visualViewport keyboard shim on the only platform this app runs on — the author says so plainly, and that honesty is worth something, but it means the direction cannot ship without a real iPhone confirming the one thing no test here can catch.</p></details>
+    <details class="disc"><summary>What it gives up</summary><p>The honest accounting is two numbers, not one. In-flow cost between the switch and the first card is 48px, measured, down from 171 — and unlike today it does not grow to 253 or 285 when the date controls open, because they open over the list rather than in it. But the rail claims 50px of viewport permanently at the foot (plus env(safe-area-inset-bottom), typically 34px on a notched iPhone — territory no tap target could have used anyway). So total viewport chrome is 48 + 50 = 98px constant, against 171–285 today. That is a real win but not the 171→48 headline on its own.
+
+The file actions leave this region entirely. Re-import CSV / Sync ▾ / Reset move verbatim — same three controls, same right-aligned group, same gating, same two-tap arm — to the foot of the list, below the last package card. That is thesis-consistent (they are the least frequent things in the app; putting Reset under the thumb would be the opposite of what this direction argues), but it is a relocation the brief did not ask for, and it means Backup is now below a long scroll rather than one tap from the top. If that is unacceptable, the fallback is a fourth pill in the rail, which costs the search field ~65px of width and puts an armed Reset in thumb territory.
+
+Search stays in the rail rather than behind the pill, which is one fewer tap but exposes the field to the iOS keyboard (see risks). Two of today's affordances also change shape: "Hide received" becomes a two-segment control instead of a label-swapping toggle, and the custom from–to becomes two hand-typed mono fields instead of a native picker — you lose the calendar and the date validation the UA gave you for free, in exchange for the ugliest control on the page disappearing.
+
+The panel is 415px tall when open with custom dates showing, which is roughly half an 812px screen. That is an overlay, so it costs the list nothing, but it is a big modal for what is often a one-chip decision, and it dims the readout while it is up.
+
+Finally: the readout deliberately does not report the sort. If you want to know how the list is ordered you open the panel. That is a real loss of at-a-glance information, traded for a line that always fits at 375px without an ellipsis.</p></details>
+    <details class="disc disc-bad"><summary>8 constraint findings — addressed above</summary><ul><li>BRIEF VIOLATION (the most serious finding). The brief says: 'FILE ACTIONS (already solved, keep as-is conceptually, do not redesign)'. The proposal redesigns them anyway — 'Re-import CSV / Sync / Reset move verbatim ... to the foot of the list, below the last package card.' With the user's real data (136 packages, 150 orders) that is a multi-screen scroll. It also regresses a lesson CLAUDE.md records as learned twice: 'any control that recovers state must not be gated on that state existing. Backup was widened once for this reason, Sync twice.' Burying Push/Pull/Backup under the full list is the same failure one level out — the more data you have, the harder the recovery control is to reach. The proposal's own fallback (a fourth rail pill) is rejected for putting Reset in thumb territory, so the direction has no good answer here.</li><li>REACHABILITY REGRESSION, undisclosed. The 'N lines outside range' notice is moved inside the panel: `&lt;p class="note"&gt;&lt;span class="n"&gt;197&lt;/span&gt; lines fall outside this range&lt;/p&gt;`. Today it is always visible in the toolbar. In the new design it is visible only while the panel is open — i.e. never, during normal use. The readout does not carry it (it shows the range name, not the suppressed count). The one notice whose entire job is to tell you data is being hidden from you is now itself hidden. The 'N canceled' link survives in the readout, so this is specifically a loss for the outside-range count.</li><li>MEASURED FALSE CLAIM — problem 8 is not fixed in the common state. The proposal claims 'Search 197px closed (169px of text room against a 142px placeholder — no truncation), 174px with the count badge showing.' Rendering the exact markup and CSS at 375x812: closed = 196.8px (claim correct); with the count badge = 165.8px, not 174px. The badge is not in the border-box group (`.q,.pill,.chip,.date,.seg`), so at `min-width:16px; padding:0 4px` it measures 24px, not 16px. Text room with the badge is 135.8px against a 142.2px placeholder in real Cochin — it truncates. The badge shows whenever any filter is live, and 'Hide received' is a core daily toggle, so this is the state the user is usually in. Problem 8 is fixed only on a pristine, unfiltered ledger.</li><li>UNMEASURED WORST CASE. Every panel measurement is for the Packages sort set. The Tally set has six longer labels (Most missing / Biggest position / Most ordered / $ remaining / Unit rate / Name A-Z); measured, they wrap to THREE rows, taking the panel from 415px to 455px and the shell from 465px to 505px. At 375x812 that leaves 307px of list, not the claimed 347px. On a 667px iPhone SE it leaves 162px — the panel is 76% of the screen — and the panel has no max-height and no internal scroll. The proposal's `.lbl .of` tag ('Packages view') shows the author knew the set swaps, but never measured the larger one.</li><li>WRONG MITIGATION for the canceled link. The proposal says the scroll target needs `scroll-margin-bottom:74px`. src/app.jsx:2051 scrolls with `scrollIntoView({ behavior: "smooth", block: "start" })` and src/app.jsx:3919 sets `scrollMarginTop: 12`. With `block:"start"` the bottom margin is never consulted — `scroll-margin-bottom` only applies to `block:"end"`/`nearest`. The actual fix is container padding-bottom (which the rail needs anyway); the named mitigation would be written, tested by eye, and do nothing.</li><li>TOUCH TARGET below the stated shared height. `.dir-bottombar .segb{ height:30px; }` — the brief states 'The shared control height is 34px (a constant, CTL_H)'. The proposal justifies 30px by analogy to the app's 30px check indicator, but that indicator sits inside a whole-row ~44px tap target, whereas these segments are the entire target for the hide-received toggle. It is the only control in the set under 34px.</li><li>STACKING LADDER stated from a misreading of the code. The CSS comment claims 'list 0 · sticky running head 20 · scrim 40 · rail and panel 50'. src/app.jsx:3025 is `.mdl-sticky { position: sticky; top: 0; z-index: 30; ... }` — the running head is 30, not 20. The scrim at 40 still clears it so nothing actually breaks, but the one number describing coexistence with the element invariant 5 depends on was not checked against the file.</li><li>STALE RISK, in the proposal's favour. It warns that 'env(safe-area-inset-bottom) is zero unless the viewport meta carries viewport-fit=cover, which build.mjs's head template does not have today.' build.mjs:19 already reads `&lt;meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"&gt;`. The risk does not exist. Harmless, but together with the z-index error it shows the proposal was written against the prose description rather than the source.</li></ul></details>
+    <details class="disc"><summary>8 fixes that would raise it</summary><ul><li>Keep the file actions where they are. Do not move Re-import / Sync / Reset to the foot of the list — that is the one part of the region the brief declared solved, and a 136-package scroll to reach Backup is strictly worse than today's one tap. Put them in a fourth section inside the panel instead: they are infrequent, the panel is already a deliberate two-tap surface, and the two-tap arm pattern for Reset survives unchanged there. That also removes the need for the rejected fourth rail pill and keeps Reset out of thumb territory, which was the stated objection.</li><li>Promote 'N lines outside range' to the readout. It is the only notice that explains missing data, and burying it in the panel means it fires exactly when it cannot be seen. Fold it into the state line as a third term — 'ALL TIME · 197 OUTSIDE · REMAINING ONLY' — keeping nowrap and the ellipsis so height is still fixed at 22px. If room is tight, drop the package count before dropping this.</li><li>Shorten the rail pill so the search field stops truncating. 'Filters &amp; sort' plus badge plus caret measures 171.2px — half the rail. Cut the label to 'Filters' (or just the badge and caret) and search recovers roughly 40px, putting text room comfortably past the 142.2px placeholder in every state rather than only when no filter is live. Alternatively add `box-sizing:border-box` to `.count`, which the proposal's own control group already sets and the badge was left out of, recovering 8px.</li><li>Measure and design the panel for the Tally sort set, not the Packages one. Six chips wrap to three rows, taking the shell to 505px — 76% of a 667px SE screen. Give `.panel` a `max-height: min(60vh, 460px)` with `overflow-y:auto`, or shorten the Tally labels (Missing / Position / Ordered / $ left / Rate / A-Z) so it wraps to two rows like the Packages set.</li><li>Fix the canceled-link mitigation properly. `scroll-margin-bottom` does nothing under the existing `scrollIntoView({ block: "start" })` at src/app.jsx:2051. Either raise the page container's bottom padding from its current 80px to `calc(50px + env(safe-area-inset-bottom) + 12px)` so the section can actually reach the top of the viewport, or switch the call to `block:"nearest"` and then the bottom margin will apply.</li><li>Correct the stacking ladder to the real value: the running head is `z-index: 30` (src/app.jsx:3025), not 20. The scrim at 40 still clears it, so only the comment needs changing — but check it against the file rather than the prose, and drop the viewport-fit=cover risk, which build.mjs:19 already satisfies.</li><li>Raise `.segb` from 30px to 34px, or make the whole `.seg` container the tap target with the segments as full-height children. It is the only control in the set below CTL_H, and unlike the 30px check indicator it is not wrapped in a larger row target.</li><li>Prototype the `--kb` visualViewport shim on a real iPhone before anything else in this direction is built. It is the single point of failure: if it is wrong the search field is unusable, which is worse than today, and nothing in the jsdom suite can catch it. Consider testing whether moving search into the panel (leaving the rail as a single pill) removes the keyboard problem entirely — it costs one tap and deletes the whole risk class.</li></ul></details>
+  </div>
+</article>
+
+<article class="spec" id="spec-progressive">
+  <header class="spec-h">
+    <div class="spec-title">
+      <h3>The Query Line</h3>
+      <span class="tag tag-good">5/10</span>
+    </div>
+    <p class="thesis">The region is one search field and one line of status; every other control is either stated inside that line as a value you can tap, or it does not exist until you ask for it.</p>
+  </header>
+
+  <div class="stage">
+    <div class="phone" data-state="rest">
+      <div class="screen">
+        
+  <div class="mast">
+    <div class="rulebar"><i></i><span class="seal"></span><i></i></div>
+    <div class="wordmark">MANIFEST</div>
+    <div class="mm-sub">C.H POSTAL COMPANY</div>
+    <div class="hr"></div>
+    <div class="tallies">
+      <div><b>CARDS</b><span><em>164</em>/351</span></div>
+      <div><b>PACKAGES</b><span><em>31</em>/136</span></div>
+      <div><b>VALUE</b><span><em>$6.13k</em>/$14.59k</span></div>
+    </div>
+    <div class="mm-bar"><i style="width:47%"></i></div>
+    <div class="mm-foot"><span>136 packages · autosaves</span><span class="miss">187 still missing · $8,460.52</span></div>
+  </div>
+  <div class="switch"><span>ORPHANED</span><span>TALLY</span><span class="on">PACKAGES</span></div>
+
+        <div class="region dir-progressive state-rest"><!-- SEARCH FIRST. Resting state: one object, one line of status, and the
+     file actions. Nothing here is a lozenge; nothing here is labelled. -->
+
+<div class="seek">
+  <!-- the query, and the order it is read in — both are list controls, so
+       they share a row. The sort scope is dropped (and the field grows to
+       fill the row) whenever the result set is under a screenful. -->
+  <div class="seek-row">
+    <input class="seek-input" type="search" enterkeyhint="search"
+           placeholder="Search cards, sellers, orders"
+           aria-label="Search card names, sets, sellers and order ids">
+    <span class="hair tall" aria-hidden="true"></span>
+    <button class="scope" aria-expanded="false"
+            aria-label="Sorted newest first — change sort">
+      <span class="u">newest</span><span class="car" aria-hidden="true">▾</span>
+    </button>
+  </div>
+
+  <!-- the line of status. Every fact on it is the control that changes it:
+       the count is passive, the dot toggles Hide received, the range on the
+       right states itself and opens the panel. -->
+  <div class="strip">
+    <div class="facts">
+      <span class="count" aria-live="polite"><b>136</b> packages</span>
+      <span class="hair" aria-hidden="true"></span>
+      <button class="tbtn" aria-pressed="false">
+        <span class="dot" aria-hidden="true">○</span><span class="u">hide received</span>
+      </button>
+    </div>
+    <div class="reveals">
+      <button class="tbtn" aria-expanded="false"
+              aria-label="Order date range: all time — change">
+        <span class="u">all dates</span><span class="car" aria-hidden="true">▾</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- file actions, unchanged in kind. The canceled reference moves into this
+     row's dead left space — it is a reference, not a filter, and it no longer
+     costs a line of its own. -->
+<div class="files">
+  <button class="ref" aria-label="31 canceled orders — view"><span class="u">31 canceled</span></button>
+  <div class="fileset">
+    <button class="ctl">Re-import CSV</button>
+    <button class="ctl" aria-expanded="false">Sync <span class="car" aria-hidden="true">▾</span></button>
+    <button class="ctl danger">Reset</button>
+  </div>
+</div></div>
+        <div class="region dir-progressive state-open" hidden><!-- Engaged: a query is running, Hide received is on, and the date panel has
+     been opened. The panel opens INSIDE the object and pushes the list down —
+     a deliberate tap, away from the list. While it is open the trigger stops
+     naming the range ("dates", not "all dates"), so the active range is stated
+     exactly once, on the segment. -->
+
+<div class="seek">
+  <div class="seek-row">
+    <input class="seek-input" type="search" enterkeyhint="search" value="sol ring"
+           placeholder="Search cards, sellers, orders"
+           aria-label="Search card names, sets, sellers and order ids">
+    <button class="clr" aria-label="Clear search">×</button>
+    <span class="hair tall" aria-hidden="true"></span>
+    <button class="scope" aria-expanded="false"
+            aria-label="Sorted newest first — change sort">
+      <span class="u">newest</span><span class="car" aria-hidden="true">▾</span>
+    </button>
+  </div>
+
+  <!-- filtered: the ratio replaces the noun. The switch above already says
+       PACKAGES, and "23 of 136" is the whole of "N lines outside range" and
+       "N matches" in one figure. -->
+  <div class="strip">
+    <div class="facts">
+      <span class="count" aria-live="polite"><b>23</b> of <span class="of">136</span></span>
+      <span class="hair" aria-hidden="true"></span>
+      <button class="tbtn on" aria-pressed="true">
+        <span class="dot" aria-hidden="true">●</span><span class="u">hide received</span>
+      </button>
+    </div>
+    <div class="reveals">
+      <button class="tbtn on" aria-expanded="true" aria-label="Order date range — close">
+        <span class="u">dates</span><span class="car" aria-hidden="true">▾</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <!-- pick-one, same component as the view switch. "Other" is a range mode,
+         not a disclosure dressed as one: it holds the free entry below. -->
+    <div class="seg" role="group" aria-label="Order date range">
+      <button aria-pressed="false" aria-label="All time">All</button>
+      <button aria-pressed="false">30d</button>
+      <button aria-pressed="false">45d</button>
+      <button aria-pressed="false">60d</button>
+      <button aria-pressed="false">90d</button>
+      <button aria-pressed="true">Other</button>
+    </div>
+    <!-- one row, two modes. No <input type="date"> anywhere: these are the
+         app's own mono fields, so no grey mm/dd/yyyy and no 140px UA floor.
+         Tapping the link at the right swaps this row for "last [21] days". -->
+    <div class="free">
+      <input class="fin date" inputmode="numeric" value="2026-05-01"
+             placeholder="YYYY-MM-DD" aria-label="From date">
+      <span class="lbl" aria-hidden="true">→</span>
+      <input class="fin date" inputmode="numeric" value="2026-08-12"
+             placeholder="YYYY-MM-DD" aria-label="To date">
+      <button class="tbtn swap"><span class="u">use day count</span></button>
+    </div>
+  </div>
+</div>
+
+<div class="files">
+  <button class="ref" aria-label="31 canceled orders — view"><span class="u">31 canceled</span></button>
+  <div class="fileset">
+    <button class="ctl">Re-import CSV</button>
+    <button class="ctl" aria-expanded="false">Sync <span class="car" aria-hidden="true">▾</span></button>
+    <button class="ctl danger">Reset</button>
+  </div>
+</div></div>
+        <div class="cards">
+          <div class="pkg"><span class="pk-n">Wood's Reserve Vault</span><span class="pk-m">2026-08-06 · ● tracked</span></div>
+          <div class="pkg"><span class="pk-n">Rochester CCG Extras</span><span class="pk-m">2026-08-04 · ○ untracked</span></div>
+        </div>
+      </div>
+      <button class="flip" type="button" data-target="spec-progressive">Show open state</button>
+    </div>
+  </div>
+
+  <div class="meta">
+    <dl class="nums">
+      <div><dt>Claimed height</dt><dd>144px</dd></div>
+             <div><dt>Reviewer's measure</dt><dd class="good">144px</dd></div>
+      <div><dt>Language fit</dt><dd>3/5</dd></div>
+             <div><dt>Reachability</dt><dd>2/5</dd></div>
+             <div><dt>Invariant safety</dt><dd>3/5</dd></div>
+             <div><dt>Discoverability</dt><dd>3/5</dd></div>
+    </dl>
+    
+    <details class="disc"><summary>Reviewer's verdict </summary><p>The 144px claim is exactly honest — I measured 144.00 resting, 198 with presets, 240 with custom dates, all at a true 375px column, and the structure genuinely folds four rows into three rather than just deleting a notice. But it ships two disqualifying defects: the file-actions row overflows the viewport by 32px the moment the Sync chip carries the push date it already carries in production, and the sort control is specified to disappear whenever the result set drops under a screenful, which makes a required function unreachable exactly when a user has filtered down to the set they want to reorder. The thinking is real and the strip-as-ruled-footer is the best idea in the batch; the execution is a revision away from being defensible, and the sort rule is a design decision that has to be withdrawn, not tuned.</p></details>
+    <details class="disc"><summary>What it gives up</summary><p>Measured, not estimated: I rendered this at 375px in Chrome with the app's real tokens and fonts. Resting 144px (today 171). Date panel with the presets showing 198px (today 253). Custom dates showing 240px (today 285). Horizontal overflow 0 in all three. What it gives up: (1) Changing the date range now costs two taps instead of one — the presets are no longer on screen. Someone who switches 30d/90d constantly pays for that every time; someone who sets it once a month never notices. Same for sort. (2) The controls are text, not boxes, so they carry less "I am tappable" weight than a lozenge does. I bought that back with a dotted underline, a caret, and the fact that each one always states a value — but it is a real reduction in affordance, and it is the thing most likely to need a live-user check. (3) CTL_H stops describing every control's *look*: the search field is 42px and the status controls are 11px labels inside 34px hit areas. The invariant survives as "one hit height", not "one visual height". (4) The exact phrase "N lines outside range" is gone, replaced by the ratio "23 of 136" — which counts packages in Packages and items in Tally, i.e. the unit the view actually lists, not CSV lines. That is arguably better information but it is different information, and the wording of the count now changes between states ("136 packages" → "23 of 136"), which is more strings to keep honest. (5) The custom range loses the native date picker; the user types. (6) "31 canceled" gives up its "— view" tail to fit beside the file actions.</p></details>
+    <details class="disc disc-bad"><summary>5 constraint findings</summary><ul><li>HORIZONTAL OVERFLOW AT 375px, in the app's normal steady state. Measured: with the Sync chip's real shipped label the .fileset is 367.1px against 343px of column — the .files row overflows by 32px and .ref is crushed to 0 width with its full 72px of text clipped. This is not hypothetical, as the risk note assumes ('if the Sync chip ever carries its push date'): src/app.jsx already ships it — `{remoteInfo?.pushedAt ? `Sync · pushed ${new Date(remoteInfo.pushedAt).toISOString().slice(5,10)}` : "Sync"}` — so every device that has pushed once is in this state permanently. The CSS guarantees it cannot recover: `.dir-progressive .ctl { flex-shrink: 0 }` plus `.dir-progressive .fileset { flex: 0 0 auto; margin-left: auto }` means the only shrinkable item is .ref, and once it hits 0 the row simply runs past the column edge. Resting-state spare is 4.3px, so any label growth at all breaks it.</li><li>THE CUSTOM DATE RANGE IS UNTYPEABLE ON THE TARGET DEVICE. `&lt;input class="fin date" inputmode="numeric" value="2026-05-01" placeholder="YYYY-MM-DD"&gt;` — iOS `inputmode="numeric"` raises a digits-only keypad with no hyphen key, so the user literally cannot enter the format the placeholder demands. Masking is listed as a risk to be solved later, but as specified this replaces a working (ugly) native picker with a control that cannot be completed on an iPhone. Compounding it, `.fin { font-size: 12px }` is under 16px and the app's viewport meta (build.mjs line 19) has no maximum-scale, so focusing either field also zooms the page.</li><li>FOCUS RINGS ARE CLIPPED. `.dir-progressive :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }` sits inside `.seek { overflow: hidden }` and `.seg { overflow: hidden }`. An ancestor's overflow:hidden clips descendant outlines, so the keyboard focus indicator on the search field and on all six date segments is cut off or invisible. The app keeps a dedicated &lt;style&gt; tag for focus rules precisely because this matters.</li><li>TOUCH TARGET UNDER THE STATED FLOOR: `.dir-progressive .clr { width: 30px }` — the search-clear button is 30px wide against the app's 34px CTL_H constant, and it sits 8px from the sort scope and immediately beside the text it destroys. The self-check claim 'every interactive thing is ≥34px' is true only on the vertical axis.</li><li>NOT violations, checked and cleared: no colour literals (every value is a var(--token); `transparent` matches the codebase's existing linkBtn), no media query except prefers-reduced-motion, no &lt;select&gt;, no &lt;input type="date"&gt;, no position:fixed to fight the sticky running head, and no --gold used as text.</li></ul></details>
+    <details class="disc"><summary>8 fixes that would raise it</summary><ul><li>Delete the 'drop the sort scope when the result set is under a screenful' rule outright. It is quoted twice — in the CSS ('Removed (field grows to fill) when the result set is under a screenful') and in the markup comment — and it makes sort unreachable on any filtered or small ledger, which is the same class of bug as the group-28 one CLAUDE.md documents (a control gated on the state it operates over). It also causes the only horizontal reflow in the design: I measured the search field jumping 265.9px → 311px when the scope is removed, i.e. a 45px resize under the thumb mid-word. Keep the scope permanently.</li><li>Make the .files row survivable. Either give .ctl a shrink budget and .fileset `min-width: 0` so the Sync chip ellipsises instead of the row overflowing, or move '31 canceled' onto the status strip as the risk note itself suggests. Test it with the real label 'Sync · pushed 08-11', not 'Sync' — that is what the app renders after the first push.</li><li>Replace `inputmode="numeric"` on the two date fields with an input that can actually produce hyphens, or auto-insert them as digits arrive, and raise .fin to 16px so focusing does not zoom the page. Until masking, validation and a rejection state exist, the custom range is a regression on the native picker rather than an improvement on it.</li><li>Move `outline`/`:focus-visible` off the clipped children — put the ring on .seek and .seg themselves (or use box-shadow, which is not clipped the same way) so keyboard focus is visible inside `overflow: hidden`.</li><li>Give an active date filter a real signal. Today `chip(dateFilter.preset !== "all")` fills the trigger with accent violet when a range is narrowing the list; in this direction `.tbtn.on` means *expanded*, so a 30d filter and no filter differ only by inkSoft vs ink on 11px text. Add a distinct active treatment (accent dot, or accent text) that is not the same token as 'panel is open'.</li><li>Decide what the count does during check-in. '23 of 136' is presented as the summary of what you are looking at, but under Hide received the sticky rule deliberately keeps completed rows on screen — so the number will disagree with the visible list on every tap. Freeze it with the sort snapshot, or the status line's central promise is false precisely while the user is working.</li><li>Reconsider dropping 'N lines outside range'. The ratio conflates three causes (date filter, search, hide received) into one figure, so the user can no longer tell which control is hiding data — a loss against problem 6, not a gain. Consider keeping the count as the ratio but attributing it on the date trigger itself.</li><li>Widen .clr to 34px and raise the search field's clamp floor from 15px to 16px — at 375px the clamp resolves to 15.01px and iOS will zoom on focus, which is a poor showing for the control the whole direction is named after.</li></ul></details>
+  </div>
+</article>
+</div>
+
+<hr class="pagerule">
+
+<h2>Where this lands</h2>
+<ol class="rank">
+<li>The Docket Drawer — the only shape that deletes the 253/285px open states outright, is airtight on invariant 5, and carries zero unverifiable platform risk; both its flaws are arithmetic, not architectural.</li>
+<li>The Ruled Foot — right instinct (controls belong where the thumb is, reporting belongs where the eye is), best-organised control surface in the batch, but gated behind an untested iOS visualViewport keyboard shim and a brief violation it has no good answer to.</li>
+<li>The Query Line — the only honest, independently verified resting cut that leaves the file actions alone (144px), but it ships a conditional-sort rule that is the exact bug class CLAUDE.md records as group 28, plus a 32px overflow in the steady state.</li>
+<li>The Filter Is A Sentence — the best writing and the only direction that dissolves problems 5, 6, 7 and 8 at once, but the headline is 6px like-for-like and it is taller in every single open state.</li>
+<li>The Ruled Head — the prettiest and the least tappable: it builds controls out of the same parts as the masthead's read-only tallies, so nothing looks touchable, and an 18.5px date input is half the app's own floor.</li>
+</ol>
+
+<div class="pick">
+  <h3>Recommendation — The Docket Drawer</h3>
+  <p>It is the only direction whose failures are arithmetic rather than structural: the 175px regression is caused entirely by a dropped `flex-wrap` plus the real `Sync · pushed MM-DD` label, and both are one-line fixes that put it back at ~133px, whereas Sentence's and Ruled's ~6–13px gains are the ceiling of what those shapes can ever deliver. It is the only shape that kills the variable 253px/285px open states outright instead of trading them around, which matters more than the resting number — those are the states you actually hit when you touch a filter. It scored 5/5 on invariant safety for a real reason: the drawer is in flow, nothing reveals inside it, presets change fills only, and nothing can reflow the list while a thumb is over it — no fixed positioning to fight the sticky running head at z-index 30, and no keyboard shim that only a real iPhone can validate. Critically, it is the one direction that reframes the date crux correctly: you do not need to replace `&lt;input type="date"&gt;`, you need to stop looking at it, and a drawer nobody opens during normal use makes the UA chrome a non-problem for free — where Sentence, Ruled and Progressive all replaced a working picker with fields that cannot be typed on an iPhone. Its two genuine weaknesses (search goes one tap deeper and you type blind; the word "date" appears nowhere at rest) are exactly what the runner-up grafts fix.</p>
+</div>
+
+<h2>What every direction missed</h2>
+<p class="sec-note">The most valuable output of the exercise. These are failures common to all five, so they'd have survived any pick.</p>
+<ul class="missed">
+<li>THE BASELINE IS WRONG FOR EVERYONE, AND PROBABLY OPTIMISTIC. All five argued against 171px, but ~14px of that is the view switch's own `margin-bottom: 14px` (src/app.jsx:3045), which no direction touches — the honest region baseline is 156.5px, so every headline saving in the batch is 14px overstated. Worse, the documented 258px / 171px figures in CLAUDE.md were clearly measured with the bare `Sync` label; the app actually renders `Sync · pushed MM-DD` after the first push, and the file-actions group carries `flexWrap: 'wrap'` — so on the author's own phone that row has probably already wrapped to two lines and the region is TALLER than 171 today. Nobody measured the baseline in the state the author's device is actually in.</li>
+<li>NOBODY ACTUALLY TRIED TYPING A DATE ON AN IPHONE. Three of five (Sentence, Ruled, Progressive) independently shipped `inputmode="numeric"` with a `YYYY-MM-DD` placeholder. iOS's numeric keypad has no hyphen key. Three separate designers made the identical unforced error, which means none of them held a phone.</li>
+<li>THE BEST ANSWER TO THE DATE CRUX WAS NEVER PROPOSED: don't type dates at all, pick them from the data. The ledger already knows every order date. A custom range could be month chips derived from the actual orders present ('Aug · Jul · Jun · May…'), which needs no keyboard, no native control, no masking, no validation, no clamping of 2026-02-31, is mono and 34px by construction, and reads in the register's own voice. For a ledger that is deliberately the system of record for orders older than 120 days, month-scoped browsing is probably what the author actually wants — and it makes the ~140px UA minimum width that started this whole problem irrelevant.</li>
+<li>EVERY DIRECTION REARRANGED; NONE SUBTRACTED. Seven presets for one axis (All / 30 / 45 / 60 / 90 / free-N / custom) is the root cause of nearly every measured failure in the batch — the seventh chip, the wrapping, the untypeable fields, the 140px minimum. Nobody asked whether 45d and 60d earn their place, or whether free-N and custom are the same control. Drop two presets and fold free-N into custom and the layout problem substantially dissolves before any redesign is needed.</li>
+<li>NOBODY DESIGNED THE ORPHANED VIEW OR THE EMPTY LEDGER. The region is hidden entirely under Orphaned, but the file actions must remain reachable there, and the whole region is gated on `… || !!window.remote` precisely because an empty ledger is when Pull matters most (CLAUDE.md group 28). All five designed the Packages/Tally case only. That is exactly where the last shipped bug lived, and the method lesson CLAUDE.md draws from it — 'the suite was all green and the feature was broken in its most important scenario, because every test booted a ledger that already had data' — applies verbatim to this batch of proposals.</li>
+<li>NOBODY ACCOUNTED FOR THE STICKY RUNNING HEAD. Only Ruled Foot mentioned the stacking order, and it got it wrong (z-index 30, not 20, at src/app.jsx:3025). Sentence, Ruled, Drawer and Progressive all open in-flow panels without stating what happens when you open one while scrolled — the panel's top rows can render beneath the pinned head.</li>
+<li>NOBODY PROPOSED A SINGLE ASSERTION. This is a codebase whose test suite is mutation-tested and whose author documents that 'an assertion that can't fail is decoration'. The batch is entirely CSS and measurements. And the deeper problem nobody named: jsdom has no layout, so NONE of these height claims can ever be protected in CI. A 171→133 win is unenforceable and will silently rot the way the pre-CTL_H toolbar did. If the resting height matters, something has to hold it — a documented measurement ritual at minimum, or a Playwright check.</li>
+<li>TOUCH TARGETS WERE SELF-REPORTED WRONG IN FOUR OF FIVE. Every direction claimed 34px compliance and every reviewer found sub-34px controls by measuring the tap target rather than the well (18.5px, 28.5px, 30px, 32px). The pattern is that designers measured containers; the app's constant is about thumbs.</li>
+</ul>
+
+<h2>Grafts worth taking</h2>
+<p class="sec-note">Where the real answer usually lives — the winner's shape carrying the runners-up's better ideas.</p>
+<ul class="grafts">
+<li>Take the prose voice of the resting line from The Filter Is A Sentence, because the Drawer's terse mono docket strip scores 2/5 on discoverability and Sentence's reviewer confirmed the prose form dissolves problems 5, 6, 7 and 8 at once — graft the voice and the state-summary-as-resting-state idea, NOT the tap-the-word-to-open-a-panel mechanic, which is what causes Sentence's 127px sort push where the native select pushed 0.</li>
+<li>Take deep-linked clauses from The Filter Is A Sentence: make each clause of the docket line open the ONE drawer scrolled to that section (tapping the range clause opens it at dates, the order clause at sort). This keeps the Drawer's single-surface simplicity while fixing its worst finding — that the word 'date' appears nowhere at rest, so a first-time reach for 'last 45 days' has nothing to aim at.</li>
+<li>Take the always-visible search field from The Ruled Foot and The Query Line, and keep it OUT of the drawer. The Drawer's own reviewer named this its highest-value regression: the manila preview reports date-range counts, not search results, so 'did my Black Lotus arrive?' goes dark exactly while you type it. Search is a live control used against a visible list; filters are a rare deliberate act. Do not bury them at the same depth.</li>
+<li>Take `max-height: min(60vh, 460px); overflow-y: auto` on the panel from The Ruled Foot's fix list, and measure against the TALLY sort set, not the Packages set. Six longer labels wrap to three rows; the Drawer measures 572px in Tally and its DONE button lands ~93px below the fold on a standard iPhone. Both directions sized their panel against the smaller vocabulary.</li>
+<li>Take the fixed-fraction grid discipline from The Ruled Head for any state-dependent label. Its reflow finding is real in shipped code — `hideDone ? 'Showing remaining only' : 'Hide received'` sits inside a `flexWrap` row at src/app.jsx:3262, so that toggle resizes its own row today. Inside the drawer this is harmless, which is a further argument for the drawer; but the rule to keep is that any label that changes with state gets a fixed slot.</li>
+<li>Take 'do not delete a control conditionally' from The Query Line's critique as a hard rule for the drawer's contents. Progressive's dropping of the sort scope when the result set is small is the same bug class as the group-28 Pull-unreachable-on-empty-ledger bug CLAUDE.md documents twice. Every control in the drawer must be present unconditionally.</li>
+<li>Take the shape vocabulary from The Filter Is A Sentence but resolve it outward, not inward: give the drawer's mutually-exclusive selectors 999px (they are the same species as the `.mdl-switch` pill directly above, which is 999px at src/app.jsx:3042) and reserve the 8px rect for actions. Both Drawer and Sentence solved 'two radii inside the region' by inventing a third radius that disagrees with the switch — that moves the seam rather than closing it.</li>
+</ul>
+
+<h2>The crux</h2>
+<p class="sec-note">Two problems every direction had to solve: replacing the native select and the native date pair, and cutting the resting height.</p>
+<div class="step">NATIVE `&lt;select&gt;` — genuinely solved by two. The Docket Drawer and The Ruled Foot both replaced it with chips inside a surface that is already a deliberate two-tap destination, so the replacement costs nothing: there is no popover to emulate because you are already inside the panel. The Filter Is A Sentence and The Ruled Head replaced it with an in-flow chooser that pushes 127px of content down, where the native select's popover pushes 0 — that is a measured regression traded for a cosmetic win, and neither direction disclosed it. The Query Line replaced it and then specified that the sort scope disappears when the result set is under a screenful, which makes a required function unreachable exactly when you have filtered down to the set you want to reorder; that is worse than a UA caret and has to be withdrawn, not tuned. NATIVE `&lt;input type="date"&gt;` — nobody solved it, and three directions actively broke it. Sentence, Ruled Head and Query Line all shipped `inputmode="numeric"` fields with a `YYYY-MM-DD` placeholder; iOS's numeric keypad has no hyphen key, so the custom range is literally uncompletable on the only device this app ships to. That is not a replacement, it is a removal disguised as a redesign, and Ruled Head compounds it by dropping the free "# days" preset entirely — six of the seven options in RANGES (src/app.jsx:1090) ship. Ruled Foot claims both natives are gone and was not caught on it, but its date entry is unverified and it never states what the input actually is. The Docket Drawer is the only direction that faces the crux honestly, and it does so by reframing it: keep `type="date"` for the first cut, because the drawer has already made the ugliness invisible. That is the correct answer. The problem was never that the native date picker is bad — it works, it validates, it needs no masking and cannot produce 2026-02-31 — the problem is that it is ugly in a place you look at all day. Move it somewhere you look at twice a year and the crux evaporates without inventing a picker. 171px — three of five dodged and one cheated. Verified like-for-like: Sentence saves 6px, not 21. Ruled Head saves ~12px at rest and is 11px WORSE open, with 14px of what it does save spent restating "187 LEFT / 136 PKGS" that the masthead already shows 100px above. The Docket Drawer measures 175px once you restore the `flex-wrap` it silently dropped — worse than the status quo, though fixable in one line. Only The Query Line cut it honestly and independently (144px verified) while leaving the file actions alone, and only The Ruled Foot cut it structurally (48px in flow) — but its real permanent chrome is 132px, not the claimed 98px, and it gets there by relocating Re-import / Sync / Reset to the foot of a 136-package list, which the brief explicitly forbade and which regresses the "recovery controls must not be gated behind the state they recover" lesson CLAUDE.md records as learned twice. The honest conclusion is that the 171px framing itself is the wrong target: 14px of it is the view switch's margin nobody touches, and the resting cost was never the real injury. The injury is the 253px and 285px open states, and exactly two directions delete those outright — the Drawer and the Ruled Foot.</div>
+
+<h2>Smallest first step</h2>
+<div class="step">Do not build the drawer. Make one throwaway commit against the current region that changes nothing structural, and live with it for one mail day. (1) Add a single prose docket line ABOVE today's existing controls, stating the live filter state in the register's voice and absorbing the notices that already wrap to their own line — roughly fifteen lines of JSX, no controls moved, no behaviour changed, fully reversible. (2) In the same commit, temporarily set the Sync chip label to bare `Sync` and measure the file-actions row at 375px. That single day answers the two questions the entire batch turns on, and the answers are worth more than any of the five proposals. From (1) you learn whether a prose state-summary actually reads at 375px with your real values — a cross-year custom range like "12 Apr 2025 – 3 Aug 2026" is normal in a ledger that keeps orders older than 120 days, and if that wraps the line to two rows then Sentence, Ruled, Drawer, Ruled Foot and Query Line ALL have a problem, because every one of them rests on a summary line. You also learn the thing that decides the Drawer outright: once you can read the state, do you ever look at the chips again? If you stop, folding them away is proven by use rather than argued by pixels. From (2) you learn whether the Drawer's 133px is real or whether it is 175px — that one label is the entire 42px difference between beating the status quo and losing to it, and it is also the current region's undocumented overflow. Only after both come back green should you build the drawer, and build it in this order: file actions row fixed first, then the drawer, then search stays outside it, then the date field last — keeping native `type="date"` for the first cut, because by then it lives somewhere you never look.</div>
+</div>
+
+<script>
+document.addEventListener("click", (e) => {
+  const b = e.target.closest(".flip"); if (!b || b.classList.contains("flip-none")) return;
+  const card = document.getElementById(b.dataset.target);
+  const rest = card.querySelector(".state-rest"), open = card.querySelector(".state-open");
+  const showingRest = !rest.hidden;
+  rest.hidden = showingRest; open.hidden = !showingRest;
+  b.textContent = showingRest ? "Show resting state" : "Show open state";
+});
+</script>
+
+<style>
+/* ── per-direction CSS, exactly as each was authored ─────────────────── */
+
+.dir-current { font-family: var(--mono); }
+.dir-current .r { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:8px; }
+.dir-current .rb { justify-content:flex-end; gap:6px; }
+.dir-current .rd .search { flex:1; }
+.dir-current .rf { justify-content:flex-end; }
+.dir-current .lbl { font-size:10.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--inkSoft); }
+.dir-current .chip, .dir-current .ctl {
+  height:34px; box-sizing:border-box; padding:0 11px; font-family:var(--mono); font-size:12px;
+  background:var(--card); color:var(--ink); border:1px solid var(--line); display:inline-flex; align-items:center; gap:6px; }
+.dir-current .chip { border-radius:999px; font-size:11.5px; }
+.dir-current .ctl { border-radius:8px; }
+.dir-current .chip.on { background:var(--accent); border-color:var(--accent); color:var(--card); }
+.dir-current .dang { background:var(--redSoft); color:var(--red); border-color:transparent; }
+.dir-current .search {
+  height:34px; box-sizing:border-box; padding:0 11px; border-radius:8px; border:1px solid var(--line);
+  background:var(--card); font-family:var(--cochin); font-size:14px; color:var(--inkSoft);
+  display:flex; align-items:center; overflow:hidden; white-space:nowrap; }
+.dir-current .sel {
+  height:34px; box-sizing:border-box; padding:0 8px; border-radius:8px; border:1px solid var(--line);
+  background:var(--card); font-size:12px; color:var(--ink); display:inline-flex; align-items:center; gap:26px; }
+.dir-current .uac { font-size:14px; color:var(--inkSoft); }
+.dir-current .note { font-size:11px; color:var(--inkSoft); }
+.dir-current .dt {
+  height:34px; box-sizing:border-box; padding:0 8px; border-radius:8px; border:1px solid var(--line);
+  background:var(--card); font-family:-apple-system,"Helvetica Neue",Arial,sans-serif; font-size:13px;
+  color:#7a7a7f; display:inline-flex; align-items:center; gap:10px; min-width:140px; }
+.dir-current .cal { filter:grayscale(1); opacity:.75; font-size:12px; }
+.dir-current .dash { color:var(--inkSoft); }
+.dir-current .lnk { font-size:11px; color:var(--inkSoft); text-decoration:underline; text-underline-offset:2px; }
+
+
+/* ══ THE FILTER IS A SENTENCE ═══════════════════════════════════════════
+   One line of running prose states the whole filter state. The variable
+   words are chits you tap; search is the second clause, written on a rule.
+   Shape carries meaning: a boxed chit is a choice, a ruled line is
+   something you write on, a mono lozenge is machinery. */
+
+.dir-sentence {
+  font-family: var(--cochin);
+  color: var(--ink);
+  padding-top: 2px;
+  margin-bottom: 14px;
+}
+.dir-sentence button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.dir-sentence :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* ── the sentence ──────────────────────────────────────────────────────
+   A flex paragraph, not a toolbar: it wraps like prose (two lines at
+   375px, one at 760px) and every column gap is a word space. */
+.dir-sentence .say {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 5px;
+  font-size: clamp(15px, calc(13.6px + 0.37vw), 16.5px);
+  line-height: 1.25;
+}
+.dir-sentence .w { white-space: nowrap; }
+/* a chit and the punctuation belonging to it travel as one word */
+.dir-sentence .seg { display: inline-flex; align-items: baseline; white-space: nowrap; }
+.dir-sentence .p { margin-left: -1px; }
+
+/* ── a token: a word in the sentence you can change ─────────────────── */
+.dir-sentence .tok {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
+  padding: 3px 8px 4px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--card);
+  color: var(--ink);
+}
+/* the visible chit stays 28px so the prose keeps its rhythm; the tap
+   target is the app's 34px, claimed by a pad that costs no layout */
+.dir-sentence .tok::before { content: ""; position: absolute; inset: -4px -3px; }
+.dir-sentence .tok:active { background: var(--paper); }
+/* accent fill == this clause is narrowing the list. Same rule as the view
+   switch and the old active date chip. */
+.dir-sentence .tok--on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--card);
+}
+.dir-sentence .tok--open { border-color: var(--accent); }
+/* a caret only on the tokens that open a chooser; the third flips in
+   place, so the mark means "there is more to see" and nothing else */
+.dir-sentence .car {
+  font-family: var(--mono);
+  font-size: 8px;
+  line-height: 1;
+  transition: transform 140ms ease;
+}
+.dir-sentence .tok--open .car { transform: rotate(180deg); }
+.dir-sentence .dates { font-family: var(--mono); font-size: 0.82em; }
+
+/* ── the second clause: search, written on a rule ──────────────────── */
+.dir-sentence .find {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 7px;
+  flex: 1 1 150px;
+  min-width: 132px;
+  margin-left: 3px;
+}
+.dir-sentence .write {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  border-bottom: 1px solid var(--line);
+}
+.dir-sentence .find-in {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: var(--cochin);
+  font-size: inherit;
+  line-height: 1.25;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 7px 2px 8px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.dir-sentence .find-in::placeholder { color: var(--inkSoft); font-style: italic; }
+/* thickens the rule without moving anything */
+.dir-sentence .write:focus-within {
+  border-bottom-color: var(--accent);
+  box-shadow: 0 1px 0 0 var(--accent);
+}
+.dir-sentence .clear {
+  position: relative;
+  flex: 0 0 auto;
+  font-family: var(--mono);
+  font-size: 15px;
+  line-height: 1;
+  color: var(--inkSoft);
+  background: none;
+  border: 0;
+  padding: 0 1px 6px;
+}
+.dir-sentence .clear::before { content: ""; position: absolute; inset: -12px -10px; }
+
+/* ── marginal notes: what the sentence can't say in its own voice ──── */
+.dir-sentence .notes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  margin-top: 6px;
+  font-family: var(--mono);
+  font-size: clamp(10.5px, calc(10px + 0.13vw), 11.5px);
+  color: var(--inkSoft);
+}
+.dir-sentence .note-link {
+  position: relative;
+  background: none;
+  border: 0;
+  padding: 2px 0;
+  font-family: var(--mono);
+  font-size: inherit;
+  color: var(--inkSoft);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.dir-sentence .note-link::before { content: ""; position: absolute; inset: -8px -5px; }
+
+/* ── the chooser: the sentence offering its alternatives ────────────
+   Opens directly under the paragraph, pushing the list down — never over
+   it. One slot, whichever token opened it, so the open height is
+   predictable. The current value is NOT repeated as a filled chip: it is
+   plain text behind a dot, because the sentence above already says it. */
+.dir-sentence .chooser {
+  margin-top: 9px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 7px;
+  padding: 9px 10px 10px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-size: clamp(15px, calc(13.6px + 0.37vw), 16.5px);
+  line-height: 1.25;
+}
+.dir-sentence .opt {
+  position: relative;
+  padding: 3px 8px 4px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--paper);
+  color: var(--ink);
+  white-space: nowrap;
+}
+.dir-sentence .opt::before { content: ""; position: absolute; inset: -4px -3px; }
+.dir-sentence .opt:active { background: var(--card); }
+.dir-sentence .opt--on {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding-left: 0;
+  border-color: transparent;
+  background: transparent;
+  cursor: default;
+}
+.dir-sentence .dot { font-family: var(--mono); font-size: 9px; color: var(--accent); }
+.dir-sentence .num { font-family: var(--mono); font-size: 0.82em; }
+
+/* the custom range: two ledger fields, typed. No UA calendar glyph and no
+   140px UA minimum width. */
+.dir-sentence .sub {
+  flex: 1 0 100%;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 3px;
+  color: var(--inkSoft);
+}
+.dir-sentence .dt {
+  width: 108px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-radius: 0;
+  padding: 7px 2px 8px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.dir-sentence .dt::placeholder { color: var(--inkSoft); }
+.dir-sentence .dt:focus {
+  border-bottom-color: var(--accent);
+  box-shadow: 0 1px 0 0 var(--accent);
+}
+
+/* ── file actions: unchanged in function, normalised in shape ──────── */
+.dir-sentence .acts {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.dir-sentence .act {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  height: 34px;
+  padding: 0 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--mono);
+  font-size: 12px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--card);
+  color: var(--ink);
+  white-space: nowrap;
+}
+.dir-sentence .act--reset {
+  color: var(--red);
+  background: var(--redSoft);
+  border-color: transparent;
+}
+.dir-sentence .act .car { font-size: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dir-sentence .car { transition: none; }
+}
+
+/* ══ THE RULED HEAD, SECOND PASS ══════════════════════════════════════════
+   Fixes, each traceable to a finding on the first pass:
+
+   · Rules are --line, not --gold. CLAUDE.md scopes gold to the masthead and
+     nothing else; the first pass added four more gold rules and broke the
+     "masthead's rules continued" story with a violet pill sitting between them.
+   · The two disclosure cells get a write-on underline under their value. The
+     first pass built controls out of the same parts as the masthead's
+     READ-ONLY tallies, so nothing looked touchable — it scored 2/5 on
+     discoverability for a real reason. An underline is a form's write-on rule,
+     not a button box, so the thesis survives.
+   · The figure line survives on the range cell only. "187 LEFT" and "136 PKGS"
+     were restating the masthead 100px above; only the range cell's count is
+     new information.
+   · File actions are set apart by a gap and their own band. Flattening them
+     into the same three-column grid destroyed the filters/file-management
+     separation the source comment calls for.
+   · All SEVEN date options ship. The first pass shipped six and asserted the
+     free "last N days" in prose.
+   · No typed dates. Month chips come from the orders that exist; the native
+     pair survives behind "Exact dates". The first pass shipped an 18.5px
+     inputmode=numeric field, which on iOS has no hyphen key at all.
+   · Search is 16px, so focusing it cannot zoom the page on iOS.
+   · Vocabulary shortened at the source ("Unreceived", "Missing", "272
+     outside") rather than relying on ellipsis — an ellipsised state readout is
+     the failure this direction exists to prevent.
+   · The armed Reset spans the full row so it can still name its consequence. */
+
+.dir-ruled2 { font-family: var(--mono); color: var(--ink); }
+.dir-ruled2 button { font: inherit; color: inherit; cursor: pointer; background: none;
+  border: 0; padding: 0; -webkit-tap-highlight-color: transparent; text-align: left; }
+.dir-ruled2 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* margin:0 stated explicitly — a bare `.rule` is a tempting class name and
+   collides with page-level dividers the moment this is dropped anywhere else */
+.dir-ruled2 .rule { height: 1px; background: var(--line); margin: 0; }
+.dir-ruled2 .rule.thin { background: var(--line); opacity: .55; }
+
+/* ── the three reporting cells ─────────────────────────────────────────── */
+.dir-ruled2 .row.r3 { display: grid; grid-template-columns: repeat(3, 1fr); }
+.dir-ruled2 .cell {
+  min-height: 46px; padding: 7px 9px 8px; display: flex; flex-direction: column; gap: 3px;
+  border-right: 1px solid var(--line); }
+.dir-ruled2 .cell:last-child { border-right: 0; }
+.dir-ruled2 .lab {
+  font-size: 8.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--inkSoft); }
+.dir-ruled2 .val {
+  font-family: var(--cochin); font-size: 15px; line-height: 1.15; color: var(--ink);
+  display: flex; align-items: baseline; gap: 5px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; }
+/* the affordance: a write-on rule under the changeable value, only on the two
+   cells that actually open something */
+.dir-ruled2 .disc .u { border-bottom: 1px solid var(--line); }
+.dir-ruled2 .disc.on .u { border-bottom-color: var(--accent); }
+.dir-ruled2 .car { font-size: 9px; color: var(--inkSoft); }
+.dir-ruled2 .car.up { transform: rotate(180deg); }
+.dir-ruled2 .dot { font-size: 10px; color: var(--inkSoft); }
+.dir-ruled2 .dot.on { color: var(--accent); }
+.dir-ruled2 .fig {
+  font-size: 9.5px; color: var(--inkSoft); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; }
+
+/* ── find ──────────────────────────────────────────────────────────────── */
+/* the LABEL is the tap target, so the whole 40px row focuses the field — the
+   first pass used a div, leaving an 18.5px text run as the only target */
+.dir-ruled2 .find { display: flex; align-items: stretch; gap: 10px; padding: 0 9px; height: 40px; }
+.dir-ruled2 .find .lab { align-self: center; }
+.dir-ruled2 .find input {
+  flex: 1; min-width: 0; height: 100%; border: 0; background: none; outline: none;
+  font-family: var(--cochin); font-size: 16px; color: var(--ink); padding: 0; }
+.dir-ruled2 .find input::placeholder { color: var(--inkSoft); }
+
+/* ── file actions: their own band, not a fourth filter ─────────────────── */
+.dir-ruled2 .acts {
+  display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end;
+  padding: 8px 9px 9px; }
+.dir-ruled2 .act {
+  height: 34px; box-sizing: border-box; padding: 0 11px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--card); font-size: 12px;
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.dir-ruled2 .act.danger { background: var(--redSoft); color: var(--red); border-color: transparent; }
+/* transient, so spanning the row costs nothing at rest and lets the sentence fit */
+.dir-ruled2 .act.armed { flex: 1 1 100%; justify-content: center; background: var(--red);
+  color: var(--card); font-weight: 700; }
+
+/* ── the date panel ────────────────────────────────────────────────────── */
+.dir-ruled2 .panel { padding: 4px 9px 11px; border-top: 1px solid var(--line);
+  background: var(--card); }
+.dir-ruled2 .opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+  background: var(--line); border: 1px solid var(--line); margin-top: 10px; }
+.dir-ruled2 .opt {
+  height: 34px; background: var(--card); font-size: 11.5px; color: var(--ink);
+  display: flex; align-items: center; justify-content: center; white-space: nowrap; }
+.dir-ruled2 .opt.on { background: var(--accent); color: var(--card); }
+.dir-ruled2 .sub { display: flex; align-items: center; gap: 9px; margin-top: 10px; }
+.dir-ruled2 .sub .lab { flex: 0 0 auto; }
+.dir-ruled2 .well {
+  display: inline-flex; align-items: stretch; height: 34px; border-radius: 999px;
+  background: var(--card); overflow: hidden; box-shadow: inset 0 0 0 1px var(--line); }
+.dir-ruled2 .stp { width: 34px; display: grid; place-items: center; font-size: 15px; }
+.dir-ruled2 .num { min-width: 34px; display: grid; place-items: center; font-size: 13px;
+  box-shadow: inset 1px 0 0 var(--line), inset -1px 0 0 var(--line); padding: 0 4px; }
+.dir-ruled2 .wrapmo { align-items: flex-start; }
+.dir-ruled2 .mos { display: flex; flex-wrap: wrap; gap: 5px; }
+.dir-ruled2 .opt.sm { border: 1px solid var(--line); padding: 0 10px; min-width: 0; }
+.dir-ruled2 .exact { margin-top: 11px; }
+.dir-ruled2 .exact summary { font-size: 11px; color: var(--inkSoft); cursor: pointer;
+  height: 34px; display: flex; align-items: center; }
+.dir-ruled2 .pair { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.dir-ruled2 .pair s { text-decoration: none; color: var(--inkSoft); }
+.dir-ruled2 .pair input {
+  height: 34px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--card); color: var(--ink); padding: 0 8px; font-family: var(--mono);
+  font-size: 12px; min-width: 0; flex: 1 1 140px; }
+
+
+/* ══ THE DOCKET DRAWER, SECOND PASS ═══════════════════════════════════════
+   Changes from the first pass, each traceable to a finding:
+
+   · .files gets flex-wrap back (the first pass silently dropped it and clipped
+     "Re-import CSV" off the left edge). It now fits on ONE row anyway, because
+     the shipped Sync label was shortened to "Sync · 08-12" — 119px, not 167px.
+   · Search LEAVES the drawer. It is a live control used against a visible list;
+     filters are a rare deliberate act. Burying them at the same depth was the
+     first pass's worst regression — you typed blind.
+   · The docket line names both axes even when null ("All dates · newest first
+     · all 136 packages"), so there is something to aim at.
+   · Chips are 999px, matching .mdl-switch directly above. The first pass used
+     8px and so moved the two-radii seam instead of closing it. One rule now:
+     999px selects, 8px acts.
+   · Every tap target is 34px. The first pass measured wells, not thumbs.
+   · The drawer scrolls with a sticky foot, so DONE and the live count cannot
+     fall below the fold — the first pass bottomed out ~93px under it in Tally.
+   · The custom range is picked from the data as month chips. No keyboard, no
+     masking, nothing that can produce 2026-02-31. The native pair survives
+     behind "Exact dates" for the rare precise case.
+   · The foot count reports the WHOLE filter result, not just the date range. */
+
+.dir-drawer2 { font-family: var(--mono); }
+.dir-drawer2 button { font: inherit; color: inherit; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.dir-drawer2 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dir-drawer2 s { text-decoration: none; color: var(--line); margin: 0 5px; }
+
+/* ── row A: search, always visible, with the one filter affordance ─────── */
+.dir-drawer2 .rowA { display: flex; gap: 8px; align-items: center; }
+.dir-drawer2 .q {
+  flex: 1 1 auto; min-width: 0; height: 34px; box-sizing: border-box; padding: 0 11px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--card);
+  font-family: var(--cochin); font-size: 14px; color: var(--ink); outline: none; }
+.dir-drawer2 .q::placeholder { color: var(--inkSoft); }
+.dir-drawer2 .filt {
+  flex: 0 0 auto; height: 34px; box-sizing: border-box; padding: 0 13px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--card);
+  color: var(--ink); font-size: 11.5px; display: inline-flex; align-items: center; gap: 6px;
+  white-space: nowrap; }
+.dir-drawer2 .filt.on { background: var(--accent); border-color: var(--accent); color: var(--card); }
+.dir-drawer2 .car { font-size: 8px; }
+.dir-drawer2 .car.up { transform: rotate(180deg); }
+
+/* ── the docket line: the state summary IS the resting state ───────────── */
+.dir-drawer2 .dock {
+  margin: 9px 0 0; font-family: var(--cochin); font-size: 14px; line-height: 1.35;
+  color: var(--inkSoft); }
+.dir-drawer2 .cl {
+  position: relative; background: none; border: 0; padding: 0;
+  font-family: var(--cochin); font-size: 14px; color: var(--ink);
+  border-bottom: 1px solid var(--line); }
+/* the visible word stays inline so the line reads as prose; the tap target is
+   the app's 34px, claimed by a pad that costs no layout */
+.dir-drawer2 .cl::before { content: ""; position: absolute; left: -4px; right: -4px; top: 50%;
+  height: 34px; transform: translateY(-50%); }
+.dir-drawer2 .notes {
+  margin: 5px 0 0; font-size: 11px; color: var(--inkSoft); }
+.dir-drawer2 .lnk { background: none; border: 0; padding: 0; font-size: 11px;
+  color: var(--inkSoft); text-decoration: underline; text-underline-offset: 2px; }
+
+/* ── file actions: wrap restored, and it fits on one row again ─────────── */
+.dir-drawer2 .files {
+  display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.dir-drawer2 .ctl {
+  height: 34px; box-sizing: border-box; padding: 0 11px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  font-size: 12px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.dir-drawer2 .ctl.danger { background: var(--redSoft); color: var(--red); border-color: transparent; }
+
+/* ── the drawer ────────────────────────────────────────────────────────── */
+.dir-drawer2 .drawer {
+  margin-top: 8px; border: 1px solid var(--line); border-radius: 10px;
+  background: var(--card); display: flex; flex-direction: column;
+  max-height: min(58vh, 430px); overflow: hidden; }
+.dir-drawer2 .scroll { overflow-y: auto; padding: 4px 12px 12px; }
+
+/* section heads borrow the masthead's vocabulary: uppercase mono micro-label
+   against a hairline, rather than another box */
+.dir-drawer2 .sh { display: flex; align-items: center; gap: 9px; margin: 13px 0 8px; }
+.dir-drawer2 .sh b { font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--inkSoft); font-weight: 400; }
+.dir-drawer2 .sh i { flex: 1; height: 1px; background: var(--line); }
+.dir-drawer2 .sh.sub b { color: var(--inkSoft); opacity: .8; }
+
+.dir-drawer2 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.dir-drawer2 .chip {
+  height: 34px; box-sizing: border-box; padding: 0 12px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--card); color: var(--ink);
+  font-size: 11.5px; white-space: nowrap; }
+.dir-drawer2 .chip.on { background: var(--accent); border-color: var(--accent); color: var(--card); }
+.dir-drawer2 .months .chip { padding: 0 11px; }
+
+/* the free "last N days" stepper — every part 34px */
+.dir-drawer2 .mode { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.dir-drawer2 .lead { font-size: 11.5px; color: var(--inkSoft); }
+/* the rule is drawn with an inset shadow, not a border: a 1px border would eat
+   the content box and leave the − and + at 32px, which is exactly the fault
+   the first pass was caught on. This keeps the well 34px AND its buttons 34px. */
+.dir-drawer2 .well {
+  display: inline-flex; align-items: stretch; height: 34px; border: 0;
+  border-radius: 999px; background: var(--card); overflow: hidden;
+  box-shadow: inset 0 0 0 1px var(--line); }
+.dir-drawer2 .stp { width: 34px; background: none; border: 0; font-size: 15px; color: var(--ink);
+  display: grid; place-items: center; }
+.dir-drawer2 .num { min-width: 34px; display: grid; place-items: center; font-size: 13px;
+  border-left: 1px solid var(--line); border-right: 1px solid var(--line); padding: 0 4px; }
+
+.dir-drawer2 .exact { margin-top: 10px; }
+.dir-drawer2 .exact summary { font-size: 11px; color: var(--inkSoft); cursor: pointer;
+  height: 34px; display: flex; align-items: center; }
+.dir-drawer2 .pair { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.dir-drawer2 .pair input {
+  height: 34px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--card); color: var(--ink); padding: 0 8px; font-family: var(--mono);
+  font-size: 12px; min-width: 0; flex: 1 1 140px; }
+
+/* sticky foot: the live count and the way out can never fall below the fold */
+.dir-drawer2 .foot {
+  flex: 0 0 auto; border-top: 1px solid var(--line); background: var(--manila);
+  padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.dir-drawer2 .live { font-size: 11px; color: var(--manilaInk); }
+.dir-drawer2 .live s { color: var(--manilaInk); opacity: .45; }
+.dir-drawer2 .done {
+  height: 34px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--manilaInk);
+  background: var(--manilaInk); color: var(--card); font-size: 11.5px; white-space: nowrap; }
+
+
+/* ══ THE RULED FOOT, SECOND PASS ══════════════════════════════════════════
+   Fixes, each traceable to a finding on the first pass:
+
+   · Search moved OUT of the rail, back to the top in flow. The first pass hung
+     the whole direction on a visualViewport keyboard shim that only a real
+     iPhone can validate — the critic's own advice was to test whether removing
+     search from the rail deletes the risk class. It does, entirely, and search
+     stays permanently visible instead of costing a tap.
+   · File actions stay at the top too. The first pass moved Re-import/Sync/
+     Reset below the last package card, which with 136 packages is a
+     multi-screen scroll to reach Backup — the same "recovery control gated
+     behind the state it recovers" regression CLAUDE.md records as learned
+     twice.
+   · "N outside range" is promoted into the readout. The first pass buried the
+     one notice whose whole job is to say data is hidden inside a panel that is
+     shut during normal use.
+   · The rail pill is "Filters", not "Filters & sort" — the long label ate 171px
+     of a 343px rail, which is what truncated search in the first pass.
+   · The panel is capped and scrolls with a pinned foot, measured against the
+     TALLY sort set (six long labels, three rows) rather than the Packages set.
+   · .segb is 34px, not 30px.
+   · Stacking ladder corrected: the sticky running head is z-index 30
+     (src/app.jsx), so the scrim is 40 and the rail 50.
+
+   The sharpened principle: what you TAP repeatedly lives under the thumb; what
+   you READ, and what you do twice a month, stays at the top. */
+
+.dir-foot2 { font-family: var(--mono); color: var(--ink); }
+.dir-foot2 button { font: inherit; color: inherit; cursor: pointer; background: none;
+  border: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+.dir-foot2 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dir-foot2 s { text-decoration: none; color: var(--line); margin: 0 5px; }
+
+/* ── the readout: reports, does not act ────────────────────────────────── */
+.dir-foot2 .readout {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  height: 20px; }
+.dir-foot2 .st {
+  font-size: 10.5px; color: var(--inkSoft); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; }
+.dir-foot2 .canc {
+  flex: 0 0 auto; font-size: 10.5px; color: var(--inkSoft);
+  text-decoration: underline; text-underline-offset: 2px; }
+
+/* ── search: top, in flow, 16px so focusing cannot zoom iOS ────────────── */
+.dir-foot2 .findrow { display: block; margin-top: 8px; }
+.dir-foot2 .q {
+  width: 100%; height: 34px; box-sizing: border-box; padding: 0 11px;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--card);
+  font-family: var(--cochin); font-size: 16px; color: var(--ink); outline: none; }
+.dir-foot2 .q::placeholder { color: var(--inkSoft); }
+
+.dir-foot2 .acts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+.dir-foot2 .act {
+  height: 34px; box-sizing: border-box; padding: 0 11px; border-radius: 8px;
+  border: 1px solid var(--line); background: var(--card); font-size: 12px;
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.dir-foot2 .act.danger { background: var(--redSoft); color: var(--red); border-color: transparent; }
+.dir-foot2 .car { font-size: 8px; }
+.dir-foot2 .car.down { transform: rotate(180deg); }
+
+/* ── the rail ──────────────────────────────────────────────────────────── */
+.dir-foot2 .scrim { position: fixed; inset: 0; background: var(--ink); opacity: .28; z-index: 40; }
+.dir-foot2 .rail {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+  background: var(--card); border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom); }
+.dir-foot2 .bar {
+  height: 50px; display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 0 14px; }
+.dir-foot2 .live { font-size: 10.5px; color: var(--inkSoft); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; }
+.dir-foot2 .pill {
+  flex: 0 0 auto; height: 34px; padding: 0 14px; border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--line); background: var(--card);
+  font-size: 11.5px; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; }
+.dir-foot2 .pill.on { background: var(--accent); color: var(--card); box-shadow: none; }
+
+/* ── the panel, capped and scrolling, foot pinned ──────────────────────── */
+.dir-foot2 .panel {
+  display: flex; flex-direction: column;
+  max-height: min(60vh, 430px); border-bottom: 1px solid var(--line); }
+.dir-foot2 .pscroll { overflow-y: auto; padding: 2px 14px 12px; }
+.dir-foot2 .sh { display: flex; align-items: center; gap: 9px; margin: 13px 0 8px; }
+.dir-foot2 .sh b { font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase;
+  color: var(--inkSoft); font-weight: 400; }
+.dir-foot2 .sh i { flex: 1; height: 1px; background: var(--line); }
+.dir-foot2 .sh.sub b { opacity: .8; }
+.dir-foot2 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.dir-foot2 .chip {
+  height: 34px; box-sizing: border-box; padding: 0 12px; border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--line); background: var(--card);
+  font-size: 11.5px; white-space: nowrap; display: inline-flex; align-items: center; }
+.dir-foot2 .chip.on { background: var(--accent); color: var(--card); box-shadow: none; }
+.dir-foot2 .seg { display: flex; border-radius: 999px; overflow: hidden;
+  box-shadow: inset 0 0 0 1px var(--line); }
+.dir-foot2 .segb { flex: 1; height: 34px; font-size: 11.5px; }
+.dir-foot2 .segb.on { background: var(--accent); color: var(--card); }
+.dir-foot2 .pfoot {
+  flex: 0 0 auto; border-top: 1px solid var(--line); background: var(--manila);
+  padding: 8px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.dir-foot2 .pfoot .live { color: var(--manilaInk); }
+.dir-foot2 .done {
+  height: 34px; padding: 0 16px; border-radius: 999px; background: var(--manilaInk);
+  color: var(--card); font-size: 11.5px; white-space: nowrap; }
+
+
+/* ============================================================
+   SEARCH FIRST, EVERYTHING ELSE EARNED
+   ------------------------------------------------------------
+   Shape rule for this region — shape now encodes what a control does:
+     · bordered card, radius 10    = the search object (the app's card radius)
+     · pill, radius 999            = a pick-one strip; the same component as
+                                     the view switch directly above
+     · radius 8, 34px tall         = the file actions and typed fields
+     · dotted-underlined mono text = a toggle or a reveal
+   Type rule: Cochin holds the user's own words (the query). Mono holds the
+   ledger's chrome — counts, ranges, ids. That is the same split the rest of
+   the app already makes; the region just stops breaking it.
+   ============================================================ */
+
+.dir-progressive {
+  font-family: var(--cochin);
+  padding: 10px 0 12px;
+}
+.dir-progressive *,
+.dir-progressive *::before,
+.dir-progressive *::after { box-sizing: border-box; }
+.dir-progressive button,
+.dir-progressive input { font-family: var(--mono); }
+
+/* ---------- the one object: query, sort scope, status ---------- */
+.dir-progressive .seek {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  overflow: hidden;
+}
+.dir-progressive .seek:focus-within { border-color: var(--accent); }
+
+.dir-progressive .seek-row {
+  display: flex;
+  align-items: stretch;
+  height: 42px;              /* the one control taller than CTL_H: it is the hero */
+}
+.dir-progressive .seek-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  padding: 0 13px;
+  font-family: var(--cochin);
+  font-size: clamp(15px, calc(13.4px + 0.43vw), 17px);
+  line-height: 1;
+  color: var(--ink);
+  -webkit-appearance: none;
+  appearance: none;
+}
+.dir-progressive .seek-input::placeholder { color: var(--inkSoft); opacity: 1; }
+/* the UA's cancel glyph draws in the system font — off, and replaced below */
+.dir-progressive .seek-input::-webkit-search-cancel-button,
+.dir-progressive .seek-input::-webkit-search-decoration { -webkit-appearance: none; }
+
+/* the app draws its own clear, from the same typographic vocabulary the item
+   rows already use for ×qty */
+.dir-progressive .clr {
+  flex: 0 0 auto;
+  width: 30px;
+  border: 0;
+  background: transparent;
+  color: var(--inkSoft);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* the sort scope rides in the search row: both are list controls, and keeping
+   it off the status line is what lets that line never wrap at 375px. Removed
+   (field grows to fill) when the result set is under a screenful. */
+.dir-progressive .scope {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 12px 0 11px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  transition: opacity 150ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ---------- the status line ---------- */
+.dir-progressive .strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  height: 34px;              /* fixed: its contents may change, its height may not */
+  padding: 0 11px;
+  background: var(--paper);  /* a ruled footer to the card, not a second card */
+  border-top: 1px solid var(--line);
+  white-space: nowrap;
+}
+.dir-progressive .facts,
+.dir-progressive .reveals {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.dir-progressive .facts { flex: 0 1 auto; overflow: hidden; }
+.dir-progressive .reveals { flex: 0 0 auto; }
+
+.dir-progressive .count {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--inkSoft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dir-progressive .count b {
+  font-weight: 600;
+  font-size: 12.5px;
+  color: var(--ink);
+}
+.dir-progressive .count .of { color: var(--inkSoft); }
+
+/* the region's control shape: mono text, a dotted rule, 34px of tap */
+.dir-progressive .tbtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--inkSoft);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.dir-progressive .tbtn.on { color: var(--ink); }
+.dir-progressive .u {
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: var(--inkSoft);
+}
+.dir-progressive .tbtn.on .u,
+.dir-progressive .scope .u { text-decoration-color: var(--line); }
+.dir-progressive .dot { font-size: 9px; line-height: 1; color: var(--inkSoft); }
+.dir-progressive .tbtn.on .dot { color: var(--accent); }
+.dir-progressive .car {
+  font-size: 8px;
+  line-height: 1;
+  color: var(--inkSoft);
+  transition: transform 140ms ease;
+}
+.dir-progressive .tbtn[aria-expanded="true"] .car { transform: rotate(180deg); }
+
+.dir-progressive .hair {
+  flex: 0 0 auto;
+  width: 1px;
+  height: 13px;
+  background: var(--line);
+}
+.dir-progressive .hair.tall { height: 100%; align-self: stretch; }
+
+/* ---------- the date panel: earned, and it opens inside the object ---------- */
+.dir-progressive .panel {
+  border-top: 1px solid var(--line);
+  background: var(--card);
+  padding: 9px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* pick-one strip — the view switch's component, one level down. Because the
+   trigger drops its value while this is open, "All time" is stated once. */
+.dir-progressive .seg {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--card);
+}
+.dir-progressive .seg button {
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: transparent;
+  color: var(--ink);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.dir-progressive .seg button:first-child { border-left: 0; }
+.dir-progressive .seg button[aria-pressed="true"] {
+  background: var(--accent);
+  border-left-color: var(--accent);
+  color: var(--card);
+}
+
+/* the free row — one row, two modes, swapped by the link at its right, so the
+   free day count and the dated range never both claim a line. */
+.dir-progressive .free {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+}
+.dir-progressive .free .lbl {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--inkSoft);
+  letter-spacing: 0.02em;
+  flex: 0 0 auto;
+}
+.dir-progressive .fin {
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 12px;
+  text-align: center;
+  padding: 0 6px;
+  outline: 0;
+  flex: 0 0 auto;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.dir-progressive .fin:focus { border-color: var(--accent); }
+.dir-progressive .fin.num { width: 52px; }
+.dir-progressive .fin.date { width: 94px; }
+.dir-progressive .fin::placeholder { color: var(--inkSoft); opacity: 1; }
+.dir-progressive .free .swap { margin-left: auto; }
+
+/* ---------- file actions: unchanged in kind, only the radii now agree ---------- */
+.dir-progressive .files {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+.dir-progressive .ref {
+  flex: 0 1 auto;            /* the one thing allowed to truncate on this row */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--inkSoft);
+  font-size: 10.5px;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  text-align: left;
+}
+.dir-progressive .fileset {
+  flex: 0 0 auto;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dir-progressive .ctl {
+  height: 34px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.dir-progressive .ctl.danger { color: var(--red); }
+
+.dir-progressive :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dir-progressive * { transition: none !important; }
+}
+</style>
+
+</body></html>

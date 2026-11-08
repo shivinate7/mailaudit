@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Account Book</title>
+<meta name="description" content="Duo concept 2: every seller is an account that owes you cards, and mail day balances the book.">
+<style>
+:root{--paper:#F2E9DA;--card:#FCF6EA;--ink:#332E3F;--inkSoft:#6E6379;--line:#DCCDB6;--gold:#C9A961;--silver:#C4C3C0;--accent:#6F5CA6;--green:#2E7A5E;--greenSoft:#E6E7D7;--red:#A8443C;--redSoft:#F4E4D9;--manila:#EADBBA;--manilaInk:#695832;--amber:#846008;--wax:#A8443C;--waxLit:#C86A5F;--waxDeep:#66231D;--waxCut:#5E1F1A;--waxRaised:#E09A90;--shadow:rgba(28,43,36,0.06);--scrim:rgba(28,43,36,0.92);
+--serif:Cochin,"Iowan Old Style",Georgia,serif;--mono:ui-monospace,"SF Mono",Menlo,monospace}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--serif)}
+.wrap{max-width:1040px;margin:0 auto;padding:24px 16px 64px}
+h1{font-weight:400;font-size:34px;margin:0 0 4px}
+.lede{color:var(--inkSoft);margin:0 0 20px;font-size:18px}
+.n{font-family:var(--mono);font-variant-numeric:tabular-nums}
+figure{margin:0 0 28px}figcaption{font-size:14px;color:var(--inkSoft);margin-top:6px}
+.fit{position:relative;overflow:hidden}.fit>.dev{position:absolute;top:0;left:0;transform-origin:0 0}
+.dev{background:var(--card);border:6px solid var(--ink);border-radius:30px;overflow:hidden;position:relative;font-size:15px}
+.inner{width:963px;height:681px}.outer{width:478px;height:690px}.tall{width:681px;height:963px}
+.fold{position:absolute;top:0;bottom:0;left:465px;width:21px;border-left:1px dashed var(--silver);border-right:1px dashed var(--silver);background:repeating-linear-gradient(90deg,transparent 0 3px,rgba(110,99,121,.10) 3px 4px)}
+.hfold{position:absolute;left:0;right:0;top:465px;height:21px;border-top:1px dashed var(--silver);border-bottom:1px dashed var(--silver);background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(110,99,121,.10) 3px 4px)}
+.fold span,.hfold span{position:absolute;font:10px var(--mono);color:var(--inkSoft);white-space:nowrap}
+.fold span{top:50%;left:50%;transform:translate(-50%,-50%) rotate(-90deg)}.hfold span{left:12px;top:4px}
+.pg{position:absolute;top:0;bottom:0;width:465px;padding:22px 24px;display:flex;flex-direction:column}
+.pg.l{left:0}.pg.r{left:486px}.pg.t{top:0;bottom:auto;height:465px;width:auto;left:0;right:0}.pg.b{top:486px;bottom:0;width:auto;left:0;right:0}
+.pg.solo{width:auto;right:0;left:0}
+.flat{background:linear-gradient(var(--paper),var(--card) 30%)}
+.poses{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start}.poses figure{flex:1 1 280px;min-width:0}
+.hit{outline:3px solid var(--accent);outline-offset:6px;border-radius:4px}
+.notes{display:grid;gap:4px 24px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));font-size:17px;line-height:1.45}
+.notes h2{font-weight:400;font-size:15px;letter-spacing:.12em;text-transform:uppercase;color:var(--inkSoft);margin:16px 0 4px;border-bottom:1px solid var(--gold);padding-bottom:4px}
+.notes ol,.notes p{margin:0 0 8px}.notes ol{padding-left:22px}
+.back{display:inline-block;margin-bottom:12px;color:var(--accent);font-size:16px}
+body.embed .chrome{display:none}body.embed .wrap{padding:0;max-width:none}body.embed figure{margin:0}body.embed figcaption{display:none}
+.btn{min-height:44px;min-width:44px;padding:0 14px;border:1px solid var(--line);border-radius:8px;background:var(--paper);font:inherit;font-size:16px;color:var(--ink);display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn.p{background:var(--accent);border-color:var(--accent);color:var(--card)}
+.btn.warn{border-color:var(--red);color:var(--red);background:var(--redSoft)}
+.k{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--inkSoft)}
+.rule{border:0;border-top:1px solid var(--gold);margin:12px 0}
+.ok{color:var(--green)}.late{color:var(--amber)}.bad{color:var(--red)}
+.ann{font:11px var(--mono);color:var(--accent)}
+.line{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:52px;border-bottom:1px solid var(--line)}
+.line small{display:block;color:var(--inkSoft);font-size:13px}
+.line.now{background:var(--greenSoft);margin:0 -10px;padding:0 10px;border-radius:6px}
+.step{display:inline-flex;align-items:center;gap:6px}.step .n{min-width:42px;text-align:center;font-size:18px}
+.box{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-top:12px;background:var(--paper)}
+
+/* concept */
+.row{height:46px;display:grid;align-items:center;border-bottom:1px solid var(--line);gap:6px}
+.pg.l .row{grid-template-columns:1fr 62px 40px 66px}.r-r{grid-template-columns:66px 66px 46px 1fr}
+.row>.n,.hd>.n{text-align:right}
+.hd{height:24px;display:grid;align-items:end;gap:6px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--inkSoft);border-bottom:1px solid var(--ink);padding-bottom:3px}
+.pg.l .hd{grid-template-columns:1fr 62px 40px 66px}.pg.r .hd{grid-template-columns:66px 66px 46px 1fr}
+.title{height:48px;display:flex;justify-content:space-between;align-items:baseline}
+.title b{font-weight:400;font-size:28px}
+.sub{background:var(--greenSoft)}.pg.l .sub{grid-template-columns:1fr 66px;padding-left:18px;font-size:14px}
+.pg.r .sub{grid-template-columns:132px 66px 66px 1fr}
+.sub .btn{min-width:40px;padding:0}
+.post{height:24px;font-size:12px;color:var(--inkSoft);padding-left:18px;background:var(--greenSoft);border-bottom:1px solid var(--line)}
+.settled .n{color:var(--green)}.settled{border-bottom:3px double var(--gold)}
+.susp{height:60px;border-bottom:1px solid var(--line);display:flex;flex-direction:column;justify-content:center;background:var(--manila);margin:0 -8px;padding:0 8px}
+.susp small{color:var(--manilaInk);font-size:13px}
+.tot{border-top:3px double var(--gold);border-bottom:0;font-size:16px}
+.act{display:flex;align-items:center;gap:8px;justify-content:flex-end;font-size:13px}
+.bar{display:flex;height:28px;border:1px solid var(--line);border-radius:4px;overflow:hidden}.bar i{display:block}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="chrome">
+<a class="back" href="index.html">All five concepts</a>
+<h1>2 · Account Book</h1>
+<p class="lede">Every seller is an account that owes you cards. Mail day is reconciling the book until each balance reads zero.</p>
+</div>
+
+<figure data-pose="flat">
+<div class="fit" data-max="1"><div class="dev inner">
+  <section class="pg l" style="justify-content:flex-start">
+    <div class="title"><b>Owed to me</b><span class="k">book of 26 Oct</span></div>
+    <div class="hd"><span>Account</span><span class="n">Opened</span><span class="n">Cards</span><span class="n">Paid</span></div>
+    <div class="row bad"><span>Ashgrove Games</span><span class="n">2 Oct</span><span class="n">4</span><span class="n">2.82</span></div>
+    <div class="row late"><span>Quillon Hobby</span><span class="n">9 Oct</span><span class="n">3</span><span class="n">1.35</span></div>
+    <div class="row" style="font-weight:600"><span>▾ Kestrel Card Co.</span><span class="n">14 Oct</span><span class="n">7</span><span class="n">6.06</span></div>
+    <div class="row sub"><span>4 Lightning Bolt · M11 · NM</span><span class="n">4.48</span></div>
+    <div class="row sub"><span>2 Counterspell · DMR · NM</span><span class="n">0.96</span></div>
+    <div class="row sub"><span>1 Brainstorm · CMM · LP</span><span class="n">0.62</span></div>
+    <div class="post n">post 1.31 · tax 0.54 · kept out of cost</div>
+    <div class="row"><span>Brass Lantern TCG</span><span class="n">16 Oct</span><span class="n">4</span><span class="n">1.34</span></div>
+    <div class="row"><span>Low Tide Singles</span><span class="n">19 Oct</span><span class="n">6</span><span class="n">1.29</span></div>
+    <div class="row settled"><span>Fernhill Cards</span><span class="n">21 Oct</span><span class="n">2</span><span class="n">2.28</span></div>
+    <div class="susp"><span>Suspense · blank envelope, today</span><small>Fellwar Stone LP · Beast Within NM</small></div>
+    <div class="row tot"><span>Totals</span><span></span><span class="n">26</span><span class="n">15.14</span></div>
+  </section>
+  <div class="fold"><span>fold · each row runs across the gutter</span></div>
+  <section class="pg r" style="justify-content:flex-start">
+    <div class="title"><b>Received</b><span class="k">today <span class="n">8</span> cards · <span class="n">$7.22</span></span></div>
+    <div class="hd"><span class="n">Rec'd</span><span class="n">Due</span><span class="n">Age</span><span></span></div>
+    <div class="row r-r bad"><span class="n">0.00</span><span class="n">2.82</span><span class="n">24 d</span><span class="act">claim by Fri <span class="btn warn">Write off</span></span></div>
+    <div class="row r-r late"><span class="n">0.00</span><span class="n">1.35</span><span class="n">17 d</span><span class="act">watch</span></div>
+    <div class="row r-r" style="font-weight:600"><span class="n">4.94</span><span class="n">1.12</span><span class="n">12 d</span><span class="act">open</span></div>
+    <div class="row sub"><span class="step"><span class="btn">−</span><span class="n">3/4</span><span class="btn p">+</span></span><span class="n">3.36</span><span class="n bad">1.12</span><span></span></div>
+    <div class="row sub"><span class="step"><span class="btn">−</span><span class="n">2/2</span><span class="btn">+</span></span><span class="n">0.96</span><span class="n ok">0.00</span><span></span></div>
+    <div class="row sub"><span class="step"><span class="btn">−</span><span class="n">1/1</span><span class="btn">+</span></span><span class="n">0.62</span><span class="n ok">0.00</span><span></span></div>
+    <div class="post"></div>
+    <div class="row r-r"><span class="n">0.00</span><span class="n">1.34</span><span class="n">10 d</span><span></span></div>
+    <div class="row r-r"><span class="n">0.00</span><span class="n">1.29</span><span class="n">7 d</span><span></span></div>
+    <div class="row r-r settled"><span class="n">2.28</span><span class="n">0.00</span><span class="n">5 d</span><span class="act ok">settled</span></div>
+    <div class="susp" style="flex-direction:row;align-items:center;justify-content:space-between"><small>fits Brass Lantern 2 of 2<br>Quillon 1 of 2</small><span class="btn p">Post to Brass Lantern</span></div>
+    <div class="row r-r tot"><span class="n">7.22</span><span class="n">7.92</span><span></span><span></span></div>
+  </section>
+</div></div>
+<figcaption>Open flat: the book lies open, Kestrel's invoice unfolded, three of four Bolts received, one blank envelope in suspense. Inner screen 951×669 pt.</figcaption>
+</figure>
+
+<div class="poses chrome">
+<figure data-pose="closed">
+<div class="fit" data-max="1"><div class="dev outer">
+  <section class="pg solo">
+    <div class="title"><b>Balances due</b><span class="n">$7.92</span></div>
+    <div class="hd" style="grid-template-columns:1fr 50px 66px"><span>Account</span><span class="n">Age</span><span class="n">Due</span></div>
+    <div class="row bad" style="grid-template-columns:1fr 50px 66px"><span>Ashgrove Games</span><span class="n">24 d</span><span class="n">2.82</span></div>
+    <div class="row late" style="grid-template-columns:1fr 50px 66px"><span>Quillon Hobby</span><span class="n">17 d</span><span class="n">1.35</span></div>
+    <div class="row" style="grid-template-columns:1fr 50px 66px"><span>Kestrel Card Co.<br><small style="color:var(--inkSoft)">1 Lightning Bolt owed</small></span><span class="n">12 d</span><span class="n">1.12</span></div>
+    <div class="row" style="grid-template-columns:1fr 50px 66px"><span>Brass Lantern TCG</span><span class="n">10 d</span><span class="n">1.34</span></div>
+    <div class="row" style="grid-template-columns:1fr 50px 66px"><span>Low Tide Singles</span><span class="n">7 d</span><span class="n">1.29</span></div>
+    <div class="susp" style="margin:8px 0 0"><span>Suspense · 1 blank envelope</span><small>tap to post it to an account</small></div>
+    <p style="margin-top:auto;font-size:14px;color:var(--inkSoft)">Tap an account to open its invoice. Settled accounts fold away.</p>
+  </section>
+</div></div>
+<figcaption>Closed, outer screen: only the balances due. The book's left page folds away.</figcaption>
+</figure>
+<figure data-pose="laptop">
+<div class="fit" data-max="1"><div class="dev tall">
+  <section class="pg t">
+    <div class="k">Aged balances</div>
+    <div class="n" style="font-size:72px;line-height:1.1">$7.92</div>
+    <div class="bar"><i style="width:16%;background:var(--greenSoft)"></i><i style="width:31%;background:var(--manila)"></i><i style="width:17%;background:var(--gold)"></i><i style="width:36%;background:var(--redSoft)"></i></div>
+    <div class="n" style="display:grid;grid-template-columns:16% 31% 17% 36%;font-size:12px;margin-top:4px"><span>0–9 d<br>1.29</span><span>10–14 d<br>2.46</span><span>15–21 d<br>1.35</span><span class="bad">22 d+<br>2.82</span></div>
+    <p style="font-size:18px">Kestrel Card Co. is open. One Lightning Bolt, <span class="n">$1.12</span>, is still due.</p>
+  </section>
+  <div class="hfold"><span>fold · top stands, bottom lies flat</span></div>
+  <section class="pg b flat">
+    <div class="title"><b>Kestrel Card Co.</b><span class="n">14 Oct</span></div>
+    <div class="line now"><div>Lightning Bolt<small>M11 · NM · 1.12</small></div><div class="step"><span class="btn">−</span><span class="n">3/4</span><span class="btn p">+</span></div></div>
+    <div class="line"><div>Counterspell<small>DMR · NM · 0.48</small></div><span class="n ok">2/2 ✓</span></div>
+    <div class="line"><div>Brainstorm<small>CMM · LP · 0.62</small></div><span class="n ok">1/1 ✓</span></div>
+    <div style="margin-top:auto;display:flex;gap:8px;justify-content:flex-end"><span class="btn warn">Write off</span><span class="btn p">Next account</span></div>
+  </section>
+</div></div>
+<figcaption>Laptop pose: the aged balances stand up; the open invoice lies under your thumb.</figcaption>
+</figure>
+</div>
+
+<div class="notes chrome">
+<div>
+<h2>Central idea</h2>
+<p>Each seller is an account that owes you cards; mail day is reconciling the book until every balance reads zero.</p>
+<h2>A mail-day session</h2>
+<ol>
+<li>Open the phone flat. The book lies open, oldest balance on top.</li>
+<li>Read the sender on an envelope. Tap that account. Its invoice unfolds in place.</li>
+<li>Receive each line with + on the right page. Bought 4, got 3 leaves 1.12 due.</li>
+<li>A settled account is ruled off with a double gold line.</li>
+<li>A blank envelope goes to Suspense. Name its cards, then post it to the account it fits.</li>
+<li>An old balance carries Write off, as lost or refunded.</li>
+</ol>
+</div>
+<div>
+<h2>Better than a phone list</h2>
+<p>Every row shows what you paid and what is still due on one line. The money question has a standing answer. Aging is a column, not a filter.</p>
+<p>Suspense is a real ledger idea, so a no-name envelope is normal, not an error.</p>
+<h2>Biggest risk</h2>
+<p>It is a table. At hundreds of rows it may feel like accounting, not mail. The rows must cross the fold cleanly, or the gutter breaks the reading line.</p>
+</div>
+</div>
+</div>
+<script>
+function fit(){document.querySelectorAll('.fit').forEach(f=>{const d=f.firstElementChild,s=Math.min(+f.dataset.max||1,f.clientWidth/d.offsetWidth);d.style.transform='scale('+s+')';f.style.height=d.offsetHeight*s+'px'})}
+function route(){const p=new URLSearchParams(location.hash.slice(1)),pose=p.get('pose');document.body.classList.toggle('embed',p.has('embed'));document.querySelectorAll('[data-pose]').forEach(e=>e.classList.toggle('hit',e.dataset.pose===pose&&!p.has('embed')));fit();const t=document.querySelector('[data-pose="'+pose+'"]');if(t&&!p.has('embed'))t.scrollIntoView()}
+addEventListener('hashchange',route);addEventListener('resize',fit);route();
+</script>
+</body>
+</html>
