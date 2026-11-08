@@ -101,9 +101,27 @@ public final class PackagesModel {
         public var line: String { BulkNotice.line(count: count, seller: seller) }
     }
     public var vacatedUndo: VacatedUndo? {
-        guard let gk = bulkUndoGk, !rows.contains(where: { $0.gk == gk }), let pkg = package(gk: gk) else { return nil }
+        guard let gk = bulkUndoGk, let pkg = package(gk: gk) else { return nil }
+        return vacated(gk: gk, seller: pkg.seller, count: bulkUndoCount)
+    }
+    /// The notices whose Undo another write ended while the card was off the list. Each keeps its slot, drawn inert, so nothing
+    /// below it moves under the pointer (no-layout-shift-under-pointer). A tab change, a restore, a Reset or a dismiss drops them.
+    public var lapsedUndos: [VacatedUndo] { lapsed.compactMap { vacated(gk: $0.gk, seller: $0.seller, count: $0.count) } }
+    private var lapsed: [(gk: String, seller: String, count: Int)] = []
+
+    private func vacated(gk: String, seller: String, count: Int) -> VacatedUndo? {
+        guard !rows.contains(where: { $0.gk == gk }) else { return nil }
         let place = order[gk] ?? .max
-        return VacatedUndo(gk: gk, seller: pkg.seller, count: bulkUndoCount, index: rows.filter { (order[$0.gk] ?? .max) < place }.count)
+        return VacatedUndo(gk: gk, seller: seller, count: count, index: rows.filter { (order[$0.gk] ?? .max) < place }.count)
+    }
+
+    /// Ends the held Undo because some other write has run. A held Undo whose card is off the list leaves its notice behind, inert.
+    private func lapseBulkUndo() {
+        if let v = vacatedUndo {
+            lapsed.removeAll { $0.gk == v.gk }
+            lapsed.append((v.gk, v.seller, v.count))
+        }
+        bulkUndoGk = nil
     }
     /// The store's postsSaved when checkInError was last set: only a Post after that is a good write that outdates the failure line.
     @ObservationIgnored private var errorPosts = 0
@@ -443,7 +461,7 @@ public final class PackagesModel {
             throw error
         }
         checkInError = nil
-        bulkUndoGk = nil
+        lapseBulkUndo()
         received = store.received()
         if count > 0 { sticky.insert(key) }  // checked in under this filter, so the line stays until the filters change
         try await relist()
@@ -498,6 +516,8 @@ public final class PackagesModel {
         checkInError = nil
         // A Mark all that adds nothing has nothing to undo, so the held Undo stays. A Clear ends it.
         if !on || !takes.isEmpty {
+            lapseBulkUndo()
+            if on { lapsed.removeAll { $0.gk == gk } }  // the card is held again, so one notice per card
             bulkUndoTakes = takes
             bulkUndoGk = on ? gk : nil
         }
@@ -525,8 +545,11 @@ public final class PackagesModel {
         if let pkg = package(gk: gk) { try await reread(pkg, items: pkg.items) }
     }
 
-    /// A tab change, a restore or a Reset: the held Undo is gone.
-    public func endBulkUndo() { bulkUndoGk = nil }
+    /// A tab change, a restore, a Reset or a dismiss: the held Undo is gone, and so are the notices left by earlier ones.
+    public func endBulkUndo() {
+        bulkUndoGk = nil
+        lapsed = []
+    }
 
     /// Stamps the package (the one stamp writer, StampWriter), then reads the ledger again: a refund leaves the list,
     /// and the stamped count and the bands follow. A failure lands in checkInError and is thrown.
@@ -562,7 +585,7 @@ public final class PackagesModel {
             fail("\(failure) \(error.localizedDescription)")
             throw error
         }
-        bulkUndoGk = nil
+        lapseBulkUndo()
         do { try await load() } catch {
             fail("Saved, but the list could not refresh. \(error.localizedDescription)")
             throw error
