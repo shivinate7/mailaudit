@@ -6,6 +6,7 @@
 // and fail on a missing element. The builder runs them red, then green. How to run: DuoShellUITests.swift, same
 // destination and the same hinge command. These tests need the pose flat (open Duo, window 951 x 669 pt), set with
 // `~/.local/bin/hinge open`. A run in another pose fails on the window size (DuoWindowSupport.swift). It never skips.
+// The AccessibilityXL match-row case is green on main: it is red only on a mutant that moves the row under the keys.
 //
 // The seed is shared/fixtures/ledger.json. What the tests rely on in it:
 //   Lightning Bolt is in three envelopes: A1 Alpha Cards, B1 Beta Games and C1 Gamma Cards. So is a shared name.
@@ -72,6 +73,8 @@ final class DuoHandUITests: XCTestCase {
     /// How far above its reported frame the keyboard panel draws on the open Duo: the panel starts near y 405 pt and the frame at 449 pt,
     /// so a view under the top 44 pt of the panel is covered although it clears the frame. The figure's record is duo-fold-and-keyboard.
     static let keyboardDrawnAbove: CGFloat = 44
+    /// The text size of the AccessibilityXL (AX3) match-row case. The launch flag sets it; nothing here reads it back.
+    static let accessibilityXL = "UICTContentSizeCategoryAccessibilityXL"
 
     static let bolt = "C1|0|pLightningBolt"
     static let path = "C1|1|pPathtoExile"
@@ -505,20 +508,36 @@ final class DuoHandUITests: XCTestCase {
         assertOnlyMatchClearsTheKeys(app, box: "Released")
     }
 
+    /// Pose: flat, system keys up, text at AccessibilityXL, no box. The typed name leaves one match row, and that row must lie wholly
+    /// above the keys' drawn top. Measured on Duo 1 on 2026-11-08: the row ends at 391.7 pt, the keyboard frame starts at 449 pt, and
+    /// the drawn keys start at 405 pt (duo-fold-and-keyboard). The Suspense and Released cases show a box and set no text size, so no
+    /// case pins this row with no box at large text.
+    func testMatchRowClearsTheKeysAtAccessibilityXL() {
+        let app = XCUIApplication.launchedOnSeed(extra: ["-UIPreferredContentSizeCategoryName", Self.accessibilityXL])
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        typeCard(app, "Path to Exile")
+        XCTAssertFalse(app.element("hand-held").exists, "a Suspense box shows for Path to Exile, which no held name matches: this is not the no-box case")
+        XCTAssertFalse(app.element("hand-strays").exists, "a Released box shows for Path to Exile: this is not the no-box case")
+        assertOnlyMatchClearsTheKeys(app, box: nil, at: "AccessibilityXL")
+    }
+
     /// Pose: flat, system keys up. The typed name must leave exactly one match row, and that row must lie wholly above the keys'
-    /// drawn top and be hittable while `box` shows. The row is read once the keys and the list have stopped moving.
+    /// drawn top and be hittable. `box` names the box that shows ("Suspense" or "Released"), or nil for no box. `size` names the
+    /// text size the test launched at, for the message. The row is read once the keys and the list have stopped moving.
     /// No tap and no scroll. The typed name leaves one row, so that row is the list's only row and the one the keys can cover.
-    func assertOnlyMatchClearsTheKeys(_ app: XCUIApplication, box: String) {
-        let rows = waitForHits(app, count: 1, "the typed name must leave exactly one match under the \(box) box")
+    func assertOnlyMatchClearsTheKeys(_ app: XCUIApplication, box: String?, at size: String? = nil) {
+        let state = (size.map { "at \($0) " } ?? "") + (box.map { "while the \($0) box shows" } ?? "with no box shown")
+        let rows = waitForHits(app, count: 1, "the typed name must leave exactly one match \(state)")
         guard let row = rows.first else { return }  // waitForHits has already failed the test
         let keys = app.keyboards.firstMatch
         _ = requireKeysUp(app)
         waitUntilStill([keys, row])
         let keysTop = keys.frame.minY - Self.keyboardDrawnAbove
         let f = row.frame
-        XCTAssertLessThanOrEqual(f.maxY, keysTop, "the match row \(row.identifier), frame \(f), is under the keys' drawn top at y \(keysTop) while the \(box) box shows: the owner must scroll to reach it")
-        XCTAssertTrue(row.isHittable, "the match row \(row.identifier), frame \(f), is not hittable with the keys up and no scroll")
-        keepShot(app, "hand-match-clears-keys-\(box.lowercased())")
+        XCTAssertLessThanOrEqual(f.maxY, keysTop, "the match row \(row.identifier), frame \(f), ends at y \(f.maxY), under the keys' drawn top at y \(keysTop) (the keyboard frame starts at y \(keys.frame.minY), drawn \(Self.keyboardDrawnAbove) pt higher) \(state): the owner must scroll to reach it")
+        XCTAssertTrue(row.isHittable, "the match row \(row.identifier), frame \(f), is not hittable with the keys up and no scroll \(state)")
+        keepShot(app, "hand-match-clears-keys-\(box?.lowercased() ?? "no-box")")
     }
 
     /// The first lines of Gamma Cards, which sit under the offer. A Post presses above them, so none may move (no-layout-shift-under-pointer).
