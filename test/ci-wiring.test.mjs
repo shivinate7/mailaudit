@@ -106,7 +106,7 @@ const ALARM_ACTION = ACTIONS + "ci-alarm";
 // The shared action pin. Every claude-settings pin in checks.yml carries this sha, except ste-lint.
 const ACTION_PIN = "380a24b5fa9ab78b973892ddfe3a95eaff68601b";
 // ste-lint follows claude-settings main on its own, not ACTION_PIN (decision action-pins-follow-sessions).
-const STE_LINT_PIN = "967a7ea0fa01593ee624ea61447d5ec9eba240a6";
+const STE_LINT_PIN = "d70ebd14d8e6dbff5e248cf3e4b1e21250228d64";
 // The sha a claude-settings pin must name: STE_LINT_PIN for ste-lint, the shared sha for the rest.
 // One home for the ste-lint exception, read by assertions 3c and 12.
 function expectedPin(action, shared) {
