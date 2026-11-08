@@ -46,6 +46,9 @@ public final class PackagesModel {
     @ObservationIgnored private var orderKey: (source: String, sort: PackageSort)?
     /// Lines checked in under this filter context; filterPackages keeps them shown.
     @ObservationIgnored private var sticky: Set<String> = []
+    /// Counts each refilter(). A load that finds it moved after its last await filters again, so the rows follow the Find, Showing or
+    /// reveal change made while it was in flight, as TallyModel's epoch does.
+    @ObservationIgnored private var filterEpoch = 0
     /// The packages the list shows: the source, narrowed by Find and Showing, in the frozen order.
     public private(set) var rows: [Package] = []
     /// Whether the ledger holds any item at all, for the Find pill (drawn only with items).
@@ -187,7 +190,8 @@ public final class PackagesModel {
         } else {
             newOrder = try await Self.placed(newSource, by: options.sortBy, received: got, engine: engine)
         }
-        let newRows = try await filtered(newSource, order: newOrder, received: got, stamps: held)
+        var seen = filterEpoch
+        var newRows = try await filtered(newSource, order: newOrder, received: got, stamps: held)
         let refunds = try await StampRules.keys(where: "isRefundStamp", in: held, engine: engine)
         let kinds = try await StampRules.kinds(engine: engine)
         // The maps cover the live lines the range and the filters hide too, and the refunded packages the stamped list adds.
@@ -202,6 +206,12 @@ public final class PackagesModel {
         let allItems = try json(store.items())
         let choices = try JSONDecoder().decode([MonthChoice].self, from: Data(try await engine.call("monthChoices", "[\(allItems)]").utf8))
         try await options.readLabels(engine: engine, itemsJSON: allItems)
+        // A Find, Showing or reveal change that landed during the awaits above was filtered over the old source. Filter again over the
+        // new one with the choices now, until none lands during the filter itself. No await sits between this check and the sets below.
+        while seen != filterEpoch {
+            seen = filterEpoch
+            newRows = try await filtered(newSource, order: newOrder, received: store.received(), stamps: held)
+        }
         source = newSource
         sourceRows = sourcePackages
         order = newOrder
@@ -258,8 +268,14 @@ public final class PackagesModel {
     }
 
     /// Reads the list again from the counts now, with the order kept: a completed package drops at once under Unreceived.
+    /// A result that a later refilter or a load's landing has passed is dropped: that one filtered by the choices now.
     private func refilter() async throws {
-        rows = try await filtered(source, order: order, received: store.received(), stamps: stamps)
+        filterEpoch += 1
+        let mine = filterEpoch
+        let from = source
+        let shown = try await filtered(from, order: order, received: store.received(), stamps: stamps)
+        guard mine == filterEpoch, from == source else { return }
+        rows = shown
     }
 
     // MARK: Find, Showing, Sorted by (the Ledger tab's View group and the Find pill)
