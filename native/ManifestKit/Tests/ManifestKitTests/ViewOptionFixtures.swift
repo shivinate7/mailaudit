@@ -19,13 +19,20 @@ enum ViewOptionFixtures {
         return fixture?["items"] as? [[String: Any]] ?? []
     }
 
-    /// A ledger file: the shared fixture's items, `received`, and the saved view preferences the web
+    /// One ledger line shaped as the shared fixture's items are. Tracking "canceled" makes its order a canceled one.
+    static func line(_ key: String, order: String, seller: String, name: String, qty: Int, date: String,
+                     tracking: String = "without tracking") -> [String: Any] {
+        ["key": key, "orderId": order, "seller": seller, "name": name, "set": "Test Set", "condition": "Near Mint", "finish": "",
+         "qty": qty, "price": 1, "date": date, "tracking": tracking, "line": "Magic"]
+    }
+
+    /// A ledger file: the shared fixture's items plus `extra`, `received`, and the saved view preferences the web
     /// keeps (`dateFilter`, `sortBy`, `itemSort`, and the legacy `cardSort`), written before the load.
     static func ledgerURL(in test: XCTestCase, received: [String: Int] = [:], saved: [String: Any] = [:],
-                          label: String) throws -> URL {
+                          extra: [[String: Any]] = [], label: String) throws -> URL {
         let dir = try PhotoTestKit.tempDir(label)
         test.addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
-        var doc: [String: Any] = ["mailday": 1, "items": try fixtureItems(), "received": received]
+        var doc: [String: Any] = ["mailday": 1, "items": try fixtureItems() + extra, "received": received]
         for (key, value) in saved { doc[key] = value }
         let url = dir.appending(path: "ledger.json")
         try JSONSerialization.data(withJSONObject: doc).write(to: url)

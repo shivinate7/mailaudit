@@ -23,10 +23,10 @@ final class ViewOptionsModelTests: XCTestCase {
     static let newestOrder = ["B1::Beta Games", "A1::Alpha Cards", "C1::Gamma Cards", "D1::Delta Cards"]
 
     func packagesModel(
-        received: [String: Int] = [:], saved: [String: Any] = [:], bundle: URL = RulesGoldenTests.bundleURL,
-        label: String
+        received: [String: Int] = [:], saved: [String: Any] = [:], extra: [[String: Any]] = [],
+        bundle: URL = RulesGoldenTests.bundleURL, label: String
     ) async throws -> (model: PackagesModel, url: URL, store: LedgerStore) {
-        let url = try ViewOptionFixtures.ledgerURL(in: self, received: received, saved: saved, label: label)
+        let url = try ViewOptionFixtures.ledgerURL(in: self, received: received, saved: saved, extra: extra, label: label)
         let store = LedgerStore(fileURL: url, now: { ViewOptionFixtures.now })
         try store.load()
         let model = PackagesModel(engine: try RulesEngine(bundleURL: bundle), store: store)
@@ -35,9 +35,9 @@ final class ViewOptionsModelTests: XCTestCase {
     }
 
     func tallyModel(
-        received: [String: Int] = [:], saved: [String: Any] = [:], label: String
+        received: [String: Int] = [:], saved: [String: Any] = [:], extra: [[String: Any]] = [], label: String
     ) async throws -> (model: TallyModel, store: LedgerStore) {
-        let url = try ViewOptionFixtures.ledgerURL(in: self, received: received, saved: saved, label: label)
+        let url = try ViewOptionFixtures.ledgerURL(in: self, received: received, saved: saved, extra: extra, label: label)
         let store = LedgerStore(fileURL: url, now: { ViewOptionFixtures.now })
         try store.load()
         let model = TallyModel(engine: try RulesEngine(bundleURL: RulesGoldenTests.bundleURL), store: store)
@@ -180,5 +180,71 @@ final class ViewOptionsModelTests: XCTestCase {
     func testLegacyCardSortIsReadWhenItemSortIsAbsent() async throws {
         let (model, _) = try await tallyModel(saved: ["cardSort": "rate"], label: "step8-cardsort")
         XCTAssertEqual(model.sort, .rate, "the legacy cardSort key is not read on load (saved-state-shape)")
+    }
+
+    // MARK: By month
+
+    /// An August order. One year on the ledger, so the picker's cell reads "Aug" and not "Aug ’26".
+    static let augustLine = ViewOptionFixtures.line("g1", order: "G1", seller: "Gamma Games", name: "Gamma", qty: 1, date: "2026-08-03")
+
+    /// Picking a whole month saves it as a custom range, and the range reads back as the cell's name, not "Custom". The
+    /// reload reads the bundle's rangeMonthLabel again, so the name holds there too.
+    func testPickingAWholeMonthReadsBackAsItsName() async throws {
+        let (model, _, store) = try await packagesModel(extra: [Self.augustLine], label: "step8-month")
+        let aug = try XCTUnwrap(model.options.months.first { $0.key == "2026-08" }, "anchor: the By month picker offers August")
+        XCTAssertEqual(aug.label, "Aug", "anchor: the cell reads Aug, one year on the ledger")
+        XCTAssertNotEqual(model.options.rangeLabel, "Aug", "anchor: no month is picked yet")
+
+        try model.options.setMonth(aug, in: store)
+
+        XCTAssertEqual(model.options.rangeLabel, "Aug", "a picked month reads back as Aug, not Custom (Orders from)")
+        try await model.load()
+        XCTAssertEqual(model.options.rangeLabel, "Aug", "the picked month still reads Aug after the list is read again")
+    }
+
+    // MARK: Canceled
+
+    /// X1 is canceled on 2026-04-01, outside the saved 30 days, and X2 on 2026-08-02, inside them. Canceled lines are counted
+    /// off the whole ledger, so both count, and the orders list newest first.
+    static let canceledOld = ViewOptionFixtures.line("x1", order: "X1", seller: "Seller X", name: "Old Canceled", qty: 2,
+                                                     date: "2026-04-01", tracking: "canceled")
+    static let canceledNew = ViewOptionFixtures.line("x2", order: "X2", seller: "Seller X", name: "New Canceled", qty: 1,
+                                                     date: "2026-08-02", tracking: "canceled")
+
+    func testCanceledCountAndOrdersIgnoreTheRange() async throws {
+        let thirtyDays: [String: Any] = ["dateFilter": ["preset": 30, "from": "", "to": ""]]
+        let extra = [Self.canceledOld, Self.canceledNew]
+
+        let (model, _, _) = try await packagesModel(saved: thirtyDays, extra: extra, label: "step8-canceled")
+        XCTAssertEqual(gks(model), ["B1::Beta Games"], "anchor: the saved 30 days leaves B1 alone on the Packages list")
+        XCTAssertEqual(model.options.canceledCount, 2, "Packages counts the canceled lines off the whole ledger, the one outside the range too")
+        XCTAssertEqual(model.options.canceled.map(\.gk), ["X2::Seller X", "X1::Seller X"], "Packages lists the canceled orders newest first")
+
+        let (tally, _) = try await tallyModel(saved: thirtyDays, extra: extra, label: "step8-canceled-tally")
+        XCTAssertEqual(tally.options.canceledCount, 2, "Tally counts the canceled lines off the whole ledger, the one outside the range too")
+        XCTAssertEqual(tally.options.canceled.map(\.gk), ["X2::Seller X", "X1::Seller X"], "Tally lists the canceled orders newest first")
+    }
+
+    // MARK: Tally's order-id tap
+
+    /// Tally's order-id tap on A1's Lightning Bolt. The stamped filter is on and Find reads "Lightning", which would cut A1 to
+    /// its Lightning Bolt line. The jump reveals A1 whole, turns the stamped filter off and names A1 to scroll to. D1 holds the
+    /// one stamp, so the stamped list is D1 alone.
+    func testOpenOrderRevealsThePackageWholeAndClearsTheStampedFilter() async throws {
+        let stamp: [String: Any] = ["D1::Delta Cards": ["kind": "other", "note": "", "at": "2026-08-01", "updatedAt": ViewOptionFixtures.now]]
+        let (model, _, _) = try await packagesModel(saved: ["stamps": stamp], label: "step8-jump")
+        try await model.setQuery("Lightning")
+        try await model.toggleStamped()
+        XCTAssertTrue(model.showStamped, "anchor: the stamped filter is on")
+        XCTAssertFalse(gks(model).contains("A1::Alpha Cards"), "anchor: A1 is not on the stamped list")
+
+        let bolt = try JSONDecoder().decode(LedgerItem.self, from: JSONSerialization.data(withJSONObject: try XCTUnwrap(
+            try ViewOptionFixtures.fixtureItems().first { ($0["key"] as? String) == "A1|0|pLightningBolt" }, "anchor: the fixture holds the bolt")))
+        try await model.openOrder(of: bolt)
+
+        XCTAssertFalse(model.showStamped, "the jump clears the stamped filter")
+        XCTAssertEqual(model.rows.first { $0.gk == "A1::Alpha Cards" }?.items.count, 3,
+                       "A1 is drawn whole: Find would cut it to its Lightning Bolt line")
+        XCTAssertEqual(model.options.jumpGk, "A1::Alpha Cards", "the jump names A1 for the list to scroll to")
     }
 }
