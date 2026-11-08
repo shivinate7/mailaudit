@@ -305,4 +305,16 @@ final class PackageBulkModelTests: XCTestCase {
         XCTAssertEqual(copies - store.received().values.reduce(0, +), 1, "undoBulk moves received by the count the hint showed: 1 copy")
         XCTAssertEqual(store.received(), [Self.a1: 1, Self.f1: 1], "undo deletes a2, which fell to 0, and keeps a1 and f1")
     }
+
+    /// A check-in on another package ends the held Undo, as a check-in on this device does. Mark all on A1 holds the two copies
+    /// of a2, then a check-in of e1 on E1 / Seller E ends it, so the count is 0. This passes on the old code too: a guard.
+    func testBulkUndoCountIsZeroAfterACheckInOnAnotherPackage() async throws {
+        let (model, _) = try await rig(received: [Self.a1: 1, Self.f1: 1])
+        try await bulking(model).bulk(gk: Self.gk, on: true)
+        XCTAssertEqual(model.bulkUndoCount, 2, "anchor: the held Undo counts the two copies of a2 that Mark all added")
+
+        try await model.checkIn(key: Self.e1, count: 1)
+
+        XCTAssertEqual(model.bulkUndoCount, 0, "a check-in on another package ends the held Undo, so the count is 0")
+    }
 }

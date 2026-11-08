@@ -153,4 +153,24 @@ final class TallyBulkModelTests: XCTestCase {
 
         XCTAssertEqual(model.bulkUndoCount, 0, "endBulkUndo() ends the held Undo, so the count is 0")
     }
+
+    /// A remote apply can lower a copy the Mark all took from, and it does not end the Undo. The hint counts what undo takes
+    /// back now, as PackageBulkModelTests pins for a package. Shared's a2 took 2 copies. A remote apply lowers a2 to 1, so the
+    /// hint says 1, not the stale 2, and undo moves received by that 1.
+    func testBulkUndoCountIsWhatUndoWouldTakeBackAfterARemoteLowering() async throws {
+        let (model, store) = try await rig(received: [Self.e1: 1, Self.s1: 1, Self.f1: 1])
+        try await bulking(model).bulk(name: "Shared", on: true)
+        XCTAssertEqual(model.bulkUndoCount, 2, "anchor: the held Undo counts the two copies of a2 that Mark all added")
+
+        try store.commitReceived(Self.a2, count: 1)
+        try await model.load()
+        XCTAssertEqual(model.bulkUndoName, "Shared", "anchor: a remote apply does not end the held Undo")
+
+        XCTAssertEqual(model.bulkUndoCount, 1, "undo would take back 1 copy of a2 now, since a2 is at 1, so the hint says 1")
+
+        let copies = store.received().values.reduce(0, +)
+        try await bulking(model).undoBulk()
+        XCTAssertEqual(copies - store.received().values.reduce(0, +), 1, "undoBulk moves received by the count the hint showed: 1 copy")
+        XCTAssertEqual(store.received(), [Self.e1: 1, Self.s1: 1, Self.f1: 1], "undo deletes a2, which fell to 0, and keeps e1, s1 and f1")
+    }
 }
