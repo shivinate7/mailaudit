@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Head cells in the Ledger tab</title>
+<style>
+/* Tokens: shared/tokens.json. The native app is held to light, so this page has one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961; --accent:#6F5CA6;
+  --green:#2E7A5E; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832;
+  --wax:#A8443C; --waxLit:#C86A5F; --waxDeep:#66231D; --shadow:rgba(28,43,36,0.06);
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  /* Status bar foot: unmeasured on the Duo outer screen. Drawn at the UI test's 20 pt floor (DuoHandUITests.statusBarFloor). */
+  --sat: max(env(safe-area-inset-top), 20px);
+  /* measurements/duo-fold-and-keyboard: outer window 466 x 678 pt, system tab bar from y 595 pt, 83 pt tall. */
+  --fold-w: 466px; --fold-h: 678px; --bar-top: 595px; --bar-h: 83px;
+  /* label colours: mockup notes, not product paint. The new green is darkened from the green token to pass 4.5:1 on paper. */
+  --new:#286E54; --today:#A8443C;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+main { max-width:1000px; margin:0 auto; padding:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:24px; margin:16px 0 4px; font-weight:700; }
+.sub { color:var(--inkSoft); margin:0 0 12px; max-width:70ch; }
+nav { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 4px; }
+nav a, nav button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+nav a:focus-visible, nav button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+section[data-state] { margin:24px 0 40px; }
+section[hidden], .gone section[data-state] { display:none; }
+.gone-line { display:none; color:var(--inkSoft); margin:24px 0; }
+.gone .gone-line { display:block; }
+.pose { font-family:var(--cochin); font-size:18px; font-weight:700; margin:0 0 12px; }
+.row { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+figure { margin:0; }
+figcaption { margin-top:8px; max-width:466px; color:var(--inkSoft); font-size:14px; }
+figcaption b { color:var(--ink); font-family:var(--cochin); font-size:16px; }
+
+/* ---- dashed labels ---- */
+.mark { position:relative; outline:1.5px dashed var(--today); outline-offset:2px; }
+.mark.new { outline-color:var(--new); }
+.tag { position:absolute; right:4px; top:-10px; z-index:3; font:600 11px/16px var(--sys); padding:0 6px; border-radius:4px;
+  background:var(--paper); color:var(--today); border:1px dashed var(--today); white-space:nowrap; }
+.mark.new > .tag { color:var(--new); border-color:var(--new); }
+/* in: inside the mark, on its label line; left: inside, on the empty left of a right-aligned row */
+.tag.in { top:14px; }
+.tag.left { top:14px; right:auto; left:12px; }
+
+/* ---- device: iPhone Duo, folded (outer screen), 1 CSS px = 1 pt ---- */
+.fold { position:relative; width:var(--fold-w); height:var(--fold-h); background:var(--paper); border:1px solid var(--ink); border-radius:24px; overflow:hidden; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); padding:0 24px; display:flex; align-items:center; justify-content:space-between;
+  font:600 12px var(--sys); color:var(--ink); z-index:2; }
+.scroll { position:absolute; inset:0; padding-top:var(--sat); }
+
+/* masthead (MastheadView.swift) */
+.mh { padding:12px 24px 0; text-align:center; }
+.seal-row { display:flex; align-items:center; gap:12px; max-width:270px; margin:0 auto 12px; }
+.seal-row i { flex:1; height:1px; background:var(--gold); opacity:.75; }
+.seal { width:36px; height:36px; border-radius:50% 46% 52% 48%; background:radial-gradient(circle at 37% 30%, var(--waxLit), var(--wax) 55%, var(--waxDeep));
+  box-shadow: inset 0 0 0 4px rgba(102,35,29,.35); flex:none; }
+.title { font-family:var(--cochin); font-size:31px; line-height:1.15; letter-spacing:.22em; padding-left:.22em; text-transform:uppercase; }
+.house { font:10px var(--mono); letter-spacing:.26em; text-transform:uppercase; color:var(--inkSoft); margin-top:8px; }
+.divider { height:1px; background:var(--line); margin-top:12px; }
+.thirds { display:grid; grid-template-columns:1fr 1fr 1.7fr; margin-top:12px; }
+.third { display:flex; flex-direction:column; gap:4px; align-items:center; padding:0 4px; }
+.third + .third { border-left:1px solid var(--line); }
+.third span { font:10px var(--mono); letter-spacing:.16em; text-transform:uppercase; color:var(--inkSoft); }
+.third b { font:700 13px var(--mono); color:var(--accent); }
+.third b em { font-style:normal; font-weight:400; color:var(--inkSoft); }
+.bar { height:8px; border-radius:4px; background:var(--line); margin-top:8px; overflow:hidden; }
+.bar i { display:block; height:100%; width:67%; background:var(--accent); border-radius:4px; }
+.count { font:10.5px var(--mono); color:var(--inkSoft); margin-top:8px; text-align:left; }
+.foot { display:flex; justify-content:space-between; margin-top:4px; font:700 10.5px var(--mono); color:var(--red); }
+.slot47 { height:47px; }
+
+/* stamped row (StampViews.swift StampedRow) */
+.stamped { padding:0 16px 16px; }
+.rule { height:1px; background:var(--line); }
+.rule.thin { opacity:.55; }
+.stamped .cells { display:flex; justify-content:flex-end; height:44px; }
+.stamped button { font:10px var(--mono); color:var(--inkSoft); background:none; border:0; border-left:1px solid var(--line); padding:0 12px; min-width:44px; min-height:44px; }
+
+/* package card (PackagesView.swift PackageRow) */
+.cards { padding:0 16px; display:flex; flex-direction:column; gap:8px; }
+.pkg { background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 1px var(--shadow); overflow:hidden; }
+.pkg-head { display:flex; align-items:center; gap:8px; padding:12px 12px 0; }
+.pkg-head .who { flex:1; min-width:0; }
+.seller { font:700 15px var(--cochin); }
+.date, .oid { font:11px var(--mono); color:var(--inkSoft); }
+.oid { text-decoration:underline; min-height:45px; display:flex; align-items:center; padding:0 12px; }
+.pill { font:700 12.5px var(--cochin); color:var(--manilaInk); background:var(--manila); border-radius:999px; padding:4px 8px; }
+.stamp-slot { height:48px; display:flex; align-items:center; padding:0 12px; }
+.mini { font:13px var(--cochin); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:4px 10px; background:var(--paper); }
+.line { display:flex; align-items:flex-start; gap:8px; border-top:1px solid var(--line); padding:12px 12px 12px 4px; }
+.box { width:45px; height:21px; display:flex; justify-content:center; flex:none; }
+.box i { width:30px; height:30px; margin-top:-5px; border:1.5px solid var(--inkSoft); border-radius:6px; display:block; }
+.line .nm { flex:1; min-width:0; }
+.line .nm b { display:block; font:400 15px var(--cochin); }
+.line .nm span { font:11px var(--mono); color:var(--inkSoft); }
+.line .pr { font:12px var(--mono); color:var(--inkSoft); }
+
+/* Ledger tab (LedgerTab.swift; src/app.jsx mdl-lh, mdl-lg, mdl-lcard, LedgerRow) */
+.ledger { padding:0 16px 16px; }
+.lh { font:12px var(--mono); letter-spacing:3.6px; text-transform:uppercase; color:var(--inkSoft); text-align:center; }
+.lg { font:11px var(--mono); letter-spacing:2.2px; text-transform:uppercase; color:var(--inkSoft); padding:16px 0 8px 4px; }
+.lcard { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.lrow { min-height:52px; padding:8px 16px; display:flex; align-items:center; gap:12px; }
+.lrow + .lrow { border-top:1px solid var(--line); }
+.lrow .t { flex:1; min-width:0; }
+.lrow .t b { display:block; font:400 20px/1.15 var(--cochin); }
+.lrow .t span { font:13.5px var(--cochin); color:var(--inkSoft); }
+.lrow .v { font:14px var(--mono); color:var(--ink); white-space:nowrap; }
+.lrow .v i { font-style:normal; color:var(--accent); }
+.lrow .chev { font:22px var(--cochin); color:var(--inkSoft); width:10px; }
+.reset { margin-top:20px; }
+.reset .lrow b { color:var(--red); }
+
+/* floating system tab bar, order Ledger, Orphaned, Tally, Packages (RootView.swift) */
+.tabbar { position:absolute; left:0; right:0; top:var(--bar-top); height:var(--bar-h); z-index:2; }
+.pillbar { margin:4px 20px 0; height:56px; border-radius:28px; background:rgba(252,246,234,.9); border:1px solid var(--line);
+  box-shadow:0 4px 16px rgba(51,46,63,.12); display:grid; grid-template-columns:repeat(4,1fr); padding:4px; }
+.tab { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; border-radius:24px; color:var(--ink); font:600 10px var(--sys); }
+.tab .g { font-size:17px; line-height:1; }
+.tab.on { color:var(--accent); background:var(--card); box-shadow:inset 0 0 0 1px var(--line); }
+.home { position:absolute; left:50%; bottom:8px; width:134px; height:5px; margin-left:-67px; border-radius:3px; background:var(--ink); }
+
+/* ---- device: iPhone Duo, open (inner screen), 951 x 669 pt; fold strip 455.5 to 495.5 pt (duo-fold-and-keyboard) ---- */
+.open { position:relative; width:951px; height:669px; background:var(--paper); border:1px solid var(--ink); border-radius:16px; overflow:hidden; }
+.open .scroll { padding-top:var(--sat); }
+.foldstrip { position:absolute; top:0; bottom:0; left:455.5px; width:40px; z-index:1; pointer-events:none;
+  background:repeating-linear-gradient(135deg, rgba(51,46,63,.05) 0 6px, transparent 6px 12px); border-left:1px dashed var(--line); border-right:1px dashed var(--line); }
+.open .tabbar { left:495.5px; top:auto; bottom:0; height:80px; }
+.fit { width:100%; overflow-x:auto; }
+@media (prefers-reduced-motion: no-preference) { nav a, nav button { transition:border-color .15s; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="banner" role="note">Sample. No figure, seller, card or date on this page is real.</div>
+  <h1>Head cells in the Ledger tab</h1>
+  <p class="sub">Showing, Sorted by and Orders from sit in a View group at the top of the Ledger tab, as the web app draws them now.
+    The working lists keep only the stamped row under the masthead. On iPhone this group is new: the native Ledger tab holds Data and Reset only.</p>
+  <nav aria-label="States">
+    <a href="#" data-link="">Both poses</a>
+    <a href="#s=folded" data-link="folded">Folded</a>
+    <a href="#s=unfolded" data-link="unfolded">Unfolded</a>
+    <button type="button" id="hide" aria-pressed="false">Hide this option</button>
+  </nav>
+  <p class="gone-line">This option is hidden. Press "Hide this option" again to show it.</p>
+
+  <section data-state="folded" aria-label="Folded">
+    <p class="pose">Folded, outer screen, 466 pt wide</p>
+    <div class="row">
+      <figure>
+        <div class="fold" data-device="iphone-duo-folded" aria-label="Packages tab, folded">
+          <div class="status"><span>9:41</span><span>100%</span></div>
+          <div class="scroll">
+            <div class="mh">
+              <div class="seal-row"><i></i><span class="seal"></span><i></i></div>
+              <div class="title">Manifest</div>
+              <div class="house">C.H Postal Company</div>
+              <div class="divider"></div>
+              <div class="thirds">
+                <div class="third"><span>cards</span><b>212<em>/318</em></b></div>
+                <div class="third"><span>packages</span><b>19<em>/42</em></b></div>
+                <div class="third"><span>value</span><b>$148<em>/$231</em></b></div>
+              </div>
+              <div class="bar"><i></i></div>
+              <div class="count">42 packages · autosaves</div>
+              <div class="foot"><span>106 still missing · $83.40</span><span></span></div>
+            </div>
+            <div class="slot47"></div>
+            <div class="stamped mark"><span class="tag left">Today: stamped row</span>
+              <div class="rule"></div>
+              <div class="cells"><button type="button">2 stamped ○</button></div>
+              <div class="rule thin"></div>
+            </div>
+            <div class="cards">
+              <div class="pkg">
+                <div class="pkg-head"><div class="who"><div class="seller">Pinewood Games</div><div class="date">2026-10-29</div></div><span class="pill">3 left</span></div>
+                <div class="oid">5A1C0E-7D2B-4F</div>
+                <div class="stamp-slot"><span class="mini">Stamp</span></div>
+                <div class="line"><span class="box"><i></i></span><span class="nm"><b>Sample card one</b><span>Set A · Near Mint</span></span><span class="pr">$0.42</span></div>
+                <div class="line"><span class="box"><i></i></span><span class="nm"><b>Sample card two</b><span>Set B · Lightly Played</span></span><span class="pr">$1.10</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="tabbar"><div class="pillbar">
+            <span class="tab"><span class="g">⚙</span>Ledger</span><span class="tab"><span class="g">✉</span>Orphaned</span>
+            <span class="tab"><span class="g">#</span>Tally</span><span class="tab on"><span class="g">▣</span>Packages</span>
+          </div><span class="home"></span></div>
+        </div>
+        <figcaption><b>Packages.</b> No head cells. The list opens on unreceived mail, sorted newest first, from all time. Tally looks the same: its sort menu and Hide received toggle move to the Ledger tab.</figcaption>
+      </figure>
+
+      <figure>
+        <div class="fold" data-device="iphone-duo-folded" aria-label="Ledger tab, folded">
+          <div class="status"><span>9:41</span><span>100%</span></div>
+          <div class="scroll">
+            <div class="mh">
+              <div class="seal-row"><i></i><span class="seal"></span><i></i></div>
+              <div class="title">Manifest</div>
+              <div class="house">C.H Postal Company</div>
+              <div class="divider"></div>
+              <div class="thirds">
+                <div class="third"><span>cards</span><b>212<em>/318</em></b></div>
+                <div class="third"><span>packages</span><b>19<em>/42</em></b></div>
+                <div class="third"><span>value</span><b>$148<em>/$231</em></b></div>
+              </div>
+              <div class="bar"><i></i></div>
+              <div class="count">42 packages · autosaves</div>
+              <div class="foot"><span>106 still missing · $83.40</span><span></span></div>
+            </div>
+            <div class="slot47"></div>
+            <div class="ledger">
+              <div id="view-group">
+              <div class="lh">Ledger</div>
+              <div class="mark new" style="margin-top:6px"><span class="tag in" style="top:8px">New: View group (the web has it today)</span>
+                <div class="lg" style="padding-top:10px">View</div>
+                <div class="lcard">
+                  <div class="lrow"><span class="t"><b>Showing</b></span><span class="v"><i>●</i> Unreceived</span></div>
+                  <div class="lrow"><span class="t"><b>Sorted by</b></span><span class="v">Newest</span><span class="chev">›</span></div>
+                  <div class="lrow"><span class="t"><b>Orders from</b><span>214 lines</span></span><span class="v">All time</span><span class="chev">›</span></div>
+                </div>
+              </div>
+              </div>
+              <div class="mark" style="margin-top:12px"><span class="tag in" style="top:6px">Today: Data and Reset</span>
+                <div class="lg" style="padding-top:4px">Data</div>
+                <div class="lcard">
+                  <div class="lrow"><span class="t"><b>Sync</b><span>Last sync 9:38</span></span><span class="v">On</span><span class="chev">›</span></div>
+                  <div class="lrow"><span class="t"><b>History</b></span><span class="v">Saved versions</span><span class="chev">›</span></div>
+                  <div class="lrow"><span class="t"><b>Backup</b></span></div>
+                </div>
+                <div class="lcard reset"><div class="lrow"><span class="t"><b>Reset</b></span></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="tabbar"><div class="pillbar">
+            <span class="tab on"><span class="g">⚙</span>Ledger</span><span class="tab"><span class="g">✉</span>Orphaned</span>
+            <span class="tab"><span class="g">#</span>Tally</span><span class="tab"><span class="g">▣</span>Packages</span>
+          </div><span class="home"></span></div>
+        </div>
+        <figcaption><b>Ledger.</b> The View group sits above Data. A change to a cell needs a trip to this tab and back to the list.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section data-state="unfolded" aria-label="Unfolded">
+    <p class="pose">Unfolded, inner screen, 951 pt wide</p>
+    <figure>
+      <div class="fit">
+      <div class="open" data-device="iphone-duo-unfolded" aria-label="Ledger tab, unfolded">
+        <div class="status"><span>9:41</span><span>100%</span></div>
+        <div class="foldstrip" aria-hidden="true"></div>
+        <div class="scroll">
+          <div class="mh">
+            <div class="seal-row"><i></i><span class="seal"></span><i></i></div>
+            <div class="title">Manifest</div>
+            <div class="house">C.H Postal Company</div>
+            <div class="divider"></div>
+            <div class="thirds">
+              <div class="third"><span>cards</span><b>212<em>/318</em></b></div>
+              <div class="third"><span>packages</span><b>19<em>/42</em></b></div>
+              <div class="third"><span>value</span><b>$148<em>/$231</em></b></div>
+            </div>
+            <div class="bar"><i></i></div>
+            <div class="count">42 packages · autosaves</div>
+            <div class="foot"><span>106 still missing · $83.40</span><span></span></div>
+          </div>
+          <div class="slot47"></div>
+          <div class="ledger">
+            <div class="lh">Ledger</div>
+            <div class="mark new" style="margin-top:6px"><span class="tag in" style="top:8px">New: View group</span>
+              <div class="lg" style="padding-top:10px">View</div>
+              <div class="lcard">
+                <div class="lrow"><span class="t"><b>Showing</b></span><span class="v"><i>●</i> Unreceived</span></div>
+                <div class="lrow"><span class="t"><b>Sorted by</b></span><span class="v">Newest</span><span class="chev">›</span></div>
+                <div class="lrow"><span class="t"><b>Orders from</b><span>214 lines</span></span><span class="v">All time</span><span class="chev">›</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="tabbar"><div class="pillbar">
+          <span class="tab on"><span class="g">⚙</span>Ledger</span><span class="tab"><span class="g">✉</span>Orphaned</span>
+          <span class="tab"><span class="g">#</span>Tally</span><span class="tab"><span class="g">▣</span>Packages</span>
+        </div></div>
+      </div>
+      </div>
+      <figcaption><b>Ledger, open.</b> The Ledger tab does not spread over two pages (DuoSpread.spreads), so one page runs across the fold. The bar sits under the right page (DuoSpine.swift).</figcaption>
+    </figure>
+  </section>
+</main>
+<script>
+(function () {
+  function state() { var m = /(?:^|[#&])s=([\w-]+)/.exec(location.hash); return m ? m[1] : ""; }
+  function draw() {
+    var s = state();
+    document.querySelectorAll("section[data-state]").forEach(function (el) { el.hidden = !!s && el.dataset.state !== s; });
+    document.querySelectorAll("nav a[data-link]").forEach(function (a) { a.setAttribute("aria-current", String(a.dataset.link === s)); });
+  }
+  window.addEventListener("hashchange", draw);
+  draw();
+  var hide = document.getElementById("hide");
+  hide.addEventListener("click", function () {
+    var on = document.body.classList.toggle("gone");
+    hide.setAttribute("aria-pressed", String(on));
+  });
+})();
+</script>
+</body>
+</html>
