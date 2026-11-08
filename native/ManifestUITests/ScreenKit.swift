@@ -55,6 +55,28 @@ enum ScreenKit {
         return e.exists
     }
 
+    /// A hand check-in on a line (Packages: checkin:, Tally: tally-checkin:), waited out until its label reads Undo.
+    @MainActor static func checkIn(_ app: XCUIApplication, _ key: String, prefix: String = "checkin:",
+                                   file: StaticString = #filePath, line: UInt = #line) {
+        tap(app, prefix + key, file: file, line: line)
+        wait("label BEGINSWITH 'Undo check in'", for: el(app, prefix + key), "the check-in of \(key) did not land", file: file, line: line)
+    }
+
+    /// Opens the Tally row `name` by its toggle, waits for its copy `copy` to list, and brings the whole row on screen.
+    @MainActor static func openTallyRow(_ app: XCUIApplication, _ name: String, copy: String, file: StaticString = #filePath, line: UInt = #line) {
+        tap(app, "tally-toggle:\(name)", file: file, line: line)
+        XCTAssertTrue(el(app, "tally-copy:\(copy)").waitForExistence(timeout: 5), "the \(name) row did not list its copies", file: file, line: line)
+        app.reveal(el(app, "tally-row:\(name)"), whole: true)
+    }
+
+    /// Keeps one screenshot of the app in the test's results under `name`, kept past the run.
+    @MainActor static func attach(_ app: XCUIApplication, _ name: String, to test: XCTestCase) {
+        let shot = XCTAttachment(screenshot: app.screenshot())
+        shot.name = name
+        shot.lifetime = .keepAlways
+        test.add(shot)
+    }
+
     /// The first stamp: Stamp, a kind, an optional note, Save. It ends with the editor gone.
     @MainActor static func stamp(_ app: XCUIApplication, _ gk: String, kind: String, note: String? = nil,
                                  file: StaticString = #filePath, line: UInt = #line) {
