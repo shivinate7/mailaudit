@@ -17,9 +17,10 @@
 //     "Undo check in <name>" (the Packages control, same wording).
 //   Sort: the Sorted by row "ledger-sort" on the Ledger tab (its View group). Its option grid "ledger-sort-grid"
 //     lists the six labels as buttons, once Tally is the last list tab left.
-//   Search: the floating pill's field "find-field" (lane restyle-step8). Its pill has no clear control.
-//   Empty search: no row, and exactly one button whose label has "clear" in it, labelled "Clear search".
-//     The system clear button of a search field counts, so a builder using one must not add a second.
+//   Search: the floating pill's field "find-field" (lane restyle-step8). Its clear control "find-clear" shows while the
+//     field holds text (owner item 46, answer a, 2026-11-08 10:55 CST).
+//   Empty search: no row, the empty state's one button labelled "Clear search" outside the pill, and the pill's own clear
+//     control. An empty search therefore shows two clear controls: the pill's, and the empty state's.
 //
 // testTextClippedAuditCanFail is a control, not a red-first case. It passes on main: the clipped-text audit does
 // find clipped text in the existing screens at a very narrow width. That is all it shows. No Tally view exists,
@@ -333,7 +334,8 @@ final class TallyUITests: XCTestCase {
 
     // MARK: an empty search
 
-    /// A search with no hit shows no rows and exactly one Clear control. The control brings the rows back.
+    /// A search with no hit shows no rows, the empty state's one Clear search control outside the pill, and the pill's own clear
+    /// control (owner item 46, answer a, 2026-11-08 10:55 CST). The empty state's control brings the rows back.
     func testEmptySearchShowsOneClearControl() throws {
         let app = launch()
         openTally(app)
@@ -345,10 +347,12 @@ final class TallyUITests: XCTestCase {
         let clear = clearControls(app)
         XCTAssertTrue(clear.firstMatch.waitForExistence(timeout: 5), "an empty search shows no Clear control")
         XCTAssertEqual(elements(app, prefix: "tally-row:").count, 0, "rows still show for a search with no hit")
-        XCTAssertEqual(clear.count, 1, "an empty search shows \(clear.count) Clear controls: \(clear.allElementsBoundByIndex.map(\.label))")
-        XCTAssertEqual(clear.firstMatch.label, "Clear search")
+        XCTAssertTrue(element(app, "find-clear").exists, "the find pill shows no clear control while its field holds zzzz")
+        let empty = clear.matching(NSPredicate(format: "identifier != %@", "find-clear"))
+        XCTAssertEqual(empty.count, 1, "an empty search shows \(empty.count) Clear controls outside the pill: \(empty.allElementsBoundByIndex.map(\.label))")
+        XCTAssertEqual(empty.firstMatch.label, "Clear search")
 
-        clear.firstMatch.tap()
+        empty.firstMatch.tap()
         XCTAssertTrue(element(app, "tally-row:Lightning Bolt").waitForExistence(timeout: 5), "Clear search did not bring the rows back")
         XCTAssertEqual(clearControls(app).count, 0, "a Clear control remains with the search empty")
     }
