@@ -38,7 +38,7 @@ Gold standard for each row: the work runs in a cloud session with the same verdi
 | GitHub sync to `mailaudit-data` | mostly retired | Per `live-verification`, no device writes it; the ledger lives on the Worker. Adding the repo makes a two-repo session, which loads no repo hooks | do not attach it; a one-off read runs on the Mac | not needed |
 | PRs and merges (deploy branch, batch runner) | partly | `gh pr create` in `npm run deploy` gets 403. The batch runner already merges from the cloud through the GitHub MCP tools and the merge tool's cloud role (`session-tiers`, `standing-merge-grant`). The REST route `gh api .../pulls` is untried | the GitHub MCP tools, or `gh api` REST calls | unmeasured |
 | Coordinator, triage and lane relay | partly | A cloud session cannot message back, and a local parent gets no note from it. Lanes report through PRs and the shared notes folder only | keep the coordinator local, and run cloud lanes that report by PR; or run each lane as a subagent inside one cloud session | per the app's session-tool notes; unmeasured in practice |
-| Swift package tests (`swift test`) | no | Swift on Linux has no JavaScriptCore or Apple frameworks | the `native` CI job on `macos-26`, already built | CI only |
+| Swift package tests (`swift test`) | no | `RulesEngine.swift` imports JavaScriptCore, which Swift on Linux lacks, and `Package.swift` lists only macOS and iOS platforms | the `native` CI job on `macos-26`, already built | CI only |
 | App build, simulator UI tests (`make native-check`) | no | Needs Xcode and a simulator | `milestone.yml` on the hosted `xcode-27` image, already built, dispatch only; no green run yet (`app-build-waits-xcode-27`) | none green |
 | Duo UI tests and fold | no | Needs the shared Duo simulator, the `hinge` tool and sim-gate grants (`one-simulator-per-mac`) | Mac only; no hosted runner has the Duo | n/a |
 | Native screenshots for restyle steps | no | Needs a simulator | a macOS CI job that runs UI tests and uploads screenshots; unbuilt | unmeasured |
@@ -54,13 +54,16 @@ Gold standard for each row: the work runs in a cloud session with the same verdi
 `docs/plans/cloud-setup.sh`:
 
 1. Run the claude-settings paste block. It is unchanged, so `~/.claude` keeps one home.
-2. Find the mailaudit clone by its `package.json` name. The docs do not say whether the clone exists when the setup script runs, so with no clone it skips the repo steps.
-3. Run `npm ci`, then `npx playwright install --with-deps chromium`.
-4. Print one verdict line per step and always exit 0.
+2. Install Chromium for Playwright 1.63.0, the version pinned in `package.json`, with its system libraries. This step needs no clone.
+3. Print one verdict line per step and always exit 0.
 
-Checked: `bash -n` and shellcheck are clean. On this Mac the script prints `skipped: not Linux` and `no clone found`. A run on a cloud VM is unmeasured.
+The script provisions the VM only, as the docs advise. `npm ci` is project setup, and the docs put it in a SessionStart hook. Nothing shows that a `node_modules` written at setup time survives into a session's fresh clone. Until the hook lands, each cloud session runs `npm ci` first.
 
-The snapshot can be up to about seven days old, so `node_modules` can lag the lockfile on main. The docs' fix is a repo SessionStart hook that runs `npm ci` on every session. That needs `.claude/settings.json`, which is a config change, so it is a follow-up and is not in this lane.
+The docs do not say which user a session runs as. The browser lands in root's cache. If a session is not root, it runs the Chromium install again without `--with-deps`.
+
+Setup must finish in about five minutes, or no snapshot is taken. The claude-settings install is capped at 240 s. The total with the browser install is unmeasured.
+
+Checked: `bash -n` and shellcheck are clean. On this Mac the script prints `skipped: not Linux` for step 1. A run on a cloud VM is unmeasured.
 
 ## Environment variables
 
@@ -83,7 +86,7 @@ Names only. No value goes in this repo, which is public.
 
 Custom: tick the default list, then add the hosts each work kind needs.
 
-- `cdn.playwright.dev` and `playwright.download.prss.microsoft.com`, for the Chromium download. The current host for Playwright 1.63 is unmeasured; read it from the failing install log.
+- `cdn.playwright.dev` and `playwright.download.prss.microsoft.com`, for the Chromium download. These are the two download hosts in `playwright-core` 1.63.0's `lib/coreBundle.js`, read 2026-11-08. `--with-deps` also runs apt. Whether the Ubuntu mirrors are on the Trusted list is unmeasured.
 - The Worker host, only for live probes. Its network secret makes it reachable anyway.
 - `api.cloudflare.com`, only if Worker deploys move to the cloud.
 
