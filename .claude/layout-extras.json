@@ -13,5 +13,12 @@
     "tools": { "path": "tools", "about": "The config that the ios-ship tool reads to archive and upload the iOS app." },
     "worker": { "path": "worker", "about": "The Cloudflare Worker that syncs the ledger, with its pure rules and tests." }
   },
-  "waiting-page": "https://claude.ai/artifact/FBKSLCBLJsvfNGeePvDz13"
+  "waiting-page": "https://claude.ai/artifact/FBKSLCBLJsvfNGeePvDz13",
+  "artifacts": [
+    {"id": "duo-blind-concepts", "url": "https://claude.ai/artifact/TxqjpdPD4AoGewGQhf6ATr", "role": "reference", "account": "gmail", "collections": []},
+    {"id": "manifest-specimen-book", "url": "https://claude.ai/artifact/1HEDEms6wsWFbQbHbPudXL", "role": "reference", "account": "gmail", "collections": []},
+    {"id": "manifest-motion-studies", "url": "https://claude.ai/artifact/DPjt6MQ2vs7KJxyR1VZF41", "role": "reference", "account": "gmail", "collections": []},
+    {"id": "manifest-order-notes", "url": "https://claude.ai/artifact/KxRALxk3hFSd2QSWJyUHuS", "role": "reference", "account": "gmail", "collections": []},
+    {"id": "filter-bar-review", "url": "https://claude.ai/artifact/LGuBBmE1EC38zHjXZVV9Jz", "role": "reference", "account": "gmail", "collections": []}
+  ]
 }
