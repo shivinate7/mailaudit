@@ -52,7 +52,10 @@ Rules:
 - A line whose price or quantity cell does not read as a number, or that has no product id (no image), is unreadable. It is dropped, never merged with a default (findings 3 and 4). The good lines still merge. The reply counts the dropped lines, and the status records kind `unreadable`.
 - A shipping-status text the parser does not know reads as blank, so the refresh skips it (finding 7 asks a test for it).
 - A failure (`empty`, `no-items`, or a posted failure kind) merges nothing.
-- A status write that fails is not hidden: the route replies 500 (finding 6).
+- A status write that fails is not hidden: the route replies 500 (finding 6). The merge runs first and stands.
+- `pages: []` is `empty`. Lines that are all unreadable leave nothing for `parseItems`, so they are `no-items`.
+- A 400, 401 or 413 writes no status: it is not a run.
+- `items` counts the lines this post kept. `added` is `stats.itemsAdded`, or on an empty store the lines merged. `lastFailure.count` is the unreadable count, present only for kind `unreadable`.
 
 Replies:
 
