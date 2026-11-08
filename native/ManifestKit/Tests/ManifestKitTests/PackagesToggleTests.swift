@@ -24,6 +24,11 @@ import XCTest
 final class PackagesToggleTests: XCTestCase {
     static let checkedKey = "A1|0|pLightningBolt"
     static let sentinel = 777
+    /// Urza's Saga sits alone in D1, so a tap on it touches no other envelope.
+    static let urzaLine = "D1|0|pUrzasSaga"
+    /// Lightning Bolt and Path to Exile in C1, the envelope the held card and the typed card post to.
+    static let heldBoltC1 = "C1|0|pLightningBolt"
+    static let pathC1 = "C1|1|pPathtoExile"
 
     /// A ledger copy in this run's folder (test-temp-standard), removed at teardown.
     func freshLedgerURL() throws -> URL {
@@ -109,6 +114,13 @@ final class PackagesToggleTests: XCTestCase {
         XCTAssertNil(model.checkInError, "a successful save must clear the error")
     }
 
+    /// The save fails from here on: an empty folder sits where the ledger file is, so the atomic write cannot land. A case
+    /// restores the file by removing the folder. Every failed-tap case uses this one step.
+    func breakSaves(_ url: URL) throws {
+        try FileManager.default.removeItem(at: url)
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: false)
+    }
+
     /// Card in Hand's line tap is `tap(key:)`, which drops the throw, and HandScreen reads PackagesModel.checkInError. So this is
     /// the model half of DuoHandUITests.testFailedLineCheckInShowsInHand: a tap whose save fails leaves the failure line that
     /// test expects, and saves nothing. GREEN on main by design: it pins the line's text and the `tap` path, and the UI test
@@ -122,8 +134,7 @@ final class PackagesToggleTests: XCTestCase {
         let model = PackagesModel(engine: engine, store: store)
         try await model.load()
 
-        try FileManager.default.removeItem(at: url)
-        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: false)
+        try breakSaves(url)
         await model.tap(key: Self.checkedKey)
 
         let line = try XCTUnwrap(model.checkInError, "a tap whose save fails must leave a failure line for the hand page")
@@ -136,6 +147,36 @@ final class PackagesToggleTests: XCTestCase {
         await model.tap(key: Self.checkedKey)
         XCTAssertNil(model.checkInError, "a good save must clear the failure line")
         XCTAssertEqual(store.received()[Self.checkedKey], 1, "the second tap did not check the line in")
+    }
+
+    /// HandScreen's Post runs HandModel.post, then the Packages reload (afterWrite). A line tap that failed left its failure on
+    /// checkInError, which HandScreen shows as hand-checkin-error. A Post that saves must clear it. This runs the same two model
+    /// calls in that order. The save fails only for the failed tap.
+    func testGoodPostClearsTheFailedLineCheckInError() async throws {
+        let url = try freshLedgerURL()
+        let store = LedgerStore(fileURL: url, now: { 1_786_543_380_000 })
+        let engine = try RulesEngine(bundleURL: RulesGoldenTests.bundleURL)
+        try store.load()
+        let model = PackagesModel(engine: engine, store: store)
+        try await model.load()
+        let hand = HandModel(engine: engine, store: store)
+        // Lightning Bolt sits in three open envelopes, so it is held and offers nothing. Path to Exile names one of them.
+        try await hand.type("Lightning Bolt")
+
+        try breakSaves(url)
+        await model.tap(key: Self.urzaLine)
+        XCTAssertNotNil(model.checkInError, "the setup is real: the failed line check-in left its error")
+
+        try FileManager.default.removeItem(at: url)
+        try await hand.type("Path to Exile")
+        XCTAssertNotNil(hand.offer, "the setup is real: the next card names one envelope, so it offers a post")
+        try await hand.post()
+        try? await model.load()
+
+        XCTAssertNil(hand.error, "the setup is real: the Post saved")
+        XCTAssertEqual(store.received(), [Self.heldBoltC1: 1, Self.pathC1: 1],
+                       "the setup is real: the Post checked in the held copy and the typed one")
+        XCTAssertNil(model.checkInError, "a good Post must clear the failed line check-in's error, or hand-checkin-error stays up")
     }
 
     /// The real bundle with `override` appended. The override reassigns the global
