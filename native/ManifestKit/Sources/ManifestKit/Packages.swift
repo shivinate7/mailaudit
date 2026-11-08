@@ -55,6 +55,8 @@ public final class PackagesModel {
     public private(set) var stampKinds: [StampKind] = []
     /// The packages the bundle's isRefundStamp names, so a check-in can refresh a refunded package's pill.
     @ObservationIgnored private var refundGks: Set<String> = []
+    /// The store's postsSaved at the last load: a Post since then is a good write, so the next load drops the old failure line.
+    @ObservationIgnored private var postsSeen = 0
 
     public init(engine: RulesEngine, store: LedgerStore) {
         self.engine = engine
@@ -111,6 +113,8 @@ public final class PackagesModel {
         bands = [:]
         refundPills = [:]
         apply(updates)
+        // Only a Post clears the line here. A reload from sync or a reply must not hide a failure the owner has not retried.
+        if store.postsSaved != postsSeen { postsSeen = store.postsSaved; checkInError = nil }
         if let failure { throw failure }
     }
 

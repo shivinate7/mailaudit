@@ -105,6 +105,7 @@ public final class HandModel {
         try store.commit(noting: &error) {
             for s in o.plan { store.setReceived(s.itemKey, count: (got[s.itemKey] ?? 0) + s.take) }
         }
+        store.postsSaved += 1
         offer = nil
         held = heldAfterPost
         hits = []
