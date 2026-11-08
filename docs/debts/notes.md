@@ -77,3 +77,4 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 - 2026-10-28, Duo wave 3 design review: Card in Hand shows "Type the card in hand" twice on hand-open, as the field prompt and as the empty-state line (`HandScreen.swift`). Not re-checked since the restyle.
 - 2026-10-28, duo-hand-screen review round 2: `heldCopies` is derived in Swift (`HandModel.swift`, the plan's copies beyond the typed one), and `native-card-state-in-swift` does not list it.
 - By 2026-10-28, duo-spine-shell review round 1: launch shows the system bar for one pass before the first geometry read. Not re-checked since the restyle.
+- 2026-11-08, pin-versions-folder review round 1: no test pins that `ManifestApp.versionsURL` calls `VersionStore.folder(besideLedger:)`. A literal `versions` put back there passes. Decision: `native-files-are-frozen`.
