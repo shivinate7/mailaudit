@@ -509,8 +509,8 @@ final class DuoHandUITests: XCTestCase {
     }
 
     /// Pose: flat, system keys up, text at AccessibilityXL, no box. The typed name leaves one match row, and that row must lie wholly
-    /// above the keys' drawn top (duo-fold-and-keyboard); the measured figures sit in debt hand-match-row-ax3-unmeasured. The Suspense and Released cases show a box and set no text size, so no
-    /// case pins this row with no box at large text.
+    /// above the keys' drawn top (duo-fold-and-keyboard); the measured figures sit in debt hand-match-row-ax3-unmeasured. The
+    /// Suspense and Released cases show a box and set no text size, so no other case pins this row with no box at large text.
     func testMatchRowClearsTheKeysAtAccessibilityXL() {
         let app = XCUIApplication.launchedOnSeed(extra: ["-UIPreferredContentSizeCategoryName", Self.accessibilityXL])
         guard app.requirePose(.flat) else { return }
