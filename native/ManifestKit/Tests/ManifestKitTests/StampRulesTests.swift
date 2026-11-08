@@ -35,14 +35,8 @@ import XCTest
 @MainActor
 final class StampRulesTests: XCTestCase {
     /// One rules call on the real bundle. A thrown error is reported as a failure, not a crash.
-    func rule(_ name: String, _ args: String) async -> Any? {
-        do {
-            let text = try await RulesEngine(bundleURL: RulesGoldenTests.bundleURL).call(name, args)
-            return try JSONSerialization.jsonObject(with: Data(text.utf8), options: [.fragmentsAllowed])
-        } catch {
-            XCTFail("\(name) threw \(error)")
-            return nil
-        }
+    func rule(_ name: String, _ args: String, file: StaticString = #filePath, line: UInt = #line) async -> Any? {
+        await bundleRule(name, args, file: file, line: line)
     }
 
     // MARK: the bundle exports the rules
@@ -115,6 +109,7 @@ final class StampRulesTests: XCTestCase {
     func testPackagesModelListsWhatTheBundlesIsRefundStampKeeps() async throws {
         let model = PackagesModel(engine: try await shimmedEngine(), store: try await ledger())
         try await model.load()
+        try await model.setHideReceived(false)  // Showing is not the subject; F1 is in, so Unreceived drops it
         XCTAssertEqual(model.rows.map(\.gk).sorted(), ["A1::Seller A", "E1::Seller E", "F1::Seller F", "R1::Seller S"])
     }
 

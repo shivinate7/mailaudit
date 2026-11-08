@@ -204,6 +204,16 @@ export function rankCandidates(entries, pkgs, received) {
   return { list, tied, explainable };
 }
 
+/* How long the app has to be in the background before coming back counts as
+   "reopening it" rather than "glancing away". iOS keeps a home-screen web app's
+   page alive when you switch away, so without this the only thing that resets
+   Showing is the system evicting the page — which can be days. A short hop out
+   to read a tracking number and straight back is not a new session, and
+   flipping the list under someone mid-check-in is the mis-tap invariant no-layout-shift-under-pointer
+   exists to prevent. A minute is comfortably longer than that hop and far
+   shorter than any real "I'll come back to this later". */
+export const RESUME_RESET_MS = 60_000;
+
 /* ---------- lane S3: filters, pooling, sorts and totals ----------
    Each takes its state and clock as arguments. Sticky rows and the frozen
    sort stay in src/app.jsx (no-layout-shift-under-pointer): the component
@@ -228,6 +238,114 @@ export function dateRange(filter, now) {
     return { from: now - n * DAY_MS, to: null };
   }
   return { from: now - filter.preset * DAY_MS, to: null };
+}
+
+/* ---------- the By month picker ----------
+   Months are read off the orders that exist, newest first, so a custom range is
+   picked rather than typed: iOS's numeric keypad has no hyphen key, so a masked
+   date field is uncompletable on the only device this ships to, and a month can
+   never be 2026-02-31. The web's ruled head and the native Ledger tab both read them. */
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/* "YYYY-MM" keys of the items' order dates, newest first */
+export function monthKeysOf(items) {
+  const seen = new Set();
+  for (const it of items) {
+    /* Read the month off an ISO string directly. Going through Date and
+       local getters shifts it: Date.parse("2026-05-01") is UTC midnight, and
+       getMonth() in any behind-UTC zone rolls it back to April. Older
+       exports use M/D/YY, which parses as LOCAL midnight — so those want the
+       local getters, and only those. */
+    const iso = /^(\d{4})-(\d{2})/.exec(it.date || "");
+    if (iso) {
+      seen.add(`${iso[1]}-${iso[2]}`);
+      continue;
+    }
+    const t = Date.parse(it.date);
+    if (!t) continue;
+    const d = new Date(t);
+    seen.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
+  return [...seen].sort().reverse();
+}
+
+/* the year is only worth printing when the ledger spans more than one */
+export const spansOneYear = (keys) => new Set(keys.map((k) => k.slice(0, 4))).size <= 1;
+
+export const monthLabel = (k, oneYear) =>
+  MON[+k.slice(5, 7) - 1] + (oneYear ? "" : ` ’${k.slice(2, 4)}`);
+
+/* the picker's cells: [{ key, label, from, to }], newest first; from and to are the range the cell picks */
+export function monthChoices(items) {
+  const keys = monthKeysOf(items);
+  const one = spansOneYear(keys);
+  return keys.map((key) => ({ key, label: monthLabel(key, one), ...monthRange(key) }));
+}
+
+/* a custom range that starts on the 1st and stays inside one month is shown as that
+   month, so picking "Aug" reads back as "Aug" rather than as "Custom". The end day is
+   not checked: 08-01..08-15 reads "Aug" too, as the web's monthKey in src/app.jsx does */
+export const monthKeyOf = (filter) =>
+  filter.preset === "custom" &&
+  filter.from &&
+  filter.to &&
+  filter.from.slice(0, 7) === filter.to.slice(0, 7) &&
+  filter.from.endsWith("-01")
+    ? filter.from.slice(0, 7)
+    : null;
+
+/* the month's label for a filter that monthKeyOf reads as a month, else null */
+export function rangeMonthLabel(filter, items) {
+  const k = monthKeyOf(filter);
+  return k ? monthLabel(k, spansOneYear(monthKeysOf(items))) : null;
+}
+
+/* the custom range a month stands for: its first and last day as ISO days */
+export function monthRange(k) {
+  const [y, m] = k.split("-").map(Number);
+  const last = new Date(y, m, 0).getDate(); // day 0 of next month
+  return { from: `${k}-01`, to: `${k}-${String(last).padStart(2, "0")}` };
+}
+
+/* The Orders from presets and the Sorted by keys, with their labels. The web's controls and the native
+   rows both read these, so the collapsed value and the chips cannot drift. The preset values are
+   deliberately heterogeneous ("all", raw numbers, "days", "custom"): the numeric ones are used
+   arithmetically when the range is applied. Do not stringify them. */
+export const RANGES = [
+  ["all", "All time"],
+  [30, "30 days"],
+  [45, "45 days"],
+  [60, "60 days"],
+  [90, "90 days"],
+  ["days", "Last…"],
+  ["custom", "By month"],
+];
+
+export const PKG_SORTS = [
+  ["newest", "Newest"],
+  ["oldest", "Oldest"],
+  ["value", "$ remaining"],
+  ["rate", "Unit rate"],
+  ["seller", "Seller A–Z"],
+];
+
+/* the Last field's stepper: a blank, missing, non-numeric or "0" field starts from 21 (|| reads 0 as
+   unset), the step is added, and the result is clamped to at least 1 */
+export function bumpDays(filter, by) {
+  const n = Math.max(1, (parseInt(filter.days, 10) || 21) + by);
+  return { ...filter, preset: "days", days: String(n) };
+}
+
+/* the Orders from row's value */
+export function rangeLabel(filter, items) {
+  const p = filter.preset;
+  if (p === "days") return filter.days ? `Last ${filter.days}d` : "Last…";
+  if (p === "custom") {
+    const m = rangeMonthLabel(filter, items);
+    if (m) return m;
+    return filter.from || filter.to ? "Custom" : "By month";
+  }
+  return (RANGES.find(([v]) => v === p) || RANGES[0])[1];
 }
 
 export function inRange(items, range) {
@@ -299,6 +417,14 @@ export function nextStamp(cur, patch, today, now) {
    without its year. */
 export const stampBandText = (s) =>
   `${(STAMP_LABEL[s.kind] ?? s.kind).toUpperCase()} · ${(s.at || "").slice(5)}`;
+
+/* The text a package's stamp adds to Find: the kind's label, then the note, "" with no live stamp.
+   `stamps` crosses as data, so the native client (JSON in, JSON out) can search a stamp too; the web
+   builds the function filterPackages takes from the same table. */
+export const stampTextOf = (stamps) => (gk) => {
+  const s = stamps?.[gk];
+  return hasStamp(s) ? `${STAMP_LABEL[s.kind] || ""} ${s.note || ""}` : "";
+};
 
 /* callers pass the range-applied, refund-inclusive items, so a refunded
    package is in the stamped list (stamped-filter-on-the-pipeline) */
@@ -391,9 +517,11 @@ export function sortPackages(pkgs, key, received) {
 const lineHit = (it, q) =>
   [it.name, it.set, it.seller, it.orderId].join(" ").toLowerCase().includes(q);
 
-/* opts {query, hideDone, received, sticky, revealed, stampText(gk)}; input order kept */
+/* opts {query, hideDone, received, sticky, revealed, stampText(gk) | stamps}; input order kept.
+   A caller that cannot pass a function (the native client) passes `stamps`, the stamps map. */
 export function filterPackages(pkgs, opts) {
-  const { hideDone, received, sticky, revealed, stampText } = opts;
+  const { hideDone, received, sticky, revealed } = opts;
+  const stampText = opts.stampText ?? stampTextOf(opts.stamps);
   const q = opts.query.trim().toLowerCase();
   return pkgs
     .map((p) => {
@@ -446,6 +574,33 @@ export function totalsOf(items, received) {
     missingVal += it.price * (it.qty - g);
   }
   return { total, got, missingVal, val };
+}
+
+/* Mark all received / Clear check-ins (undo-removes-only-its-delta). `items` is a package's lines, or a Tally row's
+   every copy. on: each line's key is its qty; off: each key is deleted, never stored as 0. Other keys are kept. */
+export function bulkApply(items, on, received) {
+  const next = { ...received };
+  for (const it of items) {
+    if (on) next[it.key] = it.qty;
+    else delete next[it.key];
+  }
+  return next;
+}
+
+/* What a Mark all adds per line: qty minus the clamped count now. The caller keeps it for the Undo. */
+export const bulkTakes = (items, received) =>
+  items.map((it) => ({ itemKey: it.key, take: it.qty - gotOfItem(it, received), qty: it.qty }));
+
+/* Takes back a press's own delta: each take's key is clamp(now - take, 0, qty), deleted at 0. Other keys are kept,
+   so a hand edit made after the press survives. */
+export function undoBulk(takes, received) {
+  const next = { ...received };
+  for (const { itemKey, take, qty } of takes) {
+    const v = Math.min((next[itemKey] || 0) - take, qty);
+    if (v > 0) next[itemKey] = v;
+    else delete next[itemKey];
+  }
+  return next;
 }
 
 export function outstandingNames(items, received) {

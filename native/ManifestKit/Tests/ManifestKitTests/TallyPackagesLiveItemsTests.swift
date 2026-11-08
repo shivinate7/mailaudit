@@ -82,8 +82,11 @@ enum LiveFixture {
 
     static func engine() throws -> RulesEngine { try RulesEngine(bundleURL: RulesGoldenTests.bundleURL) }
 
-    /// A loaded store over a ledger file with the items, the shared received map and the stamps.
-    static func store(items: [[String: Any]], stamps: [LiveStamp], engine e: RulesEngine) async throws -> LedgerStore {
+    /// A loaded store over a ledger file with the items, the received map and the stamps. `received` is the shared map and
+    /// `now` the fixed clock unless a case passes its own (the bulk cases move the clock and count the saves). `envelopes` is
+    /// the raw envelope pile; a case without one writes no `envelopes` key, as before.
+    static func store(items: [[String: Any]], stamps: [LiveStamp], engine e: RulesEngine, received: [String: Int] = LiveFixture.received,
+                      now: @escaping () -> Double = { 1_786_543_380_000 }, envelopes: [[String: Any]] = []) async throws -> LedgerStore {
         let itemsJSON = String(decoding: try JSONSerialization.data(withJSONObject: items), as: UTF8.self)
         let grouped = try await e.call("groupPackages", "[\(itemsJSON)]")
         let packages = try XCTUnwrap(try JSONSerialization.jsonObject(with: Data(grouped.utf8)) as? [[String: Any]])
@@ -94,9 +97,10 @@ enum LiveFixture {
             stamped[gk] = ["kind": s.kind, "note": "", "at": "2026-07-02", "updatedAt": 1_786_543_380_000] as [String: Any]
         }
         let url = try PhotoTestKit.tempDir("n12b-live").appending(path: "ledger.json")
-        let doc: [String: Any] = ["mailday": 1, "items": items, "received": received, "stamps": stamped]
+        var doc: [String: Any] = ["mailday": 1, "items": items, "received": received, "stamps": stamped]
+        if !envelopes.isEmpty { doc["envelopes"] = envelopes }
         try JSONSerialization.data(withJSONObject: doc).write(to: url)
-        let store = LedgerStore(fileURL: url, now: { 1_786_543_380_000 })
+        let store = LedgerStore(fileURL: url, now: now)
         try store.load()
         return store
     }
@@ -116,6 +120,8 @@ final class TallyLiveItemsTests: XCTestCase {
         let e = try LiveFixture.engine()
         let model = TallyModel(engine: e, store: try await LiveFixture.store(items: items, stamps: stamps, engine: e))
         try await model.load()
+        // Showing is not the subject: the pooled rows are read as Everything (ruled-head-showing-unreceived).
+        try await model.setHideReceived(false)
         return model.rows
     }
 
@@ -179,6 +185,8 @@ final class PackagesLiveItemsTests: XCTestCase {
         let e = try LiveFixture.engine()
         let m = PackagesModel(engine: e, store: try await LiveFixture.store(items: items, stamps: stamps, engine: e))
         try await m.load()
+        // Showing is not the subject: the list is read as Everything (ruled-head-showing-unreceived).
+        try await m.setHideReceived(false)
         return m
     }
 

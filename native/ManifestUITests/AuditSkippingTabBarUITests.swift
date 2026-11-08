@@ -6,7 +6,7 @@
 // Every other issue, and any issue with no element, still fails.
 //
 // It also holds the owner's two other narrow skips (audit-skips-measured-flags): skipMeasuredContrastFlags,
-// the contrast skip on four named elements, and skipKeyboardPredictionCells, the system keyboard's cells in the
+// the contrast skip on five named elements, and skipKeyboardPredictionCells, the system keyboard's cells in the
 // two composer audits. The Tally audits call skipMeasuredContrastFlags. No skip covers the Tally meta line: its audit
 // raises no finding (TallyUITests.testAccessibilityAuditTallyScreenWithATruncatedMetaLine). That test reads its
 // skips back through auditNamingElements, which is auditSkippingTabBar with each failing issue named.
@@ -16,6 +16,7 @@
 //
 // Every key here is fake. The tests read no Keychain item.
 
+import ManifestKit
 import XCTest
 
 /// The tab-bar skip, the owner's ruling of 2026-11-06 (item 148, pick b, audit-skips-measured-flags): true when any
@@ -28,13 +29,15 @@ func isUnderTabBar(_ element: CGRect?, bar: CGRect, window: CGRect) -> Bool {
 }
 
 /// The contrast skip the owner ruled on (decision audit-skips-measured-flags): the Orphaned mini buttons Cancel, Edit
-/// and Discard and the Tally "left" line, whose colours measure above the floor but flag in the audit. It skips an
-/// issue only when the audit type is contrast AND the element's accessibility identifier is a ruled one:
-/// `orphaned-cancel` exactly, or the prefix `discard:`, `orphaned-edit:` or `tally-left:` (the id of the envelope or
-/// the product name follows). It never reads a label.
+/// and Discard, the Tally "left" line, and the done line's detail text (provisional, waiting-page item 45), whose colours
+/// measure above the floor but flag in the audit. It skips an issue only when the audit type is contrast AND the element's
+/// accessibility identifier is a ruled one: `orphaned-cancel` exactly, or the prefix `discard:`, `orphaned-edit:`,
+/// `tally-left:` or `PackageCard.doneDetailIDPrefix` (the id of the envelope, the product name or the item key follows).
+/// The done-detail prefix is read from the product constant, never copied. It never reads a label.
 func isMeasuredContrastFlag(_ type: XCUIAccessibilityAuditType, identifier: String?) -> Bool {
     guard type == .contrast, let identifier else { return false }
-    return identifier == "orphaned-cancel" || ["discard:", "orphaned-edit:", "tally-left:"].contains(where: identifier.hasPrefix)
+    return identifier == "orphaned-cancel"
+        || ["discard:", "orphaned-edit:", "tally-left:", PackageCard.doneDetailIDPrefix].contains(where: identifier.hasPrefix)
 }
 
 /// The ruled: closure of auditSkippingTabBar (the skipping: closure of auditNamingElements), over a real audit issue.
@@ -76,18 +79,30 @@ extension XCUIApplication {
         max(windows.firstMatch.frame.minY, statusBars.firstMatch.exists ? statusBars.firstMatch.frame.maxY : 0)
     }
 
-    /// The one scroll helper of these tests. Plain: swipe up until the element can be tapped, at most 5 swipes.
+    /// The bottom of the band a list scrolls in: the top of the Find pill when one is drawn, else the tab bar's top. The pill
+    /// floats above the bar (FindPill.swift), so a drag that starts on it moves nothing, and a row under it is not free to
+    /// read. The pill's own frame is `find-pill`, the container of the field.
+    var listBottom: CGFloat {
+        let bar = tabBars.firstMatch.frame.minY
+        let pill = descendants(matching: .any).matching(identifier: "find-pill").firstMatch
+        return pill.exists && !pill.frame.isEmpty ? min(bar, pill.frame.minY) : bar
+    }
+
+    /// The one scroll helper of these tests. Plain: swipe up until the element exists and can be tapped, at most 5 swipes.
+    /// A lazy list mounts a row only near the screen, so an element not there yet is swiped toward, a second at a time.
     /// `whole`: for a test that records frames before a tap. A tap on an element that is off screen scrolls the
-    /// list and moves every frame, so the element must lie fully between the status bar and the tab bar first.
+    /// list and moves every frame, so the element must lie fully between the status bar and the Find pill or the tab
+    /// bar (listBottom) first.
     /// It drags the list by the measured gap (a drag that holds before it lifts has no fling, so it cannot
     /// overshoot), then waits until the element's frame stops changing. A drag can start on a control, so a
     /// caller reads its at-rest state after this call, never before.
     func reveal(_ element: XCUIElement, whole: Bool = false) {
         guard whole else {
             var swipes = 0
-            while !element.isHittable && swipes < 5 {
+            while !(element.exists && element.isHittable) && swipes < 5 {
                 swipeUp()
                 swipes += 1
+                _ = element.waitForExistence(timeout: 1)
             }
             return
         }
@@ -97,7 +112,7 @@ extension XCUIApplication {
         }
         let screen = windows.firstMatch.frame
         let top = listTop
-        let bottom = tabBars.firstMatch.frame.minY
+        let bottom = listBottom
         func inView() -> Bool { element.frame.minY >= top && element.frame.maxY <= bottom }
         func settle() {
             var last = element.frame
@@ -253,6 +268,8 @@ final class AuditSkippingTabBarUITests: XCTestCase {
         XCTAssertTrue(isMeasuredContrastFlag(.contrast, identifier: "discard:env-1-abc"), "contrast on an envelope's Discard")
         XCTAssertTrue(isMeasuredContrastFlag(.contrast, identifier: "orphaned-edit:env-1-abc"), "contrast on an envelope's Edit")
         XCTAssertTrue(isMeasuredContrastFlag(.contrast, identifier: "tally-left:Lightning Bolt"), "contrast on a Tally row's left line")
+        XCTAssertTrue(isMeasuredContrastFlag(.contrast, identifier: PackageCard.detailID(key: "A1|0|pLightningBolt", state: .done)),
+                      "contrast on a done line's detail, the id the product gives it")
         // kept: contrast on another element
         XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "orphaned-save"), "contrast on Save, outside the ruling")
         XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "tally-row:Lightning Bolt"), "contrast on a Tally row")
@@ -263,13 +280,19 @@ final class AuditSkippingTabBarUITests: XCTestCase {
         XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "x-discard:1"), "an identifier that only contains the Discard prefix")
         XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "x-orphaned-edit:1"), "an identifier that only contains the Edit prefix")
         XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "x-tally-left:1"), "an identifier that only contains the left-line prefix")
+        XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "done-detail"), "the detail prefix without its colon")
+        XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "done-detailx:A1"), "an identifier that only starts like the detail prefix")
+        XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "x-done-detail:1"), "an identifier that only contains the detail prefix")
+        XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: PackageCard.detailID(key: "A1|0|pLightningBolt", state: .open)),
+                       "an open line's detail carries no id, so it is kept")
         XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "Discard"), "a label is not an identifier")
         XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: "Edit"), "the Edit label is not an identifier")
         XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: ""), "an element with no identifier")
         XCTAssertFalse(isMeasuredContrastFlag(.contrast, identifier: nil), "an issue with no element")
         // kept: another audit type on a ruled element
         for type in [XCUIAccessibilityAuditType.textClipped, .hitRegion, .dynamicType, .sufficientElementDescription] {
-            for id in ["orphaned-cancel", "discard:env-1-abc", "orphaned-edit:env-1-abc", "tally-left:Lightning Bolt"] {
+            for id in ["orphaned-cancel", "discard:env-1-abc", "orphaned-edit:env-1-abc", "tally-left:Lightning Bolt",
+                       PackageCard.detailID(key: "A1|0|pLightningBolt", state: .done)] {
                 XCTAssertFalse(isMeasuredContrastFlag(type, identifier: id), "audit type \(type.rawValue) on \(id)")
             }
         }

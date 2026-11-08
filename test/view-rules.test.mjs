@@ -99,7 +99,38 @@
                    stamp.at without its year.
      refundedPill(items, received) -> "N left \u00B7 refunded" (U+00B7), N the copies a package still
                    owes (outstandingOf, an over-count clamps per line), or null when none is owed,
-                   as packagePill does. It takes the same two arguments as packagePill. */
+                   as packagePill does. It takes the same two arguments as packagePill.
+
+   Step 7 pins the bulk rules of Mark all received and Clear check-ins (undo-removes-only-its-delta,
+   recent-checks-can-be-undone). They move here from the inline setReceived calls in src/app.jsx bulkSet and
+   undoAssign, so the web and the native Packages card and Tally row share one home. `items` is a package's lines,
+   or a Tally row's every copy (item.items, filtered ones too). `received` maps item key to count. None of the
+   three mutates its input, and none reads a clock:
+     bulkApply(items, on, received) -> a new received map. on: each line's key is its qty (an over-count is
+                   lowered to qty, as bulkSet does). off: each line's key is deleted, never stored as 0.
+                   Keys that are no line of `items` are kept as they are.
+     bulkTakes(items, received) -> [{itemKey, take, qty}], one per line a Mark all adds copies to:
+                   take = qty minus the line's count now, the count clamped to qty. A line with nothing to add
+                   may be left out or listed with take 0, and the cases ignore it. The caller keeps the list
+                   for the Undo, so the undo removes this press's delta and no more.
+     undoBulk(takes, received) -> a new received map. Each take's key is clamp(now - take, 0, qty), and a key
+                   that reaches 0 is deleted, never stored as 0. Keys with no take are kept as they are, so a
+                   hand edit made after the press survives. A snapshot restore would erase it.
+   The Clear ask's "N" is not a new export. It is totalsOf(items, received).got: the copies in now, each line
+   clamped to its qty, a stray key ignored. It is neither the lines in nor totalQty. V39.8 pins it.
+
+   Step 9 pins the Last field's stepper and the labels of the Orders from and Sorted by rows. They move
+   here from src/app.jsx (bumpDays, RANGES, PKG_SORTS and rangeLabel), so the web and the native rows
+   share one home. Each is read as a constant or a plain call:
+     bumpDays(filter, by) -> {...filter, preset: "days", days: String(n)}, n = max(1, (parseInt(days, 10)
+                   || 21) + by). A "0" field counts as unset, as the web's || does.
+     RANGES -> [[preset, label], ...] in order: all "All time", 30 "30 days", 45, 60, 90, "days" "Last…",
+                   "custom" "By month". A constant.
+     PKG_SORTS -> [[key, label], ...] in order: newest "Newest", oldest "Oldest", value "$ remaining",
+                   rate "Unit rate", seller "Seller A–Z". A constant.
+     rangeLabel(filter, items) -> the Orders from row's value: "Last Nd", "Last…" with no days, a whole
+                   month's name (rangeMonthLabel), "Custom" or "By month" for a custom range that is not one,
+                   else the RANGES label, and "All time" for a preset it does not name. V42 pins it. */
 
 const DAY = 86400000;
 import { failLine } from "./fail-line.mjs";
@@ -148,6 +179,15 @@ const isRefundStamp = fn("isRefundStamp");
 const nextStamp = fn("nextStamp");
 const stampBandText = fn("stampBandText");
 const refundedPill = fn("refundedPill");
+const bulkApply = fn("bulkApply");
+const bulkTakes = fn("bulkTakes");
+const undoBulk = fn("undoBulk");
+const monthChoices = fn("monthChoices");
+const monthKeyOf = fn("monthKeyOf");
+const rangeMonthLabel = fn("rangeMonthLabel");
+const monthRange = fn("monthRange");
+const bumpDays = fn("bumpDays");
+const rangeLabel = fn("rangeLabel");
 
 /* ---------- assertion helpers ---------- */
 
@@ -1644,6 +1684,171 @@ eq(refundedPill(CARD, { zzz: 4 }), "4 left · refunded", "V38.5 a stray received
 eq(refundedPill(one(1, 1), {}), "1 left · refunded", "V38.6 one copy: 1 left, no plural form");
 eq(refundedPill(CARD, { a: 1, b: 1, c: 2 }), null, "V38.7a every copy in: no pill, never 0 left");
 eq(refundedPill([], {}), null, "V38.7b a package with no lines: no pill");
+
+/* ── V39 the bulk rules: Mark all received, Clear check-ins and the Undo of a Mark all. bulkApply is the web's
+   bulkSet (src/app.jsx) as a pure rule. A missing key is `lacksKey`, because eq cannot tell a deleted key from one
+   set to undefined, and JSON drops both. Mutants: a stored 0 for a cleared key; qty - got added to the count
+   instead of qty written; a key outside the package touched; the input mutated. */
+const hasKey = (m, k) => !!m && typeof m === "object" && Object.hasOwn(m, k);
+/* absence needs a map to be absent from, so a missing export cannot pass an absence case */
+const lacksKey = (m, k) => !!m && typeof m === "object" && !Object.hasOwn(m, k);
+/* every line a Mark all adds to; a take of 0 is ignored, as the contract says. No list at all is no empty list. */
+const bulkTakesOf = (items, rec) => {
+  const t = bulkTakes(items, rec);
+  return Array.isArray(t) ? t.filter((x) => x.take > 0) : "bulkTakes returned no list";
+};
+
+eq(bulkApply(CARD, true, {}), { a: 1, b: 1, c: 2 }, "V39.1 Mark all writes every line's qty");
+eq(bulkApply(CARD, true, { a: 1, c: 1 }), { a: 1, b: 1, c: 2 }, "V39.1b a line part in goes to its qty, not qty added to it");
+eq(bulkApply(CARD, true, { zzz: 3 }), { a: 1, b: 1, c: 2, zzz: 3 }, "V39.2 a key that is no line of the package is kept");
+eq(bulkApply(CARD, true, { c: 5 }), { a: 1, b: 1, c: 2 }, "V39.3 an over-count is lowered to qty, as bulkSet does");
+{
+  const out = bulkApply(CARD, false, { a: 1, b: 1, c: 1, zzz: 3 });
+  eq(out, { zzz: 3 }, "V39.4a Clear deletes every line's key and keeps the stray one");
+  ok(lacksKey(out, "a") && lacksKey(out, "b") && lacksKey(out, "c") && hasKey(out, "zzz"), "V39.4b Clear deletes the keys, it does not store 0");
+}
+eq(bulkApply(CARD, false, {}), {}, "V39.5 Clear on a package with nothing in writes no key");
+eq(bulkApply([], true, { a: 1 }), { a: 1 }, "V39.6 a package with no lines changes nothing");
+{
+  const rec = { a: 1, zzz: 3 };
+  const on = bulkApply(CARD, true, rec), off = bulkApply(CARD, false, rec);
+  ok(!!on && !!off && on !== rec && off !== rec && show(rec) === show({ a: 1, zzz: 3 }), "V39.7 the input map is not mutated, and a new map comes back");
+}
+
+/* V39.8 the Clear ask's N: totalsOf's got, which exists today. Lines in a: 1, c: 2 are 2, the card's totalQty is 4,
+   and N is 3. Mutants: N counts lines; N is totalQty; an over-count or a stray key adds to N. */
+eq(totalsOf(CARD, { a: 1, c: 2 }).got, 3, "V39.8a N counts copies: 3, not the 2 lines in and not totalQty 4");
+eq(totalsOf(CARD, { c: 5 }).got, 2, "V39.8b an over-count clamps to the line's qty");
+eq(totalsOf(CARD, { zzz: 4 }).got, 0, "V39.8c a stray key is no check-in");
+eq(totalsOf(CARD, {}).got, 0, "V39.8d nothing in: N is 0, and Clear is hidden");
+
+/* V39.9 bulkTakes: what a Mark all adds, per line. Mutants: take = qty; the clamp dropped, so an over-count gives a negative take. */
+eq(bulkTakesOf(CARD, {}), [{ itemKey: "a", take: 1, qty: 1 }, { itemKey: "b", take: 1, qty: 1 }, { itemKey: "c", take: 2, qty: 2 }], "V39.9a nothing in: every line's qty is taken");
+eq(bulkTakesOf(CARD, { a: 1, c: 1 }), [{ itemKey: "b", take: 1, qty: 1 }, { itemKey: "c", take: 1, qty: 2 }], "V39.9b a line already in takes nothing, a part-in line takes the rest");
+eq(bulkTakesOf(CARD, { a: 1, b: 1, c: 5 }), [], "V39.9c every line in or over: nothing taken, and no negative take");
+eq(bulkTakesOf(CARD, { c: 5 }), [{ itemKey: "a", take: 1, qty: 1 }, { itemKey: "b", take: 1, qty: 1 }], "V39.9d an over-count takes nothing: the clamped figure, not 5");
+eq(bulkTakesOf([], {}), [], "V39.9e a package with no lines takes nothing");
+
+/* V39.10 undoBulk subtracts the delta. Mutants: the key stored as 0; undo restores a snapshot; the upper clamp dropped. */
+{
+  const out = undoBulk(bulkTakesOf(CARD, {}), { a: 1, b: 1, c: 2 });
+  eq(out, {}, "V39.10a undoing a press that took everything leaves nothing in");
+  ok(lacksKey(out, "a") && lacksKey(out, "b") && lacksKey(out, "c"), "V39.10b a key that falls to 0 is deleted, not stored as 0");
+}
+eq(undoBulk([{ itemKey: "c", take: 1, qty: 2 }], { c: 2 }), { c: 1 }, "V39.11 2 minus the 1 the press took is 1");
+eq(undoBulk([{ itemKey: "c", take: 2, qty: 2 }], { c: 1 }), {}, "V39.12a a count already below the take falls to 0, never negative");
+ok(lacksKey(undoBulk([{ itemKey: "c", take: 2, qty: 2 }], { c: 1 }), "c"), "V39.12b and its key is deleted");
+eq(undoBulk([{ itemKey: "c", take: 1, qty: 2 }], { c: 5 }), { c: 2 }, "V39.13 a count over qty is clamped to qty, never left above it");
+eq(undoBulk(bulkTakesOf(CARD, {}), { zzz: 3 }), { zzz: 3 }, "V39.14 a key with no take is kept");
+{
+  const rec = { a: 1, b: 1, c: 2 };
+  const out = undoBulk(bulkTakesOf(CARD, {}), rec);
+  ok(!!out && out !== rec && show(rec) === show({ a: 1, b: 1, c: 2 }), "V39.15 the input map is not mutated, and a new map comes back");
+}
+eq(undoBulk([], { a: 1 }), { a: 1 }, "V39.16 no takes: the map is as it was");
+
+/* V39.17 a hand edit made after the press survives (undo-removes-only-its-delta, web test 14.5). The ledger held a and
+   half of c. The press took b and the other half of c. Then the owner un-checked a and checked zzz. Undo takes back b
+   and that half of c, and leaves the later edits. A snapshot restore gives { a: 1, c: 1 }, bringing a back and losing zzz.
+   It is the only case here a fixture of all-zero lines could not tell apart. */
+{
+  const before = { a: 1, c: 1 };
+  const takes = bulkTakesOf(CARD, before);
+  const afterPress = bulkApply(CARD, true, before);
+  eq(afterPress, { a: 1, b: 1, c: 2 }, "V39.17a anchor: the press filled every line");
+  const edited = { b: 1, c: 2, zzz: 1 }; // a un-checked, zzz checked, after the press
+  eq(undoBulk(takes, edited), { c: 1, zzz: 1 }, "V39.17b undo removes only the press's delta: a stays un-checked, zzz stays in");
+}
+
+/* V39.18 a Mark all and its undo round trip, from any start where no line is over qty. */
+for (const start of [{}, { a: 1 }, { c: 1 }, { a: 1, b: 1, c: 1 }, { b: 1, zzz: 2 }]) {
+  eq(undoBulk(bulkTakesOf(CARD, start), bulkApply(CARD, true, start)), start, `V39.18 undo of Mark all from ${JSON.stringify(start)} gives the start back`);
+}
+
+/* ── V40 the By month picker's rules (Orders from, by month). monthRange is a month's first and last day, leap years
+   included. monthKeyOf reads a custom range that is exactly one whole month as that month. rangeMonthLabel is the
+   label that range reads, with the year only when the ledger spans more than one. monthChoices is the picker's cells,
+   newest first, one per month the ledger holds. Mutants: the last day fixed at 30; a range that starts off the 1st read
+   as a month; the cells oldest first; the year printed on a one-year ledger. */
+const custom = (from, to) => ({ preset: "custom", from, to });
+const datedItems = (...dates) => dates.map((date) => ({ date }));
+
+eq(monthRange("2026-08"), { from: "2026-08-01", to: "2026-08-31" }, "V40.1a August has 31 days");
+eq(monthRange("2026-04"), { from: "2026-04-01", to: "2026-04-30" }, "V40.1b April has 30 days");
+eq(monthRange("2024-02"), { from: "2024-02-01", to: "2024-02-29" }, "V40.1c February 2024 is a leap month: 29 days");
+eq(monthRange("2023-02"), { from: "2023-02-01", to: "2023-02-28" }, "V40.1d February 2023 has 28 days");
+eq(monthRange("2026-12"), { from: "2026-12-01", to: "2026-12-31" }, "V40.1e December ends on the 31st");
+
+eq(monthKeyOf(custom("2026-08-01", "2026-08-31")), "2026-08", "V40.2a a custom range of one whole month reads as that month");
+eq(monthKeyOf({ preset: "custom", ...monthRange("2024-02") }), "2024-02", "V40.2b the leap month reads as its month");
+eq(monthKeyOf({ preset: 30, from: "2026-08-01", to: "2026-08-31" }), null, "V40.2c a preset that is not custom is not a month");
+eq(monthKeyOf(custom("2026-07-15", "2026-08-10")), null, "V40.2d a range across two months is not a month");
+eq(monthKeyOf(custom("2026-08-02", "2026-08-31")), null, "V40.2e a range that does not start on the 1st is not a whole month");
+eq(monthKeyOf(custom("2026-08-01", "")), null, "V40.2f an open end is not a month");
+eq(monthKeyOf(custom("", "")), null, "V40.2g no range is not a month");
+
+const oneYear = datedItems("2026-05-01", "2026-07-29", "2026-08-03");
+eq(rangeMonthLabel(custom("2026-08-01", "2026-08-31"), oneYear), "Aug", "V40.3a a one-year ledger reads the month alone");
+eq(rangeMonthLabel(custom("2026-08-01", "2026-08-31"), datedItems("2025-12-03", "2026-08-03")), "Aug ’26",
+  "V40.3b a ledger over two years prints the year, with a right single quote");
+eq(rangeMonthLabel(custom("2026-08-02", "2026-08-31"), oneYear), null, "V40.3c a range that is no whole month has no month label");
+
+const cells = monthChoices(oneYear);
+eq(cells.map((c) => c.key), ["2026-08", "2026-07", "2026-05"], "V40.4a the cells are the months the ledger holds, newest first");
+eq(cells.map((c) => c.label), ["Aug", "Jul", "May"], "V40.4b one year on the ledger: each label is the month alone");
+eq(cells[0], { key: "2026-08", label: "Aug", from: "2026-08-01", to: "2026-08-31" }, "V40.4c a cell carries the whole month it picks");
+eq(monthChoices(datedItems("2025-12-03", "2026-01-09")).map((c) => c.label), ["Jan ’26", "Dec ’25"],
+  "V40.4d two years: each label carries its year, newest first");
+eq(monthChoices([]), [], "V40.4e an empty ledger offers no month");
+const fullYear = Array.from({ length: 12 }, (_, i) => ({ date: `2026-${String(i + 1).padStart(2, "0")}-15` }));
+const fullCells = monthChoices(fullYear);
+eq(fullCells.length, 12, "V40.4f a full year offers twelve cells");
+eq([fullCells[0].label, fullCells[11].label], ["Dec", "Jan"], "V40.4g the full year runs December down to January");
+
+/* ── V41 bumpDays: the Last field's stepper (src/app.jsx bumpDays, which moves here). The web reads the field with
+   parseInt(days, 10) || 21, so a blank, missing or non-numeric field starts from 21, and so does "0": || takes 0 as
+   false. The step is added, then clamped to at least 1. Mutants: ?? for || (a "0" then gives 1); the clamp dropped;
+   the preset left as it was instead of days. */
+ok(typeof loaded.bumpDays === "function", "V41.0 bumpDays is not exported from src/view-rules.mjs");
+const LAST = { preset: "days", from: "", to: "" };
+eq(bumpDays({ ...LAST, days: "0" }, 1), { ...LAST, days: "22" }, "V41.1 a Last field of 0 steps from 21 (|| reads 0 as unset): 0 + 1 is 22");
+eq(bumpDays({ ...LAST, days: "" }, 1), { ...LAST, days: "22" }, "V41.2a a blank Last field steps from 21: 22");
+eq(bumpDays({ preset: "days", from: "", to: "" }, 1), { ...LAST, days: "22" }, "V41.2b a missing Last field steps from 21: 22");
+eq(bumpDays({ ...LAST, days: "abc" }, 1), { ...LAST, days: "22" }, "V41.2c a non-numeric Last field steps from 21: 22");
+eq(bumpDays({ ...LAST, days: "5" }, 1), { ...LAST, days: "6" }, "V41.3 a Last field of 5 steps up to 6");
+eq(bumpDays({ ...LAST, days: "1" }, -1), { ...LAST, days: "1" }, "V41.4 one step down from 1 stays at 1: the clamp holds at 1");
+eq(bumpDays({ ...LAST, days: "-3" }, 1), { ...LAST, days: "1" }, "V41.5 a negative Last field clamps to 1 after the step");
+eq(bumpDays({ preset: 30, from: "", to: "" }, 1), { ...LAST, days: "22" }, "V41.6 a preset that is not days switches to days, from 21");
+
+/* ── V42 the labels of Orders from and Sorted by (src/app.jsx RANGES, PKG_SORTS and rangeLabel, which move here).
+   The ellipsis is U+2026 and the seller dash U+2013; both are read byte-exact. An unknown Sorted by key reads
+   Newest and an unknown preset reads All time, as the web's fallbacks do. Mutants: three dots for the ellipsis; a
+   hyphen for the dash; the d dropped from "Last 14d"; a blank custom range read as Custom. */
+ok(Array.isArray(loaded.RANGES), "V42.0 RANGES is not exported from src/view-rules.mjs");
+eq(
+  loaded.RANGES,
+  [["all", "All time"], [30, "30 days"], [45, "45 days"], [60, "60 days"], [90, "90 days"], ["days", "Last…"], ["custom", "By month"]],
+  "V42.1 RANGES: the seven presets in order, labels byte-exact"
+);
+ok(Array.isArray(loaded.PKG_SORTS), "V42.2 PKG_SORTS is not exported from src/view-rules.mjs");
+eq(
+  loaded.PKG_SORTS,
+  [["newest", "Newest"], ["oldest", "Oldest"], ["value", "$ remaining"], ["rate", "Unit rate"], ["seller", "Seller A–Z"]],
+  "V42.3 PKG_SORTS: five keys in order, labels byte-exact"
+);
+eq(rangeLabel({ ...LAST, days: "14" }, []), "Last 14d", "V42.4 a Last field of 14 reads Last 14d");
+eq(rangeLabel({ ...LAST, days: "" }, []), "Last…", "V42.5a a blank Last field reads Last…");
+eq(rangeLabel({ preset: "days", from: "", to: "" }, []), "Last…", "V42.5b a missing Last field reads Last…");
+eq(rangeLabel(custom("2026-08-01", "2026-08-31"), oneYear), "Aug", "V42.6a a whole month on a one-year ledger reads Aug");
+eq(
+  rangeLabel(custom("2026-08-01", "2026-08-31"), datedItems("2025-12-03", "2026-08-03")),
+  "Aug ’26",
+  "V42.6b a whole month on a two-year ledger carries its year"
+);
+eq(rangeLabel(custom("2026-08-02", "2026-08-31"), oneYear), "Custom", "V42.7 a custom range that is no whole month reads Custom");
+eq(rangeLabel(custom("", ""), oneYear), "By month", "V42.8 an empty custom range reads By month");
+eq(rangeLabel({ preset: 30, from: "", to: "" }, []), "30 days", "V42.9 a preset reads its RANGES label");
+eq(rangeLabel({ preset: "zzz", from: "", to: "" }, []), "All time", "V42.10 an unknown preset reads All time");
 
 /* ---------- report ---------- */
 

@@ -35,6 +35,7 @@ final class HandStampedFilterTests: XCTestCase {
         let store = try await LiveFixture.store(items: LiveFixture.base, stamps: LiveFixture.baseStamps, engine: engine)
         let model = PackagesModel(engine: engine, store: store)
         try await model.load()
+        try await model.setHideReceived(false)
         return (model, store)
     }
 
@@ -56,6 +57,7 @@ final class HandStampedFilterTests: XCTestCase {
                                                 stamps: LiveFixture.baseStamps + [LiveFixture.refundStamp], engine: engine)
         let model = PackagesModel(engine: engine, store: store)
         try await model.load()
+        try await model.setHideReceived(false)
         let live = model.rows.map(\.gk).sorted()
         XCTAssertEqual(live.count, 4, "anchor: the filter off lists the four live packages")
         XCTAssertFalse(live.contains(Self.r1), "anchor: the refunded package is not live")

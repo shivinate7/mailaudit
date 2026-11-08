@@ -35,29 +35,14 @@ final class PackagesShellUITests: XCTestCase {
 
     // MARK: helpers
 
-    func launch(width: Int? = nil) -> XCUIApplication {
-        let app = XCUIApplication()
-        var args = ["-ManifestUITestSeed"]
-        if let width { args += ["-ManifestUITestWidth", String(width)] }
-        app.launchArguments = args
-        app.launch()
-        return app
-    }
+    func launch(width: Int? = nil) -> XCUIApplication { ShellUITest.launch(width: width) }
 
     func elements(_ app: XCUIApplication, prefix: String) -> [XCUIElement] {
-        app.descendants(matching: .any)
-            .matching(NSPredicate(format: "identifier BEGINSWITH %@", prefix))
-            .allElementsBoundByIndex
+        ShellUITest.elements(app, prefix: prefix)
     }
 
     /// Frame of every package row and every check-in control, by identifier.
-    func layoutFrames(_ app: XCUIApplication) -> [String: CGRect] {
-        var out: [String: CGRect] = [:]
-        for el in elements(app, prefix: "package-row:") + elements(app, prefix: "checkin:") {
-            out[el.identifier] = el.frame
-        }
-        return out
-    }
+    func layoutFrames(_ app: XCUIApplication) -> [String: CGRect] { ShellUITest.layoutFrames(app) }
 
     func tab(_ app: XCUIApplication, _ title: String) -> XCUIElement {
         app.tabBars.buttons[title]
@@ -78,12 +63,7 @@ final class PackagesShellUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed, "the check-in did not land")
     }
 
-    func attach(_ app: XCUIApplication, _ name: String) {
-        let shot = XCTAttachment(screenshot: app.screenshot())
-        shot.name = name
-        shot.lifetime = .keepAlways
-        add(shot)
-    }
+    func attach(_ app: XCUIApplication, _ name: String) { ScreenKit.attach(app, name, to: self) }
 
     // MARK: tabs
 

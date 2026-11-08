@@ -15,12 +15,25 @@ struct PackagesView: View {
     let onChange: () async throws -> Void
     /// Set only on two pages side by side: the control that opens Card in Hand (duo-card-in-hand).
     var openHand: (() -> Void)?
+    /// The last view-level read that failed, so the rows on screen are never silently stale.
+    @State private var failure: String?
+    @Environment(\.duoSpread) private var spread
+    @Environment(\.duoHandOpen) private var handOpen
+
+    /// The one-page Find pill. The open Duo's pill is `findPillOnDuo`, which Card in Hand covers while it is open (duo ruling Q5).
+    private var pillShown: Bool { model.hasItems && spread.pages(for: .cardInHand) == nil }
+    private var duoPillShown: Bool { model.hasItems && spread.pages(for: .cardInHand) != nil }
+
+    private func run(_ op: () async throws -> Void) async {
+        do { try await op(); failure = nil } catch { failure = "Could not update the list. \(error.localizedDescription)" }
+    }
 
     var body: some View {
         MastheadScreen(masthead: masthead, tab: .packages, sync: sync, openSync: openSync,
-                       ruledRow: AnyView(StampedRow(count: model.stampedCount, on: model.showStamped) {
+                       ruledRow: AnyView(RuledRow(canceled: canceledCell,
+                                                  stamped: .init(count: model.stampedCount, on: model.showStamped) {
                            Task { try? await model.toggleStamped() }  // a failed read is in model.checkInError, shown below
-                       })) {
+                       }))) {
             VStack(spacing: 0) {
                 if let openHand {
                     HStack {
@@ -31,20 +44,63 @@ struct PackagesView: View {
                 }
                 if let notice { Text(notice).font(.footnote).padding(8) }
                 LazyVStack(spacing: 8) {
-                    ForEach(model.rows, id: \.gk) { pkg in
-                        PackageRow(pkg: pkg, model: model, masthead: masthead, onChange: onChange)
+                    // A Mark all that completes its package drops the card under Unreceived, and the Undo went with it: the shared
+                    // notice takes the card's place, so the held Undo keeps a control (undo-removes-only-its-delta).
+                    // One whose Undo another write ended keeps its place, inert, so the cards below do not move under the pointer.
+                    let notices = (model.vacatedUndo.map { [(notice: $0, inert: false)] } ?? []) + model.lapsedUndos.map { (notice: $0, inert: true) }
+                    ForEach(Array(model.rows.enumerated()), id: \.element.gk) { i, pkg in
+                        ForEach(notices.filter { $0.notice.index == i }, id: \.notice.gk) { vacatedNotice($0.notice, inert: $0.inert) }
+                        PackageRow(pkg: pkg, model: model, masthead: masthead, onChange: onChange).id(Self.jumpID(pkg.gk))
                     }
+                    ForEach(notices.filter { $0.notice.index >= model.rows.count }, id: \.notice.gk) { vacatedNotice($0.notice, inert: $0.inert) }
+                    if model.rows.isEmpty && model.hasItems { empty }
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
+                JumpToOrder(options: model.options, listed: Set(model.rows.map(\.gk)), id: Self.jumpID)
+                CanceledListSection(options: model.options)
             }
         }
         .overlay(alignment: .bottom) {
-            if let e = model.checkInError {
+            if let e = model.checkInError ?? failure {
                 Text(e).font(.footnote).padding(12).frame(maxWidth: .infinity)
                     .background(.regularMaterial).accessibilityIdentifier("checkin-error")
             }
         }
+        // On one page the pill is an inset. On the open Duo it floats over the right page, above the bar, and the list scrolls clear of it
+        // (the bar's own room is DuoSystemBar's margin; this one holds the bar and the pill).
+        .contentMargins(.bottom, duoPillShown ? FindPillMetrics.duoRoom : 0, for: .scrollContent)
+        .findPill(show: pillShown, query: model.query) { q in Task { await run { try await model.setQuery(q) } } }
+        .findPillOnDuo(show: model.hasItems && !handOpen, right: spread.pages(for: .cardInHand)?.right, query: model.query) { q in Task { await run { try await model.setQuery(q) } } }
+        .task { await run { try await model.viewOpened() } }  // another tab may have changed Find
+    }
+
+    /// The canceled cell, only while the ledger holds a canceled order.
+    private var canceledCell: RuledRow.Canceled? {
+        model.options.canceledCount > 0 ? .init(count: model.options.canceledCount, on: model.options.showCanceled) { model.options.showCanceled.toggle() } : nil
+    }
+
+    /// The scroll id of a card, for the jump from a Tally order id.
+    private static func jumpID(_ gk: String) -> String { "package-jump:\(gk)" }
+
+    private func vacatedNotice(_ v: PackagesModel.VacatedUndo, inert: Bool) -> some View {
+        UndoNoticeBar(line: v.line, undoID: "bulk-vacated-undo:\(v.gk)",
+                      undo: { await bulkWrite(masthead: masthead, onChange: onChange) { try await model.undoBulk() } },
+                      dismiss: { model.dismissVacated(gk: v.gk) }, inert: inert)
+    }
+
+    /// The web's empty list: one sentence, and one Clear search only while a search is what empties it.
+    private var empty: some View {
+        VStack(spacing: 8) {
+            Text(model.query.isEmpty ? "Everything here has been checked in." : "No cards match that search.")
+                .font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.inkSoft).multilineTextAlignment(.center)
+            if !model.query.isEmpty {
+                Button { Task { await run { try await model.clearSearch() } } } label: { MiniLabel(title: "Clear search", vertical: 4, horizontal: 8) }
+                    .accessibilityLabel("Clear search")
+                    .accessibilityIdentifier("package-clear")
+            }
+        }
+        .frame(maxWidth: .infinity).padding(.vertical, 32).padding(.horizontal, 8)
     }
 }
 
@@ -56,15 +112,19 @@ struct PackageRow: View {
     /// True while the armed stamp ask shows. It hangs below the editor row and, at large text, past the card's edge, so
     /// the card then draws above its neighbours.
     @State private var overhang = false
+    /// The same for the armed Clear ask under the bulk row.
+    @State private var bulkOverhang = false
 
     private func state(_ item: LedgerItem) -> LineState { LineState(got: model.received[item.key] ?? 0, qty: item.qty) }
     private var packageState: LineState { pkg.items.allSatisfy { state($0) == .done } ? .done : .open }
+    private var totalQty: Int { pkg.items.reduce(0) { $0 + $1.qty } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
             StampSection(pkg: pkg, model: model, masthead: masthead, surface: paint(.surface, packageState),
                          overhang: $overhang, onChange: onChange)
+            bulkRow
             lines
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -73,9 +133,23 @@ struct PackageRow: View {
             .shadow(color: Parchment.shadow, radius: 1, y: 1))
         .overlay(alignment: .top) { bar.clipShape(UnevenRoundedRectangle(topLeadingRadius: 8, topTrailingRadius: 8)) }
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(paint(.border, packageState), lineWidth: 1))
-        .zIndex(overhang ? 1 : 0)
+        .zIndex(overhang || bulkOverhang ? 1 : 0)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("package-row:\(pkg.gk)")
+    }
+
+    /// Mark all received and Clear check-ins, in a row of their own under the Stamp slot (native-bulk-check-in). Each press is a
+    /// write as a stamp is: the slot says saving, the figures follow, then the other tabs read the new counts.
+    private var bulkRow: some View {
+        BulkRow(prefix: "bulk", key: pkg.gk, scope: "from \(pkg.seller)", totalCopies: totalQty, canMark: packageState != .done,
+                copiesIn: model.gots[pkg.gk] ?? 0, undoOffered: model.bulkUndoGk == pkg.gk, undoCount: model.bulkUndoCount, overhang: $bulkOverhang,
+                mark: { await write { try await model.bulk(gk: pkg.gk, on: true) } },
+                undo: { await write { try await model.undoBulk() } },
+                clear: { await write { try await model.bulk(gk: pkg.gk, on: false) } })
+    }
+
+    private func write(_ act: () async throws -> Void) async {
+        await bulkWrite(masthead: masthead, onChange: onChange, act)
     }
 
     /// The item lines, clipped to the card's bottom corners because their fills are square. The card clips nothing
@@ -98,8 +172,31 @@ struct PackageRow: View {
                         await masthead.finished(failed: model.checkInError != nil)
                     })
             }
+            revealFooter
         }
         .clipShape(UnevenRoundedRectangle(bottomLeadingRadius: 8, bottomTrailingRadius: 8))
+    }
+
+    /// The way out of a search (src/app.jsx PackageCard): how many lines the filters took, and the whole order. Below the rows and
+    /// outside the tap area of any of them. It is 44pt tall; the web's is 34.
+    @ViewBuilder private var revealFooter: some View {
+        let revealed = model.revealed.contains(pkg.gk)
+        if pkg.hiddenByFilters > 0 || revealed {
+            let n = pkg.hiddenByFilters
+            let verb = Text(revealed ? "back to matches" : "show all").underline()
+            Button { Task { await model.reveal(pkg.gk) } } label: {
+                Text(revealed ? "Showing the whole order \(verb)" : "+\(n) more line\(n == 1 ? "" : "s") in this order \(verb)")
+                    .font(.mono(11, relativeTo: .caption)).foregroundStyle(Parchment.inkSoft)
+                    .multilineTextAlignment(.leading)
+                    .padding(.horizontal, 12).padding(.vertical, 8)
+                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    .overlay(alignment: .top) { Rectangle().fill(Parchment.line).frame(height: 1) }
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityValue(revealed ? "expanded" : "collapsed")
+            .accessibilityIdentifier("reveal:\(pkg.gk)")
+        }
     }
 
     private var header: some View {
@@ -144,7 +241,7 @@ struct PackageRow: View {
     /// The pill, or the RECEIVED stamp once nothing is owed. An invisible widest pill sets the
     /// slot's size and the live one is drawn over it, so a check-in never changes the layout.
     private var statusSlot: some View {
-        Text("99 left \u{00B7} refunded").font(.cochin(12.5).weight(.bold))
+        Text("99 left \u{00B7} refunded").font(.cochin(12.5, relativeTo: .caption).weight(.bold))
             .padding(.horizontal, 8).padding(.vertical, 4)
             .frame(minHeight: 28)
             .hidden()
@@ -158,13 +255,13 @@ struct PackageRow: View {
             .overlay(alignment: .trailing) {
                 switch status {
                 case .pill(let pill):
-                    Text(pill).font(.cochin(12.5).weight(.bold)).foregroundStyle(paint(.pillText, .open))
+                    Text(pill).font(.cochin(12.5, relativeTo: .caption).weight(.bold)).foregroundStyle(paint(.pillText, .open))
                         .padding(.horizontal, 8).padding(.vertical, 4)
                         .background(Capsule().fill(paint(.pillFill, .open)))
                         .fixedSize()
                         .accessibilityIdentifier("card-pill:\(pkg.gk)")
                 case .refunded(let pill):
-                    Text(pill).font(.cochin(12.5).weight(.bold)).foregroundStyle(paint(.refundPillText, .open))
+                    Text(pill).font(.cochin(12.5, relativeTo: .caption).weight(.bold)).foregroundStyle(paint(.refundPillText, .open))
                         .padding(.horizontal, 8).padding(.vertical, 4)
                         .background(Capsule().fill(paint(.refundPillFill, .open)))
                         .fixedSize()
@@ -186,15 +283,45 @@ struct PackageRow: View {
     /// The thin bar on the card's top edge, out of flow: it mounts without moving a row.
     @ViewBuilder private var bar: some View {
         if let fraction = model.bars[pkg.gk] {
-            let total = pkg.items.reduce(0) { $0 + $1.qty }
             paint(.barTrack, .open).frame(height: 3)
                 .overlay(alignment: .leading) {
                     GeometryReader { g in paint(.barFill, .open).frame(width: g.size.width * fraction) }
                 }
                 .allowsHitTesting(false)
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel("\(Int((fraction * Double(total)).rounded())) of \(total) copies in")
-                .accessibilityIdentifier("card-bar:\(pkg.gk)")
+                // The audit reads a 3pt element with a label as a control with a hit area too small. The fact it draws, copies
+                // in of copies held, is spoken by the Clear control's value (BulkRow), which shows while any copy is in.
+                .accessibilityHidden(true)
         }
+    }
+}
+
+/// A bulk write as the masthead shows it: saving, the write, the other tabs' read of the new counts, then finished
+/// (as a stamp write does). The card's Mark all, Clear and Undo and the vacated notice's Undo all run through it.
+@MainActor func bulkWrite(masthead: MastheadModel, onChange: () async throws -> Void, _ act: () async throws -> Void) async {
+    masthead.saving()
+    var landed = true
+    do { try await act() } catch { landed = false }  // the model has put the reason in checkInError, which the screen shows
+    var refreshed = true
+    do { try await onChange() } catch { refreshed = false }  // a failed Tally or Orphaned read would leave them counting the old check-ins
+    await masthead.finished(failed: !landed || !refreshed)
+}
+
+/// Scrolls to the package a Tally order-id tap asked for, once it is in the list (src/app.jsx `jumpGk`, the effect that scrolls
+/// `jumpRef` into view at the top). It waits a moment first, as the web waits a frame, so the list exists before it scrolls.
+/// Nothing is drawn; it takes no space in the stack.
+private struct JumpToOrder: View {
+    let options: ViewOptions
+    let listed: Set<String>
+    let id: (String) -> String
+    @Environment(\.scrollToStart) private var scrollToStart
+
+    var body: some View {
+        Color.clear.frame(width: 0, height: 0).accessibilityHidden(true)
+            .task(id: options.jumpGk.map { listed.contains($0) ? $0 : "" }) {
+                guard let gk = options.jumpGk, listed.contains(gk) else { return }
+                try? await Task.sleep(for: .milliseconds(50))
+                scrollToStart(id(gk))
+                options.jumpGk = nil
+            }
     }
 }

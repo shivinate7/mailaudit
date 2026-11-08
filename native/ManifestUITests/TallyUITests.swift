@@ -10,14 +10,17 @@
 //   Row: identifier "tally-row:<product name>", for example "tally-row:Lightning Bolt". Its header button
 //     has the identifier "tally-toggle:<product name>" and opens or closes the row.
 //   Copy: an open row holds one element per shown copy, "tally-copy:<item key>". Its label holds the seller,
-//     the order id, the set and the day of the month.
+//     the set and the day of the month.
+//   Order: the copy's order id is its own control, "tally-order:<item key>", labelled "Show the whole order <id>".
+//     Its label, not the copy's, holds the order id.
 //   Copy control: "tally-checkin:<item key>", a 44pt hit region, labelled "Check in <name>" or
 //     "Undo check in <name>" (the Packages control, same wording).
-//   Sort: a menu button "tally-sort". Its label or value holds the current sort label. Its menu lists
-//     the six labels as buttons.
-//   Search: a text field "tally-search".
-//   Empty search: no row, and exactly one button whose label has "clear" in it, labelled "Clear search".
-//     The system clear button of a search field counts, so a builder using one must not add a second.
+//   Sort: the Sorted by row "ledger-sort" on the Ledger tab (its View group). Its option grid "ledger-sort-grid"
+//     lists the six labels as buttons, once Tally is the last list tab left.
+//   Search: the floating pill's field "find-field" (lane restyle-step8). Its clear control "find-clear" shows while the
+//     field holds text (owner item 46, answer a, 2026-11-08 10:55 CST).
+//   Empty search: no row, the empty state's one button labelled "Clear search" outside the pill, and the pill's own clear
+//     control. An empty search therefore shows two clear controls: the pill's, and the empty state's.
 //
 // testTextClippedAuditCanFail is a control, not a red-first case. It passes on main: the clipped-text audit does
 // find clipped text in the existing screens at a very narrow width. That is all it shows. No Tally view exists,
@@ -106,8 +109,8 @@ final class TallyUITests: XCTestCase {
     func testAccessibilityAuditTallyScreenWithARowOpen() throws {
         let app = launch()
         openTally(app)
-        let search = element(app, "tally-search")
-        XCTAssertTrue(search.waitForExistence(timeout: 5), "the search field tally-search is missing")
+        let search = element(app, "find-field")
+        XCTAssertTrue(search.waitForExistence(timeout: 5), "the find field find-field is missing")
         search.tap()
         search.typeText("Lightning\n")  // the return key closes the keyboard, so the tab bar shows
         let ponderGone = NSPredicate(format: "exists == false")
@@ -165,7 +168,8 @@ final class TallyUITests: XCTestCase {
 
     // MARK: the copies list
 
-    /// An open row lists every copy it counts, with the seller, the order id, the set and the date, and a 44pt control.
+    /// An open row lists every copy it counts, with the seller, the set and the date in the copy's label, the order id on its own
+    /// order control, and a 44pt check-in control.
     func testOpenRowListsEveryCopyWithItsDetails() throws {
         let app = launch()
         openTally(app)
@@ -179,9 +183,12 @@ final class TallyUITests: XCTestCase {
         for (key, seller, order, day) in copies {
             let copy = element(app, "tally-copy:\(key)")
             XCTAssertTrue(copy.exists, "copy \(key) is missing")
-            for part in [seller, order, "Test Set", day] where !part.isEmpty {
+            for part in [seller, "Test Set", day] where !part.isEmpty {
                 XCTAssertTrue(copy.label.contains(part), "copy \(key) reads \u{201C}\(copy.label)\u{201D}, which lacks \(part)")
             }
+            let orderControl = element(app, "tally-order:\(key)")
+            XCTAssertTrue(orderControl.exists, "copy \(key) has no order control")
+            XCTAssertTrue(orderControl.label.contains(order), "copy \(key)'s order control reads \u{201C}\(orderControl.label)\u{201D}, which lacks \(order)")
             let control = element(app, "tally-checkin:\(key)")
             XCTAssertTrue(control.exists, "copy \(key) has no check-in control")
             XCTAssertGreaterThanOrEqual(control.frame.width, Self.minHit, "\(key) control is narrower than 44pt")
@@ -224,33 +231,40 @@ final class TallyUITests: XCTestCase {
 
     // MARK: the sort label
 
-    /// Each of the six labels shows whole at 375pt: the control keeps to the frame, and the clipped-text audit
-    /// finds nothing on it.
+    /// Each of the six labels shows whole at 375pt in the Sorted by grid. The grid lives on the Ledger tab's View
+    /// group (ledger-tab-holds-options), and it holds the Tally labels once Tally is the last list tab left, so the
+    /// case opens Tally first. The cell keeps to the frame, and the clipped-text audit finds nothing on it.
     func testEverySortLabelFitsAt375pt() throws {
         let app = launch(width: 375)
         openTally(app)
-        let sort = element(app, "tally-sort")
-        XCTAssertTrue(sort.waitForExistence(timeout: 5), "the sort control tally-sort is missing")
+        app.tabBars.buttons["Ledger"].tap()
+        let sort = element(app, "ledger-sort")
+        XCTAssertTrue(sort.waitForExistence(timeout: 5), "the Sorted by row ledger-sort is missing on Ledger")
+        sort.tap()
+        XCTAssertTrue(element(app, "ledger-sort-grid").waitForExistence(timeout: 5), "Sorted by opened no option grid")
         let inset = (app.windows.firstMatch.frame.width - 375) / 2
 
-        for label in Self.sortLabels {
-            sort.tap()
+        for (i, label) in Self.sortLabels.enumerated() {
+            if i > 0 {  // a pick closes the grid (src/app.jsx setSortOpen(false)), so open it again before the next cell
+                sort.tap()
+                XCTAssertTrue(element(app, "ledger-sort-grid").waitForExistence(timeout: 5), "Sorted by did not reopen before \(label)")
+            }
             let option = app.buttons[label]
-            XCTAssertTrue(option.waitForExistence(timeout: 5), "the sort menu has no \(label) button")
-            option.tap()
-
-            let shown = [sort.label, sort.value as? String ?? ""].joined(separator: " ")
-            XCTAssertTrue(shown.contains(label), "after choosing \(label), the sort control reads \u{201C}\(shown)\u{201D}")
-            XCTAssertGreaterThanOrEqual(sort.frame.minX, inset - 1, "\(label): the sort control starts outside the 375pt frame")
-            XCTAssertLessThanOrEqual(sort.frame.maxX, inset + 375 + 1, "\(label): the sort control ends outside the 375pt frame")
+            XCTAssertTrue(option.waitForExistence(timeout: 5), "the Sorted by grid has no \(label) cell")
+            XCTAssertGreaterThanOrEqual(option.frame.minX, inset - 1, "\(label): the cell starts outside the 375pt frame")
+            XCTAssertLessThanOrEqual(option.frame.maxX, inset + 375 + 1, "\(label): the cell ends outside the 375pt frame")
 
             var clipped: [String] = []
             try app.performAccessibilityAudit(for: .textClipped) { issue in
-                guard let frame = issue.element?.frame, frame.intersects(sort.frame) else { return true }
+                guard let frame = issue.element?.frame, frame.intersects(option.frame) else { return true }
                 clipped.append(issue.compactDescription)
                 return false
             }
             XCTAssertEqual(clipped, [], "\(label) is clipped at 375pt")
+
+            option.tap()
+            let shown = [sort.label, sort.value as? String ?? ""].joined(separator: " ")
+            XCTAssertTrue(shown.contains(label), "after choosing \(label), Sorted by reads \u{201C}\(shown)\u{201D}")
         }
     }
 
@@ -320,22 +334,25 @@ final class TallyUITests: XCTestCase {
 
     // MARK: an empty search
 
-    /// A search with no hit shows no rows and exactly one Clear control. The control brings the rows back.
+    /// A search with no hit shows no rows, the empty state's one Clear search control outside the pill, and the pill's own clear
+    /// control (owner item 46, answer a, 2026-11-08 10:55 CST). The empty state's control brings the rows back.
     func testEmptySearchShowsOneClearControl() throws {
         let app = launch()
         openTally(app)
-        let search = element(app, "tally-search")
-        XCTAssertTrue(search.waitForExistence(timeout: 5), "the search field tally-search is missing")
+        let search = element(app, "find-field")
+        XCTAssertTrue(search.waitForExistence(timeout: 5), "the find field find-field is missing")
         search.tap()
         search.typeText("zzzz")
 
         let clear = clearControls(app)
         XCTAssertTrue(clear.firstMatch.waitForExistence(timeout: 5), "an empty search shows no Clear control")
         XCTAssertEqual(elements(app, prefix: "tally-row:").count, 0, "rows still show for a search with no hit")
-        XCTAssertEqual(clear.count, 1, "an empty search shows \(clear.count) Clear controls: \(clear.allElementsBoundByIndex.map(\.label))")
-        XCTAssertEqual(clear.firstMatch.label, "Clear search")
+        XCTAssertTrue(element(app, "find-clear").exists, "the find pill shows no clear control while its field holds zzzz")
+        let empty = clear.matching(NSPredicate(format: "identifier != %@", "find-clear"))
+        XCTAssertEqual(empty.count, 1, "an empty search shows \(empty.count) Clear controls outside the pill: \(empty.allElementsBoundByIndex.map(\.label))")
+        XCTAssertEqual(empty.firstMatch.label, "Clear search")
 
-        clear.firstMatch.tap()
+        empty.firstMatch.tap()
         XCTAssertTrue(element(app, "tally-row:Lightning Bolt").waitForExistence(timeout: 5), "Clear search did not bring the rows back")
         XCTAssertEqual(clearControls(app).count, 0, "a Clear control remains with the search empty")
     }

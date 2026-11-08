@@ -9,6 +9,8 @@ struct RootView: View {
     let tally: TallyModel?
     let masthead: MastheadModel?
     let store: LedgerStore?
+    /// Showing, Sorted by and Orders from, which the models and the Ledger tab's View group share.
+    let options: ViewOptions
     let sync: SyncClient?
     let versions: VersionsModel?
     let onLedgerChange: () async -> Void
@@ -29,7 +31,7 @@ struct RootView: View {
 
     var body: some View {
         TabView(selection: $tab) {
-            LedgerTab(masthead: masthead, store: store, versions: versions, sync: sync, syncOpen: $syncOpen, onLedgerChange: onLedgerChange).parchmentPaper()
+            LedgerTab(masthead: masthead, store: store, versions: versions, options: options, sync: sync, syncOpen: $syncOpen, onLedgerChange: onLedgerChange).parchmentPaper()
                 .tabItem { Label("Ledger", systemImage: "gearshape") }.tag(Tab.ledger)
             Group {
                 if let orphaned, let masthead {
@@ -46,7 +48,12 @@ struct RootView: View {
             .tag(Tab.orphaned)
             .badge(orphaned?.badgeCount ?? 0)
             Group {
-                if let tally, let masthead { TallyView(model: tally, masthead: masthead, sync: sync, openSync: showSync) } else { Placeholder(title: failure ?? "Opening the ledger") }
+                if let tally, let masthead { TallyView(model: tally, masthead: masthead, sync: sync, openSync: showSync, openOrder: { item in
+                    // Packages shows the order whole (the model reveals it) and scrolls to it. A failure is in the model's
+                    // checkInError and is thrown back, so the Tally shows it and stays.
+                    try await model?.openOrder(of: item)
+                    tab = .packages
+                }) } else { Placeholder(title: failure ?? "Opening the ledger") }
             }
             .parchmentPaper()
             .tabItem { Label("Tally", systemImage: "number") }
@@ -68,6 +75,13 @@ struct RootView: View {
         }
         .frame(width: width)
         .tint(Parchment.accent)
+        // A tab change ends the held Mark all Undo of both views (undo-removes-only-its-delta).
+        .onChange(of: tab) { _, now in
+            model?.endBulkUndo()
+            tally?.endBulkUndo()
+            // Sorted by orders the list tab left last (src/app.jsx lastList).
+            if now == .packages { options.lastList = .packages } else if now == .tally { options.lastList = .tally }
+        }
         .duoSpine(selection: $tab, items: [
             .init(id: .ledger, title: "Ledger", symbol: "gearshape"), .init(id: .orphaned, title: "Orphaned", symbol: "envelope", badge: orphaned?.badgeCount ?? 0),
             .init(id: .tally, title: "Tally", symbol: "number"), .init(id: .packages, title: "Packages", symbol: "shippingbox"),

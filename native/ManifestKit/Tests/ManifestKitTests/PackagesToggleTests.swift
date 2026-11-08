@@ -42,12 +42,8 @@ final class PackagesToggleTests: XCTestCase {
 
     /// The real bundle, with toggleCount overridden to return a sentinel.
     func sentinelBundle() throws -> URL {
-        let real = try String(contentsOf: RulesGoldenTests.bundleURL, encoding: .utf8)
-        let probe = FileManager.default.temporaryDirectory
-            .appending(path: "n5-toggle-probe-\(UUID().uuidString).js")
-        let override = "\n;Rules.toggleCount=function(){return \(Self.sentinel)};\n"
-        try (real + override).write(to: probe, atomically: true, encoding: .utf8)
-        return probe
+        try ViewOptionFixtures.bundle(
+            overriding: "Rules.toggleCount=function(){return \(Self.sentinel)};", in: self, label: "n5-toggle-probe")
     }
 
     /// The model's toggle writes the bundle's count, not a count the model worked out.
@@ -232,6 +228,35 @@ final class PackagesToggleTests: XCTestCase {
             .appending(path: "n5-toggle-fault-\(UUID().uuidString).js")
         try (real + "\n" + override + "\n").write(to: probe, atomically: true, encoding: .utf8)
         return probe
+    }
+
+    /// A stamped-filter toggle reads the list again, and it keeps a failed line check-in's error: only a Post that saves clears
+    /// that error (load keeps it, and so must the toggle). The toggle's read saves nothing and succeeds here, so the clear that
+    /// fails is the toggle's own success path. The stamp before the tap gives the filter a row to show, since a filter with
+    /// nothing to list turns itself off. Debt stamped-toggle-clears-error.
+    func testStampedToggleKeepsAFailedLineCheckInError() async throws {
+        let alpha = "A1::Alpha Cards"
+        let url = try freshLedgerURL()
+        let store = LedgerStore(fileURL: url, now: { 1_786_543_380_000 })
+        let engine = try RulesEngine(bundleURL: RulesGoldenTests.bundleURL)
+        try store.load()
+        let model = PackagesModel(engine: engine, store: store)
+        try await model.load()
+        try await model.stamp(alpha, kind: "claim", note: "x")
+        XCTAssertEqual(model.stampedCount, 1, "the setup is real: one package holds a stamp before the failed tap")
+
+        try breakSaves(url)
+        await model.tap(key: Self.urzaLine)
+        let line = try XCTUnwrap(model.checkInError, "the setup is real: the failed line check-in left its error")
+
+        try await model.toggleStamped()
+        XCTAssertTrue(model.showStamped, "the setup is real: the first toggle turned the stamped filter on")
+        XCTAssertEqual(model.rows.map(\.gk), [alpha], "the setup is real: the stamped filter narrowed the list to the stamped package")
+        XCTAssertEqual(model.checkInError, line, "a stamped-filter toggle cleared the failed check-in's error")
+
+        try await model.toggleStamped()
+        XCTAssertFalse(model.showStamped, "the setup is real: the second toggle turned the stamped filter off")
+        XCTAssertEqual(model.checkInError, line, "the second stamped-filter toggle cleared the failed check-in's error")
     }
 
     /// A toggle whose rule throws changes nothing, and the failure reaches checkInError.

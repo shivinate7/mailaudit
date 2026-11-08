@@ -7,7 +7,8 @@ private func paint(_ part: LedgerPaint.Part, armed: Bool = false) -> Color {
     LedgerPaint.token(part, armed: armed).map(Parchment.color) ?? .clear
 }
 
-/// The Ledger tab: the Data group (Sync, History, Backup) and the Reset box (ledger-tab-holds-options).
+/// The Ledger tab: the View group (Showing, Sorted by, Orders from), the Data group (Sync, History, Backup) and the Reset box
+/// (ledger-tab-holds-options). The View group shows only with items, as the web's does.
 /// History and Reset read their stores whether or not the ledger opened (recovery-control-not-state-gated);
 /// Sync has no row when the ledger will not open, because the app then starts no sync client.
 /// An ask arms in place and has its own Cancel; no native dialog appears (no-native-dialogs). Sync and History close each other (history-sync-close-each-other).
@@ -15,6 +16,8 @@ struct LedgerTab: View {
     let masthead: MastheadModel?
     let store: LedgerStore?
     let versions: VersionsModel?
+    /// Showing, Sorted by and Orders from, shared with the Packages and Tally models.
+    let options: ViewOptions
     /// nil when the app runs without a sync client: the Sync row is then not drawn.
     let sync: SyncClient?
     /// Whether the Sync panel is open. The advisory line on a working screen opens it from outside.
@@ -26,6 +29,10 @@ struct LedgerTab: View {
     @State private var historyOpen = false
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var openRow: String?
+    @State private var sortOpen = false
+    @State private var rangeOpen = false
+    @State private var exactOpen = false
+    @State private var viewFailure: String?
 
     var body: some View {
         MastheadScreen(masthead: masthead, tab: .ledger) {
@@ -34,6 +41,7 @@ struct LedgerTab: View {
                     .foregroundStyle(paint(.title)).frame(maxWidth: .infinity)
                     .padding(.top, masthead == nil ? 16 : 0)
                     .accessibilityAddTraits(.isHeader)
+                if let store, !(masthead?.countLine(for: .ledger) ?? "").isEmpty { viewGroup(store) }
                 Text("Data").textCase(.uppercase).font(.mono(11, relativeTo: .caption)).tracking(2.2)
                     .foregroundStyle(paint(.groupLabel)).padding(.leading, 4).padding(.top, 16).padding(.bottom, 8)
                     .accessibilityAddTraits(.isHeader)
@@ -51,6 +59,167 @@ struct LedgerTab: View {
         }
         .sheet(item: $shared) { ShareSheet(url: $0.url) }
         .onChange(of: syncOpen) { _, open in if open { closeHistory() } }
+    }
+
+    // MARK: View
+
+    /// The choices that shape the Packages and Tally lists (src/app.jsx, the Ledger tab's View group). Each change is saved by
+    /// ViewOptions where the web saves it, and then every tab reads the ledger again, so the figures follow the range.
+    private func viewGroup(_ store: LedgerStore) -> some View {
+        let tally = options.lastList == .tally
+        let sortLabel = tally ? options.itemSort.label : options.label(of: options.sortBy)
+        let lines = options.lineCount
+        let sub = "\(lines) line\(lines == 1 ? "" : "s")" + (options.outsideCount > 0 ? " \u{00B7} \(options.outsideCount) outside" : "")
+        return VStack(alignment: .leading, spacing: 0) {
+            Text("View").textCase(.uppercase).font(.mono(11, relativeTo: .caption)).tracking(2.2)
+                .foregroundStyle(paint(.groupLabel)).padding(.leading, 4).padding(.top, 16).padding(.bottom, 8)
+                .accessibilityAddTraits(.isHeader)
+            VStack(alignment: .leading, spacing: 0) {
+                LedgerRow(title: "Showing", value: "\(options.hideDone ? "\u{25CF}" : "\u{25CB}") \(options.hideDone ? "Unreceived" : "Everything")",
+                          id: "ledger-showing", valueID: "ledger-showing-value", first: true, pressed: options.hideDone) {
+                    options.hideDone.toggle()
+                    Task { await onLedgerChange() }
+                }
+                LedgerRow(title: "Sorted by", value: sortLabel, open: sortOpen, id: "ledger-sort", valueID: "ledger-sort-value",
+                          expandedValue: "\(sortLabel), \(sortOpen ? "expanded" : "collapsed")") {
+                    rangeOpen = false
+                    sortOpen.toggle()
+                }
+                if sortOpen {
+                    OptionPanel(id: "ledger-sort-grid", columns: 2, cells: tally
+                        ? TallySort.allCases.map { key in OptionCell(label: key.label, on: key == options.itemSort) { choose { try options.setItemSort(key, in: store) } } }
+                        : options.packageSorts.map { item in OptionCell(label: item.label, on: item.sort == options.sortBy) { choose { try options.setSortBy(item.sort, in: store) } } })
+                }
+                LedgerRow(title: "Orders from", sub: sub, value: options.rangeLabel, open: rangeOpen, id: "ledger-range",
+                          valueID: "ledger-range-value", expandedValue: "\(options.rangeLabel), \(rangeOpen ? "expanded" : "collapsed")") {
+                    sortOpen = false
+                    rangeOpen.toggle()
+                }
+                if rangeOpen {
+                    OptionPanel(id: "ledger-range-grid", columns: 4, cells: options.rangePresets.map { item in
+                        OptionCell(label: item.label, on: item.preset == options.dateFilter.preset) {
+                            var next = options.dateFilter
+                            next.preset = item.preset
+                            setRange(next, store)
+                        }
+                    }) {
+                        if options.dateFilter.preset == .days { daysRow(store) }
+                        if options.dateFilter.preset == .custom { monthRow(store) }
+                    }
+                }
+            }
+            .modifier(Card())
+            .accessibilityElement(children: .contain)
+            .accessibilityIdentifier("ledger-view")
+            if let viewFailure { ErrorBox(text: viewFailure).padding(.top, 8).accessibilityIdentifier("view-error") }
+        }
+    }
+
+    /// Picks a sort: the grid closes, as the web's does, and the lists are read again.
+    private func choose(_ save: () throws -> Void) {
+        do { try save(); viewFailure = nil } catch { viewFailure = "Could not save the view. \(error.localizedDescription)" }
+        sortOpen = false
+        Task { await onLedgerChange() }
+    }
+
+    private func setRange(_ filter: DateFilter, _ store: LedgerStore) {
+        do { try options.setDateFilter(filter, in: store); viewFailure = nil } catch { viewFailure = "Could not save the view. \(error.localizedDescription)" }
+        Task { await onLedgerChange() }
+    }
+
+    /// The Last stepper: one day more or fewer, from the bundle's bumpDays (never under 1, starting from 21 when the field is blank or 0).
+    private func daysRow(_ store: LedgerStore) -> some View {
+        func bump(_ by: Int) {
+            Task {
+                do { try await options.bumpDays(by: by, in: store); viewFailure = nil } catch { viewFailure = "Could not save the view. \(error.localizedDescription)" }
+                await onLedgerChange()
+            }
+        }
+        return HStack(spacing: 8) {
+            Text("Last").textCase(.uppercase).font(.cochin(10, relativeTo: .caption2)).tracking(1.6).foregroundStyle(paint(.partLabel))
+            HStack(spacing: 0) {
+                Button { bump(-1) } label: { Text("\u{2212}").font(.mono(15)).foregroundStyle(Parchment.ink).frame(width: 44, height: 44) }
+                    .accessibilityLabel("Fewer days").accessibilityIdentifier("ledger-days-fewer")
+                TextField("21", text: Binding(get: { options.dateFilter.days ?? "" }, set: { v in
+                    var next = options.dateFilter
+                    next.days = v.filter(\.isNumber)
+                    setRange(next, store)
+                }))
+                .keyboardType(.numberPad).multilineTextAlignment(.center).font(.mono(13)).foregroundStyle(Parchment.ink)
+                .frame(width: 46, height: 44)
+                .accessibilityLabel("Number of days").accessibilityIdentifier("ledger-days")
+                Button { bump(1) } label: { Text("+").font(.mono(15)).foregroundStyle(Parchment.ink).frame(width: 44, height: 44) }
+                    .accessibilityLabel("More days").accessibilityIdentifier("ledger-days-more")
+            }
+            .background(Parchment.card, in: Capsule())
+            .overlay(Capsule().strokeBorder(Parchment.line, lineWidth: 1))
+            Text("days").textCase(.uppercase).font(.cochin(10, relativeTo: .caption2)).tracking(1.6).foregroundStyle(paint(.partLabel))
+        }
+        .padding(.top, 8)
+    }
+
+    /// By month (src/app.jsx, the custom preset): the months the orders fall in, then Exact dates. Picked, not typed: iOS's numeric
+    /// keypad has no hyphen key. A whole-month range reads back as its month (ViewOptions.rangeLabel).
+    private func monthRow(_ store: LedgerStore) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            subHead("Month")
+            Wrap(column: 4, row: 4) {
+                ForEach(options.months, id: \.key) { m in
+                    OptionChip(label: m.label, on: m.from == options.dateFilter.from && m.to == options.dateFilter.to, id: "ledger-month:\(m.key)") {
+                        do { try options.setMonth(m, in: store); viewFailure = nil } catch { viewFailure = "Could not save the view. \(error.localizedDescription)" }
+                        Task { await onLedgerChange() }
+                    }
+                }
+            }
+            Button { exactOpen.toggle() } label: {
+                HStack(spacing: 8) {
+                    Text(exactOpen ? "\u{2013}" : "+").foregroundStyle(Parchment.accent).frame(width: 10)
+                    Text("Exact dates")
+                }
+                .font(.mono(11, relativeTo: .caption)).foregroundStyle(Parchment.inkSoft)
+                .frame(minHeight: 44, alignment: .leading).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain).padding(.top, 12)
+            .accessibilityValue(exactOpen ? "expanded" : "collapsed").accessibilityIdentifier("ledger-exact")
+            if exactOpen {
+                Wrap(column: 8, row: 8) {
+                    dateEnd("From date", value: options.dateFilter.from, id: "ledger-from") { v in
+                        var next = options.dateFilter; next.from = v; next.preset = .custom; setRange(next, store)
+                    }
+                    Text("\u{2013}").foregroundStyle(Parchment.inkSoft).frame(minHeight: 44)
+                    dateEnd("To date", value: options.dateFilter.to, id: "ledger-to") { v in
+                        var next = options.dateFilter; next.to = v; next.preset = .custom; setRange(next, store)
+                    }
+                }
+            }
+        }
+        .padding(.top, 4)
+    }
+
+    private func subHead(_ title: String) -> some View {
+        HStack(spacing: 8) {
+            Text(title).textCase(.uppercase).font(.cochin(10, relativeTo: .caption2)).tracking(1.6).foregroundStyle(paint(.partLabel))
+            Rectangle().fill(Parchment.line).frame(height: 1)
+        }
+        .padding(.top, 12).padding(.bottom, 8)
+    }
+
+    /// One end of Exact dates. The web's date input can be empty (an open end); a picker cannot, so an empty end is a button
+    /// that sets today, and a set end has a clear beside it.
+    private func dateEnd(_ label: String, value: String, id: String, set: @escaping (String) -> Void) -> some View {
+        HStack(spacing: 0) {
+            if let date = ISODay.date(value) {
+                DatePicker(label, selection: Binding(get: { date }, set: { set(ISODay.string($0)) }), displayedComponents: .date)
+                    .labelsHidden().frame(minHeight: 44).accessibilityLabel(label).accessibilityIdentifier(id)
+                Button { set("") } label: {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(Parchment.inkSoft).frame(width: 44, height: 44).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain).accessibilityLabel("Clear \(label.lowercased())").accessibilityIdentifier("\(id)-clear")
+            } else {
+                Button { set(ISODay.string(Date())) } label: { MiniLabel(title: label) }
+                    .buttonStyle(.plain).accessibilityIdentifier(id)
+            }
+        }
     }
 
     private func closeHistory() {
@@ -261,6 +430,8 @@ private struct LedgerRow: View {
     var valueID: String?
     var first = false
     var expandedValue: String?
+    /// For a one-tap choice such as Showing: whether it is on, spoken as selected (the web's aria-pressed).
+    var pressed: Bool?
     let action: () -> Void
 
     var body: some View {
@@ -288,7 +459,8 @@ private struct LedgerRow: View {
             Button(action: action) { Color.clear.contentShape(Rectangle()) }
                 .buttonStyle(.plain)
                 .accessibilityLabel(title)
-                .accessibilityValue(expandedValue ?? "")
+                .accessibilityValue(expandedValue ?? value ?? "")
+                .accessibilityAddTraits(pressed == true ? .isSelected : [])
                 .accessibilityIdentifier(id)
         }
         .overlay(alignment: .top) { if !first { Rule() } }
@@ -384,4 +556,19 @@ struct ShareSheet: UIViewControllerRepresentable {
     let url: URL
     func makeUIViewController(context: Context) -> UIActivityViewController { UIActivityViewController(activityItems: [url], applicationActivities: nil) }
     func updateUIViewController(_ vc: UIActivityViewController, context: Context) {}
+}
+
+/// The ISO day ("2026-05-01") the saved dateFilter keeps for `from` and `to`, as the picker's Date and back. The calendar is
+/// the Gregorian one in the device's time zone, so the day the picker shows is the day saved (a date input's value in the web).
+enum ISODay {
+    private static let format: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.calendar = Calendar(identifier: .gregorian)
+        f.dateFormat = "yyyy-MM-dd"
+        return f
+    }()
+
+    static func date(_ s: String) -> Date? { s.isEmpty ? nil : format.date(from: s) }
+    static func string(_ d: Date) -> String { format.string(from: d) }
 }

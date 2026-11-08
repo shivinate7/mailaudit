@@ -19,6 +19,8 @@ struct ItemLine: View {
     let price: Double
     /// Tally copies name the order under the detail. Packages names it in the card header.
     var orderID: String?
+    /// Opens the whole order in Packages (the Tally's order id). nil leaves the order id plain.
+    var onOpenOrder: (() async -> Void)?
     /// The got/qty read-out, nil for a one-copy line: no stepper then.
     let readout: String?
     /// The check-in control's spoken value ("1 of 2").
@@ -43,6 +45,7 @@ struct ItemLine: View {
             .accessibilityIdentifier(checkInID)
             VStack(alignment: .leading, spacing: 4) {
                 text
+                if let orderID, let onOpenOrder { orderControl(orderID, open: onOpenOrder) }
                 if let readout { stepper(readout) }
             }
             .padding(.vertical, 12)  // as the web row: 12 above and below
@@ -71,12 +74,32 @@ struct ItemLine: View {
                     .accessibilityLabel("Price \(PackageCard.priceText(price))")
             }
             Text(detail).font(.cochin(11.5)).foregroundStyle(paint(.detail, state))
-            // The order id: the web underlines it and opens the order in Packages. Native has no such route yet, so it is plain.
-            if let orderID {
+                .accessibilityIdentifier(PackageCard.detailID(key: key, state: state))
+            // The order id: plain here. With a route (`onOpenOrder`) it is the control below, which sits outside this element.
+            if let orderID, onOpenOrder == nil {
                 Text(orderID).font(.mono(10.5)).foregroundStyle(paint(.orderId, state)).fixedSize()
                     .accessibilityLabel("Order \(orderID)")  // a bare id failed the Dynamic Type audit, as a bare date did
             }
         }
+    }
+
+    /// The Tally's order id, a control: this copy is one line of a real order, and "what else was in that envelope" has no other answer
+    /// there (src/app.jsx ItemTotalRow). Underlined, with a trailing chevron, in a 44pt frame. It does not check the card in: the row
+    /// is not a tap target (the web needs stopPropagation for that).
+    private func orderControl(_ id: String, open: @escaping () async -> Void) -> some View {
+        Button { Task { await open() } } label: {
+            HStack(spacing: 4) {
+                // A bare id failed the Dynamic Type audit as a plain one did (the label below on `lines`), so the id carries its own.
+                Text(id).font(.mono(10.5)).underline().lineLimit(1).truncationMode(.tail).accessibilityLabel("Order \(id)")
+                Text("\u{203A}")
+            }
+            .foregroundStyle(paint(.orderId, state))
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Show the whole order \(id)")
+        .accessibilityIdentifier("tally-order:\(key)")
     }
 
     /// The web stepper under the detail line: − got/qty +. Each button moves the count by one through

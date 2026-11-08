@@ -4,8 +4,10 @@ import tokens from "../shared/tokens.json";
 import {
   parseItems, lostMail, normName, isUntracked, gkOf, groupPackages, rankCandidates,
   dateRange, inRange, dropCanceled, dropGks, canceledPackagesOf, stampedPackagesOf,
-  tallyGroups, sortTally, sortPackages, filterPackages, filterTally,
-  totalsOf, outstandingOf, packagePill, refundedPill, STAMP_KINDS, hasStamp, isRefundStamp, nextStamp, stampBandText, itemDetail, tcgplayerOrderUrl, gotQty as gotQtyText, countLine, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger, money, compact,
+  tallyGroups, sortTally, sortPackages, filterPackages, stampTextOf, filterTally, RESUME_RESET_MS,
+  monthKeysOf, spansOneYear, monthLabel as monthLabelOf, monthKeyOf, monthRange,
+  RANGES, PKG_SORTS, bumpDays as bumpDaysOf, rangeLabel as rangeLabelOf,
+  totalsOf, bulkApply, outstandingOf, packagePill, refundedPill, STAMP_KINDS, hasStamp, isRefundStamp, nextStamp, stampBandText, itemDetail, tcgplayerOrderUrl, gotQty as gotQtyText, countLine, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger, money, compact,
 } from "./view-rules.mjs";
 import { photoPlan } from "./photo-rules.mjs";
 import { shouldSnapshot } from "./version-rules.mjs";
@@ -184,7 +186,6 @@ async function dataUrlToBlob(url) {
    rather than a deleted key, so the removal itself survives the two-device
    merge (see mergeStamps in merge-rules.mjs). Every reader goes through
    hasStamp, never key presence. */
-const STAMP_LABEL = Object.fromEntries(STAMP_KINDS);
 /* the LOCAL calendar day, deliberately not toISOString(): at 8pm Central a
    claim filed today would be dated tomorrow. Same trap the month picker
    documents (test 23.16), same side of it. */
@@ -1556,16 +1557,6 @@ const edgeBar = {
    at the cost of the visible label wrapping at rest, which is a look. */
 const BULK_ROW_H = 46;
 
-/* How long the app has to be in the background before coming back counts as
-   "reopening it" rather than "glancing away". iOS keeps a home-screen web app's
-   page alive when you switch away, so without this the only thing that resets
-   Showing is the system evicting the page — which can be days. A short hop out
-   to read a tracking number and straight back is not a new session, and
-   flipping the list under someone mid-check-in is the mis-tap invariant no-layout-shift-under-pointer
-   exists to prevent. A minute is comfortably longer than that hop and far
-   shorter than any real "I'll come back to this later". */
-const RESUME_RESET_MS = 60_000;
-
 /* ---------- the toolbar vocabulary ----------
    One height for every control inside the disclosure panels. Before this,
    chips were `5px 11px`, selects `9px 8px` and buttons `9px 12px`, so nothing
@@ -1577,19 +1568,8 @@ const RESUME_RESET_MS = 60_000;
    option grid, see `.mdl-lrow` and the Ledger tab.) */
 const CTL_H = 34;
 
-/* preset → label, module-level so the collapsed control and the expanded chips
-   cannot drift apart. The values are deliberately heterogeneous — "all", raw
-   numbers, "days", "custom" — because the numeric ones are used arithmetically
-   when the range is applied. Do not stringify them. */
-const RANGES = [
-  ["all", "All time"],
-  [30, "30 days"],
-  [45, "45 days"],
-  [60, "60 days"],
-  [90, "90 days"],
-  ["days", "Last…"],
-  ["custom", "By month"],
-];
+/* The preset → label table (RANGES) and the sort vocabulary (PKG_SORTS) live in
+   view-rules.mjs, so the native client reads them too. */
 
 /* ---------- the ruled head ----------
    The masthead already establishes a vocabulary the control region used to
@@ -1682,18 +1662,8 @@ const optCell = (on) => ({
   cursor: "pointer",
 });
 
-const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
 /* sort vocabularies, one per view. Module-level so the panel and the collapsed
-   value in the head cannot drift apart — the same mistake the date range's
-   label made before RANGES was hoisted. */
-const PKG_SORTS = [
-  ["newest", "Newest"],
-  ["oldest", "Oldest"],
-  ["value", "$ remaining"],
-  ["rate", "Unit rate"],
-  ["seller", "Seller A–Z"],
-];
+   value in the head cannot drift apart. PKG_SORTS lives in view-rules.mjs. */
 const ITEM_SORTS = [
   ["missing", "Most missing"],
   ["basis", "Cost basis"],
@@ -4022,14 +3992,7 @@ export default function MailDayLedger() {
       }))
       .filter((c) => c.before !== c.after);
     if (counts.length) logAction({ kind: "bulk", gk: gkOf(pkgItems[0]), counts, at: now });
-    setReceived((prev) => {
-      const next = { ...prev };
-      for (const it of pkgItems) {
-        if (on) next[it.key] = it.qty;
-        else delete next[it.key];
-      }
-      return next;
-    });
+    setReceived((prev) => bulkApply(pkgItems, on, prev));
   }, []);
 
   /* The one writer for stamps, so `updatedAt` — what the two-device merge
@@ -5300,76 +5263,24 @@ export default function MailDayLedger() {
      what lets the custom range be picked rather than typed: iOS's numeric
      keypad has no hyphen key, so a masked date field is uncompletable on the
      only device this ships to, and a month can never be 2026-02-31. */
-  const months = useMemo(() => {
-    const seen = new Set();
-    for (const it of items) {
-      /* Read the month off an ISO string directly. Going through Date and
-         local getters shifts it: Date.parse("2026-05-01") is UTC midnight, and
-         getMonth() in any behind-UTC zone rolls it back to April. Older
-         exports use M/D/YY, which parses as LOCAL midnight — so those want the
-         local getters, and only those. */
-      const iso = /^(\d{4})-(\d{2})/.exec(it.date || "");
-      if (iso) {
-        seen.add(`${iso[1]}-${iso[2]}`);
-        continue;
-      }
-      const t = Date.parse(it.date);
-      if (!t) continue;
-      const d = new Date(t);
-      seen.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
-    }
-    return [...seen].sort().reverse();
-  }, [items]);
+  const months = useMemo(() => monthKeysOf(items), [items]);
+  const oneYear = useMemo(() => spansOneYear(months), [months]);
+  const monthLabel = useCallback((k) => monthLabelOf(k, oneYear), [oneYear]);
 
-  /* the year is only worth printing when the ledger spans more than one */
-  const oneYear = useMemo(
-    () => new Set(months.map((k) => k.slice(0, 4))).size <= 1,
-    [months]
-  );
-  const monthLabel = useCallback(
-    (k) => MON[+k.slice(5, 7) - 1] + (oneYear ? "" : ` ’${k.slice(2, 4)}`),
-    [oneYear]
-  );
-
-  /* a custom range that happens to be exactly one whole month is shown as that
-     month, so picking "Aug" reads back as "Aug" rather than as "Custom" */
-  const monthKey =
-    dateFilter.preset === "custom" &&
-    dateFilter.from &&
-    dateFilter.to &&
-    dateFilter.from.slice(0, 7) === dateFilter.to.slice(0, 7) &&
-    dateFilter.from.endsWith("-01")
-      ? dateFilter.from.slice(0, 7)
-      : null;
+  const monthKey = monthKeyOf(dateFilter);
 
   const pickMonth = useCallback((k) => {
-    const [y, m] = k.split("-").map(Number);
-    const last = new Date(y, m, 0).getDate(); // day 0 of next month
-    setDateFilter((d) => ({
-      ...d,
-      preset: "custom",
-      from: `${k}-01`,
-      to: `${k}-${String(last).padStart(2, "0")}`,
-    }));
+    setDateFilter((d) => ({ ...d, preset: "custom", ...monthRange(k) }));
   }, []);
 
   const bumpDays = useCallback((by) => {
-    setDateFilter((d) => {
-      const n = Math.max(1, (parseInt(d.days, 10) || 21) + by);
-      return { ...d, preset: "days", days: String(n) };
-    });
+    setDateFilter((d) => bumpDaysOf(d, by));
   }, []);
 
-  const rangeLabel = useMemo(() => {
-    const p = dateFilter.preset;
-    if (p === "days")
-      return dateFilter.days ? `Last ${dateFilter.days}d` : "Last…";
-    if (p === "custom") {
-      if (monthKey) return monthLabel(monthKey);
-      return dateFilter.from || dateFilter.to ? "Custom" : "By month";
-    }
-    return (RANGES.find(([v]) => v === p) || RANGES[0])[1];
-  }, [dateFilter, monthKey, monthLabel]);
+  const rangeLabel = useMemo(
+    () => rangeLabelOf(dateFilter, items),
+    [dateFilter, items]
+  );
 
   const sortLabel = useMemo(() => {
     const [list, cur] =
@@ -5452,11 +5363,8 @@ export default function MailDayLedger() {
 
   const visible = useMemo(() => {
     /* a stamp is the package's, not a line's: filterPackages reads its label
-       and note through this, so the label table stays here */
-    const stampText = (gk) => {
-      const s = stamps[gk];
-      return hasStamp(s) ? `${STAMP_LABEL[s.kind] || ""} ${s.note || ""}` : "";
-    };
+       and note through this, built from the one table in view-rules */
+    const stampText = stampTextOf(stamps);
     return filterPackages(orderSource, {
       query,
       hideDone,

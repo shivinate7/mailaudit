@@ -68,4 +68,13 @@ public enum PackageCard {
     /// "$" + price.toFixed(2), as the web item row prints it: no thousands separator.
     /// ponytail: printf rounds an exact binary tie to even where toFixed rounds up; ledger prices are cents, which never tie.
     public static func priceText(_ price: Double) -> String { String(format: "$%.2f", price) }
+
+    /// The accessibility identifier prefix of a done line's detail text: "done-detail:<item key>". inkSoft on greenSoft
+    /// measures 4.51:1 by the tokens and the audit still flags it, so its contrast-only skip names this prefix
+    /// (audit-skips-measured-flags). The skip reads this constant, never a copy.
+    public static let doneDetailIDPrefix = "done-detail:"
+
+    /// The detail text's identifier: the done-detail id on a done line, and none ("") on an open or part-in line, so the
+    /// skip never reaches a detail in another state. The view sets it in every state, so the Text keeps its identity.
+    public static func detailID(key: String, state: LineState) -> String { state == .done ? doneDetailIDPrefix + key : "" }
 }

@@ -2,7 +2,7 @@
 
 **What.** Lane N6 built search, hide-received and the six sort keys on the Tally view only. `PackagesView` has no search and no hide-received, and `PackagesModel` sorts with the fixed key "newest". Neither native view has a date filter. The web has all of these on its ledger views. The stamped filter is built (step 6): the cell and its list read the bundle's `stampedPackagesOf`. The gap closes when a lane builds them, and a test pins each one.
 
-**Status:** open. No lane is briefed.
+**Status:** open. Lane: restyle step 8 (restyle-8-head).
 
 **Decision:** `native-parity-table`.
 

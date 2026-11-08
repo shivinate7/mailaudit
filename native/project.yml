@@ -51,6 +51,7 @@ targets:
     sources: [ManifestUITests]
     dependencies:
       - target: Manifest
+      - package: ManifestKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.shivinate.manifest.uitests
