@@ -86,7 +86,7 @@ struct PackageRow: View {
     /// write as a stamp is: the slot says saving, the figures follow, then the other tabs read the new counts.
     private var bulkRow: some View {
         BulkRow(prefix: "bulk", key: pkg.gk, scope: "from \(pkg.seller)", totalCopies: totalQty, canMark: packageState != .done,
-                copiesIn: model.gots[pkg.gk] ?? 0, undoOffered: model.bulkUndoGk == pkg.gk, overhang: $bulkOverhang,
+                copiesIn: model.gots[pkg.gk] ?? 0, undoOffered: model.bulkUndoGk == pkg.gk, undoCount: model.bulkUndoCount, overhang: $bulkOverhang,
                 mark: { await write { try await model.bulk(gk: pkg.gk, on: true) } },
                 undo: { await write { try await model.undoBulk() } },
                 clear: { await write { try await model.bulk(gk: pkg.gk, on: false) } })

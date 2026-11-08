@@ -64,7 +64,9 @@ public final class TallyModel {
     public private(set) var checkInError: String?
     /// The product the held Mark all Undo is for, as PackagesModel.bulkUndoGk is for a package. nil when there is none.
     public private(set) var bulkUndoName: String?
-    @ObservationIgnored private var bulkUndoTakes: [BulkTake] = []
+    private var bulkUndoTakes: [BulkTake] = []
+    /// The check-ins the held Undo takes back, as PackagesModel.bulkUndoCount. 0 when none is held.
+    public var bulkUndoCount: Int { bulkUndoName == nil ? 0 : bulkUndoTakes.reduce(0) { $0 + $1.take } }
 
     public init(engine: RulesEngine, store: LedgerStore) {
         self.engine = engine

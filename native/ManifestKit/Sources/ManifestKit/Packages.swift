@@ -60,7 +60,9 @@ public final class PackagesModel {
     /// The package the held Mark all Undo is for. nil when there is none: the next write on this device, a newer Mark all
     /// that adds a copy, a Clear or endBulkUndo() ends it (undo-removes-only-its-delta). A Worker apply does not.
     public private(set) var bulkUndoGk: String?
-    @ObservationIgnored private var bulkUndoTakes: [BulkTake] = []
+    private var bulkUndoTakes: [BulkTake] = []
+    /// The check-ins the held Undo takes back: the one source of the Undo hint's count. 0 when none is held.
+    public var bulkUndoCount: Int { bulkUndoGk == nil ? 0 : bulkUndoTakes.reduce(0) { $0 + $1.take } }
 
     public init(engine: RulesEngine, store: LedgerStore) {
         self.engine = engine

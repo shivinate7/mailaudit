@@ -224,7 +224,7 @@ struct TallyRowView: View {
             await masthead.finished(failed: model.checkInError != nil)
         }
         return BulkRow(prefix: "tally-bulk", key: row.name, scope: "of \(row.name)", totalCopies: row.qty, canMark: row.got < row.qty,
-                       copiesIn: row.got, undoOffered: model.bulkUndoName == row.name, overhang: $overhang,
+                       copiesIn: row.got, undoOffered: model.bulkUndoName == row.name, undoCount: model.bulkUndoCount, overhang: $overhang,
                        mark: { await run { try await model.bulk(name: row.name, on: true) } },
                        undo: { await run { try await model.undoBulk() } },
                        clear: { await run { try await model.bulk(name: row.name, on: false) } })

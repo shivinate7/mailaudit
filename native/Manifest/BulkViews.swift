@@ -20,6 +20,8 @@ struct BulkRow: View {
     let copiesIn: Int
     /// The held Undo is for this card or row.
     let undoOffered: Bool
+    /// The check-ins the held Undo takes back, for its hint.
+    let undoCount: Int
     /// True while the ask hangs below the row, so the card lets it show.
     @Binding var overhang: Bool
     let mark: () async -> Void
@@ -64,10 +66,10 @@ struct BulkRow: View {
         MiniLabel(title: "Mark all received").hidden().accessibilityHidden(true)
             .overlay {
                 if undoOffered {
-                    Button { Task { await undo() } } label: { MiniLabel(title: "Undo mark all", wide: true) }
+                    Button { Task { await undo() } } label: { MiniLabel(title: "Undo mark all", bold: true, wide: true) }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Undo mark all")
-                        .accessibilityHint("Takes back the check-ins it added")
+                        .accessibilityHint("Takes back the \(checkIns(undoCount)) it added")
                         .accessibilityIdentifier(id("undo"))
                 } else if canMark {
                     Button { Task { await mark() } } label: { MiniLabel(title: "Mark all received", wide: true) }
