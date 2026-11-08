@@ -148,7 +148,8 @@ final class VersionMilestoneTests: XCTestCase {
         let again = box.store(versions: nil)
         try again.load()
         XCTAssertEqual(again.received(), [Box.keyC: 2], "the file holds the restored ledger")
-        // An envelope the version lacks is a tombstone, not gone (decision `a-restore-is-not-local`).
+        // An envelope the version lacks is a tombstone, not gone: owner ruling 2026-11-08 10:55 CST,
+        // waiting page item 43 (decision `a-restore-is-not-local`).
         let envelopes = again.snapshot()["envelopes"] as? [[String: Any]] ?? []
         XCTAssertEqual(envelopes.filter { $0["deletedAt"] == nil }.count, 0, "a restore leaves a live envelope the version lacks")
         XCTAssertNotNil(envelopes.first { ($0["id"] as? String) == "e1" }?["deletedAt"],
