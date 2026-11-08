@@ -1,5 +1,5 @@
 // The bundle must run restampRestore, because the native restore calls it on every restore (decision
-// `a-restore-is-not-local`; debt `native-restore-keeps-old-times`). The web's own test pins one
+// `a-restore-is-not-local`; debt `native-restore-later-reply-unpinned`). The web's own test pins one
 // receivedAt value of that rule (test/recent-rules.test.mjs). The stamp and envelope parts are pinned
 // here, through the bundle the app ships.
 //

@@ -1,5 +1,5 @@
 // Restore restamp. A restore is a change the person made now (decision `a-restore-is-not-local`;
-// debt `native-restore-keeps-old-times`). The web's restore gives the restore time to every check-in
+// debt `native-restore-later-reply-unpinned`). The web's restore gives the restore time to every check-in
 // key, stamp and envelope (restampRestore in src/merge-rules.mjs). The native restore applies the
 // bundle's copy of that rule, so the ledger it saves must be what the bundle returns for the same
 // inputs. The times are also checked on their own, so a failure names the cause.

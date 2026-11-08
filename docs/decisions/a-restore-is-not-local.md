@@ -8,6 +8,8 @@ A restore is a change the person made now. `restampRestore` (in `src/merge-rules
 
 The two-tap control said "replace everything", which reads as local. The control copy that named the backup is no longer in `src/app.jsx`. Its current wording is unmeasured.
 
+The native client restamps too. `build.mjs` bundles `restampRestore` into the native `rules.js`, and `LedgerStore.restore` applies it after the mend. Owner ruling 2026-11-08 10:55 CST, waiting page item 43: one shared rule, not a Swift copy. `RestoreRestampTests` and `RestampBundleTests` pin it.
+
 A Reset takes the same path to the Worker. Its effect on the Worker's copy is unmeasured.
 
 The stored sha was a GitHub rule. A restore never touched it, and that rule left with the mirror.

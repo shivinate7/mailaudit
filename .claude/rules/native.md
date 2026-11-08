@@ -44,7 +44,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-dialog-ban-unpinned` — Nothing pins the ban on native dialogs.
 - `native-restore-pill-tap-unpinned` — No test taps the leading part of the native Restore pill.
 - `native-ledger-tab-unbuilt` — The native Ledger tab lacks the View group.
-- `native-restore-keeps-old-times` — A native restore keeps the old change times.
+- `native-restore-later-reply-unpinned` — No test pins that a later Worker reply leaves a native restore in place.
 - `native-ask-has-no-cancel-focus` — The native ask does not move first focus to Cancel.
 - `native-filters-tally-only` — The native client has no date filter, package sort or Packages search.
 - `native-tally-copy-no-flags` — The native Tally copy has no lost-mail flag and no order id tap.
