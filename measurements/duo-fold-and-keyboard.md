@@ -2,7 +2,7 @@
 
 This record holds the fold strip, the system keyboard frame and the outer screen's safe content on the iPhone Duo simulator. Re-measure after a change to the fold reading or the keyboard layout. The decision that uses these figures is `duo-card-in-hand`.
 
-**Status:** measured 2026-10-27 at 14:03 CDT on the iPhone Duo simulator, iOS 27.1. The fold strip is one reading, taken after a close. The keyboard frame is one reading; the drawn panel top is one screenshot reading, 2026-10-28.
+**Status:** measured 2026-10-27 at 14:03 CDT on the iPhone Duo simulator, iOS 27.1; the outer screen re-measured 2026-11-08 08:12 CST. The fold strip is one reading, taken after a close. The keyboard frame is one reading; the drawn panel top is one screenshot reading, 2026-10-28.
 
 ## How to re-measure
 
@@ -13,6 +13,8 @@ Fold the simulator, take the two screenshots, and read the two APIs in a probe a
 simctl io <udid> screenshot --display=LCD-1    # inner screen
 simctl io <udid> screenshot --display=LCD      # outer screen
 ```
+
+For the outer screen, fold closed and run `DuoMeasureUITests.testMeasureFolded` (branch archive/duo-reach-measure). It prints the window, the masthead and the tab bar frames.
 
 In the probe app, read the reservedRegions call with kind division and options includeInactive, and the keyboard frame notifications.
 
@@ -30,7 +32,7 @@ Never drive Device Hub.
 
 ## Figures
 
-- Outer screen: 382 by 644 pt of safe content. Insets: bottom 34, trailing 84.
+- Outer screen: a window of 466 by 678 pt, with content across the full 466 pt width. The masthead spans x 24 to 442 pt, 24 pt in from each side, so no trailing inset shows. The system tab bar starts at y 595 pt and is 83 pt tall, the bottom inset included. A UI test cannot read the safe-area insets themselves. Re-measured 2026-11-08 08:12 CST on Duo 1, closed, with `DuoMeasureUITests.testMeasureFolded` (branch archive/duo-reach-measure, d365720). The 2026-10-27 reading of 382 by 644 pt with an 84 pt trailing inset no longer holds.
 - Fold strip: 40 pt, centred on the inner screen's 951 pt edge, at 455.5 to 495.5 pt. One reading, taken after a close. No fold was reported while open. Re-read it in the build.
 - System keyboard frame: open 951 by 263 pt. Half-open 801 by 263 pt. Outer screen 466 pt wide by 250 to 289 pt tall; two heights were read, likely with and without the suggestion bar.
 - Keyboard panel, drawn: on the open Duo with the keys up, the panel draws from about y=405 pt, while the reported frame starts at 449 pt, a 44 pt strip. Source: one simulator screenshot, the open-hand shot of wave 3, 2026-10-28. Content that must clear the keys is placed against 405 pt, not 449 pt.
