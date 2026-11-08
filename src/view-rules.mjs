@@ -282,8 +282,9 @@ export function monthChoices(items) {
   return keys.map((key) => ({ key, label: monthLabel(key, one), ...monthRange(key) }));
 }
 
-/* a custom range that happens to be exactly one whole month is shown as that
-   month, so picking "Aug" reads back as "Aug" rather than as "Custom" */
+/* a custom range that starts on the 1st and stays inside one month is shown as that
+   month, so picking "Aug" reads back as "Aug" rather than as "Custom". The end day is
+   not checked: 08-01..08-15 reads "Aug" too, as the web's monthKey in src/app.jsx does */
 export const monthKeyOf = (filter) =>
   filter.preset === "custom" &&
   filter.from &&
@@ -293,7 +294,7 @@ export const monthKeyOf = (filter) =>
     ? filter.from.slice(0, 7)
     : null;
 
-/* the month's label for a filter that is exactly one whole month, else null */
+/* the month's label for a filter that monthKeyOf reads as a month, else null */
 export function rangeMonthLabel(filter, items) {
   const k = monthKeyOf(filter);
   return k ? monthLabel(k, spansOneYear(monthKeysOf(items))) : null;

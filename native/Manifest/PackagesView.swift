@@ -44,12 +44,13 @@ struct PackagesView: View {
                 LazyVStack(spacing: 8) {
                     // A Mark all that completes its package drops the card under Unreceived, and the Undo went with it: the shared
                     // notice takes the card's place, so the held Undo keeps a control (undo-removes-only-its-delta).
-                    let vacated = model.vacatedUndo
+                    // One whose Undo another write ended keeps its place, inert, so the cards below do not move under the pointer.
+                    let notices = (model.vacatedUndo.map { [(notice: $0, inert: false)] } ?? []) + model.lapsedUndos.map { (notice: $0, inert: true) }
                     ForEach(Array(model.rows.enumerated()), id: \.element.gk) { i, pkg in
-                        if let vacated, vacated.index == i { vacatedNotice(vacated) }
+                        ForEach(notices.filter { $0.notice.index == i }, id: \.notice.gk) { vacatedNotice($0.notice, inert: $0.inert) }
                         PackageRow(pkg: pkg, model: model, masthead: masthead, onChange: onChange).id(Self.jumpID(pkg.gk))
                     }
-                    if let vacated, vacated.index >= model.rows.count { vacatedNotice(vacated) }
+                    ForEach(notices.filter { $0.notice.index >= model.rows.count }, id: \.notice.gk) { vacatedNotice($0.notice, inert: $0.inert) }
                     if model.rows.isEmpty && model.hasItems { empty }
                 }
                 .padding(.horizontal, 16)
@@ -76,10 +77,10 @@ struct PackagesView: View {
     /// The scroll id of a card, for the jump from a Tally order id.
     private static func jumpID(_ gk: String) -> String { "package-jump:\(gk)" }
 
-    private func vacatedNotice(_ v: PackagesModel.VacatedUndo) -> some View {
+    private func vacatedNotice(_ v: PackagesModel.VacatedUndo, inert: Bool) -> some View {
         UndoNoticeBar(line: v.line, undoID: "bulk-vacated-undo:\(v.gk)",
                       undo: { await bulkWrite(masthead: masthead, onChange: onChange) { try await model.undoBulk() } },
-                      dismiss: { model.endBulkUndo() })
+                      dismiss: { model.endBulkUndo() }, inert: inert)
     }
 
     /// The web's empty list: one sentence, and one Clear search only while a search is what empties it.
