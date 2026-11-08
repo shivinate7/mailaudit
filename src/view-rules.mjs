@@ -204,6 +204,16 @@ export function rankCandidates(entries, pkgs, received) {
   return { list, tied, explainable };
 }
 
+/* How long the app has to be in the background before coming back counts as
+   "reopening it" rather than "glancing away". iOS keeps a home-screen web app's
+   page alive when you switch away, so without this the only thing that resets
+   Showing is the system evicting the page — which can be days. A short hop out
+   to read a tracking number and straight back is not a new session, and
+   flipping the list under someone mid-check-in is the mis-tap invariant no-layout-shift-under-pointer
+   exists to prevent. A minute is comfortably longer than that hop and far
+   shorter than any real "I'll come back to this later". */
+export const RESUME_RESET_MS = 60_000;
+
 /* ---------- lane S3: filters, pooling, sorts and totals ----------
    Each takes its state and clock as arguments. Sticky rows and the frozen
    sort stay in src/app.jsx (no-layout-shift-under-pointer): the component

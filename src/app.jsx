@@ -4,7 +4,7 @@ import tokens from "../shared/tokens.json";
 import {
   parseItems, lostMail, normName, isUntracked, gkOf, groupPackages, rankCandidates,
   dateRange, inRange, dropCanceled, dropGks, canceledPackagesOf, stampedPackagesOf,
-  tallyGroups, sortTally, sortPackages, filterPackages, stampTextOf, filterTally,
+  tallyGroups, sortTally, sortPackages, filterPackages, stampTextOf, filterTally, RESUME_RESET_MS,
   totalsOf, bulkApply, outstandingOf, packagePill, refundedPill, STAMP_KINDS, hasStamp, isRefundStamp, nextStamp, stampBandText, itemDetail, tcgplayerOrderUrl, gotQty as gotQtyText, countLine, outstandingNames as outstandingNamesOf, packagesDone, salvageLedger, money, compact,
 } from "./view-rules.mjs";
 import { photoPlan } from "./photo-rules.mjs";
@@ -1554,16 +1554,6 @@ const edgeBar = {
    (`visibility: hidden`), which makes the row self-measuring at every width —
    at the cost of the visible label wrapping at rest, which is a look. */
 const BULK_ROW_H = 46;
-
-/* How long the app has to be in the background before coming back counts as
-   "reopening it" rather than "glancing away". iOS keeps a home-screen web app's
-   page alive when you switch away, so without this the only thing that resets
-   Showing is the system evicting the page — which can be days. A short hop out
-   to read a tracking number and straight back is not a new session, and
-   flipping the list under someone mid-check-in is the mis-tap invariant no-layout-shift-under-pointer
-   exists to prevent. A minute is comfortably longer than that hop and far
-   shorter than any real "I'll come back to this later". */
-const RESUME_RESET_MS = 60_000;
 
 /* ---------- the toolbar vocabulary ----------
    One height for every control inside the disclosure panels. Before this,
