@@ -23,11 +23,13 @@ final class FindPillUITests: XCTestCase {
         continueAfterFailure = false
     }
 
-    /// The Packages tab, open, with its rows loaded. Scope first: the rows exist before any case reads them.
+    /// The Packages tab, open, with its rows loaded. Scope first: the rows exist before any case reads them. The list is lazy,
+    /// and D1 is the fourth card, below the fold, so it is not in the tree until the list scrolls near it. ScreenKit.mount
+    /// does that scroll, as PackageCardUITests does for the same row. Every launch starts on Unreceived, and the seed has no
+    /// check-in, so all four packages are listed there.
     func openPackages(_ app: XCUIApplication) throws {
         app.tabBars.buttons["Packages"].tap()
-        XCTAssertTrue(ShellUITest.element(app, "package-row:D1::Delta Cards").waitForExistence(timeout: 5),
-                      "scope: the Packages rows are missing")
+        XCTAssertTrue(ScreenKit.mount(app, "package-row:D1::Delta Cards"), "scope: the Packages rows are missing")
     }
 
     /// The pill sits above the system tab bar on Packages and on Tally: its bottom edge is above the bar's top.
@@ -47,8 +49,14 @@ final class FindPillUITests: XCTestCase {
     func testPillFiltersThePackagesList() throws {
         let app = ShellUITest.launch(width: 375)
         try openPackages(app)
-        XCTAssertEqual(ShellUITest.elements(app, prefix: "package-row:").count, 4,
-                       "scope: the seed does not list four packages before the search")
+        // The masthead counts the ledger's packages, not the rows on screen, so it is the exact scope of four.
+        let count = ShellUITest.element(app, "masthead-count")
+        XCTAssertTrue(count.waitForExistence(timeout: 5), "scope: the masthead count is missing")
+        XCTAssertTrue(count.label.hasPrefix("4 packages"), "scope: the seed does not hold four packages, the masthead reads \(count.label)")
+        // A row count would read only the rows near the screen, so each seeded package is mounted in turn.
+        for key in ["A1::Alpha Cards", "B1::Beta Games", "C1::Gamma Cards", "D1::Delta Cards"] {
+            XCTAssertTrue(ScreenKit.mount(app, "package-row:" + key), "scope: \(key) is not on the Packages list before the search")
+        }
 
         let field = ShellUITest.element(app, "find-field")
         XCTAssertTrue(field.waitForExistence(timeout: 5), "the find field find-field is missing")
