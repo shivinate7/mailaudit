@@ -247,4 +247,33 @@ final class ViewOptionsModelTests: XCTestCase {
                        "A1 is drawn whole: Find would cut it to its Lightning Bolt line")
         XCTAssertEqual(model.options.jumpGk, "A1::Alpha Cards", "the jump names A1 for the list to scroll to")
     }
+
+    // MARK: the card order under $ remaining
+
+    /// Under Sorted by $ remaining the cards keep the order they were placed in. A reload reads the counts again and keeps
+    /// it, so a Worker apply that moves a copy never moves a card under the pointer (no-layout-shift-under-pointer). The web
+    /// places its order on the items and the sort, and reads the counts through receivedRef (src/app.jsx packageOrder).
+    func testAReloadKeepsTheCardOrderUnderDollarsRemaining() async throws {
+        let (model, _, store) = try await packagesModel(saved: ["sortBy": "value"], label: "step8-hold-order")
+        let placed = ["D1::Delta Cards", "C1::Gamma Cards", "B1::Beta Games", "A1::Alpha Cards"]
+        XCTAssertEqual(gks(model), placed,
+                       "anchor: $ remaining places Urza's Saga ($50), then Gamma ($9.50), then the two $4 packages, newer first")
+
+        try await model.checkIn(key: "C1|1|pPathtoExile", count: 1)
+        try await model.checkIn(key: "C1|2|pSwordstoPlowshares", count: 1)
+        XCTAssertEqual(gks(model), placed, "control: a check-in keeps the order the cards were placed in")
+
+        let fresh = PackagesModel(engine: try RulesEngine(bundleURL: RulesGoldenTests.bundleURL), store: store)
+        try await fresh.load()
+        XCTAssertEqual(gks(fresh), ["D1::Delta Cards", "B1::Beta Games", "A1::Alpha Cards", "C1::Gamma Cards"],
+                       "anchor: with Gamma at $2.50 remaining a fresh order places it last, so the counts would reorder the list")
+
+        try await model.load()
+        XCTAssertEqual(gks(model), placed,
+                       "a reload re-sorted the cards by the new counts: Gamma fell below the two $4 packages (no-layout-shift-under-pointer)")
+
+        try await model.setSort(.oldest)
+        XCTAssertEqual(gks(model), ["D1::Delta Cards", "C1::Gamma Cards", "A1::Alpha Cards", "B1::Beta Games"],
+                       "control: a change of Sorted by re-sorts the cards")
+    }
 }
