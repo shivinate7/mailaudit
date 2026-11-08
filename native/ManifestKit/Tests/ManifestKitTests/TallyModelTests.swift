@@ -489,10 +489,7 @@ final class TallyModelTests: XCTestCase {
 
     /// The real rules.js plus one override, so a model that copied a rule would not see it.
     func probeBundle(_ override: String) throws -> URL {
-        let real = try String(contentsOf: RulesGoldenTests.bundleURL, encoding: .utf8)
-        let probe = FileManager.default.temporaryDirectory.appending(path: "n6-tally-probe-\(UUID().uuidString).js")
-        try (real + "\n;" + override + ";\n").write(to: probe, atomically: true, encoding: .utf8)
-        return probe
+        try RulesProbeBundle.make(override)
     }
 
     /// sortTally put in reverse alphabetical order for every key. The rows must follow it

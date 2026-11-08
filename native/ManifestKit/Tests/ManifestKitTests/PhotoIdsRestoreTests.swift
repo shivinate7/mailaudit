@@ -134,4 +134,29 @@ final class PhotoIdsRestoreTests: XCTestCase {
         XCTAssertEqual(envelopePhotos(try s.box.saved()), [Self.photoA, Self.photoB],
                        "an unreadable photo store keeps every photo id on a restore, in the saved file")
     }
+
+    // MARK: a photo drop with a restamp
+
+    /// One restore that drops pho-b and stamps the restore time. The clock is RestoreRestampTests' restore
+    /// time, so the change time is the restore's, not the version's. Both must hold in memory and in the
+    /// file: a restamp that loses the photo filter, or a filter that skips the restamp, fails here.
+    func testARestoreDropsAPhotoIdAndStampsTheRestoreTime() async throws {
+        let s = try await makeScene(held: [Self.photoA])
+        let held = await s.photos.heldIds()
+        XCTAssertEqual(held, Set([Self.photoA]), "anchor: the photo store holds pho-a only")
+        s.box.clock.t = RestoreRestampTests.restoreAt
+
+        try s.store.restore(s.version.id)
+
+        let saved = try s.box.saved()
+        for (doc, at) in [(s.store.snapshot(), "memory"), (saved, "file")] {
+            XCTAssertNotNil(PhotoTestKit.envelope(Self.envelopeID, in: doc),
+                            "\(at): the restore left no envelope \(Self.envelopeID) to check")
+            XCTAssertEqual(envelopePhotos(doc), [Self.photoA],
+                           "\(at): the restored envelope does not keep only the photo ids this device holds")
+            let updated = PhotoTestKit.envelope(Self.envelopeID, in: doc)?["updatedAt"] as? NSNumber
+            XCTAssertEqual(updated?.doubleValue, RestoreRestampTests.restoreAt,
+                           "\(at): the restored envelope keeps an old change time, not the restore time")
+        }
+    }
 }

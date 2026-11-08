@@ -5,9 +5,13 @@ import { mkdirSync, readFileSync, writeFileSync } from "fs";
 /* ---------- the rules bundle (rules-run-in-javascriptcore) ----------
    The Swift client runs the same pure rules modules in JavaScriptCore. One
    esbuild IIFE exposes them all as the global `Rules`; the RulesEngine actor
-   calls `Rules[name](...args)`. The merge rules stay out: the merge has one
-   home, the Worker. Built in memory (write:false), so --check-rules compares
-   bytes without touching the tree. This runs before the app
+   calls `Rules[name](...args)`. The merge stays out: it has one home, the
+   Worker. One function of merge-rules comes in, `restampRestore`, because a
+   native restore stamps its change times with the rule the web uses (owner
+   ruling, waiting page item 43, 2026-11-08; decision `a-restore-is-not-local`).
+   Only that export is named, so esbuild leaves the rest of the merge out. Built in
+   memory (write:false), so --check-rules compares bytes without touching the
+   tree. This runs before the app
    build, so the check needs neither git nor a ledger remote. */
 const RULES_OUT = "native/ManifestKit/Sources/ManifestKit/rules.js";
 async function buildRules() {
@@ -15,6 +19,7 @@ async function buildRules() {
     stdin: {
       contents: ["view", "sync", "version", "photo"]
         .map((m) => `export * from "./src/${m}-rules.mjs";`)
+        .concat(`export { restampRestore } from "./src/merge-rules.mjs";`)
         .join("\n"),
       resolveDir: process.cwd(),
     },

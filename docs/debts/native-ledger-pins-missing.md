@@ -1,6 +1,6 @@
-# Four native ledger behaviours have no test
+# No test pins that the app passes its own rules.js to the ledger store
 
-**What.** No test pins the millisecond kept-name format, the missing-file case, or the unwrapped-error sentence in Load and save. `keptCopies` matches the prefix and extension only, so the format is read from `LedgerStore.load`. The app passing its own `rules.js` to the store is not pinned either (`ManifestApp.swift`, boot). When a test pins each one, the gap closes.
+**What.** `LedgerStoreTests` pins the millisecond kept-copy name, a missing ledger file, and the failed-save sentence. One ledger behaviour is still unpinned: at boot, `ManifestApp.swift` passes its own `rules.js` to the store. A Kit test cannot see the app's boot. If a hosted or UI test pins it, the gap closes.
 
 **Status:** open.
 

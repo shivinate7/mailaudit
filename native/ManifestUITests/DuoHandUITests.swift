@@ -172,7 +172,7 @@ final class DuoHandUITests: XCTestCase {
     /// the window proves nothing about the space above it, so each of those fails.
     func requireKeysUp(_ app: XCUIApplication) -> CGRect {
         let keys = app.keyboards.firstMatch
-        XCTAssertTrue(keys.waitForExistence(timeout: 5), "the system keys are not up, so nothing here shows the offer clears them; with a hardware keyboard attached the keys never draw (Simulator, I/O, Keyboard, Connect Hardware Keyboard off)")
+        XCTAssertTrue(keys.waitForExistence(timeout: 5), "the system keys are not up, so nothing here shows the offer clears them; with a hardware keyboard attached the keys never draw (Simulator, I/O, Keyboard, Connect Hardware Keyboard off); with the simulator preference AutomaticMinimizationEnabled true they come up minimized (set it false: xcrun simctl spawn <udid> defaults write com.apple.keyboard.preferences AutomaticMinimizationEnabled -bool false; debt duo-keys-minimize-pref)")
         let k = keys.frame, win = app.window.frame
         XCTAssertGreaterThan(k.height, 200, "the keyboard frame \(k) is too short to be the keys (measured 263 pt on the open Duo)")
         XCTAssertGreaterThanOrEqual(k.minY, win.minY, "the keyboard frame \(k) starts above the window \(win)")

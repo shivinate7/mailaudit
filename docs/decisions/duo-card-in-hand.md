@@ -4,7 +4,7 @@ Kind: build
 
 Plan: docs/design/duo-blind/README.md#pick (native)
 
-**Status:** ruled on 2026-10-27 at 12:25 CDT. Round 2 answers came on 2026-10-27 at 14:26 CDT, on the waiting page. Defaults and deferrals came at 15:34 CDT. Item 22 is provisional. Item 25 (the Lost stamp) is deferred. Item 27 (held Suspense cards) is default, not owner. Built: the Duo shell (the tab bar under the right page), Card in Hand on side-by-side pages, and the past-transit page, which the `hand-open` control on Packages opens. Not built: the spread tabs; the stacked poses (`duo-stacked-poses-unbuilt`); and five mockup parts (`duo-hand-mockup-gaps`). The round 2 design is PR 144, the Duo round 2 design pull request.
+**Status:** ruled on 2026-10-27 at 12:25 CDT. Round 2 answers came on 2026-10-27 at 14:26 CDT, on the waiting page. Defaults and deferrals came at 15:34 CDT. Item 22 is provisional. Item 25 (the Lost stamp) is deferred. Item 27 (held Suspense cards) is default, not owner. Built: the Duo shell (the tab bar under the right page), Card in Hand on side-by-side pages, and the past-transit page, which the `hand-open` control on Packages opens. Not built: the spread tabs; the stacked poses (`duo-stacked-poses-unbuilt`); and eight mockup parts (`duo-hand-mockup-gaps`). The round 2 design is PR 144, the Duo round 2 design pull request.
 
 On the iPhone Duo, Card in Hand checks cards in by name. The concept comes from PR 139, the Duo blind-design pull request. The card you hold is the search, and the envelope is the answer. Two parts come from other concepts in the same PR: the past-transit page from the Sorting Frame, and the Suspense line from the Account Book.
 
@@ -19,6 +19,7 @@ The owner ruled on 2026-10-27, 12:25 CDT. Round 2 answers, 14:26 CDT, are marked
 - **Claim deadline.** 30 days from the order date, the rule in `lost-mail-flags-use-order-date`. The 28 days in PR 139 is dropped.
 - **Usual transit.** 14 days. The past-transit page starts where the amber flag starts. The 10 days in PR 139 is dropped.
 - **Tab bar.** Round 2 item 23 (option a): the tab bar on two pages sits under the right page. Stacked poses are the exception, see below.
+- **Tab bar text.** Ruled by the coordinator on 2026-11-08 at 08:17 CST, under the rule that a port keeps the web's behaviour (claude-settings `building-port-keeps-behaviour`). The web bar's labels are a fixed 10 px (`src/app.jsx`, `.mdl-bar button`; decision `phone-nav-is-bottom-bar`). The open Duo's bar labels and count badge stop growing at the default text size (`dynamicTypeSize(...large)`), so no label passes its button or the 64 pt pill at any accessibility size. Each tab also offers the iOS large content viewer (`accessibilityShowsLargeContentViewer`, the tab's label and symbol), so a long press shows it big. Symbols only is ruled out. Departs from: the web bar, which has no long press — adds the iOS large content viewer on each tab. The debt is `duo-bar-dynamic-type-clips`.
 - **Other tabs.** Round 2 item 24 (option b): on the open Duo, Tally and Orphaned spread over both pages. Ledger stays full width.
 - **Stacked poses.** Round 2 item 28 (option a): in stacked poses (laptop, held tall), the answer page goes on top. At 15:34 CDT (owner, a), the system tab bar sits at the bottom of the screen.
 - **Tracked late packages.** At 15:34 CDT (owner, a), keep today's `lostMail` rule, which skips tracked packages. See `lost-mail-flags-use-order-date`.
@@ -76,4 +77,4 @@ On Card in Hand, the Post offer sits under the sender and the date, above the li
 - `duo-fold-and-keyboard` — the fold strip, keyboard frame and outer screen figures.
 - `new-envelope-ends-an-envelope` — the New envelope control, and how a shared name is decided.
 - `duo-stacked-poses-unbuilt` — the stacked poses of item 28, not built.
-- `duo-hand-mockup-gaps` — the five mockup parts not built.
+- `duo-hand-mockup-gaps` — the eight mockup parts not built.
