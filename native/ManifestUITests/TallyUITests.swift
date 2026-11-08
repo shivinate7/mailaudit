@@ -13,9 +13,9 @@
 //     the order id, the set and the day of the month.
 //   Copy control: "tally-checkin:<item key>", a 44pt hit region, labelled "Check in <name>" or
 //     "Undo check in <name>" (the Packages control, same wording).
-//   Sort: a menu button "tally-sort". Its label or value holds the current sort label. Its menu lists
-//     the six labels as buttons.
-//   Search: a text field "tally-search".
+//   Sort: the Sorted by row "ledger-sort" on the Ledger tab (its View group). Its option grid "ledger-sort-grid"
+//     lists the six labels as buttons, once Tally is the last list tab left.
+//   Search: the floating pill's field "find-field" (lane restyle-step8). Its pill has no clear control.
 //   Empty search: no row, and exactly one button whose label has "clear" in it, labelled "Clear search".
 //     The system clear button of a search field counts, so a builder using one must not add a second.
 //
@@ -106,8 +106,8 @@ final class TallyUITests: XCTestCase {
     func testAccessibilityAuditTallyScreenWithARowOpen() throws {
         let app = launch()
         openTally(app)
-        let search = element(app, "tally-search")
-        XCTAssertTrue(search.waitForExistence(timeout: 5), "the search field tally-search is missing")
+        let search = element(app, "find-field")
+        XCTAssertTrue(search.waitForExistence(timeout: 5), "the find field find-field is missing")
         search.tap()
         search.typeText("Lightning\n")  // the return key closes the keyboard, so the tab bar shows
         let ponderGone = NSPredicate(format: "exists == false")
@@ -224,33 +224,36 @@ final class TallyUITests: XCTestCase {
 
     // MARK: the sort label
 
-    /// Each of the six labels shows whole at 375pt: the control keeps to the frame, and the clipped-text audit
-    /// finds nothing on it.
+    /// Each of the six labels shows whole at 375pt in the Sorted by grid. The grid lives on the Ledger tab's View
+    /// group (ledger-tab-holds-options), and it holds the Tally labels once Tally is the last list tab left, so the
+    /// case opens Tally first. The cell keeps to the frame, and the clipped-text audit finds nothing on it.
     func testEverySortLabelFitsAt375pt() throws {
         let app = launch(width: 375)
         openTally(app)
-        let sort = element(app, "tally-sort")
-        XCTAssertTrue(sort.waitForExistence(timeout: 5), "the sort control tally-sort is missing")
+        app.tabBars.buttons["Ledger"].tap()
+        let sort = element(app, "ledger-sort")
+        XCTAssertTrue(sort.waitForExistence(timeout: 5), "the Sorted by row ledger-sort is missing on Ledger")
+        sort.tap()
+        XCTAssertTrue(element(app, "ledger-sort-grid").waitForExistence(timeout: 5), "Sorted by opened no option grid")
         let inset = (app.windows.firstMatch.frame.width - 375) / 2
 
         for label in Self.sortLabels {
-            sort.tap()
             let option = app.buttons[label]
-            XCTAssertTrue(option.waitForExistence(timeout: 5), "the sort menu has no \(label) button")
-            option.tap()
-
-            let shown = [sort.label, sort.value as? String ?? ""].joined(separator: " ")
-            XCTAssertTrue(shown.contains(label), "after choosing \(label), the sort control reads \u{201C}\(shown)\u{201D}")
-            XCTAssertGreaterThanOrEqual(sort.frame.minX, inset - 1, "\(label): the sort control starts outside the 375pt frame")
-            XCTAssertLessThanOrEqual(sort.frame.maxX, inset + 375 + 1, "\(label): the sort control ends outside the 375pt frame")
+            XCTAssertTrue(option.waitForExistence(timeout: 5), "the Sorted by grid has no \(label) cell")
+            XCTAssertGreaterThanOrEqual(option.frame.minX, inset - 1, "\(label): the cell starts outside the 375pt frame")
+            XCTAssertLessThanOrEqual(option.frame.maxX, inset + 375 + 1, "\(label): the cell ends outside the 375pt frame")
 
             var clipped: [String] = []
             try app.performAccessibilityAudit(for: .textClipped) { issue in
-                guard let frame = issue.element?.frame, frame.intersects(sort.frame) else { return true }
+                guard let frame = issue.element?.frame, frame.intersects(option.frame) else { return true }
                 clipped.append(issue.compactDescription)
                 return false
             }
             XCTAssertEqual(clipped, [], "\(label) is clipped at 375pt")
+
+            option.tap()
+            let shown = [sort.label, sort.value as? String ?? ""].joined(separator: " ")
+            XCTAssertTrue(shown.contains(label), "after choosing \(label), Sorted by reads \u{201C}\(shown)\u{201D}")
         }
     }
 
@@ -324,8 +327,8 @@ final class TallyUITests: XCTestCase {
     func testEmptySearchShowsOneClearControl() throws {
         let app = launch()
         openTally(app)
-        let search = element(app, "tally-search")
-        XCTAssertTrue(search.waitForExistence(timeout: 5), "the search field tally-search is missing")
+        let search = element(app, "find-field")
+        XCTAssertTrue(search.waitForExistence(timeout: 5), "the find field find-field is missing")
         search.tap()
         search.typeText("zzzz")
 
