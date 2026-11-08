@@ -10,6 +10,9 @@ public final class LedgerStore {
     var doc: [String: Any] = [:]
     var loaded = false
     public internal(set) var generation = 0
+    /// How many Posts on Card in Hand saved. A model with a failed-write line reads it to learn that a write has landed
+    /// since: a load, a sync or a reply does not move it.
+    public internal(set) var postsSaved = 0
     /// Entries the last load dropped from a damaged field; 0 when nothing was damaged.
     public private(set) var droppedCount = 0
     /// Runs after a write the person made was saved: commitReceived, commit(_:) and commitPhoto.

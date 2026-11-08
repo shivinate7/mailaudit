@@ -93,6 +93,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `duo-hand-mockup-gaps` — Eight parts of the Card in Hand mockup are not built.
 - `hand-stray-keeps-tie` — A released card leaves its tie on the answer page.
 - `hand-stale-checkin-error` — A good post leaves an old check-in error showing.
+- `stamped-toggle-clears-error` — The stamped toggle clears a failed check-in's error.
 - `checkin-error-bar-is-sans` — The native check-in error bar is set in sans on material.
 - `hand-post-scroll-hides-sender` — The Post offer scrolls the sender off the page.
 - `hand-notice-cuts-match-row` — A Suspense or Released box pushes the match under the keys.
@@ -101,7 +102,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `hand-match-row-ax3-unmeasured` — The match row at large text is unmeasured.
 - `hand-suspense-tap-shift` — A tap on a match shifts rows under the finger.
 - `hand-tap-label-unpinned` — No test pins the tapped name's sideways place.
-- `duo-left-page-dead-margin` — The Duo left page scrolls 76 pt past its end.
+- `duo-left-page-dead-margin` — The Duo left page scrolls 76 pt past its end; low priority, after restyle's step 8.
 - `duo-checkin-error-under-bar` — A Packages check-in error can sit under the Duo bar.
 - `native-tally-ellipsis-unpinned` — Nothing pins the native Tally ellipsis.
 - `native-discard-panel-covers-head` — The native armed Discard panel covers the envelope header.
