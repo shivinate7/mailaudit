@@ -1,7 +1,7 @@
 // The probe bundle: the real rules.js with one override appended, written into the run folder
 // (test-temp-standard). A test that needs the bundle to lack a rule, or to break one, builds its probe
-// here, so the rule under test is the bundle's own and no Swift copy stands in for it. This is the one
-// home of the probe; a test that wants a probe calls it.
+// here, so the rule under test is the bundle's own and no Swift copy stands in for it. `SyncTestCase.probeBundle`
+// and `N4bSupport.probeBundleFile` still build their own; folding them in here is open.
 //
 // Fake fixtures only. No Keychain item is read.
 
