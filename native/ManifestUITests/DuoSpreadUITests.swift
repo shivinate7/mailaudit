@@ -12,7 +12,7 @@
 // wrote them (lane duo-tabs-spread-t): they build with `xcodebuild build-for-testing`.
 // Each test names its pose and fails when the window is another size (DuoWindowSupport.swift). It never skips.
 //
-// Expected red on origin/main, not yet run (debt duo-bar-dynamic-type-clips): testFlatBarLabelsFitThePillAtAccessibilityXXXL.
+// testFlatBarLabelsFitThePillAtAccessibilityXXXL fails when a bar label passes its button or the pill at large text (debt duo-bar-dynamic-type-clips).
 //
 // Red on the code before the spread (the builder made them pass): testFlatTallySpreadsOverBothPages,
 // testFlatTallyRightPageFollowsTheTappedRow, testFlatOrphanedSpreadsOverBothPages, testFlatBarTitlesShareOneBaseline.

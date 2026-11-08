@@ -193,7 +193,7 @@ private struct DuoBar<ID: Hashable>: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel(item.title)
-                    // At accessibility sizes the bar's text is capped (below), so a long press shows the tab big instead.
+                    // The bar's text is capped at the default size (below), so at larger sizes a long press shows the tab big instead.
                     .accessibilityShowsLargeContentViewer { Label(item.title, systemImage: item.symbol) }
                     .accessibilityValue(item.badge > 0 ? "\(item.badge)" : "")
                     .accessibilityAddTraits(on ? .isSelected : [])

@@ -20,7 +20,7 @@ enum DuoMetrics {
     static var barHeight: CGFloat { pillHeight + pillLift }
     /// The room a bottom bar may keep above the window's bottom edge. The outer screen's bottom inset is 34 pt; the inner one is unmeasured.
     static let bottomAllowance: CGFloat = 40
-    /// The custom bar's pill, from DuoBarMetrics (DuoSpine.swift): 24 pt in from each side, 12 pt up from the bar's bottom, 64 pt high.
+    /// The custom bar's pill, as DuoBar draws it (DuoSpine.swift: 24 pt side padding, DuoBarMetrics.lift and .pill): 24 pt in from each side, 12 pt up from the bar's bottom, 64 pt high.
     /// The pill has no identifier, so a test derives it from the bar's frame.
     static let pillInset: CGFloat = 24
     static let pillLift: CGFloat = 12
