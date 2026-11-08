@@ -31,9 +31,10 @@ struct DuoPages<Left: View, Right: View>: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            // The bar sits under the right page only, and its inset lives inside each tab (DuoSystemBar), so the left page takes it back.
+            // The bar sits under the right page only, but DuoSystemBar sets its bottom scroll margin on the whole tab. The left page
+            // resets that margin to zero, so its scroll views end at their last part, and it runs to the window's bottom edge.
             // .container only: the keyboard region stays as SwiftUI sets it.
-            left.frame(width: pages.left.width).ignoresSafeArea(.container, edges: .bottom)
+            left.frame(width: pages.left.width).contentMargins(.bottom, 0, for: .scrollContent).ignoresSafeArea(.container, edges: .bottom)
             Color.clear.frame(width: pages.right.minX - pages.left.maxX)
             right.frame(width: pages.right.width)
         }
