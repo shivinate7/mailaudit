@@ -251,18 +251,22 @@ struct StampSection: View {
     // MARK: the editor
 
     private var editor: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
-                Text("STAMP").font(.mono(10, relativeTo: .caption)).tracking(1.6).foregroundStyle(paint(.head))
-                    .accessibilityAddTraits(.isHeader)
-                Rectangle().fill(paint(.rule)).frame(height: 1)
+        // The gaps are the stacks' spacing: 8 under the head and above Save and Cancel, 12 between the chips and the note.
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    Text("STAMP").font(.mono(10, relativeTo: .caption)).tracking(1.6).foregroundStyle(paint(.head))
+                        .accessibilityAddTraits(.isHeader)
+                    Rectangle().fill(paint(.rule)).frame(height: 1)
+                }
+                Wrap(column: 4, row: 12) {
+                    ForEach(model.stampKinds, id: \.kind) { k in chip(k) }
+                }
             }
-            .padding(.bottom, 8)
-            Wrap(column: 4, row: 12) {
-                ForEach(model.stampKinds, id: \.kind) { k in chip(k) }
+            VStack(alignment: .leading, spacing: 8) {
+                noteField
+                buttons.id(saveRow)
             }
-            noteField.padding(.top, 12)
-            buttons.padding(.top, 8).id(saveRow)
         }
         .padding(.horizontal, 12).padding(.bottom, 12)
         .accessibilityElement(children: .contain)

@@ -128,6 +128,8 @@ public final class PackagesModel {
     }
     /// The store's postsSaved when checkInError was last set: only a Post after that is a good write that outdates the failure line.
     @ObservationIgnored private var errorPosts = 0
+    /// The line a failed stamped toggle left. Its next good read clears that line and no other (debt stamped-toggle-clears-error).
+    @ObservationIgnored private var toggleError: String?
 
     public init(engine: RulesEngine, store: LedgerStore, options: ViewOptions = ViewOptions()) {
         self.engine = engine
@@ -596,9 +598,12 @@ public final class PackagesModel {
         do { try await load() } catch {
             showStamped.toggle()  // the rows on screen are still the old filter's, so the cell says that filter
             fail("Could not read the list. \(error.localizedDescription)")
+            toggleError = checkInError
             throw error
         }
-        checkInError = nil
+        // A failed check-in's line stays: only its own failed read, or a later Post, ends a line (load).
+        if let toggleError, checkInError == toggleError { checkInError = nil }
+        toggleError = nil
     }
 
     private func fail(_ message: String) {

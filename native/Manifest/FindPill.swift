@@ -1,8 +1,11 @@
 import SwiftUI
 
 /// The floating search pill of the Packages and Tally tabs (src/app.jsx `.mdl-pill`; phone-nav-is-bottom-bar, Find). One
-/// query serves both tabs, so the text follows `query` and reports each change. It has no clear button: the web's input has
-/// none (the coordinator ruling, port default), and the empty list keeps its own Clear search.
+/// query serves both tabs, so the text follows `query` and reports each change. A clear button shows while the field holds text
+/// (owner item 46, answer a, 2026-11-08 10:55 CST; departs from the web's `.mdl-pill`, whose input has none). It does what the web's
+/// empty-state "Clear search" does, `setQuery("")` (src/app.jsx MailDayLedger), and the empty list keeps its own Clear search.
+/// Its 44 x 44 slot is laid out while the field is empty too, as a clear spacer, so the field never changes width as the first
+/// character lands (no-layout-shift-under-pointer).
 ///
 /// The field holds two lines at rest (`lineLimit(2...3)`): a vertical-axis field's hit region is its text view, not its frame,
 /// and the accessibility audit calls a one-line one smaller than 44pt even inside a 52pt frame (measured, 2026-11-08, find-field
@@ -27,8 +30,9 @@ struct FindPill: View {
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
                 .accessibilityIdentifier("find-field")
+            clearSlot
         }
-        .padding(.horizontal, 16).padding(.vertical, 4)
+        .padding(.leading, 16).padding(.trailing, 6).padding(.vertical, 4)
         .frame(maxWidth: .infinity, minHeight: 48)
         // Glass over the paper at 62 percent (the web's backdrop blur over the paper).
         .background { Capsule().fill(.ultraThinMaterial); Capsule().fill(Parchment.paper.opacity(0.62)) }
@@ -41,6 +45,27 @@ struct FindPill: View {
         .onChange(of: query) { _, new in if new != text { text = new } }
         .onChange(of: text) { _, new in change(new) }
     }
+
+    @ViewBuilder private var clearSlot: some View {
+        if text.isEmpty {
+            Color.clear.frame(width: 44, height: 44).accessibilityHidden(true)
+        } else {
+            Button { text = "" } label: {
+                Image(systemName: "xmark").font(.system(size: 10, weight: .bold)).foregroundStyle(Parchment.paper)
+                    .frame(width: 20, height: 20).background(Circle().fill(Parchment.inkSoft))
+                    .frame(width: 44, height: 44).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Clear search")
+            .accessibilityIdentifier("find-clear")
+        }
+    }
+}
+
+/// Room the pill takes on the open Duo, for a list that scrolls under it: the bar, 8 pt, the pill's 48 pt and 8 pt above it.
+enum FindPillMetrics {
+    static let height: CGFloat = 48
+    static var duoRoom: CGFloat { DuoBarMetrics.height + 8 + height + 8 }
 }
 
 extension View {
@@ -49,6 +74,25 @@ extension View {
     func findPill(show: Bool, query: String, change: @escaping (String) -> Void) -> some View {
         safeAreaInset(edge: .bottom, spacing: 0) {
             if show { FindPill(query: query, change: change).padding(.horizontal, 16).padding(.top, 8).padding(.bottom, 8) }
+        }
+    }
+
+    /// The pill on the open Duo: on the right page, 8 pt above the custom bar (`DuoBarMetrics.height` up from the window's bottom),
+    /// whichever page holds the list it filters. `right` is the right page's rect in window points, nil on one page, where this draws
+    /// nothing. An overlay, not an inset: the bar's own room is a scroll margin for the same reason (DuoSystemBar). The overlay
+    /// reads the window's bottom (`ignoresSafeArea(.container)`) and the keyboard still lifts it. Apply it to the view that fills
+    /// the window.
+    func findPillOnDuo(show: Bool, right: CGRect?, query: String, change: @escaping (String) -> Void) -> some View {
+        overlay {
+            Color.clear.overlay(alignment: .bottomLeading) {
+                if show, let right {
+                    FindPill(query: query, change: change)
+                        .frame(width: right.width - 32)
+                        .padding(.leading, right.minX + 16)
+                        .padding(.bottom, DuoBarMetrics.height + 8)
+                }
+            }
+            .ignoresSafeArea(.container, edges: .bottom)
         }
     }
 }

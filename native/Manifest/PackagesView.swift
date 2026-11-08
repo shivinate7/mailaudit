@@ -19,8 +19,9 @@ struct PackagesView: View {
     @State private var failure: String?
     @Environment(\.duoSpread) private var spread
 
-    /// The Find pill is drawn on one page only: the open Duo and Card in Hand have their own search.
+    /// The one-page Find pill. The open Duo's pill is `findPillOnDuo`, which Card in Hand covers while it is open (duo ruling Q5).
     private var pillShown: Bool { model.hasItems && spread.pages(for: .cardInHand) == nil }
+    private var duoPillShown: Bool { model.hasItems && spread.pages(for: .cardInHand) != nil }
 
     private func run(_ op: () async throws -> Void) async {
         do { try await op(); failure = nil } catch { failure = "Could not update the list. \(error.localizedDescription)" }
@@ -65,7 +66,11 @@ struct PackagesView: View {
                     .background(.regularMaterial).accessibilityIdentifier("checkin-error")
             }
         }
+        // On one page the pill is an inset. On the open Duo it floats over the right page, above the bar, and the list scrolls clear of it
+        // (the bar's own room is DuoSystemBar's margin; this one holds the bar and the pill).
+        .contentMargins(.bottom, duoPillShown ? FindPillMetrics.duoRoom : 0, for: .scrollContent)
         .findPill(show: pillShown, query: model.query) { q in Task { await run { try await model.setQuery(q) } } }
+        .findPillOnDuo(show: model.hasItems, right: spread.pages(for: .cardInHand)?.right, query: model.query) { q in Task { await run { try await model.setQuery(q) } } }
         .task { await run { try await model.viewOpened() } }  // another tab may have changed Find
     }
 
@@ -235,7 +240,7 @@ struct PackageRow: View {
     /// The pill, or the RECEIVED stamp once nothing is owed. An invisible widest pill sets the
     /// slot's size and the live one is drawn over it, so a check-in never changes the layout.
     private var statusSlot: some View {
-        Text("99 left \u{00B7} refunded").font(.cochin(12.5).weight(.bold))
+        Text("99 left \u{00B7} refunded").font(.cochin(12.5, relativeTo: .caption).weight(.bold))
             .padding(.horizontal, 8).padding(.vertical, 4)
             .frame(minHeight: 28)
             .hidden()
@@ -249,13 +254,13 @@ struct PackageRow: View {
             .overlay(alignment: .trailing) {
                 switch status {
                 case .pill(let pill):
-                    Text(pill).font(.cochin(12.5).weight(.bold)).foregroundStyle(paint(.pillText, .open))
+                    Text(pill).font(.cochin(12.5, relativeTo: .caption).weight(.bold)).foregroundStyle(paint(.pillText, .open))
                         .padding(.horizontal, 8).padding(.vertical, 4)
                         .background(Capsule().fill(paint(.pillFill, .open)))
                         .fixedSize()
                         .accessibilityIdentifier("card-pill:\(pkg.gk)")
                 case .refunded(let pill):
-                    Text(pill).font(.cochin(12.5).weight(.bold)).foregroundStyle(paint(.refundPillText, .open))
+                    Text(pill).font(.cochin(12.5, relativeTo: .caption).weight(.bold)).foregroundStyle(paint(.refundPillText, .open))
                         .padding(.horizontal, 8).padding(.vertical, 4)
                         .background(Capsule().fill(paint(.refundPillFill, .open)))
                         .fixedSize()
