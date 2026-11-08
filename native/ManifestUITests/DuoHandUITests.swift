@@ -6,7 +6,7 @@
 // and fail on a missing element. The builder runs them red, then green. How to run: DuoShellUITests.swift, same
 // destination and the same hinge command. These tests need the pose flat (open Duo, window 951 x 669 pt), set with
 // `~/.local/bin/hinge open`. A run in another pose fails on the window size (DuoWindowSupport.swift). It never skips.
-// The AccessibilityXL match-row case fails only when the row moves under the keys' drawn top.
+// The AccessibilityXL match-row case fails when the row moves under the keys' drawn top.
 //
 // The seed is shared/fixtures/ledger.json. What the tests rely on in it:
 //   Lightning Bolt is in three envelopes: A1 Alpha Cards, B1 Beta Games and C1 Gamma Cards. So is a shared name.
