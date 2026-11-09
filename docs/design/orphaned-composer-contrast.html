@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Composer Contrast Flags</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light (native/project.yml
+   UIUserInterfaceStyle: Light), so this page has one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --red:#A8443C; --manila:#EADBBA; --manilaInk:#695832;
+  --shadow:rgba(28,43,36,0.06);
+  /* Cochin and Menlo are Apple fonts. Off a Mac, Menlo falls back to DejaVu Sans Mono, which Menlo is drawn from:
+     the same 0.602 em advance, so every mono width on this page holds. */
+  --cochin: Cochin, "Liberation Serif", Georgia, serif;
+  --mono: Menlo, "DejaVu Sans Mono", ui-monospace, monospace;
+  --new:#2E7A5E; --today:#A8443C; --audit:#6F5CA6;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
+main { margin:0 auto; padding:16px; padding-left:max(16px, env(safe-area-inset-left)); padding-right:max(16px, env(safe-area-inset-right)); max-width:1900px; }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-weight:600; max-width:100ch; }
+h1 { font-family:var(--cochin); font-size:24px; margin:16px 0 4px; }
+h2 { font-family:var(--cochin); font-size:20px; margin:32px 0 4px; }
+.sub { color:var(--inkSoft); margin:0 0 12px; max-width:100ch; }
+nav { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+nav a, nav button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"], nav button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+nav a:focus-visible, nav button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+nav .sep { width:100%; height:0; }
+nav .lab { align-self:center; font-size:13px; color:var(--inkSoft); min-width:6em; }
+[hidden] { display:none !important; }
+
+table.ratios { border-collapse:collapse; font-size:13.5px; background:var(--card); }
+.ratios th, .ratios td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; }
+.ratios td.ok { color:var(--green); font-weight:600; }
+.scroller { overflow-x:auto; padding:8px 2px; }
+
+/* Option columns: one crop of the composer per option, 402 pt wide (iPhone 18 Pro, the audit's device). */
+.grid { display:grid; grid-template-columns:repeat(auto-fill, 402px); gap:24px 24px; align-items:start; }
+.opt { width:402px; }
+.opt.focused .crop { outline:3px solid var(--accent); outline-offset:3px; }
+.opt h3 { font-family:var(--cochin); font-size:17px; margin:0 0 2px; }
+.opt .how { font-size:13px; color:var(--inkSoft); margin:0 0 8px; min-height:3.6em; }
+.pick { display:inline-block; font-size:12.5px; font-weight:600; padding:1px 8px; border-radius:6px; border:1px solid var(--green); color:var(--green); margin-left:6px; vertical-align:2px; }
+.tagname { display:inline-block; margin:0 0 6px; font-size:12.5px; font-weight:600; padding:1px 6px; border:2px dashed currentColor; border-radius:4px; }
+.tagname.today { color:var(--today); } .tagname.new { color:var(--new); }
+.read { font:12px/1.45 var(--mono); color:var(--inkSoft); margin-top:8px; }
+.read b { color:var(--ink); }
+
+/* ---- the crop: list padding 16, the composer card, as OrphanedView.swift ComposerView draws it. 1 CSS px = 1 pt. ---- */
+.crop { width:402px; background:var(--paper); padding:12px 16px; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.zoom .crop { zoom:2; }
+.zoom .grid { grid-template-columns:repeat(auto-fill, 804px); }
+.zoom .opt { width:804px; }
+.composer { background:var(--card); border:1px solid var(--ink); border-radius:8px; box-shadow:0 1px 2px var(--shadow); padding:12px;
+  display:flex; flex-direction:column; gap:8px; line-height:normal; }
+.micro { font:11px var(--mono); text-transform:uppercase; letter-spacing:0.14em; color:var(--inkSoft); }
+.field { font:16px var(--cochin); color:var(--inkSoft); min-height:48px; padding:6px 12px; border:1px solid var(--line); border-radius:8px; background:var(--card);
+  display:flex; align-items:center; }
+.entries { padding-top:8px; }
+.rule { height:1px; background:var(--line); }
+.entry { display:flex; align-items:center; padding-left:12px; }
+.entry .name { flex:1; font:14px var(--cochin); color:var(--ink); }
+.entry .step { width:44px; height:44px; display:flex; align-items:center; justify-content:center; font:15px var(--mono); color:var(--ink); }
+.entry .qty { min-width:20px; text-align:center; font:13px var(--mono); color:var(--ink); }
+.foot { display:flex; align-items:center; gap:8px; padding-top:4px; }
+.count { font:11px/1.164 var(--mono); color:var(--inkSoft); white-space:nowrap; }
+.spacer { flex:1; }
+/* MiniLabel (ControlViews.swift): Menlo 11.5, padding 8 x 12, radius 5, 1 pt border, in a 44 pt hit frame. */
+.hit { min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; position:relative; flex:none; }
+.pill { font:11.5px/1.164 var(--mono); padding:7px 11px; /* 8 x 12 less the 1 pt border: SwiftUI strokes the border inside */ border-radius:5px; border:1px solid var(--line); background:var(--card); color:var(--ink); white-space:nowrap; }
+.pill.save { font-weight:700; background:var(--ink); border-color:var(--ink); color:var(--card); }
+.pill.save.empty { font-weight:400; background:transparent; border-color:var(--line); color:var(--inkSoft); }
+
+/* The audited frame: the box Apple's audit reports and samples, drawn dashed over the part. */
+.audit { position:relative; }
+.audit::after { content:""; position:absolute; inset:-1px; border:1px dashed var(--audit); pointer-events:none; }
+.noaudit .audit::after { display:none; }
+
+/* Options */
+.count.c-larger { font-size:13px; }
+.count.c-heavier { font-weight:700; }
+.count.c-ink { color:var(--ink); }
+.fills .hit .pill { min-height:44px; display:flex; align-items:center; padding-top:0; padding-bottom:0; }
+.pill.s-larger { font-size:13px; }
+
+/* Tags: dashed outline on what exists today, and on what an option adds. */
+.tag-today { outline:2px dashed var(--today); outline-offset:3px; }
+.tag-new { outline:2px dashed var(--new); outline-offset:3px; }
+.notags .tag-today, .notags .tag-new { outline:0; }
+
+/* ---- full device: iPhone 18 Pro, 402 x 874 pt (the brief's size; the repo's device list names none) ---- */
+.phone { width:402px; height:874px; background:var(--paper); border:1px solid var(--ink); border-radius:24px; overflow:hidden; position:relative;
+  padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom); }
+.phone .zone { position:absolute; left:0; right:0; border:1px dashed var(--line); color:var(--inkSoft); font:12px -apple-system, system-ui, sans-serif;
+  display:flex; align-items:center; justify-content:center; text-align:center; padding:4px; }
+.phone .above { top:0; }
+.phone .bar { bottom:8px; left:16px; right:16px; height:56px; border-radius:28px; background:rgba(252,246,234,0.7); }
+.phone .body { position:absolute; left:16px; right:16px; }
+.phones { display:flex; flex-wrap:wrap; gap:24px; }
+.phones figure { margin:0; }
+.phones figcaption { font-size:13px; color:var(--inkSoft); margin-top:6px; max-width:402px; }
+.sources li { margin:4px 0; }
+code { font-family:var(--mono); font-size:0.9em; overflow-wrap:anywhere; }
+@media (max-width:440px) { .grid { grid-template-columns:1fr; } .opt, .crop, .phone { width:100%; } .crop { overflow-x:auto; } }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No card name, count or figure on this page is real data. Widths come from the code and the font's advance, not from a simulator.</div>
+<h1>Orphaned composer, ready: two contrast flags</h1>
+<p class="sub">Accessibility audit run 42653870499, <code>OrphanedUITests.testAccessibilityAuditOrphanedComposerReady</code>, iPhone 18 Pro, 402 x 874 pt. It flags "Contrast failed" on the "1 card" count (40 x 13 pt) and on the ready Save (<code>orphaned-save</code>, 118 x 44 pt). Both colour pairs clear their floor by the tokens. The colours stay. Each option below changes only the size, weight or frame, or names a skip. Light theme only. The dashed violet box is the frame the audit reports.</p>
+
+<nav aria-label="State and view">
+  <span class="lab">State</span>
+  <a href="#s=ready" data-s="ready">Ready, 1 card (audited)</a>
+  <a href="#s=empty" data-s="empty">Empty, Save disabled</a>
+  <span class="sep"></span>
+  <span class="lab">View</span>
+  <button type="button" id="zoomBtn" aria-pressed="false">Magnify 2x</button>
+  <button type="button" id="auditBtn" aria-pressed="true">Audited frames</button>
+  <button type="button" id="tagBtn" aria-pressed="true">Today / New tags</button>
+  <span class="sep"></span>
+  <span class="lab">Hide</span>
+  <button type="button" data-hide="count-skip">Hide Count: named skip</button>
+  <button type="button" data-hide="count-larger">Hide Count: 13 pt</button>
+  <button type="button" data-hide="count-heavier">Hide Count: bold</button>
+  <button type="button" data-hide="count-ink">Hide Count: ink</button>
+  <button type="button" data-hide="save-skip">Hide Save: named skip</button>
+  <button type="button" data-hide="save-fills">Hide Save: fill the frame</button>
+  <button type="button" data-hide="save-larger">Hide Save: 13 pt</button>
+  <button type="button" id="showAll">Show all</button>
+</nav>
+
+<h2>Ratios by the tokens</h2>
+<div class="scroller">
+<table class="ratios">
+  <tr><th>Part</th><th>Text</th><th>Pair (tokens)</th><th>Floor</th><th>Today</th><th>Picked option</th></tr>
+  <tr><td>"1 card" count</td><td>Menlo 11 regular</td><td><code>inkSoft</code> #6E6379 on <code>card</code> #FCF6EA</td><td>4.5:1</td><td class="ok">5.24:1</td><td class="ok">5.24:1 (colour kept, 13 pt)</td></tr>
+  <tr><td>Ready Save, text</td><td>Menlo 11.5 bold</td><td><code>card</code> on <code>ink</code> #332E3F</td><td>4.5:1</td><td class="ok">12.17:1</td><td class="ok">12.17:1 (colour kept)</td></tr>
+  <tr><td>Ready Save, fill</td><td>—</td><td><code>ink</code> fill on <code>card</code> surround</td><td>3:1</td><td class="ok">12.17:1</td><td class="ok">12.17:1</td></tr>
+  <tr><td>Count, if recoloured</td><td>Menlo 11 regular</td><td><code>ink</code> on <code>card</code></td><td>4.5:1</td><td>—</td><td>12.17:1 (not picked)</td></tr>
+</table>
+</div>
+<p class="sub">Every pair clears on paper, so the colours are not the cause. The not-ready audit passes Save only because Save is disabled there, and the audit skips contrast on disabled elements (<code>inactiveContrast</code>, decision <code>audit-skips-measured-flags</code>). It never checks Save in that state.</p>
+
+<h2>The "1 card" count</h2>
+<p class="sub">Menlo 11 regular is the iOS minimum text size. Apple's accessibility page: "Thicker weights are easier to read for smaller font sizes." A thin stroke at the minimum size is the likely place for a pixel sample to read lighter than <code>inkSoft</code>. Unmeasured.</p>
+<div class="grid" id="countGrid"></div>
+
+<h2>The ready Save</h2>
+<p class="sub">Today the pill is about 29 pt tall inside its 44 pt hit frame, so two card-coloured strips of about 7 pt sit inside the audited 118 x 44 box. The card is also Save's text colour. The decision measured a bordered MiniLabel in its 44 pt frame flagging at 12.2:1 in every container; Cancel, Edit and Discard carry a named skip for it. Ready Save is the same component. The record does not say why the skip leaves it out.</p>
+<div class="grid" id="saveGrid"></div>
+
+<h2>Whole screen: today and the picks</h2>
+<p class="sub">iPhone 18 Pro, 402 x 874 pt. The footer row is placed at the audit's reported y (count at y 568). The masthead and the system tab bar are not drawn.</p>
+<div class="phones" id="phones"></div>
+
+<h2>Sources</h2>
+<ul class="sources">
+  <li><code>native/Manifest/OrphanedView.swift</code> <code>ComposerView</code>: the count (<code>.mono(11)</code>, <code>paint(.note)</code>) and Save (<code>MiniLabel(bold: true, text: .saveReadyText, fill/border: .saveReadyFill)</code>).</li>
+  <li><code>native/Manifest/ControlViews.swift</code> <code>MiniLabel</code>: 11.5 pt, padding 8 x 12, the 44 pt frame outside the fill.</li>
+  <li><code>native/ManifestKit</code> <code>OrphanedPaint</code>: note = inkSoft, saveReadyText = card, saveReadyFill = ink. <code>ControlPaint</code>: Cancel = ink on card, line border.</li>
+  <li><code>src/app.jsx</code> <code>EnvelopeComposer</code> (count 11 px inkSoft; Save ink fill, card text, 700) and <code>miniBtn</code> (11.5 px, 8 x 12 padding).</li>
+  <li>Apple HIG Accessibility and Buttons pages, read 2026-11-09 (JSON, 200).</li>
+</ul>
+</main>
+
+<script>
+const S = { ready: true };
+const countOpts = [
+  { id:"count-today", title:"Today", tag:"today", cls:"", how:"Menlo 11 regular, inkSoft. 5.24:1.", read:"frame 40 x 13 pt" },
+  { id:"count-skip", title:"Named skip", tag:"new", cls:"", how:"No change on screen. Add the count to the named contrast skip, as item 45 a did for the done-row detail at 4.51:1. Owner grant.", read:"frame 40 x 13 pt, skipped by id" },
+  { id:"count-larger", title:"13 pt", tag:"new", cls:"c-larger", pick:true, how:"Menlo 13 regular, inkSoft. The size of the quantity numeral in the row above. Colour and meaning kept.", read:"frame 47 x 15 pt" },
+  { id:"count-heavier", title:"Bold 11 pt", tag:"new", cls:"c-heavier", how:"Menlo 11 bold, inkSoft. Same width (Menlo bold keeps the advance). Competes with bold Save for weight.", read:"frame 40 x 13 pt" },
+  { id:"count-ink", title:"Ink colour", tag:"new", cls:"c-ink", how:"Menlo 11 regular, ink, 12.17:1. Not picked: the owner kept inkSoft at 4.51 in item 45 a, and this raises a colour that already passes.", read:"frame 40 x 13 pt" },
+];
+const saveOpts = [
+  { id:"save-today", title:"Today", tag:"today", cls:"", how:"Pill about 29 pt tall in a 44 pt hit frame. Card strips inside the audited box.", read:"frame 118 x 44 pt, pill about 29 pt" },
+  { id:"save-skip", title:"Named skip", tag:"new", cls:"", how:"No change on screen. Add <code>orphaned-save</code> to the contrast skip with Cancel, Edit and Discard: the same measured class. Owner grant.", read:"frame 118 x 44 pt, skipped by id" },
+  { id:"save-fills", title:"Fill the frame", tag:"new", cls:"fills", pick:true, how:"Save and Cancel pills fill their 44 pt hit frame, in both states. The audited box then holds only fill and text. Row height is 44 today, so nothing moves.", read:"frame 118 x 44 pt, pill 44 pt" },
+  { id:"save-larger", title:"13 pt", tag:"new", cls:"s-larger", how:"Menlo 13 bold, in both states, so Cancel does not move when the first card lands. Weak: Save is bold already, and a regular Cancel flags at 12.2:1.", read:"frame about 126 x 44 pt" },
+];
+
+function composer(o, kind) {
+  const ready = S.ready;
+  const countCls = kind === "count" ? o.cls : "";
+  const footCls = kind === "save" && o.cls === "fills" ? "fills" : "";
+  const saveCls = kind === "save" && o.cls === "s-larger" ? "s-larger" : "";
+  const n = ready ? 1 : 0;
+  const tagC = kind === "count" ? (o.tag === "today" ? "tag-today" : "tag-new") : "";
+  const tagS = kind === "save" ? (o.tag === "today" ? "tag-today" : "tag-new") : "";
+  return `<div class="composer">
+    <div class="micro">New envelope</div>
+    <div class="field">Type a card name…</div>
+    ${ready ? `<div class="entries"><div class="rule"></div><div class="entry"><span class="name">Sample Card Name</span>
+      <span class="step" aria-hidden="true">–</span><span class="qty">1</span><span class="step" aria-hidden="true">+</span></div><div class="rule"></div></div>` : ""}
+    <div class="field" style="font-size:16px">Note (optional) — tracking #, sender, mailer…</div>
+    <div class="foot ${footCls}">
+      <span class="count audit ${countCls} ${tagC}" ${kind === "count" ? `id="${o.id}"` : ""}>${n} card${n === 1 ? "" : "s"}</span>
+      <span class="spacer"></span>
+      <span class="hit"><span class="pill">Cancel</span></span>
+      <span class="hit audit ${tagS}" ${kind === "save" ? `id="${o.id}"` : ""}><span class="pill save ${ready ? "" : "empty"} ${saveCls}">Save envelope</span></span>
+    </div>
+  </div>`;
+}
+
+function optCard(o, kind) {
+  return `<section class="opt" data-opt="${o.id}">
+    <h3>${o.title}${o.pick ? '<span class="pick">Pick</span>' : ""}</h3>
+    <span class="tagname ${o.tag}">${o.tag === "today" ? "Today: " : "New: "}${kind === "count" ? "count" : "Save"}</span>
+    <p class="how">${o.how}</p>
+    <div class="crop">${composer(o, kind)}</div>
+    <div class="read">${o.read}</div>
+  </section>`;
+}
+
+function phone(countO, saveO, cap) {
+  // Compose one composer carrying both picks.
+  const tmp = document.createElement("div");
+  tmp.innerHTML = composer(countO, "count");
+  const foot = tmp.querySelector(".foot");
+  if (saveO.cls === "fills") foot.classList.add("fills");
+  if (saveO.cls === "s-larger") tmp.querySelector(".pill.save").classList.add("s-larger");
+  const hit = tmp.querySelectorAll(".hit")[1];
+  hit.classList.add(saveO.tag === "today" ? "tag-today" : "tag-new");
+  tmp.querySelectorAll("[id]").forEach(e => e.removeAttribute("id"));
+  return `<figure><div class="phone"><div class="zone above" style="height:0"></div>
+    <div class="body">${tmp.innerHTML}</div>
+    <div class="zone bar">System tab bar, not drawn (height not measured here)</div></div>
+    <figcaption>${cap}</figcaption></figure>`;
+}
+
+function placePhones() {
+  document.querySelectorAll(".phone").forEach(p => {
+    const body = p.querySelector(".body"), count = p.querySelector(".count"), above = p.querySelector(".above");
+    const cr = count.getBoundingClientRect(), br = body.getBoundingClientRect();
+    // Put the count's top at y 568 (the audit's frame), measured from the phone's top edge.
+    const offsetInBody = cr.top - br.top;
+    const top = Math.max(0, 568 - 1 - offsetInBody); /* 1: the phone frame border */
+    body.style.top = top + "px";
+    above.style.height = Math.max(0, top - 12) + "px";
+    above.textContent = "Status bar, masthead and the record control: not drawn";
+  });
+}
+
+let hidden = new Set();
+function render() {
+  document.getElementById("countGrid").innerHTML = countOpts.map(o => optCard(o, "count")).join("");
+  document.getElementById("saveGrid").innerHTML = saveOpts.map(o => optCard(o, "save")).join("");
+  document.getElementById("phones").innerHTML =
+    phone(countOpts[0], saveOpts[0], "Today: count Menlo 11, Save pill inside its 44 pt frame.") +
+    phone(countOpts[2], saveOpts[2], "Picks: count Menlo 13 inkSoft; Save and Cancel fill their 44 pt frame.");
+  placePhones();
+  document.querySelectorAll("[data-opt]").forEach(el => { el.hidden = hidden.has(el.dataset.opt); });
+  document.querySelectorAll("[data-hide]").forEach(b => b.setAttribute("aria-pressed", hidden.has(b.dataset.hide)));
+}
+
+function readHash() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  S.ready = h.get("s") !== "empty";
+  document.querySelectorAll("[data-s]").forEach(a => a.setAttribute("aria-current", (a.dataset.s === (S.ready ? "ready" : "empty")) ? "true" : "false"));
+  render();
+  const o = h.get("o");
+  document.querySelectorAll(".opt").forEach(el => el.classList.toggle("focused", el.dataset.opt === o));
+  if (o) { const el = document.getElementById(o) || document.querySelector(`[data-opt="${o}"]`); if (el) el.scrollIntoView({ block: "center" }); }
+}
+
+function toggle(btn, cls, onWhenPressed) {
+  btn.addEventListener("click", () => {
+    const on = btn.getAttribute("aria-pressed") !== "true";
+    btn.setAttribute("aria-pressed", on);
+    document.body.classList.toggle(cls, onWhenPressed ? on : !on);
+    placePhones();
+  });
+}
+toggle(document.getElementById("zoomBtn"), "zoom", true);
+toggle(document.getElementById("auditBtn"), "noaudit", false);
+toggle(document.getElementById("tagBtn"), "notags", false);
+document.querySelectorAll("[data-hide]").forEach(b => b.addEventListener("click", () => {
+  const k = b.dataset.hide; hidden.has(k) ? hidden.delete(k) : hidden.add(k); render();
+}));
+document.getElementById("showAll").addEventListener("click", () => { hidden.clear(); render(); });
+window.addEventListener("hashchange", readHash);
+readHash();
+</script>
+</body>
+</html>
