@@ -70,11 +70,12 @@ function renderPull(s) {
   const text = $("pull-text");
   const open = $("open-store");
   open.hidden = true;
-  /* Hiding the focused Reload would drop focus to BODY, so it moves to Pull now first. */
+  /* Hiding the focused Reload would drop focus to BODY, so it moves to Pull now first (it is disabled just above when there is no key or a pull runs). */
   const reload = $("reload");
   const reloadHadFocus = document.activeElement === reload;
   reload.hidden = true;
-  if (reloadHadFocus) btn.focus();
+  /* A disabled Pull now cannot take focus, so the key field does. */
+  if (reloadHadFocus) (btn.disabled ? $("key-input") : btn).focus();
   $("stop").hidden = !(s.pulling && s.stoppable);
   /* A new pull replaces the note about a stopped one. */
   if (s.pulling && pullAnswer?.stopped) pullAnswer = null;
