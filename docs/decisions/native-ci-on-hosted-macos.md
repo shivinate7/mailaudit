@@ -1,8 +1,8 @@
 # The native job runs on a hosted macOS runner
 
-**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Lane C1 landed the job in PR #76. The `all-jobs-passed` rollup needs it, so it is required, see Required check. Its unmeasured facts are debts, see Unmeasured: `native-runner-image-unverified`, `native-runner-keychain-unverified` and `native-job-hosted-time-unmeasured`.
+**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Owner ruling, 2026-11-08 16:50 CST: hosted macOS CI is the only place native work runs. The whole team moves to the cloud, with no Mac simulators. Lane C1 landed the job in PR #76. The `all-jobs-passed` rollup needs it, so it is required, see Required check. Its unmeasured facts are debts, see Unmeasured: `native-runner-image-unverified`, `native-runner-keychain-unverified` and `native-job-hosted-time-unmeasured`.
 
-The native job in `.github/workflows/checks.yml` runs the Swift package tests on a hosted macOS runner. Degen's self-hosted runner is not copied. The rest of the native checks are in Still open.
+The native job in `.github/workflows/checks.yml` runs the Swift package tests on a hosted macOS runner. Degen's self-hosted runner is not copied. Native builds, simulator and UI tests, and screenshots move into macOS CI jobs, see Still open.
 
 **Holds while:** this repo is public on GitHub, so hosted macOS minutes cost nothing.
 
@@ -45,6 +45,8 @@ Degen's self-hosted runner. On a public repo, a fork PR would run on the owner's
 ## Still open
 
 - Update, 2026-10-12: lane N5 landed without the steps. Its diff does not touch the workflow, so the native job still runs ST only. Debt: `native-ui-tests-not-in-ci`.
+- Owner ruling, 2026-11-08 16:50 CST: native UI tests and screenshots run in macOS CI jobs, with no Mac simulators. Debt: `native-ui-tests-not-in-ci`.
+- Home measured a hosted route for the Duo: the xcode-27 macOS runner image has the iPhone Duo device type, and `hinge` works there (home run 42522664456, home PR 588).
 
 ## See also
 
