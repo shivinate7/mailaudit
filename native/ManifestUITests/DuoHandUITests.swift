@@ -788,7 +788,7 @@ final class DuoHandUITests: XCTestCase {
     }
 
     /// Pose: flat. New envelope ends the envelope with its receipt. The answer page is then on its empty state, and when the same
-    /// envelope is named again no receipt of the ended one comes back. The receipt is cleared on New envelope and on the next card.
+    /// envelope is named again no receipt of the ended one comes back.
     func testPostReceiptDoesNotComeBackAfterNewEnvelope() {
         let app = XCUIApplication.launchedOnSeed()
         guard app.requirePose(.flat) else { return }
@@ -807,9 +807,10 @@ final class DuoHandUITests: XCTestCase {
         waitGone(app.element("hand-receipt"), "the receipt of the ended envelope came back on its envelope after New envelope")
     }
 
-    /// Pose: flat. A receipt belongs to the envelope its Post checked in (HandScreen `r.offer.gk == pkg.gk`). After a Post on Gamma
-    /// Cards, a card that only Delta Cards holds shows Delta Cards, and the Gamma receipt does not come with it. The card is typed as
-    /// "Urza", with no apostrophe to type. The Delta envelope is asserted first, so the absent receipt is judged where it should not show.
+    /// Pose: flat. The receipt clears on the next typed card (HandScreen `.task(id: query)`). The envelope guard on the receipt
+    /// (`r.offer.gk == pkg.gk`) stays unpinned: the clear on the next card hides it (docs/debts/notes.md, the 2026-11-06 Post-offer line).
+    /// After a Post on Gamma Cards, a card that only Delta Cards holds shows Delta Cards, and the Gamma receipt does not come with it.
+    /// The card is typed as "Urza", with no apostrophe to type. The Delta envelope is asserted first, so the absent receipt is judged where it should not show.
     func testPostReceiptStaysWithItsOwnEnvelope() {
         let app = XCUIApplication.launchedOnSeed()
         guard app.requirePose(.flat) else { return }
@@ -824,8 +825,8 @@ final class DuoHandUITests: XCTestCase {
     }
 
     /// Pose: flat. A tap on a match holds its row (HandScreen `heldNames`) until the next keystroke or Close. A Post that saves must let
-    /// the held rows go: the match list then has no hits, so no row shows. post() does not reset heldNames today, so the tapped row
-    /// stays on the left page after Post (known gap: docs/debts/notes.md, the 2026-11-07 tap-shift line).
+    /// the held rows go: the match list then has no hits, so no row shows. A saved Post ends the hold; a failed save keeps it. A check-in
+    /// tap or a sync reply does not end it (docs/debts/notes.md, the 2026-11-07 tap-shift line).
     func testPostClearsTheHeldMatchRows() {
         let app = XCUIApplication.launchedOnSeed()
         guard app.requirePose(.flat) else { return }
