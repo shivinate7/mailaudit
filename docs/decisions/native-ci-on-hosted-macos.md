@@ -44,9 +44,9 @@ Degen's self-hosted runner. On a public repo, a fork PR would run on the owner's
 
 ## Still open
 
-- Update, 2026-10-12: lane N5 landed without the steps. Its diff does not touch the workflow, so the native job still runs ST only. Debt: `native-ui-tests-not-in-ci`.
+- The native job runs ST only (`checks.yml`). The UI tests run in other jobs: the Duo classes in `duo-ui-runs-on-pr-label`, the other classes at milestones in `milestone-runs-full-suite`. Debt: `native-ui-tests-not-in-ci`.
 - Owner ruling, 2026-11-08 16:50 CST: native UI tests and screenshots run in macOS CI jobs, with no Mac simulators. Debt: `native-ui-tests-not-in-ci`.
-- Home measured a hosted route for the Duo: the xcode-27 macOS runner image has the iPhone Duo device type, and `hinge` works there (home run 42522664456, home PR 588).
+- Home measured a hosted route for the Duo: the xcode-27 macOS runner image has the iPhone Duo device type, and `hinge` works there (run 42522664456 and PR 588 in the home repo). `duo-ui-runs-on-pr-label` builds that route.
 
 ## See also
 
