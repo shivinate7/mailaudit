@@ -1,0 +1,102 @@
+# Cloud screen check: iPhone screenshots of the MANIFEST app in fixture mode, for sessions that cannot boot a simulator.
+# Copied from shivinate7/home .github/workflows/screen-check.yml at f96df63 (home PRs 604 and 613). Dispatch, download and the
+# label path: see the header of scripts/screen-check.sh.
+# Never part of the ordinary PR checks and no required check: each run bills macOS minutes, so a session runs it once per finished
+# piece of screen work. It starts on a manual dispatch, or when the label screen-check is added to a pull request. It runs on no
+# push, no synchronize and no schedule, and it is not in all-jobs-passed.
+name: screen-check
+
+# Repo values: a copy edits this block only. The Xcode and xcodegen pins are the ones in duo-ui.yml.
+env:
+  # Xcode that xcode-select picks on the runner.
+  XCODE_APP: /Applications/Xcode_27.1.app
+  # The runner image holds no xcodegen, so the job installs one pinned release (scripts/ci-sim.sh install-xcodegen checks the zip
+  # against XCODEGEN_SHA256 before it unpacks it).
+  XCODEGEN_VERSION: "2.46.0"
+  XCODEGEN_SHA256: "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
+
+on:
+  workflow_dispatch:
+    inputs:
+      screens:
+        description: "Screens to shoot, comma separated: ledger, orphaned, tally, packages (default: all)"
+        required: false
+        default: all
+        type: string
+      sizes:
+        description: "Text sizes, comma separated, any case: xS, S, M, L, xL, xxL, xxxL, AX1, AX2, AX3, AX4, AX5 (default: none, the simulator's own size)"
+        required: false
+        default: ""
+        type: string
+      devices:
+        description: "Devices, comma separated: duo, 18pro (default: both)"
+        required: false
+        default: ""
+        type: string
+      postures:
+        description: "Duo postures, comma separated: folded, open (default: both)"
+        required: false
+        default: ""
+        type: string
+      video:
+        description: "One screen to record as an .mp4 on the 18 Pro: ledger, orphaned, tally, packages (default: none)"
+        required: false
+        default: ""
+        type: string
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  # Each run has its own group and never cancels another: a screen check is read by the session that started it.
+  group: ${{ github.workflow }}-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  screens:
+    # A dispatch always runs. A pull request runs only for the label screen-check being added now: the labeled event of another
+    # label starts the workflow and this job is skipped. The label name here is the second place a copy edits.
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'screen-check') && github.event.label.name == 'screen-check') }}
+    # xcode-27: the runner-images xcode-27-arm64 image: Xcode 27.1 and the iOS 27.1 SDK. Do not change it to macos-26: Xcode 26.6
+    # compiles out the Duo fold code (see duo-ui.yml).
+    runs-on: xcode-27
+    timeout-minutes: 60 # provisional
+    env:
+      # A label run has no inputs, so it gets fixed ones: both devices and both Duo postures (their empty default), all screens,
+      # sizes AX3 and AX5, and a video of Packages on the 18 Pro. A dispatch keeps what it was given.
+      SCREENS: ${{ inputs.screens }}
+      SIZES: ${{ inputs.sizes || (github.event_name == 'pull_request' && 'AX3,AX5' || '') }}
+      DEVICES: ${{ inputs.devices }}
+      POSTURES: ${{ inputs.postures }}
+      VIDEO: ${{ inputs.video || (github.event_name == 'pull_request' && 'packages' || '') }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: select Xcode
+        run: |
+          sudo xcode-select -s "$XCODE_APP"
+          xcodebuild -version
+      - name: install xcodegen
+        run: scripts/ci-sim.sh install-xcodegen
+      - run: xcodegen --version
+      - name: Runner and devices
+        run: |
+          uname -m
+          xcodebuild -version
+          xcrun simctl list devicetypes | grep -E 'iPhone (Duo|18 Pro)'
+      - name: Shoot the screens
+        run: bash scripts/screen-check.sh
+      - name: Count the images
+        # A job with no image must be red. out/logs always exists, so the upload's if-no-files-found cannot catch it.
+        run: bash scripts/screen-check.sh check-count
+      - name: Upload the screenshots
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: screens
+          path: out
+          retention-days: 7
+          if-no-files-found: error
