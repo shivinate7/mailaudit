@@ -51,7 +51,7 @@ Focus ids for the waiting page (default text, two matches): `focus-today` (the S
 
 ## SwiftUI change implied by the pick
 
-In `HandScreen.leftPage`, put the TextField and a chip in one `HStack(spacing: 8)` inside the field's background and border, so the 48 pt box holds both. The chip shows when `hand.held != nil || !hand.strays.isEmpty`, with `.lineLimit(1)`, `.fixedSize()`, `.dynamicTypeSize(...DynamicTypeSize.xxxLarge)`, `.accessibilityShowsLargeContentViewer()`, and an accessibility label that names the cards. The boxes stay where they are. A UI test closes the debt: at AX3 with two matches and a held card, the chip's maxY sits at or above `keys.frame.minY - keyboardDrawnAbove`, and the field's frame is the same before and after a tap that holds a card and after New envelope.
+In `HandScreen.leftPage`, put the TextField and a chip in one `HStack(spacing: 8)` inside the field's background and border, so the 48 pt box holds both. The chip shows when `hand.held != nil || !hand.strays.isEmpty`. It carries `.lineLimit(1)`, `.fixedSize()`, `.dynamicTypeSize(...DynamicTypeSize.xxxLarge)`, and `.accessibilityShowsLargeContentViewer()`. Its accessibility label names the cards. The boxes stay where they are. A UI test closes the debt. At AX3 with two matches and a held card, the chip's maxY sits at or above `keys.frame.minY - keyboardDrawnAbove`. The field's frame stays the same after a tap that holds a card and after New envelope.
 
 ## Critique (impeccable, design review only: native platform, no sub-agent tool in a designer)
 
