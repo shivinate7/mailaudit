@@ -70,7 +70,11 @@ function renderPull(s) {
   const text = $("pull-text");
   const open = $("open-store");
   open.hidden = true;
-  $("reload").hidden = true;
+  /* Hiding the focused Reload would drop focus to BODY, so it moves to Pull now first. */
+  const reload = $("reload");
+  const reloadHadFocus = document.activeElement === reload;
+  reload.hidden = true;
+  if (reloadHadFocus) btn.focus();
   $("stop").hidden = !(s.pulling && s.stoppable);
   /* A new pull replaces the note about a stopped one. */
   if (s.pulling && pullAnswer?.stopped) pullAnswer = null;

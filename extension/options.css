@@ -69,6 +69,10 @@ button, input { font-family: inherit; }
 .pullrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .linkbtn { border: 0; background: transparent; padding: 0; color: var(--accent); font-family: var(--mono); font-size: 11px;
   letter-spacing: .12em; text-transform: uppercase; border-bottom: 1px solid var(--line); line-height: 16px; cursor: pointer; }
+/* The text stays 17px tall; an out-of-flow box 5px taller on each side brings the hit area to 27px
+   without moving the text, the underline or a neighbour. */
+.linkbtn { position: relative; }
+.linkbtn::before { content: ""; position: absolute; inset: -5px -4px; }
 .linkbtn:hover { border-bottom-color: var(--accent); }
 .linkbtn[hidden] { display: none; }
 
