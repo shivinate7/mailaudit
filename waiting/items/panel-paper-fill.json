@@ -1,26 +1,20 @@
 {
-  "id": "panel-paper-fill",
-  "n": 63,
-  "kind": "decision",
-  "ref": "debt panel-paper-fill-unbuilt (overlay panels carry no paper fill); src/app.jsx panelWrap",
-  "rank": 25,
-  "lastAnswer": {
-    "note": "why no visuals ?",
-    "at": "2026-11-08T22:30:22.188Z"
-  },
-  "status": "open",
   "added": "2026-11-09T02:06:00Z",
-  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
-  "title": "Should the web's Sorted by and History panels get the paper fill?",
-  "short": "Panel paper fill",
   "context": "Goal: an open panel reads cleanly against the list around it.\nProblem (rule): on 2026-10-11 an orchestrator set the default that a panel takes the paper fill. You never confirmed or overruled it, and it was never built.\nBased on (read): src/app.jsx panelWrap has padding and a top border, and no background.\nBased on (read): the overlay of decision motion-disclosure-panels-arrive is not built. On main the panel pushes the rows down, so nothing shows through it today.\nDeparts from: main panelWrap has no background \u2014 option a adds the paper fill.",
   "home": "debt panel-paper-fill-unbuilt",
+  "id": "panel-paper-fill",
+  "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-08T22:30:22.188Z",
+    "note": "why no visuals ?"
+  },
+  "n": 63,
   "options": [
     {
-      "label": "Confirm the paper fill",
-      "how": "The Sorted by and History panels get the paper background. The designer also drew it with a 1 px ruled foot.",
       "gain": "The panel reads as one surface, and stays clean once the overlay is built.",
-      "lose": "One more surface colour on screen.",
+      "how": "The Sorted by and History panels get the paper background. The designer also drew it with a 1 px ruled foot.",
+      "key": "a",
+      "label": "Confirm the paper fill",
       "links": [
         {
           "label": "Sorted by, paper, 375 px",
@@ -39,13 +33,13 @@
           "url": "https://github.com/shivinate7/mailaudit/pull/252"
         }
       ],
-      "key": "a"
+      "lose": "One more surface colour on screen."
     },
     {
-      "label": "Overrule it: panels stay with no fill",
-      "how": "The default is dropped, and the debt closes.",
       "gain": "No change to today's look.",
-      "lose": "Once the overlay is built, the list shows through the panel.",
+      "how": "The default is dropped, and the debt closes.",
+      "key": "b",
+      "label": "Overrule it: panels stay with no fill",
       "links": [
         {
           "label": "Sorted by, no fill, 375 px",
@@ -64,11 +58,17 @@
           "url": "https://github.com/shivinate7/mailaudit/pull/252"
         }
       ],
-      "key": "b"
+      "lose": "Once the overlay is built, the list shows through the panel."
     }
   ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "pick": "a",
-  "why": "It costs nothing today and keeps the panel clean once the overlay lands.",
+  "rank": 25,
+  "ref": "debt panel-paper-fill-unbuilt (overlay panels carry no paper fill); src/app.jsx panelWrap",
+  "replied": "2026-11-09T02:06:00Z",
   "reply": "You asked why there were no visuals. Each option now links its screenshots; the full mockup is in PR 252 (docs/design/panel-paper-fill.html).",
-  "replied": "2026-11-09T02:06:00Z"
+  "short": "Panel paper fill",
+  "status": "open",
+  "title": "Should the web's Sorted by and History panels get the paper fill?",
+  "why": "It costs nothing today and keeps the panel clean once the overlay lands."
 }

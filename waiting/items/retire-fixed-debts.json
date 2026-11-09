@@ -1,6 +1,6 @@
 {
   "added": "2026-11-08T13:58:00-06:00",
-  "context": "Goal: the debt list shows only gaps that are still open.\nProblem (rule): the sweep found debts whose gaps are already fixed on main, but their files still read open. A records PR would add a Retire line to each, so their files can be deleted.\nBased on (read): the coordinator's sweep of 2026-11-08.\nDeparts from: main keeps those fixed debts' files open — option a adds Retire lines and deletes the stale files.\nUnvetted: the past-ruling check timed out.",
+  "context": "Goal: the debt list shows only gaps that are still open.\nProblem (rule): the sweep found debts whose gaps are already fixed on main, but their files still read open. A records PR would add a Retire line to each, so their files can be deleted.\nBased on (read): the coordinator's sweep of 2026-11-08.\nDeparts from: main keeps those fixed debts' files open \u2014 option a adds Retire lines and deletes the stale files.\nUnvetted: the past-ruling check timed out.",
   "home": "retire-fixed-debts",
   "id": "retire-fixed-debts",
   "kind": "decision",

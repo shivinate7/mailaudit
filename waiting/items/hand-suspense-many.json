@@ -1,6 +1,6 @@
 {
   "added": "2026-11-09T01:50:00Z",
-  "context": "Goal: an envelope with no sender can still be checked in on the Duo.\nProblem (rule): decision new-envelope-ends-an-envelope rules on \"a name held\", and HandModel holds one name. Parts 5 and 8, and part 7's Hold in Suspense, need several.\nBased on (read): docs/design/duo-hand-gaps-notes.md, Owner grant items 1.\nDeparts from: main HandModel.held, one name — a list of names with copies, cleared by New envelope.\nAsked by lane duo-gaps-design-review (PR 237, mockup docs/design/duo-hand-gaps.html at 4362dc5). The picks per part live in docs/design/duo-hand-gaps-notes.md.",
+  "context": "Goal: an envelope with no sender can still be checked in on the Duo.\nProblem (rule): decision new-envelope-ends-an-envelope rules on \"a name held\", and HandModel holds one name. Parts 5 and 8, and part 7's Hold in Suspense, need several.\nBased on (read): docs/design/duo-hand-gaps-notes.md, Owner grant items 1.\nDeparts from: main HandModel.held, one name \u2014 a list of names with copies, cleared by New envelope.\nAsked by lane duo-gaps-design-review (PR 237, mockup docs/design/duo-hand-gaps.html at 4362dc5). The picks per part live in docs/design/duo-hand-gaps-notes.md.",
   "group": "duo-hand-gaps",
   "holds": "Building parts 5 and 8, and part 7's Hold in Suspense, waits on this.",
   "home": "docs/design/duo-hand-gaps-notes.md (PR 237)",

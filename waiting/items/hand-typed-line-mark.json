@@ -1,6 +1,6 @@
 {
   "added": "2026-11-09T01:50:00Z",
-  "context": "Goal: see which line is the card you typed.\nProblem (goal): the round 2 mockup paints it green, which reads the same as a done line.\nBased on (read): PackageCard rowFill gives greenSoft for a done line; the chosen match already has a 3 pt accent bar.\nDeparts from: the round 2 mockup's green fill — a 3 pt accent bar.\nAsked by lane duo-gaps-design-review (PR 237, mockup docs/design/duo-hand-gaps.html at 4362dc5). The picks per part live in docs/design/duo-hand-gaps-notes.md.",
+  "context": "Goal: see which line is the card you typed.\nProblem (goal): the round 2 mockup paints it green, which reads the same as a done line.\nBased on (read): PackageCard rowFill gives greenSoft for a done line; the chosen match already has a 3 pt accent bar.\nDeparts from: the round 2 mockup's green fill \u2014 a 3 pt accent bar.\nAsked by lane duo-gaps-design-review (PR 237, mockup docs/design/duo-hand-gaps.html at 4362dc5). The picks per part live in docs/design/duo-hand-gaps-notes.md.",
   "group": "duo-hand-gaps",
   "home": "docs/design/duo-hand-gaps-notes.md (PR 237)",
   "id": "hand-typed-line-mark",

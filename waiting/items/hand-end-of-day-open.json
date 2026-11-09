@@ -1,6 +1,6 @@
 {
   "added": "2026-11-09T01:50:00Z",
-  "context": "Goal: a day's-end check of what came and what is short.\nProblem (goal): the view needs a way in.\nBased on (read): decision ux-control-earns-place (a control earns its place).\nDeparts from: main's empty query shows the start hint — it shows today's pile once a card is in today.\nAsked by lane duo-gaps-design-review (PR 237, mockup docs/design/duo-hand-gaps.html at 4362dc5). The picks per part live in docs/design/duo-hand-gaps-notes.md.",
+  "context": "Goal: a day's-end check of what came and what is short.\nProblem (goal): the view needs a way in.\nBased on (read): decision ux-control-earns-place (a control earns its place).\nDeparts from: main's empty query shows the start hint \u2014 it shows today's pile once a card is in today.\nAsked by lane duo-gaps-design-review (PR 237, mockup docs/design/duo-hand-gaps.html at 4362dc5). The picks per part live in docs/design/duo-hand-gaps-notes.md.",
   "group": "duo-hand-gaps",
   "home": "docs/design/duo-hand-gaps-notes.md (PR 237)",
   "id": "hand-end-of-day-open",

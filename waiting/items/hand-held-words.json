@@ -1,6 +1,6 @@
 {
   "added": "2026-11-09T01:58:00Z",
-  "context": "Goal: a held card reads clearly on its line and in the box.\nProblem (rule): the blind reviewers want each label once and one name per thing; the mockup says both \"held\" and \"Suspense\" in one frame.\nBased on (read): decision duo-card-in-hand uses both words; the built strings say \"1 held\" and \"Suspense\".\nDeparts from: main uses \"held\" and \"Suspense\" loosely — \"held\" names the state and \"Suspense line\" names the place, recorded in the repo glossary.\nAsked by lane duo-gaps-design-review (PR 237, mockup docs/design/duo-hand-gaps.html). The picks per part live in docs/design/duo-hand-gaps-notes.md.",
+  "context": "Goal: a held card reads clearly on its line and in the box.\nProblem (rule): the blind reviewers want each label once and one name per thing; the mockup says both \"held\" and \"Suspense\" in one frame.\nBased on (read): decision duo-card-in-hand uses both words; the built strings say \"1 held\" and \"Suspense\".\nDeparts from: main uses \"held\" and \"Suspense\" loosely \u2014 \"held\" names the state and \"Suspense line\" names the place, recorded in the repo glossary.\nAsked by lane duo-gaps-design-review (PR 237, mockup docs/design/duo-hand-gaps.html). The picks per part live in docs/design/duo-hand-gaps-notes.md.",
   "group": "duo-hand-gaps",
   "home": "docs/design/duo-hand-gaps-notes.md (PR 237)",
   "id": "hand-held-words",

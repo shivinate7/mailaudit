@@ -6,6 +6,11 @@
   "home": "duo-ci-path",
   "id": "wave-1-lanes",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-09T01:38:00Z",
+    "choice": "a",
+    "note": "by chat to the coordinator: all holds are lifted; wave 1 started 19:39 CST"
+  },
   "n": 75,
   "options": [
     {
@@ -37,10 +42,5 @@
   "short": "Start wave 1",
   "status": "closed",
   "title": "Start wave 1 of the cloud restart: four lanes at once?",
-  "why": "The four share no files, and item 74 can be answered in the same Send.",
-  "lastAnswer": {
-    "choice": "a",
-    "note": "by chat to the coordinator: all holds are lifted; wave 1 started 19:39 CST",
-    "at": "2026-11-09T01:38:00Z"
-  }
+  "why": "The four share no files, and item 74 can be answered in the same Send."
 }

@@ -1,40 +1,30 @@
 {
- "id": "testflight-team-id",
- "n": 82,
- "kind": "decision",
- "status": "open",
- "added": "2026-11-09T04:50:00Z",
- "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
- "group": "cloud-sessions-plan",
- "home": "testflight-from-ci",
- "ref": "step testflight-from-ci (TestFlight upload from CI); decision native-ships-via-testflight (iOS ships via TestFlight); item 65 (TestFlight from CI)",
- "title": "Where should CI read the Apple signing team id for TestFlight uploads?",
- "short": "TestFlight team id",
- "holds": "The first TestFlight upload from CI. Review of the lane goes on meanwhile.",
- "context": "Goal: CI uploads TestFlight builds, as you picked on item 65 (option a).\nProblem (risk): the upload tool ios-ship needs the Apple signing team id. On a GitHub runner it reads it only from env TEAM_ID, so every upload stops at \"TEAM_ID is unset\". Cloud sessions cannot set repo variables (GitHub API writes get 403).\nBased on (read): ios-ship reads TEAM_ID from env first, then the team_id key of its config file (resolve TEAM_ID team_id).\nBased on (ruling): decision native-ships-via-testflight says tools/ios-ship.json holds no ID; the team id lives off the repo.\nDeparts from: main \u2014 adds a repo variable TEAM_ID that .github/workflows/testflight.yml reads.",
- "options": [
-  {
-   "key": "a",
-   "label": "You add a repo variable TEAM_ID",
-   "how": "Add the variable TEAM_ID on the repo's Actions variables page, with the same team id as on your Mac. The workflow reads it.",
-   "gain": "No id in the public repo; the ruling stands.",
-   "lose": "One press by you.",
-   "links": [
+  "added": "2026-11-09T04:50:00Z",
+  "context": "The Apple signing team id goes in a repo variable, never in the public repo (decision native-ships-via-testflight: tools/ios-ship.json holds no ID). The workflow .github/workflows/testflight.yml reads TEAM_ID; without it every upload stops at \"TEAM_ID is unset\".\nWhy yours: the team id lives only in the ios-ship account file on your Mac, and this session cannot read it (measured 2026-11-08, no TEAM_ID in env and no account.json under $HOME/.config/ios-ship in the cloud container).",
+  "group": "cloud-sessions-plan",
+  "holds": "The first TestFlight upload from CI. Review of the lane goes on meanwhile.",
+  "home": "testflight-from-ci",
+  "id": "testflight-team-id",
+  "kind": "task",
+  "links": [
     {
-     "label": "Repo variables (Actions)",
-     "url": "https://github.com/shivinate7/mailaudit/settings/variables/actions"
+      "label": "Repo variables (Actions)",
+      "url": "https://github.com/shivinate7/mailaudit/settings/variables/actions"
     }
-   ]
-  },
-  {
-   "key": "b",
-   "label": "Put team_id in tools/ios-ship.json",
-   "how": "The lane writes the team id into the repo's ios-ship config file.",
-   "gain": "No press by you.",
-   "lose": "The team id becomes public for good, against the ruling that the file holds no ID."
-  }
- ],
- "pick": "a",
- "why": "It keeps the id out of a public repo, and costs one press.",
- "port": false
+  ],
+  "minutes": "2 min",
+  "n": 82,
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "port": false,
+  "ref": "step testflight-from-ci (TestFlight upload from CI); decision native-ships-via-testflight (iOS ships via TestFlight); item 65 (TestFlight from CI)",
+  "replied": "2026-11-09T05:20:00Z",
+  "reply": "I chose the repo variable: it keeps the id out of the public repo. This is now a task for the one press.",
+  "short": "Add TEAM_ID variable",
+  "status": "open",
+  "steps": [
+    "Open the repo's Actions variables page (link below).",
+    "Press New repository variable. Name: TEAM_ID. Value: the team_id in your Mac's ios-ship account file.",
+    "Press Mark done."
+  ],
+  "title": "Add the repo variable TEAM_ID for TestFlight uploads from CI"
 }

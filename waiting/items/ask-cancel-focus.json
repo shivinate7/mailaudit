@@ -1,6 +1,6 @@
 {
   "added": "2026-11-08T13:10:00-06:00",
-  "context": "Goal: a VoiceOver user can't confirm a costly act by accident.\nProblem (risk): on the web, when an ask arms (such as Reset), Cancel takes first focus. The phone's ask shows Cancel but moves no focus. The debt closes when a test pins the focus or you rule the phone may skip it, and Apple's UI tests cannot read VoiceOver focus.\nBased on (read): PackageStampUITests.swift:54 notes that XCUITest cannot read VoiceOver focus.\nBased on (read): AskRow in LedgerTab.swift sets no focus.\nDeparts from: LedgerTab.swift:AskRow — the phone sets no focus; option a moves focus to Cancel with no test to pin it.\nMeanwhile: nothing waits on this.",
+  "context": "Goal: a VoiceOver user can't confirm a costly act by accident.\nProblem (risk): on the web, when an ask arms (such as Reset), Cancel takes first focus. The phone's ask shows Cancel but moves no focus. The debt closes when a test pins the focus or you rule the phone may skip it, and Apple's UI tests cannot read VoiceOver focus.\nBased on (read): PackageStampUITests.swift:54 notes that XCUITest cannot read VoiceOver focus.\nBased on (read): AskRow in LedgerTab.swift sets no focus.\nDeparts from: LedgerTab.swift:AskRow \u2014 the phone sets no focus; option a moves focus to Cancel with no test to pin it.\nMeanwhile: nothing waits on this.",
   "home": "pins lane (local_a0a8c80f): focus move in LedgerTab.swift AskRow; debt native-ask-has-no-cancel-focus rewritten",
   "id": "ask-cancel-focus",
   "kind": "decision",

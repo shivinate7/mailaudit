@@ -1,6 +1,6 @@
 {
   "added": "2026-11-07T14:03:00-06:00",
-  "context": "Goal: search on the phone works as well as the web's.\nProblem (goal): the designer drew a clear (x) button in the phone's search pill. The web's pill has none, and clearing a query with the iOS keyboard takes many taps.\nBased on (read): src/app.jsx .mdl-pill has no clear button.\nDeparts from: src/app.jsx:mdl-pill — the web pill has no clear button; option a adds a clear (x) button inside the phone's search pill.\nMeanwhile: the lane builds option b, the web's behaviour.",
+  "context": "Goal: search on the phone works as well as the web's.\nProblem (goal): the designer drew a clear (x) button in the phone's search pill. The web's pill has none, and clearing a query with the iOS keyboard takes many taps.\nBased on (read): src/app.jsx .mdl-pill has no clear button.\nDeparts from: src/app.jsx:mdl-pill \u2014 the web pill has no clear button; option a adds a clear (x) button inside the phone's search pill.\nMeanwhile: the lane builds option b, the web's behaviour.",
   "home": "roadmap step restyle-8-head (restyle builds the clear button in step 8)",
   "id": "native-search-clear-button",
   "kind": "decision",

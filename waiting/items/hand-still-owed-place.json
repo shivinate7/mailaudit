@@ -1,6 +1,6 @@
 {
   "added": "2026-11-09T01:50:00Z",
-  "context": "Goal: see what this package still owes while the keys are up.\nProblem (goal): round 2 puts it under the lines, which falls under the keys at 3 or more lines.\nBased on (read): decision outstanding-value-per-level (each level states what is still outstanding).\nDeparts from: the round 2 place under the lines — the trailing end of the \"ordered\" line.\nAsked by lane duo-gaps-design-review (PR 237, mockup docs/design/duo-hand-gaps.html at 4362dc5). The picks per part live in docs/design/duo-hand-gaps-notes.md.",
+  "context": "Goal: see what this package still owes while the keys are up.\nProblem (goal): round 2 puts it under the lines, which falls under the keys at 3 or more lines.\nBased on (read): decision outstanding-value-per-level (each level states what is still outstanding).\nDeparts from: the round 2 place under the lines \u2014 the trailing end of the \"ordered\" line.\nAsked by lane duo-gaps-design-review (PR 237, mockup docs/design/duo-hand-gaps.html at 4362dc5). The picks per part live in docs/design/duo-hand-gaps-notes.md.",
   "group": "duo-hand-gaps",
   "home": "docs/design/duo-hand-gaps-notes.md (PR 237)",
   "id": "hand-still-owed-place",

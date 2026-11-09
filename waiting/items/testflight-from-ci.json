@@ -1,6 +1,6 @@
 {
   "added": "2026-11-08T13:58:00-06:00",
-  "context": "Goal: the phone app can reach TestFlight even when the Mac is off.\nProblem (risk): today the App Store Connect key lives only on the Mac, so the TestFlight fallback needs the Mac. Moving it to CI means the key leaves the Mac, onto the Actions of a public repo.\nBased on (record): decision native-ships-via-testflight, the key lives only on the Mac.\nBased on (read): plan cloud-sessions, section Decisions for the owner.\nDeparts from: native-ships-via-testflight keeps the key on the Mac — option a makes it a GitHub Actions secret and lets a macOS job upload.\nUnvetted: the past-ruling check timed out.",
+  "context": "Goal: the phone app can reach TestFlight even when the Mac is off.\nProblem (risk): today the App Store Connect key lives only on the Mac, so the TestFlight fallback needs the Mac. Moving it to CI means the key leaves the Mac, onto the Actions of a public repo.\nBased on (record): decision native-ships-via-testflight, the key lives only on the Mac.\nBased on (read): plan cloud-sessions, section Decisions for the owner.\nDeparts from: native-ships-via-testflight keeps the key on the Mac \u2014 option a makes it a GitHub Actions secret and lets a macOS job upload.\nUnvetted: the past-ruling check timed out.",
   "group": "cloud-sessions-plan",
   "home": "testflight-from-ci",
   "id": "testflight-from-ci",

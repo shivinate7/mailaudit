@@ -7,9 +7,9 @@
   "id": "cloud-plan-merge",
   "kind": "decision",
   "lastAnswer": {
+    "at": "2026-11-09T01:29:00Z",
     "choice": "a",
-    "note": "by chat to the coordinator: lift the 16:52 hold for the first records batch",
-    "at": "2026-11-09T01:29:00Z"
+    "note": "by chat to the coordinator: lift the 16:52 hold for the first records batch"
   },
   "n": 67,
   "options": [

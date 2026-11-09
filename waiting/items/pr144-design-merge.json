@@ -1,6 +1,6 @@
 {
   "added": "2026-11-09T01:50:00Z",
-  "context": "Goal: the code and debts that cite the Card in Hand design point at a file on main.\nProblem (rule): draft PR #144, the Duo round 2 Card in Hand design page, never merged. Main still cites it: HandScreen.swift:4-5, DuoHandUITests.swift:2, debt duo-hand-mockup-gaps and decision duo-card-in-hand. Its body says not to merge without your word. It merges cleanly and is docs-only.\nBased on (read): git merge-tree is clean; four later rulings (items 24b, 25, 27 and 48) override some of its picks.\nDeparts from: main has no docs/design/duo-card-in-hand — adds the page, with a top note listing where later rulings override it.",
+  "context": "Goal: the code and debts that cite the Card in Hand design point at a file on main.\nProblem (rule): draft PR #144, the Duo round 2 Card in Hand design page, never merged. Main still cites it: HandScreen.swift:4-5, DuoHandUITests.swift:2, debt duo-hand-mockup-gaps and decision duo-card-in-hand. Its body says not to merge without your word. It merges cleanly and is docs-only.\nBased on (read): git merge-tree is clean; four later rulings (items 24b, 25, 27 and 48) override some of its picks.\nDeparts from: main has no docs/design/duo-card-in-hand \u2014 adds the page, with a top note listing where later rulings override it.",
   "home": "decision duo-card-in-hand; debt duo-hand-mockup-gaps",
   "id": "pr144-design-merge",
   "kind": "decision",
