@@ -1,0 +1,10 @@
+{
+  "title": "claude-settings guard cull: two possible false alarms",
+  "status": "todo",
+  "phase": "tooling",
+  "order": 11,
+  "why": "A guard that refuses when nothing is wrong teaches the reader to scroll past it (rule verification-cry-wolf-guard-is-spent).",
+  "note": "Feedback for claude-settings, which the owner carries. From lane duo-gaps-design-review, 2026-11-08: (1) worktree-home refused a resumed reviewer's read-only git in the lane checkout; (2) env-file refused a CSS selector `.env` in a design file. Weigh both at the next cull.",
+  "ask": "",
+  "updatedAt": "2026-11-09T02:16:00Z"
+}
