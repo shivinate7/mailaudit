@@ -93,3 +93,6 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 - 2026-11-08, check-docs-code-roots review round 1: claim 3 drops all of `docs/`, including the scripts under it (`docs/plans/cloud-setup.sh`, the `capture.mjs` files). A name that lives only there reads as absent.
 - 2026-11-08, check-docs-code-roots review round 1: a local run of claim 3 also reads untracked files that are not ignored, which CI never sees. A local pass can therefore be a CI fail.
 - 2026-11-09, duo-held-chip review round 1: `waitUntilStill` in `DuoHandUITests.swift` returns with no failure after 40 reads when frames never settle. The held-chip tests compare frames right after it, so a moving frame can pass or fail by chance.
+- 2026-11-09, duo-held-chip review round 2: no UI test taps the Card in Hand field near its top or side edge. A change that shrinks the field's tap area again passes all seven chip tests.
+- 2026-11-09, duo-held-chip review round 2: the chip tests read the field's frame only while the chip shows. No test compares the frame with the chip absent and present.
+- 2026-11-09, duo-held-chip review round 2: the field box now has a tap gesture. Whether VoiceOver reads the box as one control is unchecked.
