@@ -49,9 +49,9 @@ code { font:13px/1.4 var(--mono); }
 </head>
 <body data-w="375" data-p="sort">
 <main>
-<div class="banner" role="note">Sample. No figure on this page is real: the ledger is the test fixture shared/fixtures/ledger.json (12 lines, 4 packages, $67.50). Each frame is a headless Chromium screenshot of the built index.html.</div>
+<div class="banner" role="note">Sample data. The ledger in every frame is the test fixture shared/fixtures/ledger.json (12 lines, 4 packages, $67.50), so its counts and dollar figures are not real. The frames are headless Chromium screenshots of the built index.html, and the px readings under them were measured on those pages.</div>
 <h1>Panel paper fill</h1>
-<p class="sub">Waiting item 63, panel-paper-fill. Should an overlay panel on the Ledger tab paint the paper colour, so the rows under it stop showing through? Every frame but the last draws the overlay the owner ruled on 2026-10-11 (motion-disclosure-panels-arrive). That overlay is not built yet, so a style override draws it here. Only the panel's fill differs between the options.</p>
+<p class="sub">Waiting item 63, panel-paper-fill. Should an overlay panel on the Ledger tab paint the paper colour, so the rows under it stop showing through? Every frame but the last draws the overlay the owner ruled on 2026-10-11 (motion-disclosure-panels-arrive). The owner ruled that panels overlay the list, not where they sit. The overlay is not built yet, so a style override draws it here, and its geometry is a guess: the panel keeps its place, is as wide as its card, and runs past the card's foot over the rows below. Where a panel cuts a row below it, that cut comes from this guess. Only the panel's fill differs between the options.</p>
 
 <nav aria-label="Panel">
   <span class="lab">Panel</span>
@@ -78,23 +78,23 @@ code { font:13px/1.4 var(--mono); }
 <div class="row" id="frames">
   <figure id="focus-paper" data-o="paper">
     <p class="cap">Paper fill <small>the item's first option</small></p>
-    <div class="tags"><span class="tag new">New: paper fill on panelWrap</span><span class="tag new">New: overlay (ruled, not built)</span></div>
+    <div class="tags"><span class="tag new">New: paper fill on panelWrap</span><span class="tag new">New: overlay, ruled; geometry is a guess</span></div>
     <a class="shot" href="shots/panel-paper-fill/sort-paper-375-light.png" title="Open the full-size screenshot"><img src="shots/panel-paper-fill/sort-paper-375-light.png" alt="Ledger tab with the panel open over the rows, filled with the paper colour"></a>
-    <figcaption>The panel is opaque. The rows under it are hidden, and the option cells sit raised on the paper. Its bottom edge is square and has no rule, so it cuts the next row's text in half.</figcaption>
+    <figcaption>The panel is opaque. The rows under it are hidden, and the option cells sit raised on the paper. Its bottom edge is square and has no rule. With the guessed geometry, it cuts the next row's text in half. A geometry that kept the panel inside its card would not cut a row this way.</figcaption>
     <div class="read"></div>
   </figure>
   <figure id="focus-none" data-o="none">
     <p class="cap">No fill <small>the item's second option</small></p>
-    <div class="tags"><span class="tag today">Today: panelWrap, padding and top rule, no background</span><span class="tag new">New: overlay (ruled, not built)</span></div>
+    <div class="tags"><span class="tag today">Today: panelWrap, padding and top rule, no background</span><span class="tag new">New: overlay, ruled; geometry is a guess</span></div>
     <a class="shot" href="shots/panel-paper-fill/sort-none-375-light.png" title="Open the full-size screenshot"><img src="shots/panel-paper-fill/sort-none-375-light.png" alt="Ledger tab with the panel open over the rows, with no fill, so the rows show through"></a>
     <figcaption>The rows under the panel show through its gaps. The History text prints over Re-import CSV and Backup. A row you can still see sits under the panel, so a tap on it reaches the panel instead.</figcaption>
     <div class="read"></div>
   </figure>
   <figure id="focus-rule" data-o="rule">
     <p class="cap">Paper fill, ruled foot <small>designer's variant, not on the item</small></p>
-    <div class="tags"><span class="tag new">New: paper fill</span><span class="tag new">New: 1px line rule at the foot</span><span class="tag new">New: overlay (ruled, not built)</span></div>
+    <div class="tags"><span class="tag new">New: paper fill</span><span class="tag new">New: 1px line rule at the foot</span><span class="tag new">New: overlay, ruled; geometry is a guess</span></div>
     <a class="shot" href="shots/panel-paper-fill/sort-rule-375-light.png" title="Open the full-size screenshot"><img src="shots/panel-paper-fill/sort-rule-375-light.png" alt="Ledger tab with the panel open, paper fill and a hairline under it"></a>
-    <figcaption>The paper fill, with a 1px <code>line</code> rule under the panel. The rule closes the cut edge with the region's own hairline. The row under it is still cut.</figcaption>
+    <figcaption>The paper fill, with a 1px <code>line</code> rule under the panel. The rule closes the cut edge with the region's own hairline. With the guessed geometry, the row under it is still cut.</figcaption>
     <div class="read"></div>
   </figure>
   <figure id="focus-built" data-o="built">
@@ -110,6 +110,7 @@ code { font:13px/1.4 var(--mono); }
 <section aria-label="Sizes and sources">
   <h2>Sizes and sources</h2>
   <ul>
+    <li>Shots and readings come from shots/panel-paper-fill/capture.mjs; run it again to retake them.</li>
     <li>Widths 375 and 760 px, height 812: <code>WIDTHS</code> and <code>openSeeded</code> in test/screens.mjs. Device scale 2.</li>
     <li>One theme, light: shared/tokens.json holds one palette, and src/app.jsx has no dark rule.</li>
     <li>Panel style: <code>panelWrap</code> in src/app.jsx (padding 4px 8px 12px, top rule <code>line</code>, no background). Callers: the Sorted by and Orders from panels in the View card, and the Sync, Recent and History panels in the Data card.</li>
@@ -130,15 +131,14 @@ const FILE = { built: "inflow", none: "none", paper: "paper", rule: "rule" };
 const hidden = new Set();
 function state() {
   const h = new URLSearchParams(location.hash.slice(1));
-  return { p: h.get("p") === "history" ? "history" : "sort", w: h.get("w") === "760" ? "760" : "375", o: h.get("o") };
+  return { p: h.get("p") === "history" ? "history" : "sort", w: h.get("w") === "760" ? "760" : "375", t: "light", o: h.get("o") };
 }
 function render() {
   const s = state();
   document.body.dataset.w = s.w; document.body.dataset.p = s.p;
   for (const a of document.querySelectorAll("nav a[data-k]")) {
-    if (a.dataset.k === "t") continue;
     a.setAttribute("aria-current", String(s[a.dataset.k] === a.dataset.v));
-    const q = { p: s.p, w: s.w, [a.dataset.k]: a.dataset.v }; if (s.o) q.o = s.o;
+    const q = { p: s.p, w: s.w, t: s.t, [a.dataset.k]: a.dataset.v }; if (s.o) q.o = s.o;
     a.href = "#" + new URLSearchParams(q).toString();
   }
   for (const f of document.querySelectorAll("#frames figure")) {
