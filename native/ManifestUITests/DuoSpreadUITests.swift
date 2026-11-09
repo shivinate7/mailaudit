@@ -324,9 +324,9 @@ final class DuoSpreadUITests: XCTestCase {
     }
 
     /// Pose: flat (open Duo, window 951 x 669 pt). Discard armed on one envelope does not arm the next one a pick shows: the
-    /// right page's card is that envelope's, with its own state. The guard reads the app's own lapse count (discard-lapses), not
-    /// runner wall time, so a slow runner cannot fail it. A lapse in the app makes the run inconclusive: its 4 s timer ran out
-    /// before the check, so the ask's absence proves nothing.
+    /// right page's card is that envelope's, with its own state. The guard reads the app's lapse count (discard-lapses), not
+    /// runner wall time. A lapse re-arms the check once. It never passes without a conclusive attempt: an attempt counts only
+    /// when no lapse fired during it.
     func testFlatOrphanedArmedDiscardDoesNotCarryOver() {
         guard let two = openFlatOrphanedWithTwo() else { return }
         let app = two.app
@@ -334,31 +334,49 @@ final class DuoSpreadUITests: XCTestCase {
         let title = app.byID("orphaned-detail-title")
         let ask = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Tap again to discard")).firstMatch
 
-        upperCell.tap()
-        XCTAssertTrue(title.waitForExistence(timeout: 5), "the right page's heading orphaned-detail-title is missing after a tap on the upper cell")
-        Thread.sleep(forTimeInterval: 0.3)
-        let shown = title.label
-        let discard = app.firstElement(prefix: "discard:")
-        XCTAssertTrue(discard.waitForExistence(timeout: 5), "the right page's card has no Discard (discard:<id>)")
-
-        discard.tap()
-        XCTAssertTrue(ask.waitForExistence(timeout: 2), "a tap on Discard did not arm it: there is no 'Tap again to discard' button, so the test would prove nothing")
-        lowerCell.tap()
-        XCTAssertTrue(waitUntil { title.label != shown }, "a tap on the lower cell left the right page on \(shown): no pick, so no carry-over to check")
-        let carried = ask.exists  // read before the lapse count: a count of 0 means no lapse had fired when the ask was read
-        let lapses = app.byID("discard-lapses")
-        XCTAssertTrue(lapses.exists, "the app's lapse hook discard-lapses is missing, so the check proves nothing")
-        let raw = (lapses.value as? String) ?? ""
-        guard let lapsed = Int(raw) else {
-            XCTFail("discard-lapses holds \"\(raw)\", not a count of lapsed asks")
-            return
-        }
-        if lapsed > 0 {
-            XCTFail("inconclusive: the app's own 4 s Discard lapse fired before the check, so the ask's absence proves nothing. Run again")
-            return
+        /// The app's lapse count, or nil once a failure is recorded.
+        func lapseCount() -> Int? {
+            let lapses = app.byID("discard-lapses")
+            guard lapses.exists else {
+                XCTFail("the app's lapse hook discard-lapses is missing, so the check proves nothing")
+                return nil
+            }
+            let raw = (lapses.value as? String) ?? ""
+            guard let count = Int(raw) else {
+                XCTFail("discard-lapses holds \"\(raw)\", not a count of lapsed asks")
+                return nil
+            }
+            return count
         }
 
-        XCTAssertFalse(carried, "Discard was armed on the envelope \(shown). A pick to \(title.label) kept the 'Tap again to discard' ask: the card's state carried over to the next envelope")
+        var upper: String?  // the upper envelope's heading, from the first attempt
+        for _ in 1...2 {
+            guard let before = lapseCount() else { return }
+
+            upperCell.tap()
+            XCTAssertTrue(title.waitForExistence(timeout: 5), "the right page's heading orphaned-detail-title is missing after a tap on the upper cell")
+            if let upper = upper, !waitForLabel(title, upper) {
+                XCTFail("a tap on the upper cell left the right page on \(title.label), not \(upper)")
+                return
+            }
+            Thread.sleep(forTimeInterval: 0.3)
+            let shown = title.label
+            if upper == nil { upper = shown }
+            let discard = app.firstElement(prefix: "discard:")
+            XCTAssertTrue(discard.waitForExistence(timeout: 5), "the right page's card has no Discard (discard:<id>)")
+
+            discard.tap()
+            XCTAssertTrue(ask.waitForExistence(timeout: 2), "a tap on Discard did not arm it: there is no 'Tap again to discard' button, so the test would prove nothing")
+            lowerCell.tap()
+            XCTAssertTrue(waitUntil { title.label != shown }, "a tap on the lower cell left the right page on \(shown): no pick, so no carry-over to check")
+            let carried = ask.exists  // read before the lapse count: an unchanged count means no lapse fired before the ask was read
+            guard let after = lapseCount() else { return }
+            if after != before { continue }  // the app's own lapse fired, so the absence proves nothing: re-arm and try again
+
+            XCTAssertFalse(carried, "Discard was armed on the envelope \(shown). A pick to \(title.label) kept the 'Tap again to discard' ask: the card's state carried over to the next envelope")
+            return
+        }
+        XCTFail("inconclusive twice: the app's own 4 s Discard lapse fired before the check on both attempts, so neither proves anything")
     }
 
     /// Pose: flat (open Duo, window 951 x 669 pt). The picked Orphaned cell carries the selected trait and the other cell does not.
