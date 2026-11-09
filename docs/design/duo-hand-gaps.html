@@ -53,7 +53,6 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
 .keys .row { display:flex; gap:6px; margin-bottom:8px; justify-content:center; }
 .keys .k { height:42px; flex:0 0 42px; background:#FFFFFF; border-radius:6px; display:grid; place-items:center; font-size:18px; color:#111; }
 .keys .k.w { flex-basis:300px; font-size:14px; }
-.keys .note { position:absolute; left:12px; top:-1px; transform:translateY(-100%); font:11px var(--mono); color:var(--inkSoft); background:var(--paper); padding:2px 4px; }
 /* The Duo tab bar under the right page (DuoSpine.DuoBar): 64 pt pill, 24 pt in, 12 pt up. Shown only with the keys down. */
 .bar { position:absolute; left:519.5px; width:407.5px; top:593px; height:64px; border:1px solid var(--line); border-radius:32px; z-index:4;
   background:color-mix(in srgb, var(--paper) 62%, transparent); box-shadow:0 4px 16px var(--shadow); display:grid; grid-template-columns:repeat(4,1fr); padding:4px; gap:4px; }
@@ -169,6 +168,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
 .line[data-tag]::before { top:auto; bottom:2px; }
 .line.tag-new, .line.tag-today { outline-offset:-2px; }
 .tag-below[data-tag]::before { top:auto; bottom:-17px; }
+.micro[data-tag]::before { text-transform:none; letter-spacing:0; }
 .meta[data-tag]::before { top:auto; bottom:-17px; right:auto; left:0; }
 
 /* folded frame: the outer screen, 466 x 678 pt (duo-fold-and-keyboard, re-measured 2026-11-08), drawn at half size */
@@ -211,7 +211,6 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
   <div class="fold"><span>FOLD</span></div>
   <div class="status"><span>9:41</span><span>100%</span></div>
   <div class="keys">
-    <span class="note">keys panel from y 405 · frame from y 449</span>
     <div class="row"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">y</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
     <div class="row"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
     <div class="row"><span class="k">z</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span></div>
@@ -263,7 +262,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       </div>
     </div></div>
   </div></div>
-  <figcaption><b>Today.</b> The right page shows the envelope, and nothing says which line is the card in your hand. HandScreen.swift:303 draws each line with <code>ItemLine</code>, the same in every state.</figcaption>
+  <figcaption><b>Today.</b> The right page shows the envelope, and nothing says which line is the card in your hand. HandScreen.swift:303 draws each line with <code>ItemLine</code>, the same in every state. Keys panel from y 405, frame from y 449.</figcaption>
 </figure>
 
 <figure data-opt="line-bar">
@@ -278,7 +277,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       </div>
     </div></div>
   </div></div>
-  <figcaption><b>Accent bar (pick).</b> A 3 pt accent bar on the leading edge of the typed card's line. It is the mark the chosen match already has on the left page (item 48), so one mark means "this card" on both pages. It sits in ItemLine's 4 pt leading pad, so no text moves. It stays on a done line, where a fill would not show. <button type="button" class="hide" data-hide="line-bar">Hide accent bar</button></figcaption>
+  <figcaption><b>Accent bar (pick).</b> A 3 pt accent bar on the leading edge of the typed card's line. It is the mark the chosen match already has on the left page (item 48), so one mark means "this card" on both pages. It sits in ItemLine's 4 pt leading pad, so no text moves. It stays on a done line, where a fill would not show. Keys panel from y 405, frame from y 449. <button type="button" class="hide" data-hide="line-bar">Hide accent bar</button></figcaption>
 </figure>
 
 <figure data-opt="line-fill">
@@ -293,7 +292,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       </div>
     </div></div>
   </div></div>
-  <figcaption><b>Green fill, as drawn in October.</b> The typed line and the done Counterspell line now share one fill. When the typed card's line is done too, the mark vanishes. <button type="button" class="hide" data-hide="line-fill">Hide green fill</button></figcaption>
+  <figcaption><b>Green fill, as drawn in October.</b> The typed line and the done Counterspell line now share one fill. When the typed card's line is done too, the mark vanishes. Keys panel from y 405, frame from y 449. <button type="button" class="hide" data-hide="line-fill">Hide green fill</button></figcaption>
 </figure>
 </section>
 
@@ -321,7 +320,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       </div>
     </div></div>
   </div></div>
-  <figcaption><b>Today.</b> "This envelope" names a row and shows nothing in it (HandScreen.swift:111 to :118). Six cards are in, and the left page does not say so.</figcaption>
+  <figcaption><b>Today.</b> "This envelope" names a row and shows nothing in it (HandScreen.swift:111 to :118). Six cards are in, and the left page does not say so. Keys panel from y 405, frame from y 449.</figcaption>
 </figure>
 
 <figure data-opt="env-new">
@@ -343,7 +342,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       </div>
     </div></div>
   </div></div>
-  <figcaption><b>Cards so far.</b> Names in check-in order, with the copies this envelope brought. The label and the value are two text lines (18 + 20 pt) inside the 44 pt row. Matches start at y 208, as today.</figcaption>
+  <figcaption><b>Cards so far.</b> Names in check-in order, with the copies this envelope brought. The label and the value are two text lines (18 + 20 pt) inside the 44 pt row. Matches start at y 208, as today. Keys panel from y 405, frame from y 449.</figcaption>
 </figure>
 
 <figure data-opt="env-new">
@@ -364,7 +363,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       </div>
     </div></div>
   </div></div>
-  <figcaption><b>Long list.</b> As many names as fit, then "+N more" in mono, never a second line. VoiceOver reads every name. A Post adds its cards here too.</figcaption>
+  <figcaption><b>Long list.</b> As many names as fit, then "+N more" in mono, never a second line. VoiceOver reads every name. A Post adds its cards here too. Keys panel from y 405, frame from y 449.</figcaption>
 </figure>
 
 <figure data-opt="env-new">
@@ -378,7 +377,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       <p class="empty-hint">Type the card in hand. The envelope it came from shows here.</p>
     </div></div>
   </div></div>
-  <figcaption><b>Empty.</b> New envelope clears the list. The empty line holds the row's second line, so the first check-in grows nothing.</figcaption>
+  <figcaption><b>Empty.</b> New envelope clears the list. The empty line holds the row's second line, so the first check-in grows nothing. Keys panel from y 405, frame from y 449.</figcaption>
 </figure>
 </section>
 
@@ -401,7 +400,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       </div>
     </div></div>
   </div></div>
-  <figcaption><b>Today.</b> The answer page gives no outstanding figure (HandScreen.swift:281 to :301). Packages does, on each card.</figcaption>
+  <figcaption><b>Today.</b> The answer page gives no outstanding figure (HandScreen.swift:281 to :301). Packages does, on each card. Keys panel from y 405, frame from y 449.</figcaption>
 </figure>
 
 <figure data-opt="owed-meta">
@@ -418,7 +417,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       </div>
     </div></div>
   </div></div>
-  <figcaption><b>On the order line (pick).</b> "Still owed here" in soft Cochin, the figure in red mono, at the trailing end of the "ordered" line. It adds no row, so the Post offer and the lines keep their place, and it shows at every length of envelope. When nothing is owed it reads "complete" in green. At large text, where both halves do not fit one line, the figure wraps under the date. <button type="button" class="hide" data-hide="owed-meta">Hide on the order line</button></figcaption>
+  <figcaption><b>On the order line (pick).</b> "Still owed here" in soft Cochin, the figure in red mono, at the trailing end of the "ordered" line. It adds no row, so the Post offer and the lines keep their place, and it shows at every length of envelope. When nothing is owed it reads "complete" in ink. At large text, where both halves do not fit one line, the figure wraps under the date. Keys panel from y 405, frame from y 449. <button type="button" class="hide" data-hide="owed-meta">Hide on the order line</button></figcaption>
 </figure>
 
 <figure data-opt="owed-under">
@@ -436,7 +435,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       <span class="meta tag-new" id="focus-owed-under" data-tag="New: under the lines, y 498, under the keys"><span class="owe"><em>Still owed here</em>4 left · $2.12</span></span>
     </div></div>
   </div></div>
-  <figcaption><b>Under the lines, as drawn in October.</b> It reads last, after the lines it sums. With five lines it sits at y 498, behind the keys; you scroll the right page to see it while you type. <button type="button" class="hide" data-hide="owed-under">Hide under the lines</button></figcaption>
+  <figcaption><b>Under the lines, as drawn in October.</b> It reads last, after the lines it sums. With five lines it sits at y 498, behind the keys; you scroll the right page to see it while you type. Keys panel from y 405, frame from y 449. <button type="button" class="hide" data-hide="owed-under">Hide under the lines</button></figcaption>
 </figure>
 </section>
 
@@ -479,7 +478,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       <div data-fill="brass-lines"></div>
     </div></div>
   </div></div>
-  <figcaption><b>Today.</b> The offer has one button (HandScreen.swift:324 to :334). To keep the card held you must type on, and the offer stays up.</figcaption>
+  <figcaption><b>Today.</b> The offer has one button (HandScreen.swift:324 to :334). To keep the card held you must type on, and the offer stays up. Keys panel from y 405, frame from y 449.</figcaption>
 </figure>
 
 <figure data-opt="keep-new">
@@ -493,7 +492,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       <div data-fill="brass-lines"></div>
     </div></div>
   </div></div>
-  <figcaption><b>Keep held.</b> Beside Post, in the same 44 pt row, so the slot keeps today's height. Post stays the filled button.</figcaption>
+  <figcaption><b>Keep held.</b> Beside Post, in the same 44 pt row, so the slot keeps today's height. Post stays the filled button. Keys panel from y 405, frame from y 449.</figcaption>
 </figure>
 
 <figure data-opt="keep-new">
@@ -507,7 +506,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       <div data-fill="brass-lines"></div>
     </div></div>
   </div></div>
-  <figcaption><b>After Keep held.</b> The receipt holds the slot until the next card or New envelope, as the Post receipt does (HandScreen.swift:341 to :353). The Suspense box on the left stays. Mind Stone's own line tap still checks it in.</figcaption>
+  <figcaption><b>After Keep held.</b> The receipt holds the slot until the next card or New envelope, as the Post receipt does (HandScreen.swift:341 to :353). The Suspense box on the left stays. Mind Stone's own line tap still checks it in. Keys panel from y 405, frame from y 449.</figcaption>
 </figure>
 </section>
 
@@ -531,7 +530,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       </div>
     </div></div>
   </div></div>
-  <figcaption><b>Today.</b> Beast Within is held on the left page and looks open on the right.</figcaption>
+  <figcaption><b>Today.</b> Beast Within is held on the left page and looks open on the right. Keys panel from y 405, frame from y 449.</figcaption>
 </figure>
 
 <figure data-opt="held-new">
@@ -549,7 +548,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       </div>
     </div></div>
   </div></div>
-  <figcaption><b>Held line.</b> Tint is manila 55% over card, as October drew it. The words carry the meaning, so the tint is never the only sign. The box stays open: the card is not checked in. The line keeps its height; the words join the detail line, and wrap only at large text.</figcaption>
+  <figcaption><b>Held line.</b> Tint is manila 55% over card, as October drew it. The words carry the meaning, so the tint is never the only sign. The box stays open: the card is not checked in. The line keeps its height; the words join the detail line, and wrap only at large text. Keys panel from y 405, frame from y 449.</figcaption>
 </figure>
 </section>
 
@@ -577,7 +576,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       <div class="tcard"><b>Quillon Hobby</b><span class="meta"><span>ordered 2026-10-10 · 2 cards out</span></span></div>
     </div></div>
   </div></div>
-  <figcaption><b>Today.</b> The tie names each envelope (HandScreen.swift:258 to :275). You cannot see which one is the envelope in your hand, and you cannot post to one.</figcaption>
+  <figcaption><b>Today.</b> The tie names each envelope (HandScreen.swift:258 to :275). You cannot see which one is the envelope in your hand, and you cannot post to one. Keys panel from y 405, frame from y 449.</figcaption>
 </figure>
 
 <figure data-opt="tie-new">
@@ -598,7 +597,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       </div>
     </div></div>
   </div></div>
-  <figcaption><b>Post at a tie.</b> Two envelopes side by side, each 203 pt wide, each with its open lines (28 pt read-out rows, 13 pt) and a 44 pt Post. The cards top at y 99 and end by y 330, so both Post buttons clear the keys at 405. Three or more envelopes wrap to a second row of two. Both Post buttons are outlined; neither is filled.</figcaption>
+  <figcaption><b>Post at a tie.</b> Two envelopes side by side, each 203 pt wide, each with its open lines (28 pt read-out rows, 13 pt) and a 44 pt Post. The cards top at y 99 and end by y 330, so both Post buttons clear the keys at 405. Three or more envelopes wrap to a second row of two. Both Post buttons are outlined; neither is filled. Keys panel from y 405, frame from y 449.</figcaption>
   <ul class="tags"><li>The rows read "in hand" for the typed card and "held" for a card on the Suspense line. A row does not check in: only Post does.</li></ul>
 </figure>
 </section>
@@ -625,7 +624,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
 </template>
 <!-- The masthead's still-missing figure, under its own label, outside "Not normal today" -->
 <template id="still">
-  <span class="micro m11">Across all orders</span>
+  <span class="micro m11 tag-new tag-below" data-tag="New: its own label">Across all orders</span>
   <span class="still">19 still missing · $11.07</span>
 </template>
 <section class="part" id="s-end-of-day" data-state="end-of-day">
@@ -686,7 +685,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
     <div class="page r"><div class="content">
       <span class="micro m11">Not normal today</span>
       <span class="well tag-new" id="focus-eod-well" data-tag="New: nothing to report">All is well.</span>
-      <span class="micro m11">Across all orders</span>
+      <span class="micro m11 tag-new tag-below" data-tag="New: its own label">Across all orders</span>
       <span class="still">18 still missing · $10.40</span>
     </div></div>
   </div></div>
@@ -703,7 +702,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
     </div></div>
     <div class="page r"><div class="content" data-fill="odd still"></div></div>
   </div></div>
-  <figcaption><b>No match.</b> October pose 5's second frame (index.html:394 to :405): the answer shows at the query, not on the far page, and Hold in Suspense keeps the name on the line. Today the right page says "No open envelope holds" (HandScreen.swift:253) and offers nothing. The box sits where Matches would, below This envelope.</figcaption>
+  <figcaption><b>No match.</b> October pose 5's second frame (index.html:394 to :405): the answer shows at the query, not on the far page, and Hold in Suspense keeps the name on the line. Today the right page says "No open envelope holds" (HandScreen.swift:253) and offers nothing. The box sits where Matches would, below This envelope. Keys panel from y 405, frame from y 449.</figcaption>
 </figure>
 </section>
 
@@ -739,7 +738,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       <div class="tcard"><b>Tinpot Cards</b><span class="meta"><span>ordered 2026-10-06 · 4 cards out</span></span></div>
     </div></div>
   </div></div>
-  <figcaption><b>Today.</b> The held-name line holds one name with no count (<code>HandModel.held</code>, HandModel.swift:21). Command Tower fits the same two envelopes, so <code>handStep</code> keeps Arcane Signet held and Command Tower goes nowhere. The right page shows a plain tie.</figcaption>
+  <figcaption><b>Today.</b> The held-name line holds one name with no count (<code>HandModel.held</code>, HandModel.swift:21). Command Tower fits the same two envelopes, so <code>handStep</code> keeps Arcane Signet held and Command Tower goes nowhere. The right page shows a plain tie. Keys panel from y 405, frame from y 449.</figcaption>
 </figure>
 
 <figure data-opt="rank-new">
@@ -749,13 +748,13 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       <span class="who">3 cards, no sender</span>
       <span class="meta"><span>Arcane Signet ×2 · Command Tower</span></span>
       <div class="rank tag-new" id="focus-rank" data-tag="New: ranked by named copies">
-        <div class="rr"><span><b>Low Tide Singles</b><small>ordered 2026-10-19 · 3 of 3 cards</small></span><span class="hit"><span class="pill post">Post 3 cards here</span></span></div>
-        <div class="rr"><span><b>Tinpot Cards</b><small>ordered 2026-10-06 · 2 of 3 cards</small><small>1 Arcane Signet stays held</small></span><span class="hit"><span class="pill">Post 2 cards here</span></span></div>
+        <div class="rr"><span><b>Low Tide Singles</b><small>ordered 2026-10-19</small><small>explains all 3 · nothing left over</small></span><span class="hit"><span class="pill post">Post 3 cards here</span></span></div>
+        <div class="rr"><span><b>Tinpot Cards</b><small>ordered 2026-10-06</small><small>2 of 3 cards · 2 more still owed</small><small>1 Arcane Signet stays held</small></span><span class="hit"><span class="pill">Post 2 cards here</span></span></div>
       </div>
       <p class="note">Post checks in only the cards an account ordered. A card that does not fit stays on the Suspense line.</p>
     </div></div>
   </div></div>
-  <figcaption><b>Ranked.</b> Low Tide ordered two Arcane Signet and one Command Tower, so it fits 3 of 3 cards and its Post is the filled one. Tinpot ordered one Arcane Signet and one Command Tower, so it fits 2 of 3 cards, and the second Arcane Signet stays held. The list ends by y 290, clear of the keys. October's "Leave in Suspense" button is left out: doing nothing already leaves the cards on the line.</figcaption>
+  <figcaption><b>Ranked.</b> Low Tide ordered two Arcane Signet and one Command Tower, so its row reads OrphanedView's fit line "explains all 3 · nothing left over", and its Post is the filled one. Tinpot ordered one Arcane Signet and one Command Tower, so it reads "2 of 3 cards · 2 more still owed", and the second Arcane Signet stays held. The list ends by y 300, clear of the keys. October's "Leave in Suspense" button is left out: doing nothing already leaves the cards on the line. Keys panel from y 405, frame from y 449.</figcaption>
 </figure>
 </section>
 </main>

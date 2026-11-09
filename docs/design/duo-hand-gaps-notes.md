@@ -95,8 +95,8 @@ None of the eight parts lives in PackagesView, TallyView, OrphanedView or RootVi
    - What: the Suspense line holds several names with copies. The right page ranks accounts by named copies with the bundle's `rankCandidates`, the rule Orphaned uses, so no second ranker is built. The top account's "Post N cards here" is filled. When the top two rank equal, the tie of part 6 shows instead. Post checks in only the cards an account ordered. The rest stay on the line.
    - Departs from: round 2 "Leave in Suspense", which is left out. Doing nothing already leaves the cards on the line (`ux-control-earns-place`).
    - Model need: a multi-name held list. See Owner grant item 1.
-   - Each row reads "N of M cards", the words Orphaned uses for the same rank.
-   - Test 1: three held copies rank Low Tide 3 of 3 cards above Tinpot 2 of 3 cards, and only the top button is filled.
+   - Each row reads OrphanedView's fit line, the words Orphaned uses for the same rank.
+   - Test 1: three held copies rank Low Tide, "explains all 3 · nothing left over", above Tinpot, "2 of 3 cards · 2 more still owed", and only the top button is filled.
    - Test 2: posting the second account leaves one Arcane Signet on the line.
 
 ## Owner grant items
