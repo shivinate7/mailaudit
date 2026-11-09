@@ -1,29 +1,29 @@
 {
- "id": "delete-mn-r2-gate-red",
- "n": 83,
- "kind": "task",
- "status": "open",
- "added": "2026-11-09T05:15:00Z",
- "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
- "home": "PR 270",
- "ref": "branch wip/mn-r2-gate-red (lane merge-notice-r2's red-gate branch); branch mutant/photo-fetch-order (PR 266, the mutant proof for PR 263, closed unmerged); branch lane/duo-ci-path-next (lane duo-ci-path, merged in PR 270)",
- "title": "Delete three finished work branches",
- "short": "Delete 3 branches",
- "context": "Three work branches are done and must never merge. Nothing is lost: wip/mn-r2-gate-red is saved as archive/wip/mn-r2-gate-red (423cf15), mutant/photo-fetch-order as archive/mutant/photo-fetch-order (c2d3fb2), and lane/duo-ci-path-next is already in main (batch PR 270, ff10d93).\nWhy yours: the cloud git proxy refused the delete push, and no folder on your computer is open to cloud sessions (measured 2026-11-08, git push origin --delete hung up at 23:12 CST and the branch is still on origin; list_computer_folders offers no folder).",
- "steps": [
-  "Paste the command below in a terminal.",
-  "Press Mark done."
- ],
- "command": {
-  "powershell": "gh auth switch -u shivinate7\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/wip/mn-r2-gate-red\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/mutant/photo-fetch-order\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/lane/duo-ci-path-next",
-  "mac": "gh auth switch -u shivinate7\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/wip/mn-r2-gate-red\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/mutant/photo-fetch-order\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/lane/duo-ci-path-next"
- },
- "minutes": "1 min",
- "links": [
-  {
-   "label": "Branches on GitHub",
-   "url": "https://github.com/shivinate7/mailaudit/branches"
-  }
- ],
- "port": false
+  "added": "2026-11-09T05:15:00Z",
+  "command": {
+    "mac": "gh auth switch -u shivinate7\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/wip/mn-r2-gate-red\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/mutant/photo-fetch-order\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/lane/duo-ci-path-next",
+    "powershell": "gh auth switch -u shivinate7\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/wip/mn-r2-gate-red\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/mutant/photo-fetch-order\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/lane/duo-ci-path-next"
+  },
+  "context": "Three work branches are done and must never merge. Nothing is lost: wip/mn-r2-gate-red is saved as archive/wip/mn-r2-gate-red (423cf15), mutant/photo-fetch-order as archive/mutant/photo-fetch-order (c2d3fb2), and lane/duo-ci-path-next is already in main (batch PR 270, ff10d93).\nWhy yours: the cloud git proxy refused the delete push, and no folder on your computer is open to cloud sessions (measured 2026-11-08, git push origin --delete hung up at 23:12 CST and the branch is still on origin; list_computer_folders offers no folder).",
+  "home": "PR 270",
+  "id": "delete-mn-r2-gate-red",
+  "kind": "task",
+  "links": [
+    {
+      "label": "Branches on GitHub",
+      "url": "https://github.com/shivinate7/mailaudit/branches"
+    }
+  ],
+  "minutes": "1 min",
+  "n": 83,
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "port": false,
+  "ref": "branch wip/mn-r2-gate-red (lane merge-notice-r2's red-gate branch); branch mutant/photo-fetch-order (PR 266, the mutant proof for PR 263, closed unmerged); branch lane/duo-ci-path-next (lane duo-ci-path, merged in PR 270)",
+  "short": "Delete 3 branches",
+  "status": "open",
+  "steps": [
+    "Paste the command below in a terminal.",
+    "Press Mark done."
+  ],
+  "title": "Delete three finished work branches"
 }
