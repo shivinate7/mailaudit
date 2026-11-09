@@ -20,7 +20,7 @@ Screenshots: `shots/orphaned-meta-line-wraps/<option>-<size>.png`, one per optio
 - Unmeasured: the text size of the 2026-10-27 audit. `OrphanedUITests.launch` passes no `-UIPreferredContentSizeCategoryName`, so `testAccessibilityAuditOrphanedEnvelopeWithATie` ran at the simulator's own setting, and no record names it. AX5 is drawn as the worst case; `DuoSpreadUITests.testFlatBarLabelsFitThePillAtAccessibilityXXXL` uses it. AX3 is drawn as the repo's usual large size (`duo-hand-notice-match-notes`).
 - Unmeasured: the width SwiftUI gives "This one" at AX3 and AX5. Drawn at its natural width, capped at half the row, so it wraps to two lines there.
 - Unmeasured: where SwiftUI breaks the order number. Chromium breaks after a hyphen, and inside the number when one part is still too wide.
-- Fonts: Menlo is drawn from DejaVu Sans Mono and keeps its advance, so mono widths hold off a Mac. Cochin falls back to Liberation Serif here, so seller and entry widths are estimates. Line heights are Chromium's; row heights are estimates within a few points.
+- Fonts: Menlo is drawn from DejaVu Sans Mono and keeps its advance, so mono widths are the same as on a Mac. Cochin falls back to Liberation Serif here, so seller and entry widths are estimates. Line heights are Chromium's; row heights are estimates within a few points.
 - Theme: one. The native app is held to light (`design-parchment-ledger`, `UIUserInterfaceStyle`).
 - Apple pages read 2026-11-08, each answered 200: Typography (the Dynamic Type tables; 11 pt minimum), Accessibility, Buttons (44x44 pt hit region), Layout.
 - Sample, the same in every frame: an envelope of Lightning Bolt, Counterspell and Brainstorm; two packages tie. Alpha Cards, 2026-07-01, untracked, order `7C41B09E-3A5F12-D80C4`; Beta Games, 2026-07-29, order `E93A6D21-0B7C48-15FAE`. The order numbers are invented in the 8-6-5 shape that a TCGplayer order number has. The seed's own ids (`A1`, `B1`) are too short to show the problem.
@@ -54,7 +54,7 @@ Screenshots: `shots/orphaned-meta-line-wraps/<option>-<size>.png`, one per optio
 
 5. **Capped size.** The meta line stops growing at xxxLarge (`.dynamicTypeSize(...DynamicTypeSize.xxxLarge)`, as `DuoSpine.swift` caps the bar at `.large`), and it cuts as Cut line does. Drawn as `#o=capped`.
    - Gain: one line at every size.
-   - Lose: the line stays at 15.75 pt while the rest of the row reaches 37 to 53 pt; it hides part of the order number from xxxLarge on, and all of it from AX3 on. Its clipped-text audit is unmeasured. The audit's Dynamic Type check may flag text that stops growing; unmeasured.
+   - Lose: the line stays at 15.75 pt while the rest of the row reaches 37 to 53 pt. It hides part of the order number from xxxLarge on, and all of it from AX3 on. Its clipped-text audit is unmeasured. The audit's Dynamic Type check may flag text that stops growing; unmeasured.
    - Pick: no.
 
 6. **What decides it.** From AX3 the order number alone (354 pt) is wider than the meta column (214 pt). So at full size, no one-line rule can show the whole order number there; each candidate hides it, shrinks it, or caps it. Owner grant: yes (the pick closes the debt by ruling, and departs from the web).
