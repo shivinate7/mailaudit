@@ -88,3 +88,6 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 - 2026-11-08, duo-ci-path review round 2: no test pins the named message when `DUO_CLASSES_VAR` is missing in `scripts/ci-sim.sh`. Decision: `duo-ui-runs-on-pr-label`.
 - 2026-11-08, look-mockups-56-63 (PR 252): at 375 px the web Orphaned candidate row hides the untracked package's order number.
 - 2026-11-08, look-mockups-56-63 (PR 252): the phone's Orphaned candidate meta line is set at 10.5 pt, under Apple's 11 pt minimum.
+- 2026-11-09, duo-ci-path: `testFailedLineCheckInShowsInHand` passed only on retry in CI run 42577148982, after a 311 s first-attempt UI-query timeout. It was the first test of the flat pass, so a cold simulator is likely.
+- 2026-11-09, duo-ci-path: the `pro-ui-a` and `pro-ui-b` jobs check only that at least one test ran, not an exact count.
+- 2026-11-09, duo-ci-path: debts `duo-bar-dynamic-type-clips` and `hand-stale-checkin-error` also wait on a CI path. They retire on a cited `duo-ui` run whose pinning tests pass on the first try.

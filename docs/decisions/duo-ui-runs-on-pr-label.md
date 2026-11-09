@@ -67,7 +67,7 @@ Plan: docs/decisions/duo-ui-runs-on-pr-label.md#gate (native)
 
 ## Unmeasured
 
-- The hosted time of the Duo passes beyond one run. Debt `native-job-hosted-time-unmeasured` covers the hosted time of the UI tests.
+- The hosted time of the Duo passes beyond the two runs measured here: CI runs 42549989429 and 42577148982. Debt `native-job-hosted-time-unmeasured` covers the hosted time of the UI tests.
 - Whether the merge tool reads an all-skipped run as red. This workflow makes such a run on a draft with no label, when the paths match. `ci-skips-draft-prs` says the merge tool reads a head whose jobs all skipped as red. It is unmeasured whether one all-skipped run of this file counts the same way.
 
 ## Unproven
