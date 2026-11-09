@@ -1,0 +1,10 @@
+{
+  "title": "CI: move the ste-lint pin in checks.yml to 2ac382c",
+  "status": "doing",
+  "phase": "tooling",
+  "order": 12,
+  "why": "The checks job runs the ste-lint action at 422cbbd. The lane moves it to 2ac382c (from PRs 245 and 246, plan cloud-lane-cut).",
+  "note": "Lane ste-lint-pin, wave 2, started 2026-11-08 22:34 CST after PR 243 freed checks.yml.",
+  "ask": "",
+  "updatedAt": "2026-11-09T04:45:00Z"
+}

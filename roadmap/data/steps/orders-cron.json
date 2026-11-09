@@ -1,10 +1,10 @@
 {
-  "title": "Worker: nightly TCGplayer orders pull",
-  "status": "todo",
+  "title": "Orders pull: the browser extension posts to the Worker",
+  "status": "doing",
   "phase": "sync",
   "order": 8,
-  "why": "Orders should arrive with no export (decision sync-revamp-cloudflare).",
-  "note": "Draft PR #154 is parked until the owner reviews its extension plan (debt orders-job-unbuilt).",
+  "why": "Orders should arrive with no export (decision sync-revamp-cloudflare). The extension replaced the nightly cron (plan orders-extension).",
+  "note": "The extension and the Worker routes POST /orders and GET /orders/status merged by PR 257 on 2026-11-08 22:32 CST. Left: the app status screen and the owner's first live run (lane orders-live-run, debt orders-job-unbuilt).",
   "ask": "",
-  "updatedAt": "2026-11-02T19:30:00Z"
+  "updatedAt": "2026-11-09T04:45:00Z"
 }

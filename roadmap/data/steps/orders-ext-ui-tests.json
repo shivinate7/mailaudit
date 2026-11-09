@@ -1,10 +1,10 @@
 {
   "title": "Orders extension: UI helper tests and review (PR 243 step 1)",
-  "status": "doing",
+  "status": "done",
   "phase": "sync",
   "order": 9,
   "why": "The extension's UI helpers in extension/core.mjs need tests, the 72.13 mutant, a fix check, a design review and code review round 2 (plan cloud-lane-cut).",
-  "note": "Lane orders-ext-ui-tests, wave 1, started 2026-11-08 19:39 CST. Lane picks: each block keeps its own \"Checking...\"; the send has no Stop (note 9). Untested: the options page DOM (Reload, focus). The end-of-list page is unmeasured until the live run (lane orders-live-run).",
+  "note": "Lane orders-ext-ui-tests, wave 1, started 2026-11-08 19:39 CST. Lane picks: each block keeps its own \"Checking...\"; the send has no Stop (note 9). Untested: the options page DOM (Reload, focus). The end-of-list page is unmeasured until the live run (lane orders-live-run). Done 2026-11-08 22:32 CST: PR 243 merged by PR 257 (batch orders-ext-22).",
   "ask": "",
-  "updatedAt": "2026-11-09T02:26:00Z"
+  "updatedAt": "2026-11-09T04:45:00Z"
 }
