@@ -88,6 +88,11 @@ final class DuoHandUITests: XCTestCase {
         continueAfterFailure = false  // a missing control ends the test, so no later tap lands on nothing
     }
 
+    override func tearDown() {
+        DuoShot.keep(for: self)
+        super.tearDown()
+    }
+
     // MARK: helpers
 
     /// An element that must show within 5 s.
