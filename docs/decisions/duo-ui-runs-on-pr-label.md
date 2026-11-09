@@ -23,7 +23,7 @@ Plan: docs/decisions/duo-ui-runs-on-pr-label.md#gate (native)
 ## Trigger
 
 - `pull_request` only, with the types `opened`, `synchronize`, `reopened`, `ready_for_review` and `labeled`.
-- Never `workflow_dispatch`, `push`, `schedule` or `pull_request_target`. The workflow reads no secrets.
+- Never `workflow_dispatch`, `push` or `schedule`, and never the pull-request-target trigger, which runs with the base repo's secrets. The workflow reads no secrets.
 - A newer run of the same pull request cancels the older one. Every run runs each job that the pull request's draft state and labels call for, so the newer run loses no job. A label event that ran only the newly labelled job could pass while an earlier run on the same head was red, and the merge tool judges the newest run. So any label added to a pull request that touches these paths, even an unrelated one, restarts the whole job.
 - The merge tool judges the newest completed run on `main` of every workflow file. This file has no `main` trigger, so it has no `main` run to judge.
 
@@ -49,7 +49,7 @@ Plan: docs/decisions/duo-ui-runs-on-pr-label.md#gate (native)
 
 - False-green guard: each pass reads the executed count from its result bundle. The step fails unless the count equals the count `duo-counts` scans from the Swift sources. The flat pass expects the Duo tests minus the closed ones. The closed pass expects the closed ids. A skipped Duo test fails the pass. The Pro jobs check only that at least one test ran.
 - Retries: each test runs up to two attempts. A test that needed a second attempt is listed in the step summary with its attempts. A pass on retry is green.
-- Screenshots: the export step writes each bundle's attachments into `out/`. The pose step writes four `simctl io` captures, the outer and inner display for each pose, into `out/pose/`. The job uploads `out/` as an artifact.
+- Screenshots: the export step writes each bundle's attachments into the job's out folder, which the job makes at run time. The pose step writes four `simctl io` captures, the outer and inner display for each pose, into its pose subfolder. The job uploads that folder as an artifact.
 - Each Duo test keeps one `.keepAlways` screenshot of the app window: `DuoShot` in DuoWindowSupport.swift, called from each Duo class's tearDown. It does not depend on `keepShot`, which stays off unless `DUO_SHOTS` is set. XCTest window shots may come back black on the Duo simulator; the exported images show whether they do.
 
 ## Not built
