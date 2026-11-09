@@ -2,7 +2,8 @@
 # Calls claude-settings bin/ios-ship, pinned by sha below. Never a PR check: this repo is public,
 # so only a dispatch by someone with write access may reach the App Store Connect key.
 # Uploads only from main: ios-ship refuses any other HEAD. Each run holds a shared macOS runner slot.
-# Secrets: ASC_KEY_P8, ASC_KEY_ID, ASC_ISSUER_ID (the App Store Connect key).
+# Secrets: ASC_KEY_P8, ASC_KEY_ID, ASC_ISSUER_ID (the App Store Connect key). Variable: TEAM_ID.
+# No log artifact: the raw ios-ship log may hold the key id and issuer id, and masking covers job logs only.
 # GitHub dispatches a workflow only when this file is on main.
 name: testflight
 on:
@@ -37,8 +38,11 @@ jobs:
         env:
           APPS: ${{ inputs.apps }}
           DRY: ${{ inputs.dry && '1' || '' }}
+          TEAM_ID: ${{ vars.TEAM_ID }}
         run: |
           set -o pipefail
+          # The team id is a repository variable, not in tools/ios-ship.json; ios-ship stops late without it.
+          [ -n "$TEAM_ID" ] || { echo "repository variable TEAM_ID is empty; set it in the repo's Actions variables" >&2; exit 1; }
           case $APPS in *[!A-Za-z0-9\ ._-]*) echo "apps: letters, digits, spaces and ._- only" >&2; exit 1 ;; esac
           [ "$DRY" = 1 ] || [ "$GITHUB_REF" = refs/heads/main ] || { echo "an upload runs only from main" >&2; exit 1; }
           for a in $APPS; do
@@ -68,6 +72,25 @@ jobs:
           curl -fsS --retry 3 --max-time 60 -o "$RUNNER_TEMP/ios-ship" "$URL"; chmod +x "$RUNNER_TEMP/ios-ship"
           xcodebuild -version
           security find-identity -v -p codesigning | tail -n1 > "$RUNNER_TEMP/ids-before"
+      # Neither runner image holds xcodegen, so the job installs one pinned release. The zip is
+      # checked against XCODEGEN_SHA256 before it is unpacked. A mismatch fails the step.
+      - name: install xcodegen
+        env:
+          XCODEGEN_VERSION: "2.46.0"
+          XCODEGEN_SHA256: "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
+        run: |
+          set -euo pipefail
+          dl="$RUNNER_TEMP/xcodegen-download"
+          mkdir -p "$dl"
+          curl -fsSL -o "$dl/xcodegen.zip" "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          got=$(shasum -a 256 "$dl/xcodegen.zip" | cut -d ' ' -f 1)
+          if [ "$got" != "$XCODEGEN_SHA256" ]; then
+            echo "xcodegen ${XCODEGEN_VERSION} zip digest is $got, expected $XCODEGEN_SHA256" >&2
+            exit 1
+          fi
+          unzip -q "$dl/xcodegen.zip" -d "$dl/unpacked"
+          # The binary reads ../share/xcodegen, so the unpacked tree stays whole.
+          echo "$dl/unpacked/xcodegen/bin" >> "$GITHUB_PATH"
       # Same call as the Makefile's testflight target. The ${args[@]+...} form keeps an empty array safe in the runner's bash 3.2.
       - name: Ship
         env:
@@ -78,6 +101,7 @@ jobs:
           GIT_CONFIG_GLOBAL: ${{ runner.temp }}/gitauth
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          TEAM_ID: ${{ vars.TEAM_ID }}
         run: |
           args=(); for a in ${APPS:-}; do args+=(--app "$a"); done
           [ -z "${DRY:-}" ] || args+=(--export-only)
@@ -99,14 +123,6 @@ jobs:
             grep -iE 'error|signing|certificate|provisioning' "$l" | tail -n 60 || true
           done
           [ "$found" = 1 ] || echo "no ios-ship log: it refused before the build; see the Ship step"
-      - name: Upload the log
-        if: ${{ !cancelled() }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: ios-ship-log
-          path: ${{ runner.temp }}/ios-ship-testflight.*
-          retention-days: 7
-          if-no-files-found: warn
       - name: Delete the keys
         if: ${{ always() }}
         run: rm -f "$RUNNER_TEMP"/asc/AuthKey_*.p8 "$RUNNER_TEMP/gitauth"
