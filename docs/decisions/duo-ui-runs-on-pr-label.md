@@ -61,6 +61,9 @@ Plan: docs/decisions/duo-ui-runs-on-pr-label.md#gate (native)
 - Run 42549989429, head 6a59dd5, 2026-11-08: Xcode 27.1, Duo runtime iOS-27-2-iPhone19-4 (the owner's Duo runs iOS 27.1). The job ran 35 min after 12 min queued: build 1 min, simulator boot 4 min, flat pass 26 min, closed pass under 1 min. Closed 2 of 2 green; flat 37 of 39 green on the first attempt. One sample, so the time is not a cap basis.
 - Flaky timing: `testMatchRowClearsTheKeysUnderAReleasedBox` timed out on a UI query (201 s) on its first attempt and passed on retry. A pass on retry is never a debt citation (coordinator, 2026-11-08 21:05 CST).
 - `testFlatPackagesLastRowClearsTheBar` failed both attempts. The cause was its movement measure on a lazy list, not the app: the measure now follows one row that exists before the first drag.
+- Run 42561443103: `testFlatTallyLastRowClearsTheBar` failed from the scroll helper's `isHittable`; fixed at 3a4863d. The refund test failed on a host I/O stall (the spindump shows accessibility writes blocked in the kernel). Armed discard went over its 3.5 s budget on a slow runner.
+- Run 42577148982, head 3a4863d, 2026-11-09: green. Flat 39 of 39 and closed 2 of 2 passed. The job ran 44 min after 14 min queued; the flat pass took 35 min.
+- `testFailedLineCheckInShowsInHand` timed out on a UI query at 311 s on its first attempt in run 42577148982 and passed on retry. A pass on retry is not a first-attempt pass.
 
 ## Unmeasured
 
@@ -69,4 +72,4 @@ Plan: docs/decisions/duo-ui-runs-on-pr-label.md#gate (native)
 
 ## Unproven
 
-- No run of this workflow has passed. Until one does, a green check proves only its wiring (the rule `verification-green-proves-only-its-fixtures`).
+- One run of this workflow has passed (42577148982, head 3a4863d). Until more do, a green check proves only its wiring (the rule `verification-green-proves-only-its-fixtures`).
