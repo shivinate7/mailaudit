@@ -105,6 +105,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-discard-panel-covers-head` — The native armed Discard panel covers the envelope header.
 - `native-axl-rows-break` — Three native rows break at accessibility text sizes.
 - `sim-test-diagnose-and-pin` — sim-test runs simctl diagnose and can pick the Duo.
+- `composer-keys-cover-tab-bar` — The Orphaned composer's keys cover the tab bar, so a draft test stays red.
 
 ## Measurements
 

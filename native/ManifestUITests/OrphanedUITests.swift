@@ -276,14 +276,13 @@ final class OrphanedUITests: XCTestCase {
         return "keyboard frame \(last) in a window \(bottom)pt high, \(last.maxY <= bottom + 1 ? "on screen" : "NOT on screen"), still reads \(still) of 3 after \(took)s"
     }
 
-    /// Probe for an intermittent audit issue on the composer: "Potentially inaccessible text", with no element and
-    /// a zero frame, in 3 of 5 runs. This waits for the keyboard to settle first, then audits, and logs every issue
-    /// the audit raises (the exempt ones too, except the tab bar's, which print as AUDIT-SKIP lines) with its type,
-    /// element and frame, plus the screen's accessibility tree as an attachment. It adds no skip beyond the ones the
-    /// empty composer's audit already has. Run it with
-    /// -test-iterations 5 and read the PROBE-AUDIT lines of the log: they say whether the keyboard was on screen
-    /// when the audit ran, and what each iteration's audit raised. A green run with the keyboard off screen
-    /// proves nothing about the settle.
+    /// Probe for an intermittent audit issue on the composer: "Potentially inaccessible text" with no element
+    /// (debt `native-orphaned-colours-unbuilt`). This waits for the keyboard to settle first, then audits, and logs
+    /// every issue the audit raises (the exempt ones too, except the tab bar's, which print as AUDIT-SKIP lines) with
+    /// its type, element and frame, plus the screen's accessibility tree as an attachment. It adds no skip beyond the
+    /// ones the empty composer's audit already has. Run it with several iterations (-test-iterations) and read the
+    /// PROBE-AUDIT lines of the log: they say whether the keyboard was on screen when the audit ran, and what each
+    /// iteration's audit raised. A green run with the keyboard off screen proves nothing about the settle.
     func testAccessibilityAuditOrphanedComposerAfterTheKeyboardSettles() throws {
         let app = launch()
         openOrphaned(app)
