@@ -11,9 +11,10 @@
 //       calls requirePose(.closed) (a-b);
 //   d4  make -n ui-duo-flat and make -n ui-duo-closed pass exactly the ids the two sets name (a-d);
 //   d5  the flat, closed and pro passes run xcodebuild test-without-building with
-//       -retry-tests-on-failure and -resultBundlePath; the flags may sit in the step, its env, or
-//       scripts/ci-sim.sh; the closed pass is guarded by !cancelled(); a step fetches hinge at its
-//       pinned sha (a-f);
+//       -retry-tests-on-failure and -resultBundlePath; a step runs its make target when its run:
+//       text names it once each $VAR and ${VAR} is read from the step, job or workflow env; the
+//       flags may sit in the step, its env, the workflow env or scripts/ci-sim.sh; the closed pass
+//       is guarded by !cancelled(); a step fetches hinge at its pinned sha (a-f);
 //   d6  every uses: is pinned by a 40-hex sha, every checkout keeps no credentials, and no run:
 //       block in any job holds a GitHub expression (a-c);
 //   d7  ci-done needs duo-ui, pro-ui-a and pro-ui-b, and uses ci-done-comment at checks.yml's pin (a-b);
@@ -56,10 +57,11 @@ const KEY = /^([A-Za-z0-9_.-]+):(?:\s+(.*))?$/;
 const BLOCK = /^[|>][-+0-9]*$/;
 const ONLY_FLAG = /-only-testing:ManifestUITests\/(\S+)/g;
 const SKIP_FLAG = /-skip-testing:ManifestUITests\/(\S+)/g;
-const FLAT_RUN = /\bmake\s+ui-duo-flat\b/;
-const CLOSED_RUN = /\bmake\s+ui-duo-closed\b/;
-const PRO_A_RUN = /\bmake\s+ui-a\b/;
-const PRO_B_RUN = /\bmake\s+ui-b\b/;
+// The target name ends where the name does, so make ui-duo-flat-old is not the flat pass.
+const FLAT_RUN = /\bmake\s+ui-duo-flat(?![\w-])/;
+const CLOSED_RUN = /\bmake\s+ui-duo-closed(?![\w-])/;
+const PRO_A_RUN = /\bmake\s+ui-a(?![\w-])/;
+const PRO_B_RUN = /\bmake\s+ui-b(?![\w-])/;
 
 const isMap = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const show = (v) => (v === undefined ? "nothing" : JSON.stringify(v));
@@ -471,8 +473,40 @@ function checksPinOf(text) {
   return { pin: pins[0] };
 }
 
+// The env a step sees: the workflow's, then the job's, then the step's, so the step's value wins, as GitHub reads it.
+const envOf = (wf, job, step) => {
+  const out = {};
+  for (const env of [wf?.env, job.env, step.env]) {
+    if (isMap(env)) for (const [k, v] of Object.entries(env)) out[k] = String(v);
+  }
+  return out;
+};
+
+// A run text as its shell reads it, line by line: comment lines are dropped, and each $VAR or ${VAR} the env
+// sets becomes its value, once. A name no env sets stays as written, so the caller can name it.
+const RUN_REF = /\$\{([A-Za-z_]\w*)\}|\$([A-Za-z_]\w*)/g;
+const runLines = (run) => run.split("\n").filter((l) => !/^\s*#/.test(l)).join("\n");
+const runText = (run, env) =>
+  runLines(run).replace(RUN_REF, (whole, braced, bare) => {
+    const name = braced ?? bare;
+    return Object.hasOwn(env, name) ? env[name] : whole;
+  });
+
+// The names the operands of a ci-sim.sh run command read that no env sets. Only those operands are read, so a
+// name a step sets at run time, such as one read by check-results, is not named as a fault.
+const unsetRunNames = (run, env) => {
+  const names = [];
+  for (const cmd of runLines(run).matchAll(/ci-sim\.sh\s+run\b([^\n]*)/g)) {
+    for (const ref of cmd[1].matchAll(RUN_REF)) {
+      const name = ref[1] ?? ref[2];
+      if (!Object.hasOwn(env, name)) names.push("$" + name);
+    }
+  }
+  return names;
+};
+
 // The check of one pass step: the step that runs make target must hold the xcodebuild pass flags.
-// Its text is the job env, the step env and the run text, plus scripts/ci-sim.sh when the run names it.
+// Its text is the workflow, job and step env and the run text, plus scripts/ci-sim.sh when the run names it.
 function checkDuo(input) {
   const out = [];
   const check = (id, label, fn) => {
@@ -534,12 +568,22 @@ function checkDuo(input) {
       ? pass
       : fail(`the xcodebuild test-without-building command lacks ${missing.join(", ")}`);
   };
-  const stepRunning = (job, re) => stepsOf(job).find((s) => typeof s.run === "string" && re.test(s.run));
+  // A step runs the target when its run text, with each $VAR and ${VAR} read from the env, names the target.
+  const stepRunning = (job, re) =>
+    stepsOf(job).find((s) => typeof s.run === "string" && re.test(runText(s.run, envOf(wf, job, s))));
+  // The detail when no step runs the target. It names an unset variable in a ci-sim.sh run command, when there is one.
+  const noStepDetail = (jobName, job, target) => {
+    const unset = [
+      ...new Set(stepsOf(job).flatMap((s) => (typeof s.run === "string" ? unsetRunNames(s.run, envOf(wf, job, s)) : []))),
+    ];
+    const base = `no step in ${jobName} runs make ${target}`;
+    return unset.length === 0 ? base : `${base}; a ci-sim.sh run command names ${unset.join(", ")}, which no env block sets`;
+  };
   const passStepCheck = (jobName, re, target) => {
     const j = jobOf(jobName);
     if (j === null) return jobMiss(jobName);
     const s = stepRunning(j, re);
-    if (s === undefined) return fail(`no step in ${jobName} runs make ${target}`);
+    if (s === undefined) return fail(noStepDetail(jobName, j, target));
     return passFlags(passText(j, s));
   };
   const runsOnAndTimeout = (name) => {
@@ -638,7 +682,7 @@ function checkDuo(input) {
     const j = jobOf(DUO_JOB);
     if (j === null) return jobMiss(DUO_JOB);
     const s = stepRunning(j, CLOSED_RUN);
-    if (s === undefined) return fail(`no step in ${DUO_JOB} runs make ui-duo-closed`);
+    if (s === undefined) return fail(noStepDetail(DUO_JOB, j, "ui-duo-closed"));
     return stripWrap(s.if).includes("!cancelled()") ? pass : fail(`the closed pass if: is ${show(s.if)}`);
   });
   wfCheck("d5d", `a ${DUO_JOB} step fetches ${HINGE_REPO} pinned at ${HINGE_SHA}`, () => {
@@ -1003,6 +1047,40 @@ const toWorkflowEnv = (text) =>
     .replace("\njobs:\n", () => "\nenv:\n  UI_TEST: " + SHARED_TEST + "\n\njobs:\n");
 const WF_ENV_INPUT = { ...GOOD, workflow: toWorkflowEnv(WF_GOOD) };
 
+// The live shape: the four commands sit in the workflow env, and each pass runs one through scripts/ci-sim.sh run.
+// The closed pass names its command as ${VAR}, so the braced form is read too.
+const toCmdEnv = (text) => {
+  let t = mutate(text, '        run: make ui-duo-flat UI_TEST="$UI_TEST"', "        run: scripts/ci-sim.sh run $DUO_FLAT_CMD");
+  t = mutate(t, '        run: make ui-duo-closed UI_TEST="$UI_TEST"', "        run: scripts/ci-sim.sh run ${DUO_CLOSED_CMD}");
+  t = mutate(t, '        run: make ui-a UI_TEST="$UI_TEST"', "        run: scripts/ci-sim.sh run $PRO_A_CMD");
+  t = mutate(t, '        run: make ui-b UI_TEST="$UI_TEST"', "        run: scripts/ci-sim.sh run $PRO_B_CMD");
+  return mutate(
+    t,
+    "\nenv:\n  UI_TEST: ",
+    "\nenv:\n  DUO_FLAT_CMD: make ui-duo-flat\n  DUO_CLOSED_CMD: make ui-duo-closed\n  PRO_A_CMD: make ui-a\n  PRO_B_CMD: make ui-b\n  UI_TEST: "
+  );
+};
+const CMD_WF = toCmdEnv(WF_ENV_INPUT.workflow);
+const CMD_INPUT = { ...GOOD, workflow: CMD_WF };
+const FLAT_STEP_RUN = "        run: scripts/ci-sim.sh run $DUO_FLAT_CMD";
+// Each good variant moves one thing about where the command sits or how its line reads. Each passes every check.
+const jobEnvCmd = mutate(
+  mutate(CMD_WF, "  DUO_CLOSED_CMD: make ui-duo-closed\n", ""),
+  "    timeout-minutes: 60 # provisional\n    steps:\n",
+  "    timeout-minutes: 60 # provisional\n    env:\n      DUO_CLOSED_CMD: make ui-duo-closed\n    steps:\n"
+);
+const stepEnvCmd = mutate(
+  mutate(CMD_WF, "  DUO_FLAT_CMD: make ui-duo-flat\n", ""),
+  FLAT_STEP_RUN,
+  "        env:\n          DUO_FLAT_CMD: make ui-duo-flat\n" + FLAT_STEP_RUN
+);
+const quotedHashCmd = mutate(CMD_WF, FLAT_STEP_RUN, "        run: \"echo '#' && scripts/ci-sim.sh run $DUO_FLAT_CMD\"");
+const apostropheCmd = mutate(
+  CMD_WF,
+  FLAT_STEP_RUN,
+  "        run: |\n          echo don't\n          scripts/ci-sim.sh run $DUO_FLAT_CMD"
+);
+
 const methodLines = (name, pose) => [
   "    func " + name + "() throws {",
   "        guard app.requirePose(." + pose + ") else { return }",
@@ -1028,12 +1106,15 @@ for (const cls of ["DuoHandUITests", "DuoSpreadUITests", "DuoShellUITests"]) {
   FULL_SWIFT[cls + ".swift"] = classFile(cls, lines);
 }
 
-// Mutants. Each changes one piece of the good set, and the named check must go red on it.
+// Mutants. Each changes one piece of the good set, and the named check must go red on it. A row's optional
+// fourth field is the cause its red detail must contain.
 const onWf = (from, to) => (g) => ({ ...g, workflow: mutate(g.workflow, from, to) });
 const onWfLast = (from, to) => (g) => ({ ...g, workflow: mutateLast(g.workflow, from, to) });
 const onMk = (from, to) => (g) => ({ ...g, makefile: mutate(g.makefile, from, to) });
 const onSwift = (name, from, to) => (g) => ({ ...g, swift: { ...g.swift, [name]: mutate(g.swift[name], from, to) } });
 const onChecks = (from, to) => (g) => ({ ...g, checks: mutate(g.checks, from, to) });
+// Edits the live-shape fixture, whose commands sit in the env. The good set is not read.
+const onCmd = (from, to) => () => ({ ...CMD_INPUT, workflow: mutate(CMD_WF, from, to) });
 
 const MUTANTS = [
   ["workflow file missing", "d1a", (g) => ({ ...g, workflow: null })],
@@ -1078,9 +1159,14 @@ const MUTANTS = [
   ["the flat pass's script drops -retry-tests-on-failure", "d5a", (g) => ({ ...SCRIPT_INPUT, script: mutate(SCRIPT_GOOD, " -retry-tests-on-failure", "") })],
   ["the workflow env drops -retry-tests-on-failure", "d5a", (g) => ({ ...WF_ENV_INPUT, workflow: mutate(WF_ENV_INPUT.workflow, SHARED_TEST, SHARED_TEST.replace(" -retry-tests-on-failure", "")) })],
   ["the workflow env drops its -resultBundlePath", "d5f", (g) => ({ ...WF_ENV_INPUT, workflow: mutate(WF_ENV_INPUT.workflow, " -resultBundlePath $RESULT_BUNDLE", "") })],
+  // The four rows below edit the live-shape fixture. Each names its cause in the fourth field, so a crash or another failure cannot pass as the red.
+  ["the env names the wrong target for the flat pass", "d5a", onCmd("  DUO_FLAT_CMD: make ui-duo-flat\n", "  DUO_FLAT_CMD: make ui-duo-closed\n"), "no step in duo-ui runs make ui-duo-flat"],
+  ["the flat step names a variable no env sets", "d5a", onCmd(FLAT_STEP_RUN, "        run: scripts/ci-sim.sh run $DUO_FLAT_COMMAND"), "$DUO_FLAT_COMMAND, which no env block sets"],
+  ["the env names a longer target than the flat pass", "d5a", onCmd("  DUO_FLAT_CMD: make ui-duo-flat\n", "  DUO_FLAT_CMD: make ui-duo-flat-old\n"), "no step in duo-ui runs make ui-duo-flat"],
+  ["the flat command sits only on a comment line", "d5a", onCmd(FLAT_STEP_RUN, "        run: |\n          # scripts/ci-sim.sh run $DUO_FLAT_CMD\n          true"), "no step in duo-ui runs make ui-duo-flat"],
 ];
 
-for (const [name, id, build] of MUTANTS) {
+for (const [name, id, build, cause] of MUTANTS) {
   let res;
   try {
     res = checkDuo(build(GOOD));
@@ -1089,8 +1175,9 @@ for (const [name, id, build] of MUTANTS) {
     continue;
   }
   const hit = res.find((r) => r.id === id);
-  const caught = hit !== undefined && !hit.ok;
-  expect(`fixture red: ${name} fails ${id}`, caught, `${id}: ${hit ? (hit.ok ? "passed" : hit.detail) : "no such check"}`);
+  const caught = hit !== undefined && !hit.ok && (cause === undefined || hit.detail.includes(cause));
+  const got = hit ? (hit.ok ? "passed" : hit.detail) : "no such check";
+  expect(`fixture red: ${name} fails ${id}`, caught, `${id}: ${got}${cause && !caught ? `; want the cause "${cause}"` : ""}`);
   if (caught) console.log(`     named cause: ${hit.detail}`);
 }
 
@@ -1103,6 +1190,12 @@ const VARIANTS = [
   ["fixture good: full size (90 methods, 18 closed)", FULL],
   ["fixture good: flags in scripts/ci-sim.sh", SCRIPT_INPUT],
   ["fixture good: flags in the workflow env", WF_ENV_INPUT],
+  ["fixture good: commands in the workflow env, one braced", CMD_INPUT],
+  ["fixture good: the closed command in the duo-ui job env", { ...GOOD, workflow: jobEnvCmd }],
+  ["fixture good: the flat command in its step env", { ...GOOD, workflow: stepEnvCmd }],
+  ["fixture good: a # inside quotes on the flat command line", { ...GOOD, workflow: quotedHashCmd }],
+  ["fixture good: a lone apostrophe on an earlier run line", { ...GOOD, workflow: apostropheCmd }],
+  ["fixture good: commands from the env, full size", { ...CMD_INPUT, swift: FULL_SWIFT, makefile: MAKEFILE(FULL_CLOSED) }],
 ];
 for (const [name, input] of VARIANTS) {
   const bad = checkDuo(input).filter((r) => !r.ok);
