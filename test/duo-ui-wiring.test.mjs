@@ -6,7 +6,8 @@
 // and the ci-done pin in .github/workflows/checks.yml. Each failure names one cause:
 //   d1  duo-ui.yml exists and parses; its triggers are pull_request only (a-d);
 //   d2  top-level permissions are contents: read only; the duo-ui job runs on xcode-27, has a
-//       positive timeout-minutes, and its if: gate runs on a ready PR or a PR with the duo-ui label (a-d);
+//       positive timeout-minutes, and its if: gate runs on a ready PR or a PR with the duo-ui label, and
+//       still runs on a labeled event for another label (a-d);
 //   d3  DUO_CLOSED_TESTS is set and equals the Class/method ids of the Duo test methods whose body
 //       calls requirePose(.closed) (a-b);
 //   d4  make -n ui-duo-flat and make -n ui-duo-closed pass exactly the ids the two sets name (a-d);
@@ -20,7 +21,9 @@
 //       block in any job holds a GitHub expression (a-c);
 //   d7  ci-done needs duo-ui, pro-ui-a and pro-ui-b, and uses ci-done-comment at checks.yml's pin (a-b);
 //   d8  pro-ui-a and pro-ui-b run on xcode-27 with a positive timeout-minutes, and each if: requires
-//       the pro-ui label, never the draft gate alone (a-d).
+//       the pro-ui label, never the draft gate alone, and still runs on a labeled event for another
+//       label (a-d);
+//   d9  the concurrency group sets cancel-in-progress to the literal true, not an if: expression (a).
 //
 // The fixtures prove the checker: a good set passes, each mutant fails its named check, and the
 // scanners get the comment-opener, multi-line string and lone-quote cases.
@@ -495,11 +498,13 @@ const describe = (sc) =>
   `draft=${sc.draft}, labels=[${sc.labels.join(", ")}], action=${sc.action}${sc.labelName ? `, labelName=${sc.labelName}` : ""}`;
 
 // The PR events a gate must run on, and the ones it must not. A label-gated job must not run on a draft
-// alone, and a duo-ui gate must run on a ready PR and on a duo-ui labeled draft.
+// alone, and a duo-ui gate must run on a ready PR and on a duo-ui labeled draft. A labeled event for
+// another label still runs the job: the merge tool judges the newest run, so a skipped job hides a red one.
 const DUO_GATE = {
   mustRun: [
     { draft: false, labels: [], action: "opened", labelName: "" },
     { draft: true, labels: ["duo-ui"], action: "labeled", labelName: "duo-ui" },
+    { draft: false, labels: ["duo-ui", "pro-ui"], action: "labeled", labelName: "pro-ui" },
   ],
   mustNotRun: [{ draft: true, labels: [], action: "opened", labelName: "" }],
 };
@@ -507,6 +512,7 @@ const PRO_GATE = {
   mustRun: [
     { draft: false, labels: ["pro-ui"], action: "opened", labelName: "" },
     { draft: false, labels: ["pro-ui"], action: "labeled", labelName: "pro-ui" },
+    { draft: false, labels: ["duo-ui", "pro-ui"], action: "labeled", labelName: "duo-ui" },
   ],
   mustNotRun: [
     { draft: false, labels: [], action: "opened", labelName: "" },
@@ -848,6 +854,12 @@ function checkDuo(input) {
     return gateResult(j, PRO_GATE);
   });
 
+  // d9: the concurrency group cancels older runs with the literal true, so no event's if: decides it.
+  wfCheck("d9a", "concurrency.cancel-in-progress is the literal true", () => {
+    const c = isMap(wf.concurrency) ? wf.concurrency["cancel-in-progress"] : undefined;
+    return c === "true" ? pass : fail(`cancel-in-progress is ${show(c)}`);
+  });
+
   return out;
 }
 
@@ -901,6 +913,10 @@ function mutateLast(src, from, to) {
   const i = src.lastIndexOf(from);
   if (i < 0) throw new Error(`fixture edit did not apply: ${from.slice(0, 60)}`);
   return src.slice(0, i) + to + src.slice(i + from.length);
+}
+function mutateAll(src, from, to) {
+  if (!src.includes(from)) throw new Error(`fixture edit did not apply: ${from.slice(0, 60)}`);
+  return src.split(from).join(to);
 }
 
 const CHECKOUT_SHA = "1".repeat(40);
@@ -1205,6 +1221,13 @@ const onChecks = (from, to) => (g) => ({ ...g, checks: mutate(g.checks, from, to
 // Edits the live-shape fixture, whose commands sit in the env. The good set is not read.
 const onCmd = (from, to) => () => ({ ...CMD_INPUT, workflow: mutate(CMD_WF, from, to) });
 
+// The job ifs with the labeled-event narrowing: a labeled event runs a job only for its own label. A
+// narrowed label run skips the other job, so the newest run on a head can pass while an earlier run is red.
+const DUO_IF_NARROW = "${{ (!github.event.pull_request.draft || contains(github.event.pull_request.labels.*.name, 'duo-ui')) && (github.event.action != 'labeled' || github.event.label.name == 'duo-ui') }}";
+const PRO_IF_NARROW = "${{ contains(github.event.pull_request.labels.*.name, 'pro-ui') && (github.event.action != 'labeled' || github.event.label.name == 'pro-ui') }}";
+const narrowDuo = (g) => ({ ...g, workflow: mutate(g.workflow, "    if: " + DUO_IF, "    if: " + DUO_IF_NARROW) });
+const narrowPro = (g) => ({ ...g, workflow: mutateAll(g.workflow, "    if: " + PRO_IF, "    if: " + PRO_IF_NARROW) });
+
 const MUTANTS = [
   ["workflow file missing", "d1a", (g) => ({ ...g, workflow: null })],
   ["push trigger added after a comment with a lone apostrophe", "d1b", onWf("on:\n  pull_request:", "on:\n  # Don't add push here\n  push:\n    branches: [main]\n  pull_request:")],
@@ -1256,6 +1279,10 @@ const MUTANTS = [
   ["the flat step names a variable no env sets", "d5a", onCmd(FLAT_STEP_RUN, "        run: scripts/ci-sim.sh run $DUO_FLAT_COMMAND"), "$DUO_FLAT_COMMAND, which no env block sets"],
   ["the env names a longer target than the flat pass", "d5a", onCmd("  DUO_FLAT_CMD: make ui-duo-flat\n", "  DUO_FLAT_CMD: make ui-duo-flat-old\n"), "no step in duo-ui runs make ui-duo-flat"],
   ["the flat command sits only on a comment line", "d5a", onCmd(FLAT_STEP_RUN, "        run: |\n          # scripts/ci-sim.sh run $DUO_FLAT_CMD\n          true"), "no step in duo-ui runs make ui-duo-flat"],
+  ["labeled-event narrowing on the duo-ui if", "d2d", narrowDuo, "does not run on draft=false, labels=[duo-ui, pro-ui], action=labeled, labelName=pro-ui"],
+  ["labeled-event narrowing on the pro-ui ifs", "d8c", narrowPro, "does not run on draft=false, labels=[duo-ui, pro-ui], action=labeled, labelName=duo-ui"],
+  ["labeled-event narrowing on the pro-ui ifs", "d8d", narrowPro, "does not run on draft=false, labels=[duo-ui, pro-ui], action=labeled, labelName=duo-ui"],
+  ["cancel-in-progress is an if: expression", "d9a", onWf("  cancel-in-progress: true", "  cancel-in-progress: ${{ github.event.action != 'labeled' }}"), "cancel-in-progress is \"${{ github.event.action != 'labeled' }}\""],
 ];
 
 for (const [name, id, build, cause] of MUTANTS) {
@@ -1275,17 +1302,9 @@ for (const [name, id, build, cause] of MUTANTS) {
 
 // The good set passes every check. The variants reach the empty set and the full-size set, and
 // the flags moved into scripts/ci-sim.sh.
-// The job if: lines as they stood with the labeled-event narrowing: a labeled event runs a job only for its own label.
-// The good set has no narrowing, so this variant is the other side of the d2d and d8 gate.
-const DUO_IF_NARROW = "${{ (!github.event.pull_request.draft || contains(github.event.pull_request.labels.*.name, 'duo-ui')) && (github.event.action != 'labeled' || github.event.label.name == 'duo-ui') }}";
-const PRO_IF_NARROW = "${{ contains(github.event.pull_request.labels.*.name, 'pro-ui') && (github.event.action != 'labeled' || github.event.label.name == 'pro-ui') }}";
-const withNarrowing = (text) =>
-  mutate(text, "    if: " + DUO_IF, "    if: " + DUO_IF_NARROW).split("    if: " + PRO_IF).join("    if: " + PRO_IF_NARROW);
-
-const FULL = { ...GOOD, swift: FULL_SWIFT, makefile: MAKEFILE(FULL_CLOSED) };
+const FULL ={ ...GOOD, swift: FULL_SWIFT, makefile: MAKEFILE(FULL_CLOSED) };
 const VARIANTS = [
   ["fixture good: the good set", GOOD],
-  ["fixture good: the job ifs keep the labeled-event narrowing", { ...GOOD, workflow: withNarrowing(GOOD.workflow) }],
   ["fixture good: the closed pass if: reads env beside !cancelled()", { ...GOOD, workflow: mutate(GOOD.workflow, CLOSED_IF, "        if: ${{ !cancelled() && env.SIM_UDID != '' }}") }],
   ["fixture good: no closed test (empty DUO_CLOSED_TESTS)", { ...GOOD, swift: EMPTY_SWIFT, makefile: MAKEFILE([]) }],
   ["fixture good: full size (90 methods, 18 closed)", FULL],
