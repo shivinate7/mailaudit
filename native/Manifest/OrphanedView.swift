@@ -44,7 +44,6 @@ struct OrphanedView: View {
                 EnvelopeCard(model: model, env: env, onChange: onChange, page: .detail).padding(16)
             }
         }
-        .id(current?.id)  // a new pick starts a fresh page: an armed Discard, show-all and scroll do not carry over
     }
 
     @ViewBuilder private var errorBar: some View {
