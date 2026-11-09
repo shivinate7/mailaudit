@@ -97,7 +97,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `hand-post-top-scroll-unpinned` — No test pins the scroll to the page top when Post shows.
 - `hand-open-under-bar-at-l` — At AccessibilityL the Card in Hand control sits under the tab bar.
 - `hand-tap-label-unpinned` — No test pins the tapped name's sideways place.
-- `duo-left-page-dead-margin` — The Duo left page scrolls 76 pt past its end; low priority, after restyle's step 8.
+- `duo-left-page-dead-margin` — The Duo left page scrolls past its end by the bar's height (76 pt, unmeasured: no run or record holds it); low priority, after restyle's step 8.
 - `duo-hand-first-case-timeout` — A Duo UI wait times out in CI while its value is already right.
 - `duo-keys-minimize-pref` — A simulator keyboard preference fails the Duo keys-up tests.
 - `duo-checkin-error-under-bar` — A Packages check-in error can sit under the Duo bar.
