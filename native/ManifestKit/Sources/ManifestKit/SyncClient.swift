@@ -64,6 +64,10 @@ public final class SyncClient {
     public var socket: (any SyncSocket)?
     /// Read by the server apply (PhotoIds.kept).
     public var photoStore: PhotoStore?
+    /// nil: no photo fetch.
+    public var photoSync: PhotoSync?
+    /// True while a call is out.
+    public private(set) var syncing = false
     /// Runs after a reply was adopted, so the screens read the new ledger.
     public var onApplied: (@MainActor () async -> Void)?
 
@@ -226,8 +230,10 @@ public final class SyncClient {
         let id = UUID()
         let task = Task { await work(self) }
         inflight[id] = task
+        syncing = true
         let outcome = await task.value
         inflight[id] = nil
+        syncing = false
         // A rev heard while this call was out may be newer than its reply. Look once more.
         if outcome == .applied, inflight.isEmpty, !retryOut, heardRev > (rev ?? 0) {
             heardRev = 0
@@ -256,6 +262,19 @@ public final class SyncClient {
         var out = ledger
         out["envelopes"] = envelopes
         return out
+    }
+
+    /// Fetches the blobs the reply's live envelopes name. The report is dropped: a photo failure changes
+    /// neither the outcome nor the advisory (photo-errors-never-hit-pushstate). A stated duplicate of
+    /// LedgerStore.photoIDs() over the raw reply: live is deletedAt == nil, each id once, in envelope order.
+    private func fetchPhotos(of ledger: [String: Any]) async {
+        var seen = Set<String>()
+        let ids = (ledger["envelopes"] as? [[String: Any]] ?? [])
+            .filter { $0["deletedAt"] == nil }
+            .flatMap { $0["photos"] as? [String] ?? [] }
+            .filter { seen.insert($0).inserted }
+        guard !ids.isEmpty, let photoSync else { return }
+        _ = await photoSync.pull(referenced: ids)
     }
 
     // MARK: flows
@@ -307,6 +326,7 @@ public final class SyncClient {
         } catch {
             return await failed("unknown", retry: retry)
         }
+        await fetchPhotos(of: reply.ledger)
         carried = store.userData()
         if let r = reply.rev { rev = max(rev ?? 0, r) }
         stats = reply.stats
@@ -404,8 +424,10 @@ public final class SyncClient {
                 await sleep(ms)
                 if Task.isCancelled { return }
                 retryOut = true
+                syncing = true
                 let r = await postFlow(retry: true, cold: false)
                 retryOut = false
+                syncing = false
                 if r != .unknown && r != .tooBig && r != .applied { cancelRetry(); return }
             }
         }
