@@ -1,0 +1,10 @@
+{
+  "title": "Fix the Orphaned composer colours that fail the contrast check",
+  "status": "todo",
+  "phase": "native",
+  "order": 5,
+  "why": "testAccessibilityAuditOrphanedComposerReady fails contrast on 2 of 2 tries in duo-ui run 42653870499, job pro-ui-a: the '1 card' text (no id) and the ready Save envelope button (orphaned-save). The disabled Save and Cancel are skipped by ruling; these two are not.",
+  "note": "A designer, then a builder: change the colours, never skip the elements. Debt orphaned-composer-contrast. Requested by the coordinator from lane orphaned-audit-run, 2026-11-09 11:43 CST.",
+  "ask": "",
+  "updatedAt": "2026-11-09T17:55:00Z"
+}

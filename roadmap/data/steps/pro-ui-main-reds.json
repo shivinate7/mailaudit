@@ -1,0 +1,10 @@
+{
+  "title": "Classify and fix the iPhone 18 Pro UI test reds on main",
+  "status": "doing",
+  "phase": "native",
+  "order": 4,
+  "why": "Job pro-ui-a of duo-ui run 42653870499 (main 9bafcad plus one Makefile comment line) was red on 2 of 2 tries: OrphanedUITests testAccessibilityAuditOrphanedComposerReady (contrast), four OrphanedUITests at line 89 ('the Packages view has no checkin:D1|0|pUrzasSaga'), one at line 191 ('anchor: the Packages view opened'), and MastheadBackupUITests (the Tally audit, the advisory slot, the first-content slot at 320 and 375, the running head). The next gating batch with the pro-ui label meets the same reds.",
+  "note": "Lane session_01MVD32N7NGnrATqtKcrXmf5, started by the coordinator 2026-11-09 11:45 CST. It classifies the reds first. The composer contrast reds have their own debt orphaned-composer-contrast and step orphaned-composer-colours.",
+  "ask": "",
+  "updatedAt": "2026-11-09T17:55:00Z"
+}
