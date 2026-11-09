@@ -7,7 +7,8 @@ Deep links: `#p=sort` or `#p=history` for the panel, `w=375` or `w=760` for the 
 
 ## Sizes and sources
 
-- Every frame is a headless Chromium screenshot of the committed `index.html` (built from `src/`), device scale 2. The page was seeded with `shared/fixtures/ledger.json` under the storage key `STORE_KEY` in `test/screens.mjs`, as `openSeeded` does. The script lived in the designer's scratchpad; it is not in the repo.
+- Every frame is a headless Chromium screenshot of the committed `index.html` (built from `src/`), device scale 2. The page was seeded with `shared/fixtures/ledger.json` under the storage key `STORE_KEY` in `test/screens.mjs`, as `openSeeded` does. The capture script is `shots/panel-paper-fill/capture.mjs`. A second run gave the same readings for all 16 frames.
+- Sample data: the fixture's counts and dollar figures are not real. The px readings are real measurements of the built page.
 - `layout.py devices` gives `unknown` for this repo. Widths 375 and 760 px at height 812 come from `WIDTHS` and `openSeeded` in `test/screens.mjs`.
 - One theme, light. `shared/tokens.json` holds one palette and `src/app.jsx` has no dark rule. The brief named light and dark tokens; there are no dark tokens.
 - Panel style: `panelWrap` in `src/app.jsx` (padding 4px 8px 12px, a 1px `line` top rule, no background). Its callers: the Sorted by and Orders from panels in the View card, and `RecentPanel`, the Sync panel and the History panel in the Data card. All five open inside an `.mdl-lcard`, which paints `card`.
@@ -24,7 +25,7 @@ Deep links: `#p=sort` or `#p=history` for the panel, `w=375` or `w=760` for the 
 
 1. **Paper fill** (the item's first option, `#o=paper`). `panelWrap` takes `background: C.paper`.
    - Gain: the panel is opaque. Nothing under it shows, and a row you can see is a row you can tap. The option cells still sit raised: they paint `card` over the paper.
-   - Lose: a square, full-bleed band, darker than the card, in a region with no other fill (the reason the old no-fill rule gave). Its foot has no rule, so it cuts the row under it through the text: the Sync title at 375 in Sorted by, Backup in History.
+   - Lose: a square, full-bleed band, darker than the card, in a region with no other fill (the reason the old no-fill rule gave). Its foot has no rule. With the guessed geometry (the panel runs past its card's foot), it cuts the row under it through the text: the Sync row at 375 in Sorted by, Backup in History. A geometry that kept the panel inside its card would not make this cut. The owner ruled only that panels overlay, not this geometry.
    - Pick: yes, with item 3's rule. Owner grant: yes (this confirms an orchestrator default; the pick is the owner's).
 
 2. **No fill** (the item's second option, `#o=none`). `panelWrap` as on main today, over the rows once the overlay is built.
@@ -33,7 +34,7 @@ Deep links: `#p=sort` or `#p=history` for the panel, `w=375` or `w=760` for the 
    - Pick: no. Owner grant: yes.
 
 3. **Paper fill, ruled foot** (designer's variant, not on the item, `#o=rule`). Paper fill plus `borderBottom: 1px solid C.line`.
-   - Gain: the cut edge becomes the region's own hairline, matching the top rule `panelWrap` already has. The row under it is still cut, but by a line, as a ruled sheet laid on another would be.
+   - Gain: the cut edge becomes the region's own hairline, matching the top rule `panelWrap` already has. With the guessed geometry, the row under it is still cut, but by a line, as a ruled sheet laid on another would be.
    - Lose: one more line of style. The panel's height grows 1 px (131 to 132); it is out of flow, so nothing moves.
    - Pick: yes. Owner grant: yes (it adds a part the item did not name).
 
@@ -60,4 +61,5 @@ Single context: a designer has no sub-agent tool. The launcher's context step wa
 - Fixed (detector): 11px tracked labels are now 12px; the Theme link has its own row on a phone.
 - Open (detector): one unlocated "line-height 1.22" finding remains after the labels and code were set to 1.4.
 - False alarm (detector): "cream palette". The parchment page is the repo's palette (`design-parchment-ledger`).
-- Open, for the owner: the cut row under a filled panel is visible in every fill frame. See items 1 and 3.
+- Open, for the owner: with the guessed geometry, the cut row under a filled panel shows in every fill frame. See items 1 and 3.
+- Fixed (design review round 1): the overlay tags and the intro now say the geometry is a guess, and each cut caption ties the cut to it. The banner covers only the sample data. The capture script is committed. The Theme link keeps the panel and width.
