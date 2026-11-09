@@ -1,0 +1,61 @@
+{
+  "id": "hand-end-of-day-open",
+  "n": 79,
+  "kind": "decision",
+  "status": "open",
+  "added": "2026-11-09T01:50:00Z",
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "group": "duo-hand-gaps",
+  "rank": 34,
+  "title": "What opens the End of mail day view: an empty query, or a Day's end control?",
+  "short": "End of day opener",
+  "ref": "debt duo-hand-mockup-gaps; decision duo-card-in-hand; lane duo-gaps-design-review (PR 237)",
+  "home": "docs/design/duo-hand-gaps-notes.md (PR 237)",
+  "context": "Goal: a day's-end check of what came and what is short.\nProblem (goal): the view needs a way in.\nBased on (read): decision ux-control-earns-place (a control earns its place).\nDeparts from: main's empty query shows the start hint \u2014 it shows today's pile once a card is in today.\nAsked by lane duo-gaps-design-review (PR 237, mockup docs/design/duo-hand-gaps.html at 4362dc5). The picks per part live in docs/design/duo-hand-gaps-notes.md.",
+  "options": [
+    {
+      "label": "The empty query",
+      "how": "Once one card is in today, an empty query shows the day's pile and what is not normal.",
+      "gain": "No new control.",
+      "lose": "It appears without being asked for.",
+      "key": "a",
+      "links": [
+        {
+          "label": "Mockup: this part",
+          "url": "https://claude.ai/artifact/GRAhbtEyULEWHvk9kF4U3H#s=end-of-day"
+        },
+        {
+          "label": "Mockup source on the branch",
+          "url": "https://github.com/shivinate7/mailaudit/blob/hand-mockup-gaps-d/docs/design/duo-hand-gaps.html"
+        },
+        {
+          "label": "PR 237",
+          "url": "https://github.com/shivinate7/mailaudit/pull/237"
+        }
+      ]
+    },
+    {
+      "label": "A Day's end control",
+      "how": "A Day's end button in the header opens the same view.",
+      "gain": "It shows only on purpose.",
+      "lose": "One more control, and a state to leave.",
+      "key": "b",
+      "links": [
+        {
+          "label": "Mockup: this part",
+          "url": "https://claude.ai/artifact/GRAhbtEyULEWHvk9kF4U3H#s=end-of-day"
+        },
+        {
+          "label": "Mockup source on the branch",
+          "url": "https://github.com/shivinate7/mailaudit/blob/hand-mockup-gaps-d/docs/design/duo-hand-gaps.html"
+        },
+        {
+          "label": "PR 237",
+          "url": "https://github.com/shivinate7/mailaudit/pull/237"
+        }
+      ]
+    }
+  ],
+  "pick": "a",
+  "why": "No new control, and the day shows exactly when the pile is done."
+}

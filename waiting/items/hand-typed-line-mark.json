@@ -1,0 +1,61 @@
+{
+  "id": "hand-typed-line-mark",
+  "n": 77,
+  "kind": "decision",
+  "status": "open",
+  "added": "2026-11-09T01:50:00Z",
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "group": "duo-hand-gaps",
+  "rank": 32,
+  "title": "How is the line of the card you typed marked: an accent bar or a green fill?",
+  "short": "Typed card's mark",
+  "ref": "debt duo-hand-mockup-gaps; decision duo-card-in-hand; lane duo-gaps-design-review (PR 237)",
+  "home": "docs/design/duo-hand-gaps-notes.md (PR 237)",
+  "context": "Goal: see which line is the card you typed.\nProblem (goal): the round 2 mockup paints it green, which reads the same as a done line.\nBased on (read): PackageCard rowFill gives greenSoft for a done line; the chosen match already has a 3 pt accent bar.\nDeparts from: the round 2 mockup's green fill \u2014 a 3 pt accent bar.\nAsked by lane duo-gaps-design-review (PR 237, mockup docs/design/duo-hand-gaps.html at 4362dc5). The picks per part live in docs/design/duo-hand-gaps-notes.md.",
+  "options": [
+    {
+      "label": "Accent bar",
+      "how": "A 3 pt accent bar on the leading edge of the typed card's line, the same mark the chosen match has on the left page.",
+      "gain": "One mark means \"this card\", and it still shows on a done line.",
+      "lose": "It differs from round 2.",
+      "key": "a",
+      "links": [
+        {
+          "label": "Mockup: this part",
+          "url": "https://claude.ai/artifact/GRAhbtEyULEWHvk9kF4U3H#s=line-now"
+        },
+        {
+          "label": "Mockup source on the branch",
+          "url": "https://github.com/shivinate7/mailaudit/blob/hand-mockup-gaps-d/docs/design/duo-hand-gaps.html"
+        },
+        {
+          "label": "PR 237",
+          "url": "https://github.com/shivinate7/mailaudit/pull/237"
+        }
+      ]
+    },
+    {
+      "label": "Green fill",
+      "how": "The line takes the green fill, as round 2 drew it.",
+      "gain": "The round 2 look.",
+      "lose": "It reads the same as a done line, and vanishes when the line is done.",
+      "key": "b",
+      "links": [
+        {
+          "label": "Mockup: this part",
+          "url": "https://claude.ai/artifact/GRAhbtEyULEWHvk9kF4U3H#s=line-now"
+        },
+        {
+          "label": "Mockup source on the branch",
+          "url": "https://github.com/shivinate7/mailaudit/blob/hand-mockup-gaps-d/docs/design/duo-hand-gaps.html"
+        },
+        {
+          "label": "PR 237",
+          "url": "https://github.com/shivinate7/mailaudit/pull/237"
+        }
+      ]
+    }
+  ],
+  "pick": "a",
+  "why": "A green fill already means done; the bar never collides with it."
+}

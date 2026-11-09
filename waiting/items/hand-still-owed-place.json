@@ -1,0 +1,61 @@
+{
+  "id": "hand-still-owed-place",
+  "n": 78,
+  "kind": "decision",
+  "status": "open",
+  "added": "2026-11-09T01:50:00Z",
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "group": "duo-hand-gaps",
+  "rank": 33,
+  "title": "Where does \"Still owed here\" sit: on the order line, or under the card lines?",
+  "short": "Still owed place",
+  "ref": "debt duo-hand-mockup-gaps; decision duo-card-in-hand; lane duo-gaps-design-review (PR 237)",
+  "home": "docs/design/duo-hand-gaps-notes.md (PR 237)",
+  "context": "Goal: see what this package still owes while the keys are up.\nProblem (goal): round 2 puts it under the lines, which falls under the keys at 3 or more lines.\nBased on (read): decision outstanding-value-per-level (each level states what is still outstanding).\nDeparts from: the round 2 place under the lines \u2014 the trailing end of the \"ordered\" line.\nAsked by lane duo-gaps-design-review (PR 237, mockup docs/design/duo-hand-gaps.html at 4362dc5). The picks per part live in docs/design/duo-hand-gaps-notes.md.",
+  "options": [
+    {
+      "label": "On the order line",
+      "how": "\"Still owed here\" and the figure sit at the trailing end of the \"ordered\" line.",
+      "gain": "No new row, and it stays above the keys.",
+      "lose": "A busier line, which wraps at large text.",
+      "key": "a",
+      "links": [
+        {
+          "label": "Mockup: this part",
+          "url": "https://claude.ai/artifact/GRAhbtEyULEWHvk9kF4U3H#s=still-owed"
+        },
+        {
+          "label": "Mockup source on the branch",
+          "url": "https://github.com/shivinate7/mailaudit/blob/hand-mockup-gaps-d/docs/design/duo-hand-gaps.html"
+        },
+        {
+          "label": "PR 237",
+          "url": "https://github.com/shivinate7/mailaudit/pull/237"
+        }
+      ]
+    },
+    {
+      "label": "Under the lines",
+      "how": "It sits under the card lines, as round 2 drew it.",
+      "gain": "It reads after the lines it sums.",
+      "lose": "The keys hide it at 3 or more lines.",
+      "key": "b",
+      "links": [
+        {
+          "label": "Mockup: this part",
+          "url": "https://claude.ai/artifact/GRAhbtEyULEWHvk9kF4U3H#s=still-owed"
+        },
+        {
+          "label": "Mockup source on the branch",
+          "url": "https://github.com/shivinate7/mailaudit/blob/hand-mockup-gaps-d/docs/design/duo-hand-gaps.html"
+        },
+        {
+          "label": "PR 237",
+          "url": "https://github.com/shivinate7/mailaudit/pull/237"
+        }
+      ]
+    }
+  ],
+  "pick": "a",
+  "why": "It stays in view while you type, at every length of envelope."
+}
