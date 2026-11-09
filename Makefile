@@ -7,10 +7,11 @@ NATIVE := native
 SHIP := ios-ship
 CONFIG := tools/ios-ship.json
 # The command that runs the UI tests. On the owner's Mac it is sim-test, which picks the one shared simulator.
-# A hosted runner has no sim-test, so the milestone workflow sets this to xcodebuild test with its own destination.
+# A hosted runner has no sim-test, so the milestone and duo-ui workflows set this to xcodebuild with their own destination.
 UI_TEST ?= sim-test
-# The UI test classes, by who runs them. The Duo classes need the hinge tool and separate pose runs,
-# so no hosted run and no native-check runs them: the owner runs them by hand (debt native-ui-tests-not-in-ci).
+# The UI test classes, by who runs them. The Duo classes need the hinge tool and separate pose runs.
+# The duo-ui workflow runs them on a pull request, flat pass then closed pass. Neither milestone nor native-check runs them
+# (debt native-ui-tests-not-in-ci); on the owner's Mac they run by hand.
 # UI_TESTS_A is the first milestone job's share. The second job runs every class that is in neither list.
 # test/ci-wiring.test.mjs proves each class is in exactly one of A, the rest and Duo.
 DUO_UI_TESTS := DuoHandUITests DuoSpreadUITests DuoShellUITests
@@ -18,8 +19,14 @@ UI_TESTS_A := AuditSkippingTabBarUITests LedgerSyncUITests MastheadBackupUITests
 UI_ONLY_A := $(addprefix -only-testing:ManifestUITests/,$(UI_TESTS_A))
 UI_SKIP_DUO := $(addprefix -skip-testing:ManifestUITests/,$(DUO_UI_TESTS))
 UI_SKIP_A := $(addprefix -skip-testing:ManifestUITests/,$(UI_TESTS_A))
+# The Duo test methods that call requirePose(.closed), as Class/method. They run in the closed pose; every other Duo test runs flat.
+# scripts/ci-sim.sh duo-counts proves each id names a method in the Swift sources.
+DUO_CLOSED_TESTS := DuoShellUITests/testClosedKeepsSystemBar DuoSpreadUITests/testClosedTallyIsOnePage
+UI_ONLY_DUO := $(addprefix -only-testing:ManifestUITests/,$(DUO_UI_TESTS))
+UI_SKIP_DUO_CLOSED := $(addprefix -skip-testing:ManifestUITests/,$(DUO_CLOSED_TESTS))
+UI_ONLY_DUO_CLOSED := $(addprefix -only-testing:ManifestUITests/,$(DUO_CLOSED_TESTS))
 
-.PHONY: tokens-check kit-test project app-build ui-test ui-a ui-b native-check phone testflight
+.PHONY: tokens-check kit-test project app-build ui-test ui-a ui-b ui-duo-flat ui-duo-closed duo-closed-list native-check phone testflight
 
 # index.html embeds shared/tokens.json. This check proves the committed index.html matches this repo's code.
 tokens-check:
@@ -48,6 +55,19 @@ ui-a: project
 # Milestone job part-b: every class that is not in UI_TESTS_A and not a Duo class.
 ui-b: project
 	cd $(NATIVE) && $(UI_TEST) -project $(APP).xcodeproj -scheme $(APP) -derivedDataPath build CODE_SIGNING_ALLOWED=NO $(UI_SKIP_DUO) $(UI_SKIP_A)
+
+# The Duo classes in the flat pose (open Duo): every Duo test but the closed ones. No `project` step: the duo-ui workflow
+# builds once with app-build and runs this with xcodebuild test-without-building.
+ui-duo-flat:
+	cd $(NATIVE) && $(UI_TEST) -project $(APP).xcodeproj -scheme $(APP) -derivedDataPath build CODE_SIGNING_ALLOWED=NO $(UI_ONLY_DUO) $(UI_SKIP_DUO_CLOSED)
+
+# The Duo tests that expect the closed pose (outer screen), run after the workflow closes the hinge.
+ui-duo-closed:
+	cd $(NATIVE) && $(UI_TEST) -project $(APP).xcodeproj -scheme $(APP) -derivedDataPath build CODE_SIGNING_ALLOWED=NO $(UI_ONLY_DUO_CLOSED)
+
+# The workflow reads the closed ids from here, so the list has one home.
+duo-closed-list:
+	@echo $(DUO_CLOSED_TESTS)
 
 native-check: tokens-check kit-test app-build ui-test
 
