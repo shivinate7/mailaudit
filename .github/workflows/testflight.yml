@@ -1,7 +1,7 @@
 # Manual TestFlight upload from CI, run by hand: `make testflight` is the local twin.
 # Calls claude-settings bin/ios-ship, pinned by sha below. Never a PR check: this repo is public,
 # so only a dispatch by someone with write access may reach the App Store Connect key.
-# Uploads only from main: ios-ship refuses any other HEAD. Each run bills macOS minutes.
+# Uploads only from main: ios-ship refuses any other HEAD. Each run holds a shared macOS runner slot.
 # Secrets: ASC_KEY_P8, ASC_KEY_ID, ASC_ISSUER_ID (the App Store Connect key).
 # GitHub dispatches a workflow only when this file is on main.
 name: testflight

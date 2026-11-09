@@ -6,7 +6,7 @@ After each merge, this Mac installs a Release build of MANIFEST on the owner's p
 
 Kind: build
 
-Plan: docs/decisions/build-and-deploy.md#make-testflight (native)
+Plan: docs/decisions/build-and-deploy.md#ios-ship-testflight (native)
 
 **Holds while:** the shared `ios-ship install` command installs a Release build from `tools/ios-ship.json`, `ios-ship testflight` archives and uploads from the same file, and the `testflight` workflow runs that upload from CI on a manual dispatch.
 
@@ -24,7 +24,7 @@ Plan: docs/decisions/build-and-deploy.md#make-testflight (native)
 - Inputs: `apps`, default `Manifest`. `dry` passes `--export-only`, so a dry dispatch exports and does not upload.
 - An upload runs only from main. ios-ship needs a clean tree, with HEAD equal to origin/main.
 - The job fetches ios-ship from claude-settings at the pinned commit `eaaf66e`. It writes the App Store Connect key from the repo secrets into the runner's temp dir, ships, and then deletes the key in a step that always runs.
-- Each dispatch needs the owner's go, dry and real alike: macOS minutes are billed, and the runner slots are shared.
+- Each dispatch needs the owner's go, dry and real alike: the macOS runner slots are shared. Minutes cost nothing while the repo is public, see `milestone-runs-full-suite`.
 
 ## The build number
 
