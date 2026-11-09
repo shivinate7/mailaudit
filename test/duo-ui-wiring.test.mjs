@@ -512,9 +512,11 @@ function checkDuo(input) {
   const flatRun = makeRun(input.makefile, ["-n", "ui-duo-flat", "UI_TEST=echo"]);
   const closedRun = makeRun(input.makefile, ["-n", "ui-duo-closed", "UI_TEST=echo"]);
 
+  // The env of the workflow, the job and the step each hold a value a pass can inherit: make reads
+  // UI_TEST from the environment, so one shared value at the top of the workflow is a valid home.
   const passText = (job, step) => {
     const parts = [];
-    for (const env of [job.env, step.env]) if (isMap(env)) parts.push(...Object.values(env).map(String));
+    for (const env of [wf?.env, job.env, step.env]) if (isMap(env)) parts.push(...Object.values(env).map(String));
     const run = typeof step.run === "string" ? step.run : "";
     parts.push(run);
     if (run.includes(SCRIPT_PATH) && input.script !== null) parts.push(input.script);
@@ -992,6 +994,15 @@ const viaScript = (text) =>
 const GOOD = { workflow: WF_GOOD, makefile: MAKEFILE(CLOSED_IDS), swift: SWIFT_GOOD, checks: CHECKS_GOOD, script: null };
 const SCRIPT_INPUT = { ...GOOD, workflow: viaScript(WF_GOOD), script: SCRIPT_GOOD };
 
+// One shared value in the top-level env, read by every pass through the environment. The step-level
+// UI_TEST blocks move up into it.
+const SHARED_TEST = XB + " -retry-tests-on-failure -test-iterations 2 -resultBundlePath $RESULT_BUNDLE";
+const toWorkflowEnv = (text) =>
+  text
+    .replace(/ {8}env:\n {10}UI_TEST: [^\n]*\n/g, "")
+    .replace("\njobs:\n", () => "\nenv:\n  UI_TEST: " + SHARED_TEST + "\n\njobs:\n");
+const WF_ENV_INPUT = { ...GOOD, workflow: toWorkflowEnv(WF_GOOD) };
+
 const methodLines = (name, pose) => [
   "    func " + name + "() throws {",
   "        guard app.requirePose(." + pose + ") else { return }",
@@ -1065,6 +1076,8 @@ const MUTANTS = [
   ["the closed pass -only-testing names one closed id only", "d4d", onMk("$(addprefix -only-testing:ManifestUITests/,$(DUO_CLOSED_TESTS))", "$(addprefix -only-testing:ManifestUITests/,DuoShellUITests/testBracesInBody)")],
   ["the flat target is renamed", "d4a", onMk("ui-duo-flat:", "ui-duo-flat-old:")],
   ["the flat pass's script drops -retry-tests-on-failure", "d5a", (g) => ({ ...SCRIPT_INPUT, script: mutate(SCRIPT_GOOD, " -retry-tests-on-failure", "") })],
+  ["the workflow env drops -retry-tests-on-failure", "d5a", (g) => ({ ...WF_ENV_INPUT, workflow: mutate(WF_ENV_INPUT.workflow, SHARED_TEST, SHARED_TEST.replace(" -retry-tests-on-failure", "")) })],
+  ["the workflow env drops its -resultBundlePath", "d5f", (g) => ({ ...WF_ENV_INPUT, workflow: mutate(WF_ENV_INPUT.workflow, " -resultBundlePath $RESULT_BUNDLE", "") })],
 ];
 
 for (const [name, id, build] of MUTANTS) {
@@ -1089,6 +1102,7 @@ const VARIANTS = [
   ["fixture good: no closed test (empty DUO_CLOSED_TESTS)", { ...GOOD, swift: EMPTY_SWIFT, makefile: MAKEFILE([]) }],
   ["fixture good: full size (90 methods, 18 closed)", FULL],
   ["fixture good: flags in scripts/ci-sim.sh", SCRIPT_INPUT],
+  ["fixture good: flags in the workflow env", WF_ENV_INPUT],
 ];
 for (const [name, input] of VARIANTS) {
   const bad = checkDuo(input).filter((r) => !r.ok);

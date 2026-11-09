@@ -53,6 +53,7 @@ extension XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-ManifestUITestSeed"] + extra
         app.launch()
+        DuoShot.app = app
         return app
     }
 
@@ -78,6 +79,26 @@ extension XCUIApplication {
             return false
         }
         return true
+    }
+}
+
+/// One kept screenshot of the app window per Duo test, for the duo-ui CI run to export from the result bundle.
+/// `launchedOnSeed` records the app, and each Duo class calls `keep` from tearDown. XCTest screenshots may come back black on the Duo
+/// simulator (see `keepShot`), so the exported images show whether this route works.
+@MainActor
+enum DuoShot {
+    static var app: XCUIApplication?
+
+    /// Attaches the window of the app the test launched, kept past the run. Attaches nothing when the app is gone, so a crash
+    /// shows as the test's own failure and tearDown adds none.
+    static func keep(for test: XCTestCase) {
+        let launched = Self.app
+        Self.app = nil
+        guard let launched, launched.state == .runningForeground, launched.window.exists else { return }
+        let shot = XCTAttachment(screenshot: launched.window.screenshot())
+        shot.name = "\(test.name) window"
+        shot.lifetime = .keepAlways
+        test.add(shot)
     }
 }
 

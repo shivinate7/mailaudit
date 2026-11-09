@@ -70,6 +70,11 @@ final class DuoSpreadUITests: XCTestCase {
         continueAfterFailure = false  // a missing part ends the test, so no later tap lands on nothing
     }
 
+    override func tearDown() {
+        DuoShot.keep(for: self)
+        super.tearDown()
+    }
+
     // MARK: helpers
 
     /// The open Duo on the seed, the custom bar up, and `tab` opened through the bar (the system bar is hidden on the open Duo).
