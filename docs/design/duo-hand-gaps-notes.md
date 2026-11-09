@@ -52,8 +52,8 @@ None of the eight parts lives in PackagesView, TallyView, OrphanedView or RootVi
    - Source: decision `outstanding-value-per-level` (each level states what is still outstanding) asks each package for "N left · $Y". That text is the bundle's `packagePill`, which `PackagesModel.pills[gk]` already holds (`native/ManifestKit/Sources/ManifestKit/Packages.swift:32`). Use it; do not build a second formatter. The round 2 mockup puts card names under the lines (index.html:167).
    - Options:
      - On the order line, the pick. "Still owed here" with the red figure at the trailing end of the "ordered" line, y 92 to 106. Gain: it adds no row, the Post offer does not move, and it shows above the keys at any envelope length. Loss: the line is busier. At large text it wraps under the date.
-     - Under the lines, the round 2 place. Gain: it reads after the lines it sums. Loss: with the keys up and three or more lines, it sits under the keys (y 486 with five lines).
-   - When nothing is owed, it reads "complete" in green.
+     - Under the lines, the round 2 place. Gain: it reads after the lines it sums. Loss: with the keys up and three or more lines, it sits under the keys (y 498 with five lines).
+   - When nothing is owed, it reads "complete" in ink. Green at 11 pt is 4.29:1, under the 4.5:1 text floor.
    - Departs from: the round 2 place and its card-name wording. Not blocking.
    - Test: `hand-owed` reads `packages.pills[gk]`. Its frame's maxY is less than 405 with five lines and the keys up. A line tap updates it with no change in the line frames.
 
@@ -81,7 +81,7 @@ None of the eight parts lives in PackagesView, TallyView, OrphanedView or RootVi
 7. **End of mail day.** Carried over, with an option picked for what opens it: the empty query.
    - Source: round 2 mockup index.html:171 to :195 and :382 to :406. Today the empty query shows the start hint (`HandScreen.swift:249` to `:251`).
    - Left page: "Today's pile", which lists envelopes with a check-in since local midnight (from the saved `receivedAt`). Each row shows got/qty, red when short.
-   - Right page: "Not normal today", which lists only short envelopes. Each row names the missing cards and their "N left · $Y", so it has no Open (`ux-control-earns-place`). Departs from: round 2 mockup, which gave each row an Open. Today's `transitBox` follows, unchanged, then the masthead's own "still missing" line (`MastheadModel.missingLine`). With nothing to list, it says "All is well." (`ux-all-is-well`).
+   - Right page: "Not normal today", which lists only short envelopes. Each row names the missing cards and their "N left · $Y", so it has no Open (`ux-control-earns-place`). Departs from: round 2 mockup, which gave each row an Open. Today's `transitBox` follows, unchanged. With nothing to list, it says "All is well." (`ux-all-is-well`). Under its own label, "Across all orders", the masthead's own "still missing" line follows in red (`MastheadModel.missingLine`), outside the "Not normal today" block.
    - What opens it:
      - Empty query, the pick. It shows once one card is in today. Gain: no new control. Loss: the view appears without being asked for.
      - A "Day's end" control. Gain: the view shows only on purpose. Loss: one more control, plus a state to leave.
@@ -95,8 +95,9 @@ None of the eight parts lives in PackagesView, TallyView, OrphanedView or RootVi
    - What: the Suspense line holds several names with copies. The right page ranks accounts by named copies with the bundle's `rankCandidates`, the rule Orphaned uses, so no second ranker is built. The top account's "Post N cards here" is filled. When the top two rank equal, the tie of part 6 shows instead. Post checks in only the cards an account ordered. The rest stay on the line.
    - Departs from: round 2 "Leave in Suspense", which is left out. Doing nothing already leaves the cards on the line (`ux-control-earns-place`).
    - Model need: a multi-name held list. See Owner grant item 1.
-   - Test 1: three held copies rank Low Tide 3 of 3 above Tinpot 2 of 3, and only the top button is filled.
-   - Test 2: posting the second account leaves Command Tower on the line.
+   - Each row reads "N of M cards", the words Orphaned uses for the same rank.
+   - Test 1: three held copies rank Low Tide 3 of 3 cards above Tinpot 2 of 3 cards, and only the top button is filled.
+   - Test 2: posting the second account leaves one Arcane Signet on the line.
 
 ## Owner grant items
 

@@ -71,7 +71,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
 .meta { font:11px/14px var(--mono); color:var(--inkSoft); min-height:14px; display:flex; justify-content:space-between; gap:8px; }
 .meta .owe { color:var(--red); font-weight:700; }
 .meta .owe em { font:12px var(--cochin); font-style:normal; color:var(--inkSoft); font-weight:400; margin-right:4px; }
-.meta .whole { color:var(--green); font-weight:700; }
+.meta .whole { color:var(--ink); font-weight:700; }
 .pill { font:11.5px var(--mono); border:1px solid var(--line); background:var(--card); border-radius:5px; padding:8px 12px; color:var(--ink); white-space:nowrap; }
 .pill.post { font-weight:700; background:var(--accent); border-color:var(--accent); color:var(--card); }
 .hit { min-height:44px; min-width:44px; display:inline-flex; align-items:center; justify-content:center; }
@@ -96,7 +96,8 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
 .line.partial .box i { background:var(--manila); border-color:var(--manilaInk); }
 .line.partial .box i::after { content:"\2013"; position:absolute; inset:0; display:grid; place-items:center; color:var(--manilaInk); font-size:16px; line-height:26px; text-align:center; }
 /* Part 1 options: the typed card's line */
-.line.now-bar::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent); }
+/* ::after, because the tag label holds ::before */
+.line.now-bar::after { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent); z-index:5; }
 .line.now-fill { background:var(--greenSoft); }
 /* Part 5: a line whose card waits on the Suspense line */
 .line.held { background:color-mix(in srgb, var(--manila) 55%, var(--card)); }
@@ -116,10 +117,13 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
 /* Part 2: This envelope with its cards so far. Two text lines inside the 44 pt row the button already sets. */
 .env { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; min-height:44px; }
 .env .what { display:flex; flex-direction:column; min-width:0; padding-top:2px; }
-.env .what span:first-child { color:var(--inkSoft); font-size:14px; line-height:18px; }
-.env .what span:last-child { font-size:15px; line-height:20px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.env .what > span:first-child { color:var(--inkSoft); font-size:14px; line-height:18px; }
+.env .what > span:last-child { font-size:15px; line-height:20px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .env .what span.none { color:var(--inkSoft); font-style:italic; }
-.env .what span .more { font:12px var(--mono); color:var(--inkSoft); }
+/* A long list: the names clip, "+N more" stays whole */
+.env .what .val { display:flex; align-items:baseline; gap:4px; }
+.env .what .val .names { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.env .what span .more { font:12px var(--mono); color:var(--inkSoft); flex:none; }
 .match { min-height:44px; display:flex; align-items:center; font-size:14px; padding-left:10px; position:relative; }
 .match.on { font-weight:700; } .match.on::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent); }
 .count { font:12px var(--mono); color:var(--inkSoft); }
@@ -198,9 +202,8 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
 <figure>
   <div class="folded" data-device="iphone-duo-folded">
     <b>Folded: unchanged</b>
-    Card in Hand opens only on two pages side by side (<code>PackagesTab.twoPages</code>, HandScreen.swift:32). The outer screen keeps today's one-page Packages. None of the eight parts draws here.
   </div>
-  <figcaption><b>Folded.</b> No change. Outer screen 466 x 678 pt, drawn at half size.</figcaption>
+  <figcaption><b>Folded.</b> No change. Outer screen 466 x 678 pt, drawn at half size. Card in Hand opens only on two pages side by side (<code>PackagesTab.twoPages</code>, HandScreen.swift:32). The outer screen keeps today's one-page Packages. None of the eight parts draws here.</figcaption>
 </figure>
 </section>
 
@@ -348,7 +351,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
     <div class="page l"><div class="content">
       <div data-fill="head"></div>
       <div class="field">Ponde</div>
-      <div class="env tag-new" data-tag="New: a long list ends in +N more"><span class="what"><span>This envelope</span><span>Lightning Bolt ×4 · Counterspell ×2 · <span class="more">+3 more</span></span></span><span class="hit"><span class="pill">New envelope</span></span></div>
+      <div class="env tag-new" data-tag="New: a long list ends in +N more"><span class="what"><span>This envelope</span><span class="val"><span class="names">Lightning Bolt ×4 · Counterspell ×2 ·</span><span class="more">+3 more</span></span></span><span class="hit"><span class="pill">New envelope</span></span></div>
       <span class="micro">Matches</span>
       <div class="match">Ponder</div>
     </div></div>
@@ -430,10 +433,10 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
         <div class="line"><span class="box"><i></i></span><span class="t"><b>Ponder<span>$0.18</span></b><small>Commander Masters · NM</small></span></div>
         <div class="line"><span class="box"><i></i></span><span class="t"><b>Preordain<span>$0.20</span></b><small>Commander Masters · NM</small></span></div>
       </div>
-      <span class="meta tag-new" id="focus-owed-under" data-tag="New: under the lines, y 486, under the keys"><span class="owe"><em>Still owed here</em>4 left · $2.12</span></span>
+      <span class="meta tag-new" id="focus-owed-under" data-tag="New: under the lines, y 498, under the keys"><span class="owe"><em>Still owed here</em>4 left · $2.12</span></span>
     </div></div>
   </div></div>
-  <figcaption><b>Under the lines, as drawn in October.</b> It reads last, after the lines it sums. With five lines it sits at y 486, behind the keys; you scroll the right page to see it while you type. <button type="button" class="hide" data-hide="owed-under">Hide under the lines</button></figcaption>
+  <figcaption><b>Under the lines, as drawn in October.</b> It reads last, after the lines it sums. With five lines it sits at y 498, behind the keys; you scroll the right page to see it while you type. <button type="button" class="hide" data-hide="owed-under">Hide under the lines</button></figcaption>
 </figure>
 </section>
 
@@ -584,14 +587,14 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       <p class="note">Name the next card from this envelope to tell them apart. Nothing checks in until you post.</p>
       <div class="tie tag-new" id="focus-tie" data-tag="New: lines and Post in each envelope">
         <div><b>Brass Lantern TCG</b><span class="meta"><span>ordered 2026-10-16</span></span>
-          <div class="mini heldm"><span>Fellwar Stone</span><span>in hand</span></div>
+          <div class="mini"><span>Fellwar Stone</span><span>in hand</span></div>
           <div class="mini"><span>Beast Within</span><span>0/1</span></div>
           <div class="mini"><span>Mind Stone</span><span>0/2</span></div>
-          <span class="hit" style="align-self:flex-start;margin-top:4px"><span class="pill">Post 1 card here</span></span></div>
+          <span class="hit" style="align-self:flex-start;margin-top:auto"><span class="pill">Post 1 card here</span></span></div>
         <div><b>Quillon Hobby</b><span class="meta"><span>ordered 2026-10-10</span></span>
-          <div class="mini heldm"><span>Fellwar Stone</span><span>in hand</span></div>
+          <div class="mini"><span>Fellwar Stone</span><span>in hand</span></div>
           <div class="mini"><span>Swiftfoot Boots</span><span>0/1</span></div>
-          <span class="hit" style="align-self:flex-start;margin-top:4px"><span class="pill">Post 1 card here</span></span></div>
+          <span class="hit" style="align-self:flex-start;margin-top:auto"><span class="pill">Post 1 card here</span></span></div>
       </div>
     </div></div>
   </div></div>
@@ -619,6 +622,10 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
     <div class="or"><span><b>Kestrel Card Co. came 1 short</b><small>2026-10-14 · 1 Lightning Bolt · 1 left · $1.12</small></span></div>
   </div>
   <div class="tbox"><span>Past 14 days: 4 envelopes<small>1 refund window closing</small></span><span class="hit"><span class="pill">Open</span></span></div>
+</template>
+<!-- The masthead's still-missing figure, under its own label, outside "Not normal today" -->
+<template id="still">
+  <span class="micro m11">Across all orders</span>
   <span class="still">19 still missing · $11.07</span>
 </template>
 <section class="part" id="s-end-of-day" data-state="end-of-day">
@@ -648,7 +655,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       <div data-fill="env-none"></div>
       <div class="tag-new tag-below" id="focus-eod-empty" data-tag="New: today's pile, on an empty query" style="display:flex;flex-direction:column;gap:8px" data-fill="pile"></div>
     </div></div>
-    <div class="page r"><div class="content"><div class="tag-new" data-tag="New: only what is not normal" style="display:flex;flex-direction:column;gap:8px" data-fill="odd"></div></div></div>
+    <div class="page r"><div class="content"><div class="tag-new" data-tag="New: only what is not normal" style="display:flex;flex-direction:column;gap:8px" data-fill="odd"></div><div data-fill="still"></div></div></div>
   </div></div>
   <figcaption><b>On an empty query (pick).</b> Once one card is in today, an empty query shows the day. Before that, today's hint stays. No new control. A short envelope reads red, and its row names the missing card, so it needs no Open. The red line is the masthead's own "still missing" figure. <button type="button" class="hide" data-hide="eod-empty">Hide empty query</button></figcaption>
   <ul class="tags"><li>Rows are read-outs, 44 pt each. Seven rows end near y 540 on the left page, which has no bar.</li><li>With the keys up the pile runs under them. It is a read-out, so nothing tappable hides.</li></ul>
@@ -662,7 +669,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       <div data-fill="env-none"></div>
       <div style="display:flex;flex-direction:column;gap:8px" data-fill="pile"></div>
     </div></div>
-    <div class="page r"><div class="content" data-fill="odd"></div></div>
+    <div class="page r"><div class="content" data-fill="odd still"></div></div>
   </div></div>
   <figcaption><b>Behind a Day's end control.</b> The same view, shown only after a press. The empty query keeps today's hint. One more control in the header, and the day stays out of sight until you ask. <button type="button" class="hide" data-hide="eod-control">Hide Day's end</button></figcaption>
 </figure>
@@ -679,6 +686,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
     <div class="page r"><div class="content">
       <span class="micro m11">Not normal today</span>
       <span class="well tag-new" id="focus-eod-well" data-tag="New: nothing to report">All is well.</span>
+      <span class="micro m11">Across all orders</span>
       <span class="still">18 still missing · $10.40</span>
     </div></div>
   </div></div>
@@ -693,7 +701,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       <div data-fill="env-none"></div>
       <div class="notice tag-new" id="focus-nomatch" data-tag="New: the answer at the query"><span class="micro m11">No match</span><b>No open envelope holds Smothering T.</b><span class="hit" style="align-self:flex-start"><span class="pill">Hold in Suspense</span></span></div>
     </div></div>
-    <div class="page r"><div class="content" data-fill="odd"></div></div>
+    <div class="page r"><div class="content" data-fill="odd still"></div></div>
   </div></div>
   <figcaption><b>No match.</b> October pose 5's second frame (index.html:394 to :405): the answer shows at the query, not on the far page, and Hold in Suspense keeps the name on the line. Today the right page says "No open envelope holds" (HandScreen.swift:253) and offers nothing. The box sits where Matches would, below This envelope.</figcaption>
 </figure>
@@ -741,13 +749,13 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       <span class="who">3 cards, no sender</span>
       <span class="meta"><span>Arcane Signet ×2 · Command Tower</span></span>
       <div class="rank tag-new" id="focus-rank" data-tag="New: ranked by named copies">
-        <div class="rr"><span><b>Low Tide Singles</b><small>ordered 2026-10-19 · fits 3 of 3</small></span><span class="hit"><span class="pill post">Post 3 cards here</span></span></div>
-        <div class="rr"><span><b>Tinpot Cards</b><small>ordered 2026-10-06 · fits 2 of 3</small><small>Command Tower stays held</small></span><span class="hit"><span class="pill">Post 2 cards here</span></span></div>
+        <div class="rr"><span><b>Low Tide Singles</b><small>ordered 2026-10-19 · 3 of 3 cards</small></span><span class="hit"><span class="pill post">Post 3 cards here</span></span></div>
+        <div class="rr"><span><b>Tinpot Cards</b><small>ordered 2026-10-06 · 2 of 3 cards</small><small>1 Arcane Signet stays held</small></span><span class="hit"><span class="pill">Post 2 cards here</span></span></div>
       </div>
       <p class="note">Post checks in only the cards an account ordered. A card that does not fit stays on the Suspense line.</p>
     </div></div>
   </div></div>
-  <figcaption><b>Ranked.</b> Low Tide ordered two Arcane Signet and one Command Tower, so it fits 3 of 3 and its Post is the filled one. Tinpot ordered one Arcane Signet, so it fits 2 of 3. The list ends by y 290, clear of the keys. October's "Leave in Suspense" button is left out: doing nothing already leaves the cards on the line.</figcaption>
+  <figcaption><b>Ranked.</b> Low Tide ordered two Arcane Signet and one Command Tower, so it fits 3 of 3 cards and its Post is the filled one. Tinpot ordered one Arcane Signet and one Command Tower, so it fits 2 of 3 cards, and the second Arcane Signet stays held. The list ends by y 290, clear of the keys. October's "Leave in Suspense" button is left out: doing nothing already leaves the cards on the line.</figcaption>
 </figure>
 </section>
 </main>
