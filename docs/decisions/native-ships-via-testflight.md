@@ -1,6 +1,6 @@
 # The iOS app ships Mac first, TestFlight as the fallback
 
-After each merge, this Mac installs a Release build of MANIFEST on the owner's phone over Wi-Fi or cable. `ios-ship install tools/ios-ship.json --app Manifest` does the install. If it fails for any reason, a manual dispatch of the `testflight` workflow, `.github/workflows/testflight.yml`, uploads the same commit to TestFlight at once. Each dispatch needs the owner's go.
+After each merge, this Mac installs a Release build of MANIFEST on the owner's phone over Wi-Fi or cable. `ios-ship install tools/ios-ship.json --app Manifest` does the install. If it fails for any reason, a manual dispatch of the `testflight` workflow, `.github/workflows/testflight.yml`, uploads the same commit to TestFlight. Each dispatch needs the owner's go.
 
 **Status:** ruled. Owner ruling, 2026-10-22 19:40 CDT, for every app: when the phone is on Wi-Fi and the Mac can install, take that route, with TestFlight as the fallback. It amends the ruling of 2026-10-21 13:58 CDT, which shipped through TestFlight only. Owner ruling, 2026-11-08 19:38 CST, on the waiting page as item 65 a (TestFlight upload from CI): the upload runs from CI, and the holds on it are lifted.
 
@@ -16,7 +16,7 @@ Plan: docs/decisions/build-and-deploy.md#make-testflight (native)
 - `--export-only` stops before the upload and keeps the export in a printed folder. It is the only proof run without an upload. The workflow's `dry` input passes it.
 - On this Mac, `make testflight` runs the same upload as a local fallback, from a clean tree at origin/main. The tool is shared with the owner's Degen project.
 - The upload runs once. Never retry it in a loop, and never re-dispatch the workflow in a loop.
-- The App Store Connect key file, key id and issuer id are credentials. On this Mac they live in the ios-ship account file under ~/.config, off the repo. In CI they live in the repo secrets `ASC_KEY_P8`, `ASC_KEY_ID` and `ASC_ISSUER_ID`. Never read, copy or print the key file.
+- The App Store Connect key file, key id and issuer id are credentials. On this Mac they live in the ios-ship account file under ~/.config, off the repo. In CI they live in the repo secrets `ASC_KEY_P8`, `ASC_KEY_ID` and `ASC_ISSUER_ID`. Never read, copy or print the key, in either place.
 
 ## The CI workflow
 
@@ -24,7 +24,7 @@ Plan: docs/decisions/build-and-deploy.md#make-testflight (native)
 - Inputs: `apps`, default `Manifest`. `dry` passes `--export-only`, so a dry dispatch exports and does not upload.
 - An upload runs only from main. ios-ship needs a clean tree, with HEAD equal to origin/main.
 - The job fetches ios-ship from claude-settings at the pinned commit `eaaf66e`. It writes the App Store Connect key from the repo secrets into the runner's temp dir, ships, and then deletes the key in a step that always runs.
-- Each dispatch needs the owner's go, dry and real alike. The runner slots are shared. Minutes cost nothing while the repo is public, and macOS minutes are billed once it goes private, see `milestone-runs-full-suite`.
+- Each dispatch needs the owner's go, dry and real alike: macOS minutes are billed, and the runner slots are shared.
 
 ## The build number
 
