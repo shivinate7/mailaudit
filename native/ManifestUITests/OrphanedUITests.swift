@@ -171,10 +171,15 @@ final class OrphanedUITests: XCTestCase {
         XCTAssertEqual(a.frame.width, b.frame.width, accuracy: 0.5, "the tied rows differ in width")
         XCTAssertEqual(a.frame.height, b.frame.height, accuracy: 0.5, "the tied rows differ in height")
         XCTAssertFalse(el(app, "orphaned-undo").exists, "recording an envelope checked something in")
-        XCTAssertEqual(sagaLabel(app), "Check in Urza's Saga", "the card stays unchecked")
+        // Count before sagaLabel scrolls: the scroll can unmount rows A1 and B1, which would hide a wrong check-in.
+        tab(app, "Packages").tap()
+        for row in [Self.a1, Self.b1] {
+            XCTAssertTrue(el(app, "package-row:\(row)").waitForExistence(timeout: 5), "anchor: the \(row) row is not built on Packages")
+        }
         XCTAssertEqual(
             app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Undo check in")).count, 0,
             "recording checked a card in")
+        XCTAssertEqual(sagaLabel(app), "Check in Urza's Saga", "the card stays unchecked")
     }
 
     // MARK: drafts
@@ -190,7 +195,7 @@ final class OrphanedUITests: XCTestCase {
         input.typeText("Light")
 
         tab(app, "Packages").tap()
-        // D1 sits off screen until scrolled in, as in sagaLabel; reveal only scrolls the Packages list.
+        // The swipe goes to the window, so it scrolls the list on screen: Packages, as its tab is open.
         app.reveal(el(app, Self.sagaControl))
         XCTAssertTrue(el(app, Self.sagaControl).waitForExistence(timeout: 5), "anchor: the Packages view opened")
         tab(app, "Orphaned").tap()
