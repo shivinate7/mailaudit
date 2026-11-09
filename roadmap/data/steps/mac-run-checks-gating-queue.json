@@ -1,0 +1,10 @@
+{
+  "title": "claude-settings guard: a non-gating Mac run waits while a gating Mac job is queued",
+  "status": "todo",
+  "phase": "tooling",
+  "order": 16,
+  "why": "At 2026-11-09 03:47 and 03:54 CST two mailaudit lanes started non-gating Mac proof runs (42593918445, 42593947910) while home's merge-gating job 42599575365 had been queued since 03:41. The coordinator cancelled one at 04:22. Each non-gating run on the shared macOS pool delays a merge.",
+  "note": "Feedback for claude-settings, which the owner carries (sessions never edit claude-settings). Proposed guard: before a push or dispatch that starts a non-gating macOS job, read the three repos' queued runs for a gating job (a batch PR or the merge-gating label) and refuse, naming the holder. Unmeasured: the xcode-27 pool limit; home saw only 3 jobs running account-wide with 8 queued. Reported by the coordinator, 2026-11-09 04:21 CST.",
+  "ask": "",
+  "updatedAt": "2026-11-09T10:23:00Z"
+}
