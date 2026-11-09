@@ -50,11 +50,10 @@ Plan: docs/decisions/duo-ui-runs-on-pr-label.md#gate (native)
 - False-green guard: each pass reads the executed count from its result bundle. The step fails unless the count equals the count `duo-counts` scans from the Swift sources. The flat pass expects the Duo tests minus the closed ones. The closed pass expects the closed ids. A skipped Duo test fails the pass. The Pro jobs check only that at least one test ran.
 - Retries: each test runs up to two attempts. A test that needed a second attempt is listed in the step summary with its attempts. A pass on retry is green.
 - Screenshots: the export step writes each bundle's attachments into `out/`. The pose step writes four `simctl io` captures, the outer and inner display for each pose, into `out/pose/`. The job uploads `out/` as an artifact.
-- Two non-Duo classes keep attachments through `ScreenKit.attach`. The Duo classes keep none yet. `keepShot` returns at once unless `DUO_SHOTS` is set, and this job does not set it.
+- Each Duo test keeps one `.keepAlways` screenshot of the app window: `DuoShot` in DuoWindowSupport.swift, called from each Duo class's tearDown. It does not depend on `keepShot`, which stays off unless `DUO_SHOTS` is set. XCTest window shots may come back black on the Duo simulator; the exported images show whether they do.
 
 ## Not built
 
-- A kept window screenshot for each Duo test. It needs a change in the Duo test files, which this lane does not make.
 - No debt closes here. The Duo debts that wait for a CI path close on a green `duo-ui` run, cited in that debt.
 
 ## Unmeasured
