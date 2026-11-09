@@ -1,14 +1,15 @@
 {
   "added": "2026-11-08T18:03:00-06:00",
-  "context": "Goal: land the cloud restart records on main, so each ruling has a home and the restart runs from one list.\nProblem (rule): your answer was \"none\" with the note \"have we completed it? continue on the plan\". A \"none\" grants no merge, and your 16:52 CST ruling says bring nothing new to main.\nBased on (read): all four hold records or one config line only. PR 246: plan cloud-sessions and decision native-ci-on-hosted-macos. PR 249: plan cloud-lane-cut, 23 open items cut into three waves. PR 251: the waiting-page key now names this new page. Branch records-owner-1523: the mail-day wording and the composer ruling.\nBased on (read): the batch runner's merge tool (git push lock, REST merge) has not run in the cloud yet. This batch would be its first run.\nBased on (ruling): owner, 2026-11-08 16:52 CST: bring nothing new to main. Option a asks you for an exception, for records only.\nDeparts from: main 41bf0f2 — adds plans cloud-sessions and cloud-lane-cut, decision native-ci-on-hosted-macos, two owner rulings, and the new waiting-page URL.",
+  "context": "Goal: land the cloud restart records on main, so each ruling has a home and the restart runs from one list.\nProblem (rule): your answer was \"none\" with the note \"have we completed it? continue on the plan\". A \"none\" grants no merge, and your 16:52 CST ruling says bring nothing new to main.\nBased on (read): all four hold records or one config line only. PR 246: plan cloud-sessions and decision native-ci-on-hosted-macos. PR 249: plan cloud-lane-cut, 23 open items cut into three waves. PR 251: the waiting-page key now names this new page. Branch records-owner-1523: the mail-day wording and the composer ruling.\nBased on (read): the batch runner's merge tool (git push lock, REST merge) has not run in the cloud yet. This batch would be its first run.\nBased on (ruling): owner, 2026-11-08 16:52 CST: bring nothing new to main. Option a asks you for an exception, for records only.\nDeparts from: main 41bf0f2 \u2014 adds plans cloud-sessions and cloud-lane-cut, decision native-ci-on-hosted-macos, two owner rulings, and the new waiting-page URL.",
   "group": "cloud-restart",
   "holds": "The first records batch, and the first cloud run of the batch runner's merge tool, wait on this.",
-  "home": "PRs 246, 249, 251 and branch records-owner-1523, through the batch runner",
+  "home": "PR 250 (merged as da61f29, 2026-11-08 19:36 CST)",
   "id": "cloud-plan-merge",
   "kind": "decision",
   "lastAnswer": {
-    "at": "2026-11-08T22:30:22.188Z",
-    "note": "have we completed it? continue on the plan"
+    "choice": "a",
+    "note": "by chat to the coordinator: lift the 16:52 hold for the first records batch",
+    "at": "2026-11-09T01:29:00Z"
   },
   "n": 67,
   "options": [
@@ -70,7 +71,7 @@
   "replied": "2026-11-09T01:33:00Z",
   "reply": "Not completed. Restart steps 1 and 2 are done: the probe ran, and the triage and batch runner sessions are up. The plan's next step is the lane cut: plan cloud-lane-cut (PR 249) lists 23 open items in three waves. Nothing is merged yet. This item now covers PR 249 and PR 251 too.",
   "short": "Merge records batch",
-  "status": "open",
+  "status": "closed",
   "title": "Merge the first records batch (PRs 246, 249, 251 and branch records-owner-1523) to main?",
   "why": "Records and one config line only, and it proves the cloud merge path before any code lane needs it."
 }
