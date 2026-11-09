@@ -1,0 +1,41 @@
+{
+  "added": "2026-11-09T01:33:00Z",
+  "context": "Goal: restart the paused work in the cloud, from one list.\nProblem (goal): plan cloud-lane-cut is written but no lane has started; starting four cloud sessions is your call.\nBased on (read): wave 1 is duo-ci-path, orders-ext-ui-tests, duo-gaps-design-review and merge-notice-r2. No two share a file.\nBased on (read): duo-ci-path also needs item 74's answer; the other three need nothing else.\nBased on (ruling): owner, 2026-11-08 17:57 CST: the restart cuts new lanes from one list, not the old Mac lanes.\nDeparts from: main — adds four cloud lane sessions, each with its own branch and PR.",
+  "group": "cloud-restart",
+  "holds": "No cloud lane starts until this is answered.",
+  "home": "plan cloud-lane-cut",
+  "id": "wave-1-lanes",
+  "kind": "decision",
+  "n": 75,
+  "options": [
+    {
+      "gain": "Most work in flight at once, and the first CI path for the Duo.",
+      "how": "The coordinator starts four lane sessions; duo-ci-path builds where item 74 says.",
+      "key": "a",
+      "label": "Start all four now",
+      "lose": "Four sessions run at once, and four PRs come for review."
+    },
+    {
+      "gain": "Three lanes move even if item 74 stays open.",
+      "how": "orders-ext-ui-tests, duo-gaps-design-review and merge-notice-r2 start now; duo-ci-path waits for item 74.",
+      "key": "b",
+      "label": "Start the three that need nothing else",
+      "lose": "The Duo debts and wave 2's Duo lanes wait longer."
+    },
+    {
+      "gain": "The cloud merge path is proven before any code lane.",
+      "how": "No lane starts until item 67's batch merges.",
+      "key": "c",
+      "label": "Wait for the records batch first",
+      "lose": "All restart work waits on one merge."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "pick": "a",
+  "rank": 30,
+  "ref": "plan cloud-lane-cut (PR 249), section The cut",
+  "short": "Start wave 1",
+  "status": "open",
+  "title": "Start wave 1 of the cloud restart: four lanes at once?",
+  "why": "The four share no files, and item 74 can be answered in the same Send."
+}

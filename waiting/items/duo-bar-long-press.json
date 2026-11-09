@@ -1,9 +1,14 @@
 {
   "added": "2026-11-08T08:49:00-06:00",
-  "context": "Goal: the open Duo's tab bar stays readable at every text size, as the web's bar does.\nProblem (rule): the fix departs from the web, so you get the final word. A port keeps the web's behaviour, and the web bar has no long press.\nBased on (ruling): coordinator, 2026-11-08 08:17 CST: cap the bar labels at the default size, and add the iOS large content viewer.\nBased on (read): the web bar's labels are a fixed 10 px (src/app.jsx .mdl-bar button).\nDeparts from: src/app.jsx:mdl-bar \u2014 the web bar has no long press; option a adds the iOS large content viewer, where a long press on a tab shows its name big at accessibility text sizes.\nUnvetted: the past-ruling check was not run for this question.\nMeanwhile: the lane builds option a on the coordinator's ruling.",
-  "home": "the Duo bar's decision record, filed by the lane that builds it",
+  "context": "Goal: the open Duo's tab bar stays readable at every text size, as the web's bar does.\nProblem (rule): the fix departs from the web, so you get the final word. A port keeps the web's behaviour, and the web bar has no long press.\nBased on (ruling): coordinator, 2026-11-08 08:17 CST: cap the bar labels at the default size, and add the iOS large content viewer.\nBased on (read): the web bar's labels are a fixed 10 px (src/app.jsx .mdl-bar button).\nDeparts from: src/app.jsx:mdl-bar — the web bar has no long press; option a adds the iOS large content viewer, where a long press on a tab shows its name big at accessibility text sizes.\nUnvetted: the past-ruling check was not run for this question.\nMeanwhile: the lane builds option a on the coordinator's ruling.",
+  "home": "duo-bar-long-press",
   "id": "duo-bar-long-press",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-08T22:30:22.188Z",
+    "choice": "a",
+    "note": ""
+  },
   "n": 53,
   "options": [
     {
@@ -21,13 +26,13 @@
       "lose": "At large text the tab names stay small, with no way to enlarge them."
     }
   ],
-  "owner": "coordinator session_01CTP6d4WA8Vb2tRCT2mVfKQ",
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "pick": "a",
   "port": true,
   "rank": 16,
   "ref": "item 52 (Duo bar at large text, coordinator ruling 2026-11-08 08:17 CST); debt duo-bar-dynamic-type-clips; web src/app.jsx .mdl-bar button",
   "short": "Duo bar long press",
-  "status": "open",
+  "status": "closed",
   "title": "Keep the long press that shows a tab's name big on the open Duo? The web bar has none.",
   "why": "It is the standard iOS way to read a capped label, and it changes nothing for anyone at normal text sizes."
 }

@@ -1,0 +1,10 @@
+{
+  "title": "Duo and 18 Pro UI tests run in CI",
+  "status": "todo",
+  "phase": "duo",
+  "order": 1,
+  "why": "Five fixed Duo debts retire only on a CI run.",
+  "note": "Owner ruled page item 54 b at 2026-11-08 15:23 CST: build a CI path for the Duo tests, on the xcode-27 runner. Lane duo-ci-path in plan cloud-lane-cut (PR 249), wave 1. Where the job lives waits on page item 74; the start waits on page item 75.",
+  "ask": "",
+  "updatedAt": "2026-11-09T01:50:00Z"
+}

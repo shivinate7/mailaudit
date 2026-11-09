@@ -1,6 +1,6 @@
 {
   "added": "2026-11-08T13:12:00-06:00",
-  "context": "Goal: after a sync merges changes, the phone tells you what changed, in the same words as the web.\nProblem (rule): the web words the notice with mergeSummary in src/merge-rules.mjs. The native build keeps the merge rules out of its bundle, so the phone can't call it. Which module holds the phone's wording waits on your ruling.\nBased on (read): SyncClient keeps the stats of the last reply, and no screen shows them.\nBased on (read): git grep finds no mergeSummary in native.\nDeparts from: build.mjs:RULES_OUT \u2014 the merge rules stay out of native rules.js; option a bundles mergeSummary into it.\nMeanwhile: the phone shows no merge notice.",
+  "context": "Goal: after a sync merges changes, the phone tells you what changed, in the same words as the web.\nProblem (rule): the web words the notice with mergeSummary in src/merge-rules.mjs. The native build keeps the merge rules out of its bundle, so the phone can't call it. Which module holds the phone's wording waits on your ruling.\nBased on (read): SyncClient keeps the stats of the last reply, and no screen shows them.\nBased on (read): git grep finds no mergeSummary in native.\nDeparts from: build.mjs:RULES_OUT — the merge rules stay out of native rules.js; option a bundles mergeSummary into it.\nMeanwhile: the phone shows no merge notice.",
   "group": "merge-rules-in-native",
   "home": "pins lane: bundle mergeSummary into native rules.js; restyle after step 10: the notice screen",
   "id": "native-merge-wording-home",

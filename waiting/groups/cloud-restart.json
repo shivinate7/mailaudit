@@ -1,0 +1,4 @@
+{
+  "title": "The cloud restart",
+  "why": "All three decide how the paused work restarts in the cloud: which records land first, where the Duo CI job lives, and which lanes start."
+}

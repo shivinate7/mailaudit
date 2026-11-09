@@ -1,0 +1,10 @@
+{
+  "title": "Mockups for page items 56 and 63, then ask again",
+  "status": "todo",
+  "phase": "design",
+  "order": 1,
+  "why": "The owner asked for pictures before deciding: page item 56 (\"will need a visual example to decide..\") and page item 63 (\"why no visuals ?\"), 2026-11-08 16:30 CST.",
+  "note": "A designer draws both options of each: 56, the Orphaned candidate meta line wrapped vs one line at large text on the phone (OrphanedView.swift CandidateRow); 63, the web overlay panel with and without the paper fill (src/app.jsx panelWrap). Then triage adds two fresh look items with the mockups.",
+  "ask": "",
+  "updatedAt": "2026-11-09T01:50:00Z"
+}

@@ -15,7 +15,7 @@
     },
     {
       "gain": "Every label matches its value, as the old rows did.",
-      "how": "LEDGER shows server status and last sync, such as \"Connected \u00b7 2 min ago\". PHOTOS shows photo sync, such as \"synced\" or \"3 to send\". KEY shows the key.",
+      "how": "LEDGER shows server status and last sync, such as \"Connected · 2 min ago\". PHOTOS shows photo sync, such as \"synced\" or \"3 to send\". KEY shows the key.",
       "key": "b",
       "label": "LEDGER, PHOTOS, KEY with matching values",
       "lose": "A bigger lane: a new photo value on web and phone, and a screen re-check."

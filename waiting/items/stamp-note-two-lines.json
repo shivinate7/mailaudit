@@ -1,6 +1,6 @@
 {
-  "added": "2026-11-08T13:26:00-06:00",
-  "context": "You asked for visuals (10:55 CST). Each option now has its mockup, drawn on the folded Duo (466 pt wide), with extra pictures for a tap on \"0 stamped\" and for the open Duo.\nGoal: the phone's order stamps look and work like the web's.\nProblem (goal): step 6 ships two choices the mockup didn't have. The note field is two lines tall where the mockup shows one, so it fits the 44-point tap minimum at larger text sizes. And the \"0 stamped\" filter cell is disabled when nothing is stamped, but it is not greyed out: its button style dims only on press, so it looks active and does nothing. Both depart from the mockup, so they need your word.\nBased on (read): the step 6 design review.\nBased on (ruling): house rule ux-house-rules-govern: tap targets at least 44 points.\nBased on (read): the step 6 mockup is not in the repo, so option b is drawn from this item's own description and the web's one-line note field.\nDeparts from: main ships a two-line note field and a dead \"0 stamped\" cell \u2014 option b changes them to a one-line field and an always-active cell, as the step 6 mockup had.\nMeanwhile: step 6 ships with both. A change later is a small edit.",
+  "added": "2026-11-09T01:50:00Z",
+  "context": "You asked for visuals (10:55 CST). Each option now has its mockup, drawn on the folded Duo (466 pt wide), with extra pictures for a tap on \"0 stamped\" and for the open Duo.\nGoal: the phone's order stamps look and work like the web's.\nProblem (goal): step 6 ships two choices the mockup didn't have. The note field is two lines tall where the mockup shows one, so it fits the 44-point tap minimum at larger text sizes. And the \"0 stamped\" filter cell is disabled when nothing is stamped, but it is not greyed out: its button style dims only on press, so it looks active and does nothing. Both depart from the mockup, so they need your word.\nBased on (read): the step 6 design review.\nBased on (ruling): house rule ux-house-rules-govern: tap targets at least 44 points.\nBased on (read): the step 6 mockup is not in the repo, so option b is drawn from this item's own description and the web's one-line note field.\nDeparts from: main ships a two-line note field and a dead \"0 stamped\" cell — option b changes them to a one-line field and an always-active cell, as the step 6 mockup had.\nMeanwhile: step 6 ships with both. A change later is a small edit.",
   "designs": [
     {
       "drawn": 466,
@@ -64,6 +64,10 @@
   "home": "decision stamp-band-opens-the-editor (manifest-restyle)",
   "id": "stamp-note-two-lines",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-08T22:30:22.188Z",
+    "note": "have they landed tho"
+  },
   "look": true,
   "n": 39,
   "options": [
@@ -84,10 +88,12 @@
       "lose": "More work. Tapping \"0 stamped\" shows an empty list."
     }
   ],
-  "owner": "coordinator session_01CTP6d4WA8Vb2tRCT2mVfKQ",
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "pick": "a",
   "rank": 5,
   "ref": "step 6 design review; decision stamp-band-opens-the-editor",
+  "replied": "2026-11-09T01:50:00Z",
+  "reply": "Yes, both are on main now: the note field is 2 to 6 lines tall (StampViews.swift:273-274), and the \"0 stamped\" cell is disabled with no dimming (StampViews.swift:30). That is option a. Option b is not built; draft PR 240 waits on your pick.",
   "short": "Stamp note field",
   "status": "open",
   "title": "The phone's stamp editor: a two-line note field and a \"0 stamped\" cell that looks active but does nothing. Keep both?",

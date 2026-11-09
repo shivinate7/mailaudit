@@ -1,6 +1,6 @@
 {
   "added": "2026-11-08T13:14:00-06:00",
-  "context": "Goal: nothing moves under your finger, on any phone width.\nProblem (rule): at 320 px wide, the Tally card moves 14 px on check-ins 1 and 6, which breaks invariant no-layout-shift-under-pointer. No shipped check reads 320 px; the screens check runs at 375 and 760 px only. The record's fix keeps all three buttons in place and hides the one that does not apply, which changes how the card looks.\nBased on (read): debt tally-card-moves-at-320px and test/screens.mjs widths.\nDeparts from: main lets the Tally card's buttons come and go \u2014 option a keeps all three in place and hides the one that does not apply.\nMeanwhile: nothing waits on this.",
+  "context": "Goal: nothing moves under your finger, on any phone width.\nProblem (rule): at 320 px wide, the Tally card moves 14 px on check-ins 1 and 6, which breaks invariant no-layout-shift-under-pointer. No shipped check reads 320 px; the screens check runs at 375 and 760 px only. The record's fix keeps all three buttons in place and hides the one that does not apply, which changes how the card looks.\nBased on (read): debt tally-card-moves-at-320px and test/screens.mjs widths.\nDeparts from: main lets the Tally card's buttons come and go — option a keeps all three in place and hides the one that does not apply.\nMeanwhile: nothing waits on this.",
   "home": "debt tally-card-moves-at-320px; decision card-reserved-geometry",
   "id": "tally-320-move",
   "kind": "decision",
@@ -21,7 +21,7 @@
       "lose": "On the narrowest phones a tap can land on the wrong button."
     }
   ],
-  "owner": "coordinator session_01CTP6d4WA8Vb2tRCT2mVfKQ",
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "pick": "a",
   "rank": 19,
   "ref": "debt tally-card-moves-at-320px (the Tally card moves at 320px); invariant no-layout-shift-under-pointer; decision card-reserved-geometry",

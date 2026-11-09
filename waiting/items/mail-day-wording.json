@@ -1,6 +1,6 @@
 {
   "added": "2026-11-08T13:10:00-06:00",
-  "context": "Goal: the records use words you recognise.\nProblem (rule): on 2026-10-27 you objected to the term \"mail day\". The Duo lane removed it from its own record only. CLAUDE.md and about ten records still use it, such as hourly-tier-closes-the-gap and recent-log-unmeasured.\nBased on (read): git grep finds the term in 10 files on main.\nBased on (read): decision masthead-is-not-project-name keeps \"Mail Day Ledger\" as the project name, so this is only the working-view wording.\nDeparts from: main CLAUDE.md calls Packages \"the mail-day working view\" \u2014 option a rewrites each use in plain words, such as \"when the mail comes\".\nMeanwhile: nothing waits on this. Low priority.",
+  "context": "Goal: the records use words you recognise.\nProblem (rule): on 2026-10-27 you objected to the term \"mail day\". The Duo lane removed it from its own record only. CLAUDE.md and about ten records still use it, such as hourly-tier-closes-the-gap and recent-log-unmeasured.\nBased on (read): git grep finds the term in 10 files on main.\nBased on (read): decision masthead-is-not-project-name keeps \"Mail Day Ledger\" as the project name, so this is only the working-view wording.\nDeparts from: main CLAUDE.md calls Packages \"the mail-day working view\" — option a rewrites each use in plain words, such as \"when the mail comes\".\nMeanwhile: nothing waits on this. Low priority.",
   "home": "branch records-owner-1523 (coordinator's record writer), then batch",
   "id": "mail-day-wording",
   "kind": "decision",

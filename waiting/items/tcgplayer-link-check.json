@@ -12,7 +12,7 @@
   ],
   "minutes": "2 min",
   "n": 61,
-  "owner": "coordinator session_01CTP6d4WA8Vb2tRCT2mVfKQ",
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "rank": 24,
   "ref": "debt tcgplayer-link-opens-history-list (the order link may not search by order id); src/view-rules.mjs tcgplayerOrderUrl",
   "short": "Check order id link",

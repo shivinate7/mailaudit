@@ -1,9 +1,9 @@
 {
   "added": "2026-11-08T18:03:00-06:00",
-  "context": "Goal: land the cloud move records on main.\nProblem (rule): your 16:30 CST answer was \"none\" with the note \"have we completed it? continue on the plan\", and a \"none\" grants no merge.\nBased on (read): PR 246 holds records only: plan cloud-sessions and decision native-ci-on-hosted-macos, 3 files.\nBased on (read): branch records-owner-1523 (62f9a6d) holds records only: the mail-day wording and the composer ruling.\nBased on (ruling): owner, 2026-11-08 16:52 CST: bring nothing new to main. Option a asks you for an exception, for records only.\nDeparts from: main 41bf0f2 \u2014 adds the cloud plan, the cloud-only native ruling and two owner rulings.",
-  "group": "cloud-sessions-plan",
-  "holds": "The first cloud batch, PR 246 plus records-owner-1523, waits on this.",
-  "home": "PR 246 and branch records-owner-1523, through the batch runner",
+  "context": "Goal: land the cloud restart records on main, so each ruling has a home and the restart runs from one list.\nProblem (rule): your answer was \"none\" with the note \"have we completed it? continue on the plan\". A \"none\" grants no merge, and your 16:52 CST ruling says bring nothing new to main.\nBased on (read): all four hold records or one config line only. PR 246: plan cloud-sessions and decision native-ci-on-hosted-macos. PR 249: plan cloud-lane-cut, 23 open items cut into three waves. PR 251: the waiting-page key now names this new page. Branch records-owner-1523: the mail-day wording and the composer ruling.\nBased on (read): the batch runner's merge tool (git push lock, REST merge) has not run in the cloud yet. This batch would be its first run.\nBased on (ruling): owner, 2026-11-08 16:52 CST: bring nothing new to main. Option a asks you for an exception, for records only.\nDeparts from: main 41bf0f2 — adds plans cloud-sessions and cloud-lane-cut, decision native-ci-on-hosted-macos, two owner rulings, and the new waiting-page URL.",
+  "group": "cloud-restart",
+  "holds": "The first records batch, and the first cloud run of the batch runner's merge tool, wait on this.",
+  "home": "PRs 246, 249, 251 and branch records-owner-1523, through the batch runner",
   "id": "cloud-plan-merge",
   "kind": "decision",
   "lastAnswer": {
@@ -13,28 +13,64 @@
   "n": 67,
   "options": [
     {
-      "gain": "The rulings have a home on main, and the first cloud merge gets tested.",
-      "how": "The batch runner merges PR 246 and records-owner-1523 together.",
+      "gain": "Every restart ruling has a home on main, the page key works for every session, and the cloud merge path is proven before a code lane needs it.",
+      "how": "The batch runner puts PRs 246, 249, 251 and records-owner-1523 on one integration branch and merges it on green CI.",
       "key": "a",
-      "label": "Merge both as the first batch",
-      "lose": "Nothing new runs. It is records only."
+      "label": "Merge all four as the first batch",
+      "links": [
+        {
+          "label": "PR 246",
+          "url": "https://github.com/shivinate7/mailaudit/pull/246"
+        },
+        {
+          "label": "PR 249",
+          "url": "https://github.com/shivinate7/mailaudit/pull/249"
+        },
+        {
+          "label": "PR 251",
+          "url": "https://github.com/shivinate7/mailaudit/pull/251"
+        },
+        {
+          "label": "Branch records-owner-1523",
+          "url": "https://github.com/shivinate7/mailaudit/tree/records-owner-1523"
+        }
+      ],
+      "lose": "Records reach main despite the 16:52 ruling. Nothing runs differently."
     },
     {
-      "gain": "One batch later instead of two.",
-      "how": "Both wait and go in a later batch.",
+      "gain": "One batch instead of two.",
+      "how": "They wait, and join the first code batch.",
       "key": "b",
-      "label": "Hold both until the lanes restart",
-      "lose": "The rulings stay off main, and the merge path stays untested."
+      "label": "Hold all four until wave 1 merges",
+      "links": [
+        {
+          "label": "PR 246",
+          "url": "https://github.com/shivinate7/mailaudit/pull/246"
+        },
+        {
+          "label": "PR 249",
+          "url": "https://github.com/shivinate7/mailaudit/pull/249"
+        },
+        {
+          "label": "PR 251",
+          "url": "https://github.com/shivinate7/mailaudit/pull/251"
+        },
+        {
+          "label": "Branch records-owner-1523",
+          "url": "https://github.com/shivinate7/mailaudit/tree/records-owner-1523"
+        }
+      ],
+      "lose": "The rulings stay off main, sessions that read main still find the dead page, and the first cloud merge also carries code."
     }
   ],
-  "owner": "coordinator session_01CTP6d4WA8Vb2tRCT2mVfKQ",
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "pick": "a",
   "rank": 28,
-  "ref": "PR 246 (plan cloud-sessions and decision native-ci-on-hosted-macos, 3 files); branch records-owner-1523 at 62f9a6d (mail-day wording and composer ruling)",
-  "replied": "2026-11-08T18:03:00-06:00",
-  "reply": "Yes. The plan's Restart steps 1 and 2 are done: the probe ran, and the triage and batch runner sessions are up, with messages proven both ways. The question now is whether to land its records on main.",
-  "short": "Merge cloud records",
+  "ref": "PR 246 (plan cloud-sessions, decision native-ci-on-hosted-macos); PR 249 (plan cloud-lane-cut, the restart cut); PR 251 (waiting-page URL for the new account); branch records-owner-1523 at 62f9a6d (mail-day wording, composer ruling)",
+  "replied": "2026-11-09T01:33:00Z",
+  "reply": "Not completed. Restart steps 1 and 2 are done: the probe ran, and the triage and batch runner sessions are up. The plan's next step is the lane cut: plan cloud-lane-cut (PR 249) lists 23 open items in three waves. Nothing is merged yet. This item now covers PR 249 and PR 251 too.",
+  "short": "Merge records batch",
   "status": "open",
-  "title": "Merge the cloud move records (PR 246 and branch records-owner-1523) to main as the first cloud batch?",
-  "why": "Records only, and it proves the cloud merge path before any code lane needs it."
+  "title": "Merge the first records batch (PRs 246, 249, 251 and branch records-owner-1523) to main?",
+  "why": "Records and one config line only, and it proves the cloud merge path before any code lane needs it."
 }

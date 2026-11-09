@@ -1,0 +1,10 @@
+{
+  "title": "Retire the debts the sweep found fixed",
+  "status": "todo",
+  "phase": "records",
+  "order": 1,
+  "why": "The debt list shows only gaps that are still open.",
+  "note": "Owner ruled page item 68 a at 2026-11-08 16:30 CST (accepted pick): one records PR adds the Retire lines and deletes the stale files, through the batch runner. Source: the coordinator sweep of 2026-11-08 (wf_fa43661b-922).",
+  "ask": "",
+  "updatedAt": "2026-11-09T01:50:00Z"
+}

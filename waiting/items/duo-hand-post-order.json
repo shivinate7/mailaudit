@@ -1,6 +1,6 @@
 {
-  "added": "2026-10-29T06:30:00Z",
-  "context": "Goal: on the open Duo, Card in Hand shows who sent the card and the Post button at the same time.\nProblem: today, on every card you hold, the Post offer scrolls the seller's name off the top of the page. The test measured the seller at y=-131, above the screen.\nDeparts from: HandScreen.swift envelope. The Post offer moves from under the card lines to under \"It came from\" and the seller.\nDeparts from: HandModel.swift post. After Post, saved or refused, the offer's space stays as a receipt instead of vanishing, so no line moves under your finger.\nThe builder (sonnet) is building A now. It is easy to undo if you pick B.",
+  "added": "2026-11-09T01:50:00Z",
+  "context": "Goal: on the open Duo, Card in Hand shows who sent the card and the Post button at the same time.\nProblem (goal): you asked for whichever needs less work from here, then to park the question as a debt. Option a is that: the offer under the sender already landed.\nBased on (read): roadmap step duo-post-sender: the Post offer under the sender landed in PR #217, 2026-11-07 20:01 CST.\nBased on (read): plan cloud-lane-cut, lane duo-post-pins: four pins for it went green at 6d7bc95 on the Duo.\nDeparts from: main has no debt for the untried layout — option a adds a debt that records option B (Post pinned above the keys) as untried.",
   "designs": [
     {
       "label": "A: offer under the sender",
@@ -29,29 +29,36 @@
   "home": "decision duo-card-in-hand",
   "id": "duo-hand-post-order",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-08T22:30:22.188Z",
+    "note": "do whichever needs less work from where we are right now, and then park this as a debt"
+  },
   "n": 42,
   "options": [
     {
       "design": "d42",
-      "gain": "The sender and Post both show. It needs no keyboard measurement.",
-      "how": "Post sits right under \"It came from\" and the seller. After Post, its space stays as a receipt.",
+      "gain": "No new work, and the seller stays on screen.",
+      "how": "Post stays right under \"It came from\" and the seller, as PR #217 built it. A debt records that the pinned-above-the-keys layout was never tried.",
       "key": "a",
-      "label": "Offer under the sender",
-      "lose": "The offer no longer sits under the card lines."
+      "label": "Keep it as built, park B as a debt",
+      "lose": "The other layout stays untried until the debt is picked up."
     },
     {
       "design": "d42",
-      "gain": "Today's order stays.",
-      "how": "The lines stay in today's order, and Post is pinned just above the keyboard.",
+      "gain": "The card lines keep their old order.",
+      "how": "The lines go back to the old order, and Post is pinned just above the keyboard.",
       "key": "b",
-      "label": "Keep today's order, pin the offer above the keys",
-      "lose": "It needs an unmeasured 44 pt pad. If the keys draw higher, Post sits under them and you can't scroll to it."
+      "label": "Build B now",
+      "lose": "A lane rebuilds what PR #217 shipped, and its four pins are redone."
     }
   ],
-  "owner": "coordinator session_01CTP6d4WA8Vb2tRCT2mVfKQ",
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "pick": "a",
   "ref": "duo-card-in-hand (On the iPhone Duo, Card in Hand checks cards in by name)",
+  "replied": "2026-11-09T01:50:00Z",
+  "reply": "Option a is the less-work path: it already landed in PR #217. Pick a and the question goes to a debt.",
+  "short": "Post offer order",
   "status": "open",
-  "title": "Post offer sits under the sender on the open Duo",
-  "why": "A is the only option that doesn't rest on an unmeasured keyboard figure."
+  "title": "Keep the Post offer under the sender, as built, and park option B as a debt?",
+  "why": "It is the least work from here, as you asked: it is already on main."
 }

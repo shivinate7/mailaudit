@@ -1,0 +1,10 @@
+{
+  "title": "Duo bar: keep the long press that shows a tab name big",
+  "status": "todo",
+  "phase": "duo",
+  "order": 1,
+  "why": "At accessibility text sizes the open Duo tab bar caps its labels; a long press shows the name big (iOS large content viewer).",
+  "note": "Owner ruled page item 53 a at 2026-11-08 16:30 CST: keep the long press. The lane that builds the Duo bar files the decision record and closes debt duo-bar-dynamic-type-clips.",
+  "ask": "",
+  "updatedAt": "2026-11-09T01:50:00Z"
+}

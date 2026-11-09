@@ -1,9 +1,14 @@
 {
   "added": "2026-11-08T13:58:00-06:00",
-  "context": "Goal: the debt list shows only gaps that are still open.\nProblem (rule): the sweep found debts whose gaps are already fixed on main, but their files still read open. A records PR would add a Retire line to each, so their files can be deleted.\nBased on (read): the coordinator's sweep of 2026-11-08.\nDeparts from: main keeps those fixed debts' files open \u2014 option a adds Retire lines and deletes the stale files.\nUnvetted: the past-ruling check timed out.",
-  "home": "a records PR through the batch runner",
+  "context": "Goal: the debt list shows only gaps that are still open.\nProblem (rule): the sweep found debts whose gaps are already fixed on main, but their files still read open. A records PR would add a Retire line to each, so their files can be deleted.\nBased on (read): the coordinator's sweep of 2026-11-08.\nDeparts from: main keeps those fixed debts' files open — option a adds Retire lines and deletes the stale files.\nUnvetted: the past-ruling check timed out.",
+  "home": "retire-fixed-debts",
   "id": "retire-fixed-debts",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-08T22:30:22.188Z",
+    "choice": "a",
+    "note": "accepted pick"
+  },
   "n": 68,
   "options": [
     {
@@ -21,13 +26,13 @@
       "lose": "Sessions keep reading fixed gaps as open."
     }
   ],
-  "owner": "coordinator session_01CTP6d4WA8Vb2tRCT2mVfKQ",
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "pick": "a",
   "rank": 29,
   "ref": "the coordinator's notes and debts sweep, 2026-11-08 (wf_fa43661b-922)",
   "short": "Retire fixed debts",
   "stands": true,
-  "status": "open",
+  "status": "closed",
   "title": "Retire the debts the sweep found fixed, so their stale files can go?",
   "why": "It is records cleanup with git keeping the history, so it can be undone."
 }
