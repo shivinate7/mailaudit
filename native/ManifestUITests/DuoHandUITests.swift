@@ -32,6 +32,10 @@
 //             its label is the text), hand-held (the Suspense line; present only while a name is held; its label holds
 //             the held name, any case), hand-strays (the strays list; present only while a stray exists; its label holds
 //             each stray name, any case), hand-new-envelope (the New envelope button).
+//   Held chip hand-held-chip (inside the search field, on the left page; present while a card is held or released; its label
+//             is the spoken line "Held: <name>. Released: <names>. Not checked in.", which the chip cases read whole; the visible
+//             "1 held" text is not in the tree). hand-field (the search field's box, the 48 pt frame around the typed
+//             text and the chip). hand-query is the text field alone, so the chip, which sits beside it, is not inside it.
 //   Right page hand-answer (the whole right page), hand-who (the envelope's seller; present only when one envelope is
 //             named; its label is the seller alone), hand-line:<key> (each line of that envelope, the typed card and
 //             its envelope-mates), hand-checkin:<key> (the line's check-in control, labelled "Check in <name>" or
@@ -75,6 +79,8 @@ final class DuoHandUITests: XCTestCase {
     static let keyboardDrawnAbove: CGFloat = 44
     /// The text size of the AccessibilityXL (AX3) match-row case. The launch flag sets it; nothing here reads it back.
     static let accessibilityXL = "UICTContentSizeCategoryAccessibilityXL"
+    /// The text size of the AccessibilityXXXL (AX5) chip case. The chip is capped at xxxLarge, so it must still fit its field.
+    static let accessibilityXXXL = "UICTContentSizeCategoryAccessibilityXXXL"
 
     static let bolt = "C1|0|pLightningBolt"
     static let path = "C1|1|pPathtoExile"
@@ -197,6 +203,13 @@ final class DuoHandUITests: XCTestCase {
             if held >= 3 { return }
             last = now
         }
+    }
+
+    /// The search field's box keeps its frame, to 1 pt on each side. `act` names what was done, for the message.
+    func assertFieldStays(_ field: XCUIElement, _ was: CGRect, _ act: String) {
+        let now = field.frame
+        XCTAssertTrue(abs(now.minX - was.minX) <= 1 && abs(now.minY - was.minY) <= 1 && abs(now.width - was.width) <= 1 && abs(now.height - was.height) <= 1,
+                      "hand-field moved or resized \(act): its frame was \(was) and is \(now)")
     }
 
     /// Card in Hand, then the past-transit page on the right page.
@@ -545,6 +558,153 @@ final class DuoHandUITests: XCTestCase {
         keepShot(app, "hand-match-clears-keys-\(box?.lowercased() ?? "no-box")")
     }
 
+    /// Waits until the held chip's label is exactly `spoken`. HandScreen sets that label to the spoken line; the visible "1 held"
+    /// text is not in the accessibility tree, so the label is all a test reads.
+    func assertChipSpeaks(_ chip: XCUIElement, _ spoken: String, _ state: String) {
+        let done = XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", spoken), object: chip)
+        XCTAssertEqual(XCTWaiter.wait(for: [done], timeout: 5), .completed, "the held chip reads \"\(chip.label)\", not \"\(spoken)\" \(state)")
+    }
+
+    /// Pose: flat, system keys up. The held chip shows while a card is held or released, so it is the one thing above the keys that says
+    /// a card waits (debt hand-held-box-under-keys). It must lie wholly above the keys' drawn top and be hittable. `state` names the case
+    /// for the message and `shot` the run's screenshot. No tap and no scroll: the frames are read once the keys and the chip have stopped moving.
+    func assertChipClearsTheKeys(_ app: XCUIApplication, _ state: String, shot: String) {
+        let keys = app.keyboards.firstMatch
+        _ = requireKeysUp(app)
+        let chip = need(app, "hand-held-chip", "the held chip in the search field, which shows while a card is held (\(state))")
+        waitUntilStill([keys, chip])
+        // Every caller holds Lightning Bolt and releases nothing, so the chip must read the held line alone.
+        assertChipSpeaks(chip, "Held: Lightning Bolt. Not checked in.", state)
+        let keysTop = keys.frame.minY - Self.keyboardDrawnAbove
+        let f = chip.frame
+        XCTAssertLessThanOrEqual(f.maxY, keysTop, "the held chip, frame \(f), ends at y \(f.maxY), under the keys' drawn top at y \(keysTop) (the keyboard frame starts at y \(keys.frame.minY), drawn \(Self.keyboardDrawnAbove) pt higher) \(state): the owner cannot see that a card waits")
+        XCTAssertTrue(chip.isHittable, "the held chip, frame \(f), is not hittable with the keys up \(state)")
+        onLeftPage(chip, app, "the held chip \(state)")
+        keepShot(app, shot)
+    }
+
+    /// Pose: flat, system keys up. A held card and no match: the list is empty, and the held chip must still clear the keys.
+    func testChipClearsTheKeysWithNoMatch() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        typeCard(app, "Lightning Bolt")
+        _ = need(app, "hand-held", "the Suspense line of a held name")
+        typeCard(app, "Zzz")
+        waitForMatches(app, [], "typing Zzz must list no match")
+        assertChipClearsTheKeys(app, "with default text and no match", shot: "hand-chip-no-match")
+    }
+
+    /// Pose: flat, system keys up. A held card and one match: "Path to" lists Path to Exile alone, which is in Gamma Cards only.
+    func testChipClearsTheKeysWithOneMatch() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        typeCard(app, "Lightning Bolt")
+        _ = need(app, "hand-held", "the Suspense line of a held name")
+        typeCard(app, "Path to")
+        waitForMatches(app, ["Path to Exile"], "typing Path to must list Path to Exile alone")
+        assertChipClearsTheKeys(app, "with default text and one match", shot: "hand-chip-one-match")
+    }
+
+    /// Pose: flat, system keys up. A held card and two matches: "er" lists Counterspell and Ponder, the seed's two names with "er".
+    func testChipClearsTheKeysWithTwoMatches() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        typeCard(app, "Lightning Bolt")
+        _ = need(app, "hand-held", "the Suspense line of a held name")
+        typeCard(app, "er")
+        waitForMatches(app, ["Counterspell", "Ponder"], "typing er must list Counterspell and Ponder")
+        assertChipClearsTheKeys(app, "with default text and two matches", shot: "hand-chip-two-matches")
+    }
+
+    /// Pose: flat, system keys up, text at AccessibilityXL (AX3). A held card and two matches. The match rows may sit under the keys at
+    /// this size (testMatchRowClearsTheKeysAtAccessibilityXL), so this case reads the chip only.
+    func testChipClearsTheKeysAtAccessibilityXLWithTwoMatches() {
+        let app = XCUIApplication.launchedOnSeed(extra: ["-UIPreferredContentSizeCategoryName", Self.accessibilityXL])
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        typeCard(app, "Lightning Bolt")
+        _ = need(app, "hand-held", "the Suspense line of a held name")
+        typeCard(app, "er")
+        waitForMatches(app, ["Counterspell", "Ponder"], "typing er must list Counterspell and Ponder, at AccessibilityXL")
+        assertChipClearsTheKeys(app, "at AccessibilityXL with two matches", shot: "hand-chip-ax3")
+    }
+
+    /// Pose: flat, text at AccessibilityXXXL (AX5). A held card and a released one: the widest chip, "1 held · 1 released". The chip is
+    /// capped at xxxLarge, so it must stay inside the search field's box (hand-field), which holds the typed text beside it. No tap on
+    /// the chip and no scroll; the frames are read once they have stopped moving.
+    func testChipStaysInTheFieldAtAccessibilityXXXL() {
+        let app = XCUIApplication.launchedOnSeed(extra: ["-UIPreferredContentSizeCategoryName", Self.accessibilityXXXL])
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        typeCard(app, "Lightning Bolt")
+        _ = need(app, "hand-held", "the Suspense line of a held name")
+        need(app, "hand-new-envelope", "the New envelope button").tap()
+        _ = need(app, "hand-strays", "the Released box of the name New envelope released")
+        typeCard(app, "Brainstorm")
+        _ = need(app, "hand-held", "the Suspense line of Brainstorm, a shared name, held beside the released Lightning Bolt")
+        let field = need(app, "hand-field", "the search field's box, which holds the typed text and the held chip")
+        let chip = need(app, "hand-held-chip", "the held chip in the search field, which shows while a card is held and one is released")
+        waitUntilStill([field, chip])
+        assertChipSpeaks(chip, "Held: Brainstorm. Released: Lightning Bolt. Not checked in.", "with Brainstorm held and Lightning Bolt released")
+        let box = field.frame, f = chip.frame
+        XCTAssertTrue(box.insetBy(dx: -Self.tolerance, dy: -Self.tolerance).contains(f), "the held chip, frame \(f), is outside the search field, frame \(box), at AccessibilityXXXL: the chip overflows its box")
+        keepShot(app, "hand-chip-ax5")
+    }
+
+    /// Pose: flat, system keys up. A held card and two matches ("er"). A tap on a match row, then a New envelope press: neither moves the
+    /// held chip, and the tapped row keeps its place (no-layout-shift-under-pointer). Both are read by their top edge. The search
+    /// field's box (hand-field) keeps its whole frame through both acts.
+    func testTapAndNewEnvelopeMoveNoChipOrRow() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        typeCard(app, "Lightning Bolt")
+        _ = need(app, "hand-held", "the Suspense line of a held name")
+        typeCard(app, "er")
+        waitForMatches(app, ["Counterspell", "Ponder"], "typing er must list Counterspell and Ponder")
+        let chip = need(app, "hand-held-chip", "the held chip in the search field, which shows while a card is held")
+        let field = need(app, "hand-field", "the search field's box, which holds the typed text and the held chip")
+        let row = app.element("hand-hit:Ponder")
+        waitUntilStill([chip, row, field])
+        let chipBefore = chip.frame.minY, rowBefore = row.frame.minY, fieldBefore = field.frame
+
+        row.tap()  // Ponder is in Gamma Cards alone, so the tap opens no Suspense line
+        waitForMatches(app, ["Counterspell", "Ponder"], "tapping Ponder must hold both rows, not collapse to the tapped one")
+        waitUntilStill([chip, row, field])
+        continueAfterFailure = true
+        XCTAssertEqual(chip.frame.minY, chipBefore, accuracy: 1, "the held chip moved \(chip.frame.minY - chipBefore) pt after a tap on a match row: from y \(chipBefore) to y \(chip.frame.minY)")
+        XCTAssertEqual(row.frame.minY, rowBefore, accuracy: 1, "the tapped row hand-hit:Ponder moved \(row.frame.minY - rowBefore) pt under the finger: from y \(rowBefore) to y \(row.frame.minY)")
+        assertFieldStays(field, fieldBefore, "after a tap on a match row")
+
+        let chipBeforeEnvelope = chip.frame.minY, fieldBeforeEnvelope = field.frame
+        need(app, "hand-new-envelope", "the New envelope button").tap()
+        _ = need(app, "hand-strays", "the Released box of the card New envelope released")
+        _ = need(app, "hand-held-chip", "the held chip after New envelope, which now reads released")
+        waitUntilStill([chip, field])
+        assertChipSpeaks(chip, "Released: Lightning Bolt. Not checked in.", "after New envelope releases Lightning Bolt")
+        XCTAssertEqual(chip.frame.minY, chipBeforeEnvelope, accuracy: 1, "the held chip moved \(chip.frame.minY - chipBeforeEnvelope) pt after New envelope: from y \(chipBeforeEnvelope) to y \(chip.frame.minY)")
+        assertFieldStays(field, fieldBeforeEnvelope, "after New envelope")
+        keepShot(app, "hand-chip-tap-and-new-envelope")
+    }
+
+    /// Pose: flat. Holds Lightning Bolt and reads the chip, then Post checks the held copy in and clears the hold. With nothing held and
+    /// nothing released the chip must be gone: it shows only while a card is held or released.
+    func testChipGoesWhenPostChecksTheHeldCardIn() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        typeCard(app, "Lightning Bolt")
+        let chip = need(app, "hand-held-chip", "the held chip in the search field, which shows while Lightning Bolt is held")
+        assertChipSpeaks(chip, "Held: Lightning Bolt. Not checked in.", "while Lightning Bolt is held")
+
+        typeCard(app, "Path to Exile")
+        need(app, "hand-post", "the Post button the next card offers").tap()
+        waitGone(chip, "the held chip stayed after Post checked Lightning Bolt in, though nothing is held or released now")
+    }
+
     /// The first lines of Gamma Cards, which sit under the offer. A Post presses above them, so none may move (no-layout-shift-under-pointer).
     static let stillLines = [bolt, path, swords]
 
@@ -833,6 +993,16 @@ final class DuoHandUITests: XCTestCase {
         _ = need(app, "hand-error", "the failure line of a Post whose save failed")
         XCTAssertTrue(app.element("hand-checkin:\(Self.path)").label.hasPrefix("Check in "), "Path to Exile is checked in, so the save did not fail (the app ignored \(Self.ledgerUnwritable))")
         assertLinesStayPut(app, before, after: "when Post's save failed")
+    }
+
+    /// Waits until the match list holds exactly the rows `names` (hand-hit:<name>). A row left from the last query cannot pass for
+    /// this one, which a count alone would allow. Fails with `message` when it never does.
+    func waitForMatches(_ app: XCUIApplication, _ names: [String], _ message: String) {
+        let want = Set(names.map { "hand-hit:\($0)" })
+        func ids() -> Set<String> { Set(app.elements(prefix: "hand-hit:").map(\.identifier)) }
+        let deadline = Date().addingTimeInterval(5)
+        while ids() != want && Date() < deadline { Thread.sleep(forTimeInterval: 0.1) }
+        XCTAssertEqual(ids(), want, "\(message); the rows are \(ids().sorted())")
     }
 
     /// The hand-hit rows, top to bottom, once exactly `count` show (a short poll: the list settles 150 ms after the last key
