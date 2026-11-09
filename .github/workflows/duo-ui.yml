@@ -1,0 +1,238 @@
+# The UI tests that need a simulator the milestone workflow does not run, on a GitHub-hosted Mac with Xcode 27.
+#   duo-ui    the Duo classes (DUO_UI_TESTS in the Makefile) on an iPhone Duo simulator, a flat pass then a closed pass.
+#             It runs on a ready pull request, or on a draft that carries the label duo-ui.
+#   pro-ui-a, pro-ui-b
+#             the milestone split (make ui-a, make ui-b) on an iPhone 18 Pro simulator. Only the label pro-ui starts them:
+#             the non-Duo suite has known reds (decision milestone-runs-full-suite), so an automatic run would turn every native PR red.
+# The steps live in scripts/ci-sim.sh. The tests run through the Makefile, which is the one home of the run.
+#
+# This workflow runs on pull requests only, never on push, schedule or dispatch. The merge tool counts every check on a pull request,
+# so a red run blocks its own PR. A workflow file with no main trigger has no main run for the merge tool to judge.
+# It is not in all-jobs-passed: joining needs a checks.yml edit, and milestone stays out until it has green runs too.
+name: duo-ui
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
+    paths:
+      - "native/**"
+      - "Makefile"
+      - "shared/**"
+      - ".github/workflows/duo-ui.yml"
+      - "scripts/ci-sim.sh"
+
+permissions:
+  contents: read
+
+# A label event never cancels a run in progress: it would cancel the run the push started, and its own gates may skip every job.
+# A push cancels the older run of the same pull request.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: ${{ github.event.action != 'labeled' }}
+
+env:
+  # The tests run without a build step: the job builds once with make app-build, then make runs this in place of sim-test.
+  # -retry-tests-on-failure with 2 iterations runs a failed test once more. The step summary lists each test that needed it.
+  UI_TEST: xcodebuild test-without-building -destination "platform=iOS Simulator,id=$$SIM_UDID" -collect-test-diagnostics never -retry-tests-on-failure -test-iterations 2 -resultBundlePath "$$RESULT_BUNDLE"
+
+jobs:
+  duo-ui:
+    # xcode-27 is the runner-images xcode-27-arm64 image: Xcode 27.1 and the iOS 27.1 SDK.
+    if: ${{ (!github.event.pull_request.draft || contains(github.event.pull_request.labels.*.name, 'duo-ui')) && (github.event.action != 'labeled' || github.event.label.name == 'duo-ui') }}
+    runs-on: xcode-27
+    timeout-minutes: 60 # provisional
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: select Xcode 27.1
+        run: |
+          sudo xcode-select -s /Applications/Xcode_27.1.app
+          xcodebuild -version
+      # Neither runner image holds xcodegen, so the job installs one pinned release. The zip is
+      # checked against XCODEGEN_SHA256 before it is unpacked. A mismatch fails the step.
+      - name: install xcodegen
+        env:
+          XCODEGEN_VERSION: "2.46.0"
+          XCODEGEN_SHA256: "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
+        run: scripts/ci-sim.sh install-xcodegen
+      - run: xcodegen --version
+      - name: build the app and the tests once
+        run: make app-build
+      # The Duo device type and the newest runtime that supports it are read from simctl and printed. The UDID reaches the next steps through GITHUB_ENV.
+      - name: create and boot the iPhone Duo simulator
+        run: scripts/ci-sim.sh create-sim "iPhone Duo"
+      - name: fetch hinge
+        run: scripts/ci-sim.sh fetch-hinge
+      - name: expected test counts
+        run: scripts/ci-sim.sh duo-counts
+      - name: open the Duo
+        run: scripts/ci-sim.sh pose flat
+      - name: flat pass
+        env:
+          RESULT_BUNDLE: ${{ runner.temp }}/results/flat.xcresult
+        run: |
+          mkdir -p "$(dirname "$RESULT_BUNDLE")"
+          make ui-duo-flat
+      - name: read the flat result
+        if: ${{ !cancelled() && env.SIM_UDID != '' }}
+        env:
+          RESULT_BUNDLE: ${{ runner.temp }}/results/flat.xcresult
+        run: scripts/ci-sim.sh check-results "$RESULT_BUNDLE" duo-flat "exact:$DUO_FLAT_EXPECTED"
+      - name: close the Duo
+        if: ${{ !cancelled() && env.SIM_UDID != '' }}
+        run: scripts/ci-sim.sh pose closed
+      - name: closed pass
+        if: ${{ !cancelled() && env.SIM_UDID != '' }}
+        env:
+          RESULT_BUNDLE: ${{ runner.temp }}/results/closed.xcresult
+        run: |
+          mkdir -p "$(dirname "$RESULT_BUNDLE")"
+          make ui-duo-closed
+      - name: read the closed result
+        if: ${{ !cancelled() && env.SIM_UDID != '' }}
+        env:
+          RESULT_BUNDLE: ${{ runner.temp }}/results/closed.xcresult
+        run: scripts/ci-sim.sh check-results "$RESULT_BUNDLE" duo-closed "exact:$DUO_CLOSED_EXPECTED"
+      - name: export the screenshots
+        if: ${{ !cancelled() }}
+        env:
+          RESULTS: ${{ runner.temp }}/results
+        run: |
+          scripts/ci-sim.sh export "$RESULTS/flat.xcresult" out/flat
+          scripts/ci-sim.sh export "$RESULTS/closed.xcresult" out/closed
+          if [ -d "$RESULTS" ]; then cp -R "$RESULTS" out/results; fi
+      - name: record the result
+        if: ${{ !cancelled() }}
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: scripts/ci-sim.sh summary-head "Duo UI tests"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ !cancelled() }}
+        with:
+          name: duo-ui
+          path: out/
+          if-no-files-found: warn
+          retention-days: 7
+
+  pro-ui-a:
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'pro-ui') && (github.event.action != 'labeled' || github.event.label.name == 'pro-ui') }}
+    runs-on: xcode-27
+    timeout-minutes: 60 # provisional
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: select Xcode 27.1
+        run: |
+          sudo xcode-select -s /Applications/Xcode_27.1.app
+          xcodebuild -version
+      - name: install xcodegen
+        env:
+          XCODEGEN_VERSION: "2.46.0"
+          XCODEGEN_SHA256: "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
+        run: scripts/ci-sim.sh install-xcodegen
+      - run: xcodegen --version
+      - name: build the app and the tests once
+        run: make app-build
+      # The newest runtime that lists the 18 Pro, not the first one: a runtime made for one other device lists only that device.
+      - name: create and boot the iPhone 18 Pro simulator
+        run: scripts/ci-sim.sh create-sim "iPhone 18 Pro"
+      - name: the first UI test classes
+        env:
+          RESULT_BUNDLE: ${{ runner.temp }}/results/pro-a.xcresult
+        run: |
+          mkdir -p "$(dirname "$RESULT_BUNDLE")"
+          make ui-a
+      - name: read the result
+        if: ${{ !cancelled() && env.SIM_UDID != '' }}
+        env:
+          RESULT_BUNDLE: ${{ runner.temp }}/results/pro-a.xcresult
+        run: scripts/ci-sim.sh check-results "$RESULT_BUNDLE" pro-ui-a nonzero
+      - name: export the screenshots
+        if: ${{ !cancelled() }}
+        env:
+          RESULTS: ${{ runner.temp }}/results
+        run: |
+          scripts/ci-sim.sh export "$RESULTS/pro-a.xcresult" out/pro-a
+          if [ -d "$RESULTS" ]; then cp -R "$RESULTS" out/results; fi
+      - name: record the result
+        if: ${{ !cancelled() }}
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: scripts/ci-sim.sh summary-head "iPhone 18 Pro UI tests, part a"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ !cancelled() }}
+        with:
+          name: pro-ui-a
+          path: out/
+          if-no-files-found: warn
+          retention-days: 7
+
+  pro-ui-b:
+    # The steps repeat pro-ui-a on purpose: a matrix would hide each job and its cap from test/ci-wiring.test.mjs.
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'pro-ui') && (github.event.action != 'labeled' || github.event.label.name == 'pro-ui') }}
+    runs-on: xcode-27
+    timeout-minutes: 60 # provisional
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: select Xcode 27.1
+        run: |
+          sudo xcode-select -s /Applications/Xcode_27.1.app
+          xcodebuild -version
+      - name: install xcodegen
+        env:
+          XCODEGEN_VERSION: "2.46.0"
+          XCODEGEN_SHA256: "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
+        run: scripts/ci-sim.sh install-xcodegen
+      - run: xcodegen --version
+      - name: build the app and the tests once
+        run: make app-build
+      - name: create and boot the iPhone 18 Pro simulator
+        run: scripts/ci-sim.sh create-sim "iPhone 18 Pro"
+      - name: the other UI test classes
+        env:
+          RESULT_BUNDLE: ${{ runner.temp }}/results/pro-b.xcresult
+        run: |
+          mkdir -p "$(dirname "$RESULT_BUNDLE")"
+          make ui-b
+      - name: read the result
+        if: ${{ !cancelled() && env.SIM_UDID != '' }}
+        env:
+          RESULT_BUNDLE: ${{ runner.temp }}/results/pro-b.xcresult
+        run: scripts/ci-sim.sh check-results "$RESULT_BUNDLE" pro-ui-b nonzero
+      - name: export the screenshots
+        if: ${{ !cancelled() }}
+        env:
+          RESULTS: ${{ runner.temp }}/results
+        run: |
+          scripts/ci-sim.sh export "$RESULTS/pro-b.xcresult" out/pro-b
+          if [ -d "$RESULTS" ]; then cp -R "$RESULTS" out/results; fi
+      - name: record the result
+        if: ${{ !cancelled() }}
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: scripts/ci-sim.sh summary-head "iPhone 18 Pro UI tests, part b"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ !cancelled() }}
+        with:
+          name: pro-ui-b
+          path: out/
+          if-no-files-found: warn
+          retention-days: 7
+
+  # A run that ends red posts one comment on the pull request, which wakes the session that watches it (rule git-ci-done-comment-wakes).
+  # It runs when any of the three jobs was due: a ready pull request or the label duo-ui for duo-ui, the label pro-ui for the pro jobs.
+  ci-done:
+    needs: [duo-ui, pro-ui-a, pro-ui-b]
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && (!github.event.pull_request.draft || contains(github.event.pull_request.labels.*.name, 'duo-ui') || contains(github.event.pull_request.labels.*.name, 'pro-ui')) && (github.event.action != 'labeled' || github.event.label.name == 'duo-ui' || github.event.label.name == 'pro-ui') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: shivinate7/claude-settings/actions/ci-done-comment@380a24b5fa9ab78b973892ddfe3a95eaff68601b # main 2026-11-06 (#1341)
+        with:
+          needs: ${{ toJSON(needs) }}
