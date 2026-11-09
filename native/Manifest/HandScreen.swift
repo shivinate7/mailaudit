@@ -52,6 +52,7 @@ struct HandScreen: View {
 
     @Environment(\.duoSpread) private var spread
     @State private var query = ""
+    @FocusState private var fieldFocused: Bool
     /// The names the list showed at the first tap on a match, and the one tapped. While they are set, the list keeps every
     /// row in its place and marks the chosen one; the next keystroke clears both (no-layout-shift-under-pointer).
     @State private var heldNames: [String]?
@@ -96,6 +97,8 @@ struct HandScreen: View {
                         .textFieldStyle(.plain).font(.cochin(16, relativeTo: .body)).foregroundStyle(Parchment.ink)
                         .textInputAutocapitalization(.never).autocorrectionDisabled().submitLabel(.done)
                         .accessibilityIdentifier("hand-query")
+                        // The field fills the box's full height, so a tap on its top or bottom band reaches it.
+                        .frame(minHeight: 48).contentShape(Rectangle()).focused($fieldFocused)
                         // A tap sets the query to the chosen name, which keeps the hold. Any other text is a keystroke: it ends the hold.
                         .onChange(of: query) { _, text in if text != chosen { heldNames = nil; chosen = nil } }
                         // The typed text settles for 150 ms before it is read, so a name typed letter by letter is read once, not once
@@ -111,6 +114,8 @@ struct HandScreen: View {
                     heldChip
                 }
                 .padding(.horizontal, 12).frame(minHeight: 48)
+                // The 12 pt side padding is not the field's, so a tap there focuses it.
+                .contentShape(Rectangle()).onTapGesture { fieldFocused = true }
                 .background(Parchment.card, in: RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Parchment.line, lineWidth: 1))
                 // .contain keeps hand-query and hand-held-chip reachable as children of the box.
