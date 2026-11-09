@@ -10,6 +10,8 @@ The CSS keyword `transparent` is not a color literal. It names no color and pain
 
 The native client builds its colours from the decoded file through `Parchment` in `native/Manifest/Theme.swift`, and the interface is held to light (`UIUserInterfaceStyle`). It does not yet follow the no-literal rule: `OrphanedView.swift` holds hand-set colours with dark variants, and the other views use system colours. Lanes N16 (Orphaned) and N17 (Tally, Ledger and Sync), with N14 and N15 for the masthead and cards, remove them.
 
+`shared/tokens.json` also holds the orders extension's dark set, as the keys `darkPaper`, `darkCard` and so on (owner grant, 2026-11-08; `docs/design/orders-extension/options-notes.md`, item 2). The web bundle embeds every key and Swift `Palette.decode` parses them, while `extension/build.mjs` alone writes the dark set into `extension/tokens.css` under `prefers-color-scheme: dark`; the app and the native client stay light.
+
 Translucency comes from `color-mix(in srgb, <token> <percent>, transparent)` over a token, not from `rgba()`. The bar's glass fill is the paper token at 62%. Its active tab is the card token at 90%. See `phone-nav-is-bottom-bar`.
 
 **Pinned by:** 60.10 (no colour literal in the code of `src/app.jsx`).

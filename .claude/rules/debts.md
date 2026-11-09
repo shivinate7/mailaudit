@@ -62,6 +62,6 @@ One known gap per file under `docs/debts/`. Each carries a Status line and a Dec
 - `screens-45px-width-flake` — The screens check once measured every target 45px wide.
 - `screens-touch-context-flake` — The nightly screens check once failed the touch context.
 - `tracking-checker-unbuilt` — A future checker that passively checks tracking numbers. It blocks nothing.
-- `orders-job-unbuilt` — The Worker orders cron, its key test and its status screen are unbuilt.
+- `orders-job-unbuilt` — The orders extension, its Worker route and the status screen are unbuilt.
 - `claim-17a-ci-red-unexplained` — Claim 17a failed twice on CI, and why only those runs is unknown.
 - `suite-flakes-under-load` — A suite case fails under load and passes on a re-run.
