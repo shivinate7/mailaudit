@@ -1,0 +1,798 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Card in Hand: the eight unbuilt parts</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light, so this page has one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6; --silver:#C4C3C0;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832; --amber:#846008;
+  --shadow:rgba(28,43,36,0.06);
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  /* Status bar foot: unmeasured on the Duo inner screen. Drawn at the UI test's 20 pt floor (DuoHandUITests.statusBarFloor). */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --keys-top: 405px;  /* measurements duo-fold-and-keyboard: the panel draws from about y 405 pt; its frame starts at 449 */
+  --new:#2E7A5E; --today:#A8443C;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
+main { max-width:1040px; margin:0 auto; padding:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:26px; margin:16px 0 4px; }
+h2 { font-family:var(--cochin); font-size:22px; margin:0 0 4px; }
+.sub { color:var(--inkSoft); margin:0 0 12px; max-width:80ch; }
+nav { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+nav a, button.hide { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+a:focus-visible, button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+section.part { margin:40px 0; }
+section.part[hidden], figure[hidden] { display:none; }
+.verdict { display:inline-block; font-size:13px; font-weight:600; padding:2px 8px; border-radius:8px; background:var(--card); border:1px solid var(--line); margin-left:8px; vertical-align:middle; }
+.lede { margin:0 0 8px; max-width:80ch; }
+figure { margin:16px 0 24px; }
+figcaption { margin-top:8px; max-width:80ch; }
+figcaption b { font-family:var(--cochin); font-size:18px; }
+.fit { width:100%; overflow:hidden; }
+ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14px; max-width:80ch; }
+
+/* ---- device: iPhone Duo inner screen, open, 951 x 669 pt, 1 CSS px = 1 pt ---- */
+.duo { position:relative; width:951px; height:669px; background:var(--paper); border:1px solid var(--ink); border-radius:12px; overflow:hidden;
+  font-family:-apple-system, system-ui, sans-serif; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 16px; font-size:12px; font-weight:600; z-index:5; }
+.page { position:absolute; top:0; bottom:0; width:455.5px; overflow:hidden; }
+.page.l { left:0; } .page.r { left:495.5px; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); }
+.fold span { position:absolute; top:200px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; }
+/* The system keyboard: iOS chrome, not an app colour, so these greys sit outside the tokens. */
+.keys { position:absolute; left:0; right:0; top:var(--keys-top); bottom:0; background:#D2D0D6; z-index:6; padding:8px 6px; }
+.keys .row { display:flex; gap:6px; margin-bottom:8px; justify-content:center; }
+.keys .k { height:42px; flex:0 0 42px; background:#FFFFFF; border-radius:6px; display:grid; place-items:center; font-size:18px; color:#111; }
+.keys .k.w { flex-basis:300px; font-size:14px; }
+/* The Duo tab bar under the right page (DuoSpine.DuoBar): 64 pt pill, 24 pt in, 12 pt up. Shown only with the keys down. */
+.bar { position:absolute; left:519.5px; width:407.5px; top:593px; height:64px; border:1px solid var(--line); border-radius:32px; z-index:4;
+  background:color-mix(in srgb, var(--paper) 62%, transparent); box-shadow:0 4px 16px var(--shadow); display:grid; grid-template-columns:repeat(4,1fr); padding:4px; gap:4px; }
+.bar span { display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:28px; font:12px var(--cochin); color:var(--inkSoft); }
+.bar span::before { content:""; width:20px; height:20px; border:1.5px solid currentColor; border-radius:5px; margin-bottom:4px; }
+.bar span.on { background:color-mix(in srgb, var(--card) 90%, transparent); color:var(--accent); }
+
+/* ---- app content: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono) ---- */
+.content { position:absolute; left:16px; right:16px; top:calc(var(--sat) + 16px); display:flex; flex-direction:column; gap:12px; font-family:var(--cochin); }
+.r .content { gap:8px; }
+.micro { font:10.5px/13px var(--mono); letter-spacing:1.2px; text-transform:uppercase; color:var(--inkSoft); min-height:13px; }
+/* A new label is drawn at 11 pt, the iOS minimum (HIG typography). Today's labels stay at the built 10.5 pt. */
+.micro.m11 { font-size:11px; line-height:14px; }
+.who { font-size:22px; line-height:27px; font-weight:700; }
+.meta { font:11px/14px var(--mono); color:var(--inkSoft); min-height:14px; display:flex; justify-content:space-between; gap:8px; }
+.meta .owe { color:var(--red); font-weight:700; }
+.meta .owe em { font:12px var(--cochin); font-style:normal; color:var(--inkSoft); font-weight:400; margin-right:4px; }
+.meta .whole { color:var(--ink); font-weight:700; }
+.pill { font:11.5px var(--mono); border:1px solid var(--line); background:var(--card); border-radius:5px; padding:8px 12px; color:var(--ink); white-space:nowrap; }
+.pill.post { font-weight:700; background:var(--accent); border-color:var(--accent); color:var(--card); }
+.hit { min-height:44px; min-width:44px; display:inline-flex; align-items:center; justify-content:center; }
+.lines { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.line { position:relative; display:flex; gap:8px; min-height:64px; padding-left:4px; border-top:1px solid var(--line); background:var(--card); }
+.line:first-child { border-top:0; }
+.line .box { flex:0 0 45px; height:45px; display:grid; place-items:center; }
+.line .box i { width:30px; height:30px; border:2px solid var(--inkSoft); border-radius:8px; display:block; position:relative; }
+.line .t { flex:1; padding:12px 12px 12px 0; }
+.line .t b { font-size:14px; font-weight:600; display:flex; justify-content:space-between; gap:8px; }
+.line .t b span { font:12px var(--mono); color:var(--inkSoft); font-weight:400; }
+.line .t small { font-size:11.5px; color:var(--inkSoft); display:block; margin-top:4px; }
+.line .t small .hold { color:var(--manilaInk); font-weight:700; }
+.step { display:flex; align-items:center; gap:4px; margin-top:8px; }
+.step .sb { width:44px; height:44px; display:grid; place-items:center; }
+.step .sb i { width:34px; height:34px; border:1px solid var(--line); border-radius:8px; background:var(--card); display:grid; place-items:center; font-style:normal; }
+.step .c { font:700 13px var(--mono); color:var(--manilaInk); min-width:44px; text-align:center; }
+.line.done { background:var(--greenSoft); }
+.line.done .t b { color:var(--inkSoft); }
+.line.done .box i { background:var(--green); border-color:var(--green); }
+.line.done .box i::after { content:""; position:absolute; left:8px; top:3px; width:8px; height:14px; border:solid var(--card); border-width:0 3px 3px 0; transform:rotate(45deg); }
+.line.partial .box i { background:var(--manila); border-color:var(--manilaInk); }
+.line.partial .box i::after { content:"\2013"; position:absolute; inset:0; display:grid; place-items:center; color:var(--manilaInk); font-size:16px; line-height:26px; text-align:center; }
+/* Part 1 options: the typed card's line */
+/* ::after, because the tag label holds ::before */
+.line.now-bar::after { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent); z-index:5; }
+.line.now-fill { background:var(--greenSoft); }
+/* Part 5: a line whose card waits on the Suspense line */
+.line.held { background:color-mix(in srgb, var(--manila) 55%, var(--card)); }
+.offer { min-height:110px; background:color-mix(in srgb, var(--manila) 50%, transparent); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; }
+.offer p { margin:0; font-size:13px; line-height:17px; min-height:34px; }
+.offer .btns { display:flex; gap:8px; }
+.offer .receipt { min-height:44px; display:flex; align-items:center; font:12px var(--mono); color:var(--manilaInk); }
+.notice { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:2px; }
+.notice .micro { color:var(--manilaInk); }
+.notice b { font-size:15px; } .notice small { font-size:12.5px; }
+.field { height:48px; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:0 12px; display:flex; align-items:center; font-size:16px; flex:none; }
+.field::after { content:""; width:2px; height:20px; background:var(--accent); margin-left:1px; }
+.field.empty { color:var(--inkSoft); }
+.field.empty::after { display:none; }
+.rowx { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:44px; }
+.rowx .soft { color:var(--inkSoft); font-size:14px; }
+/* Part 2: This envelope with its cards so far. Two text lines inside the 44 pt row the button already sets. */
+.env { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; min-height:44px; }
+.env .what { display:flex; flex-direction:column; min-width:0; padding-top:2px; }
+.env .what > span:first-child { color:var(--inkSoft); font-size:14px; line-height:18px; }
+.env .what > span:last-child { font-size:15px; line-height:20px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.env .what span.none { color:var(--inkSoft); font-style:italic; }
+/* A long list: the names clip, "+N more" stays whole */
+.env .what .val { display:flex; align-items:baseline; gap:4px; }
+.env .what .val .names { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.env .what span .more { font:12px var(--mono); color:var(--inkSoft); flex:none; }
+.match { min-height:44px; display:flex; align-items:center; font-size:14px; padding-left:10px; position:relative; }
+.match.on { font-weight:700; } .match.on::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent); }
+.count { font:12px var(--mono); color:var(--inkSoft); }
+.note { font-size:13px; color:var(--inkSoft); margin:0; line-height:17px; }
+.err { font-size:13px; color:var(--red); }
+/* Part 6: tie cards side by side */
+.tie { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.tie > div, .tcard { padding:12px; background:var(--card); border:1px solid var(--line); border-radius:8px; display:flex; flex-direction:column; gap:4px; }
+.tcard b, .tie b { font-size:15px; }
+.mini { display:flex; justify-content:space-between; gap:8px; font-size:13px; border-bottom:1px solid var(--line); min-height:28px; align-items:center; }
+.mini:last-of-type { border-bottom:0; }
+.mini span:last-child { font:12px var(--mono); color:var(--inkSoft); }
+.mini.heldm span:last-child { color:var(--manilaInk); font-weight:700; }
+/* Part 8: ranked accounts */
+.rank { background:var(--card); border:1px solid var(--line); border-radius:8px; }
+.rank .rr { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 12px; min-height:64px; border-top:1px solid var(--line); }
+.rank .rr:first-child { border-top:0; }
+.rank .rr b { font-size:15px; display:block; } .rank .rr small { font:11px var(--mono); color:var(--inkSoft); display:block; }
+/* Part 7: the end of mail day */
+.pile { background:var(--card); border:1px solid var(--line); border-radius:8px; }
+.pile .pr { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:0 12px; min-height:44px; border-top:1px solid var(--line); font-size:14px; }
+.pile .pr:first-child { border-top:0; }
+.pile .pr .d { font:11px var(--mono); color:var(--inkSoft); margin-left:8px; }
+.pile .pr .g { font:12px var(--mono); }
+.pile .pr .g.ok { color:var(--green); } .pile .pr .g.short { color:var(--red); font-weight:700; }
+.odd { background:var(--card); border:1px solid var(--line); border-radius:8px; }
+.odd .or { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 12px; min-height:60px; border-top:1px solid var(--line); }
+.odd .or:first-child { border-top:0; }
+.odd .or b { font-size:14px; display:block; } .odd .or small { font:11px var(--mono); color:var(--inkSoft); }
+.odd .or small.r { color:var(--red); }
+.well { font-size:20px; font-weight:700; color:var(--green); }
+.still { font:12px var(--mono); color:var(--red); font-weight:700; }
+.tbox { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:12px; background:var(--card); border:1px solid var(--line); border-radius:8px; }
+.tbox span { font-size:14px; } .tbox small { display:block; color:var(--red); font-size:12.5px; }
+.empty-hint { font-size:14px; color:var(--inkSoft); }
+
+/* tags: dashed outline on what exists today, and on what an option adds */
+[data-tag] { position:relative; }
+[data-tag]::before { content:attr(data-tag); position:absolute; right:4px; top:-9px; font:600 11px/14px -apple-system, system-ui, sans-serif; padding:0 4px;
+  background:var(--paper); z-index:4; white-space:nowrap; }
+.tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tag-new::before { color:var(--new); }
+.tag-today { outline:2px dashed var(--today); outline-offset:2px; } .tag-today::before { color:var(--today); }
+.line[data-tag]::before { top:auto; bottom:2px; }
+.line.tag-new, .line.tag-today { outline-offset:-2px; }
+.tag-below[data-tag]::before { top:auto; bottom:-17px; }
+.micro[data-tag]::before { text-transform:none; letter-spacing:0; }
+.meta[data-tag]::before { top:auto; bottom:-17px; right:auto; left:0; }
+
+/* folded frame: the outer screen, 466 x 678 pt (duo-fold-and-keyboard, re-measured 2026-11-08), drawn at half size */
+.folded { position:relative; width:233px; height:339px; border:1px solid var(--ink); border-radius:12px; background:var(--paper);
+  padding:calc(env(safe-area-inset-top) + 12px) 12px calc(env(safe-area-inset-bottom) + 12px); font-size:12px; color:var(--inkSoft); }
+.folded b { font-family:var(--cochin); color:var(--ink); font-size:14px; display:block; margin-bottom:4px; }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No seller, card, date, count or price on this page is real. Row heights are estimates from the code, not measurements.</div>
+<h1>Card in Hand: the eight parts the build does not draw</h1>
+<p class="sub">iPhone Duo, open pose, 951 x 669 pt, fold 40 pt at 455.5 pt. The keys panel draws from y 405 pt. Status bar foot drawn at 20 pt (unmeasured). Light theme only. Each part shows today's build, then the part as it should be built, inside today's layout. Debt <code>duo-hand-mockup-gaps</code>; decision <code>duo-card-in-hand</code>; the October mockup is <code>docs/design/duo-card-in-hand/index.html</code> at commit b8d11e7 (Duo round 2 draws Lost and degen's stack order as options).</p>
+
+<nav aria-label="Parts">
+  <a href="#s=folded">Folded</a>
+  <a href="#s=line-now">1 Typed line mark</a>
+  <a href="#s=this-envelope">2 This envelope</a>
+  <a href="#s=still-owed">3 Still owed here</a>
+  <a href="#s=keep-held">4 Keep held</a>
+  <a href="#s=held-lines">5 Held lines</a>
+  <a href="#s=tie-post">6 Post at a tie</a>
+  <a href="#s=end-of-day">7 End of mail day</a>
+  <a href="#s=suspense-rank">8 Suspense ranking</a>
+  <a href="#">All</a>
+  <button type="button" class="hide" id="restore">Show hidden options</button>
+</nav>
+
+<!-- Folded first (ios-apps, Mockups). Card in Hand does not open folded. -->
+<section class="part" id="s-folded" data-state="folded">
+<figure>
+  <div class="folded" data-device="iphone-duo-folded">
+    <b>Folded: unchanged</b>
+  </div>
+  <figcaption><b>Folded.</b> No change. Outer screen 466 x 678 pt, drawn at half size. Card in Hand opens only on two pages side by side (<code>PackagesTab.twoPages</code>, HandScreen.swift:32). The outer screen keeps today's one-page Packages. None of the eight parts draws here.</figcaption>
+</figure>
+</section>
+
+<template id="chrome-keys">
+  <div class="fold"><span>FOLD</span></div>
+  <div class="status"><span>9:41</span><span>100%</span></div>
+  <div class="keys">
+    <div class="row"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">y</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+    <div class="row"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+    <div class="row"><span class="k">z</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span></div>
+    <div class="row"><span class="k w">space</span><span class="k" style="flex-basis:90px;font-size:14px">done</span></div>
+  </div>
+</template>
+<template id="chrome-down">
+  <div class="fold"><span>FOLD</span></div>
+  <div class="status"><span>9:41</span><span>100%</span></div>
+  <div class="bar"><span class="on">Packages</span><span>Tally</span><span>Orphaned</span><span>Ledger</span></div>
+</template>
+<template id="head">
+  <div class="rowx"><span style="font-weight:700;font-size:17px">Mail day</span><span class="count">31 in · 27 out</span><span class="hit"><span class="pill">Close</span></span></div>
+</template>
+<template id="env-today">
+  <div class="rowx"><span class="soft">This envelope</span><span class="hit"><span class="pill">New envelope</span></span></div>
+</template>
+<template id="env-none">
+  <div class="env"><span class="what"><span>This envelope</span><span class="none">Nothing checked in yet</span></span><span class="hit"><span class="pill">New envelope</span></span></div>
+</template>
+<template id="left-bolt">
+  <div class="page l"><div class="content">
+    <div data-fill="head"></div>
+    <div class="field">Lightning B</div>
+    <div data-fill="env-today"></div>
+    <span class="micro">Matches</span>
+    <div class="match">Lightning Bolt</div>
+  </div></div>
+</template>
+<template id="kestrel-head">
+  <span class="micro">It came from</span>
+  <span class="who">Kestrel Card Co.</span>
+</template>
+
+<!-- ================= 1 ================= -->
+<section class="part" id="s-line-now" data-state="line-now">
+<h2>1 · The typed card's line <span class="verdict">option picked: accent bar</span></h2>
+<p class="lede">The October mockup marks the typed card's line with a green fill (its <code>.line.now</code>, index.html:101 and :163). In the build, that fill is already the done fill (<code>PackageCard.token(.rowFill)</code> gives greenSoft for a done line). So the October mark does not carry over as drawn. Two options.</p>
+
+<figure data-opt="today">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="left-bolt chrome-keys">
+    <div class="page r"><div class="content">
+      <div data-fill="kestrel-head"></div>
+      <span class="meta"><span>ordered 2026-10-14</span></span>
+      <div class="lines">
+        <div class="line partial tag-today" data-tag="Today: no mark on the typed card's line"><span class="box"><i></i></span><span class="t"><b>Lightning Bolt<span>$1.12</span></b><small>×4 · Magic 2011 · NM</small><span class="step"><span class="sb"><i>–</i></span><span class="c">3/4</span><span class="sb"><i>+</i></span></span></span></div>
+        <div class="line done"><span class="box"><i></i></span><span class="t"><b>Counterspell<span>$0.48</span></b><small>×2 · Dominaria Remastered · NM</small></span></div>
+        <div class="line"><span class="box"><i></i></span><span class="t"><b>Brainstorm<span>$0.62</span></b><small>Commander Masters · LP</small></span></div>
+      </div>
+    </div></div>
+  </div></div>
+  <figcaption><b>Today.</b> The right page shows the envelope, and nothing says which line is the card in your hand. HandScreen.swift:303 draws each line with <code>ItemLine</code>, the same in every state. Keys panel from y 405, frame from y 449.</figcaption>
+</figure>
+
+<figure data-opt="line-bar">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="left-bolt chrome-keys">
+    <div class="page r"><div class="content">
+      <div data-fill="kestrel-head"></div>
+      <span class="meta"><span>ordered 2026-10-14</span></span>
+      <div class="lines">
+        <div class="line partial now-bar tag-new" id="focus-line-bar" data-tag="New: 3 pt accent bar"><span class="box"><i></i></span><span class="t"><b>Lightning Bolt<span>$1.12</span></b><small>×4 · Magic 2011 · NM</small><span class="step"><span class="sb"><i>–</i></span><span class="c">3/4</span><span class="sb"><i>+</i></span></span></span></div>
+        <div class="line done"><span class="box"><i></i></span><span class="t"><b>Counterspell<span>$0.48</span></b><small>×2 · Dominaria Remastered · NM</small></span></div>
+        <div class="line"><span class="box"><i></i></span><span class="t"><b>Brainstorm<span>$0.62</span></b><small>Commander Masters · LP</small></span></div>
+      </div>
+    </div></div>
+  </div></div>
+  <figcaption><b>Accent bar (pick).</b> A 3 pt accent bar on the leading edge of the typed card's line. It is the mark the chosen match already has on the left page (item 48), so one mark means "this card" on both pages. It sits in ItemLine's 4 pt leading pad, so no text moves. It stays on a done line, where a fill would not show. Keys panel from y 405, frame from y 449. <button type="button" class="hide" data-hide="line-bar">Hide accent bar</button></figcaption>
+</figure>
+
+<figure data-opt="line-fill">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="left-bolt chrome-keys">
+    <div class="page r"><div class="content">
+      <div data-fill="kestrel-head"></div>
+      <span class="meta"><span>ordered 2026-10-14</span></span>
+      <div class="lines">
+        <div class="line partial now-fill tag-new" id="focus-line-fill" data-tag="New: October green fill"><span class="box"><i></i></span><span class="t"><b>Lightning Bolt<span>$1.12</span></b><small>×4 · Magic 2011 · NM</small><span class="step"><span class="sb"><i>–</i></span><span class="c">3/4</span><span class="sb"><i>+</i></span></span></span></div>
+        <div class="line done"><span class="box"><i></i></span><span class="t"><b>Counterspell<span>$0.48</span></b><small>×2 · Dominaria Remastered · NM</small></span></div>
+        <div class="line"><span class="box"><i></i></span><span class="t"><b>Brainstorm<span>$0.62</span></b><small>Commander Masters · LP</small></span></div>
+      </div>
+    </div></div>
+  </div></div>
+  <figcaption><b>Green fill, as drawn in October.</b> The typed line and the done Counterspell line now share one fill. When the typed card's line is done too, the mark vanishes. Keys panel from y 405, frame from y 449. <button type="button" class="hide" data-hide="line-fill">Hide green fill</button></figcaption>
+</figure>
+</section>
+
+<!-- ================= 2 ================= -->
+<section class="part" id="s-this-envelope" data-state="this-envelope">
+<h2>2 · This envelope, with its cards so far <span class="verdict">carried over</span></h2>
+<p class="lede">Carried over from October poses 1 to 3 (index.html:153, :223, :256): under "This envelope", the cards checked in since the last New envelope, or "Nothing checked in yet". Kept to one line, so the row stays the 44 pt that New envelope's hit frame already sets, and the button never moves.</p>
+
+<figure data-opt="today">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="chrome-keys">
+    <div class="page l"><div class="content">
+      <div data-fill="head"></div>
+      <div class="field">Brainst</div>
+      <div class="rowx tag-today" data-tag="Today: a label with no value"><span class="soft">This envelope</span><span class="hit"><span class="pill">New envelope</span></span></div>
+      <span class="micro">Matches</span>
+      <div class="match">Brainstorm</div>
+    </div></div>
+    <div class="page r"><div class="content">
+      <div data-fill="kestrel-head"></div>
+      <span class="meta"><span>ordered 2026-10-14</span></span>
+      <div class="lines">
+        <div class="line done"><span class="box"><i></i></span><span class="t"><b>Lightning Bolt<span>$1.12</span></b><small>×4 · Magic 2011 · NM</small></span></div>
+        <div class="line done"><span class="box"><i></i></span><span class="t"><b>Counterspell<span>$0.48</span></b><small>×2 · Dominaria Remastered · NM</small></span></div>
+        <div class="line"><span class="box"><i></i></span><span class="t"><b>Brainstorm<span>$0.62</span></b><small>Commander Masters · LP</small></span></div>
+      </div>
+    </div></div>
+  </div></div>
+  <figcaption><b>Today.</b> "This envelope" names a row and shows nothing in it (HandScreen.swift:111 to :118). Six cards are in, and the left page does not say so. Keys panel from y 405, frame from y 449.</figcaption>
+</figure>
+
+<figure data-opt="env-new">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="chrome-keys">
+    <div class="page l"><div class="content">
+      <div data-fill="head"></div>
+      <div class="field">Brainst</div>
+      <div class="env tag-new" id="focus-env-so-far" data-tag="New: cards so far, one line"><span class="what"><span>This envelope</span><span>Lightning Bolt ×4 · Counterspell ×2</span></span><span class="hit"><span class="pill">New envelope</span></span></div>
+      <span class="micro">Matches</span>
+      <div class="match">Brainstorm</div>
+    </div></div>
+    <div class="page r"><div class="content">
+      <div data-fill="kestrel-head"></div>
+      <span class="meta"><span>ordered 2026-10-14</span></span>
+      <div class="lines">
+        <div class="line done"><span class="box"><i></i></span><span class="t"><b>Lightning Bolt<span>$1.12</span></b><small>×4 · Magic 2011 · NM</small></span></div>
+        <div class="line done"><span class="box"><i></i></span><span class="t"><b>Counterspell<span>$0.48</span></b><small>×2 · Dominaria Remastered · NM</small></span></div>
+        <div class="line"><span class="box"><i></i></span><span class="t"><b>Brainstorm<span>$0.62</span></b><small>Commander Masters · LP</small></span></div>
+      </div>
+    </div></div>
+  </div></div>
+  <figcaption><b>Cards so far.</b> Names in check-in order, with the copies this envelope brought. The label and the value are two text lines (18 + 20 pt) inside the 44 pt row. Matches start at y 208, as today. Keys panel from y 405, frame from y 449.</figcaption>
+</figure>
+
+<figure data-opt="env-new">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="chrome-keys">
+    <div class="page l"><div class="content">
+      <div data-fill="head"></div>
+      <div class="field">Ponde</div>
+      <div class="env tag-new" data-tag="New: a long list ends in +N more"><span class="what"><span>This envelope</span><span class="val"><span class="names">Lightning Bolt ×4 · Counterspell ×2 ·</span><span class="more">+3 more</span></span></span><span class="hit"><span class="pill">New envelope</span></span></div>
+      <span class="micro">Matches</span>
+      <div class="match">Ponder</div>
+    </div></div>
+    <div class="page r"><div class="content">
+      <span class="micro">It came from</span>
+      <span class="who">Quillon Hobby</span>
+      <span class="meta"><span>ordered 2026-10-10</span></span>
+      <div class="lines">
+        <div class="line"><span class="box"><i></i></span><span class="t"><b>Ponder<span>$0.18</span></b><small>Commander Masters · NM</small></span></div>
+      </div>
+    </div></div>
+  </div></div>
+  <figcaption><b>Long list.</b> As many names as fit, then "+N more" in mono, never a second line. VoiceOver reads every name. A Post adds its cards here too. Keys panel from y 405, frame from y 449.</figcaption>
+</figure>
+
+<figure data-opt="env-new">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="chrome-keys">
+    <div class="page l"><div class="content">
+      <div data-fill="head"></div>
+      <div class="field empty">Type the card in hand</div>
+      <div class="env tag-new" data-tag="New: after New envelope"><span class="what"><span>This envelope</span><span class="none">Nothing checked in yet</span></span><span class="hit"><span class="pill">New envelope</span></span></div>
+    </div></div>
+    <div class="page r"><div class="content">
+      <p class="empty-hint">Type the card in hand. The envelope it came from shows here.</p>
+    </div></div>
+  </div></div>
+  <figcaption><b>Empty.</b> New envelope clears the list. The empty line holds the row's second line, so the first check-in grows nothing. Keys panel from y 405, frame from y 449.</figcaption>
+</figure>
+</section>
+
+<!-- ================= 3 ================= -->
+<section class="part" id="s-still-owed" data-state="still-owed">
+<h2>3 · Still owed here <span class="verdict">option picked: on the order line</span></h2>
+<p class="lede">The figure is the package's own "N left · $Y" (decision <code>outstanding-value-per-level</code>; the bundle's <code>packagePill</code>, which <code>PackagesModel.pills</code> already holds). October drew it under the lines with card names (index.html:167). With the build's keys spanning both pages from y 405, a line under three or more lines sits under the keys. So the place is drawn as two options.</p>
+
+<figure data-opt="today">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="left-bolt chrome-keys">
+    <div class="page r"><div class="content">
+      <div data-fill="kestrel-head"></div>
+      <span class="meta tag-today" data-tag="Today: no figure"><span>ordered 2026-10-14</span></span>
+      <div class="lines">
+        <div class="line partial"><span class="box"><i></i></span><span class="t"><b>Lightning Bolt<span>$1.12</span></b><small>×4 · Magic 2011 · NM</small><span class="step"><span class="sb"><i>–</i></span><span class="c">3/4</span><span class="sb"><i>+</i></span></span></span></div>
+        <div class="line done"><span class="box"><i></i></span><span class="t"><b>Counterspell<span>$0.48</span></b><small>×2 · Dominaria Remastered · NM</small></span></div>
+        <div class="line"><span class="box"><i></i></span><span class="t"><b>Brainstorm<span>$0.62</span></b><small>Commander Masters · LP</small></span></div>
+        <div class="line"><span class="box"><i></i></span><span class="t"><b>Ponder<span>$0.18</span></b><small>Commander Masters · NM</small></span></div>
+        <div class="line"><span class="box"><i></i></span><span class="t"><b>Preordain<span>$0.20</span></b><small>Commander Masters · NM</small></span></div>
+      </div>
+    </div></div>
+  </div></div>
+  <figcaption><b>Today.</b> The answer page gives no outstanding figure (HandScreen.swift:281 to :301). Packages does, on each card. Keys panel from y 405, frame from y 449.</figcaption>
+</figure>
+
+<figure data-opt="owed-meta">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="left-bolt chrome-keys">
+    <div class="page r"><div class="content">
+      <div data-fill="kestrel-head"></div>
+      <span class="meta tag-new" id="focus-owed-meta" data-tag="New: on the order line, y 92 to 106"><span>ordered 2026-10-14</span><span class="owe"><em>Still owed here</em>4 left · $2.12</span></span>
+      <div class="lines">
+        <div class="line partial"><span class="box"><i></i></span><span class="t"><b>Lightning Bolt<span>$1.12</span></b><small>×4 · Magic 2011 · NM</small><span class="step"><span class="sb"><i>–</i></span><span class="c">3/4</span><span class="sb"><i>+</i></span></span></span></div>
+        <div class="line done"><span class="box"><i></i></span><span class="t"><b>Counterspell<span>$0.48</span></b><small>×2 · Dominaria Remastered · NM</small></span></div>
+        <div class="line"><span class="box"><i></i></span><span class="t"><b>Brainstorm<span>$0.62</span></b><small>Commander Masters · LP</small></span></div>
+        <div class="line"><span class="box"><i></i></span><span class="t"><b>Ponder<span>$0.18</span></b><small>Commander Masters · NM</small></span></div>
+        <div class="line"><span class="box"><i></i></span><span class="t"><b>Preordain<span>$0.20</span></b><small>Commander Masters · NM</small></span></div>
+      </div>
+    </div></div>
+  </div></div>
+  <figcaption><b>On the order line (pick).</b> "Still owed here" in soft Cochin, the figure in red mono, at the trailing end of the "ordered" line. It adds no row, so the Post offer and the lines keep their place, and it shows at every length of envelope. When nothing is owed it reads "complete" in ink. At large text, where both halves do not fit one line, the figure wraps under the date. Keys panel from y 405, frame from y 449. <button type="button" class="hide" data-hide="owed-meta">Hide on the order line</button></figcaption>
+</figure>
+
+<figure data-opt="owed-under">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="left-bolt chrome-keys">
+    <div class="page r"><div class="content">
+      <div data-fill="kestrel-head"></div>
+      <span class="meta"><span>ordered 2026-10-14</span></span>
+      <div class="lines">
+        <div class="line partial"><span class="box"><i></i></span><span class="t"><b>Lightning Bolt<span>$1.12</span></b><small>×4 · Magic 2011 · NM</small><span class="step"><span class="sb"><i>–</i></span><span class="c">3/4</span><span class="sb"><i>+</i></span></span></span></div>
+        <div class="line done"><span class="box"><i></i></span><span class="t"><b>Counterspell<span>$0.48</span></b><small>×2 · Dominaria Remastered · NM</small></span></div>
+        <div class="line"><span class="box"><i></i></span><span class="t"><b>Brainstorm<span>$0.62</span></b><small>Commander Masters · LP</small></span></div>
+        <div class="line"><span class="box"><i></i></span><span class="t"><b>Ponder<span>$0.18</span></b><small>Commander Masters · NM</small></span></div>
+        <div class="line"><span class="box"><i></i></span><span class="t"><b>Preordain<span>$0.20</span></b><small>Commander Masters · NM</small></span></div>
+      </div>
+      <span class="meta tag-new" id="focus-owed-under" data-tag="New: under the lines, y 498, under the keys"><span class="owe"><em>Still owed here</em>4 left · $2.12</span></span>
+    </div></div>
+  </div></div>
+  <figcaption><b>Under the lines, as drawn in October.</b> It reads last, after the lines it sums. With five lines it sits at y 498, behind the keys; you scroll the right page to see it while you type. Keys panel from y 405, frame from y 449. <button type="button" class="hide" data-hide="owed-under">Hide under the lines</button></figcaption>
+</figure>
+</section>
+
+<!-- ================= 4 ================= -->
+<template id="left-held">
+  <div class="page l"><div class="content">
+    <div data-fill="head"></div>
+    <div class="field">Mind St</div>
+    <div data-fill="env-today"></div>
+    <span class="micro">Matches</span>
+    <div class="match">Mind Stone</div>
+    <div class="notice"><span class="micro">Suspense</span><b>Beast Within</b><small>Not checked in.</small></div>
+  </div></div>
+</template>
+<template id="brass-head">
+  <span class="micro">It came from</span>
+  <span class="who">Brass Lantern TCG</span>
+  <span class="meta"><span>ordered 2026-10-16</span></span>
+</template>
+<template id="brass-lines">
+  <div class="lines">
+    <div class="line"><span class="box"><i></i></span><span class="t"><b>Beast Within<span>$0.35</span></b><small>Commander Masters · NM</small></span></div>
+    <div class="line"><span class="box"><i></i></span><span class="t"><b>Chaos Warp<span>$0.42</span></b><small>Commander 2011 · NM</small></span></div>
+    <div class="line"><span class="box"><i></i></span><span class="t"><b>Mind Stone<span>$0.29</span></b><small>Commander Masters · NM</small></span></div>
+  </div>
+</template>
+
+<section class="part" id="s-keep-held" data-state="keep-held">
+<h2>4 · Keep held <span class="verdict">carried over</span></h2>
+<p class="lede">Carried over from October pose 2 (index.html:271 to :272): the offer carries Keep held beside Post. It goes in today's offer slot under the sender (decision <code>duo-card-in-hand</code>, the Post offer paragraph; item 42 still open). A press on Keep held leaves a receipt of the same height, as Post does.</p>
+
+<figure data-opt="today">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="left-held chrome-keys">
+    <div class="page r"><div class="content">
+      <div data-fill="brass-head"></div>
+      <div class="offer tag-today" data-tag="Today: Post only">
+        <p>Your held card came with this envelope. Nothing is checked in until you post.</p>
+        <span class="hit" style="align-self:flex-start"><span class="pill post">Post 2 cards here, 1 held</span></span>
+      </div>
+      <div data-fill="brass-lines"></div>
+    </div></div>
+  </div></div>
+  <figcaption><b>Today.</b> The offer has one button (HandScreen.swift:324 to :334). To keep the card held you must type on, and the offer stays up. Keys panel from y 405, frame from y 449.</figcaption>
+</figure>
+
+<figure data-opt="keep-new">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="left-held chrome-keys">
+    <div class="page r"><div class="content">
+      <div data-fill="brass-head"></div>
+      <div class="offer">
+        <p>Your held card came with this envelope. Nothing is checked in until you post.</p>
+        <div class="btns"><span class="hit"><span class="pill post">Post 2 cards here, 1 held</span></span><span class="hit tag-new" id="focus-keep" data-tag="New: Keep held"><span class="pill">Keep held</span></span></div>
+      </div>
+      <div data-fill="brass-lines"></div>
+    </div></div>
+  </div></div>
+  <figcaption><b>Keep held.</b> Beside Post, in the same 44 pt row, so the slot keeps today's height. Post stays the filled button. Keys panel from y 405, frame from y 449.</figcaption>
+</figure>
+
+<figure data-opt="keep-new">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="left-held chrome-keys">
+    <div class="page r"><div class="content">
+      <div data-fill="brass-head"></div>
+      <div class="offer tag-new" data-tag="New: receipt holds the slot">
+        <p>Kept on the Suspense line. Nothing is checked in.</p>
+        <span class="receipt">Beast Within stays held · Mind Stone not posted</span>
+      </div>
+      <div data-fill="brass-lines"></div>
+    </div></div>
+  </div></div>
+  <figcaption><b>After Keep held.</b> The receipt holds the slot until the next card or New envelope, as the Post receipt does (HandScreen.swift:341 to :353). The Suspense box on the left stays. Mind Stone's own line tap still checks it in. Keys panel from y 405, frame from y 449.</figcaption>
+</figure>
+</section>
+
+<!-- ================= 5 ================= -->
+<section class="part" id="s-held-lines" data-state="held-lines">
+<h2>5 · Held cards marked on their lines <span class="verdict">carried over</span></h2>
+<p class="lede">Carried over from October pose 2 (index.html:102, :267 to :268): a line whose card waits on the Suspense line gets a manila tint, and its detail ends "on the Suspense line". The tint and the words are added from HandScreen, so <code>ItemLine</code>, which Packages and Tally share, does not change.</p>
+
+<figure data-opt="today">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="left-held chrome-keys">
+    <div class="page r"><div class="content">
+      <div data-fill="brass-head"></div>
+      <div class="offer">
+        <p>Your held card came with this envelope. Nothing is checked in until you post.</p>
+        <span class="hit" style="align-self:flex-start"><span class="pill post">Post 2 cards here, 1 held</span></span>
+      </div>
+      <div class="lines">
+        <div class="line tag-today" data-tag="Today: looks like any open line"><span class="box"><i></i></span><span class="t"><b>Beast Within<span>$0.35</span></b><small>Commander Masters · NM</small></span></div>
+        <div class="line"><span class="box"><i></i></span><span class="t"><b>Chaos Warp<span>$0.42</span></b><small>Commander 2011 · NM</small></span></div>
+        <div class="line"><span class="box"><i></i></span><span class="t"><b>Mind Stone<span>$0.29</span></b><small>Commander Masters · NM</small></span></div>
+      </div>
+    </div></div>
+  </div></div>
+  <figcaption><b>Today.</b> Beast Within is held on the left page and looks open on the right. Keys panel from y 405, frame from y 449.</figcaption>
+</figure>
+
+<figure data-opt="held-new">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="left-held chrome-keys">
+    <div class="page r"><div class="content">
+      <div data-fill="brass-head"></div>
+      <div class="offer">
+        <p>Your held card came with this envelope. Nothing is checked in until you post.</p>
+        <span class="hit" style="align-self:flex-start"><span class="pill post">Post 2 cards here, 1 held</span></span>
+      </div>
+      <div class="lines">
+        <div class="line held tag-new" id="focus-held-line" data-tag="New: manila tint, held words"><span class="box"><i></i></span><span class="t"><b>Beast Within<span>$0.35</span></b><small>Commander Masters · NM · <span class="hold">on the Suspense line</span></small></span></div>
+        <div class="line"><span class="box"><i></i></span><span class="t"><b>Chaos Warp<span>$0.42</span></b><small>Commander 2011 · NM</small></span></div>
+        <div class="line"><span class="box"><i></i></span><span class="t"><b>Mind Stone<span>$0.29</span></b><small>Commander Masters · NM</small></span></div>
+      </div>
+    </div></div>
+  </div></div>
+  <figcaption><b>Held line.</b> Tint is manila 55% over card, as October drew it. The words carry the meaning, so the tint is never the only sign. The box stays open: the card is not checked in. The line keeps its height; the words join the detail line, and wrap only at large text. Keys panel from y 405, frame from y 449.</figcaption>
+</figure>
+</section>
+
+<!-- ================= 6 ================= -->
+<template id="left-tie">
+  <div class="page l"><div class="content">
+    <div data-fill="head"></div>
+    <div class="field">Fellw</div>
+    <div data-fill="env-today"></div>
+    <span class="micro">Matches</span>
+    <div class="match">Fellwar Stone</div>
+    <div class="notice"><span class="micro">Suspense</span><b>Fellwar Stone</b><small>Not checked in.</small></div>
+  </div></div>
+</template>
+<section class="part" id="s-tie-post" data-state="tie-post">
+<h2>6 · Post here at a tie <span class="verdict">carried over</span></h2>
+<p class="lede">Carried over from October pose 2 (index.html:228 to :243): each envelope of a tie lists its lines and has its own Post button. A tie still has no first choice: the buttons weigh the same, and nothing posts until you press one (<code>orphaned-mail-never-decides</code>). The button reads "Post N cards here", the act's name on the offer, not October's bare "Post here".</p>
+
+<figure data-opt="today">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="left-tie chrome-keys">
+    <div class="page r"><div class="content">
+      <span class="micro">2 envelopes hold this card</span>
+      <p class="note">Name the next card from this envelope to tell them apart. Nothing checks in until you post.</p>
+      <div class="tcard tag-today" data-tag="Today: seller and count, no lines, no Post"><b>Brass Lantern TCG</b><span class="meta"><span>ordered 2026-10-16 · 3 cards out</span></span></div>
+      <div class="tcard"><b>Quillon Hobby</b><span class="meta"><span>ordered 2026-10-10 · 2 cards out</span></span></div>
+    </div></div>
+  </div></div>
+  <figcaption><b>Today.</b> The tie names each envelope (HandScreen.swift:258 to :275). You cannot see which one is the envelope in your hand, and you cannot post to one. Keys panel from y 405, frame from y 449.</figcaption>
+</figure>
+
+<figure data-opt="tie-new">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="left-tie chrome-keys">
+    <div class="page r"><div class="content">
+      <span class="micro">2 envelopes hold this card</span>
+      <p class="note">Name the next card from this envelope to tell them apart. Nothing checks in until you post.</p>
+      <div class="tie tag-new" id="focus-tie" data-tag="New: lines and Post in each envelope">
+        <div><b>Brass Lantern TCG</b><span class="meta"><span>ordered 2026-10-16</span></span>
+          <div class="mini"><span>Fellwar Stone</span><span>in hand</span></div>
+          <div class="mini"><span>Beast Within</span><span>0/1</span></div>
+          <div class="mini"><span>Mind Stone</span><span>0/2</span></div>
+          <span class="hit" style="align-self:flex-start;margin-top:auto"><span class="pill">Post 1 card here</span></span></div>
+        <div><b>Quillon Hobby</b><span class="meta"><span>ordered 2026-10-10</span></span>
+          <div class="mini"><span>Fellwar Stone</span><span>in hand</span></div>
+          <div class="mini"><span>Swiftfoot Boots</span><span>0/1</span></div>
+          <span class="hit" style="align-self:flex-start;margin-top:auto"><span class="pill">Post 1 card here</span></span></div>
+      </div>
+    </div></div>
+  </div></div>
+  <figcaption><b>Post at a tie.</b> Two envelopes side by side, each 203 pt wide, each with its open lines (28 pt read-out rows, 13 pt) and a 44 pt Post. The cards top at y 99 and end by y 330, so both Post buttons clear the keys at 405. Three or more envelopes wrap to a second row of two. Both Post buttons are outlined; neither is filled. Keys panel from y 405, frame from y 449.</figcaption>
+  <ul class="tags"><li>The rows read "in hand" for the typed card and "held" for a card on the Suspense line. A row does not check in: only Post does.</li></ul>
+</figure>
+</section>
+
+<!-- ================= 7 ================= -->
+<template id="pile">
+  <span class="micro m11">Today's pile · 7 envelopes · 39 cards</span>
+  <div class="pile">
+    <div class="pr"><span>Fernhill Cards<span class="d">2026-10-20</span></span><span class="g ok">8/8</span></div>
+    <div class="pr"><span>Fernhill Cards<span class="d">2026-10-22</span></span><span class="g ok">6/6</span></div>
+    <div class="pr"><span>Kestrel Card Co.<span class="d">2026-10-21</span></span><span class="g ok">6/6</span></div>
+    <div class="pr"><span>Low Tide Singles<span class="d">2026-10-22</span></span><span class="g ok">5/5</span></div>
+    <div class="pr"><span>Kestrel Card Co.<span class="d">2026-10-14</span></span><span class="g short">6/7</span></div>
+    <div class="pr"><span>Brass Lantern TCG<span class="d">2026-10-16</span></span><span class="g ok">5/5</span></div>
+    <div class="pr"><span>Low Tide Singles<span class="d">2026-10-19</span></span><span class="g ok">3/3</span></div>
+  </div>
+</template>
+<template id="odd">
+  <span class="micro m11">Not normal today</span>
+  <div class="odd">
+    <div class="or"><span><b>Kestrel Card Co. came 1 short</b><small>2026-10-14 · 1 Lightning Bolt · 1 left · $1.12</small></span></div>
+  </div>
+  <div class="tbox"><span>Past 14 days: 4 envelopes<small>1 refund window closing</small></span><span class="hit"><span class="pill">Open</span></span></div>
+</template>
+<!-- The masthead's still-missing figure, under its own label, outside "Not normal today" -->
+<template id="still">
+  <span class="micro m11 tag-new tag-below" data-tag="New: its own label">Across all orders</span>
+  <span class="still">19 still missing · $11.07</span>
+</template>
+<section class="part" id="s-end-of-day" data-state="end-of-day">
+<h2>7 · The end of mail day <span class="verdict">carried over; what opens it: option picked, the empty query</span></h2>
+<p class="lede">Carried over from October pose 5 (index.html:171 to :195, :382 to :406): the left page lists today's envelopes, and the right page names only what is not normal. What opens it October does not say, since there the query was simply empty. Two options. The past-14-days box is today's <code>transitBox</code>, unchanged.</p>
+
+<figure data-opt="today">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="chrome-down">
+    <div class="page l"><div class="content">
+      <div class="rowx"><span style="font-weight:700;font-size:17px">Mail day</span><span class="count">39 in · 19 out</span><span class="hit"><span class="pill">Close</span></span></div>
+      <div class="field empty">Type the card in hand</div>
+      <div class="rowx tag-today" data-tag="Today: nothing under it"><span class="soft">This envelope</span><span class="hit"><span class="pill">New envelope</span></span></div>
+    </div></div>
+    <div class="page r"><div class="content">
+      <p class="empty-hint tag-today" data-tag="Today: the start-of-day hint">Type the card in hand. The envelope it came from shows here.</p>
+      <div class="tbox"><span>Past 14 days: 4 envelopes<small>1 refund window closing</small></span><span class="hit"><span class="pill">Open</span></span></div>
+    </div></div>
+  </div></div>
+  <figcaption><b>Today.</b> Pile done, keys down. The pages show the same hint they show before the first card (HandScreen.swift:249 to :251), and the box under it.</figcaption>
+</figure>
+
+<figure data-opt="eod-empty">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="chrome-down">
+    <div class="page l"><div class="content">
+      <div class="rowx"><span style="font-weight:700;font-size:17px">Mail day</span><span class="count">39 in · 19 out</span><span class="hit"><span class="pill">Close</span></span></div>
+      <div class="field empty">Type the card in hand</div>
+      <div data-fill="env-none"></div>
+      <div class="tag-new tag-below" id="focus-eod-empty" data-tag="New: today's pile, on an empty query" style="display:flex;flex-direction:column;gap:8px" data-fill="pile"></div>
+    </div></div>
+    <div class="page r"><div class="content"><div class="tag-new" data-tag="New: only what is not normal" style="display:flex;flex-direction:column;gap:8px" data-fill="odd"></div><div data-fill="still"></div></div></div>
+  </div></div>
+  <figcaption><b>On an empty query (pick).</b> Once one card is in today, an empty query shows the day. Before that, today's hint stays. No new control. A short envelope reads red, and its row names the missing card, so it needs no Open. The red line is the masthead's own "still missing" figure. <button type="button" class="hide" data-hide="eod-empty">Hide empty query</button></figcaption>
+  <ul class="tags"><li>Rows are read-outs, 44 pt each. Seven rows end near y 540 on the left page, which has no bar.</li><li>With the keys up the pile runs under them. It is a read-out, so nothing tappable hides.</li></ul>
+</figure>
+
+<figure data-opt="eod-control">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="chrome-down">
+    <div class="page l"><div class="content">
+      <div class="rowx"><span style="font-weight:700;font-size:17px">Mail day</span><span class="count">39 in · 19 out</span><span class="hit tag-new" id="focus-eod-control" data-tag="New: Day's end control"><span class="pill">Day's end</span></span><span class="hit"><span class="pill">Close</span></span></div>
+      <div class="field empty">Type the card in hand</div>
+      <div data-fill="env-none"></div>
+      <div style="display:flex;flex-direction:column;gap:8px" data-fill="pile"></div>
+    </div></div>
+    <div class="page r"><div class="content" data-fill="odd still"></div></div>
+  </div></div>
+  <figcaption><b>Behind a Day's end control.</b> The same view, shown only after a press. The empty query keeps today's hint. One more control in the header, and the day stays out of sight until you ask. <button type="button" class="hide" data-hide="eod-control">Hide Day's end</button></figcaption>
+</figure>
+
+<figure data-opt="eod-new">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="chrome-down">
+    <div class="page l"><div class="content">
+      <div class="rowx"><span style="font-weight:700;font-size:17px">Mail day</span><span class="count">39 in · 18 out</span><span class="hit"><span class="pill">Close</span></span></div>
+      <div class="field empty">Type the card in hand</div>
+      <div data-fill="env-none"></div>
+      <span class="micro m11">Today's pile · 1 envelope · 6 cards</span>
+      <div class="pile"><div class="pr"><span>Fernhill Cards<span class="d">2026-10-20</span></span><span class="g ok">6/6</span></div></div>
+    </div></div>
+    <div class="page r"><div class="content">
+      <span class="micro m11">Not normal today</span>
+      <span class="well tag-new" id="focus-eod-well" data-tag="New: nothing to report">All is well.</span>
+      <span class="micro m11 tag-new tag-below" data-tag="New: its own label">Across all orders</span>
+      <span class="still">18 still missing · $10.40</span>
+    </div></div>
+  </div></div>
+  <figcaption><b>All is well.</b> With nothing short and nothing past 14 days, the right page says so, and only the still-missing figure stays (<code>ux-all-is-well</code>).</figcaption>
+</figure>
+
+<figure data-opt="eod-new">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="chrome-keys">
+    <div class="page l"><div class="content">
+      <div class="rowx"><span style="font-weight:700;font-size:17px">Mail day</span><span class="count">39 in · 19 out</span><span class="hit"><span class="pill">Close</span></span></div>
+      <div class="field">Smothering T</div>
+      <div data-fill="env-none"></div>
+      <div class="notice tag-new" id="focus-nomatch" data-tag="New: the answer at the query"><span class="micro m11">No match</span><b>No open envelope holds Smothering T.</b><span class="hit" style="align-self:flex-start"><span class="pill">Hold in Suspense</span></span></div>
+    </div></div>
+    <div class="page r"><div class="content" data-fill="odd still"></div></div>
+  </div></div>
+  <figcaption><b>No match.</b> October pose 5's second frame (index.html:394 to :405): the answer shows at the query, not on the far page, and Hold in Suspense keeps the name on the line. Today the right page says "No open envelope holds" (HandScreen.swift:253) and offers nothing. The box sits where Matches would, below This envelope. Keys panel from y 405, frame from y 449.</figcaption>
+</figure>
+</section>
+
+<!-- ================= 8 ================= -->
+<template id="left-susp">
+  <div class="page l"><div class="content">
+    <div class="rowx"><span style="font-weight:700;font-size:17px">Mail day</span><span class="count">36 in · 22 out</span><span class="hit"><span class="pill">Close</span></span></div>
+    <div class="field">Command T</div>
+    <div data-fill="env-none"></div>
+    <span class="micro">Matches</span>
+    <div class="match">Command Tower</div>
+    <div class="notice"><span class="micro m11">Suspense · 3 cards</span><b>Arcane Signet ×2 · Command Tower</b><small>Not checked in.</small></div>
+  </div></div>
+</template>
+<section class="part" id="s-suspense-rank" data-state="suspense-rank">
+<h2>8 · Suspense ranks the accounts it fits <span class="verdict">carried over</span></h2>
+<p class="lede">Carried over from October pose 3 (index.html:286 to :312): an envelope with no sender, whose cards are each in two envelopes. Its cards wait on the Suspense line, and the right page ranks the accounts they fit by named copies. Post checks in the named cards only. The rank is the bundle's <code>rankCandidates</code>, the rule Orphaned already uses. When the top two rank equal, the page shows the tie of part 6 instead.</p>
+
+<figure data-opt="today">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="chrome-keys">
+    <div class="page l"><div class="content">
+      <div class="rowx"><span style="font-weight:700;font-size:17px">Mail day</span><span class="count">36 in · 22 out</span><span class="hit"><span class="pill">Close</span></span></div>
+      <div class="field">Command T</div>
+      <div data-fill="env-today"></div>
+      <span class="micro">Matches</span>
+      <div class="match">Command Tower</div>
+      <div class="notice tag-today" data-tag="Today: one held name"><span class="micro">Suspense</span><b>Arcane Signet</b><small>Not checked in.</small></div>
+    </div></div>
+    <div class="page r"><div class="content">
+      <span class="micro">2 envelopes hold this card</span>
+      <p class="note">Name the next card from this envelope to tell them apart. Nothing checks in until you post.</p>
+      <div class="tcard tag-today" data-tag="Today: a tie, unranked"><b>Low Tide Singles</b><span class="meta"><span>ordered 2026-10-19 · 3 cards out</span></span></div>
+      <div class="tcard"><b>Tinpot Cards</b><span class="meta"><span>ordered 2026-10-06 · 4 cards out</span></span></div>
+    </div></div>
+  </div></div>
+  <figcaption><b>Today.</b> The held-name line holds one name with no count (<code>HandModel.held</code>, HandModel.swift:21). Command Tower fits the same two envelopes, so <code>handStep</code> keeps Arcane Signet held and Command Tower goes nowhere. The right page shows a plain tie. Keys panel from y 405, frame from y 449.</figcaption>
+</figure>
+
+<figure data-opt="rank-new">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="left-susp chrome-keys">
+    <div class="page r"><div class="content">
+      <span class="micro m11">Accounts the held cards fit</span>
+      <span class="who">3 cards, no sender</span>
+      <span class="meta"><span>Arcane Signet ×2 · Command Tower</span></span>
+      <div class="rank tag-new" id="focus-rank" data-tag="New: ranked by named copies">
+        <div class="rr"><span><b>Low Tide Singles</b><small>ordered 2026-10-19</small><small>explains all 3 · nothing left over</small></span><span class="hit"><span class="pill post">Post 3 cards here</span></span></div>
+        <div class="rr"><span><b>Tinpot Cards</b><small>ordered 2026-10-06</small><small>2 of 3 cards · 2 more still owed</small><small>1 Arcane Signet stays held</small></span><span class="hit"><span class="pill">Post 2 cards here</span></span></div>
+      </div>
+      <p class="note">Post checks in only the cards an account ordered. A card that does not fit stays on the Suspense line.</p>
+    </div></div>
+  </div></div>
+  <figcaption><b>Ranked.</b> Low Tide ordered two Arcane Signet and one Command Tower, so its row reads OrphanedView's fit line "explains all 3 · nothing left over", and its Post is the filled one. Tinpot ordered one Arcane Signet and one Command Tower, so it reads "2 of 3 cards · 2 more still owed", and the second Arcane Signet stays held. The list ends by y 300, clear of the keys. October's "Leave in Suspense" button is left out: doing nothing already leaves the cards on the line. Keys panel from y 405, frame from y 449.</figcaption>
+</figure>
+</section>
+</main>
+
+<script>
+// Fill each frame from its templates, so the shared parts are drawn once. Templates can hold other fills, so repeat.
+for (let pass = 0; pass < 3; pass++) {
+  document.querySelectorAll('[data-fill]').forEach(el => {
+    const ids = el.getAttribute('data-fill'); el.removeAttribute('data-fill');
+    ids.split(' ').forEach(id => el.append(document.getElementById(id).content.cloneNode(true)));
+    // A bare wrapper only carried the fill: lift its children into the parent's flex column.
+    if (el.tagName === 'DIV' && el.attributes.length === 0) el.replaceWith(...el.childNodes);
+  });
+}
+// Scale each 951 pt frame to the page width; the page never scrolls sideways.
+function fit() {
+  document.querySelectorAll('.fit').forEach(w => { const d = w.firstElementChild; d.style.zoom = Math.min(1, w.clientWidth / 951); });
+}
+// Deep link: #s=<part> shows one part; no hash shows all. A Hide button removes one option.
+const hidden = new Set();
+function route() {
+  const m = location.hash.match(/s=([\w-]+)/), s = m && m[1];
+  document.querySelectorAll('section.part').forEach(p => { p.hidden = !!s && p.dataset.state !== s; });
+  document.querySelectorAll('figure[data-opt]').forEach(f => { f.hidden = hidden.has(f.dataset.opt); });
+  document.querySelectorAll('nav a').forEach(a => a.setAttribute('aria-current', String(a.getAttribute('href') === (location.hash || '#'))));
+  fit();
+}
+document.querySelectorAll('[data-hide]').forEach(b => {
+  const name = b.textContent.replace(/^Hide /, '');
+  b.addEventListener('click', () => {
+    const o = b.dataset.hide; hidden.has(o) ? hidden.delete(o) : hidden.add(o);
+    b.textContent = (hidden.has(o) ? 'Show ' : 'Hide ') + name; route();
+  });
+});
+document.getElementById('restore').addEventListener('click', () => {
+  hidden.clear(); document.querySelectorAll('[data-hide]').forEach(b => { b.textContent = 'Hide ' + b.textContent.replace(/^(Hide|Show) /, ''); }); route();
+});
+addEventListener('hashchange', route); addEventListener('resize', fit); route();
+</script>
+</body>
+</html>
