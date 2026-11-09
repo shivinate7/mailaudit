@@ -8,6 +8,8 @@
 //   - syncing is true while any call is out: while a photo fetch is held, while one of two overlapping
 //     calls is out after the other ended, and while a retry's POST is out; false once nothing is out (6, 7, 8)
 //   - a reply applies while a PhotoSync run is already out, and that run's fetch is skipped (9)
+//   - stop() during a photo fetch stops the photo run: the pull is stopped, the reply is not adopted, and no
+//     later photo is fetched (10)
 //
 // Contract the tests name (the only new API, on SyncClient):
 //   public var photoSync: PhotoSync?   // nil: no photo fetch
@@ -303,7 +305,12 @@ final class SyncPhotoFetchTests: SyncTestCase {
         gate.release()  // the retry's delay is over
         await hold.awaitEntry()
         XCTAssertTrue(client.syncing, "the retry's POST is out, held in the photo fetch")
-        hold.release()
+        // The retry's apply calls onApplied after it clears retryOut, so the resume below means the retry has ended.
+        await withCheckedContinuation { (retryEnded: CheckedContinuation<Void, Never>) in
+            client.onApplied = { retryEnded.resume() }
+            hold.release()
+        }
+        XCTAssertFalse(client.syncing, "the retry has ended, so nothing is out")
     }
 
     // MARK: a photo run already out
@@ -331,5 +338,39 @@ final class SyncPhotoFetchTests: SyncTestCase {
         hold.release()
         let report = await push.value
         XCTAssertEqual(report.pushed, ["pho-loc-1"], "anchor: the held push finishes")
+    }
+
+    // MARK: stop
+
+    // Case 10. The reply names two live photos. The first fetch is held, and stop() lands during it. The pull must
+    // return .stopped, the reply's envelope must stay out of the ledger, and the second fetch must never start.
+    // On cd60427 the assertion that fails is the last one: the worker holds both names, so `fetched` is
+    // [first, second]. SyncClient.stop() cancels the pull's own task, but PhotoSync's run is a separate Task that
+    // SyncClient does not stop, so its batch loop runs on and fetches the second photo. The outcome and the
+    // envelope asserts already hold there, because pressClear sees the cancelled pull and returns .stopped.
+    func testStopDuringAPhotoFetchStopsThePhotoRun() async throws {
+        let store = try makeStore()
+        let client = try makeClient(store)
+        let first = try await photoFile("pho-aaa-1")
+        let second = try await photoFile("pho-bbb-2")
+        let rig = try wirePhotos(client, worker: [first: Self.photo, second: Self.photo])
+        let probe = SyncPhotoProbe(store: store)
+        let hold = PhotoCallHold()
+        rig.wire.onGet = { name in
+            probe.sawGet(name, envelope: "e1")
+            if probe.getNames.count == 1 { await hold.enter() }  // holds the first fetch only
+        }
+        net.enqueue(try photoAnswer([Kit.liveEnvelope("e1", photos: ["pho-aaa-1", "pho-bbb-2"])]))
+
+        let call = Task { await client.pull() }
+        await hold.awaitEntry()
+        client.stop()
+        hold.release()
+        let outcome = await call.value
+
+        XCTAssertEqual(outcome, .stopped, "stop() during the photo fetch ends the pull as stopped")
+        XCTAssertNil(syncPhotoEnvelope(store, "e1"), "the reply's envelope is not in the ledger")
+        let fetched = await rig.worker.getCalls
+        XCTAssertEqual(fetched, [first], "the second photo's fetch never started, so only the first name was fetched")
     }
 }
