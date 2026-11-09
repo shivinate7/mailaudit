@@ -148,8 +148,8 @@ await test("2.5", async () =>
 
 await test("2.6", async () =>
   eq(shown(disp({ hasKey: true, pulling: true, run: okRun(12) })),
-    { text: "…", kind: "pulling", title: `${LEAD}pulling your orders.` },
-    "a pull under way shows … on the accent fill, and its title names no page number (badge-notes item 8; PR 243 departure)"));
+    { text: "…", kind: "pulling", title: `${LEAD}pulling order pages.` },
+    "a pull under way shows … on the accent fill, and its title says pulling order pages, with no page number (the mockup's pulling state; badge-notes item 8)"));
 
 await test("2.7", async () =>
   eq(shown(disp({ hasKey: false, pulling: false, run: okRun(12) })),
