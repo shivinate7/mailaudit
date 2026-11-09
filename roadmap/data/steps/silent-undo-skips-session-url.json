@@ -1,0 +1,10 @@
+{
+  "title": "claude-settings check: silent-undo skips the cloud session-URL line at a PR body's end",
+  "status": "todo",
+  "phase": "tooling",
+  "order": 15,
+  "why": "lint/check_silent_undo.py `last_paragraph` (claude-settings e0b9696) skips a closing paragraph that is only the Claude Code attribution line or the posting footer. A cloud session's PR body ends with the attribution line and then a claude.ai/code/session_ URL paragraph, so that URL counts as the last paragraph and a Retire-run or Drops-lines line above it is not read.",
+  "note": "Feedback for claude-settings, which the owner carries (sessions never edit claude-settings). Proposed fix: also skip a closing paragraph that is a lone https://claude.ai/code/session_ URL. Until then, a cloud PR body puts the session URL above its key lines. Reported by the batch runner after batch PR 270, 2026-11-09 03:20 CST; checked against the code.",
+  "ask": "",
+  "updatedAt": "2026-11-09T09:40:00Z"
+}
