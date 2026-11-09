@@ -22,6 +22,7 @@ Plan: docs/decisions/typography-cochin-and-mono.md#the-size-floor (web)
 
 ## See also
 
+- `composer-fields-two-lines` — the envelope composer's two-line card name and note fields are right on the phone (owner ruling 2026-11-08).
 - `design-view-switch-equal-thirds` — the one exception to mono for numbers, the outstanding pill.
 - `design-form-controls-no-inherit` — form controls need their own font rule.
 - `masthead-is-one-letterhead` — MANIFEST is set in Cochin caps.
