@@ -56,18 +56,18 @@ on:
 permissions:
   contents: read
 
-# A label event never cancels a run in progress: it would cancel the run the push started, and its own gates may skip every job.
-# A push cancels the older run of the same pull request.
+# Every run runs every job the pull request's current labels and draft state call for. So a newer run of the same
+# pull request (a push or a label) repeats the older run's jobs, and cancelling the older run loses nothing.
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
-  cancel-in-progress: ${{ github.event.action != 'labeled' }}
+  cancel-in-progress: true
 
 jobs:
   duo-ui:
     # xcode-27 is the runner-images xcode-27-arm64 image: Xcode 27.1 and the iOS 27.1 SDK.
     # Do not change it to macos-26: degen found that Xcode 26.6 on macos-26 compiles out the Duo fold code. runs-on reads no env.
     # The labels duo-ui and pro-ui in the if: lines and in ci-done are the second place a copy edits.
-    if: ${{ (!github.event.pull_request.draft || contains(github.event.pull_request.labels.*.name, 'duo-ui')) && (github.event.action != 'labeled' || github.event.label.name == 'duo-ui') }}
+    if: ${{ (!github.event.pull_request.draft || contains(github.event.pull_request.labels.*.name, 'duo-ui')) }}
     runs-on: xcode-27
     timeout-minutes: 60 # provisional
     steps:
@@ -140,7 +140,7 @@ jobs:
           retention-days: 7
 
   pro-ui-a:
-    if: ${{ contains(github.event.pull_request.labels.*.name, 'pro-ui') && (github.event.action != 'labeled' || github.event.label.name == 'pro-ui') }}
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'pro-ui') }}
     runs-on: xcode-27
     timeout-minutes: 60 # provisional
     steps:
@@ -192,7 +192,7 @@ jobs:
 
   pro-ui-b:
     # The steps repeat pro-ui-a on purpose: a matrix would hide each job and its cap from test/ci-wiring.test.mjs.
-    if: ${{ contains(github.event.pull_request.labels.*.name, 'pro-ui') && (github.event.action != 'labeled' || github.event.label.name == 'pro-ui') }}
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'pro-ui') }}
     runs-on: xcode-27
     timeout-minutes: 60 # provisional
     steps:
@@ -245,7 +245,7 @@ jobs:
   # It runs when any of the three jobs was due: a ready pull request or the label duo-ui for duo-ui, the label pro-ui for the pro jobs.
   ci-done:
     needs: [duo-ui, pro-ui-a, pro-ui-b]
-    if: ${{ !cancelled() && github.event_name == 'pull_request' && (!github.event.pull_request.draft || contains(github.event.pull_request.labels.*.name, 'duo-ui') || contains(github.event.pull_request.labels.*.name, 'pro-ui')) && (github.event.action != 'labeled' || github.event.label.name == 'duo-ui' || github.event.label.name == 'pro-ui') }}
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && (!github.event.pull_request.draft || contains(github.event.pull_request.labels.*.name, 'duo-ui') || contains(github.event.pull_request.labels.*.name, 'pro-ui')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
