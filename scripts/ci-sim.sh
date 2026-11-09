@@ -160,7 +160,7 @@ duo_counts() {
   : "${UI_TEST_DIR:?UI_TEST_DIR is not set}" "${DUO_CLASSES_FILE:?DUO_CLASSES_FILE is not set}"
   : "${DUO_CLASSES_VAR:?DUO_CLASSES_VAR is not set}" "${DUO_CLOSED_LIST_CMD:?DUO_CLOSED_LIST_CMD is not set}"
   local classes closed total=0 n f id cls method UI_DIR="$ROOT/$UI_TEST_DIR"
-  classes="$(grep -E "^${DUO_CLASSES_VAR}[[:space:]]*:=" "$ROOT/$DUO_CLASSES_FILE" | sed 's/^[^=]*=//')"
+  classes="$(grep -E "^${DUO_CLASSES_VAR}[[:space:]]*:=" "$ROOT/$DUO_CLASSES_FILE" | sed 's/^[^=]*=//' || true)"
   [[ -n "$classes" ]] || die "no $DUO_CLASSES_VAR line in $DUO_CLASSES_FILE"
   # The command word-splits on purpose: it is a command line from the env block.
   # shellcheck disable=SC2086
