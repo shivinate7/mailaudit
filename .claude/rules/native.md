@@ -98,6 +98,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `hand-open-under-bar-at-l` — At AccessibilityL the Card in Hand control sits under the tab bar.
 - `hand-tap-label-unpinned` — No test pins the tapped name's sideways place.
 - `duo-left-page-dead-margin` — The Duo left page scrolls 76 pt past its end; low priority, after restyle's step 8.
+- `duo-hand-first-case-timeout` — A Duo UI wait times out in CI while its value is already right.
 - `duo-keys-minimize-pref` — A simulator keyboard preference fails the Duo keys-up tests.
 - `duo-checkin-error-under-bar` — A Packages check-in error can sit under the Duo bar.
 - `native-tally-ellipsis-unpinned` — Nothing pins the native Tally ellipsis.
