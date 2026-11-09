@@ -35,9 +35,10 @@
 //   save-slot on the right of row 2. No part of the masthead changes frame when the tab changes, at
 //   375pt and at 320pt (-ManifestUITestWidth). Each tab's masthead-count carries that tab's count.
 // The compose-once claim is not here: no UI test can read an opacity (see MastheadComposeOnceTests).
-// The running-head slot: the first content element of every tab (the sync advisory when it shows, else the first row or the
-// title) sits 47pt below the masthead's foot, the 46pt head and its 1pt rule. `running-head` is the head, pinned over the list
-// once the masthead has scrolled away. It is mounted only while pinned, so a test reads its existence and frame, never its
+// The running-head slot: the first content element of every tab sits 47pt below the masthead's foot, the 46pt head and
+// its 1pt rule. That element is the sync advisory on Orphaned and Tally when it shows, the stamped row on Packages, else
+// the first row or the title. On Packages the advisory and the first package row sit under the stamped row's foot.
+// `running-head` is the head, pinned over the list once the masthead has scrolled away. It is mounted only while pinned, so a test reads its existence and frame, never its
 // opacity, and pinning or unpinning it moves no other frame. Launch argument -ManifestUITestSyncStatus 401 shows the advisory.
 //
 // Not driven: the share sheet behind Backup, and Backup on a ledger that failed to open (no
@@ -346,10 +347,14 @@ final class MastheadBackupUITests: XCTestCase {
     /// The 46pt running head and its 1pt rule, held clear under the masthead (MastheadScreen).
     static let slot: CGFloat = 47
 
-    /// The 1pt rules that frame the stamped row, and its 16pt bottom padding (StampedRow in StampViews). No element
-    /// carries them, so stampedRowEdges adds them to the cell's frame.
+    /// Copies of StampedRow in StampViews.swift: the 1pt rules that frame the row (:16 and :36) and its 16pt bottom
+    /// padding (:38). No element carries them, so stampedRowEdges adds them to the cell's frame.
     static let ruleHeight: CGFloat = 1
     static let stampedPadding: CGFloat = 16
+    /// Appended to each foot failure. A product change to StampViews.swift :16, :36 or :38 moves the foot, so it reads
+    /// here as a changed row, not as a moved list.
+    static let footNote = "The foot is the cell's bottom plus ruleHeight and stampedPadding, copied from StampedRow in StampViews.swift. "
+        + "A product change there reads here as a changed row, not a moved list."
 
     /// Every package row that exists. Packages is a lazy list, so only the rows near the screen do.
     func packageRows(_ app: XCUIApplication) -> XCUIElementQuery {
@@ -411,7 +416,7 @@ final class MastheadBackupUITests: XCTestCase {
                 let foot = try stampedRowEdges(app).foot
                 let row = try topmostPackageRow(app)
                 XCTAssertEqual(row.frame.minY - foot, 0, accuracy: 0.5,
-                               "Packages at \(width)pt: the first package row is not directly under the stamped row")
+                               "Packages at \(width)pt: the first package row is not directly under the stamped row. \(Self.footNote)")
             }
         }
     }
@@ -431,7 +436,7 @@ final class MastheadBackupUITests: XCTestCase {
             if tab == "Packages" {
                 let edges = try stampedRowEdges(app)
                 XCTAssertEqual(edges.top - head.maxY, Self.slot, accuracy: 0.5, "Packages: the stamped row is not one slot below the masthead")
-                XCTAssertEqual(advisory.frame.minY - edges.foot, 0, accuracy: 0.5, "Packages: the advisory is not directly under the stamped row")
+                XCTAssertEqual(advisory.frame.minY - edges.foot, 0, accuracy: 0.5, "Packages: the advisory is not directly under the stamped row. \(Self.footNote)")
             } else {
                 XCTAssertEqual(advisory.frame.minY - head.maxY, Self.slot, accuracy: 0.5, "\(tab): the advisory is not one slot below the masthead")
             }
@@ -491,7 +496,7 @@ final class MastheadBackupUITests: XCTestCase {
             settle(head)
             let edges = try stampedRowEdges(app)
             XCTAssertEqual(edges.top - head.frame.maxY, Self.slot, accuracy: 0.5, "the stamped row is not one slot below the masthead \(when)")
-            XCTAssertEqual(row.frame.minY - edges.foot, 0, accuracy: 0.5, "the first package row is not directly under the stamped row \(when)")
+            XCTAssertEqual(row.frame.minY - edges.foot, 0, accuracy: 0.5, "the first package row is not directly under the stamped row \(when). \(Self.footNote)")
         }
         func unmounted(_ when: String) {
             let none = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: running)
