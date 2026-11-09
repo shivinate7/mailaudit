@@ -7,7 +7,7 @@ received, see what is outstanding and what it cost, and flag mail that may be
 lost.
 
 Three views read the same check-in data. **Packages** pairs an order with a
-seller, and it is the mail-day working view. **Tally** pools one product name
+seller, and it is the working view for when the mail comes. **Tally** pools one product name
 across every seller, which answers "did all four arrive" and carries the cost
 basis. **Orphaned** holds a package that arrives with no way to tell who sent it.
 

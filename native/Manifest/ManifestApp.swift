@@ -152,6 +152,9 @@ struct ManifestApp: App {
 
     /// A reset or restore changed the ledger: every view reads it again.
     private func reloadAll() async {
+        // A restore or a Reset ends the held Mark all Undo; a Worker apply (startSync's reload) does not.
+        model?.endBulkUndo()
+        tally?.endBulkUndo()
         try? await model?.load()
         try? await tally?.load()
         try? await orphaned?.load()
@@ -161,8 +164,7 @@ struct ManifestApp: App {
     /// With -ManifestUITestSeed the version store starts empty, so a run never counts an earlier one.
     private static func versionsURL() throws -> URL {
         let fm = FileManager.default
-        let url = try fm.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-            .appending(path: "versions", directoryHint: .isDirectory)
+        let url = VersionStore.folder(besideLedger: try ledgerURL())
         if ProcessInfo.processInfo.arguments.contains("-ManifestUITestSeed") { try? fm.removeItem(at: url) }
         return url
     }

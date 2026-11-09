@@ -1,7 +1,7 @@
 // Package card paint, on screen (lane N15, native-build-lanes, card-the-bar-is-out-of-flow,
 // no-layout-shift-under-pointer, order-id-button-stops-propagate). The strings and the tokens are
 // pinned in ManifestKit (PackageCard*Tests); these cases pin what only the screen can show: the
-// link is there and big enough, the bar mounts and leaves without moving anything, and the pill
+// link is there and big enough, the bar's fact is spoken while check-ins move nothing, and the pill
 // on screen reads the model's text.
 //
 // Red-first. The builder makes these pass. The tests read no colour: XCUITest cannot.
@@ -10,11 +10,10 @@
 //   order-link:<gk>   one per package, an XCUIElement of type link whose label holds the order id and
 //                     "TCGplayer". At least 44pt each way, and inside its package row. A tap on it
 //                     must not check anything in (never tapped here: it would leave the app).
-//   card-bar:<gk>     the card's progress bar, in the hierarchy only while the package has some but
-//                     not all copies in. It lies inside the package row, under 8pt tall. It carries a
-//                     label such as "1 of 4 copies in", so the accessibility audit finds it described.
-//                     If that audit still flags the 3pt bar, hide it and drop the presence checks here;
-//                     PackagesModel.bars still pins when it shows.
+//   bulk-clear:<gk>   Clear check-ins (PackageBulkUITests holds the rest of its contract). There only while a copy
+//                     is in. Its value is "N of M copies in", the fact the card's progress bar draws. The bar
+//                     itself is hidden from the accessibility tree (the audit flagged the 3pt bar), so the
+//                     cases here read the fact from this value; PackagesModel.bars still pins when the bar shows.
 //   card-pill:<gk>    the "N left · $X" pill; its label is the pill text. Absent when nothing is owed.
 //   got-qty:<line key> the mono got/qty read-out of a line with more than one copy. Its label or its
 //                     value reads "got/qty", as the web stepper prints it. Absent on a one-copy line.
@@ -73,17 +72,31 @@ final class PackageCardUITests: XCTestCase {
     // MARK: the order link
 
     /// Every package has a link to TCGplayer: a real link element, named for its order, 44pt each way, in its card.
+    /// The Packages list is lazy, so a card far down is not in the tree until the list has scrolled near it. The row ids
+    /// are collected across the scroll, then each card and its link are mounted before they are read.
     func testEveryPackageHasAnOrderLinkInsideItsCard() throws {
         let app = launch()
         XCTAssertTrue(element(app, "package-row:\(Self.package)").waitForExistence(timeout: 5), "the Packages rows did not load")
-        let rows = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "identifier BEGINSWITH %@", "package-row:")).allElementsBoundByIndex
-        XCTAssertGreaterThanOrEqual(rows.count, 4, "the fixture holds four packages")
-        for row in rows {
-            let gk = String(row.identifier.dropFirst("package-row:".count))
-            let orderId = String(gk.split(separator: ":", maxSplits: 1).first ?? "")
+        var gks = Set<String>()
+        func collectRows() {
+            let rows = app.descendants(matching: .any)
+                .matching(NSPredicate(format: "identifier BEGINSWITH %@", "package-row:")).allElementsBoundByIndex
+            for row in rows { gks.insert(String(row.identifier.dropFirst("package-row:".count))) }
+        }
+        collectRows()
+        for _ in 0..<5 {
+            let seen = gks.count
+            app.swipeUp()
+            collectRows()
+            if gks.count == seen { break }
+        }
+        XCTAssertGreaterThanOrEqual(gks.count, 4, "the fixture holds four packages")
+        for gk in gks.sorted() {
+            XCTAssertTrue(ScreenKit.mount(app, "package-row:\(gk)"), "no card for \(gk) on the list")
+            XCTAssertTrue(ScreenKit.mount(app, "order-link:\(gk)"), "no order link for \(gk)")
+            let row = element(app, "package-row:\(gk)")
             let link = element(app, "order-link:\(gk)")
-            XCTAssertTrue(link.exists, "no order link for \(gk)")
+            let orderId = String(gk.split(separator: ":", maxSplits: 1).first ?? "")
             XCTAssertEqual(link.elementType, .link, "the order id for \(gk) must be a link element")
             XCTAssertTrue(link.label.contains(orderId) && link.label.contains("TCGplayer"),
                           "the link label \(link.label.debugDescription) should name order \(orderId) and TCGplayer")
@@ -96,24 +109,25 @@ final class PackageCardUITests: XCTestCase {
     // MARK: the bar, the pill and the layout through a package's three taps
 
     /// Checking the lines of A1 in one by one: nothing moves, not the link, not any row, not the tapped
-    /// control; the bar is there after the first and second tap and gone once the package is complete;
-    /// the pill reads the model's text and goes with the last copy. The A1 card is scrolled fully into view first:
+    /// control; Clear speaks the bar's fact after each tap ("1 of 4", "2 of 4", "4 of 4 copies in", the bar itself
+    /// being out of the accessibility tree); the pill reads the model's text and goes with the last copy. The A1 card is scrolled fully into view first:
     /// below the fold, the first tap would scroll the list and every frame would move. The at-rest checks come
     /// after that scroll, so they also prove the scroll checked nothing in.
     func testCheckInsMoveNothingWhileTheBarComesAndGoes() throws {
         let app = launch()
         let gk = Self.package
-        let bar = element(app, "card-bar:\(gk)"), pill = element(app, "card-pill:\(gk)")
+        let clear = element(app, "bulk-clear:\(gk)"), pill = element(app, "card-pill:\(gk)")
         let row = element(app, "package-row:\(gk)")
         XCTAssertTrue(row.waitForExistence(timeout: 5), "the A1 row is missing")
         app.reveal(row, whole: true)
 
-        XCTAssertFalse(bar.exists, "nothing is in yet: no bar")
+        XCTAssertFalse(clear.exists, "nothing is in yet: Clear is not there, and no \"copies in\" fact is spoken")
         XCTAssertEqual(pill.label, "4 left \u{00B7} $4.00", "the pill at rest")
         var previous = frames(app)
         XCTAssertNotNil(previous["order-link:\(gk)"], "the order link is missing, so the shift check below would skip it")
 
         let pills = ["3 left \u{00B7} $3.00", "2 left \u{00B7} $1.00"]  // Lightning in, then Counterspell in
+        let copiesIn = [1, 2, 4]  // after each tap: Lightning 1, Counterspell 1, Brainstorm 2
         for (i, key) in Self.lines.enumerated() {
             let control = element(app, "checkin:\(key)")
             XCTAssertTrue(control.waitForExistence(timeout: 5), "the check-in control \(key) is missing")
@@ -126,13 +140,13 @@ final class PackageCardUITests: XCTestCase {
             }
             previous = now
 
+            XCTAssertTrue(clear.waitForExistence(timeout: 3), "a copy is in after \(key): Clear must be there to speak the fact")
+            let fact = "\(copiesIn[i]) of 4 copies in"
+            wait("value == '\(fact)'", for: clear, "Clear's value did not become \(fact) after \(key)")
+            XCTAssertEqual(clear.value as? String, fact, "Clear's value after \(key): the progress bar's fact")
             if i < 2 {
-                XCTAssertTrue(bar.waitForExistence(timeout: 3), "some but not all copies are in after \(key): the bar must be drawn")
-                XCTAssertTrue(row.frame.insetBy(dx: -1, dy: -1).contains(bar.frame), "the bar lies outside its card")
-                XCTAssertLessThan(bar.frame.height, 8, "the bar is a rule on the card's edge, not a row")
                 XCTAssertEqual(pill.label, pills[i], "the pill after \(key)")
             } else {
-                wait("exists == false", for: bar, "every copy is in: no bar at 100%")
                 wait("exists == false", for: pill, "every copy is in: no pill")
             }
         }
@@ -248,7 +262,8 @@ final class PackageCardUITests: XCTestCase {
     func testOneLineCardKeepsTenPointsBelowItsLastText() throws {
         let app = launch()
         let row = element(app, "package-row:D1::Delta Cards")
-        XCTAssertTrue(row.waitForExistence(timeout: 5), "the one-line D1 card is missing")
+        // D1 sits below the fold on the lazy list, so mount scrolls it near before its text is read.
+        XCTAssertTrue(ScreenKit.mount(app, "package-row:D1::Delta Cards"), "the one-line D1 card is missing")
         guard let last = row.descendants(matching: .staticText).allElementsBoundByIndex
             .max(by: { $0.frame.maxY < $1.frame.maxY }) else {
             XCTFail("the D1 card holds no text")

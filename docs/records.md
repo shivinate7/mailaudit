@@ -11,6 +11,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | Slug | Gist | Link |
 |---|---|---|
 | `auto-push-safe-as-merge-exists` | **Status:** retired 2026-10-14. | [`docs/decisions/auto-push-safe-as-merge-exists.md`](../docs/decisions/auto-push-safe-as-merge-exists.md) |
+| `composer-fields-two-lines` | Owner ruling 2026-11-08 15:23 CST, waiting-page item 57 a: on the phone, the envelope composer's two-line card name and note fields are right. | [`docs/decisions/composer-fields-two-lines.md`](../docs/decisions/composer-fields-two-lines.md) |
 | `data-branch-setup` | The `data` branch in `mailaudit-data` already exists. | [`docs/decisions/data-branch-setup.md`](../docs/decisions/data-branch-setup.md) |
 | `debts-hold-known-gaps` | Each known gap is one file under `docs/debts/`, with a Status line and a Decision line. | [`docs/decisions/debts-hold-known-gaps.md`](../docs/decisions/debts-hold-known-gaps.md) |
 | `fine-grained-token-single-repo` | **Status:** retired. | [`docs/decisions/fine-grained-token-single-repo.md`](../docs/decisions/fine-grained-token-single-repo.md) |
@@ -89,6 +90,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `recent-checks-can-be-undone` | **Status:** ruled. | [`docs/decisions/recent-checks-can-be-undone.md`](../docs/decisions/recent-checks-can-be-undone.md) |
 | `recovery-control-not-state-gated` | If the data an action works on is absent, its recovery control must not hide. | [`docs/decisions/recovery-control-not-state-gated.md`](../docs/decisions/recovery-control-not-state-gated.md) |
 | `remote-is-transport-not-storage` | `window.remote` is transport, not storage. | [`docs/decisions/remote-is-transport-not-storage.md`](../docs/decisions/remote-is-transport-not-storage.md) |
+| `ruled-head-masthead-vocabulary` | Kind: build | [`docs/decisions/ruled-head-masthead-vocabulary.md`](../docs/decisions/ruled-head-masthead-vocabulary.md) |
 | `ruled-head-one-advisory-entrance` | Kind: build | [`docs/decisions/ruled-head-one-advisory-entrance.md`](../docs/decisions/ruled-head-one-advisory-entrance.md) |
 | `ruled-head-panels-carry-no-fill` | **Status:** orchestrator default, 2026-10-11, not built. | [`docs/decisions/ruled-head-panels-carry-no-fill.md`](../docs/decisions/ruled-head-panels-carry-no-fill.md) |
 | `rules-run-in-javascriptcore` | **Status:** ruled. | [`docs/decisions/rules-run-in-javascriptcore.md`](../docs/decisions/rules-run-in-javascriptcore.md) |
@@ -175,6 +177,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `motion-the-stamp-lands` | The stamp rocks down and settles at its resting angle, instead of blinking into place. | [`docs/decisions/motion-the-stamp-lands.md`](../docs/decisions/motion-the-stamp-lands.md) |
 | `motion-the-switch-is-one-object` | The ruling: the active-view fill is a single element that slides between thirds. | [`docs/decisions/motion-the-switch-is-one-object.md`](../docs/decisions/motion-the-switch-is-one-object.md) |
 | `motion-use-just-became` | Every celebration marks a state that a package can already be in. | [`docs/decisions/motion-use-just-became.md`](../docs/decisions/motion-use-just-became.md) |
+| `native-bulk-check-in` | The iOS Packages card and the open Tally row carry Mark all received and Clear check-ins, as the web's do (`src/app.jsx` `bulkSet`). | [`docs/decisions/native-bulk-check-in.md`](../docs/decisions/native-bulk-check-in.md) |
 | `null-remote-info-is-not-no-key` | A null `remoteInfo` means that the status has not loaded yet. | [`docs/decisions/null-remote-info-is-not-no-key.md`](../docs/decisions/null-remote-info-is-not-no-key.md) |
 | `offline-is-decided-by-fetch` | The app decides `offline` only by a failed `fetch`, and by nothing else. | [`docs/decisions/offline-is-decided-by-fetch.md`](../docs/decisions/offline-is-decided-by-fetch.md) |
 | `one-stamp-per-package` | Each package holds at most one order stamp. | [`docs/decisions/one-stamp-per-package.md`](../docs/decisions/one-stamp-per-package.md) |
@@ -202,7 +205,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `remote-rules-fail-quietly` | Two adapter decisions get their own pure functions, in `src/remote-rules.mjs`. | [`docs/decisions/remote-rules-fail-quietly.md`](../docs/decisions/remote-rules-fail-quietly.md) |
 | `remote-sync-is-off-the-save-path` | The local save runs on its own debounced path, with a 500ms debounce and a saved or saving indicator. | [`docs/decisions/remote-sync-is-off-the-save-path.md`](../docs/decisions/remote-sync-is-off-the-save-path.md) |
 | `retention-tiers-are-unioned` | A saved version survives a prune when any one of four rules keeps it. | [`docs/decisions/retention-tiers-are-unioned.md`](../docs/decisions/retention-tiers-are-unioned.md) |
-| `ruled-head-masthead-vocabulary` | The control region uses the masthead's own vocabulary. | [`docs/decisions/ruled-head-masthead-vocabulary.md`](../docs/decisions/ruled-head-masthead-vocabulary.md) |
 | `ruled-head-range-picked` | The custom range uses a month picker. | [`docs/decisions/ruled-head-range-picked.md`](../docs/decisions/ruled-head-range-picked.md) |
 | `ruled-head-resume-is-reopening` | An iOS home-screen app is usually backgrounded, not closed. | [`docs/decisions/ruled-head-resume-is-reopening.md`](../docs/decisions/ruled-head-resume-is-reopening.md) |
 | `ruled-head-showing-unreceived` | The Showing row replaces the old "Hide received" button. | [`docs/decisions/ruled-head-showing-unreceived.md`](../docs/decisions/ruled-head-showing-unreceived.md) |
@@ -266,6 +268,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `duo-fold-change-unpinned` | The shell UI tests launch MANIFEST in one pose and check the tab bar. | [`docs/debts/duo-fold-change-unpinned.md`](../docs/debts/duo-fold-change-unpinned.md) |
 | `duo-hand-mockup-gaps` | Poses 1, 2, 3 and 5 of PR 144, the Duo round 2 design pull request, show eight parts that the build lacks: | [`docs/debts/duo-hand-mockup-gaps.md`](../docs/debts/duo-hand-mockup-gaps.md) |
 | `duo-keyboard-gap-unmeasured` | On the open Duo, every tab reserves the custom tab bar's height as a bottom scroll margin. | [`docs/debts/duo-keyboard-gap-unmeasured.md`](../docs/debts/duo-keyboard-gap-unmeasured.md) |
+| `duo-keys-minimize-pref` | The Duo keys-up tests in DuoHandUITests wait for the system keys and read their frame. | [`docs/debts/duo-keys-minimize-pref.md`](../docs/debts/duo-keys-minimize-pref.md) |
 | `duo-left-page-dead-margin` | On the open Duo, DuoSystemBar reserves the custom bar's height as a bottom scroll margin in every tab. | [`docs/debts/duo-left-page-dead-margin.md`](../docs/debts/duo-left-page-dead-margin.md) |
 | `duo-stacked-poses-unbuilt` | Ruled item 28 of `duo-card-in-hand` sets the stacked poses, laptop and held tall. | [`docs/debts/duo-stacked-poses-unbuilt.md`](../docs/debts/duo-stacked-poses-unbuilt.md) |
 | `duo-tab-items-twice` | RootView names each tab's title, symbol and badge twice: once for the system tab bar and once for the Duo's custom bar. | [`docs/debts/duo-tab-items-twice.md`](../docs/debts/duo-tab-items-twice.md) |
@@ -311,7 +314,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-job-hosted-time-unmeasured` | The 8 to 15 minute estimate for the full native job is unmeasured. | [`docs/debts/native-job-hosted-time-unmeasured.md`](../docs/debts/native-job-hosted-time-unmeasured.md) |
 | `native-kept-copy-has-no-route` | No native view opens the kept copy, and no lane records a route to it. | [`docs/debts/native-kept-copy-has-no-route.md`](../docs/debts/native-kept-copy-has-no-route.md) |
 | `native-key-scan-skips-views` | No lane scans SwiftUI view state, such as `@State` in a view. | [`docs/debts/native-key-scan-skips-views.md`](../docs/debts/native-key-scan-skips-views.md) |
-| `native-ledger-pins-missing` | No test pins the millisecond kept-name format, the missing-file case, or the unwrapped-error sentence in Load and save. | [`docs/debts/native-ledger-pins-missing.md`](../docs/debts/native-ledger-pins-missing.md) |
+| `native-ledger-pins-missing` | `LedgerStoreTests` pins the millisecond kept-copy name, a missing ledger file, and the failed-save sentence. | [`docs/debts/native-ledger-pins-missing.md`](../docs/debts/native-ledger-pins-missing.md) |
 | `native-ledger-tab-unbuilt` | The native Ledger tab holds the Sync row and panel, the History row, the Backup row and the Reset box, in `native/Manifest/LedgerTab.swift`. | [`docs/debts/native-ledger-tab-unbuilt.md`](../docs/debts/native-ledger-tab-unbuilt.md) |
 | `native-masthead-axl-clips` | At accessibility text sizes two masthead lines break. | [`docs/debts/native-masthead-axl-clips.md`](../docs/debts/native-masthead-axl-clips.md) |
 | `native-masthead-foot-row-gap` | On every tab, the masthead foot's second row sits about 4.6pt lower than the web's. | [`docs/debts/native-masthead-foot-row-gap.md`](../docs/debts/native-masthead-foot-row-gap.md) |
@@ -323,7 +326,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-photo-sweep-unbuilt` | Nothing on native removes a blob that no envelope or draft uses. | [`docs/debts/native-photo-sweep-unbuilt.md`](../docs/debts/native-photo-sweep-unbuilt.md) |
 | `native-photo-viewer-unpinned` | `PhotoViewerModelTests` pins the modal state and the focus that Escape and a tap return. | [`docs/debts/native-photo-viewer-unpinned.md`](../docs/debts/native-photo-viewer-unpinned.md) |
 | `native-pinned-card-dynamic-type` | `MastheadBackupUITests.testAccessibilityAuditWithTheRunningHeadPinned` scrolls Packages until the running head pins, then audits. | [`docs/debts/native-pinned-card-dynamic-type.md`](../docs/debts/native-pinned-card-dynamic-type.md) |
-| `native-restore-keeps-old-times` | The web restore gives the restore time to every check-in key, stamp and envelope (`restampRestore` in `src/merge-rules.mjs`). | [`docs/debts/native-restore-keeps-old-times.md`](../docs/debts/native-restore-keeps-old-times.md) |
+| `native-restore-later-reply-unpinned` | A native restore now runs the bundle's `restampRestore` (`RestoreRestampTests`). | [`docs/debts/native-restore-later-reply-unpinned.md`](../docs/debts/native-restore-later-reply-unpinned.md) |
 | `native-restore-pill-tap-unpinned` | `VersionsUITests` checks the armed Restore by tapping the version row's middle twice. | [`docs/debts/native-restore-pill-tap-unpinned.md`](../docs/debts/native-restore-pill-tap-unpinned.md) |
 | `native-runner-image-unverified` | Whether the `macos-26` runner image has Xcode 27 and xcodegen is unknown. | [`docs/debts/native-runner-image-unverified.md`](../docs/debts/native-runner-image-unverified.md) |
 | `native-runner-keychain-unverified` | Whether the runner keychain is unlocked is unknown. | [`docs/debts/native-runner-keychain-unverified.md`](../docs/debts/native-runner-keychain-unverified.md) |
@@ -345,7 +348,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `photoget-throw-counts-as-kill` | In `test/photoget.test.mjs`, `runCase` turns a throw into a red case, and a red case counts as a mutant kill. | [`docs/debts/photoget-throw-counts-as-kill.md`](../docs/debts/photoget-throw-counts-as-kill.md) |
 | `received-at-size-unmeasured` | `receivedAt` is never pruned, and its size has not been measured. | [`docs/debts/received-at-size-unmeasured.md`](../docs/debts/received-at-size-unmeasured.md) |
 | `recent-log-unbuilt` | The web client ships the log, its merge rule, its panel and its undo (plan `recent-log-web`). | [`docs/debts/recent-log-unbuilt.md`](../docs/debts/recent-log-unbuilt.md) |
-| `recent-log-unmeasured` | How many actions a heavy mail day makes is unmeasured. | [`docs/debts/recent-log-unmeasured.md`](../docs/debts/recent-log-unmeasured.md) |
+| `recent-log-unmeasured` | How many actions a heavy day's mail makes is unmeasured. | [`docs/debts/recent-log-unmeasured.md`](../docs/debts/recent-log-unmeasured.md) |
 | `recent-undo-under-bar` | At 375px with the page at the top, the first open Recent row's UNDO cell spans y 705 to 777. | [`docs/debts/recent-undo-under-bar.md`](../docs/debts/recent-undo-under-bar.md) |
 | `reimport-received-unpinned` | Nothing pins that `received` survives a re-import. | [`docs/debts/reimport-received-unpinned.md`](../docs/debts/reimport-received-unpinned.md) |
 | `reset-all-keeps-token-unpinned` | No test pins that `resetAll` keeps the GitHub token. | [`docs/debts/reset-all-keeps-token-unpinned.md`](../docs/debts/reset-all-keeps-token-unpinned.md) |
@@ -379,6 +382,8 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 
 | Slug | Gist | Link |
 |---|---|---|
+| `cloud-lane-cut` | Cloud restart: one lane cut from every handoff | [`docs/plans/cloud-lane-cut.md`](../docs/plans/cloud-lane-cut.md) |
+| `cloud-sessions` | Cloud sessions for mailaudit | [`docs/plans/cloud-sessions.md`](../docs/plans/cloud-sessions.md) |
 | `recent-log-web` | Recent log, web client | [`docs/plans/recent-log-web.md`](../docs/plans/recent-log-web.md) |
 
 ## Invariants

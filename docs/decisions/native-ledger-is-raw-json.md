@@ -78,7 +78,7 @@ The orchestrator defaults of 2026-10-12 are pinned by these tests:
 
 The notice line is pinned by LedgerNoticeTests: testNoLineWhenNothingWasDropped, testOneLineNamesTheCountAndTheKeptCopy, testSingularCountReadsAsOneEntry, testLineNamesNoSyncWords.
 
-Four behaviours have no test. Debt: `native-ledger-pins-missing`.
+`LedgerStoreTests` pins the kept-copy name, a missing file and the failed-save sentence. The app passing its own `rules.js` has no test. Debt: `native-ledger-pins-missing`.
 
 No native view opens the kept copy that the notice line names. Debt: `native-kept-copy-has-no-route`.
 
