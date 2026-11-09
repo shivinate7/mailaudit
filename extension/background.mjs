@@ -4,7 +4,7 @@
    headers, and is never logged, echoed in a reply, or put in a stored record. The rules sit in
    core.mjs; this file is the glue to the chrome.* APIs. */
 import {
-  buildOrdersRequest, buildStatusRequest, displayFor, failureOf, mergeStatus, outcomeOf, shouldPull,
+  buildOrdersRequest, buildStatusRequest, displayFor, failureOf, outcomeOf, shouldPull,
 } from "./core.mjs";
 import { BADGE_FILL, BADGE_TEXT } from "./badge-colors.mjs";
 
@@ -16,6 +16,11 @@ const KEEPALIVE_MS = 20000;
 
 /* The pull in progress, or null. Set before any await, so two page loads cannot start two. */
 let running = null;
+/* What that pull is doing: {tabId, phase: "reading" | "sending", page, stop}. Stop only ends the
+   read; once the pages are on their way to the Worker they cannot be taken back. */
+let progress = null;
+/* A stopped pull no longer counts as pulling, so the page and the toolbar settle at once. */
+const isPulling = () => running !== null && !progress?.stop;
 
 const store = {
   get: () => chrome.storage.local.get(["key", "run", "failure", "lastSuccessAt"]),
@@ -26,7 +31,7 @@ const store = {
 
 async function showToolbar() {
   const { key, run } = await store.get();
-  const d = displayFor({ hasKey: Boolean(key), pulling: running !== null, run });
+  const d = displayFor({ hasKey: Boolean(key), pulling: isPulling(), run });
   await chrome.action.setBadgeText({ text: d.text });
   if (d.text) {
     await chrome.action.setBadgeBackgroundColor({ color: BADGE_FILL[d.kind] });
@@ -35,9 +40,10 @@ async function showToolbar() {
   await chrome.action.setTitle({ title: d.title });
 }
 
-function changed() {
-  showToolbar();
-  chrome.runtime.sendMessage({ type: "changed" }).catch(() => {});
+/* light: only the page number moved, so the options page re-reads its local state and no more. */
+function changed(light = false) {
+  if (!light) showToolbar();
+  chrome.runtime.sendMessage({ type: "changed", light }).catch(() => {});
 }
 
 /* ---------- the pull ---------- */
@@ -60,13 +66,13 @@ async function send({ url, init }, timeoutMs) {
   }
 }
 
-/* Runs the pull script in the tab. Anything but a clean {pages} or {failure}, such as a tab
-   that closed or moved on mid-run, reads as a fetch failure. */
+/* Runs the pull script in the tab. Anything but a clean {pages}, {failure} or {stopped}, such as
+   a tab that closed or moved on mid-run, reads as a fetch failure. */
 async function readInTab(tabId) {
   try {
     const [injected] = await chrome.scripting.executeScript({ target: { tabId }, files: ["pull.js"] });
     const r = injected?.result;
-    if (Array.isArray(r?.pages) || typeof r?.failure === "string") return r;
+    if (Array.isArray(r?.pages) || typeof r?.failure === "string" || r?.stopped === true) return r;
   } catch {}
   return { failure: "fetch" };
 }
@@ -79,6 +85,10 @@ async function pull(tabId, force) {
   const keepAlive = setInterval(() => chrome.runtime.getPlatformInfo(), KEEPALIVE_MS);
   try {
     const read = await readInTab(tabId);
+    /* Stop merges nothing: no post, no record, no change to the 12 h gate. */
+    if (read.stopped || progress?.stop) return;
+    progress.phase = "sending";
+    changed(true);
     const body = read.pages ? { v: 1, pages: read.pages } : { v: 1, failure: read.failure };
     const post = await send(buildOrdersRequest(WORKER_ORIGIN, key, body), POST_TIMEOUT_MS);
     const outcome = outcomeOf(read, post);
@@ -95,10 +105,12 @@ async function pull(tabId, force) {
 /* Starts a pull unless one runs. force skips the 12 h gate (Pull now). */
 function startPull(tabId, force) {
   if (running) return false;
+  progress = { tabId, phase: "reading", page: null, stop: false };
   running = pull(tabId, force)
     .catch(() => {})
     .finally(() => {
       running = null;
+      progress = null;
       changed();
     });
   return true;
@@ -112,25 +124,40 @@ chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
 
 const status = (key) => send(buildStatusRequest(WORKER_ORIGIN, key), CHECK_TIMEOUT_MS);
 
+/* The local record only, so the page draws at once. The Worker's record comes from serverStatus. */
 async function view() {
   const { key, run, failure, lastSuccessAt } = await store.get();
-  const hasKey = Boolean(key);
-  let shown = { run, failure };
-  if (hasKey) {
-    const res = await status(key);
-    if (res.status === 200) shown = mergeStatus({ run, failure }, res.body);
-  }
-  return { hasKey, pulling: running !== null, run: shown.run ?? null, failure: shown.failure ?? null, lastSuccessAt: lastSuccessAt ?? null };
+  const reading = progress?.phase === "reading" && !progress.stop;
+  return {
+    hasKey: Boolean(key),
+    pulling: isPulling(),
+    page: reading ? progress.page : null,
+    stoppable: reading,
+    run: run ?? null,
+    failure: failure ?? null,
+    lastSuccessAt: lastSuccessAt ?? null,
+  };
 }
 
+/* One request to GET /orders/status. server is the Worker's record, or null when there is no key
+   or no 200. check says what the reply means for the key: only a reply that never came is
+   "offline"; a 403 or a 500 is the server's own error. */
+async function serverStatus() {
+  const { key } = await store.get();
+  if (!key) return { server: null, check: "none" };
+  const res = await status(key);
+  const check = res.network ? "offline" : res.status === 200 ? "accepted" : res.status === 401 ? "refused" : "error";
+  return { server: res.status === 200 ? res.body : null, check };
+}
+
+/* Stores the key and answers at once; the page then asks for "status" to check it. */
 async function saveKey(raw) {
   const key = typeof raw === "string" ? raw.trim() : "";
   if (!key) return { saved: false };
   const { failure } = await store.get();
   await store.set({ key, ...(failure?.kind === "unauthorized" ? { failure: null } : {}) });
-  const res = await status(key);
   changed();
-  return { saved: true, check: res.network ? "offline" : res.status === 200 ? "accepted" : res.status === 401 ? "refused" : "offline" };
+  return { saved: true };
 }
 
 async function pullNow() {
@@ -144,9 +171,32 @@ async function pullNow() {
   return { started: true };
 }
 
+/* Ends the read of a pull under way. The tab's script gets the same message on the same channel. */
+async function stopPull() {
+  if (!progress || progress.phase !== "reading" || progress.stop) return { stopped: false };
+  progress.stop = true;
+  changed();
+  chrome.tabs.sendMessage(progress.tabId, { type: "stop" }).catch(() => {});
+  return { stopped: true };
+}
+
+/* The tab's script reports the page it is on. A tab other than the pull's is ignored. */
+async function pageReached(msg, sender) {
+  if (progress?.phase === "reading" && sender.tab?.id === progress.tabId && Number.isInteger(msg.page) && msg.page > 0) {
+    progress.page = msg.page;
+    /* A stop that came before the script was listening is sent again here. */
+    if (progress.stop) chrome.tabs.sendMessage(progress.tabId, { type: "stop" }).catch(() => {});
+    else changed(true);
+  }
+  return {};
+}
+
 const handlers = {
   state: view,
+  status: serverStatus,
   pull: pullNow,
+  stop: stopPull,
+  progress: pageReached,
   saveKey: (m) => saveKey(m.key),
   clearKey: async () => {
     await chrome.storage.local.remove("key");
@@ -158,7 +208,7 @@ const handlers = {
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   const handle = sender.id === chrome.runtime.id ? handlers[msg?.type] : null;
   if (!handle) return false;
-  handle(msg).then(reply, () => reply({ error: true }));
+  handle(msg, sender).then(reply, () => reply({ error: true }));
   return true;
 });
 

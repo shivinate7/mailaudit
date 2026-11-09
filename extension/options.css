@@ -1,6 +1,7 @@
-/* The options page. The light colours come from tokens.css (built from shared/tokens.json). The
-   dark set is the extension's own: the app ships no dark palette (owner ruling, 2026-11-08).
-   Every dark text pair measured over 4.5:1 (palette-tokens-contrast-floor) in the design notes. */
+/* The options page. Both colour sets come from tokens.css (built from shared/tokens.json): the
+   light set, and the dark set the extension alone follows through prefers-color-scheme (the app
+   ships light only; owner ruling, 2026-11-08). Every dark text pair measured over 4.5:1
+   (palette-tokens-contrast-floor) in the design notes. Only --onAccent is set here. */
 :root {
   --onAccent: var(--card);
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -9,12 +10,7 @@
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
-    --paper: #1E1B24; --card: #27232E; --ink: #EFE6D6; --inkSoft: #B1A6BB;
-    --line: #443D4D; --accent: #A796DA; --onAccent: #1E1B24;
-    --green: #6DBB98; --red: #E3857B; --redSoft: #3A2426;
-    --manila: #3A3122; --manilaInk: #E2CB96; --amber: #D9AE4A;
-  }
+  :root { --onAccent: var(--paper); }
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--cochin); }
@@ -41,6 +37,7 @@ button, input { font-family: inherit; }
 .parts .k { font-family: var(--mono); font-size: 10px; letter-spacing: .16em; text-transform: uppercase; color: var(--inkSoft); white-space: nowrap; }
 .parts .v { font-size: 16px; line-height: 1.35; color: var(--ink); min-width: 0; }
 .parts .v.soft { color: var(--inkSoft); }
+.parts .v.bad { color: var(--red); }
 .parts .v .fig { font-family: var(--mono); font-size: 12px; color: var(--ink); }
 
 /* the key row: write-on field at 16px (no iOS-style zoom, and legible), then the buttons */
@@ -82,7 +79,7 @@ button, input { font-family: inherit; }
 .fail .when { font-family: var(--mono); font-size: 11px; }
 .fail .fix { font-size: 15px; line-height: 1.4; }
 .fail .acts { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-.fail .acts .cell { background: var(--card); color: var(--accent); }
+.fail .acts .cell { background: var(--card); color: var(--ink); }
 .fail details { font-family: var(--mono); font-size: 11px; }
 .fail summary { cursor: pointer; width: max-content; }
 .fail details code { display: inline-block; margin-top: 4px; }

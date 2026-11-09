@@ -37,21 +37,26 @@ var __ordersPull = (() => {
       this.kind = kind;
     }
   };
-  async function fetchText(fetch2, url, init, timeoutMs) {
+  async function fetchText(fetch2, url, init, timeoutMs, stopSignal) {
     const ctl = new AbortController();
     let timedOut = false;
     const timer = setTimeout(() => {
       timedOut = true;
       ctl.abort();
     }, timeoutMs);
+    const onStop = () => ctl.abort();
+    stopSignal?.addEventListener("abort", onStop);
     try {
+      if (stopSignal?.aborted) throw new ReadFailure("stopped");
       const res = await fetch2(url, { ...init, signal: ctl.signal });
       const text = await res.text();
       return { ok: res.ok, url: res.url, text };
-    } catch {
-      throw new ReadFailure(timedOut ? "timeout" : "fetch");
+    } catch (e) {
+      if (e instanceof ReadFailure) throw e;
+      throw new ReadFailure(stopSignal?.aborted ? "stopped" : timedOut ? "timeout" : "fetch");
     } finally {
       clearTimeout(timer);
+      stopSignal?.removeEventListener("abort", onStop);
     }
   }
   function checked(res, base) {
@@ -101,39 +106,55 @@ var __ordersPull = (() => {
     const form = doc.querySelector('[name="DateRange"]')?.closest("form");
     return Boolean(form) && !doc.querySelector('input[type="password" i]');
   }
-  async function readAllPages({ fetch: fetch2, base, parseDom, timeoutMs }) {
+  async function readAllPages({ fetch: fetch2, base, parseDom, timeoutMs, stopSignal, onPage }) {
     const orderUrl = `${base}${ORDER_PATH}`;
+    const get = (url, init) => fetchText(fetch2, url, init, timeoutMs, stopSignal);
     try {
-      const first = checked(await fetchText(fetch2, orderUrl, { method: "GET" }, timeoutMs), base);
+      const first = checked(await get(orderUrl, { method: "GET" }), base);
       const { body, action } = filterForm(parseDom(first), orderUrl, base);
       const post = { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body };
-      checked(await fetchText(fetch2, action, post, timeoutMs), base);
+      checked(await get(action, post), base);
       const pages = [];
+      const seen = /* @__PURE__ */ new Set();
       for (let n = 1; ; n++) {
-        const html = checked(await fetchText(fetch2, `${orderUrl}?PageNumber=${n}`, { method: "GET" }, timeoutMs), base);
+        onPage?.(n);
+        const html = checked(await get(`${orderUrl}?PageNumber=${n}`, { method: "GET" }), base);
         const trimmed = trimPage(html, parseDom);
         if (trimmed === "") {
           if (n === 1 || !isEndPage(parseDom(html))) throw new ReadFailure("signed-out");
           return { pages };
         }
-        if (trimmed === pages[pages.length - 1]) return { pages };
+        if (seen.has(trimmed)) return { pages };
+        seen.add(trimmed);
         pages.push(trimmed);
       }
     } catch (e) {
-      if (e instanceof ReadFailure) return { failure: e.kind };
+      if (e instanceof ReadFailure) return e.kind === "stopped" ? { stopped: true } : { failure: e.kind };
       throw e;
     }
   }
 
   // extension/pull.entry.mjs
   var PAGE_TIMEOUT_MS = 3e4;
-  function run() {
-    return readAllPages({
-      fetch: (url, init) => fetch(url, init),
-      base: location.origin,
-      parseDom: (html) => new DOMParser().parseFromString(html, "text/html"),
-      timeoutMs: PAGE_TIMEOUT_MS
-    });
+  async function run() {
+    const stop = new AbortController();
+    const onMessage = (msg) => {
+      if (msg?.type === "stop") stop.abort();
+    };
+    chrome.runtime.onMessage.addListener(onMessage);
+    try {
+      return await readAllPages({
+        fetch: (url, init) => fetch(url, init),
+        base: location.origin,
+        parseDom: (html) => new DOMParser().parseFromString(html, "text/html"),
+        timeoutMs: PAGE_TIMEOUT_MS,
+        stopSignal: stop.signal,
+        onPage: (page) => chrome.runtime.sendMessage({ type: "progress", page }).catch(() => {
+        })
+      });
+    } finally {
+      chrome.runtime.onMessage.removeListener(onMessage);
+    }
   }
   return __toCommonJS(pull_entry_exports);
 })();

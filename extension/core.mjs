@@ -28,22 +28,28 @@ class ReadFailure extends Error {
   }
 }
 
-/* One fetch whose request and body read share a single deadline. The timer is always cleared. */
-async function fetchText(fetch, url, init, timeoutMs) {
+/* One fetch whose request and body read share a single deadline. The timer is always cleared.
+   An abort from the caller's stopSignal (Stop) ends the fetch at once and reads as "stopped". */
+async function fetchText(fetch, url, init, timeoutMs, stopSignal) {
   const ctl = new AbortController();
   let timedOut = false;
   const timer = setTimeout(() => {
     timedOut = true;
     ctl.abort();
   }, timeoutMs);
+  const onStop = () => ctl.abort();
+  stopSignal?.addEventListener("abort", onStop);
   try {
+    if (stopSignal?.aborted) throw new ReadFailure("stopped");
     const res = await fetch(url, { ...init, signal: ctl.signal });
     const text = await res.text();
     return { ok: res.ok, url: res.url, text };
-  } catch {
-    throw new ReadFailure(timedOut ? "timeout" : "fetch");
+  } catch (e) {
+    if (e instanceof ReadFailure) throw e;
+    throw new ReadFailure(stopSignal?.aborted ? "stopped" : timedOut ? "timeout" : "fetch");
   } finally {
     clearTimeout(timer);
+    stopSignal?.removeEventListener("abort", onStop);
   }
 }
 
@@ -107,28 +113,34 @@ function isEndPage(doc) {
   return Boolean(form) && !doc.querySelector('input[type="password" i]');
 }
 
-/* Reads every page of the last 120 days. Returns {pages} (trimmed, page 1 first) or {failure}. */
-export async function readAllPages({ fetch, base, parseDom, timeoutMs }) {
+/* Reads every page of the last 120 days. Returns {pages} (trimmed, page 1 first), {failure}, or
+   {stopped: true} with no pages when stopSignal aborts. onPage(n) runs before page n is fetched. */
+export async function readAllPages({ fetch, base, parseDom, timeoutMs, stopSignal, onPage }) {
   const orderUrl = `${base}${ORDER_PATH}`;
+  const get = (url, init) => fetchText(fetch, url, init, timeoutMs, stopSignal);
   try {
-    const first = checked(await fetchText(fetch, orderUrl, { method: "GET" }, timeoutMs), base);
+    const first = checked(await get(orderUrl, { method: "GET" }), base);
     const { body, action } = filterForm(parseDom(first), orderUrl, base);
     const post = { method: "POST", headers: { "content-type": "application/x-www-form-urlencoded" }, body };
-    checked(await fetchText(fetch, action, post, timeoutMs), base);
+    checked(await get(action, post), base);
 
     const pages = [];
+    const seen = new Set();
     for (let n = 1; ; n++) {
-      const html = checked(await fetchText(fetch, `${orderUrl}?PageNumber=${n}`, { method: "GET" }, timeoutMs), base);
+      onPage?.(n);
+      const html = checked(await get(`${orderUrl}?PageNumber=${n}`, { method: "GET" }), base);
       const trimmed = trimPage(html, parseDom);
       if (trimmed === "") {
         if (n === 1 || !isEndPage(parseDom(html))) throw new ReadFailure("signed-out");
         return { pages };
       }
-      if (trimmed === pages[pages.length - 1]) return { pages };
+      /* A page seen before means the site wrapped round to an earlier page, so the read is done. */
+      if (seen.has(trimmed)) return { pages };
+      seen.add(trimmed);
       pages.push(trimmed);
     }
   } catch (e) {
-    if (e instanceof ReadFailure) return { failure: e.kind };
+    if (e instanceof ReadFailure) return e.kind === "stopped" ? { stopped: true } : { failure: e.kind };
     throw e;
   }
 }
@@ -182,8 +194,11 @@ export function timeText(ms) {
 /* The gate's next moment, or null when the next store page load already pulls. */
 export function nextPullAt(lastSuccessAt, now) {
   if (lastSuccessAt === null || lastSuccessAt === undefined) return null;
-  const at = lastSuccessAt + GATE_MS;
-  return at > now ? at : null;
+  const last = typeof lastSuccessAt === "number" ? lastSuccessAt : Date.parse(lastSuccessAt);
+  if (!Number.isFinite(last)) return null;
+  /* The gate is "more than 12 h old", so at exactly 12 h it has not opened yet. */
+  const at = last + GATE_MS;
+  return at >= now ? at : null;
 }
 
 /* Chrome fits about four characters, so a count over 999 reads 999+. */
@@ -204,7 +219,8 @@ export function outcomeOf(read, post) {
     return { ok: true, orders: n(post.body?.orders), items: n(post.body?.items), added: n(post.body?.added), unreadable: n(post.body?.unreadable) };
   }
   if (status === 401) return { ok: false, kind: "unauthorized" };
-  if (status === 413 || status === 400) return { ok: false, kind: "too-large" };
+  if (status === 413) return { ok: false, kind: "too-large" };
+  if (status === 400) return { ok: false, kind: "bad body" };
   if (status === 422 && (post.body?.error === "empty" || post.body?.error === "no-items")) return { ok: false, kind: post.body.error };
   return { ok: false, kind: "server" };
 }
@@ -222,7 +238,7 @@ export function failureOf(outcome, now) {
 export function displayFor({ hasKey, pulling, run }) {
   const lead = "MANIFEST orders: ";
   if (!hasKey) return { text: "", kind: "none", title: `${lead}no device key. Open Options to paste one.` };
-  if (pulling) return { text: "…", kind: "pulling", title: `${lead}pulling your orders.` };
+  if (pulling) return { text: "…", kind: "pulling", title: `${lead}pulling order pages.` };
   if (!run) return { text: "", kind: "none", title: `${lead}no pull yet. It runs when a store page loads.` };
   if (run.ok) {
     const added = Number.isInteger(run.added) ? run.added : 0;
@@ -245,7 +261,9 @@ export function mergeStatus(local, server) {
   const failAt = Date.parse(server?.lastFailure?.at ?? "");
   const newest = Math.max(Number.isFinite(okAt) ? okAt : -Infinity, Number.isFinite(failAt) ? failAt : -Infinity);
   if (!Number.isFinite(newest) || (local.run && local.run.at >= newest)) return { run: local.run, failure: local.failure };
-  const failed = Number.isFinite(failAt) && failAt === newest;
+  /* The Worker stamps a success that dropped lines with one time for both records, so a failure
+     is the latest event only when strictly newer than the success. */
+  const failed = Number.isFinite(failAt) && !(failAt <= okAt);
   const run = failed ? { at: failAt, ok: false, kind: server.lastFailure.kind } : { at: okAt, ok: true };
   const failure = Number.isFinite(failAt) ? { ...server.lastFailure, at: failAt } : null;
   return { run, failure };

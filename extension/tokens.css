@@ -23,3 +23,19 @@
   --shadow: rgba(28,43,36,0.06);
   --scrim: rgba(28,43,36,0.92);
 }
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #1E1B24;
+    --card: #27232E;
+    --ink: #EFE6D6;
+    --inkSoft: #B1A6BB;
+    --line: #443D4D;
+    --accent: #A796DA;
+    --green: #6DBB98;
+    --red: #E3857B;
+    --redSoft: #3A2426;
+    --manila: #3A3122;
+    --manilaInk: #E2CB96;
+    --amber: #D9AE4A;
+  }
+}

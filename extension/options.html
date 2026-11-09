@@ -25,7 +25,7 @@
 
   <section class="sec" aria-labelledby="h-key">
     <h2 id="h-key">Device key</h2>
-    <div class="parts"><span class="k">Status</span><span class="v soft" id="key-state">No key saved.</span></div>
+    <div class="parts"><span class="k">Status</span><span class="v soft" id="key-state">Checking…</span></div>
     <form class="keyrow" id="key-form" autocomplete="off">
       <label class="fld"><span class="vh">Device key</span>
         <input class="keyfield" id="key-input" type="password" autocomplete="off" spellcheck="false" autocapitalize="off" placeholder="Paste the device key"></label>
@@ -40,18 +40,18 @@
     <div class="pullrow">
       <button class="cell primary" id="pull" type="button" disabled aria-describedby="pull-answer">Pull now</button>
     </div>
-    <div class="answer" id="pull-answer" role="status"><span id="pull-text"></span><button class="linkbtn" id="open-store" type="button" hidden>Open TCGplayer</button></div>
+    <div class="answer" id="pull-answer" role="status"><span id="pull-text"></span><button class="linkbtn" id="open-store" type="button" hidden>Open TCGplayer</button><button class="linkbtn" id="stop" type="button" hidden>Stop</button></div>
     <p class="help">Runs in an open <code>store.tcgplayer.com</code> tab, where you are signed in. It also runs by itself when a store page loads and the last pull is over 12 hours old.</p>
   </section>
 
   <section class="sec" aria-labelledby="h-fail">
     <h2 id="h-fail">Last failure</h2>
-    <div id="fail"><div class="none">None.</div></div>
+    <div id="fail"><div class="none">Checking…</div></div>
   </section>
 
   <section class="sec" aria-labelledby="h-run">
     <h2 id="h-run">Last run</h2>
-    <div class="parts" id="run"></div>
+    <div class="parts" id="run"><span class="k">When</span><span class="v soft">Checking…</span></div>
   </section>
 </main>
 <script type="module" src="options.mjs"></script>
