@@ -94,7 +94,6 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `stamped-toggle-clears-error` — The stamped toggle clears a failed check-in's error.
 - `checkin-error-bar-is-sans` — The native check-in error bar is set in sans on material.
 - `hand-post-top-scroll-unpinned` — No test pins the scroll to the page top when Post shows.
-- `hand-held-box-under-keys` — A held card's box can sit under the keys.
 - `hand-open-under-bar-at-l` — At AccessibilityL the Card in Hand control sits under the tab bar.
 - `hand-tap-label-unpinned` — No test pins the tapped name's sideways place.
 - `duo-left-page-dead-margin` — The Duo left page scrolls 76 pt past its end; low priority, after restyle's step 8.

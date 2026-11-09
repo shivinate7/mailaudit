@@ -1,6 +1,6 @@
 # Card in Hand: a held card shows above the keys
 
-Mockup: `duo-hand-held-box.html`. Debt: `hand-held-box-under-keys`, closed by the pick once a test pins it. Decision: `duo-card-in-hand`. Invariant: `no-layout-shift-under-pointer`.
+Mockup: `duo-hand-held-box.html`. Debt: `hand-held-box-under-keys`, retired by the pick: the seven chip tests passed on the first attempt in CI run 42666668781. Decision: `duo-card-in-hand`. Invariant: `no-layout-shift-under-pointer`.
 Lane kind: informed (the brief names no kind).
 
 Deep links: `#s=today`, `#s=field`, `#s=row`, `#s=strip`, `#s=press`, `#s=folded`. Filters: `z=default` or `z=ax3`, `c=1` or `c=2` (matches), `k=down` (keys left out, to see under them). Join with `&`, for example `#s=field&z=ax3&c=2`. No hash shows all. Three buttons hide one option each.
