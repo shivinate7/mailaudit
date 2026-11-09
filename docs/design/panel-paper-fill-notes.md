@@ -52,4 +52,12 @@ Focus ids for the waiting page: `focus-paper` (first option), `focus-none` (seco
 
 ## Critique (impeccable)
 
-See the hand-off report; findings fixed in this file and the mockup are listed there.
+Single context: a designer has no sub-agent tool. The launcher's context step was skipped, and the repo has no PRODUCT.md or DESIGN.md.
+
+- Fixed: the four frames sat at different heights, because their tags wrapped to different lengths. A subgrid now lines the screenshots up.
+- Fixed (detector): the img tags had no src until the script ran. Each now carries the Sorted by 375 shot, and a link opens the full-size shot.
+- Fixed (detector): green tag text and the "nothing moved" line on paper read 4.3:1. Tag text is now ink, with the colour on the dashed border.
+- Fixed (detector): 11px tracked labels are now 12px; the Theme link has its own row on a phone.
+- Open (detector): one unlocated "line-height 1.22" finding remains after the labels and code were set to 1.4.
+- False alarm (detector): "cream palette". The parchment page is the repo's palette (`design-parchment-ledger`).
+- Open, for the owner: the cut row under a filled panel is visible in every fill frame. See items 1 and 3.
