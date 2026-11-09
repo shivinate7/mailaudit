@@ -23,6 +23,7 @@ Themes: a light and a dark Chrome toolbar. Deep links: `#t=both`, `#t=light`, `#
    | `in` | MANIFEST orders: signed out of TCGplayer. Sign in, then load any store page. |
    | `!` | MANIFEST orders: the last pull failed. Open Options for the fix. |
    | no key | MANIFEST orders: no device key. Open Options to paste one. |
+   | pulling | MANIFEST orders: pulling order pages. |
 
    Times in the title use the owner's local time, in the options page's format.
 

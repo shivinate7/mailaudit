@@ -70,6 +70,7 @@ function renderPull(s) {
   const text = $("pull-text");
   const open = $("open-store");
   open.hidden = true;
+  $("reload").hidden = true;
   $("stop").hidden = !(s.pulling && s.stoppable);
   /* A new pull replaces the note about a stopped one. */
   if (s.pulling && pullAnswer?.stopped) pullAnswer = null;
@@ -154,6 +155,12 @@ function renderUnreadable() {
   $("key-state").className = "v bad";
   $("fail").replaceChildren(el("div", "none", "Unknown."));
   $("run").replaceChildren(el("span", "k", "When"), el("span", "v soft", "Unknown."));
+  /* Pull now stays disabled, so its slot says why and offers the way on. */
+  $("pull").disabled = true;
+  $("pull-text").textContent = "The extension did not answer.";
+  $("open-store").hidden = true;
+  $("stop").hidden = true;
+  $("reload").hidden = false;
 }
 
 /* One status request at a time; a second caller shares it. */
@@ -271,8 +278,15 @@ $("stop").addEventListener("click", async () => {
     pullAnswer = { text: "Stopped. Nothing was added.", stopped: true };
     last = { ...last, pulling: false, stoppable: false, page: null };
     render();
+    /* Stop hid itself, so focus moves to the control that starts the next pull. */
+    $("pull").focus();
   }
   await refresh(false);
+});
+
+$("reload").addEventListener("click", () => {
+  $("pull-text").textContent = "Asking the extension again…";
+  refresh();
 });
 
 $("open-store").addEventListener("click", () => chrome.tabs.create({ url: STORE_URL }));
