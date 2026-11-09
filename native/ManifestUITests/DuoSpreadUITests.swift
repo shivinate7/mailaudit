@@ -138,8 +138,9 @@ final class DuoSpreadUITests: XCTestCase {
     /// Drags up on the left page's middle until the list stops (12 drags at most). Returns whether the first drag moved it.
     /// The drag runs from the window's origin: on an open Duo, `app` coordinates land on the outer display.
     /// A LazyVStack loads rows below the viewport as it scrolls, so the lowest edge can grow while the list moves. Movement is
-    /// therefore read from the top-most part that exists before the first drag: it moves up with the list, and once it scrolls
-    /// away it is gone or not hittable. The lowest edge decides the end only while that part is still on screen.
+    /// therefore read from the top-most part that exists before the first drag: it moves up with the list. Once it scrolls away
+    /// it is off screen in one of two ways: a LazyVStack unloads it, so it no longer exists, or it stays loaded above the window,
+    /// so its frame no longer meets the window. The lowest edge decides the end only while that part is still on screen.
     func scrollToEnd(_ app: XCUIApplication, prefixes: [String]) -> Bool {
         func parts() -> [XCUIElement] { prefixes.flatMap { app.elements(prefix: $0) } }
         func lowest() -> CGFloat { parts().map { $0.frame.maxY }.max() ?? 0 }
@@ -158,7 +159,9 @@ final class DuoSpreadUITests: XCTestCase {
             Thread.sleep(forTimeInterval: 0.5)
             let now = lowest()
             let fixed = app.byID(anchor)
-            let onScreen = fixed.exists && fixed.isHittable
+            // Not isHittable: it records a test failure for a loaded element outside the window. exists comes first, since an
+            // unloaded element has no frame to read. An empty frame is off screen.
+            let onScreen = fixed.exists && !fixed.frame.isEmpty && win.intersects(fixed.frame)
             if drag == 0 { moved = !onScreen || fixed.frame.minY < anchorY - 0.5 }
             let anchorMoved = onScreen && abs(fixed.frame.minY - lastAnchorY) >= 0.5
             if onScreen { lastAnchorY = fixed.frame.minY }
