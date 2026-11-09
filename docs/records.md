@@ -63,6 +63,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `check-seed-backstop-not-proof` | Kind: build | [`docs/decisions/check-seed-backstop-not-proof.md`](../docs/decisions/check-seed-backstop-not-proof.md) |
 | `ci-filters-guarantee-no-rebuild` | Nothing the app writes should touch the source repository, so a backup can never trigger a site rebuild. | [`docs/decisions/ci-filters-guarantee-no-rebuild.md`](../docs/decisions/ci-filters-guarantee-no-rebuild.md) |
 | `ci-skips-draft-prs` | Kind: build | [`docs/decisions/ci-skips-draft-prs.md`](../docs/decisions/ci-skips-draft-prs.md) |
+| `csv-import-stays-web` | Kind: build | [`docs/decisions/csv-import-stays-web.md`](../docs/decisions/csv-import-stays-web.md) |
 | `duo-card-in-hand` | Kind: build | [`docs/decisions/duo-card-in-hand.md`](../docs/decisions/duo-card-in-hand.md) |
 | `ledger-remote-needed-for-seed` | Kind: build | [`docs/decisions/ledger-remote-needed-for-seed.md`](../docs/decisions/ledger-remote-needed-for-seed.md) |
 | `live-verification` | This file draws the line between proven and unproven. | [`docs/decisions/live-verification.md`](../docs/decisions/live-verification.md) |
@@ -126,7 +127,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `claims-and-tests-change-together` | A behaviour that changes on purpose changes its assertion and its prose in one commit. | [`docs/decisions/claims-and-tests-change-together.md`](../docs/decisions/claims-and-tests-change-together.md) |
 | `cost-basis-excludes-ship-and-tax` | **Cost basis** = Σ (Price × Quantity) over the item's non-canceled copies in the active date range. | [`docs/decisions/cost-basis-excludes-ship-and-tax.md`](../docs/decisions/cost-basis-excludes-ship-and-tax.md) |
 | `csv-import-shows-a-summary` | A CSV import works by drag and drop, or by the file picker. | [`docs/decisions/csv-import-shows-a-summary.md`](../docs/decisions/csv-import-shows-a-summary.md) |
-| `csv-import-stays-web` | **Status:** ruled. | [`docs/decisions/csv-import-stays-web.md`](../docs/decisions/csv-import-stays-web.md) |
 | `date-filter-spans-ledger-views` | The date filter applies to the Tally view and the Packages view. | [`docs/decisions/date-filter-spans-ledger-views.md`](../docs/decisions/date-filter-spans-ledger-views.md) |
 | `design-form-controls-no-inherit` | Browsers force their own UI font onto `button`, `input`, `select` and `textarea`. | [`docs/decisions/design-form-controls-no-inherit.md`](../docs/decisions/design-form-controls-no-inherit.md) |
 | `design-parchment-ledger` | The theme is named "Parchment ledger" (palette D▸, Violet Evergarden–inspired). | [`docs/decisions/design-parchment-ledger.md`](../docs/decisions/design-parchment-ledger.md) |
@@ -340,7 +340,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-ui-tests-not-in-ci` | The native job runs the ST tests only, so native UI tests and builds are not in CI. | [`docs/debts/native-ui-tests-not-in-ci.md`](../docs/debts/native-ui-tests-not-in-ci.md) |
 | `native-undo-notice-padding` | The Undo notice in `native/Manifest/OrphanedView.swift` pads its rows 4pt above and below. | [`docs/debts/native-undo-notice-padding.md`](../docs/debts/native-undo-notice-padding.md) |
 | `order-id-visible-unbuilt` | The package header gives the order id its own line (built 2026-10-20). | [`docs/debts/order-id-visible-unbuilt.md`](../docs/debts/order-id-visible-unbuilt.md) |
-| `orders-job-unbuilt` | The owner ruled on 2026-10-27 at 20:19 CDT that the job runs as a cron on the existing Worker. | [`docs/debts/orders-job-unbuilt.md`](../docs/debts/orders-job-unbuilt.md) |
+| `orders-job-unbuilt` | Orders will come from a browser extension. | [`docs/debts/orders-job-unbuilt.md`](../docs/debts/orders-job-unbuilt.md) |
 | `orphaned-reach-unpinned` | No test pins that Re-import, Backup and Reset must stay reachable from Orphaned, and it is unverified. | [`docs/debts/orphaned-reach-unpinned.md`](../docs/debts/orphaned-reach-unpinned.md) |
 | `panel-paper-fill-unbuilt` | Overlay panels carry no `paper` fill: `panelWrap` in `src/app.jsx` sets padding and a top border, and no background. | [`docs/debts/panel-paper-fill-unbuilt.md`](../docs/debts/panel-paper-fill-unbuilt.md) |
 | `panels-overlay-unbuilt` | Today a panel takes layout space and pushes the list down. | [`docs/debts/panels-overlay-unbuilt.md`](../docs/debts/panels-overlay-unbuilt.md) |
@@ -384,6 +384,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 |---|---|---|
 | `cloud-lane-cut` | Cloud restart: one lane cut from every handoff | [`docs/plans/cloud-lane-cut.md`](../docs/plans/cloud-lane-cut.md) |
 | `cloud-sessions` | Cloud sessions for mailaudit | [`docs/plans/cloud-sessions.md`](../docs/plans/cloud-sessions.md) |
+| `orders-extension` | Orders by browser extension | [`docs/plans/orders-extension.md`](../docs/plans/orders-extension.md) |
 | `recent-log-web` | Recent log, web client | [`docs/plans/recent-log-web.md`](../docs/plans/recent-log-web.md) |
 
 ## Invariants
