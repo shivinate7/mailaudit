@@ -86,3 +86,5 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 - 2026-11-08, duo-ci-path review round 2: `DuoSpreadUITests.scrollToEnd` counts a non-hittable anchor as moved, and after the anchor scrolls away the end check falls back to the lowest edge, which a lazy list can repeat. `expectClearsBar` still fails a list that reaches the bar, so only the message can be wrong. Pick the anchor among hittable parts and re-pick it each drag. Decision: `duo-ui-runs-on-pr-label`.
 - 2026-11-08, duo-ci-path review round 1: the 18 Pro passes in `scripts/ci-sim.sh` check only a nonzero executed count, so a dropped class passes. Decision: `duo-ui-runs-on-pr-label`.
 - 2026-11-08, duo-ci-path review round 2: no test pins the named message when `DUO_CLASSES_VAR` is missing in `scripts/ci-sim.sh`. Decision: `duo-ui-runs-on-pr-label`.
+- 2026-11-08, look-mockups-56-63 (PR 252): at 375 px the web Orphaned candidate row hides the untracked package's order number.
+- 2026-11-08, look-mockups-56-63 (PR 252): the phone's Orphaned candidate meta line is set at 10.5 pt, under Apple's 11 pt minimum.
