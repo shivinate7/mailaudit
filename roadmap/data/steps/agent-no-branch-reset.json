@@ -1,10 +1,10 @@
 {
-  "title": "claude-settings guard: an agent never resets the lane's own branch",
+  "title": "claude-settings guard: an agent never moves a lane's branch or a shared branch name",
   "status": "todo",
   "phase": "tooling",
   "order": 10,
-  "why": "A round-1 designer agent in lane duo-gaps-design-review (PR 237) ran `git checkout -B`, which moved the lane's branch under the lane's checkout and left stale staged files. Restored; nothing lost.",
-  "note": "Feedback for claude-settings, which the owner carries (sessions never edit claude-settings). Proposed guard: refuse an agent's `checkout -B` or `branch -f` on the lane's own branch. Reported by lane duo-gaps-design-review via the coordinator, 2026-11-08 20:14 CST.",
+  "why": "Two incidents on 2026-11-08. (1) A round-1 designer agent in lane duo-gaps-design-review (PR 237) ran `git checkout -B`, which moved the lane's branch under the lane's checkout and left stale staged files. (2) In lane orders-ext-ui-tests, an agent moved its branch name under the main checkout, which was left detached at 854c6cf. Both were restored; nothing was lost.",
+  "note": "Feedback for claude-settings, which the owner carries (sessions never edit claude-settings). Proposed guard: refuse an agent's `checkout -B`, `branch -f` or other ref move on the lane's own branch or on a branch another checkout holds. Folds in lane orders-ext-ui-tests' proposed step agent-ref-moves-shared-branch. Reported via the coordinator, 2026-11-08 20:14 and 20:24 CST.",
   "ask": "",
-  "updatedAt": "2026-11-09T02:16:00Z"
+  "updatedAt": "2026-11-09T02:26:00Z"
 }
