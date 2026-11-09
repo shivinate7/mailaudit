@@ -346,6 +346,11 @@ final class MastheadBackupUITests: XCTestCase {
     /// The 46pt running head and its 1pt rule, held clear under the masthead (MastheadScreen).
     static let slot: CGFloat = 47
 
+    /// The 1pt rules that frame the stamped row, and its 16pt bottom padding (StampedRow in StampViews). No element
+    /// carries them, so stampedRowEdges adds them to the cell's frame.
+    static let ruleHeight: CGFloat = 1
+    static let stampedPadding: CGFloat = 16
+
     /// Every package row that exists. Packages is a lazy list, so only the rows near the screen do.
     func packageRows(_ app: XCUIApplication) -> XCUIElementQuery {
         app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "package-row:"))
@@ -358,9 +363,21 @@ final class MastheadBackupUITests: XCTestCase {
         return try XCTUnwrap(rows.allElementsBoundByIndex.min { $0.frame.minY < $1.frame.minY }, "Packages has no package row")
     }
 
-    /// The top of the first element under the masthead on `tab`: its first row, its search box, its record button or its
-    /// title. The sync advisory, when it shows, is read by its identifier instead. Ledger's title has no identifier, so it
-    /// is found by its label, between the masthead and the tab bar. A `ledger-title` identifier would be a product change.
+    /// The stamped row on Packages, the ruled row between the running-head slot and the list. It is drawn even at 0
+    /// stamped (decision `stamped-filter-on-the-pipeline`), so the cell is always there. Its only identifier is the cell
+    /// button, so the row's edges are read from the cell: the top rule sits 1pt above the cell, and the foot is the
+    /// cell's bottom, the 1pt bottom rule and the 16pt padding.
+    func stampedRowEdges(_ app: XCUIApplication) throws -> (top: CGFloat, foot: CGFloat) {
+        let cell = find(app, "stamped-cell")
+        _ = try XCTUnwrap(cell.waitForExistence(timeout: 5) ? cell : nil, "Packages has no stamped row (stamped-cell)")
+        let frame = cell.frame
+        return (frame.minY - Self.ruleHeight, frame.maxY + Self.ruleHeight + Self.stampedPadding)
+    }
+
+    /// The top of the first element under the masthead on `tab`: the stamped row on Packages, its search box, its record
+    /// button or its title. The sync advisory, when it shows, is read by its identifier instead. Ledger's title has no
+    /// identifier, so it is found by its label, between the masthead and the tab bar. A `ledger-title` identifier would
+    /// be a product change.
     func firstContentTop(_ app: XCUIApplication, tab: String, below head: CGRect) throws -> CGFloat {
         switch tab {
         case "Orphaned": return try live(app, "orphaned-record", tab: tab).frame.minY
@@ -370,7 +387,7 @@ final class MastheadBackupUITests: XCTestCase {
             // the running head must clear, so read its top: the lesser of the field's top and 22pt above its middle.
             let field = try live(app, "tally-search", tab: tab).frame
             return min(field.minY, field.midY - Self.minHit / 2)
-        case "Packages": return try topmostPackageRow(app).frame.minY
+        case "Packages": return try stampedRowEdges(app).top
         default:
             let bar = app.tabBars.firstMatch.frame.minY
             let titles = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", tab)).allElementsBoundByIndex
@@ -380,7 +397,8 @@ final class MastheadBackupUITests: XCTestCase {
     }
 
     /// On every tab the first content sits one slot below the masthead's foot, so the running head can pin there
-    /// without moving anything. The offset is read from the masthead's own frame, not from a figure copied here.
+    /// without moving anything. The offset is read from the masthead's own frame, not from a figure copied here. On
+    /// Packages that first content is the stamped row, and the package rows sit under the row's foot.
     func assertTheFirstContentSitsOneSlotBelowTheMasthead(width: Int) throws {
         let app = launch(width: width)
         for tab in Self.tabs {
@@ -389,6 +407,12 @@ final class MastheadBackupUITests: XCTestCase {
             let first = try firstContentTop(app, tab: tab, below: head)
             XCTAssertEqual(first - head.maxY, Self.slot, accuracy: 0.5,
                            "\(tab) at \(width)pt: the first content is not one slot below the masthead")
+            if tab == "Packages" {
+                let foot = try stampedRowEdges(app).foot
+                let row = try topmostPackageRow(app)
+                XCTAssertEqual(row.frame.minY - foot, 0, accuracy: 0.5,
+                               "Packages at \(width)pt: the first package row is not directly under the stamped row")
+            }
         }
     }
 
@@ -397,13 +421,20 @@ final class MastheadBackupUITests: XCTestCase {
     func testTheFirstContentSitsOneSlotBelowTheMastheadAt320() throws { try assertTheFirstContentSitsOneSlotBelowTheMasthead(width: 320) }
 
     /// With the advisory on, it is the first content on the three tabs that show it (Ledger has none), at the same slot.
+    /// On Packages the stamped row takes that slot, so the advisory sits under the row's foot instead.
     func testTheAdvisorySitsOneSlotBelowTheMasthead() throws {
         let app = launch(width: 375, syncStatus: 401)
         for tab in ["Orphaned", "Tally", "Packages"] {
             show(app, tab)
             let head = try live(app, "masthead", tab: tab).frame
             let advisory = try live(app, "sync-advisory", tab: tab)
-            XCTAssertEqual(advisory.frame.minY - head.maxY, Self.slot, accuracy: 0.5, "\(tab): the advisory is not one slot below the masthead")
+            if tab == "Packages" {
+                let edges = try stampedRowEdges(app)
+                XCTAssertEqual(edges.top - head.maxY, Self.slot, accuracy: 0.5, "Packages: the stamped row is not one slot below the masthead")
+                XCTAssertEqual(advisory.frame.minY - edges.foot, 0, accuracy: 0.5, "Packages: the advisory is not directly under the stamped row")
+            } else {
+                XCTAssertEqual(advisory.frame.minY - head.maxY, Self.slot, accuracy: 0.5, "\(tab): the advisory is not one slot below the masthead")
+            }
         }
     }
 
@@ -444,9 +475,10 @@ final class MastheadBackupUITests: XCTestCase {
     }
 
     /// Past the masthead the head pins at the top of the list, with the cards figure. Pinning and unpinning move no
-    /// other frame: the first row keeps its one-slot gap under the masthead at rest, just short of the pin point,
-    /// pinned, and back at the top. A scroll cannot change that gap, so only a layout change can. The first row stays
-    /// loaded because the drags go only 60pt past the masthead.
+    /// other frame: on Packages the stamped row keeps its one-slot gap under the masthead, and the first package row
+    /// keeps its place under that row, at rest, just short of the pin point, pinned, and back at the top. A scroll
+    /// cannot change those gaps, so only a layout change can. The first row stays loaded because the drags go only
+    /// 60pt past the masthead.
     func testTheRunningHeadPinsAtTheTopAndMovesNothing() throws {
         let app = launch(width: 375)
         show(app, "Packages")
@@ -455,24 +487,26 @@ final class MastheadBackupUITests: XCTestCase {
         let row = try topmostPackageRow(app)
         let (restTop, pinAt, pastPin) = (head.frame.minY, head.frame.height, CGFloat(60))
         let running = find(app, "running-head")
-        func gap(_ when: String) {
+        func gap(_ when: String) throws {
             settle(head)
-            XCTAssertEqual(row.frame.minY - head.frame.maxY, Self.slot, accuracy: 0.5, "the first row is not one slot below the masthead \(when)")
+            let edges = try stampedRowEdges(app)
+            XCTAssertEqual(edges.top - head.frame.maxY, Self.slot, accuracy: 0.5, "the stamped row is not one slot below the masthead \(when)")
+            XCTAssertEqual(row.frame.minY - edges.foot, 0, accuracy: 0.5, "the first package row is not directly under the stamped row \(when)")
         }
         func unmounted(_ when: String) {
             let none = XCTNSPredicateExpectation(predicate: NSPredicate(format: "exists == false"), object: running)
             XCTAssertEqual(XCTWaiter.wait(for: [none], timeout: 5), .completed, "the running head is mounted \(when)")
         }
-        gap("at rest")
+        try gap("at rest")
         unmounted("at rest")
 
         drag(app, up: pinAt - 20)
-        gap("just short of the pin point")
+        try gap("just short of the pin point")
         unmounted("just short of the pin point")
 
         drag(app, up: pastPin)
         XCTAssertTrue(running.waitForExistence(timeout: 5), "the running head did not pin once the masthead scrolled away")
-        gap("while the running head is pinned")
+        try gap("while the running head is pinned")
         // The head pins on the list's top edge. The status bar is not in the accessibility tree on this runtime, so
         // app.listTop reads the window's top, 0, and cannot name that edge. The masthead's foot crossed the edge during
         // the last drag, by less than that drag, so the head's top lies that far below the foot and no farther. A head
@@ -485,7 +519,7 @@ final class MastheadBackupUITests: XCTestCase {
 
         drag(app, up: -(pinAt + 80))
         unmounted("back at the top")
-        gap("back at the top")
+        try gap("back at the top")
         XCTAssertEqual(head.frame.minY, restTop, accuracy: 0.5, "the masthead is not back where it started")
     }
 
