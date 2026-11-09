@@ -30,12 +30,12 @@
 #   devices   DEVICES   duo,18pro                                    default both
 #   postures  POSTURES  folded,open (the Duo; ignored off arm64)     default both
 #   video     VIDEO     one screen name; records an .mp4 on the 18 Pro only    default none
-# Every device x posture x appearance (light, dark) x size x screen is shot. Without a size, nothing is set.
+# Every device x posture x appearance (light only) x size x screen is shot. Without a size, nothing is set.
 #
 # File names (in out/, the artifact):
 #   <device>-<posture>-<appearance>-<screen>.png                   default; Duo postures folded, open; 18 Pro posture portrait
 #   <device>-<posture>-<appearance>-<size>-<screen>.png            when sizes is set (the size segment is the label, e.g. AX3)
-#   18pro-<appearance>-<screen>.mp4                                when video is set: last appearance (dark), and when sizes is
+#   18pro-<appearance>-<screen>.mp4                                when video is set: the one appearance (light), and when sizes is
 #                                                                  set the last size; simctl io on the Duo captures the wrong display
 # Large Content Viewer is out of scope: it needs a long press, simctl has no touch input, so it needs a UI test.
 #
@@ -66,7 +66,8 @@ BASELINE_SCREEN="ledger"
 # The same pin as HINGE_SHA in .github/workflows/duo-ui.yml.
 HINGE_REPO="https://github.com/artemnovichkov/hinge"
 HINGE_SHA="afb8f0bd277cb12187f0844a79542cbac35e7385"
-APPEARANCES="light dark"
+# Light only: native/Manifest/Info.plist pins UIUserInterfaceStyle = Light, so a dark shot would repeat the light one.
+APPEARANCES="light"
 SIZE_LABELS="xS S M L xL xxL xxxL AX1 AX2 AX3 AX4 AX5" # smallest to largest
 ALL_DEVICES="duo 18pro"
 ALL_POSTURES="folded open"
