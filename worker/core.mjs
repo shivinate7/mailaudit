@@ -1,8 +1,9 @@
 /* The pure half of the sync server: route(request, env, store) -> Response.
    No Worker, no Durable Object, no network. The merge is the app's own. */
 import { mergeLedger, canon } from "../src/merge-rules.mjs";
-import { salvageLedger } from "../src/view-rules.mjs";
+import { salvageLedger, parseItems } from "../src/view-rules.mjs";
 import { photoIdFromName, mimeFromName, photoName } from "../src/photo-rules.mjs";
+import { parse } from "./orders.mjs";
 
 const hex = async (s) =>
   [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))]
@@ -115,6 +116,16 @@ export async function route(request, env, store, now = Date.now()) {
     return json({ id });
   }
 
+  if (path === "/orders/status") {
+    if (request.method !== "GET") return json({ error: "method not allowed" }, 405);
+    const st = await store.readOrdersStatus();
+    return json({ lastSuccessAt: st?.lastSuccessAt ?? null, lastFailure: st?.lastFailure ?? null });
+  }
+  if (path === "/orders") {
+    if (request.method !== "POST") return json({ error: "method not allowed" }, 405);
+    return postOrders(request, store, now, json);
+  }
+
   if (path !== "/ledger") return json({ error: "not found" }, 404);
 
   if (request.method === "GET") {
@@ -129,22 +140,35 @@ export async function route(request, env, store, now = Date.now()) {
   } catch {
     return json({ error: "bad body" }, 400);
   }
+  const r = await mergeIntoStore(incoming, store, now);
+  return json(r.body, r.status);
+}
+
+/* The one merge path: POST /ledger and the orders job both end here.
+   `refresh` (the job only) maps a key to the shipping status the page shows now. A stored line
+   whose key is in it takes that status and nothing else; a CSV import passes none, so its merge
+   keeps the stored status. Returns {status, body}. */
+export async function mergeIntoStore(incoming, store, now, refresh = null) {
   if (!incoming || incoming.mailday !== 1 || !Array.isArray(incoming.items))
-    return json({ error: "bad ledger" }, 400);
+    return { status: 400, body: { error: "bad ledger" } };
   /* a received, receivedAt, stamps or envelopes of the wrong shape never reaches the store */
-  if (salvageLedger(incoming).dropped) return json({ error: "bad ledger" }, 400);
+  if (salvageLedger(incoming).dropped) return { status: 400, body: { error: "bad ledger" } };
 
   /* a stored ledger saved before the shape check shipped is mended before the merge;
      the original is kept below */
   const stored = await store.read();
   const mend = stored ? salvageLedger(stored.ledger) : null;
   const cur = mend?.dropped ? { ...stored, ledger: mend.data } : stored;
-  const merge = cur ? mergeLedger(cur.ledger, incoming) : null;
+  const base =
+    refresh && cur
+      ? { ledger: { ...cur.ledger, items: cur.ledger.items.map((it) => (refresh.get(it.key) && refresh.get(it.key) !== it.tracking ? { ...it, tracking: refresh.get(it.key) } : it)) } }
+      : cur;
+  const merge = base ? mergeLedger(base.ledger, incoming) : null;
   const ledger = merge ? merge.merged : incoming;
   // No merge runs against an empty store, so there is nothing to count.
   const stats = merge ? merge.stats : mergeLedger({}, {}).stats;
-  if (new TextEncoder().encode(JSON.stringify(ledger)).length > MAX_LEDGER_BYTES) return json({ error: "too-large" }, 413);
-  if (cur && !mend.dropped && canon(ledger) === canon(cur.ledger)) return json({ ledger, rev: cur.rev, stats });
+  if (new TextEncoder().encode(JSON.stringify(ledger)).length > MAX_LEDGER_BYTES) return { status: 413, body: { error: "too-large" } };
+  if (cur && !mend.dropped && canon(ledger) === canon(cur.ledger)) return { status: 200, body: { ledger, rev: cur.rev, stats } };
   const rev = (cur?.rev ?? 0) + 1;
   const day = dayOf(now);
   /* a mend always keeps the damaged original, whatever the snapshots hold */
@@ -154,5 +178,82 @@ export async function route(request, env, store, now = Date.now()) {
   await store.pruneKept(dayOf(now - (SNAPSHOT_DAYS - 1) * DAY_MS));
   await store.write(ledger, rev, new Date(now).toISOString());
   await store.broadcast({ rev });
-  return json({ ledger, rev, stats });
+  return { status: 200, body: { ledger, rev, stats }, wasEmpty: !cur };
+}
+
+/* A guess: the size of a real multi-page post is unmeasured. */
+export const MAX_ORDERS_BODY_BYTES = 8_000_000;
+const POSTED_FAILURES = ["signed-out", "fetch", "timeout"];
+
+/* POST /orders: the extension's order-history pages (or the failure it hit) -> the ledger and the
+   orders status. A refusal that is not a run (400, 413) writes no status. Order: merge, then status;
+   if the status write throws, the merge stands and the reply is 500. */
+async function postOrders(request, store, now, json) {
+  const tooLarge = () => json({ error: "too-large" }, 413);
+  if (Number(request.headers.get("Content-Length")) > MAX_ORDERS_BODY_BYTES) return tooLarge();
+  const raw = new Uint8Array(await request.arrayBuffer());
+  if (raw.length > MAX_ORDERS_BODY_BYTES) return tooLarge();
+  let body;
+  try {
+    body = JSON.parse(new TextDecoder().decode(raw));
+  } catch {
+    return json({ error: "bad body" }, 400);
+  }
+  const isObj = body !== null && typeof body === "object" && !Array.isArray(body);
+  const hasPages = isObj && Object.hasOwn(body, "pages");
+  const hasFailure = isObj && Object.hasOwn(body, "failure");
+  const pagesOk = hasPages && !hasFailure && Array.isArray(body.pages) && body.pages.every((p) => typeof p === "string");
+  const failureOk = hasFailure && !hasPages && POSTED_FAILURES.includes(body.failure);
+  if (!isObj || body.v !== 1 || !(pagesOk || failureOk)) return json({ error: "bad body" }, 400);
+
+  const at = new Date(now).toISOString();
+  /* `make` gets the stored status and returns the new one */
+  const record = async (make) => {
+    try {
+      await store.writeOrdersStatus(make(await store.readOrdersStatus()));
+      return null;
+    } catch {
+      return json({ error: "status-write-failed" }, 500);
+    }
+  };
+  const failed = (kind) => (prev) => ({ lastSuccessAt: prev?.lastSuccessAt ?? null, lastFailure: { kind, at } });
+  /* a failure merges nothing; `reply` is the 200 body of a posted failure, or the 422 error */
+  const fail = async (kind, status, reply) => (await record(failed(kind))) ?? json(reply, status);
+
+  if (failureOk) return fail(body.failure, 200, { recorded: body.failure });
+
+  const orderIds = new Set();
+  const rows = [];
+  let unreadable = 0;
+  for (const page of body.pages) {
+    const p = parse(page);
+    if (!p.orderIds.length) return fail("empty", 422, { error: "empty" });
+    p.orderIds.forEach((id) => orderIds.add(id));
+    rows.push(...p.rows);
+    unreadable += p.unreadable;
+  }
+  if (!body.pages.length) return fail("empty", 422, { error: "empty" });
+
+  /* parseItems is the CSV import's filter (parser-filters); a key seen twice keeps its first line */
+  const seen = new Set();
+  const items = parseItems(rows).filter((i) => !seen.has(i.key) && seen.add(i.key));
+  if (!items.length) return fail("no-items", 422, { error: "no-items" });
+
+  /* the page's shipping status refreshes a stored line's tracking; the merge skips a blank status */
+  const refresh = new Map(items.map((i) => [i.key, i.tracking]));
+  const r = await mergeIntoStore({ mailday: 1, items, received: {}, envelopes: [], stamps: {} }, store, now, refresh);
+  if (r.status !== 200) return json(r.body, r.status);
+
+  const bad = await record(() => ({
+    lastSuccessAt: at,
+    lastFailure: unreadable ? { kind: "unreadable", at, count: unreadable } : null,
+  }));
+  if (bad) return bad;
+  return json({
+    orders: orderIds.size,
+    items: items.length,
+    added: r.wasEmpty ? items.length : r.body.stats.itemsAdded,
+    unreadable,
+    rev: r.body.rev,
+  });
 }
