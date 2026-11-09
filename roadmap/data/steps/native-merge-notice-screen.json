@@ -1,0 +1,10 @@
+{
+  "title": "Native: a screen shows the merge notice",
+  "status": "todo",
+  "phase": "native",
+  "order": 2,
+  "why": "SyncClient.mergeNotice holds the merge sentence, pinned by MergeNoticeKitTests, and no screen shows it (debt native-merge-notice-unbuilt).",
+  "note": "The debt says the restyle lane builds the screen; no step or plan held that until this one. No lane assigned yet: the coordinator picks one. Found by the prose judge after PR 258, 2026-11-08 23:06 CST.",
+  "ask": "",
+  "updatedAt": "2026-11-09T05:20:00Z"
+}

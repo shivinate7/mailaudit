@@ -1,0 +1,29 @@
+{
+ "id": "delete-mn-r2-gate-red",
+ "n": 83,
+ "kind": "task",
+ "status": "open",
+ "added": "2026-11-09T05:15:00Z",
+ "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+ "home": "PR 258",
+ "ref": "lane merge-notice-r2 (the merge notice, round 2); branch wip/mn-r2-gate-red (a red-gate work branch); archive archive/wip/mn-r2-gate-red",
+ "title": "Delete the work branch wip/mn-r2-gate-red",
+ "short": "Delete red-gate branch",
+ "context": "Lane merge-notice-r2 left a red-gate work branch. It must never merge. A copy is saved as archive/wip/mn-r2-gate-red at the same commit, 423cf15, so nothing is lost.\nWhy yours: the cloud git proxy refused the delete push, and no folder on your computer is open to cloud sessions (measured 2026-11-08, git push origin --delete hung up at 23:12 CST and the branch is still on origin; list_computer_folders offers no folder).",
+ "steps": [
+  "Paste the command below in a terminal.",
+  "Press Mark done."
+ ],
+ "command": {
+  "powershell": "gh auth switch -u shivinate7\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/wip/mn-r2-gate-red",
+  "mac": "gh auth switch -u shivinate7\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/wip/mn-r2-gate-red"
+ },
+ "minutes": "1 min",
+ "links": [
+  {
+   "label": "Branch wip/mn-r2-gate-red",
+   "url": "https://github.com/shivinate7/mailaudit/tree/wip/mn-r2-gate-red"
+  }
+ ],
+ "port": false
+}
