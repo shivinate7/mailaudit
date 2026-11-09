@@ -135,22 +135,34 @@ final class DuoSpreadUITests: XCTestCase {
         XCTAssertEqual(hidden, [], "\(what) parts end below the bar's top edge at \(b.minY) pt", file: file, line: line)
     }
 
-    /// Drags up on the left page's middle until the lowest part with one of `prefixes` stops moving (12 drags at most). Returns
-    /// whether the first drag moved it. The drag runs from the window's origin: on an open Duo, `app` coordinates land on the outer display.
+    /// Drags up on the left page's middle until the list stops (12 drags at most). Returns whether the first drag moved it.
+    /// The drag runs from the window's origin: on an open Duo, `app` coordinates land on the outer display.
+    /// A LazyVStack loads rows below the viewport as it scrolls, so the lowest edge can grow while the list moves. Movement is
+    /// therefore read from the top-most part that exists before the first drag: it moves up with the list, and once it scrolls
+    /// away it is gone or not hittable. The lowest edge decides the end only while that part is still on screen.
     func scrollToEnd(_ app: XCUIApplication, prefixes: [String]) -> Bool {
-        func lowest() -> CGFloat { prefixes.flatMap { app.elements(prefix: $0) }.map { $0.frame.maxY }.max() ?? 0 }
+        func parts() -> [XCUIElement] { prefixes.flatMap { app.elements(prefix: $0) } }
+        func lowest() -> CGFloat { parts().map { $0.frame.maxY }.max() ?? 0 }
+        guard let top = parts().min(by: { $0.frame.minY < $1.frame.minY }) else { return false }
+        let anchor = top.identifier
+        let anchorY = top.frame.minY
         let win = app.window.frame
         let x = (win.minX + win.midX - DuoMetrics.foldMargin) / 2 - win.minX  // the middle of the left page
         let origin = app.window.coordinate(withNormalizedOffset: .zero)
         var last = lowest()
+        var lastAnchorY = anchorY
         var moved = false
         for drag in 0..<12 {
             origin.withOffset(CGVector(dx: x, dy: win.height - 100))
                 .press(forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: x, dy: 100)), withVelocity: .slow, thenHoldForDuration: 0.3)
             Thread.sleep(forTimeInterval: 0.5)
             let now = lowest()
-            if drag == 0 { moved = now < last - 0.5 }
-            if abs(now - last) < 0.5 { break }  // the list stopped moving: this is the end
+            let fixed = app.byID(anchor)
+            let onScreen = fixed.exists && fixed.isHittable
+            if drag == 0 { moved = !onScreen || fixed.frame.minY < anchorY - 0.5 }
+            let anchorMoved = onScreen && abs(fixed.frame.minY - lastAnchorY) >= 0.5
+            if onScreen { lastAnchorY = fixed.frame.minY }
+            if !anchorMoved && abs(now - last) < 0.5 { break }  // neither moved: the list has stopped, this is the end
             last = now
         }
         return moved
