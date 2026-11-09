@@ -25,6 +25,7 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "pick": "a",
   "ref": "decision duo-card-in-hand (Card in Hand on the iPhone Duo); item 48 duo-tap-shift-check (the match list holds after a tap); PR 235 (lane duo-post-pins, Post pins on Card in Hand)",
+  "repo": "shivinate7/mailaudit",
   "short": "Post clears held matches",
   "status": "open",
   "title": "After a saved Post on Card in Hand, should the held match rows clear, so the next card starts with a clean list?",
