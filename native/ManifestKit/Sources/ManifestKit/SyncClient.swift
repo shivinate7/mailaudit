@@ -66,8 +66,10 @@ public final class SyncClient {
     public var photoStore: PhotoStore?
     /// nil: no photo fetch.
     public var photoSync: PhotoSync?
-    /// True while a call is out.
-    public private(set) var syncing = false
+    /// True while any call is out: a run() in flight, or the retry's POST. Derived from what is out, never a flag
+    /// set and cleared per call, because run() lets calls overlap and the retry's POST runs outside run(). The
+    /// photo sweep reads it.
+    public var syncing: Bool { !inflight.isEmpty || retryOut }
     /// Runs after a reply was adopted, so the screens read the new ledger.
     public var onApplied: (@MainActor () async -> Void)?
 
@@ -230,10 +232,8 @@ public final class SyncClient {
         let id = UUID()
         let task = Task { await work(self) }
         inflight[id] = task
-        syncing = true
         let outcome = await task.value
         inflight[id] = nil
-        syncing = false
         // A rev heard while this call was out may be newer than its reply. Look once more.
         if outcome == .applied, inflight.isEmpty, !retryOut, heardRev > (rev ?? 0) {
             heardRev = 0
@@ -264,9 +264,10 @@ public final class SyncClient {
         return out
     }
 
-    /// Fetches the blobs the reply's live envelopes name. The report is dropped: a photo failure changes
-    /// neither the outcome nor the advisory (photo-errors-never-hit-pushstate). A stated duplicate of
-    /// LedgerStore.photoIDs() over the raw reply: live is deletedAt == nil, each id once, in envelope order.
+    /// Fetches the blobs the reply's live envelopes name, before the reply reaches the ledger
+    /// (pull-fetches-photos-before-apply). The report is dropped: a photo failure changes neither the outcome
+    /// nor the advisory (photo-errors-never-hit-pushstate). Duplicates LedgerStore.photoIDs() over the raw reply
+    /// (live is deletedAt == nil, each id once, in envelope order), because the reply is not in the store yet.
     private func fetchPhotos(of ledger: [String: Any]) async {
         var seen = Set<String>()
         let ids = (ledger["envelopes"] as? [[String: Any]] ?? [])
@@ -287,6 +288,7 @@ public final class SyncClient {
         case .failed(let code): return await failed(code, retry: false)
         case .ledger(let answer):
             let reply = Answer(ledger: await keepingPhotoIds(answer.ledger), rev: answer.rev, stats: answer.stats)
+            await fetchPhotos(of: reply.ledger)
             guard await pressClear(cold: cold) else { return .stopped }
             // A reply that arrives over an edit, or over data no reply has carried, is not
             // adopted: the POST sends that data and the Worker's merge answers (imports-merge-never-replace).
@@ -312,6 +314,7 @@ public final class SyncClient {
             case .empty: return await failed("unknown", retry: retry)  // the Worker answers a POST with no 404
             case .ledger(let answer):
                 let reply = Answer(ledger: await keepingPhotoIds(answer.ledger), rev: answer.rev, stats: answer.stats)
+                await fetchPhotos(of: reply.ledger)
                 guard await pressClear(cold: cold) else { return .stopped }
                 // The ledger changed while the POST was out, or during the hold: the reply is old. POST again.
                 if store.generation != gen { continue }
@@ -326,7 +329,6 @@ public final class SyncClient {
         } catch {
             return await failed("unknown", retry: retry)
         }
-        await fetchPhotos(of: reply.ledger)
         carried = store.userData()
         if let r = reply.rev { rev = max(rev ?? 0, r) }
         stats = reply.stats
@@ -424,10 +426,8 @@ public final class SyncClient {
                 await sleep(ms)
                 if Task.isCancelled { return }
                 retryOut = true
-                syncing = true
                 let r = await postFlow(retry: true, cold: false)
                 retryOut = false
-                syncing = false
                 if r != .unknown && r != .tooBig && r != .applied { cancelRetry(); return }
             }
         }
