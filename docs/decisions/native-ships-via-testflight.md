@@ -8,7 +8,7 @@ Kind: build
 
 Plan: docs/decisions/build-and-deploy.md#ios-ship-testflight (native)
 
-**Holds while:** the shared `ios-ship install` command installs a Release build from `tools/ios-ship.json`, `ios-ship testflight` archives and uploads from the same file, and the `testflight` workflow runs that upload from CI on a manual dispatch.
+**Holds while:** the shared `ios-ship install` command installs a Release build from `tools/ios-ship.json`, and `ios-ship testflight` archives and uploads from the same file. Also, the `testflight` workflow runs that upload from CI on a manual dispatch.
 
 ## The command
 
