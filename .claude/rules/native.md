@@ -50,7 +50,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-tally-copy-no-flags` — The native Tally copy has no lost-mail flag and no order id tap.
 - `native-envelope-has-no-photos` — Native envelopes have no photos.
 - `native-orphaned-colours-unbuilt` — The native Orphaned composer audits flag text with no element.
-- `orphaned-composer-contrast` — The ready Orphaned composer fails contrast on its card count and its Save.
+- `orphaned-composer-contrast` — The ready Orphaned composer fails contrast on its card count and its Save (duo-ui run 42653870499, job pro-ui-a, 2 of 2 tries).
 - `tabbar-hides-partial-controls` — The tab-bar skip never checks a control partly under the bar.
 - `native-candidate-lines-wrap` — Native candidate seller and meta lines wrap.
 - `native-undo-notice-padding` — The native Undo notice pads 4pt, not 8pt.
@@ -98,7 +98,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `hand-held-box-under-keys` — A held card's box can sit under the keys.
 - `hand-open-under-bar-at-l` — At AccessibilityL the Card in Hand control sits under the tab bar.
 - `hand-tap-label-unpinned` — No test pins the tapped name's sideways place.
-- `duo-left-page-dead-margin` — The Duo left page scrolls 76 pt past its end; low priority, after restyle's step 8.
+- `duo-left-page-dead-margin` — The Duo left page scrolls past its end by the bar's height (76 pt, unmeasured: no run or record holds it); low priority, after restyle's step 8.
 - `duo-hand-first-case-timeout` — A Duo UI wait times out in CI while its value is already right.
 - `duo-keys-minimize-pref` — A simulator keyboard preference fails the Duo keys-up tests.
 - `duo-checkin-error-under-bar` — A Packages check-in error can sit under the Duo bar.
