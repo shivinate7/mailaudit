@@ -1,10 +1,10 @@
 {
   "title": "Measure the Orphaned accessibility check on the next pro-ui run",
-  "status": "todo",
+  "status": "done",
   "phase": "native",
   "order": 3,
-  "why": "Batch PR 279 merged without the Orphaned accessibility check: run 42625642858 skipped the pro-ui jobs, so whether the discard-lapses element passes is not known.",
-  "note": "The next run carrying the pro-ui label measures it. If the check flags the element, a lane either drops the label or value from the probe, or skips it by name under audit-skips-measured-flags. Source: lane armed-discard-clock, via the coordinator, 2026-11-09 08:19 CST.",
+  "why": "Batch PR 279 merged without the Orphaned accessibility check: run 42625642858 skipped the pro-ui jobs, so whether the discard-lapses element passes was not known.",
+  "note": "Measured 2026-11-09 11:41 CST by lane orphaned-audit-run: duo-ui run 42653870499 attempt 2, job pro-ui-a, on main 9bafcad plus one Makefile comment line (probe PR 281, closed). No audit line names discard-lapses (0 in the job log), so it passes; no skip and no probe change. The same job was red on other tests: testAccessibilityAuditOrphanedComposerReady (contrast on the '1 card' label), Orphaned tests that find no checkin:D1|0|pUrzasSaga in Packages, and MastheadBackupUITests layout tests. Those went to the coordinator, 2026-11-09 11:50 CST.",
   "ask": "",
-  "updatedAt": "2026-11-09T14:25:00Z"
+  "updatedAt": "2026-11-09T17:50:00Z"
 }
