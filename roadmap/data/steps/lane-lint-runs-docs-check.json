@@ -1,0 +1,10 @@
+{
+  "title": "claude-settings guard: lane lint runs the repo's docs check when a lane changes Markdown",
+  "status": "todo",
+  "phase": "tooling",
+  "order": 14,
+  "why": "Two batches went red on check:docs from a records lane that passed its local checks. PR 259 (triage, 2026-11-08 23:11 CST) ran check:records and not check:docs; lane duo-ci-path did the same, and batch PR 270 went red at 2026-11-09 02:23 CST. `merge --lane-lint` does not run the repo's docs check.",
+  "note": "Feedback for claude-settings, which the owner carries (sessions never edit claude-settings). Proposed guard: `merge --lane-lint` runs the repo's docs check (npm run check:docs here) when the lane's diff touches a Markdown file. Each red batch costs a cancelled run and a rebuild. Reported by the coordinator, 2026-11-09 02:26 CST.",
+  "ask": "",
+  "updatedAt": "2026-11-09T08:28:00Z"
+}
