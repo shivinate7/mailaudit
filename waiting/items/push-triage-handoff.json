@@ -1,0 +1,28 @@
+{
+  "added": "2026-11-08T16:58:00-06:00",
+  "command": {
+    "mac": "cd /Users/shivinate/Developer/mailaudit/.claude/worktrees/triage-025095\ngit push origin roadmap",
+    "powershell": "cd $HOME\\Developer\\mailaudit\\.claude\\worktrees\\triage-025095\ngit push origin roadmap"
+  },
+  "context": "Goal: the cloud triage session starts from the desktop triage's handoff.\nThe handoff is committed on the roadmap branch as b1731d3, but only on the Mac.\nWhy yours: the guard roadmap-one-writer refuses every roadmap push from the desktop triage session (measured 2026-11-08, git push origin roadmap refused at 16:56 CST).\nUnvetted: the past-ruling check timed out.",
+  "home": "roadmap branch, handoffs/triage.md (commit b1731d3)",
+  "id": "push-triage-handoff",
+  "kind": "task",
+  "lastAnswer": {
+    "at": "2026-11-08T17:05:00-06:00",
+    "done": true,
+    "note": "owner pushed from Terminal; origin/roadmap at b1731d3"
+  },
+  "minutes": 1,
+  "n": 72,
+  "owner": "triage local_37611200-4d33-48f9-a0f9-53f2ca374003",
+  "rank": 1,
+  "ref": "the cloud move, 2026-11-08 16:50 CST",
+  "short": "Push triage handoff",
+  "status": "closed",
+  "steps": [
+    "Paste the command below into Terminal on the Mac.",
+    "Mark this done."
+  ],
+  "title": "Push the triage handoff (roadmap b1731d3) so the cloud team can read it"
+}
