@@ -69,7 +69,8 @@ jobs:
     # The labels duo-ui and pro-ui in the if: lines and in ci-done are the second place a copy edits.
     if: ${{ (!github.event.pull_request.draft || contains(github.event.pull_request.labels.*.name, 'duo-ui')) }}
     runs-on: xcode-27
-    timeout-minutes: 60 # provisional
+    # Provisional cap, from three measured duo-ui job times: 43.5 min (run 42625642858), 58.0 min (run 42643271925), cancelled over 60 min (run 42653789986). Sharding the suite retires this raise.
+    timeout-minutes: 90 # provisional
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
