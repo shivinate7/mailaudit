@@ -322,7 +322,7 @@ public final class SyncClient {
         guard let stats else { return nil }
         let kinds = ["itemsAdded", "checkInsAdded", "envelopesAdded", "checkInsRemoved", "envelopesRemoved",
                      "stampsRemoved", "stampsAdded"]
-        guard kinds.reduce(0, { $0 + (stats[$1] ?? 0) }) > 0,
+        guard kinds.reduce(0, { $0 + (stats[$1] ?? 0) }) > 1,
               let args = try? JSONSerialization.data(withJSONObject: [stats] as [Any]),
               let out = try? await engine.call("mergeSummary", String(decoding: args, as: UTF8.self)),
               let text = (try? JSONSerialization.jsonObject(with: Data(out.utf8), options: .fragmentsAllowed)) as? String
