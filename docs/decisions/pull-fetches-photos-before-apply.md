@@ -8,7 +8,7 @@ The order does not decide which ids survive. A merge and a server apply keep eve
 
 The order serves the photo. A merged envelope whose blob is already here shows its photo when the ledger lands. A blob that has not arrived shows a blank tile until a sync brings it. A download that fails keeps its id, so a later try can fetch the blob.
 
-**Pinned by:** 30.5–30.9 assert the outcome of a merge. The id is kept, and the blob is on this device afterwards. Its bytes and type survive the round trip, and the sweep leaves it. They do not separate the two orders. Test 30.6's name says "because it downloaded the blob first", but the id is kept either way. Mutant (a merge that applies before it downloads): unmeasured at this head. Native: `SyncPhotoFetchTests` pins the order on a GET and a POST by state: the fake transport's `get()` records that the ledger does not yet hold the reply's envelope.
+**Pinned by:** 30.5–30.9 assert the outcome of a merge. The id is kept, and the blob is on this device afterwards. Its bytes and type survive the round trip, and the sweep leaves it. They do not separate the two orders. Test 30.6's name says "because it downloaded the blob first", but the id is kept either way. Mutant (a merge that applies before it downloads): unmeasured at this head. Native: `SyncPhotoFetchTests` pins the order on a GET and a POST by state: the test's `get()` hook records that the ledger does not yet hold the reply's envelope. A fetch that meets a photo run already out is skipped, and the apply goes on (case 9).
 
 Kind: build
 
