@@ -1,0 +1,10 @@
+{
+  "title": "claude-settings guard: a lane session opens its PR as a draft",
+  "status": "todo",
+  "phase": "tooling",
+  "order": 13,
+  "why": "Lane photo-fetch-order opened PR 263 ready at 2026-11-08 23:17 CST. Its red-proof macOS run counted as batch CI, so the merge tool refused batch PR 262's merge at 23:55 CST. The coordinator told the lane to flip PR 263 to draft.",
+  "note": "Feedback for claude-settings, which the owner carries (sessions never edit claude-settings). Proposed guard: refuse a ready (non-draft) PR create, or a flip to ready, from a cs-build:lane session; only the batch runner's integration PR goes ready (rule git-integration-branch-merge). Reported by the coordinator, 2026-11-08 23:55 CST. Filed in phase tooling with the other claude-settings steps.",
+  "ask": "",
+  "updatedAt": "2026-11-09T05:58:00Z"
+}
