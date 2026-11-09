@@ -15,9 +15,6 @@
 //   public var photoSync: PhotoSync?   // nil: no photo fetch
 //   public var syncing: Bool { get }   // true while any call is out: a run() in flight, or the retry's POST
 //
-// Red-first. On main this file fails to compile only on `photoSync` and `syncing`. The red run is the macOS
-// CI run: the test-author has no Swift toolchain, so no local run was made.
-//
 // Fakes. PhotoFakeTransport (PhotoSyncTests.swift) is the Worker. It has no hook on get() and no gate, so
 // SyncPhotoWire wraps it and runs a test's hook first. PhotoCallHold is a gate with an arrival wait, so no
 // test polls. SleepGate (StubURLProtocol.swift) holds the retry's delay. Nothing here sleeps or reads a clock.
@@ -344,10 +341,8 @@ final class SyncPhotoFetchTests: SyncTestCase {
 
     // Case 10. The reply names two live photos. The first fetch is held, and stop() lands during it. The pull must
     // return .stopped, the reply's envelope must stay out of the ledger, and the second fetch must never start.
-    // On cd60427 the assertion that fails is the last one: the worker holds both names, so `fetched` is
-    // [first, second]. SyncClient.stop() cancels the pull's own task, but PhotoSync's run is a separate Task that
-    // SyncClient does not stop, so its batch loop runs on and fetches the second photo. The outcome and the
-    // envelope asserts already hold there, because pressClear sees the cancelled pull and returns .stopped.
+    // PhotoSync's run is a Task of its own, so cancelling the pull does not reach it: only SyncClient.stop()
+    // calling photoSync.stop() keeps the second fetch from starting.
     func testStopDuringAPhotoFetchStopsThePhotoRun() async throws {
         let store = try makeStore()
         let client = try makeClient(store)
