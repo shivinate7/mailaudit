@@ -24,7 +24,7 @@ Plan: docs/decisions/duo-ui-runs-on-pr-label.md#gate (native)
 
 - `pull_request` only, with the types `opened`, `synchronize`, `reopened`, `ready_for_review` and `labeled`.
 - Never `workflow_dispatch`, `push`, `schedule` or `pull_request_target`. The workflow reads no secrets.
-- A newer run of the same pull request cancels the older one. Every run runs each job that the pull request's draft state and labels call for, so the newer run loses no job. A label event that ran only the newly labelled job could pass while an earlier run on the same head was red, and the merge tool judges the newest run (review round 1, 2026-11-08).
+- A newer run of the same pull request cancels the older one. Every run runs each job that the pull request's draft state and labels call for, so the newer run loses no job. A label event that ran only the newly labelled job could pass while an earlier run on the same head was red, and the merge tool judges the newest run. So any label added to a pull request that touches these paths, even an unrelated one, restarts the whole job.
 - The merge tool judges the newest completed run on `main` of every workflow file. This file has no `main` trigger, so it has no `main` run to judge.
 
 ## Gate
@@ -60,7 +60,7 @@ Plan: docs/decisions/duo-ui-runs-on-pr-label.md#gate (native)
 
 - Run 42549989429, head 6a59dd5, 2026-11-08: Xcode 27.1, Duo runtime iOS-27-2-iPhone19-4 (the owner's Duo runs iOS 27.1). The job ran 35 min after 12 min queued: build 1 min, simulator boot 4 min, flat pass 26 min, closed pass under 1 min. Closed 2 of 2 green; flat 37 of 39 green on the first attempt. One sample, so the time is not a cap basis.
 - Flaky timing: `testMatchRowClearsTheKeysUnderAReleasedBox` timed out on a UI query (201 s) on its first attempt and passed on retry. A pass on retry is never a debt citation (coordinator, 2026-11-08 21:05 CST).
-- `testFlatPackagesLastRowClearsTheBar` failed both attempts. The cause is its movement measure on a lazy list, not the app; the fix is in this lane.
+- `testFlatPackagesLastRowClearsTheBar` failed both attempts. The cause was its movement measure on a lazy list, not the app: the measure now follows one row that exists before the first drag.
 
 ## Unmeasured
 
