@@ -94,6 +94,12 @@ final class DuoHandUITests: XCTestCase {
         continueAfterFailure = false  // a missing control ends the test, so no later tap lands on nothing
     }
 
+    override func tearDown() {
+        let name = self.name
+        MainActor.assumeIsolated { DuoShot.keep(name: name) }
+        super.tearDown()
+    }
+
     // MARK: helpers
 
     /// An element that must show within 5 s.
@@ -522,8 +528,8 @@ final class DuoHandUITests: XCTestCase {
     }
 
     /// Pose: flat, system keys up, text at AccessibilityXL, no box. The typed name leaves one match row, and that row must lie wholly
-    /// above the keys' drawn top (duo-fold-and-keyboard); the measured figures sit in debt hand-match-row-ax3-unmeasured. The
-    /// Suspense and Released cases show a box and set no text size, so no other case pins this row with no box at large text.
+    /// above the keys' drawn top (duo-fold-and-keyboard). The Suspense and Released cases show a box and set no text size, so no
+    /// other case pins this row with no box at large text.
     func testMatchRowClearsTheKeysAtAccessibilityXL() {
         let app = XCUIApplication.launchedOnSeed(extra: ["-UIPreferredContentSizeCategoryName", Self.accessibilityXL])
         guard app.requirePose(.flat) else { return }
@@ -835,8 +841,8 @@ final class DuoHandUITests: XCTestCase {
     }
 
     /// Pose: flat. A tap on a match fills the query, and the list holds its rows. The tapped row must stay under the finger.
-    /// The Suspense box that a shared name opens below the list must not rise above the old list foot (no-layout-shift-under-pointer;
-    /// debt hand-suspense-tap-shift). "o" lists seven names, Brainstorm then Counterspell.
+    /// The Suspense box that a shared name opens below the list must not rise above the old list foot (no-layout-shift-under-pointer).
+    /// "o" lists seven names, Brainstorm then Counterspell.
     /// A1 and B1 both hold Counterspell, so tapping it opens a Suspense box. Rows are read once the list has stopped moving.
     func testTappingAMatchMovesNoRowUnderTheFinger() {
         let app = XCUIApplication.launchedOnSeed()

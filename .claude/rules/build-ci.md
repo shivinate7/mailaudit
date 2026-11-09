@@ -26,6 +26,7 @@ What each check asks, and the two traps in the icon pipeline.
 - `ci-filters-guarantee-no-rebuild` — CI filters replace the old no-workflows guarantee.
 - `ci-skips-draft-prs` — CI skips draft pull requests, and the rollup with them.
 - `milestone-runs-full-suite` — The full Swift suite runs at milestones, by dispatch only.
+- `duo-ui-runs-on-pr-label` — The Duo UI tests run on pull requests, and the Pro ones by label.
 - `pages-queued-workflow-fix` — A stuck Pages deploy needs a new commit, not a re-run.
 - `favicon-is-a-different-drawing` — The favicon is redrawn, not the master shrunk.
 - `icon-paths-and-export-gotchas` — Icon paths stay relative, and iOS caches hard.
