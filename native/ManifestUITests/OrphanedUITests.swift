@@ -85,6 +85,8 @@ final class OrphanedUITests: XCTestCase {
 
     func sagaLabel(_ app: XCUIApplication) -> String {
         tab(app, "Packages").tap()
+        // D1 is the fourth card; Packages builds its rows lazily, so an off-screen card has no element until it is scrolled in.
+        app.reveal(el(app, Self.sagaControl))
         let control = el(app, Self.sagaControl)
         XCTAssertTrue(control.waitForExistence(timeout: 5), "the Packages view has no \(Self.sagaControl)")
         return control.label
@@ -188,6 +190,8 @@ final class OrphanedUITests: XCTestCase {
         input.typeText("Light")
 
         tab(app, "Packages").tap()
+        // D1 sits off screen until scrolled in, as in sagaLabel; reveal only scrolls the Packages list.
+        app.reveal(el(app, Self.sagaControl))
         XCTAssertTrue(el(app, Self.sagaControl).waitForExistence(timeout: 5), "anchor: the Packages view opened")
         tab(app, "Orphaned").tap()
 
