@@ -17,9 +17,19 @@ enum DuoMetrics {
     /// (455.5 and 495.5 at a 951 pt window), and how far right of the middle the right page starts.
     static let foldMargin: CGFloat = 20
     /// The tallest the custom bar's view may be: the pill (64 pt) and the 12 pt under it.
-    static let barHeight: CGFloat = 76
+    static var barHeight: CGFloat { pillHeight + pillLift }
     /// The room a bottom bar may keep above the window's bottom edge. The outer screen's bottom inset is 34 pt; the inner one is unmeasured.
     static let bottomAllowance: CGFloat = 40
+    /// The custom bar's pill, as DuoBar draws it (DuoSpine.swift: 24 pt side padding, DuoBarMetrics.lift and .pill): 24 pt in from each side, 12 pt up from the bar's bottom, 64 pt high.
+    /// The pill has no identifier, so a test derives it from the bar's frame.
+    static let pillInset: CGFloat = 24
+    static let pillLift: CGFloat = 12
+    static let pillHeight: CGFloat = 64
+
+    /// The pill inside the custom bar's frame `bar`.
+    static func pill(under bar: CGRect) -> CGRect {
+        CGRect(x: bar.minX + pillInset, y: bar.maxY - pillLift - pillHeight, width: bar.width - 2 * pillInset, height: pillHeight)
+    }
 }
 
 /// A page of the open Duo's spread: left of the fold strip, or right of it.
@@ -43,6 +53,7 @@ extension XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments = ["-ManifestUITestSeed"] + extra
         app.launch()
+        DuoShot.app = app
         return app
     }
 
@@ -68,6 +79,26 @@ extension XCUIApplication {
             return false
         }
         return true
+    }
+}
+
+/// One kept screenshot of the app window per Duo test, for the duo-ui CI run to export from the result bundle.
+/// `launchedOnSeed` records the app, and each Duo class calls `keep` from tearDown. XCTest screenshots may come back black on the Duo
+/// simulator (see `keepShot`), so the exported images show whether this route works.
+@MainActor
+enum DuoShot {
+    static var app: XCUIApplication?
+
+    /// Attaches the window of the app the test launched, kept past the run. Attaches nothing when the app is gone, so a crash
+    /// shows as the test's own failure and tearDown adds none.
+    static func keep(name: String) {
+        let launched = Self.app
+        Self.app = nil
+        guard let launched, launched.state == .runningForeground, launched.window.exists else { return }
+        let shot = XCTAttachment(screenshot: launched.window.screenshot())
+        shot.name = "\(name) window"
+        shot.lifetime = .keepAlways
+        XCTContext.runActivity(named: "\(name) window") { $0.add(shot) }
     }
 }
 

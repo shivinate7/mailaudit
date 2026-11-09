@@ -448,6 +448,33 @@ export function totalsOf(items, received) {
   return { total, got, missingVal, val };
 }
 
+/* Mark all received / Clear check-ins (undo-removes-only-its-delta). `items` is a package's lines, or a Tally row's
+   every copy. on: each line's key is its qty; off: each key is deleted, never stored as 0. Other keys are kept. */
+export function bulkApply(items, on, received) {
+  const next = { ...received };
+  for (const it of items) {
+    if (on) next[it.key] = it.qty;
+    else delete next[it.key];
+  }
+  return next;
+}
+
+/* What a Mark all adds per line: qty minus the clamped count now. The caller keeps it for the Undo. */
+export const bulkTakes = (items, received) =>
+  items.map((it) => ({ itemKey: it.key, take: it.qty - gotOfItem(it, received), qty: it.qty }));
+
+/* Takes back a press's own delta: each take's key is clamp(now - take, 0, qty), deleted at 0. Other keys are kept,
+   so a hand edit made after the press survives. */
+export function undoBulk(takes, received) {
+  const next = { ...received };
+  for (const { itemKey, take, qty } of takes) {
+    const v = Math.min((next[itemKey] || 0) - take, qty);
+    if (v > 0) next[itemKey] = v;
+    else delete next[itemKey];
+  }
+  return next;
+}
+
 export function outstandingNames(items, received) {
   const map = new Map();
   for (const it of items) {

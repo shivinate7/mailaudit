@@ -1,4 +1,5 @@
 import ManifestKit
+import Observation
 import SwiftUI
 
 /// Orphaned's paint: a part's token name through Parchment (OrphanedPaint holds the choice and has the unit test).
@@ -33,6 +34,7 @@ struct OrphanedView: View {
             }
         }
         .task { try? await model.load() }
+        .overlay(alignment: .topLeading) { if DiscardLapses.exposed { DiscardLapsesProbe() } }
     }
 
     private var detail: some View {
@@ -94,6 +96,28 @@ struct OrphanedView: View {
             .padding(.horizontal, 16)
             .padding(.bottom, 16)
         }
+    }
+}
+
+/// How many armed Discard asks have lapsed on their own 4 s timer since launch. It lives outside the card's state, so a pick
+/// that destroys the card does not reset it. The UI test reads it to tell a carried-over ask from one that simply timed out.
+@MainActor @Observable final class DiscardLapses {
+    static let shared = DiscardLapses()
+    /// Only a seeded UI run exposes the count; a user's VoiceOver never meets it.
+    static let exposed = ProcessInfo.processInfo.arguments.contains("-ManifestUITestSeed")
+    private(set) var count = 0
+    func lapsed() { count += 1 }
+}
+
+/// The count as one 1 pt clear element: it takes no layout, takes no touch, and is exposed to XCUITest only.
+private struct DiscardLapsesProbe: View {
+    var body: some View {
+        Color.clear.frame(width: 1, height: 1)
+            .allowsHitTesting(false)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Discard lapses")
+            .accessibilityValue("\(DiscardLapses.shared.count)")
+            .accessibilityIdentifier("discard-lapses")
     }
 }
 
@@ -386,7 +410,15 @@ private struct EnvelopeCard: View {
             .padding(.top, 8).padding(.horizontal, 12).padding(.bottom, 12)
             }
         }
-        .task(id: armed) { if armed { try? await Task.sleep(for: .seconds(4)); armed = false } }
+        .task(id: armed) {
+            guard armed else { return }
+            // A cancelled sleep (a pick that destroys the card, Cancel, a re-tap or Confirm) is not a lapse.
+            do { try await Task.sleep(for: .seconds(4)) } catch { return }
+            guard !Task.isCancelled else { return }
+            // The count goes up in the step that clears the ask, so a reader that sees the ask gone also sees the count.
+            DiscardLapses.shared.lapsed()
+            armed = false
+        }
         .modifier(CardChrome(border: .cardBorder))
     }
 }

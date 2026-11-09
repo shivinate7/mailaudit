@@ -36,4 +36,15 @@ final class VersionFileNamesTests: XCTestCase {
             .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] }
         XCTAssertEqual(json?["id"] as? String, stem, "the .json holds an id key equal to the file stem")
     }
+
+    /// The versions folder is named "versions" beside ledger.json (native-files-are-frozen). The app
+    /// builds it alone, so no other test holds the name.
+    func testTheFolderIsVersionsBesideTheLedger() {
+        let support = URL(filePath: "/tmp/Application Support/dev.shivinate.manifest", directoryHint: .isDirectory)
+        let ledger = support.appending(path: "ledger.json")
+        let folder = VersionStore.folder(besideLedger: ledger)
+
+        XCTAssertEqual(folder.path, support.appending(path: "versions").path, "the folder is named versions and sits beside ledger.json")
+        XCTAssertTrue(folder.hasDirectoryPath, "the folder is a directory URL, not a file")
+    }
 }

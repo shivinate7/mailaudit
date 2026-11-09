@@ -78,7 +78,7 @@ The orchestrator defaults of 2026-10-12 are pinned by these tests:
 
 The notice line is pinned by LedgerNoticeTests: testNoLineWhenNothingWasDropped, testOneLineNamesTheCountAndTheKeptCopy, testSingularCountReadsAsOneEntry, testLineNamesNoSyncWords.
 
-Four behaviours have no test. Debt: `native-ledger-pins-missing`.
+`LedgerStoreTests` pins the kept-copy name, a missing file and the failed-save sentence. The app passing its own `rules.js` has no test. Debt: `native-ledger-pins-missing`.
 
 No native view opens the kept copy that the notice line names. Debt: `native-kept-copy-has-no-route`.
 
@@ -96,7 +96,7 @@ The Worker POST handler in `worker/core.mjs` stored the merged ledger whenever a
 
 ## Swift names in this record
 
-The Swift names in this record (LedgerStore, LedgerStoreTests, RulesCore, droppedCount) are unbackticked. They were plain because `check-docs.mjs` did not read `native/`. Its CODE_ROOTS lists `native/` now, so a backticked Swift name is checked.
+The Swift names in this record (LedgerStore, LedgerStoreTests, RulesCore, droppedCount) are unbackticked. They were plain because `check-docs.mjs` did not read `native/`. Claim 3 reads every file git lists, `native/` included, so a backticked Swift name is checked.
 
 ## See also
 

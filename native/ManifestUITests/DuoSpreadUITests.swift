@@ -12,6 +12,8 @@
 // wrote them (lane duo-tabs-spread-t): they build with `xcodebuild build-for-testing`.
 // Each test names its pose and fails when the window is another size (DuoWindowSupport.swift). It never skips.
 //
+// testFlatBarLabelsFitThePillAtAccessibilityXXXL fails when a bar label passes its button or the pill at large text (debt duo-bar-dynamic-type-clips).
+//
 // Red on the code before the spread (the builder made them pass): testFlatTallySpreadsOverBothPages,
 // testFlatTallyRightPageFollowsTheTappedRow, testFlatOrphanedSpreadsOverBothPages, testFlatBarTitlesShareOneBaseline.
 // Red on the spread's first build (the builder's next round makes them pass): testFlatOrphanedArmedDiscardDoesNotCarryOver
@@ -42,6 +44,8 @@
 //   assign:<gk>              Orphaned, flat: a candidate's Assign button, on the right page.
 //   discard:<id>             Orphaned: Discard sits on the right page's card only, and arms an ask "Tap again to discard N card(s)"
 //                            that lapses by itself after 4 s. A pick starts the new envelope's card unarmed.
+//   discard-lapses           NEW. Value: the decimal count of Discard asks that lapsed by the app's 4 s timer since launch.
+//                            Only under -ManifestUITestSeed. A cancel, a re-tap or a pick that destroys the card never counts.
 //   orphaned-record, orphaned-input, suggestion:<name>, orphaned-save   the composer (OrphanedRecordSupport.swift).
 //   package-row:<gk>         Packages: a row spans the fold.
 // The mockup draws no masthead, search, sort or Hide received control on Tally or Orphaned. Where they sit is unruled, so the
@@ -66,6 +70,12 @@ final class DuoSpreadUITests: XCTestCase {
     override func setUp() {
         super.setUp()
         continueAfterFailure = false  // a missing part ends the test, so no later tap lands on nothing
+    }
+
+    override func tearDown() {
+        let name = self.name
+        MainActor.assumeIsolated { DuoShot.keep(name: name) }
+        super.tearDown()
     }
 
     // MARK: helpers
@@ -127,22 +137,37 @@ final class DuoSpreadUITests: XCTestCase {
         XCTAssertEqual(hidden, [], "\(what) parts end below the bar's top edge at \(b.minY) pt", file: file, line: line)
     }
 
-    /// Drags up on the left page's middle until the lowest part with one of `prefixes` stops moving (12 drags at most). Returns
-    /// whether the first drag moved it. The drag runs from the window's origin: on an open Duo, `app` coordinates land on the outer display.
+    /// Drags up on the left page's middle until the list stops (12 drags at most). Returns whether the first drag moved it.
+    /// The drag runs from the window's origin: on an open Duo, `app` coordinates land on the outer display.
+    /// A LazyVStack loads rows below the viewport as it scrolls, so the lowest edge can grow while the list moves. Movement is
+    /// therefore read from the top-most part that exists before the first drag: it moves up with the list. Once it scrolls away
+    /// it is off screen in one of two ways: a LazyVStack unloads it, so it no longer exists, or it stays loaded above the window,
+    /// so its frame no longer meets the window. The lowest edge decides the end only while that part is still on screen.
     func scrollToEnd(_ app: XCUIApplication, prefixes: [String]) -> Bool {
-        func lowest() -> CGFloat { prefixes.flatMap { app.elements(prefix: $0) }.map { $0.frame.maxY }.max() ?? 0 }
+        func parts() -> [XCUIElement] { prefixes.flatMap { app.elements(prefix: $0) } }
+        func lowest() -> CGFloat { parts().map { $0.frame.maxY }.max() ?? 0 }
+        guard let top = parts().min(by: { $0.frame.minY < $1.frame.minY }) else { return false }
+        let anchor = top.identifier
+        let anchorY = top.frame.minY
         let win = app.window.frame
         let x = (win.minX + win.midX - DuoMetrics.foldMargin) / 2 - win.minX  // the middle of the left page
         let origin = app.window.coordinate(withNormalizedOffset: .zero)
         var last = lowest()
+        var lastAnchorY = anchorY
         var moved = false
         for drag in 0..<12 {
             origin.withOffset(CGVector(dx: x, dy: win.height - 100))
                 .press(forDuration: 0.05, thenDragTo: origin.withOffset(CGVector(dx: x, dy: 100)), withVelocity: .slow, thenHoldForDuration: 0.3)
             Thread.sleep(forTimeInterval: 0.5)
             let now = lowest()
-            if drag == 0 { moved = now < last - 0.5 }
-            if abs(now - last) < 0.5 { break }  // the list stopped moving: this is the end
+            let fixed = app.byID(anchor)
+            // Not isHittable: it records a test failure for a loaded element outside the window. exists comes first, since an
+            // unloaded element has no frame to read. An empty frame is off screen.
+            let onScreen = fixed.exists && !fixed.frame.isEmpty && win.intersects(fixed.frame)
+            if drag == 0 { moved = !onScreen || fixed.frame.minY < anchorY - 0.5 }
+            let anchorMoved = onScreen && abs(fixed.frame.minY - lastAnchorY) >= 0.5
+            if onScreen { lastAnchorY = fixed.frame.minY }
+            if !anchorMoved && abs(now - last) < 0.5 { break }  // neither moved: the list has stopped, this is the end
             last = now
         }
         return moved
@@ -299,8 +324,9 @@ final class DuoSpreadUITests: XCTestCase {
     }
 
     /// Pose: flat (open Duo, window 951 x 669 pt). Discard armed on one envelope does not arm the next one a pick shows: the
-    /// right page's card is that envelope's, with its own state. The ask lapses by itself after 4 s, so the pick and the check
-    /// run inside 3.5 s of arming. A slower run fails, since it cannot tell a carried ask from a lapsed one. It never passes.
+    /// right page's card is that envelope's, with its own state. The guard reads the app's lapse count (discard-lapses), not
+    /// runner wall time. A lapse re-arms the check once. It never passes without a conclusive attempt: an attempt counts only
+    /// when no lapse fired during it.
     func testFlatOrphanedArmedDiscardDoesNotCarryOver() {
         guard let two = openFlatOrphanedWithTwo() else { return }
         let app = two.app
@@ -308,23 +334,49 @@ final class DuoSpreadUITests: XCTestCase {
         let title = app.byID("orphaned-detail-title")
         let ask = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Tap again to discard")).firstMatch
 
-        upperCell.tap()
-        XCTAssertTrue(title.waitForExistence(timeout: 5), "the right page's heading orphaned-detail-title is missing after a tap on the upper cell")
-        Thread.sleep(forTimeInterval: 0.3)
-        let shown = title.label
-        let discard = app.firstElement(prefix: "discard:")
-        XCTAssertTrue(discard.waitForExistence(timeout: 5), "the right page's card has no Discard (discard:<id>)")
+        /// The app's lapse count, or nil once a failure is recorded.
+        func lapseCount() -> Int? {
+            let lapses = app.byID("discard-lapses")
+            guard lapses.exists else {
+                XCTFail("the app's lapse hook discard-lapses is missing, so the check proves nothing")
+                return nil
+            }
+            let raw = (lapses.value as? String) ?? ""
+            guard let count = Int(raw) else {
+                XCTFail("discard-lapses holds \"\(raw)\", not a count of lapsed asks")
+                return nil
+            }
+            return count
+        }
 
-        let armedAt = Date()
-        discard.tap()
-        XCTAssertTrue(ask.waitForExistence(timeout: 2), "a tap on Discard did not arm it: there is no 'Tap again to discard' button, so the test would prove nothing")
-        lowerCell.tap()
-        XCTAssertTrue(waitUntil { title.label != shown }, "a tap on the lower cell left the right page on \(shown): no pick, so no carry-over to check")
-        let carried = ask.exists
-        let spent = Date().timeIntervalSince(armedAt)
+        var upper: String?  // the upper envelope's heading, from the first attempt
+        for _ in 1...2 {
+            guard let before = lapseCount() else { return }
 
-        XCTAssertFalse(carried, "Discard was armed on the envelope \(shown). A pick to \(title.label) kept the 'Tap again to discard' ask: the card's state carried over to the next envelope")
-        XCTAssertLessThan(spent, 3.5, "\(spent) s passed between arming and the check, and the ask lapses at 4 s: the absence proves nothing. Run again")
+            upperCell.tap()
+            XCTAssertTrue(title.waitForExistence(timeout: 5), "the right page's heading orphaned-detail-title is missing after a tap on the upper cell")
+            if let upper = upper, !waitForLabel(title, upper) {
+                XCTFail("a tap on the upper cell left the right page on \(title.label), not \(upper)")
+                return
+            }
+            Thread.sleep(forTimeInterval: 0.3)
+            let shown = title.label
+            if upper == nil { upper = shown }
+            let discard = app.firstElement(prefix: "discard:")
+            XCTAssertTrue(discard.waitForExistence(timeout: 5), "the right page's card has no Discard (discard:<id>)")
+
+            discard.tap()
+            XCTAssertTrue(ask.waitForExistence(timeout: 2), "a tap on Discard did not arm it: there is no 'Tap again to discard' button, so the test would prove nothing")
+            lowerCell.tap()
+            XCTAssertTrue(waitUntil { title.label != shown }, "a tap on the lower cell left the right page on \(shown): no pick, so no carry-over to check")
+            let carried = ask.exists  // read before the lapse count: an unchanged count means no lapse fired before the ask was read
+            guard let after = lapseCount() else { return }
+            if after != before { continue }  // the app's own lapse fired, so the absence proves nothing: re-arm and try again
+
+            XCTAssertFalse(carried, "Discard was armed on the envelope \(shown). A pick to \(title.label) kept the 'Tap again to discard' ask: the card's state carried over to the next envelope")
+            return
+        }
+        XCTFail("inconclusive twice: the app's own 4 s Discard lapse fired before the check on both attempts, so neither proves anything")
     }
 
     /// Pose: flat (open Duo, window 951 x 669 pt). The picked Orphaned cell carries the selected trait and the other cell does not.
@@ -360,6 +412,43 @@ final class DuoSpreadUITests: XCTestCase {
         }
         guard let low = bottoms.values.min(), let high = bottoms.values.max() else { return }
         XCTAssertLessThanOrEqual(high - low, 0.5, "the bar titles do not share one baseline, their bottoms are \(bottoms)")
+    }
+
+    /// Pose: flat (open Duo, window 951 x 669 pt), launched at AccessibilityXXXL. Each tab's title lies inside the pill and fits its
+    /// own button, so none is truncated. The title is fixed-size text, so one past the pill is clipped, not ellipsized (the
+    /// duo-bar-dynamic-type-clips debt). The large content viewer is not checked: XCUITest has no read of it (the Xcode SDK
+    /// headers name none), so a long-press probe would test the viewer's look, not whether it is offered.
+    func testFlatBarLabelsFitThePillAtAccessibilityXXXL() {
+        let app = XCUIApplication.launchedOnSeed(extra: ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"])
+        guard app.requirePose(.flat) else { return }
+        let bar = app.duoBar
+        guard bar.waitForExistence(timeout: 5) else {
+            XCTFail("the custom tab bar duo-tab-bar is missing on the open Duo")
+            return
+        }
+        continueAfterFailure = true  // every tab is checked, so one run shows each clipped title
+
+        let pill = DuoMetrics.pill(under: bar.frame)
+        let tol = DuoMetrics.tolerance
+        for title in DuoShellUITests.tabTitles {
+            let label = app.byID("duo-tab-title:\(title)")
+            let button = bar.buttons[title]
+            guard label.waitForExistence(timeout: 5), button.exists else {
+                XCTFail("the \(title) tab has no title element duo-tab-title:\(title) or no button in the custom bar")
+                continue
+            }
+            let f = label.frame, b = button.frame
+
+            var past: [String] = []
+            if f.minX < pill.minX - tol { past.append("left") }
+            if f.maxX > pill.maxX + tol { past.append("right") }
+            if f.minY < pill.minY - tol { past.append("top") }
+            if f.maxY > pill.maxY + tol { past.append("bottom") }
+            XCTAssertEqual(past, [], "the \(title) title \(f) runs past the pill \(pill) on its \(past.joined(separator: ", ")) side")
+
+            let fits = f.minX >= b.minX - tol && f.maxX <= b.maxX + tol && f.minY >= b.minY - tol && f.maxY <= b.maxY + tol
+            XCTAssertTrue(fits, "the \(title) title \(f) does not fit its button \(b): it is truncated")
+        }
     }
 
     /// Pose: flat (open Duo, window 951 x 669 pt). Packages keeps the full width, so the fold does not split it. A guard, not a

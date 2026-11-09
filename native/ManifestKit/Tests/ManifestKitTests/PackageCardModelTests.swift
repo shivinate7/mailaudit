@@ -234,6 +234,14 @@ final class PackageCardModelTests: XCTestCase {
         }
     }
 
+    /// The detail text's identifier, which the contrast skip reads by prefix: a done line carries "done-detail:<key>", and a
+    /// part-in or open line carries none, so the skip never reaches a detail in another state.
+    func testDetailIDIsDoneOnly() {
+        XCTAssertEqual(PackageCard.detailID(key: "A1|0|pLightningBolt", state: .done), "done-detail:A1|0|pLightningBolt", "a done line")
+        XCTAssertEqual(PackageCard.detailID(key: "A1|0|pLightningBolt", state: .partial), "", "a part-in line carries no id")
+        XCTAssertEqual(PackageCard.detailID(key: "A1|0|pLightningBolt", state: .open), "", "an open line carries no id")
+    }
+
     // MARK: price text
 
     /// The web item row prints price.toFixed(2): a thousand is "$1000.00", where the bundle's money() gives "$1,000.00".

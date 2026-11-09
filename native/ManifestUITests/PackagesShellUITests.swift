@@ -78,12 +78,7 @@ final class PackagesShellUITests: XCTestCase {
         XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed, "the check-in did not land")
     }
 
-    func attach(_ app: XCUIApplication, _ name: String) {
-        let shot = XCTAttachment(screenshot: app.screenshot())
-        shot.name = name
-        shot.lifetime = .keepAlways
-        add(shot)
-    }
+    func attach(_ app: XCUIApplication, _ name: String) { ScreenKit.attach(app, name, to: self) }
 
     // MARK: tabs
 

@@ -18,6 +18,7 @@ on:
       - "src/**"
       - "test/**"
       - "worker/**"
+      - "extension/**"
       - "shared/**"
       - "native/**"
       - "scripts/**"
@@ -85,6 +86,9 @@ jobs:
       - run: npm run test:check-docs
       - run: npm run test:check-records
       - run: npm run test:worker
+      - run: npm run test:extension
+      - name: extension/pull.js is in step with its source
+        run: node extension/build.mjs --check
       - run: npm run test:send-key
       - run: npm run test:view-rules
       - run: npm run test:ci-wiring
@@ -168,7 +172,7 @@ jobs:
         if: env.WORK == 'true'
 
   # Decision native-ci-on-hosted-macos: says whether the native and screens jobs have work.
-  # Nightly and dispatch run both; so does a diff that cannot be read (fail safe).
+  # Nightly and dispatch run both; so does a PR diff that cannot be read (fail safe). A push to main runs neither.
   scope:
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
@@ -188,7 +192,13 @@ jobs:
         run: |
           native=true
           screens=true
-          if [ "$EVENT" = push ] || [ "$EVENT" = pull_request ]; then
+          # A push to main follows a batch PR whose run already tested that merge tree
+          # (decision orchestrator-may-merge), so it starts no Mac: the shared macOS slots
+          # go to PR runs. A failed scope job still runs both on macOS (fail safe).
+          if [ "$EVENT" = push ]; then
+            native=false
+            screens=false
+          elif [ "$EVENT" = pull_request ]; then
             # NUL-separated, so a quoted path (a double quote in a name) still matches.
             # A failed or empty diff leaves files empty, and both stay true.
             files=$(git diff --no-renames --name-only -z "$BASE" HEAD | tr '\0' '\n')
@@ -263,7 +273,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: shivinate7/claude-settings/actions/ste-lint@d70ebd14d8e6dbff5e248cf3e4b1e21250228d64 # main 2026-11-08 (#1764)
+      - uses: shivinate7/claude-settings/actions/ste-lint@e0b9696caa44ca19327407ae7afe870c73da2641 # main 2026-11-08
 
   # Decision milestone-runs-full-suite: on a push to main, dispatches the full Swift suite
   # (milestone.yml) when it is due. Cost per push: one ubuntu job, one API read, one git log.
