@@ -137,7 +137,7 @@ public final class SyncClient {
         return await run { await $0.postFlow(retry: false, cold: false) }
     }
 
-    /// Cancels every call in flight, the pending retry, the POST timer and the socket. A stop is not a failure.
+    /// Cancels every call in flight, the photo run, the pending retry, the POST timer and the socket. A stop is not a failure.
     /// A later connect() or call starts again.
     public func stop() {
         for t in inflight.values { t.cancel() }
@@ -146,6 +146,7 @@ public final class SyncClient {
         socketTask = nil
         postTask?.cancel()
         postTask = nil
+        photoSync?.stop()
     }
 
     /// A key was saved (KeyIntake .stored). It lifts the 401 stop even for the same key, as the web's
