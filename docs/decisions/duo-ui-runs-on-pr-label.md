@@ -18,7 +18,7 @@ Plan: docs/decisions/duo-ui-runs-on-pr-label.md#gate (native)
 - `pro-ui-a` and `pro-ui-b` run `make ui-a` and `make ui-b` on an iPhone 18 Pro simulator. That is the split `milestone-runs-full-suite` uses, without the Duo classes.
 - `ci-done` runs after the three jobs. A red run posts one comment on the pull request. The comment wakes the session that watches the pull request (claude-settings rule `git-ci-done-comment-wakes`).
 - Each job builds once with `make app-build`. The tests then run without a build step.
-- Each job has a 60-minute cap. The cap is provisional.
+- `duo-ui` has a 90-minute cap. `pro-ui-a` and `pro-ui-b` have a 60-minute cap. All three caps are provisional. The duo-ui job took 43.5 min (run 42625642858), 58.0 min (run 42643271925), and was cancelled over 60 min (run 42653789986). Sharding the suite retires the raise.
 
 ## Trigger
 

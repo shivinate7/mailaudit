@@ -109,3 +109,4 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 - 2026-11-09, armed-discard-clock review round 2: no run has yet taken the test's lapse-retry branch or its "inconclusive twice" branch (DuoSpreadUITests.swift:374-379). Decision: `duo-ui-runs-on-pr-label`.
 - 2026-11-09, armed-discard-clock: `testARefundStampedFromHandLeavesTally` passed only on retry in duo-ui run 42600980988, at DuoHandUITests.swift:155: the Refunded stamp was not saved. That lane does not touch the Hand tab. Decision: `duo-ui-runs-on-pr-label`.
 - 2026-11-09, duo-held-chip design review: the chip was judged in Light on the open Duo only. Dark mode and the folded pose have no chip shot, and the longest text "1 held · 1 released" was shot only at AccessibilityXXXL.
+- 2026-11-09, duo-held-chip: the duo-ui cap is 90 min from three measured runs; sharding the suite retires the raise. Decision: `duo-ui-runs-on-pr-label`.
