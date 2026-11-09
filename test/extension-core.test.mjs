@@ -138,7 +138,7 @@ function site({ pages = [], token = TOKEN, override = () => undefined } = {}) {
   };
 }
 
-const readAll = (fetch, timeoutMs = 30000) => call("readAllPages", { fetch, base: BASE, parseDom, timeoutMs });
+const readAll = (fetch, timeoutMs = 30000, more = {}) => call("readAllPages", { fetch, base: BASE, parseDom, timeoutMs, ...more });
 const trim = (html) => call("trimPage", html, parseDom);
 const build = (body) => call("buildOrdersRequest", WORKER, KEY, body);
 const badge = (result) => call("badgeFor", result);
@@ -375,6 +375,47 @@ await test("2.19", async () => {
   eq(calls.some((c) => c.page === 3), true, "scope, the loop reached PageNumber=3");
   eq(res, { pages: [rows(1, 2), rows(2, 1)] }, "a page whose trimmed HTML equals the previous page's ends the read, and the repeat is not added");
   eq(calls.some((c) => c.page === 4), false, "no request follows the repeat");
+});
+
+/* onPage(n) runs before page n is fetched, once for each page number, the empty end page included. */
+await test("2.20", async () => {
+  const called = [];
+  const { fetch, calls } = recordingFetch(site({ pages: [orderPage(1, 2), orderPage(2, 1)] }));
+  const res = await readAll(fetch, 30000, { onPage: (n) => called.push(n) });
+  eq(calls.filter((c) => c.page !== null).map((c) => c.page), [1, 2, 3],
+    "scope, page requests run 1 to 3, and the empty page 3 ends the read");
+  eq(called, [1, 2, 3], "onPage is called with page 1, 2 and 3 in order");
+  eq(res, { pages: [rows(1, 2), rows(2, 1)] }, "pages 1 and 2 come back as their trimmed bodies");
+});
+
+/* Stop is set while page 2 is in flight. The read ends as stopped, with no pages, and page 3 is
+   never requested. */
+await test("2.21", async () => {
+  const stop = new AbortController();
+  const override = (req) => {
+    if (req.page === 2) stop.abort();
+    return undefined;
+  };
+  const { fetch, calls } = recordingFetch(site({ pages: [orderPage(1, 2), orderPage(2, 1), orderPage(3, 1)], override }));
+  const res = await readAll(fetch, 30000, { stopSignal: stop.signal });
+  eq(calls.some((c) => c.page === 2), true, "scope, the loop reached PageNumber=2");
+  eq(calls.some((c) => c.page === 3), false, "scope, no request for PageNumber=3 follows the Stop set during page 2");
+  eq(res, { stopped: true }, "a stopSignal set mid-read ends the read as stopped, with no pages");
+});
+
+/* The site wraps: page 3 shows page 1 again, and the wrap goes on. The read ends at the first page
+   seen before, which is not an adjacent repeat, so no page after it is fetched. The fake's wrap
+   is cut off at page 12, so a read that never stops still ends the test. */
+await test("2.22", async () => {
+  const A = orderPage(1, 2);
+  const B = orderPage(2, 1);
+  const wrap = (req) => (req.page !== null && req.page <= 12 ? reply(req.url, [A, B][(req.page - 1) % 2]) : undefined);
+  const { fetch, calls } = recordingFetch(site({ override: wrap }));
+  const res = await readAll(fetch);
+  eq(calls.filter((c) => c.page !== null).map((c) => c.page), [1, 2, 3],
+    "scope, the read stops at PageNumber=3, the first page seen again, and fetches no page 4");
+  eq(res, { pages: [rows(1, 2), rows(2, 1)] },
+    "a wrap-around A,B,A ends the read at the repeat of A, and the repeat is not added");
 });
 
 /* ---------- 3. the trim: trimPage ---------- */
