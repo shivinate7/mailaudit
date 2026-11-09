@@ -195,9 +195,8 @@ final class OrphanedUITests: XCTestCase {
         input.typeText("Light")
 
         tab(app, "Packages").tap()
-        // The swipe goes to the window, so it scrolls the list on screen: Packages, as its tab is open.
-        app.reveal(el(app, Self.sagaControl))
-        XCTAssertTrue(el(app, Self.sagaControl).waitForExistence(timeout: 5), "anchor: the Packages view opened")
+        // stamped-cell sits at the top of Packages at every count, so it shows the tab opened without a scroll.
+        XCTAssertTrue(el(app, "stamped-cell").waitForExistence(timeout: 5), "anchor: the Packages view opened")
         tab(app, "Orphaned").tap()
 
         let back = el(app, "orphaned-input")
