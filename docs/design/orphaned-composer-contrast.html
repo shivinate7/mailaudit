@@ -88,8 +88,8 @@ table.ratios { border-collapse:collapse; font-size:13.5px; background:var(--card
 .pill.s-larger { font-size:13px; }
 
 /* Tags: dashed outline on what exists today, and on what an option adds. */
-.tag-today { outline:2px dashed var(--today); outline-offset:3px; }
-.tag-new { outline:2px dashed var(--new); outline-offset:3px; }
+.tag-today { outline:2px dashed var(--today); outline-offset:5px; }
+.tag-new { outline:2px dashed var(--new); outline-offset:5px; }
 .notags .tag-today, .notags .tag-new { outline:0; }
 
 /* ---- full device: iPhone 18 Pro, 402 x 874 pt (the brief's size; the repo's device list names none) ---- */
@@ -105,7 +105,8 @@ table.ratios { border-collapse:collapse; font-size:13.5px; background:var(--card
 .phones figcaption { font-size:13px; color:var(--inkSoft); margin-top:6px; max-width:402px; }
 .sources li { margin:4px 0; }
 code { font-family:var(--mono); font-size:0.9em; overflow-wrap:anywhere; }
-@media (max-width:440px) { .grid { grid-template-columns:1fr; } .opt, .crop, .phone { width:100%; } .crop { overflow-x:auto; } }
+.cropwrap { overflow-x:auto; }
+@media (max-width:440px) { .grid { grid-template-columns:minmax(0,1fr); } .opt { width:100%; min-width:0; } .phones figure { width:100%; min-width:0; overflow-x:auto; } }
 </style>
 </head>
 <body>
@@ -124,14 +125,16 @@ code { font-family:var(--mono); font-size:0.9em; overflow-wrap:anywhere; }
   <button type="button" id="auditBtn" aria-pressed="true">Audited frames</button>
   <button type="button" id="tagBtn" aria-pressed="true">Today / New tags</button>
   <span class="sep"></span>
-  <span class="lab">Hide</span>
-  <button type="button" data-hide="count-skip">Hide Count: named skip</button>
-  <button type="button" data-hide="count-larger">Hide Count: 13 pt</button>
-  <button type="button" data-hide="count-heavier">Hide Count: bold</button>
-  <button type="button" data-hide="count-ink">Hide Count: ink</button>
-  <button type="button" data-hide="save-skip">Hide Save: named skip</button>
-  <button type="button" data-hide="save-fills">Hide Save: fill the frame</button>
-  <button type="button" data-hide="save-larger">Hide Save: 13 pt</button>
+  <span class="lab">Hide, count</span>
+  <button type="button" data-hide="count-skip">Hide Named skip</button>
+  <button type="button" data-hide="count-larger">Hide 13 pt</button>
+  <button type="button" data-hide="count-heavier">Hide Bold 11 pt</button>
+  <button type="button" data-hide="count-ink">Hide Ink colour</button>
+  <span class="sep"></span>
+  <span class="lab">Hide, Save</span>
+  <button type="button" data-hide="save-skip">Hide Named skip</button>
+  <button type="button" data-hide="save-fills">Hide Fill the frame</button>
+  <button type="button" data-hide="save-larger">Hide 13 pt</button>
   <button type="button" id="showAll">Show all</button>
 </nav>
 
@@ -213,7 +216,7 @@ function optCard(o, kind) {
     <h3>${o.title}${o.pick ? '<span class="pick">Pick</span>' : ""}</h3>
     <span class="tagname ${o.tag}">${o.tag === "today" ? "Today: " : "New: "}${kind === "count" ? "count" : "Save"}</span>
     <p class="how">${o.how}</p>
-    <div class="crop">${composer(o, kind)}</div>
+    <div class="cropwrap"><div class="crop">${composer(o, kind)}</div></div>
     <div class="read">${o.read}</div>
   </section>`;
 }
