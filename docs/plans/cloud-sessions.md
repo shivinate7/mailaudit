@@ -4,7 +4,7 @@
 
 Can mailaudit's work run in Claude Code cloud sessions (claude.ai/code, an Anthropic-hosted Ubuntu 24.04 VM) instead of on the owner's Mac?
 
-**Verdict: mostly cloud, with a named Mac remainder.** All web, records, Worker-code and CI work runs in the cloud. Anything that needs a Mac stays on the Mac or moves to a hosted macOS runner. Examples: an Xcode build, a simulator, the Duo, a phone install, TestFlight, a native screenshot and the Cochin font. The Mac remainder is the phone install, the Duo UI tests and the sim-gate grants. TestFlight and native screenshots have a hosted-runner route, but neither is built.
+**Verdict: mostly cloud, with a named Mac remainder.** All web, records, Worker-code and CI work runs in the cloud. Anything that needs a Mac stays on the Mac or moves to a hosted macOS runner. Examples: an Xcode build, a simulator, the Duo, a phone install, TestFlight, a native screenshot and the Cochin font. The Mac remainder is the phone install, the Duo UI tests and the sim-gate grants. TestFlight has a hosted-runner route, the `testflight` workflow, not yet run. Native screenshots have one too, unbuilt.
 
 ## How close (2026-11-08)
 
@@ -88,7 +88,7 @@ Names only. No value goes in this repo, which is public.
 | `WORKER_URL` | variable, optional | `scripts/copy-photos-to-worker.mjs` | the Worker's URL | no |
 | Cloudflare API token | network secret, Bearer, host `api.cloudflare.com`; only if deploys move to the cloud | wrangler | Cloudflare dashboard, a token scoped to Workers edit on one account | yes |
 | `CLOUDFLARE_ACCOUNT_ID` | variable; only with the token | wrangler | Cloudflare dashboard, Workers overview | no |
-| App Store Connect key | never in the cloud | `ios-ship` on the Mac | stays in the ios-ship account file on the Mac | yes |
+| App Store Connect key | repo secrets `ASC_KEY_P8`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, for the `testflight` workflow only; never in a cloud session | `ios-ship` in the workflow, and on the Mac | App Store Connect, Users and Access, Integrations; the Mac copy stays in the ios-ship account file | yes |
 
 `WORKER_KEY` as a plain variable is refused: anyone who uses the environment could read the device key.
 

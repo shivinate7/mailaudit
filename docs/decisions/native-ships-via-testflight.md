@@ -22,6 +22,7 @@ Plan: docs/decisions/build-and-deploy.md#ios-ship-testflight (native)
 
 - `.github/workflows/testflight.yml` is the TestFlight fallback in CI. Its one trigger is `workflow_dispatch`, a manual dispatch. It runs on the `xcode-27` runner.
 - Inputs: `apps`, default `Manifest`. `dry` passes `--export-only`, so a dry dispatch exports and does not upload.
+- The signing team id comes from the repo variable `TEAM_ID`. `tools/ios-ship.json` holds no ID, and the job stops early when the variable is empty. The job installs a pinned xcodegen, as `milestone.yml` does, because the runner image has none.
 - An upload runs only from main. ios-ship needs a clean tree, with HEAD equal to origin/main.
 - The job fetches ios-ship from claude-settings at the pinned commit `eaaf66e`. It writes the App Store Connect key from the repo secrets into the runner's temp dir, ships, and then deletes the key in a step that always runs.
 - Each dispatch needs the owner's go, dry and real alike: the macOS runner slots are shared. Minutes cost nothing while the repo is public, see `milestone-runs-full-suite`.
