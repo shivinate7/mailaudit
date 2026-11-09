@@ -15,10 +15,10 @@
     },
     {
       "gain": "No new blind spot in the audit.",
-      "how": "Roadmap step orphaned-composer-colours goes ahead: a designer and a builder adjust the two colours and rerun the audit until it is green.",
+      "how": "No skip. Both elements stay red under debt orphaned-composer-contrast until someone measures a change that makes the audit pass.",
       "key": "b",
-      "label": "No skip: change the colours until the audit passes",
-      "lose": "Colours that already measure clear change to chase a likely pixel-sampling flag, and each try costs a simulator run."
+      "label": "Skip nothing: both stay red until a measured fix exists",
+      "lose": "Main's iPhone UI audit stays red on these two elements, and no colour change is known to fix it, since both already measure clear."
     }
   ],
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
