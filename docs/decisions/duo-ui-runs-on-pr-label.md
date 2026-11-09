@@ -24,14 +24,14 @@ Plan: docs/decisions/duo-ui-runs-on-pr-label.md#gate (native)
 
 - `pull_request` only, with the types `opened`, `synchronize`, `reopened`, `ready_for_review` and `labeled`.
 - Never `workflow_dispatch`, `push`, `schedule` or `pull_request_target`. The workflow reads no secrets.
-- A push cancels the older run of the same pull request. A `labeled` event never cancels a run in progress.
+- A newer run of the same pull request cancels the older one. Every run runs each job that the pull request's draft state and labels call for, so the newer run loses no job. A label event that ran only the newly labelled job could pass while an earlier run on the same head was red, and the merge tool judges the newest run (review round 1, 2026-11-08).
 - The merge tool judges the newest completed run on `main` of every workflow file. This file has no `main` trigger, so it has no `main` run to judge.
 
 ## Gate
 
 - The trigger's paths filter: `native/**`, `Makefile`, `shared/**`, `.github/workflows/duo-ui.yml` and `scripts/ci-sim.sh`. A pull request that touches none of them starts no run.
-- `duo-ui` runs on a ready pull request, or on a draft that carries the label `duo-ui`. A `labeled` event starts it only for that label.
-- `pro-ui-a` and `pro-ui-b` run only when the pull request carries the label `pro-ui`. A draft runs them too. A `labeled` event starts them only for that label.
+- `duo-ui` runs on a ready pull request, or on a draft that carries the label `duo-ui`.
+- `pro-ui-a` and `pro-ui-b` run only when the pull request carries the label `pro-ui`. A draft runs them too.
 - The Pro jobs need a label. The non-Duo suite has known reds, named in `milestone-runs-full-suite`. An automatic run would turn every native pull request red.
 
 ## Departs from `ci-skips-draft-prs`
@@ -65,7 +65,7 @@ Plan: docs/decisions/duo-ui-runs-on-pr-label.md#gate (native)
 ## Unmeasured
 
 - The hosted time of the Duo passes beyond one run. Debt `native-job-hosted-time-unmeasured` covers the hosted time of the UI tests.
-- Whether the merge tool reads an all-skipped run as red. This workflow makes such a run on a draft with no label, and on a `labeled` event for another label on a ready pull request, when the paths match. `ci-skips-draft-prs` says the merge tool reads a head whose jobs all skipped as red. It is unmeasured whether one all-skipped run of this file counts the same way.
+- Whether the merge tool reads an all-skipped run as red. This workflow makes such a run on a draft with no label, when the paths match. `ci-skips-draft-prs` says the merge tool reads a head whose jobs all skipped as red. It is unmeasured whether one all-skipped run of this file counts the same way.
 
 ## Unproven
 
