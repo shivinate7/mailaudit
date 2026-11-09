@@ -4,7 +4,7 @@
 
 Can mailaudit's work run in Claude Code cloud sessions (claude.ai/code, an Anthropic-hosted Ubuntu 24.04 VM) instead of on the owner's Mac?
 
-**Verdict: mostly cloud, with a named Mac remainder.** All web, records, Worker-code and CI work runs in the cloud. Anything that needs a Mac stays on the Mac or moves to a hosted macOS runner. Examples: an Xcode build, a simulator, the Duo, a phone install, TestFlight, a native screenshot and the Cochin font. The Mac remainder is the phone install, the Duo UI tests and the sim-gate grants. TestFlight and native screenshots have a hosted-runner route, but neither is built.
+**Verdict: mostly cloud, with a named Mac remainder.** All web, records, Worker-code and CI work runs in the cloud. Anything that needs a Mac stays on the Mac or moves to a hosted macOS runner. Examples: an Xcode build, a simulator, the Duo, a phone install, TestFlight, a native screenshot and the Cochin font. The Mac remainder is the phone install, the Duo UI tests and the sim-gate grants. TestFlight has a hosted-runner route, the `testflight` workflow, not yet run. Native screenshots have one too, unbuilt.
 
 ## How close (2026-11-08)
 
@@ -51,7 +51,7 @@ Gold standard for each row: the work runs in a cloud session with the same verdi
 | App build, simulator UI tests (`make native-check`) | no | Needs Xcode and a simulator | `milestone.yml` on the hosted `xcode-27` image, already built, dispatch only; no green run yet (`app-build-waits-xcode-27`) | none green |
 | Duo UI tests and fold | no | Needs the shared Duo simulator, the `hinge` tool and sim-gate grants (`one-simulator-per-mac`) on the Mac. Home measured a hosted route: GitHub's xcode-27 macOS runner image has the iPhone Duo device type, and `hinge` works there (home PR 588) | a macOS CI job on the xcode-27 image, as home ran it: run 42522664456 (2026-11-08) made 30 shots, 20 on the Duo (folded and book) and 10 on the 18 Pro | home run 42522664456, 2026-11-08 |
 | Native screenshots for restyle steps | no | Needs a simulator | a macOS CI job that runs UI tests and uploads screenshots; unbuilt | unmeasured |
-| TestFlight | no | Needs Xcode, signing and the App Store Connect key, which live only on this Mac (`native-ships-via-testflight`) | a macOS CI job with the key as an Actions secret; unbuilt, and it departs from the ruling (below) | n/a |
+| TestFlight | no | Needs Xcode, signing and the App Store Connect key | the `testflight` workflow on the xcode-27 image, dispatch only, with the key as repo secrets (`native-ships-via-testflight`); no run yet | none run |
 | Install on the phone | no | `devicectl` over the home Wi-Fi or cable | Mac only | n/a |
 | Global hooks, lint and agents (`~/.claude`) | yes | claude-settings' `cloud-setup.sh` installs them; its records show the hooks running in cloud containers on 2026-11-03 (`cloud-start-hooks-run-fresh`) | step 1 of the draft script | measured by claude-settings, not here |
 | Load brake, simulator boot cap, `sim-test`, `ios-ship` | not applicable | The brake skips cloud sessions (`machine-load-brake`); the rest are Mac tools | n/a | n/a |
@@ -88,7 +88,7 @@ Names only. No value goes in this repo, which is public.
 | `WORKER_URL` | variable, optional | `scripts/copy-photos-to-worker.mjs` | the Worker's URL | no |
 | Cloudflare API token | network secret, Bearer, host `api.cloudflare.com`; only if deploys move to the cloud | wrangler | Cloudflare dashboard, a token scoped to Workers edit on one account | yes |
 | `CLOUDFLARE_ACCOUNT_ID` | variable; only with the token | wrangler | Cloudflare dashboard, Workers overview | no |
-| App Store Connect key | never in the cloud | `ios-ship` on the Mac | stays in the ios-ship account file on the Mac | yes |
+| App Store Connect key | repo secrets `ASC_KEY_P8`, `ASC_KEY_ID`, `ASC_ISSUER_ID`, for the `testflight` workflow only; never in a cloud session | `ios-ship` in the workflow, and on the Mac | App Store Connect, Users and Access, Integrations; the Mac copy stays in the ios-ship account file | yes |
 
 `WORKER_KEY` as a plain variable is refused: anyone who uses the environment could read the device key.
 
@@ -141,9 +141,9 @@ Not taken in this lane. The coordinator brings these to the owner.
 
 ## Decisions for the owner
 
-- **TestFlight from CI.** Departs from: `native-ships-via-testflight` (the key lives only on this Mac) — the App Store Connect key becomes a GitHub Actions secret, and a macOS job uploads. Gain: no Mac is needed for the fallback. Lose: the key leaves the Mac, onto a public repo's Actions.
+- **TestFlight from CI.** Ruled. Owner, 2026-11-08 19:38 CST, item 65 a: the upload runs from the `testflight` workflow, with the key as repo secrets (`native-ships-via-testflight`).
 - **Team placement.** Owner ruling, 2026-11-04 07:56 CST (claude-settings `lanes-start-as-agents`): the team of coordinator, triage, batch runner and lanes runs all on the Mac or all in the cloud. All-cloud fits that ruling, but the Mac remainder above still needs one Mac session. A split, with the coordinator local and the lanes in the cloud, departs from: `lanes-start-as-agents` (one placement for the whole team). Superseded by the owner ruling of 2026-11-08 16:50 CST: the whole team moves to the cloud (see Native work during the move).
-- **Native work during the move.** Ruled. Owner, 2026-11-08 16:50 CST: the whole team moves to the cloud, with no Mac simulators. Native builds, simulator and UI tests, and screenshots move to macOS CI jobs (decision `native-ci-on-hosted-macos`). Home measured a macOS CI route for the Duo (home PR 588). The TestFlight key question (item 65) stays open.
+- **Native work during the move.** Ruled. Owner, 2026-11-08 16:50 CST: the whole team moves to the cloud, with no Mac simulators. Native builds, simulator and UI tests, and screenshots move to macOS CI jobs (decision `native-ci-on-hosted-macos`). Home measured a macOS CI route for the Duo (home PR 588). The TestFlight key question (item 65) is ruled: see TestFlight from CI.
 
 ## Follow-ups
 

@@ -43,7 +43,7 @@ The `mutation-report` job in `checks.yml` starts on every non-draft run, and the
 
 ## ios-ship testflight
 
-`ios-ship testflight tools/ios-ship.json --app Manifest` is the iOS fallback path, run on this Mac when the Mac install fails. The ruling is `native-ships-via-testflight`. The shared tool runs `xcodegen generate`, archives Release for `generic/platform=iOS` with a UTC-minute build number, then uploads to App Store Connect. It does not run `npm run build`. Run `npm run check:rules` first. `--export-only` exports without uploading and is the proof run. The upload runs once and is never retried. The key file, key id and issuer id live in the ios-ship account file under ~/.config, off the repo, and are never read or printed.
+`ios-ship testflight tools/ios-ship.json --app Manifest` is the iOS fallback path, run on this Mac when the Mac install fails. The ruling is `native-ships-via-testflight`. CI ships through the same tool, as a manual dispatch of the `testflight` workflow, `.github/workflows/testflight.yml`. The shared tool runs `xcodegen generate`, archives Release for `generic/platform=iOS` with a UTC-minute build number, then uploads to App Store Connect. It does not run `npm run build`. Run `npm run check:rules` first. `--export-only` exports without uploading and is the proof run. The upload runs once and is never retried. The key file, key id and issuer id live in the ios-ship account file under ~/.config, off the repo, and are never read or printed. In CI the key comes from the repo secrets `ASC_KEY_P8`, `ASC_KEY_ID` and `ASC_ISSUER_ID`.
 
 ## Why check:build compares the whole page, and the Pages quirk
 
