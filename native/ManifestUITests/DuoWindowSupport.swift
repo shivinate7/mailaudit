@@ -91,14 +91,14 @@ enum DuoShot {
 
     /// Attaches the window of the app the test launched, kept past the run. Attaches nothing when the app is gone, so a crash
     /// shows as the test's own failure and tearDown adds none.
-    static func keep(for test: XCTestCase) {
+    static func keep(name: String) {
         let launched = Self.app
         Self.app = nil
         guard let launched, launched.state == .runningForeground, launched.window.exists else { return }
         let shot = XCTAttachment(screenshot: launched.window.screenshot())
-        shot.name = "\(test.name) window"
+        shot.name = "\(name) window"
         shot.lifetime = .keepAlways
-        test.add(shot)
+        XCTContext.runActivity(named: "\(name) window") { $0.add(shot) }
     }
 }
 

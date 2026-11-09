@@ -71,7 +71,8 @@ final class DuoSpreadUITests: XCTestCase {
     }
 
     override func tearDown() {
-        DuoShot.keep(for: self)
+        let name = self.name
+        MainActor.assumeIsolated { DuoShot.keep(name: name) }
         super.tearDown()
     }
 
