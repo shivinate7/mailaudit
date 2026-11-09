@@ -18,7 +18,19 @@ struct RootView: View {
     let width: CGFloat?
 
     private enum Tab { case ledger, orphaned, tally, packages }
-    @State private var tab = Tab.ledger
+    @State private var tab = RootView.startTab
+    /// -ManifestUITestTab ledger|orphaned|tally|packages: the tab the run opens on, for the cloud screen check (scripts/screen-check.sh).
+    /// Absent or unknown: Ledger. `tab` drives the Duo spine too, so the Duo-open layout opens on the same tab.
+    private static var startTab: Tab {
+        let a = ProcessInfo.processInfo.arguments
+        guard let i = a.firstIndex(of: "-ManifestUITestTab"), i + 1 < a.count else { return .ledger }
+        switch a[i + 1] {
+        case "orphaned": return .orphaned
+        case "tally": return .tally
+        case "packages": return .packages
+        default: return .ledger
+        }
+    }
     /// The Ledger tab's Sync panel. The advisory line on a working screen opens it (ruled-head-one-advisory-entrance).
     @State private var syncOpen = false
 
