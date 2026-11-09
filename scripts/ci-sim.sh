@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
 # The simulator steps of the duo-ui workflow, one home for its three jobs (duo-ui, pro-ui-a, pro-ui-b).
 # Each subcommand prints what it reads, so a red run says why. Only the workflow runs this script.
+# Every repo-specific value comes from the env: block at the top of the workflow. This script holds none, and a
+# subcommand fails when a value it needs is unset or empty.
 #
-#   install-xcodegen                    env XCODEGEN_VERSION, XCODEGEN_SHA256 (the workflow step pins them)
+#   run <command words>                 run a command from the env block (BUILD_CMD, DUO_FLAT_CMD ...); fails when it is empty
+#   install-xcodegen                    env XCODEGEN_VERSION, XCODEGEN_SHA256
 #   create-sim <device name>            pick the newest iOS runtime that supports the device type, create, boot, wait until it answers;
 #                                       sets SIM_UDID and SIM_RUNTIME in GITHUB_ENV
-#   fetch-hinge                         pinned hinge clone; sets HINGE in GITHUB_ENV
+#   fetch-hinge                         hinge clone pinned at env HINGE_SHA; sets HINGE in GITHUB_ENV
 #   pose flat|closed                    fold the simulator with hinge
 #   duo-counts                          the expected test counts of the two Duo passes; sets DUO_FLAT_EXPECTED, DUO_CLOSED_EXPECTED
+#                                       env UI_TEST_DIR, DUO_CLASSES_FILE, DUO_CLASSES_VAR, DUO_CLOSED_LIST_CMD
 #   check-results <bundle> <label> exact:<n>|nonzero
 #                                       read the executed count and the retried tests from an xcresult; fail on a wrong count
 #   export <bundle> <dir>               export the bundle's attachments (screenshots)
@@ -21,17 +25,21 @@ fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 WORK="${RUNNER_TEMP:?RUNNER_TEMP is not set}/ci-sim"
-# hinge v0.3.0 (MIT), pinned: it folds the iPhone Duo simulator. The same pin as shivinate7/home scripts/screen-check.sh.
+# hinge (MIT) folds the iPhone Duo simulator. The pin is HINGE_SHA in the workflow's env block.
 HINGE_REPO="https://github.com/artemnovichkov/hinge"
-HINGE_SHA="afb8f0bd277cb12187f0844a79542cbac35e7385"
-UI_DIR="$ROOT/native/ManifestUITests"
 mkdir -p "$WORK"
 
 die() { echo "ci-sim: $*" >&2; exit 1; }
 summary() { echo "$*" >> "${GITHUB_STEP_SUMMARY:-/dev/null}"; }
 
+# run_cmd <command words>: the command an env value names. An unset value reaches here as no words, and that fails.
+run_cmd() {
+  (( $# > 0 )) || die "run: no command given (is the env value unset or empty?)"
+  "$@"
+}
+
 install_xcodegen() {
-  : "${XCODEGEN_VERSION:?}" "${XCODEGEN_SHA256:?}"
+  : "${XCODEGEN_VERSION:?XCODEGEN_VERSION is not set}" "${XCODEGEN_SHA256:?XCODEGEN_SHA256 is not set}"
   local dl="$WORK/xcodegen-download" got
   mkdir -p "$dl"
   curl -fsSL -o "$dl/xcodegen.zip" "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
@@ -87,12 +95,12 @@ probe() {
 }
 
 create_sim() {
-  local name="$1" type_id runtime udid
+  local name="${1:?create-sim: no device name given (is the env value unset or empty?)}" type_id runtime udid
   echo "uname -m: $(uname -m)"
   xcrun simctl list devicetypes -j > "$WORK/devicetypes.json"
   xcrun simctl list runtimes available -j > "$WORK/runtimes.json"
-  echo "== device types matching iPhone Duo or iPhone 18 Pro"
-  xcrun simctl list devicetypes | grep -E 'iPhone (Duo|18 Pro)' || true
+  echo "== device types matching $name"
+  xcrun simctl list devicetypes | grep -F -e "$name" || true
   echo "== available runtimes"
   xcrun simctl list runtimes available
   type_id="$(device_type "$name")"
@@ -114,6 +122,7 @@ create_sim() {
 }
 
 fetch_hinge() {
+  : "${HINGE_SHA:?HINGE_SHA is not set}"
   local dir="$WORK/hinge"
   [[ -d "$dir/.git" ]] || git clone --quiet "$HINGE_REPO" "$dir"
   git -C "$dir" checkout --quiet "$HINGE_SHA"
@@ -148,10 +157,14 @@ pose() {
 
 # duo_counts: the expected executed counts, computed from the Swift sources. Prints each Duo test it finds.
 duo_counts() {
-  local classes closed total=0 n f id cls method
-  classes="$(grep -E '^DUO_UI_TESTS[[:space:]]*:=' "$ROOT/Makefile" | sed 's/^[^=]*=//')"
-  [[ -n "$classes" ]] || die "no DUO_UI_TESTS line in the Makefile"
-  closed="$(make -s -C "$ROOT" duo-closed-list)"
+  : "${UI_TEST_DIR:?UI_TEST_DIR is not set}" "${DUO_CLASSES_FILE:?DUO_CLASSES_FILE is not set}"
+  : "${DUO_CLASSES_VAR:?DUO_CLASSES_VAR is not set}" "${DUO_CLOSED_LIST_CMD:?DUO_CLOSED_LIST_CMD is not set}"
+  local classes closed total=0 n f id cls method UI_DIR="$ROOT/$UI_TEST_DIR"
+  classes="$(grep -E "^${DUO_CLASSES_VAR}[[:space:]]*:=" "$ROOT/$DUO_CLASSES_FILE" | sed 's/^[^=]*=//')"
+  [[ -n "$classes" ]] || die "no $DUO_CLASSES_VAR line in $DUO_CLASSES_FILE"
+  # The command word-splits on purpose: it is a command line from the env block.
+  # shellcheck disable=SC2086
+  closed="$(cd "$ROOT" && $DUO_CLOSED_LIST_CMD)"
   echo "Duo classes: $classes"
   echo "closed ids: $closed"
   for f in $classes; do
@@ -275,13 +288,14 @@ summary_head() {
     echo "- PR head sha: ${HEAD_SHA:-unknown} (merge sha ${GITHUB_SHA:-unknown})"
     echo "- Xcode: $(xcodebuild -version | tr '\n' ' ')"
     echo "- runtime: ${SIM_RUNTIME:-none}"
-    [[ -z "${HINGE:-}" ]] || echo "- hinge sha: $HINGE_SHA"
+    [[ -z "${HINGE:-}" ]] || echo "- hinge sha: ${HINGE_SHA:?HINGE_SHA is not set}"
     [[ -z "${DUO_FLAT_EXPECTED:-}" ]] || echo "- expected counts: flat ${DUO_FLAT_EXPECTED}, closed ${DUO_CLOSED_EXPECTED}"
   } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
 }
 
 cmd="${1:-}"; shift || true
 case "$cmd" in
+  run) run_cmd "$@" ;;
   install-xcodegen) install_xcodegen ;;
   create-sim) create_sim "$@" ;;
   fetch-hinge) fetch_hinge ;;
