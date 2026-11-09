@@ -50,7 +50,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-tally-copy-no-flags` — The native Tally copy has no lost-mail flag and no order id tap.
 - `native-envelope-has-no-photos` — Native envelopes have no photos.
 - `native-orphaned-colours-unbuilt` — The native Orphaned composer audits flag text with no element.
-- `orphaned-composer-contrast` — The ready Orphaned composer fails contrast on its card count and its Save.
+- `orphaned-composer-contrast` — The ready Orphaned composer fails contrast on its card count and its Save (duo-ui run 42653870499, job pro-ui-a, 2 of 2 tries).
 - `tabbar-hides-partial-controls` — The tab-bar skip never checks a control partly under the bar.
 - `native-candidate-lines-wrap` — Native candidate seller and meta lines wrap.
 - `native-undo-notice-padding` — The native Undo notice pads 4pt, not 8pt.
