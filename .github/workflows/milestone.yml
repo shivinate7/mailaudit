@@ -1,6 +1,6 @@
 # The full Swift suite in two parallel jobs, on a GitHub-hosted Mac with Xcode 27.
 # part-a runs the page check, the Kit tests and the UI_TESTS_A classes. part-b runs the other UI test classes.
-# Neither runs a Duo class. Both jobs must pass for the run to pass.
+# Neither runs a Duo class: the duo-ui workflow runs those. Both jobs must pass for the run to pass.
 # Decision milestone-runs-full-suite holds the rule.
 #
 # This workflow runs on main by dispatch only, never on push or schedule. The merge tool refuses a
