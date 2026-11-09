@@ -87,4 +87,27 @@ final class MergeNoticeKitTests: SyncTestCase {
         XCTAssertEqual(client.mergeNotice, "probe: 1 in, 1 out",
                        "the notice is the bundle's mergeSummary, given the adopted reply's stats")
     }
+
+    /// The stats of a reply whose only change is one stamp added. The gate is a count above zero over every kind,
+    /// so this reply must still get a sentence.
+    static let stampStats = ["itemsAdded": 0, "checkInsAdded": 0, "envelopesAdded": 0, "checkInsRemoved": 0,
+                             "envelopesRemoved": 0, "stampsRemoved": 0, "stampsAdded": 1]
+
+    // A POST answer that adds one stamp and nothing else gets the sentence the bundle gives for it:
+    // mergeSummary of { stampsAdded: 1 } in src/merge-rules.mjs, the same text in rules.js.
+    func testAMergeThatOnlyAddedAStampGetsItsSentence() async throws {
+        try writeLedger(received: [Self.keyA: 1])
+        let store = try makeStore()
+        let client = try makeClient(store)
+        let stamp: [String: Any] = ["kind": "claim", "at": "2026-08-01", "note": "", "updatedAt": Self.t0]
+        let reply = try ledger(received: [Self.keyA: 1], extra: ["stamps": ["A1::Alpha Cards": stamp]])
+        net.enqueue(okStats(reply, rev: 8, stats: Self.stampStats))
+
+        let pushed = await client.push()
+        XCTAssertEqual(pushed, .applied, "anchor: the reply with stats was adopted")
+        XCTAssertEqual(client.stats, Self.stampStats, "anchor: the stats of that reply are kept")
+        XCTAssertEqual(client.mergeNotice,
+                       "Merged \u{2014} 1 stamp from the other device. Nothing of yours was lost.",
+                       "a merge that added one stamp has the bundle's sentence, so the notice is not nil")
+    }
 }
