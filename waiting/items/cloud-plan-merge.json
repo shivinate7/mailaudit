@@ -1,0 +1,40 @@
+{
+  "added": "2026-11-08T18:03:00-06:00",
+  "context": "Goal: land the cloud move records on main.\nProblem (rule): your 16:30 CST answer was \"none\" with the note \"have we completed it? continue on the plan\", and a \"none\" grants no merge.\nBased on (read): PR 246 holds records only: plan cloud-sessions and decision native-ci-on-hosted-macos, 3 files.\nBased on (read): branch records-owner-1523 (62f9a6d) holds records only: the mail-day wording and the composer ruling.\nBased on (ruling): owner, 2026-11-08 16:52 CST: bring nothing new to main. Option a asks you for an exception, for records only.\nDeparts from: main 41bf0f2 \u2014 adds the cloud plan, the cloud-only native ruling and two owner rulings.",
+  "group": "cloud-sessions-plan",
+  "holds": "The first cloud batch, PR 246 plus records-owner-1523, waits on this.",
+  "home": "PR 246 and branch records-owner-1523, through the batch runner",
+  "id": "cloud-plan-merge",
+  "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-08T22:30:22.188Z",
+    "note": "have we completed it? continue on the plan"
+  },
+  "n": 67,
+  "options": [
+    {
+      "gain": "The rulings have a home on main, and the first cloud merge gets tested.",
+      "how": "The batch runner merges PR 246 and records-owner-1523 together.",
+      "key": "a",
+      "label": "Merge both as the first batch",
+      "lose": "Nothing new runs. It is records only."
+    },
+    {
+      "gain": "One batch later instead of two.",
+      "how": "Both wait and go in a later batch.",
+      "key": "b",
+      "label": "Hold both until the lanes restart",
+      "lose": "The rulings stay off main, and the merge path stays untested."
+    }
+  ],
+  "owner": "coordinator session_01CTP6d4WA8Vb2tRCT2mVfKQ",
+  "pick": "a",
+  "rank": 28,
+  "ref": "PR 246 (plan cloud-sessions and decision native-ci-on-hosted-macos, 3 files); branch records-owner-1523 at 62f9a6d (mail-day wording and composer ruling)",
+  "replied": "2026-11-08T18:03:00-06:00",
+  "reply": "Yes. The plan's Restart steps 1 and 2 are done: the probe ran, and the triage and batch runner sessions are up, with messages proven both ways. The question now is whether to land its records on main.",
+  "short": "Merge cloud records",
+  "status": "open",
+  "title": "Merge the cloud move records (PR 246 and branch records-owner-1523) to main as the first cloud batch?",
+  "why": "Records only, and it proves the cloud merge path before any code lane needs it."
+}

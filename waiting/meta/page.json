@@ -1,5 +1,5 @@
 {
-  "checked": "mailaudit origin/main b9ed382, 2026-11-06 15:45 CST",
+  "checked": "mailaudit origin/main 935e53f, 2026-11-07 21:50 CST",
   "identity": {
     "brand": "#6f5ca6",
     "face": "serif",
@@ -7,5 +7,5 @@
     "name": "mailaudit"
   },
   "parked": [],
-  "writer": "mailaudit triage local_37611200-4d33-48f9-a0f9-53f2ca374003"
+  "writer": "mailaudit triage (cloud) session_01CTP6d59TTkSPEcpkHydRbv"
 }

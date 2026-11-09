@@ -1,7 +1,7 @@
 {
   "added": "2026-10-28T21:08:00-05:00",
   "context": "Goal: each row in the Sync panel says plainly what it shows, on the web and the phone.\nProblem: item 16b says to change the labels back to LEDGER, PHOTOS and KEY. The rows today show server status, last sync time and the sync key. A plain rename puts PHOTOS over a sync time that has nothing to do with photos.\nBased on: the web's Sync rows are Server, Last sync and Sync key (read, src/app.jsx partGrid).\nBased on: your ruling of 2026-10-27 12:25 CDT, in record sync-particulars-ruled-values (ruling).\nBased on: the web already tracks photo sync state (read: photoSync, photoUsage, lostPhotos).\nDeparts from: b and c change what the web's Sync rows show today.\nMeanwhile: the sync-labels lane waits. Step 5 goes on.",
-  "home": "decision sync-particulars-ruled-values (manifest-restyle)",
+  "home": "record sync-particulars-ruled-values, which restyle rewrites in step 10 with option b",
   "id": "sync-labels-pairing",
   "kind": "decision",
   "n": 36,
@@ -33,7 +33,7 @@
   "rank": 3,
   "ref": "item 16b; decision sync-particulars-ruled-values; web src/app.jsx partGrid",
   "short": "Sync panel labels",
-  "status": "open",
+  "status": "closed",
   "title": "The Sync panel's LEDGER, PHOTOS and KEY labels: which value goes under each?",
   "why": "It's the only option where every label tells the truth and still follows 16b."
 }
