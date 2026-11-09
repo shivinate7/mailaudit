@@ -1,0 +1,32 @@
+{
+  "added": "2026-11-09T20:30:00Z",
+  "context": "Goal: after you Post a card in Card in Hand, the next card starts with a clean match list.\nProblem (rule): on item 48 you ruled \"After a tap on a match, the list holds: every row keeps its place until the next keystroke.\" PR 235 also ends that hold when a Post saves, as New envelope and Close already do. That goes past the words of your ruling, so it needs your word.\nBased on (measured): CI run 42677685979 on PR 235 is green; the four Post tests pass on the first try, and the design review passes (no match rows on the left page after Post; the receipt keeps the Post slot).\nBased on (read): what the ruling protects, no row sliding under your finger after a tap, still holds, because the list clears only after the Post press.\nDeparts from: main's duo-card-in-hand, where the hold ends only at the next keystroke \u2014 the hold also ends at a saved Post, New envelope or Close.\nMeanwhile: the lane waits on this before hand-off; nothing else waits.",
+  "holds": "Lane duo-post-pins (PR 235) waits on this before it hands off to the batch runner.",
+  "home": "duo-card-in-hand",
+  "id": "hand-post-clears-hold",
+  "kind": "decision",
+  "n": 85,
+  "options": [
+    {
+      "gain": "The next card starts with a clean list, and the record matches the code.",
+      "how": "The ruling's sentence becomes \"...until the next keystroke, a saved Post, New envelope or Close.\" PR 235 ships as built.",
+      "key": "a",
+      "label": "A saved Post clears the held rows",
+      "lose": "Nothing measured."
+    },
+    {
+      "gain": "Your ruling stays word for word.",
+      "how": "PR 235 drops the Post clear; the held rows stay until the next keystroke.",
+      "key": "b",
+      "label": "Keep the ruling as written",
+      "lose": "The last card's held rows still show after Post, until you type the next card."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "pick": "a",
+  "ref": "decision duo-card-in-hand (Card in Hand on the iPhone Duo); item 48 duo-tap-shift-check (the match list holds after a tap); PR 235 (lane duo-post-pins, Post pins on Card in Hand)",
+  "short": "Post clears held matches",
+  "status": "open",
+  "title": "After a saved Post on Card in Hand, should the held match rows clear, so the next card starts with a clean list?",
+  "why": "The clear comes after the Post press, so nothing moves under your finger, and the next card starts clean."
+}
