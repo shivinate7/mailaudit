@@ -4,7 +4,7 @@ Reads your TCGplayer order history from a signed-in tab and sends it to the ledg
 
 ## Load it
 
-1. Open `chrome://extensions` and turn on Developer mode.
+1. Open `chrome://extensions` and enable Developer mode.
 2. Press Load unpacked and pick this `extension/` folder.
 3. Press the extension's icon. The options page opens.
 4. Paste the extension's device key and press Save key. The page says whether the server accepted it.

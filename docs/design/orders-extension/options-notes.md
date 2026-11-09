@@ -45,9 +45,9 @@ Measured in headless Chromium, every state, both themes: the Save key button and
 6. **Clear key.** Options: press twice in place, as `restoreCell` arms (`red` fill, `Press to clear`, answer `Press again to clear. Pulls stop until a key is saved.`); or one press. No native confirm (`no-native-dialogs`). The button is 120 px whatever its label. With no key saved it keeps its box, hidden, so Save never moves. Gain of two presses: a stray click cannot stop the pulls. Loss: one more press. Pick: two presses.
    Options: `#s=clearing&clear=arm`, `&clear=once`. Focus: `light-clear`.
 
-7. **Pull now.** The accent fill, the app's "active" colour. Disabled with no key saved; the reason `Save a device key first.` sits in the answer slot and is named by `aria-describedby`. A help line under it: it runs in an open `store.tcgplayer.com` tab where the owner is signed in, and it runs by itself when a store page loads and the last pull is over 12 hours old.
+7. **Pull now.** The accent fill, the app's "active" colour. Disabled with no key saved; the reason `Save a device key first.` sits in the answer slot and is named by `aria-describedby`. A help line sits under it. It says the pull runs in an open `store.tcgplayer.com` tab where the owner is signed in. It also says the pull runs by itself when a store page loads and the last pull is over 12 hours old.
 
-8. **No store tab open** (`#pull`, ids `light-pull`, `dark-pull`). Options: Pull now stays live, and a press with no store tab answers `No store.tcgplayer.com tab is open.` with an `Open TCGplayer` control; or Pull now is disabled while no store tab is open, with the same line and control as its reason. Gain of the answer at press: no tab listener, and the button never changes under the pointer. Loss: the owner learns only on the press. Pick: answer at press.
+8. **No store tab open** (`#pull`, ids `light-pull`, `dark-pull`). Option one: Pull now stays live. A press with no store tab answers `No store.tcgplayer.com tab is open.` with an `Open TCGplayer` control. Option two: Pull now is disabled while no store tab is open, with the same line and control as its reason. Gain of the answer at press: no tab listener, and the button never changes under the pointer. Loss: the owner learns only on the press. Pick: answer at press.
    Options: `#s=notab&tab=answer`, `&tab=disabled`. Focus: `light-pull`.
 
 9. **Stop while pulling** (`#pull-answer`, ids `light-pullans`). The page loop has no page cap and each fetch may take 30 s. While a pull runs, the button reads `Pulling` (disabled) and the answer reads `Pulling order page 3…` with a `Stop` control (`ux-long-run-stops`). Stop sends no pages and merges nothing. Options: with Stop, or without. Gain: a long or stuck run can end. Loss: one more message between page and service worker. Pick: with Stop.
@@ -76,7 +76,7 @@ Measured in headless Chromium, every state, both themes: the Save key button and
 
 13. **Two sources, builder must follow.** The Worker records only what reaches `POST /orders`. A 401, a 413, a 400 or a network failure never lands in `GET /orders/status`, and `GET /orders/status` itself answers 401 to a wrong key. So the extension keeps its own record of its last attempt in `chrome.storage.local` (time, outcome, counts, kind), and the page reads that first. It reads `GET /orders/status` for `lastSuccessAt` and the Worker's kinds when the local record is missing or older. The key never enters that record.
 
-14. **Names.** Tab title and extension name `MANIFEST orders`; house line `TCGplayer orders`. The masthead is MANIFEST (`masthead-is-not-project-name`); the extension sits under it, not under the project name.
+14. **Names.** Tab title and extension name `MANIFEST orders`; house line `TCGplayer orders`. The masthead is MANIFEST (`masthead-is-not-project-name`); the extension sits under the masthead, and the project name stays off its screens.
 
 15. **Icon.** The favicon drawing (`favicon_svg()`, record `assets-and-icons`), not the seal and not the 1024 master, because the master fails at 16 px. The extension needs it exported at 16, 32, 48 and 128 px: a builder task outside this folder.
 
