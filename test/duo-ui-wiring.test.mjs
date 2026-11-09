@@ -13,8 +13,9 @@
 //   d5  the flat, closed and pro passes run xcodebuild test-without-building with
 //       -retry-tests-on-failure and -resultBundlePath; a step runs its make target when its run:
 //       text names it once each $VAR and ${VAR} is read from the step, job or workflow env; the
-//       flags may sit in the step, its env, the workflow env or scripts/ci-sim.sh; the closed pass
-//       is guarded by !cancelled(); a step fetches hinge at its pinned sha (a-f);
+//       flags may sit in the step, its env, the workflow env or scripts/ci-sim.sh; the closed pass's
+//       if: holds !cancelled() and reads env otherwise, never success(), failure() or always(); a
+//       step fetches hinge at its pinned sha (a-f);
 //   d6  every uses: is pinned by a 40-hex sha, every checkout keeps no credentials, and no run:
 //       block in any job holds a GitHub expression (a-c);
 //   d7  ci-done needs duo-ui, pro-ui-a and pro-ui-b, and uses ci-done-comment at checks.yml's pin (a-b);
@@ -403,6 +404,93 @@ function ifRuns(cond, sc) {
   return Boolean(value);
 }
 
+// The closed pass's if: as a tree of its terms. A term is !cancelled(), an env comparison, or a group of those
+// joined by && and ||. Any other term throws, and the throw names it.
+function guardTree(cond) {
+  const t = ifTokens(cond);
+  let i = 0;
+  const peek = (k = 0) => t[i + k];
+  const eat = (x) => {
+    if (t[i] !== x) throw new Error(`the closed pass if: expects ${x} and finds ${t[i] ?? "the end"}`);
+    i++;
+  };
+  const joined = (op, parts) =>
+    parts.length === 1 ? parts[0] : { op, items: parts.flatMap((p) => (p.op === op ? p.items : [p])) };
+  const orExpr = () => {
+    const parts = [andExpr()];
+    while (peek() === "||") {
+      i++;
+      parts.push(andExpr());
+    }
+    return joined("||", parts);
+  };
+  const andExpr = () => {
+    const parts = [unary()];
+    while (peek() === "&&") {
+      i++;
+      parts.push(unary());
+    }
+    return joined("&&", parts);
+  };
+  const unary = () => {
+    if (peek() === "!" && peek(1) === "cancelled") {
+      i += 2;
+      eat("(");
+      eat(")");
+      return { op: "!cancelled" };
+    }
+    if (peek() === "!") {
+      i++;
+      return { op: "!", inner: unary() };
+    }
+    return primary();
+  };
+  const primary = () => {
+    const tok = t[i++];
+    if (tok === undefined) throw new Error("the closed pass if: ends before its last term");
+    if (tok === "(") {
+      const v = orExpr();
+      eat(")");
+      return v;
+    }
+    if (peek() === "(") {
+      if (tok === "cancelled") throw new Error("the closed pass if: calls cancelled() without !, so only a cancelled job runs it");
+      throw new Error(`the closed pass if: calls ${tok}(), but only !cancelled() and env reads may gate it`);
+    }
+    if (tok.startsWith("env.")) {
+      const op = t[i++];
+      if (op !== "==" && op !== "!=") throw new Error(`the closed pass if: compares ${tok} with ${op ?? "nothing"}, not == or !=`);
+      if (!/^'[^']*'$/.test(t[i] ?? "")) throw new Error(`the closed pass if: compares ${tok} with ${t[i] ?? "the end"}, not a quoted string`);
+      i++;
+      return { op: "env" };
+    }
+    throw new Error(`the closed pass if: reads ${tok}, which is neither !cancelled() nor an env read`);
+  };
+  const tree = orExpr();
+  if (i !== t.length) throw new Error(`the closed pass if: has an extra term ${t[i]}`);
+  return tree;
+}
+const holdsCancelled = (n) =>
+  n.op === "!cancelled" ||
+  (n.op === "!" ? holdsCancelled(n.inner) : (n.op === "&&" || n.op === "||") && n.items.some(holdsCancelled));
+// The one cause the closed pass's if: fails on, or "" when it gates every run on !cancelled() and reads env otherwise.
+// Its value is then !cancelled() and an env condition, so no earlier step's outcome can change when the pass runs.
+function closedGuardFault(cond) {
+  if (cond === "") return "the closed pass has no if:, so GitHub's default success() skips it after a red flat pass";
+  let tree;
+  try {
+    tree = guardTree(cond);
+  } catch (e) {
+    return e.message;
+  }
+  const conjuncts = tree.op === "&&" ? tree.items : [tree];
+  if (!conjuncts.some((c) => c.op === "!cancelled")) {
+    return "the closed pass if: does not require !cancelled() on every run, so a cancelled job could run it";
+  }
+  const nested = conjuncts.some((c) => c.op !== "!cancelled" && holdsCancelled(c));
+  return nested ? "the closed pass if: puts !cancelled() inside an OR or a NOT, so it does not gate every run" : "";
+}
+
 const describe = (sc) =>
   `draft=${sc.draft}, labels=[${sc.labels.join(", ")}], action=${sc.action}${sc.labelName ? `, labelName=${sc.labelName}` : ""}`;
 
@@ -678,12 +766,13 @@ function checkDuo(input) {
   wfCheck("d5b", "the closed pass runs make ui-duo-closed with the xcodebuild pass flags", () =>
     passStepCheck(DUO_JOB, CLOSED_RUN, "ui-duo-closed")
   );
-  wfCheck("d5c", "the closed pass is guarded by !cancelled(), so a red flat pass does not skip it", () => {
+  wfCheck("d5c", "the closed pass's if: requires !cancelled() and reads env otherwise, so a red flat pass does not skip it", () => {
     const j = jobOf(DUO_JOB);
     if (j === null) return jobMiss(DUO_JOB);
     const s = stepRunning(j, CLOSED_RUN);
     if (s === undefined) return fail(noStepDetail(DUO_JOB, j, "ui-duo-closed"));
-    return stripWrap(s.if).includes("!cancelled()") ? pass : fail(`the closed pass if: is ${show(s.if)}`);
+    const fault = closedGuardFault(stripWrap(s.if));
+    return fault === "" ? pass : fail(fault);
   });
   wfCheck("d5d", `a ${DUO_JOB} step fetches ${HINGE_REPO} pinned at ${HINGE_SHA}`, () => {
     const j = jobOf(DUO_JOB);
@@ -1128,6 +1217,9 @@ const MUTANTS = [
   ["flat pass drops -retry-tests-on-failure", "d5a", onWf(FLAT_TEST, FLAT_TEST.replace(" -retry-tests-on-failure", ""))],
   ["closed pass drops its -resultBundlePath", "d5b", onWf(CLOSED_TEST, CLOSED_TEST.replace(" -resultBundlePath closed.xcresult", ""))],
   ["closed pass is guarded by success()", "d5c", onWf(CLOSED_IF, "        if: ${{ success() }}")],
+  ["closed pass is guarded by !cancelled() and success()", "d5c", onWf(CLOSED_IF, "        if: ${{ !cancelled() && success() }}"), "calls success()"],
+  ["closed pass is guarded by !cancelled() and failure()", "d5c", onWf(CLOSED_IF, "        if: ${{ !cancelled() && failure() }}"), "calls failure()"],
+  ["closed pass is guarded by !cancelled() or an env read", "d5c", onWf(CLOSED_IF, "        if: ${{ !cancelled() || env.SIM_UDID != '' }}"), "does not require !cancelled()"],
   ["hinge is checked out at another sha", "d5d", onWf(HINGE_LINE, HINGE_LINE.replace(HINGE_SHA, "b".repeat(40)))],
   ["pro-ui-a pass drops -retry-tests-on-failure", "d5e", onWf(PRO_A_TEST, PRO_A_TEST.replace(" -retry-tests-on-failure", ""))],
   ["pro-ui-b pass drops -resultBundlePath", "d5f", onWf(PRO_B_TEST, PRO_B_TEST.replace(" -resultBundlePath pro-b.xcresult", ""))],
@@ -1183,9 +1275,18 @@ for (const [name, id, build, cause] of MUTANTS) {
 
 // The good set passes every check. The variants reach the empty set and the full-size set, and
 // the flags moved into scripts/ci-sim.sh.
+// The job if: lines as they stood with the labeled-event narrowing: a labeled event runs a job only for its own label.
+// The good set has no narrowing, so this variant is the other side of the d2d and d8 gate.
+const DUO_IF_NARROW = "${{ (!github.event.pull_request.draft || contains(github.event.pull_request.labels.*.name, 'duo-ui')) && (github.event.action != 'labeled' || github.event.label.name == 'duo-ui') }}";
+const PRO_IF_NARROW = "${{ contains(github.event.pull_request.labels.*.name, 'pro-ui') && (github.event.action != 'labeled' || github.event.label.name == 'pro-ui') }}";
+const withNarrowing = (text) =>
+  mutate(text, "    if: " + DUO_IF, "    if: " + DUO_IF_NARROW).split("    if: " + PRO_IF).join("    if: " + PRO_IF_NARROW);
+
 const FULL = { ...GOOD, swift: FULL_SWIFT, makefile: MAKEFILE(FULL_CLOSED) };
 const VARIANTS = [
   ["fixture good: the good set", GOOD],
+  ["fixture good: the job ifs keep the labeled-event narrowing", { ...GOOD, workflow: withNarrowing(GOOD.workflow) }],
+  ["fixture good: the closed pass if: reads env beside !cancelled()", { ...GOOD, workflow: mutate(GOOD.workflow, CLOSED_IF, "        if: ${{ !cancelled() && env.SIM_UDID != '' }}") }],
   ["fixture good: no closed test (empty DUO_CLOSED_TESTS)", { ...GOOD, swift: EMPTY_SWIFT, makefile: MAKEFILE([]) }],
   ["fixture good: full size (90 methods, 18 closed)", FULL],
   ["fixture good: flags in scripts/ci-sim.sh", SCRIPT_INPUT],
