@@ -53,7 +53,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `tabbar-hides-partial-controls` — The tab-bar skip never checks a control partly under the bar.
 - `native-candidate-lines-wrap` — Native candidate seller and meta lines wrap.
 - `native-undo-notice-padding` — The native Undo notice pads 4pt, not 8pt.
-- `native-composer-fields-two-lines` — The native composer fields draw two lines tall.
+- `composer-fields-two-lines` — The envelope composer's two-line card name and note fields are right on the phone.
 - `native-discard-arm-unpinned` — No test pins the native Discard arm.
 - `native-key-scan-skips-views` — The native key scan skips SwiftUI view state.
 - `native-compose-is-one-fade` — The native letterhead composes in one fade.
