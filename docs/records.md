@@ -65,6 +65,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `ci-skips-draft-prs` | Kind: build | [`docs/decisions/ci-skips-draft-prs.md`](../docs/decisions/ci-skips-draft-prs.md) |
 | `csv-import-stays-web` | Kind: build | [`docs/decisions/csv-import-stays-web.md`](../docs/decisions/csv-import-stays-web.md) |
 | `duo-card-in-hand` | Kind: build | [`docs/decisions/duo-card-in-hand.md`](../docs/decisions/duo-card-in-hand.md) |
+| `duo-ui-runs-on-pr-label` | The workflow `.github/workflows/duo-ui.yml` runs the UI tests that need a simulator the milestone run does not cover. | [`docs/decisions/duo-ui-runs-on-pr-label.md`](../docs/decisions/duo-ui-runs-on-pr-label.md) |
 | `ledger-remote-needed-for-seed` | Kind: build | [`docs/decisions/ledger-remote-needed-for-seed.md`](../docs/decisions/ledger-remote-needed-for-seed.md) |
 | `live-verification` | This file draws the line between proven and unproven. | [`docs/decisions/live-verification.md`](../docs/decisions/live-verification.md) |
 | `masthead-tallies-unequal-thirds` | The tallies are three ruled cells: cards, packages, and value. | [`docs/decisions/masthead-tallies-unequal-thirds.md`](../docs/decisions/masthead-tallies-unequal-thirds.md) |
@@ -275,14 +276,9 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `failed-photo-download-no-retry` | When a merge's photo download fails, the id stays in the ledger and the tile stays blank. | [`docs/debts/failed-photo-download-no-retry.md`](../docs/debts/failed-photo-download-no-retry.md) |
 | `half-open-socket-has-no-ping` | A socket that stays open and hears nothing gets no ping. | [`docs/debts/half-open-socket-has-no-ping.md`](../docs/debts/half-open-socket-has-no-ping.md) |
 | `hand-held-box-under-keys` | On Card in Hand on the open Duo, the Suspense and Released boxes sit below the matches. | [`docs/debts/hand-held-box-under-keys.md`](../docs/debts/hand-held-box-under-keys.md) |
-| `hand-match-row-ax3-unmeasured` | On Card in Hand on the open Duo, the mockup `duo-hand-notice-match` shows the first match row whole above the keys at AX3. | [`docs/debts/hand-match-row-ax3-unmeasured.md`](../docs/debts/hand-match-row-ax3-unmeasured.md) |
-| `hand-notice-cuts-match-row` | On Card in Hand with the keys up, a manila box (Suspense, or Released, not checked in) sits above New envelope and the match list. | [`docs/debts/hand-notice-cuts-match-row.md`](../docs/debts/hand-notice-cuts-match-row.md) |
 | `hand-open-under-bar-at-l` | On the open Duo, Packages shows the `hand-open` control near the top of the right page. | [`docs/debts/hand-open-under-bar-at-l.md`](../docs/debts/hand-open-under-bar-at-l.md) |
-| `hand-post-scroll-hides-sender` | On the open Duo, when a held card's Post offer shows, the answer page scrolls it above the keys. | [`docs/debts/hand-post-scroll-hides-sender.md`](../docs/debts/hand-post-scroll-hides-sender.md) |
 | `hand-post-top-scroll-unpinned` | On Card in Hand on the open Duo, when the Post offer shows, the answer page scrolls to its top (`HandScreen.swift`, the `onChange` on the offer). | [`docs/debts/hand-post-top-scroll-unpinned.md`](../docs/debts/hand-post-top-scroll-unpinned.md) |
 | `hand-stale-checkin-error` | On Card in Hand, a failed line check-in shows `hand-checkin-error` on the envelope page. | [`docs/debts/hand-stale-checkin-error.md`](../docs/debts/hand-stale-checkin-error.md) |
-| `hand-stray-keeps-tie` | On Card in Hand, after New envelope releases a held card, the left page says "It no longer decides an envelope". | [`docs/debts/hand-stray-keeps-tie.md`](../docs/debts/hand-stray-keeps-tie.md) |
-| `hand-suspense-tap-shift` | On Card in Hand, a list that collapses to the tapped match slides a row at index 1 or later up under the finger. | [`docs/debts/hand-suspense-tap-shift.md`](../docs/debts/hand-suspense-tap-shift.md) |
 | `hand-tap-label-unpinned` | On Card in Hand on the open Duo, every match row pads 10 pt, so a tap adds the accent bar in the gutter and the name does not move. | [`docs/debts/hand-tap-label-unpinned.md`](../docs/debts/hand-tap-label-unpinned.md) |
 | `header-gestures-unmeasured` | No device ran a phone long-press on the package header. | [`docs/debts/header-gestures-unmeasured.md`](../docs/debts/header-gestures-unmeasured.md) |
 | `hidden-tab-apply-delay-unmeasured` | Nobody has timed a reply on a hidden or frozen tab. | [`docs/debts/hidden-tab-apply-delay-unmeasured.md`](../docs/debts/hidden-tab-apply-delay-unmeasured.md) |
