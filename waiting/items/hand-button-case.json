@@ -1,0 +1,61 @@
+{
+  "added": "2026-11-09T01:58:00Z",
+  "context": "Goal: buttons read the same everywhere.\nProblem (rule): the pinned Vercel rules ask for Title Case; the repo uses sentence case (\"New envelope\").\nBased on (read): every built button is sentence case.\nDeparts from: main's sentence case — option b moves every button to Title Case.\nAsked by lane duo-gaps-design-review (PR 237, mockup docs/design/duo-hand-gaps.html). The picks per part live in docs/design/duo-hand-gaps-notes.md.",
+  "group": "duo-hand-gaps",
+  "home": "docs/design/duo-hand-gaps-notes.md (PR 237)",
+  "id": "hand-button-case",
+  "kind": "decision",
+  "n": 81,
+  "options": [
+    {
+      "gain": "It matches the whole app.",
+      "how": "Every button stays as built, such as \"New envelope\".",
+      "key": "a",
+      "label": "Keep sentence case",
+      "links": [
+        {
+          "label": "Mockup: this part",
+          "url": "https://claude.ai/artifact/GRAhbtEyULEWHvk9kF4U3H#s=keep-held"
+        },
+        {
+          "label": "Mockup source on the branch",
+          "url": "https://github.com/shivinate7/mailaudit/blob/hand-mockup-gaps-d/docs/design/duo-hand-gaps.html"
+        },
+        {
+          "label": "PR 237",
+          "url": "https://github.com/shivinate7/mailaudit/pull/237"
+        }
+      ],
+      "lose": "It differs from the external list."
+    },
+    {
+      "gain": "It matches the external list.",
+      "how": "Every button label changes, such as \"New Envelope\".",
+      "key": "b",
+      "label": "Title Case",
+      "links": [
+        {
+          "label": "Mockup: this part",
+          "url": "https://claude.ai/artifact/GRAhbtEyULEWHvk9kF4U3H#s=keep-held"
+        },
+        {
+          "label": "Mockup source on the branch",
+          "url": "https://github.com/shivinate7/mailaudit/blob/hand-mockup-gaps-d/docs/design/duo-hand-gaps.html"
+        },
+        {
+          "label": "PR 237",
+          "url": "https://github.com/shivinate7/mailaudit/pull/237"
+        }
+      ],
+      "lose": "Every built label changes, outside this lane's scope."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "pick": "a",
+  "rank": 36,
+  "ref": "decision duo-card-in-hand; lane duo-gaps-design-review (PR 237)",
+  "short": "Button case",
+  "status": "open",
+  "title": "Buttons: keep sentence case (\"New envelope\"), or move to Title Case?",
+  "why": "The whole app already reads one way; changing it buys only a match with an outside list."
+}

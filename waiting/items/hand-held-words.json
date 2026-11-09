@@ -1,0 +1,61 @@
+{
+  "added": "2026-11-09T01:58:00Z",
+  "context": "Goal: a held card reads clearly on its line and in the box.\nProblem (rule): the blind reviewers want each label once and one name per thing; the mockup says both \"held\" and \"Suspense\" in one frame.\nBased on (read): decision duo-card-in-hand uses both words; the built strings say \"1 held\" and \"Suspense\".\nDeparts from: main uses \"held\" and \"Suspense\" loosely — \"held\" names the state and \"Suspense line\" names the place, recorded in the repo glossary.\nAsked by lane duo-gaps-design-review (PR 237, mockup docs/design/duo-hand-gaps.html). The picks per part live in docs/design/duo-hand-gaps-notes.md.",
+  "group": "duo-hand-gaps",
+  "home": "docs/design/duo-hand-gaps-notes.md (PR 237)",
+  "id": "hand-held-words",
+  "kind": "decision",
+  "n": 80,
+  "options": [
+    {
+      "gain": "The tint is never the only sign, and when the box sits under the keys the line still says it.",
+      "how": "\"held\" is the card's state, \"Suspense line\" is the place. Both stay on screen; the glossary records which is which.",
+      "key": "a",
+      "label": "Keep both words, fix their roles in the glossary",
+      "links": [
+        {
+          "label": "Mockup: this part",
+          "url": "https://claude.ai/artifact/GRAhbtEyULEWHvk9kF4U3H#s=held-lines"
+        },
+        {
+          "label": "Mockup source on the branch",
+          "url": "https://github.com/shivinate7/mailaudit/blob/hand-mockup-gaps-d/docs/design/duo-hand-gaps.html"
+        },
+        {
+          "label": "PR 237",
+          "url": "https://github.com/shivinate7/mailaudit/pull/237"
+        }
+      ],
+      "lose": "Two words on screen for one card."
+    },
+    {
+      "gain": "The label shows once.",
+      "how": "One of the two words goes from the screen.",
+      "key": "b",
+      "label": "One word only",
+      "links": [
+        {
+          "label": "Mockup: this part",
+          "url": "https://claude.ai/artifact/GRAhbtEyULEWHvk9kF4U3H#s=held-lines"
+        },
+        {
+          "label": "Mockup source on the branch",
+          "url": "https://github.com/shivinate7/mailaudit/blob/hand-mockup-gaps-d/docs/design/duo-hand-gaps.html"
+        },
+        {
+          "label": "PR 237",
+          "url": "https://github.com/shivinate7/mailaudit/pull/237"
+        }
+      ],
+      "lose": "The line loses its words, or the box loses its name."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "pick": "a",
+  "rank": 35,
+  "ref": "decision duo-card-in-hand; lane duo-gaps-design-review (PR 237)",
+  "short": "Held card words",
+  "status": "open",
+  "title": "A held card: keep both words, \"held\" for the state and \"Suspense line\" for the place?",
+  "why": "Each word then has one meaning, and the held line still reads when the keys cover the box."
+}

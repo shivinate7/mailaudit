@@ -1,24 +1,18 @@
 {
-  "id": "hand-suspense-many",
-  "n": 76,
-  "kind": "decision",
-  "status": "open",
   "added": "2026-11-09T01:50:00Z",
-  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "context": "Goal: an envelope with no sender can still be checked in on the Duo.\nProblem (rule): decision new-envelope-ends-an-envelope rules on \"a name held\", and HandModel holds one name. Parts 5 and 8, and part 7's Hold in Suspense, need several.\nBased on (read): docs/design/duo-hand-gaps-notes.md, Owner grant items 1.\nDeparts from: main HandModel.held, one name — a list of names with copies, cleared by New envelope.\nAsked by lane duo-gaps-design-review (PR 237, mockup docs/design/duo-hand-gaps.html at 4362dc5). The picks per part live in docs/design/duo-hand-gaps-notes.md.",
   "group": "duo-hand-gaps",
-  "rank": 31,
-  "title": "On the open Duo, can the Suspense line hold several names, not one?",
-  "short": "Suspense holds many",
-  "ref": "debt duo-hand-mockup-gaps; decision duo-card-in-hand; lane duo-gaps-design-review (PR 237)",
+  "holds": "Building parts 5 and 8, and part 7's Hold in Suspense, waits on this.",
   "home": "docs/design/duo-hand-gaps-notes.md (PR 237)",
-  "context": "Goal: an envelope with no sender can still be checked in on the Duo.\nProblem (rule): decision new-envelope-ends-an-envelope rules on \"a name held\", and HandModel holds one name. Parts 5 and 8, and part 7's Hold in Suspense, need several.\nBased on (read): docs/design/duo-hand-gaps-notes.md, Owner grant items 1.\nDeparts from: main HandModel.held, one name \u2014 a list of names with copies, cleared by New envelope.\nAsked by lane duo-gaps-design-review (PR 237, mockup docs/design/duo-hand-gaps.html at 4362dc5). The picks per part live in docs/design/duo-hand-gaps-notes.md.",
+  "id": "hand-suspense-many",
+  "kind": "decision",
+  "n": 76,
   "options": [
     {
-      "label": "Yes, several names",
-      "how": "The Suspense line holds a list of names with copies. New envelope clears it.",
       "gain": "Parts 5 and 8 work, and mail with no sender gets checked in.",
-      "lose": "More held state to show and to clear.",
+      "how": "The Suspense line holds a list of names with copies. New envelope clears it.",
       "key": "a",
+      "label": "Yes, several names",
       "links": [
         {
           "label": "Mockup: this part",
@@ -32,14 +26,14 @@
           "label": "PR 237",
           "url": "https://github.com/shivinate7/mailaudit/pull/237"
         }
-      ]
+      ],
+      "lose": "More held state to show and to clear."
     },
     {
-      "label": "No, keep one name",
-      "how": "The held line keeps one name, as today.",
       "gain": "No rule change.",
-      "lose": "Part 8 and part 7's Hold drop out; part 5 marks one card only.",
+      "how": "The held line keeps one name, as today.",
       "key": "b",
+      "label": "No, keep one name",
       "links": [
         {
           "label": "Mockup: this part",
@@ -53,10 +47,16 @@
           "label": "PR 237",
           "url": "https://github.com/shivinate7/mailaudit/pull/237"
         }
-      ]
+      ],
+      "lose": "Part 8 and part 7's Hold drop out; part 5 marks one card only."
     }
   ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "pick": "a",
-  "why": "It is the only way mail with no sender gets checked in on the Duo.",
-  "holds": "Building parts 5 and 8, and part 7's Hold in Suspense, waits on this."
+  "rank": 31,
+  "ref": "debt duo-hand-mockup-gaps; decision duo-card-in-hand; lane duo-gaps-design-review (PR 237)",
+  "short": "Suspense holds many",
+  "status": "open",
+  "title": "On the open Duo, can the Suspense line hold several names, not one?",
+  "why": "It is the only way mail with no sender gets checked in on the Duo."
 }
