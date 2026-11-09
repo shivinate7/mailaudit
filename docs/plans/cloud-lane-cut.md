@@ -8,7 +8,7 @@ Sources read: the bodies and comments of PRs 221 and 232-246, the transfer notes
 
 ## Open items
 
-macOS means the item needs GitHub's `xcode-27` macOS runner. The cloud VM is Ubuntu, so `swift test` and the UI tests run only in CI (decision `native-ci-on-hosted-macos`, on PR 246's branch).
+macOS means that the item needs GitHub's `xcode-27` macOS runner. The cloud VM is Ubuntu, so `swift test` and the UI tests run only in CI (decision `native-ci-on-hosted-macos`, on PR 246's branch).
 
 | Item | Source | What remains | Kind | macOS | Review | Blocked on | Shares files with |
 |---|---|---|---|---|---|---|---|
@@ -54,4 +54,7 @@ Each lane is one cloud session. No two lanes in a wave share a file.
 
 ## Unknown
 
-PR 144's state; the paths of the PhotoSync factory, PhotoSweeper and the stacked-poses and fold tests; the per-part picks in PR 237's notes; whether the cookie secret from PR 243 is still set.
+- PR 144's state.
+- The paths of the PhotoSync factory, PhotoSweeper, and the stacked-poses and fold tests.
+- The per-part picks in PR 237's notes.
+- Whether the cookie secret from PR 243 is still set.
