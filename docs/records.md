@@ -263,6 +263,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `claim-17a-ci-red-unexplained` | `check:screens` claim 17a failed twice on CI, on runs 39892195068 and 39900120189 (2026-10-23). | [`docs/debts/claim-17a-ci-red-unexplained.md`](../docs/debts/claim-17a-ci-red-unexplained.md) |
 | `claim-9-fractional-box-edges` | A 43.5px box reads as 44px, so claim 9 can pass a box just under 44px. | [`docs/debts/claim-9-fractional-box-edges.md`](../docs/debts/claim-9-fractional-box-edges.md) |
 | `cloudflare-access-login-untested` | Whether the backup sign-in survives in an iOS home-screen app has not been run on a device. | [`docs/debts/cloudflare-access-login-untested.md`](../docs/debts/cloudflare-access-login-untested.md) |
+| `composer-keys-cover-tab-bar` | `OrphanedUITests.testComposerDraftSurvivesAViewChange` stays red on the iPhone 18 Pro. | [`docs/debts/composer-keys-cover-tab-bar.md`](../docs/debts/composer-keys-cover-tab-bar.md) |
 | `discard-keeps-draft` | `discardEnvelope` in `src/app.jsx` never clears the draft. | [`docs/debts/discard-keeps-draft.md`](../docs/debts/discard-keeps-draft.md) |
 | `duo-bar-dynamic-type-clips` | The open Duo's tab bar is a fixed 64 pt pill, while its labels scale with Dynamic Type. | [`docs/debts/duo-bar-dynamic-type-clips.md`](../docs/debts/duo-bar-dynamic-type-clips.md) |
 | `duo-checkin-error-under-bar` | On the open Duo, the Packages `checkin-error` overlay sits at the tab's bottom edge. | [`docs/debts/duo-checkin-error-under-bar.md`](../docs/debts/duo-checkin-error-under-bar.md) |
