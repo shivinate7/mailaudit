@@ -36,6 +36,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 
 ## Native debts
 
+- `testflight-cert-per-run` — Each TestFlight run from CI may make a new Apple Development certificate.
 - `native-ui-tests-not-in-ci` — Native UI tests and builds are not in CI.
 - `native-sync-live-unrun` — The native sync POST, socket and photo paths are unrun against the Worker.
 - `native-sync-glue-unpinned` — No test drives the native sync glue in the app.
