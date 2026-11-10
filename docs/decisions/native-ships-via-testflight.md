@@ -53,12 +53,13 @@ A TestFlight install puts a native build on the phone. So the first install is t
 
 ## Measured
 
-- Dry run 42745528705, on main at 6a55afc, 2026-11-09 20:51 CST: green on the xcode-27 runner. A clean runner signs with the ASC key and `TEAM_ID` alone, with no certificate secret. The job took 3 min 6 s, and the Ship step took 2 min 58 s. No real upload has run yet.
+- Dry run 42745528705, on main at 6a55afc, 2026-11-09 20:51 CST: green on the xcode-27 runner. A clean runner signs with the ASC key and `TEAM_ID` alone, with no certificate secret. The job took 3 min 6 s, and the Ship step took 2 min 58 s.
+- Upload run 42750597378, on main at 727a7b3, 2026-11-09 22:04 CST: build 202611100404 uploaded to TestFlight. The Ship step took 4 min 4 s. The runner keychain went from 0 to 1 signing identity, so the run made one Apple Development certificate.
+- Upload run 42747709994 failed with nothing uploaded. It waited 14 min for a runner while a merge moved main, and ios-ship refused because HEAD was not origin/main.
 
 ## Unmeasured
 
 - Every TestFlight build on the team expired together at 2026-10-22 08:11 CDT, across six apps. The cause is unknown.
-- Each run likely adds one Apple Development certificate, as the home repo saw. No run here has counted it.
 
 ## See also
 
