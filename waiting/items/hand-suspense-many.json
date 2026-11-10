@@ -24,6 +24,11 @@
   "home": "docs/design/duo-hand-gaps-notes.md (PR 237)",
   "id": "hand-suspense-many",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-10T03:17:17.408Z",
+    "choice": "a",
+    "note": ""
+  },
   "n": 76,
   "options": [
     {
@@ -75,9 +80,11 @@
   "pick": "a",
   "rank": 31,
   "ref": "debt duo-hand-mockup-gaps; decision duo-card-in-hand; lane duo-gaps-design-review (PR 237)",
+  "replied": "2026-11-10T03:25:00Z",
+  "reply": "Filed: Owner grant item 1 in the Card in Hand gaps notes now states your ruling, several names (PR 309). It governs the restyle builder; nothing is built yet.",
   "repo": "shivinate7/mailaudit",
   "short": "Suspense holds many",
-  "status": "open",
+  "status": "closed",
   "title": "On the open Duo, can the Suspense line hold several names, not one?",
   "why": "It is the only way mail with no sender gets checked in on the Duo."
 }
