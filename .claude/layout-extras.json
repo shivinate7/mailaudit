@@ -13,5 +13,5 @@
     "tools": { "path": "tools", "about": "The config that the ios-ship tool reads to archive and upload the iOS app." },
     "worker": { "path": "worker", "about": "The Cloudflare Worker that syncs the ledger, with its pure rules and tests." }
   },
-  "waiting-page": "https://claude.ai/artifact/YECoF4zc9sMrVq6AAEACS6"
+  "waiting-page": "https://claude.ai/artifact/SUuQ8v7dBDCexif7doGLtj"
 }
