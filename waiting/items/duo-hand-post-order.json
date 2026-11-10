@@ -57,6 +57,7 @@
   "ref": "duo-card-in-hand (On the iPhone Duo, Card in Hand checks cards in by name)",
   "replied": "2026-11-09T01:50:00Z",
   "reply": "Option a is the less-work path: it already landed in PR #217. Pick a and the question goes to a debt.",
+  "repo": "shivinate7/mailaudit",
   "short": "Post offer order",
   "status": "open",
   "title": "Keep the Post offer under the sender, as built, and park option B as a debt?",

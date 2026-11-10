@@ -5,6 +5,11 @@
   "home": "docs/design/duo-hand-gaps-notes.md (PR 237)",
   "id": "hand-button-case",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-10T01:19:32.660Z",
+    "choice": "b",
+    "note": ""
+  },
   "n": 81,
   "options": [
     {
@@ -54,6 +59,7 @@
   "pick": "a",
   "rank": 36,
   "ref": "decision duo-card-in-hand; lane duo-gaps-design-review (PR 237)",
+  "repo": "shivinate7/mailaudit",
   "short": "Button case",
   "status": "open",
   "title": "Buttons: keep sentence case (\"New envelope\"), or move to Title Case?",

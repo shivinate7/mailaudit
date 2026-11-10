@@ -1,6 +1,5 @@
 {
   "added": "2026-10-28T22:02:00-05:00",
-  "closedNote": "Closed 2026-11-08 13:25 CST: the owner asked for a claude-settings prompt; the coordinator gave it in chat. The diagnose and UDID fix already landed in claude-settings (3cfebb9be, 13e511063). The prompt carries what is left: the stale pro slot and the lanes' guard list.",
   "context": "Goal: simulator test runs don't load the machine with a diagnostic nobody reads, and never land on the wrong simulator.\nProblem: the fix belongs in the shared sim-test script. That script lives in claude-settings, not in mailaudit. You told this session not to edit claude-settings itself, so who works there is your call.\nBased on: ~/.claude/bin/sim-test resolves to the claude-settings checkout (read, Restyle 22:01).\nBased on: your instruction not to edit claude-settings yourself (ruling).\nMeanwhile: Restyle and Duo add -collect-test-diagnostics never and pin the device by UDID by hand on every run.",
   "home": "debt sim-test-diagnose-and-pin (mailaudit)",
   "id": "sim-test-fix-where",
@@ -26,6 +25,7 @@
   "pick": "a",
   "rank": 4,
   "ref": "debt sim-test-diagnose-and-pin; claude-settings bin/sim-test",
+  "reply": "Closed 2026-11-08 13:25 CST: the owner asked for a claude-settings prompt; the coordinator gave it in chat. The diagnose and UDID fix already landed in claude-settings (3cfebb9be, 13e511063). The prompt carries what is left: the stale pro slot and the lanes' guard list.",
   "short": "Where sim-test gets fixed",
   "status": "closed",
   "title": "sim-test lives in claude-settings. Who fixes it?",

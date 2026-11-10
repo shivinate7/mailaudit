@@ -15,6 +15,7 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "rank": 24,
   "ref": "debt tcgplayer-link-opens-history-list (the order link may not search by order id); src/view-rules.mjs tcgplayerOrderUrl",
+  "repo": "shivinate7/mailaudit",
   "short": "Check order id link",
   "status": "open",
   "steps": [

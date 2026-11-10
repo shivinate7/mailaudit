@@ -1,6 +1,5 @@
 {
   "added": "2026-11-08T16:48:00-06:00",
-  "closedNote": "Closed 2026-11-08 16:52 CST on the owner's chat answer at 16:50 CST: \"we would move everything to the cloud no simulators on mac either\". That is none of a, b or c. The whole team moves to the cloud, and native builds, simulator runs and screenshots move to macOS CI jobs. Home: a decision record on branch claude/cloud-feasibility-e01860.",
   "context": "Goal: the repo runs in cloud sessions.\nProblem (goal): the web, Worker, extension and records work can move once a test session passes. Native work cannot: swift test, the app build, simulators, the Duo, phone installs and TestFlight all need macOS, and the restyle needs a simulator at every step.\nBased on (read): docs/plans/cloud-sessions.md on branch claude/cloud-feasibility-e01860, the work-kinds table.\nBased on (ruling): lanes-start-as-agents, 2026-11-04 07:56 CST: the whole team runs in one place.\nDeparts from: main runs the whole team on the Mac \u2014 each option moves part or all of it to the cloud.\nUnvetted: the past-ruling check was not run.",
   "group": "cloud-sessions-plan",
   "holds": "The native half of the cloud move waits on this.",
@@ -35,6 +34,7 @@
   "pick": "a",
   "rank": 2,
   "ref": "your ask at 16:45 CST to move the repo to the cloud; plan docs/plans/cloud-sessions.md, the work-kinds table; items 65 to 67",
+  "reply": "Closed 2026-11-08 16:52 CST on the owner's chat answer at 16:50 CST: \"we would move everything to the cloud no simulators on mac either\". That is none of a, b or c. The whole team moves to the cloud, and native builds, simulator runs and screenshots move to macOS CI jobs. Home: a decision record on branch claude/cloud-feasibility-e01860.",
   "short": "Cloud move: native",
   "status": "closed",
   "title": "Moving to the cloud: what happens to the native work?",

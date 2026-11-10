@@ -94,6 +94,7 @@
   "ref": "step 6 design review; decision stamp-band-opens-the-editor",
   "replied": "2026-11-09T01:50:00Z",
   "reply": "Yes, both are on main now: the note field is 2 to 6 lines tall (StampViews.swift:273-274), and the \"0 stamped\" cell is disabled with no dimming (StampViews.swift:30). That is option a. Option b is not built; draft PR 240 waits on your pick.",
+  "repo": "shivinate7/mailaudit",
   "short": "Stamp note field",
   "status": "open",
   "title": "The phone's stamp editor: a two-line note field and a \"0 stamped\" cell that looks active but does nothing. Keep both?",

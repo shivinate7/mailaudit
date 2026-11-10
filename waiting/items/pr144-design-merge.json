@@ -83,6 +83,7 @@
   "ref": "draft PR #144 (Duo round 2 Card in Hand design, branch design/duo-round2); HandScreen.swift:4-5; DuoHandUITests.swift:2",
   "replied": "2026-11-09T01:50:00Z",
   "reply": "The pictures are linked under each option: the design's screens on PR 144's branch, design/duo-round2. Later rulings (items 24 b, 25, 27 and 48) override some of them.",
+  "repo": "shivinate7/mailaudit",
   "short": "Merge PR 144 design",
   "status": "open",
   "title": "The Card in Hand design page (PR #144) never merged, but main cites it. Merge it as a reference?",

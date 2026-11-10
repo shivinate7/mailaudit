@@ -1,6 +1,24 @@
 {
   "added": "2026-11-09T01:50:00Z",
   "context": "Goal: an envelope with no sender can still be checked in on the Duo.\nProblem (rule): decision new-envelope-ends-an-envelope rules on \"a name held\", and HandModel holds one name. Parts 5 and 8, and part 7's Hold in Suspense, need several.\nBased on (read): docs/design/duo-hand-gaps-notes.md, Owner grant items 1.\nDeparts from: main HandModel.held, one name \u2014 a list of names with copies, cleared by New envelope.\nAsked by lane duo-gaps-design-review (PR 237, mockup docs/design/duo-hand-gaps.html at 4362dc5). The picks per part live in docs/design/duo-hand-gaps-notes.md.",
+  "designs": [
+    {
+      "file": "docs/design/duo-hand-gaps.html",
+      "focus": "#focus-rank",
+      "label": "Yes, several names",
+      "option": "a",
+      "slug": "duo-hand-gaps",
+      "state": "suspense-rank"
+    },
+    {
+      "file": "docs/design/duo-hand-gaps.html",
+      "focus": "[data-tag=\"Today: one held name\"]",
+      "label": "No, keep one name",
+      "option": "b",
+      "slug": "duo-hand-gaps",
+      "state": "suspense-rank"
+    }
+  ],
   "group": "duo-hand-gaps",
   "holds": "Building parts 5 and 8, and part 7's Hold in Suspense, waits on this.",
   "home": "docs/design/duo-hand-gaps-notes.md (PR 237)",
@@ -9,6 +27,7 @@
   "n": 76,
   "options": [
     {
+      "design": "duo-hand-gaps",
       "gain": "Parts 5 and 8 work, and mail with no sender gets checked in.",
       "how": "The Suspense line holds a list of names with copies. New envelope clears it.",
       "key": "a",
@@ -30,6 +49,7 @@
       "lose": "More held state to show and to clear."
     },
     {
+      "design": "duo-hand-gaps",
       "gain": "No rule change.",
       "how": "The held line keeps one name, as today.",
       "key": "b",
@@ -55,6 +75,7 @@
   "pick": "a",
   "rank": 31,
   "ref": "debt duo-hand-mockup-gaps; decision duo-card-in-hand; lane duo-gaps-design-review (PR 237)",
+  "repo": "shivinate7/mailaudit",
   "short": "Suspense holds many",
   "status": "open",
   "title": "On the open Duo, can the Suspense line hold several names, not one?",

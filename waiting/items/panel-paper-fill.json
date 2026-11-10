@@ -1,6 +1,22 @@
 {
   "added": "2026-11-09T02:06:00Z",
   "context": "Goal: an open panel reads cleanly against the list around it.\nProblem (rule): on 2026-10-11 an orchestrator set the default that a panel takes the paper fill. You never confirmed or overruled it, and it was never built.\nBased on (read): src/app.jsx panelWrap has padding and a top border, and no background.\nBased on (read): the overlay of decision motion-disclosure-panels-arrive is not built. On main the panel pushes the rows down, so nothing shows through it today.\nDeparts from: main panelWrap has no background \u2014 option a adds the paper fill.",
+  "designs": [
+    {
+      "file": "docs/design/panel-paper-fill.html",
+      "focus": "#focus-paper",
+      "label": "Confirm the paper fill",
+      "option": "a",
+      "slug": "panel-paper-fill"
+    },
+    {
+      "file": "docs/design/panel-paper-fill.html",
+      "focus": "#focus-none",
+      "label": "Overrule it: panels stay with no fill",
+      "option": "b",
+      "slug": "panel-paper-fill"
+    }
+  ],
   "home": "debt panel-paper-fill-unbuilt",
   "id": "panel-paper-fill",
   "kind": "decision",
@@ -11,6 +27,7 @@
   "n": 63,
   "options": [
     {
+      "design": "panel-paper-fill",
       "gain": "The panel reads as one surface, and stays clean once the overlay is built.",
       "how": "The Sorted by and History panels get the paper background. The designer also drew it with a 1 px ruled foot.",
       "key": "a",
@@ -36,6 +53,7 @@
       "lose": "One more surface colour on screen."
     },
     {
+      "design": "panel-paper-fill",
       "gain": "No change to today's look.",
       "how": "The default is dropped, and the debt closes.",
       "key": "b",
@@ -67,6 +85,7 @@
   "ref": "debt panel-paper-fill-unbuilt (overlay panels carry no paper fill); src/app.jsx panelWrap",
   "replied": "2026-11-09T02:06:00Z",
   "reply": "You asked why there were no visuals. Each option now links its screenshots; the full mockup is in PR 252 (docs/design/panel-paper-fill.html).",
+  "repo": "shivinate7/mailaudit",
   "short": "Panel paper fill",
   "status": "open",
   "title": "Should the web's Sorted by and History panels get the paper fill?",

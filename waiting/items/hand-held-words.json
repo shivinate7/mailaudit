@@ -54,6 +54,7 @@
   "pick": "a",
   "rank": 35,
   "ref": "decision duo-card-in-hand; lane duo-gaps-design-review (PR 237)",
+  "repo": "shivinate7/mailaudit",
   "short": "Held card words",
   "status": "open",
   "title": "A held card: keep both words, \"held\" for the state and \"Suspense line\" for the place?",

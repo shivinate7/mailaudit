@@ -1,6 +1,6 @@
 {
   "added": "2026-10-28T20:14:00-05:00",
-  "context": "Goal: check cards in by name on the open Duo.\nProblem: the PR 144 mockup makes Card in Hand the Packages tab itself on the open Duo. The record duo-card-in-hand says Packages keeps its one-page layout. Those two disagree, and you haven't ruled either way.\nBased on: the mockup README, line 5 (design).\nBased on: record duo-card-in-hand, Defaults (a default, not your ruling).\nDeparts from: option b departs from the phone's Packages list, which today sits on the Packages tab.\nMeanwhile: Duo builds option a. Switching to b later is a small change to the entry point.",
+  "context": "Goal: check cards in by name on the open Duo.\nProblem (rule): the PR 144 mockup makes Card in Hand the Packages tab itself on the open Duo. The record duo-card-in-hand says Packages keeps its one-page layout. Those two disagree, and you haven't ruled either way.\nBased on (read): the PR 144 mockup README, line 5.\nBased on (read): record duo-card-in-hand, Defaults (a default, not your ruling).\nDeparts from: main's Packages tab opens the Packages list \u2014 option b makes it open Card in Hand on the open Duo.\nMeanwhile: Duo builds option a. Switching to b later is a small change to the entry point.",
   "home": "decision duo-card-in-hand (manifest-duo)",
   "id": "duo-card-in-hand-entry",
   "kind": "decision",
@@ -25,6 +25,7 @@
   "pick": "a",
   "rank": 2,
   "ref": "decision duo-card-in-hand, Defaults; PR 144 mockup README line 5",
+  "repo": "shivinate7/mailaudit",
   "short": "Card in Hand entry",
   "status": "open",
   "title": "On the open Duo, is Card in Hand the Packages tab, or one tap inside it?",

@@ -23,6 +23,7 @@
   ],
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "ref": "decision audit-skips-measured-flags (audit skips only for measured false flags); debt orphaned-composer-contrast (the ready Orphaned composer fails contrast); debt tally-audit-contrast-flags (the audit flags pairs above 4.5:1); step pro-ui-main-reds (the iPhone UI test reds on main)",
+  "repo": "shivinate7/mailaudit",
   "short": "Orphaned composer skips",
   "status": "open",
   "title": "The Orphaned composer's Save button and card count fail Apple's contrast audit, but their colours measure clear. Add two named skips?"

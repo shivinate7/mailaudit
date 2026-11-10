@@ -5,6 +5,11 @@
   "home": "docs/design/duo-hand-gaps-notes.md (PR 237)",
   "id": "hand-typed-line-mark",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-10T01:19:32.660Z",
+    "choice": "a",
+    "note": ""
+  },
   "n": 77,
   "options": [
     {
@@ -56,6 +61,7 @@
   "ref": "debt duo-hand-mockup-gaps; decision duo-card-in-hand; lane duo-gaps-design-review (PR 237)",
   "replied": "2026-11-09T02:01:00Z",
   "reply": "The linked mockup is fixed: option a's accent bar now draws.",
+  "repo": "shivinate7/mailaudit",
   "short": "Typed card's mark",
   "status": "open",
   "title": "How is the line of the card you typed marked: an accent bar or a green fill?",
