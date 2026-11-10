@@ -51,10 +51,14 @@ The archive holds `Assets.car` and `CFBundleIconName` AppIcon, from the catalog 
 
 A TestFlight install puts a native build on the phone. So the first install is the first native ship, and the names in `native-files-are-frozen` freeze then.
 
+## Measured
+
+- Dry run 42745528705, on main at 6a55afc, 2026-11-09 20:51 CST: green on the xcode-27 runner. A clean runner signs with the ASC key and `TEAM_ID` alone, with no certificate secret. The job took 3 min 6 s, and the Ship step took 2 min 58 s. No real upload has run yet.
+
 ## Unmeasured
 
 - Every TestFlight build on the team expired together at 2026-10-22 08:11 CDT, across six apps. The cause is unknown.
-- From the home repo, measured there and not here: a clean runner signs with the ASC key alone, with no certificate secret. Each run likely adds one Apple Development certificate.
+- Each run likely adds one Apple Development certificate, as the home repo saw. No run here has counted it.
 
 ## See also
 

@@ -4,7 +4,7 @@
 
 Can mailaudit's work run in Claude Code cloud sessions (claude.ai/code, an Anthropic-hosted Ubuntu 24.04 VM) instead of on the owner's Mac?
 
-**Verdict: mostly cloud, with a named Mac remainder.** All web, records, Worker-code and CI work runs in the cloud. Anything that needs a Mac stays on the Mac or moves to a hosted macOS runner. Examples: an Xcode build, a simulator, the Duo, a phone install, TestFlight, a native screenshot and the Cochin font. The Mac remainder is the phone install, the Duo UI tests and the sim-gate grants. TestFlight has a hosted-runner route, the `testflight` workflow, not yet run. Native screenshots have one too, unbuilt.
+**Verdict: mostly cloud, with a named Mac remainder.** All web, records, Worker-code and CI work runs in the cloud. Anything that needs a Mac stays on the Mac or moves to a hosted macOS runner. Examples: an Xcode build, a simulator, the Duo, a phone install, TestFlight, a native screenshot and the Cochin font. The Mac remainder is the phone install, the Duo UI tests and the sim-gate grants. TestFlight has a hosted-runner route, the `testflight` workflow, with one green dry run. Native screenshots have one too, unbuilt.
 
 ## How close (2026-11-08)
 
@@ -51,7 +51,7 @@ Gold standard for each row: the work runs in a cloud session with the same verdi
 | App build, simulator UI tests (`make native-check`) | no | Needs Xcode and a simulator | `milestone.yml` on the hosted `xcode-27` image, already built, dispatch only; no green run yet (`app-build-waits-xcode-27`) | none green |
 | Duo UI tests and fold | no | Needs the shared Duo simulator, the `hinge` tool and sim-gate grants (`one-simulator-per-mac`) on the Mac. Home measured a hosted route: GitHub's xcode-27 macOS runner image has the iPhone Duo device type, and `hinge` works there (home PR 588) | a macOS CI job on the xcode-27 image, as home ran it: run 42522664456 (2026-11-08) made 30 shots, 20 on the Duo (folded and book) and 10 on the 18 Pro | home run 42522664456, 2026-11-08 |
 | Native screenshots for restyle steps | no | Needs a simulator | a macOS CI job that runs UI tests and uploads screenshots; unbuilt | unmeasured |
-| TestFlight | no | Needs Xcode, signing and the App Store Connect key | the `testflight` workflow on the xcode-27 image, dispatch only, with the key as repo secrets (`native-ships-via-testflight`); no run yet | none run |
+| TestFlight | no | Needs Xcode, signing and the App Store Connect key | the `testflight` workflow on the xcode-27 image, dispatch only, with the key as repo secrets (`native-ships-via-testflight`) | dry run 42745528705 green, 2026-11-09; no upload yet |
 | Install on the phone | no | `devicectl` over the home Wi-Fi or cable | Mac only | n/a |
 | Global hooks, lint and agents (`~/.claude`) | yes | claude-settings' `cloud-setup.sh` installs them; its records show the hooks running in cloud containers on 2026-11-03 (`cloud-start-hooks-run-fresh`) | step 1 of the draft script | measured by claude-settings, not here |
 | Load brake, simulator boot cap, `sim-test`, `ios-ship` | not applicable | The brake skips cloud sessions (`machine-load-brake`); the rest are Mac tools | n/a | n/a |
