@@ -45,6 +45,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `token-lives-outside-namespace` | The device key and any stored GitHub token sit outside the storage namespace. | [`docs/decisions/token-lives-outside-namespace.md`](../docs/decisions/token-lives-outside-namespace.md) |
 | `token-sits-on-shared-origin` | **Status:** open. | [`docs/decisions/token-sits-on-shared-origin.md`](../docs/decisions/token-sits-on-shared-origin.md) |
 | `two-device-merge-proven-first` | **Status:** retired 2026-10-14. | [`docs/decisions/two-device-merge-proven-first.md`](../docs/decisions/two-device-merge-proven-first.md) |
+| `usage-pause-at-93` | Kind: process | [`docs/decisions/usage-pause-at-93.md`](../docs/decisions/usage-pause-at-93.md) |
 | `watchdog-catches-silent-failure` | **Status:** retired. | [`docs/decisions/watchdog-catches-silent-failure.md`](../docs/decisions/watchdog-catches-silent-failure.md) |
 | `watchdog-lives-in-private-repo` | **Status:** retired. | [`docs/decisions/watchdog-lives-in-private-repo.md`](../docs/decisions/watchdog-lives-in-private-repo.md) |
 
@@ -367,6 +368,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `tally-audit-contrast-flags` | Three Tally audits report "Contrast failed" on small text and "Potentially inaccessible text" with no element: `TallyUITests.testAccessibilityAuditTallyScreenWithRows`, `TallyUITests.testAccessibilityAuditTallyScreenWithARowOpen` and `PackagesShellUITests.testAccessibilityAuditTallyScreen`. | [`docs/debts/tally-audit-contrast-flags.md`](../docs/debts/tally-audit-contrast-flags.md) |
 | `tally-card-moves-at-320px` | At 320px the Tally card moves 14px on check-ins 1 and 6. | [`docs/debts/tally-card-moves-at-320px.md`](../docs/debts/tally-card-moves-at-320px.md) |
 | `tcgplayer-link-opens-history-list` | The order id link opens `orderhistory?SearchString=<id>`, the URL the owner gave on 2026-10-21 (`tcgplayerOrderUrl` encodes the id). | [`docs/debts/tcgplayer-link-opens-history-list.md`](../docs/debts/tcgplayer-link-opens-history-list.md) |
+| `testflight-cert-per-run` | The `testflight` workflow signs on a fresh hosted runner with automatic signing and the App Store Connect key. | [`docs/debts/testflight-cert-per-run.md`](../docs/debts/testflight-cert-per-run.md) |
 | `token-state-and-bundle-unpinned` | Nothing pins the React-state or bundle guarantees. | [`docs/debts/token-state-and-bundle-unpinned.md`](../docs/debts/token-state-and-bundle-unpinned.md) |
 | `tracking-checker-unbuilt` | Today the app does not check tracking numbers. | [`docs/debts/tracking-checker-unbuilt.md`](../docs/debts/tracking-checker-unbuilt.md) |
 | `type-floor-unbuilt` | Some labels are smaller than the 10px floor today. | [`docs/debts/type-floor-unbuilt.md`](../docs/debts/type-floor-unbuilt.md) |
