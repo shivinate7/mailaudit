@@ -2,6 +2,7 @@
 # Calls claude-settings bin/ios-ship, pinned by sha below. Never a PR check: this repo is public,
 # so only a dispatch by someone with write access may reach the App Store Connect key.
 # Uploads only from main: ios-ship refuses any other HEAD. Each run holds a shared macOS runner slot.
+# Checkout takes the branch tip at run start, not the dispatch sha: a long runner wait must not leave HEAD behind main.
 # Secrets: ASC_KEY_P8, ASC_KEY_ID, ASC_ISSUER_ID (the App Store Connect key). Variable: TEAM_ID.
 # No log artifact: the raw ios-ship log may hold the key id and issuer id, and masking covers job logs only.
 # GitHub dispatches a workflow only when this file is on main.
@@ -32,6 +33,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.ref }}
           persist-credentials: false
       # Repo-specific: reads tools/ios-ship.json. The input reaches the shell through env only.
       - name: Pick apps
