@@ -101,10 +101,9 @@ None of the eight parts lives in PackagesView, TallyView, OrphanedView or RootVi
 
 ## Owner grant items
 
-1. **A Suspense line of several names.** Parts 5 and 8, and part 7's Hold in Suspense, hold more than one name at once. `new-envelope-ends-an-envelope` rules on "a name held", and `HandModel` holds one. The round 2 mockup draws several, and the decision's Suspense concept implies several. Owner grant: yes, because it widens the held rule the model enforces.
+1. **A Suspense line of several names.** Parts 5 and 8, and part 7's Hold in Suspense, hold more than one name at once. `new-envelope-ends-an-envelope` rules on "a name held", and `HandModel` holds one. The round 2 mockup draws several, and the decision's Suspense concept implies several. It needed the owner's word because it widens the held rule the model enforces. Owner ruling: several names (waiting page item 76, option a, 2026-11-09 21:17 CST). The Suspense line holds a list of names with copies, and New envelope clears it.
    - Gain: an envelope with no sender can be checked in, and parts 5 and 8 work.
    - Loss: more held state to show and to release on New envelope.
-   - Pick: yes.
 
 2. **Button case.** Owner ruling: Title Case (waiting page item 81, option b, 2026-11-09 19:19 CST). Every button label moves from sentence case to Title Case, such as "New envelope" to "New Envelope".
 
