@@ -39,6 +39,8 @@
 //      cannot read that history, so the check is unknown there, and an unknown read is red in CI
 //      (decision ci-unknown-is-red);
 //  24  every defect's file is in the repo. This one is outside the brief.
+//  25  the ship job of testflight.yml has one actions/checkout step, and its with: ref is
+//      ${{ github.ref }}, so a run queued behind a merge checks out the branch tip at run start.
 //
 // The milestone workflow (.github/workflows/milestone.yml) and its job in checks.yml
 // are checked the same way, with letter ids:
@@ -98,6 +100,7 @@ const WORKFLOW = resolve(ROOT, process.env.CI_WORKFLOW || ".github/workflows/che
 const STAMP = resolve(ROOT, process.env.CI_STAMP || ".github/stamp.json");
 const MILESTONE = resolve(ROOT, process.env.MILESTONE_WORKFLOW || ".github/workflows/milestone.yml");
 const ALARM = resolve(ROOT, ".github/workflows/ci-alarm.yml");
+const TESTFLIGHT_WORKFLOW = resolve(ROOT, ".github/workflows/testflight.yml");
 
 const ROLLUP = "all-jobs-passed";
 const CI_DONE = "ci-done";
@@ -2555,6 +2558,28 @@ function parsedJobs(text) {
 const jobOf = (jobs, id) => (jobs !== null && Object.hasOwn(jobs, id) && isMap(jobs[id]) ? jobs[id] : undefined);
 const needsIn = (jobs, id) => needsOf(jobOf(jobs, id));
 
+// Assertion 25: the ship job of testflight.yml checks out with ref: ${{ github.ref }}. A manual run can
+// queue for a runner while a merge moves main, so the checkout names the branch and builds its tip at
+// run start. The main-only guard in Pick apps reads GITHUB_REF and is a different check.
+const TF_SHIP = "ship";
+const TF_REF = "${{ github.ref }}";
+// The one result for assertion 25. Each failure names its own cause; the scope (the ship job, its one
+// checkout) is checked before the subject (the ref).
+function testflightRefCheck(text) {
+  const id = "25";
+  const label = `${id} testflight.yml's ${TF_SHIP} job checks out with ref: ${TF_REF}`;
+  const fail = (detail) => ({ id, label, ok: false, detail });
+  if (text === null) return fail(`cannot read ${TESTFLIGHT_WORKFLOW}`);
+  const jobs = parsedJobs(text);
+  if (jobs === null) return fail(`${TESTFLIGHT_WORKFLOW} is outside the parser's subset`);
+  const ship = jobOf(jobs, TF_SHIP);
+  if (ship === undefined) return fail(`no ${TF_SHIP} job`);
+  const checkouts = steps(ship).filter((s) => typeof s.uses === "string" && s.uses.startsWith(CHECKOUT));
+  if (checkouts.length !== 1) return fail(`${TF_SHIP} job has ${checkouts.length} checkout steps; expected 1`);
+  const cw = isMap(checkouts[0].with) ? checkouts[0].with : {};
+  return { id, label, ok: cw.ref === TF_REF, detail: `checkout with: ${JSON.stringify(cw)}` };
+}
+
 function mutationJobChecks(text) {
   const out = [];
   const add = (id, what, ok, detail = "") => out.push({ id, label: `${id} ${what}`, ok: Boolean(ok), detail });
@@ -2803,6 +2828,40 @@ for (const [name, text, id] of KD_RED) {
   expect(`fixture red: ${name} fails assertion ${id}`, hit !== undefined && !hit.ok, `assertion ${id}: ${JSON.stringify(hit ?? null)}`);
 }
 for (const r of knownDefectChecks(kdJson([KD_ENTRY]), ROOT, true)) show({ ...r, label: `fixture good: ${r.label}` });
+
+// Fixtures for 25. The good text names the ref. Each red edit moves assertion 25 and no other.
+const TF_GOOD = [
+  "name: testflight",
+  "jobs:",
+  "  ship:",
+  "    runs-on: xcode-27",
+  "    steps:",
+  "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
+  "        with:",
+  "          persist-credentials: false",
+  "          ref: ${{ github.ref }}",
+  "      - run: echo ship",
+].join("\n") + "\n";
+const TF_RED = [
+  ["the checkout names no ref", mutate(TF_GOOD, "          ref: ${{ github.ref }}\n", "")],
+  ["the ref is the dispatch sha", mutate(TF_GOOD, "${{ github.ref }}", "${{ github.sha }}")],
+  ["the ref is a bare github.ref", mutate(TF_GOOD, "${{ github.ref }}", "github.ref")],
+  ["the job has no checkout step", mutate(TF_GOOD, "- uses: actions/checkout@", "- uses: actions/cache@")],
+];
+for (const [name, text] of TF_RED) {
+  const hit = testflightRefCheck(text);
+  expect(`fixture red: ${name} fails assertion 25`, !hit.ok, hit.detail);
+}
+{
+  const good = testflightRefCheck(TF_GOOD);
+  expect(`fixture good: ${good.label}`, good.ok, good.detail);
+}
+
+// The real file: testflight.yml on this branch. Red until the workflow checks out with the ref.
+{
+  const real = testflightRefCheck(readOrNull(TESTFLIGHT_WORKFLOW));
+  expect(real.label, real.ok, real.detail);
+}
 
 if (failures) {
   console.log(failLine(failures, checks));
