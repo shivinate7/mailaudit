@@ -27,17 +27,17 @@ None of the eight parts lives in PackagesView, TallyView, OrphanedView or RootVi
 
 ## The eight parts
 
-1. **The typed card's line.** Option picked: accent bar.
+1. **The typed card's line.** Owner ruling: accent bar (waiting page item 77, option a, 2026-11-09 19:19 CST).
    - What: a mark on the line of the card you typed.
    - Sources:
      - The round 2 mockup paints the line greenSoft (`.line.now`, index.html:101, :163).
      - The build paints a done line greenSoft too (`PackageCard.token(.rowFill)`, `native/ManifestKit/Sources/ManifestKit/PackageCard.swift:30`).
      - The chosen match already carries a 3 pt accent bar (`HandScreen.swift:160`, item 48).
    - Options:
-     - Accent bar, the pick. Gain: one mark for "this card" on both pages, and it still shows on a done line. Loss: it departs from the round 2 drawing.
+     - Accent bar, the owner's ruling. Gain: one mark for "this card" on both pages, and it still shows on a done line. Loss: it departs from the round 2 drawing.
      - Green fill. Gain: it is the round 2 drawing. Loss: it cannot be told apart from done, and on a done line it disappears.
    - The bar goes in ItemLine's 4 pt leading pad, so no text moves.
-   - Departs from: round 2 mockup pose 1. Not blocking.
+   - Departs from: round 2 mockup pose 1.
    - Test: on the line whose name matches the shown hit, the mark is present and carries the accessibility trait `.isSelected` or the id `hand-now:<key>`. The line's name frame is the same with and without the mark.
 
 2. **This envelope, with its cards so far.** Carried over.
@@ -105,6 +105,8 @@ None of the eight parts lives in PackagesView, TallyView, OrphanedView or RootVi
    - Gain: an envelope with no sender can be checked in, and parts 5 and 8 work.
    - Loss: more held state to show and to release on New envelope.
    - Pick: yes.
+
+2. **Button case.** Owner ruling: Title Case (waiting page item 81, option b, 2026-11-09 19:19 CST). Every button label moves from sentence case to Title Case, such as "New envelope" to "New Envelope".
 
 ## Out of scope, for the orchestrator
 
