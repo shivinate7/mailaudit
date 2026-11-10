@@ -59,9 +59,11 @@
   "pick": "a",
   "rank": 36,
   "ref": "decision duo-card-in-hand; lane duo-gaps-design-review (PR 237)",
+  "replied": "2026-11-10T02:48:00Z",
+  "reply": "Filed: Title Case is now Owner grant item 2 in the Card in Hand gaps notes (PR 305). It governs the restyle builder; nothing is built yet.",
   "repo": "shivinate7/mailaudit",
   "short": "Button case",
-  "status": "open",
+  "status": "closed",
   "title": "Buttons: keep sentence case (\"New envelope\"), or move to Title Case?",
   "why": "The whole app already reads one way; changing it buys only a match with an outside list."
 }

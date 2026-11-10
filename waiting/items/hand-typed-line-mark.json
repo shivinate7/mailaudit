@@ -59,11 +59,11 @@
   "pick": "a",
   "rank": 32,
   "ref": "debt duo-hand-mockup-gaps; decision duo-card-in-hand; lane duo-gaps-design-review (PR 237)",
-  "replied": "2026-11-09T02:01:00Z",
-  "reply": "The linked mockup is fixed: option a's accent bar now draws.",
+  "replied": "2026-11-10T02:48:00Z",
+  "reply": "Filed: part 1 of the Card in Hand gaps notes now states the accent bar as your ruling (PR 305). It governs the restyle builder; nothing is built yet.",
   "repo": "shivinate7/mailaudit",
   "short": "Typed card's mark",
-  "status": "open",
+  "status": "closed",
   "title": "How is the line of the card you typed marked: an accent bar or a green fill?",
   "why": "A green fill already means done; the bar never collides with it."
 }
