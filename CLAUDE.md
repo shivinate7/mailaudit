@@ -65,6 +65,7 @@ Nothing in the component touches a storage API. Three adapters do, and each fail
 - `records-name-what-dates-them` — Each decision names the fact that would date it.
 - `orchestrator-may-merge` — The batch runner batches and merges green, reviewed PRs.
 - `session-tiers-adopted` — This repo runs the session tiers, with the record branch `roadmap`.
+- `usage-pause-at-93` — Sessions pause at 93% of the weekly usage.
 - `invariants-cited-by-slug` — Invariants are cited by slug, never by number.
 
 ## Reference
