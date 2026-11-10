@@ -85,6 +85,8 @@ final class OrphanedUITests: XCTestCase {
 
     func sagaLabel(_ app: XCUIApplication) -> String {
         tab(app, "Packages").tap()
+        // D1 is the fourth card; Packages builds its rows lazily, so an off-screen card has no element until it is scrolled in.
+        app.reveal(el(app, Self.sagaControl))
         let control = el(app, Self.sagaControl)
         XCTAssertTrue(control.waitForExistence(timeout: 5), "the Packages view has no \(Self.sagaControl)")
         return control.label
@@ -169,10 +171,15 @@ final class OrphanedUITests: XCTestCase {
         XCTAssertEqual(a.frame.width, b.frame.width, accuracy: 0.5, "the tied rows differ in width")
         XCTAssertEqual(a.frame.height, b.frame.height, accuracy: 0.5, "the tied rows differ in height")
         XCTAssertFalse(el(app, "orphaned-undo").exists, "recording an envelope checked something in")
-        XCTAssertEqual(sagaLabel(app), "Check in Urza's Saga", "the card stays unchecked")
+        // Count before sagaLabel scrolls: the scroll can unmount rows A1 and B1, which would hide a wrong check-in.
+        tab(app, "Packages").tap()
+        for row in [Self.a1, Self.b1] {
+            XCTAssertTrue(el(app, "package-row:\(row)").waitForExistence(timeout: 5), "anchor: the \(row) row is not built on Packages")
+        }
         XCTAssertEqual(
             app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "Undo check in")).count, 0,
             "recording checked a card in")
+        XCTAssertEqual(sagaLabel(app), "Check in Urza's Saga", "the card stays unchecked")
     }
 
     // MARK: drafts
@@ -188,7 +195,8 @@ final class OrphanedUITests: XCTestCase {
         input.typeText("Light")
 
         tab(app, "Packages").tap()
-        XCTAssertTrue(el(app, Self.sagaControl).waitForExistence(timeout: 5), "anchor: the Packages view opened")
+        // stamped-cell sits at the top of Packages at every count, so it shows the tab opened without a scroll.
+        XCTAssertTrue(el(app, "stamped-cell").waitForExistence(timeout: 5), "anchor: the Packages view opened")
         tab(app, "Orphaned").tap()
 
         let back = el(app, "orphaned-input")
@@ -268,14 +276,13 @@ final class OrphanedUITests: XCTestCase {
         return "keyboard frame \(last) in a window \(bottom)pt high, \(last.maxY <= bottom + 1 ? "on screen" : "NOT on screen"), still reads \(still) of 3 after \(took)s"
     }
 
-    /// Probe for an intermittent audit issue on the composer: "Potentially inaccessible text", with no element and
-    /// a zero frame, in 3 of 5 runs. This waits for the keyboard to settle first, then audits, and logs every issue
-    /// the audit raises (the exempt ones too, except the tab bar's, which print as AUDIT-SKIP lines) with its type,
-    /// element and frame, plus the screen's accessibility tree as an attachment. It adds no skip beyond the ones the
-    /// empty composer's audit already has. Run it with
-    /// -test-iterations 5 and read the PROBE-AUDIT lines of the log: they say whether the keyboard was on screen
-    /// when the audit ran, and what each iteration's audit raised. A green run with the keyboard off screen
-    /// proves nothing about the settle.
+    /// Probe for an intermittent audit issue on the composer: "Potentially inaccessible text" with no element
+    /// (debt `native-orphaned-colours-unbuilt`). This waits for the keyboard to settle first, then audits, and logs
+    /// every issue the audit raises (the exempt ones too, except the tab bar's, which print as AUDIT-SKIP lines) with
+    /// its type, element and frame, plus the screen's accessibility tree as an attachment. It adds no skip beyond the
+    /// ones the empty composer's audit already has. Run it with several iterations (-test-iterations) and read the
+    /// PROBE-AUDIT lines of the log: they say whether the keyboard was on screen when the audit ran, and what each
+    /// iteration's audit raised. A green run with the keyboard off screen proves nothing about the settle.
     func testAccessibilityAuditOrphanedComposerAfterTheKeyboardSettles() throws {
         let app = launch()
         openOrphaned(app)
