@@ -1,0 +1,82 @@
+{
+  "added": "2026-11-09T01:50:00Z",
+  "context": "Goal: see what this package still owes while the keys are up.\nProblem (goal): round 2 puts it under the lines, which falls under the keys at 3 or more lines.\nBased on (read): decision outstanding-value-per-level (each level states what is still outstanding).\nDeparts from: the round 2 place under the lines — the trailing end of the \"ordered\" line.\nAsked by lane duo-gaps-design-review (PR 237, mockup docs/design/duo-hand-gaps.html at 4362dc5). The picks per part live in docs/design/duo-hand-gaps-notes.md.",
+  "designs": [
+    {
+      "file": "docs/design/duo-hand-gaps.html",
+      "focus": "#focus-owed-meta",
+      "label": "On the order line",
+      "option": "a",
+      "slug": "duo-hand-gaps",
+      "state": "still-owed"
+    },
+    {
+      "file": "docs/design/duo-hand-gaps.html",
+      "focus": "#focus-owed-under",
+      "label": "Under the lines",
+      "option": "b",
+      "slug": "duo-hand-gaps",
+      "state": "still-owed"
+    }
+  ],
+  "group": "duo-hand-gaps",
+  "home": "docs/design/duo-hand-gaps-notes.md (PR 237)",
+  "id": "hand-still-owed-place",
+  "kind": "decision",
+  "n": 78,
+  "options": [
+    {
+      "design": "duo-hand-gaps",
+      "gain": "No new row, and it stays above the keys.",
+      "how": "\"Still owed here\" and the figure sit at the trailing end of the \"ordered\" line.",
+      "key": "a",
+      "label": "On the order line",
+      "links": [
+        {
+          "label": "Mockup: this part",
+          "url": "https://claude.ai/artifact/GRAhbtEyULEWHvk9kF4U3H#s=still-owed"
+        },
+        {
+          "label": "Mockup source on the branch",
+          "url": "https://github.com/shivinate7/mailaudit/blob/hand-mockup-gaps-d/docs/design/duo-hand-gaps.html"
+        },
+        {
+          "label": "PR 237",
+          "url": "https://github.com/shivinate7/mailaudit/pull/237"
+        }
+      ],
+      "lose": "A busier line, which wraps at large text."
+    },
+    {
+      "design": "duo-hand-gaps",
+      "gain": "It reads after the lines it sums.",
+      "how": "It sits under the card lines, as round 2 drew it.",
+      "key": "b",
+      "label": "Under the lines",
+      "links": [
+        {
+          "label": "Mockup: this part",
+          "url": "https://claude.ai/artifact/GRAhbtEyULEWHvk9kF4U3H#s=still-owed"
+        },
+        {
+          "label": "Mockup source on the branch",
+          "url": "https://github.com/shivinate7/mailaudit/blob/hand-mockup-gaps-d/docs/design/duo-hand-gaps.html"
+        },
+        {
+          "label": "PR 237",
+          "url": "https://github.com/shivinate7/mailaudit/pull/237"
+        }
+      ],
+      "lose": "The keys hide it at 3 or more lines."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "pick": "a",
+  "rank": 33,
+  "ref": "debt duo-hand-mockup-gaps; decision duo-card-in-hand; lane duo-gaps-design-review (PR 237)",
+  "repo": "shivinate7/mailaudit",
+  "short": "Still owed place",
+  "status": "open",
+  "title": "Where does \"Still owed here\" sit: on the order line, or under the card lines?",
+  "why": "It stays in view while you type, at every length of envelope."
+}

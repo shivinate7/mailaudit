@@ -1,0 +1,39 @@
+{
+  "added": "2026-11-09T04:50:00Z",
+  "command": {
+    "mac": "cd ~\ngh auth switch -u shivinate7\ngh variable set TEAM_ID --repo shivinate7/mailaudit --body \"$(plutil -extract team_id raw ~/.config/ios-ship/account.json)\"\ngh variable list --repo shivinate7/mailaudit",
+    "powershell": "cd ~\ngh auth switch -u shivinate7\n$t = (Get-Content \"$HOME\\.config\\ios-ship\\account.json\" -Raw | ConvertFrom-Json).team_id\ngh variable set TEAM_ID --repo shivinate7/mailaudit --body $t\ngh variable list --repo shivinate7/mailaudit"
+  },
+  "context": "The Apple signing team id goes in a repo variable, never in the public repo (decision native-ships-via-testflight: tools/ios-ship.json holds no ID). The workflow .github/workflows/testflight.yml reads TEAM_ID; without it every upload stops at \"TEAM_ID is unset\".\nWhy yours: the team id lives only in the ios-ship account file on your Mac, and this session cannot read it (measured 2026-11-08, no TEAM_ID in env and no account.json under $HOME/.config/ios-ship in the cloud container).",
+  "group": "cloud-sessions-plan",
+  "holds": "The first TestFlight upload from CI. Review of the lane goes on meanwhile.",
+  "home": "testflight-from-ci",
+  "id": "testflight-team-id",
+  "kind": "task",
+  "lastAnswer": {
+    "at": "2026-11-10T02:44:00Z",
+    "done": true,
+    "note": "done (said in lane testflight-from-ci chat)"
+  },
+  "links": [
+    {
+      "label": "Repo variables (Actions)",
+      "url": "https://github.com/shivinate7/mailaudit/settings/variables/actions"
+    }
+  ],
+  "minutes": "1 min",
+  "n": 82,
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "port": false,
+  "ref": "step testflight-from-ci (TestFlight upload from CI); decision native-ships-via-testflight (iOS ships via TestFlight); item 65 (TestFlight from CI)",
+  "replied": "2026-11-10T02:46:00Z",
+  "reply": "Closed: you set TEAM_ID (said to lane testflight-from-ci at 20:44 CST). The cloud cannot read repo variables (403), so the lane's next TestFlight run is the check.",
+  "repo": "shivinate7/mailaudit",
+  "short": "Add TEAM_ID variable",
+  "status": "closed",
+  "steps": [
+    "On the Mac that holds your ios-ship account file, paste the command below in a terminal. It reads team_id from that file and sets the repo variable; the last line lists the variables so you can see TEAM_ID.",
+    "Press Mark done."
+  ],
+  "title": "Add the repo variable TEAM_ID for TestFlight uploads from CI"
+}

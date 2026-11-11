@@ -1,0 +1,39 @@
+{
+  "added": "2026-11-09T22:00:00Z",
+  "context": "Goal: on the iPhone, you can type an Orphaned note, switch tabs, and come back to the same draft.\nProblem (goal): with the form's keyboard up, the keys cover the tab bar, and nothing on the Orphaned screen hides them: no drag, no tap, no toolbar. Only Save or Cancel get out, so you can't switch tabs mid-draft, and the test for it (testComposerDraftSurvivesAViewChange) stays red on main.\nBased on (read): ux-house-rules-govern L2 says the envelope draft survives a view change.\nBased on (read): on main, OrphanedView.swift:279 puts the keyboard up when the form opens and nothing takes it down; HandScreen.swift:144 is the only drag-to-hide in the app.\nDeparts from: main has no way to hide the keys in the Orphaned form — adds a drag on the Orphaned list that hides them, the same one Card in Hand uses.\nMeanwhile: lane pro-ui-main-reds works on the other reds; no merge waits on this.",
+  "home": "pro-ui-main-reds",
+  "id": "orphaned-composer-dismiss",
+  "kind": "decision",
+  "n": 86,
+  "options": [
+    {
+      "gain": "You can reach the tabs mid-draft and keep the draft, and the test goes green.",
+      "how": "The Orphaned list gets the same drag-to-hide as Card in Hand. The test drags first, then switches tabs.",
+      "key": "a",
+      "label": "Add a drag on the list that hides the keys",
+      "lose": "A change to the app: one builder, one reviewer and one Mac run."
+    },
+    {
+      "gain": "No change to the app.",
+      "how": "No change to the app. The test stays red under a debt.",
+      "key": "b",
+      "label": "Leave it as it is",
+      "lose": "You can't switch tabs while typing an Orphaned note, and main's iPhone UI run keeps a red."
+    },
+    {
+      "gain": "Only the test changes.",
+      "how": "Only the test changes: it presses Return to leave the field, once someone reads what Return does to the keys.",
+      "key": "c",
+      "label": "Point the test at the Return key instead",
+      "lose": "Return also adds the typed name (OrphanedView.swift:199), so it may not be how you switch tabs, and the keys may still stay up."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "pick": "a",
+  "ref": "step pro-ui-main-reds (the iPhone UI test reds on main); decision ux-house-rules-govern (L2: the envelope draft survives a view change); test testComposerDraftSurvivesAViewChange",
+  "repo": "shivinate7/mailaudit",
+  "short": "Hide keys in Orphaned",
+  "status": "open",
+  "title": "On the iPhone, the keyboard in the Orphaned note form covers the tabs, and nothing hides it. Add a drag that hides the keys?",
+  "why": "It gives you the tab switch the ruling promises, with a drag the app already uses on Card in Hand."
+}

@@ -1,0 +1,34 @@
+{
+  "added": "2026-11-10T03:09:00Z",
+  "context": "Goal: the Manifest app reaches your iPhone from CI, without your Mac.\nProblem (cannot undo): the next step uploads a real build of Manifest to App Store Connect and TestFlight. An uploaded build can be expired but not withdrawn, and it uses up a build number.\nBased on (measured): dry run 42745528705 on main 6a55afc passed in 3 min 6 s (build, sign and export, no upload), with TEAM_ID set.\nDeparts from: main, where builds reach the phone by a Mac install — adds CI uploads to TestFlight.\nMeanwhile: the lane waits on this; nothing else waits.",
+  "home": "testflight-from-ci",
+  "id": "testflight-first-upload",
+  "kind": "decision",
+  "n": 87,
+  "options": [
+    {
+      "gain": "The build shows up in TestFlight, ready to install on your phone.",
+      "how": "The lane runs testflight.yml on main once with dry=false, for Manifest only.",
+      "key": "a",
+      "label": "Yes, upload one build",
+      "lose": "One build number is used, and the build cannot be withdrawn."
+    },
+    {
+      "gain": "Nothing leaves CI.",
+      "how": "No upload. The lane stops after the dry run.",
+      "key": "b",
+      "label": "Not now",
+      "lose": "Phone installs stay on the Mac route."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "pick": "a",
+  "ref": "step testflight-from-ci (TestFlight upload from CI); decision native-ships-via-testflight (iOS ships via TestFlight); item 82 testflight-team-id (TEAM_ID, done); run 42745528705 (dry run on main 6a55afc)",
+  "replied": "2026-11-10T03:14:00Z",
+  "reply": "Withdrawn: your ruling on item 65 (2026-11-08 16:30 CST, option a: a macOS job uploads each build from CI) already grants this upload. The lane goes ahead on that ruling.",
+  "repo": "shivinate7/mailaudit",
+  "short": "First CI TestFlight upload",
+  "status": "closed",
+  "title": "Upload the first real Manifest build from CI to TestFlight?",
+  "why": "The dry run passed with TEAM_ID set, so one upload proves the whole path, and an expired build costs only a build number."
+}

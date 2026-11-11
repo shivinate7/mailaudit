@@ -1,0 +1,42 @@
+{
+  "added": "2026-11-08T16:48:00-06:00",
+  "context": "Goal: the repo runs in cloud sessions.\nProblem (goal): the web, Worker, extension and records work can move once a test session passes. Native work cannot: swift test, the app build, simulators, the Duo, phone installs and TestFlight all need macOS, and the restyle needs a simulator at every step.\nBased on (read): docs/plans/cloud-sessions.md on branch claude/cloud-feasibility-e01860, the work-kinds table.\nBased on (ruling): lanes-start-as-agents, 2026-11-04 07:56 CST: the whole team runs in one place.\nDeparts from: main runs the whole team on the Mac — each option moves part or all of it to the cloud.\nUnvetted: the past-ruling check was not run.",
+  "group": "cloud-sessions-plan",
+  "holds": "The native half of the cloud move waits on this.",
+  "home": "plan cloud-sessions (branch claude/cloud-feasibility-e01860); decision lanes-start-as-agents",
+  "id": "cloud-move-native",
+  "kind": "decision",
+  "n": 71,
+  "options": [
+    {
+      "gain": "The restyle keeps its simulator and phone.",
+      "how": "Web, Worker, extension and records move now. The native restyle finishes on the Mac, then moves.",
+      "key": "a",
+      "label": "Two waves: everything but native now, native after the restyle",
+      "lose": "A split team until the restyle ends, against lanes-start-as-agents for that time."
+    },
+    {
+      "gain": "No Mac needed at all.",
+      "how": "A macOS screenshot job, a green milestone.yml and TestFlight from Actions get built; native work pauses until then.",
+      "key": "b",
+      "label": "Build CI routes for native first",
+      "lose": "Native stalls while those are built, macOS CI minutes cost money, and the Duo still has no route."
+    },
+    {
+      "gain": "One cloud team.",
+      "how": "The whole team moves; one Mac helper session does simulator runs, phone installs and TestFlight.",
+      "key": "c",
+      "label": "Move everything now, with one Mac helper",
+      "lose": "The Mac helper can't hear the cloud team, so its work goes by PR only."
+    }
+  ],
+  "owner": "coordinator local_3159e21b-972b-4db6-950c-ad7fd0613fda",
+  "pick": "a",
+  "rank": 2,
+  "ref": "your ask at 16:45 CST to move the repo to the cloud; plan docs/plans/cloud-sessions.md, the work-kinds table; items 65 to 67",
+  "reply": "Closed 2026-11-08 16:52 CST on the owner's chat answer at 16:50 CST: \"we would move everything to the cloud no simulators on mac either\". That is none of a, b or c. The whole team moves to the cloud, and native builds, simulator runs and screenshots move to macOS CI jobs. Home: a decision record on branch claude/cloud-feasibility-e01860.",
+  "short": "Cloud move: native",
+  "status": "closed",
+  "title": "Moving to the cloud: what happens to the native work?",
+  "why": "The restyle is the standing goal, and it is the only part that can't move yet."
+}

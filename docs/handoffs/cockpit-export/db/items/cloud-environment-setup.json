@@ -1,0 +1,33 @@
+{
+  "added": "2026-11-08T17:15:00-06:00",
+  "context": "Goal: the mailaudit team restarts in cloud sessions.\nDeparts from: main runs sessions on the Mac only — this adds a cloud environment for every role.\nWhy yours: it changes your claude.ai account's environment settings, which the safety rules keep for you.\nUnvetted: the past-ruling check timed out.\nNetwork hosts to add (step 2): cdn.playwright.dev, playwright.download.prss.microsoft.com, *.blob.core.windows.net. The Worker host is only for live probes, and its network secret reaches it anyway.\nSetup script for step 1: docs/plans/cloud-setup.sh on branch claude/cloud-feasibility-e01860 (PR #246). Its full text was on this card until 2026-11-08 18:15 CST; the copy came out after the card closed, because the repo export reads its pinned Playwright version as an email address.",
+  "group": "cloud-sessions-plan",
+  "holds": "The restart in the cloud (the gameplan in draft PR #246) waits on this.",
+  "home": "plan cloud-sessions, Restart in the cloud, step 1",
+  "id": "cloud-environment-setup",
+  "kind": "task",
+  "links": [
+    {
+      "label": "Claude Code on the web",
+      "url": "https://claude.ai/code"
+    },
+    {
+      "label": "PR #246, the cloud gameplan",
+      "url": "https://github.com/shivinate7/mailaudit/pull/246"
+    }
+  ],
+  "minutes": "unmeasured",
+  "n": 73,
+  "owner": "coordinator local_3159e21b-972b-4db6-950c-ad7fd0613fda",
+  "rank": 1,
+  "ref": "draft PR #246 (cloud move gameplan); docs/plans/cloud-setup.sh",
+  "short": "Cloud environment",
+  "status": "closed",
+  "steps": [
+    "On claude.ai/code, on the new-session screen, select the first control under the message box, then Add environment, then Setup script, and paste the setup script from this card's text.",
+    "Network access: choose Custom, tick the default list, and add the hosts this card lists.",
+    "Environment variables: add TZ=America/Chicago, and CLAUDE_CODE_SUBAGENT_MODEL with the model you pick.",
+    "Save changes, start one session on shivinate7/mailaudit, and mark this done."
+  ],
+  "title": "Set up the mailaudit cloud environment"
+}

@@ -1,0 +1,103 @@
+{
+  "added": "2026-11-09T02:06:00Z",
+  "context": "Goal: the Orphaned candidates read clearly on the phone at every text size.\nProblem (rule): the line with the date, the untracked tag and the order id wraps at large text on the phone; the web keeps it on one line. The debt closes only on your ruling or on a one-line version that passes Apple's audit.\nBased on (measured): from AX3 on, the order number needs 354 pt and the column has 214 pt, so no one-line version shows it in full.\nBased on (measured): Shrink to fit and Cut at full size fail Apple's audit. Cut line and Capped size are unmeasured on this row, and no record names the text size the 2026-10-27 audit used.\nDeparts from: OrphanedView.swift:CandidateRow — the web's one-line meta becomes a wrap at large text on the phone, ruled right, and the debt closes.",
+  "designs": [
+    {
+      "file": "docs/design/orphaned-meta-line-wraps.html",
+      "focus": "#focus-wrap",
+      "label": "Keep the wrap",
+      "option": "a",
+      "slug": "orphaned-meta-line-wraps"
+    },
+    {
+      "file": "docs/design/orphaned-meta-line-wraps.html",
+      "focus": "#focus-one-line",
+      "label": "Keep looking for a one-line version",
+      "option": "b",
+      "slug": "orphaned-meta-line-wraps"
+    }
+  ],
+  "group": "orphaned-line-departures",
+  "home": "debt native-candidate-lines-wrap",
+  "id": "orphaned-meta-line-wraps",
+  "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-08T22:30:22.188Z",
+    "note": "will need a visual example to decide.."
+  },
+  "n": 56,
+  "options": [
+    {
+      "design": "orphaned-meta-line-wraps",
+      "gain": "The whole order number shows at every text size, and the audit passes.",
+      "how": "The meta line wraps at large text, as shipped today, and the debt closes.",
+      "key": "a",
+      "label": "Keep the wrap",
+      "links": [
+        {
+          "label": "Wrap at default size",
+          "url": "https://github.com/shivinate7/mailaudit/blob/look-mockups-56-63/docs/design/shots/orphaned-meta-line-wraps/wrap-default.png"
+        },
+        {
+          "label": "Wrap at AX3",
+          "url": "https://github.com/shivinate7/mailaudit/blob/look-mockups-56-63/docs/design/shots/orphaned-meta-line-wraps/wrap-ax3.png"
+        },
+        {
+          "label": "Wrap at AX5",
+          "url": "https://github.com/shivinate7/mailaudit/blob/look-mockups-56-63/docs/design/shots/orphaned-meta-line-wraps/wrap-ax5.png"
+        },
+        {
+          "label": "Wrap on the open Duo",
+          "url": "https://github.com/shivinate7/mailaudit/blob/look-mockups-56-63/docs/design/shots/orphaned-meta-line-wraps/open-duo-wrap.png"
+        },
+        {
+          "label": "PR 252 (the mockups)",
+          "url": "https://github.com/shivinate7/mailaudit/pull/252"
+        }
+      ],
+      "lose": "At large text the row grows a line and differs from the web."
+    },
+    {
+      "design": "orphaned-meta-line-wraps",
+      "gain": "The phone matches the web's one line.",
+      "how": "A lane measures the Cut line and Capped size versions against the audit; one ships if it passes.",
+      "key": "b",
+      "label": "Keep looking for a one-line version",
+      "links": [
+        {
+          "label": "Cut line at default size",
+          "url": "https://github.com/shivinate7/mailaudit/blob/look-mockups-56-63/docs/design/shots/orphaned-meta-line-wraps/cutline-default.png"
+        },
+        {
+          "label": "Cut line at xxxLarge",
+          "url": "https://github.com/shivinate7/mailaudit/blob/look-mockups-56-63/docs/design/shots/orphaned-meta-line-wraps/cutline-xxxl.png"
+        },
+        {
+          "label": "Shrink to fit at AX3",
+          "url": "https://github.com/shivinate7/mailaudit/blob/look-mockups-56-63/docs/design/shots/orphaned-meta-line-wraps/shrink-ax3.png"
+        },
+        {
+          "label": "The web at 375 px",
+          "url": "https://github.com/shivinate7/mailaudit/blob/look-mockups-56-63/docs/design/shots/orphaned-meta-line-wraps/web-375.png"
+        },
+        {
+          "label": "PR 252 (the mockups)",
+          "url": "https://github.com/shivinate7/mailaudit/pull/252"
+        }
+      ],
+      "lose": "From AX3 on, no one-line version shows the whole order number, and two of the four already fail the audit."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "pick": "a",
+  "port": true,
+  "rank": 21,
+  "ref": "debt native-candidate-lines-wrap (the candidate meta line wraps); decision orphaned-colours-by-meaning",
+  "replied": "2026-11-09T02:06:00Z",
+  "reply": "You asked for a visual example. Each option now links its screenshots; the full mockup is in PR 252 (docs/design/orphaned-meta-line-wraps.html).",
+  "repo": "shivinate7/mailaudit",
+  "short": "Candidate line wraps",
+  "status": "open",
+  "title": "On the phone, an Orphaned candidate's date and order line wraps at large text. Keep the wrap?",
+  "why": "Only the wrap shows the whole order number at large text, and it already passes the audit."
+}

@@ -1,0 +1,30 @@
+{
+  "added": "2026-11-09T18:10:00Z",
+  "context": "Goal: the phone's Orphaned card form passes its accessibility audit, with no real contrast problem hidden.\nProblem (rule): Apple's audit flags \"Contrast failed\" on two elements of the ready Orphaned composer, on 2 of 2 tries in run 42653870499: the \"Save envelope\" button and the \"1 card\" count. A designer measured both from the colour tokens. Save is card on ink at 12.17:1, and the count is inkSoft on card at 5.24:1. Both clear the 4.5 floor. Decision audit-skips-measured-flags allows only skips you name, so a new skip needs your word.\nBased on (measured): the two pairs measure 12.17:1 and 5.24:1 (lane pro-ui-main-reds designer, 2026-11-09 12:01 CST; mockup on branch lane/orphaned-composer-contrast at 99e1b30).\nBased on (read): debt tally-audit-contrast-flags; the audit samples pixels and flags pairs above 4.5:1 some of the time.\nBased on (ruling): audit-skips-measured-flags; you named skips for Cancel, Edit and Discard on this same form.\nDeparts from: main audit-skips-measured-flags skips Cancel, Edit and Discard on the Orphaned composer — option a adds Save and the card count, contrast check only.\nMeanwhile: both stay red under debt orphaned-composer-contrast, and lane pro-ui-main-reds works on the other reds.",
+  "home": "audit-skips-measured-flags",
+  "id": "orphaned-composer-skip",
+  "kind": "decision",
+  "n": 84,
+  "options": [
+    {
+      "gain": "The Orphaned composer audit goes green, and the colours that measure clear stay as they are.",
+      "how": "The composer audit skips only the contrast check, only on those two elements. The count first gets an id so the skip can name it. Every other check stays on.",
+      "key": "a",
+      "label": "Add named contrast skips for Save and the card count",
+      "lose": "The audit stops checking contrast on two more elements."
+    },
+    {
+      "gain": "No new blind spot in the audit.",
+      "how": "No skip. Both elements stay red under debt orphaned-composer-contrast until someone measures a change that makes the audit pass.",
+      "key": "b",
+      "label": "Skip nothing: both stay red until a measured fix exists",
+      "lose": "Main's iPhone UI audit stays red on these two elements, and no colour change is known to fix it, since both already measure clear."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "ref": "decision audit-skips-measured-flags (audit skips only for measured false flags); debt orphaned-composer-contrast (the ready Orphaned composer fails contrast); debt tally-audit-contrast-flags (the audit flags pairs above 4.5:1); step pro-ui-main-reds (the iPhone UI test reds on main)",
+  "repo": "shivinate7/mailaudit",
+  "short": "Orphaned composer skips",
+  "status": "open",
+  "title": "The Orphaned composer's Save button and card count fail Apple's contrast audit, but their colours measure clear. Add two named skips?"
+}
