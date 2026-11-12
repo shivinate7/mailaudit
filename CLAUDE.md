@@ -16,10 +16,7 @@ storage namespace do not follow the masthead. See `masthead-is-not-project-name`
 
 ## How to read this file
 
-This file is an index, and it holds no argument of its own. Rulings sit in records:
-`git-one-record-per-question` (one record per question) and `speak-rewrite-superseded-in-place`
-(current text only; git keeps the history). Read only the records a task needs
-(`tokens-never-load-whole-doc`: one record or section at a time).
+This file is an index, and it holds no argument of its own. Rulings sit in records. Read only the records a task needs.
 
 - `invariants/` holds a rule that must not break. 8 records.
 - `docs/decisions/` holds a ruling and the reason it still holds.
@@ -27,14 +24,10 @@ This file is an index, and it holds no argument of its own. Rulings sit in recor
 - `docs/debts/` holds one known gap per file, each pointing at its decision.
 - `docs/plans/` holds work not yet shipped. `docs/specs/` holds how a shipped feature works now. `docs/todo.md` holds tasks a session caught and did not do. `.claude/rules/` holds rules for one folder.
 
-Cite by slug (rule:git-cite-by-id). `npm run check:records` proves the corpus; its claims head `check-records.mjs`.
+Cite by slug. `npm run check:records` proves the corpus; its claims head `check-records.mjs`.
 
 An open question carries a `**Status:**` line. That line is the only thing that
 separates a question still open from a ruling already settled, so keep it.
-
-## Working here
-
-Verify this file against the repo (rule:verification-report-unknown-reads, rule:outcomes-decision-is-argument). A decision that looks stale follows rule:outcomes-stale-decision-protocol.
 
 ## Invariants
 
