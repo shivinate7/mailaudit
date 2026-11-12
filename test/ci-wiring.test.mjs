@@ -8,7 +8,7 @@
 //   2  its job-level if: is exactly always() && !github.event.pull_request.draft;
 //   3a its step pins the shared action to a 40-hex sha;
 //   3b its with: needs is ${{ toJSON(needs) }};
-//   3c every claude-settings pin in the file names its expected sha: STE_LINT_PIN for ste-lint,
+//   3c every claude-settings pin in the file names its expected sha: STE_LINT_PIN for ste-lint and claude-md-cites,
 //      the rollup's sha for the rest;
 //   4  its needs are every other job except ci-done and milestone-proof (staged, see i2);
 //   5  no job it needs has a job-level if: with github.event_name or .outputs.;
@@ -109,12 +109,13 @@ const ALARM_ACTION = ACTIONS + "ci-alarm";
 const STE_LINT = ACTIONS + "ste-lint";
 // The shared action pin. Every claude-settings pin in checks.yml carries this sha, except ste-lint.
 const ACTION_PIN = "380a24b5fa9ab78b973892ddfe3a95eaff68601b";
-// ste-lint follows claude-settings main on its own, not ACTION_PIN (decision action-pins-follow-sessions).
+// ste-lint and claude-md-cites follow claude-settings main on their own, not ACTION_PIN, and share one sha
+// (decision action-pins-follow-sessions).
 // STE_LINT_PIN is not written here. steLintPinIn reads it from checks.yml, so a pin move is one edit there.
 // The sha a claude-settings pin must name: STE_LINT_PIN for ste-lint, the shared sha for the rest.
-// One home for the ste-lint exception, read by assertions 3c and 12.
+// One home for the ste-lint and claude-md-cites exception, read by assertions 3c and 12.
 function expectedPin(action, shared) {
-  return action === "ste-lint" ? STE_LINT_PIN : shared;
+  return action === "ste-lint" || action === "claude-md-cites" ? STE_LINT_PIN : shared;
 }
 // The one sha that checks.yml's ste-lint uses line names. A pin is a uses: value, so a comment
 // or a run: block that names one does not count. No such line, two shas, or a non-sha throws
