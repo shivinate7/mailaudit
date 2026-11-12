@@ -273,7 +273,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: shivinate7/claude-settings/actions/ste-lint@e0b9696caa44ca19327407ae7afe870c73da2641 # main 2026-11-08
+      - uses: shivinate7/claude-settings/actions/ste-lint@2deb827ad12a5b7f605adc4f54be2b51eb2d3b42 # main 2026-11-12
+      # Decision child-cites-not-copies (claude-settings): CLAUDE.md names a claude-settings record and never copies it.
+      - uses: shivinate7/claude-settings/actions/claude-md-cites@2deb827ad12a5b7f605adc4f54be2b51eb2d3b42 # main 2026-11-12
 
   # Decision milestone-runs-full-suite: on a push to main, dispatches the full Swift suite
   # (milestone.yml) when it is due. Cost per push: one ubuntu job, one API read, one git log.
