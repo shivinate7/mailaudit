@@ -84,7 +84,9 @@
 //   s3  each other step has if: matrix.shard == N with N a listed shard, so it runs in exactly one shard;
 //   s4  each command in SUITE_WORK is exactly one step, so no check is dropped and none runs twice;
 //   s5  each part of the app suite (PART_COUNT in test/app-parts.mjs) runs in exactly one step;
-//   s6  MAILDAY_TEST_PART picks one part, or every part when unset, and refuses any other value.
+//   s6  MAILDAY_TEST_PART picks one part, or every part when unset, and refuses any other value;
+//   s7  the docs job runs npm run check:docs --silent in exactly one step, so the part logs are summed;
+//   s8  the rollup and ci-done each need the docs job.
 // A new check in the suite job goes into one shard and into SUITE_WORK in the same commit.
 //
 // No YAML library is in node_modules, and none may be added. The workflow is read as
@@ -2667,8 +2669,9 @@ function needsChecks(text) {
 
 // ---- The suite job's shards: assertions s1 to s6 ----
 const SUITE_JOB = "suite";
-// Every command the suite job ran before it was sharded, bar the app suite (s5 reads that one). Each is
-// one step, in one shard. A command that moves to another shard stays here; one that is retired leaves.
+// Every command the suite job runs, bar the app suite (s5 reads that one) and check:docs, which sums the
+// part logs of three runners and so runs in the docs job (s7). Each is one step, in one shard. A command
+// that moves to another shard stays here; one that is retired leaves.
 const SUITE_WORK = [
   "npm run check:rules",
   "npm run test:rules",
@@ -2688,8 +2691,8 @@ const SUITE_WORK = [
   "npm run check:golden --silent",
   "npm run check:build --silent",
   "npm run check:seed --silent",
-  "npm run check:docs --silent",
   "npm run check:records --silent",
+  "node test/photoget.test.mjs",
 ];
 const SHARD_IF = /^matrix\.shard==(\d+)$/;
 // Setup runs in every shard: the checkout, the node setup and the install.
@@ -2840,6 +2843,34 @@ function partSelectChecks({ select, gateOf, count }) {
   add("the gate refuses a part that never asks", checkOf(parts.slice(1)) === "throws", `check ${checkOf(parts.slice(1))}`);
   add("the gate refuses a part that asks twice", checkOf([...parts, 1]) === "throws", `check ${checkOf([...parts, 1])}`);
   add("the gate refuses a block beyond the count", checkOf([...parts, count + 1]) === "throws", `check ${checkOf([...parts, count + 1])}`);
+  return out;
+}
+
+// s7 and s8: check:docs sums the part logs the suite shards wrote on three runners, so it runs in its own
+// job after them. A job that runs nothing, or that the rollup and ci-done do not wait for, would let a
+// red check:docs pass.
+const DOCS_JOB = "docs";
+const DOCS_COMMAND = "npm run check:docs --silent";
+function docsJobChecks(text) {
+  const out = [];
+  const add = (id, what, ok, detail = "") => out.push({ id, label: `${id} ${what}`, ok: Boolean(ok), detail });
+  const jobs = parsedJobs(text);
+  const job = jobOf(jobs, DOCS_JOB);
+  const runs = steps(job).map((s) => (typeof s.run === "string" ? s.run.trim() : null));
+  const count = runs.filter((r) => r === DOCS_COMMAND).length;
+  add(
+    "s7",
+    `the ${DOCS_JOB} job runs ${DOCS_COMMAND} in exactly one step`,
+    job !== undefined && count === 1,
+    job === undefined ? (jobs === null ? "no readable workflow" : `no ${DOCS_JOB} job`) : `${count} steps run it`
+  );
+  const lacking = [ROLLUP, CI_DONE].filter((id) => !needsIn(jobs, id).includes(DOCS_JOB));
+  add(
+    "s8",
+    `the ${ROLLUP} and ${CI_DONE} jobs each need the ${DOCS_JOB} job`,
+    jobs !== null && jobOf(jobs, ROLLUP) !== undefined && jobOf(jobs, CI_DONE) !== undefined && lacking.length === 0,
+    jobs === null ? "no readable workflow" : `no ${DOCS_JOB} in needs of: ${lacking.join(", ")}`
+  );
   return out;
 }
 
@@ -3145,12 +3176,41 @@ for (const text of [SH_GOOD, SH_GOOD_ONE])
   expect("fixture red: a gate that checks nothing fails assertion s6", blindRed.length > 0, "every s6 case passed");
 }
 
-// The real files: checks.yml's suite job, package.json, test/app-parts.mjs.
+// Fixtures for s7 and s8. Each red edit moves the named assertion and no other.
+const DOCS_GOOD = [
+  "jobs:",
+  `  ${DOCS_JOB}:`,
+  "    needs: [suite]",
+  "    runs-on: ubuntu-latest",
+  "    steps:",
+  `      - run: ${DOCS_COMMAND}`,
+  `  ${ROLLUP}:`,
+  `    needs: [suite, ${DOCS_JOB}]`,
+  "    runs-on: ubuntu-latest",
+  `  ${CI_DONE}:`,
+  `    needs: [suite, ${DOCS_JOB}, ${ROLLUP}]`,
+  "    runs-on: ubuntu-latest",
+].join("\n") + "\n";
+const DOCS_RED = [
+  ["the job is missing", mutate(DOCS_GOOD, `  ${DOCS_JOB}:\n`, "  not-docs:\n"), "s7"],
+  ["the job runs another command", mutate(DOCS_GOOD, DOCS_COMMAND, "npm run check:records --silent"), "s7"],
+  ["the job runs it twice", mutate(DOCS_GOOD, `      - run: ${DOCS_COMMAND}\n`, `      - run: ${DOCS_COMMAND}\n      - run: ${DOCS_COMMAND}\n`), "s7"],
+  ["the rollup does not need the job", mutate(DOCS_GOOD, `needs: [suite, ${DOCS_JOB}]`, "needs: [suite]"), "s8"],
+  ["ci-done does not need the job", mutate(DOCS_GOOD, `needs: [suite, ${DOCS_JOB}, ${ROLLUP}]`, `needs: [suite, ${ROLLUP}]`), "s8"],
+];
+for (const [name, text, id] of DOCS_RED) {
+  const failed = docsJobChecks(text).filter((r) => !r.ok).map((r) => r.id);
+  expect(`fixture red: ${name} fails assertion ${id}`, JSON.stringify(failed) === JSON.stringify([id]), `failed assertions: ${JSON.stringify(failed)}`);
+}
+for (const r of docsJobChecks(DOCS_GOOD)) expect(`fixture good: ${r.label}`, r.ok, r.detail);
+
+// The real files: checks.yml's suite and docs jobs, package.json, test/app-parts.mjs.
 {
   const wf = WORKFLOW_TEXT;
   const pkg = readOrNull(resolve(ROOT, "package.json"));
   for (const r of shardChecks({ wfText: wf, pkgText: pkg, partCount: PART_COUNT })) show(r);
   for (const r of partSelectChecks({ select: partFromEnv, gateOf: partGate, count: PART_COUNT })) show(r);
+  for (const r of docsJobChecks(wf)) show(r);
 }
 
 if (failures) {
