@@ -76,6 +76,19 @@
 //       value is 'on' exactly when milestone-proof is in the rollup's needs;
 //   m2  no merge.ignoreChecks entry in the stamp names a workflow, a job the rollup needs, or a required check.
 //
+// The suite job runs as a matrix of shards under one job id. A step with no shard if: runs in every
+// shard, and a step in no shard never runs, so CI stays green when a check is lost or doubled. These
+// ids read the split:
+//   s1  the matrix lists at least two distinct whole-number shards;
+//   s2  each checkout, setup-node and npm ci step has no shard if:, so every shard has a tree and its modules;
+//   s3  each other step has if: matrix.shard == N with N a listed shard, so it runs in exactly one shard;
+//   s4  each command in SUITE_WORK is exactly one step, so no check is dropped and none runs twice;
+//   s5  each part of the app suite (PART_COUNT in test/app-parts.mjs) runs in exactly one step;
+//   s6  MAILDAY_TEST_PART picks one part, or every part when unset, and refuses any other value;
+//   s7  the docs job runs npm run check:docs --silent in exactly one step, so the part logs are summed;
+//   s8  the rollup and ci-done each need the docs job.
+// A new check in the suite job goes into one shard and into SUITE_WORK in the same commit.
+//
 // No YAML library is in node_modules, and none may be added. The workflow is read as
 // text by indentation: jobs sit under jobs: at 2 spaces, job keys at 4, step keys at 8.
 // A # starts a comment only after a space and outside a quoted scalar. A quote starts a
@@ -94,6 +107,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { failLine } from "./fail-line.mjs";
+import { PART_COUNT, partFromEnv, partGate } from "./app-parts.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const WORKFLOW = resolve(ROOT, process.env.CI_WORKFLOW || ".github/workflows/checks.yml");
@@ -2653,6 +2667,213 @@ function needsChecks(text) {
   return out;
 }
 
+// ---- The suite job's shards: assertions s1 to s6 ----
+const SUITE_JOB = "suite";
+// Every command the suite job runs, bar the app suite (s5 reads that one) and check:docs, which sums the
+// part logs of three runners and so runs in the docs job (s7). Each is one step, in one shard. A command
+// that moves to another shard stays here; one that is retired leaves.
+const SUITE_WORK = [
+  "npm run check:rules",
+  "npm run test:rules",
+  "npm run test:recent-rules",
+  "npm run test:check-docs",
+  "npm run test:check-records",
+  "npm run test:worker",
+  "npm run test:extension",
+  "node extension/build.mjs --check",
+  "npm run test:send-key",
+  "npm run test:view-rules",
+  "npm run test:ci-wiring",
+  "npm run test:fail-line",
+  "npm run test:tests-for",
+  "npm run test:milestone-due",
+  "npm run test:golden",
+  "npm run check:golden --silent",
+  "npm run check:build --silent",
+  "npm run check:seed --silent",
+  "npm run check:records --silent",
+  "node test/photoget.test.mjs",
+];
+const SHARD_IF = /^matrix\.shard==(\d+)$/;
+// Setup runs in every shard: the checkout, the node setup and the install.
+const isSetupStep = (s) =>
+  (typeof s.uses === "string" && (s.uses.startsWith(CHECKOUT) || s.uses.startsWith(SETUP_NODE))) ||
+  (typeof s.run === "string" && s.run.trim() === "npm ci");
+const stepLabel = (s) =>
+  typeof s.name === "string"
+    ? s.name
+    : typeof s.run === "string"
+      ? s.run.trim().split("\n").pop()
+      : String(s.uses ?? "a step with no run or uses");
+
+// The patterns that read a step as running the app suite: node on its file, and each package.json
+// script that runs it. null when package.json has no scripts to read.
+function appRunners(pkgText) {
+  let scripts;
+  try {
+    scripts = JSON.parse(pkgText).scripts;
+  } catch {
+    return null;
+  }
+  if (!isMap(scripts)) return null;
+  const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const names = Object.keys(scripts).filter((n) => typeof scripts[n] === "string" && scripts[n].includes("test/app.test.mjs"));
+  return [
+    /\bnode\s+(?:\.\/)?test\/app\.test\.mjs\b/,
+    ...names.map((n) => (n === "test" ? /\bnpm\s+(?:run\s+)?test(?![\w:-])/ : new RegExp(`\\bnpm\\s+run\\s+${esc(n)}(?![\\w:-])`))),
+  ];
+}
+// The part a step selects: "all" with no MAILDAY_TEST_PART (or an empty one), the whole number written
+// in its run line or env map, or null for any other value.
+function stepPart(step) {
+  const m = typeof step.run === "string" ? /\bMAILDAY_TEST_PART=(\S*)/.exec(step.run) : null;
+  const fromEnv = isMap(step.env) && step.env.MAILDAY_TEST_PART !== undefined ? String(step.env.MAILDAY_TEST_PART) : undefined;
+  const v = m ? m[1].replace(/^["']|["']$/g, "") : fromEnv;
+  if (v === undefined || v === "") return "all";
+  return /^[1-9]\d*$/.test(v) ? Number(v) : null;
+}
+
+function shardChecks({ wfText, pkgText, partCount }) {
+  const out = [];
+  const add = (id, what, ok, detail = "") => out.push({ id, label: `${id} ${what}`, ok: Boolean(ok), detail });
+  const jobs = parsedJobs(wfText);
+  const job = jobOf(jobs, SUITE_JOB);
+  const js = steps(job);
+  const none = job === undefined ? (jobs === null ? "no readable workflow" : `no ${SUITE_JOB} job`) : "";
+  const matrix = isMap(job) && isMap(job.strategy) && isMap(job.strategy.matrix) ? job.strategy.matrix.shard : undefined;
+  const shards = Array.isArray(matrix) ? matrix.map(String) : [];
+
+  add(
+    "s1",
+    `the ${SUITE_JOB} job's matrix lists at least two distinct whole-number shards`,
+    shards.length >= 2 && shards.every((x) => /^[1-9]\d*$/.test(x)) && new Set(shards).size === shards.length,
+    none || `matrix shard: ${JSON.stringify(matrix ?? null)}`
+  );
+
+  const setup = js.filter(isSetupStep);
+  const setupBad = setup.filter((s) => normIf(ifText(s)).includes("matrix.shard"));
+  add(
+    "s2",
+    `every checkout, setup-node and npm ci step of the ${SUITE_JOB} job runs in every shard`,
+    setup.length > 0 && setupBad.length === 0,
+    none || (setup.length === 0 ? "the job has no setup step" : `a shard if: on ${setupBad.map(stepLabel).join(", ")}`)
+  );
+
+  const work = js.filter((s) => !isSetupStep(s));
+  const cause = (s) => {
+    if (s.if === undefined) return `${stepLabel(s)} has no if:, so it runs in every shard`;
+    const m = SHARD_IF.exec(normIf(ifText(s)));
+    if (!m) return `${stepLabel(s)} has if: ${ifText(s)}, which is not matrix.shard == N`;
+    if (!shards.includes(m[1])) return `${stepLabel(s)} names shard ${m[1]}, which the matrix does not list, so it runs in none`;
+    return null;
+  };
+  const bad3 = work.map(cause).filter((x) => x !== null);
+  add(
+    "s3",
+    `every other step of the ${SUITE_JOB} job runs in exactly one shard (if: matrix.shard == N, N a listed shard)`,
+    work.length > 0 && bad3.length === 0,
+    none || (work.length === 0 ? "the job has no work step" : bad3.join("; "))
+  );
+
+  const runs = js.map((s) => (typeof s.run === "string" ? s.run.trim() : null));
+  const dropped = SUITE_WORK.filter((c) => !runs.includes(c));
+  const twice = SUITE_WORK.filter((c) => runs.filter((r) => r === c).length > 1);
+  add(
+    "s4",
+    `each of the ${SUITE_WORK.length} commands the ${SUITE_JOB} job must run is exactly one step`,
+    dropped.length === 0 && twice.length === 0,
+    [none, dropped.length ? `no step runs: ${dropped.join(", ")}` : "", twice.length ? `more than one step runs: ${twice.join(", ")}` : ""]
+      .filter(Boolean)
+      .join("; ")
+  );
+
+  const runners = appRunners(pkgText);
+  const appParts = runners === null ? [] : js.filter((s) => typeof s.run === "string" && runners.some((re) => re.test(s.run))).map(stepPart);
+  const coverage = (n) => appParts.filter((p) => p === "all" || p === n).length;
+  const bad5 = [];
+  for (let n = 1; n <= partCount; n++) if (coverage(n) !== 1) bad5.push(`part ${n} runs in ${coverage(n)} steps`);
+  for (const p of appParts) {
+    if (p === null) bad5.push("a step sets MAILDAY_TEST_PART to a value that is not a whole number");
+    else if (p !== "all" && p > partCount) bad5.push(`a step selects part ${p}, beyond the count of ${partCount}`);
+  }
+  add(
+    "s5",
+    "each part of the app suite runs in exactly one step",
+    runners !== null && Number.isInteger(partCount) && partCount >= 1 && bad5.length === 0,
+    runners === null ? "package.json has no scripts to read" : [none, ...bad5].filter(Boolean).join("; ")
+  );
+  return out;
+}
+
+// s6: the part selector and its gate, passed in so a fixture can hand them a broken copy.
+function partSelectChecks({ select, gateOf, count }) {
+  const out = [];
+  const add = (what, ok, detail = "") => out.push({ id: "s6", label: `s6 ${what}`, ok: Boolean(ok), detail });
+  const pick = (v) => {
+    try {
+      return select(v === undefined ? {} : { MAILDAY_TEST_PART: v }, count);
+    } catch {
+      return "throws";
+    }
+  };
+  for (const [v, want] of [[undefined, 0], ["", 0], ["1", 1], [String(count), count]])
+    add(`MAILDAY_TEST_PART ${JSON.stringify(v ?? null)} selects ${want === 0 ? "every part" : `part ${want}`}`, pick(v) === want, `selected ${JSON.stringify(pick(v))}`);
+  for (const v of ["0", String(count + 1), "x", "1 ", "01", "-1", "1.5"])
+    add(`MAILDAY_TEST_PART ${JSON.stringify(v)} is refused`, pick(v) === "throws", `selected ${JSON.stringify(pick(v))}`);
+
+  const parts = Array.from({ length: count }, (_, i) => i + 1);
+  const asks = (env, ns) => {
+    const g = gateOf(env, count);
+    return [ns.map((n) => g.inPart(n)), g];
+  };
+  const [answers] = asks({ MAILDAY_TEST_PART: "2" }, parts);
+  add("with part 2 chosen, only part 2's block runs", JSON.stringify(answers) === JSON.stringify(parts.map((n) => n === 2)), `blocks run: ${JSON.stringify(answers)}`);
+  const [every] = asks({}, parts);
+  add("with no part chosen, every block runs", every.every(Boolean), `blocks run: ${JSON.stringify(every)}`);
+  const checkOf = (ns) => {
+    const [, g] = asks({}, ns);
+    try {
+      g.check();
+      return "passes";
+    } catch {
+      return "throws";
+    }
+  };
+  add("the gate passes when each part asks once", checkOf(parts) === "passes", `check ${checkOf(parts)}`);
+  add("the gate refuses a part that never asks", checkOf(parts.slice(1)) === "throws", `check ${checkOf(parts.slice(1))}`);
+  add("the gate refuses a part that asks twice", checkOf([...parts, 1]) === "throws", `check ${checkOf([...parts, 1])}`);
+  add("the gate refuses a block beyond the count", checkOf([...parts, count + 1]) === "throws", `check ${checkOf([...parts, count + 1])}`);
+  return out;
+}
+
+// s7 and s8: check:docs sums the part logs the suite shards wrote on three runners, so it runs in its own
+// job after them. A job that runs nothing, or that the rollup and ci-done do not wait for, would let a
+// red check:docs pass.
+const DOCS_JOB = "docs";
+const DOCS_COMMAND = "npm run check:docs --silent";
+function docsJobChecks(text) {
+  const out = [];
+  const add = (id, what, ok, detail = "") => out.push({ id, label: `${id} ${what}`, ok: Boolean(ok), detail });
+  const jobs = parsedJobs(text);
+  const job = jobOf(jobs, DOCS_JOB);
+  const runs = steps(job).map((s) => (typeof s.run === "string" ? s.run.trim() : null));
+  const count = runs.filter((r) => r === DOCS_COMMAND).length;
+  add(
+    "s7",
+    `the ${DOCS_JOB} job runs ${DOCS_COMMAND} in exactly one step`,
+    job !== undefined && count === 1,
+    job === undefined ? (jobs === null ? "no readable workflow" : `no ${DOCS_JOB} job`) : `${count} steps run it`
+  );
+  const lacking = [ROLLUP, CI_DONE].filter((id) => !needsIn(jobs, id).includes(DOCS_JOB));
+  add(
+    "s8",
+    `the ${ROLLUP} and ${CI_DONE} jobs each need the ${DOCS_JOB} job`,
+    jobs !== null && jobOf(jobs, ROLLUP) !== undefined && jobOf(jobs, CI_DONE) !== undefined && lacking.length === 0,
+    jobs === null ? "no readable workflow" : `no ${DOCS_JOB} in needs of: ${lacking.join(", ")}`
+  );
+  return out;
+}
+
 // true when the clone holds the whole history, false when shallow, null when git cannot say.
 function historyWhole(root) {
   const r = spawnSync("git", ["rev-parse", "--is-shallow-repository"], { cwd: root, encoding: "utf8" });
@@ -2861,6 +3082,135 @@ for (const [name, text] of TF_RED) {
 {
   const real = testflightRefCheck(readOrNull(TESTFLIGHT_WORKFLOW));
   expect(real.label, real.ok, real.detail);
+}
+
+// Fixtures for s1 to s5. The good texts pass all five; each red edit moves the named assertion, and the
+// ones marked loose move another with it, because the edit breaks two things at once.
+const shStep = (cmd, n) => [`      - run: ${cmd}`, `        if: matrix.shard == ${n}`];
+const shText = (cmd, n) => shStep(cmd, n).join("\n") + "\n";
+const shardOfCmd = (cmd) => (SUITE_WORK.indexOf(cmd) % 3) + 1;
+const SH_HEAD = [
+  "jobs:",
+  `  ${SUITE_JOB}:`,
+  "    runs-on: ubuntu-latest",
+  "    strategy:",
+  "      fail-fast: false",
+  "      matrix:",
+  "        shard: [1, 2, 3]",
+  "    steps:",
+];
+const SH_SETUP = [
+  `      - uses: ${CHECKOUT}${PIN_CHECKOUT} # v7.0.1`,
+  "        with:",
+  "          fetch-depth: 0",
+  `      - uses: ${SETUP_NODE}${PIN_SETUP} # v7.1.0`,
+  "        with:",
+  '          node-version: "22"',
+  "      - run: npm ci",
+];
+const SH_WORK = SUITE_WORK.flatMap((c) => shStep(c, shardOfCmd(c)));
+// The app suite as three part steps, the selector written both ways it can be given.
+const SH_PART2 = ["      - name: app part 2", "        if: matrix.shard == 2", "        env:", "          MAILDAY_TEST_PART: 2", "        run: npm test"];
+const SH_PARTS = [...shStep("MAILDAY_TEST_PART=1 npm test", 1), ...SH_PART2, ...shStep("MAILDAY_TEST_PART=3 npm test", 3)];
+// The app suite as one step that runs every part, with the if: in its ${{ }} form.
+const SH_ONE_APP = ["      - run: npm test", "        if: ${{ matrix.shard == 1 }}"];
+const shFile = (...bodies) => [...SH_HEAD, ...SH_SETUP, ...bodies.flat()].join("\n") + "\n";
+const SH_GOOD = shFile(SH_WORK, SH_PARTS);
+const SH_GOOD_ONE = shFile(SH_WORK, SH_ONE_APP);
+const SH_PKG = JSON.stringify({ scripts: { test: "node test/app.test.mjs && node test/photoget.test.mjs", "test:rules": "node test/rules.test.mjs" } });
+const C0 = SUITE_WORK[0];
+const SH_RED = [
+  { name: "the job has no matrix", id: "s1", only: false, wf: mutate(SH_GOOD, "    strategy:\n      fail-fast: false\n      matrix:\n        shard: [1, 2, 3]\n", "") },
+  { name: "the matrix lists one shard", id: "s1", only: false, wf: mutate(SH_GOOD, "shard: [1, 2, 3]", "shard: [1]") },
+  { name: "the matrix lists a shard twice", id: "s1", wf: mutate(SH_GOOD, "shard: [1, 2, 3]", "shard: [1, 2, 2, 3]") },
+  {
+    name: "the checkout runs in shard 1 only",
+    id: "s2",
+    wf: mutate(SH_GOOD, `${SH_SETUP[0]}\n`, `${SH_SETUP[0]}\n        if: matrix.shard == 1\n`),
+  },
+  { name: "npm ci runs in shard 2 only", id: "s2", wf: mutate(SH_GOOD, "      - run: npm ci\n", "      - run: npm ci\n        if: matrix.shard == 2\n") },
+  { name: "a step has no if:", id: "s3", wf: mutate(SH_GOOD, shText(C0, 1), `      - run: ${C0}\n`) },
+  { name: "a step names a shard the matrix does not list", id: "s3", wf: mutate(SH_GOOD, shText(C0, 1), shText(C0, 4)) },
+  {
+    name: "a step runs in two shards",
+    id: "s3",
+    wf: mutate(SH_GOOD, shText(C0, 1), `      - run: ${C0}\n        if: matrix.shard == 1 || matrix.shard == 2\n`),
+  },
+  {
+    name: "a step reads another condition",
+    id: "s3",
+    wf: mutate(SH_GOOD, shText(C0, 1), `      - run: ${C0}\n        if: github.event_name == 'push'\n`),
+  },
+  { name: "a command is dropped", id: "s4", wf: mutate(SH_GOOD, shText(C0, 1), "") },
+  { name: "a command runs in two shards", id: "s4", wf: mutate(SH_GOOD, shText(C0, 1), shText(C0, 1) + shText(C0, 2)) },
+  { name: "a command is renamed", id: "s4", wf: mutate(SH_GOOD, `      - run: ${C0}\n`, "      - run: npm run check:rule\n") },
+  { name: "part 2 is dropped", id: "s5", wf: mutate(SH_GOOD, SH_PART2.join("\n") + "\n", "") },
+  { name: "part 1 runs in a second shard", id: "s5", wf: shFile(SH_WORK, SH_PARTS, shStep("MAILDAY_TEST_PART=1 npm test", 2)) },
+  { name: "an unrestricted run sits beside the parts", id: "s5", wf: shFile(SH_WORK, SH_PARTS, SH_ONE_APP) },
+  { name: "a step selects part 4 of 3", id: "s5", wf: mutate(SH_GOOD, "MAILDAY_TEST_PART=3 npm test", "MAILDAY_TEST_PART=4 npm test"), only: false },
+  { name: "a step selects a part that is no number", id: "s5", only: false, wf: mutate(SH_GOOD, "MAILDAY_TEST_PART=3 npm test", "MAILDAY_TEST_PART=three npm test") },
+  { name: "no step runs the app suite", id: "s5", wf: shFile(SH_WORK) },
+  { name: "the count grew by one and no step runs part 4", id: "s5", wf: SH_GOOD, partCount: 4 },
+  { name: "package.json is unreadable", id: "s5", wf: SH_GOOD, pkg: null },
+];
+for (const { name, id, wf, pkg = SH_PKG, partCount = 3, only = true } of SH_RED) {
+  const failed = shardChecks({ wfText: wf, pkgText: pkg, partCount })
+    .filter((r) => !r.ok)
+    .map((r) => r.id);
+  expect(
+    `fixture red: ${name} fails assertion ${id}`,
+    only ? JSON.stringify(failed) === JSON.stringify([id]) : failed.includes(id),
+    `failed assertions: ${JSON.stringify(failed)}`
+  );
+}
+for (const text of [SH_GOOD, SH_GOOD_ONE])
+  for (const r of shardChecks({ wfText: text, pkgText: SH_PKG, partCount: 3 })) expect(`fixture good: ${r.label}`, r.ok, r.detail);
+
+// s6 on a selector that never refuses, and on a gate that never checks. Both must go red.
+{
+  const lax = (env) => Number(env.MAILDAY_TEST_PART || 0);
+  const blind = () => ({ part: 0, inPart: () => true, check() {} });
+  const laxRed = partSelectChecks({ select: lax, gateOf: partGate, count: 3 }).filter((r) => !r.ok);
+  expect("fixture red: a selector that refuses nothing fails assertion s6", laxRed.length > 0, "every s6 case passed");
+  const blindRed = partSelectChecks({ select: partFromEnv, gateOf: blind, count: 3 }).filter((r) => !r.ok);
+  expect("fixture red: a gate that checks nothing fails assertion s6", blindRed.length > 0, "every s6 case passed");
+}
+
+// Fixtures for s7 and s8. Each red edit moves the named assertion and no other.
+const DOCS_GOOD = [
+  "jobs:",
+  `  ${DOCS_JOB}:`,
+  "    needs: [suite]",
+  "    runs-on: ubuntu-latest",
+  "    steps:",
+  `      - run: ${DOCS_COMMAND}`,
+  `  ${ROLLUP}:`,
+  `    needs: [suite, ${DOCS_JOB}]`,
+  "    runs-on: ubuntu-latest",
+  `  ${CI_DONE}:`,
+  `    needs: [suite, ${DOCS_JOB}, ${ROLLUP}]`,
+  "    runs-on: ubuntu-latest",
+].join("\n") + "\n";
+const DOCS_RED = [
+  ["the job is missing", mutate(DOCS_GOOD, `  ${DOCS_JOB}:\n`, "  not-docs:\n"), "s7"],
+  ["the job runs another command", mutate(DOCS_GOOD, DOCS_COMMAND, "npm run check:records --silent"), "s7"],
+  ["the job runs it twice", mutate(DOCS_GOOD, `      - run: ${DOCS_COMMAND}\n`, `      - run: ${DOCS_COMMAND}\n      - run: ${DOCS_COMMAND}\n`), "s7"],
+  ["the rollup does not need the job", mutate(DOCS_GOOD, `needs: [suite, ${DOCS_JOB}]`, "needs: [suite]"), "s8"],
+  ["ci-done does not need the job", mutate(DOCS_GOOD, `needs: [suite, ${DOCS_JOB}, ${ROLLUP}]`, `needs: [suite, ${ROLLUP}]`), "s8"],
+];
+for (const [name, text, id] of DOCS_RED) {
+  const failed = docsJobChecks(text).filter((r) => !r.ok).map((r) => r.id);
+  expect(`fixture red: ${name} fails assertion ${id}`, JSON.stringify(failed) === JSON.stringify([id]), `failed assertions: ${JSON.stringify(failed)}`);
+}
+for (const r of docsJobChecks(DOCS_GOOD)) expect(`fixture good: ${r.label}`, r.ok, r.detail);
+
+// The real files: checks.yml's suite and docs jobs, package.json, test/app-parts.mjs.
+{
+  const wf = WORKFLOW_TEXT;
+  const pkg = readOrNull(resolve(ROOT, "package.json"));
+  for (const r of shardChecks({ wfText: wf, pkgText: pkg, partCount: PART_COUNT })) show(r);
+  for (const r of partSelectChecks({ select: partFromEnv, gateOf: partGate, count: PART_COUNT })) show(r);
+  for (const r of docsJobChecks(wf)) show(r);
 }
 
 if (failures) {
