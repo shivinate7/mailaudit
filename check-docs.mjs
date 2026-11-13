@@ -20,7 +20,7 @@
 import * as esbuild from "esbuild";
 import { readFileSync, readdirSync } from "fs";
 import { existsSync, statSync } from "fs";
-import { dirname, join } from "path";
+import { delimiter, dirname, join } from "path";
 import { execFileSync } from "child_process";
 
 const FOLDERS = ["decisions", "invariants", "measurements", "debts"];
@@ -132,32 +132,54 @@ function lineAt(text, index) {
    runner set to UTC prints one fewer assertion than a machine behind UTC.
    A count that changes with the runner's clock cannot be checked anywhere,
    so the count is always read from a run under a fixed, non-UTC zone.
-   CI runs the suite once under that zone and names its output in
-   CHECK_DOCS_SUITE_LOG; this reads the count from that file. With the
-   variable unset (local use) it runs the suite itself, as before. A named
-   file that is unreadable or holds no count is a failure, never a pass. */
+   CI runs the suite under that zone and names its output in
+   CHECK_DOCS_SUITE_LOG; this reads the count from that file. CI runs the
+   suite as parts on separate runners, so the variable may name one log per
+   part, joined with the path delimiter. The count is the sum of the parts.
+   Each part's log holds the line "app suite: part N of M". The logs must
+   hold each part 1 to M once and nothing else, so a lost part log cannot
+   lower the total. A log with no such line is one whole run and stands
+   alone. With the variable unset (local use) it runs the suite itself, as
+   before. A named file that is unreadable or holds no count is a failure,
+   never a pass. */
 const FIXED_TZ = "America/New_York";
 
 function suiteTotal() {
   const log = process.env.CHECK_DOCS_SUITE_LOG;
-  let out;
+  const outs = [];
   if (log) {
-    try {
-      out = readFileSync(log, "utf8");
-    } catch (e) {
-      throw new Error(`could not read CHECK_DOCS_SUITE_LOG (${log}): ${e.message}`);
+    for (const file of log.split(delimiter).filter(Boolean)) {
+      try {
+        outs.push(readFileSync(file, "utf8"));
+      } catch (e) {
+        throw new Error(`could not read CHECK_DOCS_SUITE_LOG (${file}): ${e.message}`);
+      }
     }
   } else {
-    out = execFileSync(process.execPath, ["test/app.test.mjs"], {
-      encoding: "utf8",
-      env: { ...process.env, TZ: FIXED_TZ },
-    });
+    outs.push(
+      execFileSync(process.execPath, ["test/app.test.mjs"], {
+        encoding: "utf8",
+        env: { ...process.env, TZ: FIXED_TZ },
+      })
+    );
   }
-  const m = out.match(/(\d+) passed, (\d+) failed/);
-  if (!m) {
-    throw new Error("could not read a pass/fail count out of the suite's output");
+  const logs = outs.map((out) => {
+    const m = out.match(/(\d+) passed, (\d+) failed/);
+    if (!m) throw new Error("could not read a pass/fail count out of the suite's output");
+    const p = out.match(/^app suite: part (\d+) of (\d+)$/m);
+    return { n: Number(m[1]) + Number(m[2]), part: p ? Number(p[1]) : 0, of: p ? Number(p[2]) : 0 };
+  });
+  const parts = logs.filter((l) => l.part > 0);
+  if (parts.length > 0) {
+    const of = parts[0].of;
+    const seen = parts.map((l) => l.part).sort((a, b) => a - b);
+    const want = Array.from({ length: of }, (_, i) => i + 1);
+    if (parts.length !== logs.length || parts.some((l) => l.of !== of) || seen.join() !== want.join())
+      throw new Error(`the suite logs must hold parts 1 to ${of} once each, and nothing else (got ${logs.length} logs, parts ${seen.join(", ")})`);
+  } else if (logs.length > 1) {
+    throw new Error("several suite logs, and none names its part");
   }
-  return Number(m[1]) + Number(m[2]);
+  return logs.reduce((a, l) => a + l.n, 0);
 }
 
 const real = suiteTotal();

@@ -85,10 +85,10 @@ jobs:
           cache: npm
       - run: npm ci
       # The steps are split over three shards by `matrix.shard`. Each step names its shard in its
-      # own `if:`, so a step has exactly one home. Shard 1 holds the one suite run: it is the
-      # slow step by far (about 204 s of 236 s, run 43362506071), and the checks that read its
-      # log or its build sit beside it. test/ci-wiring.test.mjs and the lane's shard count
-      # proof read this split; add a step to exactly one shard.
+      # own `if:`, so a step has exactly one home. The app suite is the slow step by far (about
+      # 204 s of 236 s, run 43362506071), so each shard runs one of its three parts. Shard 1 also
+      # holds photoget and the checks that read the build. test/ci-wiring.test.mjs reads this
+      # split; add a step to exactly one shard.
       #
       # Shard 2: the rule, record, worker and extension tests.
       - run: npm run check:rules
@@ -126,16 +126,66 @@ jobs:
       - name: golden files are in step with src/view-rules.mjs
         if: matrix.shard == 3
         run: npm run check:golden --silent
-      # The one suite run. TZ is pinned non-UTC so test 38.9 runs (it skips in
-      # UTC); check:docs below reads its pass count from this log.
-      # pipefail makes a red suite fail the step despite the tee.
-      - name: npm test (TZ=America/New_York)
+      # The app suite, one part per shard. The parts share one bundle path
+      # (node_modules/.mailday-test), so each runs on its own runner. TZ is pinned non-UTC so test
+      # 38.9 runs (it skips in UTC). Each part prints "app suite: part N of 3" and its count; the
+      # `docs` job sums the three logs. pipefail makes a red part fail the step despite the tee.
+      # `node test/app.test.mjs` and not `npm test`, which would also run photoget in every shard.
+      - name: app suite part 1 (TZ=America/New_York)
         if: matrix.shard == 1
         env:
           TZ: America/New_York
+          MAILDAY_TEST_PART: 1
         run: |
           set -o pipefail
-          npm test | tee "$RUNNER_TEMP/suite.log"
+          node test/app.test.mjs | tee "$RUNNER_TEMP/suite-part-1.log"
+      - name: app suite part 2 (TZ=America/New_York)
+        if: matrix.shard == 2
+        env:
+          TZ: America/New_York
+          MAILDAY_TEST_PART: 2
+        run: |
+          set -o pipefail
+          node test/app.test.mjs | tee "$RUNNER_TEMP/suite-part-2.log"
+      - name: app suite part 3 (TZ=America/New_York)
+        if: matrix.shard == 3
+        env:
+          TZ: America/New_York
+          MAILDAY_TEST_PART: 3
+        run: |
+          set -o pipefail
+          node test/app.test.mjs | tee "$RUNNER_TEMP/suite-part-3.log"
+      # The part logs go to the `docs` job. An upload step has one shard, as every other step does.
+      - name: keep the part 1 log
+        if: matrix.shard == 1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: suite-log-1
+          path: ${{ runner.temp }}/suite-part-1.log
+          if-no-files-found: error
+          retention-days: 1
+      - name: keep the part 2 log
+        if: matrix.shard == 2
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: suite-log-2
+          path: ${{ runner.temp }}/suite-part-2.log
+          if-no-files-found: error
+          retention-days: 1
+      - name: keep the part 3 log
+        if: matrix.shard == 3
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: suite-log-3
+          path: ${{ runner.temp }}/suite-part-3.log
+          if-no-files-found: error
+          retention-days: 1
+      # The photo suite is not an app part, so it runs once.
+      - name: photoget suite (TZ=America/New_York)
+        if: matrix.shard == 1
+        env:
+          TZ: America/New_York
+        run: node test/photoget.test.mjs
       # The committed index.html must match what the sources build, or the live
       # site is not the code in the repo. Cheap to check, and the one thing a
       # local `npm run deploy` can skip by accident. The page is built from
@@ -151,20 +201,43 @@ jobs:
         if: matrix.shard == 1
         run: npm run check:seed --silent
 
-      # CLAUDE.md's own numbers and paths, checked against the repo itself —
-      # see check-docs.mjs for what this does and does not cover. It reads the
-      # suite log, so it stays in the shard that wrote it.
-      - name: CLAUDE.md's numbers and paths check out
-        if: matrix.shard == 1
-        env:
-          CHECK_DOCS_SUITE_LOG: ${{ runner.temp }}/suite.log
-        run: npm run check:docs --silent
-
       # The record corpus under invariants/, measurements/, docs/decisions/ and docs/debts/ —
       # see check-records.mjs for the eight claims this proves.
       - name: the record corpus checks out
         if: matrix.shard == 3
         run: npm run check:records --silent
+
+  # CLAUDE.md's own numbers and paths, checked against the repo itself: see check-docs.mjs for what
+  # this does and does not cover. Claim 1 sums the three app-suite part logs, which the suite
+  # shards wrote on three runners, so this check runs after them and not inside one of them. A red
+  # suite skips it, and the rollup is red already.
+  docs:
+    needs: [suite]
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: docs-${{ github.ref == 'refs/heads/main' && github.sha || format('{0}-{1}', github.ref, github.event.pull_request.draft) }}
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: suite-log-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/suite-logs
+      - name: CLAUDE.md's numbers and paths check out
+        env:
+          # One log per part, joined with ":". check-docs.mjs refuses a part set that is not 1 to 3 once each.
+          CHECK_DOCS_SUITE_LOG: ${{ runner.temp }}/suite-logs/suite-part-1.log:${{ runner.temp }}/suite-logs/suite-part-2.log:${{ runner.temp }}/suite-logs/suite-part-3.log
+        run: npm run check:docs --silent
 
   # Decision screens-checked-headless-in-ci: the screen check runs once, here,
   # on macOS only (Cochin exists only there), and never at deploy time.
@@ -383,7 +456,7 @@ jobs:
   # or was skipped. always() makes it run when a needed job fails, and a draft skips it with
   # every other job. It has no name key, so its check name is its id.
   all-jobs-passed:
-    needs: [suite, screens, scope, native, zizmor, checks, milestone-due, mutation-report]
+    needs: [suite, docs, screens, scope, native, zizmor, checks, milestone-due, mutation-report]
     if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
@@ -396,7 +469,7 @@ jobs:
   # wakes the session that watches the PR. A green run posts nothing. Keep needs: on every other job.
   # A draft run posts nothing, because its jobs skip on purpose.
   ci-done:
-    needs: [suite, screens, scope, native, zizmor, checks, milestone-due, mutation-report, all-jobs-passed]
+    needs: [suite, docs, screens, scope, native, zizmor, checks, milestone-due, mutation-report, all-jobs-passed]
     if: ${{ !cancelled() && !github.event.pull_request.draft && github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
