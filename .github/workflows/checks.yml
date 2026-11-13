@@ -6,11 +6,6 @@
 #   - `branches: [main]` alone would already exclude `data`, but the paths
 #     filter is the belt: nothing under src/ or test/ ever changes on `data`,
 #     which carries exactly one file.
-#   - Doc-only paths (invariants/, measurements/, docs/, CLAUDE.md, README.md, .claude/rules/) are
-#     not push triggers. A push to main follows a PR whose run already read those files, and the
-#     nightly run reads them again. A PR run has no path filter, so `all-jobs-passed` reports on
-#     every PR. This is `paths`, not `paths-ignore`: GitHub allows only one of the two per event,
-#     and the allowlist keeps Makefile, icons and tools/ from starting a run.
 #   - `index.html` is deliberately NOT a trigger. It is the build output and
 #     `npm run deploy` commits it separately; running the suite again on that
 #     commit would double every deploy for no new information.
@@ -31,7 +26,14 @@ on:
       - "build.mjs"
       - "check-records.mjs"
       - "check-docs.mjs"
+      - "invariants/**"
+      - "measurements/**"
+      - "docs/decisions/**"
+      - "docs/debts/**"
       - "package-lock.json"
+      - "CLAUDE.md"
+      - ".claude/rules/**"
+      - "README.md"
       - ".github/workflows/checks.yml"
       - ".github/native-paths.regex"
       - ".github/dependabot.yml"
@@ -163,6 +165,7 @@ jobs:
           name: suite-log-1
           path: ${{ runner.temp }}/suite-part-1.log
           if-no-files-found: error
+          overwrite: true
           retention-days: 1
       - name: keep the part 2 log
         if: matrix.shard == 2
@@ -171,6 +174,7 @@ jobs:
           name: suite-log-2
           path: ${{ runner.temp }}/suite-part-2.log
           if-no-files-found: error
+          overwrite: true
           retention-days: 1
       - name: keep the part 3 log
         if: matrix.shard == 3
@@ -179,6 +183,7 @@ jobs:
           name: suite-log-3
           path: ${{ runner.temp }}/suite-part-3.log
           if-no-files-found: error
+          overwrite: true
           retention-days: 1
       # The photo suite is not an app part, so it runs once.
       - name: photoget suite (TZ=America/New_York)
