@@ -26,6 +26,12 @@ Settings → Pages on `mailaudit` should read "Deploy from a branch: `main` / `(
 
 A second step runs `check:seed`. It refuses a seed tag, a packed data script or a ledger payload in the committed page. The two steps together ask whether the page is this repo's code, and that it publishes no ledger data.
 
+## Doc-only paths and the suite shards
+
+The push filter lists no record or prose path: `invariants/`, `measurements/`, `docs/decisions/`, `docs/debts/`, `CLAUDE.md`, `README.md` and `.claude/rules/`. A push to main follows a pull request whose run already read those files, and the nightly run reads them again. The pull request trigger has no path filter, so `all-jobs-passed` reports on every pull request and on every push that runs. The filter stays a `paths` allowlist, because GitHub allows one of `paths` and `paths-ignore` per event, and an ignore list would start runs for `Makefile`, the icons and `tools/`.
+
+The `suite` job runs as three matrix shards under one job id, so the rollup still needs one job. Each step names its shard, and shard 1 holds the one suite run with the checks that read its log. Owner order 2026-11-13 11:39 CST, "lane each change".
+
 ## The native and shared paths
 
 Lane C1 added `native/**` and `shared/**` to the push paths of `checks.yml`. Nothing under either folder ever changes on `data`, which carries one file. So the guarantee holds.
