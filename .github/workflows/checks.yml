@@ -274,8 +274,9 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: shivinate7/claude-settings/actions/ste-lint@e0b9696caa44ca19327407ae7afe870c73da2641 # main 2026-11-08
-      # The four shared checks below follow claude-settings main on their own pin, like ste-lint
-      # (decision action-pins-follow-sessions). The R44 stable branch moves them with the rest.
+      # The four shared checks below are newer than the shared pin (380a24b lacks them), so they pin
+      # to claude-settings main, as ste-lint does. The owner has not ruled on this pin; the R44 stable
+      # branch moves them with the rest.
       - uses: shivinate7/claude-settings/actions/claude-md-cites@36807ad19acf86ba85c8774f7217b3634d430c89 # main 2026-11-12 (#3041)
       - uses: shivinate7/claude-settings/actions/ruling-kind@36807ad19acf86ba85c8774f7217b3634d430c89 # main 2026-11-12 (#3041)
       - uses: shivinate7/claude-settings/actions/silent-undo@36807ad19acf86ba85c8774f7217b3634d430c89 # main 2026-11-12 (#3041)
