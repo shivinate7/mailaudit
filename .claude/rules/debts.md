@@ -49,7 +49,6 @@ One known gap per file under `docs/debts/`. Each carries a Status line and a Dec
 - `web-reads-no-worker-snapshots` — Web History reads no Worker snapshot.
 - `cloudflare-access-login-untested` — A Cloudflare Access login in an iOS home-screen app is untested.
 - `backup-unwatched` — No alarm watches the backup after the watchdog is off.
-- `jsx-sources-unchecked` — The two JSX source files get no type check or bug lint.
 - `worker-two-device-proof-unrun` — The two-device merge is not proven against the Worker.
 - `sweep-settle-masks-30-13-stall` — The SWEEP_WAIT settle after 19.6 hides a stall at 30.13.
 - `swift-stack-spacing-unset` — Swift stacks space by the platform default, not by shared values.

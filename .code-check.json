@@ -1,4 +1,0 @@
-{
-  "exclude": [".github/native-paths.regex", "docs/debts/.keep", "docs/plans/.gitkeep", "native/Manifest/Info.plist", "src/app.jsx", "src/entry.jsx"],
-  "mypy_modules": []
-}

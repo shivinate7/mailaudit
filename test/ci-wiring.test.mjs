@@ -107,18 +107,13 @@ const CI_DONE = "ci-done";
 const ACTIONS = "shivinate7/claude-settings/actions/";
 const ALARM_ACTION = ACTIONS + "ci-alarm";
 const STE_LINT = ACTIONS + "ste-lint";
-// The shared action pin. Every claude-settings pin in checks.yml carries this sha, except ste-lint and MAIN_PIN_ACTIONS.
+// The shared action pin. Every claude-settings pin in checks.yml carries this sha, except ste-lint.
 const ACTION_PIN = "380a24b5fa9ab78b973892ddfe3a95eaff68601b";
 // ste-lint follows claude-settings main on its own, not ACTION_PIN (decision action-pins-follow-sessions).
 // STE_LINT_PIN is not written here. steLintPinIn reads it from checks.yml, so a pin move is one edit there.
 // The sha a claude-settings pin must name: STE_LINT_PIN for ste-lint, the shared sha for the rest.
 // One home for the ste-lint exception, read by assertions 3c and 12.
-// claude-md-cites, code-check, ruling-kind and silent-undo were added after ACTION_PIN, so that sha lacks
-// them. They follow claude-settings main on MAIN_PIN until the stable branch (R44) moves every pin.
-const MAIN_PIN = "36807ad19acf86ba85c8774f7217b3634d430c89";
-const MAIN_PIN_ACTIONS = ["claude-md-cites", "code-check", "ruling-kind", "silent-undo"];
 function expectedPin(action, shared) {
-  if (MAIN_PIN_ACTIONS.includes(action)) return MAIN_PIN;
   return action === "ste-lint" ? STE_LINT_PIN : shared;
 }
 // The one sha that checks.yml's ste-lint uses line names. A pin is a uses: value, so a comment
