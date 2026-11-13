@@ -274,6 +274,29 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: shivinate7/claude-settings/actions/ste-lint@e0b9696caa44ca19327407ae7afe870c73da2641 # main 2026-11-08
+      # The four shared checks below follow claude-settings main on their own pin, like ste-lint
+      # (decision action-pins-follow-sessions). The R44 stable branch moves them with the rest.
+      - uses: shivinate7/claude-settings/actions/claude-md-cites@36807ad19acf86ba85c8774f7217b3634d430c89 # main 2026-11-12 (#3041)
+      - uses: shivinate7/claude-settings/actions/ruling-kind@36807ad19acf86ba85c8774f7217b3634d430c89 # main 2026-11-12 (#3041)
+      - uses: shivinate7/claude-settings/actions/silent-undo@36807ad19acf86ba85c8774f7217b3634d430c89 # main 2026-11-12 (#3041)
+
+  # One type check and one bug lint per language, from the shared standard. base is the pull
+  # request base, for the mypy list shrink check and the comment check. fetch-depth 0 lets it diff.
+  code-check:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15  # provisional
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+      - uses: shivinate7/claude-settings/actions/code-check@36807ad19acf86ba85c8774f7217b3634d430c89 # main 2026-11-12 (#3041)
+        with:
+          base: ${{ github.event.pull_request.base.sha }}
 
   # Decision milestone-runs-full-suite: on a push to main, dispatches the full Swift suite
   # (milestone.yml) when it is due. Cost per push: one ubuntu job, one API read, one git log.
@@ -349,7 +372,7 @@ jobs:
   # or was skipped. always() makes it run when a needed job fails, and a draft skips it with
   # every other job. It has no name key, so its check name is its id.
   all-jobs-passed:
-    needs: [suite, screens, scope, native, zizmor, checks, milestone-due, mutation-report]
+    needs: [suite, screens, scope, native, zizmor, checks, code-check, milestone-due, mutation-report]
     if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
@@ -362,7 +385,7 @@ jobs:
   # wakes the session that watches the PR. A green run posts nothing. Keep needs: on every other job.
   # A draft run posts nothing, because its jobs skip on purpose.
   ci-done:
-    needs: [suite, screens, scope, native, zizmor, checks, milestone-due, mutation-report, all-jobs-passed]
+    needs: [suite, screens, scope, native, zizmor, checks, code-check, milestone-due, mutation-report, all-jobs-passed]
     if: ${{ !cancelled() && !github.event.pull_request.draft && github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
