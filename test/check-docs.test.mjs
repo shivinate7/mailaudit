@@ -1,5 +1,6 @@
 // Claim-3 cases for check-docs.mjs: the comment stripper, and the code roots
-// that the names are judged against.
+// that the names are judged against. The last cases are claim 1's: the suite
+// count summed over one log per part.
 //
 // check-docs.mjs runs its whole check on import, so its stripper cannot be
 // imported here. Each case runs the CLI against a temp corpus: a source file
@@ -12,7 +13,7 @@
 
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, dirname, resolve } from "node:path";
+import { join, dirname, resolve, delimiter } from "node:path";
 import { spawnSync, execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { failLine } from "./fail-line.mjs";
@@ -64,8 +65,10 @@ const BASE = {
   "measurements/.keep": "",
 };
 
-// Writes a temp corpus, runs check-docs.mjs in it, returns status and output.
-function runCorpus(files) {
+// Writes a temp corpus, runs check-docs.mjs in it, returns status and output. `logs` is a list of
+// suite log texts, written in order and named in CHECK_DOCS_SUITE_LOG joined with the path delimiter,
+// as CI names one log per part. Unset, one log holds a count of 1.
+function runCorpus(files, { logs = ["1 passed, 0 failed\n"] } = {}) {
   const dir = mkdtempSync(join(tmpdir(), "check-docs-strip-"));
   try {
     const all = { ...BASE, ...files };
@@ -74,14 +77,18 @@ function runCorpus(files) {
       mkdirSync(dirname(full), { recursive: true });
       writeFileSync(full, text);
     }
-    // Claim 1 reads the suite's count from this log, so the suite never runs here.
-    writeFileSync(join(dir, "suite.log"), "1 passed, 0 failed\n");
+    // Claim 1 reads the suite's count from these logs, so the suite never runs here.
+    const logPaths = logs.map((text, i) => {
+      const p = join(dir, `suite-${i}.log`);
+      writeFileSync(p, text);
+      return p;
+    });
     // Claim 2 calls `git ls-files`, which needs a repo to answer.
     execFileSync("git", ["init", "-q"], { cwd: dir });
     const r = spawnSync(process.execPath, [CHECK], {
       cwd: dir,
       encoding: "utf8",
-      env: { ...process.env, CHECK_DOCS_SUITE_LOG: join(dir, "suite.log") },
+      env: { ...process.env, CHECK_DOCS_SUITE_LOG: logPaths.join(delimiter) },
     });
     return { status: r.status, out: `${r.stdout ?? ""}${r.stderr ?? ""}` };
   } finally {
@@ -321,6 +328,44 @@ expect(
       "check-docs found the name in the code, so it was not reported"
     );
   }
+}
+
+// Claim 1 with part logs. CI runs the app suite as three parts on three runners, so
+// CHECK_DOCS_SUITE_LOG names one log per part, joined with the path delimiter. The count is the
+// sum, and the logs must be parts 1 to 3 once each, so a lost log cannot lower the total. The
+// counts are the parts' real ones (TZ=America/New_York): 296 + 516 + 866 = 1678. The record claims
+// 1678, so a total that is not the sum fails the claim, and the first case shows it passes.
+{
+  const CLAIM = { "docs/decisions/count-claim.md": "# Count claim\n\nThe suite runs 1678 assertions.\n" };
+  const part = (n, of, count) => `app suite: part ${n} of ${of}\n\n${count} passed, 0 failed\nlive handles: none\nall green\n`;
+  const whole = (count) => `\n${count} passed, 0 failed\nlive handles: none\nall green\n`;
+  const P1 = part(1, 3, 296);
+  const P2 = part(2, 3, 516);
+  const P3 = part(3, 3, 866);
+  const REFUSED = "the suite logs must hold parts 1 to 3 once each";
+  const tail = (r) => `exit ${r.status}: ${r.out.trim().split("\n").slice(-2).join(" | ")}`;
+  const passes = (name, logs) => {
+    const r = runCorpus(CLAIM, { logs });
+    expect(name, r.status === 0 && /real total \(1678\)/.test(r.out), tail(r));
+  };
+  const refuses = (name, logs, message) => {
+    const r = runCorpus(CLAIM, { logs });
+    expect(name, r.status !== 0 && r.out.includes(message), tail(r));
+  };
+
+  passes("parts: logs for parts 2, 1 and 3 sum to 1678 and pass, in any order", [P2, P1, P3]);
+  passes("parts: one whole-run log of 1678, with no part line, still passes", [whole(1678)]);
+  refuses("parts: parts 1 and 2 only are refused, so a lost log cannot lower the total", [P1, P2], REFUSED);
+  refuses("parts: part 1 alone is refused", [P1], REFUSED);
+  refuses("parts: part 1 twice, with parts 2 and 3, is refused", [P1, P1, P2, P3], REFUSED);
+  refuses("parts: part 1 twice and part 3 are refused, though three logs match the count", [P1, P1, P3], REFUSED);
+  refuses("parts: a whole-run log beside a part log is refused", [whole(1678), P1], REFUSED);
+  refuses("parts: two logs and no part line are refused", [whole(800), whole(878)], "several suite logs, and none names its part");
+  refuses(
+    "parts: a part log with no count is refused, not read as zero",
+    [P1, "app suite: part 2 of 3\n", P3],
+    "could not read a pass/fail count"
+  );
 }
 
 if (failures) {
