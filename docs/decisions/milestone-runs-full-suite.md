@@ -64,7 +64,7 @@ A re-run keeps its `createdAt` and raises its attempt number. A re-run in flight
 
 Once the proof is in all-jobs-passed, a failed proof blocks merges. So no push to main follows, and `milestone-due` dispatches nothing. Recovery from a failed proof is a dispatch by hand of `milestone.yml` on main. A dispatch on another branch is not read. If the `xcode-27` runner never takes a run, the stale run fails the proof of every pull request. Once the proof is in all-jobs-passed, the fix pull request is blocked too. Then recovery is a hand dispatch, or the owner's bypass of branch protection. A pull request that went red during recovery needs a re-run of its checks once `milestone.yml` has a green run. Before the join, the block comes from the merge tool, not from branch protection. A premature red dispatch then stops every merge, the fix pull request too, until a green run or the owner's typed override of the merge tool.
 
-A pull request can edit its own copy of the proof script, so it can pass itself. The check guards a mistake, not an attacker (rule `guard-guards-mistakes-only`). Branch protection and review hold the rest.
+A pull request can edit its own copy of the proof script, so it can pass itself. The check guards a mistake, not an attacker (decision `guard-guards-mistakes-only`, in claude-settings). Branch protection and review hold the rest.
 
 ## Unproven
 

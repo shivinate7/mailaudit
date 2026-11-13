@@ -120,10 +120,10 @@ def field():
     out = [rays(C, C, 356, 500, 96, FIELD, 3.0, 1.2, 0.58),
            guilloche(C, C, 430, 36, 13, FIELD, 1.5, 0.48),
            guilloche(C, C, 396, 36, 13, FIELD, 1.2, 0.34, phase=math.pi / 36),
-           f'<circle cx="{C}" cy="{C}" r="470" fill="none" stroke="{FIELD}" '
-           f'stroke-width="2.5" opacity="0.42"/>',
-           f'<circle cx="{C}" cy="{C}" r="352" fill="none" stroke="{FIELD}" '
-           f'stroke-width="4" opacity="0.58"/>']
+           (f'<circle cx="{C}" cy="{C}" r="470" fill="none" stroke="{FIELD}" '
+            f'stroke-width="2.5" opacity="0.42"/>'),
+           (f'<circle cx="{C}" cy="{C}" r="352" fill="none" stroke="{FIELD}" '
+            f'stroke-width="4" opacity="0.58"/>')]
     return "".join(out)
 
 
@@ -232,10 +232,10 @@ def favicon_svg():
         f'<stop offset="1" stop-color="#175540"/></radialGradient>'
         '</defs>'
         + "".join(lobes)
-        + f'<circle cx="50" cy="50" r="40" fill="url(#fg)"/>'
+        + '<circle cx="50" cy="50" r="40" fill="url(#fg)"/>'
         + f'<circle cx="50" cy="50" r="40" fill="none" stroke="{GOLDD}" stroke-width="2"/>'
         + f'<circle cx="50" cy="50" r="29" fill="{GOLDD}"/>'
-        + f'<circle cx="50" cy="50" r="27" fill="url(#fj)"/>'
+        + '<circle cx="50" cy="50" r="27" fill="url(#fj)"/>'
         + '<ellipse cx="41" cy="40" rx="8.5" ry="5.5" fill="#DDFBF0" opacity=".45" '
           'transform="rotate(-38 41 40)"/>'
         + "</svg>"
