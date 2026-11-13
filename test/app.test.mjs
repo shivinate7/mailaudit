@@ -125,24 +125,18 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
+import { PART_COUNT, partGate } from "./app-parts.mjs";
+
 /* The suite runs as three parts, so CI can run each on its own runner. The groups wait on real
    timers, so a run is mostly idle, and three runners finish in about a third of the time.
    MAILDAY_TEST_PART=1, 2 or 3 runs that part alone. Unset, all three run in order, as one suite.
-   A part holds whole groups, and part 3 starts where the virtual clock is first installed. The
-   part blocks are not indented, so each group's banner stays at the line start, where
-   check-records.mjs reads it. A part ends by unmounting the app, so a part run alone leaves no
-   timer alive. A value outside 1 to 3 throws, so a mistyped part cannot run no case and still
-   report green. */
-const PART_COUNT = 3;
-const PART = (() => {
-  const v = process.env.MAILDAY_TEST_PART ?? "";
-  if (v === "") return 0;
-  if (!/^[1-9]$/.test(v) || Number(v) > PART_COUNT)
-    throw new Error(`MAILDAY_TEST_PART must be 1 to ${PART_COUNT}, or unset to run every part (got "${v}")`);
-  return Number(v);
-})();
-const inPart = (n) => PART === 0 || PART === n;
-if (PART) console.log(`app suite: part ${PART} of ${PART_COUNT}`);
+   test/app-parts.mjs holds the selector and refuses any other value. A part holds whole groups,
+   and part 3 starts where the virtual clock is first installed. The part blocks are not indented,
+   so each group's banner stays at the line start, where check-records.mjs reads it. A part ends
+   by unmounting the app, so a part run alone leaves no timer alive. */
+const gate = partGate(process.env);
+const inPart = gate.inPart;
+if (gate.part) console.log(`app suite: part ${gate.part} of ${PART_COUNT}`);
 
 const fresh = () => boot({ items: ITEMS, received: {} });
 
@@ -10069,4 +10063,5 @@ uninstallClock();
 await unmountApp();
 }
 
+gate.check();
 report();
