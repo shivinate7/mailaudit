@@ -125,6 +125,19 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 
+import { PART_COUNT, partGate } from "./app-parts.mjs";
+
+/* The suite runs as three parts, so CI can run each on its own runner. The groups wait on real
+   timers, so a run is mostly idle, and three runners finish in about a third of the time.
+   MAILDAY_TEST_PART=1, 2 or 3 runs that part alone. Unset, all three run in order, as one suite.
+   test/app-parts.mjs holds the selector and refuses any other value. A part holds whole groups,
+   and part 3 starts where the virtual clock is first installed. The part blocks are not indented,
+   so each group's banner stays at the line start, where check-records.mjs reads it. A part ends
+   by unmounting the app, so a part run alone leaves no timer alive. */
+const gate = partGate(process.env);
+const inPart = gate.inPart;
+if (gate.part) console.log(`app suite: part ${gate.part} of ${PART_COUNT}`);
+
 const fresh = () => boot({ items: ITEMS, received: {} });
 
 /* A package card, found by its seller's text and never by its header's tag. The
@@ -170,12 +183,9 @@ const currentTab = () =>
     .filter((b) => b.getAttribute("aria-current") && b.getAttribute("aria-current") !== "false")
     .map(tabName);
 
-/* ── 65. owner ruling 2026-10-12: no GitHub verbs on screen ────────────────
-   "i thought we are eliminating push and pull". Pull, Push anyway and the
-   GitHub key line leave the rendered text, so no state a user can reach may
-   show them. Placed before group 1 so a later crash in the suite cannot hide
-   these reds. Records: ledger-tab-holds-options, sync-revamp-cloudflare. */
-
+/* Definitions that more than one part reads. They sit outside the part blocks, so a part run alone
+   has them. Each run names the group it came from. */
+/* from group 65 */
 const AHEAD65 = JSON.stringify({
   mailday: 1,
   items: ITEMS.slice(0, 3),
@@ -187,6 +197,122 @@ const AHEAD65 = JSON.stringify({
 });
 const FORBIDDEN_WORDS = [/\bPull/, /push anyway/i, /Add a GitHub key/];
 const forbiddenIn = () => FORBIDDEN_WORDS.filter((re) => re.test(text())).map(String);
+/* from group 65 */
+const GITHUB_STATE_TEXT = /newer lines|pushed newer|changed since you last pulled|can’t see the backup|tap to add its key/;
+/* from group 13 */
+/* jsdom has no URL.createObjectURL, and the page calls it for a Backup download and for a photo
+   thumbnail, so every part needs this hook. `captured` is the last blob handed to it: after a
+   Backup click, the backup file. */
+let captured = null;
+win.URL.createObjectURL = (b) => {
+  captured = b;
+  return "blob:test";
+};
+win.URL.revokeObjectURL = () => {};
+/* from group 21 */
+const headBar = () => document.querySelector(".mdl-sticky");
+/* from group 23 */
+const opts = () =>
+  buttons().filter((b) =>
+    /^(All time|30 days|45 days|60 days|90 days|Last…|By month)$/.test(
+      b.textContent.trim()
+    )
+  );
+/* stand in for a missing option so a broken panel reports as failed assertions
+   rather than taking the whole run down with a TypeError */
+const opt = (label) =>
+  opts().find((c) => c.textContent.trim() === label) || {
+    getAttribute: () => null,
+  };
+/* from group 23 */
+const monthChips = () =>
+  buttons().filter((b) => /^[A-Z][a-z]{2}( ’\d\d)?$/.test(b.textContent.trim()));
+/* from group 25 */
+/* another device's copy of the GitHub ledger. Groups 28, 34 and 63 to 64 still name it
+   while they are re-pointed; it goes once they are. */
+const OTHER_DEVICE = JSON.stringify({
+  mailday: 1,
+  items: ITEMS.slice(0, 3),
+  received: { [ITEMS[0].key]: 1 },
+  envelopes: [],
+  dateFilter: { preset: "all", from: "", to: "" },
+  sortBy: "newest",
+  itemSort: "missing",
+});
+/* from group 30 */
+const withPhoto = (ids) => ({
+  items: ITEMS,
+  received: {},
+  envelopes: [
+    {
+      id: "env-p",
+      createdAt: 1,
+      note: "",
+      entries: [{ name: "Ponder", qty: 1 }],
+      photos: ids,
+    },
+  ],
+});
+/* from group 30 */
+/* a fresh resume: the page was away, and on return the Worker is read and merged */
+const resume30 = async () => {
+  await backgroundFor(5 * 60_000);
+  await drain();
+  await sleep(SAVE_WAIT);
+};
+/* from group 32 */
+const card = packageCard;
+/* from group 32 */
+/* the jump scrolls on a frame, and the frame lands outside the click's act() */
+const settle = () => act(async () => await sleep(0));
+/* from group 37 */
+const GK_A = "A1::Alpha Cards";
+/* from group 37 */
+const inCard = (c, re) =>
+  c ? [...c.querySelectorAll("button")].find((b) => re.test(b.textContent)) : undefined;
+const bandOf = (c) => c?.querySelector('button[aria-label^="Edit stamp"]');
+const noteInput = (c) => c?.querySelector('input[aria-label="Stamp note"]');
+/* the two entrances: the Stamp button on an unstamped card, the band on a
+   stamped one. `label` null keeps the kind already there; `note` undefined
+   keeps the note. */
+const stampPkg = async (re, label, note) => {
+  await click(inCard(card(re), /^Stamp$/) || bandOf(card(re)), `open stamp editor`);
+  if (label) await click(inCard(card(re), new RegExp(`^${label}$`)), `pick ${label}`);
+  if (note !== undefined) await type(noteInput(card(re)), note);
+  await click(inCard(card(re), /^Save$/), "save stamp");
+};
+const S = (kind, updatedAt, note = "") => ({ kind, at: "2026-08-01", note, updatedAt });
+const TOMB = (updatedAt) => ({ kind: "", at: "", note: "", updatedAt });
+/* from group 40 */
+const PHONE_STATE = { items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } };
+/* from group 41 */
+/* The Push button left the UI (owner ruling 2026-10-12). Its write is now the Worker
+   POST that a page wake starts (the switch, owner ruling 2026-10-14). A keyless device
+   has no POST, so the wake changes nothing for it. */
+const wakePush = async () => {
+  await wakeWorker();
+  await settle();
+};
+/* from group 51 */
+const SR = await import("../src/sync-rules.mjs").catch(() => null);
+const sr = (name, ...args) => {
+  if (!SR || typeof SR[name] !== "function") return "MISSING";
+  try {
+    return SR[name](...args);
+  } catch (e) {
+    return { threw: String(e?.message || e) };
+  }
+};
+/* from group 51 */
+const TAIL = SR?.PRESS_TAIL_MS ?? 700;
+const MAXP = SR?.PRESS_MAX_MS ?? 3000;
+
+if (inPart(1)) {
+/* ── 65. owner ruling 2026-10-12: no GitHub verbs on screen ────────────────
+   "i thought we are eliminating push and pull". Pull, Push anyway and the
+   GitHub key line leave the rendered text, so no state a user can reach may
+   show them. Placed before group 1 so a later crash in the suite cannot hide
+   these reds. Records: ledger-tab-holds-options, sync-revamp-cloudflare. */
 
 await fresh();
 eq(forbiddenIn(), [], "65.1 no rendered text mentions Pull, push anyway or Add a GitHub key (Ledger tab)");
@@ -215,7 +341,6 @@ eq(
    the user. The mirror resolves a behind or conflicted copy itself, and a
    missing GitHub token only stops the mirror. The advisory and remoteMsg speak
    only of the Worker. */
-const GITHUB_STATE_TEXT = /newer lines|pushed newer|changed since you last pulled|can’t see the backup|tap to add its key/;
 await boot({ items: ITEMS, received: {} }, null, { remote: AHEAD65, remoteKey: "github_pat_testtoken" });
 await goTo("orphaned");
 ok(!GITHUB_STATE_TEXT.test(text()), "65.6 a GitHub copy ahead of this device shows no line to the user");
@@ -533,13 +658,6 @@ ok(
 await fresh();
 await goTo("orphaned");
 await record(["Ponder", "Preordain"], "backup me");
-
-let captured = null;
-win.URL.createObjectURL = (b) => {
-  captured = b;
-  return "blob:test";
-};
-win.URL.revokeObjectURL = () => {};
 
 await openHistory();
 await click(btn(/^Backup$/), "backup");
@@ -897,7 +1015,6 @@ eq(
   "21.4 bottom bar tab order, Ledger first"
 );
 
-const headBar = () => document.querySelector(".mdl-sticky");
 ok(!!headBar(), "21.5 running head is in the DOM");
 eq(headBar().getAttribute("data-stuck"), "no", "21.6 not pinned at rest");
 
@@ -997,18 +1114,6 @@ ok(!cell(/^Sorted by/), "23.5 so does sort");
 await fresh();
 await onLedger();
 
-const opts = () =>
-  buttons().filter((b) =>
-    /^(All time|30 days|45 days|60 days|90 days|Last…|By month)$/.test(
-      b.textContent.trim()
-    )
-  );
-/* stand in for a missing option so a broken panel reports as failed assertions
-   rather than taking the whole run down with a TypeError */
-const opt = (label) =>
-  opts().find((c) => c.textContent.trim() === label) || {
-    getAttribute: () => null,
-  };
 const rangeCell = () =>
   cell(/^Orders from/) || { textContent: "", getAttribute: () => null };
 
@@ -1042,8 +1147,6 @@ ok(/30 days/.test(rangeCell().textContent), "23.14 picking a range updates the c
    express 2026-02-31. */
 await openRange();
 await click(opt("By month"), "by month");
-const monthChips = () =>
-  buttons().filter((b) => /^[A-Z][a-z]{2}( ’\d\d)?$/.test(b.textContent.trim()));
 ok(monthChips().length > 0, "23.15 months are offered, derived from the orders present");
 ok(
   monthChips().every((b) => /Jul|Jun|May/.test(b.textContent)),
@@ -1091,17 +1194,6 @@ ok(
    25.1 and 25.2 hold. 25.13b to 25.15 and 25.7 to 25.11 re-point to the Worker POST, and
    25.24 to 25.27 pin the Worker device key (the-token-is-a-credential). */
 const KEY25 = "device-25-key";
-/* another device's copy of the GitHub ledger. Groups 28, 34 and 63 to 64 still name it
-   while they are re-pointed; it goes once they are. */
-const OTHER_DEVICE = JSON.stringify({
-  mailday: 1,
-  items: ITEMS.slice(0, 3),
-  received: { [ITEMS[0].key]: 1 },
-  envelopes: [],
-  dateFilter: { preset: "all", from: "", to: "" },
-  sortBy: "newest",
-  itemSort: "missing",
-});
 
 /* A platform with no remote must lose nothing: the file backups stay on the
    toolbar rather than hiding behind a disclosure that isn't there. */
@@ -1506,19 +1598,6 @@ ok(text().includes(DECODED), "29.6 Tally's source rows show it decoded too");
    Until the photo build lands, these cases are red at the lane head: the app still
    sends photos through GitHub. */
 
-const withPhoto = (ids) => ({
-  items: ITEMS,
-  received: {},
-  envelopes: [
-    {
-      id: "env-p",
-      createdAt: 1,
-      note: "",
-      entries: [{ name: "Ponder", qty: 1 }],
-      photos: ids,
-    },
-  ],
-});
 const KEY30 = "device-30-key";
 const IDLE_MS_30 = 10000; /* a clock offset for 30.29, kept from the 10 s idle gate (gone, owner ruling 2026-10-20) */
 const SERVER30 = (state) => ({
@@ -1534,12 +1613,6 @@ const photoPuts30 = () => syncCalls().filter((c) => c.op === "photoPut");
 const photoIds30 = (op) => syncCalls().filter((c) => c.op === op).map((c) => c.id);
 /* a photo write waits one second after the ledger (photo-writes-wait-one-second) */
 const PHOTO_WAIT30 = 1500;
-/* a fresh resume: the page was away, and on return the Worker is read and merged */
-const resume30 = async () => {
-  await backgroundFor(5 * 60_000);
-  await drain();
-  await sleep(SAVE_WAIT);
-};
 
 /* a ledger with no photos in it at all */
 await boot({ items: ITEMS, received: {} }, null, { syncKey: KEY30 });
@@ -2004,7 +2077,10 @@ ok(!document.querySelector('button[aria-label="View photo"]'), "30.29b and the s
   );
   ok(!lostLeaf30(), "30.29 a photo this device holds shows no lost tile, whatever the lost set still names");
 }
+await unmountApp();
+}
 
+if (inPart(2)) {
 /* ── 31. the photo rules, asserted directly ────────────────────────────────
    Same reasoning as group 27: entry.jsx mounts React on import and is
    unreachable from here, so anything living there is untested by construction.
@@ -2108,15 +2184,12 @@ const search = () =>
   document.querySelector(
     'input[aria-label="Search cards, sets, sellers and order ids"]'
   );
-const card = packageCard;
 const revealBtn = (c) =>
   [...c.querySelectorAll("button")].find((b) =>
     /in this order|whole order/.test(b.textContent)
   );
 const orderBtn = (id) =>
   document.querySelector(`button[aria-label="Show the whole order ${id}"]`);
-/* the jump scrolls on a frame, and the frame lands outside the click's act() */
-const settle = () => act(async () => await sleep(0));
 
 await fresh();
 await type(search(), "Lightning Bolt");
@@ -3099,25 +3172,9 @@ eq(
    it; the last of those fails by silently dropping every stamp on every
    merge and pushing the loss, which is why 37.62–37.69 exist. */
 
-const GK_A = "A1::Alpha Cards";
 const GK_C = "C1::Gamma Cards";
 const GK_D = "D1::Delta Cards";
-const inCard = (c, re) =>
-  c ? [...c.querySelectorAll("button")].find((b) => re.test(b.textContent)) : undefined;
-const bandOf = (c) => c?.querySelector('button[aria-label^="Edit stamp"]');
-const noteInput = (c) => c?.querySelector('input[aria-label="Stamp note"]');
 const stampedCell = () => cell(/stamped/);
-/* the two entrances: the Stamp button on an unstamped card, the band on a
-   stamped one. `label` null keeps the kind already there; `note` undefined
-   keeps the note. */
-const stampPkg = async (re, label, note) => {
-  await click(inCard(card(re), /^Stamp$/) || bandOf(card(re)), `open stamp editor`);
-  if (label) await click(inCard(card(re), new RegExp(`^${label}$`)), `pick ${label}`);
-  if (note !== undefined) await type(noteInput(card(re)), note);
-  await click(inCard(card(re), /^Save$/), "save stamp");
-};
-const S = (kind, updatedAt, note = "") => ({ kind, at: "2026-08-01", note, updatedAt });
-const TOMB = (updatedAt) => ({ kind: "", at: "", note: "", updatedAt });
 const sortedEntries = (o) => Object.keys(o).sort().map((k) => [k, o[k]]);
 
 await fresh();
@@ -4072,7 +4129,6 @@ ok(
    GitHub peek) are retired. Group 55 holds the idle-gated apply that 40.12 leaned on. */
 
 const KEY40 = "device-40-key";
-const PHONE_STATE = { items: ITEMS.slice(0, 3), received: { [ITEMS[0].key]: 1 } };
 /* the other device's copy, as the Worker holds it */
 const SERVER40 = {
   mailday: 1,
@@ -4250,13 +4306,6 @@ ok(
   !!versionText("before restore"),
   "41.7 and it took a local milestone on the way in, so the rollback is undoable"
 );
-/* The Push button left the UI (owner ruling 2026-10-12). Its write is now the Worker
-   POST that a page wake starts (the switch, owner ruling 2026-10-14). A keyless device
-   has no POST, so the wake changes nothing for it. */
-const wakePush = async () => {
-  await wakeWorker();
-  await settle();
-};
 
 /* ── 42. the save indicator does not move the list ────────────────────────
    `.mdl-foot` is a wrapping flex row, so an indicator that exists only while
@@ -5159,6 +5208,9 @@ const freshKeyed49 = () => boot({ items: ITEMS, received: {} }, null, { syncKey:
   ok(typeof pushed.receivedAt?.[K] === "number", "49.C2 the pushed payload carries it");
 
   let backupBlob = null;
+  /* the shared capture hook comes back once this file is read. Left replaced, it would take the
+     next Backup download away from `captured`, and group 52 would read an older file. */
+  const captureHook49 = win.URL.createObjectURL;
   win.URL.createObjectURL = (b) => {
     backupBlob = b;
     return "blob:49";
@@ -5166,6 +5218,7 @@ const freshKeyed49 = () => boot({ items: ITEMS, received: {} }, null, { syncKey:
   await openHistory();
   await click(btn(/^Backup$/), "backup");
   const backedUp = backupBlob ? JSON.parse(await backupBlob.text()) : {};
+  win.URL.createObjectURL = captureHook49;
   ok(typeof backedUp.receivedAt?.[K] === "number", "49.C3 it survives a reload into the Backup file");
 
   await openHistory();
@@ -5517,16 +5570,6 @@ const freshKeyed49 = () => boot({ items: ITEMS, received: {} }, null, { syncKey:
    missing export returns the sentinel "MISSING", which equals no expected value.
    A thrown error comes back as {threw}, for the same reason. */
 
-const SR = await import("../src/sync-rules.mjs").catch(() => null);
-const sr = (name, ...args) => {
-  if (!SR || typeof SR[name] !== "function") return "MISSING";
-  try {
-    return SR[name](...args);
-  } catch (e) {
-    return { threw: String(e?.message || e) };
-  }
-};
-
 /* the device key rides in the fragment: #k=<key> */
 eq(sr("keyFromHash", "#k=abc123"), "abc123", "51.1 the key is read from #k=");
 eq(
@@ -5573,8 +5616,6 @@ eq(sr("isNewRev", 5, 4), false, "51.16 an older revision is not new");
    PRESS_MAX_MS, so a lost pointerup cannot hold the reply for ever; and for PRESS_TAIL_MS
    after the last press event, so the click that follows a release lands first. Hover, scroll
    and wheel are not press events, and the function has no argument for them. */
-const TAIL = SR?.PRESS_TAIL_MS ?? 700;
-const MAXP = SR?.PRESS_MAX_MS ?? 3000;
 eq(SR?.PRESS_TAIL_MS ?? "MISSING", 700, "51.19a PRESS_TAIL_MS is 700");
 eq(SR?.PRESS_MAX_MS ?? "MISSING", 3000, "51.19b PRESS_MAX_MS is 3000");
 eq(sr("pressHeld", null, 1000, 1000 + TAIL + 5000), false, "51.17 no press down and a quiet tail is not held");
@@ -5660,7 +5701,10 @@ ok(
   syncCalls().every((c) => !SYNC_LEAK.test(c.body ?? "")),
   "52.10 the mock's own post record never carries the key"
 );
+await unmountApp();
+}
 
+if (inPart(3)) {
 /* The virtual clock covers groups 53 to 61, then 67 to 69 (see harness.mjs).
    Installed here, removed after group 61, and installed again before group 67.
    Groups 1 to 52 and 62 to 66 keep real timers. */
@@ -10016,4 +10060,8 @@ try {
 }
 
 uninstallClock();
+await unmountApp();
+}
+
+gate.check();
 report();
